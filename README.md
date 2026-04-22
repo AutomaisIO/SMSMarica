@@ -193,3 +193,5 @@ flowchart TB
 ---
 
 *Documento iniciado para alinhar produto, arquitetura e isolamento de schema. Atualize à medida que requisitos legais (LGPD, CNS) e integrações forem fechados com o município.*
+#   S M S M a r i c a  
+ 
