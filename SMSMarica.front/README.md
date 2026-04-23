@@ -1,19 +1,71 @@
 # SMSMarica.front
 
+Painel web do **SMS Maricá**. React + Vite + TypeScript consumindo `SMSMarica.server`.
+
 ## O que é
 
-Aplicação web em **React** com **Vite** — painel administrativo e operacional do SMS Maricá.
+Aplicação web administrativa e operacional:
 
-## Para que serve
+- **Operador:** foco em execução (cadastros, alocações, conferências).
+- **Gestor:** foco em visão gerencial e relatórios (a partir do marco M6).
 
-- Dar suporte ao trabalho diário do **operador**: cadastros, consultas, alocação de pacientes (e acompanhantes) em **assentos** do veículo conforme layout por fileiras, acompanhamento de demandas de translado geradas pela periodicidade dos tratamentos, entre outras rotinas operacionais.
-- Oferecer ao **gestor** uma visão mais ampla: **dashboards**, indicadores e informações agregadas para acompanhamento da operação.
+Consome exclusivamente a API do [`SMSMarica.server`](../SMSMarica.server/README.md). Os aplicativos Flutter (cidadão e agente) atendem públicos distintos e não substituem este painel.
 
-## Perfis
+## Stack
 
-- **Operador:** foco em execução (lista do dia, alocações, conferências).
-- **Gestor:** foco em visão gerencial e relatórios (evolução conforme requisitos).
+- Vite + React 18 + TypeScript (`strict`)
+- TanStack Query + Axios (estado servidor e cliente HTTP)
+- react-router-dom v6
+- Zustand (auth mock local)
+- Zod (validação de formulários)
+- Tailwind CSS com tema Maricá (vermelho `#C8102E` + branco)
 
-## Relação com o restante do ecossistema
+Decisões e convenções em [`../docs/conventions.md §4`](../docs/conventions.md).
 
-Consome exclusivamente a API do **`SMSMarica.server`**. Os aplicativos móveis (**cidadao** e **agente**) não substituem este painel: cada canal tem público e função distintos.
+## Como rodar
+
+```bash
+npm install
+npm run dev        # http://localhost:5173
+```
+
+O Vite faz proxy de `/api/*` para `http://localhost:5080` (backend local).
+Para apontar para outra URL, copie `.env.example` para `.env.local` e ajuste `VITE_API_BASE_URL`.
+
+Com o `SMSMarica.server` rodando (`dotnet run --project SMSMarica.server/src/Host/SMSMarica.Api`), faça login (mock) e acesse **Operador → Pacientes** para cadastrar e consultar pacientes contra o backend real.
+
+## Estrutura
+
+```
+src/
+├── app/
+│   ├── layout/              (ShellAutenticado: header + nav por perfil)
+│   ├── pages/               (landing pages por perfil + 404)
+│   ├── providers/           (QueryProvider)
+│   └── router/              (AppRouter, RotaProtegida)
+├── features/
+│   ├── auth/pages/          (LoginPage mock)
+│   └── pacientes/
+│       ├── api/             (cliente HTTP + queries TanStack)
+│       ├── components/      (formulário + detalhe)
+│       ├── pages/           (PacientesPage)
+│       ├── schemas/         (zod)
+│       └── types.ts
+└── shared/
+    ├── api/                 (axios + tratamento de erro)
+    ├── auth/                (authStore mock — trocar no S2.4)
+    ├── lib/                 (cn utility)
+    └── ui/                  (Button, Input, Campo, theme)
+```
+
+## Autenticação
+
+Mock local (Zustand + localStorage) até a entrega **S2.4 Identidade** no server expor JWT real. Ao entrar, escolha o perfil; o roteador direciona para `/operador/*` ou `/gestor/*`.
+
+## Scripts
+
+```bash
+npm run dev        # servidor de desenvolvimento
+npm run build      # build de produção (typecheck + bundle)
+npm run preview    # serve o build
+```

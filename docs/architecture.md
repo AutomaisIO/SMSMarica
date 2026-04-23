@@ -10,14 +10,11 @@ flowchart TB
     S[(schema smsmarica)]
   end
 
-  subgraph server [SMSMarica.server — Modular Monolith .NET]
-    Host[Host/SMSMarica.Api]
-    subgraph mod [Módulos]
-      M1[Pacientes] --- M2[Tratamentos] --- M3[Unidades]
-      M4[Veiculos] --- M5[Motoristas] --- M6[Translado]
-      M7[Rastreamento] --- M8[Avaliacoes] --- M9[Identidade]
-    end
-    Host --> mod
+  subgraph server [SMSMarica.server · .NET 10]
+    Api[SMSMarica.Api · controllers MVC + Scalar]
+    Core[SMSMarica.Core · services + DTOs + validators]
+    Data[SMSMarica.Data · POCOs + DbContext + migrations]
+    Api --> Core --> Data
   end
 
   Front[SMSMarica.front · React + Vite]
@@ -27,12 +24,12 @@ flowchart TB
   Future[Serviços intermediários futuros]
   Legacy[Sistemas de saúde locais]
 
-  mod --> S
-  Front --> Host
-  Cidadao --> Host
-  Agente --> Host
+  Data --> S
+  Front --> Api
+  Cidadao --> Api
+  Agente --> Api
   Future -.integra.-> Legacy
-  Future -.publica/assina.-> Host
+  Future -.publica/assina.-> Api
 ```
 
 ## 2. Responsabilidades por subprojeto
@@ -46,62 +43,90 @@ flowchart TB
 
 Todos os clientes consomem **exclusivamente** a API do `SMSMarica.server`. Clientes não conversam entre si nem acessam o banco diretamente.
 
-## 3. Arquitetura do backend — Modular Monolith + Clean Architecture por módulo
+## 3. Arquitetura do backend — 3 projetos (Data + Core + Api)
 
-**Decisão registrada em** [ADR-0002](./adr/0002-modular-monolith.md).
+**Decisão registrada em** [ADR-0004](./adr/0004-arquitetura-tres-projetos.md). Substitui [ADR-0002](./adr/0002-modular-monolith.md) (Modular Monolith — superseded).
 
-### 3.1 Camadas (dentro de cada módulo)
+### 3.1 Layout
 
 ```
-Module.Api              ← endpoints, DTOs de entrada/saída HTTP
-    ↓
-Module.Application      ← use cases (commands/queries), validators, interfaces
-    ↓
-Module.Domain           ← agregados, value objects, eventos de domínio, invariantes
-    ↑
-Module.Infrastructure   ← EF Core, repositórios, integrações externas
+SMSMarica.server/
+├── src/
+│   ├── SMSMarica.Data/    (POCOs + DbContext + Configurations + Migrations)
+│   ├── SMSMarica.Core/    (services + DTOs + validators + mappers)
+│   └── SMSMarica.Api/     (Program.cs + middleware + 1 controller MVC por entidade)
+└── tests/
+    └── SMSMarica.Tests/   (xUnit + Testcontainers Postgres)
 ```
 
-Regras de dependência (travadas por `ProjectReference`):
+**Referências (travadas por `ProjectReference`):**
 
-- `Domain` depende **apenas** de `BuildingBlocks.Domain`.
-- `Application` depende de `Domain` + `BuildingBlocks.Application`.
-- `Infrastructure` depende de `Application` + `BuildingBlocks.Infrastructure`. Implementa interfaces declaradas em `Application`.
-- `Api` depende de `Application` + `BuildingBlocks.Api`. Nunca de `Infrastructure` (registrado no Host).
+- `Data` ← nada (só EF Core)
+- `Core` ← `Data`
+- `Api` ← `Core` + `Data`
+- `Tests` ← `Core` + `Data` + `Api`
 
-### 3.2 BuildingBlocks (código transversal)
+### 3.2 Cada projeto
 
 | Projeto | O que vive aqui |
 |---------|-----------------|
-| `BuildingBlocks.Domain` | `Entity`, `AggregateRoot`, `ValueObject`, `IDomainEvent`, `Guard`, tipos comuns (`Gps`, `Cpf`, `Cns`, `Telefone`) |
-| `BuildingBlocks.Application` | `Result<T>`, abstrações `ICommand`/`IQuery`, pipeline behaviors (validation, logging, transaction), `IDateTimeProvider`, `IUnitOfWork` |
-| `BuildingBlocks.Infrastructure` | `ApplicationDbContextBase` com `HasDefaultSchema("smsmarica")`, Outbox, Clock real, extensões EF comuns |
-| `BuildingBlocks.Api` | `ProblemDetails` customizado, `IApiModule` (contrato para módulo registrar seus endpoints), middlewares comuns |
+| `SMSMarica.Data` | POCOs em `Entities/` (sem private setters, sem domain events), `Configurations/<X>Configuration.cs` com mapeamento EF (snake_case, owned `Gps`, índices únicos), `SmsMaricaDbContext` com `HasDefaultSchema("smsmarica")`, `Migrations/` (uma migration `Initial` cobre todas as 16 tabelas), `DependencyInjection.AddData(IConfiguration)` |
+| `SMSMarica.Core` | `Common/Excecoes/` (`NaoEncontrado`, `Validacao`, `Conflito`), `Common/ValueObjects/Gps.cs` (helper de validação), uma pasta por entidade (`Pacientes/`, `Tratamentos/`, …) com `IXxxService` + `XxxService` injetando `SmsMaricaDbContext` direto, `Dtos/`, `Validators/` (FluentValidation), `Mapper.cs` (Mapperly), `DependencyInjection.AddCore()` |
+| `SMSMarica.Api` | `Program.cs` (Serilog + AddOpenApi + Scalar + AddData/AddCore + ExceptionMiddleware + auto-migrate em dev), `Middleware/ExceptionHandlingMiddleware.cs` (mapeia exceções tipadas para `ProblemDetails`), `Controllers/<X>Controller.cs` (`[ApiController]`, 1 por entidade, CRUD em `HttpGet/Post/Put/Delete`), `appsettings*.json` |
 
-### 3.3 Comunicação entre módulos
+### 3.3 Organização interna por entidade
 
-**Módulos não referenciam uns aos outros diretamente.** Opções, em ordem de preferência:
+Cada projeto organiza arquivos por **pasta** (não por csproj). Exemplo Pacientes:
 
-1. **Eventos de integração** via Outbox (persistido, confiável) — padrão para coisas como "SessaoDeTranslado criada → Translado precisa saber".
-2. **Contratos públicos** (`Module.Contracts` como pasta dentro de Application) — quando um módulo precisa expor um query model minimalista para consumo interno.
-3. **HTTP interno** via API — fallback quando as duas opções acima forem desproporcionais.
+```
+src/
+├── SMSMarica.Data/
+│   ├── Entities/Paciente.cs
+│   └── Configurations/PacienteConfiguration.cs
+├── SMSMarica.Core/
+│   └── Pacientes/
+│       ├── IPacientesService.cs
+│       ├── PacientesService.cs
+│       ├── PacientesMapper.cs
+│       ├── Dtos/PacienteDto.cs
+│       ├── Dtos/CadastrarPacienteRequest.cs
+│       ├── Dtos/AtualizarPacienteRequest.cs
+│       └── Validators/CadastrarPacienteValidator.cs
+└── SMSMarica.Api/
+    └── Controllers/PacientesController.cs
+```
 
-A proibição é aplicada por não adicionar `ProjectReference` entre módulos. O compilador faz a barreira.
+### 3.4 Erros e validação
 
-### 3.4 Host
+- Validações de **shape de entrada** ficam em `Validators/` (FluentValidation, auto-validating no pipeline MVC) e disparam `ValidationProblem` automaticamente.
+- Validações de **regra de negócio** que dependem do estado do banco lançam exceções tipadas no service:
+  - `NaoEncontradoException` → 404
+  - `ConflitoException` → 409 (ex.: CPF duplicado)
+  - `ValidacaoException` → 400
+- `ExceptionHandlingMiddleware` em `Api/Middleware/` mapeia para `ProblemDetails` ou `ValidationProblemDetails`.
 
-`SMSMarica.Api` é o único projeto "executável". Ele:
+### 3.5 OpenAPI
 
-- Compõe os módulos via `IApiModule` (cada módulo registra seus endpoints, DbContext, services).
-- Expõe Swagger/OpenAPI agregado.
-- Aplica migrations de todos os módulos na inicialização (ordem determinística).
-- Centraliza autenticação, OpenTelemetry, health checks.
+- `Microsoft.AspNetCore.OpenApi` (nativo do .NET 10) gera o spec em `/openapi/v1.json`.
+- `Scalar.AspNetCore` renderiza UI em `/docs`.
+- **Sempre ligado** (dev e prod), conforme decisão do produto. Se um dia ficar atrás de auth, ajustar no `Program.cs`.
+
+### 3.6 Adicionar uma nova entidade — checklist
+
+1. Criar POCO em `SMSMarica.Data/Entities/<X>.cs`.
+2. Criar `IEntityTypeConfiguration` em `SMSMarica.Data/Configurations/<X>Configuration.cs` (tabela snake_case + índices).
+3. Adicionar `DbSet<X>` em `SmsMaricaDbContext`.
+4. Rodar `dotnet ef migrations add <Nome>` no projeto Data com `--startup-project src/SMSMarica.Api`.
+5. Criar pasta `SMSMarica.Core/<X>/` com `I<X>Service` + `<X>Service`, DTOs, Validators e Mapper.
+6. Registrar service em `SMSMarica.Core/DependencyInjection.cs`.
+7. Criar `SMSMarica.Api/Controllers/<X>Controller.cs` com `[ApiController]` e 5 actions.
+8. Adicionar testes em `tests/SMSMarica.Tests/<X>/`.
 
 ## 4. Banco de dados
 
-Ver [database.md](./database.md). Resumo: **todas** as tabelas em schema `smsmarica` do banco compartilhado `defaultdb`. Zero cross-schema.
+Ver [database.md](./database.md). Resumo: **todas** as tabelas em schema `smsmarica` do banco compartilhado `defaultdb`. Zero cross-schema (ADR-0001).
 
-Cada módulo tem seu próprio `DbContext`, mas todos apontam para o mesmo schema com prefixo de tabela (`paciente_*`, `veiculo_*`, `rastreamento_*`).
+Um único `SmsMaricaDbContext` aponta para o schema `smsmarica`. Tabelas usam prefixo do "domínio" (`paciente`, `tratamento_periodicidade`, `translado_alocacao`, `rastreamento_ponto_gps`, etc.).
 
 ## 5. Stack por subprojeto
 
@@ -112,10 +137,11 @@ Cada módulo tem seu próprio `DbContext`, mas todos apontam para o mesmo schema
 | `SMSMarica.cidadao.app` | Flutter | Stable mais recente |
 | `SMSMarica.agente.app` | Flutter, Android only | Stable mais recente |
 
-Decisões específicas (MediatR, Minimal APIs, FluentValidation, etc.) estão nos ADRs.
+Decisões específicas (Controllers MVC, FluentValidation, Mapperly, Scalar) estão nos ADRs.
 
 ## 6. Futuro
 
 - **Time-series de GPS**: migrar ingestão de pontos para InfluxDB/TimescaleDB quando o volume justificar. Schema administrativo permanece em `smsmarica`.
-- **Extração de módulos**: se `Rastreamento` crescer muito, pode virar serviço autônomo — a arquitetura modular foi escolhida exatamente para essa opção ser barata.
+- **Auth**: ASP.NET Core Identity + JWT entram quando virarem prioridade. Endpoints públicos por enquanto (MVP).
+- **Extração de subdomínios**: se um conjunto de pastas (ex.: `Core/Rastreamento` + `Data/Entities/PontoGps`+`Geofence`) crescer ao ponto de pedir ciclo de release independente, criar ADR para extração e mover para serviço próprio.
 - **Camada intermediária**: integrações com sistemas legados de saúde municipais ficarão em serviços separados que publicam/assinam no Host, sem acoplar domínio do SMSMarica a legados.

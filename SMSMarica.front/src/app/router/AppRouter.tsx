@@ -1,0 +1,55 @@
+import { Navigate, Route, Routes } from 'react-router-dom';
+import { Layout } from '@/app/layout/Layout';
+import { GestorInicioPage } from '@/app/pages/GestorInicioPage';
+import { NaoEncontradoPage } from '@/app/pages/NaoEncontradoPage';
+import { OperadorInicioPage } from '@/app/pages/OperadorInicioPage';
+import { RotaProtegida } from '@/app/router/RotaProtegida';
+import { AvaliacoesPage } from '@/features/avaliacoes/pages/AvaliacoesPage';
+import { LoginPage } from '@/features/auth/pages/LoginPage';
+import { MotoristasPage } from '@/features/motoristas/pages/MotoristasPage';
+import { PacientesPage } from '@/features/pacientes/pages/PacientesPage';
+import { RastreamentoPage } from '@/features/rastreamento/pages/RastreamentoPage';
+import { TransladosPage } from '@/features/translados/pages/TransladosPage';
+import { TratamentosPage } from '@/features/tratamentos/pages/TratamentosPage';
+import { UnidadesPage } from '@/features/unidades/pages/UnidadesPage';
+import { UsuariosPage } from '@/features/usuarios/pages/UsuariosPage';
+import { VeiculosPage } from '@/features/veiculos/pages/VeiculosPage';
+import { useAuth } from '@/shared/auth/authStore';
+
+function RedirecionamentoRaiz() {
+  const usuario = useAuth((s) => s.usuario);
+  if (!usuario) return <Navigate to="/login" replace />;
+  return <Navigate to={usuario.perfil === 'operador' ? '/operador' : '/gestor'} replace />;
+}
+
+export function AppRouter() {
+  return (
+    <Routes>
+      <Route path="/" element={<RedirecionamentoRaiz />} />
+      <Route path="/login" element={<LoginPage />} />
+
+      <Route element={<RotaProtegida perfil="operador" />}>
+        <Route path="/operador" element={<Layout perfil="operador" />}>
+          <Route index element={<OperadorInicioPage />} />
+          <Route path="pacientes" element={<PacientesPage />} />
+          <Route path="unidades" element={<UnidadesPage />} />
+          <Route path="veiculos" element={<VeiculosPage />} />
+          <Route path="motoristas" element={<MotoristasPage />} />
+          <Route path="usuarios" element={<UsuariosPage />} />
+          <Route path="tratamentos" element={<TratamentosPage />} />
+          <Route path="translados" element={<TransladosPage />} />
+          <Route path="rastreamento" element={<RastreamentoPage />} />
+          <Route path="avaliacoes" element={<AvaliacoesPage />} />
+        </Route>
+      </Route>
+
+      <Route element={<RotaProtegida perfil="gestor" />}>
+        <Route path="/gestor" element={<Layout perfil="gestor" />}>
+          <Route index element={<GestorInicioPage />} />
+        </Route>
+      </Route>
+
+      <Route path="*" element={<NaoEncontradoPage />} />
+    </Routes>
+  );
+}

@@ -1,0 +1,36 @@
+import axios, { AxiosError } from 'axios';
+import { obterTokenMock } from '@/shared/auth/authStore';
+
+const baseURL = import.meta.env.VITE_API_BASE_URL ?? '/api';
+
+export const http = axios.create({
+  baseURL,
+  headers: { 'Content-Type': 'application/json' },
+});
+
+http.interceptors.request.use((config) => {
+  const token = obterTokenMock();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+export type ProblemaApi = {
+  type?: string;
+  title?: string;
+  status?: number;
+  detail?: string;
+  errors?: Record<string, string[]>;
+};
+
+export function extrairMensagemDeErro(erro: unknown): string {
+  if (erro instanceof AxiosError) {
+    const dados = erro.response?.data as ProblemaApi | undefined;
+    if (dados?.detail) return dados.detail;
+    if (dados?.title) return dados.title;
+    return erro.message;
+  }
+  if (erro instanceof Error) return erro.message;
+  return 'Erro desconhecido.';
+}

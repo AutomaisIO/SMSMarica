@@ -1,0 +1,194 @@
+name: Deploy SMSMarica.server
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'SMSMarica.server/**'
+      - '.github/workflows/deploy-server.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-smsmarica-server
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+      DOTNET_NOLOGO: 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        working-directory: SMSMarica.server
+        run: dotnet restore
+
+      - name: Publish (framework-dependent, linux-x64)
+        working-directory: SMSMarica.server
+        run: |
+          dotnet publish src/SMSMarica.Api/SMSMarica.Api.csproj \
+            --configuration Release \
+            --runtime linux-x64 \
+            --no-self-contained \
+            --output publish
+
+      - name: Pack artifact
+        working-directory: SMSMarica.server
+        run: tar -czf ../smsmarica-server.tar.gz -C publish .
+
+      - name: Copy artifact to server (SCP)
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HOST_SMSMARICA }}
+          username: ${{ secrets.USER_SMSMARICA }}
+          password: ${{ secrets.PASS_SMSMARICA }}
+          port: 22
+          source: smsmarica-server.tar.gz
+          target: /tmp/
+
+      - name: Deploy on server (SSH)
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          DB_CS: ${{ secrets.DB_CONNECTION_SMSMARICA }}
+        with:
+          host: ${{ secrets.HOST_SMSMARICA }}
+          username: ${{ secrets.USER_SMSMARICA }}
+          password: ${{ secrets.PASS_SMSMARICA }}
+          port: 22
+          envs: DB_CS
+          command_timeout: 15m
+          script: |
+            set -euo pipefail
+
+            APP_DIR=/opt/smsmarica/server
+            ENV_DIR=/etc/smsmarica-server
+            ENV_FILE=$ENV_DIR/env
+            SERVICE=smsmarica-server
+            DOTNET_DIR=/opt/dotnet
+            DOTNET=$DOTNET_DIR/dotnet
+            DOTNET_LINK=/usr/local/bin/dotnet
+            TARBALL=/tmp/smsmarica-server.tar.gz
+
+            # sudo opcional: se rodar como root, executa direto.
+            if [ "$(id -u)" -eq 0 ]; then SUDO=""; else SUDO="sudo -n"; fi
+
+            log() { echo ">>> $*"; }
+
+            # --- 1. Dependências básicas ---
+            if ! command -v curl >/dev/null 2>&1; then
+              log "Instalando curl..."
+              $SUDO apt-get update -y
+              $SUDO apt-get install -y curl
+            fi
+            if ! command -v tar >/dev/null 2>&1; then
+              $SUDO apt-get install -y tar
+            fi
+
+            # --- 2. Instalar .NET 10 ASP.NET Core runtime (se ausente) ---
+            if [ ! -x "$DOTNET" ] || ! "$DOTNET" --list-runtimes 2>/dev/null | grep -q 'Microsoft.AspNetCore.App 10'; then
+              log "Instalando .NET 10 ASP.NET Core runtime em $DOTNET_DIR..."
+              curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+              chmod +x /tmp/dotnet-install.sh
+              $SUDO mkdir -p "$DOTNET_DIR"
+              $SUDO /tmp/dotnet-install.sh --channel 10.0 --runtime aspnetcore --install-dir "$DOTNET_DIR"
+              $SUDO ln -sf "$DOTNET" "$DOTNET_LINK"
+              rm -f /tmp/dotnet-install.sh
+              log ".NET instalado: $($DOTNET --list-runtimes | grep AspNetCore || true)"
+            else
+              log ".NET 10 já presente: $($DOTNET --list-runtimes | grep AspNetCore | head -1)"
+            fi
+
+            # --- 3. Usuário de sistema dedicado ---
+            if ! id -u smsmarica >/dev/null 2>&1; then
+              log "Criando usuário de sistema 'smsmarica'..."
+              $SUDO useradd --system --home-dir /opt/smsmarica --shell /usr/sbin/nologin smsmarica
+            fi
+
+            # --- 4. Diretórios ---
+            $SUDO mkdir -p "$APP_DIR" "$ENV_DIR"
+
+            # --- 5. Arquivo de ambiente (connection string e afins) ---
+            if [ -n "${DB_CS:-}" ]; then
+              log "Atualizando $ENV_FILE com a connection string do secret DB_CONNECTION_SMSMARICA..."
+              # tee escreve via sudo sem precisar abrir subshell com heredoc
+              printf 'ConnectionStrings__DefaultDb=%s\n' "$DB_CS" | $SUDO tee "$ENV_FILE" >/dev/null
+            elif [ ! -f "$ENV_FILE" ]; then
+              log "AVISO: secret DB_CONNECTION_SMSMARICA não setado e $ENV_FILE não existe."
+              log "Criando env vazio — o serviço vai subir mas falhará ao conectar no banco."
+              log "Configure manualmente em $ENV_FILE (ver README do server)."
+              $SUDO touch "$ENV_FILE"
+            else
+              log "Secret DB_CONNECTION_SMSMARICA não fornecido; mantendo $ENV_FILE existente."
+            fi
+            $SUDO chmod 600 "$ENV_FILE"
+            $SUDO chown smsmarica:smsmarica "$ENV_FILE"
+
+            # --- 6. Systemd unit (cria se não tiver) ---
+            UNIT_FILE=/etc/systemd/system/$SERVICE.service
+            if [ ! -f "$UNIT_FILE" ]; then
+              log "Criando unit $UNIT_FILE..."
+              $SUDO tee "$UNIT_FILE" >/dev/null <<'UNIT'
+            [Unit]
+            Description=SMSMarica Server (API .NET)
+            After=network.target
+
+            [Service]
+            WorkingDirectory=/opt/smsmarica/server
+            ExecStart=/usr/local/bin/dotnet /opt/smsmarica/server/SMSMarica.Api.dll
+            Restart=on-failure
+            RestartSec=10
+            KillSignal=SIGINT
+            SyslogIdentifier=smsmarica-server
+            User=smsmarica
+            Group=smsmarica
+            EnvironmentFile=/etc/smsmarica-server/env
+            Environment=ASPNETCORE_ENVIRONMENT=Production
+            Environment=ASPNETCORE_URLS=http://0.0.0.0:5080
+            Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
+
+            [Install]
+            WantedBy=multi-user.target
+            UNIT
+              $SUDO systemctl daemon-reload
+              $SUDO systemctl enable "$SERVICE"
+            fi
+
+            # --- 7. Parar serviço (se ativo) ---
+            if $SUDO systemctl is-active --quiet "$SERVICE"; then
+              log "Parando $SERVICE..."
+              $SUDO systemctl stop "$SERVICE"
+            fi
+
+            # --- 8. Substituir artefatos ---
+            if [ ! -f "$TARBALL" ]; then
+              echo "ERRO: $TARBALL não encontrado (scp falhou?)" >&2
+              exit 1
+            fi
+            log "Extraindo nova versão em $APP_DIR..."
+            $SUDO find "$APP_DIR" -mindepth 1 -delete
+            $SUDO tar -xzf "$TARBALL" -C "$APP_DIR"
+            $SUDO chown -R smsmarica:smsmarica "$APP_DIR"
+            rm -f "$TARBALL"
+
+            # --- 9. Iniciar ---
+            log "Iniciando $SERVICE..."
+            $SUDO systemctl start "$SERVICE"
+
+            # --- 10. Validação ---
+            sleep 4
+            if ! $SUDO systemctl is-active --quiet "$SERVICE"; then
+              echo "FALHA: serviço não subiu. Últimas linhas do journal:" >&2
+              $SUDO journalctl -u "$SERVICE" -n 80 --no-pager || true
+              exit 1
+            fi
+            log "OK — $SERVICE ativo."
+            $SUDO systemctl status "$SERVICE" --no-pager --lines=10 || true

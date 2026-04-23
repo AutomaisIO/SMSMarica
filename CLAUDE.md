@@ -4,50 +4,85 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository state
 
-This is a **greenfield multi-project repository**. At time of writing, every subproject (`SMSMarica.server/`, `SMSMarica.front/`, `SMSMarica.cidadao.app/`, `SMSMarica.agente.app/`) contains only a `README.md` describing intent. No source code, build files, tests, or toolchain configuration exist yet — so there are **no build/test/lint commands to document here**. When bootstrapping any subproject, stay within the stack the READMEs commit to (below) rather than introducing a different one.
+**Multi-project monorepo.** Backend `SMSMarica.server` está em **3 projetos** (Data + Core + Api) + 1 de testes — ver [ADR-0004](./docs/adr/0004-arquitetura-tres-projetos.md). **CRUD completo das 9 entidades** (Pacientes, Unidades, Motoristas, Avaliacoes, Usuarios, Veiculos, Tratamentos, Rotas, Rastreamento). `SMSMarica.cidadao.app` está scaffoldado (Flutter, login mock + perfil consumindo `GET /pacientes/{id}`). `SMSMarica.front` e `SMSMarica.agente.app` ainda são README-only.
 
-Documentation in this repo is written in **Portuguese (pt-BR)**. Match that language for README/doc edits, commit messages, and code comments unless the user says otherwise.
+Documentation is in **Portuguese (pt-BR)**. Match that language for docs, commit messages, and code comments. Identifiers follow [`docs/conventions.md §1`](./docs/conventions.md): pt-BR for domain (`Paciente`, `Veiculo`), en-US for technical infrastructure (`DbContext`, `Service`, `Controller`).
 
-## The four subprojects
+## Start here
 
-| Path | Stack | Audience |
-|------|-------|----------|
-| `SMSMarica.server/` | ASP.NET Core + Entity Framework Core + PostgreSQL | Backend API — source of truth for all three clients |
-| `SMSMarica.front/` | React + Vite | Web admin — two profiles: **operador** (daily ops) and **gestor** (dashboards) |
-| `SMSMarica.cidadao.app/` | Flutter (iOS + Android) | Patient app — schedule, ride ETA, seat view, driver rating |
-| `SMSMarica.agente.app/` | Flutter, **Android only** | Driver app — routes, GPS posting, geofencing, external navigation (Waze/Maps) |
+Always read the canonical documentation in [`docs/`](./docs/) before making architectural decisions:
 
-All three clients consume the `SMSMarica.server` API exclusively. The clients do not talk to each other or directly to the database.
+| Arquivo | Quando consultar |
+|---------|------------------|
+| [`docs/architecture.md`](./docs/architecture.md) | Layout 3-projetos, organização por entidade, fluxo de erro |
+| [`docs/domain.md`](./docs/domain.md) | Glossário + invariantes do domínio antes de modelar qualquer entidade |
+| [`docs/database.md`](./docs/database.md) | Schema `smsmarica`, naming, migrations |
+| [`docs/conventions.md`](./docs/conventions.md) | Git, commits, estilo por stack |
+| [`docs/roadmap.md`](./docs/roadmap.md) | Marcos M1..M7 e dependências |
+| [`docs/adr/`](./docs/adr/) | Decisões arquiteturais registradas (0001 schema, 0003 Android-only, 0004 três projetos) |
 
-## Database rule — non-negotiable
+Plano de implementação: `C:\Users\berna\.claude\plans\deep-gathering-kahn.md`.
 
-The backend connects to a **PostgreSQL cluster/database shared with other products** (notably Automais.IO), conventionally called `defaultdb`. Isolation is **by schema, not by database**:
+## Regras não-negociáveis (resumo)
 
-- All SMSMarica tables, views, indexes, and FKs live in schema **`smsmarica`** (lowercase).
-- EF Core migrations must emit DDL only against `smsmarica`. Set this centrally — typically `modelBuilder.HasDefaultSchema("smsmarica")` in `OnModelCreating`, or per-entity `[Table(..., Schema = "smsmarica")]`.
-- **Never** reference, join, or FK tables in other schemas (e.g., Automais.IO's). Zero cross-schema dependencies.
-- Connection strings may point at the shared `defaultdb` — do not treat the shared DB as a reason to relax the schema rule.
+As regras abaixo não podem ser violadas sem novo ADR.
 
-If future high-volume GPS ingestion needs a time-series store (InfluxDB or similar), that is a separate system; the administrative model stays in `smsmarica`.
+1. **Schema `smsmarica`** — [ADR-0001](./docs/adr/0001-schema-isolation.md). Todo o modelo EF no schema `smsmarica` do `defaultdb` compartilhado. Zero referências cross-schema. Aplicar via `HasDefaultSchema("smsmarica")` em `SmsMaricaDbContext`.
 
-## Domain concepts that shape the model
+2. **Arquitetura 3-projetos** — [ADR-0004](./docs/adr/0004-arquitetura-tres-projetos.md). Backend é `SMSMarica.Data` + `SMSMarica.Core` + `SMSMarica.Api`. Não criar projetos novos para "modular" subdomínios — usar pastas dentro de cada projeto. Quem quiser modular monolith de novo precisa de novo ADR. (ADR-0002 está **superseded**.)
 
-These are product decisions the code must reflect — they are not derivable from any existing file because there is no code yet:
+3. **Dependências entre projetos:**
+   - `Data` ← nada
+   - `Core` ← `Data`
+   - `Api` ← `Core` + `Data`
+   - `Tests` ← `Core` + `Data` + `Api`
 
-- **Paciente** — cadastral fields must be sufficient for CNS (Cadastro Nacional de Saúde) equivalence (identification, documents, contacts, address, care links).
-- **Tratamento + periodicidade** — a treatment attached to a patient declares a cadence (e.g. daily from date X for N sessions, every 2 days, 1×/week). The system **auto-generates** the per-day transport demand (pickup at home → destination → return) from this cadence. Daily lists drive operator workflow.
-- **Unidade** and **Paciente** both carry **GPS coordinates** — required for routing and future algorithms.
-- **Veículo → Fileiras → Assentos** — model vehicles like aircraft seating but **do not assume uniform rows**. Each row declares its own seat count. The UI later renders a faithful layout (e.g. a specific van) and allocates patient + optional acompanhante to marked seats.
-- **Rastreamento / geofencing** — driver app posts GPS periodically; geofences mark arrivals at residences and units. High-frequency GPS may later move to a time-series store; keep the model open to that.
-- **Cidadão app features** — confirm pickup availability, see allocated seat, ETA for pickup and return trip (Uber-style), rate driver, submit suggestions/complaints. WhatsApp integration is planned (channel TBD).
-- **Agente app constraint** — Android only this phase; uses native intents to launch Waze/Google Maps; foreground/background location must respect Google Play policy and LGPD.
+4. **Migrations imutáveis** — uma migração já aplicada nunca é editada. Correção vira nova migration. Pasta única `SMSMarica.Data/Migrations/`.
 
-## When adding code to a subproject
+5. **`agente.app` é Android-only** — [ADR-0003](./docs/adr/0003-flutter-android-only-agente.md). Não gerar pasta `ios/` nem condicionais `Platform.isIOS` nesse projeto.
 
-- `SMSMarica.server`: ASP.NET Core Web API project + EF Core + Npgsql. Expose OpenAPI/Swagger for contract sharing with front and apps. First migration should establish the `smsmarica` schema default.
-- `SMSMarica.front`: React + Vite SPA. Plan for two role-scoped experiences (operador / gestor) — route-level or module-level separation is fine; do not hardcode role checks scattered through components.
-- Flutter apps: target the stated platforms only. `agente.app` must not silently grow an iOS build target — that is a product decision, not a cleanup.
+6. **Erros via exceções tipadas** — services lançam `NaoEncontradoException`/`ConflitoException`/`ValidacaoException` (em `SMSMarica.Core/Common/Excecoes/`). `ExceptionHandlingMiddleware` na Api mapeia para `ProblemDetails`. Não retornar `null` em vez de lançar.
 
-## Commit / branch conventions
+7. **OpenAPI sempre exposto** — `MapOpenApi()` + `MapScalarApiReference("/docs")` ficam **fora** de `if (env.IsDevelopment())`. Decisão de produto: spec acessível em dev e prod.
 
-Not yet established. If you are the one setting them up, record the decision in the root `README.md` section 9 ("Próximos passos") rather than inventing a convention silently.
+## Stack
+
+| | Stack | Observação |
+|---|---|---|
+| `SMSMarica.server` | .NET 10 LTS, ASP.NET Core, EF Core 10, PostgreSQL | CPM em `Directory.Packages.props`. Controllers MVC + FluentValidation auto + Mapperly + Serilog. xUnit + Testcontainers (precisa Docker pra rodar testes). |
+| `SMSMarica.front` | React + Vite + TypeScript (planejado) | Tema vermelho/branco (logo Maricá horizontal). |
+| `SMSMarica.cidadao.app` | Flutter (iOS + Android) | Riverpod + go_router + dio. Já chama `GET /pacientes/{id}` — não quebrar shape do `PacienteDto`. |
+| `SMSMarica.agente.app` | Flutter Android only (planejado) | Foreground service + geofencing. |
+
+## Comandos comuns
+
+```bash
+# Backend
+cd SMSMarica.server
+dotnet build                                       # 0 erros, 0 warnings esperado
+dotnet test                                        # requer Docker para Testcontainers
+dotnet run --project src/SMSMarica.Api             # http://localhost:5080
+                                                   # /docs (Scalar UI)
+                                                   # /openapi/v1.json (spec)
+                                                   # /health
+
+# Nova migration
+dotnet ef migrations add <Nome> \
+  --project src/SMSMarica.Data \
+  --startup-project src/SMSMarica.Api
+```
+
+## Adicionar uma nova entidade (CRUD completo)
+
+Ver [`docs/architecture.md §3.6`](./docs/architecture.md). Resumo:
+
+1. POCO em `Data/Entities/<X>.cs`
+2. Configuração EF em `Data/Configurations/<X>Configuration.cs`
+3. `DbSet<X>` em `SmsMaricaDbContext`
+4. Migration (`dotnet ef migrations add ...`)
+5. Pasta `Core/<X>/` com `IXService`/`XService`, `Dtos/`, `Validators/`, `Mapper.cs`
+6. Registrar service em `Core/DependencyInjection.cs`
+7. Controller em `Api/Controllers/<X>Controller.cs` com `[ApiController]` e CRUD
+8. Testes em `tests/SMSMarica.Tests/<X>/`
+
+Use o módulo Pacientes (já completo) como referência.
