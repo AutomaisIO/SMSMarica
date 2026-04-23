@@ -1,0 +1,83 @@
+using Microsoft.AspNetCore.Mvc;
+using SMSMarica.Core.Veiculos;
+using SMSMarica.Core.Veiculos.Dtos;
+
+namespace SMSMarica.Api.Controllers;
+
+[ApiController]
+[Route("veiculos")]
+public sealed class VeiculosController(IVeiculosService service) : ControllerBase
+{
+    private readonly IVeiculosService _service = service;
+
+    [HttpGet]
+    [ProducesResponseType<IReadOnlyList<VeiculoListItemDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<VeiculoListItemDto>> Listar(CancellationToken cancellationToken) =>
+        await _service.ListarAsync(cancellationToken);
+
+    [HttpGet("{id:guid}")]
+    [ProducesResponseType<VeiculoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<VeiculoDto> ObterPorId(Guid id, CancellationToken cancellationToken) =>
+        await _service.ObterPorIdAsync(id, cancellationToken);
+
+    [HttpPost]
+    [ProducesResponseType<Guid>(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Cadastrar(
+        [FromBody] CadastrarVeiculoRequest request,
+        CancellationToken cancellationToken)
+    {
+        var id = await _service.CadastrarAsync(request, cancellationToken);
+        return CreatedAtAction(nameof(ObterPorId), new { id }, id);
+    }
+
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Atualizar(
+        Guid id,
+        [FromBody] AtualizarVeiculoRequest request,
+        CancellationToken cancellationToken)
+    {
+        await _service.AtualizarAsync(id, request, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Desativar(Guid id, CancellationToken cancellationToken)
+    {
+        await _service.DesativarAsync(id, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpPost("{id:guid}/fileiras")]
+    [ProducesResponseType<FileiraDto>(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> AdicionarFileira(
+        Guid id,
+        [FromBody] AdicionarFileiraRequest request,
+        CancellationToken cancellationToken)
+    {
+        var fileira = await _service.AdicionarFileiraAsync(id, request, cancellationToken);
+        return Created($"/veiculos/{id}/fileiras/{fileira.Id}", fileira);
+    }
+
+    [HttpDelete("{id:guid}/fileiras/{fileiraId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RemoverFileira(
+        Guid id,
+        Guid fileiraId,
+        CancellationToken cancellationToken)
+    {
+        await _service.RemoverFileiraAsync(id, fileiraId, cancellationToken);
+        return NoContent();
+    }
+}

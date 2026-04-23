@@ -1,0 +1,139 @@
+using Microsoft.EntityFrameworkCore;
+using SMSMarica.Core.Common.Excecoes;
+using SMSMarica.Core.Veiculos.Dtos;
+using SMSMarica.Data;
+using SMSMarica.Data.Entities;
+using SMSMarica.Data.Entities.Enums;
+
+namespace SMSMarica.Core.Veiculos;
+
+public sealed class VeiculosService(SmsMaricaDbContext db) : IVeiculosService
+{
+    private readonly SmsMaricaDbContext _db = db;
+
+    public async Task<IReadOnlyList<VeiculoListItemDto>> ListarAsync(CancellationToken cancellationToken = default)
+    {
+        var veiculos = await _db.Veiculos.AsNoTracking()
+            .OrderBy(v => v.Placa)
+            .ToListAsync(cancellationToken);
+        return [.. veiculos.Select(VeiculosMapper.ParaListItem)];
+    }
+
+    public async Task<VeiculoDto> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var v = await _db.Veiculos.AsNoTracking()
+            .Include(x => x.Fileiras.OrderBy(f => f.Ordem))
+                .ThenInclude(f => f.Assentos.OrderBy(a => a.Numero))
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(Veiculo), id);
+        return VeiculosMapper.ParaDto(v);
+    }
+
+    public async Task<Guid> CadastrarAsync(CadastrarVeiculoRequest request, CancellationToken cancellationToken = default)
+    {
+        var placa = request.Placa.Trim().ToUpperInvariant();
+
+        if (await _db.Veiculos.AsNoTracking().AnyAsync(x => x.Placa == placa, cancellationToken))
+        {
+            throw new ConflitoException("veiculo.placa_duplicada", "Já existe veículo com esta placa.");
+        }
+
+        var v = new Veiculo
+        {
+            Id = Guid.CreateVersion7(),
+            Placa = placa,
+            Modelo = request.Modelo.Trim(),
+            Ativo = true,
+            CriadoEm = DateTime.UtcNow,
+        };
+
+        _db.Veiculos.Add(v);
+        await _db.SaveChangesAsync(cancellationToken);
+        return v.Id;
+    }
+
+    public async Task AtualizarAsync(Guid id, AtualizarVeiculoRequest request, CancellationToken cancellationToken = default)
+    {
+        var v = await _db.Veiculos.FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(Veiculo), id);
+
+        var placa = request.Placa.Trim().ToUpperInvariant();
+        if (placa != v.Placa &&
+            await _db.Veiculos.AsNoTracking().AnyAsync(x => x.Placa == placa && x.Id != id, cancellationToken))
+        {
+            throw new ConflitoException("veiculo.placa_duplicada", "Já existe veículo com esta placa.");
+        }
+
+        v.Placa = placa;
+        v.Modelo = request.Modelo.Trim();
+        v.AtualizadoEm = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task DesativarAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var v = await _db.Veiculos.FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(Veiculo), id);
+
+        if (!v.Ativo)
+        {
+            throw new ConflitoException("veiculo.ja_inativo", "Veículo já está inativo.");
+        }
+
+        v.Ativo = false;
+        v.AtualizadoEm = DateTime.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<FileiraDto> AdicionarFileiraAsync(
+        Guid veiculoId,
+        AdicionarFileiraRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var v = await _db.Veiculos
+            .Include(x => x.Fileiras)
+            .FirstOrDefaultAsync(x => x.Id == veiculoId, cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(Veiculo), veiculoId);
+
+        if (v.Fileiras.Any(f => f.Ordem == request.Ordem))
+        {
+            throw new ConflitoException(
+                "fileira.ordem_duplicada",
+                $"Veículo já tem fileira com ordem {request.Ordem}.");
+        }
+
+        var agora = DateTime.UtcNow;
+        var fileira = new Fileira
+        {
+            Id = Guid.CreateVersion7(),
+            VeiculoId = veiculoId,
+            Ordem = request.Ordem,
+            QuantidadeAssentos = request.QuantidadeAssentos,
+            CriadoEm = agora,
+            Assentos = [.. Enumerable.Range(1, request.QuantidadeAssentos)
+                .Select(n => new Assento
+                {
+                    Id = Guid.CreateVersion7(),
+                    Numero = n,
+                    Tipo = TipoAssento.Passageiro,
+                    CriadoEm = agora,
+                })],
+        };
+
+        v.Fileiras.Add(fileira);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return VeiculosMapper.ParaDto(fileira);
+    }
+
+    public async Task RemoverFileiraAsync(Guid veiculoId, Guid fileiraId, CancellationToken cancellationToken = default)
+    {
+        var fileira = await _db.Fileiras
+            .FirstOrDefaultAsync(f => f.Id == fileiraId && f.VeiculoId == veiculoId, cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(Fileira), fileiraId);
+
+        _db.Fileiras.Remove(fileira);
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+}

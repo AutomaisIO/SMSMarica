@@ -1,0 +1,20 @@
+using SMSMarica.Data.Entities.Enums;
+
+namespace SMSMarica.Core.Identidade.Dtos;
+
+public sealed record UsuarioDto(
+    Guid Id,
+    string NomeCompleto,
+    string Email,
+    string? Cpf,
+    PerfilUsuario Perfil,
+    bool Ativo,
+    DateTime CriadoEm,
+    DateTime? UltimoAcessoEm);
+
+public sealed record UsuarioListItemDto(
+    Guid Id,
+    string NomeCompleto,
+    string Email,
+    PerfilUsuario Perfil,
+    bool Ativo);

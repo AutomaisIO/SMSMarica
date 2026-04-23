@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SMSMarica.Api/SMSMarica.Api.csproj" />
+    <Project Path="src/SMSMarica.Core/SMSMarica.Core.csproj" />
+    <Project Path="src/SMSMarica.Data/SMSMarica.Data.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SMSMarica.Tests/SMSMarica.Tests.csproj" />
+  </Folder>
+</Solution>
