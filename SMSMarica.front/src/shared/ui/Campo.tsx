@@ -8,13 +8,15 @@ type CampoProps = {
   dica?: string;
   children: ReactNode;
   className?: string;
+  required?: boolean;
 };
 
-export function Campo({ label, htmlFor, erro, dica, children, className }: CampoProps) {
+export function Campo({ label, htmlFor, erro, dica, children, className, required }: CampoProps) {
   return (
     <div className={cn('flex flex-col', className)}>
       <label htmlFor={htmlFor} className="label">
         {label}
+        {required && <span className="ml-0.5 text-red-500" aria-hidden="true">*</span>}
       </label>
       {children}
       {erro ? (

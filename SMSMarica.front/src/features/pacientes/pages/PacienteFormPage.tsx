@@ -466,7 +466,7 @@ export function PacienteFormPage() {
           </p>
 
           <div className="mt-5 grid max-w-xl grid-cols-1 gap-4 md:grid-cols-2">
-            <Campo label="CPF" htmlFor="cpf" erro={erros.cpf}>
+            <Campo label="CPF" htmlFor="cpf" erro={erros.cpf} required>
               <Input
                 id="cpf"
                 value={estado.cpf}
@@ -476,7 +476,7 @@ export function PacienteFormPage() {
                 autoFocus
               />
             </Campo>
-            <Campo label="Data de nascimento" htmlFor="dataNascimento" erro={erros.dataNascimento}>
+            <Campo label="Data de nascimento" htmlFor="dataNascimento" erro={erros.dataNascimento} required>
               <Input
                 id="dataNascimento"
                 type="date"

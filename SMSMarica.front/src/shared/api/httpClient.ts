@@ -30,6 +30,10 @@ export type ProblemaApi = {
 export function extrairMensagemDeErro(erro: unknown): string {
   if (erro instanceof AxiosError) {
     const dados = erro.response?.data as ProblemaApi | undefined;
+    if (dados?.errors) {
+      const msgs = Object.values(dados.errors).flat().filter(Boolean);
+      if (msgs.length > 0) return msgs.join(' ');
+    }
     if (dados?.detail) return dados.detail;
     if (dados?.title) return dados.title;
     return erro.message;

@@ -238,7 +238,7 @@ export function FormularioVeiculo({ modo, idVeiculo, aoConcluir }: Props) {
       ) : null}
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Campo label="Placa" htmlFor="placa" erro={erros.placa}>
+        <Campo label="Placa" htmlFor="placa" erro={erros.placa} required>
           <Input
             id="placa"
             value={valores.placa}
@@ -246,6 +246,8 @@ export function FormularioVeiculo({ modo, idVeiculo, aoConcluir }: Props) {
             maxLength={10}
             required
             placeholder="ABC1D23"
+            disabled={modo === 'editar'}
+            readOnly={modo === 'editar'}
           />
         </Campo>
 
@@ -389,9 +391,23 @@ export function FormularioVeiculo({ modo, idVeiculo, aoConcluir }: Props) {
           </div>
         </section>
       ) : (
-        <section className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
-          Edição de layout (fileiras/assentos) não está disponível neste formulário.
-          Para alterar o layout, exclua e recadastre o veículo — histórico não é afetado.
+        <section className="space-y-4">
+          <div className="flex items-end justify-between gap-3 border-b border-gray-200 pb-2">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">Layout dos assentos</h3>
+              <p className="text-xs text-gray-500">
+                {linhas.length} fileira(s) · {totalAssentos} assento(s) — somente visualização.
+                Para alterar o layout, exclua e recadastre o veículo.
+              </p>
+            </div>
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+            {linhas.length > 0 ? (
+              <MapaDeAssentos linhas={linhas} />
+            ) : (
+              <p className="text-center text-xs text-gray-400">Carregando layout…</p>
+            )}
+          </div>
         </section>
       )}
 
