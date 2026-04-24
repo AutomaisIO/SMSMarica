@@ -90,19 +90,20 @@ public sealed class HubConsultaService : IHubConsultaService
             }
 
             var payload = await resposta.Content.ReadFromJsonAsync<HubCepPayload>(JsonOpts, cancellationToken);
-            if (payload is null || string.IsNullOrWhiteSpace(payload.Localidade))
+            var result = payload?.Result;
+            if (payload is null || !payload.Status || result is null || string.IsNullOrWhiteSpace(result.Localidade))
             {
                 throw new NaoEncontradoException("Cep", cepNormalizado);
             }
 
             return new HubCepRespostaDto(
-                Cep: payload.Cep ?? cepNormalizado,
-                Logradouro: payload.Logradouro ?? string.Empty,
-                Complemento: payload.Complemento,
-                Bairro: payload.Bairro ?? string.Empty,
-                Localidade: payload.Localidade,
-                Uf: payload.Uf ?? string.Empty,
-                Ibge: payload.Ibge);
+                Cep: result.Cep ?? cepNormalizado,
+                Logradouro: result.Logradouro ?? string.Empty,
+                Complemento: result.Complemento,
+                Bairro: result.Bairro ?? string.Empty,
+                Localidade: result.Localidade,
+                Uf: result.Uf ?? string.Empty,
+                Ibge: result.Ibge);
         }
         catch (HttpRequestException ex)
         {
@@ -132,6 +133,11 @@ public sealed class HubConsultaService : IHubConsultaService
         [property: JsonPropertyName("situacao_cadastral")] string? SituacaoCadastral);
 
     private sealed record HubCepPayload(
+        bool Status,
+        string? Return,
+        HubCepPayloadResult? Result);
+
+    private sealed record HubCepPayloadResult(
         string? Cep,
         string? Logradouro,
         string? Complemento,
