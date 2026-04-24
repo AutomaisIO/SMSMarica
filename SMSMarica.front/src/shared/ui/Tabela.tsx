@@ -17,6 +17,10 @@ type Props<T> = {
 };
 
 export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando }: Props<T>) {
+  // Defensivo: se a API retornar algo não-array (HTML por URL errada, erro
+  // serializado, etc.), renderiza vazio em vez de derrubar a tela toda.
+  const dadosSeguros: T[] = Array.isArray(dados) ? dados : [];
+
   return (
     <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
       <table className="min-w-full divide-y divide-gray-200">
@@ -42,14 +46,14 @@ export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando }: Pro
                 Carregando…
               </td>
             </tr>
-          ) : dados.length === 0 ? (
+          ) : dadosSeguros.length === 0 ? (
             <tr>
               <td colSpan={colunas.length} className="px-4 py-8 text-center text-sm text-gray-500">
                 {vazio ?? 'Nenhum registro encontrado.'}
               </td>
             </tr>
           ) : (
-            dados.map((item) => (
+            dadosSeguros.map((item) => (
               <tr key={chaveLinha(item)} className="hover:bg-gray-50">
                 {colunas.map((c) => (
                   <td

@@ -1,7 +1,10 @@
 import axios, { AxiosError } from 'axios';
 import { obterTokenMock } from '@/shared/auth/authStore';
 
-const baseURL = import.meta.env.VITE_API_BASE_URL ?? '/api';
+const URL_PROD = 'https://api.smsmarica.online';
+const envBase = import.meta.env.VITE_API_BASE_URL?.trim();
+// Ordem: env var explícita > fallback prod em build de produção > proxy /api em dev.
+const baseURL = envBase || (import.meta.env.PROD ? URL_PROD : '/api');
 
 export const http = axios.create({
   baseURL,
