@@ -16,6 +16,7 @@ export const assentoInputSchema = z.object({
     .refine((v): v is TipoAssento => tiposAssento.includes(v), {
       message: 'Tipo de assento inválido.',
     }),
+  bloqueado: z.boolean().default(false),
 });
 
 export const fileiraInputSchema = z.object({
