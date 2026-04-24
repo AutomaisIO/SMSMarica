@@ -7,6 +7,7 @@ import { RotaProtegida } from '@/app/router/RotaProtegida';
 import { AvaliacoesPage } from '@/features/avaliacoes/pages/AvaliacoesPage';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { MotoristasPage } from '@/features/motoristas/pages/MotoristasPage';
+import { PacienteDetalhePage } from '@/features/pacientes/pages/PacienteDetalhePage';
 import { PacienteFormPage } from '@/features/pacientes/pages/PacienteFormPage';
 import { PacientesPage } from '@/features/pacientes/pages/PacientesPage';
 import { RastreamentoPage } from '@/features/rastreamento/pages/RastreamentoPage';
@@ -36,6 +37,7 @@ export function AppRouter() {
           <Route index element={<OperadorInicioPage />} />
           <Route path="pacientes" element={<PacientesPage />} />
           <Route path="pacientes/novo" element={<PacienteFormPage />} />
+          <Route path="pacientes/:id" element={<PacienteDetalhePage />} />
           <Route path="pacientes/:id/editar" element={<PacienteFormPage />} />
           <Route path="unidades" element={<UnidadesPage />} />
           <Route path="veiculos" element={<VeiculosPage />} />

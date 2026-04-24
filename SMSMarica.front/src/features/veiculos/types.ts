@@ -46,6 +46,7 @@ export type AssentoDto = {
   id: string;
   numero: number;
   tipo: TipoAssento;
+  bloqueado: boolean;
 };
 
 export type FileiraDto = {
@@ -70,6 +71,14 @@ export type Veiculo = {
 export type AssentoInput = {
   numero: number;
   tipo: TipoAssento;
+  bloqueado: boolean;
+};
+
+export type AtualizarLayoutPayload = {
+  fileiras: {
+    ordem: number;
+    assentos: AssentoInput[];
+  }[];
 };
 
 export type FileiraInput = {

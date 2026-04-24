@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Armchair, Crown, HeartHandshake } from 'lucide-react';
+import { Armchair, Crown, HeartHandshake, Lock } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 import {
   ROTULOS_TIPO_ASSENTO,
@@ -12,6 +12,8 @@ export type CelulaAssento = {
   numero: number;
   /** Tipo atual do assento. */
   tipo: TipoAssento;
+  /** Assento bloqueado operacionalmente (banco quebrado, reservado etc.). */
+  bloqueado?: boolean;
 };
 
 export type LinhaLayout = {
@@ -66,6 +68,12 @@ const CORES: Record<TipoAssento, { base: string; hover: string; icone: React.Ele
   },
 };
 
+const COR_BLOQUEADO = {
+  base: 'bg-gray-100 border-gray-300 text-gray-400',
+  hover: 'hover:bg-gray-200',
+  icone: Lock,
+};
+
 export function MapaDeAssentos({
   linhas,
   onClickAssento,
@@ -105,7 +113,7 @@ export function MapaDeAssentos({
                 if (!assento) {
                   return <div key={`vazio-${colIdx}`} className="h-12" />;
                 }
-                const cor = CORES[assento.tipo];
+                const cor = assento.bloqueado ? COR_BLOQUEADO : CORES[assento.tipo];
                 const destacadoAqui =
                   destacado?.fileiraOrdem === linha.ordem &&
                   destacado?.numero === assento.numero;
@@ -175,27 +183,28 @@ function FrenteDoVeiculo({ colunas }: { colunas: number }) {
 }
 
 function Legenda() {
-  const itens: { tipo: TipoAssento }[] = [
+  const itens: { tipo: TipoAssento; bloqueado?: boolean }[] = [
     { tipo: TIPOS_ASSENTO.Motorista },
     { tipo: TIPOS_ASSENTO.Passageiro },
     { tipo: TIPOS_ASSENTO.Acompanhante },
+    { tipo: TIPOS_ASSENTO.Passageiro, bloqueado: true },
   ];
+  const rotulos: Record<string, string> = {
+    ...ROTULOS_TIPO_ASSENTO,
+    bloqueado: 'Bloqueado',
+  };
   return (
     <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-gray-600">
-      {itens.map(({ tipo }) => {
-        const cor = CORES[tipo];
+      {itens.map(({ tipo, bloqueado }, i) => {
+        const cor = bloqueado ? COR_BLOQUEADO : CORES[tipo];
         const Icone = cor.icone;
+        const rotulo = bloqueado ? 'Bloqueado' : rotulos[tipo];
         return (
-          <span key={tipo} className="inline-flex items-center gap-1.5">
-            <span
-              className={cn(
-                'inline-flex h-5 w-5 items-center justify-center rounded border-2',
-                cor.base,
-              )}
-            >
+          <span key={i} className="inline-flex items-center gap-1.5">
+            <span className={cn('inline-flex h-5 w-5 items-center justify-center rounded border-2', cor.base)}>
               <Icone className="h-3 w-3" />
             </span>
-            {ROTULOS_TIPO_ASSENTO[tipo]}
+            {rotulo}
           </span>
         );
       })}

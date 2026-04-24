@@ -6,6 +6,7 @@ import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import {
+  useAtualizarLayoutVeiculo,
   useAtualizarVeiculo,
   useCadastrarVeiculo,
   useVeiculoPorId,
@@ -50,25 +51,25 @@ const INICIAL: ValoresBase = {
 
 type Erros = Partial<Record<keyof ValoresBase, string>> & { fileiras?: string };
 
-const TIPO_ROTATIVO: TipoAssento[] = [
-  TIPOS_ASSENTO.Passageiro,
-  TIPOS_ASSENTO.Motorista,
-  TIPOS_ASSENTO.Acompanhante,
+type EstadoAssento = { tipo: TipoAssento; bloqueado: boolean };
+const CICLO: EstadoAssento[] = [
+  { tipo: TIPOS_ASSENTO.Passageiro, bloqueado: false },
+  { tipo: TIPOS_ASSENTO.Motorista, bloqueado: false },
+  { tipo: TIPOS_ASSENTO.Acompanhante, bloqueado: false },
+  { tipo: TIPOS_ASSENTO.Passageiro, bloqueado: true },
 ];
 
 function layoutInicial(): LinhaLayout[] {
   return [
     { ordem: 1, assentos: [
-      { numero: 1, tipo: TIPOS_ASSENTO.Motorista },
-      { numero: 2, tipo: TIPOS_ASSENTO.Passageiro },
+      { numero: 1, tipo: TIPOS_ASSENTO.Motorista, bloqueado: false },
+      { numero: 2, tipo: TIPOS_ASSENTO.Passageiro, bloqueado: false },
     ]},
     { ordem: 2, assentos: Array.from({ length: 3 }, (_, i) => ({
-      numero: i + 1,
-      tipo: TIPOS_ASSENTO.Passageiro,
+      numero: i + 1, tipo: TIPOS_ASSENTO.Passageiro, bloqueado: false,
     }))},
     { ordem: 3, assentos: Array.from({ length: 3 }, (_, i) => ({
-      numero: i + 1,
-      tipo: TIPOS_ASSENTO.Passageiro,
+      numero: i + 1, tipo: TIPOS_ASSENTO.Passageiro, bloqueado: false,
     }))},
   ];
 }
@@ -80,6 +81,7 @@ export function FormularioVeiculo({ modo, idVeiculo, aoConcluir }: Props) {
   const [erroGlobal, setErroGlobal] = useState<string | null>(null);
   const cadastrar = useCadastrarVeiculo();
   const atualizar = useAtualizarVeiculo();
+  const atualizarLayout = useAtualizarLayoutVeiculo();
   const detalhe = useVeiculoPorId(modo === 'editar' ? idVeiculo ?? null : null);
 
   useEffect(() => {
@@ -101,7 +103,7 @@ export function FormularioVeiculo({ modo, idVeiculo, aoConcluir }: Props) {
             assentos: f.assentos
               .slice()
               .sort((a, b) => a.numero - b.numero)
-              .map((a) => ({ numero: a.numero, tipo: a.tipo })),
+              .map((a) => ({ numero: a.numero, tipo: a.tipo, bloqueado: a.bloqueado })),
           })),
       );
     }
@@ -122,6 +124,7 @@ export function FormularioVeiculo({ modo, idVeiculo, aoConcluir }: Props) {
           assentos: Array.from({ length: qtdRef }, (_, i) => ({
             numero: i + 1,
             tipo: TIPOS_ASSENTO.Passageiro,
+            bloqueado: false,
           })),
         },
       ];
@@ -142,6 +145,7 @@ export function FormularioVeiculo({ modo, idVeiculo, aoConcluir }: Props) {
           const novos = Array.from({ length: alvo - l.assentos.length }, (_, i) => ({
             numero: l.assentos.length + i + 1,
             tipo: TIPOS_ASSENTO.Passageiro as TipoAssento,
+            bloqueado: false,
           }));
           return { ...l, assentos: [...l.assentos, ...novos] };
         }
@@ -150,7 +154,7 @@ export function FormularioVeiculo({ modo, idVeiculo, aoConcluir }: Props) {
     );
   }
 
-  function rotacionarTipoAssento(ordem: number, numero: number) {
+  function rotacionarAssento(ordem: number, numero: number) {
     setLinhas((prev) =>
       prev.map((l) => {
         if (l.ordem !== ordem) return l;
@@ -158,9 +162,11 @@ export function FormularioVeiculo({ modo, idVeiculo, aoConcluir }: Props) {
           ...l,
           assentos: l.assentos.map((a) => {
             if (a.numero !== numero) return a;
-            const idx = TIPO_ROTATIVO.indexOf(a.tipo);
-            const prox = TIPO_ROTATIVO[(idx + 1) % TIPO_ROTATIVO.length];
-            return { ...a, tipo: prox };
+            const idx = CICLO.findIndex(
+              (c) => c.tipo === a.tipo && c.bloqueado === (a.bloqueado ?? false),
+            );
+            const prox = CICLO[(idx + 1) % CICLO.length];
+            return { ...a, tipo: prox.tipo, bloqueado: prox.bloqueado };
           }),
         };
       }),
@@ -183,7 +189,7 @@ export function FormularioVeiculo({ modo, idVeiculo, aoConcluir }: Props) {
         cor: valores.cor.trim(),
         fileiras: linhas.map((l) => ({
           ordem: l.ordem,
-          assentos: l.assentos.map((a) => ({ numero: a.numero, tipo: a.tipo })),
+          assentos: l.assentos.map((a) => ({ numero: a.numero, tipo: a.tipo, bloqueado: a.bloqueado ?? false })),
         })),
       });
       if (!parsed.success) {
@@ -223,13 +229,26 @@ export function FormularioVeiculo({ modo, idVeiculo, aoConcluir }: Props) {
     try {
       if (!idVeiculo) throw new Error('ID ausente.');
       await atualizar.mutateAsync({ id: idVeiculo, payload: parsed.data });
+      await atualizarLayout.mutateAsync({
+        id: idVeiculo,
+        payload: {
+          fileiras: linhas.map((l) => ({
+            ordem: l.ordem,
+            assentos: l.assentos.map((a) => ({
+              numero: a.numero,
+              tipo: a.tipo,
+              bloqueado: a.bloqueado ?? false,
+            })),
+          })),
+        },
+      });
       aoConcluir();
     } catch (erro) {
       setErroGlobal(extrairMensagemDeErro(erro));
     }
   }
 
-  const pendente = cadastrar.isPending || atualizar.isPending;
+  const pendente = cadastrar.isPending || atualizar.isPending || atualizarLayout.isPending;
 
   return (
     <form onSubmit={aoEnviar} className="space-y-6">
@@ -384,7 +403,7 @@ export function FormularioVeiculo({ modo, idVeiculo, aoConcluir }: Props) {
               <MapaDeAssentos
                 linhas={linhas}
                 onClickAssento={({ fileiraOrdem, numero }) =>
-                  rotacionarTipoAssento(fileiraOrdem, numero)
+                  rotacionarAssento(fileiraOrdem, numero)
                 }
               />
             </div>
@@ -395,19 +414,66 @@ export function FormularioVeiculo({ modo, idVeiculo, aoConcluir }: Props) {
           <div className="flex items-end justify-between gap-3 border-b border-gray-200 pb-2">
             <div>
               <h3 className="text-sm font-semibold text-gray-900">Layout dos assentos</h3>
-              <p className="text-xs text-gray-500">
-                {linhas.length} fileira(s) · {totalAssentos} assento(s) — somente visualização.
-                Para alterar o layout, exclua e recadastre o veículo.
+              <p className="text-xs text-gray-600">
+                Clique num assento para alternar entre Passageiro → Motorista → Acompanhante → Bloqueado.
               </p>
             </div>
+            <div className="text-xs text-gray-500">
+              {linhas.length} fileira(s) · {totalAssentos} assento(s)
+            </div>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-            {linhas.length > 0 ? (
-              <MapaDeAssentos linhas={linhas} />
-            ) : (
-              <p className="text-center text-xs text-gray-400">Carregando layout…</p>
-            )}
-          </div>
+
+          {detalhe.isFetching ? (
+            <div className="text-sm text-gray-400">Carregando layout…</div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <div className="space-y-2">
+                {linhas.map((l) => (
+                  <div
+                    key={l.ordem}
+                    className="flex items-center justify-between rounded-md border border-gray-200 bg-white px-3 py-2"
+                  >
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="inline-flex h-6 w-8 items-center justify-center rounded bg-gray-100 text-xs font-semibold text-gray-700">
+                        F{l.ordem}
+                      </span>
+                      <span className="text-gray-700">{l.assentos.length} assento(s)</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button type="button" tamanho="sm" variante="outline"
+                        onClick={() => ajustarAssentos(l.ordem, -1)}
+                        disabled={l.assentos.length <= 1}
+                        aria-label={`Remover assento da fileira ${l.ordem}`}>
+                        <Minus className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button type="button" tamanho="sm" variante="outline"
+                        onClick={() => ajustarAssentos(l.ordem, +1)}
+                        disabled={l.assentos.length >= 10}
+                        aria-label={`Adicionar assento à fileira ${l.ordem}`}>
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button type="button" tamanho="sm" variante="ghost"
+                        onClick={() => removerFileira(l.ordem)}
+                        disabled={linhas.length <= 1}
+                        className="text-red-600 hover:bg-red-50">
+                        Excluir
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                <Button type="button" variante="outline" onClick={adicionarFileira}
+                  disabled={linhas.length >= 30} className="w-full">
+                  <Plus className="h-4 w-4" /> Adicionar fileira
+                </Button>
+              </div>
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <MapaDeAssentos
+                  linhas={linhas}
+                  onClickAssento={({ fileiraOrdem, numero }) => rotacionarAssento(fileiraOrdem, numero)}
+                />
+              </div>
+            </div>
+          )}
         </section>
       )}
 

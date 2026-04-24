@@ -31,4 +31,5 @@ public sealed record FileiraDto(
 public sealed record AssentoDto(
     Guid Id,
     int Numero,
-    TipoAssento Tipo);
+    TipoAssento Tipo,
+    bool Bloqueado);

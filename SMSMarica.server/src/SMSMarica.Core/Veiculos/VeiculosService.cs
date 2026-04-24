@@ -111,6 +111,80 @@ public sealed class VeiculosService(SmsMaricaDbContext db) : IVeiculosService
         await _db.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task AtualizarLayoutAsync(
+        Guid veiculoId,
+        AtualizarLayoutVeiculoRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var veiculo = await _db.Veiculos
+            .Include(v => v.Fileiras)
+                .ThenInclude(f => f.Assentos)
+            .FirstOrDefaultAsync(v => v.Id == veiculoId && v.Ativo, cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(Veiculo), veiculoId);
+
+        var agora = DateTime.UtcNow;
+        var ordensNovas = request.Fileiras.Select(f => f.Ordem).ToHashSet();
+
+        // Fileiras removidas do layout: soft-delete em todos os assentos
+        foreach (var fileira in veiculo.Fileiras.Where(f => !ordensNovas.Contains(f.Ordem)))
+            foreach (var assento in fileira.Assentos.Where(a => !a.Excluido))
+                assento.Excluido = true;
+
+        foreach (var fileiraReq in request.Fileiras)
+        {
+            var fileira = veiculo.Fileiras.FirstOrDefault(f => f.Ordem == fileiraReq.Ordem);
+            if (fileira is null)
+            {
+                fileira = new Fileira
+                {
+                    Id = Guid.CreateVersion7(),
+                    VeiculoId = veiculoId,
+                    Ordem = fileiraReq.Ordem,
+                    QuantidadeAssentos = fileiraReq.Assentos.Count,
+                    CriadoEm = agora,
+                    Assentos = [],
+                };
+                _db.Fileiras.Add(fileira);
+            }
+            else
+            {
+                fileira.QuantidadeAssentos = fileiraReq.Assentos.Count;
+            }
+
+            var numerosNovos = fileiraReq.Assentos.Select(a => a.Numero).ToHashSet();
+
+            // Assentos removidos desta fileira: soft-delete
+            foreach (var assento in fileira.Assentos.Where(a => !a.Excluido && !numerosNovos.Contains(a.Numero)))
+                assento.Excluido = true;
+
+            // Atualizar existentes ou inserir novos
+            foreach (var assentoReq in fileiraReq.Assentos)
+            {
+                var assento = fileira.Assentos.FirstOrDefault(a => a.Numero == assentoReq.Numero && !a.Excluido);
+                if (assento is null)
+                {
+                    fileira.Assentos.Add(new Assento
+                    {
+                        Id = Guid.CreateVersion7(),
+                        FileiraId = fileira.Id,
+                        Numero = assentoReq.Numero,
+                        Tipo = assentoReq.Tipo,
+                        Bloqueado = assentoReq.Bloqueado,
+                        CriadoEm = agora,
+                    });
+                }
+                else
+                {
+                    assento.Tipo = assentoReq.Tipo;
+                    assento.Bloqueado = assentoReq.Bloqueado;
+                }
+            }
+        }
+
+        veiculo.AtualizadoEm = agora;
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<FileiraDto> AdicionarFileiraAsync(
         Guid veiculoId,
         AdicionarFileiraRequest request,

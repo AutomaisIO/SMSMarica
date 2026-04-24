@@ -56,6 +56,18 @@ public sealed class VeiculosController(IVeiculosService service) : ControllerBas
         return NoContent();
     }
 
+    [HttpPut("{id:guid}/layout")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AtualizarLayout(
+        Guid id,
+        [FromBody] AtualizarLayoutVeiculoRequest request,
+        CancellationToken cancellationToken)
+    {
+        await _service.AtualizarLayoutAsync(id, request, cancellationToken);
+        return NoContent();
+    }
+
     [HttpPost("{id:guid}/fileiras")]
     [ProducesResponseType<FileiraDto>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

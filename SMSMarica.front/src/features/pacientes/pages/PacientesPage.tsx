@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { Eye, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { BotaoLinhaAcao } from '@/shared/ui/BotaoLinhaAcao';
@@ -46,7 +46,18 @@ export function PacientesPage() {
   const [erroAcao, setErroAcao] = useState<string | null>(null);
 
   const colunas: Coluna<PacienteListItem>[] = useMemo(() => [
-    { chave: 'nome', cabecalho: 'Nome', render: (p) => p.nomeCompleto },
+    {
+      chave: 'nome', cabecalho: 'Nome',
+      render: (p) => (
+        <button
+          type="button"
+          onClick={() => navigate(`/operador/pacientes/${p.id}`)}
+          className="text-left font-medium text-red-700 hover:underline"
+        >
+          {p.nomeCompleto}
+        </button>
+      ),
+    },
     { chave: 'cpf', cabecalho: 'CPF', render: (p) => formatarCpf(p.cpf) },
     { chave: 'nasc', cabecalho: 'Nascimento', render: (p) => formatarData(p.dataNascimento) },
     { chave: 'mae', cabecalho: 'Mãe', render: (p) => p.nomeDaMae ?? '—' },
@@ -58,6 +69,9 @@ export function PacientesPage() {
       className: 'text-right',
       render: (p) => (
         <div className="flex items-center justify-end gap-1">
+          <BotaoLinhaAcao onClick={() => navigate(`/operador/pacientes/${p.id}`)}>
+            <Eye className="h-3.5 w-3.5" /> Ver
+          </BotaoLinhaAcao>
           <BotaoLinhaAcao onClick={() => navigate(`/operador/pacientes/${p.id}/editar`)}>
             <Pencil className="h-3.5 w-3.5" /> Editar
           </BotaoLinhaAcao>

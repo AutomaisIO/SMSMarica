@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  atualizarLayoutVeiculo,
   atualizarVeiculo,
   cadastrarVeiculo,
   desativarVeiculo,
@@ -7,6 +8,7 @@ import {
   obterVeiculoPorId,
 } from '@/features/veiculos/api/veiculosApi';
 import type {
+  AtualizarLayoutPayload,
   AtualizarVeiculoPayload,
   CadastrarVeiculoPayload,
 } from '@/features/veiculos/types';
@@ -46,6 +48,17 @@ export function useAtualizarVeiculo() {
       atualizarVeiculo(id, payload),
     onSuccess: (_d, v) => {
       client.invalidateQueries({ queryKey: veiculosKeys.lista() });
+      client.invalidateQueries({ queryKey: veiculosKeys.porId(v.id) });
+    },
+  });
+}
+
+export function useAtualizarLayoutVeiculo() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: AtualizarLayoutPayload }) =>
+      atualizarLayoutVeiculo(id, payload),
+    onSuccess: (_d, v) => {
       client.invalidateQueries({ queryKey: veiculosKeys.porId(v.id) });
     },
   });

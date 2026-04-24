@@ -11,6 +11,7 @@ public interface IVeiculosService
     Task DesativarAsync(Guid id, CancellationToken cancellationToken = default);
 
     // Gestão de fileiras e assentos do veículo (aggregate children).
+    Task AtualizarLayoutAsync(Guid veiculoId, AtualizarLayoutVeiculoRequest request, CancellationToken cancellationToken = default);
     Task<FileiraDto> AdicionarFileiraAsync(Guid veiculoId, AdicionarFileiraRequest request, CancellationToken cancellationToken = default);
     Task RemoverFileiraAsync(Guid veiculoId, Guid fileiraId, CancellationToken cancellationToken = default);
 }

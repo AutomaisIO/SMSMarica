@@ -1,5 +1,6 @@
 import { http } from '@/shared/api/httpClient';
 import type {
+  AtualizarLayoutPayload,
   AtualizarVeiculoPayload,
   CadastrarVeiculoPayload,
   Veiculo,
@@ -26,6 +27,13 @@ export async function atualizarVeiculo(
   payload: AtualizarVeiculoPayload,
 ): Promise<void> {
   await http.put(`/veiculos/${id}`, payload);
+}
+
+export async function atualizarLayoutVeiculo(
+  id: string,
+  payload: AtualizarLayoutPayload,
+): Promise<void> {
+  await http.put(`/veiculos/${id}/layout`, payload);
 }
 
 export async function desativarVeiculo(id: string): Promise<void> {
