@@ -10,11 +10,16 @@ public sealed class PacientesController(IPacientesService service) : ControllerB
 {
     private readonly IPacientesService _service = service;
 
-    /// <summary>Lista todos os pacientes cadastrados.</summary>
+    /// <summary>
+    /// Busca em tempo real por nome (qualquer parte, múltiplos tokens) ou CPF.
+    /// Sem <c>termo</c> retorna lista vazia (a base é grande). Limite 20.
+    /// </summary>
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<PacienteListItemDto>>(StatusCodes.Status200OK)]
-    public async Task<IReadOnlyList<PacienteListItemDto>> Listar(CancellationToken cancellationToken) =>
-        await _service.ListarAsync(cancellationToken);
+    public async Task<IReadOnlyList<PacienteListItemDto>> Buscar(
+        [FromQuery] string? termo,
+        CancellationToken cancellationToken) =>
+        await _service.BuscarAsync(termo, cancellationToken);
 
     /// <summary>Retorna um paciente pelo identificador.</summary>
     [HttpGet("{id:guid}")]
@@ -22,6 +27,19 @@ public sealed class PacientesController(IPacientesService service) : ControllerB
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<PacienteDto> ObterPorId(Guid id, CancellationToken cancellationToken) =>
         await _service.ObterPorIdAsync(id, cancellationToken);
+
+    /// <summary>
+    /// Verifica se há paciente com o CPF informado (inclusive desativado).
+    /// 404 se não existe; 200 com o resumo (incluindo <c>ativo</c>) se existe.
+    /// </summary>
+    [HttpGet("por-cpf/{cpf}")]
+    [ProducesResponseType<PacienteExistenciaDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ObterPorCpf(string cpf, CancellationToken cancellationToken)
+    {
+        var resultado = await _service.ObterPorCpfAsync(cpf, cancellationToken);
+        return resultado is null ? NotFound() : Ok(resultado);
+    }
 
     /// <summary>Cadastra um novo paciente.</summary>
     [HttpPost]
@@ -50,7 +68,7 @@ public sealed class PacientesController(IPacientesService service) : ControllerB
         return NoContent();
     }
 
-    /// <summary>Desativa um paciente (soft delete).</summary>
+    /// <summary>Desativa um paciente (soft delete) — some das listagens.</summary>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -58,6 +76,17 @@ public sealed class PacientesController(IPacientesService service) : ControllerB
     public async Task<IActionResult> Desativar(Guid id, CancellationToken cancellationToken)
     {
         await _service.DesativarAsync(id, cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>Reativa um paciente desativado (após confirmação no fluxo de cadastro).</summary>
+    [HttpPost("{id:guid}/reativar")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Reativar(Guid id, CancellationToken cancellationToken)
+    {
+        await _service.ReativarAsync(id, cancellationToken);
         return NoContent();
     }
 }

@@ -32,7 +32,7 @@ public sealed class AvaliacoesService(SmsMaricaDbContext db) : IAvaliacoesServic
             .AnyAsync(s => s.Id == request.SessaoId, cancellationToken);
         if (!sessaoExiste)
         {
-            throw new NaoEncontradoException(nameof(SessaoDeTranslado), request.SessaoId);
+            throw new NaoEncontradoException(nameof(SessaoDeTratamento), request.SessaoId);
         }
 
         var jaAvaliada = await _db.Avaliacoes.AsNoTracking()

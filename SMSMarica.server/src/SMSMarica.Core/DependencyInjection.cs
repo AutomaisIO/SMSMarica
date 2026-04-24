@@ -1,7 +1,9 @@
 using FluentValidation;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SMSMarica.Core.Avaliacoes;
 using SMSMarica.Core.Identidade;
+using SMSMarica.Core.Integracoes;
 using SMSMarica.Core.Motoristas;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.Rastreamento;
@@ -14,7 +16,7 @@ namespace SMSMarica.Core;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddCore(this IServiceCollection services)
+    public static IServiceCollection AddCore(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<IPacientesService, PacientesService>();
         services.AddScoped<ITratamentosService, TratamentosService>();
@@ -25,6 +27,15 @@ public static class DependencyInjection
         services.AddScoped<IRastreamentoService, RastreamentoService>();
         services.AddScoped<IAvaliacoesService, AvaliacoesService>();
         services.AddScoped<IIdentidadeService, IdentidadeService>();
+
+        var hubBaseUrl = configuration["Integracoes:HubDoDesenvolvedor:BaseUrl"]
+            ?? "https://ws.hubdodesenvolvedor.com.br/v2/";
+        services
+            .AddHttpClient<IHubConsultaService, HubConsultaService>(client =>
+            {
+                client.BaseAddress = new Uri(hubBaseUrl);
+                client.Timeout = TimeSpan.FromSeconds(15);
+            });
 
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 

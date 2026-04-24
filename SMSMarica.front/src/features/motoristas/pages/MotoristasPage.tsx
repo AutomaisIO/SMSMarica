@@ -38,7 +38,7 @@ export function MotoristasPage() {
           </BotaoLinhaAcao>
           {m.ativo ? (
             <BotaoLinhaAcao tom="perigo" onClick={() => setParaDesativar(m)}>
-              <Trash2 className="w-3.5 h-3.5" /> Desativar
+              <Trash2 className="w-3.5 h-3.5" /> Excluir
             </BotaoLinhaAcao>
           ) : null}
         </div>
@@ -78,7 +78,7 @@ export function MotoristasPage() {
 
       <Tabela
         colunas={colunas}
-        dados={lista.data ?? []}
+        dados={(lista.data ?? []).filter((m) => m.ativo)}
         chaveLinha={(m) => m.id}
         carregando={lista.isLoading}
       />
@@ -100,14 +100,14 @@ export function MotoristasPage() {
 
       <ConfirmDialog
         aberto={Boolean(paraDesativar)}
-        titulo="Desativar motorista"
+        titulo="Excluir motorista"
         mensagem={
           paraDesativar
-            ? `Desativar "${paraDesativar.nomeCompleto}"? O motorista não poderá ser atribuído a novas rotas.`
+            ? `Excluir "${paraDesativar.nomeCompleto}"? O motorista some das listagens; histórico de rotas é preservado.`
             : ''
         }
         destrutivo
-        rotuloConfirmar="Desativar"
+        rotuloConfirmar="Excluir"
         carregando={desativar.isPending}
         aoConfirmar={confirmarDesativar}
         aoCancelar={() => {

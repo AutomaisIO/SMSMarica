@@ -6,6 +6,9 @@ public sealed record VeiculoDto(
     Guid Id,
     string Placa,
     string Modelo,
+    string Fabricante,
+    string Cor,
+    TipoVeiculo Tipo,
     bool Ativo,
     DateTime CriadoEm,
     IReadOnlyList<FileiraDto> Fileiras);
@@ -14,6 +17,9 @@ public sealed record VeiculoListItemDto(
     Guid Id,
     string Placa,
     string Modelo,
+    string Fabricante,
+    string Cor,
+    TipoVeiculo Tipo,
     bool Ativo);
 
 public sealed record FileiraDto(

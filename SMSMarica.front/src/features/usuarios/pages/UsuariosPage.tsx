@@ -45,7 +45,7 @@ export function UsuariosPage() {
           </BotaoLinhaAcao>
           {u.ativo ? (
             <BotaoLinhaAcao tom="perigo" onClick={() => setParaDesativar(u)}>
-              <Trash2 className="w-3.5 h-3.5" /> Desativar
+              <Trash2 className="w-3.5 h-3.5" /> Excluir
             </BotaoLinhaAcao>
           ) : null}
         </div>
@@ -85,7 +85,7 @@ export function UsuariosPage() {
 
       <Tabela
         colunas={colunas}
-        dados={lista.data ?? []}
+        dados={(lista.data ?? []).filter((u) => u.ativo)}
         chaveLinha={(u) => u.id}
         carregando={lista.isLoading}
       />
@@ -107,14 +107,14 @@ export function UsuariosPage() {
 
       <ConfirmDialog
         aberto={Boolean(paraDesativar)}
-        titulo="Desativar usuário"
+        titulo="Excluir usuário"
         mensagem={
           paraDesativar
-            ? `Desativar "${paraDesativar.nomeCompleto}"? A conta deixa de poder autenticar.`
+            ? `Excluir "${paraDesativar.nomeCompleto}"? A conta some das listagens e deixa de poder autenticar.`
             : ''
         }
         destrutivo
-        rotuloConfirmar="Desativar"
+        rotuloConfirmar="Excluir"
         carregando={desativar.isPending}
         aoConfirmar={confirmarDesativar}
         aoCancelar={() => {

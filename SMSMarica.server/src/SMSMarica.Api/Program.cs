@@ -23,7 +23,7 @@ builder.Services.AddFluentValidationAutoValidation()
 builder.Services.AddValidatorsFromAssembly(typeof(SMSMarica.Core.DependencyInjection).Assembly);
 
 builder.Services.AddData(builder.Configuration);
-builder.Services.AddCore();
+builder.Services.AddCore(builder.Configuration);
 
 builder.Services.AddOpenApi();
 

@@ -1,0 +1,32 @@
+import { http } from '@/shared/api/httpClient';
+
+export type ConsultaCpfResposta = {
+  cpf: string;
+  nome: string;
+  dataNascimento: string;
+  situacaoCadastral: string | null;
+};
+
+export type ConsultaCepResposta = {
+  cep: string;
+  logradouro: string;
+  complemento: string | null;
+  bairro: string;
+  localidade: string;
+  uf: string;
+  ibge: string | null;
+};
+
+export async function consultarCpf(cpf: string, dataNascimentoIso: string): Promise<ConsultaCpfResposta> {
+  const cpfLimpo = cpf.replace(/\D/g, '');
+  const { data } = await http.get<ConsultaCpfResposta>('/integracoes/cpf', {
+    params: { cpf: cpfLimpo, dataNascimento: dataNascimentoIso },
+  });
+  return data;
+}
+
+export async function consultarCep(cep: string): Promise<ConsultaCepResposta> {
+  const cepLimpo = cep.replace(/\D/g, '');
+  const { data } = await http.get<ConsultaCepResposta>(`/integracoes/cep/${cepLimpo}`);
+  return data;
+}

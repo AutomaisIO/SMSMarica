@@ -38,13 +38,35 @@ public sealed class VeiculosService(SmsMaricaDbContext db) : IVeiculosService
             throw new ConflitoException("veiculo.placa_duplicada", "Já existe veículo com esta placa.");
         }
 
+        var agora = DateTime.UtcNow;
         var v = new Veiculo
         {
             Id = Guid.CreateVersion7(),
             Placa = placa,
             Modelo = request.Modelo.Trim(),
+            Fabricante = request.Fabricante.Trim(),
+            Cor = request.Cor.Trim(),
+            Tipo = request.Tipo,
             Ativo = true,
-            CriadoEm = DateTime.UtcNow,
+            CriadoEm = agora,
+            Fileiras = [.. request.Fileiras
+                .OrderBy(f => f.Ordem)
+                .Select(f => new Fileira
+                {
+                    Id = Guid.CreateVersion7(),
+                    Ordem = f.Ordem,
+                    QuantidadeAssentos = f.Assentos.Count,
+                    CriadoEm = agora,
+                    Assentos = [.. f.Assentos
+                        .OrderBy(a => a.Numero)
+                        .Select(a => new Assento
+                        {
+                            Id = Guid.CreateVersion7(),
+                            Numero = a.Numero,
+                            Tipo = a.Tipo,
+                            CriadoEm = agora,
+                        })],
+                })],
         };
 
         _db.Veiculos.Add(v);
@@ -66,6 +88,9 @@ public sealed class VeiculosService(SmsMaricaDbContext db) : IVeiculosService
 
         v.Placa = placa;
         v.Modelo = request.Modelo.Trim();
+        v.Fabricante = request.Fabricante.Trim();
+        v.Cor = request.Cor.Trim();
+        v.Tipo = request.Tipo;
         v.AtualizadoEm = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(cancellationToken);

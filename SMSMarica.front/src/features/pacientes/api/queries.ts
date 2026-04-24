@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   atualizarPaciente,
+  buscarPacientes,
   cadastrarPaciente,
   desativarPaciente,
-  listarPacientes,
+  obterPacientePorCpf,
   obterPacientePorId,
+  reativarPaciente,
 } from '@/features/pacientes/api/pacientesApi';
 import type {
   AtualizarPacientePayload,
@@ -13,14 +15,17 @@ import type {
 
 export const pacientesKeys = {
   raiz: ['pacientes'] as const,
-  lista: () => ['pacientes', 'lista'] as const,
+  busca: (termo: string) => ['pacientes', 'busca', termo] as const,
   porId: (id: string) => ['pacientes', 'detalhe', id] as const,
+  porCpf: (cpf: string) => ['pacientes', 'por-cpf', cpf] as const,
 };
 
-export function useListarPacientes() {
+export function useBuscarPacientes(termo: string) {
   return useQuery({
-    queryKey: pacientesKeys.lista(),
-    queryFn: listarPacientes,
+    queryKey: pacientesKeys.busca(termo),
+    queryFn: () => buscarPacientes(termo),
+    enabled: termo.trim().length >= 2,
+    placeholderData: (anterior) => anterior,
   });
 }
 
@@ -40,7 +45,7 @@ export function useCadastrarPaciente() {
   return useMutation({
     mutationFn: (payload: CadastrarPacientePayload) => cadastrarPaciente(payload),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: pacientesKeys.lista() });
+      client.invalidateQueries({ queryKey: pacientesKeys.raiz });
     },
   });
 }
@@ -51,7 +56,7 @@ export function useAtualizarPaciente() {
     mutationFn: ({ id, payload }: { id: string; payload: AtualizarPacientePayload }) =>
       atualizarPaciente(id, payload),
     onSuccess: (_data, variables) => {
-      client.invalidateQueries({ queryKey: pacientesKeys.lista() });
+      client.invalidateQueries({ queryKey: pacientesKeys.raiz });
       client.invalidateQueries({ queryKey: pacientesKeys.porId(variables.id) });
     },
   });
@@ -62,7 +67,21 @@ export function useDesativarPaciente() {
   return useMutation({
     mutationFn: (id: string) => desativarPaciente(id),
     onSuccess: () => {
-      client.invalidateQueries({ queryKey: pacientesKeys.lista() });
+      client.invalidateQueries({ queryKey: pacientesKeys.raiz });
     },
   });
+}
+
+export function useReativarPaciente() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => reativarPaciente(id),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: pacientesKeys.raiz });
+    },
+  });
+}
+
+export async function consultarPacientePorCpf(cpf: string) {
+  return obterPacientePorCpf(cpf);
 }

@@ -1,5 +1,10 @@
+using SMSMarica.Data.Entities.Enums;
+
 namespace SMSMarica.Core.Veiculos.Dtos;
 
 public sealed record AtualizarVeiculoRequest(
     string Placa,
-    string Modelo);
+    string Modelo,
+    string Fabricante,
+    string Cor,
+    TipoVeiculo Tipo);

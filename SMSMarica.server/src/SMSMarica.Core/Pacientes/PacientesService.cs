@@ -8,16 +8,45 @@ namespace SMSMarica.Core.Pacientes;
 
 public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
 {
+    private const int LimiteBusca = 20;
     private readonly SmsMaricaDbContext _db = db;
 
-    public async Task<IReadOnlyList<PacienteListItemDto>> ListarAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<PacienteListItemDto>> BuscarAsync(
+        string? termo,
+        CancellationToken cancellationToken = default)
     {
-        var pacientes = await _db.Pacientes
-            .AsNoTracking()
+        if (string.IsNullOrWhiteSpace(termo))
+        {
+            return [];
+        }
+
+        termo = termo.Trim();
+        var digitos = NormalizarDigitos(termo);
+
+        IQueryable<Paciente> query = _db.Pacientes.AsNoTracking().Where(p => p.Ativo);
+
+        // Se o usuário digitou apenas dígitos (ou majoritariamente), tenta CPF.
+        if (digitos.Length >= 3 && digitos.Length <= 11 && digitos.Length == termo.Replace(".", "").Replace("-", "").Replace(" ", "").Length)
+        {
+            query = query.Where(p => EF.Functions.Like(p.Cpf, digitos + "%") || EF.Functions.Like(p.Cpf, "%" + digitos + "%"));
+        }
+        else
+        {
+            // Tokenização por espaço — cada token precisa aparecer em alguma parte do nome (ILIKE).
+            var tokens = termo.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            foreach (var token in tokens)
+            {
+                var like = "%" + token + "%";
+                query = query.Where(p => EF.Functions.ILike(p.NomeCompleto, like));
+            }
+        }
+
+        var encontrados = await query
             .OrderBy(p => p.NomeCompleto)
+            .Take(LimiteBusca)
             .ToListAsync(cancellationToken);
 
-        return [.. pacientes.Select(PacientesMapper.ParaListItem)];
+        return [.. encontrados.Select(PacientesMapper.ParaListItem)];
     }
 
     public async Task<PacienteDto> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default)
@@ -30,16 +59,38 @@ public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
         return PacientesMapper.ParaDto(paciente);
     }
 
+    public async Task<PacienteExistenciaDto?> ObterPorCpfAsync(string cpf, CancellationToken cancellationToken = default)
+    {
+        var normalizado = NormalizarDigitos(cpf);
+        if (normalizado.Length != 11) return null;
+
+        var paciente = await _db.Pacientes
+            .AsNoTracking()
+            .Where(p => p.Cpf == normalizado)
+            .Select(p => new PacienteExistenciaDto(p.Id, p.NomeCompleto, p.Cpf, p.Ativo))
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return paciente;
+    }
+
     public async Task<Guid> CadastrarAsync(CadastrarPacienteRequest request, CancellationToken cancellationToken = default)
     {
         var cpfNormalizado = NormalizarDigitos(request.Cpf);
 
-        var existeCpf = await _db.Pacientes
+        var existente = await _db.Pacientes
             .AsNoTracking()
-            .AnyAsync(p => p.Cpf == cpfNormalizado, cancellationToken);
-        if (existeCpf)
+            .Where(p => p.Cpf == cpfNormalizado)
+            .Select(p => new { p.Id, p.Ativo })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (existente is not null)
         {
-            throw new ConflitoException("paciente.cpf_duplicado", "Já existe paciente com este CPF.");
+            if (existente.Ativo)
+            {
+                throw new ConflitoException("paciente.cpf_duplicado", "Já existe paciente ativo com este CPF.");
+            }
+            // Há paciente desativado com esse CPF — front deve chamar reativar.
+            throw new ConflitoException("paciente.cpf_desativado", "Existe paciente desativado com este CPF. Reative o cadastro.");
         }
 
         var paciente = new Paciente
@@ -47,8 +98,35 @@ public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
             Id = Guid.CreateVersion7(),
             NomeCompleto = request.NomeCompleto.Trim(),
             Cpf = cpfNormalizado,
-            Cns = string.IsNullOrWhiteSpace(request.Cns) ? null : NormalizarDigitos(request.Cns),
-            GpsResidencia = new Gps(request.Latitude, request.Longitude),
+            Cns = NormalizaOpcional(request.Cns, true),
+            Rg = NormalizaOpcional(request.Rg, false),
+            DataNascimento = request.DataNascimento,
+            Sexo = request.Sexo,
+            EstadoCivil = request.EstadoCivil,
+            RacaCor = request.RacaCor,
+            Escolaridade = request.Escolaridade,
+            Ocupacao = NormalizaOpcional(request.Ocupacao, false),
+            Naturalidade = NormalizaOpcional(request.Naturalidade, false),
+            Nacionalidade = string.IsNullOrWhiteSpace(request.Nacionalidade) ? "Brasileira" : request.Nacionalidade!.Trim(),
+            NomeDaMae = NormalizaOpcional(request.NomeDaMae, false),
+            NomeDoPai = NormalizaOpcional(request.NomeDoPai, false),
+            ResponsavelLegal = NormalizaOpcional(request.ResponsavelLegal, false),
+            Endereco = request.Endereco is null ? null : PacientesMapper.ParaEntidade(request.Endereco),
+            TelefonePrincipal = NormalizaOpcional(request.TelefonePrincipal, false),
+            TelefoneCelular = NormalizaOpcional(request.TelefoneCelular, false),
+            TelefoneResidencial = NormalizaOpcional(request.TelefoneResidencial, false),
+            Email = NormalizaOpcional(request.Email, false),
+            ContatoEmergencia = request.ContatoEmergencia is null ? null : PacientesMapper.ParaEntidade(request.ContatoEmergencia),
+            AlturaCm = request.AlturaCm,
+            PesoKg = request.PesoKg,
+            TipoSanguineo = request.TipoSanguineo,
+            FatorRh = request.FatorRh,
+            Alergias = SanearLista(request.Alergias),
+            MedicamentosContinuos = SanearLista(request.MedicamentosContinuos),
+            Comorbidades = SanearLista(request.Comorbidades),
+            Deficiencias = SanearLista(request.Deficiencias),
+            PlanoSaude = NormalizaOpcional(request.PlanoSaude, false),
+            Observacoes = NormalizaOpcional(request.Observacoes, false),
             Ativo = true,
             CriadoEm = DateTime.UtcNow,
         };
@@ -66,8 +144,34 @@ public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
             ?? throw new NaoEncontradoException(nameof(Paciente), id);
 
         paciente.NomeCompleto = request.NomeCompleto.Trim();
-        paciente.Cns = string.IsNullOrWhiteSpace(request.Cns) ? null : NormalizarDigitos(request.Cns);
-        paciente.GpsResidencia = new Gps(request.Latitude, request.Longitude);
+        paciente.Cns = NormalizaOpcional(request.Cns, true);
+        paciente.Rg = NormalizaOpcional(request.Rg, false);
+        paciente.Sexo = request.Sexo;
+        paciente.EstadoCivil = request.EstadoCivil;
+        paciente.RacaCor = request.RacaCor;
+        paciente.Escolaridade = request.Escolaridade;
+        paciente.Ocupacao = NormalizaOpcional(request.Ocupacao, false);
+        paciente.Naturalidade = NormalizaOpcional(request.Naturalidade, false);
+        paciente.Nacionalidade = string.IsNullOrWhiteSpace(request.Nacionalidade) ? "Brasileira" : request.Nacionalidade!.Trim();
+        paciente.NomeDaMae = NormalizaOpcional(request.NomeDaMae, false);
+        paciente.NomeDoPai = NormalizaOpcional(request.NomeDoPai, false);
+        paciente.ResponsavelLegal = NormalizaOpcional(request.ResponsavelLegal, false);
+        paciente.Endereco = request.Endereco is null ? null : PacientesMapper.ParaEntidade(request.Endereco);
+        paciente.TelefonePrincipal = NormalizaOpcional(request.TelefonePrincipal, false);
+        paciente.TelefoneCelular = NormalizaOpcional(request.TelefoneCelular, false);
+        paciente.TelefoneResidencial = NormalizaOpcional(request.TelefoneResidencial, false);
+        paciente.Email = NormalizaOpcional(request.Email, false);
+        paciente.ContatoEmergencia = request.ContatoEmergencia is null ? null : PacientesMapper.ParaEntidade(request.ContatoEmergencia);
+        paciente.AlturaCm = request.AlturaCm;
+        paciente.PesoKg = request.PesoKg;
+        paciente.TipoSanguineo = request.TipoSanguineo;
+        paciente.FatorRh = request.FatorRh;
+        paciente.Alergias = SanearLista(request.Alergias);
+        paciente.MedicamentosContinuos = SanearLista(request.MedicamentosContinuos);
+        paciente.Comorbidades = SanearLista(request.Comorbidades);
+        paciente.Deficiencias = SanearLista(request.Deficiencias);
+        paciente.PlanoSaude = NormalizaOpcional(request.PlanoSaude, false);
+        paciente.Observacoes = NormalizaOpcional(request.Observacoes, false);
         paciente.AtualizadoEm = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(cancellationToken);
@@ -90,6 +194,38 @@ public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
         await _db.SaveChangesAsync(cancellationToken);
     }
 
-    private static string NormalizarDigitos(string valor) =>
-        new([.. valor.Where(char.IsDigit)]);
+    public async Task ReativarAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var paciente = await _db.Pacientes
+            .FirstOrDefaultAsync(p => p.Id == id, cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(Paciente), id);
+
+        if (paciente.Ativo)
+        {
+            throw new ConflitoException("paciente.ja_ativo", "Paciente já está ativo.");
+        }
+
+        paciente.Ativo = true;
+        paciente.AtualizadoEm = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    private static string NormalizarDigitos(string? valor) =>
+        string.IsNullOrEmpty(valor) ? string.Empty : new([.. valor.Where(char.IsDigit)]);
+
+    private static string? NormalizaOpcional(string? valor, bool soDigitos)
+    {
+        if (string.IsNullOrWhiteSpace(valor)) return null;
+        var v = valor.Trim();
+        return soDigitos ? NormalizarDigitos(v) : v;
+    }
+
+    private static List<string> SanearLista(IReadOnlyList<string>? lista)
+    {
+        if (lista is null || lista.Count == 0) return [];
+        return [.. lista
+            .Select(x => x?.Trim() ?? string.Empty)
+            .Where(x => x.Length > 0)];
+    }
 }

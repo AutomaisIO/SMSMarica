@@ -12,6 +12,6 @@ public class Alocacao
     public DateTime CriadoEm { get; set; }
 
     public RotaDiaria? RotaDiaria { get; set; }
-    public SessaoDeTranslado? Sessao { get; set; }
+    public SessaoDeTratamento? Sessao { get; set; }
     public Assento? Assento { get; set; }
 }

@@ -8,7 +8,7 @@ namespace SMSMarica.Core.Veiculos;
 internal static partial class VeiculosMapper
 {
     public static VeiculoDto ParaDto(Veiculo v) => new(
-        v.Id, v.Placa, v.Modelo, v.Ativo, v.CriadoEm,
+        v.Id, v.Placa, v.Modelo, v.Fabricante, v.Cor, v.Tipo, v.Ativo, v.CriadoEm,
         [.. v.Fileiras
             .OrderBy(f => f.Ordem)
             .Select(f => new FileiraDto(
@@ -18,7 +18,7 @@ internal static partial class VeiculosMapper
                     .Select(a => new AssentoDto(a.Id, a.Numero, a.Tipo))]))]);
 
     public static VeiculoListItemDto ParaListItem(Veiculo v) =>
-        new(v.Id, v.Placa, v.Modelo, v.Ativo);
+        new(v.Id, v.Placa, v.Modelo, v.Fabricante, v.Cor, v.Tipo, v.Ativo);
 
     public static FileiraDto ParaDto(Fileira f) => new(
         f.Id, f.Ordem, f.QuantidadeAssentos,

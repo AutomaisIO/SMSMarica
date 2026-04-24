@@ -1,23 +1,42 @@
-using Riok.Mapperly.Abstractions;
 using SMSMarica.Core.Tratamentos.Dtos;
 using SMSMarica.Data.Entities;
 
 namespace SMSMarica.Core.Tratamentos;
 
-[Mapper]
-internal static partial class TratamentosMapper
+internal static class TratamentosMapper
 {
+    public static SessaoDto ParaSessaoDto(SessaoDeTratamento s) => new(
+        s.Id, s.TratamentoId, s.DataPrevista,
+        s.HoraPrevistaBusca, s.HoraPrevistaRetorno, s.Status,
+        s.RealizadaEm, s.NomeAcompanhante, s.ParentescoAcompanhante,
+        s.MotoristaIdaId, s.VeiculoIdaId, s.HoraSaidaResidencia, s.HoraChegadaUnidade,
+        s.MotoristaVoltaId, s.VeiculoVoltaId, s.HoraSaidaUnidade, s.HoraChegadaResidencia,
+        s.MotivoNaoRealizacao, s.Observacoes);
+
     public static TratamentoDto ParaDto(Tratamento t) => new(
-        t.Id, t.PacienteId, t.UnidadeId, t.Descricao,
-        t.Ativo, t.CriadoEm, t.EncerradoEm,
+        t.Id,
+        t.PacienteId,
+        t.Paciente?.NomeCompleto ?? string.Empty,
+        t.UnidadeId,
+        t.Unidade?.Nome ?? string.Empty,
+        t.TipoTratamentoId,
+        t.TipoTratamento?.Nome,
+        t.Descricao,
+        t.CodigoSusLiberacao,
+        t.Observacoes,
+        t.HoraPrevistaBusca,
+        t.Ativo,
+        t.CriadoEm,
+        t.EncerradoEm,
         t.Periodicidade is null ? null : new PeriodicidadeDto(
             t.Periodicidade.Id,
             t.Periodicidade.Tipo,
             t.Periodicidade.IntervaloDias,
             t.Periodicidade.DiasSemanaMascara,
             t.Periodicidade.DataInicio,
-            t.Periodicidade.QuantidadeSessoes));
+            t.Periodicidade.QuantidadeSessoes),
+        [.. t.Sessoes.OrderBy(s => s.DataPrevista).Select(ParaSessaoDto)]);
 
-    public static TratamentoListItemDto ParaListItem(Tratamento t) =>
-        new(t.Id, t.PacienteId, t.UnidadeId, t.Descricao, t.Ativo);
+    public static TipoTratamentoDto ParaTipoDto(TipoTratamento t) =>
+        new(t.Id, t.Nome, t.Codigo, t.Ativo);
 }

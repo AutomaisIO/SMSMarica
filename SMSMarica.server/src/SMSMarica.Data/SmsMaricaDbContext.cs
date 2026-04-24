@@ -9,8 +9,9 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
 
     public DbSet<Paciente> Pacientes => Set<Paciente>();
     public DbSet<Tratamento> Tratamentos => Set<Tratamento>();
+    public DbSet<TipoTratamento> TiposTratamento => Set<TipoTratamento>();
     public DbSet<Periodicidade> Periodicidades => Set<Periodicidade>();
-    public DbSet<SessaoDeTranslado> Sessoes => Set<SessaoDeTranslado>();
+    public DbSet<SessaoDeTratamento> Sessoes => Set<SessaoDeTratamento>();
     public DbSet<Unidade> Unidades => Set<Unidade>();
     public DbSet<Veiculo> Veiculos => Set<Veiculo>();
     public DbSet<Fileira> Fileiras => Set<Fileira>();

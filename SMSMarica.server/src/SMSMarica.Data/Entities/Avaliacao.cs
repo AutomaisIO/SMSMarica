@@ -8,5 +8,5 @@ public class Avaliacao
     public string? Comentario { get; set; }
     public DateTime CriadoEm { get; set; }
 
-    public SessaoDeTranslado? Sessao { get; set; }
+    public SessaoDeTratamento? Sessao { get; set; }
 }

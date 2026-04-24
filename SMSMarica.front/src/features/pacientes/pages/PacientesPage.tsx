@@ -1,34 +1,56 @@
-import { useState } from 'react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { BotaoLinhaAcao } from '@/shared/ui/BotaoLinhaAcao';
 import { Button } from '@/shared/ui/Button';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
-import { Modal } from '@/shared/ui/Modal';
+import { Input } from '@/shared/ui/Input';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import {
+  useBuscarPacientes,
   useDesativarPaciente,
-  useListarPacientes,
 } from '@/features/pacientes/api/queries';
-import { FormularioPaciente } from '@/features/pacientes/components/FormularioPaciente';
 import type { PacienteListItem } from '@/features/pacientes/types';
 
-type EstadoModal =
-  | { tipo: 'fechado' }
-  | { tipo: 'criar' }
-  | { tipo: 'editar'; id: string };
+function useDebounce<T>(valor: T, ms = 300): T {
+  const [debounced, setDebounced] = useState(valor);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(valor), ms);
+    return () => clearTimeout(t);
+  }, [valor, ms]);
+  return debounced;
+}
+
+function formatarCpf(cpf: string): string {
+  const d = cpf.replace(/\D/g, '');
+  if (d.length !== 11) return cpf;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+}
+
+function formatarData(iso?: string | null): string {
+  if (!iso) return '—';
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
+}
 
 export function PacientesPage() {
-  const lista = useListarPacientes();
+  const navigate = useNavigate();
+  const [termo, setTermo] = useState('');
+  const debounced = useDebounce(termo, 300);
+  const busca = useBuscarPacientes(debounced);
   const desativar = useDesativarPaciente();
-  const [estado, setEstado] = useState<EstadoModal>({ tipo: 'fechado' });
+
   const [paraDesativar, setParaDesativar] = useState<PacienteListItem | null>(null);
   const [erroAcao, setErroAcao] = useState<string | null>(null);
 
-  const colunas: Coluna<PacienteListItem>[] = [
+  const colunas: Coluna<PacienteListItem>[] = useMemo(() => [
     { chave: 'nome', cabecalho: 'Nome', render: (p) => p.nomeCompleto },
-    { chave: 'cpf', cabecalho: 'CPF', render: (p) => p.cpf },
+    { chave: 'cpf', cabecalho: 'CPF', render: (p) => formatarCpf(p.cpf) },
+    { chave: 'nasc', cabecalho: 'Nascimento', render: (p) => formatarData(p.dataNascimento) },
+    { chave: 'mae', cabecalho: 'Mãe', render: (p) => p.nomeDaMae ?? '—' },
+    { chave: 'tel', cabecalho: 'Telefone', render: (p) => p.telefonePrincipal ?? '—' },
     { chave: 'status', cabecalho: 'Status', render: (p) => <StatusBadge ativo={p.ativo} /> },
     {
       chave: 'acoes',
@@ -36,18 +58,18 @@ export function PacientesPage() {
       className: 'text-right',
       render: (p) => (
         <div className="flex items-center justify-end gap-1">
-          <BotaoLinhaAcao onClick={() => setEstado({ tipo: 'editar', id: p.id })}>
-            <Pencil className="w-3.5 h-3.5" /> Editar
+          <BotaoLinhaAcao onClick={() => navigate(`/operador/pacientes/${p.id}/editar`)}>
+            <Pencil className="h-3.5 w-3.5" /> Editar
           </BotaoLinhaAcao>
           {p.ativo ? (
             <BotaoLinhaAcao tom="perigo" onClick={() => setParaDesativar(p)}>
-              <Trash2 className="w-3.5 h-3.5" /> Desativar
+              <Trash2 className="h-3.5 w-3.5" /> Excluir
             </BotaoLinhaAcao>
           ) : null}
         </div>
       ),
     },
-  ];
+  ], [navigate]);
 
   async function confirmarDesativar() {
     if (!paraDesativar) return;
@@ -60,59 +82,66 @@ export function PacientesPage() {
     }
   }
 
+  const termoValido = debounced.trim().length >= 2;
+  const semResultado = termoValido && !busca.isLoading && (busca.data?.length ?? 0) === 0;
+
   return (
     <div className="space-y-6">
       <header className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Pacientes</h1>
           <p className="mt-1 text-sm text-gray-600">
-            Cadastros do programa de transporte sanitário.
+            Busque por <strong>nome</strong> (qualquer parte, separadas por espaço) ou <strong>CPF</strong>{' '}
+            (com ou sem formatação). Resultados limitados a 20.
           </p>
         </div>
-        <Button onClick={() => setEstado({ tipo: 'criar' })}>
-          <Plus className="w-4 h-4" />
+        <Button onClick={() => navigate('/operador/pacientes/novo')}>
+          <Plus className="h-4 w-4" />
           Novo paciente
         </Button>
       </header>
 
-      {lista.isError ? (
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+        <Input
+          autoFocus
+          value={termo}
+          onChange={(e) => setTermo(e.target.value)}
+          placeholder="Digite ao menos 2 caracteres…"
+          className="pl-9"
+        />
+      </div>
+
+      {busca.isError ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {extrairMensagemDeErro(lista.error)}
+          {extrairMensagemDeErro(busca.error)}
         </div>
       ) : null}
 
-      <Tabela
-        colunas={colunas}
-        dados={lista.data ?? []}
-        chaveLinha={(p) => p.id}
-        carregando={lista.isLoading}
-      />
-
-      <Modal
-        aberto={estado.tipo !== 'fechado'}
-        aoFechar={() => setEstado({ tipo: 'fechado' })}
-        titulo={estado.tipo === 'criar' ? 'Novo paciente' : 'Editar paciente'}
-        largura="lg"
-      >
-        {estado.tipo !== 'fechado' ? (
-          <FormularioPaciente
-            modo={estado.tipo}
-            idPaciente={estado.tipo === 'editar' ? estado.id : null}
-            aoConcluir={() => setEstado({ tipo: 'fechado' })}
-          />
-        ) : null}
-      </Modal>
+      {!termoValido ? (
+        <div className="rounded-md border border-dashed border-gray-200 bg-white px-4 py-12 text-center text-sm text-gray-500">
+          Digite o nome ou CPF do paciente para começar a busca.
+        </div>
+      ) : (
+        <Tabela
+          colunas={colunas}
+          dados={busca.data ?? []}
+          chaveLinha={(p) => p.id}
+          carregando={busca.isLoading || (busca.isFetching && !busca.data)}
+          vazio={semResultado ? 'Nenhum paciente encontrado para essa busca.' : undefined}
+        />
+      )}
 
       <ConfirmDialog
         aberto={Boolean(paraDesativar)}
-        titulo="Desativar paciente"
+        titulo="Excluir paciente"
         mensagem={
           paraDesativar
-            ? `Desativar "${paraDesativar.nomeCompleto}"? O registro deixa de aparecer em novas alocações, mas o histórico é preservado.`
+            ? `Excluir "${paraDesativar.nomeCompleto}"? O cadastro deixa de aparecer nas buscas, mas o histórico é preservado e pode ser reativado entrando com o CPF.`
             : ''
         }
         destrutivo
-        rotuloConfirmar="Desativar"
+        rotuloConfirmar="Excluir"
         carregando={desativar.isPending}
         aoConfirmar={confirmarDesativar}
         aoCancelar={() => {

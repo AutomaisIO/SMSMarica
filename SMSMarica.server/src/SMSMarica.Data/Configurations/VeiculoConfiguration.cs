@@ -14,6 +14,9 @@ internal sealed class VeiculoConfiguration : IEntityTypeConfiguration<Veiculo>
         builder.Property(v => v.Id).HasColumnName("id");
         builder.Property(v => v.Placa).HasColumnName("placa").HasMaxLength(10).IsRequired();
         builder.Property(v => v.Modelo).HasColumnName("modelo").HasMaxLength(100).IsRequired();
+        builder.Property(v => v.Fabricante).HasColumnName("fabricante").HasMaxLength(80).IsRequired();
+        builder.Property(v => v.Cor).HasColumnName("cor").HasMaxLength(40).IsRequired();
+        builder.Property(v => v.Tipo).HasColumnName("tipo").HasConversion<int>().IsRequired();
         builder.Property(v => v.Ativo).HasColumnName("ativo").HasDefaultValue(true).IsRequired();
         builder.Property(v => v.CriadoEm).HasColumnName("criado_em").IsRequired();
         builder.Property(v => v.AtualizadoEm).HasColumnName("atualizado_em");

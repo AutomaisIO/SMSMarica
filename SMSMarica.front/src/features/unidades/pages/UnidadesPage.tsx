@@ -37,7 +37,7 @@ export function UnidadesPage() {
           </BotaoLinhaAcao>
           {u.ativo ? (
             <BotaoLinhaAcao tom="perigo" onClick={() => setParaDesativar(u)}>
-              <Trash2 className="w-3.5 h-3.5" /> Desativar
+              <Trash2 className="w-3.5 h-3.5" /> Excluir
             </BotaoLinhaAcao>
           ) : null}
         </div>
@@ -77,7 +77,7 @@ export function UnidadesPage() {
 
       <Tabela
         colunas={colunas}
-        dados={lista.data ?? []}
+        dados={(lista.data ?? []).filter((u) => u.ativo)}
         chaveLinha={(u) => u.id}
         carregando={lista.isLoading}
       />
@@ -99,14 +99,14 @@ export function UnidadesPage() {
 
       <ConfirmDialog
         aberto={Boolean(paraDesativar)}
-        titulo="Desativar unidade"
+        titulo="Excluir unidade"
         mensagem={
           paraDesativar
-            ? `Desativar "${paraDesativar.nome}"? A unidade não ficará disponível para novos tratamentos.`
+            ? `Excluir "${paraDesativar.nome}"? A unidade some das listagens; histórico de tratamentos é preservado.`
             : ''
         }
         destrutivo
-        rotuloConfirmar="Desativar"
+        rotuloConfirmar="Excluir"
         carregando={desativar.isPending}
         aoConfirmar={confirmarDesativar}
         aoCancelar={() => {

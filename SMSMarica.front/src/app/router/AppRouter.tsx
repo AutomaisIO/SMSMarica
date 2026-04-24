@@ -7,9 +7,12 @@ import { RotaProtegida } from '@/app/router/RotaProtegida';
 import { AvaliacoesPage } from '@/features/avaliacoes/pages/AvaliacoesPage';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { MotoristasPage } from '@/features/motoristas/pages/MotoristasPage';
+import { PacienteFormPage } from '@/features/pacientes/pages/PacienteFormPage';
 import { PacientesPage } from '@/features/pacientes/pages/PacientesPage';
 import { RastreamentoPage } from '@/features/rastreamento/pages/RastreamentoPage';
 import { TransladosPage } from '@/features/translados/pages/TransladosPage';
+import { TratamentoDetalhePage } from '@/features/tratamentos/pages/TratamentoDetalhePage';
+import { TratamentoFormPage } from '@/features/tratamentos/pages/TratamentoFormPage';
 import { TratamentosPage } from '@/features/tratamentos/pages/TratamentosPage';
 import { UnidadesPage } from '@/features/unidades/pages/UnidadesPage';
 import { UsuariosPage } from '@/features/usuarios/pages/UsuariosPage';
@@ -32,11 +35,15 @@ export function AppRouter() {
         <Route path="/operador" element={<Layout perfil="operador" />}>
           <Route index element={<OperadorInicioPage />} />
           <Route path="pacientes" element={<PacientesPage />} />
+          <Route path="pacientes/novo" element={<PacienteFormPage />} />
+          <Route path="pacientes/:id/editar" element={<PacienteFormPage />} />
           <Route path="unidades" element={<UnidadesPage />} />
           <Route path="veiculos" element={<VeiculosPage />} />
           <Route path="motoristas" element={<MotoristasPage />} />
           <Route path="usuarios" element={<UsuariosPage />} />
           <Route path="tratamentos" element={<TratamentosPage />} />
+          <Route path="tratamentos/novo" element={<TratamentoFormPage />} />
+          <Route path="tratamentos/:id" element={<TratamentoDetalhePage />} />
           <Route path="translados" element={<TransladosPage />} />
           <Route path="rastreamento" element={<RastreamentoPage />} />
           <Route path="avaliacoes" element={<AvaliacoesPage />} />
