@@ -1,10 +1,10 @@
 export const TIPOS_VEICULO = {
-  Carro: 1,
-  Van: 2,
-  MicroOnibus: 3,
-  Onibus: 4,
-  Ambulancia: 5,
-  Outro: 99,
+  Carro: 'Carro',
+  Van: 'Van',
+  MicroOnibus: 'MicroOnibus',
+  Onibus: 'Onibus',
+  Ambulancia: 'Ambulancia',
+  Outro: 'Outro',
 } as const;
 
 export type TipoVeiculo = (typeof TIPOS_VEICULO)[keyof typeof TIPOS_VEICULO];
@@ -19,9 +19,9 @@ export const ROTULOS_TIPO_VEICULO: Record<TipoVeiculo, string> = {
 };
 
 export const TIPOS_ASSENTO = {
-  Motorista: 1,
-  Passageiro: 2,
-  Acompanhante: 3,
+  Motorista: 'Motorista',
+  Passageiro: 'Passageiro',
+  Acompanhante: 'Acompanhante',
 } as const;
 
 export type TipoAssento = (typeof TIPOS_ASSENTO)[keyof typeof TIPOS_ASSENTO];

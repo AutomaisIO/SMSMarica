@@ -24,13 +24,10 @@ export async function obterPacientePorId(id: string): Promise<Paciente> {
 export async function obterPacientePorCpf(cpf: string): Promise<PacienteExistencia | null> {
   const limpo = cpf.replace(/\D/g, '');
   if (limpo.length !== 11) return null;
-  try {
-    const { data } = await http.get<PacienteExistencia>(`/pacientes/por-cpf/${limpo}`);
-    return data;
-  } catch (e: unknown) {
-    if ((e as { response?: { status?: number } })?.response?.status === 404) return null;
-    throw e;
-  }
+  const resposta = await http.get<PacienteExistencia>(`/pacientes/por-cpf/${limpo}`, {
+    validateStatus: (s) => s === 200 || s === 404,
+  });
+  return resposta.status === 404 ? null : resposta.data;
 }
 
 export async function cadastrarPaciente(payload: CadastrarPacientePayload): Promise<string> {

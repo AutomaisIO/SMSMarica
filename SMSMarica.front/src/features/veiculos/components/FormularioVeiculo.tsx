@@ -255,7 +255,7 @@ export function FormularioVeiculo({ modo, idVeiculo, aoConcluir }: Props) {
           <Select
             id="tipo"
             value={valores.tipo}
-            onChange={(e) => set('tipo', Number(e.target.value) as TipoVeiculo)}
+            onChange={(e) => set('tipo', e.target.value as TipoVeiculo)}
           >
             {Object.values(TIPOS_VEICULO).map((t) => (
               <option key={t} value={t}>

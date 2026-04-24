@@ -6,13 +6,13 @@ import {
   type TipoVeiculo,
 } from '@/features/veiculos/types';
 
-const tiposVeiculo = Object.values(TIPOS_VEICULO) as number[];
-const tiposAssento = Object.values(TIPOS_ASSENTO) as number[];
+const tiposVeiculo = Object.values(TIPOS_VEICULO) as string[];
+const tiposAssento = Object.values(TIPOS_ASSENTO) as string[];
 
 export const assentoInputSchema = z.object({
   numero: z.number().int().positive(),
   tipo: z
-    .number()
+    .string()
     .refine((v): v is TipoAssento => tiposAssento.includes(v), {
       message: 'Tipo de assento inválido.',
     }),
@@ -39,7 +39,7 @@ export const cadastrarVeiculoSchema = z.object({
   fabricante: z.string().min(1, 'Fabricante obrigatório.').max(80),
   cor: z.string().min(1, 'Cor obrigatória.').max(40),
   tipo: z
-    .number()
+    .string()
     .refine((v): v is TipoVeiculo => tiposVeiculo.includes(v), {
       message: 'Tipo de veículo inválido.',
     }),
