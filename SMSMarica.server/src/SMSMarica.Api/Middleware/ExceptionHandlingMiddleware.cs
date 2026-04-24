@@ -6,10 +6,15 @@ namespace SMSMarica.Api.Middleware;
 
 public sealed partial class ExceptionHandlingMiddleware(
     RequestDelegate next,
-    ILogger<ExceptionHandlingMiddleware> logger)
+    ILogger<ExceptionHandlingMiddleware> logger,
+    IConfiguration configuration,
+    IHostEnvironment environment)
 {
     private readonly RequestDelegate _next = next;
     private readonly ILogger<ExceptionHandlingMiddleware> _logger = logger;
+    private readonly bool _detailedErrors =
+        environment.IsDevelopment()
+        || configuration.GetValue("DetailedErrors", defaultValue: false);
 
     public async Task InvokeAsync(HttpContext context)
     {
@@ -36,7 +41,8 @@ public sealed partial class ExceptionHandlingMiddleware(
                 context,
                 StatusCodes.Status500InternalServerError,
                 "Erro interno",
-                "Ocorreu um erro inesperado.");
+                "Ocorreu um erro inesperado.",
+                excecao: _detailedErrors ? ex : null);
         }
     }
 
@@ -45,7 +51,8 @@ public sealed partial class ExceptionHandlingMiddleware(
         int statusCode,
         string title,
         string detail,
-        string? type = null)
+        string? type = null,
+        Exception? excecao = null)
     {
         var problem = new ProblemDetails
         {
@@ -55,6 +62,19 @@ public sealed partial class ExceptionHandlingMiddleware(
             Type = type,
             Instance = context.Request.Path,
         };
+
+        if (excecao is not null)
+        {
+            problem.Extensions["exception"] = new
+            {
+                type = excecao.GetType().FullName,
+                message = excecao.Message,
+                inner = excecao.InnerException is null
+                    ? null
+                    : $"{excecao.InnerException.GetType().FullName}: {excecao.InnerException.Message}",
+                stackTrace = excecao.StackTrace,
+            };
+        }
 
         context.Response.StatusCode = statusCode;
         context.Response.ContentType = "application/problem+json";

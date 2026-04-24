@@ -50,9 +50,20 @@ URLs disponíveis após `run`:
 
 - `http://localhost:5080/docs` — UI Scalar (substitui Swagger UI)
 - `http://localhost:5080/openapi/v1.json` — spec OpenAPI
-- `http://localhost:5080/health` — health check
+- `http://localhost:5080/health` — health check agregado (inclui DB)
+- `http://localhost:5080/health/live` — liveness (só o processo; usado por orquestrador)
+- `http://localhost:5080/health/ready` — readiness (só recursos externos tageados `ready` — hoje: DB)
 
 **OpenAPI sempre ligado** (dev e prod) por decisão de produto.
+
+### Flags de ambiente
+
+| Env / config | Default | Descrição |
+|---|---|---|
+| `ConnectionStrings__DefaultDb` | (vazio) | Connection string Postgres. Obrigatória. |
+| `AutoMigrate__Enabled` | `true` | Aplica migrations pendentes no startup em qualquer ambiente. Setar `false` se quiser migrar manualmente em prod. |
+| `DetailedErrors` | `false` (em `Development` sempre `true`) | Expõe `exception.type/message/stackTrace` em `ProblemDetails.Extensions` quando uma exceção não mapeada ocorre. Ligue temporariamente em prod para diagnosticar, desligue depois. |
+| `ASPNETCORE_ENVIRONMENT` | `Production` no systemd | Controla verbosidade, endpoints de dev, etc. |
 
 ## Como configurar o banco
 
@@ -84,7 +95,7 @@ dotnet ef database update \
   --startup-project src/SMSMarica.Api
 ```
 
-Em `Development`, o `Program.cs` também aplica migrations automaticamente no startup (`db.Database.MigrateAsync()`), com log de aviso se Postgres estiver indisponível.
+**Por padrão o `Program.cs` aplica migrations automaticamente no startup em qualquer ambiente** (`AutoMigrate:Enabled=true`). Se falhar (ex.: Postgres indisponível no boot), o processo continua vivo e `/health` reporta `Unhealthy` no check `db` até o banco voltar. Para desligar a migração automática em prod e gerenciar manualmente, seta `AutoMigrate__Enabled=false` no env file.
 
 ### Criar uma nova migration
 
@@ -147,7 +158,17 @@ systemctl status smsmarica-server
 journalctl -u smsmarica-server -f        # logs ao vivo
 journalctl -u smsmarica-server -n 200    # últimas 200 linhas
 systemctl restart smsmarica-server       # restart manual
+
+# Estado detalhado do health (inclui DB):
+curl http://127.0.0.1:5080/health | jq
+curl http://127.0.0.1:5080/health/ready | jq
 ```
+
+### Diagnóstico quando CRUDs voltam 500
+
+1. `curl https://<host>/health/ready` — se `db` estiver `Unhealthy`, o problema é banco (conexão/credenciais/migração).
+2. `journalctl -u smsmarica-server -n 200 | grep -E "Erro|Falha|Exception"` — o log do Serilog tem a exceção original completa (tipo + mensagem + stack).
+3. Para expor a causa raiz no próprio response HTTP temporariamente, adicione `DetailedErrors=true` em `/etc/smsmarica-server/env` e reinicie o serviço. **Desligue depois**, senão stack traces ficam expostos publicamente.
 
 ## Regras
 
