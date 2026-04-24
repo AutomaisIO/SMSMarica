@@ -57,7 +57,8 @@
       "Bash(npx tsc *)",
       "Read(//c/c/Projetos GIT/SMSMarica/SMSMarica.front/**)",
       "Bash(npx eslint *)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(xargs grep *)"
     ]
   }
 }
