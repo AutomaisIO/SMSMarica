@@ -17,7 +17,17 @@ public sealed class AtualizarRotaValidator : AbstractValidator<AtualizarRotaRequ
 {
     public AtualizarRotaValidator()
     {
+        RuleFor(r => r.Data).NotEmpty();
         RuleFor(r => r.VeiculoId).NotEmpty();
         RuleFor(r => r.MotoristaId).NotEmpty();
+    }
+}
+
+public sealed class CriarAlocacaoValidator : AbstractValidator<CriarAlocacaoRequest>
+{
+    public CriarAlocacaoValidator()
+    {
+        RuleFor(r => r.SessaoId).NotEmpty();
+        RuleFor(r => r.AssentoId).NotEmpty();
     }
 }

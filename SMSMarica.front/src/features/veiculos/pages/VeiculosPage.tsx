@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Eye, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { BotaoLinhaAcao } from '@/shared/ui/BotaoLinhaAcao';
 import { Button } from '@/shared/ui/Button';
@@ -17,6 +18,7 @@ import { ROTULOS_TIPO_VEICULO, type VeiculoListItem } from '@/features/veiculos/
 type EstadoModal = { tipo: 'fechado' } | { tipo: 'criar' } | { tipo: 'editar'; id: string };
 
 export function VeiculosPage() {
+  const navigate = useNavigate();
   const lista = useListarVeiculos();
   const desativar = useDesativarVeiculo();
   const [estado, setEstado] = useState<EstadoModal>({ tipo: 'fechado' });
@@ -26,7 +28,19 @@ export function VeiculosPage() {
   const visiveis = (lista.data ?? []).filter((v) => v.ativo);
 
   const colunas: Coluna<VeiculoListItem>[] = [
-    { chave: 'placa', cabecalho: 'Placa', render: (v) => v.placa },
+    {
+      chave: 'placa',
+      cabecalho: 'Placa',
+      render: (v) => (
+        <button
+          type="button"
+          onClick={() => navigate(`/operador/veiculos/${v.id}`)}
+          className="text-left font-medium text-red-700 hover:underline"
+        >
+          {v.placa}
+        </button>
+      ),
+    },
     { chave: 'tipo', cabecalho: 'Tipo', render: (v) => ROTULOS_TIPO_VEICULO[v.tipo] ?? '—' },
     {
       chave: 'descricao',
@@ -45,6 +59,9 @@ export function VeiculosPage() {
       className: 'text-right',
       render: (v) => (
         <div className="flex items-center justify-end gap-1">
+          <BotaoLinhaAcao onClick={() => navigate(`/operador/veiculos/${v.id}`)}>
+            <Eye className="h-3.5 w-3.5" /> Ver
+          </BotaoLinhaAcao>
           <BotaoLinhaAcao onClick={() => setEstado({ tipo: 'editar', id: v.id })}>
             <Pencil className="h-3.5 w-3.5" /> Editar
           </BotaoLinhaAcao>

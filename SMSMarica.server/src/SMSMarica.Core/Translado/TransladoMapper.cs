@@ -1,16 +1,31 @@
-using Riok.Mapperly.Abstractions;
 using SMSMarica.Core.Translado.Dtos;
 using SMSMarica.Data.Entities;
 
 namespace SMSMarica.Core.Translado;
 
-[Mapper]
-internal static partial class TransladoMapper
+internal static class TransladoMapper
 {
-    public static RotaDiariaDto ParaDto(RotaDiaria r) => new(
-        r.Id, r.Data, r.VeiculoId, r.MotoristaId, r.Status,
-        r.CriadoEm, r.IniciadaEm, r.ConcluidaEm);
+    public static RotaDiariaDto ParaDto(RotaDiaria r, IReadOnlyList<AlocacaoDto> alocacoes) => new(
+        r.Id,
+        r.Data,
+        r.VeiculoId,
+        r.Veiculo?.Placa ?? string.Empty,
+        r.Veiculo?.Modelo ?? string.Empty,
+        r.MotoristaId,
+        r.Motorista?.NomeCompleto ?? string.Empty,
+        r.Status,
+        r.CriadoEm,
+        r.IniciadaEm,
+        r.ConcluidaEm,
+        alocacoes);
 
-    public static RotaDiariaListItemDto ParaListItem(RotaDiaria r) =>
-        new(r.Id, r.Data, r.VeiculoId, r.MotoristaId, r.Status);
+    public static RotaDiariaListItemDto ParaListItem(RotaDiaria r, int totalAlocacoes) => new(
+        r.Id,
+        r.Data,
+        r.VeiculoId,
+        r.Veiculo?.Placa ?? string.Empty,
+        r.MotoristaId,
+        r.Motorista?.NomeCompleto ?? string.Empty,
+        r.Status,
+        totalAlocacoes);
 }

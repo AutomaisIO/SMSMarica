@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Eye, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { BotaoLinhaAcao } from '@/shared/ui/BotaoLinhaAcao';
 import { Button } from '@/shared/ui/Button';
@@ -17,6 +18,7 @@ import type { MotoristaListItem } from '@/features/motoristas/types';
 type EstadoModal = { tipo: 'fechado' } | { tipo: 'criar' } | { tipo: 'editar'; id: string };
 
 export function MotoristasPage() {
+  const navigate = useNavigate();
   const lista = useListarMotoristas();
   const desativar = useDesativarMotorista();
   const [estado, setEstado] = useState<EstadoModal>({ tipo: 'fechado' });
@@ -24,7 +26,19 @@ export function MotoristasPage() {
   const [erroAcao, setErroAcao] = useState<string | null>(null);
 
   const colunas: Coluna<MotoristaListItem>[] = [
-    { chave: 'nome', cabecalho: 'Nome', render: (m) => m.nomeCompleto },
+    {
+      chave: 'nome',
+      cabecalho: 'Nome',
+      render: (m) => (
+        <button
+          type="button"
+          onClick={() => navigate(`/operador/motoristas/${m.id}`)}
+          className="text-left font-medium text-red-700 hover:underline"
+        >
+          {m.nomeCompleto}
+        </button>
+      ),
+    },
     { chave: 'cpf', cabecalho: 'CPF', render: (m) => m.cpf },
     { chave: 'status', cabecalho: 'Status', render: (m) => <StatusBadge ativo={m.ativo} /> },
     {
@@ -33,6 +47,9 @@ export function MotoristasPage() {
       className: 'text-right',
       render: (m) => (
         <div className="flex items-center justify-end gap-1">
+          <BotaoLinhaAcao onClick={() => navigate(`/operador/motoristas/${m.id}`)}>
+            <Eye className="w-3.5 h-3.5" /> Ver
+          </BotaoLinhaAcao>
           <BotaoLinhaAcao onClick={() => setEstado({ tipo: 'editar', id: m.id })}>
             <Pencil className="w-3.5 h-3.5" /> Editar
           </BotaoLinhaAcao>

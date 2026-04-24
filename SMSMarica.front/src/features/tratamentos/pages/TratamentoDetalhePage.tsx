@@ -68,9 +68,24 @@ export function TratamentoDetalhePage() {
       render: (s) => {
         const st = statusSessaoDeNumero(s.status);
         return (
-          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${CLASSE_STATUS[st]}`}>
-            {ROTULO_STATUS[st]}
-          </span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${CLASSE_STATUS[st]}`}>
+              {ROTULO_STATUS[st]}
+            </span>
+            {s.alocadaEmRotaId ? (
+              <button
+                type="button"
+                onClick={() => navigate(`/operador/translados/${s.alocadaEmRotaId}`)}
+                className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-800 hover:border-sky-400 hover:bg-sky-100"
+                title="Abrir translado"
+              >
+                Alocado · {s.alocadaNaData ? formatarDataBr(s.alocadaNaData) : ''}
+                {s.fileiraAssentoAlocado != null && s.numeroAssentoAlocado != null
+                  ? ` · F${s.fileiraAssentoAlocado}·${s.numeroAssentoAlocado}`
+                  : ''}
+              </button>
+            ) : null}
+          </div>
         );
       },
     },

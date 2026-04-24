@@ -60,6 +60,10 @@ public sealed record SessaoDto(
     TimeOnly? HoraSaidaUnidade,
     TimeOnly? HoraChegadaResidencia,
     string? MotivoNaoRealizacao,
-    string? Observacoes);
+    string? Observacoes,
+    Guid? AlocadaEmRotaId,
+    DateOnly? AlocadaNaData,
+    int? FileiraAssentoAlocado,
+    int? NumeroAssentoAlocado);
 
 public sealed record TipoTratamentoDto(Guid Id, string Nome, string Codigo, bool Ativo);

@@ -43,7 +43,21 @@ public sealed class TratamentosService(SmsMaricaDbContext db) : ITratamentosServ
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Tratamento), id);
 
-        return TratamentosMapper.ParaDto(t);
+        var sessaoIds = t.Sessoes.Select(s => s.Id).ToList();
+
+        var alocacoesQuery =
+            from a in _db.Alocacoes.AsNoTracking()
+            join rota in _db.Rotas.AsNoTracking() on a.RotaDiariaId equals rota.Id
+            join assento in _db.Assentos.AsNoTracking() on a.AssentoId equals assento.Id
+            join fileira in _db.Fileiras.AsNoTracking() on assento.FileiraId equals fileira.Id
+            where sessaoIds.Contains(a.SessaoId) && rota.Status != StatusRota.Cancelada
+            select new TratamentosMapper.AlocacaoAtiva(
+                a.SessaoId, rota.Id, rota.Data, fileira.Ordem, assento.Numero);
+
+        var alocacoes = await alocacoesQuery.ToListAsync(cancellationToken);
+        var alocacoesPorSessao = alocacoes.ToDictionary(a => a.SessaoId, a => a);
+
+        return TratamentosMapper.ParaDto(t, alocacoesPorSessao);
     }
 
     public async Task<IReadOnlyList<TipoTratamentoDto>> ListarTiposAsync(CancellationToken cancellationToken = default)

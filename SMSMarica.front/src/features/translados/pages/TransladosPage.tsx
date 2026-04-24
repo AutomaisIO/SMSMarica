@@ -1,52 +1,73 @@
 import { useState } from 'react';
-import { Trash2 } from 'lucide-react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Eye, Plus, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
-import { BannerEscritaPendente } from '@/shared/ui/BannerEscritaPendente';
 import { BotaoLinhaAcao } from '@/shared/ui/BotaoLinhaAcao';
+import { Button } from '@/shared/ui/Button';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
-import { cancelarRota, listarRotas } from '@/features/translados/api/transladosApi';
+import {
+  useCancelarRota,
+  useListarRotas,
+} from '@/features/translados/api/queries';
 import type { RotaDiariaListItem, StatusRota } from '@/features/translados/types';
 
-const MAPA_STATUS: Record<number, StatusRota> = {
-  0: 'Planejada',
-  1: 'EmAndamento',
-  2: 'Concluida',
-  3: 'Cancelada',
+const ROTULOS_STATUS: Record<StatusRota, string> = {
+  Planejada: 'Planejada',
+  EmAndamento: 'Em andamento',
+  Concluida: 'Concluída',
+  Cancelada: 'Cancelada',
 };
 
-function rotuloStatus(status: StatusRota | number): string {
-  if (typeof status === 'number') return MAPA_STATUS[status] ?? String(status);
-  return status;
-}
+const CORES_STATUS: Record<StatusRota, string> = {
+  Planejada: 'bg-blue-50 text-blue-800 border-blue-200',
+  EmAndamento: 'bg-amber-50 text-amber-800 border-amber-200',
+  Concluida: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+  Cancelada: 'bg-gray-100 text-gray-700 border-gray-200',
+};
 
-function ehCancelada(r: RotaDiariaListItem): boolean {
-  return r.status === 'Cancelada' || (typeof r.status === 'number' && r.status === 3);
+function formatarData(iso: string): string {
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
 }
 
 export function TransladosPage() {
-  const client = useQueryClient();
-  const lista = useQuery({ queryKey: ['rotas', 'lista'], queryFn: () => listarRotas() });
-  const cancelar = useMutation({
-    mutationFn: (id: string) => cancelarRota(id),
-    onSuccess: () => client.invalidateQueries({ queryKey: ['rotas', 'lista'] }),
-  });
+  const navigate = useNavigate();
+  const lista = useListarRotas();
+  const cancelar = useCancelarRota();
+
   const [paraCancelar, setParaCancelar] = useState<RotaDiariaListItem | null>(null);
   const [erroAcao, setErroAcao] = useState<string | null>(null);
 
-  const visiveis = (lista.data ?? []).filter((r) => !ehCancelada(r));
+  const visiveis = (lista.data ?? []).filter((r) => r.status !== 'Cancelada');
 
   const colunas: Coluna<RotaDiariaListItem>[] = [
-    { chave: 'data', cabecalho: 'Data', render: (r) => r.data },
-    { chave: 'veiculo', cabecalho: 'Veículo', render: (r) => <code className="text-xs text-gray-600">{r.veiculoId}</code> },
-    { chave: 'motorista', cabecalho: 'Motorista', render: (r) => <code className="text-xs text-gray-600">{r.motoristaId}</code> },
+    {
+      chave: 'data',
+      cabecalho: 'Data',
+      render: (r) => (
+        <button
+          type="button"
+          onClick={() => navigate(`/operador/translados/${r.id}`)}
+          className="text-left font-medium text-red-700 hover:underline"
+        >
+          {formatarData(r.data)}
+        </button>
+      ),
+    },
+    { chave: 'veiculo', cabecalho: 'Veículo', render: (r) => r.veiculoPlaca },
+    { chave: 'motorista', cabecalho: 'Motorista', render: (r) => r.motoristaNome },
+    {
+      chave: 'pacientes',
+      cabecalho: 'Pacientes',
+      render: (r) => <span className="text-xs text-gray-600">{r.totalAlocacoes}</span>,
+    },
     {
       chave: 'status',
       cabecalho: 'Status',
       render: (r) => (
-        <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs text-gray-700">
-          {rotuloStatus(r.status)}
+        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${CORES_STATUS[r.status]}`}>
+          {ROTULOS_STATUS[r.status]}
         </span>
       ),
     },
@@ -56,7 +77,10 @@ export function TransladosPage() {
       className: 'text-right',
       render: (r) => (
         <div className="flex items-center justify-end gap-1">
-          {!ehCancelada(r) ? (
+          <BotaoLinhaAcao onClick={() => navigate(`/operador/translados/${r.id}`)}>
+            <Eye className="h-3.5 w-3.5" /> Abrir
+          </BotaoLinhaAcao>
+          {r.status !== 'Concluida' ? (
             <BotaoLinhaAcao tom="perigo" onClick={() => setParaCancelar(r)}>
               <Trash2 className="h-3.5 w-3.5" /> Cancelar
             </BotaoLinhaAcao>
@@ -79,14 +103,18 @@ export function TransladosPage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold text-gray-900">Translados</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Rotas diárias, alocação de sessões em assentos e acompanhamento da operação.
-        </p>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Translados</h1>
+          <p className="mt-1 text-sm text-gray-600">
+            Rotas diárias. Clique em uma data para operar alocações de pacientes nos assentos.
+          </p>
+        </div>
+        <Button onClick={() => navigate('/operador/translados/novo')}>
+          <Plus className="h-4 w-4" />
+          Novo translado
+        </Button>
       </header>
-
-      <BannerEscritaPendente mensagem="Server expõe GET/POST/PUT/DELETE /rotas + iniciar/concluir. Mapa operacional entra com a entrega S3.3." />
 
       {lista.isError ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -99,14 +127,19 @@ export function TransladosPage() {
         dados={visiveis}
         chaveLinha={(r) => r.id}
         carregando={lista.isLoading}
+        vazio={visiveis.length === 0 && !lista.isLoading ? 'Nenhum translado ativo. Clique em "Novo translado" para criar.' : undefined}
       />
 
       <ConfirmDialog
         aberto={Boolean(paraCancelar)}
-        titulo="Cancelar rota"
-        mensagem={paraCancelar ? `Cancelar a rota de ${paraCancelar.data}? Ela some da listagem ativa, mas o registro permanece para auditoria.` : ''}
+        titulo="Cancelar translado"
+        mensagem={
+          paraCancelar
+            ? `Cancelar a rota de ${formatarData(paraCancelar.data)}? Ela some da listagem ativa, mas o registro permanece para auditoria.`
+            : ''
+        }
         destrutivo
-        rotuloConfirmar="Cancelar rota"
+        rotuloConfirmar="Cancelar translado"
         carregando={cancelar.isPending}
         aoConfirmar={confirmar}
         aoCancelar={() => { setParaCancelar(null); setErroAcao(null); }}

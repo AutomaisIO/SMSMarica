@@ -76,6 +76,10 @@ export type Sessao = {
   horaChegadaResidencia: string | null;
   motivoNaoRealizacao: string | null;
   observacoes: string | null;
+  alocadaEmRotaId: string | null;
+  alocadaNaData: string | null;
+  fileiraAssentoAlocado: number | null;
+  numeroAssentoAlocado: number | null;
 };
 
 export type Tratamento = {
