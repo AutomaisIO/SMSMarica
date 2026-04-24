@@ -1,17 +1,46 @@
 import { useQuery } from '@tanstack/react-query';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { BannerEscritaPendente } from '@/shared/ui/BannerEscritaPendente';
-import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
-import { listarTranslados } from '@/features/translados/api/transladosApi';
-import type { TransladoListItem } from '@/features/translados/types';
+import { listarRotas } from '@/features/translados/api/transladosApi';
+import type { RotaDiariaListItem, StatusRota } from '@/features/translados/types';
+
+const MAPA_STATUS: Record<number, StatusRota> = {
+  0: 'Planejada',
+  1: 'EmAndamento',
+  2: 'Concluida',
+  3: 'Cancelada',
+};
+
+function rotuloStatus(status: StatusRota | number): string {
+  if (typeof status === 'number') return MAPA_STATUS[status] ?? String(status);
+  return status;
+}
 
 export function TransladosPage() {
-  const lista = useQuery({ queryKey: ['translados', 'lista'], queryFn: listarTranslados });
+  const lista = useQuery({ queryKey: ['rotas', 'lista'], queryFn: () => listarRotas() });
 
-  const colunas: Coluna<TransladoListItem>[] = [
-    { chave: 'descricao', cabecalho: 'Descrição', render: (t) => t.descricao },
-    { chave: 'status', cabecalho: 'Status', render: (t) => <StatusBadge ativo={t.ativo} /> },
+  const colunas: Coluna<RotaDiariaListItem>[] = [
+    { chave: 'data', cabecalho: 'Data', render: (r) => r.data },
+    {
+      chave: 'veiculo',
+      cabecalho: 'Veículo',
+      render: (r) => <code className="text-xs text-gray-600">{r.veiculoId}</code>,
+    },
+    {
+      chave: 'motorista',
+      cabecalho: 'Motorista',
+      render: (r) => <code className="text-xs text-gray-600">{r.motoristaId}</code>,
+    },
+    {
+      chave: 'status',
+      cabecalho: 'Status',
+      render: (r) => (
+        <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs text-gray-700">
+          {rotuloStatus(r.status)}
+        </span>
+      ),
+    },
   ];
 
   return (
@@ -23,7 +52,7 @@ export function TransladosPage() {
         </p>
       </header>
 
-      <BannerEscritaPendente mensagem="Server expõe apenas GET /translados. Alocação paciente→assento e mapa operacional entram com a entrega S3.3." />
+      <BannerEscritaPendente mensagem="Server expõe GET/POST/PUT/DELETE /rotas + iniciar/concluir. Alocação paciente→assento e mapa operacional entram com a entrega S3.3." />
 
       {lista.isError ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -34,7 +63,7 @@ export function TransladosPage() {
       <Tabela
         colunas={colunas}
         dados={lista.data ?? []}
-        chaveLinha={(t) => t.id}
+        chaveLinha={(r) => r.id}
         carregando={lista.isLoading}
       />
     </div>
