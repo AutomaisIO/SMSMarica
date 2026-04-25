@@ -9,6 +9,9 @@ public interface ITratamentosService
     /// <summary>Lista tratamentos de um paciente (todos, ativos e encerrados).</summary>
     Task<IReadOnlyList<TratamentoListItemDto>> ListarPorPacienteAsync(Guid pacienteId, CancellationToken cancellationToken = default);
 
+    /// <summary>Lista tratamentos de uma unidade (todos, ativos e encerrados).</summary>
+    Task<IReadOnlyList<TratamentoListItemDto>> ListarPorUnidadeAsync(Guid unidadeId, CancellationToken cancellationToken = default);
+
     Task<TratamentoDto> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<TipoTratamentoDto>> ListarTiposAsync(CancellationToken cancellationToken = default);

@@ -1,10 +1,14 @@
-import { ArrowLeft, Pencil } from 'lucide-react';
+import { ArrowLeft, ListChecks, Pencil } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
+import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { Tabs, type Aba } from '@/shared/ui/Tabs';
 import { usePacientePorId } from '@/features/pacientes/api/queries';
 import type { Paciente } from '@/features/pacientes/types';
+import { useListarTratamentos } from '@/features/tratamentos/api/queries';
+import { formatarDataBr } from '@/features/tratamentos/lib/expansor';
+import type { TratamentoListItem } from '@/features/tratamentos/types';
 
 function campo(label: string, valor?: string | number | null) {
   return (
@@ -170,8 +174,46 @@ export function PacienteDetalhePage() {
   const params = useParams<{ id: string }>();
   const id = params.id ?? '';
   const detalhe = usePacientePorId(id || null);
+  const tratamentos = useListarTratamentos({ pacienteId: id });
 
   const p = detalhe.data;
+  const listaTratamentos = tratamentos.data ?? [];
+
+  const colunasTratamentos: Coluna<TratamentoListItem>[] = [
+    {
+      chave: 'tipo',
+      cabecalho: 'Tipo',
+      render: (t) => (
+        <button
+          type="button"
+          onClick={() => navigate(`/operador/tratamentos/${t.id}`)}
+          className="text-left font-medium text-red-700 hover:underline"
+        >
+          {t.tipoTratamentoNome ?? t.descricao}
+        </button>
+      ),
+    },
+    { chave: 'unidade', cabecalho: 'Unidade', render: (t) => t.unidadeNome },
+    {
+      chave: 'proxima',
+      cabecalho: 'Próxima sessão',
+      render: (t) => (t.proximaSessao ? formatarDataBr(t.proximaSessao) : '—'),
+    },
+    {
+      chave: 'progresso',
+      cabecalho: 'Progresso',
+      render: (t) => (
+        <span className="text-xs text-gray-600">
+          {t.sessoesRealizadas}/{t.totalSessoes}
+        </span>
+      ),
+    },
+    {
+      chave: 'status',
+      cabecalho: 'Status',
+      render: (t) => <StatusBadge ativo={t.ativo} />,
+    },
+  ];
 
   const abas: Aba[] = p ? [
     { id: 'identificacao', rotulo: 'Identificação', conteudo: <SecaoIdentificacao p={p} /> },
@@ -229,9 +271,40 @@ export function PacienteDetalhePage() {
           Não foi possível carregar os dados do paciente.
         </div>
       ) : p ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <Tabs abas={abas} />
-        </div>
+        <>
+          <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                <ListChecks className="h-4 w-4" /> Tratamentos do paciente
+                <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
+                  {listaTratamentos.length}
+                </span>
+              </h2>
+              <Button
+                variante="outline"
+                tamanho="sm"
+                onClick={() => navigate('/operador/tratamentos/novo')}
+              >
+                Novo tratamento
+              </Button>
+            </div>
+            <Tabela
+              colunas={colunasTratamentos}
+              dados={listaTratamentos}
+              chaveLinha={(t) => t.id}
+              carregando={tratamentos.isLoading}
+              vazio={
+                !tratamentos.isLoading && listaTratamentos.length === 0
+                  ? 'Nenhum tratamento cadastrado para este paciente.'
+                  : undefined
+              }
+            />
+          </section>
+
+          <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+            <Tabs abas={abas} />
+          </div>
+        </>
       ) : null}
     </div>
   );

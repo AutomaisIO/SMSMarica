@@ -21,17 +21,23 @@ import type {
   ExpandirPeriodicidadePayload,
 } from '@/features/tratamentos/types';
 
+export type FiltrosTratamentosHook = {
+  pacienteId?: string;
+  unidadeId?: string;
+};
+
 export const tratamentosKeys = {
   raiz: ['tratamentos'] as const,
-  lista: (pacienteId?: string) => ['tratamentos', 'lista', pacienteId ?? null] as const,
+  lista: (f: FiltrosTratamentosHook = {}) =>
+    ['tratamentos', 'lista', f.pacienteId ?? null, f.unidadeId ?? null] as const,
   detalhe: (id: string) => ['tratamentos', 'detalhe', id] as const,
   tipos: () => ['tratamentos', 'tipos'] as const,
 };
 
-export function useListarTratamentos(pacienteId?: string) {
+export function useListarTratamentos(filtros: FiltrosTratamentosHook = {}) {
   return useQuery({
-    queryKey: tratamentosKeys.lista(pacienteId),
-    queryFn: () => listarTratamentos(pacienteId),
+    queryKey: tratamentosKeys.lista(filtros),
+    queryFn: () => listarTratamentos(filtros),
   });
 }
 

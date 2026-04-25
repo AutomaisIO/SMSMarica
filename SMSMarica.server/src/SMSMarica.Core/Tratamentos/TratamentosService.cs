@@ -32,6 +32,17 @@ public sealed class TratamentosService(SmsMaricaDbContext db) : ITratamentosServ
         return [.. tratamentos.Select(ParaListItem)];
     }
 
+    public async Task<IReadOnlyList<TratamentoListItemDto>> ListarPorUnidadeAsync(Guid unidadeId, CancellationToken cancellationToken = default)
+    {
+        var tratamentos = await QueryListarBase()
+            .Where(t => t.UnidadeId == unidadeId)
+            .OrderByDescending(t => t.Ativo)
+            .ThenByDescending(t => t.CriadoEm)
+            .ToListAsync(cancellationToken);
+
+        return [.. tratamentos.Select(ParaListItem)];
+    }
+
     public async Task<TratamentoDto> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var t = await _db.Tratamentos.AsNoTracking()

@@ -14,10 +14,13 @@ public sealed class TratamentosController(ITratamentosService service) : Control
     [ProducesResponseType<IReadOnlyList<TratamentoListItemDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<TratamentoListItemDto>> Listar(
         [FromQuery] Guid? pacienteId,
-        CancellationToken cancellationToken) =>
-        pacienteId is { } id
-            ? await _service.ListarPorPacienteAsync(id, cancellationToken)
-            : await _service.ListarAsync(cancellationToken);
+        [FromQuery] Guid? unidadeId,
+        CancellationToken cancellationToken)
+    {
+        if (pacienteId is { } pid) return await _service.ListarPorPacienteAsync(pid, cancellationToken);
+        if (unidadeId is { } uid) return await _service.ListarPorUnidadeAsync(uid, cancellationToken);
+        return await _service.ListarAsync(cancellationToken);
+    }
 
     [HttpGet("tipos")]
     [ProducesResponseType<IReadOnlyList<TipoTratamentoDto>>(StatusCodes.Status200OK)]

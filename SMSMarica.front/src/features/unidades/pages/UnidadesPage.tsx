@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Eye, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { BotaoLinhaAcao } from '@/shared/ui/BotaoLinhaAcao';
 import { Button } from '@/shared/ui/Button';
@@ -17,6 +18,7 @@ import type { UnidadeListItem } from '@/features/unidades/types';
 type EstadoModal = { tipo: 'fechado' } | { tipo: 'criar' } | { tipo: 'editar'; id: string };
 
 export function UnidadesPage() {
+  const navigate = useNavigate();
   const lista = useListarUnidades();
   const desativar = useDesativarUnidade();
   const [estado, setEstado] = useState<EstadoModal>({ tipo: 'fechado' });
@@ -24,7 +26,19 @@ export function UnidadesPage() {
   const [erroAcao, setErroAcao] = useState<string | null>(null);
 
   const colunas: Coluna<UnidadeListItem>[] = [
-    { chave: 'nome', cabecalho: 'Nome', render: (u) => u.nome },
+    {
+      chave: 'nome',
+      cabecalho: 'Nome',
+      render: (u) => (
+        <button
+          type="button"
+          onClick={() => navigate(`/operador/unidades/${u.id}`)}
+          className="text-left font-medium text-red-700 hover:underline"
+        >
+          {u.nome}
+        </button>
+      ),
+    },
     {
       chave: 'cidade',
       cabecalho: 'Cidade/UF',
@@ -37,6 +51,9 @@ export function UnidadesPage() {
       className: 'text-right',
       render: (u) => (
         <div className="flex items-center justify-end gap-1">
+          <BotaoLinhaAcao onClick={() => navigate(`/operador/unidades/${u.id}`)}>
+            <Eye className="w-3.5 h-3.5" /> Ver
+          </BotaoLinhaAcao>
           <BotaoLinhaAcao onClick={() => setEstado({ tipo: 'editar', id: u.id })}>
             <Pencil className="w-3.5 h-3.5" /> Editar
           </BotaoLinhaAcao>

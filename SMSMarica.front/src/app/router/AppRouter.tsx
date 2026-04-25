@@ -18,6 +18,7 @@ import { TransladosPage } from '@/features/translados/pages/TransladosPage';
 import { TratamentoDetalhePage } from '@/features/tratamentos/pages/TratamentoDetalhePage';
 import { TratamentoFormPage } from '@/features/tratamentos/pages/TratamentoFormPage';
 import { TratamentosPage } from '@/features/tratamentos/pages/TratamentosPage';
+import { UnidadeDetalhePage } from '@/features/unidades/pages/UnidadeDetalhePage';
 import { UnidadesPage } from '@/features/unidades/pages/UnidadesPage';
 import { UsuariosPage } from '@/features/usuarios/pages/UsuariosPage';
 import { VeiculoDetalhePage } from '@/features/veiculos/pages/VeiculoDetalhePage';
@@ -44,6 +45,7 @@ export function AppRouter() {
           <Route path="pacientes/:id" element={<PacienteDetalhePage />} />
           <Route path="pacientes/:id/editar" element={<PacienteFormPage />} />
           <Route path="unidades" element={<UnidadesPage />} />
+          <Route path="unidades/:id" element={<UnidadeDetalhePage />} />
           <Route path="veiculos" element={<VeiculosPage />} />
           <Route path="veiculos/:id" element={<VeiculoDetalhePage />} />
           <Route path="motoristas" element={<MotoristasPage />} />

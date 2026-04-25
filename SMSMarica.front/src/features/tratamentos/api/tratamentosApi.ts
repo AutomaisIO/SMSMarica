@@ -11,9 +11,18 @@ import type {
   TratamentoListItem,
 } from '@/features/tratamentos/types';
 
-export async function listarTratamentos(pacienteId?: string): Promise<TratamentoListItem[]> {
-  const params = pacienteId ? { pacienteId } : undefined;
-  const { data } = await http.get<TratamentoListItem[]>('/tratamentos', { params });
+export type FiltrosTratamentos = {
+  pacienteId?: string;
+  unidadeId?: string;
+};
+
+export async function listarTratamentos(filtros: FiltrosTratamentos = {}): Promise<TratamentoListItem[]> {
+  const params: Record<string, string> = {};
+  if (filtros.pacienteId) params.pacienteId = filtros.pacienteId;
+  if (filtros.unidadeId) params.unidadeId = filtros.unidadeId;
+  const { data } = await http.get<TratamentoListItem[]>('/tratamentos', {
+    params: Object.keys(params).length ? params : undefined,
+  });
   return data;
 }
 
