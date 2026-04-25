@@ -35,15 +35,32 @@ type Props = {
 };
 
 const CENTRO_DEFAULT: Coordenada = { lat: -22.9197, lng: -42.8186 }; // Maricá-RJ
+const ZOOM_PIN = 17;
 
-/** Recentraliza imperativamente quando o `centro` muda externamente. */
-function ControleDeCentro({ centro }: { centro: Coordenada | null }) {
+/**
+ * Recentraliza imperativamente quando o `gatilho` muda. Também chama
+ * invalidateSize para corrigir o caso em que o container só ganha altura
+ * após o layout (default do MapContainer não recalcula sozinho — vira
+ * mapa "de outro continente" no zoom out).
+ */
+function ControleDeCentro({
+  centro,
+  gatilho,
+}: {
+  centro: Coordenada | null;
+  gatilho: number;
+}) {
   const map = useMap();
   useEffect(() => {
-    if (centro) {
-      map.setView([centro.lat, centro.lng], Math.max(map.getZoom(), 16), { animate: true });
-    }
-  }, [centro, map]);
+    map.invalidateSize();
+    if (!centro) return;
+    map.setView([centro.lat, centro.lng], Math.max(map.getZoom(), ZOOM_PIN), {
+      animate: gatilho > 0,
+    });
+    // gatilho na deps lista para forçar re-execução em montagem inicial
+    // e em pedidos explícitos (clique no mapa, "Localizar pelo endereço").
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gatilho]);
   return null;
 }
 
@@ -56,11 +73,13 @@ export function MapaSeletor({
 }: Props) {
   const [buscando, setBuscando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [centroExterno, setCentroExterno] = useState<Coordenada | null>(null);
+  // Cada incremento dispara o ControleDeCentro a recentralizar. Drag NÃO
+  // incrementa (preserva o que o usuário está vendo após arrastar o pin).
+  const [gatilhoCentralizar, setGatilhoCentralizar] = useState(0);
   const markerRef = useRef<L.Marker | null>(null);
 
   const centroInicial = valor ?? CENTRO_DEFAULT;
-  const zoomInicial = valor ? 17 : 13;
+  const zoomInicial = valor ? ZOOM_PIN : 13;
 
   const eventos = useMemo(
     () => ({
@@ -68,6 +87,7 @@ export function MapaSeletor({
         const m = markerRef.current;
         if (!m) return;
         const pos = m.getLatLng();
+        // sem incrementar gatilho — o mapa fica onde o usuário largou.
         aoMudar({ lat: pos.lat, lng: pos.lng });
       },
     }),
@@ -98,7 +118,7 @@ export function MapaSeletor({
       }
       const c: Coordenada = { lat: parseFloat(dados[0].lat), lng: parseFloat(dados[0].lon) };
       aoMudar(c);
-      setCentroExterno(c);
+      setGatilhoCentralizar((g) => g + 1);
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
     } finally {
@@ -111,19 +131,23 @@ export function MapaSeletor({
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs text-gray-500">
           {valor
-            ? `GPS: ${valor.lat.toFixed(6)}, ${valor.lng.toFixed(6)} — arraste o pin para ajustar.`
+            ? `GPS: ${valor.lat.toFixed(6)}, ${valor.lng.toFixed(6)}${
+                desabilitado ? '' : ' — arraste o pin para ajustar.'
+              }`
             : 'Sem coordenada definida. Use "Localizar" ou clique no mapa para posicionar o pin.'}
         </p>
-        <Button
-          type="button"
-          variante="outline"
-          tamanho="sm"
-          onClick={localizarEndereco}
-          disabled={buscando || desabilitado}
-        >
-          <Locate className="h-4 w-4" />
-          {buscando ? 'Buscando…' : 'Localizar pelo endereço'}
-        </Button>
+        {desabilitado ? null : (
+          <Button
+            type="button"
+            variante="outline"
+            tamanho="sm"
+            onClick={localizarEndereco}
+            disabled={buscando}
+          >
+            <Locate className="h-4 w-4" />
+            {buscando ? 'Buscando…' : 'Localizar pelo endereço'}
+          </Button>
+        )}
       </div>
 
       <div
@@ -140,12 +164,12 @@ export function MapaSeletor({
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          <ControleDeCentro centro={centroExterno} />
+          <ControleDeCentro centro={valor} gatilho={gatilhoCentralizar} />
           <ClickHandler
             ativo={!desabilitado}
             aoClicar={(c) => {
               aoMudar(c);
-              setCentroExterno(c);
+              setGatilhoCentralizar((g) => g + 1);
             }}
           />
           {valor ? (
