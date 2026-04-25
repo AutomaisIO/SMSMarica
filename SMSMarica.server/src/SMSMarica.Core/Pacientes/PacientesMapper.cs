@@ -1,3 +1,4 @@
+using SMSMarica.Core.Common.Dtos;
 using SMSMarica.Core.Pacientes.Dtos;
 using SMSMarica.Data.Entities;
 
@@ -30,7 +31,7 @@ internal static class PacientesMapper
         p.NomeDaMae,
         p.NomeDoPai,
         p.ResponsavelLegal,
-        p.Endereco is null ? null : ParaEnderecoDto(p.Endereco),
+        p.Endereco is null ? null : EnderecoDto.ParaDto(p.Endereco),
         p.TelefonePrincipal,
         p.TelefoneCelular,
         p.TelefoneResidencial,
@@ -56,32 +57,10 @@ internal static class PacientesMapper
         p.TelefonePrincipal,
         p.Ativo);
 
-    public static EnderecoDto ParaEnderecoDto(Endereco e) => new(
-        e.Cep,
-        e.Logradouro,
-        e.Numero,
-        e.Complemento,
-        e.Bairro,
-        e.Cidade,
-        e.Uf,
-        e.PontoReferencia);
-
     public static ContatoEmergenciaDto ParaContatoDto(ContatoEmergencia c) => new(
         c.Nome,
         c.Parentesco,
         c.Telefone);
-
-    public static Endereco ParaEntidade(EnderecoDto dto) => new()
-    {
-        Cep = dto.Cep ?? string.Empty,
-        Logradouro = dto.Logradouro ?? string.Empty,
-        Numero = string.IsNullOrWhiteSpace(dto.Numero) ? null : dto.Numero,
-        Complemento = string.IsNullOrWhiteSpace(dto.Complemento) ? null : dto.Complemento,
-        Bairro = dto.Bairro ?? string.Empty,
-        Cidade = dto.Cidade ?? string.Empty,
-        Uf = dto.Uf ?? string.Empty,
-        PontoReferencia = string.IsNullOrWhiteSpace(dto.PontoReferencia) ? null : dto.PontoReferencia,
-    };
 
     public static ContatoEmergencia ParaEntidade(ContatoEmergenciaDto dto) => new()
     {

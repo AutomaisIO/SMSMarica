@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SMSMarica.Core.Common.Dtos;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Motoristas.Dtos;
 using SMSMarica.Data;
@@ -48,6 +49,7 @@ public sealed class MotoristasService(SmsMaricaDbContext db) : IMotoristasServic
             Cpf = cpf,
             Cnh = cnh,
             Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim(),
+            Endereco = request.Endereco?.ParaEntidade(),
             Ativo = true,
             CriadoEm = DateTime.UtcNow,
         };
@@ -72,6 +74,7 @@ public sealed class MotoristasService(SmsMaricaDbContext db) : IMotoristasServic
         m.NomeCompleto = request.NomeCompleto.Trim();
         m.Cnh = cnh;
         m.Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim();
+        m.Endereco = request.Endereco?.ParaEntidade();
         m.AtualizadoEm = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(cancellationToken);

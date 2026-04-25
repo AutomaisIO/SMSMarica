@@ -1,8 +1,10 @@
+using SMSMarica.Core.Common.Dtos;
+
 namespace SMSMarica.Core.Unidades.Dtos;
 
 public sealed record CadastrarUnidadeRequest(
     string Nome,
-    string Endereco,
+    EnderecoDto? Endereco,
     string? Telefone,
-    double Latitude,
-    double Longitude);
+    double? Latitude,
+    double? Longitude);

@@ -1,16 +1,20 @@
+using SMSMarica.Core.Common.Dtos;
+
 namespace SMSMarica.Core.Unidades.Dtos;
 
 public sealed record UnidadeDto(
     Guid Id,
     string Nome,
-    string Endereco,
+    EnderecoDto? Endereco,
     string? Telefone,
-    double Latitude,
-    double Longitude,
+    double? Latitude,
+    double? Longitude,
     bool Ativo,
     DateTime CriadoEm);
 
 public sealed record UnidadeListItemDto(
     Guid Id,
     string Nome,
+    string? Cidade,
+    string? Uf,
     bool Ativo);

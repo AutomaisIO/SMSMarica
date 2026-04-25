@@ -2,6 +2,12 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
+import {
+  enderecoVazio,
+  FormularioEndereco,
+  paraPayload,
+  type EnderecoForm,
+} from '@/shared/ui/FormularioEndereco';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import {
   useAtualizarMotorista,
@@ -15,9 +21,17 @@ import {
 
 type Props = { modo: 'criar' | 'editar'; idMotorista?: string | null; aoConcluir: () => void };
 
-type Valores = { nomeCompleto: string; cpf: string; cnh: string; telefone: string };
-const INICIAL: Valores = { nomeCompleto: '', cpf: '', cnh: '', telefone: '' };
-type Erros = Partial<Record<keyof Valores, string>>;
+type Valores = {
+  nomeCompleto: string;
+  cpf: string;
+  cnh: string;
+  telefone: string;
+  endereco: EnderecoForm;
+};
+const INICIAL: Valores = {
+  nomeCompleto: '', cpf: '', cnh: '', telefone: '', endereco: enderecoVazio,
+};
+type Erros = Partial<Record<'nomeCompleto' | 'cpf' | 'cnh' | 'telefone' | 'endereco', string>>;
 
 export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
   const [valores, setValores] = useState<Valores>(INICIAL);
@@ -29,16 +43,29 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
 
   useEffect(() => {
     if (modo === 'editar' && detalhe.data) {
+      const e = detalhe.data.endereco;
       setValores({
         nomeCompleto: detalhe.data.nomeCompleto,
         cpf: detalhe.data.cpf,
         cnh: detalhe.data.cnh,
         telefone: detalhe.data.telefone ?? '',
+        endereco: e
+          ? {
+              cep: e.cep ?? '',
+              logradouro: e.logradouro ?? '',
+              numero: e.numero ?? '',
+              complemento: e.complemento ?? '',
+              bairro: e.bairro ?? '',
+              cidade: e.cidade ?? '',
+              uf: e.uf ?? '',
+              pontoReferencia: e.pontoReferencia ?? '',
+            }
+          : enderecoVazio,
       });
     }
   }, [modo, detalhe.data]);
 
-  function set<K extends keyof Valores>(k: K, v: string) {
+  function set<K extends keyof Valores>(k: K, v: Valores[K]) {
     setValores((p) => ({ ...p, [k]: v }));
   }
 
@@ -47,10 +74,25 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
     setErros({});
     setErroGlobal(null);
 
+    const enderecoForm = paraPayload(valores.endereco);
+    const enderecoPayload = enderecoForm
+      ? {
+          cep: enderecoForm.cep,
+          logradouro: enderecoForm.logradouro,
+          numero: enderecoForm.numero || null,
+          complemento: enderecoForm.complemento || null,
+          bairro: enderecoForm.bairro,
+          cidade: enderecoForm.cidade,
+          uf: enderecoForm.uf,
+          pontoReferencia: enderecoForm.pontoReferencia || null,
+        }
+      : null;
+
     const base = {
       nomeCompleto: valores.nomeCompleto.trim(),
       cnh: valores.cnh.trim(),
       telefone: valores.telefone,
+      endereco: enderecoPayload,
     };
 
     try {
@@ -59,7 +101,7 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
         if (!parsed.success) {
           const ne: Erros = {};
           for (const i of parsed.error.issues) {
-            const k = i.path[0] as keyof Valores | undefined;
+            const k = i.path[0] as keyof Erros | undefined;
             if (k && !ne[k]) ne[k] = i.message;
           }
           setErros(ne);
@@ -72,7 +114,7 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
         if (!parsed.success) {
           const ne: Erros = {};
           for (const i of parsed.error.issues) {
-            const k = i.path[0] as keyof Valores | undefined;
+            const k = i.path[0] as keyof Erros | undefined;
             if (k && !ne[k]) ne[k] = i.message;
           }
           setErros(ne);
@@ -89,7 +131,7 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
   const pendente = cadastrar.isPending || atualizar.isPending;
 
   return (
-    <form onSubmit={aoEnviar} className="space-y-4">
+    <form onSubmit={aoEnviar} className="space-y-5">
       {modo === 'editar' && detalhe.isFetching ? (
         <div className="text-sm text-gray-500">Carregando dados…</div>
       ) : null}
@@ -99,6 +141,7 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
           label="Nome completo"
           htmlFor="nomeCompleto"
           erro={erros.nomeCompleto}
+          required
           className="md:col-span-2"
         >
           <Input
@@ -113,6 +156,7 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
           label="CPF"
           htmlFor="cpf"
           erro={erros.cpf}
+          required={modo === 'criar'}
           dica={modo === 'editar' ? 'CPF não pode ser alterado.' : undefined}
         >
           <Input
@@ -125,11 +169,11 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
           />
         </Campo>
 
-        <Campo label="CNH" htmlFor="cnh" erro={erros.cnh}>
+        <Campo label="CNH" htmlFor="cnh" erro={erros.cnh} required>
           <Input id="cnh" value={valores.cnh} onChange={(e) => set('cnh', e.target.value)} required />
         </Campo>
 
-        <Campo label="Telefone (opcional)" htmlFor="telefone" erro={erros.telefone}>
+        <Campo label="Telefone" htmlFor="telefone" erro={erros.telefone}>
           <Input
             id="telefone"
             value={valores.telefone}
@@ -138,6 +182,15 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
           />
         </Campo>
       </div>
+
+      <section>
+        <h3 className="mb-3 text-sm font-semibold text-gray-900">Endereço</h3>
+        <FormularioEndereco
+          valor={valores.endereco}
+          aoMudar={(e) => set('endereco', e)}
+          desabilitado={pendente}
+        />
+      </section>
 
       {erroGlobal ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

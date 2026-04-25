@@ -17,6 +17,19 @@ function cpfValido(valor: string): boolean {
   return calc(9) === Number(d[9]) && calc(10) === Number(d[10]);
 }
 
+const enderecoSchema = z
+  .object({
+    cep: z.string(),
+    logradouro: z.string(),
+    numero: z.string().nullable(),
+    complemento: z.string().nullable(),
+    bairro: z.string(),
+    cidade: z.string(),
+    uf: z.string(),
+    pontoReferencia: z.string().nullable(),
+  })
+  .nullable();
+
 const base = {
   nomeCompleto: z.string().min(3).max(200),
   cnh: z
@@ -27,6 +40,7 @@ const base = {
     .string()
     .optional()
     .transform((v) => (v && v.trim().length > 0 ? v : undefined)),
+  endereco: enderecoSchema,
 };
 
 export const cadastrarMotoristaSchema = z.object({

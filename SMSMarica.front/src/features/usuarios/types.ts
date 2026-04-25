@@ -16,6 +16,17 @@ export const rotulosPerfil: Record<PerfilUsuarioValor, string> = {
   4: 'Motorista',
 };
 
+export type EnderecoDto = {
+  cep: string;
+  logradouro: string;
+  numero: string | null;
+  complemento: string | null;
+  bairro: string;
+  cidade: string;
+  uf: string;
+  pontoReferencia: string | null;
+};
+
 export type UsuarioListItem = {
   id: string;
   nomeCompleto: string;
@@ -29,6 +40,8 @@ export type Usuario = {
   nomeCompleto: string;
   email: string;
   cpf: string | null;
+  telefone: string | null;
+  endereco: EnderecoDto | null;
   perfil: PerfilUsuarioValor;
   ativo: boolean;
   criadoEm: string;
@@ -39,11 +52,15 @@ export type CadastrarUsuarioPayload = {
   nomeCompleto: string;
   email: string;
   cpf?: string;
+  telefone?: string;
+  endereco: EnderecoDto | null;
   perfil: PerfilUsuarioValor;
 };
 
 export type AtualizarUsuarioPayload = {
   nomeCompleto: string;
   cpf?: string;
+  telefone?: string;
+  endereco: EnderecoDto | null;
   perfil: PerfilUsuarioValor;
 };

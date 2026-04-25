@@ -1,3 +1,4 @@
+using SMSMarica.Core.Common.Dtos;
 using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Pacientes.Dtos;
@@ -60,16 +61,6 @@ public sealed record PacienteListItemDto(
     string? NomeDaMae,
     string? TelefonePrincipal,
     bool Ativo);
-
-public sealed record EnderecoDto(
-    string Cep,
-    string Logradouro,
-    string? Numero,
-    string? Complemento,
-    string Bairro,
-    string Cidade,
-    string Uf,
-    string? PontoReferencia);
 
 public sealed record ContatoEmergenciaDto(
     string Nome,

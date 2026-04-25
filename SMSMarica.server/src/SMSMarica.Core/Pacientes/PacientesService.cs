@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SMSMarica.Core.Common.Dtos;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Pacientes.Dtos;
 using SMSMarica.Data;
@@ -111,7 +112,7 @@ public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
             NomeDaMae = NormalizaOpcional(request.NomeDaMae, false),
             NomeDoPai = NormalizaOpcional(request.NomeDoPai, false),
             ResponsavelLegal = NormalizaOpcional(request.ResponsavelLegal, false),
-            Endereco = request.Endereco is null ? null : PacientesMapper.ParaEntidade(request.Endereco),
+            Endereco = request.Endereco?.ParaEntidade(),
             TelefonePrincipal = NormalizaOpcional(request.TelefonePrincipal, false),
             TelefoneCelular = NormalizaOpcional(request.TelefoneCelular, false),
             TelefoneResidencial = NormalizaOpcional(request.TelefoneResidencial, false),
@@ -156,7 +157,7 @@ public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
         paciente.NomeDaMae = NormalizaOpcional(request.NomeDaMae, false);
         paciente.NomeDoPai = NormalizaOpcional(request.NomeDoPai, false);
         paciente.ResponsavelLegal = NormalizaOpcional(request.ResponsavelLegal, false);
-        paciente.Endereco = request.Endereco is null ? null : PacientesMapper.ParaEntidade(request.Endereco);
+        paciente.Endereco = request.Endereco?.ParaEntidade();
         paciente.TelefonePrincipal = NormalizaOpcional(request.TelefonePrincipal, false);
         paciente.TelefoneCelular = NormalizaOpcional(request.TelefoneCelular, false);
         paciente.TelefoneResidencial = NormalizaOpcional(request.TelefoneResidencial, false);

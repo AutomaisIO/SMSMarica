@@ -32,9 +32,9 @@ public sealed class UnidadesService(SmsMaricaDbContext db) : IUnidadesService
         {
             Id = Guid.CreateVersion7(),
             Nome = request.Nome.Trim(),
-            Endereco = request.Endereco.Trim(),
+            Endereco = request.Endereco?.ParaEntidade(),
             Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim(),
-            Gps = new Gps(request.Latitude, request.Longitude),
+            Gps = ConstruirGps(request.Latitude, request.Longitude),
             Ativo = true,
             CriadoEm = DateTime.UtcNow,
         };
@@ -50,9 +50,9 @@ public sealed class UnidadesService(SmsMaricaDbContext db) : IUnidadesService
             ?? throw new NaoEncontradoException(nameof(Unidade), id);
 
         u.Nome = request.Nome.Trim();
-        u.Endereco = request.Endereco.Trim();
+        u.Endereco = request.Endereco?.ParaEntidade();
         u.Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim();
-        u.Gps = new Gps(request.Latitude, request.Longitude);
+        u.Gps = ConstruirGps(request.Latitude, request.Longitude);
         u.AtualizadoEm = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(cancellationToken);
@@ -72,4 +72,7 @@ public sealed class UnidadesService(SmsMaricaDbContext db) : IUnidadesService
         u.AtualizadoEm = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
     }
+
+    private static Gps? ConstruirGps(double? latitude, double? longitude) =>
+        latitude is null || longitude is null ? null : new Gps(latitude.Value, longitude.Value);
 }

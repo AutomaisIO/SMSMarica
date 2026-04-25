@@ -1,3 +1,5 @@
+using SMSMarica.Core.Common.Dtos;
+
 namespace SMSMarica.Core.Motoristas.Dtos;
 
 public sealed record MotoristaDto(
@@ -6,6 +8,7 @@ public sealed record MotoristaDto(
     string Cpf,
     string Cnh,
     string? Telefone,
+    EnderecoDto? Endereco,
     bool Ativo,
     DateTime CriadoEm);
 

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SMSMarica.Core.Common.Dtos;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade.Dtos;
 using SMSMarica.Data;
@@ -47,6 +48,8 @@ public sealed class IdentidadeService(SmsMaricaDbContext db) : IIdentidadeServic
             NomeCompleto = request.NomeCompleto.Trim(),
             Email = email,
             Cpf = string.IsNullOrWhiteSpace(request.Cpf) ? null : NormalizarDigitos(request.Cpf),
+            Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim(),
+            Endereco = request.Endereco?.ParaEntidade(),
             Perfil = request.Perfil,
             SenhaHash = SenhaHashPlaceholder,
             Ativo = true,
@@ -65,6 +68,8 @@ public sealed class IdentidadeService(SmsMaricaDbContext db) : IIdentidadeServic
 
         u.NomeCompleto = request.NomeCompleto.Trim();
         u.Cpf = string.IsNullOrWhiteSpace(request.Cpf) ? null : NormalizarDigitos(request.Cpf);
+        u.Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim();
+        u.Endereco = request.Endereco?.ParaEntidade();
         u.Perfil = request.Perfil;
 
         await _db.SaveChangesAsync(cancellationToken);

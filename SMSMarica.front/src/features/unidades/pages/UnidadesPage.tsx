@@ -25,6 +25,11 @@ export function UnidadesPage() {
 
   const colunas: Coluna<UnidadeListItem>[] = [
     { chave: 'nome', cabecalho: 'Nome', render: (u) => u.nome },
+    {
+      chave: 'cidade',
+      cabecalho: 'Cidade/UF',
+      render: (u) => (u.cidade ? `${u.cidade}${u.uf ? `/${u.uf}` : ''}` : '—'),
+    },
     { chave: 'status', cabecalho: 'Status', render: (u) => <StatusBadge ativo={u.ativo} /> },
     {
       chave: 'acoes',

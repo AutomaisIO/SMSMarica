@@ -1,3 +1,4 @@
+using SMSMarica.Core.Common.Dtos;
 using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Pacientes.Dtos;

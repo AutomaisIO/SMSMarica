@@ -3,6 +3,12 @@ import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
+import {
+  enderecoVazio,
+  FormularioEndereco,
+  paraPayload,
+  type EnderecoForm,
+} from '@/shared/ui/FormularioEndereco';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import {
   useAtualizarUsuario,
@@ -21,6 +27,8 @@ type Valores = {
   nomeCompleto: string;
   email: string;
   cpf: string;
+  telefone: string;
+  endereco: EnderecoForm;
   perfil: PerfilUsuarioValor;
 };
 
@@ -28,10 +36,12 @@ const INICIAL: Valores = {
   nomeCompleto: '',
   email: '',
   cpf: '',
+  telefone: '',
+  endereco: enderecoVazio,
   perfil: PerfilUsuario.Operador,
 };
 
-type Erros = Partial<Record<keyof Valores, string>>;
+type Erros = Partial<Record<'nomeCompleto' | 'email' | 'cpf' | 'telefone' | 'perfil', string>>;
 
 const perfisDisponiveis: PerfilUsuarioValor[] = [
   PerfilUsuario.Operador,
@@ -50,11 +60,25 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
 
   useEffect(() => {
     if (modo === 'editar' && detalhe.data) {
+      const e = detalhe.data.endereco;
       setValores({
         nomeCompleto: detalhe.data.nomeCompleto,
         email: detalhe.data.email,
         cpf: detalhe.data.cpf ?? '',
+        telefone: detalhe.data.telefone ?? '',
         perfil: detalhe.data.perfil,
+        endereco: e
+          ? {
+              cep: e.cep ?? '',
+              logradouro: e.logradouro ?? '',
+              numero: e.numero ?? '',
+              complemento: e.complemento ?? '',
+              bairro: e.bairro ?? '',
+              cidade: e.cidade ?? '',
+              uf: e.uf ?? '',
+              pontoReferencia: e.pontoReferencia ?? '',
+            }
+          : enderecoVazio,
       });
     }
   }, [modo, detalhe.data]);
@@ -83,19 +107,41 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
       return;
     }
 
+    const enderecoForm = paraPayload(valores.endereco);
+    const enderecoPayload = enderecoForm
+      ? {
+          cep: enderecoForm.cep,
+          logradouro: enderecoForm.logradouro,
+          numero: enderecoForm.numero || null,
+          complemento: enderecoForm.complemento || null,
+          bairro: enderecoForm.bairro,
+          cidade: enderecoForm.cidade,
+          uf: enderecoForm.uf,
+          pontoReferencia: enderecoForm.pontoReferencia || null,
+        }
+      : null;
+
     try {
       if (modo === 'criar') {
         await cadastrar.mutateAsync({
           nomeCompleto: nome,
           email,
           cpf: cpf || undefined,
+          telefone: valores.telefone || undefined,
+          endereco: enderecoPayload,
           perfil: valores.perfil,
         });
       } else {
         if (!idUsuario) throw new Error('ID ausente.');
         await atualizar.mutateAsync({
           id: idUsuario,
-          payload: { nomeCompleto: nome, cpf: cpf || undefined, perfil: valores.perfil },
+          payload: {
+            nomeCompleto: nome,
+            cpf: cpf || undefined,
+            telefone: valores.telefone || undefined,
+            endereco: enderecoPayload,
+            perfil: valores.perfil,
+          },
         });
       }
       aoConcluir();
@@ -107,7 +153,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
   const pendente = cadastrar.isPending || atualizar.isPending;
 
   return (
-    <form onSubmit={aoEnviar} className="space-y-4">
+    <form onSubmit={aoEnviar} className="space-y-5">
       {modo === 'editar' && detalhe.isFetching ? (
         <div className="text-sm text-gray-500">Carregando dados…</div>
       ) : null}
@@ -117,6 +163,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
           label="Nome completo"
           htmlFor="nomeCompleto"
           erro={erros.nomeCompleto}
+          required
           className="md:col-span-2"
         >
           <Input
@@ -131,6 +178,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
           label="E-mail"
           htmlFor="email"
           erro={erros.email}
+          required={modo === 'criar'}
           dica={modo === 'editar' ? 'E-mail não pode ser alterado.' : undefined}
         >
           <Input
@@ -143,7 +191,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
           />
         </Campo>
 
-        <Campo label="CPF (opcional)" htmlFor="cpf" erro={erros.cpf}>
+        <Campo label="CPF" htmlFor="cpf" erro={erros.cpf}>
           <Input
             id="cpf"
             value={valores.cpf}
@@ -153,7 +201,16 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
           />
         </Campo>
 
-        <Campo label="Perfil" htmlFor="perfil" erro={erros.perfil} className="md:col-span-2">
+        <Campo label="Telefone" htmlFor="telefone" erro={erros.telefone}>
+          <Input
+            id="telefone"
+            value={valores.telefone}
+            onChange={(e) => set('telefone', e.target.value)}
+            placeholder="(21) 99999-0000"
+          />
+        </Campo>
+
+        <Campo label="Perfil" htmlFor="perfil" erro={erros.perfil} required>
           <Select
             id="perfil"
             value={valores.perfil}
@@ -167,6 +224,15 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
           </Select>
         </Campo>
       </div>
+
+      <section>
+        <h3 className="mb-3 text-sm font-semibold text-gray-900">Endereço</h3>
+        <FormularioEndereco
+          valor={valores.endereco}
+          aoMudar={(e) => set('endereco', e)}
+          desabilitado={pendente}
+        />
+      </section>
 
       {erroGlobal ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

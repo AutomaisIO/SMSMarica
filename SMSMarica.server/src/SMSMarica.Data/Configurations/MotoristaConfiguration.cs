@@ -20,6 +20,18 @@ internal sealed class MotoristaConfiguration : IEntityTypeConfiguration<Motorist
         builder.Property(m => m.CriadoEm).HasColumnName("criado_em").IsRequired();
         builder.Property(m => m.AtualizadoEm).HasColumnName("atualizado_em");
 
+        builder.OwnsOne(m => m.Endereco, e =>
+        {
+            e.Property(x => x.Cep).HasColumnName("endereco_cep").HasMaxLength(8);
+            e.Property(x => x.Logradouro).HasColumnName("endereco_logradouro").HasMaxLength(200);
+            e.Property(x => x.Numero).HasColumnName("endereco_numero").HasMaxLength(20);
+            e.Property(x => x.Complemento).HasColumnName("endereco_complemento").HasMaxLength(120);
+            e.Property(x => x.Bairro).HasColumnName("endereco_bairro").HasMaxLength(120);
+            e.Property(x => x.Cidade).HasColumnName("endereco_cidade").HasMaxLength(120);
+            e.Property(x => x.Uf).HasColumnName("endereco_uf").HasMaxLength(2);
+            e.Property(x => x.PontoReferencia).HasColumnName("endereco_ponto_referencia").HasMaxLength(200);
+        });
+
         builder.HasIndex(m => m.Cpf).IsUnique();
         builder.HasIndex(m => m.Cnh).IsUnique();
     }
