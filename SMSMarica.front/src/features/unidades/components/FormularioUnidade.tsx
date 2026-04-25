@@ -8,6 +8,7 @@ import {
   paraPayload,
   type EnderecoForm,
 } from '@/shared/ui/FormularioEndereco';
+import { MapaSeletor } from '@/shared/ui/MapaSeletor';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import {
   useAtualizarUnidade,
@@ -128,6 +129,16 @@ export function FormularioUnidade({ modo, idUnidade, aoConcluir }: Props) {
 
   const pendente = cadastrar.isPending || atualizar.isPending;
 
+  const enderecoParaBuscar = [
+    valores.endereco.logradouro,
+    valores.endereco.numero,
+    valores.endereco.bairro,
+    valores.endereco.cidade,
+    valores.endereco.uf,
+  ]
+    .filter((p) => p && p.trim().length > 0)
+    .join(', ');
+
   return (
     <form onSubmit={aoEnviar} className="space-y-5">
       {modo === 'editar' && detalhe.isFetching ? (
@@ -161,10 +172,27 @@ export function FormularioUnidade({ modo, idUnidade, aoConcluir }: Props) {
 
       <section>
         <h3 className="mb-3 text-sm font-semibold text-gray-900">Coordenadas (opcional)</h3>
-        <p className="mb-2 text-xs text-gray-500">
-          Preencha apenas se a unidade tiver geolocalização exata para o operacional. Pode ficar em branco.
+        <p className="mb-3 text-xs text-gray-500">
+          Use o mapa para posicionar a unidade — clique em "Localizar pelo endereço",
+          arraste o pin para ajustar, ou clique no mapa. Os campos de latitude/longitude
+          atualizam automaticamente. Deixar vazio também é aceito.
         </p>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+
+        <MapaSeletor
+          valor={
+            valores.latitude && valores.longitude
+              ? { lat: Number(valores.latitude), lng: Number(valores.longitude) }
+              : null
+          }
+          aoMudar={(c) => {
+            set('latitude', c.lat.toFixed(6));
+            set('longitude', c.lng.toFixed(6));
+          }}
+          enderecoParaBuscar={enderecoParaBuscar}
+          desabilitado={pendente}
+        />
+
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
           <Campo label="Latitude" htmlFor="lat" erro={erros.latitude}>
             <Input
               id="lat"

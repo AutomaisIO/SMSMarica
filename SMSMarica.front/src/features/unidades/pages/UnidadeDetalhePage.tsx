@@ -2,6 +2,7 @@ import { ArrowLeft, MapPin, Pencil, Phone } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
+import { MapaSeletor } from '@/shared/ui/MapaSeletor';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { useUnidadePorId } from '@/features/unidades/api/queries';
@@ -160,10 +161,18 @@ export function UnidadeDetalhePage() {
               <p className="text-sm text-gray-400">Endereço não informado.</p>
             )}
             {u.latitude != null && u.longitude != null ? (
-              <p className="mt-4 flex items-center gap-1 text-xs text-gray-500">
-                <Phone className="hidden h-3.5 w-3.5" />
-                GPS: {u.latitude.toFixed(6)}, {u.longitude.toFixed(6)}
-              </p>
+              <div className="mt-4">
+                <p className="mb-2 flex items-center gap-1 text-xs text-gray-500">
+                  <Phone className="hidden h-3.5 w-3.5" />
+                  GPS: {u.latitude.toFixed(6)}, {u.longitude.toFixed(6)}
+                </p>
+                <MapaSeletor
+                  valor={{ lat: u.latitude, lng: u.longitude }}
+                  aoMudar={() => undefined}
+                  altura={240}
+                  desabilitado
+                />
+              </div>
             ) : null}
           </section>
         </div>
