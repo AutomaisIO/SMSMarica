@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Search } from 'lucide-react';
+import { Avatar } from '@/shared/ui/Avatar';
 import { Input } from '@/shared/ui/Input';
 import { useBuscarPacientes } from '@/features/pacientes/api/queries';
 import type { PacienteListItem } from '@/features/pacientes/types';
@@ -55,11 +56,12 @@ export function BuscaPaciente({ aoSelecionar, placeholder }: Props) {
                   aoSelecionar(p);
                   setTermo('');
                 }}
-                className="flex w-full items-start justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-gray-50"
+                className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-gray-50"
               >
-                <span>
-                  <span className="block font-medium text-gray-900">{p.nomeCompleto}</span>
-                  <span className="block text-xs text-gray-500">
+                <Avatar src={p.fotoBase64} nome={p.nomeCompleto} tamanho="sm" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium text-gray-900">{p.nomeCompleto}</span>
+                  <span className="block truncate text-xs text-gray-500">
                     CPF {cpfFmt(p.cpf)}
                     {p.dataNascimento ? ` · nasc. ${p.dataNascimento.split('-').reverse().join('/')}` : ''}
                     {p.nomeDaMae ? ` · mãe ${p.nomeDaMae}` : ''}

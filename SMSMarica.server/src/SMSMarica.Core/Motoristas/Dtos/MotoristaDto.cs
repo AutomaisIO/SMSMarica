@@ -9,6 +9,7 @@ public sealed record MotoristaDto(
     string Cnh,
     string? Telefone,
     EnderecoDto? Endereco,
+    string? FotoBase64,
     bool Ativo,
     DateTime CriadoEm);
 
@@ -16,4 +17,5 @@ public sealed record MotoristaListItemDto(
     Guid Id,
     string NomeCompleto,
     string Cpf,
+    string? FotoBase64,
     bool Ativo);

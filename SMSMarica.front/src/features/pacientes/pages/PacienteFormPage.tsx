@@ -8,6 +8,7 @@ import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { Tabs, type Aba } from '@/shared/ui/Tabs';
 import { ListaChips } from '@/shared/ui/ListaChips';
+import { UploadFoto } from '@/shared/ui/UploadFoto';
 import {
   consultarPacientePorCpf,
   useAtualizarPaciente,
@@ -88,6 +89,7 @@ type Estado = {
   deficiencias: string[];
   planoSaude: string;
   observacoes: string;
+  fotoBase64: string | null;
 };
 
 const ENDERECO_VAZIO: Endereco = {
@@ -107,7 +109,7 @@ const ESTADO_INICIAL: Estado = {
   alturaCm: '', pesoKg: '',
   tipoSanguineo: 'NaoInformado', fatorRh: 'NaoInformado',
   alergias: [], medicamentosContinuos: [], comorbidades: [], deficiencias: [],
-  planoSaude: '', observacoes: '',
+  planoSaude: '', observacoes: '', fotoBase64: null,
 };
 
 const RIOLABEL: Record<Sexo, string> = {
@@ -192,6 +194,7 @@ function pacienteParaEstado(p: Paciente): Estado {
     deficiencias: [...p.deficiencias],
     planoSaude: p.planoSaude ?? '',
     observacoes: p.observacoes ?? '',
+    fotoBase64: p.fotoBase64 ?? null,
   };
 }
 
@@ -247,6 +250,7 @@ function estadoParaPayload(e: Estado) {
     deficiencias: e.deficiencias,
     planoSaude: e.planoSaude || null,
     observacoes: e.observacoes || null,
+    fotoBase64: e.fotoBase64,
   };
 }
 
@@ -541,9 +545,19 @@ export function PacienteFormPage() {
       {carregando ? (
         <div className="text-sm text-gray-500">Carregando dados…</div>
       ) : (
-        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <Tabs abas={abas} />
-        </div>
+        <>
+          <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+            <UploadFoto
+              valor={estado.fotoBase64}
+              aoMudar={(v) => atualizarCampo('fotoBase64', v)}
+              nome={estado.nomeCompleto || undefined}
+              desabilitado={salvando}
+            />
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+            <Tabs abas={abas} />
+          </div>
+        </>
       )}
 
       {erroGlobal ? (

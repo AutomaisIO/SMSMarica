@@ -46,6 +46,7 @@ internal sealed class PacienteConfiguration : IEntityTypeConfiguration<Paciente>
         builder.Property(p => p.PlanoSaude).HasColumnName("plano_saude").HasMaxLength(120);
 
         builder.Property(p => p.Observacoes).HasColumnName("observacoes");
+        builder.Property(p => p.FotoBase64).HasColumnName("foto_base64").HasColumnType("text");
 
         builder.Property(p => p.Ativo).HasColumnName("ativo").HasDefaultValue(true).IsRequired();
         builder.Property(p => p.CriadoEm).HasColumnName("criado_em").IsRequired();

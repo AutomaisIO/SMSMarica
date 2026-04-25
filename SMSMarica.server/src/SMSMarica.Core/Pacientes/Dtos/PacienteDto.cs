@@ -51,7 +51,8 @@ public sealed record PacienteDto(
     IReadOnlyList<string> Deficiencias,
     string? PlanoSaude,
     // Outros
-    string? Observacoes);
+    string? Observacoes,
+    string? FotoBase64);
 
 public sealed record PacienteListItemDto(
     Guid Id,
@@ -60,6 +61,7 @@ public sealed record PacienteListItemDto(
     DateOnly? DataNascimento,
     string? NomeDaMae,
     string? TelefonePrincipal,
+    string? FotoBase64,
     bool Ativo);
 
 public sealed record ContatoEmergenciaDto(

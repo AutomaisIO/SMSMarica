@@ -31,6 +31,7 @@ export type UsuarioListItem = {
   id: string;
   nomeCompleto: string;
   email: string;
+  fotoBase64: string | null;
   perfil: PerfilUsuarioValor;
   ativo: boolean;
 };
@@ -42,6 +43,7 @@ export type Usuario = {
   cpf: string | null;
   telefone: string | null;
   endereco: EnderecoDto | null;
+  fotoBase64: string | null;
   perfil: PerfilUsuarioValor;
   ativo: boolean;
   criadoEm: string;
@@ -54,6 +56,7 @@ export type CadastrarUsuarioPayload = {
   cpf?: string;
   telefone?: string;
   endereco: EnderecoDto | null;
+  fotoBase64?: string | null;
   perfil: PerfilUsuarioValor;
 };
 
@@ -62,5 +65,6 @@ export type AtualizarUsuarioPayload = {
   cpf?: string;
   telefone?: string;
   endereco: EnderecoDto | null;
+  fotoBase64?: string | null;
   perfil: PerfilUsuarioValor;
 };

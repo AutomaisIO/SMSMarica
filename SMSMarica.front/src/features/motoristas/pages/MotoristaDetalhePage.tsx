@@ -1,6 +1,7 @@
 import { ArrowLeft, Pencil } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { Avatar } from '@/shared/ui/Avatar';
 import { Button } from '@/shared/ui/Button';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
@@ -94,6 +95,7 @@ export function MotoristaDetalhePage() {
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
+          <Avatar src={m?.fotoBase64} nome={m?.nomeCompleto} tamanho="lg" />
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-semibold text-gray-900">

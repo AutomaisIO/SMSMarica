@@ -16,6 +16,7 @@ internal sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
         builder.Property(u => u.Email).HasColumnName("email").HasMaxLength(200).IsRequired();
         builder.Property(u => u.Cpf).HasColumnName("cpf").HasMaxLength(11);
         builder.Property(u => u.Telefone).HasColumnName("telefone").HasMaxLength(30);
+        builder.Property(u => u.FotoBase64).HasColumnName("foto_base64").HasColumnType("text");
         builder.Property(u => u.Perfil).HasColumnName("perfil").HasConversion<int>().IsRequired();
         builder.Property(u => u.SenhaHash).HasColumnName("senha_hash").HasMaxLength(500).IsRequired();
         builder.Property(u => u.Ativo).HasColumnName("ativo").HasDefaultValue(true).IsRequired();

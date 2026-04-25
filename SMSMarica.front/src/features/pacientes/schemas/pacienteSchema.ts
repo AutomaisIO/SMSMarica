@@ -110,6 +110,7 @@ export const pacienteFormSchema = z.object({
   deficiencias: z.array(z.string().min(1)).default([]),
   planoSaude: z.string().max(120).optional().nullable(),
   observacoes: z.string().max(2000).optional().nullable(),
+  fotoBase64: z.string().nullable().optional(),
 });
 
 export type PacienteFormInput = z.infer<typeof pacienteFormSchema>;

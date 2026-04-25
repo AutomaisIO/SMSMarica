@@ -10,6 +10,7 @@ public class Usuario
     public string? Cpf { get; set; }
     public string? Telefone { get; set; }
     public Endereco? Endereco { get; set; }
+    public string? FotoBase64 { get; set; }
     public PerfilUsuario Perfil { get; set; }
     public string SenhaHash { get; set; } = string.Empty;
     public bool Ativo { get; set; } = true;

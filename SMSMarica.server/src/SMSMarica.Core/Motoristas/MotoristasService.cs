@@ -50,6 +50,7 @@ public sealed class MotoristasService(SmsMaricaDbContext db) : IMotoristasServic
             Cnh = cnh,
             Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim(),
             Endereco = request.Endereco?.ParaEntidade(),
+            FotoBase64 = string.IsNullOrWhiteSpace(request.FotoBase64) ? null : request.FotoBase64,
             Ativo = true,
             CriadoEm = DateTime.UtcNow,
         };
@@ -75,6 +76,7 @@ public sealed class MotoristasService(SmsMaricaDbContext db) : IMotoristasServic
         m.Cnh = cnh;
         m.Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim();
         m.Endereco = request.Endereco?.ParaEntidade();
+        m.FotoBase64 = string.IsNullOrWhiteSpace(request.FotoBase64) ? null : request.FotoBase64;
         m.AtualizadoEm = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(cancellationToken);

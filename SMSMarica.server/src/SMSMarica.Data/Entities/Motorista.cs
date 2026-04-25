@@ -8,6 +8,7 @@ public class Motorista
     public string Cnh { get; set; } = string.Empty;
     public string? Telefone { get; set; }
     public Endereco? Endereco { get; set; }
+    public string? FotoBase64 { get; set; }
     public bool Ativo { get; set; } = true;
     public DateTime CriadoEm { get; set; }
     public DateTime? AtualizadoEm { get; set; }

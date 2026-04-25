@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Eye, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { Avatar } from '@/shared/ui/Avatar';
 import { BotaoLinhaAcao } from '@/shared/ui/BotaoLinhaAcao';
 import { Button } from '@/shared/ui/Button';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
@@ -49,13 +50,16 @@ export function PacientesPage() {
     {
       chave: 'nome', cabecalho: 'Nome',
       render: (p) => (
-        <button
-          type="button"
-          onClick={() => navigate(`/operador/pacientes/${p.id}`)}
-          className="text-left font-medium text-red-700 hover:underline"
-        >
-          {p.nomeCompleto}
-        </button>
+        <div className="flex items-center gap-2">
+          <Avatar src={p.fotoBase64} nome={p.nomeCompleto} tamanho="sm" />
+          <button
+            type="button"
+            onClick={() => navigate(`/operador/pacientes/${p.id}`)}
+            className="text-left font-medium text-red-700 hover:underline"
+          >
+            {p.nomeCompleto}
+          </button>
+        </div>
       ),
     },
     { chave: 'cpf', cabecalho: 'CPF', render: (p) => formatarCpf(p.cpf) },

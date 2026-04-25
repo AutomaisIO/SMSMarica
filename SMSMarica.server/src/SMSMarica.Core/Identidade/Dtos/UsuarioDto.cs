@@ -10,6 +10,7 @@ public sealed record UsuarioDto(
     string? Cpf,
     string? Telefone,
     EnderecoDto? Endereco,
+    string? FotoBase64,
     PerfilUsuario Perfil,
     bool Ativo,
     DateTime CriadoEm,
@@ -19,5 +20,6 @@ public sealed record UsuarioListItemDto(
     Guid Id,
     string NomeCompleto,
     string Email,
+    string? FotoBase64,
     PerfilUsuario Perfil,
     bool Ativo);

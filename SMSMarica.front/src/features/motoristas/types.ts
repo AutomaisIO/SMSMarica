@@ -13,6 +13,7 @@ export type MotoristaListItem = {
   id: string;
   nomeCompleto: string;
   cpf: string;
+  fotoBase64: string | null;
   ativo: boolean;
 };
 
@@ -23,6 +24,7 @@ export type Motorista = {
   cnh: string;
   telefone: string | null;
   endereco: EnderecoDto | null;
+  fotoBase64: string | null;
   ativo: boolean;
   criadoEm: string;
 };
@@ -33,6 +35,7 @@ export type CadastrarMotoristaPayload = {
   cnh: string;
   telefone?: string;
   endereco: EnderecoDto | null;
+  fotoBase64?: string | null;
 };
 
 export type AtualizarMotoristaPayload = {
@@ -40,4 +43,5 @@ export type AtualizarMotoristaPayload = {
   cnh: string;
   telefone?: string;
   endereco: EnderecoDto | null;
+  fotoBase64?: string | null;
 };

@@ -40,4 +40,5 @@ public sealed record CadastrarPacienteRequest(
     IReadOnlyList<string>? Deficiencias = null,
     string? PlanoSaude = null,
     // Outros
-    string? Observacoes = null);
+    string? Observacoes = null,
+    string? FotoBase64 = null);

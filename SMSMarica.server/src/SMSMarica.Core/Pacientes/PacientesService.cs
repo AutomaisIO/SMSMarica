@@ -128,6 +128,7 @@ public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
             Deficiencias = SanearLista(request.Deficiencias),
             PlanoSaude = NormalizaOpcional(request.PlanoSaude, false),
             Observacoes = NormalizaOpcional(request.Observacoes, false),
+            FotoBase64 = NormalizaOpcional(request.FotoBase64, false),
             Ativo = true,
             CriadoEm = DateTime.UtcNow,
         };
@@ -173,6 +174,7 @@ public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
         paciente.Deficiencias = SanearLista(request.Deficiencias);
         paciente.PlanoSaude = NormalizaOpcional(request.PlanoSaude, false);
         paciente.Observacoes = NormalizaOpcional(request.Observacoes, false);
+        paciente.FotoBase64 = NormalizaOpcional(request.FotoBase64, false);
         paciente.AtualizadoEm = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(cancellationToken);

@@ -59,6 +59,7 @@ export type PacienteListItem = {
   dataNascimento?: string | null;
   nomeDaMae?: string | null;
   telefonePrincipal?: string | null;
+  fotoBase64?: string | null;
   ativo: boolean;
 };
 
@@ -97,6 +98,7 @@ export type Paciente = {
   deficiencias: string[];
   planoSaude: string | null;
   observacoes: string | null;
+  fotoBase64: string | null;
   ativo: boolean;
   cadastradoEm: string;
 };
@@ -133,6 +135,7 @@ export type PacienteFormPayload = {
   deficiencias: string[];
   planoSaude?: string | null;
   observacoes?: string | null;
+  fotoBase64?: string | null;
 };
 
 export type CadastrarPacientePayload = PacienteFormPayload;

@@ -7,4 +7,5 @@ public sealed record CadastrarMotoristaRequest(
     string Cpf,
     string Cnh,
     string? Telefone,
-    EnderecoDto? Endereco);
+    EnderecoDto? Endereco,
+    string? FotoBase64 = null);

@@ -8,6 +8,7 @@ import {
   paraPayload,
   type EnderecoForm,
 } from '@/shared/ui/FormularioEndereco';
+import { UploadFoto } from '@/shared/ui/UploadFoto';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import {
   useAtualizarMotorista,
@@ -27,9 +28,10 @@ type Valores = {
   cnh: string;
   telefone: string;
   endereco: EnderecoForm;
+  fotoBase64: string | null;
 };
 const INICIAL: Valores = {
-  nomeCompleto: '', cpf: '', cnh: '', telefone: '', endereco: enderecoVazio,
+  nomeCompleto: '', cpf: '', cnh: '', telefone: '', endereco: enderecoVazio, fotoBase64: null,
 };
 type Erros = Partial<Record<'nomeCompleto' | 'cpf' | 'cnh' | 'telefone' | 'endereco', string>>;
 
@@ -49,6 +51,7 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
         cpf: detalhe.data.cpf,
         cnh: detalhe.data.cnh,
         telefone: detalhe.data.telefone ?? '',
+        fotoBase64: detalhe.data.fotoBase64 ?? null,
         endereco: e
           ? {
               cep: e.cep ?? '',
@@ -93,6 +96,7 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
       cnh: valores.cnh.trim(),
       telefone: valores.telefone,
       endereco: enderecoPayload,
+      fotoBase64: valores.fotoBase64,
     };
 
     try {
@@ -135,6 +139,13 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
       {modo === 'editar' && detalhe.isFetching ? (
         <div className="text-sm text-gray-500">Carregando dados…</div>
       ) : null}
+
+      <UploadFoto
+        valor={valores.fotoBase64}
+        aoMudar={(v) => set('fotoBase64', v)}
+        nome={valores.nomeCompleto || undefined}
+        desabilitado={pendente}
+      />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Campo

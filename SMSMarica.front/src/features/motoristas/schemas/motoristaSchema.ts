@@ -41,6 +41,7 @@ const base = {
     .optional()
     .transform((v) => (v && v.trim().length > 0 ? v : undefined)),
   endereco: enderecoSchema,
+  fotoBase64: z.string().nullable().optional(),
 };
 
 export const cadastrarMotoristaSchema = z.object({

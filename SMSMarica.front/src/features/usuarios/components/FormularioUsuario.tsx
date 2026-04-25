@@ -9,6 +9,7 @@ import {
   paraPayload,
   type EnderecoForm,
 } from '@/shared/ui/FormularioEndereco';
+import { UploadFoto } from '@/shared/ui/UploadFoto';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import {
   useAtualizarUsuario,
@@ -29,6 +30,7 @@ type Valores = {
   cpf: string;
   telefone: string;
   endereco: EnderecoForm;
+  fotoBase64: string | null;
   perfil: PerfilUsuarioValor;
 };
 
@@ -38,6 +40,7 @@ const INICIAL: Valores = {
   cpf: '',
   telefone: '',
   endereco: enderecoVazio,
+  fotoBase64: null,
   perfil: PerfilUsuario.Operador,
 };
 
@@ -66,6 +69,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
         email: detalhe.data.email,
         cpf: detalhe.data.cpf ?? '',
         telefone: detalhe.data.telefone ?? '',
+        fotoBase64: detalhe.data.fotoBase64 ?? null,
         perfil: detalhe.data.perfil,
         endereco: e
           ? {
@@ -129,6 +133,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
           cpf: cpf || undefined,
           telefone: valores.telefone || undefined,
           endereco: enderecoPayload,
+          fotoBase64: valores.fotoBase64,
           perfil: valores.perfil,
         });
       } else {
@@ -140,6 +145,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
             cpf: cpf || undefined,
             telefone: valores.telefone || undefined,
             endereco: enderecoPayload,
+            fotoBase64: valores.fotoBase64,
             perfil: valores.perfil,
           },
         });
@@ -157,6 +163,13 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
       {modo === 'editar' && detalhe.isFetching ? (
         <div className="text-sm text-gray-500">Carregando dados…</div>
       ) : null}
+
+      <UploadFoto
+        valor={valores.fotoBase64}
+        aoMudar={(v) => set('fotoBase64', v)}
+        nome={valores.nomeCompleto || undefined}
+        desabilitado={pendente}
+      />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Campo

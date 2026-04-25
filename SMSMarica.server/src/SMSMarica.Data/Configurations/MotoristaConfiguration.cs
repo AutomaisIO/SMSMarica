@@ -16,6 +16,7 @@ internal sealed class MotoristaConfiguration : IEntityTypeConfiguration<Motorist
         builder.Property(m => m.Cpf).HasColumnName("cpf").HasMaxLength(11).IsRequired();
         builder.Property(m => m.Cnh).HasColumnName("cnh").HasMaxLength(11).IsRequired();
         builder.Property(m => m.Telefone).HasColumnName("telefone").HasMaxLength(30);
+        builder.Property(m => m.FotoBase64).HasColumnName("foto_base64").HasColumnType("text");
         builder.Property(m => m.Ativo).HasColumnName("ativo").HasDefaultValue(true).IsRequired();
         builder.Property(m => m.CriadoEm).HasColumnName("criado_em").IsRequired();
         builder.Property(m => m.AtualizadoEm).HasColumnName("atualizado_em");

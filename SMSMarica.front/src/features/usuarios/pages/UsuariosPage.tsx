@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { Avatar } from '@/shared/ui/Avatar';
 import { BotaoLinhaAcao } from '@/shared/ui/BotaoLinhaAcao';
 import { Button } from '@/shared/ui/Button';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
@@ -24,7 +25,16 @@ export function UsuariosPage() {
   const [erroAcao, setErroAcao] = useState<string | null>(null);
 
   const colunas: Coluna<UsuarioListItem>[] = [
-    { chave: 'nome', cabecalho: 'Nome', render: (u) => u.nomeCompleto },
+    {
+      chave: 'nome',
+      cabecalho: 'Nome',
+      render: (u) => (
+        <div className="flex items-center gap-2">
+          <Avatar src={u.fotoBase64} nome={u.nomeCompleto} tamanho="sm" />
+          <span className="text-gray-900">{u.nomeCompleto}</span>
+        </div>
+      ),
+    },
     { chave: 'email', cabecalho: 'E-mail', render: (u) => u.email },
     {
       chave: 'perfil',

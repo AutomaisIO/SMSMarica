@@ -8,4 +8,5 @@ public sealed record AtualizarUsuarioRequest(
     string? Cpf,
     string? Telefone,
     EnderecoDto? Endereco,
-    PerfilUsuario Perfil);
+    PerfilUsuario Perfil,
+    string? FotoBase64 = null);

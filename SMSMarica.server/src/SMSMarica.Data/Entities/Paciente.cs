@@ -49,6 +49,7 @@ public class Paciente
 
     // Outros
     public string? Observacoes { get; set; }
+    public string? FotoBase64 { get; set; }
 
     // Controle
     public bool Ativo { get; set; } = true;

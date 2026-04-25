@@ -6,4 +6,5 @@ public sealed record AtualizarMotoristaRequest(
     string NomeCompleto,
     string Cnh,
     string? Telefone,
-    EnderecoDto? Endereco);
+    EnderecoDto? Endereco,
+    string? FotoBase64 = null);

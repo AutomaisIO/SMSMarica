@@ -32,4 +32,5 @@ public sealed record AtualizarPacienteRequest(
     IReadOnlyList<string>? Comorbidades = null,
     IReadOnlyList<string>? Deficiencias = null,
     string? PlanoSaude = null,
-    string? Observacoes = null);
+    string? Observacoes = null,
+    string? FotoBase64 = null);

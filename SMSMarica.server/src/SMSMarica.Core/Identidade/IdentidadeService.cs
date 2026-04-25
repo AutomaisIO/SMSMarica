@@ -50,6 +50,7 @@ public sealed class IdentidadeService(SmsMaricaDbContext db) : IIdentidadeServic
             Cpf = string.IsNullOrWhiteSpace(request.Cpf) ? null : NormalizarDigitos(request.Cpf),
             Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim(),
             Endereco = request.Endereco?.ParaEntidade(),
+            FotoBase64 = string.IsNullOrWhiteSpace(request.FotoBase64) ? null : request.FotoBase64,
             Perfil = request.Perfil,
             SenhaHash = SenhaHashPlaceholder,
             Ativo = true,
@@ -70,6 +71,7 @@ public sealed class IdentidadeService(SmsMaricaDbContext db) : IIdentidadeServic
         u.Cpf = string.IsNullOrWhiteSpace(request.Cpf) ? null : NormalizarDigitos(request.Cpf);
         u.Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim();
         u.Endereco = request.Endereco?.ParaEntidade();
+        u.FotoBase64 = string.IsNullOrWhiteSpace(request.FotoBase64) ? null : request.FotoBase64;
         u.Perfil = request.Perfil;
 
         await _db.SaveChangesAsync(cancellationToken);

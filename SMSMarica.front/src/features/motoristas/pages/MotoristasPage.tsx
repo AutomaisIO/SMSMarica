@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Eye, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { Avatar } from '@/shared/ui/Avatar';
 import { BotaoLinhaAcao } from '@/shared/ui/BotaoLinhaAcao';
 import { Button } from '@/shared/ui/Button';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
@@ -30,13 +31,16 @@ export function MotoristasPage() {
       chave: 'nome',
       cabecalho: 'Nome',
       render: (m) => (
-        <button
-          type="button"
-          onClick={() => navigate(`/operador/motoristas/${m.id}`)}
-          className="text-left font-medium text-red-700 hover:underline"
-        >
-          {m.nomeCompleto}
-        </button>
+        <div className="flex items-center gap-2">
+          <Avatar src={m.fotoBase64} nome={m.nomeCompleto} tamanho="sm" />
+          <button
+            type="button"
+            onClick={() => navigate(`/operador/motoristas/${m.id}`)}
+            className="text-left font-medium text-red-700 hover:underline"
+          >
+            {m.nomeCompleto}
+          </button>
+        </div>
       ),
     },
     { chave: 'cpf', cabecalho: 'CPF', render: (m) => m.cpf },

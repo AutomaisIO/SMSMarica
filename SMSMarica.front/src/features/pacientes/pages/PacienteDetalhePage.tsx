@@ -1,5 +1,6 @@
 import { ArrowLeft, ListChecks, Pencil } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { Avatar } from '@/shared/ui/Avatar';
 import { Button } from '@/shared/ui/Button';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
@@ -243,6 +244,7 @@ export function PacienteDetalhePage() {
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
+          <Avatar src={p?.fotoBase64} nome={p?.nomeCompleto} tamanho="lg" />
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-semibold text-gray-900">

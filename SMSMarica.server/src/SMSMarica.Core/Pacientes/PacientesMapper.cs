@@ -46,7 +46,8 @@ internal static class PacientesMapper
         p.Comorbidades,
         p.Deficiencias,
         p.PlanoSaude,
-        p.Observacoes);
+        p.Observacoes,
+        p.FotoBase64);
 
     public static PacienteListItemDto ParaListItem(Paciente p) => new(
         p.Id,
@@ -55,6 +56,7 @@ internal static class PacientesMapper
         p.DataNascimento,
         p.NomeDaMae,
         p.TelefonePrincipal,
+        p.FotoBase64,
         p.Ativo);
 
     public static ContatoEmergenciaDto ParaContatoDto(ContatoEmergencia c) => new(
