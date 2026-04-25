@@ -5,23 +5,18 @@ import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { BotaoLinhaAcao } from '@/shared/ui/BotaoLinhaAcao';
 import { Button } from '@/shared/ui/Button';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
-import { Modal } from '@/shared/ui/Modal';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import {
   useDesativarUnidade,
   useListarUnidades,
 } from '@/features/unidades/api/queries';
-import { FormularioUnidade } from '@/features/unidades/components/FormularioUnidade';
 import type { UnidadeListItem } from '@/features/unidades/types';
-
-type EstadoModal = { tipo: 'fechado' } | { tipo: 'criar' } | { tipo: 'editar'; id: string };
 
 export function UnidadesPage() {
   const navigate = useNavigate();
   const lista = useListarUnidades();
   const desativar = useDesativarUnidade();
-  const [estado, setEstado] = useState<EstadoModal>({ tipo: 'fechado' });
   const [paraDesativar, setParaDesativar] = useState<UnidadeListItem | null>(null);
   const [erroAcao, setErroAcao] = useState<string | null>(null);
 
@@ -54,7 +49,7 @@ export function UnidadesPage() {
           <BotaoLinhaAcao onClick={() => navigate(`/operador/unidades/${u.id}`)}>
             <Eye className="w-3.5 h-3.5" /> Ver
           </BotaoLinhaAcao>
-          <BotaoLinhaAcao onClick={() => setEstado({ tipo: 'editar', id: u.id })}>
+          <BotaoLinhaAcao onClick={() => navigate(`/operador/unidades/${u.id}/editar`)}>
             <Pencil className="w-3.5 h-3.5" /> Editar
           </BotaoLinhaAcao>
           {u.ativo ? (
@@ -85,7 +80,7 @@ export function UnidadesPage() {
           <h1 className="text-2xl font-semibold text-gray-900">Unidades</h1>
           <p className="mt-1 text-sm text-gray-600">Locais de saúde que realizam tratamentos.</p>
         </div>
-        <Button onClick={() => setEstado({ tipo: 'criar' })}>
+        <Button onClick={() => navigate('/operador/unidades/novo')}>
           <Plus className="w-4 h-4" />
           Nova unidade
         </Button>
@@ -103,21 +98,6 @@ export function UnidadesPage() {
         chaveLinha={(u) => u.id}
         carregando={lista.isLoading}
       />
-
-      <Modal
-        aberto={estado.tipo !== 'fechado'}
-        aoFechar={() => setEstado({ tipo: 'fechado' })}
-        titulo={estado.tipo === 'criar' ? 'Nova unidade' : 'Editar unidade'}
-        largura="lg"
-      >
-        {estado.tipo !== 'fechado' ? (
-          <FormularioUnidade
-            modo={estado.tipo}
-            idUnidade={estado.tipo === 'editar' ? estado.id : null}
-            aoConcluir={() => setEstado({ tipo: 'fechado' })}
-          />
-        ) : null}
-      </Modal>
 
       <ConfirmDialog
         aberto={Boolean(paraDesativar)}

@@ -1,6 +1,7 @@
-import { ArrowLeft, MapPin, Phone } from 'lucide-react';
+import { ArrowLeft, MapPin, Pencil, Phone } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { Button } from '@/shared/ui/Button';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { useUnidadePorId } from '@/features/unidades/api/queries';
@@ -118,6 +119,11 @@ export function UnidadeDetalhePage() {
             ) : null}
           </div>
         </div>
+        {u ? (
+          <Button variante="outline" onClick={() => navigate(`/operador/unidades/${id}/editar`)}>
+            <Pencil className="h-4 w-4" /> Editar
+          </Button>
+        ) : null}
       </header>
 
       {detalhe.isLoading ? (
