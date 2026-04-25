@@ -21,10 +21,13 @@ export const pacientesKeys = {
 };
 
 export function useBuscarPacientes(termo: string) {
+  const t = termo.trim();
   return useQuery({
     queryKey: pacientesKeys.busca(termo),
     queryFn: () => buscarPacientes(termo),
-    enabled: termo.trim().length >= 2,
+    // Vazio: backend devolve os 10 últimos cadastros. Com 1 char a busca seria
+    // ampla demais — espera o segundo caractere. >= 2: busca normal.
+    enabled: t.length === 0 || t.length >= 2,
     placeholderData: (anterior) => anterior,
   });
 }

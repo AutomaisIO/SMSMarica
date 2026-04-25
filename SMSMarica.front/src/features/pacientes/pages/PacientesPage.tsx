@@ -100,8 +100,8 @@ export function PacientesPage() {
     }
   }
 
-  const termoValido = debounced.trim().length >= 2;
-  const semResultado = termoValido && !busca.isLoading && (busca.data?.length ?? 0) === 0;
+  const buscando = debounced.trim().length > 0;
+  const semResultado = !busca.isLoading && (busca.data?.length ?? 0) === 0;
 
   return (
     <div className="space-y-6">
@@ -109,8 +109,9 @@ export function PacientesPage() {
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Pacientes</h1>
           <p className="mt-1 text-sm text-gray-600">
-            Busque por <strong>nome</strong> (qualquer parte, separadas por espaço) ou <strong>CPF</strong>{' '}
-            (com ou sem formatação). Resultados limitados a 20.
+            Sem busca, exibe os <strong>10 últimos cadastros</strong>. Para procurar, digite{' '}
+            <strong>nome</strong> (qualquer parte, separadas por espaço) ou <strong>CPF</strong>{' '}
+            (com ou sem formatação) — até 10 resultados.
           </p>
         </div>
         <Button onClick={() => navigate('/operador/pacientes/novo')}>
@@ -125,7 +126,7 @@ export function PacientesPage() {
           autoFocus
           value={termo}
           onChange={(e) => setTermo(e.target.value)}
-          placeholder="Digite ao menos 2 caracteres…"
+          placeholder="Buscar por nome ou CPF…"
           className="pl-9"
         />
       </div>
@@ -136,19 +137,19 @@ export function PacientesPage() {
         </div>
       ) : null}
 
-      {!termoValido ? (
-        <div className="rounded-md border border-dashed border-gray-200 bg-white px-4 py-12 text-center text-sm text-gray-500">
-          Digite o nome ou CPF do paciente para começar a busca.
-        </div>
-      ) : (
-        <Tabela
-          colunas={colunas}
-          dados={busca.data ?? []}
-          chaveLinha={(p) => p.id}
-          carregando={busca.isLoading || (busca.isFetching && !busca.data)}
-          vazio={semResultado ? 'Nenhum paciente encontrado para essa busca.' : undefined}
-        />
-      )}
+      <Tabela
+        colunas={colunas}
+        dados={busca.data ?? []}
+        chaveLinha={(p) => p.id}
+        carregando={busca.isLoading || (busca.isFetching && !busca.data)}
+        vazio={
+          semResultado
+            ? buscando
+              ? 'Nenhum paciente encontrado para essa busca.'
+              : 'Nenhum paciente cadastrado ainda. Use "Novo paciente" para começar.'
+            : undefined
+        }
+      />
 
       <ConfirmDialog
         aberto={Boolean(paraDesativar)}

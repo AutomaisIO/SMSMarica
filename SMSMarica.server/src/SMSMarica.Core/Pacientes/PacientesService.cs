@@ -9,22 +9,27 @@ namespace SMSMarica.Core.Pacientes;
 
 public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
 {
-    private const int LimiteBusca = 20;
+    private const int LimiteBusca = 10;
     private readonly SmsMaricaDbContext _db = db;
 
     public async Task<IReadOnlyList<PacienteListItemDto>> BuscarAsync(
         string? termo,
         CancellationToken cancellationToken = default)
     {
+        IQueryable<Paciente> query = _db.Pacientes.AsNoTracking().Where(p => p.Ativo);
+
+        // Sem termo: últimos cadastrados, ordenados do mais novo para o mais antigo.
         if (string.IsNullOrWhiteSpace(termo))
         {
-            return [];
+            var recentes = await query
+                .OrderByDescending(p => p.CriadoEm)
+                .Take(LimiteBusca)
+                .ToListAsync(cancellationToken);
+            return [.. recentes.Select(PacientesMapper.ParaListItem)];
         }
 
         termo = termo.Trim();
         var digitos = NormalizarDigitos(termo);
-
-        IQueryable<Paciente> query = _db.Pacientes.AsNoTracking().Where(p => p.Ativo);
 
         // Se o usuário digitou apenas dígitos (ou majoritariamente), tenta CPF.
         if (digitos.Length >= 3 && digitos.Length <= 11 && digitos.Length == termo.Replace(".", "").Replace("-", "").Replace(" ", "").Length)

@@ -6,8 +6,9 @@ public interface IPacientesService
 {
     /// <summary>
     /// Busca em tempo real por nome (qualquer parte, múltiplos tokens) ou CPF
-    /// (formatado ou não). Sem termo retorna lista vazia. Limite 20. Soft-deleted
-    /// não aparecem.
+    /// (formatado ou não). Sem termo retorna os 10 últimos cadastros ativos
+    /// (ordenados por CriadoEm desc). Com termo, limita a 10 ocorrências mais
+    /// relevantes. Soft-deleted não aparecem.
     /// </summary>
     Task<IReadOnlyList<PacienteListItemDto>> BuscarAsync(
         string? termo,
