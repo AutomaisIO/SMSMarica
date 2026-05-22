@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   LogOut,
   Route,
+  ScanLine,
   Settings,
   Star,
   Truck,
@@ -58,10 +59,18 @@ const menusPorPerfil: Record<Perfil, SecaoMenu[]> = {
         { rotulo: 'Avaliações', to: '/operador/avaliacoes', icone: Star },
       ],
     },
+    {
+      titulo: 'Imagens',
+      itens: [{ rotulo: 'PACS', to: '/operador/pacs', icone: ScanLine }],
+    },
   ],
   gestor: [
     {
       itens: [{ rotulo: 'Visão geral', to: '/gestor', icone: LayoutDashboard, end: true }],
+    },
+    {
+      titulo: 'Imagens',
+      itens: [{ rotulo: 'PACS', to: '/gestor/pacs', icone: ScanLine }],
     },
   ],
 };

@@ -58,7 +58,31 @@
       "Read(//c/c/Projetos GIT/SMSMarica/SMSMarica.front/**)",
       "Bash(npx eslint *)",
       "Bash(npm install *)",
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "Bash(grep -E \"\\\\.cs$\")",
+      "Bash(curl -s -m 15 \"http://pacs.marica.automais.cloud:8080/dcm4chee-arc/aets/DCM4CHEE/rs/studies?limit=2&includefield=00100010\" -H \"Accept: application/dicom+json\" -o -)",
+      "Bash(dotnet run *)",
+      "Bash(curl -s -m 3 \"http://localhost:5080/health/live\" -o /dev/null)",
+      "Bash(curl -s -m 20 \"http://localhost:5080/pacs/rs/studies?limit=1&includefield=00100010\" -H \"Accept: application/dicom+json\" -w \"\\\\nHTTP %{http_code} | CT: %{content_type}\\\\n\" -o -)",
+      "Bash(cd /tmp)",
+      "Bash(curl -s -m 20 \"http://localhost:5080/pacs/rs/studies?limit=1\" -H \"Accept: application/dicom+json\")",
+      "Bash(grep -o '\"0020000D\":{\"vr\":\"UI\",\"Value\":\\\\[\"[^\"]*\"')",
+      "Bash(grep -o '\"0020000E\":{\"vr\":\"UI\",\"Value\":\\\\[\"[^\"]*\"')",
+      "Bash(grep -o '\"00080018\":{\"vr\":\"UI\",\"Value\":\\\\[\"[^\"]*\"')",
+      "Bash(grep -oP '\"0020000D\":\\\\{\"vr\":\"UI\",\"Value\":\\\\[\"\\\\K[0-9.]+')",
+      "Bash(grep -oP '\"0020000E\":\\\\{\"vr\":\"UI\",\"Value\":\\\\[\"\\\\K[0-9.]+')",
+      "Bash(grep -oP '\"00080018\":\\\\{\"vr\":\"UI\",\"Value\":\\\\[\"\\\\K[0-9.]+')",
+      "Bash(curl -s -m 40 http://localhost:5080/pacs/rs/studies/1.2.392.200036.9125.2.24823725282117250.65132595607.862410/series/1.2.392.200036.9125.3.24823725282117250.65132595607.862411/instances/1.2.392.200036.9125.4.0.170575189.50392568.1392310901/frames/1 -H 'Accept: multipart/related; type=\"application/octet-stream\"' -D - -o /dev/null -w 'size_download=%{size_download}\\\\n')",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\(JSON.stringify\\({core:p.dependencies['@cornerstonejs/core'],tools:p.dependencies['@cornerstonejs/tools'],dil:p.dependencies['@cornerstonejs/dicom-image-loader'],dp:p.dependencies['dicom-parser']},null,2\\)\\)\")",
+      "Bash(node -e \"console.log\\(JSON.stringify\\(require\\('../package.json'\\).exports,null,1\\)\\)\")",
+      "Bash(xargs cat)",
+      "Bash(curl -s -m 4 \"http://localhost:5080/health/live\" -o /dev/null -w \"API health: %{http_code}\\\\n\")",
+      "Bash(curl -s -m 3 \"http://localhost:5173/\" -o /dev/null)",
+      "Bash(curl -s -m 20 \"http://localhost:5173/api/pacs/rs/studies?limit=1\" -H \"Accept: application/dicom+json\" -w \"\\\\nHTTP %{http_code} | CT %{content_type}\\\\n\" -o /dev/null)",
+      "Bash(curl -s -m 30 \"http://localhost:5173/src/features/pacs/pages/PacsViewerPage.tsx\" -w \"\\\\nHTTP %{http_code}\\\\n\" -o /tmp/page.out)",
+      "Read(//tmp/**)",
+      "Bash(curl -s -m 30 \"http://localhost:5173/src/features/pacs/lib/cornerstone.ts\" -w \"\\\\nHTTP %{http_code}\\\\n\" -o /tmp/cs.out)",
+      "Bash(curl -s -m 30 \"http://localhost:5173/node_modules/.vite/deps/@cornerstonejs_core.js\" -o /dev/null -w \"core dep HTTP %{http_code}\\\\n\")"
     ]
   }
 }

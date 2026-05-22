@@ -8,6 +8,7 @@ import { AvaliacoesPage } from '@/features/avaliacoes/pages/AvaliacoesPage';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { MotoristaDetalhePage } from '@/features/motoristas/pages/MotoristaDetalhePage';
 import { MotoristasPage } from '@/features/motoristas/pages/MotoristasPage';
+import { PacsViewerPage } from '@/features/pacs/pages/PacsViewerPage';
 import { PacienteDetalhePage } from '@/features/pacientes/pages/PacienteDetalhePage';
 import { PacienteFormPage } from '@/features/pacientes/pages/PacienteFormPage';
 import { PacientesPage } from '@/features/pacientes/pages/PacientesPage';
@@ -63,12 +64,14 @@ export function AppRouter() {
           <Route path="translados/:id/editar" element={<TransladoFormPage />} />
           <Route path="rastreamento" element={<RastreamentoPage />} />
           <Route path="avaliacoes" element={<AvaliacoesPage />} />
+          <Route path="pacs" element={<PacsViewerPage />} />
         </Route>
       </Route>
 
       <Route element={<RotaProtegida perfil="gestor" />}>
         <Route path="/gestor" element={<Layout perfil="gestor" />}>
           <Route index element={<GestorInicioPage />} />
+          <Route path="pacs" element={<PacsViewerPage />} />
         </Route>
       </Route>
 

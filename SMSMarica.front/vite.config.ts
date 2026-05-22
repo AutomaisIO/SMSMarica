@@ -9,6 +9,14 @@ export default defineConfig({
       '@': path.resolve(__dirname, 'src'),
     },
   },
+  // Cornerstone3D usa web workers ES module + codecs WASM; excluí-lo do
+  // pre-bundle e usar workers em formato ES evita quebras de empacotamento.
+  optimizeDeps: {
+    exclude: ['@cornerstonejs/dicom-image-loader'],
+  },
+  worker: {
+    format: 'es',
+  },
   server: {
     port: 5173,
     proxy: {

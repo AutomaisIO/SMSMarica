@@ -6,6 +6,7 @@ using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Integracoes;
 using SMSMarica.Core.Motoristas;
 using SMSMarica.Core.Pacientes;
+using SMSMarica.Core.Pacs;
 using SMSMarica.Core.Rastreamento;
 using SMSMarica.Core.Translado;
 using SMSMarica.Core.Tratamentos;
@@ -35,6 +36,15 @@ public static class DependencyInjection
             {
                 client.BaseAddress = new Uri(hubBaseUrl);
                 client.Timeout = TimeSpan.FromSeconds(15);
+            });
+
+        var pacsBaseUrl = configuration["Pacs:Dcm4chee:RsBaseUrl"]
+            ?? "http://pacs.marica.automais.cloud:8080/dcm4chee-arc/aets/DCM4CHEE/rs/";
+        services
+            .AddHttpClient<IPacsProxyService, PacsProxyService>(client =>
+            {
+                client.BaseAddress = new Uri(pacsBaseUrl);
+                client.Timeout = TimeSpan.FromSeconds(30);
             });
 
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
