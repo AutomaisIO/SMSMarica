@@ -96,4 +96,11 @@ public sealed class IdentidadeController(IIdentidadeService service) : Controlle
         await _service.AlterarSenhaAsync(id, request, cancellationToken);
         return NoContent();
     }
+
+    /// <summary>Gera uma senha aleatória forte para o usuário; sempre força a troca no próximo login.</summary>
+    [HttpPost("{id:guid}/senha/gerar")]
+    [ProducesResponseType<SenhaGeradaDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<SenhaGeradaDto> GerarNovaSenha(Guid id, CancellationToken cancellationToken) =>
+        await _service.GerarNovaSenhaAsync(id, cancellationToken);
 }

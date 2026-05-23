@@ -10,6 +10,7 @@ import {
   StackScrollTool,
 } from '@cornerstonejs/tools';
 import { http } from '@/shared/api/httpClient';
+import { obterToken } from '@/shared/auth/authStore';
 import type { DatasetDicom } from '@/features/pacs/types';
 
 export const RENDERING_ENGINE_ID = 'pacs-rendering-engine';
@@ -23,7 +24,14 @@ export function inicializarCornerstone(): Promise<void> {
   if (!promessaInit) {
     promessaInit = (async () => {
       await coreInit();
-      dicomImageLoaderInit();
+      // O dicom-image-loader faz XHR direto (sem axios) ao buscar /frames/* via WADO-RS.
+      // beforeSend injeta o Bearer atual pra não cair no [Authorize] global da API.
+      dicomImageLoaderInit({
+        beforeSend: (_xhr, _imageId, defaultHeaders) => {
+          const token = obterToken();
+          return token ? { ...defaultHeaders, Authorization: `Bearer ${token}` } : defaultHeaders;
+        },
+      });
       await toolsInit();
       addTool(PanTool);
       addTool(ZoomTool);

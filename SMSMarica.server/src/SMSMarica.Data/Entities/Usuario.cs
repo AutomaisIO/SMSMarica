@@ -10,6 +10,7 @@ public class Usuario
     public Endereco? Endereco { get; set; }
     public string? FotoBase64 { get; set; }
     public string SenhaHash { get; set; } = string.Empty;
+    public bool DeveTrocarSenha { get; set; }
     public bool Ativo { get; set; } = true;
     public DateTime CriadoEm { get; set; }
     public DateTime? UltimoAcessoEm { get; set; }

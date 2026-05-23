@@ -11,8 +11,9 @@ internal static class IdentidadeMapper
         u.Endereco is null ? null : EnderecoDto.ParaDto(u.Endereco),
         u.FotoBase64,
         u.Ativo, u.CriadoEm, u.UltimoAcessoEm,
-        [.. perfilIds ?? u.UsuariosPerfis.Select(up => up.PerfilId)]);
+        [.. perfilIds ?? u.UsuariosPerfis.Select(up => up.PerfilId)],
+        u.DeveTrocarSenha);
 
     public static UsuarioListItemDto ParaListItem(Usuario u) =>
-        new(u.Id, u.NomeCompleto, u.Email, u.FotoBase64, u.Ativo);
+        new(u.Id, u.NomeCompleto, u.Email, u.FotoBase64, u.Ativo, u.DeveTrocarSenha);
 }

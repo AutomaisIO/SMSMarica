@@ -15,5 +15,13 @@ public interface IIdentidadeService
 
     Task AtualizarPerfisDoUsuarioAsync(Guid usuarioId, AtualizarPerfisDoUsuarioRequest request, CancellationToken cancellationToken = default);
     Task AtualizarOverridesDoUsuarioAsync(Guid usuarioId, AtualizarOverridesDoUsuarioRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>Admin define a senha de outro usuário e opcionalmente força troca no próximo login.</summary>
     Task AlterarSenhaAsync(Guid usuarioId, AlterarSenhaRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>Admin gera uma senha aleatória forte; força troca no próximo login.</summary>
+    Task<SenhaGeradaDto> GerarNovaSenhaAsync(Guid usuarioId, CancellationToken cancellationToken = default);
+
+    /// <summary>Usuário troca a própria senha (exige a antiga) e desativa a flag de troca obrigatória.</summary>
+    Task AlterarMinhaSenhaAsync(Guid usuarioId, AlterarMinhaSenhaRequest request, CancellationToken cancellationToken = default);
 }

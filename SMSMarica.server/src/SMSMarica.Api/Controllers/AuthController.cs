@@ -33,6 +33,19 @@ public sealed class AuthController(IIdentidadeService service) : ControllerBase
         return await _service.ObterPermissoesResolvidasAsync(usuarioId, cancellationToken);
     }
 
+    /// <summary>Troca a senha do próprio usuário (verifica a atual e limpa a flag de troca obrigatória).</summary>
+    [HttpPut("me/senha")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> AlterarMinhaSenha(
+        [FromBody] AlterarMinhaSenhaRequest request,
+        CancellationToken cancellationToken)
+    {
+        var usuarioId = ExtrairUsuarioId();
+        await _service.AlterarMinhaSenhaAsync(usuarioId, request, cancellationToken);
+        return NoContent();
+    }
+
     private Guid ExtrairUsuarioId()
     {
         var sub = User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);

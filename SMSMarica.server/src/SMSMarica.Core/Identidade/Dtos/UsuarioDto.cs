@@ -13,11 +13,13 @@ public sealed record UsuarioDto(
     bool Ativo,
     DateTime CriadoEm,
     DateTime? UltimoAcessoEm,
-    IReadOnlyList<Guid> PerfilIds);
+    IReadOnlyList<Guid> PerfilIds,
+    bool DeveTrocarSenha);
 
 public sealed record UsuarioListItemDto(
     Guid Id,
     string NomeCompleto,
     string Email,
     string? FotoBase64,
-    bool Ativo);
+    bool Ativo,
+    bool DeveTrocarSenha);

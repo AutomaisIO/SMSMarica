@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Dtos;
@@ -238,7 +239,71 @@ public sealed class IdentidadeService(
         }
 
         u.SenhaHash = _hasher.HashPassword(u, request.SenhaNova);
+        u.DeveTrocarSenha = request.DeveTrocarNoProximoLogin;
         await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<SenhaGeradaDto> GerarNovaSenhaAsync(Guid usuarioId, CancellationToken cancellationToken = default)
+    {
+        var u = await _db.Usuarios.FirstOrDefaultAsync(x => x.Id == usuarioId, cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(Usuario), usuarioId);
+
+        var senha = GerarSenhaAleatoria(12);
+        u.SenhaHash = _hasher.HashPassword(u, senha);
+        u.DeveTrocarSenha = true; // sempre força troca quando admin gerou.
+        await _db.SaveChangesAsync(cancellationToken);
+        return new SenhaGeradaDto(senha, true);
+    }
+
+    public async Task AlterarMinhaSenhaAsync(Guid usuarioId, AlterarMinhaSenhaRequest request, CancellationToken cancellationToken = default)
+    {
+        var u = await _db.Usuarios.FirstOrDefaultAsync(x => x.Id == usuarioId, cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(Usuario), usuarioId);
+
+        if (string.IsNullOrWhiteSpace(request.SenhaNova) || request.SenhaNova.Length < 8)
+        {
+            throw new ValidacaoException("usuario.senha_invalida", "Senha deve ter pelo menos 8 caracteres.");
+        }
+
+        var verif = _hasher.VerifyHashedPassword(u, u.SenhaHash, request.SenhaAtual ?? string.Empty);
+        if (verif == PasswordVerificationResult.Failed)
+        {
+            throw new ValidacaoException("identidade.senha_atual_invalida", "Senha atual incorreta.");
+        }
+
+        u.SenhaHash = _hasher.HashPassword(u, request.SenhaNova);
+        u.DeveTrocarSenha = false;
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Gera senha forte com ao menos 1 caractere de cada categoria (maiúscula,
+    /// minúscula, dígito, símbolo). Evita ambiguidades (I/l/1, O/0).
+    /// </summary>
+    private static string GerarSenhaAleatoria(int comprimento)
+    {
+        const string maiusculas = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+        const string minusculas = "abcdefghijkmnpqrstuvwxyz";
+        const string digitos = "23456789";
+        const string especiais = "!@#$%&*?";
+        const string todos = maiusculas + minusculas + digitos + especiais;
+
+        var chars = new char[comprimento];
+        chars[0] = maiusculas[RandomNumberGenerator.GetInt32(maiusculas.Length)];
+        chars[1] = minusculas[RandomNumberGenerator.GetInt32(minusculas.Length)];
+        chars[2] = digitos[RandomNumberGenerator.GetInt32(digitos.Length)];
+        chars[3] = especiais[RandomNumberGenerator.GetInt32(especiais.Length)];
+        for (var i = 4; i < comprimento; i++)
+        {
+            chars[i] = todos[RandomNumberGenerator.GetInt32(todos.Length)];
+        }
+        // Fisher-Yates para não denunciar as posições fixas.
+        for (var i = comprimento - 1; i > 0; i--)
+        {
+            var j = RandomNumberGenerator.GetInt32(i + 1);
+            (chars[i], chars[j]) = (chars[j], chars[i]);
+        }
+        return new string(chars);
     }
 
     private async Task ValidarPerfisExistemAsync(IReadOnlyCollection<Guid> perfilIds, CancellationToken cancellationToken)
