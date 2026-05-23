@@ -39,3 +39,30 @@ export type FiltroBusca = {
   dataFinal: string;
   limite: number;
 };
+
+/**
+ * Snapshot opaco do estado de annotations do Cornerstone (output de
+ * `annotationManager.state.getAllAnnotations()`). Tratamos como JSON arbitrário
+ * — quem entende o formato é o próprio Cornerstone.
+ */
+export type PayloadAnotacoes = unknown;
+
+export type EstudoAnotacaoVersao = {
+  id: string;
+  studyInstanceUID: string;
+  versao: number;
+  payload: PayloadAnotacoes;
+  usuarioId: string;
+  usuarioNome: string;
+  criadoEm: string;
+  comentario: string | null;
+};
+
+export type EstudoAnotacaoVersaoResumo = {
+  id: string;
+  versao: number;
+  usuarioId: string;
+  usuarioNome: string;
+  criadoEm: string;
+  comentario: string | null;
+};

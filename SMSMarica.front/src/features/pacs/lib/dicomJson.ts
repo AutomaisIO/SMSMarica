@@ -78,12 +78,33 @@ export function formatarIdadeDicom(ageStr: string): string {
  *     Injetamos valores neutros (orientação padrão, origem no canto) para
  *     destravar a régua em mm sem afetar nada mais (não há MPR no Stack).
  */
-export function garantirPixelSpacing(ds: DatasetDicom): DatasetDicom {
+/** Fonte do PixelSpacing aplicado pela `garantirPixelSpacing`. */
+export type FontePixelSpacing = 'equipamento' | 'estimado' | 'ausente';
+
+const fontePorImageId = new Map<string, FontePixelSpacing>();
+
+/** Recupera a fonte do PixelSpacing aplicada a um imageId. */
+export function fontePixelSpacing(imageId: string): FontePixelSpacing {
+  return fontePorImageId.get(imageId) ?? 'ausente';
+}
+
+export function garantirPixelSpacing(ds: DatasetDicom, imageId?: string): DatasetDicom {
   const temPS = (ds[Tag.PixelSpacing]?.Value?.length ?? 0) > 0;
   const ips = ds[Tag.ImagerPixelSpacing];
-  if (!temPS && (ips?.Value?.length ?? 0) > 0) {
+
+  let fonte: FontePixelSpacing;
+  if (temPS) {
+    fonte = 'equipamento';
+  } else if ((ips?.Value?.length ?? 0) > 0) {
     ds[Tag.PixelSpacing] = { vr: 'DS', Value: ips!.Value };
+    // ImagerPixelSpacing é o spacing no detector; para projection radiography
+    // sem fator de magnificação aplicado, classificamos como "estimado".
+    fonte = 'estimado';
+  } else {
+    fonte = 'ausente';
   }
+  if (imageId) fontePorImageId.set(imageId, fonte);
+
   const aindaTemPS = (ds[Tag.PixelSpacing]?.Value?.length ?? 0) > 0;
   if (aindaTemPS) {
     if (!ds[Tag.ImageOrientationPatient]?.Value?.length) {

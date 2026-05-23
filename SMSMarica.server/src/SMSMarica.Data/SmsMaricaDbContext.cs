@@ -24,6 +24,7 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<EventoChegada> EventosChegada => Set<EventoChegada>();
     public DbSet<Avaliacao> Avaliacoes => Set<Avaliacao>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
+    public DbSet<EstudoAnotacao> EstudoAnotacoes => Set<EstudoAnotacao>();
     public DbSet<Perfil> Perfis => Set<Perfil>();
     public DbSet<PermissaoPerfil> PermissoesPerfil => Set<PermissaoPerfil>();
     public DbSet<UsuarioPerfil> UsuariosPerfis => Set<UsuarioPerfil>();

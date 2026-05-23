@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SMSMarica.Core.Avaliacoes;
+using SMSMarica.Core.EstudoAnotacoes;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Integracoes;
 using SMSMarica.Core.Motoristas;
@@ -31,6 +32,7 @@ public static class DependencyInjection
         services.AddScoped<ITransladoService, TransladoService>();
         services.AddScoped<IRastreamentoService, RastreamentoService>();
         services.AddScoped<IAvaliacoesService, AvaliacoesService>();
+        services.AddScoped<IEstudoAnotacoesService, EstudoAnotacoesService>();
         services.AddScoped<IIdentidadeService, IdentidadeService>();
         services.AddScoped<IPerfisService, PerfisService>();
         services.AddScoped<ITiposTratamentoService, TiposTratamentoService>();

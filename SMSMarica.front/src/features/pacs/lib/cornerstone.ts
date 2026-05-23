@@ -10,6 +10,7 @@ import {
   MagnifyTool,
   PanTool,
   ProbeTool,
+  ScaleOverlayTool,
   StackScrollTool,
   WindowLevelTool,
   ZoomTool,
@@ -48,6 +49,7 @@ export function inicializarCornerstone(): Promise<void> {
       addTool(EllipticalROITool);
       addTool(AngleTool);
       addTool(ProbeTool);
+      addTool(ScaleOverlayTool);
     })();
   }
   return promessaInit;

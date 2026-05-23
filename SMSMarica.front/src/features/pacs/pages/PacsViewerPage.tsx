@@ -116,7 +116,7 @@ export function PacsViewerPage({ janela = false }: Props = {}) {
           const sop = valorTexto(inst, Tag.SOPInstanceUID);
           if (!sop) continue;
           const id = construirImageId(e.studyInstanceUID, uid, sop);
-          registrarMetadados(id, garantirPixelSpacing(inst));
+          registrarMetadados(id, garantirPixelSpacing(inst, id));
           ids.push(id);
           todosImageIds.push(id);
         }
@@ -223,8 +223,14 @@ export function PacsViewerPage({ janela = false }: Props = {}) {
           studyUID={estudo?.studyInstanceUID ?? null}
           serieSelecionadaUID={serieUID}
           aoSelecionar={selecionarSerie}
+          imageIdsPorSerie={imageIdsPorSerie}
         />
-        <PacsViewport imageIds={imageIds} carregando={carregandoMeta} progresso={progresso} />
+        <PacsViewport
+          imageIds={imageIds}
+          carregando={carregandoMeta}
+          progresso={progresso}
+          studyInstanceUID={estudo?.studyInstanceUID ?? null}
+        />
       </div>
 
       {!janela ? (

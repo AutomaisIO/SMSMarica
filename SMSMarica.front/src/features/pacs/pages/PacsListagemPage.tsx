@@ -31,8 +31,10 @@ export function PacsListagemPage() {
     tipoBuscaNome: 'qualquer',
     dataInicial: hojeIso(),
     dataFinal: hojeIso(),
-    limite: 50,
+    limite: 10,
   });
+
+  const LIMITES_DISPONIVEIS = [5, 10, 50, 100] as const;
 
   const busca = useBuscarEstudos();
 
@@ -150,7 +152,7 @@ export function PacsListagemPage() {
 
       <form
         onSubmit={aoBuscar}
-        className="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-6"
+        className="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-7"
       >
         <Campo label="Nome do paciente" htmlFor="nome" className="sm:col-span-2">
           <Input
@@ -185,6 +187,19 @@ export function PacsListagemPage() {
             value={filtro.dataFinal}
             onChange={(e) => setCampo('dataFinal', e.target.value)}
           />
+        </Campo>
+        <Campo label="Limite" htmlFor="limite">
+          <Select
+            id="limite"
+            value={filtro.limite}
+            onChange={(e) => setCampo('limite', Number(e.target.value))}
+          >
+            {LIMITES_DISPONIVEIS.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </Select>
         </Campo>
         <div className="flex items-end">
           <Button type="submit" disabled={busca.isPending} className="w-full">

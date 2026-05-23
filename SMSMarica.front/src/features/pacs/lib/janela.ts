@@ -7,6 +7,11 @@
  *
  * Retorna `false` quando o popup foi bloqueado para que o caller possa
  * avisar o usuário.
+ *
+ * Importante: não usamos `noopener`/`noreferrer` nas features porque a
+ * spec exige que `window.open` retorne `null` quando qualquer um deles
+ * está presente — o que faria o caller achar que o popup foi bloqueado
+ * mesmo quando abriu com sucesso.
  */
 export function abrirJanelaSolta(
   url: string,
@@ -30,9 +35,9 @@ export function abrirJanelaSolta(
     'menubar=no',
     'location=no',
     'status=no',
-    'noopener',
-    'noreferrer',
   ].join(',');
   const janela = window.open(url, nome, features);
-  return janela !== null;
+  if (!janela) return false;
+  janela.opener = null;
+  return true;
 }

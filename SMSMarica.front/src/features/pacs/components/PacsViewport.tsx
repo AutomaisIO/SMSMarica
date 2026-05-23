@@ -2,8 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   RenderingEngine,
   Enums,
+  EVENTS,
   eventTarget,
   getRenderingEngine,
+  metaData,
   type Types,
 } from '@cornerstonejs/core';
 import {
@@ -15,6 +17,7 @@ import {
   MagnifyTool,
   PanTool,
   ProbeTool,
+  ScaleOverlayTool,
   StackScrollTool,
   WindowLevelTool,
   ZoomTool,
@@ -26,16 +29,19 @@ import {
   Contrast,
   Crosshair,
   Hand,
+  History,
   Loader2,
   MessageSquarePlus,
   RotateCcw,
   Ruler,
+  Save,
   ScanSearch,
   Spline,
   Trash2,
   ZoomIn,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
+import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import {
   RENDERING_ENGINE_ID,
   TOOL_GROUP_ID,
@@ -43,6 +49,15 @@ import {
   inicializarCornerstone,
   type ProgressoPrefetch,
 } from '@/features/pacs/lib/cornerstone';
+import { fontePixelSpacing } from '@/features/pacs/lib/dicomJson';
+import {
+  removerTodasAnotacoes,
+  restaurarAnotacoes,
+  serializarAnotacoes,
+} from '@/features/pacs/lib/anotacoes';
+import { obterVersaoAtual, salvarVersao } from '@/features/pacs/api/anotacoesApi';
+import { PacsHistoricoAnotacoesModal } from '@/features/pacs/components/PacsHistoricoAnotacoesModal';
+import type { EstudoAnotacaoVersao } from '@/features/pacs/types';
 
 const { ViewportType } = Enums;
 const { MouseBindings } = ToolsEnums;
@@ -81,16 +96,32 @@ type Props = {
   imageIds: string[];
   carregando?: boolean;
   progresso?: ProgressoPrefetch | null;
+  /**
+   * Quando presente, habilita persistência: o viewport carrega a última versão
+   * de anotações ao montar e expõe os botões "Salvar" e "Histórico".
+   */
+  studyInstanceUID?: string | null;
 };
 
-export function PacsViewport({ imageIds, carregando, progresso }: Props) {
+export function PacsViewport({ imageIds, carregando, progresso, studyInstanceUID }: Props) {
   const elementoRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<RenderingEngine | null>(null);
+  const ouvinteHabilitarRef = useRef<((e: Event) => void) | null>(null);
   const [pronto, setPronto] = useState(false);
   const [ferramentaAtiva, setFerramentaAtiva] = useState<Ferramenta>('WindowLevel');
   const [erro, setErro] = useState<string | null>(null);
   const [qtdSelecionadas, setQtdSelecionadas] = useState(0);
   const [montandoStack, setMontandoStack] = useState(false);
+  const [infoFooter, setInfoFooter] = useState<{
+    zoom: number;
+    rowPixelSpacing: number | null;
+    columnPixelSpacing: number | null;
+    fonte: 'equipamento' | 'estimado' | 'ausente';
+  } | null>(null);
+  const [versaoAtual, setVersaoAtual] = useState<EstudoAnotacaoVersao | null>(null);
+  const [salvando, setSalvando] = useState(false);
+  const [erroAnotacao, setErroAnotacao] = useState<string | null>(null);
+  const [historicoAberto, setHistoricoAberto] = useState(false);
 
   const excluirSelecao = useCallback(() => {
     const ids = annotationManager.selection.getAnnotationsSelected();
@@ -135,9 +166,27 @@ export function PacsViewport({ imageIds, carregando, progresso }: Props) {
         toolGroup.addTool(ArrowAnnotateTool.toolName, {
           getTextCallback: aoPedirTexto,
         });
+        toolGroup.addTool(ScaleOverlayTool.toolName);
       }
       toolGroup.addViewport(VIEWPORT_ID, RENDERING_ENGINE_ID);
+      // Escala em mm nos eixos (estilo Weasis) — sempre visível, sem interação.
+      toolGroup.setToolEnabled(ScaleOverlayTool.toolName);
       ativarFerramenta('WindowLevel');
+
+      // Quando o MagnifyTool cria seu próprio viewport ('magnify-viewport'),
+      // anexamos ao nosso ToolGroup — isso faz o ScaleOverlayTool desenhar a
+      // régua mm também dentro da janela da lupa.
+      const aoHabilitar = (e: Event) => {
+        const detalhe = (e as CustomEvent).detail as { viewportId?: string } | undefined;
+        if (detalhe?.viewportId === 'magnify-viewport') {
+          ToolGroupManager.getToolGroup(TOOL_GROUP_ID)?.addViewport(
+            'magnify-viewport',
+            RENDERING_ENGINE_ID,
+          );
+        }
+      };
+      eventTarget.addEventListener(EVENTS.ELEMENT_ENABLED, aoHabilitar);
+      ouvinteHabilitarRef.current = aoHabilitar;
 
       observer = new ResizeObserver(() => engine.resize(true, false));
       observer.observe(elemento);
@@ -148,6 +197,10 @@ export function PacsViewport({ imageIds, carregando, progresso }: Props) {
     return () => {
       cancelado = true;
       observer?.disconnect();
+      if (ouvinteHabilitarRef.current) {
+        eventTarget.removeEventListener(EVENTS.ELEMENT_ENABLED, ouvinteHabilitarRef.current);
+        ouvinteHabilitarRef.current = null;
+      }
       ToolGroupManager.getToolGroup(TOOL_GROUP_ID)?.removeViewports(
         RENDERING_ENGINE_ID,
         VIEWPORT_ID,
@@ -226,6 +279,105 @@ export function PacsViewport({ imageIds, carregando, progresso }: Props) {
       cancelado = true;
     };
   }, [pronto, imageIds]);
+
+  // Atualiza o footer (zoom + px/mm + fonte) sempre que a câmera mexer ou a
+  // imagem atual trocar. Lê do StackViewport corrente.
+  useEffect(() => {
+    if (!pronto) return;
+    const elemento = elementoRef.current;
+    if (!elemento) return;
+
+    function atualizar() {
+      const engine = engineRef.current;
+      if (!engine) return;
+      const vp = engine.getViewport(VIEWPORT_ID) as Types.IStackViewport | undefined;
+      if (!vp) return;
+      const imageId = vp.getCurrentImageId?.();
+      if (!imageId) {
+        setInfoFooter(null);
+        return;
+      }
+      const plano = metaData.get('imagePlaneModule', imageId) as
+        | { rowPixelSpacing?: number; columnPixelSpacing?: number }
+        | undefined;
+      setInfoFooter({
+        zoom: vp.getZoom(),
+        rowPixelSpacing: plano?.rowPixelSpacing ?? null,
+        columnPixelSpacing: plano?.columnPixelSpacing ?? null,
+        fonte: fontePixelSpacing(imageId),
+      });
+    }
+
+    // Eventos disparados no próprio elemento do viewport.
+    elemento.addEventListener(EVENTS.CAMERA_MODIFIED, atualizar);
+    elemento.addEventListener(EVENTS.STACK_NEW_IMAGE, atualizar);
+    elemento.addEventListener(EVENTS.IMAGE_RENDERED, atualizar);
+    return () => {
+      elemento.removeEventListener(EVENTS.CAMERA_MODIFIED, atualizar);
+      elemento.removeEventListener(EVENTS.STACK_NEW_IMAGE, atualizar);
+      elemento.removeEventListener(EVENTS.IMAGE_RENDERED, atualizar);
+    };
+  }, [pronto]);
+
+  // Quando a stack muda (nova série), reseta o footer pra não mostrar info da
+  // imagem anterior enquanto a nova ainda não renderizou.
+  useEffect(() => {
+    if (imageIds.length === 0) setInfoFooter(null);
+  }, [imageIds]);
+
+  // Carrega a versão mais recente das anotações ao abrir um estudo. Limpa o
+  // estado quando o studyUID muda (ou some), garantindo que anotações do estudo
+  // anterior nunca "vazem" para o atual.
+  useEffect(() => {
+    if (!pronto) return;
+    removerTodasAnotacoes();
+    setVersaoAtual(null);
+    setErroAnotacao(null);
+    if (!studyInstanceUID) return;
+
+    let cancelado = false;
+    obterVersaoAtual(studyInstanceUID)
+      .then((dto) => {
+        if (cancelado || !dto) return;
+        restaurarAnotacoes(dto.payload);
+        setVersaoAtual(dto);
+        engineRef.current?.renderViewports([VIEWPORT_ID]);
+      })
+      .catch((e) => {
+        if (!cancelado) setErroAnotacao(extrairMensagemDeErro(e));
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [pronto, studyInstanceUID]);
+
+  async function salvarAnotacoes() {
+    if (!studyInstanceUID) return;
+    const comentario = window.prompt(
+      'Comentário sobre esta versão (opcional):',
+      versaoAtual?.comentario ?? '',
+    );
+    // null = clicou em Cancel → aborta. String vazia = ok sem comentário.
+    if (comentario === null) return;
+
+    setSalvando(true);
+    setErroAnotacao(null);
+    try {
+      const payload = serializarAnotacoes();
+      const dto = await salvarVersao(studyInstanceUID, payload, comentario.trim() || null);
+      setVersaoAtual(dto);
+    } catch (e) {
+      setErroAnotacao(extrairMensagemDeErro(e));
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  function restaurarVersaoHistorica(dto: EstudoAnotacaoVersao) {
+    restaurarAnotacoes(dto.payload);
+    setVersaoAtual(dto);
+    engineRef.current?.renderViewports([VIEWPORT_ID]);
+  }
 
   // Debounce do overlay de "Carregando imagem..." para o `montandoStack`:
   // se a stack vier do cache (resolução abaixo de ~150ms), o overlay nem
@@ -322,8 +474,45 @@ export function PacsViewport({ imageIds, carregando, progresso }: Props) {
           <RotateCcw className="h-5 w-5" />
         </button>
 
-        <div className="ml-auto pr-1 text-[11px] text-gray-500">
-          Scroll = zoom · clique numa marca + Del para excluir
+        {studyInstanceUID ? (
+          <>
+            <div className="mx-1 h-6 w-px bg-gray-700" />
+            <button
+              type="button"
+              title="Salvar anotações"
+              onClick={salvarAnotacoes}
+              disabled={salvando}
+              className={cn(
+                'rounded-md p-2 transition-colors',
+                salvando
+                  ? 'cursor-wait text-gray-500'
+                  : 'text-emerald-300 hover:bg-emerald-900/30 hover:text-emerald-100',
+              )}
+            >
+              {salvando ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Save className="h-5 w-5" />
+              )}
+            </button>
+            <button
+              type="button"
+              title="Histórico de anotações"
+              onClick={() => setHistoricoAberto(true)}
+              className="rounded-md p-2 text-gray-300 transition-colors hover:bg-gray-700 hover:text-white"
+            >
+              <History className="h-5 w-5" />
+            </button>
+          </>
+        ) : null}
+
+        <div className="ml-auto flex items-center gap-3 pr-1 text-[11px] text-gray-500">
+          {versaoAtual ? (
+            <span title={`Última versão salva — ${formatarDataHoraCurta(versaoAtual.criadoEm)}`}>
+              v{versaoAtual.versao} · {versaoAtual.usuarioNome.split(' ')[0]}
+            </span>
+          ) : null}
+          <span>Scroll = zoom · clique numa marca + Del para excluir</span>
         </div>
       </div>
 
@@ -365,7 +554,69 @@ export function PacsViewport({ imageIds, carregando, progresso }: Props) {
             {erro}
           </div>
         ) : null}
+        {erroAnotacao ? (
+          <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-3 bg-amber-900/80 px-4 py-2 text-sm text-amber-50">
+            <span>Anotações: {erroAnotacao}</span>
+            <button
+              type="button"
+              className="rounded p-0.5 hover:bg-amber-800/60"
+              onClick={() => setErroAnotacao(null)}
+              aria-label="Fechar aviso"
+            >
+              ×
+            </button>
+          </div>
+        ) : null}
+
+        {/* Footer-info: zoom + resolução + fonte do PixelSpacing. */}
+        {infoFooter && imageIds.length > 0 && !montandoStack ? (
+          <div className="pointer-events-none absolute bottom-2 left-3 select-none font-mono text-[11px] leading-tight text-gray-400 mix-blend-screen">
+            <div>Zoom: {(infoFooter.zoom * 100).toFixed(0)}%</div>
+            {infoFooter.rowPixelSpacing != null ? (
+              <div>
+                {formatarSpacing(infoFooter.rowPixelSpacing, infoFooter.columnPixelSpacing)}
+              </div>
+            ) : null}
+            <div className={infoFooter.fonte === 'estimado' ? 'text-amber-400' : ''}>
+              {labelFonte(infoFooter.fonte)}
+            </div>
+          </div>
+        ) : null}
       </div>
+
+      {studyInstanceUID ? (
+        <PacsHistoricoAnotacoesModal
+          aberto={historicoAberto}
+          aoFechar={() => setHistoricoAberto(false)}
+          studyInstanceUID={studyInstanceUID}
+          versaoAtual={versaoAtual?.versao ?? null}
+          aoRestaurar={restaurarVersaoHistorica}
+        />
+      ) : null}
     </div>
   );
+}
+
+function formatarDataHoraCurta(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function formatarSpacing(row: number, col: number | null): string {
+  const r = row.toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
+  if (col == null || Math.abs(row - col) < 1e-6) return `${r} mm/px`;
+  const c = col.toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
+  return `${r} × ${c} mm/px`;
+}
+
+function labelFonte(fonte: 'equipamento' | 'estimado' | 'ausente'): string {
+  if (fonte === 'equipamento') return 'Calibração: equipamento';
+  if (fonte === 'estimado') return 'Calibração: estimada (detector)';
+  return 'Calibração: ausente';
 }
