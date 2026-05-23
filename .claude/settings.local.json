@@ -121,7 +121,15 @@
       "Bash(python *)",
       "Bash(echo \"EXIT=$?\")",
       "Read(//c/Users/berna/.claude/skills/sincronizar-permissoes/**)",
-      "Read(//c/Users/berna/.claude/projects/C--Projetos-GIT-SMSMarica/skills/**)"
+      "Read(//c/Users/berna/.claude/projects/C--Projetos-GIT-SMSMarica/skills/**)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Projetos GIT\\\\SMSMarica\" -Directory)",
+      "Bash(Select-Object Name)",
+      "WebSearch",
+      "WebFetch(domain:radreport.org)",
+      "Skill(update-config)",
+      "Read(//c/Users/berna/.claude/**)",
+      "Bash(powershell -NoProfile -Command \"Get-Content settings.json -Raw | ConvertFrom-Json | ConvertTo-Json -Depth 10\")",
+      "Bash(powershell *)"
     ]
   }
 }

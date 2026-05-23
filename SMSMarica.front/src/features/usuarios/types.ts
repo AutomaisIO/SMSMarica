@@ -9,6 +9,8 @@ export type EnderecoDto = {
   pontoReferencia: string | null;
 };
 
+export type TipoPapel = 'Medico' | 'Enfermeiro' | 'Motorista' | 'Recepcionista' | 'Paciente' | 'Admin';
+
 export type UsuarioListItem = {
   id: string;
   nomeCompleto: string;
@@ -32,6 +34,7 @@ export type Usuario = {
   ultimoAcessoEm: string | null;
   perfilIds: string[];
   deveTrocarSenha: boolean;
+  tipoPapel: TipoPapel | null;
 };
 
 export type CadastrarUsuarioPayload = {

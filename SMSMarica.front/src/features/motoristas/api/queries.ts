@@ -5,10 +5,12 @@ import {
   desativarMotorista,
   listarMotoristas,
   obterMotoristaPorId,
+  promoverMotorista,
 } from '@/features/motoristas/api/motoristasApi';
 import type {
   AtualizarMotoristaPayload,
   CadastrarMotoristaPayload,
+  PromoverMotoristaPayload,
 } from '@/features/motoristas/types';
 
 export const motoristasKeys = {
@@ -35,6 +37,14 @@ export function useCadastrarMotorista() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (payload: CadastrarMotoristaPayload) => cadastrarMotorista(payload),
+    onSuccess: () => client.invalidateQueries({ queryKey: motoristasKeys.lista() }),
+  });
+}
+
+export function usePromoverMotorista() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: PromoverMotoristaPayload) => promoverMotorista(payload),
     onSuccess: () => client.invalidateQueries({ queryKey: motoristasKeys.lista() }),
   });
 }

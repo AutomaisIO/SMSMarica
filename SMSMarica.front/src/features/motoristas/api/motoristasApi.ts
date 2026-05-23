@@ -4,6 +4,7 @@ import type {
   CadastrarMotoristaPayload,
   Motorista,
   MotoristaListItem,
+  PromoverMotoristaPayload,
 } from '@/features/motoristas/types';
 
 export async function listarMotoristas(): Promise<MotoristaListItem[]> {
@@ -18,6 +19,11 @@ export async function obterMotoristaPorId(id: string): Promise<Motorista> {
 
 export async function cadastrarMotorista(payload: CadastrarMotoristaPayload): Promise<string> {
   const { data } = await http.post<string>('/motoristas', payload);
+  return data;
+}
+
+export async function promoverMotorista(payload: PromoverMotoristaPayload): Promise<string> {
+  const { data } = await http.post<string>('/motoristas/promover', payload);
   return data;
 }
 

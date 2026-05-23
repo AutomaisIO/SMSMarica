@@ -45,3 +45,8 @@ export type AtualizarMotoristaPayload = {
   endereco: EnderecoDto | null;
   fotoBase64?: string | null;
 };
+
+export type PromoverMotoristaPayload = {
+  usuarioId: string;
+  cnh: string;
+};

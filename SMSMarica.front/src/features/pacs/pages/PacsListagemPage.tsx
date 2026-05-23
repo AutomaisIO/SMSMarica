@@ -12,14 +12,6 @@ import { formatarHoraDicom } from '@/features/pacs/lib/dicomJson';
 import { abrirJanelaSolta } from '@/features/pacs/lib/janela';
 import type { Estudo, FiltroBusca, TipoBuscaNome } from '@/features/pacs/types';
 
-function hojeIso(): string {
-  const agora = new Date();
-  const ano = agora.getFullYear();
-  const mes = String(agora.getMonth() + 1).padStart(2, '0');
-  const dia = String(agora.getDate()).padStart(2, '0');
-  return `${ano}-${mes}-${dia}`;
-}
-
 /**
  * Estudo enriquecido com a informação de laudo (vinda do nosso DB no futuro).
  * Por ora `laudoId` é sempre `null` — o botão de PDF fica oculto até o módulo
@@ -28,11 +20,15 @@ function hojeIso(): string {
 type ExameRow = Estudo & { laudoId: string | null };
 
 export function PacsListagemPage() {
+  // Carga inicial sem data: traz os últimos N exames independente de quando
+  // foram feitos — evita o "Nenhum exame encontrado" na abertura quando não
+  // houve exame hoje (que é o caso comum). Quem quiser filtrar pela data
+  // preenche o campo e clica Buscar.
   const [filtro, setFiltro] = useState<FiltroBusca>({
     nome: '',
     tipoBuscaNome: 'qualquer',
-    dataInicial: hojeIso(),
-    dataFinal: hojeIso(),
+    dataInicial: '',
+    dataFinal: '',
     limite: 10,
   });
 

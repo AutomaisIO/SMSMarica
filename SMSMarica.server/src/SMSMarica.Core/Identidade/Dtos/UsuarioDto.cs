@@ -1,4 +1,5 @@
 using SMSMarica.Core.Common.Dtos;
+using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Identidade.Dtos;
 
@@ -15,7 +16,8 @@ public sealed record UsuarioDto(
     DateTime CriadoEm,
     DateTime? UltimoAcessoEm,
     IReadOnlyList<Guid> PerfilIds,
-    bool DeveTrocarSenha);
+    bool DeveTrocarSenha,
+    TipoPapel? TipoPapel);
 
 public sealed record UsuarioListItemDto(
     Guid Id,

@@ -12,7 +12,8 @@ internal static class IdentidadeMapper
         u.FotoBase64,
         u.Ativo, u.CriadoEm, u.UltimoAcessoEm,
         [.. perfilIds ?? u.UsuariosPerfis.Select(up => up.PerfilId)],
-        u.DeveTrocarSenha);
+        u.DeveTrocarSenha,
+        u.TipoPapel);
 
     public static UsuarioListItemDto ParaListItem(Usuario u) =>
         new(u.Id, u.NomeCompleto, u.Email, u.FotoBase64, u.Ativo, u.DeveTrocarSenha);
