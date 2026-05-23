@@ -6,6 +6,7 @@ import { Modal } from '@/shared/ui/Modal';
 import { Select } from '@/shared/ui/Select';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { useBuscarEstudos } from '@/features/pacs/api/queries';
+import { formatarHoraDicom } from '@/features/pacs/lib/dicomJson';
 import type { Estudo, FiltroBusca, TipoBuscaNome } from '@/features/pacs/types';
 
 type Props = {
@@ -15,23 +16,34 @@ type Props = {
 };
 
 const LIMITE_PADRAO = 10;
+const JANELA_PADRAO_ANOS = 10;
 
-function hojeIso(): string {
-  const agora = new Date();
-  const ano = agora.getFullYear();
-  const mes = String(agora.getMonth() + 1).padStart(2, '0');
-  const dia = String(agora.getDate()).padStart(2, '0');
+function paraIso(d: Date): string {
+  const ano = d.getFullYear();
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
   return `${ano}-${mes}-${dia}`;
 }
 
-/** Filtro inicial usado no auto-load: ignora o que o usuário tem no form
- *  e devolve os últimos N exames independente de data. */
+function hojeIso(): string {
+  return paraIso(new Date());
+}
+
+function anosAtrasIso(anos: number): string {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - anos);
+  return paraIso(d);
+}
+
+/** Filtro inicial usado no auto-load: range de 10 anos atrás até hoje,
+ *  os N mais recentes (ordenados por StudyDate desc). Janela larga evita
+ *  qualquer ambiguidade de query sem filtro contra o dcm4chee. */
 function filtroInicial(): FiltroBusca {
   return {
     nome: '',
     tipoBuscaNome: 'inicio',
-    dataInicial: '',
-    dataFinal: '',
+    dataInicial: anosAtrasIso(JANELA_PADRAO_ANOS),
+    dataFinal: hojeIso(),
     limite: LIMITE_PADRAO,
     offset: 0,
   };
@@ -40,7 +52,7 @@ function filtroInicial(): FiltroBusca {
 export function PacsBuscaModal({ aberto, aoFechar, aoSelecionar }: Props) {
   const [nome, setNome] = useState('');
   const [tipoBuscaNome, setTipoBuscaNome] = useState<TipoBuscaNome>('inicio');
-  const [dataInicial, setDataInicial] = useState(() => hojeIso());
+  const [dataInicial, setDataInicial] = useState(() => anosAtrasIso(JANELA_PADRAO_ANOS));
   const [dataFinal, setDataFinal] = useState(() => hojeIso());
   const [limite, setLimite] = useState(LIMITE_PADRAO);
   // Filtro que de fato está aplicado na lista exibida (separado do estado do
@@ -52,13 +64,12 @@ export function PacsBuscaModal({ aberto, aoFechar, aoSelecionar }: Props) {
 
   useEffect(() => {
     if (!aberto) return;
-    const hoje = hojeIso();
+    const inicial = filtroInicial();
     setNome('');
     setTipoBuscaNome('inicio');
-    setDataInicial(hoje);
-    setDataFinal(hoje);
+    setDataInicial(inicial.dataInicial);
+    setDataFinal(inicial.dataFinal);
     setLimite(LIMITE_PADRAO);
-    const inicial = filtroInicial();
     setFiltroAplicado(inicial);
     setPagina(1);
     busca.mutate(inicial);
@@ -183,7 +194,13 @@ export function PacsBuscaModal({ aberto, aoFechar, aoSelecionar }: Props) {
                   >
                     <span className="font-medium text-gray-900">{estudo.patientName || 'Sem nome'}</span>
                     <span className="text-sm text-gray-500">
-                      {[estudo.modalidade, estudo.studyDescription, estudo.studyDateFormatado]
+                      {[
+                        estudo.modalidade,
+                        estudo.studyDescription,
+                        [estudo.studyDateFormatado, formatarHoraDicom(estudo.studyTime)]
+                          .filter(Boolean)
+                          .join(' · '),
+                      ]
                         .filter(Boolean)
                         .join(' · ')}
                     </span>

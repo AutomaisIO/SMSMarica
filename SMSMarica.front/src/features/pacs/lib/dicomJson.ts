@@ -57,13 +57,16 @@ export function formatarDataDicom(da: string): string {
   return `${da.slice(6, 8)}/${da.slice(4, 6)}/${da.slice(0, 4)}`;
 }
 
-/** HHMMSS[.ffffff] -> HH:mm. Strings curtas/inválidas viram ''. */
+/**
+ * HHMMSS[.ffffff] -> HH:mm. Aceita variações comuns que aparecem na prática:
+ * "104016", "104016.000000", "10:40:16", "10:40", etc. — extrai só os dígitos
+ * e usa os 4 primeiros. String sem 4 dígitos vira ''.
+ */
 export function formatarHoraDicom(tm: string): string {
-  if (!tm || tm.length < 4) return '';
-  const hh = tm.slice(0, 2);
-  const mm = tm.slice(2, 4);
-  if (!/^\d{2}$/.test(hh) || !/^\d{2}$/.test(mm)) return '';
-  return `${hh}:${mm}`;
+  if (!tm) return '';
+  const digitos = tm.replace(/[^\d]/g, '');
+  if (digitos.length < 4) return '';
+  return `${digitos.slice(0, 2)}:${digitos.slice(2, 4)}`;
 }
 
 /** Idade DICOM (ex.: "062Y") -> "62". */

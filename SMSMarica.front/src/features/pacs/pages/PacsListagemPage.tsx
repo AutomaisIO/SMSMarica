@@ -127,10 +127,10 @@ export function PacsListagemPage() {
       render: (e) => {
         const hora = formatarHoraDicom(e.studyTime);
         return (
-          <span className="text-gray-700">
-            {e.studyDateFormatado || '—'}
-            {hora ? <span className="text-gray-500"> · {hora}</span> : null}
-          </span>
+          <div className="leading-tight">
+            <div className="font-medium text-gray-900">{e.studyDateFormatado || '—'}</div>
+            <div className="text-xs text-gray-500">{hora || '—'}</div>
+          </div>
         );
       },
     },
