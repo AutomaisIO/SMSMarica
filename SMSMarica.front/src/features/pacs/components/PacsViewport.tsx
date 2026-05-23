@@ -182,6 +182,10 @@ export function PacsViewport({ imageIds, carregando, progresso }: Props) {
     vp.setStack(imageIds, 0)
       .then(() => {
         if (cancelado) return;
+        // resetCamera enquadra a imagem (fit-to-viewport) usando Rows/Columns
+        // do metadata. Sem ele, ao trocar de série a câmera mantém o zoom da
+        // imagem anterior e pode ficar cortada/com sobra.
+        vp.resetCamera();
         vp.render();
       })
       .catch((e) => {
