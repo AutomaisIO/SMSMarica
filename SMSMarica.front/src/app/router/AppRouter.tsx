@@ -11,7 +11,9 @@ import { PacienteDetalhePage } from '@/features/pacientes/pages/PacienteDetalheP
 import { PacienteFormPage } from '@/features/pacientes/pages/PacienteFormPage';
 import { PacientesPage } from '@/features/pacientes/pages/PacientesPage';
 import { PacsViewerPage } from '@/features/pacs/pages/PacsViewerPage';
+import { PerfisPage } from '@/features/perfis/pages/PerfisPage';
 import { RastreamentoPage } from '@/features/rastreamento/pages/RastreamentoPage';
+import { TiposTratamentoPage } from '@/features/tiposTratamento/pages/TiposTratamentoPage';
 import { TransladoDetalhePage } from '@/features/translados/pages/TransladoDetalhePage';
 import { TransladoFormPage } from '@/features/translados/pages/TransladoFormPage';
 import { TransladosPage } from '@/features/translados/pages/TransladosPage';
@@ -57,6 +59,8 @@ export function AppRouter() {
           <Route path="motoristas" element={<MotoristasPage />} />
           <Route path="motoristas/:id" element={<MotoristaDetalhePage />} />
           <Route path="usuarios" element={<UsuariosPage />} />
+          <Route path="tipos-tratamento" element={<TiposTratamentoPage />} />
+          <Route path="perfis" element={<PerfisPage />} />
           <Route path="tratamentos" element={<TratamentosPage />} />
           <Route path="tratamentos/novo" element={<TratamentoFormPage />} />
           <Route path="tratamentos/:id" element={<TratamentoDetalhePage />} />

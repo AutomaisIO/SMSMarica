@@ -95,7 +95,9 @@
       "PowerShell($env:PLINK_PWD = '#030957#Be'; cmd /c 'echo y | plink -ssh -pw %PLINK_PWD% root@pacs.marica.automais.cloud uname -a' 2>&1 | Select-Object -First 20)",
       "PowerShell(Test-NetConnection *)",
       "PowerShell(wsl -e bash -c \"command -v sshpass; command -v ssh; lsb_release -a 2>/dev/null | head -4\" 2>&1)",
-      "PowerShell(ssh-keyscan *)"
+      "PowerShell(ssh-keyscan *)",
+      "PowerShell(\"alive\")",
+      "PowerShell(Set-Content *)"
     ]
   }
 }
