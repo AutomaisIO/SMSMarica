@@ -14,37 +14,30 @@ type Props = {
   aoSelecionar: (estudo: Estudo) => void;
 };
 
-function hojeIso(): string {
-  const agora = new Date();
-  const ano = agora.getFullYear();
-  const mes = String(agora.getMonth() + 1).padStart(2, '0');
-  const dia = String(agora.getDate()).padStart(2, '0');
-  return `${ano}-${mes}-${dia}`;
-}
+const LIMITE_PADRAO = 10;
 
 export function PacsBuscaModal({ aberto, aoFechar, aoSelecionar }: Props) {
   const [nome, setNome] = useState('');
   const [tipoBuscaNome, setTipoBuscaNome] = useState<TipoBuscaNome>('inicio');
-  const [dataInicial, setDataInicial] = useState(() => hojeIso());
-  const [dataFinal, setDataFinal] = useState(() => hojeIso());
-  const [limite, setLimite] = useState(10);
+  const [dataInicial, setDataInicial] = useState('');
+  const [dataFinal, setDataFinal] = useState('');
+  const [limite, setLimite] = useState(LIMITE_PADRAO);
 
   const busca = useBuscarEstudos();
 
   useEffect(() => {
     if (!aberto) return;
-    const hoje = hojeIso();
     setNome('');
     setTipoBuscaNome('inicio');
-    setDataInicial(hoje);
-    setDataFinal(hoje);
-    setLimite(10);
+    setDataInicial('');
+    setDataFinal('');
+    setLimite(LIMITE_PADRAO);
     busca.mutate({
       nome: '',
       tipoBuscaNome: 'inicio',
-      dataInicial: hoje,
-      dataFinal: hoje,
-      limite: 10,
+      dataInicial: '',
+      dataFinal: '',
+      limite: LIMITE_PADRAO,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aberto]);
@@ -54,7 +47,14 @@ export function PacsBuscaModal({ aberto, aoFechar, aoSelecionar }: Props) {
     busca.mutate({ nome, tipoBuscaNome, dataInicial, dataFinal, limite });
   }
 
-  const estudos = busca.data ?? [];
+  // Ordena do mais novo para o mais velho. O backend já pede orderby=-StudyDate
+  // quando não há filtro, mas alguns dcm4chee ignoram o parâmetro — então
+  // garantimos a ordem aqui também (data + hora desc).
+  const estudos = [...(busca.data ?? [])].sort((a, b) => {
+    const chaveA = `${a.studyDate}${a.studyTime}`;
+    const chaveB = `${b.studyDate}${b.studyTime}`;
+    return chaveB.localeCompare(chaveA);
+  });
 
   return (
     <Modal aberto={aberto} aoFechar={aoFechar} titulo="Buscar exame" largura="lg">
