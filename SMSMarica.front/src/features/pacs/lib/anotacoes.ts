@@ -31,8 +31,13 @@ export function restaurarAnotacoes(payload: PayloadAnotacoes): void {
 
   const lista = extrairLista(payload);
   for (const anot of lista) {
-    const frame = anot?.metadata?.FrameOfReferenceUID;
-    if (!frame) continue;
+    // Imagens 2D (CR/DX/MG) tipicamente não carregam FrameOfReferenceUID. O
+    // `addAnnotation` do Cornerstone ignora o 2º arg quando não é HTMLDivElement
+    // e cai em `groupKey || metadata.FrameOfReferenceUID` — então passar string
+    // vazia é seguro, e o manager usa o FoR UID que está no próprio metadata
+    // (mesmo que vazio), garantindo que o groupKey de leitura no render bata
+    // com o de gravação. Pular aqui descarta toda anotação de radiografia.
+    const frame = anot?.metadata?.FrameOfReferenceUID ?? '';
     annotationManager.state.addAnnotation(
       anot as unknown as Parameters<typeof annotationManager.state.addAnnotation>[0],
       frame,

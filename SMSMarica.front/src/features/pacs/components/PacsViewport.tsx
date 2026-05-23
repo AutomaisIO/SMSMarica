@@ -265,6 +265,14 @@ export function PacsViewport({ imageIds, carregando, progresso, studyInstanceUID
         // imagem anterior e pode ficar cortada/com sobra.
         vp.resetCamera();
         vp.render();
+        // Re-habilita ScaleOverlay agora que a imagem está montada: o tool
+        // captura os cantos da imagem em `setToolEnabled` via
+        // `getViewportImageCornersInWorld`, que retorna [] quando o viewport
+        // ainda não tem imageData. Sem este re-enable, a régua nasce com
+        // points vazios no init inicial e nunca aparece sobre a imagem.
+        ToolGroupManager.getToolGroup(TOOL_GROUP_ID)?.setToolEnabled(
+          ScaleOverlayTool.toolName,
+        );
       })
       .catch((e) => {
         if (cancelado) return;
