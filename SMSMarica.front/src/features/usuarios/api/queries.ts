@@ -1,11 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  alterarMinhaSenha,
+  alterarSenhaDoUsuario,
+  atualizarMinhaConta,
   atualizarOverridesDoUsuario,
   atualizarPerfisDoUsuario,
   atualizarUsuario,
   cadastrarUsuario,
   desativarUsuario,
+  gerarNovaSenhaDoUsuario,
   listarUsuarios,
+  obterMeuPerfil,
   obterPermissoesDoUsuario,
   obterUsuarioPorId,
 } from '@/features/usuarios/api/usuariosApi';
@@ -52,6 +57,56 @@ export function useAtualizarOverridesDoUsuario() {
     onSuccess: (_d, v) => {
       client.invalidateQueries({ queryKey: usuariosKeys.permissoes(v.id) });
     },
+  });
+}
+
+export function useAlterarSenhaDoUsuario() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      senhaNova,
+      deveTrocarNoProximoLogin,
+    }: {
+      id: string;
+      senhaNova: string;
+      deveTrocarNoProximoLogin: boolean;
+    }) => alterarSenhaDoUsuario(id, { senhaNova, deveTrocarNoProximoLogin }),
+    onSuccess: (_d, v) => {
+      client.invalidateQueries({ queryKey: usuariosKeys.porId(v.id) });
+      client.invalidateQueries({ queryKey: usuariosKeys.lista() });
+    },
+  });
+}
+
+export function useGerarNovaSenhaDoUsuario() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => gerarNovaSenhaDoUsuario(id),
+    onSuccess: (_d, id) => {
+      client.invalidateQueries({ queryKey: usuariosKeys.porId(id) });
+      client.invalidateQueries({ queryKey: usuariosKeys.lista() });
+    },
+  });
+}
+
+export function useAlterarMinhaSenha() {
+  return useMutation({
+    mutationFn: (payload: { senhaAtual: string; senhaNova: string }) => alterarMinhaSenha(payload),
+  });
+}
+
+export const meuPerfilKey = ['identidade', 'me'] as const;
+
+export function useMeuPerfil() {
+  return useQuery({ queryKey: meuPerfilKey, queryFn: obterMeuPerfil });
+}
+
+export function useAtualizarMinhaConta() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: Parameters<typeof atualizarMinhaConta>[0]) => atualizarMinhaConta(payload),
+    onSuccess: () => client.invalidateQueries({ queryKey: meuPerfilKey }),
   });
 }
 

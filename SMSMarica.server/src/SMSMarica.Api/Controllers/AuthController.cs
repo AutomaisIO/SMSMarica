@@ -33,6 +33,27 @@ public sealed class AuthController(IIdentidadeService service) : ControllerBase
         return await _service.ObterPermissoesResolvidasAsync(usuarioId, cancellationToken);
     }
 
+    /// <summary>Retorna o usuário autenticado (perfis incluídos).</summary>
+    [HttpGet("me")]
+    [ProducesResponseType<UsuarioDto>(StatusCodes.Status200OK)]
+    public async Task<UsuarioDto> ObterMeu(CancellationToken cancellationToken)
+    {
+        var usuarioId = ExtrairUsuarioId();
+        return await _service.ObterPorIdAsync(usuarioId, cancellationToken);
+    }
+
+    /// <summary>Atualiza dados editáveis pelo próprio usuário (foto/telefone/endereço).</summary>
+    [HttpPut("me")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> AtualizarMinhaConta(
+        [FromBody] AtualizarMinhaContaRequest request,
+        CancellationToken cancellationToken)
+    {
+        var usuarioId = ExtrairUsuarioId();
+        await _service.AtualizarMinhaContaAsync(usuarioId, request, cancellationToken);
+        return NoContent();
+    }
+
     /// <summary>Troca a senha do próprio usuário (verifica a atual e limpa a flag de troca obrigatória).</summary>
     [HttpPut("me/senha")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

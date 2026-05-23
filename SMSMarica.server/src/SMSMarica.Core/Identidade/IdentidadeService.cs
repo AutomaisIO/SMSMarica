@@ -114,12 +114,20 @@ public sealed class IdentidadeService(
             throw new ConflitoException("usuario.email_duplicado", "Já existe usuário com este email.");
         }
 
+        var cpfNormalizado = string.IsNullOrWhiteSpace(request.Cpf) ? null : NormalizarDigitos(request.Cpf);
+        if (cpfNormalizado is not null
+            && await _db.Usuarios.AsNoTracking().AnyAsync(u => u.Cpf == cpfNormalizado, cancellationToken))
+        {
+            throw new ConflitoException("usuario.cpf_duplicado", "Já existe usuário com este CPF.");
+        }
+
         var u = new Usuario
         {
             Id = Guid.CreateVersion7(),
             NomeCompleto = request.NomeCompleto.Trim(),
             Email = email,
-            Cpf = string.IsNullOrWhiteSpace(request.Cpf) ? null : NormalizarDigitos(request.Cpf),
+            Cpf = cpfNormalizado,
+            DataNascimento = request.DataNascimento,
             Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim(),
             Endereco = request.Endereco?.ParaEntidade(),
             FotoBase64 = string.IsNullOrWhiteSpace(request.FotoBase64) ? null : request.FotoBase64,
@@ -154,6 +162,19 @@ public sealed class IdentidadeService(
 
         u.NomeCompleto = request.NomeCompleto.Trim();
         u.Cpf = string.IsNullOrWhiteSpace(request.Cpf) ? null : NormalizarDigitos(request.Cpf);
+        u.DataNascimento = request.DataNascimento;
+        u.Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim();
+        u.Endereco = request.Endereco?.ParaEntidade();
+        u.FotoBase64 = string.IsNullOrWhiteSpace(request.FotoBase64) ? null : request.FotoBase64;
+
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task AtualizarMinhaContaAsync(Guid usuarioId, AtualizarMinhaContaRequest request, CancellationToken cancellationToken = default)
+    {
+        var u = await _db.Usuarios.FirstOrDefaultAsync(x => x.Id == usuarioId, cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(Usuario), usuarioId);
+
         u.Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim();
         u.Endereco = request.Endereco?.ParaEntidade();
         u.FotoBase64 = string.IsNullOrWhiteSpace(request.FotoBase64) ? null : request.FotoBase64;

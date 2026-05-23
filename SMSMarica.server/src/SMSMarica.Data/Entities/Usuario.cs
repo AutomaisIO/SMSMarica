@@ -6,6 +6,7 @@ public class Usuario
     public string NomeCompleto { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string? Cpf { get; set; }
+    public DateOnly? DataNascimento { get; set; }
     public string? Telefone { get; set; }
     public Endereco? Endereco { get; set; }
     public string? FotoBase64 { get; set; }

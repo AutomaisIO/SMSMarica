@@ -16,7 +16,6 @@ import {
   LogOut,
   Route,
   ScanLine,
-  Settings,
   Star,
   Truck,
   UserCog,
@@ -238,18 +237,6 @@ export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseM
           borderTopWidth: '1px',
         }}
       >
-        <button
-          type="button"
-          className={cn(
-            'flex w-full items-center rounded-md px-3 py-2.5 text-sm font-medium text-white/80 hover:bg-white/10',
-            isCollapsed && !mobile ? 'justify-center' : 'gap-3',
-          )}
-          title={isCollapsed && !mobile ? 'Configurações' : undefined}
-          disabled
-        >
-          <Settings className="w-5 h-5" />
-          {(!isCollapsed || mobile) && <span>Configurações</span>}
-        </button>
         <button
           type="button"
           onClick={aoSair}

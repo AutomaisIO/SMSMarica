@@ -51,3 +51,34 @@ export async function atualizarOverridesDoUsuario(
 ): Promise<void> {
   await http.put(`/usuarios/${id}/overrides`, { overrides });
 }
+
+export async function alterarSenhaDoUsuario(
+  id: string,
+  payload: { senhaNova: string; deveTrocarNoProximoLogin: boolean },
+): Promise<void> {
+  await http.put(`/usuarios/${id}/senha`, payload);
+}
+
+export type SenhaGeradaDto = { senhaGerada: string; deveTrocarNoProximoLogin: boolean };
+
+export async function gerarNovaSenhaDoUsuario(id: string): Promise<SenhaGeradaDto> {
+  const { data } = await http.post<SenhaGeradaDto>(`/usuarios/${id}/senha/gerar`);
+  return data;
+}
+
+export async function alterarMinhaSenha(payload: { senhaAtual: string; senhaNova: string }): Promise<void> {
+  await http.put('/identidade/me/senha', payload);
+}
+
+export async function obterMeuPerfil(): Promise<Usuario> {
+  const { data } = await http.get<Usuario>('/identidade/me');
+  return data;
+}
+
+export async function atualizarMinhaConta(payload: {
+  telefone?: string;
+  endereco: import('@/features/usuarios/types').EnderecoDto | null;
+  fotoBase64?: string | null;
+}): Promise<void> {
+  await http.put('/identidade/me', payload);
+}

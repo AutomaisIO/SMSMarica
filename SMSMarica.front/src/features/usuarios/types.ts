@@ -15,6 +15,7 @@ export type UsuarioListItem = {
   email: string;
   fotoBase64: string | null;
   ativo: boolean;
+  deveTrocarSenha: boolean;
 };
 
 export type Usuario = {
@@ -22,6 +23,7 @@ export type Usuario = {
   nomeCompleto: string;
   email: string;
   cpf: string | null;
+  dataNascimento: string | null;
   telefone: string | null;
   endereco: EnderecoDto | null;
   fotoBase64: string | null;
@@ -29,12 +31,14 @@ export type Usuario = {
   criadoEm: string;
   ultimoAcessoEm: string | null;
   perfilIds: string[];
+  deveTrocarSenha: boolean;
 };
 
 export type CadastrarUsuarioPayload = {
   nomeCompleto: string;
   email: string;
   cpf?: string;
+  dataNascimento?: string;
   telefone?: string;
   endereco: EnderecoDto | null;
   fotoBase64?: string | null;
@@ -45,6 +49,13 @@ export type CadastrarUsuarioPayload = {
 export type AtualizarUsuarioPayload = {
   nomeCompleto: string;
   cpf?: string;
+  dataNascimento?: string;
+  telefone?: string;
+  endereco: EnderecoDto | null;
+  fotoBase64?: string | null;
+};
+
+export type AtualizarMinhaContaPayload = {
   telefone?: string;
   endereco: EnderecoDto | null;
   fotoBase64?: string | null;

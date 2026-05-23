@@ -21,6 +21,7 @@ export type UsuarioAutenticado = {
   id: string;
   nome: string;
   email: string;
+  deveTrocarSenha: boolean;
 };
 
 type PermissaoApi = { modulo: ModuloPermissao; acoes: string };
@@ -33,6 +34,8 @@ type AuthState = {
   entrar: (credenciais: { email: string; senha: string }) => Promise<void>;
   sair: () => void;
   recarregarPermissoes: () => Promise<void>;
+  /** Marca que a troca obrigatória foi concluída (limpa a flag local). */
+  marcarSenhaTrocada: () => void;
 };
 
 const CHAVE_STORAGE = 'smsmarica.auth';
@@ -79,7 +82,7 @@ function indexarPermissoes(lista: PermissaoApi[] | undefined | null) {
 type LoginResposta = {
   token: string;
   expiraEm: string;
-  usuario: { id: string; nomeCompleto: string; email: string };
+  usuario: { id: string; nomeCompleto: string; email: string; deveTrocarSenha: boolean };
   permissoes: PermissaoApi[];
 };
 
@@ -97,6 +100,7 @@ export const useAuth = create<AuthState>((set, get) => ({
       id: data.usuario.id,
       nome: data.usuario.nomeCompleto,
       email: data.usuario.email,
+      deveTrocarSenha: data.usuario.deveTrocarSenha,
     };
     const permissoes = indexarPermissoes(data.permissoes);
     const persistir: Persistido = { usuario, token: data.token, expiraEm: data.expiraEm, permissoes };
@@ -107,6 +111,22 @@ export const useAuth = create<AuthState>((set, get) => ({
   sair: () => {
     localStorage.removeItem(CHAVE_STORAGE);
     set({ usuario: null, token: null, expiraEm: null, permissoes: {} });
+  },
+
+  marcarSenhaTrocada: () => {
+    const atual = get();
+    if (!atual.usuario) return;
+    const novo: UsuarioAutenticado = { ...atual.usuario, deveTrocarSenha: false };
+    if (atual.token && atual.expiraEm) {
+      const persistir: Persistido = {
+        usuario: novo,
+        token: atual.token,
+        expiraEm: atual.expiraEm,
+        permissoes: atual.permissoes,
+      };
+      localStorage.setItem(CHAVE_STORAGE, JSON.stringify(persistir));
+    }
+    set({ usuario: novo });
   },
 
   recarregarPermissoes: async () => {

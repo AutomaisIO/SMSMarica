@@ -7,6 +7,7 @@ public sealed record UsuarioDto(
     string NomeCompleto,
     string Email,
     string? Cpf,
+    DateOnly? DataNascimento,
     string? Telefone,
     EnderecoDto? Endereco,
     string? FotoBase64,

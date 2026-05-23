@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useQueries } from '@tanstack/react-query';
+import { Copy, KeyRound, Lock, Search, ShieldAlert, Wand2 } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
+import { Modal } from '@/shared/ui/Modal';
 import { Tabs, type Aba } from '@/shared/ui/Tabs';
+import { consultarCpf } from '@/shared/api/integracoes';
 import {
   enderecoVazio,
   FormularioEndereco,
@@ -13,10 +16,12 @@ import {
 import { UploadFoto } from '@/shared/ui/UploadFoto';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import {
+  useAlterarSenhaDoUsuario,
   useAtualizarOverridesDoUsuario,
   useAtualizarPerfisDoUsuario,
   useAtualizarUsuario,
   useCadastrarUsuario,
+  useGerarNovaSenhaDoUsuario,
   useUsuarioPermissoes,
   useUsuarioPorId,
 } from '@/features/usuarios/api/queries';
@@ -38,6 +43,7 @@ type Valores = {
   email: string;
   senha: string;
   cpf: string;
+  dataNascimento: string;
   telefone: string;
   endereco: EnderecoForm;
   fotoBase64: string | null;
@@ -48,12 +54,19 @@ const INICIAL: Valores = {
   email: '',
   senha: '',
   cpf: '',
+  dataNascimento: '',
   telefone: '',
   endereco: enderecoVazio,
   fotoBase64: null,
 };
 
-type Erros = Partial<Record<'nomeCompleto' | 'email' | 'senha' | 'cpf' | 'telefone', string>>;
+type Erros = Partial<Record<'nomeCompleto' | 'email' | 'senha' | 'cpf' | 'dataNascimento' | 'telefone', string>>;
+
+function formatarCpfDigitos(cpf: string): string {
+  const d = cpf.replace(/\D/g, '');
+  if (d.length !== 11) return cpf;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+}
 
 /** Une duas matrizes (OR por módulo). */
 function unirMatrizes(a: MatrizEdicao, b: MatrizEdicao): MatrizEdicao {
@@ -76,13 +89,29 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
   const [erros, setErros] = useState<Erros>({});
   const [erroGlobal, setErroGlobal] = useState<string | null>(null);
 
+  // Gate inicial em modo "criar": exigir CPF + data de nascimento + consulta no Hub
+  // antes de abrir o resto do formulário (evita cadastros fake/duplicados).
+  const [passoCpfConcluido, setPassoCpfConcluido] = useState(modo === 'editar');
+  const [consultandoCpf, setConsultandoCpf] = useState(false);
+
   const cadastrar = useCadastrarUsuario();
   const atualizar = useAtualizarUsuario();
   const salvarPerfis = useAtualizarPerfisDoUsuario();
   const salvarOverrides = useAtualizarOverridesDoUsuario();
+  const alterarSenha = useAlterarSenhaDoUsuario();
+  const gerarSenha = useGerarNovaSenhaDoUsuario();
   const detalhe = useUsuarioPorId(modo === 'editar' ? idUsuario ?? null : null);
   const permissoesUsuario = useUsuarioPermissoes(modo === 'editar' ? idUsuario ?? null : null);
   const perfisDisponiveis = useListarPerfis();
+
+  // Estado da seção Segurança (apenas em edição).
+  const [senhaManual, setSenhaManual] = useState('');
+  const [exigirTroca, setExigirTroca] = useState(true);
+  const [erroSenha, setErroSenha] = useState<string | null>(null);
+  const [senhaGerada, setSenhaGerada] = useState<string | null>(null);
+  const [senhaCopiada, setSenhaCopiada] = useState(false);
+
+  const deveTrocarAtual = detalhe.data?.deveTrocarSenha ?? false;
 
   // Hidrata o form em modo edição.
   useEffect(() => {
@@ -93,6 +122,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
         email: detalhe.data.email,
         senha: '',
         cpf: detalhe.data.cpf ?? '',
+        dataNascimento: detalhe.data.dataNascimento ?? '',
         telefone: detalhe.data.telefone ?? '',
         fotoBase64: detalhe.data.fotoBase64 ?? null,
         endereco: e
@@ -149,6 +179,34 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
     );
   }
 
+  async function consultarCpfHub() {
+    setErros({});
+    setErroGlobal(null);
+    const cpfLimpo = valores.cpf.replace(/\D/g, '');
+    const ne: Erros = {};
+    if (cpfLimpo.length !== 11) ne.cpf = 'CPF deve ter 11 dígitos.';
+    if (!valores.dataNascimento) ne.dataNascimento = 'Informe a data de nascimento.';
+    if (Object.keys(ne).length > 0) {
+      setErros(ne);
+      return;
+    }
+    setConsultandoCpf(true);
+    try {
+      const hub = await consultarCpf(cpfLimpo, valores.dataNascimento);
+      // O Hub às vezes devolve dataNascimento em formato BR (dd/mm/aaaa) — mantém o ISO digitado.
+      setValores((s) => ({
+        ...s,
+        nomeCompleto: hub.nome.trim() || s.nomeCompleto,
+        cpf: hub.cpf || cpfLimpo,
+      }));
+      setPassoCpfConcluido(true);
+    } catch (e) {
+      setErroGlobal(extrairMensagemDeErro(e));
+    } finally {
+      setConsultandoCpf(false);
+    }
+  }
+
   async function aoEnviar(e: FormEvent) {
     e.preventDefault();
     setErros({});
@@ -164,6 +222,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
     if (modo === 'criar') {
       if (!/^\S+@\S+\.\S+$/.test(email)) ne.email = 'E-mail inválido.';
       if (senha && senha.length < 8) ne.senha = 'Mínimo 8 caracteres.';
+      if (!valores.dataNascimento) ne.dataNascimento = 'Informe a data de nascimento.';
     }
     if (cpf && cpf.replace(/\D/g, '').length !== 11) ne.cpf = 'CPF precisa ter 11 dígitos.';
     if (Object.keys(ne).length > 0) {
@@ -193,6 +252,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
           nomeCompleto: nome,
           email,
           cpf: cpf || undefined,
+          dataNascimento: valores.dataNascimento || undefined,
           telefone: valores.telefone || undefined,
           endereco: enderecoPayload,
           fotoBase64: valores.fotoBase64,
@@ -209,6 +269,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
           payload: {
             nomeCompleto: nome,
             cpf: cpf || undefined,
+            dataNascimento: valores.dataNascimento || undefined,
             telefone: valores.telefone || undefined,
             endereco: enderecoPayload,
             fotoBase64: valores.fotoBase64,
@@ -225,6 +286,48 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
 
   const pendente =
     cadastrar.isPending || atualizar.isPending || salvarPerfis.isPending || salvarOverrides.isPending;
+
+  async function aplicarSenhaManual() {
+    if (!idUsuario) return;
+    setErroSenha(null);
+    if (senhaManual.length < 8) {
+      setErroSenha('Senha deve ter pelo menos 8 caracteres.');
+      return;
+    }
+    try {
+      await alterarSenha.mutateAsync({
+        id: idUsuario,
+        senhaNova: senhaManual,
+        deveTrocarNoProximoLogin: exigirTroca,
+      });
+      setSenhaManual('');
+    } catch (e) {
+      setErroSenha(extrairMensagemDeErro(e));
+    }
+  }
+
+  async function gerarNovaSenha() {
+    if (!idUsuario) return;
+    setErroSenha(null);
+    setSenhaCopiada(false);
+    try {
+      const r = await gerarSenha.mutateAsync(idUsuario);
+      setSenhaGerada(r.senhaGerada);
+    } catch (e) {
+      setErroSenha(extrairMensagemDeErro(e));
+    }
+  }
+
+  async function copiarSenha() {
+    if (!senhaGerada) return;
+    try {
+      await navigator.clipboard.writeText(senhaGerada);
+      setSenhaCopiada(true);
+      setTimeout(() => setSenhaCopiada(false), 2000);
+    } catch {
+      // ignore
+    }
+  }
 
   const abaDados = (
     <div className="space-y-5">
@@ -246,12 +349,49 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
           erro={erros.nomeCompleto}
           required
           className="md:col-span-2"
+          dica={modo === 'criar' ? <span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" /> Vindo da Receita; não pode ser editado.</span> : undefined}
         >
           <Input
             id="nomeCompleto"
             value={valores.nomeCompleto}
             onChange={(e) => set('nomeCompleto', e.target.value)}
             required
+            disabled={modo === 'criar'}
+            readOnly={modo === 'criar'}
+          />
+        </Campo>
+
+        <Campo
+          label="CPF"
+          htmlFor="cpf"
+          erro={erros.cpf}
+          dica={modo === 'criar' ? <span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" /> Imutável</span> : undefined}
+        >
+          <Input
+            id="cpf"
+            value={modo === 'criar' ? formatarCpfDigitos(valores.cpf) : valores.cpf}
+            onChange={(e) => set('cpf', e.target.value)}
+            inputMode="numeric"
+            placeholder="00000000000"
+            disabled={modo === 'criar'}
+            readOnly={modo === 'criar'}
+          />
+        </Campo>
+
+        <Campo
+          label="Data de nascimento"
+          htmlFor="dataNascimento"
+          erro={erros.dataNascimento}
+          required={modo === 'criar'}
+          dica={modo === 'criar' ? <span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" /> Imutável</span> : undefined}
+        >
+          <Input
+            id="dataNascimento"
+            type="date"
+            value={valores.dataNascimento}
+            onChange={(e) => set('dataNascimento', e.target.value)}
+            disabled={modo === 'criar'}
+            readOnly={modo === 'criar'}
           />
         </Campo>
 
@@ -284,16 +424,6 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
           </Campo>
         ) : null}
 
-        <Campo label="CPF" htmlFor="cpf" erro={erros.cpf}>
-          <Input
-            id="cpf"
-            value={valores.cpf}
-            onChange={(e) => set('cpf', e.target.value)}
-            inputMode="numeric"
-            placeholder="00000000000"
-          />
-        </Campo>
-
         <Campo label="Telefone" htmlFor="telefone" erro={erros.telefone}>
           <Input
             id="telefone"
@@ -313,6 +443,86 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
           mostrarPontoReferencia={false}
         />
       </section>
+
+      {modo === 'editar' ? (
+        <section className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+          <h3 className="mb-1 flex items-center gap-2 text-sm font-semibold text-gray-900">
+            <KeyRound className="h-4 w-4" /> Segurança
+          </h3>
+          <p className="mb-3 text-xs text-gray-500">
+            Defina uma nova senha manualmente ou gere uma aleatória para o usuário. Em ambos os casos
+            ele pode ser forçado a trocar no próximo login.
+          </p>
+
+          {deveTrocarAtual ? (
+            <div className="mb-3 flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <ShieldAlert className="h-4 w-4 flex-shrink-0" />
+              Este usuário já está marcado para trocar a senha no próximo login.
+            </div>
+          ) : null}
+
+          {erroSenha ? (
+            <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {erroSenha}
+            </div>
+          ) : null}
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <Campo
+              label="Nova senha (manual)"
+              htmlFor="senhaManual"
+              className="md:col-span-2"
+              dica="Mínimo 8 caracteres."
+            >
+              <Input
+                id="senhaManual"
+                type="password"
+                value={senhaManual}
+                onChange={(e) => setSenhaManual(e.target.value)}
+                autoComplete="new-password"
+                disabled={alterarSenha.isPending}
+              />
+            </Campo>
+            <div className="flex items-end">
+              <Button
+                type="button"
+                variante="outline"
+                onClick={aplicarSenhaManual}
+                disabled={alterarSenha.isPending || !senhaManual}
+                className="w-full"
+              >
+                {alterarSenha.isPending ? 'Aplicando…' : 'Aplicar nova senha'}
+              </Button>
+            </div>
+          </div>
+
+          <label className="mt-3 flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={exigirTroca}
+              onChange={(e) => setExigirTroca(e.target.checked)}
+              disabled={alterarSenha.isPending}
+            />
+            <span>Exigir que o usuário troque a senha no próximo login</span>
+          </label>
+
+          <div className="mt-4 border-t border-gray-200 pt-3">
+            <Button
+              type="button"
+              variante="secundaria"
+              onClick={gerarNovaSenha}
+              disabled={gerarSenha.isPending}
+            >
+              <Wand2 className="h-4 w-4" />
+              {gerarSenha.isPending ? 'Gerando…' : 'Gerar nova senha aleatória'}
+            </Button>
+            <p className="mt-2 text-xs text-gray-500">
+              A senha gerada será exibida uma única vez. O usuário sempre será obrigado a trocá-la no
+              próximo login.
+            </p>
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 
@@ -394,24 +604,106 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
     },
   ];
 
-  return (
-    <form onSubmit={aoEnviar} className="space-y-5">
-      <Tabs abas={abas} inicial="dados" />
+  // Modo criar exige consulta CPF+nascimento antes de abrir o restante do form.
+  if (modo === 'criar' && !passoCpfConcluido) {
+    return (
+      <div className="space-y-5">
+        <p className="text-sm text-gray-600">
+          Informe o CPF e a data de nascimento. Vamos validar contra a Receita para puxar o nome e
+          evitar cadastros duplicados.
+        </p>
 
-      {erroGlobal ? (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {erroGlobal}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Campo label="CPF" htmlFor="cpfInicial" erro={erros.cpf} required>
+            <Input
+              id="cpfInicial"
+              value={valores.cpf}
+              onChange={(e) => set('cpf', e.target.value)}
+              inputMode="numeric"
+              placeholder="00000000000"
+              autoFocus
+              disabled={consultandoCpf}
+            />
+          </Campo>
+
+          <Campo label="Data de nascimento" htmlFor="nascInicial" erro={erros.dataNascimento} required>
+            <Input
+              id="nascInicial"
+              type="date"
+              value={valores.dataNascimento}
+              onChange={(e) => set('dataNascimento', e.target.value)}
+              disabled={consultandoCpf}
+            />
+          </Campo>
         </div>
-      ) : null}
 
-      <div className="flex items-center justify-end gap-3 pt-2">
-        <Button type="button" variante="ghost" onClick={aoConcluir} disabled={pendente}>
-          Cancelar
-        </Button>
-        <Button type="submit" disabled={pendente}>
-          {pendente ? 'Salvando…' : modo === 'criar' ? 'Cadastrar' : 'Salvar alterações'}
-        </Button>
+        {erroGlobal ? (
+          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {erroGlobal}
+          </div>
+        ) : null}
+
+        <div className="flex items-center justify-end gap-3 pt-2">
+          <Button type="button" variante="ghost" onClick={aoConcluir} disabled={consultandoCpf}>
+            Cancelar
+          </Button>
+          <Button type="button" onClick={consultarCpfHub} disabled={consultandoCpf}>
+            <Search className="h-4 w-4" />
+            {consultandoCpf ? 'Consultando…' : 'Continuar'}
+          </Button>
+        </div>
       </div>
-    </form>
+    );
+  }
+
+  return (
+    <>
+      <form onSubmit={aoEnviar} className="space-y-5">
+        <Tabs abas={abas} inicial="dados" />
+
+        {erroGlobal ? (
+          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {erroGlobal}
+          </div>
+        ) : null}
+
+        <div className="flex items-center justify-end gap-3 pt-2">
+          <Button type="button" variante="ghost" onClick={aoConcluir} disabled={pendente}>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={pendente}>
+            {pendente ? 'Salvando…' : modo === 'criar' ? 'Cadastrar' : 'Salvar alterações'}
+          </Button>
+        </div>
+      </form>
+
+      <Modal
+        aberto={senhaGerada !== null}
+        aoFechar={() => setSenhaGerada(null)}
+        titulo="Senha gerada"
+        descricao="Esta senha será exibida apenas uma vez. Anote ou copie agora e entregue ao usuário."
+        largura="sm"
+      >
+        <div className="space-y-4">
+          <div className="rounded-md border-2 border-dashed border-primary-200 bg-primary-50 px-4 py-3 text-center">
+            <code className="select-all font-mono text-lg font-semibold tracking-wide text-primary-800">
+              {senhaGerada}
+            </code>
+          </div>
+          <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            O usuário será obrigado a trocar esta senha no próximo login.
+          </p>
+          <div className="flex items-center justify-end gap-2">
+            <Button type="button" variante="outline" onClick={copiarSenha}>
+              <Copy className="h-4 w-4" />
+              {senhaCopiada ? 'Copiada!' : 'Copiar'}
+            </Button>
+            <Button type="button" onClick={() => setSenhaGerada(null)}>
+              Pronto
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </>
   );
 }

@@ -6,6 +6,7 @@ public sealed record CadastrarUsuarioRequest(
     string NomeCompleto,
     string Email,
     string? Cpf,
+    DateOnly? DataNascimento,
     string? Telefone,
     EnderecoDto? Endereco,
     IReadOnlyList<Guid>? PerfilIds = null,

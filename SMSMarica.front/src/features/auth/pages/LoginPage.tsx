@@ -23,8 +23,13 @@ export function LoginPage() {
     setCarregando(true);
     try {
       await entrar({ email, senha });
+      const estadoAuth = useAuth.getState();
       const estado = location.state as EstadoLocation | null;
-      navigate(estado?.de ?? '/app', { replace: true });
+      if (estadoAuth.usuario?.deveTrocarSenha) {
+        navigate('/trocar-senha', { replace: true });
+      } else {
+        navigate(estado?.de ?? '/app', { replace: true });
+      }
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
     } finally {

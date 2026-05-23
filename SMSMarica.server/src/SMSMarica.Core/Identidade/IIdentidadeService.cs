@@ -13,6 +13,9 @@ public interface IIdentidadeService
     Task AtualizarAsync(Guid id, AtualizarUsuarioRequest request, CancellationToken cancellationToken = default);
     Task DesativarAsync(Guid id, CancellationToken cancellationToken = default);
 
+    /// <summary>Usuário atualiza apenas foto/telefone/endereço da própria conta.</summary>
+    Task AtualizarMinhaContaAsync(Guid usuarioId, AtualizarMinhaContaRequest request, CancellationToken cancellationToken = default);
+
     Task AtualizarPerfisDoUsuarioAsync(Guid usuarioId, AtualizarPerfisDoUsuarioRequest request, CancellationToken cancellationToken = default);
     Task AtualizarOverridesDoUsuarioAsync(Guid usuarioId, AtualizarOverridesDoUsuarioRequest request, CancellationToken cancellationToken = default);
 

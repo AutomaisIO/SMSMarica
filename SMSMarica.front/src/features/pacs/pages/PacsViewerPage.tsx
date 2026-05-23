@@ -9,7 +9,7 @@ import {
   construirImageId,
   registrarMetadados,
 } from '@/features/pacs/lib/cornerstone';
-import { Tag, valorNumero, valorTexto } from '@/features/pacs/lib/dicomJson';
+import { Tag, garantirPixelSpacing, valorNumero, valorTexto } from '@/features/pacs/lib/dicomJson';
 import type { Estudo } from '@/features/pacs/types';
 
 export function PacsViewerPage() {
@@ -43,7 +43,7 @@ export function PacsViewerPage() {
             const sop = valorTexto(inst, Tag.SOPInstanceUID);
             if (!sop) return null;
             const id = construirImageId(estudo.studyInstanceUID, seriesUID, sop);
-            registrarMetadados(id, inst);
+            registrarMetadados(id, garantirPixelSpacing(inst));
             return id;
           })
           .filter((id): id is string => id !== null);

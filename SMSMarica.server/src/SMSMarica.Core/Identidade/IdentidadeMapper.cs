@@ -7,7 +7,7 @@ namespace SMSMarica.Core.Identidade;
 internal static class IdentidadeMapper
 {
     public static UsuarioDto ParaDto(Usuario u, IEnumerable<Guid>? perfilIds = null) => new(
-        u.Id, u.NomeCompleto, u.Email, u.Cpf, u.Telefone,
+        u.Id, u.NomeCompleto, u.Email, u.Cpf, u.DataNascimento, u.Telefone,
         u.Endereco is null ? null : EnderecoDto.ParaDto(u.Endereco),
         u.FotoBase64,
         u.Ativo, u.CriadoEm, u.UltimoAcessoEm,

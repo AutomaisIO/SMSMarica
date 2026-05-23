@@ -5,6 +5,7 @@ import { NaoEncontradoPage } from '@/app/pages/NaoEncontradoPage';
 import { RotaProtegida } from '@/app/router/RotaProtegida';
 import { AvaliacoesPage } from '@/features/avaliacoes/pages/AvaliacoesPage';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
+import { TrocarSenhaPage } from '@/features/auth/pages/TrocarSenhaPage';
 import { MotoristaDetalhePage } from '@/features/motoristas/pages/MotoristaDetalhePage';
 import { MotoristasPage } from '@/features/motoristas/pages/MotoristasPage';
 import { PacienteDetalhePage } from '@/features/pacientes/pages/PacienteDetalhePage';
@@ -23,6 +24,8 @@ import { TratamentosPage } from '@/features/tratamentos/pages/TratamentosPage';
 import { UnidadeDetalhePage } from '@/features/unidades/pages/UnidadeDetalhePage';
 import { UnidadeFormPage } from '@/features/unidades/pages/UnidadeFormPage';
 import { UnidadesPage } from '@/features/unidades/pages/UnidadesPage';
+import { AlterarMinhaSenhaPage } from '@/features/usuarios/pages/AlterarMinhaSenhaPage';
+import { MeuPerfilPage } from '@/features/usuarios/pages/MeuPerfilPage';
 import { UsuariosPage } from '@/features/usuarios/pages/UsuariosPage';
 import { VeiculoDetalhePage } from '@/features/veiculos/pages/VeiculoDetalhePage';
 import { VeiculosPage } from '@/features/veiculos/pages/VeiculosPage';
@@ -44,6 +47,10 @@ export function AppRouter() {
       <Route path="/gestor/*" element={<Navigate to="/app" replace />} />
 
       <Route element={<RotaProtegida />}>
+        <Route path="/trocar-senha" element={<TrocarSenhaPage />} />
+      </Route>
+
+      <Route element={<RotaProtegida />}>
         <Route path="/app" element={<Layout />}>
           <Route index element={<InicioPage />} />
           <Route path="pacientes" element={<PacientesPage />} />
@@ -59,6 +66,8 @@ export function AppRouter() {
           <Route path="motoristas" element={<MotoristasPage />} />
           <Route path="motoristas/:id" element={<MotoristaDetalhePage />} />
           <Route path="usuarios" element={<UsuariosPage />} />
+          <Route path="meu-perfil" element={<MeuPerfilPage />} />
+          <Route path="alterar-senha" element={<AlterarMinhaSenhaPage />} />
           <Route path="tipos-tratamento" element={<TiposTratamentoPage />} />
           <Route path="perfis" element={<PerfisPage />} />
           <Route path="tratamentos" element={<TratamentosPage />} />

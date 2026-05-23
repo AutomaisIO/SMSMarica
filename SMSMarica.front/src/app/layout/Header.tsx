@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, ChevronDown, LogOut, Menu } from 'lucide-react';
+import { Bell, ChevronDown, KeyRound, LogOut, Menu, User as UserIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/shared/auth/authStore';
 
@@ -29,6 +29,16 @@ export function Header({ onToggleMobileSidebar }: Props) {
   function aoSair() {
     sair();
     navigate('/login', { replace: true });
+  }
+
+  function abrirMeuPerfil() {
+    setAberto(false);
+    navigate('/app/meu-perfil');
+  }
+
+  function abrirAlterarSenha() {
+    setAberto(false);
+    navigate('/app/alterar-senha');
   }
 
   const iniciais = (usuario?.nome ?? 'U').slice(0, 2).toUpperCase();
@@ -74,10 +84,34 @@ export function Header({ onToggleMobileSidebar }: Props) {
 
             {aberto && (
               <div className="absolute right-0 mt-2 w-56 rounded-md border border-gray-200 bg-white py-1 shadow-lg">
-                <div className="border-b border-gray-200 px-4 py-2">
+                <button
+                  type="button"
+                  onClick={abrirMeuPerfil}
+                  className="block w-full border-b border-gray-200 px-4 py-2 text-left hover:bg-gray-50"
+                >
                   <p className="text-sm font-medium text-gray-900">{usuario?.nome}</p>
                   <p className="truncate text-xs text-gray-500">{usuario?.email}</p>
-                </div>
+                  <p className="mt-0.5 text-[10px] uppercase tracking-wider text-primary-600">
+                    Ver meu perfil
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  onClick={abrirMeuPerfil}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  <UserIcon className="w-4 h-4" />
+                  Meu perfil
+                </button>
+                <button
+                  type="button"
+                  onClick={abrirAlterarSenha}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  <KeyRound className="w-4 h-4" />
+                  Alterar senha
+                </button>
+                <div className="my-1 border-t border-gray-200" />
                 <button
                   type="button"
                   onClick={aoSair}

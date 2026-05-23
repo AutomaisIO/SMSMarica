@@ -5,7 +5,7 @@ type CampoProps = {
   label: string;
   htmlFor: string;
   erro?: string;
-  dica?: string;
+  dica?: ReactNode;
   children: ReactNode;
   className?: string;
   required?: boolean;

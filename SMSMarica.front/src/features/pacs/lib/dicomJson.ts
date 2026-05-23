@@ -21,6 +21,8 @@ export const Tag = {
   NumberOfStudyRelatedSeries: '00201206',
   NumberOfStudyRelatedInstances: '00201208',
   NumberOfSeriesRelatedInstances: '00201209',
+  PixelSpacing: '00280030',
+  ImagerPixelSpacing: '00181164',
 } as const;
 
 /** Primeiro valor textual de uma tag, ou string vazia. */
@@ -58,4 +60,20 @@ export function formatarIdadeDicom(ageStr: string): string {
   if (!ageStr) return '';
   const m = ageStr.match(/^0*(\d+)([YMWD])$/i);
   return m ? m[1] : ageStr;
+}
+
+/**
+ * Equipamentos de mamografia (Oehm und Rehbein etc.) por vezes só preenchem
+ * `ImagerPixelSpacing` (00181164) e omitem `PixelSpacing` (00280030). Sem o
+ * último o Cornerstone cai pra pixels nas medidas. Em MG digital a placa
+ * está colada na mama, então os dois são equivalentes — promovemos o detector
+ * para PixelSpacing.
+ */
+export function garantirPixelSpacing(ds: DatasetDicom): DatasetDicom {
+  const temPS = (ds[Tag.PixelSpacing]?.Value?.length ?? 0) > 0;
+  const ips = ds[Tag.ImagerPixelSpacing];
+  if (!temPS && (ips?.Value?.length ?? 0) > 0) {
+    ds[Tag.PixelSpacing] = { vr: 'DS', Value: ips!.Value };
+  }
+  return ds;
 }
