@@ -1,4 +1,4 @@
-import { init as coreInit } from '@cornerstonejs/core';
+import { imageLoader, init as coreInit } from '@cornerstonejs/core';
 import { init as dicomImageLoaderInit, wadors } from '@cornerstonejs/dicom-image-loader';
 import {
   init as toolsInit,
@@ -64,4 +64,45 @@ export function construirImageId(
 /** Registra os metadados da instância para que o StackViewport consiga renderizar. */
 export function registrarMetadados(imageId: string, metadata: DatasetDicom): void {
   wadors.metaDataManager.add(imageId, metadata as never);
+}
+
+export type ProgressoPrefetch = { carregadas: number; total: number };
+
+/**
+ * Faz prefetch das imagens em paralelo controlado, populando o cache do
+ * Cornerstone. Subsequentes `setStack` com esses imageIds resolvem instantâneo.
+ * Aborta cedo se `signal.aborted` — porém não cancela o HTTP em voo (Cornerstone
+ * 4.x não expõe AbortSignal no loadAndCacheImage), só evita o próximo download.
+ */
+export async function prefetchImagens(
+  imageIds: string[],
+  opts: {
+    concurrencia?: number;
+    onProgress?: (p: ProgressoPrefetch) => void;
+    signal?: AbortSignal;
+  } = {},
+): Promise<void> {
+  const conc = opts.concurrencia ?? 4;
+  const total = imageIds.length;
+  if (total === 0) return;
+  let proximo = 0;
+  let carregadas = 0;
+
+  async function worker() {
+    while (true) {
+      if (opts.signal?.aborted) return;
+      const idx = proximo++;
+      if (idx >= total) return;
+      try {
+        await imageLoader.loadAndCacheImage(imageIds[idx]);
+      } catch {
+        // Imagem com erro não trava o prefetch das demais.
+      }
+      if (opts.signal?.aborted) return;
+      carregadas++;
+      opts.onProgress?.({ carregadas, total });
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(conc, total) }, worker));
 }

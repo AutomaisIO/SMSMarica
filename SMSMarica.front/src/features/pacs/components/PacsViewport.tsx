@@ -33,6 +33,7 @@ import {
   TOOL_GROUP_ID,
   VIEWPORT_ID,
   inicializarCornerstone,
+  type ProgressoPrefetch,
 } from '@/features/pacs/lib/cornerstone';
 
 const { ViewportType } = Enums;
@@ -55,15 +56,20 @@ function aoPedirTexto(callback: (texto: string | null) => void) {
   else callback(txt.trim());
 }
 
-type Props = { imageIds: string[]; carregando?: boolean };
+type Props = {
+  imageIds: string[];
+  carregando?: boolean;
+  progresso?: ProgressoPrefetch | null;
+};
 
-export function PacsViewport({ imageIds, carregando }: Props) {
+export function PacsViewport({ imageIds, carregando, progresso }: Props) {
   const elementoRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<RenderingEngine | null>(null);
   const [pronto, setPronto] = useState(false);
   const [ferramentaAtiva, setFerramentaAtiva] = useState<Ferramenta>('WindowLevel');
   const [erro, setErro] = useState<string | null>(null);
   const [qtdSelecionadas, setQtdSelecionadas] = useState(0);
+  const [montandoStack, setMontandoStack] = useState(false);
 
   const excluirSelecao = useCallback(() => {
     const ids = annotationManager.selection.getAnnotationsSelected();
@@ -154,19 +160,56 @@ export function PacsViewport({ imageIds, carregando }: Props) {
     return () => window.removeEventListener('keydown', aoTeclar);
   }, [excluirSelecao]);
 
+  // Monta a stack no viewport e mantém o overlay visível até `setStack` resolver
+  // (não só até a Promise dos metadados resolver). Cancela ao trocar imageIds.
+  // Nada de `engine.resize` aqui — o ResizeObserver no init já mantém o canvas
+  // alinhado e chamar resize a cada troca de série custa caro à toa.
   useEffect(() => {
-    if (!pronto || imageIds.length === 0) return;
+    if (!pronto) return;
     const engine = engineRef.current;
     if (!engine) return;
+
+    if (imageIds.length === 0) {
+      setMontandoStack(false);
+      return;
+    }
+
     const vp = engine.getViewport(VIEWPORT_ID) as Types.IStackViewport;
     setErro(null);
+    setMontandoStack(true);
+
+    let cancelado = false;
     vp.setStack(imageIds, 0)
       .then(() => {
-        engine.resize(true, true);
+        if (cancelado) return;
         vp.render();
       })
-      .catch((e) => setErro(e instanceof Error ? e.message : 'Falha ao carregar imagens.'));
+      .catch((e) => {
+        if (cancelado) return;
+        setErro(e instanceof Error ? e.message : 'Falha ao carregar imagens.');
+      })
+      .finally(() => {
+        if (cancelado) return;
+        setMontandoStack(false);
+      });
+
+    return () => {
+      cancelado = true;
+    };
   }, [pronto, imageIds]);
+
+  // Debounce do overlay de "Carregando imagem..." para o `montandoStack`:
+  // se a stack vier do cache (resolução abaixo de ~150ms), o overlay nem
+  // chega a aparecer — sem piscar a cada clique numa série já bufferizada.
+  const [mostrarOverlayStack, setMostrarOverlayStack] = useState(false);
+  useEffect(() => {
+    if (!montandoStack) {
+      setMostrarOverlayStack(false);
+      return;
+    }
+    const t = window.setTimeout(() => setMostrarOverlayStack(true), 150);
+    return () => window.clearTimeout(t);
+  }, [montandoStack]);
 
   function ativarFerramenta(f: Ferramenta) {
     const tg = ToolGroupManager.getToolGroup(TOOL_GROUP_ID);
@@ -255,20 +298,37 @@ export function PacsViewport({ imageIds, carregando }: Props) {
         </div>
       </div>
 
+      {/* Barra fina de prefetch — só aparece enquanto o estudo está sendo
+          baixado em background. Sai discretamente quando completa. */}
+      {progresso && progresso.total > 0 && progresso.carregadas < progresso.total ? (
+        <div className="h-0.5 w-full bg-gray-800">
+          <div
+            className="h-full bg-primary-500 transition-[width] duration-200 ease-out"
+            style={{ width: `${(progresso.carregadas / progresso.total) * 100}%` }}
+          />
+        </div>
+      ) : null}
+
       <div className="relative flex-1">
         <div
           ref={elementoRef}
           className="absolute inset-0"
           onContextMenu={(e) => e.preventDefault()}
         />
-        {imageIds.length === 0 && !carregando ? (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-gray-500">
-            Selecione uma série para visualizar.
-          </div>
-        ) : null}
-        {carregando ? (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 text-sm text-gray-300">
-            <Loader2 className="h-5 w-5 animate-spin" /> Carregando imagens...
+        {/* Overlay opaco unificado — cobre o canvas até a stack atual estar
+            renderizada, evitando flash da imagem anterior entre uma seleção
+            e outra. Para `montandoStack` usamos o estado debounced, então
+            cache hit (rápido) não pisca; só aparece se realmente demorar. */}
+        {imageIds.length === 0 || carregando || mostrarOverlayStack ? (
+          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black text-sm text-gray-300">
+            {carregando || mostrarOverlayStack ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Carregando imagem...
+              </>
+            ) : (
+              <span className="text-gray-500">Selecione uma série para visualizar.</span>
+            )}
           </div>
         ) : null}
         {erro ? (
