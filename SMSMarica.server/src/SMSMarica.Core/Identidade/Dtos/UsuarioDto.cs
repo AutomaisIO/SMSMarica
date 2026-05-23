@@ -1,5 +1,4 @@
 using SMSMarica.Core.Common.Dtos;
-using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Identidade.Dtos;
 
@@ -11,15 +10,14 @@ public sealed record UsuarioDto(
     string? Telefone,
     EnderecoDto? Endereco,
     string? FotoBase64,
-    PerfilUsuario Perfil,
     bool Ativo,
     DateTime CriadoEm,
-    DateTime? UltimoAcessoEm);
+    DateTime? UltimoAcessoEm,
+    IReadOnlyList<Guid> PerfilIds);
 
 public sealed record UsuarioListItemDto(
     Guid Id,
     string NomeCompleto,
     string Email,
     string? FotoBase64,
-    PerfilUsuario Perfil,
     bool Ativo);

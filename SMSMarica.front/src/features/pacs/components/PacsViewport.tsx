@@ -48,6 +48,7 @@ export function PacsViewport({ imageIds, carregando }: Props) {
     let cancelado = false;
     const elemento = elementoRef.current;
     if (!elemento) return;
+    let observer: ResizeObserver | null = null;
 
     void (async () => {
       await inicializarCornerstone();
@@ -77,11 +78,17 @@ export function PacsViewport({ imageIds, carregando }: Props) {
       });
       ativarFerramenta('WindowLevel');
 
+      // Mantém o canvas alinhado ao container (e cobre o caso de o layout
+      // ainda não estar medido na primeira chamada de enableElement).
+      observer = new ResizeObserver(() => engine.resize(true, false));
+      observer.observe(elemento);
+
       setPronto(true);
     })();
 
     return () => {
       cancelado = true;
+      observer?.disconnect();
       ToolGroupManager.getToolGroup(TOOL_GROUP_ID)?.removeViewports(
         RENDERING_ENGINE_ID,
         VIEWPORT_ID,
@@ -99,7 +106,12 @@ export function PacsViewport({ imageIds, carregando }: Props) {
     const vp = engine.getViewport(VIEWPORT_ID) as Types.IStackViewport;
     setErro(null);
     vp.setStack(imageIds, 0)
-      .then(() => vp.render())
+      .then(() => {
+        // Força recálculo do canvas e renderiza — sem isso a primeira imagem
+        // pode sair em branco até a próxima interação (ex.: ativar ferramenta).
+        engine.resize(true, true);
+        vp.render();
+      })
       .catch((e) => setErro(e instanceof Error ? e.message : 'Falha ao carregar imagens.'));
   }, [pronto, imageIds]);
 

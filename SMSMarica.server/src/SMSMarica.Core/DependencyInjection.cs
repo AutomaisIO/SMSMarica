@@ -1,4 +1,5 @@
 using FluentValidation;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SMSMarica.Core.Avaliacoes;
@@ -7,11 +8,14 @@ using SMSMarica.Core.Integracoes;
 using SMSMarica.Core.Motoristas;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.Pacs;
+using SMSMarica.Core.Perfis;
 using SMSMarica.Core.Rastreamento;
+using SMSMarica.Core.TiposTratamento;
 using SMSMarica.Core.Translado;
 using SMSMarica.Core.Tratamentos;
 using SMSMarica.Core.Unidades;
 using SMSMarica.Core.Veiculos;
+using SMSMarica.Data.Entities;
 
 namespace SMSMarica.Core;
 
@@ -28,6 +32,11 @@ public static class DependencyInjection
         services.AddScoped<IRastreamentoService, RastreamentoService>();
         services.AddScoped<IAvaliacoesService, AvaliacoesService>();
         services.AddScoped<IIdentidadeService, IdentidadeService>();
+        services.AddScoped<IPerfisService, PerfisService>();
+        services.AddScoped<ITiposTratamentoService, TiposTratamentoService>();
+
+        // PasswordHasher do ASP.NET Identity (PBKDF2-HMAC-SHA512 / 100k iterações).
+        services.AddSingleton<IPasswordHasher<Usuario>, PasswordHasher<Usuario>>();
 
         var hubBaseUrl = configuration["Integracoes:HubDoDesenvolvedor:BaseUrl"]
             ?? "https://ws.hubdodesenvolvedor.com.br/v2/";

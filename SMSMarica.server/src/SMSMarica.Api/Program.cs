@@ -1,15 +1,22 @@
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using FluentValidation;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Authorization;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using Serilog;
+using SMSMarica.Api.Auth;
 using SMSMarica.Api.Middleware;
 using SMSMarica.Core;
+using SMSMarica.Core.Identidade;
 using SMSMarica.Data;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,7 +25,14 @@ builder.Host.UseSerilog((ctx, cfg) => cfg
     .ReadFrom.Configuration(ctx.Configuration)
     .WriteTo.Console());
 
-builder.Services.AddControllers()
+builder.Services.AddControllers(o =>
+{
+    // [Authorize] global: tudo exige token, exceto endpoints com [AllowAnonymous].
+    var politica = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+    o.Filters.Add(new AuthorizeFilter(politica));
+})
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 builder.Services.Configure<ApiBehaviorOptions>(options =>
@@ -42,6 +56,30 @@ builder.Services.AddValidatorsFromAssembly(typeof(SMSMarica.Core.DependencyInjec
 builder.Services.AddData(builder.Configuration);
 builder.Services.AddCore(builder.Configuration);
 
+// Autenticação JWT (token emitido em /identidade/login).
+builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.Secao));
+builder.Services.AddSingleton<ITokenService, JwtTokenService>();
+
+var jwt = builder.Configuration.GetSection(JwtOptions.Secao).Get<JwtOptions>() ?? new JwtOptions();
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(o =>
+    {
+        o.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwt.Issuer,
+            ValidAudience = jwt.Audience,
+            IssuerSigningKey = string.IsNullOrEmpty(jwt.Key)
+                ? new SymmetricSecurityKey(Encoding.UTF8.GetBytes(new string('x', 32)))
+                : new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key)),
+            ClockSkew = TimeSpan.FromMinutes(1),
+        };
+    });
+builder.Services.AddAuthorization();
+
 builder.Services.AddOpenApi();
 
 builder.Services.AddHealthChecks()
@@ -58,6 +96,9 @@ var app = builder.Build();
 
 app.UseSerilogRequestLogging();
 app.UseCors();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
@@ -96,6 +137,11 @@ if (autoMigrate)
         app.Logger.LogInformation("Aplicando migrations pendentes...");
         await db.Database.MigrateAsync();
         app.Logger.LogInformation("Migrations OK.");
+
+        var hasher = scope.ServiceProvider
+            .GetRequiredService<Microsoft.AspNetCore.Identity.IPasswordHasher<SMSMarica.Data.Entities.Usuario>>();
+        await DbSeeder.SeedAsync(db, hasher);
+        app.Logger.LogInformation("Seed do Admin OK.");
     }
     catch (Exception ex)
     {

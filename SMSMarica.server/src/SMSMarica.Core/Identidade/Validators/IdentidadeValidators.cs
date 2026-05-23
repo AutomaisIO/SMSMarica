@@ -9,10 +9,12 @@ public sealed class CadastrarUsuarioValidator : AbstractValidator<CadastrarUsuar
     {
         RuleFor(u => u.NomeCompleto).NotEmpty().MaximumLength(200);
         RuleFor(u => u.Email).NotEmpty().EmailAddress().MaximumLength(200);
+        RuleFor(u => u.Senha)
+            .MinimumLength(8).MaximumLength(200)
+            .When(u => !string.IsNullOrEmpty(u.Senha));
         RuleFor(u => u.Cpf)
             .Must(c => c is null || (c.All(char.IsDigit) && c.Length == 11))
             .WithMessage("CPF deve ter 11 dígitos quando informado.");
-        RuleFor(u => u.Perfil).IsInEnum();
     }
 }
 
@@ -24,6 +26,5 @@ public sealed class AtualizarUsuarioValidator : AbstractValidator<AtualizarUsuar
         RuleFor(u => u.Cpf)
             .Must(c => c is null || (c.All(char.IsDigit) && c.Length == 11))
             .WithMessage("CPF deve ter 11 dígitos quando informado.");
-        RuleFor(u => u.Perfil).IsInEnum();
     }
 }

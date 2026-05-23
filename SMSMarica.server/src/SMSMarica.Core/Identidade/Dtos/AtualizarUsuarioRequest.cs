@@ -1,5 +1,4 @@
 using SMSMarica.Core.Common.Dtos;
-using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Identidade.Dtos;
 
@@ -8,5 +7,4 @@ public sealed record AtualizarUsuarioRequest(
     string? Cpf,
     string? Telefone,
     EnderecoDto? Endereco,
-    PerfilUsuario Perfil,
     string? FotoBase64 = null);

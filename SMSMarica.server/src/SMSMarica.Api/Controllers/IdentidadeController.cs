@@ -54,4 +54,46 @@ public sealed class IdentidadeController(IIdentidadeService service) : Controlle
         await _service.DesativarAsync(id, cancellationToken);
         return NoContent();
     }
+
+    [HttpGet("{id:guid}/permissoes")]
+    [ProducesResponseType<PermissoesResolvidasDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<PermissoesResolvidasDto> ObterPermissoes(Guid id, CancellationToken cancellationToken) =>
+        await _service.ObterPermissoesResolvidasAsync(id, cancellationToken);
+
+    [HttpPut("{id:guid}/perfis")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AtualizarPerfis(
+        Guid id,
+        [FromBody] AtualizarPerfisDoUsuarioRequest request,
+        CancellationToken cancellationToken)
+    {
+        await _service.AtualizarPerfisDoUsuarioAsync(id, request, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpPut("{id:guid}/overrides")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AtualizarOverrides(
+        Guid id,
+        [FromBody] AtualizarOverridesDoUsuarioRequest request,
+        CancellationToken cancellationToken)
+    {
+        await _service.AtualizarOverridesDoUsuarioAsync(id, request, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpPut("{id:guid}/senha")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AlterarSenha(
+        Guid id,
+        [FromBody] AlterarSenhaRequest request,
+        CancellationToken cancellationToken)
+    {
+        await _service.AlterarSenhaAsync(id, request, cancellationToken);
+        return NoContent();
+    }
 }
