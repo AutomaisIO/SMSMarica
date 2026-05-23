@@ -112,7 +112,10 @@
       "PowerShell(& \"C:\\\\Program Files\\\\PuTTY\\\\pscp.exe\" -batch -pw \"#030957#Be\" -hostkey \"SHA256:qma4J9CyGhuOHPoGwXtspfXncTN+nhCFDPmSh4RvXCo\" \"C:\\\\Users\\\\berna\\\\AppData\\\\Local\\\\Temp\\\\check_s3.py\" root@pacs.marica.automais.cloud:/tmp/check_s3.py; & \"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -ssh -batch -pw \"#030957#Be\" -hostkey \"SHA256:qma4J9CyGhuOHPoGwXtspfXncTN+nhCFDPmSh4RvXCo\" root@pacs.marica.automais.cloud \"python3 /tmp/check_s3.py; rm /tmp/check_s3.py\")",
       "Bash(cmd *)",
       "Bash('/c/Program Files/PuTTY/plink.exe' -ssh -batch -pw '#030957#Be' -hostkey SHA256:qma4J9CyGhuOHPoGwXtspfXncTN+nhCFDPmSh4RvXCo root@pacs.marica.automais.cloud 'pgrep -f purge_2024.sh > /dev/null; test $? -ne 0')",
-      "Bash('/c/Program Files/PuTTY/plink.exe' -ssh -batch -pw '#030957#Be' -hostkey SHA256:qma4J9CyGhuOHPoGwXtspfXncTN+nhCFDPmSh4RvXCo root@pacs.marica.automais.cloud 'tail -40 /tmp/purge_2024.log')"
+      "Bash('/c/Program Files/PuTTY/plink.exe' -ssh -batch -pw '#030957#Be' -hostkey SHA256:qma4J9CyGhuOHPoGwXtspfXncTN+nhCFDPmSh4RvXCo root@pacs.marica.automais.cloud 'tail -40 /tmp/purge_2024.log')",
+      "Bash(grep \"\\\\.d\\\\.ts$\")",
+      "Bash(grep -E \"\\\\.\\(d\\\\.ts|js\\)$\")",
+      "Bash(grep -E \"\\\\.d\\\\.ts$\")"
     ]
   }
 }

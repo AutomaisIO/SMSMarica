@@ -3,6 +3,7 @@ import { init as dicomImageLoaderInit, wadors } from '@cornerstonejs/dicom-image
 import {
   init as toolsInit,
   addTool,
+  ArrowAnnotateTool,
   PanTool,
   ZoomTool,
   WindowLevelTool,
@@ -38,6 +39,7 @@ export function inicializarCornerstone(): Promise<void> {
       addTool(WindowLevelTool);
       addTool(LengthTool);
       addTool(StackScrollTool);
+      addTool(ArrowAnnotateTool);
     })();
   }
   return promessaInit;

@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   RenderingEngine,
   Enums,
+  eventTarget,
   getRenderingEngine,
   type Types,
 } from '@cornerstonejs/core';
@@ -12,9 +13,20 @@ import {
   WindowLevelTool,
   LengthTool,
   StackScrollTool,
+  ArrowAnnotateTool,
+  annotation as annotationManager,
   Enums as ToolsEnums,
 } from '@cornerstonejs/tools';
-import { Contrast, Hand, Loader2, RotateCcw, Ruler, ZoomIn } from 'lucide-react';
+import {
+  Contrast,
+  Hand,
+  Loader2,
+  MessageSquarePlus,
+  RotateCcw,
+  Ruler,
+  Trash2,
+  ZoomIn,
+} from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 import {
   RENDERING_ENGINE_ID,
@@ -26,14 +38,22 @@ import {
 const { ViewportType } = Enums;
 const { MouseBindings } = ToolsEnums;
 
-type Ferramenta = 'Pan' | 'Zoom' | 'WindowLevel' | 'Length';
+type Ferramenta = 'Pan' | 'Zoom' | 'WindowLevel' | 'Length' | 'Arrow';
 
 const FERRAMENTAS: { id: Ferramenta; nome: string; rotulo: string; icone: typeof Hand }[] = [
   { id: 'WindowLevel', nome: WindowLevelTool.toolName, rotulo: 'Janela/Nível', icone: Contrast },
   { id: 'Pan', nome: PanTool.toolName, rotulo: 'Mover', icone: Hand },
   { id: 'Zoom', nome: ZoomTool.toolName, rotulo: 'Zoom', icone: ZoomIn },
   { id: 'Length', nome: LengthTool.toolName, rotulo: 'Régua', icone: Ruler },
+  { id: 'Arrow', nome: ArrowAnnotateTool.toolName, rotulo: 'Comentário', icone: MessageSquarePlus },
 ];
+
+/** Pede texto ao usuário ao soltar a seta de comentário. Vazio cancela. */
+function aoPedirTexto(callback: (texto: string | null) => void) {
+  const txt = window.prompt('Texto do comentário:');
+  if (txt == null || txt.trim().length === 0) callback(null);
+  else callback(txt.trim());
+}
 
 type Props = { imageIds: string[]; carregando?: boolean };
 
@@ -43,7 +63,16 @@ export function PacsViewport({ imageIds, carregando }: Props) {
   const [pronto, setPronto] = useState(false);
   const [ferramentaAtiva, setFerramentaAtiva] = useState<Ferramenta>('WindowLevel');
   const [erro, setErro] = useState<string | null>(null);
-  const [montandoStack, setMontandoStack] = useState(false);
+  const [qtdSelecionadas, setQtdSelecionadas] = useState(0);
+
+  const excluirSelecao = useCallback(() => {
+    const ids = annotationManager.selection.getAnnotationsSelected();
+    if (ids.length === 0) return;
+    ids.forEach((uid) => annotationManager.state.removeAnnotation(uid));
+    annotationManager.selection.deselectAnnotation();
+    setQtdSelecionadas(0);
+    engineRef.current?.renderViewports([VIEWPORT_ID]);
+  }, []);
 
   useEffect(() => {
     let cancelado = false;
@@ -72,15 +101,13 @@ export function PacsViewport({ imageIds, carregando }: Props) {
         toolGroup.addTool(WindowLevelTool.toolName);
         toolGroup.addTool(LengthTool.toolName);
         toolGroup.addTool(StackScrollTool.toolName);
+        toolGroup.addTool(ArrowAnnotateTool.toolName, {
+          getTextCallback: aoPedirTexto,
+        });
       }
       toolGroup.addViewport(VIEWPORT_ID, RENDERING_ENGINE_ID);
-      toolGroup.setToolActive(StackScrollTool.toolName, {
-        bindings: [{ mouseButton: MouseBindings.Wheel }],
-      });
       ativarFerramenta('WindowLevel');
 
-      // Mantém o canvas alinhado ao container (e cobre o caso de o layout
-      // ainda não estar medido na primeira chamada de enableElement).
       observer = new ResizeObserver(() => engine.resize(true, false));
       observer.observe(elemento);
 
@@ -100,6 +127,33 @@ export function PacsViewport({ imageIds, carregando }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Listener de seleção de annotations.
+  useEffect(() => {
+    function aoMudarSelecao() {
+      setQtdSelecionadas(annotationManager.selection.getAnnotationsSelected().length);
+    }
+    eventTarget.addEventListener(ToolsEnums.Events.ANNOTATION_SELECTION_CHANGE, aoMudarSelecao);
+    return () => {
+      eventTarget.removeEventListener(ToolsEnums.Events.ANNOTATION_SELECTION_CHANGE, aoMudarSelecao);
+    };
+  }, []);
+
+  // Tecla Delete/Backspace remove a annotation selecionada (se não estiver digitando).
+  useEffect(() => {
+    function aoTeclar(e: KeyboardEvent) {
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+      const ativo = document.activeElement;
+      const tag = ativo?.tagName ?? '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if ((ativo as HTMLElement | null)?.isContentEditable) return;
+      if (annotationManager.selection.getAnnotationsSelectedCount() === 0) return;
+      e.preventDefault();
+      excluirSelecao();
+    }
+    window.addEventListener('keydown', aoTeclar);
+    return () => window.removeEventListener('keydown', aoTeclar);
+  }, [excluirSelecao]);
+
   useEffect(() => {
     if (!pronto || imageIds.length === 0) return;
     const engine = engineRef.current;
@@ -108,8 +162,6 @@ export function PacsViewport({ imageIds, carregando }: Props) {
     setErro(null);
     vp.setStack(imageIds, 0)
       .then(() => {
-        // Força recálculo do canvas e renderiza — sem isso a primeira imagem
-        // pode sair em branco até a próxima interação (ex.: ativar ferramenta).
         engine.resize(true, true);
         vp.render();
       })
@@ -119,9 +171,28 @@ export function PacsViewport({ imageIds, carregando }: Props) {
   function ativarFerramenta(f: Ferramenta) {
     const tg = ToolGroupManager.getToolGroup(TOOL_GROUP_ID);
     if (!tg) return;
-    FERRAMENTAS.forEach((ferr) => tg.setToolPassive(ferr.nome));
-    const alvo = FERRAMENTAS.find((ferr) => ferr.id === f)!;
-    tg.setToolActive(alvo.nome, { bindings: [{ mouseButton: MouseBindings.Primary }] });
+
+    // Desativa todas as primárias; o Zoom é tratado à parte porque mantém o Wheel.
+    FERRAMENTAS.forEach((ferr) => {
+      if (ferr.id !== 'Zoom') tg.setToolPassive(ferr.nome);
+    });
+
+    if (f === 'Zoom') {
+      // Zoom ganha Primary + Wheel.
+      tg.setToolActive(ZoomTool.toolName, {
+        bindings: [
+          { mouseButton: MouseBindings.Primary },
+          { mouseButton: MouseBindings.Wheel },
+        ],
+      });
+    } else {
+      // Zoom sempre mantém Wheel; o scroll do mouse aplica zoom in/out em qualquer modo.
+      tg.setToolActive(ZoomTool.toolName, {
+        bindings: [{ mouseButton: MouseBindings.Wheel }],
+      });
+      const alvo = FERRAMENTAS.find((ferr) => ferr.id === f)!;
+      tg.setToolActive(alvo.nome, { bindings: [{ mouseButton: MouseBindings.Primary }] });
+    }
     setFerramentaAtiva(f);
   }
 
@@ -154,12 +225,34 @@ export function PacsViewport({ imageIds, carregando }: Props) {
         <div className="mx-1 h-6 w-px bg-gray-700" />
         <button
           type="button"
+          title={
+            qtdSelecionadas > 0
+              ? `Excluir ${qtdSelecionadas} marca${qtdSelecionadas > 1 ? 's' : ''} (Del)`
+              : 'Selecione uma marca para excluir'
+          }
+          onClick={excluirSelecao}
+          disabled={qtdSelecionadas === 0}
+          className={cn(
+            'rounded-md p-2 transition-colors',
+            qtdSelecionadas > 0
+              ? 'text-red-300 hover:bg-red-900/40 hover:text-red-100'
+              : 'cursor-not-allowed text-gray-600',
+          )}
+        >
+          <Trash2 className="h-5 w-5" />
+        </button>
+        <button
+          type="button"
           title="Resetar"
           onClick={resetar}
           className="rounded-md p-2 text-gray-300 transition-colors hover:bg-gray-700 hover:text-white"
         >
           <RotateCcw className="h-5 w-5" />
         </button>
+
+        <div className="ml-auto pr-1 text-[11px] text-gray-500">
+          Scroll = zoom · clique numa marca + Del para excluir
+        </div>
       </div>
 
       <div className="relative flex-1">
