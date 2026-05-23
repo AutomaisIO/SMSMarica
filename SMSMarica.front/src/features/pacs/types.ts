@@ -30,8 +30,11 @@ export type Serie = {
   numeroInstancias: number;
 };
 
+export type TipoBuscaNome = 'inicio' | 'qualquer';
+
 export type FiltroBusca = {
   nome: string;
+  tipoBuscaNome: TipoBuscaNome;
   dataInicial: string;
   dataFinal: string;
   limite: number;

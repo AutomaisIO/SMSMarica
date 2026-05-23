@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Search } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
 import { Modal } from '@/shared/ui/Modal';
+import { Select } from '@/shared/ui/Select';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { useBuscarEstudos } from '@/features/pacs/api/queries';
-import type { Estudo } from '@/features/pacs/types';
+import type { Estudo, TipoBuscaNome } from '@/features/pacs/types';
 
 type Props = {
   aberto: boolean;
@@ -13,17 +14,44 @@ type Props = {
   aoSelecionar: (estudo: Estudo) => void;
 };
 
+function hojeIso(): string {
+  const agora = new Date();
+  const ano = agora.getFullYear();
+  const mes = String(agora.getMonth() + 1).padStart(2, '0');
+  const dia = String(agora.getDate()).padStart(2, '0');
+  return `${ano}-${mes}-${dia}`;
+}
+
 export function PacsBuscaModal({ aberto, aoFechar, aoSelecionar }: Props) {
   const [nome, setNome] = useState('');
-  const [dataInicial, setDataInicial] = useState('');
-  const [dataFinal, setDataFinal] = useState('');
+  const [tipoBuscaNome, setTipoBuscaNome] = useState<TipoBuscaNome>('inicio');
+  const [dataInicial, setDataInicial] = useState(() => hojeIso());
+  const [dataFinal, setDataFinal] = useState(() => hojeIso());
   const [limite, setLimite] = useState(10);
 
   const busca = useBuscarEstudos();
 
+  useEffect(() => {
+    if (!aberto) return;
+    const hoje = hojeIso();
+    setNome('');
+    setTipoBuscaNome('inicio');
+    setDataInicial(hoje);
+    setDataFinal(hoje);
+    setLimite(10);
+    busca.mutate({
+      nome: '',
+      tipoBuscaNome: 'inicio',
+      dataInicial: hoje,
+      dataFinal: hoje,
+      limite: 10,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aberto]);
+
   function aoSubmeter(e: React.FormEvent) {
     e.preventDefault();
-    busca.mutate({ nome, dataInicial, dataFinal, limite });
+    busca.mutate({ nome, tipoBuscaNome, dataInicial, dataFinal, limite });
   }
 
   const estudos = busca.data ?? [];
@@ -31,14 +59,26 @@ export function PacsBuscaModal({ aberto, aoFechar, aoSelecionar }: Props) {
   return (
     <Modal aberto={aberto} aoFechar={aoFechar} titulo="Buscar exame" largura="lg">
       <form onSubmit={aoSubmeter} className="space-y-4">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <label className="block sm:col-span-2">
             <span className="mb-1 block text-sm font-medium text-gray-700">Nome do paciente</span>
             <Input
               value={nome}
               onChange={(e) => setNome(e.target.value)}
-              placeholder="Qualquer parte do nome..."
+              placeholder={
+                tipoBuscaNome === 'inicio' ? 'Início do nome...' : 'Qualquer parte do nome...'
+              }
             />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-sm font-medium text-gray-700">Modo de busca</span>
+            <Select
+              value={tipoBuscaNome}
+              onChange={(e) => setTipoBuscaNome(e.target.value as TipoBuscaNome)}
+            >
+              <option value="inicio">Somente início</option>
+              <option value="qualquer">Qualquer ocorrência</option>
+            </Select>
           </label>
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-gray-700">Data inicial</span>

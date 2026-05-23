@@ -51,7 +51,11 @@ export async function buscarEstudos(filtro: FiltroBusca): Promise<Estudo[]> {
   };
 
   const nome = filtro.nome.trim();
-  if (nome) params[Tag.PatientName] = `*${nome}*`;
+  if (nome) {
+    // "inicio" → prefix match (universalmente suportado pelo PACS).
+    // "qualquer" → contains, depende do PACS honrar wildcard à esquerda.
+    params[Tag.PatientName] = filtro.tipoBuscaNome === 'inicio' ? `${nome}*` : `*${nome}*`;
+  }
 
   const di = filtro.dataInicial ? semData(filtro.dataInicial) : '';
   const df = filtro.dataFinal ? semData(filtro.dataFinal) : '';
@@ -66,7 +70,8 @@ export async function buscarEstudos(filtro: FiltroBusca): Promise<Estudo[]> {
     params,
     headers: HEADERS_DICOM,
   });
-  return (data ?? []).map(mapearEstudo);
+  // QIDO-RS responde 204 No Content quando não há matches — axios entrega "" em vez de array.
+  return (Array.isArray(data) ? data : []).map(mapearEstudo);
 }
 
 export async function listarSeries(studyUID: string): Promise<Serie[]> {
@@ -74,7 +79,7 @@ export async function listarSeries(studyUID: string): Promise<Serie[]> {
     params: { includefield: 'all' },
     headers: HEADERS_DICOM,
   });
-  return (data ?? [])
+  return (Array.isArray(data) ? data : [])
     .map(mapearSerie)
     .sort((a, b) => Number(a.seriesNumber) - Number(b.seriesNumber));
 }
@@ -88,5 +93,5 @@ export async function obterMetadadosSerie(
     `/pacs/rs/studies/${studyUID}/series/${seriesUID}/metadata`,
     { headers: HEADERS_DICOM },
   );
-  return data ?? [];
+  return Array.isArray(data) ? data : [];
 }
