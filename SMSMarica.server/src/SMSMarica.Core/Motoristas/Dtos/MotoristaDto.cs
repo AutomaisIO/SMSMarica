@@ -4,6 +4,7 @@ namespace SMSMarica.Core.Motoristas.Dtos;
 
 public sealed record MotoristaDto(
     Guid Id,
+    Guid UsuarioId,
     string NomeCompleto,
     string Cpf,
     string Cnh,
@@ -15,6 +16,7 @@ public sealed record MotoristaDto(
 
 public sealed record MotoristaListItemDto(
     Guid Id,
+    Guid UsuarioId,
     string NomeCompleto,
     string Cpf,
     string? FotoBase64,

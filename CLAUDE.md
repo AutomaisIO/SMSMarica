@@ -20,7 +20,7 @@ Always read the canonical documentation in [`docs/`](./docs/) before making arch
 | [`docs/conventions.md`](./docs/conventions.md) | Git, commits, estilo por stack |
 | [`docs/roadmap.md`](./docs/roadmap.md) | Marcos M1..M7 e dependências |
 | [`docs/pacs.md`](./docs/pacs.md) | Servidor de imagens (dcm4chee-arc), DICOMweb, integração com `features/pacs` |
-| [`docs/adr/`](./docs/adr/) | Decisões arquiteturais registradas (0001 schema, 0003 Android-only, 0004 três projetos) |
+| [`docs/adr/`](./docs/adr/) | Decisões arquiteturais registradas (0001 schema, 0003 Android-only, 0004 três projetos, 0005 usuário unificado com papéis) |
 
 Plano de implementação: `C:\Users\berna\.claude\plans\deep-gathering-kahn.md`.
 
@@ -46,13 +46,15 @@ As regras abaixo não podem ser violadas sem novo ADR.
 
 7. **OpenAPI sempre exposto** — `MapOpenApi()` + `MapScalarApiReference("/docs")` ficam **fora** de `if (env.IsDevelopment())`. Decisão de produto: spec acessível em dev e prod.
 
+8. **Usuário unificado com papéis 1:1** — [ADR-0005](./docs/adr/0005-usuario-unificado-com-papeis.md). Toda pessoa autenticável é uma linha em `usuario` (núcleo de identidade + dados pessoais base). Profissões (Médico, Motorista, Enfermeiro, Recepcionista, Paciente) são tabelas próprias com FK `usuario_id` UNIQUE, carregando **apenas** campos específicos do papel. Um usuário tem **no máximo 1 papel** (discriminador `usuario.tipo_papel`). **`Papel` ≠ `Perfil`**: Papel é profissão impositiva (1:1); Perfil é bag de permissões RBAC (N:N). Ver [`docs/domain.md §5`](./docs/domain.md).
+
 ## Stack
 
 | | Stack | Observação |
 |---|---|---|
 | `SMSMarica.server` | .NET 10 LTS, ASP.NET Core, EF Core 10, PostgreSQL | CPM em `Directory.Packages.props`. Controllers MVC + FluentValidation auto + Mapperly + Serilog. xUnit + Testcontainers (precisa Docker pra rodar testes). |
 | `SMSMarica.front` | React + Vite + TypeScript (planejado) | Tema vermelho/branco (logo Maricá horizontal). |
-| `SMSMarica.cidadao.app` | Flutter (iOS + Android) | Riverpod + go_router + dio. Já chama `GET /pacientes/{id}` — não quebrar shape do `PacienteDto`. |
+| `SMSMarica.cidadao.app` | Flutter (iOS + Android) | Riverpod + go_router + dio. **Ainda não está em produção** — login é mock; quebras de contrato com `/pacientes/{id}` são aceitáveis nesta fase. |
 | `SMSMarica.agente.app` | Flutter Android only (planejado) | Foreground service + geofencing. |
 
 ## Comandos comuns

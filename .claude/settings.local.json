@@ -115,7 +115,10 @@
       "Bash('/c/Program Files/PuTTY/plink.exe' -ssh -batch -pw '#030957#Be' -hostkey SHA256:qma4J9CyGhuOHPoGwXtspfXncTN+nhCFDPmSh4RvXCo root@pacs.marica.automais.cloud 'tail -40 /tmp/purge_2024.log')",
       "Bash(grep \"\\\\.d\\\\.ts$\")",
       "Bash(grep -E \"\\\\.\\(d\\\\.ts|js\\)$\")",
-      "Bash(grep -E \"\\\\.d\\\\.ts$\")"
+      "Bash(grep -E \"\\\\.d\\\\.ts$\")",
+      "Bash(curl *)",
+      "Bash(python -c \"import sys, json; data = json.load\\(sys.stdin\\); print\\(f'count: {len\\(data\\)}'\\); print\\(json.dumps\\(data[0] if data else {}, indent=2\\)[:2000]\\)\")",
+      "Bash(python *)"
     ]
   }
 }

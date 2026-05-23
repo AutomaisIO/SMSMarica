@@ -22,12 +22,21 @@ Este documento descreve **conceitos** e **invariantes**, não tabelas. A forma f
 | **Geofence** | Área circular em torno de residência ou unidade; cruzamento dispara evento. |
 | **Evento de chegada** | Registro gerado quando o veículo entra em um geofence relevante. |
 | **Avaliação** | Nota + comentário do paciente para o motorista ao fim de um translado. |
-| **Usuário** | Operador, gestor, paciente ou motorista autenticado no sistema. Diferentes perfis têm diferentes apps. |
+| **Usuário** | Núcleo de identidade de toda pessoa autenticável: paciente, médico, motorista, enfermeiro, recepcionista, admin. Carrega dados pessoais base (nome, CPF, RG, nascimento, endereço, foto) e credenciais. Ver §6. |
+| **Papel** | Profissão impositiva do usuário (Médico, Motorista, Enfermeiro, Recepcionista, Paciente). Cada papel é uma tabela 1:1 com `usuario` carregando apenas campos específicos (CRM, CNH, COREN…). Um usuário tem no máximo 1 papel. Ver [ADR-0005](./adr/0005-usuario-unificado-com-papeis.md). |
+| **Perfil** | Bag de permissões RBAC (não confundir com Papel). Um usuário pode estar em N perfis simultaneamente, e as permissões resolvidas são a união dos perfis + overrides individuais. |
 
 ## 2. Modelo conceitual (ER simplificado)
 
 ```mermaid
 erDiagram
+  USUARIO ||--o| MEDICO        : "papel"
+  USUARIO ||--o| ENFERMEIRO    : "papel"
+  USUARIO ||--o| MOTORISTA     : "papel"
+  USUARIO ||--o| RECEPCIONISTA : "papel"
+  USUARIO ||--o| PACIENTE      : "papel (futuro)"
+  USUARIO }o--o{ PERFIL        : "RBAC (N:N)"
+
   PACIENTE ||--o{ ACOMPANHANTE : "pode ter"
   PACIENTE ||--o{ TRATAMENTO : "possui"
   UNIDADE  ||--o{ TRATAMENTO : "realiza"
@@ -48,6 +57,8 @@ erDiagram
   SESSAO_TRANSLADO ||--o{ AVALIACAO : "recebe"
   USUARIO ||--o{ AVALIACAO : "emite"
 ```
+
+> Linhas `USUARIO ||--o| <Papel>` representam relação 1:1 opcional: cada Usuario tem **no máximo** um papel profissional ativo. Detalhes na §6.
 
 ## 3. Invariantes-chave
 
@@ -119,7 +130,44 @@ sequenceDiagram
   Cid->>API: avalia motorista (após retorno)
 ```
 
-## 5. Identificadores e idioma
+## 5. Usuário e papéis profissionais
+
+Decisão arquitetural completa: [ADR-0005](./adr/0005-usuario-unificado-com-papeis.md). Este resumo é o que precisa estar na cabeça de quem modela uma entidade de pessoa.
+
+### 5.1 Estrutura
+
+- `Usuario` é o **núcleo de identidade** de qualquer pessoa autenticável. Carrega: dados pessoais base (nome, CPF, RG, data de nascimento, sexo, telefone, endereço, foto), e-mail, credenciais (`senha_hash`, `deve_trocar_senha`, `ultimo_acesso_em`).
+- Cada **papel profissional** é uma tabela própria com FK `usuario_id` UNIQUE (1:1 estrito): `medico` (CRM, especialidade…), `motorista` (CNH, categoria…), `enfermeiro` (COREN, nível…), `recepcionista`, `paciente`.
+- O discriminador `usuario.tipo_papel` (enum) marca qual papel — `NULL` significa "operador genérico sem papel" (aparece na tela "Usuários").
+
+### 5.2 Invariantes
+
+- **1 papel por usuário.** Impositivo: médico não é motorista. Validado em `UsuarioService.PromoverAsync`. Hardening por DB: `CHECK (tipo_papel IS NULL OR cpf IS NOT NULL)`.
+- **CPF único globalmente em `usuario`** (`UNIQUE INDEX cpf WHERE NOT NULL`). Documentos do papel (CRM, CNH, COREN) são únicos dentro da própria tabela do papel.
+- **Promoção nunca duplica.** Se ao criar Médico o CPF já existe em `usuario`, o endpoint retorna `409 Conflict` com o usuário existente; o operador confirma e usa `POST /medicos/promover { usuarioId, ...campos }`.
+- **Demoção é condicional.** Hard-delete da linha do papel só se não houver dependências históricas (ex: motorista que conduziu rota → soft-delete via `motorista.ativo = false`). Decisão é por papel.
+
+### 5.3 Listagens (telas)
+
+| Tela | Filtro |
+|------|--------|
+| Usuários | `usuario WHERE tipo_papel IS NULL AND ativo` |
+| Médicos | `usuario INNER JOIN medico WHERE medico.ativo` |
+| Motoristas | `usuario INNER JOIN motorista WHERE motorista.ativo` |
+| Enfermeiros | `usuario INNER JOIN enfermeiro WHERE enfermeiro.ativo` |
+| Pacientes | `usuario INNER JOIN paciente` (fase futura) |
+
+Ao promover um Usuario a Médico, ele **sai** da tela "Usuários" e passa a aparecer **só** em "Médicos". Ao eliminar o papel de Médico (hard-delete), volta para "Usuários".
+
+### 5.4 `Perfil` (RBAC) **não é** `Papel`
+
+São dimensões ortogonais:
+- **Papel** = profissão impositiva, 1 por usuário, define os campos específicos e a tela onde aparece.
+- **Perfil** = bag de permissões RBAC, N por usuário, define o que pode fazer no sistema.
+
+Um motorista pode ter Perfis `Padrão` + `Auditor`. Um médico pode ter Perfil `Padrão` apenas. Os perfis são gerenciados separadamente em `usuario_perfil`.
+
+## 6. Identificadores e idioma
 
 - **Identificadores de código em português (pt-BR)**: `Paciente`, `Tratamento`, `Periodicidade`, `Veiculo`, `Fileira`, `Assento`, `Alocacao`, `Motorista`, `Rota`, `SessaoDeTranslado`, `PontoGps`, `Geofence`, `EventoDeChegada`, `Avaliacao`.
 - Termos **técnicos de infraestrutura** ficam em inglês: `Repository`, `DbContext`, `Handler`, `Command`, `Query`, `Endpoint`, `Middleware`.

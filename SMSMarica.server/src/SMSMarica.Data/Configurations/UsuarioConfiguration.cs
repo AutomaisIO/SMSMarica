@@ -8,14 +8,19 @@ internal sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
 {
     public void Configure(EntityTypeBuilder<Usuario> builder)
     {
-        builder.ToTable("usuario");
+        builder.ToTable("usuario", t => t.HasCheckConstraint(
+            "ck_usuario_papel_exige_cpf",
+            "tipo_papel IS NULL OR cpf IS NOT NULL"));
         builder.HasKey(u => u.Id);
 
         builder.Property(u => u.Id).HasColumnName("id");
         builder.Property(u => u.NomeCompleto).HasColumnName("nome_completo").HasMaxLength(200).IsRequired();
         builder.Property(u => u.Email).HasColumnName("email").HasMaxLength(200).IsRequired();
         builder.Property(u => u.Cpf).HasColumnName("cpf").HasMaxLength(11);
+        builder.Property(u => u.Rg).HasColumnName("rg").HasMaxLength(20);
         builder.Property(u => u.DataNascimento).HasColumnName("data_nascimento");
+        builder.Property(u => u.Sexo).HasColumnName("sexo").HasConversion<int?>();
+        builder.Property(u => u.TipoPapel).HasColumnName("tipo_papel").HasConversion<int?>();
         builder.Property(u => u.Telefone).HasColumnName("telefone").HasMaxLength(30);
         builder.Property(u => u.FotoBase64).HasColumnName("foto_base64").HasColumnType("text");
         builder.Property(u => u.SenhaHash).HasColumnName("senha_hash").HasMaxLength(500).IsRequired();
@@ -37,5 +42,8 @@ internal sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
         });
 
         builder.HasIndex(u => u.Email).IsUnique();
+        builder.HasIndex(u => u.Cpf)
+            .IsUnique()
+            .HasFilter("cpf IS NOT NULL");
     }
 }

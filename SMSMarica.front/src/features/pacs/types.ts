@@ -38,6 +38,8 @@ export type FiltroBusca = {
   dataInicial: string;
   dataFinal: string;
   limite: number;
+  /** Offset para paginação (default 0). */
+  offset?: number;
 };
 
 /**

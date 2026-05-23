@@ -222,6 +222,27 @@ export function PacsViewport({ imageIds, carregando, progresso, studyInstanceUID
     };
   }, []);
 
+  // A seleção do annotationManager é global (não amarrada ao imageId/viewport
+  // exibido). Sem este reset, ao trocar de imagem a seleção da anterior fica
+  // viva — e o botão de lixeira (ou Delete no teclado) acaba apagando uma
+  // marca que não está mais visível. Limpamos a cada STACK_NEW_IMAGE, que
+  // cobre tanto scroll dentro da stack quanto troca de série/estudo.
+  useEffect(() => {
+    if (!pronto) return;
+    const elemento = elementoRef.current;
+    if (!elemento) return;
+
+    function deselecionar() {
+      if (annotationManager.selection.getAnnotationsSelectedCount() === 0) return;
+      annotationManager.selection.deselectAnnotation();
+      setQtdSelecionadas(0);
+    }
+    elemento.addEventListener(EVENTS.STACK_NEW_IMAGE, deselecionar);
+    return () => {
+      elemento.removeEventListener(EVENTS.STACK_NEW_IMAGE, deselecionar);
+    };
+  }, [pronto]);
+
   // Tecla Delete/Backspace remove a annotation selecionada (se não estiver digitando).
   useEffect(() => {
     function aoTeclar(e: KeyboardEvent) {

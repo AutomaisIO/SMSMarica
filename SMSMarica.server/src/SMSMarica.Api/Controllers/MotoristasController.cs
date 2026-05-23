@@ -33,6 +33,19 @@ public sealed class MotoristasController(IMotoristasService service) : Controlle
         return CreatedAtAction(nameof(ObterPorId), new { id }, id);
     }
 
+    [HttpPost("promover")]
+    [ProducesResponseType<Guid>(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Promover(
+        [FromBody] PromoverMotoristaRequest request,
+        CancellationToken cancellationToken)
+    {
+        var id = await _service.PromoverAsync(request, cancellationToken);
+        return CreatedAtAction(nameof(ObterPorId), new { id }, id);
+    }
+
     [HttpPut("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

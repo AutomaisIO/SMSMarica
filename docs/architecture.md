@@ -113,6 +113,15 @@ src/
 
 ### 3.6 Adicionar uma nova entidade — checklist
 
+**Antes do checklist:** se a entidade é uma **pessoa** (Médico, Enfermeiro, Motorista, Recepcionista, Paciente, …), ela **não é** uma entidade de domínio independente — é um **papel profissional de `Usuario`** ([ADR-0005](./adr/0005-usuario-unificado-com-papeis.md)). Nesse caso:
+
+- A nova tabela carrega **apenas** campos específicos do papel (CRM, CNH, COREN…). Nada de nome, CPF, endereço, foto — esses ficam em `usuario`.
+- FK `usuario_id` UNIQUE (1:1 estrito) + adicionar valor ao enum `TipoPapel`.
+- Endpoint inclui rota `POST /<papel>/promover { usuarioId, ...campos }` para promover usuário existente sem duplicar CPF.
+- Listagem usa `INNER JOIN usuario`.
+
+Para qualquer outra entidade de domínio:
+
 1. Criar POCO em `SMSMarica.Data/Entities/<X>.cs`.
 2. Criar `IEntityTypeConfiguration` em `SMSMarica.Data/Configurations/<X>Configuration.cs` (tabela snake_case + índices).
 3. Adicionar `DbSet<X>` em `SmsMaricaDbContext`.

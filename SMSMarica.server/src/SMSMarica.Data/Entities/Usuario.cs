@@ -1,3 +1,5 @@
+using SMSMarica.Data.Entities.Enums;
+
 namespace SMSMarica.Data.Entities;
 
 public class Usuario
@@ -6,7 +8,10 @@ public class Usuario
     public string NomeCompleto { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string? Cpf { get; set; }
+    public string? Rg { get; set; }
     public DateOnly? DataNascimento { get; set; }
+    public Sexo? Sexo { get; set; }
+    public TipoPapel? TipoPapel { get; set; }
     public string? Telefone { get; set; }
     public Endereco? Endereco { get; set; }
     public string? FotoBase64 { get; set; }

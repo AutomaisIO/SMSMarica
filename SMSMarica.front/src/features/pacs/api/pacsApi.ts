@@ -44,10 +44,13 @@ function mapearSerie(ds: DatasetDicom): Serie {
 }
 
 export async function buscarEstudos(filtro: FiltroBusca): Promise<Estudo[]> {
+  // fuzzymatching=true quebra wildcard PN (testado contra esse dcm4chee — sempre
+  // retorna 204 com *NOME*), então deixamos desligado. A normalização do nome
+  // (NFD + uppercase + espaços→*) já cobre acentos e variações.
   const params: Record<string, string | number> = {
     limit: filtro.limite,
+    offset: filtro.offset ?? 0,
     includefield: 'all',
-    fuzzymatching: 'true',
   };
 
   // DICOM armazena PatientName como "Familia^Nome^Meio" (ou variações com
@@ -76,13 +79,9 @@ export async function buscarEstudos(filtro: FiltroBusca): Promise<Estudo[]> {
   else if (di) params[Tag.StudyDate] = `${di}-`;
   else if (df) params[Tag.StudyDate] = `-${df}`;
 
-  // Sem filtro algum: ordenar do mais novo para o mais velho e usar PatientName=*
-  // como matching key — o dcm4chee QIDO-RS retorna 204 (vazio) se a query não
-  // tiver nenhum atributo de match, então precisamos forçar um wildcard.
-  if (!nomeNormalizado && !di && !df) {
-    params[Tag.PatientName] = '*';
-    params.orderby = `-${Tag.StudyDate}`;
-  }
+  // Sempre ordenar do mais novo para o mais velho. dcm4chee aceita orderby
+  // mesmo quando há filtros; sem filtros o resultado também vem ordenado.
+  params.orderby = `-${Tag.StudyDate},-${Tag.StudyTime}`;
 
   const { data } = await http.get<DatasetDicom[]>('/pacs/rs/studies', {
     params,

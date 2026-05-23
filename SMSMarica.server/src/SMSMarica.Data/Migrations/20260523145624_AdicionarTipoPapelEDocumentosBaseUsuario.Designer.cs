@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SMSMarica.Data;
@@ -12,9 +13,11 @@ using SMSMarica.Data;
 namespace SMSMarica.Data.Migrations
 {
     [DbContext(typeof(SmsMaricaDbContext))]
-    partial class SmsMaricaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260523145624_AdicionarTipoPapelEDocumentosBaseUsuario")]
+    partial class AdicionarTipoPapelEDocumentosBaseUsuario
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -300,20 +303,37 @@ namespace SMSMarica.Data.Migrations
                         .HasColumnType("character varying(11)")
                         .HasColumnName("cnh");
 
+                    b.Property<string>("Cpf")
+                        .IsRequired()
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)")
+                        .HasColumnName("cpf");
+
                     b.Property<DateTime>("CriadoEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("criado_em");
 
-                    b.Property<Guid>("UsuarioId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("usuario_id");
+                    b.Property<string>("FotoBase64")
+                        .HasColumnType("text")
+                        .HasColumnName("foto_base64");
+
+                    b.Property<string>("NomeCompleto")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("nome_completo");
+
+                    b.Property<string>("Telefone")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("telefone");
 
                     b.HasKey("Id");
 
                     b.HasIndex("Cnh")
                         .IsUnique();
 
-                    b.HasIndex("UsuarioId")
+                    b.HasIndex("Cpf")
                         .IsUnique();
 
                     b.ToTable("motorista", "smsmarica");
@@ -1235,13 +1255,65 @@ namespace SMSMarica.Data.Migrations
 
             modelBuilder.Entity("SMSMarica.Data.Entities.Motorista", b =>
                 {
-                    b.HasOne("SMSMarica.Data.Entities.Usuario", "Usuario")
-                        .WithOne()
-                        .HasForeignKey("SMSMarica.Data.Entities.Motorista", "UsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                    b.OwnsOne("SMSMarica.Data.Entities.Endereco", "Endereco", b1 =>
+                        {
+                            b1.Property<Guid>("MotoristaId")
+                                .HasColumnType("uuid");
 
-                    b.Navigation("Usuario");
+                            b1.Property<string>("Bairro")
+                                .IsRequired()
+                                .HasMaxLength(120)
+                                .HasColumnType("character varying(120)")
+                                .HasColumnName("endereco_bairro");
+
+                            b1.Property<string>("Cep")
+                                .IsRequired()
+                                .HasMaxLength(8)
+                                .HasColumnType("character varying(8)")
+                                .HasColumnName("endereco_cep");
+
+                            b1.Property<string>("Cidade")
+                                .IsRequired()
+                                .HasMaxLength(120)
+                                .HasColumnType("character varying(120)")
+                                .HasColumnName("endereco_cidade");
+
+                            b1.Property<string>("Complemento")
+                                .HasMaxLength(120)
+                                .HasColumnType("character varying(120)")
+                                .HasColumnName("endereco_complemento");
+
+                            b1.Property<string>("Logradouro")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)")
+                                .HasColumnName("endereco_logradouro");
+
+                            b1.Property<string>("Numero")
+                                .HasMaxLength(20)
+                                .HasColumnType("character varying(20)")
+                                .HasColumnName("endereco_numero");
+
+                            b1.Property<string>("PontoReferencia")
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)")
+                                .HasColumnName("endereco_ponto_referencia");
+
+                            b1.Property<string>("Uf")
+                                .IsRequired()
+                                .HasMaxLength(2)
+                                .HasColumnType("character varying(2)")
+                                .HasColumnName("endereco_uf");
+
+                            b1.HasKey("MotoristaId");
+
+                            b1.ToTable("motorista", "smsmarica");
+
+                            b1.WithOwner()
+                                .HasForeignKey("MotoristaId");
+                        });
+
+                    b.Navigation("Endereco");
                 });
 
             modelBuilder.Entity("SMSMarica.Data.Entities.Paciente", b =>

@@ -19,7 +19,7 @@ public sealed class TransladoService(SmsMaricaDbContext db) : ITransladoService
     {
         var query = _db.Rotas.AsNoTracking()
             .Include(r => r.Veiculo)
-            .Include(r => r.Motorista)
+            .Include(r => r.Motorista).ThenInclude(m => m!.Usuario)
             .AsQueryable();
 
         if (data is not null) query = query.Where(r => r.Data == data.Value);
@@ -45,7 +45,7 @@ public sealed class TransladoService(SmsMaricaDbContext db) : ITransladoService
     {
         var r = await _db.Rotas.AsNoTracking()
             .Include(x => x.Veiculo)
-            .Include(x => x.Motorista)
+            .Include(x => x.Motorista).ThenInclude(m => m!.Usuario)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(RotaDiaria), id);
 

@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
 import { Modal } from '@/shared/ui/Modal';
 import { Select } from '@/shared/ui/Select';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { useBuscarEstudos } from '@/features/pacs/api/queries';
-import type { Estudo, TipoBuscaNome } from '@/features/pacs/types';
+import type { Estudo, FiltroBusca, TipoBuscaNome } from '@/features/pacs/types';
 
 type Props = {
   aberto: boolean;
@@ -24,12 +24,29 @@ function hojeIso(): string {
   return `${ano}-${mes}-${dia}`;
 }
 
+/** Filtro inicial usado no auto-load: ignora o que o usuário tem no form
+ *  e devolve os últimos N exames independente de data. */
+function filtroInicial(): FiltroBusca {
+  return {
+    nome: '',
+    tipoBuscaNome: 'inicio',
+    dataInicial: '',
+    dataFinal: '',
+    limite: LIMITE_PADRAO,
+    offset: 0,
+  };
+}
+
 export function PacsBuscaModal({ aberto, aoFechar, aoSelecionar }: Props) {
   const [nome, setNome] = useState('');
   const [tipoBuscaNome, setTipoBuscaNome] = useState<TipoBuscaNome>('inicio');
   const [dataInicial, setDataInicial] = useState(() => hojeIso());
   const [dataFinal, setDataFinal] = useState(() => hojeIso());
   const [limite, setLimite] = useState(LIMITE_PADRAO);
+  // Filtro que de fato está aplicado na lista exibida (separado do estado do
+  // form, que pode estar sendo digitado). Carrega o auto-load na primeira abertura.
+  const [filtroAplicado, setFiltroAplicado] = useState<FiltroBusca>(() => filtroInicial());
+  const [pagina, setPagina] = useState(1);
 
   const busca = useBuscarEstudos();
 
@@ -41,31 +58,52 @@ export function PacsBuscaModal({ aberto, aoFechar, aoSelecionar }: Props) {
     setDataInicial(hoje);
     setDataFinal(hoje);
     setLimite(LIMITE_PADRAO);
-    // Auto-load: ignora o filtro do form e busca os últimos N exames
-    // independente da data (datas vazias → orderby=-StudyDate na API).
-    busca.mutate({
-      nome: '',
-      tipoBuscaNome: 'inicio',
-      dataInicial: '',
-      dataFinal: '',
-      limite: LIMITE_PADRAO,
-    });
+    const inicial = filtroInicial();
+    setFiltroAplicado(inicial);
+    setPagina(1);
+    busca.mutate(inicial);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aberto]);
 
   function aoSubmeter(e: React.FormEvent) {
     e.preventDefault();
-    busca.mutate({ nome, tipoBuscaNome, dataInicial, dataFinal, limite });
+    const novo: FiltroBusca = {
+      nome,
+      tipoBuscaNome,
+      dataInicial,
+      dataFinal,
+      limite,
+      offset: 0,
+    };
+    setFiltroAplicado(novo);
+    setPagina(1);
+    busca.mutate(novo);
   }
 
-  // Ordena do mais novo para o mais velho. O backend já pede orderby=-StudyDate
-  // quando não há filtro, mas alguns dcm4chee ignoram o parâmetro — então
-  // garantimos a ordem aqui também (data + hora desc).
+  function trocarPagina(direcao: -1 | 1) {
+    const novaPagina = pagina + direcao;
+    if (novaPagina < 1) return;
+    const novo: FiltroBusca = {
+      ...filtroAplicado,
+      offset: (novaPagina - 1) * filtroAplicado.limite,
+    };
+    setFiltroAplicado(novo);
+    setPagina(novaPagina);
+    busca.mutate(novo);
+  }
+
+  // Ordena do mais novo para o mais velho como rede de segurança — o backend
+  // já pede orderby=-StudyDate,-StudyTime, mas garantimos a ordem aqui também.
   const estudos = [...(busca.data ?? [])].sort((a, b) => {
     const chaveA = `${a.studyDate}${a.studyTime}`;
     const chaveB = `${b.studyDate}${b.studyTime}`;
     return chaveB.localeCompare(chaveA);
   });
+
+  // QIDO-RS não expõe count barato, então inferimos "tem próxima" pela heurística:
+  // se a página veio cheia (length === limite), provavelmente há mais.
+  const temProximaPagina = estudos.length === filtroAplicado.limite;
+  const mostrarPaginacao = pagina > 1 || temProximaPagina;
 
   return (
     <Modal aberto={aberto} aoFechar={aoFechar} titulo="Buscar exame" largura="lg">
@@ -134,24 +172,52 @@ export function PacsBuscaModal({ aberto, aoFechar, aoSelecionar }: Props) {
         ) : null}
 
         {estudos.length > 0 ? (
-          <ul className="divide-y divide-gray-100 rounded-md border border-gray-200">
-            {estudos.map((estudo) => (
-              <li key={estudo.studyInstanceUID}>
-                <button
-                  type="button"
-                  onClick={() => aoSelecionar(estudo)}
-                  className="flex w-full flex-col items-start gap-0.5 px-4 py-3 text-left hover:bg-gray-50"
-                >
-                  <span className="font-medium text-gray-900">{estudo.patientName || 'Sem nome'}</span>
-                  <span className="text-sm text-gray-500">
-                    {[estudo.modalidade, estudo.studyDescription, estudo.studyDateFormatado]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="divide-y divide-gray-100 rounded-md border border-gray-200">
+              {estudos.map((estudo) => (
+                <li key={estudo.studyInstanceUID}>
+                  <button
+                    type="button"
+                    onClick={() => aoSelecionar(estudo)}
+                    className="flex w-full flex-col items-start gap-0.5 px-4 py-3 text-left hover:bg-gray-50"
+                  >
+                    <span className="font-medium text-gray-900">{estudo.patientName || 'Sem nome'}</span>
+                    <span className="text-sm text-gray-500">
+                      {[estudo.modalidade, estudo.studyDescription, estudo.studyDateFormatado]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+
+            {mostrarPaginacao ? (
+              <div className="mt-3 flex items-center justify-between">
+                <span className="text-sm text-gray-500">Página {pagina}</span>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variante="ghost"
+                    onClick={() => trocarPagina(-1)}
+                    disabled={pagina <= 1 || busca.isPending}
+                  >
+                    <ChevronLeft className="mr-1 h-4 w-4" />
+                    Anterior
+                  </Button>
+                  <Button
+                    type="button"
+                    variante="ghost"
+                    onClick={() => trocarPagina(1)}
+                    disabled={!temProximaPagina || busca.isPending}
+                  >
+                    Próxima
+                    <ChevronRight className="ml-1 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </>
         ) : null}
       </div>
     </Modal>

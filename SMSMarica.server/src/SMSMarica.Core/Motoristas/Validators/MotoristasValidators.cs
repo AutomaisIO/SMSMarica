@@ -15,6 +15,7 @@ public sealed class CadastrarMotoristaValidator : AbstractValidator<CadastrarMot
         RuleFor(m => m.Cnh)
             .NotEmpty()
             .MaximumLength(11);
+        RuleFor(m => m.Email).EmailAddress().MaximumLength(200).When(m => !string.IsNullOrWhiteSpace(m.Email));
         RuleFor(m => m.Telefone).MaximumLength(30);
     }
 }
@@ -26,5 +27,14 @@ public sealed class AtualizarMotoristaValidator : AbstractValidator<AtualizarMot
         RuleFor(m => m.NomeCompleto).NotEmpty().MaximumLength(200);
         RuleFor(m => m.Cnh).NotEmpty().MaximumLength(11);
         RuleFor(m => m.Telefone).MaximumLength(30);
+    }
+}
+
+public sealed class PromoverMotoristaValidator : AbstractValidator<PromoverMotoristaRequest>
+{
+    public PromoverMotoristaValidator()
+    {
+        RuleFor(m => m.UsuarioId).NotEmpty();
+        RuleFor(m => m.Cnh).NotEmpty().MaximumLength(11);
     }
 }
