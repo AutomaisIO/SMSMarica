@@ -8,6 +8,8 @@ public class Paciente
 
     // Identificação
     public string NomeCompleto { get; set; } = string.Empty;
+    /// <summary>Nome pelo qual o paciente prefere ser chamado (opcional).</summary>
+    public string? NomeSocial { get; set; }
     public string Cpf { get; set; } = string.Empty;
     public string? Cns { get; set; }
     public string? Rg { get; set; }

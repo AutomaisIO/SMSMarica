@@ -103,6 +103,7 @@ public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
         {
             Id = Guid.CreateVersion7(),
             NomeCompleto = request.NomeCompleto.Trim(),
+            NomeSocial = NormalizaOpcional(request.NomeSocial, false),
             Cpf = cpfNormalizado,
             Cns = NormalizaOpcional(request.Cns, true),
             Rg = NormalizaOpcional(request.Rg, false),
@@ -151,6 +152,7 @@ public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
             ?? throw new NaoEncontradoException(nameof(Paciente), id);
 
         paciente.NomeCompleto = request.NomeCompleto.Trim();
+        paciente.NomeSocial = NormalizaOpcional(request.NomeSocial, false);
         paciente.Cns = NormalizaOpcional(request.Cns, true);
         paciente.Rg = NormalizaOpcional(request.Rg, false);
         paciente.Sexo = request.Sexo;

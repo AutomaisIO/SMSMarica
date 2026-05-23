@@ -33,4 +33,6 @@ public sealed record AtualizarPacienteRequest(
     IReadOnlyList<string>? Deficiencias = null,
     string? PlanoSaude = null,
     string? Observacoes = null,
-    string? FotoBase64 = null);
+    string? FotoBase64 = null,
+    /// <summary>Nome pelo qual o paciente prefere ser chamado.</summary>
+    string? NomeSocial = null);

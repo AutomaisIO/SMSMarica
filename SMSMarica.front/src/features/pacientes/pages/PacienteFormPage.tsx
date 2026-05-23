@@ -59,6 +59,7 @@ type ContatoEmergencia = {
 
 type Estado = {
   nomeCompleto: string;
+  nomeSocial: string;
   cpf: string;
   dataNascimento: string;
   cns: string;
@@ -99,7 +100,7 @@ const ENDERECO_VAZIO: Endereco = {
 const CONTATO_VAZIO: ContatoEmergencia = { nome: '', parentesco: '', telefone: '' };
 
 const ESTADO_INICIAL: Estado = {
-  nomeCompleto: '', cpf: '', dataNascimento: '', cns: '', rg: '',
+  nomeCompleto: '', nomeSocial: '', cpf: '', dataNascimento: '', cns: '', rg: '',
   sexo: 'NaoInformado', estadoCivil: 'NaoInformado', racaCor: 'NaoInformado',
   escolaridade: 'NaoInformado', ocupacao: '', naturalidade: '', nacionalidade: 'Brasileira',
   nomeDaMae: '', nomeDoPai: '', responsavelLegal: '',
@@ -147,6 +148,7 @@ function parseDataBr(data: string): string {
 function pacienteParaEstado(p: Paciente): Estado {
   return {
     nomeCompleto: p.nomeCompleto,
+    nomeSocial: p.nomeSocial ?? '',
     cpf: p.cpf,
     dataNascimento: p.dataNascimento ?? '',
     cns: p.cns ?? '',
@@ -203,6 +205,7 @@ function estadoParaPayload(e: Estado) {
   const contatoVazio = !e.contatoEmergencia.nome && !e.contatoEmergencia.telefone;
   return {
     nomeCompleto: e.nomeCompleto.trim(),
+    nomeSocial: e.nomeSocial.trim() || null,
     cpf: e.cpf.replace(/\D/g, ''),
     dataNascimento: e.dataNascimento,
     cns: e.cns ? e.cns.replace(/\D/g, '') : null,
@@ -610,6 +613,19 @@ function SecaoIdentificacao({ estado, erros, setCampo }: SecProps) {
       <Campo label="Nome completo" htmlFor="nomeCompleto" className="md:col-span-2"
         dica="Não pode ser editado.">
         <Input id="nomeCompleto" value={estado.nomeCompleto} disabled readOnly />
+      </Campo>
+      <Campo
+        label="Nome social"
+        htmlFor="nomeSocial"
+        className="md:col-span-2"
+        dica="Nome pelo qual o paciente gosta de ser chamado (opcional)."
+      >
+        <Input
+          id="nomeSocial"
+          value={estado.nomeSocial}
+          onChange={(e) => setCampo('nomeSocial', e.target.value)}
+          maxLength={200}
+        />
       </Campo>
       <Campo label="CPF" htmlFor="cpf" dica="Não pode ser alterado.">
         <Input id="cpf" value={estado.cpf} disabled readOnly />

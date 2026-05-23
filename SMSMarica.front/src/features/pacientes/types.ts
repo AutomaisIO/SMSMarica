@@ -55,6 +55,7 @@ export type ContatoEmergencia = {
 export type PacienteListItem = {
   id: string;
   nomeCompleto: string;
+  nomeSocial?: string | null;
   cpf: string;
   dataNascimento?: string | null;
   nomeDaMae?: string | null;
@@ -66,6 +67,7 @@ export type PacienteListItem = {
 export type Paciente = {
   id: string;
   nomeCompleto: string;
+  nomeSocial: string | null;
   cpf: string;
   cns: string | null;
   rg: string | null;
@@ -105,6 +107,7 @@ export type Paciente = {
 
 export type PacienteFormPayload = {
   nomeCompleto: string;
+  nomeSocial?: string | null;
   cpf: string;
   dataNascimento: string;
   cns?: string | null;

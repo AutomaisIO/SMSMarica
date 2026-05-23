@@ -50,11 +50,24 @@ export async function buscarEstudos(filtro: FiltroBusca): Promise<Estudo[]> {
     fuzzymatching: 'true',
   };
 
-  const nome = filtro.nome.trim();
-  if (nome) {
-    // "inicio" → prefix match (universalmente suportado pelo PACS).
-    // "qualquer" → contains, depende do PACS honrar wildcard à esquerda.
-    params[Tag.PatientName] = filtro.tipoBuscaNome === 'inicio' ? `${nome}*` : `*${nome}*`;
+  // DICOM armazena PatientName como "Familia^Nome^Meio" (ou variações com
+  // "^" no começo quando o equipamento joga tudo em "Given"). Para a busca
+  // pegar nas duas formas sem o usuário se preocupar:
+  //   - tira acentos (NFD + corta combining marks)
+  //   - sobe pra MAIÚSCULAS (alguns dcm4chee são case-sensitive em PN)
+  //   - troca espaços por "*" — assim "Silva Joao" vira "*SILVA*JOAO*",
+  //     que casa contra "Silva^João^Santos" mesmo com o "^" no meio.
+  const nomeNormalizado = filtro.nome
+    .normalize('NFD')
+    // Faixa U+0300–U+036F = "Combining Diacritical Marks" (acentos
+    // soltos após NFD). Removidos para "João" virar "Joao".
+    .replace(/[̀-ͯ]/g, '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, '*');
+  if (nomeNormalizado) {
+    params[Tag.PatientName] =
+      filtro.tipoBuscaNome === 'inicio' ? `${nomeNormalizado}*` : `*${nomeNormalizado}*`;
   }
 
   const di = filtro.dataInicial ? semData(filtro.dataInicial) : '';
@@ -64,7 +77,7 @@ export async function buscarEstudos(filtro: FiltroBusca): Promise<Estudo[]> {
   else if (df) params[Tag.StudyDate] = `-${df}`;
 
   // Sem filtro algum: mostrar os mais recentes.
-  if (!nome && !di && !df) params.orderby = `-${Tag.StudyDate}`;
+  if (!nomeNormalizado && !di && !df) params.orderby = `-${Tag.StudyDate}`;
 
   const { data } = await http.get<DatasetDicom[]>('/pacs/rs/studies', {
     params,

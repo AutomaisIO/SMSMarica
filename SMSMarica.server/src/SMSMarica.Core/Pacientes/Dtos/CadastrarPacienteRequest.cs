@@ -41,4 +41,6 @@ public sealed record CadastrarPacienteRequest(
     string? PlanoSaude = null,
     // Outros
     string? Observacoes = null,
-    string? FotoBase64 = null);
+    string? FotoBase64 = null,
+    /// <summary>Nome pelo qual o paciente prefere ser chamado.</summary>
+    string? NomeSocial = null);

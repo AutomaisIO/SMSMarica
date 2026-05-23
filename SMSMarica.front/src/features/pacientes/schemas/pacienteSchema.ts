@@ -56,6 +56,7 @@ export const pacientePassoIdentificacaoSchema = z.object({
 
 export const pacienteFormSchema = z.object({
   nomeCompleto: z.string().min(3, 'Nome precisa ter ao menos 3 caracteres.').max(200),
+  nomeSocial: z.string().max(200).optional().nullable(),
   cpf: z.string().refine(cpfValido, 'CPF inválido.'),
   dataNascimento: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida.'),
   cns: z

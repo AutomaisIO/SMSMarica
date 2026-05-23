@@ -52,7 +52,9 @@ public sealed record PacienteDto(
     string? PlanoSaude,
     // Outros
     string? Observacoes,
-    string? FotoBase64);
+    string? FotoBase64,
+    // Adicionado depois — cidadao.app ignora silenciosamente.
+    string? NomeSocial = null);
 
 public sealed record PacienteListItemDto(
     Guid Id,
@@ -62,7 +64,8 @@ public sealed record PacienteListItemDto(
     string? NomeDaMae,
     string? TelefonePrincipal,
     string? FotoBase64,
-    bool Ativo);
+    bool Ativo,
+    string? NomeSocial = null);
 
 public sealed record ContatoEmergenciaDto(
     string Nome,

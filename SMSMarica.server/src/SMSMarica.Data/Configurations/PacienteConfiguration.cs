@@ -13,6 +13,7 @@ internal sealed class PacienteConfiguration : IEntityTypeConfiguration<Paciente>
 
         builder.Property(p => p.Id).HasColumnName("id");
         builder.Property(p => p.NomeCompleto).HasColumnName("nome_completo").HasMaxLength(200).IsRequired();
+        builder.Property(p => p.NomeSocial).HasColumnName("nome_social").HasMaxLength(200);
         builder.Property(p => p.Cpf).HasColumnName("cpf").HasMaxLength(11).IsRequired();
         builder.Property(p => p.Cns).HasColumnName("cns").HasMaxLength(15);
         builder.Property(p => p.Rg).HasColumnName("rg").HasMaxLength(20);
