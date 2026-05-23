@@ -129,8 +129,8 @@ export function FormularioPerfil({ modo, id, aoConcluir }: Props) {
           Marque o que este perfil pode fazer em cada módulo. Quem tiver este perfil herda essas permissões.
         </p>
         <MatrizPermissoes
-          matriz={valores.matriz}
-          aoMudar={(m) => set('matriz', m)}
+          editaveis={valores.matriz}
+          aoMudarEditaveis={(m) => set('matriz', m)}
           desabilitado={pendente}
         />
       </section>

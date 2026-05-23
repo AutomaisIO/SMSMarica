@@ -1,11 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  atualizarOverridesDoUsuario,
+  atualizarPerfisDoUsuario,
   atualizarUsuario,
   cadastrarUsuario,
   desativarUsuario,
   listarUsuarios,
+  obterPermissoesDoUsuario,
   obterUsuarioPorId,
 } from '@/features/usuarios/api/usuariosApi';
+import type { PermissaoModuloApi } from '@/features/perfis/types';
 import type {
   AtualizarUsuarioPayload,
   CadastrarUsuarioPayload,
@@ -14,7 +18,42 @@ import type {
 export const usuariosKeys = {
   lista: () => ['usuarios', 'lista'] as const,
   porId: (id: string) => ['usuarios', 'detalhe', id] as const,
+  permissoes: (id: string) => ['usuarios', 'permissoes', id] as const,
 };
+
+export function useUsuarioPermissoes(id: string | null) {
+  return useQuery({
+    queryKey: id ? usuariosKeys.permissoes(id) : ['usuarios', 'permissoes', 'nenhum'],
+    queryFn: () => {
+      if (!id) throw new Error('ID não informado.');
+      return obterPermissoesDoUsuario(id);
+    },
+    enabled: Boolean(id),
+  });
+}
+
+export function useAtualizarPerfisDoUsuario() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, perfilIds }: { id: string; perfilIds: string[] }) =>
+      atualizarPerfisDoUsuario(id, perfilIds),
+    onSuccess: (_d, v) => {
+      client.invalidateQueries({ queryKey: usuariosKeys.porId(v.id) });
+      client.invalidateQueries({ queryKey: usuariosKeys.permissoes(v.id) });
+    },
+  });
+}
+
+export function useAtualizarOverridesDoUsuario() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, overrides }: { id: string; overrides: PermissaoModuloApi[] }) =>
+      atualizarOverridesDoUsuario(id, overrides),
+    onSuccess: (_d, v) => {
+      client.invalidateQueries({ queryKey: usuariosKeys.permissoes(v.id) });
+    },
+  });
+}
 
 export function useListarUsuarios() {
   return useQuery({ queryKey: usuariosKeys.lista(), queryFn: listarUsuarios });

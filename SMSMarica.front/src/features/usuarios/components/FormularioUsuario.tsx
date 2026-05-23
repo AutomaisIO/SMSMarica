@@ -1,7 +1,9 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useQueries } from '@tanstack/react-query';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
+import { Tabs, type Aba } from '@/shared/ui/Tabs';
 import {
   enderecoVazio,
   FormularioEndereco,
@@ -11,10 +13,23 @@ import {
 import { UploadFoto } from '@/shared/ui/UploadFoto';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import {
+  useAtualizarOverridesDoUsuario,
+  useAtualizarPerfisDoUsuario,
   useAtualizarUsuario,
   useCadastrarUsuario,
+  useUsuarioPermissoes,
   useUsuarioPorId,
 } from '@/features/usuarios/api/queries';
+import { useListarPerfis } from '@/features/perfis/api/queries';
+import { obterPerfilPorId } from '@/features/perfis/api/perfisApi';
+import {
+  deMatriz,
+  paraMatriz,
+} from '@/features/perfis/lib/acoes';
+import type { MatrizEdicao, PermissaoModuloApi } from '@/features/perfis/types';
+import { MatrizPermissoes } from '@/features/perfis/components/MatrizPermissoes';
+import { cn } from '@/shared/lib/cn';
+import type { AcaoPermissao, ModuloPermissao } from '@/shared/auth/authStore';
 
 type Props = { modo: 'criar' | 'editar'; idUsuario?: string | null; aoConcluir: () => void };
 
@@ -40,14 +55,36 @@ const INICIAL: Valores = {
 
 type Erros = Partial<Record<'nomeCompleto' | 'email' | 'senha' | 'cpf' | 'telefone', string>>;
 
+/** Une duas matrizes (OR por módulo). */
+function unirMatrizes(a: MatrizEdicao, b: MatrizEdicao): MatrizEdicao {
+  const out: MatrizEdicao = {};
+  const modulos = new Set<ModuloPermissao>([
+    ...(Object.keys(a) as ModuloPermissao[]),
+    ...(Object.keys(b) as ModuloPermissao[]),
+  ]);
+  for (const m of modulos) {
+    const set = new Set<AcaoPermissao>([...(a[m] ?? []), ...(b[m] ?? [])]);
+    out[m] = Array.from(set);
+  }
+  return out;
+}
+
 export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
   const [valores, setValores] = useState<Valores>(INICIAL);
+  const [perfilIdsSelecionados, setPerfilIdsSelecionados] = useState<string[]>([]);
+  const [overrides, setOverrides] = useState<MatrizEdicao>({});
   const [erros, setErros] = useState<Erros>({});
   const [erroGlobal, setErroGlobal] = useState<string | null>(null);
+
   const cadastrar = useCadastrarUsuario();
   const atualizar = useAtualizarUsuario();
+  const salvarPerfis = useAtualizarPerfisDoUsuario();
+  const salvarOverrides = useAtualizarOverridesDoUsuario();
   const detalhe = useUsuarioPorId(modo === 'editar' ? idUsuario ?? null : null);
+  const permissoesUsuario = useUsuarioPermissoes(modo === 'editar' ? idUsuario ?? null : null);
+  const perfisDisponiveis = useListarPerfis();
 
+  // Hidrata o form em modo edição.
   useEffect(() => {
     if (modo === 'editar' && detalhe.data) {
       const e = detalhe.data.endereco;
@@ -71,11 +108,45 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
             }
           : enderecoVazio,
       });
+      setPerfilIdsSelecionados(detalhe.data.perfilIds ?? []);
     }
   }, [modo, detalhe.data]);
 
+  // Inicializa overrides quando as permissões do usuário chegam.
+  useEffect(() => {
+    if (modo === 'editar' && permissoesUsuario.data) {
+      setOverrides(paraMatriz(permissoesUsuario.data.overrides));
+    }
+  }, [modo, permissoesUsuario.data]);
+
+  // Carrega permissões de cada perfil selecionado para compor a matriz herdada
+  // localmente (sem depender do estado salvo no backend).
+  const perfisCompletos = useQueries({
+    queries: perfilIdsSelecionados.map((id) => ({
+      queryKey: ['perfis', 'detalhe', id],
+      queryFn: () => obterPerfilPorId(id),
+      enabled: Boolean(id),
+    })),
+  });
+
+  const herdadas = useMemo<MatrizEdicao>(() => {
+    let resultado: MatrizEdicao = {};
+    for (const q of perfisCompletos) {
+      if (q.data) {
+        resultado = unirMatrizes(resultado, paraMatriz(q.data.permissoes));
+      }
+    }
+    return resultado;
+  }, [perfisCompletos]);
+
   function set<K extends keyof Valores>(k: K, v: Valores[K]) {
     setValores((p) => ({ ...p, [k]: v }));
+  }
+
+  function alternarPerfil(id: string) {
+    setPerfilIdsSelecionados((atual) =>
+      atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id],
+    );
   }
 
   async function aoEnviar(e: FormEvent) {
@@ -110,13 +181,15 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
           bairro: enderecoForm.bairro,
           cidade: enderecoForm.cidade,
           uf: enderecoForm.uf,
-          pontoReferencia: enderecoForm.pontoReferencia || null,
+          pontoReferencia: null,
         }
       : null;
 
+    const overridesParaApi: PermissaoModuloApi[] = deMatriz(overrides);
+
     try {
       if (modo === 'criar') {
-        await cadastrar.mutateAsync({
+        const novoId = await cadastrar.mutateAsync({
           nomeCompleto: nome,
           email,
           cpf: cpf || undefined,
@@ -124,7 +197,11 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
           endereco: enderecoPayload,
           fotoBase64: valores.fotoBase64,
           senha: senha || undefined,
+          perfilIds: perfilIdsSelecionados,
         });
+        if (overridesParaApi.length > 0) {
+          await salvarOverrides.mutateAsync({ id: novoId, overrides: overridesParaApi });
+        }
       } else {
         if (!idUsuario) throw new Error('ID ausente.');
         await atualizar.mutateAsync({
@@ -137,6 +214,8 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
             fotoBase64: valores.fotoBase64,
           },
         });
+        await salvarPerfis.mutateAsync({ id: idUsuario, perfilIds: perfilIdsSelecionados });
+        await salvarOverrides.mutateAsync({ id: idUsuario, overrides: overridesParaApi });
       }
       aoConcluir();
     } catch (erro) {
@@ -144,10 +223,11 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
     }
   }
 
-  const pendente = cadastrar.isPending || atualizar.isPending;
+  const pendente =
+    cadastrar.isPending || atualizar.isPending || salvarPerfis.isPending || salvarOverrides.isPending;
 
-  return (
-    <form onSubmit={aoEnviar} className="space-y-5">
+  const abaDados = (
+    <div className="space-y-5">
       {modo === 'editar' && detalhe.isFetching ? (
         <div className="text-sm text-gray-500">Carregando dados…</div>
       ) : null}
@@ -230,12 +310,93 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
           valor={valores.endereco}
           aoMudar={(e) => set('endereco', e)}
           desabilitado={pendente}
+          mostrarPontoReferencia={false}
         />
       </section>
+    </div>
+  );
 
-      <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-        Os perfis e permissões deste usuário serão configurados em uma seção dedicada (próxima entrega).
-      </p>
+  const perfisAtivos = (perfisDisponiveis.data ?? []).filter((p) => p.ativo);
+  const carregandoHerdadas = perfisCompletos.some((q) => q.isLoading);
+
+  const abaPermissoes = (
+    <div className="space-y-6">
+      <section>
+        <h3 className="mb-2 text-sm font-semibold text-gray-900">Perfis</h3>
+        <p className="mb-3 text-xs text-gray-500">
+          Selecione um ou mais perfis. As permissões herdadas aparecem marcadas e bloqueadas na matriz abaixo.
+        </p>
+        {perfisDisponiveis.isLoading ? (
+          <p className="text-sm text-gray-500">Carregando perfis...</p>
+        ) : perfisAtivos.length === 0 ? (
+          <p className="text-sm text-gray-500">Nenhum perfil cadastrado. Crie em "Cadastros → Perfis".</p>
+        ) : (
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {perfisAtivos.map((p) => {
+              const selecionado = perfilIdsSelecionados.includes(p.id);
+              return (
+                <label
+                  key={p.id}
+                  className={cn(
+                    'flex cursor-pointer items-start gap-3 rounded-md border px-3 py-2 transition-colors',
+                    selecionado ? 'border-primary-500 bg-primary-50' : 'border-gray-200 hover:bg-gray-50',
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selecionado}
+                    onChange={() => alternarPerfil(p.id)}
+                    disabled={pendente}
+                    className="mt-1"
+                  />
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-gray-900">{p.nome}</div>
+                    {p.descricao ? (
+                      <div className="text-xs text-gray-600">{p.descricao}</div>
+                    ) : null}
+                    <div className="text-xs text-gray-400">{p.modulos} módulo(s)</div>
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section>
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-900">Permissões resolvidas</h3>
+          {carregandoHerdadas ? (
+            <span className="text-xs text-gray-500">Recalculando herdadas…</span>
+          ) : null}
+        </div>
+        <p className="mb-3 text-xs text-gray-500">
+          Ações com fundo cinza são <strong>herdadas dos perfis</strong> selecionados (não podem ser
+          desmarcadas). Marque ações adicionais como override individual.
+        </p>
+        <MatrizPermissoes
+          herdadas={herdadas}
+          editaveis={overrides}
+          aoMudarEditaveis={setOverrides}
+          desabilitado={pendente}
+        />
+      </section>
+    </div>
+  );
+
+  const abas: Aba[] = [
+    { id: 'dados', rotulo: 'Dados', conteudo: abaDados },
+    {
+      id: 'permissoes',
+      rotulo: 'Permissões',
+      conteudo: abaPermissoes,
+      badge: perfilIdsSelecionados.length || undefined,
+    },
+  ];
+
+  return (
+    <form onSubmit={aoEnviar} className="space-y-5">
+      <Tabs abas={abas} inicial="dados" />
 
       {erroGlobal ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

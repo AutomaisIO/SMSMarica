@@ -4,43 +4,55 @@ import { ACOES, MODULOS } from '@/features/perfis/lib/acoes';
 import { cn } from '@/shared/lib/cn';
 
 type Props = {
-  matriz: MatrizEdicao;
-  /** Permissões herdadas que aparecem marcadas + desabilitadas (não podem ser desmarcadas). */
+  /** Ações herdadas (de perfis); aparecem marcadas e desabilitadas. */
   herdadas?: MatrizEdicao;
-  aoMudar: (proxima: MatrizEdicao) => void;
+  /** Ações editáveis (overrides individuais, ou permissões diretas do perfil). */
+  editaveis: MatrizEdicao;
+  aoMudarEditaveis: (proxima: MatrizEdicao) => void;
   desabilitado?: boolean;
 };
 
-export function MatrizPermissoes({ matriz, herdadas = {}, aoMudar, desabilitado }: Props) {
-  function temAcao(modulo: ModuloPermissao, acao: AcaoPermissao): boolean {
-    return (matriz[modulo] ?? []).includes(acao);
-  }
-
+export function MatrizPermissoes({
+  herdadas = {},
+  editaveis,
+  aoMudarEditaveis,
+  desabilitado,
+}: Props) {
   function herdou(modulo: ModuloPermissao, acao: AcaoPermissao): boolean {
     return (herdadas[modulo] ?? []).includes(acao);
   }
 
-  function alternar(modulo: ModuloPermissao, acao: AcaoPermissao) {
-    if (desabilitado || herdou(modulo, acao)) return;
-    const atuais = new Set(matriz[modulo] ?? []);
-    if (atuais.has(acao)) atuais.delete(acao);
-    else atuais.add(acao);
-    aoMudar({ ...matriz, [modulo]: Array.from(atuais) });
+  function temEditavel(modulo: ModuloPermissao, acao: AcaoPermissao): boolean {
+    return (editaveis[modulo] ?? []).includes(acao);
   }
 
-  function todasAcoes(modulo: ModuloPermissao): boolean {
-    return ACOES.every((a) => temAcao(modulo, a.id));
+  function marcado(modulo: ModuloPermissao, acao: AcaoPermissao): boolean {
+    return herdou(modulo, acao) || temEditavel(modulo, acao);
+  }
+
+  function alternar(modulo: ModuloPermissao, acao: AcaoPermissao) {
+    if (desabilitado || herdou(modulo, acao)) return;
+    const atuais = new Set(editaveis[modulo] ?? []);
+    if (atuais.has(acao)) atuais.delete(acao);
+    else atuais.add(acao);
+    aoMudarEditaveis({ ...editaveis, [modulo]: Array.from(atuais) });
+  }
+
+  function todasMarcadas(modulo: ModuloPermissao): boolean {
+    return ACOES.every((a) => marcado(modulo, a.id));
   }
 
   function alternarLinha(modulo: ModuloPermissao) {
     if (desabilitado) return;
-    // Marca tudo que não é herdado; se já está tudo marcado, desmarca o não-herdado.
-    const todasMarcadas = todasAcoes(modulo);
-    const proxima = new Set(herdadas[modulo] ?? []); // sempre mantém herdadas
-    if (!todasMarcadas) {
-      for (const a of ACOES) proxima.add(a.id);
+    const todas = todasMarcadas(modulo);
+    const proxima = new Set<AcaoPermissao>(editaveis[modulo] ?? []);
+    if (todas) {
+      // Desmarca apenas as não-herdadas.
+      for (const a of ACOES) if (!herdou(modulo, a.id)) proxima.delete(a.id);
+    } else {
+      for (const a of ACOES) if (!herdou(modulo, a.id)) proxima.add(a.id);
     }
-    aoMudar({ ...matriz, [modulo]: Array.from(proxima) });
+    aoMudarEditaveis({ ...editaveis, [modulo]: Array.from(proxima) });
   }
 
   return (
@@ -62,16 +74,15 @@ export function MatrizPermissoes({ matriz, herdadas = {}, aoMudar, desabilitado 
             <tr key={m.id}>
               <td className="px-3 py-2 font-medium text-gray-900">{m.rotulo}</td>
               {ACOES.map((a) => {
-                const marcado = temAcao(m.id, a.id);
                 const fixo = herdou(m.id, a.id);
                 return (
                   <td key={a.id} className="px-3 py-2 text-center">
                     <input
                       type="checkbox"
-                      checked={marcado || fixo}
+                      checked={marcado(m.id, a.id)}
                       disabled={desabilitado || fixo}
                       onChange={() => alternar(m.id, a.id)}
-                      title={fixo ? 'Herdada do perfil — não pode ser desmarcada.' : undefined}
+                      title={fixo ? 'Herdada de um perfil — não pode ser desmarcada.' : undefined}
                       className={cn(fixo && 'opacity-70')}
                     />
                   </td>
@@ -80,7 +91,7 @@ export function MatrizPermissoes({ matriz, herdadas = {}, aoMudar, desabilitado 
               <td className="px-3 py-2 text-center">
                 <input
                   type="checkbox"
-                  checked={todasAcoes(m.id)}
+                  checked={todasMarcadas(m.id)}
                   disabled={desabilitado}
                   onChange={() => alternarLinha(m.id)}
                 />

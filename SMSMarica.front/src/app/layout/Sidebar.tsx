@@ -65,7 +65,7 @@ const SECOES: SecaoMenu[] = [
   },
   {
     id: 'operacao',
-    titulo: 'Operação',
+    titulo: 'Transporte Pacientes',
     icone: Wrench,
     itens: [
       { rotulo: 'Tratamentos', to: '/app/tratamentos', icone: CalendarClock, modulo: 'Tratamentos' },
@@ -76,20 +76,19 @@ const SECOES: SecaoMenu[] = [
   },
   {
     id: 'imagens',
-    titulo: 'Imagens',
+    titulo: 'Exame de Imagem',
     icone: ImageIcon,
     itens: [{ rotulo: 'PACS', to: '/app/pacs', icone: ScanLine, modulo: 'Pacs' }],
   },
 ];
 
-const CHAVE_COLAPSADAS = 'smsmarica.menu.colapsadas';
+const CHAVE_SECAO_ABERTA = 'smsmarica.menu.secaoAberta';
 
-function lerColapsadas(): Record<string, boolean> {
+function lerSecaoAberta(): string | null {
   try {
-    const v = localStorage.getItem(CHAVE_COLAPSADAS);
-    return v ? (JSON.parse(v) as Record<string, boolean>) : {};
+    return localStorage.getItem(CHAVE_SECAO_ABERTA);
   } catch {
-    return {};
+    return null;
   }
 }
 
@@ -106,17 +105,25 @@ export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseM
   const permissoes = useAuth((s) => s.permissoes);
   const sair = useAuth((s) => s.sair);
 
-  const [colapsadas, setColapsadas] = useState<Record<string, boolean>>(() => lerColapsadas());
+  const [secaoAberta, setSecaoAberta] = useState<string | null>(() => {
+    const armazenado = lerSecaoAberta();
+    if (armazenado) return armazenado;
+    const path = typeof window !== 'undefined' ? window.location.pathname : '';
+    return (
+      SECOES.find((s) => s.titulo && s.itens.some((i) => path.startsWith(i.to)))?.id ?? null
+    );
+  });
   useEffect(() => {
     try {
-      localStorage.setItem(CHAVE_COLAPSADAS, JSON.stringify(colapsadas));
+      if (secaoAberta) localStorage.setItem(CHAVE_SECAO_ABERTA, secaoAberta);
+      else localStorage.removeItem(CHAVE_SECAO_ABERTA);
     } catch {
       // ignore
     }
-  }, [colapsadas]);
+  }, [secaoAberta]);
 
   function alternarSecao(id: string) {
-    setColapsadas((s) => ({ ...s, [id]: !s[id] }));
+    setSecaoAberta((atual) => (atual === id ? null : id));
   }
 
   function temAcesso(item: ItemMenu): boolean {
@@ -182,7 +189,7 @@ export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseM
 
       <nav className={cn('flex-1 space-y-3 py-4', isCollapsed && !mobile ? 'px-2' : 'px-3')}>
         {secoesVisiveis.map((secao) => {
-          const colapsado = !!colapsadas[secao.id];
+          const colapsado = secao.titulo ? secaoAberta !== secao.id : false;
           const mostrarTitulo = secao.titulo && (!isCollapsed || mobile);
 
           return (

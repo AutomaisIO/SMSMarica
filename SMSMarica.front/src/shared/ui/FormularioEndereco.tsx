@@ -28,6 +28,8 @@ type Props = {
   prefixoIds?: string;
   erros?: Record<string, string | undefined>;
   desabilitado?: boolean;
+  /** Permite ocultar o campo "Ponto de referência" em formulários onde ele não faz sentido. */
+  mostrarPontoReferencia?: boolean;
 };
 
 /**
@@ -40,6 +42,7 @@ export function FormularioEndereco({
   prefixoIds = 'endereco',
   erros = {},
   desabilitado,
+  mostrarPontoReferencia = true,
 }: Props) {
   const [buscando, setBuscando] = useState(false);
   const [erroCep, setErroCep] = useState<string | null>(null);
@@ -194,19 +197,21 @@ export function FormularioEndereco({
         />
       </Campo>
 
-      <Campo
-        label="Ponto de referência"
-        htmlFor={`${prefixoIds}-ref`}
-        erro={erros['pontoReferencia']}
-        className="md:col-span-6"
-      >
-        <Input
-          id={`${prefixoIds}-ref`}
-          value={valor.pontoReferencia}
-          onChange={(e) => setCampo('pontoReferencia', e.target.value)}
-          disabled={desabilitado}
-        />
-      </Campo>
+      {mostrarPontoReferencia ? (
+        <Campo
+          label="Ponto de referência"
+          htmlFor={`${prefixoIds}-ref`}
+          erro={erros['pontoReferencia']}
+          className="md:col-span-6"
+        >
+          <Input
+            id={`${prefixoIds}-ref`}
+            value={valor.pontoReferencia}
+            onChange={(e) => setCampo('pontoReferencia', e.target.value)}
+            disabled={desabilitado}
+          />
+        </Campo>
+      ) : null}
     </div>
   );
 }
