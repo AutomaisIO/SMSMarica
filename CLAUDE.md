@@ -19,6 +19,7 @@ Always read the canonical documentation in [`docs/`](./docs/) before making arch
 | [`docs/database.md`](./docs/database.md) | Schema `smsmarica`, naming, migrations |
 | [`docs/conventions.md`](./docs/conventions.md) | Git, commits, estilo por stack |
 | [`docs/roadmap.md`](./docs/roadmap.md) | Marcos M1..M7 e dependências |
+| [`docs/pacs.md`](./docs/pacs.md) | Servidor de imagens (dcm4chee-arc), DICOMweb, integração com `features/pacs` |
 | [`docs/adr/`](./docs/adr/) | Decisões arquiteturais registradas (0001 schema, 0003 Android-only, 0004 três projetos) |
 
 Plano de implementação: `C:\Users\berna\.claude\plans\deep-gathering-kahn.md`.

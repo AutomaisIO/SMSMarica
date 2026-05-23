@@ -97,7 +97,22 @@
       "PowerShell(wsl -e bash -c \"command -v sshpass; command -v ssh; lsb_release -a 2>/dev/null | head -4\" 2>&1)",
       "PowerShell(ssh-keyscan *)",
       "PowerShell(\"alive\")",
-      "PowerShell(Set-Content *)"
+      "PowerShell(Set-Content *)",
+      "PowerShell(curl.exe -i -s \"http://pacs.marica.automais.cloud:8080/dcm4chee-arc/aets/DCM4CHEE/rs/studies/1.2.826.0.1.3680043.2.876.21039.1.1107.20240725150140.0.170/series\" -H \"Accept: application/dicom+json\" --max-time 15)",
+      "PowerShell(curl.exe -i -s \"http://pacs.marica.automais.cloud:8080/dcm4chee-arc/aets/DCM4CHEE/rs/studies/1.2.826.0.1.3680043.2.876.21039.1.1107.20240725150140.0.170/series/1.2.826.0.1.3680043.2.876.21039.1.8.0.20240725150143.1.535/instances\" -H \"Accept: application/dicom+json\" --max-time 15)",
+      "PowerShell(curl.exe -i -s \"http://pacs.marica.automais.cloud:8080/dcm4chee-arc/aets/DCM4CHEE/rs/studies/1.2.826.0.1.3680043.2.876.21039.1.1107.20240725150140.0.170/series/1.2.826.0.1.3680043.2.876.21039.1.8.0.20240725150143.1.535/metadata\" -H \"Accept: application/dicom+json\" --max-time 30)",
+      "PowerShell(ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no root@pacs.marica.automais.cloud \"mount | grep -i s3; echo '---'; df -h /mnt/s3images 2>&1; echo '---'; ls /mnt/s3images/2024/08/12/F6A74009/1DBF8715/ 2>&1 | head -20; echo '---'; ls -la /mnt/s3images/2024/08/12/F6A74009/1DBF8715/D3EBD741 2>&1\")",
+      "PowerShell(Test-Path *)",
+      "PowerShell(Get-Content *)",
+      "PowerShell(ssh -i \"$env:USERPROFILE\\\\.ssh\\\\id_ed25519_aeromais\" -o ConnectTimeout=10 -o BatchMode=yes -o StrictHostKeyChecking=no root@pacs.marica.automais.cloud \"echo CONECTOU\" 2>&1)",
+      "PowerShell(Set-Conten)",
+      "PowerShell(& \"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -ssh -batch -pw \"#030957#Be\" root@pacs.marica.automais.cloud \"echo OK; mount | grep -i s3; echo '---DF---'; df -h /mnt/s3images; echo '---ROOT---'; ls /mnt/s3images/ 2>&1; echo '---2024---'; ls /mnt/s3images/2024/ 2>&1 | head -20; echo '---TARGET-DIR---'; ls /mnt/s3images/2024/08/12/F6A74009/1DBF8715/ 2>&1; echo '---TARGET-FILE---'; ls -la /mnt/s3images/2024/08/12/F6A74009/1DBF8715/D3EBD741 2>&1\")",
+      "PowerShell(& \"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -ssh -batch -pw \"#030957#Be\" -hostkey \"SHA256:qma4J9CyGhuOHPoGwXtspfXncTN+nhCFDPmSh4RvXCo\" root@pacs.marica.automais.cloud \"echo OK; echo '---MOUNT---'; mount | grep -i s3; echo '---DF---'; df -h /mnt/s3images; echo '---ROOT---'; ls /mnt/s3images/ 2>&1; echo '---2024---'; ls /mnt/s3images/2024/ 2>&1 | head -20; echo '---TARGET-DIR---'; ls /mnt/s3images/2024/08/12/F6A74009/1DBF8715/ 2>&1; echo '---TARGET-FILE---'; ls -la /mnt/s3images/2024/08/12/F6A74009/1DBF8715/D3EBD741 2>&1\")",
+      "PowerShell(& \"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -ssh -batch -pw \"#030957#Be\" -hostkey \"SHA256:qma4J9CyGhuOHPoGwXtspfXncTN+nhCFDPmSh4RvXCo\" root@pacs.marica.automais.cloud \"echo '---CRED-FULL---'; cat /root/.passwd-s3fs; echo; echo '---PY---'; which python3 python; python3 -c 'import boto3; print\\(boto3.__version__\\)' 2>&1; echo '---SAMPLE-PATHS---'; sudo -u postgres psql dcmdb -tAc \\\\\"\"SELECT storage_path FROM location WHERE storage_id='fs1' AND storage_path LIKE '2024/%' LIMIT 5;\\\\\"\"; echo '---SAMPLE-PATHS-2025---'; sudo -u postgres psql dcmdb -tAc \\\\\"\"SELECT storage_path FROM location WHERE storage_id='fs1' AND storage_path LIKE '2025/%' LIMIT 3;\\\\\"\"; echo '---LS-2025-PROOF---'; ls /mnt/s3images/2025/ | head -5; echo '---CACHE-CHECK---'; ls /mnt/s3images/2024 2>&1; cat /etc/fstab | grep -i s3 2>&1\")",
+      "PowerShell(& \"C:\\\\Program Files\\\\PuTTY\\\\pscp.exe\" -batch -pw \"#030957#Be\" -hostkey \"SHA256:qma4J9CyGhuOHPoGwXtspfXncTN+nhCFDPmSh4RvXCo\" \"C:\\\\Users\\\\berna\\\\AppData\\\\Local\\\\Temp\\\\check_s3.py\" root@pacs.marica.automais.cloud:/tmp/check_s3.py; & \"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -ssh -batch -pw \"#030957#Be\" -hostkey \"SHA256:qma4J9CyGhuOHPoGwXtspfXncTN+nhCFDPmSh4RvXCo\" root@pacs.marica.automais.cloud \"python3 /tmp/check_s3.py; rm /tmp/check_s3.py\")",
+      "Bash(cmd *)",
+      "Bash('/c/Program Files/PuTTY/plink.exe' -ssh -batch -pw '#030957#Be' -hostkey SHA256:qma4J9CyGhuOHPoGwXtspfXncTN+nhCFDPmSh4RvXCo root@pacs.marica.automais.cloud 'pgrep -f purge_2024.sh > /dev/null; test $? -ne 0')",
+      "Bash('/c/Program Files/PuTTY/plink.exe' -ssh -batch -pw '#030957#Be' -hostkey SHA256:qma4J9CyGhuOHPoGwXtspfXncTN+nhCFDPmSh4RvXCo root@pacs.marica.automais.cloud 'tail -40 /tmp/purge_2024.log')"
     ]
   }
 }
