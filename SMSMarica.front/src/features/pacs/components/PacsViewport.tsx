@@ -43,6 +43,7 @@ export function PacsViewport({ imageIds, carregando }: Props) {
   const [pronto, setPronto] = useState(false);
   const [ferramentaAtiva, setFerramentaAtiva] = useState<Ferramenta>('WindowLevel');
   const [erro, setErro] = useState<string | null>(null);
+  const [montandoStack, setMontandoStack] = useState(false);
 
   useEffect(() => {
     let cancelado = false;

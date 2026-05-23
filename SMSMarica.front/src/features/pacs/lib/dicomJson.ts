@@ -23,6 +23,8 @@ export const Tag = {
   NumberOfSeriesRelatedInstances: '00201209',
   PixelSpacing: '00280030',
   ImagerPixelSpacing: '00181164',
+  ImageOrientationPatient: '00200037',
+  ImagePositionPatient: '00200032',
 } as const;
 
 /** Primeiro valor textual de uma tag, ou string vazia. */
@@ -63,17 +65,33 @@ export function formatarIdadeDicom(ageStr: string): string {
 }
 
 /**
- * Equipamentos de mamografia (Oehm und Rehbein etc.) por vezes só preenchem
- * `ImagerPixelSpacing` (00181164) e omitem `PixelSpacing` (00280030). Sem o
- * último o Cornerstone cai pra pixels nas medidas. Em MG digital a placa
- * está colada na mama, então os dois são equivalentes — promovemos o detector
- * para PixelSpacing.
+ * Faz o Cornerstone3D mostrar a régua em mm para imagens 2D (MG, DX, CR, MMG).
+ *
+ * Dois truques:
+ *  1. Equipamentos como Oehm und Rehbein às vezes só preenchem
+ *     `ImagerPixelSpacing` (00181164) sem `PixelSpacing` (00280030). Para MG
+ *     digital os dois são equivalentes (placa colada na mama).
+ *  2. O provider do Cornerstone marca `usingDefaultValues=true` se faltarem
+ *     `ImageOrientationPatient` (00200037) ou `ImagePositionPatient` (00200032),
+ *     e o `StackViewport` aí seta `hasPixelSpacing=false` → régua em px.
+ *     Essas tags são para corte tomográfico (CT/MR); radiografia/MG não traz.
+ *     Injetamos valores neutros (orientação padrão, origem no canto) para
+ *     destravar a régua em mm sem afetar nada mais (não há MPR no Stack).
  */
 export function garantirPixelSpacing(ds: DatasetDicom): DatasetDicom {
   const temPS = (ds[Tag.PixelSpacing]?.Value?.length ?? 0) > 0;
   const ips = ds[Tag.ImagerPixelSpacing];
   if (!temPS && (ips?.Value?.length ?? 0) > 0) {
     ds[Tag.PixelSpacing] = { vr: 'DS', Value: ips!.Value };
+  }
+  const aindaTemPS = (ds[Tag.PixelSpacing]?.Value?.length ?? 0) > 0;
+  if (aindaTemPS) {
+    if (!ds[Tag.ImageOrientationPatient]?.Value?.length) {
+      ds[Tag.ImageOrientationPatient] = { vr: 'DS', Value: ['1', '0', '0', '0', '1', '0'] };
+    }
+    if (!ds[Tag.ImagePositionPatient]?.Value?.length) {
+      ds[Tag.ImagePositionPatient] = { vr: 'DS', Value: ['0', '0', '0'] };
+    }
   }
   return ds;
 }
