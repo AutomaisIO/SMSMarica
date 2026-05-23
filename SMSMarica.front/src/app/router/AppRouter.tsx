@@ -11,6 +11,7 @@ import { MotoristasPage } from '@/features/motoristas/pages/MotoristasPage';
 import { PacienteDetalhePage } from '@/features/pacientes/pages/PacienteDetalhePage';
 import { PacienteFormPage } from '@/features/pacientes/pages/PacienteFormPage';
 import { PacientesPage } from '@/features/pacientes/pages/PacientesPage';
+import { PacsListagemPage } from '@/features/pacs/pages/PacsListagemPage';
 import { PacsViewerPage } from '@/features/pacs/pages/PacsViewerPage';
 import { PerfisPage } from '@/features/perfis/pages/PerfisPage';
 import { RastreamentoPage } from '@/features/rastreamento/pages/RastreamentoPage';
@@ -81,7 +82,7 @@ export function AppRouter() {
           <Route path="translados/:id/editar" element={<TransladoFormPage />} />
           <Route path="rastreamento" element={<RastreamentoPage />} />
           <Route path="avaliacoes" element={<AvaliacoesPage />} />
-          <Route path="pacs" element={<PacsViewerPage />} />
+          <Route path="pacs" element={<PacsListagemPage />} />
         </Route>
       </Route>
 

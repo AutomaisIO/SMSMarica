@@ -85,7 +85,6 @@ const SECOES: SecaoMenu[] = [
         to: '/app/pacs',
         icone: ScanLine,
         modulo: 'Pacs',
-        state: { abrirBusca: true },
       },
     ],
   },

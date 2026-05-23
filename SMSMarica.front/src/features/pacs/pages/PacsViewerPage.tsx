@@ -52,6 +52,19 @@ export function PacsViewerPage({ janela = false }: Props = {}) {
     return () => abortRef.current?.abort();
   }, []);
 
+  // Em modo janela popup, força confirmação nativa do browser antes do
+  // fechamento — protege contra clique acidental no "X" enquanto está
+  // analisando. O texto exibido é o padrão do browser (não dá pra customizar).
+  useEffect(() => {
+    if (!janela) return;
+    function aoFechar(e: BeforeUnloadEvent) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+    window.addEventListener('beforeunload', aoFechar);
+    return () => window.removeEventListener('beforeunload', aoFechar);
+  }, [janela]);
+
   // Abre o modal automaticamente quando o usuário clica em "Abrir Exame" no
   // menu (passa state.abrirBusca = true). Limpa o state pra refresh não repetir.
   useEffect(() => {
