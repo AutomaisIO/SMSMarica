@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using SMSMarica.Api.Auth;
 using SMSMarica.Core.Avaliacoes;
 using SMSMarica.Core.Avaliacoes.Dtos;
+using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
 
@@ -11,17 +13,20 @@ public sealed class AvaliacoesController(IAvaliacoesService service) : Controlle
     private readonly IAvaliacoesService _service = service;
 
     [HttpGet]
+    [RequerPermissao(ModuloPermissao.Avaliacoes, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<AvaliacaoListItemDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<AvaliacaoListItemDto>> Listar(CancellationToken cancellationToken) =>
         await _service.ListarAsync(cancellationToken);
 
     [HttpGet("{id:guid}")]
+    [RequerPermissao(ModuloPermissao.Avaliacoes, AcoesPermissao.Consulta)]
     [ProducesResponseType<AvaliacaoDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<AvaliacaoDto> ObterPorId(Guid id, CancellationToken cancellationToken) =>
         await _service.ObterPorIdAsync(id, cancellationToken);
 
     [HttpPost]
+    [RequerPermissao(ModuloPermissao.Avaliacoes, AcoesPermissao.Inclusao)]
     [ProducesResponseType<Guid>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -35,6 +40,7 @@ public sealed class AvaliacoesController(IAvaliacoesService service) : Controlle
     }
 
     [HttpPut("{id:guid}")]
+    [RequerPermissao(ModuloPermissao.Avaliacoes, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Atualizar(
@@ -47,6 +53,7 @@ public sealed class AvaliacoesController(IAvaliacoesService service) : Controlle
     }
 
     [HttpDelete("{id:guid}")]
+    [RequerPermissao(ModuloPermissao.Avaliacoes, AcoesPermissao.Exclusao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Deletar(Guid id, CancellationToken cancellationToken)

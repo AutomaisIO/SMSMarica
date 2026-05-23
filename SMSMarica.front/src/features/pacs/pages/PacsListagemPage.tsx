@@ -1,12 +1,14 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Eye, FileText, Search } from 'lucide-react';
+import { Eye, FileText, Loader2, Search, Trash2 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
-import { useBuscarEstudos } from '@/features/pacs/api/queries';
+import { useBuscarEstudos, useExcluirEstudo } from '@/features/pacs/api/queries';
+import { formatarHoraDicom } from '@/features/pacs/lib/dicomJson';
 import { abrirJanelaSolta } from '@/features/pacs/lib/janela';
 import type { Estudo, FiltroBusca, TipoBuscaNome } from '@/features/pacs/types';
 
@@ -36,7 +38,13 @@ export function PacsListagemPage() {
 
   const LIMITES_DISPONIVEIS = [5, 10, 50, 100] as const;
 
+  const podeAbrir = usePermissao('Pacs', 'Consulta');
+  const podeExcluir = usePermissao('Pacs', 'Exclusao');
+
   const busca = useBuscarEstudos();
+  const exclusao = useExcluirEstudo();
+  const [excluindoUid, setExcluindoUid] = useState<string | null>(null);
+  const [erroExclusao, setErroExclusao] = useState<string | null>(null);
 
   // Carga inicial: exames de hoje.
   useEffect(() => {
@@ -69,6 +77,28 @@ export function PacsListagemPage() {
     }
   }
 
+  function excluirExame(estudo: Estudo) {
+    const nome = estudo.patientName || 'sem nome';
+    const dataHora = [
+      estudo.studyDateFormatado || estudo.studyDate,
+      formatarHoraDicom(estudo.studyTime),
+    ]
+      .filter(Boolean)
+      .join(' ');
+    const confirmou = window.confirm(
+      `Excluir definitivamente o exame de "${nome}"${dataHora ? ` (${dataHora})` : ''}?\n` +
+        'Esta ação não pode ser desfeita.',
+    );
+    if (!confirmou) return;
+    setErroExclusao(null);
+    setExcluindoUid(estudo.studyInstanceUID);
+    exclusao.mutate(estudo.studyInstanceUID, {
+      onSuccess: () => busca.mutate(filtro),
+      onError: (e) => setErroExclusao(extrairMensagemDeErro(e)),
+      onSettled: () => setExcluindoUid(null),
+    });
+  }
+
   const exames: ExameRow[] = (busca.data ?? []).map((e) => ({
     ...e,
     // TODO: popular com o laudoId quando o módulo Laudo estiver pronto
@@ -93,8 +123,16 @@ export function PacsListagemPage() {
     },
     {
       chave: 'data',
-      cabecalho: 'Data',
-      render: (e) => <span className="text-gray-700">{e.studyDateFormatado || '—'}</span>,
+      cabecalho: 'Data / Hora',
+      render: (e) => {
+        const hora = formatarHoraDicom(e.studyTime);
+        return (
+          <span className="text-gray-700">
+            {e.studyDateFormatado || '—'}
+            {hora ? <span className="text-gray-500"> · {hora}</span> : null}
+          </span>
+        );
+      },
     },
     {
       chave: 'modalidade',
@@ -114,30 +152,51 @@ export function PacsListagemPage() {
       chave: 'acoes',
       cabecalho: 'Ações',
       className: 'text-right',
-      render: (e) => (
-        <div className="flex items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => abrirViewer(e)}
-            title="Abrir visualizador em janela separada"
-            className="inline-flex items-center gap-1 rounded-md border border-primary-300 bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100"
-          >
-            <Eye className="h-3.5 w-3.5" />
-            Visualizar
-          </button>
-          {e.laudoId ? (
-            <button
-              type="button"
-              onClick={() => abrirLaudoPdf(e.laudoId!)}
-              title="Abrir laudo em PDF em janela separada"
-              className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
-            >
-              <FileText className="h-3.5 w-3.5" />
-              PDF
-            </button>
-          ) : null}
-        </div>
-      ),
+      render: (e) => {
+        const excluindoEste = excluindoUid === e.studyInstanceUID;
+        return (
+          <div className="flex items-center justify-end gap-2">
+            {podeAbrir ? (
+              <button
+                type="button"
+                onClick={() => abrirViewer(e)}
+                title="Abrir visualizador em janela separada"
+                className="inline-flex items-center gap-1 rounded-md border border-primary-300 bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100"
+              >
+                <Eye className="h-3.5 w-3.5" />
+                Visualizar
+              </button>
+            ) : null}
+            {e.laudoId ? (
+              <button
+                type="button"
+                onClick={() => abrirLaudoPdf(e.laudoId!)}
+                title="Abrir laudo em PDF em janela separada"
+                className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+              >
+                <FileText className="h-3.5 w-3.5" />
+                PDF
+              </button>
+            ) : null}
+            {podeExcluir ? (
+              <button
+                type="button"
+                onClick={() => excluirExame(e)}
+                disabled={excluindoEste}
+                title="Excluir exame do PACS"
+                className="inline-flex items-center gap-1 rounded-md border border-red-300 bg-white px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-wait disabled:opacity-60"
+              >
+                {excluindoEste ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="h-3.5 w-3.5" />
+                )}
+                Excluir
+              </button>
+            ) : null}
+          </div>
+        );
+      },
     },
   ];
 
@@ -212,6 +271,12 @@ export function PacsListagemPage() {
       {busca.isError ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {extrairMensagemDeErro(busca.error)}
+        </div>
+      ) : null}
+
+      {erroExclusao ? (
+        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          Falha ao excluir o exame: {erroExclusao}
         </div>
       ) : null}
 

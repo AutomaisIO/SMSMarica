@@ -1,6 +1,6 @@
 import type { AcaoPermissao, ModuloPermissao } from '@/shared/auth/authStore';
 import type { MatrizEdicao } from '@/features/perfis/types';
-import { ACOES, MODULOS } from '@/features/perfis/lib/acoes';
+import { ACOES, APELIDOS_ACOES_POR_MODULO, MODULOS } from '@/features/perfis/lib/acoes';
 import { cn } from '@/shared/lib/cn';
 
 type Props = {
@@ -70,34 +70,53 @@ export function MatrizPermissoes({
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
-          {MODULOS.map((m) => (
-            <tr key={m.id}>
-              <td className="px-3 py-2 font-medium text-gray-900">{m.rotulo}</td>
-              {ACOES.map((a) => {
-                const fixo = herdou(m.id, a.id);
-                return (
-                  <td key={a.id} className="px-3 py-2 text-center">
-                    <input
-                      type="checkbox"
-                      checked={marcado(m.id, a.id)}
-                      disabled={desabilitado || fixo}
-                      onChange={() => alternar(m.id, a.id)}
-                      title={fixo ? 'Herdada de um perfil — não pode ser desmarcada.' : undefined}
-                      className={cn(fixo && 'opacity-70')}
-                    />
-                  </td>
-                );
-              })}
-              <td className="px-3 py-2 text-center">
-                <input
-                  type="checkbox"
-                  checked={todasMarcadas(m.id)}
-                  disabled={desabilitado}
-                  onChange={() => alternarLinha(m.id)}
-                />
-              </td>
-            </tr>
-          ))}
+          {MODULOS.map((m) => {
+            const apelidos = APELIDOS_ACOES_POR_MODULO[m.id];
+            const legenda = apelidos
+              ? ACOES.map((a) => apelidos[a.id] && `${a.rotulo} = ${apelidos[a.id]}`)
+                  .filter(Boolean)
+                  .join(' · ')
+              : '';
+            return (
+              <tr key={m.id}>
+                <td className="px-3 py-2 align-top font-medium text-gray-900">
+                  <div>{m.rotulo}</div>
+                  {legenda ? (
+                    <div className="mt-0.5 text-[11px] font-normal italic text-gray-500">
+                      {legenda}
+                    </div>
+                  ) : null}
+                </td>
+                {ACOES.map((a) => {
+                  const fixo = herdou(m.id, a.id);
+                  const apelido = apelidos?.[a.id];
+                  const titulo = fixo
+                    ? 'Herdada de um perfil — não pode ser desmarcada.'
+                    : apelido;
+                  return (
+                    <td key={a.id} className="px-3 py-2 text-center">
+                      <input
+                        type="checkbox"
+                        checked={marcado(m.id, a.id)}
+                        disabled={desabilitado || fixo}
+                        onChange={() => alternar(m.id, a.id)}
+                        title={titulo}
+                        className={cn(fixo && 'opacity-70')}
+                      />
+                    </td>
+                  );
+                })}
+                <td className="px-3 py-2 text-center">
+                  <input
+                    type="checkbox"
+                    checked={todasMarcadas(m.id)}
+                    disabled={desabilitado}
+                    onChange={() => alternarLinha(m.id)}
+                  />
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

@@ -57,6 +57,15 @@ export function formatarDataDicom(da: string): string {
   return `${da.slice(6, 8)}/${da.slice(4, 6)}/${da.slice(0, 4)}`;
 }
 
+/** HHMMSS[.ffffff] -> HH:mm. Strings curtas/inválidas viram ''. */
+export function formatarHoraDicom(tm: string): string {
+  if (!tm || tm.length < 4) return '';
+  const hh = tm.slice(0, 2);
+  const mm = tm.slice(2, 4);
+  if (!/^\d{2}$/.test(hh) || !/^\d{2}$/.test(mm)) return '';
+  return `${hh}:${mm}`;
+}
+
 /** Idade DICOM (ex.: "062Y") -> "62". */
 export function formatarIdadeDicom(ageStr: string): string {
   if (!ageStr) return '';

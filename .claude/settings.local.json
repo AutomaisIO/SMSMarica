@@ -118,7 +118,10 @@
       "Bash(grep -E \"\\\\.d\\\\.ts$\")",
       "Bash(curl *)",
       "Bash(python -c \"import sys, json; data = json.load\\(sys.stdin\\); print\\(f'count: {len\\(data\\)}'\\); print\\(json.dumps\\(data[0] if data else {}, indent=2\\)[:2000]\\)\")",
-      "Bash(python *)"
+      "Bash(python *)",
+      "Bash(echo \"EXIT=$?\")",
+      "Read(//c/Users/berna/.claude/skills/sincronizar-permissoes/**)",
+      "Read(//c/Users/berna/.claude/projects/C--Projetos-GIT-SMSMarica/skills/**)"
     ]
   }
 }

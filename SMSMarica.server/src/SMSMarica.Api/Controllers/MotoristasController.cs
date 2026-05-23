@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using SMSMarica.Api.Auth;
 using SMSMarica.Core.Motoristas;
 using SMSMarica.Core.Motoristas.Dtos;
+using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
 
@@ -11,17 +13,20 @@ public sealed class MotoristasController(IMotoristasService service) : Controlle
     private readonly IMotoristasService _service = service;
 
     [HttpGet]
+    [RequerPermissao(ModuloPermissao.Motoristas, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<MotoristaListItemDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<MotoristaListItemDto>> Listar(CancellationToken cancellationToken) =>
         await _service.ListarAsync(cancellationToken);
 
     [HttpGet("{id:guid}")]
+    [RequerPermissao(ModuloPermissao.Motoristas, AcoesPermissao.Consulta)]
     [ProducesResponseType<MotoristaDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<MotoristaDto> ObterPorId(Guid id, CancellationToken cancellationToken) =>
         await _service.ObterPorIdAsync(id, cancellationToken);
 
     [HttpPost]
+    [RequerPermissao(ModuloPermissao.Motoristas, AcoesPermissao.Inclusao)]
     [ProducesResponseType<Guid>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -34,6 +39,7 @@ public sealed class MotoristasController(IMotoristasService service) : Controlle
     }
 
     [HttpPost("promover")]
+    [RequerPermissao(ModuloPermissao.Motoristas, AcoesPermissao.Inclusao)]
     [ProducesResponseType<Guid>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -47,6 +53,7 @@ public sealed class MotoristasController(IMotoristasService service) : Controlle
     }
 
     [HttpPut("{id:guid}")]
+    [RequerPermissao(ModuloPermissao.Motoristas, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -60,6 +67,7 @@ public sealed class MotoristasController(IMotoristasService service) : Controlle
     }
 
     [HttpDelete("{id:guid}")]
+    [RequerPermissao(ModuloPermissao.Motoristas, AcoesPermissao.Exclusao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]

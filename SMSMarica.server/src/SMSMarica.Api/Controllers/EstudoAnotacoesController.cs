@@ -1,8 +1,10 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
+using SMSMarica.Api.Auth;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.EstudoAnotacoes;
 using SMSMarica.Core.EstudoAnotacoes.Dtos;
+using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
 
@@ -21,6 +23,7 @@ public sealed class EstudoAnotacoesController(IEstudoAnotacoesService service) :
     /// ainda não há nada salvo (para o front saber que precisa começar do zero).
     /// </summary>
     [HttpGet]
+    [RequerPermissao(ModuloPermissao.Pacs, AcoesPermissao.Consulta)]
     [ProducesResponseType<EstudoAnotacaoVersaoDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> ObterVersaoAtual(string studyInstanceUID, CancellationToken cancellationToken)
@@ -31,6 +34,7 @@ public sealed class EstudoAnotacoesController(IEstudoAnotacoesService service) :
 
     /// <summary>Lista o histórico completo do estudo (mais recente primeiro), sem payload.</summary>
     [HttpGet("historico")]
+    [RequerPermissao(ModuloPermissao.Pacs, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<EstudoAnotacaoVersaoResumoDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<EstudoAnotacaoVersaoResumoDto>> ListarHistorico(
         string studyInstanceUID,
@@ -39,6 +43,7 @@ public sealed class EstudoAnotacoesController(IEstudoAnotacoesService service) :
 
     /// <summary>Retorna uma versão específica com o payload completo (para restaurar/inspecionar).</summary>
     [HttpGet("versoes/{versao:int}")]
+    [RequerPermissao(ModuloPermissao.Pacs, AcoesPermissao.Consulta)]
     [ProducesResponseType<EstudoAnotacaoVersaoDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<EstudoAnotacaoVersaoDto> ObterVersao(
@@ -49,6 +54,7 @@ public sealed class EstudoAnotacoesController(IEstudoAnotacoesService service) :
 
     /// <summary>Cria uma nova versão (append-only) carimbada com o usuário autenticado.</summary>
     [HttpPost]
+    [RequerPermissao(ModuloPermissao.Pacs, AcoesPermissao.Edicao)]
     [ProducesResponseType<EstudoAnotacaoVersaoDto>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Salvar(

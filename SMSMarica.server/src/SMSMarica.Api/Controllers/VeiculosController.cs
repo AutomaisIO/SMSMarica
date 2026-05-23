@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using SMSMarica.Api.Auth;
 using SMSMarica.Core.Veiculos;
 using SMSMarica.Core.Veiculos.Dtos;
+using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
 
@@ -11,17 +13,20 @@ public sealed class VeiculosController(IVeiculosService service) : ControllerBas
     private readonly IVeiculosService _service = service;
 
     [HttpGet]
+    [RequerPermissao(ModuloPermissao.Veiculos, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<VeiculoListItemDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<VeiculoListItemDto>> Listar(CancellationToken cancellationToken) =>
         await _service.ListarAsync(cancellationToken);
 
     [HttpGet("{id:guid}")]
+    [RequerPermissao(ModuloPermissao.Veiculos, AcoesPermissao.Consulta)]
     [ProducesResponseType<VeiculoDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<VeiculoDto> ObterPorId(Guid id, CancellationToken cancellationToken) =>
         await _service.ObterPorIdAsync(id, cancellationToken);
 
     [HttpPost]
+    [RequerPermissao(ModuloPermissao.Veiculos, AcoesPermissao.Inclusao)]
     [ProducesResponseType<Guid>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -34,6 +39,7 @@ public sealed class VeiculosController(IVeiculosService service) : ControllerBas
     }
 
     [HttpPut("{id:guid}")]
+    [RequerPermissao(ModuloPermissao.Veiculos, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -47,6 +53,7 @@ public sealed class VeiculosController(IVeiculosService service) : ControllerBas
     }
 
     [HttpDelete("{id:guid}")]
+    [RequerPermissao(ModuloPermissao.Veiculos, AcoesPermissao.Exclusao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -57,6 +64,7 @@ public sealed class VeiculosController(IVeiculosService service) : ControllerBas
     }
 
     [HttpPut("{id:guid}/layout")]
+    [RequerPermissao(ModuloPermissao.Veiculos, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> AtualizarLayout(
@@ -69,6 +77,7 @@ public sealed class VeiculosController(IVeiculosService service) : ControllerBas
     }
 
     [HttpPost("{id:guid}/fileiras")]
+    [RequerPermissao(ModuloPermissao.Veiculos, AcoesPermissao.Edicao)]
     [ProducesResponseType<FileiraDto>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -82,6 +91,7 @@ public sealed class VeiculosController(IVeiculosService service) : ControllerBas
     }
 
     [HttpDelete("{id:guid}/fileiras/{fileiraId:guid}")]
+    [RequerPermissao(ModuloPermissao.Veiculos, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RemoverFileira(

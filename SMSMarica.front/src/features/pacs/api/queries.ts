@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { buscarEstudos, listarSeries } from '@/features/pacs/api/pacsApi';
+import { buscarEstudos, excluirEstudo, listarSeries } from '@/features/pacs/api/pacsApi';
 import type { FiltroBusca } from '@/features/pacs/types';
 
 export const pacsKeys = {
@@ -21,5 +21,12 @@ export function useSeriesDoEstudo(studyUID: string | null) {
       return listarSeries(studyUID);
     },
     enabled: Boolean(studyUID),
+  });
+}
+
+/** Exclui um estudo no PACS (reject + delete permanente no dcm4chee). */
+export function useExcluirEstudo() {
+  return useMutation({
+    mutationFn: (studyUID: string) => excluirEstudo(studyUID),
   });
 }

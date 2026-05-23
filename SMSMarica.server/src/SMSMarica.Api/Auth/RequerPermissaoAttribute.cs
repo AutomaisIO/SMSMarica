@@ -1,0 +1,67 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
+using SMSMarica.Core.Common.Excecoes;
+using SMSMarica.Core.Identidade;
+using SMSMarica.Data.Entities.Enums;
+
+namespace SMSMarica.Api.Auth;
+
+/// <summary>
+/// Bloqueia a requisição com 403 se o usuário autenticado não tiver a ação
+/// solicitada no módulo informado. As permissões são resolvidas via
+/// <see cref="IIdentidadeService.ObterPermissoesResolvidasAsync"/>, que já une
+/// herdadas (perfis) com overrides individuais.
+/// </summary>
+[AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, AllowMultiple = false)]
+public sealed class RequerPermissaoAttribute(ModuloPermissao modulo, AcoesPermissao acao)
+    : Attribute, IAsyncAuthorizationFilter
+{
+    private readonly ModuloPermissao _modulo = modulo;
+    private readonly AcoesPermissao _acao = acao;
+
+    public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
+    {
+        var user = context.HttpContext.User;
+        if (user?.Identity?.IsAuthenticated != true)
+        {
+            context.Result = new UnauthorizedResult();
+            return;
+        }
+
+        var sub = user.FindFirstValue("sub") ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(sub, out var usuarioId))
+        {
+            context.Result = new ForbidResult();
+            return;
+        }
+
+        var service = context.HttpContext.RequestServices.GetRequiredService<IIdentidadeService>();
+        try
+        {
+            var resolvidas = await service.ObterPermissoesResolvidasAsync(
+                usuarioId,
+                context.HttpContext.RequestAborted);
+
+            var entrada = resolvidas.Resolvidas.FirstOrDefault(p => p.Modulo == _modulo);
+            if (entrada is null || (entrada.Acoes & _acao) != _acao)
+            {
+                context.Result = new ObjectResult(new ProblemDetails
+                {
+                    Status = StatusCodes.Status403Forbidden,
+                    Title = "Permissão negada.",
+                    Detail = $"Sem permissão de '{_acao}' no módulo '{_modulo}'.",
+                    Type = "permissao.negada",
+                })
+                {
+                    StatusCode = StatusCodes.Status403Forbidden,
+                    ContentTypes = { "application/problem+json" },
+                };
+            }
+        }
+        catch (NaoEncontradoException)
+        {
+            context.Result = new ForbidResult();
+        }
+    }
+}

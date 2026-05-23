@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using SMSMarica.Api.Auth;
 using SMSMarica.Core.Tratamentos;
 using SMSMarica.Core.Tratamentos.Dtos;
+using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
 
@@ -11,6 +13,7 @@ public sealed class TratamentosController(ITratamentosService service) : Control
     private readonly ITratamentosService _service = service;
 
     [HttpGet]
+    [RequerPermissao(ModuloPermissao.Tratamentos, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<TratamentoListItemDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<TratamentoListItemDto>> Listar(
         [FromQuery] Guid? pacienteId,
@@ -23,11 +26,13 @@ public sealed class TratamentosController(ITratamentosService service) : Control
     }
 
     [HttpGet("tipos")]
+    [RequerPermissao(ModuloPermissao.Tratamentos, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<TipoTratamentoDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<TipoTratamentoDto>> ListarTipos(CancellationToken cancellationToken) =>
         await _service.ListarTiposAsync(cancellationToken);
 
     [HttpGet("{id:guid}")]
+    [RequerPermissao(ModuloPermissao.Tratamentos, AcoesPermissao.Consulta)]
     [ProducesResponseType<TratamentoDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<TratamentoDto> ObterPorId(Guid id, CancellationToken cancellationToken) =>
@@ -38,11 +43,13 @@ public sealed class TratamentosController(ITratamentosService service) : Control
     /// pela prévia do wizard de cadastro, antes de persistir.
     /// </summary>
     [HttpPost("periodicidade/expandir")]
+    [RequerPermissao(ModuloPermissao.Tratamentos, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<DateOnly>>(StatusCodes.Status200OK)]
     public ActionResult<IReadOnlyList<DateOnly>> Expandir([FromBody] ExpandirPeriodicidadeRequest request) =>
         Ok(_service.ExpandirPeriodicidade(request));
 
     [HttpPost]
+    [RequerPermissao(ModuloPermissao.Tratamentos, AcoesPermissao.Inclusao)]
     [ProducesResponseType<Guid>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -55,6 +62,7 @@ public sealed class TratamentosController(ITratamentosService service) : Control
     }
 
     [HttpPut("{id:guid}")]
+    [RequerPermissao(ModuloPermissao.Tratamentos, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -68,6 +76,7 @@ public sealed class TratamentosController(ITratamentosService service) : Control
     }
 
     [HttpDelete("{id:guid}")]
+    [RequerPermissao(ModuloPermissao.Tratamentos, AcoesPermissao.Exclusao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -80,6 +89,7 @@ public sealed class TratamentosController(ITratamentosService service) : Control
     // ---- Sessões
 
     [HttpPost("{id:guid}/sessoes")]
+    [RequerPermissao(ModuloPermissao.Tratamentos, AcoesPermissao.Edicao)]
     [ProducesResponseType<Guid>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> AdicionarSessao(
@@ -92,6 +102,7 @@ public sealed class TratamentosController(ITratamentosService service) : Control
     }
 
     [HttpPut("{id:guid}/sessoes/{sessaoId:guid}")]
+    [RequerPermissao(ModuloPermissao.Tratamentos, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -106,6 +117,7 @@ public sealed class TratamentosController(ITratamentosService service) : Control
     }
 
     [HttpDelete("{id:guid}/sessoes/{sessaoId:guid}")]
+    [RequerPermissao(ModuloPermissao.Tratamentos, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -123,6 +135,7 @@ public sealed class TratamentosController(ITratamentosService service) : Control
     /// acompanhante, horários, motorista e veículo de ida/volta.
     /// </summary>
     [HttpPost("{id:guid}/sessoes/{sessaoId:guid}/confirmar")]
+    [RequerPermissao(ModuloPermissao.Tratamentos, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]

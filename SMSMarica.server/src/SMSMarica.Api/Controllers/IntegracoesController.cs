@@ -7,6 +7,14 @@ namespace SMSMarica.Api.Controllers;
 /// <summary>
 /// Proxy para integrações externas (Hub do Desenvolvedor). Mantém o token
 /// no servidor e permite caching/auditoria centralizados.
+///
+/// <para>
+/// <b>Autorização:</b> exige JWT (filtro global), mas <b>não</b> um módulo de
+/// permissão específico. Esses endpoints são utilitários horizontais usados
+/// nos formulários de Pacientes, Médicos, Motoristas, Usuários, Unidades, etc.
+/// — amarrar a um único módulo bloquearia cenários legítimos. Se essa decisão
+/// precisar ser revisitada, criar permissão dedicada (ex.: <c>Integracoes</c>).
+/// </para>
 /// </summary>
 [ApiController]
 [Route("integracoes")]

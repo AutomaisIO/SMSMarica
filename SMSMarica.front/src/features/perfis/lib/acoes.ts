@@ -36,9 +36,11 @@ export function deMatriz(matriz: MatrizEdicao): PermissaoModuloApi[] {
   return out;
 }
 
-/** Lista oficial dos módulos, com rótulo humano. */
+/** Lista oficial dos módulos, com rótulo humano. Mantém a mesma ordem do
+ *  Sidebar para a edição de Perfis ficar previsível. */
 export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'Pacientes', rotulo: 'Pacientes' },
+  { id: 'Medicos', rotulo: 'Médicos' },
   { id: 'Unidades', rotulo: 'Unidades' },
   { id: 'Veiculos', rotulo: 'Veículos' },
   { id: 'Motoristas', rotulo: 'Motoristas' },
@@ -58,3 +60,19 @@ export const ACOES: { id: AcaoPermissao; rotulo: string }[] = [
   { id: 'Edicao', rotulo: 'Edição' },
   { id: 'Exclusao', rotulo: 'Exclusão' },
 ];
+
+/**
+ * Apelidos contextuais por ação para um módulo específico. Quando as ações
+ * genéricas (Consulta/Inclusão/Edição/Exclusão) têm um significado bem
+ * particular no módulo, registrar aqui — usado nos tooltips dos checkboxes
+ * e como subtítulo na linha do módulo.
+ */
+export const APELIDOS_ACOES_POR_MODULO: Partial<
+  Record<ModuloPermissao, Partial<Record<AcaoPermissao, string>>>
+> = {
+  Pacs: {
+    Consulta: 'Abrir exame',
+    Edicao: 'Salvar anotações',
+    Exclusao: 'Excluir exame',
+  },
+};

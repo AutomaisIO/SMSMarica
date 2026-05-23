@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using SMSMarica.Api.Auth;
 using SMSMarica.Core.Unidades;
 using SMSMarica.Core.Unidades.Dtos;
+using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
 
@@ -11,17 +13,20 @@ public sealed class UnidadesController(IUnidadesService service) : ControllerBas
     private readonly IUnidadesService _service = service;
 
     [HttpGet]
+    [RequerPermissao(ModuloPermissao.Unidades, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<UnidadeListItemDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<UnidadeListItemDto>> Listar(CancellationToken cancellationToken) =>
         await _service.ListarAsync(cancellationToken);
 
     [HttpGet("{id:guid}")]
+    [RequerPermissao(ModuloPermissao.Unidades, AcoesPermissao.Consulta)]
     [ProducesResponseType<UnidadeDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<UnidadeDto> ObterPorId(Guid id, CancellationToken cancellationToken) =>
         await _service.ObterPorIdAsync(id, cancellationToken);
 
     [HttpPost]
+    [RequerPermissao(ModuloPermissao.Unidades, AcoesPermissao.Inclusao)]
     [ProducesResponseType<Guid>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Cadastrar(
@@ -33,6 +38,7 @@ public sealed class UnidadesController(IUnidadesService service) : ControllerBas
     }
 
     [HttpPut("{id:guid}")]
+    [RequerPermissao(ModuloPermissao.Unidades, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Atualizar(
@@ -45,6 +51,7 @@ public sealed class UnidadesController(IUnidadesService service) : ControllerBas
     }
 
     [HttpDelete("{id:guid}")]
+    [RequerPermissao(ModuloPermissao.Unidades, AcoesPermissao.Exclusao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]

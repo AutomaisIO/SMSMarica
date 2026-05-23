@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { usePermissao } from '@/shared/auth/authStore';
 import {
   RENDERING_ENGINE_ID,
   TOOL_GROUP_ID,
@@ -104,6 +105,7 @@ type Props = {
 };
 
 export function PacsViewport({ imageIds, carregando, progresso, studyInstanceUID }: Props) {
+  const podeSalvarAnotacoes = usePermissao('Pacs', 'Edicao');
   const elementoRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<RenderingEngine | null>(null);
   const ouvinteHabilitarRef = useRef<((e: Event) => void) | null>(null);
@@ -506,24 +508,26 @@ export function PacsViewport({ imageIds, carregando, progresso, studyInstanceUID
         {studyInstanceUID ? (
           <>
             <div className="mx-1 h-6 w-px bg-gray-700" />
-            <button
-              type="button"
-              title="Salvar anotações"
-              onClick={salvarAnotacoes}
-              disabled={salvando}
-              className={cn(
-                'rounded-md p-2 transition-colors',
-                salvando
-                  ? 'cursor-wait text-gray-500'
-                  : 'text-emerald-300 hover:bg-emerald-900/30 hover:text-emerald-100',
-              )}
-            >
-              {salvando ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <Save className="h-5 w-5" />
-              )}
-            </button>
+            {podeSalvarAnotacoes ? (
+              <button
+                type="button"
+                title="Salvar anotações"
+                onClick={salvarAnotacoes}
+                disabled={salvando}
+                className={cn(
+                  'rounded-md p-2 transition-colors',
+                  salvando
+                    ? 'cursor-wait text-gray-500'
+                    : 'text-emerald-300 hover:bg-emerald-900/30 hover:text-emerald-100',
+                )}
+              >
+                {salvando ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Save className="h-5 w-5" />
+                )}
+              </button>
+            ) : null}
             <button
               type="button"
               title="Histórico de anotações"

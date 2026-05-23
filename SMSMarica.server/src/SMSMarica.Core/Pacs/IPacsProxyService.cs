@@ -8,13 +8,15 @@ namespace SMSMarica.Core.Pacs;
 public interface IPacsProxyService
 {
     /// <summary>
-    /// Encaminha um GET RESTful para o PACS e devolve a resposta crua,
-    /// sem ler o corpo (para permitir streaming pelo controller).
+    /// Encaminha uma requisição HTTP arbitrária para o PACS e devolve a resposta
+    /// crua, sem ler o corpo (para permitir streaming pelo controller).
     /// </summary>
+    /// <param name="metodo">Método HTTP (GET/POST/DELETE/...).</param>
     /// <param name="caminho">Caminho relativo à base RS (ex.: <c>studies</c>, <c>studies/{uid}/series</c>).</param>
     /// <param name="queryString">Query string original, incluindo o <c>?</c> (ou vazia).</param>
     /// <param name="accept">Valor do header Accept a repassar (ou null).</param>
     Task<HttpResponseMessage> EncaminharAsync(
+        HttpMethod metodo,
         string caminho,
         string queryString,
         string? accept,

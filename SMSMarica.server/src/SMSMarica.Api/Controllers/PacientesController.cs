@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using SMSMarica.Api.Auth;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.Pacientes.Dtos;
+using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
 
@@ -15,6 +17,7 @@ public sealed class PacientesController(IPacientesService service) : ControllerB
     /// Sem <c>termo</c> retorna lista vazia (a base é grande). Limite 20.
     /// </summary>
     [HttpGet]
+    [RequerPermissao(ModuloPermissao.Pacientes, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<PacienteListItemDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<PacienteListItemDto>> Buscar(
         [FromQuery] string? termo,
@@ -23,6 +26,7 @@ public sealed class PacientesController(IPacientesService service) : ControllerB
 
     /// <summary>Retorna um paciente pelo identificador.</summary>
     [HttpGet("{id:guid}")]
+    [RequerPermissao(ModuloPermissao.Pacientes, AcoesPermissao.Consulta)]
     [ProducesResponseType<PacienteDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<PacienteDto> ObterPorId(Guid id, CancellationToken cancellationToken) =>
@@ -33,6 +37,7 @@ public sealed class PacientesController(IPacientesService service) : ControllerB
     /// 404 se não existe; 200 com o resumo (incluindo <c>ativo</c>) se existe.
     /// </summary>
     [HttpGet("por-cpf/{cpf}")]
+    [RequerPermissao(ModuloPermissao.Pacientes, AcoesPermissao.Consulta)]
     [ProducesResponseType<PacienteExistenciaDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ObterPorCpf(string cpf, CancellationToken cancellationToken)
@@ -43,6 +48,7 @@ public sealed class PacientesController(IPacientesService service) : ControllerB
 
     /// <summary>Cadastra um novo paciente.</summary>
     [HttpPost]
+    [RequerPermissao(ModuloPermissao.Pacientes, AcoesPermissao.Inclusao)]
     [ProducesResponseType<Guid>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -59,6 +65,7 @@ public sealed class PacientesController(IPacientesService service) : ControllerB
     /// fluxo de cadastro detectou que o CPF já existe como usuário.
     /// </summary>
     [HttpPost("promover")]
+    [RequerPermissao(ModuloPermissao.Pacientes, AcoesPermissao.Inclusao)]
     [ProducesResponseType<Guid>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -73,6 +80,7 @@ public sealed class PacientesController(IPacientesService service) : ControllerB
 
     /// <summary>Atualiza dados de um paciente existente.</summary>
     [HttpPut("{id:guid}")]
+    [RequerPermissao(ModuloPermissao.Pacientes, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -87,6 +95,7 @@ public sealed class PacientesController(IPacientesService service) : ControllerB
 
     /// <summary>Desativa um paciente (soft delete) — some das listagens.</summary>
     [HttpDelete("{id:guid}")]
+    [RequerPermissao(ModuloPermissao.Pacientes, AcoesPermissao.Exclusao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -98,6 +107,7 @@ public sealed class PacientesController(IPacientesService service) : ControllerB
 
     /// <summary>Reativa um paciente desativado (após confirmação no fluxo de cadastro).</summary>
     [HttpPost("{id:guid}/reativar")]
+    [RequerPermissao(ModuloPermissao.Pacientes, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]

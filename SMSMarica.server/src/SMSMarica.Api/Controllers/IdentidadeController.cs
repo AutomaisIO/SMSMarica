@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using SMSMarica.Api.Auth;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Identidade.Dtos;
+using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
 
@@ -11,11 +13,13 @@ public sealed class IdentidadeController(IIdentidadeService service) : Controlle
     private readonly IIdentidadeService _service = service;
 
     [HttpGet]
+    [RequerPermissao(ModuloPermissao.Usuarios, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<UsuarioListItemDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<UsuarioListItemDto>> Listar(CancellationToken cancellationToken) =>
         await _service.ListarAsync(cancellationToken);
 
     [HttpGet("{id:guid}")]
+    [RequerPermissao(ModuloPermissao.Usuarios, AcoesPermissao.Consulta)]
     [ProducesResponseType<UsuarioDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<UsuarioDto> ObterPorId(Guid id, CancellationToken cancellationToken) =>
@@ -23,6 +27,7 @@ public sealed class IdentidadeController(IIdentidadeService service) : Controlle
 
     /// <summary>Consulta se já existe usuário com este CPF (200 com o usuário, ou 204 No Content).</summary>
     [HttpGet("cpf/{cpf}")]
+    [RequerPermissao(ModuloPermissao.Usuarios, AcoesPermissao.Consulta)]
     [ProducesResponseType<UsuarioDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> ObterPorCpf(string cpf, CancellationToken cancellationToken)
@@ -32,6 +37,7 @@ public sealed class IdentidadeController(IIdentidadeService service) : Controlle
     }
 
     [HttpPost]
+    [RequerPermissao(ModuloPermissao.Usuarios, AcoesPermissao.Inclusao)]
     [ProducesResponseType<Guid>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -44,6 +50,7 @@ public sealed class IdentidadeController(IIdentidadeService service) : Controlle
     }
 
     [HttpPut("{id:guid}")]
+    [RequerPermissao(ModuloPermissao.Usuarios, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Atualizar(
@@ -56,6 +63,7 @@ public sealed class IdentidadeController(IIdentidadeService service) : Controlle
     }
 
     [HttpDelete("{id:guid}")]
+    [RequerPermissao(ModuloPermissao.Usuarios, AcoesPermissao.Exclusao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -66,12 +74,14 @@ public sealed class IdentidadeController(IIdentidadeService service) : Controlle
     }
 
     [HttpGet("{id:guid}/permissoes")]
+    [RequerPermissao(ModuloPermissao.Usuarios, AcoesPermissao.Consulta)]
     [ProducesResponseType<PermissoesResolvidasDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<PermissoesResolvidasDto> ObterPermissoes(Guid id, CancellationToken cancellationToken) =>
         await _service.ObterPermissoesResolvidasAsync(id, cancellationToken);
 
     [HttpPut("{id:guid}/perfis")]
+    [RequerPermissao(ModuloPermissao.Usuarios, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> AtualizarPerfis(
@@ -84,6 +94,7 @@ public sealed class IdentidadeController(IIdentidadeService service) : Controlle
     }
 
     [HttpPut("{id:guid}/overrides")]
+    [RequerPermissao(ModuloPermissao.Usuarios, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> AtualizarOverrides(
@@ -96,6 +107,7 @@ public sealed class IdentidadeController(IIdentidadeService service) : Controlle
     }
 
     [HttpPut("{id:guid}/senha")]
+    [RequerPermissao(ModuloPermissao.Usuarios, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> AlterarSenha(
@@ -109,6 +121,7 @@ public sealed class IdentidadeController(IIdentidadeService service) : Controlle
 
     /// <summary>Gera uma senha aleatória forte para o usuário; sempre força a troca no próximo login.</summary>
     [HttpPost("{id:guid}/senha/gerar")]
+    [RequerPermissao(ModuloPermissao.Usuarios, AcoesPermissao.Edicao)]
     [ProducesResponseType<SenhaGeradaDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<SenhaGeradaDto> GerarNovaSenha(Guid id, CancellationToken cancellationToken) =>

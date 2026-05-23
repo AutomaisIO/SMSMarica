@@ -112,3 +112,11 @@ export async function obterMetadadosSerie(
   );
   return Array.isArray(data) ? data : [];
 }
+
+/**
+ * Exclui um estudo do PACS. O backend trata o passo-a-passo do dcm4chee
+ * (reject + delete permanente).
+ */
+export async function excluirEstudo(studyUID: string): Promise<void> {
+  await http.delete(`/pacs/rs/studies/${encodeURIComponent(studyUID)}`);
+}

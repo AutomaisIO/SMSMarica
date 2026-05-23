@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using SMSMarica.Api.Auth;
 using SMSMarica.Core.Translado;
 using SMSMarica.Core.Translado.Dtos;
+using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
 
@@ -14,6 +16,7 @@ public sealed class TransladoController(ITransladoService service) : ControllerB
     /// Lista rotas. Filtros opcionais: <c>data</c> (YYYY-MM-DD), <c>motoristaId</c>, <c>veiculoId</c>.
     /// </summary>
     [HttpGet]
+    [RequerPermissao(ModuloPermissao.Translados, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<RotaDiariaListItemDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<RotaDiariaListItemDto>> Listar(
         [FromQuery] DateOnly? data,
@@ -23,12 +26,14 @@ public sealed class TransladoController(ITransladoService service) : ControllerB
         await _service.ListarAsync(data, motoristaId, veiculoId, cancellationToken);
 
     [HttpGet("{id:guid}")]
+    [RequerPermissao(ModuloPermissao.Translados, AcoesPermissao.Consulta)]
     [ProducesResponseType<RotaDiariaDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<RotaDiariaDto> ObterPorId(Guid id, CancellationToken cancellationToken) =>
         await _service.ObterPorIdAsync(id, cancellationToken);
 
     [HttpPost]
+    [RequerPermissao(ModuloPermissao.Translados, AcoesPermissao.Inclusao)]
     [ProducesResponseType<Guid>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -41,6 +46,7 @@ public sealed class TransladoController(ITransladoService service) : ControllerB
     }
 
     [HttpPut("{id:guid}")]
+    [RequerPermissao(ModuloPermissao.Translados, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -54,6 +60,7 @@ public sealed class TransladoController(ITransladoService service) : ControllerB
     }
 
     [HttpPost("{id:guid}/iniciar")]
+    [RequerPermissao(ModuloPermissao.Translados, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -64,6 +71,7 @@ public sealed class TransladoController(ITransladoService service) : ControllerB
     }
 
     [HttpPost("{id:guid}/concluir")]
+    [RequerPermissao(ModuloPermissao.Translados, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -74,6 +82,7 @@ public sealed class TransladoController(ITransladoService service) : ControllerB
     }
 
     [HttpDelete("{id:guid}")]
+    [RequerPermissao(ModuloPermissao.Translados, AcoesPermissao.Exclusao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -89,6 +98,7 @@ public sealed class TransladoController(ITransladoService service) : ControllerB
     /// nenhuma outra rota ativa.
     /// </summary>
     [HttpGet("{id:guid}/sessoes-elegiveis")]
+    [RequerPermissao(ModuloPermissao.Translados, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<SessaoElegivelDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IReadOnlyList<SessaoElegivelDto>> ListarSessoesElegiveis(
@@ -96,6 +106,7 @@ public sealed class TransladoController(ITransladoService service) : ControllerB
         await _service.ListarSessoesElegiveisAsync(id, cancellationToken);
 
     [HttpPost("{id:guid}/alocacoes")]
+    [RequerPermissao(ModuloPermissao.Translados, AcoesPermissao.Edicao)]
     [ProducesResponseType<Guid>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -110,6 +121,7 @@ public sealed class TransladoController(ITransladoService service) : ControllerB
     }
 
     [HttpDelete("{id:guid}/alocacoes/{alocacaoId:guid}")]
+    [RequerPermissao(ModuloPermissao.Translados, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]

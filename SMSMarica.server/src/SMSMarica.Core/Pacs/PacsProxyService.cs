@@ -15,13 +15,14 @@ public sealed class PacsProxyService : IPacsProxyService
     }
 
     public async Task<HttpResponseMessage> EncaminharAsync(
+        HttpMethod metodo,
         string caminho,
         string queryString,
         string? accept,
         CancellationToken cancellationToken = default)
     {
         var alvo = $"{caminho.TrimStart('/')}{queryString}";
-        var requisicao = new HttpRequestMessage(HttpMethod.Get, alvo);
+        var requisicao = new HttpRequestMessage(metodo, alvo);
         if (!string.IsNullOrWhiteSpace(accept))
         {
             requisicao.Headers.TryAddWithoutValidation("Accept", accept);
