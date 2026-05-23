@@ -54,7 +54,7 @@ export function PacientesPage() {
           <Avatar src={p.fotoBase64} nome={p.nomeCompleto} tamanho="sm" />
           <button
             type="button"
-            onClick={() => navigate(`/operador/pacientes/${p.id}`)}
+            onClick={() => navigate(`/app/pacientes/${p.id}`)}
             className="text-left font-medium text-red-700 hover:underline"
           >
             {p.nomeCompleto}
@@ -73,10 +73,10 @@ export function PacientesPage() {
       className: 'text-right',
       render: (p) => (
         <div className="flex items-center justify-end gap-1">
-          <BotaoLinhaAcao onClick={() => navigate(`/operador/pacientes/${p.id}`)}>
+          <BotaoLinhaAcao onClick={() => navigate(`/app/pacientes/${p.id}`)}>
             <Eye className="h-3.5 w-3.5" /> Ver
           </BotaoLinhaAcao>
-          <BotaoLinhaAcao onClick={() => navigate(`/operador/pacientes/${p.id}/editar`)}>
+          <BotaoLinhaAcao onClick={() => navigate(`/app/pacientes/${p.id}/editar`)}>
             <Pencil className="h-3.5 w-3.5" /> Editar
           </BotaoLinhaAcao>
           {p.ativo ? (
@@ -114,7 +114,7 @@ export function PacientesPage() {
             (com ou sem formatação) — até 10 resultados.
           </p>
         </div>
-        <Button onClick={() => navigate('/operador/pacientes/novo')}>
+        <Button onClick={() => navigate('/app/pacientes/novo')}>
           <Plus className="h-4 w-4" />
           Novo paciente
         </Button>

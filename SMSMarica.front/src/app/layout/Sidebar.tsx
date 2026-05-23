@@ -1,12 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   Activity,
   Bus,
   Building2,
   CalendarClock,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
+  Image as ImageIcon,
+  Folder,
+  KeyRound,
   LayoutDashboard,
   LogOut,
   Route,
@@ -16,10 +21,11 @@ import {
   Truck,
   UserCog,
   Users,
+  Wrench,
   X,
   type LucideIcon,
 } from 'lucide-react';
-import { useAuth, type Perfil } from '@/shared/auth/authStore';
+import { useAuth, type ModuloPermissao } from '@/shared/auth/authStore';
 import { BrandLogo } from '@/shared/ui/BrandLogo';
 import { cn } from '@/shared/lib/cn';
 
@@ -27,79 +33,104 @@ type ItemMenu = {
   rotulo: string;
   to: string;
   icone: LucideIcon;
+  modulo?: ModuloPermissao;
   end?: boolean;
 };
 
 type SecaoMenu = {
+  id: string;
   titulo?: string;
+  icone?: LucideIcon;
   itens: ItemMenu[];
 };
 
-const menusPorPerfil: Record<Perfil, SecaoMenu[]> = {
-  operador: [
-    {
-      itens: [{ rotulo: 'Início', to: '/operador', icone: LayoutDashboard, end: true }],
-    },
-    {
-      titulo: 'Cadastros',
-      itens: [
-        { rotulo: 'Pacientes', to: '/operador/pacientes', icone: Users },
-        { rotulo: 'Unidades', to: '/operador/unidades', icone: Building2 },
-        { rotulo: 'Veículos', to: '/operador/veiculos', icone: Bus },
-        { rotulo: 'Motoristas', to: '/operador/motoristas', icone: Truck },
-        { rotulo: 'Usuários', to: '/operador/usuarios', icone: UserCog },
-      ],
-    },
-    {
-      titulo: 'Operação',
-      itens: [
-        { rotulo: 'Tratamentos', to: '/operador/tratamentos', icone: CalendarClock },
-        { rotulo: 'Translados', to: '/operador/translados', icone: Route },
-        { rotulo: 'Rastreamento', to: '/operador/rastreamento', icone: Activity },
-        { rotulo: 'Avaliações', to: '/operador/avaliacoes', icone: Star },
-      ],
-    },
-    {
-      titulo: 'Imagens',
-      itens: [{ rotulo: 'PACS', to: '/operador/pacs', icone: ScanLine }],
-    },
-  ],
-  gestor: [
-    {
-      itens: [{ rotulo: 'Visão geral', to: '/gestor', icone: LayoutDashboard, end: true }],
-    },
-    {
-      titulo: 'Imagens',
-      itens: [{ rotulo: 'PACS', to: '/gestor/pacs', icone: ScanLine }],
-    },
-  ],
-};
+const SECOES: SecaoMenu[] = [
+  {
+    id: 'inicio',
+    itens: [{ rotulo: 'Início', to: '/app', icone: LayoutDashboard, end: true }],
+  },
+  {
+    id: 'cadastros',
+    titulo: 'Cadastros',
+    icone: Folder,
+    itens: [
+      { rotulo: 'Pacientes', to: '/app/pacientes', icone: Users, modulo: 'Pacientes' },
+      { rotulo: 'Unidades', to: '/app/unidades', icone: Building2, modulo: 'Unidades' },
+      { rotulo: 'Veículos', to: '/app/veiculos', icone: Bus, modulo: 'Veiculos' },
+      { rotulo: 'Motoristas', to: '/app/motoristas', icone: Truck, modulo: 'Motoristas' },
+      { rotulo: 'Usuários', to: '/app/usuarios', icone: UserCog, modulo: 'Usuarios' },
+      { rotulo: 'Tipos de tratamento', to: '/app/tipos-tratamento', icone: ClipboardList, modulo: 'TiposTratamento' },
+      { rotulo: 'Perfis', to: '/app/perfis', icone: KeyRound, modulo: 'Perfis' },
+    ],
+  },
+  {
+    id: 'operacao',
+    titulo: 'Operação',
+    icone: Wrench,
+    itens: [
+      { rotulo: 'Tratamentos', to: '/app/tratamentos', icone: CalendarClock, modulo: 'Tratamentos' },
+      { rotulo: 'Translados', to: '/app/translados', icone: Route, modulo: 'Translados' },
+      { rotulo: 'Rastreamento', to: '/app/rastreamento', icone: Activity, modulo: 'Rastreamento' },
+      { rotulo: 'Avaliações', to: '/app/avaliacoes', icone: Star, modulo: 'Avaliacoes' },
+    ],
+  },
+  {
+    id: 'imagens',
+    titulo: 'Imagens',
+    icone: ImageIcon,
+    itens: [{ rotulo: 'PACS', to: '/app/pacs', icone: ScanLine, modulo: 'Pacs' }],
+  },
+];
+
+const CHAVE_COLAPSADAS = 'smsmarica.menu.colapsadas';
+
+function lerColapsadas(): Record<string, boolean> {
+  try {
+    const v = localStorage.getItem(CHAVE_COLAPSADAS);
+    return v ? (JSON.parse(v) as Record<string, boolean>) : {};
+  } catch {
+    return {};
+  }
+}
 
 type Props = {
-  perfil: Perfil;
   isCollapsed: boolean;
   onToggleCollapsed: () => void;
   isMobileOpen: boolean;
   onCloseMobile: () => void;
 };
 
-export function Sidebar({
-  perfil,
-  isCollapsed,
-  onToggleCollapsed,
-  isMobileOpen,
-  onCloseMobile,
-}: Props) {
+export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseMobile }: Props) {
   const navigate = useNavigate();
   const usuario = useAuth((s) => s.usuario);
+  const permissoes = useAuth((s) => s.permissoes);
   const sair = useAuth((s) => s.sair);
 
-  const [secoes] = useState<SecaoMenu[]>(menusPorPerfil[perfil]);
+  const [colapsadas, setColapsadas] = useState<Record<string, boolean>>(() => lerColapsadas());
+  useEffect(() => {
+    try {
+      localStorage.setItem(CHAVE_COLAPSADAS, JSON.stringify(colapsadas));
+    } catch {
+      // ignore
+    }
+  }, [colapsadas]);
+
+  function alternarSecao(id: string) {
+    setColapsadas((s) => ({ ...s, [id]: !s[id] }));
+  }
+
+  function temAcesso(item: ItemMenu): boolean {
+    if (!item.modulo) return true;
+    return (permissoes[item.modulo] ?? []).includes('Consulta');
+  }
 
   function aoSair() {
     sair();
     navigate('/login', { replace: true });
   }
+
+  const secoesVisiveis = SECOES.map((s) => ({ ...s, itens: s.itens.filter(temAcesso) }))
+    .filter((s) => s.itens.length > 0);
 
   const conteudo = (mobile: boolean) => (
     <div
@@ -143,41 +174,54 @@ export function Sidebar({
           {(!isCollapsed || mobile) && (
             <div className="flex-1 min-w-0">
               <div className="truncate text-sm font-medium text-white">{usuario?.nome}</div>
-              <div className="text-xs text-white/70 capitalize">{perfil}</div>
+              <div className="truncate text-xs text-white/70">{usuario?.email}</div>
             </div>
           )}
         </div>
       </div>
 
-      <nav className={cn('flex-1 space-y-4 py-4', isCollapsed && !mobile ? 'px-2' : 'px-3')}>
-        {secoes.map((secao, i) => (
-          <div key={i} className="space-y-1">
-            {secao.titulo && (!isCollapsed || mobile) ? (
-              <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-white/50">
-                {secao.titulo}
-              </div>
-            ) : null}
-            {secao.itens.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                onClick={mobile ? onCloseMobile : undefined}
-                title={isCollapsed && !mobile ? item.rotulo : undefined}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center rounded-md px-3 py-2.5 text-sm font-medium transition-all duration-200',
-                    isCollapsed && !mobile ? 'justify-center' : 'gap-3',
-                    isActive ? 'bg-white text-primary-700 shadow-md' : 'text-white/90 hover:bg-white/10',
-                  )
-                }
-              >
-                <item.icone className="w-5 h-5 flex-shrink-0" />
-                {(!isCollapsed || mobile) && <span>{item.rotulo}</span>}
-              </NavLink>
-            ))}
-          </div>
-        ))}
+      <nav className={cn('flex-1 space-y-3 py-4', isCollapsed && !mobile ? 'px-2' : 'px-3')}>
+        {secoesVisiveis.map((secao) => {
+          const colapsado = !!colapsadas[secao.id];
+          const mostrarTitulo = secao.titulo && (!isCollapsed || mobile);
+
+          return (
+            <div key={secao.id} className="space-y-1">
+              {mostrarTitulo ? (
+                <button
+                  type="button"
+                  onClick={() => alternarSecao(secao.id)}
+                  className="flex w-full items-center justify-between gap-2 px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-white/60 hover:text-white"
+                >
+                  <span>{secao.titulo}</span>
+                  <ChevronDown
+                    className={cn('w-3.5 h-3.5 transition-transform', colapsado && '-rotate-90')}
+                  />
+                </button>
+              ) : null}
+              {(!mostrarTitulo || !colapsado) &&
+                secao.itens.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.end}
+                    onClick={mobile ? onCloseMobile : undefined}
+                    title={isCollapsed && !mobile ? item.rotulo : undefined}
+                    className={({ isActive }) =>
+                      cn(
+                        'flex items-center rounded-md px-3 py-2.5 text-sm font-medium transition-all duration-200',
+                        isCollapsed && !mobile ? 'justify-center' : 'gap-3',
+                        isActive ? 'bg-white text-primary-700 shadow-md' : 'text-white/90 hover:bg-white/10',
+                      )
+                    }
+                  >
+                    <item.icone className="w-5 h-5 flex-shrink-0" />
+                    {(!isCollapsed || mobile) && <span>{item.rotulo}</span>}
+                  </NavLink>
+                ))}
+            </div>
+          );
+        })}
       </nav>
 
       <div

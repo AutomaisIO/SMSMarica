@@ -35,7 +35,7 @@ export function MotoristasPage() {
           <Avatar src={m.fotoBase64} nome={m.nomeCompleto} tamanho="sm" />
           <button
             type="button"
-            onClick={() => navigate(`/operador/motoristas/${m.id}`)}
+            onClick={() => navigate(`/app/motoristas/${m.id}`)}
             className="text-left font-medium text-red-700 hover:underline"
           >
             {m.nomeCompleto}
@@ -51,7 +51,7 @@ export function MotoristasPage() {
       className: 'text-right',
       render: (m) => (
         <div className="flex items-center justify-end gap-1">
-          <BotaoLinhaAcao onClick={() => navigate(`/operador/motoristas/${m.id}`)}>
+          <BotaoLinhaAcao onClick={() => navigate(`/app/motoristas/${m.id}`)}>
             <Eye className="w-3.5 h-3.5" /> Ver
           </BotaoLinhaAcao>
           <BotaoLinhaAcao onClick={() => setEstado({ tipo: 'editar', id: m.id })}>

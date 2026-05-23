@@ -70,7 +70,7 @@ export function VeiculoDetalhePage() {
       render: (r) => (
         <button
           type="button"
-          onClick={() => navigate(`/operador/translados/${r.id}`)}
+          onClick={() => navigate(`/app/translados/${r.id}`)}
           className="text-left font-medium text-red-700 hover:underline"
         >
           {formatarData(r.data)}
@@ -100,7 +100,7 @@ export function VeiculoDetalhePage() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => navigate('/operador/veiculos')}
+            onClick={() => navigate('/app/veiculos')}
             className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
             aria-label="Voltar"
           >

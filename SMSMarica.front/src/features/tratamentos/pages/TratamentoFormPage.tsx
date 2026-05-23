@@ -118,7 +118,7 @@ export function TratamentoFormPage() {
         },
         datas: datasExpansao,
       });
-      navigate(`/operador/tratamentos/${id}`, { replace: true });
+      navigate(`/app/tratamentos/${id}`, { replace: true });
     } catch (e) {
       setErroGlobal(extrairMensagemDeErro(e));
     }
@@ -141,7 +141,7 @@ export function TratamentoFormPage() {
       <header className="flex items-start gap-3">
         <button
           type="button"
-          onClick={() => navigate('/operador/tratamentos')}
+          onClick={() => navigate('/app/tratamentos')}
           className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
           aria-label="Voltar"
         >

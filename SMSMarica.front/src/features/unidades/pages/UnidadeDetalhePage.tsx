@@ -60,7 +60,7 @@ export function UnidadeDetalhePage() {
       render: (t) => (
         <button
           type="button"
-          onClick={() => navigate(`/operador/tratamentos/${t.id}`)}
+          onClick={() => navigate(`/app/tratamentos/${t.id}`)}
           className="text-left font-medium text-red-700 hover:underline"
         >
           {t.pacienteNome}
@@ -99,7 +99,7 @@ export function UnidadeDetalhePage() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => navigate('/operador/unidades')}
+            onClick={() => navigate('/app/unidades')}
             className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
             aria-label="Voltar"
           >
@@ -121,7 +121,7 @@ export function UnidadeDetalhePage() {
           </div>
         </div>
         {u ? (
-          <Button variante="outline" onClick={() => navigate(`/operador/unidades/${id}/editar`)}>
+          <Button variante="outline" onClick={() => navigate(`/app/unidades/${id}/editar`)}>
             <Pencil className="h-4 w-4" /> Editar
           </Button>
         ) : null}

@@ -75,10 +75,10 @@ export function TransladoFormPage() {
           id: rotaId,
           payload: { data, veiculoId, motoristaId },
         });
-        navigate(`/operador/translados/${rotaId}`);
+        navigate(`/app/translados/${rotaId}`);
       } else {
         const novoId = await cadastrar.mutateAsync({ data, veiculoId, motoristaId });
-        navigate(`/operador/translados/${novoId}`);
+        navigate(`/app/translados/${novoId}`);
       }
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
@@ -98,7 +98,7 @@ export function TransladoFormPage() {
       <header className="flex items-center gap-3">
         <button
           type="button"
-          onClick={() => navigate(editando ? `/operador/translados/${rotaId}` : '/operador/translados')}
+          onClick={() => navigate(editando ? `/app/translados/${rotaId}` : '/app/translados')}
           className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
           aria-label="Voltar"
         >
@@ -179,7 +179,7 @@ export function TransladoFormPage() {
         <div className="flex items-center justify-end gap-2 pt-2">
           <Button
             variante="ghost"
-            onClick={() => navigate(editando ? `/operador/translados/${rotaId}` : '/operador/translados')}
+            onClick={() => navigate(editando ? `/app/translados/${rotaId}` : '/app/translados')}
             disabled={pendente}
           >
             Cancelar

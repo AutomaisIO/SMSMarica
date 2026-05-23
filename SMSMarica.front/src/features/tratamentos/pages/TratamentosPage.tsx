@@ -50,7 +50,7 @@ export function TratamentosPage() {
       className: 'text-right',
       render: (t) => (
         <div className="flex items-center justify-end gap-1">
-          <BotaoLinhaAcao onClick={() => navigate(`/operador/tratamentos/${t.id}`)}>
+          <BotaoLinhaAcao onClick={() => navigate(`/app/tratamentos/${t.id}`)}>
             <Eye className="h-3.5 w-3.5" /> Abrir
           </BotaoLinhaAcao>
           {t.ativo ? (
@@ -83,7 +83,7 @@ export function TratamentosPage() {
             Associação paciente ↔ unidade com periodicidade e calendário de sessões.
           </p>
         </div>
-        <Button onClick={() => navigate('/operador/tratamentos/novo')}>
+        <Button onClick={() => navigate('/app/tratamentos/novo')}>
           <Plus className="h-4 w-4" />
           Novo tratamento
         </Button>

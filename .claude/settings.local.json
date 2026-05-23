@@ -92,7 +92,10 @@
       "PowerShell($base = \"http://pacs.marica.automais.cloud:8080/dcm4chee-arc/aets/DCM4CHEE/rs\"; $studyUid = \"1.2.826.0.1.3680043.2.876.21039.1.1107.20240718145549.0.77\"; $seriesUid = \"1.2.826.0.1.3680043.2.876.21039.1.8.0.20240718145811.1.205\"; $r = Invoke-WebRequest -Uri \"$base/studies/$studyUid/series/$seriesUid/instances?includefield=all\" -Headers @{Accept='application/dicom+json'} -TimeoutSec 15 -UseBasicParsing; $txt = [System.Text.Encoding]::UTF8.GetString\\($r.Content\\); $arr = $txt | ConvertFrom-Json; \"INSTANCIAS: $\\($arr.Count\\)\"; foreach \\($i in $arr\\) { $sop = $i.'00080018'.Value -join ''; $num = $i.'00200013'.Value -join ''; \"  [$num] SOP=$sop\" })",
       "PowerShell($base = \"http://pacs.marica.automais.cloud:8080/dcm4chee-arc/aets/DCM4CHEE/rs\"; $studyUid = \"1.2.826.0.1.3680043.2.876.21039.1.1107.20240718145549.0.77\"; $seriesUid = \"1.2.826.0.1.3680043.2.876.21039.1.8.0.20240718145811.1.205\"; $sopUid = \"1.2.826.0.1.3680043.2.876.21039.1.8.0.20240718145928.2.36\"; $accepts = @\\('application/dicom+json', 'multipart/related; type=\"application/dicom+json\"', 'multipart/related; type=\"application/dicom+xml\"', 'application/dicom+xml'\\); foreach \\($acc in $accepts\\) { \"===== Accept: $acc =====\"; try { $r = Invoke-WebRequest -Uri \"$base/studies/$studyUid/series/$seriesUid/instances/$sopUid/metadata\" -Headers @{Accept=$acc} -TimeoutSec 30 -UseBasicParsing; \"  OK status=$\\($r.StatusCode\\) len=$\\($r.Content.Length\\) ctype=$\\($r.Headers.'Content-Type'\\)\" } catch { \"  ERR: $\\($_.Exception.Message\\)\"; if \\($_.Exception.Response\\) { \"    http=$\\($_.Exception.Response.StatusCode.value__\\)\" } } })",
       "PowerShell(Get-Command *)",
-      "PowerShell($env:PLINK_PWD = '#030957#Be'; cmd /c 'echo y | plink -ssh -pw %PLINK_PWD% root@pacs.marica.automais.cloud uname -a' 2>&1 | Select-Object -First 20)"
+      "PowerShell($env:PLINK_PWD = '#030957#Be'; cmd /c 'echo y | plink -ssh -pw %PLINK_PWD% root@pacs.marica.automais.cloud uname -a' 2>&1 | Select-Object -First 20)",
+      "PowerShell(Test-NetConnection *)",
+      "PowerShell(wsl -e bash -c \"command -v sshpass; command -v ssh; lsb_release -a 2>/dev/null | head -4\" 2>&1)",
+      "PowerShell(ssh-keyscan *)"
     ]
   }
 }

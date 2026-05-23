@@ -187,7 +187,7 @@ export function PacienteDetalhePage() {
       render: (t) => (
         <button
           type="button"
-          onClick={() => navigate(`/operador/tratamentos/${t.id}`)}
+          onClick={() => navigate(`/app/tratamentos/${t.id}`)}
           className="text-left font-medium text-red-700 hover:underline"
         >
           {t.tipoTratamentoNome ?? t.descricao}
@@ -238,7 +238,7 @@ export function PacienteDetalhePage() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => navigate('/operador/pacientes')}
+            onClick={() => navigate('/app/pacientes')}
             className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
             aria-label="Voltar"
           >
@@ -260,7 +260,7 @@ export function PacienteDetalhePage() {
             ) : null}
           </div>
         </div>
-        <Button onClick={() => navigate(`/operador/pacientes/${id}/editar`)}>
+        <Button onClick={() => navigate(`/app/pacientes/${id}/editar`)}>
           <Pencil className="h-4 w-4" />
           Editar
         </Button>
@@ -285,7 +285,7 @@ export function PacienteDetalhePage() {
               <Button
                 variante="outline"
                 tamanho="sm"
-                onClick={() => navigate('/operador/tratamentos/novo')}
+                onClick={() => navigate('/app/tratamentos/novo')}
               >
                 Novo tratamento
               </Button>

@@ -48,7 +48,7 @@ export function TransladosPage() {
       render: (r) => (
         <button
           type="button"
-          onClick={() => navigate(`/operador/translados/${r.id}`)}
+          onClick={() => navigate(`/app/translados/${r.id}`)}
           className="text-left font-medium text-red-700 hover:underline"
         >
           {formatarData(r.data)}
@@ -77,7 +77,7 @@ export function TransladosPage() {
       className: 'text-right',
       render: (r) => (
         <div className="flex items-center justify-end gap-1">
-          <BotaoLinhaAcao onClick={() => navigate(`/operador/translados/${r.id}`)}>
+          <BotaoLinhaAcao onClick={() => navigate(`/app/translados/${r.id}`)}>
             <Eye className="h-3.5 w-3.5" /> Abrir
           </BotaoLinhaAcao>
           {r.status !== 'Concluida' ? (
@@ -110,7 +110,7 @@ export function TransladosPage() {
             Rotas diárias. Clique em uma data para operar alocações de pacientes nos assentos.
           </p>
         </div>
-        <Button onClick={() => navigate('/operador/translados/novo')}>
+        <Button onClick={() => navigate('/app/translados/novo')}>
           <Plus className="h-4 w-4" />
           Novo translado
         </Button>

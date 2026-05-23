@@ -1,17 +1,16 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from '@/app/layout/Layout';
-import { GestorInicioPage } from '@/app/pages/GestorInicioPage';
+import { InicioPage } from '@/app/pages/InicioPage';
 import { NaoEncontradoPage } from '@/app/pages/NaoEncontradoPage';
-import { OperadorInicioPage } from '@/app/pages/OperadorInicioPage';
 import { RotaProtegida } from '@/app/router/RotaProtegida';
 import { AvaliacoesPage } from '@/features/avaliacoes/pages/AvaliacoesPage';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { MotoristaDetalhePage } from '@/features/motoristas/pages/MotoristaDetalhePage';
 import { MotoristasPage } from '@/features/motoristas/pages/MotoristasPage';
-import { PacsViewerPage } from '@/features/pacs/pages/PacsViewerPage';
 import { PacienteDetalhePage } from '@/features/pacientes/pages/PacienteDetalhePage';
 import { PacienteFormPage } from '@/features/pacientes/pages/PacienteFormPage';
 import { PacientesPage } from '@/features/pacientes/pages/PacientesPage';
+import { PacsViewerPage } from '@/features/pacs/pages/PacsViewerPage';
 import { RastreamentoPage } from '@/features/rastreamento/pages/RastreamentoPage';
 import { TransladoDetalhePage } from '@/features/translados/pages/TransladoDetalhePage';
 import { TransladoFormPage } from '@/features/translados/pages/TransladoFormPage';
@@ -29,8 +28,7 @@ import { useAuth } from '@/shared/auth/authStore';
 
 function RedirecionamentoRaiz() {
   const usuario = useAuth((s) => s.usuario);
-  if (!usuario) return <Navigate to="/login" replace />;
-  return <Navigate to={usuario.perfil === 'operador' ? '/operador' : '/gestor'} replace />;
+  return <Navigate to={usuario ? '/app' : '/login'} replace />;
 }
 
 export function AppRouter() {
@@ -39,9 +37,13 @@ export function AppRouter() {
       <Route path="/" element={<RedirecionamentoRaiz />} />
       <Route path="/login" element={<LoginPage />} />
 
-      <Route element={<RotaProtegida perfil="operador" />}>
-        <Route path="/operador" element={<Layout perfil="operador" />}>
-          <Route index element={<OperadorInicioPage />} />
+      {/* Compat: redireciona rotas antigas /operador e /gestor para /app. */}
+      <Route path="/operador/*" element={<Navigate to="/app" replace />} />
+      <Route path="/gestor/*" element={<Navigate to="/app" replace />} />
+
+      <Route element={<RotaProtegida />}>
+        <Route path="/app" element={<Layout />}>
+          <Route index element={<InicioPage />} />
           <Route path="pacientes" element={<PacientesPage />} />
           <Route path="pacientes/novo" element={<PacienteFormPage />} />
           <Route path="pacientes/:id" element={<PacienteDetalhePage />} />
@@ -64,13 +66,6 @@ export function AppRouter() {
           <Route path="translados/:id/editar" element={<TransladoFormPage />} />
           <Route path="rastreamento" element={<RastreamentoPage />} />
           <Route path="avaliacoes" element={<AvaliacoesPage />} />
-          <Route path="pacs" element={<PacsViewerPage />} />
-        </Route>
-      </Route>
-
-      <Route element={<RotaProtegida perfil="gestor" />}>
-        <Route path="/gestor" element={<Layout perfil="gestor" />}>
-          <Route index element={<GestorInicioPage />} />
           <Route path="pacs" element={<PacsViewerPage />} />
         </Route>
       </Route>

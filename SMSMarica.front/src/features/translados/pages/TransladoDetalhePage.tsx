@@ -152,7 +152,7 @@ export function TransladoDetalhePage() {
     try {
       await cancelar.mutateAsync(r.id);
       setConfirmarCancelamento(false);
-      navigate('/operador/translados');
+      navigate('/app/translados');
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
     }
@@ -167,7 +167,7 @@ export function TransladoDetalhePage() {
       <div className="space-y-4">
         <button
           type="button"
-          onClick={() => navigate('/operador/translados')}
+          onClick={() => navigate('/app/translados')}
           className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
         >
           <ArrowLeft className="h-4 w-4" /> Voltar
@@ -185,7 +185,7 @@ export function TransladoDetalhePage() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => navigate('/operador/translados')}
+            onClick={() => navigate('/app/translados')}
             className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
             aria-label="Voltar"
           >
@@ -208,7 +208,7 @@ export function TransladoDetalhePage() {
         <div className="flex items-center gap-2">
           {r.status === 'Planejada' ? (
             <>
-              <Button variante="outline" onClick={() => navigate(`/operador/translados/${r.id}/editar`)}>
+              <Button variante="outline" onClick={() => navigate(`/app/translados/${r.id}/editar`)}>
                 <Pencil className="h-4 w-4" /> Editar
               </Button>
               <Button onClick={aoIniciar} disabled={iniciar.isPending}>

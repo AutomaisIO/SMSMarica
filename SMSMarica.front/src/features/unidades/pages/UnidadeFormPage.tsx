@@ -9,9 +9,9 @@ export function UnidadeFormPage() {
 
   function aoConcluir() {
     if (editando && params.id) {
-      navigate(`/operador/unidades/${params.id}`);
+      navigate(`/app/unidades/${params.id}`);
     } else {
-      navigate('/operador/unidades');
+      navigate('/app/unidades');
     }
   }
 
@@ -20,7 +20,7 @@ export function UnidadeFormPage() {
       <header className="flex items-center gap-3">
         <button
           type="button"
-          onClick={() => navigate(editando ? `/operador/unidades/${params.id}` : '/operador/unidades')}
+          onClick={() => navigate(editando ? `/app/unidades/${params.id}` : '/app/unidades')}
           className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
           aria-label="Voltar"
         >

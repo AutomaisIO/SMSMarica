@@ -13,7 +13,7 @@ import {
   useListarUsuarios,
 } from '@/features/usuarios/api/queries';
 import { FormularioUsuario } from '@/features/usuarios/components/FormularioUsuario';
-import { rotulosPerfil, type UsuarioListItem } from '@/features/usuarios/types';
+import { type UsuarioListItem } from '@/features/usuarios/types';
 
 type EstadoModal = { tipo: 'fechado' } | { tipo: 'criar' } | { tipo: 'editar'; id: string };
 
@@ -36,13 +36,6 @@ export function UsuariosPage() {
       ),
     },
     { chave: 'email', cabecalho: 'E-mail', render: (u) => u.email },
-    {
-      chave: 'perfil',
-      cabecalho: 'Perfil',
-      render: (u) => (
-        <span className="badge badge-primary">{rotulosPerfil[u.perfil]}</span>
-      ),
-    },
     { chave: 'status', cabecalho: 'Status', render: (u) => <StatusBadge ativo={u.ativo} /> },
     {
       chave: 'acoes',

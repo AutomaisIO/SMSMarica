@@ -75,7 +75,7 @@ export function TratamentoDetalhePage() {
             {s.alocadaEmRotaId ? (
               <button
                 type="button"
-                onClick={() => navigate(`/operador/translados/${s.alocadaEmRotaId}`)}
+                onClick={() => navigate(`/app/translados/${s.alocadaEmRotaId}`)}
                 className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-800 hover:border-sky-400 hover:bg-sky-100"
                 title="Abrir translado"
               >
@@ -180,7 +180,7 @@ export function TratamentoDetalhePage() {
       <header className="flex items-start gap-3">
         <button
           type="button"
-          onClick={() => navigate('/operador/tratamentos')}
+          onClick={() => navigate('/app/tratamentos')}
           className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
           aria-label="Voltar"
         >

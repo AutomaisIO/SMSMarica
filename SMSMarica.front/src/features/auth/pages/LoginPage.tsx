@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react';
-import { ArrowRight, Lock, Mail, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Lock, Mail } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useAuth, type Perfil } from '@/shared/auth/authStore';
+import { useAuth } from '@/shared/auth/authStore';
+import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { BrandLogo } from '@/shared/ui/BrandLogo';
 
 type EstadoLocation = { de?: string };
@@ -11,9 +12,8 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [email, setEmail] = useState('operador@marica.rj.gov.br');
-  const [senha, setSenha] = useState('operador');
-  const [perfil, setPerfil] = useState<Perfil>('operador');
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -22,12 +22,11 @@ export function LoginPage() {
     setErro(null);
     setCarregando(true);
     try {
-      await entrar({ email, senha, perfil });
+      await entrar({ email, senha });
       const estado = location.state as EstadoLocation | null;
-      const destino = estado?.de ?? (perfil === 'operador' ? '/operador' : '/gestor');
-      navigate(destino, { replace: true });
+      navigate(estado?.de ?? '/app', { replace: true });
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao entrar.');
+      setErro(extrairMensagemDeErro(e));
     } finally {
       setCarregando(false);
     }
@@ -67,7 +66,7 @@ export function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="input pl-10"
-                  placeholder="seu@marica.rj.gov.br"
+                  placeholder="admin@smsmarica.online"
                   disabled={carregando}
                 />
               </div>
@@ -93,28 +92,6 @@ export function LoginPage() {
               </div>
             </div>
 
-            <div>
-              <label htmlFor="perfil" className="label">
-                Entrar como
-              </label>
-              <div className="relative">
-                <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <select
-                  id="perfil"
-                  value={perfil}
-                  onChange={(e) => setPerfil(e.target.value as Perfil)}
-                  className="input pl-10"
-                  disabled={carregando}
-                >
-                  <option value="operador">Operador</option>
-                  <option value="gestor">Gestor</option>
-                </select>
-              </div>
-              <p className="mt-2 text-xs text-gray-500">
-                Perfil simulado. Entrará em vigor real quando o módulo Identidade (S2.4) for publicado.
-              </p>
-            </div>
-
             <button type="submit" disabled={carregando} className="w-full btn btn-primary btn-lg">
               {carregando ? (
                 <span>Entrando…</span>
@@ -130,9 +107,7 @@ export function LoginPage() {
       </div>
 
       <div className="mt-6 w-full max-w-md mx-auto text-center">
-        <p className="text-xs text-gray-400">
-          SMS Maricá &middot; ambiente de desenvolvimento
-        </p>
+        <p className="text-xs text-gray-400">SMS Maricá &middot; ambiente de desenvolvimento</p>
       </div>
     </div>
   );

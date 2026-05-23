@@ -1,5 +1,5 @@
 import axios, { AxiosError } from 'axios';
-import { obterTokenMock } from '@/shared/auth/authStore';
+import { obterToken, useAuth } from '@/shared/auth/authStore';
 
 const URL_PROD = 'https://api.smsmarica.online';
 const envBase = import.meta.env.VITE_API_BASE_URL?.trim();
@@ -12,12 +12,33 @@ export const http = axios.create({
 });
 
 http.interceptors.request.use((config) => {
-  const token = obterTokenMock();
+  const token = obterToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
+
+// Em 401 (token inválido/expirado), limpa a sessão e manda para o login.
+// Login bem-sucedido nunca cai aqui (o erro vem com 400/422).
+http.interceptors.response.use(
+  (r) => r,
+  (erro: AxiosError) => {
+    if (erro.response?.status === 401) {
+      const url = erro.config?.url ?? '';
+      if (!url.includes('/identidade/login')) {
+        const estado = useAuth.getState();
+        if (estado.token || estado.usuario) {
+          estado.sair();
+          if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+            window.location.assign('/login');
+          }
+        }
+      }
+    }
+    return Promise.reject(erro);
+  },
+);
 
 export type ProblemaApi = {
   type?: string;

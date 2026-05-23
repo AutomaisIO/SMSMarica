@@ -2,7 +2,6 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
-import { Select } from '@/shared/ui/Select';
 import {
   enderecoVazio,
   FormularioEndereco,
@@ -16,42 +15,30 @@ import {
   useCadastrarUsuario,
   useUsuarioPorId,
 } from '@/features/usuarios/api/queries';
-import {
-  PerfilUsuario,
-  rotulosPerfil,
-  type PerfilUsuarioValor,
-} from '@/features/usuarios/types';
 
 type Props = { modo: 'criar' | 'editar'; idUsuario?: string | null; aoConcluir: () => void };
 
 type Valores = {
   nomeCompleto: string;
   email: string;
+  senha: string;
   cpf: string;
   telefone: string;
   endereco: EnderecoForm;
   fotoBase64: string | null;
-  perfil: PerfilUsuarioValor;
 };
 
 const INICIAL: Valores = {
   nomeCompleto: '',
   email: '',
+  senha: '',
   cpf: '',
   telefone: '',
   endereco: enderecoVazio,
   fotoBase64: null,
-  perfil: PerfilUsuario.Operador,
 };
 
-type Erros = Partial<Record<'nomeCompleto' | 'email' | 'cpf' | 'telefone' | 'perfil', string>>;
-
-const perfisDisponiveis: PerfilUsuarioValor[] = [
-  PerfilUsuario.Operador,
-  PerfilUsuario.Gestor,
-  PerfilUsuario.Paciente,
-  PerfilUsuario.Motorista,
-];
+type Erros = Partial<Record<'nomeCompleto' | 'email' | 'senha' | 'cpf' | 'telefone', string>>;
 
 export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
   const [valores, setValores] = useState<Valores>(INICIAL);
@@ -67,10 +54,10 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
       setValores({
         nomeCompleto: detalhe.data.nomeCompleto,
         email: detalhe.data.email,
+        senha: '',
         cpf: detalhe.data.cpf ?? '',
         telefone: detalhe.data.telefone ?? '',
         fotoBase64: detalhe.data.fotoBase64 ?? null,
-        perfil: detalhe.data.perfil,
         endereco: e
           ? {
               cep: e.cep ?? '',
@@ -100,10 +87,12 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
     const nome = valores.nomeCompleto.trim();
     const email = valores.email.trim();
     const cpf = valores.cpf.trim();
+    const senha = valores.senha;
 
     if (nome.length < 3) ne.nomeCompleto = 'Nome obrigatório (mínimo 3 caracteres).';
     if (modo === 'criar') {
       if (!/^\S+@\S+\.\S+$/.test(email)) ne.email = 'E-mail inválido.';
+      if (senha && senha.length < 8) ne.senha = 'Mínimo 8 caracteres.';
     }
     if (cpf && cpf.replace(/\D/g, '').length !== 11) ne.cpf = 'CPF precisa ter 11 dígitos.';
     if (Object.keys(ne).length > 0) {
@@ -134,7 +123,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
           telefone: valores.telefone || undefined,
           endereco: enderecoPayload,
           fotoBase64: valores.fotoBase64,
-          perfil: valores.perfil,
+          senha: senha || undefined,
         });
       } else {
         if (!idUsuario) throw new Error('ID ausente.');
@@ -146,7 +135,6 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
             telefone: valores.telefone || undefined,
             endereco: enderecoPayload,
             fotoBase64: valores.fotoBase64,
-            perfil: valores.perfil,
           },
         });
       }
@@ -204,6 +192,18 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
           />
         </Campo>
 
+        {modo === 'criar' ? (
+          <Campo label="Senha inicial" htmlFor="senha" erro={erros.senha} dica="Opcional. Mínimo 8 caracteres.">
+            <Input
+              id="senha"
+              type="password"
+              value={valores.senha}
+              onChange={(e) => set('senha', e.target.value)}
+              autoComplete="new-password"
+            />
+          </Campo>
+        ) : null}
+
         <Campo label="CPF" htmlFor="cpf" erro={erros.cpf}>
           <Input
             id="cpf"
@@ -222,20 +222,6 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
             placeholder="(21) 99999-0000"
           />
         </Campo>
-
-        <Campo label="Perfil" htmlFor="perfil" erro={erros.perfil} required>
-          <Select
-            id="perfil"
-            value={valores.perfil}
-            onChange={(e) => set('perfil', Number(e.target.value) as PerfilUsuarioValor)}
-          >
-            {perfisDisponiveis.map((p) => (
-              <option key={p} value={p}>
-                {rotulosPerfil[p]}
-              </option>
-            ))}
-          </Select>
-        </Campo>
       </div>
 
       <section>
@@ -246,6 +232,10 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
           desabilitado={pendente}
         />
       </section>
+
+      <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        Os perfis e permissões deste usuário serão configurados em uma seção dedicada (próxima entrega).
+      </p>
 
       {erroGlobal ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

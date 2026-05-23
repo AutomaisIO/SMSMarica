@@ -27,7 +27,7 @@ export function UnidadesPage() {
       render: (u) => (
         <button
           type="button"
-          onClick={() => navigate(`/operador/unidades/${u.id}`)}
+          onClick={() => navigate(`/app/unidades/${u.id}`)}
           className="text-left font-medium text-red-700 hover:underline"
         >
           {u.nome}
@@ -46,10 +46,10 @@ export function UnidadesPage() {
       className: 'text-right',
       render: (u) => (
         <div className="flex items-center justify-end gap-1">
-          <BotaoLinhaAcao onClick={() => navigate(`/operador/unidades/${u.id}`)}>
+          <BotaoLinhaAcao onClick={() => navigate(`/app/unidades/${u.id}`)}>
             <Eye className="w-3.5 h-3.5" /> Ver
           </BotaoLinhaAcao>
-          <BotaoLinhaAcao onClick={() => navigate(`/operador/unidades/${u.id}/editar`)}>
+          <BotaoLinhaAcao onClick={() => navigate(`/app/unidades/${u.id}/editar`)}>
             <Pencil className="w-3.5 h-3.5" /> Editar
           </BotaoLinhaAcao>
           {u.ativo ? (
@@ -80,7 +80,7 @@ export function UnidadesPage() {
           <h1 className="text-2xl font-semibold text-gray-900">Unidades</h1>
           <p className="mt-1 text-sm text-gray-600">Locais de saúde que realizam tratamentos.</p>
         </div>
-        <Button onClick={() => navigate('/operador/unidades/novo')}>
+        <Button onClick={() => navigate('/app/unidades/novo')}>
           <Plus className="w-4 h-4" />
           Nova unidade
         </Button>

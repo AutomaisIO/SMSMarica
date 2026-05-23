@@ -2,18 +2,14 @@ import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Header } from '@/app/layout/Header';
 import { Sidebar } from '@/app/layout/Sidebar';
-import type { Perfil } from '@/shared/auth/authStore';
 
-type Props = { perfil: Perfil };
-
-export function Layout({ perfil }: Props) {
+export function Layout() {
   const [colapsado, setColapsado] = useState(false);
   const [mobileAberto, setMobileAberto] = useState(false);
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Sidebar
-        perfil={perfil}
         isCollapsed={colapsado}
         onToggleCollapsed={() => setColapsado((v) => !v)}
         isMobileOpen={mobileAberto}

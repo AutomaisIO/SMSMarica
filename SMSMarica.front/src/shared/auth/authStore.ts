@@ -1,51 +1,144 @@
 import { create } from 'zustand';
+import { http } from '@/shared/api/httpClient';
 
-export type Perfil = 'operador' | 'gestor';
+export type ModuloPermissao =
+  | 'Pacientes'
+  | 'Unidades'
+  | 'Veiculos'
+  | 'Motoristas'
+  | 'Usuarios'
+  | 'TiposTratamento'
+  | 'Perfis'
+  | 'Tratamentos'
+  | 'Translados'
+  | 'Rastreamento'
+  | 'Avaliacoes'
+  | 'Pacs';
+
+export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 
 export type UsuarioAutenticado = {
+  id: string;
   nome: string;
   email: string;
-  perfil: Perfil;
-  token: string;
 };
+
+type PermissaoApi = { modulo: ModuloPermissao; acoes: string };
 
 type AuthState = {
   usuario: UsuarioAutenticado | null;
-  entrar: (credenciais: { email: string; senha: string; perfil: Perfil }) => Promise<void>;
+  token: string | null;
+  expiraEm: string | null;
+  permissoes: Partial<Record<ModuloPermissao, AcaoPermissao[]>>;
+  entrar: (credenciais: { email: string; senha: string }) => Promise<void>;
   sair: () => void;
+  recarregarPermissoes: () => Promise<void>;
 };
 
 const CHAVE_STORAGE = 'smsmarica.auth';
 
-function lerUsuarioPersistido(): UsuarioAutenticado | null {
+type Persistido = {
+  usuario: UsuarioAutenticado;
+  token: string;
+  expiraEm: string;
+  permissoes: Partial<Record<ModuloPermissao, AcaoPermissao[]>>;
+};
+
+function lerPersistido(): Persistido | null {
   try {
     const bruto = localStorage.getItem(CHAVE_STORAGE);
-    return bruto ? (JSON.parse(bruto) as UsuarioAutenticado) : null;
+    if (!bruto) return null;
+    const obj = JSON.parse(bruto) as Persistido;
+    // Se já expirou, descarta para forçar novo login.
+    if (obj?.expiraEm && new Date(obj.expiraEm).getTime() < Date.now()) return null;
+    return obj;
   } catch {
     return null;
   }
 }
 
-export const useAuth = create<AuthState>((set) => ({
-  usuario: lerUsuarioPersistido(),
-  entrar: async ({ email, perfil }) => {
-    // Mock até S2.4 (Identidade) expor endpoint de autenticação real.
-    await new Promise((r) => setTimeout(r, 250));
+function parseAcoes(s: string): AcaoPermissao[] {
+  if (!s || s === 'Nenhuma') return [];
+  if (s === 'Todas') return ['Consulta', 'Inclusao', 'Edicao', 'Exclusao'];
+  return s
+    .split(/\s*,\s*/)
+    .filter(Boolean)
+    .filter((x): x is AcaoPermissao =>
+      x === 'Consulta' || x === 'Inclusao' || x === 'Edicao' || x === 'Exclusao',
+    );
+}
+
+function indexarPermissoes(lista: PermissaoApi[] | undefined | null) {
+  const result: Partial<Record<ModuloPermissao, AcaoPermissao[]>> = {};
+  for (const p of lista ?? []) {
+    result[p.modulo] = parseAcoes(p.acoes);
+  }
+  return result;
+}
+
+type LoginResposta = {
+  token: string;
+  expiraEm: string;
+  usuario: { id: string; nomeCompleto: string; email: string };
+  permissoes: PermissaoApi[];
+};
+
+const persistido = lerPersistido();
+
+export const useAuth = create<AuthState>((set, get) => ({
+  usuario: persistido?.usuario ?? null,
+  token: persistido?.token ?? null,
+  expiraEm: persistido?.expiraEm ?? null,
+  permissoes: persistido?.permissoes ?? {},
+
+  entrar: async ({ email, senha }) => {
+    const { data } = await http.post<LoginResposta>('/identidade/login', { email, senha });
     const usuario: UsuarioAutenticado = {
-      nome: email.split('@')[0] ?? 'Usuário',
-      email,
-      perfil,
-      token: `mock-token-${perfil}-${Date.now()}`,
+      id: data.usuario.id,
+      nome: data.usuario.nomeCompleto,
+      email: data.usuario.email,
     };
-    localStorage.setItem(CHAVE_STORAGE, JSON.stringify(usuario));
-    set({ usuario });
+    const permissoes = indexarPermissoes(data.permissoes);
+    const persistir: Persistido = { usuario, token: data.token, expiraEm: data.expiraEm, permissoes };
+    localStorage.setItem(CHAVE_STORAGE, JSON.stringify(persistir));
+    set({ usuario, token: data.token, expiraEm: data.expiraEm, permissoes });
   },
+
   sair: () => {
     localStorage.removeItem(CHAVE_STORAGE);
-    set({ usuario: null });
+    set({ usuario: null, token: null, expiraEm: null, permissoes: {} });
+  },
+
+  recarregarPermissoes: async () => {
+    const usuario = get().usuario;
+    if (!usuario) return;
+    type Resp = { resolvidas: PermissaoApi[] };
+    const { data } = await http.get<Resp>('/identidade/me/permissoes');
+    const permissoes = indexarPermissoes(data.resolvidas);
+    const atual = get();
+    if (atual.token && atual.expiraEm) {
+      const persistir: Persistido = {
+        usuario,
+        token: atual.token,
+        expiraEm: atual.expiraEm,
+        permissoes,
+      };
+      localStorage.setItem(CHAVE_STORAGE, JSON.stringify(persistir));
+    }
+    set({ permissoes });
   },
 }));
 
-export function obterTokenMock(): string | null {
-  return useAuth.getState().usuario?.token ?? null;
+export function obterToken(): string | null {
+  return useAuth.getState().token;
+}
+
+/** Hook utilitário: o usuário pode CONSULTAR (entrar em) o módulo? */
+export function useTemConsulta(modulo: ModuloPermissao): boolean {
+  return useAuth((s) => (s.permissoes[modulo] ?? []).includes('Consulta'));
+}
+
+/** Hook utilitário: o usuário pode executar a ação específica no módulo? */
+export function usePermissao(modulo: ModuloPermissao, acao: AcaoPermissao): boolean {
+  return useAuth((s) => (s.permissoes[modulo] ?? []).includes(acao));
 }

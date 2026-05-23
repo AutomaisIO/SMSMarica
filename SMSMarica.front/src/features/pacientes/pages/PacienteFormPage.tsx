@@ -366,7 +366,7 @@ export function PacienteFormPage() {
     if (!reativacaoPendente) return;
     try {
       await reativar.mutateAsync(reativacaoPendente.id);
-      navigate(`/operador/pacientes/${reativacaoPendente.id}/editar`, { replace: true });
+      navigate(`/app/pacientes/${reativacaoPendente.id}/editar`, { replace: true });
     } catch (e) {
       setErroGlobal(extrairMensagemDeErro(e));
     }
@@ -396,11 +396,11 @@ export function PacienteFormPage() {
     try {
       if (modo === 'criar') {
         const id = await cadastrar.mutateAsync(payload);
-        navigate(`/operador/pacientes/${id}/editar`, { replace: true });
+        navigate(`/app/pacientes/${id}/editar`, { replace: true });
       } else if (params.id) {
         const { cpf: _cpf, dataNascimento: _dn, ...resto } = payload;
         await atualizar.mutateAsync({ id: params.id, payload: resto });
-        navigate('/operador/pacientes', { replace: false });
+        navigate('/app/pacientes', { replace: false });
       }
     } catch (err) {
       setErroGlobal(extrairMensagemDeErro(err));
@@ -461,7 +461,7 @@ export function PacienteFormPage() {
   if (modo === 'criar' && !passoCpfConcluido) {
     return (
       <div className="space-y-6">
-        <Cabecalho titulo="Novo paciente" voltar={() => navigate('/operador/pacientes')} />
+        <Cabecalho titulo="Novo paciente" voltar={() => navigate('/app/pacientes')} />
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <h2 className="text-base font-medium text-gray-900">Identificação inicial</h2>
           <p className="mt-1 text-sm text-gray-600">
@@ -514,7 +514,7 @@ export function PacienteFormPage() {
           ) : null}
 
           <div className="mt-6 flex justify-end gap-3">
-            <Button variante="ghost" onClick={() => navigate('/operador/pacientes')}>
+            <Button variante="ghost" onClick={() => navigate('/app/pacientes')}>
               Cancelar
             </Button>
             <Button onClick={aoConfirmarPasso1} disabled={consultandoCpf}>
@@ -539,7 +539,7 @@ export function PacienteFormPage() {
       <Cabecalho
         titulo={modo === 'criar' ? 'Novo paciente' : 'Editar paciente'}
         subtitulo={estado.nomeCompleto || undefined}
-        voltar={() => navigate('/operador/pacientes')}
+        voltar={() => navigate('/app/pacientes')}
       />
 
       {carregando ? (
@@ -567,7 +567,7 @@ export function PacienteFormPage() {
       ) : null}
 
       <div className="flex justify-end gap-3">
-        <Button variante="ghost" onClick={() => navigate('/operador/pacientes')} disabled={salvando}>
+        <Button variante="ghost" onClick={() => navigate('/app/pacientes')} disabled={salvando}>
           Cancelar
         </Button>
         <Button type="submit" disabled={salvando}>

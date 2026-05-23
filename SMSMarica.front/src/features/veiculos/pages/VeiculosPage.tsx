@@ -34,7 +34,7 @@ export function VeiculosPage() {
       render: (v) => (
         <button
           type="button"
-          onClick={() => navigate(`/operador/veiculos/${v.id}`)}
+          onClick={() => navigate(`/app/veiculos/${v.id}`)}
           className="text-left font-medium text-red-700 hover:underline"
         >
           {v.placa}
@@ -59,7 +59,7 @@ export function VeiculosPage() {
       className: 'text-right',
       render: (v) => (
         <div className="flex items-center justify-end gap-1">
-          <BotaoLinhaAcao onClick={() => navigate(`/operador/veiculos/${v.id}`)}>
+          <BotaoLinhaAcao onClick={() => navigate(`/app/veiculos/${v.id}`)}>
             <Eye className="h-3.5 w-3.5" /> Ver
           </BotaoLinhaAcao>
           <BotaoLinhaAcao onClick={() => setEstado({ tipo: 'editar', id: v.id })}>

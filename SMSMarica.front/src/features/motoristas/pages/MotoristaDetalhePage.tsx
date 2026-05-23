@@ -59,7 +59,7 @@ export function MotoristaDetalhePage() {
       render: (r) => (
         <button
           type="button"
-          onClick={() => navigate(`/operador/translados/${r.id}`)}
+          onClick={() => navigate(`/app/translados/${r.id}`)}
           className="text-left font-medium text-red-700 hover:underline"
         >
           {formatarData(r.data)}
@@ -89,7 +89,7 @@ export function MotoristaDetalhePage() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => navigate('/operador/motoristas')}
+            onClick={() => navigate('/app/motoristas')}
             className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
             aria-label="Voltar"
           >
@@ -106,7 +106,7 @@ export function MotoristaDetalhePage() {
             {m ? <p className="text-sm text-gray-500">CPF {formatarCpf(m.cpf)}</p> : null}
           </div>
         </div>
-        <Button variante="outline" onClick={() => navigate('/operador/motoristas')}>
+        <Button variante="outline" onClick={() => navigate('/app/motoristas')}>
           <Pencil className="h-4 w-4" /> Editar na lista
         </Button>
       </header>
