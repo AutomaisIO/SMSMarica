@@ -24,6 +24,13 @@ public interface IPacientesService
 
     Task<Guid> CadastrarAsync(CadastrarPacienteRequest request, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Promove um <see cref="SMSMarica.Data.Entities.Usuario"/> existente
+    /// (sem papel atual) a Paciente, criando linha em paciente com os campos
+    /// específicos e setando usuario.tipo_papel=Paciente.
+    /// </summary>
+    Task<Guid> PromoverAsync(PromoverPacienteRequest request, CancellationToken cancellationToken = default);
+
     Task AtualizarAsync(Guid id, AtualizarPacienteRequest request, CancellationToken cancellationToken = default);
 
     Task DesativarAsync(Guid id, CancellationToken cancellationToken = default);

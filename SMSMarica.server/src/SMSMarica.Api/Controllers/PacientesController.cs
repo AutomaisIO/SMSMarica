@@ -54,6 +54,23 @@ public sealed class PacientesController(IPacientesService service) : ControllerB
         return CreatedAtAction(nameof(ObterPorId), new { id }, id);
     }
 
+    /// <summary>
+    /// Promove um Usuario existente (sem papel) a Paciente — usado quando o
+    /// fluxo de cadastro detectou que o CPF já existe como usuário.
+    /// </summary>
+    [HttpPost("promover")]
+    [ProducesResponseType<Guid>(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Promover(
+        [FromBody] PromoverPacienteRequest request,
+        CancellationToken cancellationToken)
+    {
+        var id = await _service.PromoverAsync(request, cancellationToken);
+        return CreatedAtAction(nameof(ObterPorId), new { id }, id);
+    }
+
     /// <summary>Atualiza dados de um paciente existente.</summary>
     [HttpPut("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

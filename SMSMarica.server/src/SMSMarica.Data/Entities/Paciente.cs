@@ -2,19 +2,23 @@ using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Data.Entities;
 
+/// <summary>
+/// Papel profissional de <see cref="Usuario"/> (1:1) — cidadão atendido pelo
+/// programa. Carrega apenas campos específicos (CNS, dados clínicos,
+/// filiação, GPS de residência, contato de emergência). Dados pessoais base
+/// (nome, CPF, RG, data de nascimento, sexo, endereço, foto, telefone
+/// principal, e-mail) vivem em <see cref="Usuario"/>. Ver ADR-0005.
+/// </summary>
 public class Paciente
 {
     public Guid Id { get; set; }
+    public Guid UsuarioId { get; set; }
+    public Usuario Usuario { get; set; } = null!;
 
-    // Identificação
-    public string NomeCompleto { get; set; } = string.Empty;
+    // Identificação específica
     /// <summary>Nome pelo qual o paciente prefere ser chamado (opcional).</summary>
     public string? NomeSocial { get; set; }
-    public string Cpf { get; set; } = string.Empty;
     public string? Cns { get; set; }
-    public string? Rg { get; set; }
-    public DateOnly? DataNascimento { get; set; }
-    public Sexo Sexo { get; set; } = Sexo.NaoInformado;
     public EstadoCivil EstadoCivil { get; set; } = EstadoCivil.NaoInformado;
     public RacaCor RacaCor { get; set; } = RacaCor.NaoInformado;
     public Escolaridade Escolaridade { get; set; } = Escolaridade.NaoInformado;
@@ -27,15 +31,12 @@ public class Paciente
     public string? NomeDoPai { get; set; }
     public string? ResponsavelLegal { get; set; }
 
-    // Endereço (nullable até ser preenchido)
-    public Endereco? Endereco { get; set; }
+    // GPS de residência (específico de translado)
     public Gps? GpsResidencia { get; set; }
 
-    // Contatos
-    public string? TelefonePrincipal { get; set; }
+    // Contatos secundários (Principal vai pra Usuario.Telefone)
     public string? TelefoneCelular { get; set; }
     public string? TelefoneResidencial { get; set; }
-    public string? Email { get; set; }
     public ContatoEmergencia? ContatoEmergencia { get; set; }
 
     // Dados de saúde
@@ -51,9 +52,8 @@ public class Paciente
 
     // Outros
     public string? Observacoes { get; set; }
-    public string? FotoBase64 { get; set; }
 
-    // Controle
+    // Controle (papel)
     public bool Ativo { get; set; } = true;
     public DateTime CriadoEm { get; set; }
     public DateTime? AtualizadoEm { get; set; }

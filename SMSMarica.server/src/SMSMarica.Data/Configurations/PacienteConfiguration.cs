@@ -12,13 +12,9 @@ internal sealed class PacienteConfiguration : IEntityTypeConfiguration<Paciente>
         builder.HasKey(p => p.Id);
 
         builder.Property(p => p.Id).HasColumnName("id");
-        builder.Property(p => p.NomeCompleto).HasColumnName("nome_completo").HasMaxLength(200).IsRequired();
+        builder.Property(p => p.UsuarioId).HasColumnName("usuario_id").IsRequired();
         builder.Property(p => p.NomeSocial).HasColumnName("nome_social").HasMaxLength(200);
-        builder.Property(p => p.Cpf).HasColumnName("cpf").HasMaxLength(11).IsRequired();
         builder.Property(p => p.Cns).HasColumnName("cns").HasMaxLength(15);
-        builder.Property(p => p.Rg).HasColumnName("rg").HasMaxLength(20);
-        builder.Property(p => p.DataNascimento).HasColumnName("data_nascimento");
-        builder.Property(p => p.Sexo).HasColumnName("sexo").HasConversion<int>().IsRequired();
         builder.Property(p => p.EstadoCivil).HasColumnName("estado_civil").HasConversion<int>().IsRequired();
         builder.Property(p => p.RacaCor).HasColumnName("raca_cor").HasConversion<int>().IsRequired();
         builder.Property(p => p.Escolaridade).HasColumnName("escolaridade").HasConversion<int>().IsRequired();
@@ -30,10 +26,8 @@ internal sealed class PacienteConfiguration : IEntityTypeConfiguration<Paciente>
         builder.Property(p => p.NomeDoPai).HasColumnName("nome_do_pai").HasMaxLength(200);
         builder.Property(p => p.ResponsavelLegal).HasColumnName("responsavel_legal").HasMaxLength(200);
 
-        builder.Property(p => p.TelefonePrincipal).HasColumnName("telefone_principal").HasMaxLength(20);
         builder.Property(p => p.TelefoneCelular).HasColumnName("telefone_celular").HasMaxLength(20);
         builder.Property(p => p.TelefoneResidencial).HasColumnName("telefone_residencial").HasMaxLength(20);
-        builder.Property(p => p.Email).HasColumnName("email").HasMaxLength(200);
 
         builder.Property(p => p.AlturaCm).HasColumnName("altura_cm");
         builder.Property(p => p.PesoKg).HasColumnName("peso_kg").HasPrecision(5, 2);
@@ -47,7 +41,6 @@ internal sealed class PacienteConfiguration : IEntityTypeConfiguration<Paciente>
         builder.Property(p => p.PlanoSaude).HasColumnName("plano_saude").HasMaxLength(120);
 
         builder.Property(p => p.Observacoes).HasColumnName("observacoes");
-        builder.Property(p => p.FotoBase64).HasColumnName("foto_base64").HasColumnType("text");
 
         builder.Property(p => p.Ativo).HasColumnName("ativo").HasDefaultValue(true).IsRequired();
         builder.Property(p => p.CriadoEm).HasColumnName("criado_em").IsRequired();
@@ -59,18 +52,6 @@ internal sealed class PacienteConfiguration : IEntityTypeConfiguration<Paciente>
             gps.Property(g => g.Longitude).HasColumnName("residencia_longitude");
         });
 
-        builder.OwnsOne(p => p.Endereco, e =>
-        {
-            e.Property(x => x.Cep).HasColumnName("endereco_cep").HasMaxLength(8);
-            e.Property(x => x.Logradouro).HasColumnName("endereco_logradouro").HasMaxLength(200);
-            e.Property(x => x.Numero).HasColumnName("endereco_numero").HasMaxLength(20);
-            e.Property(x => x.Complemento).HasColumnName("endereco_complemento").HasMaxLength(120);
-            e.Property(x => x.Bairro).HasColumnName("endereco_bairro").HasMaxLength(120);
-            e.Property(x => x.Cidade).HasColumnName("endereco_cidade").HasMaxLength(120);
-            e.Property(x => x.Uf).HasColumnName("endereco_uf").HasMaxLength(2);
-            e.Property(x => x.PontoReferencia).HasColumnName("endereco_ponto_referencia").HasMaxLength(200);
-        });
-
         builder.OwnsOne(p => p.ContatoEmergencia, c =>
         {
             c.Property(x => x.Nome).HasColumnName("contato_emergencia_nome").HasMaxLength(200);
@@ -78,8 +59,12 @@ internal sealed class PacienteConfiguration : IEntityTypeConfiguration<Paciente>
             c.Property(x => x.Telefone).HasColumnName("contato_emergencia_telefone").HasMaxLength(20);
         });
 
-        builder.HasIndex(p => p.Cpf).IsUnique();
-        builder.HasIndex(p => p.NomeCompleto);
+        builder.HasOne(p => p.Usuario)
+            .WithOne()
+            .HasForeignKey<Paciente>(p => p.UsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(p => p.UsuarioId).IsUnique();
         builder.HasIndex(p => p.Ativo);
     }
 }

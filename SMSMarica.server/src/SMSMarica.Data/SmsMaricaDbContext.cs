@@ -17,6 +17,7 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<Fileira> Fileiras => Set<Fileira>();
     public DbSet<Assento> Assentos => Set<Assento>();
     public DbSet<Motorista> Motoristas => Set<Motorista>();
+    public DbSet<Medico> Medicos => Set<Medico>();
     public DbSet<RotaDiaria> Rotas => Set<RotaDiaria>();
     public DbSet<Alocacao> Alocacoes => Set<Alocacao>();
     public DbSet<PontoGps> PontosGps => Set<PontoGps>();

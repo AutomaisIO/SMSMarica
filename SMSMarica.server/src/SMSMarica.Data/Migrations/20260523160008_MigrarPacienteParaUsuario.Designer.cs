@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SMSMarica.Data;
@@ -12,9 +13,11 @@ using SMSMarica.Data;
 namespace SMSMarica.Data.Migrations
 {
     [DbContext(typeof(SmsMaricaDbContext))]
-    partial class SmsMaricaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260523160008_MigrarPacienteParaUsuario")]
+    partial class MigrarPacienteParaUsuario
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -275,68 +278,6 @@ namespace SMSMarica.Data.Migrations
                     b.HasIndex("Tipo", "ReferenciaId");
 
                     b.ToTable("rastreamento_geofence", "smsmarica");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Medico", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<bool>("Ativo")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true)
-                        .HasColumnName("ativo");
-
-                    b.Property<DateTime?>("AtualizadoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("atualizado_em");
-
-                    b.Property<DateTime>("CriadoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("criado_em");
-
-                    b.Property<string>("Crm")
-                        .IsRequired()
-                        .HasMaxLength(15)
-                        .HasColumnType("character varying(15)")
-                        .HasColumnName("crm");
-
-                    b.Property<string>("Especialidade")
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)")
-                        .HasColumnName("especialidade");
-
-                    b.Property<string>("Rqe")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("rqe");
-
-                    b.Property<string>("UfCrm")
-                        .IsRequired()
-                        .HasMaxLength(2)
-                        .HasColumnType("character varying(2)")
-                        .HasColumnName("uf_crm");
-
-                    b.Property<Guid>("UsuarioId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("usuario_id");
-
-                    b.Property<DateOnly?>("ValidadeCrm")
-                        .HasColumnType("date")
-                        .HasColumnName("validade_crm");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UsuarioId")
-                        .IsUnique();
-
-                    b.HasIndex("Crm", "UfCrm")
-                        .IsUnique();
-
-                    b.ToTable("medico", "smsmarica");
                 });
 
             modelBuilder.Entity("SMSMarica.Data.Entities.Motorista", b =>
@@ -1256,17 +1197,6 @@ namespace SMSMarica.Data.Migrations
 
                     b.Navigation("Centro")
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Medico", b =>
-                {
-                    b.HasOne("SMSMarica.Data.Entities.Usuario", "Usuario")
-                        .WithOne()
-                        .HasForeignKey("SMSMarica.Data.Entities.Medico", "UsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("SMSMarica.Data.Entities.Motorista", b =>

@@ -1,27 +1,29 @@
 using SMSMarica.Core.Common.Dtos;
 using SMSMarica.Core.Pacientes.Dtos;
 using SMSMarica.Data.Entities;
+using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Pacientes;
 
 /// <summary>
 /// Mapeamento Paciente ↔ DTOs. Manual (sem Mapperly) porque envolve
-/// owned entities nullable, enums e listas mutáveis.
+/// owned entities nullable, enums e listas mutáveis. Após ADR-0005,
+/// dados pessoais base vêm de <see cref="Paciente.Usuario"/>.
 /// </summary>
 internal static class PacientesMapper
 {
     public static PacienteDto ParaDto(Paciente p) => new(
         p.Id,
-        p.NomeCompleto,
-        p.Cpf,
+        p.Usuario.NomeCompleto,
+        p.Usuario.Cpf ?? string.Empty,
         p.Cns,
         p.GpsResidencia?.Latitude ?? 0,
         p.GpsResidencia?.Longitude ?? 0,
         p.Ativo,
         p.CriadoEm,
-        p.Rg,
-        p.DataNascimento,
-        p.Sexo,
+        p.Usuario.Rg,
+        p.Usuario.DataNascimento,
+        p.Usuario.Sexo ?? Sexo.NaoInformado,
         p.EstadoCivil,
         p.RacaCor,
         p.Escolaridade,
@@ -31,11 +33,11 @@ internal static class PacientesMapper
         p.NomeDaMae,
         p.NomeDoPai,
         p.ResponsavelLegal,
-        p.Endereco is null ? null : EnderecoDto.ParaDto(p.Endereco),
-        p.TelefonePrincipal,
+        p.Usuario.Endereco is null ? null : EnderecoDto.ParaDto(p.Usuario.Endereco),
+        p.Usuario.Telefone,
         p.TelefoneCelular,
         p.TelefoneResidencial,
-        p.Email,
+        p.Usuario.Email,
         p.ContatoEmergencia is null ? null : ParaContatoDto(p.ContatoEmergencia),
         p.AlturaCm,
         p.PesoKg,
@@ -47,17 +49,17 @@ internal static class PacientesMapper
         p.Deficiencias,
         p.PlanoSaude,
         p.Observacoes,
-        p.FotoBase64,
+        p.Usuario.FotoBase64,
         p.NomeSocial);
 
     public static PacienteListItemDto ParaListItem(Paciente p) => new(
         p.Id,
-        p.NomeCompleto,
-        p.Cpf,
-        p.DataNascimento,
+        p.Usuario.NomeCompleto,
+        p.Usuario.Cpf ?? string.Empty,
+        p.Usuario.DataNascimento,
         p.NomeDaMae,
-        p.TelefonePrincipal,
-        p.FotoBase64,
+        p.Usuario.Telefone,
+        p.Usuario.FotoBase64,
         p.Ativo,
         p.NomeSocial);
 

@@ -13,7 +13,8 @@ export type ModuloPermissao =
   | 'Translados'
   | 'Rastreamento'
   | 'Avaliacoes'
-  | 'Pacs';
+  | 'Pacs'
+  | 'Medicos';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 

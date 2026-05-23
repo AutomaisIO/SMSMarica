@@ -29,7 +29,7 @@ internal static class TratamentosMapper
         IReadOnlyDictionary<Guid, AlocacaoAtiva> alocacoesPorSessao) => new(
         t.Id,
         t.PacienteId,
-        t.Paciente?.NomeCompleto ?? string.Empty,
+        t.Paciente?.Usuario?.NomeCompleto ?? string.Empty,
         t.UnidadeId,
         t.Unidade?.Nome ?? string.Empty,
         t.TipoTratamentoId,

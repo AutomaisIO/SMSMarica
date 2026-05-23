@@ -6,6 +6,7 @@ using SMSMarica.Core.Avaliacoes;
 using SMSMarica.Core.EstudoAnotacoes;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Integracoes;
+using SMSMarica.Core.Medicos;
 using SMSMarica.Core.Motoristas;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.Pacs;
@@ -29,6 +30,7 @@ public static class DependencyInjection
         services.AddScoped<IUnidadesService, UnidadesService>();
         services.AddScoped<IVeiculosService, VeiculosService>();
         services.AddScoped<IMotoristasService, MotoristasService>();
+        services.AddScoped<IMedicosService, MedicosService>();
         services.AddScoped<ITransladoService, TransladoService>();
         services.AddScoped<IRastreamentoService, RastreamentoService>();
         services.AddScoped<IAvaliacoesService, AvaliacoesService>();

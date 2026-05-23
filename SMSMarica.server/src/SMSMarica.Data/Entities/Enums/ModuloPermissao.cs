@@ -18,4 +18,5 @@ public enum ModuloPermissao
     Rastreamento = 10,
     Avaliacoes = 11,
     Pacs = 12,
+    Medicos = 13,
 }

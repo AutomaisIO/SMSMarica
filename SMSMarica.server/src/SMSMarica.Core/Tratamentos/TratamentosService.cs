@@ -46,7 +46,7 @@ public sealed class TratamentosService(SmsMaricaDbContext db) : ITratamentosServ
     public async Task<TratamentoDto> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var t = await _db.Tratamentos.AsNoTracking()
-            .Include(x => x.Paciente)
+            .Include(x => x.Paciente).ThenInclude(p => p!.Usuario)
             .Include(x => x.Unidade)
             .Include(x => x.TipoTratamento)
             .Include(x => x.Periodicidade)
@@ -307,7 +307,7 @@ public sealed class TratamentosService(SmsMaricaDbContext db) : ITratamentosServ
     }
 
     private IQueryable<Tratamento> QueryListarBase() => _db.Tratamentos.AsNoTracking()
-        .Include(t => t.Paciente)
+        .Include(t => t.Paciente).ThenInclude(p => p!.Usuario)
         .Include(t => t.Unidade)
         .Include(t => t.TipoTratamento)
         .Include(t => t.Sessoes);
@@ -323,7 +323,7 @@ public sealed class TratamentosService(SmsMaricaDbContext db) : ITratamentosServ
         return new TratamentoListItemDto(
             t.Id,
             t.PacienteId,
-            t.Paciente?.NomeCompleto ?? string.Empty,
+            t.Paciente?.Usuario?.NomeCompleto ?? string.Empty,
             t.UnidadeId,
             t.Unidade?.Nome ?? string.Empty,
             t.TipoTratamento?.Nome,

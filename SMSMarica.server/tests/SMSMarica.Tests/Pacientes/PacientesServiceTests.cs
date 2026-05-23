@@ -33,9 +33,9 @@ public sealed class PacientesServiceTests(PostgresFixture postgres)
         id.Should().NotBeEmpty();
 
         await using var verificacao = _postgres.CriarDbContext();
-        var paciente = await verificacao.Pacientes.FirstAsync(p => p.Id == id);
-        paciente.NomeCompleto.Should().Be("Maria da Silva");
-        paciente.Cpf.Should().Be("12345678900");
+        var paciente = await verificacao.Pacientes.Include(p => p.Usuario).FirstAsync(p => p.Id == id);
+        paciente.Usuario.NomeCompleto.Should().Be("Maria da Silva");
+        paciente.Usuario.Cpf.Should().Be("12345678900");
         paciente.Ativo.Should().BeTrue();
     }
 

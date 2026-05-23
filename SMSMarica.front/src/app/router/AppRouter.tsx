@@ -6,6 +6,8 @@ import { RotaProtegida } from '@/app/router/RotaProtegida';
 import { AvaliacoesPage } from '@/features/avaliacoes/pages/AvaliacoesPage';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { TrocarSenhaPage } from '@/features/auth/pages/TrocarSenhaPage';
+import { MedicoDetalhePage } from '@/features/medicos/pages/MedicoDetalhePage';
+import { MedicosPage } from '@/features/medicos/pages/MedicosPage';
 import { MotoristaDetalhePage } from '@/features/motoristas/pages/MotoristaDetalhePage';
 import { MotoristasPage } from '@/features/motoristas/pages/MotoristasPage';
 import { PacienteDetalhePage } from '@/features/pacientes/pages/PacienteDetalhePage';
@@ -68,6 +70,8 @@ export function AppRouter() {
           <Route path="veiculos/:id" element={<VeiculoDetalhePage />} />
           <Route path="motoristas" element={<MotoristasPage />} />
           <Route path="motoristas/:id" element={<MotoristaDetalhePage />} />
+          <Route path="medicos" element={<MedicosPage />} />
+          <Route path="medicos/:id" element={<MedicoDetalhePage />} />
           <Route path="usuarios" element={<UsuariosPage />} />
           <Route path="meu-perfil" element={<MeuPerfilPage />} />
           <Route path="alterar-senha" element={<AlterarMinhaSenhaPage />} />

@@ -44,3 +44,35 @@ public sealed record CadastrarPacienteRequest(
     string? FotoBase64 = null,
     /// <summary>Nome pelo qual o paciente prefere ser chamado.</summary>
     string? NomeSocial = null);
+
+/// <summary>
+/// Promove um Usuario existente (sem papel) a Paciente. Carrega apenas os
+/// campos específicos de paciente — dados pessoais base reutilizam o que já
+/// está em <c>usuario</c>.
+/// </summary>
+public sealed record PromoverPacienteRequest(
+    Guid UsuarioId,
+    string? Cns = null,
+    string? NomeSocial = null,
+    EstadoCivil EstadoCivil = EstadoCivil.NaoInformado,
+    RacaCor RacaCor = RacaCor.NaoInformado,
+    Escolaridade Escolaridade = Escolaridade.NaoInformado,
+    string? Ocupacao = null,
+    string? Naturalidade = null,
+    string? Nacionalidade = "Brasileira",
+    string? NomeDaMae = null,
+    string? NomeDoPai = null,
+    string? ResponsavelLegal = null,
+    string? TelefoneCelular = null,
+    string? TelefoneResidencial = null,
+    ContatoEmergenciaDto? ContatoEmergencia = null,
+    int? AlturaCm = null,
+    decimal? PesoKg = null,
+    TipoSanguineo TipoSanguineo = TipoSanguineo.NaoInformado,
+    FatorRh FatorRh = FatorRh.NaoInformado,
+    IReadOnlyList<string>? Alergias = null,
+    IReadOnlyList<string>? MedicamentosContinuos = null,
+    IReadOnlyList<string>? Comorbidades = null,
+    IReadOnlyList<string>? Deficiencias = null,
+    string? PlanoSaude = null,
+    string? Observacoes = null);
