@@ -34,6 +34,8 @@ type ItemMenu = {
   icone: LucideIcon;
   modulo?: ModuloPermissao;
   end?: boolean;
+  /** Estado passado pra rota — usado p/ ações automáticas (ex.: abrir modal). */
+  state?: unknown;
 };
 
 type SecaoMenu = {
@@ -75,9 +77,17 @@ const SECOES: SecaoMenu[] = [
   },
   {
     id: 'imagens',
-    titulo: 'Exame de Imagem',
+    titulo: 'Exames de Imagem',
     icone: ImageIcon,
-    itens: [{ rotulo: 'PACS', to: '/app/pacs', icone: ScanLine, modulo: 'Pacs' }],
+    itens: [
+      {
+        rotulo: 'Abrir Exame',
+        to: '/app/pacs',
+        icone: ScanLine,
+        modulo: 'Pacs',
+        state: { abrirBusca: true },
+      },
+    ],
   },
 ];
 
@@ -211,6 +221,7 @@ export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseM
                     key={item.to}
                     to={item.to}
                     end={item.end}
+                    state={item.state}
                     onClick={mobile ? onCloseMobile : undefined}
                     title={isCollapsed && !mobile ? item.rotulo : undefined}
                     className={({ isActive }) =>

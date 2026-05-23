@@ -3,12 +3,16 @@ import { init as dicomImageLoaderInit, wadors } from '@cornerstonejs/dicom-image
 import {
   init as toolsInit,
   addTool,
+  AngleTool,
   ArrowAnnotateTool,
-  PanTool,
-  ZoomTool,
-  WindowLevelTool,
+  EllipticalROITool,
   LengthTool,
+  MagnifyTool,
+  PanTool,
+  ProbeTool,
   StackScrollTool,
+  WindowLevelTool,
+  ZoomTool,
 } from '@cornerstonejs/tools';
 import { http } from '@/shared/api/httpClient';
 import { obterToken } from '@/shared/auth/authStore';
@@ -40,6 +44,10 @@ export function inicializarCornerstone(): Promise<void> {
       addTool(LengthTool);
       addTool(StackScrollTool);
       addTool(ArrowAnnotateTool);
+      addTool(MagnifyTool);
+      addTool(EllipticalROITool);
+      addTool(AngleTool);
+      addTool(ProbeTool);
     })();
   }
   return promessaInit;

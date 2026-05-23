@@ -465,8 +465,7 @@ export function PacienteFormPage() {
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <h2 className="text-base font-medium text-gray-900">Identificação inicial</h2>
           <p className="mt-1 text-sm text-gray-600">
-            Informe CPF e data de nascimento. O nome será obtido automaticamente da Receita Federal
-            (Hub do Desenvolvedor) e não poderá ser editado.
+            Informe o CPF e a data de nascimento. Esses dados não poderão ser editados depois.
           </p>
 
           <div className="mt-5 grid max-w-xl grid-cols-1 gap-4 md:grid-cols-2">
@@ -608,11 +607,11 @@ type SecProps = {
 function SecaoIdentificacao({ estado, erros, setCampo }: SecProps) {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-      <Campo label="Nome completo (Receita Federal)" htmlFor="nomeCompleto" className="md:col-span-2"
-        dica="Nome obtido na consulta CPF — não pode ser editado.">
+      <Campo label="Nome completo" htmlFor="nomeCompleto" className="md:col-span-2"
+        dica="Não pode ser editado.">
         <Input id="nomeCompleto" value={estado.nomeCompleto} disabled readOnly />
       </Campo>
-      <Campo label="CPF" htmlFor="cpf" dica="CPF não pode ser alterado.">
+      <Campo label="CPF" htmlFor="cpf" dica="Não pode ser alterado.">
         <Input id="cpf" value={estado.cpf} disabled readOnly />
       </Campo>
       <Campo label="Data de nascimento" htmlFor="dataNascimento" dica="Imutável.">

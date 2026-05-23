@@ -48,6 +48,8 @@ export function AppRouter() {
 
       <Route element={<RotaProtegida />}>
         <Route path="/trocar-senha" element={<TrocarSenhaPage />} />
+        {/* Janela separada do PACS — fullscreen, sem sidebar/header do app. */}
+        <Route path="/pacs/janela" element={<PacsViewerPage janela />} />
       </Route>
 
       <Route element={<RotaProtegida />}>

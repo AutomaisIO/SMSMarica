@@ -21,6 +21,16 @@ public sealed class IdentidadeController(IIdentidadeService service) : Controlle
     public async Task<UsuarioDto> ObterPorId(Guid id, CancellationToken cancellationToken) =>
         await _service.ObterPorIdAsync(id, cancellationToken);
 
+    /// <summary>Consulta se já existe usuário com este CPF (200 com o usuário, ou 204 No Content).</summary>
+    [HttpGet("cpf/{cpf}")]
+    [ProducesResponseType<UsuarioDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> ObterPorCpf(string cpf, CancellationToken cancellationToken)
+    {
+        var u = await _service.ObterPorCpfAsync(cpf, cancellationToken);
+        return u is null ? NoContent() : Ok(u);
+    }
+
     [HttpPost]
     [ProducesResponseType<Guid>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

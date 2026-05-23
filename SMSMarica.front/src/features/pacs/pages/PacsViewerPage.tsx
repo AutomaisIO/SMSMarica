@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Search } from 'lucide-react';
+import { ExternalLink, Search } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/shared/ui/Button';
+import { cn } from '@/shared/lib/cn';
 import { PacsBuscaModal } from '@/features/pacs/components/PacsBuscaModal';
 import { PacsSeriesSidebar } from '@/features/pacs/components/PacsSeriesSidebar';
 import { PacsViewport } from '@/features/pacs/components/PacsViewport';
@@ -14,22 +16,62 @@ import {
 import { Tag, garantirPixelSpacing, valorNumero, valorTexto } from '@/features/pacs/lib/dicomJson';
 import type { Estudo } from '@/features/pacs/types';
 
-export function PacsViewerPage() {
+type Props = {
+  /**
+   * Quando true, renderiza a página em tela cheia (sem o Layout do app),
+   * já carrega o estudo serializado no hash da URL e oculta o botão
+   * "Abrir em janela separada" (que abriria recursivamente).
+   */
+  janela?: boolean;
+};
+
+function lerEstudoDoHash(): Estudo | null {
+  try {
+    const hash = window.location.hash;
+    if (!hash || hash.length < 2) return null;
+    return JSON.parse(decodeURIComponent(hash.slice(1))) as Estudo;
+  } catch {
+    return null;
+  }
+}
+
+export function PacsViewerPage({ janela = false }: Props = {}) {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [modalAberto, setModalAberto] = useState(false);
-  const [estudo, setEstudo] = useState<Estudo | null>(null);
+  const [estudo, setEstudo] = useState<Estudo | null>(() => (janela ? lerEstudoDoHash() : null));
   const [serieUID, setSerieUID] = useState<string | null>(null);
   const [imageIdsPorSerie, setImageIdsPorSerie] = useState<Record<string, string[]>>({});
   const [carregandoMeta, setCarregandoMeta] = useState(false);
   const [progresso, setProgresso] = useState<ProgressoPrefetch | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  // imageIds vai sempre derivado da série selecionada — uma única fonte de
-  // verdade evita o flash de "imagem anterior" durante a troca de série.
   const imageIds = serieUID ? imageIdsPorSerie[serieUID] ?? [] : [];
 
   useEffect(() => {
     return () => abortRef.current?.abort();
   }, []);
+
+  // Abre o modal automaticamente quando o usuário clica em "Abrir Exame" no
+  // menu (passa state.abrirBusca = true). Limpa o state pra refresh não repetir.
+  useEffect(() => {
+    if (janela) return;
+    const estadoLocacao = location.state as { abrirBusca?: boolean } | null;
+    if (estadoLocacao?.abrirBusca) {
+      abrirBusca();
+      navigate(location.pathname, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [janela, location.state]);
+
+  // Em modo janela, dispara o carregamento do estudo recebido no hash assim que
+  // o componente monta (não passa pela busca/modal).
+  useEffect(() => {
+    if (!janela) return;
+    const e = lerEstudoDoHash();
+    if (e) void carregarTudoDoEstudo(e);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [janela]);
 
   async function carregarTudoDoEstudo(e: Estudo) {
     abortRef.current?.abort();
@@ -41,7 +83,6 @@ export function PacsViewerPage() {
       const series = await listarSeries(e.studyInstanceUID);
       if (ctrl.signal.aborted) return;
 
-      // Metadados de todas as séries em paralelo — uma única "espera" antes do prefetch.
       const metaPorSerie = await Promise.all(
         series.map((s) =>
           obterMetadadosSerie(e.studyInstanceUID, s.seriesInstanceUID).catch(() => []),
@@ -70,16 +111,12 @@ export function PacsViewerPage() {
       });
 
       setImageIdsPorSerie(mapa);
-      // Auto-seleciona a primeira série com imagens, mas só se o usuário ainda
-      // não clicou em nenhuma (caso clique durante a busca de metadados).
       const primeira = series.find((s) => (mapa[s.seriesInstanceUID]?.length ?? 0) > 0);
       if (primeira) {
         setSerieUID((atual) => atual ?? primeira.seriesInstanceUID);
       }
       setCarregandoMeta(false);
 
-      // Prefetch das imagens em paralelo controlado — popula o cache do
-      // Cornerstone pra que trocar de série depois seja instantâneo.
       if (todosImageIds.length > 0) {
         setProgresso({ carregadas: 0, total: todosImageIds.length });
         await prefetchImagens(todosImageIds, {
@@ -92,7 +129,7 @@ export function PacsViewerPage() {
         if (!ctrl.signal.aborted) setProgresso(null);
       }
     } catch {
-      // Erros de rede já são silenciosos no nível do helper; aborto também cai aqui.
+      // helpers já são silenciosos; abort cai aqui também.
     } finally {
       if (!ctrl.signal.aborted) setCarregandoMeta(false);
     }
@@ -111,8 +148,6 @@ export function PacsViewerPage() {
     setSerieUID(uid);
   }, []);
 
-  // Limpa tudo de cara ao trocar de exame — usuário não pode ver o exame
-  // anterior atrás do modal de busca. Também cancela qualquer prefetch em voo.
   function abrirBusca() {
     abortRef.current?.abort();
     setEstudo(null);
@@ -123,10 +158,21 @@ export function PacsViewerPage() {
     setModalAberto(true);
   }
 
+  function abrirEmJanelaSeparada() {
+    if (!estudo) return;
+    const hash = encodeURIComponent(JSON.stringify(estudo));
+    window.open(`/pacs/janela#${hash}`, '_blank', 'noopener,noreferrer');
+  }
+
   return (
-    <div className="flex h-[calc(100vh-7rem)] flex-col overflow-hidden rounded-xl border border-gray-700 bg-gray-900 shadow-marica-lg">
-      {/* Header slim integrado ao visualizador — libera ~6rem de altura útil
-          em relação ao header anterior (h1 + subtítulo). Tudo no tema escuro. */}
+    <div
+      className={cn(
+        'flex flex-col overflow-hidden bg-gray-900 shadow-marica-lg',
+        janela
+          ? 'h-screen w-screen'
+          : 'h-[calc(100vh-7rem)] rounded-xl border border-gray-700',
+      )}
+    >
       <header className="flex flex-shrink-0 items-center justify-between gap-3 border-b border-gray-700 bg-gray-900 px-4 py-2">
         <div className="min-w-0 truncate text-sm text-gray-300">
           {estudo ? (
@@ -143,10 +189,20 @@ export function PacsViewerPage() {
             <span className="text-gray-500">PACS — Visualizador</span>
           )}
         </div>
-        <Button tamanho="sm" onClick={abrirBusca}>
-          <Search className="mr-2 h-4 w-4" />
-          Buscar exame
-        </Button>
+
+        {!janela && estudo ? (
+          <Button tamanho="sm" variante="outline" onClick={abrirEmJanelaSeparada}>
+            <ExternalLink className="mr-2 h-4 w-4" />
+            Abrir em janela separada
+          </Button>
+        ) : null}
+
+        {!janela && !estudo ? (
+          <Button tamanho="sm" onClick={abrirBusca}>
+            <Search className="mr-2 h-4 w-4" />
+            Buscar exame
+          </Button>
+        ) : null}
       </header>
 
       <div className="flex flex-1 overflow-hidden">
@@ -158,11 +214,13 @@ export function PacsViewerPage() {
         <PacsViewport imageIds={imageIds} carregando={carregandoMeta} progresso={progresso} />
       </div>
 
-      <PacsBuscaModal
-        aberto={modalAberto}
-        aoFechar={() => setModalAberto(false)}
-        aoSelecionar={selecionarEstudo}
-      />
+      {!janela ? (
+        <PacsBuscaModal
+          aberto={modalAberto}
+          aoFechar={() => setModalAberto(false)}
+          aoSelecionar={selecionarEstudo}
+        />
+      ) : null}
     </div>
   );
 }

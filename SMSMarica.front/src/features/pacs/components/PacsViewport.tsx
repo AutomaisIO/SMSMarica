@@ -8,22 +8,30 @@ import {
 } from '@cornerstonejs/core';
 import {
   ToolGroupManager,
-  PanTool,
-  ZoomTool,
-  WindowLevelTool,
-  LengthTool,
-  StackScrollTool,
+  AngleTool,
   ArrowAnnotateTool,
+  EllipticalROITool,
+  LengthTool,
+  MagnifyTool,
+  PanTool,
+  ProbeTool,
+  StackScrollTool,
+  WindowLevelTool,
+  ZoomTool,
   annotation as annotationManager,
   Enums as ToolsEnums,
 } from '@cornerstonejs/tools';
 import {
+  CircleDashed,
   Contrast,
+  Crosshair,
   Hand,
   Loader2,
   MessageSquarePlus,
   RotateCcw,
   Ruler,
+  ScanSearch,
+  Spline,
   Trash2,
   ZoomIn,
 } from 'lucide-react';
@@ -39,13 +47,26 @@ import {
 const { ViewportType } = Enums;
 const { MouseBindings } = ToolsEnums;
 
-type Ferramenta = 'Pan' | 'Zoom' | 'WindowLevel' | 'Length' | 'Arrow';
+type Ferramenta =
+  | 'Pan'
+  | 'Zoom'
+  | 'WindowLevel'
+  | 'Length'
+  | 'Angle'
+  | 'EllipticalROI'
+  | 'Probe'
+  | 'Magnify'
+  | 'Arrow';
 
 const FERRAMENTAS: { id: Ferramenta; nome: string; rotulo: string; icone: typeof Hand }[] = [
   { id: 'WindowLevel', nome: WindowLevelTool.toolName, rotulo: 'Janela/Nível', icone: Contrast },
   { id: 'Pan', nome: PanTool.toolName, rotulo: 'Mover', icone: Hand },
   { id: 'Zoom', nome: ZoomTool.toolName, rotulo: 'Zoom', icone: ZoomIn },
+  { id: 'Magnify', nome: MagnifyTool.toolName, rotulo: 'Lupa', icone: ScanSearch },
   { id: 'Length', nome: LengthTool.toolName, rotulo: 'Régua', icone: Ruler },
+  { id: 'Angle', nome: AngleTool.toolName, rotulo: 'Ângulo', icone: Spline },
+  { id: 'EllipticalROI', nome: EllipticalROITool.toolName, rotulo: 'ROI elíptica', icone: CircleDashed },
+  { id: 'Probe', nome: ProbeTool.toolName, rotulo: 'Intensidade do pixel', icone: Crosshair },
   { id: 'Arrow', nome: ArrowAnnotateTool.toolName, rotulo: 'Comentário', icone: MessageSquarePlus },
 ];
 
@@ -107,6 +128,10 @@ export function PacsViewport({ imageIds, carregando, progresso }: Props) {
         toolGroup.addTool(WindowLevelTool.toolName);
         toolGroup.addTool(LengthTool.toolName);
         toolGroup.addTool(StackScrollTool.toolName);
+        toolGroup.addTool(AngleTool.toolName);
+        toolGroup.addTool(EllipticalROITool.toolName);
+        toolGroup.addTool(ProbeTool.toolName);
+        toolGroup.addTool(MagnifyTool.toolName);
         toolGroup.addTool(ArrowAnnotateTool.toolName, {
           getTextCallback: aoPedirTexto,
         });

@@ -50,9 +50,12 @@ public sealed class HubConsultaService : IHubConsultaService
             var payload = await resposta.Content.ReadFromJsonAsync<HubCpfPayload>(JsonOpts, cancellationToken);
             if (payload is null || !payload.Status || payload.Result is null)
             {
+                // Não vazamos a mensagem crua do Hub (ex.: "NOK") para o front —
+                // a Receita às vezes devolve códigos pouco amigáveis.
+                _logger.LogInformation("Hub CPF negou consulta para {Cpf}: {Return}", cpfNormalizado, payload?.Return);
                 throw new ValidacaoException(
                     "hub.cpf_nao_encontrado",
-                    payload?.Return ?? "CPF/data de nascimento não conferem.");
+                    "CPF não foi validado pela Receita. Confira CPF e data de nascimento, ou tente novamente em instantes.");
             }
 
             return new HubCpfRespostaDto(

@@ -7,6 +7,7 @@ import { Input } from '@/shared/ui/Input';
 import { Modal } from '@/shared/ui/Modal';
 import { Tabs, type Aba } from '@/shared/ui/Tabs';
 import { consultarCpf } from '@/shared/api/integracoes';
+import { consultarUsuarioPorCpf } from '@/features/usuarios/api/usuariosApi';
 import {
   enderecoVazio,
   FormularioEndereco,
@@ -192,6 +193,17 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
     }
     setConsultandoCpf(true);
     try {
+      // Primeiro checa duplicidade no nosso DB; só vai ao Hub se for CPF inédito.
+      const existente = await consultarUsuarioPorCpf(cpfLimpo);
+      if (existente) {
+        setErroGlobal(
+          existente.ativo
+            ? `Já existe usuário com este CPF: ${existente.nomeCompleto} (${existente.email}).`
+            : `CPF pertence ao usuário inativo "${existente.nomeCompleto}". Peça para um administrador reativá-lo.`,
+        );
+        return;
+      }
+
       const hub = await consultarCpf(cpfLimpo, valores.dataNascimento);
       // O Hub às vezes devolve dataNascimento em formato BR (dd/mm/aaaa) — mantém o ISO digitado.
       setValores((s) => ({
@@ -349,7 +361,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
           erro={erros.nomeCompleto}
           required
           className="md:col-span-2"
-          dica={modo === 'criar' ? <span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" /> Vindo da Receita; não pode ser editado.</span> : undefined}
+          dica={modo === 'criar' ? <span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" /> Não pode ser editado.</span> : undefined}
         >
           <Input
             id="nomeCompleto"
@@ -609,8 +621,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
     return (
       <div className="space-y-5">
         <p className="text-sm text-gray-600">
-          Informe o CPF e a data de nascimento. Vamos validar contra a Receita para puxar o nome e
-          evitar cadastros duplicados.
+          Informe o CPF e a data de nascimento. Esses dados não poderão ser editados depois.
         </p>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

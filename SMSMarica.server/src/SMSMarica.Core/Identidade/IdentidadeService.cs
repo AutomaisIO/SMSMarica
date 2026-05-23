@@ -105,6 +105,16 @@ public sealed class IdentidadeService(
         return IdentidadeMapper.ParaDto(u);
     }
 
+    public async Task<UsuarioDto?> ObterPorCpfAsync(string cpf, CancellationToken cancellationToken = default)
+    {
+        var cpfNormalizado = NormalizarDigitos(cpf ?? string.Empty);
+        if (cpfNormalizado.Length != 11) return null;
+        var u = await _db.Usuarios.AsNoTracking()
+            .Include(x => x.UsuariosPerfis)
+            .FirstOrDefaultAsync(x => x.Cpf == cpfNormalizado, cancellationToken);
+        return u is null ? null : IdentidadeMapper.ParaDto(u);
+    }
+
     public async Task<Guid> CadastrarAsync(CadastrarUsuarioRequest request, CancellationToken cancellationToken = default)
     {
         var email = request.Email.Trim().ToLowerInvariant();

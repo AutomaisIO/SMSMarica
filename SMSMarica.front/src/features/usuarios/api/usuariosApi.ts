@@ -23,6 +23,16 @@ export async function obterUsuarioPorId(id: string): Promise<Usuario> {
   return data;
 }
 
+/** Retorna o usuário existente com este CPF, ou null se não houver. */
+export async function consultarUsuarioPorCpf(cpf: string): Promise<Usuario | null> {
+  const cpfLimpo = cpf.replace(/\D/g, '');
+  if (cpfLimpo.length !== 11) return null;
+  const r = await http.get<Usuario>(`/usuarios/cpf/${cpfLimpo}`, {
+    validateStatus: (s) => s === 200 || s === 204,
+  });
+  return r.status === 200 ? r.data : null;
+}
+
 export async function cadastrarUsuario(payload: CadastrarUsuarioPayload): Promise<string> {
   const { data } = await http.post<string>('/usuarios', payload);
   return data;
