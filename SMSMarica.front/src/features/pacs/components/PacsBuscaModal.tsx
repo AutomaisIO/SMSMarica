@@ -16,22 +16,33 @@ type Props = {
 
 const LIMITE_PADRAO = 10;
 
+function hojeIso(): string {
+  const agora = new Date();
+  const ano = agora.getFullYear();
+  const mes = String(agora.getMonth() + 1).padStart(2, '0');
+  const dia = String(agora.getDate()).padStart(2, '0');
+  return `${ano}-${mes}-${dia}`;
+}
+
 export function PacsBuscaModal({ aberto, aoFechar, aoSelecionar }: Props) {
   const [nome, setNome] = useState('');
   const [tipoBuscaNome, setTipoBuscaNome] = useState<TipoBuscaNome>('inicio');
-  const [dataInicial, setDataInicial] = useState('');
-  const [dataFinal, setDataFinal] = useState('');
+  const [dataInicial, setDataInicial] = useState(() => hojeIso());
+  const [dataFinal, setDataFinal] = useState(() => hojeIso());
   const [limite, setLimite] = useState(LIMITE_PADRAO);
 
   const busca = useBuscarEstudos();
 
   useEffect(() => {
     if (!aberto) return;
+    const hoje = hojeIso();
     setNome('');
     setTipoBuscaNome('inicio');
-    setDataInicial('');
-    setDataFinal('');
+    setDataInicial(hoje);
+    setDataFinal(hoje);
     setLimite(LIMITE_PADRAO);
+    // Auto-load: ignora o filtro do form e busca os últimos N exames
+    // independente da data (datas vazias → orderby=-StudyDate na API).
     busca.mutate({
       nome: '',
       tipoBuscaNome: 'inicio',

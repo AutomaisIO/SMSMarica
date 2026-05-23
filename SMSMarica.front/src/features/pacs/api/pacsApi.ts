@@ -76,8 +76,13 @@ export async function buscarEstudos(filtro: FiltroBusca): Promise<Estudo[]> {
   else if (di) params[Tag.StudyDate] = `${di}-`;
   else if (df) params[Tag.StudyDate] = `-${df}`;
 
-  // Sem filtro algum: mostrar os mais recentes.
-  if (!nomeNormalizado && !di && !df) params.orderby = `-${Tag.StudyDate}`;
+  // Sem filtro algum: ordenar do mais novo para o mais velho e usar PatientName=*
+  // como matching key — o dcm4chee QIDO-RS retorna 204 (vazio) se a query não
+  // tiver nenhum atributo de match, então precisamos forçar um wildcard.
+  if (!nomeNormalizado && !di && !df) {
+    params[Tag.PatientName] = '*';
+    params.orderby = `-${Tag.StudyDate}`;
+  }
 
   const { data } = await http.get<DatasetDicom[]>('/pacs/rs/studies', {
     params,

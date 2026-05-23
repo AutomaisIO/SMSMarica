@@ -10,11 +10,11 @@ import {
   MagnifyTool,
   PanTool,
   ProbeTool,
-  ScaleOverlayTool,
   StackScrollTool,
   WindowLevelTool,
   ZoomTool,
 } from '@cornerstonejs/tools';
+import { ScaleOverlayXYTool } from '@/features/pacs/lib/scaleOverlayXY';
 import { http } from '@/shared/api/httpClient';
 import { obterToken } from '@/shared/auth/authStore';
 import type { DatasetDicom } from '@/features/pacs/types';
@@ -49,7 +49,7 @@ export function inicializarCornerstone(): Promise<void> {
       addTool(EllipticalROITool);
       addTool(AngleTool);
       addTool(ProbeTool);
-      addTool(ScaleOverlayTool);
+      addTool(ScaleOverlayXYTool);
     })();
   }
   return promessaInit;

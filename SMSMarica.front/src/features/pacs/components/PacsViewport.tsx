@@ -17,13 +17,13 @@ import {
   MagnifyTool,
   PanTool,
   ProbeTool,
-  ScaleOverlayTool,
   StackScrollTool,
   WindowLevelTool,
   ZoomTool,
   annotation as annotationManager,
   Enums as ToolsEnums,
 } from '@cornerstonejs/tools';
+import { ScaleOverlayXYTool } from '@/features/pacs/lib/scaleOverlayXY';
 import {
   CircleDashed,
   Contrast,
@@ -166,11 +166,11 @@ export function PacsViewport({ imageIds, carregando, progresso, studyInstanceUID
         toolGroup.addTool(ArrowAnnotateTool.toolName, {
           getTextCallback: aoPedirTexto,
         });
-        toolGroup.addTool(ScaleOverlayTool.toolName);
+        toolGroup.addTool(ScaleOverlayXYTool.toolName);
       }
       toolGroup.addViewport(VIEWPORT_ID, RENDERING_ENGINE_ID);
       // Escala em mm nos eixos (estilo Weasis) — sempre visível, sem interação.
-      toolGroup.setToolEnabled(ScaleOverlayTool.toolName);
+      toolGroup.setToolEnabled(ScaleOverlayXYTool.toolName);
       ativarFerramenta('WindowLevel');
 
       // Quando o MagnifyTool cria seu próprio viewport ('magnify-viewport'),
@@ -271,7 +271,7 @@ export function PacsViewport({ imageIds, carregando, progresso, studyInstanceUID
         // ainda não tem imageData. Sem este re-enable, a régua nasce com
         // points vazios no init inicial e nunca aparece sobre a imagem.
         ToolGroupManager.getToolGroup(TOOL_GROUP_ID)?.setToolEnabled(
-          ScaleOverlayTool.toolName,
+          ScaleOverlayXYTool.toolName,
         );
       })
       .catch((e) => {
