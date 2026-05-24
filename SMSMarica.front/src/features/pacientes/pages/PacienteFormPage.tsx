@@ -99,6 +99,51 @@ const ENDERECO_VAZIO: Endereco = {
 };
 const CONTATO_VAZIO: ContatoEmergencia = { nome: '', parentesco: '', telefone: '' };
 
+/** Tradução dos paths do Zod para rótulos exibíveis no erro global. */
+const LABELS_CAMPOS: Record<string, string> = {
+  nomeCompleto: 'Nome completo',
+  nomeSocial: 'Nome social',
+  cpf: 'CPF',
+  dataNascimento: 'Data de nascimento',
+  cns: 'CNS',
+  rg: 'RG',
+  sexo: 'Sexo',
+  estadoCivil: 'Estado civil',
+  racaCor: 'Raça/cor',
+  escolaridade: 'Escolaridade',
+  ocupacao: 'Ocupação',
+  naturalidade: 'Naturalidade',
+  nacionalidade: 'Nacionalidade',
+  nomeDaMae: 'Nome da mãe',
+  nomeDoPai: 'Nome do pai',
+  responsavelLegal: 'Responsável legal',
+  telefonePrincipal: 'Telefone principal',
+  telefoneCelular: 'Celular',
+  telefoneResidencial: 'Telefone residencial',
+  email: 'E-mail',
+  alturaCm: 'Altura (cm)',
+  pesoKg: 'Peso (kg)',
+  tipoSanguineo: 'Tipo sanguíneo',
+  fatorRh: 'Fator Rh',
+  alergias: 'Alergias',
+  medicamentosContinuos: 'Medicamentos contínuos',
+  comorbidades: 'Comorbidades',
+  deficiencias: 'Deficiências',
+  planoSaude: 'Plano de saúde',
+  observacoes: 'Observações',
+  'endereco.cep': 'CEP',
+  'endereco.logradouro': 'Logradouro',
+  'endereco.numero': 'Número',
+  'endereco.complemento': 'Complemento',
+  'endereco.bairro': 'Bairro',
+  'endereco.cidade': 'Cidade',
+  'endereco.uf': 'UF',
+  'endereco.pontoReferencia': 'Ponto de referência',
+  'contatoEmergencia.nome': 'Nome do contato de emergência',
+  'contatoEmergencia.parentesco': 'Parentesco do contato de emergência',
+  'contatoEmergencia.telefone': 'Telefone do contato de emergência',
+};
+
 const ESTADO_INICIAL: Estado = {
   nomeCompleto: '', nomeSocial: '', cpf: '', dataNascimento: '', cns: '', rg: '',
   sexo: 'NaoInformado', estadoCivil: 'NaoInformado', racaCor: 'NaoInformado',
@@ -392,7 +437,13 @@ export function PacienteFormPage() {
         if (!novos[path]) novos[path] = issue.message;
       }
       setErros(novos);
-      setErroGlobal('Verifique os campos destacados.');
+      const detalhes = Object.entries(novos)
+        .map(([path, msg]) => `${LABELS_CAMPOS[path] ?? path}: ${msg}`);
+      setErroGlobal(
+        detalhes.length === 1
+          ? detalhes[0]
+          : `Corrija ${detalhes.length} campo(s): ${detalhes.join(' · ')}`,
+      );
       return;
     }
 

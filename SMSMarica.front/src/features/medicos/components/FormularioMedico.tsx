@@ -1,18 +1,20 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Loader2, Lock, Search, UserPlus } from 'lucide-react';
+import { Loader2, Search, UserPlus } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
+import { Tabs, type Aba } from '@/shared/ui/Tabs';
+import { DadosPessoaisCampos } from '@/shared/ui/DadosPessoaisCampos';
+import { SegurancaSecao } from '@/shared/ui/SegurancaSecao';
+import { PermissoesSecao, matrizParaApi } from '@/shared/ui/PermissoesSecao';
 import {
   enderecoVazio,
-  FormularioEndereco,
   paraPayload,
   type EnderecoForm,
 } from '@/shared/ui/FormularioEndereco';
-import { UploadFoto } from '@/shared/ui/UploadFoto';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { consultarCpf } from '@/shared/api/integracoes';
-import { consultarUsuarioPorCpf } from '@/features/usuarios/api/usuariosApi';
+import { consultarUsuarioPorCpf, obterUsuarioPorId } from '@/features/usuarios/api/usuariosApi';
 import {
   useAtualizarMedico,
   useCadastrarMedico,
@@ -20,9 +22,16 @@ import {
   usePromoverMedico,
 } from '@/features/medicos/api/queries';
 import {
+  useAtualizarOverridesDoUsuario,
+  useAtualizarPerfisDoUsuario,
+  useUsuarioPermissoes,
+} from '@/features/usuarios/api/queries';
+import {
   atualizarMedicoSchema,
   cadastrarMedicoSchema,
 } from '@/features/medicos/schemas/medicoSchema';
+import { paraMatriz } from '@/features/perfis/lib/acoes';
+import type { MatrizEdicao } from '@/features/perfis/types';
 
 type Props = { modo: 'criar' | 'editar'; idMedico?: string | null; aoConcluir: () => void };
 
@@ -30,12 +39,12 @@ type Valores = {
   nomeCompleto: string;
   cpf: string;
   dataNascimento: string;
+  email: string;
   crm: string;
   ufCrm: string;
   especialidade: string;
   rqe: string;
   validadeCrm: string;
-  email: string;
   telefone: string;
   endereco: EnderecoForm;
   fotoBase64: string | null;
@@ -45,12 +54,12 @@ const INICIAL: Valores = {
   nomeCompleto: '',
   cpf: '',
   dataNascimento: '',
+  email: '',
   crm: '',
   ufCrm: '',
   especialidade: '',
   rqe: '',
   validadeCrm: '',
-  email: '',
   telefone: '',
   endereco: enderecoVazio,
   fotoBase64: null,
@@ -67,8 +76,7 @@ type Erros = Partial<
     | 'rqe'
     | 'validadeCrm'
     | 'email'
-    | 'telefone'
-    | 'endereco',
+    | 'telefone',
     string
   >
 >;
@@ -77,7 +85,6 @@ type PromocaoPendente = {
   usuarioId: string;
   nome: string;
   email: string;
-  fotoBase64: string | null;
 };
 
 export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
@@ -88,10 +95,18 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
   const [consultandoCpf, setConsultandoCpf] = useState(false);
   const [promocao, setPromocao] = useState<PromocaoPendente | null>(null);
 
+  const [perfilIdsSelecionados, setPerfilIdsSelecionados] = useState<string[]>([]);
+  const [overrides, setOverrides] = useState<MatrizEdicao>({});
+
   const cadastrar = useCadastrarMedico();
   const atualizar = useAtualizarMedico();
   const promover = usePromoverMedico();
   const detalhe = useMedicoPorId(modo === 'editar' ? idMedico ?? null : null);
+  const salvarPerfis = useAtualizarPerfisDoUsuario();
+  const salvarOverrides = useAtualizarOverridesDoUsuario();
+  const permissoesUsuario = useUsuarioPermissoes(
+    modo === 'editar' && detalhe.data ? detalhe.data.usuarioId : null,
+  );
 
   useEffect(() => {
     if (modo === 'editar' && detalhe.data) {
@@ -100,12 +115,12 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
         nomeCompleto: detalhe.data.nomeCompleto,
         cpf: detalhe.data.cpf,
         dataNascimento: detalhe.data.dataNascimento ?? '',
+        email: '',
         crm: detalhe.data.crm,
         ufCrm: detalhe.data.ufCrm,
         especialidade: detalhe.data.especialidade ?? '',
         rqe: detalhe.data.rqe ?? '',
         validadeCrm: detalhe.data.validadeCrm ?? '',
-        email: '',
         telefone: detalhe.data.telefone ?? '',
         fotoBase64: detalhe.data.fotoBase64 ?? null,
         endereco: e
@@ -121,10 +136,23 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
             }
           : enderecoVazio,
       });
+      // Pega email e perfilIds do Usuario.
+      obterUsuarioPorId(detalhe.data.usuarioId)
+        .then((u) => {
+          setValores((s) => ({ ...s, email: u.email ?? '' }));
+          setPerfilIdsSelecionados(u.perfilIds ?? []);
+        })
+        .catch(() => {});
     }
   }, [modo, detalhe.data]);
 
-  function set<K extends keyof Valores>(k: K, v: Valores[K]) {
+  useEffect(() => {
+    if (modo === 'editar' && permissoesUsuario.data) {
+      setOverrides(paraMatriz(permissoesUsuario.data.overrides));
+    }
+  }, [modo, permissoesUsuario.data]);
+
+  function setCampo<K extends keyof Valores>(k: K, v: Valores[K]) {
     setValores((p) => ({ ...p, [k]: v }));
   }
 
@@ -160,7 +188,6 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
           usuarioId: existente.id,
           nome: existente.nomeCompleto,
           email: existente.email,
-          fotoBase64: existente.fotoBase64 ?? null,
         });
         setValores((s) => ({
           ...s,
@@ -200,12 +227,17 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
     }
   }
 
+  async function aplicarPermissoes(usuarioId: string) {
+    const overridesParaApi = matrizParaApi(overrides);
+    await salvarPerfis.mutateAsync({ id: usuarioId, perfilIds: perfilIdsSelecionados });
+    await salvarOverrides.mutateAsync({ id: usuarioId, overrides: overridesParaApi });
+  }
+
   async function aoEnviar(e: FormEvent) {
     e.preventDefault();
     setErros({});
     setErroGlobal(null);
 
-    // Modo promoção: só dados do papel (CRM/UF/Especialidade/RQE/Validade) importam.
     if (modo === 'criar' && promocao) {
       const ne: Erros = {};
       const crm = valores.crm.trim();
@@ -225,6 +257,7 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
           rqe: valores.rqe.trim() || undefined,
           validadeCrm: valores.validadeCrm || undefined,
         });
+        await aplicarPermissoes(promocao.usuarioId);
         aoConcluir();
       } catch (erro) {
         setErroGlobal(extrairMensagemDeErro(erro));
@@ -275,7 +308,15 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
           setErros(ne);
           return;
         }
-        await cadastrar.mutateAsync(parsed.data);
+        const idMed = await cadastrar.mutateAsync(parsed.data);
+        try {
+          const novoMed = await import('@/features/medicos/api/medicosApi')
+            .then((m) => m.obterMedicoPorId(idMed));
+          await aplicarPermissoes(novoMed.usuarioId);
+        } catch (errPerm) {
+          setErroGlobal(`Médico criado, mas falha ao aplicar permissões: ${extrairMensagemDeErro(errPerm)}`);
+          return;
+        }
       } else {
         if (!idMedico) throw new Error('ID ausente.');
         const parsed = atualizarMedicoSchema.safeParse(base);
@@ -289,6 +330,7 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
           return;
         }
         await atualizar.mutateAsync({ id: idMedico, payload: parsed.data });
+        if (detalhe.data) await aplicarPermissoes(detalhe.data.usuarioId);
       }
       aoConcluir();
     } catch (erro) {
@@ -296,10 +338,9 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
     }
   }
 
-  const pendente = cadastrar.isPending || atualizar.isPending || promover.isPending;
-  // Nome, CPF e data de nascimento são imutáveis após o gate inicial,
-  // tanto em modo criar (preenchidos via Hub) quanto em editar.
-  const travarIdentidade = true;
+  const pendente =
+    cadastrar.isPending || atualizar.isPending || promover.isPending
+    || salvarPerfis.isPending || salvarOverrides.isPending;
 
   if (modo === 'criar' && !passoCpfConcluido) {
     return (
@@ -313,7 +354,7 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
             <Input
               id="cpfInicial"
               value={valores.cpf}
-              onChange={(e) => set('cpf', e.target.value)}
+              onChange={(e) => setCampo('cpf', e.target.value)}
               inputMode="numeric"
               placeholder="00000000000"
               autoFocus
@@ -331,7 +372,7 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
               id="nascInicial"
               type="date"
               value={valores.dataNascimento}
-              onChange={(e) => set('dataNascimento', e.target.value)}
+              onChange={(e) => setCampo('dataNascimento', e.target.value)}
               disabled={consultandoCpf}
             />
           </Campo>
@@ -363,7 +404,7 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
     );
   }
 
-  // Modo promoção: usuário existente sem papel → só pede dados do papel médico.
+  // Modo promoção: usuário existe sem papel → só campos do papel médico.
   if (modo === 'criar' && promocao) {
     return (
       <form onSubmit={aoEnviar} className="space-y-5">
@@ -384,56 +425,12 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <Campo label="CRM" htmlFor="crm" erro={erros.crm} required>
-            <Input
-              id="crm"
-              value={valores.crm}
-              onChange={(e) => set('crm', e.target.value)}
-              inputMode="numeric"
-              required
-              autoFocus
-            />
-          </Campo>
-
-          <Campo label="UF do CRM" htmlFor="ufCrm" erro={erros.ufCrm} required>
-            <Input
-              id="ufCrm"
-              value={valores.ufCrm}
-              onChange={(e) => set('ufCrm', e.target.value.toUpperCase())}
-              maxLength={2}
-              placeholder="RJ"
-              required
-            />
-          </Campo>
-
-          <Campo label="Especialidade" htmlFor="especialidade" erro={erros.especialidade}>
-            <Input
-              id="especialidade"
-              value={valores.especialidade}
-              onChange={(e) => set('especialidade', e.target.value)}
-              placeholder="Clínica geral, Cardiologia…"
-            />
-          </Campo>
-
-          <Campo
-            label="RQE"
-            htmlFor="rqe"
-            erro={erros.rqe}
-            dica="Registro de Qualificação de Especialista."
-          >
-            <Input id="rqe" value={valores.rqe} onChange={(e) => set('rqe', e.target.value)} />
-          </Campo>
-
-          <Campo label="Validade do CRM" htmlFor="validadeCrm" erro={erros.validadeCrm}>
-            <Input
-              id="validadeCrm"
-              type="date"
-              value={valores.validadeCrm}
-              onChange={(e) => set('validadeCrm', e.target.value)}
-            />
-          </Campo>
-        </div>
+        <CamposMedicoEspecificos
+          valores={valores}
+          erros={erros}
+          setCampo={setCampo}
+          autoFocusCrm
+        />
 
         {erroGlobal ? (
           <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -453,158 +450,71 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
     );
   }
 
-  return (
-    <form onSubmit={aoEnviar} className="space-y-5">
+  const dadosPessoaisValores = {
+    nomeCompleto: valores.nomeCompleto,
+    cpf: valores.cpf,
+    dataNascimento: valores.dataNascimento,
+    email: valores.email,
+    telefone: valores.telefone,
+    endereco: valores.endereco,
+    fotoBase64: valores.fotoBase64,
+  };
+
+  const abaDados = (
+    <div className="space-y-5">
       {modo === 'editar' && detalhe.isFetching ? (
         <div className="text-sm text-gray-500">Carregando dados…</div>
       ) : null}
 
-      <UploadFoto
-        valor={valores.fotoBase64}
-        aoMudar={(v) => set('fotoBase64', v)}
-        nome={valores.nomeCompleto || undefined}
+      <DadosPessoaisCampos
+        valores={dadosPessoaisValores}
+        erros={erros}
+        aoMudarCampo={(c, v) => {
+          if (c === 'nomeCompleto' || c === 'cpf' || c === 'dataNascimento') return;
+          setCampo(c as keyof Valores, v as Valores[keyof Valores]);
+        }}
+        identidadeReadOnly
+        emailReadOnly={modo === 'editar'}
         desabilitado={pendente}
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Campo
-          label="Nome completo"
-          htmlFor="nomeCompleto"
-          erro={erros.nomeCompleto}
-          required
-          className="md:col-span-2"
-          dica={
-            travarIdentidade ? (
-              <span className="inline-flex items-center gap-1">
-                <Lock className="h-3 w-3" /> Não pode ser editado.
-              </span>
-            ) : undefined
-          }
-        >
-          <Input
-            id="nomeCompleto"
-            value={valores.nomeCompleto}
-            onChange={(e) => set('nomeCompleto', e.target.value)}
-            required
-            disabled={travarIdentidade}
-            readOnly={travarIdentidade}
-          />
-        </Campo>
-
-        <Campo
-          label="CPF"
-          htmlFor="cpf"
-          erro={erros.cpf}
-          required={modo === 'criar'}
-          dica={
-            <span className="inline-flex items-center gap-1">
-              <Lock className="h-3 w-3" /> Imutável
-            </span>
-          }
-        >
-          <Input
-            id="cpf"
-            value={valores.cpf}
-            onChange={(e) => set('cpf', e.target.value)}
-            inputMode="numeric"
-            required={modo === 'criar'}
-            disabled
-            readOnly
-          />
-        </Campo>
-
-        <Campo
-          label="Data de nascimento"
-          htmlFor="dataNascimento"
-          dica={
-            <span className="inline-flex items-center gap-1">
-              <Lock className="h-3 w-3" /> Imutável
-            </span>
-          }
-        >
-          <Input
-            id="dataNascimento"
-            type="date"
-            value={valores.dataNascimento}
-            onChange={(e) => set('dataNascimento', e.target.value)}
-            disabled
-            readOnly
-          />
-        </Campo>
-
-        {modo === 'criar' ? (
-          <Campo label="E-mail" htmlFor="email" erro={erros.email}>
-            <Input
-              id="email"
-              type="email"
-              value={valores.email}
-              onChange={(e) => set('email', e.target.value)}
-              placeholder="medico@exemplo.com"
-            />
-          </Campo>
-        ) : null}
-
-        <Campo label="CRM" htmlFor="crm" erro={erros.crm} required>
-          <Input
-            id="crm"
-            value={valores.crm}
-            onChange={(e) => set('crm', e.target.value)}
-            inputMode="numeric"
-            required
-          />
-        </Campo>
-
-        <Campo label="UF do CRM" htmlFor="ufCrm" erro={erros.ufCrm} required>
-          <Input
-            id="ufCrm"
-            value={valores.ufCrm}
-            onChange={(e) => set('ufCrm', e.target.value.toUpperCase())}
-            maxLength={2}
-            placeholder="RJ"
-            required
-          />
-        </Campo>
-
-        <Campo label="Especialidade" htmlFor="especialidade" erro={erros.especialidade}>
-          <Input
-            id="especialidade"
-            value={valores.especialidade}
-            onChange={(e) => set('especialidade', e.target.value)}
-            placeholder="Clínica geral, Cardiologia…"
-          />
-        </Campo>
-
-        <Campo label="RQE" htmlFor="rqe" erro={erros.rqe} dica="Registro de Qualificação de Especialista.">
-          <Input id="rqe" value={valores.rqe} onChange={(e) => set('rqe', e.target.value)} />
-        </Campo>
-
-        <Campo label="Validade do CRM" htmlFor="validadeCrm" erro={erros.validadeCrm}>
-          <Input
-            id="validadeCrm"
-            type="date"
-            value={valores.validadeCrm}
-            onChange={(e) => set('validadeCrm', e.target.value)}
-          />
-        </Campo>
-
-        <Campo label="Telefone" htmlFor="telefone" erro={erros.telefone}>
-          <Input
-            id="telefone"
-            value={valores.telefone}
-            onChange={(e) => set('telefone', e.target.value)}
-            placeholder="(21) 99999-0000"
-          />
-        </Campo>
-      </div>
-
-      <section>
-        <h3 className="mb-3 text-sm font-semibold text-gray-900">Endereço</h3>
-        <FormularioEndereco
-          valor={valores.endereco}
-          aoMudar={(e) => set('endereco', e)}
-          desabilitado={pendente}
+      {modo === 'editar' && detalhe.data ? (
+        <SegurancaSecao
+          usuarioId={detalhe.data.usuarioId}
+          deveTrocarAtual={false}
         />
-      </section>
+      ) : null}
+    </div>
+  );
+
+  const abaMedico = (
+    <CamposMedicoEspecificos valores={valores} erros={erros} setCampo={setCampo} />
+  );
+
+  const abaPermissoes = (
+    <PermissoesSecao
+      perfilIdsSelecionados={perfilIdsSelecionados}
+      aoMudarPerfilIds={setPerfilIdsSelecionados}
+      overrides={overrides}
+      aoMudarOverrides={setOverrides}
+      desabilitado={pendente}
+    />
+  );
+
+  const abas: Aba[] = [
+    { id: 'dados', rotulo: 'Dados pessoais', conteudo: abaDados },
+    { id: 'medico', rotulo: 'Médico', conteudo: abaMedico },
+    {
+      id: 'permissoes',
+      rotulo: 'Permissões',
+      conteudo: abaPermissoes,
+      badge: perfilIdsSelecionados.length || undefined,
+    },
+  ];
+
+  return (
+    <form onSubmit={aoEnviar} className="space-y-5">
+      <Tabs abas={abas} inicial="dados" />
 
       {erroGlobal ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -621,5 +531,65 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
         </Button>
       </div>
     </form>
+  );
+}
+
+function CamposMedicoEspecificos({
+  valores,
+  erros,
+  setCampo,
+  autoFocusCrm,
+}: {
+  valores: Valores;
+  erros: Erros;
+  setCampo: <K extends keyof Valores>(k: K, v: Valores[K]) => void;
+  autoFocusCrm?: boolean;
+}) {
+  return (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <Campo label="CRM" htmlFor="crm" erro={erros.crm} required>
+        <Input
+          id="crm"
+          value={valores.crm}
+          onChange={(e) => setCampo('crm', e.target.value)}
+          inputMode="numeric"
+          required
+          autoFocus={autoFocusCrm}
+        />
+      </Campo>
+
+      <Campo label="UF do CRM" htmlFor="ufCrm" erro={erros.ufCrm} required>
+        <Input
+          id="ufCrm"
+          value={valores.ufCrm}
+          onChange={(e) => setCampo('ufCrm', e.target.value.toUpperCase())}
+          maxLength={2}
+          placeholder="RJ"
+          required
+        />
+      </Campo>
+
+      <Campo label="Especialidade" htmlFor="especialidade" erro={erros.especialidade}>
+        <Input
+          id="especialidade"
+          value={valores.especialidade}
+          onChange={(e) => setCampo('especialidade', e.target.value)}
+          placeholder="Clínica geral, Cardiologia…"
+        />
+      </Campo>
+
+      <Campo label="RQE" htmlFor="rqe" erro={erros.rqe} dica="Registro de Qualificação de Especialista.">
+        <Input id="rqe" value={valores.rqe} onChange={(e) => setCampo('rqe', e.target.value)} />
+      </Campo>
+
+      <Campo label="Validade do CRM" htmlFor="validadeCrm" erro={erros.validadeCrm}>
+        <Input
+          id="validadeCrm"
+          type="date"
+          value={valores.validadeCrm}
+          onChange={(e) => setCampo('validadeCrm', e.target.value)}
+        />
+      </Campo>
+    </div>
   );
 }

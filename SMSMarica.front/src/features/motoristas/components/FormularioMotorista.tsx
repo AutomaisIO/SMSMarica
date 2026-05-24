@@ -1,18 +1,20 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Loader2, Lock, Search, UserPlus } from 'lucide-react';
+import { Loader2, Search, UserPlus } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
+import { Tabs, type Aba } from '@/shared/ui/Tabs';
+import { DadosPessoaisCampos } from '@/shared/ui/DadosPessoaisCampos';
+import { SegurancaSecao } from '@/shared/ui/SegurancaSecao';
+import { PermissoesSecao, matrizParaApi } from '@/shared/ui/PermissoesSecao';
 import {
   enderecoVazio,
-  FormularioEndereco,
   paraPayload,
   type EnderecoForm,
 } from '@/shared/ui/FormularioEndereco';
-import { UploadFoto } from '@/shared/ui/UploadFoto';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { consultarCpf } from '@/shared/api/integracoes';
-import { consultarUsuarioPorCpf } from '@/features/usuarios/api/usuariosApi';
+import { consultarUsuarioPorCpf, obterUsuarioPorId } from '@/features/usuarios/api/usuariosApi';
 import {
   useAtualizarMotorista,
   useCadastrarMotorista,
@@ -20,9 +22,16 @@ import {
   usePromoverMotorista,
 } from '@/features/motoristas/api/queries';
 import {
+  useAtualizarOverridesDoUsuario,
+  useAtualizarPerfisDoUsuario,
+  useUsuarioPermissoes,
+} from '@/features/usuarios/api/queries';
+import {
   atualizarMotoristaSchema,
   cadastrarMotoristaSchema,
 } from '@/features/motoristas/schemas/motoristaSchema';
+import { paraMatriz } from '@/features/perfis/lib/acoes';
+import type { MatrizEdicao } from '@/features/perfis/types';
 
 type Props = { modo: 'criar' | 'editar'; idMotorista?: string | null; aoConcluir: () => void };
 
@@ -30,29 +39,32 @@ type Valores = {
   nomeCompleto: string;
   cpf: string;
   dataNascimento: string;
+  email: string;
   cnh: string;
   telefone: string;
   endereco: EnderecoForm;
   fotoBase64: string | null;
 };
+
 const INICIAL: Valores = {
   nomeCompleto: '',
   cpf: '',
   dataNascimento: '',
+  email: '',
   cnh: '',
   telefone: '',
   endereco: enderecoVazio,
   fotoBase64: null,
 };
+
 type Erros = Partial<
-  Record<'nomeCompleto' | 'cpf' | 'dataNascimento' | 'cnh' | 'telefone' | 'endereco', string>
+  Record<'nomeCompleto' | 'cpf' | 'dataNascimento' | 'email' | 'cnh' | 'telefone', string>
 >;
 
 type PromocaoPendente = {
   usuarioId: string;
   nome: string;
   email: string;
-  fotoBase64: string | null;
 };
 
 export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
@@ -63,10 +75,18 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
   const [consultandoCpf, setConsultandoCpf] = useState(false);
   const [promocao, setPromocao] = useState<PromocaoPendente | null>(null);
 
+  const [perfilIdsSelecionados, setPerfilIdsSelecionados] = useState<string[]>([]);
+  const [overrides, setOverrides] = useState<MatrizEdicao>({});
+
   const cadastrar = useCadastrarMotorista();
   const atualizar = useAtualizarMotorista();
   const promover = usePromoverMotorista();
   const detalhe = useMotoristaPorId(modo === 'editar' ? idMotorista ?? null : null);
+  const salvarPerfis = useAtualizarPerfisDoUsuario();
+  const salvarOverrides = useAtualizarOverridesDoUsuario();
+  const permissoesUsuario = useUsuarioPermissoes(
+    modo === 'editar' && detalhe.data ? detalhe.data.usuarioId : null,
+  );
 
   useEffect(() => {
     if (modo === 'editar' && detalhe.data) {
@@ -75,6 +95,7 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
         nomeCompleto: detalhe.data.nomeCompleto,
         cpf: detalhe.data.cpf,
         dataNascimento: detalhe.data.dataNascimento ?? '',
+        email: '',
         cnh: detalhe.data.cnh,
         telefone: detalhe.data.telefone ?? '',
         fotoBase64: detalhe.data.fotoBase64 ?? null,
@@ -91,10 +112,30 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
             }
           : enderecoVazio,
       });
+      // Carrega email do Usuario quando temos usuarioId.
+      obterUsuarioPorId(detalhe.data.usuarioId)
+        .then((u) => setValores((s) => ({ ...s, email: u.email ?? '' })))
+        .catch(() => {});
+      setPerfilIdsSelecionados(detalhe.data ? [] : []);
     }
   }, [modo, detalhe.data]);
 
-  function set<K extends keyof Valores>(k: K, v: Valores[K]) {
+  // Carrega perfis do usuário separadamente (porque MotoristaDto não expõe).
+  useEffect(() => {
+    if (modo === 'editar' && detalhe.data) {
+      obterUsuarioPorId(detalhe.data.usuarioId)
+        .then((u) => setPerfilIdsSelecionados(u.perfilIds ?? []))
+        .catch(() => {});
+    }
+  }, [modo, detalhe.data]);
+
+  useEffect(() => {
+    if (modo === 'editar' && permissoesUsuario.data) {
+      setOverrides(paraMatriz(permissoesUsuario.data.overrides));
+    }
+  }, [modo, permissoesUsuario.data]);
+
+  function setCampo<K extends keyof Valores>(k: K, v: Valores[K]) {
     setValores((p) => ({ ...p, [k]: v }));
   }
 
@@ -126,17 +167,17 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
           );
           return;
         }
-        // Usuário existente sem papel → promover.
+        // Usuário existente sem papel → promoção.
         setPromocao({
           usuarioId: existente.id,
           nome: existente.nomeCompleto,
           email: existente.email,
-          fotoBase64: existente.fotoBase64 ?? null,
         });
         setValores((s) => ({
           ...s,
           nomeCompleto: existente.nomeCompleto,
           cpf: cpfLimpo,
+          email: existente.email ?? s.email,
           telefone: existente.telefone ?? s.telefone,
           fotoBase64: existente.fotoBase64 ?? null,
           endereco: existente.endereco
@@ -170,6 +211,12 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
     }
   }
 
+  async function aplicarPermissoes(usuarioId: string) {
+    const overridesParaApi = matrizParaApi(overrides);
+    await salvarPerfis.mutateAsync({ id: usuarioId, perfilIds: perfilIdsSelecionados });
+    await salvarOverrides.mutateAsync({ id: usuarioId, overrides: overridesParaApi });
+  }
+
   async function aoEnviar(e: FormEvent) {
     e.preventDefault();
     setErros({});
@@ -184,6 +231,7 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
       }
       try {
         await promover.mutateAsync({ usuarioId: promocao.usuarioId, cnh });
+        await aplicarPermissoes(promocao.usuarioId);
         aoConcluir();
       } catch (erro) {
         setErroGlobal(extrairMensagemDeErro(erro));
@@ -229,7 +277,17 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
           setErros(ne);
           return;
         }
-        await cadastrar.mutateAsync(parsed.data);
+        const idMot = await cadastrar.mutateAsync(parsed.data);
+        // Resolve usuarioId pra aplicar perfis/overrides.
+        try {
+          const novoMot = await import('@/features/motoristas/api/motoristasApi')
+            .then((m) => m.obterMotoristaPorId(idMot));
+          await aplicarPermissoes(novoMot.usuarioId);
+        } catch (errPerm) {
+          // Cadastro foi feito mas perfis/overrides falharam. Reporta sem reverter o cadastro.
+          setErroGlobal(`Motorista criado, mas falha ao aplicar permissões: ${extrairMensagemDeErro(errPerm)}`);
+          return;
+        }
       } else {
         if (!idMotorista) throw new Error('ID ausente.');
         const parsed = atualizarMotoristaSchema.safeParse(base);
@@ -243,6 +301,7 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
           return;
         }
         await atualizar.mutateAsync({ id: idMotorista, payload: parsed.data });
+        if (detalhe.data) await aplicarPermissoes(detalhe.data.usuarioId);
       }
       aoConcluir();
     } catch (erro) {
@@ -250,10 +309,9 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
     }
   }
 
-  const pendente = cadastrar.isPending || atualizar.isPending || promover.isPending;
-  // Nome, CPF e data de nascimento são imutáveis após o gate inicial,
-  // tanto em modo criar (preenchidos via Hub) quanto em editar.
-  const travarIdentidade = true;
+  const pendente =
+    cadastrar.isPending || atualizar.isPending || promover.isPending
+    || salvarPerfis.isPending || salvarOverrides.isPending;
 
   // Passo 1: gate CPF + nascimento (somente modo criar).
   if (modo === 'criar' && !passoCpfConcluido) {
@@ -268,7 +326,7 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
             <Input
               id="cpfInicial"
               value={valores.cpf}
-              onChange={(e) => set('cpf', e.target.value)}
+              onChange={(e) => setCampo('cpf', e.target.value)}
               inputMode="numeric"
               placeholder="00000000000"
               autoFocus
@@ -286,7 +344,7 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
               id="nascInicial"
               type="date"
               value={valores.dataNascimento}
-              onChange={(e) => set('dataNascimento', e.target.value)}
+              onChange={(e) => setCampo('dataNascimento', e.target.value)}
               disabled={consultandoCpf}
             />
           </Campo>
@@ -318,7 +376,7 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
     );
   }
 
-  // Caso especial de promoção: usuário já existe sem papel → só pede CNH.
+  // Modo promoção: usuário existe sem papel → só CNH (sem abas).
   if (modo === 'criar' && promocao) {
     return (
       <form onSubmit={aoEnviar} className="space-y-5">
@@ -343,7 +401,7 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
           <Input
             id="cnh"
             value={valores.cnh}
-            onChange={(e) => set('cnh', e.target.value)}
+            onChange={(e) => setCampo('cnh', e.target.value)}
             required
             autoFocus
           />
@@ -367,107 +425,80 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
     );
   }
 
-  return (
-    <form onSubmit={aoEnviar} className="space-y-5">
+  const dadosPessoaisValores = {
+    nomeCompleto: valores.nomeCompleto,
+    cpf: valores.cpf,
+    dataNascimento: valores.dataNascimento,
+    email: valores.email,
+    telefone: valores.telefone,
+    endereco: valores.endereco,
+    fotoBase64: valores.fotoBase64,
+  };
+
+  const abaDados = (
+    <div className="space-y-5">
       {modo === 'editar' && detalhe.isFetching ? (
         <div className="text-sm text-gray-500">Carregando dados…</div>
       ) : null}
 
-      <UploadFoto
-        valor={valores.fotoBase64}
-        aoMudar={(v) => set('fotoBase64', v)}
-        nome={valores.nomeCompleto || undefined}
+      <DadosPessoaisCampos
+        valores={dadosPessoaisValores}
+        erros={erros}
+        aoMudarCampo={(c, v) => {
+          if (c === 'nomeCompleto' || c === 'cpf' || c === 'dataNascimento') return;
+          setCampo(c as keyof Valores, v as Valores[keyof Valores]);
+        }}
+        identidadeReadOnly
+        emailReadOnly={modo === 'editar'}
         desabilitado={pendente}
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Campo
-          label="Nome completo"
-          htmlFor="nomeCompleto"
-          erro={erros.nomeCompleto}
-          required
-          className="md:col-span-2"
-          dica={
-            travarIdentidade ? (
-              <span className="inline-flex items-center gap-1">
-                <Lock className="h-3 w-3" /> Não pode ser editado.
-              </span>
-            ) : undefined
-          }
-        >
-          <Input
-            id="nomeCompleto"
-            value={valores.nomeCompleto}
-            onChange={(e) => set('nomeCompleto', e.target.value)}
-            required
-            disabled={travarIdentidade}
-            readOnly={travarIdentidade}
-          />
-        </Campo>
-
-        <Campo
-          label="CPF"
-          htmlFor="cpf"
-          erro={erros.cpf}
-          required={modo === 'criar'}
-          dica={
-            <span className="inline-flex items-center gap-1">
-              <Lock className="h-3 w-3" /> Imutável
-            </span>
-          }
-        >
-          <Input
-            id="cpf"
-            value={valores.cpf}
-            onChange={(e) => set('cpf', e.target.value)}
-            inputMode="numeric"
-            required={modo === 'criar'}
-            disabled
-            readOnly
-          />
-        </Campo>
-
-        <Campo
-          label="Data de nascimento"
-          htmlFor="dataNascimento"
-          dica={
-            <span className="inline-flex items-center gap-1">
-              <Lock className="h-3 w-3" /> Imutável
-            </span>
-          }
-        >
-          <Input
-            id="dataNascimento"
-            type="date"
-            value={valores.dataNascimento}
-            onChange={(e) => set('dataNascimento', e.target.value)}
-            disabled
-            readOnly
-          />
-        </Campo>
-
-        <Campo label="CNH" htmlFor="cnh" erro={erros.cnh} required>
-          <Input id="cnh" value={valores.cnh} onChange={(e) => set('cnh', e.target.value)} required />
-        </Campo>
-
-        <Campo label="Telefone" htmlFor="telefone" erro={erros.telefone}>
-          <Input
-            id="telefone"
-            value={valores.telefone}
-            onChange={(e) => set('telefone', e.target.value)}
-            placeholder="(21) 99999-0000"
-          />
-        </Campo>
-      </div>
-
-      <section>
-        <h3 className="mb-3 text-sm font-semibold text-gray-900">Endereço</h3>
-        <FormularioEndereco
-          valor={valores.endereco}
-          aoMudar={(e) => set('endereco', e)}
-          desabilitado={pendente}
+      {modo === 'editar' && detalhe.data ? (
+        <SegurancaSecao
+          usuarioId={detalhe.data.usuarioId}
+          deveTrocarAtual={false}
         />
-      </section>
+      ) : null}
+    </div>
+  );
+
+  const abaMotorista = (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <Campo label="CNH" htmlFor="cnh" erro={erros.cnh} required>
+        <Input
+          id="cnh"
+          value={valores.cnh}
+          onChange={(e) => setCampo('cnh', e.target.value)}
+          required
+        />
+      </Campo>
+    </div>
+  );
+
+  const abaPermissoes = (
+    <PermissoesSecao
+      perfilIdsSelecionados={perfilIdsSelecionados}
+      aoMudarPerfilIds={setPerfilIdsSelecionados}
+      overrides={overrides}
+      aoMudarOverrides={setOverrides}
+      desabilitado={pendente}
+    />
+  );
+
+  const abas: Aba[] = [
+    { id: 'dados', rotulo: 'Dados pessoais', conteudo: abaDados },
+    { id: 'motorista', rotulo: 'Motorista', conteudo: abaMotorista },
+    {
+      id: 'permissoes',
+      rotulo: 'Permissões',
+      conteudo: abaPermissoes,
+      badge: perfilIdsSelecionados.length || undefined,
+    },
+  ];
+
+  return (
+    <form onSubmit={aoEnviar} className="space-y-5">
+      <Tabs abas={abas} inicial="dados" />
 
       {erroGlobal ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
