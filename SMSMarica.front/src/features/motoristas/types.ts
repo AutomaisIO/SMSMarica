@@ -11,10 +11,12 @@ export type EnderecoDto = {
 
 export type MotoristaListItem = {
   id: string;
+  usuarioId: string;
   nomeCompleto: string;
   cpf: string;
   fotoBase64: string | null;
-  ativo: boolean;
+  /** Espelha Usuario.Ativo (acesso liberado/bloqueado). Exclusão é separada (excluido_em). */
+  usuarioAtivo: boolean;
 };
 
 export type Motorista = {
@@ -27,13 +29,14 @@ export type Motorista = {
   telefone: string | null;
   endereco: EnderecoDto | null;
   fotoBase64: string | null;
-  ativo: boolean;
+  usuarioAtivo: boolean;
   criadoEm: string;
 };
 
 export type CadastrarMotoristaPayload = {
   nomeCompleto: string;
   cpf: string;
+  dataNascimento?: string;
   cnh: string;
   telefone?: string;
   endereco: EnderecoDto | null;

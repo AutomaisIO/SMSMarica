@@ -19,7 +19,7 @@ internal static class PacientesMapper
         p.Cns,
         p.GpsResidencia?.Latitude ?? 0,
         p.GpsResidencia?.Longitude ?? 0,
-        p.Ativo,
+        p.ExcluidoEm == null,
         p.CriadoEm,
         p.Usuario.Rg,
         p.Usuario.DataNascimento,
@@ -60,7 +60,7 @@ internal static class PacientesMapper
         p.NomeDaMae,
         p.Usuario.Telefone,
         p.Usuario.FotoBase64,
-        p.Ativo,
+        p.ExcluidoEm == null,
         p.NomeSocial);
 
     public static ContatoEmergenciaDto ParaContatoDto(ContatoEmergencia c) => new(

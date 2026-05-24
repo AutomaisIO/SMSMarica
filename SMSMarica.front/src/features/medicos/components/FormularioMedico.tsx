@@ -146,13 +146,13 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
     try {
       const existente = await consultarUsuarioPorCpf(cpfLimpo);
       if (existente) {
-        if (existente.tipoPapel === 'Medico') {
+        if (existente.papelAtual === 'Medico') {
           setErroGlobal(`Já existe médico cadastrado com este CPF: ${existente.nomeCompleto}.`);
           return;
         }
-        if (existente.tipoPapel !== null) {
+        if (existente.papelAtual !== null) {
           setErroGlobal(
-            `CPF já cadastrado como ${existente.tipoPapel}: ${existente.nomeCompleto}.`,
+            `CPF já cadastrado como ${existente.papelAtual}: ${existente.nomeCompleto}.`,
           );
           return;
         }
@@ -263,6 +263,7 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
           ...base,
           nomeCompleto: valores.nomeCompleto.trim(),
           cpf: valores.cpf,
+          dataNascimento: valores.dataNascimento || undefined,
           email: valores.email,
         });
         if (!parsed.success) {

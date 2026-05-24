@@ -51,7 +51,7 @@ export function TransladoFormPage() {
     [veiculos.data],
   );
   const motoristasAtivos = useMemo(
-    () => (motoristas.data ?? []).filter((m) => m.ativo),
+    () => (motoristas.data ?? []).filter((m) => m.usuarioAtivo),
     [motoristas.data],
   );
 

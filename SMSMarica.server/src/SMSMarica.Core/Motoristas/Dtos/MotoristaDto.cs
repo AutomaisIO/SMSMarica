@@ -12,7 +12,7 @@ public sealed record MotoristaDto(
     string? Telefone,
     EnderecoDto? Endereco,
     string? FotoBase64,
-    bool Ativo,
+    bool UsuarioAtivo,
     DateTime CriadoEm);
 
 public sealed record MotoristaListItemDto(
@@ -21,4 +21,4 @@ public sealed record MotoristaListItemDto(
     string NomeCompleto,
     string Cpf,
     string? FotoBase64,
-    bool Ativo);
+    bool UsuarioAtivo);

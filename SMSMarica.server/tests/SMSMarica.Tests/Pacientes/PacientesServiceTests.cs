@@ -10,6 +10,7 @@ namespace SMSMarica.Tests.Pacientes;
 public sealed class PacientesServiceTests(PostgresFixture postgres)
 {
     private readonly PostgresFixture _postgres = postgres;
+    private readonly UsuarioAtualAccessorFake _atual = new();
 
     private static CadastrarPacienteRequest NovoRequest(
         string nome = "Maria da Silva",
@@ -26,7 +27,7 @@ public sealed class PacientesServiceTests(PostgresFixture postgres)
     public async Task Cadastrar_ComDadosValidos_RetornaIdEPersiste()
     {
         await using var db = _postgres.CriarDbContext();
-        var service = new PacientesService(db);
+        var service = new PacientesService(db, _atual);
 
         var id = await service.CadastrarAsync(NovoRequest());
 
@@ -36,14 +37,14 @@ public sealed class PacientesServiceTests(PostgresFixture postgres)
         var paciente = await verificacao.Pacientes.Include(p => p.Usuario).FirstAsync(p => p.Id == id);
         paciente.Usuario.NomeCompleto.Should().Be("Maria da Silva");
         paciente.Usuario.Cpf.Should().Be("12345678900");
-        paciente.Ativo.Should().BeTrue();
+        paciente.ExcluidoEm.Should().BeNull();
     }
 
     [Fact]
     public async Task Cadastrar_ComCpfDuplicado_LancaConflito()
     {
         await using var db = _postgres.CriarDbContext();
-        var service = new PacientesService(db);
+        var service = new PacientesService(db, _atual);
 
         await service.CadastrarAsync(NovoRequest("Primeiro", "11122233344", null));
 
@@ -54,24 +55,24 @@ public sealed class PacientesServiceTests(PostgresFixture postgres)
     }
 
     [Fact]
-    public async Task Cadastrar_ComCpfDeDesativado_LancaConflitoParaReativacao()
+    public async Task Cadastrar_ComCpfDeExcluido_LancaConflitoParaReativacao()
     {
         await using var db = _postgres.CriarDbContext();
-        var service = new PacientesService(db);
+        var service = new PacientesService(db, _atual);
 
-        var id = await service.CadastrarAsync(NovoRequest("Inativo", "44455566677", null));
+        var id = await service.CadastrarAsync(NovoRequest("Excluido", "44455566677", null));
         await service.DesativarAsync(id);
 
         var act = async () => await service.CadastrarAsync(NovoRequest("Tentando recriar", "44455566677", null));
         var ex = await act.Should().ThrowAsync<ConflitoException>();
-        ex.Which.Codigo.Should().Be("paciente.cpf_desativado");
+        ex.Which.Codigo.Should().Be("paciente.cpf_excluido");
     }
 
     [Fact]
     public async Task ObterPorId_NaoExiste_LancaNaoEncontrado()
     {
         await using var db = _postgres.CriarDbContext();
-        var service = new PacientesService(db);
+        var service = new PacientesService(db, _atual);
 
         var act = async () => await service.ObterPorIdAsync(Guid.CreateVersion7());
 
@@ -79,40 +80,40 @@ public sealed class PacientesServiceTests(PostgresFixture postgres)
     }
 
     [Fact]
-    public async Task Desativar_PacienteAtivo_MarcaInativo()
+    public async Task Excluir_PacienteAtivo_MarcaExcluidoEm()
     {
         await using var db = _postgres.CriarDbContext();
-        var service = new PacientesService(db);
+        var service = new PacientesService(db, _atual);
 
-        var id = await service.CadastrarAsync(NovoRequest("Para desativar", "55566677788", null));
+        var id = await service.CadastrarAsync(NovoRequest("Para excluir", "55566677788", null));
 
         await service.DesativarAsync(id);
 
         await using var verificacao = _postgres.CriarDbContext();
-        var paciente = await verificacao.Pacientes.FirstAsync(p => p.Id == id);
-        paciente.Ativo.Should().BeFalse();
-        paciente.AtualizadoEm.Should().NotBeNull();
+        var paciente = await verificacao.Pacientes.Include(p => p.Usuario).FirstAsync(p => p.Id == id);
+        paciente.ExcluidoEm.Should().NotBeNull();
+        paciente.Usuario.ExcluidoEm.Should().NotBeNull();
     }
 
     [Fact]
-    public async Task Desativar_PacienteJaInativo_LancaConflito()
+    public async Task Excluir_PacienteJaExcluido_LancaConflito()
     {
         await using var db = _postgres.CriarDbContext();
-        var service = new PacientesService(db);
+        var service = new PacientesService(db, _atual);
 
-        var id = await service.CadastrarAsync(NovoRequest("Já inativo", "99988877766", null));
+        var id = await service.CadastrarAsync(NovoRequest("Já excluído", "99988877766", null));
         await service.DesativarAsync(id);
 
         var act = async () => await service.DesativarAsync(id);
         var ex = await act.Should().ThrowAsync<ConflitoException>();
-        ex.Which.Codigo.Should().Be("paciente.ja_inativo");
+        ex.Which.Codigo.Should().Be("paciente.ja_excluido");
     }
 
     [Fact]
-    public async Task Reativar_DesativadoVoltaAtivo()
+    public async Task Reativar_ExcluidoVoltaAtivo()
     {
         await using var db = _postgres.CriarDbContext();
-        var service = new PacientesService(db);
+        var service = new PacientesService(db, _atual);
 
         var id = await service.CadastrarAsync(NovoRequest("Para reativar", "33344455566", null));
         await service.DesativarAsync(id);
@@ -120,15 +121,16 @@ public sealed class PacientesServiceTests(PostgresFixture postgres)
         await service.ReativarAsync(id);
 
         await using var verificacao = _postgres.CriarDbContext();
-        var paciente = await verificacao.Pacientes.FirstAsync(p => p.Id == id);
-        paciente.Ativo.Should().BeTrue();
+        var paciente = await verificacao.Pacientes.Include(p => p.Usuario).FirstAsync(p => p.Id == id);
+        paciente.ExcluidoEm.Should().BeNull();
+        paciente.Usuario.ExcluidoEm.Should().BeNull();
     }
 
     [Fact]
     public async Task Buscar_SemTermo_RetornaVazio()
     {
         await using var db = _postgres.CriarDbContext();
-        var service = new PacientesService(db);
+        var service = new PacientesService(db, _atual);
 
         await service.CadastrarAsync(NovoRequest("Bernardo dos Santos Leite", "00011122233", null));
 
@@ -140,7 +142,7 @@ public sealed class PacientesServiceTests(PostgresFixture postgres)
     public async Task Buscar_PorTokensSeparados_RetornaPaciente()
     {
         await using var db = _postgres.CriarDbContext();
-        var service = new PacientesService(db);
+        var service = new PacientesService(db, _atual);
 
         var id = await service.CadastrarAsync(NovoRequest("Bernardo dos Santos Leite Almeida", "10011122244", null));
 
@@ -155,7 +157,7 @@ public sealed class PacientesServiceTests(PostgresFixture postgres)
     public async Task Buscar_PorCpfFormatado_NormalizaEEncontra()
     {
         await using var db = _postgres.CriarDbContext();
-        var service = new PacientesService(db);
+        var service = new PacientesService(db, _atual);
 
         var id = await service.CadastrarAsync(NovoRequest("João da Costa", "20011122255", null));
 

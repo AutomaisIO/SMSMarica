@@ -9,7 +9,8 @@ export type EnderecoDto = {
   pontoReferencia: string | null;
 };
 
-export type TipoPapel = 'Medico' | 'Enfermeiro' | 'Motorista' | 'Recepcionista' | 'Paciente' | 'Admin';
+/** Papel ativo derivado da existência de linha 1:1 (Medico/Motorista/Paciente). Ver ADR-0006. */
+export type PapelAtual = 'Medico' | 'Motorista' | 'Paciente';
 
 export type UsuarioListItem = {
   id: string;
@@ -34,7 +35,7 @@ export type Usuario = {
   ultimoAcessoEm: string | null;
   perfilIds: string[];
   deveTrocarSenha: boolean;
-  tipoPapel: TipoPapel | null;
+  papelAtual: PapelAtual | null;
 };
 
 export type CadastrarUsuarioPayload = {

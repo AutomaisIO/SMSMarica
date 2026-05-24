@@ -16,7 +16,7 @@ internal static class MotoristasMapper
         m.Usuario.Telefone,
         m.Usuario.Endereco is null ? null : EnderecoDto.ParaDto(m.Usuario.Endereco),
         m.Usuario.FotoBase64,
-        m.Ativo,
+        m.Usuario.Ativo,
         m.CriadoEm);
 
     public static MotoristaListItemDto ParaListItem(Motorista m) => new(
@@ -25,5 +25,5 @@ internal static class MotoristasMapper
         m.Usuario.NomeCompleto,
         m.Usuario.Cpf ?? string.Empty,
         m.Usuario.FotoBase64,
-        m.Ativo);
+        m.Usuario.Ativo);
 }

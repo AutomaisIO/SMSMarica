@@ -58,7 +58,7 @@ export function MedicosPage() {
       render: (m) => m.especialidade ?? <span className="text-gray-400">—</span>,
     },
     { chave: 'cpf', cabecalho: 'CPF', render: (m) => m.cpf },
-    { chave: 'status', cabecalho: 'Status', render: (m) => <StatusBadge ativo={m.ativo} /> },
+    { chave: 'status', cabecalho: 'Status', render: (m) => <StatusBadge ativo={m.usuarioAtivo} /> },
     {
       chave: 'acoes',
       cabecalho: 'Ações',
@@ -71,11 +71,9 @@ export function MedicosPage() {
           <BotaoLinhaAcao onClick={() => setEstado({ tipo: 'editar', id: m.id })}>
             <Pencil className="w-3.5 h-3.5" /> Editar
           </BotaoLinhaAcao>
-          {m.ativo ? (
-            <BotaoLinhaAcao tom="perigo" onClick={() => setParaDesativar(m)}>
-              <Trash2 className="w-3.5 h-3.5" /> Excluir
-            </BotaoLinhaAcao>
-          ) : null}
+          <BotaoLinhaAcao tom="perigo" onClick={() => setParaDesativar(m)}>
+            <Trash2 className="w-3.5 h-3.5" /> Excluir
+          </BotaoLinhaAcao>
         </div>
       ),
     },
@@ -113,7 +111,7 @@ export function MedicosPage() {
 
       <Tabela
         colunas={colunas}
-        dados={(lista.data ?? []).filter((m) => m.ativo)}
+        dados={lista.data ?? []}
         chaveLinha={(m) => m.id}
         carregando={lista.isLoading}
       />

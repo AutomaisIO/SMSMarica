@@ -20,7 +20,7 @@ internal static class MedicosMapper
         m.Usuario.Telefone,
         m.Usuario.Endereco is null ? null : EnderecoDto.ParaDto(m.Usuario.Endereco),
         m.Usuario.FotoBase64,
-        m.Ativo,
+        m.Usuario.Ativo,
         m.CriadoEm);
 
     public static MedicoListItemDto ParaListItem(Medico m) => new(
@@ -32,5 +32,5 @@ internal static class MedicosMapper
         m.UfCrm,
         m.Especialidade,
         m.Usuario.FotoBase64,
-        m.Ativo);
+        m.Usuario.Ativo);
 }

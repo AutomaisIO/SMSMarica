@@ -1,18 +1,18 @@
 using Microsoft.EntityFrameworkCore;
-using SMSMarica.Core.Common.Dtos;
 using SMSMarica.Core.Common.Excecoes;
+using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Pacientes.Dtos;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Pacientes;
 
-public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
+public sealed class PacientesService(SmsMaricaDbContext db, IUsuarioAtualAccessor atual) : IPacientesService
 {
     private const int LimiteBusca = 10;
     private const string SenhaHashPlaceholder = "PENDENTE_AUTH";
     private readonly SmsMaricaDbContext _db = db;
+    private readonly IUsuarioAtualAccessor _atual = atual;
 
     public async Task<IReadOnlyList<PacienteListItemDto>> BuscarAsync(
         string? termo,
@@ -20,7 +20,7 @@ public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
     {
         IQueryable<Paciente> query = _db.Pacientes.AsNoTracking()
             .Include(p => p.Usuario)
-            .Where(p => p.Ativo);
+            .Where(p => p.ExcluidoEm == null);
 
         // Sem termo: últimos cadastrados, ordenados do mais novo para o mais antigo.
         if (string.IsNullOrWhiteSpace(termo))
@@ -80,7 +80,7 @@ public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
             .AsNoTracking()
             .Include(p => p.Usuario)
             .Where(p => p.Usuario.Cpf == normalizado)
-            .Select(p => new PacienteExistenciaDto(p.Id, p.Usuario.NomeCompleto, p.Usuario.Cpf!, p.Ativo))
+            .Select(p => new PacienteExistenciaDto(p.Id, p.Usuario.NomeCompleto, p.Usuario.Cpf!, p.ExcluidoEm == null))
             .FirstOrDefaultAsync(cancellationToken);
 
         return paciente;
@@ -91,24 +91,19 @@ public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
         var cpfNormalizado = NormalizarDigitos(request.Cpf);
 
         var usuarioExistente = await _db.Usuarios.AsNoTracking()
+            .Include(u => u.Paciente)
             .Where(u => u.Cpf == cpfNormalizado)
-            .Select(u => new { u.Id, u.NomeCompleto, u.TipoPapel })
             .FirstOrDefaultAsync(cancellationToken);
 
         if (usuarioExistente is not null)
         {
-            if (usuarioExistente.TipoPapel == TipoPapel.Paciente)
+            if (usuarioExistente.Paciente is not null)
             {
-                var pacienteExistente = await _db.Pacientes.AsNoTracking()
-                    .Where(p => p.UsuarioId == usuarioExistente.Id)
-                    .Select(p => new { p.Ativo })
-                    .FirstAsync(cancellationToken);
-
-                if (pacienteExistente.Ativo)
+                if (usuarioExistente.Paciente.ExcluidoEm is null)
                 {
                     throw new ConflitoException("paciente.cpf_duplicado", "Já existe paciente ativo com este CPF.");
                 }
-                throw new ConflitoException("paciente.cpf_desativado", "Existe paciente desativado com este CPF. Reative o cadastro.");
+                throw new ConflitoException("paciente.cpf_excluido", "Existe paciente excluído com este CPF. Reative o cadastro.");
             }
 
             throw new ConflitoException(
@@ -117,6 +112,7 @@ public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
         }
 
         var agora = DateTime.UtcNow;
+        var atualId = _atual.UsuarioId;
         var usuario = new Usuario
         {
             Id = Guid.CreateVersion7(),
@@ -131,9 +127,9 @@ public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
             FotoBase64 = NormalizaOpcional(request.FotoBase64, false),
             SenhaHash = SenhaHashPlaceholder,
             DeveTrocarSenha = true,
-            TipoPapel = TipoPapel.Paciente,
             Ativo = true,
             CriadoEm = agora,
+            CriadoPor = atualId,
         };
 
         var paciente = new Paciente
@@ -164,8 +160,8 @@ public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
             Deficiencias = SanearLista(request.Deficiencias),
             PlanoSaude = NormalizaOpcional(request.PlanoSaude, false),
             Observacoes = NormalizaOpcional(request.Observacoes, false),
-            Ativo = true,
             CriadoEm = agora,
+            CriadoPor = atualId,
         };
 
         _db.Usuarios.Add(usuario);
@@ -177,14 +173,22 @@ public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
 
     public async Task<Guid> PromoverAsync(PromoverPacienteRequest request, CancellationToken cancellationToken = default)
     {
-        var usuario = await _db.Usuarios.FirstOrDefaultAsync(u => u.Id == request.UsuarioId, cancellationToken)
+        var usuario = await _db.Usuarios
+            .Include(u => u.Medico)
+            .Include(u => u.Motorista)
+            .Include(u => u.Paciente)
+            .FirstOrDefaultAsync(u => u.Id == request.UsuarioId, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Usuario), request.UsuarioId);
 
-        if (usuario.TipoPapel is not null)
+        var papelAtual = usuario.Medico is not null ? "Medico"
+                       : usuario.Motorista is not null ? "Motorista"
+                       : usuario.Paciente is not null ? "Paciente"
+                       : null;
+        if (papelAtual is not null)
         {
             throw new ConflitoException(
                 "paciente.usuario_ja_tem_papel",
-                $"Usuário já tem papel '{usuario.TipoPapel}'. Elimine o papel atual antes de promover.");
+                $"Usuário já tem papel '{papelAtual}'. Elimine o papel atual antes de promover.");
         }
 
         if (string.IsNullOrWhiteSpace(usuario.Cpf))
@@ -195,6 +199,7 @@ public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
         }
 
         var agora = DateTime.UtcNow;
+        var atualId = _atual.UsuarioId;
         var paciente = new Paciente
         {
             Id = Guid.CreateVersion7(),
@@ -223,11 +228,10 @@ public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
             Deficiencias = SanearLista(request.Deficiencias),
             PlanoSaude = NormalizaOpcional(request.PlanoSaude, false),
             Observacoes = NormalizaOpcional(request.Observacoes, false),
-            Ativo = true,
             CriadoEm = agora,
+            CriadoPor = atualId,
         };
 
-        usuario.TipoPapel = TipoPapel.Paciente;
         _db.Pacientes.Add(paciente);
         await _db.SaveChangesAsync(cancellationToken);
         return paciente.Id;
@@ -240,6 +244,14 @@ public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Paciente), id);
 
+        if (paciente.ExcluidoEm is not null)
+        {
+            throw new ConflitoException("paciente.excluido", "Paciente excluído não pode ser editado.");
+        }
+
+        var agora = DateTime.UtcNow;
+        var atualId = _atual.UsuarioId;
+
         // Atualizar Usuario (dados pessoais base) — nome e CPF são imutáveis.
         paciente.Usuario.Rg = NormalizaOpcional(request.Rg, false);
         paciente.Usuario.Sexo = request.Sexo;
@@ -250,6 +262,8 @@ public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
         {
             paciente.Usuario.Email = request.Email.Trim().ToLowerInvariant();
         }
+        paciente.Usuario.AtualizadoEm = agora;
+        paciente.Usuario.AtualizadoPor = atualId;
 
         // Atualizar Paciente (específicos)
         paciente.NomeSocial = NormalizaOpcional(request.NomeSocial, false);
@@ -276,7 +290,8 @@ public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
         paciente.Deficiencias = SanearLista(request.Deficiencias);
         paciente.PlanoSaude = NormalizaOpcional(request.PlanoSaude, false);
         paciente.Observacoes = NormalizaOpcional(request.Observacoes, false);
-        paciente.AtualizadoEm = DateTime.UtcNow;
+        paciente.AtualizadoEm = agora;
+        paciente.AtualizadoPor = atualId;
 
         await _db.SaveChangesAsync(cancellationToken);
     }
@@ -284,16 +299,22 @@ public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
     public async Task DesativarAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var paciente = await _db.Pacientes
+            .Include(p => p.Usuario)
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Paciente), id);
 
-        if (!paciente.Ativo)
+        if (paciente.ExcluidoEm is not null)
         {
-            throw new ConflitoException("paciente.ja_inativo", "Paciente já está inativo.");
+            throw new ConflitoException("paciente.ja_excluido", "Paciente já foi excluído.");
         }
 
-        paciente.Ativo = false;
-        paciente.AtualizadoEm = DateTime.UtcNow;
+        var agora = DateTime.UtcNow;
+        var atualId = _atual.UsuarioId;
+
+        paciente.ExcluidoEm = agora;
+        paciente.ExcluidoPor = atualId;
+        paciente.Usuario.ExcluidoEm = agora;
+        paciente.Usuario.ExcluidoPor = atualId;
 
         await _db.SaveChangesAsync(cancellationToken);
     }
@@ -301,16 +322,21 @@ public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
     public async Task ReativarAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var paciente = await _db.Pacientes
+            .Include(p => p.Usuario)
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Paciente), id);
 
-        if (paciente.Ativo)
+        if (paciente.ExcluidoEm is null)
         {
-            throw new ConflitoException("paciente.ja_ativo", "Paciente já está ativo.");
+            throw new ConflitoException("paciente.nao_excluido", "Paciente não está excluído.");
         }
 
-        paciente.Ativo = true;
+        paciente.ExcluidoEm = null;
+        paciente.ExcluidoPor = null;
+        paciente.Usuario.ExcluidoEm = null;
+        paciente.Usuario.ExcluidoPor = null;
         paciente.AtualizadoEm = DateTime.UtcNow;
+        paciente.AtualizadoPor = _atual.UsuarioId;
 
         await _db.SaveChangesAsync(cancellationToken);
     }

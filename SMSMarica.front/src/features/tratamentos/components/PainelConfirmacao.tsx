@@ -37,7 +37,7 @@ export function PainelConfirmacao({ tratamentoId, sessao, aoConcluir }: Props) {
     observacoes: sessao.observacoes ?? '',
   });
 
-  const motoristasAtivos = (motoristas.data ?? []).filter((m) => m.ativo);
+  const motoristasAtivos = (motoristas.data ?? []).filter((m) => m.usuarioAtivo);
   const veiculosAtivos = (veiculos.data ?? []).filter((v) => v.ativo);
 
   async function salvar(e: FormEvent) {

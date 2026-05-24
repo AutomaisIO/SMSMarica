@@ -53,8 +53,11 @@ public class Paciente
     // Outros
     public string? Observacoes { get; set; }
 
-    // Controle (papel)
-    public bool Ativo { get; set; } = true;
+    // Auditoria (sem flag Ativo — Usuario.Ativo trata acesso; ExcluidoEm trata exclusão).
     public DateTime CriadoEm { get; set; }
+    public Guid? CriadoPor { get; set; }
     public DateTime? AtualizadoEm { get; set; }
+    public Guid? AtualizadoPor { get; set; }
+    public DateTime? ExcluidoEm { get; set; }
+    public Guid? ExcluidoPor { get; set; }
 }

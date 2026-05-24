@@ -13,7 +13,8 @@ namespace SMSMarica.Core.Identidade;
 public sealed class IdentidadeService(
     SmsMaricaDbContext db,
     IPasswordHasher<Usuario> hasher,
-    ITokenService tokenService) : IIdentidadeService
+    ITokenService tokenService,
+    IUsuarioAtualAccessor atual) : IIdentidadeService
 {
     /// <summary>Hash de senha "PENDENTE" — bloqueia login até o admin definir a senha real.</summary>
     private const string SenhaHashPlaceholder = "PENDENTE_AUTH";
@@ -21,6 +22,7 @@ public sealed class IdentidadeService(
     private readonly SmsMaricaDbContext _db = db;
     private readonly IPasswordHasher<Usuario> _hasher = hasher;
     private readonly ITokenService _tokenService = tokenService;
+    private readonly IUsuarioAtualAccessor _atual = atual;
 
     public async Task<LoginRespostaDto> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
@@ -90,7 +92,13 @@ public sealed class IdentidadeService(
 
     public async Task<IReadOnlyList<UsuarioListItemDto>> ListarAsync(CancellationToken cancellationToken = default)
     {
+        // ADR-0006: lista só usuários sem papel (médicos/motoristas/pacientes têm tela própria)
+        // e não excluídos. Ativo=false continua aparecendo — é estado temporário, não exclusão.
         var usuarios = await _db.Usuarios.AsNoTracking()
+            .Where(u => u.ExcluidoEm == null
+                        && u.Medico == null
+                        && u.Motorista == null
+                        && u.Paciente == null)
             .OrderBy(u => u.NomeCompleto)
             .ToListAsync(cancellationToken);
         return [.. usuarios.Select(IdentidadeMapper.ParaListItem)];
@@ -100,6 +108,9 @@ public sealed class IdentidadeService(
     {
         var u = await _db.Usuarios.AsNoTracking()
             .Include(x => x.UsuariosPerfis)
+            .Include(x => x.Medico)
+            .Include(x => x.Motorista)
+            .Include(x => x.Paciente)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Usuario), id);
         return IdentidadeMapper.ParaDto(u);
@@ -111,6 +122,9 @@ public sealed class IdentidadeService(
         if (cpfNormalizado.Length != 11) return null;
         var u = await _db.Usuarios.AsNoTracking()
             .Include(x => x.UsuariosPerfis)
+            .Include(x => x.Medico)
+            .Include(x => x.Motorista)
+            .Include(x => x.Paciente)
             .FirstOrDefaultAsync(x => x.Cpf == cpfNormalizado, cancellationToken);
         return u is null ? null : IdentidadeMapper.ParaDto(u);
     }
@@ -144,6 +158,7 @@ public sealed class IdentidadeService(
             SenhaHash = SenhaHashPlaceholder,
             Ativo = true,
             CriadoEm = DateTime.UtcNow,
+            CriadoPor = _atual.UsuarioId,
         };
 
         if (!string.IsNullOrWhiteSpace(request.Senha))
@@ -173,6 +188,8 @@ public sealed class IdentidadeService(
         u.Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim();
         u.Endereco = request.Endereco?.ParaEntidade();
         u.FotoBase64 = string.IsNullOrWhiteSpace(request.FotoBase64) ? null : request.FotoBase64;
+        u.AtualizadoEm = DateTime.UtcNow;
+        u.AtualizadoPor = _atual.UsuarioId;
 
         await _db.SaveChangesAsync(cancellationToken);
     }
@@ -185,21 +202,42 @@ public sealed class IdentidadeService(
         u.Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim();
         u.Endereco = request.Endereco?.ParaEntidade();
         u.FotoBase64 = string.IsNullOrWhiteSpace(request.FotoBase64) ? null : request.FotoBase64;
+        u.AtualizadoEm = DateTime.UtcNow;
+        u.AtualizadoPor = usuarioId;
 
         await _db.SaveChangesAsync(cancellationToken);
     }
 
     public async Task DesativarAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var u = await _db.Usuarios.FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+        var u = await _db.Usuarios
+            .Include(x => x.Medico)
+            .Include(x => x.Motorista)
+            .Include(x => x.Paciente)
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Usuario), id);
 
-        if (!u.Ativo)
+        if (u.ExcluidoEm is not null)
         {
-            throw new ConflitoException("usuario.ja_inativo", "Usuário já está inativo.");
+            throw new ConflitoException("usuario.ja_excluido", "Usuário já foi excluído.");
         }
 
-        u.Ativo = false;
+        // Bloquear quando tem papel — exclusão deve ser feita pela tela do papel,
+        // que cascateia para o Usuario. Tela 'Usuários' só lista quem não tem papel
+        // (ver ListarAsync), mas defendemos via API contra chamadas diretas.
+        var papel = u.Medico is not null ? "Medico"
+                  : u.Motorista is not null ? "Motorista"
+                  : u.Paciente is not null ? "Paciente"
+                  : null;
+        if (papel is not null)
+        {
+            throw new ConflitoException(
+                "usuario.tem_papel",
+                $"Usuário tem papel '{papel}'. Exclua pela tela de {papel}s.");
+        }
+
+        u.ExcluidoEm = DateTime.UtcNow;
+        u.ExcluidoPor = _atual.UsuarioId;
         await _db.SaveChangesAsync(cancellationToken);
     }
 

@@ -47,6 +47,10 @@ export const cadastrarMotoristaSchema = z.object({
   ...baseAtualizacao,
   nomeCompleto: z.string().min(3).max(200),
   cpf: z.string().refine(cpfValido, 'CPF inválido.'),
+  dataNascimento: z
+    .string()
+    .optional()
+    .transform((v) => (v && v.trim().length > 0 ? v : undefined)),
 });
 
 export const atualizarMotoristaSchema = z.object(baseAtualizacao);

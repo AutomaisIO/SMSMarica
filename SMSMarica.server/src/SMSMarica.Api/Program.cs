@@ -59,6 +59,8 @@ builder.Services.AddCore(builder.Configuration);
 // Autenticação JWT (token emitido em /identidade/login).
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.Secao));
 builder.Services.AddSingleton<ITokenService, JwtTokenService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IUsuarioAtualAccessor, UsuarioAtualAccessor>();
 
 var jwt = builder.Configuration.GetSection(JwtOptions.Secao).Get<JwtOptions>() ?? new JwtOptions();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

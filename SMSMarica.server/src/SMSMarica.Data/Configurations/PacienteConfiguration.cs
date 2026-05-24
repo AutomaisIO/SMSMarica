@@ -42,9 +42,13 @@ internal sealed class PacienteConfiguration : IEntityTypeConfiguration<Paciente>
 
         builder.Property(p => p.Observacoes).HasColumnName("observacoes");
 
-        builder.Property(p => p.Ativo).HasColumnName("ativo").HasDefaultValue(true).IsRequired();
+        // Auditoria
         builder.Property(p => p.CriadoEm).HasColumnName("criado_em").IsRequired();
+        builder.Property(p => p.CriadoPor).HasColumnName("criado_por");
         builder.Property(p => p.AtualizadoEm).HasColumnName("atualizado_em");
+        builder.Property(p => p.AtualizadoPor).HasColumnName("atualizado_por");
+        builder.Property(p => p.ExcluidoEm).HasColumnName("excluido_em");
+        builder.Property(p => p.ExcluidoPor).HasColumnName("excluido_por");
 
         builder.OwnsOne(p => p.GpsResidencia, gps =>
         {
@@ -60,11 +64,13 @@ internal sealed class PacienteConfiguration : IEntityTypeConfiguration<Paciente>
         });
 
         builder.HasOne(p => p.Usuario)
-            .WithOne()
+            .WithOne(u => u.Paciente)
             .HasForeignKey<Paciente>(p => p.UsuarioId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(p => p.UsuarioId).IsUnique();
-        builder.HasIndex(p => p.Ativo);
+        builder.HasIndex(p => p.ExcluidoEm)
+            .HasDatabaseName("ix_paciente_excluido_em")
+            .HasFilter("excluido_em IS NULL");
     }
 }

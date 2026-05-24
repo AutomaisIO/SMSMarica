@@ -1,5 +1,4 @@
 using SMSMarica.Core.Common.Dtos;
-using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Identidade.Dtos;
 
@@ -17,7 +16,11 @@ public sealed record UsuarioDto(
     DateTime? UltimoAcessoEm,
     IReadOnlyList<Guid> PerfilIds,
     bool DeveTrocarSenha,
-    TipoPapel? TipoPapel);
+    /// <summary>
+    /// Papel ativo do usuário (Medico/Motorista/Paciente), ou null se não tem papel.
+    /// Derivado da existência de linha 1:1 nas tabelas correspondentes — ADR-0006.
+    /// </summary>
+    string? PapelAtual);
 
 public sealed record UsuarioListItemDto(
     Guid Id,

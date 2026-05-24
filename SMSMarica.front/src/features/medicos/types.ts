@@ -18,7 +18,8 @@ export type MedicoListItem = {
   ufCrm: string;
   especialidade: string | null;
   fotoBase64: string | null;
-  ativo: boolean;
+  /** Espelha Usuario.Ativo (acesso liberado/bloqueado). Exclusão é separada (excluido_em). */
+  usuarioAtivo: boolean;
 };
 
 export type Medico = {
@@ -35,13 +36,14 @@ export type Medico = {
   telefone: string | null;
   endereco: EnderecoDto | null;
   fotoBase64: string | null;
-  ativo: boolean;
+  usuarioAtivo: boolean;
   criadoEm: string;
 };
 
 export type CadastrarMedicoPayload = {
   nomeCompleto: string;
   cpf: string;
+  dataNascimento?: string;
   crm: string;
   ufCrm: string;
   especialidade?: string;

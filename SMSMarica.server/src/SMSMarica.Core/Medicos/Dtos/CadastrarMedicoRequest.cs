@@ -5,6 +5,7 @@ namespace SMSMarica.Core.Medicos.Dtos;
 public sealed record CadastrarMedicoRequest(
     string NomeCompleto,
     string Cpf,
+    DateOnly? DataNascimento,
     string Crm,
     string UfCrm,
     string? Especialidade = null,

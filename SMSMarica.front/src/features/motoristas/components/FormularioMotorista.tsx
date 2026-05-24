@@ -116,13 +116,13 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
     try {
       const existente = await consultarUsuarioPorCpf(cpfLimpo);
       if (existente) {
-        if (existente.tipoPapel === 'Motorista') {
+        if (existente.papelAtual === 'Motorista') {
           setErroGlobal(`Já existe motorista cadastrado com este CPF: ${existente.nomeCompleto}.`);
           return;
         }
-        if (existente.tipoPapel !== null) {
+        if (existente.papelAtual !== null) {
           setErroGlobal(
-            `CPF já cadastrado como ${existente.tipoPapel}: ${existente.nomeCompleto}.`,
+            `CPF já cadastrado como ${existente.papelAtual}: ${existente.nomeCompleto}.`,
           );
           return;
         }
@@ -218,6 +218,7 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
           ...base,
           nomeCompleto: valores.nomeCompleto.trim(),
           cpf: valores.cpf,
+          dataNascimento: valores.dataNascimento || undefined,
         });
         if (!parsed.success) {
           const ne: Erros = {};

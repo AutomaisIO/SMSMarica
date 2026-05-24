@@ -16,7 +16,7 @@ public sealed record MedicoDto(
     string? Telefone,
     EnderecoDto? Endereco,
     string? FotoBase64,
-    bool Ativo,
+    bool UsuarioAtivo,
     DateTime CriadoEm);
 
 public sealed record MedicoListItemDto(
@@ -28,4 +28,4 @@ public sealed record MedicoListItemDto(
     string UfCrm,
     string? Especialidade,
     string? FotoBase64,
-    bool Ativo);
+    bool UsuarioAtivo);

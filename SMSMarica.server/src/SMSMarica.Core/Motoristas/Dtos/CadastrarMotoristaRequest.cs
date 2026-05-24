@@ -5,6 +5,7 @@ namespace SMSMarica.Core.Motoristas.Dtos;
 public sealed record CadastrarMotoristaRequest(
     string NomeCompleto,
     string Cpf,
+    DateOnly? DataNascimento,
     string Cnh,
     string? Email,
     string? Telefone,

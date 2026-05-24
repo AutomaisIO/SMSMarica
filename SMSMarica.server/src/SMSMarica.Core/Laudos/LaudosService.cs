@@ -356,7 +356,7 @@ public sealed class LaudosService(SmsMaricaDbContext db, IHtmlSanitizer sanitize
         var medico = await _db.Medicos
             .AsNoTracking()
             .Include(m => m.Usuario)
-            .FirstOrDefaultAsync(m => m.UsuarioId == usuarioId && m.Ativo, ct);
+            .FirstOrDefaultAsync(m => m.UsuarioId == usuarioId && m.ExcluidoEm == null, ct);
 
         if (medico is null)
         {

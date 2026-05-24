@@ -8,9 +8,7 @@ internal sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
 {
     public void Configure(EntityTypeBuilder<Usuario> builder)
     {
-        builder.ToTable("usuario", t => t.HasCheckConstraint(
-            "ck_usuario_papel_exige_cpf",
-            "tipo_papel IS NULL OR cpf IS NOT NULL"));
+        builder.ToTable("usuario");
         builder.HasKey(u => u.Id);
 
         builder.Property(u => u.Id).HasColumnName("id");
@@ -20,14 +18,20 @@ internal sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
         builder.Property(u => u.Rg).HasColumnName("rg").HasMaxLength(20);
         builder.Property(u => u.DataNascimento).HasColumnName("data_nascimento");
         builder.Property(u => u.Sexo).HasColumnName("sexo").HasConversion<int?>();
-        builder.Property(u => u.TipoPapel).HasColumnName("tipo_papel").HasConversion<int?>();
         builder.Property(u => u.Telefone).HasColumnName("telefone").HasMaxLength(30);
         builder.Property(u => u.FotoBase64).HasColumnName("foto_base64").HasColumnType("text");
         builder.Property(u => u.SenhaHash).HasColumnName("senha_hash").HasMaxLength(500).IsRequired();
         builder.Property(u => u.DeveTrocarSenha).HasColumnName("deve_trocar_senha").HasDefaultValue(false).IsRequired();
         builder.Property(u => u.Ativo).HasColumnName("ativo").HasDefaultValue(true).IsRequired();
-        builder.Property(u => u.CriadoEm).HasColumnName("criado_em").IsRequired();
         builder.Property(u => u.UltimoAcessoEm).HasColumnName("ultimo_acesso_em");
+
+        // Auditoria
+        builder.Property(u => u.CriadoEm).HasColumnName("criado_em").IsRequired();
+        builder.Property(u => u.CriadoPor).HasColumnName("criado_por");
+        builder.Property(u => u.AtualizadoEm).HasColumnName("atualizado_em");
+        builder.Property(u => u.AtualizadoPor).HasColumnName("atualizado_por");
+        builder.Property(u => u.ExcluidoEm).HasColumnName("excluido_em");
+        builder.Property(u => u.ExcluidoPor).HasColumnName("excluido_por");
 
         builder.OwnsOne(u => u.Endereco, e =>
         {
@@ -45,5 +49,8 @@ internal sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
         builder.HasIndex(u => u.Cpf)
             .IsUnique()
             .HasFilter("cpf IS NOT NULL");
+        builder.HasIndex(u => u.ExcluidoEm)
+            .HasDatabaseName("ix_usuario_excluido_em")
+            .HasFilter("excluido_em IS NULL");
     }
 }

@@ -52,7 +52,7 @@ export function MedicoDetalhePage() {
               <h1 className="text-2xl font-semibold text-gray-900">
                 {m?.nomeCompleto ?? 'Carregando…'}
               </h1>
-              {m ? <StatusBadge ativo={m.ativo} /> : null}
+              {m ? <StatusBadge ativo={m.usuarioAtivo} /> : null}
             </div>
             {m ? (
               <p className="text-sm text-gray-500">
