@@ -48,7 +48,6 @@ export function LaudoEditorPage() {
   const [erro, setErro] = useState<string | null>(null);
 
   const studyParam = params.get('studyUID') ?? '';
-  const pacienteIdParam = params.get('patientId');
   const modalidadeParam = params.get('modalidade') ?? undefined;
   const templateIdParam = params.get('templateId');
 
@@ -70,7 +69,7 @@ export function LaudoEditorPage() {
       if (ehNovo) {
         const novoId = await cadastrar.mutateAsync({
           studyInstanceUID,
-          pacienteId: pacienteIdParam || null,
+          pacienteId: null,
           laudoTemplateId: templateIdParam || null,
           titulo,
           conteudoJson: json,
@@ -81,7 +80,7 @@ export function LaudoEditorPage() {
         await atualizar.mutateAsync({
           id,
           payload: {
-            pacienteId: detalhe.data?.pacienteId ?? pacienteIdParam ?? null,
+            pacienteId: detalhe.data?.pacienteId ?? null,
             titulo,
             conteudoJson: json,
             conteudoHtml: html,
@@ -105,7 +104,7 @@ export function LaudoEditorPage() {
       if (ehNovo) {
         alvoId = await cadastrar.mutateAsync({
           studyInstanceUID,
-          pacienteId: pacienteIdParam || null,
+          pacienteId: null,
           laudoTemplateId: templateIdParam || null,
           titulo,
           conteudoJson: json,

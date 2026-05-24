@@ -79,9 +79,11 @@ export function PacsListagemPage() {
   }
 
   function criarLaudoPara(estudo: Estudo) {
+    // Atenção: estudo.patientId vem do DICOM (00100020) e é texto livre — não
+    // é um Guid do nosso DB. Não dá para mandar como pacienteId direto;
+    // futuramente, resolver por CPF/nome via /pacientes e popular o vínculo.
     const params = new URLSearchParams({
       studyUID: estudo.studyInstanceUID,
-      ...(estudo.patientId ? { patientId: estudo.patientId } : {}),
       ...(estudo.modalidade ? { modalidade: estudo.modalidade } : {}),
     });
     navigate(`/app/laudos/novo?${params.toString()}`);
