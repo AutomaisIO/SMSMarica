@@ -7,6 +7,7 @@ public sealed record MotoristaDto(
     Guid UsuarioId,
     string NomeCompleto,
     string Cpf,
+    DateOnly? DataNascimento,
     string Cnh,
     string? Telefone,
     EnderecoDto? Endereco,

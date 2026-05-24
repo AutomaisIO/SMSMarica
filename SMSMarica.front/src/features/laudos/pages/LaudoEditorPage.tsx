@@ -1,0 +1,273 @@
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import {
+  ArrowLeft,
+  CheckCircle2,
+  FileText,
+  Loader2,
+  RefreshCw,
+  Save,
+  ScanLine,
+} from 'lucide-react';
+import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { usePermissao } from '@/shared/auth/authStore';
+import { abrirJanelaSolta } from '@/shared/lib/janela';
+import { Button } from '@/shared/ui/Button';
+import { Campo } from '@/shared/ui/Campo';
+import { Input } from '@/shared/ui/Input';
+import { EditorRichText } from '@/shared/ui/EditorRichText';
+import { CabecalhoLaudo } from '@/features/laudos/components/CabecalhoLaudo';
+import { SeletorTemplate } from '@/features/laudos/components/SeletorTemplate';
+import { StatusBadgeLaudo } from '@/features/laudos/components/StatusBadgeLaudo';
+import {
+  useAtualizarLaudo,
+  useCadastrarLaudo,
+  useCriarNovaVersao,
+  useFinalizarLaudo,
+  useLaudoPorId,
+} from '@/features/laudos/api/queries';
+import { abrirPdfLaudo } from '@/features/laudos/lib/pdf';
+
+export function LaudoEditorPage() {
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const [params] = useSearchParams();
+  const ehNovo = !id || id === 'novo';
+
+  const detalhe = useLaudoPorId(ehNovo ? null : id ?? null);
+  const cadastrar = useCadastrarLaudo();
+  const atualizar = useAtualizarLaudo();
+  const finalizar = useFinalizarLaudo();
+  const novaVersao = useCriarNovaVersao();
+
+  const podeFinalizar = usePermissao('Laudos', 'Edicao');
+
+  const [titulo, setTitulo] = useState('Laudo');
+  const [html, setHtml] = useState('');
+  const [json, setJson] = useState('{}');
+  const [erro, setErro] = useState<string | null>(null);
+
+  const studyParam = params.get('studyUID') ?? '';
+  const pacienteIdParam = params.get('patientId');
+  const modalidadeParam = params.get('modalidade') ?? undefined;
+  const templateIdParam = params.get('templateId');
+
+  // Hidrata o form com o detalhe carregado.
+  useEffect(() => {
+    if (detalhe.data) {
+      setTitulo(detalhe.data.titulo);
+      setHtml(detalhe.data.conteudoHtml);
+      setJson(detalhe.data.conteudoJson);
+    }
+  }, [detalhe.data]);
+
+  const studyInstanceUID = ehNovo ? studyParam : (detalhe.data?.studyInstanceUID ?? studyParam);
+  const finalizado = !ehNovo && detalhe.data?.status === 'Finalizado';
+
+  async function aoSalvarRascunho() {
+    setErro(null);
+    try {
+      if (ehNovo) {
+        const novoId = await cadastrar.mutateAsync({
+          studyInstanceUID,
+          pacienteId: pacienteIdParam || null,
+          laudoTemplateId: templateIdParam || null,
+          titulo,
+          conteudoJson: json,
+          conteudoHtml: html,
+        });
+        navigate(`/app/laudos/${novoId}`, { replace: true });
+      } else if (id) {
+        await atualizar.mutateAsync({
+          id,
+          payload: {
+            pacienteId: detalhe.data?.pacienteId ?? pacienteIdParam ?? null,
+            titulo,
+            conteudoJson: json,
+            conteudoHtml: html,
+          },
+        });
+      }
+    } catch (e) {
+      setErro(extrairMensagemDeErro(e));
+    }
+  }
+
+  async function aoFinalizar() {
+    setErro(null);
+    if (!html.trim()) {
+      setErro('Conteúdo do laudo não pode estar vazio.');
+      return;
+    }
+    if (!window.confirm('Finalizar o laudo? Após finalizado ele não pode mais ser editado.')) return;
+    try {
+      let alvoId = id;
+      if (ehNovo) {
+        alvoId = await cadastrar.mutateAsync({
+          studyInstanceUID,
+          pacienteId: pacienteIdParam || null,
+          laudoTemplateId: templateIdParam || null,
+          titulo,
+          conteudoJson: json,
+          conteudoHtml: html,
+        });
+      }
+      if (!alvoId) return;
+      await finalizar.mutateAsync({
+        id: alvoId,
+        payload: { titulo, conteudoJson: json, conteudoHtml: html },
+      });
+      navigate(`/app/laudos/${alvoId}`, { replace: true });
+    } catch (e) {
+      setErro(extrairMensagemDeErro(e));
+    }
+  }
+
+  async function aoCriarNovaVersao() {
+    if (!id) return;
+    setErro(null);
+    try {
+      const novoId = await novaVersao.mutateAsync(id);
+      navigate(`/app/laudos/${novoId}`, { replace: true });
+    } catch (e) {
+      setErro(extrairMensagemDeErro(e));
+    }
+  }
+
+  function abrirVisualizadorPacs() {
+    if (!studyInstanceUID) return;
+    const ok = abrirJanelaSolta(
+      `/pacs/janela#${encodeURIComponent(JSON.stringify({ studyInstanceUID }))}`,
+      `pacs-viewer-${studyInstanceUID}`,
+    );
+    if (!ok) {
+      alert('O visualizador foi bloqueado pelo navegador. Libere os popups para este site.');
+    }
+  }
+
+  const salvando = cadastrar.isPending || atualizar.isPending;
+  const finalizando = finalizar.isPending;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Voltar
+          </button>
+          <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold text-gray-900">
+            <FileText className="h-6 w-6 text-primary-600" />
+            {ehNovo ? 'Novo laudo' : `Laudo (v${detalhe.data?.versao ?? '?'})`}
+            {!ehNovo && detalhe.data ? <StatusBadgeLaudo status={detalhe.data.status} /> : null}
+          </h1>
+        </div>
+        <div className="flex items-center gap-2">
+          {studyInstanceUID ? (
+            <Button variante="outline" onClick={abrirVisualizadorPacs}>
+              <ScanLine className="mr-2 h-4 w-4" />
+              Abrir visualizador
+            </Button>
+          ) : null}
+          {!ehNovo && finalizado ? (
+            <>
+              <Button variante="outline" onClick={() => abrirPdfLaudo(id!)}>
+                <FileText className="mr-2 h-4 w-4" />
+                PDF
+              </Button>
+              {podeFinalizar ? (
+                <Button onClick={aoCriarNovaVersao} disabled={novaVersao.isPending}>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Nova versão
+                </Button>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <Button variante="outline" onClick={aoSalvarRascunho} disabled={salvando || finalizando}>
+                {salvando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Salvar rascunho
+              </Button>
+              {podeFinalizar ? (
+                <Button onClick={aoFinalizar} disabled={salvando || finalizando}>
+                  {finalizando ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                  )}
+                  Finalizar
+                </Button>
+              ) : null}
+            </>
+          )}
+        </div>
+      </div>
+
+      {erro ? (
+        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {erro}
+        </div>
+      ) : null}
+
+      {detalhe.isPending && !ehNovo ? (
+        <div className="flex items-center justify-center rounded-lg border border-gray-200 bg-white py-10 text-gray-500">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Carregando laudo…
+        </div>
+      ) : (
+        <>
+          <CabecalhoLaudo
+            pacienteNome={detalhe.data?.pacienteNome}
+            pacienteCpf={detalhe.data?.pacienteCpf}
+            studyInstanceUID={studyInstanceUID}
+            medicoNome={detalhe.data?.medicoNome}
+            medicoCrm={detalhe.data?.medicoCrm}
+            medicoUfCrm={detalhe.data?.medicoUfCrm}
+            modalidade={modalidadeParam}
+          />
+
+          <div className="flex flex-wrap items-end justify-between gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+            <Campo label="Título do laudo" htmlFor="titulo" className="flex-1 min-w-[250px]">
+              <Input
+                id="titulo"
+                value={titulo}
+                onChange={(e) => setTitulo(e.target.value)}
+                placeholder="Ex.: Mamografia bilateral — BI-RADS"
+                disabled={finalizado}
+              />
+            </Campo>
+            {!finalizado ? (
+              <SeletorTemplate
+                aoEscolher={(t) => {
+                  setHtml(t.conteudoHtml);
+                  setJson(t.conteudoJson);
+                  if (!titulo || titulo === 'Laudo') setTitulo(t.nome);
+                }}
+              />
+            ) : null}
+          </div>
+
+          <EditorRichText
+            valorHtml={html}
+            aoMudar={(v) => {
+              setHtml(v.html);
+              setJson(v.json);
+            }}
+            placeholder="Escreva o laudo aqui ou carregue um template…"
+            somenteLeitura={finalizado}
+            alturaMinima="500px"
+          />
+
+          {finalizado ? (
+            <p className="text-xs text-gray-500">
+              Laudo finalizado — para correções, use <strong>Nova versão</strong>.
+            </p>
+          ) : null}
+        </>
+      )}
+    </div>
+  );
+}

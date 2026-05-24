@@ -19,8 +19,10 @@ export type MotoristaListItem = {
 
 export type Motorista = {
   id: string;
+  usuarioId: string;
   nomeCompleto: string;
   cpf: string;
+  dataNascimento: string | null;
   cnh: string;
   telefone: string | null;
   endereco: EnderecoDto | null;
@@ -39,7 +41,6 @@ export type CadastrarMotoristaPayload = {
 };
 
 export type AtualizarMotoristaPayload = {
-  nomeCompleto: string;
   cnh: string;
   telefone?: string;
   endereco: EnderecoDto | null;

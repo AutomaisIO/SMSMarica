@@ -25,7 +25,6 @@ public sealed class AtualizarMedicoValidator : AbstractValidator<AtualizarMedico
 {
     public AtualizarMedicoValidator()
     {
-        RuleFor(m => m.NomeCompleto).NotEmpty().MaximumLength(200);
         RuleFor(m => m.Crm).NotEmpty().MaximumLength(15);
         RuleFor(m => m.UfCrm).NotEmpty().Length(2);
         RuleFor(m => m.Especialidade).MaximumLength(120);

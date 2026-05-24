@@ -11,6 +11,7 @@ internal static class MedicosMapper
         m.UsuarioId,
         m.Usuario.NomeCompleto,
         m.Usuario.Cpf ?? string.Empty,
+        m.Usuario.DataNascimento,
         m.Crm,
         m.UfCrm,
         m.Especialidade,

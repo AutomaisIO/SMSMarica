@@ -74,7 +74,7 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
       setValores({
         nomeCompleto: detalhe.data.nomeCompleto,
         cpf: detalhe.data.cpf,
-        dataNascimento: '',
+        dataNascimento: detalhe.data.dataNascimento ?? '',
         cnh: detalhe.data.cnh,
         telefone: detalhe.data.telefone ?? '',
         fotoBase64: detalhe.data.fotoBase64 ?? null,
@@ -206,7 +206,6 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
       : null;
 
     const base = {
-      nomeCompleto: valores.nomeCompleto.trim(),
       cnh: valores.cnh.trim(),
       telefone: valores.telefone,
       endereco: enderecoPayload,
@@ -215,7 +214,11 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
 
     try {
       if (modo === 'criar') {
-        const parsed = cadastrarMotoristaSchema.safeParse({ ...base, cpf: valores.cpf });
+        const parsed = cadastrarMotoristaSchema.safeParse({
+          ...base,
+          nomeCompleto: valores.nomeCompleto.trim(),
+          cpf: valores.cpf,
+        });
         if (!parsed.success) {
           const ne: Erros = {};
           for (const i of parsed.error.issues) {
@@ -247,7 +250,9 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
   }
 
   const pendente = cadastrar.isPending || atualizar.isPending || promover.isPending;
-  const travarIdentidade = modo === 'criar';
+  // Nome, CPF e data de nascimento são imutáveis após o gate inicial,
+  // tanto em modo criar (preenchidos via Hub) quanto em editar.
+  const travarIdentidade = true;
 
   // Passo 1: gate CPF + nascimento (somente modo criar).
   if (modo === 'criar' && !passoCpfConcluido) {
@@ -405,13 +410,9 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
           erro={erros.cpf}
           required={modo === 'criar'}
           dica={
-            modo === 'editar' ? (
-              'CPF não pode ser alterado.'
-            ) : (
-              <span className="inline-flex items-center gap-1">
-                <Lock className="h-3 w-3" /> Imutável
-              </span>
-            )
+            <span className="inline-flex items-center gap-1">
+              <Lock className="h-3 w-3" /> Imutável
+            </span>
           }
         >
           <Input
@@ -420,8 +421,27 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
             onChange={(e) => set('cpf', e.target.value)}
             inputMode="numeric"
             required={modo === 'criar'}
-            disabled={modo === 'editar' || travarIdentidade}
-            readOnly={modo === 'editar' || travarIdentidade}
+            disabled
+            readOnly
+          />
+        </Campo>
+
+        <Campo
+          label="Data de nascimento"
+          htmlFor="dataNascimento"
+          dica={
+            <span className="inline-flex items-center gap-1">
+              <Lock className="h-3 w-3" /> Imutável
+            </span>
+          }
+        >
+          <Input
+            id="dataNascimento"
+            type="date"
+            value={valores.dataNascimento}
+            onChange={(e) => set('dataNascimento', e.target.value)}
+            disabled
+            readOnly
           />
         </Campo>
 

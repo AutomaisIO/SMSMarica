@@ -99,7 +99,7 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
       setValores({
         nomeCompleto: detalhe.data.nomeCompleto,
         cpf: detalhe.data.cpf,
-        dataNascimento: '',
+        dataNascimento: detalhe.data.dataNascimento ?? '',
         crm: detalhe.data.crm,
         ufCrm: detalhe.data.ufCrm,
         especialidade: detalhe.data.especialidade ?? '',
@@ -247,7 +247,6 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
       : null;
 
     const base = {
-      nomeCompleto: valores.nomeCompleto.trim(),
       crm: valores.crm.trim(),
       ufCrm: valores.ufCrm.trim(),
       especialidade: valores.especialidade,
@@ -262,6 +261,7 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
       if (modo === 'criar') {
         const parsed = cadastrarMedicoSchema.safeParse({
           ...base,
+          nomeCompleto: valores.nomeCompleto.trim(),
           cpf: valores.cpf,
           email: valores.email,
         });
@@ -296,7 +296,9 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
   }
 
   const pendente = cadastrar.isPending || atualizar.isPending || promover.isPending;
-  const travarIdentidade = modo === 'criar';
+  // Nome, CPF e data de nascimento são imutáveis após o gate inicial,
+  // tanto em modo criar (preenchidos via Hub) quanto em editar.
+  const travarIdentidade = true;
 
   if (modo === 'criar' && !passoCpfConcluido) {
     return (
@@ -494,13 +496,9 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
           erro={erros.cpf}
           required={modo === 'criar'}
           dica={
-            modo === 'editar' ? (
-              'CPF não pode ser alterado.'
-            ) : (
-              <span className="inline-flex items-center gap-1">
-                <Lock className="h-3 w-3" /> Imutável
-              </span>
-            )
+            <span className="inline-flex items-center gap-1">
+              <Lock className="h-3 w-3" /> Imutável
+            </span>
           }
         >
           <Input
@@ -509,8 +507,27 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
             onChange={(e) => set('cpf', e.target.value)}
             inputMode="numeric"
             required={modo === 'criar'}
-            disabled={modo === 'editar' || travarIdentidade}
-            readOnly={modo === 'editar' || travarIdentidade}
+            disabled
+            readOnly
+          />
+        </Campo>
+
+        <Campo
+          label="Data de nascimento"
+          htmlFor="dataNascimento"
+          dica={
+            <span className="inline-flex items-center gap-1">
+              <Lock className="h-3 w-3" /> Imutável
+            </span>
+          }
+        >
+          <Input
+            id="dataNascimento"
+            type="date"
+            value={valores.dataNascimento}
+            onChange={(e) => set('dataNascimento', e.target.value)}
+            disabled
+            readOnly
           />
         </Campo>
 

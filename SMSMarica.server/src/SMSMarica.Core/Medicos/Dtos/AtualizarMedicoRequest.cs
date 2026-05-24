@@ -2,8 +2,11 @@ using SMSMarica.Core.Common.Dtos;
 
 namespace SMSMarica.Core.Medicos.Dtos;
 
+/// <summary>
+/// Nome e CPF do médico são imutáveis (vêm do Usuario, definido no gate
+/// inicial via consulta Receita).
+/// </summary>
 public sealed record AtualizarMedicoRequest(
-    string NomeCompleto,
     string Crm,
     string UfCrm,
     string? Especialidade = null,

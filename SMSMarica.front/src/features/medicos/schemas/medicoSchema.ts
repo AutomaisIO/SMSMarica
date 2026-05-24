@@ -30,8 +30,7 @@ const enderecoSchema = z
   })
   .nullable();
 
-const base = {
-  nomeCompleto: z.string().min(3).max(200),
+const baseAtualizacao = {
   crm: z
     .string()
     .min(3, 'CRM obrigatório.')
@@ -63,7 +62,8 @@ const base = {
 };
 
 export const cadastrarMedicoSchema = z.object({
-  ...base,
+  ...baseAtualizacao,
+  nomeCompleto: z.string().min(3).max(200),
   cpf: z.string().refine(cpfValido, 'CPF inválido.'),
   email: z
     .string()
@@ -72,7 +72,7 @@ export const cadastrarMedicoSchema = z.object({
     .or(z.literal('').transform(() => undefined)),
 });
 
-export const atualizarMedicoSchema = z.object(base);
+export const atualizarMedicoSchema = z.object(baseAtualizacao);
 
 export type CadastrarMedicoInput = z.infer<typeof cadastrarMedicoSchema>;
 export type AtualizarMedicoInput = z.infer<typeof atualizarMedicoSchema>;

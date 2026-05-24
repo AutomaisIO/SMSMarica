@@ -24,7 +24,6 @@ public sealed class AtualizarMotoristaValidator : AbstractValidator<AtualizarMot
 {
     public AtualizarMotoristaValidator()
     {
-        RuleFor(m => m.NomeCompleto).NotEmpty().MaximumLength(200);
         RuleFor(m => m.Cnh).NotEmpty().MaximumLength(11);
         RuleFor(m => m.Telefone).MaximumLength(30);
     }

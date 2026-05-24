@@ -276,12 +276,10 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
         }
       } else {
         if (!idUsuario) throw new Error('ID ausente.');
+        // Nome, CPF e data de nascimento são imutáveis — não vão no payload.
         await atualizar.mutateAsync({
           id: idUsuario,
           payload: {
-            nomeCompleto: nome,
-            cpf: cpf || undefined,
-            dataNascimento: valores.dataNascimento || undefined,
             telefone: valores.telefone || undefined,
             endereco: enderecoPayload,
             fotoBase64: valores.fotoBase64,
@@ -361,15 +359,15 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
           erro={erros.nomeCompleto}
           required
           className="md:col-span-2"
-          dica={modo === 'criar' ? <span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" /> Não pode ser editado.</span> : undefined}
+          dica={<span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" /> Não pode ser editado.</span>}
         >
           <Input
             id="nomeCompleto"
             value={valores.nomeCompleto}
             onChange={(e) => set('nomeCompleto', e.target.value)}
             required
-            disabled={modo === 'criar'}
-            readOnly={modo === 'criar'}
+            disabled
+            readOnly
           />
         </Campo>
 
@@ -377,16 +375,16 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
           label="CPF"
           htmlFor="cpf"
           erro={erros.cpf}
-          dica={modo === 'criar' ? <span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" /> Imutável</span> : undefined}
+          dica={<span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" /> Imutável</span>}
         >
           <Input
             id="cpf"
-            value={modo === 'criar' ? formatarCpfDigitos(valores.cpf) : valores.cpf}
+            value={formatarCpfDigitos(valores.cpf)}
             onChange={(e) => set('cpf', e.target.value)}
             inputMode="numeric"
             placeholder="00000000000"
-            disabled={modo === 'criar'}
-            readOnly={modo === 'criar'}
+            disabled
+            readOnly
           />
         </Campo>
 
@@ -395,15 +393,15 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
           htmlFor="dataNascimento"
           erro={erros.dataNascimento}
           required={modo === 'criar'}
-          dica={modo === 'criar' ? <span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" /> Imutável</span> : undefined}
+          dica={<span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" /> Imutável</span>}
         >
           <Input
             id="dataNascimento"
             type="date"
             value={valores.dataNascimento}
             onChange={(e) => set('dataNascimento', e.target.value)}
-            disabled={modo === 'criar'}
-            readOnly={modo === 'criar'}
+            disabled
+            readOnly
           />
         </Campo>
 

@@ -1,0 +1,112 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  atualizarLaudo,
+  cadastrarLaudo,
+  criarNovaVersaoLaudo,
+  excluirLaudo,
+  finalizarLaudo,
+  listarHistorico,
+  listarLaudos,
+  listarLaudosPorStudies,
+  obterLaudo,
+} from '@/features/laudos/api/laudosApi';
+import type {
+  AtualizarLaudoPayload,
+  CadastrarLaudoPayload,
+  FiltroLaudos,
+  FinalizarLaudoPayload,
+} from '@/features/laudos/types';
+
+export const laudosKeys = {
+  raiz: ['laudos'] as const,
+  lista: (filtro: FiltroLaudos) => ['laudos', 'lista', filtro] as const,
+  porId: (id: string) => ['laudos', 'detalhe', id] as const,
+  historico: (id: string) => ['laudos', 'historico', id] as const,
+  porStudies: (uids: string[]) => ['laudos', 'por-studies', [...uids].sort()] as const,
+};
+
+export function useListarLaudos(filtro: FiltroLaudos) {
+  return useQuery({
+    queryKey: laudosKeys.lista(filtro),
+    queryFn: () => listarLaudos(filtro),
+  });
+}
+
+export function useLaudoPorId(id: string | null) {
+  return useQuery({
+    queryKey: id ? laudosKeys.porId(id) : ['laudos', 'detalhe', 'nenhum'],
+    queryFn: () => {
+      if (!id) throw new Error('ID não informado.');
+      return obterLaudo(id);
+    },
+    enabled: Boolean(id),
+  });
+}
+
+export function useHistoricoLaudo(id: string | null) {
+  return useQuery({
+    queryKey: id ? laudosKeys.historico(id) : ['laudos', 'historico', 'nenhum'],
+    queryFn: () => {
+      if (!id) throw new Error('ID não informado.');
+      return listarHistorico(id);
+    },
+    enabled: Boolean(id),
+  });
+}
+
+export function useLaudosPorStudyUIDs(uids: string[]) {
+  return useQuery({
+    queryKey: laudosKeys.porStudies(uids),
+    queryFn: () => listarLaudosPorStudies(uids),
+    enabled: uids.length > 0,
+    staleTime: 30_000,
+  });
+}
+
+export function useCadastrarLaudo() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CadastrarLaudoPayload) => cadastrarLaudo(payload),
+    onSuccess: () => client.invalidateQueries({ queryKey: laudosKeys.raiz }),
+  });
+}
+
+export function useAtualizarLaudo() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: AtualizarLaudoPayload }) =>
+      atualizarLaudo(id, payload),
+    onSuccess: (_d, vars) => {
+      client.invalidateQueries({ queryKey: laudosKeys.raiz });
+      client.invalidateQueries({ queryKey: laudosKeys.porId(vars.id) });
+    },
+  });
+}
+
+export function useFinalizarLaudo() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: FinalizarLaudoPayload }) =>
+      finalizarLaudo(id, payload),
+    onSuccess: (_d, vars) => {
+      client.invalidateQueries({ queryKey: laudosKeys.raiz });
+      client.invalidateQueries({ queryKey: laudosKeys.porId(vars.id) });
+    },
+  });
+}
+
+export function useCriarNovaVersao() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => criarNovaVersaoLaudo(id),
+    onSuccess: () => client.invalidateQueries({ queryKey: laudosKeys.raiz }),
+  });
+}
+
+export function useExcluirLaudo() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => excluirLaudo(id),
+    onSuccess: () => client.invalidateQueries({ queryKey: laudosKeys.raiz }),
+  });
+}

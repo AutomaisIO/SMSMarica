@@ -30,8 +30,7 @@ const enderecoSchema = z
   })
   .nullable();
 
-const base = {
-  nomeCompleto: z.string().min(3).max(200),
+const baseAtualizacao = {
   cnh: z
     .string()
     .min(5, 'CNH obrigatória.')
@@ -45,11 +44,12 @@ const base = {
 };
 
 export const cadastrarMotoristaSchema = z.object({
-  ...base,
+  ...baseAtualizacao,
+  nomeCompleto: z.string().min(3).max(200),
   cpf: z.string().refine(cpfValido, 'CPF inválido.'),
 });
 
-export const atualizarMotoristaSchema = z.object(base);
+export const atualizarMotoristaSchema = z.object(baseAtualizacao);
 
 export type CadastrarMotoristaInput = z.infer<typeof cadastrarMotoristaSchema>;
 export type AtualizarMotoristaInput = z.infer<typeof atualizarMotoristaSchema>;

@@ -19,4 +19,6 @@ public enum ModuloPermissao
     Avaliacoes = 11,
     Pacs = 12,
     Medicos = 13,
+    Laudos = 14,
+    LaudosTemplates = 15,
 }

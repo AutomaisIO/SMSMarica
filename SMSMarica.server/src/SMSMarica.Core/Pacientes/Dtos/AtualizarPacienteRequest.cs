@@ -3,8 +3,11 @@ using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Pacientes.Dtos;
 
+/// <summary>
+/// Nome, CPF e data de nascimento do paciente são imutáveis (definidos no
+/// gate inicial via consulta Receita) e não fazem parte deste request.
+/// </summary>
 public sealed record AtualizarPacienteRequest(
-    string NomeCompleto,
     string? Cns,
     string? Rg,
     Sexo Sexo = Sexo.NaoInformado,

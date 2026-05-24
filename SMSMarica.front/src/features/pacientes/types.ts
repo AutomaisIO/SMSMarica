@@ -143,7 +143,7 @@ export type PacienteFormPayload = {
 
 export type CadastrarPacientePayload = PacienteFormPayload;
 
-export type AtualizarPacientePayload = Omit<PacienteFormPayload, 'cpf' | 'dataNascimento'>;
+export type AtualizarPacientePayload = Omit<PacienteFormPayload, 'nomeCompleto' | 'cpf' | 'dataNascimento'>;
 
 export type PacienteExistencia = {
   id: string;

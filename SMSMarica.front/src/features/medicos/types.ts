@@ -26,6 +26,7 @@ export type Medico = {
   usuarioId: string;
   nomeCompleto: string;
   cpf: string;
+  dataNascimento: string | null;
   crm: string;
   ufCrm: string;
   especialidade: string | null;
@@ -53,7 +54,6 @@ export type CadastrarMedicoPayload = {
 };
 
 export type AtualizarMedicoPayload = {
-  nomeCompleto: string;
   crm: string;
   ufCrm: string;
   especialidade?: string;

@@ -277,6 +277,205 @@ namespace SMSMarica.Data.Migrations
                     b.ToTable("rastreamento_geofence", "smsmarica");
                 });
 
+            modelBuilder.Entity("SMSMarica.Data.Entities.Laudo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<string>("ConteudoHtml")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("conteudo_html");
+
+                    b.Property<string>("ConteudoJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("conteudo_json");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<bool>("Excluido")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("excluido");
+
+                    b.Property<DateTime?>("ExcluidoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("excluido_em");
+
+                    b.Property<Guid?>("ExcluidoPorUsuarioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("excluido_por_usuario_id");
+
+                    b.Property<DateTime?>("FinalizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("finalizado_em");
+
+                    b.Property<Guid?>("LaudoAnteriorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("laudo_anterior_id");
+
+                    b.Property<Guid?>("LaudoTemplateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("laudo_template_id");
+
+                    b.Property<string>("MedicoCrmSnapshot")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("medico_crm_snapshot");
+
+                    b.Property<Guid>("MedicoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("medico_id");
+
+                    b.Property<string>("MedicoNomeSnapshot")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("medico_nome_snapshot");
+
+                    b.Property<string>("MedicoRqeSnapshot")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("medico_rqe_snapshot");
+
+                    b.Property<string>("MedicoUfCrmSnapshot")
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)")
+                        .HasColumnName("medico_uf_crm_snapshot");
+
+                    b.Property<Guid?>("PacienteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paciente_id");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<string>("StudyInstanceUID")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("study_instance_uid");
+
+                    b.Property<string>("Titulo")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("titulo");
+
+                    b.Property<int>("Versao")
+                        .HasColumnType("integer")
+                        .HasColumnName("versao");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LaudoAnteriorId");
+
+                    b.HasIndex("LaudoTemplateId");
+
+                    b.HasIndex("MedicoId");
+
+                    b.HasIndex("PacienteId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("StudyInstanceUID");
+
+                    b.HasIndex("StudyInstanceUID", "Versao")
+                        .IsUnique()
+                        .HasFilter("excluido = false");
+
+                    b.ToTable("laudo", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMarica.Data.Entities.LaudoTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Ativo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("ativo");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<Guid?>("AtualizadoPorUsuarioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atualizado_por_usuario_id");
+
+                    b.Property<string>("Categoria")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("categoria");
+
+                    b.Property<string>("ConteudoHtml")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("conteudo_html");
+
+                    b.Property<string>("ConteudoJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("conteudo_json");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid>("CriadoPorUsuarioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por_usuario_id");
+
+                    b.Property<string>("Descricao")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("descricao");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("nome");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Ativo");
+
+                    b.HasIndex("AtualizadoPorUsuarioId");
+
+                    b.HasIndex("Categoria");
+
+                    b.HasIndex("CriadoPorUsuarioId");
+
+                    b.HasIndex("Nome")
+                        .IsUnique()
+                        .HasFilter("ativo = true");
+
+                    b.ToTable("laudo_template", "smsmarica");
+                });
+
             modelBuilder.Entity("SMSMarica.Data.Entities.Medico", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1256,6 +1455,56 @@ namespace SMSMarica.Data.Migrations
 
                     b.Navigation("Centro")
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("SMSMarica.Data.Entities.Laudo", b =>
+                {
+                    b.HasOne("SMSMarica.Data.Entities.Laudo", "LaudoAnterior")
+                        .WithMany()
+                        .HasForeignKey("LaudoAnteriorId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("SMSMarica.Data.Entities.LaudoTemplate", "LaudoTemplate")
+                        .WithMany()
+                        .HasForeignKey("LaudoTemplateId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SMSMarica.Data.Entities.Medico", "Medico")
+                        .WithMany()
+                        .HasForeignKey("MedicoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SMSMarica.Data.Entities.Paciente", "Paciente")
+                        .WithMany()
+                        .HasForeignKey("PacienteId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("LaudoAnterior");
+
+                    b.Navigation("LaudoTemplate");
+
+                    b.Navigation("Medico");
+
+                    b.Navigation("Paciente");
+                });
+
+            modelBuilder.Entity("SMSMarica.Data.Entities.LaudoTemplate", b =>
+                {
+                    b.HasOne("SMSMarica.Data.Entities.Usuario", "AtualizadoPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("AtualizadoPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SMSMarica.Data.Entities.Usuario", "CriadoPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("CriadoPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AtualizadoPorUsuario");
+
+                    b.Navigation("CriadoPorUsuario");
                 });
 
             modelBuilder.Entity("SMSMarica.Data.Entities.Medico", b =>

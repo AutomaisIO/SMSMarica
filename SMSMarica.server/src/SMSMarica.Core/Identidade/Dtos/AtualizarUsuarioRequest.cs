@@ -2,11 +2,12 @@ using SMSMarica.Core.Common.Dtos;
 
 namespace SMSMarica.Core.Identidade.Dtos;
 
-/// <summary>Admin atualiza dados de outro usuário.</summary>
+/// <summary>
+/// Admin atualiza dados de outro usuário. Nome, CPF e data de nascimento são
+/// imutáveis após o cadastro (definidos no gate inicial via consulta Receita)
+/// e não fazem parte deste request.
+/// </summary>
 public sealed record AtualizarUsuarioRequest(
-    string NomeCompleto,
-    string? Cpf,
-    DateOnly? DataNascimento,
     string? Telefone,
     EnderecoDto? Endereco,
     string? FotoBase64 = null);

@@ -22,9 +22,6 @@ public sealed class AtualizarUsuarioValidator : AbstractValidator<AtualizarUsuar
 {
     public AtualizarUsuarioValidator()
     {
-        RuleFor(u => u.NomeCompleto).NotEmpty().MaximumLength(200);
-        RuleFor(u => u.Cpf)
-            .Must(c => c is null || (c.All(char.IsDigit) && c.Length == 11))
-            .WithMessage("CPF deve ter 11 dígitos quando informado.");
+        RuleFor(u => u.Telefone).MaximumLength(30);
     }
 }

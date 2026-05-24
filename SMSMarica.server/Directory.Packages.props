@@ -34,6 +34,12 @@
     <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.0" />
   </ItemGroup>
 
+  <ItemGroup Label="Laudos (PDF + HTML)">
+    <PackageVersion Include="QuestPDF" Version="2024.10.3" />
+    <PackageVersion Include="AngleSharp" Version="0.17.1" />
+    <PackageVersion Include="HtmlSanitizer" Version="9.0.884" />
+  </ItemGroup>
+
   <ItemGroup Label="Autenticação / Autorização">
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Identity.Core" Version="10.0.0" />

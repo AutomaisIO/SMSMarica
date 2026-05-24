@@ -13,6 +13,10 @@ import { MotoristasPage } from '@/features/motoristas/pages/MotoristasPage';
 import { PacienteDetalhePage } from '@/features/pacientes/pages/PacienteDetalhePage';
 import { PacienteFormPage } from '@/features/pacientes/pages/PacienteFormPage';
 import { PacientesPage } from '@/features/pacientes/pages/PacientesPage';
+import { LaudoEditorPage } from '@/features/laudos/pages/LaudoEditorPage';
+import { LaudosListagemPage } from '@/features/laudos/pages/LaudosListagemPage';
+import { LaudoTemplateEditorPage } from '@/features/laudo-templates/pages/LaudoTemplateEditorPage';
+import { LaudoTemplatesListagemPage } from '@/features/laudo-templates/pages/LaudoTemplatesListagemPage';
 import { PacsListagemPage } from '@/features/pacs/pages/PacsListagemPage';
 import { PacsViewerPage } from '@/features/pacs/pages/PacsViewerPage';
 import { PerfisPage } from '@/features/perfis/pages/PerfisPage';
@@ -87,6 +91,12 @@ export function AppRouter() {
           <Route path="rastreamento" element={<RastreamentoPage />} />
           <Route path="avaliacoes" element={<AvaliacoesPage />} />
           <Route path="pacs" element={<PacsListagemPage />} />
+          <Route path="laudos" element={<LaudosListagemPage />} />
+          <Route path="laudos/novo" element={<LaudoEditorPage />} />
+          <Route path="laudos/:id" element={<LaudoEditorPage />} />
+          <Route path="laudo-templates" element={<LaudoTemplatesListagemPage />} />
+          <Route path="laudo-templates/novo" element={<LaudoTemplateEditorPage />} />
+          <Route path="laudo-templates/:id" element={<LaudoTemplateEditorPage />} />
         </Route>
       </Route>
 

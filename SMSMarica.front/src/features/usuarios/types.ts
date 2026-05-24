@@ -50,9 +50,6 @@ export type CadastrarUsuarioPayload = {
 };
 
 export type AtualizarUsuarioPayload = {
-  nomeCompleto: string;
-  cpf?: string;
-  dataNascimento?: string;
   telefone?: string;
   endereco: EnderecoDto | null;
   fotoBase64?: string | null;

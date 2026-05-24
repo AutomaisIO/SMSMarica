@@ -11,6 +11,7 @@ internal static class MotoristasMapper
         m.UsuarioId,
         m.Usuario.NomeCompleto,
         m.Usuario.Cpf ?? string.Empty,
+        m.Usuario.DataNascimento,
         m.Cnh,
         m.Usuario.Telefone,
         m.Usuario.Endereco is null ? null : EnderecoDto.ParaDto(m.Usuario.Endereco),

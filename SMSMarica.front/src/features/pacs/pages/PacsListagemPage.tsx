@@ -1,5 +1,6 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { Eye, FileText, Loader2, Search, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Edit2, Eye, FilePlus, FileText, Loader2, Search, Trash2 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
@@ -7,17 +8,16 @@ import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
+import { useLaudosPorStudyUIDs } from '@/features/laudos/api/queries';
+import { abrirPdfLaudo } from '@/features/laudos/lib/pdf';
+import type { LaudoPorStudy } from '@/features/laudos/types';
 import { useBuscarEstudos, useExcluirEstudo } from '@/features/pacs/api/queries';
 import { formatarHoraDicom } from '@/features/pacs/lib/dicomJson';
 import { abrirJanelaSolta } from '@/features/pacs/lib/janela';
 import type { Estudo, FiltroBusca, TipoBuscaNome } from '@/features/pacs/types';
 
-/**
- * Estudo enriquecido com a informação de laudo (vinda do nosso DB no futuro).
- * Por ora `laudoId` é sempre `null` — o botão de PDF fica oculto até o módulo
- * de laudo existir; quando vier, basta popular este campo.
- */
-type ExameRow = Estudo & { laudoId: string | null };
+/** Estudo enriquecido com a informação do laudo (vindo do nosso DB). */
+type ExameRow = Estudo & { laudo: LaudoPorStudy | null };
 
 export function PacsListagemPage() {
   // Carga inicial sem data: traz os últimos N exames independente de quando
@@ -34,13 +34,17 @@ export function PacsListagemPage() {
 
   const LIMITES_DISPONIVEIS = [5, 10, 50, 100] as const;
 
+  const navigate = useNavigate();
   const podeAbrir = usePermissao('Pacs', 'Consulta');
   const podeExcluir = usePermissao('Pacs', 'Exclusao');
+  const podeCriarLaudo = usePermissao('Laudos', 'Inclusao');
+  const podeEditarLaudo = usePermissao('Laudos', 'Edicao');
 
   const busca = useBuscarEstudos();
   const exclusao = useExcluirEstudo();
   const [excluindoUid, setExcluindoUid] = useState<string | null>(null);
   const [erroExclusao, setErroExclusao] = useState<string | null>(null);
+  const [erroPdf, setErroPdf] = useState<string | null>(null);
 
   // Carga inicial: exames de hoje.
   useEffect(() => {
@@ -65,12 +69,22 @@ export function PacsListagemPage() {
     }
   }
 
-  function abrirLaudoPdf(laudoId: string) {
-    // O módulo de laudo entrega esta rota; por enquanto só estamos preparados.
-    const ok = abrirJanelaSolta(`/laudos/${laudoId}/pdf`, `laudo-${laudoId}`, 1200, 900);
-    if (!ok) {
-      alert('A janela do PDF foi bloqueada pelo navegador. Libere os popups para este site.');
+  async function abrirLaudoPdf(laudoId: string) {
+    setErroPdf(null);
+    try {
+      await abrirPdfLaudo(laudoId);
+    } catch (e) {
+      setErroPdf(extrairMensagemDeErro(e));
     }
+  }
+
+  function criarLaudoPara(estudo: Estudo) {
+    const params = new URLSearchParams({
+      studyUID: estudo.studyInstanceUID,
+      ...(estudo.patientId ? { patientId: estudo.patientId } : {}),
+      ...(estudo.modalidade ? { modalidade: estudo.modalidade } : {}),
+    });
+    navigate(`/app/laudos/novo?${params.toString()}`);
   }
 
   function excluirExame(estudo: Estudo) {
@@ -95,11 +109,20 @@ export function PacsListagemPage() {
     });
   }
 
+  const studyUids = useMemo(
+    () => (busca.data ?? []).map((e) => e.studyInstanceUID).filter(Boolean),
+    [busca.data],
+  );
+  const laudosLookup = useLaudosPorStudyUIDs(studyUids);
+  const mapaLaudos = useMemo(() => {
+    const m = new Map<string, LaudoPorStudy>();
+    for (const l of laudosLookup.data ?? []) m.set(l.studyInstanceUID, l);
+    return m;
+  }, [laudosLookup.data]);
+
   const exames: ExameRow[] = (busca.data ?? []).map((e) => ({
     ...e,
-    // TODO: popular com o laudoId quando o módulo Laudo estiver pronto
-    // (provavelmente vindo de um endpoint paralelo /laudos?studyUIDs=...).
-    laudoId: null,
+    laudo: mapaLaudos.get(e.studyInstanceUID) ?? null,
   }));
 
   const colunas: Coluna<ExameRow>[] = [
@@ -150,6 +173,7 @@ export function PacsListagemPage() {
       className: 'text-right',
       render: (e) => {
         const excluindoEste = excluindoUid === e.studyInstanceUID;
+        const laudoFinalizado = e.laudo?.status === 'Finalizado';
         return (
           <div className="flex items-center justify-end gap-2">
             {podeAbrir ? (
@@ -163,11 +187,33 @@ export function PacsListagemPage() {
                 Visualizar
               </button>
             ) : null}
-            {e.laudoId ? (
+            {e.laudo && podeEditarLaudo ? (
               <button
                 type="button"
-                onClick={() => abrirLaudoPdf(e.laudoId!)}
-                title="Abrir laudo em PDF em janela separada"
+                onClick={() => navigate(`/app/laudos/${e.laudo!.laudoId}`)}
+                title={laudoFinalizado ? 'Abrir laudo finalizado' : 'Editar rascunho do laudo'}
+                className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+              >
+                <Edit2 className="h-3.5 w-3.5" />
+                {laudoFinalizado ? 'Laudo' : 'Rascunho'}
+              </button>
+            ) : null}
+            {!e.laudo && podeCriarLaudo ? (
+              <button
+                type="button"
+                onClick={() => criarLaudoPara(e)}
+                title="Criar laudo para este exame"
+                className="inline-flex items-center gap-1 rounded-md border border-green-300 bg-green-50 px-2.5 py-1 text-xs font-medium text-green-800 hover:bg-green-100"
+              >
+                <FilePlus className="h-3.5 w-3.5" />
+                Laudar
+              </button>
+            ) : null}
+            {laudoFinalizado ? (
+              <button
+                type="button"
+                onClick={() => abrirLaudoPdf(e.laudo!.laudoId)}
+                title="Abrir PDF do laudo em janela separada"
                 className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
               >
                 <FileText className="h-3.5 w-3.5" />
@@ -273,6 +319,12 @@ export function PacsListagemPage() {
       {erroExclusao ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           Falha ao excluir o exame: {erroExclusao}
+        </div>
+      ) : null}
+
+      {erroPdf ? (
+        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          Falha ao abrir o PDF: {erroPdf}
         </div>
       ) : null}
 

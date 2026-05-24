@@ -7,6 +7,7 @@ public sealed record MedicoDto(
     Guid UsuarioId,
     string NomeCompleto,
     string Cpf,
+    DateOnly? DataNascimento,
     string Crm,
     string UfCrm,
     string? Especialidade,

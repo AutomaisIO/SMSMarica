@@ -157,7 +157,7 @@ public sealed class MedicosService(SmsMaricaDbContext db) : IMedicosService
         m.ValidadeCrm = request.ValidadeCrm;
         m.AtualizadoEm = DateTime.UtcNow;
 
-        m.Usuario.NomeCompleto = request.NomeCompleto.Trim();
+        // Nome e CPF do Usuario são imutáveis — não tocamos aqui.
         m.Usuario.Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim();
         m.Usuario.Endereco = request.Endereco?.ParaEntidade();
         m.Usuario.FotoBase64 = string.IsNullOrWhiteSpace(request.FotoBase64) ? null : request.FotoBase64;

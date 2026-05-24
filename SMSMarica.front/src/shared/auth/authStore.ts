@@ -14,7 +14,9 @@ export type ModuloPermissao =
   | 'Rastreamento'
   | 'Avaliacoes'
   | 'Pacs'
-  | 'Medicos';
+  | 'Medicos'
+  | 'Laudos'
+  | 'LaudosTemplates';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 

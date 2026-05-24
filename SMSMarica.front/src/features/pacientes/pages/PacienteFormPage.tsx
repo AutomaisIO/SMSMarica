@@ -401,7 +401,8 @@ export function PacienteFormPage() {
         const id = await cadastrar.mutateAsync(payload);
         navigate(`/app/pacientes/${id}/editar`, { replace: true });
       } else if (params.id) {
-        const { cpf: _cpf, dataNascimento: _dn, ...resto } = payload;
+        // Nome, CPF e data de nascimento são imutáveis — não vão no payload.
+        const { nomeCompleto: _nc, cpf: _cpf, dataNascimento: _dn, ...resto } = payload;
         await atualizar.mutateAsync({ id: params.id, payload: resto });
         navigate('/app/pacientes', { replace: false });
       }

@@ -170,9 +170,6 @@ public sealed class IdentidadeService(
         var u = await _db.Usuarios.FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Usuario), id);
 
-        u.NomeCompleto = request.NomeCompleto.Trim();
-        u.Cpf = string.IsNullOrWhiteSpace(request.Cpf) ? null : NormalizarDigitos(request.Cpf);
-        u.DataNascimento = request.DataNascimento;
         u.Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim();
         u.Endereco = request.Endereco?.ParaEntidade();
         u.FotoBase64 = string.IsNullOrWhiteSpace(request.FotoBase64) ? null : request.FotoBase64;

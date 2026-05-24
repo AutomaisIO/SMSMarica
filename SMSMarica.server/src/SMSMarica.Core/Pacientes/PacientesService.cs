@@ -240,8 +240,7 @@ public sealed class PacientesService(SmsMaricaDbContext db) : IPacientesService
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Paciente), id);
 
-        // Atualizar Usuario (dados pessoais base)
-        paciente.Usuario.NomeCompleto = request.NomeCompleto.Trim();
+        // Atualizar Usuario (dados pessoais base) — nome e CPF são imutáveis.
         paciente.Usuario.Rg = NormalizaOpcional(request.Rg, false);
         paciente.Usuario.Sexo = request.Sexo;
         paciente.Usuario.Endereco = request.Endereco?.ParaEntidade();

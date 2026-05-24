@@ -129,7 +129,11 @@
       "Skill(update-config)",
       "Read(//c/Users/berna/.claude/**)",
       "Bash(powershell -NoProfile -Command \"Get-Content settings.json -Raw | ConvertFrom-Json | ConvertTo-Json -Depth 10\")",
-      "Bash(powershell *)"
+      "Bash(powershell *)",
+      "Bash(netstat -ano)",
+      "Bash(findstr :5080)",
+      "PowerShell(Get-NetTCPConnection *)",
+      "PowerShell($url = 'https://ws.hubdodesenvolvedor.com.br/v2/cpf/?cpf=10861085744&data=13/01/1985&token=204737245JhioGHZBgz369646888'; try { $r = Invoke-RestMethod -Uri $url -Method Get -TimeoutSec 20; $r | ConvertTo-Json -Depth 8 } catch { Write-Output \"ERRO: $\\($_.Exception.Message\\)\" })"
     ]
   }
 }
