@@ -9,27 +9,20 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 from pydicom.dataset import Dataset, FileMetaDataset
-from pydicom.uid import (
-    DigitalMammographyXRayImageStorageForPresentation,
-    DigitalXRayImageStorageForPresentation,
-    ComputedRadiographyImageStorage,
-    UltrasoundImageStorage,
-    CTImageStorage,
-    MRImageStorage,
-    ExplicitVRLittleEndian,
-    generate_uid,
-)
+from pydicom.uid import ExplicitVRLittleEndian, generate_uid
 
 from .cliente_mwl import ItemWorklist
 
 
-SOP_CLASS_POR_MODALIDADE = {
-    "MG": DigitalMammographyXRayImageStorageForPresentation,
-    "DX": DigitalXRayImageStorageForPresentation,
-    "CR": ComputedRadiographyImageStorage,
-    "US": UltrasoundImageStorage,
-    "CT": CTImageStorage,
-    "MR": MRImageStorage,
+# SOP Class UIDs em string — independente de nomes simbólicos da lib (que
+# variam entre versões do pydicom/pynetdicom). Fonte: DICOM PS3.6 Annex A.
+SOP_CLASS_UID_POR_MODALIDADE: dict[str, str] = {
+    "MG": "1.2.840.10008.5.1.4.1.1.1.2",   # Digital Mammography X-Ray Image Storage - For Presentation
+    "DX": "1.2.840.10008.5.1.4.1.1.1.1",   # Digital X-Ray Image Storage - For Presentation
+    "CR": "1.2.840.10008.5.1.4.1.1.1",     # Computed Radiography Image Storage
+    "US": "1.2.840.10008.5.1.4.1.1.6.1",   # Ultrasound Image Storage
+    "CT": "1.2.840.10008.5.1.4.1.1.2",     # CT Image Storage
+    "MR": "1.2.840.10008.5.1.4.1.1.4",     # MR Image Storage
 }
 
 # Prefixo de UID do nosso simulador (DICOM PS3.5 B.2 — "2.25." + UUID inteiro).
@@ -61,7 +54,9 @@ def montar_dataset_a_partir_do_worklist(
     Pixel Data vem do array passado (uint16, monocromo)."""
 
     modalidade = (item.modalidade or "OT").upper()
-    sop_class_uid = SOP_CLASS_POR_MODALIDADE.get(modalidade, DigitalMammographyXRayImageStorageForPresentation)
+    sop_class_uid = SOP_CLASS_UID_POR_MODALIDADE.get(
+        modalidade, SOP_CLASS_UID_POR_MODALIDADE["MG"]
+    )
     sop_instance_uid = _gerar_uid()
     series_instance_uid = _gerar_uid()
     study_instance_uid = item.study_instance_uid or _gerar_uid()

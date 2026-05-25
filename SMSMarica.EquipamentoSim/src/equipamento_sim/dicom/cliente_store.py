@@ -4,25 +4,6 @@ from __future__ import annotations
 
 from pydicom.dataset import Dataset
 from pynetdicom import AE
-from pynetdicom.sop_class import (
-    DigitalMammographyXRayImagePresentationStorage,
-    DigitalXRayImagePresentationStorage,
-    ComputedRadiographyImageStorage,
-    UltrasoundImageStorage,
-    CTImageStorage,
-    MRImageStorage,
-)
-
-
-# Mapeamento Modalidade DICOM → SOP Class UID (Storage)
-SOP_POR_MODALIDADE = {
-    "MG": DigitalMammographyXRayImagePresentationStorage,
-    "DX": DigitalXRayImagePresentationStorage,
-    "CR": ComputedRadiographyImageStorage,
-    "US": UltrasoundImageStorage,
-    "CT": CTImageStorage,
-    "MR": MRImageStorage,
-}
 
 
 def enviar(
@@ -32,18 +13,22 @@ def enviar(
     called_ae: str,
     dataset: Dataset,
 ) -> tuple[bool, str]:
-    """Envia um único dataset via C-STORE. Retorna (sucesso, mensagem)."""
+    """Envia um único dataset via C-STORE. Retorna (sucesso, mensagem).
 
-    sop_class = dataset.SOPClassUID
+    O presentation context é negociado pela SOPClassUID do próprio Dataset
+    (pynetdicom aceita o UID string direto em add_requested_context, evitando
+    importar nomes simbólicos que mudam entre versões da lib)."""
+
+    sop_class_uid = dataset.SOPClassUID
 
     ae = AE(ae_title=calling_ae)
-    ae.add_requested_context(sop_class)
+    ae.add_requested_context(sop_class_uid)
 
     assoc = ae.associate(host, port, ae_title=called_ae)
     if not assoc.is_established:
         return False, (
             f"Não foi possível associar com {called_ae}@{host}:{port}. "
-            "Verifique se o AE Title está cadastrado no dcm4chee."
+            "Verifique se o servidor está respondendo e se o firewall libera a porta."
         )
 
     try:
