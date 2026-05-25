@@ -10,16 +10,32 @@ CLI em Python que conversa direto com o `dcm4chee` via DICOM:
 
 Pré-requisito: Python 3.11+ instalado e no PATH.
 
+### Opção A — Com venv (recomendado)
+
 ```powershell
 cd "C:\Projetos GIT\SMSMarica\SMSMarica.EquipamentoSim"
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -e .
+equipamento mwl
 ```
 
 > Em Linux/macOS: `source .venv/bin/activate`.
 
-Depois o comando `equipamento` fica disponível no PATH do venv.
+### Opção B — Sem venv (Python da Microsoft Store)
+
+O Python instalado pela Microsoft Store **não** adiciona `Scripts\` ao PATH,
+então `equipamento` não fica acessível mesmo após `pip install -e .`. Use a
+forma `python -m`:
+
+```cmd
+cd "C:\Projetos GIT\SMSMarica\SMSMarica.EquipamentoSim"
+pip install -e .
+python -m equipamento_sim mwl
+python -m equipamento_sim exec --accession SMS2026000001 --fantasma
+```
+
+Funciona idêntico ao `equipamento`, só muda o prefixo.
 
 Se aparecer erro `execução de scripts desabilitada` no PowerShell, rode antes:
 `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
