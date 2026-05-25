@@ -38,6 +38,10 @@ internal sealed class SolicitacaoExameConfiguration : IEntityTypeConfiguration<S
         builder.Property(s => s.RealizadoEm).HasColumnName("realizado_em");
         builder.Property(s => s.ErroIntegracaoPacs).HasColumnName("erro_integracao_pacs").HasMaxLength(1000);
 
+        builder.Property(s => s.TentativasEnvio).HasColumnName("tentativas_envio").HasDefaultValue(0).IsRequired();
+        builder.Property(s => s.UltimaTentativaEm).HasColumnName("ultima_tentativa_em");
+        builder.Property(s => s.ProximaTentativaEm).HasColumnName("proxima_tentativa_em");
+
         builder.Property(s => s.CanceladoEm).HasColumnName("cancelado_em");
         builder.Property(s => s.CanceladoPorUsuarioId).HasColumnName("cancelado_por_usuario_id");
         builder.Property(s => s.MotivoCancelamento).HasColumnName("motivo_cancelamento").HasMaxLength(500);
@@ -80,5 +84,8 @@ internal sealed class SolicitacaoExameConfiguration : IEntityTypeConfiguration<S
         builder.HasIndex(s => s.PacienteId);
         builder.HasIndex(s => s.Status);
         builder.HasIndex(s => new { s.Status, s.DataAgendada }); // usado pelo SincronizadorExamesService
+
+        // Usado pelo EnviadorWorklistService — pega Solicitada/Enviada com tentativa vencida.
+        builder.HasIndex(s => new { s.Status, s.ProximaTentativaEm });
     }
 }

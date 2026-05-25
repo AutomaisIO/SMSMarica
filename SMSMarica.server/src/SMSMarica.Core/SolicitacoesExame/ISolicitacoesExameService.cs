@@ -36,4 +36,14 @@ public interface ISolicitacoesExameService
     /// detecta o study no PACS).
     /// </summary>
     Task MarcarComoRealizadaAsync(Guid id, DateTime realizadoEm, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Executa uma tentativa do worker no fluxo de envio resiliente:
+    /// - Solicitada → POST UPS-RS; se OK vira Enviada.
+    /// - Enviada → GET no workitem; se OK vira Agendada; se 404 volta a Solicitada.
+    /// - Em falha (rede/erro do PACS): incrementa contador, recalcula
+    ///   <c>ProximaTentativaEm</c> com backoff exponencial.
+    /// Idempotente — pode ser chamado várias vezes.
+    /// </summary>
+    Task ProcessarTentativaEnvioAsync(Guid solicitacaoId, CancellationToken cancellationToken = default);
 }

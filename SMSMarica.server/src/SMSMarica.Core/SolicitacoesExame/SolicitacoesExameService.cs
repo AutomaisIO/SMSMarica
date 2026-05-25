@@ -132,16 +132,16 @@ public sealed class SolicitacoesExameService(
             Observacoes = NormalizaOpcional(request.Observacoes),
             DataAgendada = request.DataAgendada,
 
+            // Worker pega imediatamente no próximo tick (sem bloquear a resposta da API
+            // esperando o PACS responder).
+            ProximaTentativaEm = agora,
+
             CriadoEm = agora,
             CriadoPor = _usuarioAtual.UsuarioId,
         };
 
         _db.SolicitacoesExame.Add(solicitacao);
         await _db.SaveChangesAsync(cancellationToken);
-
-        // Tenta criar o workitem no dcm4chee. Falha não anula a solicitação —
-        // ela fica como Solicitada com ErroIntegracaoPacs para reenvio.
-        await TentarCriarWorkitemAsync(solicitacao.Id, cancellationToken);
 
         return solicitacao.Id;
     }
@@ -216,22 +216,22 @@ public sealed class SolicitacoesExameService(
         var s = await _db.SolicitacoesExame.FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(SolicitacaoExame), id);
 
-        if (s.Status != StatusSolicitacaoExame.Solicitada)
+        if (s.Status is not (StatusSolicitacaoExame.Solicitada or StatusSolicitacaoExame.Enviada))
         {
             throw new ConflitoException(
                 "solicitacaoExame.nao_reenviavel",
-                $"Só é possível reenviar worklist de solicitações no status 'Solicitada'. Atual: {s.Status}.");
+                $"Só é possível reenviar worklist de solicitações em 'Solicitada' ou 'Enviada'. Atual: {s.Status}.");
         }
 
-        await TentarCriarWorkitemAsync(s.Id, cancellationToken);
+        // Apenas agenda o worker pra tentar agora — ele faz o POST/GET e
+        // atualiza o status. UX: o front mostra "tentativa em andamento"
+        // depois do refresh e o worker resolve em ~30s no pior caso.
+        s.ProximaTentativaEm = DateTime.UtcNow;
+        s.ErroIntegracaoPacs = null;
+        s.AtualizadoEm = DateTime.UtcNow;
+        s.AtualizadoPor = _usuarioAtual.UsuarioId;
 
-        // Se ainda houver erro, propaga (o front mostra) — TentarCriarWorkitemAsync grava ErroIntegracaoPacs.
-        var atualizada = await _db.SolicitacoesExame.AsNoTracking()
-            .FirstAsync(x => x.Id == id, cancellationToken);
-        if (atualizada.Status != StatusSolicitacaoExame.Agendada)
-        {
-            throw new ConflitoException("solicitacaoExame.reenvio_falhou", atualizada.ErroIntegracaoPacs ?? "Falha ao reenviar.");
-        }
+        await _db.SaveChangesAsync(cancellationToken);
     }
 
     public async Task ExcluirAsync(Guid id, CancellationToken cancellationToken = default)
@@ -289,33 +289,122 @@ public sealed class SolicitacoesExameService(
         await _notificador.NotificarRealizadoAsync(s, cancellationToken);
     }
 
-    // ---- helpers ----
-
-    private async Task TentarCriarWorkitemAsync(Guid id, CancellationToken cancellationToken)
+    public async Task ProcessarTentativaEnvioAsync(Guid solicitacaoId, CancellationToken cancellationToken = default)
     {
         var s = await _db.SolicitacoesExame
             .Include(x => x.Paciente).ThenInclude(p => p!.Usuario)
             .Include(x => x.TipoExame).ThenInclude(t => t!.ProcedimentoSigtap)
-            .FirstAsync(x => x.Id == id, cancellationToken);
+            .FirstOrDefaultAsync(x => x.Id == solicitacaoId && x.ExcluidoEm == null, cancellationToken);
+
+        if (s is null) return;
+
+        // Estado terminal ou intermediário que não interessa pro worker.
+        if (s.Status is not (StatusSolicitacaoExame.Solicitada or StatusSolicitacaoExame.Enviada))
+        {
+            // Limpa o agendamento para não voltar.
+            if (s.ProximaTentativaEm is not null)
+            {
+                s.ProximaTentativaEm = null;
+                await _db.SaveChangesAsync(cancellationToken);
+            }
+            return;
+        }
+
+        var agora = DateTime.UtcNow;
+        s.TentativasEnvio += 1;
+        s.UltimaTentativaEm = agora;
 
         try
         {
-            var uid = await _upsClient.CriarWorkitemAsync(s, cancellationToken);
-            s.WorklistItemUid = uid;
-            s.Status = StatusSolicitacaoExame.Agendada;
-            s.ErroIntegracaoPacs = null;
-            s.AtualizadoEm = DateTime.UtcNow;
-            await _db.SaveChangesAsync(cancellationToken);
-            await _notificador.NotificarAgendadoAsync(s, cancellationToken);
+            if (s.Status == StatusSolicitacaoExame.Solicitada)
+            {
+                // 1ª etapa: POST UPS-RS.
+                var uid = await _upsClient.CriarWorkitemAsync(s, cancellationToken);
+                s.WorklistItemUid = uid;
+                s.Status = StatusSolicitacaoExame.Enviada;
+                s.ErroIntegracaoPacs = null;
+                // Agenda confirmação imediata (worker pega no próximo tick para fazer GET).
+                s.ProximaTentativaEm = agora;
+                s.AtualizadoEm = agora;
+                await _db.SaveChangesAsync(cancellationToken);
+                _logger.LogInformation(
+                    "Solicitação {Accession} enviada ao PACS (workitem {Uid}) — aguardando confirmação.",
+                    s.AccessionNumber, uid);
+            }
+            else // Enviada
+            {
+                // 2ª etapa: GET de confirmação.
+                if (string.IsNullOrEmpty(s.WorklistItemUid))
+                {
+                    // Estado inconsistente — volta pra Solicitada pra reenviar.
+                    s.Status = StatusSolicitacaoExame.Solicitada;
+                    s.ProximaTentativaEm = agora;
+                    s.AtualizadoEm = agora;
+                    await _db.SaveChangesAsync(cancellationToken);
+                    return;
+                }
+
+                var existe = await _upsClient.WorkitemExisteAsync(s.WorklistItemUid, cancellationToken);
+                if (existe)
+                {
+                    s.Status = StatusSolicitacaoExame.Agendada;
+                    s.ErroIntegracaoPacs = null;
+                    s.ProximaTentativaEm = null; // estado terminal do envio
+                    s.AtualizadoEm = agora;
+                    await _db.SaveChangesAsync(cancellationToken);
+                    await _notificador.NotificarAgendadoAsync(s, cancellationToken);
+                    _logger.LogInformation(
+                        "Solicitação {Accession} confirmada como Agendada no PACS.",
+                        s.AccessionNumber);
+                }
+                else
+                {
+                    // GET 404 — workitem sumiu (expirou ou foi limpo). Volta pra Solicitada
+                    // e reenvia imediatamente.
+                    _logger.LogWarning(
+                        "Workitem {Uid} de {Accession} sumiu do PACS — voltando para Solicitada.",
+                        s.WorklistItemUid, s.AccessionNumber);
+                    s.Status = StatusSolicitacaoExame.Solicitada;
+                    s.WorklistItemUid = null;
+                    s.ErroIntegracaoPacs = "Workitem não encontrado no PACS (404) — reenviando.";
+                    s.ProximaTentativaEm = agora;
+                    s.AtualizadoEm = agora;
+                    await _db.SaveChangesAsync(cancellationToken);
+                }
+            }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.LogWarning(ex,
-                "Falha ao criar worklist item para solicitação {Id}. Fica como Solicitada para reenvio.", id);
+            // Falha temporária — agenda nova tentativa com backoff exponencial.
+            var espera = CalcularBackoff(s.TentativasEnvio);
             s.ErroIntegracaoPacs = ex.Message;
-            s.AtualizadoEm = DateTime.UtcNow;
+            s.ProximaTentativaEm = agora.Add(espera);
+            s.AtualizadoEm = agora;
             await _db.SaveChangesAsync(cancellationToken);
+            _logger.LogWarning(ex,
+                "Tentativa {N} de envio de {Accession} falhou. Próxima em {Espera}.",
+                s.TentativasEnvio, s.AccessionNumber, espera);
         }
+    }
+
+    // ---- helpers ----
+
+    /// <summary>
+    /// Backoff exponencial limitado: 30s, 1min, 2min, 5min, 15min, 30min, 1h, 2h (cap).
+    /// </summary>
+    private static TimeSpan CalcularBackoff(int tentativas)
+    {
+        return tentativas switch
+        {
+            <= 1 => TimeSpan.FromSeconds(30),
+            2 => TimeSpan.FromMinutes(1),
+            3 => TimeSpan.FromMinutes(2),
+            4 => TimeSpan.FromMinutes(5),
+            5 => TimeSpan.FromMinutes(15),
+            6 => TimeSpan.FromMinutes(30),
+            7 => TimeSpan.FromHours(1),
+            _ => TimeSpan.FromHours(2),
+        };
     }
 
     private async Task<SolicitacaoExame?> CarregarCompletoAsync(

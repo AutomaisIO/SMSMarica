@@ -25,7 +25,7 @@ import {
 import { StatusBadgeSolicitacao } from '@/features/solicitacoes-exame/components/StatusBadgeSolicitacao';
 import type { StatusSolicitacao } from '@/features/solicitacoes-exame/types';
 
-const ETAPAS: StatusSolicitacao[] = ['Solicitada', 'Agendada', 'EmExecucao', 'Realizada', 'Laudada'];
+const ETAPAS: StatusSolicitacao[] = ['Solicitada', 'Enviada', 'Agendada', 'EmExecucao', 'Realizada', 'Laudada'];
 
 export function SolicitacaoExameDetalhePage() {
   const navigate = useNavigate();
@@ -129,9 +129,24 @@ export function SolicitacaoExameDetalhePage() {
         <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
           <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
           <div>
-            <div className="font-medium">Falha ao criar worklist no PACS.</div>
+            <div className="font-medium">Última tentativa de envio ao PACS falhou.</div>
             <div className="text-xs">{s.erroIntegracaoPacs}</div>
+            <div className="mt-1 text-xs">
+              Tentativas: <strong>{s.tentativasEnvio}</strong>
+              {s.ultimaTentativaEm ? <> · última {fmt(s.ultimaTentativaEm)}</> : null}
+              {s.proximaTentativaEm ? <> · próxima {fmt(s.proximaTentativaEm)}</> : null}
+            </div>
           </div>
+        </div>
+      ) : null}
+
+      {!s.erroIntegracaoPacs &&
+      (s.status === 'Solicitada' || s.status === 'Enviada') &&
+      s.tentativasEnvio > 0 ? (
+        <div className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
+          Envio em andamento — {s.tentativasEnvio} tentativa(s).
+          {s.ultimaTentativaEm ? <> Última em {fmt(s.ultimaTentativaEm)}.</> : null}
+          {s.proximaTentativaEm ? <> Próxima em {fmt(s.proximaTentativaEm)}.</> : null}
         </div>
       ) : null}
 

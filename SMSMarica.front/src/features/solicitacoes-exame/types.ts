@@ -2,6 +2,7 @@ import type { ModalidadeDicom } from '@/features/tipos-exame/types';
 
 export type StatusSolicitacao =
   | 'Solicitada'
+  | 'Enviada'
   | 'Agendada'
   | 'EmExecucao'
   | 'Realizada'
@@ -47,6 +48,10 @@ export type SolicitacaoExame = {
 
   canceladoEm: string | null;
   motivoCancelamento: string | null;
+
+  tentativasEnvio: number;
+  ultimaTentativaEm: string | null;
+  proximaTentativaEm: string | null;
 
   criadoEm: string;
   atualizadoEm: string | null;

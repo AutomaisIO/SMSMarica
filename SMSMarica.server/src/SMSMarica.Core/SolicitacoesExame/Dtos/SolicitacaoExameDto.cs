@@ -40,6 +40,10 @@ public sealed record SolicitacaoExameDto(
     DateTime? CanceladoEm,
     string? MotivoCancelamento,
 
+    int TentativasEnvio,
+    DateTime? UltimaTentativaEm,
+    DateTime? ProximaTentativaEm,
+
     DateTime CriadoEm,
     DateTime? AtualizadoEm);
 

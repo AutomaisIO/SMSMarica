@@ -60,8 +60,21 @@ public class SolicitacaoExame
     public DateTime? IniciadoEm { get; set; }
     public DateTime? RealizadoEm { get; set; }
 
-    /// <summary>Quando a integração UPS-RS falha, guardamos o motivo para o admin reenviar.</summary>
+    /// <summary>Quando a integração UPS-RS falha, guardamos o motivo (e o admin pode reenviar manualmente).</summary>
     public string? ErroIntegracaoPacs { get; set; }
+
+    // ---- Retry resiliente (worker EnviadorWorklistService) ----
+
+    /// <summary>Contador de tentativas de envio/confirmação no PACS.</summary>
+    public int TentativasEnvio { get; set; }
+
+    /// <summary>Quando foi a última tentativa (envio ou GET de confirmação).</summary>
+    public DateTime? UltimaTentativaEm { get; set; }
+
+    /// <summary>Quando o worker deve tentar de novo. Preenchido ao criar (= now)
+    /// para o worker pegar imediatamente; em cada falha pula com backoff
+    /// exponencial. Null = sem tentativa agendada (estados terminais).</summary>
+    public DateTime? ProximaTentativaEm { get; set; }
 
     // ---- Cancelamento ----
 

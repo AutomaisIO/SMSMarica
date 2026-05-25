@@ -35,6 +35,9 @@ internal static class SolicitacoesExameMapper
         s.ErroIntegracaoPacs,
         s.CanceladoEm,
         s.MotivoCancelamento,
+        s.TentativasEnvio,
+        s.UltimaTentativaEm,
+        s.ProximaTentativaEm,
         s.CriadoEm,
         s.AtualizadoEm);
 

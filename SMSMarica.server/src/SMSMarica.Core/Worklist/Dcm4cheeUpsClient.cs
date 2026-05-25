@@ -103,6 +103,36 @@ public sealed class Dcm4cheeUpsClient : IDcm4cheeUpsClient
         }
     }
 
+    public async Task<bool> WorkitemExisteAsync(string workitemUid, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(workitemUid)) return false;
+
+        var requisicao = new HttpRequestMessage(HttpMethod.Get, $"workitems/{workitemUid}");
+        requisicao.Headers.Accept.Clear();
+        requisicao.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/dicom+json"));
+
+        HttpResponseMessage resposta;
+        try
+        {
+            resposta = await _http.SendAsync(requisicao, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Falha de rede ao verificar workitem {Uid}.", workitemUid);
+            throw new ConflitoException("pacs.indisponivel", "Não foi possível alcançar o dcm4chee.");
+        }
+
+        if (resposta.StatusCode == System.Net.HttpStatusCode.OK) return true;
+        if (resposta.StatusCode == System.Net.HttpStatusCode.NotFound) return false;
+
+        var corpo = await resposta.Content.ReadAsStringAsync(cancellationToken);
+        _logger.LogWarning(
+            "GET workitem {Uid} retornou {Status}: {Corpo}",
+            workitemUid, (int)resposta.StatusCode, corpo);
+        // Status inesperado — tratamos como indisponível (retenta depois).
+        throw new ConflitoException("pacs.indisponivel", $"dcm4chee respondeu {(int)resposta.StatusCode} ao GET workitem.");
+    }
+
     private static string GerarUid()
     {
         // Prefixo "2.25." + Guid numerico (DICOM PS3.5 B.2)

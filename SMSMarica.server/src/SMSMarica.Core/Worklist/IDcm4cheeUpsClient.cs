@@ -19,4 +19,15 @@ public interface IDcm4cheeUpsClient
     /// dcm4chee, retorna silenciosamente.
     /// </summary>
     Task CancelarWorkitemAsync(string workitemUid, string motivo, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Confirma se o workitem ainda existe no dcm4chee.
+    /// Retorna:
+    /// - <c>true</c>: HTTP 200 (existe e está acessível)
+    /// - <c>false</c>: HTTP 404 (sumiu — provavelmente expirou ou foi limpo)
+    /// - lança <see cref="Common.Excecoes.ConflitoException"/> se o dcm4chee
+    ///   estiver indisponível (rede/timeout) — chamador deve manter o estado
+    ///   e retentar depois.
+    /// </summary>
+    Task<bool> WorkitemExisteAsync(string workitemUid, CancellationToken cancellationToken = default);
 }
