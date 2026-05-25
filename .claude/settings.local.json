@@ -133,7 +133,8 @@
       "Bash(netstat -ano)",
       "Bash(findstr :5080)",
       "PowerShell(Get-NetTCPConnection *)",
-      "PowerShell($url = 'https://ws.hubdodesenvolvedor.com.br/v2/cpf/?cpf=10861085744&data=13/01/1985&token=204737245JhioGHZBgz369646888'; try { $r = Invoke-RestMethod -Uri $url -Method Get -TimeoutSec 20; $r | ConvertTo-Json -Depth 8 } catch { Write-Output \"ERRO: $\\($_.Exception.Message\\)\" })"
+      "PowerShell($url = 'https://ws.hubdodesenvolvedor.com.br/v2/cpf/?cpf=10861085744&data=13/01/1985&token=204737245JhioGHZBgz369646888'; try { $r = Invoke-RestMethod -Uri $url -Method Get -TimeoutSec 20; $r | ConvertTo-Json -Depth 8 } catch { Write-Output \"ERRO: $\\($_.Exception.Message\\)\" })",
+      "WebFetch(domain:dcm4che.github.io)"
     ]
   }
 }
