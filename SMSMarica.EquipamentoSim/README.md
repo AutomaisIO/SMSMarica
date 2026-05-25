@@ -3,17 +3,17 @@
 Simulador de equipamento DICOM (mamógrafo) para testar o ciclo completo de **Solicitação de Exame → Worklist → Execução** do sistema SMSMarica, sem precisar de um equipamento real.
 
 CLI em Python que conversa direto com o `dcm4chee` via DICOM:
-- **C-FIND** no AE `WORKLIST` para puxar a worklist do dia.
-- **C-STORE** no AE `DCM4CHEE` para enviar imagens DICOM (fantasmas ou reais).
+- **C-FIND** para puxar a worklist do dia.
+- **C-STORE** para enviar imagens DICOM (fantasmas ou reais).
 
 ## Instalação
 
-Pré-requisito: Python 3.11+.
+Pré-requisito: Python 3.11+ instalado e no PATH.
 
 ```powershell
-cd SMSMarica.EquipamentoSim
+cd "C:\Projetos GIT\SMSMarica\SMSMarica.EquipamentoSim"
 python -m venv .venv
-.\.venv\Scripts\activate
+.\.venv\Scripts\Activate.ps1
 pip install -e .
 ```
 
@@ -21,19 +21,8 @@ pip install -e .
 
 Depois o comando `equipamento` fica disponível no PATH do venv.
 
-## Configuração de AE Title no dcm4chee (1 vez)
-
-O dcm4chee só aceita Associations DICOM de AEs conhecidas. Antes do primeiro `mwl`, cadastre o AE deste simulador:
-
-1. Acesse a UI Arc Light: `http://pacs.marica.automais.cloud:8080/dcm4chee-arc/ui2/`
-2. Vá em **Configuration → Devices**, edite o device principal.
-3. Em **Application Entities**, clique **Add AE** com:
-   - AE Title: `MAMO-SIM`
-   - Description: `Simulador SMS Maricá`
-   - Network connection: a mesma usada pelo `DCM4CHEE`.
-4. Salve e reinicie o `dcm4chee.service` se necessário.
-
-Caso contrário a Association é rejeitada com `Calling AE not recognized`.
+Se aparecer erro `execução de scripts desabilitada` no PowerShell, rode antes:
+`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
 
 ## Defaults
 
@@ -43,9 +32,11 @@ Os valores default abaixo são lidos de variáveis de ambiente prefixadas `EQSIM
 |---|---|
 | `EQSIM_HOST` | `pacs.marica.automais.cloud` |
 | `EQSIM_PORT` | `11112` |
-| `EQSIM_CALLING_AE` | `MAMO-SIM` |
-| `EQSIM_CALLED_AE_MWL` | `WORKLIST` |
+| `EQSIM_CALLING_AE` | `DCM4CHEE` |
+| `EQSIM_CALLED_AE_MWL` | `DCM4CHEE` |
 | `EQSIM_CALLED_AE_STORE` | `DCM4CHEE` |
+
+> **Sobre os AE titles**: o dcm4chee da SMS Maricá está em modo `unsecure` (sem validação de Calling AE), então usamos `DCM4CHEE` em tudo — é o único AE conhecido. Se o dcm4chee passar a exigir Calling AE registrado, basta cadastrar um novo (ex.: `MAMO-SIM`) via UI Arc Light → Configuration → Devices → Add AE e sobrescrever `EQSIM_CALLING_AE`.
 
 ## Comandos
 
@@ -83,7 +74,7 @@ Após o sucesso, o `SincronizadorExamesService` do SMSMarica.Api detecta o study
 
 ## Troubleshooting
 
-- **`Não foi possível associar`** — verifique se `MAMO-SIM` está cadastrado como AE no dcm4chee (seção acima) e se o firewall permite a porta 11112.
+- **`Não foi possível associar`** — verifique se o firewall permite a porta `11112` (e que o host responde: `Test-NetConnection pacs.marica.automais.cloud -Port 11112`).
 - **`Nenhum item encontrado`** — confirme que existe uma `SolicitacaoExame` com status `Agendada` para o AccessionNumber (o worklist item só é criado quando o POST UPS-RS retorna 201). Cheque o log do backend.
 - **`status 0xA700`** (Refused: Out of Resources) — espaço/permissões do storage no dcm4chee. Olhe `/opt/wildfly/standalone/log/server.log`.
 
