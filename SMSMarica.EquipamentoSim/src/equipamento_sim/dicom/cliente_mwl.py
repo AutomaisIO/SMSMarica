@@ -140,6 +140,14 @@ def _montar_query_minima() -> Dataset:
     swc.CodeMeaning = ""
     q.ScheduledWorkitemCodeSequence = [swc]
 
+    # ScheduledStationClassCodeSequence (0040,4026) — é onde o backend grava
+    # a modalidade (MG/DX/US/CT/MR/...).
+    sscc = Dataset()
+    sscc.CodeValue = ""
+    sscc.CodingSchemeDesignator = ""
+    sscc.CodeMeaning = ""
+    q.ScheduledStationClassCodeSequence = [sscc]
+
     # Estação agendada (para identificar pra qual equipamento o item é destinado).
     ssn = Dataset()
     ssn.CodeValue = ""
@@ -178,7 +186,13 @@ def _para_item(ds: Dataset) -> ItemWorklist:
 
 
 def _extrair_modalidade(ds: Dataset) -> str:
-    for nome in ("ScheduledProcessingParametersSequence", "ScheduledWorkitemCodeSequence"):
+    # Backend SMSMarica grava em ScheduledStationClassCodeSequence (0040,4026).
+    # Mantemos os outros como fallback para outros RIS.
+    for nome in (
+        "ScheduledStationClassCodeSequence",
+        "ScheduledProcessingParametersSequence",
+        "ScheduledWorkitemCodeSequence",
+    ):
         seq = getattr(ds, nome, None)
         if seq:
             item0 = seq[0]
