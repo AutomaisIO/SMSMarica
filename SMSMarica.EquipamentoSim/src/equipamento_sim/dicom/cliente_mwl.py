@@ -16,8 +16,13 @@ from pydicom.dataset import Dataset
 from pynetdicom import AE
 
 
-# SOP Class — Unified Procedure Step - Pull (PS3.4 CC.2)
-UPS_PULL_SOP_CLASS_UID = "1.2.840.10008.5.1.4.34.6.1"
+# SOP Class — Unified Procedure Step - Query.
+#
+# IMPORTANTE: C-FIND para UPS usa a Query SOP Class (...6.5), NÃO a Pull
+# (...6.1). A Pull aceita só N-GET/N-SET/N-ACTION (DIMSE Normalized) —
+# enviar C-FIND nela retorna 0x0211 "Unrecognized Operation".
+# Ver DICOM PS3.4 CC.2.2 (search method) e CC.2.5-1 (UPS Query SOP Class).
+UPS_QUERY_SOP_CLASS_UID = "1.2.840.10008.5.1.4.34.6.5"
 
 # Verbose: set EQSIM_DEBUG=1 para ver cada status devolvido pelo dcm4chee.
 _DEBUG = os.environ.get("EQSIM_DEBUG") == "1"
@@ -52,7 +57,7 @@ def consultar_worklist(
     não-padrão)."""
 
     ae = AE(ae_title=calling_ae)
-    ae.add_requested_context(UPS_PULL_SOP_CLASS_UID)
+    ae.add_requested_context(UPS_QUERY_SOP_CLASS_UID)
 
     query = _montar_query_minima()
 
@@ -68,7 +73,7 @@ def consultar_worklist(
         )
 
     try:
-        responses = assoc.send_c_find(query, UPS_PULL_SOP_CLASS_UID)
+        responses = assoc.send_c_find(query, UPS_QUERY_SOP_CLASS_UID)
         for (status, identifier) in responses:
             if _DEBUG:
                 s = f"0x{status.Status:04X}" if status else "None"
