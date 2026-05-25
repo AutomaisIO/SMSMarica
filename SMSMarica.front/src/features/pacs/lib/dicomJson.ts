@@ -6,6 +6,7 @@ export const Tag = {
   StudyTime: '00080030',
   ModalitiesInStudy: '00080061',
   Modality: '00080060',
+  AccessionNumber: '00080050',
   StudyDescription: '00081030',
   SeriesDescription: '0008103E',
   SOPInstanceUID: '00080018',

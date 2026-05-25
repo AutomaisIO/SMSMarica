@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "smsmarica-equipamento-sim"
+version = "0.1.0"
+description = "Simulador de equipamento DICOM para testar o ciclo de Solicitação de Exame → Worklist → Execução do SMSMarica."
+requires-python = ">=3.11"
+authors = [{ name = "SMS Maricá", email = "dev@smsmarica.local" }]
+dependencies = [
+    "pynetdicom>=2.1.0",
+    "pydicom>=2.4.0",
+    "pillow>=10.0.0",
+    "typer>=0.12.0",
+    "rich>=13.0.0",
+]
+
+[project.scripts]
+equipamento = "equipamento_sim.main:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"equipamento_sim" = ["examples/*"]

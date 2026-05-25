@@ -14,6 +14,7 @@ Always read the canonical documentation in [`docs/`](./docs/) before making arch
 
 | Arquivo | Quando consultar |
 |---------|------------------|
+| [`docs/visao.md`](./docs/visao.md) | **Norte estratégico** — hub FHIR R4 da SMS Maricá. Consultar antes de decisões que afetam modelagem do cidadão, identificadores ou integração com sistemas externos. |
 | [`docs/architecture.md`](./docs/architecture.md) | Layout 3-projetos, organização por entidade, fluxo de erro |
 | [`docs/domain.md`](./docs/domain.md) | Glossário + invariantes do domínio antes de modelar qualquer entidade |
 | [`docs/database.md`](./docs/database.md) | Schema `smsmarica`, naming, migrations |

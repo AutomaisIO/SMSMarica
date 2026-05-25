@@ -907,6 +907,436 @@ namespace SMSMarica.Data.Migrations
                     b.ToTable("rastreamento_ponto_gps", "smsmarica");
                 });
 
+            modelBuilder.Entity("SMSMarica.Data.Entities.ProcedimentoSigtap", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Ativo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("ativo");
+
+                    b.Property<string>("Codigo")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)")
+                        .HasColumnName("codigo");
+
+                    b.Property<DateOnly?>("CompetenciaFim")
+                        .HasColumnType("date")
+                        .HasColumnName("competencia_fim");
+
+                    b.Property<DateOnly>("CompetenciaInicio")
+                        .HasColumnType("date")
+                        .HasColumnName("competencia_inicio");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("descricao");
+
+                    b.Property<string>("Forma")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("forma");
+
+                    b.Property<string>("Grupo")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("grupo");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)")
+                        .HasColumnName("nome");
+
+                    b.Property<string>("Subgrupo")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("subgrupo");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Ativo");
+
+                    b.HasIndex("Codigo")
+                        .IsUnique();
+
+                    b.HasIndex("Grupo", "Subgrupo");
+
+                    b.ToTable("procedimento_sigtap", "smsmarica");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000001"),
+                            Ativo = true,
+                            Codigo = "02.04.03.018-8",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "MAMOGRAFIA BILATERAL PARA RASTREAMENTO",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "MAMOGRAFIA BILATERAL PARA RASTREAMENTO",
+                            Subgrupo = "DIAGNOSTICO POR RADIOLOGIA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000002"),
+                            Ativo = true,
+                            Codigo = "02.04.03.003-0",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "MAMOGRAFIA BILATERAL",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "MAMOGRAFIA BILATERAL",
+                            Subgrupo = "DIAGNOSTICO POR RADIOLOGIA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000003"),
+                            Ativo = true,
+                            Codigo = "02.04.03.001-3",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "MAMOGRAFIA UNILATERAL",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "MAMOGRAFIA UNILATERAL",
+                            Subgrupo = "DIAGNOSTICO POR RADIOLOGIA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000010"),
+                            Ativo = true,
+                            Codigo = "02.04.01.004-7",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "RADIOGRAFIA DE TORAX (PA)",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "RADIOGRAFIA DE TORAX (PA)",
+                            Subgrupo = "DIAGNOSTICO POR RADIOLOGIA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000011"),
+                            Ativo = true,
+                            Codigo = "02.04.01.005-5",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "RADIOGRAFIA DE TORAX (PA E PERFIL)",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "RADIOGRAFIA DE TORAX (PA E PERFIL)",
+                            Subgrupo = "DIAGNOSTICO POR RADIOLOGIA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000012"),
+                            Ativo = true,
+                            Codigo = "02.04.05.004-2",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "RADIOGRAFIA DA COLUNA LOMBO-SACRA",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "RADIOGRAFIA DA COLUNA LOMBO-SACRA",
+                            Subgrupo = "DIAGNOSTICO POR RADIOLOGIA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000013"),
+                            Ativo = true,
+                            Codigo = "02.04.05.002-6",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "RADIOGRAFIA DA COLUNA CERVICAL",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "RADIOGRAFIA DA COLUNA CERVICAL",
+                            Subgrupo = "DIAGNOSTICO POR RADIOLOGIA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000014"),
+                            Ativo = true,
+                            Codigo = "02.04.05.003-4",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "RADIOGRAFIA DA COLUNA TORACICA",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "RADIOGRAFIA DA COLUNA TORACICA",
+                            Subgrupo = "DIAGNOSTICO POR RADIOLOGIA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000015"),
+                            Ativo = true,
+                            Codigo = "02.04.04.028-3",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "RADIOGRAFIA DE JOELHO (AP + LATERAL)",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "RADIOGRAFIA DE JOELHO (AP + LATERAL)",
+                            Subgrupo = "DIAGNOSTICO POR RADIOLOGIA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000016"),
+                            Ativo = true,
+                            Codigo = "02.04.04.030-5",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "RADIOGRAFIA DE OMBRO (AP + AXIAL)",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "RADIOGRAFIA DE OMBRO (AP + AXIAL)",
+                            Subgrupo = "DIAGNOSTICO POR RADIOLOGIA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000017"),
+                            Ativo = true,
+                            Codigo = "02.04.04.020-8",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "RADIOGRAFIA DE BACIA",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "RADIOGRAFIA DE BACIA",
+                            Subgrupo = "DIAGNOSTICO POR RADIOLOGIA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000018"),
+                            Ativo = true,
+                            Codigo = "02.04.06.016-3",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "RADIOGRAFIA DE ABDOME (AGUDO ADULTO 3 INCIDENCIAS)",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "RADIOGRAFIA DE ABDOME (AGUDO ADULTO 3 INCIDENCIAS)",
+                            Subgrupo = "DIAGNOSTICO POR RADIOLOGIA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000019"),
+                            Ativo = true,
+                            Codigo = "02.04.06.019-8",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "RADIOGRAFIA DE ABDOME EM 1 INCIDENCIA",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "RADIOGRAFIA DE ABDOME EM 1 INCIDENCIA",
+                            Subgrupo = "DIAGNOSTICO POR RADIOLOGIA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000020"),
+                            Ativo = true,
+                            Codigo = "02.05.02.014-3",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "ULTRASSONOGRAFIA DE ABDOME TOTAL",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "ULTRASSONOGRAFIA DE ABDOME TOTAL",
+                            Subgrupo = "DIAGNOSTICO POR ULTRASSONOGRAFIA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000021"),
+                            Ativo = true,
+                            Codigo = "02.05.02.017-8",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "ULTRASSONOGRAFIA DE TIREOIDE",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "ULTRASSONOGRAFIA DE TIREOIDE",
+                            Subgrupo = "DIAGNOSTICO POR ULTRASSONOGRAFIA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000022"),
+                            Ativo = true,
+                            Codigo = "02.05.02.010-0",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "ULTRASSONOGRAFIA OBSTETRICA",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "ULTRASSONOGRAFIA OBSTETRICA",
+                            Subgrupo = "DIAGNOSTICO POR ULTRASSONOGRAFIA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000023"),
+                            Ativo = true,
+                            Codigo = "02.05.02.013-5",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "ULTRASSONOGRAFIA TRANSVAGINAL",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "ULTRASSONOGRAFIA TRANSVAGINAL",
+                            Subgrupo = "DIAGNOSTICO POR ULTRASSONOGRAFIA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000024"),
+                            Ativo = true,
+                            Codigo = "02.05.02.015-1",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "ULTRASSONOGRAFIA MORFOLOGICA DO 1 TRIMESTRE",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "ULTRASSONOGRAFIA MORFOLOGICA DO 1 TRIMESTRE",
+                            Subgrupo = "DIAGNOSTICO POR ULTRASSONOGRAFIA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000025"),
+                            Ativo = true,
+                            Codigo = "02.05.02.005-4",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "ULTRASSONOGRAFIA MAMARIA BILATERAL",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "ULTRASSONOGRAFIA MAMARIA BILATERAL",
+                            Subgrupo = "DIAGNOSTICO POR ULTRASSONOGRAFIA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000026"),
+                            Ativo = true,
+                            Codigo = "02.05.02.012-7",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "ULTRASSONOGRAFIA PELVICA (GINECOLOGICA)",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "ULTRASSONOGRAFIA PELVICA (GINECOLOGICA)",
+                            Subgrupo = "DIAGNOSTICO POR ULTRASSONOGRAFIA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000030"),
+                            Ativo = true,
+                            Codigo = "02.06.01.002-8",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "TOMOGRAFIA COMPUTADORIZADA DO CRANIO",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "TOMOGRAFIA COMPUTADORIZADA DO CRANIO",
+                            Subgrupo = "TOMOGRAFIA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000031"),
+                            Ativo = true,
+                            Codigo = "02.06.02.003-1",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "TOMOGRAFIA COMPUTADORIZADA DE TORAX",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "TOMOGRAFIA COMPUTADORIZADA DE TORAX",
+                            Subgrupo = "TOMOGRAFIA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000032"),
+                            Ativo = true,
+                            Codigo = "02.06.02.002-3",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "TOMOGRAFIA COMPUTADORIZADA DE ABDOME SUPERIOR",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "TOMOGRAFIA COMPUTADORIZADA DE ABDOME SUPERIOR",
+                            Subgrupo = "TOMOGRAFIA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000033"),
+                            Ativo = true,
+                            Codigo = "02.06.03.001-0",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "TOMOGRAFIA COMPUTADORIZADA DA COLUNA LOMBAR",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "TOMOGRAFIA COMPUTADORIZADA DA COLUNA LOMBAR",
+                            Subgrupo = "TOMOGRAFIA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000034"),
+                            Ativo = true,
+                            Codigo = "02.06.03.002-9",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "TOMOGRAFIA COMPUTADORIZADA DA COLUNA CERVICAL",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "TOMOGRAFIA COMPUTADORIZADA DA COLUNA CERVICAL",
+                            Subgrupo = "TOMOGRAFIA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000040"),
+                            Ativo = true,
+                            Codigo = "02.07.01.001-3",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "RESSONANCIA MAGNETICA DE CRANIO",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "RESSONANCIA MAGNETICA DE CRANIO",
+                            Subgrupo = "RESSONANCIA MAGNETICA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000041"),
+                            Ativo = true,
+                            Codigo = "02.07.01.003-0",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "RESSONANCIA MAGNETICA DE COLUNA LOMBO-SACRA",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "RESSONANCIA MAGNETICA DE COLUNA LOMBO-SACRA",
+                            Subgrupo = "RESSONANCIA MAGNETICA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000042"),
+                            Ativo = true,
+                            Codigo = "02.07.01.004-8",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "RESSONANCIA MAGNETICA DE JOELHO",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "RESSONANCIA MAGNETICA DE JOELHO",
+                            Subgrupo = "RESSONANCIA MAGNETICA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000043"),
+                            Ativo = true,
+                            Codigo = "02.07.01.002-1",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "RESSONANCIA MAGNETICA DE COLUNA CERVICAL",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "RESSONANCIA MAGNETICA DE COLUNA CERVICAL",
+                            Subgrupo = "RESSONANCIA MAGNETICA"
+                        },
+                        new
+                        {
+                            Id = new Guid("a1000000-0000-0000-0000-000000000044"),
+                            Ativo = true,
+                            Codigo = "02.07.01.005-6",
+                            CompetenciaInicio = new DateOnly(2025, 1, 1),
+                            Descricao = "RESSONANCIA MAGNETICA DE OMBRO",
+                            Forma = "EXAMES",
+                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+                            Nome = "RESSONANCIA MAGNETICA DE OMBRO",
+                            Subgrupo = "RESSONANCIA MAGNETICA"
+                        });
+                });
+
             modelBuilder.Entity("SMSMarica.Data.Entities.RotaDiaria", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1056,6 +1486,263 @@ namespace SMSMarica.Data.Migrations
                     b.HasIndex("TratamentoId", "DataPrevista");
 
                     b.ToTable("sessao_de_tratamento", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMarica.Data.Entities.SolicitacaoExame", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AccessionNumber")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("accession_number");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<Guid?>("AtualizadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atualizado_por");
+
+                    b.Property<DateTime?>("CanceladoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cancelado_em");
+
+                    b.Property<Guid?>("CanceladoPorUsuarioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cancelado_por_usuario_id");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<DateTime?>("DataAgendada")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("data_agendada");
+
+                    b.Property<string>("ErroIntegracaoPacs")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("erro_integracao_pacs");
+
+                    b.Property<DateTime?>("ExcluidoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("excluido_em");
+
+                    b.Property<Guid?>("ExcluidoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("excluido_por");
+
+                    b.Property<DateTime?>("IniciadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("iniciado_em");
+
+                    b.Property<string>("Justificativa")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("justificativa");
+
+                    b.Property<string>("MotivoCancelamento")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("motivo_cancelamento");
+
+                    b.Property<string>("NumeroRegulacaoSus")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("numero_regulacao_sus");
+
+                    b.Property<string>("Observacoes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("observacoes");
+
+                    b.Property<Guid>("PacienteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paciente_id");
+
+                    b.Property<int>("Prioridade")
+                        .HasColumnType("integer")
+                        .HasColumnName("prioridade");
+
+                    b.Property<DateTime?>("RealizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("realizado_em");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("SolicitanteCrm")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("solicitante_crm");
+
+                    b.Property<string>("SolicitanteNome")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("solicitante_nome");
+
+                    b.Property<string>("SolicitanteUfCrm")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)")
+                        .HasColumnName("solicitante_uf_crm");
+
+                    b.Property<Guid?>("SolicitanteUsuarioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("solicitante_usuario_id");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<string>("StudyInstanceUID")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("study_instance_uid");
+
+                    b.Property<Guid>("TipoExameId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tipo_exame_id");
+
+                    b.Property<Guid>("UnidadeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("unidade_id");
+
+                    b.Property<string>("WorklistItemUid")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("worklist_item_uid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccessionNumber")
+                        .IsUnique();
+
+                    b.HasIndex("PacienteId");
+
+                    b.HasIndex("SolicitanteUsuarioId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("StudyInstanceUID")
+                        .IsUnique();
+
+                    b.HasIndex("TipoExameId");
+
+                    b.HasIndex("UnidadeId");
+
+                    b.HasIndex("Status", "DataAgendada");
+
+                    b.ToTable("solicitacao_exame", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMarica.Data.Entities.TipoExame", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Ativo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("ativo");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<Guid?>("AtualizadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atualizado_por");
+
+                    b.PrimitiveCollection<List<string>>("CodigosProtocolo")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("codigos_protocolo");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<DateTime?>("ExcluidoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("excluido_em");
+
+                    b.Property<Guid?>("ExcluidoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("excluido_por");
+
+                    b.Property<int>("ModalidadeDicom")
+                        .HasColumnType("integer")
+                        .HasColumnName("modalidade_dicom");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("nome");
+
+                    b.Property<Guid>("ProcedimentoSigtapId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("procedimento_sigtap_id");
+
+                    b.Property<string>("RequestedProcedureDescription")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("requested_procedure_description");
+
+                    b.Property<string>("ScheduledProcedureStepDescription")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("scheduled_procedure_step_description");
+
+                    b.Property<int?>("TempoEstimadoMinutos")
+                        .HasColumnType("integer")
+                        .HasColumnName("tempo_estimado_minutos");
+
+                    b.Property<Guid?>("UnidadePadraoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("unidade_padrao_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Ativo");
+
+                    b.HasIndex("ModalidadeDicom");
+
+                    b.HasIndex("Nome")
+                        .IsUnique()
+                        .HasFilter("excluido_em IS NULL");
+
+                    b.HasIndex("ProcedimentoSigtapId");
+
+                    b.HasIndex("UnidadePadraoId");
+
+                    b.ToTable("tipo_exame", "smsmarica");
                 });
 
             modelBuilder.Entity("SMSMarica.Data.Entities.TipoTratamento", b =>
@@ -1748,6 +2435,58 @@ namespace SMSMarica.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Tratamento");
+                });
+
+            modelBuilder.Entity("SMSMarica.Data.Entities.SolicitacaoExame", b =>
+                {
+                    b.HasOne("SMSMarica.Data.Entities.Paciente", "Paciente")
+                        .WithMany()
+                        .HasForeignKey("PacienteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SMSMarica.Data.Entities.Usuario", "SolicitanteUsuario")
+                        .WithMany()
+                        .HasForeignKey("SolicitanteUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SMSMarica.Data.Entities.TipoExame", "TipoExame")
+                        .WithMany()
+                        .HasForeignKey("TipoExameId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SMSMarica.Data.Entities.Unidade", "Unidade")
+                        .WithMany()
+                        .HasForeignKey("UnidadeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Paciente");
+
+                    b.Navigation("SolicitanteUsuario");
+
+                    b.Navigation("TipoExame");
+
+                    b.Navigation("Unidade");
+                });
+
+            modelBuilder.Entity("SMSMarica.Data.Entities.TipoExame", b =>
+                {
+                    b.HasOne("SMSMarica.Data.Entities.ProcedimentoSigtap", "ProcedimentoSigtap")
+                        .WithMany()
+                        .HasForeignKey("ProcedimentoSigtapId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SMSMarica.Data.Entities.Unidade", "UnidadePadrao")
+                        .WithMany()
+                        .HasForeignKey("UnidadePadraoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ProcedimentoSigtap");
+
+                    b.Navigation("UnidadePadrao");
                 });
 
             modelBuilder.Entity("SMSMarica.Data.Entities.Tratamento", b =>

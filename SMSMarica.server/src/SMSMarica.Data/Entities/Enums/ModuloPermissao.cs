@@ -21,4 +21,7 @@ public enum ModuloPermissao
     Medicos = 13,
     Laudos = 14,
     LaudosTemplates = 15,
+    SolicitacoesExame = 16,
+    TiposExame = 17,
+    ProcedimentosSigtap = 18,
 }

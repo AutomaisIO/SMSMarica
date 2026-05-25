@@ -19,6 +19,12 @@ import { LaudoTemplateEditorPage } from '@/features/laudo-templates/pages/LaudoT
 import { LaudoTemplatesListagemPage } from '@/features/laudo-templates/pages/LaudoTemplatesListagemPage';
 import { PacsListagemPage } from '@/features/pacs/pages/PacsListagemPage';
 import { PacsViewerPage } from '@/features/pacs/pages/PacsViewerPage';
+import { ProcedimentosSigtapPage } from '@/features/procedimentos-sigtap/pages/ProcedimentosSigtapPage';
+import { SolicitacaoExameDetalhePage } from '@/features/solicitacoes-exame/pages/SolicitacaoExameDetalhePage';
+import { SolicitacaoExameFormPage } from '@/features/solicitacoes-exame/pages/SolicitacaoExameFormPage';
+import { SolicitacoesExamePage } from '@/features/solicitacoes-exame/pages/SolicitacoesExamePage';
+import { TipoExameFormPage } from '@/features/tipos-exame/pages/TipoExameFormPage';
+import { TiposExamePage } from '@/features/tipos-exame/pages/TiposExamePage';
 import { PerfisPage } from '@/features/perfis/pages/PerfisPage';
 import { RastreamentoPage } from '@/features/rastreamento/pages/RastreamentoPage';
 import { TiposTratamentoPage } from '@/features/tiposTratamento/pages/TiposTratamentoPage';
@@ -97,6 +103,14 @@ export function AppRouter() {
           <Route path="laudo-templates" element={<LaudoTemplatesListagemPage />} />
           <Route path="laudo-templates/novo" element={<LaudoTemplateEditorPage />} />
           <Route path="laudo-templates/:id" element={<LaudoTemplateEditorPage />} />
+          <Route path="solicitacoes-exame" element={<SolicitacoesExamePage />} />
+          <Route path="solicitacoes-exame/novo" element={<SolicitacaoExameFormPage />} />
+          <Route path="solicitacoes-exame/:id" element={<SolicitacaoExameDetalhePage />} />
+          <Route path="solicitacoes-exame/:id/editar" element={<SolicitacaoExameFormPage />} />
+          <Route path="tipos-exame" element={<TiposExamePage />} />
+          <Route path="tipos-exame/novo" element={<TipoExameFormPage />} />
+          <Route path="tipos-exame/:id" element={<TipoExameFormPage />} />
+          <Route path="procedimentos-sigtap" element={<ProcedimentosSigtapPage />} />
         </Route>
       </Route>
 

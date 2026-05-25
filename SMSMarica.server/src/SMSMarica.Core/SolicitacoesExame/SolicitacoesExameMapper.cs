@@ -1,0 +1,54 @@
+using SMSMarica.Core.SolicitacoesExame.Dtos;
+using SMSMarica.Data.Entities;
+using SMSMarica.Data.Entities.Enums;
+
+namespace SMSMarica.Core.SolicitacoesExame;
+
+internal static class SolicitacoesExameMapper
+{
+    public static SolicitacaoExameDto ParaDto(SolicitacaoExame s) => new(
+        s.Id,
+        s.AccessionNumber,
+        s.StudyInstanceUID,
+        s.WorklistItemUid,
+        s.PacienteId,
+        s.Paciente?.Usuario?.NomeCompleto ?? string.Empty,
+        s.Paciente?.Usuario?.Cpf,
+        s.Paciente?.Cns,
+        s.TipoExameId,
+        s.TipoExame?.Nome ?? string.Empty,
+        s.TipoExame?.ModalidadeDicom ?? ModalidadeDicom.OT,
+        s.UnidadeId,
+        s.Unidade?.Nome ?? string.Empty,
+        s.SolicitanteUsuarioId,
+        s.SolicitanteNome,
+        s.SolicitanteCrm,
+        s.SolicitanteUfCrm,
+        s.NumeroRegulacaoSus,
+        s.Justificativa,
+        s.Status,
+        s.Prioridade,
+        s.Observacoes,
+        s.DataAgendada,
+        s.IniciadoEm,
+        s.RealizadoEm,
+        s.ErroIntegracaoPacs,
+        s.CanceladoEm,
+        s.MotivoCancelamento,
+        s.CriadoEm,
+        s.AtualizadoEm);
+
+    public static SolicitacaoExameListItemDto ParaListItem(SolicitacaoExame s) => new(
+        s.Id,
+        s.AccessionNumber,
+        s.PacienteId,
+        s.Paciente?.Usuario?.NomeCompleto ?? string.Empty,
+        s.TipoExameId,
+        s.TipoExame?.Nome ?? string.Empty,
+        s.TipoExame?.ModalidadeDicom ?? ModalidadeDicom.OT,
+        s.SolicitanteNome,
+        s.Status,
+        s.Prioridade,
+        s.DataAgendada,
+        s.CriadoEm);
+}

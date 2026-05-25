@@ -19,6 +19,7 @@ function mapearEstudo(ds: DatasetDicom): Estudo {
   const studyDate = valorTexto(ds, Tag.StudyDate);
   return {
     studyInstanceUID: valorTexto(ds, Tag.StudyInstanceUID),
+    accessionNumber: valorTexto(ds, Tag.AccessionNumber),
     patientName: valorNomePaciente(ds, Tag.PatientName),
     patientId: valorTexto(ds, Tag.PatientID),
     patientSex: valorTexto(ds, Tag.PatientSex),

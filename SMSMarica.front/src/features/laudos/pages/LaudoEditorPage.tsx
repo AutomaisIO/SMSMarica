@@ -19,6 +19,9 @@ import { EditorRichText } from '@/shared/ui/EditorRichText';
 import { CabecalhoLaudo } from '@/features/laudos/components/CabecalhoLaudo';
 import { SeletorTemplate } from '@/features/laudos/components/SeletorTemplate';
 import { StatusBadgeLaudo } from '@/features/laudos/components/StatusBadgeLaudo';
+import { useSolicitacaoPorStudy } from '@/features/solicitacoes-exame/api/queries';
+import { ClipboardCheck } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import {
   useAtualizarLaudo,
   useCadastrarLaudo,
@@ -62,6 +65,9 @@ export function LaudoEditorPage() {
 
   const studyInstanceUID = ehNovo ? studyParam : (detalhe.data?.studyInstanceUID ?? studyParam);
   const finalizado = !ehNovo && detalhe.data?.status === 'Finalizado';
+
+  // Puxa o pedido (Solicitação de Exame) associado ao Study para mostrar contexto clínico.
+  const solicitacao = useSolicitacaoPorStudy(studyInstanceUID || null);
 
   async function aoSalvarRascunho() {
     setErro(null);
@@ -218,9 +224,36 @@ export function LaudoEditorPage() {
         </div>
       ) : (
         <>
+          {solicitacao.data ? (
+            <div className="flex flex-wrap items-center gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+              <ClipboardCheck className="h-4 w-4 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <span className="font-medium">Pedido:</span>{' '}
+                <Link
+                  to={`/app/solicitacoes-exame/${solicitacao.data.id}`}
+                  className="font-mono hover:underline"
+                >
+                  {solicitacao.data.accessionNumber}
+                </Link>
+                {' · '}
+                <span>{solicitacao.data.tipoExameNome}</span>
+                {' · '}
+                <span>
+                  Solicitado por {solicitacao.data.solicitanteNome} (CRM{' '}
+                  {solicitacao.data.solicitanteUfCrm}/{solicitacao.data.solicitanteCrm})
+                </span>
+                {solicitacao.data.justificativa ? (
+                  <div className="mt-1 text-xs text-emerald-800">
+                    Justificativa: {solicitacao.data.justificativa}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
           <CabecalhoLaudo
-            pacienteNome={detalhe.data?.pacienteNome}
-            pacienteCpf={detalhe.data?.pacienteCpf}
+            pacienteNome={detalhe.data?.pacienteNome ?? solicitacao.data?.pacienteNome}
+            pacienteCpf={detalhe.data?.pacienteCpf ?? solicitacao.data?.pacienteCpf}
             studyInstanceUID={studyInstanceUID}
             medicoNome={detalhe.data?.medicoNome}
             medicoCrm={detalhe.data?.medicoCrm}

@@ -9,6 +9,7 @@ export type DatasetDicom = Record<string, ElementoDicom>;
 
 export type Estudo = {
   studyInstanceUID: string;
+  accessionNumber: string;
   patientName: string;
   patientId: string;
   patientSex: string;

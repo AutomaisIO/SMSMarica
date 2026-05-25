@@ -1,17 +1,25 @@
 using Ganss.Xss;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Laudos.Dtos;
+using SMSMarica.Core.SolicitacoesExame;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Laudos;
 
-public sealed class LaudosService(SmsMaricaDbContext db, IHtmlSanitizer sanitizer) : ILaudosService
+public sealed class LaudosService(
+    SmsMaricaDbContext db,
+    IHtmlSanitizer sanitizer,
+    ISolicitacoesExameService solicitacoes,
+    ILogger<LaudosService> logger) : ILaudosService
 {
     private readonly SmsMaricaDbContext _db = db;
     private readonly IHtmlSanitizer _sanitizer = sanitizer;
+    private readonly ISolicitacoesExameService _solicitacoes = solicitacoes;
+    private readonly ILogger<LaudosService> _logger = logger;
 
     public async Task<IReadOnlyList<LaudoListItemDto>> ListarAsync(
         FiltroLaudosDto filtro,
@@ -267,6 +275,18 @@ public sealed class LaudosService(SmsMaricaDbContext db, IHtmlSanitizer sanitize
         laudo.AtualizadoEm = laudo.FinalizadoEm;
 
         await _db.SaveChangesAsync(cancellationToken);
+
+        // Fecha o ciclo da solicitação correspondente (se houver). Não pode
+        // derrubar o laudo se a propagação falhar — só loga.
+        try
+        {
+            await _solicitacoes.MarcarComoLaudadaAsync(laudo.StudyInstanceUID, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Falha ao marcar solicitação como Laudada para StudyInstanceUID {Uid}.", laudo.StudyInstanceUID);
+        }
     }
 
     public async Task<Guid> CriarNovaVersaoAsync(

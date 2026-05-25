@@ -16,7 +16,10 @@ export type ModuloPermissao =
   | 'Pacs'
   | 'Medicos'
   | 'Laudos'
-  | 'LaudosTemplates';
+  | 'LaudosTemplates'
+  | 'SolicitacoesExame'
+  | 'TiposExame'
+  | 'ProcedimentosSigtap';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 

@@ -13,15 +13,22 @@ using SMSMarica.Core.Laudos.Pdf;
 using SMSMarica.Core.LaudoTemplates;
 using SMSMarica.Core.Medicos;
 using SMSMarica.Core.Motoristas;
+using SMSMarica.Core.Notificacoes;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.Pacs;
 using SMSMarica.Core.Perfis;
+using SMSMarica.Core.Procedimentos;
 using SMSMarica.Core.Rastreamento;
+using SMSMarica.Core.SolicitacoesExame;
+using SMSMarica.Core.SolicitacoesExame.Identificadores;
+using SMSMarica.Core.TiposExame;
 using SMSMarica.Core.TiposTratamento;
 using SMSMarica.Core.Translado;
 using SMSMarica.Core.Tratamentos;
 using SMSMarica.Core.Unidades;
 using SMSMarica.Core.Veiculos;
+using SMSMarica.Core.Worklist;
+using SMSMarica.Core.Worklist.Background;
 using SMSMarica.Data.Entities;
 
 namespace SMSMarica.Core;
@@ -46,6 +53,34 @@ public static class DependencyInjection
         services.AddScoped<ILaudoTemplatesService, LaudoTemplatesService>();
         services.AddScoped<ILaudosService, LaudosService>();
         services.AddScoped<ILaudoPdfRenderer, LaudoPdfRenderer>();
+
+        // ---- Solicitação de Exames + Worklist + Notificações ----
+        services.AddScoped<IProcedimentosSigtapService, ProcedimentosSigtapService>();
+        services.AddScoped<ITiposExameService, TiposExameService>();
+        services.AddScoped<ISolicitacoesExameService, SolicitacoesExameService>();
+        services.AddScoped<IGeradorIdentificadores, GeradorIdentificadores>();
+        services.AddScoped<INotificadorExame, NotificadorExameLog>();
+
+        services.Configure<Dcm4cheeUpsOptions>(configuration.GetSection(Dcm4cheeUpsOptions.SecaoConfig));
+        var upsBaseUrl = configuration["Pacs:Dcm4chee:UpsBaseUrl"]
+            ?? "http://pacs.marica.automais.cloud:8080/dcm4chee-arc/aets/WORKLIST/rs/";
+        services
+            .AddHttpClient<IDcm4cheeUpsClient, Dcm4cheeUpsClient>(client =>
+            {
+                client.BaseAddress = new Uri(upsBaseUrl);
+                client.Timeout = TimeSpan.FromSeconds(15);
+            });
+
+        services
+            .AddHttpClient<IConsultaStudyClient, ConsultaStudyClient>(client =>
+            {
+                client.BaseAddress = new Uri(configuration["Pacs:Dcm4chee:RsBaseUrl"]
+                    ?? "http://pacs.marica.automais.cloud:8080/dcm4chee-arc/aets/DCM4CHEE/rs/");
+                client.Timeout = TimeSpan.FromSeconds(10);
+            });
+
+        services.Configure<SincronizadorExamesOptions>(configuration.GetSection(SincronizadorExamesOptions.SecaoConfig));
+        services.AddHostedService<SincronizadorExamesService>();
 
         // Sanitizador de HTML compartilhado (whitelist explícita das tags TipTap).
         services.AddSingleton<IHtmlSanitizer>(_ =>

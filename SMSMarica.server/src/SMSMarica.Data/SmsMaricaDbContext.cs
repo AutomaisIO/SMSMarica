@@ -32,6 +32,9 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<PermissaoUsuario> PermissoesUsuario => Set<PermissaoUsuario>();
     public DbSet<Laudo> Laudos => Set<Laudo>();
     public DbSet<LaudoTemplate> LaudoTemplates => Set<LaudoTemplate>();
+    public DbSet<ProcedimentoSigtap> ProcedimentosSigtap => Set<ProcedimentoSigtap>();
+    public DbSet<TipoExame> TiposExame => Set<TipoExame>();
+    public DbSet<SolicitacaoExame> SolicitacoesExame => Set<SolicitacaoExame>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

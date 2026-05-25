@@ -1,0 +1,84 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using SMSMarica.Data.Entities;
+
+namespace SMSMarica.Data.Configurations;
+
+internal sealed class SolicitacaoExameConfiguration : IEntityTypeConfiguration<SolicitacaoExame>
+{
+    public void Configure(EntityTypeBuilder<SolicitacaoExame> builder)
+    {
+        builder.ToTable("solicitacao_exame");
+        builder.HasKey(s => s.Id);
+
+        builder.Property(s => s.Id).HasColumnName("id");
+
+        builder.Property(s => s.AccessionNumber).HasColumnName("accession_number").HasMaxLength(16).IsRequired();
+        builder.Property(s => s.StudyInstanceUID).HasColumnName("study_instance_uid").HasMaxLength(128).IsRequired();
+        builder.Property(s => s.WorklistItemUid).HasColumnName("worklist_item_uid").HasMaxLength(128);
+
+        builder.Property(s => s.PacienteId).HasColumnName("paciente_id").IsRequired();
+        builder.Property(s => s.TipoExameId).HasColumnName("tipo_exame_id").IsRequired();
+        builder.Property(s => s.UnidadeId).HasColumnName("unidade_id").IsRequired();
+
+        builder.Property(s => s.SolicitanteUsuarioId).HasColumnName("solicitante_usuario_id");
+        builder.Property(s => s.SolicitanteNome).HasColumnName("solicitante_nome").HasMaxLength(200).IsRequired();
+        builder.Property(s => s.SolicitanteCrm).HasColumnName("solicitante_crm").HasMaxLength(20).IsRequired();
+        builder.Property(s => s.SolicitanteUfCrm).HasColumnName("solicitante_uf_crm").HasMaxLength(2).IsRequired();
+
+        builder.Property(s => s.NumeroRegulacaoSus).HasColumnName("numero_regulacao_sus").HasMaxLength(40);
+        builder.Property(s => s.Justificativa).HasColumnName("justificativa").HasMaxLength(1000);
+
+        builder.Property(s => s.Status).HasColumnName("status").HasConversion<int>().IsRequired();
+        builder.Property(s => s.Prioridade).HasColumnName("prioridade").HasConversion<int>().IsRequired();
+        builder.Property(s => s.Observacoes).HasColumnName("observacoes").HasMaxLength(2000);
+
+        builder.Property(s => s.DataAgendada).HasColumnName("data_agendada");
+        builder.Property(s => s.IniciadoEm).HasColumnName("iniciado_em");
+        builder.Property(s => s.RealizadoEm).HasColumnName("realizado_em");
+        builder.Property(s => s.ErroIntegracaoPacs).HasColumnName("erro_integracao_pacs").HasMaxLength(1000);
+
+        builder.Property(s => s.CanceladoEm).HasColumnName("cancelado_em");
+        builder.Property(s => s.CanceladoPorUsuarioId).HasColumnName("cancelado_por_usuario_id");
+        builder.Property(s => s.MotivoCancelamento).HasColumnName("motivo_cancelamento").HasMaxLength(500);
+
+        builder.Property(s => s.CriadoEm).HasColumnName("criado_em").IsRequired();
+        builder.Property(s => s.CriadoPor).HasColumnName("criado_por");
+        builder.Property(s => s.AtualizadoEm).HasColumnName("atualizado_em");
+        builder.Property(s => s.AtualizadoPor).HasColumnName("atualizado_por");
+        builder.Property(s => s.ExcluidoEm).HasColumnName("excluido_em");
+        builder.Property(s => s.ExcluidoPor).HasColumnName("excluido_por");
+
+        builder.Property(s => s.RowVersion)
+            .HasColumnName("xmin")
+            .HasColumnType("xid")
+            .ValueGeneratedOnAddOrUpdate()
+            .IsConcurrencyToken();
+
+        builder.HasOne(s => s.Paciente)
+            .WithMany()
+            .HasForeignKey(s => s.PacienteId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(s => s.TipoExame)
+            .WithMany()
+            .HasForeignKey(s => s.TipoExameId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(s => s.Unidade)
+            .WithMany()
+            .HasForeignKey(s => s.UnidadeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(s => s.SolicitanteUsuario)
+            .WithMany()
+            .HasForeignKey(s => s.SolicitanteUsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(s => s.AccessionNumber).IsUnique();
+        builder.HasIndex(s => s.StudyInstanceUID).IsUnique();
+        builder.HasIndex(s => s.PacienteId);
+        builder.HasIndex(s => s.Status);
+        builder.HasIndex(s => new { s.Status, s.DataAgendada }); // usado pelo SincronizadorExamesService
+    }
+}
