@@ -97,11 +97,56 @@ def consultar_worklist(
 
 
 def _montar_query_minima() -> Dataset:
-    """Query mínima: filtra só por ProcedureStepState=SCHEDULED. Nenhum outro
-    campo — o dcm4chee devolve o workitem inteiro de qualquer jeito (Comp.
-    Statement) e a gente extrai o que precisa do raw."""
+    """Query UPS C-FIND.
+
+    Importante: em C-FIND DICOM o servidor só preenche os atributos que
+    estão na query (com universal matching = string vazia). Atributos
+    ausentes na query NÃO vêm na resposta. Por isso listamos aqui tudo o
+    que precisamos exibir/usar.
+    """
     q = Dataset()
+
+    # Match key (filtro real).
     q.ProcedureStepState = "SCHEDULED"
+
+    # Return keys top-level (universal matching = string vazia).
+    q.PatientName = ""
+    q.PatientID = ""
+    q.PatientBirthDate = ""
+    q.PatientSex = ""
+    q.StudyInstanceUID = ""
+    q.ScheduledProcedureStepStartDateTime = ""
+    q.ProcedureStepLabel = ""
+    q.InputReadinessState = ""
+
+    # Sequences: peça com um item vazio dentro para o servidor preencher.
+    # AccessionNumber e RequestedProcedureDescription vivem aqui.
+    rrs = Dataset()
+    rrs.AccessionNumber = ""
+    rrs.RequestedProcedureDescription = ""
+    rrs.RequestedProcedureID = ""
+    q.ReferencedRequestSequence = [rrs]
+
+    # Modalidade (vem em CodeValue da SPS — em parameters ou workitem code).
+    spp = Dataset()
+    spp.CodeValue = ""
+    spp.CodingSchemeDesignator = ""
+    spp.CodeMeaning = ""
+    q.ScheduledProcessingParametersSequence = [spp]
+
+    swc = Dataset()
+    swc.CodeValue = ""
+    swc.CodingSchemeDesignator = ""
+    swc.CodeMeaning = ""
+    q.ScheduledWorkitemCodeSequence = [swc]
+
+    # Estação agendada (para identificar pra qual equipamento o item é destinado).
+    ssn = Dataset()
+    ssn.CodeValue = ""
+    ssn.CodingSchemeDesignator = ""
+    ssn.CodeMeaning = ""
+    q.ScheduledStationNameCodeSequence = [ssn]
+
     return q
 
 
