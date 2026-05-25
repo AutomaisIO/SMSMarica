@@ -8,6 +8,8 @@ dcm4chee não converte UPS→MWL automaticamente.
 
 from __future__ import annotations
 
+import os
+import sys
 from dataclasses import dataclass
 
 from pydicom.dataset import Dataset
@@ -16,6 +18,9 @@ from pynetdicom import AE
 
 # SOP Class — Unified Procedure Step - Pull (PS3.4 CC.2)
 UPS_PULL_SOP_CLASS_UID = "1.2.840.10008.5.1.4.34.6.1"
+
+# Verbose: set EQSIM_DEBUG=1 para ver cada status devolvido pelo dcm4chee.
+_DEBUG = os.environ.get("EQSIM_DEBUG") == "1"
 
 
 @dataclass
@@ -30,10 +35,8 @@ class ItemWorklist:
     descricao: str
     scheduled_datetime: str
     sps_id: str
-    """Procedure Step Label (UPS) — texto humano da etapa."""
 
     raw: Dataset
-    """Dataset original (útil para herdar todos os campos no DICOM gerado)."""
 
 
 def consultar_worklist(
@@ -44,13 +47,17 @@ def consultar_worklist(
     modalidade: str | None = None,
     accession: str | None = None,
 ) -> list[ItemWorklist]:
-    """C-FIND UPS no AE WORKLIST do dcm4chee. Filtros opcionais por modalidade
-    ou AccessionNumber."""
+    """C-FIND UPS Pull. Filtros opcionais aplicados pós-resposta (a query
+    enviada ao servidor é mínima — alguns SCPs rejeitam queries com sequences
+    não-padrão)."""
 
     ae = AE(ae_title=calling_ae)
     ae.add_requested_context(UPS_PULL_SOP_CLASS_UID)
 
-    query = _montar_query(modalidade=modalidade, accession=accession)
+    query = _montar_query_minima()
+
+    if _DEBUG:
+        print(f"[DEBUG] Query enviada:\n{query}", file=sys.stderr)
 
     items: list[ItemWorklist] = []
     assoc = ae.associate(host, port, ae_title=called_ae)
@@ -63,78 +70,47 @@ def consultar_worklist(
     try:
         responses = assoc.send_c_find(query, UPS_PULL_SOP_CLASS_UID)
         for (status, identifier) in responses:
+            if _DEBUG:
+                s = f"0x{status.Status:04X}" if status else "None"
+                print(f"[DEBUG] status={s} identifier={'yes' if identifier else 'no'}", file=sys.stderr)
             if status is None:
                 continue
-            # 0xFF00 = Pending (com dados). 0x0000 = Success (sem dados).
+            # 0xFF00 = Pending (com dados). 0xFF01 = Pending with warning.
             if status.Status in (0xFF00, 0xFF01) and identifier is not None:
                 items.append(_para_item(identifier))
     finally:
         assoc.release()
 
+    # Filtros aplicados em memória (mais robusto que enviar tudo no query).
+    if accession:
+        items = [it for it in items if it.accession_number == accession.strip()]
+    if modalidade:
+        m = modalidade.strip().upper()
+        items = [it for it in items if it.modalidade.upper() == m]
+
     return items
 
 
-def _montar_query(*, modalidade: str | None, accession: str | None) -> Dataset:
-    """Query UPS Pull (PS3.4 CC.2.2). Campos top-level + Referenced Request
-    Sequence (onde fica o AccessionNumber e o RequestedProcedureDescription)."""
+def _montar_query_minima() -> Dataset:
+    """Query mínima: filtra só por ProcedureStepState=SCHEDULED. Nenhum outro
+    campo — o dcm4chee devolve o workitem inteiro de qualquer jeito (Comp.
+    Statement) e a gente extrai o que precisa do raw."""
     q = Dataset()
-
-    # Filtro por estado — SCHEDULED é o que interessa pro equipamento puxar.
     q.ProcedureStepState = "SCHEDULED"
-
-    # Campos do paciente (universal matching = string vazia).
-    q.PatientName = ""
-    q.PatientID = ""
-    q.PatientBirthDate = ""
-    q.PatientSex = ""
-
-    # Study UID — vem direto no top do UPS.
-    q.StudyInstanceUID = ""
-
-    # ScheduledProcedureStepStartDateTime
-    q.ScheduledProcedureStepStartDateTime = ""
-    q.ProcedureStepLabel = ""
-    q.InputReadinessState = ""
-
-    # Referenced Request Sequence — contém AccessionNumber e RequestedProcedureDescription
-    rrs = Dataset()
-    rrs.AccessionNumber = accession if accession else ""
-    rrs.RequestedProcedureDescription = ""
-    rrs.RequestedProcedureID = ""
-    q.ReferencedRequestSequence = [rrs]
-
-    # Scheduled Station Name Code Sequence (modalidade + nome da estação)
-    if modalidade:
-        ssncs = Dataset()
-        ssncs.CodeValue = ""
-        ssncs.CodingSchemeDesignator = ""
-        ssncs.CodeMeaning = ""
-        q.ScheduledStationNameCodeSequence = [ssncs]
-
-        # Filtro de modalidade vai pelo ScheduledProcessingApplicationsCodeSequence
-        spacs = Dataset()
-        spacs.CodeValue = modalidade
-        spacs.CodingSchemeDesignator = "DCM"
-        spacs.CodeMeaning = ""
-        q.ScheduledProcessingParametersSequence = [spacs]
-
     return q
 
 
 def _para_item(ds: Dataset) -> ItemWorklist:
     """Extrai os campos relevantes do UPS Pull response."""
 
-    # Referenced Request Sequence — AccessionNumber + descrição
     rrs_seq = getattr(ds, "ReferencedRequestSequence", []) or []
     rrs0 = rrs_seq[0] if rrs_seq else Dataset()
     accession = str(getattr(rrs0, "AccessionNumber", "") or "")
     descricao_rrs = str(getattr(rrs0, "RequestedProcedureDescription", "") or "")
 
-    # Scheduled DateTime — campo único no UPS (em vez de Date+Time separados).
-    scheduled = _fmt_datetime_ups(str(getattr(ds, "ScheduledProcedureStepStartDateTime", "") or ""))
-
-    # Modalidade — fica em ScheduledProcessingParametersSequence ou inferimos.
-    modalidade = _extrair_modalidade(ds)
+    scheduled = _fmt_datetime_ups(
+        str(getattr(ds, "ScheduledProcedureStepStartDateTime", "") or "")
+    )
 
     return ItemWorklist(
         accession_number=accession,
@@ -143,7 +119,7 @@ def _para_item(ds: Dataset) -> ItemWorklist:
         patient_birth_date=str(getattr(ds, "PatientBirthDate", "") or ""),
         patient_sex=str(getattr(ds, "PatientSex", "") or ""),
         study_instance_uid=str(getattr(ds, "StudyInstanceUID", "") or ""),
-        modalidade=modalidade,
+        modalidade=_extrair_modalidade(ds),
         descricao=descricao_rrs or str(getattr(ds, "ProcedureStepLabel", "") or ""),
         scheduled_datetime=scheduled,
         sps_id=str(getattr(ds, "ProcedureStepLabel", "") or ""),
@@ -152,7 +128,6 @@ def _para_item(ds: Dataset) -> ItemWorklist:
 
 
 def _extrair_modalidade(ds: Dataset) -> str:
-    """Tenta achar a modalidade nos sequences do UPS. Fallback: vazio."""
     for nome in ("ScheduledProcessingParametersSequence", "ScheduledWorkitemCodeSequence"):
         seq = getattr(ds, nome, None)
         if seq:
@@ -164,7 +139,6 @@ def _extrair_modalidade(ds: Dataset) -> str:
 
 
 def _fmt_datetime_ups(dt: str) -> str:
-    """UPS usa DT (YYYYMMDDHHMMSS) num único campo."""
     if not dt:
         return ""
     if len(dt) >= 12:
