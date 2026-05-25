@@ -44,5 +44,10 @@ internal sealed class TipoExameConfiguration : IEntityTypeConfiguration<TipoExam
         builder.HasIndex(t => t.ProcedimentoSigtapId);
         builder.HasIndex(t => t.ModalidadeDicom);
         builder.HasIndex(t => t.Ativo);
+
+        // Seed inicial de TipoExame é aplicado via SQL puro em
+        // Migrations/20260525011830_SeedTiposExameIniciais.cs — HasData não foi
+        // usado porque a List<string> de codigos_protocolo dispara
+        // PendingModelChangesWarning a cada build.
     }
 }

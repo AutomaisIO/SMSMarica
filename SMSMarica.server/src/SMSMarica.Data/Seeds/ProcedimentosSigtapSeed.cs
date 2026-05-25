@@ -14,7 +14,7 @@ public static class ProcedimentosSigtapSeed
 {
     private static readonly DateOnly CompetenciaInicio = new(2025, 1, 1);
 
-    public static IReadOnlyList<ProcedimentoSigtap> Itens =>
+    public static readonly IReadOnlyList<ProcedimentoSigtap> Itens =
     [
         // ---- Mamografia (02.04.03) ----
         Item("a1000000-0000-0000-0000-000000000001", "0204030188",
