@@ -1,10 +1,14 @@
 name: Deploy Automais.Fhir (API)
 
-# Disparo MANUAL apenas, por enquanto. O serviço FHIR e o smsmarica miram o
-# mesmo schema físico `fhir` no defaultdb; a migration do FHIR só pode ser
-# aplicada DEPOIS do cutover (drop das 25 tabelas tipadas no smsmarica) — ver
-# ADR-0010. Trocar para `push`/`paths` quando o cutover estiver feito.
+# Cutover feito (ADR-0010): o schema fhir antigo foi dropado e o serviço é dono
+# exclusivo dele. Deploy automático no push ao Automais.Fhir/**. O serviço
+# auto-provisiona o schema + migrations no startup.
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'Automais.Fhir/**'
+      - '.github/workflows/deploy-fhir.yml'
   workflow_dispatch: {}
 
 concurrency:
