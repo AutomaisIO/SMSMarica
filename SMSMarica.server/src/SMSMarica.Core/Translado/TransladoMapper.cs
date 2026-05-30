@@ -12,7 +12,7 @@ internal static class TransladoMapper
         r.Veiculo?.Placa ?? string.Empty,
         r.Veiculo?.Modelo ?? string.Empty,
         r.MotoristaId,
-        r.Motorista?.NomeCompleto ?? string.Empty,
+        r.Motorista?.Usuario?.NomeCompleto ?? string.Empty,
         r.Status,
         r.CriadoEm,
         r.IniciadaEm,
@@ -25,7 +25,7 @@ internal static class TransladoMapper
         r.VeiculoId,
         r.Veiculo?.Placa ?? string.Empty,
         r.MotoristaId,
-        r.Motorista?.NomeCompleto ?? string.Empty,
+        r.Motorista?.Usuario?.NomeCompleto ?? string.Empty,
         r.Status,
         totalAlocacoes);
 }

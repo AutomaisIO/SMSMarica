@@ -1,6 +1,5 @@
 using System.Text.Json.Nodes;
 using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Fhir.Enums;
 
 namespace SMSMarica.Core.Worklist;
 
@@ -13,32 +12,30 @@ internal static class ConstrutorWorkitemUps
 {
     /// <summary>
     /// Gera array com 1 elemento (UPS-RS aceita arrays de workitems no POST).
-    /// Espera <c>solicitacao.Patient</c> (com <c>Names</c>) e
-    /// <c>solicitacao.TipoExame</c> carregados.
+    /// Espera <c>solicitacao.Paciente.Usuario</c> e <c>solicitacao.TipoExame</c>
+    /// carregados.
     /// </summary>
     public static JsonArray Construir(SolicitacaoExame s, string aeTitleEstacao)
     {
         ArgumentNullException.ThrowIfNull(s);
-        var patient = s.Patient ?? throw new InvalidOperationException("Patient não carregado.");
+        var paciente = s.Paciente ?? throw new InvalidOperationException("Paciente não carregado.");
         var tipoExame = s.TipoExame ?? throw new InvalidOperationException("TipoExame não carregado.");
+        var usuarioPaciente = paciente.Usuario ?? throw new InvalidOperationException("Paciente.Usuario não carregado.");
 
-        var nomePaciente = patient.Names.FirstOrDefault(n => n.Use == NameUse.Official)?.Text
-                         ?? patient.Names.FirstOrDefault()?.Text
-                         ?? string.Empty;
         var quandoAgendado = (s.DataAgendada ?? DateTime.UtcNow).ToString("yyyyMMddHHmmss");
 
         var workitem = new JsonObject
         {
             // PatientName — formato DICOM PN "ULTIMO^PRIMEIRO"
-            ["00100010"] = ValorPn(nomePaciente),
+            ["00100010"] = ValorPn(usuarioPaciente.NomeCompleto),
             // PatientID — usamos o Guid do paciente como ID estável.
-            ["00100020"] = ValorLo(patient.Id.ToString()),
+            ["00100020"] = ValorLo(paciente.Id.ToString()),
             // PatientBirthDate
-            ["00100030"] = patient.BirthDate.HasValue
-                ? ValorDa(patient.BirthDate.Value.ToString("yyyyMMdd"))
+            ["00100030"] = usuarioPaciente.DataNascimento.HasValue
+                ? ValorDa(usuarioPaciente.DataNascimento.Value.ToString("yyyyMMdd"))
                 : ValorVazio("DA"),
             // PatientSex
-            ["00100040"] = ValorCs(MapearSexo(patient.Gender)),
+            ["00100040"] = ValorCs(MapearSexo(usuarioPaciente.Sexo)),
 
             // AccessionNumber (vai no Study)
             ["00080050"] = ValorSh(s.AccessionNumber),
@@ -159,10 +156,10 @@ internal static class ConstrutorWorkitemUps
         return $"{ultimo}^{primeiros}";
     }
 
-    private static string MapearSexo(AdministrativeGender gender) => gender switch
+    private static string MapearSexo(Data.Entities.Enums.Sexo? sexo) => sexo switch
     {
-        AdministrativeGender.Male => "M",
-        AdministrativeGender.Female => "F",
+        Data.Entities.Enums.Sexo.Masculino => "M",
+        Data.Entities.Enums.Sexo.Feminino => "F",
         _ => "O",
     };
 

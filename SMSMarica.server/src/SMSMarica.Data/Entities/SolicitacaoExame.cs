@@ -1,5 +1,4 @@
 using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Fhir;
 
 namespace SMSMarica.Data.Entities;
 
@@ -27,8 +26,8 @@ public class SolicitacaoExame
 
     // ---- Vínculos ----
 
-    public Guid PatientId { get; set; }
-    public Patient? Patient { get; set; }
+    public Guid PacienteId { get; set; }
+    public Paciente? Paciente { get; set; }
 
     public Guid TipoExameId { get; set; }
     public TipoExame? TipoExame { get; set; }

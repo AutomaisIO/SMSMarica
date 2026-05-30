@@ -6,24 +6,24 @@ namespace SMSMarica.Core.Motoristas;
 
 internal static class MotoristasMapper
 {
-    public static MotoristaDto ParaDto(Motorista m, Usuario? usuario) => new(
+    public static MotoristaDto ParaDto(Motorista m) => new(
         m.Id,
-        usuario?.Id ?? Guid.Empty,
-        m.NomeCompleto,
-        m.Cpf,
-        m.DataNascimento,
+        m.UsuarioId,
+        m.Usuario.NomeCompleto,
+        m.Usuario.Cpf ?? string.Empty,
+        m.Usuario.DataNascimento,
         m.Cnh,
-        m.Telefone,
-        m.Endereco is null ? null : EnderecoDto.ParaDto(m.Endereco),
-        m.FotoBase64,
-        usuario?.Ativo ?? false,
+        m.Usuario.Telefone,
+        m.Usuario.Endereco is null ? null : EnderecoDto.ParaDto(m.Usuario.Endereco),
+        m.Usuario.FotoBase64,
+        m.Usuario.Ativo,
         m.CriadoEm);
 
-    public static MotoristaListItemDto ParaListItem(Motorista m, Usuario? usuario) => new(
+    public static MotoristaListItemDto ParaListItem(Motorista m) => new(
         m.Id,
-        usuario?.Id ?? Guid.Empty,
-        m.NomeCompleto,
-        m.Cpf,
-        m.FotoBase64,
-        usuario?.Ativo ?? false);
+        m.UsuarioId,
+        m.Usuario.NomeCompleto,
+        m.Usuario.Cpf ?? string.Empty,
+        m.Usuario.FotoBase64,
+        m.Usuario.Ativo);
 }

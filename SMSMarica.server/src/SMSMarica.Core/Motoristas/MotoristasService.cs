@@ -7,41 +7,30 @@ using SMSMarica.Data.Entities;
 
 namespace SMSMarica.Core.Motoristas;
 
-/// <summary>
-/// Serviço de motoristas. Após Fatia 4 do refator FHIR, <see cref="Motorista"/>
-/// carrega identidade inline (motorista não é entidade clínica FHIR), e o
-/// vínculo de login fica em <c>Usuario.MotoristaId</c>.
-/// </summary>
 public sealed class MotoristasService(SmsMaricaDbContext db, IUsuarioAtualAccessor atual) : IMotoristasService
 {
-    private const string SenhaHashPlaceholder = "PENDENTE_AUTH";
     private readonly SmsMaricaDbContext _db = db;
     private readonly IUsuarioAtualAccessor _atual = atual;
+
+    private const string SenhaHashPlaceholder = "PENDENTE_AUTH";
 
     public async Task<IReadOnlyList<MotoristaListItemDto>> ListarAsync(CancellationToken cancellationToken = default)
     {
         var motoristas = await _db.Motoristas.AsNoTracking()
+            .Include(m => m.Usuario)
             .Where(m => m.ExcluidoEm == null)
-            .OrderBy(m => m.NomeCompleto)
+            .OrderBy(m => m.Usuario.NomeCompleto)
             .ToListAsync(cancellationToken);
-
-        var usuariosPorMotorista = await CarregarUsuariosAsync(
-            motoristas.Select(m => m.Id).ToList(), cancellationToken);
-
-        return [.. motoristas.Select(m => MotoristasMapper.ParaListItem(
-            m, usuariosPorMotorista.GetValueOrDefault(m.Id)))];
+        return [.. motoristas.Select(MotoristasMapper.ParaListItem)];
     }
 
     public async Task<MotoristaDto> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var motorista = await _db.Motoristas.AsNoTracking()
-            .FirstOrDefaultAsync(m => m.Id == id, cancellationToken)
+        var m = await _db.Motoristas.AsNoTracking()
+            .Include(x => x.Usuario)
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Motorista), id);
-
-        var usuario = await _db.Usuarios.AsNoTracking()
-            .FirstOrDefaultAsync(u => u.MotoristaId == motorista.Id, cancellationToken);
-
-        return MotoristasMapper.ParaDto(motorista, usuario);
+        return MotoristasMapper.ParaDto(m);
     }
 
     public async Task<Guid> CadastrarAsync(CadastrarMotoristaRequest request, CancellationToken cancellationToken = default)
@@ -49,79 +38,114 @@ public sealed class MotoristasService(SmsMaricaDbContext db, IUsuarioAtualAccess
         var cpf = NormalizarDigitos(request.Cpf);
         var cnh = request.Cnh.Trim();
 
-        if (await _db.Motoristas.AsNoTracking().AnyAsync(m => m.Cpf == cpf && m.ExcluidoEm == null, cancellationToken))
+        var usuarioExistente = await _db.Usuarios.AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Cpf == cpf, cancellationToken);
+        if (usuarioExistente is not null)
         {
-            throw new ConflitoException("motorista.cpf_duplicado", "Já existe motorista com este CPF.");
+            throw new ConflitoException(
+                "motorista.cpf_ja_cadastrado",
+                $"CPF já cadastrado como usuário '{usuarioExistente.NomeCompleto}'. Use /motoristas/promover.");
         }
 
-        if (await _db.Motoristas.AsNoTracking().AnyAsync(m => m.Cnh == cnh && m.ExcluidoEm == null, cancellationToken))
+        if (await _db.Motoristas.AsNoTracking().AnyAsync(x => x.Cnh == cnh && x.ExcluidoEm == null, cancellationToken))
         {
             throw new ConflitoException("motorista.cnh_duplicada", "Já existe motorista com esta CNH.");
         }
 
-        var email = NormalizarEmail(request.Email, cpf);
-        if (await _db.Usuarios.AsNoTracking().AnyAsync(u => u.Email == email, cancellationToken))
-        {
-            throw new ConflitoException("motorista.email_duplicado", "Já existe usuário com este e-mail.");
-        }
-
         var agora = DateTime.UtcNow;
         var atualId = _atual.UsuarioId;
-
-        var motorista = new Motorista
+        var usuario = new Usuario
         {
             Id = Guid.CreateVersion7(),
             NomeCompleto = request.NomeCompleto.Trim(),
             Cpf = cpf,
             DataNascimento = request.DataNascimento,
+            Email = NormalizarEmail(request.Email, cpf),
             Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim(),
             Endereco = request.Endereco?.ParaEntidade(),
             FotoBase64 = string.IsNullOrWhiteSpace(request.FotoBase64) ? null : request.FotoBase64,
+            SenhaHash = SenhaHashPlaceholder,
+            DeveTrocarSenha = true,
+            Ativo = true,
+            CriadoEm = agora,
+            CriadoPor = atualId,
+        };
+
+        var motorista = new Motorista
+        {
+            Id = Guid.CreateVersion7(),
+            UsuarioId = usuario.Id,
             Cnh = cnh,
             CriadoEm = agora,
             CriadoPor = atualId,
         };
 
-        var usuario = new Usuario
+        _db.Usuarios.Add(usuario);
+        _db.Motoristas.Add(motorista);
+        await _db.SaveChangesAsync(cancellationToken);
+        return motorista.Id;
+    }
+
+    public async Task<Guid> PromoverAsync(PromoverMotoristaRequest request, CancellationToken cancellationToken = default)
+    {
+        var usuario = await _db.Usuarios
+            .Include(u => u.Medico)
+            .Include(u => u.Motorista)
+            .Include(u => u.Paciente)
+            .FirstOrDefaultAsync(u => u.Id == request.UsuarioId, cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(Usuario), request.UsuarioId);
+
+        var papelAtual = DetectarPapel(usuario);
+        if (papelAtual is not null)
+        {
+            throw new ConflitoException(
+                "motorista.usuario_ja_tem_papel",
+                $"Usuário já tem papel '{papelAtual}'. Elimine o papel atual antes de promover.");
+        }
+
+        if (string.IsNullOrWhiteSpace(usuario.Cpf))
+        {
+            throw new ConflitoException(
+                "motorista.usuario_sem_cpf",
+                "Usuário precisa ter CPF cadastrado para virar motorista.");
+        }
+
+        var cnh = request.Cnh.Trim();
+        if (await _db.Motoristas.AsNoTracking().AnyAsync(x => x.Cnh == cnh && x.ExcluidoEm == null, cancellationToken))
+        {
+            throw new ConflitoException("motorista.cnh_duplicada", "Já existe motorista com esta CNH.");
+        }
+
+        var agora = DateTime.UtcNow;
+        var atualId = _atual.UsuarioId;
+        var motorista = new Motorista
         {
             Id = Guid.CreateVersion7(),
-            Email = email,
-            SenhaHash = SenhaHashPlaceholder,
-            DeveTrocarSenha = true,
-            Ativo = true,
-            NomeExibicao = motorista.NomeCompleto,
-            MotoristaId = motorista.Id,
+            UsuarioId = usuario.Id,
+            Cnh = cnh,
             CriadoEm = agora,
             CriadoPor = atualId,
         };
 
         _db.Motoristas.Add(motorista);
-        _db.Usuarios.Add(usuario);
         await _db.SaveChangesAsync(cancellationToken);
         return motorista.Id;
     }
 
-    public Task<Guid> PromoverAsync(PromoverMotoristaRequest request, CancellationToken cancellationToken = default)
-    {
-        // Igual a Médico/Paciente — Usuario sem papel não carrega mais identidade
-        // clínica, então "promover" perdeu o sentido. Use Cadastrar normal.
-        throw new ConflitoException(
-            "motorista.promover_indisponivel",
-            "Promoção descontinuada — Usuario sem papel não carrega mais identidade. Use POST /motoristas.");
-    }
-
     public async Task AtualizarAsync(Guid id, AtualizarMotoristaRequest request, CancellationToken cancellationToken = default)
     {
-        var motorista = await _db.Motoristas.FirstOrDefaultAsync(m => m.Id == id, cancellationToken)
+        var m = await _db.Motoristas
+            .Include(x => x.Usuario)
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Motorista), id);
 
-        if (motorista.ExcluidoEm is not null)
+        if (m.ExcluidoEm is not null)
         {
             throw new ConflitoException("motorista.excluido", "Motorista excluído não pode ser editado.");
         }
 
         var cnh = request.Cnh.Trim();
-        if (cnh != motorista.Cnh &&
+        if (cnh != m.Cnh &&
             await _db.Motoristas.AsNoTracking().AnyAsync(x => x.Cnh == cnh && x.Id != id && x.ExcluidoEm == null, cancellationToken))
         {
             throw new ConflitoException("motorista.cnh_duplicada", "Já existe motorista com esta CNH.");
@@ -130,22 +154,28 @@ public sealed class MotoristasService(SmsMaricaDbContext db, IUsuarioAtualAccess
         var agora = DateTime.UtcNow;
         var atualId = _atual.UsuarioId;
 
-        motorista.Cnh = cnh;
-        motorista.Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim();
-        motorista.Endereco = request.Endereco?.ParaEntidade();
-        motorista.FotoBase64 = string.IsNullOrWhiteSpace(request.FotoBase64) ? null : request.FotoBase64;
-        motorista.AtualizadoEm = agora;
-        motorista.AtualizadoPor = atualId;
+        m.Cnh = cnh;
+        m.AtualizadoEm = agora;
+        m.AtualizadoPor = atualId;
+
+        // Nome e CPF do Usuario são imutáveis — não tocamos aqui.
+        m.Usuario.Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim();
+        m.Usuario.Endereco = request.Endereco?.ParaEntidade();
+        m.Usuario.FotoBase64 = string.IsNullOrWhiteSpace(request.FotoBase64) ? null : request.FotoBase64;
+        m.Usuario.AtualizadoEm = agora;
+        m.Usuario.AtualizadoPor = atualId;
 
         await _db.SaveChangesAsync(cancellationToken);
     }
 
     public async Task DesativarAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var motorista = await _db.Motoristas.FirstOrDefaultAsync(m => m.Id == id, cancellationToken)
+        var m = await _db.Motoristas
+            .Include(x => x.Usuario)
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Motorista), id);
 
-        if (motorista.ExcluidoEm is not null)
+        if (m.ExcluidoEm is not null)
         {
             throw new ConflitoException("motorista.ja_excluido", "Motorista já foi excluído.");
         }
@@ -153,28 +183,22 @@ public sealed class MotoristasService(SmsMaricaDbContext db, IUsuarioAtualAccess
         var agora = DateTime.UtcNow;
         var atualId = _atual.UsuarioId;
 
-        motorista.ExcluidoEm = agora;
-        motorista.ExcluidoPor = atualId;
+        m.ExcluidoEm = agora;
+        m.ExcluidoPor = atualId;
 
-        // Cascateia para o Usuario vinculado.
-        var usuario = await _db.Usuarios.FirstOrDefaultAsync(u => u.MotoristaId == motorista.Id, cancellationToken);
-        if (usuario is not null)
-        {
-            usuario.ExcluidoEm = agora;
-            usuario.ExcluidoPor = atualId;
-        }
+        // Exclusão de papel cascateia para o Usuario: a pessoa sai do sistema.
+        m.Usuario.ExcluidoEm = agora;
+        m.Usuario.ExcluidoPor = atualId;
 
         await _db.SaveChangesAsync(cancellationToken);
     }
 
-    private async Task<Dictionary<Guid, Usuario>> CarregarUsuariosAsync(
-        IReadOnlyList<Guid> motoristaIds, CancellationToken ct)
+    private static string? DetectarPapel(Usuario u)
     {
-        if (motoristaIds.Count == 0) return [];
-        var usuarios = await _db.Usuarios.AsNoTracking()
-            .Where(u => u.MotoristaId.HasValue && motoristaIds.Contains(u.MotoristaId.Value))
-            .ToListAsync(ct);
-        return usuarios.ToDictionary(u => u.MotoristaId!.Value);
+        if (u.Medico is not null) return "Medico";
+        if (u.Motorista is not null) return "Motorista";
+        if (u.Paciente is not null) return "Paciente";
+        return null;
     }
 
     private static string NormalizarDigitos(string valor) =>

@@ -129,7 +129,9 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 
 app.MapControllers();
 
-var autoMigrate = builder.Configuration.GetValue("AutoMigrate:Enabled", defaultValue: true);
+// Default false (ADR-0010 / recuperação): evita migration destrutiva acidental no startup.
+// Habilitar explicitamente via AutoMigrate__Enabled=true quando for intencional.
+var autoMigrate = builder.Configuration.GetValue("AutoMigrate:Enabled", defaultValue: false);
 if (autoMigrate)
 {
     await using var scope = app.Services.CreateAsyncScope();

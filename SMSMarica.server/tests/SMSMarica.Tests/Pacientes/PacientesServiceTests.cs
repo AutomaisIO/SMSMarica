@@ -1,23 +1,167 @@
+using Microsoft.EntityFrameworkCore;
+using SMSMarica.Core.Common.Excecoes;
+using SMSMarica.Core.Pacientes;
+using SMSMarica.Core.Pacientes.Dtos;
 using SMSMarica.Tests.Infraestrutura;
 
 namespace SMSMarica.Tests.Pacientes;
 
-/// <summary>
-/// Testes do <c>PacientesService</c> ficaram suspensos na Fatia 1 do refator
-/// FHIR (commit que migrou <c>Paciente</c> para <c>fhir.Patient</c> + tabelas
-/// associadas). Reescrever em fatia futura cobrindo: cadastro completo
-/// (identifiers/names/addresses/telecoms/contacts/photos), CPF duplicado em
-/// <c>fhir.patient_identifier</c>, busca por nome/CPF via JOIN, desativação
-/// (soft-delete em <c>fhir.patient.deleted_at</c>), reativação.
-/// </summary>
 [Collection(nameof(PostgresCollection))]
 public sealed class PacientesServiceTests(PostgresFixture postgres)
 {
     private readonly PostgresFixture _postgres = postgres;
+    private readonly UsuarioAtualAccessorFake _atual = new();
 
-    [Fact(Skip = "TODO: refator FHIR Fatia 1 — reescrever cobrindo agregado fhir.Patient.")]
-    public void Placeholder()
+    private static CadastrarPacienteRequest NovoRequest(
+        string nome = "Maria da Silva",
+        string cpf = "12345678900",
+        string? cns = "123456789012345") =>
+        new(
+            NomeCompleto: nome,
+            Cpf: cpf,
+            DataNascimento: new DateOnly(1990, 1, 1),
+            Cns: cns,
+            Rg: null);
+
+    [Fact]
+    public async Task Cadastrar_ComDadosValidos_RetornaIdEPersiste()
     {
-        _ = _postgres;
+        await using var db = _postgres.CriarDbContext();
+        var service = new PacientesService(db, _atual);
+
+        var id = await service.CadastrarAsync(NovoRequest());
+
+        id.Should().NotBeEmpty();
+
+        await using var verificacao = _postgres.CriarDbContext();
+        var paciente = await verificacao.Pacientes.Include(p => p.Usuario).FirstAsync(p => p.Id == id);
+        paciente.Usuario.NomeCompleto.Should().Be("Maria da Silva");
+        paciente.Usuario.Cpf.Should().Be("12345678900");
+        paciente.ExcluidoEm.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Cadastrar_ComCpfDuplicado_LancaConflito()
+    {
+        await using var db = _postgres.CriarDbContext();
+        var service = new PacientesService(db, _atual);
+
+        await service.CadastrarAsync(NovoRequest("Primeiro", "11122233344", null));
+
+        var act = async () => await service.CadastrarAsync(NovoRequest("Segundo", "11122233344", null));
+
+        var ex = await act.Should().ThrowAsync<ConflitoException>();
+        ex.Which.Codigo.Should().Be("paciente.cpf_duplicado");
+    }
+
+    [Fact]
+    public async Task Cadastrar_ComCpfDeExcluido_LancaConflitoParaReativacao()
+    {
+        await using var db = _postgres.CriarDbContext();
+        var service = new PacientesService(db, _atual);
+
+        var id = await service.CadastrarAsync(NovoRequest("Excluido", "44455566677", null));
+        await service.DesativarAsync(id);
+
+        var act = async () => await service.CadastrarAsync(NovoRequest("Tentando recriar", "44455566677", null));
+        var ex = await act.Should().ThrowAsync<ConflitoException>();
+        ex.Which.Codigo.Should().Be("paciente.cpf_excluido");
+    }
+
+    [Fact]
+    public async Task ObterPorId_NaoExiste_LancaNaoEncontrado()
+    {
+        await using var db = _postgres.CriarDbContext();
+        var service = new PacientesService(db, _atual);
+
+        var act = async () => await service.ObterPorIdAsync(Guid.CreateVersion7());
+
+        await act.Should().ThrowAsync<NaoEncontradoException>();
+    }
+
+    [Fact]
+    public async Task Excluir_PacienteAtivo_MarcaExcluidoEm()
+    {
+        await using var db = _postgres.CriarDbContext();
+        var service = new PacientesService(db, _atual);
+
+        var id = await service.CadastrarAsync(NovoRequest("Para excluir", "55566677788", null));
+
+        await service.DesativarAsync(id);
+
+        await using var verificacao = _postgres.CriarDbContext();
+        var paciente = await verificacao.Pacientes.Include(p => p.Usuario).FirstAsync(p => p.Id == id);
+        paciente.ExcluidoEm.Should().NotBeNull();
+        paciente.Usuario.ExcluidoEm.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Excluir_PacienteJaExcluido_LancaConflito()
+    {
+        await using var db = _postgres.CriarDbContext();
+        var service = new PacientesService(db, _atual);
+
+        var id = await service.CadastrarAsync(NovoRequest("Já excluído", "99988877766", null));
+        await service.DesativarAsync(id);
+
+        var act = async () => await service.DesativarAsync(id);
+        var ex = await act.Should().ThrowAsync<ConflitoException>();
+        ex.Which.Codigo.Should().Be("paciente.ja_excluido");
+    }
+
+    [Fact]
+    public async Task Reativar_ExcluidoVoltaAtivo()
+    {
+        await using var db = _postgres.CriarDbContext();
+        var service = new PacientesService(db, _atual);
+
+        var id = await service.CadastrarAsync(NovoRequest("Para reativar", "33344455566", null));
+        await service.DesativarAsync(id);
+
+        await service.ReativarAsync(id);
+
+        await using var verificacao = _postgres.CriarDbContext();
+        var paciente = await verificacao.Pacientes.Include(p => p.Usuario).FirstAsync(p => p.Id == id);
+        paciente.ExcluidoEm.Should().BeNull();
+        paciente.Usuario.ExcluidoEm.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Buscar_SemTermo_RetornaVazio()
+    {
+        await using var db = _postgres.CriarDbContext();
+        var service = new PacientesService(db, _atual);
+
+        await service.CadastrarAsync(NovoRequest("Bernardo dos Santos Leite", "00011122233", null));
+
+        var resultado = await service.BuscarAsync(null);
+        resultado.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Buscar_PorTokensSeparados_RetornaPaciente()
+    {
+        await using var db = _postgres.CriarDbContext();
+        var service = new PacientesService(db, _atual);
+
+        var id = await service.CadastrarAsync(NovoRequest("Bernardo dos Santos Leite Almeida", "10011122244", null));
+
+        var porParteFinal = await service.BuscarAsync("almeida santos");
+        porParteFinal.Should().ContainSingle(p => p.Id == id);
+
+        var porSubstrings = await service.BuscarAsync("ardo eite");
+        porSubstrings.Should().ContainSingle(p => p.Id == id);
+    }
+
+    [Fact]
+    public async Task Buscar_PorCpfFormatado_NormalizaEEncontra()
+    {
+        await using var db = _postgres.CriarDbContext();
+        var service = new PacientesService(db, _atual);
+
+        var id = await service.CadastrarAsync(NovoRequest("João da Costa", "20011122255", null));
+
+        var resultado = await service.BuscarAsync("200.111.222-55");
+        resultado.Should().ContainSingle(p => p.Id == id);
     }
 }

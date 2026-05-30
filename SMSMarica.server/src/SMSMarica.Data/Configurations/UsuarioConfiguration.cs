@@ -8,25 +8,22 @@ internal sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
 {
     public void Configure(EntityTypeBuilder<Usuario> builder)
     {
-        builder.ToTable("usuario", t =>
-        {
-            // Garante que no máximo uma das três FKs de papel esteja setada.
-            // (Pessoa sem papel — admin/operador — também é válida; daí "<= 1".)
-            t.HasCheckConstraint(
-                "ck_usuario_papel_unico",
-                "(CASE WHEN patient_id IS NOT NULL THEN 1 ELSE 0 END + " +
-                "CASE WHEN practitioner_id IS NOT NULL THEN 1 ELSE 0 END + " +
-                "CASE WHEN motorista_id IS NOT NULL THEN 1 ELSE 0 END) <= 1");
-        });
+        builder.ToTable("usuario");
         builder.HasKey(u => u.Id);
 
         builder.Property(u => u.Id).HasColumnName("id");
+        builder.Property(u => u.NomeCompleto).HasColumnName("nome_completo").HasMaxLength(200).IsRequired();
         builder.Property(u => u.Email).HasColumnName("email").HasMaxLength(200).IsRequired();
+        builder.Property(u => u.Cpf).HasColumnName("cpf").HasMaxLength(11);
+        builder.Property(u => u.Rg).HasColumnName("rg").HasMaxLength(20);
+        builder.Property(u => u.DataNascimento).HasColumnName("data_nascimento");
+        builder.Property(u => u.Sexo).HasColumnName("sexo").HasConversion<int?>();
+        builder.Property(u => u.Telefone).HasColumnName("telefone").HasMaxLength(30);
+        builder.Property(u => u.FotoBase64).HasColumnName("foto_base64").HasColumnType("text");
         builder.Property(u => u.SenhaHash).HasColumnName("senha_hash").HasMaxLength(500).IsRequired();
         builder.Property(u => u.DeveTrocarSenha).HasColumnName("deve_trocar_senha").HasDefaultValue(false).IsRequired();
         builder.Property(u => u.Ativo).HasColumnName("ativo").HasDefaultValue(true).IsRequired();
         builder.Property(u => u.UltimoAcessoEm).HasColumnName("ultimo_acesso_em");
-        builder.Property(u => u.NomeExibicao).HasColumnName("nome_exibicao").HasMaxLength(200).IsRequired();
 
         // Auditoria
         builder.Property(u => u.CriadoEm).HasColumnName("criado_em").IsRequired();
@@ -36,33 +33,22 @@ internal sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
         builder.Property(u => u.ExcluidoEm).HasColumnName("excluido_em");
         builder.Property(u => u.ExcluidoPor).HasColumnName("excluido_por");
 
-        // FKs de papel
-        builder.Property(u => u.PatientId).HasColumnName("patient_id");
-        builder.Property(u => u.PractitionerId).HasColumnName("practitioner_id");
-        builder.Property(u => u.MotoristaId).HasColumnName("motorista_id");
-
-        // Cross-schema FK → fhir.patient
-        builder.HasOne(u => u.Patient)
-            .WithMany()
-            .HasForeignKey(u => u.PatientId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // Cross-schema FK → fhir.practitioner
-        builder.HasOne(u => u.Practitioner)
-            .WithMany()
-            .HasForeignKey(u => u.PractitionerId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // FK → smsmarica.motorista
-        builder.HasOne(u => u.Motorista)
-            .WithMany()
-            .HasForeignKey(u => u.MotoristaId)
-            .OnDelete(DeleteBehavior.Restrict);
+        builder.OwnsOne(u => u.Endereco, e =>
+        {
+            e.Property(x => x.Cep).HasColumnName("endereco_cep").HasMaxLength(8);
+            e.Property(x => x.Logradouro).HasColumnName("endereco_logradouro").HasMaxLength(200);
+            e.Property(x => x.Numero).HasColumnName("endereco_numero").HasMaxLength(20);
+            e.Property(x => x.Complemento).HasColumnName("endereco_complemento").HasMaxLength(120);
+            e.Property(x => x.Bairro).HasColumnName("endereco_bairro").HasMaxLength(120);
+            e.Property(x => x.Cidade).HasColumnName("endereco_cidade").HasMaxLength(120);
+            e.Property(x => x.Uf).HasColumnName("endereco_uf").HasMaxLength(2);
+            e.Property(x => x.PontoReferencia).HasColumnName("endereco_ponto_referencia").HasMaxLength(200);
+        });
 
         builder.HasIndex(u => u.Email).IsUnique();
-        builder.HasIndex(u => u.PatientId).IsUnique().HasFilter("patient_id IS NOT NULL");
-        builder.HasIndex(u => u.PractitionerId).IsUnique().HasFilter("practitioner_id IS NOT NULL");
-        builder.HasIndex(u => u.MotoristaId).IsUnique().HasFilter("motorista_id IS NOT NULL");
+        builder.HasIndex(u => u.Cpf)
+            .IsUnique()
+            .HasFilter("cpf IS NOT NULL");
         builder.HasIndex(u => u.ExcluidoEm)
             .HasDatabaseName("ix_usuario_excluido_em")
             .HasFilter("excluido_em IS NULL");

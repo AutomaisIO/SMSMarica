@@ -1,5 +1,4 @@
 using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Fhir;
 
 namespace SMSMarica.Data.Entities;
 
@@ -24,12 +23,12 @@ public class Laudo
     public Laudo? LaudoAnterior { get; set; }
 
     /// <summary>Paciente vinculado (nullable — mamógrafo pode mandar estudo sem paciente cadastrado).</summary>
-    public Guid? PatientId { get; set; }
-    public Patient? Patient { get; set; }
+    public Guid? PacienteId { get; set; }
+    public Paciente? Paciente { get; set; }
 
-    /// <summary>Practitioner autor (fhir.practitioner). Obrigatório. Após Fatia 3 substitui o antigo Medico.</summary>
-    public Guid PractitionerId { get; set; }
-    public Practitioner? Practitioner { get; set; }
+    /// <summary>Médico autor (papel Medico de Usuario). Obrigatório.</summary>
+    public Guid MedicoId { get; set; }
+    public Medico? Medico { get; set; }
 
     /// <summary>Template usado como ponto de partida (snapshot do conteúdo). Nullable porque o template pode ter sido excluído.</summary>
     public Guid? LaudoTemplateId { get; set; }
@@ -45,11 +44,11 @@ public class Laudo
 
     public StatusLaudo Status { get; set; } = StatusLaudo.Rascunho;
 
-    /// <summary>Congelado ao finalizar (CRM pode mudar de UF; profissional pode sair).</summary>
-    public string? PractitionerNomeSnapshot { get; set; }
-    public string? PractitionerCrmSnapshot { get; set; }
-    public string? PractitionerUfCrmSnapshot { get; set; }
-    public string? PractitionerRqeSnapshot { get; set; }
+    /// <summary>Congelado ao finalizar (CRM pode mudar de UF; médico pode sair).</summary>
+    public string? MedicoNomeSnapshot { get; set; }
+    public string? MedicoCrmSnapshot { get; set; }
+    public string? MedicoUfCrmSnapshot { get; set; }
+    public string? MedicoRqeSnapshot { get; set; }
 
     public DateTime? FinalizadoEm { get; set; }
     public DateTime CriadoEm { get; set; }

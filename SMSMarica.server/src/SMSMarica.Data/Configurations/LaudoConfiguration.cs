@@ -19,8 +19,8 @@ internal sealed class LaudoConfiguration : IEntityTypeConfiguration<Laudo>
         builder.Property(l => l.Versao).HasColumnName("versao").IsRequired();
         builder.Property(l => l.LaudoAnteriorId).HasColumnName("laudo_anterior_id");
 
-        builder.Property(l => l.PatientId).HasColumnName("patient_id");
-        builder.Property(l => l.PractitionerId).HasColumnName("practitioner_id").IsRequired();
+        builder.Property(l => l.PacienteId).HasColumnName("paciente_id");
+        builder.Property(l => l.MedicoId).HasColumnName("medico_id").IsRequired();
         builder.Property(l => l.LaudoTemplateId).HasColumnName("laudo_template_id");
 
         builder.Property(l => l.Titulo).HasColumnName("titulo").HasMaxLength(200).IsRequired();
@@ -28,10 +28,10 @@ internal sealed class LaudoConfiguration : IEntityTypeConfiguration<Laudo>
         builder.Property(l => l.ConteudoHtml).HasColumnName("conteudo_html").HasColumnType("text").IsRequired();
         builder.Property(l => l.Status).HasColumnName("status").HasConversion<int>().IsRequired();
 
-        builder.Property(l => l.PractitionerNomeSnapshot).HasColumnName("practitioner_nome_snapshot").HasMaxLength(200);
-        builder.Property(l => l.PractitionerCrmSnapshot).HasColumnName("practitioner_crm_snapshot").HasMaxLength(20);
-        builder.Property(l => l.PractitionerUfCrmSnapshot).HasColumnName("practitioner_uf_crm_snapshot").HasMaxLength(2);
-        builder.Property(l => l.PractitionerRqeSnapshot).HasColumnName("practitioner_rqe_snapshot").HasMaxLength(40);
+        builder.Property(l => l.MedicoNomeSnapshot).HasColumnName("medico_nome_snapshot").HasMaxLength(200);
+        builder.Property(l => l.MedicoCrmSnapshot).HasColumnName("medico_crm_snapshot").HasMaxLength(20);
+        builder.Property(l => l.MedicoUfCrmSnapshot).HasColumnName("medico_uf_crm_snapshot").HasMaxLength(2);
+        builder.Property(l => l.MedicoRqeSnapshot).HasColumnName("medico_rqe_snapshot").HasMaxLength(40);
 
         builder.Property(l => l.FinalizadoEm).HasColumnName("finalizado_em");
         builder.Property(l => l.CriadoEm).HasColumnName("criado_em").IsRequired();
@@ -53,16 +53,14 @@ internal sealed class LaudoConfiguration : IEntityTypeConfiguration<Laudo>
             .HasForeignKey(l => l.LaudoAnteriorId)
             .OnDelete(DeleteBehavior.NoAction);
 
-        // Cross-schema FK: smsmarica.laudo.patient_id → fhir.patient.id (nullable)
-        builder.HasOne(l => l.Patient)
+        builder.HasOne(l => l.Paciente)
             .WithMany()
-            .HasForeignKey(l => l.PatientId)
+            .HasForeignKey(l => l.PacienteId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Cross-schema FK: smsmarica.laudo.practitioner_id → fhir.practitioner.id
-        builder.HasOne(l => l.Practitioner)
+        builder.HasOne(l => l.Medico)
             .WithMany()
-            .HasForeignKey(l => l.PractitionerId)
+            .HasForeignKey(l => l.MedicoId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(l => l.LaudoTemplate)
@@ -77,8 +75,8 @@ internal sealed class LaudoConfiguration : IEntityTypeConfiguration<Laudo>
 
         // Lookup batch para `GET /laudos?studyUIDs=...`.
         builder.HasIndex(l => l.StudyInstanceUID);
-        builder.HasIndex(l => l.PatientId);
-        builder.HasIndex(l => l.PractitionerId);
+        builder.HasIndex(l => l.PacienteId);
+        builder.HasIndex(l => l.MedicoId);
         builder.HasIndex(l => l.Status);
     }
 }

@@ -216,1440 +216,6 @@ namespace SMSMarica.Data.Migrations
                     b.ToTable("rastreamento_evento_chegada", "smsmarica");
                 });
 
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.Consent", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by");
-
-                    b.Property<string>("DocumentUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("document_url");
-
-                    b.Property<DateTime>("GrantedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("granted_at");
-
-                    b.Property<string>("GrantorName")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("grantor_name");
-
-                    b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_updated");
-
-                    b.Property<int>("LegalBasis")
-                        .HasColumnType("integer")
-                        .HasColumnName("legal_basis");
-
-                    b.Property<string>("Notes")
-                        .HasColumnType("text")
-                        .HasColumnName("notes");
-
-                    b.Property<Guid>("PatientId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("patient_id");
-
-                    b.Property<DateTime?>("RevokedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("revoked_at");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer")
-                        .HasColumnName("status");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("integer")
-                        .HasColumnName("type");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("updated_by");
-
-                    b.Property<DateTime?>("ValidFrom")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("valid_from");
-
-                    b.Property<DateTime?>("ValidUntil")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("valid_until");
-
-                    b.Property<int>("VersionId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(1)
-                        .HasColumnName("version_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PatientId", "Type", "Status")
-                        .HasDatabaseName("ix_consent_patient_type_status");
-
-                    b.ToTable("consent", "fhir");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.Lookups.BarreiraComunicacao", b =>
-                {
-                    b.Property<int>("Codigo")
-                        .HasColumnType("integer")
-                        .HasColumnName("codigo");
-
-                    b.Property<string>("Nome")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)")
-                        .HasColumnName("nome");
-
-                    b.HasKey("Codigo");
-
-                    b.ToTable("barreira_comunicacao", "fhir");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.Lookups.CboOcupacao", b =>
-                {
-                    b.Property<int>("Codigo")
-                        .HasColumnType("integer")
-                        .HasColumnName("codigo");
-
-                    b.Property<string>("Titulo")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("titulo");
-
-                    b.HasKey("Codigo");
-
-                    b.HasIndex("Titulo")
-                        .HasDatabaseName("ix_cbo_ocupacao_titulo");
-
-                    b.ToTable("cbo_ocupacao", "fhir");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.Lookups.EtniaIndigena", b =>
-                {
-                    b.Property<int>("Codigo")
-                        .HasColumnType("integer")
-                        .HasColumnName("codigo");
-
-                    b.Property<string>("Nome")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)")
-                        .HasColumnName("nome");
-
-                    b.HasKey("Codigo");
-
-                    b.ToTable("etnia_indigena", "fhir");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.Lookups.MunicipioIbge", b =>
-                {
-                    b.Property<int>("Codigo")
-                        .HasColumnType("integer")
-                        .HasColumnName("codigo");
-
-                    b.Property<string>("Nome")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)")
-                        .HasColumnName("nome");
-
-                    b.Property<string>("Uf")
-                        .IsRequired()
-                        .HasMaxLength(2)
-                        .HasColumnType("character(2)")
-                        .HasColumnName("uf")
-                        .IsFixedLength();
-
-                    b.HasKey("Codigo");
-
-                    b.HasIndex("Nome")
-                        .HasDatabaseName("ix_municipio_ibge_nome");
-
-                    b.HasIndex("Uf")
-                        .HasDatabaseName("ix_municipio_ibge_uf");
-
-                    b.ToTable("municipio_ibge", "fhir");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.Lookups.PaisIso", b =>
-                {
-                    b.Property<string>("CodigoAlfa3")
-                        .HasMaxLength(3)
-                        .HasColumnType("character(3)")
-                        .HasColumnName("codigo_alfa3")
-                        .IsFixedLength();
-
-                    b.Property<string>("CodigoAlfa2")
-                        .IsRequired()
-                        .HasMaxLength(2)
-                        .HasColumnType("character(2)")
-                        .HasColumnName("codigo_alfa2")
-                        .IsFixedLength();
-
-                    b.Property<string>("Nome")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)")
-                        .HasColumnName("nome");
-
-                    b.HasKey("CodigoAlfa3");
-
-                    b.HasIndex("CodigoAlfa2")
-                        .IsUnique();
-
-                    b.ToTable("pais_iso", "fhir");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.Lookups.Religiao", b =>
-                {
-                    b.Property<int>("Codigo")
-                        .HasColumnType("integer")
-                        .HasColumnName("codigo");
-
-                    b.Property<string>("Nome")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)")
-                        .HasColumnName("nome");
-
-                    b.HasKey("Codigo");
-
-                    b.ToTable("religiao", "fhir");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.Organization", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<bool>("Active")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true)
-                        .HasColumnName("active");
-
-                    b.Property<string>("Alias")
-                        .HasMaxLength(400)
-                        .HasColumnType("character varying(400)")
-                        .HasColumnName("alias");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deleted_at");
-
-                    b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("deleted_by");
-
-                    b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_updated");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("name");
-
-                    b.Property<Guid?>("PartOfId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("part_of_id");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("updated_by");
-
-                    b.Property<int>("VersionId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(1)
-                        .HasColumnName("version_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DeletedAt")
-                        .HasDatabaseName("ix_organization_deleted_at")
-                        .HasFilter("deleted_at IS NULL");
-
-                    b.HasIndex("PartOfId");
-
-                    b.ToTable("organization", "fhir");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.OrganizationIdentifier", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid>("OrganizationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("organization_id");
-
-                    b.Property<DateOnly?>("PeriodEnd")
-                        .HasColumnType("date")
-                        .HasColumnName("period_end");
-
-                    b.Property<DateOnly?>("PeriodStart")
-                        .HasColumnType("date")
-                        .HasColumnName("period_start");
-
-                    b.Property<string>("System")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("system");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("integer")
-                        .HasColumnName("type");
-
-                    b.Property<int>("Use")
-                        .HasColumnType("integer")
-                        .HasColumnName("use");
-
-                    b.Property<string>("Value")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)")
-                        .HasColumnName("value");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OrganizationId");
-
-                    b.HasIndex("System", "Value")
-                        .IsUnique()
-                        .HasDatabaseName("ux_organization_identifier_system_value");
-
-                    b.ToTable("organization_identifier", "fhir");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.Patient", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<bool>("Active")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true)
-                        .HasColumnName("active");
-
-                    b.Property<bool?>("AttendsSchool")
-                        .HasColumnType("boolean")
-                        .HasColumnName("attends_school");
-
-                    b.Property<string>("BirthCountryCode")
-                        .HasMaxLength(3)
-                        .HasColumnType("character(3)")
-                        .HasColumnName("birth_country_code");
-
-                    b.Property<DateOnly?>("BirthDate")
-                        .HasColumnType("date")
-                        .HasColumnName("birth_date");
-
-                    b.Property<bool>("BirthDateEstimated")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("birth_date_estimated");
-
-                    b.Property<int?>("BirthMunicipioCodigo")
-                        .HasColumnType("integer")
-                        .HasColumnName("birth_municipio_codigo");
-
-                    b.Property<DateOnly?>("CountryEntryDate")
-                        .HasColumnType("date")
-                        .HasColumnName("country_entry_date");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by");
-
-                    b.Property<bool>("DeceasedBoolean")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("deceased_boolean");
-
-                    b.Property<DateTime?>("DeceasedDateTime")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deceased_datetime");
-
-                    b.Property<bool>("DeceasedPresumed")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("deceased_presumed");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deleted_at");
-
-                    b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("deleted_by");
-
-                    b.Property<int>("EducationLevel")
-                        .HasColumnType("integer")
-                        .HasColumnName("education_level");
-
-                    b.Property<int?>("EtniaIndigenaCodigo")
-                        .HasColumnType("integer")
-                        .HasColumnName("etnia_indigena_codigo");
-
-                    b.Property<string>("FathersName")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("fathers_name");
-
-                    b.Property<int>("Gender")
-                        .HasColumnType("integer")
-                        .HasColumnName("gender");
-
-                    b.Property<int>("GenderIdentity")
-                        .HasColumnType("integer")
-                        .HasColumnName("gender_identity");
-
-                    b.Property<bool>("HasNoDocumentation")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("has_no_documentation");
-
-                    b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_updated");
-
-                    b.Property<int>("LegalBasis")
-                        .HasColumnType("integer")
-                        .HasColumnName("legal_basis");
-
-                    b.Property<Guid?>("ManagingOrganizationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("managing_organization_id");
-
-                    b.Property<int>("MaritalStatus")
-                        .HasColumnType("integer")
-                        .HasColumnName("marital_status");
-
-                    b.Property<string>("MothersMaidenName")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("mothers_maiden_name");
-
-                    b.Property<bool>("MultipleBirthBoolean")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("multiple_birth_boolean");
-
-                    b.Property<int?>("MultipleBirthInteger")
-                        .HasColumnType("integer")
-                        .HasColumnName("multiple_birth_integer");
-
-                    b.Property<string>("Notes")
-                        .HasColumnType("text")
-                        .HasColumnName("notes");
-
-                    b.Property<int?>("OcupacaoCboCodigo")
-                        .HasColumnType("integer")
-                        .HasColumnName("ocupacao_cbo_codigo");
-
-                    b.Property<int>("Race")
-                        .HasColumnType("integer")
-                        .HasColumnName("race");
-
-                    b.Property<int?>("ReligiaoCodigo")
-                        .HasColumnType("integer")
-                        .HasColumnName("religiao_codigo");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("updated_by");
-
-                    b.Property<bool>("UseSocialName")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("use_social_name");
-
-                    b.Property<int>("VersionId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(1)
-                        .HasColumnName("version_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BirthCountryCode");
-
-                    b.HasIndex("BirthMunicipioCodigo");
-
-                    b.HasIndex("DeletedAt")
-                        .HasDatabaseName("ix_patient_deleted_at")
-                        .HasFilter("deleted_at IS NULL");
-
-                    b.HasIndex("EtniaIndigenaCodigo");
-
-                    b.HasIndex("ManagingOrganizationId");
-
-                    b.HasIndex("OcupacaoCboCodigo");
-
-                    b.HasIndex("ReligiaoCodigo");
-
-                    b.ToTable("patient", "fhir");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PatientAddress", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Country")
-                        .IsRequired()
-                        .HasMaxLength(3)
-                        .HasColumnType("character varying(3)")
-                        .HasColumnName("country");
-
-                    b.Property<string>("District")
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)")
-                        .HasColumnName("district");
-
-                    b.Property<decimal?>("Latitude")
-                        .HasPrecision(10, 7)
-                        .HasColumnType("numeric(10,7)")
-                        .HasColumnName("latitude");
-
-                    b.Property<string>("Line1")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("line1");
-
-                    b.Property<string>("Line2")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("line2");
-
-                    b.Property<decimal?>("Longitude")
-                        .HasPrecision(10, 7)
-                        .HasColumnType("numeric(10,7)")
-                        .HasColumnName("longitude");
-
-                    b.Property<int?>("MunicipioCodigo")
-                        .HasColumnType("integer")
-                        .HasColumnName("municipio_codigo");
-
-                    b.Property<Guid>("PatientId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("patient_id");
-
-                    b.Property<DateOnly?>("PeriodEnd")
-                        .HasColumnType("date")
-                        .HasColumnName("period_end");
-
-                    b.Property<DateOnly?>("PeriodStart")
-                        .HasColumnType("date")
-                        .HasColumnName("period_start");
-
-                    b.Property<string>("PostalCode")
-                        .HasMaxLength(8)
-                        .HasColumnType("character varying(8)")
-                        .HasColumnName("postal_code");
-
-                    b.Property<string>("ReferencePoint")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("reference_point");
-
-                    b.Property<string>("State")
-                        .HasMaxLength(2)
-                        .HasColumnType("character varying(2)")
-                        .HasColumnName("state");
-
-                    b.Property<string>("Text")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("text");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("integer")
-                        .HasColumnName("type");
-
-                    b.Property<int>("Use")
-                        .HasColumnType("integer")
-                        .HasColumnName("use");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MunicipioCodigo");
-
-                    b.HasIndex("PatientId")
-                        .HasDatabaseName("ix_patient_address_patient_id");
-
-                    b.ToTable("patient_address", "fhir");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PatientCommunication", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<int?>("BarreiraComunicacaoCodigo")
-                        .HasColumnType("integer")
-                        .HasColumnName("barreira_comunicacao_codigo");
-
-                    b.Property<string>("LanguageCode")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("language_code");
-
-                    b.Property<Guid>("PatientId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("patient_id");
-
-                    b.Property<bool>("Preferred")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("preferred");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BarreiraComunicacaoCodigo");
-
-                    b.HasIndex("PatientId")
-                        .HasDatabaseName("ix_patient_communication_patient_id");
-
-                    b.ToTable("patient_communication", "fhir");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PatientContact", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("AddressCity")
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)")
-                        .HasColumnName("address_city");
-
-                    b.Property<string>("AddressLine")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("address_line");
-
-                    b.Property<string>("AddressPostalCode")
-                        .HasMaxLength(8)
-                        .HasColumnType("character varying(8)")
-                        .HasColumnName("address_postal_code");
-
-                    b.Property<string>("AddressState")
-                        .HasMaxLength(2)
-                        .HasColumnType("character varying(2)")
-                        .HasColumnName("address_state");
-
-                    b.Property<string>("Email")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("email");
-
-                    b.Property<int>("Gender")
-                        .HasColumnType("integer")
-                        .HasColumnName("gender");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("name");
-
-                    b.Property<Guid>("PatientId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("patient_id");
-
-                    b.Property<DateOnly?>("PeriodEnd")
-                        .HasColumnType("date")
-                        .HasColumnName("period_end");
-
-                    b.Property<DateOnly?>("PeriodStart")
-                        .HasColumnType("date")
-                        .HasColumnName("period_start");
-
-                    b.Property<int>("Relationship")
-                        .HasColumnType("integer")
-                        .HasColumnName("relationship");
-
-                    b.Property<string>("RelationshipText")
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)")
-                        .HasColumnName("relationship_text");
-
-                    b.Property<string>("TelephoneDdd")
-                        .HasMaxLength(4)
-                        .HasColumnType("character varying(4)")
-                        .HasColumnName("telephone_ddd");
-
-                    b.Property<string>("TelephoneNumber")
-                        .HasMaxLength(15)
-                        .HasColumnType("character varying(15)")
-                        .HasColumnName("telephone_number");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PatientId")
-                        .HasDatabaseName("ix_patient_contact_patient_id");
-
-                    b.ToTable("patient_contact", "fhir");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PatientDisability", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("CidCode")
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
-                        .HasColumnName("cid_code");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(400)
-                        .HasColumnType("character varying(400)")
-                        .HasColumnName("description");
-
-                    b.Property<Guid>("PatientId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("patient_id");
-
-                    b.Property<DateOnly?>("StartDate")
-                        .HasColumnType("date")
-                        .HasColumnName("start_date");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("integer")
-                        .HasColumnName("type");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PatientId")
-                        .HasDatabaseName("ix_patient_disability_patient_id");
-
-                    b.ToTable("patient_disability", "fhir");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PatientIdentifier", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid?>("AssignerOrganizationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("assigner_organization_id");
-
-                    b.Property<string>("IssuerName")
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)")
-                        .HasColumnName("issuer_name");
-
-                    b.Property<string>("IssuerState")
-                        .HasMaxLength(2)
-                        .HasColumnType("character varying(2)")
-                        .HasColumnName("issuer_state");
-
-                    b.Property<Guid>("PatientId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("patient_id");
-
-                    b.Property<DateOnly?>("PeriodEnd")
-                        .HasColumnType("date")
-                        .HasColumnName("period_end");
-
-                    b.Property<DateOnly?>("PeriodStart")
-                        .HasColumnType("date")
-                        .HasColumnName("period_start");
-
-                    b.Property<string>("RegistryBook")
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)")
-                        .HasColumnName("registry_book");
-
-                    b.Property<string>("RegistryName")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("registry_name");
-
-                    b.Property<string>("RegistryPage")
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)")
-                        .HasColumnName("registry_page");
-
-                    b.Property<string>("RegistryTerm")
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)")
-                        .HasColumnName("registry_term");
-
-                    b.Property<string>("System")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("system");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("integer")
-                        .HasColumnName("type");
-
-                    b.Property<int>("Use")
-                        .HasColumnType("integer")
-                        .HasColumnName("use");
-
-                    b.Property<string>("Value")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)")
-                        .HasColumnName("value");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AssignerOrganizationId");
-
-                    b.HasIndex("PatientId")
-                        .HasDatabaseName("ix_patient_identifier_patient_id");
-
-                    b.HasIndex("System", "Value")
-                        .IsUnique()
-                        .HasDatabaseName("ux_patient_identifier_system_value");
-
-                    b.ToTable("patient_identifier", "fhir");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PatientLink", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by");
-
-                    b.Property<Guid>("OtherPatientId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("other_patient_id");
-
-                    b.Property<Guid>("PatientId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("patient_id");
-
-                    b.Property<string>("Reason")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("reason");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("integer")
-                        .HasColumnName("type");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OtherPatientId")
-                        .HasDatabaseName("ix_patient_link_other_patient_id");
-
-                    b.HasIndex("PatientId")
-                        .HasDatabaseName("ix_patient_link_patient_id");
-
-                    b.ToTable("patient_link", "fhir");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PatientName", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Family")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("family");
-
-                    b.PrimitiveCollection<string[]>("Given")
-                        .IsRequired()
-                        .HasColumnType("text[]")
-                        .HasColumnName("given");
-
-                    b.Property<Guid>("PatientId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("patient_id");
-
-                    b.Property<DateOnly?>("PeriodEnd")
-                        .HasColumnType("date")
-                        .HasColumnName("period_end");
-
-                    b.Property<DateOnly?>("PeriodStart")
-                        .HasColumnType("date")
-                        .HasColumnName("period_start");
-
-                    b.PrimitiveCollection<string[]>("Prefix")
-                        .IsRequired()
-                        .HasColumnType("text[]")
-                        .HasColumnName("prefix");
-
-                    b.PrimitiveCollection<string[]>("Suffix")
-                        .IsRequired()
-                        .HasColumnType("text[]")
-                        .HasColumnName("suffix");
-
-                    b.Property<string>("Text")
-                        .IsRequired()
-                        .HasMaxLength(400)
-                        .HasColumnType("character varying(400)")
-                        .HasColumnName("text");
-
-                    b.Property<int>("Use")
-                        .HasColumnType("integer")
-                        .HasColumnName("use");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PatientId")
-                        .HasDatabaseName("ix_patient_name_patient_id");
-
-                    b.HasIndex("Text")
-                        .HasDatabaseName("ix_patient_name_text");
-
-                    b.ToTable("patient_name", "fhir");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PatientPhoto", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<bool>("AuthorizedDisplay")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("authorized_display");
-
-                    b.Property<string>("ContentType")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)")
-                        .HasColumnName("content_type");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("DataBase64")
-                        .HasColumnType("text")
-                        .HasColumnName("data_base64");
-
-                    b.Property<bool>("IsPrimary")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("is_primary");
-
-                    b.Property<Guid>("PatientId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("patient_id");
-
-                    b.Property<string>("Title")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("title");
-
-                    b.Property<string>("Url")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("url");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PatientId")
-                        .HasDatabaseName("ix_patient_photo_patient_id");
-
-                    b.ToTable("patient_photo", "fhir");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PatientTelecom", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid>("PatientId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("patient_id");
-
-                    b.Property<DateOnly?>("PeriodEnd")
-                        .HasColumnType("date")
-                        .HasColumnName("period_end");
-
-                    b.Property<DateOnly?>("PeriodStart")
-                        .HasColumnType("date")
-                        .HasColumnName("period_start");
-
-                    b.Property<int?>("Rank")
-                        .HasColumnType("integer")
-                        .HasColumnName("rank");
-
-                    b.Property<int>("System")
-                        .HasColumnType("integer")
-                        .HasColumnName("system");
-
-                    b.Property<int>("Use")
-                        .HasColumnType("integer")
-                        .HasColumnName("use");
-
-                    b.Property<string>("Value")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("value");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PatientId")
-                        .HasDatabaseName("ix_patient_telecom_patient_id");
-
-                    b.ToTable("patient_telecom", "fhir");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.Practitioner", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<bool>("Active")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true)
-                        .HasColumnName("active");
-
-                    b.Property<DateOnly?>("BirthDate")
-                        .HasColumnType("date")
-                        .HasColumnName("birth_date");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("created_by");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deleted_at");
-
-                    b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("deleted_by");
-
-                    b.Property<int>("Gender")
-                        .HasColumnType("integer")
-                        .HasColumnName("gender");
-
-                    b.Property<DateTime>("LastUpdated")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_updated");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("updated_by");
-
-                    b.Property<int>("VersionId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(1)
-                        .HasColumnName("version_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DeletedAt")
-                        .HasDatabaseName("ix_practitioner_deleted_at")
-                        .HasFilter("deleted_at IS NULL");
-
-                    b.ToTable("practitioner", "fhir");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PractitionerAddress", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Country")
-                        .IsRequired()
-                        .HasMaxLength(3)
-                        .HasColumnType("character varying(3)")
-                        .HasColumnName("country");
-
-                    b.Property<string>("District")
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)")
-                        .HasColumnName("district");
-
-                    b.Property<string>("Line1")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("line1");
-
-                    b.Property<string>("Line2")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("line2");
-
-                    b.Property<int?>("MunicipioCodigo")
-                        .HasColumnType("integer")
-                        .HasColumnName("municipio_codigo");
-
-                    b.Property<DateOnly?>("PeriodEnd")
-                        .HasColumnType("date")
-                        .HasColumnName("period_end");
-
-                    b.Property<DateOnly?>("PeriodStart")
-                        .HasColumnType("date")
-                        .HasColumnName("period_start");
-
-                    b.Property<string>("PostalCode")
-                        .HasMaxLength(8)
-                        .HasColumnType("character varying(8)")
-                        .HasColumnName("postal_code");
-
-                    b.Property<Guid>("PractitionerId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("practitioner_id");
-
-                    b.Property<string>("State")
-                        .HasMaxLength(2)
-                        .HasColumnType("character varying(2)")
-                        .HasColumnName("state");
-
-                    b.Property<string>("Text")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("text");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("integer")
-                        .HasColumnName("type");
-
-                    b.Property<int>("Use")
-                        .HasColumnType("integer")
-                        .HasColumnName("use");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MunicipioCodigo");
-
-                    b.HasIndex("PractitionerId")
-                        .HasDatabaseName("ix_practitioner_address_practitioner_id");
-
-                    b.ToTable("practitioner_address", "fhir");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PractitionerIdentifier", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("IssuerName")
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)")
-                        .HasColumnName("issuer_name");
-
-                    b.Property<string>("IssuerState")
-                        .HasMaxLength(2)
-                        .HasColumnType("character varying(2)")
-                        .HasColumnName("issuer_state");
-
-                    b.Property<DateOnly?>("PeriodEnd")
-                        .HasColumnType("date")
-                        .HasColumnName("period_end");
-
-                    b.Property<DateOnly?>("PeriodStart")
-                        .HasColumnType("date")
-                        .HasColumnName("period_start");
-
-                    b.Property<Guid>("PractitionerId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("practitioner_id");
-
-                    b.Property<string>("System")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("system");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("integer")
-                        .HasColumnName("type");
-
-                    b.Property<int>("Use")
-                        .HasColumnType("integer")
-                        .HasColumnName("use");
-
-                    b.Property<string>("Value")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)")
-                        .HasColumnName("value");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PractitionerId");
-
-                    b.HasIndex("System", "Value")
-                        .IsUnique()
-                        .HasDatabaseName("ux_practitioner_identifier_system_value");
-
-                    b.ToTable("practitioner_identifier", "fhir");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PractitionerName", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Family")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("family");
-
-                    b.PrimitiveCollection<string[]>("Given")
-                        .IsRequired()
-                        .HasColumnType("text[]")
-                        .HasColumnName("given");
-
-                    b.Property<DateOnly?>("PeriodEnd")
-                        .HasColumnType("date")
-                        .HasColumnName("period_end");
-
-                    b.Property<DateOnly?>("PeriodStart")
-                        .HasColumnType("date")
-                        .HasColumnName("period_start");
-
-                    b.Property<Guid>("PractitionerId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("practitioner_id");
-
-                    b.PrimitiveCollection<string[]>("Prefix")
-                        .IsRequired()
-                        .HasColumnType("text[]")
-                        .HasColumnName("prefix");
-
-                    b.PrimitiveCollection<string[]>("Suffix")
-                        .IsRequired()
-                        .HasColumnType("text[]")
-                        .HasColumnName("suffix");
-
-                    b.Property<string>("Text")
-                        .IsRequired()
-                        .HasMaxLength(400)
-                        .HasColumnType("character varying(400)")
-                        .HasColumnName("text");
-
-                    b.Property<int>("Use")
-                        .HasColumnType("integer")
-                        .HasColumnName("use");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PractitionerId")
-                        .HasDatabaseName("ix_practitioner_name_practitioner_id");
-
-                    b.HasIndex("Text")
-                        .HasDatabaseName("ix_practitioner_name_text");
-
-                    b.ToTable("practitioner_name", "fhir");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PractitionerQualification", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("CouncilCode")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("council_code");
-
-                    b.Property<string>("CouncilNumber")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("council_number");
-
-                    b.Property<string>("CouncilState")
-                        .IsRequired()
-                        .HasMaxLength(2)
-                        .HasColumnType("character varying(2)")
-                        .HasColumnName("council_state");
-
-                    b.Property<Guid?>("IssuerOrganizationId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("issuer_organization_id");
-
-                    b.Property<DateOnly?>("PeriodEnd")
-                        .HasColumnType("date")
-                        .HasColumnName("period_end");
-
-                    b.Property<DateOnly?>("PeriodStart")
-                        .HasColumnType("date")
-                        .HasColumnName("period_start");
-
-                    b.Property<Guid>("PractitionerId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("practitioner_id");
-
-                    b.Property<string>("SpecialtyCode")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("specialty_code");
-
-                    b.Property<string>("SpecialtyName")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("specialty_name");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IssuerOrganizationId");
-
-                    b.HasIndex("PractitionerId");
-
-                    b.HasIndex("CouncilCode", "CouncilNumber", "CouncilState")
-                        .IsUnique()
-                        .HasDatabaseName("ux_practitioner_qualification_council");
-
-                    b.ToTable("practitioner_qualification", "fhir");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PractitionerTelecom", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateOnly?>("PeriodEnd")
-                        .HasColumnType("date")
-                        .HasColumnName("period_end");
-
-                    b.Property<DateOnly?>("PeriodStart")
-                        .HasColumnType("date")
-                        .HasColumnName("period_start");
-
-                    b.Property<Guid>("PractitionerId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("practitioner_id");
-
-                    b.Property<int?>("Rank")
-                        .HasColumnType("integer")
-                        .HasColumnName("rank");
-
-                    b.Property<int>("System")
-                        .HasColumnType("integer")
-                        .HasColumnName("system");
-
-                    b.Property<int>("Use")
-                        .HasColumnType("integer")
-                        .HasColumnName("use");
-
-                    b.Property<string>("Value")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("value");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PractitionerId")
-                        .HasDatabaseName("ix_practitioner_telecom_practitioner_id");
-
-                    b.ToTable("practitioner_telecom", "fhir");
-                });
-
             modelBuilder.Entity("SMSMarica.Data.Entities.Fileira", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1762,33 +328,33 @@ namespace SMSMarica.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("laudo_template_id");
 
-                    b.Property<Guid?>("PatientId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("patient_id");
-
-                    b.Property<string>("PractitionerCrmSnapshot")
+                    b.Property<string>("MedicoCrmSnapshot")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
-                        .HasColumnName("practitioner_crm_snapshot");
+                        .HasColumnName("medico_crm_snapshot");
 
-                    b.Property<Guid>("PractitionerId")
+                    b.Property<Guid>("MedicoId")
                         .HasColumnType("uuid")
-                        .HasColumnName("practitioner_id");
+                        .HasColumnName("medico_id");
 
-                    b.Property<string>("PractitionerNomeSnapshot")
+                    b.Property<string>("MedicoNomeSnapshot")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
-                        .HasColumnName("practitioner_nome_snapshot");
+                        .HasColumnName("medico_nome_snapshot");
 
-                    b.Property<string>("PractitionerRqeSnapshot")
+                    b.Property<string>("MedicoRqeSnapshot")
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)")
-                        .HasColumnName("practitioner_rqe_snapshot");
+                        .HasColumnName("medico_rqe_snapshot");
 
-                    b.Property<string>("PractitionerUfCrmSnapshot")
+                    b.Property<string>("MedicoUfCrmSnapshot")
                         .HasMaxLength(2)
                         .HasColumnType("character varying(2)")
-                        .HasColumnName("practitioner_uf_crm_snapshot");
+                        .HasColumnName("medico_uf_crm_snapshot");
+
+                    b.Property<Guid?>("PacienteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paciente_id");
 
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
@@ -1822,9 +388,9 @@ namespace SMSMarica.Data.Migrations
 
                     b.HasIndex("LaudoTemplateId");
 
-                    b.HasIndex("PatientId");
+                    b.HasIndex("MedicoId");
 
-                    b.HasIndex("PractitionerId");
+                    b.HasIndex("PacienteId");
 
                     b.HasIndex("Status");
 
@@ -1910,6 +476,82 @@ namespace SMSMarica.Data.Migrations
                     b.ToTable("laudo_template", "smsmarica");
                 });
 
+            modelBuilder.Entity("SMSMarica.Data.Entities.Medico", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<Guid?>("AtualizadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atualizado_por");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<string>("Crm")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)")
+                        .HasColumnName("crm");
+
+                    b.Property<string>("Especialidade")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("especialidade");
+
+                    b.Property<DateTime?>("ExcluidoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("excluido_em");
+
+                    b.Property<Guid?>("ExcluidoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("excluido_por");
+
+                    b.Property<string>("Rqe")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("rqe");
+
+                    b.Property<string>("UfCrm")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)")
+                        .HasColumnName("uf_crm");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("usuario_id");
+
+                    b.Property<DateOnly?>("ValidadeCrm")
+                        .HasColumnType("date")
+                        .HasColumnName("validade_crm");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExcluidoEm")
+                        .HasDatabaseName("ix_medico_excluido_em")
+                        .HasFilter("excluido_em IS NULL");
+
+                    b.HasIndex("UsuarioId")
+                        .IsUnique();
+
+                    b.HasIndex("Crm", "UfCrm")
+                        .IsUnique();
+
+                    b.ToTable("medico", "smsmarica");
+                });
+
             modelBuilder.Entity("SMSMarica.Data.Entities.Motorista", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1931,12 +573,6 @@ namespace SMSMarica.Data.Migrations
                         .HasColumnType("character varying(11)")
                         .HasColumnName("cnh");
 
-                    b.Property<string>("Cpf")
-                        .IsRequired()
-                        .HasMaxLength(11)
-                        .HasColumnType("character varying(11)")
-                        .HasColumnName("cpf");
-
                     b.Property<DateTime>("CriadoEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("criado_em");
@@ -1944,10 +580,6 @@ namespace SMSMarica.Data.Migrations
                     b.Property<Guid?>("CriadoPor")
                         .HasColumnType("uuid")
                         .HasColumnName("criado_por");
-
-                    b.Property<DateOnly?>("DataNascimento")
-                        .HasColumnType("date")
-                        .HasColumnName("data_nascimento");
 
                     b.Property<DateTime?>("ExcluidoEm")
                         .HasColumnType("timestamp with time zone")
@@ -1957,44 +589,179 @@ namespace SMSMarica.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("excluido_por");
 
-                    b.Property<string>("FotoBase64")
-                        .HasColumnType("text")
-                        .HasColumnName("foto_base64");
-
-                    b.Property<string>("NomeCompleto")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("nome_completo");
-
-                    b.Property<string>("Rg")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("rg");
-
-                    b.Property<int?>("Sexo")
-                        .HasColumnType("integer")
-                        .HasColumnName("sexo");
-
-                    b.Property<string>("Telefone")
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
-                        .HasColumnName("telefone");
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("usuario_id");
 
                     b.HasKey("Id");
 
                     b.HasIndex("Cnh")
                         .IsUnique();
 
-                    b.HasIndex("Cpf")
-                        .IsUnique()
-                        .HasFilter("cpf IS NOT NULL");
-
                     b.HasIndex("ExcluidoEm")
                         .HasDatabaseName("ix_motorista_excluido_em")
                         .HasFilter("excluido_em IS NULL");
 
+                    b.HasIndex("UsuarioId")
+                        .IsUnique();
+
                     b.ToTable("motorista", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMarica.Data.Entities.Paciente", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.PrimitiveCollection<List<string>>("Alergias")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("alergias");
+
+                    b.Property<int?>("AlturaCm")
+                        .HasColumnType("integer")
+                        .HasColumnName("altura_cm");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<Guid?>("AtualizadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atualizado_por");
+
+                    b.Property<string>("Cns")
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)")
+                        .HasColumnName("cns");
+
+                    b.PrimitiveCollection<List<string>>("Comorbidades")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("comorbidades");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.PrimitiveCollection<List<string>>("Deficiencias")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("deficiencias");
+
+                    b.Property<int>("Escolaridade")
+                        .HasColumnType("integer")
+                        .HasColumnName("escolaridade");
+
+                    b.Property<int>("EstadoCivil")
+                        .HasColumnType("integer")
+                        .HasColumnName("estado_civil");
+
+                    b.Property<DateTime?>("ExcluidoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("excluido_em");
+
+                    b.Property<Guid?>("ExcluidoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("excluido_por");
+
+                    b.Property<int>("FatorRh")
+                        .HasColumnType("integer")
+                        .HasColumnName("fator_rh");
+
+                    b.PrimitiveCollection<List<string>>("MedicamentosContinuos")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("medicamentos_continuos");
+
+                    b.Property<string>("Nacionalidade")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("nacionalidade");
+
+                    b.Property<string>("Naturalidade")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("naturalidade");
+
+                    b.Property<string>("NomeDaMae")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("nome_da_mae");
+
+                    b.Property<string>("NomeDoPai")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("nome_do_pai");
+
+                    b.Property<string>("NomeSocial")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("nome_social");
+
+                    b.Property<string>("Observacoes")
+                        .HasColumnType("text")
+                        .HasColumnName("observacoes");
+
+                    b.Property<string>("Ocupacao")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("ocupacao");
+
+                    b.Property<decimal?>("PesoKg")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("peso_kg");
+
+                    b.Property<string>("PlanoSaude")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("plano_saude");
+
+                    b.Property<int>("RacaCor")
+                        .HasColumnType("integer")
+                        .HasColumnName("raca_cor");
+
+                    b.Property<string>("ResponsavelLegal")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("responsavel_legal");
+
+                    b.Property<string>("TelefoneCelular")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("telefone_celular");
+
+                    b.Property<string>("TelefoneResidencial")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("telefone_residencial");
+
+                    b.Property<int>("TipoSanguineo")
+                        .HasColumnType("integer")
+                        .HasColumnName("tipo_sanguineo");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("usuario_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExcluidoEm")
+                        .HasDatabaseName("ix_paciente_excluido_em")
+                        .HasFilter("excluido_em IS NULL");
+
+                    b.HasIndex("UsuarioId")
+                        .IsUnique();
+
+                    b.ToTable("paciente", "smsmarica");
                 });
 
             modelBuilder.Entity("SMSMarica.Data.Entities.Perfil", b =>
@@ -2799,9 +1566,9 @@ namespace SMSMarica.Data.Migrations
                         .HasColumnType("character varying(2000)")
                         .HasColumnName("observacoes");
 
-                    b.Property<Guid>("PatientId")
+                    b.Property<Guid>("PacienteId")
                         .HasColumnType("uuid")
-                        .HasColumnName("patient_id");
+                        .HasColumnName("paciente_id");
 
                     b.Property<int>("Prioridade")
                         .HasColumnType("integer")
@@ -2881,7 +1648,7 @@ namespace SMSMarica.Data.Migrations
                     b.HasIndex("AccessionNumber")
                         .IsUnique();
 
-                    b.HasIndex("PatientId");
+                    b.HasIndex("PacienteId");
 
                     b.HasIndex("SolicitanteUsuarioId");
 
@@ -3089,9 +1856,9 @@ namespace SMSMarica.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("observacoes");
 
-                    b.Property<Guid>("PatientId")
+                    b.Property<Guid>("PacienteId")
                         .HasColumnType("uuid")
-                        .HasColumnName("patient_id");
+                        .HasColumnName("paciente_id");
 
                     b.Property<Guid?>("TipoTratamentoId")
                         .HasColumnType("uuid")
@@ -3105,7 +1872,7 @@ namespace SMSMarica.Data.Migrations
 
                     b.HasIndex("Ativo");
 
-                    b.HasIndex("PatientId");
+                    b.HasIndex("PacienteId");
 
                     b.HasIndex("TipoTratamentoId");
 
@@ -3172,6 +1939,11 @@ namespace SMSMarica.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("atualizado_por");
 
+                    b.Property<string>("Cpf")
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)")
+                        .HasColumnName("cpf");
+
                     b.Property<DateTime>("CriadoEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("criado_em");
@@ -3179,6 +1951,10 @@ namespace SMSMarica.Data.Migrations
                     b.Property<Guid?>("CriadoPor")
                         .HasColumnType("uuid")
                         .HasColumnName("criado_por");
+
+                    b.Property<DateOnly?>("DataNascimento")
+                        .HasColumnType("date")
+                        .HasColumnName("data_nascimento");
 
                     b.Property<bool>("DeveTrocarSenha")
                         .ValueGeneratedOnAdd()
@@ -3200,23 +1976,20 @@ namespace SMSMarica.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("excluido_por");
 
-                    b.Property<Guid?>("MotoristaId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("motorista_id");
+                    b.Property<string>("FotoBase64")
+                        .HasColumnType("text")
+                        .HasColumnName("foto_base64");
 
-                    b.Property<string>("NomeExibicao")
+                    b.Property<string>("NomeCompleto")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
-                        .HasColumnName("nome_exibicao");
+                        .HasColumnName("nome_completo");
 
-                    b.Property<Guid?>("PatientId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("patient_id");
-
-                    b.Property<Guid?>("PractitionerId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("practitioner_id");
+                    b.Property<string>("Rg")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("rg");
 
                     b.Property<string>("SenhaHash")
                         .IsRequired()
@@ -3224,11 +1997,24 @@ namespace SMSMarica.Data.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("senha_hash");
 
+                    b.Property<int?>("Sexo")
+                        .HasColumnType("integer")
+                        .HasColumnName("sexo");
+
+                    b.Property<string>("Telefone")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("telefone");
+
                     b.Property<DateTime?>("UltimoAcessoEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("ultimo_acesso_em");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Cpf")
+                        .IsUnique()
+                        .HasFilter("cpf IS NOT NULL");
 
                     b.HasIndex("Email")
                         .IsUnique();
@@ -3237,22 +2023,7 @@ namespace SMSMarica.Data.Migrations
                         .HasDatabaseName("ix_usuario_excluido_em")
                         .HasFilter("excluido_em IS NULL");
 
-                    b.HasIndex("MotoristaId")
-                        .IsUnique()
-                        .HasFilter("motorista_id IS NOT NULL");
-
-                    b.HasIndex("PatientId")
-                        .IsUnique()
-                        .HasFilter("patient_id IS NOT NULL");
-
-                    b.HasIndex("PractitionerId")
-                        .IsUnique()
-                        .HasFilter("practitioner_id IS NOT NULL");
-
-                    b.ToTable("usuario", "smsmarica", t =>
-                        {
-                            t.HasCheckConstraint("ck_usuario_papel_unico", "(CASE WHEN patient_id IS NOT NULL THEN 1 ELSE 0 END + CASE WHEN practitioner_id IS NOT NULL THEN 1 ELSE 0 END + CASE WHEN motorista_id IS NOT NULL THEN 1 ELSE 0 END) <= 1");
-                        });
+                    b.ToTable("usuario", "smsmarica");
                 });
 
             modelBuilder.Entity("SMSMarica.Data.Entities.UsuarioPerfil", b =>
@@ -3408,280 +2179,6 @@ namespace SMSMarica.Data.Migrations
                     b.Navigation("RotaDiaria");
                 });
 
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.Consent", b =>
-                {
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Patient", "Patient")
-                        .WithMany("Consents")
-                        .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Patient");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.Organization", b =>
-                {
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Organization", "PartOf")
-                        .WithMany()
-                        .HasForeignKey("PartOfId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("PartOf");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.OrganizationIdentifier", b =>
-                {
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Organization", "Organization")
-                        .WithMany("Identifiers")
-                        .HasForeignKey("OrganizationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Organization");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.Patient", b =>
-                {
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Lookups.PaisIso", "BirthCountry")
-                        .WithMany()
-                        .HasForeignKey("BirthCountryCode")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Lookups.MunicipioIbge", "BirthMunicipio")
-                        .WithMany()
-                        .HasForeignKey("BirthMunicipioCodigo")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Lookups.EtniaIndigena", "EtniaIndigena")
-                        .WithMany()
-                        .HasForeignKey("EtniaIndigenaCodigo")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Organization", "ManagingOrganization")
-                        .WithMany()
-                        .HasForeignKey("ManagingOrganizationId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Lookups.CboOcupacao", "OcupacaoCbo")
-                        .WithMany()
-                        .HasForeignKey("OcupacaoCboCodigo")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Lookups.Religiao", "Religiao")
-                        .WithMany()
-                        .HasForeignKey("ReligiaoCodigo")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("BirthCountry");
-
-                    b.Navigation("BirthMunicipio");
-
-                    b.Navigation("EtniaIndigena");
-
-                    b.Navigation("ManagingOrganization");
-
-                    b.Navigation("OcupacaoCbo");
-
-                    b.Navigation("Religiao");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PatientAddress", b =>
-                {
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Lookups.MunicipioIbge", "Municipio")
-                        .WithMany()
-                        .HasForeignKey("MunicipioCodigo")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Patient", "Patient")
-                        .WithMany("Addresses")
-                        .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Municipio");
-
-                    b.Navigation("Patient");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PatientCommunication", b =>
-                {
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Lookups.BarreiraComunicacao", "BarreiraComunicacao")
-                        .WithMany()
-                        .HasForeignKey("BarreiraComunicacaoCodigo")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Patient", "Patient")
-                        .WithMany("Communications")
-                        .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("BarreiraComunicacao");
-
-                    b.Navigation("Patient");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PatientContact", b =>
-                {
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Patient", "Patient")
-                        .WithMany("Contacts")
-                        .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Patient");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PatientDisability", b =>
-                {
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Patient", "Patient")
-                        .WithMany("Disabilities")
-                        .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Patient");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PatientIdentifier", b =>
-                {
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Organization", "AssignerOrganization")
-                        .WithMany()
-                        .HasForeignKey("AssignerOrganizationId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Patient", "Patient")
-                        .WithMany("Identifiers")
-                        .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("AssignerOrganization");
-
-                    b.Navigation("Patient");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PatientLink", b =>
-                {
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Patient", "OtherPatient")
-                        .WithMany()
-                        .HasForeignKey("OtherPatientId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Patient", "Patient")
-                        .WithMany("Links")
-                        .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("OtherPatient");
-
-                    b.Navigation("Patient");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PatientName", b =>
-                {
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Patient", "Patient")
-                        .WithMany("Names")
-                        .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Patient");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PatientPhoto", b =>
-                {
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Patient", "Patient")
-                        .WithMany("Photos")
-                        .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Patient");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PatientTelecom", b =>
-                {
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Patient", "Patient")
-                        .WithMany("Telecoms")
-                        .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Patient");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PractitionerAddress", b =>
-                {
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Lookups.MunicipioIbge", "Municipio")
-                        .WithMany()
-                        .HasForeignKey("MunicipioCodigo")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Practitioner", "Practitioner")
-                        .WithMany("Addresses")
-                        .HasForeignKey("PractitionerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Municipio");
-
-                    b.Navigation("Practitioner");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PractitionerIdentifier", b =>
-                {
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Practitioner", "Practitioner")
-                        .WithMany("Identifiers")
-                        .HasForeignKey("PractitionerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Practitioner");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PractitionerName", b =>
-                {
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Practitioner", "Practitioner")
-                        .WithMany("Names")
-                        .HasForeignKey("PractitionerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Practitioner");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PractitionerQualification", b =>
-                {
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Organization", "IssuerOrganization")
-                        .WithMany()
-                        .HasForeignKey("IssuerOrganizationId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Practitioner", "Practitioner")
-                        .WithMany("Qualifications")
-                        .HasForeignKey("PractitionerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("IssuerOrganization");
-
-                    b.Navigation("Practitioner");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.PractitionerTelecom", b =>
-                {
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Practitioner", "Practitioner")
-                        .WithMany("Telecoms")
-                        .HasForeignKey("PractitionerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Practitioner");
-                });
-
             modelBuilder.Entity("SMSMarica.Data.Entities.Fileira", b =>
                 {
                     b.HasOne("SMSMarica.Data.Entities.Veiculo", "Veiculo")
@@ -3732,24 +2229,24 @@ namespace SMSMarica.Data.Migrations
                         .HasForeignKey("LaudoTemplateId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Patient", "Patient")
+                    b.HasOne("SMSMarica.Data.Entities.Medico", "Medico")
                         .WithMany()
-                        .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Practitioner", "Practitioner")
-                        .WithMany()
-                        .HasForeignKey("PractitionerId")
+                        .HasForeignKey("MedicoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("SMSMarica.Data.Entities.Paciente", "Paciente")
+                        .WithMany()
+                        .HasForeignKey("PacienteId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("LaudoAnterior");
 
                     b.Navigation("LaudoTemplate");
 
-                    b.Navigation("Patient");
+                    b.Navigation("Medico");
 
-                    b.Navigation("Practitioner");
+                    b.Navigation("Paciente");
                 });
 
             modelBuilder.Entity("SMSMarica.Data.Entities.LaudoTemplate", b =>
@@ -3770,67 +2267,92 @@ namespace SMSMarica.Data.Migrations
                     b.Navigation("CriadoPorUsuario");
                 });
 
+            modelBuilder.Entity("SMSMarica.Data.Entities.Medico", b =>
+                {
+                    b.HasOne("SMSMarica.Data.Entities.Usuario", "Usuario")
+                        .WithOne("Medico")
+                        .HasForeignKey("SMSMarica.Data.Entities.Medico", "UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
+                });
+
             modelBuilder.Entity("SMSMarica.Data.Entities.Motorista", b =>
                 {
-                    b.OwnsOne("SMSMarica.Data.Entities.Endereco", "Endereco", b1 =>
+                    b.HasOne("SMSMarica.Data.Entities.Usuario", "Usuario")
+                        .WithOne("Motorista")
+                        .HasForeignKey("SMSMarica.Data.Entities.Motorista", "UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("SMSMarica.Data.Entities.Paciente", b =>
+                {
+                    b.HasOne("SMSMarica.Data.Entities.Usuario", "Usuario")
+                        .WithOne("Paciente")
+                        .HasForeignKey("SMSMarica.Data.Entities.Paciente", "UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.OwnsOne("SMSMarica.Data.Entities.ContatoEmergencia", "ContatoEmergencia", b1 =>
                         {
-                            b1.Property<Guid>("MotoristaId")
+                            b1.Property<Guid>("PacienteId")
                                 .HasColumnType("uuid");
 
-                            b1.Property<string>("Bairro")
-                                .IsRequired()
-                                .HasMaxLength(120)
-                                .HasColumnType("character varying(120)")
-                                .HasColumnName("endereco_bairro");
-
-                            b1.Property<string>("Cep")
-                                .IsRequired()
-                                .HasMaxLength(8)
-                                .HasColumnType("character varying(8)")
-                                .HasColumnName("endereco_cep");
-
-                            b1.Property<string>("Cidade")
-                                .IsRequired()
-                                .HasMaxLength(120)
-                                .HasColumnType("character varying(120)")
-                                .HasColumnName("endereco_cidade");
-
-                            b1.Property<string>("Complemento")
-                                .HasMaxLength(120)
-                                .HasColumnType("character varying(120)")
-                                .HasColumnName("endereco_complemento");
-
-                            b1.Property<string>("Logradouro")
+                            b1.Property<string>("Nome")
                                 .IsRequired()
                                 .HasMaxLength(200)
                                 .HasColumnType("character varying(200)")
-                                .HasColumnName("endereco_logradouro");
+                                .HasColumnName("contato_emergencia_nome");
 
-                            b1.Property<string>("Numero")
+                            b1.Property<string>("Parentesco")
+                                .HasMaxLength(60)
+                                .HasColumnType("character varying(60)")
+                                .HasColumnName("contato_emergencia_parentesco");
+
+                            b1.Property<string>("Telefone")
+                                .IsRequired()
                                 .HasMaxLength(20)
                                 .HasColumnType("character varying(20)")
-                                .HasColumnName("endereco_numero");
+                                .HasColumnName("contato_emergencia_telefone");
 
-                            b1.Property<string>("PontoReferencia")
-                                .HasMaxLength(200)
-                                .HasColumnType("character varying(200)")
-                                .HasColumnName("endereco_ponto_referencia");
+                            b1.HasKey("PacienteId");
 
-                            b1.Property<string>("Uf")
-                                .IsRequired()
-                                .HasMaxLength(2)
-                                .HasColumnType("character varying(2)")
-                                .HasColumnName("endereco_uf");
-
-                            b1.HasKey("MotoristaId");
-
-                            b1.ToTable("motorista", "smsmarica");
+                            b1.ToTable("paciente", "smsmarica");
 
                             b1.WithOwner()
-                                .HasForeignKey("MotoristaId");
+                                .HasForeignKey("PacienteId");
                         });
 
-                    b.Navigation("Endereco");
+                    b.OwnsOne("SMSMarica.Data.Entities.Gps", "GpsResidencia", b1 =>
+                        {
+                            b1.Property<Guid>("PacienteId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<double>("Latitude")
+                                .HasColumnType("double precision")
+                                .HasColumnName("residencia_latitude");
+
+                            b1.Property<double>("Longitude")
+                                .HasColumnType("double precision")
+                                .HasColumnName("residencia_longitude");
+
+                            b1.HasKey("PacienteId");
+
+                            b1.ToTable("paciente", "smsmarica");
+
+                            b1.WithOwner()
+                                .HasForeignKey("PacienteId");
+                        });
+
+                    b.Navigation("ContatoEmergencia");
+
+                    b.Navigation("GpsResidencia");
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("SMSMarica.Data.Entities.Periodicidade", b =>
@@ -3933,9 +2455,9 @@ namespace SMSMarica.Data.Migrations
 
             modelBuilder.Entity("SMSMarica.Data.Entities.SolicitacaoExame", b =>
                 {
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Patient", "Patient")
+                    b.HasOne("SMSMarica.Data.Entities.Paciente", "Paciente")
                         .WithMany()
-                        .HasForeignKey("PatientId")
+                        .HasForeignKey("PacienteId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -3956,7 +2478,7 @@ namespace SMSMarica.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Patient");
+                    b.Navigation("Paciente");
 
                     b.Navigation("SolicitanteUsuario");
 
@@ -3985,9 +2507,9 @@ namespace SMSMarica.Data.Migrations
 
             modelBuilder.Entity("SMSMarica.Data.Entities.Tratamento", b =>
                 {
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Patient", "Patient")
+                    b.HasOne("SMSMarica.Data.Entities.Paciente", "Paciente")
                         .WithMany()
-                        .HasForeignKey("PatientId")
+                        .HasForeignKey("PacienteId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -4002,7 +2524,7 @@ namespace SMSMarica.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Patient");
+                    b.Navigation("Paciente");
 
                     b.Navigation("TipoTratamento");
 
@@ -4097,26 +2619,65 @@ namespace SMSMarica.Data.Migrations
 
             modelBuilder.Entity("SMSMarica.Data.Entities.Usuario", b =>
                 {
-                    b.HasOne("SMSMarica.Data.Entities.Motorista", "Motorista")
-                        .WithMany()
-                        .HasForeignKey("MotoristaId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                    b.OwnsOne("SMSMarica.Data.Entities.Endereco", "Endereco", b1 =>
+                        {
+                            b1.Property<Guid>("UsuarioId")
+                                .HasColumnType("uuid");
 
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Patient", "Patient")
-                        .WithMany()
-                        .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                            b1.Property<string>("Bairro")
+                                .IsRequired()
+                                .HasMaxLength(120)
+                                .HasColumnType("character varying(120)")
+                                .HasColumnName("endereco_bairro");
 
-                    b.HasOne("SMSMarica.Data.Entities.Fhir.Practitioner", "Practitioner")
-                        .WithMany()
-                        .HasForeignKey("PractitionerId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                            b1.Property<string>("Cep")
+                                .IsRequired()
+                                .HasMaxLength(8)
+                                .HasColumnType("character varying(8)")
+                                .HasColumnName("endereco_cep");
 
-                    b.Navigation("Motorista");
+                            b1.Property<string>("Cidade")
+                                .IsRequired()
+                                .HasMaxLength(120)
+                                .HasColumnType("character varying(120)")
+                                .HasColumnName("endereco_cidade");
 
-                    b.Navigation("Patient");
+                            b1.Property<string>("Complemento")
+                                .HasMaxLength(120)
+                                .HasColumnType("character varying(120)")
+                                .HasColumnName("endereco_complemento");
 
-                    b.Navigation("Practitioner");
+                            b1.Property<string>("Logradouro")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)")
+                                .HasColumnName("endereco_logradouro");
+
+                            b1.Property<string>("Numero")
+                                .HasMaxLength(20)
+                                .HasColumnType("character varying(20)")
+                                .HasColumnName("endereco_numero");
+
+                            b1.Property<string>("PontoReferencia")
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)")
+                                .HasColumnName("endereco_ponto_referencia");
+
+                            b1.Property<string>("Uf")
+                                .IsRequired()
+                                .HasMaxLength(2)
+                                .HasColumnType("character varying(2)")
+                                .HasColumnName("endereco_uf");
+
+                            b1.HasKey("UsuarioId");
+
+                            b1.ToTable("usuario", "smsmarica");
+
+                            b1.WithOwner()
+                                .HasForeignKey("UsuarioId");
+                        });
+
+                    b.Navigation("Endereco");
                 });
 
             modelBuilder.Entity("SMSMarica.Data.Entities.UsuarioPerfil", b =>
@@ -4136,47 +2697,6 @@ namespace SMSMarica.Data.Migrations
                     b.Navigation("Perfil");
 
                     b.Navigation("Usuario");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.Organization", b =>
-                {
-                    b.Navigation("Identifiers");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.Patient", b =>
-                {
-                    b.Navigation("Addresses");
-
-                    b.Navigation("Communications");
-
-                    b.Navigation("Consents");
-
-                    b.Navigation("Contacts");
-
-                    b.Navigation("Disabilities");
-
-                    b.Navigation("Identifiers");
-
-                    b.Navigation("Links");
-
-                    b.Navigation("Names");
-
-                    b.Navigation("Photos");
-
-                    b.Navigation("Telecoms");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Fhir.Practitioner", b =>
-                {
-                    b.Navigation("Addresses");
-
-                    b.Navigation("Identifiers");
-
-                    b.Navigation("Names");
-
-                    b.Navigation("Qualifications");
-
-                    b.Navigation("Telecoms");
                 });
 
             modelBuilder.Entity("SMSMarica.Data.Entities.Fileira", b =>
@@ -4205,6 +2725,12 @@ namespace SMSMarica.Data.Migrations
 
             modelBuilder.Entity("SMSMarica.Data.Entities.Usuario", b =>
                 {
+                    b.Navigation("Medico");
+
+                    b.Navigation("Motorista");
+
+                    b.Navigation("Paciente");
+
                     b.Navigation("PermissoesOverride");
 
                     b.Navigation("UsuariosPerfis");

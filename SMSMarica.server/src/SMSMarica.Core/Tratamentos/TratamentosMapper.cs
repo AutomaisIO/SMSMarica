@@ -1,7 +1,5 @@
 using SMSMarica.Core.Tratamentos.Dtos;
 using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Fhir;
-using SMSMarica.Data.Entities.Fhir.Enums;
 
 namespace SMSMarica.Core.Tratamentos;
 
@@ -30,8 +28,8 @@ internal static class TratamentosMapper
         Tratamento t,
         IReadOnlyDictionary<Guid, AlocacaoAtiva> alocacoesPorSessao) => new(
         t.Id,
-        t.PatientId,
-        NomePaciente(t.Patient),
+        t.PacienteId,
+        t.Paciente?.Usuario?.NomeCompleto ?? string.Empty,
         t.UnidadeId,
         t.Unidade?.Nome ?? string.Empty,
         t.TipoTratamentoId,
@@ -55,9 +53,4 @@ internal static class TratamentosMapper
 
     public static TipoTratamentoDto ParaTipoDto(TipoTratamento t) =>
         new(t.Id, t.Nome, t.Codigo, t.Ativo);
-
-    private static string NomePaciente(Patient? p) =>
-        p?.Names.FirstOrDefault(n => n.Use == NameUse.Official)?.Text
-        ?? p?.Names.FirstOrDefault()?.Text
-        ?? string.Empty;
 }

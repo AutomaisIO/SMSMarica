@@ -6,7 +6,6 @@ using QuestPDF.Infrastructure;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Fhir.Enums;
 using DomElement = AngleSharp.Dom.IElement;
 using DomNode = AngleSharp.Dom.INode;
 using DomText = AngleSharp.Dom.IText;
@@ -212,17 +211,16 @@ public sealed class LaudoPdfRenderer(ILaudosService laudos, IOptions<LaudosPdfOp
     {
         var lista = new List<(string, string)>(6);
 
-        var nomePaciente = l.Patient?.Names.FirstOrDefault(n => n.Use == NameUse.Official)?.Text
-                         ?? l.Patient?.Names.FirstOrDefault()?.Text;
+        var nomePaciente = l.Paciente?.Usuario?.NomeCompleto;
         lista.Add(("Paciente", string.IsNullOrWhiteSpace(nomePaciente) ? "Não vinculado" : nomePaciente!));
 
-        var cpf = l.Patient?.Identifiers.FirstOrDefault(i => i.Type == IdentifierTypeCode.Cpf)?.Value;
+        var cpf = l.Paciente?.Usuario?.Cpf;
         if (!string.IsNullOrWhiteSpace(cpf)) lista.Add(("CPF", FormatarCpf(cpf!)));
 
-        var cns = l.Patient?.Identifiers.FirstOrDefault(i => i.Type == IdentifierTypeCode.Cns)?.Value;
+        var cns = l.Paciente?.Cns;
         if (!string.IsNullOrWhiteSpace(cns)) lista.Add(("CNS", cns!));
 
-        var dn = l.Patient?.BirthDate;
+        var dn = l.Paciente?.Usuario?.DataNascimento;
         if (dn.HasValue) lista.Add(("Data de nascimento", dn.Value.ToString("dd/MM/yyyy")));
 
         lista.Add(("Study Instance UID", l.StudyInstanceUID));
@@ -232,15 +230,10 @@ public sealed class LaudoPdfRenderer(ILaudosService laudos, IOptions<LaudosPdfOp
 
     private IReadOnlyList<string> MontarBlocoAssinatura(Laudo l)
     {
-        var crmQual = l.Practitioner?.Qualifications.FirstOrDefault(q => q.CouncilCode == "CRM");
-        var nome = l.PractitionerNomeSnapshot
-                ?? l.Practitioner?.Names.FirstOrDefault(n => n.Use == NameUse.Official)?.Text
-                ?? l.Practitioner?.Names.FirstOrDefault()?.Text
-                ?? string.Empty;
-        var crm = l.PractitionerCrmSnapshot ?? crmQual?.CouncilNumber ?? string.Empty;
-        var uf = l.PractitionerUfCrmSnapshot ?? crmQual?.CouncilState ?? string.Empty;
-        var rqe = l.PractitionerRqeSnapshot
-               ?? l.Practitioner?.Identifiers.FirstOrDefault(i => i.System == "urn:br:rqe")?.Value;
+        var nome = l.MedicoNomeSnapshot ?? l.Medico?.Usuario?.NomeCompleto ?? string.Empty;
+        var crm = l.MedicoCrmSnapshot ?? l.Medico?.Crm ?? string.Empty;
+        var uf = l.MedicoUfCrmSnapshot ?? l.Medico?.UfCrm ?? string.Empty;
+        var rqe = l.MedicoRqeSnapshot ?? l.Medico?.Rqe;
 
         var linhas = new List<string>(2)
         {

@@ -79,7 +79,7 @@ public static class DbSeeder
             var admin = new Usuario
             {
                 Id = AdminUsuarioId,
-                NomeExibicao = "Administrador",
+                NomeCompleto = "Administrador",
                 Email = AdminEmail,
                 Ativo = true,
                 CriadoEm = DateTime.UtcNow,

@@ -25,7 +25,7 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : ITokenServic
         {
             new(JwtRegisteredClaimNames.Sub, usuario.Id.ToString()),
             new(JwtRegisteredClaimNames.Email, usuario.Email),
-            new(JwtRegisteredClaimNames.Name, usuario.NomeExibicao),
+            new(JwtRegisteredClaimNames.Name, usuario.NomeCompleto),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")),
         };
 

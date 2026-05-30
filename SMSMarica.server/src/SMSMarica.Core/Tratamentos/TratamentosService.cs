@@ -4,7 +4,6 @@ using SMSMarica.Core.Tratamentos.Dtos;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Fhir;
 
 namespace SMSMarica.Core.Tratamentos;
 
@@ -25,7 +24,7 @@ public sealed class TratamentosService(SmsMaricaDbContext db) : ITratamentosServ
     public async Task<IReadOnlyList<TratamentoListItemDto>> ListarPorPacienteAsync(Guid pacienteId, CancellationToken cancellationToken = default)
     {
         var tratamentos = await QueryListarBase()
-            .Where(t => t.PatientId == pacienteId)
+            .Where(t => t.PacienteId == pacienteId)
             .OrderByDescending(t => t.Ativo)
             .ThenByDescending(t => t.CriadoEm)
             .ToListAsync(cancellationToken);
@@ -47,7 +46,7 @@ public sealed class TratamentosService(SmsMaricaDbContext db) : ITratamentosServ
     public async Task<TratamentoDto> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var t = await _db.Tratamentos.AsNoTracking()
-            .Include(x => x.Patient).ThenInclude(p => p!.Names)
+            .Include(x => x.Paciente).ThenInclude(p => p!.Usuario)
             .Include(x => x.Unidade)
             .Include(x => x.TipoTratamento)
             .Include(x => x.Periodicidade)
@@ -86,9 +85,9 @@ public sealed class TratamentosService(SmsMaricaDbContext db) : ITratamentosServ
 
     public async Task<Guid> CadastrarAsync(CadastrarTratamentoRequest request, CancellationToken cancellationToken = default)
     {
-        if (!await _db.Patients.AsNoTracking().AnyAsync(p => p.Id == request.PacienteId && p.DeletedAt == null, cancellationToken))
+        if (!await _db.Pacientes.AsNoTracking().AnyAsync(p => p.Id == request.PacienteId, cancellationToken))
         {
-            throw new NaoEncontradoException(nameof(Patient), request.PacienteId);
+            throw new NaoEncontradoException(nameof(Paciente), request.PacienteId);
         }
 
         if (!await _db.Unidades.AsNoTracking().AnyAsync(u => u.Id == request.UnidadeId, cancellationToken))
@@ -133,7 +132,7 @@ public sealed class TratamentosService(SmsMaricaDbContext db) : ITratamentosServ
         var tratamento = new Tratamento
         {
             Id = tratamentoId,
-            PatientId = request.PacienteId,
+            PacienteId = request.PacienteId,
             UnidadeId = request.UnidadeId,
             TipoTratamentoId = request.TipoTratamentoId,
             Descricao = request.Descricao.Trim(),
@@ -308,7 +307,7 @@ public sealed class TratamentosService(SmsMaricaDbContext db) : ITratamentosServ
     }
 
     private IQueryable<Tratamento> QueryListarBase() => _db.Tratamentos.AsNoTracking()
-        .Include(t => t.Patient).ThenInclude(p => p!.Names)
+        .Include(t => t.Paciente).ThenInclude(p => p!.Usuario)
         .Include(t => t.Unidade)
         .Include(t => t.TipoTratamento)
         .Include(t => t.Sessoes);
@@ -323,8 +322,8 @@ public sealed class TratamentosService(SmsMaricaDbContext db) : ITratamentosServ
         var realizadas = t.Sessoes.Count(s => s.Status == StatusSessao.Realizada);
         return new TratamentoListItemDto(
             t.Id,
-            t.PatientId,
-            NomePaciente(t.Patient),
+            t.PacienteId,
+            t.Paciente?.Usuario?.NomeCompleto ?? string.Empty,
             t.UnidadeId,
             t.Unidade?.Nome ?? string.Empty,
             t.TipoTratamento?.Nome,
@@ -343,9 +342,4 @@ public sealed class TratamentosService(SmsMaricaDbContext db) : ITratamentosServ
 
     private static string? Trim(string? valor) =>
         string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();
-
-    private static string NomePaciente(Patient? p) =>
-        p?.Names.FirstOrDefault(n => n.Use == SMSMarica.Data.Entities.Fhir.Enums.NameUse.Official)?.Text
-        ?? p?.Names.FirstOrDefault()?.Text
-        ?? string.Empty;
 }
