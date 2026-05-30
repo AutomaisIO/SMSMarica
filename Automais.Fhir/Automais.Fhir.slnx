@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Automais.Fhir.Api/Automais.Fhir.Api.csproj" />
+    <Project Path="src/Automais.Fhir.Core/Automais.Fhir.Core.csproj" />
+    <Project Path="src/Automais.Fhir.Data/Automais.Fhir.Data.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Automais.Fhir.Tests/Automais.Fhir.Tests.csproj" />
+  </Folder>
+</Solution>
