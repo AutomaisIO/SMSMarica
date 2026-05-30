@@ -16,7 +16,7 @@ public sealed class FhirDbContextFactory : IDesignTimeDbContextFactory<FhirDbCon
                    ?? "Host=localhost;Database=defaultdb;Username=postgres;Password=postgres";
 
         var options = new DbContextOptionsBuilder<FhirDbContext>()
-            .UseNpgsql(conn)
+            .UseNpgsql(conn, npg => npg.MigrationsHistoryTable("__EFMigrationsHistory", FhirDbContext.Schema))
             .Options;
 
         return new FhirDbContext(options);

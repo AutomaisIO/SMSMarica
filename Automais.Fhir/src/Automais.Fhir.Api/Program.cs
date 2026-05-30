@@ -10,7 +10,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog((ctx, cfg) => cfg.ReadFrom.Configuration(ctx.Configuration).WriteTo.Console());
 
 builder.Services.AddDbContext<FhirDbContext>(opt =>
-    opt.UseNpgsql(builder.Configuration.GetConnectionString("FhirDb")));
+    opt.UseNpgsql(
+        builder.Configuration.GetConnectionString("FhirDb"),
+        npg => npg.MigrationsHistoryTable("__EFMigrationsHistory", FhirDbContext.Schema)));
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddFhirCore();
