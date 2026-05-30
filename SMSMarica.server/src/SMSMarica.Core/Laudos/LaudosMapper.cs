@@ -7,6 +7,9 @@ namespace SMSMarica.Core.Laudos;
 
 internal static class LaudosMapper
 {
+    private const string SystemRqe = "urn:br:rqe";
+    private const string CouncilCrm = "CRM";
+
     public static LaudoDto ParaDto(Laudo l) => new(
         l.Id,
         l.StudyInstanceUID,
@@ -15,11 +18,11 @@ internal static class LaudosMapper
         l.PatientId,
         NomePaciente(l.Patient),
         CpfPaciente(l.Patient),
-        l.MedicoId,
-        l.MedicoNomeSnapshot ?? l.Medico?.Usuario?.NomeCompleto ?? string.Empty,
-        l.MedicoCrmSnapshot ?? l.Medico?.Crm ?? string.Empty,
-        l.MedicoUfCrmSnapshot ?? l.Medico?.UfCrm ?? string.Empty,
-        l.MedicoRqeSnapshot ?? l.Medico?.Rqe,
+        l.PractitionerId,
+        l.PractitionerNomeSnapshot ?? NomePractitioner(l.Practitioner) ?? string.Empty,
+        l.PractitionerCrmSnapshot ?? CrmPractitioner(l.Practitioner) ?? string.Empty,
+        l.PractitionerUfCrmSnapshot ?? UfCrmPractitioner(l.Practitioner) ?? string.Empty,
+        l.PractitionerRqeSnapshot ?? RqePractitioner(l.Practitioner),
         l.LaudoTemplateId,
         l.LaudoTemplate?.Nome,
         l.Titulo,
@@ -36,8 +39,8 @@ internal static class LaudosMapper
         l.Versao,
         l.PatientId,
         NomePaciente(l.Patient),
-        l.MedicoId,
-        l.MedicoNomeSnapshot ?? l.Medico?.Usuario?.NomeCompleto ?? string.Empty,
+        l.PractitionerId,
+        l.PractitionerNomeSnapshot ?? NomePractitioner(l.Practitioner) ?? string.Empty,
         l.Titulo,
         l.Status,
         l.FinalizadoEm,
@@ -47,8 +50,8 @@ internal static class LaudosMapper
         l.Id,
         l.Versao,
         l.Status,
-        l.MedicoId,
-        l.MedicoNomeSnapshot ?? l.Medico?.Usuario?.NomeCompleto ?? string.Empty,
+        l.PractitionerId,
+        l.PractitionerNomeSnapshot ?? NomePractitioner(l.Practitioner) ?? string.Empty,
         l.CriadoEm,
         l.FinalizadoEm);
 
@@ -58,4 +61,17 @@ internal static class LaudosMapper
 
     private static string? CpfPaciente(Patient? p) =>
         p?.Identifiers.FirstOrDefault(i => i.Type == IdentifierTypeCode.Cpf)?.Value;
+
+    private static string? NomePractitioner(Practitioner? p) =>
+        p?.Names.FirstOrDefault(n => n.Use == NameUse.Official)?.Text
+        ?? p?.Names.FirstOrDefault()?.Text;
+
+    private static string? CrmPractitioner(Practitioner? p) =>
+        p?.Qualifications.FirstOrDefault(q => q.CouncilCode == CouncilCrm)?.CouncilNumber;
+
+    private static string? UfCrmPractitioner(Practitioner? p) =>
+        p?.Qualifications.FirstOrDefault(q => q.CouncilCode == CouncilCrm)?.CouncilState;
+
+    private static string? RqePractitioner(Practitioner? p) =>
+        p?.Identifiers.FirstOrDefault(i => i.System == SystemRqe)?.Value;
 }

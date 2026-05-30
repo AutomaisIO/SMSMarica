@@ -37,7 +37,7 @@ public sealed class EstudoAnotacoesService(SmsMaricaDbContext db) : IEstudoAnota
                 x.Id,
                 x.Versao,
                 x.UsuarioId,
-                x.Usuario!.NomeCompleto,
+                x.Usuario!.NomeExibicao,
                 x.CriadoEm,
                 x.Comentario))
             .ToListAsync(cancellationToken);
@@ -96,7 +96,7 @@ public sealed class EstudoAnotacoesService(SmsMaricaDbContext db) : IEstudoAnota
             entidade.Versao,
             request.Payload,
             usuario.Id,
-            usuario.NomeCompleto,
+            usuario.NomeExibicao,
             entidade.CriadoEm,
             entidade.Comentario);
     }
@@ -116,7 +116,7 @@ public sealed class EstudoAnotacoesService(SmsMaricaDbContext db) : IEstudoAnota
         a.Versao,
         JsonSerializer.Deserialize<JsonElement>(a.PayloadJson),
         a.UsuarioId,
-        a.Usuario?.NomeCompleto ?? string.Empty,
+        a.Usuario?.NomeExibicao ?? string.Empty,
         a.CriadoEm,
         a.Comentario);
 }

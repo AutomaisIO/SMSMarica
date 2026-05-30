@@ -4,33 +4,51 @@ using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Medicos.Dtos;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities;
+using SMSMarica.Data.Entities.Fhir;
+using SMSMarica.Data.Entities.Fhir.Enums;
 
 namespace SMSMarica.Core.Medicos;
 
+/// <summary>
+/// Serviço de médicos operando sobre o agregado FHIR <see cref="Practitioner"/>.
+/// Em Fatia 3 do refator FHIR, a entidade <c>smsmarica.Medico</c> foi removida —
+/// "Médico" passa a ser um Practitioner com Qualification CouncilCode='CRM',
+/// vinculado a um <see cref="Usuario"/> via <c>Usuario.PractitionerId</c>.
+/// </summary>
 public sealed class MedicosService(SmsMaricaDbContext db, IUsuarioAtualAccessor atual) : IMedicosService
 {
+    private const string SenhaHashPlaceholder = "PENDENTE_AUTH";
     private readonly SmsMaricaDbContext _db = db;
     private readonly IUsuarioAtualAccessor _atual = atual;
 
-    private const string SenhaHashPlaceholder = "PENDENTE_AUTH";
-
     public async Task<IReadOnlyList<MedicoListItemDto>> ListarAsync(CancellationToken cancellationToken = default)
     {
-        var medicos = await _db.Medicos.AsNoTracking()
-            .Include(m => m.Usuario)
-            .Where(m => m.ExcluidoEm == null)
-            .OrderBy(m => m.Usuario.NomeCompleto)
+        // Lista Practitioners que têm qualification CRM (=médicos).
+        var practitioners = await QueryAgregado()
+            .AsNoTracking()
+            .Where(p => p.DeletedAt == null
+                && p.Qualifications.Any(q => q.CouncilCode == MedicosMapper.CouncilCrm))
             .ToListAsync(cancellationToken);
-        return [.. medicos.Select(MedicosMapper.ParaListItem)];
+
+        var usuariosPorPractitionerId = await CarregarUsuariosAsync(
+            practitioners.Select(p => p.Id).ToList(), cancellationToken);
+
+        return [.. practitioners
+            .OrderBy(p => MedicosMapper.NomeOficial(p))
+            .Select(p => MedicosMapper.ParaListItem(p, usuariosPorPractitionerId.GetValueOrDefault(p.Id)))];
     }
 
     public async Task<MedicoDto> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var m = await _db.Medicos.AsNoTracking()
-            .Include(x => x.Usuario)
-            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
-            ?? throw new NaoEncontradoException(nameof(Medico), id);
-        return MedicosMapper.ParaDto(m);
+        var practitioner = await QueryAgregado()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == id, cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(Practitioner), id);
+
+        var usuario = await _db.Usuarios.AsNoTracking()
+            .FirstOrDefaultAsync(u => u.PractitionerId == practitioner.Id, cancellationToken);
+
+        return MedicosMapper.ParaDto(practitioner, usuario);
     }
 
     public async Task<Guid> CadastrarAsync(CadastrarMedicoRequest request, CancellationToken cancellationToken = default)
@@ -39,158 +57,151 @@ public sealed class MedicosService(SmsMaricaDbContext db, IUsuarioAtualAccessor 
         var crm = NormalizarDigitos(request.Crm);
         var uf = (request.UfCrm ?? string.Empty).Trim().ToUpperInvariant();
 
-        var usuarioExistente = await _db.Usuarios.AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Cpf == cpf, cancellationToken);
-        if (usuarioExistente is not null)
+        // CPF duplicado em outro Practitioner.
+        if (await _db.Practitioners.AsNoTracking()
+            .AnyAsync(p => p.DeletedAt == null && p.Identifiers.Any(i =>
+                i.Type == IdentifierTypeCode.Cpf && i.Value == cpf), cancellationToken))
         {
-            throw new ConflitoException(
-                "medico.cpf_ja_cadastrado",
-                $"CPF já cadastrado como usuário '{usuarioExistente.NomeCompleto}'. Use /medicos/promover.");
+            throw new ConflitoException("medico.cpf_duplicado", "Já existe profissional com este CPF.");
         }
 
-        if (await _db.Medicos.AsNoTracking().AnyAsync(x => x.Crm == crm && x.UfCrm == uf && x.ExcluidoEm == null, cancellationToken))
+        // CRM/UF duplicado (constraint única em PractitionerQualification cuida no banco).
+        if (await _db.PractitionerQualifications.AsNoTracking()
+            .AnyAsync(q => q.CouncilCode == MedicosMapper.CouncilCrm
+                        && q.CouncilNumber == crm
+                        && q.CouncilState == uf
+                        && q.Practitioner.DeletedAt == null, cancellationToken))
         {
             throw new ConflitoException("medico.crm_duplicado", $"Já existe médico com CRM {crm}/{uf}.");
         }
 
+        var email = NormalizarEmail(request.Email, cpf);
+        if (await _db.Usuarios.AsNoTracking().AnyAsync(u => u.Email == email, cancellationToken))
+        {
+            throw new ConflitoException("medico.email_duplicado", "Já existe usuário com este e-mail.");
+        }
+
         var agora = DateTime.UtcNow;
         var atualId = _atual.UsuarioId;
+
+        var practitioner = MontarPractitioner(request, cpf, crm, uf, agora, atualId);
+
         var usuario = new Usuario
         {
             Id = Guid.CreateVersion7(),
-            NomeCompleto = request.NomeCompleto.Trim(),
-            Cpf = cpf,
-            DataNascimento = request.DataNascimento,
-            Email = NormalizarEmail(request.Email, cpf),
-            Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim(),
-            Endereco = request.Endereco?.ParaEntidade(),
-            FotoBase64 = string.IsNullOrWhiteSpace(request.FotoBase64) ? null : request.FotoBase64,
+            Email = email,
             SenhaHash = SenhaHashPlaceholder,
             DeveTrocarSenha = true,
             Ativo = true,
+            NomeExibicao = request.NomeCompleto.Trim(),
+            PractitionerId = practitioner.Id,
             CriadoEm = agora,
             CriadoPor = atualId,
         };
 
-        var medico = new Medico
-        {
-            Id = Guid.CreateVersion7(),
-            UsuarioId = usuario.Id,
-            Crm = crm,
-            UfCrm = uf,
-            Especialidade = NormalizaOpcional(request.Especialidade),
-            Rqe = NormalizaOpcional(request.Rqe),
-            ValidadeCrm = request.ValidadeCrm,
-            CriadoEm = agora,
-            CriadoPor = atualId,
-        };
-
+        _db.Practitioners.Add(practitioner);
         _db.Usuarios.Add(usuario);
-        _db.Medicos.Add(medico);
         await _db.SaveChangesAsync(cancellationToken);
-        return medico.Id;
+        return practitioner.Id;
     }
 
-    public async Task<Guid> PromoverAsync(PromoverMedicoRequest request, CancellationToken cancellationToken = default)
+    public Task<Guid> PromoverAsync(PromoverMedicoRequest request, CancellationToken cancellationToken = default)
     {
-        var usuario = await _db.Usuarios
-            .Include(u => u.Medico)
-            .Include(u => u.Motorista)
-            .FirstOrDefaultAsync(u => u.Id == request.UsuarioId, cancellationToken)
-            ?? throw new NaoEncontradoException(nameof(Usuario), request.UsuarioId);
-
-        var papelAtual = DetectarPapel(usuario);
-        if (papelAtual is not null)
-        {
-            throw new ConflitoException(
-                "medico.usuario_ja_tem_papel",
-                $"Usuário já tem papel '{papelAtual}'. Elimine o papel atual antes de promover.");
-        }
-
-        if (string.IsNullOrWhiteSpace(usuario.Cpf))
-        {
-            throw new ConflitoException(
-                "medico.usuario_sem_cpf",
-                "Usuário precisa ter CPF cadastrado para virar médico.");
-        }
-
-        var crm = NormalizarDigitos(request.Crm);
-        var uf = (request.UfCrm ?? string.Empty).Trim().ToUpperInvariant();
-
-        if (await _db.Medicos.AsNoTracking().AnyAsync(x => x.Crm == crm && x.UfCrm == uf && x.ExcluidoEm == null, cancellationToken))
-        {
-            throw new ConflitoException("medico.crm_duplicado", $"Já existe médico com CRM {crm}/{uf}.");
-        }
-
-        var agora = DateTime.UtcNow;
-        var atualId = _atual.UsuarioId;
-        var medico = new Medico
-        {
-            Id = Guid.CreateVersion7(),
-            UsuarioId = usuario.Id,
-            Crm = crm,
-            UfCrm = uf,
-            Especialidade = NormalizaOpcional(request.Especialidade),
-            Rqe = NormalizaOpcional(request.Rqe),
-            ValidadeCrm = request.ValidadeCrm,
-            CriadoEm = agora,
-            CriadoPor = atualId,
-        };
-
-        _db.Medicos.Add(medico);
-        await _db.SaveChangesAsync(cancellationToken);
-        return medico.Id;
+        // Fluxo de "promover Usuario sem papel a Médico" foi reformulado na
+        // Fatia 2 do refator FHIR: Usuario não carrega mais identidade clínica
+        // (CPF/nome/data de nascimento), então não dá pra reaproveitar. Front
+        // deve usar Cadastrar normal.
+        throw new ConflitoException(
+            "medico.promover_indisponivel",
+            "Promoção descontinuada — Usuario sem papel não carrega mais identidade clínica. Use POST /medicos.");
     }
 
     public async Task AtualizarAsync(Guid id, AtualizarMedicoRequest request, CancellationToken cancellationToken = default)
     {
-        var m = await _db.Medicos
-            .Include(x => x.Usuario)
-            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
-            ?? throw new NaoEncontradoException(nameof(Medico), id);
+        var practitioner = await QueryAgregado()
+            .FirstOrDefaultAsync(p => p.Id == id, cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(Practitioner), id);
 
-        if (m.ExcluidoEm is not null)
+        if (practitioner.DeletedAt is not null)
         {
             throw new ConflitoException("medico.excluido", "Médico excluído não pode ser editado.");
         }
 
         var crm = NormalizarDigitos(request.Crm);
         var uf = (request.UfCrm ?? string.Empty).Trim().ToUpperInvariant();
-        if ((crm != m.Crm || uf != m.UfCrm) &&
-            await _db.Medicos.AsNoTracking().AnyAsync(x => x.Crm == crm && x.UfCrm == uf && x.Id != id && x.ExcluidoEm == null, cancellationToken))
+        var qualificacao = practitioner.Qualifications.FirstOrDefault(q => q.CouncilCode == MedicosMapper.CouncilCrm);
+
+        // Mudança de CRM exige checar unicidade contra outros Practitioners.
+        if (qualificacao is null || qualificacao.CouncilNumber != crm || qualificacao.CouncilState != uf)
         {
-            throw new ConflitoException("medico.crm_duplicado", $"Já existe médico com CRM {crm}/{uf}.");
+            if (await _db.PractitionerQualifications.AsNoTracking()
+                .AnyAsync(q => q.CouncilCode == MedicosMapper.CouncilCrm
+                            && q.CouncilNumber == crm
+                            && q.CouncilState == uf
+                            && q.PractitionerId != id
+                            && q.Practitioner.DeletedAt == null, cancellationToken))
+            {
+                throw new ConflitoException("medico.crm_duplicado", $"Já existe médico com CRM {crm}/{uf}.");
+            }
         }
 
         var agora = DateTime.UtcNow;
         var atualId = _atual.UsuarioId;
 
-        m.Crm = crm;
-        m.UfCrm = uf;
-        m.Especialidade = NormalizaOpcional(request.Especialidade);
-        m.Rqe = NormalizaOpcional(request.Rqe);
-        m.ValidadeCrm = request.ValidadeCrm;
-        m.AtualizadoEm = agora;
-        m.AtualizadoPor = atualId;
+        // CRM / Especialidade / Validade
+        if (qualificacao is null)
+        {
+            practitioner.Qualifications.Add(new PractitionerQualification
+            {
+                Id = Guid.CreateVersion7(),
+                PractitionerId = practitioner.Id,
+                CouncilCode = MedicosMapper.CouncilCrm,
+                CouncilNumber = crm,
+                CouncilState = uf,
+                SpecialtyName = NormalizaOpcional(request.Especialidade),
+                PeriodEnd = request.ValidadeCrm,
+            });
+        }
+        else
+        {
+            qualificacao.CouncilNumber = crm;
+            qualificacao.CouncilState = uf;
+            qualificacao.SpecialtyName = NormalizaOpcional(request.Especialidade);
+            qualificacao.PeriodEnd = request.ValidadeCrm;
+        }
 
-        // Nome e CPF do Usuario são imutáveis — não tocamos aqui.
-        m.Usuario.Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim();
-        m.Usuario.Endereco = request.Endereco?.ParaEntidade();
-        m.Usuario.FotoBase64 = string.IsNullOrWhiteSpace(request.FotoBase64) ? null : request.FotoBase64;
-        m.Usuario.AtualizadoEm = agora;
-        m.Usuario.AtualizadoPor = atualId;
+        // RQE como PractitionerIdentifier (System=urn:br:rqe)
+        SubstituirIdentifier(practitioner, MedicosMapper.SystemRqe, IdentifierTypeCode.Other, NormalizaOpcional(request.Rqe));
+
+        // Telefone (Phone, Rank=1)
+        SubstituirTelefone(practitioner, request.Telefone);
+
+        // Endereço
+        SubstituirEndereco(practitioner, request.Endereco);
+
+        practitioner.UpdatedAt = agora;
+        practitioner.UpdatedBy = atualId;
+        practitioner.LastUpdated = agora;
+        practitioner.VersionId += 1;
+
+        // Sincroniza NomeExibicao no Usuario (caso exista).
+        var usuario = await _db.Usuarios.FirstOrDefaultAsync(u => u.PractitionerId == practitioner.Id, cancellationToken);
+        if (usuario is not null)
+        {
+            usuario.NomeExibicao = MedicosMapper.NomeOficial(practitioner);
+            usuario.AtualizadoEm = agora;
+            usuario.AtualizadoPor = atualId;
+        }
 
         await _db.SaveChangesAsync(cancellationToken);
     }
 
     public async Task DesativarAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var m = await _db.Medicos
-            .Include(x => x.Usuario)
-            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
-            ?? throw new NaoEncontradoException(nameof(Medico), id);
+        var practitioner = await _db.Practitioners.FirstOrDefaultAsync(p => p.Id == id, cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(Practitioner), id);
 
-        if (m.ExcluidoEm is not null)
+        if (practitioner.DeletedAt is not null)
         {
             throw new ConflitoException("medico.ja_excluido", "Médico já foi excluído.");
         }
@@ -198,25 +209,211 @@ public sealed class MedicosService(SmsMaricaDbContext db, IUsuarioAtualAccessor 
         var agora = DateTime.UtcNow;
         var atualId = _atual.UsuarioId;
 
-        m.ExcluidoEm = agora;
-        m.ExcluidoPor = atualId;
+        practitioner.DeletedAt = agora;
+        practitioner.DeletedBy = atualId;
+        practitioner.Active = false;
+        practitioner.LastUpdated = agora;
+        practitioner.VersionId += 1;
 
-        // Exclusão de papel cascateia para o Usuario: a pessoa sai do sistema.
-        m.Usuario.ExcluidoEm = agora;
-        m.Usuario.ExcluidoPor = atualId;
+        // Exclusão de papel cascateia pra Usuario vinculado.
+        var usuario = await _db.Usuarios.FirstOrDefaultAsync(u => u.PractitionerId == practitioner.Id, cancellationToken);
+        if (usuario is not null)
+        {
+            usuario.ExcluidoEm = agora;
+            usuario.ExcluidoPor = atualId;
+        }
 
         await _db.SaveChangesAsync(cancellationToken);
     }
 
-    private static string? DetectarPapel(Usuario u)
+    // ---------------- helpers ----------------
+
+    private IQueryable<Practitioner> QueryAgregado() => _db.Practitioners
+        .Include(p => p.Names)
+        .Include(p => p.Identifiers)
+        .Include(p => p.Addresses).ThenInclude(a => a.Municipio)
+        .Include(p => p.Telecoms)
+        .Include(p => p.Qualifications);
+
+    private async Task<Dictionary<Guid, Usuario>> CarregarUsuariosAsync(
+        IReadOnlyList<Guid> practitionerIds, CancellationToken ct)
     {
-        if (u.Medico is not null) return "Medico";
-        if (u.Motorista is not null) return "Motorista";
-        return null;
+        if (practitionerIds.Count == 0) return [];
+        var usuarios = await _db.Usuarios.AsNoTracking()
+            .Where(u => u.PractitionerId.HasValue && practitionerIds.Contains(u.PractitionerId.Value))
+            .ToListAsync(ct);
+        return usuarios.ToDictionary(u => u.PractitionerId!.Value);
     }
 
-    private static string NormalizarDigitos(string valor) =>
-        new([.. valor.Where(char.IsDigit)]);
+    private static Practitioner MontarPractitioner(
+        CadastrarMedicoRequest req, string cpf, string crm, string uf, DateTime agora, Guid? atualId)
+    {
+        var practitioner = new Practitioner
+        {
+            Id = Guid.CreateVersion7(),
+            Active = true,
+            Gender = AdministrativeGender.Unknown,
+            BirthDate = req.DataNascimento,
+            CreatedAt = agora,
+            CreatedBy = atualId,
+            LastUpdated = agora,
+            VersionId = 1,
+        };
+
+        var nome = req.NomeCompleto.Trim();
+        var partes = nome.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        practitioner.Names.Add(new PractitionerName
+        {
+            Id = Guid.CreateVersion7(),
+            PractitionerId = practitioner.Id,
+            Use = NameUse.Official,
+            Text = nome,
+            Family = partes.Length > 1 ? partes[^1] : null,
+            Given = partes.Length > 1 ? partes[..^1] : partes,
+        });
+
+        practitioner.Identifiers.Add(new PractitionerIdentifier
+        {
+            Id = Guid.CreateVersion7(),
+            PractitionerId = practitioner.Id,
+            System = MedicosMapper.SystemCpf,
+            Value = cpf,
+            Type = IdentifierTypeCode.Cpf,
+            Use = IdentifierUse.Official,
+        });
+
+        var rqe = NormalizaOpcional(req.Rqe);
+        if (rqe is not null)
+        {
+            practitioner.Identifiers.Add(new PractitionerIdentifier
+            {
+                Id = Guid.CreateVersion7(),
+                PractitionerId = practitioner.Id,
+                System = MedicosMapper.SystemRqe,
+                Value = rqe,
+                Type = IdentifierTypeCode.Other,
+                Use = IdentifierUse.Secondary,
+            });
+        }
+
+        practitioner.Qualifications.Add(new PractitionerQualification
+        {
+            Id = Guid.CreateVersion7(),
+            PractitionerId = practitioner.Id,
+            CouncilCode = MedicosMapper.CouncilCrm,
+            CouncilNumber = crm,
+            CouncilState = uf,
+            SpecialtyName = NormalizaOpcional(req.Especialidade),
+            PeriodEnd = req.ValidadeCrm,
+        });
+
+        if (!string.IsNullOrWhiteSpace(req.Telefone))
+        {
+            practitioner.Telecoms.Add(new PractitionerTelecom
+            {
+                Id = Guid.CreateVersion7(),
+                PractitionerId = practitioner.Id,
+                System = ContactPointSystem.Phone,
+                Use = ContactPointUse.Work,
+                Value = req.Telefone.Trim(),
+                Rank = 1,
+            });
+        }
+
+        if (req.Endereco is not null)
+        {
+            practitioner.Addresses.Add(new PractitionerAddress
+            {
+                Id = Guid.CreateVersion7(),
+                PractitionerId = practitioner.Id,
+                Use = AddressUse.Work,
+                Type = AddressType.Both,
+                Line1 = JuntaLinha1(req.Endereco.Logradouro, req.Endereco.Numero),
+                Line2 = NormalizaOpcional(req.Endereco.Complemento),
+                District = NormalizaOpcional(req.Endereco.Bairro),
+                State = string.IsNullOrWhiteSpace(req.Endereco.Uf) ? null : req.Endereco.Uf.Trim().ToUpperInvariant(),
+                PostalCode = NormalizarDigitos(req.Endereco.Cep),
+                Country = "BRA",
+                Text = NormalizaOpcional(req.Endereco.Cidade),
+            });
+        }
+
+        return practitioner;
+    }
+
+    private static void SubstituirIdentifier(Practitioner p, string system, IdentifierTypeCode tipo, string? valor)
+    {
+        var atual = p.Identifiers.FirstOrDefault(i => i.System == system);
+        if (valor is null)
+        {
+            if (atual is not null) p.Identifiers.Remove(atual);
+            return;
+        }
+        if (atual is null)
+        {
+            p.Identifiers.Add(new PractitionerIdentifier
+            {
+                Id = Guid.CreateVersion7(),
+                PractitionerId = p.Id,
+                System = system,
+                Value = valor,
+                Type = tipo,
+                Use = IdentifierUse.Secondary,
+            });
+        }
+        else
+        {
+            atual.Value = valor;
+        }
+    }
+
+    private static void SubstituirTelefone(Practitioner p, string? telefone)
+    {
+        var existentes = p.Telecoms.Where(t => t.System == ContactPointSystem.Phone).ToList();
+        foreach (var t in existentes) p.Telecoms.Remove(t);
+        if (string.IsNullOrWhiteSpace(telefone)) return;
+        p.Telecoms.Add(new PractitionerTelecom
+        {
+            Id = Guid.CreateVersion7(),
+            PractitionerId = p.Id,
+            System = ContactPointSystem.Phone,
+            Use = ContactPointUse.Work,
+            Value = telefone.Trim(),
+            Rank = 1,
+        });
+    }
+
+    private static void SubstituirEndereco(Practitioner p, Common.Dtos.EnderecoDto? dto)
+    {
+        var existentes = p.Addresses.ToList();
+        foreach (var a in existentes) p.Addresses.Remove(a);
+        if (dto is null) return;
+        p.Addresses.Add(new PractitionerAddress
+        {
+            Id = Guid.CreateVersion7(),
+            PractitionerId = p.Id,
+            Use = AddressUse.Work,
+            Type = AddressType.Both,
+            Line1 = JuntaLinha1(dto.Logradouro, dto.Numero),
+            Line2 = NormalizaOpcional(dto.Complemento),
+            District = NormalizaOpcional(dto.Bairro),
+            State = string.IsNullOrWhiteSpace(dto.Uf) ? null : dto.Uf.Trim().ToUpperInvariant(),
+            PostalCode = NormalizarDigitos(dto.Cep),
+            Country = "BRA",
+            Text = NormalizaOpcional(dto.Cidade),
+        });
+    }
+
+    private static string? JuntaLinha1(string? logradouro, string? numero)
+    {
+        var l = (logradouro ?? string.Empty).Trim();
+        var n = (numero ?? string.Empty).Trim();
+        if (l.Length == 0 && n.Length == 0) return null;
+        return n.Length == 0 ? l : $"{l}, {n}";
+    }
+
+    private static string NormalizarDigitos(string? valor) =>
+        string.IsNullOrEmpty(valor) ? string.Empty : new([.. valor.Where(char.IsDigit)]);
 
     private static string? NormalizaOpcional(string? valor) =>
         string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();

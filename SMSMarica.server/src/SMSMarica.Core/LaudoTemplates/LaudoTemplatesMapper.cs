@@ -13,10 +13,10 @@ internal static class LaudoTemplatesMapper
         t.ConteudoJson,
         t.ConteudoHtml,
         t.CriadoPorUsuarioId,
-        t.CriadoPorUsuario?.NomeCompleto,
+        t.CriadoPorUsuario?.NomeExibicao,
         t.CriadoEm,
         t.AtualizadoPorUsuarioId,
-        t.AtualizadoPorUsuario?.NomeCompleto,
+        t.AtualizadoPorUsuario?.NomeExibicao,
         t.AtualizadoEm,
         t.Ativo);
 

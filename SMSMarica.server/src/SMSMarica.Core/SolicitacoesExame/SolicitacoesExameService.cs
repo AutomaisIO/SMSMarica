@@ -97,9 +97,14 @@ public sealed class SolicitacoesExameService(
 
         if (request.SolicitanteUsuarioId.HasValue)
         {
-            var existeMedico = await _db.Medicos.AsNoTracking()
-                .AnyAsync(m => m.UsuarioId == request.SolicitanteUsuarioId && m.ExcluidoEm == null, cancellationToken);
-            if (!existeMedico)
+            // Após Fatia 3 do refator FHIR: papel "Médico" é Usuario.PractitionerId
+            // != null + Practitioner.DeletedAt IS NULL.
+            var ehMedico = await _db.Usuarios.AsNoTracking()
+                .AnyAsync(u => u.Id == request.SolicitanteUsuarioId
+                            && u.ExcluidoEm == null
+                            && u.PractitionerId != null
+                            && u.Practitioner!.DeletedAt == null, cancellationToken);
+            if (!ehMedico)
             {
                 throw new ValidacaoException(
                     "solicitacaoExame.solicitante_invalido",

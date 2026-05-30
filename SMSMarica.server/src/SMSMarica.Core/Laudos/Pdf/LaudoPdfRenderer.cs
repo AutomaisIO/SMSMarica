@@ -232,10 +232,15 @@ public sealed class LaudoPdfRenderer(ILaudosService laudos, IOptions<LaudosPdfOp
 
     private IReadOnlyList<string> MontarBlocoAssinatura(Laudo l)
     {
-        var nome = l.MedicoNomeSnapshot ?? l.Medico?.Usuario?.NomeCompleto ?? string.Empty;
-        var crm = l.MedicoCrmSnapshot ?? l.Medico?.Crm ?? string.Empty;
-        var uf = l.MedicoUfCrmSnapshot ?? l.Medico?.UfCrm ?? string.Empty;
-        var rqe = l.MedicoRqeSnapshot ?? l.Medico?.Rqe;
+        var crmQual = l.Practitioner?.Qualifications.FirstOrDefault(q => q.CouncilCode == "CRM");
+        var nome = l.PractitionerNomeSnapshot
+                ?? l.Practitioner?.Names.FirstOrDefault(n => n.Use == NameUse.Official)?.Text
+                ?? l.Practitioner?.Names.FirstOrDefault()?.Text
+                ?? string.Empty;
+        var crm = l.PractitionerCrmSnapshot ?? crmQual?.CouncilNumber ?? string.Empty;
+        var uf = l.PractitionerUfCrmSnapshot ?? crmQual?.CouncilState ?? string.Empty;
+        var rqe = l.PractitionerRqeSnapshot
+               ?? l.Practitioner?.Identifiers.FirstOrDefault(i => i.System == "urn:br:rqe")?.Value;
 
         var linhas = new List<string>(2)
         {

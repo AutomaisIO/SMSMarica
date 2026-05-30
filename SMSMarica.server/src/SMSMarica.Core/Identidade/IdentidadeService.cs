@@ -1,7 +1,6 @@
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using SMSMarica.Core.Common.Dtos;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade.Dtos;
 using SMSMarica.Data;
@@ -27,8 +26,7 @@ public sealed class IdentidadeService(
     public async Task<LoginRespostaDto> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
         var email = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
-        var usuario = await _db.Usuarios
-            .Include(u => u.UsuariosPerfis)
+        var usuario = await CarregarComPapel()
             .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
 
         if (usuario is null || !usuario.Ativo || usuario.SenhaHash == SenhaHashPlaceholder)
@@ -92,25 +90,24 @@ public sealed class IdentidadeService(
 
     public async Task<IReadOnlyList<UsuarioListItemDto>> ListarAsync(CancellationToken cancellationToken = default)
     {
-        // ADR-0006: lista só usuários sem papel (médicos/motoristas têm tela própria)
-        // e não excluídos. Ativo=false continua aparecendo — é estado temporário, não exclusão.
-        // (Paciente saiu da equação na Fatia 1 do refator FHIR — login do cidadão
-        // será religado em Fatia 2 via Usuario.PatientId.)
+        // ADR-0006 + refator FHIR (Fatias 2–4): lista só Usuario sem papel
+        // (admin/operador). Médicos/motoristas/pacientes têm tela própria e
+        // o login deles é resolvido pelas FKs.
         var usuarios = await _db.Usuarios.AsNoTracking()
             .Where(u => u.ExcluidoEm == null
-                        && u.Medico == null
-                        && u.Motorista == null)
-            .OrderBy(u => u.NomeCompleto)
+                        && u.PatientId == null
+                        && u.PractitionerId == null
+                        && u.MotoristaId == null)
+            .OrderBy(u => u.NomeExibicao)
             .ToListAsync(cancellationToken);
         return [.. usuarios.Select(IdentidadeMapper.ParaListItem)];
     }
 
     public async Task<UsuarioDto> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var u = await _db.Usuarios.AsNoTracking()
+        var u = await CarregarComPapel()
+            .AsNoTracking()
             .Include(x => x.UsuariosPerfis)
-            .Include(x => x.Medico)
-            .Include(x => x.Motorista)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Usuario), id);
         return IdentidadeMapper.ParaDto(u);
@@ -120,12 +117,20 @@ public sealed class IdentidadeService(
     {
         var cpfNormalizado = NormalizarDigitos(cpf ?? string.Empty);
         if (cpfNormalizado.Length != 11) return null;
-        var u = await _db.Usuarios.AsNoTracking()
-            .Include(x => x.UsuariosPerfis)
-            .Include(x => x.Medico)
-            .Include(x => x.Motorista)
-            .FirstOrDefaultAsync(x => x.Cpf == cpfNormalizado, cancellationToken);
-        return u is null ? null : IdentidadeMapper.ParaDto(u);
+
+        // CPF agora vive nos identifiers FHIR (Patient/Practitioner) ou inline em Motorista.
+        // Tenta cada origem e devolve o Usuario vinculado.
+        var usuario = await CarregarComPapel()
+            .AsNoTracking()
+            .Include(u => u.UsuariosPerfis)
+            .FirstOrDefaultAsync(u =>
+                (u.Patient != null && u.Patient.Identifiers.Any(i =>
+                    i.Type == Data.Entities.Fhir.Enums.IdentifierTypeCode.Cpf && i.Value == cpfNormalizado))
+                || (u.Practitioner != null && u.Practitioner.Identifiers.Any(i =>
+                    i.Type == Data.Entities.Fhir.Enums.IdentifierTypeCode.Cpf && i.Value == cpfNormalizado))
+                || (u.Motorista != null && u.Motorista.Cpf == cpfNormalizado), cancellationToken);
+
+        return usuario is null ? null : IdentidadeMapper.ParaDto(usuario);
     }
 
     public async Task<Guid> CadastrarAsync(CadastrarUsuarioRequest request, CancellationToken cancellationToken = default)
@@ -137,23 +142,11 @@ public sealed class IdentidadeService(
             throw new ConflitoException("usuario.email_duplicado", "Já existe usuário com este email.");
         }
 
-        var cpfNormalizado = string.IsNullOrWhiteSpace(request.Cpf) ? null : NormalizarDigitos(request.Cpf);
-        if (cpfNormalizado is not null
-            && await _db.Usuarios.AsNoTracking().AnyAsync(u => u.Cpf == cpfNormalizado, cancellationToken))
-        {
-            throw new ConflitoException("usuario.cpf_duplicado", "Já existe usuário com este CPF.");
-        }
-
         var u = new Usuario
         {
             Id = Guid.CreateVersion7(),
-            NomeCompleto = request.NomeCompleto.Trim(),
+            NomeExibicao = request.NomeCompleto.Trim(),
             Email = email,
-            Cpf = cpfNormalizado,
-            DataNascimento = request.DataNascimento,
-            Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim(),
-            Endereco = request.Endereco?.ParaEntidade(),
-            FotoBase64 = string.IsNullOrWhiteSpace(request.FotoBase64) ? null : request.FotoBase64,
             SenhaHash = SenhaHashPlaceholder,
             Ativo = true,
             CriadoEm = DateTime.UtcNow,
@@ -184,9 +177,14 @@ public sealed class IdentidadeService(
         var u = await _db.Usuarios.FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Usuario), id);
 
-        u.Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim();
-        u.Endereco = request.Endereco?.ParaEntidade();
-        u.FotoBase64 = string.IsNullOrWhiteSpace(request.FotoBase64) ? null : request.FotoBase64;
+        // Para usuário sem papel atualiza nome de exibição direto. Para usuário
+        // com papel, NomeExibicao continua um snapshot — o nome canônico vem
+        // do papel (Patient/Practitioner/Motorista), atualizado pela tela própria.
+        if (u.PatientId == null && u.PractitionerId == null && u.MotoristaId == null)
+        {
+            u.NomeExibicao = request.NomeCompleto.Trim();
+        }
+
         u.AtualizadoEm = DateTime.UtcNow;
         u.AtualizadoPor = _atual.UsuarioId;
 
@@ -198,9 +196,11 @@ public sealed class IdentidadeService(
         var u = await _db.Usuarios.FirstOrDefaultAsync(x => x.Id == usuarioId, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Usuario), usuarioId);
 
-        u.Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim();
-        u.Endereco = request.Endereco?.ParaEntidade();
-        u.FotoBase64 = string.IsNullOrWhiteSpace(request.FotoBase64) ? null : request.FotoBase64;
+        if (u.PatientId == null && u.PractitionerId == null && u.MotoristaId == null)
+        {
+            u.NomeExibicao = request.NomeCompleto.Trim();
+        }
+
         u.AtualizadoEm = DateTime.UtcNow;
         u.AtualizadoPor = usuarioId;
 
@@ -209,10 +209,7 @@ public sealed class IdentidadeService(
 
     public async Task DesativarAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var u = await _db.Usuarios
-            .Include(x => x.Medico)
-            .Include(x => x.Motorista)
-            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+        var u = await _db.Usuarios.FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Usuario), id);
 
         if (u.ExcluidoEm is not null)
@@ -221,16 +218,15 @@ public sealed class IdentidadeService(
         }
 
         // Bloquear quando tem papel — exclusão deve ser feita pela tela do papel,
-        // que cascateia para o Usuario. Tela 'Usuários' só lista quem não tem papel
-        // (ver ListarAsync), mas defendemos via API contra chamadas diretas.
-        var papel = u.Medico is not null ? "Medico"
-                  : u.Motorista is not null ? "Motorista"
-                  : null;
-        if (papel is not null)
+        // que cascateia para o Usuario.
+        if (u.PatientId is not null || u.PractitionerId is not null || u.MotoristaId is not null)
         {
+            var papel = u.PractitionerId is not null ? "Médico"
+                      : u.MotoristaId is not null ? "Motorista"
+                      : "Paciente";
             throw new ConflitoException(
                 "usuario.tem_papel",
-                $"Usuário tem papel '{papel}'. Exclua pela tela de {papel}s.");
+                $"Usuário tem papel '{papel}'. Exclua pela tela do papel.");
         }
 
         u.ExcluidoEm = DateTime.UtcNow;
@@ -272,7 +268,6 @@ public sealed class IdentidadeService(
         var existe = await _db.Usuarios.AsNoTracking().AnyAsync(u => u.Id == usuarioId, cancellationToken);
         if (!existe) throw new NaoEncontradoException(nameof(Usuario), usuarioId);
 
-        // Estratégia simples: substitui todos os overrides do usuário.
         var existentes = await _db.PermissoesUsuario
             .Where(p => p.UsuarioId == usuarioId)
             .ToListAsync(cancellationToken);
@@ -313,7 +308,7 @@ public sealed class IdentidadeService(
 
         var senha = GerarSenhaAleatoria(12);
         u.SenhaHash = _hasher.HashPassword(u, senha);
-        u.DeveTrocarSenha = true; // sempre força troca quando admin gerou.
+        u.DeveTrocarSenha = true;
         await _db.SaveChangesAsync(cancellationToken);
         return new SenhaGeradaDto(senha, true);
     }
@@ -360,7 +355,6 @@ public sealed class IdentidadeService(
         {
             chars[i] = todos[RandomNumberGenerator.GetInt32(todos.Length)];
         }
-        // Fisher-Yates para não denunciar as posições fixas.
         for (var i = comprimento - 1; i > 0; i--)
         {
             var j = RandomNumberGenerator.GetInt32(i + 1);
@@ -383,6 +377,15 @@ public sealed class IdentidadeService(
                 $"Perfis não encontrados: {string.Join(", ", faltando)}");
         }
     }
+
+    private IQueryable<Usuario> CarregarComPapel() => _db.Usuarios
+        .Include(u => u.UsuariosPerfis)
+        .Include(u => u.Patient).ThenInclude(p => p!.Names)
+        .Include(u => u.Patient).ThenInclude(p => p!.Identifiers)
+        .Include(u => u.Patient).ThenInclude(p => p!.Photos)
+        .Include(u => u.Practitioner).ThenInclude(p => p!.Names)
+        .Include(u => u.Practitioner).ThenInclude(p => p!.Identifiers)
+        .Include(u => u.Motorista);
 
     private static string NormalizarDigitos(string valor) =>
         new([.. valor.Where(char.IsDigit)]);
