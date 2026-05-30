@@ -21,7 +21,7 @@ Always read the canonical documentation in [`docs/`](./docs/) before making arch
 | [`docs/conventions.md`](./docs/conventions.md) | Git, commits, estilo por stack |
 | [`docs/roadmap.md`](./docs/roadmap.md) | Marcos M1..M7 e dependências |
 | [`docs/pacs.md`](./docs/pacs.md) | Servidor de imagens (dcm4chee-arc), DICOMweb, integração com `features/pacs` |
-| [`docs/adr/`](./docs/adr/) | Decisões arquiteturais registradas (0001 schema, 0003 Android-only, 0004 três projetos, 0005 usuário unificado com papéis) |
+| [`docs/adr/`](./docs/adr/) | Decisões arquiteturais registradas (0001 schema, 0003 Android-only, 0004 três projetos, 0005 usuário unificado, 0006 papel derivado, **0007 schema FHIR separado**) |
 
 Plano de implementação: `C:\Users\berna\.claude\plans\deep-gathering-kahn.md`.
 
@@ -29,7 +29,7 @@ Plano de implementação: `C:\Users\berna\.claude\plans\deep-gathering-kahn.md`.
 
 As regras abaixo não podem ser violadas sem novo ADR.
 
-1. **Schema `smsmarica`** — [ADR-0001](./docs/adr/0001-schema-isolation.md). Todo o modelo EF no schema `smsmarica` do `defaultdb` compartilhado. Zero referências cross-schema. Aplicar via `HasDefaultSchema("smsmarica")` em `SmsMaricaDbContext`.
+1. **Dois schemas: `smsmarica` (negócio, pt-BR) + `fhir` (canônico FHIR R4, en)** — [ADR-0001](./docs/adr/0001-schema-isolation.md) + [ADR-0007](./docs/adr/0007-schema-fhir-separado.md). Identidade do cidadão/profissional (Patient, Practitioner, identifiers, names, addresses, telecoms, contacts, photos, qualifications, consents, lookups) vive em `fhir.*` em inglês. Regras de negócio (Usuario/RBAC, Motorista, Tratamento, RotaDiaria, Laudo, SolicitacaoExame, etc.) vivem em `smsmarica.*` em pt-BR. `HasDefaultSchema("smsmarica")` continua + cada configuration FHIR chama `.ToTable(..., schema: "fhir")`. **FKs cross-schema só na direção `smsmarica → fhir`** (proibida a inversa). Um único `SmsMaricaDbContext`.
 
 2. **Arquitetura 3-projetos** — [ADR-0004](./docs/adr/0004-arquitetura-tres-projetos.md). Backend é `SMSMarica.Data` + `SMSMarica.Core` + `SMSMarica.Api`. Não criar projetos novos para "modular" subdomínios — usar pastas dentro de cada projeto. Quem quiser modular monolith de novo precisa de novo ADR. (ADR-0002 está **superseded**.)
 
@@ -47,9 +47,9 @@ As regras abaixo não podem ser violadas sem novo ADR.
 
 7. **OpenAPI sempre exposto** — `MapOpenApi()` + `MapScalarApiReference("/docs")` ficam **fora** de `if (env.IsDevelopment())`. Decisão de produto: spec acessível em dev e prod.
 
-8. **Usuário unificado com papéis 1:1** — [ADR-0005](./docs/adr/0005-usuario-unificado-com-papeis.md) + [ADR-0006](./docs/adr/0006-papel-derivado-e-auditoria-explicita.md). Toda pessoa autenticável é uma linha em `usuario` (núcleo de identidade + dados pessoais base). Profissões (Médico, Motorista, Enfermeiro, Recepcionista, Paciente) são tabelas próprias com FK `usuario_id` UNIQUE, carregando **apenas** campos específicos do papel. Um usuário tem **no máximo 1 papel**, determinado pela existência da linha 1:1 (sem coluna discriminadora — ADR-0006 removeu `tipo_papel`). **`Papel` ≠ `Perfil`**: Papel é profissão impositiva (1:1); Perfil é bag de permissões RBAC (N:N). Ver [`docs/domain.md §5`](./docs/domain.md).
+8. **Usuario stripped + papel por FK nullable** — [ADR-0007](./docs/adr/0007-schema-fhir-separado.md) (supersede parcial de [ADR-0005](./docs/adr/0005-usuario-unificado-com-papeis.md) + [ADR-0006](./docs/adr/0006-papel-derivado-e-auditoria-explicita.md)). `usuario` carrega apenas Email/SenhaHash/RBAC/Ativo/DeveTrocarSenha/NomeExibicao (denormalizado). Identidade clínica vive em `fhir.patient` (cidadão) ou `fhir.practitioner` (médico/enfermeiro) ou inline em `smsmarica.motorista` (não é entidade clínica FHIR). Papel determinado pela FK nullable setada: `Usuario.PatientId?` / `PractitionerId?` / `MotoristaId?`. CHECK constraint `ck_usuario_papel_unico` garante no máximo 1 setada. Unique indexes filtrados em cada FK. **`Papel` ≠ `Perfil`**: Papel é entidade impositiva (1:1); Perfil é bag de permissões RBAC (N:N).
 
-9. **Auditoria e exclusão lógica em pessoas** — [ADR-0006](./docs/adr/0006-papel-derivado-e-auditoria-explicita.md). `usuario`/`medico`/`motorista`/`paciente` carregam `criado_em`/`criado_por`/`atualizado_em`/`atualizado_por`/`excluido_em`/`excluido_por`. `usuario.ativo` = acesso liberado/bloqueado (temporário). `excluido_em IS NOT NULL` = excluído permanentemente. Tabelas de papel **não têm** `ativo` — só `Usuario` tem. Listagens sempre filtram `WHERE excluido_em IS NULL`. Services obtêm "quem fez" via `IUsuarioAtualAccessor`.
+9. **Auditoria e exclusão lógica** — [ADR-0006](./docs/adr/0006-papel-derivado-e-auditoria-explicita.md) + [ADR-0007](./docs/adr/0007-schema-fhir-separado.md). `usuario`/`motorista` (smsmarica): `criado_em`/`criado_por`/`atualizado_em`/`atualizado_por`/`excluido_em`/`excluido_por`. `fhir.patient`/`fhir.practitioner` usam o equivalente em inglês: `created_at`/`created_by`/`updated_at`/`updated_by`/`deleted_at`/`deleted_by`. `usuario.ativo` = acesso (temporário); `excluido_em`/`deleted_at IS NOT NULL` = excluído permanente. Listagens filtram pelo respectivo soft-delete. Services obtêm "quem fez" via `IUsuarioAtualAccessor`.
 
 ## Stack
 
