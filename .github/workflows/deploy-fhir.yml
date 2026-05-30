@@ -154,12 +154,13 @@ jobs:
               $SUDO systemctl enable "$SERVICE"
             fi
 
-            # --- 7. Parar serviço (se ativo) + matar órfãos e liberar a porta 5081 ---
+            # --- 7. Parar serviço (se ativo) + liberar a porta 5081 ---
             if $SUDO systemctl is-active --quiet "$SERVICE"; then
               $SUDO systemctl stop "$SERVICE"
             fi
-            # Garante que nenhuma instância antiga continue segurando a porta.
-            $SUDO pkill -f 'Automais.Fhir.Api.dll' 2>/dev/null || true
+            # NÃO usar pkill -f com o nome da DLL: o padrão casaria com o próprio
+            # shell deste script (que contém a string) e mataria a sessão SSH.
+            # fuser é por porta (seguro) e systemctl stop já mata o cgroup do unit.
             if command -v fuser >/dev/null 2>&1; then
               $SUDO fuser -k 5081/tcp 2>/dev/null || true
             fi
