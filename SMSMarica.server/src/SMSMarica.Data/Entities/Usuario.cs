@@ -44,7 +44,9 @@ public class Usuario
     public ICollection<PermissaoUsuario> PermissoesOverride { get; set; } = [];
 
     // Papéis (1:1 opcional). Presença determina o papel — não há discriminador.
+    // Paciente foi removido em Fatia 1 do refator FHIR: identidade do cidadão
+    // vive em fhir.Patient. Em Fatia 2, Usuario ganha PatientId? FK para
+    // vincular login a um Patient.
     public Medico? Medico { get; set; }
     public Motorista? Motorista { get; set; }
-    public Paciente? Paciente { get; set; }
 }

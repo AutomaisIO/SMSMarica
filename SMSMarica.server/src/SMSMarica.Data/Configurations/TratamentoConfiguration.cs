@@ -12,7 +12,7 @@ internal sealed class TratamentoConfiguration : IEntityTypeConfiguration<Tratame
         builder.HasKey(t => t.Id);
 
         builder.Property(t => t.Id).HasColumnName("id");
-        builder.Property(t => t.PacienteId).HasColumnName("paciente_id").IsRequired();
+        builder.Property(t => t.PatientId).HasColumnName("patient_id").IsRequired();
         builder.Property(t => t.UnidadeId).HasColumnName("unidade_id").IsRequired();
         builder.Property(t => t.TipoTratamentoId).HasColumnName("tipo_tratamento_id");
         builder.Property(t => t.Descricao).HasColumnName("descricao").HasMaxLength(500).IsRequired();
@@ -23,9 +23,10 @@ internal sealed class TratamentoConfiguration : IEntityTypeConfiguration<Tratame
         builder.Property(t => t.CriadoEm).HasColumnName("criado_em").IsRequired();
         builder.Property(t => t.EncerradoEm).HasColumnName("encerrado_em");
 
-        builder.HasOne(t => t.Paciente)
+        // Cross-schema FK: smsmarica.tratamento.patient_id → fhir.patient.id
+        builder.HasOne(t => t.Patient)
             .WithMany()
-            .HasForeignKey(t => t.PacienteId)
+            .HasForeignKey(t => t.PatientId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(t => t.Unidade)
@@ -48,7 +49,7 @@ internal sealed class TratamentoConfiguration : IEntityTypeConfiguration<Tratame
             .HasForeignKey(s => s.TratamentoId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasIndex(t => t.PacienteId);
+        builder.HasIndex(t => t.PatientId);
         builder.HasIndex(t => t.Ativo);
     }
 }

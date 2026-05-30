@@ -9,6 +9,7 @@ using SMSMarica.Core.Worklist;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
+using SMSMarica.Data.Entities.Fhir;
 
 namespace SMSMarica.Core.SolicitacoesExame;
 
@@ -33,12 +34,13 @@ public sealed class SolicitacoesExameService(
         CancellationToken cancellationToken = default)
     {
         IQueryable<SolicitacaoExame> query = _db.SolicitacoesExame.AsNoTracking()
-            .Include(s => s.Paciente).ThenInclude(p => p!.Usuario)
+            .Include(s => s.Patient).ThenInclude(p => p!.Names)
+            .Include(s => s.Patient).ThenInclude(p => p!.Identifiers)
             .Include(s => s.TipoExame)
             .Where(s => s.ExcluidoEm == null);
 
         if (filtro.Status.HasValue) query = query.Where(s => s.Status == filtro.Status);
-        if (filtro.PacienteId.HasValue) query = query.Where(s => s.PacienteId == filtro.PacienteId);
+        if (filtro.PacienteId.HasValue) query = query.Where(s => s.PatientId == filtro.PacienteId);
         if (filtro.UnidadeId.HasValue) query = query.Where(s => s.UnidadeId == filtro.UnidadeId);
         if (filtro.TipoExameId.HasValue) query = query.Where(s => s.TipoExameId == filtro.TipoExameId);
         if (!string.IsNullOrWhiteSpace(filtro.AccessionNumber))
@@ -115,7 +117,7 @@ public sealed class SolicitacoesExameService(
             AccessionNumber = accession,
             StudyInstanceUID = studyUid,
 
-            PacienteId = request.PacienteId,
+            PatientId = request.PacienteId,
             TipoExameId = request.TipoExameId,
             UnidadeId = request.UnidadeId,
 
@@ -158,7 +160,7 @@ public sealed class SolicitacoesExameService(
                 "Solicitação só pode ser editada enquanto está no status 'Solicitada'.");
         }
 
-        await ValidarReferenciasAsync(s.PacienteId, request.TipoExameId, request.UnidadeId, cancellationToken);
+        await ValidarReferenciasAsync(s.PatientId, request.TipoExameId, request.UnidadeId, cancellationToken);
 
         s.TipoExameId = request.TipoExameId;
         s.UnidadeId = request.UnidadeId;
@@ -292,7 +294,8 @@ public sealed class SolicitacoesExameService(
     public async Task ProcessarTentativaEnvioAsync(Guid solicitacaoId, CancellationToken cancellationToken = default)
     {
         var s = await _db.SolicitacoesExame
-            .Include(x => x.Paciente).ThenInclude(p => p!.Usuario)
+            .Include(x => x.Patient).ThenInclude(p => p!.Names)
+            .Include(x => x.Patient).ThenInclude(p => p!.Identifiers)
             .Include(x => x.TipoExame).ThenInclude(t => t!.ProcedimentoSigtap)
             .FirstOrDefaultAsync(x => x.Id == solicitacaoId && x.ExcluidoEm == null, cancellationToken);
 
@@ -412,18 +415,19 @@ public sealed class SolicitacoesExameService(
         CancellationToken cancellationToken)
     {
         return await _db.SolicitacoesExame.AsNoTracking()
-            .Include(s => s.Paciente).ThenInclude(p => p!.Usuario)
+            .Include(s => s.Patient).ThenInclude(p => p!.Names)
+            .Include(s => s.Patient).ThenInclude(p => p!.Identifiers)
             .Include(s => s.TipoExame)
             .Include(s => s.Unidade)
             .Where(s => s.ExcluidoEm == null)
             .FirstOrDefaultAsync(filtro, cancellationToken);
     }
 
-    private async Task ValidarReferenciasAsync(Guid pacienteId, Guid tipoExameId, Guid unidadeId, CancellationToken ct)
+    private async Task ValidarReferenciasAsync(Guid patientId, Guid tipoExameId, Guid unidadeId, CancellationToken ct)
     {
-        if (!await _db.Pacientes.AsNoTracking().AnyAsync(p => p.Id == pacienteId && p.ExcluidoEm == null, ct))
+        if (!await _db.Patients.AsNoTracking().AnyAsync(p => p.Id == patientId && p.DeletedAt == null, ct))
         {
-            throw new NaoEncontradoException(nameof(Paciente), pacienteId);
+            throw new NaoEncontradoException(nameof(Patient), patientId);
         }
 
         if (!await _db.TiposExame.AsNoTracking().AnyAsync(t => t.Id == tipoExameId && t.ExcluidoEm == null && t.Ativo, ct))

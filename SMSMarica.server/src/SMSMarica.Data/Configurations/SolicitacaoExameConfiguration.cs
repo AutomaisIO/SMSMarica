@@ -17,7 +17,7 @@ internal sealed class SolicitacaoExameConfiguration : IEntityTypeConfiguration<S
         builder.Property(s => s.StudyInstanceUID).HasColumnName("study_instance_uid").HasMaxLength(128).IsRequired();
         builder.Property(s => s.WorklistItemUid).HasColumnName("worklist_item_uid").HasMaxLength(128);
 
-        builder.Property(s => s.PacienteId).HasColumnName("paciente_id").IsRequired();
+        builder.Property(s => s.PatientId).HasColumnName("patient_id").IsRequired();
         builder.Property(s => s.TipoExameId).HasColumnName("tipo_exame_id").IsRequired();
         builder.Property(s => s.UnidadeId).HasColumnName("unidade_id").IsRequired();
 
@@ -59,9 +59,10 @@ internal sealed class SolicitacaoExameConfiguration : IEntityTypeConfiguration<S
             .ValueGeneratedOnAddOrUpdate()
             .IsConcurrencyToken();
 
-        builder.HasOne(s => s.Paciente)
+        // Cross-schema FK: smsmarica.solicitacao_exame.patient_id → fhir.patient.id
+        builder.HasOne(s => s.Patient)
             .WithMany()
-            .HasForeignKey(s => s.PacienteId)
+            .HasForeignKey(s => s.PatientId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(s => s.TipoExame)
@@ -81,7 +82,7 @@ internal sealed class SolicitacaoExameConfiguration : IEntityTypeConfiguration<S
 
         builder.HasIndex(s => s.AccessionNumber).IsUnique();
         builder.HasIndex(s => s.StudyInstanceUID).IsUnique();
-        builder.HasIndex(s => s.PacienteId);
+        builder.HasIndex(s => s.PatientId);
         builder.HasIndex(s => s.Status);
         builder.HasIndex(s => new { s.Status, s.DataAgendada }); // usado pelo SincronizadorExamesService
 

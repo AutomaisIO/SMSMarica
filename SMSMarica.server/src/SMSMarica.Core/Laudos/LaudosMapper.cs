@@ -1,5 +1,7 @@
 using SMSMarica.Core.Laudos.Dtos;
 using SMSMarica.Data.Entities;
+using SMSMarica.Data.Entities.Fhir;
+using SMSMarica.Data.Entities.Fhir.Enums;
 
 namespace SMSMarica.Core.Laudos;
 
@@ -10,9 +12,9 @@ internal static class LaudosMapper
         l.StudyInstanceUID,
         l.Versao,
         l.LaudoAnteriorId,
-        l.PacienteId,
-        l.Paciente?.Usuario?.NomeCompleto,
-        l.Paciente?.Usuario?.Cpf,
+        l.PatientId,
+        NomePaciente(l.Patient),
+        CpfPaciente(l.Patient),
         l.MedicoId,
         l.MedicoNomeSnapshot ?? l.Medico?.Usuario?.NomeCompleto ?? string.Empty,
         l.MedicoCrmSnapshot ?? l.Medico?.Crm ?? string.Empty,
@@ -32,8 +34,8 @@ internal static class LaudosMapper
         l.Id,
         l.StudyInstanceUID,
         l.Versao,
-        l.PacienteId,
-        l.Paciente?.Usuario?.NomeCompleto,
+        l.PatientId,
+        NomePaciente(l.Patient),
         l.MedicoId,
         l.MedicoNomeSnapshot ?? l.Medico?.Usuario?.NomeCompleto ?? string.Empty,
         l.Titulo,
@@ -49,4 +51,11 @@ internal static class LaudosMapper
         l.MedicoNomeSnapshot ?? l.Medico?.Usuario?.NomeCompleto ?? string.Empty,
         l.CriadoEm,
         l.FinalizadoEm);
+
+    private static string? NomePaciente(Patient? p) =>
+        p?.Names.FirstOrDefault(n => n.Use == NameUse.Official)?.Text
+        ?? p?.Names.FirstOrDefault()?.Text;
+
+    private static string? CpfPaciente(Patient? p) =>
+        p?.Identifiers.FirstOrDefault(i => i.Type == IdentifierTypeCode.Cpf)?.Value;
 }

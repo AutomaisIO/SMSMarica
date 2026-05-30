@@ -4,6 +4,7 @@ using SMSMarica.Core.Translado.Dtos;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
+using SMSMarica.Data.Entities.Fhir.Enums;
 
 namespace SMSMarica.Core.Translado;
 
@@ -175,8 +176,7 @@ public sealed class TransladoService(SmsMaricaDbContext db) : ITransladoService
         var query =
             from s in _db.Sessoes.AsNoTracking()
             join t in _db.Tratamentos.AsNoTracking() on s.TratamentoId equals t.Id
-            join p in _db.Pacientes.AsNoTracking() on t.PacienteId equals p.Id
-            join up in _db.Usuarios.AsNoTracking() on p.UsuarioId equals up.Id
+            join p in _db.Patients.AsNoTracking() on t.PatientId equals p.Id
             join u in _db.Unidades.AsNoTracking() on t.UnidadeId equals u.Id
             where t.Ativo
                 && (s.Status == StatusSessao.Pendente || s.Status == StatusSessao.Confirmada)
@@ -184,13 +184,17 @@ public sealed class TransladoService(SmsMaricaDbContext db) : ITransladoService
                 && !_db.Alocacoes.AsNoTracking()
                     .Any(a => a.SessaoId == s.Id
                         && _db.Rotas.Any(r => r.Id == a.RotaDiariaId && r.Status != StatusRota.Cancelada))
-            orderby s.DataPrevista, s.HoraPrevistaBusca, up.NomeCompleto
+            let nomeOficial = p.Names
+                .Where(n => n.Use == NameUse.Official)
+                .Select(n => n.Text)
+                .FirstOrDefault()
+            orderby s.DataPrevista, s.HoraPrevistaBusca, nomeOficial
             select new
             {
                 s.Id,
                 s.TratamentoId,
                 PacienteId = p.Id,
-                PacienteNome = up.NomeCompleto,
+                PacienteNome = nomeOficial ?? p.Names.Select(n => n.Text).FirstOrDefault() ?? string.Empty,
                 UnidadeId = u.Id,
                 UnidadeNome = u.Nome,
                 s.DataPrevista,
@@ -342,17 +346,20 @@ public sealed class TransladoService(SmsMaricaDbContext db) : ITransladoService
             join fileira in _db.Fileiras.AsNoTracking() on assento.FileiraId equals fileira.Id
             join s in _db.Sessoes.AsNoTracking() on a.SessaoId equals s.Id
             join t in _db.Tratamentos.AsNoTracking() on s.TratamentoId equals t.Id
-            join p in _db.Pacientes.AsNoTracking() on t.PacienteId equals p.Id
-            join up in _db.Usuarios.AsNoTracking() on p.UsuarioId equals up.Id
+            join p in _db.Patients.AsNoTracking() on t.PatientId equals p.Id
             join u in _db.Unidades.AsNoTracking() on t.UnidadeId equals u.Id
             where a.RotaDiariaId == rotaId
             orderby fileira.Ordem, assento.Numero
+            let nomeOficial = p.Names
+                .Where(n => n.Use == NameUse.Official)
+                .Select(n => n.Text)
+                .FirstOrDefault()
             select new AlocacaoDto(
                 a.Id,
                 s.Id,
                 t.Id,
                 p.Id,
-                up.NomeCompleto,
+                nomeOficial ?? p.Names.Select(n => n.Text).FirstOrDefault() ?? string.Empty,
                 u.Id,
                 u.Nome,
                 s.HoraPrevistaBusca,

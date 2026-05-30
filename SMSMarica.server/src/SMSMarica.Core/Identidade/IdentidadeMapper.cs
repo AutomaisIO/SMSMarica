@@ -22,7 +22,9 @@ internal static class IdentidadeMapper
     {
         if (u.Medico is not null) return "Medico";
         if (u.Motorista is not null) return "Motorista";
-        if (u.Paciente is not null) return "Paciente";
+        // Papel "Paciente" será reconstituído via Usuario.PatientId na Fatia 2
+        // do refator FHIR — por ora qualquer Usuario sem Medico/Motorista é
+        // apresentado como "sem papel".
         return null;
     }
 }

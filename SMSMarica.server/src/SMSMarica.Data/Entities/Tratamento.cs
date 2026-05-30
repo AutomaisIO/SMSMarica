@@ -1,9 +1,11 @@
+using SMSMarica.Data.Entities.Fhir;
+
 namespace SMSMarica.Data.Entities;
 
 public class Tratamento
 {
     public Guid Id { get; set; }
-    public Guid PacienteId { get; set; }
+    public Guid PatientId { get; set; }
     public Guid UnidadeId { get; set; }
     public Guid? TipoTratamentoId { get; set; }
 
@@ -18,7 +20,7 @@ public class Tratamento
     public DateTime CriadoEm { get; set; }
     public DateTime? EncerradoEm { get; set; }
 
-    public Paciente? Paciente { get; set; }
+    public Patient? Patient { get; set; }
     public Unidade? Unidade { get; set; }
     public TipoTratamento? TipoTratamento { get; set; }
     public Periodicidade? Periodicidade { get; set; }

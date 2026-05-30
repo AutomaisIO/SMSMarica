@@ -11,7 +11,6 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public const string SchemaFhir = "fhir";
 
     // ---- schema: smsmarica (regras de negócio) ----
-    public DbSet<Paciente> Pacientes => Set<Paciente>();
     public DbSet<Tratamento> Tratamentos => Set<Tratamento>();
     public DbSet<TipoTratamento> TiposTratamento => Set<TipoTratamento>();
     public DbSet<Periodicidade> Periodicidades => Set<Periodicidade>();

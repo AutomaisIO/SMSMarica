@@ -6,6 +6,7 @@ using QuestPDF.Infrastructure;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
+using SMSMarica.Data.Entities.Fhir.Enums;
 using DomElement = AngleSharp.Dom.IElement;
 using DomNode = AngleSharp.Dom.INode;
 using DomText = AngleSharp.Dom.IText;
@@ -211,16 +212,17 @@ public sealed class LaudoPdfRenderer(ILaudosService laudos, IOptions<LaudosPdfOp
     {
         var lista = new List<(string, string)>(6);
 
-        var nomePaciente = l.Paciente?.Usuario?.NomeCompleto;
+        var nomePaciente = l.Patient?.Names.FirstOrDefault(n => n.Use == NameUse.Official)?.Text
+                         ?? l.Patient?.Names.FirstOrDefault()?.Text;
         lista.Add(("Paciente", string.IsNullOrWhiteSpace(nomePaciente) ? "Não vinculado" : nomePaciente!));
 
-        var cpf = l.Paciente?.Usuario?.Cpf;
+        var cpf = l.Patient?.Identifiers.FirstOrDefault(i => i.Type == IdentifierTypeCode.Cpf)?.Value;
         if (!string.IsNullOrWhiteSpace(cpf)) lista.Add(("CPF", FormatarCpf(cpf!)));
 
-        var cns = l.Paciente?.Cns;
+        var cns = l.Patient?.Identifiers.FirstOrDefault(i => i.Type == IdentifierTypeCode.Cns)?.Value;
         if (!string.IsNullOrWhiteSpace(cns)) lista.Add(("CNS", cns!));
 
-        var dn = l.Paciente?.Usuario?.DataNascimento;
+        var dn = l.Patient?.BirthDate;
         if (dn.HasValue) lista.Add(("Data de nascimento", dn.Value.ToString("dd/MM/yyyy")));
 
         lista.Add(("Study Instance UID", l.StudyInstanceUID));

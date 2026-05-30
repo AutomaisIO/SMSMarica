@@ -91,7 +91,6 @@ public sealed class MotoristasService(SmsMaricaDbContext db, IUsuarioAtualAccess
         var usuario = await _db.Usuarios
             .Include(u => u.Medico)
             .Include(u => u.Motorista)
-            .Include(u => u.Paciente)
             .FirstOrDefaultAsync(u => u.Id == request.UsuarioId, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Usuario), request.UsuarioId);
 
@@ -197,7 +196,6 @@ public sealed class MotoristasService(SmsMaricaDbContext db, IUsuarioAtualAccess
     {
         if (u.Medico is not null) return "Medico";
         if (u.Motorista is not null) return "Motorista";
-        if (u.Paciente is not null) return "Paciente";
         return null;
     }
 

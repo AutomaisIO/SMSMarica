@@ -1,4 +1,5 @@
 using SMSMarica.Data.Entities.Enums;
+using SMSMarica.Data.Entities.Fhir;
 
 namespace SMSMarica.Data.Entities;
 
@@ -23,8 +24,8 @@ public class Laudo
     public Laudo? LaudoAnterior { get; set; }
 
     /// <summary>Paciente vinculado (nullable — mamógrafo pode mandar estudo sem paciente cadastrado).</summary>
-    public Guid? PacienteId { get; set; }
-    public Paciente? Paciente { get; set; }
+    public Guid? PatientId { get; set; }
+    public Patient? Patient { get; set; }
 
     /// <summary>Médico autor (papel Medico de Usuario). Obrigatório.</summary>
     public Guid MedicoId { get; set; }

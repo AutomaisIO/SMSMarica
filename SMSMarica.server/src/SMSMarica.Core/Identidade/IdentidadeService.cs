@@ -92,13 +92,14 @@ public sealed class IdentidadeService(
 
     public async Task<IReadOnlyList<UsuarioListItemDto>> ListarAsync(CancellationToken cancellationToken = default)
     {
-        // ADR-0006: lista só usuários sem papel (médicos/motoristas/pacientes têm tela própria)
+        // ADR-0006: lista só usuários sem papel (médicos/motoristas têm tela própria)
         // e não excluídos. Ativo=false continua aparecendo — é estado temporário, não exclusão.
+        // (Paciente saiu da equação na Fatia 1 do refator FHIR — login do cidadão
+        // será religado em Fatia 2 via Usuario.PatientId.)
         var usuarios = await _db.Usuarios.AsNoTracking()
             .Where(u => u.ExcluidoEm == null
                         && u.Medico == null
-                        && u.Motorista == null
-                        && u.Paciente == null)
+                        && u.Motorista == null)
             .OrderBy(u => u.NomeCompleto)
             .ToListAsync(cancellationToken);
         return [.. usuarios.Select(IdentidadeMapper.ParaListItem)];
@@ -110,7 +111,6 @@ public sealed class IdentidadeService(
             .Include(x => x.UsuariosPerfis)
             .Include(x => x.Medico)
             .Include(x => x.Motorista)
-            .Include(x => x.Paciente)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Usuario), id);
         return IdentidadeMapper.ParaDto(u);
@@ -124,7 +124,6 @@ public sealed class IdentidadeService(
             .Include(x => x.UsuariosPerfis)
             .Include(x => x.Medico)
             .Include(x => x.Motorista)
-            .Include(x => x.Paciente)
             .FirstOrDefaultAsync(x => x.Cpf == cpfNormalizado, cancellationToken);
         return u is null ? null : IdentidadeMapper.ParaDto(u);
     }
@@ -213,7 +212,6 @@ public sealed class IdentidadeService(
         var u = await _db.Usuarios
             .Include(x => x.Medico)
             .Include(x => x.Motorista)
-            .Include(x => x.Paciente)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Usuario), id);
 
@@ -227,7 +225,6 @@ public sealed class IdentidadeService(
         // (ver ListarAsync), mas defendemos via API contra chamadas diretas.
         var papel = u.Medico is not null ? "Medico"
                   : u.Motorista is not null ? "Motorista"
-                  : u.Paciente is not null ? "Paciente"
                   : null;
         if (papel is not null)
         {

@@ -1,6 +1,8 @@
 using SMSMarica.Core.SolicitacoesExame.Dtos;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
+using SMSMarica.Data.Entities.Fhir;
+using SMSMarica.Data.Entities.Fhir.Enums;
 
 namespace SMSMarica.Core.SolicitacoesExame;
 
@@ -11,10 +13,10 @@ internal static class SolicitacoesExameMapper
         s.AccessionNumber,
         s.StudyInstanceUID,
         s.WorklistItemUid,
-        s.PacienteId,
-        s.Paciente?.Usuario?.NomeCompleto ?? string.Empty,
-        s.Paciente?.Usuario?.Cpf,
-        s.Paciente?.Cns,
+        s.PatientId,
+        NomePaciente(s.Patient) ?? string.Empty,
+        CpfPaciente(s.Patient),
+        CnsPaciente(s.Patient),
         s.TipoExameId,
         s.TipoExame?.Nome ?? string.Empty,
         s.TipoExame?.ModalidadeDicom ?? ModalidadeDicom.OT,
@@ -44,8 +46,8 @@ internal static class SolicitacoesExameMapper
     public static SolicitacaoExameListItemDto ParaListItem(SolicitacaoExame s) => new(
         s.Id,
         s.AccessionNumber,
-        s.PacienteId,
-        s.Paciente?.Usuario?.NomeCompleto ?? string.Empty,
+        s.PatientId,
+        NomePaciente(s.Patient) ?? string.Empty,
         s.TipoExameId,
         s.TipoExame?.Nome ?? string.Empty,
         s.TipoExame?.ModalidadeDicom ?? ModalidadeDicom.OT,
@@ -54,4 +56,14 @@ internal static class SolicitacoesExameMapper
         s.Prioridade,
         s.DataAgendada,
         s.CriadoEm);
+
+    private static string? NomePaciente(Patient? p) =>
+        p?.Names.FirstOrDefault(n => n.Use == NameUse.Official)?.Text
+        ?? p?.Names.FirstOrDefault()?.Text;
+
+    private static string? CpfPaciente(Patient? p) =>
+        p?.Identifiers.FirstOrDefault(i => i.Type == IdentifierTypeCode.Cpf)?.Value;
+
+    private static string? CnsPaciente(Patient? p) =>
+        p?.Identifiers.FirstOrDefault(i => i.Type == IdentifierTypeCode.Cns)?.Value;
 }

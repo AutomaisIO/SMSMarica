@@ -16,7 +16,7 @@ public sealed class NotificadorExameLog(ILogger<NotificadorExameLog> logger) : I
     {
         _logger.LogInformation(
             "[NOTIF] Solicitação {Accession} AGENDADA — paciente {PacienteId} aguarda execução.",
-            s.AccessionNumber, s.PacienteId);
+            s.AccessionNumber, s.PatientId);
         return Task.CompletedTask;
     }
 
@@ -24,7 +24,7 @@ public sealed class NotificadorExameLog(ILogger<NotificadorExameLog> logger) : I
     {
         _logger.LogInformation(
             "[NOTIF] Solicitação {Accession} REALIZADA — paciente {PacienteId} pode retirar resultado.",
-            s.AccessionNumber, s.PacienteId);
+            s.AccessionNumber, s.PatientId);
         return Task.CompletedTask;
     }
 }

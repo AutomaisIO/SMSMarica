@@ -19,7 +19,7 @@ internal sealed class LaudoConfiguration : IEntityTypeConfiguration<Laudo>
         builder.Property(l => l.Versao).HasColumnName("versao").IsRequired();
         builder.Property(l => l.LaudoAnteriorId).HasColumnName("laudo_anterior_id");
 
-        builder.Property(l => l.PacienteId).HasColumnName("paciente_id");
+        builder.Property(l => l.PatientId).HasColumnName("patient_id");
         builder.Property(l => l.MedicoId).HasColumnName("medico_id").IsRequired();
         builder.Property(l => l.LaudoTemplateId).HasColumnName("laudo_template_id");
 
@@ -53,9 +53,10 @@ internal sealed class LaudoConfiguration : IEntityTypeConfiguration<Laudo>
             .HasForeignKey(l => l.LaudoAnteriorId)
             .OnDelete(DeleteBehavior.NoAction);
 
-        builder.HasOne(l => l.Paciente)
+        // Cross-schema FK: smsmarica.laudo.patient_id → fhir.patient.id (nullable)
+        builder.HasOne(l => l.Patient)
             .WithMany()
-            .HasForeignKey(l => l.PacienteId)
+            .HasForeignKey(l => l.PatientId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(l => l.Medico)
@@ -75,7 +76,7 @@ internal sealed class LaudoConfiguration : IEntityTypeConfiguration<Laudo>
 
         // Lookup batch para `GET /laudos?studyUIDs=...`.
         builder.HasIndex(l => l.StudyInstanceUID);
-        builder.HasIndex(l => l.PacienteId);
+        builder.HasIndex(l => l.PatientId);
         builder.HasIndex(l => l.MedicoId);
         builder.HasIndex(l => l.Status);
     }

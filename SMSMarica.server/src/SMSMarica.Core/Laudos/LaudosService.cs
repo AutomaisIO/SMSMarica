@@ -7,6 +7,7 @@ using SMSMarica.Core.SolicitacoesExame;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
+using SMSMarica.Data.Entities.Fhir;
 
 namespace SMSMarica.Core.Laudos;
 
@@ -26,7 +27,8 @@ public sealed class LaudosService(
         CancellationToken cancellationToken = default)
     {
         IQueryable<Laudo> query = _db.Laudos.AsNoTracking()
-            .Include(l => l.Paciente).ThenInclude(p => p!.Usuario)
+            .Include(l => l.Patient).ThenInclude(p => p!.Names)
+            .Include(l => l.Patient).ThenInclude(p => p!.Identifiers)
             .Include(l => l.Medico).ThenInclude(m => m!.Usuario)
             .Where(l => !l.Excluido);
 
@@ -37,7 +39,7 @@ public sealed class LaudosService(
         }
         if (filtro.PacienteId.HasValue)
         {
-            query = query.Where(l => l.PacienteId == filtro.PacienteId);
+            query = query.Where(l => l.PatientId == filtro.PacienteId);
         }
         if (filtro.MedicoId.HasValue)
         {
@@ -80,7 +82,8 @@ public sealed class LaudosService(
     {
         var uid = NormalizarUid(studyInstanceUID);
         var l = await _db.Laudos.AsNoTracking()
-            .Include(x => x.Paciente).ThenInclude(p => p!.Usuario)
+            .Include(x => x.Patient).ThenInclude(p => p!.Names)
+            .Include(x => x.Patient).ThenInclude(p => p!.Identifiers)
             .Include(x => x.Medico).ThenInclude(m => m!.Usuario)
             .Include(x => x.LaudoTemplate)
             .Where(x => x.StudyInstanceUID == uid && !x.Excluido)
@@ -147,10 +150,11 @@ public sealed class LaudosService(
 
         if (request.PacienteId.HasValue)
         {
-            var existe = await _db.Pacientes.AsNoTracking().AnyAsync(p => p.Id == request.PacienteId, cancellationToken);
+            var existe = await _db.Patients.AsNoTracking()
+                .AnyAsync(p => p.Id == request.PacienteId && p.DeletedAt == null, cancellationToken);
             if (!existe)
             {
-                throw new NaoEncontradoException(nameof(Paciente), request.PacienteId);
+                throw new NaoEncontradoException(nameof(Patient), request.PacienteId);
             }
         }
 
@@ -175,7 +179,7 @@ public sealed class LaudosService(
             Id = Guid.CreateVersion7(),
             StudyInstanceUID = uid,
             Versao = proximaVersao,
-            PacienteId = request.PacienteId,
+            PatientId = request.PacienteId,
             MedicoId = medico.Id,
             LaudoTemplateId = request.LaudoTemplateId,
             Titulo = NormalizarTitulo(request.Titulo),
@@ -214,16 +218,17 @@ public sealed class LaudosService(
                 "Apenas o médico autor do rascunho pode editá-lo.");
         }
 
-        if (request.PacienteId.HasValue && request.PacienteId != laudo.PacienteId)
+        if (request.PacienteId.HasValue && request.PacienteId != laudo.PatientId)
         {
-            var existe = await _db.Pacientes.AsNoTracking().AnyAsync(p => p.Id == request.PacienteId, cancellationToken);
+            var existe = await _db.Patients.AsNoTracking()
+                .AnyAsync(p => p.Id == request.PacienteId && p.DeletedAt == null, cancellationToken);
             if (!existe)
             {
-                throw new NaoEncontradoException(nameof(Paciente), request.PacienteId);
+                throw new NaoEncontradoException(nameof(Patient), request.PacienteId);
             }
         }
 
-        laudo.PacienteId = request.PacienteId;
+        laudo.PatientId = request.PacienteId;
         laudo.Titulo = NormalizarTitulo(request.Titulo);
         laudo.ConteudoJson = string.IsNullOrWhiteSpace(request.ConteudoJson) ? "{}" : request.ConteudoJson;
         laudo.ConteudoHtml = _sanitizer.Sanitize(request.ConteudoHtml ?? string.Empty);
@@ -319,7 +324,7 @@ public sealed class LaudosService(
             StudyInstanceUID = anterior.StudyInstanceUID,
             Versao = proximaVersao,
             LaudoAnteriorId = anterior.Id,
-            PacienteId = anterior.PacienteId,
+            PatientId = anterior.PatientId,
             MedicoId = medico.Id,
             LaudoTemplateId = anterior.LaudoTemplateId,
             Titulo = anterior.Titulo,
@@ -362,7 +367,8 @@ public sealed class LaudosService(
     private Task<Laudo?> CarregarCompletoAsync(Guid id, bool asNoTracking, CancellationToken ct)
     {
         IQueryable<Laudo> q = _db.Laudos
-            .Include(x => x.Paciente).ThenInclude(p => p!.Usuario)
+            .Include(x => x.Patient).ThenInclude(p => p!.Names)
+            .Include(x => x.Patient).ThenInclude(p => p!.Identifiers)
             .Include(x => x.Medico).ThenInclude(m => m!.Usuario)
             .Include(x => x.LaudoTemplate);
 
