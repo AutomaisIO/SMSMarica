@@ -154,10 +154,16 @@ jobs:
               $SUDO systemctl enable "$SERVICE"
             fi
 
-            # --- 7. Parar serviço (se ativo) ---
+            # --- 7. Parar serviço (se ativo) + matar órfãos e liberar a porta 5081 ---
             if $SUDO systemctl is-active --quiet "$SERVICE"; then
               $SUDO systemctl stop "$SERVICE"
             fi
+            # Garante que nenhuma instância antiga continue segurando a porta.
+            $SUDO pkill -f 'Automais.Fhir.Api.dll' 2>/dev/null || true
+            if command -v fuser >/dev/null 2>&1; then
+              $SUDO fuser -k 5081/tcp 2>/dev/null || true
+            fi
+            sleep 3
 
             # --- 8. Substituir artefatos ---
             if [ ! -f "$TARBALL" ]; then
