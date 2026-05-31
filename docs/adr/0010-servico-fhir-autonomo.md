@@ -17,7 +17,7 @@ Decisão: extrair o FHIR para um **serviço .NET autônomo e replicável**, com 
 
 ### 1. Serviço autônomo, solução própria — namespace `Automais.Fhir`
 
-O serviço é um **produto portável**, reutilizável por qualquer prefeitura — não é específico de Maricá. Por isso o namespace/branding é **`Automais.Fhir`** (empresa), não `SMSMarica.Fhir`. Vive no monorepo do SMSMarica por ora (mesmo GitHub/secrets), mas é desenhado para ser extraído e levado a outro município sem reescrita. Inclui front próprio (`Automais.Fhir.front`, React+Vite+TS).
+O serviço é um **produto portável**, reutilizável por qualquer prefeitura — não é específico de Maricá. Por isso o namespace/branding é **`Automais.Fhir`** (empresa), não `SMSMarica.Fhir`. Vive no monorepo do SMSMarica por ora (mesmo GitHub/secrets), mas é desenhado para ser extraído e levado a outro município sem reescrita.
 
 Nova solução `Automais.Fhir/Automais.Fhir.slnx`, espelhando o padrão 3-camadas + testes do backend ([ADR-0004](./0004-arquitetura-tres-projetos.md)):
 
@@ -49,9 +49,11 @@ O serviço usa o **mesmo cluster Postgres** (DigitalOcean `defaultdb`) para não
 
 O serviço entrega **ambos** desde já: superfície REST FHIR conforme (para consumidores externos) **e** as regras de consistência do hub (validação, `meta.source`/`Provenance`, `Patient.link`/MPI). A consistência não é opcional — é a razão de o hub existir.
 
-### 6. Identidade e front próprios
+### 6. Identidade própria; sem front (API-only)
 
-Sendo autônomo, o serviço tem **identidade própria** (usuários + JWT do FHIR, **não** os do `smsmarica`) e **front próprio** (planejado: React+Vite+TS, espelhando a stack do `SMSMarica.front`). Auth e front são fatias futuras; o `Authentication.JwtBearer` já fica previsto.
+Sendo autônomo, o serviço tem **identidade própria** (usuários + JWT do FHIR, **não** os do `smsmarica`) — fatia futura, `Authentication.JwtBearer` previsto.
+
+**Não tem front próprio: o hub é API-only.** O papel de front (uso operacional — consultar/cadastrar paciente) é do **`smsmarica.online`** e futuros PEPs, que consomem a API FHIR. Construir UI de paciente no FHIR duplicaria o consumidor. Um eventual **console de admin do hub** (MPI/`Patient.link`, proveniência, consentimento LGPD, terminologia) — que não é uso operacional — poderia justificar um front no futuro, mas está fora de escopo agora. *(Revisão 2026-05-30: a ideia inicial de front próprio foi descartada e o scaffold `Automais.Fhir.front` removido.)*
 
 ### 7. Sem FK navegável cross-serviço
 

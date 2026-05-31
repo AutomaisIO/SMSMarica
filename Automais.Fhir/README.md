@@ -53,4 +53,4 @@ Conteúdo trafega como `application/fhir+json`. Erros viram `OperationOutcome`.
 
 ## Estado atual
 
-Fatia vertical do **Patient** pronta (build verde). Migration `InicialFhirSchema` gerada mas **não aplicada** (cutover coordenado com o smsmarica — ver ADR-0010). Próximos: deploy, auth (JWT próprio), front, e mais recursos (Practitioner, Organization, depois clínicos dos ADRs 0008/0009).
+Fatia vertical do **Patient** no ar (deployada em produção, porta 5081; migration `InicialFhirSchema` aplicada). Próximos: auth (JWT próprio) e mais recursos (Practitioner, Organization, depois clínicos dos ADRs 0008/0009). **Sem front próprio** — o hub é API-only; o front/consumidor é o `smsmarica.online` (ADR-0010 §6).
