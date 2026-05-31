@@ -10,6 +10,10 @@
     <PackageVersion Include="Scalar.AspNetCore" Version="2.0.22" />
   </ItemGroup>
 
+  <ItemGroup Label="FHIR (consumo do hub Automais.Fhir)">
+    <PackageVersion Include="Hl7.Fhir.R4" Version="6.2.0" />
+  </ItemGroup>
+
   <ItemGroup Label="EF Core / Postgres">
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0" />
