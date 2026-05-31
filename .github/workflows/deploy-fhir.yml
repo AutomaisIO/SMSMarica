@@ -154,17 +154,21 @@ jobs:
               $SUDO systemctl enable "$SERVICE"
             fi
 
-            # --- 7. Parar serviço (se ativo) + liberar a porta 5081 ---
-            if $SUDO systemctl is-active --quiet "$SERVICE"; then
-              $SUDO systemctl stop "$SERVICE"
+            # --- 7. Parar serviço + GARANTIR a porta 5081 livre (robusto) ---
+            # NÃO usar pkill -f com o nome da DLL: casaria com o shell deste
+            # script (que contém a string) e mataria a sessão SSH (SIGTERM 143).
+            $SUDO systemctl stop "$SERVICE" 2>/dev/null || true
+            # fuser (psmisc) mata por porta — instala se faltar (causa de deploys
+            # anteriores falharem: instância antiga seguia presa na 5081).
+            if ! command -v fuser >/dev/null 2>&1; then
+              $SUDO apt-get update -y >/dev/null 2>&1 || true
+              $SUDO apt-get install -y psmisc >/dev/null 2>&1 || true
             fi
-            # NÃO usar pkill -f com o nome da DLL: o padrão casaria com o próprio
-            # shell deste script (que contém a string) e mataria a sessão SSH.
-            # fuser é por porta (seguro) e systemctl stop já mata o cgroup do unit.
-            if command -v fuser >/dev/null 2>&1; then
+            for _ in $(seq 1 15); do
               $SUDO fuser -k 5081/tcp 2>/dev/null || true
-            fi
-            sleep 3
+              sleep 1
+              if ! $SUDO fuser 5081/tcp >/dev/null 2>&1; then break; fi
+            done
 
             # --- 8. Substituir artefatos ---
             if [ ! -f "$TARBALL" ]; then
