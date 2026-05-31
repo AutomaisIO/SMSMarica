@@ -46,7 +46,6 @@ public sealed class TratamentosService(SmsMaricaDbContext db) : ITratamentosServ
     public async Task<TratamentoDto> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var t = await _db.Tratamentos.AsNoTracking()
-            .Include(x => x.Paciente).ThenInclude(p => p!.Usuario)
             .Include(x => x.Unidade)
             .Include(x => x.TipoTratamento)
             .Include(x => x.Periodicidade)
@@ -85,11 +84,7 @@ public sealed class TratamentosService(SmsMaricaDbContext db) : ITratamentosServ
 
     public async Task<Guid> CadastrarAsync(CadastrarTratamentoRequest request, CancellationToken cancellationToken = default)
     {
-        if (!await _db.Pacientes.AsNoTracking().AnyAsync(p => p.Id == request.PacienteId, cancellationToken))
-        {
-            throw new NaoEncontradoException(nameof(Paciente), request.PacienteId);
-        }
-
+        // PacienteId referencia o hub FHIR — validação de existência fica a cargo do hub.
         if (!await _db.Unidades.AsNoTracking().AnyAsync(u => u.Id == request.UnidadeId, cancellationToken))
         {
             throw new NaoEncontradoException(nameof(Unidade), request.UnidadeId);
@@ -307,7 +302,6 @@ public sealed class TratamentosService(SmsMaricaDbContext db) : ITratamentosServ
     }
 
     private IQueryable<Tratamento> QueryListarBase() => _db.Tratamentos.AsNoTracking()
-        .Include(t => t.Paciente).ThenInclude(p => p!.Usuario)
         .Include(t => t.Unidade)
         .Include(t => t.TipoTratamento)
         .Include(t => t.Sessoes);
@@ -323,7 +317,7 @@ public sealed class TratamentosService(SmsMaricaDbContext db) : ITratamentosServ
         return new TratamentoListItemDto(
             t.Id,
             t.PacienteId,
-            t.Paciente?.Usuario?.NomeCompleto ?? string.Empty,
+            string.Empty,
             t.UnidadeId,
             t.Unidade?.Nome ?? string.Empty,
             t.TipoTratamento?.Nome,

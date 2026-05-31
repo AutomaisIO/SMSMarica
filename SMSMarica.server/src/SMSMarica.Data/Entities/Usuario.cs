@@ -43,8 +43,7 @@ public class Usuario
     public ICollection<UsuarioPerfil> UsuariosPerfis { get; set; } = [];
     public ICollection<PermissaoUsuario> PermissoesOverride { get; set; } = [];
 
-    // Papéis (1:1 opcional). Presença determina o papel — não há discriminador.
-    public Medico? Medico { get; set; }
+    // Papel operacional 1:1 (Motorista). Paciente e Médico migraram para o hub
+    // FHIR (Patient/Practitioner) — Usuário não carrega mais papel clínico.
     public Motorista? Motorista { get; set; }
-    public Paciente? Paciente { get; set; }
 }

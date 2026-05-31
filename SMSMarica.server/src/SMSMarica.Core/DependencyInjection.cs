@@ -123,10 +123,16 @@ public static class DependencyInjection
                 client.Timeout = TimeSpan.FromSeconds(30);
             });
 
-        // Cliente do hub FHIR (Automais.Fhir) — paciente vive só no hub.
+        // Clientes do hub FHIR (Automais.Fhir) — paciente e médico vivem só no hub.
         var fhirBaseUrl = configuration["Fhir:BaseUrl"] ?? "http://localhost:5081/";
         services
             .AddHttpClient<Pacientes.Fhir.IPacienteFhirClient, Pacientes.Fhir.PacienteFhirClient>(client =>
+            {
+                client.BaseAddress = new Uri(fhirBaseUrl);
+                client.Timeout = TimeSpan.FromSeconds(15);
+            });
+        services
+            .AddHttpClient<Medicos.Fhir.IPractitionerFhirClient, Medicos.Fhir.PractitionerFhirClient>(client =>
             {
                 client.BaseAddress = new Uri(fhirBaseUrl);
                 client.Timeout = TimeSpan.FromSeconds(15);

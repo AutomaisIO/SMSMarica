@@ -175,8 +175,6 @@ public sealed class TransladoService(SmsMaricaDbContext db) : ITransladoService
         var query =
             from s in _db.Sessoes.AsNoTracking()
             join t in _db.Tratamentos.AsNoTracking() on s.TratamentoId equals t.Id
-            join p in _db.Pacientes.AsNoTracking() on t.PacienteId equals p.Id
-            join up in _db.Usuarios.AsNoTracking() on p.UsuarioId equals up.Id
             join u in _db.Unidades.AsNoTracking() on t.UnidadeId equals u.Id
             where t.Ativo
                 && (s.Status == StatusSessao.Pendente || s.Status == StatusSessao.Confirmada)
@@ -184,13 +182,14 @@ public sealed class TransladoService(SmsMaricaDbContext db) : ITransladoService
                 && !_db.Alocacoes.AsNoTracking()
                     .Any(a => a.SessaoId == s.Id
                         && _db.Rotas.Any(r => r.Id == a.RotaDiariaId && r.Status != StatusRota.Cancelada))
-            orderby s.DataPrevista, s.HoraPrevistaBusca, up.NomeCompleto
+            orderby s.DataPrevista, s.HoraPrevistaBusca
             select new
             {
                 s.Id,
                 s.TratamentoId,
-                PacienteId = p.Id,
-                PacienteNome = up.NomeCompleto,
+                PacienteId = t.PacienteId,
+                // Nome do paciente vive no hub FHIR — resolver via API. TODO.
+                PacienteNome = "",
                 UnidadeId = u.Id,
                 UnidadeNome = u.Nome,
                 s.DataPrevista,
@@ -342,8 +341,6 @@ public sealed class TransladoService(SmsMaricaDbContext db) : ITransladoService
             join fileira in _db.Fileiras.AsNoTracking() on assento.FileiraId equals fileira.Id
             join s in _db.Sessoes.AsNoTracking() on a.SessaoId equals s.Id
             join t in _db.Tratamentos.AsNoTracking() on s.TratamentoId equals t.Id
-            join p in _db.Pacientes.AsNoTracking() on t.PacienteId equals p.Id
-            join up in _db.Usuarios.AsNoTracking() on p.UsuarioId equals up.Id
             join u in _db.Unidades.AsNoTracking() on t.UnidadeId equals u.Id
             where a.RotaDiariaId == rotaId
             orderby fileira.Ordem, assento.Numero
@@ -351,8 +348,8 @@ public sealed class TransladoService(SmsMaricaDbContext db) : ITransladoService
                 a.Id,
                 s.Id,
                 t.Id,
-                p.Id,
-                up.NomeCompleto,
+                t.PacienteId,
+                "",
                 u.Id,
                 u.Nome,
                 s.HoraPrevistaBusca,

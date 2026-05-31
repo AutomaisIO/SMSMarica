@@ -20,9 +20,8 @@ internal static class IdentidadeMapper
 
     private static string? DetectarPapel(Usuario u)
     {
-        if (u.Medico is not null) return "Medico";
+        // Paciente e Médico migraram para o hub FHIR — Usuário só tem papel Motorista.
         if (u.Motorista is not null) return "Motorista";
-        if (u.Paciente is not null) return "Paciente";
         return null;
     }
 }

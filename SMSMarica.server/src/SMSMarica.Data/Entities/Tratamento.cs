@@ -18,7 +18,7 @@ public class Tratamento
     public DateTime CriadoEm { get; set; }
     public DateTime? EncerradoEm { get; set; }
 
-    public Paciente? Paciente { get; set; }
+    // PacienteId aponta para fhir.patient (hub FHIR) — sem FK/navegação local.
     public Unidade? Unidade { get; set; }
     public TipoTratamento? TipoTratamento { get; set; }
     public Periodicidade? Periodicidade { get; set; }

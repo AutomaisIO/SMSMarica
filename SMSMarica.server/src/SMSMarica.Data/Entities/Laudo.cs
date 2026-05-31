@@ -22,13 +22,11 @@ public class Laudo
     public Guid? LaudoAnteriorId { get; set; }
     public Laudo? LaudoAnterior { get; set; }
 
-    /// <summary>Paciente vinculado (nullable — mamógrafo pode mandar estudo sem paciente cadastrado).</summary>
+    /// <summary>Paciente vinculado em fhir.patient (nullable). Sem FK/navegação local.</summary>
     public Guid? PacienteId { get; set; }
-    public Paciente? Paciente { get; set; }
 
-    /// <summary>Médico autor (papel Medico de Usuario). Obrigatório.</summary>
+    /// <summary>Médico autor (Practitioner em fhir.practitioner). Sem FK local — nome/CRM via snapshots abaixo.</summary>
     public Guid MedicoId { get; set; }
-    public Medico? Medico { get; set; }
 
     /// <summary>Template usado como ponto de partida (snapshot do conteúdo). Nullable porque o template pode ter sido excluído.</summary>
     public Guid? LaudoTemplateId { get; set; }

@@ -29,7 +29,8 @@ internal static class TratamentosMapper
         IReadOnlyDictionary<Guid, AlocacaoAtiva> alocacoesPorSessao) => new(
         t.Id,
         t.PacienteId,
-        t.Paciente?.Usuario?.NomeCompleto ?? string.Empty,
+        // Nome do paciente resolve via hub FHIR (GET /pacientes/{PacienteId}). TODO embutir.
+        string.Empty,
         t.UnidadeId,
         t.Unidade?.Nome ?? string.Empty,
         t.TipoTratamentoId,

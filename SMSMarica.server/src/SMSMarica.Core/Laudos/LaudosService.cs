@@ -3,6 +3,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Laudos.Dtos;
+using SMSMarica.Core.Medicos;
+using SMSMarica.Core.Medicos.Dtos;
+using SMSMarica.Core.Medicos.Fhir;
+using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Core.SolicitacoesExame;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities;
@@ -14,21 +18,22 @@ public sealed class LaudosService(
     SmsMaricaDbContext db,
     IHtmlSanitizer sanitizer,
     ISolicitacoesExameService solicitacoes,
+    IPacienteFhirClient pacienteFhir,
+    IPractitionerFhirClient practitionerFhir,
     ILogger<LaudosService> logger) : ILaudosService
 {
     private readonly SmsMaricaDbContext _db = db;
     private readonly IHtmlSanitizer _sanitizer = sanitizer;
     private readonly ISolicitacoesExameService _solicitacoes = solicitacoes;
+    private readonly IPacienteFhirClient _pacienteFhir = pacienteFhir;
+    private readonly IPractitionerFhirClient _practitionerFhir = practitionerFhir;
     private readonly ILogger<LaudosService> _logger = logger;
 
     public async Task<IReadOnlyList<LaudoListItemDto>> ListarAsync(
         FiltroLaudosDto filtro,
         CancellationToken cancellationToken = default)
     {
-        IQueryable<Laudo> query = _db.Laudos.AsNoTracking()
-            .Include(l => l.Paciente).ThenInclude(p => p!.Usuario)
-            .Include(l => l.Medico).ThenInclude(m => m!.Usuario)
-            .Where(l => !l.Excluido);
+        IQueryable<Laudo> query = _db.Laudos.AsNoTracking().Where(l => !l.Excluido);
 
         if (!string.IsNullOrWhiteSpace(filtro.StudyInstanceUID))
         {
@@ -36,17 +41,11 @@ public sealed class LaudosService(
             query = query.Where(l => l.StudyInstanceUID == uid);
         }
         if (filtro.PacienteId.HasValue)
-        {
             query = query.Where(l => l.PacienteId == filtro.PacienteId);
-        }
         if (filtro.MedicoId.HasValue)
-        {
             query = query.Where(l => l.MedicoId == filtro.MedicoId);
-        }
         if (filtro.Status.HasValue)
-        {
             query = query.Where(l => l.Status == filtro.Status);
-        }
         if (filtro.DataInicial.HasValue)
         {
             var ini = filtro.DataInicial.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
@@ -80,8 +79,6 @@ public sealed class LaudosService(
     {
         var uid = NormalizarUid(studyInstanceUID);
         var l = await _db.Laudos.AsNoTracking()
-            .Include(x => x.Paciente).ThenInclude(p => p!.Usuario)
-            .Include(x => x.Medico).ThenInclude(m => m!.Usuario)
             .Include(x => x.LaudoTemplate)
             .Where(x => x.StudyInstanceUID == uid && !x.Excluido)
             .OrderByDescending(x => x.Versao)
@@ -100,7 +97,6 @@ public sealed class LaudosService(
             ?? throw new NaoEncontradoException(nameof(Laudo), id);
 
         var historico = await _db.Laudos.AsNoTracking()
-            .Include(x => x.Medico).ThenInclude(m => m!.Usuario)
             .Where(x => x.StudyInstanceUID == alvo && !x.Excluido)
             .OrderByDescending(x => x.Versao)
             .ToListAsync(cancellationToken);
@@ -113,9 +109,7 @@ public sealed class LaudosService(
         CancellationToken cancellationToken = default)
     {
         if (studyInstanceUIDs is null || studyInstanceUIDs.Count == 0)
-        {
             return [];
-        }
 
         var uids = studyInstanceUIDs
             .Where(u => !string.IsNullOrWhiteSpace(u))
@@ -125,7 +119,6 @@ public sealed class LaudosService(
 
         if (uids.Length == 0) return [];
 
-        // Para cada UID pega a maior versão (não-excluída).
         var bruto = await _db.Laudos.AsNoTracking()
             .Where(l => uids.Contains(l.StudyInstanceUID) && !l.Excluido)
             .Select(l => new { l.StudyInstanceUID, l.Versao, l.Id, l.Status })
@@ -146,24 +139,15 @@ public sealed class LaudosService(
         var medico = await ResolverMedicoAsync(usuarioId, cancellationToken);
 
         if (request.PacienteId.HasValue)
-        {
-            var existe = await _db.Pacientes.AsNoTracking().AnyAsync(p => p.Id == request.PacienteId, cancellationToken);
-            if (!existe)
-            {
-                throw new NaoEncontradoException(nameof(Paciente), request.PacienteId);
-            }
-        }
+            await GarantirPacienteExisteAsync(request.PacienteId.Value, cancellationToken);
 
         if (request.LaudoTemplateId.HasValue)
         {
             var existe = await _db.LaudoTemplates.AsNoTracking().AnyAsync(t => t.Id == request.LaudoTemplateId, cancellationToken);
             if (!existe)
-            {
                 throw new NaoEncontradoException(nameof(LaudoTemplate), request.LaudoTemplateId);
-            }
         }
 
-        // Próxima versão = max(versao) entre não-excluídos + 1 (ou 1 se for o primeiro).
         var proximaVersao = (await _db.Laudos
             .Where(x => x.StudyInstanceUID == uid && !x.Excluido)
             .Select(x => (int?)x.Versao)
@@ -200,28 +184,16 @@ public sealed class LaudosService(
             ?? throw new NaoEncontradoException(nameof(Laudo), id);
 
         if (laudo.Status == StatusLaudo.Finalizado)
-        {
             throw new ConflitoException(
                 "laudo.finalizado_imutavel",
                 "Laudo finalizado não pode ser editado. Use 'Nova versão' para gerar um rascunho derivado.");
-        }
 
         var medico = await ResolverMedicoAsync(usuarioId, cancellationToken);
         if (laudo.MedicoId != medico.Id)
-        {
-            throw new ConflitoException(
-                "laudo.nao_e_autor",
-                "Apenas o médico autor do rascunho pode editá-lo.");
-        }
+            throw new ConflitoException("laudo.nao_e_autor", "Apenas o médico autor do rascunho pode editá-lo.");
 
         if (request.PacienteId.HasValue && request.PacienteId != laudo.PacienteId)
-        {
-            var existe = await _db.Pacientes.AsNoTracking().AnyAsync(p => p.Id == request.PacienteId, cancellationToken);
-            if (!existe)
-            {
-                throw new NaoEncontradoException(nameof(Paciente), request.PacienteId);
-            }
-        }
+            await GarantirPacienteExisteAsync(request.PacienteId.Value, cancellationToken);
 
         laudo.PacienteId = request.PacienteId;
         laudo.Titulo = NormalizarTitulo(request.Titulo);
@@ -239,33 +211,26 @@ public sealed class LaudosService(
         CancellationToken cancellationToken = default)
     {
         var laudo = await _db.Laudos
-            .Include(l => l.Medico).ThenInclude(m => m!.Usuario)
             .FirstOrDefaultAsync(x => x.Id == id && !x.Excluido, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Laudo), id);
 
         if (laudo.Status == StatusLaudo.Finalizado)
-        {
             throw new ConflitoException("laudo.ja_finalizado", "Laudo já está finalizado.");
-        }
 
         var medico = await ResolverMedicoAsync(usuarioId, cancellationToken);
         if (laudo.MedicoId != medico.Id)
-        {
             throw new ConflitoException("laudo.nao_e_autor", "Apenas o médico autor pode finalizar o laudo.");
-        }
 
         var html = _sanitizer.Sanitize(request.ConteudoHtml ?? string.Empty);
         if (string.IsNullOrWhiteSpace(html))
-        {
             throw new ValidacaoException("laudo.conteudo_vazio", "Conteúdo do laudo não pode estar vazio.");
-        }
 
         laudo.Titulo = NormalizarTitulo(request.Titulo);
         laudo.ConteudoJson = string.IsNullOrWhiteSpace(request.ConteudoJson) ? "{}" : request.ConteudoJson;
         laudo.ConteudoHtml = html;
 
-        // Snapshot dos dados do médico no momento da finalização.
-        laudo.MedicoNomeSnapshot = medico.Usuario?.NomeCompleto;
+        // Snapshot dos dados do médico (Practitioner do hub) no momento da finalização.
+        laudo.MedicoNomeSnapshot = medico.NomeCompleto;
         laudo.MedicoCrmSnapshot = medico.Crm;
         laudo.MedicoUfCrmSnapshot = medico.UfCrm;
         laudo.MedicoRqeSnapshot = medico.Rqe;
@@ -276,8 +241,6 @@ public sealed class LaudosService(
 
         await _db.SaveChangesAsync(cancellationToken);
 
-        // Fecha o ciclo da solicitação correspondente (se houver). Não pode
-        // derrubar o laudo se a propagação falhar — só loga.
         try
         {
             await _solicitacoes.MarcarComoLaudadaAsync(laudo.StudyInstanceUID, cancellationToken);
@@ -299,11 +262,9 @@ public sealed class LaudosService(
             ?? throw new NaoEncontradoException(nameof(Laudo), id);
 
         if (anterior.Status != StatusLaudo.Finalizado)
-        {
             throw new ConflitoException(
                 "laudo.nova_versao_so_finalizado",
                 "Só é possível criar nova versão a partir de um laudo finalizado.");
-        }
 
         var medico = await ResolverMedicoAsync(usuarioId, cancellationToken);
 
@@ -340,11 +301,9 @@ public sealed class LaudosService(
             ?? throw new NaoEncontradoException(nameof(Laudo), id);
 
         if (laudo.Status != StatusLaudo.Rascunho)
-        {
             throw new ConflitoException(
                 "laudo.so_rascunho_apaga",
                 "Apenas rascunhos podem ser excluídos. Laudos finalizados são imutáveis (CFM).");
-        }
 
         laudo.Excluido = true;
         laudo.ExcluidoEm = DateTime.UtcNow;
@@ -352,47 +311,42 @@ public sealed class LaudosService(
         await _db.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<Laudo?> CarregarParaPdfAsync(Guid id, CancellationToken cancellationToken = default)
-    {
-        return await CarregarCompletoAsync(id, asNoTracking: true, cancellationToken);
-    }
+    public async Task<Laudo?> CarregarParaPdfAsync(Guid id, CancellationToken cancellationToken = default) =>
+        await CarregarCompletoAsync(id, asNoTracking: true, cancellationToken);
 
     // ---------------- helpers ----------------
 
     private Task<Laudo?> CarregarCompletoAsync(Guid id, bool asNoTracking, CancellationToken ct)
     {
-        IQueryable<Laudo> q = _db.Laudos
-            .Include(x => x.Paciente).ThenInclude(p => p!.Usuario)
-            .Include(x => x.Medico).ThenInclude(m => m!.Usuario)
-            .Include(x => x.LaudoTemplate);
-
+        IQueryable<Laudo> q = _db.Laudos.Include(x => x.LaudoTemplate);
         if (asNoTracking) q = q.AsNoTracking();
-
         return q.FirstOrDefaultAsync(x => x.Id == id && !x.Excluido, ct);
     }
 
-    private async Task<Medico> ResolverMedicoAsync(Guid usuarioId, CancellationToken ct)
+    /// <summary>
+    /// Resolve o médico-laudador no hub FHIR. MVP: o id do usuário logado é
+    /// tratado como id do Practitioner (link Usuário↔Practitioner é fatia futura).
+    /// </summary>
+    private async Task<MedicoDto> ResolverMedicoAsync(Guid usuarioId, CancellationToken ct)
     {
-        var medico = await _db.Medicos
-            .AsNoTracking()
-            .Include(m => m.Usuario)
-            .FirstOrDefaultAsync(m => m.UsuarioId == usuarioId && m.ExcluidoEm == null, ct);
-
-        if (medico is null)
-        {
-            throw new ConflitoException(
+        var p = await _practitionerFhir.ObterAsync(usuarioId, ct)
+            ?? throw new ConflitoException(
                 "laudo.usuario_sem_papel_medico",
-                "Apenas usuários com papel Médico ativo podem criar/editar laudos.");
-        }
-        return medico;
+                "Apenas usuários com Practitioner (médico) no hub FHIR podem criar/editar laudos.");
+        return MedicoFhirMapper.ParaDto(p);
+    }
+
+    private async Task GarantirPacienteExisteAsync(Guid pacienteId, CancellationToken ct)
+    {
+        var p = await _pacienteFhir.ObterAsync(pacienteId, ct);
+        if (p is null)
+            throw new NaoEncontradoException("Paciente", pacienteId);
     }
 
     private static string NormalizarUid(string uid)
     {
         if (string.IsNullOrWhiteSpace(uid))
-        {
             throw new ValidacaoException("laudo.studyUid_obrigatorio", "StudyInstanceUID é obrigatório.");
-        }
         return uid.Trim();
     }
 

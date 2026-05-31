@@ -89,9 +89,7 @@ public sealed class MotoristasService(SmsMaricaDbContext db, IUsuarioAtualAccess
     public async Task<Guid> PromoverAsync(PromoverMotoristaRequest request, CancellationToken cancellationToken = default)
     {
         var usuario = await _db.Usuarios
-            .Include(u => u.Medico)
             .Include(u => u.Motorista)
-            .Include(u => u.Paciente)
             .FirstOrDefaultAsync(u => u.Id == request.UsuarioId, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Usuario), request.UsuarioId);
 
@@ -195,9 +193,8 @@ public sealed class MotoristasService(SmsMaricaDbContext db, IUsuarioAtualAccess
 
     private static string? DetectarPapel(Usuario u)
     {
-        if (u.Medico is not null) return "Medico";
+        // Paciente e Médico migraram para o hub FHIR — Usuário só tem papel Motorista.
         if (u.Motorista is not null) return "Motorista";
-        if (u.Paciente is not null) return "Paciente";
         return null;
     }
 

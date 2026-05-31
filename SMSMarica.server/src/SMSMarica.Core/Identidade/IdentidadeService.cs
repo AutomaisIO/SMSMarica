@@ -96,9 +96,7 @@ public sealed class IdentidadeService(
         // e não excluídos. Ativo=false continua aparecendo — é estado temporário, não exclusão.
         var usuarios = await _db.Usuarios.AsNoTracking()
             .Where(u => u.ExcluidoEm == null
-                        && u.Medico == null
-                        && u.Motorista == null
-                        && u.Paciente == null)
+                        && u.Motorista == null)
             .OrderBy(u => u.NomeCompleto)
             .ToListAsync(cancellationToken);
         return [.. usuarios.Select(IdentidadeMapper.ParaListItem)];
@@ -108,9 +106,7 @@ public sealed class IdentidadeService(
     {
         var u = await _db.Usuarios.AsNoTracking()
             .Include(x => x.UsuariosPerfis)
-            .Include(x => x.Medico)
             .Include(x => x.Motorista)
-            .Include(x => x.Paciente)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Usuario), id);
         return IdentidadeMapper.ParaDto(u);
@@ -122,9 +118,7 @@ public sealed class IdentidadeService(
         if (cpfNormalizado.Length != 11) return null;
         var u = await _db.Usuarios.AsNoTracking()
             .Include(x => x.UsuariosPerfis)
-            .Include(x => x.Medico)
             .Include(x => x.Motorista)
-            .Include(x => x.Paciente)
             .FirstOrDefaultAsync(x => x.Cpf == cpfNormalizado, cancellationToken);
         return u is null ? null : IdentidadeMapper.ParaDto(u);
     }
@@ -211,9 +205,7 @@ public sealed class IdentidadeService(
     public async Task DesativarAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var u = await _db.Usuarios
-            .Include(x => x.Medico)
             .Include(x => x.Motorista)
-            .Include(x => x.Paciente)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Usuario), id);
 
@@ -222,18 +214,13 @@ public sealed class IdentidadeService(
             throw new ConflitoException("usuario.ja_excluido", "Usuário já foi excluído.");
         }
 
-        // Bloquear quando tem papel — exclusão deve ser feita pela tela do papel,
-        // que cascateia para o Usuario. Tela 'Usuários' só lista quem não tem papel
-        // (ver ListarAsync), mas defendemos via API contra chamadas diretas.
-        var papel = u.Medico is not null ? "Medico"
-                  : u.Motorista is not null ? "Motorista"
-                  : u.Paciente is not null ? "Paciente"
-                  : null;
-        if (papel is not null)
+        // Bloquear quando tem papel Motorista — exclusão pela tela do papel
+        // (cascateia para o Usuario). Paciente/Médico migraram para o hub FHIR.
+        if (u.Motorista is not null)
         {
             throw new ConflitoException(
                 "usuario.tem_papel",
-                $"Usuário tem papel '{papel}'. Exclua pela tela de {papel}s.");
+                "Usuário tem papel 'Motorista'. Exclua pela tela de Motoristas.");
         }
 
         u.ExcluidoEm = DateTime.UtcNow;

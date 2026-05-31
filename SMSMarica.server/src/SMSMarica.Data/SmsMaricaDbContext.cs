@@ -7,7 +7,6 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
 {
     public const string SchemaPadrao = "smsmarica";
 
-    public DbSet<Paciente> Pacientes => Set<Paciente>();
     public DbSet<Tratamento> Tratamentos => Set<Tratamento>();
     public DbSet<TipoTratamento> TiposTratamento => Set<TipoTratamento>();
     public DbSet<Periodicidade> Periodicidades => Set<Periodicidade>();
@@ -17,7 +16,6 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<Fileira> Fileiras => Set<Fileira>();
     public DbSet<Assento> Assentos => Set<Assento>();
     public DbSet<Motorista> Motoristas => Set<Motorista>();
-    public DbSet<Medico> Medicos => Set<Medico>();
     public DbSet<RotaDiaria> Rotas => Set<RotaDiaria>();
     public DbSet<Alocacao> Alocacoes => Set<Alocacao>();
     public DbSet<PontoGps> PontosGps => Set<PontoGps>();

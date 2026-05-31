@@ -59,11 +59,7 @@ internal sealed class SolicitacaoExameConfiguration : IEntityTypeConfiguration<S
             .ValueGeneratedOnAddOrUpdate()
             .IsConcurrencyToken();
 
-        builder.HasOne(s => s.Paciente)
-            .WithMany()
-            .HasForeignKey(s => s.PacienteId)
-            .OnDelete(DeleteBehavior.Restrict);
-
+        // PacienteId referencia fhir.patient (hub FHIR) — sem FK local.
         builder.HasOne(s => s.TipoExame)
             .WithMany()
             .HasForeignKey(s => s.TipoExameId)

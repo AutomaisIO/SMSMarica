@@ -26,8 +26,8 @@ public class SolicitacaoExame
 
     // ---- Vínculos ----
 
+    /// <summary>Aponta para fhir.patient (hub FHIR) — sem FK/navegação local.</summary>
     public Guid PacienteId { get; set; }
-    public Paciente? Paciente { get; set; }
 
     public Guid TipoExameId { get; set; }
     public TipoExame? TipoExame { get; set; }

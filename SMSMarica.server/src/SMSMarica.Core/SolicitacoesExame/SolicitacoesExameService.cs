@@ -33,7 +33,6 @@ public sealed class SolicitacoesExameService(
         CancellationToken cancellationToken = default)
     {
         IQueryable<SolicitacaoExame> query = _db.SolicitacoesExame.AsNoTracking()
-            .Include(s => s.Paciente).ThenInclude(p => p!.Usuario)
             .Include(s => s.TipoExame)
             .Where(s => s.ExcluidoEm == null);
 
@@ -93,17 +92,8 @@ public sealed class SolicitacoesExameService(
     {
         await ValidarReferenciasAsync(request.PacienteId, request.TipoExameId, request.UnidadeId, cancellationToken);
 
-        if (request.SolicitanteUsuarioId.HasValue)
-        {
-            var existeMedico = await _db.Medicos.AsNoTracking()
-                .AnyAsync(m => m.UsuarioId == request.SolicitanteUsuarioId && m.ExcluidoEm == null, cancellationToken);
-            if (!existeMedico)
-            {
-                throw new ValidacaoException(
-                    "solicitacaoExame.solicitante_invalido",
-                    "Usuário informado não tem papel Médico ativo.");
-            }
-        }
+        // Solicitante médico é Practitioner no hub FHIR; os dados vão nos snapshots
+        // (SolicitanteNome/Crm/UfCrm). Validação de papel Médico foi descontinuada.
 
         var accession = await _geradorIds.ProximoAccessionAsync(cancellationToken);
         var studyUid = _geradorIds.NovoStudyInstanceUid();
@@ -292,7 +282,6 @@ public sealed class SolicitacoesExameService(
     public async Task ProcessarTentativaEnvioAsync(Guid solicitacaoId, CancellationToken cancellationToken = default)
     {
         var s = await _db.SolicitacoesExame
-            .Include(x => x.Paciente).ThenInclude(p => p!.Usuario)
             .Include(x => x.TipoExame).ThenInclude(t => t!.ProcedimentoSigtap)
             .FirstOrDefaultAsync(x => x.Id == solicitacaoId && x.ExcluidoEm == null, cancellationToken);
 
@@ -412,7 +401,6 @@ public sealed class SolicitacoesExameService(
         CancellationToken cancellationToken)
     {
         return await _db.SolicitacoesExame.AsNoTracking()
-            .Include(s => s.Paciente).ThenInclude(p => p!.Usuario)
             .Include(s => s.TipoExame)
             .Include(s => s.Unidade)
             .Where(s => s.ExcluidoEm == null)
@@ -421,11 +409,7 @@ public sealed class SolicitacoesExameService(
 
     private async Task ValidarReferenciasAsync(Guid pacienteId, Guid tipoExameId, Guid unidadeId, CancellationToken ct)
     {
-        if (!await _db.Pacientes.AsNoTracking().AnyAsync(p => p.Id == pacienteId && p.ExcluidoEm == null, ct))
-        {
-            throw new NaoEncontradoException(nameof(Paciente), pacienteId);
-        }
-
+        // PacienteId referencia o hub FHIR — validação de existência fica a cargo do hub.
         if (!await _db.TiposExame.AsNoTracking().AnyAsync(t => t.Id == tipoExameId && t.ExcluidoEm == null && t.Ativo, ct))
         {
             throw new NaoEncontradoException(nameof(TipoExame), tipoExameId);

@@ -53,16 +53,7 @@ internal sealed class LaudoConfiguration : IEntityTypeConfiguration<Laudo>
             .HasForeignKey(l => l.LaudoAnteriorId)
             .OnDelete(DeleteBehavior.NoAction);
 
-        builder.HasOne(l => l.Paciente)
-            .WithMany()
-            .HasForeignKey(l => l.PacienteId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(l => l.Medico)
-            .WithMany()
-            .HasForeignKey(l => l.MedicoId)
-            .OnDelete(DeleteBehavior.Restrict);
-
+        // PacienteId → fhir.patient, MedicoId → fhir.practitioner (hub FHIR). Sem FK local.
         builder.HasOne(l => l.LaudoTemplate)
             .WithMany()
             .HasForeignKey(l => l.LaudoTemplateId)

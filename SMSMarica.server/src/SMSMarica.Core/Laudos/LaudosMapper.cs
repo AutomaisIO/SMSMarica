@@ -5,19 +5,23 @@ namespace SMSMarica.Core.Laudos;
 
 internal static class LaudosMapper
 {
+    // Nome/CPF do paciente NÃO vêm mais embutidos (paciente vive no hub FHIR).
+    // O consumidor resolve via GET /pacientes/{PacienteId} (que proxia o FHIR).
+    // Médico usa os snapshots gravados na finalização. TODO: resolver nome do
+    // paciente via FHIR quando precisar embutir nas listagens.
     public static LaudoDto ParaDto(Laudo l) => new(
         l.Id,
         l.StudyInstanceUID,
         l.Versao,
         l.LaudoAnteriorId,
         l.PacienteId,
-        l.Paciente?.Usuario?.NomeCompleto,
-        l.Paciente?.Usuario?.Cpf,
+        null,
+        null,
         l.MedicoId,
-        l.MedicoNomeSnapshot ?? l.Medico?.Usuario?.NomeCompleto ?? string.Empty,
-        l.MedicoCrmSnapshot ?? l.Medico?.Crm ?? string.Empty,
-        l.MedicoUfCrmSnapshot ?? l.Medico?.UfCrm ?? string.Empty,
-        l.MedicoRqeSnapshot ?? l.Medico?.Rqe,
+        l.MedicoNomeSnapshot ?? string.Empty,
+        l.MedicoCrmSnapshot ?? string.Empty,
+        l.MedicoUfCrmSnapshot ?? string.Empty,
+        l.MedicoRqeSnapshot,
         l.LaudoTemplateId,
         l.LaudoTemplate?.Nome,
         l.Titulo,
@@ -33,9 +37,9 @@ internal static class LaudosMapper
         l.StudyInstanceUID,
         l.Versao,
         l.PacienteId,
-        l.Paciente?.Usuario?.NomeCompleto,
+        null,
         l.MedicoId,
-        l.MedicoNomeSnapshot ?? l.Medico?.Usuario?.NomeCompleto ?? string.Empty,
+        l.MedicoNomeSnapshot ?? string.Empty,
         l.Titulo,
         l.Status,
         l.FinalizadoEm,
@@ -46,7 +50,7 @@ internal static class LaudosMapper
         l.Versao,
         l.Status,
         l.MedicoId,
-        l.MedicoNomeSnapshot ?? l.Medico?.Usuario?.NomeCompleto ?? string.Empty,
+        l.MedicoNomeSnapshot ?? string.Empty,
         l.CriadoEm,
         l.FinalizadoEm);
 }

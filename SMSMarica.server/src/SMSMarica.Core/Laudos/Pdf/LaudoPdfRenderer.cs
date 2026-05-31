@@ -211,17 +211,9 @@ public sealed class LaudoPdfRenderer(ILaudosService laudos, IOptions<LaudosPdfOp
     {
         var lista = new List<(string, string)>(6);
 
-        var nomePaciente = l.Paciente?.Usuario?.NomeCompleto;
-        lista.Add(("Paciente", string.IsNullOrWhiteSpace(nomePaciente) ? "Não vinculado" : nomePaciente!));
-
-        var cpf = l.Paciente?.Usuario?.Cpf;
-        if (!string.IsNullOrWhiteSpace(cpf)) lista.Add(("CPF", FormatarCpf(cpf!)));
-
-        var cns = l.Paciente?.Cns;
-        if (!string.IsNullOrWhiteSpace(cns)) lista.Add(("CNS", cns!));
-
-        var dn = l.Paciente?.Usuario?.DataNascimento;
-        if (dn.HasValue) lista.Add(("Data de nascimento", dn.Value.ToString("dd/MM/yyyy")));
+        // TODO: paciente vive no hub FHIR — resolver nome/CPF/CNS/nascimento via
+        // API antes de renderizar (hoje o Laudo só carrega o PacienteId).
+        lista.Add(("Paciente", l.PacienteId.HasValue ? l.PacienteId.Value.ToString() : "Não vinculado"));
 
         lista.Add(("Study Instance UID", l.StudyInstanceUID));
 
@@ -230,10 +222,10 @@ public sealed class LaudoPdfRenderer(ILaudosService laudos, IOptions<LaudosPdfOp
 
     private IReadOnlyList<string> MontarBlocoAssinatura(Laudo l)
     {
-        var nome = l.MedicoNomeSnapshot ?? l.Medico?.Usuario?.NomeCompleto ?? string.Empty;
-        var crm = l.MedicoCrmSnapshot ?? l.Medico?.Crm ?? string.Empty;
-        var uf = l.MedicoUfCrmSnapshot ?? l.Medico?.UfCrm ?? string.Empty;
-        var rqe = l.MedicoRqeSnapshot ?? l.Medico?.Rqe;
+        var nome = l.MedicoNomeSnapshot ?? string.Empty;
+        var crm = l.MedicoCrmSnapshot ?? string.Empty;
+        var uf = l.MedicoUfCrmSnapshot ?? string.Empty;
+        var rqe = l.MedicoRqeSnapshot;
 
         var linhas = new List<string>(2)
         {

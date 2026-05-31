@@ -23,11 +23,7 @@ internal sealed class TratamentoConfiguration : IEntityTypeConfiguration<Tratame
         builder.Property(t => t.CriadoEm).HasColumnName("criado_em").IsRequired();
         builder.Property(t => t.EncerradoEm).HasColumnName("encerrado_em");
 
-        builder.HasOne(t => t.Paciente)
-            .WithMany()
-            .HasForeignKey(t => t.PacienteId)
-            .OnDelete(DeleteBehavior.Restrict);
-
+        // PacienteId referencia fhir.patient (hub FHIR) — sem FK local.
         builder.HasOne(t => t.Unidade)
             .WithMany()
             .HasForeignKey(t => t.UnidadeId)
