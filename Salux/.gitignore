@@ -1,0 +1,24 @@
+# Credenciais e configuração local — NUNCA commitar
+.env
+.env.*
+!.env.example
+
+# Capturas de queries (podem conter dados clínicos)
+capturas/
+*.capturas.json
+*.capturas.log
+
+# HTML renderizado com dados reais (PII)
+saidas_html/
+docs/queries/*.md
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node (quando o front entrar)
+node_modules/
+dist/
+.vite/

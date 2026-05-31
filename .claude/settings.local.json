@@ -134,7 +134,21 @@
       "Bash(findstr :5080)",
       "PowerShell(Get-NetTCPConnection *)",
       "PowerShell($url = 'https://ws.hubdodesenvolvedor.com.br/v2/cpf/?cpf=10861085744&data=13/01/1985&token=204737245JhioGHZBgz369646888'; try { $r = Invoke-RestMethod -Uri $url -Method Get -TimeoutSec 20; $r | ConvertTo-Json -Depth 8 } catch { Write-Output \"ERRO: $\\($_.Exception.Message\\)\" })",
-      "WebFetch(domain:dcm4che.github.io)"
+      "WebFetch(domain:dcm4che.github.io)",
+      "Bash(uv --version)",
+      "PowerShell(python -m pip install --user uv 2>&1 | Select-Object -Last 10)",
+      "PowerShell(python -c \"import uv; print\\(uv.__file__\\)\"; python -m uv --version)",
+      "Bash(xargs ls -lt)",
+      "Bash(dotnet package *)",
+      "Bash(dotnet add *)",
+      "Bash(grep -rn \"Migrate\\\\|EnsureCreated\\\\|Database\\\\.\" src/SMSMarica.Api/Program.cs)",
+      "Bash(grep -rn \"\\\\.Migrate\\(\" src/)",
+      "Bash(git -C \"C:/Projetos GIT/SMSMarica\" log --oneline -1)",
+      "Bash(git credential *)",
+      "Bash(grep -rln -i \"front\" Automais.Fhir/README.md docs/adr/0010-servico-fhir-autonomo.md)",
+      "Bash(ls -d Automais.Fhir/Automais.Fhir.front)",
+      "Bash(git rm *)",
+      "Bash(git commit -q -m ' *)"
     ]
   }
 }
