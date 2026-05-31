@@ -7,9 +7,10 @@ using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Translado;
 
-public sealed class TransladoService(SmsMaricaDbContext db) : ITransladoService
+public sealed class TransladoService(SmsMaricaDbContext db, Pacientes.Fhir.IPacienteResolver pacienteResolver) : ITransladoService
 {
     private readonly SmsMaricaDbContext _db = db;
+    private readonly Pacientes.Fhir.IPacienteResolver _pacienteResolver = pacienteResolver;
 
     public async Task<IReadOnlyList<RotaDiariaListItemDto>> ListarAsync(
         DateOnly? data,
@@ -199,13 +200,18 @@ public sealed class TransladoService(SmsMaricaDbContext db) : ITransladoService
 
         var lista = await query.ToListAsync(cancellationToken);
 
-        return [.. lista.Select(x => new SessaoElegivelDto(
+        var dtos = lista.Select(x => new SessaoElegivelDto(
             x.Id, x.TratamentoId,
             x.PacienteId, x.PacienteNome,
             x.UnidadeId, x.UnidadeNome,
             x.DataPrevista, x.HoraPrevistaBusca,
             x.Status,
-            x.DataPrevista < dataRota))];
+            x.DataPrevista < dataRota)).ToList();
+
+        // Resolve o nome do paciente pela key (PacienteId = id do Patient no hub FHIR).
+        var nomes = await _pacienteResolver.ResolverManyAsync(dtos.Select(d => d.PacienteId), cancellationToken);
+        return [.. dtos.Select(d => nomes.TryGetValue(d.PacienteId, out var r)
+            ? d with { PacienteNome = r.Nome } : d)];
     }
 
     public async Task<Guid> CriarAlocacaoAsync(
@@ -358,6 +364,9 @@ public sealed class TransladoService(SmsMaricaDbContext db) : ITransladoService
                 assento.Numero,
                 a.Tipo);
 
-        return await query.ToListAsync(cancellationToken);
+        var dtos = await query.ToListAsync(cancellationToken);
+        var nomes = await _pacienteResolver.ResolverManyAsync(dtos.Select(d => d.PacienteId), cancellationToken);
+        return [.. dtos.Select(d => nomes.TryGetValue(d.PacienteId, out var r)
+            ? d with { PacienteNome = r.Nome } : d)];
     }
 }
