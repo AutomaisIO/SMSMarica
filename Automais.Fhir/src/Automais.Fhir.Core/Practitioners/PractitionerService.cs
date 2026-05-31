@@ -81,7 +81,13 @@ public sealed class PractitionerService(FhirDbContext db, TimeProvider clock) : 
         if (!string.IsNullOrWhiteSpace(filtro.Nome))
             query = query.Where(p => p.Nome != null && EF.Functions.ILike(p.Nome, $"%{filtro.Nome}%"));
 
-        var rows = await query.OrderBy(p => p.Nome).Take(LimiteBusca).ToListAsync(ct);
+        // Sem filtro: últimos incluídos primeiro (LastUpdated desc). Com filtro: por nome.
+        var semFiltro = string.IsNullOrWhiteSpace(filtro.Cpf) && string.IsNullOrWhiteSpace(filtro.Crm)
+                        && string.IsNullOrWhiteSpace(filtro.Nome);
+        var ordenada = semFiltro
+            ? query.OrderByDescending(p => p.LastUpdated)
+            : query.OrderBy(p => p.Nome);
+        var rows = await ordenada.Take(LimiteBusca).ToListAsync(ct);
 
         var bundle = new Bundle { Type = Bundle.BundleType.Searchset, Total = rows.Count };
         foreach (var row in rows)
