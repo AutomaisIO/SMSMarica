@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
+using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Core.Tratamentos.Dtos;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities;
@@ -7,9 +8,19 @@ using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Tratamentos;
 
-public sealed class TratamentosService(SmsMaricaDbContext db) : ITratamentosService
+public sealed class TratamentosService(SmsMaricaDbContext db, IPacienteResolver resolver) : ITratamentosService
 {
     private readonly SmsMaricaDbContext _db = db;
+    private readonly IPacienteResolver _resolver = resolver;
+
+    // Resolve o nome do paciente (hub FHIR) e embute nos itens da listagem.
+    private async Task<IReadOnlyList<TratamentoListItemDto>> EnriquecerAsync(
+        List<TratamentoListItemDto> dtos, CancellationToken ct)
+    {
+        var nomes = await _resolver.ResolverManyAsync(dtos.Select(d => d.PacienteId), ct);
+        return [.. dtos.Select(d => nomes.TryGetValue(d.PacienteId, out var r)
+            ? d with { PacienteNome = r.Nome } : d)];
+    }
 
     public async Task<IReadOnlyList<TratamentoListItemDto>> ListarAsync(CancellationToken cancellationToken = default)
     {
@@ -18,7 +29,7 @@ public sealed class TratamentosService(SmsMaricaDbContext db) : ITratamentosServ
             .ThenByDescending(t => t.CriadoEm)
             .ToListAsync(cancellationToken);
 
-        return [.. tratamentos.Select(ParaListItem)];
+        return await EnriquecerAsync([.. tratamentos.Select(ParaListItem)], cancellationToken);
     }
 
     public async Task<IReadOnlyList<TratamentoListItemDto>> ListarPorPacienteAsync(Guid pacienteId, CancellationToken cancellationToken = default)
@@ -29,7 +40,7 @@ public sealed class TratamentosService(SmsMaricaDbContext db) : ITratamentosServ
             .ThenByDescending(t => t.CriadoEm)
             .ToListAsync(cancellationToken);
 
-        return [.. tratamentos.Select(ParaListItem)];
+        return await EnriquecerAsync([.. tratamentos.Select(ParaListItem)], cancellationToken);
     }
 
     public async Task<IReadOnlyList<TratamentoListItemDto>> ListarPorUnidadeAsync(Guid unidadeId, CancellationToken cancellationToken = default)
@@ -40,7 +51,7 @@ public sealed class TratamentosService(SmsMaricaDbContext db) : ITratamentosServ
             .ThenByDescending(t => t.CriadoEm)
             .ToListAsync(cancellationToken);
 
-        return [.. tratamentos.Select(ParaListItem)];
+        return await EnriquecerAsync([.. tratamentos.Select(ParaListItem)], cancellationToken);
     }
 
     public async Task<TratamentoDto> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default)
@@ -67,7 +78,9 @@ public sealed class TratamentosService(SmsMaricaDbContext db) : ITratamentosServ
         var alocacoes = await alocacoesQuery.ToListAsync(cancellationToken);
         var alocacoesPorSessao = alocacoes.ToDictionary(a => a.SessaoId, a => a);
 
-        return TratamentosMapper.ParaDto(t, alocacoesPorSessao);
+        var dto = TratamentosMapper.ParaDto(t, alocacoesPorSessao);
+        var resumo = await _resolver.ResolverAsync(dto.PacienteId, cancellationToken);
+        return resumo is null ? dto : dto with { PacienteNome = resumo.Nome };
     }
 
     public async Task<IReadOnlyList<TipoTratamentoDto>> ListarTiposAsync(CancellationToken cancellationToken = default)

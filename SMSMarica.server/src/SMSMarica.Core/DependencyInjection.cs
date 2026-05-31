@@ -38,6 +38,7 @@ public static class DependencyInjection
     public static IServiceCollection AddCore(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<IPacientesService, PacientesService>();
+        services.AddScoped<Pacientes.Fhir.IPacienteResolver, Pacientes.Fhir.PacienteResolver>();
         services.AddScoped<ITratamentosService, TratamentosService>();
         services.AddScoped<IUnidadesService, UnidadesService>();
         services.AddScoped<IVeiculosService, VeiculosService>();

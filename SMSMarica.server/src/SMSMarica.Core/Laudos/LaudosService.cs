@@ -20,6 +20,7 @@ public sealed class LaudosService(
     ISolicitacoesExameService solicitacoes,
     IPacienteFhirClient pacienteFhir,
     IPractitionerFhirClient practitionerFhir,
+    IPacienteResolver pacienteResolver,
     ILogger<LaudosService> logger) : ILaudosService
 {
     private readonly SmsMaricaDbContext _db = db;
@@ -27,7 +28,24 @@ public sealed class LaudosService(
     private readonly ISolicitacoesExameService _solicitacoes = solicitacoes;
     private readonly IPacienteFhirClient _pacienteFhir = pacienteFhir;
     private readonly IPractitionerFhirClient _practitionerFhir = practitionerFhir;
+    private readonly IPacienteResolver _pacienteResolver = pacienteResolver;
     private readonly ILogger<LaudosService> _logger = logger;
+
+    private async Task<IReadOnlyList<LaudoListItemDto>> EnriquecerAsync(
+        List<LaudoListItemDto> dtos, CancellationToken ct)
+    {
+        var ids = dtos.Where(d => d.PacienteId.HasValue).Select(d => d.PacienteId!.Value);
+        var nomes = await _pacienteResolver.ResolverManyAsync(ids, ct);
+        return [.. dtos.Select(d => d.PacienteId.HasValue && nomes.TryGetValue(d.PacienteId.Value, out var r)
+            ? d with { PacienteNome = r.Nome } : d)];
+    }
+
+    private async Task<LaudoDto> EnriquecerAsync(LaudoDto dto, CancellationToken ct)
+    {
+        if (!dto.PacienteId.HasValue) return dto;
+        var r = await _pacienteResolver.ResolverAsync(dto.PacienteId.Value, ct);
+        return r is null ? dto : dto with { PacienteNome = r.Nome, PacienteCpf = r.Cpf };
+    }
 
     public async Task<IReadOnlyList<LaudoListItemDto>> ListarAsync(
         FiltroLaudosDto filtro,
@@ -63,14 +81,14 @@ public sealed class LaudosService(
             .Take(limite)
             .ToListAsync(cancellationToken);
 
-        return [.. lista.Select(LaudosMapper.ParaListItem)];
+        return await EnriquecerAsync([.. lista.Select(LaudosMapper.ParaListItem)], cancellationToken);
     }
 
     public async Task<LaudoDto> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var l = await CarregarCompletoAsync(id, asNoTracking: true, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Laudo), id);
-        return LaudosMapper.ParaDto(l);
+        return await EnriquecerAsync(LaudosMapper.ParaDto(l), cancellationToken);
     }
 
     public async Task<LaudoDto?> ObterPorStudyAsync(
@@ -83,7 +101,7 @@ public sealed class LaudosService(
             .Where(x => x.StudyInstanceUID == uid && !x.Excluido)
             .OrderByDescending(x => x.Versao)
             .FirstOrDefaultAsync(cancellationToken);
-        return l is null ? null : LaudosMapper.ParaDto(l);
+        return l is null ? null : await EnriquecerAsync(LaudosMapper.ParaDto(l), cancellationToken);
     }
 
     public async Task<IReadOnlyList<LaudoHistoricoItemDto>> ListarHistoricoAsync(

@@ -18,6 +18,7 @@ public sealed class SolicitacoesExameService(
     IDcm4cheeUpsClient upsClient,
     INotificadorExame notificador,
     IUsuarioAtualAccessor usuarioAtual,
+    Pacientes.Fhir.IPacienteResolver pacienteResolver,
     ILogger<SolicitacoesExameService> logger)
     : ISolicitacoesExameService
 {
@@ -26,7 +27,23 @@ public sealed class SolicitacoesExameService(
     private readonly IDcm4cheeUpsClient _upsClient = upsClient;
     private readonly INotificadorExame _notificador = notificador;
     private readonly IUsuarioAtualAccessor _usuarioAtual = usuarioAtual;
+    private readonly Pacientes.Fhir.IPacienteResolver _pacienteResolver = pacienteResolver;
     private readonly ILogger<SolicitacoesExameService> _logger = logger;
+
+    // Resolve nome/CPF/CNS do paciente (hub FHIR) e embute nos DTOs.
+    private async Task<IReadOnlyList<SolicitacaoExameListItemDto>> EnriquecerAsync(
+        List<SolicitacaoExameListItemDto> dtos, CancellationToken ct)
+    {
+        var nomes = await _pacienteResolver.ResolverManyAsync(dtos.Select(d => d.PacienteId), ct);
+        return [.. dtos.Select(d => nomes.TryGetValue(d.PacienteId, out var r)
+            ? d with { PacienteNome = r.Nome } : d)];
+    }
+
+    private async Task<SolicitacaoExameDto> EnriquecerAsync(SolicitacaoExameDto dto, CancellationToken ct)
+    {
+        var r = await _pacienteResolver.ResolverAsync(dto.PacienteId, ct);
+        return r is null ? dto : dto with { PacienteNome = r.Nome, PacienteCpf = r.Cpf, PacienteCns = r.Cns };
+    }
 
     public async Task<IReadOnlyList<SolicitacaoExameListItemDto>> ListarAsync(
         FiltroSolicitacoesDto filtro,
@@ -62,14 +79,14 @@ public sealed class SolicitacoesExameService(
             .Take(limite)
             .ToListAsync(cancellationToken);
 
-        return [.. lista.Select(SolicitacoesExameMapper.ParaListItem)];
+        return await EnriquecerAsync([.. lista.Select(SolicitacoesExameMapper.ParaListItem)], cancellationToken);
     }
 
     public async Task<SolicitacaoExameDto> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var s = await CarregarCompletoAsync(x => x.Id == id, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(SolicitacaoExame), id);
-        return SolicitacoesExameMapper.ParaDto(s);
+        return await EnriquecerAsync(SolicitacoesExameMapper.ParaDto(s), cancellationToken);
     }
 
     public async Task<SolicitacaoExameDto?> ObterPorAccessionAsync(string accession, CancellationToken cancellationToken = default)
@@ -77,7 +94,7 @@ public sealed class SolicitacoesExameService(
         var a = (accession ?? string.Empty).Trim();
         if (a.Length == 0) return null;
         var s = await CarregarCompletoAsync(x => x.AccessionNumber == a, cancellationToken);
-        return s is null ? null : SolicitacoesExameMapper.ParaDto(s);
+        return s is null ? null : await EnriquecerAsync(SolicitacoesExameMapper.ParaDto(s), cancellationToken);
     }
 
     public async Task<SolicitacaoExameDto?> ObterPorStudyAsync(string studyInstanceUID, CancellationToken cancellationToken = default)
@@ -85,7 +102,7 @@ public sealed class SolicitacoesExameService(
         var u = (studyInstanceUID ?? string.Empty).Trim();
         if (u.Length == 0) return null;
         var s = await CarregarCompletoAsync(x => x.StudyInstanceUID == u, cancellationToken);
-        return s is null ? null : SolicitacoesExameMapper.ParaDto(s);
+        return s is null ? null : await EnriquecerAsync(SolicitacoesExameMapper.ParaDto(s), cancellationToken);
     }
 
     public async Task<Guid> CadastrarAsync(CadastrarSolicitacaoExameRequest request, CancellationToken cancellationToken = default)
