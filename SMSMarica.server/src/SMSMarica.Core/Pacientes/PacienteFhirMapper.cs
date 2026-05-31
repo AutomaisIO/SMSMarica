@@ -126,10 +126,18 @@ internal static class PacienteFhirMapper
     public static PacienteDto ParaDto(Patient p)
     {
         var pl = LerPayload(p);
+        // Demografia central: campos FHIR nativos primeiro (funciona p/ pacientes
+        // de qualquer fonte — Salux, eSUS), payload como fallback dos extras.
+        var nome = NomeNativo(p) ?? pl.NomeCompleto;
+        var cpf = IdentValor(p, SystemCpf) ?? pl.Cpf ?? string.Empty;
+        var cns = IdentValor(p, SystemCns) ?? pl.Cns;
+        var rg = IdentValor(p, SystemRg) ?? pl.Rg;
+        var nasc = ParseData(p.BirthDate) ?? pl.DataNascimento;
+        var sexo = GeneroNativo(p.Gender) ?? pl.Sexo;
         return new PacienteDto(
-            Guid.Parse(p.Id!), pl.NomeCompleto, pl.Cpf, pl.Cns, pl.Latitude, pl.Longitude,
+            Guid.Parse(p.Id!), nome, cpf, cns, pl.Latitude, pl.Longitude,
             p.Active ?? true, p.Meta?.LastUpdated?.UtcDateTime ?? default,
-            pl.Rg, pl.DataNascimento, pl.Sexo, pl.EstadoCivil, pl.RacaCor, pl.Escolaridade,
+            rg, nasc, sexo, pl.EstadoCivil, pl.RacaCor, pl.Escolaridade,
             pl.Ocupacao, pl.Naturalidade, pl.Nacionalidade, pl.NomeDaMae, pl.NomeDoPai, pl.ResponsavelLegal,
             pl.Endereco, pl.TelefonePrincipal, pl.TelefoneCelular, pl.TelefoneResidencial, pl.Email,
             pl.ContatoEmergencia, pl.AlturaCm, pl.PesoKg, pl.TipoSanguineo, pl.FatorRh,
@@ -141,12 +149,34 @@ internal static class PacienteFhirMapper
     {
         var pl = LerPayload(p);
         return new PacienteListItemDto(
-            Guid.Parse(p.Id!), pl.NomeCompleto, pl.Cpf, pl.DataNascimento, pl.NomeDaMae,
+            Guid.Parse(p.Id!), NomeNativo(p) ?? pl.NomeCompleto, IdentValor(p, SystemCpf) ?? pl.Cpf ?? string.Empty,
+            ParseData(p.BirthDate) ?? pl.DataNascimento, pl.NomeDaMae,
             pl.TelefonePrincipal, pl.FotoBase64, p.Active ?? true, pl.NomeSocial);
     }
 
     /// <summary>Nome do paciente (para snapshots em recursos dependentes).</summary>
-    public static string NomeDe(Patient p) => LerPayload(p).NomeCompleto;
+    public static string NomeDe(Patient p) => NomeNativo(p) ?? LerPayload(p).NomeCompleto;
+
+    private static string? NomeNativo(Patient p)
+    {
+        var n = p.Name?.FirstOrDefault(x => x.Use == HumanName.NameUse.Official)?.Text
+                ?? p.Name?.FirstOrDefault()?.Text;
+        return string.IsNullOrWhiteSpace(n) ? null : n;
+    }
+
+    private static string? IdentValor(Patient p, string system) =>
+        p.Identifier?.FirstOrDefault(i => i.System == system)?.Value;
+
+    private static DateOnly? ParseData(string? d) =>
+        DateOnly.TryParse(d, System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None, out var r) ? r : null;
+
+    private static Sexo? GeneroNativo(AdministrativeGender? g) => g switch
+    {
+        AdministrativeGender.Male => Sexo.Masculino,
+        AdministrativeGender.Female => Sexo.Feminino,
+        _ => null,
+    };
 
     private static void AplicarPayload(Patient patient, Payload pl)
     {
