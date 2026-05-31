@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Automais.Fhir.Core.Patients;
+using Automais.Fhir.Core.Practitioners;
 
 namespace Automais.Fhir.Core;
 
@@ -9,6 +10,7 @@ public static class DependencyInjection
     public static IServiceCollection AddFhirCore(this IServiceCollection services)
     {
         services.AddScoped<IPatientService, PatientService>();
+        services.AddScoped<IPractitionerService, PractitionerService>();
         return services;
     }
 }

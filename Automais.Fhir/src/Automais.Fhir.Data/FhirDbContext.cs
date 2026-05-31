@@ -13,6 +13,7 @@ public sealed class FhirDbContext(DbContextOptions<FhirDbContext> options) : DbC
     public const string Schema = "fhir";
 
     public DbSet<PatientRow> Patients => Set<PatientRow>();
+    public DbSet<PractitionerRow> Practitioners => Set<PractitionerRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
