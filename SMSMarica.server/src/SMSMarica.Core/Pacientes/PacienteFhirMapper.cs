@@ -134,15 +134,45 @@ internal static class PacienteFhirMapper
         var rg = IdentValor(p, SystemRg) ?? pl.Rg;
         var nasc = ParseData(p.BirthDate) ?? pl.DataNascimento;
         var sexo = GeneroNativo(p.Gender) ?? pl.Sexo;
+        // Endereço/telefone/email/filiação: campos FHIR nativos primeiro (pacientes
+        // importados — Salux etc.), payload como fallback (criados pelo smsmarica).
+        var mae = ContatoNome(p, "MTH") ?? pl.NomeDaMae;
+        var pai = ContatoNome(p, "FTH") ?? pl.NomeDoPai;
+        var resp = ContatoNome(p, "GUARD") ?? pl.ResponsavelLegal;
+        var endereco = EnderecoNativo(p) ?? pl.Endereco;
+        var fonePrinc = TelecomNativo(p, ContactPoint.ContactPointSystem.Phone) ?? pl.TelefonePrincipal;
+        var email = TelecomNativo(p, ContactPoint.ContactPointSystem.Email) ?? pl.Email;
+        // Tudo do FHIR: todos os identificadores, óbito, cônjuge, fonte e extras crus.
+        var identificadores = (p.Identifier ?? [])
+            .Where(i => !string.IsNullOrWhiteSpace(i.Value))
+            .Select(i => new IdentificadorDto(i.System ?? string.Empty, i.Value!))
+            .ToList();
+        var obito = ParseData((p.Deceased as FhirDateTime)?.Value);
+        var conjuge = ContatoNome(p, "SPS");
+        var fonte = p.Meta?.Source;
+        var dadosFonte = LerExtras(p);
         return new PacienteDto(
             Guid.Parse(p.Id!), nome, cpf, cns, pl.Latitude, pl.Longitude,
             p.Active ?? true, p.Meta?.LastUpdated?.UtcDateTime ?? default,
             rg, nasc, sexo, pl.EstadoCivil, pl.RacaCor, pl.Escolaridade,
-            pl.Ocupacao, pl.Naturalidade, pl.Nacionalidade, pl.NomeDaMae, pl.NomeDoPai, pl.ResponsavelLegal,
-            pl.Endereco, pl.TelefonePrincipal, pl.TelefoneCelular, pl.TelefoneResidencial, pl.Email,
+            pl.Ocupacao, pl.Naturalidade, pl.Nacionalidade, mae, pai, resp,
+            endereco, fonePrinc, pl.TelefoneCelular, pl.TelefoneResidencial, email,
             pl.ContatoEmergencia, pl.AlturaCm, pl.PesoKg, pl.TipoSanguineo, pl.FatorRh,
             pl.Alergias, pl.MedicamentosContinuos, pl.Comorbidades, pl.Deficiencias, pl.PlanoSaude,
-            pl.Observacoes, pl.FotoBase64, pl.NomeSocial);
+            pl.Observacoes, pl.FotoBase64, pl.NomeSocial,
+            identificadores, obito, conjuge, fonte, dadosFonte);
+    }
+
+    private static IReadOnlyDictionary<string, string>? LerExtras(Patient p)
+    {
+        var raw = (p.GetExtension("urn:salux:extras")?.Value as FhirString)?.Value;
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(raw);
+            return doc.RootElement.EnumerateObject().ToDictionary(x => x.Name, x => x.Value.ToString());
+        }
+        catch { return null; }
     }
 
     public static PacienteListItemDto ParaListItem(Patient p)
@@ -150,8 +180,9 @@ internal static class PacienteFhirMapper
         var pl = LerPayload(p);
         return new PacienteListItemDto(
             Guid.Parse(p.Id!), NomeNativo(p) ?? pl.NomeCompleto, IdentValor(p, SystemCpf) ?? pl.Cpf ?? string.Empty,
-            ParseData(p.BirthDate) ?? pl.DataNascimento, pl.NomeDaMae,
-            pl.TelefonePrincipal, pl.FotoBase64, p.Active ?? true, pl.NomeSocial);
+            ParseData(p.BirthDate) ?? pl.DataNascimento, ContatoNome(p, "MTH") ?? pl.NomeDaMae,
+            TelecomNativo(p, ContactPoint.ContactPointSystem.Phone) ?? pl.TelefonePrincipal,
+            pl.FotoBase64, p.Active ?? true, pl.NomeSocial);
     }
 
     /// <summary>Nome do paciente (para snapshots em recursos dependentes).</summary>
@@ -177,6 +208,33 @@ internal static class PacienteFhirMapper
         AdministrativeGender.Female => Sexo.Feminino,
         _ => null,
     };
+
+    private static string? ContatoNome(Patient p, string code) =>
+        p.Contact?.FirstOrDefault(c => c.Relationship != null
+            && c.Relationship.Any(r => r.Coding != null && r.Coding.Any(cd => cd.Code == code)))?.Name?.Text;
+
+    private static string? TelecomNativo(Patient p, ContactPoint.ContactPointSystem sistema) =>
+        p.Telecom?.FirstOrDefault(t => t.System == sistema)?.Value;
+
+    private static EnderecoDto? EnderecoNativo(Patient p)
+    {
+        var a = p.Address?.FirstOrDefault();
+        if (a is null) return null;
+        var linhas = a.Line?.ToList() ?? [];
+        var logradouro = linhas.Count > 0 ? linhas[0] : null;
+        if (string.IsNullOrWhiteSpace(logradouro) && string.IsNullOrWhiteSpace(a.City)
+            && string.IsNullOrWhiteSpace(a.PostalCode))
+            return null;
+        return new EnderecoDto(
+            a.PostalCode ?? string.Empty,
+            logradouro ?? string.Empty,
+            null,
+            linhas.Count > 1 ? linhas[1] : null,
+            a.District ?? string.Empty,
+            a.City ?? string.Empty,
+            a.State ?? string.Empty,
+            a.Text);
+    }
 
     private static void AplicarPayload(Patient patient, Payload pl)
     {

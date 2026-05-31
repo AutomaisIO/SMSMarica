@@ -54,7 +54,22 @@ public sealed record PacienteDto(
     string? Observacoes,
     string? FotoBase64,
     // Adicionado depois — cidadao.app ignora silenciosamente.
-    string? NomeSocial = null);
+    string? NomeSocial = null,
+    // --- Tudo que vem do recurso FHIR (campos extras do hub) ---
+    /// <summary>Todos os identificadores do recurso FHIR (CPF, CNS, RG, PIS,
+    /// passaporte, RNE, certidão, prontuários SGH/CEM, cd_paciente Salux...).</summary>
+    IReadOnlyList<IdentificadorDto>? Identificadores = null,
+    /// <summary>Data de óbito (FHIR Patient.deceasedDateTime), se houver.</summary>
+    DateOnly? DataObito = null,
+    string? NomeConjuge = null,
+    /// <summary>Sistema de origem do recurso no hub (FHIR Meta.source).</summary>
+    string? Fonte = null,
+    /// <summary>Dados crus da fonte preservados em extension (ex.: códigos Salux:
+    /// cor, nacionalidade, religião, etnia, peso/altura, sangue/RH).</summary>
+    IReadOnlyDictionary<string, string>? DadosFonte = null);
+
+/// <summary>Identificador FHIR (system + valor) — ex.: CPF, CNS, RG, prontuário.</summary>
+public sealed record IdentificadorDto(string Sistema, string Valor);
 
 public sealed record PacienteListItemDto(
     Guid Id,
