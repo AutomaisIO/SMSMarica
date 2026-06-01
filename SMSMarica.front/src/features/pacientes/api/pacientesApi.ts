@@ -1,11 +1,17 @@
 import { http } from '@/shared/api/httpClient';
 import type {
+  Atendimento,
   AtualizarPacientePayload,
   CadastrarPacientePayload,
   Paciente,
   PacienteExistencia,
   PacienteListItem,
 } from '@/features/pacientes/types';
+
+export async function obterAtendimentos(id: string): Promise<Atendimento[]> {
+  const { data } = await http.get<Atendimento[]>(`/pacientes/${id}/atendimentos`);
+  return data;
+}
 
 export async function buscarPacientes(termo: string): Promise<PacienteListItem[]> {
   const t = termo.trim();

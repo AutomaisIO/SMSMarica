@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
+using SMSMarica.Core.Atendimentos;
+using SMSMarica.Core.Atendimentos.Dtos;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.Pacientes.Dtos;
 using SMSMarica.Data.Entities.Enums;
@@ -8,9 +10,10 @@ namespace SMSMarica.Api.Controllers;
 
 [ApiController]
 [Route("pacientes")]
-public sealed class PacientesController(IPacientesService service) : ControllerBase
+public sealed class PacientesController(IPacientesService service, IAtendimentosService atendimentos) : ControllerBase
 {
     private readonly IPacientesService _service = service;
+    private readonly IAtendimentosService _atendimentos = atendimentos;
 
     /// <summary>
     /// Busca em tempo real por nome (qualquer parte, múltiplos tokens) ou CPF.
@@ -31,6 +34,16 @@ public sealed class PacientesController(IPacientesService service) : ControllerB
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<PacienteDto> ObterPorId(Guid id, CancellationToken cancellationToken) =>
         await _service.ObterPorIdAsync(id, cancellationToken);
+
+    /// <summary>
+    /// Histórico clínico do paciente (atendimentos + diagnósticos) vindo do hub
+    /// FHIR (Encounter/Condition), originado do Salux. Timeline, mais recente primeiro.
+    /// </summary>
+    [HttpGet("{id:guid}/atendimentos")]
+    [RequerPermissao(ModuloPermissao.Pacientes, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<AtendimentoDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<AtendimentoDto>> Atendimentos(Guid id, CancellationToken cancellationToken) =>
+        await _atendimentos.ObterPorPacienteAsync(id, cancellationToken);
 
     /// <summary>
     /// Verifica se há paciente com o CPF informado (inclusive desativado).

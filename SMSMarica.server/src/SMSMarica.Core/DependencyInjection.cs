@@ -138,6 +138,13 @@ public static class DependencyInjection
                 client.BaseAddress = new Uri(fhirBaseUrl);
                 client.Timeout = TimeSpan.FromSeconds(15);
             });
+        services
+            .AddHttpClient<Atendimentos.Fhir.IEncounterFhirClient, Atendimentos.Fhir.EncounterFhirClient>(client =>
+            {
+                client.BaseAddress = new Uri(fhirBaseUrl);
+                client.Timeout = TimeSpan.FromSeconds(15);
+            });
+        services.AddScoped<Atendimentos.IAtendimentosService, Atendimentos.AtendimentosService>();
 
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 

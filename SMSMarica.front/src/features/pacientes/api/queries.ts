@@ -4,6 +4,7 @@ import {
   buscarPacientes,
   cadastrarPaciente,
   desativarPaciente,
+  obterAtendimentos,
   obterPacientePorCpf,
   obterPacientePorId,
   reativarPaciente,
@@ -18,7 +19,19 @@ export const pacientesKeys = {
   busca: (termo: string) => ['pacientes', 'busca', termo] as const,
   porId: (id: string) => ['pacientes', 'detalhe', id] as const,
   porCpf: (cpf: string) => ['pacientes', 'por-cpf', cpf] as const,
+  atendimentos: (id: string) => ['pacientes', 'atendimentos', id] as const,
 };
+
+export function useAtendimentosPaciente(id: string | null) {
+  return useQuery({
+    queryKey: id ? pacientesKeys.atendimentos(id) : ['pacientes', 'atendimentos', 'nenhum'],
+    queryFn: () => {
+      if (!id) throw new Error('ID não informado.');
+      return obterAtendimentos(id);
+    },
+    enabled: Boolean(id),
+  });
+}
 
 export function useBuscarPacientes(termo: string) {
   const t = termo.trim();

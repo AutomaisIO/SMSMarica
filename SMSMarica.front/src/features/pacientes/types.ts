@@ -159,6 +159,24 @@ export type CadastrarPacientePayload = PacienteFormPayload;
 
 export type AtualizarPacientePayload = Omit<PacienteFormPayload, 'nomeCompleto' | 'cpf' | 'dataNascimento'>;
 
+/** Diagnóstico (CID-10) de um atendimento. */
+export type Diagnostico = {
+  codigo: string;
+  descricao?: string | null;
+};
+
+/** Atendimento do histórico clínico (Encounter do hub FHIR, originado do Salux). */
+export type Atendimento = {
+  id: string;
+  inicio?: string | null;
+  fim?: string | null;
+  tipo: string;
+  status: string;
+  medicoNome?: string | null;
+  fonte?: string | null;
+  diagnosticos: Diagnostico[];
+};
+
 export type PacienteExistencia = {
   id: string;
   nomeCompleto: string;

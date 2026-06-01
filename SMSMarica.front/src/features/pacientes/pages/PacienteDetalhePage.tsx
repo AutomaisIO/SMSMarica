@@ -1,12 +1,12 @@
-import { ArrowLeft, ListChecks, Pencil } from 'lucide-react';
+import { ArrowLeft, ListChecks, Pencil, Stethoscope } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Avatar } from '@/shared/ui/Avatar';
 import { Button } from '@/shared/ui/Button';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { Tabs, type Aba } from '@/shared/ui/Tabs';
-import { usePacientePorId } from '@/features/pacientes/api/queries';
-import type { Paciente } from '@/features/pacientes/types';
+import { useAtendimentosPaciente, usePacientePorId } from '@/features/pacientes/api/queries';
+import type { Atendimento, Paciente } from '@/features/pacientes/types';
 import { useListarTratamentos } from '@/features/tratamentos/api/queries';
 import { formatarDataBr } from '@/features/tratamentos/lib/expansor';
 import type { TratamentoListItem } from '@/features/tratamentos/types';
@@ -238,6 +238,84 @@ function SecaoSaude({ p }: { p: Paciente }) {
   );
 }
 
+function formatarDataHora(iso?: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString('pt-BR', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+}
+
+function corTipoAtendimento(tipo: string): string {
+  if (tipo === 'Urgência') return 'bg-red-100 text-red-700';
+  if (tipo === 'Internação') return 'bg-amber-100 text-amber-800';
+  return 'bg-blue-100 text-blue-700';
+}
+
+function SecaoAtendimentos({ pacienteId }: { pacienteId: string }) {
+  const q = useAtendimentosPaciente(pacienteId);
+  const lista: Atendimento[] = q.data ?? [];
+
+  if (q.isLoading) {
+    return <div className="text-sm text-gray-500">Carregando atendimentos…</div>;
+  }
+  if (q.isError) {
+    return (
+      <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        Não foi possível carregar o histórico de atendimentos.
+      </div>
+    );
+  }
+  if (lista.length === 0) {
+    return (
+      <div className="text-sm text-gray-400">
+        Nenhum atendimento encontrado para este paciente no hub clínico.
+      </div>
+    );
+  }
+  return (
+    <ol className="space-y-3">
+      {lista.map((a) => (
+        <li key={a.id} className="rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${corTipoAtendimento(a.tipo)}`}>
+                {a.tipo}
+              </span>
+              <span className="text-sm font-medium text-gray-900">
+                {formatarDataHora(a.inicio) ?? '—'}
+              </span>
+            </div>
+            {a.fonte && a.fonte.toLowerCase().includes('salux') ? (
+              <span className="text-[10px] uppercase tracking-wide text-gray-400">Origem: Salux</span>
+            ) : null}
+          </div>
+          {a.medicoNome ? (
+            <div className="mt-1 flex items-center gap-1.5 text-sm text-gray-600">
+              <Stethoscope className="h-3.5 w-3.5" /> {a.medicoNome}
+            </div>
+          ) : null}
+          {a.diagnosticos.length > 0 ? (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {a.diagnosticos.map((d, i) => (
+                <span
+                  key={`${d.codigo}-${i}`}
+                  className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700"
+                  title={d.descricao ?? undefined}
+                >
+                  {d.codigo}
+                  {d.descricao ? ` · ${d.descricao}` : ''}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 export function PacienteDetalhePage() {
   const navigate = useNavigate();
   const params = useParams<{ id: string }>();
@@ -286,6 +364,7 @@ export function PacienteDetalhePage() {
 
   const abas: Aba[] = p ? [
     { id: 'identificacao', rotulo: 'Identificação', conteudo: <SecaoIdentificacao p={p} /> },
+    { id: 'atendimentos', rotulo: 'Atendimentos', conteudo: <SecaoAtendimentos pacienteId={id} /> },
     { id: 'filiacao', rotulo: 'Filiação', conteudo: <SecaoFiliacao p={p} /> },
     { id: 'endereco', rotulo: 'Endereço', conteudo: <SecaoEndereco p={p} /> },
     { id: 'contatos', rotulo: 'Contatos', conteudo: <SecaoContatos p={p} /> },

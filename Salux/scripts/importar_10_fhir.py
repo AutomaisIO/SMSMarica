@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 import urllib.request
 
 from conexao import executar_json
@@ -187,9 +188,20 @@ def purgar_hub():
 
 
 def main():
-    purgar_hub()
+    # Uso: python importar_10_fhir.py [cd_paciente ...]
+    #   sem args  -> purga o hub e importa os 10 últimos (completos).
+    #   com cds   -> NÃO purga; importa exatamente esses pacientes (upsert por CPF).
+    cds = [x for x in sys.argv[1:] if x.isdigit()]
+    if cds:
+        filtro = "cd_paciente IN (" + ",".join(cds) + ")"
+        limite = 50
+    else:
+        purgar_hub()
+        filtro = ("cpf_paciente IS NOT NULL AND nm_paciente IS NOT NULL "
+                  "AND dt_nascimento IS NOT NULL AND nm_logradouro IS NOT NULL AND nm_mae IS NOT NULL")
+        limite = 10
     linhas = executar_json(
-        """
+        f"""
         SELECT JSON_OBJECT(
             'cd' VALUE cd_paciente, 'nome' VALUE nm_paciente, 'social' VALUE nm_paciente_social,
             'flag_social' VALUE in_flag_social, 'nasc' VALUE TO_CHAR(dt_nascimento,'YYYY-MM-DD'),
@@ -216,10 +228,9 @@ def main():
             'barreira_ds' VALUE (SELECT bc.ds_barreira_comunicacao FROM barreira_comunicacao bc WHERE TO_CHAR(bc.cd_barreira_comunicacao)=TO_CHAR(pac.cd_barreira_comunicacao) AND ROWNUM=1))
         FROM (
             SELECT * FROM paciente
-            WHERE cpf_paciente IS NOT NULL AND nm_paciente IS NOT NULL
-              AND dt_nascimento IS NOT NULL AND nm_logradouro IS NOT NULL AND nm_mae IS NOT NULL
+            WHERE {filtro}
             ORDER BY cd_paciente DESC
-        ) pac WHERE ROWNUM <= 10
+        ) pac WHERE ROWNUM <= {limite}
         """,
         modo="supervisor",
     )
