@@ -34,7 +34,7 @@ export function SeletorMedicoSolicitante({ valor, aoMudar }: Props) {
   const [filtro, setFiltro] = useState('');
   const debounced = useDebounce(filtro, 300);
   // Sem filtro: 10 últimos cadastros; com filtro: busca por nome/CPF no hub FHIR.
-  const medicos = useBuscarMedicos(debounced);
+  const medicos = useBuscarMedicos(debounced, { conselho: 'CRM' });
 
   function escolherInterno(usuarioId: string) {
     const m = medicos.data?.find((x) => x.usuarioId === usuarioId);
@@ -45,8 +45,8 @@ export function SeletorMedicoSolicitante({ valor, aoMudar }: Props) {
     aoMudar({
       solicitanteUsuarioId: m.usuarioId,
       solicitanteNome: m.nomeCompleto,
-      solicitanteCrm: m.crm,
-      solicitanteUfCrm: m.ufCrm,
+      solicitanteCrm: m.registro,
+      solicitanteUfCrm: m.ufConselho,
     });
   }
 
@@ -107,7 +107,7 @@ export function SeletorMedicoSolicitante({ valor, aoMudar }: Props) {
               ) : null}
               {(medicos.data ?? []).map((m) => (
                 <option key={m.id} value={m.usuarioId}>
-                  {m.nomeCompleto} (CRM {m.ufCrm}/{m.crm})
+                  {m.nomeCompleto} (CRM {m.ufConselho}/{m.registro})
                 </option>
               ))}
             </Select>
