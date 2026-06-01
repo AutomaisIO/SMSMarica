@@ -83,7 +83,7 @@ def construir(m):
             "code": {"text": f"CRM {uf}"},
         }]
 
-    extras = {k: m.get(k) for k in ("mae", "pai", "orgao", "categoria", "cbo") if m.get(k) not in (None, "", "0")}
+    extras = {k: m.get(k) for k in ("mae", "pai", "orgao", "categoria", "cbo", "especialidade") if m.get(k) not in (None, "", "0")}
     if extras:
         p["extension"] = [{"url": EXTRAS, "valueString": json.dumps(extras, ensure_ascii=False)}]
     return p
@@ -98,13 +98,17 @@ def main():
             'cpf' VALUE cpf, 'cns' VALUE cns, 'rg' VALUE nr_rg, 'orgao' VALUE orgao_emissor,
             'nasc' VALUE TO_CHAR(dt_nascimento,'YYYY-MM-DD'), 'sexo' VALUE sexo, 'email' VALUE ds_email,
             'ativo' VALUE in_ativo, 'mae' VALUE nm_mae, 'pai' VALUE nm_pai,
-            'categoria' VALUE id_categoria, 'cbo' VALUE cd_cbo_smm)
+            'categoria' VALUE id_categoria, 'cbo' VALUE cd_cbo_smm,
+            'especialidade' VALUE (
+                SELECT LISTAGG(e.ds_especialidade, ', ') WITHIN GROUP (ORDER BY e.ds_especialidade)
+                FROM medico_especialidade me JOIN especialidade e ON e.cd_especialidade = me.cd_especialidade
+                WHERE me.cd_medico = med.cd_medico))
         FROM (
             SELECT * FROM medico
             WHERE nr_crm IS NOT NULL AND nm_medico IS NOT NULL AND cpf IS NOT NULL
               AND dt_exclusao IS NULL
             ORDER BY cd_medico DESC
-        ) WHERE ROWNUM <= 10
+        ) med WHERE ROWNUM <= 10
         """,
         modo="supervisor",
     )

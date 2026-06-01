@@ -67,7 +67,7 @@ internal static class MedicoFhirMapper
             IdentValor(p, SystemCpf) ?? pl.Cpf,
             ParseData(p.BirthDate) ?? pl.DataNascimento,
             crm ?? pl.Crm, uf ?? pl.UfCrm,
-            pl.Especialidade, pl.Rqe, ValidadeNativa(p) ?? pl.ValidadeCrm,
+            pl.Especialidade ?? EspecialidadeNativa(p), pl.Rqe, ValidadeNativa(p) ?? pl.ValidadeCrm,
             TelefoneNativo(p) ?? pl.Telefone, pl.Endereco, pl.FotoBase64,
             p.Active ?? true, p.Meta?.LastUpdated?.UtcDateTime ?? default);
     }
@@ -79,7 +79,7 @@ internal static class MedicoFhirMapper
         var (crm, uf) = CrmNativo(p);
         return new MedicoListItemDto(
             id, id, NomeNativo(p) ?? pl.NomeCompleto, IdentValor(p, SystemCpf) ?? pl.Cpf,
-            crm ?? pl.Crm, uf ?? pl.UfCrm, pl.Especialidade, pl.FotoBase64, p.Active ?? true);
+            crm ?? pl.Crm, uf ?? pl.UfCrm, pl.Especialidade ?? EspecialidadeNativa(p), pl.FotoBase64, p.Active ?? true);
     }
 
     public static string NomeDe(Practitioner p) => NomeNativo(p) ?? LerPayload(p).NomeCompleto;
@@ -111,6 +111,19 @@ internal static class MedicoFhirMapper
 
     private static DateOnly? ValidadeNativa(Practitioner p) =>
         ParseData(p.Qualification?.FirstOrDefault()?.Period?.End);
+
+    /// <summary>Especialidade(s) trazida(s) do Salux no extension <c>urn:salux:extras</c> (chave <c>especialidade</c>).</summary>
+    private static string? EspecialidadeNativa(Practitioner p)
+    {
+        var raw = (p.GetExtension("urn:salux:extras")?.Value as FhirString)?.Value;
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(raw);
+            return doc.RootElement.TryGetProperty("especialidade", out var v) ? Op(v.GetString()) : null;
+        }
+        catch (JsonException) { return null; }
+    }
 
     private static DateOnly? ParseData(string? d) =>
         DateOnly.TryParse(d, System.Globalization.CultureInfo.InvariantCulture,
