@@ -30,15 +30,26 @@ def s(v):
     return v or None
 
 
+def dt(v):
+    """Datas do Salux são horário de Brasília; FHIR exige offset em dateTime com hora."""
+    v = s(v)
+    return v + "-03:00" if v else None
+
+
 def http(method, path, body=None):
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(HUB + path, data=data, method=method)
     req.add_header("Accept", "application/fhir+json")
     if data:
         req.add_header("Content-Type", "application/fhir+json")
-    with urllib.request.urlopen(req, timeout=30) as r:
-        raw = r.read().decode()
-        return r.status, (json.loads(raw) if raw.strip() else {})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            raw = r.read().decode()
+            return r.status, (json.loads(raw) if raw.strip() else {})
+    except urllib.error.HTTPError as e:
+        corpo = e.read().decode(errors="replace")
+        print(f"  !! {method} {path} -> HTTP {e.code}: {corpo[:500]}")
+        raise
 
 
 def pacientes_do_hub():
@@ -84,7 +95,7 @@ def baa_do_paciente(cd):
 
 def build_encounter(b, patient_ref):
     emerg = (str(b.get("emerg") or "").upper() == "S")
-    start = s(b.get("dt_cheg")) or s(b.get("dt_atend"))
+    start = dt(b.get("dt_cheg")) or dt(b.get("dt_atend"))
     enc = {
         "resourceType": "Encounter",
         "meta": {"source": SRC},
@@ -99,8 +110,8 @@ def build_encounter(b, patient_ref):
     }
     if start:
         enc["period"] = {"start": start}
-        if s(b.get("dt_saida")):
-            enc["period"]["end"] = s(b.get("dt_saida"))
+        if dt(b.get("dt_saida")):
+            enc["period"]["end"] = dt(b.get("dt_saida"))
     if s(b.get("medico")):
         enc["participant"] = [{"individual": {"display": s(b.get("medico"))}}]
     return enc

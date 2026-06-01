@@ -116,5 +116,7 @@ public sealed class EncounterService(FhirDbContext db, TimeProvider clock) : IEn
 
     private static DateTimeOffset? ParseInstant(string? fhirDateTime) =>
         DateTimeOffset.TryParse(fhirDateTime, System.Globalization.CultureInfo.InvariantCulture,
-            System.Globalization.DateTimeStyles.AssumeUniversal, out var dt) ? dt : null;
+            System.Globalization.DateTimeStyles.AssumeUniversal, out var dt)
+            ? dt.ToUniversalTime() // Npgsql exige offset 0 em timestamptz
+            : null;
 }
