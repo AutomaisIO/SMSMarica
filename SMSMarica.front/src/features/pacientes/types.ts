@@ -52,6 +52,12 @@ export type ContatoEmergencia = {
   telefone: string;
 };
 
+/** Identificador FHIR (system + valor): CPF, CNS, RG, PIS, prontuários, etc. */
+export type Identificador = {
+  sistema: string;
+  valor: string;
+};
+
 export type PacienteListItem = {
   id: string;
   nomeCompleto: string;
@@ -103,6 +109,14 @@ export type Paciente = {
   fotoBase64: string | null;
   ativo: boolean;
   cadastradoEm: string;
+  // --- Tudo que vem do recurso FHIR (hub) ---
+  identificadores?: Identificador[] | null;
+  dataObito?: string | null;
+  nomeConjuge?: string | null;
+  /** Sistema de origem do recurso no hub (FHIR Meta.source). */
+  fonte?: string | null;
+  /** Dados crus da fonte (ex.: códigos Salux: cor, religião, etnia, escolaridade). */
+  dadosFonte?: Record<string, string> | null;
 };
 
 export type PacienteFormPayload = {

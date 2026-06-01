@@ -56,6 +56,38 @@ const FATOR_RH_LABEL: Record<string, string> = {
   NaoInformado: 'Não informado', Positivo: 'Positivo (+)', Negativo: 'Negativo (−)',
 };
 
+function rotuloIdentificador(sistema: string): string {
+  const s = sistema.toLowerCase();
+  if (s.includes('/cpf')) return 'CPF';
+  if (s.includes('/cns')) return 'CNS (Cartão SUS)';
+  if (s.includes('rg')) return 'RG';
+  if (s.includes('pis')) return 'PIS/PASEP';
+  if (s.includes('passport')) return 'Passaporte';
+  if (s.includes('rne')) return 'RNE';
+  if (s.includes('certidao')) return 'Certidão de nascimento';
+  if (s.includes('crm')) return 'CRM';
+  if (s.includes('salux')) return 'Prontuário (Salux)';
+  if (s.includes('sgh')) return 'Prontuário (SGH)';
+  if (s.includes('cem')) return 'Prontuário (CEM)';
+  return sistema;
+}
+
+const FONTE_LABEL: Record<string, string> = {
+  'https://smsmarica.saude.marica/source/salux': 'Salux (HCML)',
+  'https://smsmarica.saude.marica/source/esus': 'e-SUS APS',
+  'https://smsmarica.saude.marica/source/pacs': 'PACS',
+  'https://smsmarica.saude.marica/source/smsmarica': 'SMS Maricá',
+};
+
+const EXTRA_LABEL: Record<string, string> = {
+  estado_civil: 'Estado civil', escolaridade: 'Escolaridade', religiao: 'Religião',
+  barreira_comunicacao: 'Barreira de comunicação', cd_cor: 'Raça/Cor (código)',
+  cd_nacionalidade: 'Nacionalidade (código)', pais: 'País', etnia: 'Etnia (código)',
+  profissao: 'Profissão', ocupacao: 'Ocupação', peso: 'Peso', altura: 'Altura',
+  sangue: 'Tipo sanguíneo', rh: 'Fator Rh', grau_parentesco: 'Grau de parentesco',
+  entrada_pais: 'Entrada no país',
+};
+
 function Chips({ itens }: { itens: string[] }) {
   if (!itens.length) return <span className="text-sm text-gray-400">—</span>;
   return (
@@ -93,7 +125,43 @@ function SecaoFiliacao({ p }: { p: Paciente }) {
     <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
       <div className="md:col-span-2">{campo('Nome da mãe', p.nomeDaMae)}</div>
       <div className="md:col-span-2">{campo('Nome do pai', p.nomeDoPai)}</div>
+      <div className="md:col-span-2">{campo('Cônjuge', p.nomeConjuge)}</div>
       <div className="md:col-span-2">{campo('Responsável legal', p.responsavelLegal)}</div>
+    </div>
+  );
+}
+
+function SecaoDocumentos({ p }: { p: Paciente }) {
+  const idents = p.identificadores ?? [];
+  const extras = Object.entries(p.dadosFonte ?? {});
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+        {campo('Origem (fonte)', p.fonte ? (FONTE_LABEL[p.fonte] ?? p.fonte) : null)}
+        {campo('Data de óbito', formatarData(p.dataObito))}
+      </div>
+      <div>
+        <h3 className="mb-3 text-sm font-semibold text-gray-900">Identificadores</h3>
+        {idents.length === 0 ? (
+          <span className="text-sm text-gray-400">Nenhum identificador.</span>
+        ) : (
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+            {idents.map((i, idx) => (
+              <div key={idx}>{campo(rotuloIdentificador(i.sistema), i.valor)}</div>
+            ))}
+          </div>
+        )}
+      </div>
+      {extras.length > 0 ? (
+        <div>
+          <h3 className="mb-3 text-sm font-semibold text-gray-900">Dados da fonte</h3>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+            {extras.map(([k, v]) => (
+              <div key={k}>{campo(EXTRA_LABEL[k] ?? k, v)}</div>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -222,6 +290,7 @@ export function PacienteDetalhePage() {
     { id: 'endereco', rotulo: 'Endereço', conteudo: <SecaoEndereco p={p} /> },
     { id: 'contatos', rotulo: 'Contatos', conteudo: <SecaoContatos p={p} /> },
     { id: 'saude', rotulo: 'Saúde', conteudo: <SecaoSaude p={p} /> },
+    { id: 'documentos', rotulo: 'Documentos & Origem', conteudo: <SecaoDocumentos p={p} /> },
     {
       id: 'observacoes', rotulo: 'Observações',
       conteudo: (
