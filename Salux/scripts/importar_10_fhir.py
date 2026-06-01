@@ -31,6 +31,14 @@ EXTRAS_URL = "urn:salux:extras"
 V3 = "http://terminology.hl7.org/CodeSystem/v3-RoleCode"
 
 
+UF_IBGE = {
+    "11": "RO", "12": "AC", "13": "AM", "14": "RR", "15": "PA", "16": "AP", "17": "TO",
+    "21": "MA", "22": "PI", "23": "CE", "24": "RN", "25": "PB", "26": "PE", "27": "AL",
+    "28": "SE", "29": "BA", "31": "MG", "32": "ES", "33": "RJ", "35": "SP",
+    "41": "PR", "42": "SC", "43": "RS", "50": "MS", "51": "MT", "52": "GO", "53": "DF",
+}
+
+
 def dig(v):
     return re.sub(r"\D", "", str(v)) if v else ""
 
@@ -114,9 +122,17 @@ def construir(p):
         end["postalCode"] = dig(p.get("cep"))
     if s(p.get("ref")):
         end["text"] = "Ref: " + s(p.get("ref"))
+    if s(p.get("cidade")):
+        end["city"] = s(p.get("cidade"))
+    if s(p.get("uf_sigla")):
+        uf = str(p.get("uf_sigla")).strip()
+        end["state"] = UF_IBGE.get(uf, uf)
     if end:
         end["use"] = "home"
         pat["address"] = [end]
+
+    if s(p.get("estado_civil_ds")):
+        pat["maritalStatus"] = {"text": s(p.get("estado_civil_ds"))}
 
     # Telecom
     tel = []
@@ -144,9 +160,16 @@ def construir(p):
 
     # Extras Salux (códigos internos preservados — viram recursos/lookups depois)
     extras = {k: p.get(k) for k in (
-        "cd_cor", "cd_nacionalidade", "pais", "religiao", "profissao", "ocupacao",
-        "instrucao", "peso", "altura", "sangue", "rh", "etnia", "estado_civil",
-        "barreira_com", "grau_parentesco", "entrada_pais") if p.get(k) not in (None, "", "0")}
+        "cd_cor", "cd_nacionalidade", "pais", "profissao", "ocupacao",
+        "peso", "altura", "sangue", "rh", "etnia", "grau_parentesco", "entrada_pais")
+        if p.get(k) not in (None, "", "0")}
+    # Nomes resolvidos via lookups do Salux.
+    for src, dst in (("estado_civil_ds", "estado_civil"), ("instrucao_ds", "escolaridade"),
+                     ("religiao_ds", "religiao"), ("barreira_ds", "barreira_comunicacao")):
+        if s(p.get(src)):
+            extras[dst] = s(p.get(src))
+    if "religiao" not in extras and s(p.get("religiao")):
+        extras["religiao"] = s(p.get("religiao"))
     if extras:
         pat.setdefault("extension", []).append(
             {"url": EXTRAS_URL, "valueString": json.dumps(extras, ensure_ascii=False)})
@@ -184,13 +207,19 @@ def main():
             'religiao' VALUE religiao, 'profissao' VALUE profissao, 'ocupacao' VALUE ocupacao,
             'instrucao' VALUE id_instrucao, 'peso' VALUE peso, 'altura' VALUE altura,
             'sangue' VALUE id_sangue, 'rh' VALUE id_fator_rh, 'etnia' VALUE tu_cd_etnia,
-            'barreira_com' VALUE cd_barreira_comunicacao, 'entrada_pais' VALUE TO_CHAR(dt_entrada_pais,'YYYY-MM-DD'))
+            'entrada_pais' VALUE TO_CHAR(dt_entrada_pais,'YYYY-MM-DD'),
+            'cidade' VALUE (SELECT ci.ds_cidade FROM cidade ci WHERE ci.cd_uf=pac.cd_uf AND ci.cd_cidade=pac.cd_cidade AND ROWNUM=1),
+            'uf_sigla' VALUE pac.cd_uf,
+            'estado_civil_ds' VALUE (SELECT ec.ds_est_civil FROM estado_civil ec WHERE TO_CHAR(ec.cd_est_civil)=TRIM(pac.estado_civil) AND ROWNUM=1),
+            'instrucao_ds' VALUE (SELECT gi.ds_grau_instrucao FROM grau_instrucao gi WHERE TO_CHAR(gi.cd_grau_instrucao)=TO_CHAR(pac.id_instrucao) AND ROWNUM=1),
+            'religiao_ds' VALUE (SELECT r.ds_religiao FROM religiao r WHERE TO_CHAR(r.cd_religiao)=TO_CHAR(pac.cd_religiao) AND ROWNUM=1),
+            'barreira_ds' VALUE (SELECT bc.ds_barreira_comunicacao FROM barreira_comunicacao bc WHERE TO_CHAR(bc.cd_barreira_comunicacao)=TO_CHAR(pac.cd_barreira_comunicacao) AND ROWNUM=1))
         FROM (
             SELECT * FROM paciente
             WHERE cpf_paciente IS NOT NULL AND nm_paciente IS NOT NULL
               AND dt_nascimento IS NOT NULL AND nm_logradouro IS NOT NULL AND nm_mae IS NOT NULL
             ORDER BY cd_paciente DESC
-        ) WHERE ROWNUM <= 10
+        ) pac WHERE ROWNUM <= 10
         """,
         modo="supervisor",
     )
