@@ -1,12 +1,14 @@
-import { ArrowLeft, ListChecks, Pencil, Stethoscope } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowLeft, FileText, ListChecks, Pencil, Stethoscope } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Avatar } from '@/shared/ui/Avatar';
 import { Button } from '@/shared/ui/Button';
+import { Modal } from '@/shared/ui/Modal';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { Tabs, type Aba } from '@/shared/ui/Tabs';
 import { useAtendimentosPaciente, usePacientePorId } from '@/features/pacientes/api/queries';
-import type { Atendimento, Paciente } from '@/features/pacientes/types';
+import type { Atendimento, Documento, Paciente } from '@/features/pacientes/types';
 import { useListarTratamentos } from '@/features/tratamentos/api/queries';
 import { formatarDataBr } from '@/features/tratamentos/lib/expansor';
 import type { TratamentoListItem } from '@/features/tratamentos/types';
@@ -256,6 +258,7 @@ function corTipoAtendimento(tipo: string): string {
 function SecaoAtendimentos({ pacienteId }: { pacienteId: string }) {
   const q = useAtendimentosPaciente(pacienteId);
   const lista: Atendimento[] = q.data ?? [];
+  const [docAberto, setDocAberto] = useState<Documento | null>(null);
 
   if (q.isLoading) {
     return <div className="text-sm text-gray-500">Carregando atendimentos…</div>;
@@ -275,7 +278,8 @@ function SecaoAtendimentos({ pacienteId }: { pacienteId: string }) {
     );
   }
   return (
-    <ol className="space-y-3">
+    <>
+      <ol className="space-y-3">
       {lista.map((a) => (
         <li key={a.id} className="rounded-lg border border-gray-200 p-4">
           <div className="flex items-center justify-between gap-3">
@@ -310,9 +314,38 @@ function SecaoAtendimentos({ pacienteId }: { pacienteId: string }) {
               ))}
             </div>
           ) : null}
+          {a.documentos.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-1.5 border-t border-gray-100 pt-2">
+              {a.documentos.map((doc) => (
+                <button
+                  key={doc.id}
+                  type="button"
+                  onClick={() => setDocAberto(doc)}
+                  className="inline-flex items-center gap-1 rounded border border-gray-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50"
+                >
+                  <FileText className="h-3.5 w-3.5" /> {doc.tipo}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </li>
       ))}
-    </ol>
+      </ol>
+      <Modal
+        aberto={docAberto !== null}
+        aoFechar={() => setDocAberto(null)}
+        titulo={docAberto?.tipo ?? 'Documento'}
+        largura="lg"
+      >
+        {docAberto ? (
+          <div
+            className="prose prose-sm max-w-none text-gray-800 [&_h3]:mt-0 [&_strong]:text-gray-900"
+            // Conteúdo remontado no importador, com valores já escapados (montar_html).
+            dangerouslySetInnerHTML={{ __html: docAberto.conteudoHtml }}
+          />
+        ) : null}
+      </Modal>
+    </>
   );
 }
 

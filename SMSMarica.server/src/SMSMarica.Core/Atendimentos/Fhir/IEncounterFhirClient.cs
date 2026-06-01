@@ -7,4 +7,5 @@ public interface IEncounterFhirClient
 {
     Task<Bundle> BuscarEncountersAsync(Guid pacienteId, CancellationToken ct = default);
     Task<Bundle> BuscarConditionsAsync(Guid pacienteId, CancellationToken ct = default);
+    Task<Bundle> BuscarDocumentsAsync(Guid pacienteId, CancellationToken ct = default);
 }

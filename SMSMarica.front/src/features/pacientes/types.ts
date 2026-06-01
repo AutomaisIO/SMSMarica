@@ -165,6 +165,14 @@ export type Diagnostico = {
   descricao?: string | null;
 };
 
+/** Documento clínico (DocumentReference) com o conteúdo HTML pronto para exibir. */
+export type Documento = {
+  id: string;
+  tipo: string;
+  data?: string | null;
+  conteudoHtml: string;
+};
+
 /** Atendimento do histórico clínico (Encounter do hub FHIR, originado do Salux). */
 export type Atendimento = {
   id: string;
@@ -175,6 +183,7 @@ export type Atendimento = {
   medicoNome?: string | null;
   fonte?: string | null;
   diagnosticos: Diagnostico[];
+  documentos: Documento[];
 };
 
 export type PacienteExistencia = {
