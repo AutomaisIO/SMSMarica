@@ -12,9 +12,15 @@ SRC = "https://smsmarica.saude.marica/source/salux"
 S_CPF = "https://fhir.saude.gov.br/sid/cpf"
 S_CNS = "https://fhir.saude.gov.br/sid/cns"
 S_RG = "urn:br:gov:rg"
-S_CRM = "urn:br:conselho:crm:"   # + UF
+S_CONSELHO = "urn:br:conselho:"  # + {sigla}:{UF}  (CRM, COREN, CRN, CRO...)
 S_SALUX = "urn:salux:cd_medico"
 EXTRAS = "urn:salux:extras"
+
+
+def sigla_conselho(v):
+    """Normaliza a sigla do Salux: COREN_TE (técnico) dobra em COREN (quem emite)."""
+    s = (str(v).strip().upper() if v else "") or "CRM"
+    return s.replace("_TE", "")
 
 
 def dig(v):
@@ -48,15 +54,17 @@ def purgar():
 def construir(m):
     cpf = dig(m.get("cpf"))
     uf = (str(m.get("uf") or "").strip().upper() or "RJ")
-    crm = dig(m.get("crm"))
+    registro = dig(m.get("crm"))
+    sigla = sigla_conselho(m.get("conselho"))
+    sys_conselho = S_CONSELHO + sigla.lower() + ":" + uf
 
     ident = []
     if cpf:
         ident.append({"system": S_CPF, "value": cpf})
     if dig(m.get("cns")):
         ident.append({"system": S_CNS, "value": dig(m.get("cns"))})
-    if crm:
-        ident.append({"system": S_CRM + uf, "value": crm})
+    if registro:
+        ident.append({"system": sys_conselho, "value": registro})
     if s(m.get("rg")):
         rg = {"system": S_RG, "value": s(m.get("rg"))}
         if s(m.get("orgao")):
@@ -77,10 +85,11 @@ def construir(m):
         p["birthDate"] = m["nasc"]
     if s(m.get("email")):
         p["telecom"] = [{"system": "email", "value": s(m.get("email"))}]
-    if crm:
+    if registro:
         p["qualification"] = [{
-            "identifier": [{"system": S_CRM + uf, "value": crm}],
-            "code": {"text": f"CRM {uf}"},
+            "identifier": [{"system": sys_conselho, "value": registro}],
+            "issuer": {"display": f"{sigla}-{uf}"},
+            "code": {"text": s(m.get("especialidade")) or sigla},
         }]
 
     extras = {k: m.get(k) for k in ("mae", "pai", "orgao", "categoria", "cbo", "especialidade") if m.get(k) not in (None, "", "0")}
@@ -95,6 +104,7 @@ def main():
         """
         SELECT JSON_OBJECT(
             'cd' VALUE cd_medico, 'nome' VALUE nm_medico, 'crm' VALUE nr_crm, 'uf' VALUE uf_cd_uf,
+            'conselho' VALUE cd_conselho,
             'cpf' VALUE cpf, 'cns' VALUE cns, 'rg' VALUE nr_rg, 'orgao' VALUE orgao_emissor,
             'nasc' VALUE TO_CHAR(dt_nascimento,'YYYY-MM-DD'), 'sexo' VALUE sexo, 'email' VALUE ds_email,
             'ativo' VALUE in_ativo, 'mae' VALUE nm_mae, 'pai' VALUE nm_pai,
@@ -118,7 +128,7 @@ def main():
         if not s(m.get("nome")):
             continue
         st, body = http("POST", "/fhir/Practitioner", construir(m))
-        print(f"  [{st}] {s(m.get('nome'))}  CRM {m.get('crm')}/{m.get('uf')} -> {body.get('id')}")
+        print(f"  [{st}] {s(m.get('nome'))}  {sigla_conselho(m.get('conselho'))} {m.get('crm')}/{m.get('uf')} -> {body.get('id')}")
         n += 1
     print(f"Importados: {n}")
 

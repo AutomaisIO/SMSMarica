@@ -2,17 +2,26 @@ import { http } from '@/shared/api/httpClient';
 import type {
   AtualizarMedicoPayload,
   CadastrarMedicoPayload,
+  FiltroConselho,
   Medico,
   MedicoListItem,
   PromoverMedicoPayload,
 } from '@/features/medicos/types';
 
-export async function buscarMedicos(termo = ''): Promise<MedicoListItem[]> {
+export async function buscarMedicos(
+  termo = '',
+  filtro: FiltroConselho = {},
+): Promise<MedicoListItem[]> {
   const t = termo.trim();
   // Sem termo o backend devolve os 10 últimos cadastros; com termo, busca por
-  // nome (qualquer parte) ou CPF. Mesma régua da busca de pacientes.
+  // nome (qualquer parte) ou CPF. `conselho`/`conselhoExceto` separam médicos
+  // (CRM) dos demais profissionais.
+  const params: Record<string, string> = {};
+  if (t) params.termo = t;
+  if (filtro.conselho) params.conselho = filtro.conselho;
+  if (filtro.conselhoExceto) params.conselhoExceto = filtro.conselhoExceto;
   const { data } = await http.get<MedicoListItem[]>('/medicos', {
-    params: t ? { termo: t } : undefined,
+    params: Object.keys(params).length > 0 ? params : undefined,
   });
   return data;
 }

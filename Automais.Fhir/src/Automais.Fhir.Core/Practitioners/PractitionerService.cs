@@ -76,15 +76,23 @@ public sealed class PractitionerService(FhirDbContext db, TimeProvider clock) : 
 
         if (!string.IsNullOrWhiteSpace(filtro.Cpf))
             query = query.Where(p => p.Cpf == filtro.Cpf);
-        if (!string.IsNullOrWhiteSpace(filtro.Crm))
-            query = query.Where(p => p.Crm == filtro.Crm);
+        if (!string.IsNullOrWhiteSpace(filtro.Registro))
+            query = query.Where(p => p.Registro == filtro.Registro);
+        if (!string.IsNullOrWhiteSpace(filtro.Conselho))
+        {
+            var sigla = filtro.Conselho.Trim().ToUpperInvariant();
+            query = query.Where(p => p.Conselho == sigla);
+        }
+        if (!string.IsNullOrWhiteSpace(filtro.ConselhoDiferenteDe))
+        {
+            var excluida = filtro.ConselhoDiferenteDe.Trim().ToUpperInvariant();
+            query = query.Where(p => p.Conselho != excluida);
+        }
         if (!string.IsNullOrWhiteSpace(filtro.Nome))
             query = query.Where(p => p.Nome != null && EF.Functions.ILike(p.Nome, $"%{filtro.Nome}%"));
 
-        // Sem filtro: últimos incluídos primeiro (LastUpdated desc). Com filtro: por nome.
-        var semFiltro = string.IsNullOrWhiteSpace(filtro.Cpf) && string.IsNullOrWhiteSpace(filtro.Crm)
-                        && string.IsNullOrWhiteSpace(filtro.Nome);
-        var ordenada = semFiltro
+        // Sem busca textual (nome): últimos incluídos primeiro. Com nome: ordem alfabética.
+        var ordenada = string.IsNullOrWhiteSpace(filtro.Nome)
             ? query.OrderByDescending(p => p.LastUpdated)
             : query.OrderBy(p => p.Nome);
         var rows = await ordenada.Take(LimiteBusca).ToListAsync(ct);
@@ -113,7 +121,9 @@ public sealed class PractitionerService(FhirDbContext db, TimeProvider clock) : 
     private static void ExtrairSearchParams(PractitionerRow row, Practitioner p)
     {
         row.Cpf = p.Identifier.FirstOrDefault(i => i.System == FhirSystems.Cpf)?.Value;
-        row.Crm = p.Identifier.FirstOrDefault(i => i.System != null && i.System.StartsWith(FhirSystems.CrmPrefix))?.Value;
+        var idConselho = p.Identifier.FirstOrDefault(i => i.System != null && i.System.StartsWith(FhirSystems.ConselhoPrefixRoot));
+        row.Registro = idConselho?.Value;
+        row.Conselho = FhirSystems.ParseConselho(idConselho?.System).Sigla;
         row.Nome = p.Name.FirstOrDefault(n => n.Use == HumanName.NameUse.Official)?.Text
                    ?? p.Name.FirstOrDefault()?.Text;
     }

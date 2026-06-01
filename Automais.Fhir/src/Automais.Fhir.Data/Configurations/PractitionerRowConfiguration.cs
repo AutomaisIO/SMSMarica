@@ -21,11 +21,13 @@ public sealed class PractitionerRowConfiguration : IEntityTypeConfiguration<Prac
         builder.Property(p => p.Content).HasColumnName("content").HasColumnType("jsonb").IsRequired();
 
         builder.Property(p => p.Cpf).HasColumnName("cpf").HasMaxLength(11);
-        builder.Property(p => p.Crm).HasColumnName("crm").HasMaxLength(20);
+        builder.Property(p => p.Conselho).HasColumnName("conselho").HasMaxLength(20);
+        builder.Property(p => p.Registro).HasColumnName("registro").HasMaxLength(20);
         builder.Property(p => p.Nome).HasColumnName("nome").HasMaxLength(300);
 
         builder.HasIndex(p => p.Cpf).HasFilter("cpf IS NOT NULL");
-        builder.HasIndex(p => p.Crm).HasFilter("crm IS NOT NULL");
+        builder.HasIndex(p => p.Conselho).HasFilter("conselho IS NOT NULL");
+        builder.HasIndex(p => p.Registro).HasFilter("registro IS NOT NULL");
         builder.HasIndex(p => p.Nome);
         builder.HasIndex(p => p.MetaSource);
     }

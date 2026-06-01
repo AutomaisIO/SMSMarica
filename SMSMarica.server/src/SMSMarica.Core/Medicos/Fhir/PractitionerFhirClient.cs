@@ -34,11 +34,18 @@ public sealed class PractitionerFhirClient(HttpClient http) : IPractitionerFhirC
         if (resp.StatusCode != HttpStatusCode.NotFound) resp.EnsureSuccessStatusCode();
     }
 
-    public async Task<Bundle> BuscarAsync(string? identifier = null, string? name = null, CancellationToken ct = default)
+    public async Task<Bundle> BuscarAsync(
+        string? identifier = null,
+        string? name = null,
+        string? conselho = null,
+        string? conselhoNe = null,
+        CancellationToken ct = default)
     {
         var qs = new List<string>();
         if (!string.IsNullOrWhiteSpace(identifier)) qs.Add("identifier=" + Uri.EscapeDataString(identifier));
         if (!string.IsNullOrWhiteSpace(name)) qs.Add("name=" + Uri.EscapeDataString(name));
+        if (!string.IsNullOrWhiteSpace(conselho)) qs.Add("conselho=" + Uri.EscapeDataString(conselho));
+        if (!string.IsNullOrWhiteSpace(conselhoNe)) qs.Add("conselhoNe=" + Uri.EscapeDataString(conselhoNe));
         var url = "fhir/Practitioner" + (qs.Count > 0 ? "?" + string.Join("&", qs) : string.Empty);
         using var resp = await http.GetAsync(url, ct);
         return await Ler<Bundle>(resp, ct);

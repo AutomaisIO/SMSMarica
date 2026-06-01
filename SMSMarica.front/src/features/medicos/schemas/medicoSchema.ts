@@ -31,13 +31,18 @@ const enderecoSchema = z
   .nullable();
 
 const baseAtualizacao = {
-  crm: z
+  conselho: z
     .string()
-    .min(3, 'CRM obrigatório.')
-    .max(15, 'CRM excede 15 caracteres.'),
-  ufCrm: z
+    .min(2, 'Informe o conselho.')
+    .max(12)
+    .transform((v) => v.trim().toUpperCase()),
+  registro: z
     .string()
-    .length(2, 'UF do CRM deve ter 2 letras.')
+    .min(3, 'Número do registro obrigatório.')
+    .max(15, 'Registro excede 15 caracteres.'),
+  ufConselho: z
+    .string()
+    .length(2, 'UF do conselho deve ter 2 letras.')
     .transform((v) => v.toUpperCase()),
   especialidade: z
     .string()
@@ -49,7 +54,7 @@ const baseAtualizacao = {
     .max(20)
     .optional()
     .transform((v) => (v && v.trim().length > 0 ? v.trim() : undefined)),
-  validadeCrm: z
+  validadeRegistro: z
     .string()
     .optional()
     .transform((v) => (v && v.trim().length > 0 ? v : undefined)),

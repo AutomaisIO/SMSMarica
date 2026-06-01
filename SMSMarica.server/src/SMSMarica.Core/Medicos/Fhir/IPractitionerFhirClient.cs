@@ -9,5 +9,10 @@ public interface IPractitionerFhirClient
     Task<Practitioner?> ObterAsync(Guid id, CancellationToken ct = default);
     Task<Practitioner> AtualizarAsync(Guid id, Practitioner practitioner, CancellationToken ct = default);
     Task ExcluirAsync(Guid id, CancellationToken ct = default);
-    Task<Bundle> BuscarAsync(string? identifier = null, string? name = null, CancellationToken ct = default);
+    Task<Bundle> BuscarAsync(
+        string? identifier = null,
+        string? name = null,
+        string? conselho = null,
+        string? conselhoNe = null,
+        CancellationToken ct = default);
 }

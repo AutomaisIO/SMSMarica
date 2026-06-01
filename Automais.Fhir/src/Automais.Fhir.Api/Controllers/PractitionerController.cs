@@ -39,15 +39,26 @@ public sealed class PractitionerController(IPractitionerService service) : Contr
         return NoContent();
     }
 
-    /// <summary>GET /fhir/Practitioner?identifier=system|valor&amp;name=... — busca.</summary>
+    /// <summary>
+    /// GET /fhir/Practitioner?identifier=system|valor&amp;name=...&amp;conselho=CRM&amp;conselhoNe=CRM — busca.
+    /// <c>conselho</c> filtra por sigla exata; <c>conselhoNe</c> exclui uma sigla.
+    /// </summary>
     [HttpGet]
     public async Task<IActionResult> Buscar(
         [FromQuery] string? identifier,
         [FromQuery] string? name,
+        [FromQuery] string? conselho,
+        [FromQuery] string? conselhoNe,
         CancellationToken ct)
     {
-        var (cpf, crm) = SepararIdentifier(identifier);
-        var bundle = await service.BuscarAsync(new PractitionerBusca(cpf, crm, name), ct);
+        var (cpf, registro, conselhoDoIdent) = SepararIdentifier(identifier);
+        var busca = new PractitionerBusca(
+            Cpf: cpf,
+            Registro: registro,
+            Conselho: conselho ?? conselhoDoIdent,
+            ConselhoDiferenteDe: conselhoNe,
+            Nome: name);
+        var bundle = await service.BuscarAsync(busca, ct);
         return FhirResponse.Recurso(bundle);
     }
 
@@ -66,16 +77,17 @@ public sealed class PractitionerController(IPractitionerService service) : Contr
         return FhirJson.Parse<Practitioner>(json);
     }
 
-    private static (string? Cpf, string? Crm) SepararIdentifier(string? identifier)
+    private static (string? Cpf, string? Registro, string? Conselho) SepararIdentifier(string? identifier)
     {
         if (string.IsNullOrWhiteSpace(identifier))
-            return (null, null);
+            return (null, null, null);
 
         var partes = identifier.Split('|', 2);
         var (system, valor) = partes.Length == 2 ? (partes[0], partes[1]) : (string.Empty, partes[0]);
 
-        if (system == FhirSystems.Cpf) return (valor, null);
-        if (system.StartsWith(FhirSystems.CrmPrefix)) return (null, valor);
-        return (valor, null);
+        if (system == FhirSystems.Cpf) return (valor, null, null);
+        if (system.StartsWith(FhirSystems.ConselhoPrefixRoot))
+            return (null, valor, FhirSystems.ParseConselho(system).Sigla);
+        return (valor, null, null); // valor solto (dígitos) = CPF
     }
 }

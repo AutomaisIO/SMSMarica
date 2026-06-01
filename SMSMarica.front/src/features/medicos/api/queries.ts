@@ -10,20 +10,22 @@ import {
 import type {
   AtualizarMedicoPayload,
   CadastrarMedicoPayload,
+  FiltroConselho,
   PromoverMedicoPayload,
 } from '@/features/medicos/types';
 
 export const medicosKeys = {
   raiz: ['medicos'] as const,
-  busca: (termo: string) => ['medicos', 'busca', termo] as const,
+  busca: (termo: string, filtro: FiltroConselho) =>
+    ['medicos', 'busca', termo, filtro.conselho ?? '', filtro.conselhoExceto ?? ''] as const,
   porId: (id: string) => ['medicos', 'detalhe', id] as const,
 };
 
-export function useBuscarMedicos(termo: string) {
+export function useBuscarMedicos(termo: string, filtro: FiltroConselho = {}) {
   const t = termo.trim();
   return useQuery({
-    queryKey: medicosKeys.busca(termo),
-    queryFn: () => buscarMedicos(termo),
+    queryKey: medicosKeys.busca(termo, filtro),
+    queryFn: () => buscarMedicos(termo, filtro),
     // Vazio: backend devolve os 10 últimos cadastros. Com 1 char a busca seria
     // ampla demais — espera o segundo caractere. >= 2: busca normal.
     enabled: t.length === 0 || t.length >= 2,

@@ -6,11 +6,12 @@ public sealed record CadastrarMedicoRequest(
     string NomeCompleto,
     string Cpf,
     DateOnly? DataNascimento,
-    string Crm,
-    string UfCrm,
+    string Registro,
+    string UfConselho,
+    string Conselho = "CRM",
     string? Especialidade = null,
     string? Rqe = null,
-    DateOnly? ValidadeCrm = null,
+    DateOnly? ValidadeRegistro = null,
     string? Email = null,
     string? Telefone = null,
     EnderecoDto? Endereco = null,
@@ -18,8 +19,9 @@ public sealed record CadastrarMedicoRequest(
 
 public sealed record PromoverMedicoRequest(
     Guid UsuarioId,
-    string Crm,
-    string UfCrm,
+    string Registro,
+    string UfConselho,
+    string Conselho = "CRM",
     string? Especialidade = null,
     string? Rqe = null,
-    DateOnly? ValidadeCrm = null);
+    DateOnly? ValidadeRegistro = null);

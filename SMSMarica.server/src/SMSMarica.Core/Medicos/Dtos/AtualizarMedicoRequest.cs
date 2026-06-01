@@ -7,11 +7,12 @@ namespace SMSMarica.Core.Medicos.Dtos;
 /// inicial via consulta Receita).
 /// </summary>
 public sealed record AtualizarMedicoRequest(
-    string Crm,
-    string UfCrm,
+    string Registro,
+    string UfConselho,
+    string Conselho = "CRM",
     string? Especialidade = null,
     string? Rqe = null,
-    DateOnly? ValidadeCrm = null,
+    DateOnly? ValidadeRegistro = null,
     string? Telefone = null,
     EnderecoDto? Endereco = null,
     string? FotoBase64 = null);

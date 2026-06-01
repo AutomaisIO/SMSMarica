@@ -11,6 +11,7 @@ import {
   BookOpen,
   ClipboardCheck,
   ClipboardList,
+  HeartPulse,
   FileCog,
   FileText,
   Image as ImageIcon,
@@ -63,6 +64,7 @@ const SECOES: SecaoMenu[] = [
     itens: [
       { rotulo: 'Pacientes', to: '/app/pacientes', icone: Users, modulo: 'Pacientes' },
       { rotulo: 'Médicos', to: '/app/medicos', icone: Stethoscope, modulo: 'Medicos' },
+      { rotulo: 'Profissionais', to: '/app/profissionais', icone: HeartPulse, modulo: 'Medicos' },
       { rotulo: 'Unidades', to: '/app/unidades', icone: Building2, modulo: 'Unidades' },
       { rotulo: 'Veículos', to: '/app/veiculos', icone: Bus, modulo: 'Veiculos' },
       { rotulo: 'Motoristas', to: '/app/motoristas', icone: Truck, modulo: 'Motoristas' },

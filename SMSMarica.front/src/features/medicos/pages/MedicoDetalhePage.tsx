@@ -43,6 +43,8 @@ export function MedicoDetalhePage() {
 
   const detalhe = useMedicoPorId(id || null);
   const m = detalhe.data;
+  const ehMedico = !m || m.conselho === 'CRM' || !m.conselho;
+  const voltarPara = ehMedico ? '/app/medicos' : '/app/profissionais';
 
   return (
     <div className="space-y-6">
@@ -50,7 +52,7 @@ export function MedicoDetalhePage() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => navigate('/app/medicos')}
+            onClick={() => navigate(voltarPara)}
             className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
             aria-label="Voltar"
           >
@@ -66,7 +68,7 @@ export function MedicoDetalhePage() {
             </div>
             {m ? (
               <p className="text-sm text-gray-500">
-                CRM {m.crm}/{m.ufCrm}
+                {m.conselho}-{m.ufConselho} {m.registro}
                 {m.especialidade ? ` · ${m.especialidade}` : ''}
               </p>
             ) : null}
@@ -88,10 +90,11 @@ export function MedicoDetalhePage() {
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <Dado rotulo="CPF" valor={formatarCpf(m.cpf)} />
             <Dado rotulo="Data de nascimento" valor={formatarData(m.dataNascimento) ?? undefined} />
-            <Dado rotulo="CRM" valor={`${m.crm}/${m.ufCrm}`} />
+            <Dado rotulo="Conselho" valor={`${m.conselho}-${m.ufConselho}`} />
+            <Dado rotulo="Registro" valor={m.registro} />
             <Dado rotulo="Especialidade" valor={m.especialidade ?? undefined} />
             <Dado rotulo="RQE" valor={m.rqe ?? undefined} />
-            <Dado rotulo="Validade do CRM" valor={formatarData(m.validadeCrm) ?? undefined} />
+            <Dado rotulo="Validade do registro" valor={formatarData(m.validadeRegistro) ?? undefined} />
             <Dado rotulo="Telefone" valor={m.telefone ?? undefined} />
             <Dado rotulo="Cadastrado em" valor={new Date(m.criadoEm).toLocaleString('pt-BR')} />
             <div className="md:col-span-2">

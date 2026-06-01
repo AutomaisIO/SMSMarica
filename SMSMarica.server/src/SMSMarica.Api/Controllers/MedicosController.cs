@@ -15,14 +15,20 @@ public sealed class MedicosController(IMedicosService service) : ControllerBase
     /// <summary>
     /// Busca em tempo real por nome (qualquer parte) ou CPF. Sem <c>termo</c>
     /// retorna os 10 últimos cadastros (LastUpdated desc). Limite 10.
+    /// <para>
+    /// <c>conselho</c> filtra por sigla exata (ex.: <c>CRM</c> no menu Médicos);
+    /// <c>conselhoExceto</c> exclui uma sigla (ex.: <c>CRM</c> no menu Profissionais).
+    /// </para>
     /// </summary>
     [HttpGet]
     [RequerPermissao(ModuloPermissao.Medicos, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<MedicoListItemDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<MedicoListItemDto>> Buscar(
         [FromQuery] string? termo,
+        [FromQuery] string? conselho,
+        [FromQuery] string? conselhoExceto,
         CancellationToken cancellationToken) =>
-        await _service.BuscarAsync(termo, cancellationToken);
+        await _service.BuscarAsync(termo, conselho, conselhoExceto, cancellationToken);
 
     [HttpGet("{id:guid}")]
     [RequerPermissao(ModuloPermissao.Medicos, AcoesPermissao.Consulta)]

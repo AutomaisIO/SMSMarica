@@ -17,9 +17,26 @@ public static class FhirSystems
     public const string Rne = "urn:br:gov:rne";
     public const string PisPasep = "urn:br:gov:pis-pasep";
 
-    // Conselhos profissionais (UF concatenada: urn:br:conselho:crm:RJ)
+    // Conselhos profissionais (sigla + UF concatenadas: urn:br:conselho:crm:RJ)
+    public const string ConselhoPrefixRoot = "urn:br:conselho:";
     public const string CrmPrefix = "urn:br:conselho:crm:";
     public const string CorenPrefix = "urn:br:conselho:coren:";
+
+    /// <summary>Monta o system de um registro em conselho: <c>urn:br:conselho:{sigla}:{uf}</c>.</summary>
+    public static string ConselhoSystem(string? sigla, string? uf) =>
+        ConselhoPrefixRoot
+        + (sigla ?? string.Empty).Trim().ToLowerInvariant()
+        + ":" + (uf ?? string.Empty).Trim().ToUpperInvariant();
+
+    /// <summary>Extrai <c>(sigla, uf)</c> de um system <c>urn:br:conselho:{sigla}:{uf}</c>; <c>(null, null)</c> se não casar.</summary>
+    public static (string? Sigla, string? Uf) ParseConselho(string? system)
+    {
+        if (string.IsNullOrEmpty(system) || !system.StartsWith(ConselhoPrefixRoot)) return (null, null);
+        var partes = system[ConselhoPrefixRoot.Length..].Split(':', 2);
+        var sigla = string.IsNullOrWhiteSpace(partes[0]) ? null : partes[0].ToUpperInvariant();
+        var uf = partes.Length > 1 && !string.IsNullOrWhiteSpace(partes[1]) ? partes[1].ToUpperInvariant() : null;
+        return (sigla, uf);
+    }
 
     // Prontuários de sistemas-fonte (PEPs)
     public const string SaluxPaciente = "urn:salux:cd_paciente";

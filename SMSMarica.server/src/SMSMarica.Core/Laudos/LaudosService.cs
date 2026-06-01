@@ -249,8 +249,8 @@ public sealed class LaudosService(
 
         // Snapshot dos dados do médico (Practitioner do hub) no momento da finalização.
         laudo.MedicoNomeSnapshot = medico.NomeCompleto;
-        laudo.MedicoCrmSnapshot = medico.Crm;
-        laudo.MedicoUfCrmSnapshot = medico.UfCrm;
+        laudo.MedicoCrmSnapshot = medico.Registro;
+        laudo.MedicoUfCrmSnapshot = medico.UfConselho;
         laudo.MedicoRqeSnapshot = medico.Rqe;
 
         laudo.Status = StatusLaudo.Finalizado;

@@ -8,6 +8,7 @@ import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { TrocarSenhaPage } from '@/features/auth/pages/TrocarSenhaPage';
 import { MedicoDetalhePage } from '@/features/medicos/pages/MedicoDetalhePage';
 import { MedicosPage } from '@/features/medicos/pages/MedicosPage';
+import { ProfissionaisPage } from '@/features/medicos/pages/ProfissionaisPage';
 import { MotoristaDetalhePage } from '@/features/motoristas/pages/MotoristaDetalhePage';
 import { MotoristasPage } from '@/features/motoristas/pages/MotoristasPage';
 import { PacienteDetalhePage } from '@/features/pacientes/pages/PacienteDetalhePage';
@@ -82,6 +83,8 @@ export function AppRouter() {
           <Route path="motoristas/:id" element={<MotoristaDetalhePage />} />
           <Route path="medicos" element={<MedicosPage />} />
           <Route path="medicos/:id" element={<MedicoDetalhePage />} />
+          <Route path="profissionais" element={<ProfissionaisPage />} />
+          <Route path="profissionais/:id" element={<MedicoDetalhePage />} />
           <Route path="usuarios" element={<UsuariosPage />} />
           <Route path="meu-perfil" element={<MeuPerfilPage />} />
           <Route path="alterar-senha" element={<AlterarMinhaSenhaPage />} />

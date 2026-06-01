@@ -32,19 +32,31 @@ import {
 } from '@/features/medicos/schemas/medicoSchema';
 import { paraMatriz } from '@/features/perfis/lib/acoes';
 import type { MatrizEdicao } from '@/features/perfis/types';
+import { CONSELHOS } from '@/features/medicos/types';
 
-type Props = { modo: 'criar' | 'editar'; idMedico?: string | null; aoConcluir: () => void };
+type Props = {
+  modo: 'criar' | 'editar';
+  idMedico?: string | null;
+  aoConcluir: () => void;
+  /** Conselho pré-selecionado ao criar (Médicos = "CRM"; Profissionais = aba ativa). */
+  conselhoInicial?: string;
+  /** Se false, o conselho fica travado (menu Médicos). */
+  permitirEscolherConselho?: boolean;
+  /** Substantivo usado nos textos (médico / profissional). */
+  substantivo?: string;
+};
 
 type Valores = {
   nomeCompleto: string;
   cpf: string;
   dataNascimento: string;
   email: string;
-  crm: string;
-  ufCrm: string;
+  conselho: string;
+  registro: string;
+  ufConselho: string;
   especialidade: string;
   rqe: string;
-  validadeCrm: string;
+  validadeRegistro: string;
   telefone: string;
   endereco: EnderecoForm;
   fotoBase64: string | null;
@@ -55,11 +67,12 @@ const INICIAL: Valores = {
   cpf: '',
   dataNascimento: '',
   email: '',
-  crm: '',
-  ufCrm: '',
+  conselho: 'CRM',
+  registro: '',
+  ufConselho: '',
   especialidade: '',
   rqe: '',
-  validadeCrm: '',
+  validadeRegistro: '',
   telefone: '',
   endereco: enderecoVazio,
   fotoBase64: null,
@@ -70,11 +83,12 @@ type Erros = Partial<
     | 'nomeCompleto'
     | 'cpf'
     | 'dataNascimento'
-    | 'crm'
-    | 'ufCrm'
+    | 'conselho'
+    | 'registro'
+    | 'ufConselho'
     | 'especialidade'
     | 'rqe'
-    | 'validadeCrm'
+    | 'validadeRegistro'
     | 'email'
     | 'telefone',
     string
@@ -87,8 +101,15 @@ type PromocaoPendente = {
   email: string;
 };
 
-export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
-  const [valores, setValores] = useState<Valores>(INICIAL);
+export function FormularioMedico({
+  modo,
+  idMedico,
+  aoConcluir,
+  conselhoInicial = 'CRM',
+  permitirEscolherConselho = false,
+  substantivo = 'médico',
+}: Props) {
+  const [valores, setValores] = useState<Valores>({ ...INICIAL, conselho: conselhoInicial });
   const [erros, setErros] = useState<Erros>({});
   const [erroGlobal, setErroGlobal] = useState<string | null>(null);
   const [passoCpfConcluido, setPassoCpfConcluido] = useState(modo === 'editar');
@@ -116,11 +137,12 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
         cpf: detalhe.data.cpf,
         dataNascimento: detalhe.data.dataNascimento ?? '',
         email: '',
-        crm: detalhe.data.crm,
-        ufCrm: detalhe.data.ufCrm,
+        conselho: detalhe.data.conselho || 'CRM',
+        registro: detalhe.data.registro,
+        ufConselho: detalhe.data.ufConselho,
         especialidade: detalhe.data.especialidade ?? '',
         rqe: detalhe.data.rqe ?? '',
-        validadeCrm: detalhe.data.validadeCrm ?? '',
+        validadeRegistro: detalhe.data.validadeRegistro ?? '',
         telefone: detalhe.data.telefone ?? '',
         fotoBase64: detalhe.data.fotoBase64 ?? null,
         endereco: e
@@ -240,10 +262,12 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
 
     if (modo === 'criar' && promocao) {
       const ne: Erros = {};
-      const crm = valores.crm.trim();
-      const uf = valores.ufCrm.trim().toUpperCase();
-      if (crm.length < 3) ne.crm = 'CRM obrigatório.';
-      if (uf.length !== 2) ne.ufCrm = 'UF do CRM deve ter 2 letras.';
+      const registro = valores.registro.trim();
+      const uf = valores.ufConselho.trim().toUpperCase();
+      const conselho = valores.conselho.trim().toUpperCase();
+      if (conselho.length < 2) ne.conselho = 'Informe o conselho.';
+      if (registro.length < 3) ne.registro = 'Número do registro obrigatório.';
+      if (uf.length !== 2) ne.ufConselho = 'UF do conselho deve ter 2 letras.';
       if (Object.keys(ne).length > 0) {
         setErros(ne);
         return;
@@ -251,11 +275,12 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
       try {
         await promover.mutateAsync({
           usuarioId: promocao.usuarioId,
-          crm,
-          ufCrm: uf,
+          conselho,
+          registro,
+          ufConselho: uf,
           especialidade: valores.especialidade.trim() || undefined,
           rqe: valores.rqe.trim() || undefined,
-          validadeCrm: valores.validadeCrm || undefined,
+          validadeRegistro: valores.validadeRegistro || undefined,
         });
         await aplicarPermissoes(promocao.usuarioId);
         aoConcluir();
@@ -280,11 +305,12 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
       : null;
 
     const base = {
-      crm: valores.crm.trim(),
-      ufCrm: valores.ufCrm.trim(),
+      conselho: valores.conselho.trim().toUpperCase(),
+      registro: valores.registro.trim(),
+      ufConselho: valores.ufConselho.trim(),
       especialidade: valores.especialidade,
       rqe: valores.rqe,
-      validadeCrm: valores.validadeCrm,
+      validadeRegistro: valores.validadeRegistro,
       telefone: valores.telefone,
       endereco: enderecoPayload,
       fotoBase64: valores.fotoBase64,
@@ -429,7 +455,8 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
           valores={valores}
           erros={erros}
           setCampo={setCampo}
-          autoFocusCrm
+          permitirEscolherConselho={permitirEscolherConselho}
+          autoFocusRegistro
         />
 
         {erroGlobal ? (
@@ -443,7 +470,7 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
             Cancelar
           </Button>
           <Button type="submit" disabled={pendente}>
-            {pendente ? 'Promovendo…' : `Promover ${promocao.nome.split(' ')[0]} a médico`}
+            {pendente ? 'Promovendo…' : `Promover ${promocao.nome.split(' ')[0]} a ${substantivo}`}
           </Button>
         </div>
       </form>
@@ -488,7 +515,12 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
   );
 
   const abaMedico = (
-    <CamposMedicoEspecificos valores={valores} erros={erros} setCampo={setCampo} />
+    <CamposMedicoEspecificos
+      valores={valores}
+      erros={erros}
+      setCampo={setCampo}
+      permitirEscolherConselho={permitirEscolherConselho}
+    />
   );
 
   const abaPermissoes = (
@@ -501,9 +533,10 @@ export function FormularioMedico({ modo, idMedico, aoConcluir }: Props) {
     />
   );
 
+  const tituloAbaProfissional = substantivo.charAt(0).toUpperCase() + substantivo.slice(1);
   const abas: Aba[] = [
     { id: 'dados', rotulo: 'Dados pessoais', conteudo: abaDados },
-    { id: 'medico', rotulo: 'Médico', conteudo: abaMedico },
+    { id: 'medico', rotulo: tituloAbaProfissional, conteudo: abaMedico },
     {
       id: 'permissoes',
       rotulo: 'Permissões',
@@ -538,31 +571,52 @@ function CamposMedicoEspecificos({
   valores,
   erros,
   setCampo,
-  autoFocusCrm,
+  autoFocusRegistro,
+  permitirEscolherConselho,
 }: {
   valores: Valores;
   erros: Erros;
   setCampo: <K extends keyof Valores>(k: K, v: Valores[K]) => void;
-  autoFocusCrm?: boolean;
+  autoFocusRegistro?: boolean;
+  permitirEscolherConselho?: boolean;
 }) {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-      <Campo label="CRM" htmlFor="crm" erro={erros.crm} required>
+      <Campo label="Conselho" htmlFor="conselho" erro={erros.conselho} required>
+        {permitirEscolherConselho ? (
+          <select
+            id="conselho"
+            value={valores.conselho}
+            onChange={(e) => setCampo('conselho', e.target.value)}
+            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:ring-red-500"
+          >
+            {CONSELHOS.map((c) => (
+              <option key={c.sigla} value={c.sigla}>
+                {c.sigla} — {c.nome}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <Input id="conselho" value={valores.conselho} disabled readOnly />
+        )}
+      </Campo>
+
+      <Campo label="Número do registro" htmlFor="registro" erro={erros.registro} required>
         <Input
-          id="crm"
-          value={valores.crm}
-          onChange={(e) => setCampo('crm', e.target.value)}
+          id="registro"
+          value={valores.registro}
+          onChange={(e) => setCampo('registro', e.target.value)}
           inputMode="numeric"
           required
-          autoFocus={autoFocusCrm}
+          autoFocus={autoFocusRegistro}
         />
       </Campo>
 
-      <Campo label="UF do CRM" htmlFor="ufCrm" erro={erros.ufCrm} required>
+      <Campo label="UF do conselho" htmlFor="ufConselho" erro={erros.ufConselho} required>
         <Input
-          id="ufCrm"
-          value={valores.ufCrm}
-          onChange={(e) => setCampo('ufCrm', e.target.value.toUpperCase())}
+          id="ufConselho"
+          value={valores.ufConselho}
+          onChange={(e) => setCampo('ufConselho', e.target.value.toUpperCase())}
           maxLength={2}
           placeholder="RJ"
           required
@@ -578,16 +632,16 @@ function CamposMedicoEspecificos({
         />
       </Campo>
 
-      <Campo label="RQE" htmlFor="rqe" erro={erros.rqe} dica="Registro de Qualificação de Especialista.">
+      <Campo label="RQE" htmlFor="rqe" erro={erros.rqe} dica="Registro de Qualificação de Especialista (médicos).">
         <Input id="rqe" value={valores.rqe} onChange={(e) => setCampo('rqe', e.target.value)} />
       </Campo>
 
-      <Campo label="Validade do CRM" htmlFor="validadeCrm" erro={erros.validadeCrm}>
+      <Campo label="Validade do registro" htmlFor="validadeRegistro" erro={erros.validadeRegistro}>
         <Input
-          id="validadeCrm"
+          id="validadeRegistro"
           type="date"
-          value={valores.validadeCrm}
-          onChange={(e) => setCampo('validadeCrm', e.target.value)}
+          value={valores.validadeRegistro}
+          onChange={(e) => setCampo('validadeRegistro', e.target.value)}
         />
       </Campo>
     </div>

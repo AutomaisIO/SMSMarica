@@ -6,32 +6,43 @@ using SMSMarica.Core.Medicos.Dtos;
 namespace SMSMarica.Core.Medicos;
 
 /// <summary>
-/// Mapeia entre os DTOs de médico do smsmarica e o recurso FHIR
-/// <c>Practitioner</c> do hub. Demografia/CRM em campos FHIR nativos
-/// (pesquisáveis); restante num extension JSON (mesmo padrão do paciente).
+/// Mapeia entre os DTOs de profissional de saúde do smsmarica e o recurso FHIR
+/// <c>Practitioner</c> do hub. Demografia + registro no conselho em campos FHIR
+/// nativos (pesquisáveis); restante num extension JSON (mesmo padrão do paciente).
+///
+/// O registro profissional NÃO é "CRM": é um conselho qualquer (CRM para médico,
+/// COREN para enfermagem, CRN para nutrição…). A sigla vai no system do identifier
+/// <c>urn:br:conselho:{sigla}:{uf}</c> e no <c>qualification.issuer</c>.
 /// </summary>
 internal static class MedicoFhirMapper
 {
     public const string PayloadUrl = "urn:smsmarica:medico-payload";
 
     private const string SystemCpf = "https://fhir.saude.gov.br/sid/cpf";
-    private const string SystemCrmPrefix = "urn:br:conselho:crm:";
+    private const string SystemConselhoRoot = "urn:br:conselho:";
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
-    public static string SystemCrm(string uf) => SystemCrmPrefix + (uf ?? string.Empty).Trim().ToUpperInvariant();
+    /// <summary>System do registro: <c>urn:br:conselho:{sigla}:{uf}</c>.</summary>
+    public static string SystemConselho(string? sigla, string? uf) =>
+        SystemConselhoRoot
+        + (sigla ?? string.Empty).Trim().ToLowerInvariant()
+        + ":" + (uf ?? string.Empty).Trim().ToUpperInvariant();
 
     public sealed record Payload(
-        string NomeCompleto, string Cpf, DateOnly? DataNascimento, string Crm, string UfCrm,
-        string? Especialidade, string? Rqe, DateOnly? ValidadeCrm, string? Telefone,
+        string NomeCompleto, string Cpf, DateOnly? DataNascimento,
+        string Conselho, string Registro, string UfConselho,
+        string? Especialidade, string? Rqe, DateOnly? ValidadeRegistro, string? Telefone,
         EnderecoDto? Endereco, string? FotoBase64);
 
     public static Practitioner ConstruirNovo(CadastrarMedicoRequest r)
     {
         var pl = new Payload(
-            r.NomeCompleto.Trim(), Digitos(r.Cpf), r.DataNascimento, Digitos(r.Crm),
-            (r.UfCrm ?? string.Empty).Trim().ToUpperInvariant(), Op(r.Especialidade), Op(r.Rqe),
-            r.ValidadeCrm, Op(r.Telefone), r.Endereco, Op(r.FotoBase64));
+            r.NomeCompleto.Trim(), Digitos(r.Cpf), r.DataNascimento,
+            NormalizarSigla(r.Conselho), Op(r.Registro) ?? string.Empty,
+            (r.UfConselho ?? string.Empty).Trim().ToUpperInvariant(),
+            Op(r.Especialidade), Op(r.Rqe), r.ValidadeRegistro, Op(r.Telefone),
+            r.Endereco, Op(r.FotoBase64));
 
         var p = new Practitioner { Active = true };
         AplicarPayload(p, pl);
@@ -43,11 +54,12 @@ internal static class MedicoFhirMapper
         var atual = LerPayload(existente);
         var pl = atual with
         {
-            Crm = Digitos(r.Crm),
-            UfCrm = (r.UfCrm ?? string.Empty).Trim().ToUpperInvariant(),
+            Conselho = NormalizarSigla(r.Conselho),
+            Registro = Op(r.Registro) ?? string.Empty,
+            UfConselho = (r.UfConselho ?? string.Empty).Trim().ToUpperInvariant(),
             Especialidade = Op(r.Especialidade),
             Rqe = Op(r.Rqe),
-            ValidadeCrm = r.ValidadeCrm,
+            ValidadeRegistro = r.ValidadeRegistro,
             Telefone = Op(r.Telefone),
             Endereco = r.Endereco,
             FotoBase64 = Op(r.FotoBase64),
@@ -59,15 +71,15 @@ internal static class MedicoFhirMapper
     {
         var pl = LerPayload(p);
         var id = Guid.Parse(p.Id!);
-        // Campos FHIR nativos primeiro (médicos importados — Salux); payload como fallback.
-        var (crm, uf) = CrmNativo(p);
+        // Campos FHIR nativos primeiro (profissionais importados — Salux); payload como fallback.
+        var (conselho, registro, uf) = ConselhoNativo(p);
         return new MedicoDto(
             id, id,
             NomeNativo(p) ?? pl.NomeCompleto,
             IdentValor(p, SystemCpf) ?? pl.Cpf,
             ParseData(p.BirthDate) ?? pl.DataNascimento,
-            crm ?? pl.Crm, uf ?? pl.UfCrm,
-            pl.Especialidade ?? EspecialidadeNativa(p), pl.Rqe, ValidadeNativa(p) ?? pl.ValidadeCrm,
+            conselho ?? pl.Conselho, registro ?? pl.Registro, uf ?? pl.UfConselho,
+            pl.Especialidade ?? EspecialidadeNativa(p), pl.Rqe, ValidadeNativa(p) ?? pl.ValidadeRegistro,
             TelefoneNativo(p) ?? pl.Telefone, pl.Endereco, pl.FotoBase64,
             p.Active ?? true, p.Meta?.LastUpdated?.UtcDateTime ?? default);
     }
@@ -76,19 +88,14 @@ internal static class MedicoFhirMapper
     {
         var pl = LerPayload(p);
         var id = Guid.Parse(p.Id!);
-        var (crm, uf) = CrmNativo(p);
+        var (conselho, registro, uf) = ConselhoNativo(p);
         return new MedicoListItemDto(
             id, id, NomeNativo(p) ?? pl.NomeCompleto, IdentValor(p, SystemCpf) ?? pl.Cpf,
-            crm ?? pl.Crm, uf ?? pl.UfCrm, pl.Especialidade ?? EspecialidadeNativa(p), pl.FotoBase64, p.Active ?? true);
+            conselho ?? pl.Conselho, registro ?? pl.Registro, uf ?? pl.UfConselho,
+            pl.Especialidade ?? EspecialidadeNativa(p), pl.FotoBase64, p.Active ?? true);
     }
 
     public static string NomeDe(Practitioner p) => NomeNativo(p) ?? LerPayload(p).NomeCompleto;
-    public static (string Crm, string Uf) CrmDe(Practitioner p)
-    {
-        var (crm, uf) = CrmNativo(p);
-        var pl = LerPayload(p);
-        return (crm ?? pl.Crm, uf ?? pl.UfCrm);
-    }
 
     private static string? NomeNativo(Practitioner p)
     {
@@ -99,11 +106,15 @@ internal static class MedicoFhirMapper
     private static string? IdentValor(Practitioner p, string system) =>
         p.Identifier?.FirstOrDefault(i => i.System == system)?.Value;
 
-    private static (string? Crm, string? Uf) CrmNativo(Practitioner p)
+    /// <summary>Extrai (sigla do conselho, número do registro, uf) do identifier <c>urn:br:conselho:{sigla}:{uf}</c>.</summary>
+    private static (string? Conselho, string? Registro, string? Uf) ConselhoNativo(Practitioner p)
     {
-        var idc = p.Identifier?.FirstOrDefault(i => i.System != null && i.System.StartsWith(SystemCrmPrefix));
-        if (idc is null) return (null, null);
-        return (idc.Value, idc.System!.Length > SystemCrmPrefix.Length ? idc.System![SystemCrmPrefix.Length..] : null);
+        var idc = p.Identifier?.FirstOrDefault(i => i.System != null && i.System.StartsWith(SystemConselhoRoot));
+        if (idc is null) return (null, null, null);
+        var partes = idc.System![SystemConselhoRoot.Length..].Split(':', 2);
+        var sigla = string.IsNullOrWhiteSpace(partes[0]) ? null : partes[0].ToUpperInvariant();
+        var uf = partes.Length > 1 && !string.IsNullOrWhiteSpace(partes[1]) ? partes[1].ToUpperInvariant() : null;
+        return (sigla, idc.Value, uf);
     }
 
     private static string? TelefoneNativo(Practitioner p) =>
@@ -133,20 +144,23 @@ internal static class MedicoFhirMapper
     {
         p.Name = [new HumanName { Use = HumanName.NameUse.Official, Text = pl.NomeCompleto }];
 
+        var system = SystemConselho(pl.Conselho, pl.UfConselho);
+
         p.Identifier = [];
         if (!string.IsNullOrWhiteSpace(pl.Cpf)) p.Identifier.Add(new Identifier(SystemCpf, pl.Cpf));
-        if (!string.IsNullOrWhiteSpace(pl.Crm)) p.Identifier.Add(new Identifier(SystemCrm(pl.UfCrm), pl.Crm));
+        if (!string.IsNullOrWhiteSpace(pl.Registro)) p.Identifier.Add(new Identifier(system, pl.Registro));
 
         p.BirthDate = pl.DataNascimento?.ToString("yyyy-MM-dd");
 
-        // Qualificação CRM (FHIR Practitioner.qualification).
+        // Registro no conselho (FHIR Practitioner.qualification): issuer = conselho emissor.
         p.Qualification =
         [
             new Practitioner.QualificationComponent
             {
-                Identifier = string.IsNullOrWhiteSpace(pl.Crm) ? null : [new Identifier(SystemCrm(pl.UfCrm), pl.Crm)],
-                Code = new CodeableConcept { Text = "CRM" + (string.IsNullOrWhiteSpace(pl.Especialidade) ? "" : " - " + pl.Especialidade) },
-                Period = pl.ValidadeCrm is null ? null : new Period { End = pl.ValidadeCrm.Value.ToString("yyyy-MM-dd") },
+                Identifier = string.IsNullOrWhiteSpace(pl.Registro) ? null : [new Identifier(system, pl.Registro)],
+                Issuer = string.IsNullOrWhiteSpace(pl.Conselho) ? null : new ResourceReference { Display = $"{pl.Conselho}-{pl.UfConselho}" },
+                Code = new CodeableConcept { Text = Op(pl.Especialidade) ?? pl.Conselho },
+                Period = pl.ValidadeRegistro is null ? null : new Period { End = pl.ValidadeRegistro.Value.ToString("yyyy-MM-dd") },
             },
         ];
 
@@ -158,9 +172,12 @@ internal static class MedicoFhirMapper
     {
         var raw = (p.GetExtension(PayloadUrl)?.Value as FhirString)?.Value;
         return raw is null
-            ? new Payload(string.Empty, string.Empty, null, string.Empty, string.Empty, null, null, null, null, null, null)
+            ? new Payload(string.Empty, string.Empty, null, string.Empty, string.Empty, string.Empty, null, null, null, null, null, null)
             : JsonSerializer.Deserialize<Payload>(raw, Json)!;
     }
+
+    private static string NormalizarSigla(string? v) =>
+        string.IsNullOrWhiteSpace(v) ? "CRM" : v.Trim().ToUpperInvariant();
 
     private static string Digitos(string? v) => string.IsNullOrEmpty(v) ? string.Empty : new([.. v.Where(char.IsDigit)]);
     private static string? Op(string? v) => string.IsNullOrWhiteSpace(v) ? null : v.Trim();

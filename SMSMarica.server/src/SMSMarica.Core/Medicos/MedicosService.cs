@@ -12,14 +12,18 @@ public sealed class MedicosService(IPractitionerFhirClient fhir) : IMedicosServi
 {
     private const int LimiteBusca = 10;
 
-    public async Task<IReadOnlyList<MedicoListItemDto>> BuscarAsync(string? termo, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<MedicoListItemDto>> BuscarAsync(
+        string? termo,
+        string? conselho = null,
+        string? conselhoExceto = null,
+        CancellationToken cancellationToken = default)
     {
         Hl7.Fhir.Model.Bundle bundle;
 
         if (string.IsNullOrWhiteSpace(termo))
         {
             // Sem termo: backend devolve os últimos cadastros (LastUpdated desc).
-            bundle = await fhir.BuscarAsync(ct: cancellationToken);
+            bundle = await fhir.BuscarAsync(conselho: conselho, conselhoNe: conselhoExceto, ct: cancellationToken);
         }
         else
         {
@@ -29,8 +33,8 @@ public sealed class MedicosService(IPractitionerFhirClient fhir) : IMedicosServi
 
             // 3..11 dígitos "puros" → busca por identifier (CPF); senão por nome.
             bundle = digitos.Length >= 3 && digitos.Length <= 11 && soDigitos
-                ? await fhir.BuscarAsync(identifier: digitos, ct: cancellationToken)
-                : await fhir.BuscarAsync(name: termo, ct: cancellationToken);
+                ? await fhir.BuscarAsync(identifier: digitos, conselho: conselho, conselhoNe: conselhoExceto, ct: cancellationToken)
+                : await fhir.BuscarAsync(name: termo, conselho: conselho, conselhoNe: conselhoExceto, ct: cancellationToken);
         }
 
         return [.. bundle.Entry.Select(e => e.Resource).OfType<Hl7.Fhir.Model.Practitioner>()
@@ -50,12 +54,13 @@ public sealed class MedicosService(IPractitionerFhirClient fhir) : IMedicosServi
 
     public async Task<Guid> CadastrarAsync(CadastrarMedicoRequest request, CancellationToken cancellationToken = default)
     {
-        var crm = new string([.. (request.Crm ?? string.Empty).Where(char.IsDigit)]);
-        var uf = (request.UfCrm ?? string.Empty).Trim().ToUpperInvariant();
+        var conselho = (request.Conselho ?? "CRM").Trim().ToUpperInvariant();
+        var registro = new string([.. (request.Registro ?? string.Empty).Where(char.IsDigit)]);
+        var uf = (request.UfConselho ?? string.Empty).Trim().ToUpperInvariant();
 
-        var existentes = await fhir.BuscarAsync(identifier: $"{MedicoFhirMapper.SystemCrm(uf)}|{crm}", ct: cancellationToken);
+        var existentes = await fhir.BuscarAsync(identifier: $"{MedicoFhirMapper.SystemConselho(conselho, uf)}|{registro}", ct: cancellationToken);
         if (existentes.Entry.Select(e => e.Resource).OfType<Hl7.Fhir.Model.Practitioner>().Any())
-            throw new ConflitoException("medico.crm_duplicado", $"Já existe médico com CRM {crm}/{uf}.");
+            throw new ConflitoException("medico.registro_duplicado", $"Já existe profissional com {conselho} {registro}/{uf}.");
 
         var practitioner = MedicoFhirMapper.ConstruirNovo(request);
         var criado = await fhir.CriarAsync(practitioner, cancellationToken);
