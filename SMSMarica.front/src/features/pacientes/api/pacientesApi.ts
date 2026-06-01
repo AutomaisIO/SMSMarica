@@ -9,9 +9,10 @@ import type {
 
 export async function buscarPacientes(termo: string): Promise<PacienteListItem[]> {
   const t = termo.trim();
-  if (!t) return [];
+  // Sem termo o backend devolve os 10 últimos cadastros; com termo, busca por
+  // nome (qualquer parte) ou CPF.
   const { data } = await http.get<PacienteListItem[]>('/pacientes', {
-    params: { termo: t },
+    params: t ? { termo: t } : undefined,
   });
   return data;
 }

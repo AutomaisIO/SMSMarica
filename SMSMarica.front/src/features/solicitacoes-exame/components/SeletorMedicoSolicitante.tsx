@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Stethoscope, UserPlus } from 'lucide-react';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
-import { useListarMedicos } from '@/features/medicos/api/queries';
+import { useBuscarMedicos } from '@/features/medicos/api/queries';
 import { cn } from '@/shared/lib/cn';
 
 type Valor = {
@@ -20,9 +20,21 @@ type Props = {
 
 const UFS = ['AC','AL','AM','AP','BA','CE','DF','ES','GO','MA','MG','MS','MT','PA','PB','PE','PI','PR','RJ','RN','RO','RR','RS','SC','SE','SP','TO'];
 
+function useDebounce<T>(valor: T, ms = 300): T {
+  const [v, setV] = useState(valor);
+  useEffect(() => {
+    const t = setTimeout(() => setV(valor), ms);
+    return () => clearTimeout(t);
+  }, [valor, ms]);
+  return v;
+}
+
 export function SeletorMedicoSolicitante({ valor, aoMudar }: Props) {
   const [aba, setAba] = useState<'interno' | 'externo'>(valor.solicitanteUsuarioId ? 'interno' : 'externo');
-  const medicos = useListarMedicos();
+  const [filtro, setFiltro] = useState('');
+  const debounced = useDebounce(filtro, 300);
+  // Sem filtro: 10 últimos cadastros; com filtro: busca por nome/CPF no hub FHIR.
+  const medicos = useBuscarMedicos(debounced);
 
   function escolherInterno(usuarioId: string) {
     const m = medicos.data?.find((x) => x.usuarioId === usuarioId);
@@ -70,20 +82,37 @@ export function SeletorMedicoSolicitante({ valor, aoMudar }: Props) {
       </div>
 
       {aba === 'interno' ? (
-        <Campo label="Selecionar médico" htmlFor="medico-interno">
-          <Select
-            id="medico-interno"
-            value={valor.solicitanteUsuarioId ?? ''}
-            onChange={(e) => escolherInterno(e.target.value)}
-          >
-            <option value="">— Selecione —</option>
-            {(medicos.data ?? []).map((m) => (
-              <option key={m.id} value={m.usuarioId}>
-                {m.nomeCompleto} (CRM {m.ufCrm}/{m.crm})
-              </option>
-            ))}
-          </Select>
-        </Campo>
+        <div className="space-y-2">
+          <Campo label="Buscar médico" htmlFor="medico-busca">
+            <Input
+              id="medico-busca"
+              value={filtro}
+              onChange={(e) => setFiltro(e.target.value)}
+              placeholder="Nome ou CPF (qualquer parte) — sem busca, mostra os 10 últimos"
+            />
+          </Campo>
+          <Campo label="Selecionar médico" htmlFor="medico-interno">
+            <Select
+              id="medico-interno"
+              value={valor.solicitanteUsuarioId ?? ''}
+              onChange={(e) => escolherInterno(e.target.value)}
+            >
+              <option value="">— Selecione —</option>
+              {/* Mantém o médico já escolhido visível mesmo fora dos resultados atuais. */}
+              {valor.solicitanteUsuarioId
+                && !(medicos.data ?? []).some((m) => m.usuarioId === valor.solicitanteUsuarioId) ? (
+                <option value={valor.solicitanteUsuarioId}>
+                  {valor.solicitanteNome} (CRM {valor.solicitanteUfCrm}/{valor.solicitanteCrm})
+                </option>
+              ) : null}
+              {(medicos.data ?? []).map((m) => (
+                <option key={m.id} value={m.usuarioId}>
+                  {m.nomeCompleto} (CRM {m.ufCrm}/{m.crm})
+                </option>
+              ))}
+            </Select>
+          </Campo>
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
           <Campo label="Nome do médico" htmlFor="solicitante-nome" className="sm:col-span-2">

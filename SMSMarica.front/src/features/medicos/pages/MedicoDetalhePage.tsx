@@ -5,6 +5,7 @@ import { Avatar } from '@/shared/ui/Avatar';
 import { Button } from '@/shared/ui/Button';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { useMedicoPorId } from '@/features/medicos/api/queries';
+import type { EnderecoDto } from '@/features/medicos/types';
 
 function formatarCpf(cpf: string) {
   const d = cpf.replace(/\D/g, '');
@@ -15,6 +16,15 @@ function formatarData(iso: string | null): string | null {
   if (!iso) return null;
   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
   return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
+}
+
+function formatarEndereco(e: EnderecoDto | null): string | null {
+  if (!e) return null;
+  const linha1 = [e.logradouro, e.numero].filter(Boolean).join(', ');
+  const partes = [linha1, e.complemento, e.bairro, [e.cidade, e.uf].filter(Boolean).join('/'), e.cep]
+    .map((p) => p?.trim())
+    .filter(Boolean);
+  return partes.length > 0 ? partes.join(' · ') : null;
 }
 
 function Dado({ rotulo, valor }: { rotulo: string; valor?: string | null }) {
@@ -77,12 +87,16 @@ export function MedicoDetalhePage() {
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <Dado rotulo="CPF" valor={formatarCpf(m.cpf)} />
+            <Dado rotulo="Data de nascimento" valor={formatarData(m.dataNascimento) ?? undefined} />
             <Dado rotulo="CRM" valor={`${m.crm}/${m.ufCrm}`} />
             <Dado rotulo="Especialidade" valor={m.especialidade ?? undefined} />
             <Dado rotulo="RQE" valor={m.rqe ?? undefined} />
             <Dado rotulo="Validade do CRM" valor={formatarData(m.validadeCrm) ?? undefined} />
             <Dado rotulo="Telefone" valor={m.telefone ?? undefined} />
             <Dado rotulo="Cadastrado em" valor={new Date(m.criadoEm).toLocaleString('pt-BR')} />
+            <div className="md:col-span-2">
+              <Dado rotulo="Endereço" valor={formatarEndereco(m.endereco)} />
+            </div>
           </div>
         </div>
       ) : null}

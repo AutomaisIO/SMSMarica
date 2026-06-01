@@ -7,8 +7,13 @@ import type {
   PromoverMedicoPayload,
 } from '@/features/medicos/types';
 
-export async function listarMedicos(): Promise<MedicoListItem[]> {
-  const { data } = await http.get<MedicoListItem[]>('/medicos');
+export async function buscarMedicos(termo = ''): Promise<MedicoListItem[]> {
+  const t = termo.trim();
+  // Sem termo o backend devolve os 10 últimos cadastros; com termo, busca por
+  // nome (qualquer parte) ou CPF. Mesma régua da busca de pacientes.
+  const { data } = await http.get<MedicoListItem[]>('/medicos', {
+    params: t ? { termo: t } : undefined,
+  });
   return data;
 }
 

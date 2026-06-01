@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   atualizarMedico,
+  buscarMedicos,
   cadastrarMedico,
   desativarMedico,
-  listarMedicos,
   obterMedicoPorId,
   promoverMedico,
 } from '@/features/medicos/api/medicosApi';
@@ -14,12 +14,21 @@ import type {
 } from '@/features/medicos/types';
 
 export const medicosKeys = {
-  lista: () => ['medicos', 'lista'] as const,
+  raiz: ['medicos'] as const,
+  busca: (termo: string) => ['medicos', 'busca', termo] as const,
   porId: (id: string) => ['medicos', 'detalhe', id] as const,
 };
 
-export function useListarMedicos() {
-  return useQuery({ queryKey: medicosKeys.lista(), queryFn: listarMedicos });
+export function useBuscarMedicos(termo: string) {
+  const t = termo.trim();
+  return useQuery({
+    queryKey: medicosKeys.busca(termo),
+    queryFn: () => buscarMedicos(termo),
+    // Vazio: backend devolve os 10 últimos cadastros. Com 1 char a busca seria
+    // ampla demais — espera o segundo caractere. >= 2: busca normal.
+    enabled: t.length === 0 || t.length >= 2,
+    placeholderData: (anterior) => anterior,
+  });
 }
 
 export function useMedicoPorId(id: string | null) {
@@ -37,7 +46,7 @@ export function useCadastrarMedico() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (payload: CadastrarMedicoPayload) => cadastrarMedico(payload),
-    onSuccess: () => client.invalidateQueries({ queryKey: medicosKeys.lista() }),
+    onSuccess: () => client.invalidateQueries({ queryKey: medicosKeys.raiz }),
   });
 }
 
@@ -45,7 +54,7 @@ export function usePromoverMedico() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (payload: PromoverMedicoPayload) => promoverMedico(payload),
-    onSuccess: () => client.invalidateQueries({ queryKey: medicosKeys.lista() }),
+    onSuccess: () => client.invalidateQueries({ queryKey: medicosKeys.raiz }),
   });
 }
 
@@ -55,7 +64,7 @@ export function useAtualizarMedico() {
     mutationFn: ({ id, payload }: { id: string; payload: AtualizarMedicoPayload }) =>
       atualizarMedico(id, payload),
     onSuccess: (_d, v) => {
-      client.invalidateQueries({ queryKey: medicosKeys.lista() });
+      client.invalidateQueries({ queryKey: medicosKeys.raiz });
       client.invalidateQueries({ queryKey: medicosKeys.porId(v.id) });
     },
   });
@@ -65,6 +74,6 @@ export function useDesativarMedico() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => desativarMedico(id),
-    onSuccess: () => client.invalidateQueries({ queryKey: medicosKeys.lista() }),
+    onSuccess: () => client.invalidateQueries({ queryKey: medicosKeys.raiz }),
   });
 }

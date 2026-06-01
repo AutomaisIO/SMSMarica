@@ -1,26 +1,38 @@
-import { useState } from 'react';
-import { Eye, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Eye, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Avatar } from '@/shared/ui/Avatar';
 import { BotaoLinhaAcao } from '@/shared/ui/BotaoLinhaAcao';
 import { Button } from '@/shared/ui/Button';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
+import { Input } from '@/shared/ui/Input';
 import { Modal } from '@/shared/ui/Modal';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import {
+  useBuscarMedicos,
   useDesativarMedico,
-  useListarMedicos,
 } from '@/features/medicos/api/queries';
 import { FormularioMedico } from '@/features/medicos/components/FormularioMedico';
 import type { MedicoListItem } from '@/features/medicos/types';
 
 type EstadoModal = { tipo: 'fechado' } | { tipo: 'criar' } | { tipo: 'editar'; id: string };
 
+function useDebounce<T>(valor: T, ms = 300): T {
+  const [debounced, setDebounced] = useState(valor);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(valor), ms);
+    return () => clearTimeout(t);
+  }, [valor, ms]);
+  return debounced;
+}
+
 export function MedicosPage() {
   const navigate = useNavigate();
-  const lista = useListarMedicos();
+  const [termo, setTermo] = useState('');
+  const debounced = useDebounce(termo, 300);
+  const busca = useBuscarMedicos(debounced);
   const desativar = useDesativarMedico();
   const [estado, setEstado] = useState<EstadoModal>({ tipo: 'fechado' });
   const [paraDesativar, setParaDesativar] = useState<MedicoListItem | null>(null);
@@ -90,12 +102,19 @@ export function MedicosPage() {
     }
   }
 
+  const buscando = debounced.trim().length > 0;
+  const semResultado = !busca.isLoading && (busca.data?.length ?? 0) === 0;
+
   return (
     <div className="space-y-6">
       <header className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Médicos</h1>
-          <p className="mt-1 text-sm text-gray-600">Profissionais médicos cadastrados.</p>
+          <p className="mt-1 text-sm text-gray-600">
+            Sem busca, exibe os <strong>10 últimos cadastros</strong>. Para procurar, digite{' '}
+            <strong>nome</strong> (qualquer parte, separadas por espaço) ou <strong>CPF</strong>{' '}
+            (com ou sem formatação) — até 10 resultados.
+          </p>
         </div>
         <Button onClick={() => setEstado({ tipo: 'criar' })}>
           <Plus className="w-4 h-4" />
@@ -103,17 +122,35 @@ export function MedicosPage() {
         </Button>
       </header>
 
-      {lista.isError ? (
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+        <Input
+          autoFocus
+          value={termo}
+          onChange={(e) => setTermo(e.target.value)}
+          placeholder="Buscar por nome ou CPF…"
+          className="pl-9"
+        />
+      </div>
+
+      {busca.isError ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {extrairMensagemDeErro(lista.error)}
+          {extrairMensagemDeErro(busca.error)}
         </div>
       ) : null}
 
       <Tabela
         colunas={colunas}
-        dados={lista.data ?? []}
+        dados={busca.data ?? []}
         chaveLinha={(m) => m.id}
-        carregando={lista.isLoading}
+        carregando={busca.isLoading || (busca.isFetching && !busca.data)}
+        vazio={
+          semResultado
+            ? buscando
+              ? 'Nenhum médico encontrado para essa busca.'
+              : 'Nenhum médico cadastrado ainda. Use "Novo médico" para começar.'
+            : undefined
+        }
       />
 
       <Modal
