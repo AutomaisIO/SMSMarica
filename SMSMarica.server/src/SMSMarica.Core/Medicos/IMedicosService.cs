@@ -4,7 +4,7 @@ namespace SMSMarica.Core.Medicos;
 
 public interface IMedicosService
 {
-    Task<IReadOnlyList<MedicoListItemDto>> ListarAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<MedicoListItemDto>> BuscarAsync(string? termo, CancellationToken cancellationToken = default);
     Task<MedicoDto> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<Guid> CadastrarAsync(CadastrarMedicoRequest request, CancellationToken cancellationToken = default);
     Task<Guid> PromoverAsync(PromoverMedicoRequest request, CancellationToken cancellationToken = default);

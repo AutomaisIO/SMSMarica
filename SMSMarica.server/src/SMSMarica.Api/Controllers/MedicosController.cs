@@ -12,11 +12,17 @@ public sealed class MedicosController(IMedicosService service) : ControllerBase
 {
     private readonly IMedicosService _service = service;
 
+    /// <summary>
+    /// Busca em tempo real por nome (qualquer parte) ou CPF. Sem <c>termo</c>
+    /// retorna os 10 últimos cadastros (LastUpdated desc). Limite 10.
+    /// </summary>
     [HttpGet]
     [RequerPermissao(ModuloPermissao.Medicos, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<MedicoListItemDto>>(StatusCodes.Status200OK)]
-    public async Task<IReadOnlyList<MedicoListItemDto>> Listar(CancellationToken cancellationToken) =>
-        await _service.ListarAsync(cancellationToken);
+    public async Task<IReadOnlyList<MedicoListItemDto>> Buscar(
+        [FromQuery] string? termo,
+        CancellationToken cancellationToken) =>
+        await _service.BuscarAsync(termo, cancellationToken);
 
     [HttpGet("{id:guid}")]
     [RequerPermissao(ModuloPermissao.Medicos, AcoesPermissao.Consulta)]

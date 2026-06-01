@@ -10,12 +10,36 @@ namespace SMSMarica.Core.Medicos;
 /// </summary>
 public sealed class MedicosService(IPractitionerFhirClient fhir) : IMedicosService
 {
-    public async Task<IReadOnlyList<MedicoListItemDto>> ListarAsync(CancellationToken cancellationToken = default)
+    private const int LimiteBusca = 10;
+
+    public async Task<IReadOnlyList<MedicoListItemDto>> BuscarAsync(string? termo, CancellationToken cancellationToken = default)
     {
-        var bundle = await fhir.BuscarAsync(ct: cancellationToken);
+        Hl7.Fhir.Model.Bundle bundle;
+
+        if (string.IsNullOrWhiteSpace(termo))
+        {
+            // Sem termo: backend devolve os últimos cadastros (LastUpdated desc).
+            bundle = await fhir.BuscarAsync(ct: cancellationToken);
+        }
+        else
+        {
+            termo = termo.Trim();
+            var digitos = Digitos(termo);
+            var soDigitos = digitos.Length == termo.Replace(".", "").Replace("-", "").Replace(" ", "").Length;
+
+            // 3..11 dígitos "puros" → busca por identifier (CPF); senão por nome.
+            bundle = digitos.Length >= 3 && digitos.Length <= 11 && soDigitos
+                ? await fhir.BuscarAsync(identifier: digitos, ct: cancellationToken)
+                : await fhir.BuscarAsync(name: termo, ct: cancellationToken);
+        }
+
         return [.. bundle.Entry.Select(e => e.Resource).OfType<Hl7.Fhir.Model.Practitioner>()
+            .Take(LimiteBusca)
             .Select(MedicoFhirMapper.ParaListItem)];
     }
+
+    private static string Digitos(string? valor) =>
+        string.IsNullOrEmpty(valor) ? string.Empty : new([.. valor.Where(char.IsDigit)]);
 
     public async Task<MedicoDto> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
