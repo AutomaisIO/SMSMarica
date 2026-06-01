@@ -14,6 +14,8 @@ public sealed class FhirDbContext(DbContextOptions<FhirDbContext> options) : DbC
 
     public DbSet<PatientRow> Patients => Set<PatientRow>();
     public DbSet<PractitionerRow> Practitioners => Set<PractitionerRow>();
+    public DbSet<EncounterRow> Encounters => Set<EncounterRow>();
+    public DbSet<ConditionRow> Conditions => Set<ConditionRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

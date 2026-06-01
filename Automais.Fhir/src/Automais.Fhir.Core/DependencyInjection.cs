@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using Automais.Fhir.Core.Conditions;
+using Automais.Fhir.Core.Encounters;
 using Automais.Fhir.Core.Patients;
 using Automais.Fhir.Core.Practitioners;
 
@@ -11,6 +13,8 @@ public static class DependencyInjection
     {
         services.AddScoped<IPatientService, PatientService>();
         services.AddScoped<IPractitionerService, PractitionerService>();
+        services.AddScoped<IEncounterService, EncounterService>();
+        services.AddScoped<IConditionService, ConditionService>();
         return services;
     }
 }
