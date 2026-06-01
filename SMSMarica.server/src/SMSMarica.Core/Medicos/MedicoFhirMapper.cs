@@ -59,9 +59,16 @@ internal static class MedicoFhirMapper
     {
         var pl = LerPayload(p);
         var id = Guid.Parse(p.Id!);
+        // Campos FHIR nativos primeiro (médicos importados — Salux); payload como fallback.
+        var (crm, uf) = CrmNativo(p);
         return new MedicoDto(
-            id, id, pl.NomeCompleto, pl.Cpf, pl.DataNascimento, pl.Crm, pl.UfCrm,
-            pl.Especialidade, pl.Rqe, pl.ValidadeCrm, pl.Telefone, pl.Endereco, pl.FotoBase64,
+            id, id,
+            NomeNativo(p) ?? pl.NomeCompleto,
+            IdentValor(p, SystemCpf) ?? pl.Cpf,
+            ParseData(p.BirthDate) ?? pl.DataNascimento,
+            crm ?? pl.Crm, uf ?? pl.UfCrm,
+            pl.Especialidade, pl.Rqe, ValidadeNativa(p) ?? pl.ValidadeCrm,
+            TelefoneNativo(p) ?? pl.Telefone, pl.Endereco, pl.FotoBase64,
             p.Active ?? true, p.Meta?.LastUpdated?.UtcDateTime ?? default);
     }
 
@@ -69,12 +76,45 @@ internal static class MedicoFhirMapper
     {
         var pl = LerPayload(p);
         var id = Guid.Parse(p.Id!);
+        var (crm, uf) = CrmNativo(p);
         return new MedicoListItemDto(
-            id, id, pl.NomeCompleto, pl.Cpf, pl.Crm, pl.UfCrm, pl.Especialidade, pl.FotoBase64, p.Active ?? true);
+            id, id, NomeNativo(p) ?? pl.NomeCompleto, IdentValor(p, SystemCpf) ?? pl.Cpf,
+            crm ?? pl.Crm, uf ?? pl.UfCrm, pl.Especialidade, pl.FotoBase64, p.Active ?? true);
     }
 
-    public static string NomeDe(Practitioner p) => LerPayload(p).NomeCompleto;
-    public static (string Crm, string Uf) CrmDe(Practitioner p) { var pl = LerPayload(p); return (pl.Crm, pl.UfCrm); }
+    public static string NomeDe(Practitioner p) => NomeNativo(p) ?? LerPayload(p).NomeCompleto;
+    public static (string Crm, string Uf) CrmDe(Practitioner p)
+    {
+        var (crm, uf) = CrmNativo(p);
+        var pl = LerPayload(p);
+        return (crm ?? pl.Crm, uf ?? pl.UfCrm);
+    }
+
+    private static string? NomeNativo(Practitioner p)
+    {
+        var n = p.Name?.FirstOrDefault(x => x.Use == HumanName.NameUse.Official)?.Text ?? p.Name?.FirstOrDefault()?.Text;
+        return string.IsNullOrWhiteSpace(n) ? null : n;
+    }
+
+    private static string? IdentValor(Practitioner p, string system) =>
+        p.Identifier?.FirstOrDefault(i => i.System == system)?.Value;
+
+    private static (string? Crm, string? Uf) CrmNativo(Practitioner p)
+    {
+        var idc = p.Identifier?.FirstOrDefault(i => i.System != null && i.System.StartsWith(SystemCrmPrefix));
+        if (idc is null) return (null, null);
+        return (idc.Value, idc.System!.Length > SystemCrmPrefix.Length ? idc.System![SystemCrmPrefix.Length..] : null);
+    }
+
+    private static string? TelefoneNativo(Practitioner p) =>
+        p.Telecom?.FirstOrDefault(t => t.System == ContactPoint.ContactPointSystem.Phone)?.Value;
+
+    private static DateOnly? ValidadeNativa(Practitioner p) =>
+        ParseData(p.Qualification?.FirstOrDefault()?.Period?.End);
+
+    private static DateOnly? ParseData(string? d) =>
+        DateOnly.TryParse(d, System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None, out var r) ? r : null;
 
     private static void AplicarPayload(Practitioner p, Payload pl)
     {
