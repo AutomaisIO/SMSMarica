@@ -16,7 +16,7 @@ import html as _html
 import json
 import urllib.request
 
-from conexao import executar_json
+from conexao import executar_json, executar_texto
 
 HUB = "http://smsmarica.online:5081"
 SRC = "https://smsmarica.saude.marica/source/salux"
@@ -156,10 +156,18 @@ def edoc_do_paciente(cd):
     )
 
 
+_ROW = "@@ROW@@"  # sentinela de linha lógica (não aparece em dados clínicos)
+_FLD = "@@FLD@@"  # sentinela de campo
+
+
 def itens_do_documento(h, ano, idm):
-    return executar_json(
+    # Uma única coluna concatenada + sentinelas: executar_select (COLSEP) quebra
+    # com 2 colunas de texto largo (sqlplus joga cada coluna em linha física
+    # separada -> resp vazio) e JSON_OBJECT estoura com ORA-40474 no charset
+    # legado. executar_texto rejunta linhas físicas; fatiamos pelos sentinelas.
+    txt = executar_texto(
         f"""
-        SELECT JSON_OBJECT('label' VALUE it.ds_item, 'resp' VALUE i.ds_resposta)
+        SELECT '{_ROW}' || it.ds_item || '{_FLD}' || i.ds_resposta
         FROM infosaude.edoc_movimento_item i
         JOIN infosaude.edoc_item it ON it.cd_item = i.cd_item
         WHERE i.cd_hospital = {int(h)} AND i.ano_movimento = {int(ano)} AND i.id_movimento = {int(idm)}
@@ -168,6 +176,13 @@ def itens_do_documento(h, ano, idm):
         """,
         modo="supervisor",
     )
+    itens = []
+    for chunk in txt.split(_ROW):
+        if not chunk:
+            continue
+        label, _, resp = chunk.partition(_FLD)
+        itens.append({"label": label, "resp": resp})
+    return itens
 
 
 def montar_html(modelo, itens):

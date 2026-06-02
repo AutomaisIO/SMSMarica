@@ -140,6 +140,33 @@ def executar_json(sql: str, binds: dict[str, Any] | None = None, modo: str = "ob
     return out
 
 
+def executar_texto(sql: str, binds: dict[str, Any] | None = None, modo: str = "obs", timeout: int = 60) -> str:
+    """Executa SELECT de UMA coluna textual e retorna a saída como string única
+    (linhas físicas concatenadas, sem header).
+
+    Para texto largo/multi-linha use sentinelas DENTRO do SQL (ex.: prefixar cada
+    linha lógica com '@@ROW@@' e separar campos com '@@FLD@@') e fatiar o
+    resultado no chamador. Diferente de `executar_select` (COLSEP), tolera:
+      - colunas largas que o sqlplus quebra em múltiplas linhas físicas (WRAP);
+      - bytes inválidos do charset legado do Salux (decodificados com replace),
+        que estouram JSON_OBJECT com ORA-40474.
+    """
+    garantir_leitura(sql)
+    sql_final = _aplicar_binds(sql.strip().rstrip(";"), binds)
+    script = (
+        "SET ECHO OFF\nSET FEEDBACK OFF\nSET HEADING OFF\n"
+        "SET PAGESIZE 0\nSET LINESIZE 4000\nSET LONG 200000\nSET LONGCHUNKSIZE 32000\n"
+        "SET TRIMSPOOL ON\nSET TRIMOUT ON\nSET WRAP ON\n"
+        "WHENEVER SQLERROR EXIT 1\n"
+        "SET TRANSACTION READ ONLY;\n"
+        f"{sql_final};\n"
+        "EXIT\n"
+    )
+    saida = _rodar_sqlplus(script, modo, timeout)
+    linhas = [r for r in saida.splitlines() if not r.startswith(("SP2-", "ORA-", "PLS-"))]
+    return "".join(linhas)
+
+
 def texto_sql(sql_id: str) -> str:
     """Reconstrói o SQL completo a partir de V$SQLTEXT (chunks de 64 bytes)."""
     garantir_leitura("SELECT 1 FROM dual")  # sanity
