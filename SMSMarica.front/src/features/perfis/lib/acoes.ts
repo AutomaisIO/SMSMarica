@@ -59,6 +59,7 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'LaudosTemplates', rotulo: 'Templates de laudo' },
   { id: 'Inteligencia', rotulo: 'IA' },
   { id: 'InteligenciaConfiguracao', rotulo: 'Configuração IA' },
+  { id: 'InteligenciaAprendizado', rotulo: 'Aprendizado IA' },
 ];
 
 export const ACOES: { id: AcaoPermissao; rotulo: string }[] = [

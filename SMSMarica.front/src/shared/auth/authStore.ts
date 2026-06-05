@@ -21,7 +21,8 @@ export type ModuloPermissao =
   | 'TiposExame'
   | 'ProcedimentosSigtap'
   | 'Inteligencia'
-  | 'InteligenciaConfiguracao';
+  | 'InteligenciaConfiguracao'
+  | 'InteligenciaAprendizado';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 

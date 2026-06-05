@@ -110,3 +110,32 @@ export type ResultadoTesteConexao = {
   sucesso: boolean;
   mensagem: string;
 };
+
+// ── Governança / Melhorias (aprendizado) ─────────────────────────────────────
+
+/** GET /ia/aprendizados — instrução aprendida (manual ou auto-correção) de uma fonte. */
+export type AprendizadoIa = {
+  id: string;
+  fonteId: string;
+  fonteNome: string;
+  tipo: string;
+  origem: string;
+  conteudo: string;
+  ativo: boolean;
+  criadoEm: string;
+};
+
+/** GET /ia/correcoes — entrada do histórico de correções automáticas de SQL. */
+export type CorrecaoIa = {
+  id: string;
+  consultaId: string;
+  aprendizadoId?: string | null;
+  pergunta: string;
+  erroOriginal: string;
+  sqlAntes?: string | null;
+  sqlDepois?: string | null;
+  instrucaoGerada?: string | null;
+  criadoEm: string;
+  revisadoEm?: string | null;
+  removidoEm?: string | null;
+};

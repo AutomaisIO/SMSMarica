@@ -28,6 +28,9 @@ public enum ModuloPermissao
     /// <summary>Usar o assistente de IA (fazer perguntas em linguagem natural).</summary>
     Inteligencia = 19,
 
-    /// <summary>Configurar o módulo IA: token do provedor, bases de dados e governança do aprendizado.</summary>
+    /// <summary>Configurar o módulo IA: token do provedor e bases de dados.</summary>
     InteligenciaConfiguracao = 20,
+
+    /// <summary>Governar o aprendizado da IA: ver o log de melhorias e remover instruções aprendidas.</summary>
+    InteligenciaAprendizado = 21,
 }

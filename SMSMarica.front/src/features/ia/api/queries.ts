@@ -3,6 +3,9 @@ import {
   atualizarConfiguracao,
   atualizarFonteConfig,
   criarFonteConfig,
+  desativarAprendizado,
+  listarAprendizados,
+  listarCorrecoes,
   listarFontes,
   listarFontesConfig,
   obterConfiguracao,
@@ -22,6 +25,8 @@ export const iaKeys = {
   fontes: ['ia', 'fontes'] as const,
   configuracao: ['ia', 'configuracao'] as const,
   fontesConfig: ['ia', 'configuracao', 'fontes'] as const,
+  aprendizados: (fonteId?: string) => ['ia', 'aprendizados', fonteId ?? 'todas'] as const,
+  correcoes: (fonteId?: string) => ['ia', 'correcoes', fonteId ?? 'todas'] as const,
 };
 
 export function useFontes() {
@@ -107,5 +112,32 @@ export function useRemoverFonteConfig() {
 export function useTestarConexaoFonte() {
   return useMutation({
     mutationFn: (id: string) => testarConexaoFonte(id),
+  });
+}
+
+// ── Governança / Melhorias (aprendizado) ─────────────────────────────────────
+
+export function useAprendizados(fonteId?: string) {
+  return useQuery({
+    queryKey: iaKeys.aprendizados(fonteId),
+    queryFn: () => listarAprendizados(fonteId),
+  });
+}
+
+export function useCorrecoes(fonteId?: string) {
+  return useQuery({
+    queryKey: iaKeys.correcoes(fonteId),
+    queryFn: () => listarCorrecoes(fonteId),
+  });
+}
+
+export function useDesativarAprendizado() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => desativarAprendizado(id),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ['ia', 'aprendizados'] });
+      client.invalidateQueries({ queryKey: ['ia', 'correcoes'] });
+    },
   });
 }

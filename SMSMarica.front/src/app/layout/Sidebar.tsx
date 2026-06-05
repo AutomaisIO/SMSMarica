@@ -148,6 +148,12 @@ const SECOES: SecaoMenu[] = [
         icone: Settings2,
         modulo: 'InteligenciaConfiguracao',
       },
+      {
+        rotulo: 'Melhorias da IA',
+        to: '/app/ia/melhorias',
+        icone: Sparkles,
+        modulo: 'InteligenciaAprendizado',
+      },
     ],
   },
 ];

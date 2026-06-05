@@ -8,6 +8,7 @@ import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { TrocarSenhaPage } from '@/features/auth/pages/TrocarSenhaPage';
 import { IaPage } from '@/features/ia/pages/IaPage';
 import { IaConfiguracaoPage } from '@/features/ia/pages/IaConfiguracaoPage';
+import { IaMelhoriasPage } from '@/features/ia/pages/IaMelhoriasPage';
 import { MedicoDetalhePage } from '@/features/medicos/pages/MedicoDetalhePage';
 import { MedicosPage } from '@/features/medicos/pages/MedicosPage';
 import { ProfissionaisPage } from '@/features/medicos/pages/ProfissionaisPage';
@@ -118,6 +119,7 @@ export function AppRouter() {
           <Route path="procedimentos-sigtap" element={<ProcedimentosSigtapPage />} />
           <Route path="ia" element={<IaPage />} />
           <Route path="ia/configuracao" element={<IaConfiguracaoPage />} />
+          <Route path="ia/melhorias" element={<IaMelhoriasPage />} />
         </Route>
       </Route>
 
