@@ -220,50 +220,6 @@ export function IaConfiguracaoPage() {
             </Campo>
           </div>
 
-          <div className="border-t border-gray-100 pt-4">
-            <h3 className="text-sm font-semibold text-gray-800">Embeddings</h3>
-            <p className="mt-0.5 text-xs text-gray-500">
-              Provedor e modelo usados para indexar e buscar contexto.
-            </p>
-            <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Campo label="Provedor de embeddings" htmlFor="cfg-emb-provedor">
-                <Input
-                  id="cfg-emb-provedor"
-                  value={form.provedorEmbeddings}
-                  onChange={(e) => set('provedorEmbeddings', e.target.value)}
-                />
-              </Campo>
-              <Campo label="Modelo de embeddings" htmlFor="cfg-emb-modelo">
-                <Input
-                  id="cfg-emb-modelo"
-                  value={form.modeloEmbeddings}
-                  onChange={(e) => set('modeloEmbeddings', e.target.value)}
-                />
-              </Campo>
-              <Campo
-                label="Token de embeddings"
-                htmlFor="cfg-emb-token"
-                className="sm:col-span-2"
-                dica={
-                  config.data?.tokenEmbeddingsDefinido
-                    ? 'Já definido — preencha apenas para substituir.'
-                    : 'Ainda não definido.'
-                }
-              >
-                <Input
-                  id="cfg-emb-token"
-                  type="password"
-                  value={form.tokenEmbeddings}
-                  onChange={(e) => set('tokenEmbeddings', e.target.value)}
-                  placeholder={
-                    config.data?.tokenEmbeddingsDefinido ? '••••••••••••' : 'Cole o token aqui'
-                  }
-                  autoComplete="new-password"
-                />
-              </Campo>
-            </div>
-          </div>
-
           {erroConfig ? (
             <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               {erroConfig}

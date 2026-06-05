@@ -42,7 +42,7 @@ type FormState = {
 function estadoInicial(fonte?: FonteConfig): FormState {
   return {
     nome: fonte?.nome ?? '',
-    tipo: fonte?.tipo ?? 'oracle',
+    tipo: fonte?.tipo ?? 'Salux',
     dialeto: fonte?.dialeto ?? 'oracle',
     ambiente: fonte?.ambiente ?? 'TREINAMENTO',
     host: fonte?.host ?? '',
@@ -140,23 +140,30 @@ export function FonteConfigModal({ aberto, aoFechar, fonte }: Props) {
             />
           </Campo>
 
-          <Campo label="Tipo" htmlFor="fc-tipo" required>
-            <Select id="fc-tipo" value={form.tipo} onChange={(e) => set('tipo', e.target.value)}>
-              <option value="oracle">Oracle</option>
-              <option value="postgres">PostgreSQL</option>
-              <option value="sqlserver">SQL Server</option>
-              <option value="mysql">MySQL</option>
-              <option value="rest">API REST</option>
+          <Campo label="Tipo" htmlFor="fc-tipo" required dica="Família da base (não o motor de banco).">
+            <Select
+              id="fc-tipo"
+              value={form.tipo}
+              onChange={(e) => {
+                const t = e.target.value;
+                // Sugere o dialeto conforme o tipo (ajustável).
+                const dialeto = t === 'Postgres' ? 'postgres' : t === 'Fhir' ? '' : 'oracle';
+                setForm((f) => ({ ...f, tipo: t, dialeto }));
+              }}
+            >
+              <option value="Salux">Salux</option>
+              <option value="Mv">MV</option>
+              <option value="Eco">ECO</option>
+              <option value="Fhir">FHIR (API REST)</option>
+              <option value="Postgres">PostgreSQL</option>
             </Select>
           </Campo>
 
           <Campo label="Dialeto" htmlFor="fc-dialeto" dica="Dialeto SQL usado na geração das consultas.">
-            <Input
-              id="fc-dialeto"
-              value={form.dialeto}
-              onChange={(e) => set('dialeto', e.target.value)}
-              placeholder="oracle"
-            />
+            <Select id="fc-dialeto" value={form.dialeto} onChange={(e) => set('dialeto', e.target.value)}>
+              <option value="oracle">Oracle</option>
+              <option value="postgres">PostgreSQL</option>
+            </Select>
           </Campo>
 
           <Campo label="Ambiente" htmlFor="fc-ambiente" required>
@@ -222,7 +229,7 @@ export function FonteConfigModal({ aberto, aoFechar, fonte }: Props) {
             />
           </Campo>
 
-          {form.tipo === 'rest' ? (
+          {form.tipo === 'Fhir' ? (
             <Campo label="URL base" htmlFor="fc-baseurl" className="sm:col-span-2">
               <Input
                 id="fc-baseurl"

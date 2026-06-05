@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Pgvector;
 using Pgvector.EntityFrameworkCore;
 using SMSMarica.Core.Inteligencia.Provedores;
@@ -8,18 +9,76 @@ using SMSMarica.Data;
 namespace SMSMarica.Core.Inteligencia.Conhecimento;
 
 /// <summary>
-/// Recuperador de contexto (RAG): embeda a pergunta e busca os top-k chunks de conhecimento
-/// mais próximos por distância L2 (pgvector via <c>L2Distance</c>), além dos aprendizados
-/// ativos da fonte. Devolve strings prontas para o turno do usuário do provedor de IA.
+/// Recuperador de contexto para o provedor de IA. Dois modos, conforme <c>Ia:Embeddings:Habilitado</c>:
+/// <list type="bullet">
+/// <item><b>Desligado (padrão — Opção B)</b>: manda o conhecimento <b>inteiro</b> da fonte (lê todos
+/// os .md de <c>Bases/&lt;fonte&gt;/</c>). Simples e sem depender de provedor de embeddings.</item>
+/// <item><b>Ligado</b>: busca por similaridade vetorial (RAG) os top-k chunks via pgvector
+/// (<c>L2Distance</c>). Vale a pena quando a base ficar grande demais para enviar inteira.</item>
+/// </list>
+/// Em ambos, soma os aprendizados ativos da fonte.
 /// </summary>
-public sealed class RecuperadorContexto(SmsMaricaDbContext db, IServicoEmbeddings embeddings)
+public sealed class RecuperadorContexto(
+    SmsMaricaDbContext db, IServicoEmbeddings embeddings, IConfiguration configuration)
     : IRecuperadorContexto
 {
     private const int TopKChunks = 8;
     private const int MaxAprendizados = 20;
+    private const string PastaRelativa = "Inteligencia/Conhecimento/Bases";
+
+    private readonly bool _embeddingsHabilitado = configuration.GetValue("Ia:Embeddings:Habilitado", false);
 
     public async Task<ContextoRecuperado> RecuperarAsync(
         Guid fonteId, string pergunta, CancellationToken cancellationToken = default)
+    {
+        var conhecimento = _embeddingsHabilitado
+            ? await RecuperarPorSimilaridadeAsync(fonteId, pergunta, cancellationToken)
+            : await CarregarConhecimentoCompletoAsync(fonteId, cancellationToken);
+
+        var aprendizados = await db.IaAprendizados
+            .Where(a => a.FonteId == fonteId && a.Ativo && a.ExcluidoEm == null)
+            .OrderByDescending(a => a.CriadoEm)
+            .Take(MaxAprendizados)
+            .Select(a => a.Conteudo)
+            .ToListAsync(cancellationToken);
+
+        return new ContextoRecuperado(conhecimento, Juntar(aprendizados));
+    }
+
+    /// <summary>Opção B: lê todo o conhecimento (.md) da fonte direto do disco — sem embeddings.</summary>
+    private async Task<string> CarregarConhecimentoCompletoAsync(Guid fonteId, CancellationToken cancellationToken)
+    {
+        var tipo = await db.IaFontes
+            .Where(f => f.Id == fonteId)
+            .Select(f => f.Tipo)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var raiz = Path.Combine(AppContext.BaseDirectory, PastaRelativa.Replace('/', Path.DirectorySeparatorChar));
+        if (!Directory.Exists(raiz))
+        {
+            return string.Empty;
+        }
+
+        // Casa a subpasta com o Tipo de forma case-insensitive (FS do Linux é case-sensitive).
+        var pasta = Directory.EnumerateDirectories(raiz)
+            .FirstOrDefault(d => string.Equals(Path.GetFileName(d), tipo.ToString(), StringComparison.OrdinalIgnoreCase));
+        if (pasta is null)
+        {
+            return string.Empty;
+        }
+
+        var sb = new StringBuilder();
+        foreach (var arquivo in Directory.EnumerateFiles(pasta, "*.md", SearchOption.AllDirectories).OrderBy(a => a))
+        {
+            sb.AppendLine(await File.ReadAllTextAsync(arquivo, cancellationToken)).AppendLine();
+        }
+
+        return sb.ToString().Trim();
+    }
+
+    /// <summary>Modo RAG: embeda a pergunta e busca os top-k chunks mais próximos (pgvector).</summary>
+    private async Task<string> RecuperarPorSimilaridadeAsync(
+        Guid fonteId, string pergunta, CancellationToken cancellationToken)
     {
         var vetorPergunta = new Vector(await embeddings.EmbeddarAsync(pergunta, cancellationToken));
 
@@ -30,16 +89,7 @@ public sealed class RecuperadorContexto(SmsMaricaDbContext db, IServicoEmbedding
             .Select(c => c.Conteudo)
             .ToListAsync(cancellationToken);
 
-        var aprendizados = await db.IaAprendizados
-            .Where(a => a.FonteId == fonteId && a.Ativo && a.ExcluidoEm == null)
-            .OrderByDescending(a => a.CriadoEm)
-            .Take(MaxAprendizados)
-            .Select(a => a.Conteudo)
-            .ToListAsync(cancellationToken);
-
-        return new ContextoRecuperado(
-            ConhecimentoRecuperado: Juntar(chunks),
-            AprendizadosAtivos: Juntar(aprendizados));
+        return Juntar(chunks);
     }
 
     private static string Juntar(IReadOnlyList<string> trechos)
