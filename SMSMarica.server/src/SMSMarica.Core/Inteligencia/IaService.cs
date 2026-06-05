@@ -141,7 +141,7 @@ public sealed class IaService(
                 await ctx.SaveChangesAsync(cancellationToken);
 
                 return new RespostaIaDto(
-                    fonte.Id, fonte.Nome, consulta.Status.ToString(),
+                    fonte.Id, fonte.Nome, "erro",
                     Resumo: null, Visualizacao: null, Titulo: null,
                     Colunas: [], Dados: [], Sql: consulta.SqlGerado,
                     ConsultaId: consulta.Id, Erro: consulta.Erro);
@@ -155,7 +155,7 @@ public sealed class IaService(
             await ctx.SaveChangesAsync(cancellationToken);
 
             return new RespostaIaDto(
-                fonte.Id, fonte.Nome, consulta.Status.ToString(),
+                fonte.Id, fonte.Nome, resultado.Linhas.Count == 0 ? "vazio" : "ok",
                 Resumo: resumo,
                 Visualizacao: geracao.Visualizacao,
                 Titulo: geracao.Titulo,
@@ -174,7 +174,7 @@ public sealed class IaService(
             await ctx.SaveChangesAsync(CancellationToken.None);
 
             return new RespostaIaDto(
-                fonte.Id, fonte.Nome, consulta.Status.ToString(),
+                fonte.Id, fonte.Nome, "erro",
                 Resumo: null, Visualizacao: null, Titulo: null,
                 Colunas: [], Dados: [], Sql: consulta.SqlGerado,
                 ConsultaId: consulta.Id, Erro: ex.Message);
