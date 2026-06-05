@@ -233,7 +233,7 @@ export function RespostaRenderer({ resposta, onReportarErro }: Props) {
                 ul: ({ children }) => <ul className="mb-2 list-disc space-y-0.5 pl-5">{children}</ul>,
                 ol: ({ children }) => <ol className="mb-2 list-decimal space-y-0.5 pl-5">{children}</ol>,
                 strong: ({ children }) => (
-                  <strong className="font-semibold text-gray-900">{children}</strong>
+                  <strong className="font-semibold text-primary-700">{children}</strong>
                 ),
               }}
             >
