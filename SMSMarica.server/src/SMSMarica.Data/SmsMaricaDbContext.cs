@@ -49,8 +49,9 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     // Integração SISREG (feed de leitura) — ADR-0012
     public DbSet<SisregConfiguracao> SisregConfiguracoes => Set<SisregConfiguracao>();
 
-    // Domínio de Agendamento (Especialidade → Agenda → Agendamento) — ADR-0012
+    // Domínio de Agendamento (Especialidade → Agenda → Agendamento) — ADR-0012/0013
     public DbSet<Especialidade> Especialidades => Set<Especialidade>();
+    public DbSet<Equipamento> Equipamentos => Set<Equipamento>();
     public DbSet<Agenda> Agendas => Set<Agenda>();
     public DbSet<DisponibilidadeRecorrente> DisponibilidadesRecorrentes => Set<DisponibilidadeRecorrente>();
     public DbSet<DisponibilidadeAvulsa> DisponibilidadesAvulsas => Set<DisponibilidadeAvulsa>();

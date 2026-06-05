@@ -45,4 +45,7 @@ public enum ModuloPermissao
 
     /// <summary>Configurar a integração SISREG: credenciais, UF/município, centrais reguladoras.</summary>
     SisregConfiguracao = 25,
+
+    /// <summary>Equipamentos das unidades (recurso agendável para exames de imagem).</summary>
+    Equipamentos = 26,
 }

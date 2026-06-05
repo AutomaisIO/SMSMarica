@@ -21,12 +21,14 @@ public sealed class AgendasController(IAgendaService service) : ControllerBase
     [RequerPermissao(ModuloPermissao.Agendamentos, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<AgendaListItemDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<AgendaListItemDto>> Listar(
+        [FromQuery] FinalidadeAgenda? finalidade,
         [FromQuery] Guid? unidadeId,
         [FromQuery] Guid? especialidadeId,
         [FromQuery] Guid? medicoId,
+        [FromQuery] Guid? equipamentoId,
         [FromQuery] bool incluirInativas,
         CancellationToken cancellationToken) =>
-        await _service.ListarAsync(unidadeId, especialidadeId, medicoId, incluirInativas, cancellationToken);
+        await _service.ListarAsync(finalidade, unidadeId, especialidadeId, medicoId, equipamentoId, incluirInativas, cancellationToken);
 
     [HttpGet("{id:guid}")]
     [RequerPermissao(ModuloPermissao.Agendamentos, AcoesPermissao.Consulta)]

@@ -1,15 +1,21 @@
+using SMSMarica.Data.Entities.Enums;
+
 namespace SMSMarica.Core.Agendamentos.Dtos;
 
 public sealed record AgendaDto(
     Guid Id,
+    FinalidadeAgenda Finalidade,
     Guid UnidadeId,
     string UnidadeNome,
-    Guid EspecialidadeId,
-    string EspecialidadeNome,
-    Guid MedicoId,
-    string MedicoNome,
+    Guid? EspecialidadeId,
+    string? EspecialidadeNome,
+    Guid? MedicoId,
+    string? MedicoNome,
     string? MedicoCns,
-    int DuracaoConsultaMinutos,
+    Guid? EquipamentoId,
+    string? EquipamentoNome,
+    string Alvo,
+    int DuracaoSlotMinutos,
     DateOnly VigenciaInicio,
     DateOnly? VigenciaFim,
     bool Ativo,
@@ -18,23 +24,29 @@ public sealed record AgendaDto(
 
 public sealed record AgendaListItemDto(
     Guid Id,
+    FinalidadeAgenda Finalidade,
     string UnidadeNome,
-    string EspecialidadeNome,
-    Guid MedicoId,
-    string MedicoNome,
-    int DuracaoConsultaMinutos,
+    string Alvo,
+    int DuracaoSlotMinutos,
     bool Ativo);
 
+/// <summary>
+/// Cadastro de agenda. Por finalidade (ADR-0013): Consulta exige <see cref="EspecialidadeId"/>
+/// (e <see cref="MedicoId"/> opcional — null = agenda da especialidade/pool); Exame exige
+/// <see cref="EquipamentoId"/>.
+/// </summary>
 public sealed record CadastrarAgendaRequest(
+    FinalidadeAgenda Finalidade,
     Guid UnidadeId,
-    Guid EspecialidadeId,
-    Guid MedicoId,
-    int DuracaoConsultaMinutos,
+    Guid? EspecialidadeId,
+    Guid? MedicoId,
+    Guid? EquipamentoId,
+    int DuracaoSlotMinutos,
     DateOnly VigenciaInicio,
     DateOnly? VigenciaFim);
 
 public sealed record AtualizarAgendaRequest(
-    int DuracaoConsultaMinutos,
+    int DuracaoSlotMinutos,
     DateOnly VigenciaInicio,
     DateOnly? VigenciaFim,
     bool Ativo);

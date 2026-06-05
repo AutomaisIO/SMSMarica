@@ -24,6 +24,7 @@ export type ModuloPermissao =
   | 'InteligenciaConfiguracao'
   | 'InteligenciaAprendizado'
   | 'Especialidades'
+  | 'Equipamentos'
   | 'Agendamentos'
   | 'Sisreg'
   | 'SisregConfiguracao';

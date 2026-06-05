@@ -10,23 +10,28 @@ import type {
   AgendarPayload,
   AtualizarAgendaPayload,
   CadastrarAgendaPayload,
+  FinalidadeAgenda,
   DisponibilidadesAgenda,
   SlotLivre,
 } from '@/features/agendamentos/types';
 
 export type FiltroAgendas = {
+  finalidade?: FinalidadeAgenda;
   unidadeId?: string;
   especialidadeId?: string;
   medicoId?: string;
+  equipamentoId?: string;
   incluirInativas?: boolean;
 };
 
 export async function listarAgendas(filtro: FiltroAgendas = {}): Promise<AgendaListItem[]> {
   const { data } = await http.get<AgendaListItem[]>('/agendas', {
     params: {
+      finalidade: filtro.finalidade || undefined,
       unidadeId: filtro.unidadeId || undefined,
       especialidadeId: filtro.especialidadeId || undefined,
       medicoId: filtro.medicoId || undefined,
+      equipamentoId: filtro.equipamentoId || undefined,
       incluirInativas: filtro.incluirInativas ? 'true' : undefined,
     },
   });

@@ -8,6 +8,7 @@ import { Input } from '@/shared/ui/Input';
 import { Modal } from '@/shared/ui/Modal';
 import { Select } from '@/shared/ui/Select';
 import { BuscaPaciente } from '@/shared/ui/BuscaPaciente';
+import { useListarTiposExame } from '@/features/tipos-exame/api/queries';
 import {
   useAdicionarAvulso,
   useAdicionarBloqueio,
@@ -63,6 +64,7 @@ export function AgendaDetalhePage() {
   const livres = useHorariosLivres(id, inicio, fim, Boolean(id));
   const agendamentos = useAgendamentosDaAgenda(id, inicio, fim);
   const disponibilidades = useDisponibilidades(id, inicio, fim);
+  const tiposExame = useListarTiposExame();
 
   const addRecorrencia = useAdicionarRecorrencia(id);
   const delRecorrencia = useRemoverRecorrencia(id);
@@ -82,6 +84,7 @@ export function AgendaDetalhePage() {
   const [slotMarcar, setSlotMarcar] = useState<SlotLivre | null>(null);
   const [pacienteSel, setPacienteSel] = useState<{ id: string; nome: string } | null>(null);
   const [observacao, setObservacao] = useState('');
+  const [tipoExameId, setTipoExameId] = useState('');
   const [erroMarcar, setErroMarcar] = useState<string | null>(null);
 
   if (agenda.isPending) {
@@ -135,7 +138,13 @@ export function AgendaDetalhePage() {
     if (!slotMarcar || !pacienteSel) return;
     setErroMarcar(null);
     agendar.mutate(
-      { agendaId: id, pacienteId: pacienteSel.id, inicioEm: slotMarcar.inicioEm, observacao: observacao || null },
+      {
+        agendaId: id,
+        pacienteId: pacienteSel.id,
+        inicioEm: slotMarcar.inicioEm,
+        tipoExameId: a.finalidade === 'Exame' ? tipoExameId || null : null,
+        observacao: observacao || null,
+      },
       {
         onSuccess: () => {
           setSlotMarcar(null);
@@ -163,12 +172,12 @@ export function AgendaDetalhePage() {
       <header className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <h1 className="flex items-center gap-2 text-xl font-semibold text-gray-900">
           <CalendarClock className="h-5 w-5 text-primary-600" />
-          {a.medicoNome}
+          {a.alvo}
         </h1>
         <div className="mt-2 grid grid-cols-2 gap-2 text-sm text-gray-600 sm:grid-cols-4">
-          <div><span className="text-gray-400">Especialidade:</span> {a.especialidadeNome}</div>
+          <div><span className="text-gray-400">Tipo:</span> {a.finalidade === 'Exame' ? 'Exame' : 'Consulta'}</div>
           <div><span className="text-gray-400">Unidade:</span> {a.unidadeNome}</div>
-          <div><span className="text-gray-400">Consulta:</span> {a.duracaoConsultaMinutos} min</div>
+          <div><span className="text-gray-400">Slot:</span> {a.duracaoSlotMinutos} min</div>
           <div><span className="text-gray-400">Vigência:</span> {a.vigenciaInicio}{a.vigenciaFim ? ` → ${a.vigenciaFim}` : ''}</div>
         </div>
       </header>
@@ -254,6 +263,7 @@ export function AgendaDetalhePage() {
                     setSlotMarcar(s);
                     setPacienteSel(null);
                     setObservacao('');
+                    setTipoExameId('');
                     setErroMarcar(null);
                   }}
                   className="rounded-md border border-primary-200 bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100"
@@ -397,6 +407,19 @@ export function AgendaDetalhePage() {
               <BuscaPaciente aoSelecionar={(p) => setPacienteSel({ id: p.id, nome: p.nomeCompleto })} />
             </Campo>
           )}
+
+          {a.finalidade === 'Exame' ? (
+            <Campo label="Tipo de exame" htmlFor="mk-tipo-exame">
+              <Select id="mk-tipo-exame" value={tipoExameId} onChange={(e) => setTipoExameId(e.target.value)}>
+                <option value="">Selecione…</option>
+                {(tiposExame.data ?? []).map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.nome}
+                  </option>
+                ))}
+              </Select>
+            </Campo>
+          ) : null}
 
           <Campo label="Observação" htmlFor="mk-obs" dica="Opcional.">
             <Input id="mk-obs" value={observacao} onChange={(e) => setObservacao(e.target.value)} />

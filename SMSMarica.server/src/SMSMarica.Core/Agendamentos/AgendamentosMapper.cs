@@ -1,5 +1,6 @@
 using SMSMarica.Core.Agendamentos.Dtos;
 using SMSMarica.Data.Entities.Agendamentos;
+using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Agendamentos;
 
@@ -7,14 +8,18 @@ internal static class AgendamentosMapper
 {
     public static AgendaDto ParaDto(Agenda a) => new(
         a.Id,
+        a.Finalidade,
         a.UnidadeId,
         a.Unidade?.Nome ?? string.Empty,
         a.EspecialidadeId,
-        a.Especialidade?.Nome ?? string.Empty,
+        a.Especialidade?.Nome,
         a.MedicoId,
         a.MedicoNome,
         a.MedicoCns,
-        a.DuracaoConsultaMinutos,
+        a.EquipamentoId,
+        a.Equipamento?.Nome,
+        Alvo(a),
+        a.DuracaoSlotMinutos,
         a.VigenciaInicio,
         a.VigenciaFim,
         a.Ativo,
@@ -23,12 +28,19 @@ internal static class AgendamentosMapper
 
     public static AgendaListItemDto ParaListItem(Agenda a) => new(
         a.Id,
+        a.Finalidade,
         a.Unidade?.Nome ?? string.Empty,
-        a.Especialidade?.Nome ?? string.Empty,
-        a.MedicoId,
-        a.MedicoNome,
-        a.DuracaoConsultaMinutos,
+        Alvo(a),
+        a.DuracaoSlotMinutos,
         a.Ativo);
+
+    /// <summary>Rótulo do alvo da agenda para exibição (pool / médico / equipamento).</summary>
+    private static string Alvo(Agenda a) => a.Finalidade switch
+    {
+        FinalidadeAgenda.Exame => a.Equipamento?.Nome ?? "Equipamento",
+        _ when a.MedicoId is null => $"{a.Especialidade?.Nome ?? "Especialidade"} — qualquer médico",
+        _ => $"{a.MedicoNome ?? "Médico"} — {a.Especialidade?.Nome ?? "Especialidade"}",
+    };
 
     public static DisponibilidadeRecorrenteDto ParaDto(DisponibilidadeRecorrente r) => new(
         r.Id,
@@ -60,6 +72,7 @@ internal static class AgendamentosMapper
         a.InicioEm,
         a.FimEm,
         a.Status,
+        a.TipoExameId,
         a.Observacao,
         a.CriadoEm);
 

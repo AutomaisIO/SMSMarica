@@ -69,7 +69,7 @@ public sealed class AgendamentoService(
         }
 
         var inicioEm = DateTime.SpecifyKind(request.InicioEm, DateTimeKind.Unspecified);
-        var fimEm = inicioEm.AddMinutes(agenda.DuracaoConsultaMinutos);
+        var fimEm = inicioEm.AddMinutes(agenda.DuracaoSlotMinutos);
         var dia = DateOnly.FromDateTime(inicioEm);
 
         // O horário pedido precisa ser exatamente um slot livre (cobre vigência, recorrência,
@@ -106,6 +106,7 @@ public sealed class AgendamentoService(
             InicioEm = inicioEm,
             FimEm = fimEm,
             Status = StatusAgendamento.Agendado,
+            TipoExameId = request.TipoExameId,
             Observacao = string.IsNullOrWhiteSpace(request.Observacao) ? null : request.Observacao.Trim(),
             CriadoEm = DateTime.UtcNow,
             CriadoPor = _usuarioAtual.UsuarioId,
@@ -188,7 +189,7 @@ public sealed class AgendamentoService(
             .ToListAsync(cancellationToken);
 
         return CalculadoraSlots.Calcular(
-            agenda.DuracaoConsultaMinutos,
+            agenda.DuracaoSlotMinutos,
             agenda.VigenciaInicio,
             agenda.VigenciaFim,
             recorrencias,

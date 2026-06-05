@@ -19,6 +19,7 @@ internal sealed class AgendamentoConfiguration : IEntityTypeConfiguration<Agenda
         builder.Property(a => a.InicioEm).HasColumnName("inicio_em").HasColumnType("timestamp without time zone").IsRequired();
         builder.Property(a => a.FimEm).HasColumnName("fim_em").HasColumnType("timestamp without time zone").IsRequired();
         builder.Property(a => a.Status).HasColumnName("status").HasConversion<int>().IsRequired();
+        builder.Property(a => a.TipoExameId).HasColumnName("tipo_exame_id");
         builder.Property(a => a.Observacao).HasColumnName("observacao").HasMaxLength(1000);
         builder.Property(a => a.ConfirmadoEm).HasColumnName("confirmado_em");
         builder.Property(a => a.RealizadoEm).HasColumnName("realizado_em");
@@ -31,6 +32,11 @@ internal sealed class AgendamentoConfiguration : IEntityTypeConfiguration<Agenda
         builder.Property(a => a.AtualizadoPor).HasColumnName("atualizado_por");
         builder.Property(a => a.ExcluidoEm).HasColumnName("excluido_em");
         builder.Property(a => a.ExcluidoPor).HasColumnName("excluido_por");
+
+        builder.HasOne(a => a.TipoExame)
+            .WithMany()
+            .HasForeignKey(a => a.TipoExameId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(a => new { a.AgendaId, a.InicioEm }).HasDatabaseName("ix_agendamento_agenda_inicio");
         builder.HasIndex(a => a.PacienteId).HasDatabaseName("ix_agendamento_paciente_id");

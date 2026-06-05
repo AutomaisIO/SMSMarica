@@ -24,17 +24,23 @@ public sealed class AgendaService(
     private readonly IUsuarioAtualAccessor _usuarioAtual = usuarioAtual;
 
     public async Task<IReadOnlyList<AgendaListItemDto>> ListarAsync(
-        Guid? unidadeId, Guid? especialidadeId, Guid? medicoId, bool incluirInativas,
-        CancellationToken cancellationToken = default)
+        FinalidadeAgenda? finalidade, Guid? unidadeId, Guid? especialidadeId, Guid? medicoId, Guid? equipamentoId,
+        bool incluirInativas, CancellationToken cancellationToken = default)
     {
         IQueryable<Agenda> query = _db.Agendas.AsNoTracking()
             .Include(a => a.Unidade)
             .Include(a => a.Especialidade)
+            .Include(a => a.Equipamento)
             .Where(a => a.ExcluidoEm == null);
 
         if (!incluirInativas)
         {
             query = query.Where(a => a.Ativo);
+        }
+
+        if (finalidade.HasValue)
+        {
+            query = query.Where(a => a.Finalidade == finalidade);
         }
 
         if (unidadeId.HasValue)
@@ -52,8 +58,14 @@ public sealed class AgendaService(
             query = query.Where(a => a.MedicoId == medicoId);
         }
 
+        if (equipamentoId.HasValue)
+        {
+            query = query.Where(a => a.EquipamentoId == equipamentoId);
+        }
+
         var lista = await query
-            .OrderBy(a => a.MedicoNome)
+            .OrderBy(a => a.Finalidade)
+            .ThenBy(a => a.MedicoNome)
             .ToListAsync(cancellationToken);
 
         return [.. lista.Select(AgendamentosMapper.ParaListItem)];
@@ -64,6 +76,7 @@ public sealed class AgendaService(
         var agenda = await _db.Agendas.AsNoTracking()
             .Include(a => a.Unidade)
             .Include(a => a.Especialidade)
+            .Include(a => a.Equipamento)
             .Include(a => a.Recorrencias)
             .FirstOrDefaultAsync(a => a.Id == id && a.ExcluidoEm == null, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Agenda), id);
@@ -74,26 +87,49 @@ public sealed class AgendaService(
     public async Task<Guid> CadastrarAsync(CadastrarAgendaRequest request, CancellationToken cancellationToken = default)
     {
         await ValidarUnidadeAsync(request.UnidadeId, cancellationToken);
-        await ValidarEspecialidadeAsync(request.EspecialidadeId, cancellationToken);
-
-        // Resolve o médico no hub FHIR (lança NaoEncontrado se não existir) e guarda o snapshot.
-        var medico = await _medicos.ObterPorIdAsync(request.MedicoId, cancellationToken);
 
         var agenda = new Agenda
         {
             Id = Guid.CreateVersion7(),
+            Finalidade = request.Finalidade,
             UnidadeId = request.UnidadeId,
-            EspecialidadeId = request.EspecialidadeId,
-            MedicoId = request.MedicoId,
-            MedicoNome = medico.NomeCompleto,
-            MedicoCns = null,
-            DuracaoConsultaMinutos = request.DuracaoConsultaMinutos,
+            DuracaoSlotMinutos = request.DuracaoSlotMinutos,
             VigenciaInicio = request.VigenciaInicio,
             VigenciaFim = request.VigenciaFim,
             Ativo = true,
             CriadoEm = DateTime.UtcNow,
             CriadoPor = _usuarioAtual.UsuarioId,
         };
+
+        if (request.Finalidade == FinalidadeAgenda.Consulta)
+        {
+            if (request.EspecialidadeId is not { } especialidadeId)
+            {
+                throw new ValidacaoException("agenda.especialidade", "Agenda de consulta exige uma especialidade.");
+            }
+
+            await ValidarEspecialidadeAsync(especialidadeId, cancellationToken);
+            agenda.EspecialidadeId = especialidadeId;
+
+            // Médico opcional: null = agenda da especialidade (pool, qualquer médico);
+            // setado = agenda de médico específico (retorno). Resolve no hub FHIR + snapshot.
+            if (request.MedicoId is { } medicoId)
+            {
+                var medico = await _medicos.ObterPorIdAsync(medicoId, cancellationToken);
+                agenda.MedicoId = medicoId;
+                agenda.MedicoNome = medico.NomeCompleto;
+            }
+        }
+        else
+        {
+            if (request.EquipamentoId is not { } equipamentoId)
+            {
+                throw new ValidacaoException("agenda.equipamento", "Agenda de exame exige um equipamento.");
+            }
+
+            await ValidarEquipamentoAsync(equipamentoId, cancellationToken);
+            agenda.EquipamentoId = equipamentoId;
+        }
 
         _db.Agendas.Add(agenda);
         await _db.SaveChangesAsync(cancellationToken);
@@ -104,7 +140,7 @@ public sealed class AgendaService(
     {
         var agenda = await CarregarAsync(id, cancellationToken);
 
-        agenda.DuracaoConsultaMinutos = request.DuracaoConsultaMinutos;
+        agenda.DuracaoSlotMinutos = request.DuracaoSlotMinutos;
         agenda.VigenciaInicio = request.VigenciaInicio;
         agenda.VigenciaFim = request.VigenciaFim;
         agenda.Ativo = request.Ativo;
@@ -306,6 +342,16 @@ public sealed class AgendaService(
         if (!ativa)
         {
             throw new ValidacaoException("agenda.especialidade", "Especialidade inexistente ou inativa.");
+        }
+    }
+
+    private async Task ValidarEquipamentoAsync(Guid equipamentoId, CancellationToken ct)
+    {
+        var ativo = await _db.Equipamentos.AsNoTracking()
+            .AnyAsync(e => e.Id == equipamentoId && e.ExcluidoEm == null && e.Ativo, ct);
+        if (!ativo)
+        {
+            throw new ValidacaoException("agenda.equipamento", "Equipamento inexistente ou inativo.");
         }
     }
 

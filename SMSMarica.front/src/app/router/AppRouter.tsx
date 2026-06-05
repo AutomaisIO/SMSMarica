@@ -47,6 +47,7 @@ import { UsuariosPage } from '@/features/usuarios/pages/UsuariosPage';
 import { VeiculoDetalhePage } from '@/features/veiculos/pages/VeiculoDetalhePage';
 import { VeiculosPage } from '@/features/veiculos/pages/VeiculosPage';
 import { EspecialidadesPage } from '@/features/especialidades/pages/EspecialidadesPage';
+import { EquipamentosPage } from '@/features/equipamentos/pages/EquipamentosPage';
 import { AgendasPage } from '@/features/agendamentos/pages/AgendasPage';
 import { AgendaDetalhePage } from '@/features/agendamentos/pages/AgendaDetalhePage';
 import { SisregConsultaPage } from '@/features/sisreg/pages/SisregConsultaPage';
@@ -126,6 +127,7 @@ export function AppRouter() {
           <Route path="ia/configuracao" element={<IaConfiguracaoPage />} />
           <Route path="ia/melhorias" element={<IaMelhoriasPage />} />
           <Route path="especialidades" element={<EspecialidadesPage />} />
+          <Route path="equipamentos" element={<EquipamentosPage />} />
           <Route path="agendas" element={<AgendasPage />} />
           <Route path="agendas/:id" element={<AgendaDetalhePage />} />
           <Route path="sisreg" element={<SisregConsultaPage />} />

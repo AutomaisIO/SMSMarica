@@ -28,6 +28,10 @@ public class Agendamento
 
     public StatusAgendamento Status { get; set; } = StatusAgendamento.Agendado;
 
+    /// <summary>Tipo de exame marcado (agendas de exame). Null em consultas. Ver ADR-0013.</summary>
+    public Guid? TipoExameId { get; set; }
+    public TipoExame? TipoExame { get; set; }
+
     public string? Observacao { get; set; }
 
     public DateTime? ConfirmadoEm { get; set; }

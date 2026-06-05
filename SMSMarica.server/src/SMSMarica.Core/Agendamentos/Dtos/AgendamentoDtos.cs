@@ -14,6 +14,7 @@ public sealed record AgendamentoDto(
     DateTime InicioEm,
     DateTime FimEm,
     StatusAgendamento Status,
+    Guid? TipoExameId,
     string? Observacao,
     DateTime CriadoEm);
 
@@ -33,6 +34,7 @@ public sealed record AgendarRequest(
     Guid AgendaId,
     Guid PacienteId,
     DateTime InicioEm,
+    Guid? TipoExameId,
     string? Observacao);
 
 public sealed record CancelarAgendamentoRequest(string? Motivo);

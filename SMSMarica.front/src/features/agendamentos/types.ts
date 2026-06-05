@@ -9,6 +9,17 @@ export type DiaSemana =
 
 export type StatusAgendamento = 'Agendado' | 'Confirmado' | 'Realizado' | 'Cancelado' | 'Faltou';
 
+export type FinalidadeAgenda = 'Consulta' | 'Exame';
+
+/** Tipo de agenda na UI: pool da especialidade, médico específico (retorno) ou equipamento (exame). */
+export type TipoAgenda = 'ConsultaEspecialidade' | 'ConsultaMedico' | 'Exame';
+
+export const TIPOS_AGENDA: { id: TipoAgenda; rotulo: string; descricao: string }[] = [
+  { id: 'ConsultaEspecialidade', rotulo: 'Consulta — especialidade (pool)', descricao: 'Qualquer médico da especialidade' },
+  { id: 'ConsultaMedico', rotulo: 'Consulta — médico específico', descricao: 'Para retorno/revisão (mesmo médico)' },
+  { id: 'Exame', rotulo: 'Exame — equipamento', descricao: 'Agenda de um equipamento de imagem' },
+];
+
 export const DIAS_SEMANA: { id: DiaSemana; rotulo: string }[] = [
   { id: 'Monday', rotulo: 'Segunda' },
   { id: 'Tuesday', rotulo: 'Terça' },
@@ -39,24 +50,27 @@ export type DisponibilidadeRecorrente = {
 
 export type AgendaListItem = {
   id: string;
+  finalidade: FinalidadeAgenda;
   unidadeNome: string;
-  especialidadeNome: string;
-  medicoId: string;
-  medicoNome: string;
-  duracaoConsultaMinutos: number;
+  alvo: string;
+  duracaoSlotMinutos: number;
   ativo: boolean;
 };
 
 export type Agenda = {
   id: string;
+  finalidade: FinalidadeAgenda;
   unidadeId: string;
   unidadeNome: string;
-  especialidadeId: string;
-  especialidadeNome: string;
-  medicoId: string;
-  medicoNome: string;
+  especialidadeId: string | null;
+  especialidadeNome: string | null;
+  medicoId: string | null;
+  medicoNome: string | null;
   medicoCns: string | null;
-  duracaoConsultaMinutos: number;
+  equipamentoId: string | null;
+  equipamentoNome: string | null;
+  alvo: string;
+  duracaoSlotMinutos: number;
   vigenciaInicio: string;
   vigenciaFim: string | null;
   ativo: boolean;
@@ -65,16 +79,18 @@ export type Agenda = {
 };
 
 export type CadastrarAgendaPayload = {
+  finalidade: FinalidadeAgenda;
   unidadeId: string;
-  especialidadeId: string;
-  medicoId: string;
-  duracaoConsultaMinutos: number;
+  especialidadeId?: string | null;
+  medicoId?: string | null;
+  equipamentoId?: string | null;
+  duracaoSlotMinutos: number;
   vigenciaInicio: string;
   vigenciaFim?: string | null;
 };
 
 export type AtualizarAgendaPayload = {
-  duracaoConsultaMinutos: number;
+  duracaoSlotMinutos: number;
   vigenciaInicio: string;
   vigenciaFim?: string | null;
   ativo: boolean;
@@ -131,6 +147,7 @@ export type Agendamento = {
   inicioEm: string;
   fimEm: string;
   status: StatusAgendamento;
+  tipoExameId: string | null;
   observacao: string | null;
   criadoEm: string;
 };
@@ -139,5 +156,6 @@ export type AgendarPayload = {
   agendaId: string;
   pacienteId: string;
   inicioEm: string;
+  tipoExameId?: string | null;
   observacao?: string | null;
 };

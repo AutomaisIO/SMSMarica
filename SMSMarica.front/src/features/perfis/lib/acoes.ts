@@ -61,6 +61,7 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'InteligenciaConfiguracao', rotulo: 'Configuração IA' },
   { id: 'InteligenciaAprendizado', rotulo: 'Aprendizado IA' },
   { id: 'Especialidades', rotulo: 'Especialidades' },
+  { id: 'Equipamentos', rotulo: 'Equipamentos' },
   { id: 'Agendamentos', rotulo: 'Agendamentos' },
   { id: 'Sisreg', rotulo: 'SISREG (consulta)' },
   { id: 'SisregConfiguracao', rotulo: 'Configuração SISREG' },

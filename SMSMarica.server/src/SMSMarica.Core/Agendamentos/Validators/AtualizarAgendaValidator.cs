@@ -7,7 +7,7 @@ public sealed class AtualizarAgendaValidator : AbstractValidator<AtualizarAgenda
 {
     public AtualizarAgendaValidator()
     {
-        RuleFor(a => a.DuracaoConsultaMinutos).InclusiveBetween(5, 240);
+        RuleFor(a => a.DuracaoSlotMinutos).InclusiveBetween(5, 240);
         RuleFor(a => a.VigenciaInicio).NotEmpty();
         RuleFor(a => a.VigenciaFim)
             .GreaterThanOrEqualTo(a => a.VigenciaInicio)

@@ -1,4 +1,5 @@
 using SMSMarica.Core.Agendamentos.Dtos;
+using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Agendamentos;
 
@@ -9,8 +10,8 @@ namespace SMSMarica.Core.Agendamentos;
 public interface IAgendaService
 {
     Task<IReadOnlyList<AgendaListItemDto>> ListarAsync(
-        Guid? unidadeId, Guid? especialidadeId, Guid? medicoId, bool incluirInativas,
-        CancellationToken cancellationToken = default);
+        FinalidadeAgenda? finalidade, Guid? unidadeId, Guid? especialidadeId, Guid? medicoId, Guid? equipamentoId,
+        bool incluirInativas, CancellationToken cancellationToken = default);
 
     Task<AgendaDto> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default);
 

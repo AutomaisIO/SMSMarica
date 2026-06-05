@@ -93,6 +93,7 @@ const SECOES: SecaoMenu[] = [
     itens: [
       { rotulo: 'Agendas', to: '/app/agendas', icone: CalendarClock, modulo: 'Agendamentos' },
       { rotulo: 'Especialidades', to: '/app/especialidades', icone: Stethoscope, modulo: 'Especialidades' },
+      { rotulo: 'Equipamentos', to: '/app/equipamentos', icone: ScanLine, modulo: 'Equipamentos' },
     ],
   },
   {

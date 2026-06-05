@@ -115,8 +115,9 @@ public static class DependencyInjection
                 client.Timeout = TimeSpan.FromSeconds(15);
             });
 
-        // ---- Agendamento (Especialidade → Agenda → Agendamento) — ADR-0012 ----
+        // ---- Agendamento (Especialidade/Equipamento → Agenda → Agendamento) — ADR-0012/0013 ----
         services.AddScoped<Especialidades.IEspecialidadesService, Especialidades.EspecialidadesService>();
+        services.AddScoped<Equipamentos.IEquipamentosService, Equipamentos.EquipamentosService>();
         services.AddScoped<Agendamentos.IAgendaService, Agendamentos.AgendaService>();
         services.AddScoped<Agendamentos.IAgendamentoService, Agendamentos.AgendamentoService>();
 
