@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Automais.Fhir.Core.Conditions;
 using Automais.Fhir.Core.DocumentReferences;
 using Automais.Fhir.Core.Encounters;
+using Automais.Fhir.Core.MedicationAdministrations;
 using Automais.Fhir.Core.MedicationRequests;
 using Automais.Fhir.Core.Patients;
 using Automais.Fhir.Core.Practitioners;
@@ -19,6 +20,7 @@ public static class DependencyInjection
         services.AddScoped<IConditionService, ConditionService>();
         services.AddScoped<IDocumentReferenceService, DocumentReferenceService>();
         services.AddScoped<IMedicationRequestService, MedicationRequestService>();
+        services.AddScoped<IMedicationAdministrationService, MedicationAdministrationService>();
         return services;
     }
 }
