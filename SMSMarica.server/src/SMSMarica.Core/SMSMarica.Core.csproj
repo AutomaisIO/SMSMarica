@@ -20,6 +20,8 @@
     <PackageReference Include="QuestPDF" />
     <PackageReference Include="AngleSharp" />
     <PackageReference Include="HtmlSanitizer" />
+    <PackageReference Include="Pgvector" />
+    <PackageReference Include="Oracle.ManagedDataAccess.Core" />
   </ItemGroup>
 
 </Project>

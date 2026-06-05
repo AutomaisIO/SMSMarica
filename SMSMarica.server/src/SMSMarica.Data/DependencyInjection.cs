@@ -19,6 +19,7 @@ public static class DependencyInjection
             {
                 npgsql.MigrationsAssembly(typeof(SmsMaricaDbContext).Assembly.FullName);
                 npgsql.MigrationsHistoryTable("__migrations", SmsMaricaDbContext.SchemaPadrao);
+                npgsql.UseVector(); // pgvector — embeddings do módulo IA
             }));
 
         return services;
