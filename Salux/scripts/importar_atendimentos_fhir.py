@@ -1,10 +1,12 @@
-"""Importa atendimentos (BAA) dos pacientes já no hub FHIR -> Encounter + Condition.
+"""Importa o histórico clínico (BAA) dos pacientes já no hub FHIR.
 
-Fatia 1 do histórico clínico. Para cada Patient do hub:
+Para cada Patient do hub:
   - resolve cd_paciente (identifier urn:salux:cd_paciente)
   - lê os últimos N BAA do Salux (INFOSAUDE.BAA), com CID e nome do médico
-  - cria Encounter (class AMB/EMER) + Condition (CID-10) no hub, meta.source=salux
-Idempotente: limpa Encounter/Condition do paciente antes de reimportar.
+  - cria Encounter (class AMB/EMER) + Condition (CID-10)
+  - cria MedicationRequest por item de prescrição (PRESC_BAA_OPC_PROD ⋈ MATMED)
+  - cria DocumentReference (EDOC remontado em HTML) ligado ao Encounter
+Tudo meta.source=salux. Idempotente: limpa os recursos do paciente antes de reimportar.
 
 Importador roda ON-PREM (alcança o Oracle interno) e empurra pro hub público.
 Somente SELECT no Oracle (read-only). NÃO commitar saída — pode ter PII.
@@ -22,6 +24,7 @@ HUB = "http://smsmarica.online:5081"
 SRC = "https://smsmarica.saude.marica/source/salux"
 S_BAA = "urn:salux:baa"
 S_EDOC = "urn:salux:edoc"
+S_MATMED = "urn:salux:matmed"  # catálogo de material/medicamento do Salux
 SYS_CID = "http://hl7.org/fhir/sid/icd-10"
 SYS_CLASS = "http://terminology.hl7.org/CodeSystem/v3-ActCode"
 S_PAC = "urn:salux:cd_paciente"
@@ -69,7 +72,7 @@ def pacientes_do_hub():
 
 
 def purgar_paciente(fhir_id):
-    for tipo in ("DocumentReference", "Condition", "Encounter"):
+    for tipo in ("MedicationRequest", "DocumentReference", "Condition", "Encounter"):
         _, b = http("GET", f"/fhir/{tipo}?patient={fhir_id}")
         for e in (b.get("entry") or []):
             http("DELETE", f"/fhir/{tipo}/{e['resource']['id']}")
@@ -137,6 +140,74 @@ def build_condition(b, patient_ref, enc_ref):
     }
 
 
+def _q_prescricao(h, ano, nr, com_texto_livre):
+    livre = (",\n            'horario' VALUE p.ds_horario,"
+             "\n            'obs' VALUE p.observacao") if com_texto_livre else ""
+    return f"""
+        SELECT JSON_OBJECT(
+            'cd_mat'  VALUE p.cd_material,
+            'mat'     VALUE (SELECT ds_material FROM infosaude.matmed m WHERE m.cd_material = p.cd_material),
+            'qt'      VALUE p.qt_material_prescrita,
+            'urg'     VALUE p.in_urgencia,
+            'medico'  VALUE (SELECT nm_medico FROM infosaude.medico me WHERE me.cd_medico = p.cd_medico){livre})
+        FROM infosaude.presc_baa_opc_prod p
+        WHERE p.cd_hospital = {int(h)} AND p.dt_ano_baa = {int(ano)} AND p.nr_baa = {int(nr)}
+        ORDER BY p.nr_prescricao, p.seq_item
+    """
+
+
+def prescricao_do_baa(h, ano, nr):
+    """Itens de prescrição (medicação) de um BAA: PRESC_BAA_OPC_PROD ⋈ MATMED.
+
+    ds_horario/observacao são texto livre do charset legado e podem estourar
+    JSON_OBJECT (ORA-40474); por isso há fallback só com os campos de catálogo.
+    """
+    try:
+        return executar_json(_q_prescricao(h, ano, nr, True), modo="supervisor")
+    except RuntimeError:
+        return executar_json(_q_prescricao(h, ano, nr, False), modo="supervisor")
+
+
+def texto_posologia(item):
+    partes = []
+    if s(item.get("qt")):
+        partes.append(f"Qtd: {s(item.get('qt'))}")
+    horario = s(item.get("horario"))
+    if horario:
+        partes.append(horario)
+    obs = s(item.get("obs"))
+    if obs:
+        partes.append(obs)
+    return " — ".join(partes) or None
+
+
+def build_medication_request(item, patient_ref, enc_ref, authored_on):
+    """MedicationRequest R4: status/intent/medication[x]/subject obrigatórios."""
+    mat = s(item.get("mat")) or f"Material {item.get('cd_mat')}"
+    mr = {
+        "resourceType": "MedicationRequest",
+        "meta": {"source": SRC},
+        "status": "completed",  # prescrição histórica (atendimento encerrado)
+        "intent": "order",
+        "medicationCodeableConcept": {
+            "coding": [{"system": S_MATMED, "code": str(item.get("cd_mat")), "display": mat}],
+            "text": mat,
+        },
+        "subject": {"reference": patient_ref},
+        "encounter": {"reference": enc_ref},
+    }
+    if authored_on:
+        mr["authoredOn"] = authored_on
+    if (str(item.get("urg") or "").upper() == "S"):
+        mr["priority"] = "urgent"
+    if s(item.get("medico")):
+        mr["requester"] = {"display": s(item.get("medico"))}
+    pos = texto_posologia(item)
+    if pos:
+        mr["dosageInstruction"] = [{"text": pos}]
+    return mr
+
+
 def edoc_do_paciente(cd):
     """Documentos EDOC do paciente ligados a um BAA (os mais recentes)."""
     return executar_json(
@@ -186,19 +257,32 @@ def itens_do_documento(h, ano, idm):
 
 
 def montar_html(modelo, itens):
-    linhas, atual = [], None
+    """HTML semântico (classes .edoc-*) — rótulo/valor em campos legíveis.
+    O front e a view de impressão estilizam essas classes (não usa Tailwind prose).
+    """
+    grupos = []  # [(rotulo, [resposta, ...])] — agrupa linhas multilinha do mesmo campo
     for it in itens:
         resp = s(it.get("resp"))
         if not resp:
             continue
         label = s(it.get("label")) or ""
-        if label == atual:  # campo multilinha: continua o anterior
-            linhas.append(f"<div>{_html.escape(resp)}</div>")
+        if grupos and grupos[-1][0] == label:
+            grupos[-1][1].append(resp)
         else:
-            linhas.append(f"<p><strong>{_html.escape(label)}:</strong> {_html.escape(resp)}</p>")
-            atual = label
-    corpo = "\n".join(linhas) or "<p><em>(documento sem itens preenchidos)</em></p>"
-    return f"<section><h3>{_html.escape(modelo or 'Documento')}</h3>{corpo}</section>"
+            grupos.append((label, [resp]))
+
+    campos = []
+    for label, valores in grupos:
+        valor = "".join(f'<div class="edoc-linha">{_html.escape(v)}</div>' for v in valores)
+        rotulo = f'<span class="edoc-rotulo">{_html.escape(label)}</span>' if label else ""
+        campos.append(f'<div class="edoc-campo">{rotulo}<div class="edoc-valor">{valor}</div></div>')
+
+    corpo = "\n".join(campos) or '<p class="edoc-vazio">(documento sem itens preenchidos)</p>'
+    return (
+        '<section class="edoc-doc">'
+        f'<h3 class="edoc-titulo">{_html.escape(modelo or "Documento")}</h3>'
+        f"{corpo}</section>"
+    )
 
 
 def build_docref(doc, html_str, patient_ref, enc_ref):
@@ -222,12 +306,12 @@ def build_docref(doc, html_str, patient_ref, enc_ref):
 def main():
     pacientes = pacientes_do_hub()
     print(f"Pacientes no hub: {len(pacientes)}")
-    tot_enc = tot_cond = tot_doc = 0
+    tot_enc = tot_cond = tot_doc = tot_med = 0
     for fhir_id, cd in pacientes:
         purgar_paciente(fhir_id)
         patient_ref = f"Patient/{fhir_id}"
         enc_por_baa = {}
-        n_enc = n_cond = n_doc = 0
+        n_enc = n_cond = n_doc = n_med = 0
         for b in baa_do_paciente(cd):
             _, criado = http("POST", "/fhir/Encounter", build_encounter(b, patient_ref))
             enc_ref = f"Encounter/{criado.get('id')}"
@@ -237,6 +321,12 @@ def main():
             if cond:
                 http("POST", "/fhir/Condition", cond)
                 n_cond += 1
+            # Prescrição/medicação do atendimento -> MedicationRequest (1 por item).
+            authored = dt(b.get("dt_atend")) or dt(b.get("dt_cheg"))
+            for item in prescricao_do_baa(b["h"], b["ano"], b["nr"]):
+                http("POST", "/fhir/MedicationRequest",
+                     build_medication_request(item, patient_ref, enc_ref, authored))
+                n_med += 1
         for doc in edoc_do_paciente(cd):
             enc_ref = enc_por_baa.get(s(doc.get("baa")))
             if not enc_ref:
@@ -248,8 +338,10 @@ def main():
         tot_enc += n_enc
         tot_cond += n_cond
         tot_doc += n_doc
-        print(f"  cd_paciente={cd}: {n_enc} atend., {n_cond} diag., {n_doc} docs")
-    print(f"\nTotal: {tot_enc} Encounters, {tot_cond} Conditions, {tot_doc} DocumentReferences")
+        tot_med += n_med
+        print(f"  cd_paciente={cd}: {n_enc} atend., {n_cond} diag., {n_doc} docs, {n_med} medic.")
+    print(f"\nTotal: {tot_enc} Encounters, {tot_cond} Conditions, "
+          f"{tot_doc} DocumentReferences, {tot_med} MedicationRequests")
 
 
 if __name__ == "__main__":
