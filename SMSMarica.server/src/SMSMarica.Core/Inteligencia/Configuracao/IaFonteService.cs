@@ -106,7 +106,7 @@ public sealed class IaFonteService(
         try
         {
             var ok = await _fonteDadosFactory.Criar(fonte).TestarConexaoAsync(cancellationToken);
-            return new TestarConexaoResultado(ok, ok ? null : "Falha ao conectar à base.");
+            return new TestarConexaoResultado(ok, ok ? "Conexão estabelecida com sucesso." : "Falha ao conectar à base.");
         }
         catch (Exception ex)
         {

@@ -45,4 +45,4 @@ public sealed record CadastrarFonteRequest(string Nome, string Tipo, string Dial
 public sealed record AtualizarFonteRequest(string Nome, string Ambiente, string? Host, int? Porta,
     string? Servico, string? Usuario, string? Senha, string? BaseUrl, bool Ativo);
 
-public sealed record TestarConexaoResultado(bool Ok, string? Erro);
+public sealed record TestarConexaoResultado(bool Sucesso, string? Mensagem);
