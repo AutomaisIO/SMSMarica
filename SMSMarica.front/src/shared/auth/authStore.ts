@@ -22,7 +22,11 @@ export type ModuloPermissao =
   | 'ProcedimentosSigtap'
   | 'Inteligencia'
   | 'InteligenciaConfiguracao'
-  | 'InteligenciaAprendizado';
+  | 'InteligenciaAprendizado'
+  | 'Especialidades'
+  | 'Agendamentos'
+  | 'Sisreg'
+  | 'SisregConfiguracao';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 

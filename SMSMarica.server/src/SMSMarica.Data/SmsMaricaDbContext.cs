@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Data.Entities;
+using SMSMarica.Data.Entities.Agendamentos;
 using SMSMarica.Data.Entities.Ia;
+using SMSMarica.Data.Entities.Sisreg;
 
 namespace SMSMarica.Data;
 
@@ -43,6 +45,17 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<IaAprendizado> IaAprendizados => Set<IaAprendizado>();
     public DbSet<IaConsulta> IaConsultas => Set<IaConsulta>();
     public DbSet<IaCorrecao> IaCorrecoes => Set<IaCorrecao>();
+
+    // Integração SISREG (feed de leitura) — ADR-0012
+    public DbSet<SisregConfiguracao> SisregConfiguracoes => Set<SisregConfiguracao>();
+
+    // Domínio de Agendamento (Especialidade → Agenda → Agendamento) — ADR-0012
+    public DbSet<Especialidade> Especialidades => Set<Especialidade>();
+    public DbSet<Agenda> Agendas => Set<Agenda>();
+    public DbSet<DisponibilidadeRecorrente> DisponibilidadesRecorrentes => Set<DisponibilidadeRecorrente>();
+    public DbSet<DisponibilidadeAvulsa> DisponibilidadesAvulsas => Set<DisponibilidadeAvulsa>();
+    public DbSet<BloqueioAgenda> BloqueiosAgenda => Set<BloqueioAgenda>();
+    public DbSet<Agendamento> Agendamentos => Set<Agendamento>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

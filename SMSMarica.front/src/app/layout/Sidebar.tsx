@@ -87,6 +87,29 @@ const SECOES: SecaoMenu[] = [
     ],
   },
   {
+    id: 'agendamento',
+    titulo: 'Agendamento',
+    icone: CalendarClock,
+    itens: [
+      { rotulo: 'Agendas', to: '/app/agendas', icone: CalendarClock, modulo: 'Agendamentos' },
+      { rotulo: 'Especialidades', to: '/app/especialidades', icone: Stethoscope, modulo: 'Especialidades' },
+    ],
+  },
+  {
+    id: 'sisreg',
+    titulo: 'SISREG',
+    icone: ClipboardList,
+    itens: [
+      { rotulo: 'Consultar SISREG', to: '/app/sisreg', icone: ClipboardList, modulo: 'Sisreg', end: true },
+      {
+        rotulo: 'Configuração SISREG',
+        to: '/app/sisreg/configuracao',
+        icone: Settings2,
+        modulo: 'SisregConfiguracao',
+      },
+    ],
+  },
+  {
     id: 'solicitacoes',
     titulo: 'Solicitações de Exame',
     icone: ClipboardCheck,

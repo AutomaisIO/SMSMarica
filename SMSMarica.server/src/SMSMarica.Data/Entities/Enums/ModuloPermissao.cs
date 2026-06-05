@@ -33,4 +33,16 @@ public enum ModuloPermissao
 
     /// <summary>Governar o aprendizado da IA: ver o log de melhorias e remover instruções aprendidas.</summary>
     InteligenciaAprendizado = 21,
+
+    /// <summary>Especialidades médicas (tabela de referência do agendamento).</summary>
+    Especialidades = 22,
+
+    /// <summary>Agendas dos médicos e marcação de consultas (agendamento local).</summary>
+    Agendamentos = 23,
+
+    /// <summary>Consultar o feed de leitura do SISREG (solicitações/marcações).</summary>
+    Sisreg = 24,
+
+    /// <summary>Configurar a integração SISREG: credenciais, UF/município, centrais reguladoras.</summary>
+    SisregConfiguracao = 25,
 }

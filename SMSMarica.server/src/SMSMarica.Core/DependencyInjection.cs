@@ -115,6 +115,20 @@ public static class DependencyInjection
                 client.Timeout = TimeSpan.FromSeconds(15);
             });
 
+        // ---- Agendamento (Especialidade → Agenda → Agendamento) — ADR-0012 ----
+        services.AddScoped<Especialidades.IEspecialidadesService, Especialidades.EspecialidadesService>();
+        services.AddScoped<Agendamentos.IAgendaService, Agendamentos.AgendaService>();
+        services.AddScoped<Agendamentos.IAgendamentoService, Agendamentos.AgendamentoService>();
+
+        // ---- Integração SISREG (feed de leitura DATASUS) — ADR-0012 ----
+        // BaseUrl e credenciais vêm do banco (tela de configuração), não do registro de DI.
+        services.AddScoped<Integracoes.Sisreg.Configuracao.ISisregConfiguracaoService, Integracoes.Sisreg.Configuracao.SisregConfiguracaoService>();
+        services.AddScoped<Integracoes.Sisreg.ISisregConsultaService, Integracoes.Sisreg.SisregConsultaService>();
+        services.AddHttpClient<Integracoes.Sisreg.ISisregClient, Integracoes.Sisreg.SisregClient>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+
         var pacsBaseUrl = configuration["Pacs:Dcm4chee:RsBaseUrl"]
             ?? "http://pacs.marica.automais.cloud:8080/dcm4chee-arc/aets/DCM4CHEE/rs/";
         services
