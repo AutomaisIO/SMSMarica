@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import {
   AlertTriangle,
   ChevronDown,
@@ -224,7 +225,22 @@ export function RespostaRenderer({ resposta, onReportarErro }: Props) {
       </header>
 
       <div className="space-y-3 px-5 py-4">
-        {resposta.resumo ? <p className="text-sm text-gray-700">{resposta.resumo}</p> : null}
+        {resposta.resumo ? (
+          <div className="text-sm leading-relaxed text-gray-700">
+            <ReactMarkdown
+              components={{
+                p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                ul: ({ children }) => <ul className="mb-2 list-disc space-y-0.5 pl-5">{children}</ul>,
+                ol: ({ children }) => <ol className="mb-2 list-decimal space-y-0.5 pl-5">{children}</ol>,
+                strong: ({ children }) => (
+                  <strong className="font-semibold text-gray-900">{children}</strong>
+                ),
+              }}
+            >
+              {resposta.resumo}
+            </ReactMarkdown>
+          </div>
+        ) : null}
 
         {erro ? (
           <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
