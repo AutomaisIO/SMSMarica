@@ -1,5 +1,18 @@
-import { useState } from 'react';
-import { ArrowLeft, Download, FileText, ListChecks, Pencil, Pill, Printer, Stethoscope } from 'lucide-react';
+import { useMemo, useState, type ReactNode } from 'react';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
+  CalendarClock,
+  Download,
+  FileText,
+  HeartPulse,
+  ListChecks,
+  Pencil,
+  Pill,
+  Printer,
+  Stethoscope,
+} from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Avatar } from '@/shared/ui/Avatar';
 import { Button } from '@/shared/ui/Button';
@@ -405,15 +418,277 @@ function SecaoAtendimentos({ pacienteId, paciente }: { pacienteId: string; pacie
   );
 }
 
+function calcularIdade(iso?: string | null): number | null {
+  if (!iso) return null;
+  const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return null;
+  const nasc = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const hoje = new Date();
+  let idade = hoje.getFullYear() - nasc.getFullYear();
+  const diffMes = hoje.getMonth() - nasc.getMonth();
+  if (diffMes < 0 || (diffMes === 0 && hoje.getDate() < nasc.getDate())) idade--;
+  return idade >= 0 && idade < 150 ? idade : null;
+}
+
+function calcularImc(pesoKg?: number | null, alturaCm?: number | null) {
+  if (!pesoKg || !alturaCm) return null;
+  const metros = alturaCm / 100;
+  const imc = pesoKg / (metros * metros);
+  if (!Number.isFinite(imc) || imc <= 0) return null;
+  const classe =
+    imc < 18.5 ? 'Abaixo do peso' : imc < 25 ? 'Peso normal' : imc < 30 ? 'Sobrepeso' : 'Obesidade';
+  return { valor: Math.round(imc * 10) / 10, classe };
+}
+
+/** Cartão-métrica do raio-x. Clicável quando recebe `onClick`. */
+function CartaoKpi({
+  icone,
+  rotulo,
+  valor,
+  sub,
+  tom = 'neutro',
+  onClick,
+}: {
+  icone: ReactNode;
+  rotulo: string;
+  valor: ReactNode;
+  sub?: ReactNode;
+  tom?: 'neutro' | 'alerta';
+  onClick?: () => void;
+}) {
+  const base = 'rounded-lg border bg-white p-4 text-left shadow-sm transition-colors';
+  const borda = tom === 'alerta' ? 'border-amber-200' : 'border-gray-200';
+  const hover = onClick ? 'hover:border-red-300 hover:shadow' : '';
+  const corIcone = tom === 'alerta' ? 'text-amber-600' : 'text-red-600';
+  const conteudo = (
+    <>
+      <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-gray-500">
+        <span className={corIcone}>{icone}</span>
+        {rotulo}
+        {onClick ? <ArrowRight className="ml-auto h-3.5 w-3.5 text-gray-300" /> : null}
+      </div>
+      <div className="mt-2 text-2xl font-semibold text-gray-900">{valor}</div>
+      {sub ? <div className="mt-0.5 text-xs text-gray-500">{sub}</div> : null}
+    </>
+  );
+  return onClick ? (
+    <button type="button" onClick={onClick} className={`${base} ${borda} ${hover} w-full`}>
+      {conteudo}
+    </button>
+  ) : (
+    <div className={`${base} ${borda}`}>{conteudo}</div>
+  );
+}
+
+/** Bloco branco com título — usado nos cartões de saúde do resumo. */
+function CartaoBloco({ titulo, children }: { titulo: string; children: ReactNode }) {
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <h3 className="mb-3 text-sm font-semibold text-gray-900">{titulo}</h3>
+      {children}
+    </div>
+  );
+}
+
+type EstatisticasAtendimentos = {
+  total: number;
+  ultimo: Atendimento | null;
+  porTipo: { tipo: string; n: number }[];
+  topCid: { codigo: string; descricao?: string | null; n: number }[];
+};
+
+function resumirAtendimentos(lista: Atendimento[]): EstatisticasAtendimentos {
+  const porTipo = new Map<string, number>();
+  const porCid = new Map<string, { codigo: string; descricao?: string | null; n: number }>();
+  for (const a of lista) {
+    porTipo.set(a.tipo, (porTipo.get(a.tipo) ?? 0) + 1);
+    for (const d of a.diagnosticos) {
+      const atual = porCid.get(d.codigo);
+      if (atual) atual.n++;
+      else porCid.set(d.codigo, { codigo: d.codigo, descricao: d.descricao, n: 1 });
+    }
+  }
+  return {
+    total: lista.length,
+    ultimo: lista[0] ?? null,
+    porTipo: [...porTipo.entries()].map(([tipo, n]) => ({ tipo, n })).sort((a, b) => b.n - a.n),
+    topCid: [...porCid.values()].sort((a, b) => b.n - a.n).slice(0, 5),
+  };
+}
+
+type Vista = 'resumo' | 'atendimentos' | 'tratamentos' | 'dados';
+
+function ResumoPaciente({
+  p,
+  stats,
+  carregandoAtend,
+  qtdTratamentos,
+  tratamentosAtivos,
+  irPara,
+}: {
+  p: Paciente;
+  stats: EstatisticasAtendimentos;
+  carregandoAtend: boolean;
+  qtdTratamentos: number;
+  tratamentosAtivos: number;
+  irPara: (v: Vista) => void;
+}) {
+  const imc = calcularImc(p.pesoKg, p.alturaCm);
+  const nAlertas = p.alergias.length + p.comorbidades.length;
+  const maxTipo = Math.max(1, ...stats.porTipo.map((t) => t.n));
+
+  return (
+    <div className="space-y-5">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <CartaoKpi
+          icone={<CalendarClock className="h-4 w-4" />}
+          rotulo="Atendimentos"
+          valor={carregandoAtend ? '…' : stats.total}
+          sub={
+            stats.ultimo
+              ? `Último: ${formatarData(stats.ultimo.inicio) ?? '—'} · ${stats.ultimo.tipo}`
+              : carregandoAtend
+                ? 'Carregando…'
+                : 'Nenhum atendimento'
+          }
+          onClick={() => irPara('atendimentos')}
+        />
+        <CartaoKpi
+          icone={<ListChecks className="h-4 w-4" />}
+          rotulo="Tratamentos"
+          valor={tratamentosAtivos}
+          sub={qtdTratamentos > 0 ? `${qtdTratamentos} no total` : 'Nenhum cadastrado'}
+          onClick={() => irPara('tratamentos')}
+        />
+        <CartaoKpi
+          icone={<AlertTriangle className="h-4 w-4" />}
+          rotulo="Alertas clínicos"
+          valor={nAlertas}
+          tom={nAlertas > 0 ? 'alerta' : 'neutro'}
+          sub={`${p.alergias.length} alergia(s) · ${p.comorbidades.length} comorbidade(s)`}
+        />
+        <CartaoKpi
+          icone={<HeartPulse className="h-4 w-4" />}
+          rotulo="Sinais vitais"
+          valor={<span className="text-base font-medium text-gray-400">Em breve</span>}
+          sub="Médias de PA, FC e triagem — Fase 2 (hub FHIR)"
+        />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <CartaoBloco titulo="Dados gerais">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-gray-500">Idade</dt>
+              <dd className="text-sm text-gray-900">
+                {calcularIdade(p.dataNascimento) != null ? `${calcularIdade(p.dataNascimento)} anos` : '—'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-gray-500">Sexo</dt>
+              <dd className="text-sm text-gray-900">{SEXO_LABEL[String(p.sexo)] ?? '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-gray-500">Tipo sanguíneo</dt>
+              <dd className="text-sm text-gray-900">
+                {p.tipoSanguineo && p.tipoSanguineo !== 'NaoInformado'
+                  ? `${TIPO_SANG_LABEL[String(p.tipoSanguineo)]} ${
+                      p.fatorRh === 'Positivo' ? '+' : p.fatorRh === 'Negativo' ? '−' : ''
+                    }`.trim()
+                  : '—'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-gray-500">IMC</dt>
+              <dd className="text-sm text-gray-900">
+                {imc ? (
+                  <>
+                    {imc.valor} <span className="text-xs text-gray-500">· {imc.classe}</span>
+                  </>
+                ) : (
+                  '—'
+                )}
+              </dd>
+            </div>
+          </dl>
+        </CartaoBloco>
+        <CartaoBloco titulo="Alergias">
+          <Chips itens={p.alergias} />
+        </CartaoBloco>
+        <CartaoBloco titulo="Medicamentos contínuos">
+          <Chips itens={p.medicamentosContinuos} />
+        </CartaoBloco>
+        <CartaoBloco titulo="Comorbidades">
+          <Chips itens={p.comorbidades} />
+        </CartaoBloco>
+        <CartaoBloco titulo="Deficiências">
+          <Chips itens={p.deficiencias} />
+        </CartaoBloco>
+        <CartaoBloco titulo="Plano de saúde">
+          <span className="text-sm text-gray-900">
+            {p.planoSaude || <span className="text-gray-400">—</span>}
+          </span>
+        </CartaoBloco>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <CartaoBloco titulo="Atendimentos por tipo">
+          {stats.porTipo.length === 0 ? (
+            <span className="text-sm text-gray-400">{carregandoAtend ? 'Carregando…' : 'Sem dados.'}</span>
+          ) : (
+            <ul className="space-y-2">
+              {stats.porTipo.map((t) => (
+                <li key={t.tipo} className="flex items-center gap-3 text-sm">
+                  <span className="w-28 shrink-0 text-gray-700">{t.tipo}</span>
+                  <div className="h-2 flex-1 rounded-full bg-gray-100">
+                    <div
+                      className="h-2 rounded-full bg-red-500"
+                      style={{ width: `${(t.n / maxTipo) * 100}%` }}
+                    />
+                  </div>
+                  <span className="w-6 text-right tabular-nums text-gray-600">{t.n}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CartaoBloco>
+        <CartaoBloco titulo="Diagnósticos mais frequentes">
+          {stats.topCid.length === 0 ? (
+            <span className="text-sm text-gray-400">{carregandoAtend ? 'Carregando…' : 'Sem diagnósticos.'}</span>
+          ) : (
+            <ul className="space-y-1.5">
+              {stats.topCid.map((d) => (
+                <li key={d.codigo} className="flex items-baseline gap-2 text-sm">
+                  <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-gray-700">
+                    {d.codigo}
+                  </span>
+                  <span className="flex-1 truncate text-gray-700" title={d.descricao ?? undefined}>
+                    {d.descricao ?? '—'}
+                  </span>
+                  <span className="tabular-nums text-xs text-gray-500">{d.n}×</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CartaoBloco>
+      </div>
+    </div>
+  );
+}
+
 export function PacienteDetalhePage() {
   const navigate = useNavigate();
   const params = useParams<{ id: string }>();
   const id = params.id ?? '';
   const detalhe = usePacientePorId(id || null);
   const tratamentos = useListarTratamentos({ pacienteId: id });
+  const atendimentos = useAtendimentosPaciente(id || null);
+  const [vista, setVista] = useState<Vista>('resumo');
 
   const p = detalhe.data;
   const listaTratamentos = tratamentos.data ?? [];
+  const tratamentosAtivos = listaTratamentos.filter((t) => t.ativo).length;
+  const stats = useMemo(() => resumirAtendimentos(atendimentos.data ?? []), [atendimentos.data]);
 
   const colunasTratamentos: Coluna<TratamentoListItem>[] = [
     {
@@ -453,7 +728,6 @@ export function PacienteDetalhePage() {
 
   const abas: Aba[] = p ? [
     { id: 'identificacao', rotulo: 'Identificação', conteudo: <SecaoIdentificacao p={p} /> },
-    { id: 'atendimentos', rotulo: 'Atendimentos', conteudo: <SecaoAtendimentos pacienteId={id} paciente={p} /> },
     { id: 'filiacao', rotulo: 'Filiação', conteudo: <SecaoFiliacao p={p} /> },
     { id: 'endereco', rotulo: 'Endereço', conteudo: <SecaoEndereco p={p} /> },
     { id: 'contatos', rotulo: 'Contatos', conteudo: <SecaoContatos p={p} /> },
@@ -468,6 +742,15 @@ export function PacienteDetalhePage() {
       ),
     },
   ] : [];
+
+  const navItens: { id: Vista; rotulo: string; badge?: number }[] = [
+    { id: 'resumo', rotulo: 'Resumo' },
+    { id: 'atendimentos', rotulo: 'Atendimentos', badge: stats.total },
+    { id: 'tratamentos', rotulo: 'Tratamentos', badge: listaTratamentos.length },
+    { id: 'dados', rotulo: 'Dados pessoais' },
+  ];
+
+  const idade = calcularIdade(p?.dataNascimento);
 
   return (
     <div className="space-y-6">
@@ -493,6 +776,9 @@ export function PacienteDetalhePage() {
               <p className="text-sm text-gray-500">
                 CPF {formatarCpf(p.cpf)}
                 {p.dataNascimento ? ` · Nasc. ${formatarData(p.dataNascimento.toString())}` : ''}
+                {idade != null ? ` · ${idade} anos` : ''}
+                {' · '}
+                {SEXO_LABEL[String(p.sexo)] ?? String(p.sexo)}
               </p>
             ) : null}
           </div>
@@ -511,38 +797,82 @@ export function PacienteDetalhePage() {
         </div>
       ) : p ? (
         <>
-          <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                <ListChecks className="h-4 w-4" /> Tratamentos do paciente
-                <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
-                  {listaTratamentos.length}
-                </span>
-              </h2>
-              <Button
-                variante="outline"
-                tamanho="sm"
-                onClick={() => navigate('/app/tratamentos/novo')}
-              >
-                Novo tratamento
-              </Button>
-            </div>
-            <Tabela
-              colunas={colunasTratamentos}
-              dados={listaTratamentos}
-              chaveLinha={(t) => t.id}
-              carregando={tratamentos.isLoading}
-              vazio={
-                !tratamentos.isLoading && listaTratamentos.length === 0
-                  ? 'Nenhum tratamento cadastrado para este paciente.'
-                  : undefined
-              }
-            />
-          </section>
-
-          <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-            <Tabs abas={abas} />
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex flex-wrap gap-1" role="tablist">
+              {navItens.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={vista === item.id}
+                  onClick={() => setVista(item.id)}
+                  className={
+                    '-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors ' +
+                    (vista === item.id
+                      ? 'border-red-600 text-red-700'
+                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700')
+                  }
+                >
+                  {item.rotulo}
+                  {item.badge !== undefined ? (
+                    <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
+                      {item.badge}
+                    </span>
+                  ) : null}
+                </button>
+              ))}
+            </nav>
           </div>
+
+          {vista === 'resumo' ? (
+            <ResumoPaciente
+              p={p}
+              stats={stats}
+              carregandoAtend={atendimentos.isLoading}
+              qtdTratamentos={listaTratamentos.length}
+              tratamentosAtivos={tratamentosAtivos}
+              irPara={setVista}
+            />
+          ) : null}
+
+          {vista === 'atendimentos' ? (
+            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+              <SecaoAtendimentos pacienteId={id} paciente={p} />
+            </div>
+          ) : null}
+
+          {vista === 'tratamentos' ? (
+            <section className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                  <ListChecks className="h-4 w-4" /> Tratamentos do paciente
+                  <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
+                    {listaTratamentos.length}
+                  </span>
+                </h2>
+                <Button variante="outline" tamanho="sm" onClick={() => navigate('/app/tratamentos/novo')}>
+                  Novo tratamento
+                </Button>
+              </div>
+              <Tabela
+                colunas={colunasTratamentos}
+                dados={listaTratamentos}
+                chaveLinha={(t) => t.id}
+                carregando={tratamentos.isLoading}
+                vazio={
+                  !tratamentos.isLoading && listaTratamentos.length === 0
+                    ? 'Nenhum tratamento cadastrado para este paciente.'
+                    : undefined
+                }
+              />
+            </section>
+          ) : null}
+
+          {vista === 'dados' ? (
+            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+              <Tabs abas={abas} />
+            </div>
+          ) : null}
         </>
       ) : null}
     </div>
