@@ -13,7 +13,7 @@ namespace SMSMarica.Data.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AlterDatabase()
-                .Annotation("Npgsql:PostgresExtension:vector", ",,");
+                .Annotation("Npgsql:PostgresExtension:smsmarica.vector", ",,");
 
             migrationBuilder.CreateTable(
                 name: "ia_configuracao",
@@ -305,7 +305,7 @@ namespace SMSMarica.Data.Migrations
                 schema: "smsmarica");
 
             migrationBuilder.AlterDatabase()
-                .OldAnnotation("Npgsql:PostgresExtension:vector", ",,");
+                .OldAnnotation("Npgsql:PostgresExtension:smsmarica.vector", ",,");
         }
     }
 }

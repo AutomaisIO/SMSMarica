@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 
 namespace SMSMarica.Data;
 
@@ -13,6 +14,13 @@ public static class DependencyInjection
         var connectionString = configuration.GetConnectionString(ConnectionStringName)
             ?? throw new InvalidOperationException(
                 $"ConnectionStrings:{ConnectionStringName} não configurada.");
+
+        // Garante search_path = smsmarica para que o tipo `vector` (pgvector, instalado no schema
+        // smsmarica) resolva em migrations e em runtime. O cluster gerenciado não possui `public`.
+        connectionString = new NpgsqlConnectionStringBuilder(connectionString)
+        {
+            SearchPath = SmsMaricaDbContext.SchemaPadrao,
+        }.ConnectionString;
 
         void Configurar(DbContextOptionsBuilder options) =>
             options.UseNpgsql(connectionString, npgsql =>
