@@ -133,6 +133,10 @@ gantt
 - **Descoberta tardia** de invariante ou regra: atualiza `docs/domain.md` no mesmo PR que implementa.
 - **Mudança de arquitetura** exige novo ADR em `docs/adr/`.
 
+## Pendências registradas (`docs/pendencias/`)
+
+- [Medicação: prescrita vs. administrada (FHIR) no BAU](./pendencias/medicacao-prescrita-vs-administrada.md) — hub tem `MedicationAdministration` modelado mas **vazio**; só o prescrito (`MedicationRequest`) é importado do Salux. Precisa de discovery no Salux (checagem/administração de enfermagem, FIA e BAA) antes de mostrar "administrado" no BAU. Aberta 2026-06-05.
+
 ## Próximos passos imediatos (checklist)
 
 - [x] D1 (docs base + ADR-0004)
