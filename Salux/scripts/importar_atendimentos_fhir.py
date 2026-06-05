@@ -404,8 +404,72 @@ def build_obs_risco(patient_ref, enc_ref, effective, cor):
     return o
 
 
+# Rótulos de vitais no eDoc (acolhimento/triagem) -> tipo interno. Casados por
+# substring minúscula; cobre variações "(Acolhimento)", "(mmHg)", etc.
+_MATCHERS_VITAL = [
+    ("pressão arterial", "pa"),
+    ("pulso", "fc"),
+    ("frequência cardíaca", "fc"),
+    ("freq. cardíaca", "fc"),
+    ("frequência respiratória", "fr"),
+    ("sat o2", "spo2"),
+    ("saturação", "spo2"),
+    ("temperatura", "temp"),
+]
+
+
+def _classificar_vital(label):
+    l = (label or "").lower()
+    for chave, tipo in _MATCHERS_VITAL:
+        if chave in l:
+            return tipo
+    return None
+
+
+def _parse_pa(txt):
+    """'106 / 66' (ou '106x66') -> (106.0, 66.0)."""
+    t = (s(txt) or "").replace("x", "/").replace("X", "/")
+    partes = [p for p in t.split("/")]
+    if len(partes) >= 2:
+        return _num(partes[0]), _num(partes[1])
+    return _num(t), None
+
+
+def observations_de_edoc(itens, patient_ref, enc_ref, effective):
+    """Sinais vitais do formulário de acolhimento (eDoc) -> Observation (vital-signs).
+
+    Fonte real dos vitais da triagem (SINAIS_VITAIS é incompleto). Dedup por tipo,
+    preferindo o item rotulado '(Acolhimento)'.
+    """
+    por_tipo = {}
+    for it in sorted(itens, key=lambda x: 0 if "acolhimento" in (x.get("label") or "").lower() else 1):
+        tipo = _classificar_vital(it.get("label"))
+        resp = s(it.get("resp"))
+        if tipo and resp and tipo not in por_tipo:
+            por_tipo[tipo] = resp
+
+    obs = []
+    if "pa" in por_tipo:
+        sist, diast = _parse_pa(por_tipo["pa"])
+        if sist is not None or diast is not None:
+            obs.append(build_obs_pressao(patient_ref, enc_ref, effective, sist, diast))
+    if "fc" in por_tipo and _num(por_tipo["fc"]) is not None:
+        obs.append(build_obs_quantity(patient_ref, enc_ref, effective, "8867-4", "Frequência cardíaca", _num(por_tipo["fc"]), "bpm", "/min"))
+    if "fr" in por_tipo and _num(por_tipo["fr"]) is not None:
+        obs.append(build_obs_quantity(patient_ref, enc_ref, effective, "9279-1", "Frequência respiratória", _num(por_tipo["fr"]), "irpm", "/min"))
+    if "temp" in por_tipo and _num(por_tipo["temp"]) is not None:
+        obs.append(build_obs_quantity(patient_ref, enc_ref, effective, "8310-5", "Temperatura", _num(por_tipo["temp"]), "°C", "Cel"))
+    if "spo2" in por_tipo and _num(por_tipo["spo2"]) is not None:
+        obs.append(build_obs_quantity(patient_ref, enc_ref, effective, "2708-6", "Saturação de O₂", _num(por_tipo["spo2"]), "%", "%"))
+    return obs
+
+
 def observations_de_vitais(v, patient_ref, enc_ref):
-    """Lista de Observation (vital-signs) a partir de uma linha de SINAIS_VITAIS."""
+    """[Legado] Vitais a partir de SINAIS_VITAIS (tabela colunada, incompleta).
+
+    Mantido como fallback; a fonte primária passou a ser o eDoc de acolhimento
+    (ver observations_de_edoc), que é onde os vitais da triagem realmente vivem.
+    """
     eff = dt(v.get("dthr"))
     obs = []
     pa_s, pa_d = _num(v.get("pa_alta")), _num(v.get("pa_baixa"))
@@ -450,12 +514,9 @@ def main():
                 http("POST", "/fhir/MedicationRequest",
                      build_medication_request(item, patient_ref, enc_ref, authored))
                 n_med += 1
-            # Sinais vitais da triagem -> Observation (vital-signs).
-            for v in sinais_vitais_do_baa(b["h"], b["ano"], b["nr"], "B"):
-                for o in observations_de_vitais(v, patient_ref, enc_ref):
-                    http("POST", "/fhir/Observation", o)
-                    n_obs += 1
             # Classificação de risco (cor da triagem) -> Observation (survey).
+            # Os SINAIS VITAIS vêm do eDoc de acolhimento (ver loop de documentos
+            # abaixo), não de SINAIS_VITAIS — que é incompleto.
             cor = s(b.get("risco_ds"))
             if cor:
                 http("POST", "/fhir/Observation",
@@ -469,6 +530,10 @@ def main():
             html_str = montar_html(doc.get("modelo"), itens)
             http("POST", "/fhir/DocumentReference", build_docref(doc, html_str, patient_ref, enc_ref))
             n_doc += 1
+            # Sinais vitais do acolhimento (eDoc) -> Observation (vital-signs).
+            for o in observations_de_edoc(itens, patient_ref, enc_ref, dt(doc.get("dt"))):
+                http("POST", "/fhir/Observation", o)
+                n_obs += 1
         tot_enc += n_enc
         tot_cond += n_cond
         tot_doc += n_doc
