@@ -11,7 +11,25 @@ public sealed record AtendimentoDto(
     string? Fonte,
     IReadOnlyList<DiagnosticoDto> Diagnosticos,
     IReadOnlyList<MedicamentoDto> Medicamentos,
-    IReadOnlyList<DocumentoDto> Documentos);
+    IReadOnlyList<DocumentoDto> Documentos,
+    IReadOnlyList<SinalVitalDto> SinaisVitais,
+    RiscoDto? Risco);
+
+/// <summary>
+/// Sinal vital aferido (Observation, perfil vital-signs) vinculado a um atendimento.
+/// <see cref="Valor2"/> só é usado na pressão arterial (sistólica em <see cref="Valor"/>,
+/// diastólica em <see cref="Valor2"/>).
+/// </summary>
+public sealed record SinalVitalDto(
+    string Codigo,
+    string Nome,
+    double? Valor,
+    double? Valor2,
+    string? Unidade,
+    DateTimeOffset? Em);
+
+/// <summary>Classificação de risco (cor da triagem) do atendimento.</summary>
+public sealed record RiscoDto(string Cor, string? Descricao, DateTimeOffset? Em);
 
 /// <summary>Diagnóstico (Condition / CID-10) vinculado a um atendimento.</summary>
 public sealed record DiagnosticoDto(string Codigo, string? Descricao);

@@ -269,7 +269,71 @@ function corTipoAtendimento(tipo: string): string {
   return 'bg-blue-100 text-blue-700';
 }
 
+function acharVital(a: Atendimento, codigo: string) {
+  return a.sinaisVitais.find((v) => v.codigo === codigo);
+}
+
+/** Resumo curto dos sinais vitais de um atendimento (PA destaque + FC/Tª/SpO₂). */
+function resumoVitais(a: Atendimento): { principal: string; detalhe: string } {
+  const pa = acharVital(a, '85354-9');
+  const fc = acharVital(a, '8867-4');
+  const temp = acharVital(a, '8310-5');
+  const spo2 = acharVital(a, '2708-6');
+
+  const principal =
+    pa && pa.valor != null
+      ? `${pa.valor}/${pa.valor2 ?? '—'}`
+      : fc?.valor != null
+        ? `${fc.valor} bpm`
+        : '—';
+
+  const partes: string[] = [];
+  if (pa && fc?.valor != null) partes.push(`FC ${fc.valor}`);
+  if (temp?.valor != null) partes.push(`${temp.valor}°C`);
+  if (spo2?.valor != null) partes.push(`SpO₂ ${spo2.valor}%`);
+  return { principal, detalhe: partes.join(' · ') };
+}
+
+/** Cor da triagem (Manchester) → classes Tailwind + se é nível de alerta. */
+function corRisco(cor: string): { classe: string; alerta: boolean } {
+  const c = cor.toLowerCase();
+  if (c.includes('vermelh')) return { classe: 'bg-red-100 text-red-700', alerta: true };
+  if (c.includes('laranja')) return { classe: 'bg-orange-100 text-orange-700', alerta: true };
+  if (c.includes('amarel')) return { classe: 'bg-yellow-100 text-yellow-800', alerta: true };
+  if (c.includes('verde')) return { classe: 'bg-green-100 text-green-700', alerta: false };
+  if (c.includes('azul')) return { classe: 'bg-blue-100 text-blue-700', alerta: false };
+  return { classe: 'bg-gray-100 text-gray-700', alerta: false };
+}
+
 type DocAberto = { atendimento: Atendimento; doc: Documento };
+
+/** Bloco de sinais vitais (triagem/classificação de risco) dentro do card do atendimento. */
+function SecaoSinaisVitais({ atendimento }: { atendimento: Atendimento }) {
+  if (atendimento.sinaisVitais.length === 0 && !atendimento.risco) return null;
+  return (
+    <div className="mt-3 border-t border-gray-100 pt-2">
+      <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
+        <HeartPulse className="h-3.5 w-3.5" /> Sinais vitais (triagem)
+      </div>
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        {atendimento.risco ? (
+          <span className={`rounded px-2 py-0.5 text-xs font-medium ${corRisco(atendimento.risco.cor).classe}`}>
+            {atendimento.risco.cor}
+          </span>
+        ) : null}
+        {atendimento.sinaisVitais.map((v) => (
+          <span key={v.codigo} className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
+            {v.nome}:{' '}
+            {v.codigo === '85354-9'
+              ? `${v.valor ?? '—'}/${v.valor2 ?? '—'}`
+              : v.valor ?? '—'}
+            {v.unidade ? ` ${v.unidade}` : ''}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function SecaoMedicamentos({ atendimento }: { atendimento: Atendimento }) {
   if (atendimento.medicamentos.length === 0) return null;
@@ -371,6 +435,7 @@ function SecaoAtendimentos({ pacienteId, paciente }: { pacienteId: string; pacie
               ))}
             </div>
           ) : null}
+          <SecaoSinaisVitais atendimento={a} />
           <SecaoMedicamentos atendimento={a} />
           {a.documentos.length > 0 ? (
             <div className="mt-3 flex flex-wrap gap-1.5 border-t border-gray-100 pt-2">
@@ -493,6 +558,7 @@ function CartaoBloco({ titulo, children }: { titulo: string; children: ReactNode
 type EstatisticasAtendimentos = {
   total: number;
   ultimo: Atendimento | null;
+  ultimoComVitais: Atendimento | null;
   porTipo: { tipo: string; n: number }[];
   topCid: { codigo: string; descricao?: string | null; n: number }[];
 };
@@ -511,6 +577,8 @@ function resumirAtendimentos(lista: Atendimento[]): EstatisticasAtendimentos {
   return {
     total: lista.length,
     ultimo: lista[0] ?? null,
+    // Lista vem mais recente primeiro → o 1º com vitais é a triagem mais recente.
+    ultimoComVitais: lista.find((a) => a.sinaisVitais.length > 0 || a.risco) ?? null,
     porTipo: [...porTipo.entries()].map(([tipo, n]) => ({ tipo, n })).sort((a, b) => b.n - a.n),
     topCid: [...porCid.values()].sort((a, b) => b.n - a.n).slice(0, 5),
   };
@@ -536,6 +604,11 @@ function ResumoPaciente({
   const imc = calcularImc(p.pesoKg, p.alturaCm);
   const nAlertas = p.alergias.length + p.comorbidades.length;
   const maxTipo = Math.max(1, ...stats.porTipo.map((t) => t.n));
+
+  // Sinais vitais da triagem mais recente (para o cartão KPI).
+  const av = stats.ultimoComVitais;
+  const vit = av ? resumoVitais(av) : null;
+  const risco = av?.risco ? corRisco(av.risco.cor) : null;
 
   return (
     <div className="space-y-5">
@@ -570,8 +643,23 @@ function ResumoPaciente({
         <CartaoKpi
           icone={<HeartPulse className="h-4 w-4" />}
           rotulo="Sinais vitais"
-          valor={<span className="text-base font-medium text-gray-400">Em breve</span>}
-          sub="Médias de PA, FC e triagem — Fase 2 (hub FHIR)"
+          valor={
+            carregandoAtend ? (
+              '…'
+            ) : vit && vit.principal !== '—' ? (
+              vit.principal
+            ) : (
+              <span className="text-base font-medium text-gray-400">Sem registro</span>
+            )
+          }
+          tom={risco?.alerta ? 'alerta' : 'neutro'}
+          sub={
+            av
+              ? [vit?.detalhe, av.risco ? `Risco: ${av.risco.cor}` : null, formatarData(av.inicio)]
+                  .filter(Boolean)
+                  .join(' · ')
+              : 'Pressão, FC e temperatura da triagem — sem dados ainda'
+          }
         />
       </div>
 

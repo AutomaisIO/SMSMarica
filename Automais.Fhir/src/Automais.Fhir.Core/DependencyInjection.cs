@@ -4,6 +4,7 @@ using Automais.Fhir.Core.DocumentReferences;
 using Automais.Fhir.Core.Encounters;
 using Automais.Fhir.Core.MedicationAdministrations;
 using Automais.Fhir.Core.MedicationRequests;
+using Automais.Fhir.Core.Observations;
 using Automais.Fhir.Core.Patients;
 using Automais.Fhir.Core.Practitioners;
 
@@ -21,6 +22,7 @@ public static class DependencyInjection
         services.AddScoped<IDocumentReferenceService, DocumentReferenceService>();
         services.AddScoped<IMedicationRequestService, MedicationRequestService>();
         services.AddScoped<IMedicationAdministrationService, MedicationAdministrationService>();
+        services.AddScoped<IObservationService, ObservationService>();
         return services;
     }
 }

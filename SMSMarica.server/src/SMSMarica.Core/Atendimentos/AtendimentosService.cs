@@ -17,6 +17,7 @@ public sealed class AtendimentosService(IEncounterFhirClient fhir) : IAtendiment
         var condBundle = await fhir.BuscarConditionsAsync(pacienteId, cancellationToken);
         var medBundle = await fhir.BuscarMedicationRequestsAsync(pacienteId, cancellationToken);
         var docBundle = await fhir.BuscarDocumentsAsync(pacienteId, cancellationToken);
+        var obsBundle = await fhir.BuscarObservationsAsync(pacienteId, cancellationToken);
 
         // Agrupa diagnósticos por id do Encounter referenciado.
         var porEncounter = condBundle.Entry
@@ -40,6 +41,14 @@ public sealed class AtendimentosService(IEncounterFhirClient fhir) : IAtendiment
             .OfType<DocumentReference>()
             .Where(d => d.Context?.Encounter?.FirstOrDefault()?.Reference is not null)
             .GroupBy(d => IdDaReferencia(d.Context!.Encounter!.First().Reference!))
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        // Agrupa observações (sinais vitais + risco) por id do Encounter referenciado.
+        var obsPorEncounter = obsBundle.Entry
+            .Select(e => e.Resource)
+            .OfType<Observation>()
+            .Where(o => o.Encounter?.Reference is not null)
+            .GroupBy(o => IdDaReferencia(o.Encounter!.Reference!))
             .ToDictionary(g => g.Key, g => g.ToList());
 
         var atendimentos = new List<AtendimentoDto>();
@@ -70,6 +79,10 @@ public sealed class AtendimentosService(IEncounterFhirClient fhir) : IAtendiment
                     DecodificarHtml(d.Content?.FirstOrDefault()?.Attachment))).ToList()
                 : [];
 
+            var (sinaisVitais, risco) = obsPorEncounter.TryGetValue(enc.Id!, out var obs)
+                ? ProjetarObservations(obs)
+                : ([], null);
+
             atendimentos.Add(new AtendimentoDto(
                 id,
                 ParseData(enc.Period?.Start),
@@ -80,7 +93,9 @@ public sealed class AtendimentosService(IEncounterFhirClient fhir) : IAtendiment
                 enc.Meta?.Source,
                 diagnosticos,
                 medicamentos,
-                documentos));
+                documentos,
+                sinaisVitais,
+                risco));
         }
 
         // Mais recente primeiro (o hub já ordena, mas garante).
@@ -93,6 +108,68 @@ public sealed class AtendimentosService(IEncounterFhirClient fhir) : IAtendiment
         "AMB" => "Ambulatorial",
         "IMP" => "Internação",
         _ => "Atendimento",
+    };
+
+    // LOINC dos sinais vitais que projetamos (perfil vital-signs).
+    private static readonly Dictionary<string, string> NomesVitais = new()
+    {
+        ["85354-9"] = "Pressão arterial",
+        ["8867-4"] = "Freq. cardíaca",
+        ["9279-1"] = "Freq. respiratória",
+        ["8310-5"] = "Temperatura",
+        ["2708-6"] = "Saturação O₂",
+        ["29463-7"] = "Peso",
+        ["8302-2"] = "Altura",
+    };
+
+    /// <summary>
+    /// Separa as Observations de um atendimento em sinais vitais (perfil vital-signs, LOINC
+    /// conhecido) e classificação de risco (Observation com valor CodeableConcept).
+    /// </summary>
+    private static (List<SinalVitalDto> Vitais, RiscoDto? Risco) ProjetarObservations(List<Observation> obs)
+    {
+        var vitais = new List<SinalVitalDto>();
+        RiscoDto? risco = null;
+
+        foreach (var o in obs)
+        {
+            var codigo = o.Code?.Coding?.FirstOrDefault()?.Code;
+            var em = DataObservation(o);
+
+            if (codigo == "85354-9")
+            {
+                // Pressão arterial: painel com componentes sistólica (8480-6) + diastólica (8462-4).
+                var sist = ValorComponente(o, "8480-6");
+                var diast = ValorComponente(o, "8462-4");
+                vitais.Add(new SinalVitalDto("85354-9", "Pressão arterial", sist, diast, "mmHg", em));
+            }
+            else if (codigo is not null && NomesVitais.TryGetValue(codigo, out var nome))
+            {
+                var q = o.Value as Quantity;
+                vitais.Add(new SinalVitalDto(codigo, nome, (double?)q?.Value, null, q?.Unit, em));
+            }
+            else if (o.Value is CodeableConcept cc)
+            {
+                // Classificação de risco (cor da triagem).
+                var cor = cc.Coding?.FirstOrDefault()?.Display ?? cc.Text ?? "—";
+                risco = new RiscoDto(cor, o.Code?.Text ?? cc.Text, em);
+            }
+        }
+
+        return (vitais, risco);
+    }
+
+    private static double? ValorComponente(Observation o, string loinc) =>
+        (double?)(o.Component
+            .FirstOrDefault(c => c.Code?.Coding?.Any(cd => cd.Code == loinc) == true)?
+            .Value as Quantity)?.Value;
+
+    private static DateTimeOffset? DataObservation(Observation o) => o.Effective switch
+    {
+        FhirDateTime fdt => ParseData(fdt.Value),
+        Period p => ParseData(p.Start),
+        Instant inst => inst.Value,
+        _ => null,
     };
 
     private static string IdDaReferencia(string reference) => reference.Split('/')[^1];

@@ -181,6 +181,23 @@ export type Documento = {
   conteudoHtml: string;
 };
 
+/** Sinal vital aferido (Observation). `valor2` só na pressão arterial (sist./diast.). */
+export type SinalVital = {
+  codigo: string;
+  nome: string;
+  valor?: number | null;
+  valor2?: number | null;
+  unidade?: string | null;
+  em?: string | null;
+};
+
+/** Classificação de risco (cor da triagem) do atendimento. */
+export type Risco = {
+  cor: string;
+  descricao?: string | null;
+  em?: string | null;
+};
+
 /** Atendimento do histórico clínico (Encounter do hub FHIR, originado do Salux). */
 export type Atendimento = {
   id: string;
@@ -193,6 +210,8 @@ export type Atendimento = {
   diagnosticos: Diagnostico[];
   medicamentos: Medicamento[];
   documentos: Documento[];
+  sinaisVitais: SinalVital[];
+  risco?: Risco | null;
 };
 
 export type PacienteExistencia = {

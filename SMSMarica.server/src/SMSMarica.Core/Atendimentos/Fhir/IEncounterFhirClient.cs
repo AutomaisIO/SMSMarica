@@ -9,4 +9,5 @@ public interface IEncounterFhirClient
     Task<Bundle> BuscarConditionsAsync(Guid pacienteId, CancellationToken ct = default);
     Task<Bundle> BuscarMedicationRequestsAsync(Guid pacienteId, CancellationToken ct = default);
     Task<Bundle> BuscarDocumentsAsync(Guid pacienteId, CancellationToken ct = default);
+    Task<Bundle> BuscarObservationsAsync(Guid pacienteId, CancellationToken ct = default);
 }

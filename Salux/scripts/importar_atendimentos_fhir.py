@@ -28,6 +28,10 @@ S_EDOC = "urn:salux:edoc"
 S_MATMED = "urn:salux:matmed"  # catálogo de material/medicamento do Salux
 SYS_CID = "http://hl7.org/fhir/sid/icd-10"
 SYS_CLASS = "http://terminology.hl7.org/CodeSystem/v3-ActCode"
+SYS_LOINC = "http://loinc.org"
+SYS_UCUM = "http://unitsofmeasure.org"
+SYS_OBS_CAT = "http://terminology.hl7.org/CodeSystem/observation-category"
+S_RISCO = "urn:salux:classificacao-risco"  # cor da triagem (Manchester) do BAA
 S_PAC = "urn:salux:cd_paciente"
 LIMITE_POR_PACIENTE = 30
 LIMITE_DOCS = 15
@@ -82,7 +86,7 @@ def pacientes_do_hub():
 
 
 def purgar_paciente(fhir_id):
-    for tipo in ("MedicationRequest", "DocumentReference", "Condition", "Encounter"):
+    for tipo in ("Observation", "MedicationRequest", "DocumentReference", "Condition", "Encounter"):
         _, b = http("GET", f"/fhir/{tipo}?patient={fhir_id}")
         for e in (b.get("entry") or []):
             http("DELETE", f"/fhir/{tipo}/{e['resource']['id']}")
@@ -99,6 +103,8 @@ def baa_do_paciente(cd):
             'cid' VALUE cd_cid,
             'cid_ds' VALUE (SELECT ds_cid FROM infosaude.cid WHERE cd_cid = b.cd_cid),
             'emerg' VALUE in_emergencia,
+            'risco_ds' VALUE (SELECT ds_classificacao_risco FROM infosaude.classificacao_risco cr
+                              WHERE cr.cd_classificacao_risco = b.cd_classificacao_risco),
             'medico' VALUE (SELECT nm_medico FROM infosaude.medico WHERE cd_medico = b.cd_medico))
         FROM (
             SELECT * FROM infosaude.baa
@@ -313,15 +319,122 @@ def build_docref(doc, html_str, patient_ref, enc_ref):
     return d
 
 
+def _num(v):
+    """Converte resposta numérica do Salux em float; None se vazio/zero/inválido."""
+    v = s(v)
+    if not v:
+        return None
+    try:
+        f = float(v.replace(",", "."))
+    except ValueError:
+        return None
+    return f if f != 0 else None  # 0 em sinal vital = não aferido
+
+
+def sinais_vitais_do_baa(h, ano, nr, id_tipo="B"):
+    """Aferição de TRIAGEM de um BAA (a mais antiga) — tabela colunada SINAIS_VITAIS.
+
+    id_tipo: 'B' (BAA/ambulatório) ou 'F' (FIA/internação). Chave liga por
+    (cd_hospital, dt_ano_fia_baa, nr_fia_baa). Retorna 0 ou 1 linha.
+    """
+    return executar_json(
+        f"""
+        SELECT JSON_OBJECT(
+            'dthr'  VALUE TO_CHAR(dthr_visita,'YYYY-MM-DD"T"HH24:MI:SS'),
+            'pa_alta'  VALUE vl_pa_alta,
+            'pa_baixa' VALUE vl_pa_baixa,
+            'fc'    VALUE vl_freq_cardio,
+            'fr'    VALUE vl_respiracao,
+            'temp'  VALUE vl_temp_aux,
+            'spo2'  VALUE vl_saturacao_oxigenio)
+        FROM (
+            SELECT * FROM infosaude.sinais_vitais
+            WHERE id_tipo = '{id_tipo}' AND cd_hospital = {int(h)}
+              AND dt_ano_fia_baa = {int(ano)} AND nr_fia_baa = {int(nr)}
+            ORDER BY dthr_visita ASC NULLS LAST
+        ) WHERE ROWNUM <= 1
+        """,
+        modo="supervisor",
+    )
+
+
+def _obs_skeleton(patient_ref, enc_ref, effective, categoria):
+    o = {
+        "resourceType": "Observation",
+        "meta": {"source": SRC},
+        "status": "final",
+        "category": [{"coding": [{"system": SYS_OBS_CAT, "code": categoria}]}],
+        "subject": {"reference": patient_ref},
+        "encounter": {"reference": enc_ref},
+    }
+    if effective:
+        o["effectiveDateTime"] = effective
+    return o
+
+
+def build_obs_quantity(patient_ref, enc_ref, effective, loinc, display, valor, unidade, ucum):
+    o = _obs_skeleton(patient_ref, enc_ref, effective, "vital-signs")
+    o["code"] = {"coding": [{"system": SYS_LOINC, "code": loinc, "display": display}], "text": display}
+    o["valueQuantity"] = {"value": valor, "unit": unidade, "system": SYS_UCUM, "code": ucum}
+    return o
+
+
+def build_obs_pressao(patient_ref, enc_ref, effective, sist, diast):
+    """Pressão arterial como painel (85354-9) com componentes sistólica + diastólica."""
+    o = _obs_skeleton(patient_ref, enc_ref, effective, "vital-signs")
+    o["code"] = {"coding": [{"system": SYS_LOINC, "code": "85354-9", "display": "Pressão arterial"}],
+                 "text": "Pressão arterial"}
+    comps = []
+    if sist is not None:
+        comps.append({"code": {"coding": [{"system": SYS_LOINC, "code": "8480-6", "display": "Pressão sistólica"}]},
+                      "valueQuantity": {"value": sist, "unit": "mmHg", "system": SYS_UCUM, "code": "mm[Hg]"}})
+    if diast is not None:
+        comps.append({"code": {"coding": [{"system": SYS_LOINC, "code": "8462-4", "display": "Pressão diastólica"}]},
+                      "valueQuantity": {"value": diast, "unit": "mmHg", "system": SYS_UCUM, "code": "mm[Hg]"}})
+    o["component"] = comps
+    return o
+
+
+def build_obs_risco(patient_ref, enc_ref, effective, cor):
+    """Classificação de risco (cor da triagem) como Observation survey + valueCodeableConcept."""
+    o = _obs_skeleton(patient_ref, enc_ref, effective, "survey")
+    o["code"] = {"coding": [{"system": S_RISCO, "code": "classificacao-risco",
+                             "display": "Classificação de risco"}], "text": "Classificação de risco"}
+    o["valueCodeableConcept"] = {"coding": [{"system": S_RISCO, "display": cor}], "text": cor}
+    return o
+
+
+def observations_de_vitais(v, patient_ref, enc_ref):
+    """Lista de Observation (vital-signs) a partir de uma linha de SINAIS_VITAIS."""
+    eff = dt(v.get("dthr"))
+    obs = []
+    pa_s, pa_d = _num(v.get("pa_alta")), _num(v.get("pa_baixa"))
+    if pa_s is not None or pa_d is not None:
+        obs.append(build_obs_pressao(patient_ref, enc_ref, eff, pa_s, pa_d))
+    fc = _num(v.get("fc"))
+    if fc is not None:
+        obs.append(build_obs_quantity(patient_ref, enc_ref, eff, "8867-4", "Frequência cardíaca", fc, "bpm", "/min"))
+    fr = _num(v.get("fr"))
+    if fr is not None:
+        obs.append(build_obs_quantity(patient_ref, enc_ref, eff, "9279-1", "Frequência respiratória", fr, "irpm", "/min"))
+    temp = _num(v.get("temp"))
+    if temp is not None:
+        obs.append(build_obs_quantity(patient_ref, enc_ref, eff, "8310-5", "Temperatura", temp, "°C", "Cel"))
+    spo2 = _num(v.get("spo2"))
+    if spo2 is not None:
+        obs.append(build_obs_quantity(patient_ref, enc_ref, eff, "2708-6", "Saturação de O₂", spo2, "%", "%"))
+    return obs
+
+
 def main():
     pacientes = pacientes_do_hub()
     print(f"Pacientes no hub: {len(pacientes)}")
-    tot_enc = tot_cond = tot_doc = tot_med = 0
+    tot_enc = tot_cond = tot_doc = tot_med = tot_obs = 0
     for fhir_id, cd in pacientes:
         purgar_paciente(fhir_id)
         patient_ref = f"Patient/{fhir_id}"
         enc_por_baa = {}
-        n_enc = n_cond = n_doc = n_med = 0
+        n_enc = n_cond = n_doc = n_med = n_obs = 0
         for b in baa_do_paciente(cd):
             _, criado = http("POST", "/fhir/Encounter", build_encounter(b, patient_ref))
             enc_ref = f"Encounter/{criado.get('id')}"
@@ -337,6 +450,17 @@ def main():
                 http("POST", "/fhir/MedicationRequest",
                      build_medication_request(item, patient_ref, enc_ref, authored))
                 n_med += 1
+            # Sinais vitais da triagem -> Observation (vital-signs).
+            for v in sinais_vitais_do_baa(b["h"], b["ano"], b["nr"], "B"):
+                for o in observations_de_vitais(v, patient_ref, enc_ref):
+                    http("POST", "/fhir/Observation", o)
+                    n_obs += 1
+            # Classificação de risco (cor da triagem) -> Observation (survey).
+            cor = s(b.get("risco_ds"))
+            if cor:
+                http("POST", "/fhir/Observation",
+                     build_obs_risco(patient_ref, enc_ref, dt(b.get("dt_cheg")) or dt(b.get("dt_atend")), cor))
+                n_obs += 1
         for doc in edoc_do_paciente(cd):
             enc_ref = enc_por_baa.get(s(doc.get("baa")))
             if not enc_ref:
@@ -349,9 +473,11 @@ def main():
         tot_cond += n_cond
         tot_doc += n_doc
         tot_med += n_med
-        print(f"  cd_paciente={cd}: {n_enc} atend., {n_cond} diag., {n_doc} docs, {n_med} medic.")
+        tot_obs += n_obs
+        print(f"  cd_paciente={cd}: {n_enc} atend., {n_cond} diag., {n_doc} docs, "
+              f"{n_med} medic., {n_obs} obs.")
     print(f"\nTotal: {tot_enc} Encounters, {tot_cond} Conditions, "
-          f"{tot_doc} DocumentReferences, {tot_med} MedicationRequests")
+          f"{tot_doc} DocumentReferences, {tot_med} MedicationRequests, {tot_obs} Observations")
 
 
 if __name__ == "__main__":
