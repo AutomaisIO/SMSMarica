@@ -56,6 +56,10 @@ builder.Services.AddValidatorsFromAssembly(typeof(SMSMarica.Core.DependencyInjec
 builder.Services.AddData(builder.Configuration);
 builder.Services.AddCore(builder.Configuration);
 
+// Módulo IA: cifragem de segredos (token do provedor, senha das bases) em repouso.
+builder.Services.AddDataProtection();
+builder.Services.AddScoped<SMSMarica.Core.Inteligencia.Seguranca.IProtetorSegredos, SMSMarica.Api.Auth.ProtetorSegredos>();
+
 // Autenticação JWT (token emitido em /identidade/login).
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.Secao));
 builder.Services.AddSingleton<ITokenService, JwtTokenService>();
