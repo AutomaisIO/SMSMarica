@@ -148,7 +148,29 @@
       "Bash(grep -rln -i \"front\" Automais.Fhir/README.md docs/adr/0010-servico-fhir-autonomo.md)",
       "Bash(ls -d Automais.Fhir/Automais.Fhir.front)",
       "Bash(git rm *)",
-      "Bash(git commit -q -m ' *)"
+      "Bash(git commit -q -m ' *)",
+      "Bash(git commit -q -m 'chore\\(salux\\): scripts de import de médicos + descoberta de colunas *)",
+      "Bash(git commit -q -m 'fix\\(fhir\\): MedicoFhirMapper lê nome/CPF/CRM/UF dos campos FHIR nativos *)",
+      "Bash(Select-Object -Last 25)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\(JSON.stringify\\(p.scripts,null,2\\)\\)\")",
+      "Bash(git checkout *)",
+      "Bash(git commit -m '@ *)",
+      "Bash(git *)",
+      "PowerShell(gh run *)",
+      "Bash(PYTHONIOENCODING=utf-8 python scripts/achar_conselho.py)",
+      "Bash(PYTHONIOENCODING=utf-8 python scripts/achar_conselho2.py)",
+      "Bash(PYTHONIOENCODING=utf-8 python scripts/importar_medicos_fhir.py)",
+      "Bash(PYTHONIOENCODING=utf-8 python scripts/achar_prontuario.py)",
+      "Bash(PYTHONIOENCODING=utf-8 python scripts/achar_prontuario2.py)",
+      "Bash(PYTHONIOENCODING=utf-8 python scripts/achar_prontuario3.py)",
+      "Bash(PYTHONIOENCODING=utf-8 python -c ' *)",
+      "Bash(PYTHONIOENCODING=utf-8 python importar_atendimentos_fhir.py)",
+      "Bash(PYTHONIOENCODING=utf-8 python importar_10_fhir.py 13885 19702 20269)",
+      "Bash(PYTHONIOENCODING=utf-8 python achar_edoc.py)",
+      "Bash(PYTHONIOENCODING=utf-8 python achar_edoc2.py)",
+      "Bash(PYTHONIOENCODING=utf-8 python dbg_itens.py)",
+      "PowerShell($env:PYTHONIOENCODING=\"utf-8\"; Set-Location \"C:\\\\Projetos GIT\\\\SMSMarica\\\\Salux\"; python scripts/verificar_prescricao_baa.py)",
+      "PowerShell($env:PYTHONIOENCODING=\"utf-8\"; Set-Location \"C:\\\\Projetos GIT\\\\SMSMarica\\\\Salux\"; python scripts/importar_atendimentos_fhir.py)"
     ]
   }
 }

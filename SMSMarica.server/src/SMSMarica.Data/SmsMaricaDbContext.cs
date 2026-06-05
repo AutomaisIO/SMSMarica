@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Data.Entities;
+using SMSMarica.Data.Entities.Ia;
 
 namespace SMSMarica.Data;
 
@@ -34,9 +35,19 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<TipoExame> TiposExame => Set<TipoExame>();
     public DbSet<SolicitacaoExame> SolicitacoesExame => Set<SolicitacaoExame>();
 
+    // Módulo IA (consulta em linguagem natural)
+    public DbSet<IaConfiguracao> IaConfiguracoes => Set<IaConfiguracao>();
+    public DbSet<IaFonte> IaFontes => Set<IaFonte>();
+    public DbSet<IaDocumentoConhecimento> IaDocumentosConhecimento => Set<IaDocumentoConhecimento>();
+    public DbSet<IaChunkConhecimento> IaChunksConhecimento => Set<IaChunkConhecimento>();
+    public DbSet<IaAprendizado> IaAprendizados => Set<IaAprendizado>();
+    public DbSet<IaConsulta> IaConsultas => Set<IaConsulta>();
+    public DbSet<IaCorrecao> IaCorrecoes => Set<IaCorrecao>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(SchemaPadrao);
+        modelBuilder.HasPostgresExtension("vector"); // pgvector — embeddings do módulo IA
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SmsMaricaDbContext).Assembly);
         base.OnModelCreating(modelBuilder);
     }

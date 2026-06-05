@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+using Pgvector;
 using SMSMarica.Data;
 
 #nullable disable
@@ -22,6 +23,7 @@ namespace SMSMarica.Data.Migrations
                 .HasAnnotation("ProductVersion", "10.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "vector");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("SMSMarica.Data.Entities.Alocacao", b =>
@@ -275,6 +277,441 @@ namespace SMSMarica.Data.Migrations
                     b.HasIndex("Tipo", "ReferenciaId");
 
                     b.ToTable("rastreamento_geofence", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMarica.Data.Entities.Ia.IaAprendizado", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Ativo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("ativo");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<Guid?>("AtualizadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atualizado_por");
+
+                    b.Property<string>("Conteudo")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("conteudo");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<Vector>("Embedding")
+                        .HasColumnType("vector(1024)")
+                        .HasColumnName("embedding");
+
+                    b.Property<DateTime?>("ExcluidoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("excluido_em");
+
+                    b.Property<Guid?>("ExcluidoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("excluido_por");
+
+                    b.Property<Guid>("FonteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("fonte_id");
+
+                    b.Property<int>("Origem")
+                        .HasColumnType("integer")
+                        .HasColumnName("origem");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer")
+                        .HasColumnName("tipo");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FonteId", "Ativo");
+
+                    b.ToTable("ia_aprendizado", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMarica.Data.Entities.Ia.IaChunkConhecimento", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Conteudo")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("conteudo");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid>("DocumentoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("documento_id");
+
+                    b.Property<Vector>("Embedding")
+                        .HasColumnType("vector(1024)")
+                        .HasColumnName("embedding");
+
+                    b.Property<Guid>("FonteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("fonte_id");
+
+                    b.Property<int>("Ordem")
+                        .HasColumnType("integer")
+                        .HasColumnName("ordem");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentoId");
+
+                    b.HasIndex("FonteId");
+
+                    b.ToTable("ia_chunk_conhecimento", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMarica.Data.Entities.Ia.IaConfiguracao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<Guid?>("AtualizadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atualizado_por");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<string>("Modelo")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("modelo");
+
+                    b.Property<string>("ModeloEmbeddings")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("modelo_embeddings");
+
+                    b.Property<string>("Provedor")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("provedor");
+
+                    b.Property<string>("ProvedorEmbeddings")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("provedor_embeddings");
+
+                    b.Property<string>("TokenCifrado")
+                        .HasColumnType("text")
+                        .HasColumnName("token_cifrado");
+
+                    b.Property<string>("TokenEmbeddingsCifrado")
+                        .HasColumnType("text")
+                        .HasColumnName("token_embeddings_cifrado");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ia_configuracao", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMarica.Data.Entities.Ia.IaConsulta", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<int?>("DuracaoMs")
+                        .HasColumnType("integer")
+                        .HasColumnName("duracao_ms");
+
+                    b.Property<string>("Erro")
+                        .HasColumnType("text")
+                        .HasColumnName("erro");
+
+                    b.Property<Guid>("FonteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("fonte_id");
+
+                    b.Property<string>("Pergunta")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("pergunta");
+
+                    b.Property<string>("SqlGerado")
+                        .HasColumnType("text")
+                        .HasColumnName("sql_gerado");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<int>("Tentativas")
+                        .HasColumnType("integer")
+                        .HasColumnName("tentativas");
+
+                    b.Property<int?>("TokensEntrada")
+                        .HasColumnType("integer")
+                        .HasColumnName("tokens_entrada");
+
+                    b.Property<int?>("TokensSaida")
+                        .HasColumnType("integer")
+                        .HasColumnName("tokens_saida");
+
+                    b.Property<string>("Visualizacao")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("visualizacao");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CriadoEm");
+
+                    b.HasIndex("FonteId");
+
+                    b.ToTable("ia_consulta", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMarica.Data.Entities.Ia.IaCorrecao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("AprendizadoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("aprendizado_id");
+
+                    b.Property<Guid>("ConsultaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("consulta_id");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<string>("ErroOriginal")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("erro_original");
+
+                    b.Property<string>("InstrucaoGerada")
+                        .HasColumnType("text")
+                        .HasColumnName("instrucao_gerada");
+
+                    b.Property<DateTime?>("RemovidoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("removido_em");
+
+                    b.Property<Guid?>("RemovidoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("removido_por");
+
+                    b.Property<DateTime?>("RevisadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revisado_em");
+
+                    b.Property<Guid?>("RevisadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("revisado_por");
+
+                    b.Property<string>("SqlAntes")
+                        .HasColumnType("text")
+                        .HasColumnName("sql_antes");
+
+                    b.Property<string>("SqlDepois")
+                        .HasColumnType("text")
+                        .HasColumnName("sql_depois");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AprendizadoId");
+
+                    b.HasIndex("ConsultaId");
+
+                    b.ToTable("ia_correcao", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMarica.Data.Entities.Ia.IaDocumentoConhecimento", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<string>("Caminho")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("caminho");
+
+                    b.Property<string>("Conteudo")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("conteudo");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid>("FonteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("fonte_id");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("hash");
+
+                    b.Property<int>("Versao")
+                        .HasColumnType("integer")
+                        .HasColumnName("versao");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FonteId", "Caminho")
+                        .IsUnique();
+
+                    b.ToTable("ia_documento_conhecimento", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMarica.Data.Entities.Ia.IaFonte", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Ambiente")
+                        .HasColumnType("integer")
+                        .HasColumnName("ambiente");
+
+                    b.Property<bool>("Ativo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("ativo");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<Guid?>("AtualizadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atualizado_por");
+
+                    b.Property<string>("BaseUrl")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("base_url");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<int>("Dialeto")
+                        .HasColumnType("integer")
+                        .HasColumnName("dialeto");
+
+                    b.Property<DateTime?>("ExcluidoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("excluido_em");
+
+                    b.Property<Guid?>("ExcluidoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("excluido_por");
+
+                    b.Property<string>("Host")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("host");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("nome");
+
+                    b.Property<int?>("Porta")
+                        .HasColumnType("integer")
+                        .HasColumnName("porta");
+
+                    b.Property<string>("SenhaCifrada")
+                        .HasColumnType("text")
+                        .HasColumnName("senha_cifrada");
+
+                    b.Property<string>("Servico")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("servico");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer")
+                        .HasColumnName("tipo");
+
+                    b.Property<string>("Usuario")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("usuario");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Nome");
+
+                    b.ToTable("ia_fonte", "smsmarica");
                 });
 
             modelBuilder.Entity("SMSMarica.Data.Entities.Laudo", b =>
@@ -1985,6 +2422,68 @@ namespace SMSMarica.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("SMSMarica.Data.Entities.Ia.IaAprendizado", b =>
+                {
+                    b.HasOne("SMSMarica.Data.Entities.Ia.IaFonte", "Fonte")
+                        .WithMany()
+                        .HasForeignKey("FonteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Fonte");
+                });
+
+            modelBuilder.Entity("SMSMarica.Data.Entities.Ia.IaChunkConhecimento", b =>
+                {
+                    b.HasOne("SMSMarica.Data.Entities.Ia.IaDocumentoConhecimento", "Documento")
+                        .WithMany("Chunks")
+                        .HasForeignKey("DocumentoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Documento");
+                });
+
+            modelBuilder.Entity("SMSMarica.Data.Entities.Ia.IaConsulta", b =>
+                {
+                    b.HasOne("SMSMarica.Data.Entities.Ia.IaFonte", "Fonte")
+                        .WithMany()
+                        .HasForeignKey("FonteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Fonte");
+                });
+
+            modelBuilder.Entity("SMSMarica.Data.Entities.Ia.IaCorrecao", b =>
+                {
+                    b.HasOne("SMSMarica.Data.Entities.Ia.IaAprendizado", "Aprendizado")
+                        .WithMany()
+                        .HasForeignKey("AprendizadoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("SMSMarica.Data.Entities.Ia.IaConsulta", "Consulta")
+                        .WithMany()
+                        .HasForeignKey("ConsultaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Aprendizado");
+
+                    b.Navigation("Consulta");
+                });
+
+            modelBuilder.Entity("SMSMarica.Data.Entities.Ia.IaDocumentoConhecimento", b =>
+                {
+                    b.HasOne("SMSMarica.Data.Entities.Ia.IaFonte", "Fonte")
+                        .WithMany()
+                        .HasForeignKey("FonteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Fonte");
+                });
+
             modelBuilder.Entity("SMSMarica.Data.Entities.Laudo", b =>
                 {
                     b.HasOne("SMSMarica.Data.Entities.Laudo", "LaudoAnterior")
@@ -2362,6 +2861,11 @@ namespace SMSMarica.Data.Migrations
             modelBuilder.Entity("SMSMarica.Data.Entities.Fileira", b =>
                 {
                     b.Navigation("Assentos");
+                });
+
+            modelBuilder.Entity("SMSMarica.Data.Entities.Ia.IaDocumentoConhecimento", b =>
+                {
+                    b.Navigation("Chunks");
                 });
 
             modelBuilder.Entity("SMSMarica.Data.Entities.Perfil", b =>

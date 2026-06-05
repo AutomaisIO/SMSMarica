@@ -14,12 +14,18 @@ public static class DependencyInjection
             ?? throw new InvalidOperationException(
                 $"ConnectionStrings:{ConnectionStringName} não configurada.");
 
-        services.AddDbContext<SmsMaricaDbContext>(options =>
+        void Configurar(DbContextOptionsBuilder options) =>
             options.UseNpgsql(connectionString, npgsql =>
             {
                 npgsql.MigrationsAssembly(typeof(SmsMaricaDbContext).Assembly.FullName);
                 npgsql.MigrationsHistoryTable("__migrations", SmsMaricaDbContext.SchemaPadrao);
-            }));
+                npgsql.UseVector(); // pgvector — embeddings do módulo IA
+            });
+
+        // DbContext scoped (uso geral) + DbContextFactory (IaService isola um contexto por fonte
+        // no processamento paralelo — DbContext não é thread-safe). Opções singleton para coexistirem.
+        services.AddDbContext<SmsMaricaDbContext>(Configurar, optionsLifetime: ServiceLifetime.Singleton);
+        services.AddDbContextFactory<SmsMaricaDbContext>(Configurar);
 
         return services;
     }

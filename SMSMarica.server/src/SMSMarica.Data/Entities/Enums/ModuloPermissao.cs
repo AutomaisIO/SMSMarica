@@ -24,4 +24,10 @@ public enum ModuloPermissao
     SolicitacoesExame = 16,
     TiposExame = 17,
     ProcedimentosSigtap = 18,
+
+    /// <summary>Usar o assistente de IA (fazer perguntas em linguagem natural).</summary>
+    Inteligencia = 19,
+
+    /// <summary>Configurar o módulo IA: token do provedor, bases de dados e governança do aprendizado.</summary>
+    InteligenciaConfiguracao = 20,
 }

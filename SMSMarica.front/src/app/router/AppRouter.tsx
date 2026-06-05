@@ -6,6 +6,8 @@ import { RotaProtegida } from '@/app/router/RotaProtegida';
 import { AvaliacoesPage } from '@/features/avaliacoes/pages/AvaliacoesPage';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { TrocarSenhaPage } from '@/features/auth/pages/TrocarSenhaPage';
+import { IaPage } from '@/features/ia/pages/IaPage';
+import { IaConfiguracaoPage } from '@/features/ia/pages/IaConfiguracaoPage';
 import { MedicoDetalhePage } from '@/features/medicos/pages/MedicoDetalhePage';
 import { MedicosPage } from '@/features/medicos/pages/MedicosPage';
 import { ProfissionaisPage } from '@/features/medicos/pages/ProfissionaisPage';
@@ -114,6 +116,8 @@ export function AppRouter() {
           <Route path="tipos-exame/novo" element={<TipoExameFormPage />} />
           <Route path="tipos-exame/:id" element={<TipoExameFormPage />} />
           <Route path="procedimentos-sigtap" element={<ProcedimentosSigtapPage />} />
+          <Route path="ia" element={<IaPage />} />
+          <Route path="ia/configuracao" element={<IaConfiguracaoPage />} />
         </Route>
       </Route>
 

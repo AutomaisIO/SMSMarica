@@ -19,7 +19,9 @@ export type ModuloPermissao =
   | 'LaudosTemplates'
   | 'SolicitacoesExame'
   | 'TiposExame'
-  | 'ProcedimentosSigtap';
+  | 'ProcedimentosSigtap'
+  | 'Inteligencia'
+  | 'InteligenciaConfiguracao';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 

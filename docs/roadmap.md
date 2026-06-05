@@ -111,6 +111,21 @@ gantt
 
 **Bloqueadores conhecidos:** ainda não há definição de quais sistemas legados integrar nem as APIs deles.
 
+## M8 — Módulo IA (consulta em linguagem natural)
+
+**Objetivo:** gestor da Secretaria pergunta em pt-BR ("quantos pacientes faltaram à hemodiálise esta semana?") e recebe a resposta abstraída (número/lista/tabela/gráfico) sem depender da TI nem ver SQL. Ver [ADR-0011](./adr/0011-modulo-ia-consulta-linguagem-natural.md).
+
+**Entregas:**
+- **IA-1 (Configuração)** — menu de Configuração atrás do módulo `InteligenciaConfiguracao`: token genérico de IA (Anthropic) + token de embeddings (Voyage AI) cifrados via `IDataProtector`; CRUD de bases (`host`, `ambiente` PRODUCAO/TREINAMENTO, tipo de fonte) em `smsmarica.ia_base`.
+- **IA-2 (Fonte Salux Oracle)** — abstração `IFonteDados` + primeiro alvo Salux Oracle conectado **direto** pelo server (conta read-only, guard de único `SELECT`, timeout, cap de linhas; preferir TREINAMENTO).
+- **IA-3 (Perguntar)** — menu IA atrás do módulo `Inteligencia`: dropdown multi-seleção de bases, geração de query via Messages API (saída estruturada + prompt caching), resposta abstraída.
+- **IA-4 (Conhecimento + RAG)** — base de conhecimento `.md` versionada no repo, espelhada em `smsmarica.ia_conhecimento*` (chunks + embeddings em pgvector).
+- **IA-5 (Governança/aprendizado)** — auto-correção de query falha → `ia_aprendizado` (Origem=Auto, ativo) + histórico em `ia_correcao`, rastreável e removível pela Configuração.
+
+**Dependência:** M1 estável (RBAC/`ModuloPermissao`, infra do `SMSMarica.server`). Independente de M2..M7 — pode rodar em paralelo. Acesso de rede ao Oracle Salux a partir do server é pré-requisito de IA-2.
+
+**Risco:** LGPD de PII em perguntas que viram embeddings na Voyage (alternativa: embeddings locais); garantia read-only absoluta no Salux PRODUCAO.
+
 ## Regras de governança
 
 - **Não antecipar marco**. Se um item de M3 for tentador durante M1, abrir issue e deixar no backlog.

@@ -146,6 +146,25 @@ public static class DependencyInjection
             });
         services.AddScoped<Atendimentos.IAtendimentosService, Atendimentos.AtendimentosService>();
 
+        // ---- Módulo IA (consulta em linguagem natural) ----
+        var anthropicBaseUrl = configuration["Ia:Anthropic:BaseUrl"] ?? "https://api.anthropic.com/";
+        services.AddHttpClient<Inteligencia.Provedores.IProvedorIa, Inteligencia.Provedores.ClaudeProvedorIa>(client =>
+        {
+            client.BaseAddress = new Uri(anthropicBaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(120);
+        });
+        services.AddHttpClient<Inteligencia.Provedores.IServicoEmbeddings, Inteligencia.Provedores.VoyageEmbeddings>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(60);
+        });
+        services.AddScoped<Inteligencia.Fontes.IFonteDadosFactory, Inteligencia.Fontes.FonteDadosFactory>();
+        services.AddScoped<Inteligencia.Conhecimento.IConhecimentoService, Inteligencia.Conhecimento.ConhecimentoService>();
+        services.AddScoped<Inteligencia.Conhecimento.IRecuperadorContexto, Inteligencia.Conhecimento.RecuperadorContexto>();
+        services.AddScoped<Inteligencia.IIaService, Inteligencia.IaService>();
+        services.AddScoped<Inteligencia.Configuracao.IIaConfiguracaoService, Inteligencia.Configuracao.IaConfiguracaoService>();
+        services.AddScoped<Inteligencia.Configuracao.IIaFonteService, Inteligencia.Configuracao.IaFonteService>();
+        services.AddScoped<Inteligencia.Governanca.IIaGovernancaService, Inteligencia.Governanca.IaGovernancaService>();
+
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
         return services;
