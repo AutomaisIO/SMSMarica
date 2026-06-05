@@ -165,6 +165,14 @@ export type Diagnostico = {
   descricao?: string | null;
 };
 
+/** Medicamento prescrito (MedicationRequest) de um atendimento. */
+export type Medicamento = {
+  id: string;
+  descricao: string;
+  posologia?: string | null;
+  urgente: boolean;
+};
+
 /** Documento clínico (DocumentReference) com o conteúdo HTML pronto para exibir. */
 export type Documento = {
   id: string;
@@ -183,6 +191,7 @@ export type Atendimento = {
   medicoNome?: string | null;
   fonte?: string | null;
   diagnosticos: Diagnostico[];
+  medicamentos: Medicamento[];
   documentos: Documento[];
 };
 

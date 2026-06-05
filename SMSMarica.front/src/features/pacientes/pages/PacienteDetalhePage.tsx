@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, FileText, ListChecks, Pencil, Stethoscope } from 'lucide-react';
+import { ArrowLeft, Download, FileText, ListChecks, Pencil, Pill, Printer, Stethoscope } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Avatar } from '@/shared/ui/Avatar';
 import { Button } from '@/shared/ui/Button';
@@ -8,6 +8,7 @@ import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { Tabs, type Aba } from '@/shared/ui/Tabs';
 import { useAtendimentosPaciente, usePacientePorId } from '@/features/pacientes/api/queries';
+import { abrirImpressaoDocumento, EDOC_CSS } from '@/features/pacientes/lib/imprimirDocumento';
 import type { Atendimento, Documento, Paciente } from '@/features/pacientes/types';
 import { useListarTratamentos } from '@/features/tratamentos/api/queries';
 import { formatarDataBr } from '@/features/tratamentos/lib/expansor';
@@ -255,10 +256,53 @@ function corTipoAtendimento(tipo: string): string {
   return 'bg-blue-100 text-blue-700';
 }
 
-function SecaoAtendimentos({ pacienteId }: { pacienteId: string }) {
+type DocAberto = { atendimento: Atendimento; doc: Documento };
+
+function SecaoMedicamentos({ atendimento }: { atendimento: Atendimento }) {
+  if (atendimento.medicamentos.length === 0) return null;
+  return (
+    <div className="mt-3 border-t border-gray-100 pt-2">
+      <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
+        <Pill className="h-3.5 w-3.5" /> Medicamentos
+      </div>
+      <ul className="space-y-1">
+        {atendimento.medicamentos.map((m) => (
+          <li key={m.id} className="flex flex-wrap items-baseline gap-x-2 text-sm">
+            {m.urgente ? (
+              <span className="rounded border border-red-200 px-1 text-[10px] font-bold uppercase text-red-700">
+                Urgente
+              </span>
+            ) : null}
+            <span className="font-medium text-gray-900">{m.descricao}</span>
+            {m.posologia ? <span className="text-xs text-gray-500">{m.posologia}</span> : null}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function SecaoAtendimentos({ pacienteId, paciente }: { pacienteId: string; paciente: Paciente }) {
   const q = useAtendimentosPaciente(pacienteId);
   const lista: Atendimento[] = q.data ?? [];
-  const [docAberto, setDocAberto] = useState<Documento | null>(null);
+  const [docAberto, setDocAberto] = useState<DocAberto | null>(null);
+
+  function imprimir({ atendimento, doc }: DocAberto) {
+    abrirImpressaoDocumento({
+      pacienteNome: paciente.nomeCompleto,
+      pacienteCpf: paciente.cpf,
+      atendimentoTipo: atendimento.tipo,
+      atendimentoData: formatarDataHora(atendimento.inicio),
+      medicoNome: atendimento.medicoNome,
+      documentoTitulo: doc.tipo,
+      conteudoHtml: doc.conteudoHtml,
+      medicamentos: atendimento.medicamentos.map((m) => ({
+        descricao: m.descricao,
+        posologia: m.posologia,
+        urgente: m.urgente,
+      })),
+    });
+  }
 
   if (q.isLoading) {
     return <div className="text-sm text-gray-500">Carregando atendimentos…</div>;
@@ -314,13 +358,14 @@ function SecaoAtendimentos({ pacienteId }: { pacienteId: string }) {
               ))}
             </div>
           ) : null}
+          <SecaoMedicamentos atendimento={a} />
           {a.documentos.length > 0 ? (
             <div className="mt-3 flex flex-wrap gap-1.5 border-t border-gray-100 pt-2">
               {a.documentos.map((doc) => (
                 <button
                   key={doc.id}
                   type="button"
-                  onClick={() => setDocAberto(doc)}
+                  onClick={() => setDocAberto({ atendimento: a, doc })}
                   className="inline-flex items-center gap-1 rounded border border-gray-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50"
                 >
                   <FileText className="h-3.5 w-3.5" /> {doc.tipo}
@@ -334,15 +379,26 @@ function SecaoAtendimentos({ pacienteId }: { pacienteId: string }) {
       <Modal
         aberto={docAberto !== null}
         aoFechar={() => setDocAberto(null)}
-        titulo={docAberto?.tipo ?? 'Documento'}
+        titulo={docAberto?.doc.tipo ?? 'Documento'}
         largura="lg"
       >
         {docAberto ? (
-          <div
-            className="prose prose-sm max-w-none text-gray-800 [&_h3]:mt-0 [&_strong]:text-gray-900"
-            // Conteúdo remontado no importador, com valores já escapados (montar_html).
-            dangerouslySetInnerHTML={{ __html: docAberto.conteudoHtml }}
-          />
+          <>
+            <style>{EDOC_CSS}</style>
+            <div className="mb-4 flex flex-wrap gap-2 border-b border-gray-100 pb-3">
+              <Button variante="outline" tamanho="sm" onClick={() => imprimir(docAberto)}>
+                <Printer className="h-4 w-4" /> Imprimir
+              </Button>
+              <Button variante="outline" tamanho="sm" onClick={() => imprimir(docAberto)}>
+                <Download className="h-4 w-4" /> Baixar PDF
+              </Button>
+            </div>
+            <div
+              className="edoc-render"
+              // Conteúdo remontado no importador, com valores já escapados (montar_html).
+              dangerouslySetInnerHTML={{ __html: docAberto.doc.conteudoHtml }}
+            />
+          </>
         ) : null}
       </Modal>
     </>
@@ -397,7 +453,7 @@ export function PacienteDetalhePage() {
 
   const abas: Aba[] = p ? [
     { id: 'identificacao', rotulo: 'Identificação', conteudo: <SecaoIdentificacao p={p} /> },
-    { id: 'atendimentos', rotulo: 'Atendimentos', conteudo: <SecaoAtendimentos pacienteId={id} /> },
+    { id: 'atendimentos', rotulo: 'Atendimentos', conteudo: <SecaoAtendimentos pacienteId={id} paciente={p} /> },
     { id: 'filiacao', rotulo: 'Filiação', conteudo: <SecaoFiliacao p={p} /> },
     { id: 'endereco', rotulo: 'Endereço', conteudo: <SecaoEndereco p={p} /> },
     { id: 'contatos', rotulo: 'Contatos', conteudo: <SecaoContatos p={p} /> },
