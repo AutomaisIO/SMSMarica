@@ -24,4 +24,9 @@
     <PackageReference Include="Oracle.ManagedDataAccess.Core" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Bases de conhecimento (.md) do módulo IA: copiadas para a saída p/ sync/embeddings. -->
+    <Content Include="Inteligencia/Conhecimento/Bases/**/*.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
