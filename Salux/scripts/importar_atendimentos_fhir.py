@@ -16,6 +16,7 @@ from __future__ import annotations
 import base64
 import html as _html
 import json
+import time
 import urllib.request
 
 from conexao import executar_json, executar_texto
@@ -45,18 +46,27 @@ def dt(v):
 
 def http(method, path, body=None):
     data = json.dumps(body).encode() if body is not None else None
-    req = urllib.request.Request(HUB + path, data=data, method=method)
-    req.add_header("Accept", "application/fhir+json")
-    if data:
-        req.add_header("Content-Type", "application/fhir+json")
-    try:
-        with urllib.request.urlopen(req, timeout=30) as r:
-            raw = r.read().decode()
-            return r.status, (json.loads(raw) if raw.strip() else {})
-    except urllib.error.HTTPError as e:
-        corpo = e.read().decode(errors="replace")
-        print(f"  !! {method} {path} -> HTTP {e.code}: {corpo[:500]}")
-        raise
+    # Hub é HTTP público; reinício de deploy/blip de rede derruba um POST no meio.
+    # Retry só em falha de conexão/timeout (URLError); HTTPError é resposta real.
+    for tentativa in range(4):
+        req = urllib.request.Request(HUB + path, data=data, method=method)
+        req.add_header("Accept", "application/fhir+json")
+        if data:
+            req.add_header("Content-Type", "application/fhir+json")
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                raw = r.read().decode()
+                return r.status, (json.loads(raw) if raw.strip() else {})
+        except urllib.error.HTTPError as e:
+            corpo = e.read().decode(errors="replace")
+            print(f"  !! {method} {path} -> HTTP {e.code}: {corpo[:500]}")
+            raise
+        except urllib.error.URLError as e:
+            if tentativa == 3:
+                raise
+            espera = 3 * (tentativa + 1)
+            print(f"  .. {method} {path} falhou ({e.reason}); retry em {espera}s")
+            time.sleep(espera)
 
 
 def pacientes_do_hub():
