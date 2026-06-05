@@ -141,7 +141,7 @@ const SECOES: SecaoMenu[] = [
     titulo: 'Inteligência',
     icone: Sparkles,
     itens: [
-      { rotulo: 'IA', to: '/app/ia', icone: Sparkles, modulo: 'Inteligencia' },
+      { rotulo: 'IA', to: '/app/ia', icone: Sparkles, modulo: 'Inteligencia', end: true },
       {
         rotulo: 'Configuração IA',
         to: '/app/ia/configuracao',
