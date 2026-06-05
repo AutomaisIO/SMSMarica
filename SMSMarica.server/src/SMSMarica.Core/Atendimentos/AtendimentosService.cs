@@ -15,6 +15,7 @@ public sealed class AtendimentosService(IEncounterFhirClient fhir) : IAtendiment
     {
         var encBundle = await fhir.BuscarEncountersAsync(pacienteId, cancellationToken);
         var condBundle = await fhir.BuscarConditionsAsync(pacienteId, cancellationToken);
+        var medBundle = await fhir.BuscarMedicationRequestsAsync(pacienteId, cancellationToken);
         var docBundle = await fhir.BuscarDocumentsAsync(pacienteId, cancellationToken);
 
         // Agrupa diagnósticos por id do Encounter referenciado.
@@ -23,6 +24,14 @@ public sealed class AtendimentosService(IEncounterFhirClient fhir) : IAtendiment
             .OfType<Condition>()
             .Where(c => c.Encounter?.Reference is not null)
             .GroupBy(c => IdDaReferencia(c.Encounter!.Reference!))
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        // Agrupa medicamentos (MedicationRequest) por id do Encounter referenciado.
+        var medsPorEncounter = medBundle.Entry
+            .Select(e => e.Resource)
+            .OfType<MedicationRequest>()
+            .Where(m => m.Encounter?.Reference is not null)
+            .GroupBy(m => IdDaReferencia(m.Encounter!.Reference!))
             .ToDictionary(g => g.Key, g => g.ToList());
 
         // Agrupa documentos por id do Encounter referenciado (context.encounter).
@@ -43,6 +52,16 @@ public sealed class AtendimentosService(IEncounterFhirClient fhir) : IAtendiment
                     c.Code?.Text ?? c.Code?.Coding?.FirstOrDefault()?.Display)).ToList()
                 : [];
 
+            var medicamentos = medsPorEncounter.TryGetValue(enc.Id!, out var meds)
+                ? meds.Select(m => new MedicamentoDto(
+                    Guid.Parse(m.Id!),
+                    (m.Medication as CodeableConcept)?.Text
+                        ?? (m.Medication as CodeableConcept)?.Coding?.FirstOrDefault()?.Display
+                        ?? "Medicamento",
+                    m.DosageInstruction?.FirstOrDefault()?.Text,
+                    m.Priority == RequestPriority.Urgent)).ToList()
+                : [];
+
             var documentos = docsPorEncounter.TryGetValue(enc.Id!, out var docs)
                 ? docs.Select(d => new DocumentoDto(
                     Guid.Parse(d.Id!),
@@ -60,6 +79,7 @@ public sealed class AtendimentosService(IEncounterFhirClient fhir) : IAtendiment
                 enc.Participant?.FirstOrDefault()?.Individual?.Display,
                 enc.Meta?.Source,
                 diagnosticos,
+                medicamentos,
                 documentos));
         }
 

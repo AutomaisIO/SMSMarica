@@ -11,6 +11,9 @@ public sealed class EncounterFhirClient(HttpClient http) : IEncounterFhirClient
     public Task<Bundle> BuscarConditionsAsync(Guid pacienteId, CancellationToken ct = default) =>
         BuscarAsync($"fhir/Condition?patient={pacienteId}", ct);
 
+    public Task<Bundle> BuscarMedicationRequestsAsync(Guid pacienteId, CancellationToken ct = default) =>
+        BuscarAsync($"fhir/MedicationRequest?patient={pacienteId}", ct);
+
     public Task<Bundle> BuscarDocumentsAsync(Guid pacienteId, CancellationToken ct = default) =>
         BuscarAsync($"fhir/DocumentReference?patient={pacienteId}", ct);
 
