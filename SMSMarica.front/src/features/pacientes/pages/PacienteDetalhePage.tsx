@@ -21,6 +21,7 @@ import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { Tabs, type Aba } from '@/shared/ui/Tabs';
 import { useAtendimentosPaciente, usePacientePorId } from '@/features/pacientes/api/queries';
+import { SinaisVitaisTendencia } from '@/features/pacientes/components/SinaisVitaisTendencia';
 import { abrirImpressaoDocumento, EDOC_CSS } from '@/features/pacientes/lib/imprimirDocumento';
 import type { Atendimento, Documento, Paciente } from '@/features/pacientes/types';
 import { useListarTratamentos } from '@/features/tratamentos/api/queries';
@@ -589,6 +590,7 @@ type Vista = 'resumo' | 'atendimentos' | 'tratamentos' | 'dados';
 function ResumoPaciente({
   p,
   stats,
+  atendimentos,
   carregandoAtend,
   qtdTratamentos,
   tratamentosAtivos,
@@ -596,6 +598,7 @@ function ResumoPaciente({
 }: {
   p: Paciente;
   stats: EstatisticasAtendimentos;
+  atendimentos: Atendimento[];
   carregandoAtend: boolean;
   qtdTratamentos: number;
   tratamentosAtivos: number;
@@ -662,6 +665,8 @@ function ResumoPaciente({
           }
         />
       </div>
+
+      <SinaisVitaisTendencia atendimentos={atendimentos} />
 
       <div className="grid gap-4 lg:grid-cols-3">
         <CartaoBloco titulo="Dados gerais">
@@ -916,6 +921,7 @@ export function PacienteDetalhePage() {
             <ResumoPaciente
               p={p}
               stats={stats}
+              atendimentos={atendimentos.data ?? []}
               carregandoAtend={atendimentos.isLoading}
               qtdTratamentos={listaTratamentos.length}
               tratamentosAtivos={tratamentosAtivos}
