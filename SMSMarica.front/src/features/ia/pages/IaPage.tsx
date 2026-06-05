@@ -1,50 +1,83 @@
-import { useState } from 'react';
-import { Loader2, Send, Sparkles } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Loader2, Send, Sparkles, Trash2 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { SeletorFontes } from '@/features/ia/components/SeletorFontes';
 import { RespostaRenderer } from '@/features/ia/components/RespostaRenderer';
-import {
-  useFontes,
-  usePerguntar,
-  useReportarRespostaErrada,
-} from '@/features/ia/api/queries';
+import { useFontes, usePerguntar, useReportarRespostaErrada } from '@/features/ia/api/queries';
+import { useHistoricoIa } from '@/features/ia/store/historicoIa';
 import type { RespostaIa } from '@/features/ia/types';
+
+function novoId(): string {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+  }
+}
+
+function formatarQuando(ms: number): string {
+  const d = new Date(ms);
+  return d.toLocaleString('pt-BR', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+}
 
 export function IaPage() {
   const fontes = useFontes();
   const perguntar = usePerguntar();
   const reportar = useReportarRespostaErrada();
 
-  const [selecionadas, setSelecionadas] = useState<string[]>([]);
+  const {
+    interacoes,
+    fontesSelecionadas,
+    reportadas,
+    adicionar,
+    limpar,
+    marcarReportada,
+    setFontesSelecionadas,
+  } = useHistoricoIa();
+
   const [pergunta, setPergunta] = useState('');
-  const [respostas, setRespostas] = useState<RespostaIa[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
-  const [reportadas, setReportadas] = useState<Record<string, boolean>>({});
+
+  // Remove da seleção persistida bases que não existem mais (ex.: removidas).
+  useEffect(() => {
+    if (!fontes.data) return;
+    const validas = fontesSelecionadas.filter((id) => fontes.data.some((f) => f.id === id));
+    if (validas.length !== fontesSelecionadas.length) setFontesSelecionadas(validas);
+  }, [fontes.data, fontesSelecionadas, setFontesSelecionadas]);
 
   const podeEnviar =
-    pergunta.trim().length > 0 && selecionadas.length > 0 && !perguntar.isPending;
+    pergunta.trim().length > 0 && fontesSelecionadas.length > 0 && !perguntar.isPending;
 
   function aoEnviar(e: React.FormEvent) {
     e.preventDefault();
     if (!podeEnviar) return;
     setErro(null);
+    const texto = pergunta.trim();
     perguntar.mutate(
-      { pergunta: pergunta.trim(), fonteIds: selecionadas },
+      { pergunta: texto, fonteIds: fontesSelecionadas },
       {
-        onSuccess: (data) => setRespostas(data.respostas),
-        onError: (err) => {
-          setRespostas(null);
-          setErro(extrairMensagemDeErro(err));
+        onSuccess: (data) => {
+          adicionar({
+            id: novoId(),
+            pergunta: texto,
+            fonteIds: fontesSelecionadas,
+            criadoEm: Date.now(),
+            respostas: data.respostas,
+          });
+          setPergunta('');
         },
+        onError: (err) => setErro(extrairMensagemDeErro(err)),
       },
     );
   }
 
   function aoReportarErro(resposta: RespostaIa) {
     reportar.mutate({ consultaId: resposta.consultaId });
-    setReportadas((r) => ({ ...r, [resposta.consultaId]: true }));
+    marcarReportada(resposta.consultaId);
   }
 
   return (
@@ -64,8 +97,8 @@ export function IaPage() {
         <Campo label="Bases consultadas" htmlFor="ia-fontes" required>
           <SeletorFontes
             fontes={fontes.data ?? []}
-            selecionadas={selecionadas}
-            onChange={setSelecionadas}
+            selecionadas={fontesSelecionadas}
+            onChange={setFontesSelecionadas}
             carregando={fontes.isPending}
           />
         </Campo>
@@ -109,23 +142,40 @@ export function IaPage() {
         </div>
       ) : null}
 
-      {respostas ? (
-        respostas.length === 0 ? (
-          <p className="text-sm text-gray-500">Nenhuma resposta retornada.</p>
-        ) : (
-          <div className="space-y-4">
-            {respostas.map((r) => (
-              <div key={r.consultaId} className="space-y-1">
-                <RespostaRenderer resposta={r} onReportarErro={aoReportarErro} />
-                {reportadas[r.consultaId] ? (
-                  <p className="px-1 text-xs text-gray-500">
-                    Obrigado pelo retorno — sinalizamos esta resposta para revisão.
-                  </p>
-                ) : null}
-              </div>
-            ))}
+      {interacoes.length > 0 ? (
+        <div className="space-y-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-700">Perguntas recentes</h2>
+            <button
+              type="button"
+              onClick={limpar}
+              className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-red-700"
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Limpar histórico
+            </button>
           </div>
-        )
+
+          {interacoes.map((it) => (
+            <section key={it.id} className="space-y-2">
+              <div className="flex flex-wrap items-baseline justify-between gap-2 border-l-2 border-primary-200 pl-3">
+                <p className="text-sm font-medium text-gray-900">{it.pergunta}</p>
+                <span className="text-xs text-gray-400">{formatarQuando(it.criadoEm)}</span>
+              </div>
+              <div className="space-y-3">
+                {it.respostas.map((r) => (
+                  <div key={`${it.id}-${r.consultaId}`} className="space-y-1">
+                    <RespostaRenderer resposta={r} onReportarErro={aoReportarErro} />
+                    {reportadas[r.consultaId] ? (
+                      <p className="px-1 text-xs text-gray-500">
+                        Obrigado pelo retorno — sinalizamos esta resposta para revisão.
+                      </p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
       ) : null}
     </div>
   );

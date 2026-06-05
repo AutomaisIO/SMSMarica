@@ -4,6 +4,7 @@ import {
   ChevronDown,
   Code2,
   Database,
+  Download,
   ThumbsDown,
 } from 'lucide-react';
 import {
@@ -51,6 +52,30 @@ function texto(v: unknown): string {
 function numero(v: unknown): number {
   const n = typeof v === 'number' ? v : Number(v);
   return Number.isFinite(n) ? n : 0;
+}
+
+function celulaCsv(v: string): string {
+  return /[";\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+}
+
+/** Baixa a resposta como CSV (separador ';' + BOM, amigável ao Excel pt-BR). */
+function baixarCsv(resposta: RespostaIa): void {
+  const linhas = [
+    resposta.colunas,
+    ...resposta.dados.map((linha) => linha.map((c) => texto(c))),
+  ];
+  const csv = linhas.map((l) => l.map(celulaCsv).join(';')).join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${(resposta.titulo ?? resposta.fonteNome ?? 'resposta')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '') || 'resposta'}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function CorpoVisualizacao({ resposta }: { resposta: RespostaIa }) {
@@ -174,15 +199,28 @@ export function RespostaRenderer({ resposta, onReportarErro }: Props) {
             ) : null}
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => onReportarErro(resposta)}
-          className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:text-red-700"
-          title="Sinalizar que esta resposta está errada"
-        >
-          <ThumbsDown className="h-3.5 w-3.5" />
-          Resposta errada?
-        </button>
+        <div className="flex items-center gap-2">
+          {resposta.dados.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => baixarCsv(resposta)}
+              className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:text-primary-700"
+              title="Baixar a resposta em CSV"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Baixar
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => onReportarErro(resposta)}
+            className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:text-red-700"
+            title="Sinalizar que esta resposta está errada"
+          >
+            <ThumbsDown className="h-3.5 w-3.5" />
+            Resposta errada?
+          </button>
+        </div>
       </header>
 
       <div className="space-y-3 px-5 py-4">
