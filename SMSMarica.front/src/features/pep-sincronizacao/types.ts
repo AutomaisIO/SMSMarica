@@ -18,6 +18,7 @@ export type IniciarImportacaoPayload = {
   maxMedicos: number | null;
   maxPacientes: number | null;
   apagarAntes: boolean;
+  concorrencia: number | null;
 };
 
 export type ContadoresImportacao = {
@@ -45,6 +46,7 @@ export type StatusImportacao = {
   decorridoSegundos: number | null;
   contadores: ContadoresImportacao;
   mensagemErro: string | null;
+  ultimasFalhas: string[];
 };
 
 export type ExecucaoImportacao = {

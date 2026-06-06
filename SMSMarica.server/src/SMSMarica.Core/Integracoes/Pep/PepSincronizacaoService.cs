@@ -68,11 +68,22 @@ public sealed class PepSincronizacaoService(
             throw new ValidacaoException("pep.limites",
                 "No escopo Limitado informe ao menos um limite (médicos e/ou pacientes) maior que zero.");
 
-        // No máximo uma importação por vez.
-        if (estadoVivo.ObterAtual() is not null ||
-            await db.PepSincronizacaoExecucoes.AnyAsync(
-                e => e.Status == StatusSincronizacao.Pendente || e.Status == StatusSincronizacao.EmExecucao, ct))
+        // No máximo uma importação por vez — mas só bloqueia se há run VIVO (em memória).
+        if (estadoVivo.ObterAtual() is not null)
             throw new ConflitoException("pep.importacao_em_andamento", "Já existe uma importação em andamento. Aguarde concluir.");
+
+        // Linhas EmExecucao/Pendente sem run vivo são órfãs (processo reiniciou ou crashou na
+        // finalização) — encerra como Erro pra não travar novas importações.
+        var orfas = await db.PepSincronizacaoExecucoes
+            .Where(e => e.Status == StatusSincronizacao.Pendente || e.Status == StatusSincronizacao.EmExecucao)
+            .ToListAsync(ct);
+        foreach (var o in orfas)
+        {
+            o.Status = StatusSincronizacao.Erro;
+            o.MensagemErro ??= "Execução interrompida (órfã) — encerrada ao iniciar nova importação.";
+            o.FinalizadoEm ??= DateTime.UtcNow;
+        }
+        if (orfas.Count > 0) await db.SaveChangesAsync(ct);
 
         var execucao = new PepSincronizacaoExecucao
         {
@@ -91,7 +102,8 @@ public sealed class PepSincronizacaoService(
         db.PepSincronizacaoExecucoes.Add(execucao);
         await db.SaveChangesAsync(ct);
 
-        var opcoes = new OpcoesImportacao(request.Modo, request.Escopo, request.MaxMedicos, request.MaxPacientes, request.ApagarAntes);
+        var opcoes = new OpcoesImportacao(request.Modo, request.Escopo, request.MaxMedicos, request.MaxPacientes,
+            request.ApagarAntes, Concorrencia: request.Concorrencia);
         if (!fila.TentarEnfileirar(new PepImportacaoJob(execucao.Id, fonte.Id, opcoes, usuarioAtual.UsuarioId)))
         {
             execucao.Status = StatusSincronizacao.Erro;
@@ -114,12 +126,12 @@ public sealed class PepSincronizacaoService(
 
         if (ultima is null)
             return new StatusImportacaoDto(null, false, null, null, null, null, "Nenhuma", null, null, null, null,
-                new ContadoresImportacaoDto(0, 0, 0, 0, 0, 0, 0, 0), null);
+                new ContadoresImportacaoDto(0, 0, 0, 0, 0, 0, 0, 0), null, []);
 
         return new StatusImportacaoDto(
             ultima.Id, false, ultima.FonteId, ultima.FonteNome, ultima.Modo.ToString(), ultima.Escopo.ToString(),
             ultima.Status.ToString(), null, ultima.IniciadoEm, ultima.FinalizadoEm, ultima.DuracaoSegundos,
-            Contadores(ultima), ultima.MensagemErro);
+            Contadores(ultima), ultima.MensagemErro, []);
     }
 
     public async Task<IReadOnlyList<ExecucaoImportacaoDto>> ListarExecucoesAsync(Guid? fonteId = null, CancellationToken ct = default)

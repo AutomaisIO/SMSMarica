@@ -61,6 +61,11 @@ public sealed class PepSincronizacaoEstadoVivo
                 p.Medicos, p.Pacientes, p.Encounters, p.Conditions,
                 p.MedicationRequests, p.DocumentReferences, p.Observations, p.Falhas.Count);
 
+            // Snapshot das últimas falhas (cópia sob lock) — diagnóstico em tempo real.
+            var ultimasFalhas = p.Falhas.Count == 0
+                ? []
+                : p.Falhas.TakeLast(5).Select(f => $"cd {f.Cd}: {f.Mensagem}").ToList();
+
             return new StatusImportacaoDto(
                 ExecucaoId: _execucaoId,
                 EmExecucao: true,
@@ -74,7 +79,8 @@ public sealed class PepSincronizacaoEstadoVivo
                 FinalizadoEm: null,
                 DecorridoSegundos: _iniciadoEm is { } ini ? (DateTime.UtcNow - ini).TotalSeconds : null,
                 Contadores: contadores,
-                MensagemErro: null);
+                MensagemErro: null,
+                UltimasFalhas: ultimasFalhas);
         }
     }
 }

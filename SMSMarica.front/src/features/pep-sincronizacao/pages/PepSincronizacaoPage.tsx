@@ -32,6 +32,15 @@ function duracao(seg: number | null): string {
   return `${m}m ${s}s`;
 }
 
+function vazao(s: StatusImportacao): string {
+  const c = s.contadores;
+  const total =
+    c.medicos + c.pacientes + c.encounters + c.conditions +
+    c.medicationRequests + c.documentReferences + c.observations;
+  if (!s.decorridoSegundos || s.decorridoSegundos <= 0 || total === 0) return '—';
+  return `${(total / s.decorridoSegundos).toFixed(1)} rec/s`;
+}
+
 const CLASSE_STATUS: Record<string, string> = {
   EmExecucao: 'bg-blue-50 text-blue-700 border-blue-200',
   Concluido: 'bg-green-50 text-green-700 border-green-200',
@@ -85,6 +94,7 @@ export function PepSincronizacaoPage() {
   const [escopo, setEscopo] = useState<EscopoSincronizacao>('Limitado');
   const [maxMedicos, setMaxMedicos] = useState('10');
   const [maxPacientes, setMaxPacientes] = useState('10');
+  const [concorrencia, setConcorrencia] = useState('8');
   const [apagarAntes, setApagarAntes] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -110,6 +120,7 @@ export function PepSincronizacaoPage() {
         maxMedicos: escopo === 'Limitado' ? Number(maxMedicos) || null : null,
         maxPacientes: escopo === 'Limitado' ? Number(maxPacientes) || null : null,
         apagarAntes: modo === 'Completo' ? apagarAntes : false,
+        concorrencia: Number(concorrencia) || null,
       },
       { onError: (err) => setErro(extrairMensagemDeErro(err)) },
     );
@@ -168,6 +179,14 @@ export function PepSincronizacaoPage() {
                 </Campo>
               </>
             ) : null}
+
+            <Campo
+              label="Requisições em paralelo"
+              htmlFor="pep-conc"
+              dica="Quantas escritas simultâneas no hub (1–64). Mais = mais rápido; menos = menos memória/carga."
+            >
+              <Input id="pep-conc" type="number" min={1} max={64} value={concorrencia} onChange={(e) => setConcorrencia(e.target.value)} />
+            </Campo>
           </div>
 
           {modo === 'Completo' ? (
@@ -210,13 +229,24 @@ export function PepSincronizacaoPage() {
           <div className="mb-4 grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-4">
             <div><span className="text-gray-500">Base:</span> {status.data.fonteNome ?? '—'}</div>
             <div><span className="text-gray-500">Modo:</span> {status.data.modo ?? '—'} / {status.data.escopo ?? '—'}</div>
-            <div><span className="text-gray-500">Fase:</span> {status.data.faseAtual ?? '—'}</div>
+            <div><span className="font-medium text-gray-700">Fase:</span> <span className="font-semibold text-primary-700">{status.data.faseAtual ?? '—'}</span></div>
             <div><span className="text-gray-500">Decorrido:</span> {duracao(status.data.decorridoSegundos)}</div>
+            <div><span className="text-gray-500">Vazão:</span> {vazao(status.data)}</div>
+            {emExecucao ? <div><span className="text-gray-500">Paralelas:</span> {concorrencia}</div> : null}
             <div><span className="text-gray-500">Início:</span> {dataHora(status.data.iniciadoEm)}</div>
             <div><span className="text-gray-500">Fim:</span> {dataHora(status.data.finalizadoEm)}</div>
           </div>
 
           <PainelContadores s={status.data} />
+
+          {status.data.ultimasFalhas?.length ? (
+            <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              <div className="mb-1 font-medium">Falhas recentes ({status.data.contadores.falhas}):</div>
+              <ul className="list-disc space-y-0.5 pl-5 font-mono text-xs">
+                {status.data.ultimasFalhas.map((f, i) => (<li key={i}>{f}</li>))}
+              </ul>
+            </div>
+          ) : null}
 
           {status.data.mensagemErro ? (
             <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

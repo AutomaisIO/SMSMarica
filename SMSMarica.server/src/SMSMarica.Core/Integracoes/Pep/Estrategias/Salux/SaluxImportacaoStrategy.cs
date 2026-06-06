@@ -28,7 +28,7 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
     {
         var p = ctx.Progresso;
         var incremental = ctx.Opcoes.Modo == ModoSincronizacao.Incremental;
-        var maxConc = LerConcorrencia();
+        var maxConc = LerConcorrencia(ctx.Opcoes.Concorrencia);
         var gate = new SemaphoreSlim(maxConc);
         var falhasLock = new object();
 
@@ -421,8 +421,9 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
 
     // ---------------- utilitários ----------------
 
-    private static int LerConcorrencia()
+    private static int LerConcorrencia(int? opcao)
     {
+        if (opcao is int o && o is > 0 and <= 64) return o;
         var v = Environment.GetEnvironmentVariable("PEP_MAX_CONCORRENCIA");
         return int.TryParse(v, out var n) && n is > 0 and <= 64 ? n : 8;
     }
@@ -475,7 +476,9 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
     private static void AtualizarMax(ref DateTime? atual, string? dataIso)
     {
         if (string.IsNullOrWhiteSpace(dataIso)) return;
-        if (DateTime.TryParse(dataIso, CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)
+        // AdjustToUniversal => Kind=Utc (a string traz offset -03:00); timestamptz no Postgres exige UTC.
+        if (DateTime.TryParse(dataIso, CultureInfo.InvariantCulture,
+                DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var d)
             && (atual is null || d > atual))
             atual = d;
     }

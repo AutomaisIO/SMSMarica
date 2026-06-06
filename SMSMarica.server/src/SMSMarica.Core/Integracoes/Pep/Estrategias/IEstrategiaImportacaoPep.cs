@@ -35,7 +35,8 @@ public sealed record OpcoesImportacao(
     int? MaxMedicos,
     int? MaxPacientes,
     bool ApagarAntes,
-    IReadOnlyList<long>? CdsPacientes = null);
+    IReadOnlyList<long>? CdsPacientes = null,
+    int? Concorrencia = null);
 
 /// <summary>
 /// Marca d'água por entidade (in/out). No modo incremental a estratégia usa os valores de

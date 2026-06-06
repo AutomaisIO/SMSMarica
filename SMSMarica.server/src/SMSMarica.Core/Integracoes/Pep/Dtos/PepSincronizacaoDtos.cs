@@ -18,7 +18,8 @@ public sealed record IniciarImportacaoRequest(
     EscopoSincronizacao Escopo,
     int? MaxMedicos,
     int? MaxPacientes,
-    bool ApagarAntes);
+    bool ApagarAntes,
+    int? Concorrencia);
 
 /// <summary>Contadores por tipo de recurso de uma execução.</summary>
 public sealed record ContadoresImportacaoDto(
@@ -47,7 +48,8 @@ public sealed record StatusImportacaoDto(
     DateTime? FinalizadoEm,
     double? DecorridoSegundos,
     ContadoresImportacaoDto Contadores,
-    string? MensagemErro);
+    string? MensagemErro,
+    IReadOnlyList<string> UltimasFalhas);
 
 /// <summary>Item do histórico de execuções.</summary>
 public sealed record ExecucaoImportacaoDto(

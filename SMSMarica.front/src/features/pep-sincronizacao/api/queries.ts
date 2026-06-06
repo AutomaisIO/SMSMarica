@@ -17,12 +17,12 @@ export function useBasesPep() {
   return useQuery({ queryKey: pepKeys.bases, queryFn: listarBasesPep });
 }
 
-/** Status com polling: 2s enquanto há run vivo, senão a cada 15s. */
+/** Status com polling em tempo real: 1s enquanto há run vivo, senão a cada 15s. */
 export function useStatusPep() {
   return useQuery({
     queryKey: pepKeys.status,
     queryFn: obterStatusPep,
-    refetchInterval: (query) => (query.state.data?.emExecucao ? 2000 : 15000),
+    refetchInterval: (query) => (query.state.data?.emExecucao ? 1000 : 15000),
   });
 }
 
