@@ -18,8 +18,10 @@ public sealed class SaluxOracleFonte : IFonteDados
     private readonly int _commandTimeoutSegundos;
     private readonly int _maxLinhas;
 
-    private const int MaxTentativas = 3;
-    private const int IntervaloSegundos = 3;
+    // Interativo: janela CURTA (1 retry). Pega um pisca rápido sem pendurar o usuário ~30s.
+    // (O retry longo/persistente fica no importador em background, não aqui.)
+    private const int MaxTentativas = 2;
+    private const int IntervaloSegundos = 2;
 
     // Erros transitórios de conexão (túnel/pool/listener) — fazem retry. SQL inválido NÃO entra aqui.
     private static readonly int[] CodigosTransitorios =
@@ -46,7 +48,7 @@ public sealed class SaluxOracleFonte : IFonteDados
             DataSource = dataSource,
             UserID = usuario,
             Password = senha,
-            ConnectionTimeout = 8, // connect curto: falha rápido e deixa o retry cadenciar
+            ConnectionTimeout = 6, // connect curto: interativo falha rápido (não pendura o usuário)
         };
 
         _connectionString = builder.ConnectionString;
