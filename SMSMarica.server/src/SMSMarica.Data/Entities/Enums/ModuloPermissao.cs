@@ -48,4 +48,7 @@ public enum ModuloPermissao
 
     /// <summary>Equipamentos das unidades (recurso agendável para exames de imagem).</summary>
     Equipamentos = 26,
+
+    /// <summary>Sincronização/importação de prontuários de PEPs (Salux e futuros) para o hub FHIR.</summary>
+    SincronizacaoPep = 27,
 }

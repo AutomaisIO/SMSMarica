@@ -27,7 +27,8 @@ export type ModuloPermissao =
   | 'Equipamentos'
   | 'Agendamentos'
   | 'Sisreg'
-  | 'SisregConfiguracao';
+  | 'SisregConfiguracao'
+  | 'SincronizacaoPep';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 

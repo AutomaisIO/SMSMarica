@@ -11,6 +11,7 @@ import {
   BookOpen,
   ClipboardCheck,
   ClipboardList,
+  DatabaseZap,
   HeartPulse,
   FileCog,
   FileText,
@@ -157,6 +158,19 @@ const SECOES: SecaoMenu[] = [
         to: '/app/laudo-templates',
         icone: FileCog,
         modulo: 'LaudosTemplates',
+      },
+    ],
+  },
+  {
+    id: 'pep-sincronizacao',
+    titulo: 'Sincronização PEP',
+    icone: DatabaseZap,
+    itens: [
+      {
+        rotulo: 'Importar prontuários',
+        to: '/app/pep-sincronizacao',
+        icone: DatabaseZap,
+        modulo: 'SincronizacaoPep',
       },
     ],
   },

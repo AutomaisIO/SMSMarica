@@ -52,6 +52,7 @@ import { AgendasPage } from '@/features/agendamentos/pages/AgendasPage';
 import { AgendaDetalhePage } from '@/features/agendamentos/pages/AgendaDetalhePage';
 import { SisregConsultaPage } from '@/features/sisreg/pages/SisregConsultaPage';
 import { SisregConfiguracaoPage } from '@/features/sisreg/pages/SisregConfiguracaoPage';
+import { PepSincronizacaoPage } from '@/features/pep-sincronizacao/pages/PepSincronizacaoPage';
 import { useAuth } from '@/shared/auth/authStore';
 
 function RedirecionamentoRaiz() {
@@ -132,6 +133,7 @@ export function AppRouter() {
           <Route path="agendas/:id" element={<AgendaDetalhePage />} />
           <Route path="sisreg" element={<SisregConsultaPage />} />
           <Route path="sisreg/configuracao" element={<SisregConfiguracaoPage />} />
+          <Route path="pep-sincronizacao" element={<PepSincronizacaoPage />} />
         </Route>
       </Route>
 

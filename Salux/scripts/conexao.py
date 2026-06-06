@@ -23,7 +23,25 @@ import pathlib
 import re
 import subprocess
 import tempfile
+import time
 from typing import Any
+
+# Erros transitórios de rede/listener — fazem retry com backoff (não são bug de
+# query). Surgem sob carga: abrir um sqlplus por query gera milhares de conexões
+# sequenciais e o listener/servidor às vezes recusa ou estoura timeout.
+_ERROS_TRANSITORIOS = (
+    "ORA-12170",  # TNS:Connect timeout occurred
+    "ORA-28547",  # connection to server failed, probable Oracle Net admin error
+    "ORA-12541",  # TNS:no listener
+    "ORA-12537",  # TNS:connection closed
+    "ORA-12514",  # listener não conhece o serviço (transitório em failover)
+    "ORA-03113",  # end-of-file on communication channel
+    "ORA-03114",  # not connected to ORACLE
+    "ORA-12535",  # TNS:operation timed out
+    "ORA-12170",
+    "SP2-0751",   # Unable to connect to Oracle (acompanha os ORA acima)
+)
+_MAX_TENTATIVAS = 5
 
 from dotenv import load_dotenv
 
@@ -80,6 +98,10 @@ def _aplicar_binds(sql: str, binds: dict[str, Any] | None) -> str:
     return re.sub(r":([A-Za-z_][A-Za-z0-9_]*)", _sub, sql)
 
 
+def _eh_transitorio(saida: str) -> bool:
+    return any(cod in saida for cod in _ERROS_TRANSITORIOS)
+
+
 def _rodar_sqlplus(script: str, modo: str = "obs", timeout: int = 60) -> str:
     user, password, dsn = _credenciais(modo)
     with tempfile.NamedTemporaryFile(
@@ -91,21 +113,39 @@ def _rodar_sqlplus(script: str, modo: str = "obs", timeout: int = 60) -> str:
         env = os.environ.copy()
         env["NLS_LANG"] = env.get("NLS_LANG", ".AL32UTF8")
         env["TNS_ADMIN"] = env.get("TNS_ADMIN", r"C:\Salux\TNS_ADMIN")
-        proc = subprocess.run(
-            [_SQLPLUS, "-L", "-S", f"{user}/{password}@{dsn}", f"@{sql_file}"],
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
-            env=env, timeout=timeout,
-        )
+        ultimo_erro = ""
+        for tentativa in range(1, _MAX_TENTATIVAS + 1):
+            try:
+                proc = subprocess.run(
+                    [_SQLPLUS, "-L", "-S", f"{user}/{password}@{dsn}", f"@{sql_file}"],
+                    capture_output=True, text=True, encoding="utf-8", errors="replace",
+                    env=env, timeout=timeout,
+                )
+            except subprocess.TimeoutExpired:
+                # Timeout do próprio processo = também transitório sob carga.
+                ultimo_erro = f"subprocess timeout ({timeout}s)"
+                if tentativa < _MAX_TENTATIVAS:
+                    time.sleep(min(2 ** tentativa, 30))
+                    continue
+                raise RuntimeError(f"sqlplus excedeu {timeout}s após {tentativa} tentativas")
+
+            if proc.returncode == 0:
+                return proc.stdout
+
+            ultimo_erro = (
+                f"exit {proc.returncode}:\nSTDOUT:\n{proc.stdout}\nSTDERR:\n{proc.stderr}"
+            )
+            # Só faz retry em erro transitório de conexão; erro de SQL aborta já.
+            if tentativa < _MAX_TENTATIVAS and _eh_transitorio(proc.stdout + proc.stderr):
+                time.sleep(min(2 ** tentativa, 30))
+                continue
+            break
     finally:
         try:
             os.unlink(sql_file)
         except OSError:
             pass
-    if proc.returncode != 0:
-        raise RuntimeError(
-            f"sqlplus falhou (exit {proc.returncode}):\nSTDOUT:\n{proc.stdout}\nSTDERR:\n{proc.stderr}"
-        )
-    return proc.stdout
+    raise RuntimeError(f"sqlplus falhou ({ultimo_erro})")
 
 
 def executar_json(sql: str, binds: dict[str, Any] | None = None, modo: str = "obs", timeout: int = 60) -> list[dict]:

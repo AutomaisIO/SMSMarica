@@ -28,7 +28,7 @@ Always read the canonical documentation in [`docs/`](./docs/) before making arch
 | [`docs/conventions.md`](./docs/conventions.md) | Git, commits, estilo por stack |
 | [`docs/roadmap.md`](./docs/roadmap.md) | Marcos M1..M7 e dependências |
 | [`docs/pacs.md`](./docs/pacs.md) | Servidor de imagens (dcm4chee-arc), DICOMweb, integração com `features/pacs` |
-| [`docs/adr/`](./docs/adr/) | Decisões arquiteturais registradas (0001 schema, 0003 Android-only, 0004 três projetos, 0005 usuário unificado, 0006 papel derivado, **0007 schema FHIR separado**, **0008 mapeamento clínico FHIR**, **0009 identidade e proveniência multi-PEP**, **0010 serviço FHIR autônomo (Automais.Fhir)**, **0011 módulo IA (consulta em linguagem natural multi-alvo)**, **0012 agendamento local + integração SISREG só-leitura**, **0013 agenda multi-recurso (especialidade/médico/equipamento)**) |
+| [`docs/adr/`](./docs/adr/) | Decisões arquiteturais registradas (0001 schema, 0003 Android-only, 0004 três projetos, 0005 usuário unificado, 0006 papel derivado, **0007 schema FHIR separado**, **0008 mapeamento clínico FHIR**, **0009 identidade e proveniência multi-PEP**, **0010 serviço FHIR autônomo (Automais.Fhir)**, **0011 módulo IA (consulta em linguagem natural multi-alvo)**, **0012 agendamento local + integração SISREG só-leitura**, **0013 agenda multi-recurso (especialidade/médico/equipamento)**, **0014 importação de PEPs no backend (canal Oracle persistente, multi-base)**) |
 
 Plano de implementação: `C:\Users\berna\.claude\plans\deep-gathering-kahn.md`.
 

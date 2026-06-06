@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Agendamentos;
 using SMSMarica.Data.Entities.Ia;
+using SMSMarica.Data.Entities.Pep;
 using SMSMarica.Data.Entities.Sisreg;
 
 namespace SMSMarica.Data;
@@ -48,6 +49,10 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
 
     // Integração SISREG (feed de leitura) — ADR-0012
     public DbSet<SisregConfiguracao> SisregConfiguracoes => Set<SisregConfiguracao>();
+
+    // Sincronização de PEPs (importação Salux/outros → hub FHIR) — ADR-0014
+    public DbSet<PepSincronizacaoExecucao> PepSincronizacaoExecucoes => Set<PepSincronizacaoExecucao>();
+    public DbSet<PepSincronizacaoEstado> PepSincronizacaoEstados => Set<PepSincronizacaoEstado>();
 
     // Domínio de Agendamento (Especialidade → Agenda → Agendamento) — ADR-0012/0013
     public DbSet<Especialidade> Especialidades => Set<Especialidade>();

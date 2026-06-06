@@ -33,8 +33,7 @@ SYS_UCUM = "http://unitsofmeasure.org"
 SYS_OBS_CAT = "http://terminology.hl7.org/CodeSystem/observation-category"
 S_RISCO = "urn:salux:classificacao-risco"  # cor da triagem (Manchester) do BAA
 S_PAC = "urn:salux:cd_paciente"
-LIMITE_POR_PACIENTE = 30
-LIMITE_DOCS = 15
+# Sem teto: importa TODOS os BAAs e TODOS os eDocs (BAU) de cada paciente.
 
 
 def s(v):
@@ -110,7 +109,7 @@ def baa_do_paciente(cd):
             SELECT * FROM infosaude.baa
             WHERE cd_paciente = {int(cd)}
             ORDER BY dt_atendimento DESC NULLS LAST
-        ) b WHERE ROWNUM <= {LIMITE_POR_PACIENTE}
+        ) b
         """,
         modo="supervisor",
     )
@@ -237,7 +236,7 @@ def edoc_do_paciente(cd):
             SELECT * FROM infosaude.edoc_movimento
             WHERE cd_paciente = {int(cd)} AND nr_baa IS NOT NULL
             ORDER BY dt_episodio DESC NULLS LAST
-        ) mov WHERE ROWNUM <= {LIMITE_DOCS}
+        ) mov
         """,
         modo="supervisor",
     )
@@ -493,56 +492,78 @@ def observations_de_vitais(v, patient_ref, enc_ref):
 def main():
     pacientes = pacientes_do_hub()
     print(f"Pacientes no hub: {len(pacientes)}")
+    inicio = time.time()
     tot_enc = tot_cond = tot_doc = tot_med = tot_obs = 0
+    falhas = []
     for fhir_id, cd in pacientes:
-        purgar_paciente(fhir_id)
-        patient_ref = f"Patient/{fhir_id}"
-        enc_por_baa = {}
-        n_enc = n_cond = n_doc = n_med = n_obs = 0
-        for b in baa_do_paciente(cd):
-            _, criado = http("POST", "/fhir/Encounter", build_encounter(b, patient_ref))
-            enc_ref = f"Encounter/{criado.get('id')}"
-            enc_por_baa[f"{b['h']}-{b['ano']}-{b['nr']}"] = enc_ref
-            n_enc += 1
-            cond = build_condition(b, patient_ref, enc_ref)
-            if cond:
-                http("POST", "/fhir/Condition", cond)
-                n_cond += 1
-            # Prescrição/medicação do atendimento -> MedicationRequest (1 por item).
-            authored = dt(b.get("dt_atend")) or dt(b.get("dt_cheg"))
-            for item in prescricao_do_baa(b["h"], b["ano"], b["nr"]):
-                http("POST", "/fhir/MedicationRequest",
-                     build_medication_request(item, patient_ref, enc_ref, authored))
-                n_med += 1
-            # Classificação de risco (cor da triagem) -> Observation (survey).
-            # Os SINAIS VITAIS vêm do eDoc de acolhimento (ver loop de documentos
-            # abaixo), não de SINAIS_VITAIS — que é incompleto.
-            cor = s(b.get("risco_ds"))
-            if cor:
-                http("POST", "/fhir/Observation",
-                     build_obs_risco(patient_ref, enc_ref, dt(b.get("dt_cheg")) or dt(b.get("dt_atend")), cor))
-                n_obs += 1
-        for doc in edoc_do_paciente(cd):
-            enc_ref = enc_por_baa.get(s(doc.get("baa")))
-            if not enc_ref:
-                continue  # documento de um BAA fora dos atendimentos importados
-            itens = itens_do_documento(doc["h"], doc["ano"], doc["idm"])
-            html_str = montar_html(doc.get("modelo"), itens)
-            http("POST", "/fhir/DocumentReference", build_docref(doc, html_str, patient_ref, enc_ref))
-            n_doc += 1
-            # Sinais vitais do acolhimento (eDoc) -> Observation (vital-signs).
-            for o in observations_de_edoc(itens, patient_ref, enc_ref, dt(doc.get("dt"))):
-                http("POST", "/fhir/Observation", o)
-                n_obs += 1
+        tp = time.time()
+        try:
+            n_enc, n_cond, n_doc, n_med, n_obs = _importar_paciente(fhir_id, cd, tp)
+        except Exception as exc:  # noqa: BLE001 — benchmark não pode abortar por 1 paciente
+            falhas.append((cd, str(exc).splitlines()[0][:160]))
+            print(f"  cd_paciente={cd}: FALHOU ({time.time()-tp:.1f}s) — {str(exc).splitlines()[0][:160]}")
+            continue
         tot_enc += n_enc
         tot_cond += n_cond
         tot_doc += n_doc
         tot_med += n_med
         tot_obs += n_obs
-        print(f"  cd_paciente={cd}: {n_enc} atend., {n_cond} diag., {n_doc} docs, "
-              f"{n_med} medic., {n_obs} obs.")
+    dur = time.time() - inicio
+    n = len(pacientes)
     print(f"\nTotal: {tot_enc} Encounters, {tot_cond} Conditions, "
           f"{tot_doc} DocumentReferences, {tot_med} MedicationRequests, {tot_obs} Observations")
+    print(f"Tempo: {dur:.1f}s para {n} pacientes "
+          f"({dur/max(n,1):.1f}s/paciente; {dur/max(tot_enc,1):.2f}s/BAA importado)")
+    if falhas:
+        print(f"\nFalhas ({len(falhas)}):")
+        for cd, msg in falhas:
+            print(f"  cd_paciente={cd}: {msg}")
+
+
+def _importar_paciente(fhir_id, cd, tp):
+    """Importa um paciente e retorna (n_enc, n_cond, n_doc, n_med, n_obs)."""
+    purgar_paciente(fhir_id)
+    patient_ref = f"Patient/{fhir_id}"
+    enc_por_baa = {}
+    n_enc = n_cond = n_doc = n_med = n_obs = 0
+    for b in baa_do_paciente(cd):
+        _, criado = http("POST", "/fhir/Encounter", build_encounter(b, patient_ref))
+        enc_ref = f"Encounter/{criado.get('id')}"
+        enc_por_baa[f"{b['h']}-{b['ano']}-{b['nr']}"] = enc_ref
+        n_enc += 1
+        cond = build_condition(b, patient_ref, enc_ref)
+        if cond:
+            http("POST", "/fhir/Condition", cond)
+            n_cond += 1
+        # Prescrição/medicação do atendimento -> MedicationRequest (1 por item).
+        authored = dt(b.get("dt_atend")) or dt(b.get("dt_cheg"))
+        for item in prescricao_do_baa(b["h"], b["ano"], b["nr"]):
+            http("POST", "/fhir/MedicationRequest",
+                 build_medication_request(item, patient_ref, enc_ref, authored))
+            n_med += 1
+        # Classificação de risco (cor da triagem) -> Observation (survey).
+        # Os SINAIS VITAIS vêm do eDoc de acolhimento (ver loop de documentos
+        # abaixo), não de SINAIS_VITAIS — que é incompleto.
+        cor = s(b.get("risco_ds"))
+        if cor:
+            http("POST", "/fhir/Observation",
+                 build_obs_risco(patient_ref, enc_ref, dt(b.get("dt_cheg")) or dt(b.get("dt_atend")), cor))
+            n_obs += 1
+    for doc in edoc_do_paciente(cd):
+        enc_ref = enc_por_baa.get(s(doc.get("baa")))
+        if not enc_ref:
+            continue  # documento de um BAA fora dos atendimentos importados
+        itens = itens_do_documento(doc["h"], doc["ano"], doc["idm"])
+        html_str = montar_html(doc.get("modelo"), itens)
+        http("POST", "/fhir/DocumentReference", build_docref(doc, html_str, patient_ref, enc_ref))
+        n_doc += 1
+        # Sinais vitais do acolhimento (eDoc) -> Observation (vital-signs).
+        for o in observations_de_edoc(itens, patient_ref, enc_ref, dt(doc.get("dt"))):
+            http("POST", "/fhir/Observation", o)
+            n_obs += 1
+    print(f"  cd_paciente={cd}: {n_enc} atend., {n_cond} diag., {n_doc} docs, "
+          f"{n_med} medic., {n_obs} obs. ({time.time()-tp:.1f}s)")
+    return (n_enc, n_cond, n_doc, n_med, n_obs)
 
 
 if __name__ == "__main__":

@@ -161,6 +161,18 @@ public static class DependencyInjection
             });
         services.AddScoped<Atendimentos.IAtendimentosService, Atendimentos.AtendimentosService>();
 
+        // ---- Sincronização de PEPs (importação Salux/outros → hub FHIR) — ADR-0014 ----
+        services.AddHttpClient<Integracoes.Pep.Fhir.IHubFhirEscritor, Integracoes.Pep.Fhir.HubFhirEscritor>(client =>
+        {
+            client.BaseAddress = new Uri(fhirBaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(60);
+        });
+        services.AddSingleton<Integracoes.Pep.Background.IPepSincronizacaoFila, Integracoes.Pep.Background.PepSincronizacaoFila>();
+        services.AddSingleton<Integracoes.Pep.Progresso.PepSincronizacaoEstadoVivo>();
+        services.AddScoped<Integracoes.Pep.Estrategias.IEstrategiaImportacaoPep, Integracoes.Pep.Estrategias.Salux.SaluxImportacaoStrategy>();
+        services.AddScoped<Integracoes.Pep.IPepSincronizacaoService, Integracoes.Pep.PepSincronizacaoService>();
+        services.AddHostedService<Integracoes.Pep.Background.PepSincronizacaoRunner>();
+
         // ---- Módulo IA (consulta em linguagem natural) ----
         var anthropicBaseUrl = configuration["Ia:Anthropic:BaseUrl"] ?? "https://api.anthropic.com/";
         services.AddHttpClient<Inteligencia.Provedores.IProvedorIa, Inteligencia.Provedores.ClaudeProvedorIa>(client =>
