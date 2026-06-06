@@ -13,6 +13,7 @@ internal sealed class IaFonteConfiguration : IEntityTypeConfiguration<IaFonte>
 
         builder.Property(x => x.Id).HasColumnName("id");
         builder.Property(x => x.Nome).HasColumnName("nome").HasMaxLength(120).IsRequired();
+        builder.Property(x => x.Slug).HasColumnName("slug").HasMaxLength(40);
         builder.Property(x => x.Tipo).HasColumnName("tipo").HasConversion<int>().IsRequired();
         builder.Property(x => x.Dialeto).HasColumnName("dialeto").HasConversion<int>().IsRequired();
         builder.Property(x => x.Ambiente).HasColumnName("ambiente").HasConversion<int>().IsRequired();
@@ -31,5 +32,6 @@ internal sealed class IaFonteConfiguration : IEntityTypeConfiguration<IaFonte>
         builder.Property(x => x.ExcluidoPor).HasColumnName("excluido_por");
 
         builder.HasIndex(x => x.Nome);
+        builder.HasIndex(x => x.Slug).IsUnique().HasFilter("slug IS NOT NULL AND excluido_em IS NULL");
     }
 }

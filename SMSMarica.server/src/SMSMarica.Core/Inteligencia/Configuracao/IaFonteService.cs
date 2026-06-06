@@ -37,10 +37,14 @@ public sealed class IaFonteService(
 
     public async Task<Guid> CadastrarAsync(CadastrarFonteRequest request, CancellationToken cancellationToken = default)
     {
+        var slug = NormalizarSlug(request.Slug);
+        await GarantirSlugUnicoAsync(slug, null, cancellationToken);
+
         var fonte = new IaFonte
         {
             Id = Guid.CreateVersion7(),
             Nome = request.Nome.Trim(),
+            Slug = slug,
             Tipo = ParseTipo(request.Tipo),
             Dialeto = ParseDialeto(request.Dialeto),
             Ambiente = ParseAmbiente(request.Ambiente),
@@ -68,7 +72,11 @@ public sealed class IaFonteService(
     {
         var fonte = await ObterAtivaAsync(id, cancellationToken);
 
+        var slug = NormalizarSlug(request.Slug);
+        await GarantirSlugUnicoAsync(slug, id, cancellationToken);
+
         fonte.Nome = request.Nome.Trim();
+        fonte.Slug = slug;
         fonte.Ambiente = ParseAmbiente(request.Ambiente);
         fonte.Host = Normalizar(request.Host);
         fonte.Porta = request.Porta;
@@ -121,9 +129,29 @@ public sealed class IaFonteService(
     private static string? Normalizar(string? valor) =>
         string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();
 
+    /// <summary>Normaliza o slug: minúsculas, troca espaços/inválidos por '-', valida formato.</summary>
+    private static string? NormalizarSlug(string? valor)
+    {
+        if (string.IsNullOrWhiteSpace(valor)) return null;
+        var s = System.Text.RegularExpressions.Regex.Replace(valor.Trim().ToLowerInvariant(), @"[^a-z0-9]+", "-").Trim('-');
+        if (s.Length == 0)
+            throw new ValidacaoException("iaFonte.slug_invalido", "Slug inválido: use letras, números e hífen (ex.: 'salux-hcml').");
+        return s;
+    }
+
+    private async Task GarantirSlugUnicoAsync(string? slug, Guid? exceto, CancellationToken cancellationToken)
+    {
+        if (slug is null) return;
+        var existe = await _db.IaFontes.AsNoTracking()
+            .AnyAsync(f => f.ExcluidoEm == null && f.Slug == slug && (exceto == null || f.Id != exceto), cancellationToken);
+        if (existe)
+            throw new ConflitoException("iaFonte.slug_duplicado", $"Já existe uma base com o slug '{slug}'.");
+    }
+
     private static FonteDetalheDto ParaDto(IaFonte f) => new(
         f.Id,
         f.Nome,
+        f.Slug,
         f.Tipo.ToString(),
         f.Dialeto.ToString(),
         f.Ambiente.ToString(),

@@ -27,6 +27,7 @@ type Props = {
 
 type FormState = {
   nome: string;
+  slug: string;
   tipo: string;
   dialeto: string;
   ambiente: Ambiente;
@@ -42,6 +43,7 @@ type FormState = {
 function estadoInicial(fonte?: FonteConfig): FormState {
   return {
     nome: fonte?.nome ?? '',
+    slug: fonte?.slug ?? '',
     tipo: fonte?.tipo ?? 'Salux',
     dialeto: fonte?.dialeto ?? 'oracle',
     ambiente: fonte?.ambiente ?? 'TREINAMENTO',
@@ -80,6 +82,7 @@ export function FonteConfigModal({ aberto, aoFechar, fonte }: Props) {
   function montarPayload(): SalvarFonteConfigPayload {
     return {
       nome: form.nome.trim(),
+      slug: form.slug.trim() || undefined,
       tipo: form.tipo.trim(),
       dialeto: form.dialeto.trim(),
       ambiente: form.ambiente,
@@ -131,12 +134,25 @@ export function FonteConfigModal({ aberto, aoFechar, fonte }: Props) {
     >
       <form onSubmit={aoSalvar} className="space-y-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Campo label="Nome" htmlFor="fc-nome" required className="sm:col-span-2">
+          <Campo label="Nome" htmlFor="fc-nome" required>
             <Input
               id="fc-nome"
               value={form.nome}
               onChange={(e) => set('nome', e.target.value)}
               placeholder="Ex.: Salux Produção"
+            />
+          </Campo>
+
+          <Campo
+            label="Slug (identificador da base)"
+            htmlFor="fc-slug"
+            dica="Curto e estável (ex.: salux-hcml). Identifica a origem na importação e evita colisão entre hospitais. Não mude depois de importar."
+          >
+            <Input
+              id="fc-slug"
+              value={form.slug}
+              onChange={(e) => set('slug', e.target.value)}
+              placeholder="salux-hcml"
             />
           </Campo>
 

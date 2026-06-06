@@ -76,6 +76,8 @@ export type AtualizarConfiguracaoPayload = {
 export type FonteConfig = {
   id: string;
   nome: string;
+  /** Slug curto e estável (multi-base): prefixa identifiers internos e a proveniência na importação. */
+  slug?: string | null;
   tipo: string;
   dialeto: string;
   ambiente: Ambiente;
@@ -92,6 +94,7 @@ export type FonteConfig = {
 /** Payload de criação/edição de base. Senha só vai quando o usuário a digita. */
 export type SalvarFonteConfigPayload = {
   nome: string;
+  slug?: string;
   tipo: string;
   dialeto: string;
   ambiente: Ambiente;

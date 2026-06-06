@@ -63,6 +63,10 @@ public sealed class PepSincronizacaoService(
             throw new ValidacaoException("pep.tipo_nao_suportado",
                 $"Importação ainda não suportada para o tipo de PEP '{fonte.Tipo}'.");
 
+        if (string.IsNullOrWhiteSpace(fonte.Slug))
+            throw new ValidacaoException("pep.base_sem_slug",
+                $"Base '{fonte.Nome}' sem slug. Defina um slug curto e estável no cadastro da base (ex.: 'salux-hcml') antes de importar — ele identifica a origem e evita colisão entre hospitais.");
+
         if (request.Escopo == EscopoSincronizacao.Limitado &&
             request is { MaxMedicos: null or <= 0, MaxPacientes: null or <= 0 })
             throw new ValidacaoException("pep.limites",
@@ -169,6 +173,8 @@ public sealed class PepSincronizacaoService(
             if (string.IsNullOrWhiteSpace(fonte.Host) || string.IsNullOrWhiteSpace(fonte.Servico)
                 || string.IsNullOrWhiteSpace(fonte.Usuario) || string.IsNullOrWhiteSpace(fonte.SenhaCifrada))
                 throw new ValidacaoException("pep.base_incompleta", $"Base '{fonte.Nome}' sem host/serviço/usuário/senha configurados.");
+            if (string.IsNullOrWhiteSpace(fonte.Slug))
+                throw new ValidacaoException("pep.base_sem_slug", $"Base '{fonte.Nome}' sem slug — defina no cadastro da base.");
 
             var estadoEntidade = await db.PepSincronizacaoEstados.FirstOrDefaultAsync(s => s.FonteId == fonte.Id, ct);
             var marca = new MarcaDagua
@@ -187,6 +193,7 @@ public sealed class PepSincronizacaoService(
                 Marca = marca,
                 Escritor = escritor,
                 Progresso = progresso,
+                BaseSlug = fonte.Slug!,
             };
 
             await estrategia.ImportarAsync(contexto, ct);

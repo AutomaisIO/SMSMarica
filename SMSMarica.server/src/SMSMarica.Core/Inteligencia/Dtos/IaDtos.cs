@@ -35,14 +35,14 @@ public sealed record AtualizarConfiguracaoRequest(string Provedor, string Modelo
 
 // ---- Bases de dados ----
 
-public sealed record FonteDetalheDto(Guid Id, string Nome, string Tipo, string Dialeto,
+public sealed record FonteDetalheDto(Guid Id, string Nome, string? Slug, string Tipo, string Dialeto,
     string Ambiente, string? Host, int? Porta, string? Servico, string? Usuario,
     string? BaseUrl, bool SenhaDefinida, bool Ativo);
 
-public sealed record CadastrarFonteRequest(string Nome, string Tipo, string Dialeto, string Ambiente,
+public sealed record CadastrarFonteRequest(string Nome, string? Slug, string Tipo, string Dialeto, string Ambiente,
     string? Host, int? Porta, string? Servico, string? Usuario, string? Senha, string? BaseUrl);
 
-public sealed record AtualizarFonteRequest(string Nome, string Ambiente, string? Host, int? Porta,
+public sealed record AtualizarFonteRequest(string Nome, string? Slug, string Ambiente, string? Host, int? Porta,
     string? Servico, string? Usuario, string? Senha, string? BaseUrl, bool Ativo);
 
 public sealed record TestarConexaoResultado(bool Sucesso, string? Mensagem);

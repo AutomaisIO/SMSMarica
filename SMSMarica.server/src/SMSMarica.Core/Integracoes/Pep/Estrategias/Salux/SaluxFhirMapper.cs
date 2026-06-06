@@ -8,13 +8,20 @@ namespace SMSMarica.Core.Integracoes.Pep.Estrategias.Salux;
 
 /// <summary>
 /// Constrói recursos FHIR R4 a partir das linhas do Salux — porta fiel dos <c>build_*</c>
-/// de <c>Salux/scripts/importar_*_fhir.py</c>. Produz os MESMOS campos nativos + a extension
-/// <c>urn:salux:extras</c> que o importador Python gerava, para o caminho de leitura do
-/// servidor (PacienteFhirMapper/MedicoFhirMapper/AtendimentosService) continuar funcionando.
+/// de <c>Salux/scripts/importar_*_fhir.py</c>.
+///
+/// Multi-base (ADR-0009): Paciente/Practitioner são <b>canônicos</b> (dedup por chave nacional —
+/// CPF/CNS/conselho — fora desta classe). Os códigos INTERNOS do Salux (cd_paciente, cd_medico,
+/// baa, edoc) são <b>prefixados pelo slug da base</b> para não colidir entre instâncias e
+/// carregar rastreabilidade. <see cref="Source"/> (meta.source) identifica a origem (PEP/base)
+/// de cada recurso — usado também pra purgar clínica escopada por base.
 /// </summary>
-internal static class SaluxFhirMapper
+internal sealed class SaluxFhirMapper(string slug, string source)
 {
-    public const string Src = "https://smsmarica.saude.marica/source/salux";
+    /// <summary>Prefixo base do meta.source; a estratégia compõe com tipo/slug.</summary>
+    public const string SourceBase = "https://smsmarica.saude.marica/source";
+
+    public string Source { get; } = source;
 
     private const string SysCpf = "https://fhir.saude.gov.br/sid/cpf";
     private const string SysCns = "https://fhir.saude.gov.br/sid/cns";
@@ -40,8 +47,22 @@ internal static class SaluxFhirMapper
     private const string SysMatmed = "urn:salux:matmed";
     private const string SysRisco = "urn:salux:classificacao-risco";
 
-    public const string IdentSaluxPaciente = SysSaluxPac;
+    // Sistemas de chave NACIONAL (globais) — chave de dedup canônica de Patient/Practitioner.
     public const string IdentCpf = SysCpf;
+    public const string IdentCns = SysCns;
+    /// <summary>System do código interno do paciente no Salux (valor é prefixado pelo slug).</summary>
+    public const string IdentSaluxPaciente = SysSaluxPac;
+
+    private readonly string _slug = slug;
+
+    /// <summary>Prefixa um código interno do Salux com o slug da base (unicidade + rastreio).</summary>
+    private string Pref(string valor) => $"{_slug}:{valor}";
+
+    /// <summary>Extrai o código nativo de um identifier prefixado por este slug (ou null se for de outra base).</summary>
+    public string? DesprefixarPaciente(string? valor) =>
+        valor is not null && valor.StartsWith(_slug + ":", StringComparison.Ordinal)
+            ? valor[(_slug.Length + 1)..]
+            : null;
 
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
@@ -56,15 +77,11 @@ internal static class SaluxFhirMapper
         ["41"] = "PR", ["42"] = "SC", ["43"] = "RS", ["50"] = "MS", ["51"] = "MT", ["52"] = "GO", ["53"] = "DF",
     };
 
-    // ---------------- helpers (porta de s/dt/dig/_num/_parse_pa) ----------------
+    // ---------------- helpers ----------------
 
     private static string? S(string? v) => string.IsNullOrWhiteSpace(v) ? null : v.Trim();
-
-    /// <summary>Datas do Salux são horário de Brasília; FHIR dateTime com hora exige offset.</summary>
     private static string? Dt(string? v) => S(v) is { } s ? s + "-03:00" : null;
-
     private static string Dig(string? v) => string.IsNullOrEmpty(v) ? string.Empty : new string([.. v.Where(char.IsDigit)]);
-
     private static bool Verdadeiro(string? v) => (v ?? string.Empty).Trim().ToUpperInvariant() is "S" or "1" or "A" or "T";
 
     private static decimal? Num(string? v)
@@ -72,7 +89,7 @@ internal static class SaluxFhirMapper
         var s = S(v);
         if (s is null) return null;
         if (!decimal.TryParse(s.Replace(",", "."), NumberStyles.Any, CultureInfo.InvariantCulture, out var d)) return null;
-        return d == 0 ? null : d; // 0 em sinal vital = não aferido
+        return d == 0 ? null : d;
     }
 
     private static (decimal? Sist, decimal? Diast) ParsePa(string? txt)
@@ -82,7 +99,7 @@ internal static class SaluxFhirMapper
         return partes.Length >= 2 ? (Num(partes[0]), Num(partes[1])) : (Num(t), null);
     }
 
-    private static Meta Meta() => new() { Source = Src };
+    private Meta Meta() => new() { Source = Source };
 
     private static AdministrativeGender Genero(string? sexo) => (sexo ?? string.Empty).Trim().ToUpperInvariant() switch
     {
@@ -91,13 +108,13 @@ internal static class SaluxFhirMapper
         _ => AdministrativeGender.Unknown,
     };
 
-    private static void Extras(DomainResource r, Dictionary<string, string> extras)
+    private void Extras(DomainResource r, Dictionary<string, string> extras)
     {
         if (extras.Count == 0) return;
         r.AddExtension(ExtrasUrl, new FhirString(JsonSerializer.Serialize(extras, JsonOpts)));
     }
 
-    // ---------------- Practitioner (importar_medicos_fhir.py) ----------------
+    // ---------------- Practitioner (canônico: dedup por CPF/conselho; cd_medico prefixado) ----------------
 
     private static string SiglaConselho(string? v)
     {
@@ -105,7 +122,7 @@ internal static class SaluxFhirMapper
         return s.Replace("_TE", string.Empty);
     }
 
-    public static Practitioner BuildPractitioner(MedicoLinha m)
+    public Practitioner BuildPractitioner(MedicoLinha m)
     {
         var cpf = Dig(m.Cpf);
         var uf = string.IsNullOrWhiteSpace(m.Uf) ? "RJ" : m.Uf.Trim().ToUpperInvariant();
@@ -114,16 +131,16 @@ internal static class SaluxFhirMapper
         var sysConselho = SysConselho + sigla.ToLowerInvariant() + ":" + uf;
 
         var ident = new List<Identifier>();
-        if (cpf.Length > 0) ident.Add(new Identifier(SysCpf, cpf));
-        if (Dig(m.Cns).Length > 0) ident.Add(new Identifier(SysCns, Dig(m.Cns)));
-        if (registro.Length > 0) ident.Add(new Identifier(sysConselho, registro));
+        if (cpf.Length > 0) ident.Add(new Identifier(SysCpf, cpf));                 // nacional
+        if (Dig(m.Cns).Length > 0) ident.Add(new Identifier(SysCns, Dig(m.Cns)));   // nacional
+        if (registro.Length > 0) ident.Add(new Identifier(sysConselho, registro));  // nacional (conselho)
         if (S(m.Rg) is { } rg)
         {
             var idRg = new Identifier(SysRg, rg);
             if (S(m.Orgao) is { } org) idRg.Assigner = new ResourceReference { Display = org };
             ident.Add(idRg);
         }
-        ident.Add(new Identifier(SysSaluxMed, m.Cd.ToString(CultureInfo.InvariantCulture)));
+        ident.Add(new Identifier(SysSaluxMed, Pref(m.Cd.ToString(CultureInfo.InvariantCulture)))); // interno, por base
 
         var p = new Practitioner
         {
@@ -158,9 +175,9 @@ internal static class SaluxFhirMapper
         return p;
     }
 
-    // ---------------- Patient (importar_10_fhir.py) ----------------
+    // ---------------- Patient (canônico: dedup por CPF; cd_paciente prefixado) ----------------
 
-    private static Patient.ContactComponent Contato(string relCode, string nome, string? fone = null)
+    private Patient.ContactComponent Contato(string relCode, string nome, string? fone = null)
     {
         var c = new Patient.ContactComponent
         {
@@ -172,11 +189,11 @@ internal static class SaluxFhirMapper
         return c;
     }
 
-    public static Patient BuildPatient(PacienteLinha p)
+    public Patient BuildPatient(PacienteLinha p)
     {
         var cpf = Dig(p.Cpf);
 
-        var ident = new List<Identifier> { new(SysCpf, cpf) };
+        var ident = new List<Identifier> { new(SysCpf, cpf) }; // nacional (chave de dedup)
         if (Dig(p.Cns).Length > 0) ident.Add(new Identifier(SysCns, Dig(p.Cns)));
         if (S(p.Rg) is { } rg)
         {
@@ -189,7 +206,7 @@ internal static class SaluxFhirMapper
         {
             if (S(val) is { } v && v is not "0" and not "None") ident.Add(new Identifier(sys, v));
         }
-        ident.Add(new Identifier(SysSaluxPac, p.Cd.ToString(CultureInfo.InvariantCulture)));
+        ident.Add(new Identifier(SysSaluxPac, Pref(p.Cd.ToString(CultureInfo.InvariantCulture)))); // interno, por base
 
         var nomes = new List<HumanName> { new() { Use = HumanName.NameUse.Official, Text = S(p.Nome) } };
         if (S(p.Social) is { } social && Verdadeiro(p.FlagSocial))
@@ -206,7 +223,6 @@ internal static class SaluxFhirMapper
         if (S(p.Nasc) is { } nasc) pat.BirthDate = nasc;
         if (S(p.Obito) is { } obito) pat.Deceased = new FhirDateTime(obito);
 
-        // Endereço
         var linha = string.Join(" ", new[] { S(p.Logr), S(p.NrLogr) }.Where(x => x is not null));
         var end = new Address();
         var temEnd = false;
@@ -226,14 +242,12 @@ internal static class SaluxFhirMapper
 
         if (S(p.EstadoCivilDs) is { } ec) pat.MaritalStatus = new CodeableConcept { Text = ec };
 
-        // Telecom
         var tel = new List<ContactPoint>();
         var fone = !string.IsNullOrWhiteSpace(p.Fone) ? Dig(p.Ddd) + Dig(p.Fone) : string.Empty;
         if (fone.Length > 0) tel.Add(new ContactPoint { System = ContactPoint.ContactPointSystem.Phone, Value = fone, Use = ContactPoint.ContactPointUse.Home });
         if (S(p.Email) is { } email) tel.Add(new ContactPoint { System = ContactPoint.ContactPointSystem.Email, Value = email });
         if (tel.Count > 0) pat.Telecom = tel;
 
-        // Contatos / filiação
         var contatos = new List<Patient.ContactComponent>();
         if (S(p.Mae) is { } mae) contatos.Add(Contato("MTH", mae));
         if (S(p.Pai) is { } pai) contatos.Add(Contato("FTH", pai));
@@ -245,7 +259,6 @@ internal static class SaluxFhirMapper
         }
         if (contatos.Count > 0) pat.Contact = contatos;
 
-        // Extras Salux (códigos internos preservados)
         var extras = new Dictionary<string, string>();
         foreach (var (k, v) in new[] {
             ("cd_cor", p.CdCor), ("cd_nacionalidade", p.CdNacionalidade), ("pais", p.Pais),
@@ -264,9 +277,9 @@ internal static class SaluxFhirMapper
         return pat;
     }
 
-    // ---------------- Atendimentos (importar_atendimentos_fhir.py) ----------------
+    // ---------------- Atendimentos (Encounter/DocRef prefixados por base) ----------------
 
-    public static Encounter BuildEncounter(BaaLinha b, string patientRef)
+    public Encounter BuildEncounter(BaaLinha b, string patientRef)
     {
         var emerg = (b.Emerg ?? string.Empty).ToUpperInvariant() == "S";
         var start = Dt(b.DtCheg) ?? Dt(b.DtAtend);
@@ -281,7 +294,7 @@ internal static class SaluxFhirMapper
                 Display = emerg ? "emergency" : "ambulatory",
             },
             Subject = new ResourceReference(patientRef),
-            Identifier = [new Identifier(SysBaa, b.Chave)],
+            Identifier = [new Identifier(SysBaa, Pref(b.Chave))],
         };
         if (start is not null)
         {
@@ -293,7 +306,7 @@ internal static class SaluxFhirMapper
         return enc;
     }
 
-    public static Condition? BuildCondition(BaaLinha b, string patientRef, string encRef)
+    public Condition? BuildCondition(BaaLinha b, string patientRef, string encRef)
     {
         var cid = S(b.Cid);
         if (cid is null) return null;
@@ -320,13 +333,13 @@ internal static class SaluxFhirMapper
         return partes.Count > 0 ? string.Join(" — ", partes) : null;
     }
 
-    public static MedicationRequest BuildMedicationRequest(PrescricaoLinha item, string patientRef, string encRef, string? authoredOn)
+    public MedicationRequest BuildMedicationRequest(PrescricaoLinha item, string patientRef, string encRef, string? authoredOn)
     {
         var mat = S(item.Mat) ?? $"Material {item.CdMat}";
         var mr = new MedicationRequest
         {
             Meta = Meta(),
-            Status = MedicationRequest.MedicationrequestStatus.Completed, // prescrição histórica
+            Status = MedicationRequest.MedicationrequestStatus.Completed,
             Intent = MedicationRequest.MedicationRequestIntent.Order,
             Medication = new CodeableConcept
             {
@@ -343,7 +356,7 @@ internal static class SaluxFhirMapper
         return mr;
     }
 
-    public static DocumentReference BuildDocRef(EdocLinha doc, string html, string patientRef, string encRef)
+    public DocumentReference BuildDocRef(EdocLinha doc, string html, string patientRef, string encRef)
     {
         var titulo = S(doc.Modelo) ?? "Documento";
         var d = new DocumentReference
@@ -352,7 +365,7 @@ internal static class SaluxFhirMapper
             Status = DocumentReferenceStatus.Current,
             Type = new CodeableConcept { Text = titulo },
             Subject = new ResourceReference(patientRef),
-            Identifier = [new Identifier(SysEdoc, doc.ChaveDoc)],
+            Identifier = [new Identifier(SysEdoc, Pref(doc.ChaveDoc))],
             Content =
             [
                 new DocumentReference.ContentComponent
@@ -374,7 +387,7 @@ internal static class SaluxFhirMapper
 
     // ---------------- Observations ----------------
 
-    private static Observation Esqueleto(string patientRef, string encRef, string? effective, string categoria)
+    private Observation Esqueleto(string patientRef, string encRef, string? effective, string categoria)
     {
         var o = new Observation
         {
@@ -388,7 +401,7 @@ internal static class SaluxFhirMapper
         return o;
     }
 
-    private static Observation BuildObsQuantity(string patientRef, string encRef, string? eff,
+    private Observation BuildObsQuantity(string patientRef, string encRef, string? eff,
         string loinc, string display, decimal valor, string unidade, string ucum)
     {
         var o = Esqueleto(patientRef, encRef, eff, "vital-signs");
@@ -397,7 +410,7 @@ internal static class SaluxFhirMapper
         return o;
     }
 
-    private static Observation BuildObsPressao(string patientRef, string encRef, string? eff, decimal? sist, decimal? diast)
+    private Observation BuildObsPressao(string patientRef, string encRef, string? eff, decimal? sist, decimal? diast)
     {
         var o = Esqueleto(patientRef, encRef, eff, "vital-signs");
         o.Code = new CodeableConcept { Coding = [new Coding { System = SysLoinc, Code = "85354-9", Display = "Pressão arterial" }], Text = "Pressão arterial" };
@@ -418,7 +431,7 @@ internal static class SaluxFhirMapper
         return o;
     }
 
-    public static Observation BuildObsRisco(string patientRef, string encRef, string? eff, string cor)
+    public Observation BuildObsRisco(string patientRef, string encRef, string? eff, string cor)
     {
         var o = Esqueleto(patientRef, encRef, eff, "survey");
         o.Code = new CodeableConcept
@@ -430,7 +443,6 @@ internal static class SaluxFhirMapper
         return o;
     }
 
-    // Rótulos de vitais no eDoc (acolhimento) -> tipo interno (substring minúscula).
     private static readonly (string Chave, string Tipo)[] MatchersVital =
     [
         ("pressão arterial", "pa"), ("pulso", "fc"), ("frequência cardíaca", "fc"), ("freq. cardíaca", "fc"),
@@ -445,8 +457,7 @@ internal static class SaluxFhirMapper
         return null;
     }
 
-    /// <summary>Sinais vitais do formulário de acolhimento (eDoc) -> Observation (vital-signs).</summary>
-    public static List<Observation> ObservationsDeEdoc(IReadOnlyList<EdocItemLinha> itens, string patientRef, string encRef, string? effective)
+    public List<Observation> ObservationsDeEdoc(IReadOnlyList<EdocItemLinha> itens, string patientRef, string encRef, string? effective)
     {
         var porTipo = new Dictionary<string, string>();
         foreach (var it in itens.OrderBy(x => (x.Label ?? string.Empty).ToLowerInvariant().Contains("acolhimento") ? 0 : 1))
@@ -473,8 +484,6 @@ internal static class SaluxFhirMapper
             obs.Add(BuildObsQuantity(patientRef, encRef, effective, "2708-6", "Saturação de O₂", vsp, "%", "%"));
         return obs;
     }
-
-    // ---------------- HTML do eDoc (porta de montar_html) ----------------
 
     public static string MontarHtml(string? modelo, IReadOnlyList<EdocItemLinha> itens)
     {

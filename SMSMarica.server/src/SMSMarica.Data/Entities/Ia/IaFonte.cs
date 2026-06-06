@@ -11,6 +11,14 @@ public class IaFonte
 {
     public Guid Id { get; set; }
     public string Nome { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Slug curto e estável (multi-base, ADR-0009). Na importação para o hub FHIR ele prefixa os
+    /// identifiers internos (cd_paciente, cd_medico, baa, edoc) e compõe o <c>meta.source</c>,
+    /// evitando colisão entre instâncias e carregando a proveniência. Único entre bases ativas.
+    /// </summary>
+    public string? Slug { get; set; }
+
     public TipoFonte Tipo { get; set; }
     public DialetoSql Dialeto { get; set; }
     public AmbienteFonte Ambiente { get; set; }

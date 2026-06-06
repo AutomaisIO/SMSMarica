@@ -8,11 +8,14 @@ using SMSMarica.Data.Entities.Enums;
 namespace SMSMarica.Core.Integracoes.Pep.Estrategias.Salux;
 
 /// <summary>
-/// Estratégia de importação do Salux (Oracle INFOSAUDE) → hub FHIR. Canal único e
-/// persistente (<see cref="LeitorOracleHis"/>), queries batched por lote de pacientes
-/// (IN / tuple IN) — substitui o O(BAAs) do importador Python. As escritas no hub são
-/// feitas em PARALELO (gargalo passou a ser a latência HTTP), limitadas por um semáforo.
-/// Pipeline: médicos → pacientes → atendimentos. Idempotente: purga antes de recriar.
+/// Estratégia de importação do Salux (Oracle INFOSAUDE) → hub FHIR. Canal único e persistente
+/// (<see cref="LeitorOracleHis"/>), queries batched, escritas paralelas no hub.
+///
+/// Multi-base (ADR-0009): Patient/Practitioner são <b>canônicos</b> (dedup por <b>CPF</b>, com
+/// merge — acumula os identifiers/proveniência das várias bases). Os recursos clínicos
+/// (Encounter/Condition/Medication/DocumentReference/Observation) levam <c>meta.source</c> por
+/// base e identifiers internos prefixados pelo slug; a purga é <b>escopada por base</b> (não
+/// apaga o que veio de outro hospital).
 /// </summary>
 public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> logger) : IEstrategiaImportacaoPep
 {
@@ -32,6 +35,9 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
         var gate = new SemaphoreSlim(maxConc);
         var falhasLock = new object();
 
+        var source = $"{SaluxFhirMapper.SourceBase}/salux/{ctx.BaseSlug}";
+        var mapper = new SaluxFhirMapper(ctx.BaseSlug, source);
+
         void Falhou(long cd, Exception ex)
         {
             lock (falhasLock) { p.Falhas.Add((cd, ex.Message.Split('\n')[0])); }
@@ -45,13 +51,14 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
             ? "conectando ao Oracle…"
             : $"conectando ao Oracle (tentativa {n})…");
 
+        // "Apagar antes" = full refresh DESTA base (escopado por meta.source) — não toca outras bases.
         if (ctx.Opcoes.ApagarAntes && !incremental)
         {
-            p.FaseAtual = "limpando hub";
-            await PurgarTudoAsync(ctx, gate, ct);
+            p.FaseAtual = "limpando base no hub";
+            await PurgarBaseAsync(ctx, source, gate, ct);
         }
 
-        // ---------- Médicos ----------
+        // ---------- Médicos (canônico: dedup por CPF) ----------
         if (!incremental || ctx.Marca.MedicoEm is null)
         {
             p.FaseAtual = "médicos";
@@ -60,11 +67,11 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
             var medicos = await oracle.LerAsync(SqlMedicos(limite), MapMedico, ct);
             await ParaCada(medicos, gate, async m =>
             {
-                if (m.Nome is null) return;
+                var cpf = Digitos(m.Cpf);
+                if (m.Nome is null || cpf.Length == 0) return;
                 try
                 {
-                    await UpsertPorIdentifierAsync(ctx, "Practitioner", "urn:salux:cd_medico",
-                        m.Cd.ToString(CultureInfo.InvariantCulture), SaluxFhirMapper.BuildPractitioner(m), ct);
+                    await UpsertCanonicoAsync(ctx, "Practitioner", SaluxFhirMapper.IdentCpf, cpf, mapper.BuildPractitioner(m), ct);
                     Interlocked.Increment(ref p.Medicos);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException) { Falhou(m.Cd, ex); }
@@ -73,22 +80,21 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
             ctx.Marca.MedicoEm = DateTime.UtcNow;
         }
 
-        // ---------- Pacientes ----------
+        // ---------- Pacientes (canônico: dedup por CPF, merge) ----------
         p.FaseAtual = "pacientes";
         var tp = Cronometro();
         var limPac = ctx.Opcoes.Escopo == EscopoSincronizacao.Limitado ? ctx.Opcoes.MaxPacientes : null;
         var sincePac = incremental ? ctx.Marca.PacienteEm : null;
 
-        // cd_paciente -> Patient/{id} dos pacientes que terão atendimentos importados.
-        var pacientes = new ConcurrentDictionary<long, string>();
+        var pacientes = new ConcurrentDictionary<long, string>(); // cd_paciente -> Patient/{id}
         var pacLinhas = await oracle.LerAsync(SqlPacientes(limPac, sincePac, ctx.Opcoes.CdsPacientes), MapPaciente, ct);
         await ParaCada(pacLinhas, gate, async pac =>
         {
-            var cpf = new string([.. (pac.Cpf ?? string.Empty).Where(char.IsDigit)]);
+            var cpf = Digitos(pac.Cpf);
             if (cpf.Length == 0 || pac.Nome is null) return;
             try
             {
-                var fhirId = await UpsertPacienteAsync(ctx, cpf, SaluxFhirMapper.BuildPatient(pac), ct);
+                var fhirId = await UpsertCanonicoAsync(ctx, "Patient", SaluxFhirMapper.IdentCpf, cpf, mapper.BuildPatient(pac), ct);
                 pacientes[pac.Cd] = $"Patient/{fhirId}";
                 Interlocked.Increment(ref p.Pacientes);
             }
@@ -96,10 +102,10 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
         }, ct);
         p.Tempos["pacientes"] = Decorrido(tp);
 
-        // Em incremental, atendimentos novos valem para TODOS os pacientes Salux já no hub.
+        // Incremental: atendimentos novos valem para TODOS os pacientes DESTA base já no hub.
         if (incremental)
         {
-            foreach (var (cd, fhirId) in await PacientesSaluxNoHubAsync(ctx, ct))
+            foreach (var (cd, fhirId) in await PacientesDaBaseNoHubAsync(ctx, mapper, ct))
                 pacientes.TryAdd(cd, fhirId);
         }
 
@@ -108,7 +114,7 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
         var ta = Cronometro();
         var sinceBaa = incremental ? ctx.Marca.BaaEm : null;
         var sinceEdoc = incremental ? ctx.Marca.EdocEm : null;
-        // Purga clínica por paciente só quando reimport sem wipe global (o wipe já limpou).
+        // Completo (não-apagarAntes) purga a clínica DESTA base por paciente antes de recriar.
         var purgarPorPaciente = !incremental && !ctx.Opcoes.ApagarAntes;
         DateTime? maxBaa = ctx.Marca.BaaEm;
         DateTime? maxEdoc = ctx.Marca.EdocEm;
@@ -128,47 +134,46 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
             var itensPorDoc = (await LerEmLotesTupla(oracle, chavesDoc, SqlEdocItens, MapEdocItem, ct))
                 .GroupBy(i => i.ChaveDoc).ToDictionary(g => g.Key, g => g.ToList());
 
-            // Watermarks (sequencial, fora do paralelo).
             foreach (var b in baas) AtualizarMax(ref maxBaa, b.DtAtend);
             foreach (var d in edocs) AtualizarMax(ref maxEdoc, d.Dt);
 
-            // Fase 0: purga clínica por paciente (em paralelo entre pacientes).
+            // Fase 0: purga clínica DESTA base por paciente (escopada por meta.source).
             if (purgarPorPaciente)
-                await ParaCada(cds, gate, cd => PurgarPacienteAsync(ctx, pacientes[cd], gate, ct), ct);
+                await ParaCada(cds, gate, cd => PurgarBaseDoPacienteAsync(ctx, IdDe(pacientes[cd]), source, gate, ct), ct);
 
-            // Fase A: cria TODOS os Encounters do lote em paralelo (dependências precisam do id).
+            // Fase A: Encounters do lote em paralelo.
             var encPorBaa = new ConcurrentDictionary<string, string>();
             await ParaCada(baas, gate, async b =>
             {
                 if (!pacientes.TryGetValue(b.CdPaciente, out var patientRef)) return;
                 try
                 {
-                    var enc = (Encounter)await ctx.Escritor.CriarAsync(SaluxFhirMapper.BuildEncounter(b, patientRef), ct);
+                    var enc = (Encounter)await ctx.Escritor.CriarAsync(mapper.BuildEncounter(b, patientRef), ct);
                     encPorBaa[b.Chave] = $"Encounter/{enc.Id}";
                     Interlocked.Increment(ref p.Encounters);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException) { Falhou(b.CdPaciente, ex); }
             }, ct);
 
-            // Fase B: cria todos os dependentes (Condition/Medication/Observation/DocumentReference) em paralelo.
+            // Fase B: dependentes em paralelo.
             var deps = new List<Func<Task>>();
             foreach (var b in baas)
             {
                 if (!encPorBaa.TryGetValue(b.Chave, out var encRef)) continue;
                 if (!pacientes.TryGetValue(b.CdPaciente, out var patientRef)) continue;
 
-                if (SaluxFhirMapper.BuildCondition(b, patientRef, encRef) is { } cond)
+                if (mapper.BuildCondition(b, patientRef, encRef) is { } cond)
                     deps.Add(() => Escrever(ctx, b.CdPaciente, cond, () => Interlocked.Increment(ref p.Conditions), Falhou, ct));
 
                 var authored = DtIso(b.DtAtend) ?? DtIso(b.DtCheg);
                 foreach (var item in prescPorBaa.GetValueOrDefault(b.Chave, []))
                     deps.Add(() => Escrever(ctx, b.CdPaciente,
-                        SaluxFhirMapper.BuildMedicationRequest(item, patientRef, encRef, authored),
+                        mapper.BuildMedicationRequest(item, patientRef, encRef, authored),
                         () => Interlocked.Increment(ref p.MedicationRequests), Falhou, ct));
 
                 if (b.RiscoDs is { } cor && cor.Trim().Length > 0)
                     deps.Add(() => Escrever(ctx, b.CdPaciente,
-                        SaluxFhirMapper.BuildObsRisco(patientRef, encRef, DtIso(b.DtCheg) ?? DtIso(b.DtAtend), cor.Trim()),
+                        mapper.BuildObsRisco(patientRef, encRef, DtIso(b.DtCheg) ?? DtIso(b.DtAtend), cor.Trim()),
                         () => Interlocked.Increment(ref p.Observations), Falhou, ct));
             }
             foreach (var doc in edocs)
@@ -181,9 +186,9 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
                     try
                     {
                         var html = SaluxFhirMapper.MontarHtml(doc.Modelo, itens);
-                        await ctx.Escritor.CriarAsync(SaluxFhirMapper.BuildDocRef(doc, html, patientRef, encRef), ct);
+                        await ctx.Escritor.CriarAsync(mapper.BuildDocRef(doc, html, patientRef, encRef), ct);
                         Interlocked.Increment(ref p.DocumentReferences);
-                        foreach (var o in SaluxFhirMapper.ObservationsDeEdoc(itens, patientRef, encRef, DtIso(doc.Dt)))
+                        foreach (var o in mapper.ObservationsDeEdoc(itens, patientRef, encRef, DtIso(doc.Dt)))
                         {
                             await ctx.Escritor.CriarAsync(o, ct);
                             Interlocked.Increment(ref p.Observations);
@@ -200,11 +205,11 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
         ctx.Marca.BaaEm = maxBaa ?? ctx.Marca.BaaEm;
         ctx.Marca.EdocEm = maxEdoc ?? ctx.Marca.EdocEm;
 
-        logger.LogInformation("Importação Salux concluída: {Enc} atendimentos, {Obs} observations, {Falhas} falhas.",
-            p.Encounters, p.Observations, p.Falhas.Count);
+        logger.LogInformation("Importação Salux ({Slug}) concluída: {Enc} atendimentos, {Obs} observations, {Falhas} falhas.",
+            ctx.BaseSlug, p.Encounters, p.Observations, p.Falhas.Count);
     }
 
-    // ---------------- escrita / upsert / purga ----------------
+    // ---------------- escrita / upsert canônico / purga escopada ----------------
 
     private static async Task Escrever(ContextoImportacaoPep ctx, long cd, Resource r, Action contar,
         Action<long, Exception> falhou, CancellationToken ct)
@@ -213,63 +218,88 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
         catch (Exception ex) when (ex is not OperationCanceledException) { falhou(cd, ex); }
     }
 
-    private static async Task<string> UpsertPacienteAsync(ContextoImportacaoPep ctx, string cpf, Patient patient, CancellationToken ct)
+    /// <summary>
+    /// Upsert canônico por chave nacional: se já existe (mesmo CPF), <b>mescla</b> os identifiers
+    /// (preserva os de outras bases) e atualiza no mesmo id FHIR; senão cria. Não duplica pessoa/médico.
+    /// </summary>
+    private static async Task<string> UpsertCanonicoAsync(ContextoImportacaoPep ctx, string tipo, string system, string valor, Resource novo, CancellationToken ct)
     {
-        var existentes = await ctx.Escritor.BuscarPorIdentifierAsync("Patient", SaluxFhirMapper.IdentCpf, cpf, ct);
-        var antigo = existentes.Entry.FirstOrDefault()?.Resource?.Id;
-        if (antigo is not null)
+        var existentes = await ctx.Escritor.BuscarPorIdentifierAsync(tipo, system, valor, ct);
+        var atual = existentes.Entry.Select(e => e.Resource).FirstOrDefault(r => r is not null);
+        if (atual is not null)
         {
-            await PurgarPacienteAsync(ctx, $"Patient/{antigo}", null, ct);
-            await ctx.Escritor.ExcluirAsync("Patient", antigo, ct);
+            UnirIdentifiers(novo, atual);
+            novo.Id = atual.Id;
+            var atualizado = await ctx.Escritor.AtualizarAsync(tipo, atual.Id!, novo, ct);
+            return atualizado.Id!;
         }
-        var criado = await ctx.Escritor.CriarAsync(patient, ct);
+        var criado = await ctx.Escritor.CriarAsync(novo, ct);
         return criado.Id!;
     }
 
-    private static async Task UpsertPorIdentifierAsync(ContextoImportacaoPep ctx, string tipo, string system, string value, Resource novo, CancellationToken ct)
+    private static List<Identifier> IdentificadoresDe(Resource r) => r switch
     {
-        var existentes = await ctx.Escritor.BuscarPorIdentifierAsync(tipo, system, value, ct);
-        foreach (var e in existentes.Entry.Where(e => e.Resource?.Id is not null))
-            await ctx.Escritor.ExcluirAsync(tipo, e.Resource!.Id!, ct);
-        await ctx.Escritor.CriarAsync(novo, ct);
+        Patient p => p.Identifier ??= [],
+        Practitioner pr => pr.Identifier ??= [],
+        _ => [],
+    };
+
+    /// <summary>Adiciona em <paramref name="novo"/> os identifiers de <paramref name="existente"/> que faltam (união por system+value).</summary>
+    private static void UnirIdentifiers(Resource novo, Resource existente)
+    {
+        var nv = IdentificadoresDe(novo);
+        foreach (var id in IdentificadoresDe(existente))
+            if (!nv.Any(x => x.System == id.System && x.Value == id.Value))
+                nv.Add(id);
     }
 
-    private static async Task PurgarPacienteAsync(ContextoImportacaoPep ctx, string patientRef, SemaphoreSlim? gate, CancellationToken ct)
+    /// <summary>Purga a clínica DESTA base de um paciente (filtra por meta.source — não toca outras bases).</summary>
+    private static async Task PurgarBaseDoPacienteAsync(ContextoImportacaoPep ctx, string patientId, string source, SemaphoreSlim gate, CancellationToken ct)
     {
-        var id = patientRef.Split('/')[^1];
         foreach (var tipo in TiposClinicos)
         {
-            var bundle = await ctx.Escritor.BuscarPorPacienteAsync(tipo, id, ct);
-            var ids = bundle.Entry.Where(e => e.Resource?.Id is not null).Select(e => e.Resource!.Id!).ToList();
-            if (gate is null)
-                foreach (var rid in ids) await ctx.Escritor.ExcluirAsync(tipo, rid, ct);
-            else
-                await ParaCada(ids, gate, rid => ctx.Escritor.ExcluirAsync(tipo, rid, ct), ct);
-        }
-    }
-
-    private static async Task PurgarTudoAsync(ContextoImportacaoPep ctx, SemaphoreSlim gate, CancellationToken ct)
-    {
-        foreach (var tipo in new[] { "Observation", "MedicationRequest", "DocumentReference", "Condition", "Encounter", "Patient", "Practitioner" })
-        {
-            var bundle = await ctx.Escritor.ListarAsync(tipo, ct);
-            var ids = bundle.Entry.Where(e => e.Resource?.Id is not null).Select(e => e.Resource!.Id!).ToList();
+            var bundle = await ctx.Escritor.BuscarPorPacienteAsync(tipo, patientId, ct);
+            var ids = bundle.Entry
+                .Where(e => e.Resource?.Id is not null && e.Resource.Meta?.Source == source)
+                .Select(e => e.Resource!.Id!).ToList();
             await ParaCada(ids, gate, rid => ctx.Escritor.ExcluirAsync(tipo, rid, ct), ct);
         }
     }
 
-    private static async Task<List<(long Cd, string FhirId)>> PacientesSaluxNoHubAsync(ContextoImportacaoPep ctx, CancellationToken ct)
+    /// <summary>"Apagar antes" escopado: remove toda a clínica DESTA base do hub (por meta.source).</summary>
+    private static async Task PurgarBaseAsync(ContextoImportacaoPep ctx, string source, SemaphoreSlim gate, CancellationToken ct)
+    {
+        foreach (var tipo in TiposClinicos)
+        {
+            var bundle = await ctx.Escritor.ListarAsync(tipo, ct);
+            var ids = bundle.Entry
+                .Where(e => e.Resource?.Id is not null && e.Resource.Meta?.Source == source)
+                .Select(e => e.Resource!.Id!).ToList();
+            await ParaCada(ids, gate, rid => ctx.Escritor.ExcluirAsync(tipo, rid, ct), ct);
+        }
+    }
+
+    /// <summary>Pacientes DESTA base já no hub (cd nativo extraído do identifier prefixado pelo slug).</summary>
+    private static async Task<List<(long Cd, string FhirId)>> PacientesDaBaseNoHubAsync(ContextoImportacaoPep ctx, SaluxFhirMapper mapper, CancellationToken ct)
     {
         var bundle = await ctx.Escritor.ListarAsync("Patient", ct);
         var lista = new List<(long, string)>();
         foreach (var e in bundle.Entry)
         {
             if (e.Resource is not Patient pat || pat.Id is null) continue;
-            var cd = pat.Identifier?.FirstOrDefault(i => i.System == SaluxFhirMapper.IdentSaluxPaciente)?.Value;
-            if (cd is not null && long.TryParse(cd, out var n)) lista.Add((n, $"Patient/{pat.Id}"));
+            foreach (var i in pat.Identifier?.Where(i => i.System == SaluxFhirMapper.IdentSaluxPaciente) ?? [])
+            {
+                if (mapper.DesprefixarPaciente(i.Value) is { } nativo && long.TryParse(nativo, out var n))
+                {
+                    lista.Add((n, $"Patient/{pat.Id}"));
+                    break;
+                }
+            }
         }
         return lista;
     }
+
+    private static string IdDe(string reference) => reference.Split('/')[^1];
 
     // ---------------- SQL (batched, lê colunas direto — sem JSON_OBJECT) ----------------
 
@@ -299,7 +329,7 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
         if (cds is { Count: > 0 })
         {
             filtro = $"AND cd_paciente IN ({ListaInt(cds)})";
-            teto = string.Empty; // traz exatamente esses
+            teto = string.Empty;
         }
         else
         {
@@ -424,6 +454,8 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
 
     // ---------------- utilitários ----------------
 
+    private static string Digitos(string? v) => string.IsNullOrEmpty(v) ? string.Empty : new string([.. v.Where(char.IsDigit)]);
+
     private static int LerConcorrencia(int? opcao)
     {
         if (opcao is int o && o is > 0 and <= 64) return o;
@@ -431,7 +463,6 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
         return int.TryParse(v, out var n) && n is > 0 and <= 64 ? n : 8;
     }
 
-    /// <summary>Executa <paramref name="acao"/> para cada item com concorrência limitada por <paramref name="gate"/>.</summary>
     private static async Task ParaCada<T>(IEnumerable<T> itens, SemaphoreSlim gate, Func<T, Task> acao, CancellationToken ct)
     {
         var tasks = new List<Task>();
@@ -479,7 +510,6 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
     private static void AtualizarMax(ref DateTime? atual, string? dataIso)
     {
         if (string.IsNullOrWhiteSpace(dataIso)) return;
-        // AdjustToUniversal => Kind=Utc (a string traz offset -03:00); timestamptz no Postgres exige UTC.
         if (DateTime.TryParse(dataIso, CultureInfo.InvariantCulture,
                 DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var d)
             && (atual is null || d > atual))

@@ -59,4 +59,7 @@ public sealed class ContextoImportacaoPep
     public required MarcaDagua Marca { get; init; }
     public required IHubFhirEscritor Escritor { get; init; }
     public required ProgressoImportacao Progresso { get; init; }
+
+    /// <summary>Slug curto e estável da base (IaFonte) — prefixa identifiers internos e compõe o meta.source.</summary>
+    public required string BaseSlug { get; init; }
 }
