@@ -25,13 +25,17 @@ public sealed record ConexaoFonte(
     string Senha,
     int TimeoutSegundos);
 
-/// <summary>Parâmetros do disparo de importação.</summary>
+/// <summary>
+/// Parâmetros do disparo de importação. <see cref="CdsPacientes"/> (opcional) força importar
+/// exatamente esses pacientes (reimport pontual / medição), ignorando o limite/recência.
+/// </summary>
 public sealed record OpcoesImportacao(
     ModoSincronizacao Modo,
     EscopoSincronizacao Escopo,
     int? MaxMedicos,
     int? MaxPacientes,
-    bool ApagarAntes);
+    bool ApagarAntes,
+    IReadOnlyList<long>? CdsPacientes = null);
 
 /// <summary>
 /// Marca d'água por entidade (in/out). No modo incremental a estratégia usa os valores de
