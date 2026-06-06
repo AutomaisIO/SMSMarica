@@ -37,6 +37,9 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
 
         var source = $"{SaluxFhirMapper.SourceBase}/salux/{ctx.BaseSlug}";
         var mapper = new SaluxFhirMapper(ctx.BaseSlug, source);
+        // Purga casa a origem desta base + a LEGADA (sem slug) — limpa o esquema antigo na transição.
+        // (transitório; pode sair quando não houver mais dado legado no hub.)
+        var sourcesPurga = new HashSet<string> { source, $"{SaluxFhirMapper.SourceBase}/salux" };
 
         void Falhou(long cd, Exception ex)
         {
@@ -55,7 +58,7 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
         if (ctx.Opcoes.ApagarAntes && !incremental)
         {
             p.FaseAtual = "limpando base no hub";
-            await PurgarBaseAsync(ctx, source, gate, ct);
+            await PurgarBaseAsync(ctx, sourcesPurga, gate, ct);
         }
 
         // ---------- Médicos (canônico: dedup por CPF) ----------
@@ -139,7 +142,7 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
 
             // Fase 0: purga clínica DESTA base por paciente (escopada por meta.source).
             if (purgarPorPaciente)
-                await ParaCada(cds, gate, cd => PurgarBaseDoPacienteAsync(ctx, IdDe(pacientes[cd]), source, gate, ct), ct);
+                await ParaCada(cds, gate, cd => PurgarBaseDoPacienteAsync(ctx, IdDe(pacientes[cd]), sourcesPurga, gate, ct), ct);
 
             // Fase A: Encounters do lote em paralelo.
             var encPorBaa = new ConcurrentDictionary<string, string>();
@@ -253,27 +256,27 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
                 nv.Add(id);
     }
 
-    /// <summary>Purga a clínica DESTA base de um paciente (filtra por meta.source — não toca outras bases).</summary>
-    private static async Task PurgarBaseDoPacienteAsync(ContextoImportacaoPep ctx, string patientId, string source, SemaphoreSlim gate, CancellationToken ct)
+    /// <summary>Purga a clínica DESTA base (e legada) de um paciente (filtra por meta.source — não toca outras bases).</summary>
+    private static async Task PurgarBaseDoPacienteAsync(ContextoImportacaoPep ctx, string patientId, IReadOnlySet<string> sources, SemaphoreSlim gate, CancellationToken ct)
     {
         foreach (var tipo in TiposClinicos)
         {
             var bundle = await ctx.Escritor.BuscarPorPacienteAsync(tipo, patientId, ct);
             var ids = bundle.Entry
-                .Where(e => e.Resource?.Id is not null && e.Resource.Meta?.Source == source)
+                .Where(e => e.Resource?.Id is not null && e.Resource.Meta?.Source is { } s && sources.Contains(s))
                 .Select(e => e.Resource!.Id!).ToList();
             await ParaCada(ids, gate, rid => ctx.Escritor.ExcluirAsync(tipo, rid, ct), ct);
         }
     }
 
-    /// <summary>"Apagar antes" escopado: remove toda a clínica DESTA base do hub (por meta.source).</summary>
-    private static async Task PurgarBaseAsync(ContextoImportacaoPep ctx, string source, SemaphoreSlim gate, CancellationToken ct)
+    /// <summary>"Apagar antes" escopado: remove toda a clínica DESTA base (e legada) do hub (por meta.source).</summary>
+    private static async Task PurgarBaseAsync(ContextoImportacaoPep ctx, IReadOnlySet<string> sources, SemaphoreSlim gate, CancellationToken ct)
     {
         foreach (var tipo in TiposClinicos)
         {
             var bundle = await ctx.Escritor.ListarAsync(tipo, ct);
             var ids = bundle.Entry
-                .Where(e => e.Resource?.Id is not null && e.Resource.Meta?.Source == source)
+                .Where(e => e.Resource?.Id is not null && e.Resource.Meta?.Source is { } s && sources.Contains(s))
                 .Select(e => e.Resource!.Id!).ToList();
             await ParaCada(ids, gate, rid => ctx.Escritor.ExcluirAsync(tipo, rid, ct), ct);
         }
