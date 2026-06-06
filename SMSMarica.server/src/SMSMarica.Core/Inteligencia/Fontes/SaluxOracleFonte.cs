@@ -7,6 +7,10 @@ namespace SMSMarica.Core.Inteligencia.Fontes;
 /// Fonte de dados Oracle (Salux / outros HIS Oracle). Execução estritamente read-only:
 /// a sessão abre como <c>READ ONLY</c>, o SQL passa pelo <see cref="SqlReadOnlyGuard"/>,
 /// aplica timeout de comando e capa o número de linhas devolvidas.
+///
+/// Resiliência: o caminho cloud→Oracle passa por um túnel WireGuard (hub→MikroTik) que pode
+/// piscar. Erros transitórios de conexão (ORA-50201/50000/12170…) fazem retry curto com limpeza
+/// do pool de conexões mortas — o uso é interativo (IA), então a janela é curta de propósito.
 /// </summary>
 public sealed class SaluxOracleFonte : IFonteDados
 {
@@ -14,13 +18,13 @@ public sealed class SaluxOracleFonte : IFonteDados
     private readonly int _commandTimeoutSegundos;
     private readonly int _maxLinhas;
 
-    /// <param name="host">Host/IP do listener Oracle.</param>
-    /// <param name="porta">Porta do listener (default 1521).</param>
-    /// <param name="servico">Service name / SID.</param>
-    /// <param name="usuario">Conta read-only (ex.: salux_obs).</param>
-    /// <param name="senha">Senha já decifrada.</param>
-    /// <param name="commandTimeoutSegundos">Timeout de execução por comando.</param>
-    /// <param name="maxLinhas">Cap de linhas devolvidas.</param>
+    private const int MaxTentativas = 3;
+    private const int IntervaloSegundos = 3;
+
+    // Erros transitórios de conexão (túnel/pool/listener) — fazem retry. SQL inválido NÃO entra aqui.
+    private static readonly int[] CodigosTransitorios =
+        [50201, 50000, 12170, 12541, 12543, 12535, 12537, 12152, 3113, 3114];
+
     public SaluxOracleFonte(
         string host,
         int porta,
@@ -42,7 +46,7 @@ public sealed class SaluxOracleFonte : IFonteDados
             DataSource = dataSource,
             UserID = usuario,
             Password = senha,
-            ConnectionTimeout = 15,
+            ConnectionTimeout = 8, // connect curto: falha rápido e deixa o retry cadenciar
         };
 
         _connectionString = builder.ConnectionString;
@@ -52,61 +56,100 @@ public sealed class SaluxOracleFonte : IFonteDados
     {
         SqlReadOnlyGuard.GarantirLeitura(sql);
 
-        try
+        for (var tentativa = 1; ; tentativa++)
         {
-            await using var conexao = new OracleConnection(_connectionString);
-            await conexao.OpenAsync(cancellationToken);
-
-            // Sessão read-only: qualquer tentativa de escrita falha no banco também.
-            await using (var roCmd = conexao.CreateCommand())
+            try
             {
-                roCmd.CommandText = "SET TRANSACTION READ ONLY";
-                roCmd.CommandTimeout = _commandTimeoutSegundos;
-                await roCmd.ExecuteNonQueryAsync(cancellationToken);
-            }
+                await using var conexao = new OracleConnection(_connectionString);
+                await conexao.OpenAsync(cancellationToken);
 
-            await using var cmd = conexao.CreateCommand();
-            cmd.CommandText = sql;
-            cmd.CommandTimeout = _commandTimeoutSegundos;
-
-            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
-
-            var colunas = new string[reader.FieldCount];
-            for (var i = 0; i < reader.FieldCount; i++)
-            {
-                colunas[i] = reader.GetName(i);
-            }
-
-            var linhas = new List<IReadOnlyList<object?>>();
-            while (linhas.Count < _maxLinhas && await reader.ReadAsync(cancellationToken))
-            {
-                var linha = new object?[reader.FieldCount];
-                for (var i = 0; i < reader.FieldCount; i++)
+                // Sessão read-only: qualquer tentativa de escrita falha no banco também.
+                await using (var roCmd = conexao.CreateCommand())
                 {
-                    linha[i] = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                    roCmd.CommandText = "SET TRANSACTION READ ONLY";
+                    roCmd.CommandTimeout = _commandTimeoutSegundos;
+                    await roCmd.ExecuteNonQueryAsync(cancellationToken);
                 }
 
-                linhas.Add(linha);
-            }
+                await using var cmd = conexao.CreateCommand();
+                cmd.CommandText = sql;
+                cmd.CommandTimeout = _commandTimeoutSegundos;
 
-            return new ResultadoConsulta(true, colunas, linhas);
-        }
-        catch (OracleException ex)
-        {
-            return ResultadoConsulta.ComErro(ex.Message);
+                await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+
+                var colunas = new string[reader.FieldCount];
+                for (var i = 0; i < reader.FieldCount; i++)
+                {
+                    colunas[i] = reader.GetName(i);
+                }
+
+                var linhas = new List<IReadOnlyList<object?>>();
+                while (linhas.Count < _maxLinhas && await reader.ReadAsync(cancellationToken))
+                {
+                    var linha = new object?[reader.FieldCount];
+                    for (var i = 0; i < reader.FieldCount; i++)
+                    {
+                        linha[i] = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                    }
+
+                    linhas.Add(linha);
+                }
+
+                return new ResultadoConsulta(true, colunas, linhas);
+            }
+            catch (OracleException ex)
+            {
+                if (tentativa < MaxTentativas && EhTransitorio(ex))
+                {
+                    LimparPool();
+                    await Task.Delay(TimeSpan.FromSeconds(IntervaloSegundos), cancellationToken);
+                    continue;
+                }
+                return ResultadoConsulta.ComErro(EhTransitorio(ex)
+                    ? "Falha de conexão com a base (rede/VPN instável). Tente novamente em instantes."
+                    : ex.Message);
+            }
         }
     }
 
     public async Task<bool> TestarConexaoAsync(CancellationToken cancellationToken = default)
     {
-        await using var conexao = new OracleConnection(_connectionString);
-        await conexao.OpenAsync(cancellationToken);
+        for (var tentativa = 1; ; tentativa++)
+        {
+            try
+            {
+                await using var conexao = new OracleConnection(_connectionString);
+                await conexao.OpenAsync(cancellationToken);
 
-        await using var cmd = conexao.CreateCommand();
-        cmd.CommandText = "SELECT 1 FROM dual";
-        cmd.CommandTimeout = _commandTimeoutSegundos;
+                await using var cmd = conexao.CreateCommand();
+                cmd.CommandText = "SELECT 1 FROM dual";
+                cmd.CommandTimeout = _commandTimeoutSegundos;
 
-        var resultado = await cmd.ExecuteScalarAsync(cancellationToken);
-        return resultado is not null;
+                var resultado = await cmd.ExecuteScalarAsync(cancellationToken);
+                return resultado is not null;
+            }
+            catch (OracleException ex) when (tentativa < MaxTentativas && EhTransitorio(ex))
+            {
+                LimparPool();
+                await Task.Delay(TimeSpan.FromSeconds(IntervaloSegundos), cancellationToken);
+            }
+        }
+    }
+
+    private static bool EhTransitorio(OracleException ex) =>
+        CodigosTransitorios.Contains(ex.Number)
+        || ex.Message.Contains("ORA-50201", StringComparison.Ordinal)
+        || ex.Message.Contains("ORA-50000", StringComparison.Ordinal)
+        || ex.Message.Contains("ORA-12170", StringComparison.Ordinal);
+
+    /// <summary>Descarta conexões pooled mortas (após o túnel piscar) pra a próxima tentativa abrir uma nova.</summary>
+    private void LimparPool()
+    {
+        try
+        {
+            using var c = new OracleConnection(_connectionString);
+            OracleConnection.ClearPool(c);
+        }
+        catch { /* best-effort */ }
     }
 }
