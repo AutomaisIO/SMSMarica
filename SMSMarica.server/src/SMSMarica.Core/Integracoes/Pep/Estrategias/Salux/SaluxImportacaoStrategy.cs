@@ -9,18 +9,21 @@ namespace SMSMarica.Core.Integracoes.Pep.Estrategias.Salux;
 
 /// <summary>
 /// Estratégia de importação do Salux (Oracle INFOSAUDE) → hub FHIR. Canal único e persistente
-/// (<see cref="LeitorOracleHis"/>), queries batched, escritas paralelas no hub.
+/// (<see cref="LeitorOracleHis"/>), escritas paralelas no hub.
 ///
-/// Multi-base (ADR-0009): Patient/Practitioner são <b>canônicos</b> (dedup por <b>CPF</b>, com
-/// merge — acumula os identifiers/proveniência das várias bases). Os recursos clínicos
-/// (Encounter/Condition/Medication/DocumentReference/Observation) levam <c>meta.source</c> por
-/// base e identifiers internos prefixados pelo slug; a purga é <b>escopada por base</b> (não
-/// apaga o que veio de outro hospital).
+/// <b>Streaming por blocos</b> (keyset por cd): nunca materializa todos os registros — lê médicos
+/// e pacientes em páginas, e processa os atendimentos de cada bloco antes de ler o próximo,
+/// liberando a memória. Memória constante em qualquer escopo (Limitado ou Tudo).
+///
+/// Multi-base (ADR-0009): Patient/Practitioner canônicos (dedup por CPF, merge); recursos clínicos
+/// com meta.source por base + identifiers prefixados pelo slug; purga escopada por base.
 /// </summary>
 public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> logger) : IEstrategiaImportacaoPep
 {
     private const string FmtDt = "'YYYY-MM-DD\"T\"HH24:MI:SS'";
-    private const int TamanhoLote = 500;
+    private const int TamanhoLote = 500;     // tuplas por query batched (prescrição/itens)
+    private const int ChunkPacientes = 300;  // pacientes por página (memória constante)
+    private const int ChunkMedicos = 500;
 
     private static readonly string[] TiposClinicos =
         ["Observation", "MedicationRequest", "DocumentReference", "Condition", "Encounter"];
@@ -31,20 +34,15 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
     {
         var p = ctx.Progresso;
         var incremental = ctx.Opcoes.Modo == ModoSincronizacao.Incremental;
-        var maxConc = LerConcorrencia(ctx.Opcoes.Concorrencia);
-        var gate = new SemaphoreSlim(maxConc);
+        var limitado = ctx.Opcoes.Escopo == EscopoSincronizacao.Limitado;
+        var gate = new SemaphoreSlim(LerConcorrencia(ctx.Opcoes.Concorrencia));
         var falhasLock = new object();
 
         var source = $"{SaluxFhirMapper.SourceBase}/salux/{ctx.BaseSlug}";
         var mapper = new SaluxFhirMapper(ctx.BaseSlug, source);
-        // Purga casa a origem desta base + a LEGADA (sem slug) — limpa o esquema antigo na transição.
-        // (transitório; pode sair quando não houver mais dado legado no hub.)
         var sourcesPurga = new HashSet<string> { source, $"{SaluxFhirMapper.SourceBase}/salux" };
 
-        void Falhou(long cd, Exception ex)
-        {
-            lock (falhasLock) { p.Falhas.Add((cd, ex.Message.Split('\n')[0])); }
-        }
+        void Falhou(long cd, Exception ex) { lock (falhasLock) { p.Falhas.Add((cd, ex.Message.Split('\n')[0])); } }
 
         await using var oracle = new LeitorOracleHis(
             ctx.Conexao.Host, ctx.Conexao.Porta, ctx.Conexao.Servico,
@@ -54,162 +52,237 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
             ? "conectando ao Oracle…"
             : $"conectando ao Oracle (tentativa {n})…");
 
-        // "Apagar antes" = full refresh DESTA base (escopado por meta.source) — não toca outras bases.
         if (ctx.Opcoes.ApagarAntes && !incremental)
         {
             p.FaseAtual = "limpando base no hub";
             await PurgarBaseAsync(ctx, sourcesPurga, gate, ct);
         }
 
-        // ---------- Médicos (canônico: dedup por CPF) ----------
+        var purgarPorPaciente = !incremental && !ctx.Opcoes.ApagarAntes;
+        var sinceBaa = incremental ? ctx.Marca.BaaEm : null;
+        var sinceEdoc = incremental ? ctx.Marca.EdocEm : null;
+        DateTime? maxBaa = ctx.Marca.BaaEm, maxEdoc = ctx.Marca.EdocEm;
+        var segPac = 0d; var segAtend = 0d;
+
+        // ---------- Médicos (paginado) ----------
         if (!incremental || ctx.Marca.MedicoEm is null)
         {
             p.FaseAtual = "médicos";
             var t0 = Cronometro();
-            var limite = ctx.Opcoes.Escopo == EscopoSincronizacao.Limitado ? ctx.Opcoes.MaxMedicos : null;
-            var medicos = await oracle.LerAsync(SqlMedicos(limite), MapMedico, ct);
-            await ParaCada(medicos, gate, async m =>
+            var limite = limitado ? ctx.Opcoes.MaxMedicos : null;
+            long? last = null; var count = 0;
+            while (true)
             {
-                var cpf = Digitos(m.Cpf);
-                if (m.Nome is null || cpf.Length == 0) return;
-                try
+                ct.ThrowIfCancellationRequested();
+                var tam = limite is { } L ? Math.Min(ChunkMedicos, L - count) : ChunkMedicos;
+                if (tam <= 0) break;
+                var chunk = await oracle.LerAsync(SqlMedicos(last, tam), MapMedico, ct);
+                if (chunk.Count == 0) break;
+                await ParaCada(chunk, gate, async m =>
                 {
-                    await UpsertCanonicoAsync(ctx, "Practitioner", SaluxFhirMapper.IdentCpf, cpf, mapper.BuildPractitioner(m), ct);
-                    Interlocked.Increment(ref p.Medicos);
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException) { Falhou(m.Cd, ex); }
-            }, ct);
+                    var cpf = Digitos(m.Cpf);
+                    if (m.Nome is null || cpf.Length == 0) return;
+                    try
+                    {
+                        await UpsertCanonicoAsync(ctx, "Practitioner", SaluxFhirMapper.IdentCpf, cpf, mapper.BuildPractitioner(m), ct);
+                        Interlocked.Increment(ref p.Medicos);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException) { Falhou(m.Cd, ex); }
+                }, ct);
+                last = chunk.Min(x => x.Cd);
+                count += chunk.Count;
+                if (chunk.Count < tam) break;
+            }
             p.Tempos["medicos"] = Decorrido(t0);
             ctx.Marca.MedicoEm = DateTime.UtcNow;
         }
 
-        // ---------- Pacientes (canônico: dedup por CPF, merge) ----------
-        p.FaseAtual = "pacientes";
-        var tp = Cronometro();
-        var limPac = ctx.Opcoes.Escopo == EscopoSincronizacao.Limitado ? ctx.Opcoes.MaxPacientes : null;
-        var sincePac = incremental ? ctx.Marca.PacienteEm : null;
+        // ---------- Pacientes + Atendimentos ----------
+        if (ctx.Opcoes.CdsPacientes is { Count: > 0 } cdsExpl)
+        {
+            // Lista explícita (medição / reimport pontual) — volume limitado, lê de uma vez.
+            p.FaseAtual = "pacientes";
+            var tpc = Cronometro();
+            var linhas = await oracle.LerAsync(SqlPacientes(null, null, null, cdsExpl), MapPaciente, ct);
+            var map = await UpsertPacientesChunkAsync(ctx, mapper, linhas, gate, p, Falhou, ct);
+            segPac += Decorrido(tpc);
+            p.FaseAtual = "atendimentos";
+            var ta = Cronometro();
+            var (cb, ce) = await ProcessarAtendimentosAsync(oracle, mapper, ctx, map, sinceBaa, sinceEdoc, purgarPorPaciente, sourcesPurga, gate, p, Falhou, ct);
+            maxBaa = Max(maxBaa, cb); maxEdoc = Max(maxEdoc, ce); segAtend += Decorrido(ta);
+        }
+        else if (incremental)
+        {
+            // Importa pacientes alterados (paginado); atendimentos novos valem para TODOS os
+            // pacientes da base já no hub (em lotes — não carrega tudo de uma vez).
+            p.FaseAtual = "pacientes";
+            var tpc = Cronometro();
+            long? last = null;
+            while (true)
+            {
+                ct.ThrowIfCancellationRequested();
+                var chunk = await oracle.LerAsync(SqlPacientes(last, ChunkPacientes, ctx.Marca.PacienteEm, null), MapPaciente, ct);
+                if (chunk.Count == 0) break;
+                await UpsertPacientesChunkAsync(ctx, mapper, chunk, gate, p, Falhou, ct);
+                last = chunk.Min(x => x.Cd);
+                if (chunk.Count < ChunkPacientes) break;
+            }
+            segPac += Decorrido(tpc);
 
-        var pacientes = new ConcurrentDictionary<long, string>(); // cd_paciente -> Patient/{id}
-        var pacLinhas = await oracle.LerAsync(SqlPacientes(limPac, sincePac, ctx.Opcoes.CdsPacientes), MapPaciente, ct);
-        await ParaCada(pacLinhas, gate, async pac =>
+            p.FaseAtual = "atendimentos";
+            var ta = Cronometro();
+            foreach (var lote in EmLotes(await PacientesDaBaseNoHubAsync(ctx, mapper, ct), TamanhoLote))
+            {
+                var map = new ConcurrentDictionary<long, string>();
+                foreach (var (cd, fhirId) in lote) map[cd] = fhirId;
+                var (cb, ce) = await ProcessarAtendimentosAsync(oracle, mapper, ctx, map, sinceBaa, sinceEdoc, false, sourcesPurga, gate, p, Falhou, ct);
+                maxBaa = Max(maxBaa, cb); maxEdoc = Max(maxEdoc, ce);
+            }
+            segAtend += Decorrido(ta);
+        }
+        else
+        {
+            // COMPLETO: streaming end-to-end por bloco de pacientes (memória constante).
+            var limite = limitado ? ctx.Opcoes.MaxPacientes : null;
+            long? last = null; var count = 0;
+            while (true)
+            {
+                ct.ThrowIfCancellationRequested();
+                var tam = limite is { } L ? Math.Min(ChunkPacientes, L - count) : ChunkPacientes;
+                if (tam <= 0) break;
+
+                p.FaseAtual = "pacientes";
+                var tpc = Cronometro();
+                var chunk = await oracle.LerAsync(SqlPacientes(last, tam, null, null), MapPaciente, ct);
+                if (chunk.Count == 0) break;
+                var map = await UpsertPacientesChunkAsync(ctx, mapper, chunk, gate, p, Falhou, ct);
+                last = chunk.Min(x => x.Cd); count += chunk.Count;
+                segPac += Decorrido(tpc);
+
+                p.FaseAtual = "atendimentos";
+                var ta = Cronometro();
+                var (cb, ce) = await ProcessarAtendimentosAsync(oracle, mapper, ctx, map, null, null, purgarPorPaciente, sourcesPurga, gate, p, Falhou, ct);
+                maxBaa = Max(maxBaa, cb); maxEdoc = Max(maxEdoc, ce); segAtend += Decorrido(ta);
+
+                if (chunk.Count < tam) break;
+            }
+        }
+
+        p.Tempos["pacientes"] = segPac;
+        p.Tempos["atendimentos"] = segAtend;
+
+        ctx.Marca.PacienteEm = DateTime.UtcNow;
+        ctx.Marca.BaaEm = maxBaa ?? ctx.Marca.BaaEm;
+        ctx.Marca.EdocEm = maxEdoc ?? ctx.Marca.EdocEm;
+
+        logger.LogInformation("Importação Salux ({Slug}) concluída: {Pac} pacientes, {Enc} atendimentos, {Falhas} falhas.",
+            ctx.BaseSlug, p.Pacientes, p.Encounters, p.Falhas.Count);
+    }
+
+    /// <summary>Upsert canônico (merge por CPF) de um bloco de pacientes; devolve o mapa cd → Patient/{id}.</summary>
+    private static async Task<ConcurrentDictionary<long, string>> UpsertPacientesChunkAsync(
+        ContextoImportacaoPep ctx, SaluxFhirMapper mapper, IReadOnlyList<PacienteLinha> chunk,
+        SemaphoreSlim gate, Progresso.ProgressoImportacao p, Action<long, Exception> falhou, CancellationToken ct)
+    {
+        var map = new ConcurrentDictionary<long, string>();
+        await ParaCada(chunk, gate, async pac =>
         {
             var cpf = Digitos(pac.Cpf);
             if (cpf.Length == 0 || pac.Nome is null) return;
             try
             {
                 var fhirId = await UpsertCanonicoAsync(ctx, "Patient", SaluxFhirMapper.IdentCpf, cpf, mapper.BuildPatient(pac), ct);
-                pacientes[pac.Cd] = $"Patient/{fhirId}";
+                map[pac.Cd] = $"Patient/{fhirId}";
                 Interlocked.Increment(ref p.Pacientes);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException) { Falhou(pac.Cd, ex); }
+            catch (Exception ex) when (ex is not OperationCanceledException) { falhou(pac.Cd, ex); }
         }, ct);
-        p.Tempos["pacientes"] = Decorrido(tp);
+        return map;
+    }
 
-        // Incremental: atendimentos novos valem para TODOS os pacientes DESTA base já no hub.
-        if (incremental)
+    /// <summary>Lê e grava os atendimentos (Encounter/Condition/Medication/DocRef/Observation) de UM bloco de pacientes.</summary>
+    private async Task<(DateTime? MaxBaa, DateTime? MaxEdoc)> ProcessarAtendimentosAsync(
+        LeitorOracleHis oracle, SaluxFhirMapper mapper, ContextoImportacaoPep ctx,
+        ConcurrentDictionary<long, string> pacientes, DateTime? sinceBaa, DateTime? sinceEdoc,
+        bool purgarPorPaciente, IReadOnlySet<string> sourcesPurga, SemaphoreSlim gate,
+        Progresso.ProgressoImportacao p, Action<long, Exception> falhou, CancellationToken ct)
+    {
+        var cds = pacientes.Keys.ToList();
+        if (cds.Count == 0) return (null, null);
+        DateTime? maxBaa = null, maxEdoc = null;
+
+        var baas = await oracle.LerAsync(SqlBaas(cds, sinceBaa), MapBaa, ct);
+        var chavesBaa = baas.Select(b => (b.H, b.Ano, b.Nr)).Distinct().ToList();
+        var prescPorBaa = (await LerEmLotesTupla(oracle, chavesBaa, SqlPrescricoes, MapPrescricao, ct))
+            .GroupBy(x => x.ChaveBaa).ToDictionary(g => g.Key, g => g.ToList());
+
+        var edocs = await oracle.LerAsync(SqlEdocs(cds, sinceEdoc), MapEdoc, ct);
+        var chavesDoc = edocs.Select(e => (e.H, e.Ano, e.Idm)).Distinct().ToList();
+        var itensPorDoc = (await LerEmLotesTupla(oracle, chavesDoc, SqlEdocItens, MapEdocItem, ct))
+            .GroupBy(i => i.ChaveDoc).ToDictionary(g => g.Key, g => g.ToList());
+
+        foreach (var b in baas) maxBaa = Max(maxBaa, ParseUtc(b.DtAtend));
+        foreach (var d in edocs) maxEdoc = Max(maxEdoc, ParseUtc(d.Dt));
+
+        if (purgarPorPaciente)
+            await ParaCada(cds, gate, cd => PurgarBaseDoPacienteAsync(ctx, IdDe(pacientes[cd]), sourcesPurga, gate, ct), ct);
+
+        var encPorBaa = new ConcurrentDictionary<string, string>();
+        await ParaCada(baas, gate, async b =>
         {
-            foreach (var (cd, fhirId) in await PacientesDaBaseNoHubAsync(ctx, mapper, ct))
-                pacientes.TryAdd(cd, fhirId);
-        }
-
-        // ---------- Atendimentos ----------
-        p.FaseAtual = "atendimentos";
-        var ta = Cronometro();
-        var sinceBaa = incremental ? ctx.Marca.BaaEm : null;
-        var sinceEdoc = incremental ? ctx.Marca.EdocEm : null;
-        // Completo (não-apagarAntes) purga a clínica DESTA base por paciente antes de recriar.
-        var purgarPorPaciente = !incremental && !ctx.Opcoes.ApagarAntes;
-        DateTime? maxBaa = ctx.Marca.BaaEm;
-        DateTime? maxEdoc = ctx.Marca.EdocEm;
-
-        foreach (var lote in EmLotes(pacientes.Keys.ToList(), TamanhoLote))
-        {
-            ct.ThrowIfCancellationRequested();
-            var cds = lote;
-
-            var baas = await oracle.LerAsync(SqlBaas(cds, sinceBaa), MapBaa, ct);
-            var chavesBaa = baas.Select(b => (b.H, b.Ano, b.Nr)).Distinct().ToList();
-            var prescPorBaa = (await LerEmLotesTupla(oracle, chavesBaa, SqlPrescricoes, MapPrescricao, ct))
-                .GroupBy(x => x.ChaveBaa).ToDictionary(g => g.Key, g => g.ToList());
-
-            var edocs = await oracle.LerAsync(SqlEdocs(cds, sinceEdoc), MapEdoc, ct);
-            var chavesDoc = edocs.Select(e => (e.H, e.Ano, e.Idm)).Distinct().ToList();
-            var itensPorDoc = (await LerEmLotesTupla(oracle, chavesDoc, SqlEdocItens, MapEdocItem, ct))
-                .GroupBy(i => i.ChaveDoc).ToDictionary(g => g.Key, g => g.ToList());
-
-            foreach (var b in baas) AtualizarMax(ref maxBaa, b.DtAtend);
-            foreach (var d in edocs) AtualizarMax(ref maxEdoc, d.Dt);
-
-            // Fase 0: purga clínica DESTA base por paciente (escopada por meta.source).
-            if (purgarPorPaciente)
-                await ParaCada(cds, gate, cd => PurgarBaseDoPacienteAsync(ctx, IdDe(pacientes[cd]), sourcesPurga, gate, ct), ct);
-
-            // Fase A: Encounters do lote em paralelo.
-            var encPorBaa = new ConcurrentDictionary<string, string>();
-            await ParaCada(baas, gate, async b =>
+            if (!pacientes.TryGetValue(b.CdPaciente, out var patientRef)) return;
+            try
             {
-                if (!pacientes.TryGetValue(b.CdPaciente, out var patientRef)) return;
+                var enc = (Encounter)await ctx.Escritor.CriarAsync(mapper.BuildEncounter(b, patientRef), ct);
+                encPorBaa[b.Chave] = $"Encounter/{enc.Id}";
+                Interlocked.Increment(ref p.Encounters);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException) { falhou(b.CdPaciente, ex); }
+        }, ct);
+
+        var deps = new List<Func<Task>>();
+        foreach (var b in baas)
+        {
+            if (!encPorBaa.TryGetValue(b.Chave, out var encRef)) continue;
+            if (!pacientes.TryGetValue(b.CdPaciente, out var patientRef)) continue;
+
+            if (mapper.BuildCondition(b, patientRef, encRef) is { } cond)
+                deps.Add(() => Escrever(ctx, b.CdPaciente, cond, () => Interlocked.Increment(ref p.Conditions), falhou, ct));
+
+            var authored = DtIso(b.DtAtend) ?? DtIso(b.DtCheg);
+            foreach (var item in prescPorBaa.GetValueOrDefault(b.Chave, []))
+                deps.Add(() => Escrever(ctx, b.CdPaciente,
+                    mapper.BuildMedicationRequest(item, patientRef, encRef, authored),
+                    () => Interlocked.Increment(ref p.MedicationRequests), falhou, ct));
+
+            if (b.RiscoDs is { } cor && cor.Trim().Length > 0)
+                deps.Add(() => Escrever(ctx, b.CdPaciente,
+                    mapper.BuildObsRisco(patientRef, encRef, DtIso(b.DtCheg) ?? DtIso(b.DtAtend), cor.Trim()),
+                    () => Interlocked.Increment(ref p.Observations), falhou, ct));
+        }
+        foreach (var doc in edocs)
+        {
+            if (doc.Baa is null || !encPorBaa.TryGetValue(doc.Baa, out var encRef)) continue;
+            if (!pacientes.TryGetValue(doc.CdPaciente, out var patientRef)) continue;
+            var itens = itensPorDoc.GetValueOrDefault(doc.ChaveDoc, []);
+            deps.Add(async () =>
+            {
                 try
                 {
-                    var enc = (Encounter)await ctx.Escritor.CriarAsync(mapper.BuildEncounter(b, patientRef), ct);
-                    encPorBaa[b.Chave] = $"Encounter/{enc.Id}";
-                    Interlocked.Increment(ref p.Encounters);
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException) { Falhou(b.CdPaciente, ex); }
-            }, ct);
-
-            // Fase B: dependentes em paralelo.
-            var deps = new List<Func<Task>>();
-            foreach (var b in baas)
-            {
-                if (!encPorBaa.TryGetValue(b.Chave, out var encRef)) continue;
-                if (!pacientes.TryGetValue(b.CdPaciente, out var patientRef)) continue;
-
-                if (mapper.BuildCondition(b, patientRef, encRef) is { } cond)
-                    deps.Add(() => Escrever(ctx, b.CdPaciente, cond, () => Interlocked.Increment(ref p.Conditions), Falhou, ct));
-
-                var authored = DtIso(b.DtAtend) ?? DtIso(b.DtCheg);
-                foreach (var item in prescPorBaa.GetValueOrDefault(b.Chave, []))
-                    deps.Add(() => Escrever(ctx, b.CdPaciente,
-                        mapper.BuildMedicationRequest(item, patientRef, encRef, authored),
-                        () => Interlocked.Increment(ref p.MedicationRequests), Falhou, ct));
-
-                if (b.RiscoDs is { } cor && cor.Trim().Length > 0)
-                    deps.Add(() => Escrever(ctx, b.CdPaciente,
-                        mapper.BuildObsRisco(patientRef, encRef, DtIso(b.DtCheg) ?? DtIso(b.DtAtend), cor.Trim()),
-                        () => Interlocked.Increment(ref p.Observations), Falhou, ct));
-            }
-            foreach (var doc in edocs)
-            {
-                if (doc.Baa is null || !encPorBaa.TryGetValue(doc.Baa, out var encRef)) continue;
-                if (!pacientes.TryGetValue(doc.CdPaciente, out var patientRef)) continue;
-                var itens = itensPorDoc.GetValueOrDefault(doc.ChaveDoc, []);
-                deps.Add(async () =>
-                {
-                    try
+                    var html = SaluxFhirMapper.MontarHtml(doc.Modelo, itens);
+                    await ctx.Escritor.CriarAsync(mapper.BuildDocRef(doc, html, patientRef, encRef), ct);
+                    Interlocked.Increment(ref p.DocumentReferences);
+                    foreach (var o in mapper.ObservationsDeEdoc(itens, patientRef, encRef, DtIso(doc.Dt)))
                     {
-                        var html = SaluxFhirMapper.MontarHtml(doc.Modelo, itens);
-                        await ctx.Escritor.CriarAsync(mapper.BuildDocRef(doc, html, patientRef, encRef), ct);
-                        Interlocked.Increment(ref p.DocumentReferences);
-                        foreach (var o in mapper.ObservationsDeEdoc(itens, patientRef, encRef, DtIso(doc.Dt)))
-                        {
-                            await ctx.Escritor.CriarAsync(o, ct);
-                            Interlocked.Increment(ref p.Observations);
-                        }
+                        await ctx.Escritor.CriarAsync(o, ct);
+                        Interlocked.Increment(ref p.Observations);
                     }
-                    catch (Exception ex) when (ex is not OperationCanceledException) { Falhou(doc.CdPaciente, ex); }
-                });
-            }
-            await ParaCada(deps, gate, t => t(), ct);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException) { falhou(doc.CdPaciente, ex); }
+            });
         }
-        p.Tempos["atendimentos"] = Decorrido(ta);
-
-        ctx.Marca.PacienteEm = DateTime.UtcNow;
-        ctx.Marca.BaaEm = maxBaa ?? ctx.Marca.BaaEm;
-        ctx.Marca.EdocEm = maxEdoc ?? ctx.Marca.EdocEm;
-
-        logger.LogInformation("Importação Salux ({Slug}) concluída: {Enc} atendimentos, {Obs} observations, {Falhas} falhas.",
-            ctx.BaseSlug, p.Encounters, p.Observations, p.Falhas.Count);
+        await ParaCada(deps, gate, t => t(), ct);
+        return (maxBaa, maxEdoc);
     }
 
     // ---------------- escrita / upsert canônico / purga escopada ----------------
@@ -221,10 +294,6 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
         catch (Exception ex) when (ex is not OperationCanceledException) { falhou(cd, ex); }
     }
 
-    /// <summary>
-    /// Upsert canônico por chave nacional: se já existe (mesmo CPF), <b>mescla</b> os identifiers
-    /// (preserva os de outras bases) e atualiza no mesmo id FHIR; senão cria. Não duplica pessoa/médico.
-    /// </summary>
     private static async Task<string> UpsertCanonicoAsync(ContextoImportacaoPep ctx, string tipo, string system, string valor, Resource novo, CancellationToken ct)
     {
         var existentes = await ctx.Escritor.BuscarPorIdentifierAsync(tipo, system, valor, ct);
@@ -247,7 +316,6 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
         _ => [],
     };
 
-    /// <summary>Adiciona em <paramref name="novo"/> os identifiers de <paramref name="existente"/> que faltam (união por system+value).</summary>
     private static void UnirIdentifiers(Resource novo, Resource existente)
     {
         var nv = IdentificadoresDe(novo);
@@ -256,7 +324,6 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
                 nv.Add(id);
     }
 
-    /// <summary>Purga a clínica DESTA base (e legada) de um paciente (filtra por meta.source — não toca outras bases).</summary>
     private static async Task PurgarBaseDoPacienteAsync(ContextoImportacaoPep ctx, string patientId, IReadOnlySet<string> sources, SemaphoreSlim gate, CancellationToken ct)
     {
         foreach (var tipo in TiposClinicos)
@@ -269,7 +336,6 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
         }
     }
 
-    /// <summary>"Apagar antes" escopado: remove toda a clínica DESTA base (e legada) do hub (por meta.source).</summary>
     private static async Task PurgarBaseAsync(ContextoImportacaoPep ctx, IReadOnlySet<string> sources, SemaphoreSlim gate, CancellationToken ct)
     {
         foreach (var tipo in TiposClinicos)
@@ -282,7 +348,6 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
         }
     }
 
-    /// <summary>Pacientes DESTA base já no hub (cd nativo extraído do identifier prefixado pelo slug).</summary>
     private static async Task<List<(long Cd, string FhirId)>> PacientesDaBaseNoHubAsync(ContextoImportacaoPep ctx, SaluxFhirMapper mapper, CancellationToken ct)
     {
         var bundle = await ctx.Escritor.ListarAsync("Patient", ct);
@@ -304,40 +369,38 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
 
     private static string IdDe(string reference) => reference.Split('/')[^1];
 
-    // ---------------- SQL (batched, lê colunas direto — sem JSON_OBJECT) ----------------
+    // ---------------- SQL (paginado por keyset; lê colunas direto — sem JSON_OBJECT) ----------------
 
-    private static string SqlMedicos(int? limite)
-    {
-        var teto = limite is { } n ? $"WHERE ROWNUM <= {n}" : string.Empty;
-        return $"""
-            SELECT med.cd_medico AS cd, med.nm_medico AS nome, med.nr_crm AS crm, med.uf_cd_uf AS uf,
-                   med.cd_conselho AS conselho, med.cpf AS cpf, med.cns AS cns, med.nr_rg AS rg,
-                   med.orgao_emissor AS orgao, TO_CHAR(med.dt_nascimento,'YYYY-MM-DD') AS nasc, med.sexo AS sexo,
-                   med.ds_email AS email, med.in_ativo AS ativo, med.nm_mae AS mae, med.nm_pai AS pai,
-                   med.id_categoria AS categoria, med.cd_cbo_smm AS cbo,
-                   (SELECT LISTAGG(e.ds_especialidade, ', ') WITHIN GROUP (ORDER BY e.ds_especialidade)
-                    FROM medico_especialidade me JOIN especialidade e ON e.cd_especialidade = me.cd_especialidade
-                    WHERE me.cd_medico = med.cd_medico) AS especialidade
-            FROM (SELECT * FROM medico
-                  WHERE nr_crm IS NOT NULL AND nm_medico IS NOT NULL AND cpf IS NOT NULL AND dt_exclusao IS NULL
-                  ORDER BY cd_medico DESC) med
-            {teto}
-            """;
-    }
+    private static string Keyset(string coluna, long? last) => last is { } l ? $"AND {coluna} < {l}" : string.Empty;
 
-    private static string SqlPacientes(int? limite, DateTime? since, IReadOnlyList<long>? cds)
+    private static string SqlMedicos(long? last, int tam) => $"""
+        SELECT med.cd_medico AS cd, med.nm_medico AS nome, med.nr_crm AS crm, med.uf_cd_uf AS uf,
+               med.cd_conselho AS conselho, med.cpf AS cpf, med.cns AS cns, med.nr_rg AS rg,
+               med.orgao_emissor AS orgao, TO_CHAR(med.dt_nascimento,'YYYY-MM-DD') AS nasc, med.sexo AS sexo,
+               med.ds_email AS email, med.in_ativo AS ativo, med.nm_mae AS mae, med.nm_pai AS pai,
+               med.id_categoria AS categoria, med.cd_cbo_smm AS cbo,
+               (SELECT LISTAGG(e.ds_especialidade, ', ') WITHIN GROUP (ORDER BY e.ds_especialidade)
+                FROM medico_especialidade me JOIN especialidade e ON e.cd_especialidade = me.cd_especialidade
+                WHERE me.cd_medico = med.cd_medico) AS especialidade
+        FROM (SELECT * FROM medico
+              WHERE nr_crm IS NOT NULL AND nm_medico IS NOT NULL AND cpf IS NOT NULL AND dt_exclusao IS NULL {Keyset("cd_medico", last)}
+              ORDER BY cd_medico DESC FETCH NEXT {tam} ROWS ONLY) med
+        """;
+
+    private static string SqlPacientes(long? last, int? tam, DateTime? since, IReadOnlyList<long>? cds)
     {
         string filtro;
-        string teto;
+        string ordemLimite;
         if (cds is { Count: > 0 })
         {
             filtro = $"AND cd_paciente IN ({ListaInt(cds)})";
-            teto = string.Empty;
+            ordemLimite = "ORDER BY cd_paciente DESC";
         }
         else
         {
-            filtro = since is { } d ? $"AND dt_alteracao > {OracleData(d)}" : string.Empty;
-            teto = limite is { } n ? $"WHERE ROWNUM <= {n}" : string.Empty;
+            var sinceF = since is { } d ? $"AND dt_alteracao > {OracleData(d)}" : string.Empty;
+            filtro = $"{Keyset("cd_paciente", last)} {sinceF}";
+            ordemLimite = $"ORDER BY cd_paciente DESC FETCH NEXT {tam ?? ChunkPacientes} ROWS ONLY";
         }
         return $"""
             SELECT pac.cd_paciente AS cd, pac.nm_paciente AS nome, pac.nm_paciente_social AS social,
@@ -363,8 +426,7 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
                    (SELECT bc.ds_barreira_comunicacao FROM barreira_comunicacao bc WHERE TO_CHAR(bc.cd_barreira_comunicacao)=TO_CHAR(pac.cd_barreira_comunicacao) AND ROWNUM=1) AS barreira_ds
             FROM (SELECT * FROM paciente
                   WHERE cpf_paciente IS NOT NULL AND nm_paciente IS NOT NULL AND dt_nascimento IS NOT NULL {filtro}
-                  ORDER BY cd_paciente DESC) pac
-            {teto}
+                  {ordemLimite}) pac
             """;
     }
 
@@ -510,14 +572,15 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
 
     private static string? DtIso(string? v) => string.IsNullOrWhiteSpace(v) ? null : v.Trim() + "-03:00";
 
-    private static void AtualizarMax(ref DateTime? atual, string? dataIso)
+    private static DateTime? ParseUtc(string? dataIso)
     {
-        if (string.IsNullOrWhiteSpace(dataIso)) return;
-        if (DateTime.TryParse(dataIso, CultureInfo.InvariantCulture,
-                DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var d)
-            && (atual is null || d > atual))
-            atual = d;
+        var iso = DtIso(dataIso);
+        return iso is not null && DateTime.TryParse(iso, CultureInfo.InvariantCulture,
+            DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var d) ? d : null;
     }
+
+    private static DateTime? Max(DateTime? a, DateTime? b) =>
+        a is null ? b : b is null ? a : (a > b ? a : b);
 
     private static long Cronometro() => System.Diagnostics.Stopwatch.GetTimestamp();
     private static double Decorrido(long inicio) => System.Diagnostics.Stopwatch.GetElapsedTime(inicio).TotalSeconds;
