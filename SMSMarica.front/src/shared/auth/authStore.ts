@@ -28,7 +28,8 @@ export type ModuloPermissao =
   | 'Agendamentos'
   | 'Sisreg'
   | 'SisregConfiguracao'
-  | 'SincronizacaoPep';
+  | 'SincronizacaoPep'
+  | 'ApiTokens';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 

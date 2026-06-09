@@ -1,3 +1,4 @@
+using SMSMarica.Core.Integracoes.Pep.Falhas;
 using SMSMarica.Core.Integracoes.Pep.Fhir;
 using SMSMarica.Core.Integracoes.Pep.Progresso;
 using SMSMarica.Data.Entities.Enums;
@@ -36,7 +37,13 @@ public sealed record OpcoesImportacao(
     int? MaxPacientes,
     bool ApagarAntes,
     IReadOnlyList<long>? CdsPacientes = null,
-    int? Concorrencia = null);
+    int? Concorrencia = null,
+    /// <summary>
+    /// Ponteiro inicial de <c>cd_paciente</c> no modo COMPLETO/escopo Tudo: começa
+    /// a paginação a partir dele (retoma de onde parou ou de um ponto manual).
+    /// Null = começa do topo. Ignorado nos demais modos/escopos.
+    /// </summary>
+    long? CursorPacienteInicial = null);
 
 /// <summary>
 /// Marca d'água por entidade (in/out). No modo incremental a estratégia usa os valores de
@@ -62,4 +69,18 @@ public sealed class ContextoImportacaoPep
 
     /// <summary>Slug curto e estável da base (IaFonte) — prefixa identifiers internos e compõe o meta.source.</summary>
     public required string BaseSlug { get; init; }
+
+    /// <summary>
+    /// Sink durável de falhas (opcional). Quando presente, cada falha registrada na importação
+    /// é persistida na hora em <c>smsmarica.pep_sincronizacao_falha</c> — trilha que sobrevive a
+    /// crash e alimenta o reimport direcionado por cd. Null em cenários sem persistência (testes).
+    /// </summary>
+    public IRegistradorFalhasPep? Falhas { get; init; }
+
+    /// <summary>
+    /// Callback para persistir o cursor de retomada (cd_paciente do último bloco
+    /// concluído) a cada bloco do modo COMPLETO; recebe <c>null</c> ao terminar a
+    /// base inteira. Null em cenários sem persistência (testes).
+    /// </summary>
+    public Func<long?, CancellationToken, Task>? SalvarCursorPaciente { get; init; }
 }

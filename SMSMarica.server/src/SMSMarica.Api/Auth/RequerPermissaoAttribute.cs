@@ -29,6 +29,14 @@ public sealed class RequerPermissaoAttribute(ModuloPermissao modulo, AcoesPermis
             return;
         }
 
+        // Token de serviço (X-API-Key): acesso pleno à API — não tem perfil de
+        // usuário, então não passa pela resolução de permissões por módulo.
+        if (user.FindFirstValue(ApiKeyAuthenticationHandler.ClaimTokenType)
+            == ApiKeyAuthenticationHandler.ValorServico)
+        {
+            return;
+        }
+
         var sub = user.FindFirstValue("sub") ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(sub, out var usuarioId))
         {

@@ -96,6 +96,7 @@ export function PepSincronizacaoPage() {
   const [maxPacientes, setMaxPacientes] = useState('10');
   const [concorrencia, setConcorrencia] = useState('8');
   const [apagarAntes, setApagarAntes] = useState(false);
+  const [cursorInicial, setCursorInicial] = useState('');
   const [erro, setErro] = useState<string | null>(null);
 
   // Seleciona a primeira base suportada por padrão.
@@ -112,6 +113,8 @@ export function PepSincronizacaoPage() {
   function aoIniciar(e: React.FormEvent) {
     e.preventDefault();
     setErro(null);
+    const cursor =
+      modo === 'Completo' && escopo === 'Tudo' ? Number(cursorInicial) || null : null;
     iniciar.mutate(
       {
         fonteId,
@@ -119,8 +122,11 @@ export function PepSincronizacaoPage() {
         escopo,
         maxMedicos: escopo === 'Limitado' ? Number(maxMedicos) || null : null,
         maxPacientes: escopo === 'Limitado' ? Number(maxPacientes) || null : null,
-        apagarAntes: modo === 'Completo' ? apagarAntes : false,
+        // Com cursor, NÃO apaga antes: senão zeraria a base e recomeçaria do ponteiro,
+        // perdendo tudo antes dele sem repor nesta rodada.
+        apagarAntes: modo === 'Completo' && cursor == null ? apagarAntes : false,
         concorrencia: Number(concorrencia) || null,
+        cursorPacienteInicial: cursor,
       },
       { onError: (err) => setErro(extrairMensagemDeErro(err)) },
     );
@@ -189,10 +195,50 @@ export function PepSincronizacaoPage() {
             </Campo>
           </div>
 
+          {modo === 'Completo' && escopo === 'Tudo' ? (
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+              <Campo
+                label="Iniciar a partir do cd_paciente (opcional)"
+                htmlFor="pep-cursor"
+                dica="Vazio = base inteira, do começo. Informe um cd para retomar/recomeçar de um ponto (a paginação é decrescente; reprocessar a fronteira é seguro)."
+              >
+                <Input
+                  id="pep-cursor"
+                  type="number"
+                  min={0}
+                  value={cursorInicial}
+                  onChange={(e) => setCursorInicial(e.target.value)}
+                  placeholder="ex.: 238000"
+                />
+              </Campo>
+              {baseSel?.cursorPacienteCd != null ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-amber-700">
+                  <span>
+                    Importação completa interrompida nesta base — último bloco em{' '}
+                    <span className="font-mono font-semibold">{baseSel.cursorPacienteCd}</span>.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCursorInicial(String(baseSel.cursorPacienteCd))}
+                    className="rounded-md border border-amber-300 bg-white px-2 py-0.5 font-medium text-amber-800 hover:bg-amber-50"
+                  >
+                    Retomar daqui
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           {modo === 'Completo' ? (
-            <label className="flex items-center gap-2 text-sm text-gray-700">
-              <input type="checkbox" checked={apagarAntes} onChange={(e) => setApagarAntes(e.target.checked)} />
+            <label className={`flex items-center gap-2 text-sm ${cursorInicial ? 'text-gray-400' : 'text-gray-700'}`}>
+              <input
+                type="checkbox"
+                checked={apagarAntes && !cursorInicial}
+                disabled={!!cursorInicial}
+                onChange={(e) => setApagarAntes(e.target.checked)}
+              />
               Apagar os recursos do hub antes de importar (full refresh)
+              {cursorInicial ? <span className="text-xs">— desabilitado ao usar ponteiro inicial</span> : null}
             </label>
           ) : null}
 

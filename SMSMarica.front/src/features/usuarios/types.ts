@@ -15,7 +15,7 @@ export type PapelAtual = 'Medico' | 'Motorista' | 'Paciente';
 export type UsuarioListItem = {
   id: string;
   nomeCompleto: string;
-  email: string;
+  email: string | null;
   fotoBase64: string | null;
   ativo: boolean;
   deveTrocarSenha: boolean;
@@ -24,7 +24,7 @@ export type UsuarioListItem = {
 export type Usuario = {
   id: string;
   nomeCompleto: string;
-  email: string;
+  email: string | null;
   cpf: string | null;
   dataNascimento: string | null;
   telefone: string | null;
@@ -40,7 +40,7 @@ export type Usuario = {
 
 export type CadastrarUsuarioPayload = {
   nomeCompleto: string;
-  email: string;
+  email?: string;
   cpf?: string;
   dataNascimento?: string;
   telefone?: string;
@@ -54,6 +54,8 @@ export type AtualizarUsuarioPayload = {
   telefone?: string;
   endereco: EnderecoDto | null;
   fotoBase64?: string | null;
+  /** E-mail editável/inserível (médicos importados vêm sem e-mail). Em branco = não altera. */
+  email?: string;
 };
 
 export type AtualizarMinhaContaPayload = {

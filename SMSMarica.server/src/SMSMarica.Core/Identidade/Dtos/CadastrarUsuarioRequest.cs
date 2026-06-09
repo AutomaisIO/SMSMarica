@@ -4,7 +4,7 @@ namespace SMSMarica.Core.Identidade.Dtos;
 
 public sealed record CadastrarUsuarioRequest(
     string NomeCompleto,
-    string Email,
+    string? Email,
     string? Cpf,
     DateOnly? DataNascimento,
     string? Telefone,

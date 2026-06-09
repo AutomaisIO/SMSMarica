@@ -9,9 +9,14 @@ public sealed record BasePepDto(
     string Tipo,
     string Ambiente,
     bool Suportada,
-    DateTime? UltimaSincronizacaoEm);
+    DateTime? UltimaSincronizacaoEm,
+    /// <summary>Cursor de retomada salvo (cd_paciente do último bloco), se houver uma importação completa interrompida.</summary>
+    long? CursorPacienteCd);
 
-/// <summary>Disparo de uma importação. <c>MaxMedicos/MaxPacientes</c> só valem no escopo Limitado.</summary>
+/// <summary>
+/// Disparo de uma importação. <c>MaxMedicos/MaxPacientes</c> só valem no escopo Limitado.
+/// <c>CursorPacienteInicial</c> só vale em Completo + Tudo (retomada / ponteiro manual).
+/// </summary>
 public sealed record IniciarImportacaoRequest(
     Guid FonteId,
     ModoSincronizacao Modo,
@@ -19,7 +24,8 @@ public sealed record IniciarImportacaoRequest(
     int? MaxMedicos,
     int? MaxPacientes,
     bool ApagarAntes,
-    int? Concorrencia);
+    int? Concorrencia,
+    long? CursorPacienteInicial = null);
 
 /// <summary>Contadores por tipo de recurso de uma execução.</summary>
 public sealed record ContadoresImportacaoDto(
@@ -50,6 +56,17 @@ public sealed record StatusImportacaoDto(
     ContadoresImportacaoDto Contadores,
     string? MensagemErro,
     IReadOnlyList<string> UltimasFalhas);
+
+/// <summary>Uma falha durável de importação (projeção de <c>pep_sincronizacao_falha</c>).</summary>
+public sealed record FalhaImportacaoDto(
+    Guid Id,
+    Guid ExecucaoId,
+    Guid FonteId,
+    string FonteSlug,
+    long CdPaciente,
+    string Mensagem,
+    DateTime CriadoEm,
+    DateTime? ResolvidoEm);
 
 /// <summary>Item do histórico de execuções.</summary>
 public sealed record ExecucaoImportacaoDto(

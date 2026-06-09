@@ -7,6 +7,7 @@ using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Integracoes.Pep.Background;
 using SMSMarica.Core.Integracoes.Pep.Dtos;
 using SMSMarica.Core.Integracoes.Pep.Estrategias;
+using SMSMarica.Core.Integracoes.Pep.Falhas;
 using SMSMarica.Core.Integracoes.Pep.Fhir;
 using SMSMarica.Core.Integracoes.Pep.Progresso;
 using SMSMarica.Core.Inteligencia.Seguranca;
@@ -18,6 +19,7 @@ namespace SMSMarica.Core.Integracoes.Pep;
 
 public sealed class PepSincronizacaoService(
     SmsMaricaDbContext db,
+    IDbContextFactory<SmsMaricaDbContext> dbFactory,
     IProtetorSegredos protetor,
     IEnumerable<IEstrategiaImportacaoPep> estrategias,
     IHubFhirEscritor escritor,
@@ -42,12 +44,16 @@ public sealed class PepSincronizacaoService(
             .Select(g => new { FonteId = g.Key, Ultima = g.Max(e => e.FinalizadoEm) })
             .ToDictionaryAsync(x => x.FonteId, x => x.Ultima, ct);
 
+        var cursores = await db.PepSincronizacaoEstados.AsNoTracking()
+            .ToDictionaryAsync(e => e.FonteId, e => e.PacienteCursorCd, ct);
+
         var tiposSuportados = estrategias.Select(e => e.Tipo).ToHashSet();
 
         return fontes.Select(f => new BasePepDto(
             f.Id, f.Nome, f.Tipo.ToString(), f.Ambiente.ToString(),
             tiposSuportados.Contains(f.Tipo),
-            ultimas.GetValueOrDefault(f.Id))).ToList();
+            ultimas.GetValueOrDefault(f.Id),
+            cursores.GetValueOrDefault(f.Id))).ToList();
     }
 
     public async Task<Guid> IniciarAsync(IniciarImportacaoRequest request, CancellationToken ct = default)
@@ -106,8 +112,13 @@ public sealed class PepSincronizacaoService(
         db.PepSincronizacaoExecucoes.Add(execucao);
         await db.SaveChangesAsync(ct);
 
+        // Cursor de retomada só faz sentido em Completo + Tudo; ignora nos demais.
+        var cursorInicial = request.Modo == ModoSincronizacao.Completo && request.Escopo == EscopoSincronizacao.Tudo
+            ? request.CursorPacienteInicial
+            : null;
+
         var opcoes = new OpcoesImportacao(request.Modo, request.Escopo, request.MaxMedicos, request.MaxPacientes,
-            request.ApagarAntes, Concorrencia: request.Concorrencia);
+            request.ApagarAntes, Concorrencia: request.Concorrencia, CursorPacienteInicial: cursorInicial);
         if (!fila.TentarEnfileirar(new PepImportacaoJob(execucao.Id, fonte.Id, opcoes, usuarioAtual.UsuarioId)))
         {
             execucao.Status = StatusSincronizacao.Erro;
@@ -148,6 +159,19 @@ public sealed class PepSincronizacaoService(
             e.IniciadoEm, e.FinalizadoEm, e.DuracaoSegundos, Contadores(e), e.TemposJson, e.MensagemErro)).ToList();
     }
 
+    public async Task<IReadOnlyList<FalhaImportacaoDto>> ListarFalhasAsync(
+        Guid? execucaoId = null, Guid? fonteId = null, bool somentePendentes = false, CancellationToken ct = default)
+    {
+        var q = db.PepSincronizacaoFalhas.AsNoTracking().AsQueryable();
+        if (execucaoId is { } eid) q = q.Where(f => f.ExecucaoId == eid);
+        if (fonteId is { } fid) q = q.Where(f => f.FonteId == fid);
+        if (somentePendentes) q = q.Where(f => f.ResolvidoEm == null);
+
+        var falhas = await q.OrderByDescending(f => f.CriadoEm).Take(1000).ToListAsync(ct);
+        return falhas.Select(f => new FalhaImportacaoDto(
+            f.Id, f.ExecucaoId, f.FonteId, f.FonteSlug, f.CdPaciente, f.Mensagem, f.CriadoEm, f.ResolvidoEm)).ToList();
+    }
+
     public async Task ExecutarAsync(PepImportacaoJob job, CancellationToken ct = default)
     {
         var execucao = await db.PepSincronizacaoExecucoes.FirstOrDefaultAsync(e => e.Id == job.ExecucaoId, ct);
@@ -166,6 +190,7 @@ public sealed class PepSincronizacaoService(
         await db.SaveChangesAsync(ct);
         estadoVivo.Iniciar(execucao.Id, execucao.FonteId, execucao.FonteNome, execucao.Modo, execucao.Escopo, execucao.IniciadoEm, progresso);
 
+        RegistradorFalhasPep? registrador = null;
         try
         {
             if (fonte is null) throw new ValidacaoException("pep.base", "Base não encontrada.");
@@ -185,6 +210,9 @@ public sealed class PepSincronizacaoService(
                 EdocEm = estadoEntidade?.UltimoSyncEdocEm,
             };
 
+            // Trilha durável de falhas (grava na hora, sobrevive a crash; alimenta o reimport por cd).
+            registrador = new RegistradorFalhasPep(dbFactory, logger, execucao.Id, fonte.Id, fonte.Slug!);
+
             var contexto = new ContextoImportacaoPep
             {
                 Conexao = new ConexaoFonte(fonte.Host!, fonte.Porta ?? 1521, fonte.Servico!, fonte.Usuario!,
@@ -194,6 +222,10 @@ public sealed class PepSincronizacaoService(
                 Escritor = escritor,
                 Progresso = progresso,
                 BaseSlug = fonte.Slug!,
+                Falhas = registrador,
+                // Persiste o cursor de retomada num contexto isolado (não interfere no
+                // 'db' scoped que grava a execução). Chamado em série, um por bloco.
+                SalvarCursorPaciente = (cursor, c) => SalvarCursorPacienteAsync(fonte.Id, cursor, c),
             };
 
             await estrategia.ImportarAsync(contexto, ct);
@@ -223,9 +255,29 @@ public sealed class PepSincronizacaoService(
         finally
         {
             estadoVivo.Finalizar();
+            // Drena o que faltou da trilha de falhas antes de fechar a execução.
+            if (registrador is not null) await registrador.DisposeAsync();
             try { await db.SaveChangesAsync(ct); }
             catch (Exception ex) { logger.LogError(ex, "Falha ao salvar resultado da execução {Id}.", execucao.Id); }
         }
+    }
+
+    /// <summary>
+    /// Grava o cursor de retomada (cd_paciente do último bloco) num contexto próprio,
+    /// fora da transação da execução — chamado a cada bloco do modo COMPLETO.
+    /// </summary>
+    private async Task SalvarCursorPacienteAsync(Guid fonteId, long? cursor, CancellationToken ct)
+    {
+        await using var ctx = await dbFactory.CreateDbContextAsync(ct);
+        var estado = await ctx.PepSincronizacaoEstados.FirstOrDefaultAsync(s => s.FonteId == fonteId, ct);
+        if (estado is null)
+        {
+            estado = new PepSincronizacaoEstado { FonteId = fonteId };
+            ctx.PepSincronizacaoEstados.Add(estado);
+        }
+        estado.PacienteCursorCd = cursor;
+        estado.AtualizadoEm = DateTime.UtcNow;
+        await ctx.SaveChangesAsync(ct);
     }
 
     private async Task PersistirWatermarkAsync(Guid fonteId, MarcaDagua marca, CancellationToken ct)

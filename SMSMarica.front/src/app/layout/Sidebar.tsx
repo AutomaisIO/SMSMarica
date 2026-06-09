@@ -18,6 +18,7 @@ import {
   Image as ImageIcon,
   Folder,
   KeyRound,
+  KeySquare,
   Layers,
   LayoutDashboard,
   LogOut,
@@ -172,6 +173,14 @@ const SECOES: SecaoMenu[] = [
         icone: DatabaseZap,
         modulo: 'SincronizacaoPep',
       },
+    ],
+  },
+  {
+    id: 'integracoes',
+    titulo: 'Integrações',
+    icone: KeySquare,
+    itens: [
+      { rotulo: 'API Tokens', to: '/app/api-tokens', icone: KeySquare, modulo: 'ApiTokens' },
     ],
   },
   {

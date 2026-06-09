@@ -402,6 +402,66 @@ namespace SMSMarica.Data.Migrations
                     b.ToTable("translado_alocacao", "smsmarica");
                 });
 
+            modelBuilder.Entity("SMSMarica.Data.Entities.ApiToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Ativo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("ativo");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("nome");
+
+                    b.Property<string>("Prefixo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("prefixo");
+
+                    b.Property<DateTime?>("RevogadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revogado_em");
+
+                    b.Property<Guid?>("RevogadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("revogado_por");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<DateTime?>("UltimoUsoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ultimo_uso_em");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ux_api_token_hash");
+
+                    b.ToTable("api_token", "smsmarica");
+                });
+
             modelBuilder.Entity("SMSMarica.Data.Entities.Assento", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1454,6 +1514,10 @@ namespace SMSMarica.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("atualizado_em");
 
+                    b.Property<long?>("PacienteCursorCd")
+                        .HasColumnType("bigint")
+                        .HasColumnName("paciente_cursor_cd");
+
                     b.Property<DateTime?>("UltimoSyncBaaEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("ultimo_sync_baa_em");
@@ -1582,6 +1646,56 @@ namespace SMSMarica.Data.Migrations
                         .HasDatabaseName("ix_pep_execucao_fonte_iniciado");
 
                     b.ToTable("pep_sincronizacao_execucao", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMarica.Data.Entities.Pep.PepSincronizacaoFalha", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<long>("CdPaciente")
+                        .HasColumnType("bigint")
+                        .HasColumnName("cd_paciente");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid>("ExecucaoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("execucao_id");
+
+                    b.Property<Guid>("FonteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("fonte_id");
+
+                    b.Property<string>("FonteSlug")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("fonte_slug");
+
+                    b.Property<string>("Mensagem")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("mensagem");
+
+                    b.Property<DateTime?>("ResolvidoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resolvido_em");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExecucaoId")
+                        .HasDatabaseName("ix_pep_falha_execucao");
+
+                    b.HasIndex("FonteId", "ResolvidoEm")
+                        .HasDatabaseName("ix_pep_falha_fonte_resolvido");
+
+                    b.ToTable("pep_sincronizacao_falha", "smsmarica");
                 });
 
             modelBuilder.Entity("SMSMarica.Data.Entities.Perfil", b =>
@@ -2860,7 +2974,6 @@ namespace SMSMarica.Data.Migrations
                         .HasColumnName("deve_trocar_senha");
 
                     b.Property<string>("Email")
-                        .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("email");
@@ -2914,7 +3027,8 @@ namespace SMSMarica.Data.Migrations
                         .HasFilter("cpf IS NOT NULL");
 
                     b.HasIndex("Email")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("email IS NOT NULL");
 
                     b.HasIndex("ExcluidoEm")
                         .HasDatabaseName("ix_usuario_excluido_em")

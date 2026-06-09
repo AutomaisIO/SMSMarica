@@ -5,7 +5,7 @@ namespace SMSMarica.Core.Identidade.Dtos;
 public sealed record UsuarioDto(
     Guid Id,
     string NomeCompleto,
-    string Email,
+    string? Email,
     string? Cpf,
     DateOnly? DataNascimento,
     string? Telefone,
@@ -25,7 +25,7 @@ public sealed record UsuarioDto(
 public sealed record UsuarioListItemDto(
     Guid Id,
     string NomeCompleto,
-    string Email,
+    string? Email,
     string? FotoBase64,
     bool Ativo,
     bool DeveTrocarSenha);

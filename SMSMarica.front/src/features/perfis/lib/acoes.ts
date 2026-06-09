@@ -66,6 +66,7 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'Sisreg', rotulo: 'SISREG (consulta)' },
   { id: 'SisregConfiguracao', rotulo: 'Configuração SISREG' },
   { id: 'SincronizacaoPep', rotulo: 'Sincronização PEP (Salux)' },
+  { id: 'ApiTokens', rotulo: 'API Tokens' },
 ];
 
 export const ACOES: { id: AcaoPermissao; rotulo: string }[] = [

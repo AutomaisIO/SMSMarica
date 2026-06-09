@@ -83,7 +83,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
       const e = detalhe.data.endereco;
       setValores({
         nomeCompleto: detalhe.data.nomeCompleto,
-        email: detalhe.data.email,
+        email: detalhe.data.email ?? '',
         senha: '',
         cpf: formatarCpfDigitos(detalhe.data.cpf ?? ''),
         dataNascimento: detalhe.data.dataNascimento ?? '',
@@ -133,7 +133,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
       if (existente) {
         setErroGlobal(
           existente.ativo
-            ? `Já existe usuário com este CPF: ${existente.nomeCompleto} (${existente.email}).`
+            ? `Já existe usuário com este CPF: ${existente.nomeCompleto}${existente.email ? ` (${existente.email})` : ''}.`
             : `CPF pertence ao usuário inativo "${existente.nomeCompleto}". Peça para um administrador reativá-lo.`,
         );
         return;
@@ -165,8 +165,9 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
     const senha = valores.senha;
 
     if (nome.length < 3) ne.nomeCompleto = 'Nome obrigatório (mínimo 3 caracteres).';
+    // E-mail é opcional (médico importado pode não ter); valida formato só se preenchido.
+    if (email && !/^\S+@\S+\.\S+$/.test(email)) ne.email = 'E-mail inválido.';
     if (modo === 'criar') {
-      if (!/^\S+@\S+\.\S+$/.test(email)) ne.email = 'E-mail inválido.';
       if (senha && senha.length < 8) ne.senha = 'Mínimo 8 caracteres.';
       if (!valores.dataNascimento) ne.dataNascimento = 'Informe a data de nascimento.';
     }
@@ -196,7 +197,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
       if (modo === 'criar') {
         const novoId = await cadastrar.mutateAsync({
           nomeCompleto: nome,
-          email,
+          email: email || undefined,
           cpf: cpf.replace(/\D/g, '') || undefined,
           dataNascimento: valores.dataNascimento || undefined,
           telefone: valores.telefone || undefined,
@@ -210,13 +211,15 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
         }
       } else {
         if (!idUsuario) throw new Error('ID ausente.');
-        // Nome, CPF e data de nascimento são imutáveis — não vão no payload.
+        // Nome, CPF e data de nascimento são imutáveis. E-mail PODE ser editado/inserido
+        // (médicos importados vêm sem e-mail). Em branco = backend não altera.
         await atualizar.mutateAsync({
           id: idUsuario,
           payload: {
             telefone: valores.telefone || undefined,
             endereco: enderecoPayload,
             fotoBase64: valores.fotoBase64,
+            email: email || undefined,
           },
         });
         await salvarPerfis.mutateAsync({ id: idUsuario, perfilIds: perfilIdsSelecionados });
@@ -313,7 +316,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
           setCampo(c as keyof Valores, v as Valores[keyof Valores]);
         }}
         identidadeReadOnly
-        emailReadOnly={modo === 'editar'}
+        emailReadOnly={false}
         desabilitado={pendente}
         mostrarPontoReferencia={false}
       />

@@ -9,6 +9,8 @@ export type BasePep = {
   ambiente: string; // Producao, Treinamento
   suportada: boolean;
   ultimaSincronizacaoEm: string | null;
+  /** Cursor de retomada salvo (cd_paciente) de uma importação completa interrompida. */
+  cursorPacienteCd: number | null;
 };
 
 export type IniciarImportacaoPayload = {
@@ -19,6 +21,8 @@ export type IniciarImportacaoPayload = {
   maxPacientes: number | null;
   apagarAntes: boolean;
   concorrencia: number | null;
+  /** Ponteiro inicial de cd_paciente (Completo + Tudo). Null = começa do topo. */
+  cursorPacienteInicial: number | null;
 };
 
 export type ContadoresImportacao = {

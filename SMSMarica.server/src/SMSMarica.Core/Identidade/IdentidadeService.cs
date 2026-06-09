@@ -26,20 +26,28 @@ public sealed class IdentidadeService(
 
     public async Task<LoginRespostaDto> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
-        var email = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
+        // Identificador único de login: aceita e-mail OU CPF (tanto faz).
+        var ident = (request.Email ?? string.Empty).Trim();
+        var emailCand = ident.ToLowerInvariant();
+        var digitos = NormalizarDigitos(ident);
+        var cpfCand = digitos.Length == 11 ? digitos : null;
+
         var usuario = await _db.Usuarios
             .Include(u => u.UsuariosPerfis)
-            .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
+            .FirstOrDefaultAsync(
+                u => (u.Email != null && u.Email == emailCand)
+                     || (cpfCand != null && u.Cpf == cpfCand),
+                cancellationToken);
 
         if (usuario is null || !usuario.Ativo || usuario.SenhaHash == SenhaHashPlaceholder)
         {
-            throw new ValidacaoException("identidade.credenciais_invalidas", "Email ou senha inválidos.");
+            throw new ValidacaoException("identidade.credenciais_invalidas", "E-mail/CPF ou senha inválidos.");
         }
 
         var verif = _hasher.VerifyHashedPassword(usuario, usuario.SenhaHash, request.Senha ?? string.Empty);
         if (verif == PasswordVerificationResult.Failed)
         {
-            throw new ValidacaoException("identidade.credenciais_invalidas", "Email ou senha inválidos.");
+            throw new ValidacaoException("identidade.credenciais_invalidas", "E-mail/CPF ou senha inválidos.");
         }
 
         if (verif == PasswordVerificationResult.SuccessRehashNeeded)
@@ -125,14 +133,21 @@ public sealed class IdentidadeService(
 
     public async Task<Guid> CadastrarAsync(CadastrarUsuarioRequest request, CancellationToken cancellationToken = default)
     {
-        var email = request.Email.Trim().ToLowerInvariant();
+        var email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim().ToLowerInvariant();
+        var cpfNormalizado = string.IsNullOrWhiteSpace(request.Cpf) ? null : NormalizarDigitos(request.Cpf);
 
-        if (await _db.Usuarios.AsNoTracking().AnyAsync(u => u.Email == email, cancellationToken))
+        // Sem e-mail e sem CPF não há como o usuário fazer login.
+        if (email is null && cpfNormalizado is null)
+        {
+            throw new ValidacaoException("usuario.sem_identificador", "Informe e-mail ou CPF para o login.");
+        }
+
+        if (email is not null
+            && await _db.Usuarios.AsNoTracking().AnyAsync(u => u.Email == email, cancellationToken))
         {
             throw new ConflitoException("usuario.email_duplicado", "Já existe usuário com este email.");
         }
 
-        var cpfNormalizado = string.IsNullOrWhiteSpace(request.Cpf) ? null : NormalizarDigitos(request.Cpf);
         if (cpfNormalizado is not null
             && await _db.Usuarios.AsNoTracking().AnyAsync(u => u.Cpf == cpfNormalizado, cancellationToken))
         {
@@ -178,6 +193,20 @@ public sealed class IdentidadeService(
     {
         var u = await _db.Usuarios.FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Usuario), id);
+
+        // E-mail é editável/inserível (médicos importados vêm sem e-mail). Em
+        // branco = não mexe no atual. Quando informado, normaliza e valida unicidade.
+        if (!string.IsNullOrWhiteSpace(request.Email))
+        {
+            var novoEmail = request.Email.Trim().ToLowerInvariant();
+            if (novoEmail != u.Email
+                && await _db.Usuarios.AsNoTracking()
+                    .AnyAsync(x => x.Email == novoEmail && x.Id != id, cancellationToken))
+            {
+                throw new ConflitoException("usuario.email_duplicado", "Já existe usuário com este email.");
+            }
+            u.Email = novoEmail;
+        }
 
         u.Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim();
         u.Endereco = request.Endereco?.ParaEntidade();

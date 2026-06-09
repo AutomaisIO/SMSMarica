@@ -13,7 +13,7 @@ internal sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
 
         builder.Property(u => u.Id).HasColumnName("id");
         builder.Property(u => u.NomeCompleto).HasColumnName("nome_completo").HasMaxLength(200).IsRequired();
-        builder.Property(u => u.Email).HasColumnName("email").HasMaxLength(200).IsRequired();
+        builder.Property(u => u.Email).HasColumnName("email").HasMaxLength(200);
         builder.Property(u => u.Cpf).HasColumnName("cpf").HasMaxLength(11);
         builder.Property(u => u.Rg).HasColumnName("rg").HasMaxLength(20);
         builder.Property(u => u.DataNascimento).HasColumnName("data_nascimento");
@@ -45,7 +45,9 @@ internal sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
             e.Property(x => x.PontoReferencia).HasColumnName("endereco_ponto_referencia").HasMaxLength(200);
         });
 
-        builder.HasIndex(u => u.Email).IsUnique();
+        builder.HasIndex(u => u.Email)
+            .IsUnique()
+            .HasFilter("email IS NOT NULL");
         builder.HasIndex(u => u.Cpf)
             .IsUnique()
             .HasFilter("cpf IS NOT NULL");

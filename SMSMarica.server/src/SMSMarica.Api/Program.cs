@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using FluentValidation;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -28,7 +29,10 @@ builder.Host.UseSerilog((ctx, cfg) => cfg
 builder.Services.AddControllers(o =>
 {
     // [Authorize] global: tudo exige token, exceto endpoints com [AllowAnonymous].
-    var politica = new AuthorizationPolicyBuilder()
+    // Aceita JWT de usuário OU chave de serviço (X-API-Key) — esta última usada
+    // por integrações externas (ex.: CentralIA chamando /integracoes).
+    var politica = new AuthorizationPolicyBuilder(
+            JwtBearerDefaults.AuthenticationScheme, ApiKeyAuthenticationHandler.Esquema)
         .RequireAuthenticatedUser()
         .Build();
     o.Filters.Add(new AuthorizeFilter(politica));
@@ -83,7 +87,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 : new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key)),
             ClockSkew = TimeSpan.FromMinutes(1),
         };
-    });
+    })
+    // Chave de serviço (X-API-Key) para integrações externas (ex.: CentralIA).
+    .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(
+        ApiKeyAuthenticationHandler.Esquema, _ => { });
 builder.Services.AddAuthorization();
 
 builder.Services.AddOpenApi();

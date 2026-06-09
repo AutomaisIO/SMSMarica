@@ -46,4 +46,16 @@ public sealed class PepSincronizacaoController(IPepSincronizacaoService service)
     [ProducesResponseType<IReadOnlyList<ExecucaoImportacaoDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<ExecucaoImportacaoDto>> Execucoes([FromQuery] Guid? fonteId, CancellationToken ct) =>
         await service.ListarExecucoesAsync(fonteId, ct);
+
+    /// <summary>
+    /// Falhas duráveis de importação (mais recentes primeiro). Filtra por execução/base e, com
+    /// <paramref name="somentePendentes"/>, só as ainda não resolvidas — insumo do reimport por cd.
+    /// </summary>
+    [HttpGet("falhas")]
+    [RequerPermissao(ModuloPermissao.SincronizacaoPep, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<FalhaImportacaoDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<FalhaImportacaoDto>> Falhas(
+        [FromQuery] Guid? execucaoId, [FromQuery] Guid? fonteId, [FromQuery] bool somentePendentes,
+        CancellationToken ct) =>
+        await service.ListarFalhasAsync(execucaoId, fonteId, somentePendentes, ct);
 }

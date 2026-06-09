@@ -38,6 +38,9 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<TipoExame> TiposExame => Set<TipoExame>();
     public DbSet<SolicitacaoExame> SolicitacoesExame => Set<SolicitacaoExame>();
 
+    // Tokens de API (chaves de serviço para integrações externas, ex.: CentralIA)
+    public DbSet<ApiToken> ApiTokens => Set<ApiToken>();
+
     // Módulo IA (consulta em linguagem natural)
     public DbSet<IaConfiguracao> IaConfiguracoes => Set<IaConfiguracao>();
     public DbSet<IaFonte> IaFontes => Set<IaFonte>();
@@ -53,6 +56,7 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     // Sincronização de PEPs (importação Salux/outros → hub FHIR) — ADR-0014
     public DbSet<PepSincronizacaoExecucao> PepSincronizacaoExecucoes => Set<PepSincronizacaoExecucao>();
     public DbSet<PepSincronizacaoEstado> PepSincronizacaoEstados => Set<PepSincronizacaoEstado>();
+    public DbSet<PepSincronizacaoFalha> PepSincronizacaoFalhas => Set<PepSincronizacaoFalha>();
 
     // Domínio de Agendamento (Especialidade → Agenda → Agendamento) — ADR-0012/0013
     public DbSet<Especialidade> Especialidades => Set<Especialidade>();

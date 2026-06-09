@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using QuestPDF.Infrastructure;
+using SMSMarica.Core.ApiTokens;
 using SMSMarica.Core.Avaliacoes;
 using SMSMarica.Core.EstudoAnotacoes;
 using SMSMarica.Core.Identidade;
@@ -49,6 +50,7 @@ public static class DependencyInjection
         services.AddScoped<IAvaliacoesService, AvaliacoesService>();
         services.AddScoped<IEstudoAnotacoesService, EstudoAnotacoesService>();
         services.AddScoped<IIdentidadeService, IdentidadeService>();
+        services.AddScoped<IApiTokensService, ApiTokensService>();
         services.AddScoped<IPerfisService, PerfisService>();
         services.AddScoped<ITiposTratamentoService, TiposTratamentoService>();
         services.AddScoped<ILaudoTemplatesService, LaudoTemplatesService>();

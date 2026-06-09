@@ -12,7 +12,12 @@ public class Usuario
 {
     public Guid Id { get; set; }
     public string NomeCompleto { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
+
+    /// <summary>
+    /// E-mail de login. Opcional: médicos importados (sem e-mail) podem ter
+    /// login só pelo CPF. Quando preenchido, é único. Login aceita e-mail OU CPF.
+    /// </summary>
+    public string? Email { get; set; }
     public string? Cpf { get; set; }
     public string? Rg { get; set; }
     public DateOnly? DataNascimento { get; set; }

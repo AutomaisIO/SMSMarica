@@ -51,4 +51,7 @@ public enum ModuloPermissao
 
     /// <summary>Sincronização/importação de prontuários de PEPs (Salux e futuros) para o hub FHIR.</summary>
     SincronizacaoPep = 27,
+
+    /// <summary>Gerenciar tokens de API (chaves de serviço para integrações externas, ex.: CentralIA).</summary>
+    ApiTokens = 28,
 }

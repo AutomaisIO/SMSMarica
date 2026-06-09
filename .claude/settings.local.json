@@ -170,7 +170,22 @@
       "Bash(PYTHONIOENCODING=utf-8 python achar_edoc2.py)",
       "Bash(PYTHONIOENCODING=utf-8 python dbg_itens.py)",
       "PowerShell($env:PYTHONIOENCODING=\"utf-8\"; Set-Location \"C:\\\\Projetos GIT\\\\SMSMarica\\\\Salux\"; python scripts/verificar_prescricao_baa.py)",
-      "PowerShell($env:PYTHONIOENCODING=\"utf-8\"; Set-Location \"C:\\\\Projetos GIT\\\\SMSMarica\\\\Salux\"; python scripts/importar_atendimentos_fhir.py)"
+      "PowerShell($env:PYTHONIOENCODING=\"utf-8\"; Set-Location \"C:\\\\Projetos GIT\\\\SMSMarica\\\\Salux\"; python scripts/importar_atendimentos_fhir.py)",
+      "PowerShell($env:PYTHONIOENCODING=\"utf-8\"; Set-Location \"C:\\\\Projetos GIT\\\\SMSMarica\\\\Salux\"; python scripts/descobrir_aprazamento.py)",
+      "PowerShell($env:PYTHONIOENCODING=\"utf-8\"; Set-Location \"C:\\\\Projetos GIT\\\\SMSMarica\\\\Salux\"; python scripts/descobrir_aprazamento.py 2>&1 | Select-Object -Skip 45)",
+      "PowerShell($env:PYTHONIOENCODING=\"utf-8\"; Set-Location \"C:\\\\Projetos GIT\\\\SMSMarica\\\\Salux\"; python scripts/diag_aprazamento.py)",
+      "PowerShell($t = New-Object System.Net.Sockets.TcpClient; try { $ok = $t.ConnectAsync\\(\"10.35.0.2\",1521\\).Wait\\(5000\\); if \\($ok -and $t.Connected\\) { \"ALCANCA 10.35.0.2:1521 \\(conectou\\)\" } else { \"NAO alcanca 10.35.0.2:1521 \\(timeout 5s\\)\" } } catch { \"ERRO: $\\($_.Exception.Message\\)\" } finally { $t.Close\\(\\) })",
+      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new root@api.automais.io \"hostname; echo '--- interfaces ---'; ip -br a 2>/dev/null | grep -E 'wg|10.35|eth'\")",
+      "Bash(echo \"exit: $?\")",
+      "Bash(grep -nA4 \"Configuracao\\\\|configuracao\")",
+      "Bash(grep -nA12 \"MedicoListItem\" src/features/medicos/types.ts)",
+      "Bash(grep -nA8 \"UnidadeListItem\\\\s*=\" src/features/unidades/types.ts)",
+      "Bash(./node_modules/.bin/eslint src/features/especialidades src/features/sisreg src/features/agendamentos)",
+      "Bash(git check-ignore *)",
+      "Bash(ls -la \"docs/Integração SISREG/.claude/\")",
+      "Bash(grep -E \"^\\\\.gitignore$|CLAUDE.md|Sidebar.tsx|AppRouter.tsx|perfis/lib/acoes.ts|authStore.ts|appsettings.json\")",
+      "Bash(sed -n '1,30p' Salux/scripts/importar_atendimentos_fhir.py)",
+      "Bash(sed -n '1,60p' Automais.Fhir/src/Automais.Fhir.Data/Entities/MedicationAdministrationRow.cs)"
     ]
   }
 }

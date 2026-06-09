@@ -16,5 +16,13 @@ public class PepSincronizacaoEstado
     public DateTime? UltimoSyncBaaEm { get; set; }
     public DateTime? UltimoSyncEdocEm { get; set; }
 
+    /// <summary>
+    /// Cursor de retomada do modo COMPLETO (escopo Tudo): <c>cd_paciente</c> do
+    /// último bloco totalmente processado (paginação keyset, <c>cd_paciente DESC</c>).
+    /// Gravado a cada bloco; permite retomar de onde parou após queda. Fica
+    /// <c>null</c> quando a base foi importada inteira (próxima rodada começa do topo).
+    /// </summary>
+    public long? PacienteCursorCd { get; set; }
+
     public DateTime AtualizadoEm { get; set; }
 }

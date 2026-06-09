@@ -42,7 +42,12 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
         var mapper = new SaluxFhirMapper(ctx.BaseSlug, source);
         var sourcesPurga = new HashSet<string> { source, $"{SaluxFhirMapper.SourceBase}/salux" };
 
-        void Falhou(long cd, Exception ex) { lock (falhasLock) { p.Falhas.Add((cd, ex.Message.Split('\n')[0])); } }
+        void Falhou(long cd, Exception ex)
+        {
+            var msg = ex.Message.Split('\n')[0];
+            lock (falhasLock) { p.Falhas.Add((cd, msg)); }
+            ctx.Falhas?.Registrar(cd, msg); // trilha durável + insumo do reimport direcionado
+        }
 
         await using var oracle = new LeitorOracleHis(
             ctx.Conexao.Host, ctx.Conexao.Porta, ctx.Conexao.Servico,
@@ -143,8 +148,14 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
         else
         {
             // COMPLETO: streaming end-to-end por bloco de pacientes (memória constante).
+            // Cursor de retomada (só no escopo Tudo): começa do ponteiro informado/salvo
+            // e grava o cd do último bloco CONCLUÍDO — permite retomar de onde parou.
+            // Reprocessar o bloco de fronteira é seguro: Patient/Practitioner são upsert
+            // idempotente e os clínicos passam por purga-por-paciente antes de regravar.
             var limite = limitado ? ctx.Opcoes.MaxPacientes : null;
-            long? last = null; var count = 0;
+            long? last = limitado ? null : ctx.Opcoes.CursorPacienteInicial;
+            var count = 0;
+            var exausto = false;
             while (true)
             {
                 ct.ThrowIfCancellationRequested();
@@ -154,7 +165,7 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
                 p.FaseAtual = "pacientes";
                 var tpc = Cronometro();
                 var chunk = await oracle.LerAsync(SqlPacientes(last, tam, null, null), MapPaciente, ct);
-                if (chunk.Count == 0) break;
+                if (chunk.Count == 0) { exausto = true; break; }
                 var map = await UpsertPacientesChunkAsync(ctx, mapper, chunk, gate, p, Falhou, ct);
                 last = chunk.Min(x => x.Cd); count += chunk.Count;
                 segPac += Decorrido(tpc);
@@ -164,8 +175,16 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
                 var (cb, ce) = await ProcessarAtendimentosAsync(oracle, mapper, ctx, map, null, null, purgarPorPaciente, sourcesPurga, gate, p, Falhou, ct);
                 maxBaa = Max(maxBaa, cb); maxEdoc = Max(maxEdoc, ce); segAtend += Decorrido(ta);
 
-                if (chunk.Count < tam) break;
+                // Checkpoint: bloco totalmente concluído (pacientes + atendimentos).
+                if (!limitado && ctx.SalvarCursorPaciente is { } salvar)
+                    await salvar(last, ct);
+
+                if (chunk.Count < tam) { exausto = true; break; }
             }
+
+            // Base inteira concluída → zera o cursor (próxima rodada começa do topo).
+            if (exausto && !limitado && ctx.SalvarCursorPaciente is { } limpar)
+                await limpar(null, ct);
         }
 
         p.Tempos["pacientes"] = segPac;

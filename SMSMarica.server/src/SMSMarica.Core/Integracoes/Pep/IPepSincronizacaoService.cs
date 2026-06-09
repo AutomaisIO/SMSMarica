@@ -21,6 +21,13 @@ public interface IPepSincronizacaoService
     /// <summary>Histórico de execuções (mais recentes primeiro), opcionalmente por base.</summary>
     Task<IReadOnlyList<ExecucaoImportacaoDto>> ListarExecucoesAsync(Guid? fonteId = null, CancellationToken ct = default);
 
+    /// <summary>
+    /// Falhas duráveis de importação (mais recentes primeiro). Filtra por execução e/ou base e,
+    /// com <paramref name="somentePendentes"/>, só as ainda não resolvidas — insumo do reimport por cd.
+    /// </summary>
+    Task<IReadOnlyList<FalhaImportacaoDto>> ListarFalhasAsync(
+        Guid? execucaoId = null, Guid? fonteId = null, bool somentePendentes = false, CancellationToken ct = default);
+
     /// <summary>Executa um job (chamado pelo runner em background). Não lança — registra o erro na execução.</summary>
     Task ExecutarAsync(PepImportacaoJob job, CancellationToken ct = default);
 }

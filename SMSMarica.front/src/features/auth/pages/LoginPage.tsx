@@ -59,19 +59,19 @@ export function LoginPage() {
 
             <div>
               <label htmlFor="email" className="label">
-                E-mail
+                E-mail ou CPF
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   id="email"
-                  type="email"
+                  type="text"
                   autoComplete="username"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="input pl-10"
-                  placeholder="admin@smsmarica.online"
+                  placeholder="E-mail ou CPF"
                   disabled={carregando}
                 />
               </div>

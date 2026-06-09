@@ -311,17 +311,44 @@ internal sealed class SaluxFhirMapper(string slug, string source)
         var cid = S(b.Cid);
         if (cid is null) return null;
         var ds = S(b.CidDs);
+
+        // CID-10 cruz-estrela: a origem grava o marcador (†/*) junto do código ("L14 *"),
+        // mas o tipo `code` do FHIR não aceita espaço/asterisco. Usamos só a base ("L14")
+        // no `code` e preservamos o original no `text` (repositório fiel).
+        var codigo = LimparCodigoCid(cid);
+        var code = new CodeableConcept { Text = ds ?? cid };
+        if (codigo is not null)
+            code.Coding = [new Coding { System = SysCid, Code = codigo, Display = ds }];
+
         return new Condition
         {
             Meta = Meta(),
             Subject = new ResourceReference(patientRef),
             Encounter = new ResourceReference(encRef),
-            Code = new CodeableConcept
-            {
-                Coding = [new Coding { System = SysCid, Code = cid, Display = ds }],
-                Text = ds ?? cid,
-            },
+            Code = code,
         };
+    }
+
+    /// <summary>
+    /// Reduz um CID-10 ao literal válido de `code` do FHIR: corta no primeiro espaço ou
+    /// marcador cruz-estrela (†/‡/*/+). Ex.: "L14 *" → "L14", "A09.0" → "A09.0".
+    /// Devolve null se nada sobrar.
+    /// </summary>
+    private static string? LimparCodigoCid(string codigo)
+    {
+        var t = codigo.Trim();
+        var fim = t.Length;
+        for (var i = 0; i < t.Length; i++)
+        {
+            var ch = t[i];
+            if (char.IsWhiteSpace(ch) || ch is '*' or '+' or '†' or '‡')
+            {
+                fim = i;
+                break;
+            }
+        }
+        var limpo = t[..fim];
+        return limpo.Length > 0 ? limpo : null;
     }
 
     private static string? TextoPosologia(PrescricaoLinha item)

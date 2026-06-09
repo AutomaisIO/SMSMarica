@@ -55,6 +55,35 @@ Critério de qualidade necessário:
   bases para clínica — de propósito. Esta dedup por (paciente, data/hora) é o passo seguinte.
 - Vale também para **medições/observações** repetidas e para reconciliar com dados já presentes.
 
+## 4. Trilha durável de falhas (PARCIALMENTE FEITO — no working tree, **não commitado/deployado**)
+
+**Problema descoberto (2026-06-08)**: as falhas por recurso (ex.: `Condition` com CID-10
+cruz-estrela `"H82 *"` rejeitado pelo hub com 400) só eram persistidas em `FalhasJson` **na
+conclusão limpa** do run. No ramo de crash (`ORA-50000`, OOM, órfã — o padrão recente) a lista
+detalhada **se perdia**; sobrava só a contagem + `mensagem_erro`. O endpoint de status ainda
+expõe apenas as **últimas 5** falhas (`TakeLast(5)`), e a lista completa vive só em memória.
+
+**Implementado (aguardando o fim do run atual para commit + deploy):**
+- Tabela `smsmarica.pep_sincronizacao_falha` (1 linha por recurso que falhou):
+  `execucao_id, fonte_id, fonte_slug, cd_paciente, mensagem, criado_em, resolvido_em`.
+  Migration `20260608232753_AddPepSincronizacaoFalha` (só CREATE TABLE — não-destrutiva).
+- Sink `RegistradorFalhasPep` (Channel + `IDbContextFactory`): grava **incremental, na hora**,
+  concorrência-segura, sobrevive a crash. Plugado no funil único `Falhou(cd, ex)` da estratégia Salux.
+- `GET /pep-sincronizacao/falhas?execucaoId=&fonteId=&somentePendentes=true` para consultar
+  (com `somentePendentes` → os cds a reprocessar).
+
+**Falta (próximos passos):**
+1. **Commit + deploy** (reinicia o backend) — leva junto o fix do CID (`LimparCodigoCid` em
+   `SaluxFhirMapper.cs`, também no working tree). Só fazer **depois** que o run atual terminar.
+2. **Aplicar a migration** no Postgres.
+3. **Fechar o loop de resolução**: expor `CdsPacientes` no `IniciarAsync`/`IniciarImportacaoRequest`
+   (o path de reimport direcionado já existe na estratégia, linha ~101) e **marcar `resolvido_em`**
+   ao reprocessar com sucesso. Isso transforma a tabela no insumo do **reimport rápido por cd**
+   (em vez do "Tudo", que leva o mesmo tempo do run inteiro).
+
+> Nota: as falhas do **run atual** (em andamento por mais dias) **não** entram na tabela — o código
+> só vale após o deploy. Mas o reimport idempotente pós-fix reconcilia tudo de qualquer forma.
+
 ## Encaminhamento
 
 - **Próximo a construir**: (1) relatório de incongruências na execução + (2) painel de saúde da base
