@@ -1,0 +1,188 @@
+name: Deploy Automais.Assinador (API)
+
+# Serviço de assinatura PAdES (iText) — ADR-0015. Server-side, stateless (sem banco).
+# Quem o chama é o backend (mesmo host), via http://localhost:5082. Deploy automático
+# no push ao Automais.Assinador/** (exceto o agente local, que não roda no servidor).
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Automais.Assinador/src/**'
+      - 'Automais.Assinador/Directory.Build.props'
+      - 'Automais.Assinador/Directory.Packages.props'
+      - 'Automais.Assinador/global.json'
+      - '.github/workflows/deploy-assinador.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-automais-assinador
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+      DOTNET_NOLOGO: 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        working-directory: Automais.Assinador
+        run: dotnet restore src/Automais.Assinador.Api/Automais.Assinador.Api.csproj
+
+      - name: Publish (framework-dependent, linux-x64)
+        working-directory: Automais.Assinador
+        run: |
+          dotnet publish src/Automais.Assinador.Api/Automais.Assinador.Api.csproj \
+            --configuration Release \
+            --runtime linux-x64 \
+            --no-self-contained \
+            --output publish
+
+      - name: Pack artifact
+        working-directory: Automais.Assinador
+        run: tar -czf ../automais-assinador.tar.gz -C publish .
+
+      - name: Copy artifact to server (SCP)
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HOST_SMSMARICA }}
+          username: ${{ secrets.USER_SMSMARICA }}
+          password: ${{ secrets.PASS_SMSMARICA }}
+          port: 22
+          source: automais-assinador.tar.gz
+          target: /tmp/
+
+      - name: Deploy on server (SSH)
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.HOST_SMSMARICA }}
+          username: ${{ secrets.USER_SMSMARICA }}
+          password: ${{ secrets.PASS_SMSMARICA }}
+          port: 22
+          command_timeout: 15m
+          script: |
+            set -euo pipefail
+
+            APP_DIR=/opt/automais-assinador/api
+            ENV_DIR=/etc/automais-assinador
+            ENV_FILE=$ENV_DIR/env
+            SERVICE=automais-assinador
+            DOTNET_DIR=/opt/dotnet
+            DOTNET=$DOTNET_DIR/dotnet
+            DOTNET_LINK=/usr/local/bin/dotnet
+            TARBALL=/tmp/automais-assinador.tar.gz
+
+            if [ "$(id -u)" -eq 0 ]; then SUDO=""; else SUDO="sudo -n"; fi
+
+            log() { echo ">>> $*"; }
+
+            # --- 1. Dependências básicas ---
+            if ! command -v curl >/dev/null 2>&1; then
+              $SUDO apt-get update -y && $SUDO apt-get install -y curl
+            fi
+            if ! command -v tar >/dev/null 2>&1; then
+              $SUDO apt-get install -y tar
+            fi
+
+            # --- 2. .NET 10 ASP.NET Core runtime (compartilhado com smsmarica/fhir) ---
+            if [ ! -x "$DOTNET" ] || ! "$DOTNET" --list-runtimes 2>/dev/null | grep -q 'Microsoft.AspNetCore.App 10'; then
+              log "Instalando .NET 10 ASP.NET Core runtime..."
+              curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+              chmod +x /tmp/dotnet-install.sh
+              $SUDO mkdir -p "$DOTNET_DIR"
+              $SUDO /tmp/dotnet-install.sh --channel 10.0 --runtime aspnetcore --install-dir "$DOTNET_DIR"
+              $SUDO ln -sf "$DOTNET" "$DOTNET_LINK"
+              rm -f /tmp/dotnet-install.sh
+            fi
+
+            # --- 3. Usuário de sistema dedicado (mesmo do fhir) ---
+            if ! id -u automais >/dev/null 2>&1; then
+              $SUDO useradd --system --home-dir /opt/automais-assinador --shell /usr/sbin/nologin automais
+            fi
+
+            # --- 4. Diretórios ---
+            $SUDO mkdir -p "$APP_DIR" "$ENV_DIR"
+
+            # --- 5. Arquivo de ambiente (stateless: vazio, reservado para config futura) ---
+            if [ ! -f "$ENV_FILE" ]; then
+              $SUDO touch "$ENV_FILE"
+            fi
+            $SUDO chmod 600 "$ENV_FILE"
+            $SUDO chown automais:automais "$ENV_FILE"
+
+            # --- 6. Systemd unit (bind em 127.0.0.1:5082 — só o backend local chama; sem auth própria) ---
+            UNIT_FILE=/etc/systemd/system/$SERVICE.service
+            if [ ! -f "$UNIT_FILE" ]; then
+              log "Criando unit $UNIT_FILE..."
+              $SUDO tee "$UNIT_FILE" >/dev/null <<'UNIT'
+            [Unit]
+            Description=Automais Assinador (PAdES / iText)
+            After=network.target
+
+            [Service]
+            WorkingDirectory=/opt/automais-assinador/api
+            ExecStart=/usr/local/bin/dotnet /opt/automais-assinador/api/Automais.Assinador.Api.dll
+            Restart=on-failure
+            RestartSec=10
+            KillSignal=SIGINT
+            SyslogIdentifier=automais-assinador
+            User=automais
+            Group=automais
+            EnvironmentFile=/etc/automais-assinador/env
+            Environment=ASPNETCORE_ENVIRONMENT=Production
+            Environment=ASPNETCORE_URLS=http://127.0.0.1:5082
+            Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
+
+            [Install]
+            WantedBy=multi-user.target
+            UNIT
+              $SUDO systemctl daemon-reload
+              $SUDO systemctl enable "$SERVICE"
+            fi
+
+            # --- 7. Parar serviço + GARANTIR a porta 5082 livre ---
+            # NÃO usar pkill -f com o nome da DLL: casaria com o shell deste script.
+            $SUDO systemctl stop "$SERVICE" 2>/dev/null || true
+            if ! command -v fuser >/dev/null 2>&1; then
+              $SUDO apt-get update -y >/dev/null 2>&1 || true
+              $SUDO apt-get install -y psmisc >/dev/null 2>&1 || true
+            fi
+            for _ in $(seq 1 15); do
+              $SUDO fuser -k 5082/tcp 2>/dev/null || true
+              sleep 1
+              if ! $SUDO fuser 5082/tcp >/dev/null 2>&1; then break; fi
+            done
+
+            # --- 8. Substituir artefatos ---
+            if [ ! -f "$TARBALL" ]; then
+              echo "ERRO: $TARBALL não encontrado (scp falhou?)" >&2
+              exit 1
+            fi
+            log "Extraindo nova versão em $APP_DIR..."
+            $SUDO find "$APP_DIR" -mindepth 1 -delete
+            $SUDO tar -xzf "$TARBALL" -C "$APP_DIR"
+            $SUDO chown -R automais:automais "$APP_DIR"
+            rm -f "$TARBALL"
+
+            # --- 9. Iniciar ---
+            log "Iniciando $SERVICE..."
+            $SUDO systemctl start "$SERVICE"
+
+            # --- 10. Validação ---
+            sleep 4
+            if ! $SUDO systemctl is-active --quiet "$SERVICE"; then
+              echo "FALHA: serviço não subiu. Journal:" >&2
+              $SUDO journalctl -u "$SERVICE" -n 80 --no-pager || true
+              exit 1
+            fi
+            log "OK — $SERVICE ativo na porta 5082 (127.0.0.1)."
+            $SUDO systemctl status "$SERVICE" --no-pager --lines=10 || true

@@ -1,9 +1,11 @@
 import { http } from '@/shared/api/httpClient';
 import type {
+  AssinaturaStatus,
   AtualizarLaudoPayload,
   CadastrarLaudoPayload,
   FiltroLaudos,
   FinalizarLaudoPayload,
+  IniciarAssinaturaResp,
   Laudo,
   LaudoHistoricoItem,
   LaudoListItem,
@@ -64,4 +66,16 @@ export async function criarNovaVersaoLaudo(id: string): Promise<string> {
 
 export async function excluirLaudo(id: string): Promise<void> {
   await http.delete(`/laudos/${id}`);
+}
+
+// ---- Assinatura digital ----
+
+export async function iniciarAssinatura(id: string): Promise<IniciarAssinaturaResp> {
+  const { data } = await http.post<IniciarAssinaturaResp>(`/laudos/${id}/assinatura/iniciar`);
+  return data;
+}
+
+export async function obterStatusAssinatura(id: string): Promise<AssinaturaStatus> {
+  const { data } = await http.get<AssinaturaStatus>(`/laudos/${id}/assinatura`);
+  return data;
 }

@@ -11,6 +11,17 @@ export const http = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+/**
+ * URL absoluta do backend — para passar a processos externos (ex.: o agente de
+ * assinatura, lançado via protocolo). Em dev (`/api`) resolve contra a origem.
+ * Defina `VITE_API_BASE_URL=http://localhost:5080` para o agente bater direto no backend.
+ */
+export const apiBaseAbsoluto: string = /^https?:\/\//i.test(baseURL)
+  ? baseURL
+  : typeof window !== 'undefined'
+    ? new URL(baseURL, window.location.origin).toString()
+    : baseURL;
+
 http.interceptors.request.use((config) => {
   const token = obterToken();
   if (token) {

@@ -23,7 +23,8 @@ public sealed record LaudoDto(
     StatusLaudo Status,
     DateTime? FinalizadoEm,
     DateTime CriadoEm,
-    DateTime? AtualizadoEm);
+    DateTime? AtualizadoEm,
+    bool Assinado = false);
 
 public sealed record LaudoListItemDto(
     Guid Id,
@@ -36,7 +37,8 @@ public sealed record LaudoListItemDto(
     string Titulo,
     StatusLaudo Status,
     DateTime? FinalizadoEm,
-    DateTime CriadoEm);
+    DateTime CriadoEm,
+    bool Assinado = false);
 
 public sealed record LaudoHistoricoItemDto(
     Guid Id,

@@ -81,14 +81,29 @@ public sealed class LaudosService(
             .Take(limite)
             .ToListAsync(cancellationToken);
 
-        return await EnriquecerAsync([.. lista.Select(LaudosMapper.ParaListItem)], cancellationToken);
+        var dtos = await EnriquecerAsync([.. lista.Select(LaudosMapper.ParaListItem)], cancellationToken);
+        var assinados = await ResolverAssinadosAsync([.. dtos.Select(d => d.Id)], cancellationToken);
+        return [.. dtos.Select(d => assinados.Contains(d.Id) ? d with { Assinado = true } : d)];
+    }
+
+    private async Task<HashSet<Guid>> ResolverAssinadosAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct)
+    {
+        if (ids.Count == 0) return [];
+        var assinados = await _db.LaudoAssinaturas.AsNoTracking()
+            .Where(a => ids.Contains(a.LaudoId) && a.Status == StatusAssinatura.Concluida)
+            .Select(a => a.LaudoId)
+            .ToListAsync(ct);
+        return [.. assinados];
     }
 
     public async Task<LaudoDto> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var l = await CarregarCompletoAsync(id, asNoTracking: true, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Laudo), id);
-        return await EnriquecerAsync(LaudosMapper.ParaDto(l), cancellationToken);
+        var dto = await EnriquecerAsync(LaudosMapper.ParaDto(l), cancellationToken);
+        var assinado = await _db.LaudoAssinaturas.AsNoTracking()
+            .AnyAsync(a => a.LaudoId == id && a.Status == StatusAssinatura.Concluida, cancellationToken);
+        return dto with { Assinado = assinado };
     }
 
     public async Task<LaudoDto?> ObterPorStudyAsync(

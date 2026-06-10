@@ -22,6 +22,7 @@ export type Laudo = {
   finalizadoEm: string | null;
   criadoEm: string;
   atualizadoEm: string | null;
+  assinado: boolean;
 };
 
 export type LaudoListItem = {
@@ -36,6 +37,29 @@ export type LaudoListItem = {
   status: StatusLaudo;
   finalizadoEm: string | null;
   criadoEm: string;
+  assinado: boolean;
+};
+
+export type StatusAssinatura =
+  | 'NaoIniciada'
+  | 'Iniciada'
+  | 'AguardandoAssinatura'
+  | 'Concluida'
+  | 'Falhou'
+  | 'Cancelada';
+
+export type AssinaturaStatus = {
+  assinaturaId: string | null;
+  status: StatusAssinatura;
+  assinadoEm: string | null;
+  certificadoTitular: string | null;
+  formato: string | null;
+};
+
+/** Resposta do "iniciar": a chave de uso único que o front passa ao agente. */
+export type IniciarAssinaturaResp = {
+  assinaturaId: string;
+  chave: string;
 };
 
 export type LaudoHistoricoItem = {

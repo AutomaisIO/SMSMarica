@@ -57,6 +57,18 @@ public static class DependencyInjection
         services.AddScoped<ILaudosService, LaudosService>();
         services.AddScoped<ILaudoPdfRenderer, LaudoPdfRenderer>();
 
+        // ---- Assinatura digital de laudos (PAdES via Automais.Assinador) ----
+        services.Configure<Laudos.Assinatura.AssinaturaOptions>(
+            configuration.GetSection(Laudos.Assinatura.AssinaturaOptions.SecaoConfig));
+        services.AddScoped<Laudos.Assinatura.ILaudoAssinaturaService, Laudos.Assinatura.LaudoAssinaturaService>();
+        var assinadorBaseUrl = configuration["Assinatura:AssinadorBaseUrl"] ?? "http://localhost:5082/";
+        services
+            .AddHttpClient<Laudos.Assinatura.IAssinadorPdfPades, Laudos.Assinatura.AssinadorPdfHttpClient>(client =>
+            {
+                client.BaseAddress = new Uri(assinadorBaseUrl);
+                client.Timeout = TimeSpan.FromSeconds(60);
+            });
+
         // ---- Solicitação de Exames + Worklist + Notificações ----
         services.AddScoped<IProcedimentosSigtapService, ProcedimentosSigtapService>();
         services.AddScoped<ITiposExameService, TiposExameService>();

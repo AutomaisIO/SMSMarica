@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Automais.Assinador.Agente</RootNamespace>
+    <!-- Loja de certificados do Windows (VIDaaS Connect / token / A1) + registro do protocolo. -->
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <AssemblyName>automais-assinador-agente</AssemblyName>
+  </PropertyGroup>
+
+</Project>

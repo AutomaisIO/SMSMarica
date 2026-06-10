@@ -3,8 +3,9 @@ using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Laudos;
+using SMSMarica.Core.Laudos.Assinatura;
+using SMSMarica.Core.Laudos.Assinatura.Dtos;
 using SMSMarica.Core.Laudos.Dtos;
-using SMSMarica.Core.Laudos.Pdf;
 using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
@@ -16,10 +17,10 @@ namespace SMSMarica.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("laudos")]
-public sealed class LaudosController(ILaudosService service, ILaudoPdfRenderer pdf) : ControllerBase
+public sealed class LaudosController(ILaudosService service, ILaudoAssinaturaService assinatura) : ControllerBase
 {
     private readonly ILaudosService _service = service;
-    private readonly ILaudoPdfRenderer _pdf = pdf;
+    private readonly ILaudoAssinaturaService _assinatura = assinatura;
 
     /// <summary>Lista laudos (filtros opcionais; default: últimos 50).</summary>
     [HttpGet]
@@ -165,7 +166,10 @@ public sealed class LaudosController(ILaudosService service, ILaudoPdfRenderer p
         return NoContent();
     }
 
-    /// <summary>PDF do laudo (cabeçalho + corpo + tarja CFM no rodapé).</summary>
+    /// <summary>
+    /// PDF do laudo. Se já houver assinatura digital concluída, serve o PDF assinado
+    /// (byte-estável); senão, gera on-demand com a tarja CFM no rodapé.
+    /// </summary>
     [HttpGet("{id:guid}/pdf")]
     [RequerPermissao(ModuloPermissao.Laudos, AcoesPermissao.Consulta)]
     [Produces("application/pdf")]
@@ -173,10 +177,34 @@ public sealed class LaudosController(ILaudosService service, ILaudoPdfRenderer p
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Pdf(Guid id, CancellationToken cancellationToken)
     {
-        var bytes = await _pdf.GerarAsync(id, cancellationToken);
+        var download = await _assinatura.ObterPdfParaDownloadAsync(id, cancellationToken);
         Response.Headers.CacheControl = "private, no-store";
-        return File(bytes, "application/pdf", $"laudo-{id}.pdf");
+        var nome = download.Assinado ? $"laudo-{id}-assinado.pdf" : $"laudo-{id}.pdf";
+        return File(download.Conteudo, "application/pdf", nome);
     }
+
+    /// <summary>
+    /// Inicia a assinatura digital de um laudo finalizado (médico autor). Cria o job e
+    /// devolve a chave de uso único — o front lança o agente via
+    /// <c>automais-assinador://...?chave=</c>.
+    /// </summary>
+    [HttpPost("{id:guid}/assinatura/iniciar")]
+    [RequerPermissao(ModuloPermissao.Laudos, AcoesPermissao.Edicao)]
+    [ProducesResponseType<IniciarAssinaturaResultado>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IniciarAssinaturaResultado> IniciarAssinatura(Guid id, CancellationToken cancellationToken)
+    {
+        var usuarioId = ExtrairUsuarioId();
+        return await _assinatura.IniciarAsync(id, usuarioId, cancellationToken);
+    }
+
+    /// <summary>Status da assinatura do laudo (para o front fazer polling após "Assinar").</summary>
+    [HttpGet("{id:guid}/assinatura")]
+    [RequerPermissao(ModuloPermissao.Laudos, AcoesPermissao.Consulta)]
+    [ProducesResponseType<AssinaturaStatusDto>(StatusCodes.Status200OK)]
+    public async Task<AssinaturaStatusDto> StatusAssinatura(Guid id, CancellationToken cancellationToken) =>
+        await _assinatura.ObterStatusAsync(id, cancellationToken);
 
     private Guid ExtrairUsuarioId()
     {

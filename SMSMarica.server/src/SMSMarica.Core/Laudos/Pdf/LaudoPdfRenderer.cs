@@ -18,7 +18,7 @@ public sealed class LaudoPdfRenderer(ILaudosService laudos, IOptions<LaudosPdfOp
     private readonly ILaudosService _laudos = laudos;
     private readonly LaudosPdfOptions _opt = options.Value;
 
-    public async Task<byte[]> GerarAsync(Guid laudoId, CancellationToken cancellationToken = default)
+    public async Task<byte[]> GerarAsync(Guid laudoId, bool incluirTarja = true, CancellationToken cancellationToken = default)
     {
         var laudo = await _laudos.CarregarParaPdfAsync(laudoId, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Laudo), laudoId);
@@ -38,7 +38,7 @@ public sealed class LaudoPdfRenderer(ILaudosService laudos, IOptions<LaudosPdfOp
 
                 page.Header().Element(c => RenderHeader(c));
                 page.Content().Element(c => RenderContent(c, laudo, dadosCabecalho, blocos));
-                page.Footer().Element(c => RenderFooter(c, dadosAssinatura, emitidoEm));
+                page.Footer().Element(c => RenderFooter(c, dadosAssinatura, emitidoEm, incluirTarja));
             });
         });
 
@@ -172,7 +172,7 @@ public sealed class LaudoPdfRenderer(ILaudosService laudos, IOptions<LaudosPdfOp
 
     // ------------------------ Footer ------------------------
 
-    private void RenderFooter(IContainer container, IReadOnlyList<string> assinatura, string emitidoEm)
+    private void RenderFooter(IContainer container, IReadOnlyList<string> assinatura, string emitidoEm, bool incluirTarja)
     {
         container.Column(c =>
         {
@@ -190,10 +190,15 @@ public sealed class LaudoPdfRenderer(ILaudosService laudos, IOptions<LaudosPdfOp
                 a.Item().AlignCenter().Text(emitidoEm).FontSize(8).Light();
             });
 
-            c.Item().PaddingTop(6).AlignCenter().Text(_opt.TarjaRodape)
-                .FontSize(7)
-                .FontColor(Colors.Grey.Darken2)
-                .Italic();
+            // A tarja "sem assinatura ICP-Brasil" é omitida quando o PDF está sendo
+            // preparado para assinatura digital (o carimbo da assinatura entra depois).
+            if (incluirTarja)
+            {
+                c.Item().PaddingTop(6).AlignCenter().Text(_opt.TarjaRodape)
+                    .FontSize(7)
+                    .FontColor(Colors.Grey.Darken2)
+                    .Italic();
+            }
 
             c.Item().AlignCenter().Text(t =>
             {

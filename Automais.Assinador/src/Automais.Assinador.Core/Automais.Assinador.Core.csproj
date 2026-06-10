@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Automais.Assinador.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="itext" />
+    <PackageReference Include="itext.bouncy-castle-adapter" />
+  </ItemGroup>
+
+</Project>

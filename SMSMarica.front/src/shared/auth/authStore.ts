@@ -38,6 +38,8 @@ export type UsuarioAutenticado = {
   nome: string;
   email: string;
   deveTrocarSenha: boolean;
+  /** Papel derivado no hub FHIR: "Medico", "Motorista"… (null para usuário comum). */
+  papelAtual?: string;
 };
 
 type PermissaoApi = { modulo: ModuloPermissao; acoes: string };
@@ -98,7 +100,13 @@ function indexarPermissoes(lista: PermissaoApi[] | undefined | null) {
 type LoginResposta = {
   token: string;
   expiraEm: string;
-  usuario: { id: string; nomeCompleto: string; email: string; deveTrocarSenha: boolean };
+  usuario: {
+    id: string;
+    nomeCompleto: string;
+    email: string;
+    deveTrocarSenha: boolean;
+    papelAtual?: string | null;
+  };
   permissoes: PermissaoApi[];
 };
 
@@ -117,6 +125,7 @@ export const useAuth = create<AuthState>((set, get) => ({
       nome: data.usuario.nomeCompleto,
       email: data.usuario.email,
       deveTrocarSenha: data.usuario.deveTrocarSenha,
+      papelAtual: data.usuario.papelAtual ?? undefined,
     };
     const permissoes = indexarPermissoes(data.permissoes);
     const persistir: Persistido = { usuario, token: data.token, expiraEm: data.expiraEm, permissoes };
@@ -177,4 +186,9 @@ export function useTemConsulta(modulo: ModuloPermissao): boolean {
 /** Hook utilitário: o usuário pode executar a ação específica no módulo? */
 export function usePermissao(modulo: ModuloPermissao, acao: AcaoPermissao): boolean {
   return useAuth((s) => (s.permissoes[modulo] ?? []).includes(acao));
+}
+
+/** Hook utilitário: o usuário logado é médico (papel derivado do hub FHIR)? */
+export function useEhMedico(): boolean {
+  return useAuth((s) => s.usuario?.papelAtual === 'Medico');
 }

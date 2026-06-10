@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Automais.Assinador.Api/Automais.Assinador.Api.csproj" />
+    <Project Path="src/Automais.Assinador.Core/Automais.Assinador.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Automais.Assinador.Tests/Automais.Assinador.Tests.csproj" />
+  </Folder>
+  <Folder Name="/agente/">
+    <Project Path="agente/Automais.Assinador.Agente/Automais.Assinador.Agente.csproj" />
+  </Folder>
+</Solution>

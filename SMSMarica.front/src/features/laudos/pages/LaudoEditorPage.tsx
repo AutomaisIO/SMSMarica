@@ -8,9 +8,10 @@ import {
   RefreshCw,
   Save,
   ScanLine,
+  ShieldCheck,
 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
-import { usePermissao } from '@/shared/auth/authStore';
+import { useEhMedico, usePermissao } from '@/shared/auth/authStore';
 import { abrirJanelaSolta } from '@/shared/lib/janela';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
@@ -27,9 +28,12 @@ import {
   useCadastrarLaudo,
   useCriarNovaVersao,
   useFinalizarLaudo,
+  useIniciarAssinatura,
   useLaudoPorId,
+  useStatusAssinatura,
 } from '@/features/laudos/api/queries';
 import { abrirPdfLaudo } from '@/features/laudos/lib/pdf';
+import { lancarAgenteAssinatura } from '@/features/laudos/lib/assinatura';
 
 export function LaudoEditorPage() {
   const navigate = useNavigate();
@@ -44,6 +48,8 @@ export function LaudoEditorPage() {
   const novaVersao = useCriarNovaVersao();
 
   const podeFinalizar = usePermissao('Laudos', 'Edicao');
+  const ehMedico = useEhMedico();
+  const iniciarAssinatura = useIniciarAssinatura();
 
   const [titulo, setTitulo] = useState('Laudo');
   const [html, setHtml] = useState('');
@@ -65,6 +71,15 @@ export function LaudoEditorPage() {
 
   const studyInstanceUID = ehNovo ? studyParam : (detalhe.data?.studyInstanceUID ?? studyParam);
   const finalizado = !ehNovo && detalhe.data?.status === 'Finalizado';
+
+  // Assinatura digital: faz polling enquanto o agente do médico assina.
+  const statusAssinatura = useStatusAssinatura(ehNovo ? null : (id ?? null), finalizado);
+  const assinado = (detalhe.data?.assinado ?? false) || statusAssinatura.data?.status === 'Concluida';
+  const assinando =
+    iniciarAssinatura.isPending ||
+    statusAssinatura.data?.status === 'Iniciada' ||
+    statusAssinatura.data?.status === 'AguardandoAssinatura';
+  const assinaturaFalhou = statusAssinatura.data?.status === 'Falhou';
 
   // Puxa o pedido (Solicitação de Exame) associado ao Study para mostrar contexto clínico.
   const solicitacao = useSolicitacaoPorStudy(studyInstanceUID || null);
@@ -139,6 +154,18 @@ export function LaudoEditorPage() {
     }
   }
 
+  async function aoAssinar() {
+    if (!id) return;
+    setErro(null);
+    try {
+      const { chave } = await iniciarAssinatura.mutateAsync(id);
+      // Lança o agente local via protocolo; o polling de status acompanha a assinatura.
+      lancarAgenteAssinatura(chave);
+    } catch (e) {
+      setErro(extrairMensagemDeErro(e));
+    }
+  }
+
   function abrirVisualizadorPacs() {
     if (!studyInstanceUID) return;
     const ok = abrirJanelaSolta(
@@ -180,6 +207,22 @@ export function LaudoEditorPage() {
           ) : null}
           {!ehNovo && finalizado ? (
             <>
+              {assinado ? (
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-sm font-medium text-emerald-800">
+                  <ShieldCheck className="h-4 w-4" />
+                  Assinado digitalmente
+                </span>
+              ) : ehMedico && assinando ? (
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-sm text-amber-800">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Aguardando autorização no seu agente (VIDaaS Connect)…
+                </span>
+              ) : ehMedico ? (
+                <Button onClick={aoAssinar} disabled={iniciarAssinatura.isPending}>
+                  <ShieldCheck className="mr-2 h-4 w-4" />
+                  {assinaturaFalhou ? 'Tentar assinar de novo' : 'Assinar'}
+                </Button>
+              ) : null}
               <Button variante="outline" onClick={() => abrirPdfLaudo(id!)}>
                 <FileText className="mr-2 h-4 w-4" />
                 PDF

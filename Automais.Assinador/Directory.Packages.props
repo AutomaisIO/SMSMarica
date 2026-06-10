@@ -1,0 +1,38 @@
+<Project>
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <!--
+    iText é AGPL-3.0. Este serviço é ABERTO (código-fonte público) e isolado por HTTP,
+    o que satisfaz a AGPL sem contaminar os consumidores que o chamam por rede.
+    Nunca linkar este assembly in-process num produto fechado.
+  -->
+  <ItemGroup Label="iText (PAdES / AGPL)">
+    <PackageVersion Include="itext" Version="9.1.0" />
+    <PackageVersion Include="itext.bouncy-castle-adapter" Version="9.1.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="ASP.NET Core / OpenAPI">
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
+    <PackageVersion Include="Scalar.AspNetCore" Version="2.0.22" />
+  </ItemGroup>
+
+  <ItemGroup Label="Logging">
+    <PackageVersion Include="Serilog.AspNetCore" Version="9.0.0" />
+    <PackageVersion Include="Serilog.Sinks.Console" Version="6.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Hosting (Windows Service)">
+    <PackageVersion Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Testes">
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageVersion Include="xunit" Version="2.9.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.0" />
+  </ItemGroup>
+
+</Project>

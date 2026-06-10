@@ -5,10 +5,12 @@ import {
   criarNovaVersaoLaudo,
   excluirLaudo,
   finalizarLaudo,
+  iniciarAssinatura,
   listarHistorico,
   listarLaudos,
   listarLaudosPorStudies,
   obterLaudo,
+  obterStatusAssinatura,
 } from '@/features/laudos/api/laudosApi';
 import type {
   AtualizarLaudoPayload,
@@ -108,5 +110,36 @@ export function useExcluirLaudo() {
   return useMutation({
     mutationFn: (id: string) => excluirLaudo(id),
     onSuccess: () => client.invalidateQueries({ queryKey: laudosKeys.raiz }),
+  });
+}
+
+// ---- Assinatura digital ----
+
+export const assinaturaKey = (id: string) => ['laudos', 'assinatura', id] as const;
+
+/** Status da assinatura, com polling enquanto o agente não conclui. */
+export function useStatusAssinatura(id: string | null, ativo: boolean) {
+  return useQuery({
+    queryKey: id ? assinaturaKey(id) : ['laudos', 'assinatura', 'nenhum'],
+    queryFn: () => {
+      if (!id) throw new Error('ID não informado.');
+      return obterStatusAssinatura(id);
+    },
+    enabled: Boolean(id) && ativo,
+    refetchInterval: (query) => {
+      const s = query.state.data?.status;
+      return s === 'Iniciada' || s === 'AguardandoAssinatura' ? 3000 : false;
+    },
+  });
+}
+
+export function useIniciarAssinatura() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => iniciarAssinatura(id),
+    onSuccess: (_d, id) => {
+      client.invalidateQueries({ queryKey: assinaturaKey(id) });
+      client.invalidateQueries({ queryKey: laudosKeys.porId(id) });
+    },
   });
 }
