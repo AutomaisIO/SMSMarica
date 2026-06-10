@@ -8,7 +8,6 @@ import {
 } from '@cornerstonejs/core';
 import { ToolGroupManager } from '@cornerstonejs/tools';
 import { Loader2 } from 'lucide-react';
-import { cn } from '@/shared/lib/cn';
 import { ScaleOverlayXYTool } from '@/features/pacs/lib/scaleOverlayXY';
 import { RENDERING_ENGINE_ID, TOOL_GROUP_ID } from '@/features/pacs/lib/cornerstone';
 import {
@@ -170,18 +169,19 @@ export function PacsViewportCelula({
   const mostrarLoading = Boolean(imageId) && (montando || carregando);
 
   return (
-    <div
-      className={cn(
-        'relative bg-black',
-        focado ? 'ring-2 ring-primary-500 ring-inset' : 'ring-1 ring-gray-800 ring-inset',
-      )}
-      onPointerDown={aoFocar}
-    >
+    <div className="relative bg-black" onPointerDown={aoFocar}>
       <div
         ref={elementoRef}
         className="absolute inset-0"
         onContextMenu={(e) => e.preventDefault()}
       />
+
+      {/* Borda de foco — overlay ACIMA do canvas do Cornerstone (que é pintado
+          em absolute inset-0 e cobriria um ring no wrapper). pointer-events-none
+          para não interceptar as ferramentas. */}
+      {focado ? (
+        <div className="pointer-events-none absolute inset-0 z-10 ring-2 ring-inset ring-primary-500" />
+      ) : null}
 
       {!imageId ? (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-gray-600">

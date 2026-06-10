@@ -356,9 +356,15 @@ export function PacsViewport({
 
   function espelhar(eixo: 'h' | 'v') {
     comViewportFocado((vp) => {
-      const p = vp.getViewPresentation();
-      vp.setViewPresentation(
-        eixo === 'h' ? { flipHorizontal: !p.flipHorizontal } : { flipVertical: !p.flipVertical },
+      // Via setCamera (não setViewPresentation): este último tem um toggle
+      // relativo que liga o flip mas não desliga (passa `false` ao flip()
+      // interno, que só inverte com valor truthy). setCamera calcula a
+      // diferença e alterna corretamente nos dois sentidos.
+      const cam = vp.getCamera();
+      vp.setCamera(
+        eixo === 'h'
+          ? { flipHorizontal: !cam.flipHorizontal }
+          : { flipVertical: !cam.flipVertical },
       );
     });
   }
