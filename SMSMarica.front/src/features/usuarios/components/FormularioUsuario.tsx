@@ -9,6 +9,8 @@ import { PermissoesSecao, matrizParaApi } from '@/shared/ui/PermissoesSecao';
 import { SegurancaSecao } from '@/shared/ui/SegurancaSecao';
 import { consultarCpf } from '@/shared/api/integracoes';
 import { consultarUsuarioPorCpf } from '@/features/usuarios/api/usuariosApi';
+import { buscarMedicos } from '@/features/medicos/api/medicosApi';
+import { obterPacientePorCpf } from '@/features/pacientes/api/pacientesApi';
 import {
   enderecoVazio,
   paraPayload,
@@ -120,11 +122,8 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
     setErros({});
     setErroGlobal(null);
     const cpfLimpo = valores.cpf.replace(/\D/g, '');
-    const ne: Erros = {};
-    if (cpfLimpo.length !== 11) ne.cpf = 'CPF deve ter 11 dígitos.';
-    if (!valores.dataNascimento) ne.dataNascimento = 'Informe a data de nascimento.';
-    if (Object.keys(ne).length > 0) {
-      setErros(ne);
+    if (cpfLimpo.length !== 11) {
+      setErros({ cpf: 'CPF deve ter 11 dígitos.' });
       return;
     }
     setConsultandoCpf(true);
@@ -139,13 +138,39 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
         return;
       }
 
-      const hub = await consultarCpf(cpfLimpo, valores.dataNascimento);
-      setValores((s) => ({
-        ...s,
-        nomeCompleto: hub.nome.trim() || s.nomeCompleto,
-        cpf: hub.cpf || cpfLimpo,
-      }));
-      setPassoCpfConcluido(true);
+      // Com data de nascimento: valida o CPF na Receita (via hub) e usa o nome de lá.
+      if (valores.dataNascimento) {
+        const hub = await consultarCpf(cpfLimpo, valores.dataNascimento);
+        setValores((s) => ({
+          ...s,
+          nomeCompleto: hub.nome.trim() || s.nomeCompleto,
+          cpf: hub.cpf || cpfLimpo,
+        }));
+        setPassoCpfConcluido(true);
+        return;
+      }
+
+      // Sem data de nascimento: procura na base (médico → paciente). Muito médico
+      // importado não tem data de nascimento; se já existe cadastro, seguimos com ele.
+      const medicos = await buscarMedicos(cpfLimpo);
+      const medico = medicos.find((m) => m.cpf.replace(/\D/g, '') === cpfLimpo);
+      if (medico) {
+        setValores((s) => ({ ...s, nomeCompleto: medico.nomeCompleto.trim() || s.nomeCompleto, cpf: cpfLimpo }));
+        setPassoCpfConcluido(true);
+        return;
+      }
+      const paciente = await obterPacientePorCpf(cpfLimpo);
+      if (paciente) {
+        setValores((s) => ({ ...s, nomeCompleto: paciente.nomeCompleto.trim() || s.nomeCompleto, cpf: cpfLimpo }));
+        setPassoCpfConcluido(true);
+        return;
+      }
+
+      // Nada na base e sem data de nascimento → não há como validar a identidade.
+      setErros({
+        dataNascimento:
+          'Sem cadastro de médico/paciente com este CPF. Informe a data de nascimento para validar na Receita.',
+      });
     } catch (e) {
       setErroGlobal(extrairMensagemDeErro(e));
     } finally {
@@ -169,7 +194,8 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
     if (email && !/^\S+@\S+\.\S+$/.test(email)) ne.email = 'E-mail inválido.';
     if (modo === 'criar') {
       if (senha && senha.length < 8) ne.senha = 'Mínimo 8 caracteres.';
-      if (!valores.dataNascimento) ne.dataNascimento = 'Informe a data de nascimento.';
+      // Data de nascimento é opcional: o gate já resolveu a identidade (Receita
+      // com nascimento, ou cadastro de médico/paciente sem nascimento).
     }
     if (cpf && cpf.replace(/\D/g, '').length !== 11) ne.cpf = 'CPF precisa ter 11 dígitos.';
     if (Object.keys(ne).length > 0) {
@@ -239,7 +265,9 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
     return (
       <div className="space-y-5">
         <p className="text-sm text-gray-600">
-          Informe o CPF e a data de nascimento. Esses dados não poderão ser editados depois.
+          Informe o CPF. A data de nascimento valida o CPF na Receita — mas é <strong>opcional</strong>:
+          se já houver cadastro de médico ou paciente com este CPF, seguimos com os dados de lá
+          (muito médico não tem data de nascimento). Esses dados não poderão ser editados depois.
         </p>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -255,7 +283,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
             />
           </Campo>
 
-          <Campo label="Data de nascimento" htmlFor="nascInicial" erro={erros.dataNascimento} required>
+          <Campo label="Data de nascimento" htmlFor="nascInicial" erro={erros.dataNascimento} dica="Opcional se já houver cadastro de médico/paciente com este CPF.">
             <Input
               id="nascInicial"
               type="date"
