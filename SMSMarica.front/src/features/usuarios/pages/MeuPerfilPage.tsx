@@ -119,7 +119,7 @@ export function MeuPerfilPage() {
             <Input id="nome" value={u.nomeCompleto} disabled readOnly />
           </Campo>
           <Campo label="E-mail" htmlFor="email" dica={<span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" /> Imutável</span>}>
-            <Input id="email" value={u.email} disabled readOnly />
+            <Input id="email" value={u.email ?? ''} disabled readOnly />
           </Campo>
           <Campo label="CPF" htmlFor="cpf" dica={<span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" /> Imutável</span>}>
             <Input id="cpf" value={formatarCpf(u.cpf)} disabled readOnly />

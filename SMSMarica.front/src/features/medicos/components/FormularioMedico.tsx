@@ -209,7 +209,7 @@ export function FormularioMedico({
         setPromocao({
           usuarioId: existente.id,
           nome: existente.nomeCompleto,
-          email: existente.email,
+          email: existente.email ?? '',
         });
         setValores((s) => ({
           ...s,

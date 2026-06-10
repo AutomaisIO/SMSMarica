@@ -171,7 +171,7 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
         setPromocao({
           usuarioId: existente.id,
           nome: existente.nomeCompleto,
-          email: existente.email,
+          email: existente.email ?? '',
         });
         setValores((s) => ({
           ...s,
