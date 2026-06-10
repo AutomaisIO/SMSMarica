@@ -18,9 +18,12 @@ public sealed record UsuarioDto(
     bool DeveTrocarSenha,
     /// <summary>
     /// Papel ativo do usuário (Medico/Motorista/Paciente), ou null se não tem papel.
-    /// Derivado da existência de linha 1:1 nas tabelas correspondentes — ADR-0006.
+    /// Motorista vem da linha 1:1 (ADR-0006); Medico é resolvido pelo CPF no hub FHIR
+    /// (Practitioner), já que médico não é mais linha em usuario.
     /// </summary>
-    string? PapelAtual);
+    string? PapelAtual,
+    /// <summary>Registro do conselho quando o papel é Medico (ex.: "CRM 52702650/RJ"). Null caso contrário.</summary>
+    string? RegistroProfissional = null);
 
 public sealed record UsuarioListItemDto(
     Guid Id,

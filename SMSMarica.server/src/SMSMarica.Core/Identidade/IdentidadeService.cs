@@ -1,9 +1,13 @@
 using System.Security.Cryptography;
+using Hl7.Fhir.Model;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Common.Dtos;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade.Dtos;
+using SMSMarica.Core.Medicos;
+using SMSMarica.Core.Medicos.Fhir;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
@@ -14,7 +18,9 @@ public sealed class IdentidadeService(
     SmsMaricaDbContext db,
     IPasswordHasher<Usuario> hasher,
     ITokenService tokenService,
-    IUsuarioAtualAccessor atual) : IIdentidadeService
+    IUsuarioAtualAccessor atual,
+    IPractitionerFhirClient practitioner,
+    ILogger<IdentidadeService> logger) : IIdentidadeService
 {
     /// <summary>Hash de senha "PENDENTE" — bloqueia login até o admin definir a senha real.</summary>
     private const string SenhaHashPlaceholder = "PENDENTE_AUTH";
@@ -23,6 +29,8 @@ public sealed class IdentidadeService(
     private readonly IPasswordHasher<Usuario> _hasher = hasher;
     private readonly ITokenService _tokenService = tokenService;
     private readonly IUsuarioAtualAccessor _atual = atual;
+    private readonly IPractitionerFhirClient _practitioner = practitioner;
+    private readonly ILogger<IdentidadeService> _logger = logger;
 
     public async Task<LoginRespostaDto> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
@@ -60,7 +68,8 @@ public sealed class IdentidadeService(
 
         var (token, expira) = _tokenService.GerarToken(usuario);
         var resolvidas = await ObterPermissoesResolvidasAsync(usuario.Id, cancellationToken);
-        return new LoginRespostaDto(token, expira, IdentidadeMapper.ParaDto(usuario), resolvidas.Resolvidas);
+        var medico = await ResolverMedicoAsync(usuario.Cpf, cancellationToken);
+        return new LoginRespostaDto(token, expira, IdentidadeMapper.ParaDto(usuario, medico: medico), resolvidas.Resolvidas);
     }
 
     public async Task<PermissoesResolvidasDto> ObterPermissoesResolvidasAsync(Guid usuarioId, CancellationToken cancellationToken = default)
@@ -117,7 +126,8 @@ public sealed class IdentidadeService(
             .Include(x => x.Motorista)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Usuario), id);
-        return IdentidadeMapper.ParaDto(u);
+        var medico = await ResolverMedicoAsync(u.Cpf, cancellationToken);
+        return IdentidadeMapper.ParaDto(u, medico: medico);
     }
 
     public async Task<UsuarioDto?> ObterPorCpfAsync(string cpf, CancellationToken cancellationToken = default)
@@ -128,7 +138,34 @@ public sealed class IdentidadeService(
             .Include(x => x.UsuariosPerfis)
             .Include(x => x.Motorista)
             .FirstOrDefaultAsync(x => x.Cpf == cpfNormalizado, cancellationToken);
-        return u is null ? null : IdentidadeMapper.ParaDto(u);
+        if (u is null) return null;
+        var medico = await ResolverMedicoAsync(u.Cpf, cancellationToken);
+        return IdentidadeMapper.ParaDto(u, medico: medico);
+    }
+
+    /// <summary>
+    /// Resolve o vínculo médico do usuário buscando um Practitioner com o mesmo CPF no
+    /// hub FHIR. Médico não é mais linha em <c>usuario</c> (ADR-0010), então o papel
+    /// "Medico" é resolvido aqui. Falha do hub NÃO quebra login/consulta — apenas
+    /// devolve null (sem papel médico).
+    /// </summary>
+    private async Task<VinculoMedico?> ResolverMedicoAsync(string? cpf, CancellationToken cancellationToken)
+    {
+        var cpfDigits = NormalizarDigitos(cpf ?? string.Empty);
+        if (cpfDigits.Length != 11) return null;
+        try
+        {
+            var bundle = await _practitioner.BuscarAsync(identifier: cpfDigits, ct: cancellationToken);
+            var p = bundle.Entry.Select(e => e.Resource).OfType<Practitioner>().FirstOrDefault();
+            if (p is null) return null;
+            var dto = MedicoFhirMapper.ParaDto(p);
+            return new VinculoMedico(dto.Conselho, dto.Registro, dto.UfConselho);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Falha ao resolver vínculo médico (FHIR) por CPF — papel médico ignorado.");
+            return null;
+        }
     }
 
     public async Task<Guid> CadastrarAsync(CadastrarUsuarioRequest request, CancellationToken cancellationToken = default)

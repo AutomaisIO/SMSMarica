@@ -36,6 +36,8 @@ export type Usuario = {
   perfilIds: string[];
   deveTrocarSenha: boolean;
   papelAtual: PapelAtual | null;
+  /** Registro do conselho quando papelAtual = 'Medico' (ex.: "CRM 52702650/RJ"). */
+  registroProfissional: string | null;
 };
 
 export type CadastrarUsuarioPayload = {
