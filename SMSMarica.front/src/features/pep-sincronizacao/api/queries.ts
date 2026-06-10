@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  cancelarImportacaoPep,
   iniciarImportacaoPep,
   listarBasesPep,
   listarExecucoesPep,
@@ -41,5 +42,13 @@ export function useIniciarImportacaoPep() {
       client.invalidateQueries({ queryKey: pepKeys.status });
       client.invalidateQueries({ queryKey: ['pep', 'execucoes'] });
     },
+  });
+}
+
+export function useCancelarImportacaoPep() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: cancelarImportacaoPep,
+    onSuccess: () => client.invalidateQueries({ queryKey: pepKeys.status }),
   });
 }

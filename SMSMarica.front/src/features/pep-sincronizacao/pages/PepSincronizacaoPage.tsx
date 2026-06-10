@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { DatabaseZap, Loader2, Play, RefreshCw } from 'lucide-react';
+import { DatabaseZap, Loader2, Play, RefreshCw, StopCircle } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
@@ -8,6 +8,7 @@ import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import {
   useBasesPep,
+  useCancelarImportacaoPep,
   useExecucoesPep,
   useIniciarImportacaoPep,
   useStatusPep,
@@ -45,6 +46,7 @@ const CLASSE_STATUS: Record<string, string> = {
   EmExecucao: 'bg-blue-50 text-blue-700 border-blue-200',
   Concluido: 'bg-green-50 text-green-700 border-green-200',
   Erro: 'bg-red-50 text-red-700 border-red-200',
+  Cancelado: 'bg-orange-50 text-orange-700 border-orange-200',
   Pendente: 'bg-amber-50 text-amber-700 border-amber-200',
   Nenhuma: 'bg-gray-50 text-gray-600 border-gray-200',
 };
@@ -87,6 +89,7 @@ export function PepSincronizacaoPage() {
   const status = useStatusPep();
   const execucoes = useExecucoesPep();
   const iniciar = useIniciarImportacaoPep();
+  const cancelar = useCancelarImportacaoPep();
   const podeImportar = usePermissao('SincronizacaoPep', 'Edicao');
 
   const [fonteId, setFonteId] = useState('');
@@ -130,6 +133,13 @@ export function PepSincronizacaoPage() {
       },
       { onError: (err) => setErro(extrairMensagemDeErro(err)) },
     );
+  }
+
+  function aoParar() {
+    if (!window.confirm('Parar a importação em andamento? No modo Completo, dá para retomar de onde parou depois.')) {
+      return;
+    }
+    cancelar.mutate(undefined, { onError: (err) => window.alert(extrairMensagemDeErro(err)) });
   }
 
   return (
@@ -269,7 +279,15 @@ export function PepSincronizacaoPage() {
               {emExecucao ? <Loader2 className="h-4 w-4 animate-spin text-blue-600" /> : <RefreshCw className="h-4 w-4 text-gray-400" />}
               {emExecucao ? 'Importação em andamento' : 'Última importação'}
             </h2>
-            <Badge status={status.data.status} />
+            <div className="flex items-center gap-3">
+              {emExecucao && podeImportar ? (
+                <Button type="button" variante="danger" tamanho="sm" onClick={aoParar} disabled={cancelar.isPending}>
+                  {cancelar.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <StopCircle className="mr-2 h-4 w-4" />}
+                  Parar importação
+                </Button>
+              ) : null}
+              <Badge status={status.data.status} />
+            </div>
           </div>
 
           <div className="mb-4 grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-4">

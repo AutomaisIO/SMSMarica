@@ -27,4 +27,7 @@ public enum StatusSincronizacao
     EmExecucao = 2,
     Concluido = 3,
     Erro = 4,
+
+    /// <summary>Interrompida pelo usuário (botão "parar"). No modo Completo, o cursor de retomada fica salvo.</summary>
+    Cancelado = 5,
 }

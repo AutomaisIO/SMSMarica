@@ -15,6 +15,9 @@ public interface IPepSincronizacaoService
     /// <summary>Valida e enfileira uma importação. Devolve o id da execução criada.</summary>
     Task<Guid> IniciarAsync(IniciarImportacaoRequest request, CancellationToken ct = default);
 
+    /// <summary>Solicita a parada da importação em andamento (cancelamento cooperativo).</summary>
+    Task CancelarAsync(CancellationToken ct = default);
+
     /// <summary>Status do run vivo (se houver) ou da última execução persistida.</summary>
     Task<StatusImportacaoDto> ObterStatusAsync(CancellationToken ct = default);
 

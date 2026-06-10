@@ -33,6 +33,17 @@ public sealed class PepSincronizacaoController(IPepSincronizacaoService service)
         return AcceptedAtAction(nameof(Status), new { }, new { execucaoId });
     }
 
+    /// <summary>Para a importação em andamento (cancelamento cooperativo).</summary>
+    [HttpPost("cancelar")]
+    [RequerPermissao(ModuloPermissao.SincronizacaoPep, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Cancelar(CancellationToken ct)
+    {
+        await service.CancelarAsync(ct);
+        return Accepted();
+    }
+
     /// <summary>Status do run vivo (se houver) ou da última execução.</summary>
     [HttpGet("status")]
     [RequerPermissao(ModuloPermissao.SincronizacaoPep, AcoesPermissao.Consulta)]

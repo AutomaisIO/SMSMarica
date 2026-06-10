@@ -131,6 +131,19 @@ public sealed class PepSincronizacaoService(
         return execucao.Id;
     }
 
+    public Task CancelarAsync(CancellationToken ct = default)
+    {
+        if (estadoVivo.ObterAtual() is null)
+            throw new ConflitoException("pep.sem_importacao", "Não há importação em andamento para parar.");
+
+        if (!estadoVivo.Cancelar())
+            throw new ConflitoException("pep.cancelamento_indisponivel",
+                "Não foi possível solicitar o cancelamento — a importação pode já ter finalizado.");
+
+        logger.LogInformation("Cancelamento de importação solicitado por {Usuario}.", usuarioAtual.UsuarioId);
+        return Task.CompletedTask;
+    }
+
     public async Task<StatusImportacaoDto> ObterStatusAsync(CancellationToken ct = default)
     {
         if (estadoVivo.ObterAtual() is { } vivo) return vivo;
@@ -188,7 +201,12 @@ public sealed class PepSincronizacaoService(
         execucao.Status = StatusSincronizacao.EmExecucao;
         execucao.IniciadoEm = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
-        estadoVivo.Iniciar(execucao.Id, execucao.FonteId, execucao.FonteNome, execucao.Modo, execucao.Escopo, execucao.IniciadoEm, progresso);
+
+        // CTS encadeado ao token do runner: permite o usuário parar a importação
+        // (botão) independentemente do shutdown da aplicação.
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var tokenRun = cts.Token;
+        estadoVivo.Iniciar(execucao.Id, execucao.FonteId, execucao.FonteNome, execucao.Modo, execucao.Escopo, execucao.IniciadoEm, progresso, cts);
 
         RegistradorFalhasPep? registrador = null;
         try
@@ -228,7 +246,7 @@ public sealed class PepSincronizacaoService(
                 SalvarCursorPaciente = (cursor, c) => SalvarCursorPacienteAsync(fonte.Id, cursor, c),
             };
 
-            await estrategia.ImportarAsync(contexto, ct);
+            await estrategia.ImportarAsync(contexto, tokenRun);
 
             // Sucesso: persiste contadores, tempos e watermarks.
             AplicarContadores(execucao, progresso);
@@ -242,6 +260,18 @@ public sealed class PepSincronizacaoService(
             execucao.DuracaoSegundos = (execucao.FinalizadoEm.Value - execucao.IniciadoEm).TotalSeconds;
 
             await PersistirWatermarkAsync(fonte.Id, marca, ct);
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested && !ct.IsCancellationRequested)
+        {
+            // Parada solicitada pelo usuário (não é shutdown da aplicação).
+            logger.LogInformation("Importação {Id} (base {Fonte}) interrompida pelo usuário.", execucao.Id, execucao.FonteNome);
+            AplicarContadores(execucao, progresso);
+            execucao.Status = StatusSincronizacao.Cancelado;
+            execucao.MensagemErro = "Importação interrompida pelo usuário.";
+            execucao.FinalizadoEm = DateTime.UtcNow;
+            execucao.DuracaoSegundos = (execucao.FinalizadoEm.Value - execucao.IniciadoEm).TotalSeconds;
+            // Watermark NÃO é persistida (run incompleto). O cursor de retomada do modo
+            // Completo já foi salvo por bloco — dá pra retomar de onde parou.
         }
         catch (Exception ex)
         {

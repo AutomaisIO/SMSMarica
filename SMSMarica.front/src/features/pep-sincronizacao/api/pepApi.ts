@@ -23,6 +23,10 @@ export async function obterStatusPep(): Promise<StatusImportacao> {
   return data;
 }
 
+export async function cancelarImportacaoPep(): Promise<void> {
+  await http.post('/pep-sincronizacao/cancelar');
+}
+
 export async function listarExecucoesPep(fonteId?: string): Promise<ExecucaoImportacao[]> {
   const { data } = await http.get<ExecucaoImportacao[]>('/pep-sincronizacao/execucoes', {
     params: fonteId ? { fonteId } : undefined,

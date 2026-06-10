@@ -21,9 +21,11 @@ public sealed class PepSincronizacaoEstadoVivo
     private DateTime? _iniciadoEm;
     private bool _emExecucao;
     private ProgressoImportacao? _progresso;
+    private CancellationTokenSource? _cts;
 
     public void Iniciar(Guid execucaoId, Guid fonteId, string fonteNome,
-        ModoSincronizacao modo, EscopoSincronizacao escopo, DateTime iniciadoEm, ProgressoImportacao progresso)
+        ModoSincronizacao modo, EscopoSincronizacao escopo, DateTime iniciadoEm,
+        ProgressoImportacao progresso, CancellationTokenSource cts)
     {
         lock (_lock)
         {
@@ -34,6 +36,7 @@ public sealed class PepSincronizacaoEstadoVivo
             _escopo = escopo;
             _iniciadoEm = iniciadoEm;
             _progresso = progresso;
+            _cts = cts;
             _emExecucao = true;
         }
     }
@@ -43,6 +46,22 @@ public sealed class PepSincronizacaoEstadoVivo
         lock (_lock)
         {
             _emExecucao = false;
+            _cts = null;
+        }
+    }
+
+    /// <summary>
+    /// Solicita o cancelamento do run vivo (botão "parar"). Devolve <c>false</c> se
+    /// não há run cancelável. O cancelamento é cooperativo: a estratégia para no
+    /// próximo ponto de checagem do token.
+    /// </summary>
+    public bool Cancelar()
+    {
+        lock (_lock)
+        {
+            if (!_emExecucao || _cts is null) return false;
+            try { _cts.Cancel(); return true; }
+            catch (ObjectDisposedException) { return false; }
         }
     }
 
