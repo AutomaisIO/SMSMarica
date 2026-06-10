@@ -23,6 +23,11 @@ export const RENDERING_ENGINE_ID = 'pacs-rendering-engine';
 export const VIEWPORT_ID = 'pacs-stack-viewport';
 export const TOOL_GROUP_ID = 'pacs-tool-group';
 
+/** id da viewport do quadrado `i` da grade (layout multi-viewport). */
+export function idViewportCelula(i: number): string {
+  return `pacs-vp-${i}`;
+}
+
 let promessaInit: Promise<void> | null = null;
 
 /** Inicializa core + dicom-image-loader + tools uma única vez (idempotente). */

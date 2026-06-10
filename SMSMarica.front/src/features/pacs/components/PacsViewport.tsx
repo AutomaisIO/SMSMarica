@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   RenderingEngine,
-  Enums,
   EVENTS,
   eventTarget,
   getRenderingEngine,
-  metaData,
   type Types,
 } from '@cornerstonejs/core';
 import {
@@ -28,15 +26,20 @@ import {
   CircleDashed,
   Contrast,
   Crosshair,
+  FlipHorizontal2,
+  FlipVertical2,
   Hand,
   History,
   Loader2,
+  Maximize2,
   MessageSquarePlus,
   RotateCcw,
+  RotateCw,
   Ruler,
   Save,
   ScanSearch,
   Spline,
+  SunMoon,
   Trash2,
   ZoomIn,
 } from 'lucide-react';
@@ -46,11 +49,10 @@ import { usePermissao } from '@/shared/auth/authStore';
 import {
   RENDERING_ENGINE_ID,
   TOOL_GROUP_ID,
-  VIEWPORT_ID,
+  idViewportCelula,
   inicializarCornerstone,
   type ProgressoPrefetch,
 } from '@/features/pacs/lib/cornerstone';
-import { fontePixelSpacing } from '@/features/pacs/lib/dicomJson';
 import {
   removerTodasAnotacoes,
   restaurarAnotacoes,
@@ -58,9 +60,10 @@ import {
 } from '@/features/pacs/lib/anotacoes';
 import { obterVersaoAtual, salvarVersao } from '@/features/pacs/api/anotacoesApi';
 import { PacsHistoricoAnotacoesModal } from '@/features/pacs/components/PacsHistoricoAnotacoesModal';
+import { PacsViewportCelula } from '@/features/pacs/components/PacsViewportCelula';
+import { SeletorLayoutGrade, type Layout } from '@/features/pacs/components/SeletorLayoutGrade';
 import type { EstudoAnotacaoVersao } from '@/features/pacs/types';
 
-const { ViewportType } = Enums;
 const { MouseBindings } = ToolsEnums;
 
 type Ferramenta =
@@ -94,36 +97,64 @@ function aoPedirTexto(callback: (texto: string | null) => void) {
 }
 
 type Props = {
-  imageIds: string[];
+  /** imageId por quadrado (comprimento = linhas*colunas); null = vazio. */
+  imagensPorCelula: (string | null)[];
+  layout: Layout;
+  /** Índice do quadrado em foco — alvo dos botões girar/flip/negativo/reset. */
+  focado: number;
+  aoFocar: (i: number) => void;
+  aoMudarLayout: (l: Layout) => void;
   carregando?: boolean;
   progresso?: ProgressoPrefetch | null;
   /**
-   * Quando presente, habilita persistência: o viewport carrega a última versão
-   * de anotações ao montar e expõe os botões "Salvar" e "Histórico".
+   * Quando presente, habilita persistência: carrega a última versão de
+   * anotações ao montar e expõe os botões "Salvar" e "Histórico".
    */
   studyInstanceUID?: string | null;
 };
 
-export function PacsViewport({ imageIds, carregando, progresso, studyInstanceUID }: Props) {
+export function PacsViewport({
+  imagensPorCelula,
+  layout,
+  focado,
+  aoFocar,
+  aoMudarLayout,
+  carregando,
+  progresso,
+  studyInstanceUID,
+}: Props) {
   const podeSalvarAnotacoes = usePermissao('Pacs', 'Edicao');
-  const elementoRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<RenderingEngine | null>(null);
   const ouvinteHabilitarRef = useRef<((e: Event) => void) | null>(null);
+  const [engine, setEngine] = useState<RenderingEngine | null>(null);
   const [pronto, setPronto] = useState(false);
   const [ferramentaAtiva, setFerramentaAtiva] = useState<Ferramenta>('WindowLevel');
-  const [erro, setErro] = useState<string | null>(null);
   const [qtdSelecionadas, setQtdSelecionadas] = useState(0);
-  const [montandoStack, setMontandoStack] = useState(false);
-  const [infoFooter, setInfoFooter] = useState<{
-    zoom: number;
-    rowPixelSpacing: number | null;
-    columnPixelSpacing: number | null;
-    fonte: 'equipamento' | 'estimado' | 'ausente';
-  } | null>(null);
+  const [negativoAtivo, setNegativoAtivo] = useState(false);
   const [versaoAtual, setVersaoAtual] = useState<EstudoAnotacaoVersao | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [erroAnotacao, setErroAnotacao] = useState<string | null>(null);
   const [historicoAberto, setHistoricoAberto] = useState(false);
+
+  /** Renderiza todas as viewports ativas da engine. */
+  const renderTodas = useCallback(() => {
+    const eng = engineRef.current;
+    if (!eng) return;
+    const ids = eng.getViewports().map((v) => v.id);
+    if (ids.length) eng.renderViewports(ids);
+  }, []);
+
+  /** StackViewport do quadrado em foco (ou null). */
+  const viewportFocado = useCallback((): Types.IStackViewport | null => {
+    const eng = engineRef.current;
+    if (!eng) return null;
+    try {
+      return (eng.getViewport(idViewportCelula(focado)) as Types.IStackViewport) ?? null;
+    } catch {
+      return null;
+    }
+  }, [focado]);
 
   const excluirSelecao = useCallback(() => {
     const ids = annotationManager.selection.getAnnotationsSelected();
@@ -131,27 +162,31 @@ export function PacsViewport({ imageIds, carregando, progresso, studyInstanceUID
     ids.forEach((uid) => annotationManager.state.removeAnnotation(uid));
     annotationManager.selection.deselectAnnotation();
     setQtdSelecionadas(0);
-    engineRef.current?.renderViewports([VIEWPORT_ID]);
+    renderTodas();
+  }, [renderTodas]);
+
+  // A seleção do annotationManager é global. Quando uma célula troca de imagem,
+  // limpamos a seleção para o botão de lixeira (ou Delete) não apagar uma marca
+  // que não está mais visível. O STACK_NEW_IMAGE só dispara no elemento da
+  // viewport, então cada célula chama isto via callback.
+  const deselecionarTudo = useCallback(() => {
+    if (annotationManager.selection.getAnnotationsSelectedCount() === 0) return;
+    annotationManager.selection.deselectAnnotation();
+    setQtdSelecionadas(0);
   }, []);
 
+  // Init: cria a RenderingEngine e o ToolGroup uma vez. A engine vive enquanto
+  // o container existir; as células anexam/desanexam suas viewports nela.
   useEffect(() => {
     let cancelado = false;
-    const elemento = elementoRef.current;
-    if (!elemento) return;
-    let observer: ResizeObserver | null = null;
 
     void (async () => {
       await inicializarCornerstone();
       if (cancelado) return;
 
       getRenderingEngine(RENDERING_ENGINE_ID)?.destroy();
-      const engine = new RenderingEngine(RENDERING_ENGINE_ID);
-      engineRef.current = engine;
-      engine.enableElement({
-        viewportId: VIEWPORT_ID,
-        type: ViewportType.STACK,
-        element: elemento,
-      });
+      const eng = new RenderingEngine(RENDERING_ENGINE_ID);
+      engineRef.current = eng;
 
       let toolGroup = ToolGroupManager.getToolGroup(TOOL_GROUP_ID);
       if (!toolGroup) {
@@ -165,19 +200,14 @@ export function PacsViewport({ imageIds, carregando, progresso, studyInstanceUID
         toolGroup.addTool(EllipticalROITool.toolName);
         toolGroup.addTool(ProbeTool.toolName);
         toolGroup.addTool(MagnifyTool.toolName);
-        toolGroup.addTool(ArrowAnnotateTool.toolName, {
-          getTextCallback: aoPedirTexto,
-        });
+        toolGroup.addTool(ArrowAnnotateTool.toolName, { getTextCallback: aoPedirTexto });
         toolGroup.addTool(ScaleOverlayXYTool.toolName);
       }
-      toolGroup.addViewport(VIEWPORT_ID, RENDERING_ENGINE_ID);
       // Escala em mm nos eixos (estilo Weasis) — sempre visível, sem interação.
       toolGroup.setToolEnabled(ScaleOverlayXYTool.toolName);
-      ativarFerramenta('WindowLevel');
 
       // Quando o MagnifyTool cria seu próprio viewport ('magnify-viewport'),
-      // anexamos ao nosso ToolGroup — isso faz o ScaleOverlayTool desenhar a
-      // régua mm também dentro da janela da lupa.
+      // anexamos ao nosso ToolGroup — assim a régua mm também aparece na lupa.
       const aoHabilitar = (e: Event) => {
         const detalhe = (e as CustomEvent).detail as { viewportId?: string } | undefined;
         if (detalhe?.viewportId === 'magnify-viewport') {
@@ -190,30 +220,42 @@ export function PacsViewport({ imageIds, carregando, progresso, studyInstanceUID
       eventTarget.addEventListener(EVENTS.ELEMENT_ENABLED, aoHabilitar);
       ouvinteHabilitarRef.current = aoHabilitar;
 
-      observer = new ResizeObserver(() => engine.resize(true, false));
-      observer.observe(elemento);
-
+      setEngine(eng);
       setPronto(true);
+      ativarFerramenta('WindowLevel');
     })();
 
     return () => {
       cancelado = true;
-      observer?.disconnect();
       if (ouvinteHabilitarRef.current) {
         eventTarget.removeEventListener(EVENTS.ELEMENT_ENABLED, ouvinteHabilitarRef.current);
         ouvinteHabilitarRef.current = null;
       }
-      ToolGroupManager.getToolGroup(TOOL_GROUP_ID)?.removeViewports(
-        RENDERING_ENGINE_ID,
-        VIEWPORT_ID,
-      );
       engineRef.current?.destroy();
       engineRef.current = null;
+      setEngine(null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Listener de seleção de annotations.
+  // Reaplica o resize da engine quando o layout muda (células entram/saem) e
+  // quando o container é redimensionado (painel/janela). Os efeitos das células
+  // já registraram/desregistraram suas viewports antes deste efeito do pai.
+  useEffect(() => {
+    if (!pronto) return;
+    engineRef.current?.resize(true, false);
+  }, [pronto, layout.linhas, layout.colunas]);
+
+  useEffect(() => {
+    if (!pronto) return;
+    const grid = gridRef.current;
+    if (!grid) return;
+    const observer = new ResizeObserver(() => engineRef.current?.resize(true, false));
+    observer.observe(grid);
+    return () => observer.disconnect();
+  }, [pronto]);
+
+  // Listener de seleção de annotations (global ao Cornerstone).
   useEffect(() => {
     function aoMudarSelecao() {
       setQtdSelecionadas(annotationManager.selection.getAnnotationsSelected().length);
@@ -223,27 +265,6 @@ export function PacsViewport({ imageIds, carregando, progresso, studyInstanceUID
       eventTarget.removeEventListener(ToolsEnums.Events.ANNOTATION_SELECTION_CHANGE, aoMudarSelecao);
     };
   }, []);
-
-  // A seleção do annotationManager é global (não amarrada ao imageId/viewport
-  // exibido). Sem este reset, ao trocar de imagem a seleção da anterior fica
-  // viva — e o botão de lixeira (ou Delete no teclado) acaba apagando uma
-  // marca que não está mais visível. Limpamos a cada STACK_NEW_IMAGE, que
-  // cobre tanto scroll dentro da stack quanto troca de série/estudo.
-  useEffect(() => {
-    if (!pronto) return;
-    const elemento = elementoRef.current;
-    if (!elemento) return;
-
-    function deselecionar() {
-      if (annotationManager.selection.getAnnotationsSelectedCount() === 0) return;
-      annotationManager.selection.deselectAnnotation();
-      setQtdSelecionadas(0);
-    }
-    elemento.addEventListener(EVENTS.STACK_NEW_IMAGE, deselecionar);
-    return () => {
-      elemento.removeEventListener(EVENTS.STACK_NEW_IMAGE, deselecionar);
-    };
-  }, [pronto]);
 
   // Tecla Delete/Backspace remove a annotation selecionada (se não estiver digitando).
   useEffect(() => {
@@ -261,104 +282,8 @@ export function PacsViewport({ imageIds, carregando, progresso, studyInstanceUID
     return () => window.removeEventListener('keydown', aoTeclar);
   }, [excluirSelecao]);
 
-  // Monta a stack no viewport e mantém o overlay visível até `setStack` resolver
-  // (não só até a Promise dos metadados resolver). Cancela ao trocar imageIds.
-  // Nada de `engine.resize` aqui — o ResizeObserver no init já mantém o canvas
-  // alinhado e chamar resize a cada troca de série custa caro à toa.
-  useEffect(() => {
-    if (!pronto) return;
-    const engine = engineRef.current;
-    if (!engine) return;
-
-    if (imageIds.length === 0) {
-      setMontandoStack(false);
-      return;
-    }
-
-    const vp = engine.getViewport(VIEWPORT_ID) as Types.IStackViewport;
-    setErro(null);
-    setMontandoStack(true);
-
-    let cancelado = false;
-    vp.setStack(imageIds, 0)
-      .then(() => {
-        if (cancelado) return;
-        // resetCamera enquadra a imagem (fit-to-viewport) usando Rows/Columns
-        // do metadata. Sem ele, ao trocar de série a câmera mantém o zoom da
-        // imagem anterior e pode ficar cortada/com sobra.
-        vp.resetCamera();
-        vp.render();
-        // Re-habilita ScaleOverlay agora que a imagem está montada: o tool
-        // captura os cantos da imagem em `setToolEnabled` via
-        // `getViewportImageCornersInWorld`, que retorna [] quando o viewport
-        // ainda não tem imageData. Sem este re-enable, a régua nasce com
-        // points vazios no init inicial e nunca aparece sobre a imagem.
-        ToolGroupManager.getToolGroup(TOOL_GROUP_ID)?.setToolEnabled(
-          ScaleOverlayXYTool.toolName,
-        );
-      })
-      .catch((e) => {
-        if (cancelado) return;
-        setErro(e instanceof Error ? e.message : 'Falha ao carregar imagens.');
-      })
-      .finally(() => {
-        if (cancelado) return;
-        setMontandoStack(false);
-      });
-
-    return () => {
-      cancelado = true;
-    };
-  }, [pronto, imageIds]);
-
-  // Atualiza o footer (zoom + px/mm + fonte) sempre que a câmera mexer ou a
-  // imagem atual trocar. Lê do StackViewport corrente.
-  useEffect(() => {
-    if (!pronto) return;
-    const elemento = elementoRef.current;
-    if (!elemento) return;
-
-    function atualizar() {
-      const engine = engineRef.current;
-      if (!engine) return;
-      const vp = engine.getViewport(VIEWPORT_ID) as Types.IStackViewport | undefined;
-      if (!vp) return;
-      const imageId = vp.getCurrentImageId?.();
-      if (!imageId) {
-        setInfoFooter(null);
-        return;
-      }
-      const plano = metaData.get('imagePlaneModule', imageId) as
-        | { rowPixelSpacing?: number; columnPixelSpacing?: number }
-        | undefined;
-      setInfoFooter({
-        zoom: vp.getZoom(),
-        rowPixelSpacing: plano?.rowPixelSpacing ?? null,
-        columnPixelSpacing: plano?.columnPixelSpacing ?? null,
-        fonte: fontePixelSpacing(imageId),
-      });
-    }
-
-    // Eventos disparados no próprio elemento do viewport.
-    elemento.addEventListener(EVENTS.CAMERA_MODIFIED, atualizar);
-    elemento.addEventListener(EVENTS.STACK_NEW_IMAGE, atualizar);
-    elemento.addEventListener(EVENTS.IMAGE_RENDERED, atualizar);
-    return () => {
-      elemento.removeEventListener(EVENTS.CAMERA_MODIFIED, atualizar);
-      elemento.removeEventListener(EVENTS.STACK_NEW_IMAGE, atualizar);
-      elemento.removeEventListener(EVENTS.IMAGE_RENDERED, atualizar);
-    };
-  }, [pronto]);
-
-  // Quando a stack muda (nova série), reseta o footer pra não mostrar info da
-  // imagem anterior enquanto a nova ainda não renderizou.
-  useEffect(() => {
-    if (imageIds.length === 0) setInfoFooter(null);
-  }, [imageIds]);
-
   // Carrega a versão mais recente das anotações ao abrir um estudo. Limpa o
-  // estado quando o studyUID muda (ou some), garantindo que anotações do estudo
-  // anterior nunca "vazem" para o atual.
+  // estado quando o studyUID muda (ou some).
   useEffect(() => {
     if (!pronto) return;
     removerTodasAnotacoes();
@@ -372,7 +297,7 @@ export function PacsViewport({ imageIds, carregando, progresso, studyInstanceUID
         if (cancelado || !dto) return;
         restaurarAnotacoes(dto.payload);
         setVersaoAtual(dto);
-        engineRef.current?.renderViewports([VIEWPORT_ID]);
+        renderTodas();
       })
       .catch((e) => {
         if (!cancelado) setErroAnotacao(extrairMensagemDeErro(e));
@@ -380,7 +305,79 @@ export function PacsViewport({ imageIds, carregando, progresso, studyInstanceUID
     return () => {
       cancelado = true;
     };
-  }, [pronto, studyInstanceUID]);
+  }, [pronto, studyInstanceUID, renderTodas]);
+
+  // Reflete o estado de negativo (invert) do quadrado em foco no realce do botão.
+  useEffect(() => {
+    if (!pronto) return;
+    const vp = viewportFocado();
+    setNegativoAtivo(Boolean(vp?.getProperties().invert));
+  }, [pronto, focado, imagensPorCelula, viewportFocado]);
+
+  function ativarFerramenta(f: Ferramenta) {
+    const tg = ToolGroupManager.getToolGroup(TOOL_GROUP_ID);
+    if (!tg) return;
+
+    // Desativa todas as primárias; o Zoom é tratado à parte porque mantém o Wheel.
+    FERRAMENTAS.forEach((ferr) => {
+      if (ferr.id !== 'Zoom') tg.setToolPassive(ferr.nome);
+    });
+
+    if (f === 'Zoom') {
+      tg.setToolActive(ZoomTool.toolName, {
+        bindings: [
+          { mouseButton: MouseBindings.Primary },
+          { mouseButton: MouseBindings.Wheel },
+        ],
+      });
+    } else {
+      // Zoom sempre mantém Wheel; o scroll do mouse aplica zoom em qualquer modo.
+      tg.setToolActive(ZoomTool.toolName, { bindings: [{ mouseButton: MouseBindings.Wheel }] });
+      const alvo = FERRAMENTAS.find((ferr) => ferr.id === f)!;
+      tg.setToolActive(alvo.nome, { bindings: [{ mouseButton: MouseBindings.Primary }] });
+    }
+    setFerramentaAtiva(f);
+  }
+
+  /** Transformações agem no quadrado em foco e só se ele tiver imagem. */
+  function comViewportFocado(fn: (vp: Types.IStackViewport) => void) {
+    const vp = viewportFocado();
+    if (!vp || !vp.getCurrentImageId?.()) return;
+    fn(vp);
+    vp.render();
+  }
+
+  function girar(graus: 90 | -90) {
+    comViewportFocado((vp) => {
+      const r = (((vp.getRotation() + graus) % 360) + 360) % 360;
+      vp.setViewPresentation({ rotation: r });
+    });
+  }
+
+  function espelhar(eixo: 'h' | 'v') {
+    comViewportFocado((vp) => {
+      const p = vp.getViewPresentation();
+      vp.setViewPresentation(
+        eixo === 'h' ? { flipHorizontal: !p.flipHorizontal } : { flipVertical: !p.flipVertical },
+      );
+    });
+  }
+
+  function negativo() {
+    comViewportFocado((vp) => {
+      const novo = !vp.getProperties().invert;
+      vp.setProperties({ invert: novo });
+      setNegativoAtivo(novo);
+    });
+  }
+
+  function resetar() {
+    comViewportFocado((vp) => {
+      vp.resetCamera();
+      vp.resetProperties();
+      setNegativoAtivo(false);
+    });
+  }
 
   async function salvarAnotacoes() {
     if (!studyInstanceUID) return;
@@ -388,8 +385,7 @@ export function PacsViewport({ imageIds, carregando, progresso, studyInstanceUID
       'Comentário sobre esta versão (opcional):',
       versaoAtual?.comentario ?? '',
     );
-    // null = clicou em Cancel → aborta. String vazia = ok sem comentário.
-    if (comentario === null) return;
+    if (comentario === null) return; // Cancel
 
     setSalvando(true);
     setErroAnotacao(null);
@@ -407,62 +403,15 @@ export function PacsViewport({ imageIds, carregando, progresso, studyInstanceUID
   function restaurarVersaoHistorica(dto: EstudoAnotacaoVersao) {
     restaurarAnotacoes(dto.payload);
     setVersaoAtual(dto);
-    engineRef.current?.renderViewports([VIEWPORT_ID]);
+    renderTodas();
   }
 
-  // Debounce do overlay de "Carregando imagem..." para o `montandoStack`:
-  // se a stack vier do cache (resolução abaixo de ~150ms), o overlay nem
-  // chega a aparecer — sem piscar a cada clique numa série já bufferizada.
-  const [mostrarOverlayStack, setMostrarOverlayStack] = useState(false);
-  useEffect(() => {
-    if (!montandoStack) {
-      setMostrarOverlayStack(false);
-      return;
-    }
-    const t = window.setTimeout(() => setMostrarOverlayStack(true), 150);
-    return () => window.clearTimeout(t);
-  }, [montandoStack]);
-
-  function ativarFerramenta(f: Ferramenta) {
-    const tg = ToolGroupManager.getToolGroup(TOOL_GROUP_ID);
-    if (!tg) return;
-
-    // Desativa todas as primárias; o Zoom é tratado à parte porque mantém o Wheel.
-    FERRAMENTAS.forEach((ferr) => {
-      if (ferr.id !== 'Zoom') tg.setToolPassive(ferr.nome);
-    });
-
-    if (f === 'Zoom') {
-      // Zoom ganha Primary + Wheel.
-      tg.setToolActive(ZoomTool.toolName, {
-        bindings: [
-          { mouseButton: MouseBindings.Primary },
-          { mouseButton: MouseBindings.Wheel },
-        ],
-      });
-    } else {
-      // Zoom sempre mantém Wheel; o scroll do mouse aplica zoom in/out em qualquer modo.
-      tg.setToolActive(ZoomTool.toolName, {
-        bindings: [{ mouseButton: MouseBindings.Wheel }],
-      });
-      const alvo = FERRAMENTAS.find((ferr) => ferr.id === f)!;
-      tg.setToolActive(alvo.nome, { bindings: [{ mouseButton: MouseBindings.Primary }] });
-    }
-    setFerramentaAtiva(f);
-  }
-
-  function resetar() {
-    const engine = engineRef.current;
-    if (!engine) return;
-    const vp = engine.getViewport(VIEWPORT_ID) as Types.IStackViewport;
-    vp.resetCamera();
-    vp.resetProperties();
-    vp.render();
-  }
+  const botaoBase =
+    'rounded-md p-2 text-gray-300 transition-colors hover:bg-gray-700 hover:text-white';
 
   return (
     <div className="flex flex-1 flex-col bg-black">
-      <div className="flex items-center gap-1 border-b border-gray-700 bg-gray-900 px-2 py-1.5">
+      <div className="flex flex-wrap items-center gap-1 border-b border-gray-700 bg-gray-900 px-2 py-1.5">
         {FERRAMENTAS.map((ferr) => (
           <button
             key={ferr.id}
@@ -470,14 +419,40 @@ export function PacsViewport({ imageIds, carregando, progresso, studyInstanceUID
             title={ferr.rotulo}
             onClick={() => ativarFerramenta(ferr.id)}
             className={cn(
-              'rounded-md p-2 text-gray-300 transition-colors hover:bg-gray-700 hover:text-white',
+              botaoBase,
               ferramentaAtiva === ferr.id && 'bg-primary-600 text-white hover:bg-primary-600',
             )}
           >
             <ferr.icone className="h-5 w-5" />
           </button>
         ))}
+
         <div className="mx-1 h-6 w-px bg-gray-700" />
+
+        {/* Transformações — agem no quadrado em foco. */}
+        <button type="button" title="Girar anti-horário" onClick={() => girar(-90)} className={botaoBase}>
+          <RotateCcw className="h-5 w-5" />
+        </button>
+        <button type="button" title="Girar horário" onClick={() => girar(90)} className={botaoBase}>
+          <RotateCw className="h-5 w-5" />
+        </button>
+        <button type="button" title="Espelhar horizontal" onClick={() => espelhar('h')} className={botaoBase}>
+          <FlipHorizontal2 className="h-5 w-5" />
+        </button>
+        <button type="button" title="Espelhar vertical" onClick={() => espelhar('v')} className={botaoBase}>
+          <FlipVertical2 className="h-5 w-5" />
+        </button>
+        <button
+          type="button"
+          title="Negativo (inverter)"
+          onClick={negativo}
+          className={cn(botaoBase, negativoAtivo && 'bg-primary-600 text-white hover:bg-primary-600')}
+        >
+          <SunMoon className="h-5 w-5" />
+        </button>
+
+        <div className="mx-1 h-6 w-px bg-gray-700" />
+
         <button
           type="button"
           title={
@@ -496,14 +471,13 @@ export function PacsViewport({ imageIds, carregando, progresso, studyInstanceUID
         >
           <Trash2 className="h-5 w-5" />
         </button>
-        <button
-          type="button"
-          title="Resetar"
-          onClick={resetar}
-          className="rounded-md p-2 text-gray-300 transition-colors hover:bg-gray-700 hover:text-white"
-        >
-          <RotateCcw className="h-5 w-5" />
+        <button type="button" title="Resetar (foco)" onClick={resetar} className={botaoBase}>
+          <Maximize2 className="h-5 w-5" />
         </button>
+
+        <div className="mx-1 h-6 w-px bg-gray-700" />
+
+        <SeletorLayoutGrade valor={layout} onSelecionar={aoMudarLayout} />
 
         {studyInstanceUID ? (
           <>
@@ -532,7 +506,7 @@ export function PacsViewport({ imageIds, carregando, progresso, studyInstanceUID
               type="button"
               title="Histórico de anotações"
               onClick={() => setHistoricoAberto(true)}
-              className="rounded-md p-2 text-gray-300 transition-colors hover:bg-gray-700 hover:text-white"
+              className={botaoBase}
             >
               <History className="h-5 w-5" />
             </button>
@@ -549,8 +523,7 @@ export function PacsViewport({ imageIds, carregando, progresso, studyInstanceUID
         </div>
       </div>
 
-      {/* Barra fina de prefetch — só aparece enquanto o estudo está sendo
-          baixado em background. Sai discretamente quando completa. */}
+      {/* Barra fina de prefetch — só enquanto o estudo baixa em background. */}
       {progresso && progresso.total > 0 && progresso.carregadas < progresso.total ? (
         <div className="h-0.5 w-full bg-gray-800">
           <div
@@ -560,61 +533,40 @@ export function PacsViewport({ imageIds, carregando, progresso, studyInstanceUID
         </div>
       ) : null}
 
-      <div className="relative flex-1">
-        <div
-          ref={elementoRef}
-          className="absolute inset-0"
-          onContextMenu={(e) => e.preventDefault()}
-        />
-        {/* Overlay opaco unificado — cobre o canvas até a stack atual estar
-            renderizada, evitando flash da imagem anterior entre uma seleção
-            e outra. Para `montandoStack` usamos o estado debounced, então
-            cache hit (rápido) não pisca; só aparece se realmente demorar. */}
-        {imageIds.length === 0 || carregando || mostrarOverlayStack ? (
-          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black text-sm text-gray-300">
-            {carregando || mostrarOverlayStack ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                Carregando imagem...
-              </>
-            ) : (
-              <span className="text-gray-500">Selecione uma série para visualizar.</span>
-            )}
-          </div>
-        ) : null}
-        {erro ? (
-          <div className="absolute inset-x-0 bottom-0 bg-red-900/80 px-4 py-2 text-sm text-red-100">
-            {erro}
-          </div>
-        ) : null}
-        {erroAnotacao ? (
-          <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-3 bg-amber-900/80 px-4 py-2 text-sm text-amber-50">
-            <span>Anotações: {erroAnotacao}</span>
-            <button
-              type="button"
-              className="rounded p-0.5 hover:bg-amber-800/60"
-              onClick={() => setErroAnotacao(null)}
-              aria-label="Fechar aviso"
-            >
-              ×
-            </button>
-          </div>
-        ) : null}
+      {erroAnotacao ? (
+        <div className="flex items-start justify-between gap-3 bg-amber-900/80 px-4 py-2 text-sm text-amber-50">
+          <span>Anotações: {erroAnotacao}</span>
+          <button
+            type="button"
+            className="rounded p-0.5 hover:bg-amber-800/60"
+            onClick={() => setErroAnotacao(null)}
+            aria-label="Fechar aviso"
+          >
+            ×
+          </button>
+        </div>
+      ) : null}
 
-        {/* Footer-info: zoom + resolução + fonte do PixelSpacing. */}
-        {infoFooter && imageIds.length > 0 && !montandoStack ? (
-          <div className="pointer-events-none absolute bottom-2 left-3 select-none font-mono text-[11px] leading-tight text-gray-400 mix-blend-screen">
-            <div>Zoom: {(infoFooter.zoom * 100).toFixed(0)}%</div>
-            {infoFooter.rowPixelSpacing != null ? (
-              <div>
-                {formatarSpacing(infoFooter.rowPixelSpacing, infoFooter.columnPixelSpacing)}
-              </div>
-            ) : null}
-            <div className={infoFooter.fonte === 'estimado' ? 'text-amber-400' : ''}>
-              {labelFonte(infoFooter.fonte)}
-            </div>
-          </div>
-        ) : null}
+      <div
+        ref={gridRef}
+        className="grid flex-1 gap-0.5 bg-gray-700"
+        style={{
+          gridTemplateColumns: `repeat(${layout.colunas}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${layout.linhas}, minmax(0, 1fr))`,
+        }}
+      >
+        {imagensPorCelula.map((imageId, i) => (
+          <PacsViewportCelula
+            key={i}
+            engine={engine}
+            viewportId={idViewportCelula(i)}
+            imageId={imageId}
+            focado={i === focado}
+            aoFocar={() => aoFocar(i)}
+            aoNovaImagem={deselecionarTudo}
+            carregando={carregando}
+          />
+        ))}
       </div>
 
       {studyInstanceUID ? (
@@ -639,17 +591,4 @@ function formatarDataHoraCurta(iso: string): string {
     hour: '2-digit',
     minute: '2-digit',
   });
-}
-
-function formatarSpacing(row: number, col: number | null): string {
-  const r = row.toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
-  if (col == null || Math.abs(row - col) < 1e-6) return `${r} mm/px`;
-  const c = col.toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
-  return `${r} × ${c} mm/px`;
-}
-
-function labelFonte(fonte: 'equipamento' | 'estimado' | 'ausente'): string {
-  if (fonte === 'equipamento') return 'Calibração: equipamento';
-  if (fonte === 'estimado') return 'Calibração: estimada (detector)';
-  return 'Calibração: ausente';
 }

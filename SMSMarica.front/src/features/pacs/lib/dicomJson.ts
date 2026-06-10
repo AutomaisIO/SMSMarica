@@ -26,6 +26,8 @@ export const Tag = {
   ImagerPixelSpacing: '00181164',
   ImageOrientationPatient: '00200037',
   ImagePositionPatient: '00200032',
+  ViewPosition: '00185101',
+  ImageLaterality: '00200062',
 } as const;
 
 /** Primeiro valor textual de uma tag, ou string vazia. */
@@ -91,6 +93,33 @@ export function formatarIdadeDicom(ageStr: string): string {
  *     Injetamos valores neutros (orientação padrão, origem no canto) para
  *     destravar a régua em mm sem afetar nada mais (não há MPR no Stack).
  */
+/**
+ * Rótulo curto para uma imagem de mamografia: lateralidade (D/E) + incidência
+ * (CC/MLO/...). Ex.: "D CC". Retorna '' quando as tags não vêm (outras
+ * modalidades) — o chamador cai no número da instância.
+ */
+export function rotuloImagemMG(ds: DatasetDicom): string {
+  const lat = valorTexto(ds, Tag.ImageLaterality).toUpperCase();
+  const view = valorTexto(ds, Tag.ViewPosition).toUpperCase();
+  const latPt = lat === 'R' ? 'D' : lat === 'L' ? 'E' : lat;
+  return [latPt, view].filter(Boolean).join(' ');
+}
+
+/** "0.085 mm/px" ou "0.085 × 0.090 mm/px" (rodapé do viewport). */
+export function formatarSpacing(row: number, col: number | null): string {
+  const r = row.toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
+  if (col == null || Math.abs(row - col) < 1e-6) return `${r} mm/px`;
+  const c = col.toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
+  return `${r} × ${c} mm/px`;
+}
+
+/** Texto da fonte de calibração para o rodapé do viewport. */
+export function labelFonte(fonte: FontePixelSpacing): string {
+  if (fonte === 'equipamento') return 'Calibração: equipamento';
+  if (fonte === 'estimado') return 'Calibração: estimada (detector)';
+  return 'Calibração: ausente';
+}
+
 /** Fonte do PixelSpacing aplicado pela `garantirPixelSpacing`. */
 export type FontePixelSpacing = 'equipamento' | 'estimado' | 'ausente';
 
