@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ClipboardCheck, Eye, Plus, Search } from 'lucide-react';
+import { ClipboardCheck, Eye, Loader2, Plus, Search, Trash2 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
+import { Modal } from '@/shared/ui/Modal';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
-import { useListarSolicitacoes } from '@/features/solicitacoes-exame/api/queries';
+import { useExcluirSolicitacao, useListarSolicitacoes } from '@/features/solicitacoes-exame/api/queries';
 import { StatusBadgeSolicitacao } from '@/features/solicitacoes-exame/components/StatusBadgeSolicitacao';
 import type {
   FiltroSolicitacoes,
@@ -21,6 +22,10 @@ export function SolicitacoesExamePage() {
   const [searchParams] = useSearchParams();
   const podeCriar = usePermissao('SolicitacoesExame', 'Inclusao');
   const podeVer = usePermissao('SolicitacoesExame', 'Consulta');
+  const podeExcluir = usePermissao('SolicitacoesExame', 'Exclusao');
+  const excluir = useExcluirSolicitacao();
+  const [paraExcluir, setParaExcluir] = useState<SolicitacaoExameListItem | null>(null);
+  const [erroExcluir, setErroExcluir] = useState<string | null>(null);
 
   const accessionUrl = searchParams.get('accessionNumber') ?? undefined;
   const filtroInicial: FiltroSolicitacoes = { limite: 50, accessionNumber: accessionUrl };
@@ -45,6 +50,17 @@ export function SolicitacoesExamePage() {
   function aoBuscar(e: FormEvent) {
     e.preventDefault();
     setFiltroAplicado(filtroDigitado);
+  }
+
+  async function confirmarExclusao() {
+    if (!paraExcluir) return;
+    setErroExcluir(null);
+    try {
+      await excluir.mutateAsync(paraExcluir.id);
+      setParaExcluir(null);
+    } catch (e) {
+      setErroExcluir(extrairMensagemDeErro(e));
+    }
   }
 
   const colunas: Coluna<SolicitacaoExameListItem>[] = useMemo(() => [
@@ -87,20 +103,37 @@ export function SolicitacoesExamePage() {
       chave: 'acoes',
       cabecalho: 'Ações',
       className: 'text-right',
-      render: (s) =>
-        podeVer ? (
-          <button
-            type="button"
-            onClick={() => navigate(`/app/solicitacoes-exame/${s.id}`)}
-            title="Abrir solicitação"
-            className="inline-flex items-center gap-1 rounded-md border border-primary-300 bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100"
-          >
-            <Eye className="h-3.5 w-3.5" />
-            Abrir
-          </button>
-        ) : null,
+      render: (s) => (
+        <div className="flex items-center justify-end gap-1.5">
+          {podeVer ? (
+            <button
+              type="button"
+              onClick={() => navigate(`/app/solicitacoes-exame/${s.id}`)}
+              title="Abrir solicitação"
+              className="inline-flex items-center gap-1 rounded-md border border-primary-300 bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100"
+            >
+              <Eye className="h-3.5 w-3.5" />
+              Abrir
+            </button>
+          ) : null}
+          {podeExcluir && (s.status === 'Solicitada' || s.status === 'Cancelada') ? (
+            <button
+              type="button"
+              onClick={() => {
+                setErroExcluir(null);
+                setParaExcluir(s);
+              }}
+              title="Excluir solicitação"
+              className="inline-flex items-center gap-1 rounded-md border border-red-300 bg-white px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Excluir
+            </button>
+          ) : null}
+        </div>
+      ),
     },
-  ], [navigate, podeVer]);
+  ], [navigate, podeVer, podeExcluir]);
 
   return (
     <div className="space-y-5">
@@ -191,6 +224,34 @@ export function SolicitacoesExamePage() {
         carregando={lista.isPending}
         vazio="Nenhuma solicitação encontrada."
       />
+
+      <Modal
+        aberto={!!paraExcluir}
+        aoFechar={() => setParaExcluir(null)}
+        titulo="Excluir solicitação"
+        descricao={
+          paraExcluir
+            ? `O pedido ${paraExcluir.accessionNumber} será removido permanentemente. Esta ação não pode ser desfeita.`
+            : ''
+        }
+      >
+        <div className="space-y-3">
+          {erroExcluir ? (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {erroExcluir}
+            </div>
+          ) : null}
+          <div className="flex items-center justify-end gap-2">
+            <Button variante="outline" onClick={() => setParaExcluir(null)}>
+              Voltar
+            </Button>
+            <Button variante="danger" disabled={excluir.isPending} onClick={confirmarExclusao}>
+              {excluir.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              Confirmar exclusão
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

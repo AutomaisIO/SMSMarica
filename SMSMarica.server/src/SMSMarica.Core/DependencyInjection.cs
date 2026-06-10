@@ -82,6 +82,9 @@ public static class DependencyInjection
                 client.Timeout = TimeSpan.FromSeconds(10);
             });
 
+        services.Configure<EnviadorWorklistOptions>(configuration.GetSection(EnviadorWorklistOptions.SecaoConfig));
+        services.AddHostedService<EnviadorWorklistService>();
+
         services.Configure<SincronizadorExamesOptions>(configuration.GetSection(SincronizadorExamesOptions.SecaoConfig));
         services.AddHostedService<SincronizadorExamesService>();
 

@@ -9,6 +9,7 @@ import {
   Loader2,
   RotateCw,
   ScanLine,
+  Trash2,
   XCircle,
 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
@@ -19,6 +20,7 @@ import { Input } from '@/shared/ui/Input';
 import { Campo } from '@/shared/ui/Campo';
 import {
   useCancelarSolicitacao,
+  useExcluirSolicitacao,
   useReenviarWorklist,
   useSolicitacaoPorId,
 } from '@/features/solicitacoes-exame/api/queries';
@@ -33,10 +35,13 @@ export function SolicitacaoExameDetalhePage() {
   const detalhe = useSolicitacaoPorId(id ?? null);
   const cancelar = useCancelarSolicitacao();
   const reenviar = useReenviarWorklist();
+  const excluir = useExcluirSolicitacao();
 
   const podeEditar = usePermissao('SolicitacoesExame', 'Edicao');
+  const podeExcluir = usePermissao('SolicitacoesExame', 'Exclusao');
 
   const [modalCancelar, setModalCancelar] = useState(false);
+  const [modalExcluir, setModalExcluir] = useState(false);
   const [motivo, setMotivo] = useState('');
   const [erro, setErro] = useState<string | null>(null);
 
@@ -60,6 +65,8 @@ export function SolicitacaoExameDetalhePage() {
   const podeCancelar = podeEditar && (s.status === 'Solicitada' || s.status === 'Agendada');
   const podeReenviar = podeEditar && s.status === 'Solicitada' && !!s.erroIntegracaoPacs;
   const podeEditarForm = podeEditar && s.status === 'Solicitada';
+  // Backend (ExcluirAsync) só permite excluir em Solicitada ou Cancelada.
+  const podeExcluirAgora = podeExcluir && (s.status === 'Solicitada' || s.status === 'Cancelada');
 
   async function confirmarCancelamento() {
     setErro(null);
@@ -77,6 +84,17 @@ export function SolicitacaoExameDetalhePage() {
     try {
       await reenviar.mutateAsync(s.id);
     } catch (e) {
+      setErro(extrairMensagemDeErro(e));
+    }
+  }
+
+  async function confirmarExclusao() {
+    setErro(null);
+    try {
+      await excluir.mutateAsync(s.id);
+      navigate('/app/solicitacoes-exame');
+    } catch (e) {
+      setModalExcluir(false);
       setErro(extrairMensagemDeErro(e));
     }
   }
@@ -116,6 +134,12 @@ export function SolicitacaoExameDetalhePage() {
             <Button variante="danger" onClick={() => setModalCancelar(true)}>
               <XCircle className="mr-2 h-4 w-4" />
               Cancelar
+            </Button>
+          ) : null}
+          {podeExcluirAgora ? (
+            <Button variante="outline" onClick={() => setModalExcluir(true)}>
+              <Trash2 className="mr-2 h-4 w-4 text-red-600" />
+              Excluir
             </Button>
           ) : null}
         </div>
@@ -277,6 +301,23 @@ export function SolicitacaoExameDetalhePage() {
               Confirmar cancelamento
             </Button>
           </div>
+        </div>
+      </Modal>
+
+      <Modal
+        aberto={modalExcluir}
+        aoFechar={() => setModalExcluir(false)}
+        titulo="Excluir solicitação"
+        descricao="A solicitação será removida permanentemente da lista. Esta ação não pode ser desfeita."
+      >
+        <div className="flex items-center justify-end gap-2">
+          <Button variante="outline" onClick={() => setModalExcluir(false)}>
+            Voltar
+          </Button>
+          <Button variante="danger" disabled={excluir.isPending} onClick={confirmarExclusao}>
+            {excluir.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+            Confirmar exclusão
+          </Button>
         </div>
       </Modal>
     </div>

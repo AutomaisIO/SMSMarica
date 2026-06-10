@@ -116,6 +116,8 @@ public sealed class SolicitacoesExameService(
         var studyUid = _geradorIds.NovoStudyInstanceUid();
         var agora = DateTime.UtcNow;
 
+        var solicitanteUsuarioId = await ResolverSolicitanteUsuarioAsync(request.SolicitanteUsuarioId, cancellationToken);
+
         var solicitacao = new SolicitacaoExame
         {
             Id = Guid.CreateVersion7(),
@@ -126,7 +128,7 @@ public sealed class SolicitacoesExameService(
             TipoExameId = request.TipoExameId,
             UnidadeId = request.UnidadeId,
 
-            SolicitanteUsuarioId = request.SolicitanteUsuarioId,
+            SolicitanteUsuarioId = solicitanteUsuarioId,
             SolicitanteNome = request.SolicitanteNome.Trim(),
             SolicitanteCrm = NormalizarDigitos(request.SolicitanteCrm),
             SolicitanteUfCrm = (request.SolicitanteUfCrm ?? string.Empty).Trim().ToUpperInvariant(),
@@ -169,7 +171,7 @@ public sealed class SolicitacoesExameService(
 
         s.TipoExameId = request.TipoExameId;
         s.UnidadeId = request.UnidadeId;
-        s.SolicitanteUsuarioId = request.SolicitanteUsuarioId;
+        s.SolicitanteUsuarioId = await ResolverSolicitanteUsuarioAsync(request.SolicitanteUsuarioId, cancellationToken);
         s.SolicitanteNome = request.SolicitanteNome.Trim();
         s.SolicitanteCrm = NormalizarDigitos(request.SolicitanteCrm);
         s.SolicitanteUfCrm = (request.SolicitanteUfCrm ?? string.Empty).Trim().ToUpperInvariant();
@@ -422,6 +424,21 @@ public sealed class SolicitacoesExameService(
             .Include(s => s.Unidade)
             .Where(s => s.ExcluidoEm == null)
             .FirstOrDefaultAsync(filtro, cancellationToken);
+    }
+
+    /// <summary>
+    /// "Médico cadastrado" é um Practitioner do hub FHIR — o id que o front envia em
+    /// <c>SolicitanteUsuarioId</c> é o id do Practitioner, NÃO um usuário do sistema.
+    /// A FK <c>solicitante_usuario_id</c> aponta para <c>smsmarica.usuario</c>, então só
+    /// persistimos o valor quando ele de fato for um usuário; do contrário fica null
+    /// (a identidade do solicitante vive nos snapshots SolicitanteNome/Crm/UfCrm).
+    /// Evita violação de FK (que estourava 500) ao escolher médico do hub.
+    /// </summary>
+    private async Task<Guid?> ResolverSolicitanteUsuarioAsync(Guid? id, CancellationToken ct)
+    {
+        if (id is not { } valor) return null;
+        var ehUsuario = await _db.Usuarios.AsNoTracking().AnyAsync(u => u.Id == valor, ct);
+        return ehUsuario ? valor : null;
     }
 
     private async Task ValidarReferenciasAsync(Guid pacienteId, Guid tipoExameId, Guid unidadeId, CancellationToken ct)
