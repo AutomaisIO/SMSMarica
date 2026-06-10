@@ -17,6 +17,13 @@ public sealed class ProgressoImportacao
     public int DocumentReferences;
     public int Observations;
 
+    /// <summary>
+    /// Total de reenvios por motivo transitório (saturação de conexão no hub). É o
+    /// "farol" de backpressure: sobe enquanto há registros pendentes esperando o
+    /// banco liberar; não é falha — esses registros não foram descartados.
+    /// </summary>
+    public int Retentativas;
+
     /// <summary>Falhas por paciente: (cd_paciente, mensagem).</summary>
     public List<(long Cd, string Mensagem)> Falhas { get; } = [];
 

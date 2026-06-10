@@ -78,7 +78,8 @@ public sealed class PepSincronizacaoEstadoVivo
             var p = _progresso;
             var contadores = new ContadoresImportacaoDto(
                 p.Medicos, p.Pacientes, p.Encounters, p.Conditions,
-                p.MedicationRequests, p.DocumentReferences, p.Observations, p.Falhas.Count);
+                p.MedicationRequests, p.DocumentReferences, p.Observations, p.Falhas.Count,
+                p.Retentativas);
 
             // Snapshot das últimas falhas (cópia sob lock) — diagnóstico em tempo real.
             var ultimasFalhas = p.Falhas.Count == 0

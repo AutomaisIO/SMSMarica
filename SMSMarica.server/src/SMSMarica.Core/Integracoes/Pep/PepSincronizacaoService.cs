@@ -31,6 +31,10 @@ public sealed class PepSincronizacaoService(
 {
     private readonly int _timeoutSegundos = configuration.GetValue("Pep:TimeoutSegundos", 120);
 
+    /// <summary>Tempo máximo reenviando um recurso por saturação transitória antes de desistir (vira falha).</summary>
+    private readonly TimeSpan _hubRetryBudget =
+        TimeSpan.FromSeconds(configuration.GetValue("Pep:HubRetryBudgetSegundos", 60));
+
     public async Task<IReadOnlyList<BasePepDto>> ListarBasesAsync(CancellationToken ct = default)
     {
         var fontes = await db.IaFontes.AsNoTracking()
@@ -237,7 +241,9 @@ public sealed class PepSincronizacaoService(
                     protetor.Revelar(fonte.SenhaCifrada!), _timeoutSegundos),
                 Opcoes = job.Opcoes,
                 Marca = marca,
-                Escritor = escritor,
+                // Decorator de retry-in-place: saturação transitória do hub vira reenvio
+                // com backoff (farol p.Retentativas), não falha. Nunca descarta o registro.
+                Escritor = new Fhir.EscritorComRetentativa(escritor, progresso, _hubRetryBudget, logger),
                 Progresso = progresso,
                 BaseSlug = fonte.Slug!,
                 Falhas = registrador,

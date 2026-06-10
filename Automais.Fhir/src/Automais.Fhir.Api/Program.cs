@@ -9,9 +9,17 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseSerilog((ctx, cfg) => cfg.ReadFrom.Configuration(ctx.Configuration).WriteTo.Console());
 
+// Teto do pool de conexões: o banco gerenciado tem poucas conexões compartilhadas entre
+// apps; sem teto, o default do Npgsql (100) deixa o hub sozinho estourar o limite sob a
+// carga da importação. Defina Db:MaxPoolSize (ou Maximum Pool Size na própria connection string).
+var fhirConn = builder.Configuration.GetConnectionString("FhirDb");
+var fhirMaxPool = builder.Configuration.GetValue<int?>("Db:MaxPoolSize");
+if (fhirMaxPool is > 0 && !string.IsNullOrWhiteSpace(fhirConn))
+    fhirConn = new Npgsql.NpgsqlConnectionStringBuilder(fhirConn) { MaxPoolSize = fhirMaxPool.Value }.ConnectionString;
+
 builder.Services.AddDbContext<FhirDbContext>(opt =>
     opt.UseNpgsql(
-        builder.Configuration.GetConnectionString("FhirDb"),
+        fhirConn,
         npg => npg.MigrationsHistoryTable("__EFMigrationsHistory", FhirDbContext.Schema)));
 
 builder.Services.AddSingleton(TimeProvider.System);

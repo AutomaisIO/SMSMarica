@@ -34,6 +34,8 @@ export type ContadoresImportacao = {
   documentReferences: number;
   observations: number;
   falhas: number;
+  /** Reenvios por saturação transitória (farol de backpressure). Só conta no run vivo. */
+  retentativas: number;
 };
 
 export type StatusImportacao = {

@@ -36,7 +36,9 @@ public sealed record ContadoresImportacaoDto(
     int MedicationRequests,
     int DocumentReferences,
     int Observations,
-    int Falhas);
+    int Falhas,
+    /// <summary>Reenvios por saturação transitória (farol de backpressure). Só no run vivo.</summary>
+    int Retentativas = 0);
 
 /// <summary>
 /// Status corrente da importação (run vivo se em execução; senão a última execução do banco).

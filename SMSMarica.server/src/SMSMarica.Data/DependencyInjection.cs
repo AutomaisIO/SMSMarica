@@ -17,10 +17,16 @@ public static class DependencyInjection
 
         // Garante search_path = smsmarica para que o tipo `vector` (pgvector, instalado no schema
         // smsmarica) resolva em migrations e em runtime. O cluster gerenciado não possui `public`.
-        connectionString = new NpgsqlConnectionStringBuilder(connectionString)
+        var csb = new NpgsqlConnectionStringBuilder(connectionString)
         {
             SearchPath = SmsMaricaDbContext.SchemaPadrao,
-        }.ConnectionString;
+        };
+        // Teto do pool: o banco gerenciado tem poucas conexões compartilhadas entre apps.
+        // Sem teto, o default do Npgsql (100) deixa um app sozinho estourar o limite. Defina
+        // ConnectionStrings:DefaultDb com Maximum Pool Size, ou via Db:MaxPoolSize.
+        if (int.TryParse(configuration["Db:MaxPoolSize"], out var maxPool) && maxPool > 0)
+            csb.MaxPoolSize = maxPool;
+        connectionString = csb.ConnectionString;
 
         void Configurar(DbContextOptionsBuilder options) =>
             options.UseNpgsql(connectionString, npgsql =>

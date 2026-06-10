@@ -28,8 +28,9 @@ public sealed class HubFhirEscritor(HttpClient http) : IHubFhirEscritor
     public async Task ExcluirAsync(string tipo, string id, CancellationToken ct = default)
     {
         using var resp = await http.DeleteAsync($"fhir/{tipo}/{id}", ct);
-        if (resp.StatusCode != HttpStatusCode.NotFound)
-            resp.EnsureSuccessStatusCode();
+        if (resp.StatusCode == HttpStatusCode.NotFound || resp.IsSuccessStatusCode) return;
+        var json = await resp.Content.ReadAsStringAsync(ct);
+        throw new HubFhirHttpException((int)resp.StatusCode, json, $"DELETE fhir/{tipo}/{id}");
     }
 
     public Task<Bundle> BuscarPorPacienteAsync(string tipo, string pacienteId, CancellationToken ct = default) =>
@@ -46,7 +47,7 @@ public sealed class HubFhirEscritor(HttpClient http) : IHubFhirEscritor
         using var resp = await http.GetAsync(url, ct);
         var json = await resp.Content.ReadAsStringAsync(ct);
         if (!resp.IsSuccessStatusCode)
-            throw new HttpRequestException($"Hub FHIR retornou {(int)resp.StatusCode} em GET {url}: {json}");
+            throw new HubFhirHttpException((int)resp.StatusCode, json, $"GET {url}");
         return FhirJson.Parse<Bundle>(json);
     }
 
@@ -56,7 +57,7 @@ public sealed class HubFhirEscritor(HttpClient http) : IHubFhirEscritor
     {
         var json = await resp.Content.ReadAsStringAsync(ct);
         if (!resp.IsSuccessStatusCode)
-            throw new HttpRequestException($"Hub FHIR retornou {(int)resp.StatusCode}: {json}");
+            throw new HubFhirHttpException((int)resp.StatusCode, json);
         return FhirJson.Parse<Resource>(json);
     }
 }
