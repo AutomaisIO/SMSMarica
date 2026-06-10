@@ -210,6 +210,8 @@ public sealed class IdentidadeService(
         if (!string.IsNullOrWhiteSpace(request.Senha))
         {
             u.SenhaHash = _hasher.HashPassword(u, request.Senha);
+            // Só faz sentido exigir troca quando há senha real (sem senha o login já fica bloqueado).
+            u.DeveTrocarSenha = request.DeveTrocarSenha;
         }
 
         if (request.PerfilIds is { Count: > 0 })

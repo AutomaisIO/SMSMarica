@@ -50,6 +50,8 @@ export type CadastrarUsuarioPayload = {
   fotoBase64?: string | null;
   perfilIds?: string[];
   senha?: string;
+  /** Com senha inicial, exige troca no próximo login. */
+  deveTrocarSenha?: boolean;
 };
 
 export type AtualizarUsuarioPayload = {

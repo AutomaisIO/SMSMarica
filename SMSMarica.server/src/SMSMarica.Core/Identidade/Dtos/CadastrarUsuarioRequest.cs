@@ -11,4 +11,6 @@ public sealed record CadastrarUsuarioRequest(
     EnderecoDto? Endereco,
     IReadOnlyList<Guid>? PerfilIds = null,
     string? Senha = null,
-    string? FotoBase64 = null);
+    string? FotoBase64 = null,
+    /// <summary>Quando há senha inicial, exige troca no próximo login. Ignorado sem senha.</summary>
+    bool DeveTrocarSenha = false);

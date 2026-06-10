@@ -39,6 +39,7 @@ type Valores = {
   telefone: string;
   endereco: EnderecoForm;
   fotoBase64: string | null;
+  deveTrocarSenha: boolean;
 };
 
 const INICIAL: Valores = {
@@ -50,6 +51,7 @@ const INICIAL: Valores = {
   telefone: '',
   endereco: enderecoVazio,
   fotoBase64: null,
+  deveTrocarSenha: false,
 };
 
 type Erros = Partial<Record<'nomeCompleto' | 'email' | 'senha' | 'cpf' | 'dataNascimento' | 'telefone', string>>;
@@ -91,6 +93,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
         dataNascimento: detalhe.data.dataNascimento ?? '',
         telefone: detalhe.data.telefone ?? '',
         fotoBase64: detalhe.data.fotoBase64 ?? null,
+        deveTrocarSenha: false,
         endereco: e
           ? {
               cep: e.cep ?? '',
@@ -230,6 +233,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
           endereco: enderecoPayload,
           fotoBase64: valores.fotoBase64,
           senha: senha || undefined,
+          deveTrocarSenha: senha ? valores.deveTrocarSenha : undefined,
           perfilIds: perfilIdsSelecionados,
         });
         if (overridesParaApi.length > 0) {
@@ -350,16 +354,30 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
       />
 
       {modo === 'criar' ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <Campo label="Senha inicial" htmlFor="senha" erro={erros.senha} dica="Opcional. Mínimo 8 caracteres.">
-            <Input
-              id="senha"
-              type="password"
-              value={valores.senha}
-              onChange={(e) => setCampo('senha', e.target.value)}
-              autoComplete="new-password"
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Campo label="Senha inicial" htmlFor="senha" erro={erros.senha} dica="Opcional. Mínimo 8 caracteres.">
+              <Input
+                id="senha"
+                type="password"
+                value={valores.senha}
+                onChange={(e) => setCampo('senha', e.target.value)}
+                autoComplete="new-password"
+              />
+            </Campo>
+          </div>
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={valores.deveTrocarSenha && !!valores.senha.trim()}
+              onChange={(e) => setCampo('deveTrocarSenha', e.target.checked)}
+              disabled={!valores.senha.trim()}
             />
-          </Campo>
+            <span>
+              Exigir troca de senha no próximo login
+              {!valores.senha.trim() ? ' (defina a senha inicial acima)' : ''}
+            </span>
+          </label>
         </div>
       ) : idUsuario ? (
         <SegurancaSecao usuarioId={idUsuario} deveTrocarAtual={deveTrocarAtual} />
