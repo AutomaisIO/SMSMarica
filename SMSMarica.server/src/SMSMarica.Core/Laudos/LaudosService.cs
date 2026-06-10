@@ -347,12 +347,35 @@ public sealed class LaudosService(
     /// </summary>
     private async Task<MedicoDto> ResolverMedicoAsync(Guid usuarioId, CancellationToken ct)
     {
-        var p = await _practitionerFhir.ObterAsync(usuarioId, ct)
-            ?? throw new ConflitoException(
+        // 1) Compat: médicos cujo login tem o MESMO id do Practitioner (Usuario.Id == Practitioner.Id).
+        var p = await _practitionerFhir.ObterAsync(usuarioId, ct);
+
+        // 2) Caso geral: o login é um Usuario à parte (id próprio) — casa pelo CPF com o
+        //    Practitioner do hub (ex.: médico importado que ganhou login por CPF).
+        if (p is null)
+        {
+            var cpf = await _db.Usuarios.AsNoTracking()
+                .Where(u => u.Id == usuarioId)
+                .Select(u => u.Cpf)
+                .FirstOrDefaultAsync(ct);
+            var cpfDigits = SoDigitos(cpf);
+            if (cpfDigits.Length == 11)
+            {
+                var bundle = await _practitionerFhir.BuscarAsync(identifier: cpfDigits, ct: ct);
+                p = bundle.Entry.Select(e => e.Resource).OfType<Hl7.Fhir.Model.Practitioner>().FirstOrDefault();
+            }
+        }
+
+        if (p is null)
+            throw new ConflitoException(
                 "laudo.usuario_sem_papel_medico",
                 "Apenas usuários com Practitioner (médico) no hub FHIR podem criar/editar laudos.");
+
         return MedicoFhirMapper.ParaDto(p);
     }
+
+    private static string SoDigitos(string? v) =>
+        string.IsNullOrEmpty(v) ? string.Empty : new string(v.Where(char.IsDigit).ToArray());
 
     private async Task GarantirPacienteExisteAsync(Guid pacienteId, CancellationToken ct)
     {
