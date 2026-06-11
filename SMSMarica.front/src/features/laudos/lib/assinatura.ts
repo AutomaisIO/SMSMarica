@@ -7,7 +7,7 @@ import { apiBaseAbsoluto } from '@/shared/api/httpClient';
  */
 export const urlDownloadAssinador: string =
   import.meta.env.VITE_ASSINADOR_DOWNLOAD_URL ||
-  'https://github.com/AutomaisIO/Automais.Assinador.agente/releases/latest/download/AutomaisAssinador.msi';
+  'https://github.com/AutomaisIO/Automais.Assinador/releases/latest/download/AutomaisAssinador.msi';
 
 /**
  * Segundos para concluir que o agente não pegou o job (não instalado/rodando).

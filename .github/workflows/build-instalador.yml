@@ -1,12 +1,12 @@
 name: Build Instalador (Agente MSI)
 
 # Builda o MSI do agente de assinatura num runner Windows (publish single-file +
-# WiX) e publica como Release asset no repo PÚBLICO de distribuição
-# (AutomaisIO/Automais.Assinador.agente). O front baixa de:
-#   https://github.com/AutomaisIO/Automais.Assinador.agente/releases/latest/download/AutomaisAssinador.msi
+# WiX) e publica como Release asset no repo PÚBLICO único (AutomaisIO/Automais.Assinador
+# — o mesmo que hospeda o fonte AGPL no main). O front baixa de:
+#   https://github.com/AutomaisIO/Automais.Assinador/releases/latest/download/AutomaisAssinador.msi
 #
-# Pré-requisito: secret ASSINADOR_REPO_TOKEN no repo SMSMarica = PAT (fine-grained)
-# com permissão "Contents: Read and write" no repo Automais.Assinador.agente.
+# Pré-requisito: secret ASSINADOR_REPO_TOKEN no repo SMSMarica = PAT com permissão
+# "Contents: Read and write" no repo Automais.Assinador (cria Release + tag).
 on:
   push:
     branches: [main]
@@ -71,7 +71,7 @@ jobs:
         if: ${{ env.HAS_TOKEN == 'true' }}
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65
         with:
-          repository: AutomaisIO/Automais.Assinador.agente
+          repository: AutomaisIO/Automais.Assinador
           token: ${{ secrets.ASSINADOR_REPO_TOKEN }}
           tag_name: agente-${{ github.run_number }}
           name: Agente de Assinatura (build ${{ github.run_number }})
