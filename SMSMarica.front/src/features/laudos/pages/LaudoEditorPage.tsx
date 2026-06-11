@@ -267,6 +267,16 @@ export function LaudoEditorPage() {
                   {assinaturaFalhou ? 'Tentar assinar de novo' : 'Assinar'}
                 </Button>
               ) : null}
+              {ehMedico ? (
+                <a
+                  href={urlDownloadAssinador}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  title="Baixar o instalador do Automais Assinador (necessário só uma vez por máquina)"
+                >
+                  <Download className="h-4 w-4" />
+                  Baixar Assinador
+                </a>
+              ) : null}
               <Button variante="outline" onClick={() => abrirPdfLaudo(id!)}>
                 <FileText className="mr-2 h-4 w-4" />
                 PDF
