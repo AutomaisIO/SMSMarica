@@ -1,5 +1,7 @@
+using System.Formats.Asn1;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using System.Text.Json;
 using iText.Bouncycastleconnector;
 using iText.Commons.Bouncycastle.Cert;
@@ -113,6 +115,15 @@ public sealed class PadesSigner : IPadesSigner
     {
         public byte[] Sign(Stream data)
         {
+            // Hardening: o ByteRange recém-reaberto tem que produzir o mesmo digest
+            // capturado na preparação. Se divergir (re-stamp/troca de versão do iText),
+            // o messageDigest assinado não bateria com o documento — falha explícita
+            // em vez de gerar um PDF que abre mas é criptograficamente inválido.
+            var atual = SHA256.HashData(data);
+            if (!atual.SequenceEqual(docDigest))
+                throw new InvalidOperationException(
+                    "assinatura.digest_diverge: o documento na injeção diverge do capturado na preparação.");
+
             var sgn = new PdfPKCS7(null, chain, HashAlgo, false);
             sgn.GetAuthenticatedAttributeBytes(docDigest, PdfSigner.CryptoStandard.CADES, null, null);
             sgn.SetExternalSignatureValue(rawSignature, null, "RSA");
@@ -143,11 +154,19 @@ public sealed class PadesSigner : IPadesSigner
     }
 
     /// <summary>
-    /// CPF do titular ICP-Brasil: 11 dígitos no início do OtherName 2.16.76.1.3.1
-    /// (SubjectAltName). Fallback: dígitos no CN no formato "NOME:CPF".
+    /// CPF do titular ICP-Brasil: primário = OtherName OID 2.16.76.1.3.1 do
+    /// SubjectAltName (DOC-ICP-04: nascimento[8] + CPF[11] + …). Fallback: dígitos
+    /// no CN no formato "NOME:CPF". Mesma régua do agente local (Program.cs).
     /// </summary>
     private static string? ExtrairCpf(X509Certificate2 cert)
     {
+        var san = cert.Extensions.FirstOrDefault(e => e.Oid?.Value == "2.5.29.17");
+        if (san is not null)
+        {
+            var doSan = CpfDoSan(san.RawData);
+            if (doSan is not null) return doSan;
+        }
+
         var cn = cert.GetNameInfo(X509NameType.SimpleName, forIssuer: false) ?? string.Empty;
         var idx = cn.LastIndexOf(':');
         if (idx >= 0 && idx < cn.Length - 1)
@@ -156,6 +175,58 @@ public sealed class PadesSigner : IPadesSigner
             if (sufixo.Length >= 11) return sufixo[..11];
         }
         return null;
+    }
+
+    private static string? CpfDoSan(byte[] sanRaw)
+    {
+        try
+        {
+            var outer = new AsnReader(sanRaw, AsnEncodingRules.DER).ReadSequence();
+            while (outer.HasData)
+            {
+                var tag = outer.PeekTag();
+                if (tag is { TagClass: TagClass.ContextSpecific, TagValue: 0 })
+                {
+                    var other = outer.ReadSequence(tag);
+                    var oid = other.ReadObjectIdentifier();
+                    if (oid == "2.16.76.1.3.1")
+                    {
+                        var valueExplicit = other.ReadSequence(new Asn1Tag(TagClass.ContextSpecific, 0, isConstructed: true));
+                        var texto = LerTexto(valueExplicit);
+                        var digitos = new string([.. (texto ?? string.Empty).Where(char.IsDigit)]);
+                        // DOC-ICP-04 pessoa física: nascimento(8) + CPF(11) + …
+                        if (digitos.Length >= 19) return digitos.Substring(8, 11);
+                        if (digitos.Length == 11) return digitos;
+                        return null;
+                    }
+                }
+                else
+                {
+                    outer.ReadEncodedValue();
+                }
+            }
+        }
+        catch { /* SAN malformado: sem CPF por aqui */ }
+        return null;
+    }
+
+    private static string? LerTexto(AsnReader r)
+    {
+        try
+        {
+            var tag = r.PeekTag();
+            if (tag.TagClass == TagClass.Universal)
+            {
+                var u = (UniversalTagNumber)tag.TagValue;
+                if (u == UniversalTagNumber.OctetString)
+                    return Encoding.ASCII.GetString(r.ReadOctetString());
+                if (u is UniversalTagNumber.UTF8String or UniversalTagNumber.PrintableString
+                    or UniversalTagNumber.IA5String or UniversalTagNumber.T61String)
+                    return r.ReadCharacterString(u);
+            }
+            return Encoding.ASCII.GetString(r.ReadEncodedValue().ToArray());
+        }
+        catch { return null; }
     }
 
     private static byte[] Serializar(EstadoTransferencia e) =>

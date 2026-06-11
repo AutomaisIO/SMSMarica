@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Instalador MSI do agente local de assinatura (Automais.Assinador.Agente).
+  Instala o exe em Program Files e registra o protocolo automais-assinador://
+  de forma declarativa (HKLM) — zero passo manual. O exe é passado via
+  preprocessador: wix build ... -d AgentExe=<caminho do exe publicado>.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+    Name="Automais Assinador (Agente)"
+    Manufacturer="Automais"
+    Version="1.0.0.0"
+    UpgradeCode="7E3B2A10-9C4D-4F8E-A1B2-3C4D5E6F7A8B"
+    Scope="perMachine">
+
+    <MajorUpgrade DowngradeErrorMessage="Uma versão mais recente do Automais Assinador já está instalada." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Automais Assinador">
+
+        <Component Id="cAgenteExe" Bitness="always64">
+          <File Id="fAgenteExe" Source="$(var.AgentExe)" KeyPath="yes" />
+        </Component>
+
+        <Component Id="cProtocolo" Bitness="always64">
+          <RegistryValue Root="HKLM" Key="Software\Classes\automais-assinador"
+                         Type="string" Value="URL:Automais Assinador" KeyPath="yes" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\automais-assinador"
+                         Name="URL Protocol" Type="string" Value="" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\automais-assinador\DefaultIcon"
+                         Type="string" Value="&quot;[INSTALLFOLDER]automais-assinador-agente.exe&quot;,0" />
+          <RegistryValue Root="HKLM" Key="Software\Classes\automais-assinador\shell\open\command"
+                         Type="string" Value="&quot;[INSTALLFOLDER]automais-assinador-agente.exe&quot; &quot;%1&quot;" />
+        </Component>
+
+      </Directory>
+    </StandardDirectory>
+
+    <Feature Id="Principal" Title="Automais Assinador">
+      <ComponentRef Id="cAgenteExe" />
+      <ComponentRef Id="cProtocolo" />
+    </Feature>
+  </Package>
+</Wix>

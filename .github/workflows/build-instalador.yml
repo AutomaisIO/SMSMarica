@@ -1,0 +1,67 @@
+name: Build Instalador (Agente MSI)
+
+# Builda o MSI do agente de assinatura num runner Windows (publish single-file +
+# WiX) e publica como Release asset no repo PÚBLICO de distribuição
+# (AutomaisIO/Automais.Assinador.agente). O front baixa de:
+#   https://github.com/AutomaisIO/Automais.Assinador.agente/releases/latest/download/AutomaisAssinador.msi
+#
+# Pré-requisito: secret ASSINADOR_REPO_TOKEN no repo SMSMarica = PAT (fine-grained)
+# com permissão "Contents: Read and write" no repo Automais.Assinador.agente.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Automais.Assinador/agente/**'
+      - 'Automais.Assinador/installer/**'
+      - '.github/workflows/build-instalador.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: build-instalador
+  cancel-in-progress: false
+
+# Mínimo: o GITHUB_TOKEN só precisa ler este repo (checkout). A publicação do
+# Release no repo de distribuição usa o PAT ASSINADOR_REPO_TOKEN, não este token.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publicar agente (exe único, self-contained)
+        working-directory: Automais.Assinador
+        run: >
+          dotnet publish agente/Automais.Assinador.Agente/Automais.Assinador.Agente.csproj
+          -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+          -o publish-agente
+
+      - name: Instalar WiX 5
+        run: dotnet tool install --global wix --version 5.0.2
+
+      - name: Build do MSI
+        working-directory: Automais.Assinador
+        run: wix build installer/AutomaisAssinadorAgente.wxs -d AgentExe="publish-agente/automais-assinador-agente.exe" -o AutomaisAssinador.msi
+
+      - name: Publicar Release no repo de distribuição
+        # Pinado por SHA (imutável) em vez de @v2 (tag móvel): impede que um
+        # repoint/comprometimento da action publique um MSI malicioso como "latest".
+        # SHA = softprops/action-gh-release v2 (3bb1273).
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65
+        with:
+          repository: AutomaisIO/Automais.Assinador.agente
+          token: ${{ secrets.ASSINADOR_REPO_TOKEN }}
+          tag_name: agente-${{ github.run_number }}
+          name: Agente de Assinatura (build ${{ github.run_number }})
+          body: "Instalador (MSI) do agente Automais.Assinador. Origem: SMSMarica@${{ github.sha }}."
+          files: Automais.Assinador/AutomaisAssinador.msi
+          make_latest: true

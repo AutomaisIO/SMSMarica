@@ -1,5 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using SMSMarica.Core.Common.Excecoes;
 
 namespace SMSMarica.Api.Middleware;
@@ -33,6 +35,20 @@ public sealed partial class ExceptionHandlingMiddleware(
         catch (ValidacaoException ex)
         {
             await EscreverValidationProblem(context, ex.Erros);
+        }
+        // Corrida perdida: violação do índice único (ex.: 2ª assinatura concluída do
+        // mesmo laudo) ou conflito otimista (xmin) viram 409 limpo, não 500.
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" })
+        {
+            await EscreverProblemDetails(context, StatusCodes.Status409Conflict, "Conflito",
+                "O recurso já foi processado por outra requisição concorrente.",
+                type: "concorrencia.violacao_unica");
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            await EscreverProblemDetails(context, StatusCodes.Status409Conflict, "Conflito",
+                "O recurso foi alterado por outra requisição concorrente. Tente novamente.",
+                type: "concorrencia.token");
         }
         catch (Exception ex)
         {

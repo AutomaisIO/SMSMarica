@@ -62,11 +62,14 @@ public static class DependencyInjection
             configuration.GetSection(Laudos.Assinatura.AssinaturaOptions.SecaoConfig));
         services.AddScoped<Laudos.Assinatura.ILaudoAssinaturaService, Laudos.Assinatura.LaudoAssinaturaService>();
         var assinadorBaseUrl = configuration["Assinatura:AssinadorBaseUrl"] ?? "http://localhost:5082/";
+        var assinadorToken = configuration["Assinatura:AssinadorToken"];
         services
             .AddHttpClient<Laudos.Assinatura.IAssinadorPdfPades, Laudos.Assinatura.AssinadorPdfHttpClient>(client =>
             {
                 client.BaseAddress = new Uri(assinadorBaseUrl);
                 client.Timeout = TimeSpan.FromSeconds(60);
+                if (!string.IsNullOrWhiteSpace(assinadorToken))
+                    client.DefaultRequestHeaders.Add("X-Assinador-Token", assinadorToken);
             });
 
         // ---- Solicitação de Exames + Worklist + Notificações ----

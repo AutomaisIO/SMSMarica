@@ -12,6 +12,13 @@ public sealed class AssinaturaOptions
     /// <summary>URL base do serviço Automais.Assinador (ex.: http://localhost:5082/).</summary>
     public string AssinadorBaseUrl { get; set; } = "http://localhost:5082/";
 
+    /// <summary>
+    /// Segredo compartilhado (header <c>X-Assinador-Token</c>) enviado ao Automais.Assinador.
+    /// Fecha a fronteira de confiança no host (evita que processo local forje PAdES).
+    /// Vazio = sem header (dev/loopback). Em prod, definir o mesmo valor dos dois lados.
+    /// </summary>
+    public string? AssinadorToken { get; set; }
+
     /// <summary>Texto do carimbo visual fixo aplicado no rodapé do PDF assinado.</summary>
     public string TextoCarimbo { get; set; } = "Assinado digitalmente via certificado ICP-Brasil";
 

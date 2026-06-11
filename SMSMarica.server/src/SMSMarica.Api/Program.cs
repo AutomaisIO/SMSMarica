@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -100,10 +101,34 @@ builder.Services.AddHealthChecks()
         name: "db",
         tags: ["ready"]);
 
-builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
-    .AllowAnyOrigin()
-    .AllowAnyHeader()
-    .AllowAnyMethod()));
+// CORS configurável: se "Cors:Origins" estiver definido, restringe a esses origins
+// (recomendado em prod). Sem config, mantém permissivo (compat). O canal do agente
+// NÃO é browser, então CORS nunca o bloqueia — isto protege só o painel web.
+var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
+builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
+{
+    if (corsOrigins.Length > 0)
+        p.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod();
+    else
+        p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+}));
+
+// Rate-limit de defesa-em-profundidade nos endpoints anônimos do agente (a chave É a
+// autorização). Particiona por IP; bloqueia brute-force/DoS por amplificação (cada
+// preparar/concluir renderiza PDF e chama o iText). Aplicado via [EnableRateLimiting].
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("agente-assinatura", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "desconhecido",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 30,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
+});
 
 var app = builder.Build();
 
@@ -112,6 +137,7 @@ app.UseCors();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 

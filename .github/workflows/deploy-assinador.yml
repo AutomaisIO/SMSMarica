@@ -162,27 +162,47 @@ jobs:
               if ! $SUDO fuser 5082/tcp >/dev/null 2>&1; then break; fi
             done
 
-            # --- 8. Substituir artefatos ---
+            # --- 8. Substituir artefatos (swap atômico c/ backup p/ rollback) ---
             if [ ! -f "$TARBALL" ]; then
               echo "ERRO: $TARBALL não encontrado (scp falhou?)" >&2
               exit 1
             fi
-            log "Extraindo nova versão em $APP_DIR..."
-            $SUDO find "$APP_DIR" -mindepth 1 -delete
-            $SUDO tar -xzf "$TARBALL" -C "$APP_DIR"
-            $SUDO chown -R automais:automais "$APP_DIR"
+            # Valida o tar ANTES de tocar no diretório vivo — tar corrompido aborta cedo.
+            log "Validando integridade do artefato..."
+            $SUDO tar -tzf "$TARBALL" >/dev/null
+
+            NEW="$APP_DIR.new"
+            OLD="$APP_DIR.old"
+            log "Extraindo nova versão para $NEW..."
+            $SUDO rm -rf "$NEW"
+            $SUDO mkdir -p "$NEW"
+            $SUDO tar -xzf "$TARBALL" -C "$NEW"
+            $SUDO chown -R automais:automais "$NEW"
+
+            # Swap: guarda a versão anterior em $OLD para rollback.
+            $SUDO rm -rf "$OLD"
+            if [ -d "$APP_DIR" ]; then $SUDO mv "$APP_DIR" "$OLD"; fi
+            $SUDO mv "$NEW" "$APP_DIR"
             rm -f "$TARBALL"
 
             # --- 9. Iniciar ---
             log "Iniciando $SERVICE..."
             $SUDO systemctl start "$SERVICE"
 
-            # --- 10. Validação ---
+            # --- 10. Validação + rollback automático ---
             sleep 4
             if ! $SUDO systemctl is-active --quiet "$SERVICE"; then
               echo "FALHA: serviço não subiu. Journal:" >&2
               $SUDO journalctl -u "$SERVICE" -n 80 --no-pager || true
+              if [ -d "$OLD" ]; then
+                log "ROLLBACK: restaurando versão anterior..."
+                $SUDO systemctl stop "$SERVICE" 2>/dev/null || true
+                $SUDO rm -rf "$APP_DIR"
+                $SUDO mv "$OLD" "$APP_DIR"
+                $SUDO systemctl start "$SERVICE" 2>/dev/null || true
+              fi
               exit 1
             fi
+            $SUDO rm -rf "$OLD"
             log "OK — $SERVICE ativo na porta 5082 (127.0.0.1)."
             $SUDO systemctl status "$SERVICE" --no-pager --lines=10 || true

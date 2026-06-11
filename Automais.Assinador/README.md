@@ -14,9 +14,23 @@ modelo de **assinatura diferida (two-step)** — a chave privada nunca chega aqu
 
 Porta padrão: **5082**. OpenAPI/Scalar em `/docs`. Health em `/health`.
 
-## Licença
+## Licença (AGPL-3.0 — iText)
 
-Este serviço usa **iText** sob **AGPL-3.0**. Por isso o serviço é **aberto** (código-fonte
-público) e **isolado por HTTP** — o que satisfaz a AGPL sem contaminar os consumidores que o
-chamam pela rede. **Não** linkar este assembly in-process em produto fechado; usar sempre via API.
-O PDF assinado carrega a atribuição do iText nos metadados (obrigação AGPL).
+Este serviço linka **iText** in-process, que é **AGPL-3.0**. Para que a AGPL **não** contamine os
+produtos fechados que o consomem, ele é mantido como **serviço isolado por HTTP** (nunca linkado
+in-process em produto fechado — sempre via API) e o próprio código deste serviço é distribuído
+sob AGPL-3.0.
+
+Mecanismos de conformidade já implementados:
+
+- **`LICENSE`** com o texto completo da AGPL-3.0 na raiz de `Automais.Assinador/`.
+- **`GET /source`** — oferta da *Corresponding Source* a quem interage pela rede (AGPL §13),
+  apontando para o repositório público (config `Assinador:FonteUrl`).
+- A string *Producer* do PDF assinado já nomeia o iText (atribuição padrão).
+
+> ⚠️ **Obrigação pendente (decisão do responsável):** a AGPL §13 exige que a *Corresponding
+> Source* deste serviço esteja **publicamente disponível**. Hoje o código vive no monorepo
+> **privado**. Para fechar a conformidade é preciso **publicar o fonte de `src/` num repositório
+> público** (extraindo-o do monorepo, que contém PII) **ou** adquirir a **licença comercial do
+> iText (Apryse)** e então remover esta narrativa AGPL. Ajuste `Assinador:FonteUrl` para o repo
+> público real assim que existir.

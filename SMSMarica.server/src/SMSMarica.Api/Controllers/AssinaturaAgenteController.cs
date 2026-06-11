@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using SMSMarica.Core.Laudos.Assinatura;
 using SMSMarica.Core.Laudos.Assinatura.Dtos;
 
@@ -14,6 +15,7 @@ namespace SMSMarica.Api.Controllers;
 [ApiController]
 [Route("assinatura/agente")]
 [AllowAnonymous]
+[EnableRateLimiting("agente-assinatura")]
 public sealed class AssinaturaAgenteController(ILaudoAssinaturaService assinatura) : ControllerBase
 {
     /// <summary>Reivindica o job pela chave; recebe o CPF do médico (para achar o certificado) e o título.</summary>

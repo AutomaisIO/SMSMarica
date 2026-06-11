@@ -24,6 +24,8 @@ builder.Services.AddOpenApi();
 var app = builder.Build();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+// Fronteira de confiança: exige X-Assinador-Token em /pades/* quando configurado.
+app.UseMiddleware<TokenAutenticacaoMiddleware>();
 
 // Decisão de produto (espelha smsmarica/fhir): OpenAPI exposto em dev e prod.
 app.MapOpenApi();
@@ -31,6 +33,18 @@ app.MapScalarApiReference("/docs");
 
 app.MapControllers();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+
+// AGPL-3.0 §13: o serviço linka iText (AGPL) in-process, então oferece a
+// Corresponding Source a quem interage pela rede. Aponta para o repositório público.
+var fonteUrl = app.Configuration["Assinador:FonteUrl"]
+    ?? "https://github.com/AutomaisIO/Automais.Assinador";
+app.MapGet("/source", () => Results.Json(new
+{
+    licenca = "AGPL-3.0-or-later",
+    componente = "Automais.Assinador (iText 9.x)",
+    fonte = fonteUrl,
+    aviso = "Este serviço usa iText sob AGPL-3.0. O código-fonte correspondente está disponível no endereço acima.",
+}));
 
 app.Run();
 

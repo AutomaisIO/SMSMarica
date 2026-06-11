@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Laudos.Assinatura.Dtos;
@@ -19,6 +21,7 @@ public sealed class LaudoAssinaturaService(
     ILaudoPdfRenderer pdf,
     IAssinadorPdfPades assinador,
     IPractitionerFhirClient practitionerFhir,
+    ILogger<LaudoAssinaturaService> logger,
     IOptions<AssinaturaOptions> options) : ILaudoAssinaturaService
 {
     private readonly AssinaturaOptions _opt = options.Value;
@@ -46,17 +49,29 @@ public sealed class LaudoAssinaturaService(
         if (existentes.Any(a => a.Status == StatusAssinatura.Concluida))
             throw new ConflitoException("assinatura.ja_assinado", "Este laudo já foi assinado digitalmente.");
 
-        var chave = GerarChave();
-        var expira = DateTime.UtcNow.AddMinutes(_opt.ChaveExpiraMinutos);
+        // Housekeeping: jobs pendentes com chave já vencida viram Cancelada (não reaproveita
+        // estado morto e dá uso ao enum Cancelada, em vez de acumular linhas órfãs).
+        var agora = DateTime.UtcNow;
+        foreach (var morto in existentes.Where(a =>
+            a.Status is StatusAssinatura.Iniciada or StatusAssinatura.AguardandoAssinatura
+            && a.ChaveExpiraEm is not null && a.ChaveExpiraEm < agora))
+        {
+            morto.Status = StatusAssinatura.Cancelada;
+            morto.AtualizadoEm = agora;
+            LimparTransitorios(morto);
+        }
 
-        // Reutiliza um job pendente (re-clicou "Assinar") com chave nova.
+        var chave = GerarChave();
+        var expira = agora.AddMinutes(_opt.ChaveExpiraMinutos);
+
+        // Reutiliza um job pendente AINDA VÁLIDO (re-clicou "Assinar") com chave nova.
         var pendente = existentes.FirstOrDefault(a =>
             a.Status is StatusAssinatura.Iniciada or StatusAssinatura.AguardandoAssinatura);
         if (pendente is not null)
         {
-            pendente.ChaveAgente = chave;
+            pendente.ChaveAgente = HashChave(chave);
             pendente.ChaveExpiraEm = expira;
-            pendente.AtualizadoEm = DateTime.UtcNow;
+            pendente.AtualizadoEm = agora;
             await db.SaveChangesAsync(cancellationToken);
             return new IniciarAssinaturaResultado(pendente.Id, chave);
         }
@@ -67,13 +82,16 @@ public sealed class LaudoAssinaturaService(
             LaudoId = laudoId,
             MedicoId = medico.Id,
             Status = StatusAssinatura.Iniciada,
-            ChaveAgente = chave,
+            ChaveAgente = HashChave(chave),
             ChaveExpiraEm = expira,
             AssinadoPorUsuarioId = usuarioId,
-            CriadoEm = DateTime.UtcNow,
+            CriadoEm = agora,
         };
         db.LaudoAssinaturas.Add(job);
         await db.SaveChangesAsync(cancellationToken);
+        logger.LogInformation(
+            "Assinatura: job {JobId} iniciado (laudo {LaudoId}, médico {MedicoId}, usuário {UsuarioId}). Aguardando o agente.",
+            job.Id, laudoId, medico.Id, usuarioId);
         return new IniciarAssinaturaResultado(job.Id, chave);
     }
 
@@ -133,7 +151,11 @@ public sealed class LaudoAssinaturaService(
             .FirstOrDefaultAsync(cancellationToken) ?? "Laudo";
 
         var cpf = await ResolverCpfMedicoAsync(job.MedicoId, cancellationToken);
-        return new ReivindicarResultado(job.Id, SoDigitos(cpf) is { Length: 11 } d ? d : null, titulo);
+        var cpfDigits = SoDigitos(cpf) is { Length: 11 } d ? d : null;
+        logger.LogInformation(
+            "Assinatura: job {JobId} reivindicado pelo agente (laudo {LaudoId}, médico {MedicoId}, cpfAutor {CpfAutor}).",
+            job.Id, job.LaudoId, job.MedicoId, MascararCpf(cpfDigits));
+        return new ReivindicarResultado(job.Id, cpfDigits, titulo);
     }
 
     public async Task<PrepararJobResultadoDto> PrepararAsync(
@@ -158,7 +180,17 @@ public sealed class LaudoAssinaturaService(
             laudo.MedicoRqeSnapshot,
             _opt.TextoCarimbo);
 
-        var prep = await assinador.PrepararAsync(pdfSemTarja, cadeiaCertificado, visual, cancellationToken);
+        PreparacaoAssinatura prep;
+        try
+        {
+            prep = await assinador.PrepararAsync(pdfSemTarja, cadeiaCertificado, visual, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Assinatura: job {JobId} falhou ao preparar no Automais.Assinador.", job.Id);
+            await MarcarFalhaAsync(job, cancellationToken);
+            throw;
+        }
 
         job.TransferState = prep.TransferState;
         job.HashParaAssinar = prep.ToSignHash;
@@ -168,6 +200,9 @@ public sealed class LaudoAssinaturaService(
         job.AtualizadoEm = job.EntregueEm;
         await db.SaveChangesAsync(cancellationToken);
 
+        logger.LogInformation(
+            "Assinatura: job {JobId} preparado (laudo {LaudoId}, {QtdCerts} cert(s) na cadeia, thumbprint {Thumbprint}, hash {Algo}). Aguardando assinatura do agente.",
+            job.Id, job.LaudoId, cadeiaCertificado.Count, job.CertThumbprint, prep.AlgoritmoHash);
         return new PrepararJobResultadoDto(Convert.ToBase64String(prep.ToSignHash), prep.AlgoritmoHash);
     }
 
@@ -179,23 +214,68 @@ public sealed class LaudoAssinaturaService(
         if (rawSignature is null || rawSignature.Length == 0)
             throw new ValidacaoException("assinatura.sem_assinatura", "Assinatura crua não informada.");
 
-        var resultado = await assinador.ConcluirAsync(job.TransferState, rawSignature, cancellationToken);
+        // Perdedor de corrida (duplo-clique/retry): se o laudo já foi assinado, sai cedo
+        // sem pagar a montagem PAdES (chamada cara ao Automais.Assinador).
+        if (await EstaAssinadoAsync(job.LaudoId, cancellationToken))
+            throw new ConflitoException("assinatura.ja_assinado", "Este laudo já foi assinado digitalmente.");
 
-        // Defesa em profundidade: o CPF do certificado precisa bater com o médico autor.
-        var cpfAutor = await ResolverCpfMedicoAsync(job.MedicoId, cancellationToken);
-        var cpfCert = SoDigitos(resultado.CpfTitular);
-        if (!string.IsNullOrEmpty(cpfAutor) && cpfCert.Length == 11 && SoDigitos(cpfAutor) != cpfCert)
+        // Revalida o invariante do laudo no fechamento (simetria com Iniciar/Preparar).
+        var laudoValido = await db.Laudos.AsNoTracking()
+            .AnyAsync(l => l.Id == job.LaudoId && !l.Excluido && l.Status == StatusLaudo.Finalizado, cancellationToken);
+        if (!laudoValido)
         {
-            job.Status = StatusAssinatura.Falhou;
-            LimparTransitorios(job);
-            await db.SaveChangesAsync(cancellationToken);
+            await MarcarFalhaAsync(job, cancellationToken);
+            throw new ConflitoException("assinatura.laudo_estado_invalido",
+                "O laudo não está mais finalizado/disponível para assinatura.");
+        }
+
+        // Falha do assinador encerra a janela: marca Falhou e invalida a chave (não
+        // deixa a chave válida para novas tentativas dentro do TTL).
+        ResultadoAssinatura resultado;
+        try
+        {
+            resultado = await assinador.ConcluirAsync(job.TransferState, rawSignature, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Assinatura: job {JobId} falhou ao concluir no Automais.Assinador.", job.Id);
+            await MarcarFalhaAsync(job, cancellationToken);
+            throw;
+        }
+
+        // Defesa em profundidade (FAIL-CLOSED): só conclui se o CPF do certificado
+        // bater exatamente com o CPF do médico autor. Sem CPF de um lado = recusa.
+        var cpfAutor = SoDigitos(await ResolverCpfMedicoAsync(job.MedicoId, cancellationToken));
+        var cpfCert = SoDigitos(resultado.CpfTitular);
+        logger.LogInformation(
+            "Assinatura: job {JobId} validando autoria — cpfAutor {CpfAutor}, cpfCert {CpfCert}, titular '{Titular}', emissor '{Emissor}'.",
+            job.Id, MascararCpf(cpfAutor), MascararCpf(cpfCert), resultado.CertificadoTitular, resultado.CertificadoEmissor);
+
+        if (cpfAutor.Length != 11)
+        {
+            await MarcarFalhaAsync(job, cancellationToken);
+            logger.LogWarning("Assinatura: job {JobId} RECUSADO — médico autor sem CPF resolvível no FHIR.", job.Id);
+            throw new ConflitoException("assinatura.autor_sem_cpf",
+                "O médico autor não tem CPF resolvível no hub FHIR; não é possível validar a assinatura.");
+        }
+        if (cpfCert.Length != 11)
+        {
+            await MarcarFalhaAsync(job, cancellationToken);
+            logger.LogWarning("Assinatura: job {JobId} RECUSADO — CPF não extraído do certificado (titular '{Titular}').", job.Id, resultado.CertificadoTitular);
+            throw new ValidacaoException("assinatura.cert_sem_cpf",
+                "Não foi possível extrair o CPF (ICP-Brasil) do certificado de assinatura.");
+        }
+        if (cpfAutor != cpfCert)
+        {
+            await MarcarFalhaAsync(job, cancellationToken);
+            logger.LogWarning("Assinatura: job {JobId} RECUSADO — CPF do certificado ({CpfCert}) diverge do autor ({CpfAutor}).", job.Id, MascararCpf(cpfCert), MascararCpf(cpfAutor));
             throw new ValidacaoException("assinatura.cpf_diverge",
                 "O CPF do certificado não corresponde ao médico autor do laudo.");
         }
 
         job.PdfAssinado = resultado.PdfAssinado;
         job.PdfHashSha256 = SHA256.HashData(resultado.PdfAssinado);
-        job.AssinadoPorCpf = cpfCert.Length == 11 ? cpfCert : null;
+        job.AssinadoPorCpf = cpfCert;
         job.CertificadoTitular = resultado.CertificadoTitular;
         job.CertificadoEmissor = resultado.CertificadoEmissor;
         job.Formato = resultado.Formato;
@@ -204,6 +284,10 @@ public sealed class LaudoAssinaturaService(
         job.Status = StatusAssinatura.Concluida;
         LimparTransitorios(job);
         await db.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation(
+            "Assinatura: job {JobId} CONCLUÍDO (laudo {LaudoId}, formato {Formato}, titular '{Titular}', cpf {Cpf}, pdf {Bytes} bytes).",
+            job.Id, job.LaudoId, resultado.Formato, resultado.CertificadoTitular, MascararCpf(cpfCert), resultado.PdfAssinado.Length);
     }
 
     // ---------------- helpers ----------------
@@ -214,11 +298,27 @@ public sealed class LaudoAssinaturaService(
         if (string.IsNullOrWhiteSpace(chave))
             throw new ValidacaoException("assinatura.chave_invalida", "Chave não informada.");
 
-        var job = await db.LaudoAssinaturas.FirstOrDefaultAsync(a => a.ChaveAgente == chave, ct);
+        // A chave é guardada apenas como hash (defesa: vazamento de dump/backup não
+        // permite reivindicar jobs). O cliente sempre envia o valor em claro.
+        var hash = HashChave(chave);
+        var job = await db.LaudoAssinaturas.FirstOrDefaultAsync(a => a.ChaveAgente == hash, ct);
         if (job is null || job.ChaveExpiraEm is null || job.ChaveExpiraEm < DateTime.UtcNow)
             throw new ValidacaoException("assinatura.chave_invalida", "Chave inválida ou expirada.");
 
         return job;
+    }
+
+    /// <summary>Hash (SHA-256 hex) da chave de uso único para armazenamento/lookup. Entropia alta ⇒ sem salt.</summary>
+    private static string HashChave(string chave) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(chave)));
+
+    /// <summary>Marca o job como falho, limpa transitórios e persiste (fail-closed).</summary>
+    private async Task MarcarFalhaAsync(LaudoAssinatura job, CancellationToken ct)
+    {
+        job.Status = StatusAssinatura.Falhou;
+        job.AtualizadoEm = DateTime.UtcNow;
+        LimparTransitorios(job);
+        await db.SaveChangesAsync(ct);
     }
 
     private static void LimparTransitorios(LaudoAssinatura job)
@@ -270,4 +370,12 @@ public sealed class LaudoAssinaturaService(
 
     private static string SoDigitos(string? v) =>
         string.IsNullOrEmpty(v) ? string.Empty : new string([.. v.Where(char.IsDigit)]);
+
+    /// <summary>Mascara CPF para log (LGPD): "123******89" — mantém prefixo/sufixo p/ diagnóstico.</summary>
+    private static string MascararCpf(string? cpf)
+    {
+        var d = SoDigitos(cpf);
+        if (d.Length != 11) return string.IsNullOrEmpty(d) ? "(vazio)" : $"({d.Length} dígitos)";
+        return $"{d[..3]}******{d[9..]}";
+    }
 }

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
   CheckCircle2,
+  Download,
   FileText,
   Loader2,
   RefreshCw,
@@ -28,15 +30,21 @@ import {
   useCadastrarLaudo,
   useCriarNovaVersao,
   useFinalizarLaudo,
+  laudosKeys,
   useIniciarAssinatura,
   useLaudoPorId,
   useStatusAssinatura,
 } from '@/features/laudos/api/queries';
 import { abrirPdfLaudo } from '@/features/laudos/lib/pdf';
-import { lancarAgenteAssinatura } from '@/features/laudos/lib/assinatura';
+import {
+  TIMEOUT_AGENTE_SEGUNDOS,
+  lancarAgenteAssinatura,
+  urlDownloadAssinador,
+} from '@/features/laudos/lib/assinatura';
 
 export function LaudoEditorPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { id } = useParams<{ id: string }>();
   const [params] = useSearchParams();
   const ehNovo = !id || id === 'novo';
@@ -55,6 +63,8 @@ export function LaudoEditorPage() {
   const [html, setHtml] = useState('');
   const [json, setJson] = useState('{}');
   const [erro, setErro] = useState<string | null>(null);
+  const [aguardandoAgente, setAguardandoAgente] = useState(false);
+  const [agenteNaoEncontrado, setAgenteNaoEncontrado] = useState(false);
 
   const studyParam = params.get('studyUID') ?? '';
   const modalidadeParam = params.get('modalidade') ?? undefined;
@@ -80,6 +90,38 @@ export function LaudoEditorPage() {
     statusAssinatura.data?.status === 'Iniciada' ||
     statusAssinatura.data?.status === 'AguardandoAssinatura';
   const assinaturaFalhou = statusAssinatura.data?.status === 'Falhou';
+
+  // Watchdog: depois de lançar o protocolo, se em N segundos o job não saiu de
+  // "Iniciada" (o agente não reivindicou), concluímos que o Assinador não está instalado.
+  // Assim que o job avança (o agente reivindicou), o agente existe — então cancela o
+  // watchdog E fecha o modal "não encontrado" caso ele tenha aparecido por atraso.
+  const statusAtual = statusAssinatura.data?.status;
+  const agenteReivindicou =
+    statusAtual === 'AguardandoAssinatura' ||
+    statusAtual === 'Concluida' ||
+    statusAtual === 'Falhou';
+  useEffect(() => {
+    if (agenteReivindicou) {
+      setAguardandoAgente(false);
+      setAgenteNaoEncontrado(false);
+      return;
+    }
+    if (!aguardandoAgente) return;
+    const t = setTimeout(() => {
+      setAguardandoAgente(false);
+      setAgenteNaoEncontrado(true);
+    }, TIMEOUT_AGENTE_SEGUNDOS * 1000);
+    return () => clearTimeout(t);
+  }, [aguardandoAgente, agenteReivindicou]);
+
+  // Quando a assinatura conclui, atualiza listagem/detalhe para o cadeado refletir.
+  const concluiu = statusAtual === 'Concluida';
+  useEffect(() => {
+    if (concluiu && id) {
+      queryClient.invalidateQueries({ queryKey: laudosKeys.porId(id) });
+      queryClient.invalidateQueries({ queryKey: laudosKeys.raiz });
+    }
+  }, [concluiu, id, queryClient]);
 
   // Puxa o pedido (Solicitação de Exame) associado ao Study para mostrar contexto clínico.
   const solicitacao = useSolicitacaoPorStudy(studyInstanceUID || null);
@@ -157,10 +199,12 @@ export function LaudoEditorPage() {
   async function aoAssinar() {
     if (!id) return;
     setErro(null);
+    setAgenteNaoEncontrado(false);
     try {
       const { chave } = await iniciarAssinatura.mutateAsync(id);
-      // Lança o agente local via protocolo; o polling de status acompanha a assinatura.
+      // Lança o agente via protocolo e arma o watchdog que detecta se ele não está instalado.
       lancarAgenteAssinatura(chave);
+      setAguardandoAgente(true);
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
     }
@@ -212,12 +256,12 @@ export function LaudoEditorPage() {
                   <ShieldCheck className="h-4 w-4" />
                   Assinado digitalmente
                 </span>
-              ) : ehMedico && assinando ? (
+              ) : ehMedico && podeFinalizar && assinando && !agenteNaoEncontrado ? (
                 <span className="inline-flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-sm text-amber-800">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Aguardando autorização no seu agente (VIDaaS Connect)…
                 </span>
-              ) : ehMedico ? (
+              ) : ehMedico && podeFinalizar ? (
                 <Button onClick={aoAssinar} disabled={iniciarAssinatura.isPending}>
                   <ShieldCheck className="mr-2 h-4 w-4" />
                   {assinaturaFalhou ? 'Tentar assinar de novo' : 'Assinar'}
@@ -343,6 +387,38 @@ export function LaudoEditorPage() {
           ) : null}
         </>
       )}
+
+      {agenteNaoEncontrado ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+              <ShieldCheck className="h-5 w-5 text-red-600" />
+              Assinador não encontrado
+            </h3>
+            <p className="mt-2 text-sm text-gray-600">
+              Não detectamos o <strong>Automais Assinador</strong> instalado nesta máquina.
+              Instale o aplicativo e tente assinar novamente. Se o problema persistir,
+              entre em contato com o suporte.
+            </p>
+            <div className="mt-5 flex items-center justify-between gap-3">
+              <a
+                href={urlDownloadAssinador}
+                className="inline-flex items-center gap-2 rounded-md bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700"
+              >
+                <Download className="h-4 w-4" />
+                Baixar o Assinador
+              </a>
+              <button
+                type="button"
+                onClick={() => setAgenteNaoEncontrado(false)}
+                className="text-sm text-gray-600 hover:text-gray-900"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
