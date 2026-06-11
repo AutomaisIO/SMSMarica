@@ -1,0 +1,79 @@
+name: Publicar Fonte (Automais.Assinador → repo público AGPL)
+
+# AGPL-3.0 §13: o Automais.Assinador linka iText (AGPL) in-process, então a
+# Corresponding Source precisa estar PUBLICAMENTE disponível. Este workflow espelha
+# APENAS o subtree `Automais.Assinador/` (autossuficiente: tem .slnx/props/global.json
+# próprios) para o repo público AutomaisIO/Automais.Assinador, a cada push que o toque.
+#
+# Snapshot SEM histórico (force-push de um commit único): evita vazar mensagens de
+# commit do monorepo privado (que referenciam Salux/PII). Cumpre o §13, que exige a
+# fonte da versão em execução — não o histórico.
+#
+# Pré-requisitos (uma vez):
+#   1. Repo público AutomaisIO/Automais.Assinador criado (pode estar vazio).
+#   2. Secret ASSINADOR_REPO_TOKEN = PAT fine-grained com "Contents: Read and write"
+#      em AutomaisIO/Automais.Assinador (o mesmo secret do build-instalador serve, se
+#      o PAT tiver acesso aos DOIS repos: .agente e este).
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Automais.Assinador/**'
+      - '.github/workflows/publicar-fonte-assinador.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: publicar-fonte-assinador
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  espelhar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Preparar snapshot limpo do subtree
+        run: |
+          set -euo pipefail
+          DEST="$RUNNER_TEMP/fonte"
+          rm -rf "$DEST"; mkdir -p "$DEST"
+          rsync -a \
+            --exclude 'bin/' --exclude 'obj/' --exclude 'publish/' \
+            --exclude 'publish-agente/' --exclude '*.tar.gz' --exclude '.git/' \
+            Automais.Assinador/ "$DEST/"
+          test -f "$DEST/LICENSE"   # garante a AGPL na raiz
+          echo "Arquivos no snapshot:"; find "$DEST" -type f | wc -l
+
+      - name: Snapshot como artefato (sempre disponível, mesmo sem token)
+        uses: actions/upload-artifact@v4
+        with:
+          name: fonte-automais-assinador
+          path: ${{ runner.temp }}/fonte
+          retention-days: 14
+
+      - name: Espelhar no repo público (force, snapshot)
+        if: ${{ secrets.ASSINADOR_REPO_TOKEN != '' }}
+        env:
+          TOKEN: ${{ secrets.ASSINADOR_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/fonte"
+          git init -q -b main
+          git config user.name "Automais CI"
+          git config user.email "ci@automais.io"
+          git add -A
+          git commit -q -m "Sync fonte Automais.Assinador (AGPL) — origem SMSMarica@${GITHUB_SHA}"
+          git push -f "https://x-access-token:${TOKEN}@github.com/AutomaisIO/Automais.Assinador.git" main
+          echo ">>> Espelhado em https://github.com/AutomaisIO/Automais.Assinador"
+
+      - name: Aviso se o token não está configurado
+        if: ${{ secrets.ASSINADOR_REPO_TOKEN == '' }}
+        run: |
+          echo "::warning::ASSINADOR_REPO_TOKEN não configurado — snapshot ficou só como artefato."
+          echo "Configure o secret + crie o repo público AutomaisIO/Automais.Assinador para espelhar."

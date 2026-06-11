@@ -52,10 +52,20 @@ jobs:
         working-directory: Automais.Assinador
         run: wix build installer/AutomaisAssinadorAgente.wxs -d AgentExe="publish-agente/automais-assinador-agente.exe" -o AutomaisAssinador.msi
 
+      # MSI sempre disponível como artefato do run, mesmo sem o token de Release —
+      # baixável direto da página do workflow (Actions → este run → Artifacts).
+      - name: MSI como artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: AutomaisAssinador-msi
+          path: Automais.Assinador/AutomaisAssinador.msi
+          retention-days: 14
+
       - name: Publicar Release no repo de distribuição
-        # Pinado por SHA (imutável) em vez de @v2 (tag móvel): impede que um
-        # repoint/comprometimento da action publique um MSI malicioso como "latest".
-        # SHA = softprops/action-gh-release v2 (3bb1273).
+        # Só publica quando o token existe — sem ele, o run fica VERDE (o MSI já saiu
+        # como artefato acima). Pinado por SHA (imutável) em vez de @v2 (tag móvel):
+        # impede que um repoint/comprometimento da action publique um MSI malicioso.
+        if: ${{ secrets.ASSINADOR_REPO_TOKEN != '' }}
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65
         with:
           repository: AutomaisIO/Automais.Assinador.agente
