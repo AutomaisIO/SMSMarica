@@ -28,6 +28,9 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
+    # secrets não pode ir direto num `if:`; expõe como env (true/false) p/ gatear o Release.
+    env:
+      HAS_TOKEN: ${{ secrets.ASSINADOR_REPO_TOKEN != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -65,7 +68,7 @@ jobs:
         # Só publica quando o token existe — sem ele, o run fica VERDE (o MSI já saiu
         # como artefato acima). Pinado por SHA (imutável) em vez de @v2 (tag móvel):
         # impede que um repoint/comprometimento da action publique um MSI malicioso.
-        if: ${{ secrets.ASSINADOR_REPO_TOKEN != '' }}
+        if: ${{ env.HAS_TOKEN == 'true' }}
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65
         with:
           repository: AutomaisIO/Automais.Assinador.agente

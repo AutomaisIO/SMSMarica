@@ -32,6 +32,9 @@ permissions:
 jobs:
   espelhar:
     runs-on: ubuntu-latest
+    # secrets não pode ir direto num `if:`; expõe como env (true/false).
+    env:
+      HAS_TOKEN: ${{ secrets.ASSINADOR_REPO_TOKEN != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -58,7 +61,7 @@ jobs:
           retention-days: 14
 
       - name: Espelhar no repo público (force, snapshot)
-        if: ${{ secrets.ASSINADOR_REPO_TOKEN != '' }}
+        if: ${{ env.HAS_TOKEN == 'true' }}
         env:
           TOKEN: ${{ secrets.ASSINADOR_REPO_TOKEN }}
         run: |
@@ -73,7 +76,7 @@ jobs:
           echo ">>> Espelhado em https://github.com/AutomaisIO/Automais.Assinador"
 
       - name: Aviso se o token não está configurado
-        if: ${{ secrets.ASSINADOR_REPO_TOKEN == '' }}
+        if: ${{ env.HAS_TOKEN != 'true' }}
         run: |
           echo "::warning::ASSINADOR_REPO_TOKEN não configurado — snapshot ficou só como artefato."
           echo "Configure o secret + crie o repo público AutomaisIO/Automais.Assinador para espelhar."
