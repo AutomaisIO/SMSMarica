@@ -21,16 +21,18 @@ produtos fechados que o consomem, ele é mantido como **serviço isolado por HTT
 in-process em produto fechado — sempre via API) e o próprio código deste serviço é distribuído
 sob AGPL-3.0.
 
-Mecanismos de conformidade já implementados:
+Conformidade AGPL implementada:
 
-- **`LICENSE`** com o texto completo da AGPL-3.0 na raiz de `Automais.Assinador/`.
-- **`GET /source`** — oferta da *Corresponding Source* a quem interage pela rede (AGPL §13),
-  apontando para o repositório público (config `Assinador:FonteUrl`).
-- A string *Producer* do PDF assinado já nomeia o iText (atribuição padrão).
+- **Fonte público (AGPL §13):** o código deste serviço está publicamente disponível em
+  **https://github.com/AutomaisIO/Automais.Assinador**, espelhado **automaticamente pelo CI**
+  (workflow `publicar-fonte-assinador`) a cada mudança em `Automais.Assinador/**`. É a
+  *Corresponding Source* da versão em execução.
+- **`LICENSE`** com o texto completo da AGPL-3.0 na raiz do repositório.
+- **`GET /source`** — oferta da *Corresponding Source* a quem interage pela rede, apontando
+  para o repo público (config `Assinador:FonteUrl`).
+- A string *Producer* do PDF assinado nomeia o iText (atribuição AGPL mantida — removê-la
+  exigiria licença comercial do iText/Apryse). O branding Automais fica só em *Creator*/*Author*.
 
-> ⚠️ **Obrigação pendente (decisão do responsável):** a AGPL §13 exige que a *Corresponding
-> Source* deste serviço esteja **publicamente disponível**. Hoje o código vive no monorepo
-> **privado**. Para fechar a conformidade é preciso **publicar o fonte de `src/` num repositório
-> público** (extraindo-o do monorepo, que contém PII) **ou** adquirir a **licença comercial do
-> iText (Apryse)** e então remover esta narrativa AGPL. Ajuste `Assinador:FonteUrl` para o repo
-> público real assim que existir.
+> Observação: o espelho público é um *snapshot* (sem histórico do monorepo privado, que contém
+> PII). Isso satisfaz o §13, que exige a fonte correspondente da versão distribuída — não o
+> histórico de desenvolvimento.
