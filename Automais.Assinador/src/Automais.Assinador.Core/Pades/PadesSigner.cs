@@ -43,6 +43,12 @@ public sealed class PadesSigner : IPadesSigner
             var reader = new PdfReader(entrada);
             var signer = new PdfSigner(reader, saida, new StampingProperties());
 
+            // Branding Automais nos metadados. NÃO mexe no /Producer (linha do iText®
+            // ... AGPL version) — o AGPL do iText exige mantê-la; só o Creator/Author é nosso.
+            var info = signer.GetDocument().GetDocumentInfo();
+            info.SetCreator("Automais.Assinador");
+            info.SetAuthor("Automais.Assinador");
+
             var props = new SignerProperties()
                 .SetFieldName(FieldName)
                 .SetPageNumber(1)

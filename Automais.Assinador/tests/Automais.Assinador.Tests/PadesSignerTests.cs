@@ -55,6 +55,13 @@ public class PadesSignerTests
         Assert.Single(nomes);
         var pkcs7 = util.ReadSignatureData(nomes[0]);
         Assert.True(pkcs7.VerifySignatureIntegrityAndAuthenticity(), "A assinatura deveria ser íntegra e autêntica.");
+
+        // Conformidade AGPL: a linha /Producer do iText NÃO pode ser removida (removê-la
+        // exigiria licença comercial). O branding Automais fica só no Creator/Author.
+        var info = assinado.GetDocumentInfo();
+        Assert.Contains("iText", info.GetProducer());
+        Assert.Equal("Automais.Assinador", info.GetCreator());
+        Assert.Equal("Automais.Assinador", info.GetAuthor());
     }
 
     private static byte[] GerarPdfDeTeste()
