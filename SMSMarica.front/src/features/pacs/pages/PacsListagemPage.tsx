@@ -10,6 +10,7 @@ import { Select } from '@/shared/ui/Select';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { useLaudosPorStudyUIDs } from '@/features/laudos/api/queries';
 import { abrirPdfLaudo } from '@/features/laudos/lib/pdf';
+import { BotaoAnamnese } from '@/features/anamnese/components/BotaoAnamnese';
 import type { LaudoPorStudy } from '@/features/laudos/types';
 import { useBuscarEstudos, useExcluirEstudo } from '@/features/pacs/api/queries';
 import { formatarHoraDicom } from '@/features/pacs/lib/dicomJson';
@@ -214,6 +215,7 @@ export function PacsListagemPage() {
                 Visualizar
               </button>
             ) : null}
+            <BotaoAnamnese accessionNumber={e.accessionNumber} pacienteNome={e.patientName} />
             {e.laudo && podeEditarLaudo ? (
               <button
                 type="button"

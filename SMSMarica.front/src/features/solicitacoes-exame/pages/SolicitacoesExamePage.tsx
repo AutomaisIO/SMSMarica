@@ -11,6 +11,7 @@ import { Select } from '@/shared/ui/Select';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { useExcluirSolicitacao, useListarSolicitacoes } from '@/features/solicitacoes-exame/api/queries';
 import { StatusBadgeSolicitacao } from '@/features/solicitacoes-exame/components/StatusBadgeSolicitacao';
+import { BotaoAnamnese } from '@/features/anamnese/components/BotaoAnamnese';
 import type {
   FiltroSolicitacoes,
   SolicitacaoExameListItem,
@@ -116,6 +117,7 @@ export function SolicitacoesExamePage() {
               Abrir
             </button>
           ) : null}
+          <BotaoAnamnese accessionNumber={s.accessionNumber} pacienteNome={s.pacienteNome} />
           {podeExcluir && (s.status === 'Solicitada' || s.status === 'Cancelada') ? (
             <button
               type="button"
