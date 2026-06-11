@@ -239,7 +239,9 @@ export function LaudoEditorPage() {
           <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold text-gray-900">
             <FileText className="h-6 w-6 text-primary-600" />
             {ehNovo ? 'Novo laudo' : `Laudo (v${detalhe.data?.versao ?? '?'})`}
-            {!ehNovo && detalhe.data ? <StatusBadgeLaudo status={detalhe.data.status} /> : null}
+            {!ehNovo && detalhe.data ? (
+              <StatusBadgeLaudo status={detalhe.data.status} assinado={assinado} />
+            ) : null}
           </h1>
         </div>
         <div className="flex items-center gap-2">

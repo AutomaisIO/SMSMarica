@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Edit2, FileText, Loader2, Search, ShieldCheck, Trash2 } from 'lucide-react';
+import { Edit2, FileText, Loader2, Search, Trash2 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
@@ -83,16 +83,7 @@ export function LaudosListagemPage() {
     {
       chave: 'status',
       cabecalho: 'Status',
-      render: (l) => (
-        <div className="flex items-center gap-1.5">
-          <StatusBadgeLaudo status={l.status} />
-          {l.assinado ? (
-            <span title="Assinado digitalmente (ICP-Brasil)">
-              <ShieldCheck className="h-4 w-4 text-emerald-600" />
-            </span>
-          ) : null}
-        </div>
-      ),
+      render: (l) => <StatusBadgeLaudo status={l.status} assinado={l.assinado} />,
     },
     {
       chave: 'acoes',
