@@ -39,6 +39,7 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<TipoExame> TiposExame => Set<TipoExame>();
     public DbSet<SolicitacaoExame> SolicitacoesExame => Set<SolicitacaoExame>();
     public DbSet<Anamnese> Anamneses => Set<Anamnese>();
+    public DbSet<AssinaturaMedico> AssinaturasMedico => Set<AssinaturaMedico>();
 
     // Tokens de API (chaves de serviço para integrações externas, ex.: CentralIA)
     public DbSet<ApiToken> ApiTokens => Set<ApiToken>();

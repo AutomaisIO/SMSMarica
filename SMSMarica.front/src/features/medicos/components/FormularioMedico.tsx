@@ -30,6 +30,7 @@ import {
   atualizarMedicoSchema,
   cadastrarMedicoSchema,
 } from '@/features/medicos/schemas/medicoSchema';
+import { AssinaturaMedicoSecao } from '@/features/medicos/assinatura/AssinaturaMedicoSecao';
 import { paraMatriz } from '@/features/perfis/lib/acoes';
 import type { MatrizEdicao } from '@/features/perfis/types';
 import { CONSELHOS } from '@/features/medicos/types';
@@ -515,12 +516,15 @@ export function FormularioMedico({
   );
 
   const abaMedico = (
-    <CamposMedicoEspecificos
-      valores={valores}
-      erros={erros}
-      setCampo={setCampo}
-      permitirEscolherConselho={permitirEscolherConselho}
-    />
+    <div className="space-y-5">
+      <CamposMedicoEspecificos
+        valores={valores}
+        erros={erros}
+        setCampo={setCampo}
+        permitirEscolherConselho={permitirEscolherConselho}
+      />
+      {modo === 'editar' && idMedico ? <AssinaturaMedicoSecao medicoId={idMedico} /> : null}
+    </div>
   );
 
   const abaPermissoes = (

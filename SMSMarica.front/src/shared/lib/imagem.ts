@@ -29,6 +29,38 @@ export async function recortarParaBase64(
   return canvas.toDataURL('image/jpeg', qualidade);
 }
 
+/**
+ * Recorta a área selecionada e redimensiona para um frame retangular
+ * `larguraFinal × alturaFinal` (ex.: 800×800 ou 800×400). Saída PNG — preserva
+ * traços finos da assinatura sem artefatos de JPEG. Fundo branco (assinaturas
+ * costumam vir de papel) para um carimbo previsível no PDF.
+ */
+export async function recortarRetangularParaBase64(
+  imagemSrc: string,
+  area: { x: number; y: number; width: number; height: number },
+  larguraFinal: number,
+  alturaFinal: number,
+): Promise<string> {
+  const img = await carregarImagem(imagemSrc);
+  const canvas = document.createElement('canvas');
+  canvas.width = larguraFinal;
+  canvas.height = alturaFinal;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas indisponível.');
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, larguraFinal, alturaFinal);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(
+    img,
+    area.x, area.y, area.width, area.height,
+    0, 0, larguraFinal, alturaFinal,
+  );
+
+  return canvas.toDataURL('image/png');
+}
+
 function carregarImagem(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
 using SMSMarica.Core.Medicos;
+using SMSMarica.Core.Medicos.Assinatura;
 using SMSMarica.Core.Medicos.Dtos;
 using SMSMarica.Data.Entities.Enums;
 
@@ -8,7 +9,9 @@ namespace SMSMarica.Api.Controllers;
 
 [ApiController]
 [Route("medicos")]
-public sealed class MedicosController(IMedicosService service) : ControllerBase
+public sealed class MedicosController(
+    IMedicosService service,
+    IAssinaturaMedicoService assinatura) : ControllerBase
 {
     private readonly IMedicosService _service = service;
 
@@ -86,6 +89,39 @@ public sealed class MedicosController(IMedicosService service) : ControllerBase
     public async Task<IActionResult> Desativar(Guid id, CancellationToken cancellationToken)
     {
         await _service.DesativarAsync(id, cancellationToken);
+        return NoContent();
+    }
+
+    // ---- Rubrica visual (imagem de assinatura) do médico ----
+
+    /// <summary>Rubrica de assinatura do médico (imagem + formato), ou 204 se não houver.</summary>
+    [HttpGet("{id:guid}/assinatura")]
+    [RequerPermissao(ModuloPermissao.Medicos, AcoesPermissao.Consulta)]
+    [ProducesResponseType<AssinaturaMedicoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> ObterAssinatura(Guid id, CancellationToken cancellationToken)
+    {
+        var dto = await assinatura.ObterAsync(id, cancellationToken);
+        return dto is null ? NoContent() : Ok(dto);
+    }
+
+    /// <summary>Cria/substitui a rubrica de assinatura do médico (imagem já enquadrada + formato).</summary>
+    [HttpPut("{id:guid}/assinatura")]
+    [RequerPermissao(ModuloPermissao.Medicos, AcoesPermissao.Edicao)]
+    [ProducesResponseType<AssinaturaMedicoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<AssinaturaMedicoDto> SalvarAssinatura(
+        Guid id, [FromBody] SalvarAssinaturaMedicoRequest request, CancellationToken cancellationToken) =>
+        await assinatura.SalvarAsync(id, request, cancellationToken);
+
+    /// <summary>Remove a rubrica de assinatura do médico.</summary>
+    [HttpDelete("{id:guid}/assinatura")]
+    [RequerPermissao(ModuloPermissao.Medicos, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RemoverAssinatura(Guid id, CancellationToken cancellationToken)
+    {
+        await assinatura.RemoverAsync(id, cancellationToken);
         return NoContent();
     }
 }
