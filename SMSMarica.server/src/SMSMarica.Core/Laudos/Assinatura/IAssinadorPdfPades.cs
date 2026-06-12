@@ -38,13 +38,19 @@ public interface IAssinadorPdfPades
         CancellationToken cancellationToken = default);
 }
 
-/// <summary>Dados do carimbo visual fixo aplicado ao PDF assinado.</summary>
+/// <summary>
+/// Dados do carimbo visual aplicado ao PDF assinado. <see cref="CarimboPngBase64"/>
+/// é a imagem do carimbo já composta pelo servidor (rubrica + identificação no
+/// quadrado virtual); quando presente, é estampada graphic-only. Os campos de texto
+/// ficam como fallback (médico sem rubrica / composição indisponível).
+/// </summary>
 public sealed record DadosVisualAssinatura(
     string NomeMedico,
     string Crm,
     string UfCrm,
     string? Rqe,
-    string TextoRodape);
+    string TextoRodape,
+    string? CarimboPngBase64 = null);
 
 /// <summary>Resultado do passo "preparar": o que o cliente precisa assinar + estado opaco.</summary>
 public sealed record PreparacaoAssinatura(

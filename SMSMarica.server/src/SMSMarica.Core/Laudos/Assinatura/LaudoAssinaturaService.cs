@@ -21,6 +21,8 @@ public sealed class LaudoAssinaturaService(
     ILaudoPdfRenderer pdf,
     IAssinadorPdfPades assinador,
     IPractitionerFhirClient practitionerFhir,
+    Medicos.Assinatura.IAssinaturaMedicoService assinaturaMedico,
+    ICarimboAssinaturaRenderer carimboRenderer,
     ILogger<LaudoAssinaturaService> logger,
     IOptions<AssinaturaOptions> options) : ILaudoAssinaturaService
 {
@@ -173,12 +175,22 @@ public sealed class LaudoAssinaturaService(
             ?? throw new NaoEncontradoException(nameof(Laudo), job.LaudoId);
 
         var pdfSemTarja = await pdf.GerarAsync(job.LaudoId, incluirTarja: false, cancellationToken);
+
+        // Compõe o carimbo (rubrica do médico + identificação no quadrado virtual) → PNG.
+        var nome = laudo.MedicoNomeSnapshot ?? string.Empty;
+        var crm = laudo.MedicoCrmSnapshot ?? string.Empty;
+        var uf = laudo.MedicoUfCrmSnapshot ?? string.Empty;
+        var rqe = laudo.MedicoRqeSnapshot;
+
+        var rubrica = await assinaturaMedico.ObterAsync(job.MedicoId, cancellationToken);
+        var carimboPng = carimboRenderer.Renderizar(new CarimboDados(
+            Rubrica: rubrica is null ? null : DecodificarImagem(rubrica.ImagemBase64),
+            Formato: rubrica?.Formato ?? FormatoAssinaturaMedico.Horizontal,
+            Nome: nome, Crm: crm, UfCrm: uf, Rqe: rqe));
+
         var visual = new DadosVisualAssinatura(
-            laudo.MedicoNomeSnapshot ?? string.Empty,
-            laudo.MedicoCrmSnapshot ?? string.Empty,
-            laudo.MedicoUfCrmSnapshot ?? string.Empty,
-            laudo.MedicoRqeSnapshot,
-            _opt.TextoCarimbo);
+            nome, crm, uf, rqe, _opt.TextoCarimbo,
+            CarimboPngBase64: Convert.ToBase64String(carimboPng));
 
         PreparacaoAssinatura prep;
         try
@@ -370,6 +382,16 @@ public sealed class LaudoAssinaturaService(
 
     private static string SoDigitos(string? v) =>
         string.IsNullOrEmpty(v) ? string.Empty : new string([.. v.Where(char.IsDigit)]);
+
+    /// <summary>Decodifica a rubrica (data URL "data:image/png;base64,..." ou base64 puro) em bytes.</summary>
+    private static byte[] DecodificarImagem(string valor)
+    {
+        var dados = valor;
+        var virgula = valor.IndexOf(',');
+        if (valor.StartsWith("data:", StringComparison.OrdinalIgnoreCase) && virgula > 0)
+            dados = valor[(virgula + 1)..];
+        return Convert.FromBase64String(dados);
+    }
 
     /// <summary>Mascara CPF para log (LGPD): "123******89" — mantém prefixo/sufixo p/ diagnóstico.</summary>
     private static string MascararCpf(string? cpf)

@@ -16,7 +16,10 @@ public sealed class PadesController(IPadesSigner signer) : ControllerBase
     [HttpPost("preparar")]
     public PrepararResponse Preparar([FromBody] PrepararRequest req)
     {
-        var visual = new CarimboVisual(req.NomeMedico, req.Crm, req.UfCrm, req.Rqe, req.TextoRodape);
+        var carimboPng = string.IsNullOrWhiteSpace(req.CarimboPngBase64)
+            ? null
+            : Convert.FromBase64String(req.CarimboPngBase64);
+        var visual = new CarimboVisual(req.NomeMedico, req.Crm, req.UfCrm, req.Rqe, req.TextoRodape, carimboPng);
         var resultado = signer.Preparar(new PreparacaoRequisicao(
             Convert.FromBase64String(req.PdfBase64),
             [.. req.CadeiaCertificadoBase64.Select(Convert.FromBase64String)],
@@ -52,7 +55,8 @@ public sealed record PrepararRequest(
     string Crm,
     string UfCrm,
     string? Rqe,
-    string TextoRodape);
+    string TextoRodape,
+    string? CarimboPngBase64 = null);
 
 public sealed record PrepararResponse(string ToSignHashBase64, string AlgoritmoHash, string TransferStateBase64);
 

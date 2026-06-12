@@ -1,12 +1,17 @@
 namespace Automais.Assinador.Core.Pades;
 
-/// <summary>Dados do carimbo visual fixo aplicado ao PDF assinado.</summary>
+/// <summary>
+/// Dados do carimbo visual aplicado ao PDF assinado. <see cref="CarimboPng"/> é a
+/// imagem do carimbo já composta pelo chamador (rubrica + identificação); quando
+/// presente, é estampada graphic-only. Os campos de texto são fallback.
+/// </summary>
 public sealed record CarimboVisual(
     string NomeMedico,
     string Crm,
     string UfCrm,
     string? Rqe,
-    string TextoRodape);
+    string TextoRodape,
+    byte[]? CarimboPng = null);
 
 /// <summary>Entrada do passo "preparar": PDF original + cadeia do certificado do signatário.</summary>
 public sealed record PreparacaoRequisicao(

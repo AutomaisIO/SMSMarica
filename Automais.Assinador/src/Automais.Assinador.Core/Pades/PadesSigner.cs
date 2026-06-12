@@ -6,6 +6,7 @@ using System.Text.Json;
 using iText.Bouncycastleconnector;
 using iText.Commons.Bouncycastle.Cert;
 using iText.Forms.Form.Element;
+using iText.IO.Image;
 using iText.Kernel.Geom;
 using iText.Kernel.Pdf;
 using iText.Signatures;
@@ -52,7 +53,7 @@ public sealed class PadesSigner : IPadesSigner
             var props = new SignerProperties()
                 .SetFieldName(FieldName)
                 .SetPageNumber(1)
-                .SetPageRect(new Rectangle(36, 36, 240, 64))
+                .SetPageRect(MontarRect(signer, requisicao.Visual))
                 .SetSignatureAppearance(MontarAppearance(requisicao.Visual));
             signer.SetSignerProperties(props);
 
@@ -141,8 +142,30 @@ public sealed class PadesSigner : IPadesSigner
 
     // ----------------- Helpers -----------------
 
+    /// <summary>
+    /// Carimbo quadrado (o "quadrado virtual" composto pelo servidor) centralizado
+    /// no rodapé quando há imagem; senão a faixa de texto legada no canto inferior.
+    /// </summary>
+    private static Rectangle MontarRect(PdfSigner signer, CarimboVisual v)
+    {
+        if (v.CarimboPng is null)
+            return new Rectangle(36, 36, 240, 64);
+
+        const float lado = 130f;
+        var largura = signer.GetDocument().GetFirstPage().GetPageSize().GetWidth();
+        return new Rectangle((largura - lado) / 2f, 28f, lado, lado);
+    }
+
     private static SignatureFieldAppearance MontarAppearance(CarimboVisual v)
     {
+        // Carimbo composto (rubrica + identificação no quadrado virtual): estampa a
+        // imagem inteira (graphic-only), sem texto adicional do iText.
+        if (v.CarimboPng is not null)
+        {
+            var imagem = ImageDataFactory.Create(v.CarimboPng);
+            return new SignatureFieldAppearance(FieldName).SetContent(imagem);
+        }
+
         var rqe = string.IsNullOrWhiteSpace(v.Rqe) ? string.Empty : $" — RQE {v.Rqe}";
         var texto = $"Dr(a). {v.NomeMedico}\nCRM {v.UfCrm}/{v.Crm}{rqe}\n{v.TextoRodape}";
         return new SignatureFieldAppearance(FieldName).SetContent(texto);

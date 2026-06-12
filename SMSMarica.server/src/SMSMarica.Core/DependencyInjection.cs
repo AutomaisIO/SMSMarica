@@ -62,6 +62,7 @@ public static class DependencyInjection
         services.Configure<Laudos.Assinatura.AssinaturaOptions>(
             configuration.GetSection(Laudos.Assinatura.AssinaturaOptions.SecaoConfig));
         services.AddScoped<Laudos.Assinatura.ILaudoAssinaturaService, Laudos.Assinatura.LaudoAssinaturaService>();
+        services.AddSingleton<Laudos.Assinatura.ICarimboAssinaturaRenderer, Laudos.Assinatura.CarimboAssinaturaRenderer>();
         var assinadorBaseUrl = configuration["Assinatura:AssinadorBaseUrl"] ?? "http://localhost:5082/";
         var assinadorToken = configuration["Assinatura:AssinadorToken"];
         services

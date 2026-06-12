@@ -180,20 +180,22 @@ public sealed class LaudoPdfRenderer(ILaudosService laudos, IOptions<LaudosPdfOp
 
             c.Item().PaddingTop(10).LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
 
-            c.Item().AlignCenter().Column(a =>
-            {
-                a.Spacing(1);
-                foreach (var linha in assinatura)
-                {
-                    a.Item().AlignCenter().Text(linha).FontSize(10).SemiBold();
-                }
-                a.Item().AlignCenter().Text(emitidoEm).FontSize(8).Light();
-            });
-
-            // A tarja "sem assinatura ICP-Brasil" é omitida quando o PDF está sendo
-            // preparado para assinatura digital (o carimbo da assinatura entra depois).
+            // Bloco do médico + tarja só na versão NÃO assinada (on-demand). Quando o PDF
+            // está sendo preparado para assinar (incluirTarja=false), o rodapé fica sem o
+            // bloco do médico — o carimbo da assinatura (rubrica + nome/CRM/RQE) entra no
+            // lugar, estampado pelo Automais.Assinador.
             if (incluirTarja)
             {
+                c.Item().AlignCenter().Column(a =>
+                {
+                    a.Spacing(1);
+                    foreach (var linha in assinatura)
+                    {
+                        a.Item().AlignCenter().Text(linha).FontSize(10).SemiBold();
+                    }
+                    a.Item().AlignCenter().Text(emitidoEm).FontSize(8).Light();
+                });
+
                 c.Item().PaddingTop(6).AlignCenter().Text(_opt.TarjaRodape)
                     .FontSize(7)
                     .FontColor(Colors.Grey.Darken2)

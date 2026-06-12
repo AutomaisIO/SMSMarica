@@ -22,7 +22,8 @@ public sealed class AssinadorPdfHttpClient(
         var req = new PrepararReq(
             Convert.ToBase64String(pdfOriginal),
             [.. cadeiaCertificado.Select(Convert.ToBase64String)],
-            visual.NomeMedico, visual.Crm, visual.UfCrm, visual.Rqe, visual.TextoRodape);
+            visual.NomeMedico, visual.Crm, visual.UfCrm, visual.Rqe, visual.TextoRodape,
+            visual.CarimboPngBase64);
 
         var resp = await EnviarAsync<PrepararReq, PrepararResp>("pades/preparar", req, cancellationToken);
 
@@ -92,7 +93,8 @@ public sealed class AssinadorPdfHttpClient(
         string Crm,
         string UfCrm,
         string? Rqe,
-        string TextoRodape);
+        string TextoRodape,
+        string? CarimboPngBase64);
 
     private sealed record PrepararResp(string ToSignHashBase64, string AlgoritmoHash, string TransferStateBase64);
 
