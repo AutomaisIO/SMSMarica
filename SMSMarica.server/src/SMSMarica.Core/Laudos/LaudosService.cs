@@ -384,7 +384,7 @@ public sealed class LaudosService(
         if (p is null)
             throw new ConflitoException(
                 "laudo.usuario_sem_papel_medico",
-                "Apenas usuários com Practitioner (médico) no hub FHIR podem criar/editar laudos.");
+                "Apenas médicos podem criar/editar Laudos.");
 
         return MedicoFhirMapper.ParaDto(p);
     }
