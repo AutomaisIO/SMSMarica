@@ -37,6 +37,40 @@ public sealed class AgendamentoService(
         return [.. slots.Select(s => new SlotLivreDto(s.Inicio, s.Fim))];
     }
 
+    public async Task<IReadOnlyList<SlotEspecialidadeDto>> CalcularHorariosLivresPorEspecialidadeAsync(
+        Guid especialidadeId, Guid? unidadeId, DateOnly inicio, DateOnly fim,
+        CancellationToken cancellationToken = default)
+    {
+        if (fim < inicio)
+        {
+            throw new ValidacaoException("agenda.intervalo", "Data final não pode ser anterior à inicial.");
+        }
+
+        var query = _db.Agendas.AsNoTracking()
+            .Include(a => a.Unidade)
+            .Where(a => a.ExcluidoEm == null && a.Ativo
+                && a.Finalidade == FinalidadeAgenda.Consulta
+                && a.EspecialidadeId == especialidadeId);
+
+        if (unidadeId.HasValue)
+        {
+            query = query.Where(a => a.UnidadeId == unidadeId);
+        }
+
+        var agendas = await query.ToListAsync(cancellationToken);
+
+        var slots = new List<SlotEspecialidadeDto>();
+        foreach (var agenda in agendas)
+        {
+            var janelas = await CalcularAsync(agenda, inicio, fim, cancellationToken);
+            var unidadeNome = agenda.Unidade?.Nome ?? string.Empty;
+            slots.AddRange(janelas.Select(j =>
+                new SlotEspecialidadeDto(agenda.Id, agenda.UnidadeId, unidadeNome, j.Inicio, j.Fim)));
+        }
+
+        return [.. slots.OrderBy(s => s.InicioEm).ThenBy(s => s.UnidadeNome)];
+    }
+
     public async Task<IReadOnlyList<AgendamentoListItemDto>> ListarAsync(
         Guid agendaId, DateOnly inicio, DateOnly fim, CancellationToken cancellationToken = default)
     {

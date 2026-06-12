@@ -5,6 +5,18 @@ namespace SMSMarica.Core.Agendamentos.Dtos;
 /// <summary>Horário livre calculado de uma agenda (wall-clock local).</summary>
 public sealed record SlotLivreDto(DateTime InicioEm, DateTime FimEm);
 
+/// <summary>
+/// Horário livre agregado por especialidade: além da janela, diz em qual agenda/unidade
+/// ele está. Necessário porque marcar (<see cref="AgendarRequest"/>) exige a agendaId — quem
+/// busca a partir da especialidade não conhece a agenda de antemão.
+/// </summary>
+public sealed record SlotEspecialidadeDto(
+    Guid AgendaId,
+    Guid UnidadeId,
+    string UnidadeNome,
+    DateTime InicioEm,
+    DateTime FimEm);
+
 public sealed record AgendamentoDto(
     Guid Id,
     Guid AgendaId,

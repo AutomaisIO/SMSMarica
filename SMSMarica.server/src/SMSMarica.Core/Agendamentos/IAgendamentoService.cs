@@ -12,6 +12,15 @@ public interface IAgendamentoService
     Task<IReadOnlyList<SlotLivreDto>> CalcularHorariosLivresAsync(
         Guid agendaId, DateOnly inicio, DateOnly fim, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Horários livres de uma especialidade no intervalo [inicio, fim], agregando todas as
+    /// agendas de consulta ativas dessa especialidade (opcionalmente filtradas por unidade).
+    /// Cada slot carrega a agendaId/unidade de origem, exigida depois para marcar.
+    /// </summary>
+    Task<IReadOnlyList<SlotEspecialidadeDto>> CalcularHorariosLivresPorEspecialidadeAsync(
+        Guid especialidadeId, Guid? unidadeId, DateOnly inicio, DateOnly fim,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Agendamentos (não excluídos) de uma agenda no intervalo [inicio, fim].</summary>
     Task<IReadOnlyList<AgendamentoListItemDto>> ListarAsync(
         Guid agendaId, DateOnly inicio, DateOnly fim, CancellationToken cancellationToken = default);

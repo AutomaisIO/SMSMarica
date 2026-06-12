@@ -27,6 +27,28 @@ public sealed class AgendamentosController(IAgendamentoService service) : Contro
         CancellationToken cancellationToken) =>
         await _service.CalcularHorariosLivresAsync(agendaId, inicio, fim, cancellationToken);
 
+    /// <summary>
+    /// Horários livres de uma especialidade no intervalo, agregando as agendas de consulta
+    /// dessa especialidade (opcionalmente filtradas por unidade). Cada slot traz a agendaId
+    /// de origem, exigida para marcar. Parte da especialidade — não exige conhecer a agenda.
+    /// <paramref name="de"/>/<paramref name="ate"/> default: hoje e hoje+30 dias.
+    /// </summary>
+    [HttpGet("horarios-livres")]
+    [RequerPermissao(ModuloPermissao.Agendamentos, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<SlotEspecialidadeDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<SlotEspecialidadeDto>> HorariosLivresPorEspecialidade(
+        [FromQuery] Guid especialidadeId,
+        [FromQuery] Guid? unidadeId,
+        [FromQuery] DateOnly? de,
+        [FromQuery] DateOnly? ate,
+        CancellationToken cancellationToken)
+    {
+        var inicio = de ?? DateOnly.FromDateTime(DateTime.Today);
+        var fim = ate ?? inicio.AddDays(30);
+        return await _service.CalcularHorariosLivresPorEspecialidadeAsync(
+            especialidadeId, unidadeId, inicio, fim, cancellationToken);
+    }
+
     /// <summary>Agendamentos de uma agenda no intervalo informado.</summary>
     [HttpGet("agendas/{agendaId:guid}")]
     [RequerPermissao(ModuloPermissao.Agendamentos, AcoesPermissao.Consulta)]
