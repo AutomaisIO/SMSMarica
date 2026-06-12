@@ -283,14 +283,16 @@ export function LaudoEditorPage() {
                 <FileText className="mr-2 h-4 w-4" />
                 PDF
               </Button>
-              <Button
-                variante="outline"
-                onClick={() => baixarPdfLaudo(id!)}
-                title="Baixar o PDF do laudo (o assinado, quando houver)"
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Baixar
-              </Button>
+              {assinado ? (
+                <Button
+                  variante="outline"
+                  onClick={() => baixarPdfLaudo(id!)}
+                  title="Baixar o PDF assinado digitalmente (ICP-Brasil)"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Baixar
+                </Button>
+              ) : null}
               {podeFinalizar ? (
                 <Button onClick={aoCriarNovaVersao} disabled={novaVersao.isPending}>
                   <RefreshCw className="mr-2 h-4 w-4" />
