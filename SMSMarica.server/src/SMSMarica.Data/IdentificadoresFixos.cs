@@ -11,4 +11,7 @@ public static class IdentificadoresFixos
 
     /// <summary>Usuário "Administrador" semeado no startup (mesmo padrão).</summary>
     public static readonly Guid UsuarioAdminId = new("11111111-1111-1111-1111-111111111111");
+
+    /// <summary>Template de laudo "Mamografia Digital Bilateral (CDT)" semeado no startup.</summary>
+    public static readonly Guid TemplateMamografiaCdtId = new("22222222-2222-2222-2222-222222222001");
 }
