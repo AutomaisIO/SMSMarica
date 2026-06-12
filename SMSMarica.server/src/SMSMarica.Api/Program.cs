@@ -111,6 +111,9 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
         p.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod();
     else
         p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+
+    // Permite o front ler o nome do arquivo nos downloads (ex.: laudo-...-assinado.pdf).
+    p.WithExposedHeaders("Content-Disposition");
 }));
 
 // Rate-limit de defesa-em-profundidade nos endpoints anônimos do agente (a chave É a

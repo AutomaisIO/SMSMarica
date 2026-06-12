@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Edit2, FileText, Loader2, Search, Trash2 } from 'lucide-react';
+import { Download, Edit2, FileText, Loader2, Search, Trash2 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
@@ -9,7 +9,7 @@ import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { useExcluirLaudo, useListarLaudos } from '@/features/laudos/api/queries';
-import { abrirPdfLaudo } from '@/features/laudos/lib/pdf';
+import { abrirPdfLaudo, baixarPdfLaudo } from '@/features/laudos/lib/pdf';
 import { StatusBadgeLaudo } from '@/features/laudos/components/StatusBadgeLaudo';
 import type { FiltroLaudos, LaudoListItem, StatusLaudo } from '@/features/laudos/types';
 
@@ -39,6 +39,15 @@ export function LaudosListagemPage() {
     setErro(null);
     try {
       await abrirPdfLaudo(id);
+    } catch (e) {
+      setErro(extrairMensagemDeErro(e));
+    }
+  }
+
+  async function aoBaixarPdf(id: string) {
+    setErro(null);
+    try {
+      await baixarPdfLaudo(id);
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
     }
@@ -105,15 +114,26 @@ export function LaudosListagemPage() {
               </button>
             ) : null}
             {!ehRascunho ? (
-              <button
-                type="button"
-                onClick={() => aoAbrirPdf(l.id)}
-                title="Abrir PDF"
-                className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
-              >
-                <FileText className="h-3.5 w-3.5" />
-                PDF
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => aoAbrirPdf(l.id)}
+                  title="Abrir PDF"
+                  className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  PDF
+                </button>
+                <button
+                  type="button"
+                  onClick={() => aoBaixarPdf(l.id)}
+                  title="Baixar o PDF do laudo (o assinado, quando houver)"
+                  className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Baixar
+                </button>
+              </>
             ) : null}
             {podeExcluir && ehRascunho ? (
               <button

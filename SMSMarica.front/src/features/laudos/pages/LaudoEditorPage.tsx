@@ -35,7 +35,7 @@ import {
   useLaudoPorId,
   useStatusAssinatura,
 } from '@/features/laudos/api/queries';
-import { abrirPdfLaudo } from '@/features/laudos/lib/pdf';
+import { abrirPdfLaudo, baixarPdfLaudo } from '@/features/laudos/lib/pdf';
 import {
   TIMEOUT_AGENTE_SEGUNDOS,
   lancarAgenteAssinatura,
@@ -282,6 +282,14 @@ export function LaudoEditorPage() {
               <Button variante="outline" onClick={() => abrirPdfLaudo(id!)}>
                 <FileText className="mr-2 h-4 w-4" />
                 PDF
+              </Button>
+              <Button
+                variante="outline"
+                onClick={() => baixarPdfLaudo(id!)}
+                title="Baixar o PDF do laudo (o assinado, quando houver)"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Baixar
               </Button>
               {podeFinalizar ? (
                 <Button onClick={aoCriarNovaVersao} disabled={novaVersao.isPending}>
