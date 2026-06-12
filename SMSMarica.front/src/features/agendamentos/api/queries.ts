@@ -10,6 +10,7 @@ import {
   confirmarAgendamento,
   excluirAgenda,
   horariosLivres,
+  horariosLivresPorEspecialidade,
   listarAgendamentos,
   listarAgendas,
   listarDisponibilidades,
@@ -143,6 +144,20 @@ export function useHorariosLivres(agendaId: string, inicio: string, fim: string,
     queryKey: agendasKeys.livres(agendaId, inicio, fim),
     queryFn: () => horariosLivres(agendaId, inicio, fim),
     enabled: ativo,
+  });
+}
+
+/** Slots livres da especialidade (todas as agendas dos médicos dela), p/ a marcação guiada. */
+export function useHorariosPorEspecialidade(
+  especialidadeId: string,
+  unidadeId: string | undefined,
+  de: string,
+  ate: string,
+) {
+  return useQuery({
+    queryKey: ['agendamentos', 'livres-especialidade', especialidadeId, unidadeId ?? '', de, ate] as const,
+    queryFn: () => horariosLivresPorEspecialidade(especialidadeId, unidadeId, de, ate),
+    enabled: Boolean(especialidadeId && de && ate),
   });
 }
 

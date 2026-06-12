@@ -6,14 +6,17 @@ namespace SMSMarica.Core.Agendamentos.Dtos;
 public sealed record SlotLivreDto(DateTime InicioEm, DateTime FimEm);
 
 /// <summary>
-/// Horário livre agregado por especialidade: além da janela, diz em qual agenda/unidade
-/// ele está. Necessário porque marcar (<see cref="AgendarRequest"/>) exige a agendaId — quem
-/// busca a partir da especialidade não conhece a agenda de antemão.
+/// Horário livre agregado por especialidade: além da janela, identifica a agenda, a
+/// unidade e o MÉDICO dono da agenda — o fluxo de marcação é especialidade → escolhe o
+/// médico → escolhe o horário (a agenda é sempre do profissional). Médico null só em
+/// agendas legadas de pool, exibidas como "Equipe da especialidade".
 /// </summary>
 public sealed record SlotEspecialidadeDto(
     Guid AgendaId,
     Guid UnidadeId,
     string UnidadeNome,
+    Guid? MedicoId,
+    string? MedicoNome,
     DateTime InicioEm,
     DateTime FimEm);
 

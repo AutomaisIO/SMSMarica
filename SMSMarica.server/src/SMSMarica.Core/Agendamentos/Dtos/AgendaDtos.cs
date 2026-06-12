@@ -31,9 +31,12 @@ public sealed record AgendaListItemDto(
     bool Ativo);
 
 /// <summary>
-/// Cadastro de agenda. Por finalidade (ADR-0013): Consulta exige <see cref="EspecialidadeId"/>
-/// (e <see cref="MedicoId"/> opcional — null = agenda da especialidade/pool); Exame exige
-/// <see cref="EquipamentoId"/>.
+/// Cadastro de agenda. Por finalidade: Consulta exige <see cref="EspecialidadeId"/> E
+/// <see cref="MedicoId"/> — a agenda é sempre DO PROFISSIONAL (a marcação parte da
+/// especialidade e lista os médicos dela; não existe mais "pool" solto da especialidade).
+/// Exame exige <see cref="EquipamentoId"/>. <see cref="Recorrencias"/> permite criar a
+/// agenda já com a grade semanal completa (padrão de mercado), em vez de criar vazia
+/// e adicionar horários depois.
 /// </summary>
 public sealed record CadastrarAgendaRequest(
     FinalidadeAgenda Finalidade,
@@ -43,7 +46,8 @@ public sealed record CadastrarAgendaRequest(
     Guid? EquipamentoId,
     int DuracaoSlotMinutos,
     DateOnly VigenciaInicio,
-    DateOnly? VigenciaFim);
+    DateOnly? VigenciaFim,
+    IReadOnlyList<AdicionarRecorrenciaRequest>? Recorrencias = null);
 
 public sealed record AtualizarAgendaRequest(
     int DuracaoSlotMinutos,

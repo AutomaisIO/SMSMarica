@@ -64,11 +64,13 @@ public sealed class AgendamentoService(
         {
             var janelas = await CalcularAsync(agenda, inicio, fim, cancellationToken);
             var unidadeNome = agenda.Unidade?.Nome ?? string.Empty;
-            slots.AddRange(janelas.Select(j =>
-                new SlotEspecialidadeDto(agenda.Id, agenda.UnidadeId, unidadeNome, j.Inicio, j.Fim)));
+            slots.AddRange(janelas.Select(j => new SlotEspecialidadeDto(
+                agenda.Id, agenda.UnidadeId, unidadeNome,
+                agenda.MedicoId, agenda.MedicoNome, j.Inicio, j.Fim)));
         }
 
-        return [.. slots.OrderBy(s => s.InicioEm).ThenBy(s => s.UnidadeNome)];
+        // Ordena por médico e horário: o fluxo de marcação agrupa por profissional.
+        return [.. slots.OrderBy(s => s.MedicoNome).ThenBy(s => s.InicioEm)];
     }
 
     public async Task<IReadOnlyList<AgendamentoListItemDto>> ListarAsync(

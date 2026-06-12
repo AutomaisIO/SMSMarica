@@ -51,6 +51,7 @@ import { EspecialidadesPage } from '@/features/especialidades/pages/Especialidad
 import { EquipamentosPage } from '@/features/equipamentos/pages/EquipamentosPage';
 import { AgendasPage } from '@/features/agendamentos/pages/AgendasPage';
 import { AgendaDetalhePage } from '@/features/agendamentos/pages/AgendaDetalhePage';
+import { MarcarConsultaPage } from '@/features/agendamentos/pages/MarcarConsultaPage';
 import { SisregConsultaPage } from '@/features/sisreg/pages/SisregConsultaPage';
 import { SisregConfiguracaoPage } from '@/features/sisreg/pages/SisregConfiguracaoPage';
 import { PepSincronizacaoPage } from '@/features/pep-sincronizacao/pages/PepSincronizacaoPage';
@@ -134,6 +135,7 @@ export function AppRouter() {
           <Route path="equipamentos" element={<EquipamentosPage />} />
           <Route path="agendas" element={<AgendasPage />} />
           <Route path="agendas/:id" element={<AgendaDetalhePage />} />
+          <Route path="agendamentos/marcar" element={<MarcarConsultaPage />} />
           <Route path="sisreg" element={<SisregConsultaPage />} />
           <Route path="sisreg/configuracao" element={<SisregConfiguracaoPage />} />
           <Route path="pep-sincronizacao" element={<PepSincronizacaoPage />} />

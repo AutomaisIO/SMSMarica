@@ -12,6 +12,7 @@ import type {
   CadastrarAgendaPayload,
   FinalidadeAgenda,
   DisponibilidadesAgenda,
+  SlotEspecialidade,
   SlotLivre,
 } from '@/features/agendamentos/types';
 
@@ -100,6 +101,22 @@ export async function removerBloqueio(agendaId: string, bloqueioId: string): Pro
 export async function horariosLivres(agendaId: string, inicio: string, fim: string): Promise<SlotLivre[]> {
   const { data } = await http.get<SlotLivre[]>(`/agendamentos/agendas/${agendaId}/horarios-livres`, {
     params: { inicio, fim },
+  });
+  return data;
+}
+
+/**
+ * Horários livres agregados da especialidade (todas as agendas dos médicos dela),
+ * para o fluxo de marcação: especialidade → médicos → horário.
+ */
+export async function horariosLivresPorEspecialidade(
+  especialidadeId: string,
+  unidadeId: string | undefined,
+  de: string,
+  ate: string,
+): Promise<SlotEspecialidade[]> {
+  const { data } = await http.get<SlotEspecialidade[]>('/agendamentos/horarios-livres', {
+    params: { especialidadeId, unidadeId: unidadeId || undefined, de, ate },
   });
   return data;
 }

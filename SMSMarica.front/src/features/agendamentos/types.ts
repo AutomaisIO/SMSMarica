@@ -11,12 +11,15 @@ export type StatusAgendamento = 'Agendado' | 'Confirmado' | 'Realizado' | 'Cance
 
 export type FinalidadeAgenda = 'Consulta' | 'Exame';
 
-/** Tipo de agenda na UI: pool da especialidade, médico específico (retorno) ou equipamento (exame). */
-export type TipoAgenda = 'ConsultaEspecialidade' | 'ConsultaMedico' | 'Exame';
+/**
+ * Tipo de agenda na UI. A agenda de consulta é sempre DO PROFISSIONAL (médico +
+ * especialidade) — a marcação parte da especialidade e lista os médicos dela.
+ * O antigo "pool solto" da especialidade foi descontinuado.
+ */
+export type TipoAgenda = 'ConsultaMedico' | 'Exame';
 
 export const TIPOS_AGENDA: { id: TipoAgenda; rotulo: string; descricao: string }[] = [
-  { id: 'ConsultaEspecialidade', rotulo: 'Consulta — especialidade (pool)', descricao: 'Qualquer médico da especialidade' },
-  { id: 'ConsultaMedico', rotulo: 'Consulta — médico específico', descricao: 'Para retorno/revisão (mesmo médico)' },
+  { id: 'ConsultaMedico', rotulo: 'Consulta — profissional', descricao: 'Agenda do médico em uma especialidade' },
   { id: 'Exame', rotulo: 'Exame — equipamento', descricao: 'Agenda de um equipamento de imagem' },
 ];
 
@@ -87,6 +90,8 @@ export type CadastrarAgendaPayload = {
   duracaoSlotMinutos: number;
   vigenciaInicio: string;
   vigenciaFim?: string | null;
+  /** Grade semanal inicial — cria a agenda já completa, em uma operação. */
+  recorrencias?: AdicionarRecorrenciaPayload[];
 };
 
 export type AtualizarAgendaPayload = {
@@ -128,6 +133,20 @@ export type DisponibilidadesAgenda = {
 };
 
 export type SlotLivre = { inicioEm: string; fimEm: string };
+
+/**
+ * Slot livre agregado por especialidade, identificando a agenda/unidade/médico.
+ * Médico null só em agendas legadas de pool ("Equipe da especialidade").
+ */
+export type SlotEspecialidade = {
+  agendaId: string;
+  unidadeId: string;
+  unidadeNome: string;
+  medicoId: string | null;
+  medicoNome: string | null;
+  inicioEm: string;
+  fimEm: string;
+};
 
 export type AgendamentoListItem = {
   id: string;

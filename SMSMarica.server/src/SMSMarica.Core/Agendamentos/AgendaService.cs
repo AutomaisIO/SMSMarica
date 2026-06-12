@@ -111,14 +111,18 @@ public sealed class AgendaService(
             await ValidarEspecialidadeAsync(especialidadeId, cancellationToken);
             agenda.EspecialidadeId = especialidadeId;
 
-            // Médico opcional: null = agenda da especialidade (pool, qualquer médico);
-            // setado = agenda de médico específico (retorno). Resolve no hub FHIR + snapshot.
-            if (request.MedicoId is { } medicoId)
+            // A agenda de consulta é sempre DO PROFISSIONAL: a marcação parte da
+            // especialidade e lista os médicos dela. (Pools soltos de especialidade
+            // foram descontinuados; agendas legadas seguem funcionando.)
+            if (request.MedicoId is not { } medicoId)
             {
-                var medico = await _medicos.ObterPorIdAsync(medicoId, cancellationToken);
-                agenda.MedicoId = medicoId;
-                agenda.MedicoNome = medico.NomeCompleto;
+                throw new ValidacaoException("agenda.medico",
+                    "Agenda de consulta exige um médico — a agenda é do profissional.");
             }
+
+            var medico = await _medicos.ObterPorIdAsync(medicoId, cancellationToken);
+            agenda.MedicoId = medicoId;
+            agenda.MedicoNome = medico.NomeCompleto;
         }
         else
         {
@@ -129,6 +133,30 @@ public sealed class AgendaService(
 
             await ValidarEquipamentoAsync(equipamentoId, cancellationToken);
             agenda.EquipamentoId = equipamentoId;
+        }
+
+        // Grade semanal inicial (opcional): cria a agenda já completa, em uma operação.
+        foreach (var r in request.Recorrencias ?? [])
+        {
+            if (r.HoraFim <= r.HoraInicio)
+            {
+                throw new ValidacaoException("recorrencia.horario",
+                    $"Horário inválido na grade ({r.DiaSemana}): fim deve ser maior que o início.");
+            }
+
+            agenda.Recorrencias.Add(new DisponibilidadeRecorrente
+            {
+                Id = Guid.CreateVersion7(),
+                AgendaId = agenda.Id,
+                DiaSemana = r.DiaSemana,
+                HoraInicio = r.HoraInicio,
+                HoraFim = r.HoraFim,
+                VigenciaInicio = r.VigenciaInicio,
+                VigenciaFim = r.VigenciaFim,
+                Ativo = true,
+                CriadoEm = DateTime.UtcNow,
+                CriadoPor = _usuarioAtual.UsuarioId,
+            });
         }
 
         _db.Agendas.Add(agenda);

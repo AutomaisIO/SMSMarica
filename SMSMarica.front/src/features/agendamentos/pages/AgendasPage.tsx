@@ -13,9 +13,11 @@ import { useListarUnidades } from '@/features/unidades/api/queries';
 import { useListarEspecialidades } from '@/features/especialidades/api/queries';
 import { useListarEquipamentos } from '@/features/equipamentos/api/queries';
 import { BuscaMedico } from '@/features/agendamentos/components/BuscaMedico';
+import { GradeSemanalEditor } from '@/features/agendamentos/components/GradeSemanalEditor';
 import { useCadastrarAgenda, useListarAgendas } from '@/features/agendamentos/api/queries';
 import {
   TIPOS_AGENDA,
+  type AdicionarRecorrenciaPayload,
   type AgendaListItem,
   type CadastrarAgendaPayload,
   type TipoAgenda,
@@ -38,7 +40,7 @@ type FormAgenda = {
 };
 
 const FORM_VAZIO: FormAgenda = {
-  tipoAgenda: 'ConsultaEspecialidade',
+  tipoAgenda: 'ConsultaMedico',
   unidadeId: '',
   especialidadeId: '',
   medicoId: '',
@@ -48,6 +50,11 @@ const FORM_VAZIO: FormAgenda = {
   vigenciaInicio: hoje(),
   vigenciaFim: '',
 };
+
+/** Grade padrão sugerida: seg–sex, 08:00–12:00 (o usuário ajusta no editor). */
+const GRADE_PADRAO: AdicionarRecorrenciaPayload[] = (
+  ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] as const
+).map((dia) => ({ diaSemana: dia, horaInicio: '08:00', horaFim: '12:00' }));
 
 export function AgendasPage() {
   const navigate = useNavigate();
@@ -60,10 +67,12 @@ export function AgendasPage() {
 
   const [modalAberto, setModalAberto] = useState(false);
   const [form, setForm] = useState<FormAgenda>(FORM_VAZIO);
+  const [faixas, setFaixas] = useState<AdicionarRecorrenciaPayload[]>(GRADE_PADRAO);
   const [erro, setErro] = useState<string | null>(null);
 
   function abrirNova() {
     setForm(FORM_VAZIO);
+    setFaixas(GRADE_PADRAO);
     setErro(null);
     setModalAberto(true);
   }
@@ -80,6 +89,15 @@ export function AgendasPage() {
       return;
     }
 
+    if (faixas.length === 0) {
+      setErro('Defina a grade semanal: pelo menos uma faixa de atendimento.');
+      return;
+    }
+    if (faixas.some((f) => !f.horaInicio || !f.horaFim || f.horaFim <= f.horaInicio)) {
+      setErro('Há faixa de horário inválida na grade (fim deve ser maior que o início).');
+      return;
+    }
+
     let payload: CadastrarAgendaPayload;
     if (form.tipoAgenda === 'Exame') {
       if (!form.equipamentoId) {
@@ -93,24 +111,26 @@ export function AgendasPage() {
         duracaoSlotMinutos: form.duracaoSlotMinutos,
         vigenciaInicio: form.vigenciaInicio,
         vigenciaFim: form.vigenciaFim || null,
+        recorrencias: faixas,
       };
     } else {
       if (!form.especialidadeId) {
         setErro('Selecione a especialidade.');
         return;
       }
-      if (form.tipoAgenda === 'ConsultaMedico' && !form.medicoId) {
-        setErro('Selecione o médico.');
+      if (!form.medicoId) {
+        setErro('Selecione o médico — a agenda é do profissional.');
         return;
       }
       payload = {
         finalidade: 'Consulta',
         unidadeId: form.unidadeId,
         especialidadeId: form.especialidadeId,
-        medicoId: form.tipoAgenda === 'ConsultaMedico' ? form.medicoId : null,
+        medicoId: form.medicoId,
         duracaoSlotMinutos: form.duracaoSlotMinutos,
         vigenciaInicio: form.vigenciaInicio,
         vigenciaFim: form.vigenciaFim || null,
+        recorrencias: faixas,
       };
     }
 
@@ -160,7 +180,8 @@ export function AgendasPage() {
             Agendas
           </h1>
           <p className="mt-1 text-sm text-gray-600">
-            Grade de cada recurso: especialidade (pool), médico específico (retorno) ou equipamento (exame).
+            A agenda é do profissional (médico + especialidade) ou do equipamento (exame). A
+            marcação parte da especialidade e lista os médicos dela.
           </p>
         </div>
         <Button onClick={abrirNova}>
@@ -248,8 +269,13 @@ export function AgendasPage() {
             )}
           </div>
 
-          {form.tipoAgenda === 'ConsultaMedico' ? (
-            <Campo label="Médico" htmlFor="ag-medico" required dica={form.medicoId ? `Selecionado: ${form.medicoNome}` : 'Retorno usa a agenda deste médico.'}>
+          {ehConsulta ? (
+            <Campo
+              label="Médico"
+              htmlFor="ag-medico"
+              required
+              dica={form.medicoId ? `Selecionado: ${form.medicoNome}` : 'A agenda é do profissional — selecione o médico desta especialidade.'}
+            >
               {form.medicoId ? (
                 <div className="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
                   <span className="font-medium text-gray-900">{form.medicoNome}</span>
@@ -285,6 +311,15 @@ export function AgendasPage() {
               <Input id="ag-vig-fim" type="date" value={form.vigenciaFim} onChange={(e) => set('vigenciaFim', e.target.value)} />
             </Campo>
           </div>
+
+          <Campo
+            label="Grade semanal de atendimento"
+            htmlFor="ag-grade"
+            required
+            dica="Faixas por dia (ex.: manhã e tarde). Cada faixa é fatiada em horários pela duração do slot. Bloqueios pontuais (férias, feriados) são gerenciados depois, na agenda."
+          >
+            <GradeSemanalEditor faixas={faixas} aoMudar={setFaixas} />
+          </Campo>
 
           {erro ? (
             <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{erro}</div>

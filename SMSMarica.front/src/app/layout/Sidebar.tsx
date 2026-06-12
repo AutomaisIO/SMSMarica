@@ -5,6 +5,7 @@ import {
   Bus,
   Building2,
   CalendarClock,
+  CalendarPlus,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -93,6 +94,7 @@ const SECOES: SecaoMenu[] = [
     titulo: 'Agendamento',
     icone: CalendarClock,
     itens: [
+      { rotulo: 'Marcar consulta', to: '/app/agendamentos/marcar', icone: CalendarPlus, modulo: 'Agendamentos' },
       { rotulo: 'Agendas', to: '/app/agendas', icone: CalendarClock, modulo: 'Agendamentos' },
       { rotulo: 'Especialidades', to: '/app/especialidades', icone: Stethoscope, modulo: 'Especialidades' },
       { rotulo: 'Equipamentos', to: '/app/equipamentos', icone: ScanLine, modulo: 'Equipamentos' },
