@@ -215,7 +215,7 @@ export function PacsListagemPage() {
                 Visualizar
               </button>
             ) : null}
-            <BotaoAnamnese accessionNumber={e.accessionNumber} pacienteNome={e.patientName} />
+            <BotaoAnamnese accessionNumber={e.accessionNumber} />
             {e.laudo && podeEditarLaudo ? (
               <button
                 type="button"

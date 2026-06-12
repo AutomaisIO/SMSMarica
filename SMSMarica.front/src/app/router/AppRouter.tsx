@@ -24,6 +24,7 @@ import { LaudoTemplatesListagemPage } from '@/features/laudo-templates/pages/Lau
 import { PacsListagemPage } from '@/features/pacs/pages/PacsListagemPage';
 import { PacsViewerPage } from '@/features/pacs/pages/PacsViewerPage';
 import { ProcedimentosSigtapPage } from '@/features/procedimentos-sigtap/pages/ProcedimentosSigtapPage';
+import { AnamnesePage } from '@/features/anamnese/pages/AnamnesePage';
 import { SolicitacaoExameDetalhePage } from '@/features/solicitacoes-exame/pages/SolicitacaoExameDetalhePage';
 import { SolicitacaoExameFormPage } from '@/features/solicitacoes-exame/pages/SolicitacaoExameFormPage';
 import { SolicitacoesExamePage } from '@/features/solicitacoes-exame/pages/SolicitacoesExamePage';
@@ -121,6 +122,7 @@ export function AppRouter() {
           <Route path="solicitacoes-exame/novo" element={<SolicitacaoExameFormPage />} />
           <Route path="solicitacoes-exame/:id" element={<SolicitacaoExameDetalhePage />} />
           <Route path="solicitacoes-exame/:id/editar" element={<SolicitacaoExameFormPage />} />
+          <Route path="anamnese" element={<AnamnesePage />} />
           <Route path="tipos-exame" element={<TiposExamePage />} />
           <Route path="tipos-exame/novo" element={<TipoExameFormPage />} />
           <Route path="tipos-exame/:id" element={<TipoExameFormPage />} />

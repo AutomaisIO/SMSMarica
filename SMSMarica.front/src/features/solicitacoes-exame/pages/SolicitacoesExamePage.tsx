@@ -117,7 +117,7 @@ export function SolicitacoesExamePage() {
               Abrir
             </button>
           ) : null}
-          <BotaoAnamnese accessionNumber={s.accessionNumber} pacienteNome={s.pacienteNome} />
+          <BotaoAnamnese solicitacaoExameId={s.id} accessionNumber={s.accessionNumber} />
           {podeExcluir && (s.status === 'Solicitada' || s.status === 'Cancelada') ? (
             <button
               type="button"

@@ -76,6 +76,7 @@ public static class DependencyInjection
         services.AddScoped<IProcedimentosSigtapService, ProcedimentosSigtapService>();
         services.AddScoped<ITiposExameService, TiposExameService>();
         services.AddScoped<ISolicitacoesExameService, SolicitacoesExameService>();
+        services.AddScoped<Anamneses.IAnamnesesService, Anamneses.AnamnesesService>();
         services.AddScoped<IGeradorIdentificadores, GeradorIdentificadores>();
         services.AddScoped<INotificadorExame, NotificadorExameLog>();
 
