@@ -129,6 +129,15 @@ jobs:
             else
               log "Secret DB_CONNECTION_SMSMARICA não fornecido; mantendo $ENV_FILE existente."
             fi
+
+            # Migrations + seeds aplicam no startup (AutoMigrate default=false no código —
+            # ADR-0010; em PROD ligamos explicitamente aqui). Append-if-missing: respeita
+            # um =false manual e sobrevive ao tee que reescreve o env com a connection string.
+            if ! $SUDO grep -q '^AutoMigrate__Enabled=' "$ENV_FILE"; then
+              log "Habilitando AutoMigrate__Enabled=true no $ENV_FILE..."
+              printf 'AutoMigrate__Enabled=true\n' | $SUDO tee -a "$ENV_FILE" >/dev/null
+            fi
+
             $SUDO chmod 600 "$ENV_FILE"
             $SUDO chown smsmarica:smsmarica "$ENV_FILE"
 
