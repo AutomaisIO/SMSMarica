@@ -159,13 +159,15 @@ export function FormularioMedico({
             }
           : enderecoVazio,
       });
-      // Pega email e perfilIds do Usuario.
-      obterUsuarioPorId(detalhe.data.usuarioId)
-        .then((u) => {
-          setValores((s) => ({ ...s, email: u.email ?? '' }));
-          setPerfilIdsSelecionados(u.perfilIds ?? []);
-        })
-        .catch(() => {});
+      // Pega email e perfilIds do Usuario (só se houver usuário vinculado).
+      if (detalhe.data.usuarioId) {
+        obterUsuarioPorId(detalhe.data.usuarioId)
+          .then((u) => {
+            setValores((s) => ({ ...s, email: u.email ?? '' }));
+            setPerfilIdsSelecionados(u.perfilIds ?? []);
+          })
+          .catch(() => {});
+      }
     }
   }, [modo, detalhe.data]);
 
@@ -339,7 +341,7 @@ export function FormularioMedico({
         try {
           const novoMed = await import('@/features/medicos/api/medicosApi')
             .then((m) => m.obterMedicoPorId(idMed));
-          await aplicarPermissoes(novoMed.usuarioId);
+          if (novoMed.usuarioId) await aplicarPermissoes(novoMed.usuarioId);
         } catch (errPerm) {
           setErroGlobal(`Médico criado, mas falha ao aplicar permissões: ${extrairMensagemDeErro(errPerm)}`);
           return;
@@ -357,7 +359,8 @@ export function FormularioMedico({
           return;
         }
         await atualizar.mutateAsync({ id: idMedico, payload: parsed.data });
-        if (detalhe.data) await aplicarPermissoes(detalhe.data.usuarioId);
+        // Só aplica permissões se o médico tem usuário de acesso (login vinculado por CPF).
+        if (detalhe.data?.usuarioId) await aplicarPermissoes(detalhe.data.usuarioId);
       }
       aoConcluir();
     } catch (erro) {
@@ -506,11 +509,16 @@ export function FormularioMedico({
         desabilitado={pendente}
       />
 
-      {modo === 'editar' && detalhe.data ? (
+      {modo === 'editar' && detalhe.data?.usuarioId ? (
         <SegurancaSecao
           usuarioId={detalhe.data.usuarioId}
           deveTrocarAtual={false}
         />
+      ) : modo === 'editar' && detalhe.data ? (
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          Este profissional não tem usuário de acesso (login) vinculado. Senha e permissões só
+          ficam disponíveis após criar um usuário com o mesmo CPF.
+        </div>
       ) : null}
     </div>
   );
@@ -527,7 +535,13 @@ export function FormularioMedico({
     </div>
   );
 
-  const abaPermissoes = (
+  const semUsuario = modo === 'editar' && detalhe.data != null && !detalhe.data.usuarioId;
+  const abaPermissoes = semUsuario ? (
+    <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+      Este profissional não tem usuário de acesso (login) vinculado. Crie um usuário com o mesmo
+      CPF para gerenciar perfis e permissões.
+    </div>
+  ) : (
     <PermissoesSecao
       perfilIdsSelecionados={perfilIdsSelecionados}
       aoMudarPerfilIds={setPerfilIdsSelecionados}

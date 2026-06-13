@@ -33,7 +33,8 @@ export const CONSELHOS_PROFISSIONAIS = CONSELHOS.filter((c) => c.sigla !== 'CRM'
 
 export type MedicoListItem = {
   id: string;
-  usuarioId: string;
+  /** Usuario (login) vinculado por CPF — null se o médico não tem usuário de acesso. */
+  usuarioId: string | null;
   nomeCompleto: string;
   cpf: string;
   conselho: string;
@@ -47,7 +48,8 @@ export type MedicoListItem = {
 
 export type Medico = {
   id: string;
-  usuarioId: string;
+  /** Usuario (login) vinculado por CPF — null se o médico não tem usuário de acesso. */
+  usuarioId: string | null;
   nomeCompleto: string;
   cpf: string;
   dataNascimento: string | null;

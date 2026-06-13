@@ -1,14 +1,17 @@
+using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Medicos.Dtos;
 using SMSMarica.Core.Medicos.Fhir;
+using SMSMarica.Data;
 
 namespace SMSMarica.Core.Medicos;
 
 /// <summary>
 /// Médicos agora vivem APENAS no hub FHIR como Practitioner (ADR-0010 + régua
 /// "identidade clínica → FHIR"). Este serviço é proxy do /fhir/Practitioner.
+/// O Usuario (login) é vinculado por CPF — resolvido aqui, não pelo id FHIR.
 /// </summary>
-public sealed class MedicosService(IPractitionerFhirClient fhir) : IMedicosService
+public sealed class MedicosService(IPractitionerFhirClient fhir, SmsMaricaDbContext db) : IMedicosService
 {
     private const int LimiteBusca = 10;
 
@@ -49,7 +52,28 @@ public sealed class MedicosService(IPractitionerFhirClient fhir) : IMedicosServi
     {
         var p = await fhir.ObterAsync(id, cancellationToken)
             ?? throw new NaoEncontradoException("Medico", id);
-        return MedicoFhirMapper.ParaDto(p);
+
+        var dto = MedicoFhirMapper.ParaDto(p);
+
+        // Resolve o Usuario (login) pelo CPF — é por aí que médico↔usuário se ligam
+        // (não pelo id FHIR). Null = médico sem usuário de acesso.
+        var cpf = Digitos(dto.Cpf);
+        Guid? usuarioId = null;
+        bool? usuarioAtivo = null;
+        if (cpf.Length == 11)
+        {
+            var u = await db.Usuarios.AsNoTracking()
+                .Where(x => x.Cpf == cpf && x.ExcluidoEm == null)
+                .Select(x => new { x.Id, x.Ativo })
+                .FirstOrDefaultAsync(cancellationToken);
+            if (u is not null)
+            {
+                usuarioId = u.Id;
+                usuarioAtivo = u.Ativo;
+            }
+        }
+
+        return dto with { UsuarioId = usuarioId, UsuarioAtivo = usuarioAtivo ?? dto.UsuarioAtivo };
     }
 
     public async Task<Guid> CadastrarAsync(CadastrarMedicoRequest request, CancellationToken cancellationToken = default)

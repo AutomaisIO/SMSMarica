@@ -74,7 +74,7 @@ internal static class MedicoFhirMapper
         // Campos FHIR nativos primeiro (profissionais importados — Salux); payload como fallback.
         var (conselho, registro, uf) = ConselhoNativo(p);
         return new MedicoDto(
-            id, id,
+            id, null, // UsuarioId resolvido por CPF em MedicosService (médico = Practitioner FHIR).
             NomeNativo(p) ?? pl.NomeCompleto,
             IdentValor(p, SystemCpf) ?? pl.Cpf,
             ParseData(p.BirthDate) ?? pl.DataNascimento,
@@ -90,7 +90,7 @@ internal static class MedicoFhirMapper
         var id = Guid.Parse(p.Id!);
         var (conselho, registro, uf) = ConselhoNativo(p);
         return new MedicoListItemDto(
-            id, id, NomeNativo(p) ?? pl.NomeCompleto, IdentValor(p, SystemCpf) ?? pl.Cpf,
+            id, null, NomeNativo(p) ?? pl.NomeCompleto, IdentValor(p, SystemCpf) ?? pl.Cpf,
             conselho ?? pl.Conselho, registro ?? pl.Registro, uf ?? pl.UfConselho,
             pl.Especialidade ?? EspecialidadeNativa(p), pl.FotoBase64, p.Active ?? true);
     }

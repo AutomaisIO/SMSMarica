@@ -36,14 +36,14 @@ export function SeletorMedicoSolicitante({ valor, aoMudar }: Props) {
   // Sem filtro: 10 últimos cadastros; com filtro: busca por nome/CPF no hub FHIR.
   const medicos = useBuscarMedicos(debounced, { conselho: 'CRM' });
 
-  function escolherInterno(usuarioId: string) {
-    const m = medicos.data?.find((x) => x.usuarioId === usuarioId);
+  function escolherInterno(medicoId: string) {
+    const m = medicos.data?.find((x) => x.id === medicoId);
     if (!m) {
       aoMudar({ solicitanteUsuarioId: null, solicitanteNome: '', solicitanteCrm: '', solicitanteUfCrm: '' });
       return;
     }
     aoMudar({
-      solicitanteUsuarioId: m.usuarioId,
+      solicitanteUsuarioId: m.id,
       solicitanteNome: m.nomeCompleto,
       solicitanteCrm: m.registro,
       solicitanteUfCrm: m.ufConselho,
@@ -100,13 +100,13 @@ export function SeletorMedicoSolicitante({ valor, aoMudar }: Props) {
               <option value="">— Selecione —</option>
               {/* Mantém o médico já escolhido visível mesmo fora dos resultados atuais. */}
               {valor.solicitanteUsuarioId
-                && !(medicos.data ?? []).some((m) => m.usuarioId === valor.solicitanteUsuarioId) ? (
+                && !(medicos.data ?? []).some((m) => m.id === valor.solicitanteUsuarioId) ? (
                 <option value={valor.solicitanteUsuarioId}>
                   {valor.solicitanteNome} (CRM {valor.solicitanteUfCrm}/{valor.solicitanteCrm})
                 </option>
               ) : null}
               {(medicos.data ?? []).map((m) => (
-                <option key={m.id} value={m.usuarioId}>
+                <option key={m.id} value={m.id}>
                   {m.nomeCompleto} (CRM {m.ufConselho}/{m.registro})
                 </option>
               ))}

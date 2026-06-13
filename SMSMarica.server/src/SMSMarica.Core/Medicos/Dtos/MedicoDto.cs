@@ -4,7 +4,9 @@ namespace SMSMarica.Core.Medicos.Dtos;
 
 public sealed record MedicoDto(
     Guid Id,
-    Guid UsuarioId,
+    // Usuario (login) vinculado por CPF — null quando o médico não tem usuário de acesso.
+    // NÃO é o id do Practitioner: resolvido em MedicosService pelo CPF.
+    Guid? UsuarioId,
     string NomeCompleto,
     string Cpf,
     DateOnly? DataNascimento,
@@ -22,7 +24,7 @@ public sealed record MedicoDto(
 
 public sealed record MedicoListItemDto(
     Guid Id,
-    Guid UsuarioId,
+    Guid? UsuarioId,
     string NomeCompleto,
     string Cpf,
     string Conselho,
