@@ -106,6 +106,25 @@ public sealed class PacientesController(IPacientesService service, IAtendimentos
         return NoContent();
     }
 
+    /// <summary>
+    /// Adiciona um telefone aos contatos do paciente (append em Patient.telecom),
+    /// sem substituir os existentes. Idempotente. Usado pelo agente de voz (CentralIA)
+    /// pra registrar o número de quem ligou.
+    /// </summary>
+    [HttpPost("{id:guid}/telefones")]
+    [RequerPermissao(ModuloPermissao.Pacientes, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AdicionarTelefone(
+        Guid id,
+        [FromBody] AdicionarTelefoneRequest request,
+        CancellationToken cancellationToken)
+    {
+        await _service.AdicionarTelefoneAsync(id, request, cancellationToken);
+        return NoContent();
+    }
+
     /// <summary>Desativa um paciente (soft delete) — some das listagens.</summary>
     [HttpDelete("{id:guid}")]
     [RequerPermissao(ModuloPermissao.Pacientes, AcoesPermissao.Exclusao)]

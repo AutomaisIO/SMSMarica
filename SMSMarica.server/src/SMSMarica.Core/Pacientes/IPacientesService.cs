@@ -33,6 +33,13 @@ public interface IPacientesService
 
     Task AtualizarAsync(Guid id, AtualizarPacienteRequest request, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Adiciona um telefone aos contatos do paciente (append em
+    /// <c>Patient.telecom</c> nativo), sem substituir os existentes. Idempotente:
+    /// se o número já constar, é no-op.
+    /// </summary>
+    Task AdicionarTelefoneAsync(Guid id, AdicionarTelefoneRequest request, CancellationToken cancellationToken = default);
+
     Task DesativarAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task ReativarAsync(Guid id, CancellationToken cancellationToken = default);

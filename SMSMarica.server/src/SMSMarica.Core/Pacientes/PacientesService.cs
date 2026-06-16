@@ -1,3 +1,4 @@
+using Hl7.Fhir.Model;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Pacientes.Dtos;
 using SMSMarica.Core.Pacientes.Fhir;
@@ -86,6 +87,41 @@ public sealed class PacientesService(IPacienteFhirClient fhir) : IPacientesServi
         PacienteFhirMapper.AplicarAtualizacao(patient, request);
         await fhir.AtualizarAsync(id, patient, cancellationToken);
     }
+
+    public async Task AdicionarTelefoneAsync(
+        Guid id, AdicionarTelefoneRequest request, CancellationToken cancellationToken = default)
+    {
+        var numero = request.Numero?.Trim() ?? string.Empty;
+        if (numero.Length == 0)
+            throw new ValidacaoException("paciente.telefone_obrigatorio", "Informe o número do telefone.");
+
+        var patient = await fhir.ObterAsync(id, cancellationToken)
+            ?? throw new NaoEncontradoException("Paciente", id);
+
+        // Append em Patient.telecom nativo, sem tocar nos demais dados. Idempotente:
+        // se o mesmo número (comparando só dígitos) já estiver lá, não duplica.
+        var alvo = Digitos(numero);
+        patient.Telecom ??= [];
+        var jaExiste = alvo.Length > 0 && patient.Telecom.Any(t =>
+            t.System == ContactPoint.ContactPointSystem.Phone && Digitos(t.Value) == alvo);
+        if (jaExiste) return;
+
+        patient.Telecom.Add(new ContactPoint
+        {
+            System = ContactPoint.ContactPointSystem.Phone,
+            Value = numero,
+            Use = MapearUso(request.Tipo),
+        });
+
+        await fhir.AtualizarAsync(id, patient, cancellationToken);
+    }
+
+    private static ContactPoint.ContactPointUse MapearUso(string? tipo) => tipo?.Trim().ToLowerInvariant() switch
+    {
+        "residencial" or "casa" or "home" => ContactPoint.ContactPointUse.Home,
+        "comercial" or "trabalho" or "work" => ContactPoint.ContactPointUse.Work,
+        _ => ContactPoint.ContactPointUse.Mobile,
+    };
 
     public Task DesativarAsync(Guid id, CancellationToken cancellationToken = default) =>
         fhir.ExcluirAsync(id, cancellationToken);
