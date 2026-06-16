@@ -84,7 +84,7 @@ public static class DependencyInjection
 
         services.Configure<Dcm4cheeUpsOptions>(configuration.GetSection(Dcm4cheeUpsOptions.SecaoConfig));
         var upsBaseUrl = configuration["Pacs:Dcm4chee:UpsBaseUrl"]
-            ?? "http://pacs.marica.automais.cloud:8080/dcm4chee-arc/aets/WORKLIST/rs/";
+            ?? "http://pacs.marica.automais.cloud:8080/dcm4chee-arc/aets/WORK-CDT/rs/";
         services
             .AddHttpClient<IDcm4cheeUpsClient, Dcm4cheeUpsClient>(client =>
             {
@@ -96,7 +96,7 @@ public static class DependencyInjection
             .AddHttpClient<IConsultaStudyClient, ConsultaStudyClient>(client =>
             {
                 client.BaseAddress = new Uri(configuration["Pacs:Dcm4chee:RsBaseUrl"]
-                    ?? "http://pacs.marica.automais.cloud:8080/dcm4chee-arc/aets/DCM4CHEE/rs/");
+                    ?? "http://pacs.marica.automais.cloud:8080/dcm4chee-arc/aets/PACS-CDT/rs/");
                 client.Timeout = TimeSpan.FromSeconds(10);
             });
 
@@ -154,7 +154,7 @@ public static class DependencyInjection
         });
 
         var pacsBaseUrl = configuration["Pacs:Dcm4chee:RsBaseUrl"]
-            ?? "http://pacs.marica.automais.cloud:8080/dcm4chee-arc/aets/DCM4CHEE/rs/";
+            ?? "http://pacs.marica.automais.cloud:8080/dcm4chee-arc/aets/PACS-CDT/rs/";
         services
             .AddHttpClient<IPacsProxyService, PacsProxyService>(client =>
             {

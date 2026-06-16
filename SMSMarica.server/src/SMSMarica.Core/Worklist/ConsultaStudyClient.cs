@@ -6,7 +6,7 @@ namespace SMSMarica.Core.Worklist;
 
 /// <summary>
 /// Implementação leve do QIDO-RS — só checa existência. HttpClient configurado
-/// com a base do AE <c>DCM4CHEE</c> (não o WORKLIST).
+/// com a base do AE <c>PACS-CDT</c> (não o WORK-CDT).
 /// </summary>
 public sealed class ConsultaStudyClient(HttpClient http, ILogger<ConsultaStudyClient> logger) : IConsultaStudyClient
 {

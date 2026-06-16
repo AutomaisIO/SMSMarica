@@ -141,19 +141,33 @@ ou pela UI Arc Light (`Configuration > Devices`).
 
 ## 7. AE titles (Application Entities)
 
-| AE Title | Descrição |
-|----------|-----------|
-| **`DCM4CHEE`** | AE principal — esconde instâncias rejeitadas. **Esta é a usada pelo SMSMarica.** |
-| `AS_RECEIVED` | Retrieve instâncias exatamente como recebidas (sem filtro de rejeição). |
-| `IOCM_EXPIRED` | Mostra só instâncias rejeitadas por *Data Retention Expired*. |
-| `IOCM_PAT_SAFETY` | Mostra só instâncias rejeitadas por *Patient Safety*. |
-| `IOCM_QUALITY` | Mostra só instâncias rejeitadas por *Quality Reasons*. |
-| `IOCM_REGULAR_USE` | Mostra inclusive instâncias rejeitadas por *Quality*. |
-| `IOCM_WRONG_MWL` | Mostra só instâncias rejeitadas por *Incorrect MWL Entry*. |
-| `WORKLIST` | Modality Worklist (MWL) + Unified Worklist (UPS). |
+Desde **2026-06-16**, os AEs canônicos do CDT são **`PACS-CDT`** (imagens) e
+**`WORK-CDT`** (worklist). Os antigos **`DCM4CHEE`** e **`WORKLIST`** continuam
+ativos como **alias do mesmo acervo** (clones com storage `fs1` + QR view
+`hideRejected` idênticos), para não quebrar equipamentos ainda apontados aos nomes
+antigos. Parâmetros para o técnico do equipamento: [`pacs-cdt-mamografo.md`](./pacs-cdt-mamografo.md).
+
+| AE Title | Papel | Descrição |
+|----------|-------|-----------|
+| **`PACS-CDT`** | **Imagens (canônico)** | Recebe C-STORE + serve QIDO/WADO/STOW. **Usado pelo SMSMarica.** |
+| **`WORK-CDT`** | **Worklist (canônico)** | Modality Worklist (MWL) + Unified Worklist (UPS). |
+| `DCM4CHEE` | Imagens (alias legado) | Mesmo acervo que `PACS-CDT` — esconde instâncias rejeitadas. |
+| `WORKLIST` | Worklist (alias legado) | Mesmo que `WORK-CDT` — MWL + UPS. |
+| `AS_RECEIVED` | Visão | Retrieve instâncias exatamente como recebidas (sem filtro de rejeição). |
+| `IOCM_EXPIRED` | Visão | Mostra só instâncias rejeitadas por *Data Retention Expired*. |
+| `IOCM_PAT_SAFETY` | Visão | Mostra só instâncias rejeitadas por *Patient Safety*. |
+| `IOCM_QUALITY` | Visão | Mostra só instâncias rejeitadas por *Quality Reasons*. |
+| `IOCM_REGULAR_USE` | Visão | Mostra inclusive instâncias rejeitadas por *Quality*. |
+| `IOCM_WRONG_MWL` | Visão | Mostra só instâncias rejeitadas por *Incorrect MWL Entry*. |
 
 A regra `dcmAllowDeleteStudyPermanently = REJECTED` está em todas — só estudos
 explicitamente rejeitados podem ser apagados permanentemente.
+
+> **`PACS-CDT` e `WORK-CDT` escutam na MESMA porta DICOM (11112 plain / 2762 TLS).**
+> O que separa "enviar imagem" de "consultar worklist" é o **AE Title**, não a porta.
+> `PACS-CDT` recebe/serve imagens e **não** responde MWL; `WORK-CDT` serve worklist
+> (MWL clássico + UPS) e aceita associação MWL — confirmado por C-ECHO/C-FIND em
+> 2026-06-16.
 
 ### Conexões DICOM (`dicomNetworkConnection`)
 
@@ -175,13 +189,14 @@ Inferido dos `Manufacturer` / `ManufacturerModelName` dos estudos armazenados:
 | FUJIFILM Corporation | FDR-3000AWS | MG (mamografia digital) | `0.05 mm` (50 µm) |
 | Oehm und Rehbein GmbH | (sem `ManufacturerModelName`) | MG | (estudos de 2024 — arquivo sumiu) |
 
-Equipamentos enviam via **C-STORE para `DCM4CHEE@pacs.marica.automais.cloud:11112`**
-(plain). Lembrar: a porta 11112 está aberta para internet — qualquer modalidade
-configurada pode pushar.
+Equipamentos enviam via **C-STORE para `PACS-CDT@pacs.marica.automais.cloud:11112`**
+(plain; `DCM4CHEE` ainda aceita pelo alias legado). Lembrar: a porta 11112 está
+aberta para internet — qualquer modalidade configurada pode pushar.
 
 ## 9. Endpoints DICOMweb (consumidos pelo SMSMarica)
 
-Base RS: `http://pacs.marica.automais.cloud:8080/dcm4chee-arc/aets/DCM4CHEE/rs/`
+Base RS: `http://pacs.marica.automais.cloud:8080/dcm4chee-arc/aets/PACS-CDT/rs/`
+(o alias legado `.../aets/DCM4CHEE/rs/` aponta para o mesmo acervo)
 
 Configurado em [`appsettings.json`](../SMSMarica.server/src/SMSMarica.Api/appsettings.json)
 sob `Pacs.Dcm4chee.RsBaseUrl`, sobrescritível por `Pacs__Dcm4chee__RsBaseUrl` em prod.
@@ -317,6 +332,41 @@ Arquivo `MahatmaFS` (15 bytes) na raiz do bucket dá `Input/output error` ao
 ser lido. Provavelmente um artefato deixado por alguma migração antiga.
 Inofensivo, mas convém limpar (`rm /mnt/s3images/MahatmaFS` via s3fs ou
 direto pelo console do Spaces).
+
+### 10.6. **Aposentar os AEs legados `DCM4CHEE` / `WORKLIST`** (planejado)
+
+Os AEs canônicos passaram a ser `PACS-CDT`/`WORK-CDT` (§7). Os legados continuam
+ativos só para não quebrar quem ainda aponta pros nomes antigos. **Quando remover:**
+só depois de certificar que (a) o mamógrafo do CDT envia/lê de `PACS-CDT`/`WORK-CDT`,
+(b) a plataforma SMSMarica em **produção** está nos novos AEs — conferir eventuais
+overrides de ambiente `Pacs__Dcm4chee__RsBaseUrl` / `Pacs__Dcm4chee__UpsBaseUrl`, que
+**têm precedência** sobre o `appsettings.json` — e (c) nenhuma outra modalidade
+aponta pra `DCM4CHEE`.
+
+> **Remover o AE não apaga estudo nenhum.** O acervo vive no PostgreSQL (`dcmdb`) +
+> storage `fs1`; o AE é só um ponto de acesso/visão. Mas há um pré-requisito técnico.
+
+**Pré-requisito — antes de remover o AE `DCM4CHEE`, repontar as 5 referências
+internas do `dcmArchiveDevice` que hoje apontam pra ele → `PACS-CDT`:**
+
+- `dcmRejectExpiredStudiesAETitle`
+- `dcmXDSiImagingDocumentSourceAETitle`
+- `dcmStorageVerificationAETitle`
+- `dcmRejectionNoteStorageAET`
+- `dcmCompressionAETitle`
+
+Se removê-lo sem repontar, quebram compressão, nota de rejeição, storage
+verification e reject-expired. Remover também os `dcmWebApp` correspondentes
+(`DCM4CHEE`, `DCM4CHEE-WADO`, `WORKLIST`).
+
+> **Não** trocar o literal `DCM4CHEE` que aparece na coerção
+> `IssuerOfPatientID=DCM4CHEE.{...}` — ali é só um rótulo de *namespace* de paciente
+> (não é referência ao AE). Mantê-lo preserva a identidade dos pacientes já
+> cadastrados; trocá-lo fragmentaria os cadastros.
+
+Procedimento: backup do device config (`GET /devices/dcm4chee-arc`), aplicar a
+remoção + repontes via `PUT` + `POST /ctrl/reload`. Totalmente reversível pelo
+backup. (Os AEs `PACS-CDT`/`WORK-CDT` foram criados exatamente assim em 2026-06-16.)
 
 ## 11. Operação — receitas curtas
 

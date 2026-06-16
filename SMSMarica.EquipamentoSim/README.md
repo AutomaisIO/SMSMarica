@@ -48,11 +48,11 @@ Os valores default abaixo são lidos de variáveis de ambiente prefixadas `EQSIM
 |---|---|
 | `EQSIM_HOST` | `pacs.marica.automais.cloud` |
 | `EQSIM_PORT` | `11112` |
-| `EQSIM_CALLING_AE` | `DCM4CHEE` |
-| `EQSIM_CALLED_AE_MWL` | `DCM4CHEE` |
-| `EQSIM_CALLED_AE_STORE` | `DCM4CHEE` |
+| `EQSIM_CALLING_AE` | `MAMO-SIM` |
+| `EQSIM_CALLED_AE_MWL` | `WORK-CDT` |
+| `EQSIM_CALLED_AE_STORE` | `PACS-CDT` |
 
-> **Sobre os AE titles**: o dcm4chee da SMS Maricá está em modo `unsecure` (sem validação de Calling AE), então usamos `DCM4CHEE` em tudo — é o único AE conhecido. Se o dcm4chee passar a exigir Calling AE registrado, basta cadastrar um novo (ex.: `MAMO-SIM`) via UI Arc Light → Configuration → Devices → Add AE e sobrescrever `EQSIM_CALLING_AE`.
+> **Sobre os AE titles**: o dcm4chee da SMS Maricá tem AEs distintos por papel — **`PACS-CDT`** recebe imagens (C-STORE) e **`WORK-CDT`** serve worklist (MWL/UPS). Os AEs **`DCM4CHEE`/`WORKLIST`** continuam ativos como alias legado do mesmo acervo. O dcm4chee está em modo `unsecure` (não valida o Calling AE), então o `EQSIM_CALLING_AE` (`MAMO-SIM`) não precisa ser pré-cadastrado.
 
 ## Comandos
 
@@ -84,7 +84,7 @@ equipamento exec --accession SMS2026000001 --imagem .\examples\mamo.jpg
 Fluxo interno:
 1. C-FIND para localizar o worklist item por AccessionNumber.
 2. Monta DICOM herdando `PatientName/ID/BirthDate/Sex` e `StudyInstanceUID` do worklist (fundamental — é a chave que amarra o study à solicitação no SMSMarica).
-3. C-STORE no AE `DCM4CHEE`.
+3. C-STORE no AE `PACS-CDT`.
 
 Após o sucesso, o `SincronizadorExamesService` do SMSMarica.Api detecta o study no próximo polling (~30s) e marca a solicitação como **Realizada**. Quando o radiologista finaliza o laudo, vira **Laudada**.
 
