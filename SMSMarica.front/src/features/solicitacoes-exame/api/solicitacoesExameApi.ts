@@ -52,6 +52,15 @@ export async function reenviarWorklist(id: string): Promise<void> {
   await http.post(`/solicitacoes-exame/${id}/reenviar-worklist`);
 }
 
-export async function excluirSolicitacao(id: string): Promise<void> {
-  await http.delete(`/solicitacoes-exame/${id}`);
+export async function excluirSolicitacao(id: string, force = false): Promise<void> {
+  await http.delete(`/solicitacoes-exame/${id}`, { params: force ? { force: true } : undefined });
+}
+
+/**
+ * True se o erro for o 409 de falha ao remover o item de worklist no dcm4chee
+ * (código `solicitacaoExame.exclusao_pacs_falhou`) — sinaliza que dá pra forçar.
+ */
+export function ehFalhaExclusaoPacs(e: unknown): boolean {
+  const tipo = (e as { response?: { data?: { type?: string } } })?.response?.data?.type;
+  return tipo === 'solicitacaoExame.exclusao_pacs_falhou';
 }

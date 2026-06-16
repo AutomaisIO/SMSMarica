@@ -4,6 +4,7 @@ import type { StatusSolicitacao } from '@/features/solicitacoes-exame/types';
 const ESTILOS: Record<StatusSolicitacao, string> = {
   Solicitada: 'bg-gray-100 text-gray-700 ring-1 ring-gray-200',
   Enviada: 'bg-sky-50 text-sky-700 ring-1 ring-sky-200',
+  Recebida: 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200',
   Agendada: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200',
   EmExecucao: 'bg-amber-50 text-amber-800 ring-1 ring-amber-200',
   Realizada: 'bg-green-50 text-green-700 ring-1 ring-green-200',
@@ -14,6 +15,7 @@ const ESTILOS: Record<StatusSolicitacao, string> = {
 const ROTULOS: Record<StatusSolicitacao, string> = {
   Solicitada: 'Solicitada',
   Enviada: 'Enviada ao PACS',
+  Recebida: 'Recebida pela worklist',
   Agendada: 'Agendada',
   EmExecucao: 'Em execução',
   Realizada: 'Realizada',

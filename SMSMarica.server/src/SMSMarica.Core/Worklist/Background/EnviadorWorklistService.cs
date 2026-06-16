@@ -66,7 +66,8 @@ public sealed class EnviadorWorklistService(
         var pendentes = await db.SolicitacoesExame.AsNoTracking()
             .Where(s => s.ExcluidoEm == null
                         && (s.Status == StatusSolicitacaoExame.Solicitada
-                            || s.Status == StatusSolicitacaoExame.Enviada)
+                            || s.Status == StatusSolicitacaoExame.Enviada
+                            || s.Status == StatusSolicitacaoExame.Recebida)
                         && s.ProximaTentativaEm != null
                         && s.ProximaTentativaEm <= agora)
             .OrderBy(s => s.ProximaTentativaEm)

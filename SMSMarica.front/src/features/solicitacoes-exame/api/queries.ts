@@ -100,7 +100,7 @@ export function useReenviarWorklist() {
 export function useExcluirSolicitacao() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => excluirSolicitacao(id),
+    mutationFn: ({ id, force }: { id: string; force?: boolean }) => excluirSolicitacao(id, force ?? false),
     onSuccess: () => client.invalidateQueries({ queryKey: solicitacoesKeys.raiz }),
   });
 }

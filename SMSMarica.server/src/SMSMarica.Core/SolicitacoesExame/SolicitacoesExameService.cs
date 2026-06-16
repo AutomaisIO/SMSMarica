@@ -15,7 +15,7 @@ namespace SMSMarica.Core.SolicitacoesExame;
 public sealed class SolicitacoesExameService(
     SmsMaricaDbContext db,
     IGeradorIdentificadores geradorIds,
-    IDcm4cheeUpsClient upsClient,
+    IDcm4cheeMwlClient mwlClient,
     INotificadorExame notificador,
     IUsuarioAtualAccessor usuarioAtual,
     Pacientes.Fhir.IPacienteResolver pacienteResolver,
@@ -24,7 +24,7 @@ public sealed class SolicitacoesExameService(
 {
     private readonly SmsMaricaDbContext _db = db;
     private readonly IGeradorIdentificadores _geradorIds = geradorIds;
-    private readonly IDcm4cheeUpsClient _upsClient = upsClient;
+    private readonly IDcm4cheeMwlClient _mwlClient = mwlClient;
     private readonly INotificadorExame _notificador = notificador;
     private readonly IUsuarioAtualAccessor _usuarioAtual = usuarioAtual;
     private readonly Pacientes.Fhir.IPacienteResolver _pacienteResolver = pacienteResolver;
@@ -204,9 +204,20 @@ public sealed class SolicitacoesExameService(
             throw new ValidacaoException("solicitacaoExame.motivo_obrigatorio", "Motivo do cancelamento é obrigatório.");
         }
 
+        // Remove o item da worklist no dcm4chee (best-effort — não derruba o
+        // cancelamento local se o PACS estiver fora; o item terminal não atrapalha).
         if (!string.IsNullOrEmpty(s.WorklistItemUid))
         {
-            await _upsClient.CancelarWorkitemAsync(s.WorklistItemUid, motivo, cancellationToken);
+            try
+            {
+                await _mwlClient.ExcluirMwlItemAsync(s, cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogWarning(ex,
+                    "Falha ao remover MWL de {Accession} no cancelamento — segue cancelado localmente.",
+                    s.AccessionNumber);
+            }
         }
 
         var agora = DateTime.UtcNow;
@@ -225,11 +236,11 @@ public sealed class SolicitacoesExameService(
         var s = await _db.SolicitacoesExame.FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(SolicitacaoExame), id);
 
-        if (s.Status is not (StatusSolicitacaoExame.Solicitada or StatusSolicitacaoExame.Enviada))
+        if (s.Status is not (StatusSolicitacaoExame.Solicitada or StatusSolicitacaoExame.Enviada or StatusSolicitacaoExame.Recebida))
         {
             throw new ConflitoException(
                 "solicitacaoExame.nao_reenviavel",
-                $"Só é possível reenviar worklist de solicitações em 'Solicitada' ou 'Enviada'. Atual: {s.Status}.");
+                $"Só é possível reenviar worklist em 'Solicitada', 'Enviada' ou 'Recebida'. Atual: {s.Status}.");
         }
 
         // Apenas agenda o worker pra tentar agora — ele faz o POST/GET e
@@ -243,16 +254,50 @@ public sealed class SolicitacoesExameService(
         await _db.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task ExcluirAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task ExcluirAsync(Guid id, bool force, CancellationToken cancellationToken = default)
     {
         var s = await _db.SolicitacoesExame.FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(SolicitacaoExame), id);
 
-        if (s.Status is not (StatusSolicitacaoExame.Solicitada or StatusSolicitacaoExame.Cancelada))
+        // Exame iniciado/realizado/laudado tem imagens — o pedido não se exclui por aqui.
+        if (s.Status is StatusSolicitacaoExame.EmExecucao or StatusSolicitacaoExame.Realizada or StatusSolicitacaoExame.Laudada)
         {
             throw new ConflitoException(
                 "solicitacaoExame.nao_excluivel",
-                "Apenas solicitações em status 'Solicitada' ou 'Cancelada' podem ser excluídas.");
+                $"Solicitação no status '{s.Status}' (exame iniciado/realizado) não pode ser excluída.");
+        }
+
+        // Regra anti-lixo: primeiro remove o item da worklist no dcm4chee e confirma;
+        // só então apaga localmente. Se a remoção no PACS falhar e NÃO for 'force', aborta
+        // com um código que o front reconhece para oferecer a exclusão forçada.
+        if (force)
+        {
+            // Force: tenta remover do PACS best-effort, mas ignora falha e limpa só a base local.
+            try
+            {
+                await _mwlClient.ExcluirMwlItemAsync(s, cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogWarning(ex,
+                    "Exclusão forçada de {Accession} — falha ao remover MWL no dcm4chee; limpando só a base local.",
+                    s.AccessionNumber);
+            }
+        }
+        else
+        {
+            try
+            {
+                // 404 (já não existe) conta como removido — operação idempotente.
+                await _mwlClient.ExcluirMwlItemAsync(s, cancellationToken);
+            }
+            catch (ConflitoException)
+            {
+                throw new ConflitoException(
+                    "solicitacaoExame.exclusao_pacs_falhou",
+                    "Não foi possível remover o item da worklist no dcm4chee. Verifique o PACS e tente de novo, " +
+                    "ou use a exclusão forçada (limpa apenas a base local).");
+            }
         }
 
         var agora = DateTime.UtcNow;
@@ -260,7 +305,7 @@ public sealed class SolicitacoesExameService(
         s.ExcluidoPor = _usuarioAtual.UsuarioId;
         s.AtualizadoEm = agora;
         s.AtualizadoPor = _usuarioAtual.UsuarioId;
-
+        s.ProximaTentativaEm = null; // tira do worker
         await _db.SaveChangesAsync(cancellationToken);
     }
 
@@ -306,8 +351,8 @@ public sealed class SolicitacoesExameService(
 
         if (s is null) return;
 
-        // Estado terminal ou intermediário que não interessa pro worker.
-        if (s.Status is not (StatusSolicitacaoExame.Solicitada or StatusSolicitacaoExame.Enviada))
+        // Só os estados de envio interessam ao worker.
+        if (s.Status is not (StatusSolicitacaoExame.Solicitada or StatusSolicitacaoExame.Enviada or StatusSolicitacaoExame.Recebida))
         {
             // Limpa o agendamento para não voltar.
             if (s.ProximaTentativaEm is not null)
@@ -324,61 +369,68 @@ public sealed class SolicitacoesExameService(
 
         try
         {
-            if (s.Status == StatusSolicitacaoExame.Solicitada)
+            switch (s.Status)
             {
-                // 1ª etapa: POST UPS-RS.
-                var uid = await _upsClient.CriarWorkitemAsync(s, cancellationToken);
-                s.WorklistItemUid = uid;
-                s.Status = StatusSolicitacaoExame.Enviada;
-                s.ErroIntegracaoPacs = null;
-                // Agenda confirmação imediata (worker pega no próximo tick para fazer GET).
-                s.ProximaTentativaEm = agora;
-                s.AtualizadoEm = agora;
-                await _db.SaveChangesAsync(cancellationToken);
-                _logger.LogInformation(
-                    "Solicitação {Accession} enviada ao PACS (workitem {Uid}) — aguardando confirmação.",
-                    s.AccessionNumber, uid);
-            }
-            else // Enviada
-            {
-                // 2ª etapa: GET de confirmação.
-                if (string.IsNullOrEmpty(s.WorklistItemUid))
-                {
-                    // Estado inconsistente — volta pra Solicitada pra reenviar.
-                    s.Status = StatusSolicitacaoExame.Solicitada;
-                    s.ProximaTentativaEm = agora;
-                    s.AtualizadoEm = agora;
-                    await _db.SaveChangesAsync(cancellationToken);
-                    return;
-                }
-
-                var existe = await _upsClient.WorkitemExisteAsync(s.WorklistItemUid, cancellationToken);
-                if (existe)
-                {
-                    s.Status = StatusSolicitacaoExame.Agendada;
+                case StatusSolicitacaoExame.Solicitada:
+                    // 1) Cria o MWL item (resolve paciente no FHIR + registra no dcm4chee + POST /mwlitems).
+                    var sps = await _mwlClient.CriarOuAtualizarMwlItemAsync(s, cancellationToken);
+                    s.WorklistItemUid = sps;
+                    s.Status = StatusSolicitacaoExame.Enviada;
                     s.ErroIntegracaoPacs = null;
-                    s.ProximaTentativaEm = null; // estado terminal do envio
+                    s.ProximaTentativaEm = agora; // confirma no próximo tick
                     s.AtualizadoEm = agora;
                     await _db.SaveChangesAsync(cancellationToken);
-                    await _notificador.NotificarAgendadoAsync(s, cancellationToken);
                     _logger.LogInformation(
-                        "Solicitação {Accession} confirmada como Agendada no PACS.",
-                        s.AccessionNumber);
-                }
-                else
-                {
-                    // GET 404 — workitem sumiu (expirou ou foi limpo). Volta pra Solicitada
-                    // e reenvia imediatamente.
-                    _logger.LogWarning(
-                        "Workitem {Uid} de {Accession} sumiu do PACS — voltando para Solicitada.",
-                        s.WorklistItemUid, s.AccessionNumber);
-                    s.Status = StatusSolicitacaoExame.Solicitada;
-                    s.WorklistItemUid = null;
-                    s.ErroIntegracaoPacs = "Workitem não encontrado no PACS (404) — reenviando.";
-                    s.ProximaTentativaEm = agora;
-                    s.AtualizadoEm = agora;
-                    await _db.SaveChangesAsync(cancellationToken);
-                }
+                        "Solicitação {Accession} enviada ao PACS (MWL {Sps}) — aguardando confirmação.",
+                        s.AccessionNumber, sps);
+                    break;
+
+                case StatusSolicitacaoExame.Enviada:
+                    // 2) Confirma que o dcm4chee tem o item na worklist → Recebida.
+                    if (await _mwlClient.MwlItemExisteAsync(s, cancellationToken))
+                    {
+                        s.Status = StatusSolicitacaoExame.Recebida;
+                        s.ErroIntegracaoPacs = null;
+                        s.ProximaTentativaEm = agora; // próxima passagem consolida em Agendada
+                        s.AtualizadoEm = agora;
+                        await _db.SaveChangesAsync(cancellationToken);
+                        _logger.LogInformation("Solicitação {Accession} recebida pela worklist do PACS.", s.AccessionNumber);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("MWL item de {Accession} não encontrado no PACS — voltando para Solicitada.", s.AccessionNumber);
+                        s.Status = StatusSolicitacaoExame.Solicitada;
+                        s.WorklistItemUid = null;
+                        s.ErroIntegracaoPacs = "Item de worklist não encontrado no PACS — reenviando.";
+                        s.ProximaTentativaEm = agora;
+                        s.AtualizadoEm = agora;
+                        await _db.SaveChangesAsync(cancellationToken);
+                    }
+                    break;
+
+                case StatusSolicitacaoExame.Recebida:
+                    // 3) Reconfirma estabilidade e consolida → Agendada (terminal do envio).
+                    if (await _mwlClient.MwlItemExisteAsync(s, cancellationToken))
+                    {
+                        s.Status = StatusSolicitacaoExame.Agendada;
+                        s.ErroIntegracaoPacs = null;
+                        s.ProximaTentativaEm = null; // estado terminal do envio
+                        s.AtualizadoEm = agora;
+                        await _db.SaveChangesAsync(cancellationToken);
+                        await _notificador.NotificarAgendadoAsync(s, cancellationToken);
+                        _logger.LogInformation("Solicitação {Accession} agendada (worklist confirmada).", s.AccessionNumber);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("MWL item de {Accession} sumiu do PACS — voltando para Solicitada.", s.AccessionNumber);
+                        s.Status = StatusSolicitacaoExame.Solicitada;
+                        s.WorklistItemUid = null;
+                        s.ErroIntegracaoPacs = "Item de worklist sumiu do PACS — reenviando.";
+                        s.ProximaTentativaEm = agora;
+                        s.AtualizadoEm = agora;
+                        await _db.SaveChangesAsync(cancellationToken);
+                    }
+                    break;
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

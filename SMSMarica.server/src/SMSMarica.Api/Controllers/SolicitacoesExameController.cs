@@ -7,8 +7,8 @@ using SMSMarica.Data.Entities.Enums;
 namespace SMSMarica.Api.Controllers;
 
 /// <summary>
-/// Solicitações de exame que geram worklist DICOM no dcm4chee. Ciclo:
-/// Solicitada → Agendada (UPS-RS) → EmExecucao → Realizada → Laudada.
+/// Solicitações de exame que geram worklist DICOM (MWL) no dcm4chee. Ciclo:
+/// Solicitada → Enviada → Recebida → Agendada → EmExecucao → Realizada → Laudada.
 /// </summary>
 [ApiController]
 [Route("solicitacoes-exame")]
@@ -115,14 +115,21 @@ public sealed class SolicitacoesExameController(ISolicitacoesExameService servic
         return NoContent();
     }
 
+    /// <summary>
+    /// Exclui a solicitação. Requer permissão de Exclusão (concedida apenas a perfis
+    /// administrativos). Por padrão remove primeiro o item de worklist no dcm4chee e
+    /// confirma (anti-lixo); se o PACS recusar/cair, responde 409
+    /// (<c>solicitacaoExame.exclusao_pacs_falhou</c>) e nada é apagado. Com
+    /// <c>force=true</c>, ignora o PACS e limpa só a base local.
+    /// </summary>
     [HttpDelete("{id:guid}")]
     [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Exclusao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> Excluir(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Excluir(Guid id, [FromQuery] bool force = false, CancellationToken cancellationToken = default)
     {
-        await _service.ExcluirAsync(id, cancellationToken);
+        await _service.ExcluirAsync(id, force, cancellationToken);
         return NoContent();
     }
 }

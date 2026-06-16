@@ -24,10 +24,11 @@ import {
   useReenviarWorklist,
   useSolicitacaoPorId,
 } from '@/features/solicitacoes-exame/api/queries';
+import { ehFalhaExclusaoPacs } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
 import { StatusBadgeSolicitacao } from '@/features/solicitacoes-exame/components/StatusBadgeSolicitacao';
 import type { StatusSolicitacao } from '@/features/solicitacoes-exame/types';
 
-const ETAPAS: StatusSolicitacao[] = ['Solicitada', 'Enviada', 'Agendada', 'EmExecucao', 'Realizada', 'Laudada'];
+const ETAPAS: StatusSolicitacao[] = ['Solicitada', 'Enviada', 'Recebida', 'Agendada', 'EmExecucao', 'Realizada', 'Laudada'];
 
 export function SolicitacaoExameDetalhePage() {
   const navigate = useNavigate();
@@ -44,6 +45,8 @@ export function SolicitacaoExameDetalhePage() {
   const [modalExcluir, setModalExcluir] = useState(false);
   const [motivo, setMotivo] = useState('');
   const [erro, setErro] = useState<string | null>(null);
+  const [erroExcluir, setErroExcluir] = useState<string | null>(null);
+  const [forcarExclusao, setForcarExclusao] = useState(false);
 
   if (detalhe.isPending) {
     return (
@@ -65,8 +68,9 @@ export function SolicitacaoExameDetalhePage() {
   const podeCancelar = podeEditar && (s.status === 'Solicitada' || s.status === 'Agendada');
   const podeReenviar = podeEditar && s.status === 'Solicitada' && !!s.erroIntegracaoPacs;
   const podeEditarForm = podeEditar && s.status === 'Solicitada';
-  // Backend (ExcluirAsync) só permite excluir em Solicitada ou Cancelada.
-  const podeExcluirAgora = podeExcluir && (s.status === 'Solicitada' || s.status === 'Cancelada');
+  // Exclusão (admin): permitida em qualquer status, exceto exame iniciado/realizado/laudado.
+  const podeExcluirAgora =
+    podeExcluir && s.status !== 'EmExecucao' && s.status !== 'Realizada' && s.status !== 'Laudada';
 
   async function confirmarCancelamento() {
     setErro(null);
@@ -88,14 +92,21 @@ export function SolicitacaoExameDetalhePage() {
     }
   }
 
-  async function confirmarExclusao() {
-    setErro(null);
+  function abrirModalExcluir() {
+    setErroExcluir(null);
+    setForcarExclusao(false);
+    setModalExcluir(true);
+  }
+
+  async function confirmarExclusao(force: boolean) {
+    setErroExcluir(null);
     try {
-      await excluir.mutateAsync(s.id);
+      await excluir.mutateAsync({ id: s.id, force });
       navigate('/app/solicitacoes-exame');
     } catch (e) {
-      setModalExcluir(false);
-      setErro(extrairMensagemDeErro(e));
+      setErroExcluir(extrairMensagemDeErro(e));
+      // Falha ao remover do dcm4chee → habilita "Forçar" (limpa só a base local).
+      if (!force && ehFalhaExclusaoPacs(e)) setForcarExclusao(true);
     }
   }
 
@@ -137,7 +148,7 @@ export function SolicitacaoExameDetalhePage() {
             </Button>
           ) : null}
           {podeExcluirAgora ? (
-            <Button variante="outline" onClick={() => setModalExcluir(true)}>
+            <Button variante="outline" onClick={abrirModalExcluir}>
               <Trash2 className="mr-2 h-4 w-4 text-red-600" />
               Excluir
             </Button>
@@ -308,16 +319,34 @@ export function SolicitacaoExameDetalhePage() {
         aberto={modalExcluir}
         aoFechar={() => setModalExcluir(false)}
         titulo="Excluir solicitação"
-        descricao="A solicitação será removida permanentemente da lista. Esta ação não pode ser desfeita."
+        descricao="Primeiro o item é removido da worklist do dcm4chee e confirmado; só então o pedido sai da base. Esta ação não pode ser desfeita."
       >
-        <div className="flex items-center justify-end gap-2">
-          <Button variante="outline" onClick={() => setModalExcluir(false)}>
-            Voltar
-          </Button>
-          <Button variante="danger" disabled={excluir.isPending} onClick={confirmarExclusao}>
-            {excluir.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-            Confirmar exclusão
-          </Button>
+        <div className="space-y-3">
+          {erroExcluir ? (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{erroExcluir}</div>
+          ) : null}
+          {forcarExclusao ? (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              O dcm4chee não confirmou a remoção do item de worklist. Você pode <strong>forçar</strong> a exclusão —
+              isso limpa apenas a base local e pode deixar o item órfão na worklist do equipamento.
+            </div>
+          ) : null}
+          <div className="flex items-center justify-end gap-2">
+            <Button variante="outline" onClick={() => setModalExcluir(false)}>
+              Voltar
+            </Button>
+            {forcarExclusao ? (
+              <Button variante="danger" disabled={excluir.isPending} onClick={() => confirmarExclusao(true)}>
+                {excluir.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                Forçar exclusão
+              </Button>
+            ) : (
+              <Button variante="danger" disabled={excluir.isPending} onClick={() => confirmarExclusao(false)}>
+                {excluir.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                Confirmar exclusão
+              </Button>
+            )}
+          </div>
         </div>
       </Modal>
     </div>

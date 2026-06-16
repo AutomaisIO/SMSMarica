@@ -23,7 +23,14 @@ public interface ISolicitacoesExameService
     /// <summary>Refaz o POST UPS-RS quando a primeira tentativa falhou (status ainda Solicitada).</summary>
     Task ReenviarWorklistAsync(Guid id, CancellationToken cancellationToken = default);
 
-    Task ExcluirAsync(Guid id, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Exclui (soft-delete) a solicitação. Antes, remove o item de worklist do
+    /// dcm4chee e confirma (anti-lixo); se a remoção no PACS falhar e
+    /// <paramref name="force"/> for false, lança ConflitoException
+    /// ("solicitacaoExame.exclusao_pacs_falhou"). Com force=true, ignora o PACS e
+    /// limpa apenas a base local.
+    /// </summary>
+    Task ExcluirAsync(Guid id, bool force, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Marca a solicitação como Laudada — chamado pelo módulo de Laudos ao

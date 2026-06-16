@@ -10,6 +10,7 @@ import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { useExcluirSolicitacao, useListarSolicitacoes } from '@/features/solicitacoes-exame/api/queries';
+import { ehFalhaExclusaoPacs } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
 import { StatusBadgeSolicitacao } from '@/features/solicitacoes-exame/components/StatusBadgeSolicitacao';
 import { BotaoAnamnese } from '@/features/anamnese/components/BotaoAnamnese';
 import type {
@@ -27,6 +28,7 @@ export function SolicitacoesExamePage() {
   const excluir = useExcluirSolicitacao();
   const [paraExcluir, setParaExcluir] = useState<SolicitacaoExameListItem | null>(null);
   const [erroExcluir, setErroExcluir] = useState<string | null>(null);
+  const [forcarExclusao, setForcarExclusao] = useState(false);
 
   const accessionUrl = searchParams.get('accessionNumber') ?? undefined;
   const filtroInicial: FiltroSolicitacoes = { limite: 50, accessionNumber: accessionUrl };
@@ -53,14 +55,16 @@ export function SolicitacoesExamePage() {
     setFiltroAplicado(filtroDigitado);
   }
 
-  async function confirmarExclusao() {
+  async function confirmarExclusao(force: boolean) {
     if (!paraExcluir) return;
     setErroExcluir(null);
     try {
-      await excluir.mutateAsync(paraExcluir.id);
+      await excluir.mutateAsync({ id: paraExcluir.id, force });
       setParaExcluir(null);
+      setForcarExclusao(false);
     } catch (e) {
       setErroExcluir(extrairMensagemDeErro(e));
+      if (!force && ehFalhaExclusaoPacs(e)) setForcarExclusao(true);
     }
   }
 
@@ -118,11 +122,12 @@ export function SolicitacoesExamePage() {
             </button>
           ) : null}
           <BotaoAnamnese solicitacaoExameId={s.id} accessionNumber={s.accessionNumber} />
-          {podeExcluir && (s.status === 'Solicitada' || s.status === 'Cancelada') ? (
+          {podeExcluir && s.status !== 'EmExecucao' && s.status !== 'Realizada' && s.status !== 'Laudada' ? (
             <button
               type="button"
               onClick={() => {
                 setErroExcluir(null);
+                setForcarExclusao(false);
                 setParaExcluir(s);
               }}
               title="Excluir solicitação"
@@ -182,6 +187,7 @@ export function SolicitacoesExamePage() {
             <option value="">Todos</option>
             <option value="Solicitada">Solicitada</option>
             <option value="Enviada">Enviada ao PACS</option>
+            <option value="Recebida">Recebida</option>
             <option value="Agendada">Agendada</option>
             <option value="EmExecucao">Em execução</option>
             <option value="Realizada">Realizada</option>
@@ -243,14 +249,27 @@ export function SolicitacoesExamePage() {
               {erroExcluir}
             </div>
           ) : null}
+          {forcarExclusao ? (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              O dcm4chee não confirmou a remoção do item de worklist. Você pode <strong>forçar</strong> a exclusão —
+              limpa apenas a base local e pode deixar o item órfão na worklist do equipamento.
+            </div>
+          ) : null}
           <div className="flex items-center justify-end gap-2">
             <Button variante="outline" onClick={() => setParaExcluir(null)}>
               Voltar
             </Button>
-            <Button variante="danger" disabled={excluir.isPending} onClick={confirmarExclusao}>
-              {excluir.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-              Confirmar exclusão
-            </Button>
+            {forcarExclusao ? (
+              <Button variante="danger" disabled={excluir.isPending} onClick={() => confirmarExclusao(true)}>
+                {excluir.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                Forçar exclusão
+              </Button>
+            ) : (
+              <Button variante="danger" disabled={excluir.isPending} onClick={() => confirmarExclusao(false)}>
+                {excluir.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                Confirmar exclusão
+              </Button>
+            )}
           </div>
         </div>
       </Modal>

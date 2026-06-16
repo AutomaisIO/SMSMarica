@@ -3,6 +3,7 @@ import type { ModalidadeDicom } from '@/features/tipos-exame/types';
 export type StatusSolicitacao =
   | 'Solicitada'
   | 'Enviada'
+  | 'Recebida'
   | 'Agendada'
   | 'EmExecucao'
   | 'Realizada'

@@ -82,14 +82,14 @@ public static class DependencyInjection
         services.AddScoped<IGeradorIdentificadores, GeradorIdentificadores>();
         services.AddScoped<INotificadorExame, NotificadorExameLog>();
 
-        services.Configure<Dcm4cheeUpsOptions>(configuration.GetSection(Dcm4cheeUpsOptions.SecaoConfig));
-        var upsBaseUrl = configuration["Pacs:Dcm4chee:UpsBaseUrl"]
+        services.Configure<Dcm4cheeMwlOptions>(configuration.GetSection(Dcm4cheeMwlOptions.SecaoConfig));
+        var worklistBaseUrl = configuration["Pacs:Dcm4chee:WorklistBaseUrl"]
             ?? "http://pacs.marica.automais.cloud:8080/dcm4chee-arc/aets/WORK-CDT/rs/";
         services
-            .AddHttpClient<IDcm4cheeUpsClient, Dcm4cheeUpsClient>(client =>
+            .AddHttpClient<IDcm4cheeMwlClient, Dcm4cheeMwlClient>(client =>
             {
-                client.BaseAddress = new Uri(upsBaseUrl);
-                client.Timeout = TimeSpan.FromSeconds(15);
+                client.BaseAddress = new Uri(worklistBaseUrl);
+                client.Timeout = TimeSpan.FromSeconds(20);
             });
 
         services
