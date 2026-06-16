@@ -22,6 +22,13 @@ public interface IPacientesService
     /// </summary>
     Task<PacienteExistenciaDto?> ObterPorCpfAsync(string cpf, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Busca um paciente pelo número de telefone (Patient.telecom). Retorna o
+    /// primeiro match (id, nome, cpf) ou null. Usado pelo agente de voz para
+    /// reconhecer quem liga de um número já cadastrado.
+    /// </summary>
+    Task<PacienteExistenciaDto?> ObterPorTelefoneAsync(string telefone, CancellationToken cancellationToken = default);
+
     Task<Guid> CadastrarAsync(CadastrarPacienteRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>

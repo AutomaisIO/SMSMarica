@@ -25,11 +25,13 @@ public sealed class PatientRowConfiguration : IEntityTypeConfiguration<PatientRo
         builder.Property(p => p.Cpf).HasColumnName("cpf").HasMaxLength(11);
         builder.Property(p => p.Cns).HasColumnName("cns").HasMaxLength(15);
         builder.Property(p => p.Nome).HasColumnName("nome").HasMaxLength(300);
+        builder.Property(p => p.Telefone).HasColumnName("telefone").HasMaxLength(400);
         builder.Property(p => p.Nascimento).HasColumnName("nascimento");
 
         builder.HasIndex(p => p.Cpf).HasFilter("cpf IS NOT NULL");
         builder.HasIndex(p => p.Cns).HasFilter("cns IS NOT NULL");
         builder.HasIndex(p => p.Nome);
+        builder.HasIndex(p => p.Telefone);
         builder.HasIndex(p => p.MetaSource);
     }
 }

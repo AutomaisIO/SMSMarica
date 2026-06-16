@@ -34,11 +34,12 @@ public sealed class PacienteFhirClient(HttpClient http) : IPacienteFhirClient
             resp.EnsureSuccessStatusCode();
     }
 
-    public async Task<Bundle> BuscarAsync(string? identifier = null, string? name = null, CancellationToken ct = default)
+    public async Task<Bundle> BuscarAsync(string? identifier = null, string? name = null, string? telecom = null, CancellationToken ct = default)
     {
         var qs = new List<string>();
         if (!string.IsNullOrWhiteSpace(identifier)) qs.Add("identifier=" + Uri.EscapeDataString(identifier));
         if (!string.IsNullOrWhiteSpace(name)) qs.Add("name=" + Uri.EscapeDataString(name));
+        if (!string.IsNullOrWhiteSpace(telecom)) qs.Add("telecom=" + Uri.EscapeDataString(telecom));
         var url = "fhir/Patient" + (qs.Count > 0 ? "?" + string.Join("&", qs) : string.Empty);
 
         using var resp = await http.GetAsync(url, ct);

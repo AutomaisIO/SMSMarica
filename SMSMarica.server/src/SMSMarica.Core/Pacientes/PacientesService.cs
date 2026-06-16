@@ -61,6 +61,19 @@ public sealed class PacientesService(IPacienteFhirClient fhir) : IPacientesServi
         return new PacienteExistenciaDto(dto.Id, dto.NomeCompleto, dto.Cpf, dto.Ativo);
     }
 
+    public async Task<PacienteExistenciaDto?> ObterPorTelefoneAsync(string telefone, CancellationToken cancellationToken = default)
+    {
+        var numero = Digitos(telefone);
+        if (numero.Length < 8) return null;
+
+        var bundle = await fhir.BuscarAsync(telecom: numero, ct: cancellationToken);
+        var patient = bundle.Entry.Select(e => e.Resource).OfType<Patient>().FirstOrDefault();
+        if (patient is null) return null;
+
+        var dto = PacienteFhirMapper.ParaDto(patient);
+        return new PacienteExistenciaDto(dto.Id, dto.NomeCompleto, dto.Cpf, dto.Ativo);
+    }
+
     public async Task<Guid> CadastrarAsync(CadastrarPacienteRequest request, CancellationToken cancellationToken = default)
     {
         var cpf = Digitos(request.Cpf);

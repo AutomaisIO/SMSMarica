@@ -81,10 +81,16 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
             query = query.Where(p => p.Cns == filtro.Cns);
         if (!string.IsNullOrWhiteSpace(filtro.Nome))
             query = query.Where(p => p.Nome != null && EF.Functions.ILike(p.Nome, $"%{filtro.Nome}%"));
+        if (!string.IsNullOrWhiteSpace(filtro.Telefone))
+        {
+            var fone = Digitos(filtro.Telefone);
+            if (fone.Length > 0)
+                query = query.Where(p => p.Telefone != null && p.Telefone.Contains(fone));
+        }
 
         // Sem filtro: últimos incluídos primeiro (LastUpdated desc). Com filtro: por nome.
         var semFiltro = string.IsNullOrWhiteSpace(filtro.Cpf) && string.IsNullOrWhiteSpace(filtro.Cns)
-                        && string.IsNullOrWhiteSpace(filtro.Nome);
+                        && string.IsNullOrWhiteSpace(filtro.Nome) && string.IsNullOrWhiteSpace(filtro.Telefone);
         var ordenada = semFiltro
             ? query.OrderByDescending(p => p.LastUpdated)
             : query.OrderBy(p => p.Nome);
@@ -117,11 +123,28 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
         row.Cns = ValorIdentifier(patient, FhirSystems.Cns);
         row.Nome = patient.Name.FirstOrDefault(n => n.Use == HumanName.NameUse.Official)?.Text
                    ?? patient.Name.FirstOrDefault()?.Text;
+        row.Telefone = ExtrairTelefones(patient);
         row.Nascimento = ParseDataNascimento(patient.BirthDate);
     }
 
     private static string? ValorIdentifier(Patient patient, string system) =>
         patient.Identifier.FirstOrDefault(i => i.System == system)?.Value;
+
+    /// <summary>Dígitos de todos os telefones (telecom[system=phone]), juntos por espaço.</summary>
+    private static string? ExtrairTelefones(Patient patient)
+    {
+        if (patient.Telecom is null || patient.Telecom.Count == 0) return null;
+        var fones = patient.Telecom
+            .Where(t => t.System == ContactPoint.ContactPointSystem.Phone)
+            .Select(t => Digitos(t.Value))
+            .Where(d => d.Length > 0)
+            .Distinct();
+        var juntos = string.Join(' ', fones);
+        return juntos.Length == 0 ? null : juntos;
+    }
+
+    private static string Digitos(string? valor) =>
+        string.IsNullOrEmpty(valor) ? string.Empty : new string([.. valor.Where(char.IsDigit)]);
 
     private static DateOnly? ParseDataNascimento(string? birthDate) =>
         DateOnly.TryParseExact(birthDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)

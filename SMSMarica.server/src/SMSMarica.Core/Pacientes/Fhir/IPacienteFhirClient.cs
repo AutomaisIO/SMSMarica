@@ -13,6 +13,6 @@ public interface IPacienteFhirClient
     Task<Patient> AtualizarAsync(Guid id, Patient patient, CancellationToken ct = default);
     Task ExcluirAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>Busca por identifier (system|valor) e/ou nome. Devolve o Bundle searchset.</summary>
-    Task<Bundle> BuscarAsync(string? identifier = null, string? name = null, CancellationToken ct = default);
+    /// <summary>Busca por identifier (system|valor), nome e/ou telefone. Devolve o Bundle searchset.</summary>
+    Task<Bundle> BuscarAsync(string? identifier = null, string? name = null, string? telecom = null, CancellationToken ct = default);
 }

@@ -52,10 +52,11 @@ public sealed class PatientController(IPatientService service) : ControllerBase
     public async Task<IActionResult> Buscar(
         [FromQuery] string? identifier,
         [FromQuery] string? name,
+        [FromQuery] string? telecom,
         CancellationToken ct)
     {
         var (cpf, cns) = SepararIdentifier(identifier);
-        var bundle = await service.BuscarAsync(new PatientBusca(cpf, cns, name), ct);
+        var bundle = await service.BuscarAsync(new PatientBusca(cpf, cns, name, telecom), ct);
         return FhirResponse.Recurso(bundle);
     }
 

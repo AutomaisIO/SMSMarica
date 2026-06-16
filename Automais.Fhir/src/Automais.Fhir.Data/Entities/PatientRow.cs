@@ -17,6 +17,12 @@ public sealed class PatientRow : ResourceRow
     /// <summary>Nome oficial (name[use=official].text), para busca textual.</summary>
     public string? Nome { get; set; }
 
+    /// <summary>
+    /// Dígitos dos telefones (Patient.telecom[system=phone]) concatenados por
+    /// espaço, para busca por telefone (ex.: "21981979202 2133334444").
+    /// </summary>
+    public string? Telefone { get; set; }
+
     /// <summary>Data de nascimento (birthDate).</summary>
     public DateOnly? Nascimento { get; set; }
 }
