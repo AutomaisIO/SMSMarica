@@ -5,13 +5,12 @@ namespace SMSMarica.Data.Entities.Enums;
 ///
 /// Transições válidas (fluxo Modality Worklist — MWL):
 ///   Solicitada → Enviada      (POST /mwlitems aceito pelo dcm4chee — nosso PACS recebeu)
-///   Enviada    → Recebida     (GET confirma que o item está na worklist consultável pela máquina)
-///   Recebida   → Agendada     (sistema reconfirma e consolida todos os passos antecessores)
-///   Enviada/Recebida → Solicitada (item sumiu do PACS — vai reenviar)
-///   Solicitada/Enviada/Recebida → Solicitada (falha temporária — retenta com backoff)
-///   Solicitada/Enviada/Recebida/Agendada → Cancelada (cancelamento manual)
-///   Agendada   → EmExecucao   (study parcial chegou no PACS)
-///   Agendada/EmExecucao → Realizada (study completo no PACS)
+///   Enviada    → Recebida     (GET confirma o item na worklist — TERMINAL do envio)
+///   Enviada    → Solicitada   (item sumiu do PACS — vai reenviar)
+///   Solicitada/Enviada → Solicitada (falha temporária — retenta com backoff)
+///   Solicitada/Enviada/Recebida → Cancelada (cancelamento manual)
+///   Recebida   → EmExecucao   (study parcial chegou no PACS)
+///   Recebida/EmExecucao → Realizada (study completo no PACS)
 ///   Realizada  → Laudada      (Laudo finalizado pelo radiologista)
 ///
 /// Nota: classic MWL (C-FIND) é stateless — o dcm4chee não expõe via REST o evento
@@ -21,6 +20,9 @@ namespace SMSMarica.Data.Entities.Enums;
 public enum StatusSolicitacaoExame
 {
     Solicitada = 1,
+
+    /// <summary>DESCONTINUADO 2026-06-16 — o envio agora termina em <see cref="Recebida"/>
+    /// (sem gatilho confiável para "agendar"). Mantido só para linhas legadas (migradas).</summary>
     Agendada = 2,
     EmExecucao = 3,
     Realizada = 4,

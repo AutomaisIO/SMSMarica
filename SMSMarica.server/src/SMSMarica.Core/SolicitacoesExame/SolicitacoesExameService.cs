@@ -191,7 +191,7 @@ public sealed class SolicitacoesExameService(
         var s = await _db.SolicitacoesExame.FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(SolicitacaoExame), id);
 
-        if (s.Status is not (StatusSolicitacaoExame.Solicitada or StatusSolicitacaoExame.Agendada))
+        if (s.Status is not (StatusSolicitacaoExame.Solicitada or StatusSolicitacaoExame.Enviada or StatusSolicitacaoExame.Recebida))
         {
             throw new ConflitoException(
                 "solicitacaoExame.nao_cancelavel",
@@ -351,8 +351,8 @@ public sealed class SolicitacoesExameService(
 
         if (s is null) return;
 
-        // Só os estados de envio interessam ao worker.
-        if (s.Status is not (StatusSolicitacaoExame.Solicitada or StatusSolicitacaoExame.Enviada or StatusSolicitacaoExame.Recebida))
+        // Só os estados de envio interessam ao worker (Recebida já é terminal).
+        if (s.Status is not (StatusSolicitacaoExame.Solicitada or StatusSolicitacaoExame.Enviada))
         {
             // Limpa o agendamento para não voltar.
             if (s.ProximaTentativaEm is not null)
@@ -386,14 +386,15 @@ public sealed class SolicitacoesExameService(
                     break;
 
                 case StatusSolicitacaoExame.Enviada:
-                    // 2) Confirma que o dcm4chee tem o item na worklist → Recebida.
+                    // 2) Confirma que o dcm4chee tem o item na worklist → Recebida (TERMINAL do envio).
                     if (await _mwlClient.MwlItemExisteAsync(s, cancellationToken))
                     {
                         s.Status = StatusSolicitacaoExame.Recebida;
                         s.ErroIntegracaoPacs = null;
-                        s.ProximaTentativaEm = agora; // próxima passagem consolida em Agendada
+                        s.ProximaTentativaEm = null; // terminal — a worklist está disponível para a máquina
                         s.AtualizadoEm = agora;
                         await _db.SaveChangesAsync(cancellationToken);
+                        await _notificador.NotificarAgendadoAsync(s, cancellationToken);
                         _logger.LogInformation("Solicitação {Accession} recebida pela worklist do PACS.", s.AccessionNumber);
                     }
                     else
@@ -402,30 +403,6 @@ public sealed class SolicitacoesExameService(
                         s.Status = StatusSolicitacaoExame.Solicitada;
                         s.WorklistItemUid = null;
                         s.ErroIntegracaoPacs = "Item de worklist não encontrado no PACS — reenviando.";
-                        s.ProximaTentativaEm = agora;
-                        s.AtualizadoEm = agora;
-                        await _db.SaveChangesAsync(cancellationToken);
-                    }
-                    break;
-
-                case StatusSolicitacaoExame.Recebida:
-                    // 3) Reconfirma estabilidade e consolida → Agendada (terminal do envio).
-                    if (await _mwlClient.MwlItemExisteAsync(s, cancellationToken))
-                    {
-                        s.Status = StatusSolicitacaoExame.Agendada;
-                        s.ErroIntegracaoPacs = null;
-                        s.ProximaTentativaEm = null; // estado terminal do envio
-                        s.AtualizadoEm = agora;
-                        await _db.SaveChangesAsync(cancellationToken);
-                        await _notificador.NotificarAgendadoAsync(s, cancellationToken);
-                        _logger.LogInformation("Solicitação {Accession} agendada (worklist confirmada).", s.AccessionNumber);
-                    }
-                    else
-                    {
-                        _logger.LogWarning("MWL item de {Accession} sumiu do PACS — voltando para Solicitada.", s.AccessionNumber);
-                        s.Status = StatusSolicitacaoExame.Solicitada;
-                        s.WorklistItemUid = null;
-                        s.ErroIntegracaoPacs = "Item de worklist sumiu do PACS — reenviando.";
                         s.ProximaTentativaEm = agora;
                         s.AtualizadoEm = agora;
                         await _db.SaveChangesAsync(cancellationToken);

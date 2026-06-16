@@ -26,7 +26,7 @@ export function useListarSolicitacoes(filtro: FiltroSolicitacoes) {
   return useQuery({
     queryKey: solicitacoesKeys.lista(filtro),
     queryFn: () => listarSolicitacoes(filtro),
-    refetchInterval: filtro.status === 'Agendada' || filtro.status === 'EmExecucao' ? 30_000 : false,
+    refetchInterval: filtro.status === 'Recebida' || filtro.status === 'EmExecucao' ? 30_000 : false,
   });
 }
 

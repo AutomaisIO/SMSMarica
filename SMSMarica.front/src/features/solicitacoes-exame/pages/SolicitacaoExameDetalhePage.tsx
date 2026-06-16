@@ -28,7 +28,7 @@ import { ehFalhaExclusaoPacs } from '@/features/solicitacoes-exame/api/solicitac
 import { StatusBadgeSolicitacao } from '@/features/solicitacoes-exame/components/StatusBadgeSolicitacao';
 import type { StatusSolicitacao } from '@/features/solicitacoes-exame/types';
 
-const ETAPAS: StatusSolicitacao[] = ['Solicitada', 'Enviada', 'Recebida', 'Agendada', 'EmExecucao', 'Realizada', 'Laudada'];
+const ETAPAS: StatusSolicitacao[] = ['Solicitada', 'Enviada', 'Recebida', 'EmExecucao', 'Realizada', 'Laudada'];
 
 export function SolicitacaoExameDetalhePage() {
   const navigate = useNavigate();
@@ -65,7 +65,8 @@ export function SolicitacaoExameDetalhePage() {
 
   const s = detalhe.data;
   const cancelado = s.status === 'Cancelada';
-  const podeCancelar = podeEditar && (s.status === 'Solicitada' || s.status === 'Agendada');
+  const podeCancelar =
+    podeEditar && (s.status === 'Solicitada' || s.status === 'Enviada' || s.status === 'Recebida');
   const podeReenviar = podeEditar && s.status === 'Solicitada' && !!s.erroIntegracaoPacs;
   const podeEditarForm = podeEditar && s.status === 'Solicitada';
   // Exclusão (admin): permitida em qualquer status, exceto exame iniciado/realizado/laudado.

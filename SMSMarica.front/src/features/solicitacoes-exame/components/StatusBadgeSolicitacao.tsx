@@ -15,7 +15,7 @@ const ESTILOS: Record<StatusSolicitacao, string> = {
 const ROTULOS: Record<StatusSolicitacao, string> = {
   Solicitada: 'Solicitada',
   Enviada: 'Enviada ao PACS',
-  Recebida: 'Recebida pela worklist',
+  Recebida: 'Recebida',
   Agendada: 'Agendada',
   EmExecucao: 'Em execução',
   Realizada: 'Realizada',

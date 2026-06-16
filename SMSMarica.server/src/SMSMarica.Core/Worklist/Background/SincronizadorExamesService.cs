@@ -11,7 +11,7 @@ namespace SMSMarica.Core.Worklist.Background;
 
 /// <summary>
 /// Hosted service que pesquisa periodicamente no PACS (QIDO-RS) se as
-/// solicitações no estado Agendada/EmExecucao já têm study lá. Quando acha,
+/// solicitações no estado Recebida/EmExecucao já têm study lá. Quando acha,
 /// promove para Realizada e dispara o notificador.
 /// </summary>
 public sealed class SincronizadorExamesService(
@@ -60,7 +60,7 @@ public sealed class SincronizadorExamesService(
 
         var ativas = await db.SolicitacoesExame.AsNoTracking()
             .Where(s => s.ExcluidoEm == null
-                        && (s.Status == StatusSolicitacaoExame.Agendada || s.Status == StatusSolicitacaoExame.EmExecucao)
+                        && (s.Status == StatusSolicitacaoExame.Recebida || s.Status == StatusSolicitacaoExame.EmExecucao)
                         && s.CriadoEm >= corte)
             .Select(s => new { s.Id, s.AccessionNumber })
             .ToListAsync(ct);

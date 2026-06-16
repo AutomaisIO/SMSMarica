@@ -188,7 +188,6 @@ export function SolicitacoesExamePage() {
             <option value="Solicitada">Solicitada</option>
             <option value="Enviada">Enviada ao PACS</option>
             <option value="Recebida">Recebida</option>
-            <option value="Agendada">Agendada</option>
             <option value="EmExecucao">Em execução</option>
             <option value="Realizada">Realizada</option>
             <option value="Laudada">Laudada</option>
