@@ -16,9 +16,11 @@ namespace SMSMarica.Core.Worklist;
 /// </summary>
 internal static class ConstrutorMwlItem
 {
-    /// <summary>SPS ID estável derivado do accession — junto com o StudyInstanceUID
-    /// forma a chave do MWL item (usada nos GET/DELETE do dcm4chee).</summary>
-    public static string SpsId(SolicitacaoExame s) => $"SPS-{s.AccessionNumber}";
+    /// <summary>SPS ID (0040,0009) — junto com o StudyInstanceUID forma a chave do MWL
+    /// item (usada nos GET/DELETE do dcm4chee). Usa o mesmo valor do RequestedProcedureID
+    /// (≤10 chars): o Fuji recusa SH acima de 10 e antes era "SPS-{accession}" (14 chars),
+    /// o que quebrava a execução do estudo ("obter informações de imagem").</summary>
+    public static string SpsId(SolicitacaoExame s) => RequestedProcedureId(s);
 
     /// <summary>RequestedProcedureID (0040,1001) limitado a 10 caracteres: apesar de o
     /// DICOM SH permitir 16, o Fuji rejeita IDs maiores. Deriva do AccessionNumber
@@ -56,7 +58,6 @@ internal static class ConstrutorMwlItem
             ["00100040"] = Cs(MapearSexo(paciente.Sexo)),                   // PatientSex
             ["0020000D"] = Ui(s.StudyInstanceUID),                          // StudyInstanceUID
             ["00321060"] = Lo(tipo.RequestedProcedureDescription),          // RequestedProcedureDescription
-            ["00321064"] = SeqCodigoProc(tipo),                            // RequestedProcedureCodeSequence (SIGTAP)
             ["00401001"] = Sh(RequestedProcedureId(s)),                     // RequestedProcedureID (<= 10 chars, exigência do Fuji)
             ["00401003"] = Sh(MapearPrioridade(s.Prioridade)),             // RequestedProcedurePriority
             ["00400100"] = new JsonObject                                   // ScheduledProcedureStepSequence
@@ -117,20 +118,6 @@ internal static class ConstrutorMwlItem
         return sb.ToString().Normalize(NormalizationForm.FormC);
     }
     private static JsonObject Da(DateOnly? d) => d is null ? new JsonObject { ["vr"] = "DA" } : ComVr("DA", d.Value.ToString("yyyyMMdd"));
-
-    private static JsonObject SeqCodigoProc(TipoExame t) => new()
-    {
-        ["vr"] = "SQ",
-        ["Value"] = new JsonArray
-        {
-            new JsonObject
-            {
-                ["00080100"] = Sh(t.ProcedimentoSigtap?.Codigo ?? "00.00.00.000-0"),
-                ["00080102"] = Sh("SIGTAP-DATASUS"),
-                ["00080104"] = Lo(t.ProcedimentoSigtap?.Nome ?? t.Nome),
-            },
-        },
-    };
 
     private static string MapearSexo(Sexo sexo) => sexo switch
     {
