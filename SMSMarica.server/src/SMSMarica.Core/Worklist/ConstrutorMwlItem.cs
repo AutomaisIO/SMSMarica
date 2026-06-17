@@ -70,7 +70,6 @@ internal static class ConstrutorMwlItem
                         ["00400001"] = Ae(stationAeTitle),                          // ScheduledStationAETitle (filtro do equipamento)
                         ["00400002"] = ComVr("DA", quando.ToString("yyyyMMdd")),    // SPS StartDate
                         ["00400003"] = ComVr("TM", quando.ToString("HHmmss")),      // SPS StartTime
-                        ["00400006"] = Pn(s.SolicitanteNome),                       // ScheduledPerformingPhysicianName (solicitante)
                         ["00400007"] = Lo(tipo.ScheduledProcedureStepDescription),  // SPS Description
                         ["00400009"] = Sh(SpsId(s)),                                // SPS ID
                         ["00400010"] = Sh(stationAeTitle),                          // ScheduledStationName
