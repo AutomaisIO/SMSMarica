@@ -11,23 +11,25 @@ public sealed class GeradorIdentificadores(SmsMaricaDbContext db) : IGeradorIden
     public async Task<string> ProximoAccessionAsync(CancellationToken cancellationToken = default)
     {
         var ano = DateTime.UtcNow.Year;
-        var prefixo = $"SMS{ano}";
+        var anoStr = ano.ToString();
 
-        // Próxima sequência baseada no maior já gravado para o ano.
-        var ultimo = await _db.SolicitacoesExame.AsNoTracking()
-            .Where(s => s.AccessionNumber.StartsWith(prefixo))
-            .OrderByDescending(s => s.AccessionNumber)
+        // AccessionNumber = {ano}{seq6} = 10 chars (limite aceito pelo equipamento Fuji).
+        // Considera também o formato legado "SMS{ano}{seq6}" para não reiniciar a sequência.
+        var doAno = await _db.SolicitacoesExame.AsNoTracking()
+            .Where(s => s.AccessionNumber.StartsWith(anoStr) || s.AccessionNumber.StartsWith("SMS" + anoStr))
             .Select(s => s.AccessionNumber)
-            .FirstOrDefaultAsync(cancellationToken);
+            .ToListAsync(cancellationToken);
 
-        var seq = 1;
-        if (!string.IsNullOrEmpty(ultimo) && ultimo.Length == prefixo.Length + 6
-            && int.TryParse(ultimo[prefixo.Length..], out var n))
+        var seq = 0;
+        foreach (var acc in doAno)
         {
-            seq = n + 1;
+            if (acc.Length >= 6 && int.TryParse(acc[^6..], out var n) && n > seq)
+            {
+                seq = n;
+            }
         }
 
-        return $"{prefixo}{seq:D6}";
+        return $"{anoStr}{seq + 1:D6}";
     }
 
     public string NovoStudyInstanceUid()

@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using System.Text.Json.Nodes;
 using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Data.Entities;
@@ -92,12 +94,29 @@ internal static class ConstrutorMwlItem
     // ---- helpers DICOM+JSON ----
 
     private static JsonObject ComVr(string vr, string v) => new() { ["vr"] = vr, ["Value"] = new JsonArray(v) };
-    private static JsonObject Sh(string v) => ComVr("SH", v);
-    private static JsonObject Lo(string v) => ComVr("LO", v);
+    private static JsonObject Sh(string v) => ComVr("SH", Ascii(v));
+    private static JsonObject Lo(string v) => ComVr("LO", Ascii(v));
     private static JsonObject Ui(string v) => ComVr("UI", v);
     private static JsonObject Cs(string v) => ComVr("CS", v);
     private static JsonObject Ae(string v) => ComVr("AE", v);
     private static JsonObject Pn(string nome) => new() { ["vr"] = "PN", ["Value"] = new JsonArray(new JsonObject { ["Alphabetic"] = FormatarPn(nome) }) };
+
+    /// <summary>Remove acentos/diacríticos e qualquer caractere não-ASCII. O equipamento
+    /// Fuji não aceita acentos no MWL e, como não declaramos SpecificCharacterSet (item
+    /// fica em ASCII puro / ISO_IR 6), caracteres acentuados chegavam corrompidos (viravam
+    /// '?'). Ex.: "diagnóstica" -> "diagnostica", "AVALIAÇÃO" -> "AVALIACAO".</summary>
+    private static string Ascii(string? texto)
+    {
+        if (string.IsNullOrEmpty(texto)) return texto ?? string.Empty;
+        var decomposto = texto.Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder(decomposto.Length);
+        foreach (var c in decomposto)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(c) == UnicodeCategory.NonSpacingMark) continue; // diacrítico
+            if (c <= 0x7F) sb.Append(c); // mantém só ASCII; resíduo não-ASCII é descartado
+        }
+        return sb.ToString().Normalize(NormalizationForm.FormC);
+    }
     private static JsonObject Da(DateOnly? d) => d is null ? new JsonObject { ["vr"] = "DA" } : ComVr("DA", d.Value.ToString("yyyyMMdd"));
 
     private static JsonObject SeqCodigoProc(TipoExame t) => new()
@@ -128,10 +147,10 @@ internal static class ConstrutorMwlItem
         _ => "ROUTINE",
     };
 
-    /// <summary>"João da Silva" → "SILVA^JOÃO DA" (DICOM PN: Family^Given).</summary>
+    /// <summary>"João da Silva" → "SILVA^JOAO DA" (DICOM PN: Family^Given, sem acentos).</summary>
     private static string FormatarPn(string nome)
     {
-        var n = (nome ?? string.Empty).Trim();
+        var n = Ascii(nome).Trim();
         if (string.IsNullOrEmpty(n)) return "PACIENTE";
         var partes = n.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (partes.Length == 1) return partes[0].ToUpperInvariant();
