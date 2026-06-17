@@ -18,6 +18,18 @@ internal static class ConstrutorMwlItem
     /// forma a chave do MWL item (usada nos GET/DELETE do dcm4chee).</summary>
     public static string SpsId(SolicitacaoExame s) => $"SPS-{s.AccessionNumber}";
 
+    /// <summary>RequestedProcedureID (0040,1001) limitado a 10 caracteres: apesar de o
+    /// DICOM SH permitir 16, o Fuji rejeita IDs maiores. Deriva do AccessionNumber
+    /// removendo o prefixo "SMS" — sobra ano+sequência (ex.: SMS2026000001 -> 2026000001,
+    /// 10 chars, único por ano). Para accession em formato inesperado, trunca nos
+    /// últimos 10 caracteres. Não é chave de lookup (o vínculo é por SpsId + StudyUID).</summary>
+    public static string RequestedProcedureId(SolicitacaoExame s)
+    {
+        var acc = s.AccessionNumber ?? string.Empty;
+        var id = acc.StartsWith("SMS", StringComparison.Ordinal) ? acc[3..] : acc;
+        return id.Length <= 10 ? id : id[^10..];
+    }
+
     /// <summary>PatientID exibido no equipamento: CPF (só dígitos) quando houver,
     /// senão o id do paciente no hub FHIR (Guid). O vínculo do estudo de volta é pelo
     /// StudyInstanceUID — não por este ID — então usar CPF é seguro e mais legível.</summary>
@@ -43,7 +55,7 @@ internal static class ConstrutorMwlItem
             ["0020000D"] = Ui(s.StudyInstanceUID),                          // StudyInstanceUID
             ["00321060"] = Lo(tipo.RequestedProcedureDescription),          // RequestedProcedureDescription
             ["00321064"] = SeqCodigoProc(tipo),                            // RequestedProcedureCodeSequence (SIGTAP)
-            ["00401001"] = Sh($"RP-{s.AccessionNumber}"),                   // RequestedProcedureID
+            ["00401001"] = Sh(RequestedProcedureId(s)),                     // RequestedProcedureID (<= 10 chars, exigência do Fuji)
             ["00401003"] = Sh(MapearPrioridade(s.Prioridade)),             // RequestedProcedurePriority
             ["00400100"] = new JsonObject                                   // ScheduledProcedureStepSequence
             {
