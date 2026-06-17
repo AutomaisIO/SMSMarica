@@ -57,7 +57,7 @@ internal static class ConstrutorMwlItem
             ["00100030"] = Da(paciente.DataNascimento),                     // PatientBirthDate
             ["00100040"] = Cs(MapearSexo(paciente.Sexo)),                   // PatientSex
             ["0020000D"] = Ui(s.StudyInstanceUID),                          // StudyInstanceUID
-            ["00321060"] = Lo(tipo.RequestedProcedureDescription),          // RequestedProcedureDescription
+            ["00321060"] = LoDesc(tipo.RequestedProcedureDescription),      // RequestedProcedureDescription (<= 16, exigência do Fuji)
             ["00401001"] = Sh(RequestedProcedureId(s)),                     // RequestedProcedureID (<= 10 chars, exigência do Fuji)
             ["00401003"] = Sh(MapearPrioridade(s.Prioridade)),             // RequestedProcedurePriority
             ["00400100"] = new JsonObject                                   // ScheduledProcedureStepSequence
@@ -71,7 +71,7 @@ internal static class ConstrutorMwlItem
                         ["00400001"] = Ae(stationAeTitle),                          // ScheduledStationAETitle (filtro do equipamento)
                         ["00400002"] = ComVr("DA", quando.ToString("yyyyMMdd")),    // SPS StartDate
                         ["00400003"] = ComVr("TM", quando.ToString("HHmmss")),      // SPS StartTime
-                        ["00400007"] = Lo(tipo.ScheduledProcedureStepDescription),  // SPS Description
+                        ["00400007"] = LoDesc(tipo.ScheduledProcedureStepDescription), // SPS Description (<= 16, exigência do Fuji)
                         ["00400009"] = Sh(SpsId(s)),                                // SPS ID
                         ["00400010"] = Sh(stationAeTitle),                          // ScheduledStationName
                         ["00400020"] = Cs("SCHEDULED"),                             // SPS Status
@@ -96,6 +96,17 @@ internal static class ConstrutorMwlItem
     private static JsonObject ComVr(string vr, string v) => new() { ["vr"] = vr, ["Value"] = new JsonArray(v) };
     private static JsonObject Sh(string v) => ComVr("SH", Ascii(v));
     private static JsonObject Lo(string v) => ComVr("LO", Ascii(v));
+
+    /// <summary>Descrição (LO) limitada a 16 caracteres. O Fuji falha ao montar a imagem
+    /// ("obter informações de imagem", erro 31027) com descrições longas — a worklist de
+    /// referência aceita pelo console usava ~10 ("Mamografia").</summary>
+    private static JsonObject LoDesc(string v) => Lo(Truncar(v, 16));
+
+    private static string Truncar(string? v, int max)
+    {
+        v = (v ?? string.Empty).Trim();
+        return v.Length <= max ? v : v[..max].TrimEnd();
+    }
     private static JsonObject Ui(string v) => ComVr("UI", v);
     private static JsonObject Cs(string v) => ComVr("CS", v);
     private static JsonObject Ae(string v) => ComVr("AE", v);
