@@ -24,6 +24,9 @@ internal sealed class SessaoDeTratamentoConfiguration : IEntityTypeConfiguration
         builder.Property(s => s.ConfirmadaPorUsuarioId).HasColumnName("confirmada_por_usuario_id");
         builder.Property(s => s.NomeAcompanhante).HasColumnName("nome_acompanhante").HasMaxLength(200);
         builder.Property(s => s.ParentescoAcompanhante).HasColumnName("parentesco_acompanhante").HasMaxLength(60);
+        builder.Property(s => s.AcompanhanteEsperado).HasColumnName("acompanhante_esperado");
+        builder.Property(s => s.AcompanhanteConfirmadoEm).HasColumnName("acompanhante_confirmado_em");
+        builder.Property(s => s.AcompanhanteCanal).HasColumnName("acompanhante_canal").HasConversion<int>();
 
         builder.Property(s => s.MotoristaIdaId).HasColumnName("motorista_ida_id");
         builder.Property(s => s.VeiculoIdaId).HasColumnName("veiculo_ida_id");

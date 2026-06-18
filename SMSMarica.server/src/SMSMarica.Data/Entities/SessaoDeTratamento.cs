@@ -26,6 +26,11 @@ public class SessaoDeTratamento
     public string? NomeAcompanhante { get; set; }
     public string? ParentescoAcompanhante { get; set; }
 
+    // Confirmação prévia de acompanhante (FT2) — antes do dia, pelo paciente (WhatsApp/App)
+    public bool? AcompanhanteEsperado { get; set; }
+    public DateTime? AcompanhanteConfirmadoEm { get; set; }
+    public CanalConfirmacao? AcompanhanteCanal { get; set; }
+
     // Ida
     public Guid? MotoristaIdaId { get; set; }
     public Guid? VeiculoIdaId { get; set; }

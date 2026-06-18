@@ -17,6 +17,8 @@ internal sealed class UnidadeConfiguration : IEntityTypeConfiguration<Unidade>
         builder.Property(u => u.Ativo).HasColumnName("ativo").HasDefaultValue(true).IsRequired();
         builder.Property(u => u.CriadoEm).HasColumnName("criado_em").IsRequired();
         builder.Property(u => u.AtualizadoEm).HasColumnName("atualizado_em");
+        builder.Property(u => u.Externa).HasColumnName("externa").HasDefaultValue(false).IsRequired();
+        builder.Property(u => u.CodigoIbgeCidade).HasColumnName("codigo_ibge_cidade").HasMaxLength(7);
 
         builder.OwnsOne(u => u.Endereco, e =>
         {

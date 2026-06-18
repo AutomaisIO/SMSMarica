@@ -54,4 +54,13 @@ public enum ModuloPermissao
 
     /// <summary>Gerenciar tokens de API (chaves de serviço para integrações externas, ex.: CentralIA).</summary>
     ApiTokens = 28,
+
+    /// <summary>Portal do cidadão/paciente (PWA): acesso ao próprio escopo (translados, acompanhante).</summary>
+    Cidadao = 29,
+
+    /// <summary>Configurar integrações externas do TFD (Google Maps, WhatsApp/Meta).</summary>
+    IntegracoesConfig = 30,
+
+    /// <summary>Faturamento SUS / geração de BPA do transporte (TFD).</summary>
+    Faturamento = 31,
 }

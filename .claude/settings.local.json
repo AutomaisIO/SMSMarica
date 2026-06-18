@@ -185,7 +185,29 @@
       "Bash(ls -la \"docs/Integração SISREG/.claude/\")",
       "Bash(grep -E \"^\\\\.gitignore$|CLAUDE.md|Sidebar.tsx|AppRouter.tsx|perfis/lib/acoes.ts|authStore.ts|appsettings.json\")",
       "Bash(sed -n '1,30p' Salux/scripts/importar_atendimentos_fhir.py)",
-      "Bash(sed -n '1,60p' Automais.Fhir/src/Automais.Fhir.Data/Entities/MedicationAdministrationRow.cs)"
+      "Bash(sed -n '1,60p' Automais.Fhir/src/Automais.Fhir.Data/Entities/MedicationAdministrationRow.cs)",
+      "Bash(findstr -i \"solicitacao\\\\|worklist\\\\|mwl\\\\|dicom\")",
+      "Bash(xargs findstr -l -i \"dicom\\\\|worklist\\\\|mwl\\\\|fo-dicom\\\\|modality\")",
+      "Bash(xargs findstr -l -i \"solicitacao\\\\|exame\")",
+      "Bash(Select-String -Pattern \"error|Error|Build succeeded|warning\")",
+      "Bash(Select-Object -First 30)",
+      "Bash(Select-Object -Last 15)",
+      "PowerShell(curl.exe -s -m 20 -H \"Accept: application/json\" \"http://pacs.marica.automais.cloud:8080/dcm4chee-arc/monitor/associations\")",
+      "PowerShell(ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=8 root@pacs.marica.automais.cloud \"echo CONECTOU; tail -n 8 /opt/wildfly/standalone/log/server.log\" 2>&1)",
+      "PowerShell(\"=== 1\\) Associacoes DICOM ativas \\(HTTP, sem SSH\\) ===\")",
+      "PowerShell(\"`n=== 2\\) Tenta SSH \\(BatchMode, so se houver chave\\) p/ ler o server.log ===\")",
+      "PowerShell(powershell -NoProfile -ExecutionPolicy Bypass -File \"$env:TEMP\\\\pacs_assoc_watch.ps1\")",
+      "WebFetch(domain:healthcaresolutions-us.fujifilm.com)",
+      "WebFetch(domain:www.frankshospitalworkshop.com)",
+      "WebFetch(domain:www.scribd.com)",
+      "Bash(echo \"=== exit: $? ===\")",
+      "Bash(export AutoMigrate__Enabled=false)",
+      "Bash(export ConnectionStrings__DefaultDb='Host=localhost;Port=5432;Database=dummy;Username=dummy;Password=dummy')",
+      "Bash(ls -la scripts/)",
+      "Bash(ls docs/pacs*.md)",
+      "PowerShell(plink *)",
+      "Bash(perl -i -pe \"s/'\\\\x7f'/0x7F/ if \\\\$. == 116\" ConstrutorMwlItem.cs)",
+      "Bash(pdftotext -layout webfetch-1781794111182-lwopfz.pdf aws.txt)"
     ]
   }
 }

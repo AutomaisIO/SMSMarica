@@ -11,4 +11,10 @@ public enum StatusSessao
     /// Diferente de <see cref="Cancelada"/>: cancelada é anterior ao dia.
     /// </summary>
     NaoRealizada = 5,
+
+    /// <summary>
+    /// Paciente terminou o atendimento na unidade e aguarda o carro para a volta (TFD/FT5).
+    /// Alimenta a fila de "puxar" por proximidade.
+    /// </summary>
+    AguardandoRetorno = 6,
 }

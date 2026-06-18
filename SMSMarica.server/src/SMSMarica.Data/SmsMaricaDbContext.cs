@@ -4,6 +4,7 @@ using SMSMarica.Data.Entities.Agendamentos;
 using SMSMarica.Data.Entities.Ia;
 using SMSMarica.Data.Entities.Pep;
 using SMSMarica.Data.Entities.Sisreg;
+using SMSMarica.Data.Entities.Tfd;
 
 namespace SMSMarica.Data;
 
@@ -69,6 +70,12 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<DisponibilidadeAvulsa> DisponibilidadesAvulsas => Set<DisponibilidadeAvulsa>();
     public DbSet<BloqueioAgenda> BloqueiosAgenda => Set<BloqueioAgenda>();
     public DbSet<Agendamento> Agendamentos => Set<Agendamento>();
+
+    // Módulo TFD (geocodificação, WhatsApp, configs de integração) — ADR-0017
+    public DbSet<Geocodigo> Geocodigos => Set<Geocodigo>();
+    public DbSet<MensagemWhatsApp> MensagensWhatsApp => Set<MensagemWhatsApp>();
+    public DbSet<TfdConfigGoogle> TfdConfigGoogle => Set<TfdConfigGoogle>();
+    public DbSet<TfdConfigWhatsApp> TfdConfigWhatsApp => Set<TfdConfigWhatsApp>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

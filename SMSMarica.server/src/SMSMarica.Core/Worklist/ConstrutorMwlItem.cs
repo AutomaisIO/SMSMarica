@@ -58,6 +58,7 @@ internal static class ConstrutorMwlItem
             ["00100040"] = Cs(MapearSexo(paciente.Sexo)),                   // PatientSex
             ["0020000D"] = Ui(s.StudyInstanceUID),                          // StudyInstanceUID
             ["00321060"] = LoDesc(tipo.RequestedProcedureDescription),      // RequestedProcedureDescription (<= 16, exigência do Fuji)
+            ["00401001"] = Sh(RequestedProcedureId(s)),                     // RequestedProcedureID (<=10; se omitido o dcm4chee gera RP-XXXXXXXX >10)
             ["00401003"] = Sh(MapearPrioridade(s.Prioridade)),             // RequestedProcedurePriority
             ["00400100"] = new JsonObject                                   // ScheduledProcedureStepSequence
             {
@@ -71,6 +72,7 @@ internal static class ConstrutorMwlItem
                         ["00400002"] = ComVr("DA", quando.ToString("yyyyMMdd")),    // SPS StartDate
                         ["00400003"] = ComVr("TM", quando.ToString("HHmmss")),      // SPS StartTime
                         ["00400007"] = LoDesc(tipo.ScheduledProcedureStepDescription), // SPS Description (<= 16, exigência do Fuji)
+                        ["00400009"] = Sh(SpsId(s)),                                // SPS ID (<=10; se omitido o dcm4chee gera SPS-XXXXXXXX >10)
                         ["00400010"] = Sh(stationAeTitle),                          // ScheduledStationName
                         ["00400020"] = Cs("SCHEDULED"),                             // SPS Status
                     },
