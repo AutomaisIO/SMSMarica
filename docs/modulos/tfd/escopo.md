@@ -207,9 +207,11 @@ e critérios de aceite estão em [`requisitos.md`](./requisitos.md); o desenho t
   atualiza a sessão.
 - **Entregável:** comunicação automática paciente↔sistema via WhatsApp.
 
-### FT7 — App do cidadão (paciente)
+### FT7 — App do cidadão (paciente) — **PWA**
 - **Objetivo:** dar autonomia e transparência ao paciente.
-- **Estado atual:** app scaffoldado (login + perfil).
+- **Decisão:** o app do paciente é um **PWA** (React+Vite, instalável), com **login por CPF +
+  código (OTP) no WhatsApp** (sem senha). O Flutter `cidadao.app` fica para a Fase 2.
+- **Estado atual:** painel React (reuso de httpClient/tema/leaflet) + `cidadao.app` scaffoldado.
 - **Inclui:** ver os **translados/sessões** agendados; **confirmar acompanhante** pelo app
   (alternativa ao WhatsApp); ver o **carro chegando em tempo real** (ETA); **avaliar** o
   serviço após a viagem.
@@ -232,6 +234,15 @@ e critérios de aceite estão em [`requisitos.md`](./requisitos.md); o desenho t
   reguladores de TFD e atendentes; **cutover** do WhatsApp para o número oficial;
   monitoramento pós-go-live.
 - **Entregável:** piloto operando + plano de expansão para toda a frota.
+
+### FT10 — Faturamento SUS / BPA
+- **Objetivo:** transformar o transporte em **receita** (faturamento ao SUS).
+- **Regra:** **1 unidade de faturamento a cada 50 km** rodados com o paciente a bordo (ida e
+  volta), por paciente.
+- **Inclui:** contabilização na conclusão da sessão; geração do **BPA** por competência
+  (reusa `ProcedimentoSigtap`); endpoints de registros e exportação.
+- **Entregável:** captura de unidades na Fase 1 + exportação BPA — detalhe em
+  [`faturamento.md`](./faturamento.md).
 
 ---
 

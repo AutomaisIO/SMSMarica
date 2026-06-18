@@ -24,6 +24,7 @@ rastreamento → conclusão**.
 | [`apresentacao.md`](./apresentacao.md) | **Secretaria + OS** | Apresentação executiva (formato slides) — valor, fases e entregáveis. |
 | [`requisitos.md`](./requisitos.md) | **Equipe** | Requisitos funcionais (RF) e não-funcionais (RNF) numerados + critérios de aceite + matriz de rastreabilidade. |
 | [`arquitetura.md`](./arquitetura.md) | **Equipe técnica** | Modelo de dados, motor de otimização (Google Maps + Claude), WhatsApp (Meta), apps, integrações e ADR-0017 proposto. |
+| [`faturamento.md`](./faturamento.md) | **Equipe + gestão** | Faturamento SUS/BPA: regra de 1 unidade/50 km, modelo, fluxo e exportação. |
 
 ---
 
