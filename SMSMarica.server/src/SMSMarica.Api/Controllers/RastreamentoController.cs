@@ -98,4 +98,32 @@ public sealed class RastreamentoController(IRastreamentoService service) : Contr
         Guid rotaId,
         CancellationToken cancellationToken) =>
         await _service.ListarEventosPorRotaAsync(rotaId, cancellationToken);
+
+    // --- FT5: pacientes aguardando retorno + "puxar" ---
+
+    /// <summary>Pacientes que terminaram o atendimento fora de Maricá e aguardam o carro; com distância até o motorista.</summary>
+    [HttpGet("aguardando")]
+    [RequerPermissao(ModuloPermissao.Rastreamento, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<PacienteAguardandoDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<PacienteAguardandoDto>> Aguardando(
+        [FromQuery] Guid? motoristaId, CancellationToken cancellationToken) =>
+        await _service.ListarAguardandoAsync(motoristaId, cancellationToken);
+
+    /// <summary>Marca uma sessão como "aguardando retorno" (paciente terminou o atendimento).</summary>
+    [HttpPost("sessoes/{sessaoId:guid}/aguardando-retorno")]
+    [RequerPermissao(ModuloPermissao.Rastreamento, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> MarcarAguardandoRetorno(Guid sessaoId, CancellationToken cancellationToken)
+    {
+        await _service.MarcarAguardandoRetornoAsync(sessaoId, cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>"Puxa" um paciente aguardando para a rota do motorista (insere alocação de retorno + acompanhante).</summary>
+    [HttpPost("puxar")]
+    [RequerPermissao(ModuloPermissao.Rastreamento, AcoesPermissao.Edicao)]
+    [ProducesResponseType<Guid>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<Guid> Puxar([FromBody] PuxarPacienteRequest request, CancellationToken cancellationToken) =>
+        await _service.PuxarAsync(request, cancellationToken);
 }

@@ -1,0 +1,16 @@
+using Microsoft.AspNetCore.SignalR;
+using SMSMarica.Api.Hubs;
+using SMSMarica.Core.Rastreamento;
+
+namespace SMSMarica.Api.Realtime;
+
+public sealed class RastreamentoNotificadorSignalR(IHubContext<RastreamentoHub> hub) : IRastreamentoNotificador
+{
+    public Task PosicaoAtualizadaAsync(Guid motoristaId, double latitude, double longitude, DateTime capturadoEm, CancellationToken ct = default) =>
+        hub.Clients.Groups("painel", $"motorista:{motoristaId}")
+            .SendAsync("posicaoAtualizada", new { motoristaId, latitude, longitude, capturadoEm }, ct);
+
+    public Task RotaAtualizadaAsync(Guid rotaId, CancellationToken ct = default) =>
+        hub.Clients.Groups("painel", $"rota:{rotaId}")
+            .SendAsync("rotaAtualizada", new { rotaId }, ct);
+}

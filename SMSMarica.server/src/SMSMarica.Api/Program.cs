@@ -61,6 +61,10 @@ builder.Services.AddValidatorsFromAssembly(typeof(SMSMarica.Core.DependencyInjec
 builder.Services.AddData(builder.Configuration);
 builder.Services.AddCore(builder.Configuration);
 
+// Tempo real (TFD): SignalR + notificador concreto (sobrescreve o no-op do Core).
+builder.Services.AddSignalR();
+builder.Services.AddScoped<SMSMarica.Core.Rastreamento.IRastreamentoNotificador, SMSMarica.Api.Realtime.RastreamentoNotificadorSignalR>();
+
 // Módulo IA: cifragem de segredos (token do provedor, senha das bases) em repouso.
 builder.Services.AddDataProtection();
 builder.Services.AddScoped<SMSMarica.Core.Inteligencia.Seguranca.IProtetorSegredos, SMSMarica.Api.Auth.ProtetorSegredos>();
@@ -87,6 +91,20 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 ? new SymmetricSecurityKey(Encoding.UTF8.GetBytes(new string('x', 32)))
                 : new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key)),
             ClockSkew = TimeSpan.FromMinutes(1),
+        };
+        // SignalR envia o JWT via query string (access_token) no handshake do WebSocket.
+        o.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = ctx =>
+            {
+                var accessToken = ctx.Request.Query["access_token"];
+                if (!string.IsNullOrEmpty(accessToken) &&
+                    ctx.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+                {
+                    ctx.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            },
         };
     })
     // Chave de serviço (X-API-Key) para integrações externas (ex.: CentralIA).
@@ -168,6 +186,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 });
 
 app.MapControllers();
+app.MapHub<SMSMarica.Api.Hubs.RastreamentoHub>("/hubs/rastreamento");
 
 // Default false (ADR-0010 / recuperação): evita migration destrutiva acidental no startup.
 // Habilitar explicitamente via AutoMigrate__Enabled=true quando for intencional.
