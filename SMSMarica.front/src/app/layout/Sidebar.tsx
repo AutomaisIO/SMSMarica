@@ -23,6 +23,7 @@ import {
   Layers,
   LayoutDashboard,
   LogOut,
+  Map,
   Route,
   ScanLine,
   Settings2,
@@ -85,7 +86,8 @@ const SECOES: SecaoMenu[] = [
     itens: [
       { rotulo: 'Tratamentos', to: '/app/tratamentos', icone: CalendarClock, modulo: 'Tratamentos' },
       { rotulo: 'Translados', to: '/app/translados', icone: Route, modulo: 'Translados' },
-      { rotulo: 'Rastreamento', to: '/app/rastreamento', icone: Activity, modulo: 'Rastreamento' },
+      { rotulo: 'Mapa da frota', to: '/app/rastreamento/mapa', icone: Map, modulo: 'Rastreamento' },
+      { rotulo: 'Rastreamento', to: '/app/rastreamento', icone: Activity, modulo: 'Rastreamento', end: true },
       { rotulo: 'Avaliações', to: '/app/avaliacoes', icone: Star, modulo: 'Avaliacoes' },
     ],
   },

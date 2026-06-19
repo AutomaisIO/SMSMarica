@@ -1,4 +1,24 @@
+using SMSMarica.Data.Entities.Enums;
+
 namespace SMSMarica.Core.Rastreamento.Dtos;
+
+/// <summary>
+/// Posição corrente de um veículo/motorista da frota no dia (snapshot para o mapa ao vivo).
+/// <see cref="Latitude"/>/<see cref="Longitude"/>/<see cref="AtualizadoEm"/> vêm do último ponto
+/// GPS do dia; null quando o motorista ainda não enviou posição.
+/// </summary>
+public sealed record FrotaVeiculoDto(
+    Guid RotaId,
+    StatusRota Status,
+    Guid VeiculoId,
+    string VeiculoPlaca,
+    string VeiculoModelo,
+    Guid MotoristaId,
+    string MotoristaNome,
+    int QtdPacientes,
+    double? Latitude,
+    double? Longitude,
+    DateTime? AtualizadoEm);
 
 /// <summary>
 /// Paciente que terminou o atendimento fora de Maricá e aguarda o carro para a volta.

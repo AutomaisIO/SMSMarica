@@ -129,6 +129,62 @@ public sealed class RastreamentoService(
         return [.. eventos.Select(RastreamentoMapper.ParaDto)];
     }
 
+    // ---------------- Mapa da frota ao vivo ----------------
+
+    public async Task<IReadOnlyList<FrotaVeiculoDto>> ListarFrotaAsync(DateOnly? data, CancellationToken cancellationToken = default)
+    {
+        var dia = data ?? DateOnly.FromDateTime(DateTime.UtcNow);
+
+        var rotas = await _db.Rotas.AsNoTracking()
+            .Where(r => r.Data == dia && r.Status != StatusRota.Cancelada)
+            .Include(r => r.Veiculo)
+            .Include(r => r.Motorista).ThenInclude(m => m!.Usuario)
+            .ToListAsync(cancellationToken);
+        if (rotas.Count == 0) return [];
+
+        var motoristaIds = rotas.Select(r => r.MotoristaId).Distinct().ToList();
+        var rotaIds = rotas.Select(r => r.Id).ToList();
+
+        // Última posição por motorista (pontos do dia).
+        var inicioDia = dia.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var pontos = await _db.PontosGps.AsNoTracking()
+            .Where(p => motoristaIds.Contains(p.MotoristaId) && p.CapturadoEm >= inicioDia)
+            .OrderByDescending(p => p.CapturadoEm)
+            .Select(p => new { p.MotoristaId, p.Coordenada.Latitude, p.Coordenada.Longitude, p.CapturadoEm })
+            .ToListAsync(cancellationToken);
+        var ultimoPorMotorista = pontos
+            .GroupBy(p => p.MotoristaId)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        // Quantidade de pacientes por rota.
+        var pacientesPorRota = await _db.Alocacoes.AsNoTracking()
+            .Where(a => rotaIds.Contains(a.RotaDiariaId) && a.Tipo == TipoAlocacao.Paciente)
+            .GroupBy(a => a.RotaDiariaId)
+            .Select(g => new { RotaId = g.Key, Qtd = g.Select(x => x.SessaoId).Distinct().Count() })
+            .ToDictionaryAsync(x => x.RotaId, x => x.Qtd, cancellationToken);
+
+        return [.. rotas.Select(r =>
+        {
+            double? lat = null, lng = null;
+            DateTime? atualizadoEm = null;
+            if (ultimoPorMotorista.TryGetValue(r.MotoristaId, out var pt))
+            {
+                lat = pt.Latitude;
+                lng = pt.Longitude;
+                atualizadoEm = pt.CapturadoEm;
+            }
+
+            return new FrotaVeiculoDto(
+                r.Id, r.Status, r.VeiculoId,
+                r.Veiculo?.Placa ?? string.Empty,
+                r.Veiculo?.Modelo ?? string.Empty,
+                r.MotoristaId,
+                r.Motorista?.Usuario?.NomeCompleto ?? "Motorista",
+                pacientesPorRota.GetValueOrDefault(r.Id, 0),
+                lat, lng, atualizadoEm);
+        })];
+    }
+
     // ---------------- FT5: pacientes aguardando + "puxar" ----------------
 
     public async Task<IReadOnlyList<PacienteAguardandoDto>> ListarAguardandoAsync(

@@ -22,6 +22,9 @@ public interface IRastreamentoService
     // Eventos de chegada — read-only
     Task<IReadOnlyList<EventoChegadaDto>> ListarEventosPorRotaAsync(Guid rotaId, CancellationToken cancellationToken = default);
 
+    // Mapa da frota ao vivo — snapshot do dia (rota + veículo + motorista + última posição)
+    Task<IReadOnlyList<FrotaVeiculoDto>> ListarFrotaAsync(DateOnly? data, CancellationToken cancellationToken = default);
+
     // FT5 — pacientes aguardando retorno (fora de Maricá) + "puxar"
     Task<IReadOnlyList<PacienteAguardandoDto>> ListarAguardandoAsync(Guid? motoristaId, CancellationToken cancellationToken = default);
     Task MarcarAguardandoRetornoAsync(Guid sessaoId, CancellationToken cancellationToken = default);

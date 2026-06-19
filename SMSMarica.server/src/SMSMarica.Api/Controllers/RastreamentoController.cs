@@ -99,6 +99,16 @@ public sealed class RastreamentoController(IRastreamentoService service) : Contr
         CancellationToken cancellationToken) =>
         await _service.ListarEventosPorRotaAsync(rotaId, cancellationToken);
 
+    // --- Mapa da frota ao vivo ---
+
+    /// <summary>Snapshot da frota do dia para o mapa ao vivo: rota, veículo, motorista e última posição GPS.</summary>
+    [HttpGet("frota")]
+    [RequerPermissao(ModuloPermissao.Rastreamento, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<FrotaVeiculoDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<FrotaVeiculoDto>> Frota(
+        [FromQuery] DateOnly? data, CancellationToken cancellationToken) =>
+        await _service.ListarFrotaAsync(data, cancellationToken);
+
     // --- FT5: pacientes aguardando retorno + "puxar" ---
 
     /// <summary>Pacientes que terminaram o atendimento fora de Maricá e aguardam o carro; com distância até o motorista.</summary>

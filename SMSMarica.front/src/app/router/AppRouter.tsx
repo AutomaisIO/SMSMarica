@@ -32,6 +32,7 @@ import { TipoExameFormPage } from '@/features/tipos-exame/pages/TipoExameFormPag
 import { TiposExamePage } from '@/features/tipos-exame/pages/TiposExamePage';
 import { PerfisPage } from '@/features/perfis/pages/PerfisPage';
 import { RastreamentoPage } from '@/features/rastreamento/pages/RastreamentoPage';
+import { MapaFrotaPage } from '@/features/rastreamento/pages/MapaFrotaPage';
 import { TiposTratamentoPage } from '@/features/tiposTratamento/pages/TiposTratamentoPage';
 import { TransladoDetalhePage } from '@/features/translados/pages/TransladoDetalhePage';
 import { TransladoFormPage } from '@/features/translados/pages/TransladoFormPage';
@@ -111,6 +112,7 @@ export function AppRouter() {
           <Route path="translados/:id" element={<TransladoDetalhePage />} />
           <Route path="translados/:id/editar" element={<TransladoFormPage />} />
           <Route path="rastreamento" element={<RastreamentoPage />} />
+          <Route path="rastreamento/mapa" element={<MapaFrotaPage />} />
           <Route path="avaliacoes" element={<AvaliacoesPage />} />
           <Route path="pacs" element={<PacsListagemPage />} />
           <Route path="laudos" element={<LaudosListagemPage />} />
