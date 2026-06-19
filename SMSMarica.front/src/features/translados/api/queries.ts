@@ -5,6 +5,7 @@ import {
   cancelarRota,
   concluirRota,
   criarAlocacao,
+  gerarTranslado,
   iniciarRota,
   listarRotas,
   listarSessoesElegiveis,
@@ -16,6 +17,7 @@ import type {
   CadastrarRotaPayload,
   CriarAlocacaoPayload,
   FiltrosListarRotas,
+  GerarTransladoPayload,
 } from '@/features/translados/types';
 
 export const transladosKeys = {
@@ -51,6 +53,19 @@ export function useSessoesElegiveis(rotaId: string | null) {
       return listarSessoesElegiveis(rotaId);
     },
     enabled: Boolean(rotaId),
+  });
+}
+
+export function useGerarTranslado() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: GerarTransladoPayload) => gerarTranslado(payload),
+    onSuccess: (resultado) => {
+      // Só invalida a lista quando realmente gravou (confirmar=true).
+      if (resultado.confirmado) {
+        client.invalidateQueries({ queryKey: transladosKeys.raiz });
+      }
+    },
   });
 }
 

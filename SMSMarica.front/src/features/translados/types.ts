@@ -77,3 +77,53 @@ export type FiltrosListarRotas = {
   motoristaId?: string;
   veiculoId?: string;
 };
+
+// ---- Geração automática do translado (FT3) ----
+
+export type GerarTransladoPayload = {
+  data: string;
+  confirmar: boolean;
+  usarIa: boolean;
+};
+
+export type ParadaGerada = {
+  ordem: number;
+  sessaoId: string;
+  pacienteId: string;
+  pacienteNome: string;
+  comAcompanhante: boolean;
+};
+
+export type RotaGerada = {
+  rotaId: string | null;
+  veiculoId: string;
+  veiculoPlaca: string;
+  motoristaId: string;
+  motoristaNome: string;
+  unidadeId: string;
+  unidadeNome: string;
+  qtdPacientes: number;
+  distanciaTotalMetros: number;
+  duracaoEstimadaSegundos: number;
+  paradas: ParadaGerada[];
+};
+
+export type SessaoNaoAlocada = {
+  sessaoId: string;
+  pacienteId: string;
+  pacienteNome: string;
+  unidadeId: string;
+  unidadeNome: string;
+  motivo: string;
+};
+
+export type ResultadoGeracao = {
+  data: string;
+  confirmado: boolean;
+  usouIa: boolean;
+  aproximado: boolean;
+  totalSessoes: number;
+  totalAlocadas: number;
+  rotas: RotaGerada[];
+  naoAlocadas: SessaoNaoAlocada[];
+};

@@ -4,10 +4,18 @@ import type {
   CadastrarRotaPayload,
   CriarAlocacaoPayload,
   FiltrosListarRotas,
+  GerarTransladoPayload,
+  ResultadoGeracao,
   RotaDiaria,
   RotaDiariaListItem,
   SessaoElegivel,
 } from '@/features/translados/types';
+
+/** Geração automática (FT3): preview (confirmar=false) ou gravar (confirmar=true). */
+export async function gerarTranslado(payload: GerarTransladoPayload): Promise<ResultadoGeracao> {
+  const { data } = await http.post<ResultadoGeracao>('/translados/gerar', payload);
+  return data;
+}
 
 export async function listarRotas(filtros: FiltrosListarRotas = {}): Promise<RotaDiariaListItem[]> {
   const params: Record<string, string> = {};

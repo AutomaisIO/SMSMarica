@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Eye, Plus, Trash2 } from 'lucide-react';
+import { Eye, Plus, Trash2, Wand2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { usePermissao } from '@/shared/auth/authStore';
 import { BotaoLinhaAcao } from '@/shared/ui/BotaoLinhaAcao';
 import { Button } from '@/shared/ui/Button';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
@@ -35,6 +36,7 @@ export function TransladosPage() {
   const navigate = useNavigate();
   const lista = useListarRotas();
   const cancelar = useCancelarRota();
+  const podeGerar = usePermissao('Translados', 'Inclusao');
 
   const [paraCancelar, setParaCancelar] = useState<RotaDiariaListItem | null>(null);
   const [erroAcao, setErroAcao] = useState<string | null>(null);
@@ -110,10 +112,18 @@ export function TransladosPage() {
             Rotas diárias. Clique em uma data para operar alocações de pacientes nos assentos.
           </p>
         </div>
-        <Button onClick={() => navigate('/app/translados/novo')}>
-          <Plus className="h-4 w-4" />
-          Novo translado
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {podeGerar ? (
+            <Button variante="outline" onClick={() => navigate('/app/translados/gerar')}>
+              <Wand2 className="h-4 w-4" />
+              Gerar automático
+            </Button>
+          ) : null}
+          <Button onClick={() => navigate('/app/translados/novo')}>
+            <Plus className="h-4 w-4" />
+            Novo translado
+          </Button>
+        </div>
       </header>
 
       {lista.isError ? (

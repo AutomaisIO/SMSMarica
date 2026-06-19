@@ -37,6 +37,7 @@ import { TiposTratamentoPage } from '@/features/tiposTratamento/pages/TiposTrata
 import { TransladoDetalhePage } from '@/features/translados/pages/TransladoDetalhePage';
 import { TransladoFormPage } from '@/features/translados/pages/TransladoFormPage';
 import { TransladosPage } from '@/features/translados/pages/TransladosPage';
+import { GerarTransladoPage } from '@/features/translados/pages/GerarTransladoPage';
 import { TratamentoDetalhePage } from '@/features/tratamentos/pages/TratamentoDetalhePage';
 import { TratamentoFormPage } from '@/features/tratamentos/pages/TratamentoFormPage';
 import { TratamentosPage } from '@/features/tratamentos/pages/TratamentosPage';
@@ -109,6 +110,7 @@ export function AppRouter() {
           <Route path="tratamentos/novo" element={<TratamentoFormPage />} />
           <Route path="tratamentos/:id" element={<TratamentoDetalhePage />} />
           <Route path="translados" element={<TransladosPage />} />
+          <Route path="translados/gerar" element={<GerarTransladoPage />} />
           <Route path="translados/novo" element={<TransladoFormPage />} />
           <Route path="translados/:id" element={<TransladoDetalhePage />} />
           <Route path="translados/:id/editar" element={<TransladoFormPage />} />
