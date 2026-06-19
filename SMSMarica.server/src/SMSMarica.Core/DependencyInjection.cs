@@ -229,6 +229,7 @@ public static class DependencyInjection
 
         // WhatsApp (Meta Cloud API) — cliente de envio + webhook de recebimento (FT6).
         services.AddScoped<Notificacoes.WhatsApp.IWhatsAppWebhookService, Notificacoes.WhatsApp.WhatsAppWebhookService>();
+        services.AddScoped<Notificacoes.WhatsApp.IWhatsAppNotificador, Notificacoes.WhatsApp.WhatsAppNotificador>();
         services.AddHttpClient<Notificacoes.WhatsApp.IWhatsAppCliente, Notificacoes.WhatsApp.WhatsAppCliente>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(20);

@@ -8,7 +8,7 @@ using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Tratamentos;
 
-public sealed class TratamentosService(SmsMaricaDbContext db, IPacienteResolver resolver) : ITratamentosService
+public sealed class TratamentosService(SmsMaricaDbContext db, IPacienteResolver resolver, Faturamento.IFaturamentoService faturamento) : ITratamentosService
 {
     private readonly SmsMaricaDbContext _db = db;
     private readonly IPacienteResolver _resolver = resolver;
@@ -301,6 +301,13 @@ public sealed class TratamentosService(SmsMaricaDbContext db, IPacienteResolver 
         sessao.AtualizadoEm = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(cancellationToken);
+
+        // Auto-contabiliza o faturamento TFD da sessão realizada (best-effort — não bloqueia a conclusão).
+        if (request.Realizada)
+        {
+            try { await faturamento.ContabilizarAsync(sessaoId, cancellationToken); }
+            catch (Exception) { /* faturamento é best-effort; falha aqui não impede confirmar a sessão */ }
+        }
     }
 
     private static void GarantirEditavel(SessaoDeTratamento s)
