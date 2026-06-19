@@ -37,9 +37,17 @@ public sealed record AtualizarContatoCidadaoRequest(
 
 public sealed record AtualizarFotoCidadaoRequest(string? FotoBase64);
 
-// --- Resumos clínicos do app (shapes estáveis p/ a PWA). Hoje retornam vazio (stub);
-// o preenchimento virá das fontes (TFD / FHIR / Salux) numa próxima leva. ---
+// --- Resumos clínicos do app (shapes estáveis p/ a PWA). Translados/exames/laudos
+// ainda são stub; atendimentos já vêm do hub FHIR (Encounter + Condition + documentos). ---
 public sealed record TransladoResumoDto(Guid Id, string Data, string Destino, string Status);
-public sealed record AtendimentoResumoDto(Guid Id, DateTime Data, string Estabelecimento, string Profissional, string Descricao);
+public sealed record AtendimentoResumoDto(
+    Guid Id,
+    DateTime Data,
+    string Estabelecimento,
+    string Profissional,
+    string Descricao,
+    IReadOnlyList<DocumentoResumoDto> Documentos);
+/// <summary>Documento clínico do atendimento (DocumentReference), com HTML já decodificado.</summary>
+public sealed record DocumentoResumoDto(Guid Id, string Tipo, DateTime? Data, string ConteudoHtml);
 public sealed record ExameResumoDto(Guid Id, DateTime Data, string Nome, string Status);
 public sealed record LaudoResumoDto(Guid Id, DateTime Data, string Titulo, string Status);

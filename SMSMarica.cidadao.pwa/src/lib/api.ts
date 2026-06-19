@@ -22,12 +22,19 @@ export type AtualizarContato = {
 };
 
 export type Translado = { id: string; data: string; destino: string; status: string };
+export type DocumentoAtendimento = {
+  id: string;
+  tipo: string;
+  data: string | null;
+  conteudoHtml: string;
+};
 export type Atendimento = {
   id: string;
   data: string;
   estabelecimento: string;
   profissional: string;
   descricao: string;
+  documentos: DocumentoAtendimento[];
 };
 export type Exame = { id: string; data: string; nome: string; status: string };
 export type Laudo = { id: string; data: string; titulo: string; status: string };

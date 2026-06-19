@@ -80,7 +80,11 @@ public sealed class CidadaoController(
             (a.Inicio ?? a.Fim ?? default).DateTime,
             a.Tipo,
             a.MedicoNome ?? "Profissional não informado",
-            DescricaoAtendimento(a)));
+            DescricaoAtendimento(a),
+            a.Documentos
+                .Where(d => !string.IsNullOrWhiteSpace(d.ConteudoHtml))
+                .Select(d => new DocumentoResumoDto(d.Id, d.Tipo, d.Data?.DateTime, d.ConteudoHtml))
+                .ToList()));
         return Ok(resumos);
     }
 

@@ -17,3 +17,10 @@ createRoot(container).render(
 
 // Service worker (cache offline + auto-update). Ver `@/lib/pwa`.
 registrarPwa();
+
+// Cara de app: bloqueia o menu de contexto (clique direito / long-press) fora de campos.
+window.addEventListener('contextmenu', (e) => {
+  const alvo = e.target as HTMLElement | null;
+  if (alvo?.closest('input, textarea, [contenteditable="true"]')) return;
+  e.preventDefault();
+});

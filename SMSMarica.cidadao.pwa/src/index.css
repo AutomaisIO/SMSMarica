@@ -23,6 +23,26 @@ body {
   -webkit-tap-highlight-color: transparent;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* Cara de app nativo: sem seleção de texto/realce e sem menu de long-press. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  overscroll-behavior-y: none; /* sem "bounce" de página no fim do scroll */
+}
+
+/* Campos de formulário continuam selecionáveis (digitar, colar, posicionar cursor). */
+input,
+textarea,
+[contenteditable='true'] {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
+/* Imagens não arrastáveis (parece browser). */
+img {
+  -webkit-user-drag: none;
+  user-select: none;
 }
 
 /* Foco visível e consistente em todo o app (piso de acessibilidade). */
