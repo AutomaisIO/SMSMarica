@@ -1,3 +1,8 @@
 # Documentos sensíveis da integração SISREG: PDFs assinados (CPF/assinatura),
 # termo de consentimento e proposta comercial. Mantidos apenas localmente — não versionar.
 docs/Integração SISREG/
+
+# Credenciais Google (OAuth client secret + API keys da Directions API).
+# Segredos — nunca versionar; manter só localmente / em secret manager.
+docs/client_secret_*.json
+docs/credenciais_*.txt
