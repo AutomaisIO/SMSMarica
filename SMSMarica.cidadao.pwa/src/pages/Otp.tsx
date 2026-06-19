@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { http, extrairMensagemDeErro } from '@/lib/httpClient';
 import { useAuth, type PacienteSessao } from '@/store/auth';
-import { Botao, Tela } from '@/components/Tela';
+import { AuthShell } from '@/components/AuthShell';
+import { PrimaryButton } from '@/components/ui';
 
 type RespostaLogin = { token: string; paciente: PacienteSessao };
 
@@ -27,7 +28,6 @@ export function Otp() {
     setErro(null);
     setEnviando(true);
     try {
-      // TODO(FT7): endpoint a implementar no backend — valida o OTP e devolve o token.
       const { data } = await http.post<RespostaLogin>('/auth/paciente/validar-otp', {
         cpf,
         codigo: codigo.replace(/\D/g, ''),
@@ -42,38 +42,36 @@ export function Otp() {
   }
 
   return (
-    <Tela titulo="Código de acesso">
-      <p className="text-neutral-600 mb-6 text-center">
-        Digite o código que enviamos pelo WhatsApp.
-      </p>
+    <AuthShell titulo="Código de acesso" subtitulo="Digite o código que enviamos pelo WhatsApp.">
       {codigoTeste && (
-        <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-center text-sm text-amber-800">
+        <div className="mb-5 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-center text-sm text-amber-800">
           Modo de teste — envio por WhatsApp ainda não ativo.
           <br />
-          Seu código: <span className="text-lg font-bold tracking-[0.3em]">{codigoTeste}</span>
+          Seu código: <span className="font-mono text-xl font-bold tracking-[0.3em]">{codigoTeste}</span>
         </div>
       )}
-      <form onSubmit={validar} className="space-y-4">
+      <form onSubmit={validar} className="space-y-5">
         <input
           inputMode="numeric"
           autoComplete="one-time-code"
+          aria-label="Código de acesso"
           value={codigo}
           onChange={(e) => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))}
-          placeholder="••••••"
-          className="w-full rounded-xl border border-neutral-300 px-4 py-3 text-center text-2xl tracking-[0.5em] focus:border-marica focus:outline-none"
+          placeholder="······"
+          className="w-full rounded-2xl border border-areia bg-white py-4 text-center font-mono text-3xl tracking-[0.5em] text-tinta focus:border-lagoa focus:outline-none"
         />
         {erro && <p className="text-sm text-marica">{erro}</p>}
-        <Botao type="submit" disabled={!valido || enviando}>
-          {enviando ? 'Validando…' : 'Entrar'}
-        </Botao>
+        <PrimaryButton type="submit" disabled={!valido} carregando={enviando}>
+          Entrar
+        </PrimaryButton>
         <button
           type="button"
           onClick={() => navigate('/login')}
-          className="w-full text-sm text-neutral-500 underline"
+          className="block w-full text-center text-sm font-medium text-tinta-mute underline"
         >
           Trocar CPF
         </button>
       </form>
-    </Tela>
+    </AuthShell>
   );
 }

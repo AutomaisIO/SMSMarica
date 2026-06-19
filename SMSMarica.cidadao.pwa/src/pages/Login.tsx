@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { MessageCircle } from 'lucide-react';
 import { http, extrairMensagemDeErro } from '@/lib/httpClient';
-import { Botao, Tela } from '@/components/Tela';
+import { AuthShell } from '@/components/AuthShell';
+import { Field, PrimaryButton } from '@/components/ui';
 
 function mascararCpf(valor: string): string {
   const d = valor.replace(/\D/g, '').slice(0, 11);
@@ -38,29 +40,30 @@ export function Login() {
   }
 
   return (
-    <Tela titulo="Entrar">
-      <div className="text-center mb-6">
-        <p className="text-neutral-600">
-          Informe seu CPF. Enviaremos um código de acesso pelo WhatsApp do número cadastrado.
-        </p>
-      </div>
-      <form onSubmit={solicitar} className="space-y-4">
-        <label className="block">
-          <span className="text-sm font-medium text-neutral-700">CPF</span>
-          <input
-            inputMode="numeric"
-            autoComplete="off"
-            value={cpf}
-            onChange={(e) => setCpf(mascararCpf(e.target.value))}
-            placeholder="000.000.000-00"
-            className="mt-1 w-full rounded-xl border border-neutral-300 px-4 py-3 text-lg tracking-wide focus:border-marica focus:outline-none"
-          />
-        </label>
+    <AuthShell
+      titulo="Entrar"
+      subtitulo="Informe seu CPF. Enviaremos um código de acesso pelo WhatsApp do número cadastrado na Saúde."
+    >
+      <form onSubmit={solicitar} className="space-y-5">
+        <Field
+          label="CPF"
+          inputMode="numeric"
+          autoComplete="off"
+          autoFocus
+          placeholder="000.000.000-00"
+          value={cpf}
+          onChange={(e) => setCpf(mascararCpf(e.target.value))}
+          className="text-lg tracking-wide"
+        />
         {erro && <p className="text-sm text-marica">{erro}</p>}
-        <Botao type="submit" disabled={!valido || enviando}>
-          {enviando ? 'Enviando…' : 'Receber código'}
-        </Botao>
+        <PrimaryButton type="submit" disabled={!valido} carregando={enviando}>
+          <MessageCircle className="h-5 w-5" />
+          Receber código
+        </PrimaryButton>
+        <p className="text-center text-xs text-tinta-mute">
+          Sem cadastro na Saúde de Maricá? Procure a sua unidade.
+        </p>
       </form>
-    </Tela>
+    </AuthShell>
   );
 }

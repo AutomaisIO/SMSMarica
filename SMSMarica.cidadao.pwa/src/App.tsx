@@ -1,9 +1,14 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from '@/store/auth';
+import { AppShell } from '@/components/AppShell';
 import { Login } from '@/pages/Login';
 import { Otp } from '@/pages/Otp';
-import { Agenda } from '@/pages/Agenda';
-import { Translado } from '@/pages/Translado';
+import { Home } from '@/pages/Home';
+import { Perfil } from '@/pages/Perfil';
+import { Atendimentos } from '@/pages/Atendimentos';
+import { Exames } from '@/pages/Exames';
+import { Laudos } from '@/pages/Laudos';
+import { Transporte } from '@/pages/Transporte';
 
 function Protegida({ children }: { children: React.ReactNode }) {
   const token = useAuth((s) => s.token);
@@ -17,22 +22,22 @@ export function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/login/codigo" element={<Otp />} />
+
         <Route
-          path="/"
           element={
             <Protegida>
-              <Agenda />
+              <AppShell />
             </Protegida>
           }
-        />
-        <Route
-          path="/translado/:id"
-          element={
-            <Protegida>
-              <Translado />
-            </Protegida>
-          }
-        />
+        >
+          <Route path="/" element={<Home />} />
+          <Route path="/atendimentos" element={<Atendimentos />} />
+          <Route path="/exames" element={<Exames />} />
+          <Route path="/laudos" element={<Laudos />} />
+          <Route path="/transporte" element={<Transporte />} />
+          <Route path="/perfil" element={<Perfil />} />
+        </Route>
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

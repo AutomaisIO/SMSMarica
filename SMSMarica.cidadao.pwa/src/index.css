@@ -1,3 +1,6 @@
+@import '@fontsource-variable/bricolage-grotesque';
+@import '@fontsource-variable/inter';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -14,6 +17,48 @@ body,
 
 body {
   margin: 0;
-  background: #fafafa;
+  background: #efe7e3; /* moldura mais escura que o "papel" — destaca o frame do app no desktop */
+  color: #201a1b;
+  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
   -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Foco visível e consistente em todo o app (piso de acessibilidade). */
+:where(a, button, input, [tabindex]):focus-visible {
+  outline: 2px solid #0e7c7b;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Guilloché: textura de linha de segurança do "Cartão do Cidadão" (assinatura visual).
+   Aplicado via pseudo-elemento para NÃO sobrescrever o gradiente/cor de fundo do elemento
+   (o background-image do Tailwind seria clobberado se o padrão fosse no próprio elemento). */
+.guilloche {
+  position: relative;
+  isolation: isolate;
+}
+.guilloche::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    repeating-radial-gradient(circle at 18% 120%, transparent 0 13px, rgba(255, 255, 255, 0.08) 13px 14px),
+    repeating-radial-gradient(circle at 88% -20%, transparent 0 11px, rgba(255, 255, 255, 0.06) 11px 12px);
+}
+.guilloche > * {
+  position: relative;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
 }
