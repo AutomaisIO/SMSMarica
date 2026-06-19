@@ -57,6 +57,7 @@ import { SisregConsultaPage } from '@/features/sisreg/pages/SisregConsultaPage';
 import { SisregConfiguracaoPage } from '@/features/sisreg/pages/SisregConfiguracaoPage';
 import { PepSincronizacaoPage } from '@/features/pep-sincronizacao/pages/PepSincronizacaoPage';
 import { ApiTokensPage } from '@/features/api-tokens/pages/ApiTokensPage';
+import { IntegracoesPage } from '@/features/integracoes/pages/IntegracoesPage';
 import { useAuth } from '@/shared/auth/authStore';
 
 function RedirecionamentoRaiz() {
@@ -142,6 +143,7 @@ export function AppRouter() {
           <Route path="sisreg/configuracao" element={<SisregConfiguracaoPage />} />
           <Route path="pep-sincronizacao" element={<PepSincronizacaoPage />} />
           <Route path="api-tokens" element={<ApiTokensPage />} />
+          <Route path="integracoes" element={<IntegracoesPage />} />
         </Route>
       </Route>
 

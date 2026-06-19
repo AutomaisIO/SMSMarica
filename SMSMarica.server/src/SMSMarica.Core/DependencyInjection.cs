@@ -145,6 +145,9 @@ public static class DependencyInjection
         services.AddScoped<Agendamentos.IAgendaService, Agendamentos.AgendaService>();
         services.AddScoped<Agendamentos.IAgendamentoService, Agendamentos.AgendamentoService>();
 
+        // ---- Credenciais de provedores OAuth (Microsoft/Facebook/Google), cifradas ----
+        services.AddScoped<Integracoes.Credenciais.IIntegracaoCredencialService, Integracoes.Credenciais.IntegracaoCredencialService>();
+
         // ---- Integração SISREG (feed de leitura DATASUS) — ADR-0012 ----
         // BaseUrl e credenciais vêm do banco (tela de configuração), não do registro de DI.
         services.AddScoped<Integracoes.Sisreg.Configuracao.ISisregConfiguracaoService, Integracoes.Sisreg.Configuracao.SisregConfiguracaoService>();

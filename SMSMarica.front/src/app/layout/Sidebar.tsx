@@ -184,6 +184,7 @@ const SECOES: SecaoMenu[] = [
     titulo: 'Integrações',
     icone: KeySquare,
     itens: [
+      { rotulo: 'Credenciais', to: '/app/integracoes', icone: Settings2, modulo: 'IntegracoesConfig' },
       { rotulo: 'API Tokens', to: '/app/api-tokens', icone: KeySquare, modulo: 'ApiTokens' },
     ],
   },

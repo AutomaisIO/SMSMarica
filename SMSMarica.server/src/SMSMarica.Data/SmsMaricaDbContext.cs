@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Agendamentos;
 using SMSMarica.Data.Entities.Ia;
+using SMSMarica.Data.Entities.Integracoes;
 using SMSMarica.Data.Entities.Pep;
 using SMSMarica.Data.Entities.Sisreg;
 using SMSMarica.Data.Entities.Tfd;
@@ -56,6 +57,9 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
 
     // Integração SISREG (feed de leitura) — ADR-0012
     public DbSet<SisregConfiguracao> SisregConfiguracoes => Set<SisregConfiguracao>();
+
+    // Credenciais de provedores de login OAuth (Microsoft/Facebook/Google), cifradas
+    public DbSet<IntegracaoCredencial> IntegracaoCredenciais => Set<IntegracaoCredencial>();
 
     // Sincronização de PEPs (importação Salux/outros → hub FHIR) — ADR-0014
     public DbSet<PepSincronizacaoExecucao> PepSincronizacaoExecucoes => Set<PepSincronizacaoExecucao>();
