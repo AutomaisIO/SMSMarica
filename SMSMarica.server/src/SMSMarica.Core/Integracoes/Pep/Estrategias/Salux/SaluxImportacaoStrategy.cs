@@ -244,7 +244,7 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
         foreach (var d in edocs) maxEdoc = Max(maxEdoc, ParseUtc(d.Dt));
 
         if (purgarPorPaciente)
-            await ParaCada(cds, gate, cd => PurgarBaseDoPacienteAsync(ctx, IdDe(pacientes[cd]), sourcesPurga, gate, ct), ct);
+            await ParaCada(cds, gate, cd => PurgarPacienteAsync(ctx, IdDe(pacientes[cd]), sourcesPurga, ct), ct);
 
         var encPorBaa = new ConcurrentDictionary<string, string>();
         await ParaCada(baas, gate, async b =>
@@ -343,15 +343,28 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
                 nv.Add(id);
     }
 
-    private static async Task PurgarBaseDoPacienteAsync(ContextoImportacaoPep ctx, string patientId, IReadOnlySet<string> sources, SemaphoreSlim gate, CancellationToken ct)
+    /// <summary>
+    /// Purga TODOS os recursos clínicos (deste source) de um paciente, em laço até esvaziar.
+    /// A busca do hub tem teto por página (200/500) sem paginação e <see cref="HubFhirEscritor"/>
+    /// não segue <c>next</c>; como Criar é POST cego, parar no 1º teto deixaria recursos antigos
+    /// vivos e o reimport DUPLICARIA. Exclui é soft-delete, então cada nova busca já omite os
+    /// apagados e o laço converge em ceil(N/teto) rodadas. Sequencial por paciente (NÃO reentra
+    /// no semáforo — isso travaria o run); a concorrência vem do <c>ParaCada</c> externo.
+    /// </summary>
+    private static async Task PurgarPacienteAsync(ContextoImportacaoPep ctx, string patientId, IReadOnlySet<string> sources, CancellationToken ct)
     {
         foreach (var tipo in TiposClinicos)
         {
-            var bundle = await ctx.Escritor.BuscarPorPacienteAsync(tipo, patientId, ct);
-            var ids = bundle.Entry
-                .Where(e => e.Resource?.Id is not null && e.Resource.Meta?.Source is { } s && sources.Contains(s))
-                .Select(e => e.Resource!.Id!).ToList();
-            await ParaCada(ids, gate, rid => ctx.Escritor.ExcluirAsync(tipo, rid, ct), ct);
+            while (true)
+            {
+                var bundle = await ctx.Escritor.BuscarPorPacienteAsync(tipo, patientId, ct);
+                var ids = bundle.Entry
+                    .Where(e => e.Resource?.Id is not null && e.Resource.Meta?.Source is { } s && sources.Contains(s))
+                    .Select(e => e.Resource!.Id!).ToList();
+                if (ids.Count == 0) break;
+                foreach (var rid in ids)
+                    await ctx.Escritor.ExcluirAsync(tipo, rid, ct);
+            }
         }
     }
 
@@ -359,11 +372,17 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
     {
         foreach (var tipo in TiposClinicos)
         {
-            var bundle = await ctx.Escritor.ListarAsync(tipo, ct);
-            var ids = bundle.Entry
-                .Where(e => e.Resource?.Id is not null && e.Resource.Meta?.Source is { } s && sources.Contains(s))
-                .Select(e => e.Resource!.Id!).ToList();
-            await ParaCada(ids, gate, rid => ctx.Escritor.ExcluirAsync(tipo, rid, ct), ct);
+            // Laço até esvaziar: ListarAsync também é capado por página e sem paginação; parar na
+            // 1ª página deixaria a maior parte da base viva (full refresh incompleto → duplicação).
+            while (true)
+            {
+                var bundle = await ctx.Escritor.ListarAsync(tipo, ct);
+                var ids = bundle.Entry
+                    .Where(e => e.Resource?.Id is not null && e.Resource.Meta?.Source is { } s && sources.Contains(s))
+                    .Select(e => e.Resource!.Id!).ToList();
+                if (ids.Count == 0) break;
+                await ParaCada(ids, gate, rid => ctx.Escritor.ExcluirAsync(tipo, rid, ct), ct);
+            }
         }
     }
 
