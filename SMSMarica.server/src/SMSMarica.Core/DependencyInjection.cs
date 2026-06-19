@@ -217,6 +217,8 @@ public static class DependencyInjection
         services.AddScoped<Inteligencia.Governanca.IIaGovernancaService, Inteligencia.Governanca.IaGovernancaService>();
 
         // ---- Módulo TFD: configuração de integrações + geocodificação (FT0/FT1) — ADR-0017 ----
+        services.AddMemoryCache();
+        services.AddScoped<Cidadao.IPacienteAuthService, Cidadao.PacienteAuthService>();
         services.AddScoped<Tfd.Configuracao.ITfdConfigService, Tfd.Configuracao.TfdConfigService>();
         services.AddScoped<Geo.IGeocodificadorService, Geo.GeocodificadorService>();
         services.AddHttpClient<Geo.Google.IGoogleGeocodingClient, Geo.Google.GoogleGeocodingClient>(client =>

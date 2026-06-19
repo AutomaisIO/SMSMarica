@@ -10,9 +10,11 @@ export function Otp() {
   const navigate = useNavigate();
   const location = useLocation();
   const entrar = useAuth((s) => s.entrar);
-  const cpf = (location.state as { cpf?: string } | null)?.cpf;
+  const estado = location.state as { cpf?: string; codigoTeste?: string } | null;
+  const cpf = estado?.cpf;
+  const codigoTeste = estado?.codigoTeste;
 
-  const [codigo, setCodigo] = useState('');
+  const [codigo, setCodigo] = useState(codigoTeste ?? '');
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -44,6 +46,13 @@ export function Otp() {
       <p className="text-neutral-600 mb-6 text-center">
         Digite o código que enviamos pelo WhatsApp.
       </p>
+      {codigoTeste && (
+        <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-center text-sm text-amber-800">
+          Modo de teste — envio por WhatsApp ainda não ativo.
+          <br />
+          Seu código: <span className="text-lg font-bold tracking-[0.3em]">{codigoTeste}</span>
+        </div>
+      )}
       <form onSubmit={validar} className="space-y-4">
         <input
           inputMode="numeric"

@@ -207,7 +207,13 @@
       "Bash(ls docs/pacs*.md)",
       "PowerShell(plink *)",
       "Bash(perl -i -pe \"s/'\\\\x7f'/0x7F/ if \\\\$. == 116\" ConstrutorMwlItem.cs)",
-      "Bash(pdftotext -layout webfetch-1781794111182-lwopfz.pdf aws.txt)"
+      "Bash(pdftotext -layout webfetch-1781794111182-lwopfz.pdf aws.txt)",
+      "Bash(command -v sshpass)",
+      "Bash(command -v plink)",
+      "Bash(command -v ssh)",
+      "Bash(ssh -V)",
+      "Bash(tar -czf ../smsmarica-app.tar.gz -C dist .)",
+      "Bash(\"/c/Program Files/PuTTY/pscp\" -batch -pw '#030957#Be' \"../smsmarica-app.tar.gz\" \"root@smsmarica.online:/tmp/smsmarica-app.tar.gz\")"
     ]
   }
 }

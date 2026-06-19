@@ -65,6 +65,9 @@ builder.Services.AddCore(builder.Configuration);
 builder.Services.AddSignalR();
 builder.Services.AddScoped<SMSMarica.Core.Rastreamento.IRastreamentoNotificador, SMSMarica.Api.Realtime.RastreamentoNotificadorSignalR>();
 
+// Token JWT do paciente (login CPF + OTP do PWA).
+builder.Services.AddScoped<SMSMarica.Core.Cidadao.IPacienteTokenService, SMSMarica.Api.Auth.PacienteTokenService>();
+
 // Módulo IA: cifragem de segredos (token do provedor, senha das bases) em repouso.
 builder.Services.AddDataProtection();
 builder.Services.AddScoped<SMSMarica.Core.Inteligencia.Seguranca.IProtetorSegredos, SMSMarica.Api.Auth.ProtetorSegredos>();

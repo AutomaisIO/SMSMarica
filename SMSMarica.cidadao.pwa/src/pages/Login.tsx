@@ -25,9 +25,11 @@ export function Login() {
     setErro(null);
     setEnviando(true);
     try {
-      // TODO(FT7): endpoint a implementar no backend — envia OTP por WhatsApp.
-      await http.post('/auth/paciente/solicitar-otp', { cpf: cpfLimpo });
-      navigate('/login/codigo', { state: { cpf: cpfLimpo } });
+      // Modo de teste: o backend devolve o código (codigoTeste) enquanto o WhatsApp não está ativo.
+      const { data } = await http.post<{ codigoTeste?: string }>('/auth/paciente/solicitar-otp', {
+        cpf: cpfLimpo,
+      });
+      navigate('/login/codigo', { state: { cpf: cpfLimpo, codigoTeste: data?.codigoTeste } });
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
     } finally {
