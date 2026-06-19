@@ -11,15 +11,16 @@ import type { FrotaVeiculo } from '@/features/rastreamento/types';
 const CENTRO_MARICA: [number, number] = [-22.9197, -42.8186];
 const INTERVALO_MS = 15_000; // GPS chega ~1/min; 15s mantém o mapa fresco sem custo
 
-const STATUS: Record<number, { rotulo: string; cor: string }> = {
-  1: { rotulo: 'Planejada', cor: '#6b7280' },
-  2: { rotulo: 'Em andamento', cor: '#16a34a' },
-  3: { rotulo: 'Concluída', cor: '#2563eb' },
-  4: { rotulo: 'Cancelada', cor: '#dc2626' },
+// StatusRota chega como string (JsonStringEnumConverter global no backend).
+const STATUS: Record<string, { rotulo: string; cor: string }> = {
+  Planejada: { rotulo: 'Planejada', cor: '#6b7280' },
+  EmAndamento: { rotulo: 'Em andamento', cor: '#16a34a' },
+  Concluida: { rotulo: 'Concluída', cor: '#2563eb' },
+  Cancelada: { rotulo: 'Cancelada', cor: '#dc2626' },
 };
 
-function statusDe(s: number) {
-  return STATUS[s] ?? { rotulo: `Status ${s}`, cor: '#6b7280' };
+function statusDe(s: string) {
+  return STATUS[s] ?? { rotulo: s, cor: '#6b7280' };
 }
 
 function dataLocalHoje(): string {

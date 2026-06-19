@@ -1,9 +1,9 @@
 export type TipoGeofence = 'Unidade' | 'Paciente' | 'PontoLogistico';
 
-/** StatusRota do backend: 1=Planejada, 2=EmAndamento, 3=Concluída, 4=Cancelada. */
+/** StatusRota do backend (enum serializado como string): Planejada | EmAndamento | Concluida | Cancelada. */
 export type FrotaVeiculo = {
   rotaId: string;
-  status: number;
+  status: string;
   veiculoId: string;
   veiculoPlaca: string;
   veiculoModelo: string;
