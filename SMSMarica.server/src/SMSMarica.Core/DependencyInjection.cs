@@ -235,6 +235,12 @@ public static class DependencyInjection
         {
             client.Timeout = TimeSpan.FromSeconds(20);
         });
+        // FT3: distribuição inteligente de pacientes nos veículos via Claude (config cifrada do módulo IA).
+        services.AddHttpClient<Translado.Geracao.IA.IDistribuidorIa, Translado.Geracao.IA.DistribuidorIa>(client =>
+        {
+            client.BaseAddress = new Uri(anthropicBaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(120);
+        });
 
         // WhatsApp (Meta Cloud API) — cliente de envio + webhook de recebimento (FT6).
         services.AddScoped<Notificacoes.WhatsApp.IWhatsAppWebhookService, Notificacoes.WhatsApp.WhatsAppWebhookService>();

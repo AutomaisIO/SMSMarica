@@ -5,6 +5,7 @@ using SMSMarica.Core.Geo;
 using SMSMarica.Core.Geo.Google;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.Translado.Geracao.Dtos;
+using SMSMarica.Core.Translado.Geracao.IA;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
@@ -15,6 +16,7 @@ public sealed class GeradorDeTransladoService(
     SmsMaricaDbContext db,
     IGeocodificadorService geo,
     IGoogleRoutesClient rotas,
+    IDistribuidorIa distribuidor,
     IPacientesService pacientes,
     ILogger<GeradorDeTransladoService> logger) : IGeradorDeTransladoService
 {
@@ -90,83 +92,154 @@ public sealed class GeradorDeTransladoService(
             .Include(m => m.Usuario)
             .ToListAsync(ct);
 
-        // 4) Distribuição (heurística): por destino, empacota nos veículos respeitando capacidade.
+        // 4) Distribuição: Claude sugere paciente→veículo (revalidado aqui); heurística como fallback.
         var planos = new List<PlanoRota>();
-        var iVeiculo = 0;
         var iMotorista = 0;
+        Motorista ProximoMotorista() => motoristas[iMotorista++ % motoristas.Count];
 
-        foreach (var grupo in candidatos.GroupBy(c => new { c.UnidadeId, c.UnidadeNome }))
+        // Monta o plano de um veículo+chunk: ordem de coleta via Google Routes (haversine como fallback).
+        async Task<PlanoRota> MontarPlanoAsync(
+            Veiculo v, Motorista motorista, Guid unidadeId, string unidadeNome, List<Candidato> chunk, List<Assento> livres)
         {
-            var pendentes = grupo.ToList();
-            while (pendentes.Count > 0)
+            var destino = chunk[0].Destino;
+            List<Candidato> ordenado;
+            int metrosTotal;
+            int duracaoSeg;
+            var otimizado = false;
+
+            RotaOtimizada? otim = null;
+            try
             {
-                if (iVeiculo >= veiculos.Count || motoristas.Count == 0)
-                {
-                    foreach (var c in pendentes)
-                        naoAlocadas.Add(new SessaoNaoAlocadaDto(c.SessaoId, c.PacienteId, c.Nome, c.UnidadeId, c.UnidadeNome, "Sem veículo/motorista disponível"));
-                    pendentes.Clear();
-                    break;
-                }
+                otim = await rotas.OtimizarColetaAsync([.. chunk.Select(c => c.Origem)], destino, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogDebug(ex, "Routes indisponível; usando heurística haversine.");
+            }
 
-                var v = veiculos[iVeiculo++];
+            if (otim is not null && otim.OrdemColetas.Count == chunk.Count)
+            {
+                ordenado = [.. otim.OrdemColetas.Select(i => chunk[i])];
+                metrosTotal = (int)(otim.DistanciaMetros * 2); // Routes mede a ida; dobra p/ ida + volta
+                duracaoSeg = (int)(otim.DuracaoSegundos * 2);
+                otimizado = true;
+            }
+            else
+            {
+                // coleta os mais distantes do destino primeiro (termina perto da unidade)
+                ordenado = [.. chunk.OrderByDescending(c => DistanciaMetros(c.Origem, destino))];
+                var metrosIda = 0.0;
+                for (var i = 0; i < ordenado.Count; i++)
+                {
+                    if (i > 0) metrosIda += DistanciaMetros(ordenado[i - 1].Origem, ordenado[i].Origem);
+                }
+                metrosIda += DistanciaMetros(ordenado[^1].Origem, destino);
+                metrosTotal = (int)Math.Round(metrosIda * 2); // ida + volta (aprox.)
+                duracaoSeg = (int)Math.Round(metrosTotal / VelocidadeMediaMs);
+            }
+
+            return new PlanoRota(v, motorista, unidadeId, unidadeNome, ordenado, livres, metrosTotal, duracaoSeg, otimizado);
+        }
+
+        // Empacota por capacidade (acompanhante = 2 assentos); remove os usados de 'pendentes'.
+        static List<Candidato> Empacotar(List<Candidato> pendentes, int capacidade)
+        {
+            var chunk = new List<Candidato>();
+            var usados = 0;
+            foreach (var c in pendentes.ToList())
+            {
+                var precisa = 1 + (c.ComAcompanhante ? 1 : 0);
+                if (usados + precisa <= capacidade)
+                {
+                    chunk.Add(c);
+                    usados += precisa;
+                    pendentes.Remove(c);
+                }
+            }
+            return chunk;
+        }
+
+        var usouIa = false;
+        string? justificativaIa = null;
+
+        // 4a) Distribuição via Claude (revalidando capacidade/assentos no backend).
+        if (request.UsarIa && candidatos.Count > 0 && veiculos.Count > 0 && motoristas.Count > 0)
+        {
+            var pacientesIa = candidatos.Select(c => new PacienteIa(
+                c.SessaoId.ToString(), c.Nome, c.UnidadeId.ToString(), c.UnidadeNome,
+                c.Origem.Latitude, c.Origem.Longitude, c.ComAcompanhante)).ToList();
+            var veiculosIa = veiculos.Select(v =>
+            {
                 var livres = AssentosLivres(v);
-                var capacidade = livres.Count;
+                return new VeiculoIa(v.Id.ToString(), v.Placa, livres.Count,
+                    livres.Count(a => a.Tipo == TipoAssento.Acompanhante));
+            }).ToList();
 
-                var chunk = new List<Candidato>();
-                var usados = 0;
-                foreach (var c in pendentes.ToList())
+            var sugestao = await distribuidor.DistribuirAsync(pacientesIa, veiculosIa, ct);
+            var porVeiculo = veiculos.ToDictionary(v => v.Id);
+            var mapa = new Dictionary<Guid, Guid>();
+            foreach (var a in sugestao?.Atribuicoes ?? [])
+            {
+                if (Guid.TryParse(a.SessaoId, out var sid) && Guid.TryParse(a.VeiculoId, out var vid)
+                    && porVeiculo.ContainsKey(vid))
                 {
-                    var precisa = 1 + (c.ComAcompanhante ? 1 : 0);
-                    if (usados + precisa <= capacidade)
+                    mapa[sid] = vid;
+                }
+            }
+
+            if (mapa.Count > 0)
+            {
+                usouIa = true;
+                justificativaIa = sugestao!.Justificativa;
+                var atendidos = new HashSet<Guid>();
+
+                foreach (var g in candidatos
+                    .Where(c => mapa.ContainsKey(c.SessaoId))
+                    .GroupBy(c => new { VeiculoId = mapa[c.SessaoId], c.UnidadeId, c.UnidadeNome }))
+                {
+                    var v = porVeiculo[g.Key.VeiculoId];
+                    var livres = AssentosLivres(v);
+                    var pendentes = g.ToList();
+                    var chunk = Empacotar(pendentes, livres.Count);
+                    if (chunk.Count == 0) continue;
+
+                    var plano = await MontarPlanoAsync(v, ProximoMotorista(), g.Key.UnidadeId, g.Key.UnidadeNome, chunk, livres);
+                    planos.Add(plano with { Justificativa = justificativaIa });
+                    foreach (var c in chunk) atendidos.Add(c.SessaoId);
+                }
+
+                foreach (var c in candidatos.Where(c => !atendidos.Contains(c.SessaoId)))
+                {
+                    naoAlocadas.Add(new SessaoNaoAlocadaDto(c.SessaoId, c.PacienteId, c.Nome,
+                        c.UnidadeId, c.UnidadeNome, "Não alocado pela IA (capacidade/distribuição)"));
+                }
+            }
+        }
+
+        // 4b) Heurística (IA desligada ou indisponível): por destino, empacota nos veículos em sequência.
+        if (!usouIa)
+        {
+            var iVeiculo = 0;
+            foreach (var grupo in candidatos.GroupBy(c => new { c.UnidadeId, c.UnidadeNome }))
+            {
+                var pendentes = grupo.ToList();
+                while (pendentes.Count > 0)
+                {
+                    if (iVeiculo >= veiculos.Count || motoristas.Count == 0)
                     {
-                        chunk.Add(c);
-                        usados += precisa;
-                        pendentes.Remove(c);
+                        foreach (var c in pendentes)
+                            naoAlocadas.Add(new SessaoNaoAlocadaDto(c.SessaoId, c.PacienteId, c.Nome, c.UnidadeId, c.UnidadeNome, "Sem veículo/motorista disponível"));
+                        pendentes.Clear();
+                        break;
                     }
-                }
-                if (chunk.Count == 0) continue; // veículo sem assentos suficientes — pula
 
-                var motorista = motoristas[iMotorista++ % motoristas.Count];
-                var destino = chunk[0].Destino;
+                    var v = veiculos[iVeiculo++];
+                    var livres = AssentosLivres(v);
+                    var chunk = Empacotar(pendentes, livres.Count);
+                    if (chunk.Count == 0) continue; // veículo sem assentos suficientes — pula
 
-                List<Candidato> ordenado;
-                int metrosTotal;
-                int duracaoSeg;
-                var otimizado = false;
-
-                // Ordem ótima de coleta via Google Routes (waypoint optimization); haversine como fallback.
-                RotaOtimizada? otim = null;
-                try
-                {
-                    otim = await rotas.OtimizarColetaAsync([.. chunk.Select(c => c.Origem)], destino, ct);
+                    planos.Add(await MontarPlanoAsync(v, ProximoMotorista(), grupo.Key.UnidadeId, grupo.Key.UnidadeNome, chunk, livres));
                 }
-                catch (Exception ex)
-                {
-                    logger.LogDebug(ex, "Routes indisponível; usando heurística haversine.");
-                }
-
-                if (otim is not null && otim.OrdemColetas.Count == chunk.Count)
-                {
-                    ordenado = [.. otim.OrdemColetas.Select(i => chunk[i])];
-                    metrosTotal = (int)(otim.DistanciaMetros * 2); // Routes mede a ida; dobra p/ ida + volta
-                    duracaoSeg = (int)(otim.DuracaoSegundos * 2);
-                    otimizado = true;
-                }
-                else
-                {
-                    // coleta os mais distantes do destino primeiro (termina perto da unidade)
-                    ordenado = [.. chunk.OrderByDescending(c => DistanciaMetros(c.Origem, destino))];
-                    var metrosIda = 0.0;
-                    for (var i = 0; i < ordenado.Count; i++)
-                    {
-                        if (i > 0) metrosIda += DistanciaMetros(ordenado[i - 1].Origem, ordenado[i].Origem);
-                    }
-                    metrosIda += DistanciaMetros(ordenado[^1].Origem, destino);
-                    metrosTotal = (int)Math.Round(metrosIda * 2); // ida + volta (aprox.)
-                    duracaoSeg = (int)Math.Round(metrosTotal / VelocidadeMediaMs);
-                }
-
-                planos.Add(new PlanoRota(v, motorista, grupo.Key.UnidadeId, grupo.Key.UnidadeNome, ordenado, livres, metrosTotal, duracaoSeg, otimizado));
             }
         }
 
@@ -202,7 +275,7 @@ public sealed class GeradorDeTransladoService(
         }
 
         return new ResultadoGeracaoDto(
-            data, request.Confirmar, UsouIa: false, Aproximado: planos.Any(p => !p.Otimizado),
+            data, request.Confirmar, UsouIa: usouIa, Aproximado: planos.Any(p => !p.Otimizado),
             TotalSessoes: rows.Count,
             TotalAlocadas: planos.Sum(p => p.Ordenado.Count),
             Rotas: rotasDto, NaoAlocadas: naoAlocadas);
@@ -289,6 +362,8 @@ public sealed class GeradorDeTransladoService(
     private static string SerializarPlano(PlanoRota p) => JsonSerializer.Serialize(new
     {
         geradoPor = p.Otimizado ? "google-routes-v1" : "heuristica-haversine-v1",
+        distribuidoPor = p.Justificativa is null ? "heuristica" : "claude",
+        justificativaIa = p.Justificativa,
         unidadeId = p.UnidadeId,
         unidade = p.UnidadeNome,
         distanciaMetros = p.DistanciaMetros,
@@ -322,5 +397,6 @@ public sealed class GeradorDeTransladoService(
 
     private sealed record PlanoRota(
         Veiculo Veiculo, Motorista Motorista, Guid UnidadeId, string UnidadeNome,
-        List<Candidato> Ordenado, List<Assento> Livres, int DistanciaMetros, int DuracaoSeg, bool Otimizado);
+        List<Candidato> Ordenado, List<Assento> Livres, int DistanciaMetros, int DuracaoSeg, bool Otimizado,
+        string? Justificativa = null);
 }

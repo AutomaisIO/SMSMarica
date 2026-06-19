@@ -1,7 +1,11 @@
 namespace SMSMarica.Core.Translado.Geracao.Dtos;
 
-/// <summary>Gera o translado de um dia. <see cref="Confirmar"/>=false só simula (preview, sem gravar).</summary>
-public sealed record GerarTransladoRequest(DateOnly Data, bool Confirmar = false);
+/// <summary>
+/// Gera o translado de um dia. <see cref="Confirmar"/>=false só simula (preview, sem gravar).
+/// <see cref="UsarIa"/>=true usa o Claude para distribuir os pacientes nos veículos (com
+/// revalidação de capacidade no backend e fallback para a heurística determinística).
+/// </summary>
+public sealed record GerarTransladoRequest(DateOnly Data, bool Confirmar = false, bool UsarIa = true);
 
 public sealed record ParadaGeradaDto(int Ordem, Guid SessaoId, Guid PacienteId, string PacienteNome, bool ComAcompanhante);
 
