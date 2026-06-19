@@ -8,8 +8,16 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      // favicon e páginas legais estáticas (privacidade/termos) entram no bundle.
-      includeAssets: ['favicon.svg', 'icon.svg', 'privacidade/index.html', 'termos/index.html'],
+      // favicon, ícones de instalação e páginas legais estáticas entram no bundle.
+      includeAssets: [
+        'favicon.svg',
+        'icon.svg',
+        'icon-192.png',
+        'icon-512.png',
+        'apple-touch-icon.png',
+        'privacidade/index.html',
+        'termos/index.html',
+      ],
       manifest: {
         name: 'App do Cidadão — SMS Maricá',
         short_name: 'SMS Cidadão',
@@ -18,10 +26,16 @@ export default defineConfig({
         theme_color: '#C8102E',
         background_color: '#ffffff',
         display: 'standalone',
+        orientation: 'portrait',
         start_url: '/',
         scope: '/',
+        // PNGs 192/512 (recomendado p/ Android) + SVG escalável. A cruz tem margem
+        // suficiente p/ servir como maskable (não corta no recorte circular).
         icons: [
-          { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' },
+          { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
         ],
       },
       workbox: {
@@ -29,6 +43,8 @@ export default defineConfig({
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/privacidade/, /^\/termos/, /^\/api/],
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+        // ao publicar versão nova, limpa precaches antigos (evita app preso em versão).
+        cleanupOutdatedCaches: true,
       },
     }),
   ],
