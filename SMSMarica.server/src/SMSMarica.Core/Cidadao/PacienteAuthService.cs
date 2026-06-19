@@ -10,7 +10,7 @@ namespace SMSMarica.Core.Cidadao;
 
 public sealed class PacienteAuthService(
     IPacientesService pacientes,
-    IPacienteTokenService tokens,
+    ICidadaoSessaoService sessoes,
     IMemoryCache cache,
     IConfiguration config,
     ILogger<PacienteAuthService> logger) : IPacienteAuthService
@@ -46,7 +46,8 @@ public sealed class PacienteAuthService(
             ValidadeSegundos: (int)Validade.TotalSeconds);
     }
 
-    public Task<RespostaLoginPacienteDto> ValidarOtpAsync(ValidarOtpRequest request, CancellationToken ct = default)
+    public async Task<RespostaLoginPacienteDto> ValidarOtpAsync(
+        ValidarOtpRequest request, string? dispositivo, string? ip, CancellationToken ct = default)
     {
         var cpf = Digitos(request.Cpf);
         if (!cache.TryGetValue(Chave(cpf), out OtpEntry? entry) || entry is null)
@@ -62,9 +63,13 @@ public sealed class PacienteAuthService(
         }
 
         cache.Remove(Chave(cpf));
-        var (token, _) = tokens.Gerar(entry.PacienteId, entry.Nome, entry.Cpf);
-        return Task.FromResult(new RespostaLoginPacienteDto(
-            token, new PacienteSessaoDto(entry.PacienteId, entry.Nome, entry.Cpf)));
+
+        // Abre a sessão single-device (revoga a anterior) e emite o token.
+        var (token, _) = await sessoes.AbrirSessaoAsync(
+            entry.PacienteId, entry.Nome, entry.Cpf, "otp-whatsapp", dispositivo, ip, ct);
+
+        return new RespostaLoginPacienteDto(
+            token, new PacienteSessaoDto(entry.PacienteId, entry.Nome, entry.Cpf));
     }
 
     private static string Chave(string cpf) => $"otp:paciente:{cpf}";

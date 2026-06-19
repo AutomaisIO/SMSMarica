@@ -26,5 +26,9 @@ public sealed class AuthPacienteController(IPacienteAuthService service) : Contr
     [ProducesResponseType<RespostaLoginPacienteDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<RespostaLoginPacienteDto> ValidarOtp([FromBody] ValidarOtpRequest request, CancellationToken cancellationToken) =>
-        await _service.ValidarOtpAsync(request, cancellationToken);
+        await _service.ValidarOtpAsync(
+            request,
+            Request.Headers.UserAgent.ToString() is { Length: > 0 } ua ? ua : null,
+            HttpContext.Connection.RemoteIpAddress?.ToString(),
+            cancellationToken);
 }

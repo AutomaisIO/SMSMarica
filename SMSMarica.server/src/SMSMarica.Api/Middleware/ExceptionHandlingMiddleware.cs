@@ -50,6 +50,10 @@ public sealed partial class ExceptionHandlingMiddleware(
                 "O recurso foi alterado por outra requisição concorrente. Tente novamente.",
                 type: "concorrencia.token");
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            await EscreverProblemDetails(context, StatusCodes.Status403Forbidden, "Acesso negado", ex.Message);
+        }
         catch (Exception ex)
         {
             LogErroNaoTratado(_logger, ex, context.Request.Path);

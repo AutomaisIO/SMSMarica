@@ -47,6 +47,20 @@ public interface IPacientesService
     /// </summary>
     Task AdicionarTelefoneAsync(Guid id, AdicionarTelefoneRequest request, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Atualiza SÓ a foto do paciente, preservando todo o resto (carrega o estado atual
+    /// e regrava só o campo). <c>null</c> remove a foto. Usado pelo app do cidadão.
+    /// </summary>
+    Task AtualizarFotoAsync(Guid id, string? fotoBase64, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Atualiza SÓ os contatos (e-mail + telefones) do paciente, preservando o resto.
+    /// Usado pelo app do cidadão para o próprio cadastro.
+    /// </summary>
+    Task AtualizarContatoAsync(
+        Guid id, string? email, string? telefonePrincipal, string? telefoneCelular,
+        string? telefoneResidencial, CancellationToken cancellationToken = default);
+
     Task DesativarAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task ReativarAsync(Guid id, CancellationToken cancellationToken = default);

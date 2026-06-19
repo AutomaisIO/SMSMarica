@@ -129,6 +129,65 @@ public sealed class PacientesService(IPacienteFhirClient fhir) : IPacientesServi
         await fhir.AtualizarAsync(id, patient, cancellationToken);
     }
 
+    public async Task AtualizarFotoAsync(Guid id, string? fotoBase64, CancellationToken cancellationToken = default)
+    {
+        var atual = await ObterPorIdAsync(id, cancellationToken);
+        var req = RequestCompletoDeDto(atual) with { FotoBase64 = string.IsNullOrWhiteSpace(fotoBase64) ? null : fotoBase64 };
+        await AtualizarAsync(id, req, cancellationToken);
+    }
+
+    public async Task AtualizarContatoAsync(
+        Guid id, string? email, string? telefonePrincipal, string? telefoneCelular,
+        string? telefoneResidencial, CancellationToken cancellationToken = default)
+    {
+        var atual = await ObterPorIdAsync(id, cancellationToken);
+        var req = RequestCompletoDeDto(atual) with
+        {
+            Email = email,
+            TelefonePrincipal = telefonePrincipal,
+            TelefoneCelular = telefoneCelular,
+            TelefoneResidencial = telefoneResidencial,
+        };
+        await AtualizarAsync(id, req, cancellationToken);
+    }
+
+    /// <summary>
+    /// Reconstrói um <see cref="AtualizarPacienteRequest"/> com TODOS os campos do estado
+    /// atual. Como <see cref="PacienteFhirMapper.AplicarAtualizacao"/> regrava o payload a
+    /// partir do request, edições parciais devem partir do estado completo para não apagar dados.
+    /// </summary>
+    private static AtualizarPacienteRequest RequestCompletoDeDto(PacienteDto p) => new(
+        Cns: p.Cns,
+        Rg: p.Rg,
+        Sexo: p.Sexo,
+        EstadoCivil: p.EstadoCivil,
+        RacaCor: p.RacaCor,
+        Escolaridade: p.Escolaridade,
+        Ocupacao: p.Ocupacao,
+        Naturalidade: p.Naturalidade,
+        Nacionalidade: p.Nacionalidade,
+        NomeDaMae: p.NomeDaMae,
+        NomeDoPai: p.NomeDoPai,
+        ResponsavelLegal: p.ResponsavelLegal,
+        Endereco: p.Endereco,
+        TelefonePrincipal: p.TelefonePrincipal,
+        TelefoneCelular: p.TelefoneCelular,
+        TelefoneResidencial: p.TelefoneResidencial,
+        Email: p.Email,
+        ContatoEmergencia: p.ContatoEmergencia,
+        AlturaCm: p.AlturaCm,
+        PesoKg: p.PesoKg,
+        TipoSanguineo: p.TipoSanguineo,
+        FatorRh: p.FatorRh,
+        Alergias: p.Alergias,
+        MedicamentosContinuos: p.MedicamentosContinuos,
+        Comorbidades: p.Comorbidades,
+        Deficiencias: p.Deficiencias,
+        PlanoSaude: p.PlanoSaude,
+        Observacoes: p.Observacoes,
+        FotoBase64: p.FotoBase64,
+        NomeSocial: p.NomeSocial);
+
     private static ContactPoint.ContactPointUse MapearUso(string? tipo) => tipo?.Trim().ToLowerInvariant() switch
     {
         "residencial" or "casa" or "home" => ContactPoint.ContactPointUse.Home,

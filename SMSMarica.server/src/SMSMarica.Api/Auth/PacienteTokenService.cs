@@ -12,7 +12,7 @@ public sealed class PacienteTokenService(IOptions<JwtOptions> options) : IPacien
 {
     private readonly JwtOptions _opt = options.Value;
 
-    public (string Token, DateTime ExpiraEm) Gerar(Guid pacienteId, string nome, string? cpf)
+    public string Gerar(Guid pacienteId, string nome, string? cpf, Guid sessaoJti, DateTime expiraEm)
     {
         if (string.IsNullOrWhiteSpace(_opt.Key))
         {
@@ -20,12 +20,12 @@ public sealed class PacienteTokenService(IOptions<JwtOptions> options) : IPacien
         }
 
         var agora = DateTime.UtcNow;
-        var expira = agora.AddMinutes(_opt.ExpiraEmMinutos);
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, pacienteId.ToString()),
             new(JwtRegisteredClaimNames.Name, nome),
-            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")),
+            // jti = id da sessão; validado contra cidadao_sessao a cada request (single-device).
+            new(JwtRegisteredClaimNames.Jti, sessaoJti.ToString()),
             new("tipo", "cidadao"),
         };
         if (!string.IsNullOrWhiteSpace(cpf))
@@ -40,9 +40,9 @@ public sealed class PacienteTokenService(IOptions<JwtOptions> options) : IPacien
             audience: _opt.Audience,
             claims: claims,
             notBefore: agora,
-            expires: expira,
+            expires: expiraEm,
             signingCredentials: creds);
 
-        return (new JwtSecurityTokenHandler().WriteToken(token), expira);
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }

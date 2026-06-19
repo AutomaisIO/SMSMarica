@@ -77,6 +77,11 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<TfdConfigGoogle> TfdConfigGoogle => Set<TfdConfigGoogle>();
     public DbSet<TfdConfigWhatsApp> TfdConfigWhatsApp => Set<TfdConfigWhatsApp>();
 
+    // Autenticação do cidadão (paciente no app) — credenciais + sessão única por device.
+    // NÃO é Usuario/RBAC. Fonte da verdade = CPF. Ver ADR-0018.
+    public DbSet<CidadaoAcesso> CidadaoAcessos => Set<CidadaoAcesso>();
+    public DbSet<CidadaoSessao> CidadaoSessoes => Set<CidadaoSessao>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(SchemaPadrao);

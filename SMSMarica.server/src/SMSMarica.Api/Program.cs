@@ -1,3 +1,5 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -107,6 +109,30 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     ctx.Token = accessToken;
                 }
                 return Task.CompletedTask;
+            },
+            // Single-device do cidadão: o jti do token = id da sessão; se não bater com
+            // a sessão ativa (login em outro device / logout / expirada), rejeita o token.
+            OnTokenValidated = async ctx =>
+            {
+                var principal = ctx.Principal;
+                if (principal?.FindFirst("tipo")?.Value != "cidadao") return;
+
+                var sub = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                    ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var jti = principal.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
+
+                if (!Guid.TryParse(sub, out var pacienteId) || !Guid.TryParse(jti, out var sessaoId))
+                {
+                    ctx.Fail("Token de cidadão inválido.");
+                    return;
+                }
+
+                var sessoes = ctx.HttpContext.RequestServices
+                    .GetRequiredService<SMSMarica.Core.Cidadao.ICidadaoSessaoService>();
+                if (!await sessoes.SessaoValidaAsync(sessaoId, pacienteId, ctx.HttpContext.RequestAborted))
+                {
+                    ctx.Fail("Sessão encerrada (login em outro dispositivo).");
+                }
             },
         };
     })
