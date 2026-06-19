@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Geo;
+using SMSMarica.Core.Geo.Google;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.Translado.Geracao.Dtos;
 using SMSMarica.Data;
@@ -13,6 +14,7 @@ namespace SMSMarica.Core.Translado.Geracao;
 public sealed class GeradorDeTransladoService(
     SmsMaricaDbContext db,
     IGeocodificadorService geo,
+    IGoogleRoutesClient rotas,
     IPacientesService pacientes,
     ILogger<GeradorDeTransladoService> logger) : IGeradorDeTransladoService
 {
@@ -126,19 +128,45 @@ public sealed class GeradorDeTransladoService(
 
                 var motorista = motoristas[iMotorista++ % motoristas.Count];
                 var destino = chunk[0].Destino;
-                // coleta os mais distantes do destino primeiro (termina perto da unidade)
-                var ordenado = chunk.OrderByDescending(c => DistanciaMetros(c.Origem, destino)).ToList();
 
-                var metrosIda = 0.0;
-                for (var i = 0; i < ordenado.Count; i++)
+                List<Candidato> ordenado;
+                int metrosTotal;
+                int duracaoSeg;
+                var otimizado = false;
+
+                // Ordem ótima de coleta via Google Routes (waypoint optimization); haversine como fallback.
+                RotaOtimizada? otim = null;
+                try
                 {
-                    if (i > 0) metrosIda += DistanciaMetros(ordenado[i - 1].Origem, ordenado[i].Origem);
+                    otim = await rotas.OtimizarColetaAsync([.. chunk.Select(c => c.Origem)], destino, ct);
                 }
-                metrosIda += DistanciaMetros(ordenado[^1].Origem, destino);
-                var metrosTotal = (int)Math.Round(metrosIda * 2); // ida + volta (aprox.)
-                var duracaoSeg = (int)Math.Round(metrosTotal / VelocidadeMediaMs);
+                catch (Exception ex)
+                {
+                    logger.LogDebug(ex, "Routes indisponível; usando heurística haversine.");
+                }
 
-                planos.Add(new PlanoRota(v, motorista, grupo.Key.UnidadeId, grupo.Key.UnidadeNome, ordenado, livres, metrosTotal, duracaoSeg));
+                if (otim is not null && otim.OrdemColetas.Count == chunk.Count)
+                {
+                    ordenado = [.. otim.OrdemColetas.Select(i => chunk[i])];
+                    metrosTotal = (int)(otim.DistanciaMetros * 2); // Routes mede a ida; dobra p/ ida + volta
+                    duracaoSeg = (int)(otim.DuracaoSegundos * 2);
+                    otimizado = true;
+                }
+                else
+                {
+                    // coleta os mais distantes do destino primeiro (termina perto da unidade)
+                    ordenado = [.. chunk.OrderByDescending(c => DistanciaMetros(c.Origem, destino))];
+                    var metrosIda = 0.0;
+                    for (var i = 0; i < ordenado.Count; i++)
+                    {
+                        if (i > 0) metrosIda += DistanciaMetros(ordenado[i - 1].Origem, ordenado[i].Origem);
+                    }
+                    metrosIda += DistanciaMetros(ordenado[^1].Origem, destino);
+                    metrosTotal = (int)Math.Round(metrosIda * 2); // ida + volta (aprox.)
+                    duracaoSeg = (int)Math.Round(metrosTotal / VelocidadeMediaMs);
+                }
+
+                planos.Add(new PlanoRota(v, motorista, grupo.Key.UnidadeId, grupo.Key.UnidadeNome, ordenado, livres, metrosTotal, duracaoSeg, otimizado));
             }
         }
 
@@ -174,7 +202,7 @@ public sealed class GeradorDeTransladoService(
         }
 
         return new ResultadoGeracaoDto(
-            data, request.Confirmar, UsouIa: false, Aproximado: true,
+            data, request.Confirmar, UsouIa: false, Aproximado: planos.Any(p => !p.Otimizado),
             TotalSessoes: rows.Count,
             TotalAlocadas: planos.Sum(p => p.Ordenado.Count),
             Rotas: rotasDto, NaoAlocadas: naoAlocadas);
@@ -260,7 +288,7 @@ public sealed class GeradorDeTransladoService(
 
     private static string SerializarPlano(PlanoRota p) => JsonSerializer.Serialize(new
     {
-        geradoPor = "heuristica-haversine-v1",
+        geradoPor = p.Otimizado ? "google-routes-v1" : "heuristica-haversine-v1",
         unidadeId = p.UnidadeId,
         unidade = p.UnidadeNome,
         distanciaMetros = p.DistanciaMetros,
@@ -294,5 +322,5 @@ public sealed class GeradorDeTransladoService(
 
     private sealed record PlanoRota(
         Veiculo Veiculo, Motorista Motorista, Guid UnidadeId, string UnidadeNome,
-        List<Candidato> Ordenado, List<Assento> Livres, int DistanciaMetros, int DuracaoSeg);
+        List<Candidato> Ordenado, List<Assento> Livres, int DistanciaMetros, int DuracaoSeg, bool Otimizado);
 }

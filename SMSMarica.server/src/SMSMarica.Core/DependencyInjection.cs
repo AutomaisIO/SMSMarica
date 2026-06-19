@@ -231,6 +231,10 @@ public static class DependencyInjection
         {
             client.Timeout = TimeSpan.FromSeconds(15);
         });
+        services.AddHttpClient<Geo.Google.IGoogleRoutesClient, Geo.Google.GoogleRoutesClient>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(20);
+        });
 
         // WhatsApp (Meta Cloud API) — cliente de envio + webhook de recebimento (FT6).
         services.AddScoped<Notificacoes.WhatsApp.IWhatsAppWebhookService, Notificacoes.WhatsApp.WhatsAppWebhookService>();
