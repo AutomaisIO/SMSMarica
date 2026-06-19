@@ -76,6 +76,8 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<MensagemWhatsApp> MensagensWhatsApp => Set<MensagemWhatsApp>();
     public DbSet<TfdConfigGoogle> TfdConfigGoogle => Set<TfdConfigGoogle>();
     public DbSet<TfdConfigWhatsApp> TfdConfigWhatsApp => Set<TfdConfigWhatsApp>();
+    public DbSet<RegistroFaturamento> RegistrosFaturamento => Set<RegistroFaturamento>();
+    public DbSet<TfdConfigFaturamento> TfdConfigFaturamento => Set<TfdConfigFaturamento>();
 
     // Autenticação do cidadão (paciente no app) — credenciais + sessão única por device.
     // NÃO é Usuario/RBAC. Fonte da verdade = CPF. Ver ADR-0018.

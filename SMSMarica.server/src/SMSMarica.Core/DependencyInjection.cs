@@ -234,6 +234,9 @@ public static class DependencyInjection
             client.Timeout = TimeSpan.FromSeconds(20);
         });
 
+        // Faturamento SUS/BPA (FT10): contabilização proporcional + relatórios.
+        services.AddScoped<Faturamento.IFaturamentoService, Faturamento.FaturamentoService>();
+
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
         return services;
