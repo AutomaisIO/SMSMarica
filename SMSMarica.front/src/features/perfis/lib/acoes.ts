@@ -68,6 +68,7 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'SincronizacaoPep', rotulo: 'Sincronização PEP (Salux)' },
   { id: 'ApiTokens', rotulo: 'API Tokens' },
   { id: 'IntegracoesConfig', rotulo: 'Integrações (credenciais)' },
+  { id: 'Faturamento', rotulo: 'Faturamento (TFD/SUS)' },
 ];
 
 export const ACOES: { id: AcaoPermissao; rotulo: string }[] = [

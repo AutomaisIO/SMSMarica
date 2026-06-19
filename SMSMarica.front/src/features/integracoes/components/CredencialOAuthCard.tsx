@@ -30,12 +30,14 @@ export function CredencialOAuthCard({ cred }: { cred: IntegracaoCredencial }) {
   const [erro, setErro] = useState<string | null>(null);
   const [salvo, setSalvo] = useState(false);
 
-  // Sincroniza os campos públicos quando a lista é recarregada (ex.: após salvar).
+  // Sincroniza os campos públicos com a lista recarregada, mas só com o card
+  // fechado — evita resetar o que o usuário está digitando após um refetch.
   useEffect(() => {
+    if (aberto) return;
     setRedirectUri(cred.redirectUri ?? '');
     setParametros(cred.parametrosJson ?? '');
     setAtivo(cred.ativo);
-  }, [cred.redirectUri, cred.parametrosJson, cred.ativo]);
+  }, [aberto, cred.redirectUri, cred.parametrosJson, cred.ativo]);
 
   const configurado = cred.clientIdDefinido && cred.clientSecretDefinido;
 
