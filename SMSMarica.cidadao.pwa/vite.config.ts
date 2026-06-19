@@ -11,9 +11,9 @@ export default defineConfig({
       // favicon e páginas legais estáticas (privacidade/termos) entram no bundle.
       includeAssets: ['favicon.svg', 'icon.svg', 'privacidade/index.html', 'termos/index.html'],
       manifest: {
-        name: 'App do Paciente — SMS Maricá',
-        short_name: 'SMS Paciente',
-        description: 'Acompanhe seu transporte e tratamento (TFD) da Saúde de Maricá.',
+        name: 'App do Cidadão — SMS Maricá',
+        short_name: 'SMS Cidadão',
+        description: 'Saúde de Maricá no seu bolso: agende consultas e exames, acesse seus documentos de saúde e acompanhe seu transporte (TFD).',
         lang: 'pt-BR',
         theme_color: '#C8102E',
         background_color: '#ffffff',
