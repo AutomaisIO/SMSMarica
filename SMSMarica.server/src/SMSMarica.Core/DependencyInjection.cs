@@ -237,6 +237,9 @@ public static class DependencyInjection
         // Faturamento SUS/BPA (FT10): contabilização proporcional + relatórios.
         services.AddScoped<Faturamento.IFaturamentoService, Faturamento.FaturamentoService>();
 
+        // Motor de geração de translado (FT3): distribuição + sequenciamento de rotas.
+        services.AddScoped<Translado.Geracao.IGeradorDeTransladoService, Translado.Geracao.GeradorDeTransladoService>();
+
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
         return services;
