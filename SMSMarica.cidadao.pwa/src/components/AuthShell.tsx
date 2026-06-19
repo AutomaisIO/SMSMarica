@@ -1,7 +1,8 @@
 import { HeartPulse } from 'lucide-react';
 
-/** Moldura das telas pré-login (CPF / código). Faixa vermelha com a assinatura,
- * cartão branco com a logo oficial de Maricá e o conteúdo. */
+/** Moldura das telas pré-login (CPF / código). Hero civismo com a marca centralizada,
+ * folha de "papel" que recebe a logo oficial de Maricá e o conteúdo — tudo no eixo
+ * central, com cara de app (não de formulário web). */
 export function AuthShell({
   titulo,
   subtitulo,
@@ -13,24 +14,36 @@ export function AuthShell({
 }) {
   return (
     <div className="mx-auto flex min-h-dvh max-w-[460px] flex-col bg-papel shadow-2xl">
-      <div className="guilloche flex items-center gap-2 bg-gradient-to-br from-vinho to-marica px-6 pb-14 pt-10 text-white">
-        <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/15 ring-1 ring-white/25">
-          <HeartPulse className="h-5 w-5" />
-        </span>
-        <span className="text-sm font-semibold uppercase tracking-[0.2em] text-white/90">
-          App do Cidadão
-        </span>
+      {/* Hero — faixa guilloché com a marca da Saúde centralizada. */}
+      <div className="guilloche bg-gradient-to-br from-vinho to-marica px-6 pb-20 pt-12 text-white">
+        <div className="flex flex-col items-center text-center">
+          <span className="grid h-16 w-16 place-items-center rounded-[1.25rem] bg-white/15 ring-1 ring-white/25">
+            <HeartPulse className="h-8 w-8" />
+          </span>
+          <span className="mt-3 text-[11px] font-semibold uppercase tracking-[0.3em] text-white/85">
+            App do Cidadão
+          </span>
+        </div>
       </div>
 
-      <div className="-mt-8 flex-1 rounded-t-3xl bg-papel px-6 pb-10 pt-7">
-        <img
-          src="/marica_logo.png"
-          alt="Prefeitura de Maricá — cidade que cuida, transforma e inspira"
-          className="mx-auto mb-7 h-auto w-[210px]"
-        />
-        <h1 className="font-display text-2xl font-semibold text-tinta">{titulo}</h1>
-        <p className="mt-1 mb-6 text-[15px] text-tinta-mute">{subtitulo}</p>
-        {children}
+      {/* Folha de papel: logo + conteúdo, centralizados no espaço restante. */}
+      <div className="-mt-12 flex flex-1 flex-col rounded-t-[2rem] bg-papel px-6 pb-8 pt-9 shadow-[0_-14px_44px_-26px_rgba(110,19,34,0.55)]">
+        <div className="flex flex-1 flex-col justify-center pb-6">
+          <div className="animate-rise">
+            <img
+              src="/marica_logo.png"
+              alt="Prefeitura de Maricá — cidade que cuida, transforma e inspira"
+              className="mx-auto mb-8 h-auto w-[188px]"
+            />
+            <h1 className="text-center font-display text-[26px] font-semibold leading-tight text-tinta">
+              {titulo}
+            </h1>
+            <p className="mx-auto mb-8 mt-2 max-w-[19rem] text-center text-[15px] leading-relaxed text-tinta-mute">
+              {subtitulo}
+            </p>
+            {children}
+          </div>
+        </div>
       </div>
 
       <footer className="px-6 pb-6 text-center text-xs text-tinta-mute">

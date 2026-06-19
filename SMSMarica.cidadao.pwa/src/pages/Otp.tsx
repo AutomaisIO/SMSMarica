@@ -3,6 +3,7 @@ import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { http, extrairMensagemDeErro } from '@/lib/httpClient';
 import { useAuth, type PacienteSessao } from '@/store/auth';
 import { AuthShell } from '@/components/AuthShell';
+import { CodigoInput } from '@/components/CodigoInput';
 import { PrimaryButton } from '@/components/ui';
 
 type RespostaLogin = { token: string; paciente: PacienteSessao };
@@ -44,23 +45,15 @@ export function Otp() {
   return (
     <AuthShell titulo="Código de acesso" subtitulo="Digite o código que enviamos pelo WhatsApp.">
       {codigoTeste && (
-        <div className="mb-5 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-center text-sm text-amber-800">
+        <div className="mb-6 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-center text-sm text-amber-800">
           Modo de teste — envio por WhatsApp ainda não ativo.
           <br />
           Seu código: <span className="font-mono text-xl font-bold tracking-[0.3em]">{codigoTeste}</span>
         </div>
       )}
-      <form onSubmit={validar} className="space-y-5">
-        <input
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          aria-label="Código de acesso"
-          value={codigo}
-          onChange={(e) => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))}
-          placeholder="······"
-          className="w-full rounded-2xl border border-areia bg-white py-4 text-center font-mono text-3xl tracking-[0.5em] text-tinta focus:border-lagoa focus:outline-none"
-        />
-        {erro && <p className="text-sm text-marica">{erro}</p>}
+      <form onSubmit={validar} className="space-y-6">
+        <CodigoInput valor={codigo} aoMudar={setCodigo} autoFocus={!codigoTeste} />
+        {erro && <p className="text-center text-sm text-marica">{erro}</p>}
         <PrimaryButton type="submit" disabled={!valido} carregando={enviando}>
           Entrar
         </PrimaryButton>

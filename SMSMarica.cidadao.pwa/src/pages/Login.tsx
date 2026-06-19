@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { MessageCircle } from 'lucide-react';
 import { http, extrairMensagemDeErro } from '@/lib/httpClient';
 import { AuthShell } from '@/components/AuthShell';
-import { Field, PrimaryButton } from '@/components/ui';
+import { PrimaryButton } from '@/components/ui';
 
 function mascararCpf(valor: string): string {
   const d = valor.replace(/\D/g, '').slice(0, 11);
@@ -45,22 +45,30 @@ export function Login() {
       subtitulo="Informe seu CPF. Enviaremos um código de acesso pelo WhatsApp do número cadastrado na Saúde."
     >
       <form onSubmit={solicitar} className="space-y-5">
-        <Field
-          label="CPF"
-          inputMode="numeric"
-          autoComplete="off"
-          autoFocus
-          placeholder="000.000.000-00"
-          value={cpf}
-          onChange={(e) => setCpf(mascararCpf(e.target.value))}
-          className="text-lg tracking-wide"
-        />
-        {erro && <p className="text-sm text-marica">{erro}</p>}
+        <div>
+          <label
+            htmlFor="cpf"
+            className="mb-2 block text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-tinta-mute"
+          >
+            Seu CPF
+          </label>
+          <input
+            id="cpf"
+            inputMode="numeric"
+            autoComplete="off"
+            autoFocus
+            placeholder="000.000.000-00"
+            value={cpf}
+            onChange={(e) => setCpf(mascararCpf(e.target.value))}
+            className="w-full rounded-2xl border border-areia bg-white py-4 text-center font-display text-[26px] font-semibold tabular-nums tracking-[0.06em] text-tinta shadow-carta transition placeholder:font-normal placeholder:text-tinta-mute/35 focus:border-lagoa focus:outline-none focus:ring-4 focus:ring-lagoa/15"
+          />
+        </div>
+        {erro && <p className="text-center text-sm text-marica">{erro}</p>}
         <PrimaryButton type="submit" disabled={!valido} carregando={enviando}>
           <MessageCircle className="h-5 w-5" />
           Receber código
         </PrimaryButton>
-        <p className="text-center text-xs text-tinta-mute">
+        <p className="mx-auto max-w-[17rem] text-center text-xs leading-relaxed text-tinta-mute">
           Sem cadastro na Saúde de Maricá? Procure a sua unidade.
         </p>
       </form>
