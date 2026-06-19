@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SMSMarica.Core.Atendimentos;
 using SMSMarica.Core.Cidadao;
 using SMSMarica.Core.Cidadao.Dtos;
 using SMSMarica.Core.Pacientes;
@@ -19,6 +20,7 @@ namespace SMSMarica.Api.Controllers;
 [Authorize]
 public sealed class CidadaoController(
     IPacientesService pacientes,
+    IAtendimentosService atendimentos,
     ICidadaoSessaoService sessoes) : ControllerBase
 {
     [HttpGet("me")]
@@ -64,9 +66,33 @@ public sealed class CidadaoController(
     public ActionResult<IEnumerable<TransladoResumoDto>> MeusTranslados() =>
         Ok(Array.Empty<TransladoResumoDto>());
 
+    /// <summary>
+    /// Histórico de atendimentos do cidadão, lido do hub FHIR (Encounter + Condition).
+    /// Projetado para o shape enxuto que a PWA consome.
+    /// </summary>
     [HttpGet("atendimentos")]
-    public ActionResult<IEnumerable<AtendimentoResumoDto>> Atendimentos() =>
-        Ok(Array.Empty<AtendimentoResumoDto>());
+    [ProducesResponseType<IEnumerable<AtendimentoResumoDto>>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<AtendimentoResumoDto>>> Atendimentos(CancellationToken ct)
+    {
+        var lista = await atendimentos.ObterPorPacienteAsync(PacienteId(), ct);
+        var resumos = lista.Select(a => new AtendimentoResumoDto(
+            a.Id,
+            (a.Inicio ?? a.Fim ?? default).DateTime,
+            a.Tipo,
+            a.MedicoNome ?? "Profissional não informado",
+            DescricaoAtendimento(a)));
+        return Ok(resumos);
+    }
+
+    /// <summary>Resumo textual do atendimento a partir dos diagnósticos (CID-10).</summary>
+    private static string DescricaoAtendimento(Core.Atendimentos.Dtos.AtendimentoDto a)
+    {
+        var diags = a.Diagnosticos
+            .Select(d => string.IsNullOrWhiteSpace(d.Descricao) ? d.Codigo : d.Descricao)
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .ToList();
+        return diags.Count > 0 ? string.Join(" · ", diags) : string.Empty;
+    }
 
     [HttpGet("exames")]
     public ActionResult<IEnumerable<ExameResumoDto>> Exames() =>

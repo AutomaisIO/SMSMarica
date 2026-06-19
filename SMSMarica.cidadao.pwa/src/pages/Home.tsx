@@ -13,6 +13,7 @@ import { useAuth } from '@/store/auth';
 import { usePerfil } from '@/store/perfil';
 import { formatarCpf } from '@/components/AppShell';
 import { Avatar } from '@/components/ui';
+import { InstalarApp } from '@/components/InstalarApp';
 
 const ATALHOS = [
   { to: '/atendimentos', label: 'Atendimentos', desc: 'Suas consultas', icon: Stethoscope, tom: 'lagoa' },
@@ -36,7 +37,9 @@ export function Home() {
 
   return (
     <div className="animate-rise space-y-7">
-      <p className="text-[15px] text-tinta-mute">
+      <InstalarApp />
+
+      <p className="pb-2 text-[15px] text-tinta-mute">
         Olá, <span className="font-semibold text-tinta">{primeiro}</span>. Bem-vindo de volta.
       </p>
 
