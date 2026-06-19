@@ -222,7 +222,12 @@ public static class DependencyInjection
         services.AddScoped<Cidadao.ICidadaoSessaoService, Cidadao.CidadaoSessaoService>();
         services.AddScoped<Tfd.Configuracao.ITfdConfigService, Tfd.Configuracao.TfdConfigService>();
         services.AddScoped<Geo.IGeocodificadorService, Geo.GeocodificadorService>();
+        services.AddScoped<Geo.IDistanciaService, Geo.DistanciaService>();
         services.AddHttpClient<Geo.Google.IGoogleGeocodingClient, Geo.Google.GoogleGeocodingClient>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(15);
+        });
+        services.AddHttpClient<Geo.Google.IGoogleDistanceMatrixClient, Geo.Google.GoogleDistanceMatrixClient>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(15);
         });

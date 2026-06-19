@@ -14,6 +14,7 @@ namespace SMSMarica.Core.Faturamento;
 public sealed class FaturamentoService(
     SmsMaricaDbContext db,
     IGeocodificadorService geo,
+    IDistanciaService distancia,
     IPacientesService pacientes,
     IPacienteResolver pacienteResolver,
     ILogger<FaturamentoService> logger) : IFaturamentoService
@@ -37,8 +38,8 @@ public sealed class FaturamentoService(
             var destino = unidade?.Gps;
             if (origem is not null && destino is not null)
             {
-                var ida = DistanciaMetros(origem.Latitude, origem.Longitude, destino.Latitude, destino.Longitude) / 1000.0;
-                km = (decimal)Math.Round(ida * 2, 2); // ida + volta = km com o paciente a bordo
+                var metros = await distancia.DistanciaMetrosAsync(origem, new Coordenada(destino.Latitude, destino.Longitude), ct);
+                km = (decimal)Math.Round(metros / 1000.0 * 2, 2); // ida + volta = km com o paciente a bordo
             }
         }
         catch (Exception ex)
@@ -211,13 +212,4 @@ public sealed class FaturamentoService(
         r.UnidadeId, unidadeNome, r.Competencia, r.Data, r.KmComPaciente, r.Unidades, r.ValorUnitario,
         r.ValorTotal, r.CodigoSigtap, r.Status);
 
-    private static double DistanciaMetros(double lat1, double lon1, double lat2, double lon2)
-    {
-        const double raio = 6_371_000;
-        var dLat = (lat2 - lat1) * Math.PI / 180;
-        var dLon = (lon2 - lon1) * Math.PI / 180;
-        var a = (Math.Sin(dLat / 2) * Math.Sin(dLat / 2))
-            + (Math.Cos(lat1 * Math.PI / 180) * Math.Cos(lat2 * Math.PI / 180) * Math.Sin(dLon / 2) * Math.Sin(dLon / 2));
-        return raio * 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-    }
 }
