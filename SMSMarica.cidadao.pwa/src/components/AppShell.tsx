@@ -42,6 +42,12 @@ export function AppShell() {
   // Fecha o menu ao trocar de rota.
   useEffect(() => setAberto(false), [location.pathname]);
 
+  // Reseta o scroll para o topo a cada navegação — sem isso o iOS restaura a
+  // posição anterior e o conteúdo do topo (ex.: banner de instalar) nasce escondido.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
   const nome = perfil?.nomeSocial || perfil?.nome || sessao?.nome || 'Cidadão';
   const foto = perfil?.fotoBase64 ?? null;
 
@@ -58,7 +64,7 @@ export function AppShell() {
   return (
     <div className="mx-auto flex min-h-dvh max-w-[460px] flex-col bg-papel shadow-2xl">
       {/* Barra superior (civismo Maricá) */}
-      <header className="sticky top-0 z-30 flex items-center gap-2 bg-marica px-3 py-3 text-white shadow-topo">
+      <header className="sticky top-0 z-30 flex items-center gap-2 bg-marica px-3 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] text-white shadow-topo">
         <button
           type="button"
           onClick={() => setAberto(true)}
@@ -96,7 +102,7 @@ export function AppShell() {
           />
           <nav className="absolute inset-y-0 left-0 flex w-[78%] max-w-[320px] animate-slide-in flex-col bg-papel shadow-2xl">
             {/* Cabeçalho do drawer com mini-cartão */}
-            <div className="guilloche bg-vinho px-5 pb-5 pt-6 text-white">
+            <div className="guilloche bg-vinho px-5 pb-5 pt-[calc(env(safe-area-inset-top)+1.5rem)] text-white">
               <div className="mb-4 flex justify-end">
                 <button
                   type="button"
