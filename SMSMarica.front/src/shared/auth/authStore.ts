@@ -32,7 +32,8 @@ export type ModuloPermissao =
   | 'ApiTokens'
   | 'Cidadao'
   | 'IntegracoesConfig'
-  | 'Faturamento';
+  | 'Faturamento'
+  | 'ConfiguracaoLaudo';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 

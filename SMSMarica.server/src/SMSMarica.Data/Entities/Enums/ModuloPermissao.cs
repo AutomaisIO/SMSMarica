@@ -63,4 +63,7 @@ public enum ModuloPermissao
 
     /// <summary>Faturamento SUS / geração de BPA do transporte (TFD).</summary>
     Faturamento = 31,
+
+    /// <summary>Configurar o cabeçalho/rodapé institucional global dos laudos (PDF).</summary>
+    ConfiguracaoLaudo = 32,
 }

@@ -4,6 +4,8 @@ using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using SMSMarica.Core.Common.Excecoes;
+using SMSMarica.Core.Laudos.Configuracao;
+using SMSMarica.Core.Midias;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
 using DomElement = AngleSharp.Dom.IElement;
@@ -13,15 +15,31 @@ using QuestDocument = QuestPDF.Fluent.Document;
 
 namespace SMSMarica.Core.Laudos.Pdf;
 
-public sealed class LaudoPdfRenderer(ILaudosService laudos, IOptions<LaudosPdfOptions> options) : ILaudoPdfRenderer
+public sealed class LaudoPdfRenderer(
+    ILaudosService laudos,
+    ILaudoConfiguracaoService configuracao,
+    IMidiasService midias,
+    IOptions<LaudosPdfOptions> options) : ILaudoPdfRenderer
 {
     private readonly ILaudosService _laudos = laudos;
+    private readonly ILaudoConfiguracaoService _configuracao = configuracao;
+    private readonly IMidiasService _midias = midias;
     private readonly LaudosPdfOptions _opt = options.Value;
 
     public async Task<byte[]> GerarAsync(Guid laudoId, bool incluirTarja = true, CancellationToken cancellationToken = default)
     {
         var laudo = await _laudos.CarregarParaPdfAsync(laudoId, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Laudo), laudoId);
+
+        var config = await _configuracao.ObterAsync(cancellationToken);
+        var blocosCabecalho = ParseHtmlParaBlocos(config.CabecalhoHtml);
+        var blocosRodape = ParseHtmlParaBlocos(config.RodapeHtml);
+        var temCabecalhoCustom = TemConteudo(config.CabecalhoHtml);
+        var temRodapeCustom = TemConteudo(config.RodapeHtml);
+
+        // Resolve as imagens referenciadas no cabeçalho/rodapé (uma vez, antes de renderizar).
+        var imagens = await ResolverImagensAsync(
+            blocosCabecalho.Concat(blocosRodape), cancellationToken);
 
         var dadosCabecalho = MontarCabecalhoPaciente(laudo);
         var dadosAssinatura = MontarBlocoAssinatura(laudo);
@@ -36,9 +54,9 @@ public sealed class LaudoPdfRenderer(ILaudosService laudos, IOptions<LaudosPdfOp
                 page.Margin(2, Unit.Centimetre);
                 page.DefaultTextStyle(t => t.FontSize(10).FontFamily("Helvetica"));
 
-                page.Header().Element(c => RenderHeader(c));
-                page.Content().Element(c => RenderContent(c, laudo, dadosCabecalho, blocos));
-                page.Footer().Element(c => RenderFooter(c, dadosAssinatura, emitidoEm, incluirTarja));
+                page.Header().Element(c => RenderHeader(c, temCabecalhoCustom, blocosCabecalho, imagens));
+                page.Content().Element(c => RenderContent(c, laudo, dadosCabecalho, blocos, imagens));
+                page.Footer().Element(c => RenderFooter(c, dadosAssinatura, emitidoEm, incluirTarja, temRodapeCustom, blocosRodape, imagens));
             });
         });
 
@@ -49,7 +67,26 @@ public sealed class LaudoPdfRenderer(ILaudosService laudos, IOptions<LaudosPdfOp
 
     // ------------------------ Header ------------------------
 
-    private void RenderHeader(IContainer container)
+    private void RenderHeader(IContainer container, bool custom, IReadOnlyList<BlocoHtml> blocos, IReadOnlyDictionary<string, byte[]> imagens)
+    {
+        // Cabeçalho configurado no painel tem prioridade; senão, cai no estático do appsettings.
+        if (custom)
+        {
+            container.Column(col =>
+            {
+                col.Spacing(4);
+                foreach (var bloco in blocos)
+                {
+                    RenderBloco(col.Item(), bloco, imagens);
+                }
+            });
+            return;
+        }
+
+        RenderHeaderEstatico(container);
+    }
+
+    private void RenderHeaderEstatico(IContainer container)
     {
         container.Row(row =>
         {
@@ -81,7 +118,7 @@ public sealed class LaudoPdfRenderer(ILaudosService laudos, IOptions<LaudosPdfOp
 
     // ------------------------ Content ------------------------
 
-    private void RenderContent(IContainer container, Laudo laudo, IEnumerable<(string Rotulo, string Valor)> cabecalhoPaciente, IReadOnlyList<BlocoHtml> blocos)
+    private void RenderContent(IContainer container, Laudo laudo, IEnumerable<(string Rotulo, string Valor)> cabecalhoPaciente, IReadOnlyList<BlocoHtml> blocos, IReadOnlyDictionary<string, byte[]> imagens)
     {
         container.PaddingTop(10).Column(col =>
         {
@@ -121,16 +158,27 @@ public sealed class LaudoPdfRenderer(ILaudosService laudos, IOptions<LaudosPdfOp
                 corpo.Spacing(6);
                 foreach (var bloco in blocos)
                 {
-                    RenderBloco(corpo.Item(), bloco);
+                    RenderBloco(corpo.Item(), bloco, imagens);
                 }
             });
         });
     }
 
-    private static void RenderBloco(IContainer container, BlocoHtml bloco)
+    private static void RenderBloco(IContainer container, BlocoHtml bloco, IReadOnlyDictionary<string, byte[]> imagens)
     {
+        // Alinhamento herdado do style/atributo do HTML.
+        container = bloco.Alinhamento switch
+        {
+            Alinhamento.Centro => container.AlignCenter(),
+            Alinhamento.Direita => container.AlignRight(),
+            _ => container,
+        };
+
         switch (bloco.Tipo)
         {
+            case TipoBloco.Imagem:
+                RenderImagem(container, bloco, imagens);
+                break;
             case TipoBloco.Titulo1:
                 container.Text(t => RenderInline(t, bloco.Spans, baseSize: 14, baseBold: true));
                 break;
@@ -153,6 +201,25 @@ public sealed class LaudoPdfRenderer(ILaudosService laudos, IOptions<LaudosPdfOp
         }
     }
 
+    private static void RenderImagem(IContainer container, BlocoHtml bloco, IReadOnlyDictionary<string, byte[]> imagens)
+    {
+        if (bloco.ImagemSrc is null || !imagens.TryGetValue(bloco.ImagemSrc, out var bytes))
+        {
+            return; // imagem não resolvida (externa/ausente) — ignora silenciosamente.
+        }
+
+        // Largura da imagem em px tratada como pontos; limita à largura útil do A4 (~515pt).
+        if (bloco.ImagemLargura is int w and > 0)
+        {
+            container.Width(Math.Min(w, 515)).Image(bytes).FitWidth();
+        }
+        else
+        {
+            // Sem dimensão: limita a altura para não explodir o cabeçalho.
+            container.MaxHeight(90).Image(bytes).FitHeight();
+        }
+    }
+
     private static void RenderInline(QuestPDF.Fluent.TextDescriptor td, IReadOnlyList<SpanInline> spans, float baseSize, bool baseBold)
     {
         if (spans.Count == 0)
@@ -172,7 +239,7 @@ public sealed class LaudoPdfRenderer(ILaudosService laudos, IOptions<LaudosPdfOp
 
     // ------------------------ Footer ------------------------
 
-    private void RenderFooter(IContainer container, IReadOnlyList<string> assinatura, string emitidoEm, bool incluirTarja)
+    private void RenderFooter(IContainer container, IReadOnlyList<string> assinatura, string emitidoEm, bool incluirTarja, bool temRodapeCustom, IReadOnlyList<BlocoHtml> blocosRodape, IReadOnlyDictionary<string, byte[]> imagens)
     {
         container.Column(c =>
         {
@@ -200,6 +267,19 @@ public sealed class LaudoPdfRenderer(ILaudosService laudos, IOptions<LaudosPdfOp
                     .FontSize(7)
                     .FontColor(Colors.Grey.Darken2)
                     .Italic();
+            }
+
+            // Rodapé institucional configurado no painel (endereço/contato/imagem).
+            if (temRodapeCustom)
+            {
+                c.Item().PaddingTop(4).Column(r =>
+                {
+                    r.Spacing(2);
+                    foreach (var bloco in blocosRodape)
+                    {
+                        RenderBloco(r.Item(), bloco, imagens);
+                    }
+                });
             }
 
             c.Item().AlignCenter().Text(t =>
@@ -256,6 +336,56 @@ public sealed class LaudoPdfRenderer(ILaudosService laudos, IOptions<LaudosPdfOp
         return d.Length == 11 ? $"{d[..3]}.{d[3..6]}.{d[6..9]}-{d[9..]}" : cpf;
     }
 
+    private static bool TemConteudo(string? html) =>
+        !string.IsNullOrWhiteSpace(html) && html.Trim() is not ("<p></p>" or "<p><br></p>");
+
+    // ------------------------ Resolução de imagens ------------------------
+
+    private async Task<IReadOnlyDictionary<string, byte[]>> ResolverImagensAsync(
+        IEnumerable<BlocoHtml> blocos, CancellationToken cancellationToken)
+    {
+        var resultado = new Dictionary<string, byte[]>(StringComparer.Ordinal);
+        foreach (var src in blocos.Where(b => b.Tipo == TipoBloco.Imagem && b.ImagemSrc is not null)
+                                   .Select(b => b.ImagemSrc!)
+                                   .Distinct(StringComparer.Ordinal))
+        {
+            var bytes = await ResolverImagemAsync(src, cancellationToken);
+            if (bytes is not null) resultado[src] = bytes;
+        }
+        return resultado;
+    }
+
+    private async Task<byte[]?> ResolverImagemAsync(string src, CancellationToken cancellationToken)
+    {
+        // 1) Data URI (base64 embutido).
+        if (src.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+        {
+            var virgula = src.IndexOf(',');
+            if (virgula > 0 && src.Contains(";base64,", StringComparison.OrdinalIgnoreCase))
+            {
+                try { return Convert.FromBase64String(src[(virgula + 1)..]); }
+                catch { return null; }
+            }
+            return null;
+        }
+
+        // 2) Mídia local (/midias/{guid}).
+        var idx = src.IndexOf("/midias/", StringComparison.OrdinalIgnoreCase);
+        if (idx >= 0)
+        {
+            var resto = src[(idx + "/midias/".Length)..];
+            var fim = resto.IndexOfAny(['/', '?', '#']);
+            if (fim >= 0) resto = resto[..fim];
+            if (Guid.TryParse(resto, out var id))
+            {
+                var conteudo = await _midias.ObterConteudoAsync(id, cancellationToken);
+                return conteudo?.Conteudo;
+            }
+        }
+
+        return null; // URL externa — não embute em PDF offline.
+    }
+
     // ------------------------ Parser HTML → Blocos ------------------------
 
     private static IReadOnlyList<BlocoHtml> ParseHtmlParaBlocos(string html)
@@ -276,7 +406,7 @@ public sealed class LaudoPdfRenderer(ILaudosService laudos, IOptions<LaudosPdfOp
         var blocos = new List<BlocoHtml>();
         foreach (var filho in root.ChildNodes)
         {
-            ColetarBlocos(filho, blocos, null);
+            ColetarBlocos(filho, blocos, null, Alinhamento.Esquerda);
         }
         if (blocos.Count == 0)
         {
@@ -285,61 +415,105 @@ public sealed class LaudoPdfRenderer(ILaudosService laudos, IOptions<LaudosPdfOp
         return blocos;
     }
 
-    private static void ColetarBlocos(DomNode node, List<BlocoHtml> destino, string? prefixoLista)
+    private static void ColetarBlocos(DomNode node, List<BlocoHtml> destino, string? prefixoLista, Alinhamento alinhamentoHerdado)
     {
         if (node is DomText txt && !string.IsNullOrWhiteSpace(txt.TextContent))
         {
             destino.Add(new BlocoHtml(TipoBloco.Paragrafo,
                 [new SpanInline(txt.TextContent, false, false, false)],
-                prefixoLista));
+                prefixoLista, alinhamentoHerdado));
             return;
         }
 
         if (node is not DomElement el) return;
 
         var tag = el.TagName.ToUpperInvariant();
+        var alinhamento = LerAlinhamento(el, alinhamentoHerdado);
+
         switch (tag)
         {
+            case "IMG":
+                destino.Add(BlocoImagem(el, alinhamento));
+                break;
             case "P":
-                destino.Add(new BlocoHtml(TipoBloco.Paragrafo, ColetarSpans(el), prefixoLista));
+                AdicionarComImagensInline(el, destino, TipoBloco.Paragrafo, prefixoLista, alinhamento);
                 break;
             case "H1":
-                destino.Add(new BlocoHtml(TipoBloco.Titulo1, ColetarSpans(el), null));
+                destino.Add(new BlocoHtml(TipoBloco.Titulo1, ColetarSpans(el), null, alinhamento));
                 break;
             case "H2":
-                destino.Add(new BlocoHtml(TipoBloco.Titulo2, ColetarSpans(el), null));
+                destino.Add(new BlocoHtml(TipoBloco.Titulo2, ColetarSpans(el), null, alinhamento));
                 break;
             case "H3":
             case "H4":
             case "H5":
             case "H6":
-                destino.Add(new BlocoHtml(TipoBloco.Titulo3, ColetarSpans(el), null));
+                destino.Add(new BlocoHtml(TipoBloco.Titulo3, ColetarSpans(el), null, alinhamento));
                 break;
             case "UL":
                 foreach (var li in el.Children.Where(c => string.Equals(c.TagName, "LI", StringComparison.OrdinalIgnoreCase)))
                 {
-                    destino.Add(new BlocoHtml(TipoBloco.ItemLista, ColetarSpans(li), "•"));
+                    destino.Add(new BlocoHtml(TipoBloco.ItemLista, ColetarSpans(li), "•", alinhamento));
                 }
                 break;
             case "OL":
                 var i = 1;
                 foreach (var li in el.Children.Where(c => string.Equals(c.TagName, "LI", StringComparison.OrdinalIgnoreCase)))
                 {
-                    destino.Add(new BlocoHtml(TipoBloco.ItemLista, ColetarSpans(li), $"{i}."));
+                    destino.Add(new BlocoHtml(TipoBloco.ItemLista, ColetarSpans(li), $"{i}.", alinhamento));
                     i++;
                 }
                 break;
             case "BR":
-                destino.Add(new BlocoHtml(TipoBloco.Paragrafo, [new SpanInline(string.Empty, false, false, false)], null));
+                destino.Add(new BlocoHtml(TipoBloco.Paragrafo, [new SpanInline(string.Empty, false, false, false)], null, alinhamento));
                 break;
             default:
-                // Container desconhecido (div, section, table, etc): desce recursivamente.
+                // Container desconhecido (div, span, section, table, etc): desce recursivamente.
                 foreach (var filho in el.ChildNodes)
                 {
-                    ColetarBlocos(filho, destino, prefixoLista);
+                    ColetarBlocos(filho, destino, prefixoLista, alinhamento);
                 }
                 break;
         }
+    }
+
+    /// <summary>
+    /// Um &lt;p&gt; pode conter texto e/ou uma imagem (TipTap às vezes aninha
+    /// &lt;img&gt; em parágrafo). Emite a imagem como bloco próprio e o resto como texto.
+    /// </summary>
+    private static void AdicionarComImagensInline(DomElement el, List<BlocoHtml> destino, TipoBloco tipo, string? prefixoLista, Alinhamento alinhamento)
+    {
+        var imgs = el.Children.Where(c => string.Equals(c.TagName, "IMG", StringComparison.OrdinalIgnoreCase)).ToList();
+        var spans = ColetarSpans(el);
+
+        if (spans.Count > 0 || imgs.Count == 0)
+        {
+            destino.Add(new BlocoHtml(tipo, spans, prefixoLista, alinhamento));
+        }
+        foreach (var img in imgs)
+        {
+            destino.Add(BlocoImagem(img, alinhamento));
+        }
+    }
+
+    private static BlocoHtml BlocoImagem(DomElement img, Alinhamento alinhamento)
+    {
+        var src = img.GetAttribute("src");
+        int? largura = int.TryParse(img.GetAttribute("width"), out var w) ? w : null;
+        int? altura = int.TryParse(img.GetAttribute("height"), out var h) ? h : null;
+        return new BlocoHtml(TipoBloco.Imagem, [], null, alinhamento, src, largura, altura);
+    }
+
+    private static Alinhamento LerAlinhamento(DomElement el, Alinhamento herdado)
+    {
+        var style = el.GetAttribute("style");
+        if (!string.IsNullOrEmpty(style) && style.Contains("text-align", StringComparison.OrdinalIgnoreCase))
+        {
+            if (style.Contains("center", StringComparison.OrdinalIgnoreCase)) return Alinhamento.Centro;
+            if (style.Contains("right", StringComparison.OrdinalIgnoreCase)) return Alinhamento.Direita;
+            if (style.Contains("left", StringComparison.OrdinalIgnoreCase)) return Alinhamento.Esquerda;
+        }
+        return herdado;
     }
 
     private static IReadOnlyList<SpanInline> ColetarSpans(DomNode node, bool herdaBold = false, bool herdaItalic = false, bool herdaUnderline = false)
@@ -358,6 +532,7 @@ public sealed class LaudoPdfRenderer(ILaudosService laudos, IOptions<LaudosPdfOp
             if (filho is DomElement el)
             {
                 var tag = el.TagName.ToUpperInvariant();
+                if (tag == "IMG") continue; // imagem vira bloco próprio, não span.
                 var bold = herdaBold || tag is "STRONG" or "B";
                 var italic = herdaItalic || tag is "EM" or "I";
                 var underline = herdaUnderline || tag is "U";
@@ -374,9 +549,18 @@ public sealed class LaudoPdfRenderer(ILaudosService laudos, IOptions<LaudosPdfOp
         return spans;
     }
 
-    private enum TipoBloco { Paragrafo, Titulo1, Titulo2, Titulo3, ItemLista }
+    private enum TipoBloco { Paragrafo, Titulo1, Titulo2, Titulo3, ItemLista, Imagem }
+
+    private enum Alinhamento { Esquerda, Centro, Direita }
 
     private sealed record SpanInline(string Texto, bool Bold, bool Italic, bool Underline);
 
-    private sealed record BlocoHtml(TipoBloco Tipo, IReadOnlyList<SpanInline> Spans, string? PrefixoLista);
+    private sealed record BlocoHtml(
+        TipoBloco Tipo,
+        IReadOnlyList<SpanInline> Spans,
+        string? PrefixoLista,
+        Alinhamento Alinhamento = Alinhamento.Esquerda,
+        string? ImagemSrc = null,
+        int? ImagemLargura = null,
+        int? ImagemAltura = null);
 }
