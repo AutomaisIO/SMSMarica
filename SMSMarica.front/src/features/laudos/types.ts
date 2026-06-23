@@ -1,5 +1,12 @@
 export type StatusLaudo = 'Rascunho' | 'Finalizado';
 
+/** Respostas do checklist enviadas ao salvar/finalizar (o servidor recalcula o sugerido). */
+export type ChecklistLaudoInput = {
+  respostasJson: string | null;
+  contribuicoes: string[] | null;
+  biRadsFinal: string | null;
+};
+
 export type Laudo = {
   id: string;
   studyInstanceUID: string;
@@ -19,6 +26,9 @@ export type Laudo = {
   conteudoJson: string;
   conteudoHtml: string;
   status: StatusLaudo;
+  biRads: string | null;
+  biRadsSugerido: string | null;
+  respostasChecklist: string | null;
   finalizadoEm: string | null;
   criadoEm: string;
   atualizadoEm: string | null;
@@ -35,6 +45,7 @@ export type LaudoListItem = {
   medicoNome: string;
   titulo: string;
   status: StatusLaudo;
+  biRads: string | null;
   finalizadoEm: string | null;
   criadoEm: string;
   assinado: boolean;
@@ -86,6 +97,7 @@ export type FiltroLaudos = {
   status?: StatusLaudo;
   dataInicial?: string;
   dataFinal?: string;
+  biRads?: string;
   limite?: number;
 };
 
@@ -96,6 +108,7 @@ export type CadastrarLaudoPayload = {
   titulo: string;
   conteudoJson: string;
   conteudoHtml: string;
+  checklist?: ChecklistLaudoInput | null;
 };
 
 export type AtualizarLaudoPayload = {
@@ -103,10 +116,12 @@ export type AtualizarLaudoPayload = {
   titulo: string;
   conteudoJson: string;
   conteudoHtml: string;
+  checklist?: ChecklistLaudoInput | null;
 };
 
 export type FinalizarLaudoPayload = {
   titulo: string;
   conteudoJson: string;
   conteudoHtml: string;
+  checklist?: ChecklistLaudoInput | null;
 };

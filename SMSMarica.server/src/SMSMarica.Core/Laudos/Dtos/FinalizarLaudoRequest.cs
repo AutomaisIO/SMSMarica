@@ -7,4 +7,5 @@ namespace SMSMarica.Core.Laudos.Dtos;
 public sealed record FinalizarLaudoRequest(
     string Titulo,
     string ConteudoJson,
-    string ConteudoHtml);
+    string ConteudoHtml,
+    ChecklistLaudoInput? Checklist = null);

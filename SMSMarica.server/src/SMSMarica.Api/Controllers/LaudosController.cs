@@ -33,10 +33,11 @@ public sealed class LaudosController(ILaudosService service, ILaudoAssinaturaSer
         [FromQuery] StatusLaudo? status,
         [FromQuery] DateOnly? dataInicial,
         [FromQuery] DateOnly? dataFinal,
+        [FromQuery] string? biRads,
         [FromQuery] int limite = 50,
         CancellationToken cancellationToken = default) =>
         await _service.ListarAsync(
-            new FiltroLaudosDto(studyInstanceUID, pacienteId, medicoId, status, dataInicial, dataFinal, limite),
+            new FiltroLaudosDto(studyInstanceUID, pacienteId, medicoId, status, dataInicial, dataFinal, biRads, limite),
             cancellationToken);
 
     /// <summary>

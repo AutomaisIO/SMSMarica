@@ -12,6 +12,10 @@ import {
   useTemplatePorId,
 } from '@/features/laudo-templates/api/queries';
 import type { SalvarLaudoTemplatePayload } from '@/features/laudo-templates/types';
+import { ConstrutorEstrutura } from '@/features/laudo-templates/components/ConstrutorEstrutura';
+import { PainelChecklist } from '@/features/laudos/checklist/PainelChecklist';
+import { estruturaVazia } from '@/features/laudos/checklist/types';
+import type { EstruturaChecklist, RespostasChecklist } from '@/features/laudos/checklist/types';
 
 export function LaudoTemplateEditorPage() {
   const navigate = useNavigate();
@@ -27,6 +31,8 @@ export function LaudoTemplateEditorPage() {
   const [descricao, setDescricao] = useState('');
   const [html, setHtml] = useState('');
   const [json, setJson] = useState('{}');
+  const [estrutura, setEstrutura] = useState<EstruturaChecklist | null>(null);
+  const [preview, setPreview] = useState<RespostasChecklist | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
@@ -36,8 +42,26 @@ export function LaudoTemplateEditorPage() {
       setDescricao(detalhe.data.descricao ?? '');
       setHtml(detalhe.data.conteudoHtml);
       setJson(detalhe.data.conteudoJson);
+      if (detalhe.data.estruturaJson) {
+        try {
+          setEstrutura(JSON.parse(detalhe.data.estruturaJson) as EstruturaChecklist);
+        } catch {
+          setEstrutura(null);
+        }
+      }
     }
   }, [detalhe.data]);
+
+  // Mantém o preview em sincronia com a estrutura sendo editada (preserva o que já foi marcado).
+  useEffect(() => {
+    setPreview((p) =>
+      estrutura ? { estrutura, marcados: p?.marcados ?? {}, biRadsFinal: p?.biRadsFinal ?? null } : null,
+    );
+  }, [estrutura]);
+
+  function alternarChecklist(usar: boolean) {
+    setEstrutura(usar ? (estrutura ?? estruturaVazia()) : null);
+  }
 
   async function salvar() {
     setErro(null);
@@ -47,6 +71,7 @@ export function LaudoTemplateEditorPage() {
       descricao: descricao.trim() || null,
       conteudoJson: json,
       conteudoHtml: html,
+      estruturaJson: estrutura && estrutura.secoes.length ? JSON.stringify(estrutura) : null,
     };
     if (!payload.nome) {
       setErro('Nome é obrigatório.');
@@ -126,15 +151,56 @@ export function LaudoTemplateEditorPage() {
         </Campo>
       </div>
 
-      <EditorRichText
-        valorHtml={html}
-        aoMudar={(v) => {
-          setHtml(v.html);
-          setJson(v.json);
-        }}
-        placeholder="Escreva o template do laudo aqui…"
-        alturaMinima="500px"
-      />
+      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <label className="flex items-center gap-2 text-sm font-medium text-gray-800">
+          <input
+            type="checkbox"
+            checked={estrutura !== null}
+            onChange={(e) => alternarChecklist(e.target.checked)}
+            className="h-4 w-4 accent-primary-600"
+          />
+          Este template usa checklist + cálculo automático de BI-RADS
+        </label>
+        <p className="mt-1 text-xs text-gray-500">
+          Com o checklist, a profissional marca as frases e o sistema monta o texto do laudo e
+          calcula a categoria BI-RADS (regra do achado mais suspeito).
+        </p>
+
+        {estrutura ? (
+          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div>
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Estrutura
+              </div>
+              <ConstrutorEstrutura estrutura={estrutura} aoMudar={setEstrutura} />
+            </div>
+            <div>
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Pré-visualização
+              </div>
+              {preview && estrutura.secoes.length ? (
+                <PainelChecklist respostas={preview} aoMudar={setPreview} />
+              ) : (
+                <p className="rounded-md border border-dashed border-gray-200 p-4 text-sm text-gray-400">
+                  Adicione seções e frases para ver o checklist aqui.
+                </p>
+              )}
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {estrutura === null ? (
+        <EditorRichText
+          valorHtml={html}
+          aoMudar={(v) => {
+            setHtml(v.html);
+            setJson(v.json);
+          }}
+          placeholder="Escreva o template do laudo aqui…"
+          alturaMinima="500px"
+        />
+      ) : null}
 
       <p className="text-xs text-gray-500">
         Editar este template não altera laudos já criados — o conteúdo é copiado para o laudo no momento da emissão.

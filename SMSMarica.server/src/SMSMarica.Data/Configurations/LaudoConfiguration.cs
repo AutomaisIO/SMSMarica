@@ -28,6 +28,10 @@ internal sealed class LaudoConfiguration : IEntityTypeConfiguration<Laudo>
         builder.Property(l => l.ConteudoHtml).HasColumnName("conteudo_html").HasColumnType("text").IsRequired();
         builder.Property(l => l.Status).HasColumnName("status").HasConversion<int>().IsRequired();
 
+        builder.Property(l => l.BiRads).HasColumnName("bi_rads").HasMaxLength(4);
+        builder.Property(l => l.BiRadsSugerido).HasColumnName("bi_rads_sugerido").HasMaxLength(4);
+        builder.Property(l => l.RespostasChecklist).HasColumnName("respostas_checklist").HasColumnType("jsonb");
+
         builder.Property(l => l.MedicoNomeSnapshot).HasColumnName("medico_nome_snapshot").HasMaxLength(200);
         builder.Property(l => l.MedicoCrmSnapshot).HasColumnName("medico_crm_snapshot").HasMaxLength(20);
         builder.Property(l => l.MedicoUfCrmSnapshot).HasColumnName("medico_uf_crm_snapshot").HasMaxLength(2);
@@ -69,5 +73,9 @@ internal sealed class LaudoConfiguration : IEntityTypeConfiguration<Laudo>
         builder.HasIndex(l => l.PacienteId);
         builder.HasIndex(l => l.MedicoId);
         builder.HasIndex(l => l.Status);
+
+        // Busca por categoria BI-RADS (só linhas avaliadas e não excluídas).
+        builder.HasIndex(l => new { l.BiRads, l.Status })
+            .HasFilter("bi_rads IS NOT NULL AND excluido = false");
     }
 }

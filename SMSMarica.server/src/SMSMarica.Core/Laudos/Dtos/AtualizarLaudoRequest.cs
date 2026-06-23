@@ -5,4 +5,5 @@ public sealed record AtualizarLaudoRequest(
     Guid? PacienteId,
     string Titulo,
     string ConteudoJson,
-    string ConteudoHtml);
+    string ConteudoHtml,
+    ChecklistLaudoInput? Checklist = null);

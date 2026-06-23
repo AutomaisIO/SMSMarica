@@ -21,6 +21,9 @@ public sealed record LaudoDto(
     string ConteudoJson,
     string ConteudoHtml,
     StatusLaudo Status,
+    string? BiRads,
+    string? BiRadsSugerido,
+    string? RespostasChecklist,
     DateTime? FinalizadoEm,
     DateTime CriadoEm,
     DateTime? AtualizadoEm,
@@ -36,6 +39,7 @@ public sealed record LaudoListItemDto(
     string MedicoNome,
     string Titulo,
     StatusLaudo Status,
+    string? BiRads,
     DateTime? FinalizadoEm,
     DateTime CriadoEm,
     bool Assinado = false);

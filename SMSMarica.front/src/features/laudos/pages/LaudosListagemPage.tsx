@@ -11,6 +11,7 @@ import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { useExcluirLaudo, useListarLaudos } from '@/features/laudos/api/queries';
 import { abrirPdfLaudo, baixarPdfLaudo } from '@/features/laudos/lib/pdf';
 import { StatusBadgeLaudo } from '@/features/laudos/components/StatusBadgeLaudo';
+import { CATEGORIAS_BIRADS, corBiRads } from '@/features/laudos/checklist/birads';
 import type { FiltroLaudos, LaudoListItem, StatusLaudo } from '@/features/laudos/types';
 
 export function LaudosListagemPage() {
@@ -88,6 +89,20 @@ export function LaudosListagemPage() {
         const dt = l.finalizadoEm ?? l.criadoEm;
         return new Date(dt).toLocaleString('pt-BR');
       },
+    },
+    {
+      chave: 'birads',
+      cabecalho: 'BI-RADS',
+      render: (l) =>
+        l.biRads ? (
+          <span
+            className={`inline-block rounded border px-2 py-0.5 text-xs font-semibold ${corBiRads(l.biRads)}`}
+          >
+            {l.biRads}
+          </span>
+        ) : (
+          <span className="text-xs text-gray-300">—</span>
+        ),
     },
     {
       chave: 'status',
@@ -178,7 +193,7 @@ export function LaudosListagemPage() {
 
       <form
         onSubmit={aoBuscar}
-        className="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-6"
+        className="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-7"
       >
         <Campo label="Study UID" htmlFor="study" className="sm:col-span-2">
           <Input
@@ -199,6 +214,20 @@ export function LaudosListagemPage() {
             <option value="">Todos</option>
             <option value="Rascunho">Rascunho</option>
             <option value="Finalizado">Finalizado</option>
+          </Select>
+        </Campo>
+        <Campo label="BI-RADS" htmlFor="birads">
+          <Select
+            id="birads"
+            value={filtroDigitado.biRads ?? ''}
+            onChange={(e) => setCampo('biRads', e.target.value || undefined)}
+          >
+            <option value="">Todos</option>
+            {CATEGORIAS_BIRADS.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
           </Select>
         </Campo>
         <Campo label="Data inicial" htmlFor="di">

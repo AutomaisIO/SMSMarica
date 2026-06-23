@@ -12,6 +12,7 @@ internal static class LaudoTemplatesMapper
         t.Descricao,
         t.ConteudoJson,
         t.ConteudoHtml,
+        t.EstruturaJson,
         t.CriadoPorUsuarioId,
         t.CriadoPorUsuario?.NomeCompleto,
         t.CriadoEm,
@@ -25,6 +26,7 @@ internal static class LaudoTemplatesMapper
         t.Nome,
         t.Categoria,
         t.Descricao,
+        !string.IsNullOrWhiteSpace(t.EstruturaJson),
         t.CriadoEm,
         t.Ativo);
 }
