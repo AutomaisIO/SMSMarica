@@ -3,12 +3,15 @@ import {
   AlignLeft,
   AlignRight,
   Bold,
+  Code,
   Heading1,
   Heading2,
   Heading3,
+  Image as ImageIcon,
   Italic,
   List,
   ListOrdered,
+  Loader2,
   Redo,
   Table as TableIcon,
   Trash2,
@@ -18,9 +21,30 @@ import {
 import type { Editor } from '@tiptap/react';
 import { cn } from '@/shared/lib/cn';
 
-type Props = { editor: Editor | null; desabilitado?: boolean };
+type Props = {
+  editor: Editor | null;
+  desabilitado?: boolean;
+  /** Modo "código-fonte HTML" ativo. */
+  modoSource?: boolean;
+  /** Alterna entre visual e source HTML. */
+  aoAlternarSource?: () => void;
+  /** Habilita o botão de inserir imagem. */
+  permitirImagem?: boolean;
+  /** Upload em andamento (mostra spinner no botão de imagem). */
+  enviandoImagem?: boolean;
+  /** Abre o seletor de arquivo de imagem. */
+  aoClicarImagem?: () => void;
+};
 
-export function ToolbarPadrao({ editor, desabilitado }: Props) {
+export function ToolbarPadrao({
+  editor,
+  desabilitado,
+  modoSource,
+  aoAlternarSource,
+  permitirImagem,
+  enviandoImagem,
+  aoClicarImagem,
+}: Props) {
   if (!editor) return null;
 
   function botao(
@@ -78,10 +102,37 @@ export function ToolbarPadrao({ editor, desabilitado }: Props) {
         ? botao(<Trash2 className="h-4 w-4" />, 'Excluir tabela', () => editor.chain().focus().deleteTable().run())
         : null}
 
+      {permitirImagem
+        ? botao(
+            enviandoImagem ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />,
+            'Inserir imagem',
+            () => aoClicarImagem?.(),
+          )
+        : null}
+
       <span className="mx-1 h-5 w-px bg-gray-300" />
 
       {botao(<Undo className="h-4 w-4" />, 'Desfazer (Ctrl+Z)', () => editor.chain().focus().undo().run())}
       {botao(<Redo className="h-4 w-4" />, 'Refazer (Ctrl+Y)', () => editor.chain().focus().redo().run())}
+
+      {aoAlternarSource ? (
+        <>
+          <span className="mx-1 h-5 w-px bg-gray-300" />
+          <button
+            type="button"
+            title="Editar código-fonte HTML"
+            aria-label="Editar código-fonte HTML"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={aoAlternarSource}
+            className={cn(
+              'inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+              modoSource && 'bg-primary-50 text-primary-700',
+            )}
+          >
+            <Code className="h-4 w-4" />
+          </button>
+        </>
+      ) : null}
     </div>
   );
 }

@@ -58,6 +58,10 @@ public static class DependencyInjection
         services.AddScoped<ILaudoTemplatesService, LaudoTemplatesService>();
         services.AddScoped<ILaudosService, LaudosService>();
         services.AddScoped<ILaudoPdfRenderer, LaudoPdfRenderer>();
+        services.AddScoped<Laudos.Configuracao.ILaudoConfiguracaoService, Laudos.Configuracao.LaudoConfiguracaoService>();
+
+        // Armazenamento genérico de imagens/binários no banco (reutilizável).
+        services.AddScoped<Midias.IMidiasService, Midias.MidiasService>();
 
         // ---- Assinatura digital de laudos (PAdES via Automais.Assinador) ----
         services.Configure<Laudos.Assinatura.AssinaturaOptions>(
@@ -114,13 +118,29 @@ public static class DependencyInjection
             s.AllowedTags.Clear();
             foreach (var tag in new[] { "p", "br", "h1", "h2", "h3", "ul", "ol", "li",
                                         "strong", "b", "em", "i", "u",
-                                        "table", "thead", "tbody", "tr", "th", "td" })
+                                        "table", "thead", "tbody", "tr", "th", "td",
+                                        // Cabeçalho/rodapé institucional: imagens + wrappers do TipTap.
+                                        "img", "span", "div" })
             {
                 s.AllowedTags.Add(tag);
             }
             s.AllowedAttributes.Clear();
             s.AllowedAttributes.Add("colspan");
             s.AllowedAttributes.Add("rowspan");
+            s.AllowedAttributes.Add("src");
+            s.AllowedAttributes.Add("alt");
+            s.AllowedAttributes.Add("width");
+            s.AllowedAttributes.Add("height");
+            s.AllowedAttributes.Add("style");
+            s.AllowedAttributes.Add("class");
+
+            // CSS restrito: só alinhamento e dimensões (Ganss já bloqueia url()/expression maliciosos).
+            s.AllowedCssProperties.Clear();
+            foreach (var prop in new[] { "text-align", "width", "height", "font-weight",
+                                         "font-style", "text-decoration" })
+            {
+                s.AllowedCssProperties.Add(prop);
+            }
             return s;
         });
 

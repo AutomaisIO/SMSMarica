@@ -37,6 +37,8 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<Laudo> Laudos => Set<Laudo>();
     public DbSet<LaudoAssinatura> LaudoAssinaturas => Set<LaudoAssinatura>();
     public DbSet<LaudoTemplate> LaudoTemplates => Set<LaudoTemplate>();
+    public DbSet<LaudoConfiguracao> LaudoConfiguracoes => Set<LaudoConfiguracao>();
+    public DbSet<Midia> Midias => Set<Midia>();
     public DbSet<ProcedimentoSigtap> ProcedimentosSigtap => Set<ProcedimentoSigtap>();
     public DbSet<TipoExame> TiposExame => Set<TipoExame>();
     public DbSet<SolicitacaoExame> SolicitacoesExame => Set<SolicitacaoExame>();

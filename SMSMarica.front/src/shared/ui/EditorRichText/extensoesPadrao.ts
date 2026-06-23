@@ -1,3 +1,4 @@
+import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import Table from '@tiptap/extension-table';
 import TableCell from '@tiptap/extension-table-cell';
@@ -14,6 +15,9 @@ export function extensoesPadrao(placeholder?: string): Extensions {
       heading: { levels: [1, 2, 3] },
     }),
     Underline,
+    // Imagens são enviadas para o store de mídia (/midias) e referenciadas por URL —
+    // nunca base64, para manter o HTML leve e dedupável.
+    Image.configure({ inline: false, allowBase64: false }),
     TextAlign.configure({ types: ['heading', 'paragraph'] }),
     Table.configure({ resizable: true }),
     TableRow,
