@@ -20,18 +20,41 @@ import type { Estudo, FiltroBusca, TipoBuscaNome } from '@/features/pacs/types';
 /** Estudo enriquecido com a informação do laudo (vindo do nosso DB). */
 type ExameRow = Estudo & { laudo: LaudoPorStudy | null };
 
-export function PacsListagemPage() {
+// Persistência do filtro entre navegações e reaberturas do browser (localStorage).
+const CHAVE_FILTRO_PACS = 'smsmarica.pacs.filtro';
+
+const FILTRO_PADRAO: FiltroBusca = {
+  nome: '',
+  tipoBuscaNome: 'qualquer',
   // Carga inicial sem data: traz os últimos N exames independente de quando
   // foram feitos — evita o "Nenhum exame encontrado" na abertura quando não
-  // houve exame hoje (que é o caso comum). Quem quiser filtrar pela data
-  // preenche o campo e clica Buscar.
-  const [filtro, setFiltro] = useState<FiltroBusca>({
-    nome: '',
-    tipoBuscaNome: 'qualquer',
-    dataInicial: '',
-    dataFinal: '',
-    limite: 10,
-  });
+  // houve exame hoje. (Vale só no 1º acesso; depois restauramos o último filtro.)
+  dataInicial: '',
+  dataFinal: '',
+  limite: 10,
+};
+
+function carregarFiltroSalvo(): FiltroBusca {
+  try {
+    const raw = localStorage.getItem(CHAVE_FILTRO_PACS);
+    if (!raw) return FILTRO_PADRAO;
+    const p = JSON.parse(raw) as Partial<FiltroBusca>;
+    return {
+      nome: typeof p.nome === 'string' ? p.nome : FILTRO_PADRAO.nome,
+      tipoBuscaNome: p.tipoBuscaNome === 'inicio' ? 'inicio' : 'qualquer',
+      dataInicial: typeof p.dataInicial === 'string' ? p.dataInicial : '',
+      dataFinal: typeof p.dataFinal === 'string' ? p.dataFinal : '',
+      limite: typeof p.limite === 'number' && p.limite > 0 ? p.limite : FILTRO_PADRAO.limite,
+    };
+  } catch {
+    return FILTRO_PADRAO;
+  }
+}
+
+export function PacsListagemPage() {
+  // Restaura o último filtro usado (data, nome, modo, limite). No 1º acesso cai
+  // no FILTRO_PADRAO (sem data).
+  const [filtro, setFiltro] = useState<FiltroBusca>(carregarFiltroSalvo);
 
   const LIMITES_DISPONIVEIS = [5, 10, 50, 100] as const;
 
@@ -47,11 +70,20 @@ export function PacsListagemPage() {
   const [erroExclusao, setErroExclusao] = useState<string | null>(null);
   const [erroPdf, setErroPdf] = useState<string | null>(null);
 
-  // Carga inicial: exames de hoje.
+  // Carga inicial: busca já com o último filtro restaurado.
   useEffect(() => {
     busca.mutate(filtro);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Salva o filtro a cada mudança — sobrevive à troca de tela e ao fechar/abrir o browser.
+  useEffect(() => {
+    try {
+      localStorage.setItem(CHAVE_FILTRO_PACS, JSON.stringify(filtro));
+    } catch {
+      /* localStorage indisponível — ignora */
+    }
+  }, [filtro]);
 
   function setCampo<K extends keyof FiltroBusca>(k: K, v: FiltroBusca[K]) {
     setFiltro((f) => ({ ...f, [k]: v }));

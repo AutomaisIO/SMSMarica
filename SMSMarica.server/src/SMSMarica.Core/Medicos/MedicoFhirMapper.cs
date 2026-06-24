@@ -51,7 +51,10 @@ internal static class MedicoFhirMapper
 
     public static void AplicarAtualizacao(Practitioner existente, AtualizarMedicoRequest r)
     {
-        var atual = LerPayload(existente);
+        // Médicos importados (Salux) não têm o payload smsmarica — a identidade
+        // (nome/CPF/nascimento) vive nos campos FHIR nativos. Sem este fallback,
+        // editar zerava o nome e o hub rejeitava o PUT (500).
+        var atual = LerPayloadOuNativo(existente);
         var pl = atual with
         {
             Conselho = NormalizarSigla(r.Conselho),
@@ -174,6 +177,32 @@ internal static class MedicoFhirMapper
         return raw is null
             ? new Payload(string.Empty, string.Empty, null, string.Empty, string.Empty, string.Empty, null, null, null, null, null, null)
             : JsonSerializer.Deserialize<Payload>(raw, Json)!;
+    }
+
+    /// <summary>
+    /// Como <see cref="LerPayload"/>, mas quando o Practitioner não tem o payload
+    /// smsmarica (ex.: importado do Salux), reconstrói a identidade a partir dos
+    /// campos FHIR nativos — evitando zerar nome/CPF ao editar.
+    /// </summary>
+    private static Payload LerPayloadOuNativo(Practitioner p)
+    {
+        var raw = (p.GetExtension(PayloadUrl)?.Value as FhirString)?.Value;
+        if (raw is not null) return JsonSerializer.Deserialize<Payload>(raw, Json)!;
+
+        var (conselho, registro, uf) = ConselhoNativo(p);
+        return new Payload(
+            NomeNativo(p) ?? string.Empty,
+            IdentValor(p, SystemCpf) ?? string.Empty,
+            ParseData(p.BirthDate),
+            conselho ?? "CRM",
+            registro ?? string.Empty,
+            uf ?? string.Empty,
+            EspecialidadeNativa(p),
+            null,
+            ValidadeNativa(p),
+            TelefoneNativo(p),
+            null,
+            null);
     }
 
     private static string NormalizarSigla(string? v) =>

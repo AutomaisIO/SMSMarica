@@ -24,6 +24,7 @@ public static class DbSeeder
         await GarantirPerfilAdminAsync(db, cancellationToken);
         await GarantirUsuarioAdminAsync(db, hasher, cancellationToken);
         await GarantirTemplateMamografiaAsync(db, cancellationToken);
+        await SeedCabecalhoLaudo.GarantirAsync(db, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
     }
 
