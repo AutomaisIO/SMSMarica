@@ -3,7 +3,7 @@ import { Loader2, Save } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
-import { EditorRichText } from '@/shared/ui/EditorRichText';
+import { EditorHtml } from '@/shared/ui/EditorHtml';
 import { cn } from '@/shared/lib/cn';
 import { useLaudoConfiguracao, useSalvarLaudoConfiguracao } from '../queries';
 
@@ -101,7 +101,7 @@ export function LaudoConfiguracaoPage() {
 
       {/* Mantém ambos montados (display none) para não perder estado ao trocar de aba. */}
       <div className={aba === 'cabecalho' ? 'block' : 'hidden'}>
-        <EditorRichText
+        <EditorHtml
           valorHtml={cabecalhoHtml}
           aoMudar={(v) => {
             setCabecalhoHtml(v.html);
@@ -110,17 +110,17 @@ export function LaudoConfiguracaoPage() {
           somenteLeitura={!podeEditar}
           permitirImagem={podeEditar}
           categoriaImagem="laudo-cabecalho"
-          placeholder="Monte o cabeçalho: logo, nome da instituição, endereço…"
+          placeholder="Monte o cabeçalho em HTML: logo, nome da instituição, endereço…"
           alturaMinima="320px"
         />
         <p className="mt-2 text-xs text-gray-500">
-          Use o botão de imagem para enviar o logotimbre. O botão <strong>&lt;/&gt;</strong> abre o
-          código-fonte HTML para ajustes finos.
+          Edite o HTML na aba <strong>HTML</strong> e veja o resultado fiel na aba <strong>Visual</strong>.
+          Use <strong>Imagem</strong> para enviar o logotimbre.
         </p>
       </div>
 
       <div className={aba === 'rodape' ? 'block' : 'hidden'}>
-        <EditorRichText
+        <EditorHtml
           valorHtml={rodapeHtml}
           aoMudar={(v) => {
             setRodapeHtml(v.html);
@@ -129,7 +129,7 @@ export function LaudoConfiguracaoPage() {
           somenteLeitura={!podeEditar}
           permitirImagem={podeEditar}
           categoriaImagem="laudo-rodape"
-          placeholder="Monte o rodapé: endereço, contato, observações institucionais…"
+          placeholder="Monte o rodapé em HTML: endereço, contato, observações institucionais…"
           alturaMinima="240px"
         />
         <p className="mt-2 text-xs text-gray-500">
