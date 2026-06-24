@@ -42,6 +42,22 @@ public class Laudo
 
     public StatusLaudo Status { get; set; } = StatusLaudo.Rascunho;
 
+    /// <summary>
+    /// Categoria BI-RADS FINAL do laudo (ex.: "2", "4B"). É o valor que a
+    /// profissional confirmou — pode divergir do sugerido pelo cálculo. Campo
+    /// explícito e indexado para busca. Null em laudos sem avaliação BI-RADS.
+    /// </summary>
+    public string? BiRads { get; set; }
+
+    /// <summary>Categoria sugerida pelo motor a partir das respostas (auditoria do override).</summary>
+    public string? BiRadsSugerido { get; set; }
+
+    /// <summary>
+    /// Respostas do checklist que originaram o texto/BI-RADS (jsonb). Permite
+    /// reabrir o laudo no painel estruturado. Null em laudos de texto livre.
+    /// </summary>
+    public string? RespostasChecklist { get; set; }
+
     /// <summary>Congelado ao finalizar (CRM pode mudar de UF; médico pode sair).</summary>
     public string? MedicoNomeSnapshot { get; set; }
     public string? MedicoCrmSnapshot { get; set; }

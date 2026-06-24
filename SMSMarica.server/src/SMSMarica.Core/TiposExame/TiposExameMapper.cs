@@ -19,6 +19,7 @@ internal static class TiposExameMapper
         t.UnidadePadraoId,
         t.UnidadePadrao?.Nome,
         t.Ativo,
+        t.EnviarParaWorklist,
         t.CriadoEm);
 
     public static TipoExameListItemDto ParaListItem(TipoExame t) => new(
@@ -27,5 +28,6 @@ internal static class TiposExameMapper
         t.ModalidadeDicom,
         t.ProcedimentoSigtap?.Codigo ?? string.Empty,
         t.TempoEstimadoMinutos,
-        t.Ativo);
+        t.Ativo,
+        t.EnviarParaWorklist);
 }

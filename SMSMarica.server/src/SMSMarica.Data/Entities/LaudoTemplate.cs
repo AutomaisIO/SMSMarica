@@ -22,6 +22,14 @@ public class LaudoTemplate
     /// <summary>HTML pré-renderizado (sanitizado) — seed para o editor e fallback.</summary>
     public string ConteudoHtml { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Definição opcional do questionário estruturado (seções → itens, cada item
+    /// com texto e contribuição BI-RADS). Quando preenchido, o template ganha
+    /// checklist + cálculo automático; quando null, é template de texto livre.
+    /// JSON livre (jsonb) — schema versionado em <c>versaoSchema</c>.
+    /// </summary>
+    public string? EstruturaJson { get; set; }
+
     public Guid CriadoPorUsuarioId { get; set; }
     public Usuario? CriadoPorUsuario { get; set; }
 

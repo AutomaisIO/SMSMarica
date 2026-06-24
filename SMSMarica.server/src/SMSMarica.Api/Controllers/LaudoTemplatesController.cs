@@ -20,8 +20,9 @@ public sealed class LaudoTemplatesController(ILaudoTemplatesService service) : C
     private readonly ILaudoTemplatesService _service = service;
 
     /// <summary>Lista templates (default: só ativos).</summary>
+    /// <remarks>Leitura liberada para quem gere templates OU emite laudos (escolher o template).</remarks>
     [HttpGet]
-    [RequerPermissao(ModuloPermissao.LaudosTemplates, AcoesPermissao.Consulta)]
+    [RequerQualquerPermissao(AcoesPermissao.Consulta, ModuloPermissao.LaudosTemplates, ModuloPermissao.Laudos)]
     [ProducesResponseType<IReadOnlyList<LaudoTemplateListItemDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<LaudoTemplateListItemDto>> Listar(
         [FromQuery] string? categoria,
@@ -29,9 +30,9 @@ public sealed class LaudoTemplatesController(ILaudoTemplatesService service) : C
         CancellationToken cancellationToken = default) =>
         await _service.ListarAsync(categoria, incluirInativos, cancellationToken);
 
-    /// <summary>Detalhe de um template (incluindo conteúdo JSON/HTML).</summary>
+    /// <summary>Detalhe de um template (incluindo conteúdo JSON/HTML e estrutura do checklist).</summary>
     [HttpGet("{id:guid}")]
-    [RequerPermissao(ModuloPermissao.LaudosTemplates, AcoesPermissao.Consulta)]
+    [RequerQualquerPermissao(AcoesPermissao.Consulta, ModuloPermissao.LaudosTemplates, ModuloPermissao.Laudos)]
     [ProducesResponseType<LaudoTemplateDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<LaudoTemplateDto> ObterPorId(Guid id, CancellationToken cancellationToken) =>

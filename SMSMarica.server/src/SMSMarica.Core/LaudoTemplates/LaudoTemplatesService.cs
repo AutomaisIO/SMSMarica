@@ -72,6 +72,7 @@ public sealed class LaudoTemplatesService(SmsMaricaDbContext db, IHtmlSanitizer 
             Descricao = string.IsNullOrWhiteSpace(request.Descricao) ? null : request.Descricao.Trim(),
             ConteudoJson = string.IsNullOrWhiteSpace(request.ConteudoJson) ? "{}" : request.ConteudoJson,
             ConteudoHtml = _sanitizer.Sanitize(request.ConteudoHtml ?? string.Empty),
+            EstruturaJson = string.IsNullOrWhiteSpace(request.EstruturaJson) ? null : request.EstruturaJson,
             CriadoPorUsuarioId = usuarioId,
             CriadoEm = agora,
             Ativo = true,
@@ -103,6 +104,7 @@ public sealed class LaudoTemplatesService(SmsMaricaDbContext db, IHtmlSanitizer 
         t.Descricao = string.IsNullOrWhiteSpace(request.Descricao) ? null : request.Descricao.Trim();
         t.ConteudoJson = string.IsNullOrWhiteSpace(request.ConteudoJson) ? "{}" : request.ConteudoJson;
         t.ConteudoHtml = _sanitizer.Sanitize(request.ConteudoHtml ?? string.Empty);
+        t.EstruturaJson = string.IsNullOrWhiteSpace(request.EstruturaJson) ? null : request.EstruturaJson;
         t.AtualizadoPorUsuarioId = usuarioId;
         t.AtualizadoEm = DateTime.UtcNow;
 

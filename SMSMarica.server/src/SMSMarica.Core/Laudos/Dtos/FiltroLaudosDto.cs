@@ -9,4 +9,5 @@ public sealed record FiltroLaudosDto(
     StatusLaudo? Status = null,
     DateOnly? DataInicial = null,
     DateOnly? DataFinal = null,
+    string? BiRads = null,
     int Limite = 50);

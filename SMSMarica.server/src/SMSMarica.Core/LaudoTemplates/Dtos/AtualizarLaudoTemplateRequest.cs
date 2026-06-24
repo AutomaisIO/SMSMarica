@@ -5,4 +5,5 @@ public sealed record AtualizarLaudoTemplateRequest(
     string Categoria,
     string? Descricao,
     string ConteudoJson,
-    string ConteudoHtml);
+    string ConteudoHtml,
+    string? EstruturaJson = null);

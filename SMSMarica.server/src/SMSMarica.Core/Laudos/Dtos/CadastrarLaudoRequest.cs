@@ -10,4 +10,5 @@ public sealed record CadastrarLaudoRequest(
     Guid? LaudoTemplateId,
     string Titulo,
     string ConteudoJson,
-    string ConteudoHtml);
+    string ConteudoHtml,
+    ChecklistLaudoInput? Checklist = null);

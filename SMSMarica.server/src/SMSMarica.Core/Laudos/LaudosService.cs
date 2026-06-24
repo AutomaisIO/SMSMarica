@@ -2,6 +2,7 @@ using Ganss.Xss;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Common.Excecoes;
+using SMSMarica.Core.Laudos.BiRads;
 using SMSMarica.Core.Laudos.Dtos;
 using SMSMarica.Core.Medicos;
 using SMSMarica.Core.Medicos.Dtos;
@@ -64,6 +65,8 @@ public sealed class LaudosService(
             query = query.Where(l => l.MedicoId == filtro.MedicoId);
         if (filtro.Status.HasValue)
             query = query.Where(l => l.Status == filtro.Status);
+        if (CalculadoraBiRads.Normalizar(filtro.BiRads) is { } bir)
+            query = query.Where(l => l.BiRads == bir);
         if (filtro.DataInicial.HasValue)
         {
             var ini = filtro.DataInicial.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
@@ -201,6 +204,7 @@ public sealed class LaudosService(
             Status = StatusLaudo.Rascunho,
             CriadoEm = agora,
         };
+        AplicarChecklist(laudo, request.Checklist);
 
         _db.Laudos.Add(laudo);
         await _db.SaveChangesAsync(cancellationToken);
@@ -232,6 +236,7 @@ public sealed class LaudosService(
         laudo.Titulo = NormalizarTitulo(request.Titulo);
         laudo.ConteudoJson = string.IsNullOrWhiteSpace(request.ConteudoJson) ? "{}" : request.ConteudoJson;
         laudo.ConteudoHtml = _sanitizer.Sanitize(request.ConteudoHtml ?? string.Empty);
+        AplicarChecklist(laudo, request.Checklist);
         laudo.AtualizadoEm = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(cancellationToken);
@@ -261,6 +266,7 @@ public sealed class LaudosService(
         laudo.Titulo = NormalizarTitulo(request.Titulo);
         laudo.ConteudoJson = string.IsNullOrWhiteSpace(request.ConteudoJson) ? "{}" : request.ConteudoJson;
         laudo.ConteudoHtml = html;
+        AplicarChecklist(laudo, request.Checklist);
 
         // Snapshot dos dados do médico (Practitioner do hub) no momento da finalização.
         laudo.MedicoNomeSnapshot = medico.NomeCompleto;
@@ -319,6 +325,9 @@ public sealed class LaudosService(
             Titulo = anterior.Titulo,
             ConteudoJson = anterior.ConteudoJson,
             ConteudoHtml = anterior.ConteudoHtml,
+            BiRads = anterior.BiRads,
+            BiRadsSugerido = anterior.BiRadsSugerido,
+            RespostasChecklist = anterior.RespostasChecklist,
             Status = StatusLaudo.Rascunho,
             CriadoEm = agora,
         };
@@ -348,6 +357,26 @@ public sealed class LaudosService(
         await CarregarCompletoAsync(id, asNoTracking: true, cancellationToken);
 
     // ---------------- helpers ----------------
+
+    /// <summary>
+    /// Aplica as respostas do checklist ao laudo: o servidor recalcula o BI-RADS
+    /// sugerido (regra "achado mais suspeito") e grava o final escolhido pela
+    /// profissional (override; default = sugerido). Null = laudo de texto livre,
+    /// não mexe nos campos.
+    /// </summary>
+    private static void AplicarChecklist(Laudo laudo, ChecklistLaudoInput? checklist)
+    {
+        if (checklist is null) return;
+
+        var sugerido = CalculadoraBiRads.Sugerir(checklist.Contribuicoes ?? []);
+        var final = CalculadoraBiRads.Normalizar(checklist.BiRadsFinal) ?? sugerido;
+
+        laudo.BiRadsSugerido = sugerido;
+        laudo.BiRads = final;
+        laudo.RespostasChecklist = string.IsNullOrWhiteSpace(checklist.RespostasJson)
+            ? null
+            : checklist.RespostasJson;
+    }
 
     private Task<Laudo?> CarregarCompletoAsync(Guid id, bool asNoTracking, CancellationToken ct)
     {

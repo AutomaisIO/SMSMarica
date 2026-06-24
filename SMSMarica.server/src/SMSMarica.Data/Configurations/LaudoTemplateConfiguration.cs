@@ -17,6 +17,7 @@ internal sealed class LaudoTemplateConfiguration : IEntityTypeConfiguration<Laud
         builder.Property(t => t.Descricao).HasColumnName("descricao").HasMaxLength(500);
         builder.Property(t => t.ConteudoJson).HasColumnName("conteudo_json").HasColumnType("jsonb").IsRequired();
         builder.Property(t => t.ConteudoHtml).HasColumnName("conteudo_html").HasColumnType("text").IsRequired();
+        builder.Property(t => t.EstruturaJson).HasColumnName("estrutura_json").HasColumnType("jsonb");
 
         builder.Property(t => t.CriadoPorUsuarioId).HasColumnName("criado_por_usuario_id").IsRequired();
         builder.Property(t => t.AtualizadoPorUsuarioId).HasColumnName("atualizado_por_usuario_id");

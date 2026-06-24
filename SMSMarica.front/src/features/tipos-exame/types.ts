@@ -26,6 +26,7 @@ export type TipoExame = {
   unidadePadraoId: string | null;
   unidadePadraoNome: string | null;
   ativo: boolean;
+  enviarParaWorklist: boolean;
   criadoEm: string;
 };
 
@@ -36,6 +37,7 @@ export type TipoExameListItem = {
   procedimentoSigtapCodigo: string;
   tempoEstimadoMinutos: number | null;
   ativo: boolean;
+  enviarParaWorklist: boolean;
 };
 
 export type SalvarTipoExamePayload = {
@@ -48,4 +50,5 @@ export type SalvarTipoExamePayload = {
   tempoEstimadoMinutos: number | null;
   unidadePadraoId: string | null;
   ativo?: boolean;
+  enviarParaWorklist?: boolean;
 };

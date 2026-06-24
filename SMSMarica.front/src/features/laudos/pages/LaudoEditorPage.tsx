@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
@@ -36,6 +36,12 @@ import {
   useStatusAssinatura,
 } from '@/features/laudos/api/queries';
 import { abrirPdfLaudo, baixarPdfLaudo } from '@/features/laudos/lib/pdf';
+import { PainelChecklist } from '@/features/laudos/checklist/PainelChecklist';
+import { useListarTemplates } from '@/features/laudo-templates/api/queries';
+import { obterTemplate } from '@/features/laudo-templates/api/laudoTemplatesApi';
+import { coletarContribuicoes, gerarHtmlLaudo } from '@/features/laudos/checklist/gerarTexto';
+import type { EstruturaChecklist, RespostasChecklist } from '@/features/laudos/checklist/types';
+import type { ChecklistLaudoInput } from '@/features/laudos/types';
 import {
   TIMEOUT_AGENTE_SEGUNDOS,
   lancarAgenteAssinatura,
@@ -62,6 +68,8 @@ export function LaudoEditorPage() {
   const [titulo, setTitulo] = useState('Laudo');
   const [html, setHtml] = useState('');
   const [json, setJson] = useState('{}');
+  const [respostas, setRespostas] = useState<RespostasChecklist | null>(null);
+  const [templateEscolhidoId, setTemplateEscolhidoId] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [aguardandoAgente, setAguardandoAgente] = useState(false);
   const [agenteNaoEncontrado, setAgenteNaoEncontrado] = useState(false);
@@ -76,8 +84,61 @@ export function LaudoEditorPage() {
       setTitulo(detalhe.data.titulo);
       setHtml(detalhe.data.conteudoHtml);
       setJson(detalhe.data.conteudoJson);
+      if (detalhe.data.respostasChecklist) {
+        try {
+          setRespostas(JSON.parse(detalhe.data.respostasChecklist) as RespostasChecklist);
+        } catch {
+          setRespostas(null);
+        }
+      }
     }
   }, [detalhe.data]);
+
+  // Laudo "checklist-only" (por ora só mamografia): ao criar um laudo novo,
+  // carrega automaticamente o template de checklist disponível, em vez de abrir
+  // no texto livre. Gating por modalidade evita carregar mamografia em estudo de
+  // outra natureza; quando houver mais templates, casar por modalidade/categoria.
+  const autoCarregado = useRef(false);
+  const ehMamografia = !modalidadeParam || modalidadeParam === 'MG';
+  const templatesDisponiveis = useListarTemplates(undefined, false);
+  useEffect(() => {
+    if (!ehNovo || autoCarregado.current || respostas || !ehMamografia) return;
+    const lista = templatesDisponiveis.data;
+    if (!lista) return;
+    const tpl = lista.find((t) => t.temChecklist);
+    autoCarregado.current = true;
+    if (!tpl) return;
+    void obterTemplate(tpl.id)
+      .then((t) => {
+        if (!t.estruturaJson) return;
+        const estrutura = JSON.parse(t.estruturaJson) as EstruturaChecklist;
+        const r: RespostasChecklist = { estrutura, marcados: {}, biRadsFinal: null };
+        setTemplateEscolhidoId(t.id);
+        setRespostas(r);
+        setHtml(gerarHtmlLaudo(r));
+        setJson('{}');
+        setTitulo((atual) => (!atual || atual === 'Laudo' ? t.nome : atual));
+      })
+      .catch(() => {
+        /* sem template/checklist → segue no texto livre */
+      });
+  }, [ehNovo, respostas, ehMamografia, templatesDisponiveis.data]);
+
+  // Marcar/desmarcar no checklist regenera o texto do laudo (TipTap fica para ajuste fino).
+  function aoMudarRespostas(r: RespostasChecklist) {
+    setRespostas(r);
+    setHtml(gerarHtmlLaudo(r));
+    setJson('{}');
+  }
+
+  function montarChecklist(): ChecklistLaudoInput | null {
+    if (!respostas) return null;
+    return {
+      respostasJson: JSON.stringify(respostas),
+      contribuicoes: coletarContribuicoes(respostas.estrutura, respostas.marcados),
+      biRadsFinal: respostas.biRadsFinal,
+    };
+  }
 
   const studyInstanceUID = ehNovo ? studyParam : (detalhe.data?.studyInstanceUID ?? studyParam);
   const finalizado = !ehNovo && detalhe.data?.status === 'Finalizado';
@@ -133,10 +194,11 @@ export function LaudoEditorPage() {
         const novoId = await cadastrar.mutateAsync({
           studyInstanceUID,
           pacienteId: null,
-          laudoTemplateId: templateIdParam || null,
+          laudoTemplateId: templateIdParam || templateEscolhidoId || null,
           titulo,
           conteudoJson: json,
           conteudoHtml: html,
+          checklist: montarChecklist(),
         });
         navigate(`/app/laudos/${novoId}`, { replace: true });
       } else if (id) {
@@ -147,6 +209,7 @@ export function LaudoEditorPage() {
             titulo,
             conteudoJson: json,
             conteudoHtml: html,
+            checklist: montarChecklist(),
           },
         });
       }
@@ -168,16 +231,17 @@ export function LaudoEditorPage() {
         alvoId = await cadastrar.mutateAsync({
           studyInstanceUID,
           pacienteId: null,
-          laudoTemplateId: templateIdParam || null,
+          laudoTemplateId: templateIdParam || templateEscolhidoId || null,
           titulo,
           conteudoJson: json,
           conteudoHtml: html,
+          checklist: montarChecklist(),
         });
       }
       if (!alvoId) return;
       await finalizar.mutateAsync({
         id: alvoId,
-        payload: { titulo, conteudoJson: json, conteudoHtml: html },
+        payload: { titulo, conteudoJson: json, conteudoHtml: html, checklist: montarChecklist() },
       });
       navigate(`/app/laudos/${alvoId}`, { replace: true });
     } catch (e) {
@@ -383,13 +447,44 @@ export function LaudoEditorPage() {
             {!finalizado ? (
               <SeletorTemplate
                 aoEscolher={(t) => {
-                  setHtml(t.conteudoHtml);
-                  setJson(t.conteudoJson);
+                  setTemplateEscolhidoId(t.id);
+                  let estrutura: EstruturaChecklist | null = null;
+                  if (t.estruturaJson) {
+                    try {
+                      estrutura = JSON.parse(t.estruturaJson) as EstruturaChecklist;
+                    } catch {
+                      estrutura = null;
+                    }
+                  }
+                  if (estrutura) {
+                    const r: RespostasChecklist = { estrutura, marcados: {}, biRadsFinal: null };
+                    setRespostas(r);
+                    setHtml(gerarHtmlLaudo(r));
+                    setJson('{}');
+                  } else {
+                    setRespostas(null);
+                    setHtml(t.conteudoHtml);
+                    setJson(t.conteudoJson);
+                  }
                   if (!titulo || titulo === 'Laudo') setTitulo(t.nome);
                 }}
               />
             ) : null}
           </div>
+
+          {respostas ? (
+            <>
+              <PainelChecklist
+                respostas={respostas}
+                somenteLeitura={finalizado}
+                aoMudar={aoMudarRespostas}
+              />
+              <p className="text-xs text-gray-500">
+                O texto abaixo é gerado pelo checklist — ajustes manuais são sobrescritos ao
+                remarcar uma opção.
+              </p>
+            </>
+          ) : null}
 
           <EditorRichText
             valorHtml={html}

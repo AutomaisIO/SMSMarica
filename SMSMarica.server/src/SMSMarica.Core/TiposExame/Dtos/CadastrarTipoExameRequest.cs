@@ -10,4 +10,5 @@ public sealed record CadastrarTipoExameRequest(
     string ScheduledProcedureStepDescription,
     IReadOnlyList<string>? CodigosProtocolo,
     int? TempoEstimadoMinutos,
-    Guid? UnidadePadraoId);
+    Guid? UnidadePadraoId,
+    bool EnviarParaWorklist = true);

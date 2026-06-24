@@ -11,4 +11,5 @@ public sealed record AtualizarTipoExameRequest(
     IReadOnlyList<string>? CodigosProtocolo,
     int? TempoEstimadoMinutos,
     Guid? UnidadePadraoId,
-    bool Ativo);
+    bool Ativo,
+    bool EnviarParaWorklist = true);

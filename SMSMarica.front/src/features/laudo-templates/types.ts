@@ -5,6 +5,7 @@ export type LaudoTemplate = {
   descricao: string | null;
   conteudoJson: string;
   conteudoHtml: string;
+  estruturaJson: string | null;
   criadoPorUsuarioId: string;
   criadoPorNome: string | null;
   criadoEm: string;
@@ -19,6 +20,7 @@ export type LaudoTemplateListItem = {
   nome: string;
   categoria: string;
   descricao: string | null;
+  temChecklist: boolean;
   criadoEm: string;
   ativo: boolean;
 };
@@ -29,4 +31,5 @@ export type SalvarLaudoTemplatePayload = {
   descricao: string | null;
   conteudoJson: string;
   conteudoHtml: string;
+  estruturaJson: string | null;
 };

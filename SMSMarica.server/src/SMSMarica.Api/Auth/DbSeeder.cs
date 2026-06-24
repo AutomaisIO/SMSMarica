@@ -35,18 +35,29 @@ public static class DbSeeder
     /// </summary>
     private static async Task GarantirTemplateMamografiaAsync(SmsMaricaDbContext db, CancellationToken ct)
     {
-        var existe = await db.LaudoTemplates
-            .AnyAsync(t => t.Id == IdentificadoresFixos.TemplateMamografiaCdtId, ct);
-        if (existe) return;
+        var existente = await db.LaudoTemplates
+            .FirstOrDefaultAsync(t => t.Id == IdentificadoresFixos.TemplateMamografiaCdtId, ct);
+
+        if (existente is not null)
+        {
+            // Backfill da estrutura de checklist em bases já semeadas (sem sobrescrever edições).
+            if (string.IsNullOrWhiteSpace(existente.EstruturaJson))
+            {
+                existente.EstruturaJson = TemplateMamografiaEstruturaJson;
+                existente.AtualizadoEm = DateTime.UtcNow;
+            }
+            return;
+        }
 
         db.LaudoTemplates.Add(new LaudoTemplate
         {
             Id = IdentificadoresFixos.TemplateMamografiaCdtId,
             Nome = "Mamografia Digital Bilateral (CDT)",
             Categoria = "Mamografia",
-            Descricao = "Macro do CDT Maricá: selecione as frases aplicáveis e preencha os campos ____.",
+            Descricao = "Macro do CDT Maricá: marque as frases aplicáveis — o texto e o BI-RADS são gerados automaticamente.",
             ConteudoHtml = TemplateMamografiaHtml,
             ConteudoJson = "{}",
+            EstruturaJson = TemplateMamografiaEstruturaJson,
             CriadoPorUsuarioId = AdminUsuarioId,
             CriadoEm = DateTime.UtcNow,
             Ativo = true,
@@ -102,6 +113,134 @@ public static class DbSeeder
         <p>Recomenda-se correlação com estudo histopatológico.</p>
         <p>Recomenda-se ressecção cirúrgica quando clinicamente apropriado.</p>
         <p><strong>OBS:</strong> Mamas densas, a critério clínico complementar o estudo com ultrassonografia para pesquisa de nódulo oculto.</p>
+        """;
+
+    // Versão estruturada do macro: cada frase carrega sua contribuição BI-RADS
+    // (regra do achado mais suspeito). Campos {chave} substituem os ____ e as
+    // barras "direita/esquerda". Mapeamento clínico conservador — a profissional
+    // confirma/ajusta a categoria final no laudo.
+    private const string TemplateMamografiaEstruturaJson = """
+        {
+          "versaoSchema": 1,
+          "calculadora": "BI-RADS",
+          "secoes": [
+            {
+              "id": "indicacao",
+              "titulo": "INDICAÇÃO",
+              "selecao": "unica",
+              "itens": [
+                { "id": "ind-rastreio", "texto": "Exame de rastreamento.", "birads": null }
+              ]
+            },
+            {
+              "id": "tecnica",
+              "titulo": "TÉCNICA",
+              "selecao": "multipla",
+              "itens": [
+                { "id": "tec-mlo-cc", "texto": "Incidências mediolaterais oblíquas e craniocaudais bilaterais.", "birads": null },
+                { "id": "tec-eklund", "texto": "Incidências mediolaterais oblíquas e craniocaudais bilaterais, com e sem manobra de Eklund.", "birads": null },
+                { "id": "tec-ampliacao", "texto": "Incidências de ampliação (magnificação) da {lado}.", "birads": null,
+                  "campos": [ { "chave": "lado", "tipo": "opcao", "opcoes": ["mama direita", "mama esquerda"] } ] }
+              ]
+            },
+            {
+              "id": "descricao",
+              "titulo": "DESCRIÇÃO BILATERAL",
+              "selecao": "multipla",
+              "itens": [
+                { "id": "desc-pele", "texto": "Pele e papilas sem alterações.", "birads": "1" },
+                { "id": "desc-adiposas", "texto": "Mamas predominantemente adiposas.", "birads": null },
+                { "id": "desc-esparsas", "texto": "Mamas com densidades fibroglandulares esparsas.", "birads": null },
+                { "id": "desc-heterogeneas", "texto": "Mamas heterogeneamente densas, o que pode ocultar nódulos.", "birads": null },
+                { "id": "desc-extremamente", "texto": "Mamas extremamente densas, o que diminui a sensibilidade da mamografia.", "birads": null },
+                { "id": "desc-distorcao-previa", "texto": "Distorção arquitetural bilateral por cirurgia prévia (mastoplastia).", "birads": "2" },
+                { "id": "desc-implante", "texto": "Implante mamário ânteromuscular/retromuscular bilateralmente, sem sinais de ruptura extracapsular ao método.", "birads": "2" },
+                { "id": "desc-sem-nodulos", "texto": "Não há evidência de nódulos definidos.", "birads": "1" },
+                { "id": "desc-nodulo-oval", "texto": "Nódulo oval, isodenso, {tipo}, medindo {medida} cm, localizado no {terco}, da {lado}.", "birads": "3",
+                  "campos": [
+                    { "chave": "tipo", "tipo": "opcao", "opcoes": ["obscurecido", "circunscrito"] },
+                    { "chave": "medida", "tipo": "numero", "sufixo": "cm" },
+                    { "chave": "terco", "tipo": "opcao", "opcoes": ["1/3 anterior", "1/3 médio", "1/3 posterior"] },
+                    { "chave": "lado", "tipo": "opcao", "opcoes": ["mama direita", "mama esquerda"] }
+                  ] },
+                { "id": "desc-pipoca", "texto": "Nódulo contendo calcificações em pipoca, compatível com fibroadenoma hialinizado na {lado}.", "birads": "2",
+                  "campos": [ { "chave": "lado", "tipo": "opcao", "opcoes": ["mama direita", "mama esquerda"] } ] },
+                { "id": "desc-assimetria-focal", "texto": "Assimetria focal localizada no {terco} da {lado}.", "birads": "3",
+                  "campos": [
+                    { "chave": "terco", "tipo": "opcao", "opcoes": ["1/3 anterior", "1/3 médio", "1/3 posterior"] },
+                    { "chave": "lado", "tipo": "opcao", "opcoes": ["mama direita", "mama esquerda"] }
+                  ] },
+                { "id": "desc-calc-benignas-bilat", "texto": "Calcificações de aspecto benigno bilateralmente.", "birads": "2" },
+                { "id": "desc-calc-benigna-lado", "texto": "Calcificação de aspecto benigno na {lado}.", "birads": "2",
+                  "campos": [ { "chave": "lado", "tipo": "opcao", "opcoes": ["mama direita", "mama esquerda"] } ] },
+                { "id": "desc-linfo-ok", "texto": "Linfonodos axilares sem alterações ao método.", "birads": null },
+                { "id": "desc-prolong-ok", "texto": "Prolongamentos axilares sem alterações expressivas.", "birads": null },
+                { "id": "desc-linfo-prolong", "texto": "Linfonodos no prolongamento axilar {lado}, sem alterações ao método.", "birads": null,
+                  "campos": [ { "chave": "lado", "tipo": "opcao", "opcoes": ["direito", "esquerdo"] } ] },
+                { "id": "desc-linfo-nao-vis", "texto": "Linfonodos axilares não visibilizados.", "birads": null },
+                { "id": "desc-linfo-nao-vis-lado", "texto": "Linfonodos não visibilizados na axila {lado}.", "birads": null,
+                  "campos": [ { "chave": "lado", "tipo": "opcao", "opcoes": ["direita", "esquerda"] } ] },
+                { "id": "desc-marcador", "texto": "Marcador metálico em alteração cutânea na {lado}.", "birads": null,
+                  "campos": [ { "chave": "lado", "tipo": "opcao", "opcoes": ["mama direita", "mama esquerda"] } ] }
+              ]
+            },
+            {
+              "id": "comparativa",
+              "titulo": "ANÁLISE COMPARATIVA",
+              "selecao": "unica",
+              "itens": [
+                { "id": "comp-sem-anteriores", "texto": "Não dispomos de exames anteriores para comparação.", "birads": null },
+                { "id": "comp-sem-mudanca", "texto": "Não houve alterações significativas em relação à mamografia prévia de {data}.", "birads": null,
+                  "campos": [ { "chave": "data", "tipo": "texto" } ] },
+                { "id": "comp-indisponivel", "texto": "Documentação radiográfica da mamografia de {data}, indisponível para análise comparativa.", "birads": null,
+                  "campos": [ { "chave": "data", "tipo": "texto" } ] }
+              ]
+            },
+            {
+              "id": "impressao",
+              "titulo": "IMPRESSÃO DIAGNÓSTICA",
+              "selecao": "multipla",
+              "itens": [
+                { "id": "imp-ausencia", "texto": "Ausência de sinais radiológicos de malignidade.", "birads": "1" },
+                { "id": "imp-assimetria", "texto": "Assimetria focal na {lado}.", "birads": "3",
+                  "campos": [ { "chave": "lado", "tipo": "opcao", "opcoes": ["mama direita", "mama esquerda"] } ] },
+                { "id": "imp-nodulo", "texto": "Nódulo na {lado}.", "birads": "3",
+                  "campos": [ { "chave": "lado", "tipo": "opcao", "opcoes": ["mama direita", "mama esquerda"] } ] },
+                { "id": "imp-nodulos", "texto": "Nódulos nas mamas.", "birads": "3" },
+                { "id": "imp-calc-agrupadas", "texto": "Calcificações agrupadas na {lado}.", "birads": "4A",
+                  "campos": [ { "chave": "lado", "tipo": "opcao", "opcoes": ["mama direita", "mama esquerda"] } ] }
+              ]
+            },
+            {
+              "id": "avaliacao",
+              "titulo": "AVALIAÇÃO",
+              "selecao": "unica",
+              "tipo": "birads",
+              "itens": []
+            },
+            {
+              "id": "recomendacao",
+              "titulo": "RECOMENDAÇÃO",
+              "selecao": "multipla",
+              "itens": [
+                { "id": "rec-us", "texto": "Recomenda-se correlação com ultrassonografia.", "birads": null },
+                { "id": "rec-rotina", "texto": "Rastreamento de rotina conforme a faixa etária/risco.", "birads": null },
+                { "id": "rec-6m", "texto": "Recomenda-se avaliação com mamografia em 6 meses.", "birads": null },
+                { "id": "rec-1a", "texto": "Recomenda-se avaliação com mamografia em 1 ano.", "birads": null },
+                { "id": "rec-histopato", "texto": "Recomenda-se correlação com estudo histopatológico.", "birads": null },
+                { "id": "rec-cirurgia", "texto": "Recomenda-se ressecção cirúrgica quando clinicamente apropriado.", "birads": null }
+              ]
+            },
+            {
+              "id": "observacoes",
+              "titulo": "OBSERVAÇÕES",
+              "selecao": "multipla",
+              "itens": [
+                { "id": "obs-densas", "texto": "Mamas densas — a critério clínico, complementar o estudo com ultrassonografia para pesquisa de nódulo oculto.", "birads": "0" }
+              ]
+            }
+          ]
+        }
         """;
 
     private static async Task GarantirPerfilAdminAsync(SmsMaricaDbContext db, CancellationToken ct)

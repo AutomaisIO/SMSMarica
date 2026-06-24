@@ -21,6 +21,7 @@ internal sealed class TipoExameConfiguration : IEntityTypeConfiguration<TipoExam
         builder.Property(t => t.TempoEstimadoMinutos).HasColumnName("tempo_estimado_minutos");
         builder.Property(t => t.UnidadePadraoId).HasColumnName("unidade_padrao_id");
         builder.Property(t => t.Ativo).HasColumnName("ativo").HasDefaultValue(true).IsRequired();
+        builder.Property(t => t.EnviarParaWorklist).HasColumnName("enviar_para_worklist").HasDefaultValue(true).IsRequired();
 
         builder.Property(t => t.CriadoEm).HasColumnName("criado_em").IsRequired();
         builder.Property(t => t.CriadoPor).HasColumnName("criado_por");

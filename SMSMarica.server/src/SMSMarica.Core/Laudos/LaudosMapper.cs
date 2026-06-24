@@ -28,6 +28,9 @@ internal static class LaudosMapper
         l.ConteudoJson,
         l.ConteudoHtml,
         l.Status,
+        l.BiRads,
+        l.BiRadsSugerido,
+        l.RespostasChecklist,
         l.FinalizadoEm,
         l.CriadoEm,
         l.AtualizadoEm);
@@ -42,6 +45,7 @@ internal static class LaudosMapper
         l.MedicoNomeSnapshot ?? string.Empty,
         l.Titulo,
         l.Status,
+        l.BiRads,
         l.FinalizadoEm,
         l.CriadoEm);
 

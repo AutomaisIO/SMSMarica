@@ -43,7 +43,18 @@ export function LaudoTemplatesListagemPage() {
       cabecalho: 'Nome',
       render: (t) => (
         <div className="min-w-0">
-          <div className="truncate font-medium text-gray-900">{t.nome}</div>
+          <div className="flex items-center gap-2">
+            <span className="truncate font-medium text-gray-900">{t.nome}</span>
+            {t.temChecklist ? (
+              <span className="flex-shrink-0 rounded border border-primary-200 bg-primary-50 px-1.5 text-[11px] font-medium text-primary-700">
+                Checklist + BI-RADS
+              </span>
+            ) : (
+              <span className="flex-shrink-0 rounded border border-gray-200 bg-gray-50 px-1.5 text-[11px] font-medium text-gray-500">
+                Texto livre
+              </span>
+            )}
+          </div>
           {t.descricao ? (
             <div className="truncate text-xs text-gray-500">{t.descricao}</div>
           ) : null}

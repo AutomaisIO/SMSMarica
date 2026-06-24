@@ -7,6 +7,7 @@ public sealed record LaudoTemplateDto(
     string? Descricao,
     string ConteudoJson,
     string ConteudoHtml,
+    string? EstruturaJson,
     Guid CriadoPorUsuarioId,
     string? CriadoPorNome,
     DateTime CriadoEm,
@@ -20,5 +21,6 @@ public sealed record LaudoTemplateListItemDto(
     string Nome,
     string Categoria,
     string? Descricao,
+    bool TemChecklist,
     DateTime CriadoEm,
     bool Ativo);

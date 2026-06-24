@@ -67,6 +67,7 @@ public sealed class EnviadorWorklistService(
             .Where(s => s.ExcluidoEm == null
                         && (s.Status == StatusSolicitacaoExame.Solicitada
                             || s.Status == StatusSolicitacaoExame.Enviada)
+                        && s.TipoExame!.EnviarParaWorklist // tipo com envio ao worklist desligado fica de fora
                         && s.ProximaTentativaEm != null
                         && s.ProximaTentativaEm <= agora)
             .OrderBy(s => s.ProximaTentativaEm)
