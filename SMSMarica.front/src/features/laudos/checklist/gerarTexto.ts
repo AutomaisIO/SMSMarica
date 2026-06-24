@@ -69,28 +69,32 @@ export function biRadsEfetivo(respostas: RespostasChecklist): CategoriaBiRads | 
 export function gerarHtmlLaudo(respostas: RespostasChecklist): string {
   const { estrutura, marcados } = respostas;
   const final = biRadsEfetivo(respostas);
-  const partes: string[] = [];
+  const blocos: string[] = [];
 
   for (const secao of estrutura.secoes) {
+    const partes: string[] = [];
+
     if (secao.tipo === 'birads') {
       if (!final) continue;
       partes.push(`<h3>${escaparHtml(secao.titulo)}</h3>`);
       partes.push(`<p>Categoria ${escaparHtml(final)} (BI-RADS)</p>`);
       const conduta = condutaBiRads(final);
       if (conduta) partes.push(`<p>${escaparHtml(conduta)}</p>`);
-      continue;
+    } else {
+      const itens = itensMarcados(estrutura, marcados, secao.id);
+      if (itens.length === 0) continue;
+
+      partes.push(`<h3>${escaparHtml(secao.titulo)}</h3>`);
+      for (const { item, campos } of itens) {
+        partes.push(`<p>${escaparHtml(preencherTexto(item, campos))}</p>`);
+      }
     }
 
-    const itens = itensMarcados(estrutura, marcados, secao.id);
-    if (itens.length === 0) continue;
-
-    partes.push(`<h3>${escaparHtml(secao.titulo)}</h3>`);
-    for (const { item, campos } of itens) {
-      partes.push(`<p>${escaparHtml(preencherTexto(item, campos))}</p>`);
-    }
+    if (partes.length > 0) blocos.push(partes.join('\n'));
   }
 
-  return partes.join('\n');
+  // Linha vazia (parágrafo em branco) separando uma seção da outra.
+  return blocos.join('\n<p></p>\n');
 }
 
 export { rotuloBiRads };
