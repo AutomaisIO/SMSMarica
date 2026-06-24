@@ -31,7 +31,11 @@ export function LaudoTemplateEditorPage() {
   const [descricao, setDescricao] = useState('');
   const [html, setHtml] = useState('');
   const [json, setJson] = useState('{}');
-  const [estrutura, setEstrutura] = useState<EstruturaChecklist | null>(null);
+  // Por ora só temos laudo de checklist (mamografia) → template novo já nasce
+  // como checklist. Pode-se desmarcar para fazer um template de texto livre.
+  const [estrutura, setEstrutura] = useState<EstruturaChecklist | null>(() =>
+    ehNovo ? estruturaVazia() : null,
+  );
   const [preview, setPreview] = useState<RespostasChecklist | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
