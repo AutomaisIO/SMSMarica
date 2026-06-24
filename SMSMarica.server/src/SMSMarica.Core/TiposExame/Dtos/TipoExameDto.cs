@@ -16,6 +16,7 @@ public sealed record TipoExameDto(
     Guid? UnidadePadraoId,
     string? UnidadePadraoNome,
     bool Ativo,
+    bool EnviarParaWorklist,
     DateTime CriadoEm);
 
 public sealed record TipoExameListItemDto(
@@ -24,4 +25,5 @@ public sealed record TipoExameListItemDto(
     ModalidadeDicom ModalidadeDicom,
     string ProcedimentoSigtapCodigo,
     int? TempoEstimadoMinutos,
-    bool Ativo);
+    bool Ativo,
+    bool EnviarParaWorklist);

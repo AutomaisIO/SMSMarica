@@ -51,6 +51,20 @@ export function TiposExamePage() {
       render: (t) => t.tempoEstimadoMinutos ?? '—',
     },
     {
+      chave: 'worklist',
+      cabecalho: 'Worklist',
+      render: (t) =>
+        t.enviarParaWorklist ? (
+          <span className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-700">
+            Envia
+          </span>
+        ) : (
+          <span className="rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-xs font-medium text-gray-500">
+            Desligado
+          </span>
+        ),
+    },
+    {
       chave: 'status',
       cabecalho: 'Status',
       render: (t) => <StatusBadge ativo={t.ativo} />,

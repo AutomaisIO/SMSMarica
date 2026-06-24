@@ -118,6 +118,13 @@ public sealed class SolicitacoesExameService(
 
         var solicitanteUsuarioId = await ResolverSolicitanteUsuarioAsync(request.SolicitanteUsuarioId, cancellationToken);
 
+        // Tipo com envio ao worklist desligado: cria a solicitação mas não enfileira
+        // o envio ao PACS (ProximaTentativaEm = null → o worker não pega).
+        var enviarParaWorklist = await _db.TiposExame.AsNoTracking()
+            .Where(t => t.Id == request.TipoExameId)
+            .Select(t => t.EnviarParaWorklist)
+            .FirstOrDefaultAsync(cancellationToken);
+
         var solicitacao = new SolicitacaoExame
         {
             Id = Guid.CreateVersion7(),
@@ -142,8 +149,8 @@ public sealed class SolicitacoesExameService(
             DataAgendada = request.DataAgendada,
 
             // Worker pega imediatamente no próximo tick (sem bloquear a resposta da API
-            // esperando o PACS responder).
-            ProximaTentativaEm = agora,
+            // esperando o PACS responder). Null quando o tipo não envia ao worklist.
+            ProximaTentativaEm = enviarParaWorklist ? agora : null,
 
             CriadoEm = agora,
             CriadoPor = _usuarioAtual.UsuarioId,

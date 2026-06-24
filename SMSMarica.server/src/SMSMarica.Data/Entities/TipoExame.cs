@@ -39,6 +39,13 @@ public class TipoExame
     /// <summary>Visibilidade no formulário de solicitação. Soft-delete via <see cref="ExcluidoEm"/>.</summary>
     public bool Ativo { get; set; } = true;
 
+    /// <summary>
+    /// Quando false, solicitações deste tipo NÃO são enviadas à Modality Worklist
+    /// do PACS (dcm4chee/Fuji). Permite pausar a integração por tipo enquanto o
+    /// equipamento não está mapeado para executar via worklist.
+    /// </summary>
+    public bool EnviarParaWorklist { get; set; } = true;
+
     // Auditoria ADR-0006
     public DateTime CriadoEm { get; set; }
     public Guid? CriadoPor { get; set; }

@@ -32,6 +32,7 @@ export function TipoExameFormPage() {
   const [protocolos, setProtocolos] = useState('');
   const [tempo, setTempo] = useState('');
   const [ativo, setAtivo] = useState(true);
+  const [enviarParaWorklist, setEnviarParaWorklist] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [buscaAberta, setBuscaAberta] = useState(false);
 
@@ -57,6 +58,7 @@ export function TipoExameFormPage() {
       setProtocolos(t.codigosProtocolo.join(', '));
       setTempo(t.tempoEstimadoMinutos?.toString() ?? '');
       setAtivo(t.ativo);
+      setEnviarParaWorklist(t.enviarParaWorklist);
     }
   }, [detalhe.data]);
 
@@ -79,6 +81,7 @@ export function TipoExameFormPage() {
       tempoEstimadoMinutos: tempo ? parseInt(tempo, 10) : null,
       unidadePadraoId: null,
       ativo,
+      enviarParaWorklist,
     };
 
     try {
@@ -214,6 +217,23 @@ export function TipoExameFormPage() {
             </label>
           </Campo>
         ) : null}
+
+        <Campo label="Integração PACS" htmlFor="worklist" className="sm:col-span-3">
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              id="worklist"
+              type="checkbox"
+              checked={enviarParaWorklist}
+              onChange={(e) => setEnviarParaWorklist(e.target.checked)}
+            />
+            Enviar para a Worklist do PACS
+          </label>
+          <p className="mt-1 text-xs text-gray-500">
+            Quando desligado, as solicitações deste tipo são criadas normalmente, mas{' '}
+            <strong>não</strong> são enviadas à Modality Worklist (o equipamento não as recebe).
+            Útil para pausar a integração enquanto o equipamento não está mapeado.
+          </p>
+        </Campo>
       </div>
 
       <BuscaProcedimentoSigtap

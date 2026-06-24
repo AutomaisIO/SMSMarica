@@ -7,10 +7,10 @@ namespace SMSMarica.Core.SolicitacoesExame.Identificadores;
 public interface IGeradorIdentificadores
 {
     /// <summary>
-    /// AccessionNumber no formato <c>{aaaa}{seq6}</c> (ex.: 2026000001) — 10 caracteres,
-    /// limite aceito pelo equipamento Fuji. Sequência por ano, persistida no banco;
-    /// concorrência tratada por unique constraint (retry no service em caso de colisão).
-    /// Formato legado <c>SMS{aaaa}{seq6}</c> ainda é reconhecido na geração da sequência.
+    /// AccessionNumber no formato <c>{AAMMDD}{seq}</c> (ex.: 260624019 = 19º exame
+    /// de 24/06/2026), data no fuso de Maricá (UTC-3). A sequência reinicia a cada
+    /// dia, com no mínimo 3 dígitos (expande se passar de 999/dia). <= 16 chars
+    /// (limite Fuji SH). Concorrência tratada por unique constraint (retry no service).
     /// </summary>
     Task<string> ProximoAccessionAsync(CancellationToken cancellationToken = default);
 

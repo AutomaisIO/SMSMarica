@@ -76,6 +76,7 @@ public sealed class TiposExameService(SmsMaricaDbContext db, IUsuarioAtualAccess
             TempoEstimadoMinutos = request.TempoEstimadoMinutos,
             UnidadePadraoId = request.UnidadePadraoId,
             Ativo = true,
+            EnviarParaWorklist = request.EnviarParaWorklist,
             CriadoEm = agora,
             CriadoPor = _usuarioAtual.UsuarioId,
         };
@@ -109,6 +110,7 @@ public sealed class TiposExameService(SmsMaricaDbContext db, IUsuarioAtualAccess
         t.TempoEstimadoMinutos = request.TempoEstimadoMinutos;
         t.UnidadePadraoId = request.UnidadePadraoId;
         t.Ativo = request.Ativo;
+        t.EnviarParaWorklist = request.EnviarParaWorklist;
         t.AtualizadoEm = DateTime.UtcNow;
         t.AtualizadoPor = _usuarioAtual.UsuarioId;
 
