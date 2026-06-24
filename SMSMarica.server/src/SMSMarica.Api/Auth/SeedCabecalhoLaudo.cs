@@ -16,14 +16,18 @@ internal static class SeedCabecalhoLaudo
     private static readonly Guid BrasaoId = new("00000000-0000-0000-0000-00000000a001");
     private static readonly Guid SusRjId = new("00000000-0000-0000-0000-00000000a002");
 
+    // URL absoluta da API: a tag <img> é carregada pelo browser na origem do
+    // front (smsmarica.online), mas o /midias mora na API — relativo apontaria
+    // pro domínio errado (404). O endpoint é anônimo/público, então a URL
+    // absoluta funciona em qualquer origem. Ver urlMidiaAbsoluta no front.
     private const string CabecalhoHtml = """
-<p style="text-align: center"><img src="/midias/00000000-0000-0000-0000-00000000a001" width="64"></p>
+<p style="text-align: center"><img src="https://api.smsmarica.online/midias/00000000-0000-0000-0000-00000000a001" width="64"></p>
 <p style="text-align: center"><strong>ESTADO DO RIO DE JANEIRO</strong></p>
 <p style="text-align: center"><strong>PREFEITURA MUNICIPAL DE MARICÁ</strong></p>
 <p style="text-align: center"><strong>SECRETARIA MUNICIPAL DE SAÚDE</strong></p>
 <p style="text-align: center">SUBSECRETARIA DE ATENÇÃO BÁSICA</p>
 <p style="text-align: center">CDT - CENTRO DE DIAGNÓSTICO E TRATAMENTO</p>
-<p style="text-align: center"><img src="/midias/00000000-0000-0000-0000-00000000a002" width="100"></p>
+<p style="text-align: center"><img src="https://api.smsmarica.online/midias/00000000-0000-0000-0000-00000000a002" width="100"></p>
 """;
 
     public static async Task GarantirAsync(SmsMaricaDbContext db, CancellationToken ct)
