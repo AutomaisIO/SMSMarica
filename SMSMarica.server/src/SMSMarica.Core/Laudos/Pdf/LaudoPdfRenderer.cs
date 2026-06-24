@@ -166,6 +166,13 @@ public sealed class LaudoPdfRenderer(
 
     private static void RenderBloco(IContainer container, BlocoHtml bloco, IReadOnlyDictionary<string, byte[]> imagens)
     {
+        // Linha (tabela): ocupa a largura toda e renderiza as células lado a lado.
+        if (bloco.Tipo == TipoBloco.Linha)
+        {
+            RenderLinha(container, bloco, imagens);
+            return;
+        }
+
         // Alinhamento herdado do style/atributo do HTML.
         container = bloco.Alinhamento switch
         {
@@ -199,6 +206,37 @@ public sealed class LaudoPdfRenderer(
                 });
                 break;
         }
+    }
+
+    /// <summary>
+    /// Renderiza um bloco Linha (linha de tabela) com as células lado a lado e uma
+    /// borda em volta. Célula só-imagem vira coluna de largura fixa (a logo); as
+    /// demais ocupam o espaço restante. Vertical centralizado entre as células.
+    /// </summary>
+    private static void RenderLinha(IContainer container, BlocoHtml bloco, IReadOnlyDictionary<string, byte[]> imagens)
+    {
+        var celulas = bloco.Celulas;
+        if (celulas is null || celulas.Count == 0) return;
+
+        container.Border(1).BorderColor(Colors.Grey.Darken1).Padding(6).Row(row =>
+        {
+            row.Spacing(8);
+            foreach (var celula in celulas)
+            {
+                var soImagem = celula.Count > 0 && celula.All(b => b.Tipo == TipoBloco.Imagem);
+                var item = soImagem
+                    ? row.ConstantItem(celula.Max(b => b.ImagemLargura ?? 60) + 4)
+                    : row.RelativeItem();
+                item.AlignMiddle().Column(col =>
+                {
+                    col.Spacing(2);
+                    foreach (var b in celula)
+                    {
+                        RenderBloco(col.Item(), b, imagens);
+                    }
+                });
+            }
+        });
     }
 
     private static void RenderImagem(IContainer container, BlocoHtml bloco, IReadOnlyDictionary<string, byte[]> imagens)
@@ -345,7 +383,7 @@ public sealed class LaudoPdfRenderer(
         IEnumerable<BlocoHtml> blocos, CancellationToken cancellationToken)
     {
         var resultado = new Dictionary<string, byte[]>(StringComparer.Ordinal);
-        foreach (var src in blocos.Where(b => b.Tipo == TipoBloco.Imagem && b.ImagemSrc is not null)
+        foreach (var src in Achatar(blocos).Where(b => b.Tipo == TipoBloco.Imagem && b.ImagemSrc is not null)
                                    .Select(b => b.ImagemSrc!)
                                    .Distinct(StringComparer.Ordinal))
         {
@@ -353,6 +391,23 @@ public sealed class LaudoPdfRenderer(
             if (bytes is not null) resultado[src] = bytes;
         }
         return resultado;
+    }
+
+    /// <summary>Achata blocos descendo recursivamente nas células de Linha (tabela).</summary>
+    private static IEnumerable<BlocoHtml> Achatar(IEnumerable<BlocoHtml> blocos)
+    {
+        foreach (var b in blocos)
+        {
+            yield return b;
+            if (b.Celulas is null) continue;
+            foreach (var celula in b.Celulas)
+            {
+                foreach (var sub in Achatar(celula))
+                {
+                    yield return sub;
+                }
+            }
+        }
     }
 
     private async Task<byte[]?> ResolverImagemAsync(string src, CancellationToken cancellationToken)
@@ -467,8 +522,32 @@ public sealed class LaudoPdfRenderer(
             case "BR":
                 destino.Add(new BlocoHtml(TipoBloco.Paragrafo, [new SpanInline(string.Empty, false, false, false)], null, alinhamento));
                 break;
+            case "TABLE":
+                // Cada <tr> vira um bloco Linha cujas células (td/th) são listas de
+                // blocos renderizadas lado a lado. Usado p/ cabeçalho logo|texto|logo.
+                foreach (var tr in el.QuerySelectorAll("tr"))
+                {
+                    var celulas = new List<IReadOnlyList<BlocoHtml>>();
+                    foreach (var td in tr.Children.Where(c =>
+                        string.Equals(c.TagName, "TD", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(c.TagName, "TH", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        var sub = new List<BlocoHtml>();
+                        var alinhCel = LerAlinhamento(td, alinhamento);
+                        foreach (var filho in td.ChildNodes)
+                        {
+                            ColetarBlocos(filho, sub, null, alinhCel);
+                        }
+                        celulas.Add(sub);
+                    }
+                    if (celulas.Count > 0)
+                    {
+                        destino.Add(new BlocoHtml(TipoBloco.Linha, [], null, alinhamento, Celulas: celulas));
+                    }
+                }
+                break;
             default:
-                // Container desconhecido (div, span, section, table, etc): desce recursivamente.
+                // Container desconhecido (div, span, section, etc): desce recursivamente.
                 foreach (var filho in el.ChildNodes)
                 {
                     ColetarBlocos(filho, destino, prefixoLista, alinhamento);
@@ -549,7 +628,7 @@ public sealed class LaudoPdfRenderer(
         return spans;
     }
 
-    private enum TipoBloco { Paragrafo, Titulo1, Titulo2, Titulo3, ItemLista, Imagem }
+    private enum TipoBloco { Paragrafo, Titulo1, Titulo2, Titulo3, ItemLista, Imagem, Linha }
 
     private enum Alinhamento { Esquerda, Centro, Direita }
 
@@ -562,5 +641,8 @@ public sealed class LaudoPdfRenderer(
         Alinhamento Alinhamento = Alinhamento.Esquerda,
         string? ImagemSrc = null,
         int? ImagemLargura = null,
-        int? ImagemAltura = null);
+        int? ImagemAltura = null,
+        // Para TipoBloco.Linha: cada célula é uma lista de blocos (linha de tabela
+        // renderizada lado a lado — usado p/ cabeçalho logo|texto|logo).
+        IReadOnlyList<IReadOnlyList<BlocoHtml>>? Celulas = null);
 }
