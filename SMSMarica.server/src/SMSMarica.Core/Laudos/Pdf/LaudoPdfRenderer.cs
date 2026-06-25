@@ -354,13 +354,19 @@ public sealed class LaudoPdfRenderer(
         {
             c.Spacing(4);
 
-            c.Item().PaddingTop(10).LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
+            // Régua + "Emitido em" SOMEM no PDF-base de assinatura: o carimbo da
+            // assinatura ocupa o rodapé central e a data autoritativa é a da própria
+            // assinatura digital — manter "Emitido em" aqui só geraria texto escondido
+            // sob o carimbo.
+            if (modo != ModoRodapeLaudo.PreparandoAssinatura)
+            {
+                c.Item().PaddingTop(10).LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
+            }
 
-            // "Emitido em" só faz sentido em laudo finalizado (rascunho não é emitido).
-            // A IDENTIDADE do médico (nome/CRM/RQE + rubrica) NÃO entra aqui em texto
-            // solto: ela só tem fé pública junto da assinatura digital ICP-Brasil, e por
-            // isso vive EXCLUSIVAMENTE no carimbo estampado pelo Automais.Assinador.
-            if (modo != ModoRodapeLaudo.Rascunho)
+            // "Emitido em" só no PDF on-demand finalizado e não assinado (sem carimbo
+            // por cima). A IDENTIDADE do médico (nome/CRM/RQE + rubrica) NÃO entra aqui
+            // em texto solto: vive EXCLUSIVAMENTE no carimbo da assinatura digital.
+            if (modo == ModoRodapeLaudo.FinalizadoNaoAssinado)
             {
                 c.Item().AlignCenter().Text(emitidoEm).FontSize(8).Light();
             }
@@ -389,13 +395,17 @@ public sealed class LaudoPdfRenderer(
                 });
             }
 
-            c.Item().AlignCenter().Text(t =>
-            {
-                t.Span("Página ").FontSize(8);
-                t.CurrentPageNumber().FontSize(8);
-                t.Span(" / ").FontSize(8);
-                t.TotalPages().FontSize(8);
-            });
+            // No PDF-base de assinatura o número de página vai p/ a DIREITA, fora do
+            // caminho do carimbo (central); nos demais modos, centralizado.
+            c.Item()
+                .Element(x => modo == ModoRodapeLaudo.PreparandoAssinatura ? x.AlignRight() : x.AlignCenter())
+                .Text(t =>
+                {
+                    t.Span("Página ").FontSize(8);
+                    t.CurrentPageNumber().FontSize(8);
+                    t.Span(" / ").FontSize(8);
+                    t.TotalPages().FontSize(8);
+                });
         });
     }
 
