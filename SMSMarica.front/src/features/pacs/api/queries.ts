@@ -53,13 +53,13 @@ export function useAssociacoesPorStudyUIDs(uids: string[]) {
   });
 }
 
-/** Preview da solicitação por número SMS (só dispara em formato válido). */
+/** Preview da solicitação pelo número do pedido (dígitos; ex.: 260625002). */
 export function usePreviewSolicitacao(accession: string) {
-  const valido = /^SMS\d+$/i.test(accession.trim());
+  const limpo = accession.trim();
   return useQuery({
-    queryKey: associacoesKeys.preview(accession.trim().toUpperCase()),
-    queryFn: () => previewSolicitacaoPorAccession(accession.trim().toUpperCase()),
-    enabled: valido,
+    queryKey: associacoesKeys.preview(limpo),
+    queryFn: () => previewSolicitacaoPorAccession(limpo),
+    enabled: /^\d{4,}$/.test(limpo),
     staleTime: 15_000,
   });
 }

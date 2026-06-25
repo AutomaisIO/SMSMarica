@@ -18,6 +18,7 @@ import {
   useDesassociarExame,
   useExcluirEstudo,
 } from '@/features/pacs/api/queries';
+import { CodigoCopiavel } from '@/features/pacs/components/CodigoCopiavel';
 import { ModalAssociarExame } from '@/features/pacs/components/ModalAssociarExame';
 import { formatarHoraDicom } from '@/features/pacs/lib/dicomJson';
 import { abrirJanelaSolta } from '@/features/pacs/lib/janela';
@@ -245,27 +246,7 @@ export function PacsListagemPage() {
     {
       chave: 'pedido',
       cabecalho: 'Pedido',
-      render: (e) => {
-        const acc = e.accessionNumber?.trim() ?? '';
-        const ehNosso = /^SMS\d+$/.test(acc);
-        if (!acc) return <span className="text-xs text-gray-400">—</span>;
-        if (ehNosso) {
-          return (
-            <a
-              href={`/app/solicitacoes-exame?accessionNumber=${encodeURIComponent(acc)}`}
-              onClick={(ev) => {
-                ev.preventDefault();
-                navigate(`/app/solicitacoes-exame?accessionNumber=${encodeURIComponent(acc)}`);
-              }}
-              className="font-mono text-xs text-primary-700 hover:underline"
-              title="Abrir solicitação"
-            >
-              {acc}
-            </a>
-          );
-        }
-        return <span className="font-mono text-xs text-gray-500">{acc}</span>;
-      },
+      render: (e) => <CodigoCopiavel codigo={e.accessionNumber?.trim() ?? ''} />,
     },
     {
       chave: 'modalidade',
