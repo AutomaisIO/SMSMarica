@@ -33,7 +33,7 @@ public static class TermoConsentimento
 
         Segurança: adotamos medidas técnicas e administrativas para proteger seus dados contra acesso não autorizado.
 
-        Contato / Encarregado de Dados (DPO): a definir.
+        Contato / Encarregado de Dados (DPO): lgpd@smsmarica.online.
 
         Ao tocar em "Li e concordo", você declara que leu, entendeu e concorda com este termo.
         """;
