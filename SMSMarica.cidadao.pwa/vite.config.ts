@@ -19,8 +19,8 @@ export default defineConfig({
         'termos/index.html',
       ],
       manifest: {
-        name: 'App do Cidadão — SMS Maricá',
-        short_name: 'SMS Cidadão',
+        name: 'Saúde Maricá',
+        short_name: 'Saúde Maricá',
         description: 'Saúde de Maricá no seu bolso: agende consultas e exames, acesse seus documentos de saúde e acompanhe seu transporte (TFD).',
         lang: 'pt-BR',
         theme_color: '#C8102E',
