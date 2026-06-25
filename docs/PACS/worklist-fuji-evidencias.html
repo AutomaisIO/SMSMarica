@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relatório de Evidências — Worklist (MWL) Fuji FDR-3000AWS</title>
+<style>
+  :root{ --vermelho:#b3122a; --tinta:#1d2530; --cinza:#5b6675; --linha:#e3e6ea; --bg:#f5f6f8; --okbg:#eafaf1; --okbd:#34a853; --raizbg:#fdecef; --raizbd:#b3122a; --codebg:#f4f5f7; }
+  *{ box-sizing:border-box; }
+  body{ font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:var(--tinta); line-height:1.55; margin:0; background:var(--bg); }
+  .wrap{ max-width:920px; margin:0 auto; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+  header{ background:var(--vermelho); color:#fff; padding:30px 46px 24px; }
+  header .tag{ font-size:11.5px; letter-spacing:.15em; text-transform:uppercase; opacity:.85; }
+  header h1{ margin:7px 0 4px; font-size:23px; font-weight:650; }
+  header .sub{ font-size:13.5px; opacity:.92; }
+  main{ padding:6px 46px 0; }
+  h2{ font-size:16px; margin:30px 0 10px; padding:7px 0 6px; border-bottom:2px solid var(--linha); }
+  h2 .n{ color:var(--vermelho); font-weight:700; margin-right:8px; }
+  h3{ font-size:13.6px; margin:18px 0 6px; color:var(--vermelho); text-transform:uppercase; letter-spacing:.03em; }
+  p,li,td,th{ font-size:14px; }
+  .meta{ display:grid; grid-template-columns:1fr 1fr; gap:4px 26px; margin:14px 0 4px; font-size:13px; color:var(--cinza); }
+  .meta b{ color:var(--tinta); font-weight:600; }
+  .box{ border-radius:10px; padding:15px 18px; margin:16px 0; border:1px solid var(--linha); }
+  .box .t{ font-weight:700; font-size:12.5px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; }
+  .raiz{ background:var(--raizbg); border-color:var(--raizbd); } .raiz .t{ color:var(--raizbd); }
+  .ok{ background:var(--okbg); border-color:var(--okbd); } .ok .t{ color:#1e7e44; }
+  table{ border-collapse:collapse; width:100%; margin:12px 0; font-size:13px; }
+  th,td{ border:1px solid var(--linha); padding:7px 10px; text-align:left; vertical-align:top; }
+  th{ background:#fafbfc; font-weight:600; }
+  code,.mono{ font-family:Consolas,Menlo,monospace; background:var(--codebg); padding:1px 5px; border-radius:4px; font-size:12.4px; }
+  pre{ background:var(--codebg); border:1px solid var(--linha); border-radius:8px; padding:12px 14px; overflow:auto; font-size:12.4px; font-family:Consolas,Menlo,monospace; line-height:1.5; }
+  .toc{ background:#fafbfc; border:1px solid var(--linha); border-radius:10px; padding:12px 16px 12px 34px; margin:16px 0; font-size:13.4px; columns:2; }
+  .toc li{ margin:3px 0; }
+  .small{ font-size:12.3px; color:var(--cinza); }
+  .ev{ font-weight:600; color:var(--raizbd); }
+  footer{ margin:34px 46px 0; padding:14px 0 40px; border-top:1px solid var(--linha); font-size:12.2px; color:var(--cinza); }
+  .badge{ display:inline-block; background:#f1f3f5; border:1px solid var(--linha); border-radius:5px; padding:1px 7px; font-size:11.6px; font-family:Consolas,monospace; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="tag">Relatório técnico de evidências &nbsp;·&nbsp; Integração Modality Worklist (MWL)</div>
+  <h1>Worklist não inicia exame — FUJIFILM FDR-3000AWS</h1>
+  <div class="sub">Unidade CDT — Maricá/RJ &nbsp;·&nbsp; Subsídio técnico para o serviço FUJIFILM</div>
+</header>
+
+<main>
+  <p class="small" style="margin-top:14px">Reunimos aqui o que encontramos ao investigar por que a worklist não inicia
+  os exames neste equipamento: os <b>achados, as evidências e de onde cada uma veio</b> (arquivos do próprio console e a
+  documentação consultada). A intenção não é dizer como configurar — e sim entregar à <b>equipe técnica da FUJIFILM</b>
+  o material necessário para analisar e ajustar o equipamento.</p>
+
+  <div class="meta">
+    <span><b>Equipamento:</b> FUJIFILM FDR-3000AWS</span>
+    <span><b>Software:</b> Mainsoft V9.3 (perfil AWS V4.2)</span>
+    <span><b>Estação (hostname):</b> AH57024557</span>
+    <span><b>AE Title local:</b> FDR-MAMO (IP 10.1.92.177)</span>
+    <span><b>Modalidade:</b> Mamografia (MG)</span>
+    <span><b>Serviços:</b> Modality Worklist (MWL) + MPPS</span>
+  </div>
+
+  <div class="box raiz">
+    <div class="t">Achado principal</div>
+    A worklist chega e os exames aparecem na lista — mas o exame não inicia (erro <b>31027</b>). Tudo aponta para o mesmo
+    ponto: o console <b>não acha um menu de exposição que corresponda ao código de procedimento da ordem</b>. A tabela
+    que faria essa tradução — <b>“código de procedimento (JJ1017 Ver. 3) → menu de exposição”</b>
+    (<code>JJ1017V3CodeMapping</code>) — <span class="ev">está vazia</span> (0 registros) e datada da instalação (2018),
+    ao passo que o cadastro de menus de exposição (<code>MenuData</code>) está lá, presente e atualizado. Some-se a isso
+    que <b>não há destino de MPPS</b> declarado na tabela de roteamento do console.
+  </div>
+
+  <ul class="toc">
+    <li>1. Sintoma e reprodução</li>
+    <li>2. Registros de erro</li>
+    <li>3. Fluxo de processamento (reconstruído)</li>
+    <li>4. Evidências por arquivo</li>
+    <li>5. Cadastro de menus observado</li>
+    <li>6. Configuração de rede observada</li>
+    <li>7. Auditoria das bases de configuração</li>
+    <li>8. Comportamento do RIS/PACS</li>
+    <li>9. Referências consultadas</li>
+  </ul>
+
+  <h2><span class="n">1.</span>Sintoma e reprodução</h2>
+  <ul>
+    <li>A consulta de worklist (C-FIND, modalidade MG) é respondida e os exames <b>aparecem na lista</b> do console.</li>
+    <li>Ao selecionar o exame e <b>iniciar</b>, é exibido o erro <b>31027</b> (“Falhou a operação de obter informações
+        de imagem”), com instrução para contatar o serviço técnico e desligar o sistema.</li>
+    <li>A <b>aquisição manual</b> (sem worklist), em que o operador seleciona o menu de exposição na tela, ocorre
+        normalmente.</li>
+  </ul>
+
+  <h2><span class="n">2.</span>Registros de erro</h2>
+  <p>É o que o equipamento mostra ao operador no momento de iniciar o exame — a mensagem na tela do console e,
+  por trás dela, o registro correspondente no <b>Visualizador de Eventos do Windows</b> da estação:</p>
+
+  <figure style="margin:14px 0; text-align:center;">
+    <img src="assets/erro-31027.png" alt="Mensagem 31027 no console" style="max-width:100%; border:1px solid var(--linha); border-radius:8px;">
+    <figcaption class="small" style="margin-top:6px;">Mensagem exibida no console ao iniciar o exame pela worklist
+      (cabeçalho com dados do paciente tarjado).</figcaption>
+  </figure>
+
+  <table>
+    <tr><th>Fonte (Provider)</th><th>EventID</th><th>Conteúdo registrado</th></tr>
+    <tr><td><code>FFIipInput</code></td><td><b>13060</b></td>
+        <td>Falha na rotina interna <code>GetStudyInfo</code>; dado de evento: <code>IdExposureList</code>,
+        <code>GetStudyInfo-100</code>, retorno <code>1</code> — a lista de exposições não pôde ser montada.</td></tr>
+    <tr><td><code>FFCustomMessageBox</code></td><td><b>31027</b></td>
+        <td>“Falhou a operação de obter informações de imagem. Contacte o seu engenheiro de serviço.”</td></tr>
+  </table>
+  <p class="small">No fundo, é sempre a mesma história:
+  <span class="ev"><code>GetStudyInfo</code> não consegue a <code>IdExposureList</code> → cai no 31027</span>.
+  É esse fio que as evidências a seguir puxam.</p>
+
+  <h2><span class="n">3.</span>Fluxo de processamento da worklist no console (reconstruído)</h2>
+  <p>Com base nos arquivos de configuração do próprio console (seção 4) e na documentação (seção 9), o encadeamento ao
+  iniciar um exame por worklist é:</p>
+  <pre>1.  Console consulta a worklist em WORK-CDT (C-FIND, Modality=MG, ISO_IR 100).
+2.  Lê do item:  Scheduled Procedure Step Sequence (0040,0100)
+                  > Scheduled Protocol Code Sequence (0040,0008)
+                    > Protocol Context Sequence (0040,0440)  [JJ1017 Ver.3]
+3.  TRADUZ o código JJ1017 (JJ1017-M / JJ1017-S) -> código de menu FCR,
+    via a tabela  JJ1017V3CodeMapping.
+4.  Com o código FCR, localiza o menu em  MenuData  (ExaminationMenu / ExposureMenu).
+5.  Monta a lista de exposições (IdExposureList) e inicia o exame.</pre>
+  <p>A falha registrada (<code>IdExposureList</code> não obtida no passo 5) é coerente com a ausência de correspondência
+  no passo 3 — detalhada na seção 4.</p>
+
+  <h2><span class="n">4.</span>Evidências por arquivo (configuração do console)</h2>
+  <p>Arquivos examinados sob <code>...\FujiFilm\IIP\</code> (cópias em <code>\Config\</code> e <code>\AWS\</code>):</p>
+  <table>
+    <tr><th>Arquivo / Tabela</th><th>Evidência constatada</th></tr>
+    <tr>
+      <td><code>JJMenuCodeMapping.mdb</code><br><code>→ JJ1017V3CodeMapping</code><br><span class="small">(colunas: ID, FCRCode, JJCode-16M, JJCode-16S, Update)</span></td>
+      <td><span class="ev">0 registros (tabela vazia)</span>, nas <b>duas</b> cópias presentes
+          (<code>IIP\Config\</code> e <code>IIP\AWS\User\</code>). Ambos os arquivos <b>datados de 2018-11-16</b>
+          (data de instalação), sem alteração posterior.</td>
+    </tr>
+    <tr>
+      <td><code>MWMTagSetting.mdb</code><br><code>→ UserMapping</code></td>
+      <td>O atributo <code>Scheduled Protocol Code Sequence (0040,0008)</code> e seu <code>Code Value (0008,0100)</code>
+          estão marcados como <b>requeridos</b> (<code>RQFlag = True</code>, <code>Enabled = 1</code>) no processamento
+          do item de worklist.</td>
+    </tr>
+    <tr>
+      <td><code>MWMConfig.mdb / .def</code><br><code>→ DicomCustom, ImageList07</code></td>
+      <td>O campo de menu (<code>MenuName</code>) é derivado de
+          <code>0040,0100 &gt; 0040,0008 &gt; 0008,0100</code> (Scheduled Protocol Code &gt; Code Value).
+          Há 55 regras em <code>DicomCustom</code>, incluindo entradas <b>“[AWSV4.2] JJ1017Ver3 Protocol Context SQ”</b>
+          que mapeiam <code>0040,0008 &gt; 0040,0440</code> (Protocol Context Sequence).</td>
+    </tr>
+    <tr>
+      <td><code>JJ1017FRisDef.inf</code></td>
+      <td>Define a estrutura do código como <code>JJ1017-M</code> e <code>JJ1017-S</code> (versão <b>3.x</b>),
+          transportada em <code>Protocol Context Sequence (0040,0440)</code> (esquema <code>DCM</code>, conceito
+          <code>123016 “Imaging Conditions”</code>). Compatível com as colunas <code>JJCode-16M</code>/<code>JJCode-16S</code>
+          da tabela vazia.</td>
+    </tr>
+    <tr>
+      <td><code>MenuData.mdb</code><br><code>→ ExaminationMenu / ExposureMenu</code></td>
+      <td><b>Presente e populado</b> (cópia ativa em <code>IIP\AWS\User\</code> <b>modificada em 2026-06-16</b>).
+          Contém os menus exibidos na tela com seus códigos (seção 5). Confirma que os menus existem; o que falta é a
+          <i>tradução</i> a partir do código da worklist.</td>
+    </tr>
+    <tr>
+      <td><code>MassOrder.mdb</code><br><code>→ MassOrderMenu / PreSetMenu</code></td>
+      <td><span class="ev">Ambas vazias (0 registros)</span> — tabelas de menu/pré-seleção de ordem também não
+          populadas.</td>
+    </tr>
+    <tr>
+      <td><code>NetConfig.mdb</code><br><code>→ ConnectInfo / DeviceInfo</code></td>
+      <td><code>ConnectInfo</code> contém <code>MWM → WORK-CDT</code> e <code>ROUXINOL (store) → PACS-CDT</code>;
+          <span class="ev">não há entrada de <code>PPS</code> (MPPS)</span>. Detalhe dos nós na seção 6.</td>
+    </tr>
+    <tr>
+      <td><code>DicomPpsTag.mdb</code><br><code>→ Pps</code></td>
+      <td>10 tags de MPPS definidas (Group/Element/VR/Name) — porém sem destino correspondente em
+          <code>ConnectInfo</code>.</td>
+    </tr>
+    <tr>
+      <td><code>IIP\Data\Image\ROUTINE*.INF</code><br><span class="small">(estudos previamente adquiridos)</span></td>
+      <td>Confirmam os códigos de menu reais gravados pelo equipamento: <code>AcqDeviceProcessingCode (0018,1401)=0349</code>
+          (menu CCD), <code>AnatomicRegion (0008,2218)=T-04000/SNM3 “Breast”</code>,
+          <code>ViewCodeSequence (0054,0220)=R-10242/SRT “cranio-caudal”</code>. <span class="small">(Dados de paciente
+          omitidos deste relatório.)</span></td>
+    </tr>
+  </table>
+
+  <h2><span class="n">5.</span>Cadastro de menus observado (<code>MenuData → ExaminationMenu</code>)</h2>
+  <p>Menus de estudo cadastrados (coluna <code>Code</code> / <code>NameSbcs</code>), correspondentes às telas de seleção
+  do console:</p>
+  <table>
+    <tr><th>Code (ExaminationMenu)</th><th>Menu (tela)</th></tr>
+    <tr><td><span class="badge">FCR0329-00</span></td><td>MAMO BILATERAL</td></tr>
+    <tr><td><span class="badge">FCR0329-01</span> / <span class="badge">FCR0329-02</span></td><td>MAMOGRAFIA E / MAMOGRAFIA D</td></tr>
+    <tr><td><span class="badge">FCR0321-00</span> / <span class="badge">FCR0321-01</span></td><td>UNILATERAL D / UNILATERAL E</td></tr>
+    <tr><td><span class="badge">FCR0339-00</span></td><td>MAMMOGRAPHY MLO</td></tr>
+    <tr><td><span class="badge">123</span></td><td>MAMO PROTESE <span class="small">(código curto / customizado)</span></td></tr>
+  </table>
+  <p>Exposições individuais (<code>ExposureMenu</code>, com <code>MpmCode</code>): <span class="badge">FCR0349-0001</span>/<code>0349</code> = CCD,
+  <span class="badge">FCR0349-0000</span> = CCE, <span class="badge">FCR0359-0001</span>/<code>0359</code> = MLOD,
+  <span class="badge">FCR0359-0000</span> = MLOE, entre outras. O código <code>0349</code> coincide com o
+  <code>AcqDeviceProcessingCode</code> gravado nas imagens reais (seção 4).</p>
+
+  <h2><span class="n">6.</span>Configuração de rede observada (<code>NetConfig → DeviceInfo / ConnectInfo</code>)</h2>
+  <table>
+    <tr><th>Função (ConnectInfo)</th><th>AE Title</th><th>IP : Porta</th><th>Papel / Sintaxe</th></tr>
+    <tr><td>MWM (worklist)</td><td>WORK-CDT</td><td>104.236.203.40 : 11112</td><td>SCP · Implicit VR LE · Modality Worklist FIND</td></tr>
+    <tr><td>ROUXINOL (armazenamento)</td><td>PACS-CDT</td><td>104.236.203.40 : 11112</td><td>SCP · Implicit VR LE · MG Storage + Verification</td></tr>
+    <tr><td>READER</td><td>FDR-3500DR</td><td>192.168.0.101 : 104</td><td>Detector local</td></tr>
+    <tr><td>(AE local do console)</td><td>FDR-MAMO</td><td>10.1.92.177</td><td>SCU · Print / Storage / Verification</td></tr>
+    <tr><td class="ev">PPS / MPPS</td><td colspan="3" class="ev">Sem entrada em ConnectInfo (nenhum destino de MPPS declarado)</td></tr>
+  </table>
+  <p class="small">Os nós de worklist e de armazenamento estão declarados e correspondem ao servidor da instituição.</p>
+
+  <h2><span class="n">7.</span>Auditoria das bases de configuração</h2>
+  <p>Foram abertos e inventariados <b>51 arquivos <code>.mdb</code></b> do console. Pontos relevantes ao caso:</p>
+  <ul>
+    <li><code>JJ1017V3CodeMapping</code>: <span class="ev">0 registros</span> em ambas as cópias (Config e AWS\User), datadas de 2018.</li>
+    <li><code>MassOrderMenu</code> e <code>PreSetMenu</code>: <span class="ev">0 registros</span>.</li>
+    <li><code>MenuData</code> (ExaminationMenu/ExposureMenu/SetMenu): <b>populado e atualizado</b> (2026-06-16).</li>
+    <li><code>DicomPpsTag → Pps</code>: 10 tags definidas; sem destino em <code>ConnectInfo</code>.</li>
+    <li><code>NetConfig → DeviceInfo</code>: nós de worklist/armazenamento corretos.</li>
+  </ul>
+
+  <h2><span class="n">8.</span>Comportamento observado do lado RIS/PACS</h2>
+  <div class="box ok">
+    <div class="t">Parâmetros do item de worklist entregue pelo servidor da instituição</div>
+    <table style="margin:8px 0 0">
+      <tr><td>Serviço</td><td>Modality Worklist FIND (C-FIND), respondido com status <code>0000</code> (Success)</td></tr>
+      <tr><td>Transfer Syntax</td><td>Implicit VR Little Endian (<code>1.2.840.10008.1.2</code>)</td></tr>
+      <tr><td>Specific Character Set</td><td><code>ISO_IR 100</code> (Latin-1)</td></tr>
+      <tr><td>Modality (0008,0060)</td><td><code>MG</code></td></tr>
+      <tr><td>Identificadores</td><td>Accession / Requested Procedure ID / SPS ID com ≤ 10 caracteres</td></tr>
+      <tr><td>Study Instance UID</td><td>Único por exame</td></tr>
+      <tr><td>Dados do paciente</td><td>Nome, ID, nascimento, sexo e <i>Issuer of Patient ID</i> preenchidos</td></tr>
+      <tr><td>Scheduled Protocol Code</td><td>Em apuração — depende do código a ser reconhecido pelo console (ver seções 3–4)</td></tr>
+    </table>
+  </div>
+  <p class="small">Variações testadas do lado do RIS (conjunto de caracteres, formato/tamanho de identificadores,
+  formato do Study UID, data agendada) <b>não alteraram</b> o comportamento, o que é consistente com as evidências das
+  seções 3–4.</p>
+
+  <h2><span class="n">9.</span>Referências consultadas</h2>
+  <table>
+    <tr><th>Referência</th><th>Trechos pertinentes</th></tr>
+    <tr>
+      <td><b>DICOM Conformance Statement — FDR-3000AWS, CR-IR363AWS (Standard)</b><br><span class="small">FUJIFILM, doc. 897N201838B</span></td>
+      <td>
+        • MWM-SCU propõe <b>somente Implicit VR Little Endian</b> em MWL e MPPS.<br>
+        • Tratamento de status do C-FIND: <code>0000 Success</code> → itens disponíveis; <b>“qualquer outro status → associação abortada (A-ABORT)”</b>.<br>
+        • <b>“O MPPS-SCU cria uma instância MPPS automaticamente quando o usuário seleciona e inicia um item de worklist.”</b><br>
+        • Tabela de mapeamento Worklist → Imagem → MPPS: o <code>Scheduled Protocol Code Sequence</code> é propagado “From MWL”.
+      </td>
+    </tr>
+    <tr>
+      <td><b>JJ1017 — Diretrizes JAHIS/JIRA</b> (Ver. 1.1 / Ver. 3.x)<br><span class="small">padrão japonês de códigos de procedimento para RIS↔modalidade</span></td>
+      <td>Estrutura de código em partes <code>JJ1017-M</code> (procedimento) e <code>JJ1017-S</code> (subcódigo), transportada
+          em <code>Protocol Context Sequence (0040,0440)</code> — formato adotado pelo console (perfil AWS V4.2 / JJ1017Ver3).</td>
+    </tr>
+    <tr>
+      <td><b>DICOM PS3.3 / PS3.4</b></td>
+      <td>Modality Worklist SOP Class; Scheduled Procedure Step Module — <code>Scheduled Protocol Code Sequence (0040,0008)</code>;
+          Acquisition/Protocol Context — <code>Protocol Context Sequence (0040,0440)</code>.</td>
+    </tr>
+    <tr>
+      <td><b>FUJIFILM CR/DR Console — Manual de Operação</b><br><span class="small">série 897N0519</span></td>
+      <td>Fluxo de seleção de menu de exposição; tratamento de estudos recebidos via RIS (DICOM MWM) e a relação entre a
+          ordem recebida e o menu de exposição.</td>
+    </tr>
+  </table>
+
+  <div style="margin:40px 0 8px; padding-top:18px; border-top:1px solid var(--linha); display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:12px;">
+    <div class="small" style="max-width:60%;">Dados de paciente omitidos. Documento destinado a subsidiar a análise
+      do serviço técnico FUJIFILM.</div>
+    <div style="text-align:right;">
+      <div class="small" style="margin-bottom:10px;">Maricá/RJ, 23 de junho de 2026</div>
+      <div style="font-weight:650; font-size:15px; border-top:1px solid var(--tinta); padding-top:4px; min-width:230px;">Bernardo Almeida</div>
+      <div class="small">Técnico responsável</div>
+    </div>
+  </div>
+</main>
+</div>
+</body>
+</html>
