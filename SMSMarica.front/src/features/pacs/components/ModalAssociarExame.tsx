@@ -32,11 +32,12 @@ export function ModalAssociarExame({ estudo, aoFechar }: Props) {
 
   // Debounce do número digitado.
   useEffect(() => {
-    const t = setTimeout(() => setDebounced(numero.trim().toUpperCase()), 350);
+    const t = setTimeout(() => setDebounced(numero.trim()), 350);
     return () => clearTimeout(t);
   }, [numero]);
 
-  const formatoValido = /^SMS\d+$/.test(debounced);
+  // Accession = {AAMMDD}{seq} (só dígitos), ex.: 260625002. Sem "SMS".
+  const formatoValido = /^\d{4,}$/.test(debounced);
   const preview = usePreviewSolicitacao(debounced);
   const solicitacao = preview.data ?? null;
 
@@ -88,14 +89,15 @@ export function ModalAssociarExame({ estudo, aoFechar }: Props) {
               <Input
                 id="num-sol"
                 value={numero}
-                onChange={(e) => setNumero(e.target.value)}
-                placeholder="Ex.: SMS260625001"
+                onChange={(e) => setNumero(e.target.value.replace(/\D/g, ''))}
+                placeholder="Ex.: 260625002"
+                inputMode="numeric"
                 className="pl-9 font-mono"
                 autoFocus
               />
             </div>
             {debounced && !formatoValido ? (
-              <p className="mt-1 text-xs text-amber-700">Formato inválido — use o número no padrão SMS….</p>
+              <p className="mt-1 text-xs text-amber-700">Use só os números do pedido (ex.: 260625002).</p>
             ) : null}
           </div>
 
