@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { api, type SessaoValida } from '@/lib/api';
 import { useSessao } from '@/store/sessao';
 import { AppShell } from '@/components/AppShell';
@@ -16,6 +16,37 @@ export function App() {
   const definirToken = useSessao((s) => s.definirToken);
   const [estado, setEstado] = useState<Estado>({ fase: 'validando' });
   const [vista, setVista] = useState<'home' | 'novo'>('home');
+
+  // Valida um token na API (reaproveitado pela carga inicial via ?t= e pelo leitor
+  // de QR dentro do app). Retorna um "cancelador" para descartar respostas tardias.
+  const validarToken = useCallback((token: string) => {
+    let cancelado = false;
+    setEstado({ fase: 'validando' });
+    api
+      .validarSessao(token)
+      .then((sessao) => {
+        if (!cancelado) setEstado({ fase: 'valido', token, sessao });
+      })
+      .catch(() => {
+        if (cancelado) return;
+        // Token inválido/expirado/revogado — limpa para não insistir num código morto.
+        // (A mensagem técnica não é exposta ao cidadão; a tela orienta a reler o QR.)
+        useSessao.getState().limpar();
+        setEstado({ fase: 'invalido' });
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  // Resultado do leitor de QR dentro do app: grava o token e revalida a sessão.
+  const aoLerToken = useCallback(
+    (token: string) => {
+      definirToken(token);
+      validarToken(token);
+    },
+    [definirToken, validarToken],
+  );
 
   // Carga inicial: token do QR vem na URL (?t=TOKEN). Damos prioridade ao da URL;
   // se não houver, reaproveitamos o persistido (multi-uso dentro do TTL).
@@ -47,24 +78,8 @@ export function App() {
       return;
     }
 
-    let cancelado = false;
-    setEstado({ fase: 'validando' });
-    api
-      .validarSessao(efetivo)
-      .then((sessao) => {
-        if (!cancelado) setEstado({ fase: 'valido', token: efetivo, sessao });
-      })
-      .catch(() => {
-        if (cancelado) return;
-        // Token inválido/expirado/revogado — limpa para não insistir num código morto.
-        // (A mensagem técnica não é exposta ao cidadão; a tela orienta a reler o QR.)
-        useSessao.getState().limpar();
-        setEstado({ fase: 'invalido' });
-      });
-    return () => {
-      cancelado = true;
-    };
-  }, [definirToken]);
+    return validarToken(efetivo);
+  }, [definirToken, validarToken]);
 
   if (estado.fase === 'validando') {
     return (
@@ -78,7 +93,7 @@ export function App() {
   }
 
   if (estado.fase === 'invalido') {
-    return <SemToken />;
+    return <SemToken aoLerToken={aoLerToken} />;
   }
 
   if (vista === 'novo') {

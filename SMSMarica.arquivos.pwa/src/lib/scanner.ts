@@ -14,6 +14,8 @@
  * carregado sob demanda de uma CDN (lazy-load) com estado de carregamento na UI.
  */
 
+import { ordenarCantos, type Cantos } from './perspectiva';
+
 // Maior lado da imagem processada — limita o tamanho do PDF final (~A4 a 200dpi).
 const MAX_LADO = 1600;
 
@@ -165,6 +167,65 @@ export async function processarPagina(
   return { dataUrl: final.toDataURL('image/jpeg', 0.85), recortado };
 }
 
+/**
+ * Detecta os 4 cantos do papel na foto (jscanify sobre OpenCV) para PRÉ-PREENCHER
+ * o editor de recorte manual. Devolve os cantos já ordenados (tl/tr/br/bl) em
+ * coordenadas de `canvas`, ou `null` se não houver detecção confiável (o editor
+ * então usa margens internas padrão). NÃO faz warp — só localiza os cantos.
+ */
+export async function detectarCantos(canvas: HTMLCanvasElement): Promise<Cantos | null> {
+  let scanner: Jscanify;
+  try {
+    scanner = await carregarScanner();
+  } catch {
+    return null; // OpenCV/jscanify indisponível — sem pré-detecção.
+  }
+
+  const cv = window.cv;
+  const mat = cv.imread(canvas);
+  let contorno: unknown = null;
+  try {
+    contorno = scanner.findPaperContour(mat);
+    if (!contorno) return null;
+
+    const cantos = scanner.getCornerPoints(contorno);
+    if (
+      !cantos?.topLeftCorner ||
+      !cantos.topRightCorner ||
+      !cantos.bottomLeftCorner ||
+      !cantos.bottomRightCorner
+    ) {
+      return null;
+    }
+
+    const { topLeftCorner: tl, topRightCorner: tr, bottomLeftCorner: bl, bottomRightCorner: br } = cantos;
+    const largura = Math.max(distancia(tl, tr), distancia(bl, br));
+    const altura = Math.max(distancia(tl, bl), distancia(tr, br));
+
+    // Detecção minúscula = provável ruído; melhor deixar as margens padrão do editor.
+    if (largura < 96 || altura < 96) return null;
+    if (largura * altura < canvas.width * canvas.height * 0.12) return null;
+
+    return ordenarCantos([tl, tr, bl, br]);
+  } catch {
+    return null;
+  } finally {
+    (contorno as { delete?: () => void } | null)?.delete?.();
+    mat.delete();
+  }
+}
+
+/**
+ * Aplica SÓ o realce (contraste/cinza) sobre uma imagem JÁ recortada — sem detecção
+ * de bordas nem warp. Usado na etapa de revisão do scanner, depois do recorte manual.
+ */
+export async function realcarDataUrl(dataUrl: string, realce: OpcaoRealce): Promise<string> {
+  const img = await carregarImagem(dataUrl);
+  const canvas = paraCanvas(img, MAX_LADO);
+  const final = realce === 'cor' ? realcarCor(canvas) : realcarDocumento(canvas);
+  return final.toDataURL('image/jpeg', 0.85);
+}
+
 /** Tenta detectar a borda do papel e devolver o recorte com perspectiva corrigida. */
 function recortarPapel(scanner: Jscanify, canvas: HTMLCanvasElement): HTMLCanvasElement | null {
   const cv = window.cv;
@@ -245,7 +306,7 @@ function clamp(v: number): number {
  * Desenha a fonte em um canvas novo, reduzindo para que o maior lado seja
  * `maxLado` px (evita PDFs gigantes e mantém o processamento rápido no celular).
  */
-function paraCanvas(
+export function paraCanvas(
   fonte: HTMLImageElement | HTMLCanvasElement,
   maxLado: number,
 ): HTMLCanvasElement {
