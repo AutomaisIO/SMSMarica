@@ -7,4 +7,19 @@ declare module 'jscanify/client';
 interface Window {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   cv: any;
+  // BarcodeDetector: nativo no Android Chrome (leitura de QR rápida). NÃO existe no
+  // iOS Safari — por isso o LeitorQr cai para jsQR quando esta API está ausente.
+  BarcodeDetector?: BarcodeDetectorCtor;
+}
+
+/** Subconjunto da Barcode Detection API que usamos (só o `rawValue` do QR). */
+interface DetectedBarcodeLike {
+  rawValue: string;
+}
+interface BarcodeDetectorLike {
+  detect(source: CanvasImageSource): Promise<DetectedBarcodeLike[]>;
+}
+interface BarcodeDetectorCtor {
+  new (options?: { formats?: string[] }): BarcodeDetectorLike;
+  getSupportedFormats?: () => Promise<string[]>;
 }

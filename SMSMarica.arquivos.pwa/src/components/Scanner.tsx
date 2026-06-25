@@ -4,6 +4,7 @@ import {
   ArrowUp,
   Camera,
   Check,
+  Crop,
   ImagePlus,
   RotateCcw,
   ScanLine,
@@ -12,38 +13,43 @@ import {
 } from 'lucide-react';
 import {
   arquivoParaDataUrl,
-  carregarImagem,
   prepararScanner,
-  processarPagina,
+  realcarDataUrl,
   type OpcaoRealce,
-  type PaginaProcessada,
 } from '@/lib/scanner';
+import { EditorRecorte } from '@/components/EditorRecorte';
 import { GhostButton, PrimaryButton, Spinner } from '@/components/ui';
 import { cn } from '@/lib/cn';
 
 type PaginaCapturada = {
   id: string;
   dataUrl: string;
+  /** `true` quando houve recorte manual (vs "página inteira"). */
   recortado: boolean;
 };
 
 type Revisao = {
-  origem: string; // dataURL crua da foto, para reprocessar ao trocar o realce
-  processada: PaginaProcessada | null;
+  /** dataURL da imagem JÁ recortada (entrada do realce); reaplicamos só o realce ao trocar. */
+  recortada: string;
+  /** Veio de recorte manual (`true`) ou de "página inteira" (`false`). */
+  recortado: boolean;
+  /** dataURL final já com o realce aplicado. */
+  resultado: string | null;
   realce: OpcaoRealce;
   processando: boolean;
 };
 
-type Vista = 'lista' | 'camera' | 'revisao';
+type Vista = 'lista' | 'camera' | 'editor' | 'revisao';
 
 const novoId = () =>
   (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`);
 
 /**
- * Digitalizador de páginas. Captura da câmera traseira (preview ao vivo onde
- * houver suporte; sempre com fallback de <input type=file capture=environment>,
- * que é o caminho confiável no iOS Safari), processa cada página (recorte +
- * perspectiva + realce) e devolve a lista de imagens prontas para virar PDF.
+ * Digitalizador de páginas. Fluxo por página: captura (câmera ao vivo ou
+ * <input type=file capture=environment>, caminho confiável no iOS) → editor de
+ * recorte manual (4 cantos arrastáveis estilo CamScanner) → revisão de realce
+ * (Documento P/B x Cor, só contraste sobre a imagem já recortada) → aceitar.
+ * Devolve a lista de imagens prontas para virar PDF.
  */
 export function Scanner({
   aoConcluir,
@@ -54,6 +60,7 @@ export function Scanner({
 }) {
   const [paginas, setPaginas] = useState<PaginaCapturada[]>([]);
   const [vista, setVista] = useState<Vista>('lista');
+  const [fotoCrua, setFotoCrua] = useState<string | null>(null); // foto crua em edição (recorte)
   const [revisao, setRevisao] = useState<Revisao | null>(null);
   const [scannerPronto, setScannerPronto] = useState<boolean | null>(null);
   const inputArquivo = useRef<HTMLInputElement>(null);
@@ -80,17 +87,10 @@ export function Scanner({
     else inputArquivo.current?.click();
   }
 
-  async function processar(origem: string, realce: OpcaoRealce) {
-    setRevisao({ origem, processada: null, realce, processando: true });
-    setVista('revisao');
-    try {
-      const img = await carregarImagem(origem);
-      const processada = await processarPagina(img, realce);
-      setRevisao({ origem, processada, realce, processando: false });
-    } catch {
-      // Não conseguiu processar: usa a própria foto crua para não travar o usuário.
-      setRevisao({ origem, processada: { dataUrl: origem, recortado: false }, realce, processando: false });
-    }
+  // Foto crua capturada (câmera/arquivo) → editor de recorte manual.
+  function aoCapturarFoto(dataUrl: string) {
+    setFotoCrua(dataUrl);
+    setVista('editor');
   }
 
   async function aoEscolherArquivo(e: React.ChangeEvent<HTMLInputElement>) {
@@ -98,26 +98,46 @@ export function Scanner({
     e.target.value = ''; // permite re-escolher o mesmo arquivo depois
     if (!arquivo) return;
     const dataUrl = await arquivoParaDataUrl(arquivo);
-    await processar(dataUrl, 'documento');
+    aoCapturarFoto(dataUrl);
+  }
+
+  // Aplica SÓ o realce sobre a imagem já recortada (não re-detecta/re-warpa).
+  async function aplicarRealce(recortada: string, recortado: boolean, realce: OpcaoRealce) {
+    setVista('revisao');
+    setRevisao({ recortada, recortado, resultado: null, realce, processando: true });
+    try {
+      const resultado = await realcarDataUrl(recortada, realce);
+      setRevisao({ recortada, recortado, resultado, realce, processando: false });
+    } catch {
+      // Não conseguiu realçar: usa a própria imagem recortada para não travar.
+      setRevisao({ recortada, recortado, resultado: recortada, realce, processando: false });
+    }
+  }
+
+  // Saída do editor: imagem recortada (warp) ou "página inteira" → revisão de realce.
+  function aoRecortar(recortada: string, recortado: boolean) {
+    void aplicarRealce(recortada, recortado, 'documento');
   }
 
   function trocarRealce(realce: OpcaoRealce) {
     if (!revisao) return;
-    void processar(revisao.origem, realce);
+    void aplicarRealce(revisao.recortada, revisao.recortado, realce);
   }
 
   function aceitarPagina() {
-    if (!revisao?.processada) return;
+    if (!revisao?.resultado) return;
     setPaginas((atual) => [
       ...atual,
-      { id: novoId(), dataUrl: revisao.processada!.dataUrl, recortado: revisao.processada!.recortado },
+      { id: novoId(), dataUrl: revisao.resultado!, recortado: revisao.recortado },
     ]);
     setRevisao(null);
+    setFotoCrua(null);
     setVista('lista');
   }
 
   function refazerCaptura() {
     setRevisao(null);
+    setFotoCrua(null);
     abrirCaptura();
   }
 
@@ -143,28 +163,38 @@ export function Scanner({
 
   // ---- Câmera ao vivo ----------------------------------------------------
   if (vista === 'camera') {
+    return <CameraAoVivo aoCapturar={aoCapturarFoto} aoCancelar={() => setVista('lista')} />;
+  }
+
+  // ---- Editor de recorte manual (4 cantos) -------------------------------
+  if (vista === 'editor' && fotoCrua) {
     return (
-      <CameraAoVivo
-        aoCapturar={(dataUrl) => void processar(dataUrl, 'documento')}
-        aoCancelar={() => setVista('lista')}
+      <EditorRecorte
+        fotoCrua={fotoCrua}
+        aoConfirmar={aoRecortar}
+        aoRefazerFoto={refazerCaptura}
+        aoCancelar={() => {
+          setFotoCrua(null);
+          setVista('lista');
+        }}
       />
     );
   }
 
-  // ---- Revisão da página capturada --------------------------------------
+  // ---- Revisão da página (só realce sobre a imagem já recortada) ---------
   if (vista === 'revisao') {
     return (
       <div className="space-y-4">
         <div className="overflow-hidden rounded-2xl border border-areia bg-tinta/5">
           <div className="grid min-h-[320px] place-items-center bg-tinta/90 p-2">
-            {revisao?.processando || !revisao?.processada ? (
+            {revisao?.processando || !revisao?.resultado ? (
               <div className="flex flex-col items-center gap-3 py-12 text-white/90">
                 <Spinner className="text-white" />
-                <p className="text-sm">Processando a página…</p>
+                <p className="text-sm">Aplicando realce…</p>
               </div>
             ) : (
               <img
-                src={revisao.processada.dataUrl}
+                src={revisao.resultado}
                 alt="Página digitalizada"
                 className="max-h-[60vh] w-auto rounded-lg object-contain"
               />
@@ -172,11 +202,11 @@ export function Scanner({
           </div>
         </div>
 
-        {revisao?.processada && !revisao.processando && (
+        {revisao && !revisao.processando && revisao.resultado && (
           <p className="text-center text-xs text-tinta-mute">
-            {revisao.processada.recortado
-              ? 'Borda do papel detectada e perspectiva corrigida.'
-              : 'Sem recorte automático — enviada com ajuste de contraste.'}
+            {revisao.recortado
+              ? 'Recorte aplicado — confira a página antes de usar.'
+              : 'Página inteira (sem recorte).'}
           </p>
         )}
 
@@ -199,13 +229,13 @@ export function Scanner({
         </div>
 
         <div className="flex gap-3">
-          <GhostButton className="flex-1" onClick={refazerCaptura}>
-            <RotateCcw className="h-4 w-4" /> Refazer
+          <GhostButton className="flex-1" onClick={() => setVista('editor')} disabled={!fotoCrua}>
+            <Crop className="h-4 w-4" /> Ajustar recorte
           </GhostButton>
           <PrimaryButton
             className="flex-1"
             onClick={aceitarPagina}
-            disabled={revisao?.processando || !revisao?.processada}
+            disabled={revisao?.processando || !revisao?.resultado}
           >
             <Check className="h-5 w-5" /> Usar página
           </PrimaryButton>
@@ -290,7 +320,7 @@ export function Scanner({
                   </BotaoIcone>
                 </div>
                 <span className="text-[11px] text-tinta-mute">
-                  {p.recortado ? 'Recortada automaticamente' : 'Ajuste de contraste'}
+                  {p.recortado ? 'Recortada' : 'Página inteira'}
                 </span>
               </div>
             </li>
