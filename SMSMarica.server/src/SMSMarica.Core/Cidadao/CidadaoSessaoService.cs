@@ -63,16 +63,46 @@ public sealed class CidadaoSessaoService(
         return (token, expira);
     }
 
-    public async Task<bool> SessaoValidaAsync(Guid sessaoJti, Guid patientId, CancellationToken ct = default)
+    public async Task<AcessoCidadaoValidacao> ValidarAcessoAsync(
+        Guid sessaoJti, Guid patientId, CancellationToken ct = default)
     {
         var agora = DateTime.UtcNow;
-        return await db.CidadaoSessoes
+        var versao = TermoConsentimento.VersaoVigente;
+        var r = await db.CidadaoSessoes
             .Where(s => s.Id == sessaoJti
                 && s.RevogadaEm == null
                 && s.ExpiraEm > agora
                 && s.CidadaoAcesso.PatientId == patientId
                 && s.CidadaoAcesso.Ativo)
-            .AnyAsync(ct);
+            .Select(s => new
+            {
+                Consentido = s.CidadaoAcesso.Consentimentos
+                    .Any(c => c.Versao == versao && c.RevogadoEm == null),
+            })
+            .FirstOrDefaultAsync(ct);
+
+        return r is null
+            ? new AcessoCidadaoValidacao(false, false)
+            : new AcessoCidadaoValidacao(true, r.Consentido);
+    }
+
+    public async Task<IReadOnlyList<Dtos.AcessoCidadaoDto>> ListarAcessosAsync(
+        Guid patientId, CancellationToken ct = default)
+    {
+        var agora = DateTime.UtcNow;
+        return await db.CidadaoSessoes
+            .Where(s => s.CidadaoAcesso.PatientId == patientId)
+            .OrderByDescending(s => s.CriadaEm)
+            .Select(s => new Dtos.AcessoCidadaoDto(
+                s.Id,
+                s.Canal,
+                s.Dispositivo,
+                s.Ip,
+                s.CriadaEm,
+                s.ExpiraEm,
+                s.RevogadaEm,
+                s.RevogadaEm == null && s.ExpiraEm > agora))
+            .ToListAsync(ct);
     }
 
     public async Task RevogarAsync(Guid sessaoJti, CancellationToken ct = default)

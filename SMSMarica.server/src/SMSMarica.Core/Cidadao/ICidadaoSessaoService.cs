@@ -16,9 +16,22 @@ public interface ICidadaoSessaoService
         Guid patientId, string nome, string cpf, string canal,
         string? dispositivo, string? ip, CancellationToken ct = default);
 
-    /// <summary>Valida o jti (id da sessão) contra a sessão ativa do paciente. Usado a cada request.</summary>
-    Task<bool> SessaoValidaAsync(Guid sessaoJti, Guid patientId, CancellationToken ct = default);
+    /// <summary>
+    /// Valida o jti (id da sessão) contra a sessão ativa do paciente e, de quebra,
+    /// informa se o cidadão tem consentimento vigente. Usado a cada request (gate).
+    /// </summary>
+    Task<AcessoCidadaoValidacao> ValidarAcessoAsync(Guid sessaoJti, Guid patientId, CancellationToken ct = default);
 
     /// <summary>Revoga a sessão atual (logout).</summary>
     Task RevogarAsync(Guid sessaoJti, CancellationToken ct = default);
+
+    /// <summary>
+    /// Histórico de acessos (sessões) do paciente, mais recentes primeiro. Usado pelo
+    /// painel (staff) na aba "Histórico de Acesso" do cadastro do paciente.
+    /// </summary>
+    Task<IReadOnlyList<Dtos.AcessoCidadaoDto>> ListarAcessosAsync(
+        Guid patientId, CancellationToken ct = default);
 }
+
+/// <summary>Resultado do gate por requisição: sessão ativa? consentimento vigente?</summary>
+public readonly record struct AcessoCidadaoValidacao(bool SessaoValida, bool Consentido);

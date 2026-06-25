@@ -243,6 +243,7 @@ public static class DependencyInjection
         services.AddMemoryCache();
         services.AddScoped<Cidadao.IPacienteAuthService, Cidadao.PacienteAuthService>();
         services.AddScoped<Cidadao.ICidadaoSessaoService, Cidadao.CidadaoSessaoService>();
+        services.AddScoped<Cidadao.IConsentimentoCidadaoService, Cidadao.ConsentimentoCidadaoService>();
         services.AddScoped<Tfd.Configuracao.ITfdConfigService, Tfd.Configuracao.TfdConfigService>();
         services.AddScoped<Geo.IGeocodificadorService, Geo.GeocodificadorService>();
         services.AddScoped<Geo.IDistanciaService, Geo.DistanciaService>();

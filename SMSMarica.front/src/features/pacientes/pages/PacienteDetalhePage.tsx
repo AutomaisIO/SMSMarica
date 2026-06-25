@@ -11,6 +11,7 @@ import {
   Pencil,
   Pill,
   Printer,
+  Smartphone,
   Stethoscope,
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -20,7 +21,12 @@ import { Modal } from '@/shared/ui/Modal';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { Tabs, type Aba } from '@/shared/ui/Tabs';
-import { useAtendimentosPaciente, usePacientePorId } from '@/features/pacientes/api/queries';
+import {
+  useAcessosPaciente,
+  useAtendimentosPaciente,
+  usePacientePorId,
+} from '@/features/pacientes/api/queries';
+import type { AcessoCidadao } from '@/features/pacientes/api/pacientesApi';
 import { SinaisVitaisTendencia } from '@/features/pacientes/components/SinaisVitaisTendencia';
 import { abrirImpressaoDocumento, EDOC_CSS } from '@/features/pacientes/lib/imprimirDocumento';
 import type { Atendimento, Documento, Paciente } from '@/features/pacientes/types';
@@ -484,6 +490,65 @@ function SecaoAtendimentos({ pacienteId, paciente }: { pacienteId: string; pacie
   );
 }
 
+const CANAL_ACESSO_LABEL: Record<string, string> = {
+  'otp-whatsapp': 'WhatsApp (código)',
+  senha: 'Senha',
+  google: 'Google',
+  microsoft: 'Microsoft',
+  facebook: 'Facebook',
+};
+
+function statusAcesso(a: AcessoCidadao): { texto: string; classe: string } {
+  if (a.ativa) return { texto: 'Ativa', classe: 'bg-green-100 text-green-700' };
+  if (a.revogadaEm) return { texto: 'Encerrada', classe: 'bg-gray-100 text-gray-600' };
+  return { texto: 'Expirada', classe: 'bg-amber-100 text-amber-700' };
+}
+
+/** Histórico de acessos (sessões de login) do paciente ao app. */
+function SecaoAcessos({ pacienteId }: { pacienteId: string }) {
+  const q = useAcessosPaciente(pacienteId);
+  const colunas: Coluna<AcessoCidadao>[] = [
+    { chave: 'criadaEm', cabecalho: 'Data/hora', render: (a) => formatarDataHora(a.criadaEm) ?? '—' },
+    { chave: 'canal', cabecalho: 'Forma de acesso', render: (a) => CANAL_ACESSO_LABEL[a.canal] ?? a.canal },
+    {
+      chave: 'dispositivo',
+      cabecalho: 'Dispositivo',
+      render: (a) => (
+        <span className="block max-w-xs truncate text-gray-600" title={a.dispositivo ?? ''}>
+          {a.dispositivo || '—'}
+        </span>
+      ),
+    },
+    { chave: 'ip', cabecalho: 'IP', render: (a) => a.ip || '—' },
+    {
+      chave: 'status',
+      cabecalho: 'Status',
+      render: (a) => {
+        const s = statusAcesso(a);
+        return <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${s.classe}`}>{s.texto}</span>;
+      },
+    },
+  ];
+  return (
+    <>
+      <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900">
+        <Smartphone className="h-4 w-4" /> Histórico de acesso ao app
+      </div>
+      <Tabela
+        colunas={colunas}
+        dados={q.data ?? []}
+        chaveLinha={(a) => a.id}
+        carregando={q.isLoading}
+        vazio={
+          !q.isLoading && (q.data?.length ?? 0) === 0
+            ? 'Este paciente ainda não acessou o app.'
+            : undefined
+        }
+      />
+    </>
+  );
+}
+
 function calcularIdade(iso?: string | null): number | null {
   if (!iso) return null;
   const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -585,7 +650,7 @@ function resumirAtendimentos(lista: Atendimento[]): EstatisticasAtendimentos {
   };
 }
 
-type Vista = 'resumo' | 'atendimentos' | 'tratamentos' | 'dados';
+type Vista = 'resumo' | 'atendimentos' | 'tratamentos' | 'acessos' | 'dados';
 
 function ResumoPaciente({
   p,
@@ -840,6 +905,7 @@ export function PacienteDetalhePage() {
     { id: 'resumo', rotulo: 'Resumo' },
     { id: 'atendimentos', rotulo: 'Atendimentos', badge: stats.total },
     { id: 'tratamentos', rotulo: 'Tratamentos', badge: listaTratamentos.length },
+    { id: 'acessos', rotulo: 'Histórico de Acesso' },
     { id: 'dados', rotulo: 'Dados pessoais' },
   ];
 
@@ -960,6 +1026,12 @@ export function PacienteDetalhePage() {
                 }
               />
             </section>
+          ) : null}
+
+          {vista === 'acessos' ? (
+            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+              <SecaoAcessos pacienteId={id} />
+            </div>
           ) : null}
 
           {vista === 'dados' ? (

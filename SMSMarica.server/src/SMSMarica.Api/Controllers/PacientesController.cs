@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
 using SMSMarica.Core.Atendimentos;
 using SMSMarica.Core.Atendimentos.Dtos;
+using SMSMarica.Core.Cidadao;
+using SMSMarica.Core.Cidadao.Dtos;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.Pacientes.Dtos;
 using SMSMarica.Data.Entities.Enums;
@@ -10,10 +12,14 @@ namespace SMSMarica.Api.Controllers;
 
 [ApiController]
 [Route("pacientes")]
-public sealed class PacientesController(IPacientesService service, IAtendimentosService atendimentos) : ControllerBase
+public sealed class PacientesController(
+    IPacientesService service,
+    IAtendimentosService atendimentos,
+    ICidadaoSessaoService sessoes) : ControllerBase
 {
     private readonly IPacientesService _service = service;
     private readonly IAtendimentosService _atendimentos = atendimentos;
+    private readonly ICidadaoSessaoService _sessoes = sessoes;
 
     /// <summary>
     /// Busca em tempo real por nome (qualquer parte, múltiplos tokens) ou CPF.
@@ -44,6 +50,16 @@ public sealed class PacientesController(IPacientesService service, IAtendimentos
     [ProducesResponseType<IReadOnlyList<AtendimentoDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<AtendimentoDto>> Atendimentos(Guid id, CancellationToken cancellationToken) =>
         await _atendimentos.ObterPorPacienteAsync(id, cancellationToken);
+
+    /// <summary>
+    /// Histórico de acessos do paciente ao app (sessões de login), mais recentes primeiro.
+    /// Exibido na aba "Histórico de Acesso" do cadastro do paciente.
+    /// </summary>
+    [HttpGet("{id:guid}/acessos")]
+    [RequerPermissao(ModuloPermissao.Pacientes, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<AcessoCidadaoDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<AcessoCidadaoDto>> Acessos(Guid id, CancellationToken cancellationToken) =>
+        await _sessoes.ListarAcessosAsync(id, cancellationToken);
 
     /// <summary>
     /// Verifica se há paciente com o CPF informado (inclusive desativado).

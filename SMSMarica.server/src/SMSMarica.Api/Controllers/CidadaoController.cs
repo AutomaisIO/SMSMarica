@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SMSMarica.Api.Auth;
 using SMSMarica.Core.Atendimentos;
 using SMSMarica.Core.Cidadao;
 using SMSMarica.Core.Cidadao.Dtos;
@@ -18,11 +19,32 @@ namespace SMSMarica.Api.Controllers;
 [ApiController]
 [Route("auth/paciente")]
 [Authorize]
+[ExigeConsentimento]
 public sealed class CidadaoController(
     IPacientesService pacientes,
     IAtendimentosService atendimentos,
-    ICidadaoSessaoService sessoes) : ControllerBase
+    ICidadaoSessaoService sessoes,
+    IConsentimentoCidadaoService consentimentos) : ControllerBase
 {
+    /// <summary>Status do consentimento LGPD + texto vigente do termo (acessível sem aceite).</summary>
+    [HttpGet("consentimento")]
+    [PermiteSemConsentimento]
+    [ProducesResponseType<ConsentimentoStatusDto>(StatusCodes.Status200OK)]
+    public Task<ConsentimentoStatusDto> ObterConsentimento(CancellationToken ct) =>
+        consentimentos.ObterStatusAsync(PacienteId(), ct);
+
+    /// <summary>Registra o aceite do termo vigente (acessível sem aceite — é o que cria o aceite).</summary>
+    [HttpPost("consentimento")]
+    [PermiteSemConsentimento]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> AceitarConsentimento(CancellationToken ct)
+    {
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var dispositivo = Request.Headers.UserAgent.ToString();
+        await consentimentos.RegistrarAsync(PacienteId(), ip, dispositivo, ct);
+        return NoContent();
+    }
+
     [HttpGet("me")]
     [ProducesResponseType<PerfilCidadaoDto>(StatusCodes.Status200OK)]
     public async Task<ActionResult<PerfilCidadaoDto>> Me(CancellationToken ct)
@@ -53,6 +75,7 @@ public sealed class CidadaoController(
     }
 
     [HttpPost("logout")]
+    [PermiteSemConsentimento]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Logout(CancellationToken ct)
     {

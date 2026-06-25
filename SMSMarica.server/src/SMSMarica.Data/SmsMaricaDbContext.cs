@@ -89,6 +89,7 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     // NÃO é Usuario/RBAC. Fonte da verdade = CPF. Ver ADR-0018.
     public DbSet<CidadaoAcesso> CidadaoAcessos => Set<CidadaoAcesso>();
     public DbSet<CidadaoSessao> CidadaoSessoes => Set<CidadaoSessao>();
+    public DbSet<CidadaoConsentimento> CidadaoConsentimentos => Set<CidadaoConsentimento>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
