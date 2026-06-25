@@ -10,10 +10,10 @@ export default defineConfig({
       registerType: 'autoUpdate',
       // favicon, ícones de instalação e páginas legais estáticas entram no bundle.
       includeAssets: [
-        'favicon.svg',
-        'icon.svg',
+        'favicon.png',
         'icon-192.png',
         'icon-512.png',
+        'icon-512-maskable.png',
         'apple-touch-icon.png',
         'privacidade/index.html',
         'termos/index.html',
@@ -29,13 +29,12 @@ export default defineConfig({
         orientation: 'portrait',
         start_url: '/',
         scope: '/',
-        // PNGs 192/512 (recomendado p/ Android) + SVG escalável. A cruz tem margem
-        // suficiente p/ servir como maskable (não corta no recorte circular).
+        // PNGs 192/512 (recomendado p/ Android). A versão maskable tem a arte a ~80%
+        // sobre fundo vermelho, com margem de segurança p/ o recorte circular do Android.
         icons: [
           { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
           { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-          { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-          { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+          { src: '/icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       workbox: {
