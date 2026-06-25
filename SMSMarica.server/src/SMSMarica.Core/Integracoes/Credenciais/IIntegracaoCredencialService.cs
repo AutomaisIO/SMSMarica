@@ -42,6 +42,9 @@ public static class ProvedoresIntegracao
         ["microsoft"] = "Microsoft (Azure AD)",
         ["facebook"] = "Facebook",
         ["google"] = "Google (login)",
+        // Armazenamento de objeto (S3) para os PDFs de exame.
+        // clientId=accessKey, clientSecret=secretKey, parametrosJson={endpoint,region,bucket}.
+        ["digitalocean_spaces"] = "DigitalOcean Spaces (S3)",
     };
 
     public static bool EhSuportado(string provedor) => Suportados.ContainsKey(provedor);

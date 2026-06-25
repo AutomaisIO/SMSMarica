@@ -27,6 +27,7 @@ import {
   usePacientePorId,
 } from '@/features/pacientes/api/queries';
 import type { AcessoCidadao } from '@/features/pacientes/api/pacientesApi';
+import { SecaoExamesAnexados } from '@/features/pacientes/components/SecaoExamesAnexados';
 import { SinaisVitaisTendencia } from '@/features/pacientes/components/SinaisVitaisTendencia';
 import { abrirImpressaoDocumento, EDOC_CSS } from '@/features/pacientes/lib/imprimirDocumento';
 import type { Atendimento, Documento, Paciente } from '@/features/pacientes/types';
@@ -650,7 +651,7 @@ function resumirAtendimentos(lista: Atendimento[]): EstatisticasAtendimentos {
   };
 }
 
-type Vista = 'resumo' | 'atendimentos' | 'tratamentos' | 'acessos' | 'dados';
+type Vista = 'resumo' | 'atendimentos' | 'tratamentos' | 'exames' | 'acessos' | 'dados';
 
 function ResumoPaciente({
   p,
@@ -905,6 +906,7 @@ export function PacienteDetalhePage() {
     { id: 'resumo', rotulo: 'Resumo' },
     { id: 'atendimentos', rotulo: 'Atendimentos', badge: stats.total },
     { id: 'tratamentos', rotulo: 'Tratamentos', badge: listaTratamentos.length },
+    { id: 'exames', rotulo: 'Exames anexados' },
     { id: 'acessos', rotulo: 'Histórico de Acesso' },
     { id: 'dados', rotulo: 'Dados pessoais' },
   ];
@@ -1026,6 +1028,12 @@ export function PacienteDetalhePage() {
                 }
               />
             </section>
+          ) : null}
+
+          {vista === 'exames' ? (
+            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+              <SecaoExamesAnexados pacienteId={id} />
+            </div>
           ) : null}
 
           {vista === 'acessos' ? (

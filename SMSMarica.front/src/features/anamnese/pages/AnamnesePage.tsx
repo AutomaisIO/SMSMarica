@@ -5,6 +5,7 @@ import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 import { useContextoAnamnese, useSalvarAnamnese } from '@/features/anamnese/api/queries';
+import { AnexosExameSecao } from '@/features/anamnese/components/AnexosExameSecao';
 import { DiagramaMamas } from '@/features/anamnese/components/DiagramaMamas';
 import {
   CRITERIOS_RISCO,
@@ -519,6 +520,9 @@ export function AnamnesePage() {
           </fieldset>
         </section>
       </div>
+
+      {/* 6. Documentos / exames anexados (ponte QR → PWA) */}
+      <AnexosExameSecao solicitacaoExameId={ctx.solicitacaoExameId} podeEditar={podeEditar} />
 
       {/* Rodapé */}
       <div className="flex flex-wrap items-center justify-between gap-3">

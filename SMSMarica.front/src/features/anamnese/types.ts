@@ -187,3 +187,40 @@ export type SalvarAnamnesePayload = {
   conteudoJson: string;
   classificacaoRisco: ClassificacaoRisco | null;
 };
+
+// ---- Anexos de exame (documentos digitalizados via PWA "Arquivos Saúde Maricá") ----
+
+export type AnexoExameStatus = 'Pendente' | 'Salvo';
+
+/** Documento (PDF) anexado a uma solicitação de exame. Espelha AnexoExameDto do backend. */
+export type AnexoExameDto = {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  mimeType: string;
+  tamanhoBytes: number;
+  status: AnexoExameStatus;
+  origem: string | null;
+  paginas: number | null;
+  criadoEm: string;
+  urlConteudo: string;
+};
+
+/** Resposta de POST /anamneses/{id}/anexos/tokens — abre a ponte QR → PWA. */
+export type AnexoUploadTokenDto = {
+  token: string;
+  url: string;
+  expiraEm: string;
+  solicitacaoExameId: string;
+  paciente: { id: string; nome: string };
+};
+
+/**
+ * Corpo de POST /anexos/{id}/salvar — confirma o documento (Pendente → Salvo).
+ * O backend (SalvarAnexoDto) aceita só nome/descrição opcionais; o status é
+ * setado para Salvo pela própria ação. Sem corpo = apenas confirma.
+ */
+export type SalvarAnexoPayload = {
+  nome?: string;
+  descricao?: string;
+};
