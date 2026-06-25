@@ -18,9 +18,13 @@ public sealed class LaudosPdfOptions
     /// <summary>Caminho absoluto da imagem do logotipo (PNG). Opcional.</summary>
     public string? CaminhoLogo { get; set; }
 
+    /// <summary>
+    /// Tarja neutra do PDF on-demand (finalizado e ainda não assinado digitalmente).
+    /// Não afirma autoria; apenas sinaliza a ausência da assinatura ICP-Brasil.
+    /// </summary>
     public string TarjaRodape { get; set; } =
-        "DOCUMENTO ELETRÔNICO — Sem assinatura digital ICP-Brasil. " +
-        "Validade jurídica limitada (Resolução CFM 2.299/2021).";
+        "DOCUMENTO SEM ASSINATURA DIGITAL — sem validade jurídica plena " +
+        "(Resolução CFM 2.299/2021).";
 
     /// <summary>Fuso para exibição do horário de emissão (default: UTC-3).</summary>
     public int OffsetHorasParaExibicao { get; set; } = -3;

@@ -51,6 +51,10 @@ public sealed class LaudoAssinaturaService(
         if (existentes.Any(a => a.Status == StatusAssinatura.Concluida))
             throw new ConflitoException("assinatura.ja_assinado", "Este laudo já foi assinado digitalmente.");
 
+        // GATE fail-closed: sem rubrica cadastrada não há carimbo para estampar —
+        // recusa cedo (antes de criar o job). Quem cadastra a rubrica é o administrador.
+        await GarantirMedicoTemRubricaAsync(medico.Id, cancellationToken);
+
         // Housekeeping: jobs pendentes com chave já vencida viram Cancelada (não reaproveita
         // estado morto e dá uso ao enum Cancelada, em vez de acumular linhas órfãs).
         var agora = DateTime.UtcNow;
@@ -119,7 +123,9 @@ public sealed class LaudoAssinaturaService(
         if (assinado is not null)
             return new PdfDownloadDto(assinado, true);
 
-        var bytes = await pdf.GerarAsync(laudoId, incluirTarja: true, cancellationToken);
+        // Default = FinalizadoNaoAssinado; o renderer rebaixa para Rascunho (marca
+        // d'água) sozinho quando o laudo ainda não está finalizado.
+        var bytes = await pdf.GerarAsync(laudoId, cancellationToken: cancellationToken);
         return new PdfDownloadDto(bytes, false);
     }
 
@@ -174,7 +180,16 @@ public sealed class LaudoAssinaturaService(
             .FirstOrDefaultAsync(l => l.Id == job.LaudoId && !l.Excluido, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Laudo), job.LaudoId);
 
-        var pdfSemTarja = await pdf.GerarAsync(job.LaudoId, incluirTarja: false, cancellationToken);
+        // GATE fail-closed (defesa em profundidade — espelha o IniciarAsync): sem
+        // rubrica não há carimbo. Marca o job como falho e recusa.
+        var rubrica = await assinaturaMedico.ObterAsync(job.MedicoId, cancellationToken);
+        if (rubrica is null)
+        {
+            await MarcarFalhaAsync(job, cancellationToken);
+            throw new ConflitoException("assinatura.medico_sem_rubrica", MensagemSemRubrica);
+        }
+
+        var pdfBase = await pdf.GerarAsync(job.LaudoId, ModoRodapeLaudo.PreparandoAssinatura, cancellationToken);
 
         // Compõe o carimbo (rubrica do médico + identificação no quadrado virtual) → PNG.
         var nome = laudo.MedicoNomeSnapshot ?? string.Empty;
@@ -182,10 +197,9 @@ public sealed class LaudoAssinaturaService(
         var uf = laudo.MedicoUfCrmSnapshot ?? string.Empty;
         var rqe = laudo.MedicoRqeSnapshot;
 
-        var rubrica = await assinaturaMedico.ObterAsync(job.MedicoId, cancellationToken);
         var carimboPng = carimboRenderer.Renderizar(new CarimboDados(
-            Rubrica: rubrica is null ? null : DecodificarImagem(rubrica.ImagemBase64),
-            Formato: rubrica?.Formato ?? FormatoAssinaturaMedico.Horizontal,
+            Rubrica: DecodificarImagem(rubrica.ImagemBase64),
+            Formato: rubrica.Formato,
             Nome: nome, Crm: crm, UfCrm: uf, Rqe: rqe));
 
         var visual = new DadosVisualAssinatura(
@@ -195,7 +209,7 @@ public sealed class LaudoAssinaturaService(
         PreparacaoAssinatura prep;
         try
         {
-            prep = await assinador.PrepararAsync(pdfSemTarja, cadeiaCertificado, visual, cancellationToken);
+            prep = await assinador.PrepararAsync(pdfBase, cadeiaCertificado, visual, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -303,6 +317,18 @@ public sealed class LaudoAssinaturaService(
     }
 
     // ---------------- helpers ----------------
+
+    internal const string MensagemSemRubrica =
+        "O médico não possui rubrica de assinatura cadastrada. Solicite ao administrador " +
+        "o cadastro da imagem da assinatura (formato 2:1 ou 1:1) antes de assinar.";
+
+    /// <summary>Gate fail-closed: lança se o médico não tiver rubrica ativa cadastrada.</summary>
+    private async Task GarantirMedicoTemRubricaAsync(Guid medicoId, CancellationToken ct)
+    {
+        var rubrica = await assinaturaMedico.ObterAsync(medicoId, ct);
+        if (rubrica is null)
+            throw new ConflitoException("assinatura.medico_sem_rubrica", MensagemSemRubrica);
+    }
 
     /// <summary>Resolve o job pela chave de uso único, validando existência e expiração.</summary>
     private async Task<LaudoAssinatura> BuscarPorChaveAsync(string chave, CancellationToken ct)

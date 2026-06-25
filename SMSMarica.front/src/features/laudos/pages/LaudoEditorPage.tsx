@@ -10,6 +10,7 @@ import {
   RefreshCw,
   Save,
   ScanLine,
+  ShieldAlert,
   ShieldCheck,
 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
@@ -327,11 +328,19 @@ export function LaudoEditorPage() {
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Aguardando autorização no seu agente (VIDaaS Connect)…
                 </span>
-              ) : ehMedico && podeFinalizar ? (
+              ) : ehMedico && podeFinalizar && detalhe.data?.podeAssinar ? (
                 <Button onClick={aoAssinar} disabled={iniciarAssinatura.isPending}>
                   <ShieldCheck className="mr-2 h-4 w-4" />
                   {assinaturaFalhou ? 'Tentar assinar de novo' : 'Assinar'}
                 </Button>
+              ) : ehMedico && detalhe.data?.motivoBloqueioAssinatura ? (
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-sm text-amber-800"
+                  title={detalhe.data.motivoBloqueioAssinatura}
+                >
+                  <ShieldAlert className="h-4 w-4" />
+                  Rubrica não cadastrada
+                </span>
               ) : null}
               {ehMedico ? (
                 <a

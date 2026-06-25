@@ -27,7 +27,14 @@ public sealed record LaudoDto(
     DateTime? FinalizadoEm,
     DateTime CriadoEm,
     DateTime? AtualizadoEm,
-    bool Assinado = false);
+    bool Assinado = false,
+    // Elegibilidade da assinatura digital, resolvida no servidor (ObterPorId):
+    // o usuário logado é o autor + laudo finalizado + não assinado + autor tem
+    // rubrica. Deixa o front liberar/bloquear o botão "Assinar" sem precisar do
+    // módulo Medicos (que o próprio médico não tem).
+    bool PodeAssinar = false,
+    string? MotivoBloqueioAssinatura = null,
+    bool MedicoTemRubrica = false);
 
 public sealed record LaudoListItemDto(
     Guid Id,
