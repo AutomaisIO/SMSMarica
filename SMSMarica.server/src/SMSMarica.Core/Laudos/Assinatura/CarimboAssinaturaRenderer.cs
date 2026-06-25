@@ -83,12 +83,12 @@ public sealed class CarimboAssinaturaRenderer : ICarimboAssinaturaRenderer
                         .PaddingHorizontal(28)
                         .Column(col =>
                         {
-                            col.Spacing(6);
-                            col.Item().AlignCenter().Text(nome).FontSize(34).Bold();
-                            col.Item().AlignCenter().Text(crm).FontSize(28);
+                            col.Spacing(7);
+                            col.Item().AlignCenter().Text(nome).FontSize(46).Bold();
+                            col.Item().AlignCenter().Text(crm).FontSize(38);
                             if (rqe is not null)
                             {
-                                col.Item().AlignCenter().Text(rqe).FontSize(26);
+                                col.Item().AlignCenter().Text(rqe).FontSize(34);
                             }
                         });
                 });
