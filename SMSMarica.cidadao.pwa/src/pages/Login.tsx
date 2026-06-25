@@ -27,11 +27,15 @@ export function Login() {
     setErro(null);
     setEnviando(true);
     try {
-      // Modo de teste: o backend devolve o código (codigoTeste) enquanto o WhatsApp não está ativo.
-      const { data } = await http.post<{ codigoTeste?: string }>('/auth/paciente/solicitar-otp', {
-        cpf: cpfLimpo,
+      // O código vai pelo WhatsApp. `codigoTeste` só vem como fallback se o servidor não
+      // estiver com o WhatsApp configurado (aí o backend o exibe na tela para não travar).
+      const { data } = await http.post<{ codigoTeste?: string; telefoneMascarado?: string }>(
+        '/auth/paciente/solicitar-otp',
+        { cpf: cpfLimpo },
+      );
+      navigate('/login/codigo', {
+        state: { cpf: cpfLimpo, codigoTeste: data?.codigoTeste, telefoneMascarado: data?.telefoneMascarado },
       });
-      navigate('/login/codigo', { state: { cpf: cpfLimpo, codigoTeste: data?.codigoTeste } });
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
     } finally {

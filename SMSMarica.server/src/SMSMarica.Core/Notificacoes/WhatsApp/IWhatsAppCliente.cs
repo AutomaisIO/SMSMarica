@@ -16,4 +16,14 @@ public interface IWhatsAppCliente
     Task<EnvioWhatsAppResultado> EnviarTemplateAsync(
         string telefone, string template, string idiomaBcp47, IReadOnlyList<string> parametros,
         Guid? sessaoId = null, Guid? pacienteId = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Envia um template da categoria <b>AUTHENTICATION</b> (OTP). Diferente de um template
+    /// comum, o código entra <b>duas vezes</b>: no corpo (<c>{{1}}</c>) e no botão de copiar
+    /// (<c>sub_type: url, index: 0</c>) — exigência da Meta para templates de autenticação.
+    /// O código nunca é gravado em claro na auditoria.
+    /// </summary>
+    Task<EnvioWhatsAppResultado> EnviarTemplateAutenticacaoAsync(
+        string telefone, string template, string idiomaBcp47, string codigo,
+        Guid? sessaoId = null, Guid? pacienteId = null, CancellationToken ct = default);
 }
