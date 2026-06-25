@@ -21,10 +21,10 @@ public interface ICarimboAssinaturaRenderer
 }
 
 /// <summary>
-/// Compõe o carimbo da assinatura num quadrado virtual 800×800 (QuestPDF → PNG).
-/// Z-order: a RUBRICA vai ao FUNDO (pode ter fundo opaco) e os dados do médico
-/// (nome/CRM/RQE) vão POR CIMA, sobre uma faixa branca translúcida que garante
-/// leitura mesmo sobre imagem opaca. FitArea preserva a proporção:
+/// Compõe o carimbo da assinatura num quadrado virtual 800×800 (QuestPDF → PNG
+/// com fundo TRANSPARENTE, para não cobrir o documento atrás).
+/// Z-order: a RUBRICA vai ao FUNDO e os dados do médico (nome/CRM/RQE) vão POR
+/// CIMA, com fundo transparente (sem caixa branca). FitArea preserva a proporção:
 /// - Formato 1:1 (Quadrada): rubrica preenche o quadrado; texto sobreposto embaixo.
 /// - Formato 2:1 (Horizontal): rubrica vira faixa ancorada no topo; texto embaixo.
 /// - Sem rubrica: só os dados, na metade de baixo (mantido por robustez; o gate
@@ -51,7 +51,7 @@ public sealed class CarimboAssinaturaRenderer : ICarimboAssinaturaRenderer
             {
                 page.Size(Lado, Lado, Unit.Point); // 1pt = 1px a 72 DPI → 800×800px
                 page.Margin(0);
-                page.PageColor(Colors.White);
+                page.PageColor(Colors.Transparent); // PNG transparente: não cobre o documento atrás
                 page.DefaultTextStyle(t => t.FontColor("#111111"));
 
                 page.Content().Layers(layers =>
@@ -71,15 +71,14 @@ public sealed class CarimboAssinaturaRenderer : ICarimboAssinaturaRenderer
                         });
                     }
 
-                    // CAMADA DE CIMA (frente): identificação do médico SEMPRE por cima,
-                    // sobre uma faixa branca translúcida que garante leitura mesmo quando
-                    // a rubrica tem fundo opaco. Centralizada na metade de baixo.
+                    // CAMADA DE CIMA (frente): identificação do médico SEMPRE por cima
+                    // da rubrica, com fundo 100% TRANSPARENTE (sem caixa branca) — a
+                    // assinatura aparece inteira atrás do texto. Metade de baixo.
                     layers.Layer()
                         .AlignBottom()
                         .Height(Metade)
                         .AlignMiddle()
                         .AlignCenter()
-                        .Background("#D9FFFFFF") // branco ~85% → respaldo de leitura
                         .PaddingVertical(16)
                         .PaddingHorizontal(28)
                         .Column(col =>
