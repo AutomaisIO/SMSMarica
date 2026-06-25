@@ -51,7 +51,7 @@ export function Home() {
               <HeartPulse className="h-3.5 w-3.5" />
               Cartão do Cidadão
             </div>
-            <span className="font-display text-sm font-semibold tracking-tight text-white/90">SMS Maricá</span>
+            <span className="font-display text-sm font-semibold tracking-tight text-white/90">Saúde Maricá</span>
           </div>
 
           <div className="mt-6 flex items-center gap-4">

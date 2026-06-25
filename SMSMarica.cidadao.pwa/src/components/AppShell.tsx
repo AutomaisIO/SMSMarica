@@ -74,7 +74,7 @@ export function AppShell() {
           <Menu className="h-6 w-6" />
         </button>
         <div className="flex flex-1 flex-col leading-tight">
-          <span className="font-display text-[15px] font-semibold tracking-tight">SMS Maricá</span>
+          <span className="font-display text-[15px] font-semibold tracking-tight">Saúde Maricá</span>
           <span className="text-[11px] font-medium text-white/80">App do Cidadão</span>
         </div>
         <button

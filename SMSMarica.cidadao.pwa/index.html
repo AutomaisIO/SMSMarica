@@ -12,9 +12,71 @@
     <meta name="apple-mobile-web-app-title" content="Saúde Maricá" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>Saúde Maricá</title>
+    <style>
+      /* Fundo vermelho da arte do app — evita flash branco antes do React montar. */
+      html,
+      body {
+        margin: 0;
+        background-color: #bc1f28;
+      }
+      #splash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #bc1f28;
+        transition: opacity 0.45s ease;
+      }
+      #splash img {
+        width: 190px;
+        height: 190px;
+        animation: splash-in 0.5s ease both;
+      }
+      #splash.hide {
+        opacity: 0;
+        pointer-events: none;
+      }
+      @keyframes splash-in {
+        from {
+          opacity: 0;
+          transform: scale(0.92);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #splash img {
+          animation: none;
+        }
+      }
+    </style>
   </head>
   <body>
+    <div id="splash"><img src="/icon-512.png" alt="Saúde Maricá" /></div>
     <div id="root"></div>
+    <!-- Splash garante ~2s de tela vermelha com o logo e some com fade (sem "piscar"). -->
+    <script>
+      (function () {
+        var MIN_MS = 2000;
+        var inicio = Date.now();
+        function esconder() {
+          var s = document.getElementById('splash');
+          if (!s) return;
+          s.classList.add('hide');
+          setTimeout(function () {
+            if (s && s.parentNode) s.parentNode.removeChild(s);
+          }, 500);
+        }
+        window.addEventListener('load', function () {
+          var decorrido = Date.now() - inicio;
+          setTimeout(esconder, Math.max(0, MIN_MS - decorrido));
+        });
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

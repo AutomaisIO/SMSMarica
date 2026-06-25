@@ -143,7 +143,7 @@ export function InstalarApp() {
               <li className="flex items-center gap-3">
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-marica/10 font-display text-sm font-bold text-marica">3</span>
                 <span className="text-sm text-tinta">
-                  Confirme em <strong>Adicionar</strong>. Pronto — o ícone do SMS Cidadão aparece na sua tela.
+                  Confirme em <strong>Adicionar</strong>. Pronto — o ícone do Saúde Maricá aparece na sua tela.
                 </span>
               </li>
             </ol>
