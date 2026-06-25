@@ -1,4 +1,3 @@
-using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using SMSMarica.Core.Common.Excecoes;
 
@@ -14,9 +13,12 @@ namespace SMSMarica.Core.Armazenamento;
 public sealed class ArmazenamentoLocalDisco : IArmazenamentoArquivos
 {
     private readonly string _diretorioBase;
+    private readonly string _prefixo;
 
     public ArmazenamentoLocalDisco(IConfiguration configuration)
     {
+        _prefixo = (configuration["Armazenamento:Prefixo"] ?? "arquivos").Trim('/');
+
         var configurado = configuration["Armazenamento:Local:Diretorio"];
         var dir = string.IsNullOrWhiteSpace(configurado)
             ? Path.Combine(AppContext.BaseDirectory, "App_Data", "arquivos")
@@ -31,14 +33,8 @@ public sealed class ArmazenamentoLocalDisco : IArmazenamentoArquivos
         _diretorioBase = Path.GetFullPath(dir);
     }
 
-    public string GerarChaveExame(string extensao = "pdf")
-    {
-        var agora = DateTime.UtcNow;
-        var ext = (extensao ?? "pdf").Trim('.', ' ');
-        if (string.IsNullOrEmpty(ext)) ext = "pdf";
-        return string.Create(CultureInfo.InvariantCulture,
-            $"exames/{agora:yyyy}/{agora:MM}/{Guid.NewGuid():N}.{ext}");
-    }
+    public string MontarChaveDocumento(Guid pacienteId, Guid documentoId, string extensao = "pdf")
+        => ChavesArmazenamento.Documento(_prefixo, pacienteId, documentoId, extensao);
 
     public async Task SalvarAsync(string chave, byte[] conteudo, CancellationToken cancellationToken = default)
     {
@@ -92,12 +88,5 @@ public sealed class ArmazenamentoLocalDisco : IArmazenamentoArquivos
     }
 }
 
-// TODO(arquivos): implementação S3 para DigitalOcean Spaces.
-//
-// Quando o volume de PDFs exigir armazenamento de objeto (ou múltiplas instâncias
-// do backend), criar `ArmazenamentoS3 : IArmazenamentoArquivos` lendo as credenciais
-// do provedor "digitalocean_spaces" (IIntegracaoCredencialService:
-// clientId=accessKey, clientSecret=secretKey, parametrosJson={endpoint,region,bucket})
-// e trocar o registro padrão no DI (Core/DependencyInjection) por configuração
-// (ex.: Armazenamento:Provedor = "local" | "s3"). NÃO adicionar AWSSDK agora —
-// este comentário é a costura (seam) intencional para essa evolução.
+// Implementação de objeto (DigitalOcean Spaces / S3): ver ArmazenamentoSpaces.cs.
+// Seleção via Armazenamento:Provedor ("local" | "spaces") em Core/DependencyInjection.
