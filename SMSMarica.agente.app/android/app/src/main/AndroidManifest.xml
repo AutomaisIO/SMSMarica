@@ -4,6 +4,11 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 
+    <!-- Camera: login e re-verificacao facial do motorista (on-device) -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature android:name="android.hardware.camera.any" android:required="true"/>
+    <uses-feature android:name="android.hardware.camera.front" android:required="false"/>
+
     <!-- Localizacao: foreground + background + precisa para geofencing -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
@@ -36,6 +41,13 @@
         android:label="SMS Marica Agente"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+
+        <!-- Chave do Google Navigation SDK. Valor vem de manifestPlaceholders
+             (build.gradle.kts), lido de android/local.properties (gitignored). -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${MAPS_API_KEY}" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

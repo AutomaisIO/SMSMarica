@@ -2,9 +2,16 @@ import 'package:agente/app/theme.dart';
 import 'package:agente/shared/auth/sessao_controller.dart';
 import 'package:agente/shared/permissoes/permissoes_localizacao.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+/// Primeiro acesso do motorista: **CPF + OTP por WhatsApp** (espelha o fluxo do
+/// paciente). Após autenticado, o cadastro facial é feito *dentro* da sessão
+/// (associação justa ao usuário). Logins seguintes serão **só por rosto**.
+///
+/// Enquanto o backend de OTP do motorista não existe, esta tela opera em
+/// **modo teste** (mock) — ver [[backend-app-motorista]] BE-4.
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
@@ -13,14 +20,14 @@ class LoginPage extends ConsumerStatefulWidget {
 }
 
 class _LoginPageState extends ConsumerState<LoginPage> {
-  final _usuarioCtrl = TextEditingController();
+  final _cpfCtrl = TextEditingController();
   final _senhaCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _carregando = false;
 
   @override
   void dispose() {
-    _usuarioCtrl.dispose();
+    _cpfCtrl.dispose();
     _senhaCtrl.dispose();
     super.dispose();
   }
@@ -32,8 +39,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     const perms = PermissoesLocalizacao();
     await perms.solicitarForeground();
 
+    // TODO(auth): trocar pelo fluxo real CPF + OTP (WhatsApp) — BE-4.
     await ref.read(sessaoProvider.notifier).entrar(
-          usuario: _usuarioCtrl.text.trim(),
+          usuario: _cpfCtrl.text.trim(),
           senha: _senhaCtrl.text,
         );
 
@@ -72,20 +80,28 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 const Text(
                   'Agente de transporte sanitário',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: MaricaTheme.cinzaTexto,
-                  ),
+                  style: TextStyle(fontSize: 14, color: MaricaTheme.cinzaTexto),
                 ),
-                const SizedBox(height: 48),
+                const SizedBox(height: 8),
+                const Text(
+                  'Primeiro acesso: CPF + código por WhatsApp',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 40),
                 TextFormField(
-                  controller: _usuarioCtrl,
+                  controller: _cpfCtrl,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(11),
+                  ],
                   decoration: const InputDecoration(
-                    labelText: 'Usuário',
-                    prefixIcon: Icon(Icons.person_outline),
+                    labelText: 'CPF',
+                    prefixIcon: Icon(Icons.badge_outlined),
                   ),
-                  validator: (v) => (v == null || v.trim().isEmpty)
-                      ? 'Informe o usuário'
+                  validator: (v) => (v == null || v.trim().length != 11)
+                      ? 'Informe os 11 dígitos do CPF'
                       : null,
                 ),
                 const SizedBox(height: 16),
@@ -93,11 +109,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   controller: _senhaCtrl,
                   obscureText: true,
                   decoration: const InputDecoration(
-                    labelText: 'Senha',
+                    labelText: 'Código / senha (modo teste)',
                     prefixIcon: Icon(Icons.lock_outline),
                   ),
                   validator: (v) =>
-                      (v == null || v.isEmpty) ? 'Informe a senha' : null,
+                      (v == null || v.isEmpty) ? 'Informe o código' : null,
                 ),
                 const SizedBox(height: 32),
                 ElevatedButton(
@@ -116,7 +132,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Versão 0.1.0 — mock',
+                  'Versão 0.1.0 — modo teste',
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),

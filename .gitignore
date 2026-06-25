@@ -6,3 +6,10 @@ docs/Integração SISREG/
 # Segredos — nunca versionar; manter só localmente / em secret manager.
 docs/client_secret_*.json
 docs/credenciais_*.txt
+
+# --- Protegido em 2026-06-24: nunca versionar (perigoso / sem valor em git) ---
+# Dump de 3,7GB do console FujiFilm: contém ftp.dat/encrypttype/private.dat (credenciais)
+# e logs AEC_* com dados de paciente. Mantido só localmente.
+docs/PACS/conteudo inteiro/
+# Artefatos efêmeros do Playwright MCP (logs/snapshots de navegação).
+.playwright-mcp/

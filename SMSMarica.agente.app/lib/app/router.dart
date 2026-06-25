@@ -1,4 +1,5 @@
 import 'package:agente/features/auth/presentation/login_page.dart';
+import 'package:agente/features/navegacao/presentation/navegacao_page.dart';
 import 'package:agente/features/rota/presentation/rota_do_dia_page.dart';
 import 'package:agente/shared/auth/sessao_controller.dart';
 import 'package:flutter/foundation.dart';
@@ -26,6 +27,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/rota',
         builder: (_, __) => const RotaDoDiaPage(),
+      ),
+      GoRoute(
+        path: '/navegacao',
+        builder: (_, __) => const NavegacaoPage(),
       ),
     ],
   );

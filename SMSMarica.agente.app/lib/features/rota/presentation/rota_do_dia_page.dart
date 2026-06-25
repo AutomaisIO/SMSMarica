@@ -1,4 +1,5 @@
 import 'package:agente/app/theme.dart';
+import 'package:agente/features/auth/facial/presentation/reconhecimento_facial_page.dart';
 import 'package:agente/features/rota/data/rota_repository.dart';
 import 'package:agente/features/rota/domain/parada.dart';
 import 'package:agente/shared/auth/sessao_controller.dart';
@@ -35,6 +36,15 @@ class _RotaDoDiaPageState extends ConsumerState<RotaDoDiaPage> {
         title: const Text('Rota do dia'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.face),
+            tooltip: 'Reconhecimento facial',
+            onPressed: () => Navigator.of(context).push<void>(
+              MaterialPageRoute(
+                builder: (_) => const ReconhecimentoFacialPage(),
+              ),
+            ),
+          ),
+          IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Sair',
             onPressed: () {
@@ -43,6 +53,21 @@ class _RotaDoDiaPageState extends ConsumerState<RotaDoDiaPage> {
             },
           ),
         ],
+      ),
+      bottomNavigationBar: rotaAsync.maybeWhen(
+        data: (paradas) => paradas.isEmpty
+            ? null
+            : SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  child: ElevatedButton.icon(
+                    onPressed: () => context.push('/navegacao'),
+                    icon: const Icon(Icons.navigation),
+                    label: const Text('Iniciar navegação do translado'),
+                  ),
+                ),
+              ),
+        orElse: () => null,
       ),
       body: Column(
         children: [
@@ -140,12 +165,7 @@ class _ParadaCard extends StatelessWidget {
             color: MaricaTheme.vermelho,
           ),
           tooltip: 'Navegar',
-          onPressed: () {
-            // A2.3 — intent para Waze / Google Maps.
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Navegação externa — A2.3')),
-            );
-          },
+          onPressed: () => context.push('/navegacao'),
         ),
       ),
     );
