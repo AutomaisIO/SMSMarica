@@ -13,6 +13,22 @@ export async function obterAtendimentos(id: string): Promise<Atendimento[]> {
   return data;
 }
 
+export type AcessoCidadao = {
+  id: string;
+  canal: string;
+  dispositivo: string | null;
+  ip: string | null;
+  criadaEm: string;
+  expiraEm: string;
+  revogadaEm: string | null;
+  ativa: boolean;
+};
+
+export async function obterAcessos(id: string): Promise<AcessoCidadao[]> {
+  const { data } = await http.get<AcessoCidadao[]>(`/pacientes/${id}/acessos`);
+  return data;
+}
+
 export async function buscarPacientes(termo: string): Promise<PacienteListItem[]> {
   const t = termo.trim();
   // Sem termo o backend devolve os 10 últimos cadastros; com termo, busca por

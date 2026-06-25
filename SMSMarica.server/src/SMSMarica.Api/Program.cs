@@ -129,9 +129,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
                 var sessoes = ctx.HttpContext.RequestServices
                     .GetRequiredService<SMSMarica.Core.Cidadao.ICidadaoSessaoService>();
-                if (!await sessoes.SessaoValidaAsync(sessaoId, pacienteId, ctx.HttpContext.RequestAborted))
+                var acesso = await sessoes.ValidarAcessoAsync(sessaoId, pacienteId, ctx.HttpContext.RequestAborted);
+                if (!acesso.SessaoValida)
                 {
                     ctx.Fail("Sessão encerrada (login em outro dispositivo).");
+                    return;
+                }
+
+                // Consentimento LGPD: claim lido pelo filtro que bloqueia os endpoints do
+                // cidadão enquanto não houver aceite vigente (exceto os marcados como isentos).
+                if (ctx.Principal!.Identity is ClaimsIdentity ident)
+                {
+                    ident.AddClaim(new Claim("consentido", acesso.Consentido ? "true" : "false"));
                 }
             },
         };

@@ -37,4 +37,7 @@ public class CidadaoAcesso
 
     /// <summary>Sessões (histórico). No máximo uma ativa por vez (single-device).</summary>
     public ICollection<CidadaoSessao> Sessoes { get; set; } = [];
+
+    /// <summary>Consentimentos LGPD (histórico). Acesso exige um ativo da versão vigente.</summary>
+    public ICollection<CidadaoConsentimento> Consentimentos { get; set; } = [];
 }

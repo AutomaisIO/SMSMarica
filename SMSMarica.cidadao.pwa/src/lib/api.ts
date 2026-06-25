@@ -39,7 +39,17 @@ export type Atendimento = {
 export type Exame = { id: string; data: string; nome: string; status: string };
 export type Laudo = { id: string; data: string; titulo: string; status: string };
 
+export type ConsentimentoStatus = {
+  versao: string;
+  texto: string;
+  aceito: boolean;
+  aceitoEm: string | null;
+};
+
 export const api = {
+  consentimento: () =>
+    http.get<ConsentimentoStatus>('/auth/paciente/consentimento').then((r) => r.data),
+  aceitarConsentimento: () => http.post('/auth/paciente/consentimento'),
   perfil: () => http.get<Perfil>('/auth/paciente/me').then((r) => r.data),
   salvarContato: (body: AtualizarContato) => http.put('/auth/paciente/me/contato', body),
   salvarFoto: (fotoBase64: string | null) => http.put('/auth/paciente/me/foto', { fotoBase64 }),

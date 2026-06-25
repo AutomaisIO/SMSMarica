@@ -4,6 +4,7 @@ import {
   buscarPacientes,
   cadastrarPaciente,
   desativarPaciente,
+  obterAcessos,
   obterAtendimentos,
   obterPacientePorCpf,
   obterPacientePorId,
@@ -20,6 +21,7 @@ export const pacientesKeys = {
   porId: (id: string) => ['pacientes', 'detalhe', id] as const,
   porCpf: (cpf: string) => ['pacientes', 'por-cpf', cpf] as const,
   atendimentos: (id: string) => ['pacientes', 'atendimentos', id] as const,
+  acessos: (id: string) => ['pacientes', 'acessos', id] as const,
 };
 
 export function useAtendimentosPaciente(id: string | null) {
@@ -28,6 +30,17 @@ export function useAtendimentosPaciente(id: string | null) {
     queryFn: () => {
       if (!id) throw new Error('ID não informado.');
       return obterAtendimentos(id);
+    },
+    enabled: Boolean(id),
+  });
+}
+
+export function useAcessosPaciente(id: string | null) {
+  return useQuery({
+    queryKey: id ? pacientesKeys.acessos(id) : ['pacientes', 'acessos', 'nenhum'],
+    queryFn: () => {
+      if (!id) throw new Error('ID não informado.');
+      return obterAcessos(id);
     },
     enabled: Boolean(id),
   });

@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from '@/store/auth';
 import { AppShell } from '@/components/AppShell';
+import { ConsentGate } from '@/components/ConsentGate';
 import { Login } from '@/pages/Login';
 import { Otp } from '@/pages/Otp';
 import { Home } from '@/pages/Home';
@@ -26,7 +27,9 @@ export function App() {
         <Route
           element={
             <Protegida>
-              <AppShell />
+              <ConsentGate>
+                <AppShell />
+              </ConsentGate>
             </Protegida>
           }
         >
