@@ -84,6 +84,12 @@ public static class DependencyInjection
         services.AddScoped<ITiposExameService, TiposExameService>();
         services.AddScoped<ISolicitacoesExameService, SolicitacoesExameService>();
         services.AddScoped<Anamneses.IAnamnesesService, Anamneses.AnamnesesService>();
+
+        // ---- Anexos de exame (ponte QR → PWA "Arquivos Saúde Maricá") ----
+        // Armazenamento padrão = local em disco. Seam para S3 (DigitalOcean Spaces) em ArmazenamentoLocalDisco.cs.
+        services.AddSingleton<Armazenamento.IArmazenamentoArquivos, Armazenamento.ArmazenamentoLocalDisco>();
+        services.Configure<Anexos.AnexosOptions>(configuration.GetSection(Anexos.AnexosOptions.Secao));
+        services.AddScoped<Anexos.IAnexosService, Anexos.AnexosService>();
         services.AddScoped<IGeradorIdentificadores, GeradorIdentificadores>();
         services.AddScoped<INotificadorExame, NotificadorExameLog>();
 

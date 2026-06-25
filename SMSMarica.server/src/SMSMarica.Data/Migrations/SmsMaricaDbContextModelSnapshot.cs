@@ -510,6 +510,64 @@ namespace SMSMarica.Data.Migrations
                     b.ToTable("anamnese", "smsmarica");
                 });
 
+            modelBuilder.Entity("SMSMarica.Data.Entities.AnexoUploadToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<DateTime>("ExpiraEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expira_em");
+
+                    b.Property<string>("PacienteNome")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("paciente_nome");
+
+                    b.Property<Guid>("PatientId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("patient_id");
+
+                    b.Property<DateTime?>("RevogadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revogado_em");
+
+                    b.Property<Guid>("SolicitacaoExameId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("solicitacao_exame_id");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("token");
+
+                    b.Property<DateTime?>("UltimoUsoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ultimo_uso_em");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SolicitacaoExameId");
+
+                    b.HasIndex("Token")
+                        .IsUnique()
+                        .HasDatabaseName("ix_anexo_upload_token_token");
+
+                    b.ToTable("anexo_upload_token", "smsmarica");
+                });
+
             modelBuilder.Entity("SMSMarica.Data.Entities.ApiToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -885,6 +943,109 @@ namespace SMSMarica.Data.Migrations
                         .HasDatabaseName("ix_cidadao_sessao_acesso_ativa");
 
                     b.ToTable("cidadao_sessao", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMarica.Data.Entities.DocumentoExame", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("AnexoUploadTokenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("anexo_upload_token_id");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<Guid?>("AtualizadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atualizado_por");
+
+                    b.Property<string>("ChaveArmazenamento")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)")
+                        .HasColumnName("chave_armazenamento");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<string>("Descricao")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("descricao");
+
+                    b.Property<DateTime?>("ExcluidoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("excluido_em");
+
+                    b.Property<Guid?>("ExcluidoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("excluido_por");
+
+                    b.Property<string>("HashSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("hash_sha256");
+
+                    b.Property<string>("MimeType")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("mime_type");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("nome");
+
+                    b.Property<string>("Origem")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("origem");
+
+                    b.Property<int?>("Paginas")
+                        .HasColumnType("integer")
+                        .HasColumnName("paginas");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<Guid>("SolicitacaoExameId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("solicitacao_exame_id");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<long>("TamanhoBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("tamanho_bytes");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnexoUploadTokenId");
+
+                    b.HasIndex("HashSha256");
+
+                    b.HasIndex("SolicitacaoExameId")
+                        .HasDatabaseName("ix_documento_exame_solicitacao_exame_id");
+
+                    b.ToTable("documento_exame", "smsmarica");
                 });
 
             modelBuilder.Entity("SMSMarica.Data.Entities.Equipamento", b =>
@@ -4264,6 +4425,17 @@ namespace SMSMarica.Data.Migrations
                     b.Navigation("SolicitacaoExame");
                 });
 
+            modelBuilder.Entity("SMSMarica.Data.Entities.AnexoUploadToken", b =>
+                {
+                    b.HasOne("SMSMarica.Data.Entities.SolicitacaoExame", "SolicitacaoExame")
+                        .WithMany()
+                        .HasForeignKey("SolicitacaoExameId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("SolicitacaoExame");
+                });
+
             modelBuilder.Entity("SMSMarica.Data.Entities.Assento", b =>
                 {
                     b.HasOne("SMSMarica.Data.Entities.Fileira", "Fileira")
@@ -4306,6 +4478,24 @@ namespace SMSMarica.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("CidadaoAcesso");
+                });
+
+            modelBuilder.Entity("SMSMarica.Data.Entities.DocumentoExame", b =>
+                {
+                    b.HasOne("SMSMarica.Data.Entities.AnexoUploadToken", "AnexoUploadToken")
+                        .WithMany()
+                        .HasForeignKey("AnexoUploadTokenId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("SMSMarica.Data.Entities.SolicitacaoExame", "SolicitacaoExame")
+                        .WithMany()
+                        .HasForeignKey("SolicitacaoExameId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AnexoUploadToken");
+
+                    b.Navigation("SolicitacaoExame");
                 });
 
             modelBuilder.Entity("SMSMarica.Data.Entities.Equipamento", b =>

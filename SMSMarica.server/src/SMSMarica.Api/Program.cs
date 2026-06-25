@@ -161,16 +161,31 @@ builder.Services.AddHealthChecks()
 // (recomendado em prod). Sem config, mantém permissivo (compat). O canal do agente
 // NÃO é browser, então CORS nunca o bloqueia — isto protege só o painel web.
 var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
-builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
-{
-    if (corsOrigins.Length > 0)
-        p.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod();
-    else
-        p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
 
-    // Permite o front ler o nome do arquivo nos downloads (ex.: laudo-...-assinado.pdf).
-    p.WithExposedHeaders("Content-Disposition");
-}));
+// Origens do PWA "Arquivos Saúde Maricá" (endpoints anônimos /anexos/sessao/*).
+// Default cobre prod + dev; sobrescrever via Cors__ArquivosPwaOrigins__0..N.
+var arquivosPwaOrigins = builder.Configuration.GetSection("Cors:ArquivosPwaOrigins").Get<string[]>()
+    ?? ["https://arquivos.smsmarica.online", "http://localhost:5175"];
+
+builder.Services.AddCors(o =>
+{
+    o.AddDefaultPolicy(p =>
+    {
+        if (corsOrigins.Length > 0)
+            p.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod();
+        else
+            p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+
+        // Permite o front ler o nome do arquivo nos downloads (ex.: laudo-...-assinado.pdf).
+        p.WithExposedHeaders("Content-Disposition");
+    });
+
+    // Política dedicada aos endpoints anônimos do PWA (aplicada via [EnableCors("arquivos-pwa")]).
+    o.AddPolicy("arquivos-pwa", p => p
+        .WithOrigins(arquivosPwaOrigins)
+        .AllowAnyHeader()
+        .AllowAnyMethod());
+});
 
 // Rate-limit de defesa-em-profundidade nos endpoints anônimos do agente (a chave É a
 // autorização). Particiona por IP; bloqueia brute-force/DoS por amplificação (cada
@@ -184,6 +199,18 @@ builder.Services.AddRateLimiter(options =>
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = 30,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
+
+    // Defesa em profundidade nos endpoints anônimos do PWA de anexos (o token É a
+    // autorização). Particiona por IP; barra brute-force de token / abuso de upload.
+    options.AddPolicy("anexos-sessao", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "desconhecido",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 60,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
             }));

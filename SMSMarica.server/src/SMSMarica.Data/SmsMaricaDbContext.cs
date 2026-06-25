@@ -45,6 +45,10 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<Anamnese> Anamneses => Set<Anamnese>();
     public DbSet<AssinaturaMedico> AssinaturasMedico => Set<AssinaturaMedico>();
 
+    // Anexos de exame (ponte QR → PWA "Arquivos Saúde Maricá")
+    public DbSet<DocumentoExame> DocumentosExame => Set<DocumentoExame>();
+    public DbSet<AnexoUploadToken> AnexoUploadTokens => Set<AnexoUploadToken>();
+
     // Tokens de API (chaves de serviço para integrações externas, ex.: CentralIA)
     public DbSet<ApiToken> ApiTokens => Set<ApiToken>();
 

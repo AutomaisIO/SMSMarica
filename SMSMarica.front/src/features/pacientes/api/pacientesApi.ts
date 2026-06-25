@@ -1,4 +1,5 @@
 import { http } from '@/shared/api/httpClient';
+import type { AnexoExameDto } from '@/features/anamnese/types';
 import type {
   Atendimento,
   AtualizarPacientePayload,
@@ -10,6 +11,12 @@ import type {
 
 export async function obterAtendimentos(id: string): Promise<Atendimento[]> {
   const { data } = await http.get<Atendimento[]>(`/pacientes/${id}/atendimentos`);
+  return data;
+}
+
+/** Histórico de exames digitalizados (DocumentoExame status=Salvo) do paciente. */
+export async function obterAnexosExame(id: string): Promise<AnexoExameDto[]> {
+  const { data } = await http.get<AnexoExameDto[]>(`/pacientes/${id}/anexos-exame`);
   return data;
 }
 

@@ -1,0 +1,113 @@
+name: Deploy SMSMarica.arquivos.pwa
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'SMSMarica.arquivos.pwa/**'
+      - '.github/workflows/deploy-arquivos.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-smsmarica-arquivos
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      # URL base da API em produção. O PWA fala direto com https://api.smsmarica.online
+      # (não há proxy /api obrigatório neste vhost). Reusa o mesmo secret do app/front.
+      VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL_SMSMARICA }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: SMSMarica.arquivos.pwa/package-lock.json
+
+      - name: Install
+        working-directory: SMSMarica.arquivos.pwa
+        run: npm ci --no-audit --no-fund
+
+      - name: Build
+        working-directory: SMSMarica.arquivos.pwa
+        run: npm run build
+
+      - name: Pack artifact
+        working-directory: SMSMarica.arquivos.pwa
+        run: tar -czf ../smsmarica-arquivos.tar.gz -C dist .
+
+      - name: Copy artifact to server (SCP)
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HOST_SMSMARICA }}
+          username: ${{ secrets.USER_SMSMARICA }}
+          password: ${{ secrets.PASS_SMSMARICA }}
+          port: 22
+          source: smsmarica-arquivos.tar.gz
+          target: /tmp/
+
+      - name: Deploy on server (SSH)
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.HOST_SMSMARICA }}
+          username: ${{ secrets.USER_SMSMARICA }}
+          password: ${{ secrets.PASS_SMSMARICA }}
+          port: 22
+          command_timeout: 10m
+          script: |
+            set -euo pipefail
+
+            DEPLOY_DIR=/var/www/smsmarica-arquivos
+            TARBALL=/tmp/smsmarica-arquivos.tar.gz
+
+            if [ "$(id -u)" -eq 0 ]; then SUDO=""; else SUDO="sudo -n"; fi
+
+            log() { echo ">>> $*"; }
+
+            if [ ! -f "$TARBALL" ]; then
+              echo "ERRO: $TARBALL não encontrado (scp falhou?)" >&2
+              exit 1
+            fi
+
+            if ! command -v tar >/dev/null 2>&1; then
+              $SUDO apt-get update -y
+              $SUDO apt-get install -y tar
+            fi
+
+            # Deploy atômico: extrai em pasta nova e troca, preservando a anterior como .old.
+            NEW_DIR="${DEPLOY_DIR}.new"
+            OLD_DIR="${DEPLOY_DIR}.old"
+
+            log "Preparando $NEW_DIR..."
+            $SUDO rm -rf "$NEW_DIR"
+            $SUDO mkdir -p "$NEW_DIR"
+            $SUDO tar -xzf "$TARBALL" -C "$NEW_DIR"
+
+            if getent group www-data >/dev/null 2>&1; then
+              $SUDO chown -R www-data:www-data "$NEW_DIR"
+            fi
+            $SUDO find "$NEW_DIR" -type d -exec chmod 755 {} \;
+            $SUDO find "$NEW_DIR" -type f -exec chmod 644 {} \;
+
+            log "Trocando $DEPLOY_DIR pela nova versão..."
+            $SUDO rm -rf "$OLD_DIR"
+            if [ -d "$DEPLOY_DIR" ]; then
+              $SUDO mv "$DEPLOY_DIR" "$OLD_DIR"
+            else
+              $SUDO mkdir -p "$(dirname "$DEPLOY_DIR")"
+            fi
+            $SUDO mv "$NEW_DIR" "$DEPLOY_DIR"
+
+            rm -f "$TARBALL"
+
+            log "OK — conteúdo atual em $DEPLOY_DIR:"
+            $SUDO ls -la "$DEPLOY_DIR" | head -20
+
+            # SPA/PWA é estático — nginx não precisa reload.
