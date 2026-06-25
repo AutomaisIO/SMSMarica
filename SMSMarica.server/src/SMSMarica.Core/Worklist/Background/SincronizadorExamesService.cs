@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using SMSMarica.Core.Associacoes;
+using SMSMarica.Core.Associacoes.Dtos;
 using SMSMarica.Core.SolicitacoesExame;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities.Enums;
@@ -10,9 +12,13 @@ using SMSMarica.Data.Entities.Enums;
 namespace SMSMarica.Core.Worklist.Background;
 
 /// <summary>
-/// Hosted service que pesquisa periodicamente no PACS (QIDO-RS) se as
-/// solicitações no estado Recebida/EmExecucao já têm study lá. Quando acha,
-/// promove para Realizada e dispara o notificador.
+/// Hosted service que pesquisa periodicamente no PACS (QIDO-RS) os exames das
+/// solicitações abertas e os concilia:
+/// <list type="number">
+/// <item>worklist: o study com o nosso AccessionNumber já está no PACS → promove a Realizada;</item>
+/// <item>sem worklist: o exame chegou com o NÚMERO DA SOLICITAÇÃO no campo Patient ID
+/// (0010,0020) → auto-associa o study à solicitação (e promove a Realizada).</item>
+/// </list>
 /// </summary>
 public sealed class SincronizadorExamesService(
     IServiceScopeFactory scopeFactory,
@@ -55,39 +61,89 @@ public sealed class SincronizadorExamesService(
         var db = scope.ServiceProvider.GetRequiredService<SmsMaricaDbContext>();
         var consulta = scope.ServiceProvider.GetRequiredService<IConsultaStudyClient>();
         var solicitacoes = scope.ServiceProvider.GetRequiredService<ISolicitacoesExameService>();
+        var associacao = scope.ServiceProvider.GetRequiredService<IExameAssociacaoService>();
 
         var corte = DateTime.UtcNow.AddDays(-Math.Max(1, _options.JanelaConsultaDias));
 
+        // Solicitações ABERTAS (não concluídas) na janela. Inclui Solicitada porque
+        // exames sem worklist nunca passam por Enviada/Recebida.
         var ativas = await db.SolicitacoesExame.AsNoTracking()
             .Where(s => s.ExcluidoEm == null
-                        && (s.Status == StatusSolicitacaoExame.Recebida || s.Status == StatusSolicitacaoExame.EmExecucao)
+                        && (s.Status == StatusSolicitacaoExame.Solicitada
+                            || s.Status == StatusSolicitacaoExame.Enviada
+                            || s.Status == StatusSolicitacaoExame.Recebida
+                            || s.Status == StatusSolicitacaoExame.EmExecucao)
                         && s.CriadoEm >= corte)
-            .Select(s => new { s.Id, s.AccessionNumber })
+            .OrderByDescending(s => s.CriadoEm)
+            .Take(Math.Max(1, _options.MaximoPorPassagem)) // teto de carga QIDO por passagem
+            .Select(s => new { s.Id, s.AccessionNumber, s.StudyInstanceUID, s.Status })
             .ToListAsync(ct);
 
         if (ativas.Count == 0) return;
 
-        _logger.LogDebug("Sincronizador verificando {N} solicitações ativas.", ativas.Count);
+        // Não re-escaneia o que já tem associação explícita ativa.
+        var ids = ativas.Select(a => a.Id).ToList();
+        var jaAssociadas = (await db.ExameAssociacoes.AsNoTracking()
+            .Where(a => a.ExcluidoEm == null && ids.Contains(a.SolicitacaoExameId))
+            .Select(a => a.SolicitacaoExameId)
+            .ToListAsync(ct)).ToHashSet();
+
+        _logger.LogDebug("Sincronizador verificando {N} solicitações abertas.", ativas.Count);
 
         foreach (var item in ativas)
         {
             if (ct.IsCancellationRequested) return;
+            if (jaAssociadas.Contains(item.Id)) continue;
 
             try
             {
-                var existe = await consulta.StudyExisteAsync(item.AccessionNumber, ct);
-                if (existe)
+                // 1) Caminho worklist: study com o nosso AccessionNumber já no PACS.
+                if (item.Status is StatusSolicitacaoExame.Recebida or StatusSolicitacaoExame.EmExecucao
+                    && await consulta.StudyExisteAsync(item.AccessionNumber, ct))
                 {
                     await solicitacoes.MarcarComoRealizadaAsync(item.Id, DateTime.UtcNow, ct);
                     _logger.LogInformation(
-                        "Solicitação {Accession} promovida para Realizada (study detectado no PACS).",
-                        item.AccessionNumber);
+                        "Solicitação {Accession} promovida para Realizada (study via worklist).", item.AccessionNumber);
+                    continue;
+                }
+
+                // 2) Caminho automático: exame chegou SEM worklist com o nº da solicitação
+                //    no campo Patient ID (0010,0020). SÓ para Solicitada — exames sem
+                //    worklist nunca passam por Enviada/Recebida; e na worklist o Patient ID
+                //    é o CPF, então varrer Recebida/Enviada por accession seria carga inútil.
+                if (item.Status != StatusSolicitacaoExame.Solicitada) continue;
+
+                var encontrados = await consulta.BuscarPorPatientIdAsync(item.AccessionNumber, ct);
+                if (encontrados.Count > 1)
+                {
+                    _logger.LogWarning(
+                        "Auto-associação: {N} estudos com Patient ID {Accession} — associando todos; verifique aquisição duplicada.",
+                        encontrados.Count, item.AccessionNumber);
+                }
+                foreach (var estudo in encontrados)
+                {
+                    if (string.Equals(estudo.StudyInstanceUID, item.StudyInstanceUID, StringComparison.Ordinal))
+                        continue; // é o próprio study de worklist (tratado no caminho 1)
+                    try
+                    {
+                        await associacao.AssociarAsync(
+                            new AssociarExameRequest(estudo.StudyInstanceUID, item.AccessionNumber, estudo.AccessionNumber),
+                            OrigemAssociacaoExame.Automatica, validarNoPacs: false, ct);
+                        _logger.LogInformation(
+                            "Auto-associação: study {Uid} ligado à solicitação {Accession} via Patient ID.",
+                            estudo.StudyInstanceUID, item.AccessionNumber);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        _logger.LogWarning(ex,
+                            "Falha ao auto-associar study {Uid} à {Accession}.", estudo.StudyInstanceUID, item.AccessionNumber);
+                    }
                 }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogWarning(ex,
-                    "Falha ao checar/promover solicitação {Id} ({Accession}).", item.Id, item.AccessionNumber);
+                    "Falha ao processar solicitação {Id} ({Accession}).", item.Id, item.AccessionNumber);
             }
         }
     }

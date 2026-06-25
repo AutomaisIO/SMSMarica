@@ -1,6 +1,7 @@
 using Ganss.Xss;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using SMSMarica.Core.Associacoes;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Laudos.BiRads;
@@ -25,6 +26,7 @@ public sealed class LaudosService(
     IPractitionerFhirClient practitionerFhir,
     IPacienteResolver pacienteResolver,
     IAssinaturaMedicoService assinaturaMedico,
+    IExameAssociacaoService associacao,
     IUsuarioAtualAccessor usuarioAtual,
     ILogger<LaudosService> logger) : ILaudosService
 {
@@ -35,6 +37,7 @@ public sealed class LaudosService(
     private readonly IPractitionerFhirClient _practitionerFhir = practitionerFhir;
     private readonly IPacienteResolver _pacienteResolver = pacienteResolver;
     private readonly IAssinaturaMedicoService _assinaturaMedico = assinaturaMedico;
+    private readonly IExameAssociacaoService _associacao = associacao;
     private readonly IUsuarioAtualAccessor _usuarioAtual = usuarioAtual;
     private readonly ILogger<LaudosService> _logger = logger;
 
@@ -217,8 +220,13 @@ public sealed class LaudosService(
         var uid = NormalizarUid(request.StudyInstanceUID);
         var medico = await ResolverMedicoAsync(usuarioId, cancellationToken);
 
-        if (request.PacienteId.HasValue)
-            await GarantirPacienteExisteAsync(request.PacienteId.Value, cancellationToken);
+        // Gate (regra de negócio): só lauda exame ASSOCIADO a um pedido — e, por
+        // consequência, a um paciente. O vínculo é a associação explícita (tabela)
+        // OU o casamento implícito por StudyInstanceUID (exame de worklist). Sem
+        // vínculo não há paciente confiável (o patientId DICOM é texto livre).
+        var vinculo = await _associacao.ResolverVinculoAsync(uid, cancellationToken)
+            ?? throw new ValidacaoException("laudo.sem_associacao",
+                "Associe o exame a um pedido antes de iniciar o laudo.");
 
         if (request.LaudoTemplateId.HasValue)
         {
@@ -238,7 +246,7 @@ public sealed class LaudosService(
             Id = Guid.CreateVersion7(),
             StudyInstanceUID = uid,
             Versao = proximaVersao,
-            PacienteId = request.PacienteId,
+            PacienteId = vinculo.PacienteId,
             MedicoId = medico.Id,
             LaudoTemplateId = request.LaudoTemplateId,
             Titulo = NormalizarTitulo(request.Titulo),
@@ -272,10 +280,16 @@ public sealed class LaudosService(
         if (laudo.MedicoId != medico.Id)
             throw new ConflitoException("laudo.nao_e_autor", "Apenas o médico autor do rascunho pode editá-lo.");
 
-        if (request.PacienteId.HasValue && request.PacienteId != laudo.PacienteId)
-            await GarantirPacienteExisteAsync(request.PacienteId.Value, cancellationToken);
+        // Só atualiza o paciente quando vier valor — NUNCA zera um PacienteId já
+        // setado (o gate de CadastrarAsync preenche-o; o front pode mandar null
+        // numa corrida de carregamento e apagaria o vínculo correto).
+        if (request.PacienteId.HasValue)
+        {
+            if (request.PacienteId != laudo.PacienteId)
+                await GarantirPacienteExisteAsync(request.PacienteId.Value, cancellationToken);
+            laudo.PacienteId = request.PacienteId;
+        }
 
-        laudo.PacienteId = request.PacienteId;
         laudo.Titulo = NormalizarTitulo(request.Titulo);
         laudo.ConteudoJson = string.IsNullOrWhiteSpace(request.ConteudoJson) ? "{}" : request.ConteudoJson;
         laudo.ConteudoHtml = _sanitizer.Sanitize(request.ConteudoHtml ?? string.Empty);

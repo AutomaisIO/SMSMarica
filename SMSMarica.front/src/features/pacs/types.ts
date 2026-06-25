@@ -31,6 +31,21 @@ export type Serie = {
   numeroInstancias: number;
 };
 
+/**
+ * Vínculo de um estudo do PACS a uma solicitação/paciente. `explicita` = associação
+ * manual/automática persistida (pode desassociar); senão é o casamento implícito do
+ * exame de worklist. `origem` só vem nas explícitas.
+ */
+export type AssociacaoExame = {
+  studyInstanceUID: string;
+  solicitacaoExameId: string;
+  accessionNumber: string;
+  pacienteId: string;
+  pacienteNome: string | null;
+  explicita: boolean;
+  origem: 'Manual' | 'Automatica' | null;
+};
+
 export type TipoBuscaNome = 'inicio' | 'qualquer';
 
 export type FiltroBusca = {
