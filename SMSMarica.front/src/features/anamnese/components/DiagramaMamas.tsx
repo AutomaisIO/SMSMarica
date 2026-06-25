@@ -102,7 +102,7 @@ export function DiagramaMamas({ marcacoes, tracos, aoMudar, aoMudarTracos, somen
           onPointerUp={(e) => aoSoltar(mama, e)}
           onPointerCancel={() => setDesenho(null)}
           style={{ touchAction: 'none' }}
-          className={`h-48 w-40 rounded-md border border-orange-100 bg-white ${
+          className={`h-48 w-40 rounded-md border border-gray-200 bg-white ${
             somenteLeitura ? '' : 'cursor-crosshair'
           }`}
           role="img"
@@ -112,16 +112,16 @@ export function DiagramaMamas({ marcacoes, tracos, aoMudar, aoMudarTracos, somen
           <path
             d="M 50 8 C 22 10 8 36 8 62 C 8 92 26 112 50 112 C 74 112 92 92 92 62 C 92 36 78 10 50 8 Z"
             fill="none"
-            stroke="#f59e0b"
+            stroke="#6b7280"
             strokeWidth="1.6"
             opacity="0.8"
           />
           {/* quadrantes tracejados */}
-          <line x1="50" y1="8" x2="50" y2="112" stroke="#fb923c" strokeWidth="0.8" strokeDasharray="3 3" />
-          <line x1="8" y1="60" x2="92" y2="60" stroke="#fb923c" strokeWidth="0.8" strokeDasharray="3 3" />
+          <line x1="50" y1="8" x2="50" y2="112" stroke="#9ca3af" strokeWidth="0.8" strokeDasharray="3 3" />
+          <line x1="8" y1="60" x2="92" y2="60" stroke="#9ca3af" strokeWidth="0.8" strokeDasharray="3 3" />
           {/* aréola central */}
-          <circle cx="50" cy="60" r="6" fill="none" stroke="#ea580c" strokeWidth="1" />
-          <circle cx="50" cy="60" r="2.4" fill="#ea580c" />
+          <circle cx="50" cy="60" r="6" fill="none" stroke="#6b7280" strokeWidth="1" />
+          <circle cx="50" cy="60" r="2.4" fill="#6b7280" />
           {/* traços livres (cicatrizes etc.) */}
           {tracosDoLado.map((t, i) => (
             <polyline
