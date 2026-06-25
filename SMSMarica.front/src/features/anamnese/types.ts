@@ -12,11 +12,26 @@ export type RespostaSimNao = {
   observacao: string;
 };
 
-/** Marcação no diagrama das mamas (coordenadas em % do desenho de cada mama). */
+/** Lado da mama no diagrama. */
+export type LadoMama = 'direita' | 'esquerda';
+
+/** Marcação pontual no diagrama das mamas (coordenadas em % do desenho de cada mama). */
 export type MarcacaoMama = {
-  mama: 'direita' | 'esquerda';
+  mama: LadoMama;
   x: number;
   y: number;
+};
+
+/** Ponto de um traço livre (mesmas coordenadas do diagrama). */
+export type PontoTraco = { x: number; y: number };
+
+/**
+ * Traço livre ("brush") desenhado sobre o diagrama de uma mama — ex.: cicatriz
+ * de cirurgia. É uma sequência de pontos ligados por uma linha.
+ */
+export type TracoMama = {
+  mama: LadoMama;
+  pontos: PontoTraco[];
 };
 
 export const SINTOMAS_QUEIXA = [
@@ -71,6 +86,7 @@ export type CriterioRisco = (typeof CRITERIOS_RISCO)[number][0];
 export type AnamneseMamografiaConteudo = {
   avaliacaoClinica: {
     marcacoes: MarcacaoMama[];
+    tracos: TracoMama[];
     semAlteracoes: boolean;
     alteracoesPalpaveis: boolean;
     especificar: string;
@@ -95,6 +111,7 @@ export function conteudoVazio(): AnamneseMamografiaConteudo {
   return {
     avaliacaoClinica: {
       marcacoes: [],
+      tracos: [],
       semAlteracoes: false,
       alteracoesPalpaveis: false,
       especificar: '',

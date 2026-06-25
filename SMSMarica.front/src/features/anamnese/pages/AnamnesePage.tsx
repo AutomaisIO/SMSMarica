@@ -226,10 +226,17 @@ export function AnamnesePage() {
           <div className="mt-4">
             <DiagramaMamas
               marcacoes={conteudo.avaliacaoClinica.marcacoes}
+              tracos={conteudo.avaliacaoClinica.tracos ?? []}
               aoMudar={(marcacoes) =>
                 setConteudo((c) => ({
                   ...c,
                   avaliacaoClinica: { ...c.avaliacaoClinica, marcacoes },
+                }))
+              }
+              aoMudarTracos={(tracos) =>
+                setConteudo((c) => ({
+                  ...c,
+                  avaliacaoClinica: { ...c.avaliacaoClinica, tracos },
                 }))
               }
               somenteLeitura={somenteLeitura}
