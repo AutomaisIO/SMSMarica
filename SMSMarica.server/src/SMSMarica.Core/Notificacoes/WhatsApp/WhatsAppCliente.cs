@@ -57,6 +57,37 @@ public sealed class WhatsAppCliente(
         return await EnviarRealAsync(ctx, body, fone, template, conteudo, sessaoId, pacienteId, ct);
     }
 
+    public async Task<EnvioWhatsAppResultado> EnviarTemplateAutenticacaoAsync(
+        string telefone, string template, string idiomaBcp47, string codigo,
+        Guid? sessaoId = null, Guid? pacienteId = null, CancellationToken ct = default)
+    {
+        var fone = NormalizarTelefone(telefone);
+        // Auditoria sem o código em claro (é credencial de uso único).
+        var conteudo = $"[template:{template}] código de acesso";
+        var ctx = await ObterContextoOuNuloAsync(ct);
+        if (ctx is null) return await SimularAsync(fone, template, conteudo, sessaoId, pacienteId, ct);
+
+        object[] components =
+        [
+            new { type = "body", parameters = new[] { new { type = "text", text = codigo } } },
+            new
+            {
+                type = "button",
+                sub_type = "url",
+                index = "0",
+                parameters = new[] { new { type = "text", text = codigo } },
+            },
+        ];
+        object body = new
+        {
+            messaging_product = "whatsapp",
+            to = fone,
+            type = "template",
+            template = new { name = template, language = new { code = idiomaBcp47 }, components },
+        };
+        return await EnviarRealAsync(ctx, body, fone, template, conteudo, sessaoId, pacienteId, ct);
+    }
+
     private async Task<TfdWhatsAppContexto?> ObterContextoOuNuloAsync(CancellationToken ct)
     {
         if (configuration.GetValue("Tfd:WhatsApp:Simular", defaultValue: false)) return null;

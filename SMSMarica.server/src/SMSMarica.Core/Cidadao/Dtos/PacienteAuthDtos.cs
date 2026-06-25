@@ -3,11 +3,14 @@ namespace SMSMarica.Core.Cidadao.Dtos;
 public sealed record SolicitarOtpRequest(string Cpf);
 
 /// <summary>
-/// Resultado de solicitar o código. Em <b>modo de teste</b> (WhatsApp ainda não ativo),
-/// <see cref="CodigoTeste"/> traz o código para ser exibido na tela; em produção será null
-/// (o código vai só pelo WhatsApp).
+/// Resultado de solicitar o código. No fluxo normal o código vai só pelo WhatsApp e
+/// <see cref="CodigoTeste"/> é null. Ele só é preenchido como <b>fallback</b> quando o
+/// WhatsApp não está configurado no servidor (ou <c>Tfd:Otp:ModoTeste=true</c>), para não
+/// travar o login — aí o código é exibido na tela. <see cref="TelefoneMascarado"/> traz uma
+/// dica do destino (ex.: <c>***-1234</c>) para o usuário conferir.
 /// </summary>
-public sealed record OtpEmitidoDto(bool Enviado, string Canal, string? CodigoTeste, int ValidadeSegundos);
+public sealed record OtpEmitidoDto(
+    bool Enviado, string Canal, string? CodigoTeste, int ValidadeSegundos, string? TelefoneMascarado = null);
 
 public sealed record ValidarOtpRequest(string Cpf, string Codigo);
 

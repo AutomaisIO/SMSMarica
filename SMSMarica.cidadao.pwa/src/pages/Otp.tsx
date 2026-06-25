@@ -12,9 +12,12 @@ export function Otp() {
   const navigate = useNavigate();
   const location = useLocation();
   const entrar = useAuth((s) => s.entrar);
-  const estado = location.state as { cpf?: string; codigoTeste?: string } | null;
+  const estado = location.state as
+    | { cpf?: string; codigoTeste?: string; telefoneMascarado?: string }
+    | null;
   const cpf = estado?.cpf;
   const codigoTeste = estado?.codigoTeste;
+  const telefoneMascarado = estado?.telefoneMascarado;
 
   const [codigo, setCodigo] = useState(codigoTeste ?? '');
   const [enviando, setEnviando] = useState(false);
@@ -44,12 +47,18 @@ export function Otp() {
 
   return (
     <AuthShell titulo="Código de acesso" subtitulo="Digite o código que enviamos pelo WhatsApp.">
-      {codigoTeste && (
+      {codigoTeste ? (
         <div className="mb-6 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-center text-sm text-amber-800">
           Modo de teste — envio por WhatsApp ainda não ativo.
           <br />
           Seu código: <span className="font-mono text-xl font-bold tracking-[0.3em]">{codigoTeste}</span>
         </div>
+      ) : (
+        telefoneMascarado && (
+          <p className="mb-6 text-center text-sm text-tinta-mute">
+            Enviado para o WhatsApp <span className="font-semibold text-tinta">{telefoneMascarado}</span>.
+          </p>
+        )
       )}
       <form onSubmit={validar} className="space-y-6">
         <CodigoInput valor={codigo} aoMudar={setCodigo} autoFocus={!codigoTeste} />

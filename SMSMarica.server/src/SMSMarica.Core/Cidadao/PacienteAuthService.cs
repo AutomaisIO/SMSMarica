@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Cidadao.Dtos;
 using SMSMarica.Core.Common.Excecoes;
+using SMSMarica.Core.Notificacoes.WhatsApp;
 using SMSMarica.Core.Pacientes;
 
 namespace SMSMarica.Core.Cidadao;
@@ -11,6 +12,7 @@ namespace SMSMarica.Core.Cidadao;
 public sealed class PacienteAuthService(
     IPacientesService pacientes,
     ICidadaoSessaoService sessoes,
+    IWhatsAppCliente whatsapp,
     IMemoryCache cache,
     IConfiguration config,
     ILogger<PacienteAuthService> logger) : IPacienteAuthService
@@ -34,16 +36,49 @@ public sealed class PacienteAuthService(
         var codigo = GerarCodigo();
         cache.Set(Chave(cpf), new OtpEntry(codigo, paciente.Id, paciente.NomeCompleto, paciente.Cpf ?? cpf), Validade);
 
-        // TODO(FT6): enviar 'codigo' por WhatsApp (Meta Cloud API) ao telefone do paciente.
-        // Enquanto o WhatsApp não está ativo, o código é exibido na tela (modo teste).
-        logger.LogInformation("OTP do paciente (CPF {Cpf}): {Codigo} — modo teste (envio WhatsApp pendente).", cpf, codigo);
+        var validadeSeg = (int)Validade.TotalSeconds;
 
-        var modoTeste = config.GetValue("Tfd:Otp:ModoTeste", defaultValue: true);
-        return new OtpEmitidoDto(
-            Enviado: true,
-            Canal: modoTeste ? "tela-teste" : "whatsapp",
-            CodigoTeste: modoTeste ? codigo : null,
-            ValidadeSegundos: (int)Validade.TotalSeconds);
+        // Modo de teste explícito (dev): não envia, devolve o código para a tela.
+        if (config.GetValue("Tfd:Otp:ModoTeste", defaultValue: false))
+        {
+            logger.LogInformation("OTP do paciente (CPF {Cpf}): {Codigo} — modo teste forçado.", cpf, codigo);
+            return new OtpEmitidoDto(true, "tela-teste", codigo, validadeSeg);
+        }
+
+        // Telefone do paciente (celular preferencial) a partir do cadastro FHIR.
+        var dados = await pacientes.ObterPorIdAsync(paciente.Id, ct);
+        var fone = PrimeiroTelefone(dados.TelefoneCelular, dados.TelefonePrincipal, dados.TelefoneResidencial);
+        if (fone is null)
+        {
+            throw new ValidacaoException(
+                "paciente.sem_telefone",
+                "Não há telefone cadastrado para enviar o código. Procure a sua unidade de saúde.");
+        }
+
+        var template = config.GetValue("Tfd:Otp:WhatsAppTemplate", "authzap")!;
+        var idioma = config.GetValue("Tfd:Otp:WhatsAppIdioma", "pt_BR")!;
+        var envio = await whatsapp.EnviarTemplateAutenticacaoAsync(
+            fone, template, idioma, codigo, pacienteId: paciente.Id, ct: ct);
+
+        // Sem credenciais salvas no servidor → o cliente "simula". Não trava o login:
+        // cai no fallback de tela e registra aviso para configurar o WhatsApp.
+        var simulado = envio.Ok && (envio.WaMessageId?.StartsWith("simulado-", StringComparison.Ordinal) ?? false);
+        if (simulado)
+        {
+            logger.LogWarning(
+                "WhatsApp não configurado (envio simulado): OTP exibido na tela como fallback. CPF {Cpf}.", cpf);
+            return new OtpEmitidoDto(true, "tela-teste", codigo, validadeSeg, Mascarar(fone));
+        }
+
+        if (!envio.Ok)
+        {
+            logger.LogWarning("Falha ao enviar OTP por WhatsApp (CPF {Cpf}): {Erro}", cpf, envio.Erro);
+            throw new ValidacaoException(
+                "otp.envio_falhou",
+                "Não conseguimos enviar seu código agora. Tente novamente em instantes.");
+        }
+
+        return new OtpEmitidoDto(true, "whatsapp", null, validadeSeg, Mascarar(fone));
     }
 
     public async Task<RespostaLoginPacienteDto> ValidarOtpAsync(
@@ -78,6 +113,17 @@ public sealed class PacienteAuthService(
 
     private static string Digitos(string? v) =>
         string.IsNullOrEmpty(v) ? string.Empty : new string([.. v.Where(char.IsDigit)]);
+
+    /// <summary>Primeiro telefone com pelo menos 10 dígitos (DDD + número), na ordem informada.</summary>
+    private static string? PrimeiroTelefone(params string?[] candidatos) =>
+        candidatos.FirstOrDefault(f => !string.IsNullOrWhiteSpace(f) && Digitos(f).Length >= 10);
+
+    /// <summary>Dica do destino para o usuário conferir, ex.: <c>***-1234</c>.</summary>
+    private static string? Mascarar(string telefone)
+    {
+        var d = Digitos(telefone);
+        return d.Length < 4 ? null : "***-" + d[^4..];
+    }
 
     private sealed class OtpEntry(string codigo, Guid pacienteId, string nome, string cpf)
     {
