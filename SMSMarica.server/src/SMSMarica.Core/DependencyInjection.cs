@@ -83,6 +83,7 @@ public static class DependencyInjection
         services.AddScoped<IProcedimentosSigtapService, ProcedimentosSigtapService>();
         services.AddScoped<ITiposExameService, TiposExameService>();
         services.AddScoped<ISolicitacoesExameService, SolicitacoesExameService>();
+        services.AddScoped<Associacoes.IExameAssociacaoService, Associacoes.ExameAssociacaoService>();
         services.AddScoped<Anamneses.IAnamnesesService, Anamneses.AnamnesesService>();
 
         // ---- Anexos de exame (ponte QR → PWA "Arquivos Saúde Maricá") ----

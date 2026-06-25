@@ -5,8 +5,8 @@ using Microsoft.Extensions.Logging;
 namespace SMSMarica.Core.Worklist;
 
 /// <summary>
-/// Implementação leve do QIDO-RS — só checa existência. HttpClient configurado
-/// com a base do AE <c>PACS-CDT</c> (não o WORK-CDT).
+/// Implementação leve do QIDO-RS. HttpClient configurado com a base do AE
+/// <c>PACS-CDT</c> (não o WORK-CDT).
 /// </summary>
 public sealed class ConsultaStudyClient(HttpClient http, ILogger<ConsultaStudyClient> logger) : IConsultaStudyClient
 {
@@ -16,8 +16,40 @@ public sealed class ConsultaStudyClient(HttpClient http, ILogger<ConsultaStudyCl
     public async Task<bool> StudyExisteAsync(string accessionNumber, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(accessionNumber)) return false;
+        var arr = await ConsultarAsync(
+            $"studies?AccessionNumber={Uri.EscapeDataString(accessionNumber)}&limit=1", cancellationToken);
+        return arr is { ValueKind: JsonValueKind.Array } a && a.GetArrayLength() > 0;
+    }
 
-        var url = $"studies?AccessionNumber={Uri.EscapeDataString(accessionNumber)}&limit=1";
+    public async Task<bool> StudyExistePorStudyUidAsync(string studyInstanceUID, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(studyInstanceUID)) return false;
+        var arr = await ConsultarAsync(
+            $"studies?StudyInstanceUID={Uri.EscapeDataString(studyInstanceUID)}&limit=1", cancellationToken);
+        return arr is { ValueKind: JsonValueKind.Array } a && a.GetArrayLength() > 0;
+    }
+
+    public async Task<IReadOnlyList<EstudoPacsBasico>> BuscarPorPatientIdAsync(string patientId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(patientId)) return [];
+        var arr = await ConsultarAsync(
+            $"studies?PatientID={Uri.EscapeDataString(patientId)}&includefield=00080050&includefield=0020000D&limit=100",
+            cancellationToken);
+        if (arr is not { ValueKind: JsonValueKind.Array } a) return [];
+
+        var lista = new List<EstudoPacsBasico>(a.GetArrayLength());
+        foreach (var estudo in a.EnumerateArray())
+        {
+            var uid = Tag(estudo, "0020000D");
+            if (string.IsNullOrWhiteSpace(uid)) continue;
+            lista.Add(new EstudoPacsBasico(uid!, Tag(estudo, "00080050")));
+        }
+        return lista;
+    }
+
+    /// <summary>Faz o GET QIDO-RS e devolve o array JSON (ou null em falha/204).</summary>
+    private async Task<JsonElement?> ConsultarAsync(string url, CancellationToken ct)
+    {
         var req = new HttpRequestMessage(HttpMethod.Get, url);
         req.Headers.Accept.Clear();
         req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/dicom+json"));
@@ -25,33 +57,40 @@ public sealed class ConsultaStudyClient(HttpClient http, ILogger<ConsultaStudyCl
         HttpResponseMessage resposta;
         try
         {
-            resposta = await _http.SendAsync(req, cancellationToken);
+            resposta = await _http.SendAsync(req, ct);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "QIDO-RS indisponível ao checar AccessionNumber {Acc}.", accessionNumber);
-            return false;
+            _logger.LogWarning(ex, "QIDO-RS indisponível em {Url}.", url);
+            return null;
         }
 
-        // 204 No Content significa "nenhum match" — perfeito.
-        if (resposta.StatusCode == System.Net.HttpStatusCode.NoContent) return false;
+        if (resposta.StatusCode == System.Net.HttpStatusCode.NoContent) return null;
         if (!resposta.IsSuccessStatusCode)
         {
-            _logger.LogWarning(
-                "QIDO-RS retornou {Status} para AccessionNumber {Acc}.",
-                (int)resposta.StatusCode, accessionNumber);
-            return false;
+            _logger.LogWarning("QIDO-RS retornou {Status} em {Url}.", (int)resposta.StatusCode, url);
+            return null;
         }
 
-        await using var stream = await resposta.Content.ReadAsStreamAsync(cancellationToken);
+        await using var stream = await resposta.Content.ReadAsStreamAsync(ct);
         try
         {
-            var arr = await JsonSerializer.DeserializeAsync<JsonElement>(stream, cancellationToken: cancellationToken);
-            return arr.ValueKind == JsonValueKind.Array && arr.GetArrayLength() > 0;
+            return await JsonSerializer.DeserializeAsync<JsonElement>(stream, cancellationToken: ct);
         }
         catch (JsonException)
         {
-            return false;
+            return null;
         }
+    }
+
+    /// <summary>Lê o primeiro valor de uma tag DICOM-JSON (ex.: "0020000D").</summary>
+    private static string? Tag(JsonElement estudo, string tag)
+    {
+        if (estudo.ValueKind != JsonValueKind.Object) return null;
+        if (!estudo.TryGetProperty(tag, out var campo)) return null;
+        if (!campo.TryGetProperty("Value", out var valor) || valor.ValueKind != JsonValueKind.Array || valor.GetArrayLength() == 0)
+            return null;
+        var primeiro = valor[0];
+        return primeiro.ValueKind == JsonValueKind.String ? primeiro.GetString() : primeiro.ToString();
     }
 }

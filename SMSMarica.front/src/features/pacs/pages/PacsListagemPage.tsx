@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Edit2, Eye, FilePlus, FileText, Loader2, Search, Trash2 } from 'lucide-react';
+import { Edit2, Eye, FilePlus, FileText, Link2, Loader2, Search, Trash2, Unlink } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
@@ -12,13 +12,19 @@ import { useLaudosPorStudyUIDs } from '@/features/laudos/api/queries';
 import { abrirPdfLaudo } from '@/features/laudos/lib/pdf';
 import { BotaoAnamnese } from '@/features/anamnese/components/BotaoAnamnese';
 import type { LaudoPorStudy } from '@/features/laudos/types';
-import { useBuscarEstudos, useExcluirEstudo } from '@/features/pacs/api/queries';
+import {
+  useAssociacoesPorStudyUIDs,
+  useBuscarEstudos,
+  useDesassociarExame,
+  useExcluirEstudo,
+} from '@/features/pacs/api/queries';
+import { ModalAssociarExame } from '@/features/pacs/components/ModalAssociarExame';
 import { formatarHoraDicom } from '@/features/pacs/lib/dicomJson';
 import { abrirJanelaSolta } from '@/features/pacs/lib/janela';
-import type { Estudo, FiltroBusca, TipoBuscaNome } from '@/features/pacs/types';
+import type { AssociacaoExame, Estudo, FiltroBusca, TipoBuscaNome } from '@/features/pacs/types';
 
-/** Estudo enriquecido com a informação do laudo (vindo do nosso DB). */
-type ExameRow = Estudo & { laudo: LaudoPorStudy | null };
+/** Estudo enriquecido com laudo e associação (vindos do nosso DB). */
+type ExameRow = Estudo & { laudo: LaudoPorStudy | null; associacao: AssociacaoExame | null };
 
 // Persistência do filtro entre navegações e reaberturas do browser (localStorage).
 const CHAVE_FILTRO_PACS = 'smsmarica.pacs.filtro';
@@ -63,12 +69,16 @@ export function PacsListagemPage() {
   const podeExcluir = usePermissao('Pacs', 'Exclusao');
   const podeCriarLaudo = usePermissao('Laudos', 'Inclusao');
   const podeEditarLaudo = usePermissao('Laudos', 'Edicao');
+  const podeAssociar = usePermissao('Pacs', 'Edicao');
 
   const busca = useBuscarEstudos();
   const exclusao = useExcluirEstudo();
+  const desassociar = useDesassociarExame();
   const [excluindoUid, setExcluindoUid] = useState<string | null>(null);
   const [erroExclusao, setErroExclusao] = useState<string | null>(null);
   const [erroPdf, setErroPdf] = useState<string | null>(null);
+  const [erroAssoc, setErroAssoc] = useState<string | null>(null);
+  const [associarEstudo, setAssociarEstudo] = useState<Estudo | null>(null);
 
   // Carga inicial: busca já com o último filtro restaurado.
   useEffect(() => {
@@ -155,25 +165,69 @@ export function PacsListagemPage() {
     return m;
   }, [laudosLookup.data]);
 
+  const associacoesLookup = useAssociacoesPorStudyUIDs(studyUids);
+  const mapaAssociacoes = useMemo(() => {
+    const m = new Map<string, AssociacaoExame>();
+    for (const a of associacoesLookup.data ?? []) m.set(a.studyInstanceUID, a);
+    return m;
+  }, [associacoesLookup.data]);
+
   const exames: ExameRow[] = (busca.data ?? []).map((e) => ({
     ...e,
     laudo: mapaLaudos.get(e.studyInstanceUID) ?? null,
+    associacao: mapaAssociacoes.get(e.studyInstanceUID) ?? null,
   }));
+
+  function aoDesassociar(estudo: ExameRow) {
+    if (!estudo.associacao) return;
+    const ok = window.confirm(
+      `Desassociar o exame de "${estudo.associacao.pacienteNome ?? estudo.patientName}" ` +
+        `do pedido ${estudo.associacao.accessionNumber}?`,
+    );
+    if (!ok) return;
+    setErroAssoc(null);
+    desassociar.mutate(estudo.studyInstanceUID, {
+      onError: (e) => setErroAssoc(extrairMensagemDeErro(e)),
+    });
+  }
 
   const colunas: Coluna<ExameRow>[] = [
     {
       chave: 'paciente',
       cabecalho: 'Paciente',
-      render: (e) => (
-        <div className="min-w-0">
-          <div className="truncate font-medium text-gray-900">{e.patientName || 'Sem nome'}</div>
-          <div className="truncate text-xs text-gray-500">
-            {[e.patientId && `Prontuário ${e.patientId}`, e.patientAge && `${e.patientAge}a`, e.patientSex]
-              .filter(Boolean)
-              .join(' · ')}
+      render: (e) => {
+        const assoc = e.associacao;
+        const nome = assoc?.pacienteNome ?? e.patientName;
+        const ehAuto = assoc?.explicita && assoc.origem === 'Automatica';
+        return (
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="truncate font-medium text-gray-900">{nome || 'Sem nome'}</span>
+              {assoc ? (
+                <span
+                  className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700"
+                  title={
+                    !assoc.explicita
+                      ? 'Vinculado pela worklist'
+                      : ehAuto
+                        ? 'Associado automaticamente (Patient ID)'
+                        : 'Associado manualmente'
+                  }
+                >
+                  {ehAuto ? 'auto' : 'assoc.'}
+                </span>
+              ) : null}
+            </div>
+            <div className="truncate text-xs text-gray-500">
+              {assoc?.pacienteNome && assoc.pacienteNome !== e.patientName
+                ? `DICOM: ${e.patientName || 'sem nome'}`
+                : [e.patientId && `Prontuário ${e.patientId}`, e.patientAge && `${e.patientAge}a`, e.patientSex]
+                    .filter(Boolean)
+                    .join(' · ')}
+            </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       chave: 'data',
@@ -248,6 +302,29 @@ export function PacsListagemPage() {
               </button>
             ) : null}
             <BotaoAnamnese accessionNumber={e.accessionNumber} />
+            {!e.laudo && !e.associacao && podeAssociar ? (
+              <button
+                type="button"
+                onClick={() => setAssociarEstudo(e)}
+                title="Associar este exame a um pedido (e paciente)"
+                className="inline-flex items-center gap-1 rounded-md border border-indigo-300 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-800 hover:bg-indigo-100"
+              >
+                <Link2 className="h-3.5 w-3.5" />
+                Associar
+              </button>
+            ) : null}
+            {e.associacao?.explicita && !laudoFinalizado && podeAssociar ? (
+              <button
+                type="button"
+                onClick={() => aoDesassociar(e)}
+                disabled={desassociar.isPending}
+                title="Desassociar do pedido (só antes de fechar o laudo)"
+                className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+              >
+                <Unlink className="h-3.5 w-3.5" />
+                Desassociar
+              </button>
+            ) : null}
             {e.laudo && podeEditarLaudo ? (
               <button
                 type="button"
@@ -259,7 +336,7 @@ export function PacsListagemPage() {
                 {laudoFinalizado ? 'Laudo' : 'Rascunho'}
               </button>
             ) : null}
-            {!e.laudo && podeCriarLaudo ? (
+            {!e.laudo && podeCriarLaudo && e.associacao ? (
               <button
                 type="button"
                 onClick={() => criarLaudoPara(e)}
@@ -389,6 +466,10 @@ export function PacsListagemPage() {
         </div>
       ) : null}
 
+      {erroAssoc ? (
+        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{erroAssoc}</div>
+      ) : null}
+
       <Tabela
         colunas={colunas}
         dados={exames}
@@ -399,6 +480,8 @@ export function PacsListagemPage() {
       {!busca.isPending && exames.length === 0 ? (
         <p className="text-center text-sm text-gray-500">Nenhum exame encontrado com esses filtros.</p>
       ) : null}
+
+      <ModalAssociarExame estudo={associarEstudo} aoFechar={() => setAssociarEstudo(null)} />
     </div>
   );
 }

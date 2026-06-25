@@ -44,6 +44,7 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<SolicitacaoExame> SolicitacoesExame => Set<SolicitacaoExame>();
     public DbSet<Anamnese> Anamneses => Set<Anamnese>();
     public DbSet<AssinaturaMedico> AssinaturasMedico => Set<AssinaturaMedico>();
+    public DbSet<ExameAssociacao> ExameAssociacoes => Set<ExameAssociacao>();
 
     // Anexos de exame (ponte QR → PWA "Arquivos Saúde Maricá")
     public DbSet<DocumentoExame> DocumentosExame => Set<DocumentoExame>();
