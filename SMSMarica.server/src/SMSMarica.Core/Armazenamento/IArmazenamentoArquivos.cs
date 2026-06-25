@@ -3,10 +3,10 @@ namespace SMSMarica.Core.Armazenamento;
 /// <summary>
 /// Armazenamento de arquivos binários grandes (PDFs de exame, etc.) <b>fora</b> do
 /// banco. Diferente de <c>IMidiasService</c> (bytea no Postgres, ativos institucionais
-/// pequenos), aqui o conteúdo vive em disco/objeto e o domínio guarda só a
-/// <c>ChaveArmazenamento</c>. A implementação local (<see cref="ArmazenamentoLocalDisco"/>)
-/// é o padrão; há um costura/seam para uma futura implementação S3
-/// (DigitalOcean Spaces) sem mudar os chamadores.
+/// pequenos), aqui o conteúdo vive em armazenamento de objeto e o domínio guarda só a
+/// <c>ChaveArmazenamento</c>. Implementação única: <see cref="ArmazenamentoSpaces"/>
+/// (DigitalOcean Spaces / S3). Não há armazenamento local — se o Spaces estiver
+/// indisponível, a operação falha com alerta (sem fallback que gere registro órfão).
 /// </summary>
 public interface IArmazenamentoArquivos
 {

@@ -54,6 +54,14 @@ public sealed partial class ExceptionHandlingMiddleware(
         {
             await EscreverProblemDetails(context, StatusCodes.Status403Forbidden, "Acesso negado", ex.Message);
         }
+        // Falha de armazenamento (S3/Spaces): NÃO há fallback local — alerta o usuário a
+        // procurar o suporte. A mensagem é exposta (503) e o erro é logado (infra).
+        catch (ArmazenamentoIndisponivelException ex)
+        {
+            LogErroNaoTratado(_logger, ex, context.Request.Path);
+            await EscreverProblemDetails(context, StatusCodes.Status503ServiceUnavailable,
+                "Armazenamento indisponível", ex.Message, type: ex.Codigo);
+        }
         catch (Exception ex)
         {
             LogErroNaoTratado(_logger, ex, context.Request.Path);

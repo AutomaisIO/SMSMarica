@@ -87,18 +87,12 @@ public static class DependencyInjection
         services.AddScoped<Anamneses.IAnamnesesService, Anamneses.AnamnesesService>();
 
         // ---- Anexos de exame (ponte QR → PWA "Arquivos Saúde Maricá") ----
-        // PDFs de exame fora do banco: local (disco) em dev, DigitalOcean Spaces (S3) em prod.
-        // Provedor via Armazenamento:Provedor ("local" | "spaces"). O Spaces lê as credenciais
-        // cifradas do provedor "digitalocean_spaces" (Integrações) e é scoped (usa o DbContext).
-        var provedorArmazenamento = (configuration["Armazenamento:Provedor"] ?? "local").Trim().ToLowerInvariant();
-        if (provedorArmazenamento is "spaces" or "s3")
-        {
-            services.AddScoped<Armazenamento.IArmazenamentoArquivos, Armazenamento.ArmazenamentoSpaces>();
-        }
-        else
-        {
-            services.AddSingleton<Armazenamento.IArmazenamentoArquivos, Armazenamento.ArmazenamentoLocalDisco>();
-        }
+        // PDFs de exame SEMPRE em DigitalOcean Spaces (S3) — sem disco local. A config vem
+        // da credencial "digitalocean_spaces" (Integrações). Se indisponível, o upload falha
+        // com ArmazenamentoIndisponivelException (alerta o usuário) — nunca grava local.
+        services.AddScoped<Armazenamento.ArmazenamentoSpaces>();
+        services.AddScoped<Armazenamento.IArmazenamentoArquivos>(sp =>
+            sp.GetRequiredService<Armazenamento.ArmazenamentoSpaces>());
         services.Configure<Anexos.AnexosOptions>(configuration.GetSection(Anexos.AnexosOptions.Secao));
         services.AddScoped<Anexos.IAnexosService, Anexos.AnexosService>();
         services.AddScoped<IGeradorIdentificadores, GeradorIdentificadores>();

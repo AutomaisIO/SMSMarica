@@ -1,14 +1,23 @@
 import { useEffect, useState } from 'react';
-import { ChevronDown, Cloud, Loader2, Trash2 } from 'lucide-react';
+import { CheckCircle2, ChevronDown, Cloud, Loader2, Trash2, Wifi, XCircle } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
-import { useLimparCredencial, useSalvarCredencial } from '@/features/integracoes/api';
-import type { IntegracaoCredencial } from '@/features/integracoes/types';
+import { useLimparCredencial, useSalvarCredencial, useTestarSpaces } from '@/features/integracoes/api';
+import type { EtapaTesteSpaces, IntegracaoCredencial } from '@/features/integracoes/types';
 
 export const PROVEDOR_SPACES = 'digitalocean_spaces';
+
+const ROTULO_ETAPA: Record<EtapaTesteSpaces, string> = {
+  credencial: 'credencial',
+  conexao: 'conexão',
+  escrita: 'escrita',
+  leitura: 'leitura',
+  exclusao: 'exclusão',
+  ok: 'conexão',
+};
 
 type ParametrosSpaces = { endpoint: string; region: string; bucket: string };
 
@@ -37,6 +46,7 @@ export function DigitalOceanSpacesCard({ cred }: { cred: IntegracaoCredencial })
   const podeExcluir = usePermissao('IntegracoesConfig', 'Exclusao');
   const salvar = useSalvarCredencial();
   const limpar = useLimparCredencial();
+  const testar = useTestarSpaces();
 
   const [aberto, setAberto] = useState(false);
   const [accessKey, setAccessKey] = useState('');
@@ -60,6 +70,7 @@ export function DigitalOceanSpacesCard({ cred }: { cred: IntegracaoCredencial })
     e.preventDefault();
     setErro(null);
     setSalvo(false);
+    testar.reset();
     const obj: Record<string, string> = {};
     if (params.endpoint.trim()) obj.endpoint = params.endpoint.trim();
     if (params.region.trim()) obj.region = params.region.trim();
@@ -91,6 +102,7 @@ export function DigitalOceanSpacesCard({ cred }: { cred: IntegracaoCredencial })
       return;
     }
     setErro(null);
+    testar.reset();
     limpar.mutate(cred.provedor, { onError: (err) => setErro(extrairMensagemDeErro(err)) });
   }
 
@@ -193,9 +205,46 @@ export function DigitalOceanSpacesCard({ cred }: { cred: IntegracaoCredencial })
             <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{erro}</div>
           ) : null}
 
+          {testar.isError ? (
+            <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              <XCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+              <span>Não foi possível testar a conexão: {extrairMensagemDeErro(testar.error)}</span>
+            </div>
+          ) : testar.data ? (
+            testar.data.ok ? (
+              <div className="flex items-start gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                <span>{testar.data.mensagem}</span>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                <XCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                <span>
+                  Falha na {ROTULO_ETAPA[testar.data.etapa]}: {testar.data.mensagem}
+                </span>
+              </div>
+            )
+          ) : null}
+
           {podeEditar ? (
             <div className="flex flex-wrap items-center justify-end gap-3">
               {salvo ? <span className="text-sm text-green-600">Salvo.</span> : null}
+              {configurado ? (
+                <Button
+                  type="button"
+                  variante="outline"
+                  onClick={() => testar.mutate()}
+                  disabled={testar.isPending}
+                  className="mr-auto"
+                >
+                  {testar.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Wifi className="mr-2 h-4 w-4" />
+                  )}
+                  Testar conexão
+                </Button>
+              ) : null}
               {podeExcluir && configurado ? (
                 <Button type="button" variante="outline" onClick={aoLimpar} disabled={limpar.isPending}>
                   <Trash2 className="mr-2 h-4 w-4" />
