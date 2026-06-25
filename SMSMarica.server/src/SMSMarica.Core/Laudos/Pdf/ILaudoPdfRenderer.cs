@@ -15,8 +15,16 @@ public interface ILaudoPdfRenderer
     /// para <see cref="ModoRodapeLaudo.Rascunho"/> (marca d'água), qualquer que
     /// seja o modo pedido.
     /// </param>
+    /// <param name="carimboAssinaturaSimulado">
+    /// TEMPORÁRIO (revisão de layout): quando informado, força o modo
+    /// <see cref="ModoRodapeLaudo.PreparandoAssinatura"/> (PDF-base limpo) e
+    /// estampa o PNG do carimbo na MESMA posição do Automais.Assinador
+    /// (página 1, quadrado 130pt, centralizado, y=28pt do rodapé). Simula o
+    /// PDF assinado sem a assinatura digital real. Remover após a validação.
+    /// </param>
     Task<byte[]> GerarAsync(
         Guid laudoId,
         ModoRodapeLaudo modo = ModoRodapeLaudo.FinalizadoNaoAssinado,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        byte[]? carimboAssinaturaSimulado = null);
 }

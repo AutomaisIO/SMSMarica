@@ -123,10 +123,38 @@ public sealed class LaudoAssinaturaService(
         if (assinado is not null)
             return new PdfDownloadDto(assinado, true);
 
-        // Default = FinalizadoNaoAssinado; o renderer rebaixa para Rascunho (marca
-        // d'água) sozinho quando o laudo ainda não está finalizado.
-        var bytes = await pdf.GerarAsync(laudoId, cancellationToken: cancellationToken);
+        // TEMPORÁRIO (revisão de layout): para laudo finalizado com rubrica, devolve
+        // o PDF "como ficaria assinado" — base limpa + carimbo (rubrica real do médico
+        // + identificação) no MESMO retângulo do Automais.Assinador, porém SEM a
+        // assinatura digital real. Desfazer quando a validação de layout terminar.
+        var carimboSimulado = await ComporCarimboSimuladoAsync(laudoId, cancellationToken);
+
+        var bytes = await pdf.GerarAsync(
+            laudoId, cancellationToken: cancellationToken, carimboAssinaturaSimulado: carimboSimulado);
         return new PdfDownloadDto(bytes, false);
+    }
+
+    /// <summary>
+    /// TEMPORÁRIO (revisão de layout): compõe o carimbo (rubrica real do médico +
+    /// identificação do snapshot do laudo) para o laudo FINALIZADO, ou null quando
+    /// não se aplica (não finalizado / sem rubrica). Desfazer com a simulação.
+    /// </summary>
+    private async Task<byte[]?> ComporCarimboSimuladoAsync(Guid laudoId, CancellationToken ct)
+    {
+        var laudo = await db.Laudos.AsNoTracking()
+            .FirstOrDefaultAsync(l => l.Id == laudoId && !l.Excluido, ct);
+        if (laudo is null || laudo.Status != StatusLaudo.Finalizado) return null;
+
+        var rubrica = await assinaturaMedico.ObterAsync(laudo.MedicoId, ct);
+        if (rubrica is null) return null;
+
+        return carimboRenderer.Renderizar(new CarimboDados(
+            Rubrica: DecodificarImagem(rubrica.ImagemBase64),
+            Formato: rubrica.Formato,
+            Nome: laudo.MedicoNomeSnapshot ?? string.Empty,
+            Crm: laudo.MedicoCrmSnapshot ?? string.Empty,
+            UfCrm: laudo.MedicoUfCrmSnapshot ?? string.Empty,
+            Rqe: laudo.MedicoRqeSnapshot));
     }
 
     public async Task<bool> EstaAssinadoAsync(Guid laudoId, CancellationToken cancellationToken = default) =>
