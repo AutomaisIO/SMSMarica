@@ -11,10 +11,12 @@ namespace SMSMarica.Core.Armazenamento;
 public interface IArmazenamentoArquivos
 {
     /// <summary>
-    /// Gera uma chave nova e estável para um documento de exame, no formato
-    /// <c>exames/{yyyy}/{MM}/{guid}.{extensao}</c>. Não toca o armazenamento.
+    /// Monta a chave canônica de um documento de exame no formato
+    /// <c>{prefixo}/{pacienteId}/{documentoId}.{extensao}</c> (prefixo de configuração,
+    /// default <c>arquivos</c>): pasta = UUID do paciente, arquivo = UUID do documento.
+    /// Não toca o armazenamento.
     /// </summary>
-    string GerarChaveExame(string extensao = "pdf");
+    string MontarChaveDocumento(Guid pacienteId, Guid documentoId, string extensao = "pdf");
 
     /// <summary>Persiste o conteúdo sob a chave, criando diretórios/contêineres conforme necessário.</summary>
     Task SalvarAsync(string chave, byte[] conteudo, CancellationToken cancellationToken = default);

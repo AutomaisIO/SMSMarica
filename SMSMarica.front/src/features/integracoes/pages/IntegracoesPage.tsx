@@ -4,7 +4,12 @@ import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { useTemConsulta } from '@/shared/auth/authStore';
 import { useCredenciais } from '@/features/integracoes/api';
 import { CredencialOAuthCard } from '@/features/integracoes/components/CredencialOAuthCard';
+import {
+  DigitalOceanSpacesCard,
+  PROVEDOR_SPACES,
+} from '@/features/integracoes/components/DigitalOceanSpacesCard';
 import { GoogleMapsCard } from '@/features/integracoes/components/GoogleMapsCard';
+import { NavigationSdkCard } from '@/features/integracoes/components/NavigationSdkCard';
 import { WhatsAppCard } from '@/features/integracoes/components/WhatsAppCard';
 
 function LinkCard({ to, titulo, descricao }: { to: string; titulo: string; descricao: string }) {
@@ -27,6 +32,20 @@ export function IntegracoesPage() {
   const podeVerIa = useTemConsulta('InteligenciaConfiguracao');
   const podeVerSisreg = useTemConsulta('SisregConfiguracao');
   const podeVerTokens = useTemConsulta('ApiTokens');
+
+  // O Spaces (S3) tem card próprio (Access/Secret Key + endpoint/region/bucket),
+  // então é separado da lista genérica de provedores OAuth.
+  const lista = credenciais.data ?? [];
+  const credsOauth = lista.filter((c) => c.provedor !== PROVEDOR_SPACES);
+  const credSpaces = lista.find((c) => c.provedor === PROVEDOR_SPACES) ?? {
+    provedor: PROVEDOR_SPACES,
+    rotulo: 'DigitalOcean Spaces (S3)',
+    clientIdDefinido: false,
+    clientSecretDefinido: false,
+    redirectUri: null,
+    parametrosJson: null,
+    ativo: false,
+  };
 
   return (
     <div className="space-y-8">
@@ -56,9 +75,18 @@ export function IntegracoesPage() {
           </div>
         ) : null}
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-          {(credenciais.data ?? []).map((c) => (
+          {credsOauth.map((c) => (
             <CredencialOAuthCard key={c.provedor} cred={c} />
           ))}
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+          Armazenamento de arquivos (exames digitalizados)
+        </h2>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <DigitalOceanSpacesCard cred={credSpaces} />
         </div>
       </section>
 
@@ -68,6 +96,7 @@ export function IntegracoesPage() {
         </h2>
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           <GoogleMapsCard />
+          <NavigationSdkCard />
           <WhatsAppCard />
         </div>
       </section>

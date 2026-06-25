@@ -134,12 +134,14 @@ public sealed class AnexosService(
             return new AnexoUploadRespostaDto(existente.Id, existente.Nome);
         }
 
-        var chave = armazenamento.GerarChaveExame("pdf");
+        // Chave = {prefixo}/{uuid-paciente}/{uuid-documento}.pdf — pasta por paciente.
+        var documentoId = Guid.CreateVersion7();
+        var chave = armazenamento.MontarChaveDocumento(tokenEntidade.PatientId, documentoId, "pdf");
         await armazenamento.SalvarAsync(chave, conteudo, cancellationToken);
 
         var documento = new DocumentoExame
         {
-            Id = Guid.CreateVersion7(),
+            Id = documentoId,
             SolicitacaoExameId = tokenEntidade.SolicitacaoExameId,
             AnexoUploadTokenId = tokenEntidade.Id,
             Nome = nome,
