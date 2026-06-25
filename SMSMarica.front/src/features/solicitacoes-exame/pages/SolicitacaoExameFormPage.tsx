@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, Save } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
@@ -54,6 +55,7 @@ export function SolicitacaoExameFormPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const ehNovo = !id || id === 'novo';
+  const podeCadastrarPaciente = usePermissao('Pacientes', 'Inclusao');
 
   const detalhe = useSolicitacaoPorId(ehNovo ? null : id ?? null);
   const cadastrar = useCadastrarSolicitacao();
@@ -181,6 +183,9 @@ export function SolicitacaoExameFormPage() {
               up('pacienteId', p.id);
               up('pacienteNome', p.nomeCompleto);
             }}
+            aoCadastrarPaciente={
+              podeCadastrarPaciente ? () => navigate('/app/pacientes/novo') : undefined
+            }
           />
         )}
       </section>
