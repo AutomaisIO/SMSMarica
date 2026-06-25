@@ -37,7 +37,7 @@ export function CodigoCopiavel({ codigo }: { codigo: string }) {
       type="button"
       onClick={copiar}
       title="Clique para copiar o código da solicitação"
-      className="group relative inline-flex w-full items-center justify-between gap-1.5 rounded px-1.5 py-1 font-mono text-xs text-gray-700 hover:bg-gray-100"
+      className="group relative inline-flex items-center gap-1.5 rounded px-1.5 py-1 font-mono hover:bg-gray-100"
     >
       <span className="truncate">{codigo}</span>
       {copiado ? (
@@ -46,7 +46,7 @@ export function CodigoCopiavel({ codigo }: { codigo: string }) {
         <Copy className="h-3.5 w-3.5 shrink-0 text-gray-400 group-hover:text-gray-600" />
       )}
       {copiado ? (
-        <span className="absolute -top-6 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-0.5 font-sans text-[10px] text-white shadow">
+        <span className="absolute -top-6 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded bg-gray-900 px-2 py-0.5 text-[10px] text-white shadow">
           copiado!
         </span>
       ) : null}

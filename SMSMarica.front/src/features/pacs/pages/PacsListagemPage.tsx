@@ -18,7 +18,6 @@ import {
   useDesassociarExame,
   useExcluirEstudo,
 } from '@/features/pacs/api/queries';
-import { CodigoCopiavel } from '@/features/pacs/components/CodigoCopiavel';
 import { ModalAssociarExame } from '@/features/pacs/components/ModalAssociarExame';
 import { formatarHoraDicom } from '@/features/pacs/lib/dicomJson';
 import { abrirJanelaSolta } from '@/features/pacs/lib/janela';
@@ -246,7 +245,14 @@ export function PacsListagemPage() {
     {
       chave: 'pedido',
       cabecalho: 'Pedido',
-      render: (e) => <CodigoCopiavel codigo={e.accessionNumber?.trim() ?? ''} />,
+      render: (e) => {
+        const acc = e.accessionNumber?.trim() ?? '';
+        return acc ? (
+          <span className="font-mono text-xs text-gray-600">{acc}</span>
+        ) : (
+          <span className="text-xs text-gray-400">—</span>
+        );
+      },
     },
     {
       chave: 'modalidade',
