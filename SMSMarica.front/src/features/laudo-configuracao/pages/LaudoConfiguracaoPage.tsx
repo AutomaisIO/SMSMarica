@@ -3,7 +3,7 @@ import { Loader2, Save } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
-import { EditorRichText } from '@/shared/ui/EditorRichText';
+import { ConfiguracaoImagem } from '@/features/laudo-configuracao/components/ConfiguracaoImagem';
 import { cn } from '@/shared/lib/cn';
 import { useLaudoConfiguracao, useSalvarLaudoConfiguracao } from '../queries';
 
@@ -101,36 +101,28 @@ export function LaudoConfiguracaoPage() {
 
       {/* Mantém ambos montados (display none) para não perder estado ao trocar de aba. */}
       <div className={aba === 'cabecalho' ? 'block' : 'hidden'}>
-        <EditorRichText
+        <ConfiguracaoImagem
           valorHtml={cabecalhoHtml}
           aoMudar={(v) => {
             setCabecalhoHtml(v.html);
             setCabecalhoJson(v.json);
           }}
+          categoria="laudo-cabecalho"
+          rotulo="cabeçalho"
           somenteLeitura={!podeEditar}
-          permitirImagem={podeEditar}
-          categoriaImagem="laudo-cabecalho"
-          placeholder="Monte o cabeçalho: logo, nome da instituição, endereço…"
-          alturaMinima="320px"
         />
-        <p className="mt-2 text-xs text-gray-500">
-          Use o botão de imagem para enviar o logotimbre. O botão <strong>&lt;/&gt;</strong> abre o
-          código-fonte HTML para ajustes finos.
-        </p>
       </div>
 
       <div className={aba === 'rodape' ? 'block' : 'hidden'}>
-        <EditorRichText
+        <ConfiguracaoImagem
           valorHtml={rodapeHtml}
           aoMudar={(v) => {
             setRodapeHtml(v.html);
             setRodapeJson(v.json);
           }}
+          categoria="laudo-rodape"
+          rotulo="rodapé"
           somenteLeitura={!podeEditar}
-          permitirImagem={podeEditar}
-          categoriaImagem="laudo-rodape"
-          placeholder="Monte o rodapé: endereço, contato, observações institucionais…"
-          alturaMinima="240px"
         />
         <p className="mt-2 text-xs text-gray-500">
           O rodapé entra abaixo do bloco de assinatura do médico, em todas as páginas.

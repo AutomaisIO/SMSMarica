@@ -246,10 +246,22 @@ public sealed class LaudoPdfRenderer(
             return; // imagem não resolvida (externa/ausente) — ignora silenciosamente.
         }
 
-        // Largura da imagem em px tratada como pontos; limita à largura útil do A4 (~515pt).
-        if (bloco.ImagemLargura is int w and > 0)
+        // Largura útil do A4 (595pt - margens de 2cm ≈ 2*56.7pt) ≈ 482pt.
+        const float larguraUtil = 482f;
+        if (bloco.ImagemLarguraPct is double pct and >= 0.999)
         {
-            container.Width(Math.Min(w, 515)).Image(bytes).FitWidth();
+            // width="100%" → ocupa toda a largura disponível (FitWidth puro, sem
+            // largura fixa, para não conflitar com a área útil da página).
+            container.Image(bytes).FitWidth();
+        }
+        else if (bloco.ImagemLarguraPct is double pctParcial and > 0)
+        {
+            container.Width(larguraUtil * (float)Math.Clamp(pctParcial, 0.05, 1)).Image(bytes).FitWidth();
+        }
+        else if (bloco.ImagemLargura is int w and > 0)
+        {
+            // px tratado como pontos; limita à largura útil.
+            container.Width(Math.Min(w, larguraUtil)).Image(bytes).FitWidth();
         }
         else
         {
@@ -578,9 +590,16 @@ public sealed class LaudoPdfRenderer(
     private static BlocoHtml BlocoImagem(DomElement img, Alinhamento alinhamento)
     {
         var src = img.GetAttribute("src");
-        int? largura = int.TryParse(img.GetAttribute("width"), out var w) ? w : null;
+        var larguraAttr = img.GetAttribute("width");
+        int? largura = int.TryParse(larguraAttr, out var w) ? w : null;
+        double? larguraPct = null;
+        if (largura is null && larguraAttr is not null && larguraAttr.EndsWith('%')
+            && double.TryParse(larguraAttr.TrimEnd('%'), System.Globalization.CultureInfo.InvariantCulture, out var pct))
+        {
+            larguraPct = pct / 100.0;
+        }
         int? altura = int.TryParse(img.GetAttribute("height"), out var h) ? h : null;
-        return new BlocoHtml(TipoBloco.Imagem, [], null, alinhamento, src, largura, altura);
+        return new BlocoHtml(TipoBloco.Imagem, [], null, alinhamento, src, largura, altura, larguraPct);
     }
 
     private static Alinhamento LerAlinhamento(DomElement el, Alinhamento herdado)
@@ -642,6 +661,9 @@ public sealed class LaudoPdfRenderer(
         string? ImagemSrc = null,
         int? ImagemLargura = null,
         int? ImagemAltura = null,
+        // Largura em fração (0..1) quando o HTML usa width="NN%" — relativa à
+        // largura útil da página (full-width quando 100%).
+        double? ImagemLarguraPct = null,
         // Para TipoBloco.Linha: cada célula é uma lista de blocos (linha de tabela
         // renderizada lado a lado — usado p/ cabeçalho logo|texto|logo).
         IReadOnlyList<IReadOnlyList<BlocoHtml>>? Celulas = null);
