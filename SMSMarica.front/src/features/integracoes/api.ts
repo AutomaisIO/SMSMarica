@@ -5,6 +5,7 @@ import type {
   AtualizarTfdGoogle,
   AtualizarTfdWhatsApp,
   IntegracaoCredencial,
+  TesteSpacesResultado,
   TfdGoogle,
   TfdWhatsApp,
 } from '@/features/integracoes/types';
@@ -40,6 +41,20 @@ export function useLimparCredencial() {
     mutationFn: (provedor: string) => http.delete(`/integracoes/credenciais/${provedor}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.credenciais }),
   });
+}
+
+// ---- DigitalOcean Spaces (S3) — teste de conexão ----
+
+// Conecta, grava, lê e apaga um objeto de teste no bucket. Sempre retorna 200;
+// o resultado do teste vem no corpo (`ok`/`etapa`/`mensagem`).
+export async function testarSpaces(): Promise<TesteSpacesResultado> {
+  return (
+    await http.post<TesteSpacesResultado>('/integracoes/credenciais/digitalocean_spaces/testar')
+  ).data;
+}
+
+export function useTestarSpaces() {
+  return useMutation({ mutationFn: testarSpaces });
 }
 
 // ---- Google Maps (TFD) ----

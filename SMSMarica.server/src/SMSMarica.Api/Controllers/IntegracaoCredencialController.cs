@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
+using SMSMarica.Core.Armazenamento;
 using SMSMarica.Core.Integracoes.Credenciais;
 using SMSMarica.Core.Integracoes.Credenciais.Dtos;
 using SMSMarica.Data.Entities.Enums;
@@ -50,4 +51,16 @@ public sealed class IntegracaoCredencialController(IIntegracaoCredencialService 
         await _service.LimparAsync(provedor, cancellationToken);
         return NoContent();
     }
+
+    /// <summary>
+    /// Testa a integração do DigitalOcean Spaces de ponta a ponta: conecta, grava, lê e
+    /// apaga um objeto pequeno no bucket. Sempre 200 — o sucesso/falha vem no corpo.
+    /// </summary>
+    [HttpPost("digitalocean_spaces/testar")]
+    [RequerPermissao(ModuloPermissao.IntegracoesConfig, AcoesPermissao.Edicao)]
+    [ProducesResponseType<TesteArmazenamentoSpaces>(StatusCodes.Status200OK)]
+    public async Task<TesteArmazenamentoSpaces> TestarSpaces(
+        [FromServices] ArmazenamentoSpaces spaces,
+        CancellationToken cancellationToken)
+        => await spaces.TestarAsync(cancellationToken);
 }

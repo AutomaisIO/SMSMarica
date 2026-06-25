@@ -205,7 +205,10 @@ public sealed class AnexosService(
             .FirstOrDefaultAsync(d => d.Id == id && d.ExcluidoEm == null, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(DocumentoExame), id);
 
-        // Soft delete: mantém o binário no armazenamento (recuperável).
+        // Remove o binário do S3 (idempotente — no-op se já não existir). O soft-delete
+        // preserva o registro para auditoria, mas o objeto sai do armazenamento.
+        await armazenamento.ExcluirAsync(documento.ChaveArmazenamento, cancellationToken);
+
         documento.ExcluidoEm = DateTime.UtcNow;
         documento.ExcluidoPor = usuarioAtual.UsuarioId;
         await db.SaveChangesAsync(cancellationToken);

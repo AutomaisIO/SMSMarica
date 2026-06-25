@@ -17,6 +17,18 @@ export type AtualizarCredencialPayload = {
   ativo: boolean;
 };
 
+// Resultado do teste de conexão do DigitalOcean Spaces (S3).
+// Sempre vem em HTTP 200 — o sucesso/falha do teste está em `ok`.
+export type EtapaTesteSpaces = 'credencial' | 'conexao' | 'escrita' | 'leitura' | 'exclusao' | 'ok';
+
+export type TesteSpacesResultado = {
+  ok: boolean;
+  etapa: EtapaTesteSpaces;
+  mensagem: string;
+  bucket: string | null;
+  endpoint: string | null;
+};
+
 // Google Maps (TFD) — chave cifrada.
 export type TfdGoogle = { baseUrl: string; chaveConfigurada: boolean; ativo: boolean };
 export type AtualizarTfdGoogle = { baseUrl: string; apiKey?: string; ativo: boolean };
