@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Worklist (MWL) — Mamógrafo Fuji FDR-3000AWS — Orientação ao serviço técnico</title>
+<style>
+  :root{ --vermelho:#b3122a; --tinta:#1f2733; --cinza:#5b6675; --linha:#e4e7ec; --bg:#f6f7f9; --okbg:#eafaf1; --okbd:#34a853; --alertbg:#fff4e5; --alertbd:#e8a33d; --raizbg:#fdecef; --raizbd:#b3122a; }
+  *{ box-sizing:border-box; }
+  body{ font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:var(--tinta); line-height:1.55; margin:0; background:var(--bg); }
+  .wrap{ max-width:880px; margin:0 auto; background:#fff; padding:0 0 56px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+  header{ background:var(--vermelho); color:#fff; padding:30px 44px 26px; }
+  header .tag{ font-size:12px; letter-spacing:.14em; text-transform:uppercase; opacity:.85; }
+  header h1{ margin:6px 0 4px; font-size:23px; font-weight:650; }
+  header .sub{ font-size:14px; opacity:.92; }
+  main{ padding:8px 44px 0; }
+  h2{ font-size:16px; margin:30px 0 10px; padding-bottom:6px; border-bottom:2px solid var(--linha); color:var(--tinta); }
+  h3{ font-size:14px; margin:18px 0 6px; color:var(--vermelho); }
+  p,li{ font-size:14.5px; }
+  .meta{ display:flex; flex-wrap:wrap; gap:8px 28px; margin:14px 0 2px; font-size:13.5px; color:var(--cinza); }
+  .meta b{ color:var(--tinta); font-weight:600; }
+  .box{ border-radius:10px; padding:16px 18px; margin:16px 0; border:1px solid var(--linha); }
+  .box .t{ font-weight:700; font-size:13px; text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px; }
+  .raiz{ background:var(--raizbg); border-color:var(--raizbd); }
+  .raiz .t{ color:var(--raizbd); }
+  .ok{ background:var(--okbg); border-color:var(--okbd); }
+  .ok .t{ color:#1e7e44; }
+  .alert{ background:var(--alertbg); border-color:var(--alertbd); }
+  .alert .t{ color:#9a6512; }
+  table{ border-collapse:collapse; width:100%; margin:12px 0; font-size:13.6px; }
+  th,td{ border:1px solid var(--linha); padding:8px 11px; text-align:left; vertical-align:top; }
+  th{ background:#fafbfc; font-weight:600; }
+  code,.mono{ font-family:Consolas,Menlo,monospace; background:#f1f3f5; padding:1px 6px; border-radius:5px; font-size:12.8px; }
+  ol.steps{ counter-reset:s; list-style:none; padding-left:0; }
+  ol.steps>li{ counter-increment:s; position:relative; padding:10px 0 10px 44px; border-bottom:1px dashed var(--linha); }
+  ol.steps>li:last-child{ border-bottom:none; }
+  ol.steps>li::before{ content:counter(s); position:absolute; left:0; top:9px; width:28px; height:28px; background:var(--vermelho); color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; }
+  .small{ font-size:12.6px; color:var(--cinza); }
+  footer{ margin:34px 44px 0; padding-top:14px; border-top:1px solid var(--linha); font-size:12.4px; color:var(--cinza); }
+  .pill{ display:inline-block; background:#f1f3f5; border:1px solid var(--linha); border-radius:20px; padding:2px 10px; font-size:12.5px; margin:2px 4px 2px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="tag">Integração RIS / Worklist DICOM &nbsp;·&nbsp; Orientação ao serviço técnico</div>
+  <h1>Worklist (MWL) não inicia exame — Mamógrafo Fuji FDR-3000AWS</h1>
+  <div class="sub">Unidade CDT — Maricá/RJ &nbsp;·&nbsp; Integração com RIS/PACS institucional</div>
+</header>
+
+<main>
+  <div class="meta">
+    <span><b>Equipamento:</b> FUJIFILM FDR-3000AWS (Mainsoft V9.3)</span>
+    <span><b>Modalidade:</b> Mamografia (MG)</span>
+    <span><b>Serviço afetado:</b> Modality Worklist (MWL) + MPPS</span>
+  </div>
+
+  <div class="box raiz">
+    <div class="t">Resumo — o que precisa ser feito no console</div>
+    A worklist <b>chega normalmente</b> e os exames <b>aparecem na lista</b> do console, mas ao
+    <b>iniciar</b> o exame a partir da worklist o sistema falha (erro <b>31027</b>). O comportamento
+    e os registros de evento indicam que <b>o console não consegue associar a ordem da worklist a um
+    menu de exposição</b> — ou seja, falta a <b>configuração do mapeamento de código de procedimento
+    (JJ1017) para o menu de exposição</b> no console, necessária para a integração com RIS.
+    Solicitamos ao serviço técnico Fuji <b>configurar esse mapeamento</b> (detalhes na seção
+    “Ações solicitadas”). A aquisição <b>manual funciona normalmente</b>.
+  </div>
+
+  <h2>1. Sintoma observado</h2>
+  <ul>
+    <li>A consulta de worklist é respondida e os pacientes/exames <b>aparecem</b> na lista do console (modalidade MG).</li>
+    <li>Ao <b>selecionar o exame e iniciar</b>, surge o erro <b>31027 — “Falhou a operação de obter
+        informações de imagem”</b>, com instrução para contatar o serviço técnico e desligar o sistema.</li>
+    <li>O <b>cadastro manual</b> do paciente (sem worklist) adquire e armazena normalmente.</li>
+  </ul>
+
+  <h2>2. Mensagens de erro (console e Visualizador de Eventos do Windows)</h2>
+  <table>
+    <tr><th>Origem</th><th>Evento / Código</th><th>Conteúdo</th></tr>
+    <tr><td>Módulo de entrada do console (FFIipInput)</td><td><b>EventID 13060</b></td>
+        <td>Falha na operação interna <code>GetStudyInfo</code>, sem conseguir obter a
+        <b><code>IdExposureList</code></b> (lista de exposições) — retorno <code>1</code>.</td></tr>
+    <tr><td>Console (caixa de diálogo)</td><td><b>EventID 31027</b></td>
+        <td>“Falhou a operação de obter informações de imagem.”</td></tr>
+  </table>
+  <p class="small">A falha em obter a <code>IdExposureList</code> é o ponto-chave: significa que o
+  console recebeu a ordem da worklist, mas <b>não conseguiu resolver qual menu de exposição</b>
+  corresponde àquela ordem.</p>
+
+  <h2>3. Análise técnica</h2>
+  <p>No FDR-3000AWS, ao iniciar um exame a partir da worklist, o console <b>traduz o código de
+  procedimento recebido</b> (Scheduled Protocol Code, padrão <b>JJ1017 Ver. 3</b>) para um
+  <b>menu de exposição cadastrado</b>, e a partir daí monta a lista de exposições do estudo.</p>
+  <p>O erro <code>GetStudyInfo / IdExposureList</code> indica que essa tradução <b>não encontrou
+  correspondência</b> — ou seja, a <b>tabela de mapeamento “código de procedimento (JJ1017) →
+  menu de exposição” não está configurada/populada</b> para os exames vindos por worklist.
+  Como esse mapeamento é pré-requisito para iniciar qualquer exame por RIS, <b>nenhuma ordem
+  da worklist consegue ser executada</b>, enquanto a entrada manual (que seleciona o menu na tela)
+  funciona normalmente. Isso é consistente com uma integração de worklist <b>nunca comissionada</b>
+  neste console.</p>
+
+  <h2>4. Ações solicitadas ao serviço técnico Fuji</h2>
+  <ol class="steps">
+    <li><b>Configurar o mapeamento de procedimento → menu de exposição (JJ1017 Ver. 3).</b>
+        Cadastrar a correspondência entre o <b>código de procedimento que o RIS envia</b> e o menu de
+        exposição usado no rastreamento — o menu <b>“MAMO BILATERAL”</b> (já cadastrado no console).
+        Basta, num primeiro momento, <b>uma entrada</b> apontando para esse menu; assim todo exame de
+        mamografia da worklist abre nele, e o operador ajusta na tela se necessário.</li>
+    <li><b>Definir conosco o código de procedimento</b> a ser usado nessa correspondência, para que o
+        RIS passe a enviá-lo idêntico na worklist (os dois lados precisam usar o mesmo valor).</li>
+    <li><b>Verificar/Configurar o destino de MPPS (Performed Procedure Step).</b> O console cria um
+        MPPS automaticamente ao iniciar um exame por worklist; é necessário haver um <b>destino de
+        MPPS configurado</b> apontando para o servidor de worklist da instituição (ou desabilitar o
+        “Inform Procedure State”, caso não seja utilizado).</li>
+    <li><b>Validar</b> iniciando um exame de teste da worklist após a configuração.</li>
+  </ol>
+
+  <div class="box ok">
+    <div class="t">Já validado do lado do RIS/PACS — não é necessário investigar aqui</div>
+    <p style="margin:0 0 8px">O servidor de worklist/PACS da instituição já está correto e em conformidade
+    com o que o console espera. <b>A pendência é exclusivamente de configuração no console.</b></p>
+    <span class="pill">Worklist (MWL) entregue por C-FIND, modalidade MG</span>
+    <span class="pill">Transfer syntax: Implicit VR Little Endian</span>
+    <span class="pill">Character Set: ISO_IR 100 (Latin-1)</span>
+    <span class="pill">Nós DICOM (worklist e armazenamento) configurados e acessíveis</span>
+    <span class="pill">Identificadores (Accession / Procedure / SPS ID) ≤ 10 caracteres</span>
+    <span class="pill">Study Instance UID único por exame</span>
+    <span class="pill">Dados de paciente completos (com issuer/identificador)</span>
+  </div>
+
+  <h2>5. Já testado/descartado do lado do RIS (para não repetir)</h2>
+  <p>Para localizar a origem, já variamos e <b>descartamos</b> como causa, do lado do RIS, todos os
+  itens abaixo — em nenhum deles o comportamento mudou, o que reforça que a pendência é o
+  <b>mapeamento de menu no console</b>:</p>
+  <ul>
+    <li>Conjunto de caracteres do item (Latin-1 vs UTF-8) — padronizado em ISO_IR 100.</li>
+    <li>Formato e tamanho do identificador do paciente.</li>
+    <li>Formato do Study Instance UID (longo vs curto).</li>
+    <li>Comprimento dos identificadores (Accession / Procedure ID / SPS ID), todos ≤ 10.</li>
+    <li>Data agendada do exame.</li>
+    <li>Conectividade e nós DICOM (worklist e armazenamento) — confirmados acessíveis.</li>
+  </ul>
+
+  <h2>6. Resultado esperado</h2>
+  <p>Após configurar o mapeamento de menu (item 1–2) e o destino de MPPS (item 3), os exames de
+  mamografia enviados pelo RIS devem <b>iniciar normalmente</b> a partir da worklist, abrindo no menu
+  de exposição correspondente — eliminando o erro <b>31027</b> e a necessidade de cadastro manual.</p>
+
+  <footer>
+    Documento de orientação para o serviço técnico, elaborado pela equipe de integração RIS/PACS da
+    instituição. Os códigos de erro citados são os exibidos pelo próprio console e pelo Visualizador
+    de Eventos do Windows da estação. Em caso de dúvida sobre o código de procedimento a ser
+    acordado, contatar a equipe de integração.
+  </footer>
+</main>
+</div>
+</body>
+</html>
