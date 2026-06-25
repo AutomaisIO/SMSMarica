@@ -6,11 +6,17 @@ public interface ILaudoPdfRenderer
     /// Gera o PDF do laudo identificado por <paramref name="laudoId"/>.
     /// Lança <see cref="Common.Excecoes.NaoEncontradoException"/> se não existir.
     /// </summary>
-    /// <param name="incluirTarja">
-    /// Quando <c>true</c> (default), inclui no rodapé a tarja "sem assinatura
-    /// digital ICP-Brasil". Passar <c>false</c> ao preparar o PDF para
-    /// assinatura digital — o documento assinado não pode declarar que não está
-    /// assinado; o carimbo visual da assinatura entra depois.
+    /// <param name="modo">
+    /// Estado visual do documento (tarja/marca d'água/ausência do bloco do
+    /// médico). O default <see cref="ModoRodapeLaudo.FinalizadoNaoAssinado"/>
+    /// cobre o download on-demand. Passe
+    /// <see cref="ModoRodapeLaudo.PreparandoAssinatura"/> ao preparar o PDF-base
+    /// para a assinatura digital. Laudos não finalizados são SEMPRE rebaixados
+    /// para <see cref="ModoRodapeLaudo.Rascunho"/> (marca d'água), qualquer que
+    /// seja o modo pedido.
     /// </param>
-    Task<byte[]> GerarAsync(Guid laudoId, bool incluirTarja = true, CancellationToken cancellationToken = default);
+    Task<byte[]> GerarAsync(
+        Guid laudoId,
+        ModoRodapeLaudo modo = ModoRodapeLaudo.FinalizadoNaoAssinado,
+        CancellationToken cancellationToken = default);
 }

@@ -21,11 +21,14 @@ public interface ICarimboAssinaturaRenderer
 }
 
 /// <summary>
-/// Compõe o carimbo da assinatura num quadrado virtual 800×800 (QuestPDF → PNG):
-/// os dados do médico (centralizados) ficam SEMPRE na metade de baixo.
-/// - Formato 2:1 (Horizontal): rubrica ocupa a metade de cima; dados na metade de baixo (sem sobreposição).
-/// - Formato 1:1 (Quadrada): rubrica preenche o quadrado; dados sobrepõem a metade de baixo.
-/// - Sem rubrica: só os dados, na metade de baixo.
+/// Compõe o carimbo da assinatura num quadrado virtual 800×800 (QuestPDF → PNG).
+/// Z-order: a RUBRICA vai ao FUNDO (pode ter fundo opaco) e os dados do médico
+/// (nome/CRM/RQE) vão POR CIMA, sobre uma faixa branca translúcida que garante
+/// leitura mesmo sobre imagem opaca. FitArea preserva a proporção:
+/// - Formato 1:1 (Quadrada): rubrica preenche o quadrado; texto sobreposto embaixo.
+/// - Formato 2:1 (Horizontal): rubrica vira faixa ancorada no topo; texto embaixo.
+/// - Sem rubrica: só os dados, na metade de baixo (mantido por robustez; o gate
+///   de assinatura já exige rubrica antes de chegar aqui).
 /// RQE só aparece quando informado.
 /// </summary>
 public sealed class CarimboAssinaturaRenderer : ICarimboAssinaturaRenderer
@@ -56,7 +59,9 @@ public sealed class CarimboAssinaturaRenderer : ICarimboAssinaturaRenderer
                     // Âncora do quadrado virtual completo.
                     layers.PrimaryLayer().Extend();
 
-                    // Rubrica: cheia (1:1) ou só metade de cima (2:1).
+                    // CAMADA DE BAIXO (fundo): a rubrica. FitArea preserva a proporção
+                    // (1:1 preenche o quadrado; 2:1 vira faixa, ancorada no topo) sem
+                    // distorcer. Como a imagem PODE ter fundo opaco, ela vai por baixo.
                     if (rubrica is not null)
                     {
                         layers.Layer().Element(c =>
@@ -66,12 +71,17 @@ public sealed class CarimboAssinaturaRenderer : ICarimboAssinaturaRenderer
                         });
                     }
 
-                    // Dados do médico: metade de baixo, centralizados.
+                    // CAMADA DE CIMA (frente): identificação do médico SEMPRE por cima,
+                    // sobre uma faixa branca translúcida que garante leitura mesmo quando
+                    // a rubrica tem fundo opaco. Centralizada na metade de baixo.
                     layers.Layer()
                         .AlignBottom()
                         .Height(Metade)
-                        .PaddingHorizontal(24)
                         .AlignMiddle()
+                        .AlignCenter()
+                        .Background("#D9FFFFFF") // branco ~85% → respaldo de leitura
+                        .PaddingVertical(16)
+                        .PaddingHorizontal(28)
                         .Column(col =>
                         {
                             col.Spacing(6);

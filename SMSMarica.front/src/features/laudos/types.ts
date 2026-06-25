@@ -33,6 +33,12 @@ export type Laudo = {
   criadoEm: string;
   atualizadoEm: string | null;
   assinado: boolean;
+  /** Elegibilidade da assinatura resolvida no servidor (autor + finalizado + não assinado + tem rubrica). */
+  podeAssinar: boolean;
+  /** Motivo legível do bloqueio (ex.: rubrica não cadastrada), ou null quando elegível/irrelevante. */
+  motivoBloqueioAssinatura: string | null;
+  /** O médico AUTOR tem rubrica de assinatura cadastrada. */
+  medicoTemRubrica: boolean;
 };
 
 export type LaudoListItem = {

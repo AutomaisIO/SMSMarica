@@ -2,9 +2,11 @@ using Ganss.Xss;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Common.Excecoes;
+using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Laudos.BiRads;
 using SMSMarica.Core.Laudos.Dtos;
 using SMSMarica.Core.Medicos;
+using SMSMarica.Core.Medicos.Assinatura;
 using SMSMarica.Core.Medicos.Dtos;
 using SMSMarica.Core.Medicos.Fhir;
 using SMSMarica.Core.Pacientes.Fhir;
@@ -22,6 +24,8 @@ public sealed class LaudosService(
     IPacienteFhirClient pacienteFhir,
     IPractitionerFhirClient practitionerFhir,
     IPacienteResolver pacienteResolver,
+    IAssinaturaMedicoService assinaturaMedico,
+    IUsuarioAtualAccessor usuarioAtual,
     ILogger<LaudosService> logger) : ILaudosService
 {
     private readonly SmsMaricaDbContext _db = db;
@@ -30,6 +34,8 @@ public sealed class LaudosService(
     private readonly IPacienteFhirClient _pacienteFhir = pacienteFhir;
     private readonly IPractitionerFhirClient _practitionerFhir = practitionerFhir;
     private readonly IPacienteResolver _pacienteResolver = pacienteResolver;
+    private readonly IAssinaturaMedicoService _assinaturaMedico = assinaturaMedico;
+    private readonly IUsuarioAtualAccessor _usuarioAtual = usuarioAtual;
     private readonly ILogger<LaudosService> _logger = logger;
 
     private async Task<IReadOnlyList<LaudoListItemDto>> EnriquecerAsync(
@@ -106,7 +112,44 @@ public sealed class LaudosService(
         var dto = await EnriquecerAsync(LaudosMapper.ParaDto(l), cancellationToken);
         var assinado = await _db.LaudoAssinaturas.AsNoTracking()
             .AnyAsync(a => a.LaudoId == id && a.Status == StatusAssinatura.Concluida, cancellationToken);
-        return dto with { Assinado = assinado };
+
+        var (temRubrica, podeAssinar, motivo) =
+            await ResolverElegibilidadeAssinaturaAsync(l, assinado, cancellationToken);
+        return dto with
+        {
+            Assinado = assinado,
+            MedicoTemRubrica = temRubrica,
+            PodeAssinar = podeAssinar,
+            MotivoBloqueioAssinatura = motivo,
+        };
+    }
+
+    /// <summary>
+    /// Elegibilidade da assinatura digital para o usuário logado: ele é o autor +
+    /// laudo finalizado + ainda não assinado + o autor tem rubrica cadastrada.
+    /// Resolvido no servidor (e não no front) porque a rubrica vive sob o módulo
+    /// Medicos — permissão que o próprio médico não possui; o front nunca saberia
+    /// consultá-la sozinho.
+    /// </summary>
+    private async Task<(bool TemRubrica, bool PodeAssinar, string? Motivo)> ResolverElegibilidadeAssinaturaAsync(
+        Laudo l, bool assinado, CancellationToken ct)
+    {
+        var temRubrica = await _assinaturaMedico.ObterAsync(l.MedicoId, ct) is not null;
+
+        var ehAutor = false;
+        if (_usuarioAtual.UsuarioId is { } usuarioId)
+        {
+            var medicoLogado = await ResolverMedicoOuNullAsync(usuarioId, ct);
+            ehAutor = medicoLogado is not null && medicoLogado.Id == l.MedicoId;
+        }
+
+        var finalizado = l.Status == StatusLaudo.Finalizado;
+        var podeAssinar = ehAutor && finalizado && !assinado && temRubrica;
+        var motivo = ehAutor && finalizado && !assinado && !temRubrica
+            ? "Rubrica não cadastrada — solicite ao administrador o cadastro da sua assinatura (imagem)."
+            : null;
+
+        return (temRubrica, podeAssinar, motivo);
     }
 
     public async Task<LaudoDto?> ObterPorStudyAsync(
@@ -386,10 +429,22 @@ public sealed class LaudosService(
     }
 
     /// <summary>
-    /// Resolve o médico-laudador no hub FHIR. MVP: o id do usuário logado é
-    /// tratado como id do Practitioner (link Usuário↔Practitioner é fatia futura).
+    /// Resolve o médico-laudador no hub FHIR, lançando se o usuário não for médico.
+    /// MVP: o id do usuário logado é tratado como id do Practitioner (link
+    /// Usuário↔Practitioner é fatia futura); fallback por CPF.
     /// </summary>
-    private async Task<MedicoDto> ResolverMedicoAsync(Guid usuarioId, CancellationToken ct)
+    private async Task<MedicoDto> ResolverMedicoAsync(Guid usuarioId, CancellationToken ct) =>
+        await ResolverMedicoOuNullAsync(usuarioId, ct)
+        ?? throw new ConflitoException(
+            "laudo.usuario_sem_papel_medico",
+            "Apenas médicos podem criar/editar Laudos.");
+
+    /// <summary>
+    /// Como <see cref="ResolverMedicoAsync"/>, mas devolve <c>null</c> em vez de
+    /// lançar — usado na leitura (derivar elegibilidade de assinatura sem quebrar
+    /// quando o usuário logado não é médico).
+    /// </summary>
+    private async Task<MedicoDto?> ResolverMedicoOuNullAsync(Guid usuarioId, CancellationToken ct)
     {
         // 1) Compat: médicos cujo login tem o MESMO id do Practitioner (Usuario.Id == Practitioner.Id).
         var p = await _practitionerFhir.ObterAsync(usuarioId, ct);
@@ -410,12 +465,7 @@ public sealed class LaudosService(
             }
         }
 
-        if (p is null)
-            throw new ConflitoException(
-                "laudo.usuario_sem_papel_medico",
-                "Apenas médicos podem criar/editar Laudos.");
-
-        return MedicoFhirMapper.ParaDto(p);
+        return p is null ? null : MedicoFhirMapper.ParaDto(p);
     }
 
     private static string SoDigitos(string? v) =>

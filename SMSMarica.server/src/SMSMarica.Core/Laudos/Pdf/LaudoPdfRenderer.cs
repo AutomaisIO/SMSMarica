@@ -26,10 +26,18 @@ public sealed class LaudoPdfRenderer(
     private readonly IMidiasService _midias = midias;
     private readonly LaudosPdfOptions _opt = options.Value;
 
-    public async Task<byte[]> GerarAsync(Guid laudoId, bool incluirTarja = true, CancellationToken cancellationToken = default)
+    public async Task<byte[]> GerarAsync(
+        Guid laudoId,
+        ModoRodapeLaudo modo = ModoRodapeLaudo.FinalizadoNaoAssinado,
+        CancellationToken cancellationToken = default)
     {
         var laudo = await _laudos.CarregarParaPdfAsync(laudoId, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Laudo), laudoId);
+
+        // Laudo não finalizado NUNCA é "emitido": rebaixa para Rascunho (marca d'água)
+        // qualquer que seja o modo pedido. Só o finalizado distingue
+        // "não assinado" (tarja CFM) de "preparando assinatura" (PDF-base limpo).
+        var efetivo = laudo.Status != StatusLaudo.Finalizado ? ModoRodapeLaudo.Rascunho : modo;
 
         var config = await _configuracao.ObterAsync(cancellationToken);
         var blocosCabecalho = ParseHtmlParaBlocos(config.CabecalhoHtml);
@@ -42,7 +50,6 @@ public sealed class LaudoPdfRenderer(
             blocosCabecalho.Concat(blocosRodape), cancellationToken);
 
         var dadosCabecalho = MontarCabecalhoPaciente(laudo);
-        var dadosAssinatura = MontarBlocoAssinatura(laudo);
         var blocos = ParseHtmlParaBlocos(laudo.ConteudoHtml);
         var emitidoEm = FormatarEmissao(laudo.FinalizadoEm ?? laudo.CriadoEm);
 
@@ -55,8 +62,8 @@ public sealed class LaudoPdfRenderer(
                 page.DefaultTextStyle(t => t.FontSize(10).FontFamily("Helvetica"));
 
                 page.Header().Element(c => RenderHeader(c, temCabecalhoCustom, blocosCabecalho, imagens));
-                page.Content().Element(c => RenderContent(c, laudo, dadosCabecalho, blocos, imagens));
-                page.Footer().Element(c => RenderFooter(c, dadosAssinatura, emitidoEm, incluirTarja, temRodapeCustom, blocosRodape, imagens));
+                page.Content().Element(c => RenderContent(c, laudo, efetivo, dadosCabecalho, blocos, imagens));
+                page.Footer().Element(c => RenderFooter(c, efetivo, emitidoEm, temRodapeCustom, blocosRodape, imagens));
             });
         });
 
@@ -118,49 +125,71 @@ public sealed class LaudoPdfRenderer(
 
     // ------------------------ Content ------------------------
 
-    private void RenderContent(IContainer container, Laudo laudo, IEnumerable<(string Rotulo, string Valor)> cabecalhoPaciente, IReadOnlyList<BlocoHtml> blocos, IReadOnlyDictionary<string, byte[]> imagens)
+    private void RenderContent(IContainer container, Laudo laudo, ModoRodapeLaudo modo, IEnumerable<(string Rotulo, string Valor)> cabecalhoPaciente, IReadOnlyList<BlocoHtml> blocos, IReadOnlyDictionary<string, byte[]> imagens)
     {
-        container.PaddingTop(10).Column(col =>
+        container.PaddingTop(10).Layers(layers =>
         {
-            col.Spacing(8);
-
-            col.Item().LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
-
-            // Bloco paciente / exame
-            col.Item().Column(p =>
+            // Camada primária = conteúdo (define a altura usada pela marca d'água).
+            layers.PrimaryLayer().Column(col =>
             {
-                p.Spacing(2);
-                foreach (var (rotulo, valor) in cabecalhoPaciente)
+                col.Spacing(8);
+
+                col.Item().LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
+
+                // Bloco paciente / exame
+                col.Item().Column(p =>
                 {
-                    p.Item().Text(span =>
+                    p.Spacing(2);
+                    foreach (var (rotulo, valor) in cabecalhoPaciente)
                     {
-                        span.Span($"{rotulo}: ").SemiBold();
-                        span.Span(valor);
-                    });
-                }
-            });
+                        p.Item().Text(span =>
+                        {
+                            span.Span($"{rotulo}: ").SemiBold();
+                            span.Span(valor);
+                        });
+                    }
+                });
 
-            col.Item().LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
+                col.Item().LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
 
-            // Título do laudo (status banner se rascunho)
-            col.Item().Text(laudo.Titulo).Bold().FontSize(14).AlignCenter();
-            if (laudo.Status != StatusLaudo.Finalizado)
-            {
-                col.Item().Text("RASCUNHO — não emitido")
-                    .FontColor(Colors.Red.Darken2)
-                    .FontSize(10)
-                    .AlignCenter();
-            }
+                // Título do laudo
+                col.Item().Text(laudo.Titulo).Bold().FontSize(14).AlignCenter();
 
-            // Corpo
-            col.Item().Column(corpo =>
-            {
-                corpo.Spacing(6);
-                foreach (var bloco in blocos)
+                // Corpo
+                col.Item().Column(corpo =>
                 {
-                    RenderBloco(corpo.Item(), bloco, imagens);
-                }
+                    corpo.Spacing(6);
+                    foreach (var bloco in blocos)
+                    {
+                        RenderBloco(corpo.Item(), bloco, imagens);
+                    }
+                });
             });
+
+            // Marca d'água diagonal de RASCUNHO: forte e inequívoca, atrás do
+            // conteúdo, deixando claro que o documento não tem validade.
+            // O Rotate livre do QuestPDF pivota no canto superior-esquerdo; para
+            // centralizar, rotacionamos em torno do CENTRO de uma caixa fixa
+            // (translada −c, rotaciona, translada +c). A caixa fica ≤ largura útil
+            // da A4 (≈482pt) para não estourar "conflicting size constraints".
+            if (modo == ModoRodapeLaudo.Rascunho)
+            {
+                const float w = 460f;
+                const float h = 170f;
+                layers.Layer()
+                    .AlignCenter().AlignMiddle()
+                    .Width(w).Height(h)
+                    .TranslateX(w / 2).TranslateY(h / 2)
+                    .Rotate(-45)
+                    .TranslateX(-w / 2).TranslateY(-h / 2)
+                    .AlignCenter().AlignMiddle()
+                    .Text(t =>
+                    {
+                        t.AlignCenter();
+                        t.Line("RASCUNHO").FontSize(60).Bold().FontColor("#40C62828");
+                        t.Line("SEM VALIDADE").FontSize(40).Bold().FontColor("#40C62828");
+                    });
+            }
         });
     }
 
@@ -289,7 +318,7 @@ public sealed class LaudoPdfRenderer(
 
     // ------------------------ Footer ------------------------
 
-    private void RenderFooter(IContainer container, IReadOnlyList<string> assinatura, string emitidoEm, bool incluirTarja, bool temRodapeCustom, IReadOnlyList<BlocoHtml> blocosRodape, IReadOnlyDictionary<string, byte[]> imagens)
+    private void RenderFooter(IContainer container, ModoRodapeLaudo modo, string emitidoEm, bool temRodapeCustom, IReadOnlyList<BlocoHtml> blocosRodape, IReadOnlyDictionary<string, byte[]> imagens)
     {
         container.Column(c =>
         {
@@ -297,23 +326,21 @@ public sealed class LaudoPdfRenderer(
 
             c.Item().PaddingTop(10).LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
 
-            // Bloco do médico + tarja só na versão NÃO assinada (on-demand). Quando o PDF
-            // está sendo preparado para assinar (incluirTarja=false), o rodapé fica sem o
-            // bloco do médico — o carimbo da assinatura (rubrica + nome/CRM/RQE) entra no
-            // lugar, estampado pelo Automais.Assinador.
-            if (incluirTarja)
+            // "Emitido em" só faz sentido em laudo finalizado (rascunho não é emitido).
+            // A IDENTIDADE do médico (nome/CRM/RQE + rubrica) NÃO entra aqui em texto
+            // solto: ela só tem fé pública junto da assinatura digital ICP-Brasil, e por
+            // isso vive EXCLUSIVAMENTE no carimbo estampado pelo Automais.Assinador.
+            if (modo != ModoRodapeLaudo.Rascunho)
             {
-                c.Item().AlignCenter().Column(a =>
-                {
-                    a.Spacing(1);
-                    foreach (var linha in assinatura)
-                    {
-                        a.Item().AlignCenter().Text(linha).FontSize(10).SemiBold();
-                    }
-                    a.Item().AlignCenter().Text(emitidoEm).FontSize(8).Light();
-                });
+                c.Item().AlignCenter().Text(emitidoEm).FontSize(8).Light();
+            }
 
-                c.Item().PaddingTop(6).AlignCenter().Text(_opt.TarjaRodape)
+            // Tarja neutra "documento sem assinatura digital" só no PDF on-demand
+            // (finalizado e não assinado). No PDF-base de assinatura ela some — o
+            // documento que será assinado não pode declarar que não está assinado.
+            if (modo == ModoRodapeLaudo.FinalizadoNaoAssinado)
+            {
+                c.Item().PaddingTop(2).AlignCenter().Text(_opt.TarjaRodape)
                     .FontSize(7)
                     .FontColor(Colors.Grey.Darken2)
                     .Italic();
@@ -355,21 +382,6 @@ public sealed class LaudoPdfRenderer(
         lista.Add(("Study Instance UID", l.StudyInstanceUID));
 
         return lista;
-    }
-
-    private IReadOnlyList<string> MontarBlocoAssinatura(Laudo l)
-    {
-        var nome = l.MedicoNomeSnapshot ?? string.Empty;
-        var crm = l.MedicoCrmSnapshot ?? string.Empty;
-        var uf = l.MedicoUfCrmSnapshot ?? string.Empty;
-        var rqe = l.MedicoRqeSnapshot;
-
-        var linhas = new List<string>(2)
-        {
-            $"Dr(a). {nome}",
-            string.IsNullOrWhiteSpace(rqe) ? $"CRM {uf}/{crm}" : $"CRM {uf}/{crm} — RQE {rqe}",
-        };
-        return linhas;
     }
 
     private string FormatarEmissao(DateTime utc)
