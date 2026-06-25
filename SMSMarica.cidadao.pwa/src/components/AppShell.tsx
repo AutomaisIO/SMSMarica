@@ -150,6 +150,9 @@ export function AppShell() {
                 <LogOut className="h-5 w-5" />
                 Sair
               </button>
+              <p className="mt-2 text-center text-[11px] font-medium text-tinta-mute/70">
+                versão {__APP_VERSION__}
+              </p>
             </div>
           </nav>
         </div>
