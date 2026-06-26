@@ -27,9 +27,17 @@ export function abrirJanelaSolta(
   largura = 1600,
   altura = 900,
 ): boolean {
-  // Já há uma janela aberta com este nome? Traz para o foco, sem recarregar.
+  // Já há uma janela aberta com este nome? Traz para frente, sem recarregar.
+  // `window.open('', nome)` re-aponta a janela existente pelo nome (URL vazia =
+  // não navega) e, na maioria dos browsers, a restaura/levanta acima das demais
+  // mesmo minimizada — o `focus()` sozinho não restaura janela minimizada.
   const existente = registroJanelas.get(nome);
   if (existente && !existente.closed) {
+    try {
+      window.open('', nome);
+    } catch {
+      /* alguns browsers podem bloquear; o focus abaixo ainda ajuda */
+    }
     existente.focus();
     return true;
   }

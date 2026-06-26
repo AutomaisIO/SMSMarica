@@ -25,6 +25,7 @@ import { SeletorTemplate } from '@/features/laudos/components/SeletorTemplate';
 import { StatusBadgeLaudo } from '@/features/laudos/components/StatusBadgeLaudo';
 import { useSolicitacaoPorStudy } from '@/features/solicitacoes-exame/api/queries';
 import { useAnexosExamePaciente } from '@/features/pacientes/api/queries';
+import { useContextoAnamnese } from '@/features/anamnese/api/queries';
 import { ClipboardCheck, ClipboardList, History } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
@@ -292,9 +293,13 @@ export function LaudoEditorPage() {
   const anexosPaciente = useAnexosExamePaciente(pacienteIdPedido);
   const qtdExamesAnteriores = anexosPaciente.data?.length ?? 0;
 
+  // Anamnese: só habilita o botão quando já existe uma salva (abre só leitura).
+  const anamneseCtx = useContextoAnamnese({ solicitacaoExameId: solicitacao.data?.id });
+  const semAnamnese = anamneseCtx.isSuccess && !anamneseCtx.data?.anamnese;
+
   function abrirAnamneseJanela() {
     const solId = solicitacao.data?.id;
-    if (!solId) return;
+    if (!solId || semAnamnese) return;
     const ok = abrirJanelaSolta(`/anamnese/janela?solicitacaoId=${solId}`, `anamnese-${solId}`, 1100, 900);
     if (!ok) alert('A janela foi bloqueada pelo navegador. Libere os popups para este site.');
   }
@@ -346,10 +351,12 @@ export function LaudoEditorPage() {
           ) : null}
           {solicitacao.data ? (
             <>
-              <Button variante="outline" onClick={abrirAnamneseJanela}>
-                <ClipboardList className="mr-2 h-4 w-4" />
-                Anamnese
-              </Button>
+              <span title={semAnamnese ? 'Sem anamnese' : undefined} className="inline-flex">
+                <Button variante="outline" onClick={abrirAnamneseJanela} disabled={semAnamnese}>
+                  <ClipboardList className="mr-2 h-4 w-4" />
+                  Anamnese
+                </Button>
+              </span>
               <Button variante="outline" onClick={abrirExamesAnterioresJanela}>
                 <History className="mr-2 h-4 w-4" />
                 Exames anteriores
