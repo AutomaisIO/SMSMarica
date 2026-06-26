@@ -19,7 +19,8 @@ public sealed record ExameAssociacaoDto(
     Guid PacienteId,
     string? PacienteNome,
     bool Explicita,
-    OrigemAssociacaoExame? Origem);
+    OrigemAssociacaoExame? Origem,
+    PrioridadeSolicitacao Prioridade);
 
 /// <summary>Vínculo mínimo (solicitação + paciente) usado pelo gate de laudar.</summary>
 public sealed record VinculoExame(Guid SolicitacaoExameId, Guid PacienteId);

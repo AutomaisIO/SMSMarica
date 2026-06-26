@@ -68,4 +68,5 @@ public sealed record LaudoPorStudyDto(
     string StudyInstanceUID,
     Guid LaudoId,
     int Versao,
-    StatusLaudo Status);
+    StatusLaudo Status,
+    bool Assinado = false);

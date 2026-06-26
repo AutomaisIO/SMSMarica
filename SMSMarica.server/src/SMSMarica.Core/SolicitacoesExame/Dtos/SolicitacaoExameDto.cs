@@ -25,7 +25,8 @@ public sealed record SolicitacaoExameDto(
     string SolicitanteCrm,
     string SolicitanteUfCrm,
 
-    string? NumeroRegulacaoSus,
+    string? CodigoSolicitacao,
+    string? ChaveConfirmacao,
     string? Justificativa,
 
     StatusSolicitacaoExame Status,

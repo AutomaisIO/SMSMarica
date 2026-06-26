@@ -47,7 +47,16 @@ public class SolicitacaoExame
 
     // ---- Regulação ----
 
-    public string? NumeroRegulacaoSus { get; set; }
+    /// <summary>
+    /// Código da solicitação (regulação). Substitui o antigo NumeroRegulacaoSus. Regra de
+    /// preenchimento (validada na entrada): número a partir de 9999, ou o sentinela
+    /// <c>0000</c> para exames feitos extra-SUS em caráter emergencial.
+    /// </summary>
+    public string? CodigoSolicitacao { get; set; }
+
+    /// <summary>Chave de confirmação da solicitação. Mesma régua do código (≥ 9999 ou <c>0000</c>).</summary>
+    public string? ChaveConfirmacao { get; set; }
+
     public string? Justificativa { get; set; }
 
     // ---- Fluxo ----

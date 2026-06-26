@@ -94,6 +94,7 @@ export type LaudoPorStudy = {
   laudoId: string;
   versao: number;
   status: StatusLaudo;
+  assinado: boolean;
 };
 
 export type FiltroLaudos = {

@@ -73,7 +73,19 @@ export function SolicitacoesExamePage() {
     {
       chave: 'accession',
       cabecalho: 'Pedido',
-      render: (s) => <CodigoCopiavel codigo={s.accessionNumber} />,
+      render: (s) => (
+        <div className="flex items-center gap-2">
+          {s.prioridade === 'Urgente' ? (
+            <span
+              title="Solicitação URGENTE"
+              className="inline-flex items-center gap-0.5 rounded-full bg-red-100 px-1.5 py-0.5 text-[11px] font-bold text-red-700"
+            >
+              ⚠ Urgente
+            </span>
+          ) : null}
+          <CodigoCopiavel codigo={s.accessionNumber} />
+        </div>
+      ),
     },
     {
       chave: 'paciente',

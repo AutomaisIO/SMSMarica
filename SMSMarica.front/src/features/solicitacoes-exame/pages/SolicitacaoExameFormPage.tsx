@@ -28,7 +28,8 @@ type EstadoForm = {
   solicitanteNome: string;
   solicitanteCrm: string;
   solicitanteUfCrm: string;
-  numeroRegulacaoSus: string;
+  codigoSolicitacao: string;
+  chaveConfirmacao: string;
   justificativa: string;
   prioridade: PrioridadeSolicitacao;
   observacoes: string;
@@ -44,12 +45,24 @@ const ESTADO_INICIAL: EstadoForm = {
   solicitanteNome: '',
   solicitanteCrm: '',
   solicitanteUfCrm: '',
-  numeroRegulacaoSus: '',
+  codigoSolicitacao: '',
+  chaveConfirmacao: '',
   justificativa: '',
   prioridade: 'Eletiva',
   observacoes: '',
   dataAgendada: '',
 };
+
+/**
+ * Régua do Código de Solicitação / Chave de Confirmação (espelha o backend):
+ * válido = sentinela "0000" (exame emergencial extra-SUS) OU número a partir de 9999.
+ */
+function regulacaoValida(v: string): boolean {
+  const t = v.trim();
+  if (t.length === 0) return false;
+  if (t === '0000') return true;
+  return /^\d+$/.test(t) && Number(t) >= 9999;
+}
 
 export function SolicitacaoExameFormPage() {
   const navigate = useNavigate();
@@ -80,7 +93,8 @@ export function SolicitacaoExameFormPage() {
         solicitanteNome: s.solicitanteNome,
         solicitanteCrm: s.solicitanteCrm,
         solicitanteUfCrm: s.solicitanteUfCrm,
-        numeroRegulacaoSus: s.numeroRegulacaoSus ?? '',
+        codigoSolicitacao: s.codigoSolicitacao ?? '',
+        chaveConfirmacao: s.chaveConfirmacao ?? '',
         justificativa: s.justificativa ?? '',
         prioridade: s.prioridade,
         observacoes: s.observacoes ?? '',
@@ -101,6 +115,10 @@ export function SolicitacaoExameFormPage() {
     if (!estado.solicitanteNome.trim()) return setErro('Informe o médico solicitante.');
     if (!estado.solicitanteCrm.trim() || !estado.solicitanteUfCrm.trim())
       return setErro('Informe CRM e UF do solicitante.');
+    if (!regulacaoValida(estado.codigoSolicitacao))
+      return setErro('Código de Solicitação inválido: use 0000 (emergência extra-SUS) ou um número a partir de 9999.');
+    if (!regulacaoValida(estado.chaveConfirmacao))
+      return setErro('Chave de Confirmação inválida: use 0000 (emergência extra-SUS) ou um número a partir de 9999.');
 
     const payload = {
       tipoExameId: estado.tipoExameId,
@@ -109,7 +127,8 @@ export function SolicitacaoExameFormPage() {
       solicitanteNome: estado.solicitanteNome.trim(),
       solicitanteCrm: estado.solicitanteCrm.trim(),
       solicitanteUfCrm: estado.solicitanteUfCrm.trim(),
-      numeroRegulacaoSus: estado.numeroRegulacaoSus.trim() || null,
+      codigoSolicitacao: estado.codigoSolicitacao.trim() || null,
+      chaveConfirmacao: estado.chaveConfirmacao.trim() || null,
       justificativa: estado.justificativa.trim() || null,
       prioridade: estado.prioridade,
       observacoes: estado.observacoes.trim() || null,
@@ -263,15 +282,41 @@ export function SolicitacaoExameFormPage() {
       {/* 4) Regulação + observações */}
       <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
-          4. Regulação SUS e observações
+          4. Regulação e observações
         </h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Campo label="Número de regulação (SISREG/CNRAC)" htmlFor="reg">
+          <Campo
+            label="Código de Solicitação"
+            htmlFor="cod"
+            erro={
+              estado.codigoSolicitacao.trim() && !regulacaoValida(estado.codigoSolicitacao)
+                ? 'Use 0000 (emergência extra-SUS) ou um número a partir de 9999.'
+                : undefined
+            }
+          >
             <Input
-              id="reg"
-              value={estado.numeroRegulacaoSus}
-              onChange={(e) => up('numeroRegulacaoSus', e.target.value)}
-              placeholder="Opcional"
+              id="cod"
+              value={estado.codigoSolicitacao}
+              onChange={(e) => up('codigoSolicitacao', e.target.value)}
+              inputMode="numeric"
+              placeholder="Ex.: 12345 — ou 0000 (emergência)"
+            />
+          </Campo>
+          <Campo
+            label="Chave de Confirmação"
+            htmlFor="chave"
+            erro={
+              estado.chaveConfirmacao.trim() && !regulacaoValida(estado.chaveConfirmacao)
+                ? 'Use 0000 (emergência extra-SUS) ou um número a partir de 9999.'
+                : undefined
+            }
+          >
+            <Input
+              id="chave"
+              value={estado.chaveConfirmacao}
+              onChange={(e) => up('chaveConfirmacao', e.target.value)}
+              inputMode="numeric"
+              placeholder="Ex.: 67890 — ou 0000 (emergência)"
             />
           </Campo>
           <Campo label="Justificativa clínica" htmlFor="just">

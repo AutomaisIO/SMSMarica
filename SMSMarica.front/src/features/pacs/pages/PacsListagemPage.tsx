@@ -172,11 +172,20 @@ export function PacsListagemPage() {
     return m;
   }, [associacoesLookup.data]);
 
-  const exames: ExameRow[] = (busca.data ?? []).map((e) => ({
-    ...e,
-    laudo: mapaLaudos.get(e.studyInstanceUID) ?? null,
-    associacao: mapaAssociacoes.get(e.studyInstanceUID) ?? null,
-  }));
+  const exames: ExameRow[] = (busca.data ?? [])
+    .map((e) => ({
+      ...e,
+      laudo: mapaLaudos.get(e.studyInstanceUID) ?? null,
+      associacao: mapaAssociacoes.get(e.studyInstanceUID) ?? null,
+    }))
+    // Exames de solicitação URGENTE sempre no topo, independente da data (sort estável).
+    .map((e, i) => ({ e, i }))
+    .sort((a, b) => {
+      const ua = a.e.associacao?.prioridade === 'Urgente' ? 0 : 1;
+      const ub = b.e.associacao?.prioridade === 'Urgente' ? 0 : 1;
+      return ua - ub || a.i - b.i;
+    })
+    .map((x) => x.e);
 
   function aoDesassociar(estudo: ExameRow) {
     if (!estudo.associacao) return;
@@ -202,6 +211,14 @@ export function PacsListagemPage() {
         return (
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
+              {assoc?.prioridade === 'Urgente' ? (
+                <span
+                  title="Solicitação URGENTE"
+                  className="shrink-0 rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700"
+                >
+                  ⚠ Urgente
+                </span>
+              ) : null}
               <span className="truncate font-medium text-gray-900">{nome || 'Sem nome'}</span>
               {assoc ? (
                 <span
@@ -275,6 +292,8 @@ export function PacsListagemPage() {
       render: (e) => {
         const excluindoEste = excluindoUid === e.studyInstanceUID;
         const laudoFinalizado = e.laudo?.status === 'Finalizado';
+        // Só o laudo ASSINADO trava a (re)associação; finalizado-sem-assinatura é livre.
+        const laudoAssinado = e.laudo?.assinado === true;
         return (
           <div className="flex items-center justify-end gap-2">
             {podeAbrir ? (
@@ -289,7 +308,7 @@ export function PacsListagemPage() {
               </button>
             ) : null}
             <BotaoAnamnese accessionNumber={e.accessionNumber} somenteLeitura />
-            {!e.laudo && !e.associacao && podeAssociar ? (
+            {!e.associacao && !laudoAssinado && podeAssociar ? (
               <button
                 type="button"
                 onClick={() => setAssociarEstudo(e)}
@@ -300,12 +319,12 @@ export function PacsListagemPage() {
                 Associar
               </button>
             ) : null}
-            {e.associacao?.explicita && e.associacao.origem !== 'Automatica' && !laudoFinalizado && podeAssociar ? (
+            {e.associacao?.explicita && e.associacao.origem !== 'Automatica' && !laudoAssinado && podeAssociar ? (
               <button
                 type="button"
                 onClick={() => aoDesassociar(e)}
                 disabled={desassociar.isPending}
-                title="Desassociar do pedido (só antes de fechar o laudo)"
+                title="Desassociar do pedido (enquanto o laudo não estiver assinado)"
                 className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-60"
               >
                 <Unlink className="h-3.5 w-3.5" />

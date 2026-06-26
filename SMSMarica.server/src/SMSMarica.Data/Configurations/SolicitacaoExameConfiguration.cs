@@ -26,7 +26,8 @@ internal sealed class SolicitacaoExameConfiguration : IEntityTypeConfiguration<S
         builder.Property(s => s.SolicitanteCrm).HasColumnName("solicitante_crm").HasMaxLength(20).IsRequired();
         builder.Property(s => s.SolicitanteUfCrm).HasColumnName("solicitante_uf_crm").HasMaxLength(2).IsRequired();
 
-        builder.Property(s => s.NumeroRegulacaoSus).HasColumnName("numero_regulacao_sus").HasMaxLength(40);
+        builder.Property(s => s.CodigoSolicitacao).HasColumnName("codigo_solicitacao").HasMaxLength(50);
+        builder.Property(s => s.ChaveConfirmacao).HasColumnName("chave_confirmacao").HasMaxLength(100);
         builder.Property(s => s.Justificativa).HasColumnName("justificativa").HasMaxLength(1000);
 
         builder.Property(s => s.Status).HasColumnName("status").HasConversion<int>().IsRequired();

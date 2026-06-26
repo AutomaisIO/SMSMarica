@@ -42,6 +42,11 @@ public sealed class ExameAssociacaoService(
         if (solicitacao.PacienteId == Guid.Empty)
             throw new ConflitoException("associacao.sem_paciente", "A solicitação não tem paciente vinculado.");
 
+        // Laudo ASSINADO trava o exame: a associação (e o paciente do laudo) não muda mais.
+        if (await ExisteLaudoAssinadoAsync(uid, cancellationToken))
+            throw new ConflitoException("associacao.laudo_assinado",
+                "Há laudo assinado para este exame. A associação não pode ser alterada.");
+
         // Já associado? Idempotente para a mesma solicitação; conflito para outra.
         var existente = await db.ExameAssociacoes
             .FirstOrDefaultAsync(a => a.StudyInstanceUID == uid && a.ExcluidoEm == null, cancellationToken);
@@ -80,6 +85,10 @@ public sealed class ExameAssociacaoService(
         // Exame confirmado presente → promove a solicitação (no-op se já adiante).
         await solicitacoes.MarcarComoRealizadaAsync(solicitacao.Id, agora, cancellationToken);
 
+        // Mantém a cadeia consistente: o(s) laudo(s) deste estudo passam a apontar para o
+        // paciente da solicitação associada (laudo assinado já foi barrado acima).
+        await AtualizarPacienteDosLaudosAsync(uid, solicitacao.PacienteId, agora, cancellationToken);
+
         logger.LogInformation(
             "Exame {Uid} associado à solicitação {Accession} (origem {Origem}).", uid, accession, origem);
         return await MontarDtoAsync(assoc, cancellationToken);
@@ -92,12 +101,11 @@ public sealed class ExameAssociacaoService(
             .FirstOrDefaultAsync(a => a.StudyInstanceUID == uid && a.ExcluidoEm == null, cancellationToken)
             ?? throw new NaoEncontradoException("Associação de exame", uid);
 
-        // Regra: depois de fechar o laudo, não desassocia (só excluindo o laudo).
-        var laudoFinalizado = await db.Laudos.AsNoTracking()
-            .AnyAsync(l => l.StudyInstanceUID == uid && l.Status == StatusLaudo.Finalizado && !l.Excluido, cancellationToken);
-        if (laudoFinalizado)
-            throw new ConflitoException("associacao.laudo_finalizado",
-                "Há laudo finalizado para este exame. Exclua o laudo antes de desassociar.");
+        // Regra: só o laudo ASSINADO trava. Laudo finalizado-mas-ainda-não-assinado pode ser
+        // desassociado (e reassociado) — depois de assinado não há mais "jeito".
+        if (await ExisteLaudoAssinadoAsync(uid, cancellationToken))
+            throw new ConflitoException("associacao.laudo_assinado",
+                "Há laudo assinado para este exame. Não é possível desassociar.");
 
         var agora = DateTime.UtcNow;
         assoc.ExcluidoEm = agora;
@@ -173,16 +181,17 @@ public sealed class ExameAssociacaoService(
         var implicitas = await db.SolicitacoesExame.AsNoTracking()
             .Where(s => faltam.Contains(s.StudyInstanceUID) && s.ExcluidoEm == null
                         && s.Status != StatusSolicitacaoExame.Cancelada)
-            .Select(s => new { s.StudyInstanceUID, s.Id, s.AccessionNumber, s.PacienteId })
+            .Select(s => new { s.StudyInstanceUID, s.Id, s.AccessionNumber, s.PacienteId, s.Prioridade })
             .ToListAsync(cancellationToken);
 
-        // Accession das solicitações das associações explícitas.
+        // Accession + Prioridade das solicitações das associações explícitas.
         var solIds = explicitas.Select(a => a.SolicitacaoExameId).Distinct().ToArray();
-        var accessions = solIds.Length == 0
-            ? new Dictionary<Guid, string>()
+        var solDados = solIds.Length == 0
+            ? new Dictionary<Guid, (string Accession, PrioridadeSolicitacao Prioridade)>()
             : await db.SolicitacoesExame.AsNoTracking()
                 .Where(s => solIds.Contains(s.Id))
-                .ToDictionaryAsync(s => s.Id, s => s.AccessionNumber, cancellationToken);
+                .ToDictionaryAsync(
+                    s => s.Id, s => (Accession: s.AccessionNumber, s.Prioridade), cancellationToken);
 
         // Nomes de paciente em lote (1 chamada ao hub por id distinto).
         var pacienteIds = explicitas.Select(a => a.PacienteId).Concat(implicitas.Select(i => i.PacienteId));
@@ -192,29 +201,60 @@ public sealed class ExameAssociacaoService(
         var resultado = new List<ExameAssociacaoDto>(explicitas.Count + implicitas.Count);
         foreach (var a in explicitas)
         {
+            var dados = solDados.GetValueOrDefault(a.SolicitacaoExameId);
             resultado.Add(new ExameAssociacaoDto(
                 a.StudyInstanceUID, a.SolicitacaoExameId,
-                accessions.GetValueOrDefault(a.SolicitacaoExameId, string.Empty),
-                a.PacienteId, Nome(a.PacienteId), Explicita: true, a.Origem));
+                dados.Accession ?? string.Empty,
+                a.PacienteId, Nome(a.PacienteId), Explicita: true, a.Origem,
+                dados.Prioridade));
         }
         foreach (var i in implicitas)
         {
             resultado.Add(new ExameAssociacaoDto(
                 i.StudyInstanceUID, i.Id, i.AccessionNumber,
-                i.PacienteId, Nome(i.PacienteId), Explicita: false, Origem: null));
+                i.PacienteId, Nome(i.PacienteId), Explicita: false, Origem: null, i.Prioridade));
         }
         return resultado;
     }
 
+    /// <summary>Existe laudo (não-excluído) deste estudo com assinatura concluída?</summary>
+    private async Task<bool> ExisteLaudoAssinadoAsync(string uid, CancellationToken ct) =>
+        await db.LaudoAssinaturas.AsNoTracking().AnyAsync(
+            a => a.Status == StatusAssinatura.Concluida
+                 && db.Laudos.Any(l => l.Id == a.LaudoId && l.StudyInstanceUID == uid && !l.Excluido),
+            ct);
+
+    /// <summary>
+    /// Aponta todos os laudos (não-excluídos) do estudo para o paciente informado — toda a
+    /// cadeia de versões fica consistente com a solicitação associada. Só chamado quando NÃO há
+    /// laudo assinado (assinado é imutável). No-op quando já está correto.
+    /// </summary>
+    private async Task AtualizarPacienteDosLaudosAsync(string uid, Guid pacienteId, DateTime agora, CancellationToken ct)
+    {
+        var laudos = await db.Laudos
+            .Where(l => l.StudyInstanceUID == uid && !l.Excluido && l.PacienteId != pacienteId)
+            .ToListAsync(ct);
+        if (laudos.Count == 0) return;
+        foreach (var l in laudos)
+        {
+            l.PacienteId = pacienteId;
+            l.AtualizadoEm = agora;
+        }
+        await db.SaveChangesAsync(ct);
+        logger.LogInformation("{N} laudo(s) do estudo {Uid} revinculados ao paciente {Paciente}.",
+            laudos.Count, uid, pacienteId);
+    }
+
     private async Task<ExameAssociacaoDto> MontarDtoAsync(ExameAssociacao assoc, CancellationToken ct)
     {
-        var accession = await db.SolicitacoesExame.AsNoTracking()
+        var sol = await db.SolicitacoesExame.AsNoTracking()
             .Where(s => s.Id == assoc.SolicitacaoExameId)
-            .Select(s => s.AccessionNumber)
-            .FirstOrDefaultAsync(ct) ?? string.Empty;
+            .Select(s => new { s.AccessionNumber, s.Prioridade })
+            .FirstOrDefaultAsync(ct);
         var paciente = await pacienteResolver.ResolverAsync(assoc.PacienteId, ct);
         return new ExameAssociacaoDto(
-            assoc.StudyInstanceUID, assoc.SolicitacaoExameId, accession,
-            assoc.PacienteId, paciente?.Nome, Explicita: true, assoc.Origem);
+            assoc.StudyInstanceUID, assoc.SolicitacaoExameId, sol?.AccessionNumber ?? string.Empty,
+            assoc.PacienteId, paciente?.Nome, Explicita: true, assoc.Origem,
+            sol?.Prioridade ?? PrioridadeSolicitacao.Eletiva);
     }
 }

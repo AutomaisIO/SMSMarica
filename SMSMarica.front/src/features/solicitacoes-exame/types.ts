@@ -35,7 +35,8 @@ export type SolicitacaoExame = {
   solicitanteCrm: string;
   solicitanteUfCrm: string;
 
-  numeroRegulacaoSus: string | null;
+  codigoSolicitacao: string | null;
+  chaveConfirmacao: string | null;
   justificativa: string | null;
 
   status: StatusSolicitacao;
@@ -92,7 +93,8 @@ export type CadastrarSolicitacaoPayload = {
   solicitanteNome: string;
   solicitanteCrm: string;
   solicitanteUfCrm: string;
-  numeroRegulacaoSus: string | null;
+  codigoSolicitacao: string | null;
+  chaveConfirmacao: string | null;
   justificativa: string | null;
   prioridade: PrioridadeSolicitacao;
   observacoes: string | null;
@@ -106,7 +108,8 @@ export type AtualizarSolicitacaoPayload = {
   solicitanteNome: string;
   solicitanteCrm: string;
   solicitanteUfCrm: string;
-  numeroRegulacaoSus: string | null;
+  codigoSolicitacao: string | null;
+  chaveConfirmacao: string | null;
   justificativa: string | null;
   prioridade: PrioridadeSolicitacao;
   observacoes: string | null;

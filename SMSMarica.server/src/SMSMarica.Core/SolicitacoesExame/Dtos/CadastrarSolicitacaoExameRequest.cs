@@ -14,7 +14,8 @@ public sealed record CadastrarSolicitacaoExameRequest(
     string SolicitanteCrm,
     string SolicitanteUfCrm,
 
-    string? NumeroRegulacaoSus,
+    string? CodigoSolicitacao,
+    string? ChaveConfirmacao,
     string? Justificativa,
 
     PrioridadeSolicitacao Prioridade,

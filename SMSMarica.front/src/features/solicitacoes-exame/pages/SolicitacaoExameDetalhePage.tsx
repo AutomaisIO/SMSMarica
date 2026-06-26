@@ -246,13 +246,28 @@ export function SolicitacaoExameDetalhePage() {
         <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">Regulação</h2>
           <div className="text-sm text-gray-700">
-            {s.numeroRegulacaoSus ? (
+            {s.codigoSolicitacao ? (
               <>
-                Nº SUS: <span className="font-medium">{s.numeroRegulacaoSus}</span>
+                Código de Solicitação: <span className="font-medium">{s.codigoSolicitacao}</span>
                 <br />
               </>
             ) : null}
-            <span className="text-gray-600">Prioridade: {s.prioridade}</span>
+            {s.chaveConfirmacao ? (
+              <>
+                Chave de Confirmação: <span className="font-medium">{s.chaveConfirmacao}</span>
+                <br />
+              </>
+            ) : null}
+            <span className="text-gray-600">
+              Prioridade:{' '}
+              {s.prioridade === 'Urgente' ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
+                  ⚠ Urgente
+                </span>
+              ) : (
+                <span className="font-medium">{s.prioridade}</span>
+              )}
+            </span>
             {s.justificativa ? (
               <>
                 <br />

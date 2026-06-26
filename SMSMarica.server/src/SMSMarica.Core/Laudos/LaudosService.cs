@@ -206,10 +206,18 @@ public sealed class LaudosService(
             .Select(l => new { l.StudyInstanceUID, l.Versao, l.Id, l.Status })
             .ToListAsync(cancellationToken);
 
-        return [.. bruto
+        var maisRecentes = bruto
             .GroupBy(x => x.StudyInstanceUID)
             .Select(g => g.OrderByDescending(x => x.Versao).First())
-            .Select(x => new LaudoPorStudyDto(x.StudyInstanceUID, x.Id, x.Versao, x.Status))];
+            .ToList();
+
+        // Resolve quais (do conjunto exibido) já estão assinados — habilita o gate de
+        // associar/desassociar no front (livre até assinar; assinado trava).
+        var assinados = await ResolverAssinadosAsync([.. maisRecentes.Select(x => x.Id)], cancellationToken);
+
+        return [.. maisRecentes
+            .Select(x => new LaudoPorStudyDto(
+                x.StudyInstanceUID, x.Id, x.Versao, x.Status, assinados.Contains(x.Id)))];
     }
 
     public async Task<Guid> CadastrarAsync(

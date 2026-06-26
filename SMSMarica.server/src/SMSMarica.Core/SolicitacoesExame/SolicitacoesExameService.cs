@@ -74,8 +74,10 @@ public sealed class SolicitacoesExameService(
         }
 
         var limite = filtro.Limite is <= 0 or > 500 ? 50 : filtro.Limite;
+        // Urgentes sempre no topo, independente da data (Prioridade: Urgente=3 > Prioritaria=2 > Eletiva=1).
         var lista = await query
-            .OrderByDescending(s => s.CriadoEm)
+            .OrderByDescending(s => s.Prioridade)
+            .ThenByDescending(s => s.CriadoEm)
             .Take(limite)
             .ToListAsync(cancellationToken);
 
@@ -155,7 +157,8 @@ public sealed class SolicitacoesExameService(
             SolicitanteCrm = NormalizarDigitos(request.SolicitanteCrm),
             SolicitanteUfCrm = (request.SolicitanteUfCrm ?? string.Empty).Trim().ToUpperInvariant(),
 
-            NumeroRegulacaoSus = NormalizaOpcional(request.NumeroRegulacaoSus),
+            CodigoSolicitacao = NormalizaOpcional(request.CodigoSolicitacao),
+            ChaveConfirmacao = NormalizaOpcional(request.ChaveConfirmacao),
             Justificativa = NormalizaOpcional(request.Justificativa),
 
             Status = StatusSolicitacaoExame.Solicitada,
@@ -197,7 +200,8 @@ public sealed class SolicitacoesExameService(
         s.SolicitanteNome = request.SolicitanteNome.Trim();
         s.SolicitanteCrm = NormalizarDigitos(request.SolicitanteCrm);
         s.SolicitanteUfCrm = (request.SolicitanteUfCrm ?? string.Empty).Trim().ToUpperInvariant();
-        s.NumeroRegulacaoSus = NormalizaOpcional(request.NumeroRegulacaoSus);
+        s.CodigoSolicitacao = NormalizaOpcional(request.CodigoSolicitacao);
+        s.ChaveConfirmacao = NormalizaOpcional(request.ChaveConfirmacao);
         s.Justificativa = NormalizaOpcional(request.Justificativa);
         s.Prioridade = request.Prioridade;
         s.Observacoes = NormalizaOpcional(request.Observacoes);

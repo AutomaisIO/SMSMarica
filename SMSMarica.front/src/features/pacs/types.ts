@@ -44,6 +44,7 @@ export type AssociacaoExame = {
   pacienteNome: string | null;
   explicita: boolean;
   origem: 'Manual' | 'Automatica' | null;
+  prioridade: 'Eletiva' | 'Prioritaria' | 'Urgente';
 };
 
 export type TipoBuscaNome = 'inicio' | 'qualquer';
