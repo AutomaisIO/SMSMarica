@@ -43,7 +43,8 @@ public sealed class CarimboAssinaturaRenderer : ICarimboAssinaturaRenderer
 
         var nome = dados.Nome.Trim();
         var crm = $"CRM {dados.UfCrm}/{dados.Crm}".Trim();
-        var rqe = string.IsNullOrWhiteSpace(dados.Rqe) ? null : $"RQE {dados.Rqe!.Trim()}";
+        // RQE só quando informado; UF antes do número (mesmo padrão do CRM).
+        var rqe = string.IsNullOrWhiteSpace(dados.Rqe) ? null : $"RQE {dados.UfCrm}/{dados.Rqe!.Trim()}";
 
         var documento = Document.Create(container =>
         {

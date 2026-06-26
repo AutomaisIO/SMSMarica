@@ -130,7 +130,7 @@ public sealed class LaudoPdfRenderer(
 
     // ------------------------ Content ------------------------
 
-    private void RenderContent(IContainer container, Laudo laudo, ModoRodapeLaudo modo, IEnumerable<(string Rotulo, string Valor)> cabecalhoPaciente, IReadOnlyList<BlocoHtml> blocos, IReadOnlyDictionary<string, byte[]> imagens)
+    private void RenderContent(IContainer container, Laudo laudo, ModoRodapeLaudo modo, IEnumerable<IReadOnlyList<(string Rotulo, string Valor)>> cabecalhoPaciente, IReadOnlyList<BlocoHtml> blocos, IReadOnlyDictionary<string, byte[]> imagens)
     {
         container.PaddingTop(10).Layers(layers =>
         {
@@ -145,14 +145,27 @@ public sealed class LaudoPdfRenderer(
                 col.Item().Column(p =>
                 {
                     p.Spacing(2);
-                    foreach (var (rotulo, valor) in cabecalhoPaciente)
+                    // Dados do paciente — fonte um pouco menor que o corpo (10).
+                    foreach (var linha in cabecalhoPaciente)
                     {
-                        p.Item().Text(span =>
+                        p.Item().DefaultTextStyle(t => t.FontSize(9)).Text(span =>
                         {
-                            span.Span($"{rotulo}: ").SemiBold();
-                            span.Span(valor);
+                            var primeiro = true;
+                            foreach (var (rotulo, valor) in linha)
+                            {
+                                if (!primeiro) span.Span("      ");
+                                span.Span($"{rotulo}: ").SemiBold();
+                                span.Span(valor);
+                                primeiro = false;
+                            }
                         });
                     }
+                    // Study Instance UID — dado técnico: menor ainda e em cinza.
+                    p.Item().DefaultTextStyle(t => t.FontSize(7).FontColor(Colors.Grey.Darken1)).Text(span =>
+                    {
+                        span.Span("Study Instance UID: ").SemiBold();
+                        span.Span(laudo.StudyInstanceUID);
+                    });
                 });
 
                 col.Item().LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
@@ -400,30 +413,38 @@ public sealed class LaudoPdfRenderer(
         }
     }
 
-    private static IReadOnlyList<(string Rotulo, string Valor)> MontarCabecalhoPaciente(Laudo l, PacienteDto? p)
+    // Cada item é uma LINHA do cabeçalho (1+ campos rótulo/valor renderizados lado a lado).
+    private static IReadOnlyList<IReadOnlyList<(string Rotulo, string Valor)>> MontarCabecalhoPaciente(Laudo l, PacienteDto? p)
     {
-        var lista = new List<(string, string)>(6);
+        var linhas = new List<IReadOnlyList<(string, string)>>();
 
         if (p is not null)
         {
             var nome = string.IsNullOrWhiteSpace(p.NomeSocial)
                 ? p.NomeCompleto
                 : $"{p.NomeSocial} ({p.NomeCompleto})";
-            lista.Add(("Paciente", nome));
-            if (!string.IsNullOrWhiteSpace(p.Cpf)) lista.Add(("CPF", FormatarCpf(p.Cpf)));
-            if (!string.IsNullOrWhiteSpace(p.Cns)) lista.Add(("CNS", p.Cns!));
-            if (p.DataNascimento is { } nasc) lista.Add(("Nascimento", nasc.ToString("dd/MM/yyyy")));
-            lista.Add(("Sexo", DescreverSexo(p.Sexo)));
+            linhas.Add([("Paciente", nome)]);
+
+            // CPF + CNS na mesma linha (CNS só quando houver).
+            var docs = new List<(string, string)>();
+            if (!string.IsNullOrWhiteSpace(p.Cpf)) docs.Add(("CPF", FormatarCpf(p.Cpf)));
+            if (!string.IsNullOrWhiteSpace(p.Cns)) docs.Add(("CNS", p.Cns!));
+            if (docs.Count > 0) linhas.Add(docs);
+
+            // Nascimento + Sexo na mesma linha.
+            var bio = new List<(string, string)>();
+            if (p.DataNascimento is { } nasc) bio.Add(("Nascimento", nasc.ToString("dd/MM/yyyy")));
+            bio.Add(("Sexo", DescreverSexo(p.Sexo)));
+            linhas.Add(bio);
         }
         else
         {
             // Sem paciente resolvido — nunca imprime o UUID cru no documento.
-            lista.Add(("Paciente", l.PacienteId.HasValue ? "Não encontrado" : "Não vinculado"));
+            linhas.Add([("Paciente", l.PacienteId.HasValue ? "Não encontrado" : "Não vinculado")]);
         }
 
-        lista.Add(("Study Instance UID", l.StudyInstanceUID));
-
-        return lista;
+        // O Study Instance UID (dado técnico) é renderizado à parte, em fonte menor.
+        return linhas;
     }
 
     private static string DescreverSexo(Sexo sexo) => sexo switch
