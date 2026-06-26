@@ -330,16 +330,9 @@ export function Scanner({
       )}
 
       {paginas.length > 0 && (
-        <div className="flex gap-3">
-          {temCameraAoVivo && (
-            <GhostButton className="flex-1" onClick={() => setVista('camera')}>
-              <Camera className="h-4 w-4" /> Câmera
-            </GhostButton>
-          )}
-          <GhostButton className="flex-1" onClick={() => inputArquivo.current?.click()}>
-            <ImagePlus className="h-4 w-4" /> Tirar foto
-          </GhostButton>
-        </div>
+        <PrimaryButton onClick={abrirCaptura}>
+          <ImagePlus className="h-5 w-5" /> Adicionar Página
+        </PrimaryButton>
       )}
 
       <div className="space-y-3 pt-1">
