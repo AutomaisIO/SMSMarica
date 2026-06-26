@@ -6,6 +6,7 @@ using SMSMarica.Core.Laudos.Configuracao;
 using SMSMarica.Core.Laudos.Configuracao.Dtos;
 using SMSMarica.Core.Laudos.Pdf;
 using SMSMarica.Core.Midias;
+using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.Midias.Dtos;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
@@ -51,7 +52,8 @@ public class LaudoPdfCabecalhoTabelaTests
         midias.ObterConteudoAsync(susId, Arg.Any<CancellationToken>())
             .Returns(new MidiaConteudo(sus, "image/png", "sus.png"));
 
-        var renderer = new LaudoPdfRenderer(laudosSvc, cfg, midias, Options.Create(new LaudosPdfOptions()));
+        var pacientes = Substitute.For<IPacientesService>();
+        var renderer = new LaudoPdfRenderer(laudosSvc, cfg, midias, pacientes, Options.Create(new LaudosPdfOptions()));
         var pdf = await renderer.GerarAsync(laudo.Id);
 
         pdf.Should().NotBeNullOrEmpty();

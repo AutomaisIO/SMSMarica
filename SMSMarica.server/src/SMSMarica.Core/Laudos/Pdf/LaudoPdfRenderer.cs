@@ -6,6 +6,8 @@ using QuestPDF.Infrastructure;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Laudos.Configuracao;
 using SMSMarica.Core.Midias;
+using SMSMarica.Core.Pacientes;
+using SMSMarica.Core.Pacientes.Dtos;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
 using DomElement = AngleSharp.Dom.IElement;
@@ -19,11 +21,13 @@ public sealed class LaudoPdfRenderer(
     ILaudosService laudos,
     ILaudoConfiguracaoService configuracao,
     IMidiasService midias,
+    IPacientesService pacientes,
     IOptions<LaudosPdfOptions> options) : ILaudoPdfRenderer
 {
     private readonly ILaudosService _laudos = laudos;
     private readonly ILaudoConfiguracaoService _configuracao = configuracao;
     private readonly IMidiasService _midias = midias;
+    private readonly IPacientesService _pacientes = pacientes;
     private readonly LaudosPdfOptions _opt = options.Value;
 
     public async Task<byte[]> GerarAsync(
@@ -49,7 +53,8 @@ public sealed class LaudoPdfRenderer(
         var imagens = await ResolverImagensAsync(
             blocosCabecalho.Concat(blocosRodape), cancellationToken);
 
-        var dadosCabecalho = MontarCabecalhoPaciente(laudo);
+        var paciente = await ResolverPacienteAsync(laudo.PacienteId, cancellationToken);
+        var dadosCabecalho = MontarCabecalhoPaciente(laudo, paciente);
         var blocos = ParseHtmlParaBlocos(laudo.ConteudoHtml);
         var emitidoEm = FormatarEmissao(laudo.FinalizadoEm ?? laudo.CriadoEm);
 
@@ -381,18 +386,53 @@ public sealed class LaudoPdfRenderer(
 
     // ------------------------ Helpers de dados ------------------------
 
-    private static IReadOnlyList<(string Rotulo, string Valor)> MontarCabecalhoPaciente(Laudo l)
+    /// <summary>Resolve os dados do paciente no hub FHIR; null se sem vínculo ou não encontrado.</summary>
+    private async Task<PacienteDto?> ResolverPacienteAsync(Guid? pacienteId, CancellationToken ct)
+    {
+        if (pacienteId is null) return null;
+        try
+        {
+            return await _pacientes.ObterPorIdAsync(pacienteId.Value, ct);
+        }
+        catch (NaoEncontradoException)
+        {
+            return null;
+        }
+    }
+
+    private static IReadOnlyList<(string Rotulo, string Valor)> MontarCabecalhoPaciente(Laudo l, PacienteDto? p)
     {
         var lista = new List<(string, string)>(6);
 
-        // TODO: paciente vive no hub FHIR — resolver nome/CPF/CNS/nascimento via
-        // API antes de renderizar (hoje o Laudo só carrega o PacienteId).
-        lista.Add(("Paciente", l.PacienteId.HasValue ? l.PacienteId.Value.ToString() : "Não vinculado"));
+        if (p is not null)
+        {
+            var nome = string.IsNullOrWhiteSpace(p.NomeSocial)
+                ? p.NomeCompleto
+                : $"{p.NomeSocial} ({p.NomeCompleto})";
+            lista.Add(("Paciente", nome));
+            if (!string.IsNullOrWhiteSpace(p.Cpf)) lista.Add(("CPF", FormatarCpf(p.Cpf)));
+            if (!string.IsNullOrWhiteSpace(p.Cns)) lista.Add(("CNS", p.Cns!));
+            if (p.DataNascimento is { } nasc) lista.Add(("Nascimento", nasc.ToString("dd/MM/yyyy")));
+            lista.Add(("Sexo", DescreverSexo(p.Sexo)));
+        }
+        else
+        {
+            // Sem paciente resolvido — nunca imprime o UUID cru no documento.
+            lista.Add(("Paciente", l.PacienteId.HasValue ? "Não encontrado" : "Não vinculado"));
+        }
 
         lista.Add(("Study Instance UID", l.StudyInstanceUID));
 
         return lista;
     }
+
+    private static string DescreverSexo(Sexo sexo) => sexo switch
+    {
+        Sexo.Masculino => "Masculino",
+        Sexo.Feminino => "Feminino",
+        Sexo.Outro => "Outro",
+        _ => "Não informado",
+    };
 
     private string FormatarEmissao(DateTime utc)
     {

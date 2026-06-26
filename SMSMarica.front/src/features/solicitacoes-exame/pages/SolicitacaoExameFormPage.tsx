@@ -173,7 +173,7 @@ export function SolicitacaoExameFormPage() {
         </div>
         <Button onClick={salvar} disabled={salvando}>
           {salvando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-          {ehNovo ? 'Criar e gerar worklist' : 'Salvar'}
+          {ehNovo ? 'Criar Solicitação' : 'Salvar'}
         </Button>
       </div>
 
