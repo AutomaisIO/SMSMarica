@@ -17,6 +17,11 @@ internal sealed class LaudoConfiguracaoConfiguration : IEntityTypeConfiguration<
         builder.Property(c => c.RodapeJson).HasColumnName("rodape_json").HasColumnType("jsonb").IsRequired();
         builder.Property(c => c.RodapeHtml).HasColumnName("rodape_html").HasColumnType("text").IsRequired();
 
+        builder.Property(c => c.PermitirLaudarSemAssociacao)
+            .HasColumnName("permitir_laudar_sem_associacao").HasDefaultValue(false).IsRequired();
+        builder.Property(c => c.PermitirLaudarSemAnamnese)
+            .HasColumnName("permitir_laudar_sem_anamnese").HasDefaultValue(false).IsRequired();
+
         builder.Property(c => c.AtualizadoPorUsuarioId).HasColumnName("atualizado_por_usuario_id");
         builder.Property(c => c.AtualizadoEm).HasColumnName("atualizado_em");
 

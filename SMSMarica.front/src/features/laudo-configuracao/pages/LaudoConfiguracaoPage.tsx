@@ -7,7 +7,7 @@ import { ConfiguracaoImagem } from '@/features/laudo-configuracao/components/Con
 import { cn } from '@/shared/lib/cn';
 import { useLaudoConfiguracao, useSalvarLaudoConfiguracao } from '../queries';
 
-type Aba = 'cabecalho' | 'rodape';
+type Aba = 'cabecalho' | 'rodape' | 'regras';
 
 export function LaudoConfiguracaoPage() {
   const { data, isLoading } = useLaudoConfiguracao();
@@ -19,6 +19,8 @@ export function LaudoConfiguracaoPage() {
   const [cabecalhoJson, setCabecalhoJson] = useState('{}');
   const [rodapeHtml, setRodapeHtml] = useState('');
   const [rodapeJson, setRodapeJson] = useState('{}');
+  const [permitirSemAssociacao, setPermitirSemAssociacao] = useState(false);
+  const [permitirSemAnamnese, setPermitirSemAnamnese] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [salvo, setSalvo] = useState(false);
 
@@ -28,6 +30,8 @@ export function LaudoConfiguracaoPage() {
       setCabecalhoJson(data.cabecalhoJson);
       setRodapeHtml(data.rodapeHtml);
       setRodapeJson(data.rodapeJson);
+      setPermitirSemAssociacao(data.permitirLaudarSemAssociacao);
+      setPermitirSemAnamnese(data.permitirLaudarSemAnamnese);
     }
   }, [data]);
 
@@ -35,7 +39,14 @@ export function LaudoConfiguracaoPage() {
     setErro(null);
     setSalvo(false);
     try {
-      await salvar.mutateAsync({ cabecalhoHtml, cabecalhoJson, rodapeHtml, rodapeJson });
+      await salvar.mutateAsync({
+        cabecalhoHtml,
+        cabecalhoJson,
+        rodapeHtml,
+        rodapeJson,
+        permitirLaudarSemAssociacao: permitirSemAssociacao,
+        permitirLaudarSemAnamnese: permitirSemAnamnese,
+      });
       setSalvo(true);
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
@@ -81,6 +92,7 @@ export function LaudoConfiguracaoPage() {
           [
             ['cabecalho', 'Cabeçalho'],
             ['rodape', 'Rodapé'],
+            ['regras', 'Regras para laudar'],
           ] as [Aba, string][]
         ).map(([id, rotulo]) => (
           <button
@@ -127,6 +139,48 @@ export function LaudoConfiguracaoPage() {
         <p className="mt-2 text-xs text-gray-500">
           O rodapé entra abaixo do bloco de assinatura do médico, em todas as páginas.
         </p>
+      </div>
+
+      <div className={aba === 'regras' ? 'block' : 'hidden'}>
+        <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
+          <p className="text-sm text-gray-600">
+            Controla o que é exigido para <strong>iniciar</strong> um laudo. Por segurança, o padrão
+            exige associação e anamnese.
+          </p>
+
+          <label className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 rounded border-gray-300"
+              checked={permitirSemAssociacao}
+              disabled={!podeEditar}
+              onChange={(e) => setPermitirSemAssociacao(e.target.checked)}
+            />
+            <span className="text-sm">
+              <span className="font-medium text-gray-900">Permitir iniciar laudo sem associação</span>
+              <span className="block text-gray-500">
+                Por padrão (desligado), o exame precisa estar associado a um pedido para laudar.
+                <strong> Assinar</strong> sempre exige associação — isso não muda.
+              </span>
+            </span>
+          </label>
+
+          <label className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 rounded border-gray-300"
+              checked={permitirSemAnamnese}
+              disabled={!podeEditar}
+              onChange={(e) => setPermitirSemAnamnese(e.target.checked)}
+            />
+            <span className="text-sm">
+              <span className="font-medium text-gray-900">Permitir iniciar laudo sem anamnese</span>
+              <span className="block text-gray-500">
+                Por padrão (desligado), a anamnese da solicitação precisa estar preenchida para laudar.
+              </span>
+            </span>
+          </label>
+        </div>
       </div>
     </div>
   );

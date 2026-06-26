@@ -46,7 +46,7 @@ public class LaudoPdfRodapeTests
 
         var cfg = Substitute.For<ILaudoConfiguracaoService>();
         cfg.ObterAsync(Arg.Any<CancellationToken>())
-            .Returns(new LaudoConfiguracaoDto(string.Empty, "{}", string.Empty, "{}", DateTime.UtcNow));
+            .Returns(new LaudoConfiguracaoDto(string.Empty, "{}", string.Empty, "{}", false, false, DateTime.UtcNow));
 
         var midias = Substitute.For<IMidiasService>();
         var pacientes = Substitute.For<IPacientesService>();

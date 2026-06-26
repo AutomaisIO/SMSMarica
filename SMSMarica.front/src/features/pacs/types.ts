@@ -45,6 +45,7 @@ export type AssociacaoExame = {
   explicita: boolean;
   origem: 'Manual' | 'Automatica' | null;
   prioridade: 'Eletiva' | 'Prioritaria' | 'Urgente';
+  temAnamnese: boolean;
 };
 
 export type TipoBuscaNome = 'inicio' | 'qualquer';

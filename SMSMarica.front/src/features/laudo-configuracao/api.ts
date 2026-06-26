@@ -5,6 +5,8 @@ export type LaudoConfiguracao = {
   cabecalhoJson: string;
   rodapeHtml: string;
   rodapeJson: string;
+  permitirLaudarSemAssociacao: boolean;
+  permitirLaudarSemAnamnese: boolean;
   atualizadoEm: string | null;
 };
 
@@ -13,6 +15,8 @@ export type SalvarLaudoConfiguracaoPayload = {
   cabecalhoJson: string;
   rodapeHtml: string;
   rodapeJson: string;
+  permitirLaudarSemAssociacao: boolean;
+  permitirLaudarSemAnamnese: boolean;
 };
 
 export async function obterLaudoConfiguracao(): Promise<LaudoConfiguracao> {

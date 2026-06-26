@@ -198,6 +198,16 @@ public sealed class ExameAssociacaoService(
         var nomes = await pacienteResolver.ResolverManyAsync(pacienteIds, cancellationToken);
         string? Nome(Guid id) => nomes.TryGetValue(id, out var r) ? r.Nome : null;
 
+        // Solicitações que já têm anamnese preenchida (alimenta o gate de iniciar laudo no front).
+        var todasSolIds = solIds.Concat(implicitas.Select(i => i.Id)).Distinct().ToArray();
+        var comAnamnese = todasSolIds.Length == 0
+            ? []
+            : (await db.Anamneses.AsNoTracking()
+                .Where(an => todasSolIds.Contains(an.SolicitacaoExameId))
+                .Select(an => an.SolicitacaoExameId)
+                .Distinct()
+                .ToListAsync(cancellationToken)).ToHashSet();
+
         var resultado = new List<ExameAssociacaoDto>(explicitas.Count + implicitas.Count);
         foreach (var a in explicitas)
         {
@@ -206,13 +216,14 @@ public sealed class ExameAssociacaoService(
                 a.StudyInstanceUID, a.SolicitacaoExameId,
                 dados.Accession ?? string.Empty,
                 a.PacienteId, Nome(a.PacienteId), Explicita: true, a.Origem,
-                dados.Prioridade));
+                dados.Prioridade, comAnamnese.Contains(a.SolicitacaoExameId)));
         }
         foreach (var i in implicitas)
         {
             resultado.Add(new ExameAssociacaoDto(
                 i.StudyInstanceUID, i.Id, i.AccessionNumber,
-                i.PacienteId, Nome(i.PacienteId), Explicita: false, Origem: null, i.Prioridade));
+                i.PacienteId, Nome(i.PacienteId), Explicita: false, Origem: null, i.Prioridade,
+                comAnamnese.Contains(i.Id)));
         }
         return resultado;
     }
@@ -252,9 +263,11 @@ public sealed class ExameAssociacaoService(
             .Select(s => new { s.AccessionNumber, s.Prioridade })
             .FirstOrDefaultAsync(ct);
         var paciente = await pacienteResolver.ResolverAsync(assoc.PacienteId, ct);
+        var temAnamnese = await db.Anamneses.AsNoTracking()
+            .AnyAsync(an => an.SolicitacaoExameId == assoc.SolicitacaoExameId, ct);
         return new ExameAssociacaoDto(
             assoc.StudyInstanceUID, assoc.SolicitacaoExameId, sol?.AccessionNumber ?? string.Empty,
             assoc.PacienteId, paciente?.Nome, Explicita: true, assoc.Origem,
-            sol?.Prioridade ?? PrioridadeSolicitacao.Eletiva);
+            sol?.Prioridade ?? PrioridadeSolicitacao.Eletiva, temAnamnese);
     }
 }

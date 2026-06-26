@@ -26,6 +26,21 @@ public class LaudoConfiguracao
     /// <summary>HTML sanitizado do rodapé (renderizado no fim de cada página do PDF).</summary>
     public string RodapeHtml { get; set; } = string.Empty;
 
+    // ---- Regras para INICIAR o laudo (assinar segue regra própria, não-configurável) ----
+
+    /// <summary>
+    /// Permite iniciar um laudo SEM o exame estar associado a um pedido. Padrão FALSE
+    /// (exige associação). <b>Não afeta a assinatura</b>: assinar sem associação é sempre
+    /// proibido (sem paciente confiável).
+    /// </summary>
+    public bool PermitirLaudarSemAssociacao { get; set; }
+
+    /// <summary>
+    /// Permite iniciar um laudo SEM a anamnese da solicitação estar preenchida. Padrão
+    /// FALSE (exige anamnese feita).
+    /// </summary>
+    public bool PermitirLaudarSemAnamnese { get; set; }
+
     public Guid? AtualizadoPorUsuarioId { get; set; }
     public Usuario? AtualizadoPorUsuario { get; set; }
 

@@ -9,6 +9,7 @@ import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { useLaudosPorStudyUIDs } from '@/features/laudos/api/queries';
+import { useLaudoConfiguracao } from '@/features/laudo-configuracao/queries';
 import { abrirPdfLaudo } from '@/features/laudos/lib/pdf';
 import { BotaoAnamnese } from '@/features/anamnese/components/BotaoAnamnese';
 import type { LaudoPorStudy } from '@/features/laudos/types';
@@ -70,6 +71,11 @@ export function PacsListagemPage() {
   const podeCriarLaudo = usePermissao('Laudos', 'Inclusao');
   const podeEditarLaudo = usePermissao('Laudos', 'Edicao');
   const podeAssociar = usePermissao('Pacs', 'Edicao');
+
+  // Regras de iniciar laudo (config global). Padrão seguro: exige associação e anamnese.
+  const cfgLaudo = useLaudoConfiguracao().data;
+  const permitirLaudarSemAssociacao = cfgLaudo?.permitirLaudarSemAssociacao ?? false;
+  const permitirLaudarSemAnamnese = cfgLaudo?.permitirLaudarSemAnamnese ?? false;
 
   const busca = useBuscarEstudos();
   const exclusao = useExcluirEstudo();
@@ -342,16 +348,31 @@ export function PacsListagemPage() {
                 {laudoFinalizado ? 'Laudo' : 'Rascunho'}
               </button>
             ) : null}
-            {!e.laudo && podeCriarLaudo && e.associacao ? (
-              <button
-                type="button"
-                onClick={() => criarLaudoPara(e)}
-                title="Criar laudo para este exame"
-                className="inline-flex items-center gap-1 rounded-md border border-green-300 bg-green-50 px-2.5 py-1 text-xs font-medium text-green-800 hover:bg-green-100"
-              >
-                <FilePlus className="h-3.5 w-3.5" />
-                Laudar
-              </button>
+            {!e.laudo && podeCriarLaudo && (e.associacao || permitirLaudarSemAssociacao) ? (
+              (() => {
+                const faltaAnamnese =
+                  !!e.associacao && !e.associacao.temAnamnese && !permitirLaudarSemAnamnese;
+                return (
+                  <span
+                    title={
+                      faltaAnamnese
+                        ? 'Preencha a anamnese da solicitação antes de iniciar o laudo'
+                        : 'Criar laudo para este exame'
+                    }
+                    className="inline-flex"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => criarLaudoPara(e)}
+                      disabled={faltaAnamnese}
+                      className="inline-flex items-center gap-1 rounded-md border border-green-300 bg-green-50 px-2.5 py-1 text-xs font-medium text-green-800 hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <FilePlus className="h-3.5 w-3.5" />
+                      Laudar
+                    </button>
+                  </span>
+                );
+              })()
             ) : null}
             {laudoFinalizado ? (
               <button

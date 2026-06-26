@@ -27,6 +27,7 @@ public sealed class LaudosService(
     IPacienteResolver pacienteResolver,
     IAssinaturaMedicoService assinaturaMedico,
     IExameAssociacaoService associacao,
+    Configuracao.ILaudoConfiguracaoService configuracao,
     IUsuarioAtualAccessor usuarioAtual,
     ILogger<LaudosService> logger) : ILaudosService
 {
@@ -38,6 +39,7 @@ public sealed class LaudosService(
     private readonly IPacienteResolver _pacienteResolver = pacienteResolver;
     private readonly IAssinaturaMedicoService _assinaturaMedico = assinaturaMedico;
     private readonly IExameAssociacaoService _associacao = associacao;
+    private readonly Configuracao.ILaudoConfiguracaoService _configuracao = configuracao;
     private readonly IUsuarioAtualAccessor _usuarioAtual = usuarioAtual;
     private readonly ILogger<LaudosService> _logger = logger;
 
@@ -146,11 +148,20 @@ public sealed class LaudosService(
             ehAutor = medicoLogado is not null && medicoLogado.Id == l.MedicoId;
         }
 
+        // Assinar SEMPRE exige associação (paciente confiável) — regra dura, não-configurável.
+        var temAssociacao = await _associacao.ResolverVinculoAsync(l.StudyInstanceUID, ct) is not null;
+
         var finalizado = l.Status == StatusLaudo.Finalizado;
-        var podeAssinar = ehAutor && finalizado && !assinado && temRubrica;
-        var motivo = ehAutor && finalizado && !assinado && !temRubrica
-            ? "Rubrica não cadastrada — solicite ao administrador o cadastro da sua assinatura (imagem)."
-            : null;
+        var podeAssinar = ehAutor && finalizado && !assinado && temRubrica && temAssociacao;
+
+        string? motivo = null;
+        if (ehAutor && finalizado && !assinado)
+        {
+            if (!temAssociacao)
+                motivo = "Associe o exame a um pedido antes de assinar.";
+            else if (!temRubrica)
+                motivo = "Rubrica não cadastrada — solicite ao administrador o cadastro da sua assinatura (imagem).";
+        }
 
         return (temRubrica, podeAssinar, motivo);
     }
@@ -227,14 +238,27 @@ public sealed class LaudosService(
     {
         var uid = NormalizarUid(request.StudyInstanceUID);
         var medico = await ResolverMedicoAsync(usuarioId, cancellationToken);
+        var config = await _configuracao.ObterAsync(cancellationToken);
 
-        // Gate (regra de negócio): só lauda exame ASSOCIADO a um pedido — e, por
-        // consequência, a um paciente. O vínculo é a associação explícita (tabela)
-        // OU o casamento implícito por StudyInstanceUID (exame de worklist). Sem
-        // vínculo não há paciente confiável (o patientId DICOM é texto livre).
-        var vinculo = await _associacao.ResolverVinculoAsync(uid, cancellationToken)
-            ?? throw new ValidacaoException("laudo.sem_associacao",
+        // Vínculo = associação explícita (tabela) OU casamento implícito por StudyInstanceUID
+        // (exame de worklist). Por padrão é OBRIGATÓRIO (sem ele não há paciente confiável — o
+        // patientId DICOM é texto livre). A configuração pode liberar iniciar sem associação;
+        // ASSINAR, porém, sempre exige (ver LaudoAssinaturaService).
+        var vinculo = await _associacao.ResolverVinculoAsync(uid, cancellationToken);
+        if (vinculo is null && !config.PermitirLaudarSemAssociacao)
+            throw new ValidacaoException("laudo.sem_associacao",
                 "Associe o exame a um pedido antes de iniciar o laudo.");
+
+        // Anamnese: por padrão exige a anamnese da solicitação preenchida (só faz sentido
+        // quando há vínculo/solicitação). A configuração pode liberar iniciar sem anamnese.
+        if (vinculo is not null && !config.PermitirLaudarSemAnamnese)
+        {
+            var temAnamnese = await _db.Anamneses.AsNoTracking()
+                .AnyAsync(a => a.SolicitacaoExameId == vinculo.SolicitacaoExameId, cancellationToken);
+            if (!temAnamnese)
+                throw new ValidacaoException("laudo.sem_anamnese",
+                    "Preencha a anamnese da solicitação antes de iniciar o laudo.");
+        }
 
         if (request.LaudoTemplateId.HasValue)
         {
@@ -254,7 +278,7 @@ public sealed class LaudosService(
             Id = Guid.CreateVersion7(),
             StudyInstanceUID = uid,
             Versao = proximaVersao,
-            PacienteId = vinculo.PacienteId,
+            PacienteId = vinculo?.PacienteId,
             MedicoId = medico.Id,
             LaudoTemplateId = request.LaudoTemplateId,
             Titulo = NormalizarTitulo(request.Titulo),

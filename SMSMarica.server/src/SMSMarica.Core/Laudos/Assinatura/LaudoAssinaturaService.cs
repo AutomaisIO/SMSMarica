@@ -23,6 +23,7 @@ public sealed class LaudoAssinaturaService(
     IPractitionerFhirClient practitionerFhir,
     Medicos.Assinatura.IAssinaturaMedicoService assinaturaMedico,
     Medicos.IMedicosService medicos,
+    Associacoes.IExameAssociacaoService associacao,
     ICarimboAssinaturaRenderer carimboRenderer,
     ILogger<LaudoAssinaturaService> logger,
     IOptions<AssinaturaOptions> options) : ILaudoAssinaturaService
@@ -44,6 +45,13 @@ public sealed class LaudoAssinaturaService(
         var medico = await ResolverMedicoAsync(usuarioId, cancellationToken);
         if (laudo.MedicoId != medico.Id)
             throw new ConflitoException("assinatura.nao_e_autor", "Apenas o médico autor pode assinar o laudo.");
+
+        // Regra DURA (não-configurável): assinar exige o exame associado a um pedido — sem
+        // isso não há paciente confiável. Isso impede laudo assinado órfão, mesmo que a
+        // configuração permita INICIAR o laudo sem associação.
+        if (await associacao.ResolverVinculoAsync(laudo.StudyInstanceUID, cancellationToken) is null)
+            throw new ConflitoException("assinatura.sem_associacao",
+                "Associe o exame a um pedido antes de assinar o laudo.");
 
         var existentes = await db.LaudoAssinaturas
             .Where(a => a.LaudoId == laudoId)

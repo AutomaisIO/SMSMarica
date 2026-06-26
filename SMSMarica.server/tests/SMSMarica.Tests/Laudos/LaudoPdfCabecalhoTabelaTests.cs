@@ -44,7 +44,7 @@ public class LaudoPdfCabecalhoTabelaTests
 
         var cfg = Substitute.For<ILaudoConfiguracaoService>();
         cfg.ObterAsync(Arg.Any<CancellationToken>())
-            .Returns(new LaudoConfiguracaoDto(html, "{}", string.Empty, "{}", DateTime.UtcNow));
+            .Returns(new LaudoConfiguracaoDto(html, "{}", string.Empty, "{}", false, false, DateTime.UtcNow));
 
         var midias = Substitute.For<IMidiasService>();
         midias.ObterConteudoAsync(brasaoId, Arg.Any<CancellationToken>())

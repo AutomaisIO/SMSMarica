@@ -33,6 +33,8 @@ public sealed class LaudoConfiguracaoService(SmsMaricaDbContext db, IHtmlSanitiz
         c.CabecalhoJson = string.IsNullOrWhiteSpace(request.CabecalhoJson) ? "{}" : request.CabecalhoJson;
         c.RodapeHtml = _sanitizer.Sanitize(request.RodapeHtml ?? string.Empty);
         c.RodapeJson = string.IsNullOrWhiteSpace(request.RodapeJson) ? "{}" : request.RodapeJson;
+        c.PermitirLaudarSemAssociacao = request.PermitirLaudarSemAssociacao;
+        c.PermitirLaudarSemAnamnese = request.PermitirLaudarSemAnamnese;
         c.AtualizadoPorUsuarioId = usuarioId;
         c.AtualizadoEm = DateTime.UtcNow;
 
@@ -42,8 +44,11 @@ public sealed class LaudoConfiguracaoService(SmsMaricaDbContext db, IHtmlSanitiz
         return ParaDto(c);
     }
 
-    private static LaudoConfiguracaoDto Vazia() => new(string.Empty, "{}", string.Empty, "{}", null);
+    // Sem registro = regras no padrão seguro (exige associação e anamnese).
+    private static LaudoConfiguracaoDto Vazia() =>
+        new(string.Empty, "{}", string.Empty, "{}", false, false, null);
 
     private static LaudoConfiguracaoDto ParaDto(LaudoConfiguracao c) =>
-        new(c.CabecalhoHtml, c.CabecalhoJson, c.RodapeHtml, c.RodapeJson, c.AtualizadoEm);
+        new(c.CabecalhoHtml, c.CabecalhoJson, c.RodapeHtml, c.RodapeJson,
+            c.PermitirLaudarSemAssociacao, c.PermitirLaudarSemAnamnese, c.AtualizadoEm);
 }
