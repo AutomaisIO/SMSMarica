@@ -15,6 +15,7 @@ import {
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
+import { CodigoCopiavel } from '@/shared/ui/CodigoCopiavel';
 import { Modal } from '@/shared/ui/Modal';
 import { Input } from '@/shared/ui/Input';
 import { Campo } from '@/shared/ui/Campo';
@@ -125,7 +126,7 @@ export function SolicitacaoExameDetalhePage() {
           </button>
           <h1 className="mt-1 flex items-center gap-3 text-2xl font-semibold text-gray-900">
             <ClipboardCheck className="h-6 w-6 text-primary-600" />
-            <span className="font-mono">{s.accessionNumber}</span>
+            <CodigoCopiavel codigo={s.accessionNumber} />
             <StatusBadgeSolicitacao status={s.status} />
           </h1>
         </div>
