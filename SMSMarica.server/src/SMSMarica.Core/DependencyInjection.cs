@@ -277,6 +277,9 @@ public static class DependencyInjection
             client.Timeout = TimeSpan.FromSeconds(120);
         });
 
+        // Validação de telefone por OTP (WhatsApp) — registro global do número validado.
+        services.AddScoped<Telefones.ITelefoneValidacaoService, Telefones.TelefoneValidacaoService>();
+
         // WhatsApp (Meta Cloud API) — cliente de envio + webhook de recebimento (FT6).
         services.AddScoped<Notificacoes.WhatsApp.IWhatsAppWebhookService, Notificacoes.WhatsApp.WhatsAppWebhookService>();
         services.AddScoped<Notificacoes.WhatsApp.IWhatsAppNotificador, Notificacoes.WhatsApp.WhatsAppNotificador>();

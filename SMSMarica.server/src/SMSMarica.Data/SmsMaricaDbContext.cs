@@ -46,6 +46,9 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<AssinaturaMedico> AssinaturasMedico => Set<AssinaturaMedico>();
     public DbSet<ExameAssociacao> ExameAssociacoes => Set<ExameAssociacao>();
 
+    // Registro global de números de telefone validados por OTP (painel ou PWA cidadão).
+    public DbSet<NumeroValidado> NumerosValidados => Set<NumeroValidado>();
+
     // Anexos de exame (ponte QR → PWA "Arquivos Saúde Maricá")
     public DbSet<DocumentoExame> DocumentosExame => Set<DocumentoExame>();
     public DbSet<AnexoUploadToken> AnexoUploadTokens => Set<AnexoUploadToken>();
