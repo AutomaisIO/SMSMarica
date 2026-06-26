@@ -14,7 +14,7 @@ using SMSMarica.Data;
 namespace SMSMarica.Data.Migrations
 {
     [DbContext(typeof(SmsMaricaDbContext))]
-    [Migration("20260626133004_AddNumeroValidado")]
+    [Migration("20260626144505_AddNumeroValidado")]
     partial class AddNumeroValidado
     {
         /// <inheritdoc />
@@ -1897,73 +1897,6 @@ namespace SMSMarica.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("integracao_credencial", "smsmarica");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Integracoes.ProxyMotorConfig", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<bool>("Ativo")
-                        .HasColumnType("boolean")
-                        .HasColumnName("ativo");
-
-                    b.Property<DateTime?>("AtualizadoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("atualizado_em");
-
-                    b.Property<Guid?>("AtualizadoPor")
-                        .HasColumnType("uuid")
-                        .HasColumnName("atualizado_por");
-
-                    b.Property<DateTime>("CriadoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("criado_em");
-
-                    b.Property<Guid?>("CriadoPor")
-                        .HasColumnType("uuid")
-                        .HasColumnName("criado_por");
-
-                    b.Property<string>("Motor")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("motor");
-
-                    b.Property<int>("Ordem")
-                        .HasColumnType("integer")
-                        .HasColumnName("ordem");
-
-                    b.Property<string>("ParametrosJson")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("parametros_json");
-
-                    b.Property<string>("Servico")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("servico");
-
-                    b.Property<int>("Tentativas")
-                        .HasColumnType("integer")
-                        .HasColumnName("tentativas");
-
-                    b.Property<int>("TimeoutSegundos")
-                        .HasColumnType("integer")
-                        .HasColumnName("timeout_segundos");
-
-                    b.Property<string>("TokenCifrado")
-                        .HasColumnType("text")
-                        .HasColumnName("token_cifrado");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Servico", "Motor")
-                        .IsUnique();
-
-                    b.ToTable("proxy_motor", "smsmarica");
                 });
 
             modelBuilder.Entity("SMSMarica.Data.Entities.Laudo", b =>

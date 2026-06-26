@@ -29,15 +29,10 @@ public sealed class LaudoPdfRenderer(
     public async Task<byte[]> GerarAsync(
         Guid laudoId,
         ModoRodapeLaudo modo = ModoRodapeLaudo.FinalizadoNaoAssinado,
-        CancellationToken cancellationToken = default,
-        byte[]? carimboAssinaturaSimulado = null)
+        CancellationToken cancellationToken = default)
     {
         var laudo = await _laudos.CarregarParaPdfAsync(laudoId, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Laudo), laudoId);
-
-        // Simulação de PDF assinado (revisão de layout): usa a base limpa de assinatura.
-        if (carimboAssinaturaSimulado is not null && laudo.Status == StatusLaudo.Finalizado)
-            modo = ModoRodapeLaudo.PreparandoAssinatura;
 
         // Laudo não finalizado NUNCA é "emitido": rebaixa para Rascunho (marca d'água)
         // qualquer que seja o modo pedido. Só o finalizado distingue
@@ -69,37 +64,12 @@ public sealed class LaudoPdfRenderer(
                 page.Header().Element(c => RenderHeader(c, temCabecalhoCustom, blocosCabecalho, imagens));
                 page.Content().Element(c => RenderContent(c, laudo, efetivo, dadosCabecalho, blocos, imagens));
                 page.Footer().Element(c => RenderFooter(c, efetivo, emitidoEm, temRodapeCustom, blocosRodape, imagens));
-
-                // TEMPORÁRIO (revisão de layout): carimbo da assinatura no MESMO
-                // retângulo do Automais.Assinador. Remover junto com a simulação.
-                if (carimboAssinaturaSimulado is not null && efetivo == ModoRodapeLaudo.PreparandoAssinatura)
-                {
-                    page.Foreground().Element(c => RenderCarimboSimulado(c, carimboAssinaturaSimulado));
-                }
             });
         });
 
         using var ms = new MemoryStream();
         documento.GeneratePdf(ms);
         return ms.ToArray();
-    }
-
-    /// <summary>
-    /// TEMPORÁRIO (revisão de layout): estampa o carimbo no MESMO retângulo do
-    /// Automais.Assinador — quadrado de 130pt, centralizado na horizontal, a 28pt
-    /// do rodapé. <c>page.Foreground()</c> cobre a página inteira (inclui as
-    /// margens), então o posicionamento em pontos casa com o do iText. Remover
-    /// quando a simulação de assinatura for desfeita.
-    /// </summary>
-    private static void RenderCarimboSimulado(IContainer container, byte[] carimboPng)
-    {
-        container
-            .AlignBottom()
-            .AlignCenter()
-            .PaddingBottom(28)
-            .Width(130)
-            .Height(130)
-            .Image(carimboPng).FitArea();
     }
 
     // ------------------------ Header ------------------------
