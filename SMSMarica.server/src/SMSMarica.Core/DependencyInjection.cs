@@ -161,14 +161,20 @@ public static class DependencyInjection
         // PasswordHasher do ASP.NET Identity (PBKDF2-HMAC-SHA512 / 100k iterações).
         services.AddSingleton<IPasswordHasher<Usuario>, PasswordHasher<Usuario>>();
 
-        var hubBaseUrl = configuration["Integracoes:HubDoDesenvolvedor:BaseUrl"]
-            ?? "https://ws.hubdodesenvolvedor.com.br/v2/";
+        // Motores de proxy (CPF/CEP) com fallback configurável. O timeout é controlado por
+        // tentativa no orquestrador (CTS), então os HttpClients dos motores usam timeout
+        // infinito — quem corta é o ProxyExecutor com base no TimeoutSegundos de cada motor.
+        services.AddScoped<Integracoes.Proxy.Configuracao.IProxyMotorConfiguracaoService,
+            Integracoes.Proxy.Configuracao.ProxyMotorConfiguracaoService>();
+        services.AddScoped<Integracoes.Proxy.IConsultaCpfService, Integracoes.Proxy.ConsultaCpfService>();
+        services.AddScoped<Integracoes.Proxy.IConsultaCepService, Integracoes.Proxy.ConsultaCepService>();
+
         services
-            .AddHttpClient<IHubConsultaService, HubConsultaService>(client =>
-            {
-                client.BaseAddress = new Uri(hubBaseUrl);
-                client.Timeout = TimeSpan.FromSeconds(15);
-            });
+            .AddHttpClient<Integracoes.Proxy.IMotorCpf, Integracoes.Proxy.Motores.HubDoDesenvolvedorMotorCpf>(client =>
+                client.Timeout = System.Threading.Timeout.InfiniteTimeSpan);
+        services
+            .AddHttpClient<Integracoes.Proxy.IMotorCep, Integracoes.Proxy.Motores.HubDoDesenvolvedorMotorCep>(client =>
+                client.Timeout = System.Threading.Timeout.InfiniteTimeSpan);
 
         // ---- Agendamento (Especialidade/Equipamento → Agenda → Agendamento) — ADR-0012/0013 ----
         services.AddScoped<Especialidades.IEspecialidadesService, Especialidades.EspecialidadesService>();
@@ -255,6 +261,9 @@ public static class DependencyInjection
         services.AddScoped<Cidadao.IPacienteAuthService, Cidadao.PacienteAuthService>();
         services.AddScoped<Cidadao.ICidadaoSessaoService, Cidadao.CidadaoSessaoService>();
         services.AddScoped<Cidadao.IConsentimentoCidadaoService, Cidadao.ConsentimentoCidadaoService>();
+        // Leitura clínica do app do cidadão (exames + docs escaneados + imagens PACS + laudos + agendamentos).
+        services.AddScoped<Cidadao.ICidadaoClinicoService, Cidadao.CidadaoClinicoService>();
+        services.AddScoped<Exames.IExameImagensPdfService, Exames.ExameImagensPdfService>();
         services.AddScoped<Tfd.Configuracao.ITfdConfigService, Tfd.Configuracao.TfdConfigService>();
         services.AddScoped<Geo.IGeocodificadorService, Geo.GeocodificadorService>();
         services.AddScoped<Geo.IDistanciaService, Geo.DistanciaService>();
@@ -276,6 +285,9 @@ public static class DependencyInjection
             client.BaseAddress = new Uri(anthropicBaseUrl);
             client.Timeout = TimeSpan.FromSeconds(120);
         });
+
+        // Validação de telefone por OTP (WhatsApp) — registro global do número validado.
+        services.AddScoped<Telefones.ITelefoneValidacaoService, Telefones.TelefoneValidacaoService>();
 
         // WhatsApp (Meta Cloud API) — cliente de envio + webhook de recebimento (FT6).
         services.AddScoped<Notificacoes.WhatsApp.IWhatsAppWebhookService, Notificacoes.WhatsApp.WhatsAppWebhookService>();

@@ -2,6 +2,7 @@ import { Lock } from 'lucide-react';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { UploadFoto } from '@/shared/ui/UploadFoto';
+import { BotaoValidarTelefone } from '@/features/telefone-validacao/components/BotaoValidarTelefone';
 import {
   FormularioEndereco,
   type EnderecoForm,
@@ -30,6 +31,8 @@ type Props = {
   mostrarPontoReferencia?: boolean;
   /** Slot opcional renderizado dentro do grid, depois do telefone. */
   camposExtras?: React.ReactNode;
+  /** Exibe o selo/ação de validar o telefone por OTP (WhatsApp). */
+  validarTelefone?: boolean;
 }
 
 const lockIcon = (
@@ -52,6 +55,7 @@ export function DadosPessoaisCampos({
   desabilitado,
   mostrarPontoReferencia = true,
   camposExtras,
+  validarTelefone = false,
 }: Props) {
   return (
     <div className="space-y-5">
@@ -138,6 +142,11 @@ export function DadosPessoaisCampos({
             placeholder="(21) 99999-0000"
             disabled={desabilitado}
           />
+          {validarTelefone ? (
+            <div className="mt-1.5">
+              <BotaoValidarTelefone numero={valores.telefone} />
+            </div>
+          ) : null}
         </Campo>
 
         {camposExtras}

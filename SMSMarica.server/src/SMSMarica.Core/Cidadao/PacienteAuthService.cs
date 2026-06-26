@@ -6,6 +6,7 @@ using SMSMarica.Core.Cidadao.Dtos;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Notificacoes.WhatsApp;
 using SMSMarica.Core.Pacientes;
+using SMSMarica.Core.Telefones;
 
 namespace SMSMarica.Core.Cidadao;
 
@@ -15,6 +16,7 @@ public sealed class PacienteAuthService(
     IWhatsAppCliente whatsapp,
     IMemoryCache cache,
     IConfiguration config,
+    ITelefoneValidacaoService telefoneValidacao,
     ILogger<PacienteAuthService> logger) : IPacienteAuthService
 {
     private static readonly TimeSpan Validade = TimeSpan.FromMinutes(5);
@@ -98,6 +100,20 @@ public sealed class PacienteAuthService(
         }
 
         cache.Remove(Chave(cpf));
+
+        // O cidadão acabou de provar posse do número (recebeu o OTP no WhatsApp): marca
+        // o telefone como validado no registro global. Nunca quebra o login se falhar.
+        try
+        {
+            var dados = await pacientes.ObterPorIdAsync(entry.PacienteId, ct);
+            var fone = PrimeiroTelefone(dados.TelefoneCelular, dados.TelefonePrincipal, dados.TelefoneResidencial);
+            if (fone is not null)
+                await telefoneValidacao.MarcarValidadoAsync(fone, "pwa-cidadao", null, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Não foi possível marcar o telefone como validado no login do cidadão.");
+        }
 
         // Abre a sessão single-device (revoga a anterior) e emite o token.
         var (token, _) = await sessoes.AbrirSessaoAsync(
