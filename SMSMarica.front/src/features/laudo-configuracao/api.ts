@@ -19,8 +19,19 @@ export type SalvarLaudoConfiguracaoPayload = {
   permitirLaudarSemAnamnese: boolean;
 };
 
+export type RegrasIniciarLaudo = {
+  permitirLaudarSemAssociacao: boolean;
+  permitirLaudarSemAnamnese: boolean;
+};
+
 export async function obterLaudoConfiguracao(): Promise<LaudoConfiguracao> {
   const { data } = await http.get<LaudoConfiguracao>('/laudos/configuracao');
+  return data;
+}
+
+/** Só as regras de iniciar o laudo — liberado a qualquer autenticado (para o botão "Laudar"). */
+export async function obterRegrasIniciarLaudo(): Promise<RegrasIniciarLaudo> {
+  const { data } = await http.get<RegrasIniciarLaudo>('/laudos/configuracao/regras');
   return data;
 }
 

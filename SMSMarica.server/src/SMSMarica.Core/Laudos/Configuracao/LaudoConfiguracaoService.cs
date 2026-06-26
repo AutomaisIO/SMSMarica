@@ -18,6 +18,16 @@ public sealed class LaudoConfiguracaoService(SmsMaricaDbContext db, IHtmlSanitiz
         return c is null ? Vazia() : ParaDto(c);
     }
 
+    public async Task<RegrasIniciarLaudoDto> ObterRegrasAsync(CancellationToken cancellationToken = default)
+    {
+        var regras = await _db.LaudoConfiguracoes.AsNoTracking()
+            .Where(x => x.Id == LaudoConfiguracao.IdSingleton)
+            .Select(x => new RegrasIniciarLaudoDto(x.PermitirLaudarSemAssociacao, x.PermitirLaudarSemAnamnese))
+            .FirstOrDefaultAsync(cancellationToken);
+        // Sem registro = padrão seguro (exige associação e anamnese).
+        return regras ?? new RegrasIniciarLaudoDto(false, false);
+    }
+
     public async Task<LaudoConfiguracaoDto> SalvarAsync(
         Guid usuarioId,
         SalvarLaudoConfiguracaoRequest request,

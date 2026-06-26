@@ -18,3 +18,12 @@ public sealed record SalvarLaudoConfiguracaoRequest(
     string? RodapeJson,
     bool PermitirLaudarSemAssociacao = false,
     bool PermitirLaudarSemAnamnese = false);
+
+/// <summary>
+/// Só as regras de INICIAR o laudo (sem o cabeçalho/rodapé). Leitura leve, liberada a
+/// qualquer usuário autenticado — o front (botão "Laudar") precisa delas mesmo sem a
+/// permissão de Configuração de Laudo.
+/// </summary>
+public sealed record RegrasIniciarLaudoDto(
+    bool PermitirLaudarSemAssociacao,
+    bool PermitirLaudarSemAnamnese);

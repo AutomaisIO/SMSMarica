@@ -26,6 +26,16 @@ public sealed class LaudoConfiguracaoController(ILaudoConfiguracaoService servic
     public async Task<LaudoConfiguracaoDto> Obter(CancellationToken cancellationToken) =>
         await _service.ObterAsync(cancellationToken);
 
+    /// <summary>
+    /// Só as regras de iniciar o laudo (sem cabeçalho/rodapé). Liberado a qualquer usuário
+    /// autenticado — o front (botão "Laudar") precisa delas mesmo sem a permissão de
+    /// Configuração de Laudo, senão o médico fica sem laudar.
+    /// </summary>
+    [HttpGet("regras")]
+    [ProducesResponseType<RegrasIniciarLaudoDto>(StatusCodes.Status200OK)]
+    public async Task<RegrasIniciarLaudoDto> ObterRegras(CancellationToken cancellationToken) =>
+        await _service.ObterRegrasAsync(cancellationToken);
+
     /// <summary>Salva (upsert) o cabeçalho/rodapé global.</summary>
     [HttpPut]
     [RequerPermissao(ModuloPermissao.ConfiguracaoLaudo, AcoesPermissao.Edicao)]

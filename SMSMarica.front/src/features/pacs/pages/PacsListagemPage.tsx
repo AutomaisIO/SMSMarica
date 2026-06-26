@@ -9,7 +9,7 @@ import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { useLaudosPorStudyUIDs } from '@/features/laudos/api/queries';
-import { useLaudoConfiguracao } from '@/features/laudo-configuracao/queries';
+import { useRegrasIniciarLaudo } from '@/features/laudo-configuracao/queries';
 import { abrirPdfLaudo } from '@/features/laudos/lib/pdf';
 import { BotaoAnamnese } from '@/features/anamnese/components/BotaoAnamnese';
 import type { LaudoPorStudy } from '@/features/laudos/types';
@@ -72,10 +72,11 @@ export function PacsListagemPage() {
   const podeEditarLaudo = usePermissao('Laudos', 'Edicao');
   const podeAssociar = usePermissao('Pacs', 'Edicao');
 
-  // Regras de iniciar laudo (config global). Padrão seguro: exige associação e anamnese.
-  const cfgLaudo = useLaudoConfiguracao().data;
-  const permitirLaudarSemAssociacao = cfgLaudo?.permitirLaudarSemAssociacao ?? false;
-  const permitirLaudarSemAnamnese = cfgLaudo?.permitirLaudarSemAnamnese ?? false;
+  // Regras de iniciar laudo (config global, leitura leve sem permissão de Configuração de
+  // Laudo). Padrão seguro: exige associação e anamnese.
+  const regras = useRegrasIniciarLaudo().data;
+  const permitirLaudarSemAssociacao = regras?.permitirLaudarSemAssociacao ?? false;
+  const permitirLaudarSemAnamnese = regras?.permitirLaudarSemAnamnese ?? false;
 
   const busca = useBuscarEstudos();
   const exclusao = useExcluirEstudo();
