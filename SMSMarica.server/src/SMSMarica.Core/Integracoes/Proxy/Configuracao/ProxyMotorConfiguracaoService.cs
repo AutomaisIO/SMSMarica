@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Inteligencia.Seguranca;
@@ -10,14 +9,12 @@ namespace SMSMarica.Core.Integracoes.Proxy.Configuracao;
 
 /// <summary>
 /// Store (uma linha por serviço+motor) das configurações de proxy. Token cifrado/decifrado
-/// via <see cref="IProtetorSegredos"/>. Para o Hub do Desenvolvedor, o token do
-/// <c>appsettings</c> (<c>Integracoes:HubDoDesenvolvedor:Token</c>) serve de fallback,
-/// preservando a continuidade enquanto não for migrado pela tela.
+/// via <see cref="IProtetorSegredos"/> e write-only na API. Um motor que exige token e não
+/// tem nenhum cadastrado fica fora da cadeia de fallback.
 /// </summary>
 public sealed class ProxyMotorConfiguracaoService(
     SmsMaricaDbContext db,
     IProtetorSegredos protetor,
-    IConfiguration configuracao,
     IUsuarioAtualAccessor usuarioAtual) : IProxyMotorConfiguracaoService
 {
     private const int TimeoutPadrao = 10;
@@ -37,7 +34,7 @@ public sealed class ProxyMotorConfiguracaoService(
                 : new ProxyMotorDto(
                     servico, motor, MotoresProxy.Rotulo(motor),
                     Ativo: true, Ordem: indice, ExigeToken: MotoresProxy.ExigeToken(motor),
-                    TokenDefinido: TokenFallback(motor) is not null,
+                    TokenDefinido: false,
                     TimeoutSegundos: TimeoutPadrao, Tentativas: TentativasPadrao, ParametrosJson: null))];
     }
 
@@ -98,11 +95,9 @@ public sealed class ProxyMotorConfiguracaoService(
             var ativo = c?.Ativo ?? true;
             if (!ativo) continue;
 
-            var token = !string.IsNullOrEmpty(c?.TokenCifrado)
-                ? protetor.Revelar(c.TokenCifrado)
-                : TokenFallback(motor);
+            var token = string.IsNullOrEmpty(c?.TokenCifrado) ? null : protetor.Revelar(c.TokenCifrado);
 
-            // Motor que exige token e não tem nenhum (banco nem fallback) → fora da cadeia.
+            // Motor que exige token e não tem nenhum cadastrado → fora da cadeia.
             if (MotoresProxy.ExigeToken(motor) && string.IsNullOrWhiteSpace(token)) continue;
 
             resultado.Add((
@@ -127,9 +122,7 @@ public sealed class ProxyMotorConfiguracaoService(
         var c = await db.ProxyMotores.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Servico == servico && x.Motor == motor, cancellationToken);
 
-        var token = !string.IsNullOrEmpty(c?.TokenCifrado)
-            ? protetor.Revelar(c.TokenCifrado)
-            : TokenFallback(motor);
+        var token = string.IsNullOrEmpty(c?.TokenCifrado) ? null : protetor.Revelar(c.TokenCifrado);
 
         return new MotorExecucao(
             token,
@@ -138,19 +131,14 @@ public sealed class ProxyMotorConfiguracaoService(
             c?.ParametrosJson);
     }
 
-    /// <summary>Token do appsettings, fallback apenas para o Hub do Desenvolvedor.</summary>
-    private string? TokenFallback(string motor) => motor == MotoresProxy.HubDoDesenvolvedor
-        ? configuracao["Integracoes:HubDoDesenvolvedor:Token"]
-        : null;
-
-    private ProxyMotorDto ParaDto(ProxyMotorConfig c) => new(
+    private static ProxyMotorDto ParaDto(ProxyMotorConfig c) => new(
         c.Servico,
         c.Motor,
         MotoresProxy.Rotulo(c.Motor),
         c.Ativo,
         c.Ordem,
         MotoresProxy.ExigeToken(c.Motor),
-        !string.IsNullOrEmpty(c.TokenCifrado) || TokenFallback(c.Motor) is not null,
+        !string.IsNullOrEmpty(c.TokenCifrado),
         c.TimeoutSegundos,
         c.Tentativas,
         c.ParametrosJson);
