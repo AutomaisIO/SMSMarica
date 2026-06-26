@@ -101,7 +101,22 @@ public sealed class SolicitacoesExameService(
     {
         var u = (studyInstanceUID ?? string.Empty).Trim();
         if (u.Length == 0) return null;
+
+        // 1) Casamento direto (exame de worklist: study == StudyInstanceUID da solicitação).
         var s = await CarregarCompletoAsync(x => x.StudyInstanceUID == u, cancellationToken);
+
+        // 2) Fallback: associação manual/automática — o study REAL do PACS difere do
+        //    StudyInstanceUID pré-gerado da solicitação. Resolve pela tabela de associação.
+        if (s is null)
+        {
+            var solicitacaoId = await _db.ExameAssociacoes.AsNoTracking()
+                .Where(a => a.StudyInstanceUID == u && a.ExcluidoEm == null)
+                .Select(a => a.SolicitacaoExameId)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (solicitacaoId != Guid.Empty)
+                s = await CarregarCompletoAsync(x => x.Id == solicitacaoId, cancellationToken);
+        }
+
         return s is null ? null : await EnriquecerAsync(SolicitacoesExameMapper.ParaDto(s), cancellationToken);
     }
 
