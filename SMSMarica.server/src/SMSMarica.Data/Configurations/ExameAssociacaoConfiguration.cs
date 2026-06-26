@@ -17,6 +17,7 @@ internal sealed class ExameAssociacaoConfiguration : IEntityTypeConfiguration<Ex
         builder.Property(a => a.PacienteId).HasColumnName("paciente_id").IsRequired();
         builder.Property(a => a.AccessionNumberDicomOriginal).HasColumnName("accession_number_dicom_original").HasMaxLength(64);
         builder.Property(a => a.Origem).HasColumnName("origem").HasConversion<int>().IsRequired();
+        builder.Property(a => a.StatusSolicitacaoAnterior).HasColumnName("status_solicitacao_anterior").HasConversion<int>();
 
         builder.Property(a => a.CriadoEm).HasColumnName("criado_em").IsRequired();
         builder.Property(a => a.CriadoPor).HasColumnName("criado_por");

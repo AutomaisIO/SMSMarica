@@ -39,6 +39,13 @@ public class ExameAssociacao
     /// <summary>Manual (operador) ou Automatica (Patient ID na chegada).</summary>
     public OrigemAssociacaoExame Origem { get; set; } = OrigemAssociacaoExame.Manual;
 
+    /// <summary>
+    /// Status da solicitação ANTES de a associação promovê-la a Realizada. Guardado
+    /// para que o "desassociar" reverta ao ponto anterior. Null quando a solicitação
+    /// já estava em Realizada/Laudada/Cancelada (a associação não a promoveu).
+    /// </summary>
+    public StatusSolicitacaoExame? StatusSolicitacaoAnterior { get; set; }
+
     // ---- Auditoria (ADR-0006) ----
     public DateTime CriadoEm { get; set; }
     public Guid? CriadoPor { get; set; }
