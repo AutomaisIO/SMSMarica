@@ -5,6 +5,7 @@ import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 import { useContextoAnamnese, useSalvarAnamnese } from '@/features/anamnese/api/queries';
+import { AnamneseLeitura } from '@/features/anamnese/components/AnamneseLeitura';
 import { AnexosExameSecao } from '@/features/anamnese/components/AnexosExameSecao';
 import { DiagramaMamas } from '@/features/anamnese/components/DiagramaMamas';
 import {
@@ -47,13 +48,16 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
   const [params] = useSearchParams();
   const solicitacaoId = params.get('solicitacaoId') ?? undefined;
   const accession = params.get('accession') ?? undefined;
+  // Fora da tela de Solicitações (janela do Laudar, ou `?leitura=1` vindo do PACS)
+  // a anamnese abre só para leitura — nunca em edição.
+  const leitura = params.get('leitura') === '1';
 
   const contexto = useContextoAnamnese({
     solicitacaoExameId: solicitacaoId,
     accessionNumber: accession,
   });
   const salvar = useSalvarAnamnese();
-  const podeEditar = usePermissao('SolicitacoesExame', 'Edicao');
+  const podeEditar = usePermissao('SolicitacoesExame', 'Edicao') && !janela && !leitura;
 
   const [conteudo, setConteudo] = useState<AnamneseMamografiaConteudo>(conteudoVazio);
   const [erro, setErro] = useState<string | null>(null);
@@ -228,6 +232,9 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
         </div>
       </section>
 
+      {somenteLeitura ? (
+        <AnamneseLeitura conteudo={conteudo} />
+      ) : (
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* 2. Avaliação clínica pelo profissional */}
         <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
@@ -528,6 +535,7 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
           </fieldset>
         </section>
       </div>
+      )}
 
       {/* 6. Documentos / exames anexados (ponte QR → PWA) */}
       <AnexosExameSecao solicitacaoExameId={ctx.solicitacaoExameId} podeEditar={podeEditar} />

@@ -288,7 +288,7 @@ export function PacsListagemPage() {
                 Visualizar
               </button>
             ) : null}
-            <BotaoAnamnese accessionNumber={e.accessionNumber} />
+            <BotaoAnamnese accessionNumber={e.accessionNumber} somenteLeitura />
             {!e.laudo && !e.associacao && podeAssociar ? (
               <button
                 type="button"
