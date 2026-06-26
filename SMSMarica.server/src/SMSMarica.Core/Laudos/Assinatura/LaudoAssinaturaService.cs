@@ -22,6 +22,7 @@ public sealed class LaudoAssinaturaService(
     IAssinadorPdfPades assinador,
     IPractitionerFhirClient practitionerFhir,
     Medicos.Assinatura.IAssinaturaMedicoService assinaturaMedico,
+    Medicos.IMedicosService medicos,
     ICarimboAssinaturaRenderer carimboRenderer,
     ILogger<LaudoAssinaturaService> logger,
     IOptions<AssinaturaOptions> options) : ILaudoAssinaturaService
@@ -196,6 +197,15 @@ public sealed class LaudoAssinaturaService(
         var crm = laudo.MedicoCrmSnapshot ?? string.Empty;
         var uf = laudo.MedicoUfCrmSnapshot ?? string.Empty;
         var rqe = laudo.MedicoRqeSnapshot;
+
+        // Laudos finalizados ANTES do médico ter RQE cadastrado têm o snapshot nulo.
+        // Como o signatário é o próprio autor, busca o RQE atual do médico como fallback
+        // (não falsifica nada — é a credencial vigente). Falha não bloqueia a assinatura.
+        if (string.IsNullOrWhiteSpace(rqe))
+        {
+            try { rqe = (await medicos.ObterPorIdAsync(laudo.MedicoId, cancellationToken)).Rqe; }
+            catch (Exception ex) { logger.LogWarning(ex, "Não foi possível resolver o RQE atual do médico {Medico}.", laudo.MedicoId); }
+        }
 
         var carimboPng = carimboRenderer.Renderizar(new CarimboDados(
             Rubrica: DecodificarImagem(rubrica.ImagemBase64),
