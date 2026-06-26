@@ -174,7 +174,7 @@ export function SolicitacoesExamePage() {
             id="acc"
             value={filtroDigitado.accessionNumber ?? ''}
             onChange={(e) => setCampo('accessionNumber', e.target.value)}
-            placeholder="Ex.: SMS2026000001"
+            placeholder="Ex.: 260626001"
           />
         </Campo>
         <Campo label="Status" htmlFor="status">
