@@ -10,6 +10,7 @@ import {
 } from '@/features/integracoes/components/DigitalOceanSpacesCard';
 import { GoogleMapsCard } from '@/features/integracoes/components/GoogleMapsCard';
 import { NavigationSdkCard } from '@/features/integracoes/components/NavigationSdkCard';
+import { ProxyServicoSection } from '@/features/integracoes/components/ProxyServicoSection';
 import { WhatsAppCard } from '@/features/integracoes/components/WhatsAppCard';
 
 function LinkCard({ to, titulo, descricao }: { to: string; titulo: string; descricao: string }) {
@@ -32,6 +33,7 @@ export function IntegracoesPage() {
   const podeVerIa = useTemConsulta('InteligenciaConfiguracao');
   const podeVerSisreg = useTemConsulta('SisregConfiguracao');
   const podeVerTokens = useTemConsulta('ApiTokens');
+  const podeVerProxy = useTemConsulta('IntegracoesConfig');
 
   // O Spaces (S3) tem card próprio (Access/Secret Key + endpoint/region/bucket),
   // então é separado da lista genérica de provedores OAuth.
@@ -100,6 +102,21 @@ export function IntegracoesPage() {
           <WhatsAppCard />
         </div>
       </section>
+
+      {podeVerProxy ? (
+        <>
+          <ProxyServicoSection
+            servico="cpf"
+            titulo="Proxy CPF (validação na Receita)"
+            descricao="Motores tentados em cadeia: se um falhar (timeout/indisponível), cai para o próximo antes de devolver erro."
+          />
+          <ProxyServicoSection
+            servico="cep"
+            titulo="Proxy CEP (busca de endereço)"
+            descricao="Mesma lógica de fallback dos motores, agora para a consulta de CEP."
+          />
+        </>
+      ) : null}
 
       {podeVerIa || podeVerSisreg || podeVerTokens ? (
         <section className="space-y-3">

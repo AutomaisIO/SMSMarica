@@ -36,8 +36,29 @@ export type Atendimento = {
   descricao: string;
   documentos: DocumentoAtendimento[];
 };
-export type Exame = { id: string; data: string; nome: string; status: string };
+export type AnexoResumo = { id: string; nome: string; tamanhoBytes: number; paginas: number | null };
+export type Exame = {
+  id: string;
+  data: string;
+  nome: string;
+  status: string;
+  studyInstanceUID: string | null;
+  temImagens: boolean;
+  documentos: AnexoResumo[];
+  laudoId: string | null;
+  laudoAssinado: boolean;
+};
 export type Laudo = { id: string; data: string; titulo: string; status: string };
+export type Agendamento = {
+  id: string;
+  inicioEm: string;
+  fimEm: string;
+  tipo: 'Consulta' | 'Exame';
+  titulo: string;
+  profissional: string | null;
+  unidade: string | null;
+  status: string;
+};
 
 export type ConsentimentoStatus = {
   versao: string;
@@ -58,4 +79,13 @@ export const api = {
   atendimentos: () => http.get<Atendimento[]>('/auth/paciente/atendimentos').then((r) => r.data),
   exames: () => http.get<Exame[]>('/auth/paciente/exames').then((r) => r.data),
   laudos: () => http.get<Laudo[]>('/auth/paciente/laudos').then((r) => r.data),
+  agendamentos: (tipo: 'consulta' | 'exame') =>
+    http.get<Agendamento[]>('/auth/paciente/agendamentos', { params: { tipo } }).then((r) => r.data),
+};
+
+// URLs de PDF protegido (abertas/baixadas via blob — ver lib/pdf.ts).
+export const pdfUrls = {
+  laudo: (laudoId: string) => `/auth/paciente/laudos/${laudoId}/pdf`,
+  anexo: (anexoId: string) => `/auth/paciente/anexos/${anexoId}/conteudo`,
+  exameImagens: (solicitacaoId: string) => `/auth/paciente/exames/${solicitacaoId}/imagens-pdf`,
 };

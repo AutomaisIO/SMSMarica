@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
+  CalendarClock,
   CalendarHeart,
+  CalendarPlus,
   FileText,
   FlaskConical,
   Home,
@@ -19,6 +21,8 @@ import { Avatar } from '@/components/ui';
 
 const NAV = [
   { to: '/', label: 'Início', icon: Home, end: true },
+  { to: '/agendados/consultas', label: 'Consultas agendadas', icon: CalendarClock },
+  { to: '/agendados/exames', label: 'Exames agendados', icon: CalendarPlus },
   { to: '/atendimentos', label: 'Meus atendimentos', icon: Stethoscope },
   { to: '/exames', label: 'Exames', icon: FlaskConical },
   { to: '/laudos', label: 'Laudos', icon: FileText },

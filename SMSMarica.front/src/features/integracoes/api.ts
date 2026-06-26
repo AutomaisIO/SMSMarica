@@ -2,9 +2,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { http } from '@/shared/api/httpClient';
 import type {
   AtualizarCredencialPayload,
+  AtualizarProxyMotorPayload,
   AtualizarTfdGoogle,
   AtualizarTfdWhatsApp,
   IntegracaoCredencial,
+  ProxyMotor,
+  ProxyTesteCepResultado,
+  ProxyTesteCpfResultado,
+  ServicoProxy,
   TesteSpacesResultado,
   TfdGoogle,
   TfdWhatsApp,
@@ -14,6 +19,7 @@ const keys = {
   credenciais: ['integracoes', 'credenciais'] as const,
   google: ['integracoes', 'tfd', 'google'] as const,
   whatsapp: ['integracoes', 'tfd', 'whatsapp'] as const,
+  proxy: (servico: ServicoProxy) => ['integracoes', 'proxy', servico] as const,
 };
 
 // ---- Credenciais OAuth (store genérico) ----
@@ -88,5 +94,39 @@ export function useSalvarTfdWhatsApp() {
   return useMutation({
     mutationFn: (payload: AtualizarTfdWhatsApp) => http.put('/integracoes/tfd/whatsapp', payload),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.whatsapp }),
+  });
+}
+
+// ---- Motores de proxy (CPF/CEP) com fallback ----
+
+export function useProxyMotores(servico: ServicoProxy) {
+  return useQuery({
+    queryKey: keys.proxy(servico),
+    queryFn: async () =>
+      (await http.get<ProxyMotor[]>(`/integracoes/proxy/${servico}`)).data,
+  });
+}
+
+export function useSalvarProxyMotor(servico: ServicoProxy) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { motor: string; payload: AtualizarProxyMotorPayload }) =>
+      http.put(`/integracoes/proxy/${servico}/${args.motor}`, args.payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.proxy(servico) }),
+  });
+}
+
+// Testa um motor específico (sem fallback). Sempre HTTP 200; sucesso/erro no corpo.
+export function useTestarProxyCpf(motor: string) {
+  return useMutation({
+    mutationFn: async (body: { cpf: string; dataNascimento: string }) =>
+      (await http.post<ProxyTesteCpfResultado>(`/integracoes/proxy/cpf/${motor}/testar`, body)).data,
+  });
+}
+
+export function useTestarProxyCep(motor: string) {
+  return useMutation({
+    mutationFn: async (body: { cep: string }) =>
+      (await http.post<ProxyTesteCepResultado>(`/integracoes/proxy/cep/${motor}/testar`, body)).data,
   });
 }

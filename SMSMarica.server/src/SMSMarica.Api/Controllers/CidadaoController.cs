@@ -24,7 +24,8 @@ public sealed class CidadaoController(
     IPacientesService pacientes,
     IAtendimentosService atendimentos,
     ICidadaoSessaoService sessoes,
-    IConsentimentoCidadaoService consentimentos) : ControllerBase
+    IConsentimentoCidadaoService consentimentos,
+    ICidadaoClinicoService clinico) : ControllerBase
 {
     /// <summary>Status do consentimento LGPD + texto vigente do termo (acessível sem aceite).</summary>
     [HttpGet("consentimento")]
@@ -121,13 +122,63 @@ public sealed class CidadaoController(
         return diags.Count > 0 ? string.Join(" · ", diags) : string.Empty;
     }
 
+    /// <summary>Exames realizados do paciente: documentos escaneados + imagens do PACS + laudo assinado (se houver).</summary>
     [HttpGet("exames")]
-    public ActionResult<IEnumerable<ExameResumoDto>> Exames() =>
-        Ok(Array.Empty<ExameResumoDto>());
+    [ProducesResponseType<IEnumerable<ExameResumoDto>>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<ExameResumoDto>>> Exames(CancellationToken ct) =>
+        Ok(await clinico.ListarExamesAsync(PacienteId(), ct));
 
+    /// <summary>Baixa um documento escaneado (PDF) anexado a um exame do paciente.</summary>
+    [HttpGet("anexos/{anexoId:guid}/conteudo")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AnexoConteudo(Guid anexoId, CancellationToken ct)
+    {
+        var conteudo = await clinico.ObterAnexoAsync(PacienteId(), anexoId, ct);
+        return conteudo is null
+            ? NotFound()
+            : File(conteudo.Conteudo, conteudo.MimeType, conteudo.NomeArquivo);
+    }
+
+    /// <summary>
+    /// PDF consolidado das imagens do exame: gera sob demanda (busca as imagens no PACS, monta o
+    /// documento com capa e armazena no S3) e reaproveita o cache nas próximas vezes.
+    /// </summary>
+    [HttpGet("exames/{solicitacaoExameId:guid}/imagens-pdf")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ImagensPdf(Guid solicitacaoExameId, CancellationToken ct)
+    {
+        var pdf = await clinico.ObterImagensPdfAsync(PacienteId(), solicitacaoExameId, ct);
+        return pdf is null
+            ? NotFound()
+            : File(pdf, "application/pdf", $"exame-imagens-{solicitacaoExameId}.pdf");
+    }
+
+    /// <summary>Laudos assinados (PAdES) do paciente.</summary>
     [HttpGet("laudos")]
-    public ActionResult<IEnumerable<LaudoResumoDto>> Laudos() =>
-        Ok(Array.Empty<LaudoResumoDto>());
+    [ProducesResponseType<IEnumerable<LaudoResumoDto>>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<LaudoResumoDto>>> Laudos(CancellationToken ct) =>
+        Ok(await clinico.ListarLaudosAsync(PacienteId(), ct));
+
+    /// <summary>Baixa o PDF assinado de um laudo do paciente.</summary>
+    [HttpGet("laudos/{laudoId:guid}/pdf")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> LaudoPdf(Guid laudoId, CancellationToken ct)
+    {
+        var pdf = await clinico.ObterLaudoPdfAsync(PacienteId(), laudoId, ct);
+        return pdf is null
+            ? NotFound()
+            : File(pdf.Conteudo, "application/pdf", $"laudo-{laudoId}.pdf");
+    }
+
+    /// <summary>Consultas e exames agendados (futuros) do paciente. <c>tipo</c>: consulta | exame | (ambos).</summary>
+    [HttpGet("agendamentos")]
+    [ProducesResponseType<IEnumerable<AgendamentoResumoDto>>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<AgendamentoResumoDto>>> Agendamentos(
+        [FromQuery] string? tipo, CancellationToken ct) =>
+        Ok(await clinico.ListarAgendamentosAsync(PacienteId(), tipo, ct));
 
     /// <summary>Id do paciente (FHIR) a partir do <c>sub</c>; 403 se o token não for de cidadão.</summary>
     private Guid PacienteId()

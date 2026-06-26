@@ -53,3 +53,60 @@ export type AtualizarTfdWhatsApp = {
   appSecret?: string;
   ativo: boolean;
 };
+
+// Motores de proxy (CPF/CEP) com fallback configurável.
+export type ServicoProxy = 'cpf' | 'cep';
+
+export type ProxyMotor = {
+  servico: ServicoProxy;
+  motor: string;
+  rotulo: string;
+  ativo: boolean;
+  ordem: number;
+  exigeToken: boolean;
+  tokenDefinido: boolean;
+  timeoutSegundos: number;
+  tentativas: number;
+  parametrosJson: string | null;
+};
+
+export type AtualizarProxyMotorPayload = {
+  token?: string;
+  ativo: boolean;
+  ordem: number;
+  timeoutSegundos: number;
+  tentativas: number;
+  parametrosJson?: string | null;
+};
+
+// Teste manual de um motor (sempre HTTP 200; sucesso/erro no corpo).
+export type HubCpfResposta = {
+  cpf: string;
+  nome: string;
+  dataNascimento: string;
+  situacaoCadastral: string | null;
+};
+
+export type HubCepResposta = {
+  cep: string;
+  logradouro: string;
+  complemento: string | null;
+  bairro: string;
+  localidade: string;
+  uf: string;
+  ibge: string | null;
+};
+
+export type ProxyTesteCpfResultado = {
+  ok: boolean;
+  mensagem: string | null;
+  resultado: HubCpfResposta | null;
+  duracaoMs: number;
+};
+
+export type ProxyTesteCepResultado = {
+  ok: boolean;
+  mensagem: string | null;
+  resultado: HubCepResposta | null;
+  duracaoMs: number;
+};

@@ -1,7 +1,9 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  CalendarClock,
   CalendarHeart,
+  CalendarPlus,
   ChevronRight,
   FileText,
   FlaskConical,
@@ -16,6 +18,8 @@ import { Avatar } from '@/components/ui';
 import { InstalarApp } from '@/components/InstalarApp';
 
 const ATALHOS = [
+  { to: '/agendados/consultas', label: 'Consultas', desc: 'Agendadas', icon: CalendarClock, tom: 'lagoa' },
+  { to: '/agendados/exames', label: 'Exames', desc: 'Agendados', icon: CalendarPlus, tom: 'lagoa' },
   { to: '/atendimentos', label: 'Atendimentos', desc: 'Suas consultas', icon: Stethoscope, tom: 'lagoa' },
   { to: '/exames', label: 'Exames', desc: 'Resultados', icon: FlaskConical, tom: 'lagoa' },
   { to: '/laudos', label: 'Laudos', desc: 'Documentos', icon: FileText, tom: 'marica' },

@@ -52,5 +52,33 @@ public sealed record AtendimentoResumoDto(
     IReadOnlyList<DocumentoResumoDto> Documentos);
 /// <summary>Documento clínico do atendimento (DocumentReference), com HTML já decodificado.</summary>
 public sealed record DocumentoResumoDto(Guid Id, string Tipo, DateTime? Data, string ConteudoHtml);
-public sealed record ExameResumoDto(Guid Id, DateTime Data, string Nome, string Status);
+/// <summary>Documento escaneado (DocumentoExame "Salvo") anexado a um exame, visível ao cidadão.</summary>
+public sealed record AnexoResumoDto(Guid Id, string Nome, long TamanhoBytes, int? Paginas);
+
+/// <summary>
+/// Um exame realizado do paciente (SolicitacaoExame). Traz os documentos escaneados, a
+/// disponibilidade de imagens no PACS (para gerar o PDF consolidado) e o laudo assinado, se houver.
+/// </summary>
+public sealed record ExameResumoDto(
+    Guid Id,
+    DateTime Data,
+    string Nome,
+    string Status,
+    string? StudyInstanceUID,
+    bool TemImagens,
+    IReadOnlyList<AnexoResumoDto> Documentos,
+    Guid? LaudoId,
+    bool LaudoAssinado);
+
 public sealed record LaudoResumoDto(Guid Id, DateTime Data, string Titulo, string Status);
+
+/// <summary>Consulta ou exame agendado (futuro) do paciente, projetado para o app.</summary>
+public sealed record AgendamentoResumoDto(
+    Guid Id,
+    DateTime InicioEm,
+    DateTime FimEm,
+    string Tipo,
+    string Titulo,
+    string? Profissional,
+    string? Unidade,
+    string Status);

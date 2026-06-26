@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import Cropper, { type Area } from 'react-easy-crop';
-import { Camera, RotateCcw } from 'lucide-react';
+import { Camera, Images, RotateCcw } from 'lucide-react';
 import { arquivoParaDataUrl, recortarParaBase64 } from '@/lib/imagem';
 import { Avatar, GhostButton, PrimaryButton } from '@/components/ui';
 
@@ -27,11 +27,14 @@ export function AvatarUploader({
   const [areaPx, setAreaPx] = useState<Area | null>(null);
   const [processando, setProcessando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [menu, setMenu] = useState(false);
+  const galeriaRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
 
   const aoCompletar = useCallback((_: Area, px: Area) => setAreaPx(px), []);
 
   async function escolher(e: React.ChangeEvent<HTMLInputElement>) {
+    setMenu(false);
     const arquivo = e.target.files?.[0];
     e.target.value = '';
     if (!arquivo) return;
@@ -71,15 +74,44 @@ export function AvatarUploader({
         <Avatar src={valor} nome={nome} size={104} className="shadow-carta ring-4 ring-white" />
         <button
           type="button"
-          onClick={() => inputRef.current?.click()}
+          onClick={() => setMenu((v) => !v)}
           disabled={salvando}
           aria-label="Trocar foto"
           className="absolute -bottom-1 -right-1 grid h-10 w-10 place-items-center rounded-full bg-marica text-white shadow-carta ring-4 ring-papel transition active:scale-95 disabled:opacity-50"
         >
           <Camera className="h-5 w-5" />
         </button>
+
+        {menu && (
+          <>
+            <button
+              type="button"
+              aria-label="Fechar"
+              onClick={() => setMenu(false)}
+              className="fixed inset-0 z-40 cursor-default"
+            />
+            <div className="absolute left-1/2 top-full z-50 mt-3 w-56 -translate-x-1/2 overflow-hidden rounded-2xl border border-areia bg-white shadow-2xl">
+              <button
+                type="button"
+                onClick={() => cameraRef.current?.click()}
+                className="flex w-full items-center gap-3 px-4 py-3.5 text-left text-[15px] font-medium text-tinta transition active:bg-papel"
+              >
+                <Camera className="h-5 w-5 text-marica" /> Tirar foto
+              </button>
+              <button
+                type="button"
+                onClick={() => galeriaRef.current?.click()}
+                className="flex w-full items-center gap-3 border-t border-areia px-4 py-3.5 text-left text-[15px] font-medium text-tinta transition active:bg-papel"
+              >
+                <Images className="h-5 w-5 text-lagoa" /> Escolher da galeria
+              </button>
+            </div>
+          </>
+        )}
       </div>
-      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={escolher} />
+      {/* Câmera: capture aciona a câmera frontal direto no celular; galeria abre o seletor de arquivos. */}
+      <input ref={cameraRef} type="file" accept="image/*" capture="user" className="hidden" onChange={escolher} />
+      <input ref={galeriaRef} type="file" accept="image/*" className="hidden" onChange={escolher} />
       {erro && <p className="mt-3 text-sm text-marica">{erro}</p>}
 
       {src && (
