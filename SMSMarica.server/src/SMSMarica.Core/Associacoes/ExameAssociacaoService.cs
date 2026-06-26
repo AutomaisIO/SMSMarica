@@ -57,6 +57,10 @@ public sealed class ExameAssociacaoService(
             throw new ConflitoException("associacao.study_inexistente", "Estudo não encontrado no PACS.");
 
         var agora = DateTime.UtcNow;
+        // Guarda o status atual SE a associação for promovê-lo a Realizada — para o
+        // desassociar reverter ao ponto anterior. Null se já estava adiante.
+        var promovel = solicitacao.Status is not (StatusSolicitacaoExame.Realizada
+            or StatusSolicitacaoExame.Laudada or StatusSolicitacaoExame.Cancelada);
         var assoc = new ExameAssociacao
         {
             Id = Guid.CreateVersion7(),
@@ -66,6 +70,7 @@ public sealed class ExameAssociacaoService(
             AccessionNumberDicomOriginal = string.IsNullOrWhiteSpace(request.AccessionNumberDicomOriginal)
                 ? null : request.AccessionNumberDicomOriginal!.Trim(),
             Origem = origem,
+            StatusSolicitacaoAnterior = promovel ? solicitacao.Status : null,
             CriadoEm = agora,
             CriadoPor = usuarioAtual.UsuarioId,
         };
@@ -99,6 +104,29 @@ public sealed class ExameAssociacaoService(
         assoc.ExcluidoPor = usuarioAtual.UsuarioId;
         assoc.AtualizadoEm = agora;
         assoc.AtualizadoPor = usuarioAtual.UsuarioId;
+
+        // Reverte o status da solicitação ao ponto anterior à associação — desde que
+        // tenha sido ESTA associação a promovê-la (StatusSolicitacaoAnterior setado),
+        // ela ainda esteja em Realizada e não haja OUTRA associação ativa segurando-a.
+        if (assoc.StatusSolicitacaoAnterior is { } anterior)
+        {
+            var temOutra = await db.ExameAssociacoes.AnyAsync(
+                a => a.SolicitacaoExameId == assoc.SolicitacaoExameId && a.ExcluidoEm == null && a.Id != assoc.Id,
+                cancellationToken);
+            if (!temOutra)
+            {
+                var sol = await db.SolicitacoesExame.FirstOrDefaultAsync(
+                    s => s.Id == assoc.SolicitacaoExameId && s.ExcluidoEm == null, cancellationToken);
+                if (sol is not null && sol.Status == StatusSolicitacaoExame.Realizada)
+                {
+                    sol.Status = anterior;
+                    sol.RealizadoEm = null;
+                    sol.AtualizadoEm = agora;
+                    sol.AtualizadoPor = usuarioAtual.UsuarioId;
+                }
+            }
+        }
+
         await db.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation("Exame {Uid} desassociado.", uid);

@@ -300,7 +300,7 @@ export function PacsListagemPage() {
                 Associar
               </button>
             ) : null}
-            {e.associacao?.explicita && !laudoFinalizado && podeAssociar ? (
+            {e.associacao?.explicita && e.associacao.origem !== 'Automatica' && !laudoFinalizado && podeAssociar ? (
               <button
                 type="button"
                 onClick={() => aoDesassociar(e)}
