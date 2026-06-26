@@ -59,7 +59,8 @@ export function EditorRecorte({
       try {
         const img = await carregarImagem(fotoCrua);
         if (!vivo) return;
-        canvas = paraCanvas(img, 1600);
+        // Resolução de processamento alta (a fonte do warp) — preserva a nitidez do texto.
+        canvas = paraCanvas(img, 2600);
       } catch {
         return;
       }
@@ -161,11 +162,12 @@ export function EditorRecorte({
   function aplicarRecorte() {
     if (!srcCanvas || !cantos) return;
     const out = corrigirPerspectiva(srcCanvas, cantos);
-    aoConfirmar(out.toDataURL('image/jpeg', 0.85), true);
+    // JPEG quase sem perda no intermediário: o realce (revisão) faz o passe final.
+    aoConfirmar(out.toDataURL('image/jpeg', 0.95), true);
   }
   function paginaInteira() {
     if (!srcCanvas) return;
-    aoConfirmar(srcCanvas.toDataURL('image/jpeg', 0.9), false);
+    aoConfirmar(srcCanvas.toDataURL('image/jpeg', 0.95), false);
   }
 
   const pronto = !!srcCanvas && !!srcUrl && !!cantos;

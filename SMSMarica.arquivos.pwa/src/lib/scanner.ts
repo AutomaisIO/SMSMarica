@@ -16,8 +16,9 @@
 
 import { ordenarCantos, type Cantos } from './perspectiva';
 
-// Maior lado da imagem processada — limita o tamanho do PDF final (~A4 a 200dpi).
-const MAX_LADO = 1600;
+// Maior lado da imagem processada. Mais alto que antes para preservar a resolução
+// (a foto perdia muita nitidez no downscale); o warp gera A4 a ~210 dpi.
+const MAX_LADO = 2600;
 
 // CDN do OpenCV.js. docs.opencv.org publica o build oficial pré-compilado.
 const OPENCV_CDN = 'https://docs.opencv.org/4.10.0/opencv.js';
@@ -221,9 +222,11 @@ export async function detectarCantos(canvas: HTMLCanvasElement): Promise<Cantos 
  */
 export async function realcarDataUrl(dataUrl: string, realce: OpcaoRealce): Promise<string> {
   const img = await carregarImagem(dataUrl);
+  // Não reduz a imagem JÁ recortada (A4 ~2480px ≤ MAX_LADO): só limita a "página inteira".
   const canvas = paraCanvas(img, MAX_LADO);
   const final = realce === 'cor' ? realcarCor(canvas) : realcarDocumento(canvas);
-  return final.toDataURL('image/jpeg', 0.85);
+  // Qualidade alta no único passe de JPEG (o recorte intermediário é quase sem perda).
+  return final.toDataURL('image/jpeg', 0.92);
 }
 
 /** Tenta detectar a borda do papel e devolver o recorte com perspectiva corrigida. */
@@ -264,21 +267,76 @@ function distancia(a: Ponto, b: Ponto): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-/** Realce "documento": tons de cinza + ganho de contraste (papel mais legível). */
+/**
+ * Realce "documento": tons de cinza + normalização de iluminação (achata sombras e
+ * clareia o papel) + máscara de nitidez (unsharp) para deixar as letras definidas.
+ * Robusto para texto fotografado sob luz irregular.
+ */
 function realcarDocumento(canvas: HTMLCanvasElement): HTMLCanvasElement {
-  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
   if (!ctx) return canvas;
-  const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const d = img.data;
-  const contraste = 1.45;
-  const brilho = 12;
-  for (let i = 0; i < d.length; i += 4) {
-    const cinza = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-    const v = clamp((cinza - 128) * contraste + 128 + brilho);
-    d[i] = d[i + 1] = d[i + 2] = v;
+
+  // 1. Tons de cinza.
+  const src = ctx.getImageData(0, 0, w, h).data;
+  const total = w * h;
+  const cinza = new Float32Array(total);
+  for (let i = 0, p = 0; p < total; i += 4, p++) {
+    cinza[p] = 0.299 * src[i] + 0.587 * src[i + 1] + 0.114 * src[i + 2];
   }
-  ctx.putImageData(img, 0, 0);
+
+  // Canvas auxiliar com o cinza, para os blurs via ctx.filter (suportado no iOS 14+).
+  const cinzaCanvas = document.createElement('canvas');
+  cinzaCanvas.width = w;
+  cinzaCanvas.height = h;
+  const cinzaCtx = cinzaCanvas.getContext('2d', { willReadFrequently: true });
+  if (!cinzaCtx) return canvas;
+  const cinzaImg = cinzaCtx.createImageData(w, h);
+  for (let p = 0, o = 0; p < total; p++, o += 4) {
+    cinzaImg.data[o] = cinzaImg.data[o + 1] = cinzaImg.data[o + 2] = cinza[p];
+    cinzaImg.data[o + 3] = 255;
+  }
+  cinzaCtx.putImageData(cinzaImg, 0, 0);
+
+  // 2. Fundo (iluminação): blur grande. 3. Detalhe: blur pequeno (para o unsharp).
+  const fundo = lerBorrado(cinzaCanvas, Math.max(3, Math.round(Math.max(w, h) / 18)));
+  const detalhe = lerBorrado(cinzaCanvas, Math.max(1, Math.round(Math.max(w, h) / 800)));
+
+  // 4. Normaliza a iluminação, aplica unsharp e estica o contraste.
+  const out = ctx.createImageData(w, h);
+  const od = out.data;
+  const nitidez = 0.8;
+  const contraste = 1.35;
+  for (let p = 0, o = 0; p < total; p++, o += 4) {
+    const g = cinza[p];
+    const bg = fundo[p] > 1 ? fundo[p] : 1;
+    let v = (g / bg) * 235; // papel → quase branco; texto preservado
+    v += nitidez * (g - detalhe[p]); // unsharp: realça as bordas das letras
+    v = (v - 165) * contraste + 175; // contraste: afunda o texto, clareia o papel
+    od[o] = od[o + 1] = od[o + 2] = clamp(v);
+    od[o + 3] = 255;
+  }
+  ctx.putImageData(out, 0, 0);
   return canvas;
+}
+
+/** Luminância (canal R) de um canvas borrado com ctx.filter (blur de `raio` px). */
+function lerBorrado(fonte: HTMLCanvasElement, raio: number): Float32Array {
+  const w = fonte.width;
+  const h = fonte.height;
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  const out = new Float32Array(w * h);
+  if (!ctx) return out;
+  ctx.filter = `blur(${raio}px)`;
+  ctx.drawImage(fonte, 0, 0);
+  ctx.filter = 'none';
+  const d = ctx.getImageData(0, 0, w, h).data;
+  for (let p = 0, o = 0; p < out.length; p++, o += 4) out[p] = d[o];
+  return out;
 }
 
 /** Realce "cor": mantém a cor, só dá um leve ganho de contraste/brilho. */
