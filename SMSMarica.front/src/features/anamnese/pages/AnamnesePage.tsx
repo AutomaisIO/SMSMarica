@@ -42,7 +42,7 @@ function TituloSecao({ numero, titulo, cor }: { numero: number; titulo: string; 
   );
 }
 
-export function AnamnesePage() {
+export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const solicitacaoId = params.get('solicitacaoId') ?? undefined;
@@ -58,6 +58,12 @@ export function AnamnesePage() {
   const [conteudo, setConteudo] = useState<AnamneseMamografiaConteudo>(conteudoVazio);
   const [erro, setErro] = useState<string | null>(null);
   const [salvo, setSalvo] = useState(false);
+
+  // Em janela solta, o nome do paciente vira o título da janela do SO.
+  const pacienteNome = contexto.data?.pacienteNome;
+  useEffect(() => {
+    if (janela && pacienteNome) document.title = `Anamnese — ${pacienteNome}`;
+  }, [janela, pacienteNome]);
 
   // Hidrata o form com a anamnese existente (merge defensivo sobre o shape vazio).
   useEffect(() => {
@@ -129,13 +135,13 @@ export function AnamnesePage() {
 
   if (contexto.isError || !contexto.data) {
     return (
-      <div className="space-y-3">
+      <div className={`space-y-3 ${janela ? 'min-h-screen bg-gray-50 p-6' : ''}`}>
         <button
           type="button"
-          onClick={() => navigate(-1)}
+          onClick={() => (janela ? window.close() : navigate(-1))}
           className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
         >
-          <ArrowLeft className="h-4 w-4" /> Voltar
+          <ArrowLeft className="h-4 w-4" /> {janela ? 'Fechar' : 'Voltar'}
         </button>
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {contexto.error ? extrairMensagemDeErro(contexto.error) : 'Solicitação não encontrada.'}
@@ -148,17 +154,19 @@ export function AnamnesePage() {
   const somenteLeitura = !podeEditar;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 pb-10">
+    <div className={`mx-auto max-w-5xl space-y-6 pb-10 ${janela ? 'min-h-screen bg-gray-50 p-6' : ''}`}>
       {/* Cabeçalho */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
-          >
-            <ArrowLeft className="h-4 w-4" /> Voltar
-          </button>
+          {janela ? null : (
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
+            >
+              <ArrowLeft className="h-4 w-4" /> Voltar
+            </button>
+          )}
           <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold text-gray-900">
             <ClipboardList className="h-6 w-6 text-primary-600" />
             Questionário para Exame de Mamografia

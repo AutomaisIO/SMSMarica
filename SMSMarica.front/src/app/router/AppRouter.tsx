@@ -26,6 +26,7 @@ import { PacsListagemPage } from '@/features/pacs/pages/PacsListagemPage';
 import { PacsViewerPage } from '@/features/pacs/pages/PacsViewerPage';
 import { ProcedimentosSigtapPage } from '@/features/procedimentos-sigtap/pages/ProcedimentosSigtapPage';
 import { AnamnesePage } from '@/features/anamnese/pages/AnamnesePage';
+import { ExamesAnterioresJanelaPage } from '@/features/exames-anteriores/pages/ExamesAnterioresJanelaPage';
 import { SolicitacaoExameDetalhePage } from '@/features/solicitacoes-exame/pages/SolicitacaoExameDetalhePage';
 import { SolicitacaoExameFormPage } from '@/features/solicitacoes-exame/pages/SolicitacaoExameFormPage';
 import { SolicitacoesExamePage } from '@/features/solicitacoes-exame/pages/SolicitacoesExamePage';
@@ -82,6 +83,9 @@ export function AppRouter() {
         <Route path="/trocar-senha" element={<TrocarSenhaPage />} />
         {/* Janela separada do PACS — fullscreen, sem sidebar/header do app. */}
         <Route path="/pacs/janela" element={<PacsViewerPage janela />} />
+        {/* Janela solta da anamnese e dos exames anteriores (abertas do Laudar). */}
+        <Route path="/anamnese/janela" element={<AnamnesePage janela />} />
+        <Route path="/exames-anteriores/janela" element={<ExamesAnterioresJanelaPage />} />
       </Route>
 
       <Route element={<RotaProtegida />}>

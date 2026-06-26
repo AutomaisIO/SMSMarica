@@ -24,7 +24,8 @@ import { CabecalhoLaudo } from '@/features/laudos/components/CabecalhoLaudo';
 import { SeletorTemplate } from '@/features/laudos/components/SeletorTemplate';
 import { StatusBadgeLaudo } from '@/features/laudos/components/StatusBadgeLaudo';
 import { useSolicitacaoPorStudy } from '@/features/solicitacoes-exame/api/queries';
-import { ClipboardCheck } from 'lucide-react';
+import { useAnexosExamePaciente } from '@/features/pacientes/api/queries';
+import { ClipboardCheck, ClipboardList, History } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
   useAtualizarLaudo,
@@ -286,6 +287,33 @@ export function LaudoEditorPage() {
     }
   }
 
+  // Paciente do pedido associado — alimenta a anamnese e os exames anteriores.
+  const pacienteIdPedido = solicitacao.data?.pacienteId ?? null;
+  const anexosPaciente = useAnexosExamePaciente(pacienteIdPedido);
+  const qtdExamesAnteriores = anexosPaciente.data?.length ?? 0;
+
+  function abrirAnamneseJanela() {
+    const solId = solicitacao.data?.id;
+    if (!solId) return;
+    const ok = abrirJanelaSolta(`/anamnese/janela?solicitacaoId=${solId}`, `anamnese-${solId}`, 1100, 900);
+    if (!ok) alert('A janela foi bloqueada pelo navegador. Libere os popups para este site.');
+  }
+
+  function abrirExamesAnterioresJanela() {
+    const pid = solicitacao.data?.pacienteId;
+    if (!pid) return;
+    const payload = encodeURIComponent(
+      JSON.stringify({ pacienteId: pid, nome: solicitacao.data?.pacienteNome }),
+    );
+    const ok = abrirJanelaSolta(
+      `/exames-anteriores/janela#${payload}`,
+      `exames-anteriores-${pid}`,
+      1200,
+      900,
+    );
+    if (!ok) alert('A janela foi bloqueada pelo navegador. Libere os popups para este site.');
+  }
+
   const salvando = cadastrar.isPending || atualizar.isPending;
   const finalizando = finalizar.isPending;
 
@@ -315,6 +343,23 @@ export function LaudoEditorPage() {
               <ScanLine className="mr-2 h-4 w-4" />
               Abrir visualizador
             </Button>
+          ) : null}
+          {solicitacao.data ? (
+            <>
+              <Button variante="outline" onClick={abrirAnamneseJanela}>
+                <ClipboardList className="mr-2 h-4 w-4" />
+                Anamnese
+              </Button>
+              <Button variante="outline" onClick={abrirExamesAnterioresJanela}>
+                <History className="mr-2 h-4 w-4" />
+                Exames anteriores
+                {qtdExamesAnteriores > 0 ? (
+                  <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-600 px-1.5 text-xs font-semibold text-white">
+                    {qtdExamesAnteriores}
+                  </span>
+                ) : null}
+              </Button>
+            </>
           ) : null}
           {!ehNovo && finalizado ? (
             <>
