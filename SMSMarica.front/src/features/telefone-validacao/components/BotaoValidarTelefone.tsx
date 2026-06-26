@@ -11,21 +11,24 @@ import {
 } from '@/features/telefone-validacao/api/queries';
 
 type Props = {
-  /** Número como está na tela (com ou sem máscara). */
+  /** CPF da pessoa (a chave do contato). Sem CPF de 11 díg. o botão não aparece. */
+  cpf: string;
+  /** Número do contato principal como está na tela (com ou sem máscara). */
   numero: string;
   className?: string;
 };
 
 /**
- * Selo + ação de validação do número por OTP (WhatsApp). Se o número já foi
- * validado em algum momento (registro global), mostra "Validado". Senão, oferece
- * um botão que dispara o código no WhatsApp do número em tela e abre um modal
- * aguardando o código. A validação é do NÚMERO — vale para qualquer cadastro.
+ * Selo + ação de validação do CONTATO PRINCIPAL (WhatsApp) da pessoa, por OTP, ancorado
+ * no CPF. Se o CPF já tem este número como contato validado, mostra "Validado". Senão,
+ * oferece o botão que dispara o código no WhatsApp e abre o modal aguardando o código.
+ * O número é único entre pessoas: se já for de outra pessoa, o backend bloqueia (409).
  */
-export function BotaoValidarTelefone({ numero, className }: Props) {
-  const digitos = (numero ?? '').replace(/\D/g, '');
-  const habilitado = digitos.length >= 10; // DDD (2) + número (>=8)
-  const validadoQ = useTelefoneValidado(habilitado ? numero : null);
+export function BotaoValidarTelefone({ cpf, numero, className }: Props) {
+  const cpfDig = (cpf ?? '').replace(/\D/g, '');
+  const numDig = (numero ?? '').replace(/\D/g, '');
+  const habilitado = cpfDig.length === 11 && numDig.length >= 10; // CPF + DDD (2) + número (>=8)
+  const validadoQ = useTelefoneValidado(habilitado ? cpf : null, habilitado ? numero : null);
   const [aberto, setAberto] = useState(false);
 
   if (!habilitado) return null;
@@ -37,7 +40,7 @@ export function BotaoValidarTelefone({ numero, className }: Props) {
         title={
           validadoQ.data.validadoEm
             ? `Validado em ${new Date(validadoQ.data.validadoEm).toLocaleString('pt-BR')}`
-            : 'Número validado'
+            : 'Contato validado'
         }
       >
         <BadgeCheck className="h-4 w-4" />
@@ -54,9 +57,10 @@ export function BotaoValidarTelefone({ numero, className }: Props) {
         className={`inline-flex items-center gap-1 rounded-md border border-indigo-300 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100 ${className ?? ''}`}
       >
         <ShieldCheck className="h-3.5 w-3.5" />
-        Validar número
+        Validar contato
       </button>
       <ModalValidarTelefone
+        cpf={cpf}
         numero={numero}
         aberto={aberto}
         aoFechar={() => setAberto(false)}
@@ -70,11 +74,13 @@ export function BotaoValidarTelefone({ numero, className }: Props) {
 }
 
 function ModalValidarTelefone({
+  cpf,
   numero,
   aberto,
   aoFechar,
   aoValidado,
 }: {
+  cpf: string;
   numero: string;
   aberto: boolean;
   aoFechar: () => void;
@@ -102,7 +108,7 @@ function ModalValidarTelefone({
   async function aoEnviar() {
     setErro(null);
     try {
-      const r = await enviar.mutateAsync(numero);
+      const r = await enviar.mutateAsync({ cpf, numero });
       setMascara(r.mascara);
       setModoTeste(r.canal === 'tela-teste');
       setEtapa('codigo');
@@ -114,7 +120,7 @@ function ModalValidarTelefone({
   async function aoConfirmar() {
     setErro(null);
     try {
-      await confirmar.mutateAsync({ numero, codigo });
+      await confirmar.mutateAsync({ cpf, numero, codigo });
       aoValidado();
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
@@ -122,7 +128,7 @@ function ModalValidarTelefone({
   }
 
   return (
-    <Modal aberto={aberto} aoFechar={aoFechar} titulo="Validar número" largura="sm">
+    <Modal aberto={aberto} aoFechar={aoFechar} titulo="Validar contato (WhatsApp)" largura="sm">
       <div className="space-y-4">
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <Smartphone className="h-4 w-4 text-gray-400" />

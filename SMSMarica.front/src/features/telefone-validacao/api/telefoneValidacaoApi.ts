@@ -13,23 +13,30 @@ export type TelefoneValidado = {
   validadoEm: string | null;
 };
 
-/** Dispara o envio do código de validação por WhatsApp para o número. */
-export async function enviarTelefoneOtp(numero: string): Promise<TelefoneOtpEmitido> {
-  const { data } = await http.post<TelefoneOtpEmitido>('/telefones/validacao/enviar', { numero });
+/** Dispara o envio do código de validação por WhatsApp para o contato principal do CPF. */
+export async function enviarTelefoneOtp(cpf: string, numero: string): Promise<TelefoneOtpEmitido> {
+  const { data } = await http.post<TelefoneOtpEmitido>('/telefones/validacao/enviar', { cpf, numero });
   return data;
 }
 
-/** Confirma o código; em caso de sucesso o número fica registrado como validado. */
-export async function confirmarTelefoneOtp(numero: string, codigo: string): Promise<TelefoneValidado> {
+/** Confirma o código; em sucesso o número fica como contato validado do CPF. */
+export async function confirmarTelefoneOtp(
+  cpf: string,
+  numero: string,
+  codigo: string,
+): Promise<TelefoneValidado> {
   const { data } = await http.post<TelefoneValidado>('/telefones/validacao/confirmar', {
+    cpf,
     numero,
     codigo,
   });
   return data;
 }
 
-/** Situação de validação de um número (para exibir o selo). */
-export async function obterTelefoneValidado(numero: string): Promise<TelefoneValidado> {
-  const { data } = await http.get<TelefoneValidado>('/telefones/validacao', { params: { numero } });
+/** Situação do contato validado de um (CPF, número) — para exibir o selo. */
+export async function obterTelefoneValidado(cpf: string, numero: string): Promise<TelefoneValidado> {
+  const { data } = await http.get<TelefoneValidado>('/telefones/validacao', {
+    params: { cpf, numero },
+  });
   return data;
 }

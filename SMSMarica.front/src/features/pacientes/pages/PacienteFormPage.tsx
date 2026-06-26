@@ -801,13 +801,12 @@ function SecaoContatos({
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Campo label="Telefone principal" htmlFor="telefonePrincipal" erro={erros.telefonePrincipal}>
+        <Campo label="Contato principal (WhatsApp)" htmlFor="telefonePrincipal" erro={erros.telefonePrincipal}>
           <Input id="telefonePrincipal" value={estado.telefonePrincipal} onChange={(e) => setCampo('telefonePrincipal', e.target.value)} placeholder="(21) 99999-9999" />
-          <div className="mt-1.5"><BotaoValidarTelefone numero={estado.telefonePrincipal} /></div>
+          <div className="mt-1.5"><BotaoValidarTelefone cpf={estado.cpf} numero={estado.telefonePrincipal} /></div>
         </Campo>
         <Campo label="Celular" htmlFor="telefoneCelular" erro={erros.telefoneCelular}>
           <Input id="telefoneCelular" value={estado.telefoneCelular} onChange={(e) => setCampo('telefoneCelular', e.target.value)} />
-          <div className="mt-1.5"><BotaoValidarTelefone numero={estado.telefoneCelular} /></div>
         </Campo>
         <Campo label="Telefone residencial" htmlFor="telefoneResidencial" erro={erros.telefoneResidencial}>
           <Input id="telefoneResidencial" value={estado.telefoneResidencial} onChange={(e) => setCampo('telefoneResidencial', e.target.value)} />

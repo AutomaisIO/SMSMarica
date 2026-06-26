@@ -31,21 +31,25 @@ public sealed class TelefoneValidacaoService(
         return d;
     }
 
-    public async Task<TelefoneOtpEmitidoDto> EnviarCodigoAsync(string numero, CancellationToken ct = default)
+    public async Task<TelefoneOtpEmitidoDto> EnviarCodigoAsync(string cpf, string numero, CancellationToken ct = default)
     {
+        var cpfDig = CpfDigitos(cpf);
         var canon = Canonizar(numero);
         // 55 (DDI) + DDD (2) + número (>=8) = 12 dígitos no mínimo.
         if (canon.Length < 12)
             throw new ValidacaoException("telefone.invalido", "Informe um número de celular com DDD.");
 
+        // Pré-checagem: o número já é contato principal de OUTRA pessoa? (UX melhor que falhar no confirmar)
+        await GarantirNumeroLivreAsync(cpfDig, canon, ct);
+
         var codigo = GerarCodigo();
-        cache.Set(Chave(canon), new Entry(codigo), Validade);
+        cache.Set(Chave(cpfDig, canon), new Entry(codigo), Validade);
         var validadeSeg = (int)Validade.TotalSeconds;
 
         // Modo de teste (dev): não envia, devolve o código para a tela.
         if (config.GetValue("Tfd:Otp:ModoTeste", defaultValue: false))
         {
-            logger.LogInformation("OTP de validação de telefone {Num}: {Cod} — modo teste.", canon, codigo);
+            logger.LogInformation("OTP de contato {Num} (CPF {Cpf}): {Cod} — modo teste.", canon, cpfDig, codigo);
             return new TelefoneOtpEmitidoDto("tela-teste", Mascarar(canon), validadeSeg);
         }
 
@@ -57,13 +61,13 @@ public sealed class TelefoneValidacaoService(
         var simulado = envio.Ok && (envio.WaMessageId?.StartsWith("simulado-", StringComparison.Ordinal) ?? false);
         if (simulado)
         {
-            logger.LogWarning("WhatsApp não configurado (envio simulado) ao validar telefone {Num}.", canon);
+            logger.LogWarning("WhatsApp não configurado (envio simulado) ao validar contato {Num}.", canon);
             return new TelefoneOtpEmitidoDto("tela-teste", Mascarar(canon), validadeSeg);
         }
 
         if (!envio.Ok)
         {
-            logger.LogWarning("Falha ao enviar OTP de telefone {Num}: {Erro}", canon, envio.Erro);
+            logger.LogWarning("Falha ao enviar OTP de contato {Num}: {Erro}", canon, envio.Erro);
             throw new ValidacaoException(
                 "otp.envio_falhou", "Não conseguimos enviar o código agora. Tente novamente em instantes.");
         }
@@ -71,60 +75,74 @@ public sealed class TelefoneValidacaoService(
         return new TelefoneOtpEmitidoDto("whatsapp", Mascarar(canon), validadeSeg);
     }
 
-    public async Task<TelefoneValidadoDto> ConfirmarCodigoAsync(string numero, string codigo, CancellationToken ct = default)
+    public async Task<TelefoneValidadoDto> ConfirmarCodigoAsync(
+        string cpf, string numero, string codigo, CancellationToken ct = default)
     {
+        var cpfDig = CpfDigitos(cpf);
         var canon = Canonizar(numero);
-        if (!cache.TryGetValue(Chave(canon), out Entry? entry) || entry is null)
+        var chave = Chave(cpfDig, canon);
+        if (!cache.TryGetValue(chave, out Entry? entry) || entry is null)
             throw new ValidacaoException("otp.expirado", "Código expirado ou inexistente. Envie um novo código.");
 
         if (entry.Codigo != Digitos(codigo))
         {
             entry.Tentativas++;
-            if (entry.Tentativas >= MaxTentativas) cache.Remove(Chave(canon));
+            if (entry.Tentativas >= MaxTentativas) cache.Remove(chave);
             throw new ValidacaoException("otp.invalido", "Código inválido. Confira e tente de novo.");
         }
 
-        cache.Remove(Chave(canon));
-        var validadoEm = await MarcarValidadoInternoAsync(canon, "painel", atual.UsuarioId, ct);
+        cache.Remove(chave);
+        var validadoEm = await MarcarValidadoInternoAsync(cpfDig, canon, "painel", atual.UsuarioId, ct);
         return new TelefoneValidadoDto(canon, true, validadoEm);
     }
 
-    public async Task MarcarValidadoAsync(string numero, string origem, Guid? validadoPor, CancellationToken ct = default)
+    public async Task MarcarValidadoAsync(
+        string cpf, string numero, string origem, Guid? validadoPor, CancellationToken ct = default)
     {
+        var cpfDig = CpfDigitos(cpf, lancar: false);
         var canon = Canonizar(numero);
-        if (canon.Length < 12) return;
-        await MarcarValidadoInternoAsync(canon, origem, validadoPor, ct);
+        if (cpfDig.Length != 11 || canon.Length < 12) return;
+        await MarcarValidadoInternoAsync(cpfDig, canon, origem, validadoPor, ct);
     }
 
-    public async Task<IReadOnlyList<TelefoneValidadoDto>> ConsultarAsync(
-        IReadOnlyList<string> numeros, CancellationToken ct = default)
+    public async Task<TelefoneValidadoDto> ConsultarAsync(string cpf, string numero, CancellationToken ct = default)
     {
-        var canon = (numeros ?? [])
-            .Select(Canonizar)
-            .Where(n => n.Length >= 12)
-            .Distinct()
-            .ToArray();
-        if (canon.Length == 0) return [];
+        var cpfDig = CpfDigitos(cpf, lancar: false);
+        var canon = Canonizar(numero);
+        if (cpfDig.Length != 11 || canon.Length < 12)
+            return new TelefoneValidadoDto(canon, false, null);
 
-        var validados = await db.NumerosValidados.AsNoTracking()
-            .Where(n => canon.Contains(n.Numero))
-            .ToDictionaryAsync(n => n.Numero, n => n.ValidadoEm, ct);
-
-        return canon
-            .Select(n => new TelefoneValidadoDto(
-                n, validados.ContainsKey(n), validados.TryGetValue(n, out var dt) ? dt : null))
-            .ToList();
+        // Validado só quando o CONTATO daquele CPF é exatamente este número.
+        var reg = await db.ContatosValidados.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Cpf == cpfDig && c.Numero == canon, ct);
+        return new TelefoneValidadoDto(canon, reg is not null, reg?.ValidadoEm);
     }
 
-    private async Task<DateTime> MarcarValidadoInternoAsync(string canon, string origem, Guid? por, CancellationToken ct)
+    /// <summary>Lança 409 se o número já é contato principal de OUTRO CPF.</summary>
+    private async Task GarantirNumeroLivreAsync(string cpfDig, string canon, CancellationToken ct)
     {
+        var donoOutro = await db.ContatosValidados.AsNoTracking()
+            .AnyAsync(c => c.Numero == canon && c.Cpf != cpfDig, ct);
+        if (donoOutro)
+            throw new ConflitoException(
+                "telefone.duplicado",
+                "Este número já é o contato principal de outra pessoa. Use um número diferente.");
+    }
+
+    private async Task<DateTime> MarcarValidadoInternoAsync(
+        string cpfDig, string canon, string origem, Guid? por, CancellationToken ct)
+    {
+        await GarantirNumeroLivreAsync(cpfDig, canon, ct);
+
         var agora = DateTime.UtcNow;
-        var existente = await db.NumerosValidados.FirstOrDefaultAsync(n => n.Numero == canon, ct);
+        // Upsert por PESSOA (CPF): 1 contato principal por CPF; trocar o número libera o antigo.
+        var existente = await db.ContatosValidados.FirstOrDefaultAsync(c => c.Cpf == cpfDig, ct);
         if (existente is null)
         {
-            db.NumerosValidados.Add(new NumeroValidado
+            db.ContatosValidados.Add(new ContatoValidado
             {
                 Id = Guid.CreateVersion7(),
+                Cpf = cpfDig,
                 Numero = canon,
                 ValidadoEm = agora,
                 Origem = origem,
@@ -133,20 +151,29 @@ public sealed class TelefoneValidacaoService(
         }
         else
         {
+            existente.Numero = canon;
             existente.ValidadoEm = agora;
             existente.Origem = origem;
             existente.ValidadoPor = por;
         }
         await db.SaveChangesAsync(ct);
-        logger.LogInformation("Número {Num} validado (origem {Origem}).", canon, origem);
+        logger.LogInformation("Contato {Num} validado para CPF {Cpf} (origem {Origem}).", canon, cpfDig, origem);
         return agora;
     }
 
-    private static string Chave(string canon) => $"otp:telefone:{canon}";
+    private static string Chave(string cpfDig, string canon) => $"otp:telefone:{cpfDig}:{canon}";
     private static string GerarCodigo() => RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
     private static string Digitos(string? v) =>
         string.IsNullOrEmpty(v) ? string.Empty : new string([.. v.Where(char.IsDigit)]);
     private static string? Mascarar(string canon) => canon.Length < 4 ? null : "***-" + canon[^4..];
+
+    private static string CpfDigitos(string? cpf, bool lancar = true)
+    {
+        var d = Digitos(cpf);
+        if (d.Length != 11 && lancar)
+            throw new ValidacaoException("cpf.invalido", "CPF da pessoa é obrigatório para validar o contato.");
+        return d;
+    }
 
     private sealed class Entry(string codigo)
     {

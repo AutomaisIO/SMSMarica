@@ -134,7 +134,11 @@ export function DadosPessoaisCampos({
           />
         </Campo>
 
-        <Campo label="Telefone" htmlFor="telefone" erro={erros.telefone}>
+        <Campo
+          label={validarTelefone ? 'Contato principal (WhatsApp)' : 'Telefone'}
+          htmlFor="telefone"
+          erro={erros.telefone}
+        >
           <Input
             id="telefone"
             value={valores.telefone}
@@ -144,7 +148,7 @@ export function DadosPessoaisCampos({
           />
           {validarTelefone ? (
             <div className="mt-1.5">
-              <BotaoValidarTelefone numero={valores.telefone} />
+              <BotaoValidarTelefone cpf={valores.cpf} numero={valores.telefone} />
             </div>
           ) : null}
         </Campo>

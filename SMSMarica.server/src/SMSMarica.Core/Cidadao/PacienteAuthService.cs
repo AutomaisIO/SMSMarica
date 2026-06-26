@@ -102,13 +102,13 @@ public sealed class PacienteAuthService(
         cache.Remove(Chave(cpf));
 
         // O cidadão acabou de provar posse do número (recebeu o OTP no WhatsApp): marca
-        // o telefone como validado no registro global. Nunca quebra o login se falhar.
+        // como contato validado DA PESSOA (CPF). Nunca quebra o login se falhar.
         try
         {
             var dados = await pacientes.ObterPorIdAsync(entry.PacienteId, ct);
             var fone = PrimeiroTelefone(dados.TelefoneCelular, dados.TelefonePrincipal, dados.TelefoneResidencial);
             if (fone is not null)
-                await telefoneValidacao.MarcarValidadoAsync(fone, "pwa-cidadao", null, ct);
+                await telefoneValidacao.MarcarValidadoAsync(entry.Cpf, fone, "pwa-cidadao", null, ct);
         }
         catch (Exception ex)
         {

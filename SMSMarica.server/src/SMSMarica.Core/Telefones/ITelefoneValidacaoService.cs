@@ -3,22 +3,23 @@ using SMSMarica.Core.Telefones.Dtos;
 namespace SMSMarica.Core.Telefones;
 
 /// <summary>
-/// Validação de número de telefone por OTP (WhatsApp). O alvo é o NÚMERO em si — uma vez
-/// validado, fica registrado globalmente (<c>numero_validado</c>) e qualquer cadastro com
-/// esse número exibe o selo. Usado pelo painel (operadora dispara) e pelo PWA do cidadão
-/// (o login por OTP marca o número automaticamente).
+/// Validação do contato principal (WhatsApp) de uma PESSOA por OTP, ancorado por CPF.
+/// O alvo é o par (CPF, número): uma vez validado, fica registrado em <c>contato_validado</c>
+/// (1 por CPF, número único entre pessoas) e qualquer cadastro do mesmo CPF com esse número
+/// exibe o selo. Usado pelo painel (operadora dispara) e pelo PWA do cidadão (o login por OTP
+/// marca o contato automaticamente).
 /// </summary>
 public interface ITelefoneValidacaoService
 {
-    /// <summary>Gera e envia um código por WhatsApp para o número informado.</summary>
-    Task<TelefoneOtpEmitidoDto> EnviarCodigoAsync(string numero, CancellationToken ct = default);
+    /// <summary>Gera e envia um código por WhatsApp para o número (contato principal do CPF).</summary>
+    Task<TelefoneOtpEmitidoDto> EnviarCodigoAsync(string cpf, string numero, CancellationToken ct = default);
 
-    /// <summary>Confirma o código; em caso de sucesso, marca o número como validado (origem painel).</summary>
-    Task<TelefoneValidadoDto> ConfirmarCodigoAsync(string numero, string codigo, CancellationToken ct = default);
+    /// <summary>Confirma o código; em sucesso, registra o número como contato validado do CPF (origem painel).</summary>
+    Task<TelefoneValidadoDto> ConfirmarCodigoAsync(string cpf, string numero, string codigo, CancellationToken ct = default);
 
-    /// <summary>Marca um número como validado sem OTP (ex.: caminho do PWA cidadão). Idempotente.</summary>
-    Task MarcarValidadoAsync(string numero, string origem, Guid? validadoPor, CancellationToken ct = default);
+    /// <summary>Marca o contato de um CPF como validado sem OTP (ex.: PWA cidadão). Idempotente por CPF.</summary>
+    Task MarcarValidadoAsync(string cpf, string numero, string origem, Guid? validadoPor, CancellationToken ct = default);
 
-    /// <summary>Situação de validação dos números informados (em lote).</summary>
-    Task<IReadOnlyList<TelefoneValidadoDto>> ConsultarAsync(IReadOnlyList<string> numeros, CancellationToken ct = default);
+    /// <summary>Situação: <c>Validado=true</c> só se o CPF tem ESTE número como contato validado.</summary>
+    Task<TelefoneValidadoDto> ConsultarAsync(string cpf, string numero, CancellationToken ct = default);
 }
