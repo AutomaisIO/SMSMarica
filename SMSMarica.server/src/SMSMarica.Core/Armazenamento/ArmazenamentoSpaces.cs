@@ -95,7 +95,17 @@ public sealed class ArmazenamentoSpaces : IArmazenamentoArquivos, IDisposable
         }
         catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
-            return null;
+            return null; // objeto não existe = cache miss (caminho normal).
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            // Auth/assinatura/endpoint/rede: indisponível (503), nunca 500 cru.
+            throw new ArmazenamentoIndisponivelException(
+                "Falha ao ler do armazenamento (DigitalOcean Spaces). Procure o suporte técnico.", ex);
         }
     }
 
@@ -188,16 +198,41 @@ public sealed class ArmazenamentoSpaces : IArmazenamentoArquivos, IDisposable
         catch { /* limpeza best-effort */ }
     }
 
-    /// <summary>Constrói o cliente S3 sob demanda (1x por scope) a partir da credencial cifrada.</summary>
+    /// <summary>
+    /// Constrói o cliente S3 sob demanda (1x por scope) a partir da credencial cifrada.
+    /// Qualquer falha em ler/decifrar a credencial ou montar o cliente vira
+    /// <see cref="ArmazenamentoIndisponivelException"/> (→ 503) — nunca uma exceção crua (→ 500).
+    /// </summary>
     private async Task<(IAmazonS3 Cliente, string Bucket)> GarantirClienteAsync(CancellationToken ct)
     {
         if (_cliente is not null && _bucket is not null) return (_cliente, _bucket);
 
-        var cfg = await LerConfigAsync(ct)
-            ?? throw new ArmazenamentoIndisponivelException(
+        ConfigSpaces? cfg;
+        try
+        {
+            cfg = await LerConfigAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            // Ex.: a credencial existe mas não decifra (chave de DataProtection mudou).
+            throw new ArmazenamentoIndisponivelException(
+                "Não foi possível ler a credencial do armazenamento (DigitalOcean Spaces). Recadastre as chaves em Integrações.", ex);
+        }
+
+        if (cfg is null)
+            throw new ArmazenamentoIndisponivelException(
                 "Armazenamento de arquivos indisponível: o DigitalOcean Spaces não está configurado/ativo em Integrações. Procure o suporte técnico.");
 
-        _cliente = CriarCliente(cfg);
+        try
+        {
+            _cliente = CriarCliente(cfg);
+        }
+        catch (Exception ex)
+        {
+            throw new ArmazenamentoIndisponivelException(
+                "Falha ao inicializar o cliente do armazenamento (DigitalOcean Spaces). Procure o suporte técnico.", ex);
+        }
+
         _bucket = cfg.Bucket;
         return (_cliente, _bucket);
     }
