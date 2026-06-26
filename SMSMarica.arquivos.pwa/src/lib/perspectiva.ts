@@ -2,22 +2,20 @@
  * Correção de perspectiva ("desentortar" a folha) 100% no cliente.
  *
  * Dado o quadrilátero da página (4 cantos marcados na foto), produz um retângulo
- * recortado e planificado, **preenchendo todo o retângulo** (sem áreas vazias) e
- * com a proporção (aspect ratio) o mais fiel possível à folha real.
- *
- * A proporção é estimada do próprio quadrilátero pelo método de Zhang & He
- * ("Whiteboard scanning and image enhancement") — recupera a razão largura/altura
- * de um retângulo a partir da sua projeção em perspectiva, assumindo o ponto
- * principal no centro da imagem. Se a geometria for degenerada (quase frontal,
- * sem perspectiva, ou ruidosa), cai para a razão média dos lados — sempre dá um
- * valor razoável. O warp usa OpenCV quando disponível e tem fallback puro em JS.
+ * recortado e planificado **na proporção A4** (a folha típica de exame), preenchendo
+ * 100% da largura e da altura — sem áreas vazias. A orientação (retrato x paisagem)
+ * é decidida pelo próprio quadrilátero. Saída em alta resolução (~210 dpi) para
+ * preservar a legibilidade do texto. O warp usa OpenCV quando disponível e tem
+ * fallback puro em JS (homografia + amostragem bilinear).
  */
 
 export type Ponto = { x: number; y: number };
 export type Cantos = { tl: Ponto; tr: Ponto; br: Ponto; bl: Ponto };
 
-/** Maior lado da imagem de saída (limita o tamanho do PDF e o custo do warp em JS). */
-const MAX_LADO_SAIDA = 1600;
+/** Lado maior da saída em px (A4 a ~210 dpi → boa nitidez de texto sem PDF gigante). */
+const LADO_A4 = 2480;
+/** Proporção A4 (297/210). */
+const RATIO_A4 = Math.SQRT2;
 
 /** Ordena 4 pontos quaisquer em topo-esq, topo-dir, baixo-dir, baixo-esq. */
 export function ordenarCantos(pts: Ponto[]): Cantos {
@@ -37,96 +35,24 @@ function dist(a: Ponto, b: Ponto): number {
 }
 
 /**
- * Estima a razão largura/altura da folha real a partir do quadrilátero projetado.
- * `larguraImg`/`alturaImg` = dimensões da imagem (para o ponto principal no centro).
+ * Dimensões de saída em A4: o lado maior fica com LADO_A4 e o menor segue a razão A4.
+ * Retrato se o quadrilátero é mais alto que largo; paisagem caso contrário.
  */
-export function estimarAspecto(c: Cantos, larguraImg: number, alturaImg: number): number {
-  const naive = razaoMediaDosLados(c);
-
-  const u0 = larguraImg / 2;
-  const v0 = alturaImg / 2;
-
-  // Cantos em coordenadas homogêneas (x, y, 1). Mapeamento do método:
-  //   m1 = topo-esq, m2 = topo-dir (direção da largura),
-  //   m3 = baixo-esq (direção da altura), m4 = baixo-dir (canto oposto).
-  const m1 = [c.tl.x, c.tl.y, 1];
-  const m2 = [c.tr.x, c.tr.y, 1];
-  const m3 = [c.bl.x, c.bl.y, 1];
-  const m4 = [c.br.x, c.br.y, 1];
-
-  const detK2 =
-    (m2[1] - m4[1]) * m3[0] - (m2[0] - m4[0]) * m3[1] + m2[0] * m4[1] - m2[1] * m4[0];
-  const detK3 =
-    (m3[1] - m4[1]) * m2[0] - (m3[0] - m4[0]) * m2[1] + m3[0] * m4[1] - m3[1] * m4[0];
-
-  // Denominadores ~0 → quadrilátero (quase) paralelogramo: sem info de perspectiva.
-  if (Math.abs(detK2) < 1e-6 || Math.abs(detK3) < 1e-6) return naive;
-
-  const k2 =
-    ((m1[1] - m4[1]) * m3[0] - (m1[0] - m4[0]) * m3[1] + m1[0] * m4[1] - m1[1] * m4[0]) / detK2;
-  const k3 =
-    ((m1[1] - m4[1]) * m2[0] - (m1[0] - m4[0]) * m2[1] + m1[0] * m4[1] - m1[1] * m4[0]) / detK3;
-
-  // k2≈1 e k3≈1 → lados paralelos (afim) → razão = lados medidos.
-  if (Math.abs(k2 - 1) < 1e-3 && Math.abs(k3 - 1) < 1e-3) return naive;
-
-  const n2 = [k2 * m2[0] - m1[0], k2 * m2[1] - m1[1], k2 - 1];
-  const n3 = [k3 * m3[0] - m1[0], k3 * m3[1] - m1[1], k3 - 1];
-
-  const denom = n2[2] * n3[2];
-  if (Math.abs(denom) < 1e-9) return naive;
-
-  const fSq =
-    -(
-      (n2[0] - u0 * n2[2]) * (n3[0] - u0 * n3[2]) +
-      (n2[1] - v0 * n2[2]) * (n3[1] - v0 * n3[2])
-    ) / denom;
-
-  // f² ≤ 0 → solução inconsistente (ângulo extremo/ruído): usa o naive.
-  if (!(fSq > 0) || !Number.isFinite(fSq)) return naive;
-
-  const num =
-    (n2[0] - u0 * n2[2]) ** 2 + (n2[1] - v0 * n2[2]) ** 2 + fSq * n2[2] ** 2;
-  const den =
-    (n3[0] - u0 * n3[2]) ** 2 + (n3[1] - v0 * n3[2]) ** 2 + fSq * n3[2] ** 2;
-
-  if (!(den > 0)) return naive;
-  const ratio = Math.sqrt(num / den);
-
-  // Sanidade: documentos vão de ~retrato A4 (0.7) a paisagem; rejeita absurdos.
-  if (!Number.isFinite(ratio) || ratio < 0.25 || ratio > 4) return naive;
-  return ratio;
-}
-
-function razaoMediaDosLados(c: Cantos): number {
+function dimensoesA4(c: Cantos): { largura: number; altura: number } {
   const larg = (dist(c.tl, c.tr) + dist(c.bl, c.br)) / 2;
   const alt = (dist(c.tl, c.bl) + dist(c.tr, c.br)) / 2;
-  if (alt < 1) return 1;
-  const r = larg / alt;
-  return Number.isFinite(r) && r > 0 ? r : 1;
-}
-
-/** Calcula as dimensões de saída a partir dos cantos + razão estimada. */
-function dimensoesSaida(c: Cantos, ratio: number): { largura: number; altura: number } {
-  const altMedida = (dist(c.tl, c.bl) + dist(c.tr, c.br)) / 2;
-  let altura = Math.max(1, Math.round(altMedida));
-  let largura = Math.max(1, Math.round(altura * ratio));
-  const maior = Math.max(largura, altura);
-  if (maior > MAX_LADO_SAIDA) {
-    const s = MAX_LADO_SAIDA / maior;
-    largura = Math.max(1, Math.round(largura * s));
-    altura = Math.max(1, Math.round(altura * s));
-  }
-  return { largura, altura };
+  const menor = Math.round(LADO_A4 / RATIO_A4);
+  return larg > alt
+    ? { largura: LADO_A4, altura: menor } // paisagem
+    : { largura: menor, altura: LADO_A4 }; // retrato
 }
 
 /**
  * Recorta + planifica a folha: warp do quadrilátero `cantos` (em coords da imagem
- * `fonte`) para um retângulo com a proporção estimada. Devolve um canvas novo.
+ * `fonte`) para um retângulo A4 cheio. Devolve um canvas novo.
  */
 export function corrigirPerspectiva(fonte: HTMLCanvasElement, cantos: Cantos): HTMLCanvasElement {
-  const ratio = estimarAspecto(cantos, fonte.width, fonte.height);
-  const { largura, altura } = dimensoesSaida(cantos, ratio);
+  const { largura, altura } = dimensoesA4(cantos);
 
   // Caminho preferido: OpenCV (rápido, alta qualidade) quando carregado.
   if (window.cv?.Mat) {

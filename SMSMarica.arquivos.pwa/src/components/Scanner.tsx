@@ -63,6 +63,7 @@ export function Scanner({
   const [fotoCrua, setFotoCrua] = useState<string | null>(null); // foto crua em edição (recorte)
   const [revisao, setRevisao] = useState<Revisao | null>(null);
   const [scannerPronto, setScannerPronto] = useState<boolean | null>(null);
+  const [confirmar, setConfirmar] = useState<'fechar' | 'concluir' | null>(null);
   const inputArquivo = useRef<HTMLInputElement>(null);
 
   // getUserMedia indica suporte a preview ao vivo. No iOS Safari isso pode existir
@@ -342,12 +343,84 @@ export function Scanner({
       )}
 
       <div className="space-y-3 pt-1">
-        <PrimaryButton onClick={() => aoConcluir(paginas.map((p) => p.dataUrl))} disabled={paginas.length === 0}>
+        <PrimaryButton onClick={() => setConfirmar('concluir')} disabled={paginas.length === 0}>
           <Check className="h-5 w-5" /> Concluir ({paginas.length})
         </PrimaryButton>
-        <GhostButton className="w-full" onClick={aoCancelar}>
+        <GhostButton
+          className="w-full"
+          onClick={() => (paginas.length > 0 ? setConfirmar('fechar') : aoCancelar())}
+        >
           Cancelar
         </GhostButton>
+      </div>
+
+      {confirmar === 'concluir' && (
+        <ConfirmacaoModal
+          titulo="Concluir documento?"
+          mensagem={`Vamos gerar o PDF com ${paginas.length} página${
+            paginas.length > 1 ? 's' : ''
+          } e enviar para o profissional.`}
+          rotuloConfirmar="Concluir e enviar"
+          aoConfirmar={() => {
+            setConfirmar(null);
+            aoConcluir(paginas.map((p) => p.dataUrl));
+          }}
+          aoVoltar={() => setConfirmar(null)}
+        />
+      )}
+      {confirmar === 'fechar' && (
+        <ConfirmacaoModal
+          titulo="Descartar páginas?"
+          mensagem={`${paginas.length} página${paginas.length > 1 ? 's' : ''} capturada${
+            paginas.length > 1 ? 's serão perdidas' : ' será perdida'
+          }. Esta ação não pode ser desfeita.`}
+          rotuloConfirmar="Descartar"
+          aoConfirmar={() => {
+            setConfirmar(null);
+            aoCancelar();
+          }}
+          aoVoltar={() => setConfirmar(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Modal de confirmação (descartar páginas / concluir documento). */
+function ConfirmacaoModal({
+  titulo,
+  mensagem,
+  rotuloConfirmar,
+  aoConfirmar,
+  aoVoltar,
+}: {
+  titulo: string;
+  mensagem: string;
+  rotuloConfirmar: string;
+  aoConfirmar: () => void;
+  aoVoltar: () => void;
+}) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-[60] mx-auto flex max-w-[460px] items-center justify-center bg-tinta/60 p-5"
+      onClick={aoVoltar}
+    >
+      <div
+        className="w-full max-w-sm rounded-2xl bg-papel p-5 shadow-carta"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="font-display text-lg font-semibold text-tinta">{titulo}</p>
+        <p className="mt-2 text-sm text-tinta-mute">{mensagem}</p>
+        <div className="mt-5 flex gap-3">
+          <GhostButton className="flex-1" onClick={aoVoltar}>
+            Voltar
+          </GhostButton>
+          <PrimaryButton className="flex-1" onClick={aoConfirmar}>
+            {rotuloConfirmar}
+          </PrimaryButton>
+        </div>
       </div>
     </div>
   );
@@ -435,8 +508,10 @@ function CameraAoVivo({
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: { ideal: 'environment' },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
+            // Pede 4K p/ documento (mais resolução = texto legível); o navegador cai
+            // para a maior resolução suportada se o aparelho não tiver 4K.
+            width: { ideal: 3840 },
+            height: { ideal: 2160 },
           },
           audio: false,
         });
