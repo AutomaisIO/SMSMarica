@@ -269,9 +269,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
     return (
       <div className="space-y-5">
         <p className="text-sm text-gray-600">
-          Informe o CPF. A data de nascimento valida o CPF na Receita — mas é <strong>opcional</strong>:
-          se já houver cadastro de médico ou paciente com este CPF, seguimos com os dados de lá
-          (muito médico não tem data de nascimento). Esses dados não poderão ser editados depois.
+          Informe o CPF e a data de nascimento. Esses dados não poderão ser editados depois.
         </p>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
