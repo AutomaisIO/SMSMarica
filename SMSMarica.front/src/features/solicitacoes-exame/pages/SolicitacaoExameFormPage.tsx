@@ -4,6 +4,7 @@ import { ArrowLeft, Loader2, Save } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
+import { notificar } from '@/shared/ui/Notificacoes';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
@@ -120,13 +121,15 @@ export function SolicitacaoExameFormPage() {
 
     try {
       if (ehNovo) {
-        const novoId = await cadastrar.mutateAsync({
+        await cadastrar.mutateAsync({
           ...payload,
           pacienteId: estado.pacienteId,
         });
-        navigate(`/app/solicitacoes-exame/${novoId}`, { replace: true });
+        notificar('Solicitação criada com sucesso.');
+        navigate('/app/solicitacoes-exame', { replace: true });
       } else if (id) {
         await atualizar.mutateAsync({ id, payload });
+        notificar('Solicitação atualizada com sucesso.');
         navigate(`/app/solicitacoes-exame/${id}`, { replace: true });
       }
     } catch (e) {

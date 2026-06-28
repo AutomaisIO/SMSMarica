@@ -4,6 +4,7 @@ import { ArrowLeft, ClipboardList, Loader2, Save, ShieldAlert, User } from 'luci
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
+import { notificar } from '@/shared/ui/Notificacoes';
 import { useContextoAnamnese, useSalvarAnamnese } from '@/features/anamnese/api/queries';
 import { AnamneseLeitura } from '@/features/anamnese/components/AnamneseLeitura';
 import { AnexosExameSecao } from '@/features/anamnese/components/AnexosExameSecao';
@@ -61,7 +62,6 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
 
   const [conteudo, setConteudo] = useState<AnamneseMamografiaConteudo>(conteudoVazio);
   const [erro, setErro] = useState<string | null>(null);
-  const [salvo, setSalvo] = useState(false);
 
   // Em janela solta, o nome do paciente vira o título da janela do SO.
   const pacienteNome = contexto.data?.pacienteNome;
@@ -99,7 +99,6 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
   async function aoSalvar() {
     if (!contexto.data) return;
     setErro(null);
-    setSalvo(false);
     try {
       await salvar.mutateAsync({
         solicitacaoExameId: contexto.data.solicitacaoExameId,
@@ -110,7 +109,8 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
           classificacaoRisco: conteudo.avaliacaoRisco.classificacao,
         },
       });
-      setSalvo(true);
+      notificar('Anamnese salva com sucesso.');
+      navigate(-1);
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
     }
@@ -196,11 +196,6 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
 
       {erro ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{erro}</div>
-      ) : null}
-      {salvo ? (
-        <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
-          Anamnese salva com sucesso.
-        </div>
       ) : null}
 
       {/* 1. Identificação do paciente (somente leitura — vem do cadastro) */}
