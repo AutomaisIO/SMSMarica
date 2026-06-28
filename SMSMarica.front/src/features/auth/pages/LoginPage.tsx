@@ -44,7 +44,7 @@ export function LoginPage() {
           <BrandLogo className="h-20 w-auto max-w-[300px]" />
         </div>
         <p className="mt-3 text-center text-sm text-gray-500">
-          Secretaria Municipal de Saúde · Painel administrativo
+          Secretaria Municipal de Saúde
         </p>
       </div>
 
@@ -109,10 +109,6 @@ export function LoginPage() {
             </button>
           </form>
         </div>
-      </div>
-
-      <div className="mt-6 w-full max-w-md mx-auto text-center">
-        <p className="text-xs text-gray-400">SMS Maricá &middot; ambiente de desenvolvimento</p>
       </div>
     </div>
   );
