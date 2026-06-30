@@ -63,6 +63,10 @@ builder.Services.AddValidatorsFromAssembly(typeof(SMSMarica.Core.DependencyInjec
 builder.Services.AddData(builder.Configuration);
 builder.Services.AddCore(builder.Configuration);
 
+// fo-dicom: registra os codecs nativos (JPEG-LS Lossless) usados pela transcodificação
+// do proxy PACS. Idempotente; a flag Pacs:Compressao:Habilitado controla o uso efetivo.
+SMSMarica.Core.Pacs.PacsDicomSetup.Inicializar();
+
 // Tempo real (TFD): SignalR + notificador concreto (sobrescreve o no-op do Core).
 builder.Services.AddSignalR();
 builder.Services.AddScoped<SMSMarica.Core.Rastreamento.IRastreamentoNotificador, SMSMarica.Api.Realtime.RastreamentoNotificadorSignalR>();

@@ -12,6 +12,7 @@ namespace SMSMarica.Core.Pacs;
 public sealed class PacsWarmupService(
     IPacsProxyService pacs,
     IPacsCache cache,
+    IPacsTranscodeService transcode,
     ILogger<PacsWarmupService> logger) : IPacsWarmupService
 {
     private const string AcceptJson = "application/dicom+json";
@@ -27,6 +28,7 @@ public sealed class PacsWarmupService(
 
     private readonly IPacsProxyService _pacs = pacs;
     private readonly IPacsCache _cache = cache;
+    private readonly IPacsTranscodeService _transcode = transcode;
     private readonly ILogger<PacsWarmupService> _logger = logger;
 
     public async Task AquecerEstudoAsync(string studyUid, CancellationToken cancellationToken = default)
@@ -65,6 +67,21 @@ public sealed class PacsWarmupService(
         await limite.WaitAsync(ct);
         try
         {
+            // Compressão ligada: aquece a variante JPEG-LS (mesma chave que o GET serve).
+            if (_transcode.Habilitado)
+            {
+                var chaveComprimida = _cache.CalcularChave("GET", _transcode.DiscriminarCaminho(caminho), string.Empty);
+                if (_cache.Contains(chaveComprimida)) return; // já aquecido
+
+                var comprimido = await _transcode.TranscodificarFrameAsync(caminho, ct);
+                if (comprimido is not null)
+                {
+                    _cache.Set(chaveComprimida, comprimido.ContentType, comprimido.Conteudo);
+                    return;
+                }
+                // Transcode falhou: cai no aquecimento do frame cru (fallback do GET).
+            }
+
             var chave = _cache.CalcularChave("GET", caminho, string.Empty);
             if (_cache.Contains(chave)) return; // já aquecido (checagem leve, sem ler bytes)
 

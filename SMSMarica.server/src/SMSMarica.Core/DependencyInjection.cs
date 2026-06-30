@@ -208,6 +208,14 @@ public static class DependencyInjection
         services.AddSingleton<IPacsCache, PacsCache>();
         services.AddScoped<IPacsWarmupService, PacsWarmupService>();
 
+        // ---- Transcode JPEG-LS Lossless (flag Pacs:Compressao:Habilitado, default false) ----
+        // HttpClient próprio (sem BaseAddress: monta URLs WADO-URI absolutas) com timeout
+        // maior por baixar a instância COMPLETA (~53MB) antes de comprimir (~533ms/frame).
+        services.AddHttpClient<IPacsTranscodeService, PacsTranscodeService>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(60);
+        });
+
         // Clientes do hub FHIR (Automais.Fhir) — paciente e médico vivem só no hub.
         var fhirBaseUrl = configuration["Fhir:BaseUrl"] ?? "http://localhost:5081/";
         services
