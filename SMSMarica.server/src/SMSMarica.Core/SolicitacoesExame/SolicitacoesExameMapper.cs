@@ -25,6 +25,7 @@ internal static class SolicitacoesExameMapper
         s.SolicitanteNome,
         s.SolicitanteCrm,
         s.SolicitanteUfCrm,
+        s.SolicitanteConselho,
         s.CodigoSolicitacao,
         s.ChaveConfirmacao,
         s.Justificativa,

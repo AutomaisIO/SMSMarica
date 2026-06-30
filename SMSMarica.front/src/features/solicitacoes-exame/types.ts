@@ -34,6 +34,8 @@ export type SolicitacaoExame = {
   solicitanteNome: string;
   solicitanteCrm: string;
   solicitanteUfCrm: string;
+  /** Conselho do solicitante: "CRM" (médico) ou "COREN" (enfermeiro). */
+  solicitanteConselho: string;
 
   codigoSolicitacao: string | null;
   chaveConfirmacao: string | null;
@@ -93,6 +95,7 @@ export type CadastrarSolicitacaoPayload = {
   solicitanteNome: string;
   solicitanteCrm: string;
   solicitanteUfCrm: string;
+  solicitanteConselho: string;
   codigoSolicitacao: string | null;
   chaveConfirmacao: string | null;
   justificativa: string | null;
@@ -108,6 +111,7 @@ export type AtualizarSolicitacaoPayload = {
   solicitanteNome: string;
   solicitanteCrm: string;
   solicitanteUfCrm: string;
+  solicitanteConselho: string;
   codigoSolicitacao: string | null;
   chaveConfirmacao: string | null;
   justificativa: string | null;

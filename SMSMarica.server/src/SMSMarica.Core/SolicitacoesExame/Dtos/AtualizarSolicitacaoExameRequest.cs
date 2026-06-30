@@ -11,6 +11,7 @@ public sealed record AtualizarSolicitacaoExameRequest(
     string SolicitanteNome,
     string SolicitanteCrm,
     string SolicitanteUfCrm,
+    string? SolicitanteConselho,
 
     string? CodigoSolicitacao,
     string? ChaveConfirmacao,

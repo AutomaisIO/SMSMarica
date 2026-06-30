@@ -7,12 +7,14 @@ public sealed record CadastrarSolicitacaoExameRequest(
     Guid TipoExameId,
     Guid UnidadeId,
 
-    // Solicitante: SolicitanteUsuarioId é opcional (null = médico externo).
-    // Nome/CRM/UF são sempre obrigatórios (snapshot).
+    // Solicitante: SolicitanteUsuarioId é opcional (null = externo).
+    // Nome/registro/UF são sempre obrigatórios (snapshot). Conselho = "CRM" (médico)
+    // ou "COREN" (enfermeiro); null/omitido → o serviço assume "CRM" (retrocompat).
     Guid? SolicitanteUsuarioId,
     string SolicitanteNome,
     string SolicitanteCrm,
     string SolicitanteUfCrm,
+    string? SolicitanteConselho,
 
     string? CodigoSolicitacao,
     string? ChaveConfirmacao,

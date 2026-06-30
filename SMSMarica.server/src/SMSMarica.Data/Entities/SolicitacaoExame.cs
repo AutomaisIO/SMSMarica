@@ -35,15 +35,20 @@ public class SolicitacaoExame
     public Guid UnidadeId { get; set; }
     public Unidade? Unidade { get; set; }
 
-    // ---- Solicitante (snapshot do médico que pediu) ----
+    // ---- Solicitante (snapshot do profissional que pediu: médico/CRM ou enfermeiro/COREN) ----
 
-    /// <summary>FK opcional para o Médico interno cadastrado. Null quando externo.</summary>
+    /// <summary>FK opcional para o profissional interno cadastrado. Null quando externo.</summary>
     public Guid? SolicitanteUsuarioId { get; set; }
     public Usuario? SolicitanteUsuario { get; set; }
 
     public string SolicitanteNome { get; set; } = string.Empty;
+
+    /// <summary>Número do registro no conselho (nº do CRM ou do COREN).</summary>
     public string SolicitanteCrm { get; set; } = string.Empty;
     public string SolicitanteUfCrm { get; set; } = string.Empty;
+
+    /// <summary>Conselho do solicitante: "CRM" (médico) ou "COREN" (enfermeiro). Default "CRM" (legado).</summary>
+    public string SolicitanteConselho { get; set; } = "CRM";
 
     // ---- Regulação ----
 
