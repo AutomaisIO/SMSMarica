@@ -10,7 +10,7 @@ import {
 } from '@/features/pacs/components/PacsImagensSidebar';
 import { PacsViewport } from '@/features/pacs/components/PacsViewport';
 import type { Layout } from '@/features/pacs/components/SeletorLayoutGrade';
-import { listarSeries, obterMetadadosSerie } from '@/features/pacs/api/pacsApi';
+import { aquecerEstudo, listarSeries, obterMetadadosSerie } from '@/features/pacs/api/pacsApi';
 import {
   construirImageId,
   prefetchImagens,
@@ -104,6 +104,11 @@ export function PacsViewerPage({ janela = false }: Props = {}) {
     abortRef.current = ctrl;
     setCarregandoMeta(true);
 
+    // Best-effort: pede ao servidor pra esquentar o cache do estudo em paralelo,
+    // sem bloquear a UI (responde 202 na hora). Assim o WADO-RS já entrega quente
+    // enquanto o cliente baixa as primeiras imagens.
+    void aquecerEstudo(e.studyInstanceUID);
+
     try {
       const series = await listarSeries(e.studyInstanceUID);
       if (ctrl.signal.aborted) return;
@@ -145,14 +150,39 @@ export function PacsViewerPage({ janela = false }: Props = {}) {
       setCarregandoMeta(false);
 
       if (todosImageIds.length > 0) {
-        setProgresso({ carregadas: 0, total: todosImageIds.length });
-        await prefetchImagens(todosImageIds, {
-          concurrencia: 4,
+        const total = todosImageIds.length;
+        setProgresso({ carregadas: 0, total });
+
+        // Prefetch priorizado: carrega primeiro as imagens imediatamente
+        // visíveis/próximas (a 1ª semeada no quadrado + as primeiras N da lista)
+        // com concorrência maior; só depois baixa o restante em background com
+        // concorrência menor pra não brigar com a imagem em foco. A barra de
+        // progresso enxerga o estudo inteiro: o lote prioritário avança o mesmo
+        // contador (offset) que o restante continua a partir dele.
+        const TAMANHO_LOTE_PRIORITARIO = 8;
+        const prioritarios = todosImageIds.slice(0, TAMANHO_LOTE_PRIORITARIO);
+        const restantes = todosImageIds.slice(TAMANHO_LOTE_PRIORITARIO);
+
+        await prefetchImagens(prioritarios, {
+          concurrencia: 6,
           signal: ctrl.signal,
           onProgress: (p) => {
-            if (!ctrl.signal.aborted) setProgresso(p);
+            if (!ctrl.signal.aborted) setProgresso({ carregadas: p.carregadas, total });
           },
         });
+
+        if (!ctrl.signal.aborted && restantes.length > 0) {
+          const jaCarregadas = prioritarios.length;
+          await prefetchImagens(restantes, {
+            concurrencia: 3,
+            signal: ctrl.signal,
+            onProgress: (p) => {
+              if (!ctrl.signal.aborted)
+                setProgresso({ carregadas: jaCarregadas + p.carregadas, total });
+            },
+          });
+        }
+
         if (!ctrl.signal.aborted) setProgresso(null);
       }
     } catch {

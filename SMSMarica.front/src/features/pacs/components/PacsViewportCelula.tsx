@@ -10,6 +10,7 @@ import { ToolGroupManager } from '@cornerstonejs/tools';
 import { Loader2 } from 'lucide-react';
 import { ScaleOverlayXYTool } from '@/features/pacs/lib/scaleOverlayXY';
 import { RENDERING_ENGINE_ID, TOOL_GROUP_ID } from '@/features/pacs/lib/cornerstone';
+import { useImagemRendered } from '@/features/pacs/lib/rendered';
 import {
   fontePixelSpacing,
   formatarSpacing,
@@ -59,6 +60,11 @@ export function PacsViewportCelula({
   const [montando, setMontando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [info, setInfo] = useState<InfoFooter | null>(null);
+
+  // Preview instantâneo (JPEG ~56KB já janelado pelo servidor) exibido enquanto a
+  // imagem DICOM diagnóstica (~53MB) carrega atrás. NÃO é diagnóstico — some assim
+  // que a imagem real renderiza (ver overlay abaixo, com aviso explícito).
+  const previewUrl = useImagemRendered(imageId, 1024);
 
   // Registra a viewport na engine + tool group; desfaz ao desmontar (mudança de
   // layout). A engine vive no container; aqui só anexamos/desanexamos.
@@ -166,7 +172,7 @@ export function PacsViewportCelula({
     return () => elemento.removeEventListener(EVENTS.STACK_NEW_IMAGE, handler);
   }, [pronto, aoNovaImagem]);
 
-  const mostrarLoading = Boolean(imageId) && (montando || carregando);
+  const mostrarPreview = Boolean(imageId) && (montando || carregando);
 
   return (
     <div className="relative bg-black" onPointerDown={aoFocar}>
@@ -189,10 +195,20 @@ export function PacsViewportCelula({
         </div>
       ) : null}
 
-      {mostrarLoading ? (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 bg-black/70 text-sm text-gray-300">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          Carregando...
+      {/* Preview rápido por cima do canvas enquanto a imagem diagnóstica carrega.
+          z-[5] fica abaixo do ring de foco (z-10). Mostra o JPEG reduzido quando
+          disponível, ou um spinner; sempre com o aviso de "resolução diagnóstica". */}
+      {mostrarPreview ? (
+        <div className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center bg-black">
+          {previewUrl ? (
+            <img src={previewUrl} alt="" className="h-full w-full object-contain" draggable={false} />
+          ) : (
+            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+          )}
+          <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-amber-500/90 px-3 py-1 text-[11px] font-medium text-amber-950 shadow">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Carregando resolução diagnóstica…
+          </div>
         </div>
       ) : null}
 

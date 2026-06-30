@@ -203,6 +203,11 @@ public static class DependencyInjection
                 client.Timeout = TimeSpan.FromSeconds(30);
             });
 
+        // ---- Cache em disco (LRU) + pré-aquecimento de imagens imutáveis do PACS ----
+        services.Configure<PacsCacheOptions>(configuration.GetSection(PacsCacheOptions.SecaoConfig));
+        services.AddSingleton<IPacsCache, PacsCache>();
+        services.AddScoped<IPacsWarmupService, PacsWarmupService>();
+
         // Clientes do hub FHIR (Automais.Fhir) — paciente e médico vivem só no hub.
         var fhirBaseUrl = configuration["Fhir:BaseUrl"] ?? "http://localhost:5081/";
         services
