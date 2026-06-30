@@ -76,7 +76,12 @@ public sealed partial class PacsTranscodeService : IPacsTranscodeService
                 return null;
             }
 
-            await using var origem = await resposta.Content.ReadAsStreamAsync(cancellationToken);
+            // fo-dicom precisa de stream SEEKABLE para parsear o DICOM. O stream HTTP do
+            // WADO-URI (ResponseHeadersRead) é NÃO-seekable → DicomFile.Open lança
+            // ("Specified method is not supported"). Bufferiza a instância (limitada a
+            // 1 SOP) numa MemoryStream antes de abrir.
+            var dicomBytes = await resposta.Content.ReadAsByteArrayAsync(cancellationToken);
+            using var origem = new MemoryStream(dicomBytes);
             var arquivo = await DicomFile.OpenAsync(origem);
 
             // 2) Transcoda o dataset para o alvo (JPEG-LS Lossless) e extrai o frame.
