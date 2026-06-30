@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Search, UserPlus } from 'lucide-react';
+import { Loader2, Search, UserPlus } from 'lucide-react';
 import { Avatar } from '@/shared/ui/Avatar';
 import { Input } from '@/shared/ui/Input';
+import { cpfValido, pareceCpfCompleto } from '@/shared/lib/cpf';
 import { useBuscarPacientes } from '@/features/pacientes/api/queries';
 import type { PacienteListItem } from '@/features/pacientes/types';
 
@@ -39,6 +40,16 @@ export function BuscaPaciente({ aoSelecionar, placeholder, aoCadastrarPaciente }
   const debounced = useDebounce(termo, 300);
   const busca = useBuscarPacientes(debounced);
 
+  // Digitou algo do tamanho de um CPF (11 dígitos) mas os verificadores não fecham.
+  const cpfInvalido = pareceCpfCompleto(debounced) && !cpfValido(debounced);
+
+  // "Ainda buscando": durante o debounce (termo ≠ debounced) ou o fetch em si.
+  // Dá feedback visual de que o auto-buscar não terminou.
+  const buscando =
+    debounced.trim().length >= 2 &&
+    !cpfInvalido &&
+    (termo.trim() !== debounced.trim() || busca.isFetching);
+
   return (
     <div className="relative">
       <div className="relative">
@@ -47,11 +58,19 @@ export function BuscaPaciente({ aoSelecionar, placeholder, aoCadastrarPaciente }
           value={termo}
           onChange={(e) => setTermo(e.target.value)}
           placeholder={placeholder ?? 'Nome ou CPF (qualquer parte) — mín. 2 caracteres'}
-          className="pl-9"
+          className="pl-9 pr-9"
           autoFocus
         />
+        {buscando ? (
+          <Loader2 className="pointer-events-none absolute right-3 top-2.5 h-4 w-4 animate-spin text-gray-400" />
+        ) : null}
       </div>
-      {debounced.trim().length >= 2 && !busca.isLoading && (busca.data?.length ?? 0) > 0 ? (
+      {debounced.trim().length >= 2 && cpfInvalido ? (
+        <p className="mt-2 text-xs font-medium text-red-600">
+          CPF inválido — confira os dígitos.
+        </p>
+      ) : null}
+      {!cpfInvalido && debounced.trim().length >= 2 && !busca.isLoading && (busca.data?.length ?? 0) > 0 ? (
         <ul className="mt-2 max-h-72 overflow-auto rounded-md border border-gray-200 bg-white shadow">
           {busca.data!.map((p) => (
             <li key={p.id}>
@@ -77,7 +96,7 @@ export function BuscaPaciente({ aoSelecionar, placeholder, aoCadastrarPaciente }
           ))}
         </ul>
       ) : null}
-      {debounced.trim().length >= 2 && !busca.isLoading && (busca.data?.length ?? 0) === 0 ? (
+      {!cpfInvalido && !buscando && debounced.trim().length >= 2 && !busca.isLoading && (busca.data?.length ?? 0) === 0 ? (
         <div className="mt-2 flex flex-wrap items-center gap-3">
           <p className="text-xs text-gray-500">Nenhum paciente encontrado.</p>
           {aoCadastrarPaciente ? (

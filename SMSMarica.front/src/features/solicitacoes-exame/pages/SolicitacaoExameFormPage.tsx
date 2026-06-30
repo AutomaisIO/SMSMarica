@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, Save } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
@@ -9,12 +9,14 @@ import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { BuscaPaciente } from '@/shared/ui/BuscaPaciente';
+import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
 import { useListarUnidades } from '@/features/unidades/api/queries';
 import { useTipoExamePorId } from '@/features/tipos-exame/api/queries';
 import {
   useAtualizarSolicitacao,
   useCadastrarSolicitacao,
   useSolicitacaoPorId,
+  useSolicitacoesRecentesPaciente,
 } from '@/features/solicitacoes-exame/api/queries';
 import { SeletorMedicoSolicitante } from '@/features/solicitacoes-exame/components/SeletorMedicoSolicitante';
 import { SeletorTipoExame } from '@/features/solicitacoes-exame/components/SeletorTipoExame';
@@ -78,6 +80,23 @@ export function SolicitacaoExameFormPage() {
 
   const [estado, setEstado] = useState<EstadoForm>(ESTADO_INICIAL);
   const [erro, setErro] = useState<string | null>(null);
+  const [confirmarDuplicata, setConfirmarDuplicata] = useState(false);
+
+  // Aviso de duplicada: solicitações deste paciente nos últimos 10 dias (exclui
+  // canceladas). Pede confirmação antes de criar outra.
+  const dataInicial10d = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 10);
+    return d.toISOString().slice(0, 10);
+  }, []);
+  const recentes = useSolicitacoesRecentesPaciente(
+    ehNovo ? estado.pacienteId || null : null,
+    dataInicial10d,
+  );
+  const duplicatas = useMemo(
+    () => (recentes.data ?? []).filter((s) => s.status !== 'Cancelada'),
+    [recentes.data],
+  );
 
   // Preview do tipo de exame escolhido (puxa modalidade + tempo).
   const tipoSelecionado = useTipoExamePorId(estado.tipoExameId || null);
@@ -108,7 +127,7 @@ export function SolicitacaoExameFormPage() {
     setEstado((s) => ({ ...s, [k]: v }));
   }
 
-  async function salvar() {
+  async function salvar(forcarDuplicata = false) {
     setErro(null);
     if (!estado.pacienteId) return setErro('Selecione o paciente.');
     if (!estado.tipoExameId) return setErro('Selecione o tipo de exame.');
@@ -120,6 +139,12 @@ export function SolicitacaoExameFormPage() {
       return setErro('Código de Solicitação inválido: use 0000 (emergência extra-SUS) ou um número a partir de 9999.');
     if (!regulacaoValida(estado.chaveConfirmacao))
       return setErro('Chave de Confirmação inválida: use 0000 (emergência extra-SUS) ou um número a partir de 9999.');
+
+    // Já existe solicitação recente para este paciente → confirma antes de criar outra.
+    if (ehNovo && !forcarDuplicata && duplicatas.length > 0) {
+      setConfirmarDuplicata(true);
+      return;
+    }
 
     const payload = {
       tipoExameId: estado.tipoExameId,
@@ -158,6 +183,13 @@ export function SolicitacaoExameFormPage() {
 
   const salvando = cadastrar.isPending || atualizar.isPending;
 
+  const mensagemDuplicata =
+    duplicatas.length > 0
+      ? `Este paciente já tem ${duplicatas.length} solicitação(ões) nos últimos 10 dias — a mais recente: ` +
+        `${duplicatas[0].tipoExameNome} em ${new Date(duplicatas[0].criadoEm).toLocaleDateString('pt-BR')} ` +
+        `(${duplicatas[0].status}). Deseja criar outra mesmo assim?`
+      : '';
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -174,7 +206,7 @@ export function SolicitacaoExameFormPage() {
             {ehNovo ? 'Nova solicitação de exame' : 'Editar solicitação'}
           </h1>
         </div>
-        <Button onClick={salvar} disabled={salvando}>
+        <Button onClick={() => salvar()} disabled={salvando}>
           {salvando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
           {ehNovo ? 'Criar Solicitação' : 'Salvar'}
         </Button>
@@ -188,15 +220,23 @@ export function SolicitacaoExameFormPage() {
       <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">1. Paciente</h2>
         {estado.pacienteId ? (
-          <div className="flex items-center justify-between gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-            <div>
-              <div className="font-medium text-gray-900">{estado.pacienteNome}</div>
-              <div className="text-xs text-gray-500 font-mono">ID {estado.pacienteId}</div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+              <div>
+                <div className="font-medium text-gray-900">{estado.pacienteNome}</div>
+                <div className="text-xs text-gray-500 font-mono">ID {estado.pacienteId}</div>
+              </div>
+              {ehNovo ? (
+                <Button variante="outline" tamanho="sm" onClick={() => { up('pacienteId', ''); up('pacienteNome', ''); }}>
+                  Trocar
+                </Button>
+              ) : null}
             </div>
-            {ehNovo ? (
-              <Button variante="outline" tamanho="sm" onClick={() => { up('pacienteId', ''); up('pacienteNome', ''); }}>
-                Trocar
-              </Button>
+            {ehNovo && duplicatas.length > 0 ? (
+              <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                ⚠ Este paciente já tem {duplicatas.length} solicitação(ões) nos últimos 10 dias. Ao salvar, será
+                pedida confirmação.
+              </div>
             ) : null}
           </div>
         ) : (
@@ -206,7 +246,9 @@ export function SolicitacaoExameFormPage() {
               up('pacienteNome', p.nomeCompleto);
             }}
             aoCadastrarPaciente={
-              podeCadastrarPaciente ? () => navigate('/app/pacientes/novo') : undefined
+              podeCadastrarPaciente
+                ? (termo) => navigate('/app/pacientes/novo', { state: { termo } })
+                : undefined
             }
           />
         )}
@@ -340,6 +382,19 @@ export function SolicitacaoExameFormPage() {
           </Campo>
         </div>
       </section>
+
+      <ConfirmDialog
+        aberto={confirmarDuplicata}
+        titulo="Solicitação recente para este paciente"
+        mensagem={mensagemDuplicata}
+        rotuloConfirmar="Criar mesmo assim"
+        rotuloCancelar="Cancelar"
+        aoConfirmar={() => {
+          setConfirmarDuplicata(false);
+          salvar(true);
+        }}
+        aoCancelar={() => setConfirmarDuplicata(false)}
+      />
     </div>
   );
 }

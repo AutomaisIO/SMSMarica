@@ -30,6 +30,19 @@ export function useListarSolicitacoes(filtro: FiltroSolicitacoes) {
   });
 }
 
+/**
+ * Solicitações do paciente a partir de uma data (para o aviso de duplicada na
+ * criação). Só dispara quando há paciente selecionado.
+ */
+export function useSolicitacoesRecentesPaciente(pacienteId: string | null, dataInicial: string) {
+  return useQuery({
+    queryKey: ['solicitacoes-exame', 'recentes-paciente', pacienteId, dataInicial],
+    queryFn: () => listarSolicitacoes({ pacienteId: pacienteId!, dataInicial, limite: 50 }),
+    enabled: Boolean(pacienteId),
+    staleTime: 30_000,
+  });
+}
+
 export function useSolicitacaoPorId(id: string | null) {
   return useQuery({
     queryKey: id ? solicitacoesKeys.porId(id) : ['solicitacoes-exame', 'detalhe', 'nenhum'],
