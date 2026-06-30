@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Header } from '@/app/layout/Header';
+import { MenuContextoBar } from '@/app/layout/MenuContextoBar';
 import { Sidebar } from '@/app/layout/Sidebar';
 
 export function Layout() {
@@ -20,6 +21,7 @@ export function Layout() {
         <Header onToggleMobileSidebar={() => setMobileAberto(true)} />
         <main className="px-4 py-8 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-7xl">
+            <MenuContextoBar />
             <Outlet />
           </div>
         </main>

@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from '@/app/layout/Layout';
 import { InicioPage } from '@/app/pages/InicioPage';
+import { MenuHubPage } from '@/app/pages/MenuHubPage';
 import { NaoEncontradoPage } from '@/app/pages/NaoEncontradoPage';
 import { RotaProtegida } from '@/app/router/RotaProtegida';
 import { AvaliacoesPage } from '@/features/avaliacoes/pages/AvaliacoesPage';
@@ -91,6 +92,7 @@ export function AppRouter() {
       <Route element={<RotaProtegida />}>
         <Route path="/app" element={<Layout />}>
           <Route index element={<InicioPage />} />
+          <Route path="menu/:secaoId" element={<MenuHubPage />} />
           <Route path="pacientes" element={<PacientesPage />} />
           <Route path="pacientes/novo" element={<PacienteFormPage />} />
           <Route path="pacientes/:id" element={<PacienteDetalhePage />} />
