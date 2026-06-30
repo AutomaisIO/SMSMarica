@@ -37,20 +37,18 @@ public static class DeclaracaoComparecimentoPdf
 
                 page.Content().Column(col =>
                 {
-                    col.Spacing(10);
-
                     if (d.CabecalhoImagem is { Length: > 0 } img)
                     {
                         col.Item().AlignCenter().Image(img).FitWidth();
                     }
 
-                    col.Item().PaddingTop(4).Text("DECLARAÇÃO DE COMPARECIMENTO")
-                        .Bold().FontSize(12).AlignCenter();
+                    col.Item().PaddingTop(28).Text("DECLARAÇÃO DE COMPARECIMENTO")
+                        .Bold().FontSize(11).AlignCenter();
 
-                    col.Item().PaddingTop(2).Text(texto =>
+                    col.Item().PaddingTop(26).Text(texto =>
                     {
                         texto.Justify();
-                        texto.DefaultTextStyle(s => s.FontSize(10).LineHeight(1.5f));
+                        texto.DefaultTextStyle(s => s.FontSize(9).LineHeight(1.8f));
 
                         texto.Span("Declaro, a pedido da(o) usuária(o) ");
                         texto.Span(d.PacienteNome).Bold();
@@ -65,16 +63,16 @@ public static class DeclaracaoComparecimentoPdf
                         texto.Span(".");
                     });
 
-                    col.Item().PaddingTop(14).AlignRight()
+                    col.Item().PaddingTop(34).AlignRight()
                         .Text($"{d.Cidade}, {DataPorExtenso(d.DataEmissao)}.")
-                        .FontSize(10);
+                        .FontSize(9);
 
-                    col.Item().PaddingTop(64).AlignCenter().Width(220).Column(assina =>
+                    col.Item().PaddingTop(96).AlignCenter().Width(230).Column(assina =>
                     {
                         assina.Item().LineHorizontal(0.8f).LineColor(Colors.Grey.Darken1);
                         if (!string.IsNullOrWhiteSpace(d.AssinanteNome))
                         {
-                            assina.Item().PaddingTop(2).AlignCenter().Text(d.AssinanteNome).FontSize(10).SemiBold();
+                            assina.Item().PaddingTop(3).AlignCenter().Text(d.AssinanteNome).FontSize(9).SemiBold();
                         }
                         assina.Item().AlignCenter().Text("Assinatura e carimbo do profissional")
                             .FontSize(8).Light();
