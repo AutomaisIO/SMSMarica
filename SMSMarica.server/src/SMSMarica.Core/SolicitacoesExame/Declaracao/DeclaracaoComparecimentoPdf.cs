@@ -33,7 +33,7 @@ public static class DeclaracaoComparecimentoPdf
             {
                 page.Size(148, 200, Unit.Millimetre);
                 page.Margin(12, Unit.Millimetre);
-                page.DefaultTextStyle(t => t.FontSize(10).FontFamily("Helvetica"));
+                page.DefaultTextStyle(t => t.FontSize(9).FontFamily("Helvetica"));
 
                 page.Content().Column(col =>
                 {
@@ -45,12 +45,12 @@ public static class DeclaracaoComparecimentoPdf
                     }
 
                     col.Item().PaddingTop(4).Text("DECLARAÇÃO DE COMPARECIMENTO")
-                        .Bold().FontSize(13).AlignCenter();
+                        .Bold().FontSize(12).AlignCenter();
 
                     col.Item().PaddingTop(2).Text(texto =>
                     {
                         texto.Justify();
-                        texto.DefaultTextStyle(s => s.FontSize(11).LineHeight(1.5f));
+                        texto.DefaultTextStyle(s => s.FontSize(10).LineHeight(1.5f));
 
                         texto.Span("Declaro, a pedido da(o) usuária(o) ");
                         texto.Span(d.PacienteNome).Bold();
@@ -67,9 +67,9 @@ public static class DeclaracaoComparecimentoPdf
 
                     col.Item().PaddingTop(14).AlignRight()
                         .Text($"{d.Cidade}, {DataPorExtenso(d.DataEmissao)}.")
-                        .FontSize(11);
+                        .FontSize(10);
 
-                    col.Item().PaddingTop(36).AlignCenter().Width(220).Column(assina =>
+                    col.Item().PaddingTop(64).AlignCenter().Width(220).Column(assina =>
                     {
                         assina.Item().LineHorizontal(0.8f).LineColor(Colors.Grey.Darken1);
                         if (!string.IsNullOrWhiteSpace(d.AssinanteNome))

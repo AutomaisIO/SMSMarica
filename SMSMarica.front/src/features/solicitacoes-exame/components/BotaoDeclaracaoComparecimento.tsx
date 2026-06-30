@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Loader2, Receipt } from 'lucide-react';
+import { FileCheck, Loader2 } from 'lucide-react';
 import { abrirDeclaracaoComparecimento } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
 import { cn } from '@/shared/lib/cn';
 
@@ -37,7 +37,7 @@ export function BotaoDeclaracaoComparecimento({ solicitacaoId }: { solicitacaoId
       {carregando ? (
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
       ) : (
-        <Receipt className="h-3.5 w-3.5" />
+        <FileCheck className="h-3.5 w-3.5" />
       )}
     </button>
   );
