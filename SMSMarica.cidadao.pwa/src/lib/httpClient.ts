@@ -24,13 +24,16 @@ http.interceptors.response.use(
   (erro: AxiosError) => {
     if (erro.response?.status === 401) {
       const url = erro.config?.url ?? '';
-      if (!url.includes('/auth/paciente')) {
-        const estado = useAuth.getState();
-        if (estado.token) {
-          estado.sair();
-          if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-            window.location.assign('/login');
-          }
+      // 401 nos endpoints de login (OTP) significa "código inválido" — NÃO deslogar.
+      // Em qualquer outro endpoint autenticado, 401 = sessão expirada/revogada
+      // (inclui /consentimento): limpa a sessão e manda pro login. Sem isso, o app
+      // ficava preso na tela de consentimento no iOS (token velho persistido).
+      const ehLogin = url.includes('-otp');
+      const estado = useAuth.getState();
+      if (!ehLogin && estado.token) {
+        estado.sair();
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+          window.location.assign('/login');
         }
       }
     }

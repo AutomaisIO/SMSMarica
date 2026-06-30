@@ -1,9 +1,15 @@
 import { useEffect, useState } from 'react';
+import { AxiosError } from 'axios';
 import { ShieldCheck } from 'lucide-react';
 import { api, type ConsentimentoStatus } from '@/lib/api';
 import { extrairMensagemDeErro } from '@/lib/httpClient';
 import { useAuth } from '@/store/auth';
 import { PrimaryButton } from '@/components/ui';
+
+/** 401 = sessão expirada/revogada: o interceptor já desloga e redireciona pro login. */
+function ehSessaoInvalida(e: unknown): boolean {
+  return e instanceof AxiosError && e.response?.status === 401;
+}
 
 type Estado = 'carregando' | 'pendente' | 'ok';
 
@@ -27,6 +33,9 @@ export function ConsentGate({ children }: { children: React.ReactNode }) {
       setTermo(s);
       setEstado(s.aceito ? 'ok' : 'pendente');
     } catch (e) {
+      // Sessão inválida: segura na tela de carregamento — o interceptor redireciona
+      // pro login (não deixa preso no "Li e concordo").
+      if (ehSessaoInvalida(e)) return;
       setErro(extrairMensagemDeErro(e));
       setEstado('pendente'); // na dúvida, NÃO libera o app
     }
@@ -43,6 +52,7 @@ export function ConsentGate({ children }: { children: React.ReactNode }) {
       await api.aceitarConsentimento();
       setEstado('ok');
     } catch (e) {
+      if (ehSessaoInvalida(e)) return; // interceptor redireciona pro login
       setErro(extrairMensagemDeErro(e));
     } finally {
       setEnviando(false);
