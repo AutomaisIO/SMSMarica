@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
+using SMSMarica.Core.Exames;
 using SMSMarica.Core.SolicitacoesExame;
 using SMSMarica.Core.SolicitacoesExame.Declaracao;
 using SMSMarica.Core.SolicitacoesExame.Dtos;
@@ -15,10 +16,12 @@ namespace SMSMarica.Api.Controllers;
 [Route("solicitacoes-exame")]
 public sealed class SolicitacoesExameController(
     ISolicitacoesExameService service,
-    IDeclaracaoComparecimentoService declaracao) : ControllerBase
+    IDeclaracaoComparecimentoService declaracao,
+    IExameCompletoPdfService exameCompleto) : ControllerBase
 {
     private readonly ISolicitacoesExameService _service = service;
     private readonly IDeclaracaoComparecimentoService _declaracao = declaracao;
+    private readonly IExameCompletoPdfService _exameCompleto = exameCompleto;
 
     [HttpGet]
     [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
@@ -80,6 +83,23 @@ public sealed class SolicitacoesExameController(
         var pdf = await _declaracao.GerarAsync(id, cancellationToken);
         Response.Headers.CacheControl = "private, no-store";
         return File(pdf, "application/pdf", $"declaracao-comparecimento-{id}.pdf");
+    }
+
+    /// <summary>
+    /// PDF do EXAME COMPLETO: capa com os dados da solicitação, as imagens do PACS e,
+    /// por último, o laudo (quando finalizado) — tudo num único documento.
+    /// </summary>
+    [HttpGet("{id:guid}/exame-completo-pdf")]
+    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
+    [Produces("application/pdf")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> ExameCompletoPdf(Guid id, CancellationToken cancellationToken)
+    {
+        var pdf = await _exameCompleto.GerarAsync(id, cancellationToken);
+        Response.Headers.CacheControl = "private, no-store";
+        return File(pdf, "application/pdf", $"exame-completo-{id}.pdf");
     }
 
     [HttpPost]

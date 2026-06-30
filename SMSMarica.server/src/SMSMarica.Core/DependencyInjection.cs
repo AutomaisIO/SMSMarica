@@ -278,7 +278,9 @@ public static class DependencyInjection
         services.AddScoped<Cidadao.IConsentimentoCidadaoService, Cidadao.ConsentimentoCidadaoService>();
         // Leitura clínica do app do cidadão (exames + docs escaneados + imagens PACS + laudos + agendamentos).
         services.AddScoped<Cidadao.ICidadaoClinicoService, Cidadao.CidadaoClinicoService>();
+        services.AddScoped<Exames.IExamePacsImagensReader, Exames.ExamePacsImagensReader>();
         services.AddScoped<Exames.IExameImagensPdfService, Exames.ExameImagensPdfService>();
+        services.AddScoped<Exames.IExameCompletoPdfService, Exames.ExameCompletoPdfService>();
         services.AddScoped<Tfd.Configuracao.ITfdConfigService, Tfd.Configuracao.TfdConfigService>();
         services.AddScoped<Geo.IGeocodificadorService, Geo.GeocodificadorService>();
         services.AddScoped<Geo.IDistanciaService, Geo.DistanciaService>();
