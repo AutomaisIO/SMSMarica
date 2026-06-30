@@ -10,6 +10,7 @@ import { Select } from '@/shared/ui/Select';
 import { Tabs, type Aba } from '@/shared/ui/Tabs';
 import { ListaChips } from '@/shared/ui/ListaChips';
 import { UploadFoto } from '@/shared/ui/UploadFoto';
+import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
 import {
   consultarPacientePorCpf,
   useAtualizarPaciente,
@@ -311,9 +312,12 @@ export function PacienteFormPage() {
   const modo: Modo = params.id ? 'editar' : 'criar';
 
   // CPF pré-preenchido quando o cadastro foi iniciado a partir de uma busca por
-  // CPF válido (ex.: tela de solicitação → "Cadastrar paciente").
-  const navState = (location.state as { termo?: string } | null) ?? null;
+  // CPF válido (ex.: tela de solicitação → "Cadastrar paciente"). `origem`
+  // marca de onde o fluxo nasceu (ex.: 'solicitacao') para, ao concluir,
+  // sugerir criar a solicitação já com o paciente recém-cadastrado.
+  const navState = (location.state as { termo?: string; origem?: string } | null) ?? null;
   const cpfPreFill = navState?.termo && cpfValido(navState.termo) ? apenasDigitosCpf(navState.termo) : '';
+  const origemSolicitacao = navState?.origem === 'solicitacao';
 
   const [estado, setEstado] = useState<Estado>(() =>
     cpfPreFill ? { ...ESTADO_INICIAL, cpf: cpfPreFill } : ESTADO_INICIAL,
@@ -324,6 +328,8 @@ export function PacienteFormPage() {
   const [consultandoCpf, setConsultandoCpf] = useState(false);
   const [consultandoCep, setConsultandoCep] = useState(false);
   const [reativacaoPendente, setReativacaoPendente] = useState<{ id: string; nome: string } | null>(null);
+  // Após cadastrar vindo da solicitação, sugere abrir a solicitação já preenchida.
+  const [sugerirSolicitacao, setSugerirSolicitacao] = useState<{ id: string; nome: string } | null>(null);
 
   const detalhe = usePacientePorId(params.id ?? null);
   const cadastrar = useCadastrarPaciente();
@@ -460,7 +466,15 @@ export function PacienteFormPage() {
     try {
       if (modo === 'criar') {
         const id = await cadastrar.mutateAsync(payload);
-        navigate(`/app/pacientes/${id}/editar`, { replace: true });
+        // O cadastro já salvou tudo (todas as abas estão neste formulário). Não
+        // mandamos mais para "/editar" — isso fazia o usuário achar que precisava
+        // "Salvar alterações" de novo. Se o fluxo nasceu da solicitação, oferecemos
+        // criar a solicitação já com o paciente; senão, voltamos para a lista.
+        if (origemSolicitacao) {
+          setSugerirSolicitacao({ id, nome: payload.nomeCompleto });
+        } else {
+          navigate('/app/pacientes', { replace: true });
+        }
       } else if (params.id) {
         // Nome, CPF e data de nascimento são imutáveis — não vão no payload.
         const { nomeCompleto: _nc, cpf: _cpf, dataNascimento: _dn, ...resto } = payload;
@@ -599,6 +613,7 @@ export function PacienteFormPage() {
   }
 
   return (
+    <>
     <form onSubmit={aoSalvar} className="space-y-6">
       <Cabecalho
         titulo={modo === 'criar' ? 'Novo paciente' : 'Editar paciente'}
@@ -639,6 +654,29 @@ export function PacienteFormPage() {
         </Button>
       </div>
     </form>
+
+    <ConfirmDialog
+      aberto={!!sugerirSolicitacao}
+      titulo="Paciente cadastrado"
+      mensagem={`Cadastro concluído. Deseja criar uma solicitação de exame para ${sugerirSolicitacao?.nome ?? ''}?`}
+      rotuloConfirmar="Criar solicitação"
+      rotuloCancelar="Agora não"
+      aoConfirmar={() => {
+        const sug = sugerirSolicitacao;
+        setSugerirSolicitacao(null);
+        if (sug) {
+          // Abre a solicitação já com o paciente selecionado — sem buscar de novo.
+          navigate('/app/solicitacoes-exame/novo', {
+            state: { pacienteCriado: { id: sug.id, nomeCompleto: sug.nome } },
+          });
+        }
+      }}
+      aoCancelar={() => {
+        setSugerirSolicitacao(null);
+        navigate('/app/pacientes', { replace: true });
+      }}
+    />
+    </>
   );
 }
 

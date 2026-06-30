@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, Save } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
@@ -71,6 +71,7 @@ function regulacaoValida(v: string): boolean {
 
 export function SolicitacaoExameFormPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams<{ id: string }>();
   const ehNovo = !id || id === 'novo';
   const podeCadastrarPaciente = usePermissao('Pacientes', 'Inclusao');
@@ -125,6 +126,21 @@ export function SolicitacaoExameFormPage() {
       });
     }
   }, [detalhe.data]);
+
+  // Paciente recém-cadastrado vindo da tela de cadastro (fluxo "Cadastrar
+  // paciente" → "Criar solicitação"): pré-seleciona sem precisar buscar de novo.
+  useEffect(() => {
+    const st = (location.state as { pacienteCriado?: { id: string; nomeCompleto: string } } | null) ?? null;
+    if (ehNovo && st?.pacienteCriado) {
+      setEstado((s) => ({
+        ...s,
+        pacienteId: st.pacienteCriado!.id,
+        pacienteNome: st.pacienteCriado!.nomeCompleto,
+      }));
+      // Limpa o state para um refresh não re-aplicar.
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [ehNovo, location.state, location.pathname, navigate]);
 
   function up<K extends keyof EstadoForm>(k: K, v: EstadoForm[K]) {
     setEstado((s) => ({ ...s, [k]: v }));
@@ -251,7 +267,8 @@ export function SolicitacaoExameFormPage() {
             }}
             aoCadastrarPaciente={
               podeCadastrarPaciente
-                ? (termo) => navigate('/app/pacientes/novo', { state: { termo } })
+                ? (termo) =>
+                    navigate('/app/pacientes/novo', { state: { termo, origem: 'solicitacao' } })
                 : undefined
             }
           />
