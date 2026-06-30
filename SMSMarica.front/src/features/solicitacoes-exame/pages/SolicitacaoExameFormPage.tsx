@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, Save } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
@@ -54,6 +54,7 @@ const ESTADO_INICIAL: EstadoForm = {
 
 export function SolicitacaoExameFormPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams<{ id: string }>();
   const ehNovo = !id || id === 'novo';
   const podeCadastrarPaciente = usePermissao('Pacientes', 'Inclusao');
@@ -63,7 +64,20 @@ export function SolicitacaoExameFormPage() {
   const atualizar = useAtualizarSolicitacao();
   const unidades = useListarUnidades();
 
-  const [estado, setEstado] = useState<EstadoForm>(ESTADO_INICIAL);
+  // Paciente pré-selecionado quando voltamos do cadastro iniciado por esta
+  // tela (botão "Cadastrar paciente" → modal "criar solicitação?").
+  const pacientePreSelecionado =
+    (location.state as { pacienteId?: string; pacienteNome?: string } | null) ?? null;
+
+  const [estado, setEstado] = useState<EstadoForm>(() =>
+    pacientePreSelecionado?.pacienteId
+      ? {
+          ...ESTADO_INICIAL,
+          pacienteId: pacientePreSelecionado.pacienteId,
+          pacienteNome: pacientePreSelecionado.pacienteNome ?? '',
+        }
+      : ESTADO_INICIAL,
+  );
   const [erro, setErro] = useState<string | null>(null);
 
   // Preview do tipo de exame escolhido (puxa modalidade + tempo).
@@ -89,6 +103,20 @@ export function SolicitacaoExameFormPage() {
       });
     }
   }, [detalhe.data]);
+
+  // Reaplica/limpa o paciente pré-selecionado a cada entrada de histórico.
+  // Esta rota (/novo) é a mesma para o form em branco e o pré-preenchido, e o
+  // componente é reusado entre elas — então o initializer preguiçoso não roda
+  // ao voltar; sem isto, o paciente recém-criado "vazaria" para o form anterior.
+  useEffect(() => {
+    if (!ehNovo) return;
+    const st = (location.state as { pacienteId?: string; pacienteNome?: string } | null) ?? null;
+    setEstado((s) => ({
+      ...s,
+      pacienteId: st?.pacienteId ?? '',
+      pacienteNome: st?.pacienteNome ?? '',
+    }));
+  }, [location, ehNovo]);
 
   function up<K extends keyof EstadoForm>(k: K, v: EstadoForm[K]) {
     setEstado((s) => ({ ...s, [k]: v }));
@@ -187,7 +215,12 @@ export function SolicitacaoExameFormPage() {
               up('pacienteNome', p.nomeCompleto);
             }}
             aoCadastrarPaciente={
-              podeCadastrarPaciente ? () => navigate('/app/pacientes/novo') : undefined
+              podeCadastrarPaciente
+                ? (termo) =>
+                    navigate('/app/pacientes/novo', {
+                      state: { origem: 'solicitacao-exame', termo },
+                    })
+                : undefined
             }
           />
         )}

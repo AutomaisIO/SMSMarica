@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { ArrowLeft, Loader2, Search } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, ClipboardList, Loader2, Search } from 'lucide-react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
@@ -9,6 +9,7 @@ import { BotaoValidarTelefone } from '@/features/telefone-validacao/components/B
 import { Select } from '@/shared/ui/Select';
 import { Tabs, type Aba } from '@/shared/ui/Tabs';
 import { ListaChips } from '@/shared/ui/ListaChips';
+import { Modal } from '@/shared/ui/Modal';
 import { UploadFoto } from '@/shared/ui/UploadFoto';
 import {
   consultarPacientePorCpf,
@@ -305,16 +306,31 @@ function estadoParaPayload(e: Estado) {
 
 export function PacienteFormPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const params = useParams<{ id?: string }>();
   const modo: Modo = params.id ? 'editar' : 'criar';
 
-  const [estado, setEstado] = useState<Estado>(ESTADO_INICIAL);
+  // Contexto de quando o cadastro foi iniciado a partir da tela de
+  // solicitação de exame (botão "Cadastrar paciente"). Nesse caso, ao
+  // concluir o cadastro, oferecemos criar a solicitação já com o paciente.
+  const navState = (location.state as { origem?: string; termo?: string } | null) ?? null;
+  const veioDeSolicitacao = navState?.origem === 'solicitacao-exame';
+  // Se a busca que originou o cadastro era numérica (CPF), pré-preenche o campo.
+  const cpfPreFill =
+    navState?.termo && /^[\d.\s-]+$/.test(navState.termo)
+      ? navState.termo.replace(/\D/g, '').slice(0, 11)
+      : '';
+
+  const [estado, setEstado] = useState<Estado>(() =>
+    cpfPreFill ? { ...ESTADO_INICIAL, cpf: cpfPreFill } : ESTADO_INICIAL,
+  );
   const [erros, setErros] = useState<Record<string, string>>({});
   const [erroGlobal, setErroGlobal] = useState<string | null>(null);
   const [passoCpfConcluido, setPassoCpfConcluido] = useState<boolean>(modo === 'editar');
   const [consultandoCpf, setConsultandoCpf] = useState(false);
   const [consultandoCep, setConsultandoCep] = useState(false);
   const [reativacaoPendente, setReativacaoPendente] = useState<{ id: string; nome: string } | null>(null);
+  const [solicitacaoPendente, setSolicitacaoPendente] = useState<{ id: string; nome: string } | null>(null);
 
   const detalhe = usePacientePorId(params.id ?? null);
   const cadastrar = useCadastrarPaciente();
@@ -451,6 +467,12 @@ export function PacienteFormPage() {
     try {
       if (modo === 'criar') {
         const id = await cadastrar.mutateAsync(payload);
+        if (veioDeSolicitacao) {
+          // Oferece criar a solicitação de exame já com este paciente,
+          // evitando ter de buscá-lo de novo na outra tela.
+          setSolicitacaoPendente({ id, nome: payload.nomeCompleto });
+          return;
+        }
         navigate(`/app/pacientes/${id}/editar`, { replace: true });
       } else if (params.id) {
         // Nome, CPF e data de nascimento são imutáveis — não vão no payload.
@@ -461,6 +483,26 @@ export function PacienteFormPage() {
     } catch (err) {
       setErroGlobal(extrairMensagemDeErro(err));
     }
+  }
+
+  function irParaSolicitacao() {
+    if (!solicitacaoPendente) return;
+    const { id, nome } = solicitacaoPendente;
+    setSolicitacaoPendente(null);
+    navigate('/app/solicitacoes-exame/novo', {
+      replace: true,
+      state: { pacienteId: id, pacienteNome: nome },
+    });
+  }
+
+  function dispensarSolicitacao() {
+    if (!solicitacaoPendente) return;
+    const { id } = solicitacaoPendente;
+    // Fecha o modal explicitamente: as rotas /novo e /:id/editar renderizam
+    // este mesmo componente, então a navegação reusa a instância (sem
+    // remount) e o estado não se zera sozinho.
+    setSolicitacaoPendente(null);
+    navigate(`/app/pacientes/${id}/editar`, { replace: true });
   }
 
   const carregando = modo === 'editar' && detalhe.isFetching && !detalhe.data;
@@ -629,6 +671,33 @@ export function PacienteFormPage() {
           {salvando ? 'Salvando…' : modo === 'criar' ? 'Cadastrar paciente' : 'Salvar alterações'}
         </Button>
       </div>
+
+      <Modal
+        aberto={!!solicitacaoPendente}
+        aoFechar={dispensarSolicitacao}
+        titulo="Paciente cadastrado"
+        largura="sm"
+      >
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary-600">
+              <ClipboardList className="h-5 w-5" />
+            </div>
+            <p className="text-sm text-gray-700">
+              <strong>{solicitacaoPendente?.nome}</strong> foi cadastrado(a) com sucesso. Deseja
+              criar uma solicitação de exame para este paciente agora?
+            </p>
+          </div>
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <Button type="button" variante="ghost" onClick={dispensarSolicitacao}>
+              Agora não
+            </Button>
+            <Button type="button" onClick={irParaSolicitacao}>
+              Criar solicitação
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </form>
   );
 }
