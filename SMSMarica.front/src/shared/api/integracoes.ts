@@ -5,6 +5,8 @@ export type ConsultaCpfResposta = {
   nome: string;
   dataNascimento: string;
   situacaoCadastral: string | null;
+  /** "Masculino" | "Feminino" quando a Receita/Hub retorna; null caso contrário. */
+  sexo: string | null;
 };
 
 export type ConsultaCepResposta = {

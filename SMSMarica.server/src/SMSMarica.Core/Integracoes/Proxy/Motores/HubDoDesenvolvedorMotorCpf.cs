@@ -39,6 +39,19 @@ public sealed class HubDoDesenvolvedorMotorCpf(HttpClient http) : IMotorCpf
             Cpf: payload.Result.NumeroDeCpf ?? cpf,
             Nome: payload.Result.NomeDaPf ?? string.Empty,
             DataNascimento: payload.Result.DataNascimento ?? data,
-            SituacaoCadastral: payload.Result.SituacaoCadastral);
+            SituacaoCadastral: payload.Result.SituacaoCadastral,
+            Sexo: NormalizarSexo(payload.Result.Genero ?? payload.Result.Sexo));
+    }
+
+    /// <summary>Normaliza o sexo cru do Hub (M/F/Masculino/Feminino) para o canônico do domínio.</summary>
+    private static string? NormalizarSexo(string? bruto)
+    {
+        if (string.IsNullOrWhiteSpace(bruto)) return null;
+        return bruto.Trim().ToUpperInvariant() switch
+        {
+            "M" or "MASCULINO" => "Masculino",
+            "F" or "FEMININO" => "Feminino",
+            _ => null,
+        };
     }
 }

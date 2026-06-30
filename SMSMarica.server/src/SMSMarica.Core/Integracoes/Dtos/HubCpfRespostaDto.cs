@@ -5,7 +5,9 @@ public sealed record HubCpfRespostaDto(
     string Cpf,
     string Nome,
     string DataNascimento,
-    string? SituacaoCadastral);
+    string? SituacaoCadastral,
+    /// <summary>Sexo normalizado ("Masculino"/"Feminino") quando a Receita/Hub retorna; null caso contrário.</summary>
+    string? Sexo = null);
 
 /// <summary>Resposta normalizada da consulta CEP (Hub do Desenvolvedor v2 — cep3).</summary>
 public sealed record HubCepRespostaDto(

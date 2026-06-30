@@ -44,7 +44,10 @@ internal static class HubDoDesenvolvedor
         [property: JsonPropertyName("numero_de_cpf")] string? NumeroDeCpf,
         [property: JsonPropertyName("nome_da_pf")] string? NomeDaPf,
         [property: JsonPropertyName("data_nascimento")] string? DataNascimento,
-        [property: JsonPropertyName("situacao_cadastral")] string? SituacaoCadastral);
+        [property: JsonPropertyName("situacao_cadastral")] string? SituacaoCadastral,
+        // O Hub pode mandar o sexo como "genero" ou "sexo" (varia por plano); aceitamos os dois.
+        [property: JsonPropertyName("genero")] string? Genero = null,
+        [property: JsonPropertyName("sexo")] string? Sexo = null);
 
     public sealed record CepPayload(bool Status, string? Return, CepPayloadResult? Result);
 

@@ -383,11 +383,16 @@ export function PacienteFormPage() {
 
       const hub: ConsultaCpfResposta = await consultarCpf(cpfLimpo, estado.dataNascimento);
       const dataIso = parseDataBr(hub.dataNascimento) || estado.dataNascimento;
+      const sexoHub = hub.sexo && (SEXOS as readonly string[]).includes(hub.sexo)
+        ? (hub.sexo as Sexo)
+        : null;
       setEstado((s) => ({
         ...s,
         nomeCompleto: hub.nome.trim(),
         cpf: hub.cpf,
         dataNascimento: dataIso,
+        // Pré-preenche o sexo quando a Receita/Hub retorna; senão mantém o atual.
+        sexo: sexoHub ?? s.sexo,
       }));
       setPassoCpfConcluido(true);
     } catch (e) {
