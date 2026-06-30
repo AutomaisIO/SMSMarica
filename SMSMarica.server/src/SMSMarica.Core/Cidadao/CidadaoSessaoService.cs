@@ -37,11 +37,12 @@ public sealed class CidadaoSessaoService(
             acesso.AtualizadoEm = DateTime.UtcNow;
         }
 
-        // 2. Single-device: revoga todas as sessões ativas anteriores deste acesso.
+        // 2. Múltiplas sessões permitidas: NÃO revoga as anteriores no login. No iOS o
+        //    PWA instalado tem storage separado do Safari/Chrome; a antiga política
+        //    single-device derrubava a sessão do PWA ao logar em outra superfície,
+        //    gerando 401 recorrente. Logout explícito (RevogarAsync) segue revogando
+        //    a sessão específica; as demais expiram naturalmente.
         var agora = DateTime.UtcNow;
-        await db.CidadaoSessoes
-            .Where(s => s.CidadaoAcessoId == acesso.Id && s.RevogadaEm == null)
-            .ExecuteUpdateAsync(set => set.SetProperty(s => s.RevogadaEm, agora), ct);
 
         // 3. Cria a nova sessão. O Id é o jti que vai no token.
         var dias = config.GetValue("Tfd:Cidadao:SessaoDias", defaultValue: 30);
