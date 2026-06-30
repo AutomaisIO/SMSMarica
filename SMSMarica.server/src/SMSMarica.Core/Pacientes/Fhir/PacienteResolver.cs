@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Pacientes.Fhir;
@@ -22,16 +23,27 @@ public interface IPacienteResolver
     Task<IReadOnlyDictionary<Guid, PacienteResumo>> ResolverManyAsync(IEnumerable<Guid> ids, CancellationToken ct = default);
 }
 
-public sealed class PacienteResolver(IPacienteFhirClient fhir) : IPacienteResolver
+public sealed class PacienteResolver(IPacienteFhirClient fhir, ILogger<PacienteResolver> logger) : IPacienteResolver
 {
     public async Task<PacienteResumo?> ResolverAsync(Guid id, CancellationToken ct = default)
     {
         if (id == Guid.Empty) return null;
-        var patient = await fhir.ObterAsync(id, ct);
-        if (patient is null) return null;
+        try
+        {
+            var patient = await fhir.ObterAsync(id, ct);
+            if (patient is null) return null;
 
-        var dto = PacienteFhirMapper.ParaDto(patient);
-        return new PacienteResumo(dto.Id, dto.NomeCompleto, dto.Cpf, dto.Cns, dto.DataNascimento, dto.Sexo);
+            var dto = PacienteFhirMapper.ParaDto(patient);
+            return new PacienteResumo(dto.Id, dto.NomeCompleto, dto.Cpf, dto.Cns, dto.DataNascimento, dto.Sexo);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Hub FHIR indisponível/erro NÃO pode derrubar a listagem que só quer
+            // exibir o nome: degrada para "sem nome" (o chamador mostra fallback) em
+            // vez de propagar e virar 500. A cancelação legítima segue propagando.
+            logger.LogWarning(ex, "Falha ao resolver paciente {PacienteId} no hub FHIR — seguindo sem nome.", id);
+            return null;
+        }
     }
 
     public async Task<IReadOnlyDictionary<Guid, PacienteResumo>> ResolverManyAsync(
@@ -41,6 +53,13 @@ public sealed class PacienteResolver(IPacienteFhirClient fhir) : IPacienteResolv
         if (distintos.Length == 0) return new Dictionary<Guid, PacienteResumo>();
 
         var resumos = await Task.WhenAll(distintos.Select(id => ResolverAsync(id, ct)));
-        return resumos.Where(r => r is not null).ToDictionary(r => r!.Id, r => r!);
+
+        // Indexador (não ToDictionary): se dois ids resolverem para o mesmo paciente
+        // canônico (.Id), a chave duplicada sobrescreve em vez de lançar
+        // ArgumentException — que viraria 500 na listagem.
+        var mapa = new Dictionary<Guid, PacienteResumo>(distintos.Length);
+        foreach (var r in resumos)
+            if (r is not null) mapa[r.Id] = r;
+        return mapa;
     }
 }
