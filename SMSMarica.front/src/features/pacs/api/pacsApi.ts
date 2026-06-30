@@ -115,6 +115,20 @@ export async function obterMetadadosSerie(
 }
 
 /**
+ * Pede ao backend que pré-aqueça (em background) o cache do estudo no proxy
+ * WADO-RS. Responde 202 imediatamente; é best-effort — qualquer erro é ignorado
+ * para não travar a UI. Disparar sem `await` bloqueante ao abrir o estudo, para
+ * o servidor já esquentar o cache em paralelo com o prefetch do cliente.
+ */
+export async function aquecerEstudo(studyUID: string): Promise<void> {
+  try {
+    await http.post(`/pacs/aquecer/${encodeURIComponent(studyUID)}`);
+  } catch {
+    // Silencioso de propósito: o aquecimento é apenas uma otimização.
+  }
+}
+
+/**
  * Exclui um estudo do PACS. O backend trata o passo-a-passo do dcm4chee
  * (reject + delete permanente).
  */

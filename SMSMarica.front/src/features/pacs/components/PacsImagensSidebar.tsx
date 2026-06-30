@@ -1,8 +1,6 @@
-import { useEffect, useRef } from 'react';
-import { utilities } from '@cornerstonejs/core';
 import { Image as ImageIcon, Loader2 } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
-import { inicializarCornerstone } from '@/features/pacs/lib/cornerstone';
+import { useImagemRendered } from '@/features/pacs/lib/rendered';
 
 export type ImagemLista = { imageId: string; rotulo: string };
 
@@ -76,33 +74,13 @@ export function PacsImagensSidebar({
 
 const TAMANHO_THUMB = 72;
 
+/**
+ * Miniatura via WADO-RS /rendered (JPEG ~2,5KB já reduzido pelo servidor) — não
+ * baixa a imagem DICOM crua (~53MB). Antes usava loadImageToCanvas, que forçava
+ * o download da resolução total de TODAS as imagens só para montar a lista.
+ */
 function ThumbnailImagem({ imageId, ativa }: { imageId: string; ativa: boolean }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    let cancelado = false;
-    void (async () => {
-      await inicializarCornerstone();
-      if (cancelado) return;
-      try {
-        await utilities.loadImageToCanvas({
-          canvas,
-          imageId,
-          thumbnail: true,
-          imageAspect: true,
-        });
-      } catch {
-        // Falhou — mantemos o placeholder vazio sem erro visível.
-      }
-    })();
-
-    return () => {
-      cancelado = true;
-    };
-  }, [imageId]);
+  const url = useImagemRendered(imageId, 160);
 
   return (
     <div
@@ -112,13 +90,8 @@ function ThumbnailImagem({ imageId, ativa }: { imageId: string; ativa: boolean }
       )}
       style={{ width: TAMANHO_THUMB, height: TAMANHO_THUMB }}
     >
-      {imageId ? (
-        <canvas
-          ref={canvasRef}
-          width={TAMANHO_THUMB}
-          height={TAMANHO_THUMB}
-          className="h-full w-full"
-        />
+      {url ? (
+        <img src={url} alt="" className="h-full w-full object-contain" draggable={false} />
       ) : (
         <ImageIcon className="h-5 w-5 text-gray-700" />
       )}

@@ -1,5 +1,7 @@
 using System.Net;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SMSMarica.Api.Auth;
 using SMSMarica.Core.Pacs;
 using SMSMarica.Data.Entities.Enums;
@@ -14,7 +16,11 @@ namespace SMSMarica.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("pacs")]
-public sealed class PacsController(IPacsProxyService pacs) : ControllerBase
+public sealed class PacsController(
+    IPacsProxyService pacs,
+    IPacsCache cache,
+    IServiceScopeFactory scopeFactory,
+    ILogger<PacsController> logger) : ControllerBase
 {
     /// <summary>
     /// Code+designator (DCM 113001 — "Rejected for Quality Reasons") usado para
@@ -24,7 +30,18 @@ public sealed class PacsController(IPacsProxyService pacs) : ControllerBase
     /// </summary>
     private const string RejectCodeQualidade = "113001%5EDCM";
 
+    /// <summary>
+    /// Header de cache "para sempre" usado em conteúdo IMUTÁVEL por instância
+    /// (tudo sob <c>/instances/</c>: frames, bulk e metadata da instância). O pixel
+    /// data de uma SOP Instance DICOM nunca muda, então o browser pode reusar a
+    /// resposta sem revalidar.
+    /// </summary>
+    private const string CacheControlImutavel = "private, max-age=31536000, immutable";
+
     private readonly IPacsProxyService _pacs = pacs;
+    private readonly IPacsCache _cache = cache;
+    private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
+    private readonly ILogger<PacsController> _logger = logger;
 
     [HttpGet("rs/{**caminho}")]
     [RequerPermissao(ModuloPermissao.Pacs, AcoesPermissao.Consulta)]
@@ -32,7 +49,62 @@ public sealed class PacsController(IPacsProxyService pacs) : ControllerBase
     {
         var queryString = Request.QueryString.Value ?? string.Empty;
         var accept = Request.Headers.Accept.ToString();
+        var imutavel = EhCaminhoImutavel(caminho);
 
+        // (B) Cache em disco SOMENTE para conteúdo imutável por instância e método GET.
+        if (imutavel && _cache.Habilitado)
+        {
+            var chave = _cache.CalcularChave("GET", caminho, queryString);
+
+            // Cache hit: serve do disco com o content-type guardado + header imutável.
+            if (_cache.TryGet(chave, out var ctCache, out var bytesCache))
+            {
+                Response.StatusCode = (int)HttpStatusCode.OK;
+                Response.ContentType = ctCache;
+                Response.Headers.CacheControl = CacheControlImutavel;
+                await Response.Body.WriteAsync(bytesCache, cancellationToken);
+                return;
+            }
+
+            using var resposta = await _pacs.EncaminharAsync(
+                HttpMethod.Get, caminho, queryString, accept, cancellationToken);
+
+            Response.StatusCode = (int)resposta.StatusCode;
+            if (resposta.Content.Headers.ContentType is not null)
+            {
+                Response.ContentType = resposta.Content.Headers.ContentType.ToString();
+            }
+
+            if (resposta.IsSuccessStatusCode)
+            {
+                Response.Headers.CacheControl = CacheControlImutavel; // (A)
+
+                // Bufferiza com teto RÍGIDO (sem depender de Content-Length, que o
+                // dcm4chee não manda no multipart chunked). Cabendo no teto, cacheia;
+                // estourando, repassa o restante por streaming sem cachear.
+                var teto = _cache.TetoItemBytes > 0 ? _cache.TetoItemBytes : StreamLimitado.TetoSegurancaPadrao;
+                await using var origem = await resposta.Content.ReadAsStreamAsync(cancellationToken);
+                var (buffer, completo) = await StreamLimitado.LerComTetoAsync(origem, teto, cancellationToken);
+
+                await Response.Body.WriteAsync(buffer, cancellationToken);
+                if (completo)
+                {
+                    _cache.Set(chave, Response.ContentType ?? "application/octet-stream", buffer);
+                }
+                else
+                {
+                    await origem.CopyToAsync(Response.Body, cancellationToken);
+                }
+                return;
+            }
+
+            // Não-2xx: repassa por streaming, sem cachear nem marcar como imutável.
+            await using var erroStream = await resposta.Content.ReadAsStreamAsync(cancellationToken);
+            await erroStream.CopyToAsync(Response.Body, cancellationToken);
+            return;
+        }
+
+        // Caminho NÃO-imutável (QIDO/listagens) ou cache desligado: streaming como hoje.
         using var upstream = await _pacs.EncaminharAsync(
             HttpMethod.Get, caminho, queryString, accept, cancellationToken);
 
@@ -43,9 +115,57 @@ public sealed class PacsController(IPacsProxyService pacs) : ControllerBase
             Response.ContentType = upstream.Content.Headers.ContentType.ToString();
         }
 
+        // (A) Mesmo sem cache em disco, marca conteúdo imutável como cacheável no browser.
+        if (imutavel && upstream.IsSuccessStatusCode)
+        {
+            Response.Headers.CacheControl = CacheControlImutavel;
+        }
+
         await using var stream = await upstream.Content.ReadAsStreamAsync(cancellationToken);
         await stream.CopyToAsync(Response.Body, cancellationToken);
     }
+
+    /// <summary>
+    /// Pré-aquece o cache de imagens de um estudo (item de performance): responde
+    /// 202 imediatamente e dispara, em background, o download dos frames para o
+    /// cache local, deixando a primeira visualização do médico instantânea.
+    /// </summary>
+    [HttpPost("aquecer/{studyUid}")]
+    [RequerPermissao(ModuloPermissao.Pacs, AcoesPermissao.Consulta)]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    public IActionResult Aquecer(string studyUid)
+    {
+        // Escopo próprio: o request HTTP termina já-já (202), mas o aquecimento
+        // continua. Capturamos e logamos qualquer exceção para nunca derrubar o host.
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var escopo = _scopeFactory.CreateScope();
+                var warmup = escopo.ServiceProvider.GetRequiredService<IPacsWarmupService>();
+                await warmup.AquecerEstudoAsync(studyUid, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Falha no pré-aquecimento do estudo {StudyUid}.", studyUid);
+            }
+        });
+
+        return Accepted();
+    }
+
+    /// <summary>
+    /// Conteúdo IMUTÁVEL por instância: tudo sob <c>/instances/</c> (a instância
+    /// individual, seus <c>/frames/</c> e seu <c>/metadata</c> — no WADO-RS frames
+    /// e metadata de instância sempre ficam sob <c>/instances/</c>).
+    /// Ficam de fora (podem mudar e NÃO entram aqui): listagens/buscas QIDO
+    /// (<c>.../studies</c>, <c>.../series</c>) e a metadata AGREGADA de estudo/série
+    /// (<c>studies/{u}/metadata</c>, <c>.../series/{u}/metadata</c>), que crescem
+    /// quando novas imagens chegam ao estudo.
+    /// </summary>
+    private static bool EhCaminhoImutavel(string caminho)
+        => !string.IsNullOrEmpty(caminho)
+            && caminho.Contains("/instances/", StringComparison.Ordinal);
 
     /// <summary>
     /// Exclui um estudo do PACS. O dcm4chee exige duas operações: primeiro
