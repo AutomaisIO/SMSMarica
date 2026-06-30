@@ -3,6 +3,7 @@ using PdfSharp.Pdf.IO;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using Placeholders = QuestPDF.Helpers.Placeholders;
 using SMSMarica.Core.Exames;
 using Xunit;
 using QuestDocument = QuestPDF.Fluent.Document;
@@ -44,6 +45,30 @@ public class PdfMergeTests
         using var ms = new MemoryStream(merged);
         using var doc = PdfReader.Open(ms, PdfDocumentOpenMode.Import);
         doc.PageCount.Should().Be(5);
+    }
+
+    [Fact]
+    public void Concatenar_pdf_do_QuestPDF_com_imagem_embutida()
+    {
+        QuestPDF.Settings.License = LicenseType.Community;
+        var jpeg = Placeholders.Image(400, 300);
+        var comImagem = QuestDocument.Create(c =>
+        {
+            c.Page(p =>
+            {
+                p.Size(PageSizes.A4);
+                p.Margin(1, Unit.Centimetre);
+                p.Content().Image(jpeg).FitArea();
+            });
+        }).GeneratePdf();
+
+        var laudo = GerarQuestPdf("Laudo", 1);
+
+        var merged = PdfMerge.Concatenar(comImagem, laudo);
+
+        using var ms = new MemoryStream(merged);
+        using var doc = PdfReader.Open(ms, PdfDocumentOpenMode.Import);
+        doc.PageCount.Should().Be(2);
     }
 
     [Fact]

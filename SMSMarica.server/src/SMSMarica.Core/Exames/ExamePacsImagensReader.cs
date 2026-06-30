@@ -72,8 +72,24 @@ public sealed class ExamePacsImagensReader(
             return [];
         }
 
-        await using var stream = await resposta.Content.ReadAsStreamAsync(ct);
-        using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+        // dcm4chee às vezes responde 200 com corpo VAZIO (estudo inexistente/sem
+        // instâncias) em vez de 204 — não tente parsear JSON nesse caso.
+        var corpo = await resposta.Content.ReadAsStringAsync(ct);
+        if (string.IsNullOrWhiteSpace(corpo)) return [];
+
+        JsonDocument doc;
+        try
+        {
+            doc = JsonDocument.Parse(corpo);
+        }
+        catch (JsonException ex)
+        {
+            logger.LogWarning(ex, "QIDO de instâncias retornou corpo não-JSON para o estudo {Study}.", studyUid);
+            return [];
+        }
+
+        using var _ = doc;
+        if (doc.RootElement.ValueKind != JsonValueKind.Array) return [];
 
         var lista = new List<Instancia>();
         foreach (var item in doc.RootElement.EnumerateArray())

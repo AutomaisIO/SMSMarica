@@ -44,7 +44,20 @@ public sealed class ExameCompletoPdfService(
         if (string.IsNullOrWhiteSpace(sol.StudyInstanceUID))
             throw new ConflitoException("exame.sem_imagens", "Este exame ainda não tem imagens disponíveis.");
 
+        // Worklist: o StudyInstanceUID da solicitação é o real. Exames associados
+        // (sem worklist) têm UID pré-gerado que não existe no PACS — nesses casos o
+        // estudo REAL vem da associação ativa.
         var imagens = await imagensReader.ObterImagensAsync(sol.StudyInstanceUID, MaxImagens, cancellationToken);
+        if (imagens.Count == 0)
+        {
+            var studyReal = await db.ExameAssociacoes.AsNoTracking()
+                .Where(a => a.SolicitacaoExameId == sol.Id && a.ExcluidoEm == null)
+                .OrderByDescending(a => a.CriadoEm)
+                .Select(a => a.StudyInstanceUID)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (!string.IsNullOrWhiteSpace(studyReal) && studyReal != sol.StudyInstanceUID)
+                imagens = await imagensReader.ObterImagensAsync(studyReal, MaxImagens, cancellationToken);
+        }
 
         var (nome, cpf, cns, nascimento) = await ResolverPacienteAsync(sol.PacienteId, cancellationToken);
 
