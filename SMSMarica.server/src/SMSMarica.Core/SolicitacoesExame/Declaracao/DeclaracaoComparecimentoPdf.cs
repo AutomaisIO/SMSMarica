@@ -72,18 +72,19 @@ public static class DeclaracaoComparecimentoPdf
                         .FontSize(9);
                 });
 
-                // Rodapé: assinatura centralizada + selo de autenticidade (QR) embaixo.
+                // Rodapé: emissão eletrônica (esquerda, sem assinatura/carimbo) + selo (QR).
                 page.Footer().PaddingBottom(16).Column(rodape =>
                 {
-                    rodape.Item().AlignCenter().Width(230).Column(assina =>
+                    rodape.Item().Column(emit =>
                     {
-                        assina.Item().LineHorizontal(0.8f).LineColor(Colors.Grey.Darken1);
+                        emit.Item().Text("Documento emitido eletronicamente por:")
+                            .FontSize(9).FontColor(Colors.Grey.Darken1);
                         if (!string.IsNullOrWhiteSpace(d.AssinanteNome))
                         {
-                            assina.Item().PaddingTop(3).AlignCenter().Text(d.AssinanteNome).FontSize(9).SemiBold();
+                            emit.Item().PaddingTop(1).Text(d.AssinanteNome).FontSize(10).SemiBold();
                         }
-                        assina.Item().AlignCenter().Text("Assinatura e carimbo do profissional")
-                            .FontSize(8).Light();
+                        emit.Item().PaddingTop(1).Text("Não requer assinatura física nem carimbo.")
+                            .FontSize(8).Italic().FontColor(Colors.Grey.Medium);
                     });
 
                     rodape.Item().PaddingTop(14).BorderTop(0.5f).BorderColor(Colors.Grey.Lighten1)
