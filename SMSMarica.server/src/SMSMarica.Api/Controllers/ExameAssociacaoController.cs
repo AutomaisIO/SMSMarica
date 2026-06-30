@@ -28,6 +28,16 @@ public sealed class ExameAssociacaoController(
         [FromBody] AssociarExameRequest request, CancellationToken cancellationToken) =>
         await service.AssociarAsync(request, cancellationToken: cancellationToken);
 
+    /// <summary>
+    /// Resincronização sob demanda (rede de segurança): varre solicitações abertas sem
+    /// associação e tenta casar pelo nº da solicitação no Patient ID do estudo. Idempotente.
+    /// </summary>
+    [HttpPost("resincronizar")]
+    [RequerPermissao(ModuloPermissao.Pacs, AcoesPermissao.Edicao)]
+    [ProducesResponseType<ResincronizacaoResultadoDto>(StatusCodes.Status200OK)]
+    public async Task<ResincronizacaoResultadoDto> Resincronizar(CancellationToken cancellationToken) =>
+        await service.ResincronizarAsync(cancellationToken);
+
     /// <summary>Desassocia um estudo. Bloqueado se houver laudo finalizado.</summary>
     [HttpDelete("{studyInstanceUID}")]
     [RequerPermissao(ModuloPermissao.Pacs, AcoesPermissao.Edicao)]

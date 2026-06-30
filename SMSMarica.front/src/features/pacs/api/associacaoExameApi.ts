@@ -27,6 +27,27 @@ export async function desassociarExame(studyInstanceUID: string): Promise<void> 
   await http.delete(`/exames/associacoes/${encodeURIComponent(studyInstanceUID)}`);
 }
 
+export type ResincronizacaoResultado = {
+  /** Solicitações abertas sem associação ativa (universo da varredura). */
+  candidatas: number;
+  /** Quantas foram efetivamente consultadas no PACS (≤ candidatas, limitado pelo teto). */
+  varridas: number;
+  /** Exames associados nesta passagem. */
+  associadas: number;
+  /** Varridas que ainda não têm exame correspondente no PACS (nada a fazer). */
+  semExameNoPacs: number;
+  /** Falhas pontuais (consulta ao PACS ou conflito de associação). */
+  falhas: number;
+  /** True se havia mais candidatas que o teto e a varredura foi truncada. */
+  limiteAtingido: boolean;
+};
+
+/** Rede de segurança: varre órfãos e associa pelo nº da solicitação no Patient ID. Idempotente. */
+export async function resincronizarExames(): Promise<ResincronizacaoResultado> {
+  const { data } = await http.post<ResincronizacaoResultado>('/exames/associacoes/resincronizar');
+  return data;
+}
+
 /** Pré-visualização do modal: solicitação enriquecida pelo número SMS. 204 → null. */
 export async function previewSolicitacaoPorAccession(accession: string): Promise<SolicitacaoExame | null> {
   const { data } = await http.get<SolicitacaoExame | ''>(

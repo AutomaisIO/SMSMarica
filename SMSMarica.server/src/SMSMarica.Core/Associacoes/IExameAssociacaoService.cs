@@ -38,4 +38,13 @@ public interface IExameAssociacaoService
     /// </summary>
     Task<IReadOnlyList<ExameAssociacaoDto>> ObterPorStudyUidsAsync(
         IReadOnlyList<string> studyInstanceUIDs, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Resincronização sob demanda (rede de segurança): varre TODAS as solicitações
+    /// abertas (não-terminais) SEM associação ativa — sem janela de data — e tenta
+    /// associar pelo nº da solicitação no Patient ID do estudo (mesma lógica do
+    /// sincronizador automático, idempotente). Recupera exames que ficaram órfãos por
+    /// falha transitória ou por terem avançado de status antes de chegar o exame.
+    /// </summary>
+    Task<ResincronizacaoResultadoDto> ResincronizarAsync(CancellationToken cancellationToken = default);
 }

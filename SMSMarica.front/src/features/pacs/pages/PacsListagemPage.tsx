@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Edit2, Eye, FilePlus, FileText, Link2, Loader2, Search, Trash2, Unlink } from 'lucide-react';
+import { Edit2, Eye, FilePlus, FileText, Link2, Loader2, RotateCw, Search, Trash2, Unlink } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
+import { notificar } from '@/shared/ui/Notificacoes';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
@@ -18,6 +19,7 @@ import {
   useBuscarEstudos,
   useDesassociarExame,
   useExcluirEstudo,
+  useResincronizarExames,
 } from '@/features/pacs/api/queries';
 import { ModalAssociarExame } from '@/features/pacs/components/ModalAssociarExame';
 import { formatarHoraDicom } from '@/features/pacs/lib/dicomJson';
@@ -81,6 +83,7 @@ export function PacsListagemPage() {
   const busca = useBuscarEstudos();
   const exclusao = useExcluirEstudo();
   const desassociar = useDesassociarExame();
+  const resync = useResincronizarExames();
   const [excluindoUid, setExcluindoUid] = useState<string | null>(null);
   const [erroExclusao, setErroExclusao] = useState<string | null>(null);
   const [erroPdf, setErroPdf] = useState<string | null>(null);
@@ -104,6 +107,24 @@ export function PacsListagemPage() {
 
   function setCampo<K extends keyof FiltroBusca>(k: K, v: FiltroBusca[K]) {
     setFiltro((f) => ({ ...f, [k]: v }));
+  }
+
+  // Rede de segurança: varre solicitações abertas sem associação e tenta casar
+  // pelo nº do pedido no Patient ID do exame. Idempotente; nada destrutivo.
+  function aoResincronizar() {
+    setErroAssoc(null);
+    resync.mutate(undefined, {
+      onSuccess: (r) => {
+        const sufixoFalha = r.falhas ? `, ${r.falhas} falha(s)` : '';
+        const msg =
+          r.associadas > 0
+            ? `Resincronização: ${r.associadas} exame(s) associado(s) (${r.varridas}/${r.candidatas} verificadas${sufixoFalha}).`
+            : `Resincronização: nenhum vínculo novo — ${r.varridas} solicitação(ões) ainda sem exame no PACS${sufixoFalha}.`;
+        notificar(msg);
+        busca.mutate(filtro); // recarrega a lista para refletir os novos vínculos
+      },
+      onError: (e) => setErroAssoc(extrairMensagemDeErro(e)),
+    });
   }
 
   function aoBuscar(e: FormEvent) {
@@ -410,11 +431,28 @@ export function PacsListagemPage() {
 
   return (
     <div className="space-y-5">
-      <header>
-        <h1 className="text-2xl font-semibold text-gray-900">Exames de imagem</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Filtre os exames disponíveis no PACS e abra o visualizador ou o PDF do laudo em uma janela separada.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Exames de imagem</h1>
+          <p className="mt-1 text-sm text-gray-600">
+            Filtre os exames disponíveis no PACS e abra o visualizador ou o PDF do laudo em uma janela separada.
+          </p>
+        </div>
+        {podeAssociar ? (
+          <Button
+            variante="outline"
+            onClick={aoResincronizar}
+            disabled={resync.isPending}
+            title="Varre solicitações abertas sem associação e tenta casar pelo nº do pedido no Patient ID do exame (seguro/idempotente)"
+          >
+            {resync.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <RotateCw className="mr-2 h-4 w-4" />
+            )}
+            Resincronizar
+          </Button>
+        ) : null}
       </header>
 
       <form

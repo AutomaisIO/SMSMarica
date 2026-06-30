@@ -25,3 +25,15 @@ public sealed record ExameAssociacaoDto(
 
 /// <summary>Vínculo mínimo (solicitação + paciente) usado pelo gate de laudar.</summary>
 public sealed record VinculoExame(Guid SolicitacaoExameId, Guid PacienteId);
+
+/// <summary>
+/// Resultado de uma resincronização sob demanda: varre solicitações abertas sem
+/// associação e tenta casar pelo nº da solicitação no Patient ID do estudo (PACS).
+/// </summary>
+public sealed record ResincronizacaoResultadoDto(
+    int Candidatas,
+    int Varridas,
+    int Associadas,
+    int SemExameNoPacs,
+    int Falhas,
+    bool LimiteAtingido);
