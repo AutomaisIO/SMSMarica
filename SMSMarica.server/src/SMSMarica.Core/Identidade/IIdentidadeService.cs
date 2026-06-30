@@ -30,4 +30,10 @@ public interface IIdentidadeService
 
     /// <summary>Usuário troca a própria senha (exige a antiga) e desativa a flag de troca obrigatória.</summary>
     Task AlterarMinhaSenhaAsync(Guid usuarioId, AlterarMinhaSenhaRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>Preferências de UI do próprio usuário (ex.: tela default de cada seção do menu).</summary>
+    Task<PreferenciasUiDto> ObterPreferenciasUiAsync(Guid usuarioId, CancellationToken cancellationToken = default);
+
+    /// <summary>Salva as preferências de UI do próprio usuário.</summary>
+    Task SalvarPreferenciasUiAsync(Guid usuarioId, PreferenciasUiDto preferencias, CancellationToken cancellationToken = default);
 }

@@ -25,6 +25,14 @@ public class Usuario
     public string? Telefone { get; set; }
     public Endereco? Endereco { get; set; }
     public string? FotoBase64 { get; set; }
+
+    /// <summary>
+    /// Preferências de UI do próprio usuário (JSONB), ex.: tela default de cada
+    /// seção do menu. Opaco para o domínio — quem dá forma é o front. <c>null</c>
+    /// quando o usuário nunca personalizou nada.
+    /// </summary>
+    public string? PreferenciasUi { get; set; }
+
     public string SenhaHash { get; set; } = string.Empty;
     public bool DeveTrocarSenha { get; set; }
 

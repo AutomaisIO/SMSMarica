@@ -67,6 +67,24 @@ public sealed class AuthController(IIdentidadeService service) : ControllerBase
         return NoContent();
     }
 
+    /// <summary>Preferências de UI do usuário autenticado (ex.: tela default de cada seção do menu).</summary>
+    [HttpGet("me/preferencias")]
+    [ProducesResponseType<PreferenciasUiDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<PreferenciasUiDto> MinhasPreferencias(CancellationToken cancellationToken) =>
+        await _service.ObterPreferenciasUiAsync(ExtrairUsuarioId(), cancellationToken);
+
+    /// <summary>Salva as preferências de UI do próprio usuário.</summary>
+    [HttpPut("me/preferencias")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> SalvarMinhasPreferencias(
+        [FromBody] PreferenciasUiDto request,
+        CancellationToken cancellationToken)
+    {
+        await _service.SalvarPreferenciasUiAsync(ExtrairUsuarioId(), request, cancellationToken);
+        return NoContent();
+    }
+
     private Guid ExtrairUsuarioId()
     {
         var sub = User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);

@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text.Json;
 using Hl7.Fhir.Model;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -267,6 +268,36 @@ public sealed class IdentidadeService(
         u.AtualizadoEm = DateTime.UtcNow;
         u.AtualizadoPor = usuarioId;
 
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    private static readonly JsonSerializerOptions PreferenciasJson = new(JsonSerializerDefaults.Web);
+
+    public async Task<PreferenciasUiDto> ObterPreferenciasUiAsync(Guid usuarioId, CancellationToken cancellationToken = default)
+    {
+        var json = await _db.Usuarios.AsNoTracking()
+            .Where(u => u.Id == usuarioId)
+            .Select(u => u.PreferenciasUi)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (string.IsNullOrWhiteSpace(json)) return new PreferenciasUiDto(new());
+        try
+        {
+            return JsonSerializer.Deserialize<PreferenciasUiDto>(json, PreferenciasJson) ?? new PreferenciasUiDto(new());
+        }
+        catch (JsonException)
+        {
+            return new PreferenciasUiDto(new());
+        }
+    }
+
+    public async Task SalvarPreferenciasUiAsync(Guid usuarioId, PreferenciasUiDto preferencias, CancellationToken cancellationToken = default)
+    {
+        var u = await _db.Usuarios.FirstOrDefaultAsync(x => x.Id == usuarioId, cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(Usuario), usuarioId);
+
+        var limpo = new PreferenciasUiDto(preferencias.MenuDefaults ?? new());
+        u.PreferenciasUi = JsonSerializer.Serialize(limpo, PreferenciasJson);
         await _db.SaveChangesAsync(cancellationToken);
     }
 
