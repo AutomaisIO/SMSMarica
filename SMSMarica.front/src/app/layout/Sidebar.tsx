@@ -1,5 +1,6 @@
+import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, LogOut, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, LogOut, X } from 'lucide-react';
 import { useAuth } from '@/shared/auth/authStore';
 import {
   caminhoHub,
@@ -11,6 +12,16 @@ import {
 import { useMenuPreferencias } from '@/app/layout/menuPreferencias';
 import { BrandLogo } from '@/shared/ui/BrandLogo';
 import { cn } from '@/shared/lib/cn';
+
+const CHAVE_SECAO_ABERTA = 'smsmarica.menu.secaoAberta';
+
+function lerSecaoAberta(): string | null {
+  try {
+    return localStorage.getItem(CHAVE_SECAO_ABERTA);
+  } catch {
+    return null;
+  }
+}
 
 type Props = {
   isCollapsed: boolean;
@@ -27,6 +38,22 @@ export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseM
   const sair = useAuth((s) => s.sair);
   const defaults = useMenuPreferencias((s) => s.defaults);
 
+  // Qual seção está "ativa" pela rota atual (inclui a própria página-hub).
+  const hubMatch = pathname.match(new RegExp(`^${ROTA_HUB}/([^/]+)`));
+  const secaoAtivaId = hubMatch ? hubMatch[1] : encontrarSecaoPorPath(pathname)?.id ?? null;
+
+  const [secaoAberta, setSecaoAberta] = useState<string | null>(
+    () => lerSecaoAberta() ?? secaoAtivaId,
+  );
+  useEffect(() => {
+    try {
+      if (secaoAberta) localStorage.setItem(CHAVE_SECAO_ABERTA, secaoAberta);
+      else localStorage.removeItem(CHAVE_SECAO_ABERTA);
+    } catch {
+      // ignore
+    }
+  }, [secaoAberta]);
+
   function temAcesso(item: ItemMenu): boolean {
     if (!item.modulo) return true;
     return (permissoes[item.modulo] ?? []).includes('Consulta');
@@ -41,12 +68,29 @@ export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseM
     (s) => s.itens.length > 0,
   );
 
-  // Qual seção está "ativa" pela rota atual (inclui a própria página-hub).
-  const hubMatch = pathname.match(new RegExp(`^${ROTA_HUB}/([^/]+)`));
-  const secaoAtivaId = hubMatch ? hubMatch[1] : encontrarSecaoPorPath(pathname)?.id ?? null;
-
   const conteudo = (mobile: boolean) => {
     const compacto = isCollapsed && !mobile;
+
+    const renderItem = (item: ItemMenu, indentado: boolean) => (
+      <NavLink
+        key={item.to}
+        to={item.to}
+        end={item.end}
+        state={item.state}
+        onClick={mobile ? onCloseMobile : undefined}
+        title={compacto ? item.rotulo : undefined}
+        className={({ isActive }) =>
+          cn(
+            'flex items-center rounded-md py-2.5 text-sm font-medium transition-all duration-200',
+            compacto ? 'justify-center px-3' : indentado ? 'gap-3 pl-9 pr-3' : 'gap-3 px-3',
+            isActive ? 'bg-white text-primary-700 shadow-md' : 'text-white/90 hover:bg-white/10',
+          )
+        }
+      >
+        <item.icone className="w-5 h-5 flex-shrink-0" />
+        {!compacto && <span>{item.rotulo}</span>}
+      </NavLink>
+    );
 
     return (
       <div
@@ -97,53 +141,64 @@ export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseM
           {secoesVisiveis.map((secao) => {
             // Seção sem título (Início): renderiza os itens diretamente.
             if (!secao.titulo) {
-              return secao.itens.map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.end}
-                  state={item.state}
-                  onClick={mobile ? onCloseMobile : undefined}
-                  title={compacto ? item.rotulo : undefined}
-                  className={({ isActive }) =>
-                    cn(
-                      'flex items-center rounded-md px-3 py-2.5 text-sm font-medium transition-all duration-200',
-                      compacto ? 'justify-center' : 'gap-3',
-                      isActive ? 'bg-white text-primary-700 shadow-md' : 'text-white/90 hover:bg-white/10',
-                    )
-                  }
-                >
-                  <item.icone className="w-5 h-5 flex-shrink-0" />
-                  {!compacto && <span>{item.rotulo}</span>}
-                </NavLink>
-              ));
+              return secao.itens.map((item) => renderItem(item, false));
             }
 
-            // Seção com título: o cabeçalho leva à página-hub (ou direto à tela
-            // default da seção, quando definida e ainda visível ao usuário).
+            // Seção com 1 item visível: vira um link direto (sem hub/expansão).
+            if (secao.itens.length === 1) {
+              return renderItem(secao.itens[0], false);
+            }
+
+            // Seção com título e múltiplos itens: o cabeçalho leva à página-hub
+            // (ou direto à tela default, quando definida e ainda visível) e
+            // expande os sub-itens na própria lateral.
             const Icone = secao.icone;
-            const temHub = secao.itens.length > 1;
             const padrao = defaults[secao.id];
             const padraoValido = padrao && secao.itens.some((i) => i.to === padrao) ? padrao : undefined;
-            const destino = temHub ? padraoValido ?? caminhoHub(secao.id) : secao.itens[0].to;
+            const destino = padraoValido ?? caminhoHub(secao.id);
             const ativa = secaoAtivaId === secao.id;
+            const aberta = !compacto && secaoAberta === secao.id;
 
             return (
-              <Link
-                key={secao.id}
-                to={destino}
-                onClick={mobile ? onCloseMobile : undefined}
-                title={compacto ? secao.titulo : undefined}
-                className={cn(
-                  'flex items-center rounded-md px-3 py-2.5 text-sm font-medium transition-all duration-200',
-                  compacto ? 'justify-center' : 'gap-3',
-                  ativa ? 'bg-white text-primary-700 shadow-md' : 'text-white/90 hover:bg-white/10',
-                )}
-              >
-                {Icone && <Icone className="w-5 h-5 flex-shrink-0" />}
-                {!compacto && <span className="flex-1 truncate">{secao.titulo}</span>}
-                {!compacto && !temHub && <ChevronRight className="w-4 h-4 opacity-50" />}
-              </Link>
+              <div key={secao.id} className="space-y-1">
+                <div
+                  className={cn(
+                    'flex items-center rounded-md text-sm font-medium transition-all duration-200',
+                    ativa ? 'bg-white text-primary-700 shadow-md' : 'text-white/90 hover:bg-white/10',
+                  )}
+                >
+                  <Link
+                    to={destino}
+                    onClick={() => {
+                      setSecaoAberta(secao.id);
+                      if (mobile) onCloseMobile();
+                    }}
+                    title={compacto ? secao.titulo : undefined}
+                    className={cn(
+                      'flex flex-1 items-center py-2.5',
+                      compacto ? 'justify-center px-3' : 'gap-3 pl-3',
+                    )}
+                  >
+                    {Icone && <Icone className="w-5 h-5 flex-shrink-0" />}
+                    {!compacto && <span className="flex-1 truncate">{secao.titulo}</span>}
+                  </Link>
+                  {!compacto && (
+                    <button
+                      type="button"
+                      onClick={() => setSecaoAberta((atual) => (atual === secao.id ? null : secao.id))}
+                      className="px-2.5 py-2.5"
+                      aria-label={aberta ? 'Recolher seção' : 'Expandir seção'}
+                      aria-expanded={aberta}
+                    >
+                      <ChevronDown
+                        className={cn('w-4 h-4 transition-transform', !aberta && '-rotate-90')}
+                      />
+                    </button>
+                  )}
+                </div>
+
+                {aberta && <div className="space-y-1">{secao.itens.map((item) => renderItem(item, true))}</div>}
+              </div>
             );
           })}
         </nav>
