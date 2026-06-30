@@ -66,17 +66,18 @@ public static class DeclaracaoComparecimentoPdf
                     col.Item().PaddingTop(34).AlignRight()
                         .Text($"{d.Cidade}, {DataPorExtenso(d.DataEmissao)}.")
                         .FontSize(9);
+                });
 
-                    col.Item().PaddingTop(96).AlignCenter().Width(230).Column(assina =>
+                // Assinatura ancorada no rodapé da folha (aproveita o espaço em branco).
+                page.Footer().PaddingBottom(28).AlignCenter().Width(230).Column(assina =>
+                {
+                    assina.Item().LineHorizontal(0.8f).LineColor(Colors.Grey.Darken1);
+                    if (!string.IsNullOrWhiteSpace(d.AssinanteNome))
                     {
-                        assina.Item().LineHorizontal(0.8f).LineColor(Colors.Grey.Darken1);
-                        if (!string.IsNullOrWhiteSpace(d.AssinanteNome))
-                        {
-                            assina.Item().PaddingTop(3).AlignCenter().Text(d.AssinanteNome).FontSize(9).SemiBold();
-                        }
-                        assina.Item().AlignCenter().Text("Assinatura e carimbo do profissional")
-                            .FontSize(8).Light();
-                    });
+                        assina.Item().PaddingTop(3).AlignCenter().Text(d.AssinanteNome).FontSize(9).SemiBold();
+                    }
+                    assina.Item().AlignCenter().Text("Assinatura e carimbo do profissional")
+                        .FontSize(8).Light();
                 });
             });
         });
