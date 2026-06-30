@@ -256,6 +256,85 @@ public sealed class ExameAssociacaoService(
             laudos.Count, uid, pacienteId);
     }
 
+    // Teto de varredura: o conjunto de órfãos costuma ser pequeno; o cap só protege o
+    // PACS de um sweep gigante (cada candidata = 1 consulta QIDO ao dcm4chee).
+    private const int TetoResincronizacao = 500;
+
+    public async Task<ResincronizacaoResultadoDto> ResincronizarAsync(CancellationToken cancellationToken = default)
+    {
+        // Solicitações abertas (não-terminais) SEM associação ativa — sem janela de data.
+        var abertas = await db.SolicitacoesExame.AsNoTracking()
+            .Where(s => s.ExcluidoEm == null
+                        && (s.Status == StatusSolicitacaoExame.Solicitada
+                            || s.Status == StatusSolicitacaoExame.Enviada
+                            || s.Status == StatusSolicitacaoExame.Recebida
+                            || s.Status == StatusSolicitacaoExame.EmExecucao))
+            .OrderByDescending(s => s.CriadoEm)
+            .Select(s => new { s.Id, s.AccessionNumber, s.StudyInstanceUID })
+            .ToListAsync(cancellationToken);
+
+        var comAssociacao = (await db.ExameAssociacoes.AsNoTracking()
+            .Where(a => a.ExcluidoEm == null)
+            .Select(a => a.SolicitacaoExameId)
+            .ToListAsync(cancellationToken)).ToHashSet();
+
+        var candidatas = abertas.Where(s => !comAssociacao.Contains(s.Id)).ToList();
+        var limiteAtingido = candidatas.Count > TetoResincronizacao;
+        var lote = limiteAtingido ? candidatas.Take(TetoResincronizacao).ToList() : candidatas;
+
+        int varridas = 0, associadas = 0, semExame = 0, falhas = 0;
+
+        foreach (var s in lote)
+        {
+            if (cancellationToken.IsCancellationRequested) break;
+            varridas++;
+
+            IReadOnlyList<EstudoPacsBasico> estudos;
+            try
+            {
+                // Só casa quando o Patient ID do estudo == nº da solicitação (o que o técnico
+                // digitou). Em exame de worklist real o Patient ID é o CPF → busca não casa (no-op).
+                estudos = await consultaStudy.BuscarPorPatientIdAsync(s.AccessionNumber, cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                falhas++;
+                logger.LogWarning(ex, "Resync: falha ao consultar o PACS por Patient ID {Accession}.", s.AccessionNumber);
+                continue;
+            }
+
+            // Ignora o próprio study pré-gerado da worklist — esse não é "o exame".
+            var alvos = estudos
+                .Where(e => !string.Equals(e.StudyInstanceUID, s.StudyInstanceUID, StringComparison.Ordinal))
+                .ToList();
+            if (alvos.Count == 0) { semExame++; continue; }
+
+            foreach (var e in alvos)
+            {
+                try
+                {
+                    await AssociarAsync(
+                        new AssociarExameRequest(e.StudyInstanceUID, s.AccessionNumber, e.AccessionNumber),
+                        OrigemAssociacaoExame.Automatica, validarNoPacs: false, cancellationToken);
+                    associadas++;
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    // Conflito (já associado a OUTRA solicitação) ou erro pontual — não derruba o lote.
+                    falhas++;
+                    logger.LogWarning(ex,
+                        "Resync: falha ao associar study {Uid} à solicitação {Accession}.", e.StudyInstanceUID, s.AccessionNumber);
+                }
+            }
+        }
+
+        logger.LogInformation(
+            "Resync manual: {Cand} candidatas, {Var} varridas, {Assoc} associadas, {Sem} sem exame no PACS, {Falha} falhas.",
+            candidatas.Count, varridas, associadas, semExame, falhas);
+
+        return new ResincronizacaoResultadoDto(candidatas.Count, varridas, associadas, semExame, falhas, limiteAtingido);
+    }
+
     private async Task<ExameAssociacaoDto> MontarDtoAsync(ExameAssociacao assoc, CancellationToken ct)
     {
         var sol = await db.SolicitacoesExame.AsNoTracking()

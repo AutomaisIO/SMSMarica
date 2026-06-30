@@ -107,12 +107,14 @@ public sealed class SincronizadorExamesService(
                     continue;
                 }
 
-                // 2) Caminho automático: exame chegou SEM worklist com o nº da solicitação
-                //    no campo Patient ID (0010,0020). SÓ para Solicitada — exames sem
-                //    worklist nunca passam por Enviada/Recebida; e na worklist o Patient ID
-                //    é o CPF, então varrer Recebida/Enviada por accession seria carga inútil.
-                if (item.Status != StatusSolicitacaoExame.Solicitada) continue;
-
+                // 2) Caminho automático: exame chegou com o nº da solicitação no campo
+                //    Patient ID (0010,0020). Roda para QUALQUER status aberto (não só
+                //    Solicitada): com a worklist da máquina desligada/ignorada, a solicitação
+                //    pode ter avançado para Enviada/Recebida e o exame chegar depois — esses
+                //    não se recuperariam se barrássemos por status. Seguro: em exame de
+                //    worklist real o Patient ID é o CPF, então a busca por accession não casa
+                //    (no-op). Custo: +1 QIDO por solicitação aberta/passagem (limitado por
+                //    MaximoPorPassagem; some assim que a associação é criada).
                 var encontrados = await consulta.BuscarPorPatientIdAsync(item.AccessionNumber, ct);
                 if (encontrados.Count > 1)
                 {

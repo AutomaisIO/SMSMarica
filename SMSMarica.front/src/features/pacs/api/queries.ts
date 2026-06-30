@@ -5,6 +5,7 @@ import {
   desassociarExame,
   listarAssociacoesPorStudies,
   previewSolicitacaoPorAccession,
+  resincronizarExames,
 } from '@/features/pacs/api/associacaoExameApi';
 import type { FiltroBusca } from '@/features/pacs/types';
 
@@ -78,6 +79,17 @@ export function useDesassociarExame() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (studyUID: string) => desassociarExame(studyUID),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: associacoesKeys.raiz });
+    },
+  });
+}
+
+/** Resincronização sob demanda (rede de segurança) — varre órfãos e associa. */
+export function useResincronizarExames() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: resincronizarExames,
     onSuccess: () => {
       client.invalidateQueries({ queryKey: associacoesKeys.raiz });
     },
