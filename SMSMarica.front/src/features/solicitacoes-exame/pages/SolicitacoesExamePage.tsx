@@ -13,6 +13,7 @@ import { CodigoCopiavel } from '@/shared/ui/CodigoCopiavel';
 import { useExcluirSolicitacao, useListarSolicitacoes } from '@/features/solicitacoes-exame/api/queries';
 import { ehFalhaExclusaoPacs } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
 import { StatusBadgeSolicitacao } from '@/features/solicitacoes-exame/components/StatusBadgeSolicitacao';
+import { BotaoDeclaracaoComparecimento } from '@/features/solicitacoes-exame/components/BotaoDeclaracaoComparecimento';
 import { BotaoAnamnese } from '@/features/anamnese/components/BotaoAnamnese';
 import type {
   FiltroSolicitacoes,
@@ -115,7 +116,14 @@ export function SolicitacoesExamePage() {
     {
       chave: 'status',
       cabecalho: 'Status',
-      render: (s) => <StatusBadgeSolicitacao status={s.status} />,
+      render: (s) => (
+        <div className="flex items-center gap-1.5">
+          <StatusBadgeSolicitacao status={s.status} />
+          {(s.status === 'Realizada' || s.status === 'Laudada') && (
+            <BotaoDeclaracaoComparecimento solicitacaoId={s.id} />
+          )}
+        </div>
+      ),
     },
     {
       chave: 'acoes',

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
 using SMSMarica.Core.SolicitacoesExame;
+using SMSMarica.Core.SolicitacoesExame.Declaracao;
 using SMSMarica.Core.SolicitacoesExame.Dtos;
 using SMSMarica.Data.Entities.Enums;
 
@@ -12,9 +13,12 @@ namespace SMSMarica.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("solicitacoes-exame")]
-public sealed class SolicitacoesExameController(ISolicitacoesExameService service) : ControllerBase
+public sealed class SolicitacoesExameController(
+    ISolicitacoesExameService service,
+    IDeclaracaoComparecimentoService declaracao) : ControllerBase
 {
     private readonly ISolicitacoesExameService _service = service;
+    private readonly IDeclaracaoComparecimentoService _declaracao = declaracao;
 
     [HttpGet]
     [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
@@ -58,6 +62,24 @@ public sealed class SolicitacoesExameController(ISolicitacoesExameService servic
     {
         var dto = await _service.ObterPorStudyAsync(studyInstanceUID, cancellationToken);
         return dto is null ? NoContent() : Ok(dto);
+    }
+
+    /// <summary>
+    /// PDF da declaração de comparecimento (A5, 148×200mm) — só disponível para
+    /// solicitações já realizadas (ou laudadas). Usa a data/hora real do estudo no
+    /// PACS e a imagem do cabeçalho do laudo; assinada pelo usuário que a emitiu.
+    /// </summary>
+    [HttpGet("{id:guid}/declaracao-comparecimento")]
+    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
+    [Produces("application/pdf")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeclaracaoComparecimento(Guid id, CancellationToken cancellationToken)
+    {
+        var pdf = await _declaracao.GerarAsync(id, cancellationToken);
+        Response.Headers.CacheControl = "private, no-store";
+        return File(pdf, "application/pdf", $"declaracao-comparecimento-{id}.pdf");
     }
 
     [HttpPost]

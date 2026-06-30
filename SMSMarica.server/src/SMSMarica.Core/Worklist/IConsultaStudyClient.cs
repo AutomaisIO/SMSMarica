@@ -21,4 +21,12 @@ public interface IConsultaStudyClient
     /// o número da solicitação que o técnico digitou no campo PatientID do equipamento.
     /// </summary>
     Task<IReadOnlyList<EstudoPacsBasico>> BuscarPorPatientIdAsync(string patientId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Data/hora reais do estudo no PACS — combina StudyDate (0008,0020) e
+    /// StudyTime (0008,0030). Retorna <c>null</c> se o estudo não existir ou as
+    /// tags estiverem ausentes. O <see cref="DateTime"/> é "wall-clock" local do
+    /// equipamento (<see cref="DateTimeKind.Unspecified"/>), sem conversão de fuso.
+    /// </summary>
+    Task<DateTime?> ObterDataHoraEstudoAsync(string studyInstanceUID, CancellationToken cancellationToken = default);
 }

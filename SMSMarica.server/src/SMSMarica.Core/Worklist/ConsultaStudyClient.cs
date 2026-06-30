@@ -47,6 +47,43 @@ public sealed class ConsultaStudyClient(HttpClient http, ILogger<ConsultaStudyCl
         return lista;
     }
 
+    public async Task<DateTime?> ObterDataHoraEstudoAsync(string studyInstanceUID, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(studyInstanceUID)) return null;
+        var arr = await ConsultarAsync(
+            $"studies?StudyInstanceUID={Uri.EscapeDataString(studyInstanceUID)}&includefield=00080020&includefield=00080030&limit=1",
+            cancellationToken);
+        if (arr is not { ValueKind: JsonValueKind.Array } a || a.GetArrayLength() == 0) return null;
+
+        var estudo = a[0];
+        return CombinarDataHoraDicom(Tag(estudo, "00080020"), Tag(estudo, "00080030"));
+    }
+
+    /// <summary>
+    /// Combina StudyDate ("YYYYMMDD") e StudyTime ("HHMMSS[.ffffff]") do DICOM-JSON
+    /// num <see cref="DateTime"/> local-wall-clock. Hora ausente ⇒ 00:00.
+    /// </summary>
+    private static DateTime? CombinarDataHoraDicom(string? studyDate, string? studyTime)
+    {
+        if (string.IsNullOrWhiteSpace(studyDate)) return null;
+        var d = new string([.. studyDate.Where(char.IsDigit)]);
+        if (d.Length < 8) return null;
+        if (!int.TryParse(d[..4], out var ano) || !int.TryParse(d[4..6], out var mes) || !int.TryParse(d[6..8], out var dia))
+            return null;
+
+        int hh = 0, mm = 0, ss = 0;
+        if (!string.IsNullOrWhiteSpace(studyTime))
+        {
+            var t = new string([.. studyTime.Split('.')[0].Where(char.IsDigit)]);
+            if (t.Length >= 2) int.TryParse(t[..2], out hh);
+            if (t.Length >= 4) int.TryParse(t[2..4], out mm);
+            if (t.Length >= 6) int.TryParse(t[4..6], out ss);
+        }
+
+        try { return new DateTime(ano, mes, dia, hh, mm, ss, DateTimeKind.Unspecified); }
+        catch { return null; }
+    }
+
     /// <summary>Faz o GET QIDO-RS e devolve o array JSON (ou null em falha/204).</summary>
     private async Task<JsonElement?> ConsultarAsync(string url, CancellationToken ct)
     {

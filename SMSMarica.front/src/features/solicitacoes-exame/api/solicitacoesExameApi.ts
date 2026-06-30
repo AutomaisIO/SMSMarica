@@ -57,6 +57,25 @@ export async function excluirSolicitacao(id: string, force = false): Promise<voi
 }
 
 /**
+ * Abre, em nova aba, o PDF da declaração de comparecimento da solicitação. O
+ * endpoint exige bearer (popups não levam o token do interceptor), então baixamos
+ * como blob e abrimos uma blob URL.
+ */
+export async function abrirDeclaracaoComparecimento(id: string): Promise<void> {
+  const resp = await http.get(`/solicitacoes-exame/${id}/declaracao-comparecimento`, {
+    responseType: 'blob',
+  });
+  const url = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }));
+  const janela = window.open(url, `declaracao-${id}`);
+  if (!janela) {
+    alert('A janela do documento foi bloqueada pelo navegador. Libere os popups para este site.');
+    URL.revokeObjectURL(url);
+    return;
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+/**
  * True se o erro for o 409 de falha ao remover o item de worklist no dcm4chee
  * (código `solicitacaoExame.exclusao_pacs_falhou`) — sinaliza que dá pra forçar.
  */

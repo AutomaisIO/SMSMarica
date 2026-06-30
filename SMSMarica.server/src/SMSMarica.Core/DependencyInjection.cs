@@ -83,6 +83,8 @@ public static class DependencyInjection
         services.AddScoped<IProcedimentosSigtapService, ProcedimentosSigtapService>();
         services.AddScoped<ITiposExameService, TiposExameService>();
         services.AddScoped<ISolicitacoesExameService, SolicitacoesExameService>();
+        services.AddScoped<SolicitacoesExame.Declaracao.IDeclaracaoComparecimentoService,
+            SolicitacoesExame.Declaracao.DeclaracaoComparecimentoService>();
         services.AddScoped<Associacoes.IExameAssociacaoService, Associacoes.ExameAssociacaoService>();
         services.AddScoped<Anamneses.IAnamnesesService, Anamneses.AnamnesesService>();
 

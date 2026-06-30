@@ -27,6 +27,7 @@ import {
 } from '@/features/solicitacoes-exame/api/queries';
 import { ehFalhaExclusaoPacs } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
 import { StatusBadgeSolicitacao } from '@/features/solicitacoes-exame/components/StatusBadgeSolicitacao';
+import { BotaoDeclaracaoComparecimento } from '@/features/solicitacoes-exame/components/BotaoDeclaracaoComparecimento';
 import type { StatusSolicitacao } from '@/features/solicitacoes-exame/types';
 
 const ETAPAS: StatusSolicitacao[] = ['Solicitada', 'Enviada', 'Recebida', 'EmExecucao', 'Realizada', 'Laudada'];
@@ -128,6 +129,9 @@ export function SolicitacaoExameDetalhePage() {
             <ClipboardCheck className="h-6 w-6 text-primary-600" />
             <CodigoCopiavel codigo={s.accessionNumber} />
             <StatusBadgeSolicitacao status={s.status} />
+            {(s.status === 'Realizada' || s.status === 'Laudada') && (
+              <BotaoDeclaracaoComparecimento solicitacaoId={s.id} />
+            )}
           </h1>
         </div>
         <div className="flex items-center gap-2">
