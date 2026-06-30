@@ -15,7 +15,11 @@ public sealed record DeclaracaoComparecimentoDados(
     string Cidade,
     DateTime DataEmissao,
     string AssinanteNome,
-    byte[]? CabecalhoImagem);
+    byte[]? CabecalhoImagem,
+    // Selo de autenticidade: QR (PNG) + código (UUID) + URL pública de verificação.
+    byte[]? QrCode,
+    string Codigo,
+    string VerificacaoUrl);
 
 /// <summary>
 /// Renderizador puro (QuestPDF) da declaração de comparecimento. Página A5 retrato
@@ -68,16 +72,36 @@ public static class DeclaracaoComparecimentoPdf
                         .FontSize(9);
                 });
 
-                // Assinatura ancorada no rodapé da folha (aproveita o espaço em branco).
-                page.Footer().PaddingBottom(28).AlignCenter().Width(230).Column(assina =>
+                // Rodapé: assinatura centralizada + selo de autenticidade (QR) embaixo.
+                page.Footer().PaddingBottom(16).Column(rodape =>
                 {
-                    assina.Item().LineHorizontal(0.8f).LineColor(Colors.Grey.Darken1);
-                    if (!string.IsNullOrWhiteSpace(d.AssinanteNome))
+                    rodape.Item().AlignCenter().Width(230).Column(assina =>
                     {
-                        assina.Item().PaddingTop(3).AlignCenter().Text(d.AssinanteNome).FontSize(9).SemiBold();
-                    }
-                    assina.Item().AlignCenter().Text("Assinatura e carimbo do profissional")
-                        .FontSize(8).Light();
+                        assina.Item().LineHorizontal(0.8f).LineColor(Colors.Grey.Darken1);
+                        if (!string.IsNullOrWhiteSpace(d.AssinanteNome))
+                        {
+                            assina.Item().PaddingTop(3).AlignCenter().Text(d.AssinanteNome).FontSize(9).SemiBold();
+                        }
+                        assina.Item().AlignCenter().Text("Assinatura e carimbo do profissional")
+                            .FontSize(8).Light();
+                    });
+
+                    rodape.Item().PaddingTop(14).BorderTop(0.5f).BorderColor(Colors.Grey.Lighten1)
+                        .PaddingTop(6).Row(row =>
+                        {
+                            if (d.QrCode is { Length: > 0 } qr)
+                            {
+                                row.ConstantItem(58).Image(qr).FitWidth();
+                            }
+                            row.RelativeItem().PaddingLeft(8).AlignMiddle().Column(t =>
+                            {
+                                t.Item().Text("Selo de autenticidade").FontSize(8).SemiBold();
+                                t.Item().Text("Aponte a câmera para o QR Code para confirmar a validade deste documento.")
+                                    .FontSize(7).FontColor(Colors.Grey.Darken1);
+                                t.Item().PaddingTop(1).Text(d.VerificacaoUrl).FontSize(6.5f).FontColor(Colors.Grey.Darken1);
+                                t.Item().Text($"Código: {d.Codigo}").FontSize(6.5f).FontColor(Colors.Grey.Darken1);
+                            });
+                        });
                 });
             });
         });

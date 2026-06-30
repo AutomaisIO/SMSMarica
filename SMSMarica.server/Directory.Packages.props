@@ -48,6 +48,8 @@
     <PackageVersion Include="HtmlSanitizer" Version="9.0.884" />
     <!-- Merge de PDFs (capa+imagens + laudo num documento único). PDFsharp é MIT. -->
     <PackageVersion Include="PdfSharp" Version="6.1.1" />
+    <!-- QR Code (selo de autenticidade da declaração). PngByteQRCode não usa System.Drawing. MIT. -->
+    <PackageVersion Include="QRCoder" Version="1.6.0" />
   </ItemGroup>
   <ItemGroup Label="Autenticação / Autorização">
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />

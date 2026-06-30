@@ -22,6 +22,7 @@
     <PackageReference Include="AngleSharp" />
     <PackageReference Include="HtmlSanitizer" />
     <PackageReference Include="PdfSharp" />
+    <PackageReference Include="QRCoder" />
     <PackageReference Include="Pgvector" />
     <PackageReference Include="Oracle.ManagedDataAccess.Core" />
     <!-- DICOM: transcode JPEG-LS Lossless feito no NOSSO proxy (dcm4chee tem o compressor quebrado). -->

@@ -1,6 +1,8 @@
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
+using QRCoder;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Laudos.Configuracao;
@@ -8,6 +10,7 @@ using SMSMarica.Core.Laudos.Pdf;
 using SMSMarica.Core.Midias;
 using SMSMarica.Core.Worklist;
 using SMSMarica.Data;
+using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.SolicitacoesExame.Declaracao;
@@ -25,6 +28,7 @@ public sealed partial class DeclaracaoComparecimentoService(
     IConsultaStudyClient consultaStudy,
     IUsuarioAtualAccessor usuarioAtual,
     SmsMaricaDbContext db,
+    IConfiguration configuration,
     IOptions<LaudosPdfOptions> options) : IDeclaracaoComparecimentoService
 {
     private const string Cidade = "Maricá";
@@ -43,6 +47,13 @@ public sealed partial class DeclaracaoComparecimentoService(
         }
 
         var dataHoraExame = await ResolverDataHoraExameAsync(s.StudyInstanceUID, s.RealizadoEm, s.CriadoEm, cancellationToken);
+
+        // Selo de autenticidade: um registro estável por solicitação. A data/hora é
+        // gravada no 1º documento e reusada, garantindo que a verificação bata com o PDF.
+        var verificacao = await ObterOuCriarVerificacaoAsync(s.Id, dataHoraExame, cancellationToken);
+        var url = MontarUrlVerificacao(verificacao.Id);
+        var qr = GerarQrPng(url);
+
         var dataEmissao = DateTime.UtcNow.AddHours(_opt.OffsetHorasParaExibicao);
         var assinante = await ResolverAssinanteAsync(cancellationToken);
         var cabecalho = await ResolverImagemCabecalhoAsync(cancellationToken);
@@ -51,13 +62,82 @@ public sealed partial class DeclaracaoComparecimentoService(
             PacienteNome: string.IsNullOrWhiteSpace(s.PacienteNome) ? "—" : s.PacienteNome,
             UnidadeNome: string.IsNullOrWhiteSpace(s.UnidadeNome) ? "—" : s.UnidadeNome,
             TipoExameNome: string.IsNullOrWhiteSpace(s.TipoExameNome) ? "—" : s.TipoExameNome,
-            DataHoraExame: dataHoraExame,
+            DataHoraExame: verificacao.DataHoraExame,
             Cidade: Cidade,
             DataEmissao: dataEmissao,
             AssinanteNome: assinante,
-            CabecalhoImagem: cabecalho);
+            CabecalhoImagem: cabecalho,
+            QrCode: qr,
+            Codigo: verificacao.Id.ToString(),
+            VerificacaoUrl: url);
 
         return DeclaracaoComparecimentoPdf.Gerar(dados);
+    }
+
+    public async Task<DeclaracaoVerificacaoDto?> VerificarAsync(Guid codigo, CancellationToken cancellationToken = default)
+    {
+        var v = await db.DeclaracaoComparecimentoVerificacoes.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == codigo, cancellationToken);
+        if (v is null) return null;
+
+        // Nome (FHIR) e descrição vêm ao vivo da solicitação; data/hora é o snapshot do selo.
+        string nome = "—", descricao = "—";
+        string? unidade = null;
+        try
+        {
+            var s = await solicitacoes.ObterPorIdAsync(v.SolicitacaoExameId, cancellationToken);
+            if (!string.IsNullOrWhiteSpace(s.PacienteNome)) nome = s.PacienteNome;
+            if (!string.IsNullOrWhiteSpace(s.TipoExameNome)) descricao = s.TipoExameNome;
+            unidade = string.IsNullOrWhiteSpace(s.UnidadeNome) ? null : s.UnidadeNome;
+        }
+        catch (NaoEncontradoException)
+        {
+            // Solicitação removida: o selo segue válido, mas sem dados associados.
+        }
+
+        return new DeclaracaoVerificacaoDto(nome, v.DataHoraExame, descricao, unidade);
+    }
+
+    private async Task<DeclaracaoComparecimentoVerificacao> ObterOuCriarVerificacaoAsync(
+        Guid solicitacaoId, DateTime dataHoraExame, CancellationToken ct)
+    {
+        var existente = await db.DeclaracaoComparecimentoVerificacoes
+            .FirstOrDefaultAsync(x => x.SolicitacaoExameId == solicitacaoId, ct);
+        if (existente is not null) return existente;
+
+        var nova = new DeclaracaoComparecimentoVerificacao
+        {
+            Id = Guid.CreateVersion7(),
+            SolicitacaoExameId = solicitacaoId,
+            DataHoraExame = DateTime.SpecifyKind(dataHoraExame, DateTimeKind.Unspecified),
+            CriadoEm = DateTime.UtcNow,
+        };
+        db.DeclaracaoComparecimentoVerificacoes.Add(nova);
+        try
+        {
+            await db.SaveChangesAsync(ct);
+            return nova;
+        }
+        catch (DbUpdateException)
+        {
+            // Corrida: outro request criou o selo entre o SELECT e o INSERT.
+            db.Entry(nova).State = EntityState.Detached;
+            return await db.DeclaracaoComparecimentoVerificacoes
+                .FirstAsync(x => x.SolicitacaoExameId == solicitacaoId, ct);
+        }
+    }
+
+    private string MontarUrlVerificacao(Guid codigo)
+    {
+        var baseUrl = (configuration["Publico:BaseUrl"] ?? "https://api.smsmarica.online").TrimEnd('/');
+        return $"{baseUrl}/publico/declaracoes/{codigo}";
+    }
+
+    private static byte[] GerarQrPng(string conteudo)
+    {
+        using var gerador = new QRCodeGenerator();
+        using var dados = gerador.CreateQrCode(conteudo, QRCodeGenerator.ECCLevel.M);
+        return new PngByteQRCode(dados).GetGraphic(10);
     }
 
     /// <summary>Hora real do estudo no PACS; fallback p/ RealizadoEm (UTC→local) e, em último caso, CriadoEm.</summary>

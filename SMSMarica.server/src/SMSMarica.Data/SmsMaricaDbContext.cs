@@ -45,6 +45,7 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<Anamnese> Anamneses => Set<Anamnese>();
     public DbSet<AssinaturaMedico> AssinaturasMedico => Set<AssinaturaMedico>();
     public DbSet<ExameAssociacao> ExameAssociacoes => Set<ExameAssociacao>();
+    public DbSet<DeclaracaoComparecimentoVerificacao> DeclaracaoComparecimentoVerificacoes => Set<DeclaracaoComparecimentoVerificacao>();
 
     // Contato principal (WhatsApp) validado por OTP, ancorado por CPF (painel ou PWA cidadão).
     public DbSet<ContatoValidado> ContatosValidados => Set<ContatoValidado>();
