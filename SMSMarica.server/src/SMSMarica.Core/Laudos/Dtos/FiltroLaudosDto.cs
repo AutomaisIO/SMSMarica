@@ -10,4 +10,8 @@ public sealed record FiltroLaudosDto(
     DateOnly? DataInicial = null,
     DateOnly? DataFinal = null,
     string? BiRads = null,
+    /// <summary>true = só com paciente vinculado; false = só "Não vinculado"; null = todos.</summary>
+    bool? Vinculado = null,
+    /// <summary>true = só assinados (assinatura concluída); false = só não assinados; null = todos.</summary>
+    bool? Assinado = null,
     int Limite = 50);

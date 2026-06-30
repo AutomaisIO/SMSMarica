@@ -22,6 +22,8 @@ export async function listarLaudos(filtro: FiltroLaudos): Promise<LaudoListItem[
       dataInicial: filtro.dataInicial || undefined,
       dataFinal: filtro.dataFinal || undefined,
       biRads: filtro.biRads || undefined,
+      vinculado: filtro.vinculado,
+      assinado: filtro.assinado,
       limite: filtro.limite ?? 50,
     },
   });
