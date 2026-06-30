@@ -31,6 +31,7 @@ type EstadoForm = {
   solicitanteNome: string;
   solicitanteCrm: string;
   solicitanteUfCrm: string;
+  solicitanteConselho: string;
   codigoSolicitacao: string;
   chaveConfirmacao: string;
   justificativa: string;
@@ -48,6 +49,7 @@ const ESTADO_INICIAL: EstadoForm = {
   solicitanteNome: '',
   solicitanteCrm: '',
   solicitanteUfCrm: '',
+  solicitanteConselho: 'CRM',
   codigoSolicitacao: '',
   chaveConfirmacao: '',
   justificativa: '',
@@ -113,6 +115,7 @@ export function SolicitacaoExameFormPage() {
         solicitanteNome: s.solicitanteNome,
         solicitanteCrm: s.solicitanteCrm,
         solicitanteUfCrm: s.solicitanteUfCrm,
+        solicitanteConselho: s.solicitanteConselho ?? 'CRM',
         codigoSolicitacao: s.codigoSolicitacao ?? '',
         chaveConfirmacao: s.chaveConfirmacao ?? '',
         justificativa: s.justificativa ?? '',
@@ -132,9 +135,9 @@ export function SolicitacaoExameFormPage() {
     if (!estado.pacienteId) return setErro('Selecione o paciente.');
     if (!estado.tipoExameId) return setErro('Selecione o tipo de exame.');
     if (!estado.unidadeId) return setErro('Selecione a unidade executora.');
-    if (!estado.solicitanteNome.trim()) return setErro('Informe o médico solicitante.');
+    if (!estado.solicitanteNome.trim()) return setErro('Informe o profissional solicitante.');
     if (!estado.solicitanteCrm.trim() || !estado.solicitanteUfCrm.trim())
-      return setErro('Informe CRM e UF do solicitante.');
+      return setErro('Informe o registro (CRM/COREN) e a UF do solicitante.');
     if (!regulacaoValida(estado.codigoSolicitacao))
       return setErro('Código de Solicitação inválido: use 0000 (emergência extra-SUS) ou um número a partir de 9999.');
     if (!regulacaoValida(estado.chaveConfirmacao))
@@ -153,6 +156,7 @@ export function SolicitacaoExameFormPage() {
       solicitanteNome: estado.solicitanteNome.trim(),
       solicitanteCrm: estado.solicitanteCrm.trim(),
       solicitanteUfCrm: estado.solicitanteUfCrm.trim(),
+      solicitanteConselho: estado.solicitanteConselho || 'CRM',
       codigoSolicitacao: estado.codigoSolicitacao.trim() || null,
       chaveConfirmacao: estado.chaveConfirmacao.trim() || null,
       justificativa: estado.justificativa.trim() || null,
@@ -310,15 +314,16 @@ export function SolicitacaoExameFormPage() {
         </div>
       </section>
 
-      {/* 3) Médico solicitante */}
+      {/* 3) Profissional solicitante (médico/CRM ou enfermeiro/COREN) */}
       <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">3. Médico solicitante</h2>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">3. Profissional solicitante</h2>
         <SeletorMedicoSolicitante
           valor={{
             solicitanteUsuarioId: estado.solicitanteUsuarioId,
             solicitanteNome: estado.solicitanteNome,
             solicitanteCrm: estado.solicitanteCrm,
             solicitanteUfCrm: estado.solicitanteUfCrm,
+            solicitanteConselho: estado.solicitanteConselho,
           }}
           aoMudar={(v) => setEstado((s) => ({ ...s, ...v }))}
         />

@@ -156,6 +156,7 @@ public sealed class SolicitacoesExameService(
             SolicitanteNome = request.SolicitanteNome.Trim(),
             SolicitanteCrm = NormalizarDigitos(request.SolicitanteCrm),
             SolicitanteUfCrm = (request.SolicitanteUfCrm ?? string.Empty).Trim().ToUpperInvariant(),
+            SolicitanteConselho = NormalizarConselho(request.SolicitanteConselho),
 
             CodigoSolicitacao = NormalizaOpcional(request.CodigoSolicitacao),
             ChaveConfirmacao = NormalizaOpcional(request.ChaveConfirmacao),
@@ -200,6 +201,7 @@ public sealed class SolicitacoesExameService(
         s.SolicitanteNome = request.SolicitanteNome.Trim();
         s.SolicitanteCrm = NormalizarDigitos(request.SolicitanteCrm);
         s.SolicitanteUfCrm = (request.SolicitanteUfCrm ?? string.Empty).Trim().ToUpperInvariant();
+        s.SolicitanteConselho = NormalizarConselho(request.SolicitanteConselho);
         s.CodigoSolicitacao = NormalizaOpcional(request.CodigoSolicitacao);
         s.ChaveConfirmacao = NormalizaOpcional(request.ChaveConfirmacao);
         s.Justificativa = NormalizaOpcional(request.Justificativa);
@@ -512,6 +514,13 @@ public sealed class SolicitacoesExameService(
 
     private static string NormalizarDigitos(string? valor) =>
         string.IsNullOrEmpty(valor) ? string.Empty : new([.. valor.Where(char.IsDigit)]);
+
+    /// <summary>Conselho do solicitante normalizado para maiúsculas; vazio/omitido vira "CRM" (legado/retrocompat).</summary>
+    private static string NormalizarConselho(string? valor)
+    {
+        var v = (valor ?? string.Empty).Trim().ToUpperInvariant();
+        return v.Length == 0 ? "CRM" : v;
+    }
 
     private static string? NormalizaOpcional(string? valor) =>
         string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();

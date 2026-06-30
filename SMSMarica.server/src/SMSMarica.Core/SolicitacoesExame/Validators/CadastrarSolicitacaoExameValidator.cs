@@ -13,10 +13,11 @@ public sealed class CadastrarSolicitacaoExameValidator : AbstractValidator<Cadas
 
         RuleFor(s => s.SolicitanteNome).NotEmpty().MaximumLength(200);
         RuleFor(s => s.SolicitanteCrm)
-            .NotEmpty().WithMessage("CRM é obrigatório.")
-            .Must(c => c.Any(char.IsDigit)).WithMessage("CRM deve conter dígitos.")
+            .NotEmpty().WithMessage("O registro (CRM/COREN) é obrigatório.")
+            .Must(c => c.Any(char.IsDigit)).WithMessage("O registro (CRM/COREN) deve conter dígitos.")
             .MaximumLength(20);
         RuleFor(s => s.SolicitanteUfCrm).NotEmpty().Length(2);
+        RuleFor(s => s.SolicitanteConselho).MaximumLength(20);
 
         RuleFor(s => s.CodigoSolicitacao)
             .NotEmpty().WithMessage("Código de Solicitação é obrigatório.")

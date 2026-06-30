@@ -470,13 +470,18 @@ public sealed class LaudoPdfRenderer(
         {
             linhas.Add([("Unidade executora", s.UnidadeNome)]);
 
-            var crm = string.IsNullOrWhiteSpace(s.SolicitanteCrm)
+            // Conselho do solicitante: "COREN" → enfermeiro; senão (CRM/legado) → médico.
+            var conselho = string.IsNullOrWhiteSpace(s.SolicitanteConselho)
+                ? "CRM"
+                : s.SolicitanteConselho.Trim().ToUpperInvariant();
+            var rotuloSolicitante = conselho == "COREN" ? "Enfermeiro solicitante" : "Médico solicitante";
+            var registro = string.IsNullOrWhiteSpace(s.SolicitanteCrm)
                 ? null
-                : $"CRM {s.SolicitanteCrm}{(string.IsNullOrWhiteSpace(s.SolicitanteUfCrm) ? string.Empty : "/" + s.SolicitanteUfCrm)}";
+                : $"{conselho} {s.SolicitanteCrm}{(string.IsNullOrWhiteSpace(s.SolicitanteUfCrm) ? string.Empty : "/" + s.SolicitanteUfCrm)}";
             var solicitante = string.IsNullOrWhiteSpace(s.SolicitanteNome)
                 ? null
-                : crm is null ? s.SolicitanteNome : $"{s.SolicitanteNome} ({crm})";
-            if (solicitante is not null) linhas.Add([("Médico solicitante", solicitante)]);
+                : registro is null ? s.SolicitanteNome : $"{s.SolicitanteNome} ({registro})";
+            if (solicitante is not null) linhas.Add([(rotuloSolicitante, solicitante)]);
 
             if (!string.IsNullOrWhiteSpace(s.CodigoSolicitacao))
                 linhas.Add([("Código da Solicitação", s.CodigoSolicitacao!)]);
