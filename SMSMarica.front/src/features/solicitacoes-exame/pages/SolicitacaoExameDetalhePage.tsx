@@ -28,6 +28,7 @@ import {
 import { ehFalhaExclusaoPacs } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
 import { StatusBadgeSolicitacao } from '@/features/solicitacoes-exame/components/StatusBadgeSolicitacao';
 import { BotaoDeclaracaoComparecimento } from '@/features/solicitacoes-exame/components/BotaoDeclaracaoComparecimento';
+import { BotaoBaixarExameCompleto } from '@/features/solicitacoes-exame/components/BotaoBaixarExameCompleto';
 import type { StatusSolicitacao } from '@/features/solicitacoes-exame/types';
 
 const ETAPAS: StatusSolicitacao[] = ['Solicitada', 'Enviada', 'Recebida', 'EmExecucao', 'Realizada', 'Laudada'];
@@ -130,7 +131,10 @@ export function SolicitacaoExameDetalhePage() {
             <CodigoCopiavel codigo={s.accessionNumber} />
             <StatusBadgeSolicitacao status={s.status} />
             {(s.status === 'Realizada' || s.status === 'Laudada') && (
-              <BotaoDeclaracaoComparecimento solicitacaoId={s.id} />
+              <>
+                <BotaoDeclaracaoComparecimento solicitacaoId={s.id} />
+                <BotaoBaixarExameCompleto solicitacaoId={s.id} />
+              </>
             )}
           </h1>
         </div>

@@ -30,7 +30,7 @@ export function BotaoDeclaracaoComparecimento({ solicitacaoId }: { solicitacaoId
       title="Declaração de comparecimento (recibo)"
       aria-label="Declaração de comparecimento"
       className={cn(
-        'inline-flex items-center rounded-md border border-emerald-300 bg-emerald-50 px-1.5 py-1 text-emerald-700 transition-colors hover:bg-emerald-100',
+        'inline-flex items-center rounded p-0.5 text-emerald-600 transition-colors hover:text-emerald-800',
         carregando && 'opacity-60',
       )}
     >

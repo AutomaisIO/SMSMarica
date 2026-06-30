@@ -76,6 +76,24 @@ export async function abrirDeclaracaoComparecimento(id: string): Promise<void> {
 }
 
 /**
+ * Baixa o PDF do exame completo (capa + imagens + laudo) da solicitação. Como o
+ * endpoint exige bearer, baixamos como blob e disparamos o download via âncora.
+ */
+export async function baixarExameCompleto(id: string): Promise<void> {
+  const resp = await http.get(`/solicitacoes-exame/${id}/exame-completo-pdf`, {
+    responseType: 'blob',
+  });
+  const url = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `exame-completo-${id}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+/**
  * True se o erro for o 409 de falha ao remover o item de worklist no dcm4chee
  * (código `solicitacaoExame.exclusao_pacs_falhou`) — sinaliza que dá pra forçar.
  */

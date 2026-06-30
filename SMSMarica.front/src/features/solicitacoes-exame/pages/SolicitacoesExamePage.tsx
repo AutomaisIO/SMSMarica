@@ -14,6 +14,7 @@ import { useExcluirSolicitacao, useListarSolicitacoes } from '@/features/solicit
 import { ehFalhaExclusaoPacs } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
 import { StatusBadgeSolicitacao } from '@/features/solicitacoes-exame/components/StatusBadgeSolicitacao';
 import { BotaoDeclaracaoComparecimento } from '@/features/solicitacoes-exame/components/BotaoDeclaracaoComparecimento';
+import { BotaoBaixarExameCompleto } from '@/features/solicitacoes-exame/components/BotaoBaixarExameCompleto';
 import { BotaoAnamnese } from '@/features/anamnese/components/BotaoAnamnese';
 import type {
   FiltroSolicitacoes,
@@ -120,7 +121,10 @@ export function SolicitacoesExamePage() {
         <div className="flex items-center gap-1.5">
           <StatusBadgeSolicitacao status={s.status} />
           {(s.status === 'Realizada' || s.status === 'Laudada') && (
-            <BotaoDeclaracaoComparecimento solicitacaoId={s.id} />
+            <>
+              <BotaoDeclaracaoComparecimento solicitacaoId={s.id} />
+              <BotaoBaixarExameCompleto solicitacaoId={s.id} />
+            </>
           )}
         </div>
       ),
