@@ -8,6 +8,8 @@ using SMSMarica.Core.Laudos.Configuracao;
 using SMSMarica.Core.Midias;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.Pacientes.Dtos;
+using SMSMarica.Core.SolicitacoesExame;
+using SMSMarica.Core.SolicitacoesExame.Dtos;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
 using DomElement = AngleSharp.Dom.IElement;
@@ -22,12 +24,14 @@ public sealed class LaudoPdfRenderer(
     ILaudoConfiguracaoService configuracao,
     IMidiasService midias,
     IPacientesService pacientes,
+    ISolicitacoesExameService solicitacoes,
     IOptions<LaudosPdfOptions> options) : ILaudoPdfRenderer
 {
     private readonly ILaudosService _laudos = laudos;
     private readonly ILaudoConfiguracaoService _configuracao = configuracao;
     private readonly IMidiasService _midias = midias;
     private readonly IPacientesService _pacientes = pacientes;
+    private readonly ISolicitacoesExameService _solicitacoes = solicitacoes;
     private readonly LaudosPdfOptions _opt = options.Value;
 
     public async Task<byte[]> GerarAsync(
@@ -54,7 +58,8 @@ public sealed class LaudoPdfRenderer(
             blocosCabecalho.Concat(blocosRodape), cancellationToken);
 
         var paciente = await ResolverPacienteAsync(laudo.PacienteId, cancellationToken);
-        var dadosCabecalho = MontarCabecalhoPaciente(laudo, paciente);
+        var solicitacao = await ResolverSolicitacaoAsync(laudo.StudyInstanceUID, cancellationToken);
+        var dadosCabecalho = MontarCabecalhoPaciente(laudo, paciente, solicitacao);
         var blocos = ParseHtmlParaBlocos(laudo.ConteudoHtml);
         var emitidoEm = FormatarEmissao(laudo.FinalizadoEm ?? laudo.CriadoEm);
 
@@ -413,8 +418,25 @@ public sealed class LaudoPdfRenderer(
         }
     }
 
+    /// <summary>
+    /// Solicitação ligada ao estudo (match direto por StudyInstanceUID ou via associação).
+    /// Falha na resolução NUNCA derruba o PDF — só omite os dados do pedido.
+    /// </summary>
+    private async Task<SolicitacaoExameDto?> ResolverSolicitacaoAsync(string studyInstanceUID, CancellationToken ct)
+    {
+        try
+        {
+            return await _solicitacoes.ObterPorStudyAsync(studyInstanceUID, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return null;
+        }
+    }
+
     // Cada item é uma LINHA do cabeçalho (1+ campos rótulo/valor renderizados lado a lado).
-    private static IReadOnlyList<IReadOnlyList<(string Rotulo, string Valor)>> MontarCabecalhoPaciente(Laudo l, PacienteDto? p)
+    private static IReadOnlyList<IReadOnlyList<(string Rotulo, string Valor)>> MontarCabecalhoPaciente(
+        Laudo l, PacienteDto? p, SolicitacaoExameDto? s)
     {
         var linhas = new List<IReadOnlyList<(string, string)>>();
 
@@ -441,6 +463,23 @@ public sealed class LaudoPdfRenderer(
         {
             // Sem paciente resolvido — nunca imprime o UUID cru no documento.
             linhas.Add([("Paciente", l.PacienteId.HasValue ? "Não encontrado" : "Não vinculado")]);
+        }
+
+        // Dados do pedido/exame (quando há solicitação ligada ao estudo).
+        if (s is not null)
+        {
+            linhas.Add([("Unidade executora", s.UnidadeNome)]);
+
+            var crm = string.IsNullOrWhiteSpace(s.SolicitanteCrm)
+                ? null
+                : $"CRM {s.SolicitanteCrm}{(string.IsNullOrWhiteSpace(s.SolicitanteUfCrm) ? string.Empty : "/" + s.SolicitanteUfCrm)}";
+            var solicitante = string.IsNullOrWhiteSpace(s.SolicitanteNome)
+                ? null
+                : crm is null ? s.SolicitanteNome : $"{s.SolicitanteNome} ({crm})";
+            if (solicitante is not null) linhas.Add([("Médico solicitante", solicitante)]);
+
+            if (!string.IsNullOrWhiteSpace(s.CodigoSolicitacao))
+                linhas.Add([("Código da Solicitação", s.CodigoSolicitacao!)]);
         }
 
         // O Study Instance UID (dado técnico) é renderizado à parte, em fonte menor.
