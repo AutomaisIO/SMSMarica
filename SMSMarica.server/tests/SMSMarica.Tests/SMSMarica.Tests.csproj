@@ -20,6 +20,8 @@
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Testcontainers.PostgreSql" />
     <PackageReference Include="NSubstitute" />
+    <PackageReference Include="fo-dicom" />
+    <PackageReference Include="fo-dicom.Codecs" />
   </ItemGroup>
 
   <ItemGroup>

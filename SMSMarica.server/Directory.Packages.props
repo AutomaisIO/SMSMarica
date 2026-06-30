@@ -11,6 +11,10 @@
   <ItemGroup Label="FHIR (consumo do hub Automais.Fhir)">
     <PackageVersion Include="Hl7.Fhir.R4" Version="6.2.0" />
   </ItemGroup>
+  <ItemGroup Label="PACS / DICOM (transcode JPEG-LS lossless do nosso proxy)">
+    <PackageVersion Include="fo-dicom" Version="5.1.2" />
+    <PackageVersion Include="fo-dicom.Codecs" Version="5.9.0" />
+  </ItemGroup>
   <ItemGroup Label="EF Core / Postgres">
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0" />

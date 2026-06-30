@@ -19,6 +19,7 @@ namespace SMSMarica.Api.Controllers;
 public sealed class PacsController(
     IPacsProxyService pacs,
     IPacsCache cache,
+    IPacsTranscodeService transcode,
     IServiceScopeFactory scopeFactory,
     ILogger<PacsController> logger) : ControllerBase
 {
@@ -40,6 +41,7 @@ public sealed class PacsController(
 
     private readonly IPacsProxyService _pacs = pacs;
     private readonly IPacsCache _cache = cache;
+    private readonly IPacsTranscodeService _transcode = transcode;
     private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
     private readonly ILogger<PacsController> _logger = logger;
 
@@ -50,6 +52,20 @@ public sealed class PacsController(
         var queryString = Request.QueryString.Value ?? string.Empty;
         var accept = Request.Headers.Accept.ToString();
         var imutavel = EhCaminhoImutavel(caminho);
+
+        // (C) Compressão JPEG-LS Lossless (flag Pacs:Compressao:Habilitado, default false).
+        // Só para requisições de frame; serve a variante comprimida (cache-first, chave
+        // DISTINTA da do frame cru). Qualquer falha de transcode cai no caminho atual
+        // (frame cru ~53MB) sem nunca quebrar a visualização.
+        if (_transcode.Habilitado && !string.IsNullOrEmpty(caminho)
+            && caminho.Contains("/frames/", StringComparison.Ordinal))
+        {
+            if (await ServirFrameComprimidoAsync(caminho, queryString, cancellationToken))
+            {
+                return;
+            }
+            // Falhou (transcode null/exceção): segue para o passthrough cru abaixo.
+        }
 
         // (B) Cache em disco SOMENTE para conteúdo imutável por instância e método GET.
         if (imutavel && _cache.Habilitado)
@@ -123,6 +139,44 @@ public sealed class PacsController(
 
         await using var stream = await upstream.Content.ReadAsStreamAsync(cancellationToken);
         await stream.CopyToAsync(Response.Body, cancellationToken);
+    }
+
+    /// <summary>
+    /// Serve a variante JPEG-LS Lossless de um frame (cache-first). Retorna
+    /// <c>true</c> se respondeu (hit do cache ou transcode bem-sucedido); <c>false</c>
+    /// se o transcode não produziu bytes — nesse caso o chamador faz passthrough cru.
+    /// A chave de cache é DISTINTA da do frame cru (sufixo via DiscriminarCaminho)
+    /// para nunca servir/sobrescrever os bytes errados sob a mesma URL imutável.
+    /// </summary>
+    private async Task<bool> ServirFrameComprimidoAsync(
+        string caminho, string queryString, CancellationToken cancellationToken)
+    {
+        var chave = _cache.CalcularChave("GET", _transcode.DiscriminarCaminho(caminho), queryString);
+
+        // Cache hit: serve do disco o envelope multipart comprimido já pronto.
+        if (_cache.Habilitado && _cache.TryGet(chave, out var ctCache, out var bytesCache))
+        {
+            Response.StatusCode = (int)HttpStatusCode.OK;
+            Response.ContentType = ctCache;
+            Response.Headers.CacheControl = CacheControlImutavel;
+            await Response.Body.WriteAsync(bytesCache, cancellationToken);
+            return true;
+        }
+
+        // Miss: transcoda agora. Null = falha → fallback para o frame cru.
+        var comprimido = await _transcode.TranscodificarFrameAsync(caminho, cancellationToken);
+        if (comprimido is null) return false;
+
+        if (_cache.Habilitado)
+        {
+            _cache.Set(chave, comprimido.ContentType, comprimido.Conteudo);
+        }
+
+        Response.StatusCode = (int)HttpStatusCode.OK;
+        Response.ContentType = comprimido.ContentType;
+        Response.Headers.CacheControl = CacheControlImutavel;
+        await Response.Body.WriteAsync(comprimido.Conteudo, cancellationToken);
+        return true;
     }
 
     /// <summary>
