@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { ArrowLeft, Loader2, Search } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
@@ -23,6 +23,7 @@ import {
   type ConsultaCpfResposta,
 } from '@/shared/api/integracoes';
 import { cpfValido, pacienteFormSchema } from '@/features/pacientes/schemas/pacienteSchema';
+import { apenasDigitosCpf } from '@/shared/lib/cpf';
 import {
   ESCOLARIDADES,
   ESTADOS_CIVIS,
@@ -305,10 +306,18 @@ function estadoParaPayload(e: Estado) {
 
 export function PacienteFormPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const params = useParams<{ id?: string }>();
   const modo: Modo = params.id ? 'editar' : 'criar';
 
-  const [estado, setEstado] = useState<Estado>(ESTADO_INICIAL);
+  // CPF pré-preenchido quando o cadastro foi iniciado a partir de uma busca por
+  // CPF válido (ex.: tela de solicitação → "Cadastrar paciente").
+  const navState = (location.state as { termo?: string } | null) ?? null;
+  const cpfPreFill = navState?.termo && cpfValido(navState.termo) ? apenasDigitosCpf(navState.termo) : '';
+
+  const [estado, setEstado] = useState<Estado>(() =>
+    cpfPreFill ? { ...ESTADO_INICIAL, cpf: cpfPreFill } : ESTADO_INICIAL,
+  );
   const [erros, setErros] = useState<Record<string, string>>({});
   const [erroGlobal, setErroGlobal] = useState<string | null>(null);
   const [passoCpfConcluido, setPassoCpfConcluido] = useState<boolean>(modo === 'editar');
