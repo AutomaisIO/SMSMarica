@@ -105,6 +105,10 @@ export type FiltroLaudos = {
   dataInicial?: string;
   dataFinal?: string;
   biRads?: string;
+  /** true = só vinculados; false = só não vinculados; undefined = todos. */
+  vinculado?: boolean;
+  /** true = só assinados; false = só não assinados; undefined = todos. */
+  assinado?: boolean;
   limite?: number;
 };
 

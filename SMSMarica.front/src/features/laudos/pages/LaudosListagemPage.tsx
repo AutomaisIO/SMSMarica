@@ -193,7 +193,7 @@ export function LaudosListagemPage() {
 
       <form
         onSubmit={aoBuscar}
-        className="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-7"
+        className="grid grid-cols-2 gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-4 lg:grid-cols-8"
       >
         <Campo label="Study UID" htmlFor="study" className="sm:col-span-2">
           <Input
@@ -230,6 +230,36 @@ export function LaudosListagemPage() {
             ))}
           </Select>
         </Campo>
+        <Campo label="Vínculo" htmlFor="vinculo">
+          <Select
+            id="vinculo"
+            value={
+              filtroDigitado.vinculado === undefined ? '' : filtroDigitado.vinculado ? 'sim' : 'nao'
+            }
+            onChange={(e) =>
+              setCampo('vinculado', e.target.value === '' ? undefined : e.target.value === 'sim')
+            }
+          >
+            <option value="">Todos</option>
+            <option value="sim">Vinculados</option>
+            <option value="nao">Não vinculados</option>
+          </Select>
+        </Campo>
+        <Campo label="Assinatura" htmlFor="assinatura">
+          <Select
+            id="assinatura"
+            value={
+              filtroDigitado.assinado === undefined ? '' : filtroDigitado.assinado ? 'sim' : 'nao'
+            }
+            onChange={(e) =>
+              setCampo('assinado', e.target.value === '' ? undefined : e.target.value === 'sim')
+            }
+          >
+            <option value="">Todos</option>
+            <option value="sim">Assinados</option>
+            <option value="nao">Não assinados</option>
+          </Select>
+        </Campo>
         <Campo label="Data inicial" htmlFor="di">
           <Input
             id="di"
@@ -245,6 +275,19 @@ export function LaudosListagemPage() {
             value={filtroDigitado.dataFinal ?? ''}
             onChange={(e) => setCampo('dataFinal', e.target.value || undefined)}
           />
+        </Campo>
+        <Campo label="Limite" htmlFor="limite">
+          <Select
+            id="limite"
+            value={filtroDigitado.limite ?? 50}
+            onChange={(e) => setCampo('limite', Number(e.target.value))}
+          >
+            {[50, 100, 200, 500].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </Select>
         </Campo>
         <div className="flex items-end">
           <Button type="submit" disabled={lista.isPending} className="w-full">

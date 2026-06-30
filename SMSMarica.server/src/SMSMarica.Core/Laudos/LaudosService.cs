@@ -88,6 +88,14 @@ public sealed class LaudosService(
             var fim = filtro.DataFinal.Value.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
             query = query.Where(l => l.CriadoEm <= fim);
         }
+        if (filtro.Vinculado == true)
+            query = query.Where(l => l.PacienteId != null);
+        else if (filtro.Vinculado == false)
+            query = query.Where(l => l.PacienteId == null);
+        if (filtro.Assinado == true)
+            query = query.Where(l => _db.LaudoAssinaturas.Any(a => a.LaudoId == l.Id && a.Status == StatusAssinatura.Concluida));
+        else if (filtro.Assinado == false)
+            query = query.Where(l => !_db.LaudoAssinaturas.Any(a => a.LaudoId == l.Id && a.Status == StatusAssinatura.Concluida));
 
         var limite = filtro.Limite is <= 0 or > 500 ? 50 : filtro.Limite;
         var lista = await query
