@@ -21,11 +21,21 @@ public static class DependencyInjection
         {
             SearchPath = SmsMaricaDbContext.SchemaPadrao,
         };
-        // Teto do pool: o banco gerenciado tem poucas conexões compartilhadas entre apps.
-        // Sem teto, o default do Npgsql (100) deixa um app sozinho estourar o limite. Defina
-        // ConnectionStrings:DefaultDb com Maximum Pool Size, ou via Db:MaxPoolSize.
+        // Teto do pool: o banco gerenciado tem POUCAS conexões (max_connections=25 no DO),
+        // compartilhadas entre apps + processos internos do cluster. Sem teto, o default do
+        // Npgsql (100) deixa um app sozinho estourar o limite → "remaining connection slots
+        // are reserved..." → 500 intermitente. Precedência: Db:MaxPoolSize (config) >
+        // "Maximum Pool Size" embutido na connection string > default seguro abaixo.
+        const int tetoPadraoPool = 10;
         if (int.TryParse(configuration["Db:MaxPoolSize"], out var maxPool) && maxPool > 0)
             csb.MaxPoolSize = maxPool;
+        else if (connectionString.IndexOf("Pool Size", StringComparison.OrdinalIgnoreCase) < 0)
+            csb.MaxPoolSize = tetoPadraoPool;
+
+        // Devolve conexões ociosas ao cluster mais rápido após picos (default do Npgsql é 300s).
+        if (connectionString.IndexOf("Connection Idle Lifetime", StringComparison.OrdinalIgnoreCase) < 0)
+            csb.ConnectionIdleLifetime = 60;
+
         connectionString = csb.ConnectionString;
 
         void Configurar(DbContextOptionsBuilder options) =>
