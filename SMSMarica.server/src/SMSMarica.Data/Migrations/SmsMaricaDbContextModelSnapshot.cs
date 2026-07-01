@@ -2220,6 +2220,11 @@ namespace SMSMarica.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("paciente_id");
 
+                    b.Property<string>("PacienteNomeDicom")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("paciente_nome_dicom");
+
                     b.Property<string>("RespostasChecklist")
                         .HasColumnType("jsonb")
                         .HasColumnName("respostas_checklist");
@@ -4014,7 +4019,7 @@ namespace SMSMarica.Data.Migrations
 
                     b.HasIndex("CodigoSolicitacao")
                         .IsUnique()
-                        .HasFilter("codigo_solicitacao IS NOT NULL AND codigo_solicitacao <> '0000'");
+                        .HasFilter("codigo_solicitacao IS NOT NULL AND codigo_solicitacao <> '0000' AND excluido_em IS NULL");
 
                     b.HasIndex("PacienteId");
 

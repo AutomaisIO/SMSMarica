@@ -24,7 +24,7 @@ namespace SMSMarica.Data.Migrations
                 table: "solicitacao_exame",
                 column: "codigo_solicitacao",
                 unique: true,
-                filter: "codigo_solicitacao IS NOT NULL AND codigo_solicitacao <> '0000'");
+                filter: "codigo_solicitacao IS NOT NULL AND codigo_solicitacao <> '0000' AND excluido_em IS NULL");
         }
 
         /// <inheritdoc />

@@ -87,10 +87,12 @@ internal sealed class SolicitacaoExameConfiguration : IEntityTypeConfiguration<S
         builder.HasIndex(s => s.StudyInstanceUID).IsUnique();
 
         // Trava de idempotência do número de regulação (SISREG). Único quando preenchido,
-        // EXCETO o sentinela '0000' (extra-SUS, repetição intencional) e nulos (manuais/PACS).
+        // EXCETO o sentinela '0000' (extra-SUS, repetição intencional), nulos (manuais/PACS)
+        // e linhas soft-deleted (uma solicitação excluída não deve "prender" o número do SISREG —
+        // permite re-importar o mesmo código depois de excluir).
         builder.HasIndex(s => s.CodigoSolicitacao)
             .IsUnique()
-            .HasFilter("codigo_solicitacao IS NOT NULL AND codigo_solicitacao <> '0000'");
+            .HasFilter("codigo_solicitacao IS NOT NULL AND codigo_solicitacao <> '0000' AND excluido_em IS NULL");
         builder.HasIndex(s => s.PacienteId);
         builder.HasIndex(s => s.Status);
         builder.HasIndex(s => new { s.Status, s.DataAgendada }); // usado pelo SincronizadorExamesService
