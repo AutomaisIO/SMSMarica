@@ -88,32 +88,32 @@ export function useAvisoSaidaNaoSalva({ sujo, aoSalvar, mensagem }: Opcoes) {
 
   const continuar = useCallback(() => setPendente(null), []);
 
+  // O efeito colateral (navegar) fica FORA do updater de estado — updater deve ser
+  // puro (o StrictMode em dev o invoca 2x, o que navegaria em dobro).
   const descartar = useCallback(() => {
-    setPendente((p) => {
-      p?.();
-      return null;
-    });
-  }, []);
+    const prosseguir = pendente;
+    setPendente(null);
+    prosseguir?.();
+  }, [pendente]);
 
   const salvarESair = useCallback(async () => {
     if (!aoSalvar) {
       descartar();
       return;
     }
+    const prosseguir = pendente;
     setSalvando(true);
     try {
       await aoSalvar();
-      setPendente((p) => {
-        p?.();
-        return null;
-      });
+      setPendente(null);
+      prosseguir?.();
     } catch {
       // O erro fica visível na própria tela; fecha o modal para o operador ver.
       setPendente(null);
     } finally {
       setSalvando(false);
     }
-  }, [aoSalvar, descartar]);
+  }, [aoSalvar, descartar, pendente]);
 
   /**
    * Envolve uma navegação POP (ex.: botão "Voltar" = `navigate(-1)`), que não passa
