@@ -249,18 +249,22 @@ public sealed class ExameAssociacaoService(
 
     /// <summary>
     /// Aponta todos os laudos (não-excluídos) do estudo para o paciente informado — toda a
-    /// cadeia de versões fica consistente com a solicitação associada. Só chamado quando NÃO há
-    /// laudo assinado (assinado é imutável). No-op quando já está correto.
+    /// cadeia de versões fica consistente com a solicitação associada. Ao definir o vínculo,
+    /// limpa o rótulo temporário do DICOM (<see cref="Laudo.PacienteNomeDicom"/>): agora há
+    /// paciente confiável. Só chamado quando NÃO há laudo assinado (assinado é imutável).
+    /// No-op quando já está tudo correto.
     /// </summary>
     private async Task AtualizarPacienteDosLaudosAsync(string uid, Guid pacienteId, DateTime agora, CancellationToken ct)
     {
         var laudos = await db.Laudos
-            .Where(l => l.StudyInstanceUID == uid && !l.Excluido && l.PacienteId != pacienteId)
+            .Where(l => l.StudyInstanceUID == uid && !l.Excluido
+                        && (l.PacienteId != pacienteId || l.PacienteNomeDicom != null))
             .ToListAsync(ct);
         if (laudos.Count == 0) return;
         foreach (var l in laudos)
         {
             l.PacienteId = pacienteId;
+            l.PacienteNomeDicom = null; // vínculo definido → rótulo temporário do DICOM é removido
             l.AtualizadoEm = agora;
         }
         await db.SaveChangesAsync(ct);

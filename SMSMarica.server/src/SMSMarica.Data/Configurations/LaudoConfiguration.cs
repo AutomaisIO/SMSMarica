@@ -20,6 +20,8 @@ internal sealed class LaudoConfiguration : IEntityTypeConfiguration<Laudo>
         builder.Property(l => l.LaudoAnteriorId).HasColumnName("laudo_anterior_id");
 
         builder.Property(l => l.PacienteId).HasColumnName("paciente_id");
+        // Referência temporária do DICOM (0010,0010) enquanto o exame não tem vínculo.
+        builder.Property(l => l.PacienteNomeDicom).HasColumnName("paciente_nome_dicom").HasMaxLength(256);
         builder.Property(l => l.MedicoId).HasColumnName("medico_id").IsRequired();
         builder.Property(l => l.LaudoTemplateId).HasColumnName("laudo_template_id");
 

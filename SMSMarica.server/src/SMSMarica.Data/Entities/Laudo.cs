@@ -25,6 +25,15 @@ public class Laudo
     /// <summary>Paciente vinculado em fhir.patient (nullable). Sem FK/navegação local.</summary>
     public Guid? PacienteId { get; set; }
 
+    /// <summary>
+    /// Nome do paciente como veio no DICOM (0010,0010) do estudo em que o laudo foi
+    /// gerado — capturado na criação quando o exame ainda NÃO tem vínculo. É apenas
+    /// uma referência TEMPORÁRIA ("de quem parece ser") para não deixar o laudo
+    /// órfão sem nenhuma pista; não é paciente confiável. Ao associar o exame a uma
+    /// solicitação (<see cref="PacienteId"/> passa a valer) este campo é limpo.
+    /// </summary>
+    public string? PacienteNomeDicom { get; set; }
+
     /// <summary>Médico autor (Practitioner em fhir.practitioner). Sem FK local — nome/CRM via snapshots abaixo.</summary>
     public Guid MedicoId { get; set; }
 

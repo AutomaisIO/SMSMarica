@@ -12,6 +12,7 @@ using SMSMarica.Core.Medicos.Dtos;
 using SMSMarica.Core.Medicos.Fhir;
 using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Core.SolicitacoesExame;
+using SMSMarica.Core.Worklist;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
@@ -27,6 +28,7 @@ public sealed class LaudosService(
     IPacienteResolver pacienteResolver,
     IAssinaturaMedicoService assinaturaMedico,
     IExameAssociacaoService associacao,
+    IConsultaStudyClient consultaStudy,
     Configuracao.ILaudoConfiguracaoService configuracao,
     IUsuarioAtualAccessor usuarioAtual,
     ILogger<LaudosService> logger) : ILaudosService
@@ -41,6 +43,7 @@ public sealed class LaudosService(
     private readonly IPacienteResolver _pacienteResolver = pacienteResolver;
     private readonly IAssinaturaMedicoService _assinaturaMedico = assinaturaMedico;
     private readonly IExameAssociacaoService _associacao = associacao;
+    private readonly IConsultaStudyClient _consultaStudy = consultaStudy;
     private readonly Configuracao.ILaudoConfiguracaoService _configuracao = configuracao;
     private readonly IUsuarioAtualAccessor _usuarioAtual = usuarioAtual;
     private readonly ILogger<LaudosService> _logger = logger;
@@ -282,6 +285,30 @@ public sealed class LaudosService(
             .Select(x => (int?)x.Versao)
             .MaxAsync(cancellationToken) ?? 0) + 1;
 
+        // Sem vínculo → guarda o nome do DICOM (0010,0010) do estudo como rótulo
+        // TEMPORÁRIO, só para o laudo órfão exibir "de quem parece ser" (cinza, na
+        // listagem). Best-effort: PACS fora do ar não impede criar o laudo; limpo ao
+        // associar. Com vínculo, o paciente confiável já resolve o nome — não captura.
+        string? nomeDicomTemporario = null;
+        if (vinculo is null)
+        {
+            // Cap de latência: o rótulo é só exibição — um PACS LENTO (não fora do ar) não
+            // pode segurar a criação do laudo até o timeout de 10s do HttpClient. Timeout
+            // próprio (curto). O cancelamento REAL do request (token externo) ainda propaga;
+            // o estouro do nosso cap é engolido e o laudo nasce sem rótulo temporário.
+            using var capturaCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            capturaCts.CancelAfter(TimeSpan.FromSeconds(4));
+            try
+            {
+                nomeDicomTemporario = await _consultaStudy.ObterNomePacienteAsync(uid, capturaCts.Token);
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning(ex,
+                    "Falha/timeout ao ler PatientName do DICOM para {Uid} — laudo segue sem rótulo temporário.", uid);
+            }
+        }
+
         var agora = DateTime.UtcNow;
         var laudo = new Laudo
         {
@@ -289,6 +316,7 @@ public sealed class LaudosService(
             StudyInstanceUID = uid,
             Versao = proximaVersao,
             PacienteId = vinculo?.PacienteId,
+            PacienteNomeDicom = nomeDicomTemporario,
             MedicoId = medico.Id,
             LaudoTemplateId = request.LaudoTemplateId,
             Titulo = NormalizarTitulo(request.Titulo),
@@ -419,6 +447,7 @@ public sealed class LaudosService(
             Versao = proximaVersao,
             LaudoAnteriorId = anterior.Id,
             PacienteId = anterior.PacienteId,
+            PacienteNomeDicom = anterior.PacienteNomeDicom,
             MedicoId = medico.Id,
             LaudoTemplateId = anterior.LaudoTemplateId,
             Titulo = anterior.Titulo,

@@ -555,6 +555,8 @@ export function LaudoEditorPage() {
           <CabecalhoLaudo
             pacienteNome={detalhe.data?.pacienteNome ?? solicitacao.data?.pacienteNome}
             pacienteCpf={detalhe.data?.pacienteCpf ?? solicitacao.data?.pacienteCpf}
+            pacienteNomeDicom={detalhe.data?.pacienteNomeDicom}
+            pacienteVinculado={Boolean(detalhe.data?.pacienteId)}
             studyInstanceUID={studyInstanceUID}
             medicoNome={detalhe.data?.medicoNome}
             medicoCrm={detalhe.data?.medicoCrm}

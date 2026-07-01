@@ -81,4 +81,52 @@ public class ConsultaStudyClientTests
         handler.UltimaUrl.Should().Contain("includefield=0020000D");
         handler.UltimaUrl.Should().Contain("includefield=00080050");
     }
+
+    [Fact]
+    public async Task ObterNomePaciente_VR_PN_objeto_Alphabetic_limpa_circunflexo()
+    {
+        const string json = """
+        [ { "00100010": { "vr": "PN", "Value": [ { "Alphabetic": "SILVA^JOAO^MARIA" } ] } } ]
+        """;
+        (await Cliente(new HandlerFixo(json)).ObterNomePacienteAsync("2.25.1"))
+            .Should().Be("SILVA JOAO MARIA");
+    }
+
+    [Fact]
+    public async Task ObterNomePaciente_aceita_string_simples()
+    {
+        const string json = """[ { "00100010": { "vr": "PN", "Value": ["SILVA^JOAO"] } } ]""";
+        (await Cliente(new HandlerFixo(json)).ObterNomePacienteAsync("2.25.1"))
+            .Should().Be("SILVA JOAO");
+    }
+
+    [Fact]
+    public async Task ObterNomePaciente_tag_ausente_retorna_null()
+    {
+        const string json = """[ { "0020000D": { "vr": "UI", "Value": ["2.25.1"] } } ]""";
+        (await Cliente(new HandlerFixo(json)).ObterNomePacienteAsync("2.25.1")).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ObterNomePaciente_estudo_inexistente_retorna_null()
+    {
+        (await Cliente(new HandlerFixo("[]")).ObterNomePacienteAsync("2.25.0")).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ObterNomePaciente_204_retorna_null()
+    {
+        (await Cliente(new HandlerFixo("", HttpStatusCode.NoContent)).ObterNomePacienteAsync("2.25.1"))
+            .Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ObterNomePaciente_pede_PatientName_e_escapa_studyUid()
+    {
+        var handler = new HandlerFixo("[]");
+        await Cliente(handler).ObterNomePacienteAsync("2.25 9");
+
+        handler.UltimaUrl.Should().Contain("StudyInstanceUID=2.25%209");
+        handler.UltimaUrl.Should().Contain("includefield=00100010");
+    }
 }

@@ -59,6 +59,43 @@ public sealed class ConsultaStudyClient(HttpClient http, ILogger<ConsultaStudyCl
         return CombinarDataHoraDicom(Tag(estudo, "00080020"), Tag(estudo, "00080030"));
     }
 
+    public async Task<string?> ObterNomePacienteAsync(string studyInstanceUID, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(studyInstanceUID)) return null;
+        var arr = await ConsultarAsync(
+            $"studies?StudyInstanceUID={Uri.EscapeDataString(studyInstanceUID)}&includefield=00100010&limit=1",
+            cancellationToken);
+        if (arr is not { ValueKind: JsonValueKind.Array } a || a.GetArrayLength() == 0) return null;
+
+        return LimparNomePn(NomePaciente(a[0]));
+    }
+
+    /// <summary>
+    /// Lê PatientName (0010,0010) do DICOM-JSON. VR PN traz o valor como objeto
+    /// <c>{ "Alphabetic": "Familia^Nome^..." }</c> (grupos de caractere), mas alguns
+    /// equipamentos emitem uma string simples — cobre as duas formas.
+    /// </summary>
+    private static string? NomePaciente(JsonElement estudo)
+    {
+        if (estudo.ValueKind != JsonValueKind.Object) return null;
+        if (!estudo.TryGetProperty("00100010", out var campo)) return null;
+        if (!campo.TryGetProperty("Value", out var valor) || valor.ValueKind != JsonValueKind.Array || valor.GetArrayLength() == 0)
+            return null;
+        var primeiro = valor[0];
+        if (primeiro.ValueKind == JsonValueKind.String) return primeiro.GetString();
+        if (primeiro.ValueKind == JsonValueKind.Object && primeiro.TryGetProperty("Alphabetic", out var alpha))
+            return alpha.GetString();
+        return null;
+    }
+
+    /// <summary>"Familia^Nome^Meio" → "Familia Nome Meio" (espaços colapsados, trim).</summary>
+    private static string? LimparNomePn(string? bruto)
+    {
+        if (string.IsNullOrWhiteSpace(bruto)) return null;
+        var limpo = string.Join(' ', bruto.Split(['^', ' '], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        return limpo.Length == 0 ? null : limpo;
+    }
+
     /// <summary>
     /// Combina StudyDate ("YYYYMMDD") e StudyTime ("HHMMSS[.ffffff]") do DICOM-JSON
     /// num <see cref="DateTime"/> local-wall-clock. Hora ausente ⇒ 00:00.

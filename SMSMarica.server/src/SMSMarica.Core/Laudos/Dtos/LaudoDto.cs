@@ -10,6 +10,9 @@ public sealed record LaudoDto(
     Guid? PacienteId,
     string? PacienteNome,
     string? PacienteCpf,
+    // Nome cru do DICOM (0010,0010) capturado na criação — só rótulo temporário
+    // enquanto não há vínculo (PacienteId). Limpo ao associar.
+    string? PacienteNomeDicom,
     Guid MedicoId,
     string MedicoNome,
     string MedicoCrm,
@@ -42,6 +45,8 @@ public sealed record LaudoListItemDto(
     int Versao,
     Guid? PacienteId,
     string? PacienteNome,
+    // Rótulo temporário do DICOM enquanto o exame não tem vínculo (ver LaudoDto).
+    string? PacienteNomeDicom,
     Guid MedicoId,
     string MedicoNome,
     string Titulo,

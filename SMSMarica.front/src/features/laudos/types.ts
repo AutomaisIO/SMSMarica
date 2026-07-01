@@ -15,6 +15,8 @@ export type Laudo = {
   pacienteId: string | null;
   pacienteNome: string | null;
   pacienteCpf: string | null;
+  /** Nome cru do DICOM capturado na criação — rótulo temporário enquanto não há vínculo. */
+  pacienteNomeDicom: string | null;
   medicoId: string;
   medicoNome: string;
   medicoCrm: string;
@@ -47,6 +49,8 @@ export type LaudoListItem = {
   versao: number;
   pacienteId: string | null;
   pacienteNome: string | null;
+  /** Nome cru do DICOM (rótulo temporário) enquanto o exame não tem vínculo. */
+  pacienteNomeDicom: string | null;
   medicoId: string;
   medicoNome: string;
   titulo: string;

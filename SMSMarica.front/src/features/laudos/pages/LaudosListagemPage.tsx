@@ -70,9 +70,27 @@ export function LaudosListagemPage() {
       cabecalho: 'Paciente',
       render: (l) => (
         <div className="min-w-0">
-          <div className="truncate font-medium text-gray-900">
-            {l.pacienteNome || 'Não vinculado'}
-          </div>
+          {l.pacienteNome ? (
+            <div className="truncate font-medium text-gray-900">{l.pacienteNome}</div>
+          ) : l.pacienteId ? (
+            // Vinculado, mas o nome não resolveu no hub FHIR (indisponível). É vínculo
+            // real — nunca rotular como "não vinculado".
+            <div className="truncate font-medium text-gray-500">Paciente vinculado</div>
+          ) : l.pacienteNomeDicom ? (
+            <div
+              className="flex items-center gap-1.5"
+              title="Nome informado no equipamento (DICOM). O exame ainda não está vinculado a um paciente cadastrado — associe-o para confirmar."
+            >
+              <span className="truncate font-medium italic text-gray-400">
+                {l.pacienteNomeDicom}
+              </span>
+              <span className="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-400">
+                não vinculado
+              </span>
+            </div>
+          ) : (
+            <div className="truncate font-medium text-gray-400">Não vinculado</div>
+          )}
           <div className="truncate text-xs text-gray-500">{l.titulo}</div>
         </div>
       ),

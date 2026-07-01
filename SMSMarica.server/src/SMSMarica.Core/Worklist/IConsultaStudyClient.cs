@@ -29,4 +29,12 @@ public interface IConsultaStudyClient
     /// equipamento (<see cref="DateTimeKind.Unspecified"/>), sem conversão de fuso.
     /// </summary>
     Task<DateTime?> ObterDataHoraEstudoAsync(string studyInstanceUID, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Nome do paciente (0010,0010, VR PN) como veio no DICOM do estudo, já limpo
+    /// para exibição (componentes "^" viram espaço). Retorna <c>null</c> se o estudo
+    /// não existir, a tag estiver ausente/vazia ou o PACS estiver indisponível.
+    /// Usado como rótulo TEMPORÁRIO no laudo de um exame ainda sem vínculo.
+    /// </summary>
+    Task<string?> ObterNomePacienteAsync(string studyInstanceUID, CancellationToken cancellationToken = default);
 }
