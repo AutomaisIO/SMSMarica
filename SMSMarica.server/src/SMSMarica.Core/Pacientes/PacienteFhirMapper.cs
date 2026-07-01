@@ -298,10 +298,15 @@ internal static class PacienteFhirMapper
         if (!string.IsNullOrWhiteSpace(pl.NomeSocial))
             patient.Name.Add(new HumanName { Use = HumanName.NameUse.Nickname, Text = pl.NomeSocial });
 
-        patient.Identifier = [];
-        if (!string.IsNullOrWhiteSpace(pl.Cpf)) patient.Identifier.Add(new Identifier(SystemCpf, pl.Cpf));
-        if (!string.IsNullOrWhiteSpace(pl.Cns)) patient.Identifier.Add(new Identifier(SystemCns, pl.Cns));
-        if (!string.IsNullOrWhiteSpace(pl.Rg)) patient.Identifier.Add(new Identifier(SystemRg, pl.Rg));
+        // MERGE, nunca replace-all: preserva os identificadores nativos que o smsmarica
+        // NÃO gerencia (PIS, passaporte, RNE, certidão, prontuários SGH/CEM e sobretudo
+        // urn:salux:cd_paciente — a chave de re-dedup da importação). Antes, "Identifier = []"
+        // apagava tudo isso a cada edição de paciente importado (perda silenciosa + risco de
+        // duplicar histórico clínico no próximo reimport). Só faz upsert de CPF/CNS/RG.
+        patient.Identifier ??= [];
+        UpsertIdentifier(patient, SystemCpf, pl.Cpf);
+        UpsertIdentifier(patient, SystemCns, pl.Cns);
+        UpsertIdentifier(patient, SystemRg, pl.Rg);
 
         patient.BirthDate = pl.DataNascimento?.ToString("yyyy-MM-dd");
         patient.Gender = pl.Sexo switch
@@ -313,6 +318,18 @@ internal static class PacienteFhirMapper
 
         patient.RemoveExtension(PayloadUrl);
         patient.AddExtension(PayloadUrl, new FhirString(JsonSerializer.Serialize(pl, Json)));
+    }
+
+    /// <summary>
+    /// Upsert de um identificador por <c>system</c>, preservando os demais. Valor vazio
+    /// é no-op (não remove o existente) — evita "limpar" um identificador imutável por engano.
+    /// </summary>
+    private static void UpsertIdentifier(Patient patient, string system, string? valor)
+    {
+        if (string.IsNullOrWhiteSpace(valor)) return;
+        var existente = patient.Identifier.FirstOrDefault(i => i.System == system);
+        if (existente is null) patient.Identifier.Add(new Identifier(system, valor));
+        else existente.Value = valor;
     }
 
     private static Payload LerPayload(Patient p)
