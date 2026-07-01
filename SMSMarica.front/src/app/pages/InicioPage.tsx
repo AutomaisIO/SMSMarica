@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, Navigate } from 'react-router-dom';
 import {
   Activity,
   Building2,
@@ -15,6 +16,13 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useAuth, type ModuloPermissao } from '@/shared/auth/authStore';
+import { resolverDestinoMenu } from '@/app/layout/menuConfig';
+import {
+  alternarFavorito,
+  jaRedirecionouNaSessao,
+  lerFavorito,
+  marcarRedirecionadoNaSessao,
+} from '@/shared/menuFavorito/menuFavorito';
 
 type Card = {
   titulo: string;
@@ -44,6 +52,32 @@ export function InicioPage() {
   const permissoes = useAuth((s) => s.permissoes);
   const cardsVisiveis = CARDS.filter((c) => (permissoes[c.modulo] ?? []).includes('Consulta'));
 
+  const [favorito, setFavorito] = useState<string | null>(() => lerFavorito(usuario?.id));
+
+  // Sincroniza o favorito quando o usuário logado muda.
+  useEffect(() => {
+    setFavorito(lerFavorito(usuario?.id));
+  }, [usuario?.id]);
+
+  // Redirect de entrada: computa uma única vez (idempotente sob StrictMode) se,
+  // ao abrir o app, há favorito e ainda não redirecionamos nesta sessão do
+  // navegador. Se sim, vai direto ao destino do menu favoritado (encadeamento).
+  const [destinoRedirect] = useState<string | null>(() => {
+    const fav = lerFavorito(usuario?.id);
+    if (fav && !jaRedirecionouNaSessao()) {
+      marcarRedirecionadoNaSessao();
+      return resolverDestinoMenu(fav);
+    }
+    return null;
+  });
+  if (destinoRedirect) {
+    return <Navigate to={destinoRedirect} replace />;
+  }
+
+  function toggleFavorito(to: string) {
+    setFavorito(alternarFavorito(to, usuario?.id));
+  }
+
   return (
     <div className="space-y-6">
       <header>
@@ -62,12 +96,34 @@ export function InicioPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {cardsVisiveis.map((c) => (
-            <Link key={c.to} to={c.to} className="card card-hover group p-5">
+            <Link key={c.to} to={c.to} className="card card-hover group relative p-5">
+              <button
+                type="button"
+                aria-label={favorito === c.to ? 'Remover dos favoritos' : 'Definir como favorito'}
+                aria-pressed={favorito === c.to}
+                title={
+                  favorito === c.to
+                    ? 'Menu favorito — ao abrir o app você vai direto para cá. Clique para remover.'
+                    : 'Favoritar: ao abrir o app você vai direto para este menu.'
+                }
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  toggleFavorito(c.to);
+                }}
+                className="absolute right-3 top-3 rounded-full p-1.5 text-gray-300 hover:bg-gray-100 hover:text-amber-500"
+              >
+                <Star
+                  className="h-5 w-5"
+                  fill={favorito === c.to ? 'currentColor' : 'none'}
+                  color={favorito === c.to ? '#f59e0b' : 'currentColor'}
+                />
+              </button>
               <div className="flex items-start gap-4">
                 <div className="icon-box icon-box-default">
                   <c.icone className="w-5 h-5" />
                 </div>
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 pr-6">
                   <h2 className="text-base font-semibold text-gray-900 group-hover:text-primary-700">
                     {c.titulo}
                   </h2>

@@ -46,6 +46,13 @@ export type ItemMenu = {
   end?: boolean;
   /** Estado passado pra rota — usado p/ ações automáticas (ex.: abrir modal). */
   state?: unknown;
+  /**
+   * Gancho de encadeamento: destino/tela padrão interno do menu. Quando o menu
+   * for favoritado na tela Início, o redirect leva a este destino em vez da
+   * própria rota do menu. Hoje nenhum menu define — deixe vazio para cair na
+   * própria `to`. (Ver Tarefa "Favoritar menu".)
+   */
+  destinoPadrao?: string;
 };
 
 export type SecaoMenu = {
@@ -256,6 +263,26 @@ export function caminhoHub(secaoId: string): string {
 
 export function encontrarSecaoPorId(secaoId: string | undefined): SecaoMenu | undefined {
   return SECOES.find((s) => s.id === secaoId);
+}
+
+/** Localiza um item de menu pela sua rota (`to`). */
+export function encontrarItemPorTo(to: string): ItemMenu | undefined {
+  for (const secao of SECOES) {
+    const item = secao.itens.find((i) => i.to === to);
+    if (item) return item;
+  }
+  return undefined;
+}
+
+/**
+ * Resolve o destino final de um menu favoritado — encadeamento do favorito:
+ * o favorito do Início aponta para a rota do menu; o menu, por sua vez, pode
+ * ter uma tela padrão interna (`destinoPadrao`). Se não houver, cai na própria
+ * rota do menu.
+ */
+export function resolverDestinoMenu(to: string): string {
+  const item = encontrarItemPorTo(to);
+  return item?.destinoPadrao ?? to;
 }
 
 function itemCasaPath(item: ItemMenu, path: string): boolean {

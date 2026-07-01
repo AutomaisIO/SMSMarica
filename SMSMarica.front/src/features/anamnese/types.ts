@@ -66,7 +66,7 @@ export const PERGUNTAS_HISTORICO = [
   ['possuiProteseMamaria', 'Possui prótese mamária?'],
   ['jaRealizouCirurgiaMamaria', 'Já realizou cirurgia mamária?'],
   ['estaGestante', 'Está gestante?'],
-  ['estaAmamentando', 'Está amamentando?'],
+  ['estaAmamentando', 'Já amamentou?'],
   ['fazUsoHormonios', 'Faz uso de hormônios?'],
   ['eTabagista', 'É tabagista?'],
 ] as const;
