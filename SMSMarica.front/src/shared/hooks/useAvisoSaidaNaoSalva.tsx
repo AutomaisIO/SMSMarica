@@ -1,5 +1,6 @@
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { UNSAFE_NavigationContext } from 'react-router-dom';
+import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 import { Modal } from '@/shared/ui/Modal';
 
@@ -36,6 +37,7 @@ export function useAvisoSaidaNaoSalva({ sujo, aoSalvar, mensagem }: Opcoes) {
 
   const [pendente, setPendente] = useState<null | (() => void)>(null);
   const [salvando, setSalvando] = useState(false);
+  const [erroSalvar, setErroSalvar] = useState<string | null>(null);
 
   const permitirRef = useRef(false);
   const sujoRef = useRef(sujo);
@@ -60,6 +62,9 @@ export function useAvisoSaidaNaoSalva({ sujo, aoSalvar, mensagem }: Opcoes) {
   // Navegação SPA (Link/menu/navigate(destino)): intercepta push/replace.
   useEffect(() => {
     if (!sujo) return;
+    // Nova sessão de edição não pode herdar um permit obsoleto (deixado por um
+    // permitir() que rodou com sujo=false, sem interceptor para consumi-lo).
+    permitirRef.current = false;
     const nativo = nav as unknown as Record<string, (...args: unknown[]) => void>;
     const pushOrig = nativo.push.bind(nav);
     const replaceOrig = nativo.replace.bind(nav);
@@ -86,12 +91,16 @@ export function useAvisoSaidaNaoSalva({ sujo, aoSalvar, mensagem }: Opcoes) {
     };
   }, [sujo, nav]);
 
-  const continuar = useCallback(() => setPendente(null), []);
+  const continuar = useCallback(() => {
+    setErroSalvar(null);
+    setPendente(null);
+  }, []);
 
   // O efeito colateral (navegar) fica FORA do updater de estado — updater deve ser
   // puro (o StrictMode em dev o invoca 2x, o que navegaria em dobro).
   const descartar = useCallback(() => {
     const prosseguir = pendente;
+    setErroSalvar(null);
     setPendente(null);
     prosseguir?.();
   }, [pendente]);
@@ -102,14 +111,16 @@ export function useAvisoSaidaNaoSalva({ sujo, aoSalvar, mensagem }: Opcoes) {
       return;
     }
     const prosseguir = pendente;
+    setErroSalvar(null);
     setSalvando(true);
     try {
       await aoSalvar();
       setPendente(null);
       prosseguir?.();
-    } catch {
-      // O erro fica visível na própria tela; fecha o modal para o operador ver.
-      setPendente(null);
+    } catch (e) {
+      // NÃO fecha o modal: mantém aberto exibindo o erro para o operador reagir
+      // (as edições foram preservadas — não navegou nem atualizou o baseline).
+      setErroSalvar(extrairMensagemDeErro(e));
     } finally {
       setSalvando(false);
     }
@@ -141,6 +152,11 @@ export function useAvisoSaidaNaoSalva({ sujo, aoSalvar, mensagem }: Opcoes) {
         <p className="text-sm text-gray-700">
           {mensagem ?? 'Há alterações que ainda não foram salvas. O que você deseja fazer?'}
         </p>
+        {erroSalvar ? (
+          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {erroSalvar}
+          </div>
+        ) : null}
         <div className="flex flex-wrap items-center justify-end gap-3">
           <Button type="button" variante="ghost" onClick={continuar} disabled={salvando}>
             Continuar editando

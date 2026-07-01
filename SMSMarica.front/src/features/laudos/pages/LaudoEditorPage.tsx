@@ -81,6 +81,8 @@ export function LaudoEditorPage() {
   const [baseline, setBaseline] = useState(() =>
     JSON.stringify({ t: 'Laudo', h: '', j: '{}', r: null }),
   );
+  const snap = (t: string, h: string, j: string, r: RespostasChecklist | null) =>
+    JSON.stringify({ t, h, j, r });
 
   const studyParam = params.get('studyUID') ?? '';
   const modalidadeParam = params.get('modalidade') ?? undefined;
@@ -131,11 +133,16 @@ export function LaudoEditorPage() {
         if (!t.estruturaJson) return;
         const estrutura = JSON.parse(t.estruturaJson) as EstruturaChecklist;
         const r: RespostasChecklist = { estrutura, marcados: {}, biRadsFinal: null };
+        const novoHtml = gerarHtmlLaudo(r);
+        const novoTitulo = !titulo || titulo === 'Laudo' ? t.nome : titulo;
         setTemplateEscolhidoId(t.id);
         setRespostas(r);
-        setHtml(gerarHtmlLaudo(r));
+        setHtml(novoHtml);
         setJson('{}');
-        setTitulo((atual) => (!atual || atual === 'Laudo' ? t.nome : atual));
+        setTitulo(novoTitulo);
+        // Template auto-carregado não é "alteração do usuário": atualiza o baseline
+        // para o modal de "não salvo" só acusar edições reais em cima do template.
+        setBaseline(snap(novoTitulo, novoHtml, '{}', r));
       })
       .catch(() => {
         /* sem template/checklist → segue no texto livre */
@@ -207,8 +214,6 @@ export function LaudoEditorPage() {
 
   // Guarda de alterações não salvas (o painel usa BrowserRouter, sem useBlocker).
   // Laudo finalizado é somente-leitura → nunca fica "sujo".
-  const snap = (t: string, h: string, j: string, r: RespostasChecklist | null) =>
-    JSON.stringify({ t, h, j, r });
   const sujo = !finalizado && snap(titulo, html, json, respostas) !== baseline;
   const { elemento: modalSaida, permitir, protegerAcao } = useAvisoSaidaNaoSalva({
     sujo,
