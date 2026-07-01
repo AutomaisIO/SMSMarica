@@ -39,6 +39,7 @@ import {
   useStatusAssinatura,
 } from '@/features/laudos/api/queries';
 import { abrirPdfLaudo, baixarPdfLaudo } from '@/features/laudos/lib/pdf';
+import { useAvisoSaidaNaoSalva } from '@/shared/hooks/useAvisoSaidaNaoSalva';
 import { PainelChecklist } from '@/features/laudos/checklist/PainelChecklist';
 import { useListarTemplates } from '@/features/laudo-templates/api/queries';
 import { obterTemplate } from '@/features/laudo-templates/api/laudoTemplatesApi';
@@ -76,6 +77,10 @@ export function LaudoEditorPage() {
   const [erro, setErro] = useState<string | null>(null);
   const [aguardandoAgente, setAguardandoAgente] = useState(false);
   const [agenteNaoEncontrado, setAgenteNaoEncontrado] = useState(false);
+  // Baseline (título/html/json/checklist) para detectar alterações não salvas.
+  const [baseline, setBaseline] = useState(() =>
+    JSON.stringify({ t: 'Laudo', h: '', j: '{}', r: null }),
+  );
 
   const studyParam = params.get('studyUID') ?? '';
   const modalidadeParam = params.get('modalidade') ?? undefined;
@@ -84,16 +89,26 @@ export function LaudoEditorPage() {
   // Hidrata o form com o detalhe carregado.
   useEffect(() => {
     if (detalhe.data) {
+      let respostasCarregadas: RespostasChecklist | null = null;
+      if (detalhe.data.respostasChecklist) {
+        try {
+          respostasCarregadas = JSON.parse(detalhe.data.respostasChecklist) as RespostasChecklist;
+        } catch {
+          respostasCarregadas = null;
+        }
+      }
       setTitulo(detalhe.data.titulo);
       setHtml(detalhe.data.conteudoHtml);
       setJson(detalhe.data.conteudoJson);
-      if (detalhe.data.respostasChecklist) {
-        try {
-          setRespostas(JSON.parse(detalhe.data.respostasChecklist) as RespostasChecklist);
-        } catch {
-          setRespostas(null);
-        }
-      }
+      setRespostas(respostasCarregadas);
+      setBaseline(
+        JSON.stringify({
+          t: detalhe.data.titulo,
+          h: detalhe.data.conteudoHtml,
+          j: detalhe.data.conteudoJson,
+          r: respostasCarregadas,
+        }),
+      );
     }
   }, [detalhe.data]);
 
@@ -190,6 +205,46 @@ export function LaudoEditorPage() {
   // Puxa o pedido (Solicitação de Exame) associado ao Study para mostrar contexto clínico.
   const solicitacao = useSolicitacaoPorStudy(studyInstanceUID || null);
 
+  // Guarda de alterações não salvas (o painel usa BrowserRouter, sem useBlocker).
+  // Laudo finalizado é somente-leitura → nunca fica "sujo".
+  const snap = (t: string, h: string, j: string, r: RespostasChecklist | null) =>
+    JSON.stringify({ t, h, j, r });
+  const sujo = !finalizado && snap(titulo, html, json, respostas) !== baseline;
+  const { elemento: modalSaida, permitir, protegerAcao } = useAvisoSaidaNaoSalva({
+    sujo,
+    aoSalvar: persistirLaudo,
+    mensagem:
+      'O laudo tem alterações que ainda não foram salvas. Deseja salvar o rascunho antes de sair?',
+  });
+
+  // Persiste o rascunho SEM navegar (usado pelo "Salvar e sair" do guard); lança em erro
+  // para o guard não prosseguir com dados perdidos. Nunca toca laudo finalizado/assinado.
+  async function persistirLaudo() {
+    if (ehNovo) {
+      await cadastrar.mutateAsync({
+        studyInstanceUID,
+        pacienteId: null,
+        laudoTemplateId: templateIdParam || templateEscolhidoId || null,
+        titulo,
+        conteudoJson: json,
+        conteudoHtml: html,
+        checklist: montarChecklist(),
+      });
+    } else if (id) {
+      await atualizar.mutateAsync({
+        id,
+        payload: {
+          pacienteId: detalhe.data?.pacienteId ?? null,
+          titulo,
+          conteudoJson: json,
+          conteudoHtml: html,
+          checklist: montarChecklist(),
+        },
+      });
+    }
+    setBaseline(snap(titulo, html, json, respostas));
+  }
+
   async function aoSalvarRascunho() {
     setErro(null);
     try {
@@ -203,6 +258,8 @@ export function LaudoEditorPage() {
           conteudoHtml: html,
           checklist: montarChecklist(),
         });
+        setBaseline(snap(titulo, html, json, respostas));
+        permitir();
         navigate(`/app/laudos/${novoId}`, { replace: true });
       } else if (id) {
         await atualizar.mutateAsync({
@@ -215,6 +272,7 @@ export function LaudoEditorPage() {
             checklist: montarChecklist(),
           },
         });
+        setBaseline(snap(titulo, html, json, respostas));
       }
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
@@ -246,6 +304,7 @@ export function LaudoEditorPage() {
         id: alvoId,
         payload: { titulo, conteudoJson: json, conteudoHtml: html, checklist: montarChecklist() },
       });
+      permitir();
       navigate(`/app/laudos/${alvoId}`, { replace: true });
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
@@ -257,6 +316,7 @@ export function LaudoEditorPage() {
     setErro(null);
     try {
       const novoId = await novaVersao.mutateAsync(id);
+      permitir();
       navigate(`/app/laudos/${novoId}`, { replace: true });
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
@@ -324,11 +384,12 @@ export function LaudoEditorPage() {
 
   return (
     <div className="space-y-5">
+      {modalSaida}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={protegerAcao(() => navigate(-1))}
             className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
           >
             <ArrowLeft className="h-4 w-4" />

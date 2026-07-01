@@ -5,6 +5,7 @@ import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 import { notificar } from '@/shared/ui/Notificacoes';
+import { useAvisoSaidaNaoSalva } from '@/shared/hooks/useAvisoSaidaNaoSalva';
 import { useContextoAnamnese, useSalvarAnamnese } from '@/features/anamnese/api/queries';
 import { AnamneseLeitura } from '@/features/anamnese/components/AnamneseLeitura';
 import { AnexosExameSecao } from '@/features/anamnese/components/AnexosExameSecao';
@@ -62,6 +63,8 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
 
   const [conteudo, setConteudo] = useState<AnamneseMamografiaConteudo>(conteudoVazio);
   const [erro, setErro] = useState<string | null>(null);
+  // Baseline para detectar alterações não salvas (comparação com o estado atual).
+  const [baseline, setBaseline] = useState(() => JSON.stringify(conteudoVazio()));
 
   // Em janela solta, o nome do paciente vira o título da janela do SO.
   const pacienteNome = contexto.data?.pacienteNome;
@@ -76,7 +79,7 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
     try {
       const carregado = JSON.parse(json) as Partial<AnamneseMamografiaConteudo>;
       const base = conteudoVazio();
-      setConteudo({
+      const merged: AnamneseMamografiaConteudo = {
         avaliacaoClinica: { ...base.avaliacaoClinica, ...carregado.avaliacaoClinica },
         historicoClinico: { ...base.historicoClinico, ...carregado.historicoClinico },
         queixas: {
@@ -85,7 +88,9 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
           sintomas: { ...base.queixas.sintomas, ...carregado.queixas?.sintomas },
         },
         avaliacaoRisco: { ...base.avaliacaoRisco, ...carregado.avaliacaoRisco },
-      });
+      };
+      setConteudo(merged);
+      setBaseline(JSON.stringify(merged));
     } catch {
       setErro('Não foi possível ler a anamnese gravada; o formulário foi aberto em branco.');
     }
@@ -96,25 +101,40 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
     [contexto.data?.pacienteNascimento],
   );
 
-  async function aoSalvar() {
+  // Persiste sem navegar (usado pelo botão Salvar e pelo "Salvar e sair" do guard).
+  async function persistir() {
     if (!contexto.data) return;
     setErro(null);
+    await salvar.mutateAsync({
+      solicitacaoExameId: contexto.data.solicitacaoExameId,
+      payload: {
+        tipo: 'mamografia',
+        versao: 1,
+        conteudoJson: JSON.stringify(conteudo),
+        classificacaoRisco: conteudo.avaliacaoRisco.classificacao,
+      },
+    });
+    setBaseline(JSON.stringify(conteudo));
+  }
+
+  async function aoSalvar() {
     try {
-      await salvar.mutateAsync({
-        solicitacaoExameId: contexto.data.solicitacaoExameId,
-        payload: {
-          tipo: 'mamografia',
-          versao: 1,
-          conteudoJson: JSON.stringify(conteudo),
-          classificacaoRisco: conteudo.avaliacaoRisco.classificacao,
-        },
-      });
+      await persistir();
       notificar('Anamnese salva com sucesso.');
       navigate(-1);
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
     }
   }
+
+  // Guarda de alterações não salvas (o painel usa BrowserRouter, sem useBlocker).
+  const sujo = podeEditar && JSON.stringify(conteudo) !== baseline;
+  const { elemento: modalSaida, protegerAcao } = useAvisoSaidaNaoSalva({
+    sujo,
+    aoSalvar: persistir,
+    mensagem:
+      'A anamnese tem alterações que ainda não foram salvas. Deseja salvar antes de sair?',
+  });
 
   function mudarHistorico(
     pergunta: (typeof PERGUNTAS_HISTORICO)[number][0],
@@ -159,13 +179,14 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
 
   return (
     <div className={`mx-auto max-w-5xl space-y-6 pb-10 ${janela ? 'min-h-screen bg-gray-50 p-6' : ''}`}>
+      {modalSaida}
       {/* Cabeçalho */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           {janela ? null : (
             <button
               type="button"
-              onClick={() => navigate(-1)}
+              onClick={protegerAcao(() => navigate(-1))}
               className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
             >
               <ArrowLeft className="h-4 w-4" /> Voltar
