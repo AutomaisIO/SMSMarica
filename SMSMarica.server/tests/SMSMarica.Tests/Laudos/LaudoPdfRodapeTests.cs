@@ -11,6 +11,7 @@ using SMSMarica.Core.Medicos.Assinatura;
 using SMSMarica.Core.Midias;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.SolicitacoesExame;
+using SMSMarica.Core.Worklist;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
 using QuestDocument = QuestPDF.Fluent.Document;
@@ -52,8 +53,9 @@ public class LaudoPdfRodapeTests
         var midias = Substitute.For<IMidiasService>();
         var pacientes = Substitute.For<IPacientesService>();
         var solicitacoes = Substitute.For<ISolicitacoesExameService>();
+        var consultaStudy = Substitute.For<IConsultaStudyClient>();
 
-        return new LaudoPdfRenderer(laudosSvc, cfg, midias, pacientes, solicitacoes, Options.Create(new LaudosPdfOptions()));
+        return new LaudoPdfRenderer(laudosSvc, cfg, midias, pacientes, solicitacoes, consultaStudy, Options.Create(new LaudosPdfOptions()));
     }
 
     private static Laudo LaudoExemplo(StatusLaudo status) => new()

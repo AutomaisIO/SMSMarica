@@ -101,7 +101,11 @@ public sealed class SincronizadorExamesService(
                 if (item.Status is StatusSolicitacaoExame.Recebida or StatusSolicitacaoExame.EmExecucao
                     && await consulta.StudyExisteAsync(item.AccessionNumber, ct))
                 {
-                    await solicitacoes.MarcarComoRealizadaAsync(item.Id, DateTime.UtcNow, ct);
+                    // Data/hora REAL do exame vem do DICOM (StudyDate/StudyTime) — fonte da
+                    // verdade. Falha do PACS aqui não pode quebrar a sincronização: em erro,
+                    // dataEstudo fica null e a exibição faz fallback para RealizadoEm.
+                    var dataEstudo = await ResolverDataEstudoAsync(consulta, item.StudyInstanceUID, item.AccessionNumber, ct);
+                    await solicitacoes.MarcarComoRealizadaAsync(item.Id, DateTime.UtcNow, dataEstudo, ct);
                     _logger.LogInformation(
                         "Solicitação {Accession} promovida para Realizada (study via worklist).", item.AccessionNumber);
                     continue;
@@ -147,6 +151,25 @@ public sealed class SincronizadorExamesService(
                 _logger.LogWarning(ex,
                     "Falha ao processar solicitação {Id} ({Accession}).", item.Id, item.AccessionNumber);
             }
+        }
+    }
+
+    /// <summary>
+    /// Resolve a data/hora real do exame (StudyDate/StudyTime) via QIDO-RS, blindado:
+    /// nenhuma exceção do PACS escapa (retorna null e a exibição faz fallback).
+    /// </summary>
+    private async Task<DateTime?> ResolverDataEstudoAsync(
+        IConsultaStudyClient consulta, string studyInstanceUID, string accession, CancellationToken ct)
+    {
+        try
+        {
+            return await consulta.ObterDataHoraEstudoAsync(studyInstanceUID, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex,
+                "Falha ao obter StudyDate/StudyTime do DICOM para {Accession} — segue sem DataEstudo.", accession);
+            return null;
         }
     }
 }

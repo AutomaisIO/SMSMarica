@@ -59,6 +59,9 @@ export type SolicitacaoExame = {
 
   criadoEm: string;
   atualizadoEm: string | null;
+
+  /** Data/hora REAL de execução do exame vinda do DICOM (StudyDate/StudyTime) — fonte da verdade. */
+  dataEstudo: string | null;
 };
 
 export type SolicitacaoExameListItem = {

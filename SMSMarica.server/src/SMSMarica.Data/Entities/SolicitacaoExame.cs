@@ -72,7 +72,21 @@ public class SolicitacaoExame
 
     public DateTime? DataAgendada { get; set; }
     public DateTime? IniciadoEm { get; set; }
+
+    /// <summary>
+    /// Momento em que o servidor DETECTOU o exame no PACS (auditoria — hora do servidor,
+    /// UTC). NÃO é a data em que o exame foi feito; para isso use <see cref="DataEstudo"/>.
+    /// </summary>
     public DateTime? RealizadoEm { get; set; }
+
+    /// <summary>
+    /// Data/hora REAL de execução do exame, lida do DICOM (StudyDate 0008,0020 +
+    /// StudyTime 0008,0030) — a FONTE DA VERDADE da data do exame/laudo. É wall-clock
+    /// local do equipamento (Kind=Unspecified), por isso mapeada como
+    /// <c>timestamp without time zone</c>. Null quando o PACS não respondeu ou o estudo
+    /// não trouxe a tag (a exibição faz fallback para RealizadoEm/CriadoEm).
+    /// </summary>
+    public DateTime? DataEstudo { get; set; }
 
     /// <summary>Quando a integração UPS-RS falha, guardamos o motivo (e o admin pode reenviar manualmente).</summary>
     public string? ErroIntegracaoPacs { get; set; }

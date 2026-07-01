@@ -8,6 +8,7 @@ using SMSMarica.Core.Laudos.Pdf;
 using SMSMarica.Core.Midias;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.SolicitacoesExame;
+using SMSMarica.Core.Worklist;
 using SMSMarica.Core.Midias.Dtos;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
@@ -55,7 +56,8 @@ public class LaudoPdfCabecalhoTabelaTests
 
         var pacientes = Substitute.For<IPacientesService>();
         var solicitacoes = Substitute.For<ISolicitacoesExameService>();
-        var renderer = new LaudoPdfRenderer(laudosSvc, cfg, midias, pacientes, solicitacoes, Options.Create(new LaudosPdfOptions()));
+        var consultaStudy = Substitute.For<IConsultaStudyClient>();
+        var renderer = new LaudoPdfRenderer(laudosSvc, cfg, midias, pacientes, solicitacoes, consultaStudy, Options.Create(new LaudosPdfOptions()));
         var pdf = await renderer.GerarAsync(laudo.Id);
 
         pdf.Should().NotBeNullOrEmpty();
