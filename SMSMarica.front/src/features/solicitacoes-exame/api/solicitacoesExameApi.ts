@@ -75,6 +75,14 @@ export async function abrirDeclaracaoComparecimento(id: string): Promise<void> {
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
+export type LinkDownload = { token: string; url: string; expiraEm: string };
+
+/** Gera um link público de download (uso único) do exame completo, para enviar ao paciente. */
+export async function gerarLinkDownload(id: string): Promise<LinkDownload> {
+  const { data } = await http.post<LinkDownload>(`/solicitacoes-exame/${id}/link-download`);
+  return data;
+}
+
 /**
  * Baixa o PDF do exame completo (capa + imagens + laudo) da solicitação. Como o
  * endpoint exige bearer, baixamos como blob e disparamos o download via âncora.

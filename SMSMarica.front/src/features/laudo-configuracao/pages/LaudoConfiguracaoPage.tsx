@@ -21,6 +21,7 @@ export function LaudoConfiguracaoPage() {
   const [rodapeJson, setRodapeJson] = useState('{}');
   const [permitirSemAssociacao, setPermitirSemAssociacao] = useState(false);
   const [permitirSemAnamnese, setPermitirSemAnamnese] = useState(false);
+  const [validadeDias, setValidadeDias] = useState(7);
   const [erro, setErro] = useState<string | null>(null);
   const [salvo, setSalvo] = useState(false);
 
@@ -32,6 +33,7 @@ export function LaudoConfiguracaoPage() {
       setRodapeJson(data.rodapeJson);
       setPermitirSemAssociacao(data.permitirLaudarSemAssociacao);
       setPermitirSemAnamnese(data.permitirLaudarSemAnamnese);
+      setValidadeDias(data.downloadLinkValidadeDias);
     }
   }, [data]);
 
@@ -46,6 +48,7 @@ export function LaudoConfiguracaoPage() {
         rodapeJson,
         permitirLaudarSemAssociacao: permitirSemAssociacao,
         permitirLaudarSemAnamnese: permitirSemAnamnese,
+        downloadLinkValidadeDias: validadeDias,
       });
       setSalvo(true);
     } catch (e) {
@@ -180,6 +183,27 @@ export function LaudoConfiguracaoPage() {
               </span>
             </span>
           </label>
+        </div>
+
+        <div className="mt-4 space-y-2 rounded-lg border border-gray-200 bg-white p-4">
+          <label className="block text-sm font-medium text-gray-900" htmlFor="validadeDias">
+            Validade do link de download (dias)
+          </label>
+          <input
+            id="validadeDias"
+            type="number"
+            min={1}
+            max={365}
+            className="w-32 rounded-md border border-gray-300 px-3 py-2 text-sm"
+            value={validadeDias}
+            disabled={!podeEditar}
+            onChange={(e) => setValidadeDias(Math.max(1, Math.min(365, Number(e.target.value) || 1)))}
+          />
+          <p className="text-xs text-gray-500">
+            Prazo do link público enviado ao paciente (ex.: WhatsApp) para baixar o exame. O link é de
+            <strong> uso único</strong>: após o 1º download — ou passado esse prazo — expira e o cidadão
+            passa a acessar pelo app.
+          </p>
         </div>
       </div>
     </div>

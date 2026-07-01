@@ -11,6 +11,7 @@ import { Exames } from '@/pages/Exames';
 import { Laudos } from '@/pages/Laudos';
 import { Transporte } from '@/pages/Transporte';
 import { ConsultasAgendadas, ExamesAgendados } from '@/pages/Agendados';
+import { Documento } from '@/pages/Documento';
 
 function Protegida({ children }: { children: React.ReactNode }) {
   const token = useAuth((s) => s.token);
@@ -24,6 +25,8 @@ export function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/login/codigo" element={<Otp />} />
+        {/* Link público de download (uso único) enviado ao paciente — sem autenticação. */}
+        <Route path="/documento/:token" element={<Documento />} />
 
         <Route
           element={

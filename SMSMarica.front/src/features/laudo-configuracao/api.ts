@@ -7,6 +7,7 @@ export type LaudoConfiguracao = {
   rodapeJson: string;
   permitirLaudarSemAssociacao: boolean;
   permitirLaudarSemAnamnese: boolean;
+  downloadLinkValidadeDias: number;
   atualizadoEm: string | null;
 };
 
@@ -17,6 +18,7 @@ export type SalvarLaudoConfiguracaoPayload = {
   rodapeJson: string;
   permitirLaudarSemAssociacao: boolean;
   permitirLaudarSemAnamnese: boolean;
+  downloadLinkValidadeDias: number;
 };
 
 export type RegrasIniciarLaudo = {

@@ -29,6 +29,7 @@ import { ehFalhaExclusaoPacs } from '@/features/solicitacoes-exame/api/solicitac
 import { StatusBadgeSolicitacao } from '@/features/solicitacoes-exame/components/StatusBadgeSolicitacao';
 import { BotaoDeclaracaoComparecimento } from '@/features/solicitacoes-exame/components/BotaoDeclaracaoComparecimento';
 import { BotaoBaixarExameCompleto } from '@/features/solicitacoes-exame/components/BotaoBaixarExameCompleto';
+import { BotaoLinkDownload } from '@/features/solicitacoes-exame/components/BotaoLinkDownload';
 import type { StatusSolicitacao } from '@/features/solicitacoes-exame/types';
 
 const ETAPAS: StatusSolicitacao[] = ['Solicitada', 'Enviada', 'Recebida', 'EmExecucao', 'Realizada', 'Laudada'];
@@ -139,6 +140,9 @@ export function SolicitacaoExameDetalhePage() {
           </h1>
         </div>
         <div className="flex items-center gap-2">
+          {(s.status === 'Realizada' || s.status === 'Laudada') ? (
+            <BotaoLinkDownload solicitacaoId={s.id} />
+          ) : null}
           {podeReenviar ? (
             <Button onClick={reenviarAgora} disabled={reenviar.isPending} variante="outline">
               {reenviar.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCw className="mr-2 h-4 w-4" />}
