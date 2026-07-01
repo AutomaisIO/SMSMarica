@@ -12,6 +12,9 @@ public sealed record DeclaracaoComparecimentoDados(
     string UnidadeNome,
     string TipoExameNome,
     DateTime DataHoraExame,
+    DateTime HoraEntrada,
+    DateTime HoraSaida,
+    string? Motivo,
     string Cidade,
     DateTime DataEmissao,
     string AssinanteNome,
@@ -59,12 +62,21 @@ public static class DeclaracaoComparecimentoPdf
                         texto.Span(", que esta(e) compareceu à unidade de saúde ");
                         texto.Span(d.UnidadeNome).Bold();
                         texto.Span(" no dia ");
-                        texto.Span(DataPorExtenso(d.DataHoraExame)).Bold();
-                        texto.Span(" às ");
-                        texto.Span(d.DataHoraExame.ToString("HH'h'mm", PtBr)).Bold();
+                        texto.Span(DataPorExtenso(d.HoraEntrada)).Bold();
+                        texto.Span(", com entrada às ");
+                        texto.Span(d.HoraEntrada.ToString("HH'h'mm", PtBr)).Bold();
+                        texto.Span(" e saída às ");
+                        texto.Span(d.HoraSaida.ToString("HH'h'mm", PtBr)).Bold();
                         texto.Span(", para a finalidade de realização de ");
                         texto.Span(d.TipoExameNome).Bold();
                         texto.Span(".");
+
+                        if (!string.IsNullOrWhiteSpace(d.Motivo))
+                        {
+                            texto.Span(" Motivo: ");
+                            texto.Span(d.Motivo).Bold();
+                            texto.Span(".");
+                        }
                     });
 
                     col.Item().PaddingTop(34).AlignRight()

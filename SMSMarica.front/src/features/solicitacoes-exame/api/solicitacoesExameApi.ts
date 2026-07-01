@@ -57,14 +57,35 @@ export async function excluirSolicitacao(id: string, force = false): Promise<voi
   await http.delete(`/solicitacoes-exame/${id}`, { params: force ? { force: true } : undefined });
 }
 
+/** Campos editáveis (atendente) impressos na declaração de comparecimento. */
+export type ParametrosDeclaracaoComparecimento = {
+  /** Hora de entrada (ISO local, ex.: 2026-07-01T08:30). */
+  horaEntrada: string;
+  /** Hora de saída (ISO local). */
+  horaSaida: string;
+  /** Motivo do comparecimento (texto livre). */
+  motivo: string;
+};
+
 /**
  * Abre, em nova aba, o PDF da declaração de comparecimento da solicitação. O
  * endpoint exige bearer (popups não levam o token do interceptor), então baixamos
- * como blob e abrimos uma blob URL.
+ * como blob e abrimos uma blob URL. Os parâmetros (entrada/saída/motivo) vêm do
+ * modal preenchido pela atendente.
  */
-export async function abrirDeclaracaoComparecimento(id: string): Promise<void> {
+export async function abrirDeclaracaoComparecimento(
+  id: string,
+  parametros?: ParametrosDeclaracaoComparecimento,
+): Promise<void> {
   const resp = await http.get(`/solicitacoes-exame/${id}/declaracao-comparecimento`, {
     responseType: 'blob',
+    params: parametros
+      ? {
+          horaEntrada: parametros.horaEntrada,
+          horaSaida: parametros.horaSaida,
+          motivo: parametros.motivo || undefined,
+        }
+      : undefined,
   });
   const url = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }));
   const janela = window.open(url, `declaracao-${id}`);

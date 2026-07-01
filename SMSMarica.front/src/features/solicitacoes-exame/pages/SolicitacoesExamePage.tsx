@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ClipboardCheck, Eye, Loader2, Plus, Search, Trash2 } from 'lucide-react';
+import { CalendarDays, ClipboardCheck, Eye, Loader2, Plus, Search, Trash2 } from 'lucide-react';
+import { cn } from '@/shared/lib/cn';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
@@ -23,6 +24,16 @@ import type {
   StatusSolicitacao,
 } from '@/features/solicitacoes-exame/types';
 
+const CHAVE_TOGGLE_HOJE = 'solicitacoes-exame:filtro-hoje';
+
+/** Data de hoje no fuso local, no formato yyyy-mm-dd (compatível com <input type="date">). */
+function hojeISO(): string {
+  const d = new Date();
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mes}-${dia}`;
+}
+
 export function SolicitacoesExamePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -36,7 +47,18 @@ export function SolicitacoesExamePage() {
 
   // Deep-link vindo da coluna "Pedido" do PACS: cai na busca livre (que casa accession).
   const accessionUrl = searchParams.get('accessionNumber') ?? undefined;
-  const filtroInicial: FiltroSolicitacoes = { limite: 50, busca: accessionUrl };
+
+  // Toggle "Hoje": persistido em localStorage. Quando ligado, trava as datas no dia
+  // corrente e desabilita os campos de período. Deep-link do PACS tem prioridade.
+  const [hojeAtivo, setHojeAtivo] = useState<boolean>(
+    () => !accessionUrl && localStorage.getItem(CHAVE_TOGGLE_HOJE) === '1',
+  );
+
+  const filtroInicial: FiltroSolicitacoes = accessionUrl
+    ? { limite: 50, busca: accessionUrl }
+    : hojeAtivo
+      ? { limite: 50, dataInicial: hojeISO(), dataFinal: hojeISO() }
+      : { limite: 50 };
   const [filtroAplicado, setFiltroAplicado] = useState<FiltroSolicitacoes>(filtroInicial);
   const [filtroDigitado, setFiltroDigitado] = useState<FiltroSolicitacoes>(filtroInicial);
 
@@ -48,6 +70,29 @@ export function SolicitacoesExamePage() {
       setFiltroDigitado(novo);
     }
   }, [accessionUrl]);
+
+  // A cada abertura da página com o toggle ligado, recalcula "hoje" e reaplica o filtro.
+  useEffect(() => {
+    if (!hojeAtivo || accessionUrl) return;
+    const hoje = hojeISO();
+    setFiltroDigitado((f) => ({ ...f, dataInicial: hoje, dataFinal: hoje }));
+    setFiltroAplicado((f) => ({ ...f, dataInicial: hoje, dataFinal: hoje }));
+    // Intencional: roda no mount (e ao ligar o toggle), não a cada tecla.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hojeAtivo]);
+
+  function alternarHoje() {
+    setHojeAtivo((atual) => {
+      const proximo = !atual;
+      localStorage.setItem(CHAVE_TOGGLE_HOJE, proximo ? '1' : '0');
+      if (!proximo) {
+        // Desligou: libera os campos e limpa o período travado.
+        setFiltroDigitado((f) => ({ ...f, dataInicial: undefined, dataFinal: undefined }));
+        setFiltroAplicado((f) => ({ ...f, dataInicial: undefined, dataFinal: undefined }));
+      }
+      return proximo;
+    });
+  }
 
   const lista = useListarSolicitacoes(filtroAplicado);
 
@@ -193,7 +238,7 @@ export function SolicitacoesExamePage() {
 
       <form
         onSubmit={aoBuscar}
-        className="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-6"
+        className="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-7"
       >
         <Campo label="Buscar" htmlFor="busca" className="sm:col-span-2">
           <Input
@@ -227,6 +272,7 @@ export function SolicitacoesExamePage() {
             type="date"
             value={filtroDigitado.dataInicial ?? ''}
             onChange={(e) => setCampo('dataInicial', e.target.value || undefined)}
+            disabled={hojeAtivo}
           />
         </Campo>
         <Campo label="Data final" htmlFor="df">
@@ -235,7 +281,26 @@ export function SolicitacoesExamePage() {
             type="date"
             value={filtroDigitado.dataFinal ?? ''}
             onChange={(e) => setCampo('dataFinal', e.target.value || undefined)}
+            disabled={hojeAtivo}
           />
+        </Campo>
+        <Campo label="Período" htmlFor="hoje">
+          <button
+            id="hoje"
+            type="button"
+            onClick={alternarHoje}
+            aria-pressed={hojeAtivo}
+            title="Filtrar apenas as solicitações de hoje"
+            className={cn(
+              'inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md border px-3 text-sm font-medium transition-colors',
+              hojeAtivo
+                ? 'border-primary-600 bg-primary-600 text-white hover:bg-primary-700'
+                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50',
+            )}
+          >
+            <CalendarDays className="h-4 w-4" />
+            Hoje
+          </button>
         </Campo>
         <div className="flex items-end">
           <Button type="submit" disabled={lista.isFetching} className="w-full">

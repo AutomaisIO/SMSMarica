@@ -8,7 +8,10 @@ namespace SMSMarica.Core.SolicitacoesExame.Declaracao;
 public interface IDeclaracaoComparecimentoService
 {
     /// <summary>Bytes do PDF da declaração. Lança se a solicitação não existir ou ainda não estiver realizada.</summary>
-    Task<byte[]> GerarAsync(Guid solicitacaoId, CancellationToken cancellationToken = default);
+    Task<byte[]> GerarAsync(
+        Guid solicitacaoId,
+        DeclaracaoComparecimentoParametros? parametros = null,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Verifica um selo de autenticidade (código do QR). Retorna os dados públicos a
@@ -19,3 +22,13 @@ public interface IDeclaracaoComparecimentoService
 
 /// <summary>Dados públicos exibidos na verificação de autenticidade da declaração.</summary>
 public sealed record DeclaracaoVerificacaoDto(string Nome, DateTime DataHora, string Descricao, string? Unidade);
+
+/// <summary>
+/// Campos editáveis (informados pela atendente) impressos na declaração de
+/// comparecimento: hora de entrada, hora de saída e o motivo. Quando ausentes,
+/// o serviço cai para a data/hora real do estudo no PACS.
+/// </summary>
+public sealed record DeclaracaoComparecimentoParametros(
+    DateTime? HoraEntrada = null,
+    DateTime? HoraSaida = null,
+    string? Motivo = null);

@@ -34,7 +34,10 @@ public sealed partial class DeclaracaoComparecimentoService(
     private const string Cidade = "Maricá";
     private readonly LaudosPdfOptions _opt = options.Value;
 
-    public async Task<byte[]> GerarAsync(Guid solicitacaoId, CancellationToken cancellationToken = default)
+    public async Task<byte[]> GerarAsync(
+        Guid solicitacaoId,
+        DeclaracaoComparecimentoParametros? parametros = null,
+        CancellationToken cancellationToken = default)
     {
         // Lança NaoEncontradoException quando não existe.
         var s = await solicitacoes.ObterPorIdAsync(solicitacaoId, cancellationToken);
@@ -48,9 +51,15 @@ public sealed partial class DeclaracaoComparecimentoService(
 
         var dataHoraExame = await ResolverDataHoraExameAsync(s.StudyInstanceUID, s.RealizadoEm, s.CriadoEm, cancellationToken);
 
+        // Horários editáveis informados pela atendente; quando ausentes, caem para a
+        // data/hora real do estudo. O "dia" da declaração passa a ser o da entrada.
+        var horaEntrada = parametros?.HoraEntrada ?? dataHoraExame;
+        var horaSaida = parametros?.HoraSaida ?? dataHoraExame;
+        var motivo = string.IsNullOrWhiteSpace(parametros?.Motivo) ? null : parametros!.Motivo!.Trim();
+
         // Selo de autenticidade: um registro estável por solicitação. A data/hora é
         // gravada no 1º documento e reusada, garantindo que a verificação bata com o PDF.
-        var verificacao = await ObterOuCriarVerificacaoAsync(s.Id, dataHoraExame, cancellationToken);
+        var verificacao = await ObterOuCriarVerificacaoAsync(s.Id, horaEntrada, cancellationToken);
         var url = MontarUrlVerificacao(verificacao.Id);
         var qr = GerarQrPng(url);
 
@@ -63,6 +72,9 @@ public sealed partial class DeclaracaoComparecimentoService(
             UnidadeNome: string.IsNullOrWhiteSpace(s.UnidadeNome) ? "—" : s.UnidadeNome,
             TipoExameNome: string.IsNullOrWhiteSpace(s.TipoExameNome) ? "—" : s.TipoExameNome,
             DataHoraExame: verificacao.DataHoraExame,
+            HoraEntrada: horaEntrada,
+            HoraSaida: horaSaida,
+            Motivo: motivo,
             Cidade: Cidade,
             DataEmissao: dataEmissao,
             AssinanteNome: assinante,
