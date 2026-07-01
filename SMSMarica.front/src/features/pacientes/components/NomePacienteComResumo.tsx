@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Info, Loader2, Pencil } from 'lucide-react';
+import { Loader2, Pencil, UserRound } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/Button';
@@ -100,7 +100,7 @@ export function NomePacienteComResumo({ pacienteId, nome, className, classNameNo
         aria-label="Ver resumo do paciente"
         title="Ver resumo do paciente"
       >
-        <Info className="h-4 w-4" />
+        <UserRound className="h-4 w-4" />
       </button>
 
       <Modal
