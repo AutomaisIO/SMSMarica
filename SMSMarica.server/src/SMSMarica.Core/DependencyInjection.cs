@@ -59,6 +59,8 @@ public static class DependencyInjection
         services.AddScoped<ITiposTratamentoService, TiposTratamentoService>();
         services.AddScoped<ILaudoTemplatesService, LaudoTemplatesService>();
         services.AddScoped<ILaudosService, LaudosService>();
+        // Resolução preguiçosa p/ quebrar o ciclo de DI Laudos ↔ SolicitacoesExame.
+        services.AddScoped(sp => new Lazy<ISolicitacoesExameService>(sp.GetRequiredService<ISolicitacoesExameService>));
         services.AddScoped<ILaudoPdfRenderer, LaudoPdfRenderer>();
         services.AddScoped<Laudos.Configuracao.ILaudoConfiguracaoService, Laudos.Configuracao.LaudoConfiguracaoService>();
 

@@ -21,7 +21,7 @@ namespace SMSMarica.Core.Laudos;
 public sealed class LaudosService(
     SmsMaricaDbContext db,
     IHtmlSanitizer sanitizer,
-    ISolicitacoesExameService solicitacoes,
+    Lazy<ISolicitacoesExameService> solicitacoes,
     IPacienteFhirClient pacienteFhir,
     IPractitionerFhirClient practitionerFhir,
     IPacienteResolver pacienteResolver,
@@ -33,7 +33,9 @@ public sealed class LaudosService(
 {
     private readonly SmsMaricaDbContext _db = db;
     private readonly IHtmlSanitizer _sanitizer = sanitizer;
-    private readonly ISolicitacoesExameService _solicitacoes = solicitacoes;
+    // Lazy: quebra a dependência circular SolicitacoesExame → Assinatura → PdfRenderer
+    // → Laudos → SolicitacoesExame na construção do grafo de DI (resolução só no uso).
+    private readonly Lazy<ISolicitacoesExameService> _solicitacoes = solicitacoes;
     private readonly IPacienteFhirClient _pacienteFhir = pacienteFhir;
     private readonly IPractitionerFhirClient _practitionerFhir = practitionerFhir;
     private readonly IPacienteResolver _pacienteResolver = pacienteResolver;
@@ -379,7 +381,7 @@ public sealed class LaudosService(
 
         try
         {
-            await _solicitacoes.MarcarComoLaudadaAsync(laudo.StudyInstanceUID, cancellationToken);
+            await _solicitacoes.Value.MarcarComoLaudadaAsync(laudo.StudyInstanceUID, cancellationToken);
         }
         catch (Exception ex)
         {
