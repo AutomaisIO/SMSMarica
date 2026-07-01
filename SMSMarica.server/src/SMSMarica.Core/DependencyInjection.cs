@@ -71,6 +71,11 @@ public static class DependencyInjection
         services.Configure<Laudos.Assinatura.AssinaturaOptions>(
             configuration.GetSection(Laudos.Assinatura.AssinaturaOptions.SecaoConfig));
         services.AddScoped<Laudos.Assinatura.ILaudoAssinaturaService, Laudos.Assinatura.LaudoAssinaturaService>();
+        // Resolução preguiçosa: SolicitacoesExame entra no subsistema de Laudos por
+        // aqui; sem o Lazy o grafo de DI fecha ciclo (via Laudos → SolicitacoesExame,
+        // direto e via ExameAssociacao).
+        services.AddScoped(sp => new Lazy<Laudos.Assinatura.ILaudoAssinaturaService>(
+            sp.GetRequiredService<Laudos.Assinatura.ILaudoAssinaturaService>));
         services.AddSingleton<Laudos.Assinatura.ICarimboAssinaturaRenderer, Laudos.Assinatura.CarimboAssinaturaRenderer>();
         var assinadorBaseUrl = configuration["Assinatura:AssinadorBaseUrl"] ?? "http://localhost:5082/";
         var assinadorToken = configuration["Assinatura:AssinadorToken"];

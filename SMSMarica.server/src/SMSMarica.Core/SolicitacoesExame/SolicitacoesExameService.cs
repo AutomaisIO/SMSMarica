@@ -19,7 +19,7 @@ public sealed class SolicitacoesExameService(
     INotificadorExame notificador,
     IUsuarioAtualAccessor usuarioAtual,
     Pacientes.Fhir.IPacienteResolver pacienteResolver,
-    Laudos.Assinatura.ILaudoAssinaturaService assinaturas,
+    Lazy<Laudos.Assinatura.ILaudoAssinaturaService> assinaturas,
     ILogger<SolicitacoesExameService> logger)
     : ISolicitacoesExameService
 {
@@ -29,7 +29,10 @@ public sealed class SolicitacoesExameService(
     private readonly INotificadorExame _notificador = notificador;
     private readonly IUsuarioAtualAccessor _usuarioAtual = usuarioAtual;
     private readonly Pacientes.Fhir.IPacienteResolver _pacienteResolver = pacienteResolver;
-    private readonly Laudos.Assinatura.ILaudoAssinaturaService _assinaturas = assinaturas;
+    // Lazy: ponto de entrada do subsistema de Laudos. Sem isso a construção do
+    // SolicitacoesExameService puxa Assinatura → PdfRenderer → Laudos, que reentra
+    // aqui por várias arestas (direta e via ExameAssociacao) — dependência circular.
+    private readonly Lazy<Laudos.Assinatura.ILaudoAssinaturaService> _assinaturas = assinaturas;
     private readonly ILogger<SolicitacoesExameService> _logger = logger;
 
     // Resolve nome/CPF/CNS do paciente (hub FHIR) e embute nos DTOs.
@@ -69,7 +72,7 @@ public sealed class SolicitacoesExameService(
             .GroupBy(l => l.StudyInstanceUID)
             .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.Versao).First().Id);
 
-        var assinados = await _assinaturas.QuaisAssinadosAsync(atualPorStudy.Values.ToArray(), ct);
+        var assinados = await _assinaturas.Value.QuaisAssinadosAsync(atualPorStudy.Values.ToArray(), ct);
 
         return [.. dtos.Select(d =>
             atualPorStudy.TryGetValue(d.StudyInstanceUID, out var laudoId)
