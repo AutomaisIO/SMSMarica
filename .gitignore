@@ -13,3 +13,5 @@ docs/credenciais_*.txt
 docs/PACS/conteudo inteiro/
 # Artefatos efêmeros do Playwright MCP (logs/snapshots de navegação).
 .playwright-mcp/
+# Mural local de coordenação entre sessões da Claude (não é código do projeto).
+alterações entre sessoes/

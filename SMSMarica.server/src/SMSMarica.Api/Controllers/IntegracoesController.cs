@@ -3,6 +3,7 @@ using SMSMarica.Api.Auth;
 using SMSMarica.Core.Integracoes.Dtos;
 using SMSMarica.Core.Integracoes.Proxy;
 using SMSMarica.Core.Integracoes.Proxy.Configuracao;
+using SMSMarica.Core.Integracoes.SisregWeb;
 using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
@@ -24,6 +25,7 @@ namespace SMSMarica.Api.Controllers;
 public sealed class IntegracoesController(
     IConsultaCpfService consultaCpf,
     IConsultaCepService consultaCep,
+    IConsultaCnsService consultaCns,
     IProxyMotorConfiguracaoService motores) : ControllerBase
 {
     /// <summary>Consulta CPF na Receita exigindo data de nascimento.</summary>
@@ -36,6 +38,19 @@ public sealed class IntegracoesController(
         [FromQuery] DateOnly dataNascimento,
         CancellationToken cancellationToken) =>
         await consultaCpf.ConsultarCpfAsync(cpf, dataNascimento, cancellationToken);
+
+    /// <summary>
+    /// Consulta paciente por CNS no SISREG (CADSUS). Não exige data de nascimento. Retorna
+    /// CNS, CPF, nome, sexo, nascimento e nome da mãe para auto-preencher o cadastro.
+    /// </summary>
+    [HttpGet("cns")]
+    [ProducesResponseType<ConsultaCnsRespostaDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ConsultaCnsRespostaDto> ConsultarCns(
+        [FromQuery] string cns,
+        CancellationToken cancellationToken) =>
+        await consultaCns.ConsultarPorCnsAsync(cns, cancellationToken);
 
     /// <summary>Consulta endereço por CEP.</summary>
     [HttpGet("cep/{cep}")]
