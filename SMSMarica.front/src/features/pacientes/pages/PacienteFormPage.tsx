@@ -21,7 +21,9 @@ import {
 } from '@/features/pacientes/api/queries';
 import {
   consultarCep,
+  consultarCns,
   consultarCpf,
+  type ConsultaCnsResposta,
   type ConsultaCpfResposta,
 } from '@/shared/api/integracoes';
 import { cpfValido, pacienteFormSchema } from '@/features/pacientes/schemas/pacienteSchema';
@@ -326,7 +328,11 @@ export function PacienteFormPage() {
   const [erros, setErros] = useState<Record<string, string>>({});
   const [erroGlobal, setErroGlobal] = useState<string | null>(null);
   const [passoCpfConcluido, setPassoCpfConcluido] = useState<boolean>(modo === 'editar');
+  // Método de identificação inicial: por CPF (hub da Receita) ou por CNS (SISREG/CADSUS).
+  // No CNS a data de nascimento não é pedida — o SISREG a devolve.
+  const [metodoBusca, setMetodoBusca] = useState<'cpf' | 'cns'>('cpf');
   const [consultandoCpf, setConsultandoCpf] = useState(false);
+  const [consultandoCns, setConsultandoCns] = useState(false);
   const [consultandoCep, setConsultandoCep] = useState(false);
   const [reativacaoPendente, setReativacaoPendente] = useState<{ id: string; nome: string } | null>(null);
   // Após cadastrar vindo da solicitação, sugere abrir a solicitação já preenchida.
@@ -400,6 +406,62 @@ export function PacienteFormPage() {
       setErroGlobal(extrairMensagemDeErro(e));
     } finally {
       setConsultandoCpf(false);
+    }
+  }
+
+  async function aoConfirmarPasso1Cns() {
+    setErros({});
+    setErroGlobal(null);
+
+    const cnsLimpo = estado.cns.replace(/\D/g, '');
+    if (cnsLimpo.length !== 15) {
+      setErros({ cns: 'CNS precisa ter 15 dígitos.' });
+      return;
+    }
+
+    setConsultandoCns(true);
+    try {
+      const sisreg: ConsultaCnsResposta = await consultarCns(cnsLimpo);
+
+      const cpfLimpo = (sisreg.cpf ?? '').replace(/\D/g, '');
+      if (cpfLimpo.length !== 11) {
+        setErroGlobal('O SISREG não retornou um CPF para este CNS. Cadastre o paciente pela busca por CPF.');
+        return;
+      }
+      if (!sisreg.dataNascimento) {
+        setErroGlobal('O SISREG não informou a data de nascimento deste CNS. Cadastre o paciente pela busca por CPF.');
+        return;
+      }
+
+      // Dedup/reativação por CPF — mesmo comportamento do fluxo por CPF.
+      const existente = await consultarPacientePorCpf(cpfLimpo);
+      if (existente) {
+        if (existente.ativo) {
+          setErroGlobal(`Já existe paciente ativo com este CPF: ${existente.nomeCompleto}.`);
+          return;
+        }
+        setReativacaoPendente({ id: existente.id, nome: existente.nomeCompleto });
+        return;
+      }
+
+      const sexoSisreg = sisreg.sexo && (SEXOS as readonly string[]).includes(sisreg.sexo)
+        ? (sisreg.sexo as Sexo)
+        : null;
+      setEstado((s) => ({
+        ...s,
+        nomeCompleto: sisreg.nome.trim(),
+        cpf: cpfLimpo,
+        cns: sisreg.cns || cnsLimpo,
+        dataNascimento: sisreg.dataNascimento ?? s.dataNascimento,
+        // Sexo e nome da mãe vêm do CADSUS quando disponíveis (endereço/telefone NÃO — vêm errados).
+        sexo: sexoSisreg ?? s.sexo,
+        nomeDaMae: sisreg.nomeMae?.trim() || s.nomeDaMae,
+      }));
+      setPassoCpfConcluido(true);
+    } catch (e) {
+      setErroGlobal(extrairMensagemDeErro(e));
+    } finally {
+      setConsultandoCns(false);
     }
   }
 
@@ -550,29 +612,68 @@ export function PacienteFormPage() {
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
           <h2 className="text-base font-medium text-gray-900">Identificação inicial</h2>
           <p className="mt-1 text-sm text-gray-600">
-            Informe o CPF e a data de nascimento. Esses dados não poderão ser editados depois.
+            {metodoBusca === 'cpf'
+              ? 'Informe o CPF e a data de nascimento. Esses dados não poderão ser editados depois.'
+              : 'Informe o CNS (Cartão SUS). Buscamos os dados no SISREG — sem precisar da data de nascimento.'}
           </p>
 
-          <div className="mt-5 grid max-w-xl grid-cols-1 gap-4 md:grid-cols-2">
-            <Campo label="CPF" htmlFor="cpf" erro={erros.cpf} required>
-              <Input
-                id="cpf"
-                value={estado.cpf}
-                onChange={(e) => atualizarCampo('cpf', e.target.value)}
-                placeholder="00000000000"
-                inputMode="numeric"
-                autoFocus
-              />
-            </Campo>
-            <Campo label="Data de nascimento" htmlFor="dataNascimento" erro={erros.dataNascimento} required>
-              <Input
-                id="dataNascimento"
-                type="date"
-                value={estado.dataNascimento}
-                onChange={(e) => atualizarCampo('dataNascimento', e.target.value)}
-              />
-            </Campo>
+          {/* Método de identificação: CPF (hub da Receita) ou CNS (SISREG/CADSUS). */}
+          <div className="mt-4 inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1">
+            <button
+              type="button"
+              onClick={() => { setMetodoBusca('cpf'); setErros({}); setErroGlobal(null); }}
+              className={`rounded-md px-4 py-1.5 text-sm font-medium ${
+                metodoBusca === 'cpf' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Por CPF
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMetodoBusca('cns'); setErros({}); setErroGlobal(null); }}
+              className={`rounded-md px-4 py-1.5 text-sm font-medium ${
+                metodoBusca === 'cns' ? 'bg-white text-primary-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Por CNS (SISREG)
+            </button>
           </div>
+
+          {metodoBusca === 'cpf' ? (
+            <div className="mt-5 grid max-w-xl grid-cols-1 gap-4 md:grid-cols-2">
+              <Campo label="CPF" htmlFor="cpf" erro={erros.cpf} required>
+                <Input
+                  id="cpf"
+                  value={estado.cpf}
+                  onChange={(e) => atualizarCampo('cpf', e.target.value)}
+                  placeholder="00000000000"
+                  inputMode="numeric"
+                  autoFocus
+                />
+              </Campo>
+              <Campo label="Data de nascimento" htmlFor="dataNascimento" erro={erros.dataNascimento} required>
+                <Input
+                  id="dataNascimento"
+                  type="date"
+                  value={estado.dataNascimento}
+                  onChange={(e) => atualizarCampo('dataNascimento', e.target.value)}
+                />
+              </Campo>
+            </div>
+          ) : (
+            <div className="mt-5 grid max-w-xl grid-cols-1 gap-4">
+              <Campo label="CNS (Cartão SUS)" htmlFor="cnsBusca" erro={erros.cns} required>
+                <Input
+                  id="cnsBusca"
+                  value={estado.cns}
+                  onChange={(e) => atualizarCampo('cns', e.target.value)}
+                  placeholder="000000000000000"
+                  inputMode="numeric"
+                  autoFocus
+                />
+              </Campo>
+            </div>
+          )}
 
           {erroGlobal ? (
             <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -601,8 +702,11 @@ export function PacienteFormPage() {
             <Button variante="ghost" onClick={() => navigate('/app/pacientes')}>
               Cancelar
             </Button>
-            <Button onClick={aoConfirmarPasso1} disabled={consultandoCpf}>
-              {consultandoCpf ? (
+            <Button
+              onClick={metodoBusca === 'cpf' ? aoConfirmarPasso1 : aoConfirmarPasso1Cns}
+              disabled={consultandoCpf || consultandoCns}
+            >
+              {consultandoCpf || consultandoCns ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Consultando…
                 </>
