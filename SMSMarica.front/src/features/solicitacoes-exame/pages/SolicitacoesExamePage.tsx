@@ -18,6 +18,7 @@ import { BotaoDeclaracaoComparecimento } from '@/features/solicitacoes-exame/com
 import { BotaoBaixarExameCompleto } from '@/features/solicitacoes-exame/components/BotaoBaixarExameCompleto';
 import { BotaoVisualizarLaudo } from '@/features/solicitacoes-exame/components/BotaoVisualizarLaudo';
 import { BotaoAnamnese } from '@/features/anamnese/components/BotaoAnamnese';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import type {
   FiltroSolicitacoes,
   SolicitacaoExameListItem,
@@ -141,7 +142,12 @@ export function SolicitacoesExamePage() {
       cabecalho: 'Paciente',
       render: (s) => (
         <div className="min-w-0">
-          <div className="truncate font-medium text-gray-900">{s.pacienteNome}</div>
+          <NomePacienteComResumo
+            pacienteId={s.pacienteId}
+            nome={s.pacienteNome}
+            className="min-w-0"
+            classNameNome="truncate font-medium text-gray-900"
+          />
           <div className="truncate text-xs text-gray-500">Por {s.solicitanteNome}</div>
         </div>
       ),

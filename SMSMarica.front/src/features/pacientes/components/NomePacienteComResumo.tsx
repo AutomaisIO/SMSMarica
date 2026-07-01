@@ -110,11 +110,9 @@ export function NomePacienteComResumo({ pacienteId, nome, className, classNameNo
         largura="md"
       >
         {aberto ? <ResumoConteudo pacienteId={pacienteId} /> : null}
-        <div className="mt-6 flex justify-end gap-3 border-t border-gray-100 pt-4">
-          <Button variante="ghost" onClick={() => setAberto(false)}>
-            Fechar
-          </Button>
+        <div className="mt-6 flex justify-between gap-3 border-t border-gray-100 pt-4">
           <Button
+            variante="ghost"
             onClick={() => {
               setAberto(false);
               navigate(`/app/pacientes/${pacienteId}/editar`);
@@ -122,6 +120,7 @@ export function NomePacienteComResumo({ pacienteId, nome, className, classNameNo
           >
             <Pencil className="h-4 w-4" /> Editar
           </Button>
+          <Button onClick={() => setAberto(false)}>Fechar</Button>
         </div>
       </Modal>
     </span>
