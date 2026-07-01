@@ -1,8 +1,11 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using SMSMarica.Core.Common.Excecoes;
+using SMSMarica.Core.Erros;
+using SMSMarica.Core.Erros.Dtos;
 
 namespace SMSMarica.Api.Middleware;
 
@@ -59,18 +62,60 @@ public sealed partial class ExceptionHandlingMiddleware(
         catch (ArmazenamentoIndisponivelException ex)
         {
             LogErroNaoTratado(_logger, ex, context.Request.Path);
+            var codigo = await PersistirErroEObterCodigo(context, ex, StatusCodes.Status503ServiceUnavailable);
             await EscreverProblemDetails(context, StatusCodes.Status503ServiceUnavailable,
-                "Armazenamento indisponível", ex.Message, type: ex.Codigo);
+                "Armazenamento indisponível", $"{ex.Message} (código {codigo})",
+                type: ex.Codigo, codigoReferencia: codigo);
         }
         catch (Exception ex)
         {
             LogErroNaoTratado(_logger, ex, context.Request.Path);
+            var codigo = await PersistirErroEObterCodigo(context, ex, StatusCodes.Status500InternalServerError);
             await EscreverProblemDetails(
                 context,
                 StatusCodes.Status500InternalServerError,
                 "Erro interno",
-                "Ocorreu um erro inesperado.",
-                excecao: _detailedErrors ? ex : null);
+                $"Ocorreu um erro inesperado. Informe o código {codigo} ao suporte para que possamos resolver.",
+                type: "erro.nao_tratado",
+                excecao: _detailedErrors ? ex : null,
+                codigoReferencia: codigo);
+        }
+    }
+
+    /// <summary>
+    /// Persiste o erro no log do banco (best-effort) e devolve o código de referência.
+    /// Se a própria gravação falhar (ex.: o DB caiu), NÃO mascara o erro original:
+    /// loga e devolve um código derivado do TraceId para o usuário ainda ter o que reportar.
+    /// </summary>
+    private async Task<string> PersistirErroEObterCodigo(HttpContext context, Exception ex, int statusCode)
+    {
+        try
+        {
+            var servico = context.RequestServices.GetRequiredService<IRegistroErroService>();
+            var ua = context.Request.Headers.UserAgent.ToString();
+            var dados = new RegistrarErroDados(
+                Metodo: context.Request.Method,
+                Caminho: context.Request.Path.Value ?? string.Empty,
+                QueryString: context.Request.QueryString.HasValue ? context.Request.QueryString.Value : null,
+                StatusCode: statusCode,
+                TipoExcecao: ex.GetType().FullName ?? ex.GetType().Name,
+                Mensagem: ex.Message,
+                StackTrace: ex.StackTrace,
+                Interna: ex.InnerException is null
+                    ? null
+                    : $"{ex.InnerException.GetType().FullName}: {ex.InnerException.Message}",
+                TraceId: context.TraceIdentifier,
+                UserAgent: string.IsNullOrEmpty(ua) ? null : ua);
+
+            // CancellationToken.None: garante que o log seja gravado mesmo se o cliente desistir.
+            return await servico.RegistrarAsync(dados, CancellationToken.None);
+        }
+        catch (Exception persistEx)
+        {
+            _logger.LogError(persistEx,
+                "Falha ao persistir RegistroErro (erro original em {Path}). TraceId={TraceId}",
+                context.Request.Path, context.TraceIdentifier);
+            return $"ERRO-{context.TraceIdentifier}";
         }
     }
 
@@ -80,7 +125,8 @@ public sealed partial class ExceptionHandlingMiddleware(
         string title,
         string detail,
         string? type = null,
-        Exception? excecao = null)
+        Exception? excecao = null,
+        string? codigoReferencia = null)
     {
         var problem = new ProblemDetails
         {
@@ -90,6 +136,9 @@ public sealed partial class ExceptionHandlingMiddleware(
             Type = type,
             Instance = context.Request.Path,
         };
+
+        if (codigoReferencia is not null)
+            problem.Extensions["codigoReferencia"] = codigoReferencia;
 
         if (excecao is not null)
         {

@@ -1,5 +1,6 @@
 import {
   Activity,
+  Bug,
   Bus,
   Building2,
   Calculator,
@@ -233,6 +234,13 @@ export const SECOES: SecaoMenu[] = [
         icone: ScrollText,
         modulo: 'Auditoria',
         descricao: 'Trilha de alterações do sistema (somente leitura).',
+      },
+      {
+        rotulo: 'Erros do sistema',
+        to: '/app/erros',
+        icone: Bug,
+        modulo: 'Erros',
+        descricao: 'Log de erros (500) para diagnóstico pelo código de referência.',
       },
     ],
   },

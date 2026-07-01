@@ -23,13 +23,22 @@ function normalizar(valor: string): string {
     .toUpperCase();
 }
 
+type BotaoProps = {
+  pacienteId: string;
+  nomeCompleto: string;
+  cpf: string;
+  dataNascimento: string | null;
+  /** Chamado após salvar com sucesso (ex.: atualizar o campo do formulário). */
+  onSalvo?: (novoNome: string) => void;
+};
+
 /**
- * Campo "Nome completo" com botão "Verificar": recheca o CPF no motor de busca e
- * compara o nome retornado com o do cadastro. Se diferente, oferece corrigir para
- * o nome verificado; se igual, avisa que confere mas ainda permite ajuste manual.
+ * Botão "Verificar" + modal: recheca o CPF no motor de busca e compara o nome
+ * retornado com o do cadastro. Se diferente, oferece corrigir para o nome
+ * verificado; se igual, avisa que confere mas ainda permite ajuste manual.
  * Salvar grava via endpoint dedicado (auditado no backend).
  */
-export function NomeCompletoVerificavel({ paciente }: { paciente: Paciente }) {
+export function VerificarNomeBotao({ pacienteId, nomeCompleto, cpf, dataNascimento, onSalvo }: BotaoProps) {
   const [fase, setFase] = useState<Fase>({ tipo: 'fechado' });
   const [consultando, setConsultando] = useState(false);
   const [erroConsulta, setErroConsulta] = useState<string | null>(null);
@@ -37,17 +46,17 @@ export function NomeCompletoVerificavel({ paciente }: { paciente: Paciente }) {
   const [erroSalvar, setErroSalvar] = useState<string | null>(null);
   const atualizarNome = useAtualizarNomePaciente();
 
-  const dataNasc = paciente.dataNascimento?.slice(0, 10) ?? null;
+  const dataNasc = dataNascimento?.slice(0, 10) ?? null;
 
   async function verificar() {
     if (!dataNasc) return;
     setErroConsulta(null);
     setConsultando(true);
     try {
-      const r = await consultarCpf(paciente.cpf, dataNasc);
+      const r = await consultarCpf(cpf, dataNasc);
       const retornado = (r.nome ?? '').trim();
-      const igual = normalizar(retornado) === normalizar(paciente.nomeCompleto);
-      setNomeManual(igual ? paciente.nomeCompleto : retornado);
+      const igual = normalizar(retornado) === normalizar(nomeCompleto);
+      setNomeManual(igual ? nomeCompleto : retornado);
       setErroSalvar(null);
       setFase(
         igual
@@ -71,7 +80,8 @@ export function NomeCompletoVerificavel({ paciente }: { paciente: Paciente }) {
     if (nome.length < 3) return;
     setErroSalvar(null);
     try {
-      await atualizarNome.mutateAsync({ id: paciente.id, nomeCompleto: nome });
+      await atualizarNome.mutateAsync({ id: pacienteId, nomeCompleto: nome });
+      onSalvo?.(nome);
       fechar();
     } catch (e) {
       setErroSalvar(extrairMensagemDeErro(e));
@@ -79,35 +89,25 @@ export function NomeCompletoVerificavel({ paciente }: { paciente: Paciente }) {
   }
 
   const nomeAlterado =
-    nomeManual.trim().length >= 3 && normalizar(nomeManual) !== normalizar(paciente.nomeCompleto);
+    nomeManual.trim().length >= 3 && normalizar(nomeManual) !== normalizar(nomeCompleto);
 
   return (
     <>
-      <div className="flex flex-col gap-0.5">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
-            Nome completo
-          </span>
-          <button
-            type="button"
-            onClick={verificar}
-            disabled={consultando || !dataNasc}
-            title={
-              dataNasc
-                ? 'Recheca o CPF no motor de busca e compara o nome'
-                : 'Cadastre a data de nascimento para verificar'
-            }
-            className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600 transition-colors hover:border-red-300 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <BadgeCheck className="h-3.5 w-3.5" />
-            {consultando ? 'Verificando…' : 'Verificar'}
-          </button>
-        </div>
-        <span className="text-sm text-gray-900">
-          {paciente.nomeCompleto || <span className="text-gray-400">—</span>}
-        </span>
-        {erroConsulta ? <span className="text-xs text-red-600">{erroConsulta}</span> : null}
-      </div>
+      <button
+        type="button"
+        onClick={verificar}
+        disabled={consultando || !dataNasc}
+        title={
+          dataNasc
+            ? 'Recheca o CPF no motor de busca e compara o nome'
+            : 'Cadastre a data de nascimento para verificar'
+        }
+        className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-xs font-medium text-gray-600 transition-colors hover:border-red-300 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <BadgeCheck className="h-3.5 w-3.5" />
+        {consultando ? 'Verificando…' : 'Verificar'}
+      </button>
+      {erroConsulta ? <span className="ml-2 text-xs text-red-600">{erroConsulta}</span> : null}
 
       <Modal
         aberto={fase.tipo !== 'fechado'}
@@ -140,7 +140,7 @@ export function NomeCompletoVerificavel({ paciente }: { paciente: Paciente }) {
                 <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
                   Nome no cadastro
                 </span>
-                <span className="text-sm text-gray-900">{paciente.nomeCompleto}</span>
+                <span className="text-sm text-gray-900">{nomeCompleto}</span>
               </div>
               <div className="flex flex-col gap-0.5">
                 <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
@@ -197,5 +197,30 @@ export function NomeCompletoVerificavel({ paciente }: { paciente: Paciente }) {
         ) : null}
       </Modal>
     </>
+  );
+}
+
+/**
+ * Campo "Nome completo" (rótulo + valor) com o botão "Verificar" ao lado.
+ * Usado na tela de detalhe do paciente.
+ */
+export function NomeCompletoVerificavel({ paciente }: { paciente: Paciente }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
+          Nome completo
+        </span>
+        <VerificarNomeBotao
+          pacienteId={paciente.id}
+          nomeCompleto={paciente.nomeCompleto}
+          cpf={paciente.cpf}
+          dataNascimento={paciente.dataNascimento}
+        />
+      </div>
+      <span className="text-sm text-gray-900">
+        {paciente.nomeCompleto || <span className="text-gray-400">—</span>}
+      </span>
+    </div>
   );
 }

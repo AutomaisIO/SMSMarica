@@ -108,6 +108,9 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     // Trilha de auditoria de ações de usuário (append-only). Ver RegistroAuditoria.
     public DbSet<RegistroAuditoria> RegistrosAuditoria => Set<RegistroAuditoria>();
 
+    // Log de erros não tratados (500) com código de referência. Ver RegistroErro.
+    public DbSet<RegistroErro> RegistrosErro => Set<RegistroErro>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(SchemaPadrao);

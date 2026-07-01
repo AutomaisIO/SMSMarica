@@ -34,7 +34,8 @@ export type ModuloPermissao =
   | 'IntegracoesConfig'
   | 'Faturamento'
   | 'ConfiguracaoLaudo'
-  | 'Auditoria';
+  | 'Auditoria'
+  | 'Erros';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 

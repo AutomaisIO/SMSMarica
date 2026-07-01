@@ -69,4 +69,7 @@ public enum ModuloPermissao
 
     /// <summary>Consultar a trilha de auditoria do sistema (somente leitura).</summary>
     Auditoria = 33,
+
+    /// <summary>Consultar o log de erros não tratados do sistema (diagnóstico, só leitura).</summary>
+    Erros = 34,
 }

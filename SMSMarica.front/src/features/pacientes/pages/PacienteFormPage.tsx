@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { ArrowLeft, Loader2, Search } from 'lucide-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { VerificarNomeBotao } from '@/features/pacientes/components/NomeCompletoVerificavel';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
@@ -498,7 +499,7 @@ export function PacienteFormPage() {
     {
       id: 'identificacao',
       rotulo: 'Identificação',
-      conteudo: <SecaoIdentificacao estado={estado} erros={erros} setCampo={atualizarCampo} />,
+      conteudo: <SecaoIdentificacao estado={estado} erros={erros} setCampo={atualizarCampo} pacienteId={params.id} />,
     },
     {
       id: 'filiacao',
@@ -710,14 +711,27 @@ type SecProps = {
   estado: Estado;
   erros: Record<string, string>;
   setCampo: <K extends keyof Estado>(campo: K, valor: Estado[K]) => void;
+  /** Id do paciente em modo edição — habilita o botão "Verificar" nome. */
+  pacienteId?: string;
 };
 
-function SecaoIdentificacao({ estado, erros, setCampo }: SecProps) {
+function SecaoIdentificacao({ estado, erros, setCampo, pacienteId }: SecProps) {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       <Campo label="Nome completo" htmlFor="nomeCompleto" className="md:col-span-2"
-        dica="Não pode ser editado.">
-        <Input id="nomeCompleto" value={estado.nomeCompleto} disabled readOnly />
+        dica="Nome oficial — corrija pelo botão “Verificar” (recheca no CPF, com auditoria).">
+        <div className="flex items-center gap-2">
+          <Input id="nomeCompleto" value={estado.nomeCompleto} disabled readOnly className="flex-1" />
+          {pacienteId ? (
+            <VerificarNomeBotao
+              pacienteId={pacienteId}
+              nomeCompleto={estado.nomeCompleto}
+              cpf={estado.cpf}
+              dataNascimento={estado.dataNascimento}
+              onSalvo={(novoNome) => setCampo('nomeCompleto', novoNome)}
+            />
+          ) : null}
+        </div>
       </Campo>
       <Campo
         label="Nome social"

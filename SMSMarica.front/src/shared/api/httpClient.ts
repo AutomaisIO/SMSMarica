@@ -1,5 +1,6 @@
 import axios, { AxiosError } from 'axios';
 import { obterToken, useAuth } from '@/shared/auth/authStore';
+import { notificar } from '@/shared/ui/Notificacoes';
 
 const URL_PROD = 'https://api.smsmarica.online';
 const envBase = import.meta.env.VITE_API_BASE_URL?.trim();
@@ -30,12 +31,25 @@ http.interceptors.request.use((config) => {
   return config;
 });
 
-// Em 401 (token inválido/expirado), limpa a sessão e manda para o login.
-// Login bem-sucedido nunca cai aqui (o erro vem com 400/422).
+// Evita repetir o mesmo toast quando um retry (react-query) dispara o mesmo erro.
+let ultimoAviso = { mensagem: '', em: 0 };
+function avisarErroUnico(mensagem: string) {
+  const agora = Date.now();
+  if (mensagem === ultimoAviso.mensagem && agora - ultimoAviso.em < 4000) return;
+  ultimoAviso = { mensagem, em: agora };
+  notificar(mensagem, 'erro');
+}
+
+// Interceptor global de resposta:
+// - 401: token inválido/expirado → limpa sessão e vai pro login (login nunca cai aqui).
+// - >=500 ou erro de rede: SEMPRE avisa o usuário (rede de segurança contra 500 silencioso),
+//   com o código de referência quando houver. Erros de negócio (4xx) NÃO são notificados
+//   aqui — cada tela os trata inline.
 http.interceptors.response.use(
   (r) => r,
   (erro: AxiosError) => {
-    if (erro.response?.status === 401) {
+    const status = erro.response?.status;
+    if (status === 401) {
       const url = erro.config?.url ?? '';
       if (!url.includes('/identidade/login')) {
         const estado = useAuth.getState();
@@ -46,6 +60,11 @@ http.interceptors.response.use(
           }
         }
       }
+    } else if (status && status >= 500) {
+      avisarErroUnico(extrairMensagemDeErro(erro));
+    } else if (!erro.response) {
+      // Sem resposta = rede/timeout/CORS/servidor fora. Não expõe infra.
+      avisarErroUnico('Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.');
     }
     return Promise.reject(erro);
   },
@@ -57,7 +76,18 @@ export type ProblemaApi = {
   status?: number;
   detail?: string;
   errors?: Record<string, string[]>;
+  /** Código de referência técnico interno (ex.: "ERRO-4F9C2A") em 500/503. */
+  codigoReferencia?: string;
 };
+
+/** Código de referência do erro (500/503), se o backend o informou. */
+export function extrairCodigoReferencia(erro: unknown): string | null {
+  if (erro instanceof AxiosError) {
+    const dados = erro.response?.data as ProblemaApi | undefined;
+    return dados?.codigoReferencia ?? null;
+  }
+  return null;
+}
 
 export function extrairMensagemDeErro(erro: unknown): string {
   if (erro instanceof AxiosError) {
@@ -66,9 +96,11 @@ export function extrairMensagemDeErro(erro: unknown): string {
       const msgs = Object.values(dados.errors).flat().filter(Boolean);
       if (msgs.length > 0) return msgs.join(' ');
     }
-    if (dados?.detail) return dados.detail;
-    if (dados?.title) return dados.title;
-    return erro.message;
+    let msg = dados?.detail || dados?.title || erro.message;
+    // Garante o código na mensagem (caso o detail não o tenha embutido).
+    const codigo = dados?.codigoReferencia;
+    if (codigo && !msg.includes(codigo)) msg = `${msg} (código ${codigo})`;
+    return msg;
   }
   if (erro instanceof Error) return erro.message;
   return 'Erro desconhecido.';
