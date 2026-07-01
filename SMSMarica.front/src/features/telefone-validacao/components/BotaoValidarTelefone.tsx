@@ -16,6 +16,8 @@ type Props = {
   /** Número do contato principal como está na tela (com ou sem máscara). */
   numero: string;
   className?: string;
+  /** Chamado após validar com sucesso (OTP OK) — ex.: persistir o número no cadastro. */
+  onValidado?: () => void;
 };
 
 /**
@@ -24,7 +26,7 @@ type Props = {
  * oferece o botão que dispara o código no WhatsApp e abre o modal aguardando o código.
  * O número é único entre pessoas: se já for de outra pessoa, o backend bloqueia (409).
  */
-export function BotaoValidarTelefone({ cpf, numero, className }: Props) {
+export function BotaoValidarTelefone({ cpf, numero, className, onValidado }: Props) {
   const cpfDig = (cpf ?? '').replace(/\D/g, '');
   const numDig = (numero ?? '').replace(/\D/g, '');
   const habilitado = cpfDig.length === 11 && numDig.length >= 10; // CPF + DDD (2) + número (>=8)
@@ -67,6 +69,7 @@ export function BotaoValidarTelefone({ cpf, numero, className }: Props) {
         aoValidado={() => {
           validadoQ.refetch();
           setAberto(false);
+          onValidado?.();
         }}
       />
     </>

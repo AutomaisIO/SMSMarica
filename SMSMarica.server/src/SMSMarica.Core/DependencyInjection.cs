@@ -60,6 +60,8 @@ public static class DependencyInjection
         services.AddScoped<ITiposTratamentoService, TiposTratamentoService>();
         services.AddScoped<ILaudoTemplatesService, LaudoTemplatesService>();
         services.AddScoped<ILaudosService, LaudosService>();
+        // Resolução preguiçosa p/ quebrar o ciclo de DI Laudos ↔ SolicitacoesExame.
+        services.AddScoped(sp => new Lazy<ISolicitacoesExameService>(sp.GetRequiredService<ISolicitacoesExameService>));
         services.AddScoped<ILaudoPdfRenderer, LaudoPdfRenderer>();
         services.AddScoped<Laudos.Configuracao.ILaudoConfiguracaoService, Laudos.Configuracao.LaudoConfiguracaoService>();
 
@@ -70,6 +72,11 @@ public static class DependencyInjection
         services.Configure<Laudos.Assinatura.AssinaturaOptions>(
             configuration.GetSection(Laudos.Assinatura.AssinaturaOptions.SecaoConfig));
         services.AddScoped<Laudos.Assinatura.ILaudoAssinaturaService, Laudos.Assinatura.LaudoAssinaturaService>();
+        // Resolução preguiçosa: SolicitacoesExame entra no subsistema de Laudos por
+        // aqui; sem o Lazy o grafo de DI fecha ciclo (via Laudos → SolicitacoesExame,
+        // direto e via ExameAssociacao).
+        services.AddScoped(sp => new Lazy<Laudos.Assinatura.ILaudoAssinaturaService>(
+            sp.GetRequiredService<Laudos.Assinatura.ILaudoAssinaturaService>));
         services.AddSingleton<Laudos.Assinatura.ICarimboAssinaturaRenderer, Laudos.Assinatura.CarimboAssinaturaRenderer>();
         var assinadorBaseUrl = configuration["Assinatura:AssinadorBaseUrl"] ?? "http://localhost:5082/";
         var assinadorToken = configuration["Assinatura:AssinadorToken"];
@@ -86,6 +93,8 @@ public static class DependencyInjection
         services.AddScoped<IProcedimentosSigtapService, ProcedimentosSigtapService>();
         services.AddScoped<ITiposExameService, TiposExameService>();
         services.AddScoped<ISolicitacoesExameService, SolicitacoesExameService>();
+        // Backfill de data_estudo (DICOM) — depende só de DbContext + IConsultaStudyClient (sem ciclo).
+        services.AddScoped<SolicitacoesExame.IBackfillDataEstudoService, SolicitacoesExame.BackfillDataEstudoService>();
         services.AddScoped<SolicitacoesExame.Declaracao.IDeclaracaoComparecimentoService,
             SolicitacoesExame.Declaracao.DeclaracaoComparecimentoService>();
         services.AddScoped<Downloads.IDownloadTokenService, Downloads.DownloadTokenService>();
@@ -190,6 +199,12 @@ public static class DependencyInjection
 
         // ---- Credenciais de provedores OAuth (Microsoft/Facebook/Google), cifradas ----
         services.AddScoped<Integracoes.Credenciais.IIntegracaoCredencialService, Integracoes.Credenciais.IntegracaoCredencialService>();
+
+        // ---- SISREG III (web scraping): consulta de paciente por CNS (CADSUS) ----
+        // Sessão única por operador → cliente HTTP com cookies persistentes (singleton) que
+        // reloga sozinho quando a sessão cai. Credencial cifrada no store de Integrações ("sisreg").
+        services.AddSingleton<Integracoes.SisregWeb.ISisregWebSessao, Integracoes.SisregWeb.SisregWebSessao>();
+        services.AddScoped<Integracoes.SisregWeb.IConsultaCnsService, Integracoes.SisregWeb.ConsultaCnsService>();
 
         // ---- Integração SISREG (feed de leitura DATASUS) — ADR-0012 ----
         // BaseUrl e credenciais vêm do banco (tela de configuração), não do registro de DI.

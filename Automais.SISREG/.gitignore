@@ -1,0 +1,18 @@
+# Segredos e PII — NUNCA versionar
+.env
+.env.*
+!.env.example
+
+# Capturas de sessão / respostas do SISREG (contêm dados de paciente / PII)
+capturas/
+*.html.dump
+*.session.json
+cookies.txt
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/

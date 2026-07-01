@@ -82,8 +82,20 @@ public sealed class ExameAssociacaoService(
         db.ExameAssociacoes.Add(assoc);
         await db.SaveChangesAsync(cancellationToken);
 
+        // Data/hora REAL do exame vem do DICOM (StudyDate/StudyTime) do study associado —
+        // fonte da verdade. Falha do PACS não derruba a associação (null → fallback na exibição).
+        DateTime? dataEstudo = null;
+        try
+        {
+            dataEstudo = await consultaStudy.ObterDataHoraEstudoAsync(uid, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Falha ao obter StudyDate/StudyTime do DICOM para {Uid} — segue sem DataEstudo.", uid);
+        }
+
         // Exame confirmado presente → promove a solicitação (no-op se já adiante).
-        await solicitacoes.MarcarComoRealizadaAsync(solicitacao.Id, agora, cancellationToken);
+        await solicitacoes.MarcarComoRealizadaAsync(solicitacao.Id, agora, dataEstudo, cancellationToken);
 
         // Mantém a cadeia consistente: o(s) laudo(s) deste estudo passam a apontar para o
         // paciente da solicitação associada (laudo assinado já foi barrado acima).

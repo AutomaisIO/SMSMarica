@@ -31,6 +31,7 @@ public sealed class CidadaoClinicoService(
                 s.Id,
                 s.StudyInstanceUID,
                 s.Status,
+                s.DataEstudo,
                 s.RealizadoEm,
                 s.CriadoEm,
                 Nome = s.TipoExame != null ? s.TipoExame.Nome : "Exame de imagem",
@@ -75,7 +76,9 @@ public sealed class CidadaoClinicoService(
 
             return new ExameResumoDto(
                 e.Id,
-                e.RealizadoEm ?? e.CriadoEm,
+                // Data do exame = DICOM (StudyDate/StudyTime) como fonte da verdade; só cai
+                // para a hora de detecção (RealizadoEm) e, por fim, CriadoEm.
+                e.DataEstudo ?? e.RealizadoEm ?? e.CriadoEm,
                 e.Nome,
                 DescreverStatusExame(e.Status),
                 string.IsNullOrEmpty(e.StudyInstanceUID) ? null : e.StudyInstanceUID,

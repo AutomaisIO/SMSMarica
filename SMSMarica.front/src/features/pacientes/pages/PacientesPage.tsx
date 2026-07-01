@@ -9,6 +9,7 @@ import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
 import { Input } from '@/shared/ui/Input';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import {
   useBuscarPacientes,
   useDesativarPaciente,
@@ -59,6 +60,7 @@ export function PacientesPage() {
           >
             {p.nomeCompleto}
           </button>
+          <NomePacienteComResumo pacienteId={p.id} />
         </div>
       ),
     },

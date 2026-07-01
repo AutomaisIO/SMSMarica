@@ -8,6 +8,7 @@ using SMSMarica.Core.Laudos.Pdf;
 using SMSMarica.Core.Midias;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.SolicitacoesExame;
+using SMSMarica.Core.Worklist;
 using SMSMarica.Core.Midias.Dtos;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
@@ -45,7 +46,7 @@ public class LaudoPdfCabecalhoTabelaTests
 
         var cfg = Substitute.For<ILaudoConfiguracaoService>();
         cfg.ObterAsync(Arg.Any<CancellationToken>())
-            .Returns(new LaudoConfiguracaoDto(html, "{}", string.Empty, "{}", false, false, 7, 7, DateTime.UtcNow));
+            .Returns(new LaudoConfiguracaoDto(html, "{}", string.Empty, "{}", false, false, 7, 3, DateTime.UtcNow));
 
         var midias = Substitute.For<IMidiasService>();
         midias.ObterConteudoAsync(brasaoId, Arg.Any<CancellationToken>())
@@ -55,7 +56,8 @@ public class LaudoPdfCabecalhoTabelaTests
 
         var pacientes = Substitute.For<IPacientesService>();
         var solicitacoes = Substitute.For<ISolicitacoesExameService>();
-        var renderer = new LaudoPdfRenderer(laudosSvc, cfg, midias, pacientes, solicitacoes, Options.Create(new LaudosPdfOptions()));
+        var consultaStudy = Substitute.For<IConsultaStudyClient>();
+        var renderer = new LaudoPdfRenderer(laudosSvc, cfg, midias, pacientes, solicitacoes, consultaStudy, Options.Create(new LaudosPdfOptions()));
         var pdf = await renderer.GerarAsync(laudo.Id);
 
         pdf.Should().NotBeNullOrEmpty();

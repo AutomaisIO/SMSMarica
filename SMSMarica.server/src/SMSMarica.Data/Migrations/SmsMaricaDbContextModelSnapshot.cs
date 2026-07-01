@@ -3881,6 +3881,10 @@ namespace SMSMarica.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("data_agendada");
 
+                    b.Property<DateTime?>("DataEstudo")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("data_estudo");
+
                     b.Property<string>("ErroIntegracaoPacs")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")

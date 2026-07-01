@@ -30,6 +30,7 @@ import {
 import type { AcessoCidadao } from '@/features/pacientes/api/pacientesApi';
 import type { RegistroAuditoria } from '@/features/auditoria/types';
 import { NomeCompletoVerificavel } from '@/features/pacientes/components/NomeCompletoVerificavel';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { SecaoExamesAnexados } from '@/features/pacientes/components/SecaoExamesAnexados';
 import { SinaisVitaisTendencia } from '@/features/pacientes/components/SinaisVitaisTendencia';
 import { abrirImpressaoDocumento, EDOC_CSS } from '@/features/pacientes/lib/imprimirDocumento';
@@ -965,6 +966,7 @@ export function PacienteDetalhePage() {
               <h1 className="text-2xl font-semibold text-gray-900">
                 {p?.nomeCompleto ?? 'Carregando…'}
               </h1>
+              {p ? <NomePacienteComResumo pacienteId={p.id} /> : null}
               {p ? <StatusBadge ativo={p.ativo} /> : null}
             </div>
             {p ? (

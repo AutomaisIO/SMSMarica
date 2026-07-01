@@ -17,6 +17,7 @@ export async function listarSolicitacoes(filtro: FiltroSolicitacoes): Promise<So
       dataInicial: filtro.dataInicial,
       dataFinal: filtro.dataFinal,
       accessionNumber: filtro.accessionNumber,
+      busca: filtro.busca,
       limite: filtro.limite ?? 50,
     },
   });
@@ -56,14 +57,35 @@ export async function excluirSolicitacao(id: string, force = false): Promise<voi
   await http.delete(`/solicitacoes-exame/${id}`, { params: force ? { force: true } : undefined });
 }
 
+/** Campos editáveis (atendente) impressos na declaração de comparecimento. */
+export type ParametrosDeclaracaoComparecimento = {
+  /** Hora de entrada (ISO local, ex.: 2026-07-01T08:30). */
+  horaEntrada: string;
+  /** Hora de saída (ISO local). */
+  horaSaida: string;
+  /** Motivo do comparecimento (texto livre). */
+  motivo: string;
+};
+
 /**
  * Abre, em nova aba, o PDF da declaração de comparecimento da solicitação. O
  * endpoint exige bearer (popups não levam o token do interceptor), então baixamos
- * como blob e abrimos uma blob URL.
+ * como blob e abrimos uma blob URL. Os parâmetros (entrada/saída/motivo) vêm do
+ * modal preenchido pela atendente.
  */
-export async function abrirDeclaracaoComparecimento(id: string): Promise<void> {
+export async function abrirDeclaracaoComparecimento(
+  id: string,
+  parametros?: ParametrosDeclaracaoComparecimento,
+): Promise<void> {
   const resp = await http.get(`/solicitacoes-exame/${id}/declaracao-comparecimento`, {
     responseType: 'blob',
+    params: parametros
+      ? {
+          horaEntrada: parametros.horaEntrada,
+          horaSaida: parametros.horaSaida,
+          motivo: parametros.motivo || undefined,
+        }
+      : undefined,
   });
   const url = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }));
   const janela = window.open(url, `declaracao-${id}`);
@@ -90,20 +112,22 @@ export async function gerarLinkAcesso(id: string): Promise<LinkDownload> {
 }
 
 /**
- * Baixa o PDF do exame completo (capa + imagens + laudo) da solicitação. Como o
- * endpoint exige bearer, baixamos como blob e disparamos o download via âncora.
+ * Abre, em nova aba, o PDF do exame completo (capa + imagens + laudo) para
+ * visualização/impressão no navegador — o download fica a cargo do próprio
+ * visualizador de PDF do browser. O endpoint exige bearer (popups não levam o
+ * token do interceptor), então baixamos como blob e abrimos uma blob URL.
  */
-export async function baixarExameCompleto(id: string): Promise<void> {
+export async function abrirExameCompleto(id: string): Promise<void> {
   const resp = await http.get(`/solicitacoes-exame/${id}/exame-completo-pdf`, {
     responseType: 'blob',
   });
   const url = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `exame-completo-${id}.pdf`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+  const janela = window.open(url, `exame-completo-${id}`);
+  if (!janela) {
+    alert('A janela do documento foi bloqueada pelo navegador. Libere os popups para este site.');
+    URL.revokeObjectURL(url);
+    return;
+  }
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 

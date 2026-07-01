@@ -22,13 +22,15 @@ public sealed class SolicitacoesExameController(
     IDeclaracaoComparecimentoService declaracao,
     IExameCompletoPdfService exameCompleto,
     IDownloadTokenService downloads,
-    ICidadaoLoginLinkService loginLinks) : ControllerBase
+    ICidadaoLoginLinkService loginLinks,
+    IBackfillDataEstudoService backfill) : ControllerBase
 {
     private readonly ISolicitacoesExameService _service = service;
     private readonly IDeclaracaoComparecimentoService _declaracao = declaracao;
     private readonly IExameCompletoPdfService _exameCompleto = exameCompleto;
     private readonly IDownloadTokenService _downloads = downloads;
     private readonly ICidadaoLoginLinkService _loginLinks = loginLinks;
+    private readonly IBackfillDataEstudoService _backfill = backfill;
 
     [HttpGet]
     [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
@@ -41,10 +43,11 @@ public sealed class SolicitacoesExameController(
         [FromQuery] DateOnly? dataInicial,
         [FromQuery] DateOnly? dataFinal,
         [FromQuery] string? accessionNumber,
+        [FromQuery] string? busca,
         [FromQuery] int limite = 50,
         CancellationToken cancellationToken = default) =>
         await _service.ListarAsync(
-            new FiltroSolicitacoesDto(status, pacienteId, unidadeId, tipoExameId, dataInicial, dataFinal, accessionNumber, limite),
+            new FiltroSolicitacoesDto(status, pacienteId, unidadeId, tipoExameId, dataInicial, dataFinal, accessionNumber, busca, limite),
             cancellationToken);
 
     [HttpGet("{id:guid}")]
@@ -85,9 +88,15 @@ public sealed class SolicitacoesExameController(
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DeclaracaoComparecimento(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> DeclaracaoComparecimento(
+        Guid id,
+        [FromQuery] DateTime? horaEntrada,
+        [FromQuery] DateTime? horaSaida,
+        [FromQuery] string? motivo,
+        CancellationToken cancellationToken)
     {
-        var pdf = await _declaracao.GerarAsync(id, cancellationToken);
+        var parametros = new DeclaracaoComparecimentoParametros(horaEntrada, horaSaida, motivo);
+        var pdf = await _declaracao.GerarAsync(id, parametros, cancellationToken);
         Response.Headers.CacheControl = "private, no-store";
         return File(pdf, "application/pdf", $"declaracao-comparecimento-{id}.pdf");
     }
@@ -204,4 +213,19 @@ public sealed class SolicitacoesExameController(
         await _service.ExcluirAsync(id, force, cancellationToken);
         return NoContent();
     }
+
+    /// <summary>
+    /// Manutenção: preenche <c>data_estudo</c> (data DICOM) nos exames antigos que
+    /// ficaram com o campo nulo (realizados antes de a coluna existir). Idempotente,
+    /// em lote (<c>limite</c>). <c>dryRun=true</c> só conta os candidatos — não toca
+    /// no PACS nem no banco.
+    /// </summary>
+    [HttpPost("backfill-data-estudo")]
+    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Edicao)]
+    [ProducesResponseType<BackfillDataEstudoResultado>(StatusCodes.Status200OK)]
+    public async Task<BackfillDataEstudoResultado> BackfillDataEstudo(
+        [FromQuery] int limite = 500,
+        [FromQuery] bool dryRun = false,
+        CancellationToken cancellationToken = default)
+        => await _backfill.ExecutarAsync(limite, dryRun, cancellationToken);
 }

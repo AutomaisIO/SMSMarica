@@ -309,7 +309,13 @@ export function SolicitacaoExameDetalhePage() {
             <li>Solicitada em {fmt(s.criadoEm)}</li>
             {s.dataAgendada ? <li>Agendada para {fmt(s.dataAgendada)}</li> : null}
             {s.iniciadoEm ? <li>Início da execução em {fmt(s.iniciadoEm)}</li> : null}
-            {s.realizadoEm ? <li>Exame realizado em {fmt(s.realizadoEm)} (detectado pelo PACS)</li> : null}
+            {/* Data do exame = DICOM (StudyDate/StudyTime), a data real de execução. Só
+                cai no RealizadoEm (hora de detecção) quando o PACS não trouxe a tag. */}
+            {s.dataEstudo ? (
+              <li>Exame realizado em {fmt(s.dataEstudo)}</li>
+            ) : s.realizadoEm ? (
+              <li>Exame realizado em {fmt(s.realizadoEm)} (detectado pelo PACS)</li>
+            ) : null}
             {s.canceladoEm ? (
               <li className="text-red-700">
                 Cancelada em {fmt(s.canceladoEm)} — {s.motivoCancelamento}

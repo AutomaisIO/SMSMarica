@@ -39,10 +39,13 @@ public interface ISolicitacoesExameService
     Task MarcarComoLaudadaAsync(string studyInstanceUID, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Marca como Realizada (chamado pelo SincronizadorExamesService quando
-    /// detecta o study no PACS).
+    /// Marca como Realizada (chamado pelo SincronizadorExamesService/ExameAssociacaoService
+    /// quando detecta o study no PACS). <paramref name="realizadoEm"/> é a hora de detecção
+    /// pelo servidor (auditoria); <paramref name="dataEstudo"/> é a data/hora REAL de execução
+    /// vinda do DICOM (StudyDate/StudyTime) — fonte da verdade da data do exame. Null quando o
+    /// PACS não trouxe a tag.
     /// </summary>
-    Task MarcarComoRealizadaAsync(Guid id, DateTime realizadoEm, CancellationToken cancellationToken = default);
+    Task MarcarComoRealizadaAsync(Guid id, DateTime realizadoEm, DateTime? dataEstudo, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Executa uma tentativa do worker no fluxo de envio resiliente:

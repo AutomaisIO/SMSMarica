@@ -22,6 +22,7 @@ import {
   useResincronizarExames,
 } from '@/features/pacs/api/queries';
 import { ModalAssociarExame } from '@/features/pacs/components/ModalAssociarExame';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { formatarHoraDicom } from '@/features/pacs/lib/dicomJson';
 import { abrirJanelaSolta } from '@/features/pacs/lib/janela';
 import type { AssociacaoExame, Estudo, FiltroBusca, TipoBuscaNome } from '@/features/pacs/types';
@@ -201,6 +202,9 @@ export function PacsListagemPage() {
   }, [associacoesLookup.data]);
 
   const exames: ExameRow[] = (busca.data ?? [])
+    // Descarta exames de PHANTOM: estudos de calibração/teste criados automaticamente
+    // pelo equipamento de imagem (não são pacientes reais e poluem a lista).
+    .filter((e) => !/phanto[nm]/i.test(e.patientName ?? ''))
     .map((e) => ({
       ...e,
       laudo: mapaLaudos.get(e.studyInstanceUID) ?? null,
@@ -247,7 +251,16 @@ export function PacsListagemPage() {
                   ⚠ Urgente
                 </span>
               ) : null}
-              <span className="truncate font-medium text-gray-900">{nome || 'Sem nome'}</span>
+              {assoc?.pacienteId ? (
+                <NomePacienteComResumo
+                  pacienteId={assoc.pacienteId}
+                  nome={nome || 'Sem nome'}
+                  className="min-w-0"
+                  classNameNome="truncate font-medium text-gray-900"
+                />
+              ) : (
+                <span className="truncate font-medium text-gray-900">{nome || 'Sem nome'}</span>
+              )}
               {assoc ? (
                 <span
                   className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700"

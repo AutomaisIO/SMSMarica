@@ -45,6 +45,9 @@ public static class ProvedoresIntegracao
         // Armazenamento de objeto (S3) para os PDFs de exame.
         // clientId=accessKey, clientSecret=secretKey, parametrosJson={endpoint,region,bucket}.
         ["digitalocean_spaces"] = "DigitalOcean Spaces (S3)",
+        // SISREG III (web scraping): consulta de paciente por CNS (CADSUS).
+        // clientId=usuário (operador), clientSecret=senha, parametrosJson={baseUrl}.
+        ["sisreg"] = "SISREG (consulta de paciente por CNS)",
     };
 
     public static bool EhSuportado(string provedor) => Suportados.ContainsKey(provedor);

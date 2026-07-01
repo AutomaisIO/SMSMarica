@@ -12,6 +12,8 @@ type Props = {
   pacienteNome?: string | null;
   /** 'compacto' = botão pequeno de linha de tabela; 'normal' = botão padrão. */
   variante?: 'compacto' | 'normal';
+  /** Só o ícone (sem rótulo), para linhas de tabela densas — função no tooltip. */
+  iconeApenas?: boolean;
   /**
    * Fora da tela de Solicitações a anamnese abre só para leitura e o botão fica
    * desabilitado quando não há anamnese salva (tooltip "Sem anamnese").
@@ -29,6 +31,7 @@ export function BotaoAnamnese({
   solicitacaoExameId,
   accessionNumber,
   variante = 'compacto',
+  iconeApenas = false,
   somenteLeitura = false,
   className,
 }: Props) {
@@ -53,6 +56,25 @@ export function BotaoAnamnese({
       ? `/app/anamnese?solicitacaoId=${encodeURIComponent(solicitacaoExameId)}${sufixo}`
       : `/app/anamnese?accession=${encodeURIComponent(accessionNumber!.trim())}${sufixo}`;
     navigate(destino);
+  }
+
+  if (iconeApenas) {
+    return (
+      <button
+        type="button"
+        onClick={abrir}
+        disabled={semAnamnese}
+        title={semAnamnese ? 'Sem anamnese' : 'Anamnese do paciente (pré-exame)'}
+        aria-label="Anamnese do paciente"
+        className={cn(
+          'inline-flex items-center rounded p-0.5 text-indigo-600 transition-colors hover:text-indigo-800',
+          'disabled:cursor-not-allowed disabled:text-gray-300',
+          className,
+        )}
+      >
+        <ClipboardList className="h-3.5 w-3.5" />
+      </button>
+    );
   }
 
   return (
