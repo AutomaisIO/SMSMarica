@@ -355,14 +355,17 @@ public sealed class SolicitacoesExameService(
         await _db.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task MarcarComoRealizadaAsync(Guid id, DateTime realizadoEm, CancellationToken cancellationToken = default)
+    public async Task MarcarComoRealizadaAsync(Guid id, DateTime realizadoEm, DateTime? dataEstudo, CancellationToken cancellationToken = default)
     {
         var s = await _db.SolicitacoesExame.FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken);
         if (s is null) return;
         if (s.Status is StatusSolicitacaoExame.Realizada or StatusSolicitacaoExame.Laudada or StatusSolicitacaoExame.Cancelada) return;
 
         s.Status = StatusSolicitacaoExame.Realizada;
-        s.RealizadoEm = realizadoEm;
+        s.RealizadoEm = realizadoEm; // hora de detecção pelo servidor (auditoria)
+        // Data REAL do exame vinda do DICOM (fonte da verdade). Só grava quando o PACS
+        // trouxe a tag — não sobrescreve com null.
+        if (dataEstudo is not null) s.DataEstudo = dataEstudo;
         s.AtualizadoEm = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(cancellationToken);

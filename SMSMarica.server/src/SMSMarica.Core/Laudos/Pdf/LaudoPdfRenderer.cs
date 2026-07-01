@@ -10,6 +10,7 @@ using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.Pacientes.Dtos;
 using SMSMarica.Core.SolicitacoesExame;
 using SMSMarica.Core.SolicitacoesExame.Dtos;
+using SMSMarica.Core.Worklist;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
 using DomElement = AngleSharp.Dom.IElement;
@@ -25,6 +26,7 @@ public sealed class LaudoPdfRenderer(
     IMidiasService midias,
     IPacientesService pacientes,
     ISolicitacoesExameService solicitacoes,
+    IConsultaStudyClient consultaStudy,
     IOptions<LaudosPdfOptions> options) : ILaudoPdfRenderer
 {
     private readonly ILaudosService _laudos = laudos;
@@ -32,6 +34,7 @@ public sealed class LaudoPdfRenderer(
     private readonly IMidiasService _midias = midias;
     private readonly IPacientesService _pacientes = pacientes;
     private readonly ISolicitacoesExameService _solicitacoes = solicitacoes;
+    private readonly IConsultaStudyClient _consultaStudy = consultaStudy;
     private readonly LaudosPdfOptions _opt = options.Value;
 
     public async Task<byte[]> GerarAsync(
@@ -59,7 +62,8 @@ public sealed class LaudoPdfRenderer(
 
         var paciente = await ResolverPacienteAsync(laudo.PacienteId, cancellationToken);
         var solicitacao = await ResolverSolicitacaoAsync(laudo.StudyInstanceUID, cancellationToken);
-        var dadosCabecalho = MontarCabecalhoPaciente(laudo, paciente, solicitacao);
+        var dataExame = await ResolverDataExameAsync(solicitacao, laudo.StudyInstanceUID, cancellationToken);
+        var dadosCabecalho = MontarCabecalhoPaciente(laudo, paciente, solicitacao, dataExame);
         var blocos = ParseHtmlParaBlocos(laudo.ConteudoHtml);
         var emitidoEm = FormatarEmissao(laudo.FinalizadoEm ?? laudo.CriadoEm);
 
@@ -434,9 +438,40 @@ public sealed class LaudoPdfRenderer(
         }
     }
 
+    /// <summary>
+    /// Data/hora do exame para o cabeçalho, já formatada e no fuso de exibição. Fonte da
+    /// verdade: <c>DataEstudo</c> (DICOM StudyDate/StudyTime); se ausente, cai para
+    /// <c>RealizadoEm</c> (hora de detecção pelo servidor, UTC→local); em último caso,
+    /// consulta o PACS ao vivo. Null quando nada disso está disponível — a linha é omitida.
+    /// NUNCA usa a data da SOLICITAÇÃO como data do exame.
+    /// </summary>
+    private async Task<string?> ResolverDataExameAsync(
+        SolicitacaoExameDto? solicitacao, string studyInstanceUID, CancellationToken ct)
+    {
+        // 1) DICOM persistido (wall-clock local) — exibe como está.
+        if (solicitacao?.DataEstudo is { } dicom)
+            return dicom.ToString("dd/MM/yyyy HH:mm");
+
+        // 2) Hora de detecção pelo servidor (UTC) — converte para o fuso de exibição.
+        if (solicitacao?.RealizadoEm is { } realizado)
+            return realizado.AddHours(_opt.OffsetHorasParaExibicao).ToString("dd/MM/yyyy HH:mm");
+
+        // 3) Último recurso: consulta o PACS ao vivo (StudyDate/StudyTime), blindado.
+        try
+        {
+            if (await _consultaStudy.ObterDataHoraEstudoAsync(studyInstanceUID, ct) is { } aoVivo)
+                return aoVivo.ToString("dd/MM/yyyy HH:mm");
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // PACS indisponível — omite a linha (nunca derruba o PDF).
+        }
+        return null;
+    }
+
     // Cada item é uma LINHA do cabeçalho (1+ campos rótulo/valor renderizados lado a lado).
     private static IReadOnlyList<IReadOnlyList<(string Rotulo, string Valor)>> MontarCabecalhoPaciente(
-        Laudo l, PacienteDto? p, SolicitacaoExameDto? s)
+        Laudo l, PacienteDto? p, SolicitacaoExameDto? s, string? dataExame)
     {
         var linhas = new List<IReadOnlyList<(string, string)>>();
 
@@ -464,6 +499,10 @@ public sealed class LaudoPdfRenderer(
             // Sem paciente resolvido — nunca imprime o UUID cru no documento.
             linhas.Add([("Paciente", l.PacienteId.HasValue ? "Não encontrado" : "Não vinculado")]);
         }
+
+        // Data REAL do exame (DICOM StudyDate/StudyTime) — jamais a data da solicitação.
+        if (!string.IsNullOrWhiteSpace(dataExame))
+            linhas.Add([("Data do exame", dataExame!)]);
 
         // Dados do pedido/exame (quando há solicitação ligada ao estudo).
         if (s is not null)

@@ -47,7 +47,11 @@ public sealed record SolicitacaoExameDto(
     DateTime? ProximaTentativaEm,
 
     DateTime CriadoEm,
-    DateTime? AtualizadoEm);
+    DateTime? AtualizadoEm,
+
+    // Data/hora REAL de execução do exame vinda do DICOM (StudyDate/StudyTime) —
+    // fonte da verdade da data do exame. Null quando o PACS não trouxe a tag.
+    DateTime? DataEstudo);
 
 public sealed record SolicitacaoExameListItemDto(
     Guid Id,
@@ -61,4 +65,6 @@ public sealed record SolicitacaoExameListItemDto(
     StatusSolicitacaoExame Status,
     PrioridadeSolicitacao Prioridade,
     DateTime? DataAgendada,
-    DateTime CriadoEm);
+    DateTime CriadoEm,
+    // Data/hora REAL de execução do exame vinda do DICOM (StudyDate/StudyTime).
+    DateTime? DataEstudo);

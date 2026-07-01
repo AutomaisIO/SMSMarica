@@ -42,7 +42,8 @@ internal static class SolicitacoesExameMapper
         s.UltimaTentativaEm,
         s.ProximaTentativaEm,
         s.CriadoEm,
-        s.AtualizadoEm);
+        s.AtualizadoEm,
+        s.DataEstudo);
 
     public static SolicitacaoExameListItemDto ParaListItem(SolicitacaoExame s) => new(
         s.Id,
@@ -56,5 +57,6 @@ internal static class SolicitacoesExameMapper
         s.Status,
         s.Prioridade,
         s.DataAgendada,
-        s.CriadoEm);
+        s.CriadoEm,
+        s.DataEstudo);
 }

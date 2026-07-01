@@ -39,6 +39,10 @@ internal sealed class SolicitacaoExameConfiguration : IEntityTypeConfiguration<S
         builder.Property(s => s.DataAgendada).HasColumnName("data_agendada");
         builder.Property(s => s.IniciadoEm).HasColumnName("iniciado_em");
         builder.Property(s => s.RealizadoEm).HasColumnName("realizado_em");
+        // DataEstudo vem do DICOM (StudyDate/StudyTime) — wall-clock local (Kind=Unspecified).
+        // Precisa de "timestamp without time zone" (mesmo padrão de DeclaracaoComparecimentoVerificacao.DataHoraExame);
+        // o default do Npgsql (timestamptz) rejeita DateTime Unspecified na escrita.
+        builder.Property(s => s.DataEstudo).HasColumnName("data_estudo").HasColumnType("timestamp without time zone");
         builder.Property(s => s.ErroIntegracaoPacs).HasColumnName("erro_integracao_pacs").HasMaxLength(1000);
 
         builder.Property(s => s.TentativasEnvio).HasColumnName("tentativas_envio").HasDefaultValue(0).IsRequired();
