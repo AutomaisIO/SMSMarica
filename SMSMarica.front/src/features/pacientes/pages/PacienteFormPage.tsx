@@ -196,6 +196,28 @@ function parseDataBr(data: string): string {
   return m ? `${m[3]}-${m[2]}-${m[1]}` : '';
 }
 
+/**
+ * Mapeia o sexo vindo de fontes externas (Hub/Receita por CPF, CADSUS/SISREG por CNS)
+ * para a opção do select. O backend já normaliza para "Masculino"/"Feminino", mas
+ * aceitamos também variações cruas (M/F, minúsculas, male/female) por robustez.
+ * Retorna null quando não reconhece — aí o chamador preserva o valor atual.
+ */
+function mapearSexoFonte(bruto: string | null | undefined): Sexo | null {
+  if (!bruto) return null;
+  switch (bruto.trim().toUpperCase()) {
+    case 'M':
+    case 'MASCULINO':
+    case 'MALE':
+      return 'Masculino';
+    case 'F':
+    case 'FEMININO':
+    case 'FEMALE':
+      return 'Feminino';
+    default:
+      return null;
+  }
+}
+
 function pacienteParaEstado(p: Paciente): Estado {
   return {
     nomeCompleto: p.nomeCompleto,
@@ -390,9 +412,7 @@ export function PacienteFormPage() {
 
       const hub: ConsultaCpfResposta = await consultarCpf(cpfLimpo, estado.dataNascimento);
       const dataIso = parseDataBr(hub.dataNascimento) || estado.dataNascimento;
-      const sexoHub = hub.sexo && (SEXOS as readonly string[]).includes(hub.sexo)
-        ? (hub.sexo as Sexo)
-        : null;
+      const sexoHub = mapearSexoFonte(hub.sexo);
       setEstado((s) => ({
         ...s,
         nomeCompleto: hub.nome.trim(),
@@ -444,9 +464,7 @@ export function PacienteFormPage() {
         return;
       }
 
-      const sexoSisreg = sisreg.sexo && (SEXOS as readonly string[]).includes(sisreg.sexo)
-        ? (sisreg.sexo as Sexo)
-        : null;
+      const sexoSisreg = mapearSexoFonte(sisreg.sexo);
       setEstado((s) => ({
         ...s,
         nomeCompleto: sisreg.nome.trim(),
