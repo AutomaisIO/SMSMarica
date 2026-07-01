@@ -40,4 +40,11 @@ public interface IPacsCache
 
     /// <summary>Grava no disco e aplica o teto total por evicção LRU.</summary>
     void Set(string chave, string contentType, byte[] bytes);
+
+    /// <summary>
+    /// Remove um item do cache (os dois arquivos <c>{chave}.bin</c> + <c>{chave}.ct</c>).
+    /// Best-effort e idempotente: se a chave não existe, não faz nada. Usado para
+    /// descartar uma entrada corrompida e forçar a regeneração no próximo GET.
+    /// </summary>
+    void Invalidar(string chave);
 }

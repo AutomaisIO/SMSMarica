@@ -61,6 +61,19 @@ public sealed class PacsWarmupService(
         await Task.WhenAll(tarefas);
     }
 
+    public async Task AquecerInstanciaAsync(
+        string studyUid, string seriesUid, string sopUid, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(studyUid)
+            || string.IsNullOrWhiteSpace(seriesUid)
+            || string.IsNullOrWhiteSpace(sopUid)) return;
+        if (!_cache.Habilitado) return;
+
+        var caminho = $"studies/{studyUid}/series/{seriesUid}/instances/{sopUid}/frames/1";
+        using var limite = new SemaphoreSlim(1);
+        await AquecerFrameAsync(caminho, limite, cancellationToken);
+    }
+
     /// <summary>Puxa um frame pelo proxy e grava no cache (best-effort).</summary>
     private async Task AquecerFrameAsync(string caminho, SemaphoreSlim limite, CancellationToken ct)
     {

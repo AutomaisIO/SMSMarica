@@ -138,6 +138,26 @@ public sealed class PacsCache : IPacsCache
         }
     }
 
+    public void Invalidar(string chave)
+    {
+        if (string.IsNullOrEmpty(chave)) return;
+        try
+        {
+            lock (_trava)
+            {
+                var arquivoBin = CaminhoBin(chave);
+                var arquivoCt = CaminhoCt(chave);
+                if (File.Exists(arquivoBin)) File.Delete(arquivoBin);
+                if (File.Exists(arquivoCt)) File.Delete(arquivoCt);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Best-effort: falha ao apagar não pode derrubar a ação de recriação.
+            _logger.LogWarning(ex, "Falha ao invalidar item de cache do PACS {Chave}.", chave);
+        }
+    }
+
     /// <summary>
     /// Remove os itens menos recentemente usados até o total ficar abaixo do teto.
     /// Deve ser chamado sob <see cref="_trava"/>.

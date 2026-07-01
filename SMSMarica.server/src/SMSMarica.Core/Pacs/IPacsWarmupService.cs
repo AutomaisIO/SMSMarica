@@ -9,4 +9,12 @@ public interface IPacsWarmupService
 {
     /// <summary>Aquece o cache de todas as instâncias do estudo informado.</summary>
     Task AquecerEstudoAsync(string studyUid, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Aquece o cache do primeiro frame de UMA instância (frame cru + variante
+    /// comprimida, conforme a config). Usado após invalidar o cache de uma imagem
+    /// para reconstruí-la já quente. Best-effort.
+    /// </summary>
+    Task AquecerInstanciaAsync(
+        string studyUid, string seriesUid, string sopUid, CancellationToken cancellationToken = default);
 }

@@ -129,6 +129,22 @@ export async function aquecerEstudo(studyUID: string): Promise<void> {
 }
 
 /**
+ * Descarta o cache local (proxy) de UMA imagem e o reconstrói no servidor.
+ * Corrige o caso em que a entrada em cache de um frame ficou corrompida (imagem
+ * abre em branco) enquanto a thumbnail está OK — como o conteúdo é servido como
+ * imutável, não dá pra "re-pedir" pelo fluxo normal. Extrai study/series/sop do
+ * imageId wadors. Retorna silenciosamente se o imageId não casar o padrão.
+ */
+export async function recriarImagensDaInstancia(imageId: string): Promise<void> {
+  const m = imageId.match(/studies\/([^/]+)\/series\/([^/]+)\/instances\/([^/?]+)/);
+  if (!m) return;
+  const [, studyUID, seriesUID, sopUID] = m;
+  await http.post(
+    `/pacs/cache/recriar/${encodeURIComponent(studyUID)}/${encodeURIComponent(seriesUID)}/${encodeURIComponent(sopUID)}`,
+  );
+}
+
+/**
  * Exclui um estudo do PACS. O backend trata o passo-a-passo do dcm4chee
  * (reject + delete permanente).
  */

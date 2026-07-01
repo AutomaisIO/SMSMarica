@@ -1,4 +1,4 @@
-import { imageLoader, init as coreInit } from '@cornerstonejs/core';
+import { cache, imageLoader, init as coreInit } from '@cornerstonejs/core';
 import { init as dicomImageLoaderInit, wadors } from '@cornerstonejs/dicom-image-loader';
 import {
   init as toolsInit,
@@ -79,6 +79,19 @@ export function construirImageId(
 /** Registra os metadados da instância para que o StackViewport consiga renderizar. */
 export function registrarMetadados(imageId: string, metadata: DatasetDicom): void {
   wadors.metaDataManager.add(imageId, metadata as never);
+}
+
+/**
+ * Descarta a imagem do cache em memória do Cornerstone. Após recriar o cache no
+ * servidor, isto força o próximo `setStack`/`loadAndCacheImage` a rebaixar os
+ * pixels do proxy em vez de reusar a cópia (possivelmente corrompida) em RAM.
+ */
+export function descartarImagemDoCache(imageId: string): void {
+  try {
+    cache.removeImageLoadObject(imageId);
+  } catch {
+    // Imagem não estava em cache (nunca carregada nesta viewport): nada a fazer.
+  }
 }
 
 export type ProgressoPrefetch = { carregadas: number; total: number };

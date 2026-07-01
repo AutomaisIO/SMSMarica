@@ -23,7 +23,11 @@ export function urlRendered(imageId: string, viewport?: number): string | null {
  * como blob e devolve um object URL pronto para <img>. Revoga ao trocar de
  * imagem ou desmontar. Aproveita o cache do proxy + do browser.
  */
-export function useImagemRendered(imageId: string | null, viewport?: number): string | null {
+export function useImagemRendered(
+  imageId: string | null,
+  viewport?: number,
+  versao = 0,
+): string | null {
   const [url, setUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,10 +35,15 @@ export function useImagemRendered(imageId: string | null, viewport?: number): st
       setUrl(null);
       return;
     }
-    const caminho = urlRendered(imageId, viewport);
+    let caminho = urlRendered(imageId, viewport);
     if (!caminho) {
       setUrl(null);
       return;
+    }
+    // Ao recriar o cache (versao > 0), fura o cache imutável do browser e do proxy
+    // com um parâmetro extra — força uma busca fresca do dcm4chee sob nova chave.
+    if (versao > 0) {
+      caminho += `${caminho.includes('?') ? '&' : '?'}_v=${versao}`;
     }
 
     let cancelado = false;
@@ -54,7 +63,7 @@ export function useImagemRendered(imageId: string | null, viewport?: number): st
       cancelado = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [imageId, viewport]);
+  }, [imageId, viewport, versao]);
 
   return url;
 }

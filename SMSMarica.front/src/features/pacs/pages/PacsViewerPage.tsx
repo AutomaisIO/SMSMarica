@@ -10,9 +10,16 @@ import {
 } from '@/features/pacs/components/PacsImagensSidebar';
 import { PacsViewport } from '@/features/pacs/components/PacsViewport';
 import type { Layout } from '@/features/pacs/components/SeletorLayoutGrade';
-import { aquecerEstudo, listarSeries, obterMetadadosSerie } from '@/features/pacs/api/pacsApi';
+import { notificar } from '@/shared/ui/Notificacoes';
+import {
+  aquecerEstudo,
+  listarSeries,
+  obterMetadadosSerie,
+  recriarImagensDaInstancia,
+} from '@/features/pacs/api/pacsApi';
 import {
   construirImageId,
+  descartarImagemDoCache,
   prefetchImagens,
   registrarMetadados,
   type ProgressoPrefetch,
@@ -57,8 +64,15 @@ export function PacsViewerPage({ janela = false }: Props = {}) {
   const [carregandoMeta, setCarregandoMeta] = useState(false);
   const [progresso, setProgresso] = useState<ProgressoPrefetch | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  // Espelho de `celulas` para o callback de recriação (useCallback estável) ler a
+  // grade atual sem virar dependência.
+  const celulasRef = useRef(celulas);
 
   const imageIdFocado = celulas[focado] ?? null;
+
+  useEffect(() => {
+    celulasRef.current = celulas;
+  }, [celulas]);
 
   useEffect(() => {
     return () => abortRef.current?.abort();
@@ -217,6 +231,30 @@ export function PacsViewerPage({ janela = false }: Props = {}) {
     [focado],
   );
 
+  // Duplo-clique na miniatura: limpa o cache local desta imagem (thumb, preview e
+  // frame diagnóstico) no proxy e recria. Descarta a cópia em RAM do Cornerstone e
+  // recarrega os quadrados que exibem a imagem (null → id força novo setStack).
+  const recriarImagem = useCallback(async (imageId: string) => {
+    const anterior = celulasRef.current.slice();
+    try {
+      await recriarImagensDaInstancia(imageId);
+      descartarImagemDoCache(imageId);
+    } catch {
+      notificar('Não foi possível recriar as imagens desta foto.', 'erro');
+      return;
+    }
+
+    if (anterior.includes(imageId)) {
+      // Apaga temporariamente os quadrados com esta imagem e restaura no próximo
+      // tick — o setStack roda de novo e rebaixa os pixels do proxy (já quentes).
+      setCelulas((atual) => atual.map((v) => (v === imageId ? null : v)));
+      window.setTimeout(() => {
+        setCelulas((atual) => atual.map((v, i) => (v === null && anterior[i] === imageId ? imageId : v)));
+      }, 60);
+    }
+    notificar('Cache limpo e imagem recriada.', 'sucesso');
+  }, []);
+
   function mudarLayout(novo: Layout) {
     const total = novo.linhas * novo.colunas;
     setCelulas((atual) => {
@@ -287,6 +325,7 @@ export function PacsViewerPage({ janela = false }: Props = {}) {
           imagens={imagens}
           imageIdFocado={imageIdFocado}
           aoSelecionar={selecionarImagem}
+          aoRecriar={recriarImagem}
           carregando={carregandoMeta}
           temEstudo={Boolean(estudo)}
         />

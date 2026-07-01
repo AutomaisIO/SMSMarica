@@ -20,6 +20,7 @@ public sealed class PacsController(
     IPacsProxyService pacs,
     IPacsCache cache,
     IPacsTranscodeService transcode,
+    IPacsWarmupService warmup,
     IServiceScopeFactory scopeFactory,
     ILogger<PacsController> logger) : ControllerBase
 {
@@ -42,6 +43,7 @@ public sealed class PacsController(
     private readonly IPacsProxyService _pacs = pacs;
     private readonly IPacsCache _cache = cache;
     private readonly IPacsTranscodeService _transcode = transcode;
+    private readonly IPacsWarmupService _warmup = warmup;
     private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
     private readonly ILogger<PacsController> _logger = logger;
 
@@ -206,6 +208,47 @@ public sealed class PacsController(
         });
 
         return Accepted();
+    }
+
+    /// <summary>
+    /// Descarta o cache local de UMA imagem (instância) e o reconstrói. Corrige o
+    /// caso em que a entrada em cache de um frame ficou corrompida (ex.: imagem
+    /// diagnóstica abre em branco) enquanto a thumbnail — outra entrada — está OK,
+    /// e como o conteúdo é servido como imutável não dá pra "re-pedir" pelo fluxo
+    /// normal. Invalida TODAS as variantes que o visualizador gera para a instância
+    /// (frame cru, frame JPEG-LS, thumbnail 160 e preview 1024) e, em seguida,
+    /// re-aquece o frame no servidor para a próxima visualização já cair em cache hit.
+    /// </summary>
+    [HttpPost("cache/recriar/{studyUid}/{seriesUid}/{sopUid}")]
+    [RequerPermissao(ModuloPermissao.Pacs, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> RecriarImagensDaInstancia(
+        string studyUid, string seriesUid, string sopUid, CancellationToken cancellationToken)
+    {
+        var baseInstancia = $"studies/{studyUid}/series/{seriesUid}/instances/{sopUid}";
+        var frame = $"{baseInstancia}/frames/1";
+        var rendered = $"{baseInstancia}/rendered";
+
+        // As chaves batem com as que o GET /pacs/rs calcula (mesmo método/caminho/
+        // queryString e o mesmo discriminante de transfer-syntax). A queryString do
+        // /rendered inclui o "?" (idêntico ao Request.QueryString.Value do proxy).
+        string[] chaves =
+        [
+            _cache.CalcularChave("GET", frame, string.Empty),                             // frame cru
+            _cache.CalcularChave("GET", _transcode.DiscriminarCaminho(frame), string.Empty), // frame JPEG-LS
+            _cache.CalcularChave("GET", rendered, "?viewport=160,160"),                   // thumbnail
+            _cache.CalcularChave("GET", rendered, "?viewport=1024,1024"),                 // preview
+        ];
+        foreach (var chave in chaves) _cache.Invalidar(chave);
+
+        _logger.LogInformation(
+            "Cache PACS recriado para a instância {SopUid} (estudo {StudyUid}).", sopUid, studyUid);
+
+        // Re-aquece o frame agora (síncrono): quando o front recarregar, já vem quente.
+        // Best-effort — falha aqui não impede o front de re-pedir do PACS na sequência.
+        await _warmup.AquecerInstanciaAsync(studyUid, seriesUid, sopUid, cancellationToken);
+
+        return Ok();
     }
 
     /// <summary>
