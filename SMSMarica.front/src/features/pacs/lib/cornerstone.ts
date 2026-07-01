@@ -66,6 +66,16 @@ export function wadoRsRoot(): string {
   return `${base}/pacs/rs`;
 }
 
+/**
+ * Versão do encoding dos frames. Entra na URL (`?ev=N`) para versionar o cache
+ * HTTP imutável do browser: ao trocar o codec/encoding no backend (ex.: JPEG-LS
+ * → JPEG 2000), basta incrementar aqui que TODAS as URLs de frame mudam e o
+ * browser rebaixa fresco — sem depender de hard-reload manual. O backend remove
+ * esse parâmetro antes de encaminhar ao dcm4chee (que não o conhece).
+ * v2: migração JPEG-LS → JPEG 2000 Lossless (JPEG-LS quebrava mamografia 12-bit).
+ */
+const VERSAO_ENCODING = 2;
+
 /** imageId WADO-RS para uma instância (frame único por padrão). */
 export function construirImageId(
   studyUID: string,
@@ -73,7 +83,7 @@ export function construirImageId(
   sopUID: string,
   frame = 1,
 ): string {
-  return `wadors:${wadoRsRoot()}/studies/${studyUID}/series/${seriesUID}/instances/${sopUID}/frames/${frame}`;
+  return `wadors:${wadoRsRoot()}/studies/${studyUID}/series/${seriesUID}/instances/${sopUID}/frames/${frame}?ev=${VERSAO_ENCODING}`;
 }
 
 /**

@@ -55,13 +55,12 @@ public sealed class PacsController(
         var accept = Request.Headers.Accept.ToString();
         var imutavel = EhCaminhoImutavel(caminho);
 
-        // Sentinela do visualizador para pedir o frame CRU (sem JPEG-LS): usado ao
-        // "recriar" uma imagem cuja variante comprimida ficou ilegível (abre em
-        // branco). Mantém a chave de cache única (o sentinela entra na queryString),
-        // mas NÃO é encaminhado ao dcm4chee (que não conhece o parâmetro) — como o
-        // visualizador só coloca esse parâmetro sozinho em frames, cai para vazio.
+        // Parâmetros INTERNOS do visualizador que entram na chave de cache mas NÃO
+        // podem ir ao dcm4chee (ele não os conhece):
+        //  - ?ev=N        versão do encoding, versiona o cache imutável do browser;
+        //  - ?semCompressao=1  pede o frame CRU (desvia do transcode) ao "recriar".
         var semCompressao = PedeSemCompressao(queryString);
-        var queryUpstream = semCompressao ? string.Empty : queryString;
+        var queryUpstream = RemoverParamsInternos(queryString);
 
         // (C) Compressão JPEG-LS Lossless (flag Pacs:Compressao:Habilitado, default false).
         // Só para requisições de frame; serve a variante comprimida (cache-first, chave
@@ -284,6 +283,26 @@ public sealed class PacsController(
 
     private static bool PedeSemCompressao(string queryString)
         => queryString.Contains(SentinelaSemCompressao, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Remove os parâmetros INTERNOS do visualizador (<c>ev</c>, <c>semCompressao</c>)
+    /// de uma queryString antes de encaminhá-la ao dcm4chee, preservando os demais
+    /// (ex.: <c>viewport</c> do /rendered). Devolve começando por <c>?</c> ou vazio.
+    /// </summary>
+    private static string RemoverParamsInternos(string queryString)
+    {
+        if (string.IsNullOrEmpty(queryString)) return string.Empty;
+        var q = queryString.StartsWith('?') ? queryString[1..] : queryString;
+        var mantidos = q.Split('&', StringSplitOptions.RemoveEmptyEntries)
+            .Where(par =>
+            {
+                var chave = par.Split('=', 2)[0];
+                return !chave.Equals("ev", StringComparison.OrdinalIgnoreCase)
+                    && !chave.Equals("semCompressao", StringComparison.OrdinalIgnoreCase);
+            })
+            .ToArray();
+        return mantidos.Length == 0 ? string.Empty : "?" + string.Join('&', mantidos);
+    }
 
     /// <summary>
     /// Exclui um estudo do PACS. O dcm4chee exige duas operações: primeiro
