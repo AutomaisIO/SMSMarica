@@ -9,6 +9,17 @@ export type ConsultaCpfResposta = {
   sexo: string | null;
 };
 
+export type ConsultaCnsResposta = {
+  cns: string;
+  cpf: string;
+  nome: string;
+  /** "Masculino" | "Feminino" quando o CADSUS informa; null caso contrário. */
+  sexo: string | null;
+  /** ISO (yyyy-MM-dd) — o CADSUS devolve mesmo sem exigi-la na busca; null se ausente. */
+  dataNascimento: string | null;
+  nomeMae: string | null;
+};
+
 export type ConsultaCepResposta = {
   cep: string;
   logradouro: string;
@@ -23,6 +34,15 @@ export async function consultarCpf(cpf: string, dataNascimentoIso: string): Prom
   const cpfLimpo = cpf.replace(/\D/g, '');
   const { data } = await http.get<ConsultaCpfResposta>('/integracoes/cpf', {
     params: { cpf: cpfLimpo, dataNascimento: dataNascimentoIso },
+  });
+  return data;
+}
+
+/** Consulta paciente por CNS no SISREG (CADSUS). Não exige data de nascimento. */
+export async function consultarCns(cns: string): Promise<ConsultaCnsResposta> {
+  const cnsLimpo = cns.replace(/\D/g, '');
+  const { data } = await http.get<ConsultaCnsResposta>('/integracoes/cns', {
+    params: { cns: cnsLimpo },
   });
   return data;
 }
