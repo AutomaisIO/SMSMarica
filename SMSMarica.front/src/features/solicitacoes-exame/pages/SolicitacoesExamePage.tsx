@@ -15,6 +15,7 @@ import { ehFalhaExclusaoPacs } from '@/features/solicitacoes-exame/api/solicitac
 import { StatusBadgeSolicitacao } from '@/features/solicitacoes-exame/components/StatusBadgeSolicitacao';
 import { BotaoDeclaracaoComparecimento } from '@/features/solicitacoes-exame/components/BotaoDeclaracaoComparecimento';
 import { BotaoBaixarExameCompleto } from '@/features/solicitacoes-exame/components/BotaoBaixarExameCompleto';
+import { BotaoVisualizarLaudo } from '@/features/solicitacoes-exame/components/BotaoVisualizarLaudo';
 import { BotaoAnamnese } from '@/features/anamnese/components/BotaoAnamnese';
 import type {
   FiltroSolicitacoes,
@@ -33,15 +34,16 @@ export function SolicitacoesExamePage() {
   const [erroExcluir, setErroExcluir] = useState<string | null>(null);
   const [forcarExclusao, setForcarExclusao] = useState(false);
 
+  // Deep-link vindo da coluna "Pedido" do PACS: cai na busca livre (que casa accession).
   const accessionUrl = searchParams.get('accessionNumber') ?? undefined;
-  const filtroInicial: FiltroSolicitacoes = { limite: 50, accessionNumber: accessionUrl };
+  const filtroInicial: FiltroSolicitacoes = { limite: 50, busca: accessionUrl };
   const [filtroAplicado, setFiltroAplicado] = useState<FiltroSolicitacoes>(filtroInicial);
   const [filtroDigitado, setFiltroDigitado] = useState<FiltroSolicitacoes>(filtroInicial);
 
   // Sincroniza com a querystring quando o usuário entra pela coluna "Pedido" do PACS.
   useEffect(() => {
     if (accessionUrl) {
-      const novo: FiltroSolicitacoes = { limite: 50, accessionNumber: accessionUrl };
+      const novo: FiltroSolicitacoes = { limite: 50, busca: accessionUrl };
       setFiltroAplicado(novo);
       setFiltroDigitado(novo);
     }
@@ -117,53 +119,53 @@ export function SolicitacoesExamePage() {
     {
       chave: 'status',
       cabecalho: 'Status',
-      render: (s) => (
-        <div className="flex items-center gap-1.5">
-          <StatusBadgeSolicitacao status={s.status} />
-          {(s.status === 'Realizada' || s.status === 'Laudada') && (
-            <>
-              <BotaoDeclaracaoComparecimento solicitacaoId={s.id} />
-              <BotaoBaixarExameCompleto solicitacaoId={s.id} />
-            </>
-          )}
-        </div>
-      ),
+      render: (s) => <StatusBadgeSolicitacao status={s.status} />,
     },
     {
       chave: 'acoes',
       cabecalho: 'Ações',
       className: 'text-right',
-      render: (s) => (
-        <div className="flex items-center justify-end gap-1.5">
-          {podeVer ? (
-            <button
-              type="button"
-              onClick={() => navigate(`/app/solicitacoes-exame/${s.id}`)}
-              title="Abrir solicitação"
-              className="inline-flex items-center gap-1 rounded-md border border-primary-300 bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100"
-            >
-              <Eye className="h-3.5 w-3.5" />
-              Abrir
-            </button>
-          ) : null}
-          <BotaoAnamnese solicitacaoExameId={s.id} accessionNumber={s.accessionNumber} />
-          {podeExcluir && s.status !== 'EmExecucao' && s.status !== 'Realizada' && s.status !== 'Laudada' ? (
-            <button
-              type="button"
-              onClick={() => {
-                setErroExcluir(null);
-                setForcarExclusao(false);
-                setParaExcluir(s);
-              }}
-              title="Excluir solicitação"
-              className="inline-flex items-center gap-1 rounded-md border border-red-300 bg-white px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Excluir
-            </button>
-          ) : null}
-        </div>
-      ),
+      render: (s) => {
+        const realizadaOuLaudada = s.status === 'Realizada' || s.status === 'Laudada';
+        return (
+          <div className="flex items-center justify-end gap-2">
+            {podeVer ? (
+              <button
+                type="button"
+                onClick={() => navigate(`/app/solicitacoes-exame/${s.id}`)}
+                title="Abrir solicitação"
+                aria-label="Abrir solicitação"
+                className="inline-flex items-center rounded p-0.5 text-gray-600 transition-colors hover:text-gray-900"
+              >
+                <Eye className="h-3.5 w-3.5" />
+              </button>
+            ) : null}
+            <BotaoAnamnese solicitacaoExameId={s.id} accessionNumber={s.accessionNumber} iconeApenas />
+            {realizadaOuLaudada ? (
+              <>
+                <BotaoDeclaracaoComparecimento solicitacaoId={s.id} />
+                <BotaoBaixarExameCompleto solicitacaoId={s.id} />
+                <BotaoVisualizarLaudo laudoId={s.laudoId} assinado={s.laudoAssinado} />
+              </>
+            ) : null}
+            {podeExcluir && s.status !== 'EmExecucao' && !realizadaOuLaudada ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setErroExcluir(null);
+                  setForcarExclusao(false);
+                  setParaExcluir(s);
+                }}
+                title="Excluir solicitação"
+                aria-label="Excluir solicitação"
+                className="inline-flex items-center rounded p-0.5 text-red-600 transition-colors hover:text-red-800"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            ) : null}
+          </div>
+        );
+      },
     },
   ], [navigate, podeVer, podeExcluir]);
 
@@ -193,12 +195,12 @@ export function SolicitacoesExamePage() {
         onSubmit={aoBuscar}
         className="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-6"
       >
-        <Campo label="Pedido (Accession)" htmlFor="acc" className="sm:col-span-2">
+        <Campo label="Buscar" htmlFor="busca" className="sm:col-span-2">
           <Input
-            id="acc"
-            value={filtroDigitado.accessionNumber ?? ''}
-            onChange={(e) => setCampo('accessionNumber', e.target.value)}
-            placeholder="Ex.: 260626001"
+            id="busca"
+            value={filtroDigitado.busca ?? ''}
+            onChange={(e) => setCampo('busca', e.target.value)}
+            placeholder="Nome, CPF, CNS ou nº do pedido"
           />
         </Campo>
         <Campo label="Status" htmlFor="status">
@@ -236,8 +238,12 @@ export function SolicitacoesExamePage() {
           />
         </Campo>
         <div className="flex items-end">
-          <Button type="submit" disabled={lista.isPending} className="w-full">
-            <Search className="mr-2 h-4 w-4" />
+          <Button type="submit" disabled={lista.isFetching} className="w-full">
+            {lista.isFetching ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Search className="mr-2 h-4 w-4" />
+            )}
             Buscar
           </Button>
         </div>
@@ -255,6 +261,7 @@ export function SolicitacoesExamePage() {
         chaveLinha={(s) => s.id}
         carregando={lista.isPending}
         vazio="Nenhuma solicitação encontrada."
+        scrollXFlutuante
       />
 
       <Modal

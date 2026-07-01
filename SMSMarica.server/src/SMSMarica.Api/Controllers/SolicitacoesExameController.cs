@@ -41,10 +41,11 @@ public sealed class SolicitacoesExameController(
         [FromQuery] DateOnly? dataInicial,
         [FromQuery] DateOnly? dataFinal,
         [FromQuery] string? accessionNumber,
+        [FromQuery] string? busca,
         [FromQuery] int limite = 50,
         CancellationToken cancellationToken = default) =>
         await _service.ListarAsync(
-            new FiltroSolicitacoesDto(status, pacienteId, unidadeId, tipoExameId, dataInicial, dataFinal, accessionNumber, limite),
+            new FiltroSolicitacoesDto(status, pacienteId, unidadeId, tipoExameId, dataInicial, dataFinal, accessionNumber, busca, limite),
             cancellationToken);
 
     [HttpGet("{id:guid}")]

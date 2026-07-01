@@ -67,4 +67,8 @@ public sealed record SolicitacaoExameListItemDto(
     DateTime? DataAgendada,
     DateTime CriadoEm,
     // Data/hora REAL de execução do exame vinda do DICOM (StudyDate/StudyTime).
-    DateTime? DataEstudo);
+    DateTime? DataEstudo,
+    // Study do pedido + estado do laudo (habilita o botão "ver laudo" na listagem).
+    string StudyInstanceUID,
+    Guid? LaudoId,
+    bool LaudoAssinado);

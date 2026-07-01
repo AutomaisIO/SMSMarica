@@ -77,6 +77,12 @@ export type SolicitacaoExameListItem = {
   prioridade: PrioridadeSolicitacao;
   dataAgendada: string | null;
   criadoEm: string;
+  /** Study do pedido — usado para localizar o laudo. */
+  studyInstanceUID: string;
+  /** Laudo "atual" (maior versão finalizada) do estudo, se houver. */
+  laudoId: string | null;
+  /** True quando esse laudo já está assinado digitalmente (habilita o botão). */
+  laudoAssinado: boolean;
 };
 
 export type FiltroSolicitacoes = {
@@ -87,6 +93,8 @@ export type FiltroSolicitacoes = {
   dataInicial?: string;
   dataFinal?: string;
   accessionNumber?: string;
+  /** Busca livre: nome, CPF, CNS ou nº do pedido/accession/código. */
+  busca?: string;
   limite?: number;
 };
 

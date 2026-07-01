@@ -19,6 +19,7 @@ public sealed class SolicitacoesExameService(
     INotificadorExame notificador,
     IUsuarioAtualAccessor usuarioAtual,
     Pacientes.Fhir.IPacienteResolver pacienteResolver,
+    Laudos.Assinatura.ILaudoAssinaturaService assinaturas,
     ILogger<SolicitacoesExameService> logger)
     : ISolicitacoesExameService
 {
@@ -28,6 +29,7 @@ public sealed class SolicitacoesExameService(
     private readonly INotificadorExame _notificador = notificador;
     private readonly IUsuarioAtualAccessor _usuarioAtual = usuarioAtual;
     private readonly Pacientes.Fhir.IPacienteResolver _pacienteResolver = pacienteResolver;
+    private readonly Laudos.Assinatura.ILaudoAssinaturaService _assinaturas = assinaturas;
     private readonly ILogger<SolicitacoesExameService> _logger = logger;
 
     // Resolve nome/CPF/CNS do paciente (hub FHIR) e embute nos DTOs.
@@ -43,6 +45,36 @@ public sealed class SolicitacoesExameService(
     {
         var r = await _pacienteResolver.ResolverAsync(dto.PacienteId, ct);
         return r is null ? dto : dto with { PacienteNome = r.Nome, PacienteCpf = r.Cpf, PacienteCns = r.Cns };
+    }
+
+    // Marca, em cada linha, o laudo "atual" (maior versão finalizada) do estudo e se
+    // ele já está ASSINADO digitalmente — o front habilita o botão "ver laudo" só nesse caso.
+    private async Task<IReadOnlyList<SolicitacaoExameListItemDto>> EnriquecerLaudosAsync(
+        List<SolicitacaoExameListItemDto> dtos, CancellationToken ct)
+    {
+        var studies = dtos
+            .Where(d => !string.IsNullOrEmpty(d.StudyInstanceUID))
+            .Select(d => d.StudyInstanceUID)
+            .Distinct()
+            .ToArray();
+        if (studies.Length == 0) return dtos;
+
+        var laudos = await _db.Laudos.AsNoTracking()
+            .Where(l => !l.Excluido && l.Status == StatusLaudo.Finalizado && studies.Contains(l.StudyInstanceUID))
+            .Select(l => new { l.Id, l.StudyInstanceUID, l.Versao })
+            .ToListAsync(ct);
+        if (laudos.Count == 0) return dtos;
+
+        var atualPorStudy = laudos
+            .GroupBy(l => l.StudyInstanceUID)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.Versao).First().Id);
+
+        var assinados = await _assinaturas.QuaisAssinadosAsync(atualPorStudy.Values.ToArray(), ct);
+
+        return [.. dtos.Select(d =>
+            atualPorStudy.TryGetValue(d.StudyInstanceUID, out var laudoId)
+                ? d with { LaudoId = laudoId, LaudoAssinado = assinados.Contains(laudoId) }
+                : d)];
     }
 
     public async Task<IReadOnlyList<SolicitacaoExameListItemDto>> ListarAsync(
@@ -61,6 +93,18 @@ public sealed class SolicitacoesExameService(
         {
             var a = filtro.AccessionNumber.Trim();
             query = query.Where(s => s.AccessionNumber == a);
+        }
+        if (!string.IsNullOrWhiteSpace(filtro.Busca))
+        {
+            // Busca livre: nº do pedido (accession/código) por ILIKE local + nome/CPF/CNS
+            // resolvidos no hub FHIR (ids). Hub fora do ar → só match local (nunca 500).
+            var termo = filtro.Busca.Trim();
+            var padrao = $"%{termo}%";
+            var idsPaciente = (await _pacienteResolver.BuscarIdsPorTermoAsync(termo, cancellationToken)).ToArray();
+            query = query.Where(s =>
+                EF.Functions.ILike(s.AccessionNumber, padrao)
+                || (s.CodigoSolicitacao != null && EF.Functions.ILike(s.CodigoSolicitacao, padrao))
+                || idsPaciente.Contains(s.PacienteId));
         }
         if (filtro.DataInicial.HasValue)
         {
@@ -81,7 +125,8 @@ public sealed class SolicitacoesExameService(
             .Take(limite)
             .ToListAsync(cancellationToken);
 
-        return await EnriquecerAsync([.. lista.Select(SolicitacoesExameMapper.ParaListItem)], cancellationToken);
+        var dtos = await EnriquecerAsync([.. lista.Select(SolicitacoesExameMapper.ParaListItem)], cancellationToken);
+        return await EnriquecerLaudosAsync([.. dtos], cancellationToken);
     }
 
     public async Task<SolicitacaoExameDto> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default)
