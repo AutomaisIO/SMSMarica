@@ -627,6 +627,9 @@ export function PacienteFormPage() {
         voltar={() => navigate('/app/pacientes')}
       />
 
+      {/* Ações duplicadas no topo para o operador não precisar rolar até o fim. */}
+      <BarraAcoes salvando={salvando} modo={modo} aoCancelar={() => navigate('/app/pacientes')} />
+
       {carregando ? (
         <div className="text-sm text-gray-500">Carregando dados…</div>
       ) : (
@@ -651,14 +654,7 @@ export function PacienteFormPage() {
         </div>
       ) : null}
 
-      <div className="flex justify-end gap-3">
-        <Button variante="ghost" onClick={() => navigate('/app/pacientes')} disabled={salvando}>
-          Cancelar
-        </Button>
-        <Button type="submit" disabled={salvando}>
-          {salvando ? 'Salvando…' : modo === 'criar' ? 'Cadastrar paciente' : 'Salvar alterações'}
-        </Button>
-      </div>
+      <BarraAcoes salvando={salvando} modo={modo} aoCancelar={() => navigate('/app/pacientes')} />
     </form>
 
     <ConfirmDialog
@@ -683,6 +679,27 @@ export function PacienteFormPage() {
       }}
     />
     </>
+  );
+}
+
+function BarraAcoes({
+  salvando,
+  modo,
+  aoCancelar,
+}: {
+  salvando: boolean;
+  modo: Modo;
+  aoCancelar: () => void;
+}) {
+  return (
+    <div className="flex justify-end gap-3">
+      <Button variante="ghost" type="button" onClick={aoCancelar} disabled={salvando}>
+        Cancelar
+      </Button>
+      <Button type="submit" disabled={salvando}>
+        {salvando ? 'Salvando…' : modo === 'criar' ? 'Cadastrar paciente' : 'Salvar alterações'}
+      </Button>
+    </div>
   );
 }
 
