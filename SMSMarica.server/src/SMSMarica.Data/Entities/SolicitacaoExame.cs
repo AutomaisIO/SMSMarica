@@ -32,8 +32,14 @@ public class SolicitacaoExame
     public Guid TipoExameId { get; set; }
     public TipoExame? TipoExame { get; set; }
 
+    /// <summary>Unidade EXECUTANTE (onde o exame é realizado).</summary>
     public Guid UnidadeId { get; set; }
     public Unidade? Unidade { get; set; }
+
+    /// <summary>Unidade SOLICITANTE (que pediu o exame) — opcional. Distinta da executante.
+    /// Preenchida na importação SISREG (unidade solicitante da ficha) ou manualmente na tela.</summary>
+    public Guid? UnidadeSolicitanteId { get; set; }
+    public Unidade? UnidadeSolicitante { get; set; }
 
     // ---- Solicitante (snapshot do profissional que pediu: médico/CRM ou enfermeiro/COREN) ----
 

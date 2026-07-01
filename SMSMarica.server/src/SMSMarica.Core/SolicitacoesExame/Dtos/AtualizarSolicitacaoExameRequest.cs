@@ -6,6 +6,7 @@ namespace SMSMarica.Core.SolicitacoesExame.Dtos;
 public sealed record AtualizarSolicitacaoExameRequest(
     Guid TipoExameId,
     Guid UnidadeId,
+    Guid? UnidadeSolicitanteId,
 
     Guid? SolicitanteUsuarioId,
     string SolicitanteNome,

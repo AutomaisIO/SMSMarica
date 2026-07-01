@@ -27,6 +27,7 @@ type EstadoForm = {
   pacienteNome: string;
   tipoExameId: string;
   unidadeId: string;
+  unidadeSolicitanteId: string;
   solicitanteUsuarioId: string | null;
   solicitanteNome: string;
   solicitanteNumConselho: string;
@@ -45,6 +46,7 @@ const ESTADO_INICIAL: EstadoForm = {
   pacienteNome: '',
   tipoExameId: '',
   unidadeId: '',
+  unidadeSolicitanteId: '',
   solicitanteUsuarioId: null,
   solicitanteNome: '',
   solicitanteNumConselho: '',
@@ -112,6 +114,7 @@ export function SolicitacaoExameFormPage() {
         pacienteNome: s.pacienteNome,
         tipoExameId: s.tipoExameId,
         unidadeId: s.unidadeId,
+        unidadeSolicitanteId: s.unidadeSolicitanteId ?? '',
         solicitanteUsuarioId: s.solicitanteUsuarioId,
         solicitanteNome: s.solicitanteNome,
         solicitanteNumConselho: s.solicitanteNumConselho,
@@ -168,6 +171,7 @@ export function SolicitacaoExameFormPage() {
     const payload = {
       tipoExameId: estado.tipoExameId,
       unidadeId: estado.unidadeId,
+      unidadeSolicitanteId: estado.unidadeSolicitanteId || null,
       solicitanteUsuarioId: estado.solicitanteUsuarioId,
       solicitanteNome: estado.solicitanteNome.trim(),
       solicitanteNumConselho: estado.solicitanteNumConselho.trim(),
@@ -290,6 +294,22 @@ export function SolicitacaoExameFormPage() {
               disabled={unidades.isPending}
             >
               <option value="">— Selecione —</option>
+              {(unidades.data ?? []).filter((u) => u.ativo).map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.nome}
+                </option>
+              ))}
+            </Select>
+          </Campo>
+
+          <Campo label="Unidade solicitante (opcional)" htmlFor="unidade-solic" className="sm:col-span-2">
+            <Select
+              id="unidade-solic"
+              value={estado.unidadeSolicitanteId}
+              onChange={(e) => up('unidadeSolicitanteId', e.target.value)}
+              disabled={unidades.isPending}
+            >
+              <option value="">— Nenhuma —</option>
               {(unidades.data ?? []).filter((u) => u.ativo).map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.nome}

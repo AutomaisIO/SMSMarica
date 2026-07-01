@@ -172,7 +172,7 @@ public sealed class SolicitacoesExameService(
 
     public async Task<Guid> CadastrarAsync(CadastrarSolicitacaoExameRequest request, CancellationToken cancellationToken = default)
     {
-        await ValidarReferenciasAsync(request.PacienteId, request.TipoExameId, request.UnidadeId, cancellationToken);
+        await ValidarReferenciasAsync(request.PacienteId, request.TipoExameId, request.UnidadeId, request.UnidadeSolicitanteId, cancellationToken);
 
         // Solicitante médico é Practitioner no hub FHIR; os dados vão nos snapshots
         // (SolicitanteNome/Crm/UfCrm). Validação de papel Médico foi descontinuada.
@@ -199,6 +199,7 @@ public sealed class SolicitacoesExameService(
             PacienteId = request.PacienteId,
             TipoExameId = request.TipoExameId,
             UnidadeId = request.UnidadeId,
+            UnidadeSolicitanteId = request.UnidadeSolicitanteId,
 
             SolicitanteUsuarioId = solicitanteUsuarioId,
             SolicitanteNome = request.SolicitanteNome.Trim(),
@@ -241,10 +242,11 @@ public sealed class SolicitacoesExameService(
                 "Solicitação só pode ser editada enquanto está no status 'Solicitada'.");
         }
 
-        await ValidarReferenciasAsync(s.PacienteId, request.TipoExameId, request.UnidadeId, cancellationToken);
+        await ValidarReferenciasAsync(s.PacienteId, request.TipoExameId, request.UnidadeId, request.UnidadeSolicitanteId, cancellationToken);
 
         s.TipoExameId = request.TipoExameId;
         s.UnidadeId = request.UnidadeId;
+        s.UnidadeSolicitanteId = request.UnidadeSolicitanteId;
         s.SolicitanteUsuarioId = await ResolverSolicitanteUsuarioAsync(request.SolicitanteUsuarioId, cancellationToken);
         s.SolicitanteNome = request.SolicitanteNome.Trim();
         s.SolicitanteNumConselho = NormalizarDigitos(request.SolicitanteNumConselho);
@@ -530,6 +532,7 @@ public sealed class SolicitacoesExameService(
         return await _db.SolicitacoesExame.AsNoTracking()
             .Include(s => s.TipoExame)
             .Include(s => s.Unidade)
+            .Include(s => s.UnidadeSolicitante)
             .Where(s => s.ExcluidoEm == null)
             .FirstOrDefaultAsync(filtro, cancellationToken);
     }
@@ -549,7 +552,7 @@ public sealed class SolicitacoesExameService(
         return ehUsuario ? valor : null;
     }
 
-    private async Task ValidarReferenciasAsync(Guid pacienteId, Guid tipoExameId, Guid unidadeId, CancellationToken ct)
+    private async Task ValidarReferenciasAsync(Guid pacienteId, Guid tipoExameId, Guid unidadeId, Guid? unidadeSolicitanteId, CancellationToken ct)
     {
         // PacienteId referencia o hub FHIR — validação de existência fica a cargo do hub.
         if (!await _db.TiposExame.AsNoTracking().AnyAsync(t => t.Id == tipoExameId && t.ExcluidoEm == null && t.Ativo, ct))
@@ -560,6 +563,11 @@ public sealed class SolicitacoesExameService(
         if (!await _db.Unidades.AsNoTracking().AnyAsync(u => u.Id == unidadeId, ct))
         {
             throw new NaoEncontradoException(nameof(Unidade), unidadeId);
+        }
+
+        if (unidadeSolicitanteId is { } us && !await _db.Unidades.AsNoTracking().AnyAsync(u => u.Id == us, ct))
+        {
+            throw new NaoEncontradoException(nameof(Unidade), us);
         }
     }
 

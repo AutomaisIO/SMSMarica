@@ -20,6 +20,7 @@ internal sealed class SolicitacaoExameConfiguration : IEntityTypeConfiguration<S
         builder.Property(s => s.PacienteId).HasColumnName("paciente_id").IsRequired();
         builder.Property(s => s.TipoExameId).HasColumnName("tipo_exame_id").IsRequired();
         builder.Property(s => s.UnidadeId).HasColumnName("unidade_id").IsRequired();
+        builder.Property(s => s.UnidadeSolicitanteId).HasColumnName("unidade_solicitante_id");
 
         builder.Property(s => s.SolicitanteUsuarioId).HasColumnName("solicitante_usuario_id");
         builder.Property(s => s.SolicitanteNome).HasColumnName("solicitante_nome").HasMaxLength(200).IsRequired();
@@ -76,6 +77,11 @@ internal sealed class SolicitacaoExameConfiguration : IEntityTypeConfiguration<S
         builder.HasOne(s => s.Unidade)
             .WithMany()
             .HasForeignKey(s => s.UnidadeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(s => s.UnidadeSolicitante)
+            .WithMany()
+            .HasForeignKey(s => s.UnidadeSolicitanteId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(s => s.SolicitanteUsuario)

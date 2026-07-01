@@ -38,6 +38,7 @@ public sealed class ExameCompletoPdfService(
         var sol = await db.SolicitacoesExame.AsNoTracking()
             .Include(s => s.TipoExame)
             .Include(s => s.Unidade)
+            .Include(s => s.UnidadeSolicitante)
             .FirstOrDefaultAsync(s => s.Id == solicitacaoExameId && s.ExcluidoEm == null, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(SolicitacaoExame), solicitacaoExameId);
 
@@ -72,6 +73,7 @@ public sealed class ExameCompletoPdfService(
             ExameNome: sol.TipoExame?.Nome ?? "Exame de imagem",
             Modalidade: sol.TipoExame?.ModalidadeDicom.ToString(),
             Unidade: sol.Unidade?.Nome,
+            UnidadeSolicitante: sol.UnidadeSolicitante?.Nome,
             Accession: sol.AccessionNumber,
             RealizadoEm: sol.RealizadoEm?.AddHours(OffsetHoras),
             SolicitadaEm: sol.CriadoEm.AddHours(OffsetHoras),

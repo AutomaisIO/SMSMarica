@@ -509,6 +509,9 @@ public sealed class LaudoPdfRenderer(
         {
             linhas.Add([("Unidade executora", s.UnidadeNome)]);
 
+            if (!string.IsNullOrWhiteSpace(s.UnidadeSolicitanteNome))
+                linhas.Add([("Unidade solicitante", s.UnidadeSolicitanteNome!)]);
+
             // Conselho do solicitante: "COREN" → enfermeiro; senão (CRM/legado) → médico.
             var conselho = string.IsNullOrWhiteSpace(s.SolicitanteConselho)
                 ? "CRM"

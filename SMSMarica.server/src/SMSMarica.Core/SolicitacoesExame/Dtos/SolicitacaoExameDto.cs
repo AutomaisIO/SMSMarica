@@ -20,6 +20,9 @@ public sealed record SolicitacaoExameDto(
     Guid UnidadeId,
     string UnidadeNome,
 
+    Guid? UnidadeSolicitanteId,
+    string? UnidadeSolicitanteNome,
+
     Guid? SolicitanteUsuarioId,
     string SolicitanteNome,
     string SolicitanteNumConselho,

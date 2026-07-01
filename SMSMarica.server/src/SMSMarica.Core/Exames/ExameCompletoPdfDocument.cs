@@ -14,6 +14,7 @@ public sealed record ExameCompletoCapa(
     string ExameNome,
     string? Modalidade,
     string? Unidade,
+    string? UnidadeSolicitante,
     string Accession,
     DateTime? RealizadoEm,
     DateTime SolicitadaEm,
@@ -102,6 +103,7 @@ public sealed class ExameCompletoPdfDocument(
                 Linha(c, "Exame", capa.ExameNome);
                 if (!string.IsNullOrWhiteSpace(capa.Modalidade)) Linha(c, "Modalidade", capa.Modalidade!);
                 if (!string.IsNullOrWhiteSpace(capa.Unidade)) Linha(c, "Unidade executora", capa.Unidade!);
+                if (!string.IsNullOrWhiteSpace(capa.UnidadeSolicitante)) Linha(c, "Unidade solicitante", capa.UnidadeSolicitante!);
                 Linha(c, "Accession (PACS)", capa.Accession);
                 if (capa.RealizadoEm is { } real) Linha(c, "Realizado em", real.ToString("dd/MM/yyyy HH:mm"));
                 Linha(c, "Solicitado em", capa.SolicitadaEm.ToString("dd/MM/yyyy"));

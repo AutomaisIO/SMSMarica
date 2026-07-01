@@ -7,6 +7,9 @@ public sealed record CadastrarSolicitacaoExameRequest(
     Guid TipoExameId,
     Guid UnidadeId,
 
+    // Unidade que solicitou o exame (opcional — não quebra fluxos existentes).
+    Guid? UnidadeSolicitanteId,
+
     // Solicitante: SolicitanteUsuarioId é opcional (null = externo).
     // Nome/registro/UF são sempre obrigatórios (snapshot). Conselho = "CRM" (médico)
     // ou "COREN" (enfermeiro); null/omitido → o serviço assume "CRM" (retrocompat).

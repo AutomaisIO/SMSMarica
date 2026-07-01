@@ -30,6 +30,10 @@ export type SolicitacaoExame = {
   unidadeId: string;
   unidadeNome: string;
 
+  /** Unidade que solicitou o exame (opcional). */
+  unidadeSolicitanteId: string | null;
+  unidadeSolicitanteNome: string | null;
+
   solicitanteUsuarioId: string | null;
   solicitanteNome: string;
   solicitanteNumConselho: string;
@@ -102,6 +106,7 @@ export type CadastrarSolicitacaoPayload = {
   pacienteId: string;
   tipoExameId: string;
   unidadeId: string;
+  unidadeSolicitanteId: string | null;
   solicitanteUsuarioId: string | null;
   solicitanteNome: string;
   solicitanteNumConselho: string;
@@ -118,6 +123,7 @@ export type CadastrarSolicitacaoPayload = {
 export type AtualizarSolicitacaoPayload = {
   tipoExameId: string;
   unidadeId: string;
+  unidadeSolicitanteId: string | null;
   solicitanteUsuarioId: string | null;
   solicitanteNome: string;
   solicitanteNumConselho: string;
