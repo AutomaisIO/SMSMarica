@@ -76,6 +76,17 @@ export function construirImageId(
   return `wadors:${wadoRsRoot()}/studies/${studyUID}/series/${seriesUID}/instances/${sopUID}/frames/${frame}`;
 }
 
+/**
+ * Deriva o imageId que pede o frame CRU (sentinela `?semCompressao=1`): o proxy
+ * serve os pixels sem passar pela compressão JPEG-LS. Usado ao "recriar" uma
+ * imagem cuja variante comprimida ficou ilegível (abre em branco). A URL nova
+ * também fura o cache HTTP imutável do browser. Idempotente.
+ */
+export function imageIdSemCompressao(imageId: string): string {
+  if (imageId.includes('semCompressao=1')) return imageId;
+  return imageId + (imageId.includes('?') ? '&' : '?') + 'semCompressao=1';
+}
+
 /** Registra os metadados da instância para que o StackViewport consiga renderizar. */
 export function registrarMetadados(imageId: string, metadata: DatasetDicom): void {
   wadors.metaDataManager.add(imageId, metadata as never);

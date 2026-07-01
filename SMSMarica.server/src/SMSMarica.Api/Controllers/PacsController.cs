@@ -55,12 +55,21 @@ public sealed class PacsController(
         var accept = Request.Headers.Accept.ToString();
         var imutavel = EhCaminhoImutavel(caminho);
 
+        // Sentinela do visualizador para pedir o frame CRU (sem JPEG-LS): usado ao
+        // "recriar" uma imagem cuja variante comprimida ficou ilegível (abre em
+        // branco). Mantém a chave de cache única (o sentinela entra na queryString),
+        // mas NÃO é encaminhado ao dcm4chee (que não conhece o parâmetro) — como o
+        // visualizador só coloca esse parâmetro sozinho em frames, cai para vazio.
+        var semCompressao = PedeSemCompressao(queryString);
+        var queryUpstream = semCompressao ? string.Empty : queryString;
+
         // (C) Compressão JPEG-LS Lossless (flag Pacs:Compressao:Habilitado, default false).
         // Só para requisições de frame; serve a variante comprimida (cache-first, chave
         // DISTINTA da do frame cru). Qualquer falha de transcode cai no caminho atual
         // (frame cru ~53MB) sem nunca quebrar a visualização.
         if (_transcode.Habilitado && !string.IsNullOrEmpty(caminho)
-            && caminho.Contains("/frames/", StringComparison.Ordinal))
+            && caminho.Contains("/frames/", StringComparison.Ordinal)
+            && !semCompressao)
         {
             if (await ServirFrameComprimidoAsync(caminho, queryString, cancellationToken))
             {
@@ -85,7 +94,7 @@ public sealed class PacsController(
             }
 
             using var resposta = await _pacs.EncaminharAsync(
-                HttpMethod.Get, caminho, queryString, accept, cancellationToken);
+                HttpMethod.Get, caminho, queryUpstream, accept, cancellationToken);
 
             Response.StatusCode = (int)resposta.StatusCode;
             if (resposta.Content.Headers.ContentType is not null)
@@ -124,7 +133,7 @@ public sealed class PacsController(
 
         // Caminho NÃO-imutável (QIDO/listagens) ou cache desligado: streaming como hoje.
         using var upstream = await _pacs.EncaminharAsync(
-            HttpMethod.Get, caminho, queryString, accept, cancellationToken);
+            HttpMethod.Get, caminho, queryUpstream, accept, cancellationToken);
 
         Response.StatusCode = (int)upstream.StatusCode;
         if (upstream.Content.Headers.ContentType is not null)
@@ -236,6 +245,7 @@ public sealed class PacsController(
         [
             _cache.CalcularChave("GET", frame, string.Empty),                             // frame cru
             _cache.CalcularChave("GET", _transcode.DiscriminarCaminho(frame), string.Empty), // frame JPEG-LS
+            _cache.CalcularChave("GET", frame, "?" + SentinelaSemCompressao),             // frame cru (sentinela)
             _cache.CalcularChave("GET", rendered, "?viewport=160,160"),                   // thumbnail
             _cache.CalcularChave("GET", rendered, "?viewport=1024,1024"),                 // preview
         ];
@@ -244,9 +254,11 @@ public sealed class PacsController(
         _logger.LogInformation(
             "Cache PACS recriado para a instância {SopUid} (estudo {StudyUid}).", sopUid, studyUid);
 
-        // Re-aquece o frame agora (síncrono): quando o front recarregar, já vem quente.
-        // Best-effort — falha aqui não impede o front de re-pedir do PACS na sequência.
-        await _warmup.AquecerInstanciaAsync(studyUid, seriesUid, sopUid, cancellationToken);
+        // Re-aquece a variante CRUA (sentinela) — é para ela que o visualizador
+        // recarrega ao recriar, desviando do transcode que produziu o frame ilegível.
+        // Síncrono e best-effort: falha aqui não impede o front de re-pedir do PACS.
+        await _warmup.AquecerInstanciaAsync(
+            studyUid, seriesUid, sopUid, semCompressao: true, cancellationToken);
 
         return Ok();
     }
@@ -263,6 +275,15 @@ public sealed class PacsController(
     private static bool EhCaminhoImutavel(string caminho)
         => !string.IsNullOrEmpty(caminho)
             && caminho.Contains("/instances/", StringComparison.Ordinal);
+
+    /// <summary>
+    /// Sentinela do visualizador (<c>?semCompressao=1</c>) que pede o frame CRU,
+    /// desviando do transcode JPEG-LS. Ver <see cref="EncaminharRs"/>.
+    /// </summary>
+    private const string SentinelaSemCompressao = "semCompressao=1";
+
+    private static bool PedeSemCompressao(string queryString)
+        => queryString.Contains(SentinelaSemCompressao, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Exclui um estudo do PACS. O dcm4chee exige duas operações: primeiro

@@ -11,10 +11,12 @@ public interface IPacsWarmupService
     Task AquecerEstudoAsync(string studyUid, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Aquece o cache do primeiro frame de UMA instância (frame cru + variante
-    /// comprimida, conforme a config). Usado após invalidar o cache de uma imagem
-    /// para reconstruí-la já quente. Best-effort.
+    /// Aquece o cache do primeiro frame de UMA instância. Usado após invalidar o
+    /// cache de uma imagem para reconstruí-la já quente. Best-effort. Com
+    /// <paramref name="semCompressao"/>, aquece a variante CRUA (sentinela
+    /// <c>?semCompressao=1</c>, sem JPEG-LS); sem ele, aquece conforme a config.
     /// </summary>
     Task AquecerInstanciaAsync(
-        string studyUid, string seriesUid, string sopUid, CancellationToken cancellationToken = default);
+        string studyUid, string seriesUid, string sopUid,
+        bool semCompressao = false, CancellationToken cancellationToken = default);
 }

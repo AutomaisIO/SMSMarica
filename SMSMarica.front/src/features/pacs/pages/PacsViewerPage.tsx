@@ -20,6 +20,7 @@ import {
 import {
   construirImageId,
   descartarImagemDoCache,
+  imageIdSemCompressao,
   prefetchImagens,
   registrarMetadados,
   type ProgressoPrefetch,
@@ -31,7 +32,7 @@ import {
   valorNumero,
   valorTexto,
 } from '@/features/pacs/lib/dicomJson';
-import type { Estudo } from '@/features/pacs/types';
+import type { DatasetDicom, Estudo } from '@/features/pacs/types';
 
 type Props = {
   /**
@@ -67,6 +68,9 @@ export function PacsViewerPage({ janela = false }: Props = {}) {
   // Espelho de `celulas` para o callback de recriação (useCallback estável) ler a
   // grade atual sem virar dependência.
   const celulasRef = useRef(celulas);
+  // Dataset DICOM cru por imageId — necessário para registrar os metadados sob o
+  // imageId "cru" (sentinela) ao recriar uma imagem sem compressão.
+  const metaPorImageId = useRef<Map<string, DatasetDicom>>(new Map());
 
   const imageIdFocado = celulas[focado] ?? null;
 
@@ -135,6 +139,7 @@ export function PacsViewerPage({ janela = false }: Props = {}) {
       if (ctrl.signal.aborted) return;
 
       // Lista plana de todas as imagens do estudo (achata as séries).
+      metaPorImageId.current.clear();
       const lista: ImagemLista[] = [];
       const todosImageIds: string[] = [];
       metaPorSerie.forEach((instancias, i) => {
@@ -148,6 +153,7 @@ export function PacsViewerPage({ janela = false }: Props = {}) {
           if (!sop) continue;
           const id = construirImageId(e.studyInstanceUID, uid, sop);
           registrarMetadados(id, garantirPixelSpacing(inst, id));
+          metaPorImageId.current.set(id, inst);
           lista.push({ imageId: id, rotulo: rotuloImagemMG(inst) });
           todosImageIds.push(id);
         }
@@ -232,10 +238,26 @@ export function PacsViewerPage({ janela = false }: Props = {}) {
   );
 
   // Duplo-clique na miniatura: limpa o cache local desta imagem (thumb, preview e
-  // frame diagnóstico) no proxy e recria. Descarta a cópia em RAM do Cornerstone e
-  // recarrega os quadrados que exibem a imagem (null → id força novo setStack).
+  // frame diagnóstico) no proxy e a recria SEM compressão. A thumb vem correta
+  // (renderizada direto pelo dcm4chee), mas a variante comprimida (JPEG-LS) pode
+  // sair ilegível para certas imagens — então recarregamos o frame CRU: um imageId
+  // novo (sentinela ?semCompressao=1) que fura o cache do browser e desvia do
+  // transcode. Se o imageId original já for "cru", não há o que trocar.
   const recriarImagem = useCallback(async (imageId: string) => {
-    const anterior = celulasRef.current.slice();
+    if (imageId.includes('semCompressao=1')) {
+      // Já está no modo cru e ainda falhou: limpar/re-pedir do dcm4chee é o máximo
+      // que dá daqui — o problema está antes (fonte). Só reaproveita a limpeza.
+      try {
+        await recriarImagensDaInstancia(imageId);
+        descartarImagemDoCache(imageId);
+      } catch {
+        notificar('Não foi possível recriar esta imagem.', 'erro');
+        return;
+      }
+      notificar('Cache limpo. Se ainda falhar, o problema está na origem (PACS).', 'info');
+      return;
+    }
+
     try {
       await recriarImagensDaInstancia(imageId);
       descartarImagemDoCache(imageId);
@@ -244,15 +266,20 @@ export function PacsViewerPage({ janela = false }: Props = {}) {
       return;
     }
 
-    if (anterior.includes(imageId)) {
-      // Apaga temporariamente os quadrados com esta imagem e restaura no próximo
-      // tick — o setStack roda de novo e rebaixa os pixels do proxy (já quentes).
-      setCelulas((atual) => atual.map((v) => (v === imageId ? null : v)));
-      window.setTimeout(() => {
-        setCelulas((atual) => atual.map((v, i) => (v === null && anterior[i] === imageId ? imageId : v)));
-      }, 60);
+    const rawId = imageIdSemCompressao(imageId);
+    const inst = metaPorImageId.current.get(imageId);
+    if (inst) {
+      registrarMetadados(rawId, garantirPixelSpacing(inst, rawId));
+      metaPorImageId.current.set(rawId, inst);
     }
-    notificar('Cache limpo e imagem recriada.', 'sucesso');
+    descartarImagemDoCache(rawId);
+
+    // Troca o imageId (original → cru) na lista e nos quadrados: como o id muda, o
+    // setStack roda de novo e o browser busca a URL nova (não a cacheada).
+    setImagens((lista) => lista.map((im) => (im.imageId === imageId ? { ...im, imageId: rawId } : im)));
+    setCelulas((atual) => atual.map((v) => (v === imageId ? rawId : v)));
+
+    notificar('Imagem recriada sem compressão.', 'sucesso');
   }, []);
 
   function mudarLayout(novo: Layout) {

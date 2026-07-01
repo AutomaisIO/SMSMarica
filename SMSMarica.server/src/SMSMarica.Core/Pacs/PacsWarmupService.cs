@@ -61,8 +61,12 @@ public sealed class PacsWarmupService(
         await Task.WhenAll(tarefas);
     }
 
+    // Sentinela (idêntico ao do proxy) que pede o frame cru, desviando do transcode.
+    private const string SentinelaSemCompressao = "?semCompressao=1";
+
     public async Task AquecerInstanciaAsync(
-        string studyUid, string seriesUid, string sopUid, CancellationToken cancellationToken = default)
+        string studyUid, string seriesUid, string sopUid,
+        bool semCompressao = false, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(studyUid)
             || string.IsNullOrWhiteSpace(seriesUid)
@@ -70,8 +74,45 @@ public sealed class PacsWarmupService(
         if (!_cache.Habilitado) return;
 
         var caminho = $"studies/{studyUid}/series/{seriesUid}/instances/{sopUid}/frames/1";
+
+        if (semCompressao)
+        {
+            await AquecerFrameCruAsync(caminho, cancellationToken);
+            return;
+        }
+
         using var limite = new SemaphoreSlim(1);
         await AquecerFrameAsync(caminho, limite, cancellationToken);
+    }
+
+    /// <summary>
+    /// Aquece o frame CRU sob a chave sentinela (<c>?semCompressao=1</c>), buscando
+    /// no dcm4chee sem o sentinela (que ele não conhece) — igual ao proxy. Best-effort.
+    /// </summary>
+    private async Task AquecerFrameCruAsync(string caminho, CancellationToken ct)
+    {
+        try
+        {
+            var chave = _cache.CalcularChave("GET", caminho, SentinelaSemCompressao);
+            if (_cache.Contains(chave)) return; // já aquecido
+
+            // Upstream recebe query vazia (o sentinela é só interno).
+            using var resposta = await _pacs.EncaminharAsync(
+                HttpMethod.Get, caminho, queryString: string.Empty, accept: AcceptFrame, ct);
+            if (!resposta.IsSuccessStatusCode) return;
+
+            var teto = _cache.TetoItemBytes > 0 ? _cache.TetoItemBytes : StreamLimitado.TetoSegurancaPadrao;
+            await using var origem = await resposta.Content.ReadAsStreamAsync(ct);
+            var (buffer, completo) = await StreamLimitado.LerComTetoAsync(origem, teto, ct);
+            if (!completo) return; // grande demais para cachear
+
+            var contentType = resposta.Content.Headers.ContentType?.ToString() ?? "application/octet-stream";
+            _cache.Set(chave, contentType, buffer);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Falha ao aquecer frame cru {Caminho}.", caminho);
+        }
     }
 
     /// <summary>Puxa um frame pelo proxy e grava no cache (best-effort).</summary>
