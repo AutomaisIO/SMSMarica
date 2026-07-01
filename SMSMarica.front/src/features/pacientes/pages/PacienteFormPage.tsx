@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { ArrowLeft, Loader2, Search } from 'lucide-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
@@ -28,6 +28,7 @@ import {
 } from '@/shared/api/integracoes';
 import { cpfValido, pacienteFormSchema } from '@/features/pacientes/schemas/pacienteSchema';
 import { apenasDigitosCpf } from '@/shared/lib/cpf';
+import { useAvisoSaidaNaoSalva } from '@/shared/hooks/useAvisoSaidaNaoSalva';
 import {
   ESCOLARIDADES,
   ESTADOS_CIVIS,
@@ -347,6 +348,11 @@ export function PacienteFormPage() {
   const [estado, setEstado] = useState<Estado>(() =>
     cpfPreFill ? { ...ESTADO_INICIAL, cpf: cpfPreFill } : ESTADO_INICIAL,
   );
+  // Baseline p/ detectar alterações não salvas (guarda de saída). Atualizado ao carregar e ao salvar.
+  const [baselineJson, setBaselineJson] = useState<string>(() =>
+    JSON.stringify(cpfPreFill ? { ...ESTADO_INICIAL, cpf: cpfPreFill } : ESTADO_INICIAL),
+  );
+  const idCriadoRef = useRef<string | null>(null);
   const [erros, setErros] = useState<Record<string, string>>({});
   const [erroGlobal, setErroGlobal] = useState<string | null>(null);
   const [passoCpfConcluido, setPassoCpfConcluido] = useState<boolean>(modo === 'editar');
@@ -367,7 +373,9 @@ export function PacienteFormPage() {
 
   useEffect(() => {
     if (modo === 'editar' && detalhe.data) {
-      setEstado(pacienteParaEstado(detalhe.data));
+      const carregado = pacienteParaEstado(detalhe.data);
+      setEstado(carregado);
+      setBaselineJson(JSON.stringify(carregado));
     }
   }, [modo, detalhe.data]);
 
@@ -522,8 +530,12 @@ export function PacienteFormPage() {
     }
   }
 
-  async function aoSalvar(e: FormEvent) {
-    e.preventDefault();
+  /**
+   * Valida e persiste o paciente SEM navegar (atualiza o baseline em sucesso).
+   * Lança em caso de validação/erro — usado pelo submit, pela guarda de saída
+   * ("Salvar e sair") e pelo salvamento automático ao validar o telefone.
+   */
+  async function persistir(): Promise<void> {
     setErros({});
     setErroGlobal(null);
 
@@ -541,39 +553,78 @@ export function PacienteFormPage() {
       setErros(novos);
       const detalhes = Object.entries(novos)
         .map(([path, msg]) => `${LABELS_CAMPOS[path] ?? path}: ${msg}`);
-      setErroGlobal(
+      const msg =
         detalhes.length === 1
           ? detalhes[0]
-          : `Corrija ${detalhes.length} campo(s): ${detalhes.join(' · ')}`,
-      );
-      return;
+          : `Corrija ${detalhes.length} campo(s): ${detalhes.join(' · ')}`;
+      setErroGlobal(msg);
+      throw new Error(msg);
     }
 
     try {
       if (modo === 'criar') {
-        const id = await cadastrar.mutateAsync(payload);
-        // O cadastro já salvou tudo (todas as abas estão neste formulário). Não
-        // mandamos mais para "/editar" — isso fazia o usuário achar que precisava
-        // "Salvar alterações" de novo. Se o fluxo nasceu da solicitação, oferecemos
-        // criar a solicitação já com o paciente; senão, voltamos para a lista.
-        if (origemSolicitacao) {
-          setSugerirSolicitacao({ id, nome: payload.nomeCompleto });
-        } else {
-          navigate('/app/pacientes', { replace: true });
-        }
+        idCriadoRef.current = await cadastrar.mutateAsync(payload);
       } else if (params.id) {
         // Nome, CPF e data de nascimento são imutáveis — não vão no payload.
         const { nomeCompleto: _nc, cpf: _cpf, dataNascimento: _dn, ...resto } = payload;
         await atualizar.mutateAsync({ id: params.id, payload: resto });
-        navigate('/app/pacientes', { replace: false });
       }
+      // Sucesso: o estado atual passa a ser o baseline (deixa de estar "sujo").
+      setBaselineJson(JSON.stringify(estado));
     } catch (err) {
       setErroGlobal(extrairMensagemDeErro(err));
+      throw err;
+    }
+  }
+
+  async function aoSalvar(e: FormEvent) {
+    e.preventDefault();
+    try {
+      await persistir();
+    } catch {
+      return; // erro já exibido; não navega
+    }
+    // Navegação pós-save legítima: libera a guarda para não interceptar.
+    permitir();
+    if (modo === 'criar') {
+      // O cadastro já salvou tudo (todas as abas estão neste formulário). Se o fluxo
+      // nasceu da solicitação, oferecemos criar a solicitação já com o paciente.
+      if (origemSolicitacao && idCriadoRef.current) {
+        setSugerirSolicitacao({ id: idCriadoRef.current, nome: estado.nomeCompleto });
+      } else {
+        navigate('/app/pacientes', { replace: true });
+      }
+    } else {
+      navigate('/app/pacientes', { replace: false });
+    }
+  }
+
+  /**
+   * Ao validar o telefone (OTP OK) no modo edição, salva o cadastro no mesmo fluxo
+   * para o número validado não se perder caso o operador saia sem clicar em Salvar.
+   */
+  async function aoTelefoneValidado() {
+    if (modo !== 'editar' || !params.id) return;
+    try {
+      await persistir();
+    } catch {
+      /* form incompleto: a guarda de saída ainda protege o número digitado */
     }
   }
 
   const carregando = modo === 'editar' && detalhe.isFetching && !detalhe.data;
   const salvando = cadastrar.isPending || atualizar.isPending;
+
+  // Guarda de "alterações não salvas" — só no formulário de fato (após o passo do CPF).
+  const sujo = useMemo(
+    () => passoCpfConcluido && JSON.stringify(estado) !== baselineJson,
+    [passoCpfConcluido, estado, baselineJson],
+  );
+  const { elemento: guardaSaida, permitir } = useAvisoSaidaNaoSalva({
+    sujo,
+    aoSalvar: persistir,
+    mensagem: 'O cadastro do paciente tem alterações não salvas. O que você deseja fazer?',
+  });
 
   const abas = useMemo<Aba[]>(() => [
     {
@@ -608,6 +659,7 @@ export function PacienteFormPage() {
           erros={erros}
           setCampo={atualizarCampo}
           setContato={atualizarContato}
+          onTelefoneValidado={aoTelefoneValidado}
         />
       ),
     },
@@ -778,6 +830,8 @@ export function PacienteFormPage() {
 
       <BarraAcoes salvando={salvando} modo={modo} aoCancelar={() => navigate('/app/pacientes')} />
     </form>
+
+    {guardaSaida}
 
     <ConfirmDialog
       aberto={!!sugerirSolicitacao}
@@ -1001,14 +1055,18 @@ function SecaoEndereco({
 }
 
 function SecaoContatos({
-  estado, erros, setCampo, setContato,
-}: SecProps & { setContato: <K extends keyof ContatoEmergencia>(c: K, v: ContatoEmergencia[K]) => void }) {
+  estado, erros, setCampo, setContato, onTelefoneValidado,
+}: SecProps & {
+  setContato: <K extends keyof ContatoEmergencia>(c: K, v: ContatoEmergencia[K]) => void;
+  /** Chamado quando o telefone é validado (OTP OK) — para persistir no mesmo fluxo. */
+  onTelefoneValidado?: () => void;
+}) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Campo label="Contato principal (WhatsApp)" htmlFor="telefonePrincipal" erro={erros.telefonePrincipal}>
           <Input id="telefonePrincipal" value={estado.telefonePrincipal} onChange={(e) => setCampo('telefonePrincipal', e.target.value)} placeholder="(21) 99999-9999" />
-          <div className="mt-1.5"><BotaoValidarTelefone cpf={estado.cpf} numero={estado.telefonePrincipal} /></div>
+          <div className="mt-1.5"><BotaoValidarTelefone cpf={estado.cpf} numero={estado.telefonePrincipal} onValidado={onTelefoneValidado} /></div>
         </Campo>
         <Campo label="Celular" htmlFor="telefoneCelular" erro={erros.telefoneCelular}>
           <Input id="telefoneCelular" value={estado.telefoneCelular} onChange={(e) => setCampo('telefoneCelular', e.target.value)} />
