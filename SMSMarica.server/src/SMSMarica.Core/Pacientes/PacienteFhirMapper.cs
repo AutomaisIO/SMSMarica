@@ -88,7 +88,8 @@ internal static class PacienteFhirMapper
         return patient;
     }
 
-    public static void AplicarAtualizacao(Patient existente, AtualizarPacienteRequest r)
+    public static void AplicarAtualizacao(Patient existente, AtualizarPacienteRequest r,
+        IReadOnlySet<string>? telefonesProtegidos = null)
     {
         // Nome, CPF, CNS e data de nascimento são imutáveis — preservados do existente.
         var atual = LerPayload(existente);
@@ -137,7 +138,7 @@ internal static class PacienteFhirMapper
             Cns = Opcional(r.Cns, true)
                 ?? (string.IsNullOrWhiteSpace(atual.Cns) ? IdentValor(existente, SystemCns) : atual.Cns),
         };
-        AplicarPayload(existente, payload);
+        AplicarPayload(existente, payload, telefonesProtegidos);
     }
 
     /// <summary>
@@ -315,8 +316,9 @@ internal static class PacienteFhirMapper
     {
         var fones = p.Telecom?.Where(t => t.System == ContactPoint.ContactPointSystem.Phone).ToList() ?? [];
         var princ = fones.FirstOrDefault(t => t.Rank == 1) ?? fones.FirstOrDefault();
-        var principalDig = Digitos(princ?.Value);
-        var alvo = fones.FirstOrDefault(t => t.Use == uso && Digitos(t.Value) != principalDig);
+        // Exclui o principal POR REFERÊNCIA (não por dígitos): permite que celular/residencial
+        // com o mesmo número do principal ainda sejam representados/lidos distintamente.
+        var alvo = fones.FirstOrDefault(t => t.Use == uso && !ReferenceEquals(t, princ));
         return string.IsNullOrWhiteSpace(alvo?.Value) ? null : alvo.Value;
     }
 
@@ -356,7 +358,7 @@ internal static class PacienteFhirMapper
         return null;
     }
 
-    private static void AplicarPayload(Patient patient, Payload pl)
+    private static void AplicarPayload(Patient patient, Payload pl, IReadOnlySet<string>? telefonesProtegidos = null)
     {
         // ESCRITA NATIVA (fonte da verdade), por MERGE/upsert — mesmo shape do import
         // (SaluxFhirMapper). Preserva identificadores/campos não geridos; nunca replace-all.
@@ -371,7 +373,8 @@ internal static class PacienteFhirMapper
         PatientMergeFhir.SetGender(patient, pl.Sexo);
         PatientMergeFhir.SetMaritalStatus(patient, pl.EstadoCivil);
         PatientMergeFhir.UpsertEndereco(patient, pl.Endereco);
-        PatientMergeFhir.AplicarContatos(patient, pl.TelefonePrincipal, pl.TelefoneCelular, pl.TelefoneResidencial, pl.Email);
+        PatientMergeFhir.AplicarContatos(patient, pl.TelefonePrincipal, pl.TelefoneCelular,
+            pl.TelefoneResidencial, pl.Email, telefonesProtegidos);
         PatientMergeFhir.UpsertContato(patient, "MTH", pl.NomeDaMae);
         PatientMergeFhir.UpsertContato(patient, "FTH", pl.NomeDoPai);
         PatientMergeFhir.UpsertContato(patient, "GUARD", pl.ResponsavelLegal);

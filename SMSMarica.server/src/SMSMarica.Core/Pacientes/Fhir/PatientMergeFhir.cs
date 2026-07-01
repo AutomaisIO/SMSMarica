@@ -76,12 +76,16 @@ public static class PatientMergeFhir
         if (data is { } d) p.BirthDate = d.ToString("yyyy-MM-dd");
     }
 
-    public static void SetGender(Patient p, Sexo sexo) => p.Gender = sexo switch
-    {
-        Sexo.Masculino => AdministrativeGender.Male,
-        Sexo.Feminino => AdministrativeGender.Female,
-        _ => AdministrativeGender.Unknown,
-    };
+    public static void SetGender(Patient p, Sexo sexo) =>
+        // Decisão do produto: gender SOBRESCREVE mesmo com NaoInformado (→ Unknown).
+        // Diferente de SetMaritalStatus, que preserva. O form sempre reenvia o sexo
+        // (ParaDto lê nativo), então round-trip; NaoInformado explícito zera para Unknown.
+        p.Gender = sexo switch
+        {
+            Sexo.Masculino => AdministrativeGender.Male,
+            Sexo.Feminino => AdministrativeGender.Female,
+            _ => AdministrativeGender.Unknown,
+        };
 
     public static void SetMaritalStatus(Patient p, EstadoCivil ec)
     {
@@ -165,54 +169,70 @@ public static class PatientMergeFhir
     /// <summary>
     /// Aplica os telefones/e-mail geridos pelo painel. Modelo: principal = phone rank=1;
     /// celular = phone use=mobile; residencial = phone use=home; e-mail = email.
-    /// Dedupe por dígitos; preserva telecoms não geridos. Vazio remove o slot correspondente.
+    /// Dedupe por dígitos; preserva telecoms não geridos. <b>Vazio é no-op</b> (não remove) —
+    /// preservação-first (ADR-0020): evita apagar o telefone nativo do importado quando o
+    /// slot vem vazio no DTO. Limpar um telefone não é suportado nesta fase.
     /// </summary>
-    public static void AplicarContatos(Patient p, string? principal, string? celular, string? residencial, string? email)
+    private static readonly IReadOnlySet<string> SemProtecao = new HashSet<string>();
+
+    /// <param name="protegidos">
+    /// Dígitos de telefones CONFIRMADOS (validados por OTP/WhatsApp, <c>contato_validado</c>).
+    /// Invariante (ADR-0020): automação NUNCA toca um número confirmado — nem altera, nem
+    /// remove, nem reordena, nem substitui. O chamador (edição/import/backfill) deve informá-los.
+    /// </param>
+    public static void AplicarContatos(Patient p, string? principal, string? celular, string? residencial,
+        string? email, IReadOnlySet<string>? protegidos = null)
     {
         p.Telecom ??= [];
+        var prot = protegidos ?? SemProtecao;
 
-        UpsertTelefone(p, principal, use: null, rank: 1);
-        UpsertTelefone(p, celular, use: ContactPoint.ContactPointUse.Mobile, rank: null);
-        UpsertTelefone(p, residencial, use: ContactPoint.ContactPointUse.Home, rank: null);
+        UpsertTelefone(p, principal, use: null, rank: 1, prot);
+        UpsertTelefone(p, celular, use: ContactPoint.ContactPointUse.Mobile, rank: null, prot);
+        UpsertTelefone(p, residencial, use: ContactPoint.ContactPointUse.Home, rank: null, prot);
         UpsertEmail(p, email);
     }
 
-    private static void UpsertTelefone(Patient p, string? valor, ContactPoint.ContactPointUse? use, int? rank)
+    private static void UpsertTelefone(Patient p, string? valor, ContactPoint.ContactPointUse? use, int? rank,
+        IReadOnlySet<string> protegidos)
     {
         var digitos = Digitos(valor);
+        if (digitos.Length == 0) return; // vazio = no-op (nunca remove; preservação-first)
+        // Número confirmado é intocável: se o próprio valor é protegido, ele já existe e não
+        // deve ser recriado/movido por automação.
+        if (protegidos.Contains(digitos)) return;
+
         bool ehTelefone(ContactPoint t) => t.System == ContactPoint.ContactPointSystem.Phone;
         // Slot gerido: principal identifica-se por Rank==1; os demais por Use (e não-principal).
         var slot = rank == 1
             ? p.Telecom.FirstOrDefault(t => ehTelefone(t) && t.Rank == 1)
             : p.Telecom.FirstOrDefault(t => ehTelefone(t) && t.Use == use && t.Rank != 1);
 
-        if (digitos.Length == 0)
-        {
-            if (slot is not null) p.Telecom.Remove(slot);
-            return;
-        }
-        // Sem slot gerido: reusa um telefone existente de mesmos dígitos (ex.: o telefone
-        // nativo do importado) em vez de duplicar; só cria novo se o número ainda não existe.
-        slot ??= p.Telecom.FirstOrDefault(t => ehTelefone(t) && Digitos(t.Value) == digitos);
+        // NUNCA tocar num slot cujo número é confirmado (ex.: mudar o principal quando o
+        // atual está validado) — o número validado é imutável para a automação.
+        if (slot is not null && protegidos.Contains(Digitos(slot.Value))) return;
+
+        // Sem slot gerido: reusa um telefone de mesmos dígitos (ex.: o telefone nativo do
+        // importado) em vez de duplicar — nunca colapsa um não-principal no slot principal,
+        // nem reusa um número confirmado.
+        slot ??= p.Telecom.FirstOrDefault(t =>
+            ehTelefone(t) && Digitos(t.Value) == digitos && (rank == 1 || t.Rank != 1)
+            && !protegidos.Contains(Digitos(t.Value)));
+
         if (slot is null)
         {
-            slot = new ContactPoint { System = ContactPoint.ContactPointSystem.Phone, Use = use };
+            slot = new ContactPoint { System = ContactPoint.ContactPointSystem.Phone };
+            if (rank != 1) slot.Use = use; // Use só em slot novo não-principal; não muta reusados
             p.Telecom.Add(slot);
         }
         slot.Value = digitos;
         if (rank == 1) slot.Rank = 1;
-        else if (slot.Use is null) slot.Use = use;
     }
 
     private static void UpsertEmail(Patient p, string? email)
     {
         var limpo = email?.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(limpo)) return; // vazio = no-op (preservação-first)
         var slot = p.Telecom.FirstOrDefault(t => t.System == ContactPoint.ContactPointSystem.Email);
-        if (string.IsNullOrWhiteSpace(limpo))
-        {
-            if (slot is not null) p.Telecom.Remove(slot);
-            return;
-        }
         if (slot is null) p.Telecom.Add(new ContactPoint { System = ContactPoint.ContactPointSystem.Email, Value = limpo });
         else slot.Value = limpo;
     }
@@ -243,9 +263,12 @@ public static class PatientMergeFhir
         }
         existente.Name = new HumanName { Text = limpo };
         var foneDig = Digitos(fone);
-        existente.Telecom = foneDig.Length > 0
-            ? [new ContactPoint { System = ContactPoint.ContactPointSystem.Phone, Value = foneDig }]
-            : null;
+        // Upsert, nunca replace: fone vazio preserva o telecom existente (ex.: fone do
+        // responsável gravado pelo import Salux), pois o painel não expõe esse campo.
+        if (foneDig.Length > 0)
+            existente.Telecom = [new ContactPoint { System = ContactPoint.ContactPointSystem.Phone, Value = foneDig }];
+        else if (existente.Telecom is not { Count: > 0 })
+            existente.Telecom = null;
     }
 
     private static string Digitos(string? v) =>
