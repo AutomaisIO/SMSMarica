@@ -8,6 +8,7 @@ public sealed record LaudoConfiguracaoDto(
     string RodapeJson,
     bool PermitirLaudarSemAssociacao,
     bool PermitirLaudarSemAnamnese,
+    int DownloadLinkValidadeDias,
     DateTime? AtualizadoEm);
 
 /// <summary>Payload para salvar o cabeçalho/rodapé global + regras de iniciar o laudo.</summary>
@@ -17,7 +18,8 @@ public sealed record SalvarLaudoConfiguracaoRequest(
     string? RodapeHtml,
     string? RodapeJson,
     bool PermitirLaudarSemAssociacao = false,
-    bool PermitirLaudarSemAnamnese = false);
+    bool PermitirLaudarSemAnamnese = false,
+    int DownloadLinkValidadeDias = 7);
 
 /// <summary>
 /// Só as regras de INICIAR o laudo (sem o cabeçalho/rodapé). Leitura leve, liberada a

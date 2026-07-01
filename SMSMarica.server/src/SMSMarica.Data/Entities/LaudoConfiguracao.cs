@@ -41,6 +41,12 @@ public class LaudoConfiguracao
     /// </summary>
     public bool PermitirLaudarSemAnamnese { get; set; }
 
+    /// <summary>
+    /// Validade (em dias) do link público de download enviado ao paciente (ex.: WhatsApp).
+    /// Após esse prazo — ou após o 1º download — o link expira. Padrão 7 dias.
+    /// </summary>
+    public int DownloadLinkValidadeDias { get; set; } = 7;
+
     public Guid? AtualizadoPorUsuarioId { get; set; }
     public Usuario? AtualizadoPorUsuario { get; set; }
 

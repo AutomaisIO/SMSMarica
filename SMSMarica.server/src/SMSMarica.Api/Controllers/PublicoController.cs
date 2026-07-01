@@ -3,20 +3,47 @@ using System.Text;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SMSMarica.Core.Downloads;
 using SMSMarica.Core.SolicitacoesExame.Declaracao;
 
 namespace SMSMarica.Api.Controllers;
 
 /// <summary>
-/// Páginas/endpoints públicos (sem autenticação). Hoje: verificação do selo de
-/// autenticidade da Declaração de Comparecimento (alvo do QR Code do PDF).
+/// Páginas/endpoints públicos (sem autenticação): verificação do selo da Declaração
+/// de Comparecimento e o download por token de uso único (link enviado ao paciente).
 /// </summary>
 [ApiController]
 [Route("publico")]
 [AllowAnonymous]
-public sealed class PublicoController(IDeclaracaoComparecimentoService declaracao) : ControllerBase
+public sealed class PublicoController(
+    IDeclaracaoComparecimentoService declaracao,
+    IDownloadTokenService downloads) : ControllerBase
 {
     private static readonly CultureInfo PtBr = new("pt-BR");
+
+    /// <summary>Estado do link de download (não consome) — a página decide baixar vs "expirou".</summary>
+    [HttpGet("download/{token:guid}/status")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> DownloadStatus(Guid token, CancellationToken cancellationToken)
+    {
+        var s = await downloads.ObterStatusAsync(token, cancellationToken);
+        Response.Headers.CacheControl = "no-store";
+        return Ok(new { estado = s.Estado.ToString().ToLowerInvariant(), descricao = s.Descricao });
+    }
+
+    /// <summary>Baixa o arquivo do token (uso único). 410 se já usado/expirado/inexistente.</summary>
+    [HttpGet("download/{token:guid}")]
+    [Produces("application/pdf")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status410Gone)]
+    public async Task<IActionResult> Download(Guid token, CancellationToken cancellationToken)
+    {
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var arquivo = await downloads.ConsumirAsync(token, ip, cancellationToken);
+        Response.Headers.CacheControl = "no-store";
+        if (arquivo is null) return StatusCode(StatusCodes.Status410Gone);
+        return File(arquivo.Bytes, arquivo.ContentType, arquivo.NomeArquivo);
+    }
 
     /// <summary>Página HTML que confirma a validade de uma Declaração de Comparecimento.</summary>
     [HttpGet("declaracoes/{codigo:guid}")]

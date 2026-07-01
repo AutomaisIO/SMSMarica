@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
+using SMSMarica.Core.Downloads;
 using SMSMarica.Core.Exames;
 using SMSMarica.Core.SolicitacoesExame;
 using SMSMarica.Core.SolicitacoesExame.Declaracao;
@@ -17,11 +18,13 @@ namespace SMSMarica.Api.Controllers;
 public sealed class SolicitacoesExameController(
     ISolicitacoesExameService service,
     IDeclaracaoComparecimentoService declaracao,
-    IExameCompletoPdfService exameCompleto) : ControllerBase
+    IExameCompletoPdfService exameCompleto,
+    IDownloadTokenService downloads) : ControllerBase
 {
     private readonly ISolicitacoesExameService _service = service;
     private readonly IDeclaracaoComparecimentoService _declaracao = declaracao;
     private readonly IExameCompletoPdfService _exameCompleto = exameCompleto;
+    private readonly IDownloadTokenService _downloads = downloads;
 
     [HttpGet]
     [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
@@ -101,6 +104,17 @@ public sealed class SolicitacoesExameController(
         Response.Headers.CacheControl = "private, no-store";
         return File(pdf, "application/pdf", $"exame-completo-{id}.pdf");
     }
+
+    /// <summary>
+    /// Gera um link público de download (uso único, validade configurável) do exame
+    /// completo, para enviar ao paciente (ex.: WhatsApp). Retorna a URL e a expiração.
+    /// </summary>
+    [HttpPost("{id:guid}/link-download")]
+    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
+    [ProducesResponseType<DownloadLinkDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<DownloadLinkDto> GerarLinkDownload(Guid id, CancellationToken cancellationToken) =>
+        await _downloads.GerarExameCompletoAsync(id, cancellationToken);
 
     [HttpPost]
     [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Inclusao)]
