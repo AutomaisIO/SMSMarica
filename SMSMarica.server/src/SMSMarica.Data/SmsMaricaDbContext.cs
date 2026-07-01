@@ -105,6 +105,9 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<CidadaoSessao> CidadaoSessoes => Set<CidadaoSessao>();
     public DbSet<CidadaoConsentimento> CidadaoConsentimentos => Set<CidadaoConsentimento>();
 
+    // Trilha de auditoria de ações de usuário (append-only). Ver RegistroAuditoria.
+    public DbSet<RegistroAuditoria> RegistrosAuditoria => Set<RegistroAuditoria>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(SchemaPadrao);

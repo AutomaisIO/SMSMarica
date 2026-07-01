@@ -22,6 +22,7 @@ import {
   Map,
   Route,
   ScanLine,
+  ScrollText,
   Settings2,
   Sparkles,
   Star,
@@ -218,6 +219,20 @@ export const SECOES: SecaoMenu[] = [
         icone: Sparkles,
         modulo: 'InteligenciaAprendizado',
         descricao: 'Aprendizado e ajustes.',
+      },
+    ],
+  },
+  {
+    id: 'sistema',
+    titulo: 'Sistema',
+    icone: ScrollText,
+    itens: [
+      {
+        rotulo: 'Auditoria',
+        to: '/app/auditoria',
+        icone: ScrollText,
+        modulo: 'Auditoria',
+        descricao: 'Trilha de alterações do sistema (somente leitura).',
       },
     ],
   },

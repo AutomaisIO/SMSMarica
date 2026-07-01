@@ -123,6 +123,43 @@ internal static class PacienteFhirMapper
         AplicarPayload(existente, payload);
     }
 
+    /// <summary>
+    /// Corrige SÓ o nome oficial do paciente, preservando todo o resto
+    /// (identificadores, data de nascimento, sexo, contatos, endereço…).
+    /// Atualiza o <see cref="HumanName"/> oficial nativo (lido por
+    /// <see cref="NomeNativo"/>/<see cref="ParaDto"/>) e, quando existir, o
+    /// nome no blob de payload — para manter os dois consistentes.
+    ///
+    /// CRÍTICO: NÃO chamar <c>AplicarPayload</c>, que recria
+    /// Identifier/BirthDate/Gender a partir do payload e apagaria esses dados em
+    /// pacientes importados (Salux/eSUS) que não têm o blob.
+    /// </summary>
+    public static void AplicarNome(Patient existente, string nome)
+    {
+        var limpo = nome.Trim();
+
+        existente.Name ??= [];
+        var oficial = existente.Name.FirstOrDefault(x => x.Use == HumanName.NameUse.Official);
+        if (oficial is null)
+        {
+            oficial = new HumanName { Use = HumanName.NameUse.Official };
+            existente.Name.Insert(0, oficial);
+        }
+        oficial.Text = limpo;
+        // Zera partes estruturadas (importadas) para não conflitar com o Text corrigido.
+        oficial.Family = null;
+        oficial.GivenElement = [];
+
+        // Mantém o blob consistente quando existir; nunca recria a partir de payload vazio.
+        var raw = (existente.GetExtension(PayloadUrl)?.Value as FhirString)?.Value;
+        if (raw is not null)
+        {
+            var pl = JsonSerializer.Deserialize<Payload>(raw, Json)! with { NomeCompleto = limpo };
+            existente.RemoveExtension(PayloadUrl);
+            existente.AddExtension(PayloadUrl, new FhirString(JsonSerializer.Serialize(pl, Json)));
+        }
+    }
+
     public static PacienteDto ParaDto(Patient p)
     {
         var pl = LerPayload(p);

@@ -70,6 +70,7 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'ApiTokens', rotulo: 'API Tokens' },
   { id: 'IntegracoesConfig', rotulo: 'Integrações (credenciais)' },
   { id: 'Faturamento', rotulo: 'Faturamento (TFD/SUS)' },
+  { id: 'Auditoria', rotulo: 'Auditoria (trilha do sistema)' },
 ];
 
 export const ACOES: { id: AcaoPermissao; rotulo: string }[] = [

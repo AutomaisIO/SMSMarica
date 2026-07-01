@@ -24,9 +24,12 @@ import { Tabs, type Aba } from '@/shared/ui/Tabs';
 import {
   useAcessosPaciente,
   useAtendimentosPaciente,
+  useAuditoriaPaciente,
   usePacientePorId,
 } from '@/features/pacientes/api/queries';
 import type { AcessoCidadao } from '@/features/pacientes/api/pacientesApi';
+import type { RegistroAuditoria } from '@/features/auditoria/types';
+import { NomeCompletoVerificavel } from '@/features/pacientes/components/NomeCompletoVerificavel';
 import { SecaoExamesAnexados } from '@/features/pacientes/components/SecaoExamesAnexados';
 import { SinaisVitaisTendencia } from '@/features/pacientes/components/SinaisVitaisTendencia';
 import { abrirImpressaoDocumento, EDOC_CSS } from '@/features/pacientes/lib/imprimirDocumento';
@@ -128,7 +131,7 @@ function Chips({ itens }: { itens: string[] }) {
 function SecaoIdentificacao({ p }: { p: Paciente }) {
   return (
     <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-      <div className="md:col-span-2">{campo('Nome completo', p.nomeCompleto)}</div>
+      <div className="md:col-span-2"><NomeCompletoVerificavel paciente={p} /></div>
       {campo('CPF', formatarCpf(p.cpf))}
       {campo('Data de nascimento', formatarData(p.dataNascimento?.toString()))}
       {campo('CNS (Cartão SUS)', p.cns)}
@@ -651,7 +654,37 @@ function resumirAtendimentos(lista: Atendimento[]): EstatisticasAtendimentos {
   };
 }
 
-type Vista = 'resumo' | 'atendimentos' | 'tratamentos' | 'exames' | 'acessos' | 'dados';
+type Vista = 'resumo' | 'atendimentos' | 'tratamentos' | 'exames' | 'acessos' | 'auditoria' | 'dados';
+
+/** Histórico de alterações auditadas do paciente (ex.: correções de nome). */
+function SecaoAuditoriaPaciente({ pacienteId }: { pacienteId: string }) {
+  const q = useAuditoriaPaciente(pacienteId);
+  const colunas: Coluna<RegistroAuditoria>[] = [
+    { chave: 'data', cabecalho: 'Data/hora', render: (r) => formatarDataHora(r.criadoEm) ?? '—' },
+    { chave: 'usuario', cabecalho: 'Usuário', render: (r) => r.usuarioNome ?? '—' },
+    { chave: 'acao', cabecalho: 'Ação', render: (r) => (r.acao === 'AlteracaoNome' ? 'Alteração de nome' : r.acao) },
+    { chave: 'de', cabecalho: 'De', render: (r) => <span className="text-gray-500">{r.valorAnterior ?? '—'}</span> },
+    { chave: 'para', cabecalho: 'Para', render: (r) => <span className="font-medium text-gray-900">{r.valorNovo ?? '—'}</span> },
+  ];
+  return (
+    <>
+      <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900">
+        <ListChecks className="h-4 w-4" /> Histórico de alterações
+      </div>
+      <Tabela
+        colunas={colunas}
+        dados={q.data?.itens ?? []}
+        chaveLinha={(r) => r.id}
+        carregando={q.isLoading}
+        vazio={
+          !q.isLoading && (q.data?.itens.length ?? 0) === 0
+            ? 'Nenhuma alteração registrada para este paciente.'
+            : undefined
+        }
+      />
+    </>
+  );
+}
 
 function ResumoPaciente({
   p,
@@ -908,6 +941,7 @@ export function PacienteDetalhePage() {
     { id: 'tratamentos', rotulo: 'Tratamentos', badge: listaTratamentos.length },
     { id: 'exames', rotulo: 'Exames anexados' },
     { id: 'acessos', rotulo: 'Histórico de Acesso' },
+    { id: 'auditoria', rotulo: 'Histórico de alterações' },
     { id: 'dados', rotulo: 'Dados pessoais' },
   ];
 
@@ -1039,6 +1073,12 @@ export function PacienteDetalhePage() {
           {vista === 'acessos' ? (
             <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
               <SecaoAcessos pacienteId={id} />
+            </div>
+          ) : null}
+
+          {vista === 'auditoria' ? (
+            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+              <SecaoAuditoriaPaciente pacienteId={id} />
             </div>
           ) : null}
 

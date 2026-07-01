@@ -1,5 +1,6 @@
 import { http } from '@/shared/api/httpClient';
 import type { AnexoExameDto } from '@/features/anamnese/types';
+import type { PaginaAuditoria } from '@/features/auditoria/types';
 import type {
   Atendimento,
   AtualizarPacientePayload,
@@ -70,6 +71,20 @@ export async function atualizarPaciente(
   payload: AtualizarPacientePayload,
 ): Promise<void> {
   await http.put(`/pacientes/${id}`, payload);
+}
+
+/**
+ * Corrige o nome oficial do paciente (fluxo "Verificar nome"). Endpoint dedicado
+ * porque o PUT normal trata o nome como imutável. A mudança é auditada no backend.
+ */
+export async function atualizarNomePaciente(id: string, nomeCompleto: string): Promise<void> {
+  await http.put(`/pacientes/${id}/nome`, { nomeCompleto });
+}
+
+/** Histórico de alterações auditadas deste paciente (ex.: correções de nome). */
+export async function obterAuditoriaPaciente(id: string): Promise<PaginaAuditoria> {
+  const { data } = await http.get<PaginaAuditoria>(`/pacientes/${id}/auditoria`);
+  return data;
 }
 
 export async function desativarPaciente(id: string): Promise<void> {

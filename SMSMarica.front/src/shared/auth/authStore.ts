@@ -33,7 +33,8 @@ export type ModuloPermissao =
   | 'Cidadao'
   | 'IntegracoesConfig'
   | 'Faturamento'
-  | 'ConfiguracaoLaudo';
+  | 'ConfiguracaoLaudo'
+  | 'Auditoria';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 

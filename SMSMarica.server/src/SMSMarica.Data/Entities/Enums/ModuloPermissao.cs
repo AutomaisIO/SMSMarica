@@ -66,4 +66,7 @@ public enum ModuloPermissao
 
     /// <summary>Configurar o cabeçalho/rodapé institucional global dos laudos (PDF).</summary>
     ConfiguracaoLaudo = 32,
+
+    /// <summary>Consultar a trilha de auditoria do sistema (somente leitura).</summary>
+    Auditoria = 33,
 }

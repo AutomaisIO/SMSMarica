@@ -41,6 +41,14 @@ public interface IPacientesService
     Task AtualizarAsync(Guid id, AtualizarPacienteRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Corrige SÓ o nome oficial do paciente (fluxo "Verificar nome"), preservando
+    /// o restante do cadastro. Endpoint dedicado porque <see cref="AtualizarAsync"/>
+    /// trata o nome como imutável. A alteração fica registrada na trilha de
+    /// auditoria (nome anterior → novo, usuário, data). No-op se o nome não muda.
+    /// </summary>
+    Task AtualizarNomeAsync(Guid id, AtualizarNomePacienteRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Adiciona um telefone aos contatos do paciente (append em
     /// <c>Patient.telecom</c> nativo), sem substituir os existentes. Idempotente:
     /// se o número já constar, é no-op.

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  atualizarNomePaciente,
   atualizarPaciente,
   buscarPacientes,
   cadastrarPaciente,
@@ -7,6 +8,7 @@ import {
   obterAcessos,
   obterAnexosExame,
   obterAtendimentos,
+  obterAuditoriaPaciente,
   obterPacientePorCpf,
   obterPacientePorId,
   reativarPaciente,
@@ -24,6 +26,7 @@ export const pacientesKeys = {
   atendimentos: (id: string) => ['pacientes', 'atendimentos', id] as const,
   acessos: (id: string) => ['pacientes', 'acessos', id] as const,
   anexosExame: (id: string) => ['pacientes', 'anexos-exame', id] as const,
+  auditoria: (id: string) => ['pacientes', 'auditoria', id] as const,
 };
 
 export function useAtendimentosPaciente(id: string | null) {
@@ -100,6 +103,31 @@ export function useAtualizarPaciente() {
     onSuccess: (_data, variables) => {
       client.invalidateQueries({ queryKey: pacientesKeys.raiz });
       client.invalidateQueries({ queryKey: pacientesKeys.porId(variables.id) });
+    },
+  });
+}
+
+export function useAuditoriaPaciente(id: string | null) {
+  return useQuery({
+    queryKey: id ? pacientesKeys.auditoria(id) : ['pacientes', 'auditoria', 'nenhum'],
+    queryFn: () => {
+      if (!id) throw new Error('ID não informado.');
+      return obterAuditoriaPaciente(id);
+    },
+    enabled: Boolean(id),
+  });
+}
+
+/** Corrige o nome oficial do paciente (fluxo "Verificar nome"). */
+export function useAtualizarNomePaciente() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, nomeCompleto }: { id: string; nomeCompleto: string }) =>
+      atualizarNomePaciente(id, nomeCompleto),
+    onSuccess: (_data, variables) => {
+      client.invalidateQueries({ queryKey: pacientesKeys.raiz });
+      client.invalidateQueries({ queryKey: pacientesKeys.porId(variables.id) });
+      client.invalidateQueries({ queryKey: pacientesKeys.auditoria(variables.id) });
     },
   });
 }

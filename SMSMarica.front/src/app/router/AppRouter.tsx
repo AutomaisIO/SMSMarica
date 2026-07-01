@@ -63,6 +63,7 @@ import { PepSincronizacaoPage } from '@/features/pep-sincronizacao/pages/PepSinc
 import { ApiTokensPage } from '@/features/api-tokens/pages/ApiTokensPage';
 import { IntegracoesPage } from '@/features/integracoes/pages/IntegracoesPage';
 import { FaturamentoPage } from '@/features/faturamento/pages/FaturamentoPage';
+import { AuditoriaPage } from '@/features/auditoria/pages/AuditoriaPage';
 import { useAuth } from '@/shared/auth/authStore';
 
 function RedirecionamentoRaiz() {
@@ -156,6 +157,7 @@ export function AppRouter() {
           <Route path="pep-sincronizacao" element={<PepSincronizacaoPage />} />
           <Route path="api-tokens" element={<ApiTokensPage />} />
           <Route path="integracoes" element={<IntegracoesPage />} />
+          <Route path="auditoria" element={<AuditoriaPage />} />
         </Route>
       </Route>
 

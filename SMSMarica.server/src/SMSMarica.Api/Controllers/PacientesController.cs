@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
 using SMSMarica.Core.Atendimentos;
 using SMSMarica.Core.Atendimentos.Dtos;
+using SMSMarica.Core.Auditoria;
+using SMSMarica.Core.Auditoria.Dtos;
 using SMSMarica.Core.Cidadao;
 using SMSMarica.Core.Cidadao.Dtos;
 using SMSMarica.Core.Pacientes;
@@ -15,11 +17,13 @@ namespace SMSMarica.Api.Controllers;
 public sealed class PacientesController(
     IPacientesService service,
     IAtendimentosService atendimentos,
-    ICidadaoSessaoService sessoes) : ControllerBase
+    ICidadaoSessaoService sessoes,
+    IAuditoriaService auditoria) : ControllerBase
 {
     private readonly IPacientesService _service = service;
     private readonly IAtendimentosService _atendimentos = atendimentos;
     private readonly ICidadaoSessaoService _sessoes = sessoes;
+    private readonly IAuditoriaService _auditoria = auditoria;
 
     /// <summary>
     /// Busca em tempo real por nome (qualquer parte, múltiplos tokens) ou CPF.
@@ -136,6 +140,39 @@ public sealed class PacientesController(
         await _service.AtualizarAsync(id, request, cancellationToken);
         return NoContent();
     }
+
+    /// <summary>
+    /// Corrige o nome oficial do paciente (fluxo "Verificar nome": recheca o CPF
+    /// no motor de busca e permite aplicar o nome retornado ou um ajuste manual).
+    /// O nome é normalmente imutável — este é o único ponto que o altera, e a
+    /// mudança fica registrada na trilha de auditoria.
+    /// </summary>
+    [HttpPut("{id:guid}/nome")]
+    [RequerPermissao(ModuloPermissao.Pacientes, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AtualizarNome(
+        Guid id,
+        [FromBody] AtualizarNomePacienteRequest request,
+        CancellationToken cancellationToken)
+    {
+        await _service.AtualizarNomeAsync(id, request, cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Histórico de alterações auditadas deste paciente (ex.: correções de nome),
+    /// mais recentes primeiro. Gate por Pacientes.Consulta (mesmo do cadastro), para
+    /// que quem abre a ficha veja o histórico sem depender do módulo Auditoria.
+    /// </summary>
+    [HttpGet("{id:guid}/auditoria")]
+    [RequerPermissao(ModuloPermissao.Pacientes, AcoesPermissao.Consulta)]
+    [ProducesResponseType<PaginaAuditoriaDto>(StatusCodes.Status200OK)]
+    public async Task<PaginaAuditoriaDto> Auditoria(Guid id, CancellationToken cancellationToken) =>
+        await _auditoria.BuscarAsync(
+            new AuditoriaFiltroDto(Entidade: "Paciente", EntidadeId: id.ToString(), Tamanho: 200),
+            cancellationToken);
 
     /// <summary>
     /// Adiciona um telefone aos contatos do paciente (append em Patient.telecom),

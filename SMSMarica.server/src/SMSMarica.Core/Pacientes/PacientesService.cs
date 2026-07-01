@@ -10,7 +10,9 @@ namespace SMSMarica.Core.Pacientes;
 /// proxy: consultar/cadastrar/atualizar paciente vira chamada à API FHIR
 /// (ADR-0010 + regra "FHIR é API-only; smsmarica é o consumidor").
 /// </summary>
-public sealed class PacientesService(IPacienteFhirClient fhir) : IPacientesService
+public sealed class PacientesService(
+    IPacienteFhirClient fhir,
+    Auditoria.IAuditoriaService auditoria) : IPacientesService
 {
     private const int LimiteBusca = 10;
 
@@ -99,6 +101,22 @@ public sealed class PacientesService(IPacienteFhirClient fhir) : IPacientesServi
 
         PacienteFhirMapper.AplicarAtualizacao(patient, request);
         await fhir.AtualizarAsync(id, patient, cancellationToken);
+    }
+
+    public async Task AtualizarNomeAsync(Guid id, AtualizarNomePacienteRequest request, CancellationToken cancellationToken = default)
+    {
+        var patient = await fhir.ObterAsync(id, cancellationToken)
+            ?? throw new NaoEncontradoException("Paciente", id);
+
+        var nomeAnterior = PacienteFhirMapper.NomeDe(patient);
+        var nomeNovo = request.NomeCompleto.Trim();
+        if (string.Equals(nomeAnterior, nomeNovo, StringComparison.Ordinal)) return;
+
+        PacienteFhirMapper.AplicarNome(patient, nomeNovo);
+        await fhir.AtualizarAsync(id, patient, cancellationToken);
+
+        await auditoria.RegistrarAsync(
+            "Paciente", id.ToString(), "AlteracaoNome", nomeAnterior, nomeNovo, cancellationToken);
     }
 
     public async Task AdicionarTelefoneAsync(
