@@ -317,7 +317,8 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
     {
         var existentes = await ctx.Escritor.BuscarPorIdentifierAsync(tipo, system, valor, ct);
         var atual = existentes.Entry.Select(e => e.Resource).FirstOrDefault(r => r is not null);
-        if (atual is not null)
+
+        for (var tentativa = 1; atual is not null; tentativa++)
         {
             UnirIdentifiers(novo, atual);
             // Merge/preserve (ADR-0020): reimport NÃO sobrescreve blob, campos editados no painel
@@ -325,9 +326,21 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
             if (novo is Patient np && atual is Patient ap)
                 Pacientes.Fhir.PatientMergeFhir.PreservarDoExistente(np, ap);
             novo.Id = atual.Id;
-            var atualizado = await ctx.Escritor.AtualizarAsync(tipo, atual.Id!, novo, ct);
-            return atualizado.Id!;
+            // If-Match: se o painel editou entre a leitura e o PUT, re-lê e re-mergeia (preserva a edição).
+            novo.Meta ??= new Meta();
+            novo.Meta.VersionId = atual.Meta?.VersionId;
+            try
+            {
+                var atualizado = await ctx.Escritor.AtualizarAsync(tipo, atual.Id!, novo, ct);
+                return atualizado.Id!;
+            }
+            catch (Pacientes.Fhir.ConflitoVersaoHubException) when (tentativa < 3)
+            {
+                var refetch = await ctx.Escritor.BuscarPorIdentifierAsync(tipo, system, valor, ct);
+                atual = refetch.Entry.Select(e => e.Resource).FirstOrDefault(r => r is not null);
+            }
         }
+
         var criado = await ctx.Escritor.CriarAsync(novo, ct);
         return criado.Id!;
     }

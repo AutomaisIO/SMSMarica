@@ -21,7 +21,14 @@ public sealed class HubFhirEscritor(HttpClient http) : IHubFhirEscritor
 
     public async Task<Resource> AtualizarAsync(string tipo, string id, Resource recurso, CancellationToken ct = default)
     {
-        using var resp = await http.PutAsync($"fhir/{tipo}/{id}", Body(recurso), ct);
+        using var req = new HttpRequestMessage(HttpMethod.Put, $"fhir/{tipo}/{id}") { Content = Body(recurso) };
+        // Concorrência otimista (If-Match): se o painel editou entre a leitura e este PUT, o hub
+        // devolve 409 e o chamador re-lê/re-mergeia (preserva a edição do painel — ADR-0020 #1).
+        if (recurso.Meta?.VersionId is { Length: > 0 } v)
+            req.Headers.TryAddWithoutValidation("If-Match", $"W/\"{v}\"");
+        using var resp = await http.SendAsync(req, ct);
+        if (resp.StatusCode is HttpStatusCode.Conflict or HttpStatusCode.PreconditionFailed)
+            throw new ConflitoVersaoHubException(Guid.TryParse(id, out var g) ? g : Guid.Empty);
         return await Ler(resp, ct);
     }
 

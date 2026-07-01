@@ -23,7 +23,14 @@ public sealed class PacienteFhirClient(HttpClient http) : IPacienteFhirClient
 
     public async Task<Patient> AtualizarAsync(Guid id, Patient patient, CancellationToken ct = default)
     {
-        using var resp = await http.PutAsync($"fhir/Patient/{id}", Body(patient), ct);
+        using var req = new HttpRequestMessage(HttpMethod.Put, $"fhir/Patient/{id}") { Content = Body(patient) };
+        // Concorrência otimista: manda a versão que lemos (Meta.VersionId) no If-Match. O hub
+        // devolve 409 se alguém alterou o recurso nesse meio-tempo.
+        if (patient.Meta?.VersionId is { Length: > 0 } v)
+            req.Headers.TryAddWithoutValidation("If-Match", $"W/\"{v}\"");
+        using var resp = await http.SendAsync(req, ct);
+        if (resp.StatusCode is HttpStatusCode.Conflict or HttpStatusCode.PreconditionFailed)
+            throw new ConflitoVersaoHubException(id);
         return await LerRecurso<Patient>(resp, ct);
     }
 

@@ -39,10 +39,14 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
         return FhirJson.Parse<Patient>(row.Content);
     }
 
-    public async Task<Patient> AtualizarAsync(Guid id, Patient patient, CancellationToken ct = default)
+    public async Task<Patient> AtualizarAsync(Guid id, Patient patient, int? versaoEsperada = null, CancellationToken ct = default)
     {
         var row = await db.Patients.FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct)
             ?? throw new RecursoNaoEncontradoException(TipoRecurso, id.ToString());
+
+        // Concorrência otimista (If-Match): rejeita escrita sobre versão obsoleta.
+        if (versaoEsperada is int esperada && esperada != row.VersionId)
+            throw new ConflitoVersaoException(TipoRecurso, id.ToString(), esperada, row.VersionId);
 
         var agora = clock.GetUtcNow();
         var versao = row.VersionId + 1;

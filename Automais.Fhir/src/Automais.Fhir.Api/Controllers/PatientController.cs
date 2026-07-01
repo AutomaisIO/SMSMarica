@@ -30,13 +30,27 @@ public sealed class PatientController(IPatientService service) : ControllerBase
         return FhirResponse.Recurso(patient);
     }
 
-    /// <summary>PUT /fhir/Patient/{id} — substitui um Patient existente.</summary>
+    /// <summary>
+    /// PUT /fhir/Patient/{id} — substitui um Patient existente. Se enviado o header
+    /// <c>If-Match: W/"&lt;versão&gt;"</c>, aplica concorrência otimista (409 em versão obsoleta).
+    /// </summary>
     [HttpPut("{id}")]
     public async Task<IActionResult> Atualizar(string id, CancellationToken ct)
     {
         var patient = await LerCorpoAsync(ct);
-        var atualizado = await service.AtualizarAsync(ParseId(id), patient, ct);
+        var versaoEsperada = ParseIfMatch(Request.Headers.IfMatch.ToString());
+        var atualizado = await service.AtualizarAsync(ParseId(id), patient, versaoEsperada, ct);
+        if (atualizado.Meta?.VersionId is { } v)
+            Response.Headers.ETag = $"W/\"{v}\"";
         return FhirResponse.Recurso(atualizado);
+    }
+
+    /// <summary>Extrai a versão int de um header If-Match no formato <c>W/"5"</c> (ou <c>"5"</c>/<c>5</c>). Null se ausente/inválido.</summary>
+    private static int? ParseIfMatch(string? ifMatch)
+    {
+        if (string.IsNullOrWhiteSpace(ifMatch) || ifMatch == "*") return null;
+        var digitos = new string([.. ifMatch.Where(char.IsDigit)]);
+        return int.TryParse(digitos, out var v) ? v : null;
     }
 
     /// <summary>DELETE /fhir/Patient/{id} — exclusão lógica.</summary>

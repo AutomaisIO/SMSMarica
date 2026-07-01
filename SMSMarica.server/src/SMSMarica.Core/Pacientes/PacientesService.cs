@@ -96,27 +96,31 @@ public sealed class PacientesService(
 
     public async Task AtualizarAsync(Guid id, AtualizarPacienteRequest request, CancellationToken cancellationToken = default)
     {
-        var patient = await fhir.ObterAsync(id, cancellationToken)
-            ?? throw new NaoEncontradoException("Paciente", id);
-
-        PacienteFhirMapper.AplicarAtualizacao(patient, request);
-        await fhir.AtualizarAsync(id, patient, cancellationToken);
+        await AtualizarComRetryAsync(id, patient =>
+        {
+            PacienteFhirMapper.AplicarAtualizacao(patient, request);
+            return true;
+        }, cancellationToken);
     }
 
     public async Task AtualizarNomeAsync(Guid id, AtualizarNomePacienteRequest request, CancellationToken cancellationToken = default)
     {
-        var patient = await fhir.ObterAsync(id, cancellationToken)
-            ?? throw new NaoEncontradoException("Paciente", id);
-
-        var nomeAnterior = PacienteFhirMapper.NomeDe(patient);
         var nomeNovo = request.NomeCompleto.Trim();
-        if (string.Equals(nomeAnterior, nomeNovo, StringComparison.Ordinal)) return;
+        string? nomeAnterior = null;
+        var alterou = false;
 
-        PacienteFhirMapper.AplicarNome(patient, nomeNovo);
-        await fhir.AtualizarAsync(id, patient, cancellationToken);
+        await AtualizarComRetryAsync(id, patient =>
+        {
+            nomeAnterior = PacienteFhirMapper.NomeDe(patient);
+            if (string.Equals(nomeAnterior, nomeNovo, StringComparison.Ordinal)) return false;
+            PacienteFhirMapper.AplicarNome(patient, nomeNovo);
+            alterou = true;
+            return true;
+        }, cancellationToken);
 
-        await auditoria.RegistrarAsync(
-            "Paciente", id.ToString(), "AlteracaoNome", nomeAnterior, nomeNovo, cancellationToken);
+        if (alterou)
+            await auditoria.RegistrarAsync(
+                "Paciente", id.ToString(), "AlteracaoNome", nomeAnterior, nomeNovo, cancellationToken);
     }
 
     public async Task AdicionarTelefoneAsync(
@@ -126,25 +130,49 @@ public sealed class PacientesService(
         if (numero.Length == 0)
             throw new ValidacaoException("paciente.telefone_obrigatorio", "Informe o número do telefone.");
 
-        var patient = await fhir.ObterAsync(id, cancellationToken)
-            ?? throw new NaoEncontradoException("Paciente", id);
-
-        // Append em Patient.telecom nativo, sem tocar nos demais dados. Idempotente:
-        // se o mesmo número (comparando só dígitos) já estiver lá, não duplica.
-        var alvo = Digitos(numero);
-        patient.Telecom ??= [];
-        var jaExiste = alvo.Length > 0 && patient.Telecom.Any(t =>
-            t.System == ContactPoint.ContactPointSystem.Phone && Digitos(t.Value) == alvo);
-        if (jaExiste) return;
-
-        patient.Telecom.Add(new ContactPoint
+        await AtualizarComRetryAsync(id, patient =>
         {
-            System = ContactPoint.ContactPointSystem.Phone,
-            Value = numero,
-            Use = MapearUso(request.Tipo),
-        });
+            // Append em Patient.telecom nativo, sem tocar nos demais dados. Idempotente:
+            // se o mesmo número (comparando só dígitos) já estiver lá, não duplica.
+            var alvo = Digitos(numero);
+            patient.Telecom ??= [];
+            var jaExiste = alvo.Length > 0 && patient.Telecom.Any(t =>
+                t.System == ContactPoint.ContactPointSystem.Phone && Digitos(t.Value) == alvo);
+            if (jaExiste) return false;
 
-        await fhir.AtualizarAsync(id, patient, cancellationToken);
+            patient.Telecom.Add(new ContactPoint
+            {
+                System = ContactPoint.ContactPointSystem.Phone,
+                Value = numero,
+                Use = MapearUso(request.Tipo),
+            });
+            return true;
+        }, cancellationToken);
+    }
+
+    /// <summary>
+    /// Read-modify-write com concorrência otimista: lê o Patient, aplica <paramref name="mutar"/> e grava
+    /// com If-Match; em conflito (edição concorrente) re-lê e reaplica, até <paramref name="maxTentativas"/>.
+    /// <paramref name="mutar"/> devolve <c>false</c> para no-op (não grava).
+    /// </summary>
+    private async Task AtualizarComRetryAsync(Guid id, Func<Patient, bool> mutar,
+        CancellationToken ct, int maxTentativas = 3)
+    {
+        for (var tentativa = 1; ; tentativa++)
+        {
+            var patient = await fhir.ObterAsync(id, ct)
+                ?? throw new NaoEncontradoException("Paciente", id);
+            if (!mutar(patient)) return;
+            try
+            {
+                await fhir.AtualizarAsync(id, patient, ct);
+                return;
+            }
+            catch (Pacientes.Fhir.ConflitoVersaoHubException) when (tentativa < maxTentativas)
+            {
+                // Alguém alterou o paciente entre o GET e o PUT — re-lê e reaplica.
+            }
+        }
     }
 
     public async Task AtualizarFotoAsync(Guid id, string? fotoBase64, CancellationToken cancellationToken = default)

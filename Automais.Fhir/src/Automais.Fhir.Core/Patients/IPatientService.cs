@@ -17,8 +17,11 @@ public interface IPatientService
     /// <summary>Lê um Patient pelo id lógico. Lança se não existir/estiver excluído.</summary>
     Task<Patient> LerAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>Substitui um Patient existente (PUT FHIR). Incrementa a versão.</summary>
-    Task<Patient> AtualizarAsync(Guid id, Patient patient, CancellationToken ct = default);
+    /// <summary>
+    /// Substitui um Patient existente (PUT FHIR). Incrementa a versão. Se <paramref name="versaoEsperada"/>
+    /// for informada (If-Match) e diferir da versão atual, lança <c>ConflitoVersaoException</c> (409).
+    /// </summary>
+    Task<Patient> AtualizarAsync(Guid id, Patient patient, int? versaoEsperada = null, CancellationToken ct = default);
 
     /// <summary>Exclusão lógica (DELETE FHIR).</summary>
     Task ExcluirAsync(Guid id, CancellationToken ct = default);

@@ -26,3 +26,14 @@ public sealed class RecursoInvalidoException(string mensagem)
     public override string IssueCode => "invalid";
     public override int StatusHttp => 400;
 }
+
+/// <summary>
+/// Conflito de versão (If-Match): a versão esperada pelo cliente difere da atual — houve edição
+/// concorrente. HTTP 409. O cliente deve re-ler e reaplicar (read-modify-write).
+/// </summary>
+public sealed class ConflitoVersaoException(string tipo, string id, int esperada, int atual)
+    : FhirException($"{tipo}/{id}: versão esperada {esperada} difere da atual {atual} (edição concorrente).")
+{
+    public override string IssueCode => "conflict";
+    public override int StatusHttp => 409;
+}
