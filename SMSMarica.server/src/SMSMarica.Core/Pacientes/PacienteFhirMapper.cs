@@ -1,7 +1,10 @@
+using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using Hl7.Fhir.Model;
 using SMSMarica.Core.Common.Dtos;
 using SMSMarica.Core.Pacientes.Dtos;
+using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Pacientes;
@@ -23,6 +26,8 @@ internal static class PacienteFhirMapper
     private const string SystemCpf = "https://fhir.saude.gov.br/sid/cpf";
     private const string SystemCns = "https://fhir.saude.gov.br/sid/cns";
     private const string SystemRg = "urn:br:gov:rg";
+    private const string SysV3Marital = "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus";
+    private const string ExtHouseNumber = "http://hl7.org/fhir/StructureDefinition/iso21090-ADXP-houseNumber";
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -189,8 +194,12 @@ internal static class PacienteFhirMapper
         var pai = ContatoNome(p, "FTH") ?? pl.NomeDoPai;
         var resp = ContatoNome(p, "GUARD") ?? pl.ResponsavelLegal;
         var endereco = EnderecoNativo(p) ?? pl.Endereco;
-        var fonePrinc = TelecomNativo(p, ContactPoint.ContactPointSystem.Phone) ?? pl.TelefonePrincipal;
+        var fonePrinc = TelefonePrincipalNativo(p) ?? pl.TelefonePrincipal;
+        var celular = TelefonePorUsoNativo(p, ContactPoint.ContactPointUse.Mobile) ?? pl.TelefoneCelular;
+        var residencial = TelefonePorUsoNativo(p, ContactPoint.ContactPointUse.Home) ?? pl.TelefoneResidencial;
         var email = TelecomNativo(p, ContactPoint.ContactPointSystem.Email) ?? pl.Email;
+        var estadoCivil = EstadoCivilNativo(p) ?? pl.EstadoCivil;
+        var nomeSocial = NomeSocialNativo(p) ?? pl.NomeSocial;
         // Tudo do FHIR: todos os identificadores, óbito, cônjuge, fonte e extras crus.
         var identificadores = (p.Identifier ?? [])
             .Where(i => !string.IsNullOrWhiteSpace(i.Value))
@@ -203,12 +212,12 @@ internal static class PacienteFhirMapper
         return new PacienteDto(
             Guid.Parse(p.Id!), nome, cpf, cns, pl.Latitude, pl.Longitude,
             p.Active ?? true, p.Meta?.LastUpdated?.UtcDateTime ?? default,
-            rg, nasc, sexo, pl.EstadoCivil, pl.RacaCor, pl.Escolaridade,
+            rg, nasc, sexo, estadoCivil, pl.RacaCor, pl.Escolaridade,
             pl.Ocupacao, pl.Naturalidade, pl.Nacionalidade, mae, pai, resp,
-            endereco, fonePrinc, pl.TelefoneCelular, pl.TelefoneResidencial, email,
+            endereco, fonePrinc, celular, residencial, email,
             pl.ContatoEmergencia, pl.AlturaCm, pl.PesoKg, pl.TipoSanguineo, pl.FatorRh,
             pl.Alergias, pl.MedicamentosContinuos, pl.Comorbidades, pl.Deficiencias, pl.PlanoSaude,
-            pl.Observacoes, pl.FotoBase64, pl.NomeSocial,
+            pl.Observacoes, pl.FotoBase64, nomeSocial,
             identificadores, obito, conjuge, fonte, dadosFonte);
     }
 
@@ -230,8 +239,8 @@ internal static class PacienteFhirMapper
         return new PacienteListItemDto(
             Guid.Parse(p.Id!), NomeNativo(p) ?? pl.NomeCompleto, IdentValor(p, SystemCpf) ?? pl.Cpf ?? string.Empty,
             ParseData(p.BirthDate) ?? pl.DataNascimento, ContatoNome(p, "MTH") ?? pl.NomeDaMae,
-            TelecomNativo(p, ContactPoint.ContactPointSystem.Phone) ?? pl.TelefonePrincipal,
-            pl.FotoBase64, p.Active ?? true, pl.NomeSocial);
+            TelefonePrincipalNativo(p) ?? pl.TelefonePrincipal,
+            pl.FotoBase64, p.Active ?? true, NomeSocialNativo(p) ?? pl.NomeSocial);
     }
 
     /// <summary>Nome do paciente (para snapshots em recursos dependentes).</summary>
@@ -267,69 +276,111 @@ internal static class PacienteFhirMapper
 
     private static EnderecoDto? EnderecoNativo(Patient p)
     {
-        var a = p.Address?.FirstOrDefault();
+        var a = p.Address?.FirstOrDefault(x => x.Use == Address.AddressUse.Home) ?? p.Address?.FirstOrDefault();
         if (a is null) return null;
-        var linhas = a.Line?.ToList() ?? [];
-        var logradouro = linhas.Count > 0 ? linhas[0] : null;
+        var linhaEls = a.LineElement?.ToList() ?? [];
+        var logradouro = linhaEls.Count > 0 ? linhaEls[0].Value : null;
         if (string.IsNullOrWhiteSpace(logradouro) && string.IsNullOrWhiteSpace(a.City)
             && string.IsNullOrWhiteSpace(a.PostalCode))
             return null;
+        // Número: extension iso21090-ADXP-houseNumber no Line[0] (gravado pelo painel).
+        var numero = linhaEls.Count > 0
+            ? (linhaEls[0].GetExtension(ExtHouseNumber)?.Value as FhirString)?.Value
+            : null;
         return new EnderecoDto(
             a.PostalCode ?? string.Empty,
             logradouro ?? string.Empty,
-            null,
-            linhas.Count > 1 ? linhas[1] : null,
+            numero,
+            linhaEls.Count > 1 ? linhaEls[1].Value : null,
             a.District ?? string.Empty,
             a.City ?? string.Empty,
             a.State ?? string.Empty,
             a.Text);
     }
 
-    private static void AplicarPayload(Patient patient, Payload pl)
+    private static string? NomeSocialNativo(Patient p)
     {
-        // Nunca emitir HumanName com text vazio (o hub FHIR rejeita com 400). Se o
-        // payload não trouxer nome (paciente importado sem blob), preserva o nativo.
-        var nomeOficial = string.IsNullOrWhiteSpace(pl.NomeCompleto)
-            ? NomeNativo(patient)
-            : pl.NomeCompleto.Trim();
-        patient.Name = string.IsNullOrWhiteSpace(nomeOficial)
-            ? []
-            : [new HumanName { Use = HumanName.NameUse.Official, Text = nomeOficial }];
-        if (!string.IsNullOrWhiteSpace(pl.NomeSocial))
-            patient.Name.Add(new HumanName { Use = HumanName.NameUse.Nickname, Text = pl.NomeSocial });
-
-        // MERGE, nunca replace-all: preserva os identificadores nativos que o smsmarica
-        // NÃO gerencia (PIS, passaporte, RNE, certidão, prontuários SGH/CEM e sobretudo
-        // urn:salux:cd_paciente — a chave de re-dedup da importação). Antes, "Identifier = []"
-        // apagava tudo isso a cada edição de paciente importado (perda silenciosa + risco de
-        // duplicar histórico clínico no próximo reimport). Só faz upsert de CPF/CNS/RG.
-        patient.Identifier ??= [];
-        UpsertIdentifier(patient, SystemCpf, pl.Cpf);
-        UpsertIdentifier(patient, SystemCns, pl.Cns);
-        UpsertIdentifier(patient, SystemRg, pl.Rg);
-
-        patient.BirthDate = pl.DataNascimento?.ToString("yyyy-MM-dd");
-        patient.Gender = pl.Sexo switch
-        {
-            Sexo.Masculino => AdministrativeGender.Male,
-            Sexo.Feminino => AdministrativeGender.Female,
-            _ => AdministrativeGender.Unknown,
-        };
-
-        patient.RemoveExtension(PayloadUrl);
-        patient.AddExtension(PayloadUrl, new FhirString(JsonSerializer.Serialize(pl, Json)));
+        var s = p.Name?.FirstOrDefault(n => n.Use == HumanName.NameUse.Nickname)?.Text;
+        return string.IsNullOrWhiteSpace(s) ? null : s;
     }
 
-    /// <summary>
-    /// Upsert de um identificador por <c>system</c>, preservando os demais. Valor vazio
-    /// é no-op (não remove o existente) — evita "limpar" um identificador imutável por engano.
-    /// </summary>
-    private static void UpsertIdentifier(Patient patient, string system, string? valor)
+    private static string? TelefonePrincipalNativo(Patient p)
     {
-        if (string.IsNullOrWhiteSpace(valor)) return;
-        var existente = patient.Identifier.FirstOrDefault(i => i.System == system);
-        if (existente is null) patient.Identifier.Add(new Identifier(system, valor));
-        else existente.Value = valor;
+        var fones = p.Telecom?.Where(t => t.System == ContactPoint.ContactPointSystem.Phone).ToList() ?? [];
+        var princ = fones.FirstOrDefault(t => t.Rank == 1) ?? fones.FirstOrDefault();
+        return string.IsNullOrWhiteSpace(princ?.Value) ? null : princ.Value;
+    }
+
+    private static string? TelefonePorUsoNativo(Patient p, ContactPoint.ContactPointUse uso)
+    {
+        var fones = p.Telecom?.Where(t => t.System == ContactPoint.ContactPointSystem.Phone).ToList() ?? [];
+        var princ = fones.FirstOrDefault(t => t.Rank == 1) ?? fones.FirstOrDefault();
+        var principalDig = Digitos(princ?.Value);
+        var alvo = fones.FirstOrDefault(t => t.Use == uso && Digitos(t.Value) != principalDig);
+        return string.IsNullOrWhiteSpace(alvo?.Value) ? null : alvo.Value;
+    }
+
+    private static EstadoCivil? EstadoCivilNativo(Patient p)
+    {
+        var mc = p.MaritalStatus;
+        if (mc is null) return null;
+        var code = mc.Coding?.FirstOrDefault(c => c.System == SysV3Marital)?.Code;
+        var porCode = code switch
+        {
+            "S" => EstadoCivil.Solteiro,
+            "M" => EstadoCivil.Casado,
+            "T" => EstadoCivil.UniaoEstavel,
+            "D" => EstadoCivil.Divorciado,
+            "W" => EstadoCivil.Viuvo,
+            "L" => EstadoCivil.Separado,
+            _ => (EstadoCivil?)null,
+        };
+        return porCode ?? NormalizarEstadoCivilTexto(mc.Text);
+    }
+
+    /// <summary>Normaliza o texto pt-BR do estado civil (importado grava só .text, ex.: "CASADO(A)").</summary>
+    private static EstadoCivil? NormalizarEstadoCivilTexto(string? texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto)) return null;
+        var n = new string(texto.Trim().ToUpperInvariant()
+            .Normalize(NormalizationForm.FormD)
+            .Where(c => CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
+            .ToArray());
+        n = n.Replace("(A)", string.Empty).Replace("(O)", string.Empty).Replace("(", string.Empty).Replace(")", string.Empty).Trim();
+        if (n.StartsWith("SOLTEIR", StringComparison.Ordinal)) return EstadoCivil.Solteiro;
+        if (n.StartsWith("CASAD", StringComparison.Ordinal)) return EstadoCivil.Casado;
+        if (n.Contains("UNIAO", StringComparison.Ordinal)) return EstadoCivil.UniaoEstavel;
+        if (n.StartsWith("DIVORCIAD", StringComparison.Ordinal)) return EstadoCivil.Divorciado;
+        if (n.StartsWith("VIUV", StringComparison.Ordinal)) return EstadoCivil.Viuvo;
+        if (n.StartsWith("SEPARAD", StringComparison.Ordinal)) return EstadoCivil.Separado;
+        return null;
+    }
+
+    private static void AplicarPayload(Patient patient, Payload pl)
+    {
+        // ESCRITA NATIVA (fonte da verdade), por MERGE/upsert — mesmo shape do import
+        // (SaluxFhirMapper). Preserva identificadores/campos não geridos; nunca replace-all.
+        // Nome vazio (paciente importado sem blob) preserva o nativo (evita name.text="" → 400).
+        PatientMergeFhir.UpsertNomeOficial(patient,
+            string.IsNullOrWhiteSpace(pl.NomeCompleto) ? NomeNativo(patient) : pl.NomeCompleto);
+        PatientMergeFhir.UpsertNomeSocial(patient, pl.NomeSocial);
+        PatientMergeFhir.UpsertIdentifier(patient, SystemCpf, pl.Cpf);
+        PatientMergeFhir.UpsertIdentifier(patient, SystemCns, pl.Cns);
+        PatientMergeFhir.UpsertIdentifier(patient, SystemRg, pl.Rg);
+        PatientMergeFhir.SetBirthDate(patient, pl.DataNascimento);
+        PatientMergeFhir.SetGender(patient, pl.Sexo);
+        PatientMergeFhir.SetMaritalStatus(patient, pl.EstadoCivil);
+        PatientMergeFhir.UpsertEndereco(patient, pl.Endereco);
+        PatientMergeFhir.AplicarContatos(patient, pl.TelefonePrincipal, pl.TelefoneCelular, pl.TelefoneResidencial, pl.Email);
+        PatientMergeFhir.UpsertContato(patient, "MTH", pl.NomeDaMae);
+        PatientMergeFhir.UpsertContato(patient, "FTH", pl.NomeDoPai);
+        PatientMergeFhir.UpsertContato(patient, "GUARD", pl.ResponsavelLegal);
+
+        // Dual-write do blob (Fase A: rede de segurança / reversibilidade; sai na Fase C).
+        // Foto, geolocalização (lat/long) e contato de emergência ainda vivem só no blob
+        // nesta fase — ParaDto os lê do blob (ver ADR-0020).
+        patient.RemoveExtension(PayloadUrl);
+        patient.AddExtension(PayloadUrl, new FhirString(JsonSerializer.Serialize(pl, Json)));
     }
 
     private static Payload LerPayload(Patient p)
