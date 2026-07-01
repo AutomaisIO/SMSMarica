@@ -88,9 +88,15 @@ public sealed class SolicitacoesExameController(
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DeclaracaoComparecimento(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> DeclaracaoComparecimento(
+        Guid id,
+        [FromQuery] DateTime? horaEntrada,
+        [FromQuery] DateTime? horaSaida,
+        [FromQuery] string? motivo,
+        CancellationToken cancellationToken)
     {
-        var pdf = await _declaracao.GerarAsync(id, cancellationToken);
+        var parametros = new DeclaracaoComparecimentoParametros(horaEntrada, horaSaida, motivo);
+        var pdf = await _declaracao.GerarAsync(id, parametros, cancellationToken);
         Response.Headers.CacheControl = "private, no-store";
         return File(pdf, "application/pdf", $"declaracao-comparecimento-{id}.pdf");
     }
