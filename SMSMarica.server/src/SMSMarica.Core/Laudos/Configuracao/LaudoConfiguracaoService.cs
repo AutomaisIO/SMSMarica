@@ -46,6 +46,7 @@ public sealed class LaudoConfiguracaoService(SmsMaricaDbContext db, IHtmlSanitiz
         c.PermitirLaudarSemAssociacao = request.PermitirLaudarSemAssociacao;
         c.PermitirLaudarSemAnamnese = request.PermitirLaudarSemAnamnese;
         c.DownloadLinkValidadeDias = Math.Clamp(request.DownloadLinkValidadeDias, 1, 365);
+        c.MagicLinkValidadeDias = Math.Clamp(request.MagicLinkValidadeDias, 1, 30);
         c.AtualizadoPorUsuarioId = usuarioId;
         c.AtualizadoEm = DateTime.UtcNow;
 
@@ -57,9 +58,10 @@ public sealed class LaudoConfiguracaoService(SmsMaricaDbContext db, IHtmlSanitiz
 
     // Sem registro = regras no padrão seguro (exige associação e anamnese).
     private static LaudoConfiguracaoDto Vazia() =>
-        new(string.Empty, "{}", string.Empty, "{}", false, false, 7, null);
+        new(string.Empty, "{}", string.Empty, "{}", false, false, 7, 3, null);
 
     private static LaudoConfiguracaoDto ParaDto(LaudoConfiguracao c) =>
         new(c.CabecalhoHtml, c.CabecalhoJson, c.RodapeHtml, c.RodapeJson,
-            c.PermitirLaudarSemAssociacao, c.PermitirLaudarSemAnamnese, c.DownloadLinkValidadeDias, c.AtualizadoEm);
+            c.PermitirLaudarSemAssociacao, c.PermitirLaudarSemAnamnese,
+            c.DownloadLinkValidadeDias, c.MagicLinkValidadeDias, c.AtualizadoEm);
 }

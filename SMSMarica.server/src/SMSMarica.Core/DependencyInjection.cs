@@ -276,6 +276,7 @@ public static class DependencyInjection
         services.AddMemoryCache();
         services.AddScoped<Cidadao.IPacienteAuthService, Cidadao.PacienteAuthService>();
         services.AddScoped<Cidadao.ICidadaoSessaoService, Cidadao.CidadaoSessaoService>();
+        services.AddScoped<Cidadao.ICidadaoLoginLinkService, Cidadao.CidadaoLoginLinkService>();
         services.AddScoped<Cidadao.IConsentimentoCidadaoService, Cidadao.ConsentimentoCidadaoService>();
         // Leitura clínica do app do cidadão (exames + docs escaneados + imagens PACS + laudos + agendamentos).
         services.AddScoped<Cidadao.ICidadaoClinicoService, Cidadao.CidadaoClinicoService>();

@@ -47,6 +47,12 @@ public class LaudoConfiguracao
     /// </summary>
     public int DownloadLinkValidadeDias { get; set; } = 7;
 
+    /// <summary>
+    /// Validade (em dias) do "magic-link" de acesso (login em 1 clique) enviado ao
+    /// paciente. É credencial de login, então curta. Uso único. Padrão 3 dias.
+    /// </summary>
+    public int MagicLinkValidadeDias { get; set; } = 3;
+
     public Guid? AtualizadoPorUsuarioId { get; set; }
     public Usuario? AtualizadoPorUsuario { get; set; }
 

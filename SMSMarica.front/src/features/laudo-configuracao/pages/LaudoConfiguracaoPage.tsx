@@ -22,6 +22,7 @@ export function LaudoConfiguracaoPage() {
   const [permitirSemAssociacao, setPermitirSemAssociacao] = useState(false);
   const [permitirSemAnamnese, setPermitirSemAnamnese] = useState(false);
   const [validadeDias, setValidadeDias] = useState(7);
+  const [magicDias, setMagicDias] = useState(3);
   const [erro, setErro] = useState<string | null>(null);
   const [salvo, setSalvo] = useState(false);
 
@@ -34,6 +35,7 @@ export function LaudoConfiguracaoPage() {
       setPermitirSemAssociacao(data.permitirLaudarSemAssociacao);
       setPermitirSemAnamnese(data.permitirLaudarSemAnamnese);
       setValidadeDias(data.downloadLinkValidadeDias);
+      setMagicDias(data.magicLinkValidadeDias);
     }
   }, [data]);
 
@@ -49,6 +51,7 @@ export function LaudoConfiguracaoPage() {
         permitirLaudarSemAssociacao: permitirSemAssociacao,
         permitirLaudarSemAnamnese: permitirSemAnamnese,
         downloadLinkValidadeDias: validadeDias,
+        magicLinkValidadeDias: magicDias,
       });
       setSalvo(true);
     } catch (e) {
@@ -203,6 +206,27 @@ export function LaudoConfiguracaoPage() {
             Prazo do link público enviado ao paciente (ex.: WhatsApp) para baixar o exame. O link é de
             <strong> uso único</strong>: após o 1º download — ou passado esse prazo — expira e o cidadão
             passa a acessar pelo app.
+          </p>
+        </div>
+
+        <div className="mt-4 space-y-2 rounded-lg border border-gray-200 bg-white p-4">
+          <label className="block text-sm font-medium text-gray-900" htmlFor="magicDias">
+            Validade do link de acesso / login (dias)
+          </label>
+          <input
+            id="magicDias"
+            type="number"
+            min={1}
+            max={30}
+            className="w-32 rounded-md border border-gray-300 px-3 py-2 text-sm"
+            value={magicDias}
+            disabled={!podeEditar}
+            onChange={(e) => setMagicDias(Math.max(1, Math.min(30, Number(e.target.value) || 1)))}
+          />
+          <p className="text-xs text-gray-500">
+            Prazo do "magic-link" que loga o paciente em <strong>1 clique</strong> pelo WhatsApp. É uma
+            credencial de acesso, então mantenha curto (padrão 3 dias). <strong>Uso único</strong>: após
+            entrar — ou passado o prazo — expira e a pessoa entra pelo código (OTP).
           </p>
         </div>
       </div>

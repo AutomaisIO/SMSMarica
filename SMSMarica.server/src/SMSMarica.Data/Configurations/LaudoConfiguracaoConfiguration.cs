@@ -24,6 +24,8 @@ internal sealed class LaudoConfiguracaoConfiguration : IEntityTypeConfiguration<
 
         builder.Property(c => c.DownloadLinkValidadeDias)
             .HasColumnName("download_link_validade_dias").HasDefaultValue(7).IsRequired();
+        builder.Property(c => c.MagicLinkValidadeDias)
+            .HasColumnName("magic_link_validade_dias").HasDefaultValue(3).IsRequired();
 
         builder.Property(c => c.AtualizadoPorUsuarioId).HasColumnName("atualizado_por_usuario_id");
         builder.Property(c => c.AtualizadoEm).HasColumnName("atualizado_em");

@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
+using SMSMarica.Core.Cidadao;
+using SMSMarica.Core.Cidadao.Dtos;
 using SMSMarica.Core.Downloads;
 using SMSMarica.Core.Exames;
 using SMSMarica.Core.SolicitacoesExame;
@@ -19,12 +21,14 @@ public sealed class SolicitacoesExameController(
     ISolicitacoesExameService service,
     IDeclaracaoComparecimentoService declaracao,
     IExameCompletoPdfService exameCompleto,
-    IDownloadTokenService downloads) : ControllerBase
+    IDownloadTokenService downloads,
+    ICidadaoLoginLinkService loginLinks) : ControllerBase
 {
     private readonly ISolicitacoesExameService _service = service;
     private readonly IDeclaracaoComparecimentoService _declaracao = declaracao;
     private readonly IExameCompletoPdfService _exameCompleto = exameCompleto;
     private readonly IDownloadTokenService _downloads = downloads;
+    private readonly ICidadaoLoginLinkService _loginLinks = loginLinks;
 
     [HttpGet]
     [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
@@ -115,6 +119,18 @@ public sealed class SolicitacoesExameController(
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<DownloadLinkDto> GerarLinkDownload(Guid id, CancellationToken cancellationToken) =>
         await _downloads.GerarExameCompletoAsync(id, cancellationToken);
+
+    /// <summary>
+    /// Gera um "magic-link" de acesso (login em 1 clique) do paciente da solicitação,
+    /// para enviar por WhatsApp. Uso único, validade configurável (Config de Laudo).
+    /// </summary>
+    [HttpPost("{id:guid}/link-acesso")]
+    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
+    [ProducesResponseType<MagicLinkDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<MagicLinkDto> GerarLinkAcesso(Guid id, CancellationToken cancellationToken) =>
+        await _loginLinks.GerarParaSolicitacaoAsync(id, cancellationToken);
 
     [HttpPost]
     [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Inclusao)]

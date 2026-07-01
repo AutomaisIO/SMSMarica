@@ -12,9 +12,12 @@ namespace SMSMarica.Api.Controllers;
 [ApiController]
 [Route("auth/paciente")]
 [AllowAnonymous]
-public sealed class AuthPacienteController(IPacienteAuthService service) : ControllerBase
+public sealed class AuthPacienteController(
+    IPacienteAuthService service,
+    ICidadaoLoginLinkService loginLinks) : ControllerBase
 {
     private readonly IPacienteAuthService _service = service;
+    private readonly ICidadaoLoginLinkService _loginLinks = loginLinks;
 
     [HttpPost("solicitar-otp")]
     [ProducesResponseType<OtpEmitidoDto>(StatusCodes.Status200OK)]
@@ -31,4 +34,19 @@ public sealed class AuthPacienteController(IPacienteAuthService service) : Contr
             Request.Headers.UserAgent.ToString() is { Length: > 0 } ua ? ua : null,
             HttpContext.Connection.RemoteIpAddress?.ToString(),
             cancellationToken);
+
+    /// <summary>
+    /// Troca o "magic-link" (código do link do WhatsApp) por uma sessão — login em 1
+    /// clique. Uso único: 410 se já usado/expirado/inexistente (o app manda pro login).
+    /// </summary>
+    [HttpPost("magic")]
+    [ProducesResponseType<RespostaMagicLinkDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status410Gone)]
+    public async Task<IActionResult> Magic([FromBody] MagicLinkTrocaRequest request, CancellationToken cancellationToken)
+    {
+        var ua = Request.Headers.UserAgent.ToString() is { Length: > 0 } u ? u : null;
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var r = await _loginLinks.TrocarAsync(request.Token, ua, ip, cancellationToken);
+        return r is null ? StatusCode(StatusCodes.Status410Gone) : Ok(r);
+    }
 }

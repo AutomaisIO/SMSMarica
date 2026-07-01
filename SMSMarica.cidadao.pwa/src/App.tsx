@@ -12,6 +12,7 @@ import { Laudos } from '@/pages/Laudos';
 import { Transporte } from '@/pages/Transporte';
 import { ConsultasAgendadas, ExamesAgendados } from '@/pages/Agendados';
 import { Documento } from '@/pages/Documento';
+import { Entrar } from '@/pages/Entrar';
 
 function Protegida({ children }: { children: React.ReactNode }) {
   const token = useAuth((s) => s.token);
@@ -27,6 +28,8 @@ export function App() {
         <Route path="/login/codigo" element={<Otp />} />
         {/* Link público de download (uso único) enviado ao paciente — sem autenticação. */}
         <Route path="/documento/:token" element={<Documento />} />
+        {/* Magic-link: login em 1 clique a partir do WhatsApp. */}
+        <Route path="/entrar/:token" element={<Entrar />} />
 
         <Route
           element={

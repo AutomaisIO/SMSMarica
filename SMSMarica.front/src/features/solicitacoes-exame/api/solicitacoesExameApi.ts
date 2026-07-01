@@ -83,6 +83,12 @@ export async function gerarLinkDownload(id: string): Promise<LinkDownload> {
   return data;
 }
 
+/** Gera um "magic-link" de acesso (login em 1 clique) do paciente, para enviar por WhatsApp. */
+export async function gerarLinkAcesso(id: string): Promise<LinkDownload> {
+  const { data } = await http.post<LinkDownload>(`/solicitacoes-exame/${id}/link-acesso`);
+  return data;
+}
+
 /**
  * Baixa o PDF do exame completo (capa + imagens + laudo) da solicitação. Como o
  * endpoint exige bearer, baixamos como blob e disparamos o download via âncora.

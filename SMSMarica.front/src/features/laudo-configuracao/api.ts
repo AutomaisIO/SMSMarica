@@ -8,6 +8,7 @@ export type LaudoConfiguracao = {
   permitirLaudarSemAssociacao: boolean;
   permitirLaudarSemAnamnese: boolean;
   downloadLinkValidadeDias: number;
+  magicLinkValidadeDias: number;
   atualizadoEm: string | null;
 };
 
@@ -19,6 +20,7 @@ export type SalvarLaudoConfiguracaoPayload = {
   permitirLaudarSemAssociacao: boolean;
   permitirLaudarSemAnamnese: boolean;
   downloadLinkValidadeDias: number;
+  magicLinkValidadeDias: number;
 };
 
 export type RegrasIniciarLaudo = {
