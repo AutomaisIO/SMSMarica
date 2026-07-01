@@ -1,3 +1,4 @@
+using Hl7.Fhir.Model;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Data.Entities.Enums;
 
@@ -21,6 +22,13 @@ public interface IPacienteResolver
 {
     Task<PacienteResumo?> ResolverAsync(Guid id, CancellationToken ct = default);
     Task<IReadOnlyDictionary<Guid, PacienteResumo>> ResolverManyAsync(IEnumerable<Guid> ids, CancellationToken ct = default);
+
+    /// <summary>
+    /// Busca ids de pacientes no hub FHIR por um termo livre (nome e/ou CPF/CNS).
+    /// Para a busca da tela de solicitações. Nunca lança: hub indisponível → conjunto
+    /// vazio (o chamador cai no match local por accession/código).
+    /// </summary>
+    Task<IReadOnlySet<Guid>> BuscarIdsPorTermoAsync(string termo, CancellationToken ct = default);
 }
 
 public sealed class PacienteResolver(IPacienteFhirClient fhir, ILogger<PacienteResolver> logger) : IPacienteResolver
@@ -61,5 +69,37 @@ public sealed class PacienteResolver(IPacienteFhirClient fhir, ILogger<PacienteR
         foreach (var r in resumos)
             if (r is not null) mapa[r.Id] = r;
         return mapa;
+    }
+
+    public async Task<IReadOnlySet<Guid>> BuscarIdsPorTermoAsync(string termo, CancellationToken ct = default)
+    {
+        var ids = new HashSet<Guid>();
+        if (string.IsNullOrWhiteSpace(termo)) return ids;
+
+        var t = termo.Trim();
+        var digitos = new string([.. t.Where(char.IsDigit)]);
+        try
+        {
+            // Por nome (o hub trata acento/casing) — só quando o termo tem letra.
+            if (t.Any(char.IsLetter))
+                ColetarIds(await fhir.BuscarAsync(name: t, ct: ct), ids);
+
+            // Por identifier (CPF=11 / CNS=15 dígitos).
+            if (digitos.Length >= 11)
+                ColetarIds(await fhir.BuscarAsync(identifier: digitos, ct: ct), ids);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Busca de pacientes por termo no hub FHIR falhou — seguindo sem ids.");
+        }
+        return ids;
+    }
+
+    private static void ColetarIds(Bundle? bundle, HashSet<Guid> ids)
+    {
+        if (bundle?.Entry is null) return;
+        foreach (var e in bundle.Entry)
+            if (e.Resource is Patient p && Guid.TryParse(p.Id, out var g))
+                ids.Add(g);
     }
 }

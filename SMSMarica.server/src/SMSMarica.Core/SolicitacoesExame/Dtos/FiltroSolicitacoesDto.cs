@@ -10,4 +10,6 @@ public sealed record FiltroSolicitacoesDto(
     DateOnly? DataInicial = null,
     DateOnly? DataFinal = null,
     string? AccessionNumber = null,
+    // Busca livre: nome, CPF, CNS (via hub FHIR) ou nº do pedido/accession/código.
+    string? Busca = null,
     int Limite = 50);

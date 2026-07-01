@@ -17,6 +17,7 @@ export async function listarSolicitacoes(filtro: FiltroSolicitacoes): Promise<So
       dataInicial: filtro.dataInicial,
       dataFinal: filtro.dataFinal,
       accessionNumber: filtro.accessionNumber,
+      busca: filtro.busca,
       limite: filtro.limite ?? 50,
     },
   });
@@ -90,20 +91,22 @@ export async function gerarLinkAcesso(id: string): Promise<LinkDownload> {
 }
 
 /**
- * Baixa o PDF do exame completo (capa + imagens + laudo) da solicitação. Como o
- * endpoint exige bearer, baixamos como blob e disparamos o download via âncora.
+ * Abre, em nova aba, o PDF do exame completo (capa + imagens + laudo) para
+ * visualização/impressão no navegador — o download fica a cargo do próprio
+ * visualizador de PDF do browser. O endpoint exige bearer (popups não levam o
+ * token do interceptor), então baixamos como blob e abrimos uma blob URL.
  */
-export async function baixarExameCompleto(id: string): Promise<void> {
+export async function abrirExameCompleto(id: string): Promise<void> {
   const resp = await http.get(`/solicitacoes-exame/${id}/exame-completo-pdf`, {
     responseType: 'blob',
   });
   const url = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `exame-completo-${id}.pdf`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+  const janela = window.open(url, `exame-completo-${id}`);
+  if (!janela) {
+    alert('A janela do documento foi bloqueada pelo navegador. Libere os popups para este site.');
+    URL.revokeObjectURL(url);
+    return;
+  }
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 

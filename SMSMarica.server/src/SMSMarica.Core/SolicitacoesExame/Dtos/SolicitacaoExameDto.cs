@@ -61,4 +61,8 @@ public sealed record SolicitacaoExameListItemDto(
     StatusSolicitacaoExame Status,
     PrioridadeSolicitacao Prioridade,
     DateTime? DataAgendada,
-    DateTime CriadoEm);
+    DateTime CriadoEm,
+    // Study do pedido + estado do laudo (habilita o botão "ver laudo" na listagem).
+    string StudyInstanceUID,
+    Guid? LaudoId,
+    bool LaudoAssinado);

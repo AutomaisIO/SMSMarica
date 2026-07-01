@@ -56,5 +56,8 @@ internal static class SolicitacoesExameMapper
         s.Status,
         s.Prioridade,
         s.DataAgendada,
-        s.CriadoEm);
+        s.CriadoEm,
+        s.StudyInstanceUID,
+        null,
+        false);
 }
