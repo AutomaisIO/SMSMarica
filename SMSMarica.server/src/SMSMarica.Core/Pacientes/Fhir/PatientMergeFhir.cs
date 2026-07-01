@@ -173,50 +173,46 @@ public static class PatientMergeFhir
     /// preservação-first (ADR-0020): evita apagar o telefone nativo do importado quando o
     /// slot vem vazio no DTO. Limpar um telefone não é suportado nesta fase.
     /// </summary>
-    private static readonly IReadOnlySet<string> SemProtecao = new HashSet<string>();
+    /// <summary>
+    /// Marcador (extension em ContactPoint) de contato CONFIRMADO por OTP/WhatsApp.
+    /// Invariante (ADR-0020, decisão #2): a automação (edição/import/backfill) NUNCA altera,
+    /// remove, reordena ou substitui um telecom que carrega este marcador. A fonte é o próprio
+    /// Patient — não precisa consultar o banco. Carimbado por <see cref="MarcarTelefoneConfirmado"/>.
+    /// </summary>
+    public const string ExtContatoConfirmado = "urn:smsmarica:contato-confirmado";
 
-    /// <param name="protegidos">
-    /// Dígitos de telefones CONFIRMADOS (validados por OTP/WhatsApp, <c>contato_validado</c>).
-    /// Invariante (ADR-0020): automação NUNCA toca um número confirmado — nem altera, nem
-    /// remove, nem reordena, nem substitui. O chamador (edição/import/backfill) deve informá-los.
-    /// </param>
-    public static void AplicarContatos(Patient p, string? principal, string? celular, string? residencial,
-        string? email, IReadOnlySet<string>? protegidos = null)
+    public static void AplicarContatos(Patient p, string? principal, string? celular, string? residencial, string? email)
     {
         p.Telecom ??= [];
-        var prot = protegidos ?? SemProtecao;
-
-        UpsertTelefone(p, principal, use: null, rank: 1, prot);
-        UpsertTelefone(p, celular, use: ContactPoint.ContactPointUse.Mobile, rank: null, prot);
-        UpsertTelefone(p, residencial, use: ContactPoint.ContactPointUse.Home, rank: null, prot);
+        UpsertTelefone(p, principal, use: null, rank: 1);
+        UpsertTelefone(p, celular, use: ContactPoint.ContactPointUse.Mobile, rank: null);
+        UpsertTelefone(p, residencial, use: ContactPoint.ContactPointUse.Home, rank: null);
         UpsertEmail(p, email);
     }
 
-    private static void UpsertTelefone(Patient p, string? valor, ContactPoint.ContactPointUse? use, int? rank,
-        IReadOnlySet<string> protegidos)
+    private static void UpsertTelefone(Patient p, string? valor, ContactPoint.ContactPointUse? use, int? rank)
     {
         var digitos = Digitos(valor);
         if (digitos.Length == 0) return; // vazio = no-op (nunca remove; preservação-first)
-        // Número confirmado é intocável: se o próprio valor é protegido, ele já existe e não
-        // deve ser recriado/movido por automação.
-        if (protegidos.Contains(digitos)) return;
 
         bool ehTelefone(ContactPoint t) => t.System == ContactPoint.ContactPointSystem.Phone;
+        // Número confirmado é intocável: se o valor recebido é o mesmo de um telecom confirmado,
+        // não recria/move — o confirmado já o representa.
+        if (p.Telecom.Any(t => ehTelefone(t) && EhConfirmado(t) && MesmoNumero(Digitos(t.Value), digitos)))
+            return;
+
         // Slot gerido: principal identifica-se por Rank==1; os demais por Use (e não-principal).
         var slot = rank == 1
             ? p.Telecom.FirstOrDefault(t => ehTelefone(t) && t.Rank == 1)
             : p.Telecom.FirstOrDefault(t => ehTelefone(t) && t.Use == use && t.Rank != 1);
 
-        // NUNCA tocar num slot cujo número é confirmado (ex.: mudar o principal quando o
-        // atual está validado) — o número validado é imutável para a automação.
-        if (slot is not null && protegidos.Contains(Digitos(slot.Value))) return;
+        // Nunca tocar num slot confirmado (ex.: trocar o principal quando o atual está validado).
+        if (slot is not null && EhConfirmado(slot)) return;
 
         // Sem slot gerido: reusa um telefone de mesmos dígitos (ex.: o telefone nativo do
-        // importado) em vez de duplicar — nunca colapsa um não-principal no slot principal,
-        // nem reusa um número confirmado.
+        // importado) — nunca colapsa um não-principal no slot principal, nem reusa um confirmado.
         slot ??= p.Telecom.FirstOrDefault(t =>
-            ehTelefone(t) && Digitos(t.Value) == digitos && (rank == 1 || t.Rank != 1)
-            && !protegidos.Contains(Digitos(t.Value)));
+            ehTelefone(t) && !EhConfirmado(t) && Digitos(t.Value) == digitos && (rank == 1 || t.Rank != 1));
 
         if (slot is null)
         {
@@ -233,9 +229,56 @@ public static class PatientMergeFhir
         var limpo = email?.Trim().ToLowerInvariant();
         if (string.IsNullOrWhiteSpace(limpo)) return; // vazio = no-op (preservação-first)
         var slot = p.Telecom.FirstOrDefault(t => t.System == ContactPoint.ContactPointSystem.Email);
+        if (slot is not null && EhConfirmado(slot)) return; // confirmado (futuro) é intocável
         if (slot is null) p.Telecom.Add(new ContactPoint { System = ContactPoint.ContactPointSystem.Email, Value = limpo });
         else slot.Value = limpo;
     }
+
+    /// <summary>
+    /// Carimba (idempotente) o <paramref name="numero"/> como CONFIRMADO no Patient e remove o
+    /// marcador de qualquer outro telecom (1 contato confirmado por pessoa). Se o número ainda não
+    /// existir no telecom, adiciona-o como principal. Usado pela validação por OTP e pelo backfill.
+    /// Reconcilia DDI: <c>contato_validado</c> guarda "55…", o FHIR guarda nacional (match por sufixo).
+    /// </summary>
+    public static void MarcarTelefoneConfirmado(Patient p, string numero, DateTimeOffset em)
+    {
+        var alvo = Digitos(numero);
+        if (alvo.Length < 8) return;
+        p.Telecom ??= [];
+
+        var confirmado = p.Telecom.FirstOrDefault(t =>
+            t.System == ContactPoint.ContactPointSystem.Phone && MesmoNumero(Digitos(t.Value), alvo));
+        if (confirmado is null)
+        {
+            confirmado = new ContactPoint
+            {
+                System = ContactPoint.ContactPointSystem.Phone,
+                Value = alvo.Length > 11 ? alvo[^11..] : alvo, // forma nacional aproximada
+            };
+            p.Telecom.Add(confirmado);
+        }
+
+        // 1 confirmado por pessoa: remove marcador dos outros e a marca do principal (rank1) dos demais.
+        foreach (var t in p.Telecom.Where(t => t.System == ContactPoint.ContactPointSystem.Phone))
+        {
+            if (!ReferenceEquals(t, confirmado))
+            {
+                t.RemoveExtension(ExtContatoConfirmado);
+                t.Rank = null; // o confirmado passa a ser o único principal
+            }
+        }
+
+        confirmado.Rank = 1; // o confirmado é o contato principal (memória: só o principal é validável)
+        confirmado.RemoveExtension(ExtContatoConfirmado);
+        confirmado.AddExtension(ExtContatoConfirmado, new FhirDateTime(em));
+    }
+
+    private static bool EhConfirmado(ContactPoint t) => t.GetExtension(ExtContatoConfirmado) is not null;
+
+    /// <summary>Mesmo número tolerando DDI (um é sufixo do outro), com guarda de tamanho.</summary>
+    private static bool MesmoNumero(string a, string b) =>
+        a.Length >= 8 && b.Length >= 8
+        && (a.EndsWith(b, StringComparison.Ordinal) || b.EndsWith(a, StringComparison.Ordinal));
 
     // ---------------- Filiação (Patient.contact) ----------------
 

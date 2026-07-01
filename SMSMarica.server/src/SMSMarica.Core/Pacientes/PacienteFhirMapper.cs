@@ -88,8 +88,7 @@ internal static class PacienteFhirMapper
         return patient;
     }
 
-    public static void AplicarAtualizacao(Patient existente, AtualizarPacienteRequest r,
-        IReadOnlySet<string>? telefonesProtegidos = null)
+    public static void AplicarAtualizacao(Patient existente, AtualizarPacienteRequest r)
     {
         // Nome, CPF, CNS e data de nascimento são imutáveis — preservados do existente.
         var atual = LerPayload(existente);
@@ -138,7 +137,7 @@ internal static class PacienteFhirMapper
             Cns = Opcional(r.Cns, true)
                 ?? (string.IsNullOrWhiteSpace(atual.Cns) ? IdentValor(existente, SystemCns) : atual.Cns),
         };
-        AplicarPayload(existente, payload, telefonesProtegidos);
+        AplicarPayload(existente, payload);
     }
 
     /// <summary>
@@ -358,7 +357,7 @@ internal static class PacienteFhirMapper
         return null;
     }
 
-    private static void AplicarPayload(Patient patient, Payload pl, IReadOnlySet<string>? telefonesProtegidos = null)
+    private static void AplicarPayload(Patient patient, Payload pl)
     {
         // ESCRITA NATIVA (fonte da verdade), por MERGE/upsert — mesmo shape do import
         // (SaluxFhirMapper). Preserva identificadores/campos não geridos; nunca replace-all.
@@ -374,7 +373,7 @@ internal static class PacienteFhirMapper
         PatientMergeFhir.SetMaritalStatus(patient, pl.EstadoCivil);
         PatientMergeFhir.UpsertEndereco(patient, pl.Endereco);
         PatientMergeFhir.AplicarContatos(patient, pl.TelefonePrincipal, pl.TelefoneCelular,
-            pl.TelefoneResidencial, pl.Email, telefonesProtegidos);
+            pl.TelefoneResidencial, pl.Email);
         PatientMergeFhir.UpsertContato(patient, "MTH", pl.NomeDaMae);
         PatientMergeFhir.UpsertContato(patient, "FTH", pl.NomeDoPai);
         PatientMergeFhir.UpsertContato(patient, "GUARD", pl.ResponsavelLegal);

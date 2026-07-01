@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Hl7.Fhir.Model;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
@@ -6,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Notificacoes.WhatsApp;
+using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Core.Telefones.Dtos;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities;
@@ -18,6 +20,7 @@ public sealed class TelefoneValidacaoService(
     IMemoryCache cache,
     IConfiguration config,
     IUsuarioAtualAccessor atual,
+    IPacienteFhirClient fhir,
     ILogger<TelefoneValidacaoService> logger) : ITelefoneValidacaoService
 {
     private static readonly TimeSpan Validade = TimeSpan.FromMinutes(5);
@@ -158,7 +161,30 @@ public sealed class TelefoneValidacaoService(
         }
         await db.SaveChangesAsync(ct);
         logger.LogInformation("Contato {Num} validado para CPF {Cpf} (origem {Origem}).", canon, cpfDig, origem);
+
+        // Projeta o "confirmado" no FHIR (marcador no telecom do Patient) para que a automação
+        // — merge de edição, import, backfill — NUNCA toque neste número (ADR-0020, decisão #2).
+        // Best-effort: se falhar, o contato_validado já está salvo e um backfill re-carimba.
+        await EstamparConfirmadoNoFhirAsync(cpfDig, canon, agora, ct);
         return agora;
+    }
+
+    private async Task EstamparConfirmadoNoFhirAsync(string cpfDig, string canon, DateTime em, CancellationToken ct)
+    {
+        try
+        {
+            var bundle = await fhir.BuscarAsync(identifier: cpfDig, ct: ct);
+            var patient = bundle.Entry.Select(e => e.Resource).OfType<Patient>().FirstOrDefault();
+            if (patient?.Id is null) return;
+            PatientMergeFhir.MarcarTelefoneConfirmado(patient, canon, new DateTimeOffset(em, TimeSpan.Zero));
+            await fhir.AtualizarAsync(Guid.Parse(patient.Id), patient, ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Falha ao estampar telefone confirmado no FHIR (CPF {Cpf}); contato_validado salvo, backfill re-carimba.",
+                cpfDig);
+        }
     }
 
     private static string Chave(string cpfDig, string canon) => $"otp:telefone:{cpfDig}:{canon}";
