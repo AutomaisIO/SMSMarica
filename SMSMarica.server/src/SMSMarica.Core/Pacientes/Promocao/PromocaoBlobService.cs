@@ -28,9 +28,15 @@ public sealed class PromocaoBlobService(
 
     public async Task<PromocaoResultado> PromoverTodosAsync(int throttleMs = 25, CancellationToken ct = default)
     {
+        // Pré-carrega os telefones confirmados em memória (contato_validado é pequeno) — evita
+        // uma query por paciente (seriam centenas de milhares).
+        var confirmadosPorCpf = await db.ContatosValidados.AsNoTracking()
+            .ToDictionaryAsync(c => c.Cpf, c => c.Numero, ct);
+
         Guid? cursor = null;
         int total = 0, promovidos = 0, confirmados = 0, erros = 0;
-        logger.LogInformation("Backfill blob→nativo iniciado (throttle {Throttle}ms).", throttleMs);
+        logger.LogInformation("Backfill blob→nativo iniciado (throttle {Throttle}ms; {Conf} confirmados carregados).",
+            throttleMs, confirmadosPorCpf.Count);
 
         while (!ct.IsCancellationRequested)
         {
@@ -44,16 +50,17 @@ public sealed class PromocaoBlobService(
                 total++;
                 try
                 {
-                    var (promoveu, carimbou) = await PromoverUmAsync(p, ct);
+                    var (promoveu, carimbou) = await PromoverUmAsync(p, confirmadosPorCpf, ct);
                     if (promoveu) promovidos++;
                     if (carimbou) confirmados++;
+                    // Throttle SÓ quando houve escrita (a varredura dos "pulados" não carrega o hub).
+                    if ((promoveu || carimbou) && throttleMs > 0) await Task.Delay(throttleMs, ct);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     erros++;
                     logger.LogWarning(ex, "Falha ao promover Patient/{Id} no backfill.", p.Id);
                 }
-                if (throttleMs > 0) await Task.Delay(throttleMs, ct);
             }
 
             cursor = Guid.Parse(patients[^1].Id!);
@@ -67,13 +74,14 @@ public sealed class PromocaoBlobService(
         return new PromocaoResultado(total, promovidos, confirmados, erros);
     }
 
-    private async Task<(bool Promoveu, bool Carimbou)> PromoverUmAsync(Patient p, CancellationToken ct)
+    private async Task<(bool Promoveu, bool Carimbou)> PromoverUmAsync(
+        Patient p, IReadOnlyDictionary<string, string> confirmadosPorCpf, CancellationToken ct)
     {
         var id = Guid.Parse(p.Id!);
         for (var tentativa = 1; ; tentativa++)
         {
             var promoveu = PacienteFhirMapper.PromoverBlobParaNativo(p);
-            var carimbou = await ReCarimbarConfirmadoAsync(p, ct);
+            var carimbou = ReCarimbarConfirmado(p, confirmadosPorCpf);
             if (!promoveu && !carimbou) return (false, false);
             try
             {
@@ -88,14 +96,11 @@ public sealed class PromocaoBlobService(
     }
 
     /// <summary>Re-carimba no FHIR o telefone confirmado (contato_validado) que ainda não estava marcado.</summary>
-    private async Task<bool> ReCarimbarConfirmadoAsync(Patient p, CancellationToken ct)
+    private static bool ReCarimbarConfirmado(Patient p, IReadOnlyDictionary<string, string> confirmadosPorCpf)
     {
         var cpf = Digitos(p.Identifier?.FirstOrDefault(i => i.System == PatientMergeFhir.SystemCpf)?.Value);
-        if (cpf.Length != 11) return false;
-
-        var numero = await db.ContatosValidados.AsNoTracking()
-            .Where(c => c.Cpf == cpf).Select(c => c.Numero).FirstOrDefaultAsync(ct);
-        if (string.IsNullOrWhiteSpace(numero)) return false;
+        if (cpf.Length != 11 || !confirmadosPorCpf.TryGetValue(cpf, out var numero) || string.IsNullOrWhiteSpace(numero))
+            return false;
 
         var jaMarcado = (p.Telecom ?? []).Any(t =>
             t.GetExtension(PatientMergeFhir.ExtContatoConfirmado) is not null
