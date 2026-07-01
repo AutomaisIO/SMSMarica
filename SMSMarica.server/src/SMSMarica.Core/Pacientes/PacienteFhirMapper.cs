@@ -89,6 +89,17 @@ internal static class PacienteFhirMapper
         var atual = LerPayload(existente);
         var payload = atual with
         {
+            // Imutáveis: pacientes importados (Salux/eSUS) não têm o blob de payload,
+            // então LerPayload devolve vazio. Sem isto, AplicarPayload reescreveria o
+            // nome com "" (name.text vazio → o hub FHIR rejeita com 400) e apagaria
+            // CPF/CNS/nascimento. Preserva do recurso FHIR nativo quando o blob não tem.
+            NomeCompleto = string.IsNullOrWhiteSpace(atual.NomeCompleto)
+                ? (NomeNativo(existente) ?? atual.NomeCompleto)
+                : atual.NomeCompleto,
+            Cpf = string.IsNullOrWhiteSpace(atual.Cpf)
+                ? (IdentValor(existente, SystemCpf) ?? atual.Cpf)
+                : atual.Cpf,
+            DataNascimento = atual.DataNascimento ?? ParseData(existente.BirthDate),
             Rg = Opcional(r.Rg, false),
             Sexo = r.Sexo,
             EstadoCivil = r.EstadoCivil,
@@ -118,7 +129,8 @@ internal static class PacienteFhirMapper
             Observacoes = Opcional(r.Observacoes, false),
             FotoBase64 = Opcional(r.FotoBase64, false),
             NomeSocial = Opcional(r.NomeSocial, false),
-            Cns = Opcional(r.Cns, true) ?? atual.Cns,
+            Cns = Opcional(r.Cns, true)
+                ?? (string.IsNullOrWhiteSpace(atual.Cns) ? IdentValor(existente, SystemCns) : atual.Cns),
         };
         AplicarPayload(existente, payload);
     }
@@ -275,7 +287,14 @@ internal static class PacienteFhirMapper
 
     private static void AplicarPayload(Patient patient, Payload pl)
     {
-        patient.Name = [new HumanName { Use = HumanName.NameUse.Official, Text = pl.NomeCompleto }];
+        // Nunca emitir HumanName com text vazio (o hub FHIR rejeita com 400). Se o
+        // payload não trouxer nome (paciente importado sem blob), preserva o nativo.
+        var nomeOficial = string.IsNullOrWhiteSpace(pl.NomeCompleto)
+            ? NomeNativo(patient)
+            : pl.NomeCompleto.Trim();
+        patient.Name = string.IsNullOrWhiteSpace(nomeOficial)
+            ? []
+            : [new HumanName { Use = HumanName.NameUse.Official, Text = nomeOficial }];
         if (!string.IsNullOrWhiteSpace(pl.NomeSocial))
             patient.Name.Add(new HumanName { Use = HumanName.NameUse.Nickname, Text = pl.NomeSocial });
 
