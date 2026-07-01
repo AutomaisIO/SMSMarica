@@ -23,6 +23,9 @@ public static class PatientMergeFhir
     private const string SysV3Marital = "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus";
     private const string ExtHouseNumber = "http://hl7.org/fhir/StructureDefinition/iso21090-ADXP-houseNumber";
 
+    /// <summary>Extension FHIR padrão de geolocalização (lat/long) em Address.</summary>
+    public const string ExtGeolocation = "http://hl7.org/fhir/StructureDefinition/geolocation";
+
     // ---------------- Nome ----------------
 
     /// <summary>Upsert do nome oficial. Vazio preserva o existente (nunca emite text vazio → 400 no hub).</summary>
@@ -162,6 +165,18 @@ public static class PatientMergeFhir
         p.Address ??= [];
         var outros = p.Address.Where(a => a.Use != Address.AddressUse.Home).ToList();
         p.Address = [end, .. outros];
+    }
+
+    /// <summary>Grava a geolocalização (extension FHIR padrão) no endereço residencial. No-op sem endereço.</summary>
+    public static void SetGeolocation(Patient p, double latitude, double longitude)
+    {
+        var a = p.Address?.FirstOrDefault(x => x.Use == Address.AddressUse.Home) ?? p.Address?.FirstOrDefault();
+        if (a is null) return; // geolocation pertence a um endereço
+        a.RemoveExtension(ExtGeolocation);
+        var geo = new Extension { Url = ExtGeolocation };
+        geo.AddExtension("latitude", new FhirDecimal((decimal)latitude));
+        geo.AddExtension("longitude", new FhirDecimal((decimal)longitude));
+        a.Extension.Add(geo);
     }
 
     // ---------------- Telecom ----------------

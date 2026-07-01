@@ -12,7 +12,8 @@ namespace SMSMarica.Core.Pacientes;
 /// </summary>
 public sealed class PacientesService(
     IPacienteFhirClient fhir,
-    Auditoria.IAuditoriaService auditoria) : IPacientesService
+    Auditoria.IAuditoriaService auditoria,
+    Geo.IGeocodificadorService geocoder) : IPacientesService
 {
     private const int LimiteBusca = 10;
 
@@ -85,8 +86,23 @@ public sealed class PacientesService(
             throw new ConflitoException("paciente.cpf_duplicado", "Já existe paciente com este CPF no hub FHIR.");
 
         var patient = PacienteFhirMapper.ConstruirNovo(request);
+        var coord = await GeocodificarAsync(request.Endereco, cancellationToken);
+        if (coord is not null) PatientMergeFhir.SetGeolocation(patient, coord.Latitude, coord.Longitude);
+
         var criado = await fhir.CriarAsync(patient, cancellationToken);
         return Guid.Parse(criado.Id!);
+    }
+
+    /// <summary>
+    /// Geocodifica o endereço (cache → Google) para a geolocalização do Patient — mata o lat/long
+    /// 0,0 (ADR-0020 R2). Best-effort: endereço que não resolve entra na fila de revisão e a
+    /// operação NÃO falha por isso (retorna null).
+    /// </summary>
+    private async Task<Geo.Coordenada?> GeocodificarAsync(Common.Dtos.EnderecoDto? endereco, CancellationToken ct)
+    {
+        if (endereco is null) return null;
+        try { return await geocoder.GeocodificarAsync(endereco.ParaEntidade(), ct); }
+        catch { return null; }
     }
 
     public Task<Guid> PromoverAsync(PromoverPacienteRequest request, CancellationToken cancellationToken = default) =>
@@ -96,9 +112,12 @@ public sealed class PacientesService(
 
     public async Task AtualizarAsync(Guid id, AtualizarPacienteRequest request, CancellationToken cancellationToken = default)
     {
+        // Geocodifica uma vez (fora do retry); a coordenada é aplicada em cada tentativa.
+        var coord = await GeocodificarAsync(request.Endereco, cancellationToken);
         await AtualizarComRetryAsync(id, patient =>
         {
             PacienteFhirMapper.AplicarAtualizacao(patient, request);
+            if (coord is not null) PatientMergeFhir.SetGeolocation(patient, coord.Latitude, coord.Longitude);
             return true;
         }, cancellationToken);
     }

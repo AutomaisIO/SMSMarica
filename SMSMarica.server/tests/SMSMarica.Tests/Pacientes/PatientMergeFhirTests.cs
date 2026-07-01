@@ -114,6 +114,27 @@ public class PatientMergeFhirTests
     }
 
     [Fact]
+    public void SetGeolocation_grava_extension_no_endereco_home()
+    {
+        var p = new Patient { Address = [new Address { Use = Address.AddressUse.Home, City = "Maricá" }] };
+        PatientMergeFhir.SetGeolocation(p, -22.9, -42.8);
+
+        var geo = p.Address.Single().GetExtension(PatientMergeFhir.ExtGeolocation);
+        geo.Should().NotBeNull();
+        ((FhirDecimal)geo.GetExtension("latitude").Value).Value.Should().Be(-22.9m);
+        ((FhirDecimal)geo.GetExtension("longitude").Value).Value.Should().Be(-42.8m);
+    }
+
+    [Fact]
+    public void SetGeolocation_sem_endereco_e_no_op()
+    {
+        var p = new Patient();
+        var act = () => PatientMergeFhir.SetGeolocation(p, -22.9, -42.8);
+        act.Should().NotThrow();
+        (p.Address is null || p.Address.Count == 0).Should().BeTrue();
+    }
+
+    [Fact]
     public void SetMaritalStatus_usa_coding_v3()
     {
         var p = new Patient();

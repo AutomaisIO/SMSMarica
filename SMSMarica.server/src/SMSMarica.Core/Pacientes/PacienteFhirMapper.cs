@@ -210,6 +210,7 @@ internal static class PacienteFhirMapper
         var email = TelecomNativo(p, ContactPoint.ContactPointSystem.Email) ?? pl.Email;
         var estadoCivil = EstadoCivilNativo(p) ?? pl.EstadoCivil;
         var nomeSocial = NomeSocialNativo(p) ?? pl.NomeSocial;
+        var (latitude, longitude) = GeolocationNativo(p) ?? (pl.Latitude, pl.Longitude);
         // Tudo do FHIR: todos os identificadores, óbito, cônjuge, fonte e extras crus.
         var identificadores = (p.Identifier ?? [])
             .Where(i => !string.IsNullOrWhiteSpace(i.Value))
@@ -220,7 +221,7 @@ internal static class PacienteFhirMapper
         var fonte = p.Meta?.Source;
         var dadosFonte = LerExtras(p);
         return new PacienteDto(
-            Guid.Parse(p.Id!), nome, cpf, cns, pl.Latitude, pl.Longitude,
+            Guid.Parse(p.Id!), nome, cpf, cns, latitude, longitude,
             p.Active ?? true, p.Meta?.LastUpdated?.UtcDateTime ?? default,
             rg, nasc, sexo, estadoCivil, pl.RacaCor, pl.Escolaridade,
             pl.Ocupacao, pl.Naturalidade, pl.Nacionalidade, mae, pai, resp,
@@ -306,6 +307,16 @@ internal static class PacienteFhirMapper
             a.City ?? string.Empty,
             a.State ?? string.Empty,
             a.Text);
+    }
+
+    private static (double Latitude, double Longitude)? GeolocationNativo(Patient p)
+    {
+        var a = p.Address?.FirstOrDefault(x => x.Use == Address.AddressUse.Home) ?? p.Address?.FirstOrDefault();
+        var geo = a?.GetExtension(PatientMergeFhir.ExtGeolocation);
+        if (geo is null) return null;
+        var lat = (geo.GetExtension("latitude")?.Value as FhirDecimal)?.Value;
+        var lng = (geo.GetExtension("longitude")?.Value as FhirDecimal)?.Value;
+        return lat is null || lng is null ? null : ((double)lat.Value, (double)lng.Value);
     }
 
     private static string? NomeSocialNativo(Patient p)
