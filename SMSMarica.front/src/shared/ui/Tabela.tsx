@@ -122,7 +122,15 @@ export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrol
           ref={barraRef}
           onScroll={sincronizarDaBarra}
           aria-hidden="true"
-          className="sticky bottom-0 z-10 overflow-x-auto border-t border-gray-200 bg-white/90 backdrop-blur"
+          className={cn(
+            'sticky bottom-0 z-10 overflow-x-auto border-t border-primary-100 bg-white/90 backdrop-blur',
+            // Barra VERMELHA (tema Maricá) e mais visível — a cinza padrão do SO ficava discreta.
+            '[scrollbar-width:auto] [scrollbar-color:#C8102E_transparent]',
+            '[&::-webkit-scrollbar]:h-3',
+            '[&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-primary-50',
+            '[&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-primary-600',
+            '[&::-webkit-scrollbar-thumb:hover]:bg-primary-700',
+          )}
         >
           <div style={{ width: larguraConteudo }} className="h-3" />
         </div>
