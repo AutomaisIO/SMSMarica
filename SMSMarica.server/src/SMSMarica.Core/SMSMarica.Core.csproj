@@ -5,6 +5,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Testes unitários acessam tipos internos (ex.: PacienteFhirMapper). -->
+    <InternalsVisibleTo Include="SMSMarica.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\SMSMarica.Data\SMSMarica.Data.csproj" />
   </ItemGroup>
 
