@@ -54,7 +54,7 @@ public sealed class SisregWebSessao(IServiceScopeFactory scopeFactory, ILogger<S
                 await LoginAsync(creds.Usuario, creds.Senha, cancellationToken);
             }
 
-            var (html, _) = await PostRawAsync(caminho, campos, cancellationToken);
+            var (html, _, _) = await PostRawAsync(caminho, campos, cancellationToken);
             if (CadsusHtmlParser.SessaoInvalida(html))
             {
                 // Sessão derrubada (uso concorrente do operador). Só reloga se a
@@ -67,7 +67,7 @@ public sealed class SisregWebSessao(IServiceScopeFactory scopeFactory, ILogger<S
                 }
                 logger.LogInformation("SISREG: sessão expirada — refazendo login.");
                 await LoginAsync(creds.Usuario, creds.Senha, cancellationToken);
-                (html, _) = await PostRawAsync(caminho, campos, cancellationToken);
+                (html, _, _) = await PostRawAsync(caminho, campos, cancellationToken);
             }
 
             return html;
@@ -118,8 +118,8 @@ public sealed class SisregWebSessao(IServiceScopeFactory scopeFactory, ILogger<S
             ["logout"] = string.Empty,
         };
 
-        var (html, url) = await PostRawAsync("/", campos, cancellationToken);
-        if (!LoginOk(url, html))
+        var (html, url, location) = await PostRawAsync("/", campos, cancellationToken);
+        if (!LoginOk(url, location, html))
         {
             throw new ValidacaoException(
                 "sisreg.login_falhou",
@@ -129,23 +129,31 @@ public sealed class SisregWebSessao(IServiceScopeFactory scopeFactory, ILogger<S
         _logado = true;
     }
 
-    private async Task<(string html, Uri url)> PostRawAsync(
+    private async Task<(string html, Uri finalUrl, Uri? location)> PostRawAsync(
         string caminho, IReadOnlyDictionary<string, string> campos, CancellationToken cancellationToken)
     {
         using var content = new FormUrlEncodedContent(campos);
         using var resposta = await _http.PostAsync(new Uri(_baseUri, caminho), content, cancellationToken);
         var html = await resposta.Content.ReadAsStringAsync(cancellationToken);
-        return (html, resposta.RequestMessage?.RequestUri ?? new Uri(_baseUri, caminho));
+        var finalUrl = resposta.RequestMessage?.RequestUri ?? new Uri(_baseUri, caminho);
+        // Pós-login o SISREG responde 302 para http://.../cgi-bin/index (downgrade HTTPS→HTTP);
+        // o HttpClient NÃO segue esse downgrade, então preservamos o Location p/ detectar sucesso.
+        // A sessão já vem nos cookies (SESSION/ID), então as chamadas seguintes funcionam por HTTPS.
+        return (html, finalUrl, resposta.Headers.Location);
     }
 
     /// <summary>Reproduz <c>hex_sha256(senha.toUpperCase())</c> do JS de login do SISREG.</summary>
     internal static string HashSenha(string senha) =>
         Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(senha.ToUpperInvariant())));
 
-    private static bool LoginOk(Uri url, string html) =>
-        url.AbsolutePath.Contains("/cgi-bin/index", StringComparison.OrdinalIgnoreCase)
+    private static bool LoginOk(Uri finalUrl, Uri? location, string html) =>
+        ApontaParaIndex(finalUrl)
+        || ApontaParaIndex(location)
         || html.Contains("id=\"f_main\"", StringComparison.OrdinalIgnoreCase)
         || html.Contains("?logout=1", StringComparison.OrdinalIgnoreCase);
+
+    private static bool ApontaParaIndex(Uri? u) =>
+        u is not null && u.AbsolutePath.Contains("/cgi-bin/index", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Lê baseUrl e autoLogin do parametrosJson (defaults: base padrão + autoLogin ON).</summary>
     private static (string baseUrl, bool autoLogin) LerParametros(string? parametrosJson)
