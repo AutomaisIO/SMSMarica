@@ -22,13 +22,15 @@ public sealed class SolicitacoesExameController(
     IDeclaracaoComparecimentoService declaracao,
     IExameCompletoPdfService exameCompleto,
     IDownloadTokenService downloads,
-    ICidadaoLoginLinkService loginLinks) : ControllerBase
+    ICidadaoLoginLinkService loginLinks,
+    IBackfillDataEstudoService backfill) : ControllerBase
 {
     private readonly ISolicitacoesExameService _service = service;
     private readonly IDeclaracaoComparecimentoService _declaracao = declaracao;
     private readonly IExameCompletoPdfService _exameCompleto = exameCompleto;
     private readonly IDownloadTokenService _downloads = downloads;
     private readonly ICidadaoLoginLinkService _loginLinks = loginLinks;
+    private readonly IBackfillDataEstudoService _backfill = backfill;
 
     [HttpGet]
     [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
@@ -205,4 +207,19 @@ public sealed class SolicitacoesExameController(
         await _service.ExcluirAsync(id, force, cancellationToken);
         return NoContent();
     }
+
+    /// <summary>
+    /// Manutenção: preenche <c>data_estudo</c> (data DICOM) nos exames antigos que
+    /// ficaram com o campo nulo (realizados antes de a coluna existir). Idempotente,
+    /// em lote (<c>limite</c>). <c>dryRun=true</c> só conta os candidatos — não toca
+    /// no PACS nem no banco.
+    /// </summary>
+    [HttpPost("backfill-data-estudo")]
+    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Edicao)]
+    [ProducesResponseType<BackfillDataEstudoResultado>(StatusCodes.Status200OK)]
+    public async Task<BackfillDataEstudoResultado> BackfillDataEstudo(
+        [FromQuery] int limite = 500,
+        [FromQuery] bool dryRun = false,
+        CancellationToken cancellationToken = default)
+        => await _backfill.ExecutarAsync(limite, dryRun, cancellationToken);
 }

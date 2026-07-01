@@ -92,6 +92,8 @@ public static class DependencyInjection
         services.AddScoped<IProcedimentosSigtapService, ProcedimentosSigtapService>();
         services.AddScoped<ITiposExameService, TiposExameService>();
         services.AddScoped<ISolicitacoesExameService, SolicitacoesExameService>();
+        // Backfill de data_estudo (DICOM) — depende só de DbContext + IConsultaStudyClient (sem ciclo).
+        services.AddScoped<SolicitacoesExame.IBackfillDataEstudoService, SolicitacoesExame.BackfillDataEstudoService>();
         services.AddScoped<SolicitacoesExame.Declaracao.IDeclaracaoComparecimentoService,
             SolicitacoesExame.Declaracao.DeclaracaoComparecimentoService>();
         services.AddScoped<Downloads.IDownloadTokenService, Downloads.DownloadTokenService>();
