@@ -43,6 +43,33 @@ public sealed class TranscodeJpegLsTests
         frameComprimido.Length.Should().BeLessThan(original.Length, "deve haver ganho de tamanho");
     }
 
+    [Fact]
+    public void TranscodeJpeg2000Lossless_DeveSerPixelIdentico_Em12Bits()
+    {
+        // Espelha a mamografia real do PACS (12 bits em 16 alocados, MONOCHROME1):
+        // é o formato para o qual o JPEG-LS gerava frame ilegível no browser. Garante
+        // que o alvo atual (JPEG 2000 Lossless) preserva cada pixel no servidor.
+        PacsDicomSetup.Inicializar();
+
+        const int linhas = 64;
+        const int colunas = 64;
+        var original = GerarPixels16Bits(linhas, colunas); // valores até 4095 = 12 bits
+        var dataset = MontarDataset(linhas, colunas, original, bitsStored: 12, highBit: 11);
+
+        var comprimido = new DicomTranscoder(
+            dataset.InternalTransferSyntax, DicomTransferSyntax.JPEG2000Lossless)
+            .Transcode(dataset);
+
+        var descomprimido = new DicomTranscoder(
+            DicomTransferSyntax.JPEG2000Lossless, DicomTransferSyntax.ExplicitVRLittleEndian)
+            .Transcode(comprimido);
+
+        var frameVolta = DicomPixelData.Create(descomprimido).GetFrame(0).Data;
+
+        frameVolta.Should().Equal(original, "JPEG 2000 Lossless deve preservar cada pixel");
+        comprimido.InternalTransferSyntax.Should().Be(DicomTransferSyntax.JPEG2000Lossless);
+    }
+
     /// <summary>Gera um padrão determinístico de 16 bits (little-endian).</summary>
     private static byte[] GerarPixels16Bits(int linhas, int colunas)
     {
@@ -57,7 +84,8 @@ public sealed class TranscodeJpegLsTests
         return bytes;
     }
 
-    private static DicomDataset MontarDataset(int linhas, int colunas, byte[] pixels)
+    private static DicomDataset MontarDataset(
+        int linhas, int colunas, byte[] pixels, ushort bitsStored = 16, ushort highBit = 15)
     {
         var dataset = new DicomDataset
         {
@@ -68,8 +96,8 @@ public sealed class TranscodeJpegLsTests
             { DicomTag.Rows, (ushort)linhas },
             { DicomTag.Columns, (ushort)colunas },
             { DicomTag.BitsAllocated, (ushort)16 },
-            { DicomTag.BitsStored, (ushort)16 },
-            { DicomTag.HighBit, (ushort)15 },
+            { DicomTag.BitsStored, bitsStored },
+            { DicomTag.HighBit, highBit },
             { DicomTag.PixelRepresentation, (ushort)0 },
         };
 

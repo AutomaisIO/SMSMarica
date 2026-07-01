@@ -19,15 +19,11 @@ namespace SMSMarica.Core.Pacs;
 /// </summary>
 public sealed partial class PacsTranscodeService : IPacsTranscodeService
 {
-    // Sufixo que discrimina a chave de cache da variante comprimida da chave do
-    // frame cru (mesma URL /instances/.../frames/n). Não vai pela rede — só entra
-    // no cálculo da chave de cache.
-    private const string SufixoComprimido = "#jls";
-
     private readonly HttpClient _http;
     private readonly ILogger<PacsTranscodeService> _logger;
     private readonly bool _habilitado;
     private readonly string _transferSyntaxAlvo;
+    private readonly string _mediaTypeAlvo;
     private readonly string? _wadoUriBase;
 
     // Extrai study/series/sop/frame de um caminho WADO-RS de frame.
@@ -40,13 +36,32 @@ public sealed partial class PacsTranscodeService : IPacsTranscodeService
         _logger = logger;
         _habilitado = configuration.GetValue("Pacs:Compressao:Habilitado", false);
         _transferSyntaxAlvo = configuration["Pacs:Compressao:TransferSyntaxAlvo"]
-            ?? "1.2.840.10008.1.2.4.80"; // JPEG-LS Lossless
+            ?? "1.2.840.10008.1.2.4.90"; // JPEG 2000 Lossless
+        _mediaTypeAlvo = MediaTypePorTransferSyntax(_transferSyntaxAlvo);
         _wadoUriBase = DerivarWadoUri(configuration["Pacs:Dcm4chee:RsBaseUrl"]);
     }
 
+    /// <summary>
+    /// Media type DICOMweb da parte multipart para o transfer-syntax comprimido.
+    /// O loader do Cornerstone escolhe o decodificador por ele (e pelo
+    /// <c>transfer-syntax</c>). JPEG-LS → <c>image/jls</c>; JPEG 2000 → <c>image/jp2</c>.
+    /// </summary>
+    private static string MediaTypePorTransferSyntax(string ts) => ts switch
+    {
+        "1.2.840.10008.1.2.4.80" or "1.2.840.10008.1.2.4.81" => "image/jls",
+        "1.2.840.10008.1.2.4.90" or "1.2.840.10008.1.2.4.91" => "image/jp2",
+        "1.2.840.10008.1.2.4.50" or "1.2.840.10008.1.2.4.51"
+            or "1.2.840.10008.1.2.4.57" or "1.2.840.10008.1.2.4.70" => "image/jpeg",
+        _ => "application/octet-stream",
+    };
+
     public bool Habilitado => _habilitado;
 
-    public string DiscriminarCaminho(string caminho) => caminho + SufixoComprimido;
+    // Discrimina a chave de cache da variante comprimida da chave do frame cru
+    // (mesma URL /instances/.../frames/n). Inclui o transfer-syntax ALVO: trocar o
+    // alvo (ex.: JPEG-LS → JPEG 2000) muda a chave, invalidando automaticamente as
+    // entradas geradas na sintaxe antiga. Não vai pela rede — só entra no cálculo da chave.
+    public string DiscriminarCaminho(string caminho) => caminho + "#" + _transferSyntaxAlvo;
 
     public async Task<PacsFrameComprimido?> TranscodificarFrameAsync(string caminho, CancellationToken cancellationToken = default)
     {
@@ -121,7 +136,7 @@ public sealed partial class PacsTranscodeService : IPacsTranscodeService
 
         var cabecalhoParte =
             $"--{boundary}{crlf}" +
-            $"Content-Type: image/jls; transfer-syntax={_transferSyntaxAlvo}{crlf}" +
+            $"Content-Type: {_mediaTypeAlvo}; transfer-syntax={_transferSyntaxAlvo}{crlf}" +
             crlf;
         var rodape = $"{crlf}--{boundary}--";
 
@@ -134,7 +149,7 @@ public sealed partial class PacsTranscodeService : IPacsTranscodeService
         Buffer.BlockCopy(rodapeBytes, 0, corpo, cabecalhoBytes.Length + frameBytes.Length, rodapeBytes.Length);
 
         var contentType =
-            $"multipart/related; type=\"image/jls\"; boundary={boundary}; transfer-syntax={_transferSyntaxAlvo}";
+            $"multipart/related; type=\"{_mediaTypeAlvo}\"; boundary={boundary}; transfer-syntax={_transferSyntaxAlvo}";
 
         return new PacsFrameComprimido(corpo, contentType);
     }
