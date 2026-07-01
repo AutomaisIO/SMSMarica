@@ -85,11 +85,17 @@ internal static class PacienteFhirMapper
 
         var patient = new Patient { Active = true };
         AplicarPayload(patient, payload);
+        // Create pelo painel: o painel é dono de tudo que preencheu (ADR-0020 #1).
+        var editados = EditadosNaoVazios(payload);
+        if (editados.Count > 0) PatientMergeFhir.MarcarEditados(patient, editados);
         return patient;
     }
 
     public static void AplicarAtualizacao(Patient existente, AtualizarPacienteRequest r)
     {
+        // Diff ANTES de mutar: só os grupos que realmente mudaram viram "editados pelo painel".
+        var editados = DiferencaEditados(existente, r);
+
         // Nome, CPF, CNS e data de nascimento são imutáveis — preservados do existente.
         var atual = LerPayload(existente);
         var payload = atual with
@@ -138,6 +144,7 @@ internal static class PacienteFhirMapper
                 ?? (string.IsNullOrWhiteSpace(atual.Cns) ? IdentValor(existente, SystemCns) : atual.Cns),
         };
         AplicarPayload(existente, payload);
+        if (editados.Count > 0) PatientMergeFhir.MarcarEditados(existente, editados);
     }
 
     /// <summary>
@@ -175,6 +182,9 @@ internal static class PacienteFhirMapper
             existente.RemoveExtension(PayloadUrl);
             existente.AddExtension(PayloadUrl, new FhirString(JsonSerializer.Serialize(pl, Json)));
         }
+
+        // Correção de nome pelo painel vence o Oracle no reimport (ADR-0020 #1).
+        PatientMergeFhir.MarcarEditados(existente, ["nome"]);
     }
 
     public static PacienteDto ParaDto(Patient p)
@@ -383,20 +393,56 @@ internal static class PacienteFhirMapper
         // nesta fase — ParaDto os lê do blob (ver ADR-0020).
         patient.RemoveExtension(PayloadUrl);
         patient.AddExtension(PayloadUrl, new FhirString(JsonSerializer.Serialize(pl, Json)));
+        // O carimbo de "campos editados" (ADR-0020 #1) NÃO é feito aqui (AplicarPayload é
+        // compartilhado por create/update): create marca tudo o que foi preenchido; update marca
+        // só o que MUDOU vs o nativo — ver ConstruirNovo/AplicarAtualizacao.
+    }
 
-        // Marca os campos que o PAINEL escreveu para o import não os sobrescrever no reimport
-        // (ADR-0020 #1: "painel vence no que editou").
-        var editados = new List<string>();
+    /// <summary>Grupos de campo preenchidos (não-vazios) no payload — usado no CREATE (painel dono).</summary>
+    private static List<string> EditadosNaoVazios(Payload pl)
+    {
+        var ed = new List<string>();
         if (!string.IsNullOrWhiteSpace(pl.TelefonePrincipal) || !string.IsNullOrWhiteSpace(pl.TelefoneCelular)
-            || !string.IsNullOrWhiteSpace(pl.TelefoneResidencial)) editados.Add("telefone");
-        if (!string.IsNullOrWhiteSpace(pl.Email)) editados.Add("email");
+            || !string.IsNullOrWhiteSpace(pl.TelefoneResidencial)) ed.Add("telefone");
+        if (!string.IsNullOrWhiteSpace(pl.Email)) ed.Add("email");
         if (pl.Endereco is not null && (!string.IsNullOrWhiteSpace(pl.Endereco.Logradouro)
-            || !string.IsNullOrWhiteSpace(pl.Endereco.Cidade))) editados.Add("endereco");
-        if (!string.IsNullOrWhiteSpace(pl.NomeSocial)) editados.Add("nomeSocial");
-        if (pl.EstadoCivil != EstadoCivil.NaoInformado) editados.Add("estadoCivil");
+            || !string.IsNullOrWhiteSpace(pl.Endereco.Cidade))) ed.Add("endereco");
+        if (!string.IsNullOrWhiteSpace(pl.NomeSocial)) ed.Add("nomeSocial");
+        if (pl.EstadoCivil != EstadoCivil.NaoInformado) ed.Add("estadoCivil");
         if (!string.IsNullOrWhiteSpace(pl.NomeDaMae) || !string.IsNullOrWhiteSpace(pl.NomeDoPai)
-            || !string.IsNullOrWhiteSpace(pl.ResponsavelLegal)) editados.Add("filiacao");
-        if (editados.Count > 0) PatientMergeFhir.MarcarEditados(patient, editados);
+            || !string.IsNullOrWhiteSpace(pl.ResponsavelLegal)) ed.Add("filiacao");
+        return ed;
+    }
+
+    /// <summary>
+    /// Grupos que MUDARAM no update vs o estado nativo atual — só esses "o painel venceu"
+    /// (ADR-0020 #1). Evita congelar TODO o demográfico contra o Oracle a cada save.
+    /// </summary>
+    private static List<string> DiferencaEditados(Patient p, AtualizarPacienteRequest r)
+    {
+        var ed = new List<string>();
+        if (Digitos(r.TelefonePrincipal) != Digitos(TelefonePrincipalNativo(p))
+            || Digitos(r.TelefoneCelular) != Digitos(TelefonePorUsoNativo(p, ContactPoint.ContactPointUse.Mobile))
+            || Digitos(r.TelefoneResidencial) != Digitos(TelefonePorUsoNativo(p, ContactPoint.ContactPointUse.Home)))
+            ed.Add("telefone");
+        if (NormEmail(r.Email) != NormEmail(TelecomNativo(p, ContactPoint.ContactPointSystem.Email))) ed.Add("email");
+        if (!EnderecoIgual(r.Endereco, EnderecoNativo(p))) ed.Add("endereco");
+        if (r.EstadoCivil != (EstadoCivilNativo(p) ?? EstadoCivil.NaoInformado)) ed.Add("estadoCivil");
+        if (Norm(r.NomeSocial) != Norm(NomeSocialNativo(p))) ed.Add("nomeSocial");
+        if (Norm(r.NomeDaMae) != Norm(ContatoNome(p, "MTH")) || Norm(r.NomeDoPai) != Norm(ContatoNome(p, "FTH"))
+            || Norm(r.ResponsavelLegal) != Norm(ContatoNome(p, "GUARD"))) ed.Add("filiacao");
+        return ed;
+    }
+
+    private static string Norm(string? v) => v?.Trim() ?? string.Empty;
+    private static string NormEmail(string? v) => v?.Trim().ToLowerInvariant() ?? string.Empty;
+
+    private static bool EnderecoIgual(EnderecoDto? a, EnderecoDto? b)
+    {
+        static string S(EnderecoDto? e) => e is null ? string.Empty : string.Join('|',
+            Norm(e.Logradouro), Norm(e.Numero), Norm(e.Complemento), Digitos(e.Cep),
+            Norm(e.Bairro), Norm(e.Cidade), Norm(e.Uf).ToUpperInvariant(), Norm(e.PontoReferencia));
+        return S(a) == S(b);
     }
 
     private static Payload LerPayload(Patient p)

@@ -323,30 +323,60 @@ public static class PatientMergeFhir
             novo.AddExtension(ExtPayloadBlob, new FhirString(blob.Value));
         }
 
-        // 2. Campos editados no painel — Oracle não sobrescreve.
+        // 2. Campos editados no painel — Oracle não sobrescreve. SEMPRE clona do 'atual' (nunca
+        //    aliasa a lista/objeto do recurso lido do hub — evita mutação-durante-enumeração e
+        //    aliasing entre 'novo' e 'atual').
         var editados = CamposEditados(atual);
+        if (editados.Contains("nome"))
+        {
+            // Correção de nome oficial pelo painel (feature "Verificar") vence o Oracle.
+            var oficial = atual.Name?.FirstOrDefault(n => n.Use == HumanName.NameUse.Official);
+            if (oficial is not null)
+            {
+                novo.Name ??= [];
+                novo.Name.RemoveAll(n => n.Use == HumanName.NameUse.Official);
+                novo.Name.Insert(0, (HumanName)oficial.DeepCopy());
+            }
+        }
         if (editados.Contains("nomeSocial"))
         {
             novo.Name ??= [];
             novo.Name.RemoveAll(n => n.Use == HumanName.NameUse.Nickname);
             var apelido = atual.Name?.FirstOrDefault(n => n.Use == HumanName.NameUse.Nickname);
-            if (apelido is not null) novo.Name.Add(apelido);
+            if (apelido is not null) novo.Name.Add((HumanName)apelido.DeepCopy());
         }
-        if (editados.Contains("endereco")) novo.Address = atual.Address;
-        if (editados.Contains("estadoCivil")) novo.MaritalStatus = atual.MaritalStatus;
-        if (editados.Contains("telefone") || editados.Contains("email")) novo.Telecom = atual.Telecom;
-        if (editados.Contains("filiacao")) novo.Contact = atual.Contact;
+        if (editados.Contains("endereco"))
+            novo.Address = atual.Address is null ? null : [.. atual.Address.Select(a => (Address)a.DeepCopy())];
+        if (editados.Contains("estadoCivil"))
+            novo.MaritalStatus = (CodeableConcept?)atual.MaritalStatus?.DeepCopy();
+        if (editados.Contains("filiacao"))
+            novo.Contact = atual.Contact is null ? null : [.. atual.Contact.Select(c => (Patient.ContactComponent)c.DeepCopy())];
+        // Telecom por SISTEMA: e-mail editado não congela o telefone do Oracle (e vice-versa).
+        if (editados.Contains("telefone") || editados.Contains("email"))
+        {
+            var preservarPhone = editados.Contains("telefone");
+            var preservarEmail = editados.Contains("email");
+            bool gerido(ContactPoint t) =>
+                (preservarPhone && t.System == ContactPoint.ContactPointSystem.Phone)
+                || (preservarEmail && t.System == ContactPoint.ContactPointSystem.Email);
+            novo.Telecom ??= [];
+            novo.Telecom.RemoveAll(gerido); // tira do Oracle o(s) sistema(s) que o painel gere
+            foreach (var t in (atual.Telecom ?? []).Where(gerido).ToList())
+                novo.Telecom.Add((ContactPoint)t.DeepCopy());
+        }
         if (editados.Count > 0) MarcarEditados(novo, editados);
 
-        // 3. Telefones CONFIRMADOS — sempre preservados (independe de "editado"): remove o número
-        //    correspondente vindo do Oracle e injeta o telecom confirmado do hub.
-        foreach (var conf in (atual.Telecom ?? []).Where(t =>
-                     t.System == ContactPoint.ContactPointSystem.Phone && EhConfirmado(t)))
+        // 3. Telefones CONFIRMADOS — sempre preservados. Idempotente inclusive no retry: remove
+        //    QUALQUER confirmado já presente em 'novo' (de uma tentativa anterior) e injeta os do
+        //    hub clonados, tirando o número correspondente vindo do Oracle.
+        novo.Telecom ??= [];
+        novo.Telecom.RemoveAll(EhConfirmado);
+        foreach (var conf in (atual.Telecom ?? [])
+                     .Where(t => t.System == ContactPoint.ContactPointSystem.Phone && EhConfirmado(t)).ToList())
         {
-            novo.Telecom ??= [];
             novo.Telecom.RemoveAll(x => x.System == ContactPoint.ContactPointSystem.Phone
                 && MesmoNumero(Digitos(x.Value), Digitos(conf.Value)));
-            novo.Telecom.Add(conf);
+            novo.Telecom.Add((ContactPoint)conf.DeepCopy());
         }
     }
 
