@@ -40,6 +40,7 @@ public static class DependencyInjection
     {
         services.AddScoped<IPacientesService, PacientesService>();
         services.AddScoped<Pacientes.Fhir.IPacienteResolver, Pacientes.Fhir.PacienteResolver>();
+        services.AddScoped<Pacientes.Promocao.IPromocaoBlobService, Pacientes.Promocao.PromocaoBlobService>();
         services.AddScoped<Auditoria.IAuditoriaService, Auditoria.AuditoriaService>();
         services.AddScoped<Erros.IRegistroErroService, Erros.RegistroErroService>();
         services.AddScoped<ITratamentosService, TratamentosService>();

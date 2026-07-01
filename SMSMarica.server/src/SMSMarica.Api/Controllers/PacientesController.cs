@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SMSMarica.Api.Auth;
 using SMSMarica.Core.Atendimentos;
 using SMSMarica.Core.Atendimentos.Dtos;
@@ -191,6 +193,37 @@ public sealed class PacientesController(
     {
         await _service.AdicionarTelefoneAsync(id, request, cancellationToken);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Backfill de manutenção (ADR-0020 R4): promove a demografia de TODOS os pacientes do blob para
+    /// campos FHIR nativos (idempotente/resumível) e re-carimba os telefones já confirmados. Roda em
+    /// BACKGROUND (202) — acompanhe pelos logs do server. GATE OPERACIONAL: só com backup do
+    /// <c>fhir.patient</c> (o hub não tem undo). Gate de acesso por SincronizacaoPep.Edicao.
+    /// </summary>
+    [HttpPost("promocao-blob")]
+    [RequerPermissao(ModuloPermissao.SincronizacaoPep, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    public IActionResult PromoverBlob(
+        [FromServices] IServiceScopeFactory escopos,
+        [FromServices] ILogger<PacientesController> logger,
+        [FromQuery] int throttleMs = 25)
+    {
+        // Fire-and-forget num escopo próprio (a requisição retorna 202 na hora).
+        _ = Task.Run(async () =>
+        {
+            using var escopo = escopos.CreateScope();
+            try
+            {
+                var svc = escopo.ServiceProvider.GetRequiredService<Core.Pacientes.Promocao.IPromocaoBlobService>();
+                await svc.PromoverTodosAsync(throttleMs, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Backfill de promoção blob→nativo falhou.");
+            }
+        });
+        return Accepted(new { mensagem = "Backfill blob→nativo iniciado em background. Acompanhe pelos logs do server." });
     }
 
     /// <summary>Desativa um paciente (soft delete) — some das listagens.</summary>

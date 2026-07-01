@@ -61,6 +61,20 @@ public sealed class PatientController(IPatientService service) : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// GET /fhir/Patient/_manutencao?_cursor=&amp;_count= — iteração keyset (por Id) de todos os
+    /// Patients vivos, para manutenção/backfill. Rota literal antes de {id}.
+    /// </summary>
+    [HttpGet("_manutencao")]
+    public async Task<IActionResult> ListarManutencao(
+        [FromQuery(Name = "_cursor")] Guid? cursor,
+        [FromQuery(Name = "_count")] int count,
+        CancellationToken ct)
+    {
+        var bundle = await service.ListarParaManutencaoAsync(cursor, count <= 0 ? 200 : count, ct);
+        return FhirResponse.Recurso(bundle);
+    }
+
     /// <summary>GET /fhir/Patient?identifier=system|valor&amp;name=... — busca.</summary>
     [HttpGet]
     public async Task<IActionResult> Buscar(

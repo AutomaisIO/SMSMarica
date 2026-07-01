@@ -112,6 +112,25 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
         return bundle;
     }
 
+    public async Task<Bundle> ListarParaManutencaoAsync(Guid? cursor, int count, CancellationToken ct = default)
+    {
+        count = Math.Clamp(count, 1, 500);
+        var query = db.Patients.AsNoTracking().Where(p => !p.IsDeleted);
+        if (cursor is Guid c) query = query.Where(p => p.Id.CompareTo(c) > 0);
+        var rows = await query.OrderBy(p => p.Id).Take(count).ToListAsync(ct);
+
+        var bundle = new Bundle { Type = Bundle.BundleType.Searchset, Total = rows.Count };
+        foreach (var row in rows)
+            bundle.Entry.Add(new Bundle.EntryComponent { Resource = FhirJson.Parse<Patient>(row.Content) });
+        if (rows.Count == count)
+            bundle.Link.Add(new Bundle.LinkComponent
+            {
+                Relation = "next",
+                Url = $"fhir/Patient/_manutencao?_cursor={rows[^1].Id}&_count={count}",
+            });
+        return bundle;
+    }
+
     private static void CarimbarMeta(Patient patient, Guid id, int versao, DateTimeOffset agora, string source)
     {
         patient.Id = id.ToString();

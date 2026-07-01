@@ -22,6 +22,10 @@ internal static class PacienteFhirMapper
 {
     public const string PayloadUrl = "urn:smsmarica:paciente-payload";
 
+    /// <summary>Marcador de que o paciente já teve o blob promovido para nativo (resumível/idempotente).</summary>
+    public const string ExtPromovido = "urn:smsmarica:promovido";
+    private const string PromocaoVersaoAtual = "1";
+
     // Systems canônicos (espelham FhirSystems do hub).
     private const string SystemCpf = "https://fhir.saude.gov.br/sid/cpf";
     private const string SystemCns = "https://fhir.saude.gov.br/sid/cns";
@@ -185,6 +189,24 @@ internal static class PacienteFhirMapper
 
         // Correção de nome pelo painel vence o Oracle no reimport (ADR-0020 #1).
         PatientMergeFhir.MarcarEditados(existente, ["nome"]);
+    }
+
+    /// <summary>
+    /// Backfill (ADR-0020 R4): promove a demografia do blob para campos FHIR NATIVOS (idempotente).
+    /// NÃO marca "campos editados" — não é edição de usuário, só migração de representação. Mantém o
+    /// blob (dual-write da Fase A). Devolve false se não há o que fazer (sem blob ou já promovido).
+    /// </summary>
+    public static bool PromoverBlobParaNativo(Patient p)
+    {
+        var raw = (p.GetExtension(PayloadUrl)?.Value as FhirString)?.Value;
+        if (raw is null) return false; // sem blob (paciente puro do hub/Salux) — nada a promover
+        if ((p.GetExtension(ExtPromovido)?.Value as FhirString)?.Value == PromocaoVersaoAtual) return false;
+
+        var pl = JsonSerializer.Deserialize<Payload>(raw, Json)!;
+        AplicarPayload(p, pl); // reescreve nativo a partir do blob (sem marcar editado; mantém o blob)
+        p.RemoveExtension(ExtPromovido);
+        p.AddExtension(ExtPromovido, new FhirString(PromocaoVersaoAtual));
+        return true;
     }
 
     public static PacienteDto ParaDto(Patient p)

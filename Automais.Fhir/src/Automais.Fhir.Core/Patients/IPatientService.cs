@@ -28,4 +28,10 @@ public interface IPatientService
 
     /// <summary>Busca Patients pelos filtros, devolvendo um Bundle searchset.</summary>
     Task<Bundle> BuscarAsync(PatientBusca filtro, CancellationToken ct = default);
+
+    /// <summary>
+    /// Iteração keyset (por Id) de TODOS os Patients vivos — para manutenção/backfill. Devolve uma
+    /// página ordenada por Id (Id &gt; cursor) com <c>link[rel=next]</c> carregando o próximo cursor.
+    /// </summary>
+    Task<Bundle> ListarParaManutencaoAsync(Guid? cursor, int count, CancellationToken ct = default);
 }

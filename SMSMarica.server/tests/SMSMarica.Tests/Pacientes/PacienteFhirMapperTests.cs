@@ -70,6 +70,13 @@ public class PacienteFhirMapperTests
     }
 
     [Fact]
+    public void PromoverBlobParaNativo_sem_blob_e_no_op()
+    {
+        // Paciente importado (sem blob) — nada a promover.
+        PacienteFhirMapper.PromoverBlobParaNativo(Importado()).Should().BeFalse();
+    }
+
+    [Fact]
     public void EstadoCivil_texto_pt_br_do_importado_e_normalizado()
     {
         var p = Importado();

@@ -53,6 +53,13 @@ public sealed class PacienteFhirClient(HttpClient http) : IPacienteFhirClient
         return await LerRecurso<Bundle>(resp, ct);
     }
 
+    public async Task<Bundle> ListarParaManutencaoAsync(Guid? cursor, int count, CancellationToken ct = default)
+    {
+        var url = $"fhir/Patient/_manutencao?_count={count}" + (cursor is Guid c ? $"&_cursor={c}" : string.Empty);
+        using var resp = await http.GetAsync(url, ct);
+        return await LerRecurso<Bundle>(resp, ct);
+    }
+
     private static StringContent Body(Resource r) =>
         new(FhirJson.Serialize(r), Encoding.UTF8, MediaType);
 
