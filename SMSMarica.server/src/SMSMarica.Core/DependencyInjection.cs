@@ -190,6 +190,12 @@ public static class DependencyInjection
         // ---- Credenciais de provedores OAuth (Microsoft/Facebook/Google), cifradas ----
         services.AddScoped<Integracoes.Credenciais.IIntegracaoCredencialService, Integracoes.Credenciais.IntegracaoCredencialService>();
 
+        // ---- SISREG III (web scraping): consulta de paciente por CNS (CADSUS) ----
+        // Sessão única por operador → cliente HTTP com cookies persistentes (singleton) que
+        // reloga sozinho quando a sessão cai. Credencial cifrada no store de Integrações ("sisreg").
+        services.AddSingleton<Integracoes.SisregWeb.ISisregWebSessao, Integracoes.SisregWeb.SisregWebSessao>();
+        services.AddScoped<Integracoes.SisregWeb.IConsultaCnsService, Integracoes.SisregWeb.ConsultaCnsService>();
+
         // ---- Integração SISREG (feed de leitura DATASUS) — ADR-0012 ----
         // BaseUrl e credenciais vêm do banco (tela de configuração), não do registro de DI.
         services.AddScoped<Integracoes.Sisreg.Configuracao.ISisregConfiguracaoService, Integracoes.Sisreg.Configuracao.SisregConfiguracaoService>();

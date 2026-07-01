@@ -11,6 +11,7 @@ import {
 import { GoogleMapsCard } from '@/features/integracoes/components/GoogleMapsCard';
 import { NavigationSdkCard } from '@/features/integracoes/components/NavigationSdkCard';
 import { ProxyServicoSection } from '@/features/integracoes/components/ProxyServicoSection';
+import { SisregCard, PROVEDOR_SISREG } from '@/features/integracoes/components/SisregCard';
 import { WhatsAppCard } from '@/features/integracoes/components/WhatsAppCard';
 
 function LinkCard({ to, titulo, descricao }: { to: string; titulo: string; descricao: string }) {
@@ -38,10 +39,19 @@ export function IntegracoesPage() {
   // O Spaces (S3) tem card próprio (Access/Secret Key + endpoint/region/bucket),
   // então é separado da lista genérica de provedores OAuth.
   const lista = credenciais.data ?? [];
-  const credsOauth = lista.filter((c) => c.provedor !== PROVEDOR_SPACES);
+  const credsOauth = lista.filter((c) => c.provedor !== PROVEDOR_SPACES && c.provedor !== PROVEDOR_SISREG);
   const credSpaces = lista.find((c) => c.provedor === PROVEDOR_SPACES) ?? {
     provedor: PROVEDOR_SPACES,
     rotulo: 'DigitalOcean Spaces (S3)',
+    clientIdDefinido: false,
+    clientSecretDefinido: false,
+    redirectUri: null,
+    parametrosJson: null,
+    ativo: false,
+  };
+  const credSisreg = lista.find((c) => c.provedor === PROVEDOR_SISREG) ?? {
+    provedor: PROVEDOR_SISREG,
+    rotulo: 'SISREG (consulta de paciente por CNS)',
     clientIdDefinido: false,
     clientSecretDefinido: false,
     redirectUri: null,
@@ -89,6 +99,15 @@ export function IntegracoesPage() {
         </h2>
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           <DigitalOceanSpacesCard cred={credSpaces} />
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+          Consulta de pacientes (SISREG)
+        </h2>
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <SisregCard cred={credSisreg} />
         </div>
       </section>
 
