@@ -541,7 +541,7 @@ export function LaudoEditorPage() {
                 <span>
                   Solicitado por {solicitacao.data.solicitanteNome} (
                   {(solicitacao.data.solicitanteConselho || 'CRM').toUpperCase()}{' '}
-                  {solicitacao.data.solicitanteUfCrm}/{solicitacao.data.solicitanteCrm})
+                  {solicitacao.data.solicitanteUfConselho}/{solicitacao.data.solicitanteNumConselho})
                 </span>
                 {solicitacao.data.justificativa ? (
                   <div className="mt-1 text-xs text-emerald-800">

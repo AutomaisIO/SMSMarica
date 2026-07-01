@@ -9,8 +9,8 @@ public sealed record AtualizarSolicitacaoExameRequest(
 
     Guid? SolicitanteUsuarioId,
     string SolicitanteNome,
-    string SolicitanteCrm,
-    string SolicitanteUfCrm,
+    string SolicitanteNumConselho,
+    string SolicitanteUfConselho,
     string? SolicitanteConselho,
 
     string? CodigoSolicitacao,

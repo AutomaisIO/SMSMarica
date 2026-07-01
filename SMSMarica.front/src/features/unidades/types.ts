@@ -20,6 +20,7 @@ export type UnidadeListItem = {
 export type Unidade = {
   id: string;
   nome: string;
+  cnes: string | null;
   endereco: EnderecoDto | null;
   telefone: string | null;
   latitude: number | null;
@@ -30,6 +31,7 @@ export type Unidade = {
 
 export type SalvarUnidadePayload = {
   nome: string;
+  cnes?: string | null;
   endereco: EnderecoDto | null;
   telefone?: string;
   latitude?: number | null;

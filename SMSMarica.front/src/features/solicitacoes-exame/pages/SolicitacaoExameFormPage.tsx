@@ -29,8 +29,8 @@ type EstadoForm = {
   unidadeId: string;
   solicitanteUsuarioId: string | null;
   solicitanteNome: string;
-  solicitanteCrm: string;
-  solicitanteUfCrm: string;
+  solicitanteNumConselho: string;
+  solicitanteUfConselho: string;
   solicitanteConselho: string;
   codigoSolicitacao: string;
   chaveConfirmacao: string;
@@ -47,8 +47,8 @@ const ESTADO_INICIAL: EstadoForm = {
   unidadeId: '',
   solicitanteUsuarioId: null,
   solicitanteNome: '',
-  solicitanteCrm: '',
-  solicitanteUfCrm: '',
+  solicitanteNumConselho: '',
+  solicitanteUfConselho: '',
   solicitanteConselho: 'CRM',
   codigoSolicitacao: '',
   chaveConfirmacao: '',
@@ -114,8 +114,8 @@ export function SolicitacaoExameFormPage() {
         unidadeId: s.unidadeId,
         solicitanteUsuarioId: s.solicitanteUsuarioId,
         solicitanteNome: s.solicitanteNome,
-        solicitanteCrm: s.solicitanteCrm,
-        solicitanteUfCrm: s.solicitanteUfCrm,
+        solicitanteNumConselho: s.solicitanteNumConselho,
+        solicitanteUfConselho: s.solicitanteUfConselho,
         solicitanteConselho: s.solicitanteConselho ?? 'CRM',
         codigoSolicitacao: s.codigoSolicitacao ?? '',
         chaveConfirmacao: s.chaveConfirmacao ?? '',
@@ -152,7 +152,7 @@ export function SolicitacaoExameFormPage() {
     if (!estado.tipoExameId) return setErro('Selecione o tipo de exame.');
     if (!estado.unidadeId) return setErro('Selecione a unidade executora.');
     if (!estado.solicitanteNome.trim()) return setErro('Informe o profissional solicitante.');
-    if (!estado.solicitanteCrm.trim() || !estado.solicitanteUfCrm.trim())
+    if (!estado.solicitanteNumConselho.trim() || !estado.solicitanteUfConselho.trim())
       return setErro('Informe o registro (CRM/COREN) e a UF do solicitante.');
     if (!regulacaoValida(estado.codigoSolicitacao))
       return setErro('Código de Solicitação inválido: use 0000 (emergência extra-SUS) ou um número a partir de 9999.');
@@ -170,8 +170,8 @@ export function SolicitacaoExameFormPage() {
       unidadeId: estado.unidadeId,
       solicitanteUsuarioId: estado.solicitanteUsuarioId,
       solicitanteNome: estado.solicitanteNome.trim(),
-      solicitanteCrm: estado.solicitanteCrm.trim(),
-      solicitanteUfCrm: estado.solicitanteUfCrm.trim(),
+      solicitanteNumConselho: estado.solicitanteNumConselho.trim(),
+      solicitanteUfConselho: estado.solicitanteUfConselho.trim(),
       solicitanteConselho: estado.solicitanteConselho || 'CRM',
       codigoSolicitacao: estado.codigoSolicitacao.trim() || null,
       chaveConfirmacao: estado.chaveConfirmacao.trim() || null,
@@ -338,8 +338,8 @@ export function SolicitacaoExameFormPage() {
           valor={{
             solicitanteUsuarioId: estado.solicitanteUsuarioId,
             solicitanteNome: estado.solicitanteNome,
-            solicitanteCrm: estado.solicitanteCrm,
-            solicitanteUfCrm: estado.solicitanteUfCrm,
+            solicitanteNumConselho: estado.solicitanteNumConselho,
+            solicitanteUfConselho: estado.solicitanteUfConselho,
             solicitanteConselho: estado.solicitanteConselho,
           }}
           aoMudar={(v) => setEstado((s) => ({ ...s, ...v }))}

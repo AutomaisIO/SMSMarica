@@ -10,11 +10,11 @@ public sealed class AtualizarSolicitacaoExameValidator : AbstractValidator<Atual
         RuleFor(s => s.TipoExameId).NotEmpty();
         RuleFor(s => s.UnidadeId).NotEmpty();
         RuleFor(s => s.SolicitanteNome).NotEmpty().MaximumLength(200);
-        RuleFor(s => s.SolicitanteCrm)
+        RuleFor(s => s.SolicitanteNumConselho)
             .NotEmpty()
             .Must(c => c.Any(char.IsDigit)).WithMessage("O registro (CRM/COREN) deve conter dígitos.")
             .MaximumLength(20);
-        RuleFor(s => s.SolicitanteUfCrm).NotEmpty().Length(2);
+        RuleFor(s => s.SolicitanteUfConselho).NotEmpty().Length(2);
         RuleFor(s => s.SolicitanteConselho).MaximumLength(20);
         RuleFor(s => s.CodigoSolicitacao)
             .NotEmpty().WithMessage("Código de Solicitação é obrigatório.")

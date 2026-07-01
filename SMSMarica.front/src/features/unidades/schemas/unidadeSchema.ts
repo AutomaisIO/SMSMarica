@@ -15,6 +15,12 @@ export const enderecoSchema = z
 
 export const unidadeSchema = z.object({
   nome: z.string().min(2, 'Nome obrigatório.').max(200, 'Nome excede 200 caracteres.'),
+  cnes: z
+    .string()
+    .optional()
+    .transform((v) => (v ? v.replace(/\D/g, '') : ''))
+    .refine((v) => v === '' || v.length === 7, 'CNES deve ter 7 dígitos.')
+    .transform((v) => (v.length > 0 ? v : undefined)),
   endereco: enderecoSchema,
   telefone: z
     .string()

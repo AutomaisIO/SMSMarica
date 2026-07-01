@@ -35,6 +35,7 @@ public sealed class UnidadesService(SmsMaricaDbContext db, IGeocodificadorServic
         {
             Id = Guid.CreateVersion7(),
             Nome = request.Nome.Trim(),
+            Cnes = NormalizarCnes(request.Cnes),
             Endereco = endereco,
             Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim(),
             Gps = await ResolverGpsAsync(request.Latitude, request.Longitude, endereco, cancellationToken),
@@ -55,6 +56,7 @@ public sealed class UnidadesService(SmsMaricaDbContext db, IGeocodificadorServic
 
         var endereco = request.Endereco?.ParaEntidade();
         u.Nome = request.Nome.Trim();
+        u.Cnes = NormalizarCnes(request.Cnes);
         u.Endereco = endereco;
         u.Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim();
         u.Gps = await ResolverGpsAsync(request.Latitude, request.Longitude, endereco, cancellationToken);
@@ -93,6 +95,14 @@ public sealed class UnidadesService(SmsMaricaDbContext db, IGeocodificadorServic
 
         var coord = await _geo.GeocodificarAsync(endereco, ct);
         return coord is null ? null : new Gps(coord.Latitude, coord.Longitude);
+    }
+
+    /// <summary>Só dígitos; null quando vazio. Evita duplicar CNES por diferença de máscara/espaços.</summary>
+    private static string? NormalizarCnes(string? cnes)
+    {
+        if (string.IsNullOrWhiteSpace(cnes)) return null;
+        var digitos = new string([.. cnes.Where(char.IsDigit)]);
+        return digitos.Length == 0 ? null : digitos;
     }
 
     private static bool EhExterna(Endereco? endereco) =>

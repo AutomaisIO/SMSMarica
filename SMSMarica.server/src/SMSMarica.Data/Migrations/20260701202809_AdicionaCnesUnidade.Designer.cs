@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -13,9 +14,11 @@ using SMSMarica.Data;
 namespace SMSMarica.Data.Migrations
 {
     [DbContext(typeof(SmsMaricaDbContext))]
-    partial class SmsMaricaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260701202809_AdicionaCnesUnidade")]
+    partial class AdicionaCnesUnidade
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -3947,10 +3950,11 @@ namespace SMSMarica.Data.Migrations
                         .HasDefaultValue("CRM")
                         .HasColumnName("solicitante_conselho");
 
-                    b.Property<string>("SolicitanteCpf")
-                        .HasMaxLength(11)
-                        .HasColumnType("character varying(11)")
-                        .HasColumnName("solicitante_cpf");
+                    b.Property<string>("SolicitanteCrm")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("solicitante_crm");
 
                     b.Property<string>("SolicitanteNome")
                         .IsRequired()
@@ -3958,17 +3962,11 @@ namespace SMSMarica.Data.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("solicitante_nome");
 
-                    b.Property<string>("SolicitanteNumConselho")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("solicitante_num_conselho");
-
-                    b.Property<string>("SolicitanteUfConselho")
+                    b.Property<string>("SolicitanteUfCrm")
                         .IsRequired()
                         .HasMaxLength(2)
                         .HasColumnType("character varying(2)")
-                        .HasColumnName("solicitante_uf_conselho");
+                        .HasColumnName("solicitante_uf_crm");
 
                     b.Property<Guid?>("SolicitanteUsuarioId")
                         .HasColumnType("uuid")
@@ -4011,10 +4009,6 @@ namespace SMSMarica.Data.Migrations
 
                     b.HasIndex("AccessionNumber")
                         .IsUnique();
-
-                    b.HasIndex("CodigoSolicitacao")
-                        .IsUnique()
-                        .HasFilter("codigo_solicitacao IS NOT NULL AND codigo_solicitacao <> '0000'");
 
                     b.HasIndex("PacienteId");
 

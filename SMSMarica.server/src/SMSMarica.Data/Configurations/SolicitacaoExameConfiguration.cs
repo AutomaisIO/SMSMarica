@@ -23,8 +23,9 @@ internal sealed class SolicitacaoExameConfiguration : IEntityTypeConfiguration<S
 
         builder.Property(s => s.SolicitanteUsuarioId).HasColumnName("solicitante_usuario_id");
         builder.Property(s => s.SolicitanteNome).HasColumnName("solicitante_nome").HasMaxLength(200).IsRequired();
-        builder.Property(s => s.SolicitanteCrm).HasColumnName("solicitante_crm").HasMaxLength(20).IsRequired();
-        builder.Property(s => s.SolicitanteUfCrm).HasColumnName("solicitante_uf_crm").HasMaxLength(2).IsRequired();
+        builder.Property(s => s.SolicitanteNumConselho).HasColumnName("solicitante_num_conselho").HasMaxLength(20).IsRequired();
+        builder.Property(s => s.SolicitanteUfConselho).HasColumnName("solicitante_uf_conselho").HasMaxLength(2).IsRequired();
+        builder.Property(s => s.SolicitanteCpf).HasColumnName("solicitante_cpf").HasMaxLength(11);
         // Default "CRM" também faz o backfill das linhas existentes (todas legado = médico).
         builder.Property(s => s.SolicitanteConselho).HasColumnName("solicitante_conselho").HasMaxLength(20).HasDefaultValue("CRM").IsRequired();
 
@@ -84,6 +85,12 @@ internal sealed class SolicitacaoExameConfiguration : IEntityTypeConfiguration<S
 
         builder.HasIndex(s => s.AccessionNumber).IsUnique();
         builder.HasIndex(s => s.StudyInstanceUID).IsUnique();
+
+        // Trava de idempotência do número de regulação (SISREG). Único quando preenchido,
+        // EXCETO o sentinela '0000' (extra-SUS, repetição intencional) e nulos (manuais/PACS).
+        builder.HasIndex(s => s.CodigoSolicitacao)
+            .IsUnique()
+            .HasFilter("codigo_solicitacao IS NOT NULL AND codigo_solicitacao <> '0000'");
         builder.HasIndex(s => s.PacienteId);
         builder.HasIndex(s => s.Status);
         builder.HasIndex(s => new { s.Status, s.DataAgendada }); // usado pelo SincronizadorExamesService

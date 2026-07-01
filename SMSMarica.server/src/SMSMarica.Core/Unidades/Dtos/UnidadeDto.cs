@@ -5,6 +5,7 @@ namespace SMSMarica.Core.Unidades.Dtos;
 public sealed record UnidadeDto(
     Guid Id,
     string Nome,
+    string? Cnes,
     EnderecoDto? Endereco,
     string? Telefone,
     double? Latitude,

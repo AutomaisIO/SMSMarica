@@ -202,8 +202,8 @@ public sealed class SolicitacoesExameService(
 
             SolicitanteUsuarioId = solicitanteUsuarioId,
             SolicitanteNome = request.SolicitanteNome.Trim(),
-            SolicitanteCrm = NormalizarDigitos(request.SolicitanteCrm),
-            SolicitanteUfCrm = (request.SolicitanteUfCrm ?? string.Empty).Trim().ToUpperInvariant(),
+            SolicitanteNumConselho = NormalizarDigitos(request.SolicitanteNumConselho),
+            SolicitanteUfConselho = (request.SolicitanteUfConselho ?? string.Empty).Trim().ToUpperInvariant(),
             SolicitanteConselho = NormalizarConselho(request.SolicitanteConselho),
 
             CodigoSolicitacao = NormalizaOpcional(request.CodigoSolicitacao),
@@ -247,8 +247,8 @@ public sealed class SolicitacoesExameService(
         s.UnidadeId = request.UnidadeId;
         s.SolicitanteUsuarioId = await ResolverSolicitanteUsuarioAsync(request.SolicitanteUsuarioId, cancellationToken);
         s.SolicitanteNome = request.SolicitanteNome.Trim();
-        s.SolicitanteCrm = NormalizarDigitos(request.SolicitanteCrm);
-        s.SolicitanteUfCrm = (request.SolicitanteUfCrm ?? string.Empty).Trim().ToUpperInvariant();
+        s.SolicitanteNumConselho = NormalizarDigitos(request.SolicitanteNumConselho);
+        s.SolicitanteUfConselho = (request.SolicitanteUfConselho ?? string.Empty).Trim().ToUpperInvariant();
         s.SolicitanteConselho = NormalizarConselho(request.SolicitanteConselho);
         s.CodigoSolicitacao = NormalizaOpcional(request.CodigoSolicitacao);
         s.ChaveConfirmacao = NormalizaOpcional(request.ChaveConfirmacao);

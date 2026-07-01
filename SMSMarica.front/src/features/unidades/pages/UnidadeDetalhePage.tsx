@@ -139,6 +139,7 @@ export function UnidadeDetalhePage() {
             <h2 className="mb-4 text-sm font-semibold text-gray-900">Identificação</h2>
             <div className="grid grid-cols-1 gap-4">
               <Dado rotulo="Nome" valor={u.nome} />
+              <Dado rotulo="CNES" valor={u.cnes ?? undefined} />
               <Dado rotulo="Telefone" valor={u.telefone ?? undefined} />
               <Dado rotulo="Cadastrada em" valor={new Date(u.criadoEm).toLocaleString('pt-BR')} />
             </div>

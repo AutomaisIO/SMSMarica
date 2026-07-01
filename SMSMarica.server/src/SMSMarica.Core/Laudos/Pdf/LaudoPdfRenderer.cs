@@ -514,9 +514,9 @@ public sealed class LaudoPdfRenderer(
                 ? "CRM"
                 : s.SolicitanteConselho.Trim().ToUpperInvariant();
             var rotuloSolicitante = conselho == "COREN" ? "Enfermeiro solicitante" : "Médico solicitante";
-            var registro = string.IsNullOrWhiteSpace(s.SolicitanteCrm)
+            var registro = string.IsNullOrWhiteSpace(s.SolicitanteNumConselho)
                 ? null
-                : $"{conselho} {s.SolicitanteCrm}{(string.IsNullOrWhiteSpace(s.SolicitanteUfCrm) ? string.Empty : "/" + s.SolicitanteUfCrm)}";
+                : $"{conselho} {s.SolicitanteNumConselho}{(string.IsNullOrWhiteSpace(s.SolicitanteUfConselho) ? string.Empty : "/" + s.SolicitanteUfConselho)}";
             var solicitante = string.IsNullOrWhiteSpace(s.SolicitanteNome)
                 ? null
                 : registro is null ? s.SolicitanteNome : $"{s.SolicitanteNome} ({registro})";

@@ -9,8 +9,8 @@ import { cn } from '@/shared/lib/cn';
 type Valor = {
   solicitanteUsuarioId: string | null;
   solicitanteNome: string;
-  solicitanteCrm: string;
-  solicitanteUfCrm: string;
+  solicitanteNumConselho: string;
+  solicitanteUfConselho: string;
   /** "CRM" (médico) ou "COREN" (enfermeiro). */
   solicitanteConselho: string;
 };
@@ -59,22 +59,22 @@ export function SeletorMedicoSolicitante({ valor, aoMudar }: Props) {
       solicitanteConselho: novo,
       solicitanteUsuarioId: null,
       solicitanteNome: '',
-      solicitanteCrm: '',
-      solicitanteUfCrm: '',
+      solicitanteNumConselho: '',
+      solicitanteUfConselho: '',
     });
   }
 
   function escolherInterno(profId: string) {
     const m = medicos.data?.find((x) => x.id === profId);
     if (!m) {
-      aoMudar({ ...valor, solicitanteUsuarioId: null, solicitanteNome: '', solicitanteCrm: '', solicitanteUfCrm: '' });
+      aoMudar({ ...valor, solicitanteUsuarioId: null, solicitanteNome: '', solicitanteNumConselho: '', solicitanteUfConselho: '' });
       return;
     }
     aoMudar({
       solicitanteUsuarioId: m.id,
       solicitanteNome: m.nomeCompleto,
-      solicitanteCrm: m.registro,
-      solicitanteUfCrm: m.ufConselho,
+      solicitanteNumConselho: m.registro,
+      solicitanteUfConselho: m.ufConselho,
       solicitanteConselho: m.conselho || conselho,
     });
   }
@@ -148,7 +148,7 @@ export function SeletorMedicoSolicitante({ valor, aoMudar }: Props) {
               {valor.solicitanteUsuarioId
                 && !(medicos.data ?? []).some((m) => m.id === valor.solicitanteUsuarioId) ? (
                 <option value={valor.solicitanteUsuarioId}>
-                  {valor.solicitanteNome} ({registroLabel} {valor.solicitanteUfCrm}/{valor.solicitanteCrm})
+                  {valor.solicitanteNome} ({registroLabel} {valor.solicitanteUfConselho}/{valor.solicitanteNumConselho})
                 </option>
               ) : null}
               {(medicos.data ?? []).map((m) => (
@@ -172,16 +172,16 @@ export function SeletorMedicoSolicitante({ valor, aoMudar }: Props) {
           <Campo label={registroLabel} htmlFor="solicitante-crm">
             <Input
               id="solicitante-crm"
-              value={valor.solicitanteCrm}
-              onChange={(e) => aoMudar({ ...valor, solicitanteCrm: e.target.value.replace(/\D/g, '') })}
+              value={valor.solicitanteNumConselho}
+              onChange={(e) => aoMudar({ ...valor, solicitanteNumConselho: e.target.value.replace(/\D/g, '') })}
               placeholder="123456"
             />
           </Campo>
           <Campo label="UF" htmlFor="solicitante-uf">
             <Select
               id="solicitante-uf"
-              value={valor.solicitanteUfCrm}
-              onChange={(e) => aoMudar({ ...valor, solicitanteUfCrm: e.target.value })}
+              value={valor.solicitanteUfConselho}
+              onChange={(e) => aoMudar({ ...valor, solicitanteUfConselho: e.target.value })}
             >
               <option value="">UF</option>
               {UFS.map((uf) => (

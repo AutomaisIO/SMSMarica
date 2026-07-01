@@ -25,6 +25,7 @@ type Props = {
 
 type Valores = {
   nome: string;
+  cnes: string;
   telefone: string;
   endereco: EnderecoForm;
   latitude: string;
@@ -33,13 +34,14 @@ type Valores = {
 
 const INICIAL: Valores = {
   nome: '',
+  cnes: '',
   telefone: '',
   endereco: enderecoVazio,
   latitude: '',
   longitude: '',
 };
 
-type Erros = Partial<Record<'nome' | 'telefone' | 'latitude' | 'longitude', string>>;
+type Erros = Partial<Record<'nome' | 'cnes' | 'telefone' | 'latitude' | 'longitude', string>>;
 
 export function FormularioUnidade({ modo, idUnidade, aoConcluir }: Props) {
   const [valores, setValores] = useState<Valores>(INICIAL);
@@ -54,6 +56,7 @@ export function FormularioUnidade({ modo, idUnidade, aoConcluir }: Props) {
       const e = detalhe.data.endereco;
       setValores({
         nome: detalhe.data.nome,
+        cnes: detalhe.data.cnes ?? '',
         telefone: detalhe.data.telefone ?? '',
         latitude: detalhe.data.latitude == null ? '' : String(detalhe.data.latitude),
         longitude: detalhe.data.longitude == null ? '' : String(detalhe.data.longitude),
@@ -88,6 +91,7 @@ export function FormularioUnidade({ modo, idUnidade, aoConcluir }: Props) {
 
     const parsed = unidadeSchema.safeParse({
       nome: valores.nome.trim(),
+      cnes: valores.cnes,
       telefone: valores.telefone,
       endereco: enderecoForm
         ? {
@@ -150,6 +154,17 @@ export function FormularioUnidade({ modo, idUnidade, aoConcluir }: Props) {
           <Input id="nome" value={valores.nome} onChange={(e) => set('nome', e.target.value)} required />
         </Campo>
 
+        <Campo label="CNES" htmlFor="cnes" erro={erros.cnes}>
+          <Input
+            id="cnes"
+            value={valores.cnes}
+            onChange={(e) => set('cnes', e.target.value)}
+            inputMode="numeric"
+            maxLength={7}
+            placeholder="3132358"
+          />
+        </Campo>
+
         <Campo label="Telefone" htmlFor="telefone" erro={erros.telefone}>
           <Input
             id="telefone"
@@ -158,7 +173,6 @@ export function FormularioUnidade({ modo, idUnidade, aoConcluir }: Props) {
             placeholder="(21) 99999-0000"
           />
         </Campo>
-        <div />
       </div>
 
       <section>

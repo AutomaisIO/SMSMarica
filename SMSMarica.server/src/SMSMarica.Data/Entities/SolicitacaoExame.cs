@@ -43,9 +43,17 @@ public class SolicitacaoExame
 
     public string SolicitanteNome { get; set; } = string.Empty;
 
-    /// <summary>Número do registro no conselho (nº do CRM ou do COREN).</summary>
-    public string SolicitanteCrm { get; set; } = string.Empty;
-    public string SolicitanteUfCrm { get; set; } = string.Empty;
+    /// <summary>Número do registro no conselho (nº do CRM do médico ou do COREN do enfermeiro).
+    /// Nome genérico de propósito — o tipo de conselho fica em <see cref="SolicitanteConselho"/>.</summary>
+    public string SolicitanteNumConselho { get; set; } = string.Empty;
+
+    /// <summary>UF do conselho (CRM/COREN).</summary>
+    public string SolicitanteUfConselho { get; set; } = string.Empty;
+
+    /// <summary>CPF do médico solicitante (só dígitos). Uso INTERNO — âncora da importação SISREG
+    /// e base para resolver CPF→CRM. NÃO é exposto em DTO/laudo/PDF (o que se exibe é o CRM/COREN).
+    /// O SISREG entrega o CPF na ficha; o CRM vem vazio e é derivado depois.</summary>
+    public string? SolicitanteCpf { get; set; }
 
     /// <summary>Conselho do solicitante: "CRM" (médico) ou "COREN" (enfermeiro). Default "CRM" (legado).</summary>
     public string SolicitanteConselho { get; set; } = "CRM";

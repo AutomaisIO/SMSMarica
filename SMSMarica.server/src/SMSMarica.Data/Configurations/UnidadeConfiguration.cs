@@ -19,6 +19,10 @@ internal sealed class UnidadeConfiguration : IEntityTypeConfiguration<Unidade>
         builder.Property(u => u.AtualizadoEm).HasColumnName("atualizado_em");
         builder.Property(u => u.Externa).HasColumnName("externa").HasDefaultValue(false).IsRequired();
         builder.Property(u => u.CodigoIbgeCidade).HasColumnName("codigo_ibge_cidade").HasMaxLength(7);
+        builder.Property(u => u.Cnes).HasColumnName("cnes").HasMaxLength(7);
+
+        // Único quando preenchido: unidades legadas/manuais podem ficar sem CNES (nulo).
+        builder.HasIndex(u => u.Cnes).IsUnique().HasFilter("cnes IS NOT NULL");
 
         builder.OwnsOne(u => u.Endereco, e =>
         {

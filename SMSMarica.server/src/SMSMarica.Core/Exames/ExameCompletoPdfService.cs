@@ -105,11 +105,11 @@ public sealed class ExameCompletoPdfService(
 
     private static string? MontarRegistroSolicitante(SolicitacaoExame sol)
     {
-        if (string.IsNullOrWhiteSpace(sol.SolicitanteCrm)) return null;
+        if (string.IsNullOrWhiteSpace(sol.SolicitanteNumConselho)) return null;
         var conselho = string.IsNullOrWhiteSpace(sol.SolicitanteConselho)
             ? "CRM"
             : sol.SolicitanteConselho.Trim().ToUpperInvariant();
-        var uf = string.IsNullOrWhiteSpace(sol.SolicitanteUfCrm) ? string.Empty : "/" + sol.SolicitanteUfCrm;
-        return $"{conselho} {sol.SolicitanteCrm}{uf}";
+        var uf = string.IsNullOrWhiteSpace(sol.SolicitanteUfConselho) ? string.Empty : "/" + sol.SolicitanteUfConselho;
+        return $"{conselho} {sol.SolicitanteNumConselho}{uf}";
     }
 }

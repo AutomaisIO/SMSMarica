@@ -12,8 +12,8 @@ public sealed record CadastrarSolicitacaoExameRequest(
     // ou "COREN" (enfermeiro); null/omitido → o serviço assume "CRM" (retrocompat).
     Guid? SolicitanteUsuarioId,
     string SolicitanteNome,
-    string SolicitanteCrm,
-    string SolicitanteUfCrm,
+    string SolicitanteNumConselho,
+    string SolicitanteUfConselho,
     string? SolicitanteConselho,
 
     string? CodigoSolicitacao,

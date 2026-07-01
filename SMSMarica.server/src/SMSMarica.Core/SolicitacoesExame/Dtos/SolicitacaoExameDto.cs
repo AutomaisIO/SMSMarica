@@ -22,8 +22,8 @@ public sealed record SolicitacaoExameDto(
 
     Guid? SolicitanteUsuarioId,
     string SolicitanteNome,
-    string SolicitanteCrm,
-    string SolicitanteUfCrm,
+    string SolicitanteNumConselho,
+    string SolicitanteUfConselho,
     string SolicitanteConselho,
 
     string? CodigoSolicitacao,
