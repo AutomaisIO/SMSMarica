@@ -181,6 +181,13 @@ public static class PatientMergeFhir
     /// </summary>
     public const string ExtContatoConfirmado = "urn:smsmarica:contato-confirmado";
 
+    /// <summary>Marcador (no Patient) das chaves de campo que o PAINEL editou — o import não as sobrescreve
+    /// (ADR-0020 decisão #1: "painel vence no que editou"). Chaves: telefone,email,endereco,nomeSocial,estadoCivil,filiacao.</summary>
+    public const string ExtCamposEditados = "urn:smsmarica:campos-editados";
+
+    /// <summary>Blob proprietário do smsmarica (payload JSON) — preservado no reimport (Oracle não tem).</summary>
+    public const string ExtPayloadBlob = "urn:smsmarica:paciente-payload";
+
     public static void AplicarContatos(Patient p, string? principal, string? celular, string? residencial, string? email)
     {
         p.Telecom ??= [];
@@ -279,6 +286,69 @@ public static class PatientMergeFhir
     private static bool MesmoNumero(string a, string b) =>
         a.Length >= 8 && b.Length >= 8
         && (a.EndsWith(b, StringComparison.Ordinal) || b.EndsWith(a, StringComparison.Ordinal));
+
+    // ---------------- Campos editados (painel vence no reimport) ----------------
+
+    /// <summary>Adiciona chaves ao marcador de campos editados pelo painel (idempotente, união).</summary>
+    public static void MarcarEditados(Patient p, IEnumerable<string> campos)
+    {
+        var atuais = CamposEditados(p);
+        foreach (var c in campos)
+            if (!string.IsNullOrWhiteSpace(c)) atuais.Add(c);
+        p.RemoveExtension(ExtCamposEditados);
+        if (atuais.Count > 0)
+            p.AddExtension(ExtCamposEditados, new FhirString(string.Join(",", atuais.OrderBy(x => x, StringComparer.Ordinal))));
+    }
+
+    public static HashSet<string> CamposEditados(Patient p)
+    {
+        var raw = (p.GetExtension(ExtCamposEditados)?.Value as FhirString)?.Value;
+        return string.IsNullOrWhiteSpace(raw)
+            ? []
+            : [.. raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
+    }
+
+    /// <summary>
+    /// MERGE/PRESERVE da importação (ADR-0020 #1/#2): sobrepõe em <paramref name="novo"/> (recém-construído
+    /// do Oracle, prestes a ir pro PUT) o que o painel/hub possui e o Oracle NÃO deve sobrescrever:
+    /// (1) o blob proprietário; (2) os campos EDITADOS no painel (painel vence); (3) telefones CONFIRMADOS.
+    /// O resto (identidade, filiação não-editada, extras crus) segue do Oracle.
+    /// </summary>
+    public static void PreservarDoExistente(Patient novo, Patient atual)
+    {
+        // 1. Blob proprietário (clínico/extras do smsmarica; Oracle não tem).
+        if (atual.GetExtension(ExtPayloadBlob) is { Value: FhirString blob })
+        {
+            novo.RemoveExtension(ExtPayloadBlob);
+            novo.AddExtension(ExtPayloadBlob, new FhirString(blob.Value));
+        }
+
+        // 2. Campos editados no painel — Oracle não sobrescreve.
+        var editados = CamposEditados(atual);
+        if (editados.Contains("nomeSocial"))
+        {
+            novo.Name ??= [];
+            novo.Name.RemoveAll(n => n.Use == HumanName.NameUse.Nickname);
+            var apelido = atual.Name?.FirstOrDefault(n => n.Use == HumanName.NameUse.Nickname);
+            if (apelido is not null) novo.Name.Add(apelido);
+        }
+        if (editados.Contains("endereco")) novo.Address = atual.Address;
+        if (editados.Contains("estadoCivil")) novo.MaritalStatus = atual.MaritalStatus;
+        if (editados.Contains("telefone") || editados.Contains("email")) novo.Telecom = atual.Telecom;
+        if (editados.Contains("filiacao")) novo.Contact = atual.Contact;
+        if (editados.Count > 0) MarcarEditados(novo, editados);
+
+        // 3. Telefones CONFIRMADOS — sempre preservados (independe de "editado"): remove o número
+        //    correspondente vindo do Oracle e injeta o telecom confirmado do hub.
+        foreach (var conf in (atual.Telecom ?? []).Where(t =>
+                     t.System == ContactPoint.ContactPointSystem.Phone && EhConfirmado(t)))
+        {
+            novo.Telecom ??= [];
+            novo.Telecom.RemoveAll(x => x.System == ContactPoint.ContactPointSystem.Phone
+                && MesmoNumero(Digitos(x.Value), Digitos(conf.Value)));
+            novo.Telecom.Add(conf);
+        }
+    }
 
     // ---------------- Filiação (Patient.contact) ----------------
 

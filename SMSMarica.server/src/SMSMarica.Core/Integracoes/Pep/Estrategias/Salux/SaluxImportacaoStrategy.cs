@@ -320,6 +320,10 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
         if (atual is not null)
         {
             UnirIdentifiers(novo, atual);
+            // Merge/preserve (ADR-0020): reimport NÃO sobrescreve blob, campos editados no painel
+            // nem telefones confirmados; o resto (identidade/filiação/extras) vem do Oracle.
+            if (novo is Patient np && atual is Patient ap)
+                Pacientes.Fhir.PatientMergeFhir.PreservarDoExistente(np, ap);
             novo.Id = atual.Id;
             var atualizado = await ctx.Escritor.AtualizarAsync(tipo, atual.Id!, novo, ct);
             return atualizado.Id!;

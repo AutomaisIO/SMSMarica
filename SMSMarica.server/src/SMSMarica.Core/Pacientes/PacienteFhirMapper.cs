@@ -383,6 +383,20 @@ internal static class PacienteFhirMapper
         // nesta fase — ParaDto os lê do blob (ver ADR-0020).
         patient.RemoveExtension(PayloadUrl);
         patient.AddExtension(PayloadUrl, new FhirString(JsonSerializer.Serialize(pl, Json)));
+
+        // Marca os campos que o PAINEL escreveu para o import não os sobrescrever no reimport
+        // (ADR-0020 #1: "painel vence no que editou").
+        var editados = new List<string>();
+        if (!string.IsNullOrWhiteSpace(pl.TelefonePrincipal) || !string.IsNullOrWhiteSpace(pl.TelefoneCelular)
+            || !string.IsNullOrWhiteSpace(pl.TelefoneResidencial)) editados.Add("telefone");
+        if (!string.IsNullOrWhiteSpace(pl.Email)) editados.Add("email");
+        if (pl.Endereco is not null && (!string.IsNullOrWhiteSpace(pl.Endereco.Logradouro)
+            || !string.IsNullOrWhiteSpace(pl.Endereco.Cidade))) editados.Add("endereco");
+        if (!string.IsNullOrWhiteSpace(pl.NomeSocial)) editados.Add("nomeSocial");
+        if (pl.EstadoCivil != EstadoCivil.NaoInformado) editados.Add("estadoCivil");
+        if (!string.IsNullOrWhiteSpace(pl.NomeDaMae) || !string.IsNullOrWhiteSpace(pl.NomeDoPai)
+            || !string.IsNullOrWhiteSpace(pl.ResponsavelLegal)) editados.Add("filiacao");
+        if (editados.Count > 0) PatientMergeFhir.MarcarEditados(patient, editados);
     }
 
     private static Payload LerPayload(Patient p)
