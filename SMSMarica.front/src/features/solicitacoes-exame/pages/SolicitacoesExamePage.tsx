@@ -160,8 +160,8 @@ export function SolicitacoesExamePage() {
     },
     {
       chave: 'data',
-      cabecalho: 'Solicitada em',
-      render: (s) => formatarInstante(s.criadoEm),
+      cabecalho: 'Data Agendamento',
+      render: (s) => formatarInstante(s.dataAgendada),
     },
     {
       chave: 'status',
