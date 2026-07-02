@@ -41,7 +41,8 @@ internal static class SolicitacoesExameMapper
         s.ProximaTentativaEm,
         s.CriadoEm,
         s.AtualizadoEm,
-        s.DataEstudo);
+        s.DataEstudo,
+        s.RawSisreg);
 
     public static SolicitacaoExameListItemDto ParaListItem(SolicitacaoExame s) => new(
         s.Id,

@@ -51,7 +51,11 @@ public sealed record SolicitacaoExameDto(
 
     // Data/hora REAL de execução do exame vinda do DICOM (StudyDate/StudyTime) —
     // fonte da verdade da data do exame. Null quando o PACS não trouxe a tag.
-    DateTime? DataEstudo);
+    DateTime? DataEstudo,
+
+    // Linha crua do TXT do SISREG que originou a solicitação (proveniência). Null quando
+    // não veio de importação. Exibida na tela de detalhe atrás de um botão discreto.
+    string? RawSisreg);
 
 public sealed record SolicitacaoExameListItemDto(
     Guid Id,

@@ -62,6 +62,8 @@ export type SolicitacaoExame = {
 
   /** Data/hora REAL de execução do exame vinda do DICOM (StudyDate/StudyTime) — fonte da verdade. */
   dataEstudo: string | null;
+  /** Linha crua do TXT do SISREG que originou a solicitação (proveniência). Null se não veio de import. */
+  rawSisreg: string | null;
 };
 
 export type SolicitacaoExameListItem = {
