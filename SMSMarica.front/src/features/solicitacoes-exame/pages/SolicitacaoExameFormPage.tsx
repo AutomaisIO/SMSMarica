@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, Save } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { formatarInstanteData, paraInputLocalDeUtc, paraUtcDeLocal } from '@/shared/lib/datas';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 import { notificar } from '@/shared/ui/Notificacoes';
@@ -112,7 +113,7 @@ export function SolicitacaoExameFormPage() {
         justificativa: s.justificativa ?? '',
         prioridade: s.prioridade,
         observacoes: s.observacoes ?? '',
-        dataAgendada: s.dataAgendada ? s.dataAgendada.slice(0, 16) : '',
+        dataAgendada: paraInputLocalDeUtc(s.dataAgendada),
       });
     }
   }, [detalhe.data]);
@@ -163,9 +164,7 @@ export function SolicitacaoExameFormPage() {
       justificativa: estado.justificativa.trim() || null,
       prioridade: estado.prioridade,
       observacoes: estado.observacoes.trim() || null,
-      dataAgendada: estado.dataAgendada
-        ? new Date(estado.dataAgendada).toISOString()
-        : null,
+      dataAgendada: paraUtcDeLocal(estado.dataAgendada),
     };
 
     try {
@@ -191,7 +190,7 @@ export function SolicitacaoExameFormPage() {
   const mensagemDuplicata =
     duplicatas.length > 0
       ? `Este paciente já tem ${duplicatas.length} solicitação(ões) nos últimos 10 dias — a mais recente: ` +
-        `${duplicatas[0].tipoExameNome} em ${new Date(duplicatas[0].criadoEm).toLocaleDateString('pt-BR')} ` +
+        `${duplicatas[0].tipoExameNome} em ${formatarInstanteData(duplicatas[0].criadoEm)} ` +
         `(${duplicatas[0].status}). Deseja criar outra mesmo assim?`
       : '';
 

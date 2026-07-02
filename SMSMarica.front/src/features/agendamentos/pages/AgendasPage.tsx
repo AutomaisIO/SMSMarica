@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CalendarClock, Loader2, Plus } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { hojeSP } from '@/shared/lib/datas';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
@@ -23,9 +24,7 @@ import {
   type TipoAgenda,
 } from '@/features/agendamentos/types';
 
-function hoje(): string {
-  return new Date().toISOString().slice(0, 10);
-}
+const hoje = hojeSP;
 
 type FormAgenda = {
   tipoAgenda: TipoAgenda;

@@ -8,13 +8,11 @@ import { Modal } from '@/shared/ui/Modal';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Button } from '@/shared/ui/Button';
+import { agoraInputLocalSP } from '@/shared/lib/datas';
 
-/** Datahora atual no formato aceito por <input type="datetime-local"> (yyyy-MM-ddTHH:mm). */
-function agoraLocal(): string {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
-}
+// A declaração guarda a hora de comparecimento como wall-clock local (Brasília) ponta a ponta —
+// o "agora" padrão vem em Brasília (não no fuso do browser); o valor enviado fica wall-clock.
+const agoraLocal = agoraInputLocalSP;
 
 /**
  * Ícone de "recibo" ao lado do badge Realizada/Laudada. Abre um modal com a

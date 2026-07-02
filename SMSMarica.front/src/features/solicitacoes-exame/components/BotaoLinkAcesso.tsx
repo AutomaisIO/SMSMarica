@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Check, LogIn, Loader2 } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
+import { formatarInstanteData } from '@/shared/lib/datas';
 import { gerarLinkAcesso } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
 
 /**
@@ -23,7 +24,7 @@ export function BotaoLinkAcesso({ solicitacaoId }: { solicitacaoId: string }) {
       } catch {
         /* clipboard pode falhar — mostra no alerta abaixo */
       }
-      const exp = new Date(r.expiraEm).toLocaleDateString('pt-BR');
+      const exp = formatarInstanteData(r.expiraEm);
       alert(`Link de acesso (login em 1 clique) gerado e copiado:\n\n${r.url}\n\nUso único — válido até ${exp}.`);
     } catch {
       alert('Não foi possível gerar o link de acesso.');

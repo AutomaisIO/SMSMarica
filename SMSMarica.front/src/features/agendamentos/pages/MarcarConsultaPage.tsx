@@ -13,9 +13,13 @@ import { useListarUnidades } from '@/features/unidades/api/queries';
 import { useHorariosPorEspecialidade } from '@/features/agendamentos/api/queries';
 import { agendar } from '@/features/agendamentos/api/agendamentosApi';
 import type { SlotEspecialidade } from '@/features/agendamentos/types';
+import { TZ_BR } from '@/shared/lib/datas';
 
+/** Data de um instante como aaaa-mm-dd em Brasília (não no fuso do browser). */
 function dataIso(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ_BR, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(d);
 }
 
 function hoje(): string {

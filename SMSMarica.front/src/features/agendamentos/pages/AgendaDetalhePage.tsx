@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, CalendarClock, Clock, Loader2, Plus, Trash2 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { formatarInstante, hojeSP } from '@/shared/lib/datas';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
@@ -31,9 +32,7 @@ import {
   type StatusAgendamento,
 } from '@/features/agendamentos/types';
 
-function hoje(): string {
-  return new Date().toISOString().slice(0, 10);
-}
+const hoje = hojeSP;
 
 function emDias(base: string, dias: number): string {
   const d = new Date(`${base}T00:00:00`);
@@ -42,8 +41,7 @@ function emDias(base: string, dias: number): string {
 }
 
 function fmtDataHora(v: string): string {
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? v : d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+  return formatarInstante(v);
 }
 
 const CORES_STATUS: Record<StatusAgendamento, string> = {

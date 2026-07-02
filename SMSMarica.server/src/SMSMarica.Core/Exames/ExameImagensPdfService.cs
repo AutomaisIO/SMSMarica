@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Armazenamento;
 using SMSMarica.Core.Common.Excecoes;
+using SMSMarica.Core.Common.Tempo;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities;
@@ -56,7 +57,8 @@ public sealed class ExameImagensPdfService(
             PacienteCns: paciente.Cns,
             PacienteNascimento: paciente.DataNascimento,
             ExameNome: sol.TipoExame?.Nome ?? "Exame de imagem",
-            RealizadoEm: sol.RealizadoEm,
+            // RealizadoEm é UTC → converte p/ Brasília na exibição (mesma regra dos outros PDFs).
+            RealizadoEm: FusoBrasilia.ParaExibicao(sol.RealizadoEm),
             Unidade: sol.Unidade?.Nome,
             Descricao: PrimeiroNaoVazio(sol.Justificativa, sol.Observacoes),
             Anamnese: Resumir(sol.Observacoes, sol.Justificativa));

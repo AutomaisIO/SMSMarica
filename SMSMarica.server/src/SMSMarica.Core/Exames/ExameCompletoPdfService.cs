@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
+using SMSMarica.Core.Common.Tempo;
 using SMSMarica.Core.Laudos;
 using SMSMarica.Core.Laudos.Pdf;
 using SMSMarica.Core.Pacientes;
@@ -29,9 +30,6 @@ public sealed class ExameCompletoPdfService(
 {
     /// <summary>Teto de imagens incluídas no PDF (trava de segurança).</summary>
     private const int MaxImagens = 300;
-
-    /// <summary>Fuso de exibição (UTC-3) das datas/horas em UTC.</summary>
-    private const int OffsetHoras = -3;
 
     public async Task<byte[]> GerarAsync(Guid solicitacaoExameId, CancellationToken cancellationToken = default)
     {
@@ -75,8 +73,8 @@ public sealed class ExameCompletoPdfService(
             Unidade: sol.Unidade?.Nome,
             UnidadeSolicitante: sol.UnidadeSolicitante?.Nome,
             Accession: sol.AccessionNumber,
-            RealizadoEm: sol.RealizadoEm?.AddHours(OffsetHoras),
-            SolicitadaEm: sol.CriadoEm.AddHours(OffsetHoras),
+            RealizadoEm: FusoBrasilia.ParaExibicao(sol.RealizadoEm),
+            SolicitadaEm: FusoBrasilia.ParaExibicao(sol.CriadoEm),
             SolicitanteNome: string.IsNullOrWhiteSpace(sol.SolicitanteNome) ? null : sol.SolicitanteNome,
             IncluiLaudo: incluiLaudo,
             Justificativa: string.IsNullOrWhiteSpace(sol.Justificativa) ? null : sol.Justificativa,

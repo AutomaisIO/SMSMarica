@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Download, Edit2, FileText, Loader2, Search, Trash2 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { formatarInstante } from '@/shared/lib/datas';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
@@ -105,7 +106,7 @@ export function LaudosListagemPage() {
       cabecalho: 'Emissão',
       render: (l) => {
         const dt = l.finalizadoEm ?? l.criadoEm;
-        return new Date(dt).toLocaleString('pt-BR');
+        return formatarInstante(dt);
       },
     },
     {

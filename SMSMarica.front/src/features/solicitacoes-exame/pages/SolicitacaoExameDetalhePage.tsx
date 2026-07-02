@@ -13,6 +13,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { formatarInstante, formatarWallClock } from '@/shared/lib/datas';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 import { CodigoCopiavel } from '@/shared/ui/CodigoCopiavel';
@@ -310,7 +311,7 @@ export function SolicitacaoExameDetalhePage() {
             {/* Data do exame = DICOM (StudyDate/StudyTime), a data real de execução. Só
                 cai no RealizadoEm (hora de detecção) quando o PACS não trouxe a tag. */}
             {s.dataEstudo ? (
-              <li>Exame realizado em {fmt(s.dataEstudo)}</li>
+              <li>Exame realizado em {formatarWallClock(s.dataEstudo)}</li>
             ) : s.realizadoEm ? (
               <li>Exame realizado em {fmt(s.realizadoEm)} (detectado pelo PACS)</li>
             ) : null}
@@ -420,9 +421,7 @@ export function SolicitacaoExameDetalhePage() {
   );
 }
 
-function fmt(iso: string) {
-  return new Date(iso).toLocaleString('pt-BR');
-}
+const fmt = formatarInstante;
 
 function formatarCpf(cpf: string) {
   const d = cpf.replace(/\D/g, '');

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollText, Search } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { paraUtcDeLocal } from '@/shared/lib/datas';
 import { Input } from '@/shared/ui/Input';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { useBuscarAuditoria } from '@/features/auditoria/api/queries';
@@ -17,7 +18,7 @@ function useDebounce<T>(valor: T, ms = 400): T {
 
 function formatarDataHora(iso: string): string {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('pt-BR');
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 }
 
 /** Rótulos amigáveis das ações auditadas. Cai no valor cru quando desconhecido. */
@@ -42,9 +43,9 @@ export function AuditoriaPage() {
     () => ({
       texto: textoDebounced.trim() || undefined,
       entidade: entidade || undefined,
-      // Datas: inclui o dia inteiro do "até" somando o fim do dia.
-      de: de ? `${de}T00:00:00` : undefined,
-      ate: ate ? `${ate}T23:59:59` : undefined,
+      // Limites do dia em Brasília → UTC (as datas de auditoria são timestamptz/UTC).
+      de: de ? paraUtcDeLocal(`${de}T00:00`) ?? undefined : undefined,
+      ate: ate ? paraUtcDeLocal(`${ate}T23:59`) ?? undefined : undefined,
       tamanho: 100,
     }),
     [textoDebounced, entidade, de, ate],

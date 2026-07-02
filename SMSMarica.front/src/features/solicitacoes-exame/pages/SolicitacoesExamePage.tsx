@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { CalendarDays, ClipboardCheck, Loader2, Plus, Search, Trash2 } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { formatarInstante, hojeSP } from '@/shared/lib/datas';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 import { Modal } from '@/shared/ui/Modal';
@@ -27,13 +28,8 @@ import type {
 
 const CHAVE_TOGGLE_HOJE = 'solicitacoes-exame:filtro-hoje';
 
-/** Data de hoje no fuso local, no formato yyyy-mm-dd (compatível com <input type="date">). */
-function hojeISO(): string {
-  const d = new Date();
-  const mes = String(d.getMonth() + 1).padStart(2, '0');
-  const dia = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${mes}-${dia}`;
-}
+/** Data de "hoje" em Brasília, yyyy-mm-dd (compatível com <input type="date">). */
+const hojeISO = hojeSP;
 
 export function SolicitacoesExamePage() {
   const navigate = useNavigate();
@@ -165,7 +161,7 @@ export function SolicitacoesExamePage() {
     {
       chave: 'data',
       cabecalho: 'Solicitada em',
-      render: (s) => new Date(s.criadoEm).toLocaleString('pt-BR'),
+      render: (s) => formatarInstante(s.criadoEm),
     },
     {
       chave: 'status',

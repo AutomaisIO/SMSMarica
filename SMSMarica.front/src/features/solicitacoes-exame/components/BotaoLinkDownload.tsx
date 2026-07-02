@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Check, Link2, Loader2 } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
+import { formatarInstanteData } from '@/shared/lib/datas';
 import { gerarLinkDownload } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
 
 /**
@@ -23,7 +24,7 @@ export function BotaoLinkDownload({ solicitacaoId }: { solicitacaoId: string }) 
       } catch {
         /* clipboard pode falhar sem HTTPS/permite — mostra no alerta abaixo mesmo assim */
       }
-      const exp = new Date(r.expiraEm).toLocaleDateString('pt-BR');
+      const exp = formatarInstanteData(r.expiraEm);
       alert(`Link de download gerado (copiado):\n\n${r.url}\n\nUso único — válido até ${exp}.`);
     } catch {
       alert('Não foi possível gerar o link de download.');
