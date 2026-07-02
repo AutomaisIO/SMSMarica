@@ -11,8 +11,10 @@ public sealed record MarcacaoSisreg(
     string CodigoSolicitacao,
     string? CnsPaciente,
     string? NomePaciente,
-    /// <summary>Procedimento em TEXTO (ex.: "MAMOGRAFIA BILATERAL"). Mapear para SIGTAP no serviço.</summary>
+    /// <summary>Procedimento em TEXTO (ex.: "MAMOGRAFIA BILATERAL").</summary>
     string? ProcedimentoTexto,
+    /// <summary>Código SIGTAP (só dígitos, ex.: "0204030030"). Vem direto no TXT — dispensa mapear por texto.</summary>
+    string? CodigoSigtap,
     string? CpfMedicoSolicitante,
     string? NomeMedicoSolicitante,
     /// <summary>CRM do solicitante (quase sempre vazio na ficha; derivado depois).</summary>

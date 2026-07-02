@@ -1,16 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { DownloadCloud, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { UploadCloud, CheckCircle2, AlertTriangle, FileText } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
-import { Campo } from '@/shared/ui/Campo';
-import { Input } from '@/shared/ui/Input';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
-import { previewImportacao } from '@/features/importacao-sisreg/api/importacaoApi';
+import { previewImportacaoTxt } from '@/features/importacao-sisreg/api/importacaoApi';
 import type { ImportacaoPreviewItem } from '@/features/importacao-sisreg/types';
-
-function hoje(): string {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function formatarDataHora(iso: string | null): string {
   if (!iso) return '—';
@@ -19,11 +13,11 @@ function formatarDataHora(iso: string | null): string {
 }
 
 export function ImportacaoSisregPage() {
-  const [inicio, setInicio] = useState(hoje());
-  const [fim, setFim] = useState(hoje());
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [arquivo, setArquivo] = useState<File | null>(null);
 
   const preview = useMutation({
-    mutationFn: () => previewImportacao(inicio, fim),
+    mutationFn: (f: File) => previewImportacaoTxt(f),
   });
 
   const r = preview.data;
@@ -33,28 +27,40 @@ export function ImportacaoSisregPage() {
       <header>
         <h1 className="text-2xl font-semibold text-gray-900">Importação SISREG</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Escolha um período e gere o <strong>preview</strong> das marcações de mamografia no SISREG.
-          Esta tela é <strong>somente leitura</strong> — nada é criado até você rodar a importação.
+          Envie o <strong>Arquivo Agendamento (TXT)</strong> exportado do SISREG (menu Arquivo
+          Agendamento) e gere o <strong>preview</strong>. Esta tela é <strong>somente leitura</strong> —
+          nada é criado até você rodar a importação.
         </p>
       </header>
 
       <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap items-end gap-3">
-          <Campo label="Data inicial" htmlFor="ini">
-            <Input id="ini" type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} />
-          </Campo>
-          <Campo label="Data final" htmlFor="fim">
-            <Input id="fim" type="date" value={fim} onChange={(e) => setFim(e.target.value)} />
-          </Campo>
-          <Button onClick={() => preview.mutate()} disabled={preview.isPending || !inicio || !fim}>
-            <DownloadCloud className="h-4 w-4" />
-            {preview.isPending ? 'Consultando SISREG…' : 'Gerar preview'}
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".txt,text/plain"
+            className="hidden"
+            onChange={(e) => setArquivo(e.target.files?.[0] ?? null)}
+          />
+          <Button variante="outline" onClick={() => inputRef.current?.click()}>
+            <FileText className="h-4 w-4" /> Escolher arquivo TXT
+          </Button>
+          <span className="text-sm text-gray-600">{arquivo ? arquivo.name : 'Nenhum arquivo selecionado'}</span>
+          <Button onClick={() => arquivo && preview.mutate(arquivo)} disabled={preview.isPending || !arquivo}>
+            <UploadCloud className="h-4 w-4" />
+            {preview.isPending ? 'Processando…' : 'Gerar preview'}
           </Button>
         </div>
         {preview.isError ? (
           <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {extrairMensagemDeErro(preview.error)}
           </div>
+        ) : null}
+        {r ? (
+          <p className="mt-3 text-xs text-gray-500">
+            Período do arquivo: {formatarDataHora(`${r.inicio}T00:00:00`).slice(0, 10)} a{' '}
+            {formatarDataHora(`${r.fim}T00:00:00`).slice(0, 10)}
+          </p>
         ) : null}
       </section>
 

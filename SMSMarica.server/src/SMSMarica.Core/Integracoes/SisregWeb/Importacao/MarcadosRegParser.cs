@@ -101,6 +101,7 @@ public static partial class MarcadosRegParser
             CnsPaciente: cns,
             NomePaciente: nomePac,
             ProcedimentoTexto: null, // vem da listagem (a ficha lista códigos internos); preenchido pelo scraper.
+            CodigoSigtap: null,
             CpfMedicoSolicitante: medCpf.Length == 11 ? medCpf : null,
             NomeMedicoSolicitante: medNome,
             CrmMedicoSolicitante: medCrm,
