@@ -175,6 +175,7 @@ public sealed class ImportacaoSisregService(
             SolicitanteUfConselho = string.Empty,
             SolicitanteConselho = "CRM",
             SolicitanteCpf = m.CpfMedicoSolicitante,
+            RawSisreg = m.LinhaRaw,
             CodigoSolicitacao = codigo,
             Status = StatusSolicitacaoExame.Solicitada,
             Prioridade = PrioridadeSolicitacao.Eletiva,

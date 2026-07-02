@@ -64,6 +64,11 @@ public class SolicitacaoExame
     /// <summary>Conselho do solicitante: "CRM" (médico) ou "COREN" (enfermeiro). Default "CRM" (legado).</summary>
     public string SolicitanteConselho { get; set; } = "CRM";
 
+    /// <summary>Linha CRUA do "Arquivo Agendamento (TXT)" do SISREG que originou esta solicitação
+    /// (a linha ;-delimitada, as-is). Proveniência/auditoria da importação. Null quando não veio
+    /// de importação. Uso interno — não exposto em DTO/tela.</summary>
+    public string? RawSisreg { get; set; }
+
     // ---- Regulação ----
 
     /// <summary>

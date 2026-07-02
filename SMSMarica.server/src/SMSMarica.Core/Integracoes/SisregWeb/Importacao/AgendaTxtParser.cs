@@ -93,7 +93,8 @@ public static class AgendaTxtParser
                 Bairro: LimparNulo(c[Bairro]),
                 Cep: Digitos(c[Cep]) is { Length: 8 } cep ? cep : LimparNulo(c[Cep]),
                 MunicipioResidencia: LimparNulo(c[MunicipioResidencia]),
-                CodigoIbgeResidencia: Digitos(c[CodigoIbgeResidencia]) is { Length: >= 6 } ibge ? ibge : null));
+                CodigoIbgeResidencia: Digitos(c[CodigoIbgeResidencia]) is { Length: >= 6 } ibge ? ibge : null,
+                LinhaRaw: linha));
         }
 
         return new Resultado(cab, marcacoes);

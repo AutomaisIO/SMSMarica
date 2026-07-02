@@ -36,4 +36,7 @@ public sealed record MarcacaoSisreg(
     string? Bairro = null,
     string? Cep = null,
     string? MunicipioResidencia = null,
-    string? CodigoIbgeResidencia = null);
+    string? CodigoIbgeResidencia = null,
+
+    /// <summary>Linha crua do TXT (as-is) que originou esta marcação — proveniência.</summary>
+    string? LinhaRaw = null);

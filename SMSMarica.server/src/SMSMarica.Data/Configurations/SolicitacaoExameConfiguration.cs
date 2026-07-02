@@ -27,6 +27,8 @@ internal sealed class SolicitacaoExameConfiguration : IEntityTypeConfiguration<S
         builder.Property(s => s.SolicitanteNumConselho).HasColumnName("solicitante_num_conselho").HasMaxLength(20).IsRequired();
         builder.Property(s => s.SolicitanteUfConselho).HasColumnName("solicitante_uf_conselho").HasMaxLength(2).IsRequired();
         builder.Property(s => s.SolicitanteCpf).HasColumnName("solicitante_cpf").HasMaxLength(11);
+        // Linha crua do TXT do SISREG (proveniência da importação) — text, sem limite.
+        builder.Property(s => s.RawSisreg).HasColumnName("raw_sisreg");
         // Default "CRM" também faz o backfill das linhas existentes (todas legado = médico).
         builder.Property(s => s.SolicitanteConselho).HasColumnName("solicitante_conselho").HasMaxLength(20).HasDefaultValue("CRM").IsRequired();
 
