@@ -20,9 +20,17 @@ type Props<T> = {
    * estiver à vista), para o operador não precisar rolar até o fim para arrastá-la.
    */
   scrollXFlutuante?: boolean;
+  /**
+   * Torna a LINHA inteira clicável (cursor "dedinho" + tooltip). Cliques em
+   * botões/links/inputs dentro da linha são ignorados (as ações da linha seguem
+   * funcionando), então não é preciso stopPropagation em cada botão.
+   */
+  aoClicarLinha?: (item: T) => void;
+  /** Tooltip da linha clicável. Default: "Clique para visualizar". */
+  dicaLinha?: string;
 };
 
-export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrollXFlutuante }: Props<T>) {
+export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrollXFlutuante, aoClicarLinha, dicaLinha }: Props<T>) {
   // Defensivo: se a API retornar algo não-array (HTML por URL errada, erro
   // serializado, etc.), renderiza vazio em vez de derrubar a tela toda.
   const dadosSeguros: T[] = Array.isArray(dados) ? dados : [];
@@ -101,7 +109,20 @@ export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrol
               </tr>
             ) : (
               dadosSeguros.map((item) => (
-                <tr key={chaveLinha(item)} className="hover:bg-gray-50">
+                <tr
+                  key={chaveLinha(item)}
+                  className={cn('hover:bg-gray-50', aoClicarLinha && 'cursor-pointer')}
+                  title={aoClicarLinha ? (dicaLinha ?? 'Clique para visualizar') : undefined}
+                  onClick={
+                    aoClicarLinha
+                      ? (e) => {
+                          // Ignora cliques em elementos interativos (botões/links/inputs).
+                          if ((e.target as HTMLElement).closest('button, a, input, select, [role="button"]')) return;
+                          aoClicarLinha(item);
+                        }
+                      : undefined
+                  }
+                >
                   {colunas.map((c) => (
                     <td
                       key={c.chave}

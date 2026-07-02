@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { CalendarDays, ClipboardCheck, Eye, Loader2, Plus, Search, Trash2 } from 'lucide-react';
+import { CalendarDays, ClipboardCheck, Loader2, Plus, Search, Trash2 } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
@@ -180,17 +180,6 @@ export function SolicitacoesExamePage() {
         const realizadaOuLaudada = s.status === 'Realizada' || s.status === 'Laudada';
         return (
           <div className="flex items-center justify-end gap-2">
-            {podeVer ? (
-              <button
-                type="button"
-                onClick={() => navigate(`/app/solicitacoes-exame/${s.id}`)}
-                title="Abrir solicitação"
-                aria-label="Abrir solicitação"
-                className="inline-flex items-center rounded p-0.5 text-gray-600 transition-colors hover:text-gray-900"
-              >
-                <Eye className="h-3.5 w-3.5" />
-              </button>
-            ) : null}
             <BotaoAnamnese solicitacaoExameId={s.id} accessionNumber={s.accessionNumber} iconeApenas />
             {realizadaOuLaudada ? (
               <>
@@ -333,6 +322,8 @@ export function SolicitacoesExamePage() {
         carregando={lista.isPending}
         vazio="Nenhuma solicitação encontrada."
         scrollXFlutuante
+        aoClicarLinha={podeVer ? (s) => navigate(`/app/solicitacoes-exame/${s.id}`) : undefined}
+        dicaLinha="Clique para visualizar"
       />
 
       <Modal

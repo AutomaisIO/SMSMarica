@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Edit2, Eye, FilePlus, FileText, Link2, Loader2, RotateCw, Search, Trash2, Unlink } from 'lucide-react';
+import { Edit2, FilePlus, FileText, Link2, Loader2, RotateCw, Search, Trash2, Unlink } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
@@ -337,17 +337,6 @@ export function PacsListagemPage() {
         const laudoAssinado = e.laudo?.assinado === true;
         return (
           <div className="flex items-center justify-end gap-2">
-            {podeAbrir ? (
-              <button
-                type="button"
-                onClick={() => abrirViewer(e)}
-                title="Abrir visualizador em janela separada"
-                className="inline-flex items-center gap-1 rounded-md border border-primary-300 bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100"
-              >
-                <Eye className="h-3.5 w-3.5" />
-                Visualizar
-              </button>
-            ) : null}
             <BotaoAnamnese accessionNumber={e.accessionNumber} somenteLeitura />
             {!e.associacao && !laudoAssinado && podeAssociar ? (
               <button
@@ -554,6 +543,8 @@ export function PacsListagemPage() {
         dados={exames}
         chaveLinha={(e) => e.studyInstanceUID}
         carregando={busca.isPending}
+        aoClicarLinha={podeAbrir ? (e) => abrirViewer(e) : undefined}
+        dicaLinha="Clique para visualizar"
       />
 
       {!busca.isPending && exames.length === 0 ? (
