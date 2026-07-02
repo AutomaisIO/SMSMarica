@@ -538,11 +538,7 @@ export function LaudoEditorPage() {
                 {' · '}
                 <span>{solicitacao.data.tipoExameNome}</span>
                 {' · '}
-                <span>
-                  Solicitado por {solicitacao.data.solicitanteNome} (
-                  {(solicitacao.data.solicitanteConselho || 'CRM').toUpperCase()}{' '}
-                  {solicitacao.data.solicitanteUfConselho}/{solicitacao.data.solicitanteNumConselho})
-                </span>
+                <span>Solicitado por {solicitacao.data.solicitanteNome}</span>
                 {solicitacao.data.justificativa ? (
                   <div className="mt-1 text-xs text-emerald-800">
                     Justificativa: {solicitacao.data.justificativa}

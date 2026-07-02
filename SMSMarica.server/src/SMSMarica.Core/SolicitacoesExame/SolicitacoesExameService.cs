@@ -181,8 +181,6 @@ public sealed class SolicitacoesExameService(
         var studyUid = _geradorIds.NovoStudyInstanceUid();
         var agora = DateTime.UtcNow;
 
-        var solicitanteUsuarioId = await ResolverSolicitanteUsuarioAsync(request.SolicitanteUsuarioId, cancellationToken);
-
         // Tipo com envio ao worklist desligado: cria a solicitação mas não enfileira
         // o envio ao PACS (ProximaTentativaEm = null → o worker não pega).
         var enviarParaWorklist = await _db.TiposExame.AsNoTracking()
@@ -201,11 +199,9 @@ public sealed class SolicitacoesExameService(
             UnidadeId = request.UnidadeId,
             UnidadeSolicitanteId = request.UnidadeSolicitanteId,
 
-            SolicitanteUsuarioId = solicitanteUsuarioId,
+            // Solicitante = só o nome (texto). Colunas de conselho/usuário mantidas no banco
+            // com os defaults da entidade (num/uf vazios, conselho "CRM"), mas não usadas.
             SolicitanteNome = request.SolicitanteNome.Trim(),
-            SolicitanteNumConselho = NormalizarDigitos(request.SolicitanteNumConselho),
-            SolicitanteUfConselho = (request.SolicitanteUfConselho ?? string.Empty).Trim().ToUpperInvariant(),
-            SolicitanteConselho = NormalizarConselho(request.SolicitanteConselho),
 
             CodigoSolicitacao = NormalizaOpcional(request.CodigoSolicitacao),
             ChaveConfirmacao = NormalizaOpcional(request.ChaveConfirmacao),
@@ -247,11 +243,7 @@ public sealed class SolicitacoesExameService(
         s.TipoExameId = request.TipoExameId;
         s.UnidadeId = request.UnidadeId;
         s.UnidadeSolicitanteId = request.UnidadeSolicitanteId;
-        s.SolicitanteUsuarioId = await ResolverSolicitanteUsuarioAsync(request.SolicitanteUsuarioId, cancellationToken);
         s.SolicitanteNome = request.SolicitanteNome.Trim();
-        s.SolicitanteNumConselho = NormalizarDigitos(request.SolicitanteNumConselho);
-        s.SolicitanteUfConselho = (request.SolicitanteUfConselho ?? string.Empty).Trim().ToUpperInvariant();
-        s.SolicitanteConselho = NormalizarConselho(request.SolicitanteConselho);
         s.CodigoSolicitacao = NormalizaOpcional(request.CodigoSolicitacao);
         s.ChaveConfirmacao = NormalizaOpcional(request.ChaveConfirmacao);
         s.Justificativa = NormalizaOpcional(request.Justificativa);
@@ -537,21 +529,6 @@ public sealed class SolicitacoesExameService(
             .FirstOrDefaultAsync(filtro, cancellationToken);
     }
 
-    /// <summary>
-    /// "Médico cadastrado" é um Practitioner do hub FHIR — o id que o front envia em
-    /// <c>SolicitanteUsuarioId</c> é o id do Practitioner, NÃO um usuário do sistema.
-    /// A FK <c>solicitante_usuario_id</c> aponta para <c>smsmarica.usuario</c>, então só
-    /// persistimos o valor quando ele de fato for um usuário; do contrário fica null
-    /// (a identidade do solicitante vive nos snapshots SolicitanteNome/Crm/UfCrm).
-    /// Evita violação de FK (que estourava 500) ao escolher médico do hub.
-    /// </summary>
-    private async Task<Guid?> ResolverSolicitanteUsuarioAsync(Guid? id, CancellationToken ct)
-    {
-        if (id is not { } valor) return null;
-        var ehUsuario = await _db.Usuarios.AsNoTracking().AnyAsync(u => u.Id == valor, ct);
-        return ehUsuario ? valor : null;
-    }
-
     private async Task ValidarReferenciasAsync(Guid pacienteId, Guid tipoExameId, Guid unidadeId, Guid? unidadeSolicitanteId, CancellationToken ct)
     {
         // PacienteId referencia o hub FHIR — validação de existência fica a cargo do hub.
@@ -571,15 +548,6 @@ public sealed class SolicitacoesExameService(
         }
     }
 
-    private static string NormalizarDigitos(string? valor) =>
-        string.IsNullOrEmpty(valor) ? string.Empty : new([.. valor.Where(char.IsDigit)]);
-
-    /// <summary>Conselho do solicitante normalizado para maiúsculas; vazio/omitido vira "CRM" (legado/retrocompat).</summary>
-    private static string NormalizarConselho(string? valor)
-    {
-        var v = (valor ?? string.Empty).Trim().ToUpperInvariant();
-        return v.Length == 0 ? "CRM" : v;
-    }
 
     private static string? NormalizaOpcional(string? valor) =>
         string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();

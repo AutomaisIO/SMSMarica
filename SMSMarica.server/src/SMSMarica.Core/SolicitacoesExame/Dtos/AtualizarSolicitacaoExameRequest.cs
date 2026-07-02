@@ -8,11 +8,8 @@ public sealed record AtualizarSolicitacaoExameRequest(
     Guid UnidadeId,
     Guid? UnidadeSolicitanteId,
 
-    Guid? SolicitanteUsuarioId,
+    // Solicitante = só o nome (texto livre, obrigatório).
     string SolicitanteNome,
-    string SolicitanteNumConselho,
-    string SolicitanteUfConselho,
-    string? SolicitanteConselho,
 
     string? CodigoSolicitacao,
     string? ChaveConfirmacao,

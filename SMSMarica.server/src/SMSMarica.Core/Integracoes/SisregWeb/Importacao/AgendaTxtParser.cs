@@ -22,6 +22,15 @@ public static class AgendaTxtParser
     private const int HoraAtendimento = 7;
     private const int CnsPaciente = 9;
     private const int NomePaciente = 10;
+    private const int TipoLogradouro = 15;
+    private const int Logradouro = 16;
+    private const int Complemento = 17;
+    private const int Numero = 18;
+    private const int Bairro = 19;
+    private const int Cep = 20;
+    private const int Telefone = 21;
+    private const int MunicipioResidencia = 22;
+    private const int CodigoIbgeResidencia = 23;
     private const int CnesUnidadeSolicitante = 26;
     private const int NomeUnidadeSolicitante = 27;
     private const int Cid = 35;
@@ -75,7 +84,16 @@ public static class AgendaTxtParser
                 CnesUnidadeExecutante: cab.CnesUnidade, // o arquivo é da agenda do executante (cabeçalho).
                 NomeUnidadeExecutante: cab.NomeUnidade,
                 DataHoraAtendimento: dataHora,
-                Cid: LimparNulo(c[Cid])));
+                Cid: LimparNulo(c[Cid]),
+                TelefonePaciente: LimparNulo(c[Telefone]),
+                TipoLogradouro: LimparNulo(c[TipoLogradouro]),
+                Logradouro: LimparNulo(c[Logradouro]),
+                Complemento: LimparNulo(c[Complemento]),
+                Numero: LimparNulo(c[Numero]),
+                Bairro: LimparNulo(c[Bairro]),
+                Cep: Digitos(c[Cep]) is { Length: 8 } cep ? cep : LimparNulo(c[Cep]),
+                MunicipioResidencia: LimparNulo(c[MunicipioResidencia]),
+                CodigoIbgeResidencia: Digitos(c[CodigoIbgeResidencia]) is { Length: >= 6 } ibge ? ibge : null));
         }
 
         return new Resultado(cab, marcacoes);

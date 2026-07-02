@@ -18,7 +18,6 @@ import {
   useSolicitacaoPorId,
   useSolicitacoesRecentesPaciente,
 } from '@/features/solicitacoes-exame/api/queries';
-import { SeletorMedicoSolicitante } from '@/features/solicitacoes-exame/components/SeletorMedicoSolicitante';
 import { SeletorTipoExame } from '@/features/solicitacoes-exame/components/SeletorTipoExame';
 import type { PrioridadeSolicitacao } from '@/features/solicitacoes-exame/types';
 
@@ -28,11 +27,7 @@ type EstadoForm = {
   tipoExameId: string;
   unidadeId: string;
   unidadeSolicitanteId: string;
-  solicitanteUsuarioId: string | null;
   solicitanteNome: string;
-  solicitanteNumConselho: string;
-  solicitanteUfConselho: string;
-  solicitanteConselho: string;
   codigoSolicitacao: string;
   chaveConfirmacao: string;
   justificativa: string;
@@ -47,11 +42,7 @@ const ESTADO_INICIAL: EstadoForm = {
   tipoExameId: '',
   unidadeId: '',
   unidadeSolicitanteId: '',
-  solicitanteUsuarioId: null,
   solicitanteNome: '',
-  solicitanteNumConselho: '',
-  solicitanteUfConselho: '',
-  solicitanteConselho: 'CRM',
   codigoSolicitacao: '',
   chaveConfirmacao: '',
   justificativa: '',
@@ -115,11 +106,7 @@ export function SolicitacaoExameFormPage() {
         tipoExameId: s.tipoExameId,
         unidadeId: s.unidadeId,
         unidadeSolicitanteId: s.unidadeSolicitanteId ?? '',
-        solicitanteUsuarioId: s.solicitanteUsuarioId,
         solicitanteNome: s.solicitanteNome,
-        solicitanteNumConselho: s.solicitanteNumConselho,
-        solicitanteUfConselho: s.solicitanteUfConselho,
-        solicitanteConselho: s.solicitanteConselho ?? 'CRM',
         codigoSolicitacao: s.codigoSolicitacao ?? '',
         chaveConfirmacao: s.chaveConfirmacao ?? '',
         justificativa: s.justificativa ?? '',
@@ -154,9 +141,7 @@ export function SolicitacaoExameFormPage() {
     if (!estado.pacienteId) return setErro('Selecione o paciente.');
     if (!estado.tipoExameId) return setErro('Selecione o tipo de exame.');
     if (!estado.unidadeId) return setErro('Selecione a unidade executora.');
-    if (!estado.solicitanteNome.trim()) return setErro('Informe o profissional solicitante.');
-    if (!estado.solicitanteNumConselho.trim() || !estado.solicitanteUfConselho.trim())
-      return setErro('Informe o registro (CRM/COREN) e a UF do solicitante.');
+    if (!estado.solicitanteNome.trim()) return setErro('Informe o solicitante.');
     if (!regulacaoValida(estado.codigoSolicitacao))
       return setErro('Código de Solicitação inválido: use 0000 (emergência extra-SUS) ou um número a partir de 9999.');
     if (!regulacaoValida(estado.chaveConfirmacao))
@@ -172,11 +157,7 @@ export function SolicitacaoExameFormPage() {
       tipoExameId: estado.tipoExameId,
       unidadeId: estado.unidadeId,
       unidadeSolicitanteId: estado.unidadeSolicitanteId || null,
-      solicitanteUsuarioId: estado.solicitanteUsuarioId,
       solicitanteNome: estado.solicitanteNome.trim(),
-      solicitanteNumConselho: estado.solicitanteNumConselho.trim(),
-      solicitanteUfConselho: estado.solicitanteUfConselho.trim(),
-      solicitanteConselho: estado.solicitanteConselho || 'CRM',
       codigoSolicitacao: estado.codigoSolicitacao.trim() || null,
       chaveConfirmacao: estado.chaveConfirmacao.trim() || null,
       justificativa: estado.justificativa.trim() || null,
@@ -351,19 +332,18 @@ export function SolicitacaoExameFormPage() {
         </div>
       </section>
 
-      {/* 3) Profissional solicitante (médico/CRM ou enfermeiro/COREN) */}
+      {/* 3) Solicitante (texto livre) */}
       <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">3. Profissional solicitante</h2>
-        <SeletorMedicoSolicitante
-          valor={{
-            solicitanteUsuarioId: estado.solicitanteUsuarioId,
-            solicitanteNome: estado.solicitanteNome,
-            solicitanteNumConselho: estado.solicitanteNumConselho,
-            solicitanteUfConselho: estado.solicitanteUfConselho,
-            solicitanteConselho: estado.solicitanteConselho,
-          }}
-          aoMudar={(v) => setEstado((s) => ({ ...s, ...v }))}
-        />
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">3. Solicitante</h2>
+        <Campo label="Solicitante" htmlFor="solicitante" required>
+          <Input
+            id="solicitante"
+            value={estado.solicitanteNome}
+            onChange={(e) => setEstado((s) => ({ ...s, solicitanteNome: e.target.value }))}
+            placeholder="Nome do profissional/unidade solicitante"
+            maxLength={200}
+          />
+        </Campo>
       </section>
 
       {/* 4) Regulação + observações */}

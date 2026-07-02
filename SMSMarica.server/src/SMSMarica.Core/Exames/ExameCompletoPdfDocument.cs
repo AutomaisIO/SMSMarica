@@ -19,7 +19,6 @@ public sealed record ExameCompletoCapa(
     DateTime? RealizadoEm,
     DateTime SolicitadaEm,
     string? SolicitanteNome,
-    string? SolicitanteRegistro,
     bool IncluiLaudo,
     string? Justificativa,
     string? Observacoes);
@@ -117,9 +116,7 @@ public sealed class ExameCompletoPdfDocument(
                 col.Item().PaddingTop(8).Column(c =>
                 {
                     c.Spacing(4);
-                    Linha(c, "Profissional", capa.SolicitanteNome!);
-                    if (!string.IsNullOrWhiteSpace(capa.SolicitanteRegistro))
-                        Linha(c, "Registro", capa.SolicitanteRegistro!);
+                    Linha(c, "Nome", capa.SolicitanteNome!);
                 });
             }
 

@@ -23,11 +23,8 @@ public sealed record SolicitacaoExameDto(
     Guid? UnidadeSolicitanteId,
     string? UnidadeSolicitanteNome,
 
-    Guid? SolicitanteUsuarioId,
+    // Solicitante = só o nome (CRM/COREN e vínculo com médico saíram do produto).
     string SolicitanteNome,
-    string SolicitanteNumConselho,
-    string SolicitanteUfConselho,
-    string SolicitanteConselho,
 
     string? CodigoSolicitacao,
     string? ChaveConfirmacao,

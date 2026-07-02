@@ -253,13 +253,7 @@ export function SolicitacaoExameDetalhePage() {
 
         <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">Solicitante</h2>
-          <div className="text-base font-medium text-gray-900">{s.solicitanteNome}</div>
-          <div className="mt-1 text-sm text-gray-600">
-            {(s.solicitanteConselho || 'CRM').toUpperCase()} {s.solicitanteUfConselho}/{s.solicitanteNumConselho}
-            {s.solicitanteUsuarioId
-              ? ' · Cadastrado no sistema'
-              : ` · ${(s.solicitanteConselho || 'CRM').toUpperCase() === 'COREN' ? 'Enfermeiro' : 'Médico'} externo`}
-          </div>
+          <div className="text-base font-medium text-gray-900">{s.solicitanteNome || '—'}</div>
           {s.unidadeSolicitanteNome ? (
             <div className="mt-1 text-sm text-gray-600">Unidade solicitante: {s.unidadeSolicitanteNome}</div>
           ) : null}

@@ -25,4 +25,15 @@ public sealed record MarcacaoSisreg(
     string? NomeUnidadeExecutante,
     /// <summary>Data/hora do atendimento no fuso local (wall-clock), como o SISREG informa.</summary>
     DateTime? DataHoraAtendimento,
-    string? Cid);
+    string? Cid,
+
+    // ---- Dados do paciente vindos do TXT (para criar o paciente novo; opcionais) ----
+    string? TelefonePaciente = null,
+    string? TipoLogradouro = null,
+    string? Logradouro = null,
+    string? Complemento = null,
+    string? Numero = null,
+    string? Bairro = null,
+    string? Cep = null,
+    string? MunicipioResidencia = null,
+    string? CodigoIbgeResidencia = null);

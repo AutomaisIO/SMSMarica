@@ -33,4 +33,24 @@ public sealed class SisregImportacaoController(IImportacaoSisregService importac
         var conteudo = await reader.ReadToEndAsync(cancellationToken);
         return await importacao.PreviewDeTextoAsync(conteudo, cancellationToken);
     }
+
+    /// <summary>Importa UMA marcação (por código) do TXT enviado — roda o fluxo inteiro. ESCRITA.</summary>
+    [HttpPost("executar")]
+    [RequerPermissao(ModuloPermissao.Sisreg, AcoesPermissao.Inclusao)]
+    [ProducesResponseType<ImportacaoExecucaoResultado>(StatusCodes.Status200OK)]
+    [RequestSizeLimit(20_000_000)]
+    public async Task<ImportacaoExecucaoResultado> Executar(
+        IFormFile arquivo,
+        [FromForm] string codigo,
+        CancellationToken cancellationToken)
+    {
+        if (arquivo is null || arquivo.Length == 0)
+            throw new ValidacaoException("importacao.arquivo_ausente", "Envie o arquivo TXT do SISREG.");
+        if (string.IsNullOrWhiteSpace(codigo))
+            throw new ValidacaoException("importacao.codigo_ausente", "Informe o código da marcação a importar.");
+
+        using var reader = new StreamReader(arquivo.OpenReadStream(), Encoding.Latin1);
+        var conteudo = await reader.ReadToEndAsync(cancellationToken);
+        return await importacao.ExecutarUmAsync(conteudo, codigo, cancellationToken);
+    }
 }

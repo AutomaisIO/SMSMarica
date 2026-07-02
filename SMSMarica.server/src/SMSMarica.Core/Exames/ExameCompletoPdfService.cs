@@ -78,7 +78,6 @@ public sealed class ExameCompletoPdfService(
             RealizadoEm: sol.RealizadoEm?.AddHours(OffsetHoras),
             SolicitadaEm: sol.CriadoEm.AddHours(OffsetHoras),
             SolicitanteNome: string.IsNullOrWhiteSpace(sol.SolicitanteNome) ? null : sol.SolicitanteNome,
-            SolicitanteRegistro: MontarRegistroSolicitante(sol),
             IncluiLaudo: incluiLaudo,
             Justificativa: string.IsNullOrWhiteSpace(sol.Justificativa) ? null : sol.Justificativa,
             Observacoes: string.IsNullOrWhiteSpace(sol.Observacoes) ? null : sol.Observacoes);
@@ -105,13 +104,4 @@ public sealed class ExameCompletoPdfService(
         }
     }
 
-    private static string? MontarRegistroSolicitante(SolicitacaoExame sol)
-    {
-        if (string.IsNullOrWhiteSpace(sol.SolicitanteNumConselho)) return null;
-        var conselho = string.IsNullOrWhiteSpace(sol.SolicitanteConselho)
-            ? "CRM"
-            : sol.SolicitanteConselho.Trim().ToUpperInvariant();
-        var uf = string.IsNullOrWhiteSpace(sol.SolicitanteUfConselho) ? string.Empty : "/" + sol.SolicitanteUfConselho;
-        return $"{conselho} {sol.SolicitanteNumConselho}{uf}";
-    }
 }

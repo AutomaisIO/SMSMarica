@@ -16,6 +16,18 @@ export type ImportacaoPreviewItem = {
   alertas: string[];
 };
 
+export type ImportacaoExecucaoResultado = {
+  codigoSolicitacao: string;
+  sucesso: boolean;
+  solicitacaoId: string | null;
+  accessionNumber: string | null;
+  pacienteNome: string | null;
+  pacienteCriado: boolean;
+  unidadeSolicitanteCriada: boolean;
+  passos: string[];
+  erro: string | null;
+};
+
 export type ImportacaoPreviewResultado = {
   inicio: string;
   fim: string;

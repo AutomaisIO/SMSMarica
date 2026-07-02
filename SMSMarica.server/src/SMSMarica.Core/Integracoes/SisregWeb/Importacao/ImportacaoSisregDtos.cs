@@ -23,6 +23,22 @@ public sealed record ImportacaoPreviewItem(
     /// <summary>Impedimentos que fariam esse item cair em divergência (vazio = importável).</summary>
     IReadOnlyList<string> Alertas);
 
+/// <summary>Resultado de importar UMA marcação (executar o fluxo inteiro de um registro).</summary>
+public sealed record ImportacaoExecucaoResultado(
+    string CodigoSolicitacao,
+    bool Sucesso,
+    /// <summary>Id da SolicitacaoExame criada (null se não criou).</summary>
+    Guid? SolicitacaoId,
+    string? AccessionNumber,
+    /// <summary>Nome do paciente resolvido/criado.</summary>
+    string? PacienteNome,
+    bool PacienteCriado,
+    bool UnidadeSolicitanteCriada,
+    /// <summary>Passos executados, em ordem (para o operador conferir o fluxo).</summary>
+    IReadOnlyList<string> Passos,
+    /// <summary>Mensagem de erro/impedimento quando Sucesso=false.</summary>
+    string? Erro);
+
 /// <summary>Resultado do preview de importação para um período.</summary>
 public sealed record ImportacaoPreviewResultado(
     DateOnly Inicio,

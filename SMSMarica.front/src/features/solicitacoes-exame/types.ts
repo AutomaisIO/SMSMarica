@@ -34,12 +34,8 @@ export type SolicitacaoExame = {
   unidadeSolicitanteId: string | null;
   unidadeSolicitanteNome: string | null;
 
-  solicitanteUsuarioId: string | null;
+  /** Solicitante = só o nome (texto livre). CRM/COREN e vínculo com médico saíram do produto. */
   solicitanteNome: string;
-  solicitanteNumConselho: string;
-  solicitanteUfConselho: string;
-  /** Conselho do solicitante: "CRM" (médico) ou "COREN" (enfermeiro). */
-  solicitanteConselho: string;
 
   codigoSolicitacao: string | null;
   chaveConfirmacao: string | null;
@@ -107,11 +103,7 @@ export type CadastrarSolicitacaoPayload = {
   tipoExameId: string;
   unidadeId: string;
   unidadeSolicitanteId: string | null;
-  solicitanteUsuarioId: string | null;
   solicitanteNome: string;
-  solicitanteNumConselho: string;
-  solicitanteUfConselho: string;
-  solicitanteConselho: string;
   codigoSolicitacao: string | null;
   chaveConfirmacao: string | null;
   justificativa: string | null;
@@ -124,11 +116,7 @@ export type AtualizarSolicitacaoPayload = {
   tipoExameId: string;
   unidadeId: string;
   unidadeSolicitanteId: string | null;
-  solicitanteUsuarioId: string | null;
   solicitanteNome: string;
-  solicitanteNumConselho: string;
-  solicitanteUfConselho: string;
-  solicitanteConselho: string;
   codigoSolicitacao: string | null;
   chaveConfirmacao: string | null;
   justificativa: string | null;
