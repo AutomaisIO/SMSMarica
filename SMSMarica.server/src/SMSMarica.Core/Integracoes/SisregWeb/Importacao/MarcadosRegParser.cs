@@ -35,15 +35,21 @@ public static partial class MarcadosRegParser
             }
         }
 
-        var totalPag = 1;
-        var mPag = PaginasRegex().Match(html);
-        if (mPag.Success) totalPag = int.Parse(mPag.Groups[1].Value, CultureInfo.InvariantCulture);
-
+        // Total de registros: "...PESQUISADAS (336)".
         int? total = null;
         var mTot = TotalRegex().Match(html);
         if (mTot.Success) total = int.Parse(mTot.Groups[1].Value, CultureInfo.InvariantCulture);
 
-        return new Listagem(linhas, totalPag, total);
+        // Páginas: a paginação do SISREG é via JS (exibirPagina), NÃO há "de N <A HREF".
+        // Fonte confiável = ceil(total / 10). Fallback: nº de páginas do regex antigo, senão 1.
+        const int PorPagina = 10;
+        int totalPag;
+        var mPag = PaginasRegex().Match(html);
+        if (total is { } t && t > 0) totalPag = (int)Math.Ceiling(t / (double)PorPagina);
+        else if (mPag.Success) totalPag = int.Parse(mPag.Groups[1].Value, CultureInfo.InvariantCulture);
+        else totalPag = linhas.Count > 0 ? 1 : 0;
+
+        return new Listagem(linhas, Math.Max(totalPag, linhas.Count > 0 ? 1 : 0), total);
     }
 
     /// <summary>Interpreta a ficha detalhe. Preenche o que existir; campos ausentes ficam null.</summary>
