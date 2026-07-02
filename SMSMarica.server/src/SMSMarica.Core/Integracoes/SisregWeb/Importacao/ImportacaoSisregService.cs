@@ -179,9 +179,10 @@ public sealed class ImportacaoSisregService(
             CodigoSolicitacao = codigo,
             Status = StatusSolicitacaoExame.Solicitada,
             Prioridade = PrioridadeSolicitacao.Eletiva,
-            DataAgendada = m.DataHoraAtendimento is { } dh
-                ? DateTime.SpecifyKind(dh, DateTimeKind.Local).ToUniversalTime()
-                : null,
+            // O SISREG entrega hora LOCAL de Brasília (GMT-3). data_agendada é timestamptz (UTC),
+            // então convertemos São Paulo (-03:00) → UTC explicitamente (+3h). NÃO usar Kind=Local
+            // porque o servidor roda em UTC (Local=UTC → não somaria as 3h → gravava 3h cedo).
+            DataAgendada = m.DataHoraAtendimento is { } dh ? ParaUtcBrasilia(dh) : null,
             // Segue a config do tipo (worklist ligado → worker envia; senão só registra).
             ProximaTentativaEm = tipo.EnviarParaWorklist ? agora : null,
             CriadoEm = agora,
@@ -282,6 +283,13 @@ public sealed class ImportacaoSisregService(
             _ => string.Empty,
         };
     }
+
+    /// <summary>Fuso de Brasília (GMT-3, sem horário de verão desde 2019 — datas de 2026 não têm DST).</summary>
+    private static readonly TimeSpan OffsetBrasilia = TimeSpan.FromHours(-3);
+
+    /// <summary>Interpreta a data/hora como wall-clock de Brasília (-03:00) e devolve o instante em UTC.</summary>
+    private static DateTime ParaUtcBrasilia(DateTime wallClock) =>
+        new DateTimeOffset(DateTime.SpecifyKind(wallClock, DateTimeKind.Unspecified), OffsetBrasilia).UtcDateTime;
 
     private static string SoDigitos(string? s) =>
         string.IsNullOrEmpty(s) ? string.Empty : new string([.. s.Where(char.IsDigit)]);
