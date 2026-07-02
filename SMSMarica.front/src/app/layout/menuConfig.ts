@@ -9,6 +9,7 @@ import {
   BookOpen,
   ClipboardCheck,
   ClipboardList,
+  DownloadCloud,
   DatabaseZap,
   HeartPulse,
   FileCog,
@@ -113,6 +114,7 @@ export const SECOES: SecaoMenu[] = [
     icone: ClipboardList,
     itens: [
       { rotulo: 'Consultar SISREG', to: '/app/sisreg', icone: ClipboardList, modulo: 'Sisreg', end: true, descricao: 'Consulta integrada (só leitura).' },
+      { rotulo: 'Importação SISREG', to: '/app/importacao-sisreg', icone: DownloadCloud, modulo: 'Sisreg', descricao: 'Preview e importação de agendamentos.' },
       {
         rotulo: 'Configuração SISREG',
         to: '/app/sisreg/configuracao',

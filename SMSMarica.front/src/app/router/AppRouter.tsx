@@ -31,6 +31,7 @@ import { ExamesAnterioresJanelaPage } from '@/features/exames-anteriores/pages/E
 import { SolicitacaoExameDetalhePage } from '@/features/solicitacoes-exame/pages/SolicitacaoExameDetalhePage';
 import { SolicitacaoExameFormPage } from '@/features/solicitacoes-exame/pages/SolicitacaoExameFormPage';
 import { SolicitacoesExamePage } from '@/features/solicitacoes-exame/pages/SolicitacoesExamePage';
+import { ImportacaoSisregPage } from '@/features/importacao-sisreg/pages/ImportacaoSisregPage';
 import { TipoExameFormPage } from '@/features/tipos-exame/pages/TipoExameFormPage';
 import { TiposExamePage } from '@/features/tipos-exame/pages/TiposExamePage';
 import { PerfisPage } from '@/features/perfis/pages/PerfisPage';
@@ -140,6 +141,7 @@ export function AppRouter() {
           <Route path="solicitacoes-exame/novo" element={<SolicitacaoExameFormPage />} />
           <Route path="solicitacoes-exame/:id" element={<SolicitacaoExameDetalhePage />} />
           <Route path="solicitacoes-exame/:id/editar" element={<SolicitacaoExameFormPage />} />
+          <Route path="importacao-sisreg" element={<ImportacaoSisregPage />} />
           <Route path="anamnese" element={<AnamnesePage />} />
           <Route path="tipos-exame" element={<TiposExamePage />} />
           <Route path="tipos-exame/novo" element={<TipoExameFormPage />} />

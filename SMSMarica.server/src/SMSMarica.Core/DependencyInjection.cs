@@ -206,6 +206,10 @@ public static class DependencyInjection
         services.AddSingleton<Integracoes.SisregWeb.ISisregWebSessao, Integracoes.SisregWeb.SisregWebSessao>();
         services.AddScoped<Integracoes.SisregWeb.IConsultaCnsService, Integracoes.SisregWeb.ConsultaCnsService>();
 
+        // Importação de agendamentos (scraping cons_marcados_reg) → SolicitacaoExame.
+        services.AddScoped<Integracoes.SisregWeb.Importacao.IMarcadosRegScraper, Integracoes.SisregWeb.Importacao.MarcadosRegScraper>();
+        services.AddScoped<Integracoes.SisregWeb.Importacao.IImportacaoSisregService, Integracoes.SisregWeb.Importacao.ImportacaoSisregService>();
+
         // ---- Integração SISREG (feed de leitura DATASUS) — ADR-0012 ----
         // BaseUrl e credenciais vêm do banco (tela de configuração), não do registro de DI.
         services.AddScoped<Integracoes.Sisreg.Configuracao.ISisregConfiguracaoService, Integracoes.Sisreg.Configuracao.SisregConfiguracaoService>();
