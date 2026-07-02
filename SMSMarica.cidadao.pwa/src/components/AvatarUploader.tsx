@@ -115,28 +115,17 @@ export function AvatarUploader({
       {erro && <p className="mt-3 text-sm text-marica">{erro}</p>}
 
       {src && (
-        <div className="fixed inset-0 z-50 mx-auto flex max-w-[460px] flex-col bg-tinta">
-          <div className="flex items-center justify-between px-4 py-3 text-white">
-            <button type="button" onClick={fechar} className="text-sm font-medium text-white/80">
-              Cancelar
-            </button>
-            <span className="font-display text-base font-semibold">Ajustar foto</span>
-            <span className="w-16" />
-          </div>
-          <div className="relative flex-1">
-            <Cropper
-              image={src}
-              crop={crop}
-              zoom={zoom}
-              aspect={1}
-              cropShape="round"
-              showGrid={false}
-              onCropChange={setCrop}
-              onZoomChange={setZoom}
-              onCropComplete={aoCompletar}
-            />
-          </div>
-          <div className="space-y-4 bg-papel px-5 pb-7 pt-5">
+        <div className="fixed inset-0 z-50 mx-auto flex h-[100dvh] max-w-[460px] flex-col bg-tinta">
+          {/* Controles no TOPO: em alguns celulares a barra do navegador cobre o rodapé e o botão some. */}
+          <div className="space-y-4 bg-papel px-5 pb-4 pt-[calc(env(safe-area-inset-top)+1rem)]">
+            <div className="flex gap-3">
+              <GhostButton className="flex-1" onClick={fechar}>
+                Cancelar
+              </GhostButton>
+              <PrimaryButton className="flex-1" onClick={aplicar} carregando={processando}>
+                Usar foto
+              </PrimaryButton>
+            </div>
             <div className="flex items-center gap-3">
               <Camera className="h-4 w-4 text-tinta-mute" />
               <input
@@ -161,14 +150,19 @@ export function AvatarUploader({
                 <RotateCcw className="h-4 w-4" />
               </button>
             </div>
-            <div className="flex gap-3">
-              <GhostButton className="flex-1" onClick={fechar}>
-                Cancelar
-              </GhostButton>
-              <PrimaryButton className="flex-1" onClick={aplicar} carregando={processando}>
-                Usar foto
-              </PrimaryButton>
-            </div>
+          </div>
+          <div className="relative flex-1">
+            <Cropper
+              image={src}
+              crop={crop}
+              zoom={zoom}
+              aspect={1}
+              cropShape="round"
+              showGrid={false}
+              onCropChange={setCrop}
+              onZoomChange={setZoom}
+              onCropComplete={aoCompletar}
+            />
           </div>
         </div>
       )}
