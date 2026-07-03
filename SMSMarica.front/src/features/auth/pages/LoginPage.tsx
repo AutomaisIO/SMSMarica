@@ -75,7 +75,8 @@ export function LoginPage() {
                   (dá para trocar depois, no topo do sistema).
                 </p>
               </div>
-              <div className="space-y-2">
+              {/* Mais de 3 unidades: lista rola em vez de esticar o card. */}
+              <div className="max-h-44 space-y-2 overflow-y-auto pr-1">
                 {unidadesEscolha.map((u) => (
                   <button
                     key={u.id}

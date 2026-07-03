@@ -109,17 +109,20 @@ export function Header({ onToggleMobileSidebar }: Props) {
                     <span className="flex-1 truncate">Todas as unidades</span>
                     {unidadeAtivaId === null && <Check className="w-4 h-4 text-primary-600" />}
                   </button>
-                  {unidades.map((u) => (
-                    <button
-                      key={u.id}
-                      type="button"
-                      onClick={() => aoTrocarUnidade(u.id)}
-                      className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      <span className="flex-1 truncate">{u.nome}</span>
-                      {u.id === unidadeAtivaId && <Check className="w-4 h-4 text-primary-600" />}
-                    </button>
-                  ))}
+                  {/* Mais de 3 unidades: rola em vez de esticar o menu. */}
+                  <div className="max-h-32 overflow-y-auto">
+                    {unidades.map((u) => (
+                      <button
+                        key={u.id}
+                        type="button"
+                        onClick={() => aoTrocarUnidade(u.id)}
+                        className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <span className="flex-1 truncate">{u.nome}</span>
+                        {u.id === unidadeAtivaId && <Check className="w-4 h-4 text-primary-600" />}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
