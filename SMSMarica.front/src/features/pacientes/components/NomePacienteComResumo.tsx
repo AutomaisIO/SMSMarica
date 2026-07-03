@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Check, Loader2, Pencil, UserRound } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/shared/lib/cn';
@@ -107,6 +107,8 @@ type Props = {
   className?: string;
   /** Classe extra do texto do nome. */
   classNameNome?: string;
+  /** Conteúdo opcional renderizado ao lado do ícone do paciente (ex.: alerta de urgência). */
+  sufixo?: ReactNode;
 };
 
 /**
@@ -115,7 +117,7 @@ type Props = {
  * sexo, telefone, nome da mãe) e um botão "Editar" que leva à edição do paciente.
  * Componente genérico/reutilizável dentro da feature de pacientes.
  */
-export function NomePacienteComResumo({ pacienteId, nome, className, classNameNome }: Props) {
+export function NomePacienteComResumo({ pacienteId, nome, className, classNameNome, sufixo }: Props) {
   const navigate = useNavigate();
   const [aberto, setAberto] = useState(false);
 
@@ -131,6 +133,7 @@ export function NomePacienteComResumo({ pacienteId, nome, className, classNameNo
       >
         <UserRound className="h-4 w-4" />
       </button>
+      {sufixo}
 
       <Modal
         aberto={aberto}

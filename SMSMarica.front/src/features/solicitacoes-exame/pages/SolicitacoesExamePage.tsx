@@ -119,20 +119,7 @@ export function SolicitacoesExamePage() {
     {
       chave: 'accession',
       cabecalho: 'Pedido',
-      render: (s) => (
-        <div className="flex items-center gap-2">
-          {s.prioridade === 'Urgente' ? (
-            <span
-              title="Solicitação URGENTE"
-              className="text-sm font-bold text-red-700"
-              aria-label="Urgente"
-            >
-              ⚠
-            </span>
-          ) : null}
-          <CodigoCopiavel codigo={s.accessionNumber} />
-        </div>
-      ),
+      render: (s) => <CodigoCopiavel codigo={s.accessionNumber} />,
     },
     {
       chave: 'paciente',
@@ -144,6 +131,17 @@ export function SolicitacoesExamePage() {
             nome={s.pacienteNome}
             className="min-w-0"
             classNameNome="truncate font-medium text-gray-900"
+            sufixo={
+              s.prioridade === 'Urgente' ? (
+                <span
+                  title="Solicitação URGENTE"
+                  className="text-sm font-bold text-red-700"
+                  aria-label="Urgente"
+                >
+                  ⚠
+                </span>
+              ) : undefined
+            }
           />
           <div className="truncate text-xs text-gray-500">Por {s.solicitanteNome}</div>
         </div>
