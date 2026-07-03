@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { BotaoLinhaAcao } from '@/shared/ui/BotaoLinhaAcao';
@@ -24,15 +24,7 @@ export function UnidadesPage() {
     {
       chave: 'nome',
       cabecalho: 'Nome',
-      render: (u) => (
-        <button
-          type="button"
-          onClick={() => navigate(`/app/unidades/${u.id}`)}
-          className="text-left font-medium text-red-700 hover:underline"
-        >
-          {u.nome}
-        </button>
-      ),
+      render: (u) => <span className="font-medium text-gray-900">{u.nome}</span>,
     },
     {
       chave: 'cidade',
@@ -46,9 +38,6 @@ export function UnidadesPage() {
       className: 'text-right',
       render: (u) => (
         <div className="flex items-center justify-end gap-1">
-          <BotaoLinhaAcao onClick={() => navigate(`/app/unidades/${u.id}`)}>
-            <Eye className="w-3.5 h-3.5" /> Ver
-          </BotaoLinhaAcao>
           <BotaoLinhaAcao onClick={() => navigate(`/app/unidades/${u.id}/editar`)}>
             <Pencil className="w-3.5 h-3.5" /> Editar
           </BotaoLinhaAcao>
@@ -97,6 +86,8 @@ export function UnidadesPage() {
         dados={(lista.data ?? []).filter((u) => u.ativo)}
         chaveLinha={(u) => u.id}
         carregando={lista.isLoading}
+        aoClicarLinha={(u) => navigate(`/app/unidades/${u.id}`)}
+        dicaLinha="Clique para visualizar"
       />
 
       <ConfirmDialog

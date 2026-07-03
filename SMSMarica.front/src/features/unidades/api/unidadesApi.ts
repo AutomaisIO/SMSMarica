@@ -27,3 +27,25 @@ export async function atualizarUnidade(id: string, payload: SalvarUnidadePayload
 export async function desativarUnidade(id: string): Promise<void> {
   await http.delete(`/unidades/${id}`);
 }
+
+/** Usuário vinculado à unidade (visão reversa unidade→usuários). */
+export type UsuarioDaUnidade = {
+  usuarioId: string;
+  nomeCompleto: string;
+  email: string | null;
+  ativo: boolean;
+  principal: boolean;
+};
+
+export async function listarUsuariosDaUnidade(unidadeId: string): Promise<UsuarioDaUnidade[]> {
+  const { data } = await http.get<UsuarioDaUnidade[]>(`/unidades/${unidadeId}/usuarios`);
+  return data;
+}
+
+export async function adicionarUsuarioNaUnidade(unidadeId: string, usuarioId: string): Promise<void> {
+  await http.post(`/unidades/${unidadeId}/usuarios/${usuarioId}`);
+}
+
+export async function removerUsuarioDaUnidade(unidadeId: string, usuarioId: string): Promise<void> {
+  await http.delete(`/unidades/${unidadeId}/usuarios/${usuarioId}`);
+}

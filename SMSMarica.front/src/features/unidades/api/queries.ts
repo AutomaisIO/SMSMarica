@@ -1,17 +1,57 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  adicionarUsuarioNaUnidade,
   atualizarUnidade,
   cadastrarUnidade,
   desativarUnidade,
   listarUnidades,
+  listarUsuariosDaUnidade,
   obterUnidadePorId,
+  removerUsuarioDaUnidade,
 } from '@/features/unidades/api/unidadesApi';
 import type { SalvarUnidadePayload } from '@/features/unidades/types';
 
 export const unidadesKeys = {
   lista: () => ['unidades', 'lista'] as const,
   porId: (id: string) => ['unidades', 'detalhe', id] as const,
+  usuarios: (id: string) => ['unidades', 'usuarios', id] as const,
 };
+
+export function useUsuariosDaUnidade(unidadeId: string | null) {
+  return useQuery({
+    queryKey: unidadeId ? unidadesKeys.usuarios(unidadeId) : ['unidades', 'usuarios', 'nenhum'],
+    queryFn: () => {
+      if (!unidadeId) throw new Error('ID não informado.');
+      return listarUsuariosDaUnidade(unidadeId);
+    },
+    enabled: Boolean(unidadeId),
+  });
+}
+
+export function useAdicionarUsuarioNaUnidade() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ unidadeId, usuarioId }: { unidadeId: string; usuarioId: string }) =>
+      adicionarUsuarioNaUnidade(unidadeId, usuarioId),
+    onSuccess: (_d, v) => {
+      client.invalidateQueries({ queryKey: unidadesKeys.usuarios(v.unidadeId) });
+      // A tela de edição do usuário também mostra esses vínculos.
+      client.invalidateQueries({ queryKey: ['usuarios', 'unidades', v.usuarioId] });
+    },
+  });
+}
+
+export function useRemoverUsuarioDaUnidade() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ unidadeId, usuarioId }: { unidadeId: string; usuarioId: string }) =>
+      removerUsuarioDaUnidade(unidadeId, usuarioId),
+    onSuccess: (_d, v) => {
+      client.invalidateQueries({ queryKey: unidadesKeys.usuarios(v.unidadeId) });
+      client.invalidateQueries({ queryKey: ['usuarios', 'unidades', v.usuarioId] });
+    },
+  });
+}
 
 export function useListarUnidades() {
   return useQuery({ queryKey: unidadesKeys.lista(), queryFn: listarUnidades });

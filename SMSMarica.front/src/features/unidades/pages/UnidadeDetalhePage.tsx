@@ -5,7 +5,9 @@ import { Button } from '@/shared/ui/Button';
 import { MapaSeletor } from '@/shared/ui/MapaSeletor';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
-import { useUnidadePorId } from '@/features/unidades/api/queries';
+import { Tabs, type Aba } from '@/shared/ui/Tabs';
+import { useUnidadePorId, useUsuariosDaUnidade } from '@/features/unidades/api/queries';
+import { UsuariosDaUnidadeSecao } from '@/features/unidades/components/UsuariosDaUnidadeSecao';
 import { useListarTratamentos } from '@/features/tratamentos/api/queries';
 import type { TratamentoListItem } from '@/features/tratamentos/types';
 import { formatarDataBr } from '@/features/tratamentos/lib/expansor';
@@ -50,6 +52,7 @@ export function UnidadeDetalhePage() {
 
   const detalhe = useUnidadePorId(id || null);
   const tratamentos = useListarTratamentos({ unidadeId: id });
+  const usuariosDaUnidade = useUsuariosDaUnidade(id || null);
 
   const u = detalhe.data;
 
@@ -90,6 +93,42 @@ export function UnidadeDetalhePage() {
       chave: 'status',
       cabecalho: 'Status',
       render: (t) => <StatusBadge ativo={t.ativo} />,
+    },
+  ];
+
+  const abaTratamentos = (
+    <div className="space-y-3">
+      {tratamentos.isError ? (
+        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {extrairMensagemDeErro(tratamentos.error)}
+        </div>
+      ) : null}
+      <Tabela
+        colunas={colunas}
+        dados={tratamentos.data ?? []}
+        chaveLinha={(t) => t.id}
+        carregando={tratamentos.isLoading}
+        vazio={
+          !tratamentos.isLoading && (tratamentos.data?.length ?? 0) === 0
+            ? 'Nenhum tratamento cadastrado nesta unidade.'
+            : undefined
+        }
+      />
+    </div>
+  );
+
+  const abas: Aba[] = [
+    {
+      id: 'tratamentos',
+      rotulo: 'Tratamentos',
+      conteudo: abaTratamentos,
+      badge: tratamentos.data?.length || undefined,
+    },
+    {
+      id: 'usuarios',
+      rotulo: 'Usuários',
+      conteudo: <UsuariosDaUnidadeSecao unidadeId={id} />,
+      badge: usuariosDaUnidade.data?.length || undefined,
     },
   ];
 
@@ -179,24 +218,8 @@ export function UnidadeDetalhePage() {
         </div>
       ) : null}
 
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-gray-900">Tratamentos da unidade</h2>
-        {tratamentos.isError ? (
-          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {extrairMensagemDeErro(tratamentos.error)}
-          </div>
-        ) : null}
-        <Tabela
-          colunas={colunas}
-          dados={tratamentos.data ?? []}
-          chaveLinha={(t) => t.id}
-          carregando={tratamentos.isLoading}
-          vazio={
-            !tratamentos.isLoading && (tratamentos.data?.length ?? 0) === 0
-              ? 'Nenhum tratamento cadastrado nesta unidade.'
-              : undefined
-          }
-        />
+      <section>
+        <Tabs abas={abas} inicial="tratamentos" />
       </section>
     </div>
   );

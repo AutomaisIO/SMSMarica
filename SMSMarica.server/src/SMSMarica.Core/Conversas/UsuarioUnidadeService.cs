@@ -70,4 +70,47 @@ public sealed class UsuarioUnidadeService(
 
         await db.SaveChangesAsync(ct);
     }
+
+    public async Task<IReadOnlyList<UsuarioDaUnidadeDto>> ListarUsuariosDaUnidadeAsync(Guid unidadeId, CancellationToken ct = default)
+    {
+        if (!await db.Unidades.AsNoTracking().AnyAsync(u => u.Id == unidadeId, ct))
+            throw new NaoEncontradoException("Unidade", unidadeId);
+
+        return await db.UsuarioUnidades.AsNoTracking()
+            .Where(x => x.UnidadeId == unidadeId && x.Usuario!.ExcluidoEm == null)
+            .OrderBy(x => x.Usuario!.NomeCompleto)
+            .Select(x => new UsuarioDaUnidadeDto(
+                x.UsuarioId, x.Usuario!.NomeCompleto, x.Usuario!.Email, x.Usuario!.Ativo, x.Principal))
+            .ToListAsync(ct);
+    }
+
+    public async Task AdicionarUsuarioAsync(Guid unidadeId, Guid usuarioId, CancellationToken ct = default)
+    {
+        if (!await db.Unidades.AsNoTracking().AnyAsync(u => u.Id == unidadeId, ct))
+            throw new NaoEncontradoException("Unidade", unidadeId);
+        if (!await db.Usuarios.AsNoTracking().AnyAsync(u => u.Id == usuarioId && u.ExcluidoEm == null, ct))
+            throw new NaoEncontradoException("Usuário", usuarioId);
+        if (await db.UsuarioUnidades.AnyAsync(x => x.UnidadeId == unidadeId && x.UsuarioId == usuarioId, ct))
+            return; // idempotente
+
+        db.UsuarioUnidades.Add(new UsuarioUnidade
+        {
+            UsuarioId = usuarioId,
+            UnidadeId = unidadeId,
+            Principal = false,
+            CriadoEm = DateTime.UtcNow,
+            CriadoPor = usuarioAtual.UsuarioId,
+        });
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task RemoverUsuarioAsync(Guid unidadeId, Guid usuarioId, CancellationToken ct = default)
+    {
+        var vinculo = await db.UsuarioUnidades
+            .FirstOrDefaultAsync(x => x.UnidadeId == unidadeId && x.UsuarioId == usuarioId, ct);
+        if (vinculo is null) return; // idempotente
+
+        db.UsuarioUnidades.Remove(vinculo);
+        await db.SaveChangesAsync(ct);
+    }
 }
