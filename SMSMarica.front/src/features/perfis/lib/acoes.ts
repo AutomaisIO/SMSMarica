@@ -74,6 +74,7 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'Erros', rotulo: 'Erros do sistema (diagnóstico)' },
   { id: 'Conversas', rotulo: 'Central de Atendimento (chat)' },
   { id: 'ConversasSupervisao', rotulo: 'Atendimento — supervisão (ver todas as unidades)' },
+  { id: 'Ticket', rotulo: 'Suporte — gestão de tickets (ver/responder todos)' },
 ];
 
 export const ACOES: { id: AcaoPermissao; rotulo: string }[] = [

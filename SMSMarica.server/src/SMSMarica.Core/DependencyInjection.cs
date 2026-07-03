@@ -53,6 +53,7 @@ public static class DependencyInjection
         services.AddScoped<IRastreamentoService, RastreamentoService>();
         services.AddScoped<IRastreamentoNotificador, NotificadorRastreamentoNulo>();
         services.AddScoped<IAvaliacoesService, AvaliacoesService>();
+        services.AddScoped<Tickets.ITicketService, Tickets.TicketService>();
         services.AddScoped<IEstudoAnotacoesService, EstudoAnotacoesService>();
         services.AddScoped<IIdentidadeService, IdentidadeService>();
         services.AddScoped<IApiTokensService, ApiTokensService>();

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Common.Excecoes;
+using SMSMarica.Core.Common.Tempo;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Notificacoes;
 using SMSMarica.Core.SolicitacoesExame.Dtos;
@@ -109,15 +110,21 @@ public sealed class SolicitacoesExameService(
                 || (s.CodigoSolicitacao != null && EF.Functions.ILike(s.CodigoSolicitacao, padrao))
                 || idsPaciente.Contains(s.PacienteId));
         }
+        // O período filtra pela DATA DO AGENDAMENTO (data_agendada), não pela data da solicitação.
+        // data_agendada é um instante UTC (timestamptz); a coluna é exibida no fuso de Brasília, então
+        // os limites do dia (yyyy-mm-dd) são convertidos de Brasília para UTC (+3h) p/ casar com a exibição.
+        // Registros sem data agendada ficam fora quando há filtro de período.
         if (filtro.DataInicial.HasValue)
         {
-            var ini = filtro.DataInicial.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-            query = query.Where(s => s.CriadoEm >= ini);
+            var ini = filtro.DataInicial.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)
+                .AddHours(-FusoBrasilia.OffsetHoras);
+            query = query.Where(s => s.DataAgendada != null && s.DataAgendada >= ini);
         }
         if (filtro.DataFinal.HasValue)
         {
-            var fim = filtro.DataFinal.Value.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
-            query = query.Where(s => s.CriadoEm <= fim);
+            var fim = filtro.DataFinal.Value.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc)
+                .AddHours(-FusoBrasilia.OffsetHoras);
+            query = query.Where(s => s.DataAgendada != null && s.DataAgendada <= fim);
         }
 
         query = await AplicarEscopoUnidadeAsync(query, cancellationToken);

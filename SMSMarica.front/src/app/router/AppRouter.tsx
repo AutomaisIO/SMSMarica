@@ -67,6 +67,9 @@ import { FaturamentoPage } from '@/features/faturamento/pages/FaturamentoPage';
 import { AuditoriaPage } from '@/features/auditoria/pages/AuditoriaPage';
 import { ErrosPage } from '@/features/erros/pages/ErrosPage';
 import { ConversasPage } from '@/features/conversas/pages/ConversasPage';
+import { MeusTicketsPage } from '@/features/tickets/pages/MeusTicketsPage';
+import { TicketDetalhePage } from '@/features/tickets/pages/TicketDetalhePage';
+import { GestaoTicketsPage } from '@/features/tickets/pages/GestaoTicketsPage';
 import { useAuth } from '@/shared/auth/authStore';
 
 function RedirecionamentoRaiz() {
@@ -164,6 +167,10 @@ export function AppRouter() {
           <Route path="auditoria" element={<AuditoriaPage />} />
           <Route path="erros" element={<ErrosPage />} />
           <Route path="conversas" element={<ConversasPage />} />
+          <Route path="tickets" element={<MeusTicketsPage />} />
+          <Route path="tickets/gestao" element={<GestaoTicketsPage />} />
+          <Route path="tickets/gestao/:id" element={<TicketDetalhePage gestao />} />
+          <Route path="tickets/:id" element={<TicketDetalhePage />} />
         </Route>
       </Route>
 

@@ -79,4 +79,9 @@ public enum ModuloPermissao
     /// <summary>Supervisão do chat: ver TODAS as conversas (qualquer unidade), reatribuir de terceiros
     /// e encaminhar entre unidades.</summary>
     ConversasSupervisao = 36,
+
+    /// <summary>Gestão de tickets de suporte: ver TODOS os tickets, responder, mudar status e
+    /// configurar a visibilidade. Abrir/ver os próprios tickets não exige este módulo (qualquer
+    /// usuário autenticado pode).</summary>
+    Ticket = 37,
 }
