@@ -20,6 +20,8 @@ public static class AgendaTxtParser
     private const int ProcedimentoTexto = 3;
     private const int DataAtendimento = 6;
     private const int HoraAtendimento = 7;
+    private const int DataSolicitacao = 29; // data em que o pedido foi feito (seguida do operador solicitante na col. 30).
+    private const int DataRegulacao = 31;   // data em que a solicitação foi regulada (seguida do operador de regulação na col. 32).
     private const int CnsPaciente = 9;
     private const int NomePaciente = 10;
     private const int TipoLogradouro = 15;
@@ -84,6 +86,8 @@ public static class AgendaTxtParser
                 CnesUnidadeExecutante: cab.CnesUnidade, // o arquivo é da agenda do executante (cabeçalho).
                 NomeUnidadeExecutante: cab.NomeUnidade,
                 DataHoraAtendimento: dataHora,
+                DataSolicitacao: Data(c[DataSolicitacao]),
+                DataRegulacao: Data(c[DataRegulacao]),
                 Cid: LimparNulo(c[Cid]),
                 TelefonePaciente: LimparNulo(c[Telefone]),
                 TipoLogradouro: LimparNulo(c[TipoLogradouro]),

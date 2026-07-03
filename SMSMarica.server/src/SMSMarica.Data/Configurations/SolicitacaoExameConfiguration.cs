@@ -40,6 +40,10 @@ internal sealed class SolicitacaoExameConfiguration : IEntityTypeConfiguration<S
         builder.Property(s => s.Prioridade).HasColumnName("prioridade").HasConversion<int>().IsRequired();
         builder.Property(s => s.Observacoes).HasColumnName("observacoes").HasMaxLength(2000);
 
+        // Data da solicitação (dia de calendário, sem hora) — mapeada para "date".
+        builder.Property(s => s.DataSolicitacao).HasColumnName("data_solicitacao");
+        // Data da regulação (dia de calendário) — capturada para estatística.
+        builder.Property(s => s.DataRegulacao).HasColumnName("data_regulacao");
         builder.Property(s => s.DataAgendada).HasColumnName("data_agendada");
         builder.Property(s => s.IniciadoEm).HasColumnName("iniciado_em");
         builder.Property(s => s.RealizadoEm).HasColumnName("realizado_em");

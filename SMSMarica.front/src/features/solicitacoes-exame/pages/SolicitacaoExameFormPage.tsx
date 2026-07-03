@@ -7,6 +7,7 @@ import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 import { notificar } from '@/shared/ui/Notificacoes';
 import { Campo } from '@/shared/ui/Campo';
+import { AjudaCampo } from '@/shared/ui/AjudaCampo';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { BuscaPaciente } from '@/shared/ui/BuscaPaciente';
@@ -20,6 +21,7 @@ import {
   useSolicitacoesRecentesPaciente,
 } from '@/features/solicitacoes-exame/api/queries';
 import { SeletorTipoExame } from '@/features/solicitacoes-exame/components/SeletorTipoExame';
+import { AJUDA_SOLICITACAO } from '@/features/solicitacoes-exame/ajudaCampos';
 import type { PrioridadeSolicitacao } from '@/features/solicitacoes-exame/types';
 
 type EstadoForm = {
@@ -35,6 +37,7 @@ type EstadoForm = {
   prioridade: PrioridadeSolicitacao;
   observacoes: string;
   dataAgendada: string;
+  dataSolicitacao: string;
 };
 
 const ESTADO_INICIAL: EstadoForm = {
@@ -50,6 +53,7 @@ const ESTADO_INICIAL: EstadoForm = {
   prioridade: 'Eletiva',
   observacoes: '',
   dataAgendada: '',
+  dataSolicitacao: '',
 };
 
 /**
@@ -114,6 +118,7 @@ export function SolicitacaoExameFormPage() {
         prioridade: s.prioridade,
         observacoes: s.observacoes ?? '',
         dataAgendada: paraInputLocalDeUtc(s.dataAgendada),
+        dataSolicitacao: s.dataSolicitacao ?? '',
       });
     }
   }, [detalhe.data]);
@@ -165,6 +170,7 @@ export function SolicitacaoExameFormPage() {
       prioridade: estado.prioridade,
       observacoes: estado.observacoes.trim() || null,
       dataAgendada: paraUtcDeLocal(estado.dataAgendada),
+      dataSolicitacao: estado.dataSolicitacao || null,
     };
 
     try {
@@ -282,7 +288,12 @@ export function SolicitacaoExameFormPage() {
             </Select>
           </Campo>
 
-          <Campo label="Unidade solicitante (opcional)" htmlFor="unidade-solic" className="sm:col-span-2">
+          <Campo
+            label="Unidade solicitante (opcional)"
+            htmlFor="unidade-solic"
+            className="sm:col-span-2"
+            ajuda={<AjudaCampo titulo={AJUDA_SOLICITACAO.unidadeSolicitante.titulo}>{AJUDA_SOLICITACAO.unidadeSolicitante.conteudo}</AjudaCampo>}
+          >
             <Select
               id="unidade-solic"
               value={estado.unidadeSolicitanteId}
@@ -309,7 +320,23 @@ export function SolicitacaoExameFormPage() {
             </div>
           ) : null}
 
-          <Campo label="Data/hora agendada (opcional)" htmlFor="data" className="sm:col-span-2">
+          <Campo
+            label="Data da solicitação"
+            htmlFor="data-solic"
+            ajuda={<AjudaCampo titulo={AJUDA_SOLICITACAO.dataSolicitacao.titulo}>{AJUDA_SOLICITACAO.dataSolicitacao.conteudo}</AjudaCampo>}
+          >
+            <Input
+              id="data-solic"
+              type="date"
+              value={estado.dataSolicitacao}
+              onChange={(e) => up('dataSolicitacao', e.target.value)}
+            />
+          </Campo>
+          <Campo
+            label="Data/hora agendada (opcional)"
+            htmlFor="data"
+            ajuda={<AjudaCampo titulo={AJUDA_SOLICITACAO.dataAgendada.titulo}>{AJUDA_SOLICITACAO.dataAgendada.conteudo}</AjudaCampo>}
+          >
             <Input
               id="data"
               type="datetime-local"
@@ -317,7 +344,11 @@ export function SolicitacaoExameFormPage() {
               onChange={(e) => up('dataAgendada', e.target.value)}
             />
           </Campo>
-          <Campo label="Prioridade" htmlFor="prioridade">
+          <Campo
+            label="Prioridade"
+            htmlFor="prioridade"
+            ajuda={<AjudaCampo titulo={AJUDA_SOLICITACAO.prioridade.titulo}>{AJUDA_SOLICITACAO.prioridade.conteudo}</AjudaCampo>}
+          >
             <Select
               id="prioridade"
               value={estado.prioridade}
@@ -334,7 +365,12 @@ export function SolicitacaoExameFormPage() {
       {/* 3) Solicitante (texto livre) */}
       <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">3. Solicitante</h2>
-        <Campo label="Solicitante" htmlFor="solicitante" required>
+        <Campo
+          label="Solicitante"
+          htmlFor="solicitante"
+          required
+          ajuda={<AjudaCampo titulo={AJUDA_SOLICITACAO.solicitante.titulo}>{AJUDA_SOLICITACAO.solicitante.conteudo}</AjudaCampo>}
+        >
           <Input
             id="solicitante"
             value={estado.solicitanteNome}
@@ -354,6 +390,7 @@ export function SolicitacaoExameFormPage() {
           <Campo
             label="Código de Solicitação"
             htmlFor="cod"
+            ajuda={<AjudaCampo titulo={AJUDA_SOLICITACAO.codigoSolicitacao.titulo}>{AJUDA_SOLICITACAO.codigoSolicitacao.conteudo}</AjudaCampo>}
             erro={
               estado.codigoSolicitacao.trim() && !regulacaoValida(estado.codigoSolicitacao)
                 ? 'Use 0000 (emergência extra-SUS) ou um número a partir de 9999.'
@@ -371,6 +408,7 @@ export function SolicitacaoExameFormPage() {
           <Campo
             label="Chave de Confirmação"
             htmlFor="chave"
+            ajuda={<AjudaCampo titulo={AJUDA_SOLICITACAO.chaveConfirmacao.titulo}>{AJUDA_SOLICITACAO.chaveConfirmacao.conteudo}</AjudaCampo>}
             erro={
               estado.chaveConfirmacao.trim() && !regulacaoValida(estado.chaveConfirmacao)
                 ? 'Use 0000 (emergência extra-SUS) ou um número a partir de 9999.'

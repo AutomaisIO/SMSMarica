@@ -16,4 +16,7 @@ public sealed record AtualizarSolicitacaoExameRequest(
     string? Justificativa,
     PrioridadeSolicitacao Prioridade,
     string? Observacoes,
-    DateTime? DataAgendada);
+    DateTime? DataAgendada,
+
+    // Data em que o exame foi solicitado (dia de calendário; opcional).
+    DateOnly? DataSolicitacao = null);

@@ -191,6 +191,10 @@ public sealed class ImportacaoSisregService(
             // então convertemos São Paulo (-03:00) → UTC explicitamente (+3h). NÃO usar Kind=Local
             // porque o servidor roda em UTC (Local=UTC → não somaria as 3h → gravava 3h cedo).
             DataAgendada = m.DataHoraAtendimento is { } dh ? ParaUtcBrasilia(dh) : null,
+            // Data em que o pedido foi feito no SISREG (dia de calendário, sem hora).
+            DataSolicitacao = m.DataSolicitacao,
+            // Data em que a regulação autorizou (para estatística de tempos).
+            DataRegulacao = m.DataRegulacao,
             // Segue a config do tipo (worklist ligado → worker envia; senão só registra).
             ProximaTentativaEm = tipo.EnviarParaWorklist ? agora : null,
             CriadoEm = agora,

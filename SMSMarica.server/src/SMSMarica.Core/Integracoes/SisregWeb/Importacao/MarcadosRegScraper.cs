@@ -91,7 +91,7 @@ public sealed class MarcadosRegScraper(ISisregWebSessao sessao, ILogger<Marcados
         }, ct);
 
     private static MarcacaoSisreg MarcacaoVazia(string codigo) =>
-        new(codigo, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        new(codigo, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
     private static DateTime? ParseDataHoraListagem(string data, string hora)
     {

@@ -52,6 +52,11 @@ export type SolicitacaoExame = {
   prioridade: PrioridadeSolicitacao;
   observacoes: string | null;
 
+  /** Data em que o exame foi solicitado (dia de calendário, "yyyy-MM-dd"). */
+  dataSolicitacao: string | null;
+  /** Data em que a regulação autorizou (dia de calendário) — capturada do SISREG para estatística. */
+  dataRegulacao: string | null;
+
   dataAgendada: string | null;
   iniciadoEm: string | null;
   realizadoEm: string | null;
@@ -121,6 +126,8 @@ export type CadastrarSolicitacaoPayload = {
   prioridade: PrioridadeSolicitacao;
   observacoes: string | null;
   dataAgendada: string | null;
+  /** Data da solicitação (dia de calendário, "yyyy-MM-dd"); opcional. */
+  dataSolicitacao: string | null;
 };
 
 export type AtualizarSolicitacaoPayload = {
@@ -134,4 +141,6 @@ export type AtualizarSolicitacaoPayload = {
   prioridade: PrioridadeSolicitacao;
   observacoes: string | null;
   dataAgendada: string | null;
+  /** Data da solicitação (dia de calendário, "yyyy-MM-dd"); opcional. */
+  dataSolicitacao: string | null;
 };

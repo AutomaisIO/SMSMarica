@@ -305,7 +305,9 @@ export function SolicitacaoExameDetalhePage() {
         <section className="lg:col-span-2 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">Linha do tempo</h2>
           <ul className="space-y-1 text-sm text-gray-700">
-            <li>Solicitada em {fmt(s.criadoEm)}</li>
+            {s.dataSolicitacao ? <li>Solicitada em {formatarWallClock(s.dataSolicitacao)}</li> : null}
+            {s.dataRegulacao ? <li>Regulada em {formatarWallClock(s.dataRegulacao)}</li> : null}
+            <li>Cadastrada no sistema em {fmt(s.criadoEm)}</li>
             {s.dataAgendada ? <li>Agendada para {fmt(s.dataAgendada)}</li> : null}
             {s.iniciadoEm ? <li>Início da execução em {fmt(s.iniciadoEm)}</li> : null}
             {/* Data do exame = DICOM (StudyDate/StudyTime), a data real de execução. Só

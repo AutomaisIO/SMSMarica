@@ -30,6 +30,8 @@ internal static class SolicitacoesExameMapper
         s.Status,
         s.Prioridade,
         s.Observacoes,
+        s.DataSolicitacao,
+        s.DataRegulacao,
         s.DataAgendada,
         s.IniciadoEm,
         s.RealizadoEm,

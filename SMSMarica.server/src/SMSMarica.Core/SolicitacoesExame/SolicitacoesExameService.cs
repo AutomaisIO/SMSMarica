@@ -268,6 +268,7 @@ public sealed class SolicitacoesExameService(
             Status = StatusSolicitacaoExame.Solicitada,
             Prioridade = request.Prioridade,
             Observacoes = NormalizaOpcional(request.Observacoes),
+            DataSolicitacao = request.DataSolicitacao,
             DataAgendada = request.DataAgendada,
 
             // Worker pega imediatamente no próximo tick (sem bloquear a resposta da API
@@ -307,6 +308,7 @@ public sealed class SolicitacoesExameService(
         s.Justificativa = NormalizaOpcional(request.Justificativa);
         s.Prioridade = request.Prioridade;
         s.Observacoes = NormalizaOpcional(request.Observacoes);
+        s.DataSolicitacao = request.DataSolicitacao;
         s.DataAgendada = request.DataAgendada;
         s.AtualizadoEm = DateTime.UtcNow;
         s.AtualizadoPor = _usuarioAtual.UsuarioId;

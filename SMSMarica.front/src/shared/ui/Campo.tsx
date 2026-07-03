@@ -6,17 +6,20 @@ type CampoProps = {
   htmlFor: string;
   erro?: string;
   dica?: ReactNode;
+  /** Botão de ajuda ("?") renderizado ao lado do rótulo — ver <AjudaCampo />. */
+  ajuda?: ReactNode;
   children: ReactNode;
   className?: string;
   required?: boolean;
 };
 
-export function Campo({ label, htmlFor, erro, dica, children, className, required }: CampoProps) {
+export function Campo({ label, htmlFor, erro, dica, ajuda, children, className, required }: CampoProps) {
   return (
     <div className={cn('flex flex-col', className)}>
-      <label htmlFor={htmlFor} className="label">
+      <label htmlFor={htmlFor} className="label inline-flex items-center gap-1">
         {label}
         {required && <span className="ml-0.5 text-red-500" aria-hidden="true">*</span>}
+        {ajuda}
       </label>
       {children}
       {erro ? (

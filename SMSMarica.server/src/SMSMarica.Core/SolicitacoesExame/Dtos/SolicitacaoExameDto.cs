@@ -34,6 +34,12 @@ public sealed record SolicitacaoExameDto(
     PrioridadeSolicitacao Prioridade,
     string? Observacoes,
 
+    // Data em que o exame foi solicitado (dia de calendário; null quando não informada).
+    DateOnly? DataSolicitacao,
+
+    // Data em que a regulação autorizou (dia de calendário; capturada do SISREG para estatística).
+    DateOnly? DataRegulacao,
+
     DateTime? DataAgendada,
     DateTime? IniciadoEm,
     DateTime? RealizadoEm,

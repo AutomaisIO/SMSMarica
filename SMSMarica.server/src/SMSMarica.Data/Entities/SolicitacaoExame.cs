@@ -89,6 +89,23 @@ public class SolicitacaoExame
     public PrioridadeSolicitacao Prioridade { get; set; } = PrioridadeSolicitacao.Eletiva;
     public string? Observacoes { get; set; }
 
+    /// <summary>
+    /// Data em que o exame foi SOLICITADO (o pedido foi feito), como dia de calendário.
+    /// Distinta de <see cref="CriadoEm"/> (quando o registro entrou no NOSSO sistema) e de
+    /// <see cref="DataAgendada"/> (quando o exame está marcado para acontecer). Na importação
+    /// SISREG vem da coluna "data da solicitação" do TXT (sem hora), por isso é
+    /// <c>DateOnly</c> mapeada para <c>date</c>. Null quando não informada.
+    /// </summary>
+    public DateOnly? DataSolicitacao { get; set; }
+
+    /// <summary>
+    /// Data em que a solicitação foi REGULADA/autorizada pela regulação (SISREG), como dia de
+    /// calendário. Capturada só para números/estatística (ex.: tempo entre solicitação e
+    /// regulação). Na importação vem da coluna "data da regulação" do TXT. Null quando não veio
+    /// de importação ou não informada.
+    /// </summary>
+    public DateOnly? DataRegulacao { get; set; }
+
     public DateTime? DataAgendada { get; set; }
     public DateTime? IniciadoEm { get; set; }
 

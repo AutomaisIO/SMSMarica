@@ -25,6 +25,10 @@ public sealed record MarcacaoSisreg(
     string? NomeUnidadeExecutante,
     /// <summary>Data/hora do atendimento no fuso local (wall-clock), como o SISREG informa.</summary>
     DateTime? DataHoraAtendimento,
+    /// <summary>Data em que o exame foi SOLICITADO (dia de calendário, sem hora) — coluna 29 do TXT.</summary>
+    DateOnly? DataSolicitacao,
+    /// <summary>Data em que a solicitação foi REGULADA/autorizada (dia de calendário) — coluna 31 do TXT.</summary>
+    DateOnly? DataRegulacao,
     string? Cid,
 
     // ---- Dados do paciente vindos do TXT (para criar o paciente novo; opcionais) ----

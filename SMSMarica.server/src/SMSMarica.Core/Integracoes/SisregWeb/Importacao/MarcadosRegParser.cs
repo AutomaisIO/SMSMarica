@@ -110,6 +110,8 @@ public static partial class MarcadosRegParser
             CnesUnidadeExecutante: cnesExe,
             NomeUnidadeExecutante: nExe,
             DataHoraAtendimento: dataHora,
+            DataSolicitacao: null, // a lista "Agendados pela Regulação" não traz a data da solicitação; só o TXT.
+            DataRegulacao: null,
             Cid: cid);
     }
 
