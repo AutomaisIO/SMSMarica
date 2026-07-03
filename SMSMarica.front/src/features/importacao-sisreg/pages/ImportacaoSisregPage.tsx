@@ -4,7 +4,9 @@ import {
   UploadCloud,
   CheckCircle2,
   AlertTriangle,
+  Ban,
   FileText,
+  ListChecks,
   Loader2,
   X,
   Play,
@@ -33,21 +35,29 @@ export function ImportacaoSisregPage() {
   const [resultados, setResultados] = useState<Record<string, ImportacaoExecucaoResultado>>({});
   const [importando, setImportando] = useState<string | null>(null);
   const [modal, setModal] = useState<ImportacaoExecucaoResultado | null>(null);
+  // Importação em lote ("Importar todos"): flag + progresso + cancelamento.
+  const [importandoTodos, setImportandoTodos] = useState(false);
+  const [progresso, setProgresso] = useState<
+    { total: number; feitos: number; ok: number; falhas: number } | null
+  >(null);
+  const cancelarRef = useRef(false);
 
   const preview = useMutation({
     mutationFn: (f: File) => previewImportacaoTxt(f),
     onSuccess: () => {
       setResultados({});
+      setProgresso(null);
     },
   });
 
-  async function importar(codigo: string) {
-    if (!arquivo) return;
+  // Executa um código e grava o resultado no map. NÃO abre o modal (reusado pelo lote).
+  async function executarUm(codigo: string): Promise<ImportacaoExecucaoResultado> {
     setImportando(codigo);
     try {
+      if (!arquivo) throw new Error('Nenhum arquivo selecionado.');
       const res = await executarImportacaoTxt(arquivo, codigo);
       setResultados((m) => ({ ...m, [codigo]: res }));
-      setModal(res);
+      return res;
     } catch (e) {
       const erro: ImportacaoExecucaoResultado = {
         codigoSolicitacao: codigo,
@@ -61,13 +71,53 @@ export function ImportacaoSisregPage() {
         erro: extrairMensagemDeErro(e),
       };
       setResultados((m) => ({ ...m, [codigo]: erro }));
-      setModal(erro);
+      return erro;
     } finally {
       setImportando(null);
     }
   }
 
+  // Importar UM (manual, pelo botão da linha) — abre o modal com o resultado.
+  async function importar(codigo: string) {
+    if (!arquivo) return;
+    const res = await executarUm(codigo);
+    setModal(res);
+  }
+
+  // Importar TODOS os pendentes (novos ainda não importados com sucesso), em série.
+  // Série (não paralelo): o backend não é seguro para concorrência (SaveChanges +
+  // idempotência por nº do SISREG). Pode ser interrompido pelo botão "Parar".
+  async function importarTodos() {
+    if (!arquivo || !r) return;
+    const pendentes = r.itens
+      .filter((i) => !i.jaExiste && resultados[i.codigoSolicitacao]?.sucesso !== true)
+      .map((i) => i.codigoSolicitacao);
+    if (pendentes.length === 0) return;
+
+    cancelarRef.current = false;
+    setImportandoTodos(true);
+    setProgresso({ total: pendentes.length, feitos: 0, ok: 0, falhas: 0 });
+    for (const codigo of pendentes) {
+      if (cancelarRef.current) break;
+      const res = await executarUm(codigo);
+      setProgresso((p) =>
+        p
+          ? {
+              ...p,
+              feitos: p.feitos + 1,
+              ok: p.ok + (res.sucesso ? 1 : 0),
+              falhas: p.falhas + (res.sucesso ? 0 : 1),
+            }
+          : p,
+      );
+    }
+    setImportandoTodos(false);
+  }
+
   const r = preview.data;
+  const pendentesCount = r
+    ? r.itens.filter((i) => !i.jaExiste && resultados[i.codigoSolicitacao]?.sucesso !== true).length
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -75,8 +125,8 @@ export function ImportacaoSisregPage() {
         <h1 className="text-2xl font-semibold text-gray-900">Importação SISREG</h1>
         <p className="mt-1 text-sm text-gray-500">
           Envie o <strong>Arquivo Agendamento (TXT)</strong> exportado do SISREG e gere o{' '}
-          <strong>preview</strong>. Depois importe <strong>um a um</strong> pelo botão de cada linha
-          e confira o resultado no modal.
+          <strong>preview</strong>. Use <strong>Importar todos</strong> para processar a lista
+          inteira de uma vez, ou importe <strong>um a um</strong> pelo botão de cada linha.
         </p>
       </header>
 
@@ -119,10 +169,65 @@ export function ImportacaoSisregPage() {
           </section>
 
           <section className="rounded-lg border border-gray-200 bg-white shadow-sm">
-            <div className="border-b border-gray-100 px-4 py-3">
-              <h2 className="text-sm font-semibold text-gray-900">Diferenças no período</h2>
-              <p className="text-xs text-gray-500">Importe cada registro pelo botão da linha e confira.</p>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-4 py-3">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900">Diferenças no período</h2>
+                <p className="text-xs text-gray-500">
+                  Importe tudo de uma vez ou registro a registro pelo botão da linha.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {importandoTodos ? (
+                  <Button
+                    variante="outline"
+                    onClick={() => {
+                      cancelarRef.current = true;
+                    }}
+                  >
+                    <Ban className="h-4 w-4" /> Parar
+                  </Button>
+                ) : null}
+                <Button
+                  onClick={importarTodos}
+                  disabled={!arquivo || importandoTodos || importando !== null || pendentesCount === 0}
+                >
+                  {importandoTodos ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ListChecks className="h-4 w-4" />
+                  )}
+                  {importandoTodos
+                    ? 'Importando…'
+                    : pendentesCount > 0
+                      ? `Importar todos (${pendentesCount})`
+                      : 'Tudo importado'}
+                </Button>
+              </div>
             </div>
+
+            {progresso ? (
+              <div className="border-b border-gray-100 px-4 py-3">
+                <div className="mb-1 flex items-center justify-between text-xs text-gray-600">
+                  <span>
+                    {progresso.feitos} de {progresso.total} processados
+                    {' · '}
+                    <span className="text-emerald-700">{progresso.ok} ok</span>
+                    {progresso.falhas > 0 ? (
+                      <span className="text-red-600"> · {progresso.falhas} com falha</span>
+                    ) : null}
+                  </span>
+                  {!importandoTodos ? <span className="text-gray-400">Concluído</span> : null}
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all"
+                    style={{
+                      width: `${progresso.total > 0 ? (progresso.feitos / progresso.total) * 100 : 0}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            ) : null}
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
@@ -144,7 +249,7 @@ export function ImportacaoSisregPage() {
                       item={i}
                       resultado={resultados[i.codigoSolicitacao]}
                       importando={importando === i.codigoSolicitacao}
-                      podeImportar={Boolean(arquivo) && importando === null}
+                      podeImportar={Boolean(arquivo) && importando === null && !importandoTodos}
                       onImportar={() => importar(i.codigoSolicitacao)}
                       onVerResultado={(res) => setModal(res)}
                     />
