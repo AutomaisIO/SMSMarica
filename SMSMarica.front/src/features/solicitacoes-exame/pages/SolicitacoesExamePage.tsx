@@ -321,8 +321,13 @@ export function SolicitacoesExamePage() {
         scrollXFlutuante
         aoClicarLinha={podeVer ? (s) => navigate(`/app/solicitacoes-exame/${s.id}`) : undefined}
         dicaLinha="Clique para visualizar"
-        // Solicitações URGENTES ficam com a linha inteira em vermelho claro.
-        classeLinha={(s) => (s.prioridade === 'Urgente' ? 'bg-red-50 hover:bg-red-100' : undefined)}
+        // Solicitações URGENTES: fundo vermelho claro + filete vermelho fininho à
+        // esquerda (na 1ª célula — renderiza em qualquer border-model da tabela).
+        classeLinha={(s) =>
+          s.prioridade === 'Urgente'
+            ? 'bg-red-50 hover:bg-red-100 [&>td:first-child]:border-l-[3px] [&>td:first-child]:border-l-red-600'
+            : undefined
+        }
       />
 
       <Modal
