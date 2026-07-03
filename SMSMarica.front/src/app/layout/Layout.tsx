@@ -5,6 +5,7 @@ import { MenuContextoBar } from '@/app/layout/MenuContextoBar';
 import { Sidebar } from '@/app/layout/Sidebar';
 import { useMenuPreferencias } from '@/app/layout/menuPreferencias';
 import { obterPreferencias } from '@/shared/auth/preferenciasApi';
+import { ChatWidget } from '@/features/conversas/components/ChatWidget';
 
 export function Layout() {
   const [colapsado, setColapsado] = useState(false);
@@ -45,6 +46,9 @@ export function Layout() {
           </div>
         </main>
       </div>
+
+      {/* Chat flutuante global (só aparece para quem tem o módulo Conversas). */}
+      <ChatWidget />
     </div>
   );
 }

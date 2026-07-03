@@ -338,6 +338,15 @@ public static class DependencyInjection
             client.Timeout = TimeSpan.FromSeconds(20);
         });
 
+        // ---- Módulo Conversas (chat WhatsApp multi-operador, transversal) ----
+        services.AddScoped<Conversas.IConversaService, Conversas.ConversaService>();
+        services.AddScoped<Conversas.IUsuarioUnidadeService, Conversas.UsuarioUnidadeService>();
+        // No-op por padrão (testes/console/background); a Api sobrescreve com o SignalR.
+        services.AddScoped<Conversas.IConversaNotificador, Conversas.NotificadorConversaNulo>();
+        // Manipuladores de mensagem inbound (o webhook aplica todos, ordenados).
+        services.AddScoped<Notificacoes.WhatsApp.Manipuladores.IManipuladorMensagemWhatsApp,
+            Notificacoes.WhatsApp.Manipuladores.AcompanhanteWhatsAppHandler>();
+
         // Faturamento SUS/BPA (FT10): contabilização proporcional + relatórios.
         services.AddScoped<Faturamento.IFaturamentoService, Faturamento.FaturamentoService>();
 

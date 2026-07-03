@@ -66,6 +66,7 @@ import { IntegracoesPage } from '@/features/integracoes/pages/IntegracoesPage';
 import { FaturamentoPage } from '@/features/faturamento/pages/FaturamentoPage';
 import { AuditoriaPage } from '@/features/auditoria/pages/AuditoriaPage';
 import { ErrosPage } from '@/features/erros/pages/ErrosPage';
+import { ConversasPage } from '@/features/conversas/pages/ConversasPage';
 import { useAuth } from '@/shared/auth/authStore';
 
 function RedirecionamentoRaiz() {
@@ -162,6 +163,7 @@ export function AppRouter() {
           <Route path="integracoes" element={<IntegracoesPage />} />
           <Route path="auditoria" element={<AuditoriaPage />} />
           <Route path="erros" element={<ErrosPage />} />
+          <Route path="conversas" element={<ConversasPage />} />
         </Route>
       </Route>
 

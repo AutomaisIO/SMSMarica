@@ -22,6 +22,7 @@ import {
   Layers,
   LayoutDashboard,
   Map,
+  MessageCircle,
   Route,
   ScanLine,
   ScrollText,
@@ -229,6 +230,20 @@ export const SECOES: SecaoMenu[] = [
         icone: Sparkles,
         modulo: 'InteligenciaAprendizado',
         descricao: 'Aprendizado e ajustes.',
+      },
+    ],
+  },
+  {
+    id: 'atendimento',
+    titulo: 'Atendimento',
+    icone: MessageCircle,
+    itens: [
+      {
+        rotulo: 'Central de Atendimento',
+        to: '/app/conversas',
+        icone: MessageCircle,
+        modulo: 'Conversas',
+        descricao: 'Chat de WhatsApp com os cidadãos (por unidade).',
       },
     ],
   },

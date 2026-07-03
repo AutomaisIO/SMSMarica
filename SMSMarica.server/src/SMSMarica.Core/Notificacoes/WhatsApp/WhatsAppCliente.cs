@@ -1,6 +1,8 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Common.Excecoes;
@@ -22,8 +24,98 @@ public sealed class WhatsAppCliente(
     ITfdConfigService config,
     SmsMaricaDbContext db,
     IConfiguration configuration,
+    IMemoryCache memoryCache,
     ILogger<WhatsAppCliente> logger) : IWhatsAppCliente
 {
+    private const string CacheKeyTemplates = "whatsapp:templates";
+
+    public async Task<IReadOnlyList<TemplateWhatsApp>> ListarTemplatesAsync(CancellationToken ct = default)
+    {
+        var ctx = await ObterContextoOuNuloAsync(ct);
+        if (ctx is null || string.IsNullOrWhiteSpace(ctx.WabaId)) return [];
+
+        if (memoryCache.TryGetValue(CacheKeyTemplates, out IReadOnlyList<TemplateWhatsApp>? cache) && cache is not null)
+            return cache;
+
+        var url = $"{ctx.BaseUrl.TrimEnd('/')}/{ctx.WabaId}/message_templates?limit=200";
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", ctx.Token);
+            using var resp = await http.SendAsync(req, ct);
+            var corpo = await resp.Content.ReadAsStringAsync(ct);
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                logger.LogWarning("WhatsApp listar templates falhou {Status}: {Corpo}", resp.StatusCode, corpo);
+                return [];
+            }
+
+            var lista = ParsearTemplates(corpo);
+            memoryCache.Set(CacheKeyTemplates, lista, TimeSpan.FromMinutes(5));
+            return lista;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Falha ao listar templates do WhatsApp.");
+            return [];
+        }
+    }
+
+    private static IReadOnlyList<TemplateWhatsApp> ParsearTemplates(string corpo)
+    {
+        var lista = new List<TemplateWhatsApp>();
+        JsonDocument doc;
+        try { doc = JsonDocument.Parse(corpo); }
+        catch { return lista; }
+
+        using (doc)
+        {
+            if (!doc.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
+                return lista;
+
+            foreach (var t in data.EnumerateArray())
+            {
+                var status = t.TryGetProperty("status", out var st) ? st.GetString() : null;
+                if (!string.Equals(status, "APPROVED", StringComparison.OrdinalIgnoreCase)) continue;
+
+                var nome = t.TryGetProperty("name", out var n) ? n.GetString() : null;
+                if (string.IsNullOrEmpty(nome)) continue;
+
+                var idioma = (t.TryGetProperty("language", out var l) ? l.GetString() : null) ?? "pt_BR";
+                var categoria = (t.TryGetProperty("category", out var c) ? c.GetString() : null) ?? "";
+
+                string? corpoTexto = null;
+                if (t.TryGetProperty("components", out var comps) && comps.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var comp in comps.EnumerateArray())
+                    {
+                        if (comp.TryGetProperty("type", out var tp)
+                            && string.Equals(tp.GetString(), "BODY", StringComparison.OrdinalIgnoreCase)
+                            && comp.TryGetProperty("text", out var txt))
+                        {
+                            corpoTexto = txt.GetString();
+                            break;
+                        }
+                    }
+                }
+
+                lista.Add(new TemplateWhatsApp(nome, idioma, categoria, corpoTexto, ContarParametros(corpoTexto)));
+            }
+        }
+
+        return lista;
+    }
+
+    private static int ContarParametros(string? corpo)
+    {
+        if (string.IsNullOrEmpty(corpo)) return 0;
+        var max = 0;
+        foreach (Match m in Regex.Matches(corpo, @"\{\{(\d+)\}\}"))
+            if (int.TryParse(m.Groups[1].Value, out var idx) && idx > max) max = idx;
+        return max;
+    }
+
     public async Task<EnvioWhatsAppResultado> EnviarTextoAsync(
         string telefone, string texto, Guid? sessaoId = null, Guid? pacienteId = null, CancellationToken ct = default)
     {

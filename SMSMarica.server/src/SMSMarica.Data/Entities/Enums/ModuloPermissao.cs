@@ -72,4 +72,11 @@ public enum ModuloPermissao
 
     /// <summary>Consultar o log de erros não tratados do sistema (diagnóstico, só leitura).</summary>
     Erros = 34,
+
+    /// <summary>Central de Atendimento (chat WhatsApp): ver/atender conversas da(s) própria(s) unidade(s).</summary>
+    Conversas = 35,
+
+    /// <summary>Supervisão do chat: ver TODAS as conversas (qualquer unidade), reatribuir de terceiros
+    /// e encaminhar entre unidades.</summary>
+    ConversasSupervisao = 36,
 }

@@ -1,8 +1,12 @@
+using System.Globalization;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using SMSMarica.Core.Conversas;
+using SMSMarica.Core.Notificacoes.WhatsApp.Manipuladores;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Data;
+using SMSMarica.Data.Entities.Conversas;
 using SMSMarica.Data.Entities.Enums;
 using SMSMarica.Data.Entities.Tfd;
 
@@ -14,13 +18,17 @@ public interface IWhatsAppWebhookService
 }
 
 /// <summary>
-/// Processa mensagens recebidas no webhook do WhatsApp: registra (idempotente por
-/// <c>wamid</c>) e, quando é resposta de confirmação de acompanhante, atualiza a próxima
-/// sessão pendente do paciente (casado pelo telefone).
+/// Processa mensagens recebidas no webhook do WhatsApp. Caminho principal (genérico, chat
+/// multi-operador): idempotência por <c>wamid</c> → resolve/abre a <see cref="Conversa"/> do
+/// contato (herdando o operador/unidade da última conversa — roteamento sticky) → anexa a
+/// mensagem → renova a janela de 24h → incrementa não-lidas. Só então aplica manipuladores de
+/// domínio (ex.: confirmação de acompanhante do TFD). Notifica em tempo real APÓS o commit.
 /// </summary>
 public sealed class WhatsAppWebhookService(
     SmsMaricaDbContext db,
     IPacientesService pacientes,
+    IConversaNotificador notificador,
+    IEnumerable<IManipuladorMensagemWhatsApp> manipuladores,
     ILogger<WhatsAppWebhookService> logger) : IWhatsAppWebhookService
 {
     public async Task ProcessarAsync(string rawJson, CancellationToken ct = default)
@@ -44,14 +52,20 @@ public sealed class WhatsAppWebhookService(
                     if (!change.TryGetProperty("value", out var value)) continue;
                     if (!value.TryGetProperty("messages", out var messages) || messages.ValueKind != JsonValueKind.Array)
                         continue;
+
+                    var contatos = MapearContatos(value);
                     foreach (var m in messages.EnumerateArray())
-                        await ProcessarMensagemAsync(m, ct);
+                    {
+                        var from = m.TryGetProperty("from", out var f) ? f.GetString() : null;
+                        var nomeContato = from is not null && contatos.TryGetValue(from, out var nome) ? nome : null;
+                        await ProcessarMensagemAsync(m, nomeContato, ct);
+                    }
                 }
             }
         }
     }
 
-    private async Task ProcessarMensagemAsync(JsonElement m, CancellationToken ct)
+    private async Task ProcessarMensagemAsync(JsonElement m, string? nomeContato, CancellationToken ct)
     {
         var waId = m.TryGetProperty("id", out var idEl) ? idEl.GetString() : null;
         var from = m.TryGetProperty("from", out var fromEl) ? fromEl.GetString() : null;
@@ -61,51 +75,154 @@ public sealed class WhatsAppWebhookService(
             return; // idempotência
 
         var texto = ExtrairTexto(m);
+        var tipo = ExtrairTipo(m);
         var contexto = m.TryGetProperty("context", out var ctxEl) && ctxEl.TryGetProperty("id", out var ctxId)
             ? ctxId.GetString() : null;
+        var ocorridoEm = ExtrairTimestamp(m);
+        var fone = TelefoneWhatsApp.Canonizar(from);
 
         var paciente = await pacientes.ObterPorTelefoneAsync(from, ct);
+        var pacienteId = paciente?.Id;
+
+        var conversa = await ResolverOuAbrirConversaAsync(fone, pacienteId, nomeContato, contexto, ocorridoEm, ct);
 
         var msg = new MensagemWhatsApp
         {
             Id = Guid.CreateVersion7(),
-            PacienteId = paciente?.Id,
-            Telefone = from,
+            ConversaId = conversa.Id,
+            PacienteId = pacienteId ?? conversa.PacienteId,
+            Telefone = fone,
             Direcao = DirecaoMensagem.Entrada,
+            TipoMensagem = tipo,
             Conteudo = texto,
             Status = StatusMensagemWhatsApp.Recebida,
             WaMessageId = waId,
             ContextoWaMessageId = contexto,
-            OcorridoEm = DateTime.UtcNow,
+            OcorridoEm = ocorridoEm,
             CriadoEm = DateTime.UtcNow,
         };
         db.MensagensWhatsApp.Add(msg);
 
-        var resposta = InterpretarSimNao(texto);
-        if (paciente is not null && resposta is not null)
-        {
-            var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
-            var sessao = await (
-                from s in db.Sessoes
-                join t in db.Tratamentos on s.TratamentoId equals t.Id
-                where t.PacienteId == paciente.Id
-                    && s.AcompanhanteEsperado == null
-                    && s.DataPrevista >= hoje
-                    && (s.Status == StatusSessao.Pendente || s.Status == StatusSessao.Confirmada)
-                orderby s.DataPrevista
-                select s).FirstOrDefaultAsync(ct);
+        // Efeitos da mensagem inbound na conversa (uniforme p/ conversa nova ou existente).
+        conversa.PacienteId ??= pacienteId;
+        conversa.NomeContato ??= nomeContato;
+        conversa.Status = StatusConversa.Aberta;                 // reabre Pendente/Resolvida/Fechada
+        conversa.JanelaExpiraEm = ocorridoEm.AddHours(24);       // renova janela de 24h
+        conversa.UltimaMensagemEm = ocorridoEm;
+        conversa.UltimaMensagemDirecao = DirecaoMensagem.Entrada;
+        conversa.UltimaMensagemPreview = Truncar(texto);
+        conversa.NaoLidas += 1;
+        conversa.AtualizadoEm = DateTime.UtcNow;
 
-            if (sessao is not null)
-            {
-                sessao.AcompanhanteEsperado = resposta.Value;
-                sessao.AcompanhanteConfirmadoEm = DateTime.UtcNow;
-                sessao.AcompanhanteCanal = CanalConfirmacao.WhatsApp;
-                sessao.AtualizadoEm = DateTime.UtcNow;
-                msg.SessaoId = sessao.Id;
-            }
+        // Manipuladores de domínio (não fazem SaveChanges).
+        var ctx = new ManipuladorContexto(conversa, msg, texto, conversa.PacienteId);
+        foreach (var manipulador in manipuladores.OrderBy(x => x.Ordem))
+        {
+            try { await manipulador.TratarAsync(ctx, ct); }
+            catch (Exception ex) { logger.LogWarning(ex, "Manipulador {Tipo} falhou.", manipulador.GetType().Name); }
         }
 
         await db.SaveChangesAsync(ct);
+
+        // Tempo real APÓS o commit.
+        await notificador.MensagemRecebidaAsync(new ConversaEventoRealtime(
+            conversa.Id, conversa.OperadorResponsavelId, conversa.UnidadeId,
+            conversa.TelefoneCanonical, conversa.NomeContato, Truncar(texto),
+            conversa.NaoLidas, ocorridoEm), ct);
+    }
+
+    private async Task<Conversa> ResolverOuAbrirConversaAsync(
+        string fone, Guid? pacienteId, string? nomeContato, string? contexto, DateTime ocorridoEm, CancellationToken ct)
+    {
+        Conversa? conversa = null;
+
+        // 1. Âncora forte: a mensagem respondida (context.id) aponta a conversa.
+        if (!string.IsNullOrEmpty(contexto))
+        {
+            var conversaIdCtx = await db.MensagensWhatsApp.AsNoTracking()
+                .Where(x => x.WaMessageId == contexto && x.ConversaId != null)
+                .Select(x => x.ConversaId)
+                .FirstOrDefaultAsync(ct);
+            if (conversaIdCtx is Guid cid)
+                conversa = await db.Conversas.FirstOrDefaultAsync(c => c.Id == cid && c.ExcluidoEm == null, ct);
+        }
+
+        // 2. Conversa viva (Aberta/Pendente) do telefone.
+        conversa ??= await db.Conversas.FirstOrDefaultAsync(
+            c => c.TelefoneCanonical == fone && c.Canal == CanalConversa.WhatsApp && c.ExcluidoEm == null
+              && (c.Status == StatusConversa.Aberta || c.Status == StatusConversa.Pendente), ct);
+        if (conversa is not null) return conversa;
+
+        // 3. Cria nova, herdando operador/unidade da última conversa do telefone (sticky).
+        var ultima = await db.Conversas.AsNoTracking()
+            .Where(c => c.TelefoneCanonical == fone && c.Canal == CanalConversa.WhatsApp && c.ExcluidoEm == null)
+            .OrderByDescending(c => c.UltimaMensagemEm ?? c.CriadoEm)
+            .Select(c => new { c.OperadorResponsavelId, c.UnidadeId, c.PacienteId, c.NomeContato })
+            .FirstOrDefaultAsync(ct);
+
+        var nova = new Conversa
+        {
+            Id = Guid.CreateVersion7(),
+            Canal = CanalConversa.WhatsApp,
+            TelefoneCanonical = fone,
+            PacienteId = pacienteId ?? ultima?.PacienteId,
+            NomeContato = nomeContato ?? ultima?.NomeContato,
+            Status = StatusConversa.Aberta,
+            OperadorResponsavelId = ultima?.OperadorResponsavelId,
+            UnidadeId = ultima?.UnidadeId,
+            JanelaExpiraEm = ocorridoEm.AddHours(24),
+            PrimeiroContatoEm = ocorridoEm,
+            NaoLidas = 0,
+            CriadoEm = DateTime.UtcNow,
+        };
+        db.Conversas.Add(nova);
+        db.ConversaEventos.Add(new ConversaEvento
+        {
+            Id = Guid.CreateVersion7(),
+            ConversaId = nova.Id,
+            Tipo = TipoEventoConversa.Criada,
+            OcorridoEm = ocorridoEm,
+            CriadoEm = DateTime.UtcNow,
+        });
+        return nova;
+    }
+
+    private static Dictionary<string, string?> MapearContatos(JsonElement value)
+    {
+        var mapa = new Dictionary<string, string?>();
+        if (!value.TryGetProperty("contacts", out var contatos) || contatos.ValueKind != JsonValueKind.Array)
+            return mapa;
+        foreach (var c in contatos.EnumerateArray())
+        {
+            var waId = c.TryGetProperty("wa_id", out var w) ? w.GetString() : null;
+            if (string.IsNullOrEmpty(waId)) continue;
+            var nome = c.TryGetProperty("profile", out var p) && p.TryGetProperty("name", out var nm) ? nm.GetString() : null;
+            mapa[waId] = nome;
+        }
+        return mapa;
+    }
+
+    private static DateTime ExtrairTimestamp(JsonElement m)
+    {
+        if (m.TryGetProperty("timestamp", out var ts) && ts.GetString() is { } s
+            && long.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var epoch))
+        {
+            return DateTimeOffset.FromUnixTimeSeconds(epoch).UtcDateTime;
+        }
+        return DateTime.UtcNow;
+    }
+
+    private static TipoMensagem ExtrairTipo(JsonElement m)
+    {
+        var tipo = m.TryGetProperty("type", out var t) ? t.GetString() : null;
+        return tipo switch
+        {
+            "image" => TipoMensagem.Imagem,
+            "document" => TipoMensagem.Documento,
+            "audio" or "voice" => TipoMensagem.Audio,
+            "video" => TipoMensagem.Video,
+            _ => TipoMensagem.Texto,
+        };
     }
 
     private static string? ExtrairTexto(JsonElement m)
@@ -120,12 +237,5 @@ public sealed class WhatsAppWebhookService(
         return null;
     }
 
-    private static bool? InterpretarSimNao(string? texto)
-    {
-        if (string.IsNullOrWhiteSpace(texto)) return null;
-        var t = texto.Trim().ToLowerInvariant();
-        if (t is "1" or "sim" or "s" or "com" || t.Contains("com acompanhante")) return true;
-        if (t is "2" or "nao" or "não" or "n" or "sem" || t.Contains("sem acompanhante")) return false;
-        return null;
-    }
+    private static string? Truncar(string? s) => s is null ? null : s.Length <= 200 ? s : s[..200];
 }

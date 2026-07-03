@@ -24,10 +24,18 @@ internal sealed class MensagemWhatsAppConfiguration : IEntityTypeConfiguration<M
         builder.Property(m => m.OcorridoEm).HasColumnName("ocorrido_em").IsRequired();
         builder.Property(m => m.CriadoEm).HasColumnName("criado_em").IsRequired();
 
+        // Módulo Conversas (aditivo, nullable) — ver EstenderMensagemWhatsAppParaConversa.
+        builder.Property(m => m.ConversaId).HasColumnName("conversa_id");
+        builder.Property(m => m.AutorUsuarioId).HasColumnName("autor_usuario_id");
+        builder.Property(m => m.AutorNomeExibicao).HasColumnName("autor_nome_exibicao").HasMaxLength(200);
+        builder.Property(m => m.TipoMensagem).HasColumnName("tipo_mensagem").HasConversion<int>();
+
         builder.HasOne(m => m.Sessao).WithMany().HasForeignKey(m => m.SessaoId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne(m => m.Conversa).WithMany(c => c.Mensagens).HasForeignKey(m => m.ConversaId).OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(m => m.WaMessageId).IsUnique().HasFilter("wa_message_id IS NOT NULL");
         builder.HasIndex(m => new { m.PacienteId, m.OcorridoEm });
         builder.HasIndex(m => m.SessaoId);
+        builder.HasIndex(m => new { m.ConversaId, m.OcorridoEm });
     }
 }

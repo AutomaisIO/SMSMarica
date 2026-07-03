@@ -25,6 +25,12 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/api/, ''),
       },
+      // Hubs SignalR (WebSocket) — chat em tempo real. `ws: true` faz o upgrade.
+      '/hubs': {
+        target: 'http://localhost:5080',
+        changeOrigin: true,
+        ws: true,
+      },
     },
   },
 });

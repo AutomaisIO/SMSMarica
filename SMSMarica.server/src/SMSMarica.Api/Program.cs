@@ -71,6 +71,9 @@ SMSMarica.Core.Pacs.PacsDicomSetup.Inicializar();
 builder.Services.AddSignalR();
 builder.Services.AddScoped<SMSMarica.Core.Rastreamento.IRastreamentoNotificador, SMSMarica.Api.Realtime.RastreamentoNotificadorSignalR>();
 
+// Tempo real (Conversas/chat): notificador concreto (sobrescreve o no-op do Core).
+builder.Services.AddScoped<SMSMarica.Core.Conversas.IConversaNotificador, SMSMarica.Api.Realtime.ConversaNotificadorSignalR>();
+
 // Token JWT do paciente (login CPF + OTP do PWA).
 builder.Services.AddScoped<SMSMarica.Core.Cidadao.IPacienteTokenService, SMSMarica.Api.Auth.PacienteTokenService>();
 
@@ -256,6 +259,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 
 app.MapControllers();
 app.MapHub<SMSMarica.Api.Hubs.RastreamentoHub>("/hubs/rastreamento");
+app.MapHub<SMSMarica.Api.Hubs.ConversasHub>("/hubs/conversas");
 
 // Default false (ADR-0010 / recuperação): evita migration destrutiva acidental no startup.
 // Habilitar explicitamente via AutoMigrate__Enabled=true quando for intencional.

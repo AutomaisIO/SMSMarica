@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Agendamentos;
+using SMSMarica.Data.Entities.Conversas;
 using SMSMarica.Data.Entities.Ia;
 using SMSMarica.Data.Entities.Integracoes;
 using SMSMarica.Data.Entities.Pep;
@@ -110,6 +111,11 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
 
     // Log de erros não tratados (500) com código de referência. Ver RegistroErro.
     public DbSet<RegistroErro> RegistrosErro => Set<RegistroErro>();
+
+    // Módulo Conversas — chat WhatsApp multi-operador, transversal a todo o SMSMarica.
+    public DbSet<Conversa> Conversas => Set<Conversa>();
+    public DbSet<ConversaEvento> ConversaEventos => Set<ConversaEvento>();
+    public DbSet<UsuarioUnidade> UsuarioUnidades => Set<UsuarioUnidade>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

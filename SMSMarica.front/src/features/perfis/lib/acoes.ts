@@ -72,6 +72,8 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'Faturamento', rotulo: 'Faturamento (TFD/SUS)' },
   { id: 'Auditoria', rotulo: 'Auditoria (trilha do sistema)' },
   { id: 'Erros', rotulo: 'Erros do sistema (diagnóstico)' },
+  { id: 'Conversas', rotulo: 'Central de Atendimento (chat)' },
+  { id: 'ConversasSupervisao', rotulo: 'Atendimento — supervisão (ver todas as unidades)' },
 ];
 
 export const ACOES: { id: AcaoPermissao; rotulo: string }[] = [
