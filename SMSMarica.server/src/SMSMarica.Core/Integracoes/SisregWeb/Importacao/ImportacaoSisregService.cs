@@ -119,17 +119,25 @@ public sealed class ImportacaoSisregService(
         catch (Exception ex) { return Falha($"Falha ao consultar o paciente no SISREG (CNS): {ex.Message}"); }
         passos.Add($"CNS {Mascara(m.CnsPaciente)} → CPF {Mascara(cadsus.Cpf)} (cadweb50).");
 
-        var existente = await pacientes.ObterPorCpfAsync(cadsus.Cpf, ct);
+        // Resolve o paciente existente por CPF (do CADSUS) e, se faltar, por CNS — o cidadão
+        // pode já estar no hub sob o CNS mesmo quando o CADSUS não devolve o CPF. Nunca altera o nome.
+        var existente = await pacientes.ObterPorCpfAsync(cadsus.Cpf, ct)
+                        ?? await pacientes.ObterPorCnsAsync(m.CnsPaciente!, ct);
         Guid pacienteId;
         bool pacienteCriado;
         if (existente is not null)
         {
             pacienteId = existente.Id;
             pacienteCriado = false;
-            passos.Add($"Paciente já cadastrado (CPF) — reusa, sem alterar o nome.");
+            passos.Add("Paciente já cadastrado — reusa, sem alterar o nome.");
         }
         else
         {
+            // Paciente inexistente E sem CPF do CADSUS: não dá para cadastrar com segurança
+            // (sem CPF não há identidade). Cai em falha honesta em vez do falso "CPF duplicado".
+            if (SoDigitos(cadsus.Cpf).Length != 11)
+                return Falha("O CADSUS não retornou o CPF deste CNS e o paciente ainda não existe no sistema. Cadastre o paciente manualmente e reimporte.");
+
             // Telefone do TXT vai num slot NÃO-principal (celular se móvel, senão residencial) —
             // o principal é o contato validado por OTP e é intocável pela automação (ADR-0020).
             var (celular, residencial) = MontarTelefoneDoTxt(m.TelefonePaciente);

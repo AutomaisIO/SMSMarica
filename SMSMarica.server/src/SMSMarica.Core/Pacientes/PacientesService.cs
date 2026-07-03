@@ -64,6 +64,19 @@ public sealed class PacientesService(
         return new PacienteExistenciaDto(dto.Id, dto.NomeCompleto, dto.Cpf, dto.Ativo);
     }
 
+    public async Task<PacienteExistenciaDto?> ObterPorCnsAsync(string cns, CancellationToken cancellationToken = default)
+    {
+        var normalizado = Digitos(cns);
+        if (normalizado.Length != 15) return null;
+
+        var bundle = await fhir.BuscarAsync(identifier: normalizado, ct: cancellationToken);
+        var patient = bundle.Entry.Select(e => e.Resource).OfType<Patient>().FirstOrDefault();
+        if (patient is null) return null;
+
+        var dto = PacienteFhirMapper.ParaDto(patient);
+        return new PacienteExistenciaDto(dto.Id, dto.NomeCompleto, dto.Cpf, dto.Ativo);
+    }
+
     public async Task<PacienteExistenciaDto?> ObterPorTelefoneAsync(string telefone, CancellationToken cancellationToken = default)
     {
         var numero = Digitos(telefone);
@@ -80,6 +93,11 @@ public sealed class PacientesService(
     public async Task<Guid> CadastrarAsync(CadastrarPacienteRequest request, CancellationToken cancellationToken = default)
     {
         var cpf = Digitos(request.Cpf);
+        // Sem CPF válido (11 dígitos) NÃO buscamos por identifier vazio: o hub trataria a
+        // ausência de filtro como "listar todos" e um match qualquer viraria falso "CPF duplicado".
+        if (cpf.Length != 11)
+            throw new ValidacaoException("paciente.cpf_invalido",
+                "CPF ausente ou inválido — não é possível cadastrar o paciente sem um CPF de 11 dígitos.");
 
         var existentes = await fhir.BuscarAsync(identifier: cpf, ct: cancellationToken);
         if (existentes.Entry.Select(e => e.Resource).OfType<Hl7.Fhir.Model.Patient>().Any())

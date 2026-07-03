@@ -23,6 +23,13 @@ public interface IPacientesService
     Task<PacienteExistenciaDto?> ObterPorCpfAsync(string cpf, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Verifica existência por CNS (Patient.identifier do CNS = 15 dígitos). Retorna o
+    /// primeiro match ou null. Usado pela importação SISREG para reusar o paciente quando
+    /// o CADSUS não devolve o CPF (o cidadão já pode existir no hub sob o CNS).
+    /// </summary>
+    Task<PacienteExistenciaDto?> ObterPorCnsAsync(string cns, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Busca um paciente pelo número de telefone (Patient.telecom). Retorna o
     /// primeiro match (id, nome, cpf) ou null. Usado pelo agente de voz para
     /// reconhecer quem liga de um número já cadastrado.
