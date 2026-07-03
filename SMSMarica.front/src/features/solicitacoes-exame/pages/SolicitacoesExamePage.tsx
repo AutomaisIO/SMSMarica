@@ -124,9 +124,10 @@ export function SolicitacoesExamePage() {
           {s.prioridade === 'Urgente' ? (
             <span
               title="Solicitação URGENTE"
-              className="inline-flex items-center gap-0.5 rounded-full bg-red-100 px-1.5 py-0.5 text-[11px] font-bold text-red-700"
+              className="text-sm font-bold text-red-700"
+              aria-label="Urgente"
             >
-              ⚠ Urgente
+              ⚠
             </span>
           ) : null}
           <CodigoCopiavel codigo={s.accessionNumber} />
@@ -320,6 +321,8 @@ export function SolicitacoesExamePage() {
         scrollXFlutuante
         aoClicarLinha={podeVer ? (s) => navigate(`/app/solicitacoes-exame/${s.id}`) : undefined}
         dicaLinha="Clique para visualizar"
+        // Solicitações URGENTES ficam com a linha inteira em vermelho claro.
+        classeLinha={(s) => (s.prioridade === 'Urgente' ? 'bg-red-50 hover:bg-red-100' : undefined)}
       />
 
       <Modal

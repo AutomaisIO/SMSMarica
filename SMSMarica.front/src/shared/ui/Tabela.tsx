@@ -28,9 +28,15 @@ type Props<T> = {
   aoClicarLinha?: (item: T) => void;
   /** Tooltip da linha clicável. Default: "Clique para visualizar". */
   dicaLinha?: string;
+  /**
+   * Classe extra por linha (ex.: destacar urgentes em vermelho claro). Aplicada
+   * depois das classes base, então vence conflitos via tailwind-merge — para
+   * sobrepor o hover padrão, devolva também o `hover:` correspondente.
+   */
+  classeLinha?: (item: T) => string | undefined;
 };
 
-export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrollXFlutuante, aoClicarLinha, dicaLinha }: Props<T>) {
+export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrollXFlutuante, aoClicarLinha, dicaLinha, classeLinha }: Props<T>) {
   // Defensivo: se a API retornar algo não-array (HTML por URL errada, erro
   // serializado, etc.), renderiza vazio em vez de derrubar a tela toda.
   const dadosSeguros: T[] = Array.isArray(dados) ? dados : [];
@@ -111,7 +117,7 @@ export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrol
               dadosSeguros.map((item) => (
                 <tr
                   key={chaveLinha(item)}
-                  className={cn('hover:bg-gray-50', aoClicarLinha && 'cursor-pointer')}
+                  className={cn('hover:bg-gray-50', aoClicarLinha && 'cursor-pointer', classeLinha?.(item))}
                   title={aoClicarLinha ? (dicaLinha ?? 'Clique para visualizar') : undefined}
                   onClick={
                     aoClicarLinha
