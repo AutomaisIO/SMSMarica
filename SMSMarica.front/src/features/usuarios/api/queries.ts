@@ -20,6 +20,7 @@ import type { PermissaoModuloApi } from '@/features/perfis/types';
 import type {
   AtualizarUsuarioPayload,
   CadastrarUsuarioPayload,
+  FiltroUsuarios,
 } from '@/features/usuarios/types';
 
 export const usuariosKeys = {
@@ -135,8 +136,11 @@ export function useAtualizarMinhaConta() {
   });
 }
 
-export function useListarUsuarios() {
-  return useQuery({ queryKey: usuariosKeys.lista(), queryFn: listarUsuarios });
+export function useListarUsuarios(filtro?: FiltroUsuarios) {
+  return useQuery({
+    queryKey: [...usuariosKeys.lista(), filtro ?? {}],
+    queryFn: () => listarUsuarios(filtro),
+  });
 }
 
 export function useUsuarioPorId(id: string | null) {

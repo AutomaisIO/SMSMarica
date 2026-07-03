@@ -27,7 +27,7 @@ internal static class IdentidadeMapper
         medico?.Texto);
 
     public static UsuarioListItemDto ParaListItem(Usuario u) =>
-        new(u.Id, u.NomeCompleto, u.Email, u.FotoBase64, u.Ativo, u.DeveTrocarSenha);
+        new(u.Id, u.NomeCompleto, u.Cpf, u.Email, u.FotoBase64, u.Ativo, u.DeveTrocarSenha);
 
     private static string? DetectarPapel(Usuario u)
     {

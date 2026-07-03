@@ -7,7 +7,8 @@ public interface IIdentidadeService
     Task<LoginRespostaDto> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default);
     Task<PermissoesResolvidasDto> ObterPermissoesResolvidasAsync(Guid usuarioId, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<UsuarioListItemDto>> ListarAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<UsuarioListItemDto>> ListarAsync(
+        FiltroUsuariosDto? filtro = null, CancellationToken cancellationToken = default);
     Task<UsuarioDto> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>Retorna o usuário com este CPF (qualquer estado), ou <c>null</c> se não existir.</summary>

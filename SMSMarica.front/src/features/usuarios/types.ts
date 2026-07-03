@@ -15,10 +15,18 @@ export type PapelAtual = 'Medico' | 'Motorista' | 'Paciente';
 export type UsuarioListItem = {
   id: string;
   nomeCompleto: string;
+  cpf: string | null;
   email: string | null;
   fotoBase64: string | null;
   ativo: boolean;
   deveTrocarSenha: boolean;
+};
+
+/** Filtro da listagem de usuários (busca por nome/CPF, unidade e limite). */
+export type FiltroUsuarios = {
+  busca?: string;
+  unidadeId?: string;
+  limite?: number;
 };
 
 export type Usuario = {

@@ -3,6 +3,7 @@ import type { PermissaoModuloApi } from '@/features/perfis/types';
 import type {
   AtualizarUsuarioPayload,
   CadastrarUsuarioPayload,
+  FiltroUsuarios,
   Usuario,
   UsuarioListItem,
 } from '@/features/usuarios/types';
@@ -13,8 +14,14 @@ export type PermissoesUsuarioApi = {
   resolvidas: PermissaoModuloApi[];
 };
 
-export async function listarUsuarios(): Promise<UsuarioListItem[]> {
-  const { data } = await http.get<UsuarioListItem[]>('/usuarios');
+export async function listarUsuarios(filtro?: FiltroUsuarios): Promise<UsuarioListItem[]> {
+  const { data } = await http.get<UsuarioListItem[]>('/usuarios', {
+    params: {
+      busca: filtro?.busca?.trim() || undefined,
+      unidadeId: filtro?.unidadeId || undefined,
+      limite: filtro?.limite ?? 50,
+    },
+  });
   return data;
 }
 

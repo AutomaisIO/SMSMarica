@@ -28,6 +28,7 @@ public sealed record UsuarioDto(
 public sealed record UsuarioListItemDto(
     Guid Id,
     string NomeCompleto,
+    string? Cpf,
     string? Email,
     string? FotoBase64,
     bool Ativo,

@@ -15,8 +15,12 @@ public sealed class IdentidadeController(IIdentidadeService service) : Controlle
     [HttpGet]
     [RequerPermissao(ModuloPermissao.Usuarios, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<UsuarioListItemDto>>(StatusCodes.Status200OK)]
-    public async Task<IReadOnlyList<UsuarioListItemDto>> Listar(CancellationToken cancellationToken) =>
-        await _service.ListarAsync(cancellationToken);
+    public async Task<IReadOnlyList<UsuarioListItemDto>> Listar(
+        [FromQuery] string? busca,
+        [FromQuery] Guid? unidadeId,
+        [FromQuery] int limite = 50,
+        CancellationToken cancellationToken = default) =>
+        await _service.ListarAsync(new FiltroUsuariosDto(busca, unidadeId, limite), cancellationToken);
 
     [HttpGet("{id:guid}")]
     [RequerPermissao(ModuloPermissao.Usuarios, AcoesPermissao.Consulta)]

@@ -21,30 +21,27 @@ type Props = { unidadeId: string };
  */
 export function UsuariosDaUnidadeSecao({ unidadeId }: Props) {
   const vinculados = useUsuariosDaUnidade(unidadeId);
-  const todos = useListarUsuarios();
   const adicionar = useAdicionarUsuarioNaUnidade();
   const remover = useRemoverUsuarioDaUnidade();
   const [busca, setBusca] = useState('');
   const [erro, setErro] = useState<string | null>(null);
+
+  // Busca server-side (a lista de usuários é limitada) — só dispara com 2+ letras.
+  const termo = busca.trim();
+  const candidatosQuery = useListarUsuarios(termo.length >= 2 ? { busca: termo, limite: 10 } : {});
 
   const idsVinculados = useMemo(
     () => new Set((vinculados.data ?? []).map((v) => v.usuarioId)),
     [vinculados.data],
   );
 
-  // Candidatos à inclusão: usuários ativos, fora da unidade, casando com a busca.
-  const termo = busca.trim().toLowerCase();
+  // Candidatos à inclusão: usuários ativos, fora da unidade.
   const candidatos = useMemo(() => {
     if (termo.length < 2) return [];
-    return (todos.data ?? [])
+    return (candidatosQuery.data ?? [])
       .filter((u) => u.ativo && !idsVinculados.has(u.id))
-      .filter(
-        (u) =>
-          u.nomeCompleto.toLowerCase().includes(termo) ||
-          (u.email ?? '').toLowerCase().includes(termo),
-      )
       .slice(0, 8);
-  }, [todos.data, idsVinculados, termo]);
+  }, [candidatosQuery.data, idsVinculados, termo]);
 
   async function aoAdicionar(usuarioId: string) {
     setErro(null);
@@ -114,7 +111,7 @@ export function UsuariosDaUnidadeSecao({ unidadeId }: Props) {
         </div>
         {termo.length >= 2 ? (
           <div className="mt-2 max-w-md divide-y divide-gray-100 rounded-md border border-gray-200 bg-white shadow-sm">
-            {todos.isLoading ? (
+            {candidatosQuery.isLoading ? (
               <p className="px-3 py-2 text-sm text-gray-500">Carregando usuários…</p>
             ) : candidatos.length === 0 ? (
               <p className="px-3 py-2 text-sm text-gray-500">

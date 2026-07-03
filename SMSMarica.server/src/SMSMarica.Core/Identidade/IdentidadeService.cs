@@ -122,14 +122,36 @@ public sealed class IdentidadeService(
         return new PermissoesResolvidasDto(herdadas, overrides, resolvidas);
     }
 
-    public async Task<IReadOnlyList<UsuarioListItemDto>> ListarAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<UsuarioListItemDto>> ListarAsync(
+        FiltroUsuariosDto? filtro = null, CancellationToken cancellationToken = default)
     {
+        filtro ??= new FiltroUsuariosDto();
+
         // ADR-0006: lista só usuários sem papel (médicos/motoristas/pacientes têm tela própria)
         // e não excluídos. Ativo=false continua aparecendo — é estado temporário, não exclusão.
-        var usuarios = await _db.Usuarios.AsNoTracking()
-            .Where(u => u.ExcluidoEm == null
-                        && u.Motorista == null)
+        var query = _db.Usuarios.AsNoTracking()
+            .Where(u => u.ExcluidoEm == null && u.Motorista == null);
+
+        if (!string.IsNullOrWhiteSpace(filtro.Busca))
+        {
+            var termo = filtro.Busca.Trim();
+            var padraoNome = $"%{termo}%";
+            var digitos = NormalizarDigitos(termo);
+            query = query.Where(u =>
+                EF.Functions.ILike(u.NomeCompleto, padraoNome)
+                || (digitos.Length > 0 && u.Cpf != null && u.Cpf.Contains(digitos)));
+        }
+
+        if (filtro.UnidadeId is { } unidadeId)
+        {
+            query = query.Where(u => _db.UsuarioUnidades.Any(v => v.UsuarioId == u.Id && v.UnidadeId == unidadeId));
+        }
+
+        // A lista tende a crescer — limita (clamp 1..500, default 50).
+        var limite = filtro.Limite is <= 0 or > 500 ? 50 : filtro.Limite;
+        var usuarios = await query
             .OrderBy(u => u.NomeCompleto)
+            .Take(limite)
             .ToListAsync(cancellationToken);
         return [.. usuarios.Select(IdentidadeMapper.ParaListItem)];
     }
