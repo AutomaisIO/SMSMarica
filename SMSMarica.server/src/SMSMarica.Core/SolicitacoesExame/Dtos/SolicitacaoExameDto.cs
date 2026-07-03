@@ -57,6 +57,18 @@ public sealed record SolicitacaoExameDto(
     // não veio de importação. Exibida na tela de detalhe atrás de um botão discreto.
     string? RawSisreg);
 
+/// <summary>
+/// Direção da solicitação RELATIVA à unidade ativa da sessão. <c>Recebida</c> = a unidade
+/// ativa é a executora (recebe para realizar → seta para dentro); <c>Enviada</c> = a unidade
+/// ativa é a solicitante (gerou o pedido → seta para fora). <c>null</c> quando não há unidade
+/// de referência única (ex.: admin vendo todas, ou visão do conjunto de unidades).
+/// </summary>
+public enum DirecaoSolicitacao
+{
+    Recebida = 1,
+    Enviada = 2,
+}
+
 public sealed record SolicitacaoExameListItemDto(
     Guid Id,
     string AccessionNumber,
@@ -75,4 +87,6 @@ public sealed record SolicitacaoExameListItemDto(
     // Study do pedido + estado do laudo (habilita o botão "ver laudo" na listagem).
     string StudyInstanceUID,
     Guid? LaudoId,
-    bool LaudoAssinado);
+    bool LaudoAssinado,
+    // Direção relativa à unidade ativa (recebida/enviada). Null = sem referência única.
+    DirecaoSolicitacao? Direcao);

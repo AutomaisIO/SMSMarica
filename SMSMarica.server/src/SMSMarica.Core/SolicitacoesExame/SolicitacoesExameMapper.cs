@@ -44,21 +44,33 @@ internal static class SolicitacoesExameMapper
         s.DataEstudo,
         s.RawSisreg);
 
-    public static SolicitacaoExameListItemDto ParaListItem(SolicitacaoExame s) => new(
-        s.Id,
-        s.AccessionNumber,
-        s.PacienteId,
-        string.Empty,
-        s.TipoExameId,
-        s.TipoExame?.Nome ?? string.Empty,
-        s.TipoExame?.ModalidadeDicom ?? ModalidadeDicom.OT,
-        s.SolicitanteNome,
-        s.Status,
-        s.Prioridade,
-        s.DataAgendada,
-        s.CriadoEm,
-        s.DataEstudo,
-        s.StudyInstanceUID,
-        null,
-        false);
+    public static SolicitacaoExameListItemDto ParaListItem(SolicitacaoExame s, Guid? unidadeReferencia = null)
+    {
+        // Direção relativa à unidade ativa: executora → Recebida; solicitante → Enviada.
+        // Quando a mesma unidade é executora e solicitante, prevalece Recebida (é a que atua).
+        DirecaoSolicitacao? direcao = unidadeReferencia is { } r
+            ? s.UnidadeId == r ? DirecaoSolicitacao.Recebida
+            : s.UnidadeSolicitanteId == r ? DirecaoSolicitacao.Enviada
+            : null
+            : null;
+
+        return new(
+            s.Id,
+            s.AccessionNumber,
+            s.PacienteId,
+            string.Empty,
+            s.TipoExameId,
+            s.TipoExame?.Nome ?? string.Empty,
+            s.TipoExame?.ModalidadeDicom ?? ModalidadeDicom.OT,
+            s.SolicitanteNome,
+            s.Status,
+            s.Prioridade,
+            s.DataAgendada,
+            s.CriadoEm,
+            s.DataEstudo,
+            s.StudyInstanceUID,
+            null,
+            false,
+            direcao);
+    }
 }

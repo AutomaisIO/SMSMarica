@@ -12,6 +12,13 @@ export type StatusSolicitacao =
 
 export type PrioridadeSolicitacao = 'Eletiva' | 'Prioritaria' | 'Urgente';
 
+/**
+ * Direção da solicitação relativa à unidade ativa: `Recebida` = a unidade ativa é a
+ * executora (recebe para realizar → seta para dentro); `Enviada` = a unidade ativa é a
+ * solicitante (gerou o pedido → seta para fora). null = sem unidade de referência única.
+ */
+export type DirecaoSolicitacao = 'Recebida' | 'Enviada';
+
 export type SolicitacaoExame = {
   id: string;
   accessionNumber: string;
@@ -85,6 +92,8 @@ export type SolicitacaoExameListItem = {
   laudoId: string | null;
   /** True quando esse laudo já está assinado digitalmente (habilita o botão). */
   laudoAssinado: boolean;
+  /** Direção relativa à unidade ativa (recebida/enviada). null = sem referência única. */
+  direcao: DirecaoSolicitacao | null;
 };
 
 export type FiltroSolicitacoes = {

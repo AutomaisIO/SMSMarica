@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { CalendarDays, ClipboardCheck, Loader2, Plus, Search, Trash2 } from 'lucide-react';
+import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  CalendarDays,
+  ClipboardCheck,
+  Loader2,
+  Plus,
+  Search,
+  Trash2,
+} from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { formatarInstante, hojeSP } from '@/shared/lib/datas';
@@ -27,6 +36,29 @@ import type {
 } from '@/features/solicitacoes-exame/types';
 
 const CHAVE_TOGGLE_HOJE = 'solicitacoes-exame:filtro-hoje';
+
+/**
+ * Direção relativa à unidade ativa: recebida (executora, seta para dentro) vs.
+ * enviada (a unidade ativa é a solicitante, seta para fora). Nada quando não há
+ * unidade de referência (ex.: "Todas as unidades").
+ */
+function DirecaoIcone({ direcao }: { direcao: SolicitacaoExameListItem['direcao'] }) {
+  if (direcao === 'Recebida') {
+    return (
+      <span title="Recebida — sua unidade é a executora deste exame" aria-label="Recebida">
+        <ArrowDownToLine className="h-4 w-4 text-emerald-600" />
+      </span>
+    );
+  }
+  if (direcao === 'Enviada') {
+    return (
+      <span title="Enviada — sua unidade solicitou este exame" aria-label="Enviada">
+        <ArrowUpFromLine className="h-4 w-4 text-sky-600" />
+      </span>
+    );
+  }
+  return null;
+}
 
 /** Data de "hoje" em Brasília, yyyy-mm-dd (compatível com <input type="date">). */
 const hojeISO = hojeSP;
@@ -119,7 +151,12 @@ export function SolicitacoesExamePage() {
     {
       chave: 'accession',
       cabecalho: 'Pedido',
-      render: (s) => <CodigoCopiavel codigo={s.accessionNumber} />,
+      render: (s) => (
+        <div className="flex items-center gap-1.5">
+          <DirecaoIcone direcao={s.direcao} />
+          <CodigoCopiavel codigo={s.accessionNumber} />
+        </div>
+      ),
     },
     {
       chave: 'paciente',

@@ -127,7 +127,8 @@ public sealed class SolicitacoesExameService(
             query = query.Where(s => s.DataAgendada != null && s.DataAgendada <= fim);
         }
 
-        query = await AplicarEscopoUnidadeAsync(query, cancellationToken);
+        var (queryEscopo, unidadeReferencia) = await AplicarEscopoUnidadeAsync(query, cancellationToken);
+        query = queryEscopo;
 
         var limite = filtro.Limite is <= 0 or > 500 ? 50 : filtro.Limite;
         // Urgentes sempre no topo, independente da data (Prioridade: Urgente=3 > Prioritaria=2 > Eletiva=1).
@@ -137,44 +138,56 @@ public sealed class SolicitacoesExameService(
             .Take(limite)
             .ToListAsync(cancellationToken);
 
-        var dtos = await EnriquecerAsync([.. lista.Select(SolicitacoesExameMapper.ParaListItem)], cancellationToken);
+        var dtos = await EnriquecerAsync([.. lista.Select(s => SolicitacoesExameMapper.ParaListItem(s, unidadeReferencia))], cancellationToken);
         return await EnriquecerLaudosAsync([.. dtos], cancellationToken);
     }
 
-    // Multitenancy por unidade executora: restringe a listagem às unidades vinculadas
-    // ao usuário (usuario_unidade). Regra de transição: usuário sem vínculo (ou fora de
-    // contexto autenticado, ex.: background) continua vendo tudo. A unidade ativa vem
-    // do header X-Unidade-Id e só vale se estiver entre os vínculos; caso contrário
+    // Multitenancy por unidade: restringe a listagem às unidades vinculadas ao usuário
+    // (usuario_unidade), casando tanto pela EXECUTORA quanto pela SOLICITANTE — a unidade vê
+    // o que recebe para realizar e o que ela própria pediu. Regra de transição: usuário sem
+    // vínculo (ou fora de contexto autenticado, ex.: background) continua vendo tudo. A unidade
+    // ativa vem do header X-Unidade-Id e só vale se estiver entre os vínculos; caso contrário
     // degrada silenciosamente para o conjunto vinculado (nunca 403).
-    private async Task<IQueryable<SolicitacaoExame>> AplicarEscopoUnidadeAsync(
+    //
+    // Retorna também a "unidade de referência" (a ativa resolvida, ou null quando é a visão do
+    // conjunto/admin-todas) — usada para marcar a direção (recebida/enviada) de cada linha.
+    private async Task<(IQueryable<SolicitacaoExame> Query, Guid? UnidadeReferencia)> AplicarEscopoUnidadeAsync(
         IQueryable<SolicitacaoExame> query, CancellationToken ct)
     {
         var usuarioId = _usuarioAtual.UsuarioId;
-        if (usuarioId is null) return query;
+        if (usuarioId is null) return (query, null);
+
+        var ativa = _usuarioAtual.UnidadeAtivaId;
 
         // Global admin: vínculo implícito a TODAS as unidades — sem escopo obrigatório;
         // a unidade ativa (se enviada e válida) vira apenas um filtro de conveniência.
         if (usuarioId == IdentificadoresFixos.UsuarioAdminId)
         {
-            var ativaAdmin = _usuarioAtual.UnidadeAtivaId;
-            if (ativaAdmin.HasValue &&
-                await _db.Unidades.AsNoTracking().AnyAsync(u => u.Id == ativaAdmin.Value && u.Ativo, ct))
+            if (ativa.HasValue &&
+                await _db.Unidades.AsNoTracking().AnyAsync(u => u.Id == ativa.Value && u.Ativo, ct))
             {
-                return query.Where(s => s.UnidadeId == ativaAdmin.Value);
+                return (query.Where(s => s.UnidadeId == ativa.Value || s.UnidadeSolicitanteId == ativa.Value), ativa);
             }
-            return query;
+            return (query, null);
         }
 
         var vinculos = await _db.UsuarioUnidades.AsNoTracking()
             .Where(v => v.UsuarioId == usuarioId && v.Unidade!.Ativo)
             .Select(v => v.UnidadeId)
             .ToArrayAsync(ct);
-        if (vinculos.Length == 0) return query;
+        if (vinculos.Length == 0) return (query, null);
 
-        var ativa = _usuarioAtual.UnidadeAtivaId;
-        return ativa.HasValue && vinculos.Contains(ativa.Value)
-            ? query.Where(s => s.UnidadeId == ativa.Value)
-            : query.Where(s => vinculos.Contains(s.UnidadeId));
+        if (ativa.HasValue && vinculos.Contains(ativa.Value))
+        {
+            return (query.Where(s => s.UnidadeId == ativa.Value || s.UnidadeSolicitanteId == ativa.Value), ativa);
+        }
+
+        // Visão do conjunto (sem unidade ativa única): executora OU solicitante entre as
+        // vinculadas. Sem referência única → sem seta de direção.
+        return (
+            query.Where(s => vinculos.Contains(s.UnidadeId)
+                || (s.UnidadeSolicitanteId != null && vinculos.Contains(s.UnidadeSolicitanteId.Value))),
+            null);
     }
 
     public async Task<SolicitacaoExameDto> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default)
