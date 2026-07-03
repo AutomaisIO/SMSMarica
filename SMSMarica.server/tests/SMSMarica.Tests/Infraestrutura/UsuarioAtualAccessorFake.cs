@@ -7,7 +7,8 @@ namespace SMSMarica.Tests.Infraestrutura;
 /// null (operação "sistema/sem contexto"). Construtor com argumento permite
 /// simular um usuário autenticado específico.
 /// </summary>
-public sealed class UsuarioAtualAccessorFake(Guid? usuarioId = null) : IUsuarioAtualAccessor
+public sealed class UsuarioAtualAccessorFake(Guid? usuarioId = null, Guid? unidadeAtivaId = null) : IUsuarioAtualAccessor
 {
     public Guid? UsuarioId { get; } = usuarioId;
+    public Guid? UnidadeAtivaId { get; } = unidadeAtivaId;
 }

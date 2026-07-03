@@ -5,6 +5,7 @@ import {
   atualizarMinhaConta,
   atualizarOverridesDoUsuario,
   atualizarPerfisDoUsuario,
+  atualizarUnidadesDoUsuario,
   atualizarUsuario,
   cadastrarUsuario,
   desativarUsuario,
@@ -12,6 +13,7 @@ import {
   listarUsuarios,
   obterMeuPerfil,
   obterPermissoesDoUsuario,
+  obterUnidadesDoUsuario,
   obterUsuarioPorId,
 } from '@/features/usuarios/api/usuariosApi';
 import type { PermissaoModuloApi } from '@/features/perfis/types';
@@ -24,7 +26,30 @@ export const usuariosKeys = {
   lista: () => ['usuarios', 'lista'] as const,
   porId: (id: string) => ['usuarios', 'detalhe', id] as const,
   permissoes: (id: string) => ['usuarios', 'permissoes', id] as const,
+  unidades: (id: string) => ['usuarios', 'unidades', id] as const,
 };
+
+export function useUnidadesDoUsuario(id: string | null) {
+  return useQuery({
+    queryKey: id ? usuariosKeys.unidades(id) : ['usuarios', 'unidades', 'nenhum'],
+    queryFn: () => {
+      if (!id) throw new Error('ID não informado.');
+      return obterUnidadesDoUsuario(id);
+    },
+    enabled: Boolean(id),
+  });
+}
+
+export function useAtualizarUnidadesDoUsuario() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, unidades }: { id: string; unidades: { unidadeId: string; principal: boolean }[] }) =>
+      atualizarUnidadesDoUsuario(id, unidades),
+    onSuccess: (_d, v) => {
+      client.invalidateQueries({ queryKey: usuariosKeys.unidades(v.id) });
+    },
+  });
+}
 
 export function useUsuarioPermissoes(id: string | null) {
   return useQuery({

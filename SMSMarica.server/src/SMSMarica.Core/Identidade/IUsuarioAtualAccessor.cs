@@ -12,4 +12,11 @@ public interface IUsuarioAtualAccessor
     /// contexto autenticado (ex.: tarefas em background, seed).
     /// </summary>
     Guid? UsuarioId { get; }
+
+    /// <summary>
+    /// Unidade ativa declarada pelo cliente via header <c>X-Unidade-Id</c>, ou <c>null</c>
+    /// se ausente/inválido. NÃO é validada contra os vínculos do usuário aqui — a
+    /// validação é responsabilidade do service que a consome.
+    /// </summary>
+    Guid? UnidadeAtivaId { get; }
 }

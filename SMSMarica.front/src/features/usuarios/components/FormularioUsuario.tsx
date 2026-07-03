@@ -20,11 +20,14 @@ import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import {
   useAtualizarOverridesDoUsuario,
   useAtualizarPerfisDoUsuario,
+  useAtualizarUnidadesDoUsuario,
   useAtualizarUsuario,
   useCadastrarUsuario,
+  useUnidadesDoUsuario,
   useUsuarioPermissoes,
   useUsuarioPorId,
 } from '@/features/usuarios/api/queries';
+import { UnidadesSecao, type UnidadeSelecionada } from '@/features/usuarios/components/UnidadesSecao';
 import { paraMatriz } from '@/features/perfis/lib/acoes';
 import type { MatrizEdicao } from '@/features/perfis/types';
 
@@ -65,6 +68,7 @@ function formatarCpfDigitos(cpf: string): string {
 export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
   const [valores, setValores] = useState<Valores>(INICIAL);
   const [perfilIdsSelecionados, setPerfilIdsSelecionados] = useState<string[]>([]);
+  const [unidadesSelecionadas, setUnidadesSelecionadas] = useState<UnidadeSelecionada[]>([]);
   const [overrides, setOverrides] = useState<MatrizEdicao>({});
   const [erros, setErros] = useState<Erros>({});
   const [erroGlobal, setErroGlobal] = useState<string | null>(null);
@@ -77,8 +81,18 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
   const atualizar = useAtualizarUsuario();
   const salvarPerfis = useAtualizarPerfisDoUsuario();
   const salvarOverrides = useAtualizarOverridesDoUsuario();
+  const salvarUnidades = useAtualizarUnidadesDoUsuario();
   const detalhe = useUsuarioPorId(modo === 'editar' ? idUsuario ?? null : null);
   const permissoesUsuario = useUsuarioPermissoes(modo === 'editar' ? idUsuario ?? null : null);
+  const unidadesUsuario = useUnidadesDoUsuario(modo === 'editar' ? idUsuario ?? null : null);
+
+  useEffect(() => {
+    if (modo === 'editar' && unidadesUsuario.data) {
+      setUnidadesSelecionadas(
+        unidadesUsuario.data.map((v) => ({ unidadeId: v.unidadeId, principal: v.principal })),
+      );
+    }
+  }, [modo, unidadesUsuario.data]);
 
   const deveTrocarAtual = detalhe.data?.deveTrocarSenha ?? false;
 
@@ -239,6 +253,9 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
         if (overridesParaApi.length > 0) {
           await salvarOverrides.mutateAsync({ id: novoId, overrides: overridesParaApi });
         }
+        if (unidadesSelecionadas.length > 0) {
+          await salvarUnidades.mutateAsync({ id: novoId, unidades: unidadesSelecionadas });
+        }
       } else {
         if (!idUsuario) throw new Error('ID ausente.');
         // Nome, CPF e data de nascimento são imutáveis. E-mail PODE ser editado/inserido
@@ -254,6 +271,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
         });
         await salvarPerfis.mutateAsync({ id: idUsuario, perfilIds: perfilIdsSelecionados });
         await salvarOverrides.mutateAsync({ id: idUsuario, overrides: overridesParaApi });
+        await salvarUnidades.mutateAsync({ id: idUsuario, unidades: unidadesSelecionadas });
       }
       aoConcluir();
     } catch (erro) {
@@ -262,7 +280,11 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
   }
 
   const pendente =
-    cadastrar.isPending || atualizar.isPending || salvarPerfis.isPending || salvarOverrides.isPending;
+    cadastrar.isPending ||
+    atualizar.isPending ||
+    salvarPerfis.isPending ||
+    salvarOverrides.isPending ||
+    salvarUnidades.isPending;
 
   // Modo criar exige consulta CPF+nascimento antes de abrir o restante do form.
   if (modo === 'criar' && !passoCpfConcluido) {
@@ -394,6 +416,14 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
     />
   );
 
+  const abaUnidades = (
+    <UnidadesSecao
+      selecionadas={unidadesSelecionadas}
+      aoMudar={setUnidadesSelecionadas}
+      desabilitado={pendente}
+    />
+  );
+
   const abas: Aba[] = [
     { id: 'dados', rotulo: 'Dados', conteudo: abaDados },
     {
@@ -401,6 +431,12 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
       rotulo: 'Permissões',
       conteudo: abaPermissoes,
       badge: perfilIdsSelecionados.length || undefined,
+    },
+    {
+      id: 'unidades',
+      rotulo: 'Unidades',
+      conteudo: abaUnidades,
+      badge: unidadesSelecionadas.length || undefined,
     },
   ];
 

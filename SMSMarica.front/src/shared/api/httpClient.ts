@@ -1,5 +1,5 @@
 import axios, { AxiosError } from 'axios';
-import { obterToken, useAuth } from '@/shared/auth/authStore';
+import { obterToken, obterUnidadeAtivaId, useAuth } from '@/shared/auth/authStore';
 import { notificar } from '@/shared/ui/Notificacoes';
 
 const URL_PROD = 'https://api.smsmarica.online';
@@ -27,6 +27,10 @@ http.interceptors.request.use((config) => {
   const token = obterToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  const unidadeId = obterUnidadeAtivaId();
+  if (unidadeId) {
+    config.headers['X-Unidade-Id'] = unidadeId;
   }
   return config;
 });

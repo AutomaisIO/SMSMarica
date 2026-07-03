@@ -120,6 +120,8 @@ public sealed class SolicitacoesExameService(
             query = query.Where(s => s.CriadoEm <= fim);
         }
 
+        query = await AplicarEscopoUnidadeAsync(query, cancellationToken);
+
         var limite = filtro.Limite is <= 0 or > 500 ? 50 : filtro.Limite;
         // Urgentes sempre no topo, independente da data (Prioridade: Urgente=3 > Prioritaria=2 > Eletiva=1).
         var lista = await query
@@ -130,6 +132,42 @@ public sealed class SolicitacoesExameService(
 
         var dtos = await EnriquecerAsync([.. lista.Select(SolicitacoesExameMapper.ParaListItem)], cancellationToken);
         return await EnriquecerLaudosAsync([.. dtos], cancellationToken);
+    }
+
+    // Multitenancy por unidade executora: restringe a listagem às unidades vinculadas
+    // ao usuário (usuario_unidade). Regra de transição: usuário sem vínculo (ou fora de
+    // contexto autenticado, ex.: background) continua vendo tudo. A unidade ativa vem
+    // do header X-Unidade-Id e só vale se estiver entre os vínculos; caso contrário
+    // degrada silenciosamente para o conjunto vinculado (nunca 403).
+    private async Task<IQueryable<SolicitacaoExame>> AplicarEscopoUnidadeAsync(
+        IQueryable<SolicitacaoExame> query, CancellationToken ct)
+    {
+        var usuarioId = _usuarioAtual.UsuarioId;
+        if (usuarioId is null) return query;
+
+        // Global admin: vínculo implícito a TODAS as unidades — sem escopo obrigatório;
+        // a unidade ativa (se enviada e válida) vira apenas um filtro de conveniência.
+        if (usuarioId == IdentificadoresFixos.UsuarioAdminId)
+        {
+            var ativaAdmin = _usuarioAtual.UnidadeAtivaId;
+            if (ativaAdmin.HasValue &&
+                await _db.Unidades.AsNoTracking().AnyAsync(u => u.Id == ativaAdmin.Value && u.Ativo, ct))
+            {
+                return query.Where(s => s.UnidadeId == ativaAdmin.Value);
+            }
+            return query;
+        }
+
+        var vinculos = await _db.UsuarioUnidades.AsNoTracking()
+            .Where(v => v.UsuarioId == usuarioId && v.Unidade!.Ativo)
+            .Select(v => v.UnidadeId)
+            .ToArrayAsync(ct);
+        if (vinculos.Length == 0) return query;
+
+        var ativa = _usuarioAtual.UnidadeAtivaId;
+        return ativa.HasValue && vinculos.Contains(ativa.Value)
+            ? query.Where(s => s.UnidadeId == ativa.Value)
+            : query.Where(s => vinculos.Contains(s.UnidadeId));
     }
 
     public async Task<SolicitacaoExameDto> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default)

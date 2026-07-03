@@ -70,7 +70,21 @@ public sealed class IdentidadeService(
         var (token, expira) = _tokenService.GerarToken(usuario);
         var resolvidas = await ObterPermissoesResolvidasAsync(usuario.Id, cancellationToken);
         var medico = await ResolverMedicoAsync(usuario.Cpf, cancellationToken);
-        return new LoginRespostaDto(token, expira, IdentidadeMapper.ParaDto(usuario, medico: medico), resolvidas.Resolvidas);
+        // Global admin: vínculo implícito a todas as unidades ativas, sem precisar
+        // de linhas em usuario_unidade (nenhuma vira "principal" — entra vendo tudo).
+        var unidades = usuario.Id == IdentificadoresFixos.UsuarioAdminId
+            ? await _db.Unidades.AsNoTracking()
+                .Where(u => u.Ativo)
+                .OrderBy(u => u.Nome)
+                .Select(u => new UnidadeVinculadaDto(u.Id, u.Nome, false))
+                .ToListAsync(cancellationToken)
+            : await _db.UsuarioUnidades.AsNoTracking()
+                .Where(v => v.UsuarioId == usuario.Id && v.Unidade!.Ativo)
+                .OrderByDescending(v => v.Principal)
+                .ThenBy(v => v.Unidade!.Nome)
+                .Select(v => new UnidadeVinculadaDto(v.UnidadeId, v.Unidade!.Nome, v.Principal))
+                .ToListAsync(cancellationToken);
+        return new LoginRespostaDto(token, expira, IdentidadeMapper.ParaDto(usuario, medico: medico), resolvidas.Resolvidas, unidades);
     }
 
     public async Task<PermissoesResolvidasDto> ObterPermissoesResolvidasAsync(Guid usuarioId, CancellationToken cancellationToken = default)

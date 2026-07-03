@@ -19,4 +19,13 @@ internal sealed class UsuarioAtualAccessor(IHttpContextAccessor http) : IUsuario
             return Guid.TryParse(sub, out var id) ? id : null;
         }
     }
+
+    public Guid? UnidadeAtivaId
+    {
+        get
+        {
+            var valor = _http.HttpContext?.Request.Headers["X-Unidade-Id"].FirstOrDefault();
+            return Guid.TryParse(valor, out var id) ? id : null;
+        }
+    }
 }

@@ -62,6 +62,21 @@ export async function atualizarOverridesDoUsuario(
   await http.put(`/usuarios/${id}/overrides`, { overrides });
 }
 
+/** Vínculo usuário↔unidade (usuario_unidade) — base do multitenant e das filas do chat. */
+export type VinculoUnidadeApi = { unidadeId: string; unidadeNome: string; principal: boolean };
+
+export async function obterUnidadesDoUsuario(id: string): Promise<VinculoUnidadeApi[]> {
+  const { data } = await http.get<VinculoUnidadeApi[]>(`/usuarios/${id}/unidades`);
+  return data;
+}
+
+export async function atualizarUnidadesDoUsuario(
+  id: string,
+  unidades: { unidadeId: string; principal: boolean }[],
+): Promise<void> {
+  await http.put(`/usuarios/${id}/unidades`, { unidades });
+}
+
 export async function alterarSenhaDoUsuario(
   id: string,
   payload: { senhaNova: string; deveTrocarNoProximoLogin: boolean },
