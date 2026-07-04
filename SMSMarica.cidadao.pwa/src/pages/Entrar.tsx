@@ -5,8 +5,9 @@ import { http } from '@/lib/httpClient';
 import { useAuth } from '@/store/auth';
 
 type RespostaMagic = {
-  token: string;
-  paciente: { id: string; nome: string; cpf: string };
+  // null quando o token já foi usado/expirado (não autentica — ver Entrar()).
+  token: string | null;
+  paciente: { id: string; nome: string; cpf: string } | null;
   destino: string;
   confirmacaoAgendamento: {
     solicitacaoExameId: string;
@@ -39,19 +40,32 @@ export function Entrar() {
     (async () => {
       try {
         const { data } = await http.post<RespostaMagic>('/auth/paciente/magic', { token });
-        entrar(data.token, data.paciente);
-        // O uso do link já confirmou a presença no exame — a tela de destino mostra o modal.
-        if (data.confirmacaoAgendamento) {
-          sessionStorage.setItem(
-            CHAVE_CONFIRMACAO_AGENDAMENTO,
-            JSON.stringify(data.confirmacaoAgendamento),
-          );
-        }
         // Remove o token da URL antes de navegar (não fica no histórico nem numa instalação).
         window.history.replaceState(null, '', '/');
-        navigate(data.destino || '/', { replace: true });
+
+        if (data.token && data.paciente) {
+          // 1ª troca (token válido): autentica.
+          entrar(data.token, data.paciente);
+          if (data.confirmacaoAgendamento) {
+            sessionStorage.setItem(
+              CHAVE_CONFIRMACAO_AGENDAMENTO,
+              JSON.stringify(data.confirmacaoAgendamento),
+            );
+          }
+          navigate(data.destino || '/', { replace: true });
+          return;
+        }
+
+        // Token já usado/expirado (sem JWT): NÃO autentica. Se este aparelho já tem sessão,
+        // abre o destino direto (facilitador no aparelho original); senão, manda pro login.
+        if (useAuth.getState().token) {
+          navigate(data.destino || '/', { replace: true });
+        } else {
+          setErro(true);
+          setTimeout(() => navigate('/login', { replace: true }), 2200);
+        }
       } catch {
-        // Token inválido/usado/expirado: se já há sessão, vai pra home; senão, login.
+        // Token inexistente (410) ou erro de rede: se já há sessão, vai pra home; senão, login.
         if (useAuth.getState().token) {
           navigate('/', { replace: true });
         } else {

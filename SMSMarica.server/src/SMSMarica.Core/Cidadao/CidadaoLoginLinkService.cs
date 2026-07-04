@@ -84,22 +84,32 @@ public sealed class CidadaoLoginLinkService(
     public async Task<RespostaMagicLinkDto?> TrocarAsync(
         Guid token, string? dispositivo, string? ip, CancellationToken cancellationToken = default)
     {
+        var link = await db.CidadaoLoginLinks.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == token, cancellationToken);
+        if (link is null) return null; // token inexistente → 410 (app manda pro login)
+
         var agora = DateTime.UtcNow;
         var usadoIp = ip is { Length: > 64 } ? ip[..64] : ip;
 
         // USO ÚNICO ATÔMICO: uma única requisição consegue marcar usado_em. Se a pessoa
-        // compartilhar o link, quem clicar depois (ou um 2º clique simultâneo) recebe 0 linhas
-        // e é rejeitado — não acessa a conta. Fecha a corrida do "check-then-set".
+        // compartilhar o link, quem clicar depois (ou um 2º clique simultâneo) recebe 0 linhas.
         var reivindicadas = await db.CidadaoLoginLinks
             .Where(x => x.Id == token && x.UsadoEm == null && x.ExpiraEm > agora)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(x => x.UsadoEm, agora)
                 .SetProperty(x => x.UsadoIp, usadoIp), cancellationToken);
-        if (reivindicadas == 0) return null; // inexistente, expirado ou já usado
 
-        var link = await db.CidadaoLoginLinks.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == token, cancellationToken);
-        if (link is null) return null;
+        if (reivindicadas == 0)
+        {
+            // Token já usado/expirado (mas existe): NUNCA autentica. Devolve só o destino,
+            // sem JWT — o app abre o exame direto SE já estiver autenticado (facilitador no
+            // aparelho original) e, se NÃO estiver, cai no login. Aparelho sem sessão jamais
+            // autentica com token gasto (mesmo que a pessoa compartilhe o link).
+            return new RespostaMagicLinkDto(
+                Token: null, Paciente: null,
+                Destino: string.IsNullOrWhiteSpace(link.Destino) ? "/" : link.Destino!,
+                ConfirmacaoAgendamento: null);
+        }
 
         // Nome vem do hub FHIR (não persistimos nome no smsmarica).
         var paciente = await pacientes.ObterPorIdAsync(link.PatientId, cancellationToken);
