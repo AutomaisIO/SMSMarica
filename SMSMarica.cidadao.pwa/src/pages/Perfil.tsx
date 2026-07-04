@@ -21,6 +21,7 @@ export function Perfil() {
   const [salvando, setSalvando] = useState(false);
   const [salvandoFoto, setSalvandoFoto] = useState(false);
   const [trocando, setTrocando] = useState(false);
+  const [celularTrocado, setCelularTrocado] = useState(false);
   const [ok, setOk] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -146,10 +147,16 @@ export function Perfil() {
               Trocar
             </button>
           </div>
-          <p className="mt-1.5 text-xs text-tinta-mute">
-            É neste número que enviamos seu código de acesso e avisos. Para trocar, você confirma um
-            código enviado ao número novo — assim não corremos o risco de perder o contato.
-          </p>
+          {celularTrocado ? (
+            <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-lagoa">
+              <Check className="h-3.5 w-3.5" /> Número atualizado e verificado — já salvo.
+            </p>
+          ) : (
+            <p className="mt-1.5 text-xs text-tinta-mute">
+              É neste número que enviamos seu código de acesso e avisos. Para trocar, você confirma um
+              código enviado ao número novo — assim não corremos o risco de perder o contato.
+            </p>
+          )}
         </div>
         <Field
           label="Telefone fixo (opcional)"
@@ -177,6 +184,8 @@ export function Perfil() {
           aoTrocar={(novo) => {
             setCelular(novo);
             setTrocando(false);
+            setCelularTrocado(true);
+            setTimeout(() => setCelularTrocado(false), 4000);
             void carregar();
           }}
         />
