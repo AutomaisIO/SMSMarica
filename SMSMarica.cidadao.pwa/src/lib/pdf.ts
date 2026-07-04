@@ -1,15 +1,26 @@
 import { http } from './httpClient';
 import { usePdfViewer } from '@/store/pdfViewer';
+import { obterPdfCache, salvarPdfCache } from './pdfCache';
 
 /**
  * Abre um PDF protegido por JWT DENTRO do app (visualizador embutido com pdf.js), com
  * botão de baixar — sem depender do leitor de PDF do celular (muitos idosos não têm).
- * Busca os bytes autenticados e entrega ao <VisualizadorPdf/> montado no AppShell.
+ * Materializa o arquivo localmente (IndexedDB): a 1ª abertura baixa e salva; as próximas
+ * abrem direto do aparelho, sem rede.
  */
 export async function abrirPdf(url: string, nomePadrao = 'documento.pdf'): Promise<void> {
+  const cache = await obterPdfCache(url);
+  if (cache) {
+    usePdfViewer.getState().abrir(cache, nomePadrao);
+    return;
+  }
+
   const resp = await http.get(url, { responseType: 'arraybuffer' });
+  const dados = resp.data as ArrayBuffer;
   const nome = nomeDoHeader(resp.headers?.['content-disposition']) ?? nomePadrao;
-  usePdfViewer.getState().abrir(resp.data as ArrayBuffer, nome);
+  usePdfViewer.getState().abrir(dados, nome);
+  // Salva uma cópia (o pdf.js pode "detachar" o buffer aberto) — best-effort.
+  void salvarPdfCache(url, dados.slice(0));
 }
 
 /** Baixa um PDF protegido por JWT como arquivo. */
