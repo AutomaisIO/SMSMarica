@@ -88,4 +88,8 @@ public enum ModuloPermissao
     /// <summary>Gestão das notificações WhatsApp de agendamento (confirmação de exames):
     /// acompanhar envios/entregas/falhas, respostas do paciente e reenviar.</summary>
     NotificacoesAgendamento = 38,
+
+    /// <summary>Sandbox de QA (admin): criar pacientes de teste, semear exames/agendamentos,
+    /// gerar magic link e enviar mensagens de teste por WhatsApp (texto livre, janela 24h).</summary>
+    Sandbox = 39,
 }

@@ -145,6 +145,7 @@ public static class DependencyInjection
             Notificacoes.Agendamento.AgendamentoNotificacaoService>();
         services.AddScoped<Notificacoes.Agendamento.IAgendamentoNotificacaoGestaoService,
             Notificacoes.Agendamento.AgendamentoNotificacaoGestaoService>();
+        services.AddScoped<Sandbox.ISandboxService, Sandbox.SandboxService>();
         services.AddHostedService<Notificacoes.Agendamento.NotificadorAgendamentoService>();
 
         // Sanitizador de HTML compartilhado (whitelist explícita das tags TipTap).

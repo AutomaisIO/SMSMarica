@@ -39,7 +39,8 @@ export type ModuloPermissao =
   | 'Conversas'
   | 'ConversasSupervisao'
   | 'Ticket'
-  | 'NotificacoesAgendamento';
+  | 'NotificacoesAgendamento'
+  | 'Sandbox';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 
