@@ -13,7 +13,10 @@ namespace SMSMarica.Api.Auth;
 public static class DbSeeder
 {
     public static Guid AdminUsuarioId => IdentificadoresFixos.UsuarioAdminId;
-    private const string AdminEmail = "admin@smsmarica.online";
+    // Login do admin: "admin" (via Email) ou "00000000000" (via Cpf) — o login casa string
+    // exata, sem validar formato. Identificadores memoráveis a pedido do usuário.
+    private const string AdminEmail = "admin";
+    private const string AdminCpf = "00000000000";
     private const string AdminSenhaInicial = "Abc,123!";
 
     public static async Task SeedAsync(
@@ -299,6 +302,7 @@ public static class DbSeeder
                 Id = AdminUsuarioId,
                 NomeCompleto = "Administrador",
                 Email = AdminEmail,
+                Cpf = AdminCpf,
                 Ativo = true,
                 CriadoEm = DateTime.UtcNow,
                 SenhaHash = string.Empty,
