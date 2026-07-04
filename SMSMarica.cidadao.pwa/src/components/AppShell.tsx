@@ -18,6 +18,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/store/auth';
 import { usePerfil } from '@/store/perfil';
 import { Avatar } from '@/components/ui';
+import { VisualizadorPdf } from '@/components/VisualizadorPdf';
 
 const NAV = [
   { to: '/', label: 'Início', icon: Home, end: true },
@@ -94,6 +95,9 @@ export function AppShell() {
       <main className="flex-1 px-4 pb-10 pt-5">
         <Outlet />
       </main>
+
+      {/* PDF renderizado no próprio app (não depende de leitor externo). */}
+      <VisualizadorPdf />
 
       {/* Drawer */}
       {aberto && (

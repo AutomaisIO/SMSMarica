@@ -1,18 +1,15 @@
 import { http } from './httpClient';
+import { usePdfViewer } from '@/store/pdfViewer';
 
 /**
- * Abre um PDF protegido por JWT. Popups não herdam o token do interceptor axios,
- * então buscamos como blob e abrimos via object URL. Se o navegador bloquear a aba
- * (comum no iOS/standalone), cai para download direto do arquivo.
+ * Abre um PDF protegido por JWT DENTRO do app (visualizador embutido com pdf.js), com
+ * botão de baixar — sem depender do leitor de PDF do celular (muitos idosos não têm).
+ * Busca os bytes autenticados e entrega ao <VisualizadorPdf/> montado no AppShell.
  */
 export async function abrirPdf(url: string, nomePadrao = 'documento.pdf'): Promise<void> {
-  const resp = await http.get(url, { responseType: 'blob' });
-  const blobUrl = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }));
-
-  const aba = window.open(blobUrl, '_blank');
-  if (!aba) baixarBlob(blobUrl, nomeDoHeader(resp.headers?.['content-disposition']) ?? nomePadrao);
-
-  setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+  const resp = await http.get(url, { responseType: 'arraybuffer' });
+  const nome = nomeDoHeader(resp.headers?.['content-disposition']) ?? nomePadrao;
+  usePdfViewer.getState().abrir(resp.data as ArrayBuffer, nome);
 }
 
 /** Baixa um PDF protegido por JWT como arquivo. */
