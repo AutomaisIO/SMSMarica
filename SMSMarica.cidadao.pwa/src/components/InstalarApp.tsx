@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Download, Plus, Share, X } from 'lucide-react';
-import { PrimaryButton } from '@/components/ui';
+import { Download, X } from 'lucide-react';
 
 /** Evento não-padronizado disparado por Chrome/Edge/Android antes de oferecer a instalação. */
 type BeforeInstallPromptEvent = Event & {
@@ -36,7 +35,6 @@ function jaInstalado(): boolean {
 
 export function InstalarApp() {
   const [deferido, setDeferido] = useState<BeforeInstallPromptEvent | null>(null);
-  const [mostrarIos, setMostrarIos] = useState(false);
   const [oculto, setOculto] = useState(() => jaInstalado() || estaAdiado());
 
   useEffect(() => {
@@ -58,9 +56,11 @@ export function InstalarApp() {
     };
   }, [oculto]);
 
-  // No iOS não existe beforeinstallprompt: o banner aparece direto com as instruções.
-  const ios = ehIos();
-  const podeOferecer = !oculto && (deferido !== null || ios);
+  // No iOS NÃO sugerimos instalar: o app instalado tem armazenamento isolado (abre deslogado)
+  // e o magic link do WhatsApp sempre abre no Safari — instalar só confunde o público idoso.
+  // A entrada no iPhone é sempre o link → Safari (já logado). Só oferecemos no Android/Chrome.
+  if (ehIos()) return null;
+  const podeOferecer = !oculto && deferido !== null;
   if (!podeOferecer) return null;
 
   function dispensar() {
@@ -69,10 +69,6 @@ export function InstalarApp() {
   }
 
   async function instalar() {
-    if (ios) {
-      setMostrarIos(true);
-      return;
-    }
     if (!deferido) return;
     await deferido.prompt();
     const { outcome } = await deferido.userChoice;
@@ -81,91 +77,31 @@ export function InstalarApp() {
   }
 
   return (
-    <>
-      <div className="flex items-center gap-3 rounded-2xl border border-marica/20 bg-marica/[0.04] p-3.5">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-marica/10 text-marica">
-          <Download className="h-5 w-5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="font-display text-sm font-semibold text-tinta">Instale o Saúde Maricá</p>
-          <p className="text-xs text-tinta-mute">
-            Abre em tela cheia, com o ícone do app na tela inicial — sem passar pelo navegador.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={instalar}
-          className="shrink-0 rounded-xl bg-marica px-3.5 py-2 text-sm font-semibold text-white transition active:scale-95 active:bg-marica-escuro"
-        >
-          Instalar
-        </button>
-        <button
-          type="button"
-          onClick={dispensar}
-          aria-label="Dispensar"
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-tinta-mute transition active:bg-areia/60"
-        >
-          <X className="h-4 w-4" />
-        </button>
+    <div className="flex items-center gap-3 rounded-2xl border border-marica/20 bg-marica/[0.04] p-3.5">
+      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-marica/10 text-marica">
+        <Download className="h-5 w-5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="font-display text-sm font-semibold text-tinta">Instale o Saúde Maricá</p>
+        <p className="text-xs text-tinta-mute">
+          Abre em tela cheia, com o ícone do app na tela inicial — sem passar pelo navegador.
+        </p>
       </div>
-
-      {/* iOS: passo a passo do "Adicionar à Tela de Início" (só funciona no Safari). */}
-      {mostrarIos && (
-        <div className="fixed inset-0 z-50 mx-auto flex max-w-[460px] items-end" role="dialog" aria-modal="true">
-          <button
-            type="button"
-            aria-label="Fechar"
-            onClick={() => setMostrarIos(false)}
-            className="absolute inset-0 animate-fade-in bg-tinta/40 backdrop-blur-[1px]"
-          />
-          <div className="relative w-full animate-rise rounded-t-3xl bg-papel p-6 shadow-2xl">
-            <div className="mb-4 flex items-start justify-between">
-              <div>
-                <p className="font-display text-lg font-semibold text-tinta">Instalar no iPhone</p>
-                <p className="text-sm text-tinta-mute">Pelo Safari, em 3 passos:</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setMostrarIos(false)}
-                aria-label="Fechar"
-                className="grid h-9 w-9 place-items-center rounded-lg text-tinta-mute transition active:bg-areia/60"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <ol className="space-y-4">
-              <li className="flex items-center gap-3">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-marica/10 font-display text-sm font-bold text-marica">1</span>
-                <span className="flex flex-wrap items-center gap-1 text-sm text-tinta">
-                  Toque em <Share className="h-4 w-4 text-lagoa" /> <strong>Compartilhar</strong>, na barra do Safari.
-                </span>
-              </li>
-              <li className="flex items-center gap-3">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-marica/10 font-display text-sm font-bold text-marica">2</span>
-                <span className="flex flex-wrap items-center gap-1 text-sm text-tinta">
-                  Escolha <Plus className="h-4 w-4 text-lagoa" /> <strong>Adicionar à Tela de Início</strong>.
-                </span>
-              </li>
-              <li className="flex items-center gap-3">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-marica/10 font-display text-sm font-bold text-marica">3</span>
-                <span className="text-sm text-tinta">
-                  Confirme em <strong>Adicionar</strong>. Pronto — o ícone do Saúde Maricá aparece na sua tela.
-                </span>
-              </li>
-            </ol>
-
-            <p className="mt-5 rounded-xl bg-areia/50 px-3 py-2 text-xs text-tinta-mute">
-              Não vê o botão Compartilhar? Abra o site pelo <strong>Safari</strong> — outros navegadores no iPhone não
-              permitem instalar.
-            </p>
-
-            <PrimaryButton className="mt-5" onClick={() => setMostrarIos(false)}>
-              Entendi
-            </PrimaryButton>
-          </div>
-        </div>
-      )}
-    </>
+      <button
+        type="button"
+        onClick={instalar}
+        className="shrink-0 rounded-xl bg-marica px-3.5 py-2 text-sm font-semibold text-white transition active:scale-95 active:bg-marica-escuro"
+      >
+        Instalar
+      </button>
+      <button
+        type="button"
+        onClick={dispensar}
+        aria-label="Dispensar"
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-tinta-mute transition active:bg-areia/60"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
   );
 }
