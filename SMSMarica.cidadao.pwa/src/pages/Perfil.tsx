@@ -19,6 +19,7 @@ export function Perfil() {
   const [residencial, setResidencial] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [salvandoFoto, setSalvandoFoto] = useState(false);
+  const [trocando, setTrocando] = useState(false);
   const [ok, setOk] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -129,16 +130,26 @@ export function Perfil() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
-        <Field
-          label="Celular / WhatsApp"
-          type="tel"
-          inputMode="tel"
-          autoComplete="tel"
-          placeholder="(21) 90000-0000"
-          value={celular}
-          onChange={(e) => setCelular(e.target.value)}
-          hint="É neste número que enviamos seu código de acesso e avisos."
-        />
+        {/* Celular de contato: troca só por OTP (confirma o código no número novo). */}
+        <div className="rounded-2xl border border-areia bg-white p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-tinta-mute">Celular / WhatsApp</p>
+              <p className="truncate text-sm font-semibold text-tinta">{celular || 'Não informado'}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setTrocando(true)}
+              className="shrink-0 rounded-xl bg-marica/10 px-3.5 py-2 text-sm font-semibold text-marica transition active:scale-95"
+            >
+              Trocar
+            </button>
+          </div>
+          <p className="mt-1.5 text-xs text-tinta-mute">
+            É neste número que enviamos seu código de acesso e avisos. Para trocar, você confirma um
+            código enviado ao número novo — assim não corremos o risco de perder o contato.
+          </p>
+        </div>
         <Field
           label="Telefone fixo (opcional)"
           type="tel"
@@ -158,6 +169,129 @@ export function Perfil() {
           )}
         </PrimaryButton>
       </form>
+
+      {trocando && (
+        <TrocaCelularModal
+          aoFechar={() => setTrocando(false)}
+          aoTrocar={(novo) => {
+            setCelular(novo);
+            setTrocando(false);
+            void carregar();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Troca do celular em 2 passos: (1) informar o número novo → recebe um código nele;
+ * (2) digitar o código → só então a troca é salva. Evita cadastrar número errado e
+ * ficar sem contato.
+ */
+function TrocaCelularModal({
+  aoFechar,
+  aoTrocar,
+}: {
+  aoFechar: () => void;
+  aoTrocar: (novoNumero: string) => void;
+}) {
+  const [passo, setPasso] = useState<'numero' | 'codigo'>('numero');
+  const [numero, setNumero] = useState('');
+  const [codigo, setCodigo] = useState('');
+  const [mascara, setMascara] = useState<string | null>(null);
+  const [ocupado, setOcupado] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function enviar() {
+    if (numero.replace(/\D/g, '').length < 10) {
+      setErro('Informe um celular com DDD.');
+      return;
+    }
+    setOcupado(true);
+    setErro(null);
+    try {
+      const r = await api.solicitarOtpContato(numero.trim());
+      setMascara(r.mascara);
+      setPasso('codigo');
+    } catch (e) {
+      setErro(extrairMensagemDeErro(e));
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  async function confirmar() {
+    if (codigo.replace(/\D/g, '').length < 4) {
+      setErro('Digite o código recebido.');
+      return;
+    }
+    setOcupado(true);
+    setErro(null);
+    try {
+      const r = await api.confirmarContato(numero.trim(), codigo.trim());
+      aoTrocar(r.numero);
+    } catch (e) {
+      setErro(extrairMensagemDeErro(e));
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 mx-auto flex max-w-[460px] items-end" role="dialog" aria-modal="true">
+      <button type="button" aria-label="Fechar" onClick={aoFechar} className="absolute inset-0 animate-fade-in bg-tinta/40" />
+      <div className="relative w-full animate-rise rounded-t-3xl bg-papel p-6 shadow-2xl">
+        <SectionHeader eyebrow="Segurança" title="Trocar celular" />
+
+        {passo === 'numero' ? (
+          <div className="mt-4 space-y-4">
+            <Field
+              label="Novo celular / WhatsApp"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder="(21) 90000-0000"
+              value={numero}
+              onChange={(e) => setNumero(e.target.value)}
+              hint="Enviaremos um código por WhatsApp para este número."
+            />
+            {erro && <p className="text-sm text-marica">{erro}</p>}
+            <PrimaryButton onClick={enviar} carregando={ocupado}>
+              Enviar código
+            </PrimaryButton>
+          </div>
+        ) : (
+          <div className="mt-4 space-y-4">
+            <p className="text-sm text-tinta-mute">
+              Enviamos um código para {mascara ?? 'o número novo'}. Digite-o para confirmar a troca.
+            </p>
+            <Field
+              label="Código"
+              type="tel"
+              inputMode="numeric"
+              placeholder="000000"
+              value={codigo}
+              onChange={(e) => setCodigo(e.target.value)}
+            />
+            {erro && <p className="text-sm text-marica">{erro}</p>}
+            <PrimaryButton onClick={confirmar} carregando={ocupado}>
+              Confirmar troca
+            </PrimaryButton>
+            <button
+              type="button"
+              onClick={() => {
+                setPasso('numero');
+                setCodigo('');
+                setErro(null);
+              }}
+              className="w-full text-center text-sm text-tinta-mute underline"
+            >
+              Corrigir o número
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

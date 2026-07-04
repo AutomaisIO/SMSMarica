@@ -7,6 +7,8 @@ using SMSMarica.Core.Atendimentos;
 using SMSMarica.Core.Cidadao;
 using SMSMarica.Core.Cidadao.Dtos;
 using SMSMarica.Core.Pacientes;
+using SMSMarica.Core.Telefones;
+using SMSMarica.Core.Telefones.Dtos;
 
 namespace SMSMarica.Api.Controllers;
 
@@ -25,7 +27,8 @@ public sealed class CidadaoController(
     IAtendimentosService atendimentos,
     ICidadaoSessaoService sessoes,
     IConsentimentoCidadaoService consentimentos,
-    ICidadaoClinicoService clinico) : ControllerBase
+    ICidadaoClinicoService clinico,
+    ITelefoneValidacaoService telefones) : ControllerBase
 {
     /// <summary>Status do consentimento LGPD + texto vigente do termo (acessível sem aceite).</summary>
     [HttpGet("consentimento")]
@@ -205,6 +208,38 @@ public sealed class CidadaoController(
     }
 
     public sealed record CancelarExameCidadaoRequest(string Motivo);
+
+    // ---- Troca do celular de contato por OTP (só salva se confirmar o código no número novo) ----
+
+    /// <summary>Envia um código por WhatsApp para o NÚMERO NOVO que a pessoa quer passar a usar.
+    /// A troca só se efetiva ao confirmar o código (evita cadastrar um número errado e perder contato).</summary>
+    [HttpPost("me/contato/otp")]
+    [ProducesResponseType<TelefoneOtpEmitidoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<TelefoneOtpEmitidoDto> EnviarOtpContato(
+        [FromBody] TrocarContatoOtpRequest req, CancellationToken ct) =>
+        await telefones.EnviarCodigoAsync(Cpf(), req.Numero, ct);
+
+    /// <summary>Confirma o código do número novo; em sucesso, ele vira o contato principal validado
+    /// (e o telefone principal do cadastro). Só então a troca é salva.</summary>
+    [HttpPost("me/contato/confirmar")]
+    [ProducesResponseType<TelefoneValidadoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<TelefoneValidadoDto> ConfirmarContato(
+        [FromBody] ConfirmarContatoRequest req, CancellationToken ct) =>
+        await telefones.ConfirmarCodigoAsync(Cpf(), req.Numero, req.Codigo, ct, origem: "pwa-cidadao");
+
+    public sealed record TrocarContatoOtpRequest(string Numero);
+    public sealed record ConfirmarContatoRequest(string Numero, string Codigo);
+
+    /// <summary>CPF do cidadão a partir do claim do token (nunca do corpo).</summary>
+    private string Cpf()
+    {
+        var cpf = User.FindFirstValue("cpf");
+        return string.IsNullOrWhiteSpace(cpf)
+            ? throw new UnauthorizedAccessException("Token sem CPF.")
+            : cpf;
+    }
 
     /// <summary>Id do paciente (FHIR) a partir do <c>sub</c>; 403 se o token não for de cidadão.</summary>
     private Guid PacienteId()

@@ -64,6 +64,9 @@ export type Agendamento = {
   podeResponder: boolean;
 };
 
+export type TelefoneOtpEmitido = { canal: string; mascara: string | null; expiraEmSegundos: number };
+export type TelefoneValidado = { numero: string; validado: boolean; validadoEm: string | null };
+
 export type ConsentimentoStatus = {
   versao: string;
   texto: string;
@@ -77,6 +80,15 @@ export const api = {
   aceitarConsentimento: () => http.post('/auth/paciente/consentimento'),
   perfil: () => http.get<Perfil>('/auth/paciente/me').then((r) => r.data),
   salvarContato: (body: AtualizarContato) => http.put('/auth/paciente/me/contato', body),
+  // Troca do celular por OTP: envia código ao número NOVO; só efetiva ao confirmar.
+  solicitarOtpContato: (numero: string) =>
+    http
+      .post<TelefoneOtpEmitido>('/auth/paciente/me/contato/otp', { numero })
+      .then((r) => r.data),
+  confirmarContato: (numero: string, codigo: string) =>
+    http
+      .post<TelefoneValidado>('/auth/paciente/me/contato/confirmar', { numero, codigo })
+      .then((r) => r.data),
   salvarFoto: (fotoBase64: string | null) => http.put('/auth/paciente/me/foto', { fotoBase64 }),
   logout: () => http.post('/auth/paciente/logout'),
   translados: () => http.get<Translado[]>('/auth/paciente/meus-translados').then((r) => r.data),

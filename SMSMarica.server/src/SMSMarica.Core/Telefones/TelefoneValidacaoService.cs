@@ -79,7 +79,7 @@ public sealed class TelefoneValidacaoService(
     }
 
     public async Task<TelefoneValidadoDto> ConfirmarCodigoAsync(
-        string cpf, string numero, string codigo, CancellationToken ct = default)
+        string cpf, string numero, string codigo, CancellationToken ct = default, string origem = "painel")
     {
         var cpfDig = CpfDigitos(cpf);
         var canon = Canonizar(numero);
@@ -95,7 +95,7 @@ public sealed class TelefoneValidacaoService(
         }
 
         cache.Remove(chave);
-        var validadoEm = await MarcarValidadoInternoAsync(cpfDig, canon, "painel", atual.UsuarioId, ct);
+        var validadoEm = await MarcarValidadoInternoAsync(cpfDig, canon, origem, atual.UsuarioId, ct);
         return new TelefoneValidadoDto(canon, true, validadoEm);
     }
 
