@@ -8,7 +8,14 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 };
 
-const CHAVE_DISPENSADO = 'sms.instalar.dispensado';
+// Dispensar não some para sempre: adia por alguns dias e o convite volta a aparecer.
+const CHAVE_ADIADO_ATE = 'sms.instalar.adiado_ate';
+const DIAS_ADIAR = 4;
+
+function estaAdiado(): boolean {
+  const ate = Number(localStorage.getItem(CHAVE_ADIADO_ATE) ?? 0);
+  return Number.isFinite(ate) && Date.now() < ate;
+}
 
 /** iPhone/iPad (iPadOS 13+ se disfarça de Mac com toque). */
 function ehIos(): boolean {
@@ -30,9 +37,7 @@ function jaInstalado(): boolean {
 export function InstalarApp() {
   const [deferido, setDeferido] = useState<BeforeInstallPromptEvent | null>(null);
   const [mostrarIos, setMostrarIos] = useState(false);
-  const [oculto, setOculto] = useState(
-    () => jaInstalado() || localStorage.getItem(CHAVE_DISPENSADO) === '1',
-  );
+  const [oculto, setOculto] = useState(() => jaInstalado() || estaAdiado());
 
   useEffect(() => {
     if (oculto) return;
@@ -59,7 +64,7 @@ export function InstalarApp() {
   if (!podeOferecer) return null;
 
   function dispensar() {
-    localStorage.setItem(CHAVE_DISPENSADO, '1');
+    localStorage.setItem(CHAVE_ADIADO_ATE, String(Date.now() + DIAS_ADIAR * 24 * 60 * 60 * 1000));
     setOculto(true);
   }
 
@@ -82,8 +87,10 @@ export function InstalarApp() {
           <Download className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="font-display text-sm font-semibold text-tinta">Instale o app no celular</p>
-          <p className="text-xs text-tinta-mute">Acesso rápido, em tela cheia, direto na sua tela inicial.</p>
+          <p className="font-display text-sm font-semibold text-tinta">Instale o Saúde Maricá</p>
+          <p className="text-xs text-tinta-mute">
+            Abre em tela cheia, com o ícone do app na tela inicial — sem passar pelo navegador.
+          </p>
         </div>
         <button
           type="button"
