@@ -19,6 +19,7 @@ import { useAuth } from '@/store/auth';
 import { usePerfil } from '@/store/perfil';
 import { Avatar } from '@/components/ui';
 import { VisualizadorPdf } from '@/components/VisualizadorPdf';
+import { InstalarApp } from '@/components/InstalarApp';
 
 const NAV = [
   { to: '/', label: 'Início', icon: Home, end: true },
@@ -93,6 +94,10 @@ export function AppShell() {
       </header>
 
       <main className="flex-1 px-4 pb-10 pt-5">
+        {/* Convite de instalação em todas as telas autenticadas (some se instalado/adiado). */}
+        <div className="mb-4 empty:hidden">
+          <InstalarApp />
+        </div>
         <Outlet />
       </main>
 

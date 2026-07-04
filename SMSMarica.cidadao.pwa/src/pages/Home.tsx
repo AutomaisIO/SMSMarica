@@ -15,7 +15,6 @@ import { useAuth } from '@/store/auth';
 import { usePerfil } from '@/store/perfil';
 import { formatarCpf } from '@/components/AppShell';
 import { Avatar } from '@/components/ui';
-import { InstalarApp } from '@/components/InstalarApp';
 
 const ATALHOS = [
   { to: '/agendados/consultas', label: 'Consultas', desc: 'Agendadas', icon: CalendarClock, tom: 'lagoa' },
@@ -41,8 +40,6 @@ export function Home() {
 
   return (
     <div className="animate-rise space-y-7">
-      <InstalarApp />
-
       <p className="pb-2 text-[15px] text-tinta-mute">
         Olá, <span className="font-semibold text-tinta">{primeiro}</span>. Bem-vindo de volta.
       </p>
