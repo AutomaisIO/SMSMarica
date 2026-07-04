@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { Download, Loader2, X } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
-import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+// Worker empacotado pelo Vite como .js separado (classic worker) — evita o .mjs servido
+// com MIME errado pelo nginx ("Failed to fetch dynamically imported module"), sem inchar o
+// bundle principal. Fica em chunk próprio (lazy) e é precacheado pelo Workbox.
+import PdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?worker';
 import { usePdfViewer } from '@/store/pdfViewer';
 
-// Worker do pdf.js empacotado localmente (funciona offline / dentro do PWA instalado).
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+pdfjsLib.GlobalWorkerOptions.workerPort = new PdfWorker();
 
 /**
  * Visualizador de PDF em tela cheia, renderizado no próprio app com pdf.js (canvas por
