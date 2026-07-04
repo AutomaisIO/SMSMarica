@@ -125,7 +125,7 @@ export function Perfil() {
           type="email"
           inputMode="email"
           autoComplete="email"
-          placeholder="voce@exemplo.com"
+          placeholder="Seu e-mail"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
