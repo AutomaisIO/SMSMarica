@@ -16,6 +16,7 @@ export function VisualizadorPdf() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(false);
+  const [erroDetalhe, setErroDetalhe] = useState<string | null>(null);
 
   useEffect(() => {
     if (!aberto || !dados) return;
@@ -24,11 +25,15 @@ export function VisualizadorPdf() {
     if (container) container.innerHTML = '';
     setCarregando(true);
     setErro(false);
+    setErroDetalhe(null);
 
     (async () => {
       try {
+        // Diagnóstico: primeiros bytes devem ser "%PDF". Se não, o backend mandou outra coisa.
+        const cabecalho = new TextDecoder().decode(new Uint8Array(dados.slice(0, 5)));
         // Cópia: o pdf.js "detaches" o buffer; guardamos o original no store para o download.
         const doc = await pdfjsLib.getDocument({ data: dados.slice(0) }).promise;
+        void cabecalho;
         const larguraAlvo = Math.min(container?.clientWidth ?? 720, 900);
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
@@ -51,8 +56,16 @@ export function VisualizadorPdf() {
           await page.render({ canvasContext: ctx, viewport, transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : undefined }).promise;
         }
         if (!cancelado) setCarregando(false);
-      } catch {
+      } catch (e) {
         if (!cancelado) {
+          const cab = (() => {
+            try {
+              return new TextDecoder().decode(new Uint8Array(dados.slice(0, 8)));
+            } catch {
+              return '?';
+            }
+          })();
+          setErroDetalhe(`${(e as Error)?.name ?? 'Erro'}: ${(e as Error)?.message ?? String(e)} · início="${cab}" · ${dados.byteLength}B`);
           setErro(true);
           setCarregando(false);
         }
@@ -109,6 +122,9 @@ export function VisualizadorPdf() {
       {erro ? (
         <div className="absolute inset-x-0 bottom-24 mx-auto max-w-xs rounded-xl bg-white px-4 py-3 text-center text-sm text-tinta shadow-lg">
           Não foi possível exibir aqui. Toque em <strong>Baixar</strong> para salvar o arquivo.
+          {erroDetalhe ? (
+            <p className="mt-2 break-words text-left font-mono text-[10px] leading-tight text-tinta-mute">{erroDetalhe}</p>
+          ) : null}
         </div>
       ) : null}
     </div>
