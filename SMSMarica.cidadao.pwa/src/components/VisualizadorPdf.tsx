@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Download, Loader2, X } from 'lucide-react';
+import { Download, Loader2, Share2, X } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 // Worker empacotado pelo Vite como .js separado (classic worker) — evita o .mjs servido
 // com MIME errado pelo nginx ("Failed to fetch dynamically imported module"), sem inchar o
@@ -93,10 +93,38 @@ export function VisualizadorPdf() {
     setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000);
   }
 
+  // Compartilhamento nativo do celular (WhatsApp, e-mail, etc.). Só aparece se o
+  // aparelho suportar compartilhar arquivos; senão, o botão Baixar já cobre.
+  const arquivo = dados ? new File([dados.slice(0)], nome, { type: 'application/pdf' }) : null;
+  const podeCompartilhar =
+    typeof navigator !== 'undefined' &&
+    !!navigator.canShare &&
+    !!arquivo &&
+    navigator.canShare({ files: [arquivo] });
+
+  async function compartilhar() {
+    if (!dados) return;
+    const file = new File([dados.slice(0)], nome, { type: 'application/pdf' });
+    try {
+      await navigator.share({ files: [file], title: nome });
+    } catch {
+      /* usuário cancelou ou não suportado — silencioso */
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-tinta/95">
       <header className="flex items-center justify-between gap-3 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] text-white">
         <p className="min-w-0 flex-1 truncate text-sm font-medium">{nome}</p>
+        {podeCompartilhar ? (
+          <button
+            type="button"
+            onClick={compartilhar}
+            className="flex items-center gap-1.5 rounded-lg bg-white/15 px-3 py-1.5 text-sm font-medium transition active:scale-95"
+          >
+            <Share2 className="h-4 w-4" /> Compartilhar
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={baixar}
