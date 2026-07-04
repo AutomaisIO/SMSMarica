@@ -84,15 +84,26 @@ public sealed class CidadaoLoginLinkService(
     public async Task<RespostaMagicLinkDto?> TrocarAsync(
         Guid token, string? dispositivo, string? ip, CancellationToken cancellationToken = default)
     {
-        var link = await db.CidadaoLoginLinks.FirstOrDefaultAsync(x => x.Id == token, cancellationToken);
-        if (link is null || link.UsadoEm is not null || link.ExpiraEm <= DateTime.UtcNow) return null;
+        var agora = DateTime.UtcNow;
+        var usadoIp = ip is { Length: > 64 } ? ip[..64] : ip;
+
+        // USO ÚNICO ATÔMICO: uma única requisição consegue marcar usado_em. Se a pessoa
+        // compartilhar o link, quem clicar depois (ou um 2º clique simultâneo) recebe 0 linhas
+        // e é rejeitado — não acessa a conta. Fecha a corrida do "check-then-set".
+        var reivindicadas = await db.CidadaoLoginLinks
+            .Where(x => x.Id == token && x.UsadoEm == null && x.ExpiraEm > agora)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(x => x.UsadoEm, agora)
+                .SetProperty(x => x.UsadoIp, usadoIp), cancellationToken);
+        if (reivindicadas == 0) return null; // inexistente, expirado ou já usado
+
+        var link = await db.CidadaoLoginLinks.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == token, cancellationToken);
+        if (link is null) return null;
 
         // Nome vem do hub FHIR (não persistimos nome no smsmarica).
         var paciente = await pacientes.ObterPorIdAsync(link.PatientId, cancellationToken);
         var nome = string.IsNullOrWhiteSpace(paciente.NomeCompleto) ? "Paciente" : paciente.NomeCompleto;
-
-        link.UsadoEm = DateTime.UtcNow;
-        link.UsadoIp = ip is { Length: > 64 } ? ip[..64] : ip;
 
         // Link de notificação de agendamento: o USO do link (1 clique no botão do WhatsApp)
         // já confirma a presença do paciente — mesmo SaveChanges do consumo do link.
