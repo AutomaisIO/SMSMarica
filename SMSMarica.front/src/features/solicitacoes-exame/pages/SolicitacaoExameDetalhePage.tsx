@@ -28,6 +28,7 @@ import {
 } from '@/features/solicitacoes-exame/api/queries';
 import { ehFalhaExclusaoPacs } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
 import { StatusBadgeSolicitacao } from '@/features/solicitacoes-exame/components/StatusBadgeSolicitacao';
+import { ConfirmacaoBadge, canalConfirmacaoTexto } from '@/features/solicitacoes-exame/components/ConfirmacaoBadge';
 import { BotaoDeclaracaoComparecimento } from '@/features/solicitacoes-exame/components/BotaoDeclaracaoComparecimento';
 import { BotaoBaixarExameCompleto } from '@/features/solicitacoes-exame/components/BotaoBaixarExameCompleto';
 import { BotaoLinkDownload } from '@/features/solicitacoes-exame/components/BotaoLinkDownload';
@@ -134,6 +135,7 @@ export function SolicitacaoExameDetalhePage() {
             <ClipboardCheck className="h-6 w-6 text-primary-600" />
             <CodigoCopiavel codigo={s.accessionNumber} />
             <StatusBadgeSolicitacao status={s.status} />
+            <ConfirmacaoBadge status={s.statusConfirmacao} />
             {(s.status === 'Realizada' || s.status === 'Laudada') && (
               <>
                 <BotaoDeclaracaoComparecimento solicitacaoId={s.id} />
@@ -316,6 +318,18 @@ export function SolicitacaoExameDetalhePage() {
               <li>Exame realizado em {formatarWallClock(s.dataEstudo)}</li>
             ) : s.realizadoEm ? (
               <li>Exame realizado em {fmt(s.realizadoEm)} (detectado pelo PACS)</li>
+            ) : null}
+            {s.confirmadoEm ? (
+              <li className="text-green-700">
+                Paciente confirmou a presença {canalConfirmacaoTexto(s.confirmadoCanal)} em {fmt(s.confirmadoEm)}
+              </li>
+            ) : null}
+            {s.confirmacaoCanceladaEm ? (
+              <li className="text-red-700">
+                Paciente informou que não poderá comparecer {canalConfirmacaoTexto(s.confirmadoCanal)} em{' '}
+                {fmt(s.confirmacaoCanceladaEm)}
+                {s.motivoCancelamentoPaciente ? ` — motivo: ${s.motivoCancelamentoPaciente}` : ''}
+              </li>
             ) : null}
             {s.canceladoEm ? (
               <li className="text-red-700">

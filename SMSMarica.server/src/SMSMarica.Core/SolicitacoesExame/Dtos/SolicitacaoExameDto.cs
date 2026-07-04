@@ -48,6 +48,13 @@ public sealed record SolicitacaoExameDto(
     DateTime? CanceladoEm,
     string? MotivoCancelamento,
 
+    // Resposta do PACIENTE à notificação (WhatsApp/app) — independente do Status operacional.
+    StatusConfirmacaoAgendamento StatusConfirmacao,
+    DateTime? ConfirmadoEm,
+    string? ConfirmadoCanal,
+    DateTime? ConfirmacaoCanceladaEm,
+    string? MotivoCancelamentoPaciente,
+
     int TentativasEnvio,
     DateTime? UltimaTentativaEm,
     DateTime? ProximaTentativaEm,
@@ -85,6 +92,8 @@ public sealed record SolicitacaoExameListItemDto(
     ModalidadeDicom ModalidadeDicom,
     string SolicitanteNome,
     StatusSolicitacaoExame Status,
+    // Resposta do paciente à notificação (Pendente/Confirmada/Cancelada) — para a lista.
+    StatusConfirmacaoAgendamento StatusConfirmacao,
     PrioridadeSolicitacao Prioridade,
     DateTime? DataAgendada,
     DateTime CriadoEm,

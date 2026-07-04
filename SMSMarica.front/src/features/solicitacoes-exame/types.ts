@@ -12,6 +12,9 @@ export type StatusSolicitacao =
 
 export type PrioridadeSolicitacao = 'Eletiva' | 'Prioritaria' | 'Urgente';
 
+/** Resposta do paciente à notificação (WhatsApp/app) — independente do status operacional. */
+export type StatusConfirmacaoPaciente = 'Pendente' | 'Confirmada' | 'Cancelada';
+
 /**
  * Direção da solicitação relativa à unidade ativa: `Recebida` = a unidade ativa é a
  * executora (recebe para realizar → seta para dentro); `Enviada` = a unidade ativa é a
@@ -65,6 +68,13 @@ export type SolicitacaoExame = {
   canceladoEm: string | null;
   motivoCancelamento: string | null;
 
+  /** Resposta do paciente à notificação: como/quando confirmou ou cancelou + motivo. */
+  statusConfirmacao: StatusConfirmacaoPaciente;
+  confirmadoEm: string | null;
+  confirmadoCanal: string | null;
+  confirmacaoCanceladaEm: string | null;
+  motivoCancelamentoPaciente: string | null;
+
   tentativasEnvio: number;
   ultimaTentativaEm: string | null;
   proximaTentativaEm: string | null;
@@ -88,6 +98,8 @@ export type SolicitacaoExameListItem = {
   modalidadeDicom: ModalidadeDicom;
   solicitanteNome: string;
   status: StatusSolicitacao;
+  /** Resposta do paciente à notificação (Pendente/Confirmada/Cancelada). */
+  statusConfirmacao: StatusConfirmacaoPaciente;
   prioridade: PrioridadeSolicitacao;
   dataAgendada: string | null;
   criadoEm: string;

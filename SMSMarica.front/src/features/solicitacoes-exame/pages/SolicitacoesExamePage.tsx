@@ -24,6 +24,7 @@ import { CodigoCopiavel } from '@/shared/ui/CodigoCopiavel';
 import { useExcluirSolicitacao, useListarSolicitacoes } from '@/features/solicitacoes-exame/api/queries';
 import { ehFalhaExclusaoPacs } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
 import { StatusBadgeSolicitacao } from '@/features/solicitacoes-exame/components/StatusBadgeSolicitacao';
+import { ConfirmacaoBadge } from '@/features/solicitacoes-exame/components/ConfirmacaoBadge';
 import { BotaoDeclaracaoComparecimento } from '@/features/solicitacoes-exame/components/BotaoDeclaracaoComparecimento';
 import { BotaoBaixarExameCompleto } from '@/features/solicitacoes-exame/components/BotaoBaixarExameCompleto';
 import { BotaoVisualizarLaudo } from '@/features/solicitacoes-exame/components/BotaoVisualizarLaudo';
@@ -203,6 +204,11 @@ export function SolicitacoesExamePage() {
       chave: 'status',
       cabecalho: 'Status',
       render: (s) => <StatusBadgeSolicitacao status={s.status} />,
+    },
+    {
+      chave: 'confirmacao',
+      cabecalho: 'Confirmação',
+      render: (s) => <ConfirmacaoBadge status={s.statusConfirmacao} compacto />,
     },
     {
       chave: 'acoes',
