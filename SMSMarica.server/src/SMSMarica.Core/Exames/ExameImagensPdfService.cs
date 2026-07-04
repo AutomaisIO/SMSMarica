@@ -36,16 +36,27 @@ public sealed class ExameImagensPdfService(
             .FirstOrDefaultAsync(s => s.Id == solicitacaoExameId && s.ExcluidoEm == null, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(SolicitacaoExame), solicitacaoExameId);
 
-        if (string.IsNullOrWhiteSpace(sol.StudyInstanceUID))
+        // Exames sem worklist (ex.: mamografia no Fuji, que gera o próprio StudyInstanceUID)
+        // chegam ao PACS sob o UID do EQUIPAMENTO, ligado à solicitação via ExameAssociacao.
+        // As imagens vivem sob esse UID real — não sob o pré-gerado da solicitação. Preferimos
+        // o UID da associação ativa; sem associação, usamos o da própria solicitação.
+        var studyUid = await db.ExameAssociacoes.AsNoTracking()
+            .Where(a => a.SolicitacaoExameId == sol.Id && a.ExcluidoEm == null && a.StudyInstanceUID != "")
+            .OrderByDescending(a => a.CriadoEm)
+            .Select(a => a.StudyInstanceUID)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(studyUid)) studyUid = sol.StudyInstanceUID;
+
+        if (string.IsNullOrWhiteSpace(studyUid))
             throw new ConflitoException("exame.sem_imagens", "Este exame ainda não tem imagens disponíveis.");
 
-        var chave = $"imagens-exame/{sol.PacienteId}/{sol.StudyInstanceUID}.pdf";
+        var chave = $"imagens-exame/{sol.PacienteId}/{studyUid}.pdf";
 
         var cache = await armazenamento.LerAsync(chave, cancellationToken);
         if (cache is { Length: > 0 })
             return cache;
 
-        var imagens = await imagensReader.ObterImagensAsync(sol.StudyInstanceUID, MaxImagens, cancellationToken);
+        var imagens = await imagensReader.ObterImagensAsync(studyUid, MaxImagens, cancellationToken);
         if (imagens.Count == 0)
             throw new ConflitoException("exame.sem_imagens", "Este exame ainda não tem imagens disponíveis no PACS.");
 
