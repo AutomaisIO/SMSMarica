@@ -85,7 +85,7 @@ export function AppShell() {
           type="button"
           onClick={() => navigate('/perfil')}
           aria-label="Meu perfil"
-          className="rounded-full ring-2 ring-white/30 transition active:scale-95"
+          className="inline-flex rounded-full ring-2 ring-white/30 transition active:scale-95"
         >
           <Avatar src={foto} nome={nome} size={40} className="bg-white/15 text-white ring-0" />
         </button>
