@@ -139,7 +139,7 @@ public sealed class SolicitacoesExameController(
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<MagicLinkDto> GerarLinkAcesso(Guid id, CancellationToken cancellationToken) =>
-        await _loginLinks.GerarParaSolicitacaoAsync(id, cancellationToken);
+        await _loginLinks.GerarParaSolicitacaoAsync(id, cancellationToken: cancellationToken);
 
     [HttpPost]
     [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Inclusao)]

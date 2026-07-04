@@ -149,6 +149,78 @@ public sealed class WhatsAppCliente(
         return await EnviarRealAsync(ctx, body, fone, template, conteudo, sessaoId, pacienteId, ct);
     }
 
+    public async Task<EnvioWhatsAppResultado> EnviarTemplateComBotoesAsync(
+        string telefone, string template, string idiomaBcp47,
+        IReadOnlyList<string> parametrosBody, IReadOnlyList<BotaoTemplateWhatsApp> botoes,
+        Guid? sessaoId = null, Guid? pacienteId = null, CancellationToken ct = default)
+    {
+        var fone = NormalizarTelefone(telefone);
+        var conteudo = parametrosBody.Count == 0
+            ? $"[template:{template}]"
+            : $"[template:{template}] {string.Join(" | ", parametrosBody)}";
+        var ctx = await ObterContextoOuNuloAsync(ct);
+        if (ctx is null) return await SimularAsync(fone, template, conteudo, sessaoId, pacienteId, ct);
+
+        var components = new List<object>();
+        if (parametrosBody.Count > 0)
+            components.Add(new { type = "body", parameters = parametrosBody.Select(p => new { type = "text", text = p }).ToArray() });
+        for (var i = 0; i < botoes.Count; i++)
+        {
+            var b = botoes[i];
+            components.Add(b.Tipo == TipoBotaoTemplate.Url
+                ? new
+                {
+                    type = "button",
+                    sub_type = "url",
+                    index = i.ToString(),
+                    parameters = new object[] { new { type = "text", text = b.Valor } },
+                }
+                : new
+                {
+                    type = "button",
+                    sub_type = "quick_reply",
+                    index = i.ToString(),
+                    parameters = new object[] { new { type = "payload", payload = b.Valor } },
+                });
+        }
+
+        object body = new
+        {
+            messaging_product = "whatsapp",
+            to = fone,
+            type = "template",
+            template = new { name = template, language = new { code = idiomaBcp47 }, components = components.ToArray() },
+        };
+        return await EnviarRealAsync(ctx, body, fone, template, conteudo, sessaoId, pacienteId, ct);
+    }
+
+    public async Task<EnvioWhatsAppResultado> EnviarInterativoBotoesAsync(
+        string telefone, string texto, IReadOnlyList<BotaoInterativoWhatsApp> botoes,
+        Guid? sessaoId = null, Guid? pacienteId = null, CancellationToken ct = default)
+    {
+        var fone = NormalizarTelefone(telefone);
+        var conteudo = $"{texto} [{string.Join(" / ", botoes.Select(b => b.Titulo))}]";
+        var ctx = await ObterContextoOuNuloAsync(ct);
+        if (ctx is null) return await SimularAsync(fone, template: null, conteudo, sessaoId, pacienteId, ct);
+
+        object body = new
+        {
+            messaging_product = "whatsapp",
+            to = fone,
+            type = "interactive",
+            interactive = new
+            {
+                type = "button",
+                body = new { text = texto },
+                action = new
+                {
+                    buttons = botoes.Select(b => new { type = "reply", reply = new { id = b.Id, title = b.Titulo } }).ToArray(),
+                },
+            },
+        };
+        return await EnviarRealAsync(ctx, body, fone, template: null, conteudo, sessaoId, pacienteId, ct);
+    }
+
     public async Task<EnvioWhatsAppResultado> EnviarTemplateAutenticacaoAsync(
         string telefone, string template, string idiomaBcp47, string codigo,
         Guid? sessaoId = null, Guid? pacienteId = null, CancellationToken ct = default)
@@ -215,12 +287,14 @@ public sealed class WhatsAppCliente(
 
             if (!resp.IsSuccessStatusCode)
             {
+                var erro = ExtrairErroMeta(corpo) ?? $"HTTP {(int)resp.StatusCode}: {corpo}";
                 msg.Status = StatusMensagemWhatsApp.Falha;
                 msg.Conteudo = Truncar($"{conteudo} | erro {(int)resp.StatusCode}: {corpo}");
+                msg.ErroMeta = erro.Length <= 500 ? erro : erro[..500];
                 db.MensagensWhatsApp.Add(msg);
                 await db.SaveChangesAsync(ct);
                 logger.LogWarning("WhatsApp envio falhou {Status}: {Corpo}", resp.StatusCode, corpo);
-                return new EnvioWhatsAppResultado(false, null, corpo);
+                return new EnvioWhatsAppResultado(false, null, erro);
             }
 
             msg.WaMessageId = ExtrairWamid(corpo);
@@ -251,6 +325,24 @@ public sealed class WhatsAppCliente(
         OcorridoEm = DateTime.UtcNow,
         CriadoEm = DateTime.UtcNow,
     };
+
+    /// <summary>"(code) message — details" a partir do envelope de erro do Graph API; null se o corpo não for esse formato.</summary>
+    internal static string? ExtrairErroMeta(string corpo)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(corpo);
+            if (!doc.RootElement.TryGetProperty("error", out var e)) return null;
+            var code = e.TryGetProperty("code", out var c) ? c.ToString() : null;
+            var message = e.TryGetProperty("message", out var m) ? m.GetString() : null;
+            var details = e.TryGetProperty("error_data", out var ed) && ed.TryGetProperty("details", out var d)
+                ? d.GetString() : null;
+            if (message is null && code is null) return null;
+            var txt = $"({code}) {message}";
+            return string.IsNullOrEmpty(details) ? txt : $"{txt} — {details}";
+        }
+        catch { return null; }
+    }
 
     private static string? ExtrairWamid(string corpo)
     {

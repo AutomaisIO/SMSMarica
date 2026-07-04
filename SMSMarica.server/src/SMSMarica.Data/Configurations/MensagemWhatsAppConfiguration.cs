@@ -21,6 +21,7 @@ internal sealed class MensagemWhatsAppConfiguration : IEntityTypeConfiguration<M
         builder.Property(m => m.Status).HasColumnName("status").HasConversion<int>().IsRequired();
         builder.Property(m => m.WaMessageId).HasColumnName("wa_message_id").HasMaxLength(120);
         builder.Property(m => m.ContextoWaMessageId).HasColumnName("contexto_wa_message_id").HasMaxLength(120);
+        builder.Property(m => m.ErroMeta).HasColumnName("erro_meta").HasMaxLength(500);
         builder.Property(m => m.OcorridoEm).HasColumnName("ocorrido_em").IsRequired();
         builder.Property(m => m.CriadoEm).HasColumnName("criado_em").IsRequired();
 

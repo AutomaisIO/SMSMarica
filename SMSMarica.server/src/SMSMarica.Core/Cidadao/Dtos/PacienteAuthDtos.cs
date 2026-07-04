@@ -72,7 +72,10 @@ public sealed record ExameResumoDto(
 
 public sealed record LaudoResumoDto(Guid Id, DateTime Data, string Titulo, string Status);
 
-/// <summary>Consulta ou exame agendado (futuro) do paciente, projetado para o app.</summary>
+/// <summary>Consulta ou exame agendado (futuro) do paciente, projetado para o app.
+/// Exames importados do SISREG entram como SolicitacaoExame: <c>SolicitacaoExameId</c>
+/// preenchido + <c>StatusConfirmacao</c> ("Pendente"|"Confirmada"|"Cancelada") habilitam os
+/// botões Confirmar/Não poderei ir no card (<c>PodeResponder</c>).</summary>
 public sealed record AgendamentoResumoDto(
     Guid Id,
     DateTime InicioEm,
@@ -81,4 +84,7 @@ public sealed record AgendamentoResumoDto(
     string Titulo,
     string? Profissional,
     string? Unidade,
-    string Status);
+    string Status,
+    Guid? SolicitacaoExameId = null,
+    string? StatusConfirmacao = null,
+    bool PodeResponder = false);

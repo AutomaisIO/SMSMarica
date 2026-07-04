@@ -70,6 +70,7 @@ import { ConversasPage } from '@/features/conversas/pages/ConversasPage';
 import { MeusTicketsPage } from '@/features/tickets/pages/MeusTicketsPage';
 import { TicketDetalhePage } from '@/features/tickets/pages/TicketDetalhePage';
 import { GestaoTicketsPage } from '@/features/tickets/pages/GestaoTicketsPage';
+import { NotificacoesAgendamentoPage } from '@/features/notificacoes-agendamento/pages/NotificacoesAgendamentoPage';
 import { useAuth } from '@/shared/auth/authStore';
 
 function RedirecionamentoRaiz() {
@@ -167,6 +168,7 @@ export function AppRouter() {
           <Route path="auditoria" element={<AuditoriaPage />} />
           <Route path="erros" element={<ErrosPage />} />
           <Route path="conversas" element={<ConversasPage />} />
+          <Route path="notificacoes-agendamento" element={<NotificacoesAgendamentoPage />} />
           <Route path="tickets" element={<MeusTicketsPage />} />
           <Route path="tickets/gestao" element={<GestaoTicketsPage />} />
           <Route path="tickets/gestao/:id" element={<TicketDetalhePage gestao />} />

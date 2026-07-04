@@ -20,6 +20,10 @@ public class CidadaoLoginLink
     /// <summary>Rota relativa de destino no app após logar (ex.: "/exames").</summary>
     public string? Destino { get; set; }
 
+    /// <summary>Solicitação de exame que originou o link (notificação de agendamento).
+    /// Quando presente, o USO do link confirma a presença do paciente. Null em links avulsos.</summary>
+    public Guid? SolicitacaoExameId { get; set; }
+
     public DateTime ExpiraEm { get; set; }
 
     /// <summary>Preenchido na 1ª troca por sessão — a partir daí o link é inválido.</summary>

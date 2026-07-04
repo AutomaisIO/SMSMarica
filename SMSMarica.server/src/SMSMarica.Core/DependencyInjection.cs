@@ -138,6 +138,15 @@ public static class DependencyInjection
         services.Configure<SincronizadorExamesOptions>(configuration.GetSection(SincronizadorExamesOptions.SecaoConfig));
         services.AddHostedService<SincronizadorExamesService>();
 
+        // Notificação WhatsApp de agendamentos (fila alimentada pelo import + worker de envio).
+        services.Configure<Notificacoes.Agendamento.NotificadorAgendamentoOptions>(
+            configuration.GetSection(Notificacoes.Agendamento.NotificadorAgendamentoOptions.SecaoConfig));
+        services.AddScoped<Notificacoes.Agendamento.IAgendamentoNotificacaoService,
+            Notificacoes.Agendamento.AgendamentoNotificacaoService>();
+        services.AddScoped<Notificacoes.Agendamento.IAgendamentoNotificacaoGestaoService,
+            Notificacoes.Agendamento.AgendamentoNotificacaoGestaoService>();
+        services.AddHostedService<Notificacoes.Agendamento.NotificadorAgendamentoService>();
+
         // Sanitizador de HTML compartilhado (whitelist explícita das tags TipTap).
         services.AddSingleton<IHtmlSanitizer>(_ =>
         {
@@ -347,6 +356,8 @@ public static class DependencyInjection
         // Manipuladores de mensagem inbound (o webhook aplica todos, ordenados).
         services.AddScoped<Notificacoes.WhatsApp.Manipuladores.IManipuladorMensagemWhatsApp,
             Notificacoes.WhatsApp.Manipuladores.AcompanhanteWhatsAppHandler>();
+        services.AddScoped<Notificacoes.WhatsApp.Manipuladores.IManipuladorMensagemWhatsApp,
+            Notificacoes.WhatsApp.Manipuladores.ConfirmacaoAgendamentoWhatsAppHandler>();
 
         // Faturamento SUS/BPA (FT10): contabilização proporcional + relatórios.
         services.AddScoped<Faturamento.IFaturamentoService, Faturamento.FaturamentoService>();

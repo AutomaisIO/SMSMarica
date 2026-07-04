@@ -29,6 +29,10 @@ public class MensagemWhatsApp
     /// <summary>wamid da mensagem respondida (contexto), quando houver.</summary>
     public string? ContextoWaMessageId { get; set; }
 
+    /// <summary>Erro de ENTREGA reportado pela Meta via webhook value.statuses (code + título),
+    /// distinto de falha do POST (que fica no Conteudo). Para a tela de gestão de notificações.</summary>
+    public string? ErroMeta { get; set; }
+
     public DateTime OcorridoEm { get; set; }
     public DateTime CriadoEm { get; set; }
 

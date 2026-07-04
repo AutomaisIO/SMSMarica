@@ -27,4 +27,11 @@ public interface ICidadaoClinicoService
     /// <summary><paramref name="tipo"/>: "consulta", "exame" ou null (ambos). Só agendamentos futuros, não cancelados.</summary>
     Task<IReadOnlyList<AgendamentoResumoDto>> ListarAgendamentosAsync(
         Guid pacienteId, string? tipo, CancellationToken cancellationToken = default);
+
+    /// <summary>Confirma a presença do paciente no exame agendado (card do app).</summary>
+    Task ConfirmarExameAsync(Guid pacienteId, Guid solicitacaoExameId, CancellationToken cancellationToken = default);
+
+    /// <summary>Registra que o paciente NÃO irá (motivo obrigatório). Não cancela o exame —
+    /// sinaliza para a equipe (StatusConfirmacao=Cancelada).</summary>
+    Task CancelarExameAsync(Guid pacienteId, Guid solicitacaoExameId, string motivo, CancellationToken cancellationToken = default);
 }

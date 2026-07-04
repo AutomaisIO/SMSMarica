@@ -180,6 +180,32 @@ public sealed class CidadaoController(
         [FromQuery] string? tipo, CancellationToken ct) =>
         Ok(await clinico.ListarAgendamentosAsync(PacienteId(), tipo, ct));
 
+    /// <summary>Confirma a presença no exame agendado (card do app).</summary>
+    [HttpPost("agendamentos/exames/{solicitacaoExameId:guid}/confirmar")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> ConfirmarExame(Guid solicitacaoExameId, CancellationToken ct)
+    {
+        await clinico.ConfirmarExameAsync(PacienteId(), solicitacaoExameId, ct);
+        return NoContent();
+    }
+
+    /// <summary>Avisa que NÃO poderá comparecer (motivo obrigatório). Não cancela o exame —
+    /// sinaliza a intenção para a equipe reavaliar a vaga.</summary>
+    [HttpPost("agendamentos/exames/{solicitacaoExameId:guid}/cancelar")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> CancelarExame(
+        Guid solicitacaoExameId, [FromBody] CancelarExameCidadaoRequest corpo, CancellationToken ct)
+    {
+        await clinico.CancelarExameAsync(PacienteId(), solicitacaoExameId, corpo.Motivo, ct);
+        return NoContent();
+    }
+
+    public sealed record CancelarExameCidadaoRequest(string Motivo);
+
     /// <summary>Id do paciente (FHIR) a partir do <c>sub</c>; 403 se o token não for de cidadão.</summary>
     private Guid PacienteId()
     {

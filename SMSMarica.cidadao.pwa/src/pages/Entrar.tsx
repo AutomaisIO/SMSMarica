@@ -8,7 +8,17 @@ type RespostaMagic = {
   token: string;
   paciente: { id: string; nome: string; cpf: string };
   destino: string;
+  confirmacaoAgendamento: {
+    solicitacaoExameId: string;
+    titulo: string;
+    inicioEm: string | null;
+    unidade: string | null;
+    confirmadaAgora: boolean;
+  } | null;
 };
+
+/** Chave usada por Agendados.tsx para exibir o modal "Agenda confirmada" após o magic link. */
+export const CHAVE_CONFIRMACAO_AGENDAMENTO = 'smsmarica-confirmacao-agendamento';
 
 /**
  * Magic-link: troca o token do link do WhatsApp por uma sessão (login em 1 clique).
@@ -30,6 +40,13 @@ export function Entrar() {
       try {
         const { data } = await http.post<RespostaMagic>('/auth/paciente/magic', { token });
         entrar(data.token, data.paciente);
+        // O uso do link já confirmou a presença no exame — a tela de destino mostra o modal.
+        if (data.confirmacaoAgendamento) {
+          sessionStorage.setItem(
+            CHAVE_CONFIRMACAO_AGENDAMENTO,
+            JSON.stringify(data.confirmacaoAgendamento),
+          );
+        }
         // Remove o token da URL antes de navegar (não fica no histórico nem numa instalação).
         window.history.replaceState(null, '', '/');
         navigate(data.destino || '/', { replace: true });

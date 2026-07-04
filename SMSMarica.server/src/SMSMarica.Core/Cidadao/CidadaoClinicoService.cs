@@ -169,7 +169,7 @@ public sealed class CidadaoClinicoService(
             })
             .ToListAsync(cancellationToken);
 
-        return linhas.Select(l =>
+        var resultado = linhas.Select(l =>
         {
             var ehExame = l.TipoExameId != null;
             return new AgendamentoResumoDto(
@@ -182,7 +182,100 @@ public sealed class CidadaoClinicoService(
                 l.UnidadeNome,
                 DescreverStatusAgendamento(l.Status));
         }).ToList();
+
+        // Exames importados (SISREG) vivem em SolicitacaoExame, não na agenda local — o card
+        // deles traz a confirmação de presença (magic link / quick reply / botões do app).
+        if (filtro is null or "exame")
+        {
+            var solicitacoes = await db.SolicitacoesExame.AsNoTracking()
+                .Where(s => s.PacienteId == pacienteId && s.ExcluidoEm == null
+                    && s.Status != StatusSolicitacaoExame.Cancelada
+                    && s.DataAgendada != null && s.DataAgendada >= hoje)
+                .OrderBy(s => s.DataAgendada)
+                .Select(s => new
+                {
+                    s.Id,
+                    InicioEm = s.DataAgendada!.Value,
+                    TipoExameNome = s.TipoExame != null ? s.TipoExame.Nome : null,
+                    UnidadeNome = s.Unidade != null ? s.Unidade.Nome : null,
+                    s.StatusConfirmacao,
+                })
+                .ToListAsync(cancellationToken);
+
+            resultado.AddRange(solicitacoes.Select(s => new AgendamentoResumoDto(
+                s.Id,
+                s.InicioEm,
+                s.InicioEm,
+                "Exame",
+                s.TipoExameNome ?? "Exame",
+                null,
+                s.UnidadeNome,
+                DescreverStatusConfirmacao(s.StatusConfirmacao),
+                SolicitacaoExameId: s.Id,
+                StatusConfirmacao: s.StatusConfirmacao.ToString(),
+                PodeResponder: s.StatusConfirmacao == StatusConfirmacaoAgendamento.Pendente)));
+            resultado.Sort((a, b) => a.InicioEm.CompareTo(b.InicioEm));
+        }
+
+        return resultado;
     }
+
+    public async Task ConfirmarExameAsync(
+        Guid pacienteId, Guid solicitacaoExameId, CancellationToken cancellationToken = default)
+    {
+        var s = await ObterSolicitacaoDoPacienteAsync(pacienteId, solicitacaoExameId, cancellationToken);
+        if (s.StatusConfirmacao != StatusConfirmacaoAgendamento.Pendente)
+            throw new Common.Excecoes.ConflitoException(
+                "confirmacao.ja_respondida", "Este agendamento já foi respondido.");
+
+        s.StatusConfirmacao = StatusConfirmacaoAgendamento.Confirmada;
+        s.ConfirmadoEm = DateTime.UtcNow;
+        s.ConfirmadoCanal = "app";
+        s.AtualizadoEm = DateTime.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task CancelarExameAsync(
+        Guid pacienteId, Guid solicitacaoExameId, string motivo, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(motivo))
+            throw new Common.Excecoes.ValidacaoException(
+                "confirmacao.motivo_obrigatorio", "Informe o motivo para avisar que não poderá comparecer.");
+
+        var s = await ObterSolicitacaoDoPacienteAsync(pacienteId, solicitacaoExameId, cancellationToken);
+        if (s.StatusConfirmacao != StatusConfirmacaoAgendamento.Pendente)
+            throw new Common.Excecoes.ConflitoException(
+                "confirmacao.ja_respondida", "Este agendamento já foi respondido.");
+
+        var texto = motivo.Trim();
+        s.StatusConfirmacao = StatusConfirmacaoAgendamento.Cancelada;
+        s.ConfirmacaoCanceladaEm = DateTime.UtcNow;
+        s.ConfirmadoCanal = "app";
+        s.MotivoCancelamentoPaciente = texto.Length <= 500 ? texto : texto[..500];
+        s.AtualizadoEm = DateTime.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task<Data.Entities.SolicitacaoExame> ObterSolicitacaoDoPacienteAsync(
+        Guid pacienteId, Guid solicitacaoExameId, CancellationToken ct)
+    {
+        var s = await db.SolicitacoesExame.FirstOrDefaultAsync(
+            x => x.Id == solicitacaoExameId && x.ExcluidoEm == null, ct);
+        // 404 também quando não é do paciente (não vaza existência).
+        if (s is null || s.PacienteId != pacienteId)
+            throw new Common.Excecoes.NaoEncontradoException("solicitacao.nao_encontrada", "Agendamento não encontrado.");
+        if (s.DataAgendada is not { } da || da <= DateTime.UtcNow)
+            throw new Common.Excecoes.ConflitoException(
+                "confirmacao.exame_passado", "Este exame já aconteceu ou não tem data futura.");
+        return s;
+    }
+
+    private static string DescreverStatusConfirmacao(StatusConfirmacaoAgendamento status) => status switch
+    {
+        StatusConfirmacaoAgendamento.Confirmada => "Confirmado",
+        StatusConfirmacaoAgendamento.Cancelada => "Aguardando remarcação",
+        _ => "Agendado",
+    };
 
     private static string DescreverStatusExame(StatusSolicitacaoExame status) => status switch
     {

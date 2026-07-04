@@ -11,7 +11,12 @@ public sealed record ManipuladorContexto(
     Conversa Conversa,
     MensagemWhatsApp Mensagem,
     string? Texto,
-    Guid? PacienteId);
+    Guid? PacienteId,
+    // Payload do quick reply de template (messages[].button.payload) — roteia a resposta
+    // de volta ao domínio (ex.: "confirma:{solicitacaoId}").
+    string? BotaoPayload = null,
+    // Id do botão escolhido numa mensagem interativa (interactive.button_reply.id).
+    string? InterativoReplyId = null);
 
 /// <summary>
 /// Regra de negócio plugável disparada por uma mensagem recebida. O caminho principal do webhook

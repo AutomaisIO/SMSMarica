@@ -1,5 +1,6 @@
 import {
   Activity,
+  BellRing,
   Bug,
   Bus,
   Building2,
@@ -246,6 +247,13 @@ export const SECOES: SecaoMenu[] = [
         icone: MessageCircle,
         modulo: 'Conversas',
         descricao: 'Chat de WhatsApp com os cidadãos (por unidade).',
+      },
+      {
+        rotulo: 'Notificações de Agendamento',
+        to: '/app/notificacoes-agendamento',
+        icone: BellRing,
+        modulo: 'NotificacoesAgendamento',
+        descricao: 'Envio e confirmação de exames pelo WhatsApp.',
       },
     ],
   },

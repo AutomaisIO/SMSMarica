@@ -2,7 +2,9 @@ using System.Globalization;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SMSMarica.Core.Conversas;
+using SMSMarica.Core.Notificacoes.Agendamento;
 using SMSMarica.Core.Notificacoes.WhatsApp.Manipuladores;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Data;
@@ -29,6 +31,7 @@ public sealed class WhatsAppWebhookService(
     IPacientesService pacientes,
     IConversaNotificador notificador,
     IEnumerable<IManipuladorMensagemWhatsApp> manipuladores,
+    IOptions<NotificadorAgendamentoOptions> notificadorOptions,
     ILogger<WhatsAppWebhookService> logger) : IWhatsAppWebhookService
 {
     public async Task ProcessarAsync(string rawJson, CancellationToken ct = default)
@@ -50,6 +53,17 @@ public sealed class WhatsAppWebhookService(
                 foreach (var change in changes.EnumerateArray())
                 {
                     if (!change.TryGetProperty("value", out var value)) continue;
+
+                    // Recibos de entrega/leitura/falha das mensagens ENVIADAS (não abrem conversa).
+                    if (value.TryGetProperty("statuses", out var statuses) && statuses.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var st in statuses.EnumerateArray())
+                        {
+                            try { await ProcessarStatusAsync(st, ct); }
+                            catch (Exception ex) { logger.LogWarning(ex, "Falha ao processar status do WhatsApp."); }
+                        }
+                    }
+
                     if (!value.TryGetProperty("messages", out var messages) || messages.ValueKind != JsonValueKind.Array)
                         continue;
 
@@ -115,7 +129,12 @@ public sealed class WhatsAppWebhookService(
         conversa.AtualizadoEm = DateTime.UtcNow;
 
         // Manipuladores de domínio (não fazem SaveChanges).
-        var ctx = new ManipuladorContexto(conversa, msg, texto, conversa.PacienteId);
+        var botaoPayload = m.TryGetProperty("button", out var btnEl) && btnEl.TryGetProperty("payload", out var bp)
+            ? bp.GetString() : null;
+        var interativoReplyId = m.TryGetProperty("interactive", out var itEl)
+            && itEl.TryGetProperty("button_reply", out var brEl) && brEl.TryGetProperty("id", out var bri)
+            ? bri.GetString() : null;
+        var ctx = new ManipuladorContexto(conversa, msg, texto, conversa.PacienteId, botaoPayload, interativoReplyId);
         foreach (var manipulador in manipuladores.OrderBy(x => x.Ordem))
         {
             try { await manipulador.TratarAsync(ctx, ct); }
@@ -130,6 +149,104 @@ public sealed class WhatsAppWebhookService(
             conversa.TelefoneCanonical, conversa.NomeContato, Truncar(texto),
             conversa.NaoLidas, ocorridoEm), ct);
     }
+
+    /// <summary>
+    /// Aplica um recibo (sent/delivered/read/failed) à mensagem outbound (por wamid) e espelha
+    /// na AgendamentoNotificacao vinculada. Promoção monotônica: Enviada→Entregue→Lida nunca
+    /// regride; failed sempre vira Falha + ErroMeta. Idempotente (repetir o mesmo recibo não muda nada).
+    /// </summary>
+    private async Task ProcessarStatusAsync(JsonElement st, CancellationToken ct)
+    {
+        var wamid = st.TryGetProperty("id", out var idEl) ? idEl.GetString() : null;
+        var status = st.TryGetProperty("status", out var stEl) ? stEl.GetString() : null;
+        if (string.IsNullOrEmpty(wamid) || string.IsNullOrEmpty(status)) return;
+
+        var novo = status switch
+        {
+            "sent" => StatusMensagemWhatsApp.Enviada,
+            "delivered" => StatusMensagemWhatsApp.Entregue,
+            "read" => StatusMensagemWhatsApp.Lida,
+            "failed" => StatusMensagemWhatsApp.Falha,
+            _ => (StatusMensagemWhatsApp?)null,
+        };
+        if (novo is null) return;
+
+        var msg = await db.MensagensWhatsApp.FirstOrDefaultAsync(
+            m => m.WaMessageId == wamid && m.Direcao == DirecaoMensagem.Saida, ct);
+        if (msg is null) return;
+
+        var ocorridoEm = ExtrairTimestamp(st);
+        string? erro = null;
+        if (novo == StatusMensagemWhatsApp.Falha)
+        {
+            erro = ExtrairErroStatus(st);
+            msg.Status = StatusMensagemWhatsApp.Falha;
+            msg.ErroMeta = erro is { Length: > 500 } ? erro[..500] : erro;
+        }
+        else if (msg.Status is StatusMensagemWhatsApp.Enviada or StatusMensagemWhatsApp.Entregue
+                 && novo > msg.Status)
+        {
+            msg.Status = novo.Value; // promoção monotônica; Lida não regride para Entregue
+        }
+
+        // Espelho na notificação de agendamento (tela de gestão + retentativa em falha de entrega).
+        var notificacao = await db.AgendamentoNotificacoes.FirstOrDefaultAsync(
+            n => n.MensagemWhatsAppId == msg.Id, ct);
+        if (notificacao is not null)
+        {
+            notificacao.AtualizadoEm = DateTime.UtcNow;
+            switch (novo)
+            {
+                case StatusMensagemWhatsApp.Entregue:
+                    notificacao.EntregueEm ??= ocorridoEm;
+                    if (notificacao.Status == StatusNotificacaoAgendamento.Enviada)
+                        notificacao.Status = StatusNotificacaoAgendamento.Entregue;
+                    break;
+                case StatusMensagemWhatsApp.Lida:
+                    notificacao.EntregueEm ??= ocorridoEm;
+                    notificacao.LidoEm ??= ocorridoEm;
+                    if (notificacao.Status is StatusNotificacaoAgendamento.Enviada or StatusNotificacaoAgendamento.Entregue)
+                        notificacao.Status = StatusNotificacaoAgendamento.Lida;
+                    break;
+                case StatusMensagemWhatsApp.Falha:
+                    notificacao.MotivoFalha = erro ?? "Falha de entrega reportada pela Meta.";
+                    if (notificacao.Tentativas < notificadorOptions.Value.MaxTentativas && ErroEntregaRetentavel(erro))
+                    {
+                        // Volta pra fila — o worker reenvia com magic link novo.
+                        notificacao.Status = StatusNotificacaoAgendamento.Pendente;
+                        notificacao.ProximaTentativaEm = DateTime.UtcNow.AddMinutes(
+                            5 * Math.Pow(2, Math.Max(0, notificacao.Tentativas - 1)));
+                    }
+                    else
+                    {
+                        notificacao.Status = StatusNotificacaoAgendamento.Falha;
+                        notificacao.ProximaTentativaEm = null;
+                    }
+                    break;
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>"(code) title — details" dos errors[] do recibo failed.</summary>
+    private static string? ExtrairErroStatus(JsonElement st)
+    {
+        if (!st.TryGetProperty("errors", out var errors) || errors.ValueKind != JsonValueKind.Array
+            || errors.GetArrayLength() == 0)
+            return null;
+        var e = errors[0];
+        var code = e.TryGetProperty("code", out var c) ? c.ToString() : null;
+        var title = e.TryGetProperty("title", out var t) ? t.GetString() : null;
+        var details = e.TryGetProperty("error_data", out var ed) && ed.TryGetProperty("details", out var d)
+            ? d.GetString() : null;
+        var txt = $"({code}) {title}";
+        return string.IsNullOrEmpty(details) ? txt : $"{txt} — {details}";
+    }
+
+    /// <summary>Falhas permanentes (número não é WhatsApp / destinatário inválido) não retentam.</summary>
+    private static bool ErroEntregaRetentavel(string? erro) =>
+        erro is null || !(erro.Contains("(131026)") || erro.Contains("(131030)"));
 
     private async Task<Conversa> ResolverOuAbrirConversaAsync(
         string fone, Guid? pacienteId, string? nomeContato, string? contexto, DateTime ocorridoEm, CancellationToken ct)

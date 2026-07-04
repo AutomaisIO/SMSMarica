@@ -140,6 +140,22 @@ public class SolicitacaoExame
     /// exponencial. Null = sem tentativa agendada (estados terminais).</summary>
     public DateTime? ProximaTentativaEm { get; set; }
 
+    // ---- Confirmação pelo PACIENTE (notificação WhatsApp/app) ----
+    // Independente do Status operacional: Cancelada aqui é a INTENÇÃO do paciente;
+    // a equipe decide o cancelamento real (CanceladoEm/MotivoCancelamento abaixo).
+
+    public StatusConfirmacaoAgendamento StatusConfirmacao { get; set; } = StatusConfirmacaoAgendamento.Pendente;
+
+    public DateTime? ConfirmadoEm { get; set; }
+
+    /// <summary>Canal da resposta: "whatsapp-link" | "whatsapp-quickreply" | "app".</summary>
+    public string? ConfirmadoCanal { get; set; }
+
+    public DateTime? ConfirmacaoCanceladaEm { get; set; }
+
+    /// <summary>Motivo informado pelo paciente ao avisar que não irá.</summary>
+    public string? MotivoCancelamentoPaciente { get; set; }
+
     // ---- Cancelamento ----
 
     public DateTime? CanceladoEm { get; set; }

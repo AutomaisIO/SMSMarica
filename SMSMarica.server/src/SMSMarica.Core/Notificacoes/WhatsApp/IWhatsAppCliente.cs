@@ -2,6 +2,24 @@ namespace SMSMarica.Core.Notificacoes.WhatsApp;
 
 public sealed record EnvioWhatsAppResultado(bool Ok, string? WaMessageId, string? Erro);
 
+/// <summary>Tipo do botão em um template com componentes de botão.</summary>
+public enum TipoBotaoTemplate
+{
+    /// <summary>Botão de URL dinâmica — <c>Valor</c> é o SUFIXO da URL configurada no template
+    /// (ex.: token do magic link em <c>https://app.smsmarica.online/entrar/{{1}}</c>).</summary>
+    Url = 1,
+
+    /// <summary>Quick reply — <c>Valor</c> é o payload devolvido no webhook
+    /// (<c>messages[].button.payload</c>), máx. 128 chars.</summary>
+    QuickReply = 2,
+}
+
+/// <summary>Botão do template, na MESMA ordem em que foi configurado na Meta (a posição vira o index).</summary>
+public sealed record BotaoTemplateWhatsApp(TipoBotaoTemplate Tipo, string Valor);
+
+/// <summary>Botão de resposta em mensagem interativa (janela de 24h). Título máx. 20 chars.</summary>
+public sealed record BotaoInterativoWhatsApp(string Id, string Titulo);
+
 /// <summary>
 /// Template HSM aprovado (catálogo da WABA), usado para iniciar conversas fora da janela de 24h.
 /// <see cref="Parametros"/> é o maior índice de <c>{{n}}</c> encontrado no corpo (quantos valores
@@ -32,6 +50,24 @@ public interface IWhatsAppCliente
     /// </summary>
     Task<EnvioWhatsAppResultado> EnviarTemplateAutenticacaoAsync(
         string telefone, string template, string idiomaBcp47, string codigo,
+        Guid? sessaoId = null, Guid? pacienteId = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Envia um template com componentes de botão (URL dinâmica e/ou quick reply), além dos
+    /// parâmetros do corpo. Os botões devem vir na ordem configurada no template (posição = index).
+    /// </summary>
+    Task<EnvioWhatsAppResultado> EnviarTemplateComBotoesAsync(
+        string telefone, string template, string idiomaBcp47,
+        IReadOnlyList<string> parametrosBody, IReadOnlyList<BotaoTemplateWhatsApp> botoes,
+        Guid? sessaoId = null, Guid? pacienteId = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Envia mensagem interativa com botões de resposta (só dentro da janela de 24h — fora dela
+    /// a Meta rejeita). O id escolhido volta no webhook em <c>interactive.button_reply.id</c>.
+    /// Máximo 3 botões.
+    /// </summary>
+    Task<EnvioWhatsAppResultado> EnviarInterativoBotoesAsync(
+        string telefone, string texto, IReadOnlyList<BotaoInterativoWhatsApp> botoes,
         Guid? sessaoId = null, Guid? pacienteId = null, CancellationToken ct = default);
 
     /// <summary>

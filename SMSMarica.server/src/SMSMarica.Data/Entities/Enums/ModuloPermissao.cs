@@ -84,4 +84,8 @@ public enum ModuloPermissao
     /// configurar a visibilidade. Abrir/ver os próprios tickets não exige este módulo (qualquer
     /// usuário autenticado pode).</summary>
     Ticket = 37,
+
+    /// <summary>Gestão das notificações WhatsApp de agendamento (confirmação de exames):
+    /// acompanhar envios/entregas/falhas, respostas do paciente e reenviar.</summary>
+    NotificacoesAgendamento = 38,
 }

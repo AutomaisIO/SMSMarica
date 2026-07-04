@@ -58,6 +58,10 @@ export type Agendamento = {
   profissional: string | null;
   unidade: string | null;
   status: string;
+  // Exame importado (SISREG): habilita confirmar/avisar ausência no card.
+  solicitacaoExameId: string | null;
+  statusConfirmacao: 'Pendente' | 'Confirmada' | 'Cancelada' | null;
+  podeResponder: boolean;
 };
 
 export type ConsentimentoStatus = {
@@ -81,6 +85,10 @@ export const api = {
   laudos: () => http.get<Laudo[]>('/auth/paciente/laudos').then((r) => r.data),
   agendamentos: (tipo: 'consulta' | 'exame') =>
     http.get<Agendamento[]>('/auth/paciente/agendamentos', { params: { tipo } }).then((r) => r.data),
+  confirmarExame: (solicitacaoExameId: string) =>
+    http.post(`/auth/paciente/agendamentos/exames/${solicitacaoExameId}/confirmar`),
+  cancelarExame: (solicitacaoExameId: string, motivo: string) =>
+    http.post(`/auth/paciente/agendamentos/exames/${solicitacaoExameId}/cancelar`, { motivo }),
 };
 
 // URLs de PDF protegido (abertas/baixadas via blob — ver lib/pdf.ts).

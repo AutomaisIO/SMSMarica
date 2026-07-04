@@ -1,8 +1,18 @@
-import { CalendarClock, CalendarPlus, Clock, MapPin, Stethoscope } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import {
+  CalendarClock,
+  CalendarPlus,
+  CheckCircle2,
+  Clock,
+  MapPin,
+  Stethoscope,
+  X,
+} from 'lucide-react';
 import { api, type Agendamento } from '@/lib/api';
-import { Card } from '@/components/ui';
+import { Card, GhostButton, PrimaryButton } from '@/components/ui';
 import { Lista } from '@/components/Lista';
 import { Etiqueta } from '@/components/Etiqueta';
+import { CHAVE_CONFIRMACAO_AGENDAMENTO } from '@/pages/Entrar';
 
 export function ConsultasAgendadas() {
   return (
@@ -18,23 +28,93 @@ export function ConsultasAgendadas() {
   );
 }
 
+type ConfirmacaoMagicLink = {
+  solicitacaoExameId: string;
+  titulo: string;
+  inicioEm: string | null;
+  unidade: string | null;
+  confirmadaAgora: boolean;
+};
+
 export function ExamesAgendados() {
+  // Modal "Agenda confirmada" — gravado pelo Entrar.tsx quando o magic link confirmou o exame.
+  const [confirmacao, setConfirmacao] = useState<ConfirmacaoMagicLink | null>(null);
+  // Força recarregar a Lista após responder num card (key remount).
+  const [versao, setVersao] = useState(0);
+
+  useEffect(() => {
+    const bruto = sessionStorage.getItem(CHAVE_CONFIRMACAO_AGENDAMENTO);
+    if (!bruto) return;
+    sessionStorage.removeItem(CHAVE_CONFIRMACAO_AGENDAMENTO);
+    try {
+      setConfirmacao(JSON.parse(bruto) as ConfirmacaoMagicLink);
+    } catch {
+      /* conteúdo inesperado — ignora */
+    }
+  }, []);
+
   return (
-    <Lista
-      eyebrow="Agenda"
-      titulo="Exames agendados"
-      carregar={() => api.agendamentos('exame')}
-      emptyIcon={CalendarPlus}
-      emptyTitulo="Nenhum exame agendado"
-      emptyDescricao="Seus próximos exames marcados vão aparecer aqui com data, tipo e local."
-      renderItem={(a) => <AgendamentoCard agendamento={a} />}
-    />
+    <>
+      <Lista
+        key={versao}
+        eyebrow="Agenda"
+        titulo="Exames agendados"
+        carregar={() => api.agendamentos('exame')}
+        emptyIcon={CalendarPlus}
+        emptyTitulo="Nenhum exame agendado"
+        emptyDescricao="Seus próximos exames marcados vão aparecer aqui com data, tipo e local."
+        renderItem={(a) => (
+          <AgendamentoCard
+            agendamento={a}
+            destacadoId={confirmacao?.solicitacaoExameId ?? null}
+            aoResponder={() => setVersao((v) => v + 1)}
+          />
+        )}
+      />
+      {confirmacao && (
+        <ModalAgendaConfirmada confirmacao={confirmacao} aoFechar={() => setConfirmacao(null)} />
+      )}
+    </>
   );
 }
 
-function AgendamentoCard({ agendamento: a }: { agendamento: Agendamento }) {
+function ModalAgendaConfirmada({
+  confirmacao,
+  aoFechar,
+}: {
+  confirmacao: ConfirmacaoMagicLink;
+  aoFechar: () => void;
+}) {
   return (
-    <Card className="p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6">
+      <Card className="w-full max-w-sm p-6 text-center">
+        <CheckCircle2 className="mx-auto h-12 w-12 text-green-600" />
+        <h2 className="mt-3 font-display text-lg font-bold text-tinta">Agenda confirmada!</h2>
+        <p className="mt-2 text-sm text-tinta-mute">
+          Sua presença no exame <strong>{confirmacao.titulo}</strong>
+          {confirmacao.inicioEm ? ` em ${formatarDataHora(confirmacao.inicioEm)}` : ''}
+          {confirmacao.unidade ? `, ${confirmacao.unidade},` : ''} está confirmada. Obrigado! 😊
+        </p>
+        <PrimaryButton className="mt-5 w-full" onClick={aoFechar}>
+          Ok, entendi
+        </PrimaryButton>
+      </Card>
+    </div>
+  );
+}
+
+function AgendamentoCard({
+  agendamento: a,
+  destacadoId = null,
+  aoResponder,
+}: {
+  agendamento: Agendamento;
+  destacadoId?: string | null;
+  aoResponder?: () => void;
+}) {
+  const destacado = a.solicitacaoExameId != null && a.solicitacaoExameId === destacadoId;
+  return (
+    <Card className={`p-4 ${destacado ? 'ring-2 ring-green-500' : ''}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate font-display font-semibold text-tinta">{a.titulo}</p>
@@ -43,7 +123,7 @@ function AgendamentoCard({ agendamento: a }: { agendamento: Agendamento }) {
             {formatarDataHora(a.inicioEm)}
           </p>
         </div>
-        <Etiqueta status={a.status} />
+        <EtiquetaAgendamento agendamento={a} />
       </div>
 
       <div className="mt-3 space-y-1.5 text-sm text-tinta-mute">
@@ -60,7 +140,103 @@ function AgendamentoCard({ agendamento: a }: { agendamento: Agendamento }) {
           </p>
         )}
       </div>
+
+      {a.podeResponder && a.solicitacaoExameId && (
+        <RespostaConfirmacao solicitacaoExameId={a.solicitacaoExameId} aoResponder={aoResponder} />
+      )}
     </Card>
+  );
+}
+
+function EtiquetaAgendamento({ agendamento: a }: { agendamento: Agendamento }) {
+  if (a.statusConfirmacao === 'Confirmada') return <Etiqueta status="Confirmado" />;
+  if (a.statusConfirmacao === 'Cancelada') return <Etiqueta status="Aguardando remarcação" />;
+  return <Etiqueta status={a.status} />;
+}
+
+/** Botões Confirmar / Não poderei ir do exame ainda sem resposta (importado do SISREG). */
+function RespostaConfirmacao({
+  solicitacaoExameId,
+  aoResponder,
+}: {
+  solicitacaoExameId: string;
+  aoResponder?: () => void;
+}) {
+  const [pedindoMotivo, setPedindoMotivo] = useState(false);
+  const [motivo, setMotivo] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function confirmar() {
+    setEnviando(true);
+    setErro(null);
+    try {
+      await api.confirmarExame(solicitacaoExameId);
+      aoResponder?.();
+    } catch {
+      setErro('Não foi possível registrar. Tente novamente.');
+      setEnviando(false);
+    }
+  }
+
+  async function cancelar() {
+    if (!motivo.trim()) {
+      setErro('Conte pra gente o motivo, assim oferecemos a vaga a outra pessoa.');
+      return;
+    }
+    setEnviando(true);
+    setErro(null);
+    try {
+      await api.cancelarExame(solicitacaoExameId, motivo.trim());
+      aoResponder?.();
+    } catch {
+      setErro('Não foi possível registrar. Tente novamente.');
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <div className="mt-4 border-t border-black/5 pt-3">
+      {!pedindoMotivo ? (
+        <div className="flex gap-2">
+          <PrimaryButton className="flex-1" disabled={enviando} onClick={confirmar}>
+            Confirmar presença
+          </PrimaryButton>
+          <GhostButton className="flex-1" disabled={enviando} onClick={() => setPedindoMotivo(true)}>
+            Não poderei ir
+          </GhostButton>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-tinta">Qual o motivo?</p>
+            <button
+              type="button"
+              aria-label="Fechar"
+              className="text-tinta-mute"
+              onClick={() => {
+                setPedindoMotivo(false);
+                setErro(null);
+              }}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <textarea
+            className="w-full rounded-xl border border-black/10 bg-white p-3 text-sm text-tinta outline-none focus:border-marica"
+            rows={3}
+            maxLength={500}
+            placeholder="Ex.: estarei viajando, consegui em outro lugar…"
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+          />
+          <PrimaryButton className="w-full" disabled={enviando} onClick={cancelar}>
+            Enviar e avisar a unidade
+          </PrimaryButton>
+        </div>
+      )}
+      {erro && <p className="mt-2 text-sm text-marica">{erro}</p>}
+    </div>
   );
 }
 

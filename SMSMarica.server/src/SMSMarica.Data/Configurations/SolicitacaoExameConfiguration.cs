@@ -57,6 +57,13 @@ internal sealed class SolicitacaoExameConfiguration : IEntityTypeConfiguration<S
         builder.Property(s => s.UltimaTentativaEm).HasColumnName("ultima_tentativa_em");
         builder.Property(s => s.ProximaTentativaEm).HasColumnName("proxima_tentativa_em");
 
+        // Confirmação pelo paciente (notificação WhatsApp/app) — default Pendente backfilla o legado.
+        builder.Property(s => s.StatusConfirmacao).HasColumnName("status_confirmacao").HasConversion<int>().HasDefaultValue(Entities.Enums.StatusConfirmacaoAgendamento.Pendente).IsRequired();
+        builder.Property(s => s.ConfirmadoEm).HasColumnName("confirmado_em");
+        builder.Property(s => s.ConfirmadoCanal).HasColumnName("confirmado_canal").HasMaxLength(30);
+        builder.Property(s => s.ConfirmacaoCanceladaEm).HasColumnName("confirmacao_cancelada_em");
+        builder.Property(s => s.MotivoCancelamentoPaciente).HasColumnName("motivo_cancelamento_paciente").HasMaxLength(500);
+
         builder.Property(s => s.CanceladoEm).HasColumnName("cancelado_em");
         builder.Property(s => s.CanceladoPorUsuarioId).HasColumnName("cancelado_por_usuario_id");
         builder.Property(s => s.MotivoCancelamento).HasColumnName("motivo_cancelamento").HasMaxLength(500);

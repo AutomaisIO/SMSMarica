@@ -19,8 +19,11 @@ namespace SMSMarica.Core.Cidadao;
 /// </summary>
 public interface ICidadaoLoginLinkService
 {
-    /// <summary>Gera um magic-link que loga o paciente da solicitação e cai no exame.</summary>
-    Task<MagicLinkDto> GerarParaSolicitacaoAsync(Guid solicitacaoExameId, CancellationToken cancellationToken = default);
+    /// <summary>Gera um magic-link que loga o paciente da solicitação e cai no exame.
+    /// <paramref name="destino"/> troca a rota de chegada (default "/exames"). A validade
+    /// respeita a config, mas nunca expira ANTES da DataAgendada (o botão "Confirmar" do
+    /// WhatsApp precisa funcionar até o dia do exame; teto 30 dias).</summary>
+    Task<MagicLinkDto> GerarParaSolicitacaoAsync(Guid solicitacaoExameId, string? destino = null, CancellationToken cancellationToken = default);
 
     /// <summary>Troca o token por sessão (uso único). <c>null</c> se inválido/usado/expirado.</summary>
     Task<RespostaMagicLinkDto?> TrocarAsync(Guid token, string? dispositivo, string? ip, CancellationToken cancellationToken = default);
@@ -38,7 +41,7 @@ public sealed class CidadaoLoginLinkService(
     private const string DestinoPadrao = "/exames";
 
     public async Task<MagicLinkDto> GerarParaSolicitacaoAsync(
-        Guid solicitacaoExameId, CancellationToken cancellationToken = default)
+        Guid solicitacaoExameId, string? destino = null, CancellationToken cancellationToken = default)
     {
         var s = await solicitacoes.ObterPorIdAsync(solicitacaoExameId, cancellationToken);
 
@@ -53,13 +56,21 @@ public sealed class CidadaoLoginLinkService(
 
         var cfg = await configuracaoLaudo.ObterAsync(cancellationToken);
         var dias = Math.Clamp(cfg.MagicLinkValidadeDias, 1, 30);
+        // O link da notificação de agendamento precisa viver até o exame (senão o botão
+        // "Confirmar" do WhatsApp quebra antes do dia marcado).
+        if (s.DataAgendada is { } da && da > DateTime.UtcNow)
+        {
+            var diasAteExame = (int)Math.Ceiling((da - DateTime.UtcNow).TotalDays) + 1;
+            dias = Math.Clamp(Math.Max(dias, diasAteExame), 1, 30);
+        }
 
         var link = new CidadaoLoginLink
         {
             Id = Guid.CreateVersion7(),
             PatientId = s.PacienteId,
             Cpf = cpf,
-            Destino = DestinoPadrao,
+            Destino = string.IsNullOrWhiteSpace(destino) ? DestinoPadrao : destino,
+            SolicitacaoExameId = solicitacaoExameId,
             ExpiraEm = DateTime.UtcNow.AddDays(dias),
             CriadoEm = DateTime.UtcNow,
             CriadoPor = usuarioAtual.UsuarioId,
@@ -83,6 +94,34 @@ public sealed class CidadaoLoginLinkService(
         link.UsadoEm = DateTime.UtcNow;
         link.UsadoIp = ip is { Length: > 64 } ? ip[..64] : ip;
 
+        // Link de notificação de agendamento: o USO do link (1 clique no botão do WhatsApp)
+        // já confirma a presença do paciente — mesmo SaveChanges do consumo do link.
+        ConfirmacaoAgendamentoDto? confirmacao = null;
+        if (link.SolicitacaoExameId is { } solicitacaoId)
+        {
+            var s = await db.SolicitacoesExame
+                .Include(x => x.TipoExame).Include(x => x.Unidade)
+                .FirstOrDefaultAsync(x => x.Id == solicitacaoId && x.ExcluidoEm == null, cancellationToken);
+            if (s is not null)
+            {
+                var confirmadaAgora = false;
+                if (s.StatusConfirmacao == Data.Entities.Enums.StatusConfirmacaoAgendamento.Pendente
+                    && s.DataAgendada is { } da && da > DateTime.UtcNow)
+                {
+                    s.StatusConfirmacao = Data.Entities.Enums.StatusConfirmacaoAgendamento.Confirmada;
+                    s.ConfirmadoEm = DateTime.UtcNow;
+                    s.ConfirmadoCanal = "whatsapp-link";
+                    s.AtualizadoEm = DateTime.UtcNow;
+                    confirmadaAgora = true;
+                }
+                if (confirmadaAgora || s.StatusConfirmacao == Data.Entities.Enums.StatusConfirmacaoAgendamento.Confirmada)
+                {
+                    confirmacao = new ConfirmacaoAgendamentoDto(
+                        s.Id, s.TipoExame?.Nome ?? "Exame", s.DataAgendada, s.Unidade?.Nome, confirmadaAgora);
+                }
+            }
+        }
+
         // Abre a sessão normal do cidadão (mesma do OTP) e salva (persiste também o link).
         var (jwt, _) = await sessoes.AbrirSessaoAsync(
             link.PatientId, nome, link.Cpf, "magic-link", dispositivo, ip, cancellationToken);
@@ -91,7 +130,8 @@ public sealed class CidadaoLoginLinkService(
         return new RespostaMagicLinkDto(
             jwt,
             new PacienteSessaoDto(link.PatientId, nome, link.Cpf),
-            string.IsNullOrWhiteSpace(link.Destino) ? "/" : link.Destino!);
+            string.IsNullOrWhiteSpace(link.Destino) ? "/" : link.Destino!,
+            confirmacao);
     }
 
     private string MontarUrl(Guid token)
