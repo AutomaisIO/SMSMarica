@@ -225,6 +225,51 @@ public sealed class CidadaoClinicoService(
         return resultado;
     }
 
+    public async Task<AgendamentoExameDetalheDto?> ObterExameAgendadoAsync(
+        Guid pacienteId, Guid solicitacaoExameId, CancellationToken cancellationToken = default)
+    {
+        var s = await db.SolicitacoesExame.AsNoTracking()
+            .Include(x => x.TipoExame)
+            .Include(x => x.Unidade!).ThenInclude(u => u.Endereco)
+            .Include(x => x.UnidadeSolicitante)
+            .FirstOrDefaultAsync(x => x.Id == solicitacaoExameId && x.ExcluidoEm == null, cancellationToken);
+        if (s is null || s.PacienteId != pacienteId) return null;
+
+        return new AgendamentoExameDetalheDto(
+            s.Id,
+            s.TipoExame?.Nome ?? "Exame",
+            s.DataAgendada,
+            s.DataSolicitacao,
+            s.DataRegulacao,
+            s.Unidade?.Nome,
+            FormatarEndereco(s.Unidade?.Endereco),
+            s.Unidade?.Telefone,
+            s.UnidadeSolicitante?.Nome,
+            string.IsNullOrWhiteSpace(s.SolicitanteNome) ? null : s.SolicitanteNome,
+            s.AccessionNumber,
+            s.CodigoSolicitacao,
+            s.Prioridade.ToString(),
+            s.Observacoes,
+            s.StatusConfirmacao.ToString(),
+            s.ConfirmadoEm,
+            s.ConfirmadoCanal,
+            s.ConfirmacaoCanceladaEm,
+            s.MotivoCancelamentoPaciente);
+    }
+
+    private static string? FormatarEndereco(Data.Entities.Endereco? e)
+    {
+        if (e is null) return null;
+        var partes = new[]
+        {
+            string.Join(", ", new[] { e.Logradouro, e.Numero }.Where(p => !string.IsNullOrWhiteSpace(p))),
+            e.Bairro,
+            string.Join("/", new[] { e.Cidade, e.Uf }.Where(p => !string.IsNullOrWhiteSpace(p))),
+        }.Where(p => !string.IsNullOrWhiteSpace(p));
+        var texto = string.Join(" · ", partes);
+        return string.IsNullOrWhiteSpace(texto) ? null : texto;
+    }
+
     public async Task ConfirmarExameAsync(
         Guid pacienteId, Guid solicitacaoExameId, CancellationToken cancellationToken = default)
     {

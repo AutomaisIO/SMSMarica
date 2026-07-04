@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   CalendarClock,
@@ -11,6 +11,7 @@ import {
   Stethoscope,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { api } from '@/lib/api';
 import { useAuth } from '@/store/auth';
 import { usePerfil } from '@/store/perfil';
 import { formatarCpf } from '@/components/AppShell';
@@ -29,10 +30,25 @@ export function Home() {
   const sessao = useAuth((s) => s.paciente);
   const perfil = usePerfil((s) => s.perfil);
   const carregar = usePerfil((s) => s.carregar);
+  // Badge: quantos exames agendados (futuros) — some sozinho quando o exame passa.
+  const [examesAgendados, setExamesAgendados] = useState(0);
 
   useEffect(() => {
     if (!perfil) void carregar();
   }, [perfil, carregar]);
+
+  useEffect(() => {
+    let vivo = true;
+    api
+      .agendamentos('exame')
+      .then((l) => vivo && setExamesAgendados(l.length))
+      .catch(() => {});
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  const badges: Record<string, number> = { '/agendados/exames': examesAgendados };
 
   const nome = perfil?.nomeSocial || perfil?.nome || sessao?.nome || 'Cidadão';
   const primeiro = nome.split(' ')[0];
@@ -93,11 +109,16 @@ export function Home() {
             >
               <span
                 className={cn(
-                  'grid h-12 w-12 place-items-center rounded-2xl',
+                  'relative grid h-12 w-12 place-items-center rounded-2xl',
                   a.tom === 'lagoa' ? 'bg-lagoa-claro text-lagoa' : 'bg-marica/10 text-marica',
                 )}
               >
                 <a.icon className="h-6 w-6" />
+                {badges[a.to] > 0 && (
+                  <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-marica px-1 text-[11px] font-bold text-white ring-2 ring-white">
+                    {badges[a.to] > 9 ? '9+' : badges[a.to]}
+                  </span>
+                )}
               </span>
               <div>
                 <p className="font-display text-base font-semibold text-tinta">{a.label}</p>

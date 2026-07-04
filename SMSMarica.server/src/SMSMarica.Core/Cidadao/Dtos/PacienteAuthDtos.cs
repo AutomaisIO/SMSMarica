@@ -72,6 +72,29 @@ public sealed record ExameResumoDto(
 
 public sealed record LaudoResumoDto(Guid Id, DateTime Data, string Titulo, string Status);
 
+/// <summary>Detalhe completo do exame agendado (ticket do app).</summary>
+public sealed record AgendamentoExameDetalheDto(
+    Guid SolicitacaoExameId,
+    string TipoExame,
+    DateTime? DataAgendada,
+    DateOnly? DataSolicitacao,
+    DateOnly? DataRegulacao,
+    string? UnidadeExecutoraNome,
+    string? UnidadeExecutoraEndereco,
+    string? UnidadeExecutoraTelefone,
+    string? UnidadeSolicitanteNome,
+    string? SolicitanteNome,
+    string? AccessionNumber,
+    string? CodigoSolicitacao,
+    string Prioridade,
+    string? Observacoes,
+    string StatusConfirmacao,
+    // Rastro da resposta do paciente (para o ticket): como/quando confirmou ou cancelou.
+    DateTime? ConfirmadoEm,
+    string? ConfirmadoCanal,
+    DateTime? ConfirmacaoCanceladaEm,
+    string? MotivoCancelamentoPaciente);
+
 /// <summary>Consulta ou exame agendado (futuro) do paciente, projetado para o app.
 /// Exames importados do SISREG entram como SolicitacaoExame: <c>SolicitacaoExameId</c>
 /// preenchido + <c>StatusConfirmacao</c> ("Pendente"|"Confirmada"|"Cancelada") habilitam os

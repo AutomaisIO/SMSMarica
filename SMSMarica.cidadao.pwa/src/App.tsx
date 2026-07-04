@@ -11,6 +11,7 @@ import { Exames } from '@/pages/Exames';
 import { Laudos } from '@/pages/Laudos';
 import { Transporte } from '@/pages/Transporte';
 import { ConsultasAgendadas, ExamesAgendados } from '@/pages/Agendados';
+import { TicketExame } from '@/pages/TicketExame';
 import { Documento } from '@/pages/Documento';
 import { Entrar } from '@/pages/Entrar';
 
@@ -44,6 +45,7 @@ export function App() {
           <Route path="/atendimentos" element={<Atendimentos />} />
           <Route path="/agendados/consultas" element={<ConsultasAgendadas />} />
           <Route path="/agendados/exames" element={<ExamesAgendados />} />
+          <Route path="/agendados/exames/:id" element={<TicketExame />} />
           <Route path="/exames" element={<Exames />} />
           <Route path="/laudos" element={<Laudos />} />
           <Route path="/transporte" element={<Transporte />} />

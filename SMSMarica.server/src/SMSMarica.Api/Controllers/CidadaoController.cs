@@ -183,6 +183,17 @@ public sealed class CidadaoController(
         [FromQuery] string? tipo, CancellationToken ct) =>
         Ok(await clinico.ListarAgendamentosAsync(PacienteId(), tipo, ct));
 
+    /// <summary>Detalhe completo (ticket) de um exame agendado do paciente.</summary>
+    [HttpGet("agendamentos/exames/{solicitacaoExameId:guid}")]
+    [ProducesResponseType<AgendamentoExameDetalheDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<AgendamentoExameDetalheDto>> DetalheExame(
+        Guid solicitacaoExameId, CancellationToken ct)
+    {
+        var d = await clinico.ObterExameAgendadoAsync(PacienteId(), solicitacaoExameId, ct);
+        return d is null ? NotFound() : d;
+    }
+
     /// <summary>Confirma a presença no exame agendado (card do app).</summary>
     [HttpPost("agendamentos/exames/{solicitacaoExameId:guid}/confirmar")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

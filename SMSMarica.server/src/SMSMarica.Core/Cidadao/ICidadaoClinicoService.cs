@@ -28,6 +28,10 @@ public interface ICidadaoClinicoService
     Task<IReadOnlyList<AgendamentoResumoDto>> ListarAgendamentosAsync(
         Guid pacienteId, string? tipo, CancellationToken cancellationToken = default);
 
+    /// <summary>Detalhe completo (ticket) de um exame agendado do paciente. <c>null</c> se não for dele.</summary>
+    Task<AgendamentoExameDetalheDto?> ObterExameAgendadoAsync(
+        Guid pacienteId, Guid solicitacaoExameId, CancellationToken cancellationToken = default);
+
     /// <summary>Confirma a presença do paciente no exame agendado (card do app).</summary>
     Task ConfirmarExameAsync(Guid pacienteId, Guid solicitacaoExameId, CancellationToken cancellationToken = default);
 

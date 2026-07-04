@@ -4,11 +4,13 @@ import { cn } from '@/lib/cn';
 export function Etiqueta({ status }: { status: string }) {
   const s = status.toLowerCase();
   const tom =
-    /(pronto|conclu|assinad|dispon|realizad)/.test(s)
+    /(pronto|conclu|assinad|dispon|realizad|confirmad)/.test(s)
       ? 'bg-lagoa-claro text-lagoa-escuro'
-      : /(pendente|aguard|process|agendad)/.test(s)
-        ? 'bg-amber-50 text-amber-700'
-        : 'bg-areia/60 text-tinta-mute';
+      : /(cancel|não pod|nao pod|declin|remarca|não vai|nao vai)/.test(s)
+        ? 'bg-red-50 text-red-700'
+        : /(pendente|aguard|process|agendad)/.test(s)
+          ? 'bg-amber-50 text-amber-700'
+          : 'bg-areia/60 text-tinta-mute';
   return (
     <span className={cn('shrink-0 rounded-full px-3 py-1 text-xs font-semibold', tom)}>{status}</span>
   );

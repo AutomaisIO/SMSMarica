@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   CalendarClock,
   CalendarPlus,
   CheckCircle2,
+  ChevronRight,
   Clock,
   MapPin,
   Stethoscope,
@@ -112,34 +114,49 @@ function AgendamentoCard({
   destacadoId?: string | null;
   aoResponder?: () => void;
 }) {
+  const navigate = useNavigate();
   const destacado = a.solicitacaoExameId != null && a.solicitacaoExameId === destacadoId;
+  // Exames importados (SISREG) têm ticket com detalhes; consultas (sem solicitação) não.
+  const abrirTicket = a.solicitacaoExameId
+    ? () => navigate(`/agendados/exames/${a.solicitacaoExameId}`)
+    : undefined;
   return (
     <Card className={`p-4 ${destacado ? 'ring-2 ring-green-500' : ''}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate font-display font-semibold text-tinta">{a.titulo}</p>
-          <p className="mt-0.5 flex items-center gap-1.5 text-sm text-tinta-mute">
-            <Clock className="h-4 w-4 shrink-0" />
-            {formatarDataHora(a.inicioEm)}
-          </p>
+      <button
+        type="button"
+        onClick={abrirTicket}
+        disabled={!abrirTicket}
+        className="w-full text-left disabled:cursor-default"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate font-display font-semibold text-tinta">{a.titulo}</p>
+            <p className="mt-0.5 flex items-center gap-1.5 text-sm text-tinta-mute">
+              <Clock className="h-4 w-4 shrink-0" />
+              {formatarDataHora(a.inicioEm)}
+            </p>
+          </div>
+          <div className="flex items-center gap-1">
+            <EtiquetaAgendamento agendamento={a} />
+            {abrirTicket && <ChevronRight className="h-4 w-4 shrink-0 text-tinta-mute" />}
+          </div>
         </div>
-        <EtiquetaAgendamento agendamento={a} />
-      </div>
 
-      <div className="mt-3 space-y-1.5 text-sm text-tinta-mute">
-        {a.profissional && (
-          <p className="flex items-center gap-1.5">
-            <Stethoscope className="h-4 w-4 shrink-0" />
-            <span className="truncate">{a.profissional}</span>
-          </p>
-        )}
-        {a.unidade && (
-          <p className="flex items-center gap-1.5">
-            <MapPin className="h-4 w-4 shrink-0" />
-            <span className="truncate">{a.unidade}</span>
-          </p>
-        )}
-      </div>
+        <div className="mt-3 space-y-1.5 text-sm text-tinta-mute">
+          {a.profissional && (
+            <p className="flex items-center gap-1.5">
+              <Stethoscope className="h-4 w-4 shrink-0" />
+              <span className="truncate">{a.profissional}</span>
+            </p>
+          )}
+          {a.unidade && (
+            <p className="flex items-center gap-1.5">
+              <MapPin className="h-4 w-4 shrink-0" />
+              <span className="truncate">{a.unidade}</span>
+            </p>
+          )}
+        </div>
+      </button>
 
       {a.podeResponder && a.solicitacaoExameId && (
         <RespostaConfirmacao solicitacaoExameId={a.solicitacaoExameId} aoResponder={aoResponder} />
@@ -149,8 +166,8 @@ function AgendamentoCard({
 }
 
 function EtiquetaAgendamento({ agendamento: a }: { agendamento: Agendamento }) {
-  if (a.statusConfirmacao === 'Confirmada') return <Etiqueta status="Confirmado" />;
-  if (a.statusConfirmacao === 'Cancelada') return <Etiqueta status="Aguardando remarcação" />;
+  if (a.statusConfirmacao === 'Confirmada') return <Etiqueta status="Confirmada" />;
+  if (a.statusConfirmacao === 'Cancelada') return <Etiqueta status="Cancelada" />;
   return <Etiqueta status={a.status} />;
 }
 

@@ -64,6 +64,28 @@ export type Agendamento = {
   podeResponder: boolean;
 };
 
+export type AgendamentoExameDetalhe = {
+  solicitacaoExameId: string;
+  tipoExame: string;
+  dataAgendada: string | null;
+  dataSolicitacao: string | null;
+  dataRegulacao: string | null;
+  unidadeExecutoraNome: string | null;
+  unidadeExecutoraEndereco: string | null;
+  unidadeExecutoraTelefone: string | null;
+  unidadeSolicitanteNome: string | null;
+  solicitanteNome: string | null;
+  accessionNumber: string | null;
+  codigoSolicitacao: string | null;
+  prioridade: string;
+  observacoes: string | null;
+  statusConfirmacao: 'Pendente' | 'Confirmada' | 'Cancelada';
+  confirmadoEm: string | null;
+  confirmadoCanal: string | null;
+  confirmacaoCanceladaEm: string | null;
+  motivoCancelamentoPaciente: string | null;
+};
+
 export type TelefoneOtpEmitido = { canal: string; mascara: string | null; expiraEmSegundos: number };
 export type TelefoneValidado = { numero: string; validado: boolean; validadoEm: string | null };
 
@@ -97,6 +119,10 @@ export const api = {
   laudos: () => http.get<Laudo[]>('/auth/paciente/laudos').then((r) => r.data),
   agendamentos: (tipo: 'consulta' | 'exame') =>
     http.get<Agendamento[]>('/auth/paciente/agendamentos', { params: { tipo } }).then((r) => r.data),
+  agendamentoExame: (solicitacaoExameId: string) =>
+    http
+      .get<AgendamentoExameDetalhe>(`/auth/paciente/agendamentos/exames/${solicitacaoExameId}`)
+      .then((r) => r.data),
   confirmarExame: (solicitacaoExameId: string) =>
     http.post(`/auth/paciente/agendamentos/exames/${solicitacaoExameId}/confirmar`),
   cancelarExame: (solicitacaoExameId: string, motivo: string) =>
