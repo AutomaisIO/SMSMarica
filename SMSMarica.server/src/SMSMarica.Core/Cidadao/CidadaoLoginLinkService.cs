@@ -35,6 +35,7 @@ public sealed class CidadaoLoginLinkService(
     IPacientesService pacientes,
     ISolicitacoesExameService solicitacoes,
     ICidadaoSessaoService sessoes,
+    Telefones.ITelefoneValidacaoService telefones,
     IUsuarioAtualAccessor usuarioAtual,
     IConfiguration configuration) : ICidadaoLoginLinkService
 {
@@ -147,6 +148,16 @@ public sealed class CidadaoLoginLinkService(
         var (jwt, _) = await sessoes.AbrirSessaoAsync(
             link.PatientId, nome, link.Cpf, "magic-link", dispositivo, ip, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
+
+        // Login por magic-link comprova que o WhatsApp CHEGOU no número e que ele é válido →
+        // marca o contato como verificado (idempotente). Best-effort: nunca impede o login.
+        try
+        {
+            var fone = paciente.TelefonePrincipal ?? paciente.TelefoneCelular;
+            if (!string.IsNullOrWhiteSpace(fone))
+                await telefones.MarcarValidadoAsync(link.Cpf, fone, "magic-link", null, cancellationToken);
+        }
+        catch { /* número de outra pessoa / falha FHIR — não trava o login */ }
 
         return new RespostaMagicLinkDto(
             jwt,

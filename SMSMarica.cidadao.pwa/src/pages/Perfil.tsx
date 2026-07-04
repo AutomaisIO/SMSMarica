@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BadgeCheck, Check } from 'lucide-react';
 import { api } from '@/lib/api';
+import { normalizarCelularBr } from '@/lib/telefone';
 import { extrairMensagemDeErro } from '@/lib/httpClient';
 import { usePerfil } from '@/store/perfil';
 import { formatarCpf } from '@/components/AppShell';
@@ -198,20 +199,24 @@ function TrocaCelularModal({
 }) {
   const [passo, setPasso] = useState<'numero' | 'codigo'>('numero');
   const [numero, setNumero] = useState('');
+  const [canon, setCanon] = useState('');
   const [codigo, setCodigo] = useState('');
   const [mascara, setMascara] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   async function enviar() {
-    if (numero.replace(/\D/g, '').length < 10) {
-      setErro('Informe um celular com DDD.');
+    const numeroCanon = normalizarCelularBr(numero);
+    // 55 + DDD(2) + número(>=8) = 12 dígitos no mínimo.
+    if (numeroCanon.length < 12) {
+      setErro('Informe um celular válido (com DDD).');
       return;
     }
     setOcupado(true);
     setErro(null);
     try {
-      const r = await api.solicitarOtpContato(numero.trim());
+      const r = await api.solicitarOtpContato(numeroCanon);
+      setCanon(numeroCanon);
       setMascara(r.mascara);
       setPasso('codigo');
     } catch (e) {
@@ -229,7 +234,7 @@ function TrocaCelularModal({
     setOcupado(true);
     setErro(null);
     try {
-      const r = await api.confirmarContato(numero.trim(), codigo.trim());
+      const r = await api.confirmarContato(canon, codigo.trim());
       aoTrocar(r.numero);
     } catch (e) {
       setErro(extrairMensagemDeErro(e));

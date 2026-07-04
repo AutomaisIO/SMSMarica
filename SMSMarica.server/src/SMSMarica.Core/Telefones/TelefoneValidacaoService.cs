@@ -26,12 +26,20 @@ public sealed class TelefoneValidacaoService(
     private static readonly TimeSpan Validade = TimeSpan.FromMinutes(5);
     private const int MaxTentativas = 5;
 
-    /// <summary>Forma canônica: só dígitos + DDI Brasil (espelha o cliente WhatsApp).</summary>
+    /// <summary>
+    /// Forma canônica 55 + DDD + número (Maricá = DDD 21). Anti-burro: aceita com/sem DDI,
+    /// com 0 de tronco (021), com/sem DDD e com qualquer pontuação.
+    /// </summary>
     public static string Canonizar(string? telefone)
     {
         var d = Digitos(telefone);
-        if (d.Length <= 11 && !d.StartsWith("55", StringComparison.Ordinal)) d = "55" + d;
-        return d;
+        if (d.Length == 0) return d;
+        // Já veio com DDI 55 (12 díg = fixo 8; 13 díg = celular 9).
+        if (d.StartsWith("55", StringComparison.Ordinal) && (d.Length == 12 || d.Length == 13)) return d;
+        d = d.TrimStart('0');                                   // remove 0 de tronco (021, 0xx)
+        if (d.Length is 10 or 11) return "55" + d;              // DDD + número → falta só o DDI
+        if (d.Length is 8 or 9) return "5521" + d;              // sem DDD → assume Maricá (21)
+        return d.StartsWith("55", StringComparison.Ordinal) ? d : "5521" + d;
     }
 
     public async Task<TelefoneOtpEmitidoDto> EnviarCodigoAsync(string cpf, string numero, CancellationToken ct = default)
