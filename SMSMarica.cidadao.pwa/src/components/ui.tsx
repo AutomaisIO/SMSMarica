@@ -22,13 +22,17 @@ export function Avatar({
   return (
     <span
       className={cn(
-        'inline-grid place-items-center overflow-hidden rounded-full bg-vinho/10 font-display font-semibold text-vinho ring-1 ring-black/5',
+        'relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-vinho/10 font-display font-semibold leading-none text-vinho ring-1 ring-black/5',
         className,
       )}
       style={{ width: size, height: size, fontSize: size * 0.38 }}
     >
       {src ? (
-        <img src={src} alt={nome ?? 'Foto'} className="h-full w-full object-cover" />
+        <img
+          src={src}
+          alt={nome ?? 'Foto'}
+          className="absolute inset-0 h-full w-full object-cover object-center"
+        />
       ) : (
         iniciais(nome)
       )}

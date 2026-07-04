@@ -2,7 +2,7 @@
   "name": "smsmarica-cidadao-pwa",
   "description": "App do Cidadão (PWA) do SMS Maricá — saúde digital: agendamento de consultas/exames, documentos de saúde (laudos, boletins, receituário, exames) e transporte/TFD. Login por CPF + OTP.",
   "private": true,
-  "version": "1.0.8",
+  "version": "1.0.9",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Anexos;
+using SMSMarica.Core.Common.Tempo;
 using SMSMarica.Core.Anexos.Dtos;
 using SMSMarica.Core.Cidadao.Dtos;
 using SMSMarica.Core.Exames;
@@ -142,12 +143,16 @@ public sealed class CidadaoClinicoService(
     public async Task<IReadOnlyList<AgendamentoResumoDto>> ListarAgendamentosAsync(
         Guid pacienteId, string? tipo, CancellationToken cancellationToken = default)
     {
-        var hoje = DateTime.UtcNow.Date;
+        // Agendamento.InicioEm é "timestamp without time zone" (wall-clock Brasília): comparar com
+        // um DateTime Kind=Utc quebra no Npgsql. Usamos a data local de Brasília como Unspecified.
+        var hojeLocal = DateTime.SpecifyKind(FusoBrasilia.ParaExibicao(DateTime.UtcNow).Date, DateTimeKind.Unspecified);
+        // SolicitacaoExame.DataAgendada é "timestamp with time zone" (Kind=Utc).
+        var inicioHojeUtc = DateTime.UtcNow.Date;
 
         var query = db.Agendamentos.AsNoTracking()
             .Where(a => a.PacienteId == pacienteId && a.ExcluidoEm == null
                 && a.Status != StatusAgendamento.Cancelado
-                && a.InicioEm >= hoje);
+                && a.InicioEm >= hojeLocal);
 
         var filtro = tipo?.Trim().ToLowerInvariant();
         if (filtro == "exame") query = query.Where(a => a.TipoExameId != null);
@@ -190,7 +195,7 @@ public sealed class CidadaoClinicoService(
             var solicitacoes = await db.SolicitacoesExame.AsNoTracking()
                 .Where(s => s.PacienteId == pacienteId && s.ExcluidoEm == null
                     && s.Status != StatusSolicitacaoExame.Cancelada
-                    && s.DataAgendada != null && s.DataAgendada >= hoje)
+                    && s.DataAgendada != null && s.DataAgendada >= inicioHojeUtc)
                 .OrderBy(s => s.DataAgendada)
                 .Select(s => new
                 {
