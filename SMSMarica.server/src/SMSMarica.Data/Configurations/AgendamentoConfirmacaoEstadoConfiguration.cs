@@ -13,15 +13,15 @@ internal sealed class AgendamentoConfirmacaoEstadoConfiguration : IEntityTypeCon
 
         builder.Property(e => e.Id).HasColumnName("id");
         builder.Property(e => e.TelefoneCanonical).HasColumnName("telefone_canonical").HasMaxLength(20).IsRequired();
-        builder.Property(e => e.AgendamentoNotificacaoId).HasColumnName("agendamento_notificacao_id").IsRequired();
+        builder.Property(e => e.ComunicacaoPacienteId).HasColumnName("comunicacao_paciente_id").IsRequired();
         builder.Property(e => e.Etapa).HasColumnName("etapa").HasConversion<int>().IsRequired();
         builder.Property(e => e.ExpiraEm).HasColumnName("expira_em").IsRequired();
         builder.Property(e => e.CriadoEm).HasColumnName("criado_em").IsRequired();
         builder.Property(e => e.AtualizadoEm).HasColumnName("atualizado_em");
 
-        builder.HasOne(e => e.AgendamentoNotificacao)
+        builder.HasOne(e => e.ComunicacaoPaciente)
             .WithMany()
-            .HasForeignKey(e => e.AgendamentoNotificacaoId)
+            .HasForeignKey(e => e.ComunicacaoPacienteId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Um estado ativo por telefone (o handler substitui/remove ao concluir).

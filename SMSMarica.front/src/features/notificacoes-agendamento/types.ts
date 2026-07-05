@@ -8,8 +8,11 @@ export type StatusNotificacao =
 
 export type StatusConfirmacao = 'Pendente' | 'Confirmada' | 'Cancelada';
 
+export type FinalidadeComunicacao = 'ConfirmacaoAgendamento' | 'ExameLiberado' | 'LaudoPronto';
+
 export type NotificacaoFiltro = {
   status?: string;
+  finalidade?: string;
   confirmacao?: string;
   texto?: string;
   de?: string;
@@ -20,6 +23,7 @@ export type NotificacaoFiltro = {
 
 export type NotificacaoResumo = {
   id: string;
+  finalidade: FinalidadeComunicacao;
   solicitacaoExameId: string | null;
   accessionNumber: string | null;
   codigoSolicitacao: string | null;
@@ -35,6 +39,7 @@ export type NotificacaoResumo = {
   enviadoEm: string | null;
   entregueEm: string | null;
   lidoEm: string | null;
+  visualizadoEm: string | null;
   statusConfirmacao: StatusConfirmacao;
   confirmadoEm: string | null;
   confirmadoCanal: string | null;

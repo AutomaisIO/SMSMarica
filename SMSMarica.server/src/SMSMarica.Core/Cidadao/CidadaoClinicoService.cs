@@ -111,8 +111,29 @@ public sealed class CidadaoClinicoService(
         var pertence = await db.SolicitacoesExame.AsNoTracking()
             .AnyAsync(s => s.Id == solicitacaoExameId && s.PacienteId == pacienteId && s.ExcluidoEm == null,
                 cancellationToken);
+        if (!pertence) return null;
 
-        return pertence ? await imagensPdf.GerarOuObterAsync(solicitacaoExameId, cancellationToken) : null;
+        // Abrir o exame no app = VISUALIZOU o "Exame liberado" (✓✓ azul). Best-effort/idempotente.
+        await MarcarVisualizadoAsync(solicitacaoExameId, FinalidadeComunicacao.ExameLiberado, cancellationToken);
+
+        return await imagensPdf.GerarOuObterAsync(solicitacaoExameId, cancellationToken);
+    }
+
+    /// <summary>Estampa VisualizadoEm na comunicação (solicitação × finalidade). Nunca lança.</summary>
+    private async Task MarcarVisualizadoAsync(
+        Guid solicitacaoExameId, FinalidadeComunicacao finalidade, CancellationToken ct)
+    {
+        try
+        {
+            await db.ComunicacoesPaciente
+                .Where(c => c.SolicitacaoExameId == solicitacaoExameId
+                    && c.Finalidade == finalidade && c.VisualizadoEm == null)
+                .ExecuteUpdateAsync(s => s.SetProperty(c => c.VisualizadoEm, DateTime.UtcNow), ct);
+        }
+        catch
+        {
+            /* marcador é telemetria — nunca falha o request do cidadão */
+        }
     }
 
     public async Task<IReadOnlyList<LaudoResumoDto>> ListarLaudosAsync(
@@ -129,15 +150,35 @@ public sealed class CidadaoClinicoService(
     public async Task<PdfDownloadDto?> ObterLaudoPdfAsync(
         Guid pacienteId, Guid laudoId, CancellationToken cancellationToken = default)
     {
-        var dono = await db.Laudos.AsNoTracking()
+        var laudo = await db.Laudos.AsNoTracking()
             .Where(l => l.Id == laudoId && !l.Excluido)
-            .Select(l => l.PacienteId)
+            .Select(l => new { l.PacienteId, l.StudyInstanceUID })
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (dono != pacienteId) return null;
+        if (laudo?.PacienteId != pacienteId) return null;
         if (!await assinatura.EstaAssinadoAsync(laudoId, cancellationToken)) return null;
 
+        // Abrir o laudo no app = VISUALIZOU o "Laudo pronto" (✓✓ azul). Resolve a solicitação
+        // pelo study (direto ou associação); best-effort.
+        var solicitacaoId = await ResolverSolicitacaoPorStudyAsync(laudo.StudyInstanceUID, cancellationToken);
+        if (solicitacaoId is { } sid)
+            await MarcarVisualizadoAsync(sid, FinalidadeComunicacao.LaudoPronto, cancellationToken);
+
         return await assinatura.ObterPdfParaDownloadAsync(laudoId, cancellationToken);
+    }
+
+    private async Task<Guid?> ResolverSolicitacaoPorStudyAsync(string? studyUid, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(studyUid)) return null;
+        var direto = await db.SolicitacoesExame.AsNoTracking()
+            .Where(s => s.StudyInstanceUID == studyUid && s.ExcluidoEm == null)
+            .Select(s => (Guid?)s.Id)
+            .FirstOrDefaultAsync(ct);
+        if (direto is not null) return direto;
+        return await db.ExameAssociacoes.AsNoTracking()
+            .Where(a => a.StudyInstanceUID == studyUid && a.ExcluidoEm == null)
+            .Select(a => (Guid?)a.SolicitacaoExameId)
+            .FirstOrDefaultAsync(ct);
     }
 
     public async Task<IReadOnlyList<AgendamentoResumoDto>> ListarAgendamentosAsync(

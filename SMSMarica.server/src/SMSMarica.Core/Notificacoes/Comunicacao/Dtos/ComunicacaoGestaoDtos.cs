@@ -1,18 +1,20 @@
-namespace SMSMarica.Core.Notificacoes.Agendamento.Dtos;
+namespace SMSMarica.Core.Notificacoes.Comunicacao.Dtos;
 
-/// <summary>Filtro da tela de gestão de notificações de agendamento.</summary>
-public sealed record NotificacaoFiltroDto(
+/// <summary>Filtro da tela de gestão de comunicações ao paciente.</summary>
+public sealed record ComunicacaoFiltroDto(
     string? Status,          // Pendente|Enviada|Entregue|Lida|Falha|SemTelefoneValido
-    string? Confirmacao,     // Pendente|Confirmada|Cancelada
-    string? Texto,           // nome do paciente (resolvido) não filtra aqui; busca por accession/código
+    string? Finalidade,      // ConfirmacaoAgendamento|ExameLiberado|LaudoPronto
+    string? Confirmacao,     // Pendente|Confirmada|Cancelada (resposta do paciente)
+    string? Texto,           // accession/código SISREG/telefone
     DateTime? De,
     DateTime? Ate,
     int Pagina = 1,
     int Tamanho = 50);
 
-/// <summary>Linha da lista de notificações (notificação + solicitação + confirmação).</summary>
-public sealed record NotificacaoResumoDto(
+/// <summary>Linha da lista de comunicações (comunicação + solicitação + confirmação).</summary>
+public sealed record ComunicacaoResumoDto(
     Guid Id,
+    string Finalidade,
     Guid? SolicitacaoExameId,
     string? AccessionNumber,
     string? CodigoSolicitacao,
@@ -28,18 +30,19 @@ public sealed record NotificacaoResumoDto(
     DateTime? EnviadoEm,
     DateTime? EntregueEm,
     DateTime? LidoEm,
+    DateTime? VisualizadoEm,
     string StatusConfirmacao,
     DateTime? ConfirmadoEm,
     string? ConfirmadoCanal,
     string? MotivoCancelamentoPaciente,
     DateTime CriadoEm);
 
-public sealed record PaginaNotificacoesDto(
-    IReadOnlyList<NotificacaoResumoDto> Itens, int Total, int Pagina, int Tamanho);
+public sealed record PaginaComunicacoesDto(
+    IReadOnlyList<ComunicacaoResumoDto> Itens, int Total, int Pagina, int Tamanho);
 
 /// <summary>Detalhe com a linha do tempo completa (mensagem + link).</summary>
-public sealed record NotificacaoDetalheDto(
-    NotificacaoResumoDto Resumo,
+public sealed record ComunicacaoDetalheDto(
+    ComunicacaoResumoDto Resumo,
     DateTime? UltimaTentativaEm,
     DateTime? ProximaTentativaEm,
     string? MensagemConteudo,

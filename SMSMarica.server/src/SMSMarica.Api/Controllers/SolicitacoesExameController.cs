@@ -23,6 +23,7 @@ public sealed class SolicitacoesExameController(
     IExameCompletoPdfService exameCompleto,
     IDownloadTokenService downloads,
     ICidadaoLoginLinkService loginLinks,
+    ISolicitacaoHistoricoService historico,
     IBackfillDataEstudoService backfill) : ControllerBase
 {
     private readonly ISolicitacoesExameService _service = service;
@@ -30,6 +31,7 @@ public sealed class SolicitacoesExameController(
     private readonly IExameCompletoPdfService _exameCompleto = exameCompleto;
     private readonly IDownloadTokenService _downloads = downloads;
     private readonly ICidadaoLoginLinkService _loginLinks = loginLinks;
+    private readonly ISolicitacaoHistoricoService _historico = historico;
     private readonly IBackfillDataEstudoService _backfill = backfill;
 
     [HttpGet]
@@ -182,6 +184,25 @@ public sealed class SolicitacoesExameController(
         CancellationToken cancellationToken)
     {
         await _service.CancelarAsync(id, request, cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>Histórico do processo de comunicação (comunicações WhatsApp + contatos manuais).</summary>
+    [HttpGet("{id:guid}/historico")]
+    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
+    [ProducesResponseType<HistoricoSolicitacaoDto>(StatusCodes.Status200OK)]
+    public async Task<HistoricoSolicitacaoDto> Historico(Guid id, CancellationToken cancellationToken) =>
+        await _historico.ObterAsync(id, cancellationToken);
+
+    /// <summary>Registra um contato MANUAL com o paciente ("liguei, não atendeu"...). Append-only.</summary>
+    [HttpPost("{id:guid}/contatos")]
+    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RegistrarContato(
+        Guid id, [FromBody] RegistrarContatoRequest request, CancellationToken cancellationToken)
+    {
+        await _historico.RegistrarContatoAsync(id, request, cancellationToken);
         return NoContent();
     }
 

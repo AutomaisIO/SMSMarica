@@ -25,6 +25,8 @@ public sealed class LaudoAssinaturaService(
     Medicos.IMedicosService medicos,
     Associacoes.IExameAssociacaoService associacao,
     ICarimboAssinaturaRenderer carimboRenderer,
+    // Lazy: quebra o ciclo Assinatura → Comunicacao → LoginLink → Solicitacoes → Assinatura.
+    Lazy<Notificacoes.Comunicacao.IComunicacaoPacienteService> comunicacoes,
     ILogger<LaudoAssinaturaService> logger,
     IOptions<AssinaturaOptions> options) : ILaudoAssinaturaService
 {
@@ -327,11 +329,52 @@ public sealed class LaudoAssinaturaService(
         job.AtualizadoEm = job.AssinadoEm;
         job.Status = StatusAssinatura.Concluida;
         LimparTransitorios(job);
+
+        // Laudo ASSINADO → enfileira o aviso "Laudo pronto" ao paciente (o cidadão só enxerga
+        // laudos assinados). Resolve a solicitação pelo study do laudo (direto ou associação).
+        // Best-effort: falha aqui nunca impede a conclusão da assinatura.
+        try
+        {
+            await EnfileirarLaudoProntoAsync(job.LaudoId, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Falha ao enfileirar aviso de laudo pronto (laudo {LaudoId}).", job.LaudoId);
+        }
+
         await db.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(
             "Assinatura: job {JobId} CONCLUÍDO (laudo {LaudoId}, formato {Formato}, titular '{Titular}', cpf {Cpf}, pdf {Bytes} bytes).",
             job.Id, job.LaudoId, resultado.Formato, resultado.CertificadoTitular, MascararCpf(cpfCert), resultado.PdfAssinado.Length);
+    }
+
+    /// <summary>Resolve a solicitação pelo StudyInstanceUID do laudo (direto ou via associação)
+    /// e enfileira a comunicação LaudoPronto. Sem solicitação amarrada → no-op.</summary>
+    private async Task EnfileirarLaudoProntoAsync(Guid laudoId, CancellationToken ct)
+    {
+        var studyUid = await db.Laudos.AsNoTracking()
+            .Where(l => l.Id == laudoId)
+            .Select(l => l.StudyInstanceUID)
+            .FirstOrDefaultAsync(ct);
+        if (string.IsNullOrWhiteSpace(studyUid)) return;
+
+        var solicitacao = await db.SolicitacoesExame
+            .FirstOrDefaultAsync(s => s.StudyInstanceUID == studyUid && s.ExcluidoEm == null, ct);
+        if (solicitacao is null)
+        {
+            var solicitacaoId = await db.ExameAssociacoes.AsNoTracking()
+                .Where(a => a.StudyInstanceUID == studyUid && a.ExcluidoEm == null)
+                .Select(a => (Guid?)a.SolicitacaoExameId)
+                .FirstOrDefaultAsync(ct);
+            if (solicitacaoId is { } sid)
+                solicitacao = await db.SolicitacoesExame
+                    .FirstOrDefaultAsync(s => s.Id == sid && s.ExcluidoEm == null, ct);
+        }
+        if (solicitacao is null) return;
+
+        await comunicacoes.Value.EnfileirarAsync(
+            solicitacao, FinalidadeComunicacao.LaudoPronto, ct);
     }
 
     // ---------------- helpers ----------------

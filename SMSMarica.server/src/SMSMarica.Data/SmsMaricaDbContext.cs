@@ -121,9 +121,11 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<ConversaEvento> ConversaEventos => Set<ConversaEvento>();
     public DbSet<UsuarioUnidade> UsuarioUnidades => Set<UsuarioUnidade>();
 
-    // Confirmação de agendamento por WhatsApp (fila de notificação + estado da conversa de cancelamento).
-    public DbSet<AgendamentoNotificacao> AgendamentoNotificacoes => Set<AgendamentoNotificacao>();
+    // Comunicações ao paciente (fila WhatsApp: confirmação/exame liberado/laudo pronto),
+    // estado da conversa de cancelamento e registro manual de contatos.
+    public DbSet<ComunicacaoPaciente> ComunicacoesPaciente => Set<ComunicacaoPaciente>();
     public DbSet<AgendamentoConfirmacaoEstado> AgendamentoConfirmacaoEstados => Set<AgendamentoConfirmacaoEstado>();
+    public DbSet<ContatoRegistro> ContatosRegistro => Set<ContatoRegistro>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

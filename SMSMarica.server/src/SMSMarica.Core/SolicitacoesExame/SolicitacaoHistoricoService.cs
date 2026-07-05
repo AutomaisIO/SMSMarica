@@ -1,0 +1,93 @@
+using Microsoft.EntityFrameworkCore;
+using SMSMarica.Core.Common.Excecoes;
+using SMSMarica.Core.Identidade;
+using SMSMarica.Core.SolicitacoesExame.Dtos;
+using SMSMarica.Data;
+using SMSMarica.Data.Entities;
+using SMSMarica.Data.Entities.Enums;
+
+namespace SMSMarica.Core.SolicitacoesExame;
+
+/// <summary>
+/// Histórico do processo de comunicação de uma solicitação (linha do tempo do detalhe):
+/// comunicações automáticas (WhatsApp, com recibos/visualização) + contatos MANUAIS
+/// registrados pela equipe ("liguei, não atendeu"...). O registro de contato é append-only.
+/// </summary>
+public interface ISolicitacaoHistoricoService
+{
+    Task<HistoricoSolicitacaoDto> ObterAsync(Guid solicitacaoExameId, CancellationToken ct = default);
+    Task RegistrarContatoAsync(Guid solicitacaoExameId, RegistrarContatoRequest request, CancellationToken ct = default);
+}
+
+public sealed class SolicitacaoHistoricoService(
+    SmsMaricaDbContext db,
+    IUsuarioAtualAccessor usuarioAtual) : ISolicitacaoHistoricoService
+{
+    public async Task<HistoricoSolicitacaoDto> ObterAsync(Guid solicitacaoExameId, CancellationToken ct = default)
+    {
+        var comunicacoes = await db.ComunicacoesPaciente.AsNoTracking()
+            .Where(c => c.SolicitacaoExameId == solicitacaoExameId)
+            .OrderBy(c => c.CriadoEm)
+            .Select(c => new HistoricoComunicacaoDto(
+                c.Id,
+                c.Finalidade.ToString(),
+                c.Status.ToString(),
+                c.Telefone,
+                c.Tentativas,
+                c.CriadoEm,
+                c.EnviadoEm,
+                c.EntregueEm,
+                c.LidoEm,
+                c.VisualizadoEm,
+                c.MotivoFalha,
+                c.MensagemWhatsApp != null ? c.MensagemWhatsApp.ErroMeta : null))
+            .ToListAsync(ct);
+
+        var contatos = await (
+            from c in db.ContatosRegistro.AsNoTracking()
+            where c.SolicitacaoExameId == solicitacaoExameId
+            join u in db.Usuarios.AsNoTracking() on c.CriadoPor equals u.Id into ju
+            from u in ju.DefaultIfEmpty()
+            orderby c.CriadoEm descending
+            select new HistoricoContatoDto(
+                c.Id,
+                c.Meio.ToString(),
+                c.Resultado.ToString(),
+                c.Observacao,
+                c.CriadoEm,
+                u != null ? u.NomeCompleto : null))
+            .ToListAsync(ct);
+
+        return new HistoricoSolicitacaoDto(comunicacoes, contatos);
+    }
+
+    public async Task RegistrarContatoAsync(
+        Guid solicitacaoExameId, RegistrarContatoRequest request, CancellationToken ct = default)
+    {
+        if (!Enum.TryParse<MeioContato>(request.Meio, ignoreCase: true, out var meio))
+            throw new ValidacaoException("contato.meio_invalido", "Meio inválido (Ligacao|WhatsApp|Presencial|Outro).");
+        if (!Enum.TryParse<ResultadoContato>(request.Resultado, ignoreCase: true, out var resultado))
+            throw new ValidacaoException("contato.resultado_invalido",
+                "Resultado inválido (Atendeu|NaoAtendeu|CaixaPostal|NumeroInvalido|Outro).");
+
+        var solicitacao = await db.SolicitacoesExame.AsNoTracking()
+            .Where(s => s.Id == solicitacaoExameId && s.ExcluidoEm == null)
+            .Select(s => new { s.Id, s.PacienteId })
+            .FirstOrDefaultAsync(ct)
+            ?? throw new NaoEncontradoException(nameof(SolicitacaoExame), solicitacaoExameId);
+
+        var obs = request.Observacao?.Trim();
+        db.ContatosRegistro.Add(new ContatoRegistro
+        {
+            Id = Guid.CreateVersion7(),
+            SolicitacaoExameId = solicitacao.Id,
+            PacienteId = solicitacao.PacienteId,
+            Meio = meio,
+            Resultado = resultado,
+            Observacao = string.IsNullOrEmpty(obs) ? null : (obs.Length <= 500 ? obs : obs[..500]),
+            CriadoEm = DateTime.UtcNow,
+            CriadoPor = usuarioAtual.UsuarioId,
+        });
+        await db.SaveChangesAsync(ct);
+    }
+}

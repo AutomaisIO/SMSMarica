@@ -13,11 +13,18 @@ import {
   useReenviarNotificacao,
 } from '@/features/notificacoes-agendamento/api/queries';
 import type {
+  FinalidadeComunicacao,
   NotificacaoFiltro,
   NotificacaoResumo,
   StatusConfirmacao,
   StatusNotificacao,
 } from '@/features/notificacoes-agendamento/types';
+
+const ROTULO_FINALIDADE: Record<FinalidadeComunicacao, string> = {
+  ConfirmacaoAgendamento: 'Confirmação de agendamento',
+  ExameLiberado: 'Exame liberado',
+  LaudoPronto: 'Laudo pronto',
+};
 
 function useDebounce<T>(valor: T, ms = 400): T {
   const [debounced, setDebounced] = useState(valor);
@@ -126,6 +133,7 @@ function DetalheNotificacao({ id, aoFechar }: { id: string; aoFechar: () => void
               <Info rotulo="Enviada" valor={formatarDataHora(r.enviadoEm)} />
               <Info rotulo="Entregue" valor={formatarDataHora(r.entregueEm)} />
               <Info rotulo="Lida" valor={formatarDataHora(r.lidoEm)} />
+              <Info rotulo="Visualizada (abriu o conteúdo)" valor={formatarDataHora(r.visualizadoEm)} />
               <Info rotulo="Próxima tentativa" valor={formatarDataHora(d.proximaTentativaEm)} />
             </div>
             {r.motivoFalha ? (
@@ -199,6 +207,7 @@ function DetalheNotificacao({ id, aoFechar }: { id: string; aoFechar: () => void
 export function NotificacoesAgendamentoPage() {
   const [texto, setTexto] = useState('');
   const [status, setStatus] = useState('');
+  const [finalidade, setFinalidade] = useState('');
   const [confirmacao, setConfirmacao] = useState('');
   const [de, setDe] = useState('');
   const [ate, setAte] = useState('');
@@ -209,12 +218,13 @@ export function NotificacoesAgendamentoPage() {
     () => ({
       texto: textoDebounced.trim() || undefined,
       status: status || undefined,
+      finalidade: finalidade || undefined,
       confirmacao: confirmacao || undefined,
       de: de ? `${de}T00:00:00` : undefined,
       ate: ate ? `${ate}T00:00:00` : undefined,
       tamanho: 100,
     }),
-    [textoDebounced, status, confirmacao, de, ate],
+    [textoDebounced, status, finalidade, confirmacao, de, ate],
   );
 
   const q = useNotificacoes(filtro);
@@ -232,6 +242,13 @@ export function NotificacoesAgendamentoPage() {
           >
             {n.pacienteNome ?? '(sem nome)'}
           </button>
+        ),
+      },
+      {
+        chave: 'finalidade',
+        cabecalho: 'Finalidade',
+        render: (n) => (
+          <span className="text-xs text-gray-600">{ROTULO_FINALIDADE[n.finalidade] ?? n.finalidade}</span>
         ),
       },
       { chave: 'exame', cabecalho: 'Exame', render: (n) => n.tipoExameNome ?? '—' },
@@ -272,6 +289,12 @@ export function NotificacoesAgendamentoPage() {
             className="pl-9"
           />
         </div>
+        <Select value={finalidade} onChange={(e) => setFinalidade(e.target.value)} aria-label="Finalidade">
+          <option value="">Finalidade: todas</option>
+          <option value="ConfirmacaoAgendamento">Confirmação de agendamento</option>
+          <option value="ExameLiberado">Exame liberado</option>
+          <option value="LaudoPronto">Laudo pronto</option>
+        </Select>
         <Select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Status do envio">
           <option value="">Envio: todos</option>
           <option value="Pendente">Na fila</option>

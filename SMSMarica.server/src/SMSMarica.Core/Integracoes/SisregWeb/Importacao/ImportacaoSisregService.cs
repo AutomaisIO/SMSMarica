@@ -31,7 +31,7 @@ public sealed class ImportacaoSisregService(
     IPacientesService pacientes,
     IGeradorIdentificadores geradorIds,
     IUsuarioAtualAccessor usuarioAtual,
-    Notificacoes.Agendamento.IAgendamentoNotificacaoService notificacoes) : IImportacaoSisregService
+    Notificacoes.Comunicacao.IComunicacaoPacienteService comunicacoes) : IImportacaoSisregService
 {
     // ===================== PREVIEW =====================
 
@@ -205,7 +205,7 @@ public sealed class ImportacaoSisregService(
         db.SolicitacoesExame.Add(solic);
         // Notificação WhatsApp de confirmação — só enfileira (o worker envia com ritmo);
         // exames com data passada/ausente não notificam.
-        notificacoes.EnfileirarParaExame(solic);
+        await comunicacoes.EnfileirarAsync(solic, Data.Entities.Enums.FinalidadeComunicacao.ConfirmacaoAgendamento, ct);
         await db.SaveChangesAsync(ct);
         passos.Add($"Solicitação criada (accession {accession}).");
 

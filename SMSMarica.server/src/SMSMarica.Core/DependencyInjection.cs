@@ -94,6 +94,7 @@ public static class DependencyInjection
         services.AddScoped<IProcedimentosSigtapService, ProcedimentosSigtapService>();
         services.AddScoped<ITiposExameService, TiposExameService>();
         services.AddScoped<ISolicitacoesExameService, SolicitacoesExameService>();
+        services.AddScoped<ISolicitacaoHistoricoService, SolicitacaoHistoricoService>();
         // Backfill de data_estudo (DICOM) — depende só de DbContext + IConsultaStudyClient (sem ciclo).
         services.AddScoped<SolicitacoesExame.IBackfillDataEstudoService, SolicitacoesExame.BackfillDataEstudoService>();
         services.AddScoped<SolicitacoesExame.Declaracao.IDeclaracaoComparecimentoService,
@@ -139,14 +140,17 @@ public static class DependencyInjection
         services.AddHostedService<SincronizadorExamesService>();
 
         // Notificação WhatsApp de agendamentos (fila alimentada pelo import + worker de envio).
-        services.Configure<Notificacoes.Agendamento.NotificadorAgendamentoOptions>(
-            configuration.GetSection(Notificacoes.Agendamento.NotificadorAgendamentoOptions.SecaoConfig));
-        services.AddScoped<Notificacoes.Agendamento.IAgendamentoNotificacaoService,
-            Notificacoes.Agendamento.AgendamentoNotificacaoService>();
-        services.AddScoped<Notificacoes.Agendamento.IAgendamentoNotificacaoGestaoService,
-            Notificacoes.Agendamento.AgendamentoNotificacaoGestaoService>();
+        services.Configure<Notificacoes.Comunicacao.ComunicacaoPacienteOptions>(
+            configuration.GetSection(Notificacoes.Comunicacao.ComunicacaoPacienteOptions.SecaoConfig));
+        services.AddScoped<Notificacoes.Comunicacao.IComunicacaoPacienteService,
+            Notificacoes.Comunicacao.ComunicacaoPacienteService>();
+        services.AddScoped<Notificacoes.Comunicacao.IComunicacaoGestaoService,
+            Notificacoes.Comunicacao.ComunicacaoGestaoService>();
+        // Resolução preguiçosa: quebra o ciclo Solicitacoes → Comunicacao → LoginLink → Solicitacoes.
+        services.AddScoped(sp => new Lazy<Notificacoes.Comunicacao.IComunicacaoPacienteService>(
+            sp.GetRequiredService<Notificacoes.Comunicacao.IComunicacaoPacienteService>));
         services.AddScoped<Sandbox.ISandboxService, Sandbox.SandboxService>();
-        services.AddHostedService<Notificacoes.Agendamento.NotificadorAgendamentoService>();
+        services.AddHostedService<Notificacoes.Comunicacao.EnviadorComunicacaoService>();
 
         // Sanitizador de HTML compartilhado (whitelist explícita das tags TipTap).
         services.AddSingleton<IHtmlSanitizer>(_ =>

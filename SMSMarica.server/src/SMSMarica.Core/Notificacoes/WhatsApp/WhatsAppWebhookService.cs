@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SMSMarica.Core.Conversas;
-using SMSMarica.Core.Notificacoes.Agendamento;
+using SMSMarica.Core.Notificacoes.Comunicacao;
 using SMSMarica.Core.Notificacoes.WhatsApp.Manipuladores;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Data;
@@ -31,7 +31,7 @@ public sealed class WhatsAppWebhookService(
     IPacientesService pacientes,
     IConversaNotificador notificador,
     IEnumerable<IManipuladorMensagemWhatsApp> manipuladores,
-    IOptions<NotificadorAgendamentoOptions> notificadorOptions,
+    IOptions<ComunicacaoPacienteOptions> notificadorOptions,
     ILogger<WhatsAppWebhookService> logger) : IWhatsAppWebhookService
 {
     public async Task ProcessarAsync(string rawJson, CancellationToken ct = default)
@@ -152,7 +152,7 @@ public sealed class WhatsAppWebhookService(
 
     /// <summary>
     /// Aplica um recibo (sent/delivered/read/failed) à mensagem outbound (por wamid) e espelha
-    /// na AgendamentoNotificacao vinculada. Promoção monotônica: Enviada→Entregue→Lida nunca
+    /// na ComunicacaoPaciente vinculada. Promoção monotônica: Enviada→Entregue→Lida nunca
     /// regride; failed sempre vira Falha + ErroMeta. Idempotente (repetir o mesmo recibo não muda nada).
     /// </summary>
     private async Task ProcessarStatusAsync(JsonElement st, CancellationToken ct)
@@ -190,7 +190,7 @@ public sealed class WhatsAppWebhookService(
         }
 
         // Espelho na notificação de agendamento (tela de gestão + retentativa em falha de entrega).
-        var notificacao = await db.AgendamentoNotificacoes.FirstOrDefaultAsync(
+        var notificacao = await db.ComunicacoesPaciente.FirstOrDefaultAsync(
             n => n.MensagemWhatsAppId == msg.Id, ct);
         if (notificacao is not null)
         {
@@ -199,27 +199,27 @@ public sealed class WhatsAppWebhookService(
             {
                 case StatusMensagemWhatsApp.Entregue:
                     notificacao.EntregueEm ??= ocorridoEm;
-                    if (notificacao.Status == StatusNotificacaoAgendamento.Enviada)
-                        notificacao.Status = StatusNotificacaoAgendamento.Entregue;
+                    if (notificacao.Status == StatusComunicacao.Enviada)
+                        notificacao.Status = StatusComunicacao.Entregue;
                     break;
                 case StatusMensagemWhatsApp.Lida:
                     notificacao.EntregueEm ??= ocorridoEm;
                     notificacao.LidoEm ??= ocorridoEm;
-                    if (notificacao.Status is StatusNotificacaoAgendamento.Enviada or StatusNotificacaoAgendamento.Entregue)
-                        notificacao.Status = StatusNotificacaoAgendamento.Lida;
+                    if (notificacao.Status is StatusComunicacao.Enviada or StatusComunicacao.Entregue)
+                        notificacao.Status = StatusComunicacao.Lida;
                     break;
                 case StatusMensagemWhatsApp.Falha:
                     notificacao.MotivoFalha = erro ?? "Falha de entrega reportada pela Meta.";
                     if (notificacao.Tentativas < notificadorOptions.Value.MaxTentativas && ErroEntregaRetentavel(erro))
                     {
                         // Volta pra fila — o worker reenvia com magic link novo.
-                        notificacao.Status = StatusNotificacaoAgendamento.Pendente;
+                        notificacao.Status = StatusComunicacao.Pendente;
                         notificacao.ProximaTentativaEm = DateTime.UtcNow.AddMinutes(
                             5 * Math.Pow(2, Math.Max(0, notificacao.Tentativas - 1)));
                     }
                     else
                     {
-                        notificacao.Status = StatusNotificacaoAgendamento.Falha;
+                        notificacao.Status = StatusComunicacao.Falha;
                         notificacao.ProximaTentativaEm = null;
                     }
                     break;

@@ -1,38 +1,40 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
-using SMSMarica.Core.Notificacoes.Agendamento.Dtos;
+using SMSMarica.Core.Notificacoes.Comunicacao.Dtos;
 using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
 
-namespace SMSMarica.Core.Notificacoes.Agendamento;
+namespace SMSMarica.Core.Notificacoes.Comunicacao;
 
 /// <summary>
-/// Consulta da tela de gestão das notificações de agendamento (painel): lista paginada com
-/// status de envio/entrega/leitura, resposta do paciente e motivo; detalhe com linha do tempo;
-/// reenvio manual (re-enfileira para o worker, que gera magic link novo).
+/// Consulta da tela de gestão das comunicações ao paciente (painel): lista paginada com
+/// status de envio/entrega/leitura/visualização, resposta do paciente e motivo; detalhe com
+/// linha do tempo; reenvio manual (re-enfileira para o worker, que gera magic link novo).
 /// </summary>
-public interface IAgendamentoNotificacaoGestaoService
+public interface IComunicacaoGestaoService
 {
-    Task<PaginaNotificacoesDto> ListarAsync(NotificacaoFiltroDto filtro, CancellationToken ct = default);
-    Task<NotificacaoDetalheDto> ObterAsync(Guid id, CancellationToken ct = default);
+    Task<PaginaComunicacoesDto> ListarAsync(ComunicacaoFiltroDto filtro, CancellationToken ct = default);
+    Task<ComunicacaoDetalheDto> ObterAsync(Guid id, CancellationToken ct = default);
     Task ReenviarAsync(Guid id, CancellationToken ct = default);
 }
 
-public sealed class AgendamentoNotificacaoGestaoService(
+public sealed class ComunicacaoGestaoService(
     SmsMaricaDbContext db,
-    IPacienteResolver pacienteResolver) : IAgendamentoNotificacaoGestaoService
+    IPacienteResolver pacienteResolver) : IComunicacaoGestaoService
 {
-    public async Task<PaginaNotificacoesDto> ListarAsync(NotificacaoFiltroDto filtro, CancellationToken ct = default)
+    public async Task<PaginaComunicacoesDto> ListarAsync(ComunicacaoFiltroDto filtro, CancellationToken ct = default)
     {
-        var query = db.AgendamentoNotificacoes.AsNoTracking()
+        var query = db.ComunicacoesPaciente.AsNoTracking()
             .Include(n => n.SolicitacaoExame!).ThenInclude(s => s.TipoExame)
             .Include(n => n.SolicitacaoExame!).ThenInclude(s => s.Unidade)
             .AsQueryable();
 
-        if (Enum.TryParse<StatusNotificacaoAgendamento>(filtro.Status, ignoreCase: true, out var st))
+        if (Enum.TryParse<StatusComunicacao>(filtro.Status, ignoreCase: true, out var st))
             query = query.Where(n => n.Status == st);
+        if (Enum.TryParse<FinalidadeComunicacao>(filtro.Finalidade, ignoreCase: true, out var fin))
+            query = query.Where(n => n.Finalidade == fin);
         if (Enum.TryParse<StatusConfirmacaoAgendamento>(filtro.Confirmacao, ignoreCase: true, out var conf))
             query = query.Where(n => n.SolicitacaoExame != null && n.SolicitacaoExame.StatusConfirmacao == conf);
         if (filtro.De is { } de) query = query.Where(n => n.CriadoEm >= de);
@@ -61,22 +63,22 @@ public sealed class AgendamentoNotificacaoGestaoService(
         var itens = linhas.Select(n => Mapear(
             n, nomes.TryGetValue(n.PacienteId, out var r) ? r.Nome : null)).ToList();
 
-        return new PaginaNotificacoesDto(itens, total, pagina, tamanho);
+        return new PaginaComunicacoesDto(itens, total, pagina, tamanho);
     }
 
-    public async Task<NotificacaoDetalheDto> ObterAsync(Guid id, CancellationToken ct = default)
+    public async Task<ComunicacaoDetalheDto> ObterAsync(Guid id, CancellationToken ct = default)
     {
-        var n = await db.AgendamentoNotificacoes.AsNoTracking()
+        var n = await db.ComunicacoesPaciente.AsNoTracking()
             .Include(x => x.SolicitacaoExame!).ThenInclude(s => s.TipoExame)
             .Include(x => x.SolicitacaoExame!).ThenInclude(s => s.Unidade)
             .Include(x => x.MensagemWhatsApp)
             .Include(x => x.LoginLink)
             .FirstOrDefaultAsync(x => x.Id == id, ct)
-            ?? throw new NaoEncontradoException("notificacao.nao_encontrada", "Notificação não encontrada.");
+            ?? throw new NaoEncontradoException("comunicacao.nao_encontrada", "Comunicação não encontrada.");
 
         var resumo = Mapear(n, (await pacienteResolver.ResolverAsync(n.PacienteId, ct))?.Nome);
 
-        return new NotificacaoDetalheDto(
+        return new ComunicacaoDetalheDto(
             resumo,
             n.UltimaTentativaEm,
             n.ProximaTentativaEm,
@@ -90,32 +92,36 @@ public sealed class AgendamentoNotificacaoGestaoService(
 
     public async Task ReenviarAsync(Guid id, CancellationToken ct = default)
     {
-        var n = await db.AgendamentoNotificacoes
+        var n = await db.ComunicacoesPaciente
             .Include(x => x.SolicitacaoExame)
             .FirstOrDefaultAsync(x => x.Id == id, ct)
-            ?? throw new NaoEncontradoException("notificacao.nao_encontrada", "Notificação não encontrada.");
+            ?? throw new NaoEncontradoException("comunicacao.nao_encontrada", "Comunicação não encontrada.");
 
-        if (n.Status == StatusNotificacaoAgendamento.Pendente && n.ProximaTentativaEm is not null)
-            throw new ConflitoException("notificacao.ja_na_fila", "Esta notificação já está na fila de envio.");
+        if (n.Status == StatusComunicacao.Pendente && n.ProximaTentativaEm is not null)
+            throw new ConflitoException("comunicacao.ja_na_fila", "Esta comunicação já está na fila de envio.");
         if (n.SolicitacaoExame is null || n.SolicitacaoExame.ExcluidoEm is not null)
-            throw new ConflitoException("notificacao.sem_solicitacao", "A solicitação desta notificação não existe mais.");
-        if (n.SolicitacaoExame.DataAgendada is not { } da || da <= DateTime.UtcNow)
-            throw new ConflitoException("notificacao.exame_passado", "O exame já aconteceu — não faz sentido reenviar.");
-        if (n.SolicitacaoExame.StatusConfirmacao != StatusConfirmacaoAgendamento.Pendente)
-            throw new ConflitoException("notificacao.ja_respondida", "O paciente já respondeu este agendamento.");
+            throw new ConflitoException("comunicacao.sem_solicitacao", "A solicitação desta comunicação não existe mais.");
+        if (n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento)
+        {
+            if (n.SolicitacaoExame.DataAgendada is not { } da || da <= DateTime.UtcNow)
+                throw new ConflitoException("comunicacao.exame_passado", "O exame já aconteceu — não faz sentido reenviar.");
+            if (n.SolicitacaoExame.StatusConfirmacao != StatusConfirmacaoAgendamento.Pendente)
+                throw new ConflitoException("comunicacao.ja_respondida", "O paciente já respondeu este agendamento.");
+        }
 
-        n.Status = StatusNotificacaoAgendamento.Pendente;
+        n.Status = StatusComunicacao.Pendente;
         n.MotivoFalha = null;
         n.ProximaTentativaEm = DateTime.UtcNow;
         n.AtualizadoEm = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
     }
 
-    private static NotificacaoResumoDto Mapear(AgendamentoNotificacao n, string? pacienteNome)
+    private static ComunicacaoResumoDto Mapear(ComunicacaoPaciente n, string? pacienteNome)
     {
         var s = n.SolicitacaoExame;
-        return new NotificacaoResumoDto(
+        return new ComunicacaoResumoDto(
             n.Id,
+            n.Finalidade.ToString(),
             n.SolicitacaoExameId,
             s?.AccessionNumber,
             s?.CodigoSolicitacao,
@@ -131,6 +137,7 @@ public sealed class AgendamentoNotificacaoGestaoService(
             n.EnviadoEm,
             n.EntregueEm,
             n.LidoEm,
+            n.VisualizadoEm,
             (s?.StatusConfirmacao ?? StatusConfirmacaoAgendamento.Pendente).ToString(),
             s?.ConfirmadoEm,
             s?.ConfirmadoCanal,

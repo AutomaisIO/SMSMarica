@@ -1,7 +1,8 @@
 namespace SMSMarica.Data.Entities.Enums;
 
 /// <summary>
-/// Ciclo de vida da notificação WhatsApp de um agendamento.
+/// Ciclo de vida do ENVIO de uma <see cref="Entities.ComunicacaoPaciente"/>.
+/// (Renomeado de StatusNotificacaoAgendamento em 2026-07-05 — valores preservados.)
 ///
 /// Transições:
 ///   Pendente → Enviada            (template aceito pela Meta)
@@ -10,7 +11,7 @@ namespace SMSMarica.Data.Entities.Enums;
 ///   Pendente → Falha              (esgotou tentativas ou erro Meta permanente)
 ///   Pendente → SemTelefoneValido  (nenhum celular BR válido — nem tenta)
 /// </summary>
-public enum StatusNotificacaoAgendamento
+public enum StatusComunicacao
 {
     Pendente = 1,
     Enviada = 2,

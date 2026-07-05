@@ -9,6 +9,8 @@ import {
   obterSolicitacaoPorStudy,
   reenviarWorklist,
   autorizarSolicitacao,
+  obterHistorico,
+  registrarContato,
 } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
 import type {
   AtualizarSolicitacaoPayload,
@@ -120,6 +122,27 @@ export function useAutorizarSolicitacao() {
       client.invalidateQueries({ queryKey: solicitacoesKeys.raiz });
       client.invalidateQueries({ queryKey: solicitacoesKeys.porId(v.id) });
     },
+  });
+}
+
+export function useHistoricoSolicitacao(id: string | null) {
+  return useQuery({
+    queryKey: id ? [...solicitacoesKeys.raiz, 'historico', id] : [...solicitacoesKeys.raiz, 'historico', 'nenhum'],
+    queryFn: () => {
+      if (!id) throw new Error('Id não informado.');
+      return obterHistorico(id);
+    },
+    enabled: Boolean(id),
+  });
+}
+
+export function useRegistrarContato() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, meio, resultado, observacao }: { id: string; meio: string; resultado: string; observacao: string | null }) =>
+      registrarContato(id, { meio, resultado, observacao }),
+    onSuccess: (_d, v) =>
+      client.invalidateQueries({ queryKey: [...solicitacoesKeys.raiz, 'historico', v.id] }),
   });
 }
 

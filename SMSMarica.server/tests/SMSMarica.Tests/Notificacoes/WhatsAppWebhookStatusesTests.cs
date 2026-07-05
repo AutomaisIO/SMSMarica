@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using SMSMarica.Core.Conversas;
-using SMSMarica.Core.Notificacoes.Agendamento;
+using SMSMarica.Core.Notificacoes.Comunicacao;
 using SMSMarica.Core.Notificacoes.WhatsApp;
 using SMSMarica.Core.Notificacoes.WhatsApp.Manipuladores;
 using SMSMarica.Core.Pacientes;
@@ -18,7 +18,7 @@ namespace SMSMarica.Tests.Notificacoes;
 /// <summary>
 /// Processamento de <c>value.statuses</c> do webhook da Meta (recibos de entrega):
 /// promoção monotônica Enviada→Entregue→Lida, falha com ErroMeta, espelho na
-/// AgendamentoNotificacao (re-enfileira retentável, terminal em erro permanente) e idempotência.
+/// ComunicacaoPaciente (re-enfileira retentável, terminal em erro permanente) e idempotência.
 /// Payloads no formato real da Cloud API.
 /// </summary>
 [Collection(nameof(PostgresCollection))]
@@ -29,7 +29,7 @@ public class WhatsAppWebhookStatusesTests(PostgresFixture fixture)
         Substitute.For<IPacientesService>(),
         Substitute.For<IConversaNotificador>(),
         [],
-        Options.Create(new NotificadorAgendamentoOptions()),
+        Options.Create(new ComunicacaoPacienteOptions()),
         NullLogger<WhatsAppWebhookService>.Instance);
 
     private static string PayloadStatus(string wamid, string status, string? erroJson = null)
@@ -40,7 +40,7 @@ public class WhatsAppWebhookStatusesTests(PostgresFixture fixture)
                "]}}]}]}";
     }
 
-    private async Task<(MensagemWhatsApp Msg, AgendamentoNotificacao Notif)> SeedEnvioAsync(
+    private async Task<(MensagemWhatsApp Msg, ComunicacaoPaciente Notif)> SeedEnvioAsync(
         SmsMaricaDbContext db, int tentativas = 1)
     {
         var wamid = $"wamid.TEST.{Guid.NewGuid():N}";
@@ -55,19 +55,19 @@ public class WhatsAppWebhookStatusesTests(PostgresFixture fixture)
             OcorridoEm = DateTime.UtcNow,
             CriadoEm = DateTime.UtcNow,
         };
-        var notif = new AgendamentoNotificacao
+        var notif = new ComunicacaoPaciente
         {
             Id = Guid.NewGuid(),
             Tipo = TipoAgendamento.Exame,
             PacienteId = Guid.NewGuid(),
-            Status = StatusNotificacaoAgendamento.Enviada,
+            Status = StatusComunicacao.Enviada,
             MensagemWhatsAppId = msg.Id,
             Tentativas = tentativas,
             EnviadoEm = DateTime.UtcNow,
             CriadoEm = DateTime.UtcNow,
         };
         db.MensagensWhatsApp.Add(msg);
-        db.AgendamentoNotificacoes.Add(notif);
+        db.ComunicacoesPaciente.Add(notif);
         await db.SaveChangesAsync();
         return (msg, notif);
     }
@@ -82,9 +82,9 @@ public class WhatsAppWebhookStatusesTests(PostgresFixture fixture)
 
         await using var leitura = fixture.CriarDbContext();
         var m = await leitura.MensagensWhatsApp.SingleAsync(x => x.Id == msg.Id);
-        var n = await leitura.AgendamentoNotificacoes.SingleAsync(x => x.Id == notif.Id);
+        var n = await leitura.ComunicacoesPaciente.SingleAsync(x => x.Id == notif.Id);
         Assert.Equal(StatusMensagemWhatsApp.Entregue, m.Status);
-        Assert.Equal(StatusNotificacaoAgendamento.Entregue, n.Status);
+        Assert.Equal(StatusComunicacao.Entregue, n.Status);
         Assert.NotNull(n.EntregueEm);
     }
 
@@ -100,9 +100,9 @@ public class WhatsAppWebhookStatusesTests(PostgresFixture fixture)
 
         await using var leitura = fixture.CriarDbContext();
         var m = await leitura.MensagensWhatsApp.SingleAsync(x => x.Id == msg.Id);
-        var n = await leitura.AgendamentoNotificacoes.SingleAsync(x => x.Id == notif.Id);
+        var n = await leitura.ComunicacoesPaciente.SingleAsync(x => x.Id == notif.Id);
         Assert.Equal(StatusMensagemWhatsApp.Lida, m.Status); // monotônico — Lida não volta a Entregue
-        Assert.Equal(StatusNotificacaoAgendamento.Lida, n.Status);
+        Assert.Equal(StatusComunicacao.Lida, n.Status);
         Assert.NotNull(n.LidoEm);
     }
 
@@ -117,10 +117,10 @@ public class WhatsAppWebhookStatusesTests(PostgresFixture fixture)
 
         await using var leitura = fixture.CriarDbContext();
         var m = await leitura.MensagensWhatsApp.SingleAsync(x => x.Id == msg.Id);
-        var n = await leitura.AgendamentoNotificacoes.SingleAsync(x => x.Id == notif.Id);
+        var n = await leitura.ComunicacoesPaciente.SingleAsync(x => x.Id == notif.Id);
         Assert.Equal(StatusMensagemWhatsApp.Falha, m.Status);
         Assert.Contains("131047", m.ErroMeta);
-        Assert.Equal(StatusNotificacaoAgendamento.Pendente, n.Status); // volta pra fila
+        Assert.Equal(StatusComunicacao.Pendente, n.Status); // volta pra fila
         Assert.NotNull(n.ProximaTentativaEm);                          // worker reenvia com link novo
     }
 
@@ -134,8 +134,8 @@ public class WhatsAppWebhookStatusesTests(PostgresFixture fixture)
         await CriarService(db).ProcessarAsync(PayloadStatus(msg.WaMessageId!, "failed", erro));
 
         await using var leitura = fixture.CriarDbContext();
-        var n = await leitura.AgendamentoNotificacoes.SingleAsync(x => x.Id == notif.Id);
-        Assert.Equal(StatusNotificacaoAgendamento.Falha, n.Status);
+        var n = await leitura.ComunicacoesPaciente.SingleAsync(x => x.Id == notif.Id);
+        Assert.Equal(StatusComunicacao.Falha, n.Status);
         Assert.Null(n.ProximaTentativaEm); // terminal — número não é WhatsApp
         Assert.Contains("131026", n.MotivoFalha);
     }

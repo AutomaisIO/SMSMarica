@@ -10,15 +10,15 @@ export async function listarNotificacoes(filtro: NotificacaoFiltro): Promise<Pag
   for (const [k, v] of Object.entries(filtro)) {
     if (v !== undefined && v !== null && v !== '') params[k] = v as string | number;
   }
-  const { data } = await http.get<PaginaNotificacoes>('/agendamento-notificacoes', { params });
+  const { data } = await http.get<PaginaNotificacoes>('/comunicacoes-paciente', { params });
   return data;
 }
 
 export async function obterNotificacao(id: string): Promise<NotificacaoDetalhe> {
-  const { data } = await http.get<NotificacaoDetalhe>(`/agendamento-notificacoes/${id}`);
+  const { data } = await http.get<NotificacaoDetalhe>(`/comunicacoes-paciente/${id}`);
   return data;
 }
 
 export async function reenviarNotificacao(id: string): Promise<void> {
-  await http.post(`/agendamento-notificacoes/${id}/reenviar`);
+  await http.post(`/comunicacoes-paciente/${id}/reenviar`);
 }

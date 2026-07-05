@@ -4,19 +4,26 @@ using SMSMarica.Data.Entities.Tfd;
 namespace SMSMarica.Data.Entities;
 
 /// <summary>
-/// Fila de notificação WhatsApp de um agendamento (exame hoje; consulta no futuro).
-/// Criada no import (SISREG) quando a DataAgendada é futura; um worker
-/// (NotificadorAgendamentoService) processa Pendentes com ProximaTentativaEm vencida,
-/// gera o magic link e envia o template com botões. Os recibos de entrega/leitura
-/// (webhook value.statuses) são espelhados aqui para a tela de gestão.
+/// Comunicação ao paciente via WhatsApp (uma linha por finalidade × solicitação), com o ciclo
+/// completo: fila → envio → entrega → leitura → visualização → falha (+tentativas/motivo).
+/// Finalidades: confirmação de agendamento (import), exame liberado (Realizada) e laudo pronto
+/// (laudo ASSINADO). O worker (EnviadorComunicacaoService) processa Pendentes com
+/// ProximaTentativaEm vencida; os recibos da Meta (webhook value.statuses) e os acessos do
+/// cidadão (magic link/app) alimentam Entregue/Lida/Visualizado — é a fonte dos checks
+/// (✓ enviado, ✓✓ entregue, ✓✓ azul lida/visualizada, ⚠ falha) na lista de solicitações.
+/// (Renomeada de AgendamentoNotificacao em 2026-07-05.)
 /// </summary>
-public class AgendamentoNotificacao
+public class ComunicacaoPaciente
 {
     public Guid Id { get; set; }
 
+    /// <summary>Natureza do agendamento (exame/consulta) — consultas no futuro.</summary>
     public TipoAgendamento Tipo { get; set; } = TipoAgendamento.Exame;
 
-    /// <summary>Preenchida quando Tipo=Exame (única notificação por solicitação).</summary>
+    /// <summary>Assunto do envio (confirmação, exame liberado, laudo pronto).</summary>
+    public FinalidadeComunicacao Finalidade { get; set; } = FinalidadeComunicacao.ConfirmacaoAgendamento;
+
+    /// <summary>Preenchida quando Tipo=Exame (única por solicitação × finalidade).</summary>
     public Guid? SolicitacaoExameId { get; set; }
     public SolicitacaoExame? SolicitacaoExame { get; set; }
 
@@ -26,12 +33,12 @@ public class AgendamentoNotificacao
     /// <summary>Telefone canônico (55DDD9XXXXXXXX) escolhido na hora do envio. Null antes do 1º envio.</summary>
     public string? Telefone { get; set; }
 
-    public StatusNotificacaoAgendamento Status { get; set; } = StatusNotificacaoAgendamento.Pendente;
+    public StatusComunicacao Status { get; set; } = StatusComunicacao.Pendente;
 
     /// <summary>Motivo legível da falha (erro Meta code/título) ou "sem celular válido".</summary>
     public string? MotivoFalha { get; set; }
 
-    /// <summary>Magic link ativo desta notificação (renovado a cada reenvio).</summary>
+    /// <summary>Magic link ativo desta comunicação (renovado a cada reenvio).</summary>
     public Guid? LoginLinkId { get; set; }
     public CidadaoLoginLink? LoginLink { get; set; }
 
@@ -47,11 +54,15 @@ public class AgendamentoNotificacao
     /// <summary>Quando o worker deve (re)tentar. Null = terminal.</summary>
     public DateTime? ProximaTentativaEm { get; set; }
 
-    // ---- Recibos ----
+    // ---- Recibos / acesso ----
 
     public DateTime? EnviadoEm { get; set; }
     public DateTime? EntregueEm { get; set; }
     public DateTime? LidoEm { get; set; }
+
+    /// <summary>Paciente ACESSOU o conteúdo (usou o magic link desta comunicação ou abriu o
+    /// recurso no app). Compõe o "✓✓ azul" junto com Lida.</summary>
+    public DateTime? VisualizadoEm { get; set; }
 
     public DateTime CriadoEm { get; set; }
     public DateTime? AtualizadoEm { get; set; }

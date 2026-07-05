@@ -57,19 +57,19 @@ public class ConfirmacaoAgendamentoHandlerTests(PostgresFixture fixture)
         return new ManipuladorContexto(conversa, msg, texto, pacienteId, botaoPayload, interativoReplyId);
     }
 
-    private async Task<(SolicitacaoExame Solic, AgendamentoNotificacao Notif)> SeedAsync(SmsMaricaDbContext db)
+    private async Task<(SolicitacaoExame Solic, ComunicacaoPaciente Notif)> SeedAsync(SmsMaricaDbContext db)
     {
         var solic = await SeedSolicitacao.CriarAsync(db, Guid.NewGuid(), dataAgendada: DateTime.UtcNow.AddDays(3));
-        var notif = new AgendamentoNotificacao
+        var notif = new ComunicacaoPaciente
         {
             Id = Guid.NewGuid(),
             Tipo = TipoAgendamento.Exame,
             SolicitacaoExameId = solic.Id,
             PacienteId = solic.PacienteId,
-            Status = StatusNotificacaoAgendamento.Enviada,
+            Status = StatusComunicacao.Enviada,
             CriadoEm = DateTime.UtcNow,
         };
-        db.AgendamentoNotificacoes.Add(notif);
+        db.ComunicacoesPaciente.Add(notif);
         await db.SaveChangesAsync();
         return (solic, notif);
     }
@@ -115,7 +115,7 @@ public class ConfirmacaoAgendamentoHandlerTests(PostgresFixture fixture)
         {
             Id = Guid.NewGuid(),
             TelefoneCanonical = telefone,
-            AgendamentoNotificacaoId = notif.Id,
+            ComunicacaoPacienteId = notif.Id,
             Etapa = EtapaConfirmacaoAgendamento.AguardandoConfirmacaoCancelamento,
             ExpiraEm = DateTime.UtcNow.AddHours(48),
             CriadoEm = DateTime.UtcNow,
@@ -159,7 +159,7 @@ public class ConfirmacaoAgendamentoHandlerTests(PostgresFixture fixture)
         {
             Id = Guid.NewGuid(),
             TelefoneCanonical = telefone,
-            AgendamentoNotificacaoId = notif.Id,
+            ComunicacaoPacienteId = notif.Id,
             Etapa = EtapaConfirmacaoAgendamento.AguardandoMotivo,
             ExpiraEm = DateTime.UtcNow.AddHours(-1), // vencido
             CriadoEm = DateTime.UtcNow.AddDays(-3),

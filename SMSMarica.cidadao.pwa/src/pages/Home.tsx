@@ -30,7 +30,9 @@ export function Home() {
   const sessao = useAuth((s) => s.paciente);
   const perfil = usePerfil((s) => s.perfil);
   const carregar = usePerfil((s) => s.carregar);
-  // Badge: quantos exames agendados (futuros) — some sozinho quando o exame passa.
+  // Badge: exames agendados que ainda PRECISAM de atenção — cancelados e já confirmados
+  // (inclusive presencialmente na recepção) saem da conta; o card continua na lista.
+  // Some sozinho quando o exame passa (o backend só devolve futuros).
   const [examesAgendados, setExamesAgendados] = useState(0);
 
   useEffect(() => {
@@ -41,7 +43,12 @@ export function Home() {
     let vivo = true;
     api
       .agendamentos('exame')
-      .then((l) => vivo && setExamesAgendados(l.length))
+      .then((l) => {
+        if (!vivo) return;
+        setExamesAgendados(
+          l.filter((a) => a.statusConfirmacao !== 'Cancelada' && a.statusConfirmacao !== 'Confirmada').length,
+        );
+      })
       .catch(() => {});
     return () => {
       vivo = false;

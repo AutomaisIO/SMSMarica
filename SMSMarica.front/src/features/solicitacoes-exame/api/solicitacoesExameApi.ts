@@ -3,6 +3,7 @@ import type {
   AtualizarSolicitacaoPayload,
   CadastrarSolicitacaoPayload,
   FiltroSolicitacoes,
+  HistoricoSolicitacao,
   SolicitacaoExame,
   SolicitacaoExameListItem,
 } from '@/features/solicitacoes-exame/types';
@@ -60,6 +61,20 @@ export async function reenviarWorklist(id: string): Promise<void> {
 
 export async function excluirSolicitacao(id: string, force = false): Promise<void> {
   await http.delete(`/solicitacoes-exame/${id}`, { params: force ? { force: true } : undefined });
+}
+
+/** Histórico do processo de comunicação (comunicações WhatsApp + contatos manuais). */
+export async function obterHistorico(id: string): Promise<HistoricoSolicitacao> {
+  const { data } = await http.get<HistoricoSolicitacao>(`/solicitacoes-exame/${id}/historico`);
+  return data;
+}
+
+/** Registra um contato MANUAL com o paciente ("liguei, não atendeu"...). */
+export async function registrarContato(
+  id: string,
+  body: { meio: string; resultado: string; observacao: string | null },
+): Promise<void> {
+  await http.post(`/solicitacoes-exame/${id}/contatos`, body);
 }
 
 /** Campos editáveis (atendente) impressos na declaração de comparecimento. */

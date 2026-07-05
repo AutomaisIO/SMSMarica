@@ -115,4 +115,8 @@ public sealed record SolicitacaoExameListItemDto(
     Guid? LaudoId,
     bool LaudoAssinado,
     // Direção relativa à unidade ativa (recebida/enviada). Null = sem referência única.
-    DirecaoSolicitacao? Direcao);
+    DirecaoSolicitacao? Direcao,
+    // Checks de comunicação (✓ enviado, ✓✓ entregue, ✓✓ azul lida/visualizada, ⚠ falha).
+    // Preenchidos no enriquecimento da listagem; null quando não há comunicação da finalidade.
+    ComunicacaoChipDto? ChipExameLiberado = null,
+    ComunicacaoChipDto? ChipLaudoPronto = null);

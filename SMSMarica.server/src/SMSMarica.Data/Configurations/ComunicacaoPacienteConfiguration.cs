@@ -4,15 +4,18 @@ using SMSMarica.Data.Entities;
 
 namespace SMSMarica.Data.Configurations;
 
-internal sealed class AgendamentoNotificacaoConfiguration : IEntityTypeConfiguration<AgendamentoNotificacao>
+internal sealed class ComunicacaoPacienteConfiguration : IEntityTypeConfiguration<ComunicacaoPaciente>
 {
-    public void Configure(EntityTypeBuilder<AgendamentoNotificacao> builder)
+    public void Configure(EntityTypeBuilder<ComunicacaoPaciente> builder)
     {
-        builder.ToTable("agendamento_notificacao");
+        builder.ToTable("comunicacao_paciente");
         builder.HasKey(n => n.Id);
 
         builder.Property(n => n.Id).HasColumnName("id");
         builder.Property(n => n.Tipo).HasColumnName("tipo").HasConversion<int>().IsRequired();
+        // Default 1 (ConfirmacaoAgendamento) backfilla as linhas anteriores ao rename.
+        builder.Property(n => n.Finalidade).HasColumnName("finalidade").HasConversion<int>()
+            .HasDefaultValue(Entities.Enums.FinalidadeComunicacao.ConfirmacaoAgendamento).IsRequired();
         builder.Property(n => n.SolicitacaoExameId).HasColumnName("solicitacao_exame_id");
         // PacienteId referencia fhir.patient (hub FHIR) — sem FK local.
         builder.Property(n => n.PacienteId).HasColumnName("paciente_id").IsRequired();
@@ -27,6 +30,7 @@ internal sealed class AgendamentoNotificacaoConfiguration : IEntityTypeConfigura
         builder.Property(n => n.EnviadoEm).HasColumnName("enviado_em");
         builder.Property(n => n.EntregueEm).HasColumnName("entregue_em");
         builder.Property(n => n.LidoEm).HasColumnName("lido_em");
+        builder.Property(n => n.VisualizadoEm).HasColumnName("visualizado_em");
         builder.Property(n => n.CriadoEm).HasColumnName("criado_em").IsRequired();
         builder.Property(n => n.AtualizadoEm).HasColumnName("atualizado_em");
 
@@ -53,8 +57,8 @@ internal sealed class AgendamentoNotificacaoConfiguration : IEntityTypeConfigura
 
         // Fila do worker.
         builder.HasIndex(n => new { n.Status, n.ProximaTentativaEm });
-        // Uma notificação por solicitação de exame.
-        builder.HasIndex(n => n.SolicitacaoExameId)
+        // Uma comunicação por solicitação × finalidade.
+        builder.HasIndex(n => new { n.SolicitacaoExameId, n.Finalidade })
             .IsUnique()
             .HasFilter("solicitacao_exame_id IS NOT NULL");
         builder.HasIndex(n => n.MensagemWhatsAppId);

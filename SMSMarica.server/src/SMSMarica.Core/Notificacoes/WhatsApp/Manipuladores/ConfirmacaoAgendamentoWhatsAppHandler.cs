@@ -67,8 +67,8 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
             return;
         }
 
-        var notificacao = await db.AgendamentoNotificacoes.FirstOrDefaultAsync(
-            n => n.SolicitacaoExameId == solicitacaoId, ct);
+        var notificacao = await db.ComunicacoesPaciente.FirstOrDefaultAsync(
+            n => n.SolicitacaoExameId == solicitacaoId && n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento, ct);
         if (notificacao is null) return;
 
         await AbrirOuAtualizarEstadoAsync(ctx.Conversa.TelefoneCanonical, notificacao.Id,
@@ -104,8 +104,8 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
     // "Sim, cancelar" — pede o motivo.
     private async Task TratarConfirmouCancelamentoAsync(ManipuladorContexto ctx, Guid solicitacaoId, CancellationToken ct)
     {
-        var notificacao = await db.AgendamentoNotificacoes.FirstOrDefaultAsync(
-            n => n.SolicitacaoExameId == solicitacaoId, ct);
+        var notificacao = await db.ComunicacoesPaciente.FirstOrDefaultAsync(
+            n => n.SolicitacaoExameId == solicitacaoId && n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento, ct);
         if (notificacao is null) return;
 
         await AbrirOuAtualizarEstadoAsync(ctx.Conversa.TelefoneCanonical, notificacao.Id,
@@ -122,7 +122,7 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
         if (string.IsNullOrWhiteSpace(ctx.Texto)) return;
 
         var estado = await db.AgendamentoConfirmacaoEstados
-            .Include(e => e.AgendamentoNotificacao)
+            .Include(e => e.ComunicacaoPaciente)
             .FirstOrDefaultAsync(e => e.TelefoneCanonical == ctx.Conversa.TelefoneCanonical, ct);
         if (estado is null) return;
 
@@ -133,7 +133,7 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
         }
         if (estado.Etapa != EtapaConfirmacaoAgendamento.AguardandoMotivo) return;
 
-        var solicitacaoId = estado.AgendamentoNotificacao?.SolicitacaoExameId;
+        var solicitacaoId = estado.ComunicacaoPaciente?.SolicitacaoExameId;
         if (solicitacaoId is null) { db.AgendamentoConfirmacaoEstados.Remove(estado); return; }
 
         var s = await db.SolicitacoesExame.FirstOrDefaultAsync(
@@ -176,14 +176,14 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
             {
                 Id = Guid.CreateVersion7(),
                 TelefoneCanonical = telefone,
-                AgendamentoNotificacaoId = notificacaoId,
+                ComunicacaoPacienteId = notificacaoId,
                 Etapa = etapa,
                 ExpiraEm = DateTime.UtcNow.Add(ValidadeEstado),
                 CriadoEm = DateTime.UtcNow,
             });
             return;
         }
-        estado.AgendamentoNotificacaoId = notificacaoId;
+        estado.ComunicacaoPacienteId = notificacaoId;
         estado.Etapa = etapa;
         estado.ExpiraEm = DateTime.UtcNow.Add(ValidadeEstado);
         estado.AtualizadoEm = DateTime.UtcNow;

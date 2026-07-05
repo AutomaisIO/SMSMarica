@@ -100,6 +100,15 @@ public sealed class CidadaoLoginLinkService(
                 .SetProperty(x => x.UsadoEm, agora)
                 .SetProperty(x => x.UsadoIp, usadoIp), cancellationToken);
 
+        // Clique no link = paciente VISUALIZOU a comunicação que o carregava (✓✓ azul).
+        // Direto no banco, idempotente e best-effort (nunca impede o login).
+        if (reivindicadas > 0)
+        {
+            await db.ComunicacoesPaciente
+                .Where(c => c.LoginLinkId == token && c.VisualizadoEm == null)
+                .ExecuteUpdateAsync(s => s.SetProperty(c => c.VisualizadoEm, agora), cancellationToken);
+        }
+
         if (reivindicadas == 0)
         {
             // Token já usado/expirado (mas existe): NUNCA autentica. Devolve só o destino,

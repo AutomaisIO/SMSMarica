@@ -24,9 +24,14 @@ import {
   useAutorizarSolicitacao,
   useCancelarSolicitacao,
   useExcluirSolicitacao,
+  useHistoricoSolicitacao,
   useReenviarWorklist,
+  useRegistrarContato,
   useSolicitacaoPorId,
 } from '@/features/solicitacoes-exame/api/queries';
+import { ChecksComunicacao } from '@/features/solicitacoes-exame/components/ChecksComunicacao';
+import { Select } from '@/shared/ui/Select';
+import type { HistoricoComunicacao } from '@/features/solicitacoes-exame/types';
 import { ehFalhaExclusaoPacs } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
 import { StatusBadgeSolicitacao } from '@/features/solicitacoes-exame/components/StatusBadgeSolicitacao';
 import { ConfirmacaoBadge, canalConfirmacaoTexto } from '@/features/solicitacoes-exame/components/ConfirmacaoBadge';
@@ -300,6 +305,8 @@ export function SolicitacaoExameDetalhePage() {
 
         <CardAutorizacao s={s} />
 
+        <CardHistoricoComunicacao solicitacaoId={s.id} />
+
         {s.observacoes ? (
           <section className="lg:col-span-2 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
             <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">Observações</h2>
@@ -494,6 +501,145 @@ function CardAutorizacao({ s }: { s: SolicitacaoExame }) {
         </div>
       )}
       {erro ? <p className="mt-2 text-sm text-red-700">{erro}</p> : null}
+    </section>
+  );
+}
+
+const ROTULO_FINALIDADE: Record<HistoricoComunicacao['finalidade'], string> = {
+  ConfirmacaoAgendamento: 'Confirmação de agendamento',
+  ExameLiberado: 'Exame liberado',
+  LaudoPronto: 'Laudo pronto',
+};
+
+const ROTULO_MEIO: Record<string, string> = {
+  Ligacao: 'Ligação', WhatsApp: 'WhatsApp', Presencial: 'Presencial', Outro: 'Outro',
+};
+const ROTULO_RESULTADO: Record<string, string> = {
+  Atendeu: 'Atendeu', NaoAtendeu: 'Não atendeu', CaixaPostal: 'Caixa postal',
+  NumeroInvalido: 'Número inválido', Outro: 'Outro',
+};
+
+/** Histórico do processo: comunicações WhatsApp (com checks) + contatos manuais + registrar. */
+function CardHistoricoComunicacao({ solicitacaoId }: { solicitacaoId: string }) {
+  const podeEditar = usePermissao('SolicitacoesExame', 'Edicao');
+  const q = useHistoricoSolicitacao(solicitacaoId);
+  const registrar = useRegistrarContato();
+  const [aberto, setAberto] = useState(false);
+  const [meio, setMeio] = useState('Ligacao');
+  const [resultado, setResultado] = useState('NaoAtendeu');
+  const [observacao, setObservacao] = useState('');
+  const [erro, setErro] = useState<string | null>(null);
+
+  const h = q.data;
+  const vazio = !h || (h.comunicacoes.length === 0 && h.contatos.length === 0);
+
+  async function salvarContato() {
+    setErro(null);
+    try {
+      await registrar.mutateAsync({ id: solicitacaoId, meio, resultado, observacao: observacao.trim() || null });
+      setAberto(false);
+      setObservacao('');
+    } catch (e) {
+      setErro(extrairMensagemDeErro(e));
+    }
+  }
+
+  return (
+    <section className="lg:col-span-2 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+          Comunicação com o paciente
+        </h2>
+        {podeEditar ? (
+          <Button variante="outline" tamanho="sm" onClick={() => setAberto(true)}>
+            Registrar contato
+          </Button>
+        ) : null}
+      </div>
+
+      {q.isLoading ? (
+        <p className="text-sm text-gray-500">Carregando…</p>
+      ) : vazio ? (
+        <p className="text-sm text-gray-500">Nenhuma comunicação registrada ainda.</p>
+      ) : (
+        <div className="space-y-3">
+          {h!.comunicacoes.map((c) => (
+            <div key={c.id} className="rounded-md border border-gray-100 bg-gray-50/60 px-3 py-2 text-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <ChecksComunicacao
+                  chip={{ status: c.status, visualizado: c.visualizadoEm != null, motivo: c.motivoFalha }}
+                  finalidade={c.finalidade === 'LaudoPronto' ? 'LaudoPronto' : 'ExameLiberado'}
+                />
+                <span className="font-medium text-gray-900">{ROTULO_FINALIDADE[c.finalidade]}</span>
+                {c.telefone ? <span className="text-xs text-gray-500">→ {c.telefone}</span> : null}
+                {c.tentativas > 1 ? <span className="text-xs text-gray-500">({c.tentativas} tentativas)</span> : null}
+              </div>
+              <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-600">
+                <span>Fila: {fmt(c.criadoEm)}</span>
+                {c.enviadoEm ? <span>Enviada: {fmt(c.enviadoEm)}</span> : null}
+                {c.entregueEm ? <span>Entregue: {fmt(c.entregueEm)}</span> : null}
+                {c.lidoEm ? <span>Lida: {fmt(c.lidoEm)}</span> : null}
+                {c.visualizadoEm ? <span className="text-sky-600">Visualizada: {fmt(c.visualizadoEm)}</span> : null}
+              </div>
+              {c.motivoFalha || c.erroMeta ? (
+                <p className="mt-1 text-xs text-red-700">{c.motivoFalha ?? c.erroMeta}</p>
+              ) : null}
+            </div>
+          ))}
+
+          {h!.contatos.length > 0 ? (
+            <ul className="space-y-1 border-t border-gray-100 pt-2 text-sm text-gray-700">
+              {h!.contatos.map((c) => (
+                <li key={c.id}>
+                  <span className="font-medium">{ROTULO_MEIO[c.meio] ?? c.meio}</span>
+                  {' — '}
+                  {ROTULO_RESULTADO[c.resultado] ?? c.resultado} em {fmt(c.criadoEm)}
+                  {c.registradoPorNome ? ` · por ${c.registradoPorNome}` : ''}
+                  {c.observacao ? <span className="text-gray-500"> · {c.observacao}</span> : null}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      )}
+
+      <Modal aberto={aberto} aoFechar={() => setAberto(false)} titulo="Registrar contato com o paciente" largura="sm">
+        <div className="space-y-3">
+          <Campo label="Meio" htmlFor="contato-meio">
+            <Select id="contato-meio" value={meio} onChange={(e) => setMeio(e.target.value)}>
+              <option value="Ligacao">Ligação</option>
+              <option value="WhatsApp">WhatsApp</option>
+              <option value="Presencial">Presencial</option>
+              <option value="Outro">Outro</option>
+            </Select>
+          </Campo>
+          <Campo label="Resultado" htmlFor="contato-resultado">
+            <Select id="contato-resultado" value={resultado} onChange={(e) => setResultado(e.target.value)}>
+              <option value="Atendeu">Atendeu</option>
+              <option value="NaoAtendeu">Não atendeu</option>
+              <option value="CaixaPostal">Caixa postal</option>
+              <option value="NumeroInvalido">Número inválido</option>
+              <option value="Outro">Outro</option>
+            </Select>
+          </Campo>
+          <Campo label="Observação (opcional)" htmlFor="contato-obs">
+            <Input
+              id="contato-obs"
+              value={observacao}
+              onChange={(e) => setObservacao(e.target.value)}
+              placeholder="Ex.: pediu para ligar após as 14h"
+              maxLength={500}
+            />
+          </Campo>
+          {erro ? <p className="text-sm text-red-700">{erro}</p> : null}
+          <div className="flex justify-end gap-2">
+            <Button variante="ghost" onClick={() => setAberto(false)}>Cancelar</Button>
+            <Button onClick={salvarContato} disabled={registrar.isPending}>
+              {registrar.isPending ? 'Salvando…' : 'Salvar'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </section>
   );
 }

@@ -21,6 +21,8 @@ public sealed class SolicitacoesExameService(
     IUsuarioAtualAccessor usuarioAtual,
     Pacientes.Fhir.IPacienteResolver pacienteResolver,
     Lazy<Laudos.Assinatura.ILaudoAssinaturaService> assinaturas,
+    // Lazy: quebra o ciclo Solicitacoes → Comunicacao → LoginLink → Solicitacoes.
+    Lazy<Notificacoes.Comunicacao.IComunicacaoPacienteService> comunicacoes,
     ILogger<SolicitacoesExameService> logger)
     : ISolicitacoesExameService
 {
@@ -34,6 +36,7 @@ public sealed class SolicitacoesExameService(
     // SolicitacoesExameService puxa Assinatura → PdfRenderer → Laudos, que reentra
     // aqui por várias arestas (direta e via ExameAssociacao) — dependência circular.
     private readonly Lazy<Laudos.Assinatura.ILaudoAssinaturaService> _assinaturas = assinaturas;
+    private readonly Lazy<Notificacoes.Comunicacao.IComunicacaoPacienteService> _comunicacoes = comunicacoes;
     private readonly ILogger<SolicitacoesExameService> _logger = logger;
 
     // Resolve nome/CPF/CNS do paciente (hub FHIR) e embute nos DTOs.
@@ -145,7 +148,35 @@ public sealed class SolicitacoesExameService(
             .ToListAsync(cancellationToken);
 
         var dtos = await EnriquecerAsync([.. lista.Select(s => SolicitacoesExameMapper.ParaListItem(s, unidadeReferencia))], cancellationToken);
-        return await EnriquecerLaudosAsync([.. dtos], cancellationToken);
+        var comLaudos = await EnriquecerLaudosAsync([.. dtos], cancellationToken);
+        return await EnriquecerComunicacoesAsync([.. comLaudos], cancellationToken);
+    }
+
+    // Checks de comunicação na lista (✓/✓✓/✓✓azul/⚠): resume ExameLiberado e LaudoPronto de
+    // cada solicitação da página. Uma query só para a página inteira.
+    private async Task<IReadOnlyList<SolicitacaoExameListItemDto>> EnriquecerComunicacoesAsync(
+        List<SolicitacaoExameListItemDto> dtos, CancellationToken ct)
+    {
+        if (dtos.Count == 0) return dtos;
+        var ids = dtos.Select(d => d.Id).ToArray();
+
+        var comunicacoes = await _db.ComunicacoesPaciente.AsNoTracking()
+            .Where(c => c.SolicitacaoExameId != null && ids.Contains(c.SolicitacaoExameId.Value)
+                && (c.Finalidade == FinalidadeComunicacao.ExameLiberado
+                    || c.Finalidade == FinalidadeComunicacao.LaudoPronto))
+            .Select(c => new { c.SolicitacaoExameId, c.Finalidade, c.Status, c.VisualizadoEm, c.MotivoFalha })
+            .ToListAsync(ct);
+        if (comunicacoes.Count == 0) return dtos;
+
+        var mapa = comunicacoes.ToDictionary(
+            c => (c.SolicitacaoExameId!.Value, c.Finalidade),
+            c => new ComunicacaoChipDto(c.Status.ToString(), c.VisualizadoEm != null, c.MotivoFalha));
+
+        return [.. dtos.Select(d => d with
+        {
+            ChipExameLiberado = mapa.GetValueOrDefault((d.Id, FinalidadeComunicacao.ExameLiberado)),
+            ChipLaudoPronto = mapa.GetValueOrDefault((d.Id, FinalidadeComunicacao.LaudoPronto)),
+        })];
     }
 
     // Multitenancy por unidade: restringe a listagem às unidades vinculadas ao usuário
@@ -531,6 +562,11 @@ public sealed class SolicitacoesExameService(
         // trouxe a tag — não sobrescreve com null.
         if (dataEstudo is not null) s.DataEstudo = dataEstudo;
         s.AtualizadoEm = DateTime.UtcNow;
+
+        // Exame chegou → enfileira o aviso "Exame liberado" (idempotente; o worker só envia
+        // quando a chave EnviarExameLiberado estiver ligada — template aguardando a Meta).
+        await _comunicacoes.Value.EnfileirarAsync(
+            s, Data.Entities.Enums.FinalidadeComunicacao.ExameLiberado, cancellationToken);
 
         await _db.SaveChangesAsync(cancellationToken);
 

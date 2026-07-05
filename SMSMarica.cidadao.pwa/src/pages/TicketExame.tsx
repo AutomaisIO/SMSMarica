@@ -23,6 +23,7 @@ const ROTULO_CANAL: Record<string, string> = {
   'whatsapp-quickreply': 'pelo WhatsApp',
   ligacao: 'por ligação',
   telefone: 'por ligação',
+  presencial: 'presencialmente na unidade',
   sandbox: 'teste (sandbox)',
 };
 

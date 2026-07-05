@@ -15,8 +15,8 @@ public class AgendamentoConfirmacaoEstado
     /// <summary>Telefone canônico (mesma régua de Conversa.TelefoneCanonical).</summary>
     public string TelefoneCanonical { get; set; } = string.Empty;
 
-    public Guid AgendamentoNotificacaoId { get; set; }
-    public AgendamentoNotificacao? AgendamentoNotificacao { get; set; }
+    public Guid ComunicacaoPacienteId { get; set; }
+    public ComunicacaoPaciente? ComunicacaoPaciente { get; set; }
 
     public EtapaConfirmacaoAgendamento Etapa { get; set; }
 

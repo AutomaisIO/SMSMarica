@@ -25,6 +25,7 @@ import { useExcluirSolicitacao, useListarSolicitacoes } from '@/features/solicit
 import { ehFalhaExclusaoPacs } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
 import { StatusBadgeSolicitacao } from '@/features/solicitacoes-exame/components/StatusBadgeSolicitacao';
 import { SituacaoBadge, derivarSituacao } from '@/features/solicitacoes-exame/components/SituacaoSolicitacao';
+import { ChecksComunicacao } from '@/features/solicitacoes-exame/components/ChecksComunicacao';
 import { BotaoDeclaracaoComparecimento } from '@/features/solicitacoes-exame/components/BotaoDeclaracaoComparecimento';
 import { BotaoBaixarExameCompleto } from '@/features/solicitacoes-exame/components/BotaoBaixarExameCompleto';
 import { BotaoVisualizarLaudo } from '@/features/solicitacoes-exame/components/BotaoVisualizarLaudo';
@@ -206,7 +207,14 @@ export function SolicitacoesExamePage() {
       cabecalho: 'Situação',
       render: (s) => {
         const sit = derivarSituacao(s);
-        return sit ? <SituacaoBadge situacao={sit} /> : <StatusBadgeSolicitacao status={s.status} />;
+        return (
+          <span className="inline-flex items-center gap-1.5">
+            {sit ? <SituacaoBadge situacao={sit} /> : <StatusBadgeSolicitacao status={s.status} />}
+            {/* Checks das comunicações: exame liberado (quando Realizada+) e laudo pronto (Laudada). */}
+            <ChecksComunicacao chip={s.chipExameLiberado} finalidade="ExameLiberado" />
+            <ChecksComunicacao chip={s.chipLaudoPronto} finalidade="LaudoPronto" />
+          </span>
+        );
       },
     },
     {

@@ -122,6 +122,47 @@ export type SolicitacaoExameListItem = {
   laudoAssinado: boolean;
   /** Direção relativa à unidade ativa (recebida/enviada). null = sem referência única. */
   direcao: DirecaoSolicitacao | null;
+  /** Checks de comunicação (✓ enviado, ✓✓ entregue, ✓✓ azul lida/visualizada, ⚠ falha). */
+  chipExameLiberado: ComunicacaoChip | null;
+  chipLaudoPronto: ComunicacaoChip | null;
+};
+
+/** Resumo da comunicação para os checks na lista. */
+export type ComunicacaoChip = {
+  status: 'Pendente' | 'Enviada' | 'Entregue' | 'Lida' | 'Falha' | 'SemTelefoneValido';
+  visualizado: boolean;
+  motivo: string | null;
+};
+
+// ---- Histórico do processo de comunicação (detalhe) ----
+
+export type HistoricoComunicacao = {
+  id: string;
+  finalidade: 'ConfirmacaoAgendamento' | 'ExameLiberado' | 'LaudoPronto';
+  status: ComunicacaoChip['status'];
+  telefone: string | null;
+  tentativas: number;
+  criadoEm: string;
+  enviadoEm: string | null;
+  entregueEm: string | null;
+  lidoEm: string | null;
+  visualizadoEm: string | null;
+  motivoFalha: string | null;
+  erroMeta: string | null;
+};
+
+export type HistoricoContato = {
+  id: string;
+  meio: 'Ligacao' | 'WhatsApp' | 'Presencial' | 'Outro';
+  resultado: 'Atendeu' | 'NaoAtendeu' | 'CaixaPostal' | 'NumeroInvalido' | 'Outro';
+  observacao: string | null;
+  criadoEm: string;
+  registradoPorNome: string | null;
+};
+
+export type HistoricoSolicitacao = {
+  comunicacoes: HistoricoComunicacao[];
+  contatos: HistoricoContato[];
 };
 
 export type FiltroSolicitacoes = {

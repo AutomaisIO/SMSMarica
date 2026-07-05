@@ -4,6 +4,7 @@ using NSubstitute;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Laudos.Assinatura;
 using SMSMarica.Core.Notificacoes;
+using SMSMarica.Core.Notificacoes.Comunicacao;
 using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Core.SolicitacoesExame;
 using SMSMarica.Core.SolicitacoesExame.Identificadores;
@@ -37,6 +38,7 @@ public class AutorizacaoSolicitacaoTests(PostgresFixture fixture)
             new UsuarioAtualAccessorFake(Guid.NewGuid()),
             resolver,
             new Lazy<ILaudoAssinaturaService>(() => Substitute.For<ILaudoAssinaturaService>()),
+            new Lazy<IComunicacaoPacienteService>(() => Substitute.For<IComunicacaoPacienteService>()),
             NullLogger<SolicitacoesExameService>.Instance);
     }
 
