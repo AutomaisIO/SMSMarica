@@ -239,6 +239,9 @@ public sealed class SolicitacoesExameService(
         var chave = (chaveConfirmacao ?? string.Empty).Trim();
         if (chave.Length == 0)
             throw new ValidacaoException("autorizacao.chave_obrigatoria", "Informe a chave de autorização.");
+        // Mesma régua da regulação usada no cadastro/edição (0000 emergencial ou ≥ 9999).
+        if (!Validators.RegulacaoRegras.Valido(chave))
+            throw new ValidacaoException("autorizacao.chave_invalida", Validators.RegulacaoRegras.MensagemInvalido);
 
         var s = await _db.SolicitacoesExame
             .Include(x => x.TipoExame)
@@ -262,12 +265,16 @@ public sealed class SolicitacoesExameService(
         s.AtualizadoEm = agora;
         s.AtualizadoPor = _usuarioAtual.UsuarioId;
 
-        // Paciente chegou sem ter confirmado antes → confirma na hora, origem "presencial".
-        if (s.StatusConfirmacao == StatusConfirmacaoAgendamento.Pendente)
+        // Presença física vence qualquer estado anterior: sem resposta → confirma presencial;
+        // tinha CANCELADO pelo WhatsApp/app mas compareceu → "revive" (volta a Confirmada,
+        // canal presencial, e limpa o cancelamento — a linha deixa de ficar esmaecida).
+        if (s.StatusConfirmacao != StatusConfirmacaoAgendamento.Confirmada)
         {
             s.StatusConfirmacao = StatusConfirmacaoAgendamento.Confirmada;
             s.ConfirmadoEm = agora;
             s.ConfirmadoCanal = "presencial";
+            s.ConfirmacaoCanceladaEm = null;
+            s.MotivoCancelamentoPaciente = null;
         }
 
         // Só AGORA enfileira o envio ao PACS (se o tipo envia à worklist e ainda não foi enviado).
@@ -416,6 +423,16 @@ public sealed class SolicitacoesExameService(
             throw new ConflitoException(
                 "solicitacaoExame.nao_reenviavel",
                 $"Só é possível reenviar worklist em 'Solicitada', 'Enviada' ou 'Recebida'. Atual: {s.Status}.");
+        }
+
+        // Gate de autorização: uma solicitação que NUNCA foi ao PACS (Solicitada) só entra na
+        // fila depois que a recepção autorizar com a chave. (Enviada/Recebida já estão no PACS —
+        // o reenvio ali é manutenção/ressincronização, não um envio novo.)
+        if (s.Status == StatusSolicitacaoExame.Solicitada && s.AutorizadoEm is null)
+        {
+            throw new ConflitoException(
+                "solicitacaoExame.nao_autorizada",
+                "Este exame ainda não foi autorizado pela recepção. Autorize com a chave de confirmação antes de enviar ao PACS.");
         }
 
         // Apenas agenda o worker pra tentar agora — ele faz o POST/GET e
