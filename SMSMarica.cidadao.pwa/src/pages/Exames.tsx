@@ -7,7 +7,6 @@ import {
   Loader2,
   ShieldCheck,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { api, pdfUrls, type AnexoResumo, type Exame } from '@/lib/api';
 import { extrairMensagemDeErro } from '@/lib/httpClient';
 import { abrirPdf } from '@/lib/pdf';
@@ -33,9 +32,9 @@ export function Exames() {
 function ExameCard({ exame }: { exame: Exame }) {
   const [aberto, setAberto] = useState(false);
   const [gerando, setGerando] = useState(false);
+  const [abrindoLaudo, setAbrindoLaudo] = useState(false);
   const [abrindoDoc, setAbrindoDoc] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
-  const navigate = useNavigate();
 
   const temDocs = exame.documentos.length > 0;
   const expansivel = temDocs || exame.temImagens || exame.laudoAssinado;
@@ -49,6 +48,20 @@ function ExameCard({ exame }: { exame: Exame }) {
       setErro(extrairMensagemDeErro(e));
     } finally {
       setGerando(false);
+    }
+  }
+
+  // Laudo pertence AO EXAME: abre o PDF assinado aqui mesmo, dentro do card.
+  async function verLaudo() {
+    if (!exame.laudoId) return;
+    setAbrindoLaudo(true);
+    setErro(null);
+    try {
+      await abrirPdf(pdfUrls.laudo(exame.laudoId), `laudo-${exame.laudoId}.pdf`);
+    } catch (e) {
+      setErro(extrairMensagemDeErro(e));
+    } finally {
+      setAbrindoLaudo(false);
     }
   }
 
@@ -96,12 +109,14 @@ function ExameCard({ exame }: { exame: Exame }) {
             />
           )}
 
-          {exame.laudoAssinado && (
+          {exame.laudoAssinado && exame.laudoId && (
             <LinhaAcao
-              icon={ShieldCheck}
+              icon={abrindoLaudo ? Loader2 : ShieldCheck}
+              girando={abrindoLaudo}
               titulo="Laudo assinado"
-              descricao="Abrir nos seus laudos"
-              onClick={() => navigate('/laudos')}
+              descricao={abrindoLaudo ? 'Abrindo o laudo…' : 'Abrir o laudo (PDF)'}
+              onClick={verLaudo}
+              destaque
             />
           )}
 

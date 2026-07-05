@@ -5,8 +5,8 @@ import {
   CalendarHeart,
   CalendarPlus,
   ChevronRight,
-  FileText,
   FlaskConical,
+  MessageCircle,
   HeartPulse,
   Stethoscope,
 } from 'lucide-react';
@@ -22,7 +22,7 @@ const ATALHOS = [
   { to: '/agendados/exames', label: 'Exames', desc: 'Agendados', icon: CalendarPlus, tom: 'lagoa' },
   { to: '/atendimentos', label: 'Atendimentos', desc: 'Suas consultas', icon: Stethoscope, tom: 'lagoa' },
   { to: '/exames', label: 'Exames', desc: 'Resultados', icon: FlaskConical, tom: 'lagoa' },
-  { to: '/laudos', label: 'Laudos', desc: 'Documentos', icon: FileText, tom: 'marica' },
+  { to: '/chat', label: 'Chat', desc: 'Fale com a Saúde', icon: MessageCircle, tom: 'marica' },
   { to: '/transporte', label: 'Transporte', desc: 'TFD e viagens', icon: CalendarHeart, tom: 'marica' },
 ] as const;
 

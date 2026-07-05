@@ -4,7 +4,7 @@ import {
   CalendarClock,
   CalendarHeart,
   CalendarPlus,
-  FileText,
+  MessageCircle,
   FlaskConical,
   Home,
   LogOut,
@@ -30,7 +30,7 @@ const NAV = [
   { to: '/agendados/exames', label: 'Exames agendados', icon: CalendarPlus },
   { to: '/atendimentos', label: 'Meus atendimentos', icon: Stethoscope },
   { to: '/exames', label: 'Exames', icon: FlaskConical },
-  { to: '/laudos', label: 'Laudos', icon: FileText },
+  { to: '/chat', label: 'Chat', icon: MessageCircle },
   { to: '/transporte', label: 'Transporte (TFD)', icon: CalendarHeart },
   { to: '/perfil', label: 'Meu perfil', icon: User },
 ];
