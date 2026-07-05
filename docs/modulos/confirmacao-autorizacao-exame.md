@@ -1,6 +1,37 @@
-# Confirmação de agendamento + autorização presencial de exames
+# Confirmação de agendamento + autorização presencial + comunicações ao paciente
 
-> Estado: **em produção** desde 2026-07-05. Migrations: `20260704012933_ConfirmacaoAgendamentoWhatsApp`, `20260705011223_AutorizacaoPresencialSolicitacao`.
+> Estado: **em produção** desde 2026-07-05. Migrations: `20260704012933_ConfirmacaoAgendamentoWhatsApp`, `20260705011223_AutorizacaoPresencialSolicitacao`, `20260705022530_RenomearComunicacaoPaciente`.
+
+## Comunicações ao paciente (`comunicacao_paciente`)
+
+Tabela ÚNICA de comunicação WhatsApp (renomeada de `agendamento_notificacao`), uma linha por
+**solicitação × finalidade**, ciclo completo: fila → envio → entrega → leitura → **visualização**
+→ falha (+tentativas/motivo). Finalidades e gatilhos:
+
+| Finalidade | Gatilho | Destino do magic link | Chave de envio (config `ComunicacaoPaciente`) |
+|---|---|---|---|
+| ConfirmacaoAgendamento (1) | import com DataAgendada futura | `/agendados/exames` | `EnviarConfirmacaoAgendamento` (ON) |
+| ExameLiberado (2) | solicitação marcada **Realizada** | `/exames` | `EnviarExameLiberado` (**OFF** até a Meta aprovar) |
+| LaudoPronto (3) | laudo **ASSINADO** digitalmente | `/laudos` | `EnviarLaudoPronto` (**OFF** até a Meta aprovar) |
+
+Chave desligada = a fila **acumula** (o gatilho enfileira normal) e flui sozinha ao ligar.
+`VisualizadoEm` é estampado quando o paciente usa o magic link da comunicação **ou** abre o
+recurso no app (imagens-pdf / laudo-pdf).
+
+### Checks (estilo WhatsApp) na lista de solicitações
+
+Chips ao lado da Situação, por finalidade (ExameLiberado quando Realizada; LaudoPronto quando
+Laudada): **✓ cinza** enviado · **✓✓ cinza** entregue · **✓✓ AZUL** lida/visualizada ·
+**⚠** falha/sem número (tooltip com o motivo) · relógio = na fila.
+
+### Histórico + contatos manuais
+
+No detalhe da solicitação, a seção "Comunicação com o paciente" mostra a timeline de cada
+comunicação (fila/enviada/entregue/lida/visualizada + erros) e os **contatos manuais**
+(`contato_registro`, append-only): botão "Registrar contato" (meio: ligação/WhatsApp/presencial;
+resultado: atendeu/não atendeu/caixa postal/número inválido; observação).
+Endpoints: `GET /solicitacoes-exame/{id}/historico`, `POST /solicitacoes-exame/{id}/contatos`.
+Gestão geral em `/comunicacoes-paciente` (rota renomeada de agendamento-notificacoes).
 
 ## Visão geral
 
