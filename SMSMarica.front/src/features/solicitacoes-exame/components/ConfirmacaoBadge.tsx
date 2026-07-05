@@ -1,5 +1,23 @@
+import { CheckCircle2, XCircle } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
 import type { StatusConfirmacaoPaciente } from '@/features/solicitacoes-exame/types';
+
+/** Ícone compacto ao lado do paciente: ✓ verde = confirmou, ✗ vermelho = não vai. Nada se pendente. */
+export function ConfirmacaoIcone({ status }: { status: StatusConfirmacaoPaciente }) {
+  if (status === 'Confirmada')
+    return (
+      <span title="Paciente confirmou a presença" className="inline-flex">
+        <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600" aria-label="Paciente confirmou" />
+      </span>
+    );
+  if (status === 'Cancelada')
+    return (
+      <span title="Paciente informou que não vai comparecer" className="inline-flex">
+        <XCircle className="h-4 w-4 shrink-0 text-red-600" aria-label="Paciente não vai comparecer" />
+      </span>
+    );
+  return null;
+}
 
 const ESTILOS: Record<StatusConfirmacaoPaciente, string> = {
   Pendente: 'bg-amber-50 text-amber-800 ring-1 ring-amber-200',

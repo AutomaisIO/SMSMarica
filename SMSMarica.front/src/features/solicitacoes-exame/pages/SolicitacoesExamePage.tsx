@@ -24,7 +24,7 @@ import { CodigoCopiavel } from '@/shared/ui/CodigoCopiavel';
 import { useExcluirSolicitacao, useListarSolicitacoes } from '@/features/solicitacoes-exame/api/queries';
 import { ehFalhaExclusaoPacs } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
 import { StatusBadgeSolicitacao } from '@/features/solicitacoes-exame/components/StatusBadgeSolicitacao';
-import { ConfirmacaoBadge } from '@/features/solicitacoes-exame/components/ConfirmacaoBadge';
+import { ConfirmacaoIcone } from '@/features/solicitacoes-exame/components/ConfirmacaoBadge';
 import { BotaoDeclaracaoComparecimento } from '@/features/solicitacoes-exame/components/BotaoDeclaracaoComparecimento';
 import { BotaoBaixarExameCompleto } from '@/features/solicitacoes-exame/components/BotaoBaixarExameCompleto';
 import { BotaoVisualizarLaudo } from '@/features/solicitacoes-exame/components/BotaoVisualizarLaudo';
@@ -170,15 +170,14 @@ export function SolicitacoesExamePage() {
             className="min-w-0"
             classNameNome="truncate font-medium text-gray-900"
             sufixo={
-              s.prioridade === 'Urgente' ? (
-                <span
-                  title="Solicitação URGENTE"
-                  className="text-sm font-bold text-red-700"
-                  aria-label="Urgente"
-                >
-                  ⚠
-                </span>
-              ) : undefined
+              <span className="inline-flex items-center gap-1">
+                {s.prioridade === 'Urgente' ? (
+                  <span title="Solicitação URGENTE" className="text-sm font-bold text-red-700" aria-label="Urgente">
+                    ⚠
+                  </span>
+                ) : null}
+                <ConfirmacaoIcone status={s.statusConfirmacao} />
+              </span>
             }
           />
           <div className="truncate text-xs text-gray-500">Por {s.solicitanteNome}</div>
@@ -204,11 +203,6 @@ export function SolicitacoesExamePage() {
       chave: 'status',
       cabecalho: 'Status',
       render: (s) => <StatusBadgeSolicitacao status={s.status} />,
-    },
-    {
-      chave: 'confirmacao',
-      cabecalho: 'Confirmação',
-      render: (s) => <ConfirmacaoBadge status={s.statusConfirmacao} compacto />,
     },
     {
       chave: 'acoes',
