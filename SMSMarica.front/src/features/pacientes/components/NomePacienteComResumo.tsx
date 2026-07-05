@@ -6,6 +6,7 @@ import { Button } from '@/shared/ui/Button';
 import { Modal } from '@/shared/ui/Modal';
 import { usePacientePorId } from '@/features/pacientes/api/queries';
 import { useTelefoneValidado } from '@/features/telefone-validacao/api/queries';
+import { BotaoVerificarTelefonePaciente } from '@/features/telefone-validacao/components/BotaoVerificarTelefonePaciente';
 import type { Paciente } from '@/features/pacientes/types';
 
 /** Logo do WhatsApp (lucide não traz ícones de marca). */
@@ -52,7 +53,8 @@ function ResumoConteudo({ pacienteId }: { pacienteId: string }) {
   // Situação do contato principal (WhatsApp) — só o principal é validável (por CPF+número).
   const cpf = p?.cpf ?? null;
   const numero = p?.telefonePrincipal ?? null;
-  const telefoneValidado = useTelefoneValidado(cpf, numero).data?.validado === true;
+  const validadoQ = useTelefoneValidado(cpf, numero);
+  const telefoneValidado = validadoQ.data?.validado === true;
 
   if (detalhe.isLoading) {
     return (
@@ -80,9 +82,9 @@ function ResumoConteudo({ pacienteId }: { pacienteId: string }) {
       <Linha rotulo="Sexo" valor={SEXO_LABEL[String(p.sexo)] ?? String(p.sexo)} />
       <div className="flex flex-col gap-0.5">
         <span className="text-xs font-medium uppercase tracking-wide text-gray-500">Telefone</span>
-        <span className="flex items-center gap-1.5 text-sm text-gray-900">
+        <span className="flex flex-wrap items-center gap-1.5 text-sm text-gray-900">
           {p.telefonePrincipal || <span className="text-gray-400">—</span>}
-          {p.telefonePrincipal && telefoneValidado ? (
+          {telefoneValidado ? (
             <span
               className="inline-flex items-center gap-0.5 text-emerald-600"
               title="Contato verificado no WhatsApp"
@@ -90,7 +92,13 @@ function ResumoConteudo({ pacienteId }: { pacienteId: string }) {
               <WhatsappIcon className="h-4 w-4" />
               <Check className="h-3.5 w-3.5" strokeWidth={3} />
             </span>
-          ) : null}
+          ) : (
+            <BotaoVerificarTelefonePaciente
+              cpf={p.cpf}
+              numeroInicial={p.telefonePrincipal}
+              aoValidado={() => validadoQ.refetch()}
+            />
+          )}
         </span>
       </div>
       <Linha rotulo="Nome da mãe" valor={p.nomeDaMae} />
