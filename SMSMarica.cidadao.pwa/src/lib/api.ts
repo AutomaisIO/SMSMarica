@@ -1,4 +1,5 @@
 import { http } from './httpClient';
+import { comCacheLocal } from './dadosCache';
 
 export type Perfil = {
   id: string;
@@ -100,7 +101,8 @@ export const api = {
   consentimento: () =>
     http.get<ConsentimentoStatus>('/auth/paciente/consentimento').then((r) => r.data),
   aceitarConsentimento: () => http.post('/auth/paciente/consentimento'),
-  perfil: () => http.get<Perfil>('/auth/paciente/me').then((r) => r.data),
+  // Leituras clínicas: rede-primeiro com fallback OFFLINE (ver lib/dadosCache).
+  perfil: () => comCacheLocal('perfil', () => http.get<Perfil>('/auth/paciente/me').then((r) => r.data)),
   salvarContato: (body: AtualizarContato) => http.put('/auth/paciente/me/contato', body),
   // Troca do celular por OTP: envia código ao número NOVO; só efetiva ao confirmar.
   solicitarOtpContato: (numero: string) =>
@@ -113,16 +115,24 @@ export const api = {
       .then((r) => r.data),
   salvarFoto: (fotoBase64: string | null) => http.put('/auth/paciente/me/foto', { fotoBase64 }),
   logout: () => http.post('/auth/paciente/logout'),
-  translados: () => http.get<Translado[]>('/auth/paciente/meus-translados').then((r) => r.data),
-  atendimentos: () => http.get<Atendimento[]>('/auth/paciente/atendimentos').then((r) => r.data),
-  exames: () => http.get<Exame[]>('/auth/paciente/exames').then((r) => r.data),
-  laudos: () => http.get<Laudo[]>('/auth/paciente/laudos').then((r) => r.data),
+  translados: () =>
+    comCacheLocal('translados', () =>
+      http.get<Translado[]>('/auth/paciente/meus-translados').then((r) => r.data)),
+  atendimentos: () =>
+    comCacheLocal('atendimentos', () =>
+      http.get<Atendimento[]>('/auth/paciente/atendimentos').then((r) => r.data)),
+  exames: () =>
+    comCacheLocal('exames', () => http.get<Exame[]>('/auth/paciente/exames').then((r) => r.data)),
+  laudos: () =>
+    comCacheLocal('laudos', () => http.get<Laudo[]>('/auth/paciente/laudos').then((r) => r.data)),
   agendamentos: (tipo: 'consulta' | 'exame') =>
-    http.get<Agendamento[]>('/auth/paciente/agendamentos', { params: { tipo } }).then((r) => r.data),
+    comCacheLocal(`agendamentos.${tipo}`, () =>
+      http.get<Agendamento[]>('/auth/paciente/agendamentos', { params: { tipo } }).then((r) => r.data)),
   agendamentoExame: (solicitacaoExameId: string) =>
-    http
-      .get<AgendamentoExameDetalhe>(`/auth/paciente/agendamentos/exames/${solicitacaoExameId}`)
-      .then((r) => r.data),
+    comCacheLocal(`agendamento.${solicitacaoExameId}`, () =>
+      http
+        .get<AgendamentoExameDetalhe>(`/auth/paciente/agendamentos/exames/${solicitacaoExameId}`)
+        .then((r) => r.data)),
   confirmarExame: (solicitacaoExameId: string) =>
     http.post(`/auth/paciente/agendamentos/exames/${solicitacaoExameId}/confirmar`),
   cancelarExame: (solicitacaoExameId: string, motivo: string) =>

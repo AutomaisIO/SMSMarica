@@ -51,6 +51,21 @@ export async function salvarPdfCache(url: string, data: ArrayBuffer): Promise<vo
   }
 }
 
+/** Apaga TODOS os PDFs locais — chamado no logout (LGPD, aparelho compartilhado). */
+export async function limparPdfCache(): Promise<void> {
+  try {
+    const db = await abrir();
+    await new Promise<void>((resolve) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    });
+  } catch {
+    /* best-effort */
+  }
+}
+
 /** Remove os itens mais antigos quando passa de MAX. */
 async function podar(db: IDBDatabase): Promise<void> {
   await new Promise<void>((resolve) => {

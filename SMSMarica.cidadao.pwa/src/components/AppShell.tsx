@@ -20,6 +20,9 @@ import { usePerfil } from '@/store/perfil';
 import { Avatar } from '@/components/ui';
 import { VisualizadorPdf } from '@/components/VisualizadorPdf';
 import { InstalarApp } from '@/components/InstalarApp';
+import { sincronizarTudo, resetarSincronizacao } from '@/lib/sincronizar';
+import { limparDadosLocais } from '@/lib/dadosCache';
+import { limparPdfCache } from '@/lib/pdfCache';
 
 const NAV = [
   { to: '/', label: 'Início', icon: Home, end: true },
@@ -43,7 +46,22 @@ export function AppShell() {
 
   useEffect(() => {
     void carregar();
+    // Sincronização offline-first: baixa listas + documentos em segundo plano (1x por entrada).
+    sincronizarTudo();
   }, [carregar]);
+
+  // Indicador de offline: quando cai a rede, avisamos que os dados exibidos são os salvos.
+  const [offline, setOffline] = useState(typeof navigator !== 'undefined' && !navigator.onLine);
+  useEffect(() => {
+    const on = () => setOffline(false);
+    const off = () => setOffline(true);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => {
+      window.removeEventListener('online', on);
+      window.removeEventListener('offline', off);
+    };
+  }, []);
 
   // Fecha o menu ao trocar de rota.
   useEffect(() => setAberto(false), [location.pathname]);
@@ -63,6 +81,10 @@ export function AppShell() {
     } catch {
       /* mesmo se falhar no servidor, encerra a sessão local */
     }
+    // LGPD: sair remove os dados sincronizados do aparelho (pode ser compartilhado).
+    limparDadosLocais();
+    void limparPdfCache();
+    resetarSincronizacao();
     sair();
     navigate('/login', { replace: true });
   }
@@ -92,6 +114,13 @@ export function AppShell() {
           <Avatar src={foto} nome={nome} size={40} className="bg-white/15 text-white ring-0" />
         </button>
       </header>
+
+      {/* Banner de offline — os dados exibidos são os últimos sincronizados. */}
+      {offline && (
+        <div className="bg-amber-100 px-4 py-1.5 text-center text-xs font-medium text-amber-800">
+          Sem conexão — mostrando os dados salvos no aparelho.
+        </div>
+      )}
 
       <main className="flex-1 px-4 pb-10 pt-5">
         {/* Convite de instalação em todas as telas autenticadas (some se instalado/adiado). */}
