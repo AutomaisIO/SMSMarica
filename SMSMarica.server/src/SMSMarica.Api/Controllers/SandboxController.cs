@@ -42,6 +42,17 @@ public sealed class SandboxController(ISandboxService service) : ControllerBase
     public async Task<ResultadoEnvioTesteDto> Enviar([FromBody] EnviarMensagemTesteRequest req, CancellationToken ct) =>
         await service.EnviarMensagemAsync(req, ct);
 
+    /// <summary>Simula o ciclo dos checks do zap (✓ enviada, ✓✓ entregue, ✓✓ azul lida,
+    /// visualizada, ⚠ falha, reset) de uma comunicação, sem falar com a Meta.</summary>
+    [HttpPost("comunicacao")]
+    [RequerPermissao(ModuloPermissao.Sandbox, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> SimularComunicacao([FromBody] SimularComunicacaoRequest req, CancellationToken ct)
+    {
+        await service.SimularComunicacaoAsync(req, ct);
+        return NoContent();
+    }
+
     /// <summary>Força o estado de confirmação de uma solicitação (reversível): pendente|confirmada|cancelada.</summary>
     [HttpPost("confirmacao")]
     [RequerPermissao(ModuloPermissao.Sandbox, AcoesPermissao.Edicao)]

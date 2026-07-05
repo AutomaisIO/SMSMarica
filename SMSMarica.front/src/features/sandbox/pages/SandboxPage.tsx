@@ -100,6 +100,20 @@ export function SandboxPage() {
     }
   }
 
+  const [finalidadeSim, setFinalidadeSim] = useState('ExameLiberado');
+  const [simulado, setSimulado] = useState<string | null>(null);
+
+  async function simular(s: SandboxSolicitacao, estado: string) {
+    setErro(null);
+    setSimulado(null);
+    try {
+      await sandboxApi.simularComunicacao(s.id, finalidadeSim, estado);
+      setSimulado(`${s.accessionNumber}: ${finalidadeSim} → ${estado}. Confira os checks na lista de Solicitações.`);
+    } catch (e) {
+      setErro(extrairMensagemDeErro(e));
+    }
+  }
+
   function copiar(v: string) {
     navigator.clipboard?.writeText(v);
     setCopiado(true);
@@ -256,6 +270,56 @@ export function SandboxPage() {
               ))}
             </ul>
           )}
+        </section>
+      ) : null}
+
+      {/* 4. Simular os checks do zap (sem Meta) */}
+      {sel && solic.length > 0 ? (
+        <section className="rounded-lg border border-gray-200 p-4">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-gray-800">
+              4. Simular checks do zap (✓ enviada · ✓✓ entregue · ✓✓ azul lida · ⚠ falha)
+            </p>
+            <label className="flex items-center gap-2 text-xs text-gray-600">
+              Comunicação:
+              <select
+                className="rounded-md border border-gray-200 px-2 py-1 text-sm"
+                value={finalidadeSim}
+                onChange={(e) => setFinalidadeSim(e.target.value)}
+              >
+                <option value="ExameLiberado">Exame liberado</option>
+                <option value="LaudoPronto">Laudo pronto</option>
+                <option value="ConfirmacaoAgendamento">Confirmação de agendamento</option>
+              </select>
+            </label>
+          </div>
+          <p className="mb-2 text-xs text-gray-500">
+            Grava direto no banco (sem Meta). Depois confira os checks na lista de <strong>Solicitações</strong> e o
+            histórico no detalhe.
+          </p>
+          <ul className="divide-y divide-gray-100 rounded-md border border-gray-100">
+            {solic.map((s) => (
+              <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
+                <div className="min-w-0">
+                  <span className="font-medium text-gray-900">{s.tipoExame ?? 'Exame'}</span>{' '}
+                  <span className="font-mono text-xs text-gray-500">{s.accessionNumber}</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  <Button tamanho="sm" variante="outline" onClick={() => simular(s, 'enviada')}>✓ Enviada</Button>
+                  <Button tamanho="sm" variante="outline" onClick={() => simular(s, 'entregue')}>✓✓ Entregue</Button>
+                  <Button tamanho="sm" variante="outline" onClick={() => simular(s, 'lida')}>
+                    <span className="text-sky-500">✓✓</span>&nbsp;Lida
+                  </Button>
+                  <Button tamanho="sm" variante="outline" onClick={() => simular(s, 'visualizada')}>👁 Visualizada</Button>
+                  <Button tamanho="sm" variante="outline" onClick={() => simular(s, 'falha')}>⚠ Falha</Button>
+                  <Button tamanho="sm" variante="ghost" onClick={() => simular(s, 'reset')}>↺ Reset</Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {simulado ? (
+            <p className="mt-2 rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">{simulado}</p>
+          ) : null}
         </section>
       ) : null}
     </div>

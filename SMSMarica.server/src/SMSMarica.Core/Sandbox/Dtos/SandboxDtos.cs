@@ -27,3 +27,10 @@ public sealed record ResultadoEnvioTesteDto(bool Ok, string? Erro, string? Link)
 
 /// <summary>Força o estado de confirmação de uma solicitação (reversível): "pendente" | "confirmada" | "cancelada".</summary>
 public sealed record DefinirConfirmacaoRequest(Guid SolicitacaoExameId, string Estado, string? Motivo);
+
+/// <summary>
+/// Simula o ciclo de uma comunicação (checks do zap) sem falar com a Meta:
+/// <c>Finalidade</c> = ExameLiberado | LaudoPronto | ConfirmacaoAgendamento;
+/// <c>Estado</c> = enviada (✓) | entregue (✓✓) | lida (✓✓ azul) | visualizada | falha (⚠) | reset.
+/// </summary>
+public sealed record SimularComunicacaoRequest(Guid SolicitacaoExameId, string Finalidade, string Estado);

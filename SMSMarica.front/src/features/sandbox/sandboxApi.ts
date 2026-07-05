@@ -23,4 +23,7 @@ export const sandboxApi = {
     http.post<ResultadoEnvio>('/sandbox/mensagem', body).then((r) => r.data),
   definirConfirmacao: (solicitacaoExameId: string, estado: string, motivo?: string) =>
     http.post('/sandbox/confirmacao', { solicitacaoExameId, estado, motivo }),
+  /** Simula o ciclo dos checks do zap (sem Meta): enviada|entregue|lida|visualizada|falha|reset. */
+  simularComunicacao: (solicitacaoExameId: string, finalidade: string, estado: string) =>
+    http.post('/sandbox/comunicacao', { solicitacaoExameId, finalidade, estado }),
 };

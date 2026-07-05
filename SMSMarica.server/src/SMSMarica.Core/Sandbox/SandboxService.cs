@@ -26,6 +26,9 @@ public interface ISandboxService
     Task<LinkTesteDto> GerarLinkAsync(GerarLinkRequest req, CancellationToken ct = default);
     Task<ResultadoEnvioTesteDto> EnviarMensagemAsync(EnviarMensagemTesteRequest req, CancellationToken ct = default);
     Task DefinirConfirmacaoAsync(DefinirConfirmacaoRequest req, CancellationToken ct = default);
+
+    /// <summary>Simula o ciclo dos checks (✓/✓✓/✓✓ azul/⚠) de uma comunicação, sem Meta.</summary>
+    Task SimularComunicacaoAsync(SimularComunicacaoRequest req, CancellationToken ct = default);
 }
 
 public sealed class SandboxService(
@@ -127,6 +130,81 @@ public sealed class SandboxService(
                 throw new ValidacaoException("sandbox.estado", "Estado inválido (use pendente | confirmada | cancelada).");
         }
         s.AtualizadoEm = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task SimularComunicacaoAsync(SimularComunicacaoRequest req, CancellationToken ct = default)
+    {
+        if (!Enum.TryParse<FinalidadeComunicacao>(req.Finalidade, ignoreCase: true, out var finalidade))
+            throw new ValidacaoException("sandbox.finalidade",
+                "Finalidade inválida (ConfirmacaoAgendamento|ExameLiberado|LaudoPronto).");
+
+        var s = await db.SolicitacoesExame.AsNoTracking()
+            .Where(x => x.Id == req.SolicitacaoExameId && x.ExcluidoEm == null)
+            .Select(x => new { x.Id, x.PacienteId })
+            .FirstOrDefaultAsync(ct)
+            ?? throw new NaoEncontradoException("sandbox.solicitacao", "Solicitação não encontrada.");
+
+        // Upsert por (solicitação, finalidade) — respeita o índice único.
+        var c = await db.ComunicacoesPaciente.FirstOrDefaultAsync(
+            x => x.SolicitacaoExameId == s.Id && x.Finalidade == finalidade, ct);
+        if (c is null)
+        {
+            c = new ComunicacaoPaciente
+            {
+                Id = Guid.CreateVersion7(),
+                Tipo = TipoAgendamento.Exame,
+                Finalidade = finalidade,
+                SolicitacaoExameId = s.Id,
+                PacienteId = s.PacienteId,
+                CriadoEm = DateTime.UtcNow,
+            };
+            db.ComunicacoesPaciente.Add(c);
+        }
+
+        var agora = DateTime.UtcNow;
+        c.AtualizadoEm = agora;
+        c.ProximaTentativaEm = null; // simulado — o worker não deve pegar
+        switch (req.Estado?.Trim().ToLowerInvariant())
+        {
+            case "enviada":
+                c.Status = StatusComunicacao.Enviada;
+                c.Telefone ??= "5521999990000";
+                c.Tentativas = Math.Max(1, c.Tentativas);
+                c.EnviadoEm = agora;
+                c.EntregueEm = null; c.LidoEm = null; c.VisualizadoEm = null; c.MotivoFalha = null;
+                break;
+            case "entregue":
+                c.Status = StatusComunicacao.Entregue;
+                c.EnviadoEm ??= agora;
+                c.EntregueEm = agora;
+                c.MotivoFalha = null;
+                break;
+            case "lida":
+                c.Status = StatusComunicacao.Lida;
+                c.EnviadoEm ??= agora;
+                c.EntregueEm ??= agora;
+                c.LidoEm = agora;
+                c.MotivoFalha = null;
+                break;
+            case "visualizada":
+                c.EnviadoEm ??= agora;
+                c.VisualizadoEm = agora;
+                break;
+            case "falha":
+                c.Status = StatusComunicacao.Falha;
+                c.MotivoFalha = "(SIMULADO) Falha de entrega gerada pelo sandbox.";
+                break;
+            case "reset":
+                c.Status = StatusComunicacao.Pendente;
+                c.EnviadoEm = null; c.EntregueEm = null; c.LidoEm = null; c.VisualizadoEm = null;
+                c.MotivoFalha = null; c.Tentativas = 0;
+                break;
+            default:
+                throw new ValidacaoException("sandbox.estado",
+                    "Estado inválido (enviada|entregue|lida|visualizada|falha|reset).");
+        }
+
         await db.SaveChangesAsync(ct);
     }
 
