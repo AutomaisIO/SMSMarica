@@ -53,9 +53,25 @@ public sealed class CidadaoClinicoService(
             .GroupBy(d => d.SolicitacaoExameId)
             .ToDictionary(g => g.Key, g => g.ToList());
 
+        // Study EFETIVO por solicitação: exames sem worklist (ex.: mamografia no Fuji) têm o
+        // study REAL do equipamento na ExameAssociacao — e o LAUDO é criado com esse UID real,
+        // não com o pré-gerado da solicitação. Sem isso o laudo nunca casa com o card do exame.
+        var associacoes = await db.ExameAssociacoes.AsNoTracking()
+            .Where(a => ids.Contains(a.SolicitacaoExameId) && a.ExcluidoEm == null)
+            .Select(a => new { a.SolicitacaoExameId, a.StudyInstanceUID })
+            .ToListAsync(cancellationToken);
+        var studyRealPorExame = associacoes
+            .GroupBy(a => a.SolicitacaoExameId)
+            .ToDictionary(g => g.Key, g => g.First().StudyInstanceUID);
+        string? StudyEfetivo(Guid exameId, string? preGerado) =>
+            studyRealPorExame.TryGetValue(exameId, out var real) && !string.IsNullOrEmpty(real)
+                ? real
+                : (string.IsNullOrEmpty(preGerado) ? null : preGerado);
+
         var studyUids = exames
-            .Where(e => !string.IsNullOrEmpty(e.StudyInstanceUID))
-            .Select(e => e.StudyInstanceUID)
+            .Select(e => StudyEfetivo(e.Id, e.StudyInstanceUID))
+            .Where(u => u is not null)
+            .Select(u => u!)
             .Distinct()
             .ToList();
         var laudosPorStudy = studyUids.Count > 0
@@ -71,8 +87,9 @@ public sealed class CidadaoClinicoService(
         {
             docsPorExame.TryGetValue(e.Id, out var ds);
             LaudoPorStudyDto? laudo = null;
-            if (!string.IsNullOrEmpty(e.StudyInstanceUID))
-                laudosPorStudy.TryGetValue(e.StudyInstanceUID, out laudo);
+            var studyEfetivo = StudyEfetivo(e.Id, e.StudyInstanceUID);
+            if (studyEfetivo is not null)
+                laudosPorStudy.TryGetValue(studyEfetivo, out laudo);
             var laudoAssinado = laudo is not null && assinados.Contains(laudo.LaudoId);
 
             return new ExameResumoDto(

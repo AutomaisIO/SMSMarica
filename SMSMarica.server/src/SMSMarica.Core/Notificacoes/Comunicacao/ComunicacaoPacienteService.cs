@@ -137,7 +137,7 @@ public sealed class ComunicacaoPacienteService(
         n.Telefone = TelefoneWhatsApp.Canonizar(telefone!);
 
         // Magic link novo a cada tentativa (o anterior simplesmente expira sem uso).
-        var link = await loginLinks.GerarParaSolicitacaoAsync(s.Id, Destino(n.Finalidade), ct);
+        var link = await loginLinks.GerarParaSolicitacaoAsync(s.Id, Destino(n.Finalidade, s.Id), ct);
         n.LoginLinkId = link.Token;
 
         var opts = options.Value;
@@ -166,11 +166,12 @@ public sealed class ComunicacaoPacienteService(
         }
     }
 
-    /// <summary>Rota de chegada no app após o magic link, por finalidade.</summary>
-    private static string Destino(FinalidadeComunicacao finalidade) => finalidade switch
+    /// <summary>Rota de chegada no app após o magic link, por finalidade. Exame liberado e
+    /// laudo pronto caem em /exames com o CARD do exame já expandido (?exame={id}).</summary>
+    private static string Destino(FinalidadeComunicacao finalidade, Guid solicitacaoId) => finalidade switch
     {
-        FinalidadeComunicacao.ExameLiberado => "/exames",
-        FinalidadeComunicacao.LaudoPronto => "/laudos",
+        FinalidadeComunicacao.ExameLiberado or FinalidadeComunicacao.LaudoPronto
+            => $"/exames?exame={solicitacaoId}",
         _ => "/agendados/exames",
     };
 

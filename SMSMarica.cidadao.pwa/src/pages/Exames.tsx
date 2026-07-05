@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   ChevronDown,
   FileText,
@@ -16,6 +17,11 @@ import { Lista } from '@/components/Lista';
 import { Etiqueta } from '@/components/Etiqueta';
 
 export function Exames() {
+  // Magic link de "exame liberado"/"laudo pronto" chega com ?exame={id}: o card correspondente
+  // nasce EXPANDIDO, destacado e rolado para a vista — a senhora cai direto no resultado.
+  const [params] = useSearchParams();
+  const destaqueId = params.get('exame');
+
   return (
     <Lista
       eyebrow="Resultados"
@@ -24,13 +30,19 @@ export function Exames() {
       emptyIcon={FlaskConical}
       emptyTitulo="Nenhum exame disponível"
       emptyDescricao="Resultados, documentos e imagens dos seus exames aparecem aqui assim que ficam prontos."
-      renderItem={(e) => <ExameCard exame={e} />}
+      renderItem={(e) => <ExameCard exame={e} destacado={e.id === destaqueId} />}
     />
   );
 }
 
-function ExameCard({ exame }: { exame: Exame }) {
-  const [aberto, setAberto] = useState(false);
+function ExameCard({ exame, destacado = false }: { exame: Exame; destacado?: boolean }) {
+  const [aberto, setAberto] = useState(destacado);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+
+  // Rola o card destacado para a vista assim que a lista renderiza.
+  useEffect(() => {
+    if (destacado) cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [destacado]);
   const [gerando, setGerando] = useState(false);
   const [abrindoLaudo, setAbrindoLaudo] = useState(false);
   const [abrindoDoc, setAbrindoDoc] = useState<string | null>(null);
@@ -78,7 +90,8 @@ function ExameCard({ exame }: { exame: Exame }) {
   }
 
   return (
-    <Card className="overflow-hidden">
+    <div ref={cardRef}>
+    <Card className={cn('overflow-hidden', destacado && 'ring-2 ring-lagoa')}>
       <button
         type="button"
         onClick={() => expansivel && setAberto((v) => !v)}
@@ -135,6 +148,7 @@ function ExameCard({ exame }: { exame: Exame }) {
         </div>
       )}
     </Card>
+    </div>
   );
 }
 
