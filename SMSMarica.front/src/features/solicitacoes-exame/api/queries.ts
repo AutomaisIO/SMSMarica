@@ -8,6 +8,7 @@ import {
   obterSolicitacao,
   obterSolicitacaoPorStudy,
   reenviarWorklist,
+  autorizarSolicitacao,
 } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
 import type {
   AtualizarSolicitacaoPayload,
@@ -106,6 +107,18 @@ export function useReenviarWorklist() {
     onSuccess: (_d, id) => {
       client.invalidateQueries({ queryKey: solicitacoesKeys.raiz });
       client.invalidateQueries({ queryKey: solicitacoesKeys.porId(id) });
+    },
+  });
+}
+
+export function useAutorizarSolicitacao() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, chaveConfirmacao }: { id: string; chaveConfirmacao: string }) =>
+      autorizarSolicitacao(id, chaveConfirmacao),
+    onSuccess: (_d, v) => {
+      client.invalidateQueries({ queryKey: solicitacoesKeys.raiz });
+      client.invalidateQueries({ queryKey: solicitacoesKeys.porId(v.id) });
     },
   });
 }

@@ -196,8 +196,9 @@ public sealed class ImportacaoSisregService(
             DataSolicitacao = m.DataSolicitacao,
             // Data em que a regulação autorizou (para estatística de tempos).
             DataRegulacao = m.DataRegulacao,
-            // Segue a config do tipo (worklist ligado → worker envia; senão só registra).
-            ProximaTentativaEm = tipo.EnviarParaWorklist ? agora : null,
+            // NADA vai ao PACS automaticamente: o envio só é enfileirado quando a recepção
+            // AUTORIZA (com a chave). Fica null até lá, mesmo com worklist ligado.
+            ProximaTentativaEm = null,
             CriadoEm = agora,
             CriadoPor = usuarioAtual.UsuarioId,
         };

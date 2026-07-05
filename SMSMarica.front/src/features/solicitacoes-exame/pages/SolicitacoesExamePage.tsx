@@ -24,7 +24,7 @@ import { CodigoCopiavel } from '@/shared/ui/CodigoCopiavel';
 import { useExcluirSolicitacao, useListarSolicitacoes } from '@/features/solicitacoes-exame/api/queries';
 import { ehFalhaExclusaoPacs } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
 import { StatusBadgeSolicitacao } from '@/features/solicitacoes-exame/components/StatusBadgeSolicitacao';
-import { ConfirmacaoIcone } from '@/features/solicitacoes-exame/components/ConfirmacaoBadge';
+import { SituacaoBadge, derivarSituacao } from '@/features/solicitacoes-exame/components/SituacaoSolicitacao';
 import { BotaoDeclaracaoComparecimento } from '@/features/solicitacoes-exame/components/BotaoDeclaracaoComparecimento';
 import { BotaoBaixarExameCompleto } from '@/features/solicitacoes-exame/components/BotaoBaixarExameCompleto';
 import { BotaoVisualizarLaudo } from '@/features/solicitacoes-exame/components/BotaoVisualizarLaudo';
@@ -153,9 +153,14 @@ export function SolicitacoesExamePage() {
       chave: 'accession',
       cabecalho: 'Pedido',
       render: (s) => (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-start gap-1.5">
           <DirecaoIcone direcao={s.direcao} />
-          <CodigoCopiavel codigo={s.accessionNumber} />
+          <div className="min-w-0">
+            <CodigoCopiavel codigo={s.accessionNumber} />
+            {s.codigoSolicitacao ? (
+              <div className="truncate text-xs text-gray-500">SISREG {s.codigoSolicitacao}</div>
+            ) : null}
+          </div>
         </div>
       ),
     },
@@ -170,14 +175,11 @@ export function SolicitacoesExamePage() {
             className="min-w-0"
             classNameNome="truncate font-medium text-gray-900"
             sufixo={
-              <span className="inline-flex items-center gap-1">
-                {s.prioridade === 'Urgente' ? (
-                  <span title="Solicitação URGENTE" className="text-sm font-bold text-red-700" aria-label="Urgente">
-                    ⚠
-                  </span>
-                ) : null}
-                <ConfirmacaoIcone status={s.statusConfirmacao} />
-              </span>
+              s.prioridade === 'Urgente' ? (
+                <span title="Solicitação URGENTE" className="text-sm font-bold text-red-700" aria-label="Urgente">
+                  ⚠
+                </span>
+              ) : undefined
             }
           />
           <div className="truncate text-xs text-gray-500">Por {s.solicitanteNome}</div>
@@ -201,8 +203,11 @@ export function SolicitacoesExamePage() {
     },
     {
       chave: 'status',
-      cabecalho: 'Status',
-      render: (s) => <StatusBadgeSolicitacao status={s.status} />,
+      cabecalho: 'Situação',
+      render: (s) => {
+        const sit = derivarSituacao(s);
+        return sit ? <SituacaoBadge situacao={sit} /> : <StatusBadgeSolicitacao status={s.status} />;
+      },
     },
     {
       chave: 'acoes',
@@ -359,9 +364,11 @@ export function SolicitacoesExamePage() {
         // Solicitações URGENTES: fundo vermelho claro + filete vermelho fininho à
         // esquerda (na 1ª célula — renderiza em qualquer border-model da tabela).
         classeLinha={(s) =>
-          s.prioridade === 'Urgente'
-            ? 'bg-red-50 hover:bg-red-100 [&>td:first-child]:border-l-[3px] [&>td:first-child]:border-l-red-600'
-            : undefined
+          s.statusConfirmacao === 'Cancelada'
+            ? 'opacity-55 bg-gray-50 hover:bg-gray-100'
+            : s.prioridade === 'Urgente'
+              ? 'bg-red-50 hover:bg-red-100 [&>td:first-child]:border-l-[3px] [&>td:first-child]:border-l-red-600'
+              : undefined
         }
       />
 

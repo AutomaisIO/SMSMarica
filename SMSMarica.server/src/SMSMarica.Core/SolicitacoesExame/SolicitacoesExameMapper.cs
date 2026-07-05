@@ -43,6 +43,9 @@ internal static class SolicitacoesExameMapper
         s.ConfirmadoCanal,
         s.ConfirmacaoCanceladaEm,
         s.MotivoCancelamentoPaciente,
+        s.AutorizadoEm,
+        s.AutorizadoPor,
+        false, // PacienteContatoVerificado — calculado no enriquecimento (consulta contato_validado).
         s.TentativasEnvio,
         s.UltimaTentativaEm,
         s.ProximaTentativaEm,
@@ -64,6 +67,7 @@ internal static class SolicitacoesExameMapper
         return new(
             s.Id,
             s.AccessionNumber,
+            s.CodigoSolicitacao,
             s.PacienteId,
             string.Empty,
             s.TipoExameId,
@@ -72,6 +76,8 @@ internal static class SolicitacoesExameMapper
             s.SolicitanteNome,
             s.Status,
             s.StatusConfirmacao,
+            s.AutorizadoEm,
+            s.ErroIntegracaoPacs,
             s.Prioridade,
             s.DataAgendada,
             s.CriadoEm,

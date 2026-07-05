@@ -49,6 +49,11 @@ export async function cancelarSolicitacao(id: string, motivo: string): Promise<v
   await http.post(`/solicitacoes-exame/${id}/cancelar`, { motivo });
 }
 
+/** Autorização presencial (recepção): grava a chave e libera o envio ao PACS. */
+export async function autorizarSolicitacao(id: string, chaveConfirmacao: string): Promise<void> {
+  await http.post(`/solicitacoes-exame/${id}/autorizar`, { chaveConfirmacao });
+}
+
 export async function reenviarWorklist(id: string): Promise<void> {
   await http.post(`/solicitacoes-exame/${id}/reenviar-worklist`);
 }

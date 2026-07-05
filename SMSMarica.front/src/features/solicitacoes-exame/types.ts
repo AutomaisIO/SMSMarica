@@ -75,6 +75,12 @@ export type SolicitacaoExame = {
   confirmacaoCanceladaEm: string | null;
   motivoCancelamentoPaciente: string | null;
 
+  /** Autorização presencial (recepção entrou com a chave). */
+  autorizadoEm: string | null;
+  autorizadoPor: string | null;
+  /** Paciente tem número verificado? (gate do campo de chave). */
+  pacienteContatoVerificado: boolean;
+
   tentativasEnvio: number;
   ultimaTentativaEm: string | null;
   proximaTentativaEm: string | null;
@@ -91,6 +97,8 @@ export type SolicitacaoExame = {
 export type SolicitacaoExameListItem = {
   id: string;
   accessionNumber: string;
+  /** Nº da solicitação no SISREG (exibido embaixo do pedido). */
+  codigoSolicitacao: string | null;
   pacienteId: string;
   pacienteNome: string;
   tipoExameId: string;
@@ -100,6 +108,9 @@ export type SolicitacaoExameListItem = {
   status: StatusSolicitacao;
   /** Resposta do paciente à notificação (Pendente/Confirmada/Cancelada). */
   statusConfirmacao: StatusConfirmacaoPaciente;
+  /** Autorização presencial + erro de PACS — para o status "de fora" derivado. */
+  autorizadoEm: string | null;
+  erroIntegracaoPacs: string | null;
   prioridade: PrioridadeSolicitacao;
   dataAgendada: string | null;
   criadoEm: string;

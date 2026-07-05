@@ -185,6 +185,24 @@ public sealed class SolicitacoesExameController(
         return NoContent();
     }
 
+    /// <summary>Autorização presencial (recepção): grava a chave e libera o envio ao PACS.
+    /// Exige paciente com número verificado.</summary>
+    [HttpPost("{id:guid}/autorizar")]
+    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Autorizar(
+        Guid id,
+        [FromBody] AutorizarSolicitacaoRequest request,
+        CancellationToken cancellationToken)
+    {
+        await _service.AutorizarAsync(id, request.ChaveConfirmacao, cancellationToken);
+        return NoContent();
+    }
+
+    public sealed record AutorizarSolicitacaoRequest(string ChaveConfirmacao);
+
     [HttpPost("{id:guid}/reenviar-worklist")]
     [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

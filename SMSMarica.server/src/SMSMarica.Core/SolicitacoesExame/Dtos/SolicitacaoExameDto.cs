@@ -55,6 +55,12 @@ public sealed record SolicitacaoExameDto(
     DateTime? ConfirmacaoCanceladaEm,
     string? MotivoCancelamentoPaciente,
 
+    // Autorização presencial (recepção entrou com a chave). Habilita o envio ao PACS.
+    DateTime? AutorizadoEm,
+    Guid? AutorizadoPor,
+    // Paciente tem número verificado? (gate do campo de chave na recepção).
+    bool PacienteContatoVerificado,
+
     int TentativasEnvio,
     DateTime? UltimaTentativaEm,
     DateTime? ProximaTentativaEm,
@@ -85,6 +91,8 @@ public enum DirecaoSolicitacao
 public sealed record SolicitacaoExameListItemDto(
     Guid Id,
     string AccessionNumber,
+    // Nº da solicitação no SISREG — exibido embaixo do pedido na lista.
+    string? CodigoSolicitacao,
     Guid PacienteId,
     string PacienteNome,
     Guid TipoExameId,
@@ -94,6 +102,9 @@ public sealed record SolicitacaoExameListItemDto(
     StatusSolicitacaoExame Status,
     // Resposta do paciente à notificação (Pendente/Confirmada/Cancelada) — para a lista.
     StatusConfirmacaoAgendamento StatusConfirmacao,
+    // Autorização presencial + erro de PACS — para o status "de fora" derivado.
+    DateTime? AutorizadoEm,
+    string? ErroIntegracaoPacs,
     PrioridadeSolicitacao Prioridade,
     DateTime? DataAgendada,
     DateTime CriadoEm,

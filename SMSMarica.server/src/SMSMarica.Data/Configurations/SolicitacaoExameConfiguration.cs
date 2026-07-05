@@ -64,6 +64,9 @@ internal sealed class SolicitacaoExameConfiguration : IEntityTypeConfiguration<S
         builder.Property(s => s.ConfirmacaoCanceladaEm).HasColumnName("confirmacao_cancelada_em");
         builder.Property(s => s.MotivoCancelamentoPaciente).HasColumnName("motivo_cancelamento_paciente").HasMaxLength(500);
 
+        builder.Property(s => s.AutorizadoEm).HasColumnName("autorizado_em");
+        builder.Property(s => s.AutorizadoPor).HasColumnName("autorizado_por");
+
         builder.Property(s => s.CanceladoEm).HasColumnName("cancelado_em");
         builder.Property(s => s.CanceladoPorUsuarioId).HasColumnName("cancelado_por_usuario_id");
         builder.Property(s => s.MotivoCancelamento).HasColumnName("motivo_cancelamento").HasMaxLength(500);

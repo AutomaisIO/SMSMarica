@@ -21,6 +21,7 @@ import { Modal } from '@/shared/ui/Modal';
 import { Input } from '@/shared/ui/Input';
 import { Campo } from '@/shared/ui/Campo';
 import {
+  useAutorizarSolicitacao,
   useCancelarSolicitacao,
   useExcluirSolicitacao,
   useReenviarWorklist,
@@ -33,7 +34,7 @@ import { BotaoDeclaracaoComparecimento } from '@/features/solicitacoes-exame/com
 import { BotaoBaixarExameCompleto } from '@/features/solicitacoes-exame/components/BotaoBaixarExameCompleto';
 import { BotaoLinkDownload } from '@/features/solicitacoes-exame/components/BotaoLinkDownload';
 import { BotaoLinkAcesso } from '@/features/solicitacoes-exame/components/BotaoLinkAcesso';
-import type { StatusSolicitacao } from '@/features/solicitacoes-exame/types';
+import type { SolicitacaoExame, StatusSolicitacao } from '@/features/solicitacoes-exame/types';
 
 const ETAPAS: StatusSolicitacao[] = ['Solicitada', 'Enviada', 'Recebida', 'EmExecucao', 'Realizada', 'Laudada'];
 
@@ -297,6 +298,8 @@ export function SolicitacaoExameDetalhePage() {
           </div>
         </section>
 
+        <CardAutorizacao s={s} />
+
         {s.observacoes ? (
           <section className="lg:col-span-2 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
             <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">Observações</h2>
@@ -438,6 +441,62 @@ export function SolicitacaoExameDetalhePage() {
 }
 
 const fmt = formatarInstante;
+
+/** Autorização presencial: recepção entra com a chave (só se o paciente tem número verificado). */
+function CardAutorizacao({ s }: { s: SolicitacaoExame }) {
+  const podeEditar = usePermissao('SolicitacoesExame', 'Edicao');
+  const autorizar = useAutorizarSolicitacao();
+  const [chave, setChave] = useState(s.chaveConfirmacao ?? '');
+  const [erro, setErro] = useState<string | null>(null);
+
+  const preRecebido = s.status === 'Solicitada' || s.status === 'Enviada';
+  if (!preRecebido && !s.autorizadoEm) return null;
+
+  async function submeter() {
+    setErro(null);
+    try {
+      await autorizar.mutateAsync({ id: s.id, chaveConfirmacao: chave.trim() });
+    } catch (e) {
+      setErro(extrairMensagemDeErro(e));
+    }
+  }
+
+  return (
+    <section className="lg:col-span-2 rounded-lg border border-orange-200 bg-orange-50/40 p-4 shadow-sm">
+      <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">Autorização (recepção)</h2>
+      {s.autorizadoEm ? (
+        <p className="flex items-center gap-2 text-sm text-green-700">
+          <CheckCircle2 className="h-4 w-4" />
+          Autorizado em {fmt(s.autorizadoEm)}
+          {s.chaveConfirmacao ? ` — chave ${s.chaveConfirmacao}` : ''}. Envio ao PACS liberado.
+        </p>
+      ) : !podeEditar ? (
+        <p className="text-sm text-gray-500">Você não tem permissão para autorizar.</p>
+      ) : !s.pacienteContatoVerificado ? (
+        <p className="flex items-center gap-2 text-sm text-amber-800">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          Paciente sem número verificado. Verifique o contato (no <strong>resumo do paciente</strong>, ao lado do
+          nome) antes de autorizar.
+        </p>
+      ) : (
+        <div className="flex items-end gap-2">
+          <Campo label="Chave de autorização" htmlFor="chave-autorizacao" className="flex-1">
+            <Input
+              id="chave-autorizacao"
+              value={chave}
+              onChange={(e) => setChave(e.target.value)}
+              placeholder="Chave da confirmação do SISREG"
+            />
+          </Campo>
+          <Button onClick={submeter} disabled={autorizar.isPending}>
+            {autorizar.isPending ? 'Autorizando…' : 'Autorizar e enviar'}
+          </Button>
+        </div>
+      )}
+      {erro ? <p className="mt-2 text-sm text-red-700">{erro}</p> : null}
+    </section>
+  );
+}
 
 function formatarCpf(cpf: string) {
   const d = cpf.replace(/\D/g, '');

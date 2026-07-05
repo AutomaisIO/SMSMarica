@@ -48,7 +48,13 @@ public sealed class SolicitacoesExameService(
     private async Task<SolicitacaoExameDto> EnriquecerAsync(SolicitacaoExameDto dto, CancellationToken ct)
     {
         var r = await _pacienteResolver.ResolverAsync(dto.PacienteId, ct);
-        return r is null ? dto : dto with { PacienteNome = r.Nome, PacienteCpf = r.Cpf, PacienteCns = r.Cns };
+        var cpf = new string([.. (r?.Cpf ?? "").Where(char.IsDigit)]);
+        var verificado = cpf.Length == 11
+            && await _db.ContatosValidados.AsNoTracking().AnyAsync(c => c.Cpf == cpf, ct);
+        var comVerificado = dto with { PacienteContatoVerificado = verificado };
+        return r is null
+            ? comVerificado
+            : comVerificado with { PacienteNome = r.Nome, PacienteCpf = r.Cpf, PacienteCns = r.Cns };
     }
 
     // Marca, em cada linha, o laudo "atual" (maior versão finalizada) do estudo e se
@@ -228,6 +234,52 @@ public sealed class SolicitacoesExameService(
         return s is null ? null : await EnriquecerAsync(SolicitacoesExameMapper.ParaDto(s), cancellationToken);
     }
 
+    public async Task AutorizarAsync(Guid id, string chaveConfirmacao, CancellationToken cancellationToken = default)
+    {
+        var chave = (chaveConfirmacao ?? string.Empty).Trim();
+        if (chave.Length == 0)
+            throw new ValidacaoException("autorizacao.chave_obrigatoria", "Informe a chave de autorização.");
+
+        var s = await _db.SolicitacoesExame
+            .Include(x => x.TipoExame)
+            .FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(SolicitacaoExame), id);
+
+        // Gate: paciente precisa ter um número VERIFICADO (contato_validado por CPF).
+        var paciente = await _pacienteResolver.ResolverAsync(s.PacienteId, cancellationToken);
+        var cpf = new string([.. (paciente?.Cpf ?? "").Where(char.IsDigit)]);
+        var verificado = cpf.Length == 11
+            && await _db.ContatosValidados.AsNoTracking().AnyAsync(c => c.Cpf == cpf, cancellationToken);
+        if (!verificado)
+            throw new ValidacaoException(
+                "autorizacao.sem_numero_verificado",
+                "O paciente ainda não tem um número de telefone verificado. Verifique o contato antes de autorizar.");
+
+        var agora = DateTime.UtcNow;
+        s.ChaveConfirmacao = chave;
+        s.AutorizadoEm = agora;
+        s.AutorizadoPor = _usuarioAtual.UsuarioId;
+        s.AtualizadoEm = agora;
+        s.AtualizadoPor = _usuarioAtual.UsuarioId;
+
+        // Paciente chegou sem ter confirmado antes → confirma na hora, origem "presencial".
+        if (s.StatusConfirmacao == StatusConfirmacaoAgendamento.Pendente)
+        {
+            s.StatusConfirmacao = StatusConfirmacaoAgendamento.Confirmada;
+            s.ConfirmadoEm = agora;
+            s.ConfirmadoCanal = "presencial";
+        }
+
+        // Só AGORA enfileira o envio ao PACS (se o tipo envia à worklist e ainda não foi enviado).
+        if (s.Status == StatusSolicitacaoExame.Solicitada && (s.TipoExame?.EnviarParaWorklist ?? false))
+        {
+            s.ProximaTentativaEm = agora;
+            s.ErroIntegracaoPacs = null;
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<Guid> CadastrarAsync(CadastrarSolicitacaoExameRequest request, CancellationToken cancellationToken = default)
     {
         await ValidarReferenciasAsync(request.PacienteId, request.TipoExameId, request.UnidadeId, request.UnidadeSolicitanteId, cancellationToken);
@@ -238,13 +290,6 @@ public sealed class SolicitacoesExameService(
         var accession = await _geradorIds.ProximoAccessionAsync(cancellationToken);
         var studyUid = _geradorIds.NovoStudyInstanceUid();
         var agora = DateTime.UtcNow;
-
-        // Tipo com envio ao worklist desligado: cria a solicitação mas não enfileira
-        // o envio ao PACS (ProximaTentativaEm = null → o worker não pega).
-        var enviarParaWorklist = await _db.TiposExame.AsNoTracking()
-            .Where(t => t.Id == request.TipoExameId)
-            .Select(t => t.EnviarParaWorklist)
-            .FirstOrDefaultAsync(cancellationToken);
 
         var solicitacao = new SolicitacaoExame
         {
@@ -271,9 +316,9 @@ public sealed class SolicitacoesExameService(
             DataSolicitacao = request.DataSolicitacao,
             DataAgendada = request.DataAgendada,
 
-            // Worker pega imediatamente no próximo tick (sem bloquear a resposta da API
-            // esperando o PACS responder). Null quando o tipo não envia ao worklist.
-            ProximaTentativaEm = enviarParaWorklist ? agora : null,
+            // NADA vai ao PACS automaticamente: o envio só é enfileirado quando a recepção
+            // AUTORIZA (AutorizarAsync). ProximaTentativaEm fica null até lá.
+            ProximaTentativaEm = null,
 
             CriadoEm = agora,
             CriadoPor = _usuarioAtual.UsuarioId,

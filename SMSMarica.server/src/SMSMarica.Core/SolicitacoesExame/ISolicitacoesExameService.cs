@@ -20,6 +20,14 @@ public interface ISolicitacoesExameService
 
     Task CancelarAsync(Guid id, CancelarSolicitacaoExameRequest request, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Autorização presencial na recepção: grava a chave, marca AutorizadoEm e — só então —
+    /// enfileira o envio ao PACS (se o tipo envia à worklist). Exige que o paciente tenha um
+    /// número VERIFICADO (senão lança ValidacaoException). Se a confirmação ainda estava
+    /// pendente, marca Confirmada com canal "presencial".
+    /// </summary>
+    Task AutorizarAsync(Guid id, string chaveConfirmacao, CancellationToken cancellationToken = default);
+
     /// <summary>Refaz o POST UPS-RS quando a primeira tentativa falhou (status ainda Solicitada).</summary>
     Task ReenviarWorklistAsync(Guid id, CancellationToken cancellationToken = default);
 

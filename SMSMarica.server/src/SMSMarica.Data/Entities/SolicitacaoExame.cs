@@ -156,6 +156,14 @@ public class SolicitacaoExame
     /// <summary>Motivo informado pelo paciente ao avisar que não irá.</summary>
     public string? MotivoCancelamentoPaciente { get; set; }
 
+    // ---- Autorização presencial (recepção) ----
+    // A recepção entra com a chave (ChaveConfirmacao) para AUTORIZAR o exame. Só então ele vai
+    // ao PACS (nada é enviado automaticamente no import/criação). Exige paciente com número
+    // verificado. Autorizar também confirma a presença (canal "presencial") se ainda pendente.
+
+    public DateTime? AutorizadoEm { get; set; }
+    public Guid? AutorizadoPor { get; set; }
+
     // ---- Cancelamento ----
 
     public DateTime? CanceladoEm { get; set; }
