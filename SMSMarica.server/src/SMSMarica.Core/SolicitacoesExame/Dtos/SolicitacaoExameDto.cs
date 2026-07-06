@@ -118,5 +118,6 @@ public sealed record SolicitacaoExameListItemDto(
     DirecaoSolicitacao? Direcao,
     // Checks de comunicação (✓ enviado, ✓✓ entregue, ✓✓ azul lida/visualizada, ⚠ falha).
     // Preenchidos no enriquecimento da listagem; null quando não há comunicação da finalidade.
+    ComunicacaoChipDto? ChipConfirmacao = null,
     ComunicacaoChipDto? ChipExameLiberado = null,
     ComunicacaoChipDto? ChipLaudoPronto = null);

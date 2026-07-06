@@ -161,9 +161,7 @@ public sealed class SolicitacoesExameService(
         var ids = dtos.Select(d => d.Id).ToArray();
 
         var comunicacoes = await _db.ComunicacoesPaciente.AsNoTracking()
-            .Where(c => c.SolicitacaoExameId != null && ids.Contains(c.SolicitacaoExameId.Value)
-                && (c.Finalidade == FinalidadeComunicacao.ExameLiberado
-                    || c.Finalidade == FinalidadeComunicacao.LaudoPronto))
+            .Where(c => c.SolicitacaoExameId != null && ids.Contains(c.SolicitacaoExameId.Value))
             .Select(c => new { c.SolicitacaoExameId, c.Finalidade, c.Status, c.VisualizadoEm, c.MotivoFalha })
             .ToListAsync(ct);
         if (comunicacoes.Count == 0) return dtos;
@@ -174,6 +172,7 @@ public sealed class SolicitacoesExameService(
 
         return [.. dtos.Select(d => d with
         {
+            ChipConfirmacao = mapa.GetValueOrDefault((d.Id, FinalidadeComunicacao.ConfirmacaoAgendamento)),
             ChipExameLiberado = mapa.GetValueOrDefault((d.Id, FinalidadeComunicacao.ExameLiberado)),
             ChipLaudoPronto = mapa.GetValueOrDefault((d.Id, FinalidadeComunicacao.LaudoPronto)),
         })];
@@ -363,6 +362,10 @@ public sealed class SolicitacoesExameService(
         };
 
         _db.SolicitacoesExame.Add(solicitacao);
+        // Notificação de confirmação por WhatsApp — igual ao import do SISREG (só enfileira;
+        // o worker envia). Sem data agendada futura, o EnfileirarAsync não faz nada.
+        await _comunicacoes.Value.EnfileirarAsync(
+            solicitacao, Data.Entities.Enums.FinalidadeComunicacao.ConfirmacaoAgendamento, cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
 
         return solicitacao.Id;
@@ -395,6 +398,11 @@ public sealed class SolicitacoesExameService(
         s.DataAgendada = request.DataAgendada;
         s.AtualizadoEm = DateTime.UtcNow;
         s.AtualizadoPor = _usuarioAtual.UsuarioId;
+
+        // Cobriu o caso "criou sem data, agendou depois": enfileira a confirmação por WhatsApp
+        // se ainda não existe (idempotente por solicitação × finalidade).
+        await _comunicacoes.Value.EnfileirarAsync(
+            s, Data.Entities.Enums.FinalidadeComunicacao.ConfirmacaoAgendamento, cancellationToken);
 
         await _db.SaveChangesAsync(cancellationToken);
     }

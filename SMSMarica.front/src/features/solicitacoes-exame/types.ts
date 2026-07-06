@@ -123,6 +123,7 @@ export type SolicitacaoExameListItem = {
   /** Direção relativa à unidade ativa (recebida/enviada). null = sem referência única. */
   direcao: DirecaoSolicitacao | null;
   /** Checks de comunicação (✓ enviado, ✓✓ entregue, ✓✓ azul lida/visualizada, ⚠ falha). */
+  chipConfirmacao: ComunicacaoChip | null;
   chipExameLiberado: ComunicacaoChip | null;
   chipLaudoPronto: ComunicacaoChip | null;
 };

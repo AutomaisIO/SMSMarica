@@ -2,6 +2,7 @@ import { AlertTriangle, Check, CheckCheck, Clock3 } from 'lucide-react';
 import type { ComunicacaoChip } from '@/features/solicitacoes-exame/types';
 
 const ROTULO: Record<string, string> = {
+  ConfirmacaoAgendamento: 'Confirmação de agendamento',
   ExameLiberado: 'Aviso "exame liberado"',
   LaudoPronto: 'Aviso "laudo pronto"',
 };
@@ -16,7 +17,7 @@ export function ChecksComunicacao({
   finalidade,
 }: {
   chip: ComunicacaoChip | null | undefined;
-  finalidade: 'ExameLiberado' | 'LaudoPronto';
+  finalidade: 'ConfirmacaoAgendamento' | 'ExameLiberado' | 'LaudoPronto';
 }) {
   if (!chip) return null;
   const rotulo = ROTULO[finalidade];

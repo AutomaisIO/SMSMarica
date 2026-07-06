@@ -210,7 +210,8 @@ export function SolicitacoesExamePage() {
         return (
           <span className="inline-flex items-center gap-1.5">
             {sit ? <SituacaoBadge situacao={sit} /> : <StatusBadgeSolicitacao status={s.status} />}
-            {/* Checks das comunicações: exame liberado (quando Realizada+) e laudo pronto (Laudada). */}
+            {/* Checks das comunicações: confirmação do agendamento, exame liberado e laudo pronto. */}
+            <ChecksComunicacao chip={s.chipConfirmacao} finalidade="ConfirmacaoAgendamento" />
             <ChecksComunicacao chip={s.chipExameLiberado} finalidade="ExameLiberado" />
             <ChecksComunicacao chip={s.chipLaudoPronto} finalidade="LaudoPronto" />
           </span>
