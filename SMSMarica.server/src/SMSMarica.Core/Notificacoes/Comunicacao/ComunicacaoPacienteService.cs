@@ -185,19 +185,54 @@ public sealed class ComunicacaoPacienteService(
 
         switch (finalidade)
         {
+            // exame_liberado / laudo_disponivel: "seu exame de {{2}}, realizado {{3}}, está pronto…"
             case FinalidadeComunicacao.ExameLiberado:
-                return (opts.TemplateExameLiberado, [nome, exame], [url]);
+                return (opts.TemplateExameLiberado, [nome, exame, DataRealizacao(s)], [url]);
 
             case FinalidadeComunicacao.LaudoPronto:
-                return (opts.TemplateLaudoPronto, [nome, exame], [url]);
+                return (opts.TemplateLaudoPronto, [nome, exame, DataRealizacao(s)], [url]);
 
-            default: // ConfirmacaoAgendamento — 5 params + quick reply de cancelamento.
+            // confirmar_agendamento_urlapp (genérico consulta/exame): "você tem {{2}} de *{{3}}*
+            // agendado para o dia *{{4}}*, {{5}}📍, às *{{6}}*. Endereço: {{7}}".
+            // Botões na ordem do template: URL (index 0) + quick reply (index 1).
+            default:
                 var local = FusoBrasilia.ParaExibicao(s.DataAgendada!.Value);
                 return (
                     opts.TemplateConfirmaAgendamento,
-                    [nome, exame, local.ToString("dd/MM/yyyy", PtBr), s.Unidade?.Nome ?? "unidade de saúde", local.ToString("HH:mm", PtBr)],
+                    [
+                        nome,
+                        "um exame",
+                        exame,
+                        local.ToString("dd/MM/yyyy", PtBr),
+                        $"na unidade {s.Unidade?.Nome ?? "de saúde"}",
+                        $"{local.ToString("HH:mm", PtBr)}h",
+                        EnderecoUnidade(s.Unidade),
+                    ],
                     [url, new BotaoTemplateWhatsApp(TipoBotaoTemplate.QuickReply, $"confirma:{s.Id}")]);
         }
+    }
+
+    /// <summary>Data em que o exame foi feito (DICOM → detecção → criação), formatada dd/MM/aaaa.</summary>
+    private static string DataRealizacao(SolicitacaoExame s)
+    {
+        // DataEstudo é wall-clock do equipamento (as-is); os demais são UTC → Brasília.
+        var d = s.DataEstudo
+            ?? (s.RealizadoEm is { } r ? FusoBrasilia.ParaExibicao(r) : FusoBrasilia.ParaExibicao(s.CriadoEm));
+        return d.ToString("dd/MM/yyyy", PtBr);
+    }
+
+    /// <summary>Endereço da unidade para o template (a Meta rejeita parâmetro vazio).</summary>
+    private static string EnderecoUnidade(Unidade? u)
+    {
+        var e = u?.Endereco;
+        if (e is null) return "Maricá/RJ";
+        var partes = new[]
+        {
+            string.Join(", ", new[] { e.Logradouro, e.Numero }.Where(p => !string.IsNullOrWhiteSpace(p))),
+            e.Bairro,
+        }.Where(p => !string.IsNullOrWhiteSpace(p));
+        var texto = string.Join(" - ", partes);
+        return string.IsNullOrWhiteSpace(texto) ? "Maricá/RJ" : texto;
     }
 
     private void ReagendarOuFalhar(ComunicacaoPaciente n, string? erro)

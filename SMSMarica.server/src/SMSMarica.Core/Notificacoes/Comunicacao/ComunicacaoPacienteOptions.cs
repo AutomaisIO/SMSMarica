@@ -19,11 +19,17 @@ public sealed class ComunicacaoPacienteOptions
     /// <summary>Idioma dos templates (BCP-47 da Meta).</summary>
     public string Idioma { get; set; } = "pt_BR";
 
-    // ---- Templates por finalidade (nomes aprovados na Meta) ----
+    // ---- Templates por finalidade (nomes APROVADOS na WABA, conferidos 2026-07-05) ----
 
-    public string TemplateConfirmaAgendamento { get; set; } = "confirma_exame";
+    /// <summary>Genérico consulta/exame: 7 params (nome, "um exame", tipo, data, unidade, hora,
+    /// endereço) + botão URL /entrar/{{1}} + quick reply "Não poderei comparecer!".</summary>
+    public string TemplateConfirmaAgendamento { get; set; } = "confirmar_agendamento_urlapp";
+
+    /// <summary>3 params (nome, exame, data realizada) + botão URL "Visualizar Exame".</summary>
     public string TemplateExameLiberado { get; set; } = "exame_liberado";
-    public string TemplateLaudoPronto { get; set; } = "laudo_pronto";
+
+    /// <summary>3 params (nome, exame, data realizada) + botão URL "Visualizar Laudo".</summary>
+    public string TemplateLaudoPronto { get; set; } = "laudo_disponivel";
 
     // ---- Chaves por finalidade. Desligada = a fila ACUMULA (ProximaTentativaEm fica no
     // passado) e o worker simplesmente não seleciona essa finalidade; ao ligar, tudo flui
