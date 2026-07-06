@@ -36,6 +36,11 @@ public sealed class ComunicacaoPacienteOptions
     // sozinho. Útil enquanto o template correspondente aguarda aprovação da Meta. ----
 
     public bool EnviarConfirmacaoAgendamento { get; set; } = true;
-    public bool EnviarExameLiberado { get; set; } = false;
+
+    /// <summary>Ligado em 2026-07-06 (template exame_liberado APPROVED).</summary>
+    public bool EnviarExameLiberado { get; set; } = true;
+
+    /// <summary>OFF: a correção do typo devolveu o laudo_disponivel para PENDING na Meta.
+    /// Ligar quando re-aprovar — a fila acumula e flui sozinha.</summary>
     public bool EnviarLaudoPronto { get; set; } = false;
 }
