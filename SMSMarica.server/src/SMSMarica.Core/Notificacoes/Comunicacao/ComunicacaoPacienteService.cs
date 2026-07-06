@@ -141,7 +141,7 @@ public sealed class ComunicacaoPacienteService(
         n.LoginLinkId = link.Token;
 
         var opts = options.Value;
-        var (template, parametros, botoes) = MontarEnvio(n.Finalidade, s, paciente.NomeCompleto, link.Token, opts);
+        var (template, parametros, botoes) = MontarEnvio(n.Finalidade, n.Tipo, s, paciente.NomeCompleto, link.Token, opts);
 
         var resultado = await whatsApp.EnviarTemplateComBotoesAsync(
             n.Telefone, template, opts.Idioma, parametros, botoes, pacienteId: n.PacienteId, ct: ct);
@@ -176,8 +176,8 @@ public sealed class ComunicacaoPacienteService(
     };
 
     private static (string Template, string[] Parametros, BotaoTemplateWhatsApp[] Botoes) MontarEnvio(
-        FinalidadeComunicacao finalidade, SolicitacaoExame s, string? nomePaciente, Guid token,
-        ComunicacaoPacienteOptions opts)
+        FinalidadeComunicacao finalidade, TipoAgendamento tipo, SolicitacaoExame s, string? nomePaciente,
+        Guid token, ComunicacaoPacienteOptions opts)
     {
         var nome = PrimeiroNome(nomePaciente);
         var exame = s.TipoExame?.Nome ?? "exame";
@@ -192,16 +192,17 @@ public sealed class ComunicacaoPacienteService(
             case FinalidadeComunicacao.LaudoPronto:
                 return (opts.TemplateLaudoPronto, [nome, exame, DataRealizacao(s)], [url]);
 
-            // confirmar_agendamento_urlapp (genérico consulta/exame): "você tem {{2}} de *{{3}}*
-            // agendado para o dia *{{4}}*, {{5}}📍, às *{{6}}*. Endereço: {{7}}".
-            // Botões na ordem do template: URL (index 0) + quick reply (index 1).
+            // confirmar_agendamento_urlapp (ÚNICO template de confirmação — serve exame E
+            // consulta; confirma_exame/confirma_consulta foram descontinuados na Meta):
+            // "você tem {{2}} de *{{3}}* agendado para o dia *{{4}}*, {{5}}📍, às *{{6}}*.
+            // Endereço: {{7}}". Botões na ordem do template: URL (index 0) + quick reply (index 1).
             default:
                 var local = FusoBrasilia.ParaExibicao(s.DataAgendada!.Value);
                 return (
                     opts.TemplateConfirmaAgendamento,
                     [
                         nome,
-                        "um exame",
+                        tipo == TipoAgendamento.Consulta ? "uma consulta" : "um exame",
                         exame,
                         local.ToString("dd/MM/yyyy", PtBr),
                         $"na unidade {s.Unidade?.Nome ?? "de saúde"}",
