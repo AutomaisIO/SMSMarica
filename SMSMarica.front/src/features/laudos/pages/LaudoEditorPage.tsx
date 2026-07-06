@@ -16,6 +16,7 @@ import {
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { useEhMedico, usePermissao } from '@/shared/auth/authStore';
 import { abrirJanelaSolta } from '@/shared/lib/janela';
+import { formatarWallClock } from '@/shared/lib/datas';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
@@ -344,8 +345,30 @@ export function LaudoEditorPage() {
 
   function abrirVisualizadorPacs() {
     if (!studyInstanceUID) return;
+    // O viewer em modo janela lê o ESTUDO serializado no hash — mandar só o UID carrega as
+    // imagens, mas o cabeçalho fica sem paciente. Preenche com o que o editor já tem
+    // (laudo/pedido); o que faltar vai vazio e o viewer degrada com "—".
+    const estudo = {
+      studyInstanceUID,
+      accessionNumber: solicitacao.data?.accessionNumber ?? '',
+      patientName:
+        detalhe.data?.pacienteNome ??
+        solicitacao.data?.pacienteNome ??
+        detalhe.data?.pacienteNomeDicom ??
+        '',
+      patientId: '',
+      patientSex: '',
+      patientAge: '',
+      studyDate: '',
+      studyDateFormatado: formatarWallClock(solicitacao.data?.dataEstudo ?? null),
+      studyTime: '',
+      modalidade: solicitacao.data?.modalidadeDicom ?? '',
+      studyDescription: solicitacao.data?.tipoExameNome ?? '',
+      numeroSeries: '',
+      numeroInstancias: '',
+    };
     const ok = abrirJanelaSolta(
-      `/pacs/janela#${encodeURIComponent(JSON.stringify({ studyInstanceUID }))}`,
+      `/pacs/janela#${encodeURIComponent(JSON.stringify(estudo))}`,
       `pacs-viewer-${studyInstanceUID}`,
     );
     if (!ok) {
