@@ -110,17 +110,21 @@ export function PacsListagemPage() {
     setFiltro((f) => ({ ...f, [k]: v }));
   }
 
-  // Rede de segurança: varre solicitações abertas sem associação e tenta casar
-  // pelo nº do pedido no Patient ID do exame. Idempotente; nada destrutivo.
+  // Rede de segurança (PACS-driven): varre os exames recentes do PACS e concilia cada
+  // um com a solicitação pelo accession/nº do pedido. Idempotente; nada destrutivo.
   function aoResincronizar() {
     setErroAssoc(null);
     resync.mutate(undefined, {
       onSuccess: (r) => {
         const sufixoFalha = r.falhas ? `, ${r.falhas} falha(s)` : '';
+        const sufixoTeto = r.limiteAtingido
+          ? ' Atenção: varredura truncada no teto — parte da janela não foi verificada.'
+          : '';
         const msg =
-          r.associadas > 0
-            ? `Resincronização: ${r.associadas} exame(s) associado(s) (${r.varridas}/${r.candidatas} verificadas${sufixoFalha}).`
-            : `Resincronização: nenhum vínculo novo — ${r.varridas} solicitação(ões) ainda sem exame no PACS${sufixoFalha}.`;
+          (r.associadas > 0
+            ? `Resincronização: ${r.associadas} exame(s) conciliado(s) (${r.varridas} estudo(s) verificados${sufixoFalha}).`
+            : `Resincronização: nenhum vínculo novo — ${r.semExameNoPacs} estudo(s) sem pedido correspondente${sufixoFalha}.`) +
+          sufixoTeto;
         notificar(msg);
         busca.mutate(filtro); // recarrega a lista para refletir os novos vínculos
       },
@@ -445,7 +449,7 @@ export function PacsListagemPage() {
             variante="outline"
             onClick={aoResincronizar}
             disabled={resync.isPending}
-            title="Varre solicitações abertas sem associação e tenta casar pelo nº do pedido no Patient ID do exame (seguro/idempotente)"
+            title="Varre os exames recentes do PACS (30 dias pela data do exame) e concilia cada um com o pedido pelo accession/nº da solicitação (seguro/idempotente)"
           >
             {resync.isPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

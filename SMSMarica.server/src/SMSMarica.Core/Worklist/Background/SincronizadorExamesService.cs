@@ -1,24 +1,23 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SMSMarica.Core.Associacoes;
-using SMSMarica.Core.Associacoes.Dtos;
-using SMSMarica.Core.SolicitacoesExame;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Enums;
+using SMSMarica.Core.Common.Tempo;
 
 namespace SMSMarica.Core.Worklist.Background;
 
 /// <summary>
-/// Hosted service que pesquisa periodicamente no PACS (QIDO-RS) os exames das
-/// solicitações abertas e os concilia:
-/// <list type="number">
-/// <item>worklist: o study com o nosso AccessionNumber já está no PACS → promove a Realizada;</item>
-/// <item>sem worklist: o exame chegou com o NÚMERO DA SOLICITAÇÃO no campo Patient ID
-/// (0010,0020) → auto-associa o study à solicitação (e promove a Realizada).</item>
-/// </list>
+/// Hosted service que concilia os exames do PACS com as solicitações. É <b>PACS-driven</b>:
+/// itera os studies que CHEGARAM (varridos por <c>StudyDate</c>, intrinsecamente recente) e
+/// casa cada um com a solicitação pelo <b>AccessionNumber</b> — a chave durável do vínculo.
+/// A data de CRIAÇÃO da solicitação é irrelevante: ela pode ter entrado a qualquer momento.
+/// <para>
+/// Isso substitui o modelo antigo (enumerar solicitações por <c>CriadoEm</c> e perguntar ao
+/// PACS), que sofria <i>starvation</i> — um lote de solicitações novas abertas empurrava os
+/// exames legítimos para fora do teto por passagem — e ignorava pedidos antigos.
+/// </para>
+/// A conciliação de cada study fica em <see cref="IExameAssociacaoService.ConciliarStudyAsync"/>.
 /// </summary>
 public sealed class SincronizadorExamesService(
     IServiceScopeFactory scopeFactory,
@@ -58,118 +57,28 @@ public sealed class SincronizadorExamesService(
     private async Task ExecutarUmaPassagemAsync(CancellationToken ct)
     {
         using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<SmsMaricaDbContext>();
         var consulta = scope.ServiceProvider.GetRequiredService<IConsultaStudyClient>();
-        var solicitacoes = scope.ServiceProvider.GetRequiredService<ISolicitacoesExameService>();
         var associacao = scope.ServiceProvider.GetRequiredService<IExameAssociacaoService>();
 
-        var corte = DateTime.UtcNow.AddDays(-Math.Max(1, _options.JanelaConsultaDias));
+        // Janela pela DATA DO EXAME (StudyDate). +1 dia de folga cobre a borda de fuso
+        // (StudyDate é wall-clock de Brasília; o servidor roda em UTC).
+        var hojeBr = DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(DateTime.UtcNow));
+        var inicio = hojeBr.AddDays(-Math.Max(0, _options.JanelaConsultaDias));
+        var fim = hojeBr.AddDays(1);
 
-        // Solicitações ABERTAS (não concluídas) na janela. Inclui Solicitada porque
-        // exames sem worklist nunca passam por Enviada/Recebida.
-        var ativas = await db.SolicitacoesExame.AsNoTracking()
-            .Where(s => s.ExcluidoEm == null
-                        && (s.Status == StatusSolicitacaoExame.Solicitada
-                            || s.Status == StatusSolicitacaoExame.Enviada
-                            || s.Status == StatusSolicitacaoExame.Recebida
-                            || s.Status == StatusSolicitacaoExame.EmExecucao)
-                        && s.CriadoEm >= corte)
-            .OrderByDescending(s => s.CriadoEm)
-            .Take(Math.Max(1, _options.MaximoPorPassagem)) // teto de carga QIDO por passagem
-            .Select(s => new { s.Id, s.AccessionNumber, s.StudyInstanceUID, s.Status })
-            .ToListAsync(ct);
+        var max = Math.Max(1, _options.MaximoPorPassagem);
+        var estudos = await consulta.BuscarStudiesPorDataAsync(inicio, fim, max, ct);
+        if (estudos.Count == 0) return;
 
-        if (ativas.Count == 0) return;
+        // Truncar sem avisar reintroduziria starvation silenciosa (a razão desta reescrita).
+        if (estudos.Count >= max)
+            _logger.LogWarning(
+                "Sincronizador: janela {Ini}..{Fim} atingiu o teto de {Max} studies — parte da janela NÃO foi varrida; reduza JanelaConsultaDias ou aumente MaximoPorPassagem.",
+                inicio, fim, max);
 
-        // Não re-escaneia o que já tem associação explícita ativa.
-        var ids = ativas.Select(a => a.Id).ToList();
-        var jaAssociadas = (await db.ExameAssociacoes.AsNoTracking()
-            .Where(a => a.ExcluidoEm == null && ids.Contains(a.SolicitacaoExameId))
-            .Select(a => a.SolicitacaoExameId)
-            .ToListAsync(ct)).ToHashSet();
+        _logger.LogDebug("Sincronizador: {N} studies no PACS na janela {Ini}..{Fim}.", estudos.Count, inicio, fim);
 
-        _logger.LogDebug("Sincronizador verificando {N} solicitações abertas.", ativas.Count);
-
-        foreach (var item in ativas)
-        {
-            if (ct.IsCancellationRequested) return;
-            if (jaAssociadas.Contains(item.Id)) continue;
-
-            try
-            {
-                // 1) Caminho worklist: study com o nosso AccessionNumber já no PACS.
-                if (item.Status is StatusSolicitacaoExame.Recebida or StatusSolicitacaoExame.EmExecucao
-                    && await consulta.StudyExisteAsync(item.AccessionNumber, ct))
-                {
-                    // Data/hora REAL do exame vem do DICOM (StudyDate/StudyTime) — fonte da
-                    // verdade. Falha do PACS aqui não pode quebrar a sincronização: em erro,
-                    // dataEstudo fica null e a exibição faz fallback para RealizadoEm.
-                    var dataEstudo = await ResolverDataEstudoAsync(consulta, item.StudyInstanceUID, item.AccessionNumber, ct);
-                    await solicitacoes.MarcarComoRealizadaAsync(item.Id, DateTime.UtcNow, dataEstudo, ct);
-                    _logger.LogInformation(
-                        "Solicitação {Accession} promovida para Realizada (study via worklist).", item.AccessionNumber);
-                    continue;
-                }
-
-                // 2) Caminho automático: exame chegou com o nº da solicitação no campo
-                //    Patient ID (0010,0020). Roda para QUALQUER status aberto (não só
-                //    Solicitada): com a worklist da máquina desligada/ignorada, a solicitação
-                //    pode ter avançado para Enviada/Recebida e o exame chegar depois — esses
-                //    não se recuperariam se barrássemos por status. Seguro: em exame de
-                //    worklist real o Patient ID é o CPF, então a busca por accession não casa
-                //    (no-op). Custo: +1 QIDO por solicitação aberta/passagem (limitado por
-                //    MaximoPorPassagem; some assim que a associação é criada).
-                var encontrados = await consulta.BuscarPorPatientIdAsync(item.AccessionNumber, ct);
-                if (encontrados.Count > 1)
-                {
-                    _logger.LogWarning(
-                        "Auto-associação: {N} estudos com Patient ID {Accession} — associando todos; verifique aquisição duplicada.",
-                        encontrados.Count, item.AccessionNumber);
-                }
-                foreach (var estudo in encontrados)
-                {
-                    if (string.Equals(estudo.StudyInstanceUID, item.StudyInstanceUID, StringComparison.Ordinal))
-                        continue; // é o próprio study de worklist (tratado no caminho 1)
-                    try
-                    {
-                        await associacao.AssociarAsync(
-                            new AssociarExameRequest(estudo.StudyInstanceUID, item.AccessionNumber, estudo.AccessionNumber),
-                            OrigemAssociacaoExame.Automatica, validarNoPacs: false, ct);
-                        _logger.LogInformation(
-                            "Auto-associação: study {Uid} ligado à solicitação {Accession} via Patient ID.",
-                            estudo.StudyInstanceUID, item.AccessionNumber);
-                    }
-                    catch (Exception ex) when (ex is not OperationCanceledException)
-                    {
-                        _logger.LogWarning(ex,
-                            "Falha ao auto-associar study {Uid} à {Accession}.", estudo.StudyInstanceUID, item.AccessionNumber);
-                    }
-                }
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                _logger.LogWarning(ex,
-                    "Falha ao processar solicitação {Id} ({Accession}).", item.Id, item.AccessionNumber);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Resolve a data/hora real do exame (StudyDate/StudyTime) via QIDO-RS, blindado:
-    /// nenhuma exceção do PACS escapa (retorna null e a exibição faz fallback).
-    /// </summary>
-    private async Task<DateTime?> ResolverDataEstudoAsync(
-        IConsultaStudyClient consulta, string studyInstanceUID, string accession, CancellationToken ct)
-    {
-        try
-        {
-            return await consulta.ObterDataHoraEstudoAsync(studyInstanceUID, ct);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            _logger.LogWarning(ex,
-                "Falha ao obter StudyDate/StudyTime do DICOM para {Accession} — segue sem DataEstudo.", accession);
-            return null;
-        }
+        // Pré-filtro em lote + conciliação por study (falha pontual não derruba a passagem).
+        await associacao.ConciliarLoteAsync(estudos, ct);
     }
 }

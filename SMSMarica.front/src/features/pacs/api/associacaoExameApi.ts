@@ -28,21 +28,21 @@ export async function desassociarExame(studyInstanceUID: string): Promise<void> 
 }
 
 export type ResincronizacaoResultado = {
-  /** Solicitações abertas sem associação ativa (universo da varredura). */
+  /** Studies recentes do PACS varridos (universo da conciliação; nomes legados). */
   candidatas: number;
-  /** Quantas foram efetivamente consultadas no PACS (≤ candidatas, limitado pelo teto). */
+  /** Idem candidatas (mantido por compatibilidade). */
   varridas: number;
-  /** Exames associados nesta passagem. */
+  /** Exames conciliados (promovidos/associados) nesta passagem. */
   associadas: number;
-  /** Varridas que ainda não têm exame correspondente no PACS (nada a fazer). */
+  /** Studies órfãos — sem solicitação aberta correspondente (nada a fazer). */
   semExameNoPacs: number;
   /** Falhas pontuais (consulta ao PACS ou conflito de associação). */
   falhas: number;
-  /** True se havia mais candidatas que o teto e a varredura foi truncada. */
+  /** True se havia mais studies que o teto e a varredura foi truncada. */
   limiteAtingido: boolean;
 };
 
-/** Rede de segurança: varre órfãos e associa pelo nº da solicitação no Patient ID. Idempotente. */
+/** Rede de segurança PACS-driven: varre studies recentes e concilia pelo accession/nº do pedido. Idempotente. */
 export async function resincronizarExames(): Promise<ResincronizacaoResultado> {
   const { data } = await http.post<ResincronizacaoResultado>('/exames/associacoes/resincronizar');
   return data;

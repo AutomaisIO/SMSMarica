@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Associacoes.Dtos;
 using SMSMarica.Core.Common.Excecoes;
+using SMSMarica.Core.Common.Tempo;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Core.SolicitacoesExame;
@@ -53,13 +54,26 @@ public sealed class ExameAssociacaoService(
         if (existente is not null)
         {
             if (existente.SolicitacaoExameId == solicitacao.Id)
+            {
+                // AUTO-REPARO: uma falha entre o commit da associação e a promoção deixaria a
+                // solicitação presa sem "Realizada" (e sem o zap). Reaplicar aqui é idempotente
+                // (MarcarComoRealizada tem guard por status; revínculo de laudos é no-op quando ok).
+                var dataEstudoReparo = await ObterDataEstudoSeguroAsync(uid, cancellationToken);
+                await solicitacoes.MarcarComoRealizadaAsync(solicitacao.Id, DateTime.UtcNow, dataEstudoReparo, cancellationToken);
+                await AtualizarPacienteDosLaudosAsync(uid, solicitacao.PacienteId, DateTime.UtcNow, cancellationToken);
                 return await MontarDtoAsync(existente, cancellationToken);
+            }
             throw new ConflitoException("associacao.ja_associado",
                 "Este exame já está associado a outra solicitação. Desassocie antes de reassociar.");
         }
 
         if (validarNoPacs && !await consultaStudy.StudyExistePorStudyUidAsync(uid, cancellationToken))
             throw new ConflitoException("associacao.study_inexistente", "Estudo não encontrado no PACS.");
+
+        // Data/hora REAL do exame vem do DICOM (StudyDate/StudyTime) do study associado —
+        // fonte da verdade. Buscada ANTES da transação (nada de HTTP segurando lock);
+        // falha do PACS não derruba a associação (null → fallback na exibição).
+        var dataEstudo = await ObterDataEstudoSeguroAsync(uid, cancellationToken);
 
         var agora = DateTime.UtcNow;
         // Guarda o status atual SE a associação for promovê-lo a Realizada — para o
@@ -79,31 +93,42 @@ public sealed class ExameAssociacaoService(
             CriadoEm = agora,
             CriadoPor = usuarioAtual.UsuarioId,
         };
-        db.ExameAssociacoes.Add(assoc);
-        await db.SaveChangesAsync(cancellationToken);
 
-        // Data/hora REAL do exame vem do DICOM (StudyDate/StudyTime) do study associado —
-        // fonte da verdade. Falha do PACS não derruba a associação (null → fallback na exibição).
-        DateTime? dataEstudo = null;
-        try
+        // TRANSAÇÃO: associação + promoção (com enfileiramento do zap) + revínculo de laudos
+        // são um único fato — parcial aqui deixava a solicitação presa em "JaConciliada" sem
+        // nunca notificar o paciente. Falhou? Nada persiste e a próxima passagem refaz tudo.
+        await using (var tx = await db.Database.BeginTransactionAsync(cancellationToken))
         {
-            dataEstudo = await consultaStudy.ObterDataHoraEstudoAsync(uid, cancellationToken);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            logger.LogWarning(ex, "Falha ao obter StudyDate/StudyTime do DICOM para {Uid} — segue sem DataEstudo.", uid);
-        }
+            db.ExameAssociacoes.Add(assoc);
+            await db.SaveChangesAsync(cancellationToken);
 
-        // Exame confirmado presente → promove a solicitação (no-op se já adiante).
-        await solicitacoes.MarcarComoRealizadaAsync(solicitacao.Id, agora, dataEstudo, cancellationToken);
+            // Exame confirmado presente → promove a solicitação (no-op se já adiante).
+            await solicitacoes.MarcarComoRealizadaAsync(solicitacao.Id, agora, dataEstudo, cancellationToken);
 
-        // Mantém a cadeia consistente: o(s) laudo(s) deste estudo passam a apontar para o
-        // paciente da solicitação associada (laudo assinado já foi barrado acima).
-        await AtualizarPacienteDosLaudosAsync(uid, solicitacao.PacienteId, agora, cancellationToken);
+            // Mantém a cadeia consistente: o(s) laudo(s) deste estudo passam a apontar para o
+            // paciente da solicitação associada (laudo assinado já foi barrado acima).
+            await AtualizarPacienteDosLaudosAsync(uid, solicitacao.PacienteId, agora, cancellationToken);
+
+            await tx.CommitAsync(cancellationToken);
+        }
 
         logger.LogInformation(
             "Exame {Uid} associado à solicitação {Accession} (origem {Origem}).", uid, accession, origem);
         return await MontarDtoAsync(assoc, cancellationToken);
+    }
+
+    /// <summary>StudyDate/StudyTime do DICOM, blindado: falha do PACS vira null (fallback na exibição).</summary>
+    private async Task<DateTime?> ObterDataEstudoSeguroAsync(string uid, CancellationToken ct)
+    {
+        try
+        {
+            return await consultaStudy.ObterDataHoraEstudoAsync(uid, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Falha ao obter StudyDate/StudyTime do DICOM para {Uid} — segue sem DataEstudo.", uid);
+            return null;
+        }
     }
 
     public async Task DesassociarAsync(string studyInstanceUID, CancellationToken cancellationToken = default)
@@ -143,6 +168,21 @@ public sealed class ExameAssociacaoService(
                     sol.RealizadoEm = null;
                     sol.AtualizadoEm = agora;
                     sol.AtualizadoPor = usuarioAtual.UsuarioId;
+
+                    // A promoção desta associação enfileirou o zap "Exame Liberado". Se ainda
+                    // NÃO saiu (Pendente), remove — o exame não aconteceu para este pedido, e a
+                    // linha (única por solicitação×finalidade) calaria a notificação do exame
+                    // real no futuro. Se já saiu, não há des-envio: só registra no log.
+                    var comunicacoes = await db.ComunicacoesPaciente
+                        .Where(c => c.SolicitacaoExameId == sol.Id
+                                    && c.Finalidade == FinalidadeComunicacao.ExameLiberado)
+                        .ToListAsync(cancellationToken);
+                    var pendentes = comunicacoes.Where(c => c.Status == StatusComunicacao.Pendente).ToList();
+                    db.ComunicacoesPaciente.RemoveRange(pendentes);
+                    if (comunicacoes.Count > pendentes.Count)
+                        logger.LogWarning(
+                            "Desassociação da solicitação {Accession}: zap 'Exame Liberado' já havia sido enviado ao paciente.",
+                            sol.AccessionNumber);
                 }
             }
         }
@@ -272,83 +312,186 @@ public sealed class ExameAssociacaoService(
             laudos.Count, uid, pacienteId);
     }
 
-    // Teto de varredura: o conjunto de órfãos costuma ser pequeno; o cap só protege o
-    // PACS de um sweep gigante (cada candidata = 1 consulta QIDO ao dcm4chee).
-    private const int TetoResincronizacao = 500;
+    /// <summary>Chave mínima de uma solicitação aberta para a conciliação PACS-driven.</summary>
+    private sealed record SolicitacaoChave(Guid Id, string AccessionNumber, string StudyInstanceUID);
 
-    public async Task<ResincronizacaoResultadoDto> ResincronizarAsync(CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    public async Task<ResultadoConciliacao> ConciliarStudyAsync(
+        EstudoPacsRecente estudo, CancellationToken cancellationToken = default)
     {
-        // Solicitações abertas (não-terminais) SEM associação ativa — sem janela de data.
-        var abertas = await db.SolicitacoesExame.AsNoTracking()
-            .Where(s => s.ExcluidoEm == null
-                        && (s.Status == StatusSolicitacaoExame.Solicitada
-                            || s.Status == StatusSolicitacaoExame.Enviada
-                            || s.Status == StatusSolicitacaoExame.Recebida
-                            || s.Status == StatusSolicitacaoExame.EmExecucao))
-            .OrderByDescending(s => s.CriadoEm)
-            .Select(s => new { s.Id, s.AccessionNumber, s.StudyInstanceUID })
-            .ToListAsync(cancellationToken);
+        var uid = (estudo.StudyInstanceUID ?? string.Empty).Trim();
+        if (uid.Length == 0) return ResultadoConciliacao.SemSolicitacao;
 
-        var comAssociacao = (await db.ExameAssociacoes.AsNoTracking()
-            .Where(a => a.ExcluidoEm == null)
-            .Select(a => a.SolicitacaoExameId)
-            .ToListAsync(cancellationToken)).ToHashSet();
+        // Idempotência (o poller repassa a mesma janela a cada 30s): study já vinculado
+        // explicitamente, ou worklist já consumada (vínculo implícito por StudyUID de uma
+        // solicitação já promovida) → nada a fazer. (No caminho em lote estes dois checks
+        // são pré-filtrados em 2 queries — ConciliarLoteAsync chama o núcleo direto.)
+        if (await db.ExameAssociacoes.AsNoTracking()
+                .AnyAsync(a => a.StudyInstanceUID == uid && a.ExcluidoEm == null, cancellationToken))
+            return ResultadoConciliacao.JaConciliada;
+        if (await db.SolicitacoesExame.AsNoTracking().AnyAsync(
+                s => s.StudyInstanceUID == uid && s.ExcluidoEm == null
+                     && (s.Status == StatusSolicitacaoExame.Realizada || s.Status == StatusSolicitacaoExame.Laudada),
+                cancellationToken))
+            return ResultadoConciliacao.JaConciliada;
 
-        var candidatas = abertas.Where(s => !comAssociacao.Contains(s.Id)).ToList();
-        var limiteAtingido = candidatas.Count > TetoResincronizacao;
-        var lote = limiteAtingido ? candidatas.Take(TetoResincronizacao).ToList() : candidatas;
+        return await ConciliarNucleoAsync(uid, estudo, cancellationToken);
+    }
 
-        int varridas = 0, associadas = 0, semExame = 0, falhas = 0;
+    /// <summary>
+    /// Núcleo da conciliação — pressupõe study SEM vínculo ativo (o chamador garantiu).
+    /// Resolve a solicitação pelas chaves duráveis e promove (worklist) ou associa (explícito).
+    /// </summary>
+    private async Task<ResultadoConciliacao> ConciliarNucleoAsync(
+        string uid, EstudoPacsRecente estudo, CancellationToken cancellationToken)
+    {
+        var acc = (estudo.AccessionNumber ?? string.Empty).Trim();
+        var patId = (estudo.PatientId ?? string.Empty).Trim();
 
-        foreach (var s in lote)
+        // Chaves de junção duráveis, em ordem de confiança: AccessionNumber do DICOM
+        // (worklist leva o nº SMS), PatientID = nº SMS (técnico digitou o número no campo
+        // do paciente) e o StudyInstanceUID pré-gerado (worklist que voltou sem accession).
+        // NENHUMA depende de quando a solicitação foi criada — o pedido pode ser antigo.
+        // Realizada TAMBÉM resolve (2ª aquisição do mesmo pedido vincula ao mesmo exame);
+        // Laudada/Cancelada nunca (laudo pode estar assinado; cancelada não vincula).
+        var sol = await ResolverConciliavelPorAccessionAsync(acc, cancellationToken)
+               ?? await ResolverConciliavelPorAccessionAsync(patId, cancellationToken)
+               ?? await ResolverConciliavelPorStudyUidAsync(uid, cancellationToken);
+        if (sol is null) return ResultadoConciliacao.SemSolicitacao;
+
+        if (string.Equals(sol.StudyInstanceUID, uid, StringComparison.Ordinal))
+        {
+            // Worklist genuíno: o study herdou o StudyInstanceUID pré-gerado → o vínculo já
+            // é IMPLÍCITO (por StudyUID). Só promove a Realizada, com a data real do DICOM.
+            var dataEstudo = await ObterDataEstudoSeguroAsync(uid, cancellationToken);
+            await solicitacoes.MarcarComoRealizadaAsync(sol.Id, DateTime.UtcNow, dataEstudo, cancellationToken);
+            logger.LogInformation(
+                "Conciliação worklist: solicitação {Accession} promovida a Realizada (study {Uid}).", sol.AccessionNumber, uid);
+            return ResultadoConciliacao.Conciliada;
+        }
+
+        // TOMBSTONE: vínculo DESFEITO por humano é definitivo para o motor. As chaves DICOM
+        // continuam gravadas no study; sem esta trava o poller recriaria a associação errada
+        // em ≤30s e o desassociar seria impossível de sustentar. O study vira órfão (a tela
+        // de conferência decide). Reassociar o MESMO par continua possível — manualmente.
+        if (await db.ExameAssociacoes.AsNoTracking().AnyAsync(
+                a => a.StudyInstanceUID == uid && a.SolicitacaoExameId == sol.Id && a.ExcluidoEm != null,
+                cancellationToken))
+            return ResultadoConciliacao.SemSolicitacao;
+
+        // Exame sem worklist (ou com StudyUID próprio da máquina): cria vínculo EXPLÍCITO.
+        // AssociarAsync promove a Realizada e revincula laudos. validarNoPacs:false — veio DO PACS.
+        await AssociarAsync(
+            new AssociarExameRequest(uid, sol.AccessionNumber, acc.Length > 0 ? acc : null),
+            OrigemAssociacaoExame.Automatica, validarNoPacs: false, cancellationToken);
+        return ResultadoConciliacao.Conciliada;
+    }
+
+    /// <inheritdoc />
+    public async Task<ConciliacaoLoteResultado> ConciliarLoteAsync(
+        IReadOnlyList<EstudoPacsRecente> estudos, CancellationToken cancellationToken = default)
+    {
+        // Normaliza e deduplica por UID (a paginação QIDO pode repetir linhas na borda).
+        var validos = (estudos ?? [])
+            .Where(e => !string.IsNullOrWhiteSpace(e.StudyInstanceUID))
+            .Select(e => e with { StudyInstanceUID = e.StudyInstanceUID.Trim() })
+            .DistinctBy(e => e.StudyInstanceUID, StringComparer.Ordinal)
+            .ToList();
+        if (validos.Count == 0) return new ConciliacaoLoteResultado(0, 0, 0, 0);
+
+        // Pré-filtro em LOTE (2 queries) do caso dominante em regime: study já conciliado.
+        // Evita 2+ queries POR STUDY a cada passagem do poller de 30s (DB compartilhado).
+        var uids = validos.Select(e => e.StudyInstanceUID).ToArray();
+        var jaAssociados = (await db.ExameAssociacoes.AsNoTracking()
+            .Where(a => uids.Contains(a.StudyInstanceUID) && a.ExcluidoEm == null)
+            .Select(a => a.StudyInstanceUID)
+            .ToListAsync(cancellationToken)).ToHashSet(StringComparer.Ordinal);
+        var worklistConsumada = (await db.SolicitacoesExame.AsNoTracking()
+            .Where(s => uids.Contains(s.StudyInstanceUID) && s.ExcluidoEm == null
+                        && (s.Status == StatusSolicitacaoExame.Realizada || s.Status == StatusSolicitacaoExame.Laudada))
+            .Select(s => s.StudyInstanceUID)
+            .ToListAsync(cancellationToken)).ToHashSet(StringComparer.Ordinal);
+
+        int conciliadas = 0, jaConciliadas = 0, semSolicitacao = 0, falhas = 0;
+        foreach (var estudo in validos)
         {
             if (cancellationToken.IsCancellationRequested) break;
-            varridas++;
-
-            IReadOnlyList<EstudoPacsBasico> estudos;
+            var uid = estudo.StudyInstanceUID;
+            if (jaAssociados.Contains(uid) || worklistConsumada.Contains(uid)) { jaConciliadas++; continue; }
             try
             {
-                // Só casa quando o Patient ID do estudo == nº da solicitação (o que o técnico
-                // digitou). Em exame de worklist real o Patient ID é o CPF → busca não casa (no-op).
-                estudos = await consultaStudy.BuscarPorPatientIdAsync(s.AccessionNumber, cancellationToken);
+                // Núcleo direto: o pré-filtro acima já fez os checks de idempotência.
+                switch (await ConciliarNucleoAsync(uid, estudo, cancellationToken))
+                {
+                    case ResultadoConciliacao.Conciliada: conciliadas++; break;
+                    case ResultadoConciliacao.JaConciliada: jaConciliadas++; break;
+                    default: semSolicitacao++; break;
+                }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 falhas++;
-                logger.LogWarning(ex, "Resync: falha ao consultar o PACS por Patient ID {Accession}.", s.AccessionNumber);
-                continue;
-            }
-
-            // Ignora o próprio study pré-gerado da worklist — esse não é "o exame".
-            var alvos = estudos
-                .Where(e => !string.Equals(e.StudyInstanceUID, s.StudyInstanceUID, StringComparison.Ordinal))
-                .ToList();
-            if (alvos.Count == 0) { semExame++; continue; }
-
-            foreach (var e in alvos)
-            {
-                try
-                {
-                    await AssociarAsync(
-                        new AssociarExameRequest(e.StudyInstanceUID, s.AccessionNumber, e.AccessionNumber),
-                        OrigemAssociacaoExame.Automatica, validarNoPacs: false, cancellationToken);
-                    associadas++;
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException)
-                {
-                    // Conflito (já associado a OUTRA solicitação) ou erro pontual — não derruba o lote.
-                    falhas++;
-                    logger.LogWarning(ex,
-                        "Resync: falha ao associar study {Uid} à solicitação {Accession}.", e.StudyInstanceUID, s.AccessionNumber);
-                }
+                // Entidade deixada no ChangeTracker por um SaveChanges falho envenenaria os
+                // SaveChanges dos próximos studies (ou flusharia promoção sem o zap junto) —
+                // o DbContext é compartilhado pelo lote inteiro.
+                db.ChangeTracker.Clear();
+                logger.LogWarning(ex, "Falha ao conciliar study {Uid}.", uid);
             }
         }
 
-        logger.LogInformation(
-            "Resync manual: {Cand} candidatas, {Var} varridas, {Assoc} associadas, {Sem} sem exame no PACS, {Falha} falhas.",
-            candidatas.Count, varridas, associadas, semExame, falhas);
+        // Loga só quando algo aconteceu — o poller roda a cada 30s.
+        if (conciliadas > 0 || falhas > 0)
+            logger.LogInformation(
+                "Conciliação: {Tot} studies — {Conc} conciliados, {Ja} já ok, {Sem} órfãos, {Falha} falhas.",
+                validos.Count, conciliadas, jaConciliadas, semSolicitacao, falhas);
 
-        return new ResincronizacaoResultadoDto(candidatas.Count, varridas, associadas, semExame, falhas, limiteAtingido);
+        return new ConciliacaoLoteResultado(conciliadas, jaConciliadas, semSolicitacao, falhas);
+    }
+
+    /// <summary>
+    /// Solicitação CONCILIÁVEL (qualquer status exceto Laudada/Cancelada — Realizada entra,
+    /// para a 2ª aquisição do mesmo pedido) cujo AccessionNumber == <paramref name="accession"/>.
+    /// </summary>
+    private async Task<SolicitacaoChave?> ResolverConciliavelPorAccessionAsync(string accession, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(accession)) return null;
+        return await db.SolicitacoesExame.AsNoTracking()
+            .Where(s => s.AccessionNumber == accession && s.ExcluidoEm == null
+                        && s.Status != StatusSolicitacaoExame.Laudada
+                        && s.Status != StatusSolicitacaoExame.Cancelada)
+            .Select(s => new SolicitacaoChave(s.Id, s.AccessionNumber, s.StudyInstanceUID))
+            .FirstOrDefaultAsync(ct);
+    }
+
+    /// <summary>Solicitação conciliável cujo StudyInstanceUID pré-gerado == <paramref name="uid"/>.</summary>
+    private async Task<SolicitacaoChave?> ResolverConciliavelPorStudyUidAsync(string uid, CancellationToken ct) =>
+        await db.SolicitacoesExame.AsNoTracking()
+            .Where(s => s.StudyInstanceUID == uid && s.ExcluidoEm == null
+                        && s.Status != StatusSolicitacaoExame.Laudada
+                        && s.Status != StatusSolicitacaoExame.Cancelada)
+            .Select(s => new SolicitacaoChave(s.Id, s.AccessionNumber, s.StudyInstanceUID))
+            .FirstOrDefaultAsync(ct);
+
+    // Janela ampla (dias de StudyDate) do resync manual — mais larga que a do poller.
+    private const int JanelaResyncDias = 30;
+    // Teto de studies varridos por resync. 2000 cobre com folga 30 dias do CDT (~30-70/dia);
+    // acima disso o DTO sinaliza LimiteAtingido e o front avisa a truncagem.
+    private const int TetoResincronizacao = 2000;
+
+    public async Task<ResincronizacaoResultadoDto> ResincronizarAsync(CancellationToken cancellationToken = default)
+    {
+        // PACS-driven: varre os studies recentes (pela DATA DO EXAME — StudyDate) e concilia.
+        var hojeBr = DateOnly.FromDateTime(FusoBrasilia.ParaExibicao(DateTime.UtcNow));
+        var estudos = await consultaStudy.BuscarStudiesPorDataAsync(
+            hojeBr.AddDays(-JanelaResyncDias), hojeBr.AddDays(1), TetoResincronizacao, cancellationToken);
+
+        var r = await ConciliarLoteAsync(estudos, cancellationToken);
+
+        // Contrato do DTO (front): Candidatas/Varridas = studies varridos; Associadas =
+        // conciliados nesta passada; SemExameNoPacs = órfãos (sem solicitação aberta).
+        return new ResincronizacaoResultadoDto(
+            estudos.Count, estudos.Count, r.Conciliadas, r.SemSolicitacao, r.Falhas,
+            LimiteAtingido: estudos.Count >= TetoResincronizacao);
     }
 
     private async Task<ExameAssociacaoDto> MontarDtoAsync(ExameAssociacao assoc, CancellationToken ct)

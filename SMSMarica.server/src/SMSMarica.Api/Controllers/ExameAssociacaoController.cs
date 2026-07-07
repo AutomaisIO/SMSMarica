@@ -29,8 +29,9 @@ public sealed class ExameAssociacaoController(
         await service.AssociarAsync(request, cancellationToken: cancellationToken);
 
     /// <summary>
-    /// Resincronização sob demanda (rede de segurança): varre solicitações abertas sem
-    /// associação e tenta casar pelo nº da solicitação no Patient ID do estudo. Idempotente.
+    /// Resincronização sob demanda (rede de segurança, PACS-driven): varre os studies
+    /// recentes do PACS (pela data do EXAME) e concilia cada um com a solicitação pelo
+    /// AccessionNumber / PatientID = nº SMS / StudyUID de worklist. Idempotente.
     /// </summary>
     [HttpPost("resincronizar")]
     [RequerPermissao(ModuloPermissao.Pacs, AcoesPermissao.Edicao)]

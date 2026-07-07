@@ -1,26 +1,31 @@
 namespace SMSMarica.Core.Worklist;
 
-/// <summary>Estudo do PACS reduzido às chaves de casamento (QIDO-RS).</summary>
-public sealed record EstudoPacsBasico(string StudyInstanceUID, string? AccessionNumber);
+/// <summary>
+/// Estudo do PACS varrido por data (StudyDate), com as três chaves usadas na
+/// conciliação PACS-driven: StudyInstanceUID, AccessionNumber (0008,0050) e
+/// PatientID (0010,0020).
+/// </summary>
+public sealed record EstudoPacsRecente(string StudyInstanceUID, string? AccessionNumber, string? PatientId);
 
 /// <summary>
-/// Cliente QIDO-RS. Checa existência por AccessionNumber/StudyInstanceUID e busca
-/// estudos por Patient ID (0010,0020) — base da auto-associação na chegada do exame.
-/// Usado pelo <c>SincronizadorExamesService</c>.
+/// Cliente QIDO-RS. Varre estudos por StudyDate (base da conciliação PACS-driven do
+/// <c>SincronizadorExamesService</c>) e checa existência/atributos por StudyInstanceUID.
 /// </summary>
 public interface IConsultaStudyClient
 {
-    /// <summary>"Este AccessionNumber já tem study no PACS?"</summary>
-    Task<bool> StudyExisteAsync(string accessionNumber, CancellationToken cancellationToken = default);
-
     /// <summary>"Este StudyInstanceUID existe no PACS?"</summary>
     Task<bool> StudyExistePorStudyUidAsync(string studyInstanceUID, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Estudos cujo Patient ID (0010,0020) é igual a <paramref name="patientId"/> —
-    /// o número da solicitação que o técnico digitou no campo PatientID do equipamento.
+    /// Estudos recentes por <b>StudyDate</b> (0008,0020) no intervalo [<paramref name="inicio"/>,
+    /// <paramref name="fim"/>], até <paramref name="limite"/> itens. Base da conciliação
+    /// PACS-driven: itera o que CHEGOU (data do exame é intrinsecamente recente) e casa
+    /// pelo AccessionNumber — sem depender de quando a solicitação foi criada.
+    /// Falha do PACS (transporte/HTTP não-2xx/JSON inválido) LANÇA — o chamador não pode
+    /// confundir "PACS fora do ar" com "sem estudos na janela".
     /// </summary>
-    Task<IReadOnlyList<EstudoPacsBasico>> BuscarPorPatientIdAsync(string patientId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<EstudoPacsRecente>> BuscarStudiesPorDataAsync(
+        DateOnly inicio, DateOnly fim, int limite, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Data/hora reais do estudo no PACS — combina StudyDate (0008,0020) e

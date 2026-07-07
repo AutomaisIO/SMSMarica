@@ -27,38 +27,6 @@ public class ConsultaStudyClientTests
     }
 
     [Fact]
-    public async Task BuscarPorPatientId_extrai_studyUid_e_accession()
-    {
-        const string json = """
-        [
-          { "0020000D": { "vr": "UI", "Value": ["2.25.111"] }, "00080050": { "vr": "SH", "Value": ["SMS260625001"] } },
-          { "0020000D": { "vr": "UI", "Value": ["2.25.222"] } }
-        ]
-        """;
-        var lista = await Cliente(new HandlerFixo(json)).BuscarPorPatientIdAsync("SMS260625001");
-
-        lista.Should().HaveCount(2);
-        lista[0].StudyInstanceUID.Should().Be("2.25.111");
-        lista[0].AccessionNumber.Should().Be("SMS260625001");
-        lista[1].StudyInstanceUID.Should().Be("2.25.222");
-        lista[1].AccessionNumber.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task BuscarPorPatientId_ignora_estudo_sem_studyUid()
-    {
-        const string json = """[ { "00080050": { "vr": "SH", "Value": ["X"] } } ]""";
-        (await Cliente(new HandlerFixo(json)).BuscarPorPatientIdAsync("SMS1")).Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task BuscarPorPatientId_204_retorna_vazio()
-    {
-        (await Cliente(new HandlerFixo("", HttpStatusCode.NoContent)).BuscarPorPatientIdAsync("SMS1"))
-            .Should().BeEmpty();
-    }
-
-    [Fact]
     public async Task StudyExistePorStudyUid_true_quando_ha_match()
     {
         const string json = """[ { "0020000D": { "vr": "UI", "Value": ["2.25.999"] } } ]""";
@@ -72,14 +40,125 @@ public class ConsultaStudyClientTests
     }
 
     [Fact]
-    public async Task BuscarPorPatientId_escapa_patientId_e_pede_campos()
+    public async Task BuscarStudiesPorData_extrai_uid_accession_e_patientId()
+    {
+        const string json = """
+        [
+          { "0020000D": { "vr": "UI", "Value": ["2.25.111"] },
+            "00080050": { "vr": "SH", "Value": ["260702062"] },
+            "00100020": { "vr": "LO", "Value": ["96254947749"] } },
+          { "0020000D": { "vr": "UI", "Value": ["2.25.222"] } },
+          { "00080050": { "vr": "SH", "Value": ["SEM-UID"] } }
+        ]
+        """;
+        var lista = await Cliente(new HandlerFixo(json))
+            .BuscarStudiesPorDataAsync(new DateOnly(2026, 7, 1), new DateOnly(2026, 7, 8), 100);
+
+        lista.Should().HaveCount(2); // o item sem StudyInstanceUID é descartado
+        lista[0].StudyInstanceUID.Should().Be("2.25.111");
+        lista[0].AccessionNumber.Should().Be("260702062");
+        lista[0].PatientId.Should().Be("96254947749");
+        lista[1].StudyInstanceUID.Should().Be("2.25.222");
+        lista[1].AccessionNumber.Should().BeNull();
+        lista[1].PatientId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task BuscarStudiesPorData_monta_range_campos_ordenacao_e_pagina_inicial()
     {
         var handler = new HandlerFixo("[]");
-        await Cliente(handler).BuscarPorPatientIdAsync("SMS 1");
+        await Cliente(handler).BuscarStudiesPorDataAsync(new DateOnly(2026, 7, 1), new DateOnly(2026, 7, 8), 250);
 
-        handler.UltimaUrl.Should().Contain("PatientID=SMS%201");
-        handler.UltimaUrl.Should().Contain("includefield=0020000D");
+        handler.UltimaUrl.Should().Contain("StudyDate=20260701-20260708");
         handler.UltimaUrl.Should().Contain("includefield=00080050");
+        handler.UltimaUrl.Should().Contain("includefield=0020000D");
+        handler.UltimaUrl.Should().Contain("includefield=00100020");
+        // Ordenação determinística: sem orderby o paging por offset pula/duplica linhas.
+        handler.UltimaUrl.Should().Contain("orderby=-StudyDate,-StudyTime");
+        handler.UltimaUrl.Should().Contain("limit=100"); // paginado (cap QIDO do dcm4chee)
+        handler.UltimaUrl.Should().Contain("offset=0");
+    }
+
+    [Fact]
+    public async Task BuscarStudiesPorData_falha_do_pacs_lanca_em_vez_de_lista_vazia()
+    {
+        // PACS fora do ar não pode ser indistinguível de "janela vazia" — o resync
+        // reportaria varredura limpa sem ter varrido nada.
+        var acao = () => Cliente(new HandlerFixo("", HttpStatusCode.InternalServerError))
+            .BuscarStudiesPorDataAsync(new DateOnly(2026, 7, 1), new DateOnly(2026, 7, 8), 10);
+
+        await acao.Should().ThrowAsync<HttpRequestException>();
+    }
+
+    private sealed class HandlerSequencia(params string[] respostas) : HttpMessageHandler
+    {
+        private int _i;
+        public List<string> Urls { get; } = [];
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Urls.Add(request.RequestUri!.AbsoluteUri);
+            var json = _i < respostas.Length ? respostas[_i++] : "[]";
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(json, System.Text.Encoding.UTF8, "application/dicom+json"),
+            });
+        }
+    }
+
+    [Fact]
+    public async Task BuscarStudiesPorData_pagina_com_offset_ate_pagina_curta()
+    {
+        static string Pagina(int inicio, int n) => "[" + string.Join(',', Enumerable.Range(inicio, n)
+            .Select(i => $$"""{ "0020000D": { "vr": "UI", "Value": ["2.25.{{i}}"] } }""")) + "]";
+
+        // 1ª página cheia (100) + 2ª curta (1) → para; sem 3ª requisição.
+        var handler = new HandlerSequencia(Pagina(0, 100), Pagina(100, 1));
+        var http = new HttpClient(handler) { BaseAddress = new Uri("http://pacs/") };
+        var cliente = new ConsultaStudyClient(http, NullLogger<ConsultaStudyClient>.Instance);
+
+        var lista = await cliente.BuscarStudiesPorDataAsync(new DateOnly(2026, 7, 1), new DateOnly(2026, 7, 8), 500);
+
+        lista.Should().HaveCount(101);
+        handler.Urls.Should().HaveCount(2);
+        handler.Urls[0].Should().Contain("limit=100").And.Contain("offset=0");
+        handler.Urls[1].Should().Contain("limit=100").And.Contain("offset=100");
+    }
+
+    [Fact]
+    public async Task BuscarStudiesPorData_corta_no_teto_apos_pagina_cheia()
+    {
+        static string Pagina(int inicio, int n) => "[" + string.Join(',', Enumerable.Range(inicio, n)
+            .Select(i => $$"""{ "0020000D": { "vr": "UI", "Value": ["2.25.{{i}}"] } }""")) + "]";
+
+        // Teto 150 no meio da 2ª página: a página é sempre cheia (offset estável) e o
+        // excedente é cortado no retorno.
+        var handler = new HandlerSequencia(Pagina(0, 100), Pagina(100, 100));
+        var http = new HttpClient(handler) { BaseAddress = new Uri("http://pacs/") };
+        var cliente = new ConsultaStudyClient(http, NullLogger<ConsultaStudyClient>.Instance);
+
+        var lista = await cliente.BuscarStudiesPorDataAsync(new DateOnly(2026, 7, 1), new DateOnly(2026, 7, 8), 150);
+
+        lista.Should().HaveCount(150);
+        handler.Urls.Should().HaveCount(2);
+        handler.Urls[1].Should().Contain("limit=100"); // página fixa, nunca parcial
+    }
+
+    [Fact]
+    public async Task BuscarStudiesPorData_mesma_data_nao_gera_range()
+    {
+        var handler = new HandlerFixo("[]");
+        await Cliente(handler).BuscarStudiesPorDataAsync(new DateOnly(2026, 7, 7), new DateOnly(2026, 7, 7), 10);
+
+        handler.UltimaUrl.Should().Contain("StudyDate=20260707&");
+    }
+
+    [Fact]
+    public async Task BuscarStudiesPorData_204_retorna_vazio()
+    {
+        (await Cliente(new HandlerFixo("", HttpStatusCode.NoContent))
+            .BuscarStudiesPorDataAsync(new DateOnly(2026, 7, 1), new DateOnly(2026, 7, 8), 10))
+            .Should().BeEmpty();
     }
 
     [Fact]

@@ -26,9 +26,15 @@ public sealed record ExameAssociacaoDto(
 /// <summary>Vínculo mínimo (solicitação + paciente) usado pelo gate de laudar.</summary>
 public sealed record VinculoExame(Guid SolicitacaoExameId, Guid PacienteId);
 
+/// <summary>Contadores de uma passada de conciliação PACS→solicitações (lote).</summary>
+public sealed record ConciliacaoLoteResultado(int Conciliadas, int JaConciliadas, int SemSolicitacao, int Falhas);
+
 /// <summary>
-/// Resultado de uma resincronização sob demanda: varre solicitações abertas sem
-/// associação e tenta casar pelo nº da solicitação no Patient ID do estudo (PACS).
+/// Resultado de uma resincronização sob demanda (PACS-driven): varre os studies recentes
+/// do PACS (pela data do EXAME) e concilia cada um com as solicitações. Nomes dos campos
+/// mantidos por compatibilidade com o front: Candidatas/Varridas = studies varridos;
+/// Associadas = conciliados nesta passada; SemExameNoPacs = studies órfãos (sem
+/// solicitação aberta correspondente).
 /// </summary>
 public sealed record ResincronizacaoResultadoDto(
     int Candidatas,

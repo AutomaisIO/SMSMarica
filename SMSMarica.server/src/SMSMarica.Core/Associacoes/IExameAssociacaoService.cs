@@ -1,7 +1,21 @@
 using SMSMarica.Core.Associacoes.Dtos;
+using SMSMarica.Core.Worklist;
 using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Associacoes;
+
+/// <summary>Desfecho da conciliação de um study do PACS com as solicitações abertas.</summary>
+public enum ResultadoConciliacao
+{
+    /// <summary>Nenhuma solicitação aberta casa (por AccessionNumber nem por PatientID).</summary>
+    SemSolicitacao,
+
+    /// <summary>Study já tinha vínculo (associação explícita ativa) — nada a fazer.</summary>
+    JaConciliada,
+
+    /// <summary>Vínculo estabelecido nesta chamada: promoveu a Realizada (worklist) ou associou.</summary>
+    Conciliada,
+}
 
 /// <summary>
 /// Associação explícita estudo PACS ↔ solicitação de exame, para exames que não
@@ -40,11 +54,28 @@ public interface IExameAssociacaoService
         IReadOnlyList<string> studyInstanceUIDs, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Resincronização sob demanda (rede de segurança): varre TODAS as solicitações
-    /// abertas (não-terminais) SEM associação ativa — sem janela de data — e tenta
-    /// associar pelo nº da solicitação no Patient ID do estudo (mesma lógica do
-    /// sincronizador automático, idempotente). Recupera exames que ficaram órfãos por
-    /// falha transitória ou por terem avançado de status antes de chegar o exame.
+    /// Concilia um study do PACS com as solicitações abertas, casando pelas chaves duráveis
+    /// em ordem de confiança: <b>AccessionNumber</b> do DICOM (worklist carrega o nº SMS),
+    /// <b>PatientID</b> = nº SMS (técnico digitou o número no campo do paciente) e
+    /// <b>StudyInstanceUID</b> pré-gerado (worklist que voltou sem accession). Nenhuma depende
+    /// de QUANDO a solicitação foi criada. Worklist genuíno (StudyUID herdado) só promove a
+    /// Realizada (vínculo implícito); demais casos criam associação explícita. Idempotente:
+    /// study já vinculado retorna <see cref="ResultadoConciliacao.JaConciliada"/>.
+    /// </summary>
+    Task<ResultadoConciliacao> ConciliarStudyAsync(EstudoPacsRecente estudo, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Concilia um LOTE de studies: pré-filtra em 2 queries os já vinculados (caso dominante
+    /// em regime — o poller repassa a mesma janela a cada 30s) e delega o restante a
+    /// <see cref="ConciliarStudyAsync"/>. Falha de um study não derruba o lote.
+    /// </summary>
+    Task<ConciliacaoLoteResultado> ConciliarLoteAsync(
+        IReadOnlyList<EstudoPacsRecente> estudos, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Resincronização sob demanda (rede de segurança): varre os studies recentes do PACS
+    /// (janela ampla, pela DATA DO EXAME) e concilia cada um via
+    /// <see cref="ConciliarStudyAsync"/>. Idempotente. Recupera exames órfãos.
     /// </summary>
     Task<ResincronizacaoResultadoDto> ResincronizarAsync(CancellationToken cancellationToken = default);
 }

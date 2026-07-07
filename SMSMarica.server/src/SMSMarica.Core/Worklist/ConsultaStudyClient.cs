@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
@@ -13,14 +14,6 @@ public sealed class ConsultaStudyClient(HttpClient http, ILogger<ConsultaStudyCl
     private readonly HttpClient _http = http;
     private readonly ILogger<ConsultaStudyClient> _logger = logger;
 
-    public async Task<bool> StudyExisteAsync(string accessionNumber, CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrWhiteSpace(accessionNumber)) return false;
-        var arr = await ConsultarAsync(
-            $"studies?AccessionNumber={Uri.EscapeDataString(accessionNumber)}&limit=1", cancellationToken);
-        return arr is { ValueKind: JsonValueKind.Array } a && a.GetArrayLength() > 0;
-    }
-
     public async Task<bool> StudyExistePorStudyUidAsync(string studyInstanceUID, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(studyInstanceUID)) return false;
@@ -29,22 +22,43 @@ public sealed class ConsultaStudyClient(HttpClient http, ILogger<ConsultaStudyCl
         return arr is { ValueKind: JsonValueKind.Array } a && a.GetArrayLength() > 0;
     }
 
-    public async Task<IReadOnlyList<EstudoPacsBasico>> BuscarPorPatientIdAsync(string patientId, CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrWhiteSpace(patientId)) return [];
-        var arr = await ConsultarAsync(
-            $"studies?PatientID={Uri.EscapeDataString(patientId)}&includefield=00080050&includefield=0020000D&limit=100",
-            cancellationToken);
-        if (arr is not { ValueKind: JsonValueKind.Array } a) return [];
+    // Página do QIDO por data — abaixo do cap server-side de resultados do dcm4chee
+    // (QidoMaxNumberOfResults costuma ser 100): paginar com offset evita truncar a janela.
+    private const int TamanhoPaginaStudies = 100;
 
-        var lista = new List<EstudoPacsBasico>(a.GetArrayLength());
-        foreach (var estudo in a.EnumerateArray())
+    public async Task<IReadOnlyList<EstudoPacsRecente>> BuscarStudiesPorDataAsync(
+        DateOnly inicio, DateOnly fim, int limite, CancellationToken cancellationToken = default)
+    {
+        static string F(DateOnly d) => d.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+        var intervalo = inicio == fim ? F(inicio) : $"{F(inicio)}-{F(fim)}";
+        var teto = Math.Max(1, limite);
+
+        var lista = new List<EstudoPacsRecente>();
+        var offset = 0;
+        while (lista.Count < teto)
         {
-            var uid = Tag(estudo, "0020000D");
-            if (string.IsNullOrWhiteSpace(uid)) continue;
-            lista.Add(new EstudoPacsBasico(uid!, Tag(estudo, "00080050")));
+            // Página de tamanho FIXO (offset avança pelo nº de linhas RECEBIDAS, nunca por
+            // contagem filtrada) e ordenação determinística — sem orderby o dcm4chee não
+            // garante ordem entre requisições e o paging por offset pula/duplica linhas.
+            // Falha do PACS aqui LANÇA (ConsultarPaginaAsync): lista parcial silenciosa
+            // seria indistinguível de "janela vazia" para o chamador.
+            var arr = await ConsultarPaginaAsync(
+                $"studies?StudyDate={intervalo}&includefield=00080050&includefield=0020000D&includefield=00100020" +
+                $"&orderby=-StudyDate,-StudyTime&limit={TamanhoPaginaStudies}&offset={offset}",
+                cancellationToken);
+            if (arr is not { ValueKind: JsonValueKind.Array } a || a.GetArrayLength() == 0) break;
+
+            foreach (var estudo in a.EnumerateArray())
+            {
+                var uid = Tag(estudo, "0020000D");
+                if (string.IsNullOrWhiteSpace(uid)) continue;
+                lista.Add(new EstudoPacsRecente(uid!, Tag(estudo, "00080050"), Tag(estudo, "00100020")));
+            }
+
+            if (a.GetArrayLength() < TamanhoPaginaStudies) break; // página curta = acabou
+            offset += a.GetArrayLength();
         }
-        return lista;
+        return lista.Count > teto ? lista[..teto] : lista;
     }
 
     public async Task<DateTime?> ObterDataHoraEstudoAsync(string studyInstanceUID, CancellationToken cancellationToken = default)
@@ -119,6 +133,26 @@ public sealed class ConsultaStudyClient(HttpClient http, ILogger<ConsultaStudyCl
 
         try { return new DateTime(ano, mes, dia, hh, mm, ss, DateTimeKind.Unspecified); }
         catch { return null; }
+    }
+
+    /// <summary>
+    /// GET QIDO-RS ESTRITO para a varredura paginada: 204 devolve null (fim legítimo);
+    /// falha de transporte, HTTP não-2xx ou JSON inválido LANÇAM. Diferente de
+    /// <see cref="ConsultarAsync"/> (tolerante), aqui o chamador precisa distinguir
+    /// "PACS fora do ar" de "sem estudos" — senão o resync reporta varredura limpa vazia.
+    /// </summary>
+    private async Task<JsonElement?> ConsultarPaginaAsync(string url, CancellationToken ct)
+    {
+        var req = new HttpRequestMessage(HttpMethod.Get, url);
+        req.Headers.Accept.Clear();
+        req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/dicom+json"));
+
+        var resposta = await _http.SendAsync(req, ct);
+        if (resposta.StatusCode == System.Net.HttpStatusCode.NoContent) return null;
+        resposta.EnsureSuccessStatusCode();
+
+        await using var stream = await resposta.Content.ReadAsStreamAsync(ct);
+        return await JsonSerializer.DeserializeAsync<JsonElement>(stream, cancellationToken: ct);
     }
 
     /// <summary>Faz o GET QIDO-RS e devolve o array JSON (ou null em falha/204).</summary>
