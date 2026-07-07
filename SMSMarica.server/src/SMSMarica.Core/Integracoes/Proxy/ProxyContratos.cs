@@ -27,9 +27,13 @@ public static class MotoresProxy
 {
     public const string HubDoDesenvolvedor = "hubdodesenvolvedor";
 
+    /// <summary>CADSUS via SISREG III (cadweb50) — não usa token: a credencial é a sessão SISREG.</summary>
+    public const string SisregCadsus = "sisreg-cadsus";
+
     public static string Rotulo(string motor) => motor switch
     {
         HubDoDesenvolvedor => "Hub do Desenvolvedor",
+        SisregCadsus => "CADSUS (SISREG)",
         _ => motor,
     };
 
@@ -40,7 +44,8 @@ public static class MotoresProxy
         _ => false,
     };
 
-    private static readonly IReadOnlyList<string> SuportadosCpf = [HubDoDesenvolvedor];
+    // Ordem = prioridade default da cadeia: Receita (Hub) primeiro, CADSUS como fallback.
+    private static readonly IReadOnlyList<string> SuportadosCpf = [HubDoDesenvolvedor, SisregCadsus];
     private static readonly IReadOnlyList<string> SuportadosCep = [HubDoDesenvolvedor];
 
     public static IReadOnlyList<string> Suportados(string servico) => servico switch

@@ -205,6 +205,9 @@ public static class DependencyInjection
         services
             .AddHttpClient<Integracoes.Proxy.IMotorCep, Integracoes.Proxy.Motores.HubDoDesenvolvedorMotorCep>(client =>
                 client.Timeout = System.Threading.Timeout.InfiniteTimeSpan);
+        // Fallback do proxy CPF via CADSUS/SISREG — usa a sessão SISREG (singleton com
+        // relogin), não um HttpClient tipado próprio.
+        services.AddScoped<Integracoes.Proxy.IMotorCpf, Integracoes.Proxy.Motores.SisregCadsusMotorCpf>();
 
         // ---- Agendamento (Especialidade/Equipamento → Agenda → Agendamento) — ADR-0012/0013 ----
         services.AddScoped<Especialidades.IEspecialidadesService, Especialidades.EspecialidadesService>();
