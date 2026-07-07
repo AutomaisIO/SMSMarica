@@ -344,8 +344,10 @@ export function SolicitacoesExamePage() {
           </button>
         </Campo>
         <div className="flex items-end">
-          <Button type="submit" disabled={lista.isFetching} className="w-full">
-            {lista.isFetching ? (
+          {/* isLoading (1ª carga do filtro), não isFetching: o auto-refresh de 10s em
+              background não pode ficar piscando/desabilitando o botão. */}
+          <Button type="submit" disabled={lista.isLoading} className="w-full">
+            {lista.isLoading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <Search className="mr-2 h-4 w-4" />

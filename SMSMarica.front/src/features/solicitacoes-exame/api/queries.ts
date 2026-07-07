@@ -29,7 +29,10 @@ export function useListarSolicitacoes(filtro: FiltroSolicitacoes) {
   return useQuery({
     queryKey: solicitacoesKeys.lista(filtro),
     queryFn: () => listarSolicitacoes(filtro),
-    refetchInterval: filtro.status === 'Recebida' || filtro.status === 'EmExecucao' ? 30_000 : false,
+    // Auto-refresh assíncrono: status/checks mudam no servidor (sincronizador PACS,
+    // recibos do zap) sem ação do usuário. Refetch em background não pisca a tabela
+    // (isPending fica false) e pausa quando a aba perde o foco (default do react-query).
+    refetchInterval: 10_000,
   });
 }
 
