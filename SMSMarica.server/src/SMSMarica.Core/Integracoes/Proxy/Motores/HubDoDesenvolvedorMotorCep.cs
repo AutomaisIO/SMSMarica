@@ -24,7 +24,17 @@ public sealed class HubDoDesenvolvedorMotorCep(HttpClient http) : IMotorCep
 
         if (payload is null || !payload.Status || result is null || string.IsNullOrWhiteSpace(result.Localidade))
         {
-            throw new MotorNaoEncontrouException(Motor, $"CEP {cep} não encontrado.");
+            // Mesma regra do motor de CPF: status:false só é negativa quando o Hub diz que o
+            // CEP não existe; problema operacional (saldo/instabilidade/token) é indisponível
+            // (retenta/fallback). Resposta com result preenchido-mas-incompleto = negativa.
+            var temResultado = result is not null && payload!.Status;
+            var motivoCru = $"{payload?.Return} {payload?.Message}".Trim();
+            if (temResultado || (payload is not null && HubDoDesenvolvedor.EhNegativaAutoritativa(payload.Return, payload.Message)))
+            {
+                throw new MotorNaoEncontrouException(Motor, $"CEP {cep} não encontrado.");
+            }
+            throw new MotorIndisponivelException(
+                Motor, motivoCru.Length > 0 ? $"status=false do Hub: {motivoCru}" : "payload vazio/ilegível");
         }
 
         return new HubCepRespostaDto(

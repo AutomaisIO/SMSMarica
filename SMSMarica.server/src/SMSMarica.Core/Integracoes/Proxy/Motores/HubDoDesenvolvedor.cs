@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -6,6 +8,37 @@ namespace SMSMarica.Core.Integracoes.Proxy.Motores;
 /// <summary>Constantes/utilidades compartilhadas pelos motores do Hub do Desenvolvedor.</summary>
 internal static class HubDoDesenvolvedor
 {
+    /// <summary>
+    /// O Hub responde <c>status:false</c> tanto para NEGATIVA real (dados divergem/não
+    /// encontrados) quanto para problema operacional DELE (sem saldo, instabilidade da fonte,
+    /// token, "tente novamente"). Só é negativa autoritativa quando a mensagem diz
+    /// explicitamente que os dados não conferem/não existem — todo o resto é tratado como
+    /// indisponibilidade (retenta/fallback): nunca negar um cadastro por falha do fornecedor.
+    /// </summary>
+    public static bool EhNegativaAutoritativa(string? retorno, string? mensagem)
+    {
+        var texto = RemoverAcentos($"{retorno} {mensagem}").ToLowerInvariant();
+        return SinaisNegativa.Any(texto.Contains);
+    }
+
+    private static readonly string[] SinaisNegativa =
+    [
+        "nao confere", "nao conferem", "divergente", "divergem",
+        "nao encontrado", "nao localizado", "nao consta", "inexistente",
+        "cpf invalido", "data de nascimento invalida", "cpf ou data",
+        "cep invalido",
+    ];
+
+    private static string RemoverAcentos(string s)
+    {
+        var norm = s.Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder(norm.Length);
+        foreach (var c in norm)
+            if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
+                sb.Append(c);
+        return sb.ToString();
+    }
+
     public const string DefaultBaseUrl = "https://ws.hubdodesenvolvedor.com.br/v2/";
 
     public static readonly JsonSerializerOptions JsonOpts = new()
@@ -38,7 +71,8 @@ internal static class HubDoDesenvolvedor
             ? throw new MotorIndisponivelException(MotoresProxy.HubDoDesenvolvedor, "token não configurado")
             : cfg.Token.Trim();
 
-    public sealed record CpfPayload(bool Status, string? Return, CpfPayloadResult? Result);
+    // "return" e "message" carregam o motivo cru do Hub quando status=false (varia por caso).
+    public sealed record CpfPayload(bool Status, string? Return, string? Message, CpfPayloadResult? Result);
 
     public sealed record CpfPayloadResult(
         [property: JsonPropertyName("numero_de_cpf")] string? NumeroDeCpf,
@@ -49,7 +83,7 @@ internal static class HubDoDesenvolvedor
         [property: JsonPropertyName("genero")] string? Genero = null,
         [property: JsonPropertyName("sexo")] string? Sexo = null);
 
-    public sealed record CepPayload(bool Status, string? Return, CepPayloadResult? Result);
+    public sealed record CepPayload(bool Status, string? Return, string? Message, CepPayloadResult? Result);
 
     public sealed record CepPayloadResult(
         string? Cep,

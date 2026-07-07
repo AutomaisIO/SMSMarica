@@ -29,10 +29,19 @@ public sealed class HubDoDesenvolvedorMotorCpf(HttpClient http) : IMotorCpf
 
         if (payload is null || !payload.Status || payload.Result is null)
         {
-            // Negativa autoritativa: não vazamos a mensagem crua do Hub (ex.: "NOK").
-            throw new MotorNaoEncontrouException(
-                Motor,
-                "CPF não foi validado pela Receita. Confira CPF e data de nascimento, ou tente novamente em instantes.");
+            // status:false do Hub NÃO é sempre negativa: sem saldo/instabilidade/token também
+            // chegam assim. Negativa autoritativa só quando a mensagem diz que os DADOS não
+            // conferem; o resto vira indisponível (o executor retenta e cai pro fallback) —
+            // com o motivo cru do Hub na exceção, que o executor loga (era descartado antes).
+            var motivoCru = $"{payload?.Return} {payload?.Message}".Trim();
+            if (payload is not null && HubDoDesenvolvedor.EhNegativaAutoritativa(payload.Return, payload.Message))
+            {
+                // Não vazamos a mensagem crua do Hub ao usuário (ex.: "NOK").
+                throw new MotorNaoEncontrouException(
+                    Motor, "CPF não foi validado pela Receita. Confira o CPF e a data de nascimento.");
+            }
+            throw new MotorIndisponivelException(
+                Motor, motivoCru.Length > 0 ? $"status=false do Hub: {motivoCru}" : "payload vazio/ilegível");
         }
 
         return new HubCpfRespostaDto(
