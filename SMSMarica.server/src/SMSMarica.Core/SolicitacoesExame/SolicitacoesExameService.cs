@@ -119,17 +119,23 @@ public sealed class SolicitacoesExameService(
                 || (s.CodigoSolicitacao != null && EF.Functions.ILike(s.CodigoSolicitacao, padrao))
                 || idsPaciente.Contains(s.PacienteId));
         }
+        // Busca PONTUAL (nº do pedido ou termo livre) ignora o período: quem procura uma
+        // solicitação específica quer encontrá-la mesmo fora do dia filtrado (toggle "hoje"
+        // travando as datas escondia o resultado — inclusive solicitações SEM data agendada).
+        var buscaPontual = !string.IsNullOrWhiteSpace(filtro.AccessionNumber)
+                           || !string.IsNullOrWhiteSpace(filtro.Busca);
+
         // O período filtra pela DATA DO AGENDAMENTO (data_agendada), não pela data da solicitação.
         // data_agendada é um instante UTC (timestamptz); a coluna é exibida no fuso de Brasília, então
         // os limites do dia (yyyy-mm-dd) são convertidos de Brasília para UTC (+3h) p/ casar com a exibição.
         // Registros sem data agendada ficam fora quando há filtro de período.
-        if (filtro.DataInicial.HasValue)
+        if (!buscaPontual && filtro.DataInicial.HasValue)
         {
             var ini = filtro.DataInicial.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)
                 .AddHours(-FusoBrasilia.OffsetHoras);
             query = query.Where(s => s.DataAgendada != null && s.DataAgendada >= ini);
         }
-        if (filtro.DataFinal.HasValue)
+        if (!buscaPontual && filtro.DataFinal.HasValue)
         {
             var fim = filtro.DataFinal.Value.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc)
                 .AddHours(-FusoBrasilia.OffsetHoras);

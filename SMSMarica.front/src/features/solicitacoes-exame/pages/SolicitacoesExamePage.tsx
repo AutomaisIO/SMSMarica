@@ -288,6 +288,13 @@ export function SolicitacoesExamePage() {
             onChange={(e) => setCampo('busca', e.target.value)}
             placeholder="Nome, CPF, CNS ou nº do pedido"
           />
+          {/* O backend ignora o período em busca pontual — avisa para as datas
+              preenchidas (ex.: toggle Hoje) não parecerem contraditórias. */}
+          {filtroDigitado.busca?.trim() ? (
+            <p className="mt-1 text-xs text-gray-500">
+              A busca localiza em qualquer data (período ignorado).
+            </p>
+          ) : null}
         </Campo>
         <Campo label="Status" htmlFor="status">
           <Select
