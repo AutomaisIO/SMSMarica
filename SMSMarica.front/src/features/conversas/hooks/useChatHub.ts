@@ -46,7 +46,14 @@ export function useChatHub() {
     if (!token) return;
     const base = apiBaseAbsoluto.replace(/\/api$/, '');
     const conn = new HubConnectionBuilder()
-      .withUrl(`${base}/hubs/conversas`, { accessTokenFactory: () => obterToken() ?? '' })
+      // withCredentials:false — a autenticação é o JWT (accessTokenFactory → header no
+      // negotiate, access_token na query no WebSocket), nunca cookie. O default (true)
+      // manda credentials:include e o browser rejeita o `Access-Control-Allow-Origin: *`
+      // do CORS do backend (negotiate bloqueado em produção).
+      .withUrl(`${base}/hubs/conversas`, {
+        accessTokenFactory: () => obterToken() ?? '',
+        withCredentials: false,
+      })
       .withAutomaticReconnect()
       .build();
 
