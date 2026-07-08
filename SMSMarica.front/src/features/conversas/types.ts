@@ -11,6 +11,12 @@ export type ConversaListItem = {
   telefoneCanonical: string;
   nomeContato: string | null;
   pacienteId: string | null;
+  /**
+   * Nome COMPLETO do paciente resolvido do banco (hub FHIR) pelo vínculo/telefone.
+   * NÃO substitui o nomeContato (perfil do WhatsApp) — os dois convivem para expor
+   * divergência (telefone cadastrado na pessoa errada).
+   */
+  pacienteNome: string | null;
   assunto: AssuntoConversa | null;
   status: StatusConversa;
   operadorResponsavelId: string | null;

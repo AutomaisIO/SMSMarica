@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import { useListarConversas } from '@/features/conversas/api/queries';
 import { useChat } from '@/features/conversas/store/chatStore';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { ROTULO_ASSUNTO, type AbaConversas } from '@/features/conversas/types';
 
 type Props = {
@@ -81,17 +82,30 @@ export function ListaConversas({ conversaAtivaId, onSelecionar, podeSupervisao, 
         )}
         {conversas?.map((c) => (
           <li key={c.id}>
-            <button
-              type="button"
+            {/* div clicável (não <button>) para poder aninhar o botão do resumo do paciente. */}
+            <div
+              role="button"
+              tabIndex={0}
               onClick={() => onSelecionar(c.id)}
-              className={`flex w-full items-start gap-2 px-3 py-2.5 text-left hover:bg-gray-50 ${
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') onSelecionar(c.id);
+              }}
+              className={`flex w-full cursor-pointer items-start gap-2 px-3 py-2.5 text-left hover:bg-gray-50 ${
                 conversaAtivaId === c.id ? 'bg-primary-50' : ''
               }`}
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="truncate text-sm font-medium text-gray-900">
-                    {c.nomeContato || c.telefoneCanonical}
+                  <span className="flex min-w-0 items-center gap-1">
+                    {/* Nome do PERFIL do WhatsApp — nunca sobreposto pelo nome do banco. */}
+                    <span className="truncate text-sm font-medium text-gray-900">
+                      {c.nomeContato || c.telefoneCanonical}
+                    </span>
+                    {c.pacienteId ? (
+                      <span onClick={(e) => e.stopPropagation()}>
+                        <NomePacienteComResumo pacienteId={c.pacienteId} />
+                      </span>
+                    ) : null}
                   </span>
                   <span className="shrink-0 text-[11px] text-gray-400">{formatarHora(c.ultimaMensagemEm)}</span>
                 </div>
@@ -129,7 +143,7 @@ export function ListaConversas({ conversaAtivaId, onSelecionar, podeSupervisao, 
                   )}
                 </div>
               </div>
-            </button>
+            </div>
           </li>
         ))}
       </ul>

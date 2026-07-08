@@ -19,6 +19,7 @@ public sealed class ConversaService(
     IIdentidadeService identidade,
     IUsuarioUnidadeService vinculos,
     IConversaNotificador notificador,
+    Pacientes.Fhir.IPacienteResolver pacienteResolver,
     IConfiguration configuration) : IConversaService
 {
     public Task<IReadOnlyList<TemplateWhatsApp>> ListarTemplatesAsync(CancellationToken ct = default) =>
@@ -153,7 +154,7 @@ public sealed class ConversaService(
                 || (c.NomeContato != null && c.NomeContato.Contains(termo)));
         }
 
-        return await query
+        var itens = await query
             .OrderByDescending(c => c.UltimaMensagemEm ?? c.CriadoEm)
             .Take(200)
             .Select(c => new ConversaListItemDto(
@@ -164,12 +165,19 @@ public sealed class ConversaService(
                 c.NaoLidas, c.JanelaExpiraEm,
                 c.JanelaExpiraEm != null && c.JanelaExpiraEm > agora))
             .ToListAsync(ct);
+
+        // Nome do paciente resolvido do hub (best-effort; hub fora → segue sem nome).
+        var nomes = await pacienteResolver.ResolverManyAsync(
+            itens.Where(i => i.PacienteId.HasValue).Select(i => i.PacienteId!.Value), ct);
+        return [.. itens.Select(i => i.PacienteId is { } pid && nomes.TryGetValue(pid, out var r)
+            ? i with { PacienteNome = r.Nome }
+            : i)];
     }
 
     public async Task<ConversaListItemDto> ObterAsync(Guid conversaId, CancellationToken ct = default)
     {
         var agora = DateTime.UtcNow;
-        return await db.Conversas.AsNoTracking()
+        var dto = await db.Conversas.AsNoTracking()
             .Where(c => c.Id == conversaId && c.ExcluidoEm == null)
             .Select(c => new ConversaListItemDto(
                 c.Id, c.TelefoneCanonical, c.NomeContato, c.PacienteId, c.Assunto, c.Status,
@@ -180,6 +188,28 @@ public sealed class ConversaService(
                 c.JanelaExpiraEm != null && c.JanelaExpiraEm > agora))
             .FirstOrDefaultAsync(ct)
             ?? throw new NaoEncontradoException("Conversa", conversaId);
+
+        // Nome COMPLETO do paciente (título da thread): pelo vínculo ou, sem vínculo, achando
+        // pelo telefone no hub (só exibição — não grava). Best-effort: hub fora → sem nome.
+        try
+        {
+            if (dto.PacienteId is { } pid)
+            {
+                var resumo = await pacienteResolver.ResolverAsync(pid, ct);
+                if (resumo is not null) dto = dto with { PacienteNome = resumo.Nome };
+            }
+            else
+            {
+                var porFone = await pacientes.ObterPorTelefoneAsync(dto.TelefoneCanonical, ct);
+                if (porFone is not null)
+                    dto = dto with { PacienteId = porFone.Id, PacienteNome = porFone.NomeCompleto };
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Resolver o nome é enfeite da thread — nunca derruba o chat.
+        }
+        return dto;
     }
 
     public async Task<IReadOnlyList<MensagemDto>> ObterMensagensAsync(Guid conversaId, CancellationToken ct = default) =>

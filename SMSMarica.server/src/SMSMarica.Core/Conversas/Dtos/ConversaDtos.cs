@@ -35,7 +35,11 @@ public sealed record ConversaListItemDto(
     string? UltimaMensagemPreview,
     int NaoLidas,
     DateTime? JanelaExpiraEm,
-    bool PodeTextoLivre);
+    bool PodeTextoLivre,
+    // Nome COMPLETO do paciente resolvido do hub FHIR (pelo vínculo ou pelo telefone).
+    // NÃO substitui o NomeContato (perfil do WhatsApp): os dois convivem de propósito,
+    // para expor divergência (telefone cadastrado na pessoa errada).
+    string? PacienteNome = null);
 
 /// <summary>Uma mensagem dentro da thread.</summary>
 public sealed record MensagemDto(

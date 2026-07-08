@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useConversa, useMarcarLida, useMensagens } from '@/features/conversas/api/queries';
 import { useAssinaturaConversa } from '@/features/conversas/hooks/useChatHub';
 import { ComposerMensagem } from '@/features/conversas/components/ComposerMensagem';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import type { Mensagem } from '@/features/conversas/types';
 
 function hora(iso: string): string {
@@ -60,11 +61,19 @@ export function ThreadMensagens({ conversaId }: { conversaId: string }) {
   return (
     <div className="flex h-full flex-col bg-gray-50">
       <div className="border-b border-gray-200 bg-white px-4 py-2.5">
-        <p className="text-sm font-semibold text-gray-900">
-          {conversa?.nomeContato || conversa?.telefoneCanonical || 'Conversa'}
+        {/* Título = nome COMPLETO do paciente resolvido do banco (quando há); o nome do
+            perfil do WhatsApp fica no subtítulo — os dois convivem para expor divergência. */}
+        <p className="flex items-center gap-1 text-sm font-semibold text-gray-900">
+          {conversa?.pacienteNome || conversa?.nomeContato || conversa?.telefoneCanonical || 'Conversa'}
+          {conversa?.pacienteId ? (
+            <NomePacienteComResumo pacienteId={conversa.pacienteId} />
+          ) : null}
         </p>
         <p className="text-xs text-gray-500">
           {conversa?.telefoneCanonical}
+          {conversa?.pacienteNome && conversa?.nomeContato && conversa.nomeContato !== conversa.pacienteNome
+            ? ` · WhatsApp: ${conversa.nomeContato}`
+            : ''}
           {conversa?.operadorResponsavelNome && ` · Atendendo: ${conversa.operadorResponsavelNome}`}
           {conversa?.unidadeNome && ` · ${conversa.unidadeNome}`}
         </p>
