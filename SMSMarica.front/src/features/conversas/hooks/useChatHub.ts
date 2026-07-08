@@ -5,6 +5,7 @@ import { apiBaseAbsoluto } from '@/shared/api/httpClient';
 import { obterToken, useAuth } from '@/shared/auth/authStore';
 import { useChat } from '@/features/conversas/store/chatStore';
 import { useNotificacoesNavegador } from '@/features/conversas/hooks/useNotificacoesNavegador';
+import { abrirJanelaChat, ehJanelaChat, janelaChatAberta } from '@/features/conversas/lib/janelaChat';
 import type { ConversaEventoRealtime } from '@/features/conversas/types';
 
 let audioCtx: AudioContext | null = null;
@@ -118,6 +119,9 @@ export function useChatHub(habilitado: boolean) {
       const st = useChat.getState();
       const olhando = st.widget === 'aberto' && st.conversaAtivaId === evt.conversaId && !document.hidden;
       if (olhando) return;
+      // Com a janela separada do chat aberta, quem bipa/notifica é ELA (evita alerta
+      // em dobro — cada janela tem seu próprio hub).
+      if (!ehJanelaChat() && janelaChatAberta()) return;
 
       tocarBip();
       if (st.alertasAtivos) {
@@ -125,7 +129,12 @@ export function useChatHub(habilitado: boolean) {
           evt.nomeContato || evt.telefoneCanonical,
           evt.preview || 'Nova mensagem',
           `conversa:${evt.conversaId}`,
-          () => useChat.getState().abrirConversa(evt.conversaId),
+          // Na própria janela do chat troca a conversa in-place; na principal
+          // abre/foca a janela separada já na conversa (ticket #18).
+          () =>
+            ehJanelaChat()
+              ? useChat.getState().abrirConversa(evt.conversaId)
+              : abrirJanelaChat(evt.conversaId),
         );
       }
     });

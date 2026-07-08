@@ -67,6 +67,7 @@ import { FaturamentoPage } from '@/features/faturamento/pages/FaturamentoPage';
 import { AuditoriaPage } from '@/features/auditoria/pages/AuditoriaPage';
 import { ErrosPage } from '@/features/erros/pages/ErrosPage';
 import { ConversasPage } from '@/features/conversas/pages/ConversasPage';
+import { ChatJanelaPage } from '@/features/conversas/pages/ChatJanelaPage';
 import { MeusTicketsPage } from '@/features/tickets/pages/MeusTicketsPage';
 import { TicketDetalhePage } from '@/features/tickets/pages/TicketDetalhePage';
 import { GestaoTicketsPage } from '@/features/tickets/pages/GestaoTicketsPage';
@@ -96,6 +97,8 @@ export function AppRouter() {
         {/* Janela solta da anamnese e dos exames anteriores (abertas do Laudar). */}
         <Route path="/anamnese/janela" element={<AnamnesePage janela />} />
         <Route path="/exames-anteriores/janela" element={<ExamesAnterioresJanelaPage />} />
+        {/* Central de Atendimento em janela separada do navegador (ticket #18). */}
+        <Route path="/chat/janela" element={<ChatJanelaPage />} />
       </Route>
 
       <Route element={<RotaProtegida />}>

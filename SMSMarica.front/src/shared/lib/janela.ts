@@ -66,3 +66,13 @@ export function abrirJanelaSolta(
   janela.opener = null;
   return true;
 }
+
+/**
+ * A janela solta com este nome (aberta A PARTIR desta janela) ainda está aberta?
+ * Best-effort: após um refresh da janela principal o registro se perde — devolve
+ * false mesmo com a solta viva. Usado p/ suprimir alertas duplicados do chat.
+ */
+export function janelaSoltaAberta(nome: string): boolean {
+  const j = registroJanelas.get(nome);
+  return Boolean(j && !j.closed);
+}

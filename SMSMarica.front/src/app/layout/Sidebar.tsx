@@ -10,7 +10,7 @@ import {
   type ItemMenu,
 } from '@/app/layout/menuConfig';
 import { useMenuPreferencias } from '@/app/layout/menuPreferencias';
-import { useChat } from '@/features/conversas/store/chatStore';
+import { abrirJanelaChat } from '@/features/conversas/lib/janelaChat';
 import { BrandLogo } from '@/shared/ui/BrandLogo';
 import { cn } from '@/shared/lib/cn';
 
@@ -74,16 +74,16 @@ export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseM
 
     const renderItem = (item: ItemMenu, indentado: boolean) =>
       item.acao === 'chat' ? (
-        // Central de Atendimento abre a janela FLUTUANTE do chat (ChatWidget), sem navegar:
-        // minimizada, o clique traz a janela como está; fechada, reabre zerada (ticket #18).
+        // Central de Atendimento abre em JANELA SEPARADA do navegador (como o PACS):
+        // minimizada/atrás, o clique traz para frente; fechada, reabre (ticket #18).
         <button
           key={item.to}
           type="button"
           onClick={() => {
-            useChat.getState().abrir();
+            abrirJanelaChat();
             if (mobile) onCloseMobile();
           }}
-          title={compacto ? item.rotulo : 'Abrir a Central de Atendimento (janela flutuante)'}
+          title={compacto ? item.rotulo : 'Abrir a Central de Atendimento (janela separada)'}
           className={cn(
             'flex w-full items-center rounded-md py-2.5 text-sm font-medium transition-all duration-200',
             compacto ? 'justify-center px-3' : indentado ? 'gap-3 pl-9 pr-3' : 'gap-3 px-3',
