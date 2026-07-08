@@ -58,14 +58,27 @@ public sealed class SolicitacoesExameService(
             : comVerificado with { PacienteNome = r.Nome, PacienteCpf = r.Cpf, PacienteCns = r.Cns };
     }
 
-    // Marca, em cada linha, o laudo "atual" (maior versão finalizada) do estudo e se
+    // Marca, em cada linha, o laudo "atual" (maior versão finalizada) do exame e se
     // ele já está ASSINADO digitalmente — o front habilita o botão "ver laudo" só nesse caso.
+    // O study do exame pode ser o pré-gerado da solicitação (worklist consumada) OU o gerado
+    // pela própria máquina e vinculado via ExameAssociacao — a associação tem precedência.
     private async Task<IReadOnlyList<SolicitacaoExameListItemDto>> EnriquecerLaudosAsync(
         List<SolicitacaoExameListItemDto> dtos, CancellationToken ct)
     {
+        if (dtos.Count == 0) return dtos;
+
+        var ids = dtos.Select(d => d.Id).ToArray();
+        var associados = await _db.ExameAssociacoes.AsNoTracking()
+            .Where(a => ids.Contains(a.SolicitacaoExameId) && a.ExcluidoEm == null)
+            .OrderByDescending(a => a.CriadoEm)
+            .Select(a => new { a.SolicitacaoExameId, a.StudyInstanceUID })
+            .ToListAsync(ct);
+        var assocPorSolicitacao = associados
+            .GroupBy(a => a.SolicitacaoExameId)
+            .ToDictionary(g => g.Key, g => g.Select(a => a.StudyInstanceUID).ToList());
+
         var studies = dtos
-            .Where(d => !string.IsNullOrEmpty(d.StudyInstanceUID))
-            .Select(d => d.StudyInstanceUID)
+            .SelectMany(d => CandidatosStudy(d, assocPorSolicitacao))
             .Distinct()
             .ToArray();
         if (studies.Length == 0) return dtos;
@@ -83,9 +96,27 @@ public sealed class SolicitacoesExameService(
         var assinados = await _assinaturas.Value.QuaisAssinadosAsync(atualPorStudy.Values.ToArray(), ct);
 
         return [.. dtos.Select(d =>
-            atualPorStudy.TryGetValue(d.StudyInstanceUID, out var laudoId)
-                ? d with { LaudoId = laudoId, LaudoAssinado = assinados.Contains(laudoId) }
-                : d)];
+        {
+            var candidatos = CandidatosStudy(d, assocPorSolicitacao)
+                .Where(atualPorStudy.ContainsKey)
+                .Select(s => atualPorStudy[s])
+                .ToList();
+            if (candidatos.Count == 0) return d;
+            // Mais de um exame com laudo na mesma solicitação: prevalece o já assinado.
+            var laudoId = candidatos.FirstOrDefault(assinados.Contains);
+            if (laudoId == default) laudoId = candidatos[0];
+            return d with { LaudoId = laudoId, LaudoAssinado = assinados.Contains(laudoId) };
+        })];
+    }
+
+    /// <summary>Studies candidatos da linha: os vinculados via associação explícita (mais
+    /// recente primeiro) e por fim o StudyInstanceUID pré-gerado da própria solicitação.</summary>
+    private static IEnumerable<string> CandidatosStudy(
+        SolicitacaoExameListItemDto d, Dictionary<Guid, List<string>> assocPorSolicitacao)
+    {
+        if (assocPorSolicitacao.TryGetValue(d.Id, out var associados))
+            foreach (var study in associados) yield return study;
+        if (!string.IsNullOrEmpty(d.StudyInstanceUID)) yield return d.StudyInstanceUID;
     }
 
     public async Task<IReadOnlyList<SolicitacaoExameListItemDto>> ListarAsync(

@@ -1,3 +1,5 @@
+import type { ComunicacaoChip } from '@/features/solicitacoes-exame/types';
+
 export type StatusLaudo = 'Rascunho' | 'Finalizado';
 
 /** Respostas do checklist enviadas ao salvar/finalizar (o servidor recalcula o sugerido). */
@@ -59,6 +61,8 @@ export type LaudoListItem = {
   finalizadoEm: string | null;
   criadoEm: string;
   assinado: boolean;
+  /** Checks do aviso "laudo pronto" ao paciente (null = sem comunicação, ex.: não assinado). */
+  chipLaudoPronto: ComunicacaoChip | null;
 };
 
 export type StatusAssinatura =

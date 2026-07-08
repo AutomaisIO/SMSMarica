@@ -12,6 +12,7 @@ import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { useExcluirLaudo, useListarLaudos } from '@/features/laudos/api/queries';
 import { abrirPdfLaudo, baixarPdfLaudo } from '@/features/laudos/lib/pdf';
 import { StatusBadgeLaudo } from '@/features/laudos/components/StatusBadgeLaudo';
+import { ChecksComunicacao } from '@/features/solicitacoes-exame/components/ChecksComunicacao';
 import { CATEGORIAS_BIRADS, corBiRads } from '@/features/laudos/checklist/birads';
 import type { FiltroLaudos, LaudoListItem, StatusLaudo } from '@/features/laudos/types';
 
@@ -126,7 +127,13 @@ export function LaudosListagemPage() {
     {
       chave: 'status',
       cabecalho: 'Status',
-      render: (l) => <StatusBadgeLaudo status={l.status} assinado={l.assinado} />,
+      render: (l) => (
+        <span className="inline-flex items-center gap-1.5">
+          <StatusBadgeLaudo status={l.status} assinado={l.assinado} />
+          {/* Checks do aviso "laudo pronto" enviado ao paciente pelo WhatsApp. */}
+          <ChecksComunicacao chip={l.chipLaudoPronto} finalidade="LaudoPronto" />
+        </span>
+      ),
     },
     {
       chave: 'acoes',

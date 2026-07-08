@@ -1,3 +1,4 @@
+using SMSMarica.Core.SolicitacoesExame.Dtos;
 using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Laudos.Dtos;
@@ -54,7 +55,10 @@ public sealed record LaudoListItemDto(
     string? BiRads,
     DateTime? FinalizadoEm,
     DateTime CriadoEm,
-    bool Assinado = false);
+    bool Assinado = false,
+    // Checks do aviso "laudo pronto" ao paciente (✓ enviado, ✓✓ entregue, ✓✓ azul
+    // lida/visualizada, ⚠ falha). Null quando não há comunicação (ex.: não assinado).
+    ComunicacaoChipDto? ChipLaudoPronto = null);
 
 public sealed record LaudoHistoricoItemDto(
     Guid Id,

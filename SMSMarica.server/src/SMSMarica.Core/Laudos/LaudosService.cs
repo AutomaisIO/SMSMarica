@@ -110,7 +110,52 @@ public sealed class LaudosService(
 
         var dtos = await EnriquecerAsync([.. lista.Select(LaudosMapper.ParaListItem)], cancellationToken);
         var assinados = await ResolverAssinadosAsync([.. dtos.Select(d => d.Id)], cancellationToken);
-        return [.. dtos.Select(d => assinados.Contains(d.Id) ? d with { Assinado = true } : d)];
+        var comAssinatura = dtos.Select(d => assinados.Contains(d.Id) ? d with { Assinado = true } : d).ToList();
+        return await EnriquecerComunicacoesAsync(comAssinatura, cancellationToken);
+    }
+
+    // Checks do aviso "laudo pronto" (zap) na lista: resolve a solicitação de cada study
+    // (direto pela worklist consumada ou via associação explícita) e anexa o estado da
+    // comunicação às linhas ASSINADAS — o aviso só é enfileirado depois da assinatura.
+    private async Task<IReadOnlyList<LaudoListItemDto>> EnriquecerComunicacoesAsync(
+        List<LaudoListItemDto> dtos, CancellationToken ct)
+    {
+        var studies = dtos.Where(d => d.Assinado).Select(d => d.StudyInstanceUID).Distinct().ToArray();
+        if (studies.Length == 0) return dtos;
+
+        var diretas = await _db.SolicitacoesExame.AsNoTracking()
+            .Where(s => studies.Contains(s.StudyInstanceUID) && s.ExcluidoEm == null)
+            .Select(s => new { s.StudyInstanceUID, SolicitacaoId = s.Id })
+            .ToListAsync(ct);
+        var associadas = await _db.ExameAssociacoes.AsNoTracking()
+            .Where(a => studies.Contains(a.StudyInstanceUID) && a.ExcluidoEm == null)
+            .Select(a => new { a.StudyInstanceUID, SolicitacaoId = a.SolicitacaoExameId })
+            .ToListAsync(ct);
+
+        var solicitacaoPorStudy = new Dictionary<string, Guid>();
+        foreach (var v in diretas.Concat(associadas))
+            solicitacaoPorStudy.TryAdd(v.StudyInstanceUID, v.SolicitacaoId);
+        if (solicitacaoPorStudy.Count == 0) return dtos;
+
+        var solicitacaoIds = solicitacaoPorStudy.Values.Distinct().ToArray();
+        var chips = (await _db.ComunicacoesPaciente.AsNoTracking()
+            .Where(c => c.SolicitacaoExameId != null
+                        && solicitacaoIds.Contains(c.SolicitacaoExameId.Value)
+                        && c.Finalidade == FinalidadeComunicacao.LaudoPronto)
+            .Select(c => new { c.SolicitacaoExameId, c.Status, c.VisualizadoEm, c.MotivoFalha })
+            .ToListAsync(ct))
+            .ToDictionary(
+                c => c.SolicitacaoExameId!.Value,
+                c => new SolicitacoesExame.Dtos.ComunicacaoChipDto(
+                    c.Status.ToString(), c.VisualizadoEm != null, c.MotivoFalha));
+        if (chips.Count == 0) return dtos;
+
+        return [.. dtos.Select(d =>
+            d.Assinado
+            && solicitacaoPorStudy.TryGetValue(d.StudyInstanceUID, out var sid)
+            && chips.TryGetValue(sid, out var chip)
+                ? d with { ChipLaudoPronto = chip }
+                : d)];
     }
 
     private async Task<HashSet<Guid>> ResolverAssinadosAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct)

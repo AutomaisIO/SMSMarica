@@ -40,7 +40,7 @@ public sealed class ComunicacaoPacienteOptions
     /// <summary>Ligado em 2026-07-06 (template exame_liberado APPROVED).</summary>
     public bool EnviarExameLiberado { get; set; } = true;
 
-    /// <summary>OFF: a correção do typo devolveu o laudo_disponivel para PENDING na Meta.
-    /// Ligar quando re-aprovar — a fila acumula e flui sozinha.</summary>
-    public bool EnviarLaudoPronto { get; set; } = false;
+    /// <summary>Religado em 2026-07-08 (laudo_disponivel voltou a APPROVED na Meta após a
+    /// correção do typo). A fila acumulada flui sozinha ao ligar.</summary>
+    public bool EnviarLaudoPronto { get; set; } = true;
 }
