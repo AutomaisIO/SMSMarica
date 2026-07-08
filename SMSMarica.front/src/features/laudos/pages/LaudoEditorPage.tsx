@@ -40,6 +40,7 @@ import {
   useStatusAssinatura,
 } from '@/features/laudos/api/queries';
 import { abrirPdfLaudo, baixarPdfLaudo } from '@/features/laudos/lib/pdf';
+import { ModalConferenciaAssinatura } from '@/features/laudos/components/ModalConferenciaAssinatura';
 import { useAvisoSaidaNaoSalva } from '@/shared/hooks/useAvisoSaidaNaoSalva';
 import { PainelChecklist } from '@/features/laudos/checklist/PainelChecklist';
 import { useListarTemplates } from '@/features/laudo-templates/api/queries';
@@ -185,8 +186,19 @@ export function LaudoEditorPage() {
   const statusAtual = statusAssinatura.data?.status;
   const agenteReivindicou =
     statusAtual === 'AguardandoAssinatura' ||
+    statusAtual === 'AguardandoAprovacao' ||
     statusAtual === 'Concluida' ||
     statusAtual === 'Falhou';
+
+  // Conferência pós-assinatura: o PDF assinado (com o carimbo) precisa ser APROVADO
+  // pelo médico para o laudo valer e o paciente ser avisado. O modal abre sozinho ao
+  // chegar em AguardandoAprovacao; fechar sem decidir deixa o botão "Conferir e
+  // aprovar" no cabeçalho para reabrir.
+  const aguardandoAprovacao = statusAtual === 'AguardandoAprovacao';
+  const [conferenciaFechada, setConferenciaFechada] = useState(false);
+  useEffect(() => {
+    if (aguardandoAprovacao) setConferenciaFechada(false);
+  }, [aguardandoAprovacao]);
   useEffect(() => {
     if (agenteReivindicou) {
       setAguardandoAgente(false);
@@ -413,6 +425,13 @@ export function LaudoEditorPage() {
   return (
     <div className="space-y-5">
       {modalSaida}
+      {!ehNovo && id ? (
+        <ModalConferenciaAssinatura
+          laudoId={id}
+          aberto={aguardandoAprovacao && !conferenciaFechada}
+          aoFechar={() => setConferenciaFechada(true)}
+        />
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <button
@@ -464,6 +483,11 @@ export function LaudoEditorPage() {
                   <ShieldCheck className="h-4 w-4" />
                   Assinado digitalmente
                 </span>
+              ) : ehMedico && aguardandoAprovacao ? (
+                <Button onClick={() => setConferenciaFechada(false)}>
+                  <ShieldCheck className="mr-2 h-4 w-4" />
+                  Conferir e aprovar assinatura
+                </Button>
               ) : ehMedico && podeFinalizar && assinando && !agenteNaoEncontrado ? (
                 <span className="inline-flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-sm text-amber-800">
                   <Loader2 className="h-4 w-4 animate-spin" />

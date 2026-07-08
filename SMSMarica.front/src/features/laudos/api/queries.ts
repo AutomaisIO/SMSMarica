@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  aprovarAssinatura,
   atualizarLaudo,
   cadastrarLaudo,
   criarNovaVersaoLaudo,
@@ -11,6 +12,7 @@ import {
   listarLaudosPorStudies,
   obterLaudo,
   obterStatusAssinatura,
+  rejeitarAssinatura,
 } from '@/features/laudos/api/laudosApi';
 import type {
   AtualizarLaudoPayload,
@@ -140,6 +142,32 @@ export function useIniciarAssinatura() {
     onSuccess: (_d, id) => {
       client.invalidateQueries({ queryKey: assinaturaKey(id) });
       client.invalidateQueries({ queryKey: laudosKeys.porId(id) });
+    },
+  });
+}
+
+/** Aprova o documento assinado (conferência) — oficializa e avisa o paciente. */
+export function useAprovarAssinatura() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => aprovarAssinatura(id),
+    onSuccess: (_d, id) => {
+      client.invalidateQueries({ queryKey: assinaturaKey(id) });
+      client.invalidateQueries({ queryKey: laudosKeys.porId(id) });
+      client.invalidateQueries({ queryKey: laudosKeys.raiz });
+    },
+  });
+}
+
+/** Rejeita na conferência — cancela a assinatura e libera assinar de novo. */
+export function useRejeitarAssinatura() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => rejeitarAssinatura(id),
+    onSuccess: (_d, id) => {
+      client.invalidateQueries({ queryKey: assinaturaKey(id) });
+      client.invalidateQueries({ queryKey: laudosKeys.porId(id) });
+      client.invalidateQueries({ queryKey: laudosKeys.raiz });
     },
   });
 }

@@ -82,3 +82,21 @@ export async function obterStatusAssinatura(id: string): Promise<AssinaturaStatu
   const { data } = await http.get<AssinaturaStatus>(`/laudos/${id}/assinatura`);
   return data;
 }
+
+/** PDF assinado aguardando a CONFERÊNCIA do médico (preview do modal de aprovação). */
+export async function obterPdfAprovacao(id: string): Promise<Blob> {
+  const { data } = await http.get(`/laudos/${id}/assinatura/pdf-aprovacao`, {
+    responseType: 'blob',
+  });
+  return data as Blob;
+}
+
+/** Aprova o documento assinado: oficializa o laudo e dispara o aviso ao paciente. */
+export async function aprovarAssinatura(id: string): Promise<void> {
+  await http.post(`/laudos/${id}/assinatura/aprovar`);
+}
+
+/** Rejeita na conferência: cancela a assinatura (PDF preservado) e libera assinar de novo. */
+export async function rejeitarAssinatura(id: string): Promise<void> {
+  await http.post(`/laudos/${id}/assinatura/rejeitar`);
+}

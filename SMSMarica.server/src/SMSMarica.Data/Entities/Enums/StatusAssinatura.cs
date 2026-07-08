@@ -17,4 +17,12 @@ public enum StatusAssinatura
 
     /// <summary>Hash preparado (agente já enviou o certificado); aguardando a assinatura crua.</summary>
     AguardandoAssinatura = 5,
+
+    /// <summary>
+    /// PDF assinado criptograficamente, aguardando o médico CONFERIR o documento
+    /// (carimbo/conteúdo) e aprovar. Só a aprovação promove a <see cref="Concluida"/> —
+    /// que oficializa o laudo assinado e dispara o aviso ao paciente. Rejeitar vira
+    /// <see cref="Cancelada"/> (o PDF fica na linha para auditoria) e libera nova assinatura.
+    /// </summary>
+    AguardandoAprovacao = 6,
 }

@@ -21,6 +21,15 @@ public interface ILaudoAssinaturaService
     /// <summary>PDF para download: o assinado (byte-estável) se houver, senão o gerado com tarja.</summary>
     Task<PdfDownloadDto> ObterPdfParaDownloadAsync(Guid laudoId, CancellationToken cancellationToken = default);
 
+    /// <summary>PDF assinado que aguarda a conferência do médico (modal de aprovação).</summary>
+    Task<byte[]> ObterPdfAprovacaoAsync(Guid laudoId, CancellationToken cancellationToken = default);
+
+    /// <summary>Aprova o documento assinado: oficializa (Concluida) e avisa o paciente.</summary>
+    Task AprovarAsync(Guid laudoId, Guid usuarioId, CancellationToken cancellationToken = default);
+
+    /// <summary>Rejeita na conferência: cancela (PDF preservado) e libera nova assinatura.</summary>
+    Task RejeitarAsync(Guid laudoId, Guid usuarioId, CancellationToken cancellationToken = default);
+
     /// <summary>True se o laudo tem assinatura concluída (para o cadeado).</summary>
     Task<bool> EstaAssinadoAsync(Guid laudoId, CancellationToken cancellationToken = default);
 

@@ -211,6 +211,41 @@ public sealed class LaudosController(ILaudosService service, ILaudoAssinaturaSer
     public async Task<AssinaturaStatusDto> StatusAssinatura(Guid id, CancellationToken cancellationToken) =>
         await _assinatura.ObterStatusAsync(id, cancellationToken);
 
+    /// <summary>PDF assinado aguardando a conferência do médico (preview do modal de aprovação).</summary>
+    [HttpGet("{id:guid}/assinatura/pdf-aprovacao")]
+    [RequerPermissao(ModuloPermissao.Laudos, AcoesPermissao.Edicao)]
+    [Produces("application/pdf")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> PdfAprovacao(Guid id, CancellationToken cancellationToken)
+    {
+        var pdf = await _assinatura.ObterPdfAprovacaoAsync(id, cancellationToken);
+        Response.Headers.CacheControl = "private, no-store";
+        return File(pdf, "application/pdf", $"laudo-{id}-conferencia.pdf");
+    }
+
+    /// <summary>Aprova o documento assinado após a conferência: oficializa e avisa o paciente.</summary>
+    [HttpPost("{id:guid}/assinatura/aprovar")]
+    [RequerPermissao(ModuloPermissao.Laudos, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AprovarAssinatura(Guid id, CancellationToken cancellationToken)
+    {
+        await _assinatura.AprovarAsync(id, ExtrairUsuarioId(), cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>Rejeita o documento na conferência: cancela a assinatura e libera assinar de novo.</summary>
+    [HttpPost("{id:guid}/assinatura/rejeitar")]
+    [RequerPermissao(ModuloPermissao.Laudos, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RejeitarAssinatura(Guid id, CancellationToken cancellationToken)
+    {
+        await _assinatura.RejeitarAsync(id, ExtrairUsuarioId(), cancellationToken);
+        return NoContent();
+    }
+
     private Guid ExtrairUsuarioId()
     {
         var sub = User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);

@@ -69,6 +69,8 @@ export type StatusAssinatura =
   | 'NaoIniciada'
   | 'Iniciada'
   | 'AguardandoAssinatura'
+  /** Assinado criptograficamente; aguardando o médico CONFERIR e aprovar o documento. */
+  | 'AguardandoAprovacao'
   | 'Concluida'
   | 'Falhou'
   | 'Cancelada';

@@ -62,6 +62,12 @@ public sealed class LaudoAssinaturaService(
         if (existentes.Any(a => a.Status == StatusAssinatura.Concluida))
             throw new ConflitoException("assinatura.ja_assinado", "Este laudo já foi assinado digitalmente.");
 
+        // Assinatura feita e aguardando a CONFERÊNCIA do médico: não abre outro job —
+        // o painel mostra o documento para aprovar ou rejeitar.
+        if (existentes.Any(a => a.Status == StatusAssinatura.AguardandoAprovacao))
+            throw new ConflitoException("assinatura.aguardando_aprovacao",
+                "Este laudo já está assinado e aguardando a sua conferência — aprove ou rejeite o documento.");
+
         // GATE fail-closed: sem rubrica cadastrada não há carimbo para estampar —
         // recusa cedo (antes de criar o job). Quem cadastra a rubrica é o administrador.
         await GarantirMedicoTemRubricaAsync(medico.Id, cancellationToken);
@@ -327,12 +333,40 @@ public sealed class LaudoAssinaturaService(
         job.Formato = resultado.Formato;
         job.AssinadoEm = DateTime.UtcNow;
         job.AtualizadoEm = job.AssinadoEm;
-        job.Status = StatusAssinatura.Concluida;
+        // Assinado criptograficamente, mas AINDA NÃO oficial: o médico confere o PDF
+        // (carimbo/conteúdo) no painel e APROVA — só então vira Concluida e o aviso ao
+        // paciente é enfileirado (AprovarAsync). Rejeitar cancela e libera re-assinar.
+        job.Status = StatusAssinatura.AguardandoAprovacao;
         LimparTransitorios(job);
 
-        // Laudo ASSINADO → enfileira o aviso "Laudo pronto" ao paciente (o cidadão só enxerga
-        // laudos assinados). Resolve a solicitação pelo study do laudo (direto ou associação).
-        // Best-effort: falha aqui nunca impede a conclusão da assinatura.
+        await db.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation(
+            "Assinatura: job {JobId} assinado, AGUARDANDO APROVAÇÃO do médico (laudo {LaudoId}, formato {Formato}, titular '{Titular}', cpf {Cpf}, pdf {Bytes} bytes).",
+            job.Id, job.LaudoId, resultado.Formato, resultado.CertificadoTitular, MascararCpf(cpfCert), resultado.PdfAssinado.Length);
+    }
+
+    public async Task<byte[]> ObterPdfAprovacaoAsync(Guid laudoId, CancellationToken cancellationToken = default)
+    {
+        var pdf = await db.LaudoAssinaturas.AsNoTracking()
+            .Where(a => a.LaudoId == laudoId && a.Status == StatusAssinatura.AguardandoAprovacao && a.PdfAssinado != null)
+            .OrderByDescending(a => a.AssinadoEm)
+            .Select(a => a.PdfAssinado)
+            .FirstOrDefaultAsync(cancellationToken);
+        return pdf ?? throw new NaoEncontradoException("Assinatura aguardando aprovação", laudoId);
+    }
+
+    public async Task AprovarAsync(Guid laudoId, Guid usuarioId, CancellationToken cancellationToken = default)
+    {
+        var job = await db.LaudoAssinaturas
+            .FirstOrDefaultAsync(a => a.LaudoId == laudoId && a.Status == StatusAssinatura.AguardandoAprovacao, cancellationToken)
+            ?? throw new NaoEncontradoException("Assinatura aguardando aprovação", laudoId);
+
+        job.Status = StatusAssinatura.Concluida;
+        job.AtualizadoEm = DateTime.UtcNow;
+
+        // Agora sim o laudo é oficialmente assinado → aviso "Laudo pronto" ao paciente.
+        // Best-effort: falha aqui nunca impede a aprovação.
         try
         {
             await EnfileirarLaudoProntoAsync(job.LaudoId, cancellationToken);
@@ -345,8 +379,25 @@ public sealed class LaudoAssinaturaService(
         await db.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(
-            "Assinatura: job {JobId} CONCLUÍDO (laudo {LaudoId}, formato {Formato}, titular '{Titular}', cpf {Cpf}, pdf {Bytes} bytes).",
-            job.Id, job.LaudoId, resultado.Formato, resultado.CertificadoTitular, MascararCpf(cpfCert), resultado.PdfAssinado.Length);
+            "Assinatura: job {JobId} APROVADO pelo usuário {UsuarioId} (laudo {LaudoId}) — laudo oficialmente assinado.",
+            job.Id, usuarioId, job.LaudoId);
+    }
+
+    public async Task RejeitarAsync(Guid laudoId, Guid usuarioId, CancellationToken cancellationToken = default)
+    {
+        var job = await db.LaudoAssinaturas
+            .FirstOrDefaultAsync(a => a.LaudoId == laudoId && a.Status == StatusAssinatura.AguardandoAprovacao, cancellationToken)
+            ?? throw new NaoEncontradoException("Assinatura aguardando aprovação", laudoId);
+
+        // Cancelada (não excluída): o PDF assinado permanece na linha para auditoria.
+        // O slot único é só de Concluida — o médico pode assinar de novo em seguida.
+        job.Status = StatusAssinatura.Cancelada;
+        job.AtualizadoEm = DateTime.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation(
+            "Assinatura: job {JobId} REJEITADO na conferência pelo usuário {UsuarioId} (laudo {LaudoId}) — liberado para nova assinatura.",
+            job.Id, usuarioId, job.LaudoId);
     }
 
     /// <summary>Resolve a solicitação pelo StudyInstanceUID do laudo (direto ou via associação)
