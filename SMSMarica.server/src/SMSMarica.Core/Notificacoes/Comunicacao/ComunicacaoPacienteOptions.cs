@@ -21,9 +21,13 @@ public sealed class ComunicacaoPacienteOptions
 
     // ---- Templates por finalidade (nomes APROVADOS na WABA, conferidos 2026-07-05) ----
 
-    /// <summary>Genérico consulta/exame: 7 params (nome, "um exame", tipo, data, unidade, hora,
-    /// endereço) + botão URL /entrar/{{1}} + quick reply "Não poderei comparecer!".</summary>
-    public string TemplateConfirmaAgendamento { get; set; } = "confirmar_agendamento_urlapp";
+    /// <summary>Modelo do Complexo Regulador (troca de 2026-07-08; antes era
+    /// confirmar_agendamento_urlapp). 7 params com flexão de gênero: 1 "Sr./Sra. {nome}",
+    /// 2 "O seu exame"/"A sua consulta", 3 tipo, 4 "dd/MM/aaaa às HH:mmh",
+    /// 5 "o Sr. é assistido"/"a Sra. é assistida", 6 "do seu exame"/"da sua consulta",
+    /// 7 "o Sr."/"a Sra.". Botões: URL /entrar/{{1}} + quick replies "Não poderei ir!" e
+    /// "Falar com atendente" (este cai no módulo Conversas).</summary>
+    public string TemplateConfirmaAgendamento { get; set; } = "confirmacao_regulacao";
 
     /// <summary>3 params (nome, exame, data realizada) + botão URL "Visualizar Exame".</summary>
     public string TemplateExameLiberado { get; set; } = "exame_liberado";

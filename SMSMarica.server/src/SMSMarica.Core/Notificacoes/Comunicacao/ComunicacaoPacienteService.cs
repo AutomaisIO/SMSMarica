@@ -237,7 +237,8 @@ public sealed class ComunicacaoPacienteService(
         n.LoginLinkId = link.Token;
 
         var opts = options.Value;
-        var (template, parametros, botoes) = MontarEnvio(n.Finalidade, n.Tipo, s, paciente.NomeCompleto, link.Token, opts);
+        var (template, parametros, botoes) = MontarEnvio(
+            n.Finalidade, n.Tipo, s, paciente.NomeCompleto, paciente.Sexo, link.Token, opts);
 
         var resultado = await whatsApp.EnviarTemplateComBotoesAsync(
             n.Telefone, template, opts.Idioma, parametros, botoes, pacienteId: n.PacienteId, ct: ct);
@@ -273,7 +274,7 @@ public sealed class ComunicacaoPacienteService(
 
     private static (string Template, string[] Parametros, BotaoTemplateWhatsApp[] Botoes) MontarEnvio(
         FinalidadeComunicacao finalidade, TipoAgendamento tipo, SolicitacaoExame s, string? nomePaciente,
-        Guid token, ComunicacaoPacienteOptions opts)
+        Sexo sexo, Guid token, ComunicacaoPacienteOptions opts)
     {
         var nome = PrimeiroNome(nomePaciente);
         var exame = s.TipoExame?.Nome ?? "exame";
@@ -288,24 +289,41 @@ public sealed class ComunicacaoPacienteService(
             case FinalidadeComunicacao.LaudoPronto:
                 return (opts.TemplateLaudoPronto, [nome, exame, DataRealizacao(s)], [url]);
 
-            // confirmar_agendamento_urlapp (ÚNICO template de confirmação — serve exame E
-            // consulta; confirma_exame/confirma_consulta foram descontinuados na Meta):
-            // "você tem {{2}} de *{{3}}* agendado para o dia *{{4}}*, {{5}}📍, às *{{6}}*.
-            // Endereço: {{7}}". Botões na ordem do template: URL (index 0) + quick reply (index 1).
+            // confirmacao_regulacao (modelo do Complexo Regulador; substitui o
+            // confirmar_agendamento_urlapp desde 2026-07-08): "Bom dia, {{1}}. … Boas notícias!
+            // {{2}} de {{3}} *foi agendada para o dia {{4}}* … retire a guia no posto de saúde
+            // onde {{5}} … No dia {{6}} é imprescindível que {{7}} leve também o pedido médico,
+            // guia do SISREG, comprovante de residência e cartão do SUS."
+            // Flexiona gênero pelo cadastro (Sr./Sra.; sem sexo informado → "você").
+            // ("foi agendada" é texto FIXO do template aprovado — a concordância com "O seu
+            // exame" só se corrige submetendo nova versão à Meta.)
+            // Botões na ordem do template: URL (0), "Não poderei ir!" (1, payload confirma:) e
+            // "Falar com atendente" (2, payload atendente: — sem manipulador de propósito: a
+            // resposta cai no módulo Conversas/Central de Atendimento).
             default:
                 var local = FusoBrasilia.ParaExibicao(s.DataAgendada!.Value);
+                var (tratamento, assistido, pronome) = sexo switch
+                {
+                    Sexo.Masculino => ($"Sr. {nome}", "o Sr. é assistido", "o Sr."),
+                    Sexo.Feminino => ($"Sra. {nome}", "a Sra. é assistida", "a Sra."),
+                    _ => (nome, "você é assistido(a)", "você"),
+                };
                 return (
                     opts.TemplateConfirmaAgendamento,
                     [
-                        nome,
-                        tipo == TipoAgendamento.Consulta ? "uma consulta" : "um exame",
+                        tratamento,
+                        tipo == TipoAgendamento.Consulta ? "A sua consulta" : "O seu exame",
                         exame,
-                        local.ToString("dd/MM/yyyy", PtBr),
-                        $"na unidade {s.Unidade?.Nome ?? "de saúde"}",
-                        $"{local.ToString("HH:mm", PtBr)}h",
-                        EnderecoUnidade(s.Unidade),
+                        $"{local.ToString("dd/MM/yyyy", PtBr)} às {local.ToString("HH:mm", PtBr)}h",
+                        assistido,
+                        tipo == TipoAgendamento.Consulta ? "da sua consulta" : "do seu exame",
+                        pronome,
                     ],
-                    [url, new BotaoTemplateWhatsApp(TipoBotaoTemplate.QuickReply, $"confirma:{s.Id}")]);
+                    [
+                        url,
+                        new BotaoTemplateWhatsApp(TipoBotaoTemplate.QuickReply, $"confirma:{s.Id}"),
+                        new BotaoTemplateWhatsApp(TipoBotaoTemplate.QuickReply, $"atendente:{s.Id}"),
+                    ]);
         }
     }
 
@@ -316,20 +334,6 @@ public sealed class ComunicacaoPacienteService(
         var d = s.DataEstudo
             ?? (s.RealizadoEm is { } r ? FusoBrasilia.ParaExibicao(r) : FusoBrasilia.ParaExibicao(s.CriadoEm));
         return d.ToString("dd/MM/yyyy", PtBr);
-    }
-
-    /// <summary>Endereço da unidade para o template (a Meta rejeita parâmetro vazio).</summary>
-    private static string EnderecoUnidade(Unidade? u)
-    {
-        var e = u?.Endereco;
-        if (e is null) return "Maricá/RJ";
-        var partes = new[]
-        {
-            string.Join(", ", new[] { e.Logradouro, e.Numero }.Where(p => !string.IsNullOrWhiteSpace(p))),
-            e.Bairro,
-        }.Where(p => !string.IsNullOrWhiteSpace(p));
-        var texto = string.Join(" - ", partes);
-        return string.IsNullOrWhiteSpace(texto) ? "Maricá/RJ" : texto;
     }
 
     private void ReagendarOuFalhar(ComunicacaoPaciente n, string? erro)

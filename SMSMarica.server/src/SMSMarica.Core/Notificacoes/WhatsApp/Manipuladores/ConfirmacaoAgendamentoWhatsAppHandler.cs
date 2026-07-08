@@ -120,6 +120,9 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
     private async Task TratarTextoLivreComoMotivoAsync(ManipuladorContexto ctx, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(ctx.Texto)) return;
+        // Toque em botão nunca é motivo — ex.: "Falar com atendente" (payload atendente:)
+        // durante o AguardandoMotivo deve seguir para a Central de Atendimento, não cancelar.
+        if (!string.IsNullOrEmpty(ctx.BotaoPayload)) return;
 
         var estado = await db.AgendamentoConfirmacaoEstados
             .Include(e => e.ComunicacaoPaciente)
