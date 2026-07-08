@@ -50,10 +50,16 @@ public sealed class PadesSigner : IPadesSigner
             info.SetCreator("Automais.Assinador");
             info.SetAuthor("Automais.Assinador");
 
+            // Carimbo na ÚLTIMA página (junto da conclusão do laudo). O PDF-base já
+            // reserva a zona do carimbo no fim do conteúdo (LaudoPdfRenderer, modo
+            // PreparandoAssinatura) — juntas, as duas pontas garantem que o carimbo
+            // nunca cubra texto: sem espaço, o gerador quebra página e o carimbo
+            // cai numa página limpa.
+            var ultimaPagina = signer.GetDocument().GetNumberOfPages();
             var props = new SignerProperties()
                 .SetFieldName(FieldName)
-                .SetPageNumber(1)
-                .SetPageRect(MontarRect(signer, requisicao.Visual))
+                .SetPageNumber(ultimaPagina)
+                .SetPageRect(MontarRect(signer, ultimaPagina, requisicao.Visual))
                 .SetSignatureAppearance(MontarAppearance(requisicao.Visual));
             signer.SetSignerProperties(props);
 
@@ -144,15 +150,16 @@ public sealed class PadesSigner : IPadesSigner
 
     /// <summary>
     /// Carimbo quadrado (o "quadrado virtual" composto pelo servidor) centralizado
-    /// no rodapé quando há imagem; senão a faixa de texto legada no canto inferior.
+    /// no rodapé da página alvo quando há imagem; senão a faixa de texto legada no
+    /// canto inferior.
     /// </summary>
-    private static Rectangle MontarRect(PdfSigner signer, CarimboVisual v)
+    private static Rectangle MontarRect(PdfSigner signer, int pagina, CarimboVisual v)
     {
         if (v.CarimboPng is null)
             return new Rectangle(36, 36, 240, 64);
 
         const float lado = 130f;
-        var largura = signer.GetDocument().GetFirstPage().GetPageSize().GetWidth();
+        var largura = signer.GetDocument().GetPage(pagina).GetPageSize().GetWidth();
         return new Rectangle((largura - lado) / 2f, 28f, lado, lado);
     }
 

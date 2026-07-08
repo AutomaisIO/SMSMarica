@@ -37,6 +37,14 @@ public sealed class LaudoPdfRenderer(
     private readonly IConsultaStudyClient _consultaStudy = consultaStudy;
     private readonly LaudosPdfOptions _opt = options.Value;
 
+    /// <summary>
+    /// Altura reservada ao carimbo da assinatura no fim do conteúdo (modo
+    /// PreparandoAssinatura). Topo do carimbo = 158pt do pé da página; margem
+    /// inferior de 2cm ≈ 57pt e rodapé mínimo (nº da página) ≈ 14pt → o carimbo
+    /// invade ≈ 87pt da área útil. 100pt cobre com folga rodapés enxutos.
+    /// </summary>
+    private const float ReservaCarimboPt = 100f;
+
     public async Task<byte[]> GerarAsync(
         Guid laudoId,
         ModoRodapeLaudo modo = ModoRodapeLaudo.FinalizadoNaoAssinado,
@@ -191,6 +199,17 @@ public sealed class LaudoPdfRenderer(
                         RenderBloco(corpo.Item(), bloco, imagens);
                     }
                 });
+
+                // RESERVA DO CARIMBO (só no PDF-base de assinatura): o Automais.Assinador
+                // estampa um quadrado de 130pt a 28..158pt do pé da ÚLTIMA página. Com a
+                // margem de 2cm (~57pt) + rodapé, o carimbo invade ~100pt da área útil —
+                // este bloco vazio e inquebrável garante que o TEXTO nunca termine dentro
+                // dessa zona: se não couber, o QuestPDF quebra a página e o carimbo cai
+                // numa página limpa. (Correção do carimbo sobreposto ao texto.)
+                if (modo == ModoRodapeLaudo.PreparandoAssinatura)
+                {
+                    col.Item().Height(ReservaCarimboPt);
+                }
             });
 
             // Marca d'água diagonal de RASCUNHO: forte e inequívoca, atrás do
