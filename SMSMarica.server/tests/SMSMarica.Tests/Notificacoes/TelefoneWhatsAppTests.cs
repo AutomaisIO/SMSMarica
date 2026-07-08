@@ -8,6 +8,9 @@ public class TelefoneWhatsAppTests
     [InlineData("5521999990000", true)]   // canônico completo
     [InlineData("21999990000", true)]     // sem DDI (11 dígitos locais)
     [InlineData("(21) 99999-0000", true)] // formatado
+    [InlineData("2199671643", true)]      // celular FORMATO ANTIGO (sem o nono dígito)
+    [InlineData("552199671643", true)]    // formato antigo com DDI
+    [InlineData("21 8888-7777", true)]    // formato antigo começando em 8 (ainda celular)
     [InlineData("2133334444", false)]     // fixo (10 dígitos)
     [InlineData("552133334444", false)]   // fixo com DDI
     [InlineData("5521899990000", false)]  // 9º dígito não é 9
@@ -24,4 +27,12 @@ public class TelefoneWhatsAppTests
     [InlineData("21 3333-4444", "552133334444")]
     public void Canonizar_normaliza(string entrada, string esperado) =>
         Assert.Equal(esperado, TelefoneWhatsApp.Canonizar(entrada));
+
+    [Theory]
+    [InlineData("2199671643", "5521999671643")]   // insere o nono dígito (celular antigo)
+    [InlineData("21 8888-7777", "5521988887777")] // idem começando em 8
+    [InlineData("2133334444", "552133334444")]    // fixo fica como está
+    [InlineData("5521999990000", "5521999990000")] // já completo fica como está
+    public void NormalizarNonoDigito_completa_celular_antigo(string entrada, string esperado) =>
+        Assert.Equal(esperado, TelefoneWhatsApp.NormalizarNonoDigito(entrada));
 }

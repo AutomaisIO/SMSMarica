@@ -219,10 +219,12 @@ public sealed class ComunicacaoPacienteService(
     {
         var paciente = await pacientes.ObterPorIdAsync(n.PacienteId, ct);
 
-        // Telefone: contato VERIFICADO (marcador no telecom FHIR, já vem no DTO) >
-        // celular do cadastro > principal.
+        // Telefone: contato VERIFICADO (marcador no telecom FHIR, já vem no DTO) > qualquer
+        // CELULAR do cadastro (celular > principal > residencial — import às vezes guarda o
+        // celular como "home"). Verificação NÃO é pré-requisito: só não envia quando o
+        // paciente não tem celular nenhum (fixo/sem telefone).
         var telefone = paciente.TelefoneVerificado
-            ?? new[] { paciente.TelefoneCelular, paciente.TelefonePrincipal }
+            ?? new[] { paciente.TelefoneCelular, paciente.TelefonePrincipal, paciente.TelefoneResidencial }
                 .FirstOrDefault(TelefoneWhatsApp.EhCelularBr);
 
         if (!TelefoneWhatsApp.EhCelularBr(telefone))
@@ -230,7 +232,7 @@ public sealed class ComunicacaoPacienteService(
             Terminal(n, StatusComunicacao.SemTelefoneValido, "Paciente sem número de celular válido.");
             return;
         }
-        n.Telefone = TelefoneWhatsApp.Canonizar(telefone!);
+        n.Telefone = TelefoneWhatsApp.NormalizarNonoDigito(telefone!);
 
         // Magic link novo a cada tentativa (o anterior simplesmente expira sem uso).
         var link = await loginLinks.GerarParaSolicitacaoAsync(s.Id, Destino(n.Finalidade, s.Id), ct);
