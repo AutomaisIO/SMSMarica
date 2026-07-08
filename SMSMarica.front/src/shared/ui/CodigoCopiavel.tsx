@@ -2,21 +2,33 @@ import { useState } from 'react';
 import { Check, Copy } from 'lucide-react';
 
 /**
- * Célula com um código (ex.: nº da solicitação) que copia ao clicar — evita o
+ * Célula com um código (ex.: nº da solicitação, CPF, CNS) que copia ao clicar — evita o
  * operador selecionar texto na tela. Mostra um "copiado!" por ~1,5s.
+ * `valorCopiar` permite exibir formatado mas copiar cru (ex.: CPF sem pontuação).
  */
-export function CodigoCopiavel({ codigo }: { codigo: string }) {
+export function CodigoCopiavel({
+  codigo,
+  valorCopiar,
+  dica,
+}: {
+  codigo: string;
+  /** O que vai para a área de transferência (default: o próprio código exibido). */
+  valorCopiar?: string;
+  /** Tooltip do botão (default: o texto do código da solicitação). */
+  dica?: string;
+}) {
   const [copiado, setCopiado] = useState(false);
 
   if (!codigo) return <span className="text-xs text-gray-400">—</span>;
 
   async function copiar() {
+    const valor = valorCopiar ?? codigo;
     try {
-      await navigator.clipboard.writeText(codigo);
+      await navigator.clipboard.writeText(valor);
     } catch {
       // Fallback p/ contextos sem Clipboard API (http antigo / permissão).
       const ta = document.createElement('textarea');
-      ta.value = codigo;
+      ta.value = valorCopiar ?? codigo;
       ta.style.position = 'fixed';
       ta.style.opacity = '0';
       document.body.appendChild(ta);
@@ -36,7 +48,7 @@ export function CodigoCopiavel({ codigo }: { codigo: string }) {
     <button
       type="button"
       onClick={copiar}
-      title="Clique para copiar o código da solicitação"
+      title={dica ?? 'Clique para copiar o código da solicitação'}
       className="group relative inline-flex items-center gap-1.5 rounded px-1.5 py-1 font-mono hover:bg-gray-100"
     >
       <span className="truncate">{codigo}</span>

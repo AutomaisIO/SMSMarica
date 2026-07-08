@@ -8,6 +8,7 @@ import { Button } from '@/shared/ui/Button';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
 import { Input } from '@/shared/ui/Input';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
+import { CodigoCopiavel } from '@/shared/ui/CodigoCopiavel';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import {
@@ -64,7 +65,17 @@ export function PacientesPage() {
         </div>
       ),
     },
-    { chave: 'cpf', cabecalho: 'CPF', render: (p) => formatarCpf(p.cpf) },
+    {
+      chave: 'cpf',
+      cabecalho: 'CPF',
+      render: (p) => (
+        <CodigoCopiavel
+          codigo={formatarCpf(p.cpf)}
+          valorCopiar={p.cpf.replace(/\D/g, '')}
+          dica="Copiar CPF (só números)"
+        />
+      ),
+    },
     { chave: 'nasc', cabecalho: 'Nascimento', render: (p) => formatarData(p.dataNascimento) },
     { chave: 'mae', cabecalho: 'Mãe', render: (p) => p.nomeDaMae ?? '—' },
     { chave: 'tel', cabecalho: 'Telefone', render: (p) => p.telefonePrincipal ?? '—' },
