@@ -32,6 +32,19 @@ public sealed class TelefonesController(ITelefoneValidacaoService service) : Con
         [FromBody] ConfirmarTelefoneOtpRequest request, CancellationToken cancellationToken) =>
         await service.ConfirmarCodigoAsync(request.Cpf, request.Numero, request.Codigo, cancellationToken);
 
+    /// <summary>
+    /// Define o telefone PRINCIPAL do paciente (por CPF) sem exigir verificação — edição
+    /// rápida pelo painel. Trocar o número derruba o marcador de verificado; verificar
+    /// depois é opcional.
+    /// </summary>
+    [HttpPost("principal")]
+    [ProducesResponseType<TelefoneValidadoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<TelefoneValidadoDto> DefinirPrincipal(
+        [FromBody] DefinirTelefonePrincipalRequest request, CancellationToken cancellationToken) =>
+        await service.DefinirPrincipalAsync(request.Cpf, request.Numero, cancellationToken);
+
     // Sem GET de "situação": o telefoneVerificado vem dentro do PacienteDto
     // (marcador no telecom do Patient FHIR) — nenhuma consulta própria necessária.
 }

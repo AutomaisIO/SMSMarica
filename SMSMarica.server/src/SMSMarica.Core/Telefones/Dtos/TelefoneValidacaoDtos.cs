@@ -11,3 +11,6 @@ public sealed record TelefoneOtpEmitidoDto(string Canal, string? Mascara, int Ex
 
 /// <summary>Situação do contato validado de um (CPF, número).</summary>
 public sealed record TelefoneValidadoDto(string Numero, bool Validado, DateTime? ValidadoEm);
+
+/// <summary>Define o telefone principal do paciente (por CPF) sem exigir verificação.</summary>
+public sealed record DefinirTelefonePrincipalRequest(string Cpf, string Numero);

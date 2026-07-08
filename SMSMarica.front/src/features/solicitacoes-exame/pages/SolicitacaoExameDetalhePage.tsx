@@ -42,6 +42,7 @@ import { BotaoDeclaracaoComparecimento } from '@/features/solicitacoes-exame/com
 import { BotaoBaixarExameCompleto } from '@/features/solicitacoes-exame/components/BotaoBaixarExameCompleto';
 import { BotaoLinkDownload } from '@/features/solicitacoes-exame/components/BotaoLinkDownload';
 import { BotaoLinkAcesso } from '@/features/solicitacoes-exame/components/BotaoLinkAcesso';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import type { SolicitacaoExame, StatusSolicitacao } from '@/features/solicitacoes-exame/types';
 
 const ETAPAS: StatusSolicitacao[] = ['Solicitada', 'Enviada', 'Recebida', 'EmExecucao', 'Realizada', 'Laudada'];
@@ -247,10 +248,32 @@ export function SolicitacaoExameDetalhePage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">Paciente</h2>
-          <div className="text-base font-medium text-gray-900">{s.pacienteNome}</div>
-          <div className="mt-1 text-sm text-gray-600">
-            {s.pacienteCpf ? <>CPF {formatarCpf(s.pacienteCpf)} · </> : null}
-            {s.pacienteCns ? <>CNS {s.pacienteCns}</> : null}
+          <NomePacienteComResumo
+            pacienteId={s.pacienteId}
+            nome={s.pacienteNome}
+            classNameNome="text-base font-medium text-gray-900"
+          />
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-600">
+            {s.pacienteCpf ? (
+              <span className="inline-flex items-center gap-0.5">
+                CPF
+                <CodigoCopiavel
+                  codigo={formatarCpf(s.pacienteCpf)}
+                  valorCopiar={s.pacienteCpf.replace(/\D/g, '')}
+                  dica="Copiar CPF (só números)"
+                />
+              </span>
+            ) : null}
+            {s.pacienteCns ? (
+              <span className="inline-flex items-center gap-0.5">
+                CNS
+                <CodigoCopiavel
+                  codigo={s.pacienteCns}
+                  valorCopiar={s.pacienteCns.replace(/\D/g, '')}
+                  dica="Copiar CNS (só números)"
+                />
+              </span>
+            ) : null}
           </div>
         </section>
 

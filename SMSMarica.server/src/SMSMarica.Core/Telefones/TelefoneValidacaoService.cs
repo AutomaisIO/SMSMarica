@@ -113,6 +113,36 @@ public sealed class TelefoneValidacaoService(
         await MarcarValidadoInternoAsync(cpfDig, canon, origem, validadoPor, exigirFhir: false, ct);
     }
 
+    public async Task<TelefoneValidadoDto> DefinirPrincipalAsync(
+        string cpf, string numero, CancellationToken ct = default)
+    {
+        var cpfDig = CpfDigitos(cpf);
+        var canon = Canonizar(numero);
+        // 55 (DDI) + DDD (2) + número (>=8) = 12 dígitos no mínimo (fixo entra: quem digita
+        // decide; o zap simplesmente não usa fixo).
+        if (canon.Length < 12)
+            throw new ValidacaoException("telefone.invalido", "Informe um número de telefone com DDD.");
+
+        // O número não pode ser o contato CONFIRMADO de outra pessoa (caso das Márcias).
+        await GarantirNumeroLivreAsync(cpfDig, canon, ct);
+
+        var patient = await ObterPatientPorCpfAsync(cpfDig, ct)
+            ?? throw new ValidacaoException(
+                "telefone.sem_paciente",
+                "Não encontramos o cadastro de paciente desta pessoa — o telefone é alterado no cadastro do paciente.");
+
+        // Edição manual do principal: o merge derruba o marcador de verificado quando o
+        // número muda (o novo nasce não-verificado; verificar depois é opcional).
+        var nacional = canon.Length > 11 ? canon[2..] : canon;
+        PatientMergeFhir.AplicarContatos(patient, principal: nacional,
+            celular: null, residencial: null, email: null, manual: true);
+        await fhir.AtualizarAsync(Guid.Parse(patient.Id!), patient, ct);
+
+        logger.LogInformation("Telefone principal do CPF {Cpf} alterado manualmente para {Num} (usuário {Usuario}).",
+            cpfDig, canon, atual.UsuarioId);
+        return new TelefoneValidadoDto(canon, PatientMergeFhir.TelefoneEstaConfirmado(patient, canon), null);
+    }
+
     /// <summary>Lança 409 se o número já é contato CONFIRMADO de OUTRO CPF (busca por telecom no hub).</summary>
     private async Task GarantirNumeroLivreAsync(string cpfDig, string canon, CancellationToken ct)
     {

@@ -32,3 +32,12 @@ export async function confirmarTelefoneOtp(
   });
   return data;
 }
+
+/**
+ * Define o telefone PRINCIPAL do paciente (por CPF) sem exigir verificação — edição rápida.
+ * Trocar o número derruba o selo de verificado; verificar depois é opcional.
+ */
+export async function definirTelefonePrincipal(cpf: string, numero: string): Promise<TelefoneValidado> {
+  const { data } = await http.post<TelefoneValidado>('/telefones/principal', { cpf, numero });
+  return data;
+}

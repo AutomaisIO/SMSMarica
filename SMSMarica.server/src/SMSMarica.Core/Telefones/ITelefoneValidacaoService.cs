@@ -21,4 +21,11 @@ public interface ITelefoneValidacaoService
 
     /// <summary>Marca o contato de um CPF como validado sem OTP (ex.: PWA cidadão). Idempotente por CPF.</summary>
     Task MarcarValidadoAsync(string cpf, string numero, string origem, Guid? validadoPor, CancellationToken ct = default);
+
+    /// <summary>
+    /// Define o telefone PRINCIPAL do paciente (por CPF) SEM exigir verificação — edição manual
+    /// rápida pelo painel (ticket #16). Trocar o número derruba o marcador de verificado
+    /// (o novo número nasce não-verificado; verificar depois é opcional).
+    /// </summary>
+    Task<TelefoneValidadoDto> DefinirPrincipalAsync(string cpf, string numero, CancellationToken ct = default);
 }

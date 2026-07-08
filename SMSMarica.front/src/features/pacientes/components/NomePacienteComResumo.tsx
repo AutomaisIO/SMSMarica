@@ -1,10 +1,14 @@
-import { useState, type ReactNode } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { Check, Loader2, Pencil, UserRound } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/shared/lib/cn';
+import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
+import { Input } from '@/shared/ui/Input';
 import { Modal } from '@/shared/ui/Modal';
+import { CodigoCopiavel } from '@/shared/ui/CodigoCopiavel';
 import { usePacientePorId } from '@/features/pacientes/api/queries';
+import { definirTelefonePrincipal } from '@/features/telefone-validacao/api/telefoneValidacaoApi';
 import { BotaoVerificarTelefonePaciente } from '@/features/telefone-validacao/components/BotaoVerificarTelefonePaciente';
 import type { Paciente } from '@/features/pacientes/types';
 
@@ -44,10 +48,33 @@ function Linha({ rotulo, valor }: { rotulo: string; valor?: string | null }) {
   );
 }
 
+/** Rótulo + valor copiável (só dígitos vão para a área de transferência). */
+function LinhaCopiavel({ rotulo, valor, copiar }: { rotulo: string; valor?: string | null; copiar?: string }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-xs font-medium uppercase tracking-wide text-gray-500">{rotulo}</span>
+      {valor ? (
+        <span className="-ml-1.5 text-sm text-gray-900">
+          <CodigoCopiavel codigo={valor} valorCopiar={copiar} dica={`Copiar ${rotulo} (só números)`} />
+        </span>
+      ) : (
+        <span className="text-sm text-gray-400">—</span>
+      )}
+    </div>
+  );
+}
+
 /** Conteúdo do card-resumo — só monta a query quando o modal está aberto. */
 function ResumoConteudo({ pacienteId }: { pacienteId: string }) {
   const detalhe = usePacientePorId(pacienteId);
   const p: Paciente | undefined = detalhe.data;
+
+  // Alteração rápida do telefone principal (ticket #16): salva direto no cadastro,
+  // mesmo sem verificar — trocar o número derruba o selo; verificar depois é opcional.
+  const [editandoFone, setEditandoFone] = useState(false);
+  const [numeroNovo, setNumeroNovo] = useState('');
+  const [salvandoFone, setSalvandoFone] = useState(false);
+  const [erroFone, setErroFone] = useState<string | null>(null);
 
   // Situação do contato principal (WhatsApp): o verificado JÁ VEM no objeto do paciente
   // (marcador no telecom FHIR) — sem request extra, sem "piscada" de não-verificado.
@@ -68,35 +95,87 @@ function ResumoConteudo({ pacienteId }: { pacienteId: string }) {
     );
   }
 
+  async function salvarTelefone(e: FormEvent) {
+    e.preventDefault();
+    if (!p || salvandoFone) return;
+    setErroFone(null);
+    setSalvandoFone(true);
+    try {
+      await definirTelefonePrincipal(p.cpf, numeroNovo);
+      setEditandoFone(false);
+      await detalhe.refetch();
+    } catch (err) {
+      setErroFone(extrairMensagemDeErro(err));
+    } finally {
+      setSalvandoFone(false);
+    }
+  }
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <div className="sm:col-span-2">
         <Linha rotulo="Nome completo" valor={p.nomeCompleto} />
       </div>
-      <Linha rotulo="CPF" valor={formatarCpf(p.cpf)} />
-      <Linha rotulo="CNS (Cartão SUS)" valor={p.cns} />
+      <LinhaCopiavel rotulo="CPF" valor={formatarCpf(p.cpf)} copiar={(p.cpf ?? '').replace(/\D/g, '')} />
+      <LinhaCopiavel rotulo="CNS (Cartão SUS)" valor={p.cns} copiar={(p.cns ?? '').replace(/\D/g, '')} />
       <Linha rotulo="Data de nascimento" valor={formatarData(p.dataNascimento)} />
       <Linha rotulo="Sexo" valor={SEXO_LABEL[String(p.sexo)] ?? String(p.sexo)} />
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-0.5 sm:col-span-2">
         <span className="text-xs font-medium uppercase tracking-wide text-gray-500">Telefone</span>
-        <span className="flex flex-wrap items-center gap-1.5 text-sm text-gray-900">
-          {p.telefonePrincipal || <span className="text-gray-400">—</span>}
-          {telefoneValidado ? (
-            <span
-              className="inline-flex items-center gap-0.5 text-emerald-600"
-              title="Contato verificado no WhatsApp"
+        {!editandoFone ? (
+          <span className="flex flex-wrap items-center gap-1.5 text-sm text-gray-900">
+            {p.telefonePrincipal || <span className="text-gray-400">—</span>}
+            {telefoneValidado ? (
+              <span
+                className="inline-flex items-center gap-0.5 text-emerald-600"
+                title="Contato verificado no WhatsApp"
+              >
+                <WhatsappIcon className="h-4 w-4" />
+                <Check className="h-3.5 w-3.5" strokeWidth={3} />
+              </span>
+            ) : (
+              <BotaoVerificarTelefonePaciente
+                cpf={p.cpf}
+                numeroInicial={p.telefonePrincipal}
+                aoValidado={() => detalhe.refetch()}
+              />
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setNumeroNovo(p.telefonePrincipal ?? '');
+                setErroFone(null);
+                setEditandoFone(true);
+              }}
+              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium text-primary-700 hover:bg-primary-50"
+              title="Alterar o telefone principal (salva mesmo sem verificar)"
             >
-              <WhatsappIcon className="h-4 w-4" />
-              <Check className="h-3.5 w-3.5" strokeWidth={3} />
+              <Pencil className="h-3 w-3" /> Alterar telefone
+            </button>
+          </span>
+        ) : (
+          <form onSubmit={salvarTelefone} className="flex flex-col gap-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                value={numeroNovo}
+                onChange={(e) => setNumeroNovo(e.target.value)}
+                placeholder="(21) 99999-0000"
+                autoFocus
+                className="w-44"
+              />
+              <Button type="submit" disabled={salvandoFone}>
+                {salvandoFone ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
+              </Button>
+              <Button type="button" variante="ghost" onClick={() => setEditandoFone(false)}>
+                Cancelar
+              </Button>
+            </div>
+            <span className="text-xs text-gray-500">
+              Salva como telefone principal mesmo sem verificar (o selo de verificado cai; dá para verificar depois).
             </span>
-          ) : (
-            <BotaoVerificarTelefonePaciente
-              cpf={p.cpf}
-              numeroInicial={p.telefonePrincipal}
-              aoValidado={() => detalhe.refetch()}
-            />
-          )}
-        </span>
+            {erroFone ? <span className="text-xs text-red-700">{erroFone}</span> : null}
+          </form>
+        )}
       </div>
       <Linha rotulo="Nome da mãe" valor={p.nomeDaMae} />
     </div>
