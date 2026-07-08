@@ -1,16 +1,27 @@
 import { useEffect, useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
+import { RefreshCw } from 'lucide-react';
 import { Header } from '@/app/layout/Header';
 import { MenuContextoBar } from '@/app/layout/MenuContextoBar';
 import { Sidebar } from '@/app/layout/Sidebar';
 import { useMenuPreferencias } from '@/app/layout/menuPreferencias';
 import { obterPreferencias } from '@/shared/auth/preferenciasApi';
+import { useVersaoApp } from '@/shared/hooks/useVersaoApp';
 import { ChatWidget } from '@/features/conversas/components/ChatWidget';
 
 export function Layout() {
   const [colapsado, setColapsado] = useState(false);
   const [mobileAberto, setMobileAberto] = useState(false);
   const hidratar = useMenuPreferencias((s) => s.hidratar);
+  const { novaVersao, atualizar } = useVersaoApp();
+  const { pathname } = useLocation();
+
+  // Com versão nova pendente, a troca de rota é um momento seguro para atualizar:
+  // a navegação já descarta o estado da tela anterior, então o reload é transparente.
+  useEffect(() => {
+    if (novaVersao) window.location.reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   // Hidrata as preferências do menu a partir do servidor (por usuário) ao entrar.
   // O localStorage já deu o valor imediato; aqui o servidor passa a ser a verdade.
@@ -30,6 +41,19 @@ export function Layout() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {novaVersao && (
+        <div className="fixed inset-x-0 top-0 z-[60] flex items-center justify-center gap-3 bg-primary-700 px-4 py-2 text-sm text-white shadow-md">
+          <span>Nova versão do sistema disponível.</span>
+          <button
+            type="button"
+            onClick={atualizar}
+            className="flex items-center gap-1.5 rounded-md bg-white px-3 py-1 text-xs font-semibold text-primary-700 hover:bg-primary-50"
+          >
+            <RefreshCw className="h-3.5 w-3.5" /> Atualizar agora
+          </button>
+        </div>
+      )}
+
       <Sidebar
         isCollapsed={colapsado}
         onToggleCollapsed={() => setColapsado((v) => !v)}
