@@ -10,6 +10,7 @@ import {
   reenviarWorklist,
   autorizarSolicitacao,
   obterHistorico,
+  reenviarComunicacao,
   registrarContato,
 } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
 import type {
@@ -136,6 +137,18 @@ export function useHistoricoSolicitacao(id: string | null) {
       return obterHistorico(id);
     },
     enabled: Boolean(id),
+  });
+}
+
+export function useReenviarComunicacao() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, comunicacaoId }: { id: string; comunicacaoId: string }) =>
+      reenviarComunicacao(id, comunicacaoId),
+    onSuccess: (_d, v) => {
+      client.invalidateQueries({ queryKey: [...solicitacoesKeys.raiz, 'historico', v.id] });
+      client.invalidateQueries({ queryKey: ['solicitacoes-exame', 'lista'] }); // checks da lista
+    },
   });
 }
 

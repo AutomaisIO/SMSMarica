@@ -194,6 +194,26 @@ public sealed class SolicitacoesExameController(
     public async Task<HistoricoSolicitacaoDto> Historico(Guid id, CancellationToken cancellationToken) =>
         await _historico.ObterAsync(id, cancellationToken);
 
+    /// <summary>
+    /// Reenvia uma comunicação (WhatsApp): REVOGA todos os links de acesso anteriores da
+    /// solicitação — e as sessões abertas por eles, se usados — e reconstrói o envio com os
+    /// dados ATUAIS do paciente (telefone certo, link novo). Para casos de envio errado
+    /// (ex.: telefone trocado entre pacientes).
+    /// </summary>
+    [HttpPost("{id:guid}/comunicacoes/{comunicacaoId:guid}/reenviar")]
+    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> ReenviarComunicacao(
+        Guid id, Guid comunicacaoId,
+        [FromServices] Core.Notificacoes.Comunicacao.IComunicacaoPacienteService comunicacoes,
+        CancellationToken cancellationToken)
+    {
+        await comunicacoes.ReenviarAsync(id, comunicacaoId, cancellationToken);
+        return NoContent();
+    }
+
     /// <summary>Registra um contato MANUAL com o paciente ("liguei, não atendeu"...). Append-only.</summary>
     [HttpPost("{id:guid}/contatos")]
     [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Edicao)]

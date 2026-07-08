@@ -28,6 +28,14 @@ public interface IComunicacaoPacienteService
 
     /// <summary>Processa UMA tentativa de envio. Nunca lança — falha vira backoff/estado terminal.</summary>
     Task ProcessarTentativaEnvioAsync(Guid comunicacaoId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Reenvio MANUAL (operador): REVOGA todos os magic links ativos da solicitação (e derruba
+    /// as sessões do cidadão se algum link foi usado — quem recebeu errado perde o acesso) e
+    /// reconstrói o envio do zero com os dados ATUAIS do paciente (telefone certo, link novo).
+    /// Envia imediatamente, sem esperar o worker.
+    /// </summary>
+    Task ReenviarAsync(Guid solicitacaoExameId, Guid comunicacaoId, CancellationToken ct = default);
 }
 
 public sealed class ComunicacaoPacienteService(
@@ -36,6 +44,7 @@ public sealed class ComunicacaoPacienteService(
     ICidadaoLoginLinkService loginLinks,
     IWhatsAppCliente whatsApp,
     IOptions<ComunicacaoPacienteOptions> options,
+    Identidade.IUsuarioAtualAccessor usuarioAtual,
     ILogger<ComunicacaoPacienteService> logger) : IComunicacaoPacienteService
 {
     private static readonly CultureInfo PtBr = CultureInfo.GetCultureInfo("pt-BR");
@@ -115,6 +124,96 @@ public sealed class ComunicacaoPacienteService(
 
         await db.SaveChangesAsync(ct);
     }
+
+    public async Task ReenviarAsync(Guid solicitacaoExameId, Guid comunicacaoId, CancellationToken ct = default)
+    {
+        var n = await db.ComunicacoesPaciente
+            .Include(x => x.SolicitacaoExame)
+            .FirstOrDefaultAsync(x => x.Id == comunicacaoId && x.SolicitacaoExameId == solicitacaoExameId, ct)
+            ?? throw new Common.Excecoes.NaoEncontradoException(nameof(ComunicacaoPaciente), comunicacaoId);
+
+        var agora = DateTime.UtcNow;
+        var s = n.SolicitacaoExame;
+
+        // Guardas de coerência (evitam transformar um histórico OK em Falha no processamento).
+        if (s is null || s.ExcluidoEm is not null || s.Status == StatusSolicitacaoExame.Cancelada)
+            throw new Common.Excecoes.ConflitoException(
+                "reenvio.solicitacao_invalida", "A solicitação foi excluída ou cancelada — nada a reenviar.");
+        if (n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento)
+        {
+            if (s.DataAgendada is not { } da || da <= agora)
+                throw new Common.Excecoes.ConflitoException(
+                    "reenvio.sem_data_futura", "O exame não tem data futura — a confirmação não pode ser reenviada.");
+            if (s.StatusConfirmacao != StatusConfirmacaoAgendamento.Pendente)
+                throw new Common.Excecoes.ConflitoException(
+                    "reenvio.ja_respondida", "O paciente já respondeu esta confirmação — nada a reenviar.");
+        }
+
+        // 1. REVOGA todos os magic links ainda ativos da solicitação (não só o desta comunicação:
+        //    qualquer link anterior pode ter ido para o número errado). Expirar = ninguém mais
+        //    autentica com eles.
+        var linksAtivos = await db.CidadaoLoginLinks
+            .Where(l => l.SolicitacaoExameId == solicitacaoExameId && l.ExpiraEm > agora)
+            .ToListAsync(ct);
+        foreach (var l in linksAtivos) l.ExpiraEm = agora;
+
+        // 2. Se algum link da solicitação JÁ FOI USADO, derruba as sessões ativas do paciente do
+        //    link — se quem clicou foi a pessoa errada, ela perde o acesso ao app AGORA. O
+        //    paciente certo reentra com 1 clique no link novo (single-device, custo zero).
+        var pacientesComLinkUsado = await db.CidadaoLoginLinks.AsNoTracking()
+            .Where(l => l.SolicitacaoExameId == solicitacaoExameId && l.UsadoEm != null)
+            .Select(l => l.PatientId)
+            .Distinct()
+            .ToListAsync(ct);
+        if (pacientesComLinkUsado.Count > 0)
+        {
+            await db.CidadaoSessoes
+                .Where(x => x.RevogadaEm == null && pacientesComLinkUsado.Contains(x.CidadaoAcesso.PatientId))
+                .ExecuteUpdateAsync(u => u.SetProperty(x => x.RevogadaEm, agora), ct);
+        }
+
+        // 3. Reconstrói o envio do zero: zera telefone/link/recibos — o processamento re-resolve
+        //    o paciente (telefone ATUAL: verificado > celular > principal) e gera link novo.
+        n.Status = StatusComunicacao.Pendente;
+        n.MotivoFalha = null;
+        n.Telefone = null;
+        n.LoginLinkId = null;
+        n.MensagemWhatsAppId = null;
+        n.Tentativas = 0;
+        n.EnviadoEm = null;
+        n.EntregueEm = null;
+        n.LidoEm = null;
+        n.VisualizadoEm = null;
+        n.ProximaTentativaEm = agora;
+        n.AtualizadoEm = agora;
+
+        // Trilha na linha do tempo: quem reenviou e o que foi revogado.
+        db.ContatosRegistro.Add(new ContatoRegistro
+        {
+            Id = Guid.CreateVersion7(),
+            SolicitacaoExameId = solicitacaoExameId,
+            PacienteId = n.PacienteId,
+            Meio = MeioContato.WhatsApp,
+            Resultado = ResultadoContato.Outro,
+            Observacao = $"Reenvio manual da comunicação ({RotuloFinalidade(n.Finalidade)}): " +
+                         $"{linksAtivos.Count} link(s) de acesso anterior(es) revogado(s); mensagem reconstruída com o contato atual.",
+            CriadoEm = agora,
+            CriadoPor = usuarioAtual.UsuarioId,
+        });
+
+        await db.SaveChangesAsync(ct);
+
+        // 4. Envia JÁ (mesmo caminho do worker; falha vira backoff normal, visível no histórico).
+        await ProcessarTentativaEnvioAsync(n.Id, ct);
+    }
+
+    private static string RotuloFinalidade(FinalidadeComunicacao f) => f switch
+    {
+        FinalidadeComunicacao.ConfirmacaoAgendamento => "confirmação de agendamento",
+        FinalidadeComunicacao.ExameLiberado => "exame liberado",
+        FinalidadeComunicacao.LaudoPronto => "laudo pronto",
+        _ => f.ToString(),
+    };
 
     private async Task EnviarAsync(ComunicacaoPaciente n, SolicitacaoExame s, CancellationToken ct)
     {

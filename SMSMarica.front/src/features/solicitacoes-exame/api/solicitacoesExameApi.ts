@@ -69,6 +69,14 @@ export async function obterHistorico(id: string): Promise<HistoricoSolicitacao> 
   return data;
 }
 
+/**
+ * Reenvia uma comunicação: REVOGA os links de acesso anteriores (e sessões abertas por
+ * eles) e reconstrói o envio com os dados ATUAIS do paciente (telefone certo, link novo).
+ */
+export async function reenviarComunicacao(id: string, comunicacaoId: string): Promise<void> {
+  await http.post(`/solicitacoes-exame/${id}/comunicacoes/${comunicacaoId}/reenviar`);
+}
+
 /** Registra um contato MANUAL com o paciente ("liguei, não atendeu"...). */
 export async function registrarContato(
   id: string,

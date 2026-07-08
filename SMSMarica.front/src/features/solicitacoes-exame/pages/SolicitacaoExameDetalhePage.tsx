@@ -17,14 +17,17 @@ import { formatarInstante, formatarWallClock } from '@/shared/lib/datas';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 import { CodigoCopiavel } from '@/shared/ui/CodigoCopiavel';
+import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
 import { Modal } from '@/shared/ui/Modal';
 import { Input } from '@/shared/ui/Input';
 import { Campo } from '@/shared/ui/Campo';
+import { notificar } from '@/shared/ui/Notificacoes';
 import {
   useAutorizarSolicitacao,
   useCancelarSolicitacao,
   useExcluirSolicitacao,
   useHistoricoSolicitacao,
+  useReenviarComunicacao,
   useReenviarWorklist,
   useRegistrarContato,
   useSolicitacaoPorId,
@@ -524,14 +527,29 @@ function CardHistoricoComunicacao({ solicitacaoId }: { solicitacaoId: string }) 
   const podeEditar = usePermissao('SolicitacoesExame', 'Edicao');
   const q = useHistoricoSolicitacao(solicitacaoId);
   const registrar = useRegistrarContato();
+  const reenviar = useReenviarComunicacao();
   const [aberto, setAberto] = useState(false);
   const [meio, setMeio] = useState('Ligacao');
   const [resultado, setResultado] = useState('NaoAtendeu');
   const [observacao, setObservacao] = useState('');
   const [erro, setErro] = useState<string | null>(null);
+  // Comunicação aguardando confirmação do reenvio (abre o ConfirmDialog).
+  const [paraReenviar, setParaReenviar] = useState<HistoricoComunicacao | null>(null);
 
   const h = q.data;
   const vazio = !h || (h.comunicacoes.length === 0 && h.contatos.length === 0);
+
+  async function confirmarReenvio() {
+    if (!paraReenviar) return;
+    try {
+      await reenviar.mutateAsync({ id: solicitacaoId, comunicacaoId: paraReenviar.id });
+      notificar('Comunicação reenviada — links anteriores revogados.', 'sucesso');
+      setParaReenviar(null);
+    } catch (e) {
+      notificar(extrairMensagemDeErro(e), 'erro');
+      setParaReenviar(null);
+    }
+  }
 
   async function salvarContato() {
     setErro(null);
@@ -573,6 +591,17 @@ function CardHistoricoComunicacao({ solicitacaoId }: { solicitacaoId: string }) 
                 <span className="font-medium text-gray-900">{ROTULO_FINALIDADE[c.finalidade]}</span>
                 {c.telefone ? <span className="text-xs text-gray-500">→ {c.telefone}</span> : null}
                 {c.tentativas > 1 ? <span className="text-xs text-gray-500">({c.tentativas} tentativas)</span> : null}
+                {podeEditar && c.status !== 'Pendente' ? (
+                  <button
+                    type="button"
+                    onClick={() => setParaReenviar(c)}
+                    disabled={reenviar.isPending}
+                    title="Reenviar: revoga os links anteriores e reenvia para o contato ATUAL do paciente"
+                    className="ml-auto inline-flex items-center gap-1 rounded-md border border-indigo-300 bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100 disabled:opacity-50"
+                  >
+                    <RotateCw className="h-3 w-3" /> Reenviar
+                  </button>
+                ) : null}
               </div>
               <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-600">
                 <span>Fila: {fmt(c.criadoEm)}</span>
@@ -602,6 +631,22 @@ function CardHistoricoComunicacao({ solicitacaoId }: { solicitacaoId: string }) 
           ) : null}
         </div>
       )}
+
+      <ConfirmDialog
+        aberto={paraReenviar != null}
+        titulo="Reenviar comunicação"
+        mensagem={
+          paraReenviar
+            ? `Reenviar "${ROTULO_FINALIDADE[paraReenviar.finalidade]}"? Os links de acesso anteriores serão REVOGADOS ` +
+              `(quem os recebeu perde o acesso, inclusive sessões abertas) e a mensagem será reconstruída ` +
+              `com o contato ATUAL do paciente${paraReenviar.telefone ? ` (envio anterior: ${paraReenviar.telefone})` : ''}.`
+            : ''
+        }
+        rotuloConfirmar="Revogar e reenviar"
+        carregando={reenviar.isPending}
+        aoConfirmar={() => void confirmarReenvio()}
+        aoCancelar={() => setParaReenviar(null)}
+      />
 
       <Modal aberto={aberto} aoFechar={() => setAberto(false)} titulo="Registrar contato com o paciente" largura="sm">
         <div className="space-y-3">
