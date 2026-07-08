@@ -10,6 +10,7 @@ import {
   type ItemMenu,
 } from '@/app/layout/menuConfig';
 import { useMenuPreferencias } from '@/app/layout/menuPreferencias';
+import { useChat } from '@/features/conversas/store/chatStore';
 import { BrandLogo } from '@/shared/ui/BrandLogo';
 import { cn } from '@/shared/lib/cn';
 
@@ -71,26 +72,47 @@ export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseM
   const conteudo = (mobile: boolean) => {
     const compacto = isCollapsed && !mobile;
 
-    const renderItem = (item: ItemMenu, indentado: boolean) => (
-      <NavLink
-        key={item.to}
-        to={item.to}
-        end={item.end}
-        state={item.state}
-        onClick={mobile ? onCloseMobile : undefined}
-        title={compacto ? item.rotulo : undefined}
-        className={({ isActive }) =>
-          cn(
-            'flex items-center rounded-md py-2.5 text-sm font-medium transition-all duration-200',
+    const renderItem = (item: ItemMenu, indentado: boolean) =>
+      item.acao === 'chat' ? (
+        // Central de Atendimento abre a janela FLUTUANTE do chat (ChatWidget), sem navegar:
+        // minimizada, o clique traz a janela como está; fechada, reabre zerada (ticket #18).
+        <button
+          key={item.to}
+          type="button"
+          onClick={() => {
+            useChat.getState().abrir();
+            if (mobile) onCloseMobile();
+          }}
+          title={compacto ? item.rotulo : 'Abrir a Central de Atendimento (janela flutuante)'}
+          className={cn(
+            'flex w-full items-center rounded-md py-2.5 text-sm font-medium transition-all duration-200',
             compacto ? 'justify-center px-3' : indentado ? 'gap-3 pl-9 pr-3' : 'gap-3 px-3',
-            isActive ? 'bg-white text-primary-700 shadow-md' : 'text-white/90 hover:bg-white/10',
-          )
-        }
-      >
-        <item.icone className="w-5 h-5 flex-shrink-0" />
-        {!compacto && <span>{item.rotulo}</span>}
-      </NavLink>
-    );
+            'text-white/90 hover:bg-white/10',
+          )}
+        >
+          <item.icone className="w-5 h-5 flex-shrink-0" />
+          {!compacto && <span>{item.rotulo}</span>}
+        </button>
+      ) : (
+        <NavLink
+          key={item.to}
+          to={item.to}
+          end={item.end}
+          state={item.state}
+          onClick={mobile ? onCloseMobile : undefined}
+          title={compacto ? item.rotulo : undefined}
+          className={({ isActive }) =>
+            cn(
+              'flex items-center rounded-md py-2.5 text-sm font-medium transition-all duration-200',
+              compacto ? 'justify-center px-3' : indentado ? 'gap-3 pl-9 pr-3' : 'gap-3 px-3',
+              isActive ? 'bg-white text-primary-700 shadow-md' : 'text-white/90 hover:bg-white/10',
+            )
+          }
+        >
+          <item.icone className="w-5 h-5 flex-shrink-0" />
+          {!compacto && <span>{item.rotulo}</span>}
+        </NavLink>
+      );
 
     return (
       <div

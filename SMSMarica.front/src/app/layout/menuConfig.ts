@@ -53,6 +53,12 @@ export type ItemMenu = {
   /** Estado passado pra rota — usado p/ ações automáticas (ex.: abrir modal). */
   state?: unknown;
   /**
+   * Ação especial no clique da sidebar em vez de navegar: 'chat' abre a Central de
+   * Atendimento como janela FLUTUANTE (ChatWidget) — minimizada volta como está;
+   * fechada reabre zerada. A rota `to` continua valendo para deep-link/hub.
+   */
+  acao?: 'chat';
+  /**
    * Gancho de encadeamento: destino/tela padrão interno do menu. Quando o menu
    * for favoritado na tela Início, o redirect leva a este destino em vez da
    * própria rota do menu. Hoje nenhum menu define — deixe vazio para cair na
@@ -248,6 +254,8 @@ export const SECOES: SecaoMenu[] = [
         icone: MessageCircle,
         modulo: 'Conversas',
         descricao: 'Chat de WhatsApp com os cidadãos (por unidade).',
+        // Abre a janela flutuante do chat (não navega) — ticket #18.
+        acao: 'chat',
       },
       {
         rotulo: 'Notificações de Agendamento',
