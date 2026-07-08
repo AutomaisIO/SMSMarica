@@ -5,6 +5,7 @@ namespace SMSMarica.Core.Tickets.Dtos;
 /// <summary>Item da lista de tickets (visão enxuta).</summary>
 public sealed record TicketListItemDto(
     Guid Id,
+    int Numero,
     string Titulo,
     TicketTipo Tipo,
     TicketStatus Status,
@@ -37,6 +38,7 @@ public sealed record TicketComentarioDto(
 /// <summary>Detalhe completo do ticket com conversa e anexos.</summary>
 public sealed record TicketDto(
     Guid Id,
+    int Numero,
     string Titulo,
     string Descricao,
     TicketTipo Tipo,

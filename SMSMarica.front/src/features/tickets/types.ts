@@ -23,6 +23,8 @@ export type TicketComentario = {
 
 export type TicketListItem = {
   id: string;
+  /** Número sequencial curto — referência humana do ticket ("#42"). */
+  numero: number;
   titulo: string;
   tipo: TicketTipo;
   status: TicketStatus;
@@ -38,6 +40,8 @@ export type TicketListItem = {
 
 export type Ticket = {
   id: string;
+  /** Número sequencial curto — referência humana do ticket ("#42"). */
+  numero: number;
   titulo: string;
   descricao: string;
   tipo: TicketTipo;

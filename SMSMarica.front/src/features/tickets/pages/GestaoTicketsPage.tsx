@@ -38,15 +38,26 @@ export function GestaoTicketsPage() {
 
   const filtrados = useMemo(() => {
     const b = busca.trim().toLowerCase();
+    // Buscar por "#42" ou "42" acha o ticket pelo número exato.
+    const numero = /^#?\d+$/.test(b) ? Number(b.replace('#', '')) : null;
     return tickets.filter(
       (t) =>
         (!fStatus || t.status === fStatus) &&
         (!fTipo || t.tipo === fTipo) &&
-        (!b || t.titulo.toLowerCase().includes(b) || (t.autorNome ?? '').toLowerCase().includes(b)),
+        (!b ||
+          t.numero === numero ||
+          t.titulo.toLowerCase().includes(b) ||
+          (t.autorNome ?? '').toLowerCase().includes(b)),
     );
   }, [tickets, fStatus, fTipo, busca]);
 
   const colunas: Coluna<TicketListItem>[] = [
+    {
+      chave: 'numero',
+      cabecalho: '#',
+      className: 'whitespace-nowrap text-sm font-medium text-slate-500',
+      render: (t) => `#${t.numero}`,
+    },
     { chave: 'tipo', cabecalho: 'Tipo', render: (t) => <TipoBadge tipo={t.tipo} /> },
     {
       chave: 'titulo',
@@ -90,7 +101,7 @@ export function GestaoTicketsPage() {
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="w-56">
-          <Input placeholder="Buscar por título ou autor…" value={busca} onChange={(e) => setBusca(e.target.value)} />
+          <Input placeholder="Buscar por nº, título ou autor…" value={busca} onChange={(e) => setBusca(e.target.value)} />
         </div>
         <Select value={fStatus} onChange={(e) => setFStatus(e.target.value as '' | TicketStatus)} className="w-40">
           <option value="">Todos os status</option>

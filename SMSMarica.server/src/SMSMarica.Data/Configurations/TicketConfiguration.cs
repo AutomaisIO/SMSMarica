@@ -12,6 +12,7 @@ internal sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
         builder.HasKey(t => t.Id);
 
         builder.Property(t => t.Id).HasColumnName("id");
+        builder.Property(t => t.Numero).HasColumnName("numero").UseIdentityByDefaultColumn();
         builder.Property(t => t.Titulo).HasColumnName("titulo").HasMaxLength(200).IsRequired();
         builder.Property(t => t.Descricao).HasColumnName("descricao").IsRequired();
 
@@ -38,6 +39,7 @@ internal sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
             .ValueGeneratedOnAddOrUpdate()
             .IsConcurrencyToken();
 
+        builder.HasIndex(t => t.Numero).IsUnique();
         builder.HasIndex(t => t.CriadoPor);
         builder.HasIndex(t => t.Status);
         builder.HasIndex(t => t.UnidadeId);

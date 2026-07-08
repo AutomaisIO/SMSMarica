@@ -262,7 +262,7 @@ public sealed class TicketService(SmsMaricaDbContext db, IUsuarioAtualAccessor u
             .ToList();
 
         return new TicketDto(
-            ticket.Id, ticket.Titulo, ticket.Descricao, ticket.Tipo, ticket.Status, ticket.Prioridade,
+            ticket.Id, ticket.Numero, ticket.Titulo, ticket.Descricao, ticket.Tipo, ticket.Status, ticket.Prioridade,
             ticket.RespostaFinal, NomeDe(nomes, ticket.CriadoPor), ticket.CriadoPor, ticket.UnidadeId,
             ticket.ArquivadoPeloAutorEm != null, ticket.ArquivadoPeloAdminEm != null,
             ticket.CriadoEm, ticket.AtualizadoEm,
@@ -276,7 +276,7 @@ public sealed class TicketService(SmsMaricaDbContext db, IUsuarioAtualAccessor u
             .OrderByDescending(t => t.AtualizadoEm ?? t.CriadoEm)
             .Select(t => new
             {
-                t.Id, t.Titulo, t.Tipo, t.Status, t.Prioridade, t.CriadoPor, t.UnidadeId,
+                t.Id, t.Numero, t.Titulo, t.Tipo, t.Status, t.Prioridade, t.CriadoPor, t.UnidadeId,
                 Arquivado = t.ArquivadoPeloAutorEm != null || t.ArquivadoPeloAdminEm != null,
                 QtdComentarios = t.Comentarios.Count(c => !c.Interno),
                 t.CriadoEm, t.AtualizadoEm,
@@ -287,7 +287,7 @@ public sealed class TicketService(SmsMaricaDbContext db, IUsuarioAtualAccessor u
         var nomes = await ResolverNomesAsync(ids, ct);
 
         return [.. linhas.Select(l => new TicketListItemDto(
-            l.Id, l.Titulo, l.Tipo, l.Status, l.Prioridade, NomeDe(nomes, l.CriadoPor), l.CriadoPor,
+            l.Id, l.Numero, l.Titulo, l.Tipo, l.Status, l.Prioridade, NomeDe(nomes, l.CriadoPor), l.CriadoPor,
             l.UnidadeId, l.Arquivado, l.QtdComentarios, l.CriadoEm, l.AtualizadoEm))];
     }
 

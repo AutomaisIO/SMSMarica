@@ -10,6 +10,12 @@ public sealed class Ticket
 {
     public Guid Id { get; set; }
 
+    /// <summary>
+    /// Número sequencial curto (identity do Postgres) — referência humana do ticket ("#42")
+    /// para o usuário citar por telefone/mensagem. O Guid continua sendo a chave técnica.
+    /// </summary>
+    public int Numero { get; set; }
+
     public string Titulo { get; set; } = string.Empty;
     public string Descricao { get; set; } = string.Empty;
 

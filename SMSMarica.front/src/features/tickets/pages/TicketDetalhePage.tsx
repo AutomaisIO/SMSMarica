@@ -71,7 +71,10 @@ export function TicketDetalhePage({ gestao = false }: { gestao?: boolean }) {
           <PrioridadeBadge prioridade={ticket.prioridade} />
           {arquivado && <span className="text-xs text-slate-400">(arquivado)</span>}
         </div>
-        <h1 className="mt-3 text-xl font-semibold text-slate-800">{ticket.titulo}</h1>
+        <h1 className="mt-3 text-xl font-semibold text-slate-800">
+          <span className="mr-1.5 font-normal text-slate-400">#{ticket.numero}</span>
+          {ticket.titulo}
+        </h1>
         <p className="mt-1 text-xs text-slate-500">
           Aberto por {ticket.autorNome ?? 'usuário'} · {formatarInstante(ticket.criadoEm)}
         </p>

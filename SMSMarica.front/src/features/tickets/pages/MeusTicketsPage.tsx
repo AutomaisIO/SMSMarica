@@ -16,6 +16,12 @@ export function MeusTicketsPage() {
   const { data: tickets = [], isLoading } = useMeusTickets(incluirArquivados);
 
   const colunas: Coluna<TicketListItem>[] = [
+    {
+      chave: 'numero',
+      cabecalho: '#',
+      className: 'whitespace-nowrap text-sm font-medium text-slate-500',
+      render: (t) => `#${t.numero}`,
+    },
     { chave: 'tipo', cabecalho: 'Tipo', render: (t) => <TipoBadge tipo={t.tipo} /> },
     {
       chave: 'titulo',
