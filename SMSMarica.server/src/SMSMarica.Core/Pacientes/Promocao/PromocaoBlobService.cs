@@ -1,18 +1,17 @@
 using Hl7.Fhir.Model;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Pacientes.Fhir;
-using SMSMarica.Data;
 
 namespace SMSMarica.Core.Pacientes.Promocao;
 
-public sealed record PromocaoResultado(int Total, int Promovidos, int Confirmados, int Erros);
+public sealed record PromocaoResultado(int Total, int Promovidos, int Erros);
 
 /// <summary>
 /// Backfill (ADR-0020 R4): promove a demografia de TODOS os pacientes do blob para campos FHIR
-/// nativos (idempotente e resumível pelo marcador <c>urn:smsmarica:promovido</c>) e re-carimba os
-/// telefones já confirmados (<c>contato_validado</c>) no FHIR. Grava com If-Match (concorrência
-/// otimista) e throttle. GATE operacional: rodar com <b>backup do fhir.patient</b> (o hub não tem undo).
+/// nativos (idempotente e resumível pelo marcador <c>urn:smsmarica:promovido</c>). Grava com
+/// If-Match (concorrência otimista) e throttle. Os telefones confirmados já vivem SÓ no telecom
+/// do Patient (a tabela contato_validado foi aposentada) — nada a re-carimbar aqui.
+/// GATE operacional: rodar com <b>backup do fhir.patient</b> (o hub não tem undo).
 /// </summary>
 public interface IPromocaoBlobService
 {
@@ -21,22 +20,15 @@ public interface IPromocaoBlobService
 
 public sealed class PromocaoBlobService(
     IPacienteFhirClient fhir,
-    SmsMaricaDbContext db,
     ILogger<PromocaoBlobService> logger) : IPromocaoBlobService
 {
     private const int TamanhoPagina = 200;
 
     public async Task<PromocaoResultado> PromoverTodosAsync(int throttleMs = 25, CancellationToken ct = default)
     {
-        // Pré-carrega os telefones confirmados em memória (contato_validado é pequeno) — evita
-        // uma query por paciente (seriam centenas de milhares).
-        var confirmadosPorCpf = await db.ContatosValidados.AsNoTracking()
-            .ToDictionaryAsync(c => c.Cpf, c => c.Numero, ct);
-
         Guid? cursor = null;
-        int total = 0, promovidos = 0, confirmados = 0, erros = 0;
-        logger.LogInformation("Backfill blob→nativo iniciado (throttle {Throttle}ms; {Conf} confirmados carregados).",
-            throttleMs, confirmadosPorCpf.Count);
+        int total = 0, promovidos = 0, erros = 0;
+        logger.LogInformation("Backfill blob→nativo iniciado (throttle {Throttle}ms).", throttleMs);
 
         while (!ct.IsCancellationRequested)
         {
@@ -50,11 +42,10 @@ public sealed class PromocaoBlobService(
                 total++;
                 try
                 {
-                    var (promoveu, carimbou) = await PromoverUmAsync(p, confirmadosPorCpf, ct);
+                    var promoveu = await PromoverUmAsync(p, ct);
                     if (promoveu) promovidos++;
-                    if (carimbou) confirmados++;
                     // Throttle SÓ quando houve escrita (a varredura dos "pulados" não carrega o hub).
-                    if ((promoveu || carimbou) && throttleMs > 0) await Task.Delay(throttleMs, ct);
+                    if (promoveu && throttleMs > 0) await Task.Delay(throttleMs, ct);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
@@ -65,28 +56,26 @@ public sealed class PromocaoBlobService(
 
             cursor = Guid.Parse(patients[^1].Id!);
             if (bundle.Link.All(l => l.Relation != "next")) break;
-            logger.LogInformation("Backfill: {Total} vistos, {Prom} promovidos, {Conf} confirmados, {Err} erros.",
-                total, promovidos, confirmados, erros);
+            logger.LogInformation("Backfill: {Total} vistos, {Prom} promovidos, {Err} erros.",
+                total, promovidos, erros);
         }
 
-        logger.LogInformation("Backfill CONCLUÍDO: {Total} vistos, {Prom} promovidos, {Conf} confirmados, {Err} erros.",
-            total, promovidos, confirmados, erros);
-        return new PromocaoResultado(total, promovidos, confirmados, erros);
+        logger.LogInformation("Backfill CONCLUÍDO: {Total} vistos, {Prom} promovidos, {Err} erros.",
+            total, promovidos, erros);
+        return new PromocaoResultado(total, promovidos, erros);
     }
 
-    private async Task<(bool Promoveu, bool Carimbou)> PromoverUmAsync(
-        Patient p, IReadOnlyDictionary<string, string> confirmadosPorCpf, CancellationToken ct)
+    private async Task<bool> PromoverUmAsync(Patient p, CancellationToken ct)
     {
         var id = Guid.Parse(p.Id!);
         for (var tentativa = 1; ; tentativa++)
         {
             var promoveu = PacienteFhirMapper.PromoverBlobParaNativo(p);
-            var carimbou = ReCarimbarConfirmado(p, confirmadosPorCpf);
-            if (!promoveu && !carimbou) return (false, false);
+            if (!promoveu) return false;
             try
             {
                 await fhir.AtualizarAsync(id, p, ct); // If-Match embutido no cliente
-                return (promoveu, carimbou);
+                return true;
             }
             catch (ConflitoVersaoHubException) when (tentativa < 3)
             {
@@ -94,26 +83,4 @@ public sealed class PromocaoBlobService(
             }
         }
     }
-
-    /// <summary>Re-carimba no FHIR o telefone confirmado (contato_validado) que ainda não estava marcado.</summary>
-    private static bool ReCarimbarConfirmado(Patient p, IReadOnlyDictionary<string, string> confirmadosPorCpf)
-    {
-        var cpf = Digitos(p.Identifier?.FirstOrDefault(i => i.System == PatientMergeFhir.SystemCpf)?.Value);
-        if (cpf.Length != 11 || !confirmadosPorCpf.TryGetValue(cpf, out var numero) || string.IsNullOrWhiteSpace(numero))
-            return false;
-
-        var jaMarcado = (p.Telecom ?? []).Any(t =>
-            t.GetExtension(PatientMergeFhir.ExtContatoConfirmado) is not null
-            && MesmoNumero(Digitos(t.Value), Digitos(numero)));
-        if (jaMarcado) return false;
-
-        PatientMergeFhir.MarcarTelefoneConfirmado(p, numero, DateTimeOffset.UtcNow);
-        return true;
-    }
-
-    private static string Digitos(string? v) => string.IsNullOrEmpty(v) ? string.Empty : new([.. v.Where(char.IsDigit)]);
-
-    private static bool MesmoNumero(string a, string b) =>
-        a.Length >= 8 && b.Length >= 8
-        && (a.EndsWith(b, StringComparison.Ordinal) || b.EndsWith(a, StringComparison.Ordinal));
 }

@@ -94,6 +94,9 @@ export type Paciente = {
   telefonePrincipal: string | null;
   telefoneCelular: string | null;
   telefoneResidencial: string | null;
+  /** Número do contato VERIFICADO por OTP (marcador no telecom FHIR) — já vem no objeto. */
+  telefoneVerificado: string | null;
+  telefoneVerificadoEm: string | null;
   email: string | null;
   contatoEmergencia: ContatoEmergencia | null;
   alturaCm: number | null;

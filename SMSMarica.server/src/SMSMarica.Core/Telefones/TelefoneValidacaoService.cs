@@ -1,6 +1,5 @@
 using System.Security.Cryptography;
 using Hl7.Fhir.Model;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -9,13 +8,10 @@ using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Notificacoes.WhatsApp;
 using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Core.Telefones.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
 
 namespace SMSMarica.Core.Telefones;
 
 public sealed class TelefoneValidacaoService(
-    SmsMaricaDbContext db,
     IWhatsAppCliente whatsapp,
     IMemoryCache cache,
     IConfiguration config,
@@ -117,22 +113,6 @@ public sealed class TelefoneValidacaoService(
         await MarcarValidadoInternoAsync(cpfDig, canon, origem, validadoPor, exigirFhir: false, ct);
     }
 
-    public async Task<TelefoneValidadoDto> ConsultarAsync(string cpf, string numero, CancellationToken ct = default)
-    {
-        var cpfDig = CpfDigitos(cpf, lancar: false);
-        var canon = Canonizar(numero);
-        if (cpfDig.Length != 11 || canon.Length < 12)
-            return new TelefoneValidadoDto(canon, false, null);
-
-        // Fonte única: marcador de confirmado no telecom do Patient FHIR (não a tabela local).
-        var patient = await ObterPatientPorCpfAsync(cpfDig, ct);
-        if (patient is null) return new TelefoneValidadoDto(canon, false, null);
-
-        var confirmado = PatientMergeFhir.TelefoneConfirmado(patient);
-        var validado = confirmado is not null && PatientMergeFhir.TelefoneEstaConfirmado(patient, canon);
-        return new TelefoneValidadoDto(canon, validado, validado ? confirmado?.Em?.UtcDateTime : null);
-    }
-
     /// <summary>Lança 409 se o número já é contato CONFIRMADO de OUTRO CPF (busca por telecom no hub).</summary>
     private async Task GarantirNumeroLivreAsync(string cpfDig, string canon, CancellationToken ct)
     {
@@ -155,77 +135,19 @@ public sealed class TelefoneValidacaoService(
 
         var agora = DateTime.UtcNow;
 
-        // Fonte da verdade: marcador no telecom do Patient FHIR. Quando exigido (OTP confirmado
-        // pelo operador/cidadão), falha ALTO se não conseguir carimbar — validação sem carimbo
-        // seria invisível para todo o sistema.
+        // Fonte ÚNICA: marcador no telecom do Patient FHIR (a tabela contato_validado foi
+        // aposentada). Quando exigido (OTP confirmado pelo operador/cidadão), falha ALTO se não
+        // conseguir carimbar — validação sem carimbo seria invisível para todo o sistema.
+        // Verificado é conceito de PACIENTE: sem Patient no hub não há o que validar.
         var estampado = await EstamparConfirmadoNoFhirAsync(cpfDig, canon, agora, ct);
         if (!estampado && exigirFhir)
             throw new ValidacaoException(
-                "telefone.fhir_indisponivel",
-                "Não foi possível registrar a verificação no cadastro do paciente. Tente novamente.");
+                "telefone.sem_paciente",
+                "Não encontramos o cadastro de paciente desta pessoa — a verificação de contato é feita no cadastro do paciente.");
 
-        // Dual-write transitório na tabela contato_validado (removida na fase 2 — o backfill
-        // usa a tabela como fonte; manter escrito até o drop garante que nada se perca).
-        var existente = await db.ContatosValidados.FirstOrDefaultAsync(c => c.Cpf == cpfDig, ct);
-        if (existente is null)
-        {
-            db.ContatosValidados.Add(new ContatoValidado
-            {
-                Id = Guid.CreateVersion7(),
-                Cpf = cpfDig,
-                Numero = canon,
-                ValidadoEm = agora,
-                Origem = origem,
-                ValidadoPor = por,
-            });
-        }
-        else
-        {
-            existente.Numero = canon;
-            existente.ValidadoEm = agora;
-            existente.Origem = origem;
-            existente.ValidadoPor = por;
-        }
-        await db.SaveChangesAsync(ct);
         logger.LogInformation("Contato {Num} validado para CPF {Cpf} (origem {Origem}; FHIR {Fhir}).",
-            canon, cpfDig, origem, estampado ? "estampado" : "PENDENTE");
+            canon, cpfDig, origem, estampado ? "estampado" : "sem-paciente");
         return agora;
-    }
-
-    /// <summary>
-    /// Backfill contato_validado → FHIR: garante o marcador de confirmado no telecom de cada
-    /// Patient. Idempotente (re-carimbar o mesmo número é no-op lógico). Roda antes do drop
-    /// da tabela (fase 2) — nada verificado se perde.
-    /// </summary>
-    public async Task<TelefoneBackfillResultadoDto> BackfillFhirAsync(CancellationToken ct = default)
-    {
-        var linhas = await db.ContatosValidados.AsNoTracking().OrderBy(c => c.ValidadoEm).ToListAsync(ct);
-        int jaOk = 0, estampados = 0, semPaciente = 0, erros = 0;
-
-        foreach (var c in linhas)
-        {
-            try
-            {
-                var patient = await ObterPatientPorCpfAsync(c.Cpf, ct);
-                if (patient is null) { semPaciente++; continue; }
-                if (PatientMergeFhir.TelefoneEstaConfirmado(patient, c.Numero)) { jaOk++; continue; }
-
-                PatientMergeFhir.MarcarTelefoneConfirmado(
-                    patient, c.Numero, new DateTimeOffset(c.ValidadoEm, TimeSpan.Zero));
-                await fhir.AtualizarAsync(Guid.Parse(patient.Id!), patient, ct);
-                estampados++;
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                erros++;
-                logger.LogWarning(ex, "Backfill: falha ao carimbar contato do CPF {Cpf} no FHIR.", c.Cpf);
-            }
-        }
-
-        logger.LogInformation(
-            "Backfill contato_validado→FHIR: {Total} linhas, {Ok} já ok, {Est} estampados, {Sem} sem paciente, {Err} erros.",
-            linhas.Count, jaOk, estampados, semPaciente, erros);
-        return new TelefoneBackfillResultadoDto(linhas.Count, jaOk, estampados, semPaciente, erros);
     }
 
     private async Task<Patient?> ObterPatientPorCpfAsync(string cpfDig, CancellationToken ct)

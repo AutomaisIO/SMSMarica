@@ -2,7 +2,6 @@ import { Lock } from 'lucide-react';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { UploadFoto } from '@/shared/ui/UploadFoto';
-import { BotaoValidarTelefone } from '@/features/telefone-validacao/components/BotaoValidarTelefone';
 import {
   FormularioEndereco,
   type EnderecoForm,
@@ -31,8 +30,6 @@ type Props = {
   mostrarPontoReferencia?: boolean;
   /** Slot opcional renderizado dentro do grid, depois do telefone. */
   camposExtras?: React.ReactNode;
-  /** Exibe o selo/ação de validar o telefone por OTP (WhatsApp). */
-  validarTelefone?: boolean;
 }
 
 const lockIcon = (
@@ -55,7 +52,6 @@ export function DadosPessoaisCampos({
   desabilitado,
   mostrarPontoReferencia = true,
   camposExtras,
-  validarTelefone = false,
 }: Props) {
   return (
     <div className="space-y-5">
@@ -134,11 +130,9 @@ export function DadosPessoaisCampos({
           />
         </Campo>
 
-        <Campo
-          label={validarTelefone ? 'Contato principal (WhatsApp)' : 'Telefone'}
-          htmlFor="telefone"
-          erro={erros.telefone}
-        >
+        {/* Sem selo/validação por OTP aqui: "contato verificado" é conceito de PACIENTE
+            (canal oficial SMS↔cidadão, ancorado no Patient FHIR) — não de funcionário. */}
+        <Campo label="Telefone" htmlFor="telefone" erro={erros.telefone}>
           <Input
             id="telefone"
             value={valores.telefone}
@@ -146,11 +140,6 @@ export function DadosPessoaisCampos({
             placeholder="(21) 99999-0000"
             disabled={desabilitado}
           />
-          {validarTelefone ? (
-            <div className="mt-1.5">
-              <BotaoValidarTelefone cpf={valores.cpf} numero={valores.telefone} />
-            </div>
-          ) : null}
         </Campo>
 
         {camposExtras}

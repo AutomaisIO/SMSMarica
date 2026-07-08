@@ -507,7 +507,6 @@ export function FormularioMedico({
         identidadeReadOnly
         emailReadOnly={modo === 'editar'}
         desabilitado={pendente}
-        validarTelefone
       />
 
       {modo === 'editar' && detalhe.data?.usuarioId ? (

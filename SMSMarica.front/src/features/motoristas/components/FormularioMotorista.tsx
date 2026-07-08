@@ -451,7 +451,6 @@ export function FormularioMotorista({ modo, idMotorista, aoConcluir }: Props) {
         identidadeReadOnly
         emailReadOnly={modo === 'editar'}
         desabilitado={pendente}
-        validarTelefone
       />
 
       {modo === 'editar' && detalhe.data ? (

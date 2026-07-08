@@ -54,9 +54,6 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<DownloadToken> DownloadTokens => Set<DownloadToken>();
     public DbSet<CidadaoLoginLink> CidadaoLoginLinks => Set<CidadaoLoginLink>();
 
-    // Contato principal (WhatsApp) validado por OTP, ancorado por CPF (painel ou PWA cidadão).
-    public DbSet<ContatoValidado> ContatosValidados => Set<ContatoValidado>();
-
     // Anexos de exame (ponte QR → PWA "Arquivos Saúde Maricá")
     public DbSet<DocumentoExame> DocumentosExame => Set<DocumentoExame>();
     public DbSet<AnexoUploadToken> AnexoUploadTokens => Set<AnexoUploadToken>();

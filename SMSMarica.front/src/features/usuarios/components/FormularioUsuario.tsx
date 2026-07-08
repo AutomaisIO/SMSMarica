@@ -371,7 +371,6 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
         emailReadOnly={false}
         desabilitado={pendente}
         mostrarPontoReferencia={false}
-        validarTelefone
       />
 
       {modo === 'criar' ? (

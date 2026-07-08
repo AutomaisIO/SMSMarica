@@ -10,7 +10,6 @@ using SMSMarica.Core.SolicitacoesExame;
 using SMSMarica.Core.SolicitacoesExame.Identificadores;
 using SMSMarica.Core.Worklist;
 using SMSMarica.Data;
-using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
 using SMSMarica.Tests.Infraestrutura;
 
@@ -24,11 +23,15 @@ namespace SMSMarica.Tests.SolicitacoesExame;
 [Collection(nameof(PostgresCollection))]
 public class AutorizacaoSolicitacaoTests(PostgresFixture fixture)
 {
-    private SolicitacoesExameService CriarService(SmsMaricaDbContext db, string? cpfPaciente, Guid pacienteId)
+    private SolicitacoesExameService CriarService(
+        SmsMaricaDbContext db, string? cpfPaciente, Guid pacienteId, string? telefoneVerificado = null)
     {
+        // O gate de autorização lê o verificado do Patient FHIR (via resolver) — não há mais
+        // tabela contato_validado para semear; o resumo do mock carrega o telefone verificado.
         var resolver = Substitute.For<IPacienteResolver>();
         resolver.ResolverAsync(pacienteId, Arg.Any<CancellationToken>())
-            .Returns(new PacienteResumo(pacienteId, "PACIENTE TESTE", cpfPaciente, null, null, Sexo.NaoInformado));
+            .Returns(new PacienteResumo(
+                pacienteId, "PACIENTE TESTE", cpfPaciente, null, null, Sexo.NaoInformado, telefoneVerificado));
 
         return new SolicitacoesExameService(
             db,
@@ -42,27 +45,13 @@ public class AutorizacaoSolicitacaoTests(PostgresFixture fixture)
             NullLogger<SolicitacoesExameService>.Instance);
     }
 
-    private async Task<string> SeedContatoValidadoAsync(SmsMaricaDbContext db, string cpf)
-    {
-        db.ContatosValidados.Add(new ContatoValidado
-        {
-            Id = Guid.NewGuid(),
-            Cpf = cpf,
-            Numero = SeedSolicitacao.TelefoneAleatorio(),
-            ValidadoEm = DateTime.UtcNow,
-            Origem = "teste",
-        });
-        await db.SaveChangesAsync();
-        return cpf;
-    }
-
     [Fact]
     public async Task Autorizar_sem_numero_verificado_recusa()
     {
         await using var db = fixture.CriarDbContext();
         var pacienteId = Guid.NewGuid();
         var s = await SeedSolicitacao.CriarAsync(db, pacienteId);
-        var service = CriarService(db, SeedSolicitacao.CpfAleatorio(), pacienteId); // CPF sem contato_validado
+        var service = CriarService(db, SeedSolicitacao.CpfAleatorio(), pacienteId); // sem telefone verificado
 
         var ex = await Assert.ThrowsAsync<ValidacaoException>(() => service.AutorizarAsync(s.Id, "12345"));
         Assert.Contains("verificado", ex.Message, StringComparison.OrdinalIgnoreCase);
@@ -76,9 +65,9 @@ public class AutorizacaoSolicitacaoTests(PostgresFixture fixture)
     {
         await using var db = fixture.CriarDbContext();
         var pacienteId = Guid.NewGuid();
-        var cpf = await SeedContatoValidadoAsync(db, SeedSolicitacao.CpfAleatorio());
+        var cpf = SeedSolicitacao.CpfAleatorio();
         var s = await SeedSolicitacao.CriarAsync(db, pacienteId);
-        var service = CriarService(db, cpf, pacienteId);
+        var service = CriarService(db, cpf, pacienteId, telefoneVerificado: SeedSolicitacao.TelefoneAleatorio());
 
         await Assert.ThrowsAsync<ValidacaoException>(() => service.AutorizarAsync(s.Id, chave));
     }
@@ -88,9 +77,9 @@ public class AutorizacaoSolicitacaoTests(PostgresFixture fixture)
     {
         await using var db = fixture.CriarDbContext();
         var pacienteId = Guid.NewGuid();
-        var cpf = await SeedContatoValidadoAsync(db, SeedSolicitacao.CpfAleatorio());
+        var cpf = SeedSolicitacao.CpfAleatorio();
         var s = await SeedSolicitacao.CriarAsync(db, pacienteId, enviarParaWorklist: true);
-        var service = CriarService(db, cpf, pacienteId);
+        var service = CriarService(db, cpf, pacienteId, telefoneVerificado: SeedSolicitacao.TelefoneAleatorio());
 
         await service.AutorizarAsync(s.Id, "12345");
 
@@ -107,12 +96,12 @@ public class AutorizacaoSolicitacaoTests(PostgresFixture fixture)
     {
         await using var db = fixture.CriarDbContext();
         var pacienteId = Guid.NewGuid();
-        var cpf = await SeedContatoValidadoAsync(db, SeedSolicitacao.CpfAleatorio());
+        var cpf = SeedSolicitacao.CpfAleatorio();
         var s = await SeedSolicitacao.CriarAsync(db, pacienteId, confirmacao: StatusConfirmacaoAgendamento.Cancelada);
         s.ConfirmacaoCanceladaEm = DateTime.UtcNow.AddHours(-2);
         s.MotivoCancelamentoPaciente = "vou viajar";
         await db.SaveChangesAsync();
-        var service = CriarService(db, cpf, pacienteId);
+        var service = CriarService(db, cpf, pacienteId, telefoneVerificado: SeedSolicitacao.TelefoneAleatorio());
 
         await service.AutorizarAsync(s.Id, "0000"); // sentinela extra-SUS também passa na régua
 
@@ -128,9 +117,9 @@ public class AutorizacaoSolicitacaoTests(PostgresFixture fixture)
     {
         await using var db = fixture.CriarDbContext();
         var pacienteId = Guid.NewGuid();
-        var cpf = await SeedContatoValidadoAsync(db, SeedSolicitacao.CpfAleatorio());
+        var cpf = SeedSolicitacao.CpfAleatorio();
         var s = await SeedSolicitacao.CriarAsync(db, pacienteId, enviarParaWorklist: false);
-        var service = CriarService(db, cpf, pacienteId);
+        var service = CriarService(db, cpf, pacienteId, telefoneVerificado: SeedSolicitacao.TelefoneAleatorio());
 
         await service.AutorizarAsync(s.Id, "99999");
 

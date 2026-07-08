@@ -1,19 +1,11 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import {
   confirmarTelefoneOtp,
   enviarTelefoneOtp,
-  obterTelefoneValidado,
 } from '@/features/telefone-validacao/api/telefoneValidacaoApi';
 
-/** Só consulta quando há CPF (11 díg.) e número suficiente. */
-export function useTelefoneValidado(cpf: string | null, numero: string | null) {
-  return useQuery({
-    queryKey: ['telefone-validado', cpf, numero],
-    queryFn: () => obterTelefoneValidado(cpf as string, numero as string),
-    enabled: Boolean(cpf) && Boolean(numero),
-    staleTime: 30_000,
-  });
-}
+// O "situação do validado" não tem mais consulta própria: o telefoneVerificado
+// vem dentro do objeto do paciente (marcador no telecom FHIR).
 
 export function useEnviarTelefoneOtp() {
   return useMutation({

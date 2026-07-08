@@ -32,11 +32,3 @@ export async function confirmarTelefoneOtp(
   });
   return data;
 }
-
-/** Situação do contato validado de um (CPF, número) — para exibir o selo. */
-export async function obterTelefoneValidado(cpf: string, numero: string): Promise<TelefoneValidado> {
-  const { data } = await http.get<TelefoneValidado>('/telefones/validacao', {
-    params: { cpf, numero },
-  });
-  return data;
-}

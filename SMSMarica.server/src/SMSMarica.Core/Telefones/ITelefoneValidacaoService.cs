@@ -21,10 +21,4 @@ public interface ITelefoneValidacaoService
 
     /// <summary>Marca o contato de um CPF como validado sem OTP (ex.: PWA cidadão). Idempotente por CPF.</summary>
     Task MarcarValidadoAsync(string cpf, string numero, string origem, Guid? validadoPor, CancellationToken ct = default);
-
-    /// <summary>Situação: <c>Validado=true</c> só se o CPF tem ESTE número como contato validado.</summary>
-    Task<TelefoneValidadoDto> ConsultarAsync(string cpf, string numero, CancellationToken ct = default);
-
-    /// <summary>Backfill contato_validado → marcador no telecom FHIR (transição; some na fase 2).</summary>
-    Task<TelefoneBackfillResultadoDto> BackfillFhirAsync(CancellationToken ct = default);
 }

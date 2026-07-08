@@ -660,6 +660,7 @@ export function PacienteFormPage() {
           setCampo={atualizarCampo}
           setContato={atualizarContato}
           onTelefoneValidado={aoTelefoneValidado}
+          numeroVerificado={detalhe.data?.telefoneVerificado ?? null}
         />
       ),
     },
@@ -1055,18 +1056,20 @@ function SecaoEndereco({
 }
 
 function SecaoContatos({
-  estado, erros, setCampo, setContato, onTelefoneValidado,
+  estado, erros, setCampo, setContato, onTelefoneValidado, numeroVerificado,
 }: SecProps & {
   setContato: <K extends keyof ContatoEmergencia>(c: K, v: ContatoEmergencia[K]) => void;
   /** Chamado quando o telefone é validado (OTP OK) — para persistir no mesmo fluxo. */
   onTelefoneValidado?: () => void;
+  /** Número verificado que veio no objeto do paciente (telefoneVerificado). */
+  numeroVerificado?: string | null;
 }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Campo label="Contato principal (WhatsApp)" htmlFor="telefonePrincipal" erro={erros.telefonePrincipal}>
           <Input id="telefonePrincipal" value={estado.telefonePrincipal} onChange={(e) => setCampo('telefonePrincipal', e.target.value)} placeholder="(21) 99999-9999" />
-          <div className="mt-1.5"><BotaoValidarTelefone cpf={estado.cpf} numero={estado.telefonePrincipal} onValidado={onTelefoneValidado} /></div>
+          <div className="mt-1.5"><BotaoValidarTelefone cpf={estado.cpf} numero={estado.telefonePrincipal} numeroVerificado={numeroVerificado} onValidado={onTelefoneValidado} /></div>
         </Campo>
         <Campo label="Celular" htmlFor="telefoneCelular" erro={erros.telefoneCelular}>
           <Input id="telefoneCelular" value={estado.telefoneCelular} onChange={(e) => setCampo('telefoneCelular', e.target.value)} />

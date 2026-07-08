@@ -5,7 +5,6 @@ import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/Button';
 import { Modal } from '@/shared/ui/Modal';
 import { usePacientePorId } from '@/features/pacientes/api/queries';
-import { useTelefoneValidado } from '@/features/telefone-validacao/api/queries';
 import { BotaoVerificarTelefonePaciente } from '@/features/telefone-validacao/components/BotaoVerificarTelefonePaciente';
 import type { Paciente } from '@/features/pacientes/types';
 
@@ -50,11 +49,9 @@ function ResumoConteudo({ pacienteId }: { pacienteId: string }) {
   const detalhe = usePacientePorId(pacienteId);
   const p: Paciente | undefined = detalhe.data;
 
-  // Situação do contato principal (WhatsApp) — só o principal é validável (por CPF+número).
-  const cpf = p?.cpf ?? null;
-  const numero = p?.telefonePrincipal ?? null;
-  const validadoQ = useTelefoneValidado(cpf, numero);
-  const telefoneValidado = validadoQ.data?.validado === true;
+  // Situação do contato principal (WhatsApp): o verificado JÁ VEM no objeto do paciente
+  // (marcador no telecom FHIR) — sem request extra, sem "piscada" de não-verificado.
+  const telefoneValidado = Boolean(p?.telefoneVerificado);
 
   if (detalhe.isLoading) {
     return (
@@ -96,7 +93,7 @@ function ResumoConteudo({ pacienteId }: { pacienteId: string }) {
             <BotaoVerificarTelefonePaciente
               cpf={p.cpf}
               numeroInicial={p.telefonePrincipal}
-              aoValidado={() => validadoQ.refetch()}
+              aoValidado={() => detalhe.refetch()}
             />
           )}
         </span>
