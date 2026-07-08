@@ -80,6 +80,10 @@ public sealed class PacientesService(
     public async Task<PacienteExistenciaDto?> ObterPorTelefoneAsync(string telefone, CancellationToken cancellationToken = default)
     {
         var numero = Digitos(telefone);
+        // O hub guarda os telefones na forma NACIONAL (DDD+número); o WhatsApp/canônico chega
+        // com DDI 55 (12/13 díg.) — sem tirar o DDI, o Contains da busca nunca casa.
+        if (numero.StartsWith("55", StringComparison.Ordinal) && numero.Length is 12 or 13)
+            numero = numero[2..];
         if (numero.Length < 8) return null;
 
         var bundle = await fhir.BuscarAsync(telecom: numero, ct: cancellationToken);
