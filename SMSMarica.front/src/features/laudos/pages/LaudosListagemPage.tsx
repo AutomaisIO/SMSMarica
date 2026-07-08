@@ -70,6 +70,7 @@ export function LaudosListagemPage() {
     {
       chave: 'paciente',
       cabecalho: 'Paciente',
+      ordenar: (l) => l.pacienteNome ?? l.pacienteNomeDicom ?? null,
       render: (l) => (
         <div className="min-w-0">
           {l.pacienteNome ? (
@@ -100,11 +101,13 @@ export function LaudosListagemPage() {
     {
       chave: 'medico',
       cabecalho: 'Médico',
+      ordenar: (l) => l.medicoNome,
       render: (l) => <span className="text-gray-700">{l.medicoNome}</span>,
     },
     {
       chave: 'data',
       cabecalho: 'Emissão',
+      ordenar: (l) => l.finalizadoEm ?? l.criadoEm,
       render: (l) => {
         const dt = l.finalizadoEm ?? l.criadoEm;
         return formatarInstante(dt);
@@ -113,6 +116,7 @@ export function LaudosListagemPage() {
     {
       chave: 'birads',
       cabecalho: 'BI-RADS',
+      ordenar: (l) => l.biRads,
       render: (l) =>
         l.biRads ? (
           <span
@@ -127,6 +131,7 @@ export function LaudosListagemPage() {
     {
       chave: 'status',
       cabecalho: 'Status',
+      ordenar: (l) => (l.assinado ? 'Assinado' : l.status),
       render: (l) => (
         <span className="inline-flex items-center gap-1.5">
           <StatusBadgeLaudo status={l.status} assinado={l.assinado} />

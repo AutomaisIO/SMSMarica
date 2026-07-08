@@ -153,6 +153,7 @@ export function SolicitacoesExamePage() {
     {
       chave: 'accession',
       cabecalho: 'Pedido',
+      ordenar: (s) => s.accessionNumber,
       render: (s) => (
         <div className="flex items-start gap-1.5">
           <DirecaoIcone direcao={s.direcao} />
@@ -168,6 +169,7 @@ export function SolicitacoesExamePage() {
     {
       chave: 'paciente',
       cabecalho: 'Paciente',
+      ordenar: (s) => s.pacienteNome || null,
       render: (s) => (
         <div className="min-w-0">
           <NomePacienteComResumo
@@ -190,6 +192,7 @@ export function SolicitacoesExamePage() {
     {
       chave: 'exame',
       cabecalho: 'Exame',
+      ordenar: (s) => s.tipoExameNome || null,
       render: (s) => (
         <div className="min-w-0">
           <div className="truncate text-gray-900">{s.tipoExameNome}</div>
@@ -203,11 +206,13 @@ export function SolicitacoesExamePage() {
     {
       chave: 'data',
       cabecalho: 'Data Agendamento',
+      ordenar: (s) => s.dataAgendada,
       render: (s) => formatarInstante(s.dataAgendada),
     },
     {
       chave: 'status',
       cabecalho: 'Situação',
+      ordenar: (s) => derivarSituacao(s)?.rotulo ?? s.status,
       render: (s) => {
         const sit = derivarSituacao(s);
         return (
