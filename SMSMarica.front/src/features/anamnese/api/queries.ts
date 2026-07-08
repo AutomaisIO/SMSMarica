@@ -39,7 +39,11 @@ export function useSalvarAnamnese() {
       solicitacaoExameId: string;
       payload: SalvarAnamnesePayload;
     }) => salvarAnamnese(solicitacaoExameId, payload),
-    onSuccess: () => client.invalidateQueries({ queryKey: ['anamnese'] }),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ['anamnese'] });
+      // A lista de Solicitações pinta o botão Anamnese (temAnamnese) — refetch ao voltar.
+      client.invalidateQueries({ queryKey: ['solicitacoes-exame', 'lista'] });
+    },
   });
 }
 

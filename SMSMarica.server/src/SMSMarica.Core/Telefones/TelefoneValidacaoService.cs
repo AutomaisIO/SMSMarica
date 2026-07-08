@@ -103,7 +103,7 @@ public sealed class TelefoneValidacaoService(
         }
 
         cache.Remove(chave);
-        var validadoEm = await MarcarValidadoInternoAsync(cpfDig, canon, origem, atual.UsuarioId, ct);
+        var validadoEm = await MarcarValidadoInternoAsync(cpfDig, canon, origem, atual.UsuarioId, exigirFhir: true, ct);
         return new TelefoneValidadoDto(canon, true, validadoEm);
     }
 
@@ -113,7 +113,8 @@ public sealed class TelefoneValidacaoService(
         var cpfDig = CpfDigitos(cpf, lancar: false);
         var canon = Canonizar(numero);
         if (cpfDig.Length != 11 || canon.Length < 12) return;
-        await MarcarValidadoInternoAsync(cpfDig, canon, origem, validadoPor, ct);
+        // Caminho silencioso (login do PWA): melhor esforço no FHIR — não pode travar o login.
+        await MarcarValidadoInternoAsync(cpfDig, canon, origem, validadoPor, exigirFhir: false, ct);
     }
 
     public async Task<TelefoneValidadoDto> ConsultarAsync(string cpf, string numero, CancellationToken ct = default)
@@ -123,17 +124,24 @@ public sealed class TelefoneValidacaoService(
         if (cpfDig.Length != 11 || canon.Length < 12)
             return new TelefoneValidadoDto(canon, false, null);
 
-        // Validado só quando o CONTATO daquele CPF é exatamente este número.
-        var reg = await db.ContatosValidados.AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Cpf == cpfDig && c.Numero == canon, ct);
-        return new TelefoneValidadoDto(canon, reg is not null, reg?.ValidadoEm);
+        // Fonte única: marcador de confirmado no telecom do Patient FHIR (não a tabela local).
+        var patient = await ObterPatientPorCpfAsync(cpfDig, ct);
+        if (patient is null) return new TelefoneValidadoDto(canon, false, null);
+
+        var confirmado = PatientMergeFhir.TelefoneConfirmado(patient);
+        var validado = confirmado is not null && PatientMergeFhir.TelefoneEstaConfirmado(patient, canon);
+        return new TelefoneValidadoDto(canon, validado, validado ? confirmado?.Em?.UtcDateTime : null);
     }
 
-    /// <summary>Lança 409 se o número já é contato principal de OUTRO CPF.</summary>
+    /// <summary>Lança 409 se o número já é contato CONFIRMADO de OUTRO CPF (busca por telecom no hub).</summary>
     private async Task GarantirNumeroLivreAsync(string cpfDig, string canon, CancellationToken ct)
     {
-        var donoOutro = await db.ContatosValidados.AsNoTracking()
-            .AnyAsync(c => c.Numero == canon && c.Cpf != cpfDig, ct);
+        // O hub guarda a forma nacional (sem DDI) — busca pelos últimos 11 dígitos.
+        var nacional = canon.Length > 11 ? canon[^11..] : canon;
+        var bundle = await fhir.BuscarAsync(telecom: nacional, ct: ct);
+        var donoOutro = bundle.Entry.Select(e => e.Resource).OfType<Patient>().Any(p =>
+            PatientMergeFhir.TelefoneEstaConfirmado(p, canon)
+            && CpfDoPatient(p) is { Length: 11 } outroCpf && outroCpf != cpfDig);
         if (donoOutro)
             throw new ConflitoException(
                 "telefone.duplicado",
@@ -141,12 +149,23 @@ public sealed class TelefoneValidacaoService(
     }
 
     private async Task<DateTime> MarcarValidadoInternoAsync(
-        string cpfDig, string canon, string origem, Guid? por, CancellationToken ct)
+        string cpfDig, string canon, string origem, Guid? por, bool exigirFhir, CancellationToken ct)
     {
         await GarantirNumeroLivreAsync(cpfDig, canon, ct);
 
         var agora = DateTime.UtcNow;
-        // Upsert por PESSOA (CPF): 1 contato principal por CPF; trocar o número libera o antigo.
+
+        // Fonte da verdade: marcador no telecom do Patient FHIR. Quando exigido (OTP confirmado
+        // pelo operador/cidadão), falha ALTO se não conseguir carimbar — validação sem carimbo
+        // seria invisível para todo o sistema.
+        var estampado = await EstamparConfirmadoNoFhirAsync(cpfDig, canon, agora, ct);
+        if (!estampado && exigirFhir)
+            throw new ValidacaoException(
+                "telefone.fhir_indisponivel",
+                "Não foi possível registrar a verificação no cadastro do paciente. Tente novamente.");
+
+        // Dual-write transitório na tabela contato_validado (removida na fase 2 — o backfill
+        // usa a tabela como fonte; manter escrito até o drop garante que nada se perca).
         var existente = await db.ContatosValidados.FirstOrDefaultAsync(c => c.Cpf == cpfDig, ct);
         if (existente is null)
         {
@@ -168,30 +187,72 @@ public sealed class TelefoneValidacaoService(
             existente.ValidadoPor = por;
         }
         await db.SaveChangesAsync(ct);
-        logger.LogInformation("Contato {Num} validado para CPF {Cpf} (origem {Origem}).", canon, cpfDig, origem);
-
-        // Projeta o "confirmado" no FHIR (marcador no telecom do Patient) para que a automação
-        // — merge de edição, import, backfill — NUNCA toque neste número (ADR-0020, decisão #2).
-        // Best-effort: se falhar, o contato_validado já está salvo e um backfill re-carimba.
-        await EstamparConfirmadoNoFhirAsync(cpfDig, canon, agora, ct);
+        logger.LogInformation("Contato {Num} validado para CPF {Cpf} (origem {Origem}; FHIR {Fhir}).",
+            canon, cpfDig, origem, estampado ? "estampado" : "PENDENTE");
         return agora;
     }
 
-    private async Task EstamparConfirmadoNoFhirAsync(string cpfDig, string canon, DateTime em, CancellationToken ct)
+    /// <summary>
+    /// Backfill contato_validado → FHIR: garante o marcador de confirmado no telecom de cada
+    /// Patient. Idempotente (re-carimbar o mesmo número é no-op lógico). Roda antes do drop
+    /// da tabela (fase 2) — nada verificado se perde.
+    /// </summary>
+    public async Task<TelefoneBackfillResultadoDto> BackfillFhirAsync(CancellationToken ct = default)
+    {
+        var linhas = await db.ContatosValidados.AsNoTracking().OrderBy(c => c.ValidadoEm).ToListAsync(ct);
+        int jaOk = 0, estampados = 0, semPaciente = 0, erros = 0;
+
+        foreach (var c in linhas)
+        {
+            try
+            {
+                var patient = await ObterPatientPorCpfAsync(c.Cpf, ct);
+                if (patient is null) { semPaciente++; continue; }
+                if (PatientMergeFhir.TelefoneEstaConfirmado(patient, c.Numero)) { jaOk++; continue; }
+
+                PatientMergeFhir.MarcarTelefoneConfirmado(
+                    patient, c.Numero, new DateTimeOffset(c.ValidadoEm, TimeSpan.Zero));
+                await fhir.AtualizarAsync(Guid.Parse(patient.Id!), patient, ct);
+                estampados++;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                erros++;
+                logger.LogWarning(ex, "Backfill: falha ao carimbar contato do CPF {Cpf} no FHIR.", c.Cpf);
+            }
+        }
+
+        logger.LogInformation(
+            "Backfill contato_validado→FHIR: {Total} linhas, {Ok} já ok, {Est} estampados, {Sem} sem paciente, {Err} erros.",
+            linhas.Count, jaOk, estampados, semPaciente, erros);
+        return new TelefoneBackfillResultadoDto(linhas.Count, jaOk, estampados, semPaciente, erros);
+    }
+
+    private async Task<Patient?> ObterPatientPorCpfAsync(string cpfDig, CancellationToken ct)
+    {
+        var bundle = await fhir.BuscarAsync(identifier: cpfDig, ct: ct);
+        return bundle.Entry.Select(e => e.Resource).OfType<Patient>().FirstOrDefault(p => p.Id is not null);
+    }
+
+    private static string? CpfDoPatient(Patient p) =>
+        p.Identifier?.FirstOrDefault(i => i.System == PatientMergeFhir.SystemCpf)?.Value is { } v
+            ? new string([.. v.Where(char.IsDigit)])
+            : null;
+
+    private async Task<bool> EstamparConfirmadoNoFhirAsync(string cpfDig, string canon, DateTime em, CancellationToken ct)
     {
         try
         {
-            var bundle = await fhir.BuscarAsync(identifier: cpfDig, ct: ct);
-            var patient = bundle.Entry.Select(e => e.Resource).OfType<Patient>().FirstOrDefault();
-            if (patient?.Id is null) return;
+            var patient = await ObterPatientPorCpfAsync(cpfDig, ct);
+            if (patient?.Id is null) return false;
             PatientMergeFhir.MarcarTelefoneConfirmado(patient, canon, new DateTimeOffset(em, TimeSpan.Zero));
             await fhir.AtualizarAsync(Guid.Parse(patient.Id), patient, ct);
+            return true;
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex,
-                "Falha ao estampar telefone confirmado no FHIR (CPF {Cpf}); contato_validado salvo, backfill re-carimba.",
-                cpfDig);
+            logger.LogWarning(ex, "Falha ao estampar telefone confirmado no FHIR (CPF {Cpf}).", cpfDig);
+            return false;
         }
     }
 

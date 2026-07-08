@@ -11,7 +11,9 @@ public sealed record PacienteResumo(
     string? Cpf,
     string? Cns,
     DateOnly? DataNascimento,
-    Sexo Sexo);
+    Sexo Sexo,
+    /// <summary>Número do contato verificado (marcador no telecom FHIR), se houver.</summary>
+    string? TelefoneVerificado = null);
 
 /// <summary>
 /// Resolve dados de paciente do hub FHIR por id. Os dependentes (Laudo,
@@ -42,7 +44,8 @@ public sealed class PacienteResolver(IPacienteFhirClient fhir, ILogger<PacienteR
             if (patient is null) return null;
 
             var dto = PacienteFhirMapper.ParaDto(patient);
-            return new PacienteResumo(dto.Id, dto.NomeCompleto, dto.Cpf, dto.Cns, dto.DataNascimento, dto.Sexo);
+            return new PacienteResumo(dto.Id, dto.NomeCompleto, dto.Cpf, dto.Cns, dto.DataNascimento, dto.Sexo,
+                dto.TelefoneVerificado);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

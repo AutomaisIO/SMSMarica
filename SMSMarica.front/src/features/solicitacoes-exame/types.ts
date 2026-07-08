@@ -126,6 +126,8 @@ export type SolicitacaoExameListItem = {
   chipConfirmacao: ComunicacaoChip | null;
   chipExameLiberado: ComunicacaoChip | null;
   chipLaudoPronto: ComunicacaoChip | null;
+  /** Anamnese (questionário pré-exame) já preenchida — muda a cor do botão na lista. */
+  temAnamnese: boolean;
 };
 
 /** Resumo da comunicação para os checks na lista. */

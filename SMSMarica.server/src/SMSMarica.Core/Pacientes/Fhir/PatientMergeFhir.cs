@@ -203,16 +203,22 @@ public static class PatientMergeFhir
     /// <summary>Blob proprietário do smsmarica (payload JSON) — preservado no reimport (Oracle não tem).</summary>
     public const string ExtPayloadBlob = "urn:smsmarica:paciente-payload";
 
-    public static void AplicarContatos(Patient p, string? principal, string? celular, string? residencial, string? email)
+    /// <param name="manual">
+    /// true = edição humana pelo painel: trocar o principal por um número DIFERENTE remove o
+    /// marcador de confirmado (o novo número nasce não-verificado e exige nova verificação).
+    /// false (default) = automação (import/promoção/backfill): telecom confirmado é intocável.
+    /// </param>
+    public static void AplicarContatos(Patient p, string? principal, string? celular, string? residencial, string? email,
+        bool manual = false)
     {
         p.Telecom ??= [];
-        UpsertTelefone(p, principal, use: null, rank: 1);
-        UpsertTelefone(p, celular, use: ContactPoint.ContactPointUse.Mobile, rank: null);
-        UpsertTelefone(p, residencial, use: ContactPoint.ContactPointUse.Home, rank: null);
+        UpsertTelefone(p, principal, use: null, rank: 1, manual);
+        UpsertTelefone(p, celular, use: ContactPoint.ContactPointUse.Mobile, rank: null, manual);
+        UpsertTelefone(p, residencial, use: ContactPoint.ContactPointUse.Home, rank: null, manual);
         UpsertEmail(p, email);
     }
 
-    private static void UpsertTelefone(Patient p, string? valor, ContactPoint.ContactPointUse? use, int? rank)
+    private static void UpsertTelefone(Patient p, string? valor, ContactPoint.ContactPointUse? use, int? rank, bool manual)
     {
         var digitos = Digitos(valor);
         if (digitos.Length == 0) return; // vazio = no-op (nunca remove; preservação-first)
@@ -228,8 +234,14 @@ public static class PatientMergeFhir
             ? p.Telecom.FirstOrDefault(t => ehTelefone(t) && t.Rank == 1)
             : p.Telecom.FirstOrDefault(t => ehTelefone(t) && t.Use == use && t.Rank != 1);
 
-        // Nunca tocar num slot confirmado (ex.: trocar o principal quando o atual está validado).
-        if (slot is not null && EhConfirmado(slot)) return;
+        if (slot is not null && EhConfirmado(slot))
+        {
+            // Automação nunca toca num slot confirmado (ex.: import trocando o principal validado).
+            if (!manual) return;
+            // Edição manual trocando o número: o verificado deixa de valer — remove o marcador
+            // e sobrescreve abaixo. Quem atende decide; o novo número exige nova verificação.
+            slot.RemoveExtension(ExtContatoConfirmado);
+        }
 
         // Sem slot gerido: reusa um telefone de mesmos dígitos (ex.: o telefone nativo do
         // importado) — nunca colapsa um não-principal no slot principal, nem reusa um confirmado.
@@ -296,6 +308,30 @@ public static class PatientMergeFhir
     }
 
     private static bool EhConfirmado(ContactPoint t) => t.GetExtension(ExtContatoConfirmado) is not null;
+
+    /// <summary>
+    /// Telecom CONFIRMADO do Patient (número em dígitos + instante da validação), ou null.
+    /// É a fonte única do "telefone verificado" — substitui a antiga tabela contato_validado.
+    /// </summary>
+    public static (string Numero, DateTimeOffset? Em)? TelefoneConfirmado(Patient p)
+    {
+        var t = p.Telecom?.FirstOrDefault(x =>
+            x.System == ContactPoint.ContactPointSystem.Phone && EhConfirmado(x));
+        var digitos = Digitos(t?.Value);
+        if (t is null || digitos.Length < 8) return null;
+
+        DateTimeOffset? em = null;
+        if (t.GetExtension(ExtContatoConfirmado)?.Value is FhirDateTime fd)
+        {
+            try { em = fd.ToDateTimeOffset(TimeSpan.Zero); }
+            catch { /* carimbo ilegível não invalida o confirmado */ }
+        }
+        return (digitos, em);
+    }
+
+    /// <summary>true se o <paramref name="numero"/> é o telecom confirmado do Patient (tolera DDI).</summary>
+    public static bool TelefoneEstaConfirmado(Patient p, string numero) =>
+        TelefoneConfirmado(p) is { } c && MesmoNumero(c.Numero, Digitos(numero));
 
     /// <summary>Mesmo número tolerando DDI (um é sufixo do outro), com guarda de tamanho.</summary>
     private static bool MesmoNumero(string a, string b) =>
@@ -392,6 +428,15 @@ public static class PatientMergeFhir
             novo.Telecom.RemoveAll(x => x.System == ContactPoint.ContactPointSystem.Phone
                 && MesmoNumero(Digitos(x.Value), Digitos(conf.Value)));
             novo.Telecom.Add((ContactPoint)conf.DeepCopy());
+        }
+
+        // Com um confirmado presente, ele é o ÚNICO principal: telefone vindo do prontuário
+        // externo fica num slot secundário (rank demovido), nunca disputa o rank 1.
+        if (novo.Telecom.Any(t => t.System == ContactPoint.ContactPointSystem.Phone && EhConfirmado(t)))
+        {
+            foreach (var t in novo.Telecom.Where(t =>
+                         t.System == ContactPoint.ContactPointSystem.Phone && !EhConfirmado(t) && t.Rank == 1))
+                t.Rank = null;
         }
     }
 

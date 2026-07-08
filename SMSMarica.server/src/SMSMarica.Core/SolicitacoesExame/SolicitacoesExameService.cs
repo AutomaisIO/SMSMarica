@@ -51,10 +51,8 @@ public sealed class SolicitacoesExameService(
     private async Task<SolicitacaoExameDto> EnriquecerAsync(SolicitacaoExameDto dto, CancellationToken ct)
     {
         var r = await _pacienteResolver.ResolverAsync(dto.PacienteId, ct);
-        var cpf = new string([.. (r?.Cpf ?? "").Where(char.IsDigit)]);
-        var verificado = cpf.Length == 11
-            && await _db.ContatosValidados.AsNoTracking().AnyAsync(c => c.Cpf == cpf, ct);
-        var comVerificado = dto with { PacienteContatoVerificado = verificado };
+        // Verificado = marcador no telecom do Patient FHIR (fonte única; sem tabela local).
+        var comVerificado = dto with { PacienteContatoVerificado = r?.TelefoneVerificado is not null };
         return r is null
             ? comVerificado
             : comVerificado with { PacienteNome = r.Nome, PacienteCpf = r.Cpf, PacienteCns = r.Cns };
@@ -155,7 +153,21 @@ public sealed class SolicitacoesExameService(
 
         var dtos = await EnriquecerAsync([.. lista.Select(s => SolicitacoesExameMapper.ParaListItem(s, unidadeReferencia))], cancellationToken);
         var comLaudos = await EnriquecerLaudosAsync([.. dtos], cancellationToken);
-        return await EnriquecerComunicacoesAsync([.. comLaudos], cancellationToken);
+        var comAnamnese = await EnriquecerAnamneseAsync([.. comLaudos], cancellationToken);
+        return await EnriquecerComunicacoesAsync([.. comAnamnese], cancellationToken);
+    }
+
+    // Marca as linhas que já têm anamnese preenchida (muda a cor do botão Anamnese na lista).
+    private async Task<IReadOnlyList<SolicitacaoExameListItemDto>> EnriquecerAnamneseAsync(
+        List<SolicitacaoExameListItemDto> dtos, CancellationToken ct)
+    {
+        if (dtos.Count == 0) return dtos;
+        var ids = dtos.Select(d => d.Id).ToArray();
+        var comAnamnese = (await _db.Anamneses.AsNoTracking()
+            .Where(a => ids.Contains(a.SolicitacaoExameId) && a.ExcluidoEm == null)
+            .Select(a => a.SolicitacaoExameId)
+            .ToListAsync(ct)).ToHashSet();
+        return [.. dtos.Select(d => comAnamnese.Contains(d.Id) ? d with { TemAnamnese = true } : d)];
     }
 
     // Checks de comunicação na lista (✓/✓✓/✓✓azul/⚠): resume ExameLiberado e LaudoPronto de
@@ -284,12 +296,9 @@ public sealed class SolicitacoesExameService(
             .FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(SolicitacaoExame), id);
 
-        // Gate: paciente precisa ter um número VERIFICADO (contato_validado por CPF).
+        // Gate: paciente precisa ter um número VERIFICADO (marcador no telecom do Patient FHIR).
         var paciente = await _pacienteResolver.ResolverAsync(s.PacienteId, cancellationToken);
-        var cpf = new string([.. (paciente?.Cpf ?? "").Where(char.IsDigit)]);
-        var verificado = cpf.Length == 11
-            && await _db.ContatosValidados.AsNoTracking().AnyAsync(c => c.Cpf == cpf, cancellationToken);
-        if (!verificado)
+        if (paciente?.TelefoneVerificado is null)
             throw new ValidacaoException(
                 "autorizacao.sem_numero_verificado",
                 "O paciente ainda não tem um número de telefone verificado. Verifique o contato antes de autorizar.");

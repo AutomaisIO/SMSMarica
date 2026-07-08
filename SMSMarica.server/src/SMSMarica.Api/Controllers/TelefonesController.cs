@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using SMSMarica.Api.Auth;
 using SMSMarica.Core.Telefones;
 using SMSMarica.Core.Telefones.Dtos;
+using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
 
@@ -38,4 +40,14 @@ public sealed class TelefonesController(ITelefoneValidacaoService service) : Con
     public async Task<TelefoneValidadoDto> Consultar(
         [FromQuery] string cpf, [FromQuery] string numero, CancellationToken cancellationToken) =>
         await service.ConsultarAsync(cpf ?? string.Empty, numero ?? string.Empty, cancellationToken);
+
+    /// <summary>
+    /// Backfill contato_validado → marcador no telecom FHIR (transição para a fonte única;
+    /// endpoint temporário — sai junto com a tabela na fase 2). Idempotente.
+    /// </summary>
+    [HttpPost("validacao/backfill-fhir")]
+    [RequerPermissao(ModuloPermissao.Pacientes, AcoesPermissao.Edicao)]
+    [ProducesResponseType<TelefoneBackfillResultadoDto>(StatusCodes.Status200OK)]
+    public async Task<TelefoneBackfillResultadoDto> BackfillFhir(CancellationToken cancellationToken) =>
+        await service.BackfillFhirAsync(cancellationToken);
 }

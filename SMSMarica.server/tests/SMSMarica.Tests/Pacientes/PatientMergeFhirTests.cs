@@ -82,6 +82,51 @@ public class PatientMergeFhirTests
     }
 
     [Fact]
+    public void Edicao_manual_troca_o_principal_confirmado_e_remove_o_marcador()
+    {
+        var p = new Patient { Telecom = [Fone("21999990000", rank: 1)] };
+        PatientMergeFhir.MarcarTelefoneConfirmado(p, "5521999990000", DateTimeOffset.UtcNow);
+
+        // Operador troca o principal de propósito: o novo número nasce NÃO verificado.
+        PatientMergeFhir.AplicarContatos(p, "21988887777", null, null, null, manual: true);
+
+        var principal = p.Telecom.Single(t => t.System == ContactPoint.ContactPointSystem.Phone && t.Rank == 1);
+        Digitos(principal.Value).Should().Be("21988887777");
+        p.Telecom.Should().NotContain(t => t.GetExtension(PatientMergeFhir.ExtContatoConfirmado) != null);
+    }
+
+    [Fact]
+    public void Edicao_manual_com_o_mesmo_numero_preserva_o_marcador()
+    {
+        var p = new Patient { Telecom = [Fone("21999990000", rank: 1)] };
+        PatientMergeFhir.MarcarTelefoneConfirmado(p, "5521999990000", DateTimeOffset.UtcNow);
+
+        // Reenvio do form com o mesmo número (round-trip) não derruba o verificado.
+        PatientMergeFhir.AplicarContatos(p, "21999990000", null, null, null, manual: true);
+
+        var confirmado = p.Telecom.Single(t => t.GetExtension(PatientMergeFhir.ExtContatoConfirmado) is not null);
+        Digitos(confirmado.Value).Should().Be("21999990000");
+        confirmado.Rank.Should().Be(1);
+    }
+
+    [Fact]
+    public void TelefoneConfirmado_expoe_numero_e_instante_e_tolera_ddi()
+    {
+        var p = new Patient { Telecom = [Fone("21999990000", rank: 1)] };
+        var em = DateTimeOffset.UtcNow;
+        PatientMergeFhir.MarcarTelefoneConfirmado(p, "5521999990000", em);
+
+        var conf = PatientMergeFhir.TelefoneConfirmado(p);
+        conf.Should().NotBeNull();
+        conf!.Value.Numero.Should().Be("21999990000");
+        conf.Value.Em.Should().NotBeNull();
+
+        PatientMergeFhir.TelefoneEstaConfirmado(p, "5521999990000").Should().BeTrue();  // com DDI
+        PatientMergeFhir.TelefoneEstaConfirmado(p, "21999990000").Should().BeTrue();    // nacional
+        PatientMergeFhir.TelefoneEstaConfirmado(p, "21988887777").Should().BeFalse();
+    }
+
+    [Fact]
     public void MarcarTelefoneConfirmado_e_idempotente_e_um_por_pessoa()
     {
         var p = new Patient { Telecom = [Fone("21999990000")] };
@@ -235,6 +280,24 @@ public class PatientMergeFhirTests
 
         novo.Telecom.Should().Contain(t => t.System == ContactPoint.ContactPointSystem.Email && t.Value == "painel@x.com"); // email do painel
         novo.Telecom.Should().Contain(t => Digitos(t.Value) == "21955554444"); // telefone do Oracle NÃO congelado
+    }
+
+    [Fact]
+    public void PreservarDoExistente_demove_rank1_do_oracle_quando_ha_confirmado()
+    {
+        var atual = Importado();
+        atual.Telecom = [Fone("21988887777", rank: 1)];
+        PatientMergeFhir.MarcarTelefoneConfirmado(atual, "5521988887777", DateTimeOffset.UtcNow);
+
+        // Prontuário externo chega com telefone reivindicando o principal.
+        var novo = new Patient { Telecom = [Fone("21911112222", rank: 1)] };
+
+        PatientMergeFhir.PreservarDoExistente(novo, atual);
+
+        var principais = novo.Telecom.Where(t => t.System == ContactPoint.ContactPointSystem.Phone && t.Rank == 1).ToList();
+        principais.Should().ContainSingle();
+        Digitos(principais[0].Value).Should().Be("21988887777"); // o confirmado é o único principal
+        novo.Telecom.Should().Contain(t => Digitos(t.Value) == "21911112222"); // o do Oracle fica em slot secundário
     }
 
     [Fact]

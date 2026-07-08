@@ -226,7 +226,12 @@ export function SolicitacoesExamePage() {
         const realizadaOuLaudada = s.status === 'Realizada' || s.status === 'Laudada';
         return (
           <div className="flex items-center justify-end gap-2">
-            <BotaoAnamnese solicitacaoExameId={s.id} accessionNumber={s.accessionNumber} iconeApenas />
+            <BotaoAnamnese
+              solicitacaoExameId={s.id}
+              accessionNumber={s.accessionNumber}
+              temAnamnese={s.temAnamnese}
+              iconeApenas
+            />
             {realizadaOuLaudada ? (
               <>
                 <BotaoDeclaracaoComparecimento solicitacaoId={s.id} />

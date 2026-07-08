@@ -24,4 +24,7 @@ public interface ITelefoneValidacaoService
 
     /// <summary>Situação: <c>Validado=true</c> só se o CPF tem ESTE número como contato validado.</summary>
     Task<TelefoneValidadoDto> ConsultarAsync(string cpf, string numero, CancellationToken ct = default);
+
+    /// <summary>Backfill contato_validado → marcador no telecom FHIR (transição; some na fase 2).</summary>
+    Task<TelefoneBackfillResultadoDto> BackfillFhirAsync(CancellationToken ct = default);
 }

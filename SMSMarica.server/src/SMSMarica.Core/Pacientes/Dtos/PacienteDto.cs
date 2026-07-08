@@ -66,7 +66,11 @@ public sealed record PacienteDto(
     string? Fonte = null,
     /// <summary>Dados crus da fonte preservados em extension (ex.: códigos Salux:
     /// cor, nacionalidade, religião, etnia, peso/altura, sangue/RH).</summary>
-    IReadOnlyDictionary<string, string>? DadosFonte = null);
+    IReadOnlyDictionary<string, string>? DadosFonte = null,
+    /// <summary>Número do contato VERIFICADO por OTP (marcador no telecom FHIR), se houver.
+    /// Fonte única do "telefone verificado" — é por ele que a SMS fala com a pessoa.</summary>
+    string? TelefoneVerificado = null,
+    DateTime? TelefoneVerificadoEm = null);
 
 /// <summary>Identificador FHIR (system + valor) — ex.: CPF, CNS, RG, prontuário.</summary>
 public sealed record IdentificadorDto(string Sistema, string Valor);

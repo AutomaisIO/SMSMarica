@@ -119,15 +119,12 @@ public sealed class ComunicacaoPacienteService(
     private async Task EnviarAsync(ComunicacaoPaciente n, SolicitacaoExame s, CancellationToken ct)
     {
         var paciente = await pacientes.ObterPorIdAsync(n.PacienteId, ct);
-        var cpf = SoDigitos(paciente.Cpf);
 
-        // Telefone: contato validado por OTP (âncora por CPF) > celular do cadastro > principal.
-        string? telefone = null;
-        if (cpf.Length == 11)
-            telefone = await db.ContatosValidados.AsNoTracking()
-                .Where(c => c.Cpf == cpf).Select(c => c.Numero).FirstOrDefaultAsync(ct);
-        telefone ??= new[] { paciente.TelefoneCelular, paciente.TelefonePrincipal }
-            .FirstOrDefault(TelefoneWhatsApp.EhCelularBr);
+        // Telefone: contato VERIFICADO (marcador no telecom FHIR, já vem no DTO) >
+        // celular do cadastro > principal.
+        var telefone = paciente.TelefoneVerificado
+            ?? new[] { paciente.TelefoneCelular, paciente.TelefonePrincipal }
+                .FirstOrDefault(TelefoneWhatsApp.EhCelularBr);
 
         if (!TelefoneWhatsApp.EhCelularBr(telefone))
         {
@@ -261,9 +258,6 @@ public sealed class ComunicacaoPacienteService(
         var partes = (nome ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
         return partes.Length == 0 ? "Paciente" : PtBr.TextInfo.ToTitleCase(partes[0].ToLowerInvariant());
     }
-
-    private static string SoDigitos(string? v) =>
-        string.IsNullOrEmpty(v) ? string.Empty : new string([.. v.Where(char.IsDigit)]);
 
     private static string? Truncar(string? s) => s is null ? null : s.Length <= 1000 ? s : s[..1000];
 }

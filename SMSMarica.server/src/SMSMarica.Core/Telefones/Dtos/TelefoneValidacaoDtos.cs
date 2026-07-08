@@ -11,3 +11,7 @@ public sealed record TelefoneOtpEmitidoDto(string Canal, string? Mascara, int Ex
 
 /// <summary>Situação do contato validado de um (CPF, número).</summary>
 public sealed record TelefoneValidadoDto(string Numero, bool Validado, DateTime? ValidadoEm);
+
+/// <summary>Resultado do backfill contato_validado → marcador FHIR (fase de transição).</summary>
+public sealed record TelefoneBackfillResultadoDto(
+    int Total, int JaEstampados, int Estampados, int SemPaciente, int Erros);

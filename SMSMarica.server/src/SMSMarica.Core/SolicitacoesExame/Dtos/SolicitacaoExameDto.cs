@@ -120,4 +120,6 @@ public sealed record SolicitacaoExameListItemDto(
     // Preenchidos no enriquecimento da listagem; null quando não há comunicação da finalidade.
     ComunicacaoChipDto? ChipConfirmacao = null,
     ComunicacaoChipDto? ChipExameLiberado = null,
-    ComunicacaoChipDto? ChipLaudoPronto = null);
+    ComunicacaoChipDto? ChipLaudoPronto = null,
+    // Anamnese (questionário pré-exame) já preenchida — muda a cor do botão na lista.
+    bool TemAnamnese = false);

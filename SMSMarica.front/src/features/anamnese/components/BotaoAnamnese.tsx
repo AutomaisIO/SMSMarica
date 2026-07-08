@@ -19,6 +19,11 @@ type Props = {
    * desabilitado quando não há anamnese salva (tooltip "Sem anamnese").
    */
   somenteLeitura?: boolean;
+  /**
+   * Anamnese já preenchida (vem no DTO da listagem — sem request extra por linha).
+   * Muda a cor do botão: esmeralda = preenchida, indigo = pendente.
+   */
+  temAnamnese?: boolean;
   className?: string;
 };
 
@@ -33,18 +38,20 @@ export function BotaoAnamnese({
   variante = 'compacto',
   iconeApenas = false,
   somenteLeitura = false,
+  temAnamnese: temAnamneseProp,
   className,
 }: Props) {
   const navigate = useNavigate();
   const habilitado = Boolean(solicitacaoExameId || accessionNumber?.trim());
 
   // Em modo leitura, descobrimos se já existe anamnese salva para habilitar o
-  // botão. Em edição (tela Solicitações) o botão é sempre ativo (é onde se cria).
+  // botão. Em edição (tela Solicitações) o botão é sempre ativo (é onde se cria)
+  // e a flag vem pronta no DTO da lista — sem uma request por linha da tabela.
   const contexto = useContextoAnamnese({
     solicitacaoExameId: somenteLeitura ? (solicitacaoExameId ?? undefined) : undefined,
     accessionNumber: somenteLeitura ? (accessionNumber?.trim() || undefined) : undefined,
   });
-  const temAnamnese = Boolean(contexto.data?.anamnese);
+  const temAnamnese = temAnamneseProp ?? Boolean(contexto.data?.anamnese);
   const semAnamnese = somenteLeitura && contexto.isSuccess && !temAnamnese;
 
   if (!habilitado) return null;
@@ -58,16 +65,23 @@ export function BotaoAnamnese({
     navigate(destino);
   }
 
+  const titulo = semAnamnese
+    ? 'Sem anamnese'
+    : temAnamnese
+      ? 'Anamnese preenchida — clique para ver/editar'
+      : 'Anamnese do paciente (pré-exame)';
+
   if (iconeApenas) {
     return (
       <button
         type="button"
         onClick={abrir}
         disabled={semAnamnese}
-        title={semAnamnese ? 'Sem anamnese' : 'Anamnese do paciente (pré-exame)'}
+        title={titulo}
         aria-label="Anamnese do paciente"
         className={cn(
-          'inline-flex items-center rounded p-0.5 text-indigo-600 transition-colors hover:text-indigo-800',
+          'inline-flex items-center rounded p-0.5 transition-colors',
+          temAnamnese ? 'text-emerald-600 hover:text-emerald-800' : 'text-indigo-600 hover:text-indigo-800',
           'disabled:cursor-not-allowed disabled:text-gray-300',
           className,
         )}
@@ -82,12 +96,15 @@ export function BotaoAnamnese({
       type="button"
       onClick={abrir}
       disabled={semAnamnese}
-      title={semAnamnese ? 'Sem anamnese' : 'Anamnese do paciente (pré-exame)'}
+      title={titulo}
       className={cn(
         variante === 'compacto'
-          ? 'inline-flex items-center gap-1 rounded-md border border-indigo-300 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100'
-          : 'inline-flex items-center gap-1.5 rounded-md border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100',
-        'disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-indigo-50',
+          ? 'inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium'
+          : 'inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm font-medium',
+        temAnamnese
+          ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:hover:bg-emerald-50'
+          : 'border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 disabled:hover:bg-indigo-50',
+        'disabled:cursor-not-allowed disabled:opacity-50',
         className,
       )}
     >

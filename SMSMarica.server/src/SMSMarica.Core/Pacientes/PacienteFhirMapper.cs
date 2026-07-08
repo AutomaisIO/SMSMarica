@@ -88,7 +88,7 @@ internal static class PacienteFhirMapper
             Opcional(r.Observacoes, false), Opcional(r.FotoBase64, false), Opcional(r.NomeSocial, false));
 
         var patient = new Patient { Active = true };
-        AplicarPayload(patient, payload);
+        AplicarPayload(patient, payload, manualTelefones: true);
         // Create pelo painel: o painel é dono de tudo que preencheu (ADR-0020 #1).
         var editados = EditadosNaoVazios(payload);
         if (editados.Count > 0) PatientMergeFhir.MarcarEditados(patient, editados);
@@ -147,7 +147,9 @@ internal static class PacienteFhirMapper
             Cns = Opcional(r.Cns, true)
                 ?? (string.IsNullOrWhiteSpace(atual.Cns) ? IdentValor(existente, SystemCns) : atual.Cns),
         };
-        AplicarPayload(existente, payload);
+        // manualTelefones: edição humana pode trocar o principal VERIFICADO (o marcador cai
+        // e o novo número exige nova verificação) — diferente da automação, que nunca toca.
+        AplicarPayload(existente, payload, manualTelefones: true);
         if (editados.Count > 0) PatientMergeFhir.MarcarEditados(existente, editados);
     }
 
@@ -242,6 +244,7 @@ internal static class PacienteFhirMapper
         var conjuge = ContatoNome(p, "SPS");
         var fonte = p.Meta?.Source;
         var dadosFonte = LerExtras(p);
+        var confirmado = PatientMergeFhir.TelefoneConfirmado(p);
         return new PacienteDto(
             Guid.Parse(p.Id!), nome, cpf, cns, latitude, longitude,
             p.Active ?? true, p.Meta?.LastUpdated?.UtcDateTime ?? default,
@@ -251,7 +254,8 @@ internal static class PacienteFhirMapper
             pl.ContatoEmergencia, pl.AlturaCm, pl.PesoKg, pl.TipoSanguineo, pl.FatorRh,
             pl.Alergias, pl.MedicamentosContinuos, pl.Comorbidades, pl.Deficiencias, pl.PlanoSaude,
             pl.Observacoes, pl.FotoBase64, nomeSocial,
-            identificadores, obito, conjuge, fonte, dadosFonte);
+            identificadores, obito, conjuge, fonte, dadosFonte,
+            confirmado?.Numero, confirmado?.Em?.UtcDateTime);
     }
 
     private static IReadOnlyDictionary<string, string>? LerExtras(Patient p)
@@ -400,7 +404,7 @@ internal static class PacienteFhirMapper
         return null;
     }
 
-    private static void AplicarPayload(Patient patient, Payload pl)
+    private static void AplicarPayload(Patient patient, Payload pl, bool manualTelefones = false)
     {
         // ESCRITA NATIVA (fonte da verdade), por MERGE/upsert — mesmo shape do import
         // (SaluxFhirMapper). Preserva identificadores/campos não geridos; nunca replace-all.
@@ -416,7 +420,7 @@ internal static class PacienteFhirMapper
         PatientMergeFhir.SetMaritalStatus(patient, pl.EstadoCivil);
         PatientMergeFhir.UpsertEndereco(patient, pl.Endereco);
         PatientMergeFhir.AplicarContatos(patient, pl.TelefonePrincipal, pl.TelefoneCelular,
-            pl.TelefoneResidencial, pl.Email);
+            pl.TelefoneResidencial, pl.Email, manualTelefones);
         PatientMergeFhir.UpsertContato(patient, "MTH", pl.NomeDaMae);
         PatientMergeFhir.UpsertContato(patient, "FTH", pl.NomeDoPai);
         PatientMergeFhir.UpsertContato(patient, "GUARD", pl.ResponsavelLegal);
