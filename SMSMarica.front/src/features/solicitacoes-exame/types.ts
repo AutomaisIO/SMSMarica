@@ -104,6 +104,8 @@ export type SolicitacaoExameListItem = {
   tipoExameId: string;
   tipoExameNome: string;
   modalidadeDicom: ModalidadeDicom;
+  /** Unidade EXECUTANTE — exibida sob a modalidade na lista. */
+  unidadeNome: string;
   solicitanteNome: string;
   status: StatusSolicitacao;
   /** Resposta do paciente à notificação (Pendente/Confirmada/Cancelada). */

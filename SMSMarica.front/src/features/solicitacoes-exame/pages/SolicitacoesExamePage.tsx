@@ -193,7 +193,10 @@ export function SolicitacoesExamePage() {
       render: (s) => (
         <div className="min-w-0">
           <div className="truncate text-gray-900">{s.tipoExameNome}</div>
-          <div className="text-xs uppercase text-gray-500">{s.modalidadeDicom}</div>
+          <div className="truncate text-xs text-gray-500">
+            <span className="uppercase">{s.modalidadeDicom}</span>
+            {s.unidadeNome ? <> — {s.unidadeNome}</> : null}
+          </div>
         </div>
       ),
     },

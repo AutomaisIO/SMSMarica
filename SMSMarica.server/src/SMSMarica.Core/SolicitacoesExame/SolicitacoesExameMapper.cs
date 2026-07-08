@@ -73,6 +73,7 @@ internal static class SolicitacoesExameMapper
             s.TipoExameId,
             s.TipoExame?.Nome ?? string.Empty,
             s.TipoExame?.ModalidadeDicom ?? ModalidadeDicom.OT,
+            s.Unidade?.Nome ?? string.Empty,
             s.SolicitanteNome,
             s.Status,
             s.StatusConfirmacao,

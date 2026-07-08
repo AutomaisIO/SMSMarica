@@ -98,6 +98,8 @@ public sealed record SolicitacaoExameListItemDto(
     Guid TipoExameId,
     string TipoExameNome,
     ModalidadeDicom ModalidadeDicom,
+    // Unidade EXECUTANTE — exibida sob a modalidade na lista (ticket #14).
+    string UnidadeNome,
     string SolicitanteNome,
     StatusSolicitacaoExame Status,
     // Resposta do paciente à notificação (Pendente/Confirmada/Cancelada) — para a lista.

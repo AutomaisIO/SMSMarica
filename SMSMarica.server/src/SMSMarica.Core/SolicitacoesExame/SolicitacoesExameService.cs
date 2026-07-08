@@ -125,6 +125,7 @@ public sealed class SolicitacoesExameService(
     {
         IQueryable<SolicitacaoExame> query = _db.SolicitacoesExame.AsNoTracking()
             .Include(s => s.TipoExame)
+            .Include(s => s.Unidade)
             .Where(s => s.ExcluidoEm == null);
 
         if (filtro.Status.HasValue) query = query.Where(s => s.Status == filtro.Status);
