@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { HubConnectionBuilder } from '@microsoft/signalr';
+import { HubConnectionBuilder, HubConnectionState, type HubConnection } from '@microsoft/signalr';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiBaseAbsoluto } from '@/shared/api/httpClient';
 import { obterToken, useAuth } from '@/shared/auth/authStore';
@@ -27,12 +27,48 @@ function tocarBip() {
   }
 }
 
+// --- Assinatura da thread aberta (grupo conversa:{id} no hub) --------------------------------
+// A conexão vive no useChatHub (montado uma vez no ChatWidget), mas quem sabe qual thread está
+// aberta é o ThreadMensagens (widget E página). Registro module-level: o componente declara a
+// conversa que está olhando e o hook (re)assina no servidor, inclusive após reconexão — grupos
+// SignalR são por conexão e se perdem quando o socket cai.
+let connAtual: HubConnection | null = null;
+const conversasAssinadas = new Set<string>();
+
+function invocarSeguro(metodo: 'AssinarConversa' | 'DesassinarConversa', conversaId: string) {
+  if (connAtual?.state === HubConnectionState.Connected) {
+    connAtual.invoke(metodo, conversaId).catch(() => {
+      /* melhor esforço — o poll de fallback cobre */
+    });
+  }
+}
+
+export function assinarConversaRealtime(conversaId: string) {
+  conversasAssinadas.add(conversaId);
+  invocarSeguro('AssinarConversa', conversaId);
+}
+
+export function desassinarConversaRealtime(conversaId: string) {
+  conversasAssinadas.delete(conversaId);
+  invocarSeguro('DesassinarConversa', conversaId);
+}
+
+/** Hook para o ThreadMensagens: assina a conversa aberta enquanto o componente viver. */
+export function useAssinaturaConversa(conversaId: string | null) {
+  useEffect(() => {
+    if (!conversaId) return;
+    assinarConversaRealtime(conversaId);
+    return () => desassinarConversaRealtime(conversaId);
+  }, [conversaId]);
+}
+
 /**
  * Conecta ao ConversasHub (SignalR) e traduz os eventos server→client em invalidações do
  * react-query + alerta/som quando o operador não está olhando a conversa. O socket é apenas o
  * "invalidador"; a fonte de verdade continua sendo o react-query (com poll de fallback).
+ * `habilitado` = usuário tem o módulo Conversas (sem ele, nem conecta).
  */
-export function useChatHub() {
+export function useChatHub(habilitado: boolean) {
   const queryClient = useQueryClient();
   const token = useAuth((s) => s.token);
   const total = useChat((s) => s.totalNaoLidas);
@@ -43,7 +79,7 @@ export function useChatHub() {
 
   // Conexão (uma vez por sessão autenticada).
   useEffect(() => {
-    if (!token) return;
+    if (!token || !habilitado) return;
     const base = apiBaseAbsoluto.replace(/\/api$/, '');
     const conn = new HubConnectionBuilder()
       // withCredentials:false — a autenticação é o JWT (accessTokenFactory → header no
@@ -56,12 +92,28 @@ export function useChatHub() {
       })
       .withAutomaticReconnect()
       .build();
+    connAtual = conn;
 
     const invalidarLista = () => queryClient.invalidateQueries({ queryKey: ['conversas', 'lista'] });
-
-    conn.on('mensagemRecebida', (evt: ConversaEventoRealtime) => {
+    const invalidarConversa = (evt: ConversaEventoRealtime) => {
       invalidarLista();
       queryClient.invalidateQueries({ queryKey: ['conversas', 'mensagens', evt.conversaId] });
+      queryClient.invalidateQueries({ queryKey: ['conversas', 'detalhe', evt.conversaId] });
+    };
+
+    // Uma conexão pode estar em mais de um grupo alvo do evento (unidade + supervisão +
+    // conversa aberta) e o SignalR entrega uma cópia por grupo — dedup para não bipar 2×.
+    let ultimoEvento = '';
+    const ehDuplicado = (evt: ConversaEventoRealtime) => {
+      const chave = `${evt.conversaId}:${evt.ocorridoEm ?? ''}:${evt.naoLidas}`;
+      if (chave === ultimoEvento) return true;
+      ultimoEvento = chave;
+      return false;
+    };
+
+    conn.on('mensagemRecebida', (evt: ConversaEventoRealtime) => {
+      if (ehDuplicado(evt)) return;
+      invalidarConversa(evt);
 
       const st = useChat.getState();
       const olhando = st.widget === 'aberto' && st.conversaAtivaId === evt.conversaId && !document.hidden;
@@ -79,21 +131,29 @@ export function useChatHub() {
     });
 
     conn.on('mensagemEnviada', (evt: ConversaEventoRealtime) => {
-      invalidarLista();
-      queryClient.invalidateQueries({ queryKey: ['conversas', 'mensagens', evt.conversaId] });
+      if (ehDuplicado(evt)) return;
+      invalidarConversa(evt);
     });
 
     conn.on('conversaAtualizada', () => invalidarLista());
-    conn.onreconnected(() => queryClient.invalidateQueries({ queryKey: ['conversas'] }));
 
-    conn.start().catch(() => {
+    const reassinar = () => {
+      for (const id of conversasAssinadas) invocarSeguro('AssinarConversa', id);
+    };
+    conn.onreconnected(() => {
+      queryClient.invalidateQueries({ queryKey: ['conversas'] });
+      reassinar(); // grupos são por conexão — se perdem na queda do socket
+    });
+
+    conn.start().then(reassinar).catch(() => {
       /* Se o socket falhar, o refetchInterval das queries mantém a tela viva. */
     });
 
     return () => {
+      if (connAtual === conn) connAtual = null;
       conn.stop().catch(() => {});
     };
-  }, [token, queryClient]);
+  }, [token, habilitado, queryClient]);
 
   // Título da aba piscando com o contador quando há não-lidas e a aba/chat não está em foco.
   useEffect(() => {

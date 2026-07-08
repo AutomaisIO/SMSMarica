@@ -40,6 +40,8 @@ export function useMensagens(id: string | null) {
     queryKey: id ? conversasKeys.mensagens(id) : ['conversas', 'mensagens', 'nenhum'],
     queryFn: () => obterMensagens(id!),
     enabled: Boolean(id),
+    // Fallback: o SignalR invalida em tempo real; o poll cobre reconexão/queda do socket.
+    refetchInterval: 30_000,
   });
 }
 

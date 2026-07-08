@@ -26,7 +26,7 @@ export function ChatWidget() {
 
   // Hub sempre ativo enquanto o operador estiver logado (mesmo com o painel fechado),
   // para alimentar o badge e as notificações. Deve rodar antes de qualquer early-return.
-  useChatHub();
+  useChatHub(podeVer);
 
   if (!podeVer) return null;
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useConversa, useMarcarLida, useMensagens } from '@/features/conversas/api/queries';
+import { useAssinaturaConversa } from '@/features/conversas/hooks/useChatHub';
 import { ComposerMensagem } from '@/features/conversas/components/ComposerMensagem';
 import type { Mensagem } from '@/features/conversas/types';
 
@@ -39,6 +40,10 @@ export function ThreadMensagens({ conversaId }: { conversaId: string }) {
   const { data: mensagens, isLoading } = useMensagens(conversaId);
   const marcarLida = useMarcarLida();
   const fimRef = useRef<HTMLDivElement | null>(null);
+
+  // Grupo conversa:{id} no hub — garante tempo real na thread aberta mesmo quando o evento
+  // não rotearia pro operador (ex.: conversa de outra unidade aberta pela supervisão).
+  useAssinaturaConversa(conversaId);
 
   // Zera não-lidas ao abrir (e quando muda a conversa).
   useEffect(() => {
