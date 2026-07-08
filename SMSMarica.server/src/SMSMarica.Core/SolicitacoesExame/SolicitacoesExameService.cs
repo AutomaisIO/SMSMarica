@@ -593,6 +593,18 @@ public sealed class SolicitacoesExameService(
 
         var s = await _db.SolicitacoesExame.FirstOrDefaultAsync(
             x => x.StudyInstanceUID == uid && x.ExcluidoEm == null, cancellationToken);
+        // Exame com StudyUID próprio da máquina (sem worklist): resolve pela associação
+        // explícita — mesmo fallback do aviso "laudo pronto" e do ObterPorStudy.
+        if (s is null)
+        {
+            var solicitacaoId = await _db.ExameAssociacoes.AsNoTracking()
+                .Where(a => a.StudyInstanceUID == uid && a.ExcluidoEm == null)
+                .Select(a => (Guid?)a.SolicitacaoExameId)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (solicitacaoId is { } sid)
+                s = await _db.SolicitacoesExame.FirstOrDefaultAsync(
+                    x => x.Id == sid && x.ExcluidoEm == null, cancellationToken);
+        }
         if (s is null) return; // study sem solicitação amarrada — ok.
 
         if (s.Status is StatusSolicitacaoExame.Cancelada or StatusSolicitacaoExame.Laudada) return;
