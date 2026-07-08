@@ -54,8 +54,10 @@ export function derivarSituacao(
       const atrasado = agoraMs > exameMs + HORA_MS;
       if (atrasado && agoraMs > dezoitoHorasBrasiliaDoDia(exameMs))
         return { rotulo: 'Falta', classe: 'bg-purple-50 text-purple-700 ring-1 ring-purple-200' };
+      // Rose (não azul): alerta visual e distante de Recebida (indigo) e Agendada (blue),
+      // que dividem a mesma coluna na lista.
       if (atrasado)
-        return { rotulo: 'Atrasado', classe: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200' };
+        return { rotulo: 'Atrasado', classe: 'bg-rose-100 text-rose-700 ring-1 ring-rose-300' };
     }
   }
 
