@@ -127,6 +127,17 @@ public class SolicitacaoExame
     /// <summary>Quando a integração UPS-RS falha, guardamos o motivo (e o admin pode reenviar manualmente).</summary>
     public string? ErroIntegracaoPacs { get; set; }
 
+    /// <summary>
+    /// Quando o cache de imagens/PDF do exame foi PRÉ-MATERIALIZADO pelo
+    /// PreparadorImagensExameService (null = pendente). Com o cache aquecido, o clique
+    /// do paciente/operador gera o PDF sem tocar o dcm4chee.
+    /// </summary>
+    public DateTime? ImagensPreparadasEm { get; set; }
+
+    /// <summary>Tentativas falhas de pré-materialização — o worker desiste após o teto
+    /// (ex.: estudo de 2024 cujo DICOM sumiu do bucket) sem travar a fila.</summary>
+    public int ImagensPreparacaoTentativas { get; set; }
+
     // ---- Retry resiliente (worker EnviadorWorklistService) ----
 
     /// <summary>Contador de tentativas de envio/confirmação no PACS.</summary>

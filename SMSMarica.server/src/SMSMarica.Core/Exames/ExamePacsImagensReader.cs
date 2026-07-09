@@ -1,5 +1,7 @@
+using System.IO.Compression;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using SMSMarica.Core.Armazenamento;
 using SMSMarica.Core.Pacs;
 
 namespace SMSMarica.Core.Exames;
@@ -8,6 +10,14 @@ namespace SMSMarica.Core.Exames;
 /// Lê as imagens de um estudo no PACS (QIDO-RS para listar instâncias + WADO-RS
 /// /rendered para baixar cada JPEG já rasterizado pelo dcm4chee). Compartilhado
 /// pelos PDFs de imagens e de exame completo.
+/// <para>
+/// CACHE por estudo no S3 (<c>render-cache/{study}.zip</c>): rasterizar cada DICOM
+/// (~53MB na mamografia) é a operação mais cara do PACS — cacheado, os PDFs saem
+/// sem tocar o dcm4chee. O cache é aquecido de fundo pelo
+/// <see cref="Background.PreparadorImagensExameService"/> quando o exame chega, e
+/// preenchido on-demand no primeiro acesso dos demais casos. Falha de cache nunca
+/// quebra o fluxo: cai no caminho direto ao PACS.
+/// </para>
 /// </summary>
 public interface IExamePacsImagensReader
 {
@@ -20,6 +30,7 @@ public interface IExamePacsImagensReader
 
 public sealed class ExamePacsImagensReader(
     IPacsProxyService pacs,
+    IArmazenamentoArquivos armazenamento,
     ILogger<ExamePacsImagensReader> logger) : IExamePacsImagensReader
 {
     private const string DicomJson = "application/dicom+json";
@@ -29,6 +40,12 @@ public sealed class ExamePacsImagensReader(
         string studyInstanceUID, int maxImagens, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(studyInstanceUID)) return [];
+
+        var chaveCache = $"render-cache/{studyInstanceUID.Trim()}.zip";
+
+        var doCache = await LerCacheAsync(chaveCache, cancellationToken);
+        if (doCache is { Count: > 0 })
+            return doCache.Count > maxImagens ? doCache.Take(maxImagens).ToList() : doCache;
 
         var instancias = await ListarInstanciasAsync(studyInstanceUID, cancellationToken);
         if (instancias.Count == 0) return [];
@@ -49,7 +66,65 @@ public sealed class ExamePacsImagensReader(
             if (jpeg is { Length: > 0 })
                 imagens.Add(jpeg);
         }
+
+        // Só cacheia o conjunto COMPLETO (toda instância pedida rasterizou) — cachear um
+        // conjunto parcial (ex.: /rendered falhou numa instância) congelaria o PDF capenga.
+        if (imagens.Count > 0 && imagens.Count == instancias.Count)
+            await GravarCacheAsync(chaveCache, imagens, cancellationToken);
+
         return imagens;
+    }
+
+    // ---------------- Cache S3 (zip de JPEGs, ordem preservada pelo nome da entrada) ----------------
+
+    private async Task<IReadOnlyList<byte[]>?> LerCacheAsync(string chave, CancellationToken ct)
+    {
+        try
+        {
+            var zip = await armazenamento.LerAsync(chave, ct);
+            if (zip is not { Length: > 0 }) return null;
+
+            using var arquivo = new ZipArchive(new MemoryStream(zip), ZipArchiveMode.Read);
+            var imagens = new List<byte[]>(arquivo.Entries.Count);
+            foreach (var entrada in arquivo.Entries.OrderBy(e => e.Name, StringComparer.Ordinal))
+            {
+                using var ms = new MemoryStream((int)entrada.Length);
+                await using (var s = entrada.Open())
+                {
+                    await s.CopyToAsync(ms, ct);
+                }
+                if (ms.Length > 0) imagens.Add(ms.ToArray());
+            }
+            return imagens;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Falha ao ler o cache de imagens {Chave} — indo direto ao PACS.", chave);
+            return null;
+        }
+    }
+
+    private async Task GravarCacheAsync(string chave, IReadOnlyList<byte[]> imagens, CancellationToken ct)
+    {
+        try
+        {
+            using var ms = new MemoryStream();
+            using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
+            {
+                for (var i = 0; i < imagens.Count; i++)
+                {
+                    // JPEG já é comprimido — o zip é só contêiner ordenado (sem recomprimir).
+                    var entrada = zip.CreateEntry($"{i + 1:D4}.jpg", CompressionLevel.NoCompression);
+                    await using var s = entrada.Open();
+                    await s.WriteAsync(imagens[i], ct);
+                }
+            }
+            await armazenamento.SalvarAsync(chave, ms.ToArray(), ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Falha ao gravar o cache de imagens {Chave} — seguindo sem cache.", chave);
+        }
     }
 
     private sealed record Instancia(string SeriesUid, string SopUid, int SeriesNumero, int InstanciaNumero);

@@ -53,6 +53,10 @@ internal sealed class SolicitacaoExameConfiguration : IEntityTypeConfiguration<S
         builder.Property(s => s.DataEstudo).HasColumnName("data_estudo").HasColumnType("timestamp without time zone");
         builder.Property(s => s.ErroIntegracaoPacs).HasColumnName("erro_integracao_pacs").HasMaxLength(1000);
 
+        // Pré-materialização do cache de imagens/PDF (PreparadorImagensExameService).
+        builder.Property(s => s.ImagensPreparadasEm).HasColumnName("imagens_preparadas_em");
+        builder.Property(s => s.ImagensPreparacaoTentativas).HasColumnName("imagens_preparacao_tentativas").HasDefaultValue(0).IsRequired();
+
         builder.Property(s => s.TentativasEnvio).HasColumnName("tentativas_envio").HasDefaultValue(0).IsRequired();
         builder.Property(s => s.UltimaTentativaEm).HasColumnName("ultima_tentativa_em");
         builder.Property(s => s.ProximaTentativaEm).HasColumnName("proxima_tentativa_em");

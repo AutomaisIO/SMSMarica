@@ -139,6 +139,12 @@ public static class DependencyInjection
         services.Configure<SincronizadorExamesOptions>(configuration.GetSection(SincronizadorExamesOptions.SecaoConfig));
         services.AddHostedService<SincronizadorExamesService>();
 
+        // Pré-materialização do PDF de imagens quando o exame fica pronto (1 por vez, de
+        // fundo) — o clique do paciente/operador sai do cache S3 sem tocar o dcm4chee.
+        services.Configure<Exames.Background.PreparadorImagensOptions>(
+            configuration.GetSection(Exames.Background.PreparadorImagensOptions.SecaoConfig));
+        services.AddHostedService<Exames.Background.PreparadorImagensExameService>();
+
         // Notificação WhatsApp de agendamentos (fila alimentada pelo import + worker de envio).
         services.Configure<Notificacoes.Comunicacao.ComunicacaoPacienteOptions>(
             configuration.GetSection(Notificacoes.Comunicacao.ComunicacaoPacienteOptions.SecaoConfig));
