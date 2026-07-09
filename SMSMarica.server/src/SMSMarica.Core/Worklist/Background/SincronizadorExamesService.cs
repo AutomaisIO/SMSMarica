@@ -44,8 +44,15 @@ public sealed class SincronizadorExamesService(
             {
                 await ExecutarUmaPassagemAsync(stoppingToken);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
+                return; // shutdown real do host — encerra o worker
+            }
+            catch (Exception ex)
+            {
+                // Inclui TaskCanceledException de TIMEOUT do HttpClient (PACS lento): trata como
+                // falha transitória e continua o loop. NUNCA deixa a exceção subir — senão o
+                // BackgroundServiceExceptionBehavior=StopHost derruba a API inteira.
                 _logger.LogError(ex, "Falha na passagem do SincronizadorExamesService — vai tentar de novo.");
             }
 

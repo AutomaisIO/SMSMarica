@@ -43,8 +43,15 @@ public sealed class EnviadorComunicacaoService(
             {
                 await ExecutarUmaPassagemAsync(stoppingToken);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
+                return; // shutdown real do host — encerra o worker
+            }
+            catch (Exception ex)
+            {
+                // Inclui TaskCanceledException de TIMEOUT do HttpClient (Meta/WhatsApp lento):
+                // trata como falha transitória e continua o loop. NUNCA deixa a exceção subir —
+                // senão o BackgroundServiceExceptionBehavior=StopHost derruba a API inteira.
                 logger.LogError(ex, "Falha na passagem do EnviadorComunicacaoService — vai tentar de novo.");
             }
 
