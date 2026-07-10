@@ -76,3 +76,21 @@ export function janelaSoltaAberta(nome: string): boolean {
   const j = registroJanelas.get(nome);
   return Boolean(j && !j.closed);
 }
+
+/** Canal por onde JANELAS SOLTAS pedem navegação à(s) janela(s) principal(is). */
+export const CANAL_NAVEGACAO = 'smsmarica-navegacao';
+
+/**
+ * Pede que a janela PRINCIPAL (a página que originou a janela solta) navegue para
+ * a rota. Janelas soltas abrem com `opener` nulo, então o pedido vai por
+ * BroadcastChannel — atende toda janela principal aberta na mesma origem (na
+ * prática, a que originou). Retorna false quando o navegador não suporta o canal,
+ * para o caller decidir o fallback.
+ */
+export function pedirNavegacaoJanelaPrincipal(rota: string): boolean {
+  if (!('BroadcastChannel' in window)) return false;
+  const canal = new BroadcastChannel(CANAL_NAVEGACAO);
+  canal.postMessage({ tipo: 'navegar', rota });
+  canal.close();
+  return true;
+}

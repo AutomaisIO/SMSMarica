@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { RefreshCw } from 'lucide-react';
 import { Header } from '@/app/layout/Header';
 import { MenuContextoBar } from '@/app/layout/MenuContextoBar';
@@ -7,6 +7,7 @@ import { Sidebar } from '@/app/layout/Sidebar';
 import { useMenuPreferencias } from '@/app/layout/menuPreferencias';
 import { obterPreferencias } from '@/shared/auth/preferenciasApi';
 import { useVersaoApp } from '@/shared/hooks/useVersaoApp';
+import { CANAL_NAVEGACAO } from '@/shared/lib/janela';
 import { ChatWidget } from '@/features/conversas/components/ChatWidget';
 
 export function Layout() {
@@ -15,6 +16,22 @@ export function Layout() {
   const hidratar = useMenuPreferencias((s) => s.hidratar);
   const { novaVersao, atualizar } = useVersaoApp();
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+
+  // Navegação pedida por uma JANELA SOLTA (chat/PACS): o clique lá (ex.: última
+  // solicitação no resumo do paciente) navega AQUI, na janela principal. Só rotas
+  // internas de /app — o canal é same-origin, mas a checagem evita rota arbitrária.
+  useEffect(() => {
+    if (!('BroadcastChannel' in window)) return;
+    const canal = new BroadcastChannel(CANAL_NAVEGACAO);
+    canal.onmessage = (e) => {
+      if (e.data?.tipo === 'navegar' && typeof e.data.rota === 'string' && e.data.rota.startsWith('/app')) {
+        navigate(e.data.rota);
+        window.focus(); // best-effort: nem todo browser deixa levantar a janela sem gesto
+      }
+    };
+    return () => canal.close();
+  }, [navigate]);
 
   // Com versão nova pendente, a troca de rota é um momento seguro para atualizar:
   // a navegação já descarta o estado da tela anterior, então o reload é transparente.

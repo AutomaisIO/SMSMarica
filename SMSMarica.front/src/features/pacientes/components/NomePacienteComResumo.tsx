@@ -1,7 +1,8 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { Check, Loader2, Pencil, UserRound } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/shared/lib/cn';
+import { pedirNavegacaoJanelaPrincipal } from '@/shared/lib/janela';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
@@ -10,6 +11,7 @@ import { CodigoCopiavel } from '@/shared/ui/CodigoCopiavel';
 import { usePacientePorId } from '@/features/pacientes/api/queries';
 import { definirTelefonePrincipal } from '@/features/telefone-validacao/api/telefoneValidacaoApi';
 import { BotaoVerificarTelefonePaciente } from '@/features/telefone-validacao/components/BotaoVerificarTelefonePaciente';
+import { UltimaSolicitacaoPaciente } from '@/features/solicitacoes-exame/components/UltimaSolicitacaoPaciente';
 import type { Paciente } from '@/features/pacientes/types';
 
 /** Logo do WhatsApp (lucide não traz ícones de marca). */
@@ -203,7 +205,17 @@ type Props = {
  */
 export function NomePacienteComResumo({ pacienteId, nome, className, classNameNome, sufixo }: Props) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [aberto, setAberto] = useState(false);
+
+  // Fecha o modal e navega. Fora de /app este componente roda numa JANELA SOLTA
+  // (chat/PACS) — quem navega é a janela principal, via BroadcastChannel. Dentro
+  // de /app, navega na própria janela. Vale p/ Editar e p/ a última solicitação.
+  function navegarNaJanelaCerta(rota: string) {
+    setAberto(false);
+    if (!location.pathname.startsWith('/app') && pedirNavegacaoJanelaPrincipal(rota)) return;
+    navigate(rota);
+  }
 
   return (
     <span className={cn('inline-flex items-center gap-1.5', className)}>
@@ -226,13 +238,16 @@ export function NomePacienteComResumo({ pacienteId, nome, className, classNameNo
         largura="md"
       >
         {aberto ? <ResumoConteudo pacienteId={pacienteId} /> : null}
+        {aberto ? (
+          <UltimaSolicitacaoPaciente
+            pacienteId={pacienteId}
+            aoAbrir={(id) => navegarNaJanelaCerta(`/app/solicitacoes-exame/${id}`)}
+          />
+        ) : null}
         <div className="mt-6 flex justify-between gap-3 border-t border-gray-100 pt-4">
           <Button
             variante="ghost"
-            onClick={() => {
-              setAberto(false);
-              navigate(`/app/pacientes/${pacienteId}/editar`);
-            }}
+            onClick={() => navegarNaJanelaCerta(`/app/pacientes/${pacienteId}/editar`)}
           >
             <Pencil className="h-4 w-4" /> Editar
           </Button>
