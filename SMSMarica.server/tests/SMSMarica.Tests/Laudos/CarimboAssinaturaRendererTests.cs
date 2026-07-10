@@ -21,7 +21,8 @@ public class CarimboAssinaturaRendererTests
         var renderer = new CarimboAssinaturaRenderer();
         var png = renderer.Renderizar(new CarimboDados(
             Rubrica: null, Formato: FormatoAssinaturaMedico.Horizontal,
-            Nome: "Dra. Fulana de Tal", Crm: "12345", UfCrm: "RJ", Rqe: "58716"));
+            Nome: "Dra. Fulana de Tal", Crm: "12345", UfCrm: "RJ", Rqe: "58716",
+            DataAssinatura: new DateTime(2026, 7, 10, 14, 30, 0)));
 
         Assert.True(EhPng(png), "A saída deve ser um PNG.");
         Assert.True(png.Length > 1000, "PNG não deveria ser trivialmente vazio.");
@@ -34,12 +35,13 @@ public class CarimboAssinaturaRendererTests
     {
         // Rubrica de teste: um PNG simples gerado pelo próprio renderer (sem dados).
         var rubrica = new CarimboAssinaturaRenderer().Renderizar(new CarimboDados(
-            null, formato, "x", "x", "x", null));
+            null, formato, "x", "x", "x", null, new DateTime(2026, 7, 10, 14, 30, 0)));
 
         var renderer = new CarimboAssinaturaRenderer();
         var png = renderer.Renderizar(new CarimboDados(
             Rubrica: rubrica, Formato: formato,
-            Nome: "Dr. Beltrano", Crm: "999", UfCrm: "RJ", Rqe: null)); // sem RQE
+            Nome: "Dr. Beltrano", Crm: "999", UfCrm: "RJ", Rqe: null, // sem RQE
+            DataAssinatura: new DateTime(2026, 7, 10, 14, 30, 0)));
 
         Assert.True(EhPng(png));
         Assert.True(png.Length > 1000);

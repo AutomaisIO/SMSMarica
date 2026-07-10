@@ -119,7 +119,8 @@ public class LaudoPdfRodapeTests
 
         var carimbo = new CarimboAssinaturaRenderer().Renderizar(new CarimboDados(
             Rubrica: rubrica, Formato: formato,
-            Nome: "Dra. Claudia Freixo Seixas", Crm: "52702650", UfCrm: "RJ", Rqe: "12345"));
+            Nome: "Dra. Claudia Freixo Seixas", Crm: "52702650", UfCrm: "RJ", Rqe: "12345",
+            DataAssinatura: new DateTime(2026, 7, 10, 14, 30, 0)));
 
         DimensaoImagem.Ler(carimbo).Should().Be((800, 800)); // quadrado virtual fixo
         Despejar($"carimbo-{formato}.png", carimbo);

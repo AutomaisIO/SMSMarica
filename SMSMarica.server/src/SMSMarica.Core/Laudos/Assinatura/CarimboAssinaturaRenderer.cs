@@ -12,7 +12,8 @@ public sealed record CarimboDados(
     string Nome,
     string Crm,
     string UfCrm,
-    string? Rqe);
+    string? Rqe,
+    DateTime DataAssinatura);
 
 public interface ICarimboAssinaturaRenderer
 {
@@ -23,8 +24,9 @@ public interface ICarimboAssinaturaRenderer
 /// <summary>
 /// Compõe o carimbo da assinatura num quadrado virtual 800×800 (QuestPDF → PNG
 /// com fundo TRANSPARENTE, para não cobrir o documento atrás).
-/// Z-order: a RUBRICA vai ao FUNDO e os dados do médico (nome/CRM/RQE) vão POR
-/// CIMA, com fundo transparente (sem caixa branca). FitArea preserva a proporção:
+/// Z-order: a RUBRICA vai ao FUNDO e os dados do médico (nome/CRM/RQE/data da
+/// assinatura) vão POR CIMA, com fundo transparente (sem caixa branca). FitArea
+/// preserva a proporção:
 /// - Formato 1:1 (Quadrada): rubrica preenche o quadrado; texto sobreposto embaixo.
 /// - Formato 2:1 (Horizontal): rubrica vira faixa ancorada no topo; texto embaixo.
 /// - Sem rubrica: só os dados, na metade de baixo (mantido por robustez; o gate
@@ -45,6 +47,9 @@ public sealed class CarimboAssinaturaRenderer : ICarimboAssinaturaRenderer
         var crm = $"CRM {dados.UfCrm}/{dados.Crm}".Trim();
         // RQE só quando informado; UF antes do número (mesmo padrão do CRM).
         var rqe = string.IsNullOrWhiteSpace(dados.Rqe) ? null : $"RQE {dados.UfCrm}/{dados.Rqe!.Trim()}";
+        // Data/hora já em horário de Brasília (o chamador converte via FusoBrasilia).
+        var data = dados.DataAssinatura.ToString(
+            "'Assinado em 'dd/MM/yyyy' às 'HH:mm", System.Globalization.CultureInfo.InvariantCulture);
 
         var documento = Document.Create(container =>
         {
@@ -91,6 +96,7 @@ public sealed class CarimboAssinaturaRenderer : ICarimboAssinaturaRenderer
                             {
                                 col.Item().AlignCenter().Text(rqe).FontSize(34);
                             }
+                            col.Item().AlignCenter().Text(data).FontSize(28);
                         });
                 });
             });

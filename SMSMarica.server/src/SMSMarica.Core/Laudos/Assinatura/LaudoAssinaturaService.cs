@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SMSMarica.Core.Common.Excecoes;
+using SMSMarica.Core.Common.Tempo;
 using SMSMarica.Core.Laudos.Assinatura.Dtos;
 using SMSMarica.Core.Laudos.Pdf;
 using SMSMarica.Core.Medicos;
@@ -226,7 +227,10 @@ public sealed class LaudoAssinaturaService(
         var carimboPng = carimboRenderer.Renderizar(new CarimboDados(
             Rubrica: DecodificarImagem(rubrica.ImagemBase64),
             Formato: rubrica.Formato,
-            Nome: nome, Crm: crm, UfCrm: uf, Rqe: rqe));
+            Nome: nome, Crm: crm, UfCrm: uf, Rqe: rqe,
+            // A assinatura criptográfica acontece segundos depois da preparação (o
+            // agente assina em seguida); este é o instante exibido no carimbo.
+            DataAssinatura: FusoBrasilia.ParaExibicao(DateTime.UtcNow)));
 
         var visual = new DadosVisualAssinatura(
             nome, crm, uf, rqe, _opt.TextoCarimbo,
