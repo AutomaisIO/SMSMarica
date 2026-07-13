@@ -38,6 +38,7 @@ import {
   UserCog,
   Users,
   Wrench,
+  Zap,
   type LucideIcon,
 } from 'lucide-react';
 import type { ModuloPermissao } from '@/shared/auth/authStore';
@@ -263,6 +264,13 @@ export const SECOES: SecaoMenu[] = [
         icone: BellRing,
         modulo: 'NotificacoesAgendamento',
         descricao: 'Envio e confirmação de exames pelo WhatsApp.',
+      },
+      {
+        rotulo: 'Mensagens Prontas',
+        to: '/app/respostas-rapidas',
+        icone: Zap,
+        modulo: 'RespostasRapidas',
+        descricao: 'Respostas rápidas que os atendentes usam no chat.',
       },
     ],
   },

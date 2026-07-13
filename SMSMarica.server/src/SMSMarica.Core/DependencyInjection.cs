@@ -366,6 +366,8 @@ public static class DependencyInjection
         services.Configure<Conversas.ConversasOptions>(
             configuration.GetSection(Conversas.ConversasOptions.SecaoConfig));
         services.AddScoped<Conversas.IConversaService, Conversas.ConversaService>();
+        services.AddScoped<Conversas.RespostasRapidas.IRespostaRapidaService,
+            Conversas.RespostasRapidas.RespostaRapidaService>();
         services.AddScoped<Conversas.IUsuarioUnidadeService, Conversas.UsuarioUnidadeService>();
         // No-op por padrão (testes/console/background); a Api sobrescreve com o SignalR.
         services.AddScoped<Conversas.IConversaNotificador, Conversas.NotificadorConversaNulo>();

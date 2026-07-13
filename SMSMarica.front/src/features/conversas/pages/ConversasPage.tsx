@@ -4,6 +4,7 @@ import { useTemConsulta } from '@/shared/auth/authStore';
 import { ListaConversas } from '@/features/conversas/components/ListaConversas';
 import { ThreadMensagens } from '@/features/conversas/components/ThreadMensagens';
 import { NovaConversaDialog } from '@/features/conversas/components/NovaConversaDialog';
+import { PainelRespostasRapidas } from '@/features/respostas-rapidas/components/PainelRespostasRapidas';
 
 export function ConversasPage() {
   const podeSupervisao = useTemConsulta('ConversasSupervisao');
@@ -43,6 +44,13 @@ export function ConversasPage() {
             </div>
           )}
         </div>
+
+        {/* Atalhos de mensagens prontas — só fazem sentido com uma conversa aberta. */}
+        {ativa ? (
+          <div className="hidden w-64 shrink-0 border-l border-gray-200 lg:block">
+            <PainelRespostasRapidas conversaId={ativa} />
+          </div>
+        ) : null}
       </div>
 
       {nova && (

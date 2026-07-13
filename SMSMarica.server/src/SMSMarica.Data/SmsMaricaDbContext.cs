@@ -116,6 +116,10 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     // Módulo Conversas — chat WhatsApp multi-operador, transversal a todo o SMSMarica.
     public DbSet<Conversa> Conversas => Set<Conversa>();
     public DbSet<ConversaEvento> ConversaEventos => Set<ConversaEvento>();
+
+    // Mensagens prontas do chat (texto livre com tags), globais ou por unidade.
+    public DbSet<RespostaRapida> RespostasRapidas => Set<RespostaRapida>();
+    public DbSet<RespostaRapidaCampo> RespostaRapidaCampos => Set<RespostaRapidaCampo>();
     public DbSet<UsuarioUnidade> UsuarioUnidades => Set<UsuarioUnidade>();
 
     // Comunicações ao paciente (fila WhatsApp: confirmação/exame liberado/laudo pronto),

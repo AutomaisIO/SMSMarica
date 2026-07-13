@@ -92,4 +92,8 @@ public enum ModuloPermissao
     /// <summary>Sandbox de QA (admin): criar pacientes de teste, semear exames/agendamentos,
     /// gerar magic link e enviar mensagens de teste por WhatsApp (texto livre, janela 24h).</summary>
     Sandbox = 39,
+
+    /// <summary>Cadastro das mensagens prontas ("respostas rápidas") do chat: criar, editar e
+    /// definir as variáveis. USAR os atalhos no chat exige só <see cref="Conversas"/>.</summary>
+    RespostasRapidas = 40,
 }

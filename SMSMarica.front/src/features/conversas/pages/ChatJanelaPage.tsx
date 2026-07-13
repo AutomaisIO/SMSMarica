@@ -9,6 +9,7 @@ import { ListaConversas } from '@/features/conversas/components/ListaConversas';
 import { ThreadMensagens } from '@/features/conversas/components/ThreadMensagens';
 import { NovaConversaDialog } from '@/features/conversas/components/NovaConversaDialog';
 import { CANAL_CHAT } from '@/features/conversas/lib/janelaChat';
+import { PainelRespostasRapidas } from '@/features/respostas-rapidas/components/PainelRespostasRapidas';
 
 /**
  * Central de Atendimento em JANELA SEPARADA do navegador (ticket #18), aberta por
@@ -109,6 +110,13 @@ export function ChatJanelaPage() {
             </div>
           )}
         </div>
+
+        {/* Atalhos de mensagens prontas — só fazem sentido com uma conversa aberta. */}
+        {conversaAtivaId ? (
+          <div className="w-60 shrink-0 border-l border-gray-200">
+            <PainelRespostasRapidas conversaId={conversaAtivaId} />
+          </div>
+        ) : null}
       </div>
 
       {novaAberta && (

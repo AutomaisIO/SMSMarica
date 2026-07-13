@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AlertTriangle, Send } from 'lucide-react';
 import { useEnviarMensagem } from '@/features/conversas/api/queries';
+import { useChat } from '@/features/conversas/store/chatStore';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 
 type Props = {
@@ -12,6 +13,15 @@ export function ComposerMensagem({ conversaId, podeTextoLivre }: Props) {
   const [texto, setTexto] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const enviar = useEnviarMensagem();
+
+  // Resposta rápida escolhida no painel: o texto já resolvido cai aqui para o operador
+  // revisar. Nunca enviamos por ele — o clique é no atalho, o envio continua sendo dele.
+  const rascunho = useChat((s) => s.rascunho);
+  useEffect(() => {
+    if (!rascunho || rascunho.conversaId !== conversaId) return;
+    setTexto((atual) => (atual.trim() ? `${atual.trimEnd()}\n${rascunho.texto}` : rascunho.texto));
+    useChat.getState().consumirRascunho();
+  }, [rascunho, conversaId]);
 
   async function aoEnviar() {
     const t = texto.trim();

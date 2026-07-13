@@ -72,6 +72,7 @@ import { MeusTicketsPage } from '@/features/tickets/pages/MeusTicketsPage';
 import { TicketDetalhePage } from '@/features/tickets/pages/TicketDetalhePage';
 import { GestaoTicketsPage } from '@/features/tickets/pages/GestaoTicketsPage';
 import { NotificacoesAgendamentoPage } from '@/features/notificacoes-agendamento/pages/NotificacoesAgendamentoPage';
+import { RespostasRapidasPage } from '@/features/respostas-rapidas/pages/RespostasRapidasPage';
 import { SandboxPage } from '@/features/sandbox/pages/SandboxPage';
 import { useAuth } from '@/shared/auth/authStore';
 
@@ -173,6 +174,7 @@ export function AppRouter() {
           <Route path="erros" element={<ErrosPage />} />
           <Route path="conversas" element={<ConversasPage />} />
           <Route path="notificacoes-agendamento" element={<NotificacoesAgendamentoPage />} />
+          <Route path="respostas-rapidas" element={<RespostasRapidasPage />} />
           <Route path="sandbox" element={<SandboxPage />} />
           <Route path="tickets" element={<MeusTicketsPage />} />
           <Route path="tickets/gestao" element={<GestaoTicketsPage />} />

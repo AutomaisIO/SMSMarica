@@ -40,7 +40,8 @@ export type ModuloPermissao =
   | 'ConversasSupervisao'
   | 'Ticket'
   | 'NotificacoesAgendamento'
-  | 'Sandbox';
+  | 'Sandbox'
+  | 'RespostasRapidas';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 
