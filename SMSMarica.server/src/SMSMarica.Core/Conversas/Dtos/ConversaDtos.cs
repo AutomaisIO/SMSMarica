@@ -66,3 +66,16 @@ public sealed record IniciarConversaRequest(
 
 /// <summary>Envia uma mensagem de texto livre (dentro da janela de 24h).</summary>
 public sealed record EnviarMensagemRequest(string Texto);
+
+/// <summary>
+/// Candidato a contato na abertura de uma conversa — o paciente achado no hub FHIR, já com o
+/// telefone que a mensagem usaria.
+/// </summary>
+/// <param name="Origem">Por onde ele foi achado ("Solicitação SISREG 123456", "Cadastro").</param>
+public sealed record ContatoConversaDto(
+    Guid PacienteId,
+    string Nome,
+    string? Telefone,
+    string? Cpf,
+    DateOnly? DataNascimento,
+    string Origem);

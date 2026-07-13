@@ -50,6 +50,19 @@ export type TemplateWhatsApp = {
   categoria: string;
   corpo: string | null;
   parametros: number;
+  /** Exemplo de cada variável ({{1}}, {{2}}…), como aprovado na Meta. Vira placeholder do campo. */
+  exemplos: string[];
+};
+
+/** Candidato a destinatário na abertura de conversa (busca por solicitação, CPF, CNS ou nome). */
+export type ContatoConversa = {
+  pacienteId: string;
+  nome: string;
+  telefone: string | null;
+  cpf: string | null;
+  dataNascimento: string | null;
+  /** Por onde foi achado: "Solicitação SISREG 123456" ou "Cadastro". */
+  origem: string;
 };
 
 export type IniciarConversaPayload = {

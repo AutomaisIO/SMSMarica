@@ -30,6 +30,17 @@ public sealed class ConversasController(IConversaService service) : ControllerBa
     public async Task<IReadOnlyList<TemplateWhatsApp>> Templates(CancellationToken ct) =>
         await service.ListarTemplatesAsync(ct);
 
+    /// <summary>
+    /// Acha o paciente para quem abrir a conversa — por nº da solicitação (SISREG), CPF, CNS
+    /// ou qualquer parte do nome. Traz o telefone já cadastrado.
+    /// </summary>
+    [HttpGet("contatos")]
+    [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<ContatoConversaDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<ContatoConversaDto>> Contatos(
+        [FromQuery] string? termo, CancellationToken ct) =>
+        await service.BuscarContatosAsync(termo, ct);
+
     [HttpGet("{id:guid}")]
     [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Consulta)]
     [ProducesResponseType<ConversaListItemDto>(StatusCodes.Status200OK)]

@@ -1,6 +1,7 @@
 import { http } from '@/shared/api/httpClient';
 import type {
   AbaConversas,
+  ContatoConversa,
   ConversaListItem,
   IniciarConversaPayload,
   Mensagem,
@@ -26,6 +27,11 @@ export async function obterMensagens(id: string): Promise<Mensagem[]> {
 
 export async function listarTemplates(): Promise<TemplateWhatsApp[]> {
   const { data } = await http.get<TemplateWhatsApp[]>('/conversas/templates');
+  return data;
+}
+
+export async function buscarContatos(termo: string): Promise<ContatoConversa[]> {
+  const { data } = await http.get<ContatoConversa[]>('/conversas/contatos', { params: { termo } });
   return data;
 }
 

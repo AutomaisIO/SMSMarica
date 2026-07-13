@@ -25,7 +25,17 @@ public sealed record BotaoInterativoWhatsApp(string Id, string Titulo);
 /// <see cref="Parametros"/> é o maior índice de <c>{{n}}</c> encontrado no corpo (quantos valores
 /// o operador precisa preencher).
 /// </summary>
-public sealed record TemplateWhatsApp(string Nome, string Idioma, string Categoria, string? Corpo, int Parametros);
+/// <param name="Exemplos">
+/// Exemplos de cada variável, na ordem ({{1}}, {{2}}…), vindos do <c>example.body_text</c>
+/// aprovado na Meta. Alimentam os placeholders da tela de nova conversa.
+/// </param>
+public sealed record TemplateWhatsApp(
+    string Nome,
+    string Idioma,
+    string Categoria,
+    string? Corpo,
+    int Parametros,
+    IReadOnlyList<string> Exemplos);
 
 /// <summary>
 /// Cliente do WhatsApp Cloud API (Meta). Token/PhoneNumberId vêm da configuração cifrada

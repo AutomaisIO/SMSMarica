@@ -35,4 +35,32 @@ public class TelefoneWhatsAppTests
     [InlineData("5521999990000", "5521999990000")] // já completo fica como está
     public void NormalizarNonoDigito_completa_celular_antigo(string entrada, string esperado) =>
         Assert.Equal(esperado, TelefoneWhatsApp.NormalizarNonoDigito(entrada));
+
+    [Theory]
+    [InlineData("21999990000", "5521999990000")]       // DDD + celular
+    [InlineData("(21) 99999-0000", "5521999990000")]   // com máscara
+    [InlineData("+55 21 99999-0000", "5521999990000")] // com DDI e +
+    [InlineData("021 99999-0000", "5521999990000")]    // prefixo de discagem (0 + DDD)
+    [InlineData("0 21 21 99999-0000", "5521999990000")]// operadora (0 + 21) + DDD + número
+    [InlineData("99999-0000", "5521999990000")]        // sem DDD → assume 21 (Maricá)
+    [InlineData("2199671643", "5521999671643")]        // celular antigo (8 dígitos) ganha o 9
+    [InlineData("9967-1643", "5521999671643")]         // sem DDD e sem o nono dígito
+    public void Interpretar_aceita_as_variacoes_do_balcao(string entrada, string esperado)
+    {
+        var r = TelefoneWhatsApp.Interpretar(entrada);
+        Assert.True(r.Ok, r.Erro);
+        Assert.Equal(esperado, r.Fone);
+    }
+
+    [Theory]
+    [InlineData("21 3333-4444")]  // fixo
+    [InlineData("+1 555 123 4567")] // estrangeiro
+    [InlineData("1234")]          // curto demais
+    [InlineData("")]
+    public void Interpretar_recusa_o_que_nao_e_celular_br(string entrada)
+    {
+        var r = TelefoneWhatsApp.Interpretar(entrada);
+        Assert.False(r.Ok);
+        Assert.False(string.IsNullOrWhiteSpace(r.Erro));
+    }
 }

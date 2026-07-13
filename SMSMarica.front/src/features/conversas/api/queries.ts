@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  buscarContatos,
   enviarMensagem,
   iniciarConversa,
   listarConversas,
@@ -16,7 +17,19 @@ export const conversasKeys = {
   detalhe: (id: string) => ['conversas', 'detalhe', id] as const,
   mensagens: (id: string) => ['conversas', 'mensagens', id] as const,
   templates: () => ['conversas', 'templates'] as const,
+  contatos: (termo: string) => ['conversas', 'contatos', termo] as const,
 };
+
+/** Busca do destinatário na nova conversa: nº da solicitação, CPF, CNS ou parte do nome. */
+export function useBuscarContatos(termo: string) {
+  const limpo = termo.trim();
+  return useQuery({
+    queryKey: conversasKeys.contatos(limpo),
+    queryFn: () => buscarContatos(limpo),
+    enabled: limpo.length >= 3,
+    staleTime: 30_000,
+  });
+}
 
 export function useListarConversas(aba: AbaConversas, busca?: string) {
   return useQuery({

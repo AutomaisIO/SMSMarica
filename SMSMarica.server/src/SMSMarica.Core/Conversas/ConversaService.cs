@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Conversas.Dtos;
 using SMSMarica.Core.Identidade;
@@ -20,15 +21,74 @@ public sealed class ConversaService(
     IUsuarioUnidadeService vinculos,
     IConversaNotificador notificador,
     Pacientes.Fhir.IPacienteResolver pacienteResolver,
+    IOptions<ConversasOptions> opcoes,
     IConfiguration configuration) : IConversaService
 {
-    public Task<IReadOnlyList<TemplateWhatsApp>> ListarTemplatesAsync(CancellationToken ct = default) =>
-        whats.ListarTemplatesAsync(ct);
+    private const int LimiteContatos = 10;
+
+    /// <summary>
+    /// Só os templates que fazem sentido para ABRIR conversa (lista branca em
+    /// <see cref="ConversasOptions.TemplatesInicioConversa"/>) — os de confirmação/laudo saem
+    /// pela fila de comunicações, não pela mão do operador.
+    /// </summary>
+    public async Task<IReadOnlyList<TemplateWhatsApp>> ListarTemplatesAsync(CancellationToken ct = default)
+    {
+        var todos = await whats.ListarTemplatesAsync(ct);
+        var permitidos = opcoes.Value.TemplatesInicioConversa;
+        if (permitidos.Length == 0) return todos;
+
+        return [.. todos.Where(t => permitidos.Contains(t.Nome, StringComparer.OrdinalIgnoreCase))];
+    }
+
+    public async Task<IReadOnlyList<ContatoConversaDto>> BuscarContatosAsync(
+        string? termo, CancellationToken ct = default)
+    {
+        termo = termo?.Trim() ?? "";
+        if (termo.Length < 3) return [];
+
+        var achados = new List<ContatoConversaDto>();
+        var vistos = new HashSet<Guid>();
+
+        // Nº da solicitação (o do SISREG, gravado em codigo_solicitacao). É o caminho que a
+        // recepção tem na mão quando liga para o paciente.
+        var digitos = new string([.. termo.Where(char.IsDigit)]);
+        if (digitos.Length >= 4)
+        {
+            var solicitacoes = await db.SolicitacoesExame
+                .Where(s => s.ExcluidoEm == null && s.CodigoSolicitacao == digitos)
+                .OrderByDescending(s => s.CriadoEm)
+                .Select(s => new { s.PacienteId, s.CodigoSolicitacao })
+                .Take(LimiteContatos)
+                .ToListAsync(ct);
+
+            foreach (var s in solicitacoes)
+            {
+                if (!vistos.Add(s.PacienteId)) continue;
+                var pac = await pacientes.ObterPorIdAsync(s.PacienteId, ct);
+                achados.Add(new ContatoConversaDto(
+                    pac.Id, pac.NomeCompleto, pac.TelefonePrincipal, pac.Cpf, pac.DataNascimento,
+                    $"Solicitação SISREG {s.CodigoSolicitacao}"));
+            }
+        }
+
+        // Cadastro: nome (qualquer parte), CPF ou CNS — a busca do hub FHIR já cobre os três.
+        foreach (var p in await pacientes.BuscarAsync(termo, ct))
+        {
+            if (achados.Count >= LimiteContatos) break;
+            if (!vistos.Add(p.Id)) continue;
+            achados.Add(new ContatoConversaDto(
+                p.Id, p.NomeCompleto, p.TelefonePrincipal, p.Cpf, p.DataNascimento, "Cadastro"));
+        }
+
+        return achados;
+    }
 
     public async Task<Guid> IniciarComTemplateAsync(IniciarConversaRequest request, CancellationToken ct = default)
     {
         var me = ExigirUsuario();
-        var fone = TelefoneWhatsApp.Canonizar(request.Telefone);
+        var interpretado = TelefoneWhatsApp.Interpretar(request.Telefone);
+        if (!interpretado.Ok) throw new ValidacaoException("telefone", interpretado.Erro!);
+        var fone = TelefoneWhatsApp.Canonizar(interpretado.Fone!);
 
         Guid? pacienteId = request.PacienteId;
         var nome = request.NomeContato;

@@ -32,7 +32,8 @@ public sealed class PacientesService(
             var digitos = Digitos(termo);
             var soDigitos = digitos.Length == termo.Replace(".", "").Replace("-", "").Replace(" ", "").Length;
 
-            bundle = digitos.Length >= 3 && digitos.Length <= 11 && soDigitos
+            // Até 15 dígitos: cobre o CPF (11) e também o CNS (15) — os dois são identifier no hub.
+            bundle = digitos.Length >= 3 && digitos.Length <= 15 && soDigitos
                 ? await fhir.BuscarAsync(identifier: digitos, ct: cancellationToken)
                 : await fhir.BuscarAsync(name: termo, ct: cancellationToken);
         }

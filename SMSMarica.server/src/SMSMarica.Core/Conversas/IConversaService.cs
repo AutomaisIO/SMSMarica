@@ -29,4 +29,10 @@ public interface IConversaService
 
     /// <summary>Templates aprovados para iniciar conversa.</summary>
     Task<IReadOnlyList<TemplateWhatsApp>> ListarTemplatesAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Acha o contato para abrir a conversa: nº da solicitação (SISREG), CPF, CNS ou qualquer
+    /// parte do nome. Termo com menos de 3 caracteres devolve vazio.
+    /// </summary>
+    Task<IReadOnlyList<ContatoConversaDto>> BuscarContatosAsync(string? termo, CancellationToken ct = default);
 }

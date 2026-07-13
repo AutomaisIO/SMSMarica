@@ -86,6 +86,7 @@ public sealed class WhatsAppCliente(
                 var categoria = (t.TryGetProperty("category", out var c) ? c.GetString() : null) ?? "";
 
                 string? corpoTexto = null;
+                IReadOnlyList<string> exemplos = [];
                 if (t.TryGetProperty("components", out var comps) && comps.ValueKind == JsonValueKind.Array)
                 {
                     foreach (var comp in comps.EnumerateArray())
@@ -95,16 +96,41 @@ public sealed class WhatsAppCliente(
                             && comp.TryGetProperty("text", out var txt))
                         {
                             corpoTexto = txt.GetString();
+                            exemplos = ExtrairExemplos(comp);
                             break;
                         }
                     }
                 }
 
-                lista.Add(new TemplateWhatsApp(nome, idioma, categoria, corpoTexto, ContarParametros(corpoTexto)));
+                lista.Add(new TemplateWhatsApp(
+                    nome, idioma, categoria, corpoTexto, ContarParametros(corpoTexto), exemplos));
             }
         }
 
         return lista;
+    }
+
+    /// <summary>
+    /// Lê <c>example.body_text</c> do componente BODY — a Meta entrega uma lista de listas
+    /// (um conjunto de exemplos por variável); usamos o primeiro conjunto.
+    /// </summary>
+    private static IReadOnlyList<string> ExtrairExemplos(JsonElement componenteBody)
+    {
+        if (!componenteBody.TryGetProperty("example", out var ex)
+            || !ex.TryGetProperty("body_text", out var bt)
+            || bt.ValueKind != JsonValueKind.Array)
+            return [];
+
+        foreach (var conjunto in bt.EnumerateArray())
+        {
+            if (conjunto.ValueKind != JsonValueKind.Array) continue;
+            return [.. conjunto.EnumerateArray()
+                .Select(v => v.GetString())
+                .Where(v => !string.IsNullOrWhiteSpace(v))
+                .Select(v => v!)];
+        }
+
+        return [];
     }
 
     private static int ContarParametros(string? corpo)
