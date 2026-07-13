@@ -103,7 +103,7 @@ export function ListaConversas({ conversaAtivaId, onSelecionar, podeSupervisao, 
                     </span>
                     {c.pacienteId ? (
                       <span onClick={(e) => e.stopPropagation()}>
-                        <NomePacienteComResumo pacienteId={c.pacienteId} />
+                        <NomePacienteComResumo pacienteId={c.pacienteId} mostrarWhatsApp={false} />
                       </span>
                     ) : null}
                   </span>

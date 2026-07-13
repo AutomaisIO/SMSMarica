@@ -66,7 +66,7 @@ export function ThreadMensagens({ conversaId }: { conversaId: string }) {
         <p className="flex items-center gap-1 text-sm font-semibold text-gray-900">
           {conversa?.pacienteNome || conversa?.nomeContato || conversa?.telefoneCanonical || 'Conversa'}
           {conversa?.pacienteId ? (
-            <NomePacienteComResumo pacienteId={conversa.pacienteId} />
+            <NomePacienteComResumo pacienteId={conversa.pacienteId} mostrarWhatsApp={false} />
           ) : null}
         </p>
         <p className="text-xs text-gray-500">

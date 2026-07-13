@@ -6,6 +6,11 @@ import { Input } from '@/shared/ui/Input';
 import { Modal } from '@/shared/ui/Modal';
 import { Campo } from '@/shared/ui/Campo';
 import { useConfirmarTelefoneOtp, useEnviarTelefoneOtp } from '@/features/telefone-validacao/api/queries';
+import {
+  lerOtpPendente,
+  limparOtpPendente,
+  salvarOtpPendente,
+} from '@/features/telefone-validacao/lib/otpPendente';
 
 type Props = {
   aberto: boolean;
@@ -36,17 +41,27 @@ export function ModalOtpTelefone({ aberto, cpf, numeroInicial, numeroEditavel, a
   const [codigo, setCodigo] = useState('');
   const [erro, setErro] = useState<string | null>(null);
 
-  // Reseta o fluxo a cada abertura.
+  // A cada abertura: se já mandamos um código para este CPF e ele ainda vale, retoma o
+  // fluxo no campo do código. Reenviar aqui invalidaria o código que o paciente tem na mão.
   useEffect(() => {
-    if (aberto) {
-      setEtapa('numero');
-      setNumero(numeroInicial);
-      setMascara(null);
-      setModoTeste(false);
-      setCodigo('');
-      setErro(null);
+    if (!aberto) return;
+    setCodigo('');
+    setErro(null);
+
+    const pendente = lerOtpPendente(cpf);
+    if (pendente) {
+      setEtapa('codigo');
+      setNumero(pendente.numero);
+      setMascara(pendente.mascara);
+      setModoTeste(pendente.modoTeste);
+      return;
     }
-  }, [aberto, numeroInicial]);
+
+    setEtapa('numero');
+    setNumero(numeroInicial);
+    setMascara(null);
+    setModoTeste(false);
+  }, [aberto, cpf, numeroInicial]);
 
   async function aoEnviar() {
     setErro(null);
@@ -59,6 +74,12 @@ export function ModalOtpTelefone({ aberto, cpf, numeroInicial, numeroEditavel, a
       setMascara(r.mascara);
       setModoTeste(r.canal === 'tela-teste');
       setEtapa('codigo');
+      salvarOtpPendente(cpf, {
+        numero,
+        mascara: r.mascara,
+        modoTeste: r.canal === 'tela-teste',
+        expiraEm: Date.now() + r.expiraEmSegundos * 1000,
+      });
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
     }
@@ -68,10 +89,17 @@ export function ModalOtpTelefone({ aberto, cpf, numeroInicial, numeroEditavel, a
     setErro(null);
     try {
       await confirmar.mutateAsync({ cpf, numero, codigo });
+      limparOtpPendente(cpf);
       aoValidado();
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
     }
+  }
+
+  /** Desiste da verificação: só aqui (ou ao confirmar/expirar) a pendência morre. */
+  function aoCancelarVerificacao() {
+    limparOtpPendente(cpf);
+    aoFechar();
   }
 
   return (
@@ -129,20 +157,40 @@ export function ModalOtpTelefone({ aberto, cpf, numeroInicial, numeroEditavel, a
             />
             <div className="flex gap-2">
               {numeroEditavel ? (
-                <Button variante="outline" onClick={() => setEtapa('numero')} className="flex-1">
+                <Button
+                  variante="outline"
+                  onClick={() => {
+                    // O número estava errado: o código enviado não serve mais.
+                    limparOtpPendente(cpf);
+                    setEtapa('numero');
+                  }}
+                  className="flex-1"
+                >
                   Corrigir número
                 </Button>
-              ) : (
-                <Button variante="outline" onClick={aoEnviar} disabled={enviar.isPending} className="flex-1">
-                  {enviar.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  Reenviar
-                </Button>
-              )}
+              ) : null}
+              <Button variante="outline" onClick={aoEnviar} disabled={enviar.isPending} className="flex-1">
+                {enviar.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Reenviar
+              </Button>
               <Button onClick={aoConfirmar} disabled={confirmar.isPending || codigo.length < 6} className="flex-1">
                 {confirmar.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Confirmar
               </Button>
             </div>
+
+            <p className="text-xs text-gray-500">
+              Pode fechar e voltar depois: o código continua valendo e esta tela volta aqui. Para
+              desistir de vez,{' '}
+              <button
+                type="button"
+                onClick={aoCancelarVerificacao}
+                className="font-medium text-red-600 underline hover:text-red-700"
+              >
+                cancelar a verificação
+              </button>
+              .
+            </p>
           </div>
         )}
       </div>

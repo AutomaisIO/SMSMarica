@@ -1,13 +1,24 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Loader2, Search, X } from 'lucide-react';
 import { useBuscarContatos, useIniciarConversa, useTemplates } from '@/features/conversas/api/queries';
+import { usePacientePorId } from '@/features/pacientes/api/queries';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { ROTULO_ASSUNTO, type AssuntoConversa, type ContatoConversa } from '@/features/conversas/types';
 
 type Props = {
   onFechar: () => void;
   onCriada: (id: string) => void;
+  /**
+   * Abre já com este paciente escolhido (atalho do WhatsApp ao lado do nome, em qualquer
+   * tela). Nome e telefone vêm do cadastro — o operador só confere e dispara.
+   */
+  pacienteInicialId?: string;
 };
+
+/** O tratamento do template é "Sr./Sra. Fulano" — o primeiro nome basta. */
+function primeiroNome(nome: string): string {
+  return nome.trim().split(/\s+/)[0] ?? nome;
+}
 
 const ASSUNTOS: AssuntoConversa[] = ['Tfd', 'MarcacaoConsulta', 'Duvida', 'Atendente', 'Outro'];
 
@@ -46,9 +57,10 @@ function preencher(corpo: string, valores: string[]): string {
  * primeiro contato só existe via template aprovado, e é ele que provoca a resposta que abre
  * a janela. Por isso o modelo é obrigatório aqui (a lista vem filtrada pelo backend).
  */
-export function NovaConversaDialog({ onFechar, onCriada }: Props) {
+export function NovaConversaDialog({ onFechar, onCriada, pacienteInicialId }: Props) {
   const { data: templates } = useTemplates(true);
   const iniciar = useIniciarConversa();
+  const pacienteInicial = usePacientePorId(pacienteInicialId ?? null);
 
   const [modo, setModo] = useState<'paciente' | 'telefone'>('paciente');
   const [termo, setTermo] = useState('');
@@ -73,8 +85,10 @@ export function NovaConversaDialog({ onFechar, onCriada }: Props) {
     if (templateNome || !templates?.length) return;
     const unico = templates[0];
     setTemplateNome(unico.nome);
-    setParams(Array.from({ length: unico.parametros }, () => ''));
-  }, [templates, templateNome]);
+    // O contato pode ter chegado antes do modelo (atalho do WhatsApp): mantém o {{1}}.
+    setParams(Array.from({ length: unico.parametros }, (_, i) =>
+      i === 0 && contato ? primeiroNome(contato.nome) : ''));
+  }, [templates, templateNome, contato]);
 
   function aoTrocarTemplate(nome: string) {
     setTemplateNome(nome);
@@ -87,9 +101,26 @@ export function NovaConversaDialog({ onFechar, onCriada }: Props) {
     setTelefone(c.telefone ?? '');
     setTermo('');
     // {{1}} é o tratamento ("Sr./Sra. Fulano") em todos os modelos de abertura — adianta o
-    // nome e deixa o operador ajustar o pronome.
-    setParams((atual) => (atual[0]?.trim() ? atual : atual.map((v, i) => (i === 0 ? c.nome : v))));
+    // primeiro nome e deixa o operador acrescentar o pronome.
+    setParams((atual) =>
+      atual[0]?.trim() ? atual : atual.map((v, i) => (i === 0 ? primeiroNome(c.nome) : v)));
   }
+
+  // Atalho do WhatsApp ao lado do nome: o paciente já vem escolhido, com nome e telefone
+  // do cadastro. Roda uma vez, quando o cadastro chega.
+  const pacienteCarregado = pacienteInicial.data;
+  useEffect(() => {
+    if (!pacienteCarregado || contato) return;
+    aoSelecionarContato({
+      pacienteId: pacienteCarregado.id,
+      nome: pacienteCarregado.nomeCompleto,
+      telefone: pacienteCarregado.telefonePrincipal ?? null,
+      cpf: pacienteCarregado.cpf ?? null,
+      dataNascimento: pacienteCarregado.dataNascimento ?? null,
+      origem: 'Cadastro',
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pacienteCarregado]);
 
   const idioma = selecionado?.idioma ?? 'pt_BR';
   const faltaVariavel = params.some((p) => !p.trim());
@@ -132,6 +163,14 @@ export function NovaConversaDialog({ onFechar, onCriada }: Props) {
 
         <div className="space-y-4 overflow-y-auto p-4">
           <div>
+            {pacienteInicial.isLoading ? (
+              <p className="flex items-center gap-2 text-sm text-gray-500">
+                <Loader2 className="h-4 w-4 animate-spin" /> Carregando o paciente…
+              </p>
+            ) : null}
+
+            {!contato && !pacienteInicial.isLoading ? (
+              <>
             <div className="mb-2 flex gap-1 rounded-md bg-gray-100 p-1">
               {(['paciente', 'telefone'] as const).map((m) => (
                 <button
@@ -185,6 +224,8 @@ export function NovaConversaDialog({ onFechar, onCriada }: Props) {
                   </ul>
                 ) : null}
               </div>
+            ) : null}
+              </>
             ) : null}
 
             {contato ? (
