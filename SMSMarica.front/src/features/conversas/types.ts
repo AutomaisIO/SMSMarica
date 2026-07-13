@@ -54,6 +54,16 @@ export type TemplateWhatsApp = {
   exemplos: string[];
 };
 
+/** Um dos cadastros que carregam o telefone da conversa (celular de família). */
+export type PacienteDoTelefone = {
+  pacienteId: string;
+  nome: string;
+  cpf: string | null;
+  dataNascimento: string | null;
+  /** O paciente vinculado à conversa — o que o resto do sistema trata como "o dono". */
+  titular: boolean;
+};
+
 /** Candidato a destinatário na abertura de conversa (busca por solicitação, CPF, CNS ou nome). */
 export type ContatoConversa = {
   pacienteId: string;

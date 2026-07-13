@@ -3,6 +3,7 @@ import { useConversa, useMarcarLida, useMensagens } from '@/features/conversas/a
 import { useAssinaturaConversa } from '@/features/conversas/hooks/useChatHub';
 import { ComposerMensagem } from '@/features/conversas/components/ComposerMensagem';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
+import { PacientesDoTelefone } from '@/features/conversas/components/PacientesDoTelefone';
 import type { Mensagem } from '@/features/conversas/types';
 
 function hora(iso: string): string {
@@ -77,6 +78,8 @@ export function ThreadMensagens({ conversaId }: { conversaId: string }) {
           {conversa?.operadorResponsavelNome && ` · Atendendo: ${conversa.operadorResponsavelNome}`}
           {conversa?.unidadeNome && ` · ${conversa.unidadeNome}`}
         </p>
+
+        <PacientesDoTelefone conversaId={conversaId} />
       </div>
 
       <div className="flex-1 space-y-2 overflow-y-auto p-3">

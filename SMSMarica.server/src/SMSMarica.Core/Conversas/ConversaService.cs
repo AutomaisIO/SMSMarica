@@ -84,6 +84,24 @@ public sealed class ConversaService(
         return achados;
     }
 
+    public async Task<IReadOnlyList<PacienteDoTelefoneDto>> ListarPacientesDoTelefoneAsync(
+        Guid conversaId, CancellationToken ct = default)
+    {
+        var conversa = await db.Conversas
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == conversaId && c.ExcluidoEm == null, ct)
+            ?? throw new NaoEncontradoException("Conversa", conversaId);
+
+        var achados = await pacientes.ListarPorTelefoneAsync(conversa.TelefoneCanonical, ct);
+
+        return [.. achados
+            .Select(p => new PacienteDoTelefoneDto(
+                p.Id, p.NomeCompleto, p.Cpf, p.DataNascimento, p.Id == conversa.PacienteId))
+            // O titular primeiro; o resto por nome, para a lista não dançar entre requests.
+            .OrderByDescending(p => p.Titular)
+            .ThenBy(p => p.Nome, StringComparer.OrdinalIgnoreCase)];
+    }
+
     public async Task<Guid> IniciarComTemplateAsync(IniciarConversaRequest request, CancellationToken ct = default)
     {
         var me = ExigirUsuario();

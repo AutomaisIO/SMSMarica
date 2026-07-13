@@ -48,6 +48,18 @@ public sealed class ConversasController(IConversaService service) : ControllerBa
     public async Task<ConversaListItemDto> ObterPorId(Guid id, CancellationToken ct) =>
         await service.ObterAsync(id, ct);
 
+    /// <summary>
+    /// Todos os cadastros que têm o telefone desta conversa — telefone de família aparece em
+    /// vários pacientes, e quem atende precisa saber com quem pode estar falando.
+    /// </summary>
+    [HttpGet("{id:guid}/pacientes")]
+    [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<PacienteDoTelefoneDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IReadOnlyList<PacienteDoTelefoneDto>> PacientesDoTelefone(
+        Guid id, CancellationToken ct) =>
+        await service.ListarPacientesDoTelefoneAsync(id, ct);
+
     [HttpGet("{id:guid}/mensagens")]
     [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<MensagemDto>>(StatusCodes.Status200OK)]

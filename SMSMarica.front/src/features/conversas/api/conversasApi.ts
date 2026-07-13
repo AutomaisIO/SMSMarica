@@ -5,6 +5,7 @@ import type {
   ConversaListItem,
   IniciarConversaPayload,
   Mensagem,
+  PacienteDoTelefone,
   TemplateWhatsApp,
 } from '@/features/conversas/types';
 
@@ -27,6 +28,11 @@ export async function obterMensagens(id: string): Promise<Mensagem[]> {
 
 export async function listarTemplates(): Promise<TemplateWhatsApp[]> {
   const { data } = await http.get<TemplateWhatsApp[]>('/conversas/templates');
+  return data;
+}
+
+export async function listarPacientesDoTelefone(id: string): Promise<PacienteDoTelefone[]> {
+  const { data } = await http.get<PacienteDoTelefone[]>(`/conversas/${id}/pacientes`);
   return data;
 }
 

@@ -80,19 +80,28 @@ public sealed class PacientesService(
 
     public async Task<PacienteExistenciaDto?> ObterPorTelefoneAsync(string telefone, CancellationToken cancellationToken = default)
     {
+        var patient = (await BuscarPorTelefoneAsync(telefone, cancellationToken)).FirstOrDefault();
+        if (patient is null) return null;
+
+        var dto = PacienteFhirMapper.ParaDto(patient);
+        return new PacienteExistenciaDto(dto.Id, dto.NomeCompleto, dto.Cpf, dto.Ativo);
+    }
+
+    public async Task<IReadOnlyList<PacienteListItemDto>> ListarPorTelefoneAsync(
+        string telefone, CancellationToken cancellationToken = default) =>
+        [.. (await BuscarPorTelefoneAsync(telefone, cancellationToken)).Select(PacienteFhirMapper.ParaListItem)];
+
+    private async Task<IReadOnlyList<Patient>> BuscarPorTelefoneAsync(string telefone, CancellationToken ct)
+    {
         var numero = Digitos(telefone);
         // O hub guarda os telefones na forma NACIONAL (DDD+número); o WhatsApp/canônico chega
         // com DDI 55 (12/13 díg.) — sem tirar o DDI, o Contains da busca nunca casa.
         if (numero.StartsWith("55", StringComparison.Ordinal) && numero.Length is 12 or 13)
             numero = numero[2..];
-        if (numero.Length < 8) return null;
+        if (numero.Length < 8) return [];
 
-        var bundle = await fhir.BuscarAsync(telecom: numero, ct: cancellationToken);
-        var patient = bundle.Entry.Select(e => e.Resource).OfType<Patient>().FirstOrDefault();
-        if (patient is null) return null;
-
-        var dto = PacienteFhirMapper.ParaDto(patient);
-        return new PacienteExistenciaDto(dto.Id, dto.NomeCompleto, dto.Cpf, dto.Ativo);
+        var bundle = await fhir.BuscarAsync(telecom: numero, ct: ct);
+        return [.. bundle.Entry.Select(e => e.Resource).OfType<Patient>()];
     }
 
     public async Task<Guid> CadastrarAsync(CadastrarPacienteRequest request, CancellationToken cancellationToken = default)

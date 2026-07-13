@@ -4,6 +4,7 @@ import {
   enviarMensagem,
   iniciarConversa,
   listarConversas,
+  listarPacientesDoTelefone,
   listarTemplates,
   marcarLida,
   obterConversa,
@@ -18,7 +19,18 @@ export const conversasKeys = {
   mensagens: (id: string) => ['conversas', 'mensagens', id] as const,
   templates: () => ['conversas', 'templates'] as const,
   contatos: (termo: string) => ['conversas', 'contatos', termo] as const,
+  pacientesDoTelefone: (id: string) => ['conversas', 'pacientes-telefone', id] as const,
 };
+
+/** Todos os cadastros que têm o telefone da conversa (celular de família). */
+export function usePacientesDoTelefone(conversaId: string | null) {
+  return useQuery({
+    queryKey: conversasKeys.pacientesDoTelefone(conversaId ?? 'nenhum'),
+    queryFn: () => listarPacientesDoTelefone(conversaId!),
+    enabled: Boolean(conversaId),
+    staleTime: 60_000,
+  });
+}
 
 /** Busca do destinatário na nova conversa: nº da solicitação, CPF, CNS ou parte do nome. */
 export function useBuscarContatos(termo: string) {

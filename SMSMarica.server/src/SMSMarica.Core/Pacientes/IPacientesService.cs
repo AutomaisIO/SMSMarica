@@ -36,6 +36,14 @@ public interface IPacientesService
     /// </summary>
     Task<PacienteExistenciaDto?> ObterPorTelefoneAsync(string telefone, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// TODOS os pacientes que têm este telefone (Patient.telecom) — um celular de família
+    /// costuma estar no cadastro da mãe, do filho e do avô. Quem atende precisa ver a lista
+    /// inteira em vez de um match escolhido em silêncio.
+    /// </summary>
+    Task<IReadOnlyList<PacienteListItemDto>> ListarPorTelefoneAsync(
+        string telefone, CancellationToken cancellationToken = default);
+
     Task<Guid> CadastrarAsync(CadastrarPacienteRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>

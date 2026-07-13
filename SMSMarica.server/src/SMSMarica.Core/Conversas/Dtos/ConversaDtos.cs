@@ -68,6 +68,21 @@ public sealed record IniciarConversaRequest(
 public sealed record EnviarMensagemRequest(string Texto);
 
 /// <summary>
+/// Um dos cadastros que carregam o telefone da conversa. Celular de família aparece no
+/// cadastro da mãe, do filho e do avô — quem atende precisa ver todos, não um escolhido em
+/// silêncio.
+/// </summary>
+/// <param name="Titular">
+/// True para o paciente vinculado à conversa (o que o resto do sistema considera "o dono").
+/// </param>
+public sealed record PacienteDoTelefoneDto(
+    Guid PacienteId,
+    string Nome,
+    string? Cpf,
+    DateOnly? DataNascimento,
+    bool Titular);
+
+/// <summary>
 /// Candidato a contato na abertura de uma conversa — o paciente achado no hub FHIR, já com o
 /// telefone que a mensagem usaria.
 /// </summary>

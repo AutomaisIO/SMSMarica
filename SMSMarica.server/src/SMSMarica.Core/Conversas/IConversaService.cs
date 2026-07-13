@@ -35,4 +35,11 @@ public interface IConversaService
     /// parte do nome. Termo com menos de 3 caracteres devolve vazio.
     /// </summary>
     Task<IReadOnlyList<ContatoConversaDto>> BuscarContatosAsync(string? termo, CancellationToken ct = default);
+
+    /// <summary>
+    /// TODOS os cadastros que têm o telefone desta conversa (telefone de família). O titular
+    /// vem marcado. Lista vazia = ninguém no hub tem esse número.
+    /// </summary>
+    Task<IReadOnlyList<PacienteDoTelefoneDto>> ListarPacientesDoTelefoneAsync(
+        Guid conversaId, CancellationToken ct = default);
 }
