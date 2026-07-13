@@ -3,6 +3,7 @@ import { Loader2, Search, X } from 'lucide-react';
 import { useBuscarContatos, useIniciarConversa, useTemplates } from '@/features/conversas/api/queries';
 import { usePacientePorId } from '@/features/pacientes/api/queries';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { formatarNomeProprio, primeiroNomeProprio } from '@/shared/lib/nomes';
 import { ROTULO_ASSUNTO, type AssuntoConversa, type ContatoConversa } from '@/features/conversas/types';
 
 type Props = {
@@ -14,11 +15,6 @@ type Props = {
    */
   pacienteInicialId?: string;
 };
-
-/** O tratamento do template é "Sr./Sra. Fulano" — o primeiro nome basta. */
-function primeiroNome(nome: string): string {
-  return nome.trim().split(/\s+/)[0] ?? nome;
-}
 
 const ASSUNTOS: AssuntoConversa[] = ['Tfd', 'MarcacaoConsulta', 'Duvida', 'Atendente', 'Outro'];
 
@@ -87,7 +83,7 @@ export function NovaConversaDialog({ onFechar, onCriada, pacienteInicialId }: Pr
     setTemplateNome(unico.nome);
     // O contato pode ter chegado antes do modelo (atalho do WhatsApp): mantém o {{1}}.
     setParams(Array.from({ length: unico.parametros }, (_, i) =>
-      i === 0 && contato ? primeiroNome(contato.nome) : ''));
+      i === 0 && contato ? primeiroNomeProprio(contato.nome) : ''));
   }, [templates, templateNome, contato]);
 
   function aoTrocarTemplate(nome: string) {
@@ -103,7 +99,7 @@ export function NovaConversaDialog({ onFechar, onCriada, pacienteInicialId }: Pr
     // {{1}} é o tratamento ("Sr./Sra. Fulano") em todos os modelos de abertura — adianta o
     // primeiro nome e deixa o operador acrescentar o pronome.
     setParams((atual) =>
-      atual[0]?.trim() ? atual : atual.map((v, i) => (i === 0 ? primeiroNome(c.nome) : v)));
+      atual[0]?.trim() ? atual : atual.map((v, i) => (i === 0 ? primeiroNomeProprio(c.nome) : v)));
   }
 
   // Atalho do WhatsApp ao lado do nome: o paciente já vem escolhido, com nome e telefone
@@ -136,7 +132,7 @@ export function NovaConversaDialog({ onFechar, onCriada, pacienteInicialId }: Pr
       const id = await iniciar.mutateAsync({
         telefone: telefone.trim(),
         pacienteId: contato?.pacienteId ?? null,
-        nomeContato: contato?.nome ?? null,
+        nomeContato: contato ? formatarNomeProprio(contato.nome) : null,
         assunto: assunto || null,
         template: templateNome,
         idioma,
@@ -213,7 +209,9 @@ export function NovaConversaDialog({ onFechar, onCriada, pacienteInicialId }: Pr
                           onClick={() => aoSelecionarContato(c)}
                           className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50"
                         >
-                          <span className="block truncate font-medium text-gray-900">{c.nome}</span>
+                          <span className="block truncate font-medium text-gray-900">
+                            {formatarNomeProprio(c.nome)}
+                          </span>
                           <span className="block truncate text-xs text-gray-500">
                             {c.telefone ? telefoneFmt(c.telefone) : 'sem telefone cadastrado'}
                             {c.cpf ? ` · CPF ${cpfFmt(c.cpf)}` : ''} · {c.origem}
@@ -231,7 +229,9 @@ export function NovaConversaDialog({ onFechar, onCriada, pacienteInicialId }: Pr
             {contato ? (
               <div className="mt-2 flex items-center justify-between rounded-md border border-primary-200 bg-primary-50 px-3 py-2">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-gray-900">{contato.nome}</p>
+                  <p className="truncate text-sm font-medium text-gray-900">
+                    {formatarNomeProprio(contato.nome)}
+                  </p>
                   <p className="truncate text-xs text-gray-500">{contato.origem}</p>
                 </div>
                 <button

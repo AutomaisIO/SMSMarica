@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using SMSMarica.Core.Common.Excecoes;
+using SMSMarica.Core.Common.Texto;
 using SMSMarica.Core.Conversas.Dtos;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Notificacoes.WhatsApp;
@@ -353,8 +354,9 @@ public sealed class ConversaService(
         c.Id, c.OperadorResponsavelId, c.UnidadeId, c.TelefoneCanonical, c.NomeContato,
         Truncar(preview), c.NaoLidas, c.UltimaMensagemEm);
 
-    private static string PrimeiroNome(string nome) =>
-        nome.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? nome;
+    // O nome de exibição do operador costuma vir em caixa alta do cadastro — no WhatsApp
+    // isso lê como grito.
+    private static string PrimeiroNome(string nome) => NomePessoa.PrimeiroNome(nome);
 
     private static string? Truncar(string? s) => s is null ? null : s.Length <= 200 ? s : s[..200];
 }
