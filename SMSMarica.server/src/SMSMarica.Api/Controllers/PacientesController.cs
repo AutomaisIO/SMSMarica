@@ -68,6 +68,23 @@ public sealed class PacientesController(
         await _sessoes.ListarAcessosAsync(id, cancellationToken);
 
     /// <summary>
+    /// BOTÃO DE PÂNICO: expira TODOS os magic links válidos e revoga TODAS as sessões de
+    /// cidadão. Use quando um lote de mensagens pode ter ido para números errados — nenhum
+    /// link antigo autentica mais e quem estiver logado cai. O paciente certo reentra pelo
+    /// link novo (reenvio) ou pelo OTP.
+    /// </summary>
+    [HttpPost("acessos/revogar-todos")]
+    [RequerPermissao(ModuloPermissao.Pacientes, AcoesPermissao.Exclusao)]
+    [ProducesResponseType<RevogacaoGlobalDto>(StatusCodes.Status200OK)]
+    public async Task<RevogacaoGlobalDto> RevogarTodosAcessos(
+        [FromBody] RevogarAcessosRequest request, CancellationToken cancellationToken)
+    {
+        var (links, sessoes) = await _sessoes.RevogarTodosAcessosAsync(
+            request.Motivo, cancellationToken);
+        return new RevogacaoGlobalDto(links, sessoes);
+    }
+
+    /// <summary>
     /// Verifica se há paciente com o CPF informado (inclusive desativado).
     /// 404 se não existe; 200 com o resumo (incluindo <c>ativo</c>) se existe.
     /// </summary>

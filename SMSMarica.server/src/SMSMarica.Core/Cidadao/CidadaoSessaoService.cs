@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities;
 
@@ -8,8 +9,33 @@ namespace SMSMarica.Core.Cidadao;
 public sealed class CidadaoSessaoService(
     SmsMaricaDbContext db,
     IPacienteTokenService tokens,
-    IConfiguration config) : ICidadaoSessaoService
+    IConfiguration config,
+    ILogger<CidadaoSessaoService> logger) : ICidadaoSessaoService
 {
+    public async Task<(int Links, int Sessoes)> RevogarTodosAcessosAsync(
+        string motivo, CancellationToken ct = default)
+    {
+        var agora = DateTime.UtcNow;
+
+        // Expirar = ninguém mais troca o link por sessão (mesmo caminho do "Reenviar", sem o
+        // filtro por solicitação). Não apagamos a linha: o histórico de quem clicou e quando
+        // é justamente o que permite investigar para onde a mensagem foi parar.
+        var links = await db.CidadaoLoginLinks
+            .Where(l => l.ExpiraEm > agora)
+            .ExecuteUpdateAsync(set => set.SetProperty(l => l.ExpiraEm, agora), ct);
+
+        // Quem já entrou com um link (possivelmente errado) perde o acesso agora.
+        var sessoes = await db.CidadaoSessoes
+            .Where(s => s.RevogadaEm == null && s.ExpiraEm > agora)
+            .ExecuteUpdateAsync(set => set.SetProperty(s => s.RevogadaEm, agora), ct);
+
+        logger.LogWarning(
+            "REVOGAÇÃO GLOBAL de acessos do cidadão: {Links} link(s) expirado(s), {Sessoes} sessão(ões) revogada(s). Motivo: {Motivo}",
+            links, sessoes, motivo);
+
+        return (links, sessoes);
+    }
+
     public async Task<(string Token, DateTime ExpiraEm)> AbrirSessaoAsync(
         Guid patientId, string nome, string cpf, string canal,
         string? dispositivo, string? ip, CancellationToken ct = default)

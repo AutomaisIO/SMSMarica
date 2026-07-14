@@ -48,6 +48,7 @@ const ROTULO_STATUS: Record<StatusNotificacao, string> = {
   Lida: 'Lida',
   Falha: 'Falha',
   SemTelefoneValido: 'Sem celular válido',
+  AguardandoTelefoneVerificado: 'Aguardando contato verificado',
 };
 
 const CLASSE_STATUS: Record<StatusNotificacao, string> = {
@@ -57,6 +58,7 @@ const CLASSE_STATUS: Record<StatusNotificacao, string> = {
   Lida: 'badge-success',
   Falha: 'badge-danger',
   SemTelefoneValido: 'badge-warning',
+  AguardandoTelefoneVerificado: 'badge-warning',
 };
 
 const ROTULO_CONFIRMACAO: Record<StatusConfirmacao, string> = {
@@ -303,6 +305,7 @@ export function NotificacoesAgendamentoPage() {
           <option value="Lida">Lida</option>
           <option value="Falha">Falha</option>
           <option value="SemTelefoneValido">Sem celular válido</option>
+          <option value="AguardandoTelefoneVerificado">Aguardando contato verificado</option>
         </Select>
         <Select
           value={confirmacao}

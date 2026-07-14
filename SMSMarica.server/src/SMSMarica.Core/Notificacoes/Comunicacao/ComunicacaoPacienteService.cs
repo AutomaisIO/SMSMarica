@@ -219,10 +219,27 @@ public sealed class ComunicacaoPacienteService(
     {
         var paciente = await pacientes.ObterPorIdAsync(n.PacienteId, ct);
 
+        // DADO CLÍNICO (imagem do exame, laudo) só vai para contato VERIFICADO: o link abre o
+        // resultado, e o telefone do cadastro pode estar errado/desatualizado — foi o que
+        // mandou laudo para destino desconhecido no lote de 2026-07. Confirmação de
+        // agendamento continua indo para qualquer celular: não expõe resultado e é ela que
+        // provoca o contato (a resposta do paciente é o que permite verificar o número).
+        var exigeVerificado = n.Finalidade is FinalidadeComunicacao.ExameLiberado
+            or FinalidadeComunicacao.LaudoPronto;
+
+        if (exigeVerificado && !TelefoneWhatsApp.EhCelularBr(paciente.TelefoneVerificado))
+        {
+            // NÃO é terminal: fica retida e sai sozinha quando a recepção verificar o contato.
+            n.Status = StatusComunicacao.AguardandoTelefoneVerificado;
+            n.MotivoFalha = "Contato não verificado — resultado e laudo só vão para telefone verificado.";
+            n.ProximaTentativaEm = null;
+            await db.SaveChangesAsync(ct);
+            return;
+        }
+
         // Telefone: contato VERIFICADO (marcador no telecom FHIR, já vem no DTO) > qualquer
         // CELULAR do cadastro (celular > principal > residencial — import às vezes guarda o
-        // celular como "home"). Verificação NÃO é pré-requisito: só não envia quando o
-        // paciente não tem celular nenhum (fixo/sem telefone).
+        // celular como "home").
         var telefone = paciente.TelefoneVerificado
             ?? new[] { paciente.TelefoneCelular, paciente.TelefonePrincipal, paciente.TelefoneResidencial }
                 .FirstOrDefault(TelefoneWhatsApp.EhCelularBr);

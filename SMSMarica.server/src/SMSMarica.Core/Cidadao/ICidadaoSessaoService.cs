@@ -26,6 +26,14 @@ public interface ICidadaoSessaoService
     Task RevogarAsync(Guid sessaoJti, CancellationToken ct = default);
 
     /// <summary>
+    /// BOTÃO DE PÂNICO: expira TODOS os magic links ainda válidos e revoga TODAS as sessões
+    /// ativas de cidadão. Para quando um lote de mensagens pode ter ido para números errados —
+    /// nenhum link antigo autentica mais e quem estiver logado cai. O paciente certo reentra
+    /// pelo link novo (ou pelo OTP). Devolve quantos links e sessões foram derrubados.
+    /// </summary>
+    Task<(int Links, int Sessoes)> RevogarTodosAcessosAsync(string motivo, CancellationToken ct = default);
+
+    /// <summary>
     /// Histórico de acessos (sessões) do paciente, mais recentes primeiro. Usado pelo
     /// painel (staff) na aba "Histórico de Acesso" do cadastro do paciente.
     /// </summary>

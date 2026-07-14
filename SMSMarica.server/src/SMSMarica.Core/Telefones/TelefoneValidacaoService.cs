@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Hl7.Fhir.Model;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -8,10 +9,13 @@ using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Notificacoes.WhatsApp;
 using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Core.Telefones.Dtos;
+using SMSMarica.Data;
+using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Telefones;
 
 public sealed class TelefoneValidacaoService(
+    SmsMaricaDbContext db,
     IWhatsAppCliente whatsapp,
     IMemoryCache cache,
     IConfiguration config,
@@ -169,14 +173,16 @@ public sealed class TelefoneValidacaoService(
         // aposentada). Quando exigido (OTP confirmado pelo operador/cidadão), falha ALTO se não
         // conseguir carimbar — validação sem carimbo seria invisível para todo o sistema.
         // Verificado é conceito de PACIENTE: sem Patient no hub não há o que validar.
-        var estampado = await EstamparConfirmadoNoFhirAsync(cpfDig, canon, agora, ct);
-        if (!estampado && exigirFhir)
+        var patientId = await EstamparConfirmadoNoFhirAsync(cpfDig, canon, agora, ct);
+        if (patientId is null && exigirFhir)
             throw new ValidacaoException(
                 "telefone.sem_paciente",
                 "Não encontramos o cadastro de paciente desta pessoa — a verificação de contato é feita no cadastro do paciente.");
 
+        if (patientId is { } id) await LiberarComunicacoesRetidasAsync(id, agora, ct);
+
         logger.LogInformation("Contato {Num} validado para CPF {Cpf} (origem {Origem}; FHIR {Fhir}).",
-            canon, cpfDig, origem, estampado ? "estampado" : "sem-paciente");
+            canon, cpfDig, origem, patientId is not null ? "estampado" : "sem-paciente");
         return agora;
     }
 
@@ -191,21 +197,44 @@ public sealed class TelefoneValidacaoService(
             ? new string([.. v.Where(char.IsDigit)])
             : null;
 
-    private async Task<bool> EstamparConfirmadoNoFhirAsync(string cpfDig, string canon, DateTime em, CancellationToken ct)
+    /// <summary>Carimba o marcador no telecom e devolve o id do Patient; null = não estampou.</summary>
+    private async Task<Guid?> EstamparConfirmadoNoFhirAsync(string cpfDig, string canon, DateTime em, CancellationToken ct)
     {
         try
         {
             var patient = await ObterPatientPorCpfAsync(cpfDig, ct);
-            if (patient?.Id is null) return false;
+            if (patient?.Id is null) return null;
             PatientMergeFhir.MarcarTelefoneConfirmado(patient, canon, new DateTimeOffset(em, TimeSpan.Zero));
-            await fhir.AtualizarAsync(Guid.Parse(patient.Id), patient, ct);
-            return true;
+            var id = Guid.Parse(patient.Id);
+            await fhir.AtualizarAsync(id, patient, ct);
+            return id;
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Falha ao estampar telefone confirmado no FHIR (CPF {Cpf}).", cpfDig);
-            return false;
+            return null;
         }
+    }
+
+    /// <summary>
+    /// Solta as comunicações que estavam RETIDAS por falta de contato verificado (resultado de
+    /// exame e laudo). Verificou o telefone → o worker manda na próxima passagem, sem ninguém
+    /// precisar lembrar de reenviar.
+    /// </summary>
+    private async Task LiberarComunicacoesRetidasAsync(Guid patientId, DateTime agora, CancellationToken ct)
+    {
+        var soltas = await db.ComunicacoesPaciente
+            .Where(c => c.PacienteId == patientId
+                        && c.Status == StatusComunicacao.AguardandoTelefoneVerificado)
+            .ExecuteUpdateAsync(set => set
+                .SetProperty(c => c.Status, StatusComunicacao.Pendente)
+                .SetProperty(c => c.MotivoFalha, (string?)null)
+                .SetProperty(c => c.ProximaTentativaEm, agora), ct);
+
+        if (soltas > 0)
+            logger.LogInformation(
+                "Contato verificado do paciente {Paciente}: {N} comunicação(ões) retidas liberadas.",
+                patientId, soltas);
     }
 
     private static string Chave(string cpfDig, string canon) => $"otp:telefone:{cpfDig}:{canon}";
