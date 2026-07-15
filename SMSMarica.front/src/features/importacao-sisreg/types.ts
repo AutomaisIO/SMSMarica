@@ -24,6 +24,7 @@ export type ImportacaoExecucaoResultado = {
   pacienteNome: string | null;
   pacienteCriado: boolean;
   unidadeSolicitanteCriada: boolean;
+  unidadeExecutanteCriada: boolean;
   passos: string[];
   erro: string | null;
 };

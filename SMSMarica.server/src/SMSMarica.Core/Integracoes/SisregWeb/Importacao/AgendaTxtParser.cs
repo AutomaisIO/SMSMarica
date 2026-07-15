@@ -3,10 +3,17 @@ using System.Globalization;
 namespace SMSMarica.Core.Integracoes.SisregWeb.Importacao;
 
 /// <summary>
-/// Parser do "Arquivo Agendamento (TXT)" do SISREG (<c>expo_solicitacoes</c>) — export da
-/// agenda do executante. Formato: 1 linha de cabeçalho (<c>CNES;Nome;dt_ini;dt_fim;total</c>)
-/// seguida de linhas de 38 campos separados por <c>;</c>. Traz tudo estruturado, inclusive o
-/// código SIGTAP direto (dispensa mapear procedimento por texto). Encoding latin-1 (ISO-8859-1).
+/// Parser do export de agendamentos do SISREG (<c>expo_solicitacoes</c>) — a agenda do
+/// executante. Aceita os DOIS formatos que o SISREG entrega, pois as linhas de dados são
+/// idênticas (38 campos separados por <c>;</c>, datas em <c>dd.MM.yyyy</c>):
+/// <list type="bullet">
+///   <item><b>TXT</b>: 1ª linha é o cabeçalho da unidade (<c>CNES;Nome;dt_ini;dt_fim;total</c>);
+///   traz o CNES do executante. Encoding latin-1 (ISO-8859-1).</item>
+///   <item><b>CSV</b>: 1ª linha é o cabeçalho de COLUNAS (<c>solicitacao;codigo_interno;…</c>),
+///   sem a linha da unidade — o executante vem do <b>nome do arquivo</b> (a extração é por
+///   unidade). Sai em ASCII (sem acentos).</item>
+/// </list>
+/// Ambos trazem o código SIGTAP direto (dispensa mapear procedimento por texto).
 /// </summary>
 public static class AgendaTxtParser
 {
@@ -40,10 +47,15 @@ public static class AgendaTxtParser
     private const int NomeMedico = 37;
     private const int TotalCampos = 38;
 
-    public static Resultado Parse(string conteudo)
+    /// <param name="conteudo">Texto integral do arquivo (TXT ou CSV).</param>
+    /// <param name="nomeArquivo">Nome do arquivo enviado — usado só no CSV, para derivar a
+    /// unidade executante (que não vem nas linhas). Ex.: "CDT DR ALBERTO…-20260703.csv".</param>
+    public static Resultado Parse(string conteudo, string? nomeArquivo = null)
     {
         var linhas = (conteudo ?? string.Empty).Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
-        var cab = new Cabecalho(null, null, null, null, null);
+        // Sem cabeçalho de unidade (caso CSV), o executante vem do nome do arquivo. Um cabeçalho
+        // real (TXT) sobrescreve isto adiante com o CNES + nome de verdade.
+        var cab = new Cabecalho(null, NomeExecutanteDoArquivo(nomeArquivo), null, null, null);
         var marcacoes = new List<MarcacaoSisreg>();
 
         foreach (var raw in linhas)
@@ -52,12 +64,15 @@ public static class AgendaTxtParser
             if (linha.Length == 0) continue;
             var c = linha.Split(';');
 
-            // Cabeçalho: 5 campos, 1º é CNES (7 díg.), 5º é total numérico.
+            // Cabeçalho de COLUNAS do CSV (1ª célula "solicitacao"): ignora explicitamente.
+            if (EhCabecalhoColunas(c)) continue;
+
+            // Cabeçalho da unidade (TXT): 5 campos, 1º é CNES (7 díg.), 5º é total numérico.
             if (c.Length == 5 && EhCnes(c[0]) && int.TryParse(c[4].Trim(), out var tot))
             {
                 cab = new Cabecalho(
                     Digitos(c[0]),
-                    LimparNulo(c[1]),
+                    LimparNulo(c[1]) ?? cab.NomeUnidade,
                     Data(c[2]),
                     Data(c[3]),
                     tot);
@@ -105,6 +120,26 @@ public static class AgendaTxtParser
     }
 
     private static bool EhCnes(string? s) => Digitos(s) is { Length: 7 };
+
+    /// <summary>Linha de cabeçalho de colunas do CSV (começa por "solicitacao").</summary>
+    private static bool EhCabecalhoColunas(string[] c) =>
+        c.Length >= 2 && string.Equals(c[0].Trim(), "solicitacao", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Nome da unidade executante a partir do nome do arquivo, tirando extensão e o
+    /// sufixo de data "-yyyymmdd" (ex.: "USF JOSEFA XAVIER LEAL-20260703.csv" → "USF JOSEFA
+    /// XAVIER LEAL"). Retorna em MAIÚSCULAS (como as unidades são criadas na importação).</summary>
+    private static string? NomeExecutanteDoArquivo(string? nomeArquivo)
+    {
+        if (string.IsNullOrWhiteSpace(nomeArquivo)) return null;
+        var nome = Path.GetFileNameWithoutExtension(nomeArquivo.Trim());
+        // Corta um bloco final de exatamente 8 dígitos precedido de separador (-, _ ou espaço).
+        var i = nome.Length;
+        while (i > 0 && char.IsDigit(nome[i - 1])) i--;
+        if (nome.Length - i == 8 && i > 0 && nome[i - 1] is '-' or '_' or ' ')
+            nome = nome[..(i - 1)];
+        nome = nome.Trim().Trim('-', '_').Trim();
+        return nome.Length == 0 ? null : nome.ToUpperInvariant();
+    }
 
     private static string Digitos(string? s) =>
         string.IsNullOrEmpty(s) ? string.Empty : new string([.. s.Where(char.IsDigit)]);

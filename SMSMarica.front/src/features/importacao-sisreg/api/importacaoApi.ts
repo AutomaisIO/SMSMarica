@@ -4,7 +4,7 @@ import type {
   ImportacaoPreviewResultado,
 } from '@/features/importacao-sisreg/types';
 
-/** Preview a partir do upload do TXT (Arquivo Agendamento do SISREG). Só leitura. */
+/** Preview a partir do upload do export de agendamentos do SISREG (TXT ou CSV). Só leitura. */
 export async function previewImportacaoTxt(arquivo: File): Promise<ImportacaoPreviewResultado> {
   const form = new FormData();
   form.append('arquivo', arquivo);

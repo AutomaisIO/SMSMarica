@@ -34,6 +34,8 @@ public sealed record ImportacaoExecucaoResultado(
     string? PacienteNome,
     bool PacienteCriado,
     bool UnidadeSolicitanteCriada,
+    /// <summary>Unidade executante foi criada agora (não existia por CNES nem por nome).</summary>
+    bool UnidadeExecutanteCriada,
     /// <summary>Passos executados, em ordem (para o operador conferir o fluxo).</summary>
     IReadOnlyList<string> Passos,
     /// <summary>Mensagem de erro/impedimento quando Sucesso=false.</summary>

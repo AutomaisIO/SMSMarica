@@ -239,6 +239,21 @@ birthDate, address, telecom, identifiers CNS+CPF). Por isso é uma tela-chave.
 No motor, tratar como dado sensível (não logar em claro, respeitar consentimento —
 ver [[project_consentimento_lgpd_cidadao]]). Não commitar capturas dessa tela.
 
+## 🏥 `cons_unidade` — resolver NOME → CNES (e enriquecer cadastro) ✅
+Menu **Unidades**. `POST /cgi-bin/cons_unidade`, **`etapa=LISTAR_UNIDADES_IMPORTADAS`**.
+Filtros: **`no_fantasia`** (nome → CNES) ou **`co_cnes_ups`** (CNES → nome); `tp_unidade`,
+`st_gestao_propria`, `qtd_itens_pag` (10/20/50/100), `pagina` (0-based).
+
+Colunas retornadas (`table_listagem`): **Código CNES | Nome Fantasia | Município Origem (c/ IBGE) |
+Central Reguladora Gestora | Telefone | Solicita Para Outra Central | Tipo** (AMBAS/EXECUTANTE/
+SOLICITANTE). Validado 2026-07-01: CDT→**3132358**, RADIOCENTER→**5833841**, DIMAGEM→**2285134**
+(todos MARICA 330270).
+
+→ Serve para (a) **backfill de CNES** nas unidades já cadastradas (que hoje só casam por nome) e
+(b) **auto-criar** unidade com cadastro decente (nome oficial UPPERCASE + telefone + município/IBGE).
+Na importação o CNES já vem na ficha do agendamento; `cons_unidade` **enriquece**. Mesma fonte,
+sem API externa.
+
 ## 🔒 Escopo do perfil (IMPORTANTE p/ "toda a secretaria")
 A credencial de teste (perfil **EXECUTANTE/SOLICITANTE**) enxerga **uma única
 unidade**: o select `ups`/hidden `unidade` só traz **CNES 3132358 (CDT ALBERTO

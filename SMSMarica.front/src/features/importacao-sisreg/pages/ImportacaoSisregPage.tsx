@@ -67,6 +67,7 @@ export function ImportacaoSisregPage() {
         pacienteNome: null,
         pacienteCriado: false,
         unidadeSolicitanteCriada: false,
+        unidadeExecutanteCriada: false,
         passos: [],
         erro: extrairMensagemDeErro(e),
       };
@@ -124,9 +125,11 @@ export function ImportacaoSisregPage() {
       <header>
         <h1 className="text-2xl font-semibold text-gray-900">Importação SISREG</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Envie o <strong>Arquivo Agendamento (TXT)</strong> exportado do SISREG e gere o{' '}
-          <strong>preview</strong>. Use <strong>Importar todos</strong> para processar a lista
-          inteira de uma vez, ou importe <strong>um a um</strong> pelo botão de cada linha.
+          Envie o export de agendamentos do SISREG — <strong>TXT</strong> (Arquivo Agendamento) ou{' '}
+          <strong>CSV</strong> — e gere o <strong>preview</strong>. A <strong>unidade executante</strong>{' '}
+          é a do seu <strong>contexto atual</strong> (a unidade selecionada). Use{' '}
+          <strong>Importar todos</strong> para processar a lista inteira de uma vez, ou importe{' '}
+          <strong>um a um</strong> pelo botão de cada linha.
         </p>
       </header>
 
@@ -135,12 +138,12 @@ export function ImportacaoSisregPage() {
           <input
             ref={inputRef}
             type="file"
-            accept=".txt,text/plain"
+            accept=".txt,.csv,text/plain,text/csv"
             className="hidden"
             onChange={(e) => setArquivo(e.target.files?.[0] ?? null)}
           />
           <Button variante="outline" onClick={() => inputRef.current?.click()}>
-            <FileText className="h-4 w-4" /> Escolher arquivo TXT
+            <FileText className="h-4 w-4" /> Escolher arquivo (TXT ou CSV)
           </Button>
           <span className="text-sm text-gray-600">{arquivo ? arquivo.name : 'Nenhum arquivo selecionado'}</span>
           <Button onClick={() => arquivo && preview.mutate(arquivo)} disabled={preview.isPending || !arquivo}>
@@ -237,6 +240,7 @@ export function ImportacaoSisregPage() {
                     <th className="px-3 py-2">Data/Hora</th>
                     <th className="px-3 py-2">Paciente</th>
                     <th className="px-3 py-2">Procedimento</th>
+                    <th className="px-3 py-2">Unidade executante</th>
                     <th className="px-3 py-2">Unidade solicitante</th>
                     <th className="px-3 py-2">Alertas</th>
                     <th className="px-3 py-2 text-right">Ação</th>
@@ -256,8 +260,8 @@ export function ImportacaoSisregPage() {
                   ))}
                   {r.itens.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-3 py-6 text-center text-gray-400">
-                        Nenhuma marcação de mamografia no período.
+                      <td colSpan={9} className="px-3 py-6 text-center text-gray-400">
+                        Nenhuma marcação no período.
                       </td>
                     </tr>
                   ) : null}
@@ -323,8 +327,17 @@ function LinhaItem({
       <td className="px-3 py-2">{item.nomePaciente ?? '—'}</td>
       <td className="px-3 py-2">{item.procedimentoTexto ?? '—'}</td>
       <td className="px-3 py-2">
+        {item.unidadeExecutanteExiste ? (
+          item.nomeUnidadeExecutante ?? '—'
+        ) : (
+          <span className="text-xs text-amber-700" title="Selecione a unidade no seu contexto para importar">
+            selecione a unidade
+          </span>
+        )}
+      </td>
+      <td className="px-3 py-2">
         {item.nomeUnidadeSolicitante ?? '—'}
-        {item.cnesUnidadeSolicitante && !item.unidadeSolicitanteExiste ? (
+        {item.nomeUnidadeSolicitante && !item.unidadeSolicitanteExiste ? (
           <span className="ml-1 text-xs text-amber-600">(nova)</span>
         ) : null}
       </td>
@@ -393,6 +406,10 @@ function ModalResultado({
                 <Info rotulo="Paciente" valor={resultado.pacienteNome ?? '—'} />
                 <Info rotulo="Paciente" valor={resultado.pacienteCriado ? 'criado' : 'já existia (reusado)'} />
                 <Info rotulo="Accession" valor={resultado.accessionNumber ?? '—'} />
+                <Info
+                  rotulo="Unidade executante"
+                  valor={resultado.unidadeExecutanteCriada ? 'criada (cabeçalho do arquivo)' : 'contexto atual'}
+                />
                 <Info
                   rotulo="Unidade solicitante"
                   valor={resultado.unidadeSolicitanteCriada ? 'criada' : 'já existia'}

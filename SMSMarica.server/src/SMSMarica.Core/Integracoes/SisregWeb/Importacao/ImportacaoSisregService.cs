@@ -12,17 +12,19 @@ using SMSMarica.Data.Entities.Enums;
 namespace SMSMarica.Core.Integracoes.SisregWeb.Importacao;
 
 /// <summary>
-/// Importação de agendamentos do SISREG para <c>SolicitacaoExame</c>, a partir do
-/// "Arquivo Agendamento (TXT)" (<c>expo_solicitacoes</c>).
+/// Importação de agendamentos do SISREG para <c>SolicitacaoExame</c>, a partir do export de
+/// agendamentos (<c>expo_solicitacoes</c>) — aceita TXT (com cabeçalho de unidade) ou CSV (com
+/// cabeçalho de colunas). Ver <see cref="AgendaTxtParser"/>.
 ///  - PREVIEW: só leitura, monta o "diff" (novo vs já existe).
 ///  - EXECUTAR: roda o fluxo inteiro de UMA marcação (o operador importa 1 a 1 e confere).
 /// </summary>
 public interface IImportacaoSisregService
 {
-    Task<ImportacaoPreviewResultado> PreviewDeTextoAsync(string conteudoTxt, CancellationToken ct);
+    /// <param name="nomeArquivo">Nome do arquivo enviado (usado no CSV para achar o executante).</param>
+    Task<ImportacaoPreviewResultado> PreviewDeTextoAsync(string conteudo, string? nomeArquivo, CancellationToken ct);
 
-    /// <summary>Importa UMA marcação (por código) do TXT enviado. Cria paciente/unidades/solicitação.</summary>
-    Task<ImportacaoExecucaoResultado> ExecutarUmAsync(string conteudoTxt, string codigoSolicitacao, CancellationToken ct);
+    /// <summary>Importa UMA marcação (por código) do arquivo enviado. Cria paciente/unidades/solicitação.</summary>
+    Task<ImportacaoExecucaoResultado> ExecutarUmAsync(string conteudo, string codigoSolicitacao, string? nomeArquivo, CancellationToken ct);
 }
 
 public sealed class ImportacaoSisregService(
@@ -35,16 +37,18 @@ public sealed class ImportacaoSisregService(
 {
     // ===================== PREVIEW =====================
 
-    public async Task<ImportacaoPreviewResultado> PreviewDeTextoAsync(string conteudoTxt, CancellationToken ct)
+    public async Task<ImportacaoPreviewResultado> PreviewDeTextoAsync(string conteudo, string? nomeArquivo, CancellationToken ct)
     {
-        var parsed = ParseOuFalhar(conteudoTxt);
+        var parsed = ParseOuFalhar(conteudo, nomeArquivo);
         var inicio = parsed.Cabecalho.Inicio ?? parsed.Marcacoes.Min(m => m.DataHoraAtendimento)?.ToDateOnly() ?? default;
         var fim = parsed.Cabecalho.Fim ?? parsed.Marcacoes.Max(m => m.DataHoraAtendimento)?.ToDateOnly() ?? default;
-        return await MontarPreviewAsync(parsed.Marcacoes, inicio, fim, ct);
+        // A unidade EXECUTORA é resolvida uma vez para o arquivo inteiro (é o tenant atual).
+        var executante = await ResolverExecutanteAsync(parsed.Cabecalho.CnesUnidade, parsed.Cabecalho.NomeUnidade, ct);
+        return await MontarPreviewAsync(parsed.Marcacoes, inicio, fim, executante, ct);
     }
 
     private async Task<ImportacaoPreviewResultado> MontarPreviewAsync(
-        IReadOnlyList<MarcacaoSisreg> marcacoes, DateOnly inicio, DateOnly fim, CancellationToken ct)
+        IReadOnlyList<MarcacaoSisreg> marcacoes, DateOnly inicio, DateOnly fim, ExecutanteResolvido executante, CancellationToken ct)
     {
         var codigos = marcacoes.Select(m => m.CodigoSolicitacao).Distinct().ToList();
         var existentes = (await db.SolicitacoesExame.AsNoTracking()
@@ -52,32 +56,38 @@ public sealed class ImportacaoSisregService(
             .Select(s => s.CodigoSolicitacao!)
             .ToListAsync(ct)).ToHashSet(StringComparer.Ordinal);
 
-        var cnesSet = marcacoes
-            .SelectMany(m => new[] { m.CnesUnidadeSolicitante, m.CnesUnidadeExecutante })
+        // Existência da SOLICITANTE por CNES (o arquivo sempre traz o CNES do solicitante).
+        var cnesSolic = marcacoes
+            .Select(m => m.CnesUnidadeSolicitante)
             .Where(c => !string.IsNullOrWhiteSpace(c)).Select(c => c!).Distinct().ToList();
         var unidadesComCnes = (await db.Unidades.AsNoTracking()
-            .Where(u => u.Cnes != null && cnesSet.Contains(u.Cnes))
+            .Where(u => u.Cnes != null && cnesSolic.Contains(u.Cnes))
             .Select(u => u.Cnes!)
             .ToListAsync(ct)).ToHashSet(StringComparer.Ordinal);
 
         var sigtapComTipo = await SigtapComTipoAsync(ct);
+
+        // Executante já resolvida (tenant atual); o mesmo nome/CNES vale para todas as linhas.
+        var execNome = executante.Nome ?? marcacoes.Select(m => m.NomeUnidadeExecutante).FirstOrDefault(n => n is not null);
+        var execExiste = executante.Id is not null;
 
         var itens = new List<ImportacaoPreviewItem>(marcacoes.Count);
         foreach (var m in marcacoes)
         {
             var procMapeia = m.CodigoSigtap is { } sig && sigtapComTipo.Contains(sig);
             var alertas = new List<string>();
+            if (executante.Erro is { } erroExec) alertas.Add(erroExec);
             if (!procMapeia) alertas.Add("Procedimento/SIGTAP sem tipo de exame mapeado (cairia em divergência).");
             if (string.IsNullOrWhiteSpace(m.CnsPaciente)) alertas.Add("Sem CNS do paciente.");
             if (m.DataHoraAtendimento is null) alertas.Add("Sem data/hora de atendimento.");
 
             itens.Add(new ImportacaoPreviewItem(
                 m.CodigoSolicitacao, m.NomePaciente, m.CnsPaciente, m.ProcedimentoTexto, m.DataHoraAtendimento,
-                m.NomeUnidadeSolicitante, m.CnesUnidadeSolicitante, m.NomeUnidadeExecutante, m.CnesUnidadeExecutante,
+                m.NomeUnidadeSolicitante, m.CnesUnidadeSolicitante, execNome, executante.Cnes,
                 m.NomeMedicoSolicitante,
                 JaExiste: existentes.Contains(m.CodigoSolicitacao),
                 UnidadeSolicitanteExiste: m.CnesUnidadeSolicitante is { } cs && unidadesComCnes.Contains(cs),
-                UnidadeExecutanteExiste: m.CnesUnidadeExecutante is { } ce && unidadesComCnes.Contains(ce),
+                UnidadeExecutanteExiste: execExiste,
                 ProcedimentoMapeia: procMapeia,
                 Alertas: alertas));
         }
@@ -89,14 +99,14 @@ public sealed class ImportacaoSisregService(
 
     // ===================== EXECUTAR (1 registro) =====================
 
-    public async Task<ImportacaoExecucaoResultado> ExecutarUmAsync(string conteudoTxt, string codigoSolicitacao, CancellationToken ct)
+    public async Task<ImportacaoExecucaoResultado> ExecutarUmAsync(string conteudo, string codigoSolicitacao, string? nomeArquivo, CancellationToken ct)
     {
         var codigo = (codigoSolicitacao ?? string.Empty).Trim();
-        var m = ParseOuFalhar(conteudoTxt).Marcacoes.FirstOrDefault(x => x.CodigoSolicitacao == codigo)
+        var m = ParseOuFalhar(conteudo, nomeArquivo).Marcacoes.FirstOrDefault(x => x.CodigoSolicitacao == codigo)
             ?? throw new NaoEncontradoException("importacao.marcacao", codigo);
 
         var passos = new List<string>();
-        ImportacaoExecucaoResultado Falha(string erro) => new(codigo, false, null, null, null, false, false, passos, erro);
+        ImportacaoExecucaoResultado Falha(string erro) => new(codigo, false, null, null, null, false, false, false, passos, erro);
 
         // 1. Idempotência (nº SISREG).
         if (await db.SolicitacoesExame.AsNoTracking().AnyAsync(
@@ -160,11 +170,19 @@ public sealed class ImportacaoSisregService(
             passos.Add("Paciente novo → criado a partir do CADSUS (+ telefone/endereço do TXT).");
         }
 
-        // 4. Unidades (por CNES; cria a solicitante se faltar).
-        var (unidadeExecId, _) = await ResolverOuCriarUnidadeAsync(m.CnesUnidadeExecutante, m.NomeUnidadeExecutante, ct);
-        if (unidadeExecId is null) return Falha("Sem unidade executante (CNES) na marcação.");
+        // 4. Unidades. EXECUTORA = o tenant atual (contexto da unidade em que o operador importa) —
+        //    atribuição explícita, resolvida uma vez para o arquivo. SOLICITANTE = por CNES do
+        //    arquivo (cria se ainda não existir).
+        var exec = await ResolverExecutanteAsync(m.CnesUnidadeExecutante, m.NomeUnidadeExecutante, ct);
+        if (exec.Id is null) return Falha(exec.Erro ?? "Não identifiquei a unidade executante.");
+        var unidadeExecId = exec.Id.Value;
+        var execCriada = exec.Criada;
+        passos.Add(execCriada
+            ? $"Unidade executante criada do cabeçalho: {exec.Nome}{CnesSufixo(exec.Cnes)}."
+            : $"Unidade executante: {exec.Nome} (contexto atual).");
+
         var (unidadeSolicId, solicCriada) = await ResolverOuCriarUnidadeAsync(m.CnesUnidadeSolicitante, m.NomeUnidadeSolicitante, ct);
-        if (solicCriada) passos.Add($"Unidade solicitante criada: {m.NomeUnidadeSolicitante} (CNES {m.CnesUnidadeSolicitante}).");
+        if (solicCriada) passos.Add($"Unidade solicitante criada: {m.NomeUnidadeSolicitante}{CnesSufixo(m.CnesUnidadeSolicitante)}.");
         else if (unidadeSolicId is not null) passos.Add("Unidade solicitante já cadastrada.");
 
         // 5. Solicitação (médico do SISREG = texto; CRM vazio, CPF interno; data do SISREG).
@@ -177,7 +195,7 @@ public sealed class ImportacaoSisregService(
             StudyInstanceUID = geradorIds.NovoStudyInstanceUid(),
             PacienteId = pacienteId,
             TipoExameId = tipo.Id,
-            UnidadeId = unidadeExecId.Value,
+            UnidadeId = unidadeExecId,
             UnidadeSolicitanteId = unidadeSolicId,
             SolicitanteNome = m.NomeMedicoSolicitante ?? "NÃO INFORMADO",
             SolicitanteNumConselho = string.Empty,
@@ -211,19 +229,19 @@ public sealed class ImportacaoSisregService(
 
         return new ImportacaoExecucaoResultado(
             codigo, true, solic.Id, accession,
-            existente?.NomeCompleto ?? cadsus.Nome, pacienteCriado, solicCriada, passos, null);
+            existente?.NomeCompleto ?? cadsus.Nome, pacienteCriado, solicCriada, execCriada, passos, null);
     }
 
     // ===================== helpers =====================
 
-    private static AgendaTxtParser.Resultado ParseOuFalhar(string conteudo)
+    private static AgendaTxtParser.Resultado ParseOuFalhar(string conteudo, string? nomeArquivo)
     {
         if (string.IsNullOrWhiteSpace(conteudo))
             throw new ValidacaoException("importacao.arquivo_vazio", "Arquivo vazio ou ilegível.");
-        var parsed = AgendaTxtParser.Parse(conteudo);
+        var parsed = AgendaTxtParser.Parse(conteudo, nomeArquivo);
         if (parsed.Marcacoes.Count == 0)
             throw new ValidacaoException("importacao.sem_registros",
-                "Não encontrei marcações no arquivo. Confirme que é o TXT de Arquivo Agendamento do SISREG.");
+                "Não encontrei marcações no arquivo. Confirme que é o export de agendamentos do SISREG (TXT ou CSV).");
         return parsed;
     }
 
@@ -234,18 +252,55 @@ public sealed class ImportacaoSisregService(
             .ToListAsync(ct))
         .Select(SoDigitos).Where(c => c.Length > 0).ToHashSet(StringComparer.Ordinal);
 
+    /// <summary>Unidade executante resolvida para o arquivo (uma só). <see cref="Erro"/> não-nulo
+    /// quando não foi possível determinar (aí a importação não prossegue).</summary>
+    private sealed record ExecutanteResolvido(Guid? Id, string? Nome, string? Cnes, bool Criada, string? Erro);
+
+    /// <summary>
+    /// Resolve a unidade EXECUTORA do arquivo. Prioridade:
+    ///  1. <b>Tenant atual</b> (header <c>X-Unidade-Id</c>) — o contexto de unidade em que o
+    ///     operador está importando. É a atribuição explícita e vale para TXT e CSV.
+    ///  2. <b>CNES do cabeçalho do arquivo</b> (só o TXT traz) — fallback quando não há tenant
+    ///     (ex.: admin global sem unidade ativa); resolve/cria por CNES.
+    ///  3. Sem tenant e sem CNES no arquivo (CSV fora de contexto) → erro pedindo para o operador
+    ///     entrar no contexto da unidade.
+    /// </summary>
+    private async Task<ExecutanteResolvido> ResolverExecutanteAsync(string? cnesArquivo, string? nomeExecArquivo, CancellationToken ct)
+    {
+        if (usuarioAtual.UnidadeAtivaId is { } uid)
+        {
+            var u = await db.Unidades.AsNoTracking()
+                .Where(x => x.Id == uid && x.Ativo)
+                .Select(x => new { x.Id, x.Nome, x.Cnes })
+                .FirstOrDefaultAsync(ct);
+            if (u is not null) return new(u.Id, u.Nome, u.Cnes, false, null);
+            // Header presente mas unidade inexistente/inativa: cai no fallback do arquivo.
+        }
+
+        if (SoDigitos(cnesArquivo) is { Length: 7 } c)
+        {
+            var (id, criada) = await ResolverOuCriarUnidadeAsync(c, nomeExecArquivo, ct);
+            if (id is not null) return new(id.Value, nomeExecArquivo, c, criada, null);
+        }
+
+        return new(null, null, null, false,
+            "Selecione a unidade executante (entre no contexto da unidade) antes de importar — o arquivo não traz o CNES do executante.");
+    }
+
     /// <summary>Resolve unidade por CNES; cria (nome UPPERCASE) se não existir. Retorna (id, criada).</summary>
     private async Task<(Guid? id, bool criada)> ResolverOuCriarUnidadeAsync(string? cnes, string? nome, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(cnes)) return (null, false);
-        var existente = await db.Unidades.Where(u => u.Cnes == cnes).Select(u => (Guid?)u.Id).FirstOrDefaultAsync(ct);
+        var cnesLimpo = SoDigitos(cnes);
+        if (cnesLimpo.Length != 7) return (null, false);
+
+        var existente = await db.Unidades.Where(u => u.Cnes == cnesLimpo).Select(u => (Guid?)u.Id).FirstOrDefaultAsync(ct);
         if (existente is not null) return (existente, false);
 
         var u = new Unidade
         {
             Id = Guid.CreateVersion7(),
-            Nome = (string.IsNullOrWhiteSpace(nome) ? $"UNIDADE CNES {cnes}" : nome).Trim().ToUpperInvariant(),
-            Cnes = cnes,
+            Nome = (string.IsNullOrWhiteSpace(nome) ? $"UNIDADE CNES {cnesLimpo}" : nome).Trim().ToUpperInvariant(),
+            Cnes = cnesLimpo,
             Ativo = true,
             Externa = false,
             CriadoEm = DateTime.UtcNow,
@@ -254,6 +309,9 @@ public sealed class ImportacaoSisregService(
         await db.SaveChangesAsync(ct);
         return (u.Id, true);
     }
+
+    private static string CnesSufixo(string? cnes) =>
+        SoDigitos(cnes) is { Length: 7 } c ? $" (CNES {c})" : " (sem CNES)";
 
     /// <summary>Telefone do TXT em slot NÃO-principal: celular se for móvel (11 díg. e 3º = '9'),
     /// senão residencial. Nunca o Principal (esse é o contato validado por OTP).</summary>
