@@ -33,12 +33,12 @@ public sealed class ExameCompletoPdfService(
 
     public async Task<byte[]> GerarAsync(Guid solicitacaoExameId, CancellationToken cancellationToken = default)
     {
-        var sol = await db.SolicitacoesExame.AsNoTracking()
+        var sol = await db.ExamesImagem.AsNoTracking()
             .Include(s => s.TipoExame)
-            .Include(s => s.Unidade)
-            .Include(s => s.UnidadeSolicitante)
+            .Include(s => s.Solicitacao!).ThenInclude(so => so.UnidadeExecutante)
+            .Include(s => s.Solicitacao!).ThenInclude(so => so.UnidadeSolicitante)
             .FirstOrDefaultAsync(s => s.Id == solicitacaoExameId && s.ExcluidoEm == null, cancellationToken)
-            ?? throw new NaoEncontradoException(nameof(SolicitacaoExame), solicitacaoExameId);
+            ?? throw new NaoEncontradoException(nameof(ExameImagem), solicitacaoExameId);
 
         if (string.IsNullOrWhiteSpace(sol.StudyInstanceUID))
             throw new ConflitoException("exame.sem_imagens", "Este exame ainda não tem imagens disponíveis.");
@@ -50,7 +50,7 @@ public sealed class ExameCompletoPdfService(
         if (imagens.Count == 0)
         {
             var studyReal = await db.ExameAssociacoes.AsNoTracking()
-                .Where(a => a.SolicitacaoExameId == sol.Id && a.ExcluidoEm == null)
+                .Where(a => a.ExameImagemId == sol.Id && a.ExcluidoEm == null)
                 .OrderByDescending(a => a.CriadoEm)
                 .Select(a => a.StudyInstanceUID)
                 .FirstOrDefaultAsync(cancellationToken);
@@ -58,7 +58,7 @@ public sealed class ExameCompletoPdfService(
                 imagens = await imagensReader.ObterImagensAsync(studyReal, MaxImagens, cancellationToken);
         }
 
-        var (nome, cpf, cns, nascimento) = await ResolverPacienteAsync(sol.PacienteId, cancellationToken);
+        var (nome, cpf, cns, nascimento) = await ResolverPacienteAsync(sol.Solicitacao!.PacienteId, cancellationToken);
 
         var laudo = await laudos.ObterPorStudyAsync(sol.StudyInstanceUID, cancellationToken);
         var incluiLaudo = laudo is { Status: StatusLaudo.Finalizado };
@@ -70,15 +70,15 @@ public sealed class ExameCompletoPdfService(
             PacienteNascimento: nascimento,
             ExameNome: sol.TipoExame?.Nome ?? "Exame de imagem",
             Modalidade: sol.TipoExame?.ModalidadeDicom.ToString(),
-            Unidade: sol.Unidade?.Nome,
-            UnidadeSolicitante: sol.UnidadeSolicitante?.Nome,
+            Unidade: sol.Solicitacao!.UnidadeExecutante?.Nome,
+            UnidadeSolicitante: sol.Solicitacao!.UnidadeSolicitante?.Nome,
             Accession: sol.AccessionNumber,
             RealizadoEm: FusoBrasilia.ParaExibicao(sol.RealizadoEm),
             SolicitadaEm: FusoBrasilia.ParaExibicao(sol.CriadoEm),
-            SolicitanteNome: string.IsNullOrWhiteSpace(sol.SolicitanteNome) ? null : sol.SolicitanteNome,
+            SolicitanteNome: string.IsNullOrWhiteSpace(sol.Solicitacao!.SolicitanteNome) ? null : sol.Solicitacao!.SolicitanteNome,
             IncluiLaudo: incluiLaudo,
-            Justificativa: string.IsNullOrWhiteSpace(sol.Justificativa) ? null : sol.Justificativa,
-            Observacoes: string.IsNullOrWhiteSpace(sol.Observacoes) ? null : sol.Observacoes);
+            Justificativa: string.IsNullOrWhiteSpace(sol.Solicitacao!.Justificativa) ? null : sol.Solicitacao!.Justificativa,
+            Observacoes: string.IsNullOrWhiteSpace(sol.Solicitacao!.Observacoes) ? null : sol.Solicitacao!.Observacoes);
 
         var capaImagens = new ExameCompletoPdfDocument(capa, imagens, ExameRecursos.Logo).Gerar();
 

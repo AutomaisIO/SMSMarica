@@ -257,8 +257,11 @@ public sealed class ComunicacaoPacienteService(
         }
         n.Telefone = TelefoneWhatsApp.NormalizarNonoDigito(telefone!);
 
-        // Magic link novo a cada tentativa (o anterior simplesmente expira sem uso).
-        var link = await loginLinks.GerarParaSolicitacaoAsync(s.Id, Destino(n.Finalidade, s.Id), ct);
+        // Magic link novo a cada tentativa (o anterior simplesmente expira sem uso). O link é
+        // ancorado na ESPINHA (s.Id); o destino usa o id PÚBLICO do exame (ExameImagem.Id) para o
+        // front achar o card em /exames.
+        var exameIdPublico = s.ExameImagem?.Id ?? s.Id;
+        var link = await loginLinks.GerarParaSolicitacaoAsync(exameIdPublico, Destino(n.Finalidade, exameIdPublico), ct);
         n.LoginLinkId = link.Token;
 
         var opts = options.Value;

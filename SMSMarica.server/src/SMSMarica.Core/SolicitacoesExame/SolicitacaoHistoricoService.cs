@@ -25,8 +25,13 @@ public sealed class SolicitacaoHistoricoService(
 {
     public async Task<HistoricoSolicitacaoDto> ObterAsync(Guid solicitacaoExameId, CancellationToken ct = default)
     {
+        // Comunicações/contatos são ancorados na espinha; traduz o id público (exame) → espinha.
+        var solicitacaoId = await db.ExamesImagem.AsNoTracking()
+            .Where(e => e.Id == solicitacaoExameId).Select(e => (Guid?)e.SolicitacaoId).FirstOrDefaultAsync(ct)
+            ?? solicitacaoExameId;
+
         var comunicacoes = await db.ComunicacoesPaciente.AsNoTracking()
-            .Where(c => c.SolicitacaoExameId == solicitacaoExameId)
+            .Where(c => c.SolicitacaoId == solicitacaoId)
             .OrderBy(c => c.CriadoEm)
             .Select(c => new HistoricoComunicacaoDto(
                 c.Id,
@@ -45,7 +50,7 @@ public sealed class SolicitacaoHistoricoService(
 
         var contatos = await (
             from c in db.ContatosRegistro.AsNoTracking()
-            where c.SolicitacaoExameId == solicitacaoExameId
+            where c.SolicitacaoId == solicitacaoId
             join u in db.Usuarios.AsNoTracking() on c.CriadoPor equals u.Id into ju
             from u in ju.DefaultIfEmpty()
             orderby c.CriadoEm descending
@@ -70,17 +75,18 @@ public sealed class SolicitacaoHistoricoService(
             throw new ValidacaoException("contato.resultado_invalido",
                 "Resultado inválido (Atendeu|NaoAtendeu|CaixaPostal|NumeroInvalido|Outro).");
 
-        var solicitacao = await db.SolicitacoesExame.AsNoTracking()
-            .Where(s => s.Id == solicitacaoExameId && s.ExcluidoEm == null)
-            .Select(s => new { s.Id, s.PacienteId })
+        // Contato é ancorado na espinha; resolve pelo id público do exame.
+        var solicitacao = await db.ExamesImagem.AsNoTracking()
+            .Where(e => e.Id == solicitacaoExameId && e.ExcluidoEm == null)
+            .Select(e => new { e.SolicitacaoId, e.Solicitacao!.PacienteId })
             .FirstOrDefaultAsync(ct)
-            ?? throw new NaoEncontradoException(nameof(SolicitacaoExame), solicitacaoExameId);
+            ?? throw new NaoEncontradoException(nameof(ExameImagem), solicitacaoExameId);
 
         var obs = request.Observacao?.Trim();
         db.ContatosRegistro.Add(new ContatoRegistro
         {
             Id = Guid.CreateVersion7(),
-            SolicitacaoExameId = solicitacao.Id,
+            SolicitacaoId = solicitacao.SolicitacaoId,
             PacienteId = solicitacao.PacienteId,
             Meio = meio,
             Resultado = resultado,

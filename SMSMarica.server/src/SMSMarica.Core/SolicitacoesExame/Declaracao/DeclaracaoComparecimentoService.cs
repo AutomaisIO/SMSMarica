@@ -97,7 +97,7 @@ public sealed partial class DeclaracaoComparecimentoService(
         string? unidade = null;
         try
         {
-            var s = await solicitacoes.ObterPorIdAsync(v.SolicitacaoExameId, cancellationToken);
+            var s = await solicitacoes.ObterPorIdAsync(v.ExameImagemId, cancellationToken);
             if (!string.IsNullOrWhiteSpace(s.PacienteNome)) nome = s.PacienteNome;
             if (!string.IsNullOrWhiteSpace(s.TipoExameNome)) descricao = s.TipoExameNome;
             unidade = string.IsNullOrWhiteSpace(s.UnidadeNome) ? null : s.UnidadeNome;
@@ -114,13 +114,13 @@ public sealed partial class DeclaracaoComparecimentoService(
         Guid solicitacaoId, DateTime dataHoraExame, CancellationToken ct)
     {
         var existente = await db.DeclaracaoComparecimentoVerificacoes
-            .FirstOrDefaultAsync(x => x.SolicitacaoExameId == solicitacaoId, ct);
+            .FirstOrDefaultAsync(x => x.ExameImagemId == solicitacaoId, ct);
         if (existente is not null) return existente;
 
         var nova = new DeclaracaoComparecimentoVerificacao
         {
             Id = Guid.CreateVersion7(),
-            SolicitacaoExameId = solicitacaoId,
+            ExameImagemId = solicitacaoId,
             DataHoraExame = DateTime.SpecifyKind(dataHoraExame, DateTimeKind.Unspecified),
             CriadoEm = DateTime.UtcNow,
         };
@@ -135,7 +135,7 @@ public sealed partial class DeclaracaoComparecimentoService(
             // Corrida: outro request criou o selo entre o SELECT e o INSERT.
             db.Entry(nova).State = EntityState.Detached;
             return await db.DeclaracaoComparecimentoVerificacoes
-                .FirstAsync(x => x.SolicitacaoExameId == solicitacaoId, ct);
+                .FirstAsync(x => x.ExameImagemId == solicitacaoId, ct);
         }
     }
 

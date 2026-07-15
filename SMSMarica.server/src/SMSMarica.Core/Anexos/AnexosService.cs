@@ -30,11 +30,11 @@ public sealed class AnexosService(
     public async Task<CriarTokenRespostaDto> CriarTokenAsync(
         Guid solicitacaoExameId, CancellationToken cancellationToken = default)
     {
-        var sol = await db.SolicitacoesExame.AsNoTracking()
+        var sol = await db.ExamesImagem.AsNoTracking().Include(s => s.Solicitacao)
             .FirstOrDefaultAsync(s => s.Id == solicitacaoExameId && s.ExcluidoEm == null, cancellationToken)
-            ?? throw new NaoEncontradoException(nameof(SolicitacaoExame), solicitacaoExameId);
+            ?? throw new NaoEncontradoException(nameof(ExameImagem), solicitacaoExameId);
 
-        var paciente = await pacienteResolver.ResolverAsync(sol.PacienteId, cancellationToken);
+        var paciente = await pacienteResolver.ResolverAsync(sol.Solicitacao!.PacienteId, cancellationToken);
         var pacienteNome = paciente?.Nome ?? string.Empty;
 
         var agora = DateTime.UtcNow;
@@ -44,8 +44,8 @@ public sealed class AnexosService(
         {
             Id = Guid.CreateVersion7(),
             Token = token,
-            SolicitacaoExameId = sol.Id,
-            PatientId = sol.PacienteId,
+            ExameImagemId = sol.Id,
+            PatientId = sol.Solicitacao!.PacienteId,
             PacienteNome = pacienteNome,
             CriadoPor = usuarioAtual.UsuarioId,
             CriadoEm = agora,
@@ -57,7 +57,7 @@ public sealed class AnexosService(
 
         var url = $"{_opcoes.PwaBaseUrl.TrimEnd('/')}/?t={token}";
         return new CriarTokenRespostaDto(
-            token, url, entidade.ExpiraEm, sol.Id, new AnexoTokenPacienteDto(sol.PacienteId, pacienteNome));
+            token, url, entidade.ExpiraEm, sol.Id, new AnexoTokenPacienteDto(sol.Solicitacao!.PacienteId, pacienteNome));
     }
 
     public async Task<ValidarTokenRespostaDto> ValidarTokenAsync(
@@ -65,8 +65,8 @@ public sealed class AnexosService(
     {
         var entidade = await CarregarTokenValidoAsync(token, rastrear: false, cancellationToken);
 
-        var resumo = await db.SolicitacoesExame.AsNoTracking()
-            .Where(s => s.Id == entidade.SolicitacaoExameId)
+        var resumo = await db.ExamesImagem.AsNoTracking()
+            .Where(s => s.Id == entidade.ExameImagemId)
             .Select(s => s.TipoExame != null ? s.TipoExame.Nome : s.AccessionNumber)
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -74,7 +74,7 @@ public sealed class AnexosService(
             true,
             entidade.ExpiraEm,
             new SessaoPacienteDto(entidade.PacienteNome),
-            new SessaoSolicitacaoDto(entidade.SolicitacaoExameId, resumo));
+            new SessaoSolicitacaoDto(entidade.ExameImagemId, resumo));
     }
 
     public async Task<AnexoUploadRespostaDto> ReceberUploadAsync(
@@ -123,7 +123,7 @@ public sealed class AnexosService(
         // Dedup: mesmo conteúdo na mesma solicitação (ex.: PWA reenviou) → reaproveita.
         var existente = await db.DocumentosExame.AsNoTracking()
             .FirstOrDefaultAsync(
-                d => d.SolicitacaoExameId == tokenEntidade.SolicitacaoExameId
+                d => d.ExameImagemId == tokenEntidade.ExameImagemId
                      && d.HashSha256 == hash
                      && d.ExcluidoEm == null,
                 cancellationToken);
@@ -142,7 +142,7 @@ public sealed class AnexosService(
         var documento = new DocumentoExame
         {
             Id = documentoId,
-            SolicitacaoExameId = tokenEntidade.SolicitacaoExameId,
+            ExameImagemId = tokenEntidade.ExameImagemId,
             AnexoUploadTokenId = tokenEntidade.Id,
             Nome = nome,
             Descricao = descricao,
@@ -168,7 +168,7 @@ public sealed class AnexosService(
         Guid solicitacaoExameId, CancellationToken cancellationToken = default)
     {
         var docs = await db.DocumentosExame.AsNoTracking()
-            .Where(d => d.SolicitacaoExameId == solicitacaoExameId && d.ExcluidoEm == null)
+            .Where(d => d.ExameImagemId == solicitacaoExameId && d.ExcluidoEm == null)
             .OrderByDescending(d => d.CriadoEm)
             .ToListAsync(cancellationToken);
 
@@ -231,8 +231,8 @@ public sealed class AnexosService(
     {
         var docs = await (
             from d in db.DocumentosExame.AsNoTracking()
-            join s in db.SolicitacoesExame.AsNoTracking() on d.SolicitacaoExameId equals s.Id
-            where s.PacienteId == pacienteId
+            join s in db.ExamesImagem.AsNoTracking() on d.ExameImagemId equals s.Id
+            where s.Solicitacao!.PacienteId == pacienteId
                   && s.ExcluidoEm == null
                   && d.ExcluidoEm == null
                   && d.Status == StatusDocumentoExame.Salvo

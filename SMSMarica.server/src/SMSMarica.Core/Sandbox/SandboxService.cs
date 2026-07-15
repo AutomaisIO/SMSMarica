@@ -52,17 +52,17 @@ public sealed class SandboxService(
     public async Task<IReadOnlyList<SandboxSolicitacaoDto>> ListarSolicitacoesAsync(
         Guid pacienteId, CancellationToken ct = default)
     {
-        return await db.SolicitacoesExame.AsNoTracking()
-            .Where(s => s.PacienteId == pacienteId && s.ExcluidoEm == null)
-            .OrderByDescending(s => s.DataAgendada ?? s.CriadoEm)
+        return await db.ExamesImagem.AsNoTracking()
+            .Where(s => s.Solicitacao!.PacienteId == pacienteId && s.ExcluidoEm == null)
+            .OrderByDescending(s => s.Solicitacao!.DataAgendada ?? s.CriadoEm)
             .Take(50)
             .Select(s => new SandboxSolicitacaoDto(
                 s.Id,
                 s.AccessionNumber,
                 s.TipoExame != null ? s.TipoExame.Nome : null,
-                s.DataAgendada,
+                s.Solicitacao!.DataAgendada,
                 s.Status.ToString(),
-                s.StatusConfirmacao.ToString()))
+                s.Solicitacao!.StatusConfirmacao.ToString()))
             .ToListAsync(ct);
     }
 
@@ -102,8 +102,12 @@ public sealed class SandboxService(
 
     public async Task DefinirConfirmacaoAsync(DefinirConfirmacaoRequest req, CancellationToken ct = default)
     {
-        var s = await db.SolicitacoesExame.FirstOrDefaultAsync(
-            x => x.Id == req.SolicitacaoExameId && x.ExcluidoEm == null, ct)
+        // req.SolicitacaoExameId é o id público (exame) → traduz para a espinha (StatusConfirmacao é regulação).
+        var solicitacaoId = await db.ExamesImagem.AsNoTracking()
+            .Where(e => e.Id == req.SolicitacaoExameId).Select(e => (Guid?)e.SolicitacaoId).FirstOrDefaultAsync(ct)
+            ?? req.SolicitacaoExameId;
+        var s = await db.Solicitacoes.FirstOrDefaultAsync(
+            x => x.Id == solicitacaoId && x.ExcluidoEm == null, ct)
             ?? throw new NaoEncontradoException("sandbox.solicitacao", "Solicitação não encontrada.");
 
         switch (req.Estado?.Trim().ToLowerInvariant())
@@ -139,15 +143,15 @@ public sealed class SandboxService(
             throw new ValidacaoException("sandbox.finalidade",
                 "Finalidade inválida (ConfirmacaoAgendamento|ExameLiberado|LaudoPronto).");
 
-        var s = await db.SolicitacoesExame.AsNoTracking()
+        var s = await db.ExamesImagem.AsNoTracking()
             .Where(x => x.Id == req.SolicitacaoExameId && x.ExcluidoEm == null)
-            .Select(x => new { x.Id, x.PacienteId })
+            .Select(x => new { x.SolicitacaoId, x.Solicitacao!.PacienteId })
             .FirstOrDefaultAsync(ct)
             ?? throw new NaoEncontradoException("sandbox.solicitacao", "Solicitação não encontrada.");
 
-        // Upsert por (solicitação, finalidade) — respeita o índice único.
+        // Upsert por (solicitação, finalidade) — respeita o índice único. Comunicação é ancorada na espinha.
         var c = await db.ComunicacoesPaciente.FirstOrDefaultAsync(
-            x => x.SolicitacaoExameId == s.Id && x.Finalidade == finalidade, ct);
+            x => x.SolicitacaoId == s.SolicitacaoId && x.Finalidade == finalidade, ct);
         if (c is null)
         {
             c = new ComunicacaoPaciente
@@ -155,7 +159,7 @@ public sealed class SandboxService(
                 Id = Guid.CreateVersion7(),
                 Tipo = TipoAgendamento.Exame,
                 Finalidade = finalidade,
-                SolicitacaoExameId = s.Id,
+                SolicitacaoId = s.SolicitacaoId,
                 PacienteId = s.PacienteId,
                 CriadoEm = DateTime.UtcNow,
             };

@@ -65,13 +65,18 @@ public sealed class CidadaoLoginLinkService(
             dias = Math.Clamp(Math.Max(dias, diasAteExame), 1, 30);
         }
 
+        // CidadaoLoginLink é ancorado na espinha; o param é o id público do exame → traduz.
+        var solicitacaoSpineId = await db.ExamesImagem.AsNoTracking()
+            .Where(e => e.Id == solicitacaoExameId).Select(e => (Guid?)e.SolicitacaoId)
+            .FirstOrDefaultAsync(cancellationToken) ?? solicitacaoExameId;
+
         var link = new CidadaoLoginLink
         {
             Id = Guid.CreateVersion7(),
             PatientId = s.PacienteId,
             Cpf = cpf,
             Destino = string.IsNullOrWhiteSpace(destino) ? DestinoPadrao : destino,
-            SolicitacaoExameId = solicitacaoExameId,
+            SolicitacaoId = solicitacaoSpineId,
             ExpiraEm = DateTime.UtcNow.AddDays(dias),
             CriadoEm = DateTime.UtcNow,
             CriadoPor = usuarioAtual.UsuarioId,
@@ -128,10 +133,11 @@ public sealed class CidadaoLoginLinkService(
         // Link de notificação de agendamento: o USO do link (1 clique no botão do WhatsApp)
         // já confirma a presença do paciente — mesmo SaveChanges do consumo do link.
         ConfirmacaoAgendamentoDto? confirmacao = null;
-        if (link.SolicitacaoExameId is { } solicitacaoId)
+        if (link.SolicitacaoId is { } solicitacaoId)
         {
-            var s = await db.SolicitacoesExame
-                .Include(x => x.TipoExame).Include(x => x.Unidade)
+            var s = await db.Solicitacoes
+                .Include(x => x.ExameImagem!).ThenInclude(e => e.TipoExame)
+                .Include(x => x.UnidadeExecutante)
                 .FirstOrDefaultAsync(x => x.Id == solicitacaoId && x.ExcluidoEm == null, cancellationToken);
             if (s is not null)
             {
@@ -148,7 +154,7 @@ public sealed class CidadaoLoginLinkService(
                 if (confirmadaAgora || s.StatusConfirmacao == Data.Entities.Enums.StatusConfirmacaoAgendamento.Confirmada)
                 {
                     confirmacao = new ConfirmacaoAgendamentoDto(
-                        s.Id, s.TipoExame?.Nome ?? "Exame", s.DataAgendada, s.Unidade?.Nome, confirmadaAgora);
+                        s.ExameImagem?.Id ?? s.Id, s.ExameImagem?.TipoExame?.Nome ?? "Exame", s.DataAgendada, s.UnidadeExecutante?.Nome, confirmadaAgora);
                 }
             }
         }

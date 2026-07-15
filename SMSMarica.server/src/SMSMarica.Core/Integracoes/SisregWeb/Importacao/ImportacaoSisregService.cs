@@ -51,7 +51,7 @@ public sealed class ImportacaoSisregService(
         IReadOnlyList<MarcacaoSisreg> marcacoes, DateOnly inicio, DateOnly fim, ExecutanteResolvido executante, CancellationToken ct)
     {
         var codigos = marcacoes.Select(m => m.CodigoSolicitacao).Distinct().ToList();
-        var existentes = (await db.SolicitacoesExame.AsNoTracking()
+        var existentes = (await db.Solicitacoes.AsNoTracking()
             .Where(s => s.ExcluidoEm == null && s.CodigoSolicitacao != null && codigos.Contains(s.CodigoSolicitacao))
             .Select(s => s.CodigoSolicitacao!)
             .ToListAsync(ct)).ToHashSet(StringComparer.Ordinal);
@@ -109,7 +109,7 @@ public sealed class ImportacaoSisregService(
         ImportacaoExecucaoResultado Falha(string erro) => new(codigo, false, null, null, null, false, false, false, passos, erro);
 
         // 1. Idempotência (nº SISREG).
-        if (await db.SolicitacoesExame.AsNoTracking().AnyAsync(
+        if (await db.Solicitacoes.AsNoTracking().AnyAsync(
                 s => s.CodigoSolicitacao == codigo && s.ExcluidoEm == null, ct))
             return Falha("Já existe uma solicitação com esse número do SISREG.");
 
@@ -188,14 +188,16 @@ public sealed class ImportacaoSisregService(
         // 5. Solicitação (médico do SISREG = texto; CRM vazio, CPF interno; data do SISREG).
         var accession = await geradorIds.ProximoAccessionAsync(ct);
         var agora = DateTime.UtcNow;
-        var solic = new SolicitacaoExame
+        // Espinha de regulação (categoria Imagem — o roteamento por natureza SIGTAP é a próxima
+        // fase; hoje o importador só trata exames) + satélite de execução. Ver ADR-0021.
+        var solic = new Solicitacao
         {
             Id = Guid.CreateVersion7(),
-            AccessionNumber = accession,
-            StudyInstanceUID = geradorIds.NovoStudyInstanceUid(),
             PacienteId = pacienteId,
-            TipoExameId = tipo.Id,
-            UnidadeId = unidadeExecId,
+            Categoria = CategoriaSolicitacao.Imagem,
+            ProcedimentoSigtapCodigo = m.CodigoSigtap,
+            ProcedimentoTexto = m.ProcedimentoTexto,
+            UnidadeExecutanteId = unidadeExecId,
             UnidadeSolicitanteId = unidadeSolicId,
             SolicitanteNome = m.NomeMedicoSolicitante ?? "NÃO INFORMADO",
             SolicitanteNumConselho = string.Empty,
@@ -204,31 +206,38 @@ public sealed class ImportacaoSisregService(
             SolicitanteCpf = m.CpfMedicoSolicitante,
             RawSisreg = m.LinhaRaw,
             CodigoSolicitacao = codigo,
-            Status = StatusSolicitacaoExame.Solicitada,
+            Status = StatusSolicitacao.Solicitada,
             Prioridade = PrioridadeSolicitacao.Eletiva,
             // O SISREG entrega hora LOCAL de Brasília (GMT-3). data_agendada é timestamptz (UTC),
-            // então convertemos São Paulo (-03:00) → UTC explicitamente (+3h). NÃO usar Kind=Local
-            // porque o servidor roda em UTC (Local=UTC → não somaria as 3h → gravava 3h cedo).
+            // então convertemos São Paulo (-03:00) → UTC explicitamente (+3h).
             DataAgendada = m.DataHoraAtendimento is { } dh ? ParaUtcBrasilia(dh) : null,
-            // Data em que o pedido foi feito no SISREG (dia de calendário, sem hora).
             DataSolicitacao = m.DataSolicitacao,
-            // Data em que a regulação autorizou (para estatística de tempos).
             DataRegulacao = m.DataRegulacao,
-            // NADA vai ao PACS automaticamente: o envio só é enfileirado quando a recepção
-            // AUTORIZA (com a chave). Fica null até lá, mesmo com worklist ligado.
+            CriadoEm = agora,
+            CriadoPor = usuarioAtual.UsuarioId,
+        };
+        var exame = new ExameImagem
+        {
+            Id = Guid.CreateVersion7(),
+            Solicitacao = solic,
+            AccessionNumber = accession,
+            StudyInstanceUID = geradorIds.NovoStudyInstanceUid(),
+            TipoExameId = tipo.Id,
+            Status = StatusSolicitacaoExame.Solicitada,
+            // NADA vai ao PACS automaticamente: o envio só é enfileirado quando a recepção AUTORIZA.
             ProximaTentativaEm = null,
             CriadoEm = agora,
             CriadoPor = usuarioAtual.UsuarioId,
         };
-        db.SolicitacoesExame.Add(solic);
-        // Notificação WhatsApp de confirmação — só enfileira (o worker envia com ritmo);
-        // exames com data passada/ausente não notificam.
+        db.Solicitacoes.Add(solic);
+        db.ExamesImagem.Add(exame);
+        // Notificação WhatsApp de confirmação — só enfileira (o worker envia com ritmo).
         await comunicacoes.EnfileirarAsync(solic, Data.Entities.Enums.FinalidadeComunicacao.ConfirmacaoAgendamento, ct);
         await db.SaveChangesAsync(ct);
         passos.Add($"Solicitação criada (accession {accession}).");
 
         return new ImportacaoExecucaoResultado(
-            codigo, true, solic.Id, accession,
+            codigo, true, exame.Id, accession,
             existente?.NomeCompleto ?? cadsus.Nome, pacienteCriado, solicCriada, execCriada, passos, null);
     }
 

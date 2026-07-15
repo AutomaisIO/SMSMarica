@@ -92,7 +92,7 @@ public sealed class PreparadorImagensExameService(
             var max = Math.Clamp(_options.MaximoPorPassagem, 1, 20);
 
             // Recentes primeiro: são os que os pacientes vão clicar assim que o zap chega.
-            pendentes = await db.SolicitacoesExame.AsNoTracking()
+            pendentes = await db.ExamesImagem.AsNoTracking()
                 .Where(s => s.ExcluidoEm == null
                             && (s.Status == StatusSolicitacaoExame.Realizada
                                 || s.Status == StatusSolicitacaoExame.Laudada)
@@ -123,7 +123,7 @@ public sealed class PreparadorImagensExameService(
         var db = scope.ServiceProvider.GetRequiredService<SmsMaricaDbContext>();
         var pdfImagens = scope.ServiceProvider.GetRequiredService<IExameImagensPdfService>();
 
-        var sol = await db.SolicitacoesExame
+        var sol = await db.ExamesImagem
             .FirstOrDefaultAsync(s => s.Id == solicitacaoId && s.ExcluidoEm == null, ct);
         if (sol is null) return;
 

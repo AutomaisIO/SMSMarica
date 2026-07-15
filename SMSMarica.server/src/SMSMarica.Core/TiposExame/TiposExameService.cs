@@ -122,7 +122,7 @@ public sealed class TiposExameService(SmsMaricaDbContext db, IUsuarioAtualAccess
         var t = await _db.TiposExame.FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(TipoExame), id);
 
-        var emUso = await _db.SolicitacoesExame.AsNoTracking()
+        var emUso = await _db.ExamesImagem.AsNoTracking()
             .AnyAsync(s => s.TipoExameId == id && s.ExcluidoEm == null, cancellationToken);
         if (emUso)
         {

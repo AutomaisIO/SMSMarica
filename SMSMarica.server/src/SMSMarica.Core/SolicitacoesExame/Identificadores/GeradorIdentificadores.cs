@@ -17,7 +17,7 @@ public sealed class GeradorIdentificadores(SmsMaricaDbContext db) : IGeradorIden
         // AccessionNumber = {AAMMDD}{seq} — a sequência reinicia a cada dia
         // (ex.: 260624019 = 19º exame de 24/06/2026). Mínimo 3 dígitos; expande
         // sozinha se passar de 999 no mesmo dia. Total <= 16 chars (limite Fuji SH).
-        var doDia = await _db.SolicitacoesExame.AsNoTracking()
+        var doDia = await _db.ExamesImagem.AsNoTracking()
             .Where(s => s.AccessionNumber.StartsWith(prefixo))
             .Select(s => s.AccessionNumber)
             .ToListAsync(cancellationToken);

@@ -70,7 +70,7 @@ public sealed class EnviadorWorklistService(
         var max = Math.Clamp(_options.MaximoPorPassagem, 1, 200);
 
         // Pega só os IDs primeiro, ordenado por urgência (proxima vencida primeiro).
-        var pendentes = await db.SolicitacoesExame.AsNoTracking()
+        var pendentes = await db.ExamesImagem.AsNoTracking()
             .Where(s => s.ExcluidoEm == null
                         && (s.Status == StatusSolicitacaoExame.Solicitada
                             || s.Status == StatusSolicitacaoExame.Enviada)

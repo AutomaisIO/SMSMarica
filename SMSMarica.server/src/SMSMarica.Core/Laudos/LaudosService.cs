@@ -123,13 +123,14 @@ public sealed class LaudosService(
         var studies = dtos.Where(d => d.Assinado).Select(d => d.StudyInstanceUID).Distinct().ToArray();
         if (studies.Length == 0) return dtos;
 
-        var diretas = await _db.SolicitacoesExame.AsNoTracking()
+        // Mapa study → id da ESPINHA (as comunicações são ancoradas nela).
+        var diretas = await _db.ExamesImagem.AsNoTracking()
             .Where(s => studies.Contains(s.StudyInstanceUID) && s.ExcluidoEm == null)
-            .Select(s => new { s.StudyInstanceUID, SolicitacaoId = s.Id })
+            .Select(s => new { s.StudyInstanceUID, SolicitacaoId = s.SolicitacaoId })
             .ToListAsync(ct);
         var associadas = await _db.ExameAssociacoes.AsNoTracking()
             .Where(a => studies.Contains(a.StudyInstanceUID) && a.ExcluidoEm == null)
-            .Select(a => new { a.StudyInstanceUID, SolicitacaoId = a.SolicitacaoExameId })
+            .Select(a => new { a.StudyInstanceUID, SolicitacaoId = a.ExameImagem!.SolicitacaoId })
             .ToListAsync(ct);
 
         var solicitacaoPorStudy = new Dictionary<string, Guid>();
@@ -139,13 +140,13 @@ public sealed class LaudosService(
 
         var solicitacaoIds = solicitacaoPorStudy.Values.Distinct().ToArray();
         var chips = (await _db.ComunicacoesPaciente.AsNoTracking()
-            .Where(c => c.SolicitacaoExameId != null
-                        && solicitacaoIds.Contains(c.SolicitacaoExameId.Value)
+            .Where(c => c.SolicitacaoId != null
+                        && solicitacaoIds.Contains(c.SolicitacaoId.Value)
                         && c.Finalidade == FinalidadeComunicacao.LaudoPronto)
-            .Select(c => new { c.SolicitacaoExameId, c.Status, c.VisualizadoEm, c.MotivoFalha })
+            .Select(c => new { c.SolicitacaoId, c.Status, c.VisualizadoEm, c.MotivoFalha })
             .ToListAsync(ct))
             .ToDictionary(
-                c => c.SolicitacaoExameId!.Value,
+                c => c.SolicitacaoId!.Value,
                 c => new SolicitacoesExame.Dtos.ComunicacaoChipDto(
                     c.Status.ToString(), c.VisualizadoEm != null, c.MotivoFalha));
         if (chips.Count == 0) return dtos;
@@ -312,7 +313,7 @@ public sealed class LaudosService(
         if (vinculo is not null && !config.PermitirLaudarSemAnamnese)
         {
             var temAnamnese = await _db.Anamneses.AsNoTracking()
-                .AnyAsync(a => a.SolicitacaoExameId == vinculo.SolicitacaoExameId, cancellationToken);
+                .AnyAsync(a => a.ExameImagemId == vinculo.SolicitacaoExameId, cancellationToken);
             if (!temAnamnese)
                 throw new ValidacaoException("laudo.sem_anamnese",
                     "Preencha a anamnese da solicitação antes de iniciar o laudo.");
