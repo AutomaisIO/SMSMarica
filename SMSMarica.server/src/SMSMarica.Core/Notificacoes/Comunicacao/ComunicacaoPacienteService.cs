@@ -24,7 +24,7 @@ public interface IComunicacaoPacienteService
     /// <summary>Enfileira a comunicação (idempotente por solicitação × finalidade). Para
     /// ConfirmacaoAgendamento exige DataAgendada futura (senão não faz nada). NÃO salva —
     /// participa do SaveChanges do chamador.</summary>
-    Task EnfileirarAsync(SolicitacaoExame solicitacao, FinalidadeComunicacao finalidade, CancellationToken ct = default);
+    Task EnfileirarAsync(Solicitacao solicitacao, FinalidadeComunicacao finalidade, CancellationToken ct = default);
 
     /// <summary>Processa UMA tentativa de envio. Nunca lança — falha vira backoff/estado terminal.</summary>
     Task ProcessarTentativaEnvioAsync(Guid comunicacaoId, CancellationToken ct = default);
@@ -53,9 +53,9 @@ public sealed class ComunicacaoPacienteService(
     private static readonly string[] ErrosMetaPermanentes = ["131026", "131030"];
 
     public async Task EnfileirarAsync(
-        SolicitacaoExame solicitacao, FinalidadeComunicacao finalidade, CancellationToken ct = default)
+        Solicitacao solicitacao, FinalidadeComunicacao finalidade, CancellationToken ct = default)
     {
-        // Confirmação só faz sentido antes do exame; as demais finalidades valem sempre.
+        // Confirmação só faz sentido antes do atendimento; as demais finalidades valem sempre.
         if (finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
             && (solicitacao.DataAgendada is not { } da || da <= DateTime.UtcNow))
             return;
@@ -63,15 +63,16 @@ public sealed class ComunicacaoPacienteService(
         // Idempotência: uma comunicação por solicitação × finalidade (o índice único garante;
         // a checagem evita a exceção quando o gatilho re-dispara).
         var jaExiste = await db.ComunicacoesPaciente
-            .AnyAsync(c => c.SolicitacaoExameId == solicitacao.Id && c.Finalidade == finalidade, ct);
+            .AnyAsync(c => c.SolicitacaoId == solicitacao.Id && c.Finalidade == finalidade, ct);
         if (jaExiste) return;
 
         db.ComunicacoesPaciente.Add(new ComunicacaoPaciente
         {
             Id = Guid.CreateVersion7(),
-            Tipo = TipoAgendamento.Exame,
+            Tipo = solicitacao.Categoria == CategoriaSolicitacao.Consulta
+                ? TipoAgendamento.Consulta : TipoAgendamento.Exame,
             Finalidade = finalidade,
-            SolicitacaoExameId = solicitacao.Id,
+            SolicitacaoId = solicitacao.Id,
             PacienteId = solicitacao.PacienteId,
             Status = StatusComunicacao.Pendente,
             ProximaTentativaEm = DateTime.UtcNow,
@@ -82,8 +83,7 @@ public sealed class ComunicacaoPacienteService(
     public async Task ProcessarTentativaEnvioAsync(Guid comunicacaoId, CancellationToken ct = default)
     {
         var n = await db.ComunicacoesPaciente
-            .Include(x => x.SolicitacaoExame!).ThenInclude(s => s.TipoExame)
-            .Include(x => x.SolicitacaoExame!).ThenInclude(s => s.Unidade)
+            .Include(x => x.Solicitacao!).ThenInclude(s => s.ExameImagem!).ThenInclude(e => e.TipoExame)
             .FirstOrDefaultAsync(x => x.Id == comunicacaoId, ct);
         if (n is null || n.Status != StatusComunicacao.Pendente || n.ProximaTentativaEm is null)
             return;
@@ -94,9 +94,9 @@ public sealed class ComunicacaoPacienteService(
 
         try
         {
-            var s = n.SolicitacaoExame;
+            var s = n.Solicitacao;
 
-            if (s is null || s.ExcluidoEm is not null || s.Status == StatusSolicitacaoExame.Cancelada)
+            if (s is null || s.ExcluidoEm is not null || s.Status == StatusSolicitacao.Cancelada)
             {
                 Terminal(n, StatusComunicacao.Falha, "Solicitação excluída ou cancelada antes do envio.");
             }
@@ -127,16 +127,22 @@ public sealed class ComunicacaoPacienteService(
 
     public async Task ReenviarAsync(Guid solicitacaoExameId, Guid comunicacaoId, CancellationToken ct = default)
     {
+        // Id público de um exame = ExameImagem.Id; traduz para o id da espinha (Solicitacao).
+        // Consulta: o id público já é o da espinha (sem satélite).
+        var solicitacaoId = await db.ExamesImagem.AsNoTracking()
+            .Where(e => e.Id == solicitacaoExameId).Select(e => (Guid?)e.SolicitacaoId).FirstOrDefaultAsync(ct)
+            ?? solicitacaoExameId;
+
         var n = await db.ComunicacoesPaciente
-            .Include(x => x.SolicitacaoExame)
-            .FirstOrDefaultAsync(x => x.Id == comunicacaoId && x.SolicitacaoExameId == solicitacaoExameId, ct)
+            .Include(x => x.Solicitacao)
+            .FirstOrDefaultAsync(x => x.Id == comunicacaoId && x.SolicitacaoId == solicitacaoId, ct)
             ?? throw new Common.Excecoes.NaoEncontradoException(nameof(ComunicacaoPaciente), comunicacaoId);
 
         var agora = DateTime.UtcNow;
-        var s = n.SolicitacaoExame;
+        var s = n.Solicitacao;
 
         // Guardas de coerência (evitam transformar um histórico OK em Falha no processamento).
-        if (s is null || s.ExcluidoEm is not null || s.Status == StatusSolicitacaoExame.Cancelada)
+        if (s is null || s.ExcluidoEm is not null || s.Status == StatusSolicitacao.Cancelada)
             throw new Common.Excecoes.ConflitoException(
                 "reenvio.solicitacao_invalida", "A solicitação foi excluída ou cancelada — nada a reenviar.");
         if (n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento)
@@ -153,7 +159,7 @@ public sealed class ComunicacaoPacienteService(
         //    qualquer link anterior pode ter ido para o número errado). Expirar = ninguém mais
         //    autentica com eles.
         var linksAtivos = await db.CidadaoLoginLinks
-            .Where(l => l.SolicitacaoExameId == solicitacaoExameId && l.ExpiraEm > agora)
+            .Where(l => l.SolicitacaoId == solicitacaoId && l.ExpiraEm > agora)
             .ToListAsync(ct);
         foreach (var l in linksAtivos) l.ExpiraEm = agora;
 
@@ -161,7 +167,7 @@ public sealed class ComunicacaoPacienteService(
         //    link — se quem clicou foi a pessoa errada, ela perde o acesso ao app AGORA. O
         //    paciente certo reentra com 1 clique no link novo (single-device, custo zero).
         var pacientesComLinkUsado = await db.CidadaoLoginLinks.AsNoTracking()
-            .Where(l => l.SolicitacaoExameId == solicitacaoExameId && l.UsadoEm != null)
+            .Where(l => l.SolicitacaoId == solicitacaoId && l.UsadoEm != null)
             .Select(l => l.PatientId)
             .Distinct()
             .ToListAsync(ct);
@@ -191,7 +197,7 @@ public sealed class ComunicacaoPacienteService(
         db.ContatosRegistro.Add(new ContatoRegistro
         {
             Id = Guid.CreateVersion7(),
-            SolicitacaoExameId = solicitacaoExameId,
+            SolicitacaoId = solicitacaoId,
             PacienteId = n.PacienteId,
             Meio = MeioContato.WhatsApp,
             Resultado = ResultadoContato.Outro,
@@ -215,7 +221,7 @@ public sealed class ComunicacaoPacienteService(
         _ => f.ToString(),
     };
 
-    private async Task EnviarAsync(ComunicacaoPaciente n, SolicitacaoExame s, CancellationToken ct)
+    private async Task EnviarAsync(ComunicacaoPaciente n, Solicitacao s, CancellationToken ct)
     {
         var paciente = await pacientes.ObterPorIdAsync(n.PacienteId, ct);
 
@@ -292,11 +298,13 @@ public sealed class ComunicacaoPacienteService(
     };
 
     private static (string Template, string[] Parametros, BotaoTemplateWhatsApp[] Botoes) MontarEnvio(
-        FinalidadeComunicacao finalidade, TipoAgendamento tipo, SolicitacaoExame s, string? nomePaciente,
+        FinalidadeComunicacao finalidade, TipoAgendamento tipo, Solicitacao s, string? nomePaciente,
         Sexo sexo, Guid token, ComunicacaoPacienteOptions opts)
     {
         var nome = PrimeiroNome(nomePaciente);
-        var exame = s.TipoExame?.Nome ?? "exame";
+        // Nome do procedimento: exame de imagem tem TipoExame no satélite; consulta usa a
+        // especialidade/procedimento em texto.
+        var exame = s.ExameImagem?.TipoExame?.Nome ?? s.EspecialidadeTexto ?? s.ProcedimentoTexto ?? "exame";
         var url = new BotaoTemplateWhatsApp(TipoBotaoTemplate.Url, token.ToString());
 
         switch (finalidade)
@@ -347,11 +355,12 @@ public sealed class ComunicacaoPacienteService(
     }
 
     /// <summary>Data em que o exame foi feito (DICOM → detecção → criação), formatada dd/MM/aaaa.</summary>
-    private static string DataRealizacao(SolicitacaoExame s)
+    private static string DataRealizacao(Solicitacao s)
     {
-        // DataEstudo é wall-clock do equipamento (as-is); os demais são UTC → Brasília.
-        var d = s.DataEstudo
-            ?? (s.RealizadoEm is { } r ? FusoBrasilia.ParaExibicao(r) : FusoBrasilia.ParaExibicao(s.CriadoEm));
+        // Datas de execução vivem no satélite de imagem; DataEstudo é wall-clock do equipamento
+        // (as-is), os demais são UTC → Brasília. Fallback final na criação da solicitação.
+        var d = s.ExameImagem?.DataEstudo
+            ?? (s.ExameImagem?.RealizadoEm is { } r ? FusoBrasilia.ParaExibicao(r) : FusoBrasilia.ParaExibicao(s.CriadoEm));
         return d.ToString("dd/MM/yyyy", PtBr);
     }
 

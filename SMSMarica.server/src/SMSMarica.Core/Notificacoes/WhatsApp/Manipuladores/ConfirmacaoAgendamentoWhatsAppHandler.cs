@@ -55,7 +55,7 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
     // Quick reply "Não poderei comparecer" do template.
     private async Task TratarNaoPodereiAsync(ManipuladorContexto ctx, Guid solicitacaoId, CancellationToken ct)
     {
-        var s = await db.SolicitacoesExame.FirstOrDefaultAsync(
+        var s = await db.Solicitacoes.FirstOrDefaultAsync(
             x => x.Id == solicitacaoId && x.ExcluidoEm == null, ct);
         if (s is null) return;
 
@@ -68,7 +68,7 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
         }
 
         var notificacao = await db.ComunicacoesPaciente.FirstOrDefaultAsync(
-            n => n.SolicitacaoExameId == solicitacaoId && n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento, ct);
+            n => n.SolicitacaoId == solicitacaoId && n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento, ct);
         if (notificacao is null) return;
 
         await AbrirOuAtualizarEstadoAsync(ctx.Conversa.TelefoneCanonical, notificacao.Id,
@@ -87,7 +87,7 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
     // "Não, vou comparecer" — vira confirmação.
     private async Task TratarDesistiuDoCancelamentoAsync(ManipuladorContexto ctx, Guid solicitacaoId, CancellationToken ct)
     {
-        var s = await db.SolicitacoesExame.FirstOrDefaultAsync(
+        var s = await db.Solicitacoes.FirstOrDefaultAsync(
             x => x.Id == solicitacaoId && x.ExcluidoEm == null, ct);
         if (s is null) return;
 
@@ -105,7 +105,7 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
     private async Task TratarConfirmouCancelamentoAsync(ManipuladorContexto ctx, Guid solicitacaoId, CancellationToken ct)
     {
         var notificacao = await db.ComunicacoesPaciente.FirstOrDefaultAsync(
-            n => n.SolicitacaoExameId == solicitacaoId && n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento, ct);
+            n => n.SolicitacaoId == solicitacaoId && n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento, ct);
         if (notificacao is null) return;
 
         await AbrirOuAtualizarEstadoAsync(ctx.Conversa.TelefoneCanonical, notificacao.Id,
@@ -136,10 +136,10 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
         }
         if (estado.Etapa != EtapaConfirmacaoAgendamento.AguardandoMotivo) return;
 
-        var solicitacaoId = estado.ComunicacaoPaciente?.SolicitacaoExameId;
+        var solicitacaoId = estado.ComunicacaoPaciente?.SolicitacaoId;
         if (solicitacaoId is null) { db.AgendamentoConfirmacaoEstados.Remove(estado); return; }
 
-        var s = await db.SolicitacoesExame.FirstOrDefaultAsync(
+        var s = await db.Solicitacoes.FirstOrDefaultAsync(
             x => x.Id == solicitacaoId && x.ExcluidoEm == null, ct);
         db.AgendamentoConfirmacaoEstados.Remove(estado);
         if (s is null) return;
@@ -160,7 +160,7 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
         }
     }
 
-    private static void Confirmar(SolicitacaoExame s, string canal)
+    private static void Confirmar(Solicitacao s, string canal)
     {
         s.StatusConfirmacao = StatusConfirmacaoAgendamento.Confirmada;
         s.ConfirmadoEm = DateTime.UtcNow;
