@@ -13,6 +13,8 @@ using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Cidadao;
 
+// Visão clínica do cidadão (PWA). Exames de imagem = satélite ExameImagem (id público preservado);
+// a regulação (paciente, datas, confirmação) vem por .Solicitacao. Ver ADR-0021.
 public sealed class CidadaoClinicoService(
     SmsMaricaDbContext db,
     IAnexosService anexos,
@@ -23,8 +25,8 @@ public sealed class CidadaoClinicoService(
     public async Task<IReadOnlyList<ExameResumoDto>> ListarExamesAsync(
         Guid pacienteId, CancellationToken cancellationToken = default)
     {
-        var exames = await db.SolicitacoesExame.AsNoTracking()
-            .Where(s => s.PacienteId == pacienteId && s.ExcluidoEm == null
+        var exames = await db.ExamesImagem.AsNoTracking()
+            .Where(s => s.Solicitacao!.PacienteId == pacienteId && s.ExcluidoEm == null
                 && (s.Status == StatusSolicitacaoExame.Realizada || s.Status == StatusSolicitacaoExame.Laudada))
             .OrderByDescending(s => s.RealizadoEm ?? s.CriadoEm)
             .Select(s => new
@@ -44,24 +46,24 @@ public sealed class CidadaoClinicoService(
         var ids = exames.Select(e => e.Id).ToList();
 
         var docs = await db.DocumentosExame.AsNoTracking()
-            .Where(d => ids.Contains(d.SolicitacaoExameId) && d.ExcluidoEm == null
+            .Where(d => ids.Contains(d.ExameImagemId) && d.ExcluidoEm == null
                 && d.Status == StatusDocumentoExame.Salvo)
             .OrderByDescending(d => d.CriadoEm)
-            .Select(d => new { d.Id, d.SolicitacaoExameId, d.Nome, d.TamanhoBytes, d.Paginas })
+            .Select(d => new { d.Id, d.ExameImagemId, d.Nome, d.TamanhoBytes, d.Paginas })
             .ToListAsync(cancellationToken);
         var docsPorExame = docs
-            .GroupBy(d => d.SolicitacaoExameId)
+            .GroupBy(d => d.ExameImagemId)
             .ToDictionary(g => g.Key, g => g.ToList());
 
-        // Study EFETIVO por solicitação: exames sem worklist (ex.: mamografia no Fuji) têm o
-        // study REAL do equipamento na ExameAssociacao — e o LAUDO é criado com esse UID real,
-        // não com o pré-gerado da solicitação. Sem isso o laudo nunca casa com o card do exame.
+        // Study EFETIVO por exame: exames sem worklist (ex.: mamografia no Fuji) têm o study REAL
+        // do equipamento na ExameAssociacao — e o LAUDO é criado com esse UID real, não com o
+        // pré-gerado. Sem isso o laudo nunca casa com o card do exame.
         var associacoes = await db.ExameAssociacoes.AsNoTracking()
-            .Where(a => ids.Contains(a.SolicitacaoExameId) && a.ExcluidoEm == null)
-            .Select(a => new { a.SolicitacaoExameId, a.StudyInstanceUID })
+            .Where(a => ids.Contains(a.ExameImagemId) && a.ExcluidoEm == null)
+            .Select(a => new { a.ExameImagemId, a.StudyInstanceUID })
             .ToListAsync(cancellationToken);
         var studyRealPorExame = associacoes
-            .GroupBy(a => a.SolicitacaoExameId)
+            .GroupBy(a => a.ExameImagemId)
             .ToDictionary(g => g.Key, g => g.First().StudyInstanceUID);
         string? StudyEfetivo(Guid exameId, string? preGerado) =>
             studyRealPorExame.TryGetValue(exameId, out var real) && !string.IsNullOrEmpty(real)
@@ -94,8 +96,8 @@ public sealed class CidadaoClinicoService(
 
             return new ExameResumoDto(
                 e.Id,
-                // Data do exame = DICOM (StudyDate/StudyTime) como fonte da verdade; só cai
-                // para a hora de detecção (RealizadoEm) e, por fim, CriadoEm.
+                // Data do exame = DICOM (StudyDate/StudyTime) como fonte da verdade; cai para a
+                // hora de detecção (RealizadoEm) e, por fim, CriadoEm.
                 e.DataEstudo ?? e.RealizadoEm ?? e.CriadoEm,
                 e.Nome,
                 DescreverStatusExame(e.Status),
@@ -114,9 +116,9 @@ public sealed class CidadaoClinicoService(
     {
         var pertence = await (
             from d in db.DocumentosExame.AsNoTracking()
-            join s in db.SolicitacoesExame.AsNoTracking() on d.SolicitacaoExameId equals s.Id
+            join e in db.ExamesImagem.AsNoTracking() on d.ExameImagemId equals e.Id
             where d.Id == anexoId && d.ExcluidoEm == null && d.Status == StatusDocumentoExame.Salvo
-                  && s.PacienteId == pacienteId && s.ExcluidoEm == null
+                  && e.Solicitacao!.PacienteId == pacienteId && e.ExcluidoEm == null
             select d.Id).AnyAsync(cancellationToken);
 
         return pertence ? await anexos.ObterConteudoAsync(anexoId, cancellationToken) : null;
@@ -125,8 +127,8 @@ public sealed class CidadaoClinicoService(
     public async Task<byte[]?> ObterImagensPdfAsync(
         Guid pacienteId, Guid solicitacaoExameId, CancellationToken cancellationToken = default)
     {
-        var pertence = await db.SolicitacoesExame.AsNoTracking()
-            .AnyAsync(s => s.Id == solicitacaoExameId && s.PacienteId == pacienteId && s.ExcluidoEm == null,
+        var pertence = await db.ExamesImagem.AsNoTracking()
+            .AnyAsync(e => e.Id == solicitacaoExameId && e.Solicitacao!.PacienteId == pacienteId && e.ExcluidoEm == null,
                 cancellationToken);
         if (!pertence) return null;
 
@@ -136,14 +138,18 @@ public sealed class CidadaoClinicoService(
         return await imagensPdf.GerarOuObterAsync(solicitacaoExameId, cancellationToken);
     }
 
-    /// <summary>Estampa VisualizadoEm na comunicação (solicitação × finalidade). Nunca lança.</summary>
+    /// <summary>Estampa VisualizadoEm na comunicação (solicitação × finalidade). A comunicação é
+    /// ancorada na espinha; traduz o id público (exame) → id da espinha. Nunca lança.</summary>
     private async Task MarcarVisualizadoAsync(
-        Guid solicitacaoExameId, FinalidadeComunicacao finalidade, CancellationToken ct)
+        Guid exameId, FinalidadeComunicacao finalidade, CancellationToken ct)
     {
         try
         {
+            var solicitacaoId = await db.ExamesImagem.AsNoTracking()
+                .Where(e => e.Id == exameId).Select(e => (Guid?)e.SolicitacaoId).FirstOrDefaultAsync(ct)
+                ?? exameId;
             await db.ComunicacoesPaciente
-                .Where(c => c.SolicitacaoExameId == solicitacaoExameId
+                .Where(c => c.SolicitacaoId == solicitacaoId
                     && c.Finalidade == finalidade && c.VisualizadoEm == null)
                 .ExecuteUpdateAsync(s => s.SetProperty(c => c.VisualizadoEm, DateTime.UtcNow), ct);
         }
@@ -175,26 +181,26 @@ public sealed class CidadaoClinicoService(
         if (laudo?.PacienteId != pacienteId) return null;
         if (!await assinatura.EstaAssinadoAsync(laudoId, cancellationToken)) return null;
 
-        // Abrir o laudo no app = VISUALIZOU o "Laudo pronto" (✓✓ azul). Resolve a solicitação
-        // pelo study (direto ou associação); best-effort.
-        var solicitacaoId = await ResolverSolicitacaoPorStudyAsync(laudo.StudyInstanceUID, cancellationToken);
-        if (solicitacaoId is { } sid)
-            await MarcarVisualizadoAsync(sid, FinalidadeComunicacao.LaudoPronto, cancellationToken);
+        // Abrir o laudo no app = VISUALIZOU o "Laudo pronto" (✓✓ azul). Resolve o exame pelo study
+        // (direto ou associação); best-effort.
+        var exameId = await ResolverExamePorStudyAsync(laudo.StudyInstanceUID, cancellationToken);
+        if (exameId is { } eid)
+            await MarcarVisualizadoAsync(eid, FinalidadeComunicacao.LaudoPronto, cancellationToken);
 
         return await assinatura.ObterPdfParaDownloadAsync(laudoId, cancellationToken);
     }
 
-    private async Task<Guid?> ResolverSolicitacaoPorStudyAsync(string? studyUid, CancellationToken ct)
+    private async Task<Guid?> ResolverExamePorStudyAsync(string? studyUid, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(studyUid)) return null;
-        var direto = await db.SolicitacoesExame.AsNoTracking()
-            .Where(s => s.StudyInstanceUID == studyUid && s.ExcluidoEm == null)
-            .Select(s => (Guid?)s.Id)
+        var direto = await db.ExamesImagem.AsNoTracking()
+            .Where(e => e.StudyInstanceUID == studyUid && e.ExcluidoEm == null)
+            .Select(e => (Guid?)e.Id)
             .FirstOrDefaultAsync(ct);
         if (direto is not null) return direto;
         return await db.ExameAssociacoes.AsNoTracking()
             .Where(a => a.StudyInstanceUID == studyUid && a.ExcluidoEm == null)
-            .Select(a => (Guid?)a.SolicitacaoExameId)
+            .Select(a => (Guid?)a.ExameImagemId)
             .FirstOrDefaultAsync(ct);
     }
 
@@ -204,7 +210,7 @@ public sealed class CidadaoClinicoService(
         // Agendamento.InicioEm é "timestamp without time zone" (wall-clock Brasília): comparar com
         // um DateTime Kind=Utc quebra no Npgsql. Usamos a data local de Brasília como Unspecified.
         var hojeLocal = DateTime.SpecifyKind(FusoBrasilia.ParaExibicao(DateTime.UtcNow).Date, DateTimeKind.Unspecified);
-        // SolicitacaoExame.DataAgendada é "timestamp with time zone" (Kind=Utc).
+        // Solicitacao.DataAgendada é "timestamp with time zone" (Kind=Utc).
         var inicioHojeUtc = DateTime.UtcNow.Date;
 
         var query = db.Agendamentos.AsNoTracking()
@@ -246,22 +252,22 @@ public sealed class CidadaoClinicoService(
                 DescreverStatusAgendamento(l.Status));
         }).ToList();
 
-        // Exames importados (SISREG) vivem em SolicitacaoExame, não na agenda local — o card
+        // Exames importados (SISREG) vivem em ExameImagem+Solicitacao, não na agenda local — o card
         // deles traz a confirmação de presença (magic link / quick reply / botões do app).
         if (filtro is null or "exame")
         {
-            var solicitacoes = await db.SolicitacoesExame.AsNoTracking()
-                .Where(s => s.PacienteId == pacienteId && s.ExcluidoEm == null
+            var solicitacoes = await db.ExamesImagem.AsNoTracking()
+                .Where(s => s.Solicitacao!.PacienteId == pacienteId && s.ExcluidoEm == null
                     && s.Status != StatusSolicitacaoExame.Cancelada
-                    && s.DataAgendada != null && s.DataAgendada >= inicioHojeUtc)
-                .OrderBy(s => s.DataAgendada)
+                    && s.Solicitacao!.DataAgendada != null && s.Solicitacao!.DataAgendada >= inicioHojeUtc)
+                .OrderBy(s => s.Solicitacao!.DataAgendada)
                 .Select(s => new
                 {
                     s.Id,
-                    InicioEm = s.DataAgendada!.Value,
+                    InicioEm = s.Solicitacao!.DataAgendada!.Value,
                     TipoExameNome = s.TipoExame != null ? s.TipoExame.Nome : null,
-                    UnidadeNome = s.Unidade != null ? s.Unidade.Nome : null,
-                    s.StatusConfirmacao,
+                    UnidadeNome = s.Solicitacao!.UnidadeExecutante != null ? s.Solicitacao!.UnidadeExecutante.Nome : null,
+                    s.Solicitacao!.StatusConfirmacao,
                 })
                 .ToListAsync(cancellationToken);
 
@@ -286,33 +292,34 @@ public sealed class CidadaoClinicoService(
     public async Task<AgendamentoExameDetalheDto?> ObterExameAgendadoAsync(
         Guid pacienteId, Guid solicitacaoExameId, CancellationToken cancellationToken = default)
     {
-        var s = await db.SolicitacoesExame.AsNoTracking()
+        var s = await db.ExamesImagem.AsNoTracking()
             .Include(x => x.TipoExame)
-            .Include(x => x.Unidade!).ThenInclude(u => u.Endereco)
-            .Include(x => x.UnidadeSolicitante)
+            .Include(x => x.Solicitacao!).ThenInclude(so => so.UnidadeExecutante!).ThenInclude(u => u.Endereco)
+            .Include(x => x.Solicitacao!).ThenInclude(so => so.UnidadeSolicitante)
             .FirstOrDefaultAsync(x => x.Id == solicitacaoExameId && x.ExcluidoEm == null, cancellationToken);
-        if (s is null || s.PacienteId != pacienteId) return null;
+        if (s is null || s.Solicitacao!.PacienteId != pacienteId) return null;
+        var reg = s.Solicitacao!;
 
         return new AgendamentoExameDetalheDto(
             s.Id,
             s.TipoExame?.Nome ?? "Exame",
-            s.DataAgendada,
-            s.DataSolicitacao,
-            s.DataRegulacao,
-            s.Unidade?.Nome,
-            FormatarEndereco(s.Unidade?.Endereco),
-            s.Unidade?.Telefone,
-            s.UnidadeSolicitante?.Nome,
-            string.IsNullOrWhiteSpace(s.SolicitanteNome) ? null : s.SolicitanteNome,
+            reg.DataAgendada,
+            reg.DataSolicitacao,
+            reg.DataRegulacao,
+            reg.UnidadeExecutante?.Nome,
+            FormatarEndereco(reg.UnidadeExecutante?.Endereco),
+            reg.UnidadeExecutante?.Telefone,
+            reg.UnidadeSolicitante?.Nome,
+            string.IsNullOrWhiteSpace(reg.SolicitanteNome) ? null : reg.SolicitanteNome,
             s.AccessionNumber,
-            s.CodigoSolicitacao,
-            s.Prioridade.ToString(),
-            s.Observacoes,
-            s.StatusConfirmacao.ToString(),
-            s.ConfirmadoEm,
-            s.ConfirmadoCanal,
-            s.ConfirmacaoCanceladaEm,
-            s.MotivoCancelamentoPaciente);
+            reg.CodigoSolicitacao,
+            reg.Prioridade.ToString(),
+            reg.Observacoes,
+            reg.StatusConfirmacao.ToString(),
+            reg.ConfirmadoEm,
+            reg.ConfirmadoCanal,
+            reg.ConfirmacaoCanceladaEm,
+            reg.MotivoCancelamentoPaciente);
     }
 
     private static string? FormatarEndereco(Data.Entities.Endereco? e)
@@ -364,11 +371,16 @@ public sealed class CidadaoClinicoService(
         await db.SaveChangesAsync(cancellationToken);
     }
 
-    private async Task<Data.Entities.SolicitacaoExame> ObterSolicitacaoDoPacienteAsync(
+    // Retorna a ESPINHA (Solicitacao) do exame do paciente. O id recebido é o público (exame);
+    // traduz para a espinha (consulta: já é o id da espinha).
+    private async Task<Data.Entities.Solicitacao> ObterSolicitacaoDoPacienteAsync(
         Guid pacienteId, Guid solicitacaoExameId, CancellationToken ct)
     {
-        var s = await db.SolicitacoesExame.FirstOrDefaultAsync(
-            x => x.Id == solicitacaoExameId && x.ExcluidoEm == null, ct);
+        var solicitacaoId = await db.ExamesImagem.AsNoTracking()
+            .Where(e => e.Id == solicitacaoExameId).Select(e => (Guid?)e.SolicitacaoId).FirstOrDefaultAsync(ct)
+            ?? solicitacaoExameId;
+        var s = await db.Solicitacoes.FirstOrDefaultAsync(
+            x => x.Id == solicitacaoId && x.ExcluidoEm == null, ct);
         // 404 também quando não é do paciente (não vaza existência).
         if (s is null || s.PacienteId != pacienteId)
             throw new Common.Excecoes.NaoEncontradoException("solicitacao.nao_encontrada", "Agendamento não encontrado.");
