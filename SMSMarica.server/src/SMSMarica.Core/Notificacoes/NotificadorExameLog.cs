@@ -12,19 +12,19 @@ public sealed class NotificadorExameLog(ILogger<NotificadorExameLog> logger) : I
 {
     private readonly ILogger<NotificadorExameLog> _logger = logger;
 
-    public Task NotificarAgendadoAsync(SolicitacaoExame s, CancellationToken cancellationToken = default)
+    public Task NotificarAgendadoAsync(ExameImagem s, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation(
             "[NOTIF] Solicitação {Accession} AGENDADA — paciente {PacienteId} aguarda execução.",
-            s.AccessionNumber, s.PacienteId);
+            s.AccessionNumber, s.Solicitacao!.PacienteId);
         return Task.CompletedTask;
     }
 
-    public Task NotificarRealizadoAsync(SolicitacaoExame s, CancellationToken cancellationToken = default)
+    public Task NotificarRealizadoAsync(ExameImagem s, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation(
             "[NOTIF] Solicitação {Accession} REALIZADA — paciente {PacienteId} pode retirar resultado.",
-            s.AccessionNumber, s.PacienteId);
+            s.AccessionNumber, s.Solicitacao!.PacienteId);
         return Task.CompletedTask;
     }
 }

@@ -8,7 +8,7 @@ using SMSMarica.Data.Entities.Enums;
 namespace SMSMarica.Core.Worklist;
 
 /// <summary>
-/// Converte uma <see cref="SolicitacaoExame"/> + dados do paciente (hub FHIR) num
+/// Converte uma <see cref="ExameImagem"/> + dados do paciente (hub FHIR) num
 /// item de Modality Worklist (MWL) DICOM+JSON, aceito pelo endpoint <c>/mwlitems</c>
 /// do dcm4chee. O equipamento (ex.: Fuji FDR-3000AWS) consome via C-FIND MWL
 /// clássico, filtrando por ScheduledStationAETitle + Modality + Data — por isso a
@@ -20,14 +20,14 @@ internal static class ConstrutorMwlItem
     /// item (usada nos GET/DELETE do dcm4chee). Usa o mesmo valor do RequestedProcedureID
     /// (≤10 chars): o Fuji recusa SH acima de 10 e antes era "SPS-{accession}" (14 chars),
     /// o que quebrava a execução do estudo ("obter informações de imagem").</summary>
-    public static string SpsId(SolicitacaoExame s) => RequestedProcedureId(s);
+    public static string SpsId(ExameImagem s) => RequestedProcedureId(s);
 
     /// <summary>RequestedProcedureID (0040,1001) limitado a 10 caracteres: apesar de o
     /// DICOM SH permitir 16, o Fuji rejeita IDs maiores. Deriva do AccessionNumber
     /// removendo o prefixo "SMS" — sobra ano+sequência (ex.: SMS2026000001 -> 2026000001,
     /// 10 chars, único por ano). Para accession em formato inesperado, trunca nos
     /// últimos 10 caracteres. Não é chave de lookup (o vínculo é por SpsId + StudyUID).</summary>
-    public static string RequestedProcedureId(SolicitacaoExame s)
+    public static string RequestedProcedureId(ExameImagem s)
     {
         var acc = s.AccessionNumber ?? string.Empty;
         var id = acc.StartsWith("SMS", StringComparison.Ordinal) ? acc[3..] : acc;
@@ -37,17 +37,17 @@ internal static class ConstrutorMwlItem
     /// <summary>PatientID exibido no equipamento: CPF (só dígitos) quando houver,
     /// senão o id do paciente no hub FHIR (Guid). O vínculo do estudo de volta é pelo
     /// StudyInstanceUID — não por este ID — então usar CPF é seguro e mais legível.</summary>
-    public static string PatientId(SolicitacaoExame s, PacienteResumo p)
+    public static string PatientId(ExameImagem s, PacienteResumo p)
     {
         var cpf = new string((p.Cpf ?? string.Empty).Where(char.IsDigit).ToArray());
-        return cpf.Length == 11 ? cpf : s.PacienteId.ToString();
+        return cpf.Length == 11 ? cpf : s.Solicitacao!.PacienteId.ToString();
     }
 
     /// <summary>Item MWL completo (top-level + Scheduled Procedure Step Sequence).</summary>
-    public static JsonObject Item(SolicitacaoExame s, PacienteResumo paciente, string stationAeTitle)
+    public static JsonObject Item(ExameImagem s, PacienteResumo paciente, string stationAeTitle)
     {
         var tipo = s.TipoExame ?? throw new InvalidOperationException("TipoExame não carregado.");
-        var quando = s.DataAgendada ?? DateTime.UtcNow;
+        var quando = s.Solicitacao!.DataAgendada ?? DateTime.UtcNow;
 
         return new JsonObject
         {
@@ -59,7 +59,7 @@ internal static class ConstrutorMwlItem
             ["0020000D"] = Ui(s.StudyInstanceUID),                          // StudyInstanceUID
             ["00321060"] = LoDesc(tipo.RequestedProcedureDescription),      // RequestedProcedureDescription (<= 16, exigência do Fuji)
             ["00401001"] = Sh(RequestedProcedureId(s)),                     // RequestedProcedureID (<=10; se omitido o dcm4chee gera RP-XXXXXXXX >10)
-            ["00401003"] = Sh(MapearPrioridade(s.Prioridade)),             // RequestedProcedurePriority
+            ["00401003"] = Sh(MapearPrioridade(s.Solicitacao!.Prioridade)),             // RequestedProcedurePriority
             ["00400100"] = new JsonObject                                   // ScheduledProcedureStepSequence
             {
                 ["vr"] = "SQ",
@@ -83,7 +83,7 @@ internal static class ConstrutorMwlItem
 
     /// <summary>Recurso Patient mínimo para registrar/atualizar no dcm4chee antes do
     /// MWL item (o <c>POST /mwlitems</c> exige que o paciente já exista no arquivo).</summary>
-    public static JsonObject Paciente(SolicitacaoExame s, PacienteResumo p) => new()
+    public static JsonObject Paciente(ExameImagem s, PacienteResumo p) => new()
     {
         ["00100010"] = Pn(p.Nome),
         ["00100020"] = Lo(PatientId(s, p)),

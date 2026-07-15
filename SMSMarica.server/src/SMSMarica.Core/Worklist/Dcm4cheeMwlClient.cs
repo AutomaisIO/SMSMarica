@@ -32,9 +32,9 @@ public sealed class Dcm4cheeMwlClient : IDcm4cheeMwlClient
         _pacienteResolver = pacienteResolver;
     }
 
-    public async Task<string> CriarOuAtualizarMwlItemAsync(SolicitacaoExame s, CancellationToken ct = default)
+    public async Task<string> CriarOuAtualizarMwlItemAsync(ExameImagem s, CancellationToken ct = default)
     {
-        var paciente = await ResolverPacienteAsync(s.PacienteId, ct);
+        var paciente = await ResolverPacienteAsync(s.Solicitacao!.PacienteId, ct);
 
         // 1) Garante o paciente no dcm4chee (o POST /mwlitems exige paciente existente).
         await RegistrarPacienteAsync(s, paciente, ct);
@@ -61,7 +61,7 @@ public sealed class Dcm4cheeMwlClient : IDcm4cheeMwlClient
         return ConstrutorMwlItem.SpsId(s);
     }
 
-    public async Task<bool> MwlItemExisteAsync(SolicitacaoExame s, CancellationToken ct = default)
+    public async Task<bool> MwlItemExisteAsync(ExameImagem s, CancellationToken ct = default)
     {
         var req = new HttpRequestMessage(
             HttpMethod.Get,
@@ -88,7 +88,7 @@ public sealed class Dcm4cheeMwlClient : IDcm4cheeMwlClient
             $"dcm4chee respondeu {(int)resp.StatusCode} ao consultar a worklist.");
     }
 
-    public async Task<bool> ExcluirMwlItemAsync(SolicitacaoExame s, CancellationToken ct = default)
+    public async Task<bool> ExcluirMwlItemAsync(ExameImagem s, CancellationToken ct = default)
     {
         var sps = ConstrutorMwlItem.SpsId(s);
         var req = new HttpRequestMessage(
@@ -128,7 +128,7 @@ public sealed class Dcm4cheeMwlClient : IDcm4cheeMwlClient
         }
     }
 
-    private async Task RegistrarPacienteAsync(SolicitacaoExame s, PacienteResumo paciente, CancellationToken ct)
+    private async Task RegistrarPacienteAsync(ExameImagem s, PacienteResumo paciente, CancellationToken ct)
     {
         var corpo = ConstrutorMwlItem.Paciente(s, paciente);
         var req = new HttpRequestMessage(HttpMethod.Post, "patients")
@@ -143,7 +143,7 @@ public sealed class Dcm4cheeMwlClient : IDcm4cheeMwlClient
         {
             var txt = await resp.Content.ReadAsStringAsync(ct);
             _logger.LogError("dcm4chee recusou registro do paciente {Id} ({Status}): {Corpo}",
-                s.PacienteId, (int)resp.StatusCode, Encurtar(txt));
+                s.Solicitacao!.PacienteId, (int)resp.StatusCode, Encurtar(txt));
             throw new ConflitoException("pacs.paciente_falhou",
                 $"dcm4chee respondeu {(int)resp.StatusCode} ao registrar o paciente.");
         }
