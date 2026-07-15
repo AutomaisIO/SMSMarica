@@ -16,7 +16,7 @@ internal sealed class CidadaoLoginLinkConfiguration : IEntityTypeConfiguration<C
         builder.Property(l => l.Cpf).HasColumnName("cpf").HasMaxLength(11).IsRequired();
         builder.Property(l => l.Destino).HasColumnName("destino").HasMaxLength(200);
         // Sem FK: link é histórico/auditoria — sobrevive à exclusão da solicitação.
-        builder.Property(l => l.SolicitacaoExameId).HasColumnName("solicitacao_exame_id");
+        builder.Property(l => l.SolicitacaoId).HasColumnName("solicitacao_id");
         builder.Property(l => l.ExpiraEm).HasColumnName("expira_em").IsRequired();
         builder.Property(l => l.UsadoEm).HasColumnName("usado_em");
         builder.Property(l => l.UsadoIp).HasColumnName("usado_ip").HasMaxLength(64);

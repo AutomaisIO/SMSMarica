@@ -13,7 +13,7 @@ internal sealed class AnexoUploadTokenConfiguration : IEntityTypeConfiguration<A
 
         builder.Property(t => t.Id).HasColumnName("id");
         builder.Property(t => t.Token).HasColumnName("token").HasMaxLength(120).IsRequired();
-        builder.Property(t => t.SolicitacaoExameId).HasColumnName("solicitacao_exame_id").IsRequired();
+        builder.Property(t => t.ExameImagemId).HasColumnName("exame_imagem_id").IsRequired();
         builder.Property(t => t.PatientId).HasColumnName("patient_id").IsRequired();
         builder.Property(t => t.PacienteNome).HasColumnName("paciente_nome").HasMaxLength(200).IsRequired();
 
@@ -23,9 +23,9 @@ internal sealed class AnexoUploadTokenConfiguration : IEntityTypeConfiguration<A
         builder.Property(t => t.RevogadoEm).HasColumnName("revogado_em");
         builder.Property(t => t.UltimoUsoEm).HasColumnName("ultimo_uso_em");
 
-        builder.HasOne(t => t.SolicitacaoExame)
+        builder.HasOne(t => t.ExameImagem)
             .WithMany()
-            .HasForeignKey(t => t.SolicitacaoExameId)
+            .HasForeignKey(t => t.ExameImagemId)
             .OnDelete(DeleteBehavior.Restrict);
 
         // Segredo aleatório, nunca reaproveitado → índice único simples.
@@ -33,6 +33,6 @@ internal sealed class AnexoUploadTokenConfiguration : IEntityTypeConfiguration<A
             .IsUnique()
             .HasDatabaseName("ix_anexo_upload_token_token");
 
-        builder.HasIndex(t => t.SolicitacaoExameId);
+        builder.HasIndex(t => t.ExameImagemId);
     }
 }

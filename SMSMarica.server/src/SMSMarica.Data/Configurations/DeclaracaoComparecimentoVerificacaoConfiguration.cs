@@ -13,7 +13,7 @@ internal sealed class DeclaracaoComparecimentoVerificacaoConfiguration
         builder.HasKey(d => d.Id);
 
         builder.Property(d => d.Id).HasColumnName("id");
-        builder.Property(d => d.SolicitacaoExameId).HasColumnName("solicitacao_exame_id").IsRequired();
+        builder.Property(d => d.SolicitacaoId).HasColumnName("solicitacao_id").IsRequired();
         builder.Property(d => d.DataHoraExame)
             .HasColumnName("data_hora_exame")
             .HasColumnType("timestamp without time zone")
@@ -21,11 +21,11 @@ internal sealed class DeclaracaoComparecimentoVerificacaoConfiguration
         builder.Property(d => d.CriadoEm).HasColumnName("criado_em").IsRequired();
 
         // Um selo por solicitação (estável).
-        builder.HasIndex(d => d.SolicitacaoExameId).IsUnique();
+        builder.HasIndex(d => d.SolicitacaoId).IsUnique();
 
-        builder.HasOne(d => d.SolicitacaoExame)
+        builder.HasOne(d => d.Solicitacao)
             .WithMany()
-            .HasForeignKey(d => d.SolicitacaoExameId)
+            .HasForeignKey(d => d.SolicitacaoId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

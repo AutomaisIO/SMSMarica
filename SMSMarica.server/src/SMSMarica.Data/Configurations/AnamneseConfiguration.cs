@@ -12,7 +12,7 @@ internal sealed class AnamneseConfiguration : IEntityTypeConfiguration<Anamnese>
         builder.HasKey(a => a.Id);
 
         builder.Property(a => a.Id).HasColumnName("id");
-        builder.Property(a => a.SolicitacaoExameId).HasColumnName("solicitacao_exame_id").IsRequired();
+        builder.Property(a => a.ExameImagemId).HasColumnName("exame_imagem_id").IsRequired();
 
         builder.Property(a => a.Tipo).HasColumnName("tipo").HasMaxLength(40).IsRequired();
         builder.Property(a => a.Versao).HasColumnName("versao").HasDefaultValue(1).IsRequired();
@@ -35,16 +35,16 @@ internal sealed class AnamneseConfiguration : IEntityTypeConfiguration<Anamnese>
             .ValueGeneratedOnAddOrUpdate()
             .IsConcurrencyToken();
 
-        builder.HasOne(a => a.SolicitacaoExame)
+        builder.HasOne(a => a.ExameImagem)
             .WithMany()
-            .HasForeignKey(a => a.SolicitacaoExameId)
+            .HasForeignKey(a => a.ExameImagemId)
             .OnDelete(DeleteBehavior.Restrict);
 
         // 1 anamnese ativa por solicitação (soft-delete libera o slot).
-        builder.HasIndex(a => a.SolicitacaoExameId)
+        builder.HasIndex(a => a.ExameImagemId)
             .IsUnique()
             .HasFilter("excluido_em IS NULL")
-            .HasDatabaseName("ix_anamnese_solicitacao_exame_id_ativa");
+            .HasDatabaseName("ix_anamnese_exame_imagem_id_ativa");
 
         builder.HasIndex(a => a.ClassificacaoRisco);
     }

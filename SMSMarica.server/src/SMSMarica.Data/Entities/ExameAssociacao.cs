@@ -22,9 +22,9 @@ public class ExameAssociacao
     /// <summary>StudyInstanceUID REAL do estudo no dcm4chee (o que veio do equipamento). Sem FK local.</summary>
     public string StudyInstanceUID { get; set; } = string.Empty;
 
-    /// <summary>Solicitação à qual o estudo foi vinculado (FK smsmarica → smsmarica).</summary>
-    public Guid SolicitacaoExameId { get; set; }
-    public SolicitacaoExame? SolicitacaoExame { get; set; }
+    /// <summary>Exame de imagem (execução) ao qual o estudo foi vinculado (FK smsmarica → smsmarica).</summary>
+    public Guid ExameImagemId { get; set; }
+    public ExameImagem? ExameImagem { get; set; }
 
     /// <summary>
     /// Paciente (fhir.patient) espelhado da solicitação no momento da associação —

@@ -12,8 +12,8 @@ public class ContatoRegistro
 {
     public Guid Id { get; set; }
 
-    public Guid SolicitacaoExameId { get; set; }
-    public SolicitacaoExame? SolicitacaoExame { get; set; }
+    public Guid SolicitacaoId { get; set; }
+    public Solicitacao? Solicitacao { get; set; }
 
     /// <summary>Aponta para fhir.patient (hub FHIR) — sem FK local (espelho da solicitação).</summary>
     public Guid PacienteId { get; set; }
