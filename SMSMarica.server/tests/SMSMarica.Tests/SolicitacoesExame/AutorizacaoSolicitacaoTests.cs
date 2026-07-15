@@ -83,11 +83,11 @@ public class AutorizacaoSolicitacaoTests(PostgresFixture fixture)
 
         await service.AutorizarAsync(s.Id, "12345");
 
-        var atual = await db.SolicitacoesExame.AsNoTracking().SingleAsync(x => x.Id == s.Id);
-        Assert.NotNull(atual.AutorizadoEm);
-        Assert.Equal("12345", atual.ChaveConfirmacao);
-        Assert.Equal(StatusConfirmacaoAgendamento.Confirmada, atual.StatusConfirmacao);
-        Assert.Equal("presencial", atual.ConfirmadoCanal);
+        var atual = await db.ExamesImagem.Include(x => x.Solicitacao).AsNoTracking().SingleAsync(x => x.Id == s.Id);
+        Assert.NotNull(atual.Solicitacao!.AutorizadoEm);
+        Assert.Equal("12345", atual.Solicitacao!.ChaveConfirmacao);
+        Assert.Equal(StatusConfirmacaoAgendamento.Confirmada, atual.Solicitacao!.StatusConfirmacao);
+        Assert.Equal("presencial", atual.Solicitacao!.ConfirmadoCanal);
         Assert.NotNull(atual.ProximaTentativaEm); // envio ao PACS liberado SÓ agora
     }
 
@@ -98,18 +98,18 @@ public class AutorizacaoSolicitacaoTests(PostgresFixture fixture)
         var pacienteId = Guid.NewGuid();
         var cpf = SeedSolicitacao.CpfAleatorio();
         var s = await SeedSolicitacao.CriarAsync(db, pacienteId, confirmacao: StatusConfirmacaoAgendamento.Cancelada);
-        s.ConfirmacaoCanceladaEm = DateTime.UtcNow.AddHours(-2);
-        s.MotivoCancelamentoPaciente = "vou viajar";
+        s.Solicitacao!.ConfirmacaoCanceladaEm = DateTime.UtcNow.AddHours(-2);
+        s.Solicitacao!.MotivoCancelamentoPaciente = "vou viajar";
         await db.SaveChangesAsync();
         var service = CriarService(db, cpf, pacienteId, telefoneVerificado: SeedSolicitacao.TelefoneAleatorio());
 
         await service.AutorizarAsync(s.Id, "0000"); // sentinela extra-SUS também passa na régua
 
-        var atual = await db.SolicitacoesExame.AsNoTracking().SingleAsync(x => x.Id == s.Id);
-        Assert.Equal(StatusConfirmacaoAgendamento.Confirmada, atual.StatusConfirmacao);
-        Assert.Equal("presencial", atual.ConfirmadoCanal);
-        Assert.Null(atual.ConfirmacaoCanceladaEm);      // cancelamento limpo — "trouxe à vida"
-        Assert.Null(atual.MotivoCancelamentoPaciente);
+        var atual = await db.ExamesImagem.Include(x => x.Solicitacao).AsNoTracking().SingleAsync(x => x.Id == s.Id);
+        Assert.Equal(StatusConfirmacaoAgendamento.Confirmada, atual.Solicitacao!.StatusConfirmacao);
+        Assert.Equal("presencial", atual.Solicitacao!.ConfirmadoCanal);
+        Assert.Null(atual.Solicitacao!.ConfirmacaoCanceladaEm);      // cancelamento limpo — "trouxe à vida"
+        Assert.Null(atual.Solicitacao!.MotivoCancelamentoPaciente);
     }
 
     [Fact]
@@ -123,8 +123,8 @@ public class AutorizacaoSolicitacaoTests(PostgresFixture fixture)
 
         await service.AutorizarAsync(s.Id, "99999");
 
-        var atual = await db.SolicitacoesExame.AsNoTracking().SingleAsync(x => x.Id == s.Id);
-        Assert.NotNull(atual.AutorizadoEm);
+        var atual = await db.ExamesImagem.Include(x => x.Solicitacao).AsNoTracking().SingleAsync(x => x.Id == s.Id);
+        Assert.NotNull(atual.Solicitacao!.AutorizadoEm);
         Assert.Null(atual.ProximaTentativaEm);
     }
 
@@ -146,13 +146,13 @@ public class AutorizacaoSolicitacaoTests(PostgresFixture fixture)
         await using var db = fixture.CriarDbContext();
         var pacienteId = Guid.NewGuid();
         var s = await SeedSolicitacao.CriarAsync(db, pacienteId);
-        s.AutorizadoEm = DateTime.UtcNow;
+        s.Solicitacao!.AutorizadoEm = DateTime.UtcNow;
         await db.SaveChangesAsync();
         var service = CriarService(db, null, pacienteId);
 
         await service.ReenviarWorklistAsync(s.Id);
 
-        var atual = await db.SolicitacoesExame.AsNoTracking().SingleAsync(x => x.Id == s.Id);
+        var atual = await db.ExamesImagem.Include(x => x.Solicitacao).AsNoTracking().SingleAsync(x => x.Id == s.Id);
         Assert.NotNull(atual.ProximaTentativaEm);
     }
 }

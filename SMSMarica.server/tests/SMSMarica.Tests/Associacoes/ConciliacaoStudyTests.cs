@@ -68,7 +68,7 @@ public class ConciliacaoStudyTests(PostgresFixture fixture)
             new EstudoPacsRecente(s.StudyInstanceUID, s.AccessionNumber, SeedSolicitacao.CpfAleatorio()));
 
         Assert.Equal(ResultadoConciliacao.Conciliada, resultado);
-        var atual = await db.SolicitacoesExame.AsNoTracking().SingleAsync(x => x.Id == s.Id);
+        var atual = await db.ExamesImagem.AsNoTracking().SingleAsync(x => x.Id == s.Id);
         Assert.Equal(StatusSolicitacaoExame.Realizada, atual.Status);
         Assert.NotNull(atual.RealizadoEm);
         Assert.Equal(DataEstudoDicom, atual.DataEstudo);
@@ -91,9 +91,9 @@ public class ConciliacaoStudyTests(PostgresFixture fixture)
         Assert.Equal(ResultadoConciliacao.Conciliada, resultado);
         var assoc = await db.ExameAssociacoes.AsNoTracking()
             .SingleAsync(a => a.StudyInstanceUID == uidDaMaquina && a.ExcluidoEm == null);
-        Assert.Equal(s.Id, assoc.SolicitacaoExameId);
+        Assert.Equal(s.Id, assoc.ExameImagemId);
         Assert.Equal(OrigemAssociacaoExame.Automatica, assoc.Origem);
-        var atual = await db.SolicitacoesExame.AsNoTracking().SingleAsync(x => x.Id == s.Id);
+        var atual = await db.ExamesImagem.AsNoTracking().SingleAsync(x => x.Id == s.Id);
         Assert.Equal(StatusSolicitacaoExame.Realizada, atual.Status);
     }
 
@@ -111,7 +111,7 @@ public class ConciliacaoStudyTests(PostgresFixture fixture)
 
         Assert.Equal(ResultadoConciliacao.Conciliada, resultado);
         Assert.True(await db.ExameAssociacoes.AsNoTracking()
-            .AnyAsync(a => a.StudyInstanceUID == uid && a.SolicitacaoExameId == s.Id && a.ExcluidoEm == null));
+            .AnyAsync(a => a.StudyInstanceUID == uid && a.ExameImagemId == s.Id && a.ExcluidoEm == null));
     }
 
     [Fact]
@@ -125,7 +125,7 @@ public class ConciliacaoStudyTests(PostgresFixture fixture)
             new EstudoPacsRecente(s.StudyInstanceUID, AccessionNumber: null, PatientId: SeedSolicitacao.CpfAleatorio()));
 
         Assert.Equal(ResultadoConciliacao.Conciliada, resultado);
-        var atual = await db.SolicitacoesExame.AsNoTracking().SingleAsync(x => x.Id == s.Id);
+        var atual = await db.ExamesImagem.AsNoTracking().SingleAsync(x => x.Id == s.Id);
         Assert.Equal(StatusSolicitacaoExame.Realizada, atual.Status);
         Assert.False(await db.ExameAssociacoes.AsNoTracking()
             .AnyAsync(a => a.StudyInstanceUID == s.StudyInstanceUID));
@@ -142,7 +142,7 @@ public class ConciliacaoStudyTests(PostgresFixture fixture)
             new EstudoPacsRecente(UidAleatorio(), "ACC-INEXISTENTE", "07072026"));
 
         Assert.Equal(ResultadoConciliacao.SemSolicitacao, resultado);
-        var atual = await db.SolicitacoesExame.AsNoTracking().SingleAsync(x => x.Id == s.Id);
+        var atual = await db.ExamesImagem.AsNoTracking().SingleAsync(x => x.Id == s.Id);
         Assert.Equal(StatusSolicitacaoExame.Solicitada, atual.Status); // intocada
     }
 
@@ -200,7 +200,7 @@ public class ConciliacaoStudyTests(PostgresFixture fixture)
         await service.DesassociarAsync(uid);
         Assert.Equal(ResultadoConciliacao.SemSolicitacao, await service.ConciliarStudyAsync(estudo));
 
-        var atual = await db.SolicitacoesExame.AsNoTracking().SingleAsync(x => x.Id == s.Id);
+        var atual = await db.ExamesImagem.AsNoTracking().SingleAsync(x => x.Id == s.Id);
         Assert.Equal(StatusSolicitacaoExame.Solicitada, atual.Status); // reversão preservada
     }
 
@@ -220,7 +220,7 @@ public class ConciliacaoStudyTests(PostgresFixture fixture)
         Assert.Equal(ResultadoConciliacao.Conciliada, await service.ConciliarStudyAsync(
             new EstudoPacsRecente(uid2, s.AccessionNumber, null)));
         Assert.True(await db.ExameAssociacoes.AsNoTracking()
-            .AnyAsync(a => a.StudyInstanceUID == uid2 && a.SolicitacaoExameId == s.Id && a.ExcluidoEm == null));
+            .AnyAsync(a => a.StudyInstanceUID == uid2 && a.ExameImagemId == s.Id && a.ExcluidoEm == null));
     }
 
     [Fact]
@@ -236,8 +236,8 @@ public class ConciliacaoStudyTests(PostgresFixture fixture)
         {
             Id = Guid.CreateVersion7(),
             StudyInstanceUID = uid,
-            SolicitacaoExameId = s.Id,
-            PacienteId = s.PacienteId,
+            ExameImagemId = s.Id,
+            PacienteId = s.Solicitacao!.PacienteId,
             Origem = OrigemAssociacaoExame.Automatica,
             StatusSolicitacaoAnterior = StatusSolicitacaoExame.Solicitada,
             CriadoEm = DateTime.UtcNow,
@@ -248,7 +248,7 @@ public class ConciliacaoStudyTests(PostgresFixture fixture)
         await service.AssociarAsync(
             new Core.Associacoes.Dtos.AssociarExameRequest(uid, s.AccessionNumber), validarNoPacs: false);
 
-        var atual = await db.SolicitacoesExame.AsNoTracking().SingleAsync(x => x.Id == s.Id);
+        var atual = await db.ExamesImagem.AsNoTracking().SingleAsync(x => x.Id == s.Id);
         Assert.Equal(StatusSolicitacaoExame.Realizada, atual.Status);
     }
 
@@ -269,8 +269,8 @@ public class ConciliacaoStudyTests(PostgresFixture fixture)
         {
             Id = Guid.NewGuid(),
             Finalidade = FinalidadeComunicacao.ExameLiberado,
-            SolicitacaoExameId = s.Id,
-            PacienteId = s.PacienteId,
+            SolicitacaoId = s.SolicitacaoId,
+            PacienteId = s.Solicitacao!.PacienteId,
             Status = StatusComunicacao.Pendente,
             ProximaTentativaEm = DateTime.UtcNow,
             CriadoEm = DateTime.UtcNow,
@@ -281,7 +281,7 @@ public class ConciliacaoStudyTests(PostgresFixture fixture)
 
         // Pendente removida: o exame não aconteceu, e a linha calaria a notificação real futura.
         Assert.False(await db.ComunicacoesPaciente.AsNoTracking().AnyAsync(
-            c => c.SolicitacaoExameId == s.Id && c.Finalidade == FinalidadeComunicacao.ExameLiberado));
+            c => c.SolicitacaoId == s.SolicitacaoId && c.Finalidade == FinalidadeComunicacao.ExameLiberado));
     }
 
     [Fact]

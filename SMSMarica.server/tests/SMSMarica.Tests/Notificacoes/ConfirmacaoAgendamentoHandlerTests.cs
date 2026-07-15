@@ -57,15 +57,15 @@ public class ConfirmacaoAgendamentoHandlerTests(PostgresFixture fixture)
         return new ManipuladorContexto(conversa, msg, texto, pacienteId, botaoPayload, interativoReplyId);
     }
 
-    private async Task<(SolicitacaoExame Solic, ComunicacaoPaciente Notif)> SeedAsync(SmsMaricaDbContext db)
+    private async Task<(ExameImagem Solic, ComunicacaoPaciente Notif)> SeedAsync(SmsMaricaDbContext db)
     {
         var solic = await SeedSolicitacao.CriarAsync(db, Guid.NewGuid(), dataAgendada: DateTime.UtcNow.AddDays(3));
         var notif = new ComunicacaoPaciente
         {
             Id = Guid.NewGuid(),
             Tipo = TipoAgendamento.Exame,
-            SolicitacaoExameId = solic.Id,
-            PacienteId = solic.PacienteId,
+            SolicitacaoId = solic.SolicitacaoId,
+            PacienteId = solic.Solicitacao!.PacienteId,
             Status = StatusComunicacao.Enviada,
             CriadoEm = DateTime.UtcNow,
         };
@@ -84,22 +84,22 @@ public class ConfirmacaoAgendamentoHandlerTests(PostgresFixture fixture)
         var handler = new ConfirmacaoAgendamentoWhatsAppHandler(db, whatsApp, NullLogger<ConfirmacaoAgendamentoWhatsAppHandler>.Instance);
 
         // 1. "Não poderei comparecer" (quick reply do template) → pergunta interativa + estado.
-        await handler.TratarAsync(Contexto(telefone, solic.PacienteId, botaoPayload: $"confirma:{solic.Id}"), default);
+        await handler.TratarAsync(Contexto(telefone, solic.Solicitacao!.PacienteId, botaoPayload: $"confirma:{solic.SolicitacaoId}"), default);
         await db.SaveChangesAsync();
         var estado = await db.AgendamentoConfirmacaoEstados.SingleAsync(e => e.TelefoneCanonical == telefone);
         Assert.Equal(EtapaConfirmacaoAgendamento.AguardandoConfirmacaoCancelamento, estado.Etapa);
         await whatsApp.ReceivedWithAnyArgs(1).EnviarInterativoBotoesAsync(null!, null!, null!);
 
         // 2. "Sim, cancelar" → aguarda o motivo.
-        await handler.TratarAsync(Contexto(telefone, solic.PacienteId, interativoReplyId: $"cancela_sim:{solic.Id}"), default);
+        await handler.TratarAsync(Contexto(telefone, solic.Solicitacao!.PacienteId, interativoReplyId: $"cancela_sim:{solic.SolicitacaoId}"), default);
         await db.SaveChangesAsync();
         estado = await db.AgendamentoConfirmacaoEstados.SingleAsync(e => e.TelefoneCanonical == telefone);
         Assert.Equal(EtapaConfirmacaoAgendamento.AguardandoMotivo, estado.Etapa);
 
         // 3. Texto livre com estado ativo = motivo → cancela e limpa o estado.
-        await handler.TratarAsync(Contexto(telefone, solic.PacienteId, texto: "vou estar viajando"), default);
+        await handler.TratarAsync(Contexto(telefone, solic.Solicitacao!.PacienteId, texto: "vou estar viajando"), default);
         await db.SaveChangesAsync();
-        var s = await db.SolicitacoesExame.AsNoTracking().SingleAsync(x => x.Id == solic.Id);
+        var s = await db.Solicitacoes.AsNoTracking().SingleAsync(x => x.Id == solic.SolicitacaoId);
         Assert.Equal(StatusConfirmacaoAgendamento.Cancelada, s.StatusConfirmacao);
         Assert.Equal("vou estar viajando", s.MotivoCancelamentoPaciente);
         Assert.False(await db.AgendamentoConfirmacaoEstados.AnyAsync(e => e.TelefoneCanonical == telefone));
@@ -123,10 +123,10 @@ public class ConfirmacaoAgendamentoHandlerTests(PostgresFixture fixture)
         await db.SaveChangesAsync();
         var handler = new ConfirmacaoAgendamentoWhatsAppHandler(db, CriarWhatsAppMock(), NullLogger<ConfirmacaoAgendamentoWhatsAppHandler>.Instance);
 
-        await handler.TratarAsync(Contexto(telefone, solic.PacienteId, interativoReplyId: $"cancela_nao:{solic.Id}"), default);
+        await handler.TratarAsync(Contexto(telefone, solic.Solicitacao!.PacienteId, interativoReplyId: $"cancela_nao:{solic.SolicitacaoId}"), default);
         await db.SaveChangesAsync();
 
-        var s = await db.SolicitacoesExame.AsNoTracking().SingleAsync(x => x.Id == solic.Id);
+        var s = await db.Solicitacoes.AsNoTracking().SingleAsync(x => x.Id == solic.SolicitacaoId);
         Assert.Equal(StatusConfirmacaoAgendamento.Confirmada, s.StatusConfirmacao);
         Assert.Equal("whatsapp-quickreply", s.ConfirmadoCanal);
         Assert.False(await db.AgendamentoConfirmacaoEstados.AnyAsync(e => e.TelefoneCanonical == telefone));
@@ -141,10 +141,10 @@ public class ConfirmacaoAgendamentoHandlerTests(PostgresFixture fixture)
         var whatsApp = CriarWhatsAppMock();
         var handler = new ConfirmacaoAgendamentoWhatsAppHandler(db, whatsApp, NullLogger<ConfirmacaoAgendamentoWhatsAppHandler>.Instance);
 
-        await handler.TratarAsync(Contexto(telefone, solic.PacienteId, texto: "bom dia, uma dúvida"), default);
+        await handler.TratarAsync(Contexto(telefone, solic.Solicitacao!.PacienteId, texto: "bom dia, uma dúvida"), default);
         await db.SaveChangesAsync();
 
-        var s = await db.SolicitacoesExame.AsNoTracking().SingleAsync(x => x.Id == solic.Id);
+        var s = await db.Solicitacoes.AsNoTracking().SingleAsync(x => x.Id == solic.SolicitacaoId);
         Assert.Equal(StatusConfirmacaoAgendamento.Pendente, s.StatusConfirmacao); // nada mudou
         await whatsApp.DidNotReceiveWithAnyArgs().EnviarTextoAsync(null!, null!); // não sequestrou o chat
     }
@@ -167,10 +167,10 @@ public class ConfirmacaoAgendamentoHandlerTests(PostgresFixture fixture)
         await db.SaveChangesAsync();
         var handler = new ConfirmacaoAgendamentoWhatsAppHandler(db, CriarWhatsAppMock(), NullLogger<ConfirmacaoAgendamentoWhatsAppHandler>.Instance);
 
-        await handler.TratarAsync(Contexto(telefone, solic.PacienteId, texto: "isso não é um motivo"), default);
+        await handler.TratarAsync(Contexto(telefone, solic.Solicitacao!.PacienteId, texto: "isso não é um motivo"), default);
         await db.SaveChangesAsync();
 
-        var s = await db.SolicitacoesExame.AsNoTracking().SingleAsync(x => x.Id == solic.Id);
+        var s = await db.Solicitacoes.AsNoTracking().SingleAsync(x => x.Id == solic.SolicitacaoId);
         Assert.Equal(StatusConfirmacaoAgendamento.Pendente, s.StatusConfirmacao); // expirado não cancela
         Assert.False(await db.AgendamentoConfirmacaoEstados.AnyAsync(e => e.TelefoneCanonical == telefone));
     }

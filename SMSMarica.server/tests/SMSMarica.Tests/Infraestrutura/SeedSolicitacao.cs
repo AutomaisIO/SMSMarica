@@ -11,7 +11,7 @@ namespace SMSMarica.Tests.Infraestrutura;
 /// </summary>
 internal static class SeedSolicitacao
 {
-    public static async Task<SolicitacaoExame> CriarAsync(
+    public static async Task<ExameImagem> CriarAsync(
         SmsMaricaDbContext db,
         Guid pacienteId,
         bool enviarParaWorklist = true,
@@ -41,18 +41,28 @@ internal static class SeedSolicitacao
             Nome = $"UNIDADE TESTE {sufixo}",
             CriadoEm = DateTime.UtcNow,
         };
-        var solicitacao = new SolicitacaoExame
+        // Espinha de regulação + satélite de execução de imagem (ADR-0021).
+        var solicitacao = new Solicitacao
         {
             Id = Guid.NewGuid(),
+            PacienteId = pacienteId,
+            Categoria = CategoriaSolicitacao.Imagem,
+            UnidadeExecutanteId = unidade.Id,
+            SolicitanteNome = "DR TESTE",
+            Status = StatusSolicitacao.Solicitada,
+            StatusConfirmacao = confirmacao,
+            Prioridade = PrioridadeSolicitacao.Eletiva,
+            DataAgendada = dataAgendada,
+            CriadoEm = DateTime.UtcNow,
+        };
+        var exame = new ExameImagem
+        {
+            Id = Guid.NewGuid(),
+            Solicitacao = solicitacao,
             AccessionNumber = $"T{sufixo}",
             StudyInstanceUID = $"2.25.{Random.Shared.NextInt64(1_000_000_000):D10}{Random.Shared.NextInt64(1_000_000_000):D10}",
-            PacienteId = pacienteId,
             TipoExameId = tipo.Id,
-            UnidadeId = unidade.Id,
-            SolicitanteNome = "DR TESTE",
             Status = StatusSolicitacaoExame.Solicitada,
-            StatusConfirmacao = confirmacao,
-            DataAgendada = dataAgendada,
             ProximaTentativaEm = null, // fluxo novo: nada vai ao PACS sem autorização
             CriadoEm = DateTime.UtcNow,
         };
@@ -60,9 +70,10 @@ internal static class SeedSolicitacao
         db.ProcedimentosSigtap.Add(proc);
         db.TiposExame.Add(tipo);
         db.Unidades.Add(unidade);
-        db.SolicitacoesExame.Add(solicitacao);
+        db.Solicitacoes.Add(solicitacao);
+        db.ExamesImagem.Add(exame);
         await db.SaveChangesAsync();
-        return solicitacao;
+        return exame;
     }
 
     /// <summary>CPF sintético de 11 dígitos, único por chamada (sem validação de DV nos serviços).</summary>
