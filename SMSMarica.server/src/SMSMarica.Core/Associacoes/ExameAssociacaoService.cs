@@ -237,13 +237,17 @@ public sealed class ExameAssociacaoService(
             .ToListAsync(cancellationToken);
 
         // Accession + Prioridade dos exames das associações explícitas.
+        // OBS: projetar com Select (traduzido pro SQL — a navegação Solicitacao vira JOIN) ANTES
+        // de virar dicionário. Passar a navegação no elementSelector do ToDictionaryAsync a
+        // avaliaria em memória sobre a entidade materializada (Solicitacao não carregada) => NRE.
         var solIds = explicitas.Select(a => a.ExameImagemId).Distinct().ToArray();
         var solDados = solIds.Length == 0
             ? new Dictionary<Guid, (string Accession, PrioridadeSolicitacao Prioridade)>()
-            : await db.ExamesImagem.AsNoTracking()
+            : (await db.ExamesImagem.AsNoTracking()
                 .Where(e => solIds.Contains(e.Id))
-                .ToDictionaryAsync(
-                    e => e.Id, e => (Accession: e.AccessionNumber, e.Solicitacao!.Prioridade), cancellationToken);
+                .Select(e => new { e.Id, e.AccessionNumber, e.Solicitacao!.Prioridade })
+                .ToListAsync(cancellationToken))
+                .ToDictionary(x => x.Id, x => (Accession: x.AccessionNumber, x.Prioridade));
 
         // Nomes de paciente em lote (1 chamada ao hub por id distinto).
         var pacienteIds = explicitas.Select(a => a.PacienteId).Concat(implicitas.Select(i => i.PacienteId));
