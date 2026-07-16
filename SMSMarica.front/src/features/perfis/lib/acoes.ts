@@ -78,6 +78,8 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'NotificacoesAgendamento', rotulo: 'Notificações de agendamento (WhatsApp)' },
   { id: 'RespostasRapidas', rotulo: 'Mensagens prontas do chat (cadastro)' },
   { id: 'Sandbox', rotulo: 'Sandbox de testes (QA)' },
+  { id: 'Consultas', rotulo: 'Consultas reguladas (SISREG)' },
+  { id: 'MapeamentoSigtap', rotulo: 'Mapeamento SIGTAP → tipo de exame' },
 ];
 
 export const ACOES: { id: AcaoPermissao; rotulo: string }[] = [

@@ -142,11 +142,25 @@ export const SECOES: SecaoMenu[] = [
     icone: ClipboardCheck,
     itens: [
       {
-        rotulo: 'Solicitações',
+        rotulo: 'Exames',
         to: '/app/solicitacoes-exame',
         icone: ClipboardCheck,
         modulo: 'SolicitacoesExame',
-        descricao: 'Pedidos de exame e worklist.',
+        descricao: 'Pedidos de exame de imagem e worklist.',
+      },
+      {
+        rotulo: 'Consultas',
+        to: '/app/consultas',
+        icone: Stethoscope,
+        modulo: 'Consultas',
+        descricao: 'Consultas reguladas do SISREG (sem imagem/laudo).',
+      },
+      {
+        rotulo: 'Mapeamento pendente',
+        to: '/app/mapeamento-sigtap',
+        icone: Sparkles,
+        modulo: 'MapeamentoSigtap',
+        descricao: 'Vincular SIGTAP → tipo de exame (exames importados sem tipo).',
       },
       {
         rotulo: 'Tipos de Exame',

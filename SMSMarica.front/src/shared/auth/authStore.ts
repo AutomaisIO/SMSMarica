@@ -41,7 +41,9 @@ export type ModuloPermissao =
   | 'Ticket'
   | 'NotificacoesAgendamento'
   | 'Sandbox'
-  | 'RespostasRapidas';
+  | 'RespostasRapidas'
+  | 'Consultas'
+  | 'MapeamentoSigtap';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 
