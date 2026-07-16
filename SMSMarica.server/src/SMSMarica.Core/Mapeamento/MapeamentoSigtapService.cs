@@ -22,14 +22,19 @@ public sealed class MapeamentoSigtapService(SmsMaricaDbContext db) : IMapeamento
 {
     public async Task<IReadOnlyList<PendenteMapeamentoDto>> ListarPendentesAsync(CancellationToken ct = default)
     {
-        // Exames de imagem (satélite) sem tipo, agrupados pelo SIGTAP + texto da espinha.
-        return await db.ExamesImagem.AsNoTracking()
+        // Exames de imagem (satélite) sem tipo. O GroupBy+Count sobre a navegação não traduz pro
+        // SQL no EF Core — então projetamos os pares (SIGTAP, texto) e agrupamos em memória (o
+        // conjunto de pendentes é pequeno).
+        var pares = await db.ExamesImagem.AsNoTracking()
             .Where(e => e.ExcluidoEm == null && e.TipoExameId == null && e.Solicitacao!.ExcluidoEm == null)
-            .GroupBy(e => new { e.Solicitacao!.ProcedimentoSigtapCodigo, e.Solicitacao!.ProcedimentoTexto })
+            .Select(e => new { e.Solicitacao!.ProcedimentoSigtapCodigo, e.Solicitacao!.ProcedimentoTexto })
+            .ToListAsync(ct);
+
+        return [.. pares
+            .GroupBy(p => new { p.ProcedimentoSigtapCodigo, p.ProcedimentoTexto })
             .Select(g => new PendenteMapeamentoDto(
                 g.Key.ProcedimentoSigtapCodigo ?? string.Empty, g.Key.ProcedimentoTexto, g.Count()))
-            .OrderByDescending(p => p.Quantidade)
-            .ToListAsync(ct);
+            .OrderByDescending(p => p.Quantidade)];
     }
 
     public async Task<VincularMapeamentoResultado> VincularAsync(
