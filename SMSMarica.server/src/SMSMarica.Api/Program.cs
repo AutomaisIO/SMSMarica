@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Net;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
@@ -12,6 +13,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Authorization;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
@@ -223,7 +225,24 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 
+// Atrás do nginx (proxy no mesmo host): sem isto, RemoteIpAddress é o loopback do proxy
+// (127.0.0.1) e o histórico de acesso do cidadão grava o IP errado. Honra X-Forwarded-For /
+// X-Forwarded-Proto vindos SOMENTE do proxy local confiável, resolvendo o IP real do cliente.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    // Confia só no nginx local (loopback v4/v6); não confiar em qualquer proxy evita spoof do XFF.
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+    options.KnownProxies.Add(IPAddress.Loopback);      // 127.0.0.1
+    options.KnownProxies.Add(IPAddress.IPv6Loopback);  // ::1
+});
+
 var app = builder.Build();
+
+// Primeiro middleware: reescreve RemoteIpAddress a partir do X-Forwarded-For antes de qualquer
+// coisa que use o IP (log do Serilog, rate limiter por IP, gravação do acesso do cidadão).
+app.UseForwardedHeaders();
 
 app.UseSerilogRequestLogging();
 app.UseCors();
