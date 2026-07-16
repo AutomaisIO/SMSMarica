@@ -19,6 +19,7 @@ import { Avatar } from '@/shared/ui/Avatar';
 import { Button } from '@/shared/ui/Button';
 import { Modal } from '@/shared/ui/Modal';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
+import { TelefoneCopiavel } from '@/shared/ui/TelefoneCopiavel';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { Tabs, type Aba } from '@/shared/ui/Tabs';
 import {
@@ -39,7 +40,7 @@ import { useListarTratamentos } from '@/features/tratamentos/api/queries';
 import { formatarDataBr } from '@/features/tratamentos/lib/expansor';
 import type { TratamentoListItem } from '@/features/tratamentos/types';
 
-function campo(label: string, valor?: string | number | null) {
+function campo(label: string, valor?: ReactNode) {
   return (
     <div className="flex flex-col gap-0.5">
       <span className="text-xs font-medium uppercase tracking-wide text-gray-500">{label}</span>
@@ -215,9 +216,9 @@ function SecaoContatos({ p }: { p: Paciente }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-        {campo('Telefone principal', p.telefonePrincipal)}
-        {campo('Celular', p.telefoneCelular)}
-        {campo('Telefone residencial', p.telefoneResidencial)}
+        {campo('Telefone principal', p.telefonePrincipal ? <TelefoneCopiavel numero={p.telefonePrincipal} /> : null)}
+        {campo('Celular', p.telefoneCelular ? <TelefoneCopiavel numero={p.telefoneCelular} /> : null)}
+        {campo('Telefone residencial', p.telefoneResidencial ? <TelefoneCopiavel numero={p.telefoneResidencial} /> : null)}
         {campo('E-mail', p.email)}
       </div>
       {p.contatoEmergencia ? (
@@ -226,7 +227,7 @@ function SecaoContatos({ p }: { p: Paciente }) {
           <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
             {campo('Nome', p.contatoEmergencia.nome)}
             {campo('Parentesco', p.contatoEmergencia.parentesco)}
-            {campo('Telefone', p.contatoEmergencia.telefone)}
+            {campo('Telefone', p.contatoEmergencia.telefone ? <TelefoneCopiavel numero={p.contatoEmergencia.telefone} /> : null)}
           </div>
         </div>
       ) : null}

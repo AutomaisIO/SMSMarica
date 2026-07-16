@@ -8,6 +8,7 @@ import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
 import { Modal } from '@/shared/ui/Modal';
 import { CodigoCopiavel } from '@/shared/ui/CodigoCopiavel';
+import { TelefoneCopiavel } from '@/shared/ui/TelefoneCopiavel';
 import { WhatsappIcon } from '@/shared/ui/WhatsappIcon';
 import { usePacientePorId } from '@/features/pacientes/api/queries';
 import { definirTelefonePrincipal } from '@/features/telefone-validacao/api/telefoneValidacaoApi';
@@ -119,7 +120,9 @@ function ResumoConteudo({ pacienteId }: { pacienteId: string }) {
         <span className="text-xs font-medium uppercase tracking-wide text-gray-500">Telefone</span>
         {!editandoFone ? (
           <span className="flex flex-wrap items-center gap-1.5 text-sm text-gray-900">
-            {p.telefonePrincipal || <span className="text-gray-400">—</span>}
+            <span className="-ml-1.5">
+              <TelefoneCopiavel numero={p.telefonePrincipal} />
+            </span>
             {telefoneValidado ? (
               <span
                 className="inline-flex items-center gap-0.5 text-emerald-600"

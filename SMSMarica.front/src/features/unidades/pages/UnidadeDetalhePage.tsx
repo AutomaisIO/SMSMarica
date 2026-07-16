@@ -1,4 +1,6 @@
+import type { ReactNode } from 'react';
 import { ArrowLeft, MapPin, Pencil, Phone } from 'lucide-react';
+import { TelefoneCopiavel } from '@/shared/ui/TelefoneCopiavel';
 import { useNavigate, useParams } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
@@ -12,7 +14,7 @@ import { useListarTratamentos } from '@/features/tratamentos/api/queries';
 import type { TratamentoListItem } from '@/features/tratamentos/types';
 import { formatarDataBr } from '@/features/tratamentos/lib/expansor';
 
-function Dado({ rotulo, valor }: { rotulo: string; valor?: string | null | number }) {
+function Dado({ rotulo, valor }: { rotulo: string; valor?: ReactNode }) {
   return (
     <div className="flex flex-col gap-0.5">
       <span className="text-xs font-medium uppercase tracking-wide text-gray-500">{rotulo}</span>
@@ -179,7 +181,7 @@ export function UnidadeDetalhePage() {
             <div className="grid grid-cols-1 gap-4">
               <Dado rotulo="Nome" valor={u.nome} />
               <Dado rotulo="CNES" valor={u.cnes ?? undefined} />
-              <Dado rotulo="Telefone" valor={u.telefone ?? undefined} />
+              <Dado rotulo="Telefone" valor={u.telefone ? <TelefoneCopiavel numero={u.telefone} /> : undefined} />
               <Dado rotulo="Cadastrada em" valor={new Date(u.criadoEm).toLocaleString('pt-BR')} />
             </div>
           </section>

@@ -6,6 +6,7 @@ import { Input } from '@/shared/ui/Input';
 import { Modal } from '@/shared/ui/Modal';
 import { Select } from '@/shared/ui/Select';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
+import { TelefoneCopiavel } from '@/shared/ui/TelefoneCopiavel';
 import { usePermissao } from '@/shared/auth/authStore';
 import {
   useNotificacaoDetalhe,
@@ -91,7 +92,15 @@ function BadgeConfirmacao({ status }: { status: StatusConfirmacao }) {
   );
 }
 
-function Info({ rotulo, valor, className }: { rotulo: string; valor: string; className?: string }) {
+function Info({
+  rotulo,
+  valor,
+  className,
+}: {
+  rotulo: string;
+  valor: import('react').ReactNode;
+  className?: string;
+}) {
   return (
     <div className={`flex flex-col gap-0.5 ${className ?? ''}`}>
       <span className="text-xs font-medium uppercase tracking-wide text-gray-500">{rotulo}</span>
@@ -120,7 +129,7 @@ function DetalheNotificacao({ id, aoFechar }: { id: string; aoFechar: () => void
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Info rotulo="Paciente" valor={r.pacienteNome ?? '—'} />
-            <Info rotulo="Telefone" valor={r.telefone ?? '—'} />
+            <Info rotulo="Telefone" valor={<TelefoneCopiavel numero={r.telefone} />} />
             <Info rotulo="Exame" valor={r.tipoExameNome ?? '—'} />
             <Info rotulo="Unidade" valor={r.unidadeNome ?? '—'} />
             <Info rotulo="Data agendada" valor={formatarDataHora(r.dataAgendada)} />
@@ -255,7 +264,7 @@ export function NotificacoesAgendamentoPage() {
       },
       { chave: 'exame', cabecalho: 'Exame', render: (n) => n.tipoExameNome ?? '—' },
       { chave: 'data', cabecalho: 'Data agendada', render: (n) => formatarDataHora(n.dataAgendada) },
-      { chave: 'telefone', cabecalho: 'Telefone', render: (n) => n.telefone ?? '—' },
+      { chave: 'telefone', cabecalho: 'Telefone', render: (n) => <TelefoneCopiavel numero={n.telefone} /> },
       { chave: 'status', cabecalho: 'Envio', render: (n) => <BadgeStatus status={n.status} /> },
       {
         chave: 'confirmacao',

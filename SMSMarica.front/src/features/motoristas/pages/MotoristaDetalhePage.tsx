@@ -1,4 +1,6 @@
+import type { ReactNode } from 'react';
 import { ArrowLeft, Pencil } from 'lucide-react';
+import { TelefoneCopiavel } from '@/shared/ui/TelefoneCopiavel';
 import { useNavigate, useParams } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Avatar } from '@/shared/ui/Avatar';
@@ -33,7 +35,7 @@ const CORES_STATUS: Record<StatusRota, string> = {
   Cancelada: 'bg-gray-100 text-gray-700 border-gray-200',
 };
 
-function Dado({ rotulo, valor }: { rotulo: string; valor?: string | null }) {
+function Dado({ rotulo, valor }: { rotulo: string; valor?: ReactNode }) {
   return (
     <div className="flex flex-col gap-0.5">
       <span className="text-xs font-medium uppercase tracking-wide text-gray-500">{rotulo}</span>
@@ -122,7 +124,7 @@ export function MotoristaDetalhePage() {
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <Dado rotulo="CPF" valor={formatarCpf(m.cpf)} />
             <Dado rotulo="CNH" valor={m.cnh} />
-            <Dado rotulo="Telefone" valor={m.telefone ?? undefined} />
+            <Dado rotulo="Telefone" valor={m.telefone ? <TelefoneCopiavel numero={m.telefone} /> : undefined} />
             <Dado rotulo="Cadastrado em" valor={new Date(m.criadoEm).toLocaleString('pt-BR')} />
           </div>
         </div>

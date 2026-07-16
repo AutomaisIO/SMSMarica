@@ -1,4 +1,6 @@
+import type { ReactNode } from 'react';
 import { ArrowLeft, Pencil } from 'lucide-react';
+import { TelefoneCopiavel } from '@/shared/ui/TelefoneCopiavel';
 import { useNavigate, useParams } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Avatar } from '@/shared/ui/Avatar';
@@ -27,7 +29,7 @@ function formatarEndereco(e: EnderecoDto | null): string | null {
   return partes.length > 0 ? partes.join(' · ') : null;
 }
 
-function Dado({ rotulo, valor }: { rotulo: string; valor?: string | null }) {
+function Dado({ rotulo, valor }: { rotulo: string; valor?: ReactNode }) {
   return (
     <div className="flex flex-col gap-0.5">
       <span className="text-xs font-medium uppercase tracking-wide text-gray-500">{rotulo}</span>
@@ -95,7 +97,7 @@ export function MedicoDetalhePage() {
             <Dado rotulo="Especialidade" valor={m.especialidade ?? undefined} />
             <Dado rotulo="RQE" valor={m.rqe ?? undefined} />
             <Dado rotulo="Validade do registro" valor={formatarData(m.validadeRegistro) ?? undefined} />
-            <Dado rotulo="Telefone" valor={m.telefone ?? undefined} />
+            <Dado rotulo="Telefone" valor={m.telefone ? <TelefoneCopiavel numero={m.telefone} /> : undefined} />
             <Dado rotulo="Cadastrado em" valor={new Date(m.criadoEm).toLocaleString('pt-BR')} />
             <div className="md:col-span-2">
               <Dado rotulo="Endereço" valor={formatarEndereco(m.endereco)} />

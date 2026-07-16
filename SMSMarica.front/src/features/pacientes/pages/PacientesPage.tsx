@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { Eye, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { aoColarSoDigitosSeDocumento } from '@/shared/lib/colarDocumento';
 import { Avatar } from '@/shared/ui/Avatar';
 import { BotaoLinhaAcao } from '@/shared/ui/BotaoLinhaAcao';
 import { Button } from '@/shared/ui/Button';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
 import { Input } from '@/shared/ui/Input';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
+import { TelefoneCopiavel } from '@/shared/ui/TelefoneCopiavel';
 import { CodigoCopiavel } from '@/shared/ui/CodigoCopiavel';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
@@ -78,7 +80,7 @@ export function PacientesPage() {
     },
     { chave: 'nasc', cabecalho: 'Nascimento', render: (p) => formatarData(p.dataNascimento) },
     { chave: 'mae', cabecalho: 'Mãe', render: (p) => p.nomeDaMae ?? '—' },
-    { chave: 'tel', cabecalho: 'Telefone', render: (p) => p.telefonePrincipal ?? '—' },
+    { chave: 'tel', cabecalho: 'Telefone', render: (p) => <TelefoneCopiavel numero={p.telefonePrincipal} /> },
     { chave: 'status', cabecalho: 'Status', render: (p) => <StatusBadge ativo={p.ativo} /> },
     {
       chave: 'acoes',
@@ -139,6 +141,7 @@ export function PacientesPage() {
           autoFocus
           value={termo}
           onChange={(e) => setTermo(e.target.value)}
+          onPaste={aoColarSoDigitosSeDocumento(setTermo)}
           placeholder="Buscar por nome ou CPF…"
           className="pl-9"
         />
