@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Erros.Dtos;
 using SMSMarica.Core.Identidade;
@@ -14,8 +15,27 @@ public sealed class RegistroErroService(SmsMaricaDbContext db, IUsuarioAtualAcce
     // Alfabeto sem caracteres ambíguos (0/O, 1/I/L) — código fácil de ditar por telefone.
     private const string Alfabeto = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 
-    public async Task<string> RegistrarAsync(RegistrarErroDados dados, CancellationToken cancellationToken = default)
+    public async Task<RegistroErroResultado> RegistrarAsync(RegistrarErroDados dados, CancellationToken cancellationToken = default)
     {
+        var agora = DateTime.UtcNow;
+        var assinatura = Assinar(dados);
+
+        // Dedup: se já existe um erro IGUAL e ainda EM ABERTO, reusa o código e só incrementa as
+        // ocorrências (não gera código novo). Erros resolvidos não absorvem — reincidência vira
+        // registro novo (sinal de regressão).
+        var existente = await db.RegistrosErro
+            .Where(e => e.Assinatura == assinatura && e.ResolvidoEm == null)
+            .OrderByDescending(e => e.CriadoEm)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (existente is not null)
+        {
+            existente.Ocorrencias += 1;
+            existente.UltimaOcorrenciaEm = agora;
+            await db.SaveChangesAsync(cancellationToken);
+            return new RegistroErroResultado(existente.CodigoReferencia, JaReportado: true, existente.Ocorrencias);
+        }
+
         var usuarioId = usuarioAtual.UsuarioId;
         var usuarioNome = usuarioId is null
             ? null
@@ -30,7 +50,10 @@ public sealed class RegistroErroService(SmsMaricaDbContext db, IUsuarioAtualAcce
         {
             Id = Guid.CreateVersion7(),
             CodigoReferencia = codigo,
-            CriadoEm = DateTime.UtcNow,
+            Assinatura = assinatura,
+            Ocorrencias = 1,
+            CriadoEm = agora,
+            UltimaOcorrenciaEm = agora,
             Metodo = Limitar(dados.Metodo, 10),
             Caminho = Limitar(dados.Caminho, 400),
             QueryString = Limitar(dados.QueryString, 2000),
@@ -46,8 +69,55 @@ public sealed class RegistroErroService(SmsMaricaDbContext db, IUsuarioAtualAcce
         });
 
         await db.SaveChangesAsync(cancellationToken);
-        return codigo;
+        return new RegistroErroResultado(codigo, JaReportado: false, 1);
     }
+
+    /// <summary>Assinatura estável do erro — o que define "o mesmo erro" para dedup.</summary>
+    private static string Assinar(RegistrarErroDados d)
+    {
+        var bruto = $"{d.Metodo}|{d.Caminho}|{d.StatusCode}|{d.TipoExcecao}|{d.Mensagem}";
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(bruto));
+        return Convert.ToHexString(hash); // 64 chars
+    }
+
+    public async Task<RegistroErroDto?> ResolverAsync(
+        string codigo, ResolverErroRequest request, CancellationToken cancellationToken = default)
+    {
+        var alvo = codigo.Trim();
+        var erro = await db.RegistrosErro
+            .Where(e => e.CodigoReferencia == alvo)
+            .OrderByDescending(e => e.CriadoEm)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (erro is null) return null;
+
+        erro.ResolvidoEm = DateTime.UtcNow;
+        erro.ResolvidoPor = Limitar(request.ResolvidoPor, 200);
+        erro.ResolucaoNota = request.Nota;
+        await db.SaveChangesAsync(cancellationToken);
+        return Projetar(erro);
+    }
+
+    public async Task<RegistroErroDto?> ReabrirAsync(string codigo, CancellationToken cancellationToken = default)
+    {
+        var alvo = codigo.Trim();
+        var erro = await db.RegistrosErro
+            .Where(e => e.CodigoReferencia == alvo)
+            .OrderByDescending(e => e.CriadoEm)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (erro is null) return null;
+
+        erro.ResolvidoEm = null;
+        erro.ResolvidoPor = null;
+        erro.ResolucaoNota = null;
+        await db.SaveChangesAsync(cancellationToken);
+        return Projetar(erro);
+    }
+
+    private static RegistroErroDto Projetar(RegistroErro e) => new(
+        e.Id, e.CodigoReferencia, e.CriadoEm, e.Metodo, e.Caminho, e.QueryString,
+        e.StatusCode, e.TipoExcecao, e.Mensagem, e.StackTrace, e.Interna,
+        e.TraceId, e.UsuarioId, e.UsuarioNome, e.UserAgent,
+        e.Ocorrencias, e.UltimaOcorrenciaEm, e.ResolvidoEm, e.ResolvidoPor, e.ResolucaoNota);
 
     public async Task<PaginaErrosDto> BuscarAsync(ErroFiltroDto filtro, CancellationToken cancellationToken = default)
     {
@@ -84,7 +154,8 @@ public sealed class RegistroErroService(SmsMaricaDbContext db, IUsuarioAtualAcce
             .Take(tamanho)
             .Select(e => new RegistroErroListItemDto(
                 e.Id, e.CodigoReferencia, e.CriadoEm, e.Metodo, e.Caminho,
-                e.StatusCode, e.TipoExcecao, e.Mensagem, e.UsuarioNome))
+                e.StatusCode, e.TipoExcecao, e.Mensagem, e.UsuarioNome,
+                e.Ocorrencias, e.UltimaOcorrenciaEm, e.ResolvidoEm))
             .ToListAsync(cancellationToken);
 
         return new PaginaErrosDto(itens, total, pagina, tamanho);
@@ -99,7 +170,8 @@ public sealed class RegistroErroService(SmsMaricaDbContext db, IUsuarioAtualAcce
             .Select(e => new RegistroErroDto(
                 e.Id, e.CodigoReferencia, e.CriadoEm, e.Metodo, e.Caminho, e.QueryString,
                 e.StatusCode, e.TipoExcecao, e.Mensagem, e.StackTrace, e.Interna,
-                e.TraceId, e.UsuarioId, e.UsuarioNome, e.UserAgent))
+                e.TraceId, e.UsuarioId, e.UsuarioNome, e.UserAgent,
+                e.Ocorrencias, e.UltimaOcorrenciaEm, e.ResolvidoEm, e.ResolvidoPor, e.ResolucaoNota))
             .FirstOrDefaultAsync(cancellationToken);
     }
 

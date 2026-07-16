@@ -62,23 +62,24 @@ public sealed partial class ExceptionHandlingMiddleware(
         catch (ArmazenamentoIndisponivelException ex)
         {
             LogErroNaoTratado(_logger, ex, context.Request.Path);
-            var codigo = await PersistirErroEObterCodigo(context, ex, StatusCodes.Status503ServiceUnavailable);
+            var reg = await PersistirErroEObterCodigo(context, ex, StatusCodes.Status503ServiceUnavailable);
             await EscreverProblemDetails(context, StatusCodes.Status503ServiceUnavailable,
-                "Armazenamento indisponível", $"{ex.Message} (código {codigo})",
-                type: ex.Codigo, codigoReferencia: codigo);
+                "Armazenamento indisponível", $"{ex.Message} (código {reg.Codigo})",
+                type: ex.Codigo, codigoReferencia: reg.Codigo, jaReportado: reg.JaReportado);
         }
         catch (Exception ex)
         {
             LogErroNaoTratado(_logger, ex, context.Request.Path);
-            var codigo = await PersistirErroEObterCodigo(context, ex, StatusCodes.Status500InternalServerError);
+            var reg = await PersistirErroEObterCodigo(context, ex, StatusCodes.Status500InternalServerError);
             await EscreverProblemDetails(
                 context,
                 StatusCodes.Status500InternalServerError,
                 "Erro interno",
-                $"Ocorreu um erro inesperado. Informe o código {codigo} ao suporte para que possamos resolver.",
+                $"Ocorreu um erro inesperado. Informe o código {reg.Codigo} ao suporte para que possamos resolver.",
                 type: "erro.nao_tratado",
                 excecao: _detailedErrors ? ex : null,
-                codigoReferencia: codigo);
+                codigoReferencia: reg.Codigo,
+                jaReportado: reg.JaReportado);
         }
     }
 
@@ -87,7 +88,7 @@ public sealed partial class ExceptionHandlingMiddleware(
     /// Se a própria gravação falhar (ex.: o DB caiu), NÃO mascara o erro original:
     /// loga e devolve um código derivado do TraceId para o usuário ainda ter o que reportar.
     /// </summary>
-    private async Task<string> PersistirErroEObterCodigo(HttpContext context, Exception ex, int statusCode)
+    private async Task<RegistroErroResultado> PersistirErroEObterCodigo(HttpContext context, Exception ex, int statusCode)
     {
         try
         {
@@ -115,7 +116,7 @@ public sealed partial class ExceptionHandlingMiddleware(
             _logger.LogError(persistEx,
                 "Falha ao persistir RegistroErro (erro original em {Path}). TraceId={TraceId}",
                 context.Request.Path, context.TraceIdentifier);
-            return $"ERRO-{context.TraceIdentifier}";
+            return new RegistroErroResultado($"ERRO-{context.TraceIdentifier}", JaReportado: false, 1);
         }
     }
 
@@ -126,7 +127,8 @@ public sealed partial class ExceptionHandlingMiddleware(
         string detail,
         string? type = null,
         Exception? excecao = null,
-        string? codigoReferencia = null)
+        string? codigoReferencia = null,
+        bool jaReportado = false)
     {
         var problem = new ProblemDetails
         {
@@ -139,6 +141,9 @@ public sealed partial class ExceptionHandlingMiddleware(
 
         if (codigoReferencia is not null)
             problem.Extensions["codigoReferencia"] = codigoReferencia;
+
+        if (jaReportado)
+            problem.Extensions["jaReportado"] = true;
 
         if (excecao is not null)
         {

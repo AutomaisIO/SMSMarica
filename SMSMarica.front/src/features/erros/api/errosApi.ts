@@ -14,3 +14,16 @@ export async function obterErroPorCodigo(codigo: string): Promise<RegistroErro> 
   const { data } = await http.get<RegistroErro>(`/erros/${encodeURIComponent(codigo)}`);
   return data;
 }
+
+export async function resolverErro(
+  codigo: string,
+  body: { resolvidoPor?: string; nota?: string },
+): Promise<RegistroErro> {
+  const { data } = await http.post<RegistroErro>(`/erros/${encodeURIComponent(codigo)}/resolver`, body);
+  return data;
+}
+
+export async function reabrirErro(codigo: string): Promise<RegistroErro> {
+  const { data } = await http.post<RegistroErro>(`/erros/${encodeURIComponent(codigo)}/reabrir`);
+  return data;
+}

@@ -9,6 +9,9 @@ export type RegistroErroListItem = {
   tipoExcecao: string;
   mensagem: string;
   usuarioNome: string | null;
+  ocorrencias: number;
+  ultimaOcorrenciaEm: string;
+  resolvidoEm: string | null;
 };
 
 /** Detalhe completo de um erro (com stack trace). */
@@ -19,6 +22,8 @@ export type RegistroErro = RegistroErroListItem & {
   traceId: string | null;
   usuarioId: string | null;
   userAgent: string | null;
+  resolvidoPor: string | null;
+  resolucaoNota: string | null;
 };
 
 export type PaginaErros = {

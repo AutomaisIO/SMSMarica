@@ -13,7 +13,13 @@ internal sealed class RegistroErroConfiguration : IEntityTypeConfiguration<Regis
 
         builder.Property(e => e.Id).HasColumnName("id");
         builder.Property(e => e.CodigoReferencia).HasColumnName("codigo_referencia").HasMaxLength(40).IsRequired();
+        builder.Property(e => e.Assinatura).HasColumnName("assinatura").HasMaxLength(64).IsRequired();
+        builder.Property(e => e.Ocorrencias).HasColumnName("ocorrencias").HasDefaultValue(1).IsRequired();
         builder.Property(e => e.CriadoEm).HasColumnName("criado_em").IsRequired();
+        builder.Property(e => e.UltimaOcorrenciaEm).HasColumnName("ultima_ocorrencia_em").IsRequired();
+        builder.Property(e => e.ResolvidoEm).HasColumnName("resolvido_em");
+        builder.Property(e => e.ResolvidoPor).HasColumnName("resolvido_por").HasMaxLength(200);
+        builder.Property(e => e.ResolucaoNota).HasColumnName("resolucao_nota").HasColumnType("text");
         builder.Property(e => e.Metodo).HasColumnName("metodo").HasMaxLength(10).IsRequired();
         builder.Property(e => e.Caminho).HasColumnName("caminho").HasMaxLength(400).IsRequired();
         builder.Property(e => e.QueryString).HasColumnName("query_string").HasMaxLength(2000);
@@ -29,5 +35,9 @@ internal sealed class RegistroErroConfiguration : IEntityTypeConfiguration<Regis
 
         builder.HasIndex(e => e.CodigoReferencia).HasDatabaseName("ix_registro_erro_codigo_referencia");
         builder.HasIndex(e => e.CriadoEm).HasDatabaseName("ix_registro_erro_criado_em");
+        // Dedup: busca o erro em aberto pela assinatura. Índice parcial (só os não resolvidos).
+        builder.HasIndex(e => e.Assinatura)
+            .HasDatabaseName("ix_registro_erro_assinatura_aberto")
+            .HasFilter("resolvido_em IS NULL");
     }
 }

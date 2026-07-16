@@ -65,7 +65,10 @@ http.interceptors.response.use(
         }
       }
     } else if (status && status >= 500) {
-      avisarErroUnico(extrairMensagemDeErro(erro));
+      const dados = erro.response?.data as ProblemaApi | undefined;
+      const msg = extrairMensagemDeErro(erro);
+      // Dedup: o backend reusa o código quando o erro é idêntico a um já registrado.
+      avisarErroUnico(dados?.jaReportado ? `Erro já reportado. ${msg}` : msg);
     } else if (!erro.response) {
       // Sem resposta = rede/timeout/CORS/servidor fora. Não expõe infra.
       avisarErroUnico('Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.');
@@ -82,6 +85,8 @@ export type ProblemaApi = {
   errors?: Record<string, string[]>;
   /** Código de referência técnico interno (ex.: "ERRO-4F9C2A") em 500/503. */
   codigoReferencia?: string;
+  /** true quando o backend deduplicou: erro idêntico já registrado antes. */
+  jaReportado?: boolean;
 };
 
 /** Código de referência do erro (500/503), se o backend o informou. */

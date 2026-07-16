@@ -1,10 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Bug, Search } from 'lucide-react';
+import { Bug, CheckCircle2, RotateCcw, Search } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
 import { Modal } from '@/shared/ui/Modal';
+import { notificar } from '@/shared/ui/Notificacoes';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
-import { useBuscarErros, useErroPorCodigo } from '@/features/erros/api/queries';
+import {
+  useBuscarErros,
+  useErroPorCodigo,
+  useReabrirErro,
+  useResolverErro,
+} from '@/features/erros/api/queries';
 import type { ErroFiltro, RegistroErroListItem } from '@/features/erros/types';
 
 function useDebounce<T>(valor: T, ms = 400): T {
@@ -21,10 +28,46 @@ function formatarDataHora(iso: string): string {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('pt-BR');
 }
 
+/** Selo de situação (aberto/resolvido). */
+function SeloSituacao({ resolvidoEm }: { resolvidoEm: string | null }) {
+  return resolvidoEm ? (
+    <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+      <CheckCircle2 className="h-3 w-3" /> Resolvido
+    </span>
+  ) : (
+    <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+      Em aberto
+    </span>
+  );
+}
+
 /** Detalhe de um erro (stack trace) buscado pelo código. */
 function DetalheErro({ codigo, aoFechar }: { codigo: string; aoFechar: () => void }) {
   const q = useErroPorCodigo(codigo);
   const e = q.data;
+  const [nota, setNota] = useState('');
+  const resolver = useResolverErro();
+  const reabrir = useReabrirErro();
+
+  async function aoResolver() {
+    try {
+      await resolver.mutateAsync({ codigo, nota: nota.trim() || undefined });
+      notificar('Erro marcado como resolvido.', 'sucesso');
+      setNota('');
+    } catch (err) {
+      notificar(extrairMensagemDeErro(err), 'erro');
+    }
+  }
+
+  async function aoReabrir() {
+    try {
+      await reabrir.mutateAsync(codigo);
+      notificar('Erro reaberto.', 'sucesso');
+    } catch (err) {
+      notificar(extrairMensagemDeErro(err), 'erro');
+    }
+  }
+
   return (
     <Modal aberto aoFechar={aoFechar} titulo={`Erro ${codigo}`} largura="lg">
       {q.isLoading ? (
@@ -35,8 +78,15 @@ function DetalheErro({ codigo, aoFechar }: { codigo: string; aoFechar: () => voi
         </div>
       ) : (
         <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <SeloSituacao resolvidoEm={e.resolvidoEm} />
+            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+              {e.ocorrencias} ocorrência{e.ocorrencias > 1 ? 's' : ''}
+            </span>
+          </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Info rotulo="Data/hora" valor={formatarDataHora(e.criadoEm)} />
+            <Info rotulo="Primeira ocorrência" valor={formatarDataHora(e.criadoEm)} />
+            <Info rotulo="Última ocorrência" valor={formatarDataHora(e.ultimaOcorrenciaEm)} />
             <Info rotulo="Status" valor={String(e.statusCode)} />
             <Info rotulo="Método" valor={e.metodo} />
             <Info rotulo="Usuário" valor={e.usuarioNome ?? '—'} />
@@ -44,6 +94,40 @@ function DetalheErro({ codigo, aoFechar }: { codigo: string; aoFechar: () => voi
             <Info rotulo="Trace ID" valor={e.traceId ?? '—'} className="sm:col-span-2" />
             <Info rotulo="Tipo da exceção" valor={e.tipoExcecao} className="sm:col-span-2" />
           </div>
+
+          {e.resolvidoEm ? (
+            <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm text-green-800">
+                  Resolvido em {formatarDataHora(e.resolvidoEm)}
+                  {e.resolvidoPor ? ` por ${e.resolvidoPor}` : ''}.
+                </span>
+                <Button variante="secundaria" onClick={aoReabrir} disabled={reabrir.isPending}>
+                  <RotateCcw className="mr-1 h-4 w-4" /> Reabrir
+                </Button>
+              </div>
+              {e.resolucaoNota ? (
+                <p className="mt-1 whitespace-pre-wrap text-sm text-green-900">{e.resolucaoNota}</p>
+              ) : null}
+            </div>
+          ) : (
+            <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+              <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                Marcar como resolvido
+              </span>
+              <div className="mt-1 flex flex-col gap-2 sm:flex-row">
+                <Input
+                  value={nota}
+                  onChange={(ev) => setNota(ev.target.value)}
+                  placeholder="Nota (o que foi feito) — opcional"
+                  className="flex-1"
+                />
+                <Button onClick={aoResolver} disabled={resolver.isPending}>
+                  <CheckCircle2 className="mr-1 h-4 w-4" /> Resolver
+                </Button>
+              </div>
+            </div>
+          )}
           <div>
             <span className="text-xs font-medium uppercase tracking-wide text-gray-500">Mensagem</span>
             <p className="mt-1 whitespace-pre-wrap text-sm text-gray-900">{e.mensagem}</p>
@@ -115,6 +199,12 @@ export function ErrosPage() {
             {e.codigoReferencia}
           </button>
         ),
+      },
+      { chave: 'situacao', cabecalho: 'Situação', render: (e) => <SeloSituacao resolvidoEm={e.resolvidoEm} /> },
+      {
+        chave: 'ocorrencias',
+        cabecalho: 'Ocorr.',
+        render: (e) => <span className="tabular-nums text-gray-700">{e.ocorrencias}</span>,
       },
       { chave: 'status', cabecalho: 'Status', render: (e) => e.statusCode },
       { chave: 'metodo', cabecalho: 'Método', render: (e) => e.metodo },

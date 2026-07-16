@@ -40,4 +40,30 @@ public sealed class ErrosController(IRegistroErroService service) : ControllerBa
         var erro = await _service.ObterPorCodigoAsync(codigo, cancellationToken);
         return erro is null ? NotFound() : Ok(erro);
     }
+
+    /// <summary>
+    /// Marca o erro como resolvido (data + autor + nota). Usado pela skill de suporte quando o bug
+    /// é corrigido; reincidências posteriores geram um código novo (sinal de regressão).
+    /// </summary>
+    [HttpPost("{codigo}/resolver")]
+    [RequerPermissao(ModuloPermissao.Erros, AcoesPermissao.Edicao)]
+    [ProducesResponseType<RegistroErroDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Resolver(
+        string codigo, [FromBody] ResolverErroRequest? request, CancellationToken cancellationToken)
+    {
+        var erro = await _service.ResolverAsync(codigo, request ?? new ResolverErroRequest(), cancellationToken);
+        return erro is null ? NotFound() : Ok(erro);
+    }
+
+    /// <summary>Reabre um erro resolvido (limpa a marcação de resolução).</summary>
+    [HttpPost("{codigo}/reabrir")]
+    [RequerPermissao(ModuloPermissao.Erros, AcoesPermissao.Edicao)]
+    [ProducesResponseType<RegistroErroDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Reabrir(string codigo, CancellationToken cancellationToken)
+    {
+        var erro = await _service.ReabrirAsync(codigo, cancellationToken);
+        return erro is null ? NotFound() : Ok(erro);
+    }
 }
