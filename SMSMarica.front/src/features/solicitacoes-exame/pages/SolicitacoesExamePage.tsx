@@ -11,6 +11,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
+import { aoColarSoDigitosSeDocumento } from '@/shared/lib/colarDocumento';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { formatarInstante, hojeSP } from '@/shared/lib/datas';
 import { usePermissao } from '@/shared/auth/authStore';
@@ -134,6 +135,13 @@ export function SolicitacoesExamePage() {
   function aoBuscar(e: FormEvent) {
     e.preventDefault();
     setFiltroAplicado(filtroDigitado);
+  }
+
+  // Itens por página (backend limita a 500). Aplica na hora, sem precisar clicar em Buscar.
+  const limiteAtual = filtroAplicado.limite ?? 50;
+  function mudarLimite(novo: number) {
+    setFiltroDigitado((f) => ({ ...f, limite: novo }));
+    setFiltroAplicado((f) => ({ ...f, limite: novo }));
   }
 
   async function confirmarExclusao(force: boolean) {
@@ -299,6 +307,7 @@ export function SolicitacoesExamePage() {
             id="busca"
             value={filtroDigitado.busca ?? ''}
             onChange={(e) => setCampo('busca', e.target.value)}
+            onPaste={aoColarSoDigitosSeDocumento((v) => setCampo('busca', v))}
             placeholder="Nome, CPF, CNS ou nº do pedido"
           />
           {/* O backend ignora o período em busca pontual — avisa para as datas
@@ -382,6 +391,33 @@ export function SolicitacoesExamePage() {
           {extrairMensagemDeErro(lista.error)}
         </div>
       ) : null}
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-gray-500">
+          {lista.data ? (
+            <>
+              {lista.data.length} {lista.data.length === 1 ? 'solicitação' : 'solicitações'}
+              {lista.data.length >= limiteAtual ? (
+                <span className="text-gray-400"> · pode haver mais — aumente os itens por página</span>
+              ) : null}
+            </>
+          ) : null}
+        </p>
+        <label className="flex items-center gap-2 text-sm text-gray-600">
+          Itens por página:
+          <Select
+            value={String(limiteAtual)}
+            onChange={(e) => mudarLimite(Number(e.target.value))}
+            className="w-24"
+          >
+            {[25, 50, 100, 200, 500].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </Select>
+        </label>
+      </div>
 
       <Tabela
         colunas={colunas}
