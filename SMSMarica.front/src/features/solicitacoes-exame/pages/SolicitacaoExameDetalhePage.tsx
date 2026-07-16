@@ -9,6 +9,7 @@ import {
   Loader2,
   RotateCw,
   ScanLine,
+  Siren,
   Trash2,
   XCircle,
 } from 'lucide-react';
@@ -314,7 +315,7 @@ export function SolicitacaoExameDetalhePage() {
               Prioridade:{' '}
               {s.prioridade === 'Urgente' ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
-                  ⚠ Urgente
+                  <Siren className="h-3.5 w-3.5" /> Urgente
                 </span>
               ) : (
                 <span className="font-medium">{s.prioridade}</span>

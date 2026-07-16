@@ -8,6 +8,7 @@ import {
   Loader2,
   Plus,
   Search,
+  Siren,
   Trash2,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
@@ -187,8 +188,8 @@ export function SolicitacoesExamePage() {
             classNameNome="truncate font-medium text-gray-900"
             sufixo={
               s.prioridade === 'Urgente' ? (
-                <span title="Solicitação URGENTE" className="text-sm font-bold text-red-700" aria-label="Urgente">
-                  ⚠
+                <span title="Solicitação URGENTE" className="inline-flex text-red-600" aria-label="Urgente">
+                  <Siren className="h-4 w-4" />
                 </span>
               ) : undefined
             }

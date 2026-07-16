@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Edit2, FilePlus, FileText, Link2, Loader2, RotateCw, Search, Trash2, Unlink } from 'lucide-react';
+import { Edit2, FilePlus, FileText, Link2, Loader2, RotateCw, Search, Siren, Trash2, Unlink } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
@@ -250,9 +250,9 @@ export function PacsListagemPage() {
               {assoc?.prioridade === 'Urgente' ? (
                 <span
                   title="Solicitação URGENTE"
-                  className="shrink-0 rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700"
+                  className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700"
                 >
-                  ⚠ Urgente
+                  <Siren className="h-3 w-3" /> Urgente
                 </span>
               ) : null}
               {assoc?.pacienteId ? (
