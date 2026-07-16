@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { ImagePlus, Loader2, X } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
 import { notificar } from '@/shared/ui/Notificacoes';
+import { VisualizadorImagem } from '@/shared/ui/VisualizadorImagem';
 import { urlMidiaAbsoluta } from '@/shared/api/midiaApi';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { enviarAnexo } from '@/features/tickets/api/ticketsApi';
@@ -91,26 +92,36 @@ export function AnexosInput({ anexos, aoMudar, disabled }: Props) {
   );
 }
 
-/** Galeria só-leitura de anexos (miniaturas que abrem em nova aba). */
+/** Galeria só-leitura de anexos (miniaturas que abrem no visualizador com zoom). */
 export function AnexosGaleria({ anexos }: { anexos: { midiaId: string; nomeArquivo: string }[] }) {
+  const [aberto, setAberto] = useState<number | null>(null);
   if (anexos.length === 0) return null;
   return (
-    <div className="flex flex-wrap gap-2">
-      {anexos.map((a) => (
-        <a
-          key={a.midiaId}
-          href={urlMidiaAbsoluta(a.midiaId)}
-          target="_blank"
-          rel="noreferrer"
-          title={a.nomeArquivo}
-        >
-          <img
-            src={urlMidiaAbsoluta(a.midiaId)}
-            alt={a.nomeArquivo}
-            className="h-24 w-24 rounded-lg object-cover ring-1 ring-slate-200 transition hover:ring-2 hover:ring-red-400"
-          />
-        </a>
-      ))}
-    </div>
+    <>
+      <div className="flex flex-wrap gap-2">
+        {anexos.map((a, i) => (
+          <button
+            key={a.midiaId}
+            type="button"
+            onClick={() => setAberto(i)}
+            title={`${a.nomeArquivo} — clique para ampliar`}
+            className="cursor-zoom-in"
+          >
+            <img
+              src={urlMidiaAbsoluta(a.midiaId)}
+              alt={a.nomeArquivo}
+              className="h-24 w-24 rounded-lg object-cover ring-1 ring-slate-200 transition hover:ring-2 hover:ring-red-400"
+            />
+          </button>
+        ))}
+      </div>
+      {aberto !== null ? (
+        <VisualizadorImagem
+          imagens={anexos.map((a) => ({ url: urlMidiaAbsoluta(a.midiaId), legenda: a.nomeArquivo }))}
+          indiceInicial={aberto}
+          aoFechar={() => setAberto(null)}
+        />
+      ) : null}
+    </>
   );
 }
