@@ -96,4 +96,12 @@ public enum ModuloPermissao
     /// <summary>Cadastro das mensagens prontas ("respostas rápidas") do chat: criar, editar e
     /// definir as variáveis. USAR os atalhos no chat exige só <see cref="Conversas"/>.</summary>
     RespostasRapidas = 40,
+
+    /// <summary>Consultas reguladas (SISREG): listar/consultar as solicitações de consulta
+    /// (categoria não-imagem). Sem PACS/laudo. Ver ADR-0021.</summary>
+    Consultas = 41,
+
+    /// <summary>Mapeamento SIGTAP→TipoExame: curadoria dos exames de imagem importados sem tipo
+    /// (pendentes) — criar/vincular TipoExame com backfill por código SIGTAP.</summary>
+    MapeamentoSigtap = 42,
 }
