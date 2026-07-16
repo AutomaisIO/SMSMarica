@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BadgeCheck, ShieldCheck } from 'lucide-react';
 import { ModalOtpTelefone } from '@/features/telefone-validacao/components/ModalOtpTelefone';
+import { useOtpPendente } from '@/features/telefone-validacao/lib/otpPendente';
 
 type Props = {
   /** CPF da pessoa (a chave do contato). Sem CPF de 11 díg. o botão não aparece. */
@@ -36,11 +37,22 @@ export function BotaoValidarTelefone({ cpf, numero, numeroVerificado, className,
   const [aberto, setAberto] = useState(false);
   // Validação feita AGORA nesta tela (o objeto do paciente ainda não refletiu).
   const [validadoAgora, setValidadoAgora] = useState<string | null>(null);
-
-  if (!habilitado) return null;
+  const pendente = useOtpPendente(cpf);
 
   const verificadoDig = (validadoAgora ?? numeroVerificado ?? '').replace(/\D/g, '');
   const validado = verificadoDig.length >= 8 && mesmoNumero(numDig, verificadoDig);
+
+  // #13: código ainda válido pendente → reabre o modal sozinho ao (re)entrar na tela,
+  // no campo do código (uma vez por montagem). Não reabre se já validado.
+  const autoAbriu = useRef(false);
+  useEffect(() => {
+    if (pendente && !validado && !autoAbriu.current) {
+      autoAbriu.current = true;
+      setAberto(true);
+    }
+  }, [pendente, validado]);
+
+  if (!habilitado) return null;
 
   if (validado) {
     return (
