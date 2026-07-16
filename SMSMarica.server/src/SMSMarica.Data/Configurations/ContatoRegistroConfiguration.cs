@@ -12,7 +12,7 @@ internal sealed class ContatoRegistroConfiguration : IEntityTypeConfiguration<Co
         builder.HasKey(c => c.Id);
 
         builder.Property(c => c.Id).HasColumnName("id");
-        builder.Property(c => c.SolicitacaoExameId).HasColumnName("solicitacao_exame_id").IsRequired();
+        builder.Property(c => c.SolicitacaoId).HasColumnName("solicitacao_id").IsRequired();
         // PacienteId referencia fhir.patient (hub FHIR) — sem FK local.
         builder.Property(c => c.PacienteId).HasColumnName("paciente_id").IsRequired();
         builder.Property(c => c.Meio).HasColumnName("meio").HasConversion<int>().IsRequired();
@@ -21,11 +21,11 @@ internal sealed class ContatoRegistroConfiguration : IEntityTypeConfiguration<Co
         builder.Property(c => c.CriadoEm).HasColumnName("criado_em").IsRequired();
         builder.Property(c => c.CriadoPor).HasColumnName("criado_por");
 
-        builder.HasOne(c => c.SolicitacaoExame)
+        builder.HasOne(c => c.Solicitacao)
             .WithMany()
-            .HasForeignKey(c => c.SolicitacaoExameId)
+            .HasForeignKey(c => c.SolicitacaoId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasIndex(c => new { c.SolicitacaoExameId, c.CriadoEm });
+        builder.HasIndex(c => new { c.SolicitacaoId, c.CriadoEm });
     }
 }

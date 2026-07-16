@@ -11,8 +11,8 @@ public class DeclaracaoComparecimentoVerificacao
     /// <summary>Chave pública (selo) referenciada no QR Code.</summary>
     public Guid Id { get; set; }
 
-    public Guid SolicitacaoExameId { get; set; }
-    public SolicitacaoExame? SolicitacaoExame { get; set; }
+    public Guid ExameImagemId { get; set; }
+    public ExameImagem? ExameImagem { get; set; }
 
     /// <summary>
     /// Data/hora do exame mostrada no documento (wall-clock local, sem fuso). Snapshot

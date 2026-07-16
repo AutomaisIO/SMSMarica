@@ -30,18 +30,18 @@ public sealed class ExameImagensPdfService(
 
     public async Task<byte[]> GerarOuObterAsync(Guid solicitacaoExameId, CancellationToken cancellationToken = default)
     {
-        var sol = await db.SolicitacoesExame.AsNoTracking()
+        var sol = await db.ExamesImagem.AsNoTracking()
             .Include(s => s.TipoExame)
-            .Include(s => s.Unidade)
+            .Include(s => s.Solicitacao!).ThenInclude(so => so.UnidadeExecutante)
             .FirstOrDefaultAsync(s => s.Id == solicitacaoExameId && s.ExcluidoEm == null, cancellationToken)
-            ?? throw new NaoEncontradoException(nameof(SolicitacaoExame), solicitacaoExameId);
+            ?? throw new NaoEncontradoException(nameof(ExameImagem), solicitacaoExameId);
 
         // Exames sem worklist (ex.: mamografia no Fuji, que gera o próprio StudyInstanceUID)
         // chegam ao PACS sob o UID do EQUIPAMENTO, ligado à solicitação via ExameAssociacao.
         // As imagens vivem sob esse UID real — não sob o pré-gerado da solicitação. Preferimos
         // o UID da associação ativa; sem associação, usamos o da própria solicitação.
         var studyUid = await db.ExameAssociacoes.AsNoTracking()
-            .Where(a => a.SolicitacaoExameId == sol.Id && a.ExcluidoEm == null && a.StudyInstanceUID != "")
+            .Where(a => a.ExameImagemId == sol.Id && a.ExcluidoEm == null && a.StudyInstanceUID != "")
             .OrderByDescending(a => a.CriadoEm)
             .Select(a => a.StudyInstanceUID)
             .FirstOrDefaultAsync(cancellationToken);
@@ -50,7 +50,7 @@ public sealed class ExameImagensPdfService(
         if (string.IsNullOrWhiteSpace(studyUid))
             throw new ConflitoException("exame.sem_imagens", "Este exame ainda não tem imagens disponíveis.");
 
-        var chave = $"imagens-exame/{sol.PacienteId}/{studyUid}.pdf";
+        var chave = $"imagens-exame/{sol.Solicitacao!.PacienteId}/{studyUid}.pdf";
 
         var cache = await armazenamento.LerAsync(chave, cancellationToken);
         if (cache is { Length: > 0 })
@@ -60,7 +60,7 @@ public sealed class ExameImagensPdfService(
         if (imagens.Count == 0)
             throw new ConflitoException("exame.sem_imagens", "Este exame ainda não tem imagens disponíveis no PACS.");
 
-        var paciente = await pacientes.ObterPorIdAsync(sol.PacienteId, cancellationToken);
+        var paciente = await pacientes.ObterPorIdAsync(sol.Solicitacao!.PacienteId, cancellationToken);
 
         var capa = new ExameImagensCapa(
             PacienteNome: paciente.NomeCompleto,
@@ -70,9 +70,9 @@ public sealed class ExameImagensPdfService(
             ExameNome: sol.TipoExame?.Nome ?? "Exame de imagem",
             // RealizadoEm é UTC → converte p/ Brasília na exibição (mesma regra dos outros PDFs).
             RealizadoEm: FusoBrasilia.ParaExibicao(sol.RealizadoEm),
-            Unidade: sol.Unidade?.Nome,
-            Descricao: PrimeiroNaoVazio(sol.Justificativa, sol.Observacoes),
-            Anamnese: Resumir(sol.Observacoes, sol.Justificativa));
+            Unidade: sol.Solicitacao!.UnidadeExecutante?.Nome,
+            Descricao: PrimeiroNaoVazio(sol.Solicitacao!.Justificativa, sol.Solicitacao!.Observacoes),
+            Anamnese: Resumir(sol.Solicitacao!.Observacoes, sol.Solicitacao!.Justificativa));
 
         var pdf = new ExameImagensPdfDocument(capa, imagens, ExameRecursos.Logo).Gerar();
 

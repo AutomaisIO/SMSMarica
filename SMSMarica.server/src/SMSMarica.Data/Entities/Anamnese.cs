@@ -15,8 +15,8 @@ public class Anamnese
     public Guid Id { get; set; }
 
     /// <summary>Vínculo 1:1 com o pedido de exame (único por solicitação).</summary>
-    public Guid SolicitacaoExameId { get; set; }
-    public SolicitacaoExame? SolicitacaoExame { get; set; }
+    public Guid ExameImagemId { get; set; }
+    public ExameImagem? ExameImagem { get; set; }
 
     /// <summary>Tipo do questionário (ex.: "mamografia"). Define o shape do ConteudoJson.</summary>
     public string Tipo { get; set; } = "mamografia";

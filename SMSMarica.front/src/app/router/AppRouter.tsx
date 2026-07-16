@@ -31,6 +31,8 @@ import { ExamesAnterioresJanelaPage } from '@/features/exames-anteriores/pages/E
 import { SolicitacaoExameDetalhePage } from '@/features/solicitacoes-exame/pages/SolicitacaoExameDetalhePage';
 import { SolicitacaoExameFormPage } from '@/features/solicitacoes-exame/pages/SolicitacaoExameFormPage';
 import { SolicitacoesExamePage } from '@/features/solicitacoes-exame/pages/SolicitacoesExamePage';
+import { ConsultasPage } from '@/features/consultas/pages/ConsultasPage';
+import { MapeamentoSigtapPage } from '@/features/mapeamento-sigtap/pages/MapeamentoSigtapPage';
 import { ImportacaoSisregPage } from '@/features/importacao-sisreg/pages/ImportacaoSisregPage';
 import { TipoExameFormPage } from '@/features/tipos-exame/pages/TipoExameFormPage';
 import { TiposExamePage } from '@/features/tipos-exame/pages/TiposExamePage';
@@ -154,6 +156,8 @@ export function AppRouter() {
           <Route path="importacao-sisreg" element={<ImportacaoSisregPage />} />
           <Route path="anamnese" element={<AnamnesePage />} />
           <Route path="tipos-exame" element={<TiposExamePage />} />
+          <Route path="consultas" element={<ConsultasPage />} />
+          <Route path="mapeamento-sigtap" element={<MapeamentoSigtapPage />} />
           <Route path="tipos-exame/novo" element={<TipoExameFormPage />} />
           <Route path="tipos-exame/:id" element={<TipoExameFormPage />} />
           <Route path="procedimentos-sigtap" element={<ProcedimentosSigtapPage />} />

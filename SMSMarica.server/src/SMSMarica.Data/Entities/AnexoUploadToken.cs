@@ -15,9 +15,9 @@ public class AnexoUploadToken
     /// <summary>Segredo aleatório URL-safe (base64url, 32+ bytes). Único.</summary>
     public string Token { get; set; } = string.Empty;
 
-    /// <summary>Solicitação de exame à qual os uploads ficam vinculados (FK).</summary>
-    public Guid SolicitacaoExameId { get; set; }
-    public SolicitacaoExame? SolicitacaoExame { get; set; }
+    /// <summary>Exame de imagem ao qual os uploads ficam vinculados (FK).</summary>
+    public Guid ExameImagemId { get; set; }
+    public ExameImagem? ExameImagem { get; set; }
 
     /// <summary>Aponta para fhir.patient (hub FHIR), denormalizado — sem FK/navegação local.</summary>
     public Guid PatientId { get; set; }

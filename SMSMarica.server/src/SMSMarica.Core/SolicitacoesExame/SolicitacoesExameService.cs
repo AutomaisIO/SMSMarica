@@ -13,6 +13,13 @@ using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.SolicitacoesExame;
 
+/// <summary>
+/// Serviço do ciclo de vida de EXAMES DE IMAGEM (ADR-0021). Opera sobre o satélite
+/// <see cref="ExameImagem"/> (cujo <c>Id</c> é o id PÚBLICO do exame, preservado do modelo antigo)
+/// e acessa a regulação pela navegação <see cref="ExameImagem.Solicitacao"/>. O status de EXECUÇÃO
+/// (worklist/PACS) vive em <c>ExameImagem.Status</c>; a espinha <c>Solicitacao.Status</c> é o resumo
+/// de regulação, sincronizado nas transições Cancelada/Realizada.
+/// </summary>
 public sealed class SolicitacoesExameService(
     SmsMaricaDbContext db,
     IGeradorIdentificadores geradorIds,
@@ -67,14 +74,15 @@ public sealed class SolicitacoesExameService(
     {
         if (dtos.Count == 0) return dtos;
 
+        // DTO.Id = ExameImagem.Id; a associação FK aponta direto para o exame (id preservado).
         var ids = dtos.Select(d => d.Id).ToArray();
         var associados = await _db.ExameAssociacoes.AsNoTracking()
-            .Where(a => ids.Contains(a.SolicitacaoExameId) && a.ExcluidoEm == null)
+            .Where(a => ids.Contains(a.ExameImagemId) && a.ExcluidoEm == null)
             .OrderByDescending(a => a.CriadoEm)
-            .Select(a => new { a.SolicitacaoExameId, a.StudyInstanceUID })
+            .Select(a => new { a.ExameImagemId, a.StudyInstanceUID })
             .ToListAsync(ct);
         var assocPorSolicitacao = associados
-            .GroupBy(a => a.SolicitacaoExameId)
+            .GroupBy(a => a.ExameImagemId)
             .ToDictionary(g => g.Key, g => g.Select(a => a.StudyInstanceUID).ToList());
 
         var studies = dtos
@@ -123,19 +131,20 @@ public sealed class SolicitacoesExameService(
         FiltroSolicitacoesDto filtro,
         CancellationToken cancellationToken = default)
     {
-        IQueryable<SolicitacaoExame> query = _db.SolicitacoesExame.AsNoTracking()
-            .Include(s => s.TipoExame)
-            .Include(s => s.Unidade)
-            .Where(s => s.ExcluidoEm == null);
+        // Exames de imagem = satélite; regulação vem por .Solicitacao (não-excluída dos dois lados).
+        IQueryable<ExameImagem> query = _db.ExamesImagem.AsNoTracking()
+            .Include(e => e.TipoExame)
+            .Include(e => e.Solicitacao!).ThenInclude(so => so.UnidadeExecutante)
+            .Where(e => e.ExcluidoEm == null && e.Solicitacao!.ExcluidoEm == null);
 
-        if (filtro.Status.HasValue) query = query.Where(s => s.Status == filtro.Status);
-        if (filtro.PacienteId.HasValue) query = query.Where(s => s.PacienteId == filtro.PacienteId);
-        if (filtro.UnidadeId.HasValue) query = query.Where(s => s.UnidadeId == filtro.UnidadeId);
-        if (filtro.TipoExameId.HasValue) query = query.Where(s => s.TipoExameId == filtro.TipoExameId);
+        if (filtro.Status.HasValue) query = query.Where(e => e.Status == filtro.Status);
+        if (filtro.PacienteId.HasValue) query = query.Where(e => e.Solicitacao!.PacienteId == filtro.PacienteId);
+        if (filtro.UnidadeId.HasValue) query = query.Where(e => e.Solicitacao!.UnidadeExecutanteId == filtro.UnidadeId);
+        if (filtro.TipoExameId.HasValue) query = query.Where(e => e.TipoExameId == filtro.TipoExameId);
         if (!string.IsNullOrWhiteSpace(filtro.AccessionNumber))
         {
             var a = filtro.AccessionNumber.Trim();
-            query = query.Where(s => s.AccessionNumber == a);
+            query = query.Where(e => e.AccessionNumber == a);
         }
         if (!string.IsNullOrWhiteSpace(filtro.Busca))
         {
@@ -144,32 +153,29 @@ public sealed class SolicitacoesExameService(
             var termo = filtro.Busca.Trim();
             var padrao = $"%{termo}%";
             var idsPaciente = (await _pacienteResolver.BuscarIdsPorTermoAsync(termo, cancellationToken)).ToArray();
-            query = query.Where(s =>
-                EF.Functions.ILike(s.AccessionNumber, padrao)
-                || (s.CodigoSolicitacao != null && EF.Functions.ILike(s.CodigoSolicitacao, padrao))
-                || idsPaciente.Contains(s.PacienteId));
+            query = query.Where(e =>
+                EF.Functions.ILike(e.AccessionNumber, padrao)
+                || (e.Solicitacao!.CodigoSolicitacao != null && EF.Functions.ILike(e.Solicitacao!.CodigoSolicitacao, padrao))
+                || idsPaciente.Contains(e.Solicitacao!.PacienteId));
         }
         // Busca PONTUAL (nº do pedido ou termo livre) ignora o período: quem procura uma
-        // solicitação específica quer encontrá-la mesmo fora do dia filtrado (toggle "hoje"
-        // travando as datas escondia o resultado — inclusive solicitações SEM data agendada).
+        // solicitação específica quer encontrá-la mesmo fora do dia filtrado.
         var buscaPontual = !string.IsNullOrWhiteSpace(filtro.AccessionNumber)
                            || !string.IsNullOrWhiteSpace(filtro.Busca);
 
-        // O período filtra pela DATA DO AGENDAMENTO (data_agendada), não pela data da solicitação.
-        // data_agendada é um instante UTC (timestamptz); a coluna é exibida no fuso de Brasília, então
-        // os limites do dia (yyyy-mm-dd) são convertidos de Brasília para UTC (+3h) p/ casar com a exibição.
-        // Registros sem data agendada ficam fora quando há filtro de período.
+        // O período filtra pela DATA DO AGENDAMENTO (regulação). data_agendada é instante UTC; os
+        // limites do dia (Brasília) são convertidos para UTC (+3h). Sem data agendada → fora do período.
         if (!buscaPontual && filtro.DataInicial.HasValue)
         {
             var ini = filtro.DataInicial.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)
                 .AddHours(-FusoBrasilia.OffsetHoras);
-            query = query.Where(s => s.DataAgendada != null && s.DataAgendada >= ini);
+            query = query.Where(e => e.Solicitacao!.DataAgendada != null && e.Solicitacao!.DataAgendada >= ini);
         }
         if (!buscaPontual && filtro.DataFinal.HasValue)
         {
             var fim = filtro.DataFinal.Value.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc)
                 .AddHours(-FusoBrasilia.OffsetHoras);
-            query = query.Where(s => s.DataAgendada != null && s.DataAgendada <= fim);
+            query = query.Where(e => e.Solicitacao!.DataAgendada != null && e.Solicitacao!.DataAgendada <= fim);
         }
 
         var (queryEscopo, unidadeReferencia) = await AplicarEscopoUnidadeAsync(query, cancellationToken);
@@ -178,12 +184,12 @@ public sealed class SolicitacoesExameService(
         var limite = filtro.Limite is <= 0 or > 500 ? 50 : filtro.Limite;
         // Urgentes sempre no topo, independente da data (Prioridade: Urgente=3 > Prioritaria=2 > Eletiva=1).
         var lista = await query
-            .OrderByDescending(s => s.Prioridade)
-            .ThenByDescending(s => s.CriadoEm)
+            .OrderByDescending(e => e.Solicitacao!.Prioridade)
+            .ThenByDescending(e => e.CriadoEm)
             .Take(limite)
             .ToListAsync(cancellationToken);
 
-        var dtos = await EnriquecerAsync([.. lista.Select(s => SolicitacoesExameMapper.ParaListItem(s, unidadeReferencia))], cancellationToken);
+        var dtos = await EnriquecerAsync([.. lista.Select(e => SolicitacoesExameMapper.ParaListItem(e, unidadeReferencia))], cancellationToken);
         var comLaudos = await EnriquecerLaudosAsync([.. dtos], cancellationToken);
         var comAnamnese = await EnriquecerAnamneseAsync([.. comLaudos], cancellationToken);
         return await EnriquecerComunicacoesAsync([.. comAnamnese], cancellationToken);
@@ -194,65 +200,73 @@ public sealed class SolicitacoesExameService(
         List<SolicitacaoExameListItemDto> dtos, CancellationToken ct)
     {
         if (dtos.Count == 0) return dtos;
+        // Anamnese FK = ExameImagemId (id preservado = DTO.Id).
         var ids = dtos.Select(d => d.Id).ToArray();
         var comAnamnese = (await _db.Anamneses.AsNoTracking()
-            .Where(a => ids.Contains(a.SolicitacaoExameId) && a.ExcluidoEm == null)
-            .Select(a => a.SolicitacaoExameId)
+            .Where(a => ids.Contains(a.ExameImagemId) && a.ExcluidoEm == null)
+            .Select(a => a.ExameImagemId)
             .ToListAsync(ct)).ToHashSet();
         return [.. dtos.Select(d => comAnamnese.Contains(d.Id) ? d with { TemAnamnese = true } : d)];
     }
 
     // Checks de comunicação na lista (✓/✓✓/✓✓azul/⚠): resume ExameLiberado e LaudoPronto de
-    // cada solicitação da página. Uma query só para a página inteira.
+    // cada solicitação da página. As comunicações são ancoradas na ESPINHA (Solicitacao), então
+    // traduzimos o id público (ExameImagem.Id) → id da espinha para o join.
     private async Task<IReadOnlyList<SolicitacaoExameListItemDto>> EnriquecerComunicacoesAsync(
         List<SolicitacaoExameListItemDto> dtos, CancellationToken ct)
     {
         if (dtos.Count == 0) return dtos;
         var ids = dtos.Select(d => d.Id).ToArray();
 
+        // Mapa exame(id público) → solicitação(espinha).
+        var exameParaSolic = await _db.ExamesImagem.AsNoTracking()
+            .Where(e => ids.Contains(e.Id))
+            .Select(e => new { e.Id, e.SolicitacaoId })
+            .ToListAsync(ct);
+        var solicPorExame = exameParaSolic.ToDictionary(x => x.Id, x => x.SolicitacaoId);
+        var solicIds = exameParaSolic.Select(x => x.SolicitacaoId).ToArray();
+
         var comunicacoes = await _db.ComunicacoesPaciente.AsNoTracking()
-            .Where(c => c.SolicitacaoExameId != null && ids.Contains(c.SolicitacaoExameId.Value))
-            .Select(c => new { c.SolicitacaoExameId, c.Finalidade, c.Status, c.VisualizadoEm, c.MotivoFalha })
+            .Where(c => c.SolicitacaoId != null && solicIds.Contains(c.SolicitacaoId.Value))
+            .Select(c => new { c.SolicitacaoId, c.Finalidade, c.Status, c.VisualizadoEm, c.MotivoFalha })
             .ToListAsync(ct);
         if (comunicacoes.Count == 0) return dtos;
 
         var mapa = comunicacoes.ToDictionary(
-            c => (c.SolicitacaoExameId!.Value, c.Finalidade),
+            c => (c.SolicitacaoId!.Value, c.Finalidade),
             c => new ComunicacaoChipDto(c.Status.ToString(), c.VisualizadoEm != null, c.MotivoFalha));
+
+        ComunicacaoChipDto? Chip(Guid exameId, FinalidadeComunicacao f) =>
+            solicPorExame.TryGetValue(exameId, out var sid) ? mapa.GetValueOrDefault((sid, f)) : null;
 
         return [.. dtos.Select(d => d with
         {
-            ChipConfirmacao = mapa.GetValueOrDefault((d.Id, FinalidadeComunicacao.ConfirmacaoAgendamento)),
-            ChipExameLiberado = mapa.GetValueOrDefault((d.Id, FinalidadeComunicacao.ExameLiberado)),
-            ChipLaudoPronto = mapa.GetValueOrDefault((d.Id, FinalidadeComunicacao.LaudoPronto)),
+            ChipConfirmacao = Chip(d.Id, FinalidadeComunicacao.ConfirmacaoAgendamento),
+            ChipExameLiberado = Chip(d.Id, FinalidadeComunicacao.ExameLiberado),
+            ChipLaudoPronto = Chip(d.Id, FinalidadeComunicacao.LaudoPronto),
         })];
     }
 
     // Multitenancy por unidade: restringe a listagem às unidades vinculadas ao usuário
-    // (usuario_unidade), casando tanto pela EXECUTORA quanto pela SOLICITANTE — a unidade vê
-    // o que recebe para realizar e o que ela própria pediu. Regra de transição: usuário sem
-    // vínculo (ou fora de contexto autenticado, ex.: background) continua vendo tudo. A unidade
-    // ativa vem do header X-Unidade-Id e só vale se estiver entre os vínculos; caso contrário
-    // degrada silenciosamente para o conjunto vinculado (nunca 403).
-    //
-    // Retorna também a "unidade de referência" (a ativa resolvida, ou null quando é a visão do
-    // conjunto/admin-todas) — usada para marcar a direção (recebida/enviada) de cada linha.
-    private async Task<(IQueryable<SolicitacaoExame> Query, Guid? UnidadeReferencia)> AplicarEscopoUnidadeAsync(
-        IQueryable<SolicitacaoExame> query, CancellationToken ct)
+    // (usuario_unidade), casando tanto pela EXECUTORA quanto pela SOLICITANTE. Usuário sem vínculo
+    // (ou background sem contexto) vê tudo. Retorna a "unidade de referência" (a ativa resolvida,
+    // ou null na visão do conjunto/admin-todas) — marca a direção (recebida/enviada) de cada linha.
+    private async Task<(IQueryable<ExameImagem> Query, Guid? UnidadeReferencia)> AplicarEscopoUnidadeAsync(
+        IQueryable<ExameImagem> query, CancellationToken ct)
     {
         var usuarioId = _usuarioAtual.UsuarioId;
         if (usuarioId is null) return (query, null);
 
         var ativa = _usuarioAtual.UnidadeAtivaId;
 
-        // Global admin: vínculo implícito a TODAS as unidades — sem escopo obrigatório;
-        // a unidade ativa (se enviada e válida) vira apenas um filtro de conveniência.
+        // Global admin: vínculo implícito a TODAS as unidades — a ativa (se válida) vira filtro de conveniência.
         if (usuarioId == IdentificadoresFixos.UsuarioAdminId)
         {
             if (ativa.HasValue &&
                 await _db.Unidades.AsNoTracking().AnyAsync(u => u.Id == ativa.Value && u.Ativo, ct))
             {
-                return (query.Where(s => s.UnidadeId == ativa.Value || s.UnidadeSolicitanteId == ativa.Value), ativa);
+                return (query.Where(e => e.Solicitacao!.UnidadeExecutanteId == ativa.Value
+                    || e.Solicitacao!.UnidadeSolicitanteId == ativa.Value), ativa);
             }
             return (query, null);
         }
@@ -265,21 +279,21 @@ public sealed class SolicitacoesExameService(
 
         if (ativa.HasValue && vinculos.Contains(ativa.Value))
         {
-            return (query.Where(s => s.UnidadeId == ativa.Value || s.UnidadeSolicitanteId == ativa.Value), ativa);
+            return (query.Where(e => e.Solicitacao!.UnidadeExecutanteId == ativa.Value
+                || e.Solicitacao!.UnidadeSolicitanteId == ativa.Value), ativa);
         }
 
-        // Visão do conjunto (sem unidade ativa única): executora OU solicitante entre as
-        // vinculadas. Sem referência única → sem seta de direção.
+        // Visão do conjunto: executora OU solicitante entre as vinculadas. Sem referência única → sem seta.
         return (
-            query.Where(s => vinculos.Contains(s.UnidadeId)
-                || (s.UnidadeSolicitanteId != null && vinculos.Contains(s.UnidadeSolicitanteId.Value))),
+            query.Where(e => vinculos.Contains(e.Solicitacao!.UnidadeExecutanteId)
+                || (e.Solicitacao!.UnidadeSolicitanteId != null && vinculos.Contains(e.Solicitacao!.UnidadeSolicitanteId.Value))),
             null);
     }
 
     public async Task<SolicitacaoExameDto> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var s = await CarregarCompletoAsync(x => x.Id == id, cancellationToken)
-            ?? throw new NaoEncontradoException(nameof(SolicitacaoExame), id);
+            ?? throw new NaoEncontradoException(nameof(ExameImagem), id);
         return await EnriquecerAsync(SolicitacoesExameMapper.ParaDto(s), cancellationToken);
     }
 
@@ -296,19 +310,18 @@ public sealed class SolicitacoesExameService(
         var u = (studyInstanceUID ?? string.Empty).Trim();
         if (u.Length == 0) return null;
 
-        // 1) Casamento direto (exame de worklist: study == StudyInstanceUID da solicitação).
+        // 1) Casamento direto (exame de worklist: study == StudyInstanceUID pré-gerado).
         var s = await CarregarCompletoAsync(x => x.StudyInstanceUID == u, cancellationToken);
 
-        // 2) Fallback: associação manual/automática — o study REAL do PACS difere do
-        //    StudyInstanceUID pré-gerado da solicitação. Resolve pela tabela de associação.
+        // 2) Fallback: associação manual/automática — o study REAL do PACS difere do pré-gerado.
         if (s is null)
         {
-            var solicitacaoId = await _db.ExameAssociacoes.AsNoTracking()
+            var exameId = await _db.ExameAssociacoes.AsNoTracking()
                 .Where(a => a.StudyInstanceUID == u && a.ExcluidoEm == null)
-                .Select(a => a.SolicitacaoExameId)
+                .Select(a => a.ExameImagemId)
                 .FirstOrDefaultAsync(cancellationToken);
-            if (solicitacaoId != Guid.Empty)
-                s = await CarregarCompletoAsync(x => x.Id == solicitacaoId, cancellationToken);
+            if (exameId != Guid.Empty)
+                s = await CarregarCompletoAsync(x => x.Id == exameId, cancellationToken);
         }
 
         return s is null ? null : await EnriquecerAsync(SolicitacoesExameMapper.ParaDto(s), cancellationToken);
@@ -323,35 +336,36 @@ public sealed class SolicitacoesExameService(
         if (!Validators.RegulacaoRegras.Valido(chave))
             throw new ValidacaoException("autorizacao.chave_invalida", Validators.RegulacaoRegras.MensagemInvalido);
 
-        var s = await _db.SolicitacoesExame
+        var s = await _db.ExamesImagem
             .Include(x => x.TipoExame)
+            .Include(x => x.Solicitacao)
             .FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
-            ?? throw new NaoEncontradoException(nameof(SolicitacaoExame), id);
+            ?? throw new NaoEncontradoException(nameof(ExameImagem), id);
+        var reg = s.Solicitacao!;
 
         // Gate: paciente precisa ter um número VERIFICADO (marcador no telecom do Patient FHIR).
-        var paciente = await _pacienteResolver.ResolverAsync(s.PacienteId, cancellationToken);
+        var paciente = await _pacienteResolver.ResolverAsync(reg.PacienteId, cancellationToken);
         if (paciente?.TelefoneVerificado is null)
             throw new ValidacaoException(
                 "autorizacao.sem_numero_verificado",
                 "O paciente ainda não tem um número de telefone verificado. Verifique o contato antes de autorizar.");
 
         var agora = DateTime.UtcNow;
-        s.ChaveConfirmacao = chave;
-        s.AutorizadoEm = agora;
-        s.AutorizadoPor = _usuarioAtual.UsuarioId;
-        s.AtualizadoEm = agora;
-        s.AtualizadoPor = _usuarioAtual.UsuarioId;
+        reg.ChaveConfirmacao = chave;
+        reg.AutorizadoEm = agora;
+        reg.AutorizadoPor = _usuarioAtual.UsuarioId;
+        reg.AtualizadoEm = agora;
+        reg.AtualizadoPor = _usuarioAtual.UsuarioId;
 
         // Presença física vence qualquer estado anterior: sem resposta → confirma presencial;
-        // tinha CANCELADO pelo WhatsApp/app mas compareceu → "revive" (volta a Confirmada,
-        // canal presencial, e limpa o cancelamento — a linha deixa de ficar esmaecida).
-        if (s.StatusConfirmacao != StatusConfirmacaoAgendamento.Confirmada)
+        // cancelou pelo WhatsApp mas compareceu → "revive" (Confirmada, canal presencial).
+        if (reg.StatusConfirmacao != StatusConfirmacaoAgendamento.Confirmada)
         {
-            s.StatusConfirmacao = StatusConfirmacaoAgendamento.Confirmada;
-            s.ConfirmadoEm = agora;
-            s.ConfirmadoCanal = "presencial";
-            s.ConfirmacaoCanceladaEm = null;
-            s.MotivoCancelamentoPaciente = null;
+            reg.StatusConfirmacao = StatusConfirmacaoAgendamento.Confirmada;
+            reg.ConfirmadoEm = agora;
+            reg.ConfirmadoCanal = "presencial";
+            reg.ConfirmacaoCanceladaEm = null;
+            reg.MotivoCancelamentoPaciente = null;
         }
 
         // Só AGORA enfileira o envio ao PACS (se o tipo envia à worklist e ainda não foi enviado).
@@ -359,6 +373,7 @@ public sealed class SolicitacoesExameService(
         {
             s.ProximaTentativaEm = agora;
             s.ErroIntegracaoPacs = null;
+            s.AtualizadoEm = agora;
         }
 
         await _db.SaveChangesAsync(cancellationToken);
@@ -368,60 +383,62 @@ public sealed class SolicitacoesExameService(
     {
         await ValidarReferenciasAsync(request.PacienteId, request.TipoExameId, request.UnidadeId, request.UnidadeSolicitanteId, cancellationToken);
 
-        // Solicitante médico é Practitioner no hub FHIR; os dados vão nos snapshots
-        // (SolicitanteNome/Crm/UfCrm). Validação de papel Médico foi descontinuada.
-
         var accession = await _geradorIds.ProximoAccessionAsync(cancellationToken);
         var studyUid = _geradorIds.NovoStudyInstanceUid();
         var agora = DateTime.UtcNow;
 
-        var solicitacao = new SolicitacaoExame
+        // Espinha de regulação (categoria Imagem) + satélite de execução.
+        var solicitacao = new Solicitacao
         {
             Id = Guid.CreateVersion7(),
-            AccessionNumber = accession,
-            StudyInstanceUID = studyUid,
-
             PacienteId = request.PacienteId,
-            TipoExameId = request.TipoExameId,
-            UnidadeId = request.UnidadeId,
+            Categoria = CategoriaSolicitacao.Imagem,
+            UnidadeExecutanteId = request.UnidadeId,
             UnidadeSolicitanteId = request.UnidadeSolicitanteId,
-
-            // Solicitante = só o nome (texto). Colunas de conselho/usuário mantidas no banco
-            // com os defaults da entidade (num/uf vazios, conselho "CRM"), mas não usadas.
+            // Solicitante = só o nome (texto); colunas de conselho/usuário ficam nos defaults.
             SolicitanteNome = request.SolicitanteNome.Trim(),
-
             CodigoSolicitacao = NormalizaOpcional(request.CodigoSolicitacao),
             ChaveConfirmacao = NormalizaOpcional(request.ChaveConfirmacao),
             Justificativa = NormalizaOpcional(request.Justificativa),
-
-            Status = StatusSolicitacaoExame.Solicitada,
+            Status = StatusSolicitacao.Solicitada,
             Prioridade = request.Prioridade,
             Observacoes = NormalizaOpcional(request.Observacoes),
             DataSolicitacao = request.DataSolicitacao,
             DataAgendada = request.DataAgendada,
-
-            // NADA vai ao PACS automaticamente: o envio só é enfileirado quando a recepção
-            // AUTORIZA (AutorizarAsync). ProximaTentativaEm fica null até lá.
+            CriadoEm = agora,
+            CriadoPor = _usuarioAtual.UsuarioId,
+        };
+        var exame = new ExameImagem
+        {
+            Id = Guid.CreateVersion7(),
+            Solicitacao = solicitacao,
+            AccessionNumber = accession,
+            StudyInstanceUID = studyUid,
+            TipoExameId = request.TipoExameId,
+            Status = StatusSolicitacaoExame.Solicitada,
+            // NADA vai ao PACS automaticamente: o envio só é enfileirado quando a recepção AUTORIZA.
             ProximaTentativaEm = null,
-
             CriadoEm = agora,
             CriadoPor = _usuarioAtual.UsuarioId,
         };
 
-        _db.SolicitacoesExame.Add(solicitacao);
-        // Notificação de confirmação por WhatsApp — igual ao import do SISREG (só enfileira;
-        // o worker envia). Sem data agendada futura, o EnfileirarAsync não faz nada.
+        _db.Solicitacoes.Add(solicitacao);
+        _db.ExamesImagem.Add(exame);
+        // Confirmação por WhatsApp — só enfileira (o worker envia). Sem data futura, no-op.
         await _comunicacoes.Value.EnfileirarAsync(
-            solicitacao, Data.Entities.Enums.FinalidadeComunicacao.ConfirmacaoAgendamento, cancellationToken);
+            solicitacao, FinalidadeComunicacao.ConfirmacaoAgendamento, cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
 
-        return solicitacao.Id;
+        // Id público do exame = ExameImagem.Id (preservado).
+        return exame.Id;
     }
 
     public async Task AtualizarAsync(Guid id, AtualizarSolicitacaoExameRequest request, CancellationToken cancellationToken = default)
     {
-        var s = await _db.SolicitacoesExame.FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
-            ?? throw new NaoEncontradoException(nameof(SolicitacaoExame), id);
+        var s = await _db.ExamesImagem.Include(x => x.Solicitacao)
+            .FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(ExameImagem), id);
+        var reg = s.Solicitacao!;
 
         if (s.Status != StatusSolicitacaoExame.Solicitada)
         {
@@ -430,34 +447,38 @@ public sealed class SolicitacoesExameService(
                 "Solicitação só pode ser editada enquanto está no status 'Solicitada'.");
         }
 
-        await ValidarReferenciasAsync(s.PacienteId, request.TipoExameId, request.UnidadeId, request.UnidadeSolicitanteId, cancellationToken);
+        await ValidarReferenciasAsync(reg.PacienteId, request.TipoExameId, request.UnidadeId, request.UnidadeSolicitanteId, cancellationToken);
 
+        var agora = DateTime.UtcNow;
         s.TipoExameId = request.TipoExameId;
-        s.UnidadeId = request.UnidadeId;
-        s.UnidadeSolicitanteId = request.UnidadeSolicitanteId;
-        s.SolicitanteNome = request.SolicitanteNome.Trim();
-        s.CodigoSolicitacao = NormalizaOpcional(request.CodigoSolicitacao);
-        s.ChaveConfirmacao = NormalizaOpcional(request.ChaveConfirmacao);
-        s.Justificativa = NormalizaOpcional(request.Justificativa);
-        s.Prioridade = request.Prioridade;
-        s.Observacoes = NormalizaOpcional(request.Observacoes);
-        s.DataSolicitacao = request.DataSolicitacao;
-        s.DataAgendada = request.DataAgendada;
-        s.AtualizadoEm = DateTime.UtcNow;
+        s.AtualizadoEm = agora;
         s.AtualizadoPor = _usuarioAtual.UsuarioId;
 
-        // Cobriu o caso "criou sem data, agendou depois": enfileira a confirmação por WhatsApp
-        // se ainda não existe (idempotente por solicitação × finalidade).
+        reg.UnidadeExecutanteId = request.UnidadeId;
+        reg.UnidadeSolicitanteId = request.UnidadeSolicitanteId;
+        reg.SolicitanteNome = request.SolicitanteNome.Trim();
+        reg.CodigoSolicitacao = NormalizaOpcional(request.CodigoSolicitacao);
+        reg.ChaveConfirmacao = NormalizaOpcional(request.ChaveConfirmacao);
+        reg.Justificativa = NormalizaOpcional(request.Justificativa);
+        reg.Prioridade = request.Prioridade;
+        reg.Observacoes = NormalizaOpcional(request.Observacoes);
+        reg.DataSolicitacao = request.DataSolicitacao;
+        reg.DataAgendada = request.DataAgendada;
+        reg.AtualizadoEm = agora;
+        reg.AtualizadoPor = _usuarioAtual.UsuarioId;
+
+        // Cobre "criou sem data, agendou depois": enfileira confirmação (idempotente).
         await _comunicacoes.Value.EnfileirarAsync(
-            s, Data.Entities.Enums.FinalidadeComunicacao.ConfirmacaoAgendamento, cancellationToken);
+            reg, FinalidadeComunicacao.ConfirmacaoAgendamento, cancellationToken);
 
         await _db.SaveChangesAsync(cancellationToken);
     }
 
     public async Task CancelarAsync(Guid id, CancelarSolicitacaoExameRequest request, CancellationToken cancellationToken = default)
     {
-        var s = await _db.SolicitacoesExame.FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
-            ?? throw new NaoEncontradoException(nameof(SolicitacaoExame), id);
+        var s = await _db.ExamesImagem.Include(x => x.Solicitacao)
+            .FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(ExameImagem), id);
 
         if (s.Status is not (StatusSolicitacaoExame.Solicitada or StatusSolicitacaoExame.Enviada or StatusSolicitacaoExame.Recebida))
         {
@@ -472,8 +493,7 @@ public sealed class SolicitacoesExameService(
             throw new ValidacaoException("solicitacaoExame.motivo_obrigatorio", "Motivo do cancelamento é obrigatório.");
         }
 
-        // Remove o item da worklist no dcm4chee (best-effort — não derruba o
-        // cancelamento local se o PACS estiver fora; o item terminal não atrapalha).
+        // Remove o item da worklist no dcm4chee (best-effort — não derruba o cancelamento local).
         if (!string.IsNullOrEmpty(s.WorklistItemUid))
         {
             try
@@ -490,19 +510,26 @@ public sealed class SolicitacoesExameService(
 
         var agora = DateTime.UtcNow;
         s.Status = StatusSolicitacaoExame.Cancelada;
-        s.CanceladoEm = agora;
-        s.CanceladoPorUsuarioId = _usuarioAtual.UsuarioId;
-        s.MotivoCancelamento = motivo;
         s.AtualizadoEm = agora;
         s.AtualizadoPor = _usuarioAtual.UsuarioId;
+
+        // Espinha reflete o cancelamento (é decisão de regulação).
+        var reg = s.Solicitacao!;
+        reg.Status = StatusSolicitacao.Cancelada;
+        reg.CanceladoEm = agora;
+        reg.CanceladoPorUsuarioId = _usuarioAtual.UsuarioId;
+        reg.MotivoCancelamento = motivo;
+        reg.AtualizadoEm = agora;
+        reg.AtualizadoPor = _usuarioAtual.UsuarioId;
 
         await _db.SaveChangesAsync(cancellationToken);
     }
 
     public async Task ReenviarWorklistAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var s = await _db.SolicitacoesExame.FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
-            ?? throw new NaoEncontradoException(nameof(SolicitacaoExame), id);
+        var s = await _db.ExamesImagem.Include(x => x.Solicitacao)
+            .FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(ExameImagem), id);
 
         if (s.Status is not (StatusSolicitacaoExame.Solicitada or StatusSolicitacaoExame.Enviada or StatusSolicitacaoExame.Recebida))
         {
@@ -511,19 +538,15 @@ public sealed class SolicitacoesExameService(
                 $"Só é possível reenviar worklist em 'Solicitada', 'Enviada' ou 'Recebida'. Atual: {s.Status}.");
         }
 
-        // Gate de autorização: uma solicitação que NUNCA foi ao PACS (Solicitada) só entra na
-        // fila depois que a recepção autorizar com a chave. (Enviada/Recebida já estão no PACS —
-        // o reenvio ali é manutenção/ressincronização, não um envio novo.)
-        if (s.Status == StatusSolicitacaoExame.Solicitada && s.AutorizadoEm is null)
+        // Gate de autorização (na espinha): Solicitada que nunca foi ao PACS só entra na fila
+        // depois que a recepção autorizar. (Enviada/Recebida já estão no PACS — reenvio = manutenção.)
+        if (s.Status == StatusSolicitacaoExame.Solicitada && s.Solicitacao!.AutorizadoEm is null)
         {
             throw new ConflitoException(
                 "solicitacaoExame.nao_autorizada",
                 "Este exame ainda não foi autorizado pela recepção. Autorize com a chave de confirmação antes de enviar ao PACS.");
         }
 
-        // Apenas agenda o worker pra tentar agora — ele faz o POST/GET e
-        // atualiza o status. UX: o front mostra "tentativa em andamento"
-        // depois do refresh e o worker resolve em ~30s no pior caso.
         s.ProximaTentativaEm = DateTime.UtcNow;
         s.ErroIntegracaoPacs = null;
         s.AtualizadoEm = DateTime.UtcNow;
@@ -534,8 +557,9 @@ public sealed class SolicitacoesExameService(
 
     public async Task ExcluirAsync(Guid id, bool force, CancellationToken cancellationToken = default)
     {
-        var s = await _db.SolicitacoesExame.FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
-            ?? throw new NaoEncontradoException(nameof(SolicitacaoExame), id);
+        var s = await _db.ExamesImagem.Include(x => x.Solicitacao)
+            .FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(ExameImagem), id);
 
         // Exame iniciado/realizado/laudado tem imagens — o pedido não se exclui por aqui.
         if (s.Status is StatusSolicitacaoExame.EmExecucao or StatusSolicitacaoExame.Realizada or StatusSolicitacaoExame.Laudada)
@@ -545,16 +569,10 @@ public sealed class SolicitacoesExameService(
                 $"Solicitação no status '{s.Status}' (exame iniciado/realizado) não pode ser excluída.");
         }
 
-        // Regra anti-lixo: primeiro remove o item da worklist no dcm4chee e confirma;
-        // só então apaga localmente. Se a remoção no PACS falhar e NÃO for 'force', aborta
-        // com um código que o front reconhece para oferecer a exclusão forçada.
+        // Anti-lixo: remove o item da worklist no dcm4chee e confirma; só então apaga localmente.
         if (force)
         {
-            // Force: tenta remover do PACS best-effort, mas ignora falha e limpa só a base local.
-            try
-            {
-                await _mwlClient.ExcluirMwlItemAsync(s, cancellationToken);
-            }
+            try { await _mwlClient.ExcluirMwlItemAsync(s, cancellationToken); }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogWarning(ex,
@@ -566,7 +584,6 @@ public sealed class SolicitacoesExameService(
         {
             try
             {
-                // 404 (já não existe) conta como removido — operação idempotente.
                 await _mwlClient.ExcluirMwlItemAsync(s, cancellationToken);
             }
             catch (ConflitoException)
@@ -579,11 +596,19 @@ public sealed class SolicitacoesExameService(
         }
 
         var agora = DateTime.UtcNow;
+        // Soft-delete espelhado nas duas tabelas (execução + regulação).
         s.ExcluidoEm = agora;
         s.ExcluidoPor = _usuarioAtual.UsuarioId;
         s.AtualizadoEm = agora;
         s.AtualizadoPor = _usuarioAtual.UsuarioId;
         s.ProximaTentativaEm = null; // tira do worker
+
+        var reg = s.Solicitacao!;
+        reg.ExcluidoEm = agora;
+        reg.ExcluidoPor = _usuarioAtual.UsuarioId;
+        reg.AtualizadoEm = agora;
+        reg.AtualizadoPor = _usuarioAtual.UsuarioId;
+
         await _db.SaveChangesAsync(cancellationToken);
     }
 
@@ -592,21 +617,20 @@ public sealed class SolicitacoesExameService(
         var uid = (studyInstanceUID ?? string.Empty).Trim();
         if (uid.Length == 0) return;
 
-        var s = await _db.SolicitacoesExame.FirstOrDefaultAsync(
+        var s = await _db.ExamesImagem.FirstOrDefaultAsync(
             x => x.StudyInstanceUID == uid && x.ExcluidoEm == null, cancellationToken);
-        // Exame com StudyUID próprio da máquina (sem worklist): resolve pela associação
-        // explícita — mesmo fallback do aviso "laudo pronto" e do ObterPorStudy.
+        // Study próprio da máquina (sem worklist): resolve pela associação explícita.
         if (s is null)
         {
-            var solicitacaoId = await _db.ExameAssociacoes.AsNoTracking()
+            var exameId = await _db.ExameAssociacoes.AsNoTracking()
                 .Where(a => a.StudyInstanceUID == uid && a.ExcluidoEm == null)
-                .Select(a => (Guid?)a.SolicitacaoExameId)
+                .Select(a => (Guid?)a.ExameImagemId)
                 .FirstOrDefaultAsync(cancellationToken);
-            if (solicitacaoId is { } sid)
-                s = await _db.SolicitacoesExame.FirstOrDefaultAsync(
-                    x => x.Id == sid && x.ExcluidoEm == null, cancellationToken);
+            if (exameId is { } eid)
+                s = await _db.ExamesImagem.FirstOrDefaultAsync(
+                    x => x.Id == eid && x.ExcluidoEm == null, cancellationToken);
         }
-        if (s is null) return; // study sem solicitação amarrada — ok.
+        if (s is null) return; // study sem exame amarrado — ok.
 
         if (s.Status is StatusSolicitacaoExame.Cancelada or StatusSolicitacaoExame.Laudada) return;
 
@@ -619,21 +643,27 @@ public sealed class SolicitacoesExameService(
 
     public async Task MarcarComoRealizadaAsync(Guid id, DateTime realizadoEm, DateTime? dataEstudo, CancellationToken cancellationToken = default)
     {
-        var s = await _db.SolicitacoesExame.FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken);
+        var s = await _db.ExamesImagem.Include(x => x.Solicitacao)
+            .FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken);
         if (s is null) return;
         if (s.Status is StatusSolicitacaoExame.Realizada or StatusSolicitacaoExame.Laudada or StatusSolicitacaoExame.Cancelada) return;
 
+        var agora = DateTime.UtcNow;
         s.Status = StatusSolicitacaoExame.Realizada;
         s.RealizadoEm = realizadoEm; // hora de detecção pelo servidor (auditoria)
-        // Data REAL do exame vinda do DICOM (fonte da verdade). Só grava quando o PACS
-        // trouxe a tag — não sobrescreve com null.
+        // Data REAL do exame vinda do DICOM (fonte da verdade). Só grava quando o PACS trouxe a tag.
         if (dataEstudo is not null) s.DataEstudo = dataEstudo;
-        s.AtualizadoEm = DateTime.UtcNow;
+        s.AtualizadoEm = agora;
 
-        // Exame chegou → enfileira o aviso "Exame liberado" (idempotente; o worker só envia
-        // quando a chave EnviarExameLiberado estiver ligada — template aguardando a Meta).
+        // Espinha reflete a realização.
+        var reg = s.Solicitacao!;
+        reg.Status = StatusSolicitacao.Realizada;
+        reg.AtualizadoEm = agora;
+
+        // Exame chegou → enfileira o aviso "Exame liberado" (idempotente; o worker só envia quando
+        // a chave EnviarExameLiberado estiver ligada — template aguardando a Meta).
         await _comunicacoes.Value.EnfileirarAsync(
-            s, Data.Entities.Enums.FinalidadeComunicacao.ExameLiberado, cancellationToken);
+            reg, FinalidadeComunicacao.ExameLiberado, cancellationToken);
 
         await _db.SaveChangesAsync(cancellationToken);
 
@@ -643,8 +673,10 @@ public sealed class SolicitacoesExameService(
 
     public async Task ProcessarTentativaEnvioAsync(Guid solicitacaoId, CancellationToken cancellationToken = default)
     {
-        var s = await _db.SolicitacoesExame
+        // solicitacaoId aqui é o id PÚBLICO do exame (= ExameImagem.Id).
+        var s = await _db.ExamesImagem
             .Include(x => x.TipoExame).ThenInclude(t => t!.ProcedimentoSigtap)
+            .Include(x => x.Solicitacao)
             .FirstOrDefaultAsync(x => x.Id == solicitacaoId && x.ExcluidoEm == null, cancellationToken);
 
         if (s is null) return;
@@ -652,7 +684,6 @@ public sealed class SolicitacoesExameService(
         // Só os estados de envio interessam ao worker (Recebida já é terminal).
         if (s.Status is not (StatusSolicitacaoExame.Solicitada or StatusSolicitacaoExame.Enviada))
         {
-            // Limpa o agendamento para não voltar.
             if (s.ProximaTentativaEm is not null)
             {
                 s.ProximaTentativaEm = null;
@@ -689,7 +720,7 @@ public sealed class SolicitacoesExameService(
                     {
                         s.Status = StatusSolicitacaoExame.Recebida;
                         s.ErroIntegracaoPacs = null;
-                        s.ProximaTentativaEm = null; // terminal — a worklist está disponível para a máquina
+                        s.ProximaTentativaEm = null; // terminal — worklist disponível para a máquina
                         s.AtualizadoEm = agora;
                         await _db.SaveChangesAsync(cancellationToken);
                         await _notificador.NotificarAgendadoAsync(s, cancellationToken);
@@ -742,15 +773,15 @@ public sealed class SolicitacoesExameService(
         };
     }
 
-    private async Task<SolicitacaoExame?> CarregarCompletoAsync(
-        System.Linq.Expressions.Expression<Func<SolicitacaoExame, bool>> filtro,
+    private async Task<ExameImagem?> CarregarCompletoAsync(
+        System.Linq.Expressions.Expression<Func<ExameImagem, bool>> filtro,
         CancellationToken cancellationToken)
     {
-        return await _db.SolicitacoesExame.AsNoTracking()
-            .Include(s => s.TipoExame)
-            .Include(s => s.Unidade)
-            .Include(s => s.UnidadeSolicitante)
-            .Where(s => s.ExcluidoEm == null)
+        return await _db.ExamesImagem.AsNoTracking()
+            .Include(e => e.TipoExame)
+            .Include(e => e.Solicitacao!).ThenInclude(so => so.UnidadeExecutante)
+            .Include(e => e.Solicitacao!).ThenInclude(so => so.UnidadeSolicitante)
+            .Where(e => e.ExcluidoEm == null && e.Solicitacao!.ExcluidoEm == null)
             .FirstOrDefaultAsync(filtro, cancellationToken);
     }
 

@@ -23,9 +23,10 @@ public class ComunicacaoPaciente
     /// <summary>Assunto do envio (confirmação, exame liberado, laudo pronto).</summary>
     public FinalidadeComunicacao Finalidade { get; set; } = FinalidadeComunicacao.ConfirmacaoAgendamento;
 
-    /// <summary>Preenchida quando Tipo=Exame (única por solicitação × finalidade).</summary>
-    public Guid? SolicitacaoExameId { get; set; }
-    public SolicitacaoExame? SolicitacaoExame { get; set; }
+    /// <summary>Solicitação (regulação) à qual a comunicação se refere — vale p/ exame E consulta
+    /// (única por solicitação × finalidade).</summary>
+    public Guid? SolicitacaoId { get; set; }
+    public Solicitacao? Solicitacao { get; set; }
 
     /// <summary>Aponta para fhir.patient (hub FHIR) — sem FK/navegação local.</summary>
     public Guid PacienteId { get; set; }

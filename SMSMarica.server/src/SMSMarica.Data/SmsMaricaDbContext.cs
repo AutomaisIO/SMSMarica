@@ -46,10 +46,7 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<TicketConfiguracao> TicketConfiguracoes => Set<TicketConfiguracao>();
     public DbSet<ProcedimentoSigtap> ProcedimentosSigtap => Set<ProcedimentoSigtap>();
     public DbSet<TipoExame> TiposExame => Set<TipoExame>();
-    public DbSet<SolicitacaoExame> SolicitacoesExame => Set<SolicitacaoExame>();
-
     // Ecossistema de solicitação (ADR-0021): espinha de regulação + satélite de execução de imagem.
-    // Convive com SolicitacaoExame durante a migração (expand→migrate→verify→contract).
     public DbSet<Solicitacao> Solicitacoes => Set<Solicitacao>();
     public DbSet<ExameImagem> ExamesImagem => Set<ExameImagem>();
     public DbSet<Anamnese> Anamneses => Set<Anamnese>();

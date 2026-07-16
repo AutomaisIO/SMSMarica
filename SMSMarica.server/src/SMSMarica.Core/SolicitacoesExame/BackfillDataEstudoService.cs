@@ -37,7 +37,7 @@ public sealed class BackfillDataEstudoService(
         var lim = limite is <= 0 or > 5000 ? 1000 : limite;
 
         // Candidatos: realizados/laudados, com study no PACS e sem data_estudo ainda.
-        var candidatos = await db.SolicitacoesExame.AsNoTracking()
+        var candidatos = await db.ExamesImagem.AsNoTracking()
             .Where(s => s.ExcluidoEm == null
                 && s.DataEstudo == null
                 && (s.Status == StatusSolicitacaoExame.Realizada || s.Status == StatusSolicitacaoExame.Laudada)
@@ -63,7 +63,7 @@ public sealed class BackfillDataEstudoService(
                     continue;
                 }
 
-                await db.SolicitacoesExame
+                await db.ExamesImagem
                     .Where(s => s.Id == c.Id)
                     .ExecuteUpdateAsync(u => u.SetProperty(s => s.DataEstudo, data), cancellationToken);
                 atualizados++;

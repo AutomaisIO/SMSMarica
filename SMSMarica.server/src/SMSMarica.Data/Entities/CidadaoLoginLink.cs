@@ -22,7 +22,7 @@ public class CidadaoLoginLink
 
     /// <summary>Solicitação de exame que originou o link (notificação de agendamento).
     /// Quando presente, o USO do link confirma a presença do paciente. Null em links avulsos.</summary>
-    public Guid? SolicitacaoExameId { get; set; }
+    public Guid? SolicitacaoId { get; set; }
 
     public DateTime ExpiraEm { get; set; }
 

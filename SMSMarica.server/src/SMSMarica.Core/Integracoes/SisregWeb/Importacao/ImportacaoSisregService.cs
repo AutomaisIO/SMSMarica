@@ -51,7 +51,7 @@ public sealed class ImportacaoSisregService(
         IReadOnlyList<MarcacaoSisreg> marcacoes, DateOnly inicio, DateOnly fim, ExecutanteResolvido executante, CancellationToken ct)
     {
         var codigos = marcacoes.Select(m => m.CodigoSolicitacao).Distinct().ToList();
-        var existentes = (await db.SolicitacoesExame.AsNoTracking()
+        var existentes = (await db.Solicitacoes.AsNoTracking()
             .Where(s => s.ExcluidoEm == null && s.CodigoSolicitacao != null && codigos.Contains(s.CodigoSolicitacao))
             .Select(s => s.CodigoSolicitacao!)
             .ToListAsync(ct)).ToHashSet(StringComparer.Ordinal);
@@ -74,10 +74,16 @@ public sealed class ImportacaoSisregService(
         var itens = new List<ImportacaoPreviewItem>(marcacoes.Count);
         foreach (var m in marcacoes)
         {
-            var procMapeia = m.CodigoSigtap is { } sig && sigtapComTipo.Contains(sig);
+            var categoria = CategoriaPorSigtap(m.CodigoSigtap);
+            // "Mapeia" só faz sentido para imagem (é quem vira satélite/worklist).
+            var procMapeia = categoria == CategoriaSolicitacao.Imagem
+                && m.CodigoSigtap is { } sig && sigtapComTipo.Contains(sig);
             var alertas = new List<string>();
             if (executante.Erro is { } erroExec) alertas.Add(erroExec);
-            if (!procMapeia) alertas.Add("Procedimento/SIGTAP sem tipo de exame mapeado (cairia em divergência).");
+            if (categoria == CategoriaSolicitacao.Imagem && !procMapeia)
+                alertas.Add("Exame de imagem sem tipo mapeado — importa como pendente (mapear depois).");
+            else if (categoria != CategoriaSolicitacao.Imagem)
+                alertas.Add($"Categoria {categoria} — importa como solicitação (sem exame de imagem/PACS).");
             if (string.IsNullOrWhiteSpace(m.CnsPaciente)) alertas.Add("Sem CNS do paciente.");
             if (m.DataHoraAtendimento is null) alertas.Add("Sem data/hora de atendimento.");
 
@@ -109,19 +115,30 @@ public sealed class ImportacaoSisregService(
         ImportacaoExecucaoResultado Falha(string erro) => new(codigo, false, null, null, null, false, false, false, passos, erro);
 
         // 1. Idempotência (nº SISREG).
-        if (await db.SolicitacoesExame.AsNoTracking().AnyAsync(
+        if (await db.Solicitacoes.AsNoTracking().AnyAsync(
                 s => s.CodigoSolicitacao == codigo && s.ExcluidoEm == null, ct))
             return Falha("Já existe uma solicitação com esse número do SISREG.");
 
-        // 2. Procedimento → tipo de exame (por SIGTAP).
-        var sig = m.CodigoSigtap ?? string.Empty;
-        var tipoExame = await db.TiposExame.AsNoTracking()
-            .Where(t => t.ExcluidoEm == null && t.Ativo && t.ProcedimentoSigtap != null)
-            .Select(t => new { t.Id, t.EnviarParaWorklist, Codigo = t.ProcedimentoSigtap!.Codigo })
-            .ToListAsync(ct);
-        var tipo = tipoExame.FirstOrDefault(t => SoDigitos(t.Codigo) == sig);
-        if (tipo is null) return Falha("Procedimento (SIGTAP) sem tipo de exame mapeado — cai em divergência.");
-        passos.Add($"Procedimento {m.ProcedimentoTexto} → tipo de exame (SIGTAP {sig}).");
+        // 2. Natureza pelo subgrupo SIGTAP (roteia satélite/UI). SÓ imagem precisa de TipoExame —
+        //    e mesmo SEM tipo mapeado a importação NÃO trava: entra como pendente (ADR-0021).
+        var sig = SoDigitos(m.CodigoSigtap);
+        var categoria = CategoriaPorSigtap(sig);
+        Guid? tipoExameId = null;
+        if (categoria == CategoriaSolicitacao.Imagem)
+        {
+            var tipos = await db.TiposExame.AsNoTracking()
+                .Where(t => t.ExcluidoEm == null && t.Ativo && t.ProcedimentoSigtap != null)
+                .Select(t => new { t.Id, Codigo = t.ProcedimentoSigtap!.Codigo })
+                .ToListAsync(ct);
+            tipoExameId = tipos.FirstOrDefault(t => SoDigitos(t.Codigo) == sig)?.Id;
+            passos.Add(tipoExameId is null
+                ? $"Exame de imagem \"{m.ProcedimentoTexto}\" (SIGTAP {sig}) — SEM tipo mapeado; importa como PENDENTE."
+                : $"Exame de imagem \"{m.ProcedimentoTexto}\" → tipo mapeado (SIGTAP {sig}).");
+        }
+        else
+        {
+            passos.Add($"Categoria {categoria} (SIGTAP {sig}) — importa como solicitação, sem satélite de execução.");
+        }
 
         // 3. Paciente: CNS → cadweb50 (CPF+demografia) → resolve por CPF → cria se não existir.
         if (string.IsNullOrWhiteSpace(m.CnsPaciente)) return Falha("Marcação sem CNS do paciente.");
@@ -185,17 +202,18 @@ public sealed class ImportacaoSisregService(
         if (solicCriada) passos.Add($"Unidade solicitante criada: {m.NomeUnidadeSolicitante}{CnesSufixo(m.CnesUnidadeSolicitante)}.");
         else if (unidadeSolicId is not null) passos.Add("Unidade solicitante já cadastrada.");
 
-        // 5. Solicitação (médico do SISREG = texto; CRM vazio, CPF interno; data do SISREG).
-        var accession = await geradorIds.ProximoAccessionAsync(ct);
+        // 5. Espinha de regulação (sempre) + satélite de execução SÓ para imagem. Ver ADR-0021.
         var agora = DateTime.UtcNow;
-        var solic = new SolicitacaoExame
+        var solic = new Solicitacao
         {
             Id = Guid.CreateVersion7(),
-            AccessionNumber = accession,
-            StudyInstanceUID = geradorIds.NovoStudyInstanceUid(),
             PacienteId = pacienteId,
-            TipoExameId = tipo.Id,
-            UnidadeId = unidadeExecId,
+            Categoria = categoria,
+            ProcedimentoSigtapCodigo = m.CodigoSigtap,
+            ProcedimentoTexto = m.ProcedimentoTexto,
+            // Consulta colapsa no SIGTAP 0301010072 — a especialidade só existe no texto.
+            EspecialidadeTexto = categoria == CategoriaSolicitacao.Consulta ? m.ProcedimentoTexto : null,
+            UnidadeExecutanteId = unidadeExecId,
             UnidadeSolicitanteId = unidadeSolicId,
             SolicitanteNome = m.NomeMedicoSolicitante ?? "NÃO INFORMADO",
             SolicitanteNumConselho = string.Empty,
@@ -204,31 +222,47 @@ public sealed class ImportacaoSisregService(
             SolicitanteCpf = m.CpfMedicoSolicitante,
             RawSisreg = m.LinhaRaw,
             CodigoSolicitacao = codigo,
-            Status = StatusSolicitacaoExame.Solicitada,
+            Status = StatusSolicitacao.Solicitada,
             Prioridade = PrioridadeSolicitacao.Eletiva,
-            // O SISREG entrega hora LOCAL de Brasília (GMT-3). data_agendada é timestamptz (UTC),
-            // então convertemos São Paulo (-03:00) → UTC explicitamente (+3h). NÃO usar Kind=Local
-            // porque o servidor roda em UTC (Local=UTC → não somaria as 3h → gravava 3h cedo).
+            // O SISREG entrega hora LOCAL de Brasília (GMT-3) → UTC (+3h).
             DataAgendada = m.DataHoraAtendimento is { } dh ? ParaUtcBrasilia(dh) : null,
-            // Data em que o pedido foi feito no SISREG (dia de calendário, sem hora).
             DataSolicitacao = m.DataSolicitacao,
-            // Data em que a regulação autorizou (para estatística de tempos).
             DataRegulacao = m.DataRegulacao,
-            // NADA vai ao PACS automaticamente: o envio só é enfileirado quando a recepção
-            // AUTORIZA (com a chave). Fica null até lá, mesmo com worklist ligado.
-            ProximaTentativaEm = null,
             CriadoEm = agora,
             CriadoPor = usuarioAtual.UsuarioId,
         };
-        db.SolicitacoesExame.Add(solic);
-        // Notificação WhatsApp de confirmação — só enfileira (o worker envia com ritmo);
-        // exames com data passada/ausente não notificam.
+        db.Solicitacoes.Add(solic);
+
+        // AccessionNumber/StudyUID são conceitos DICOM — só existem no satélite de imagem.
+        Guid idPublico = solic.Id;
+        string? accession = null;
+        if (categoria == CategoriaSolicitacao.Imagem)
+        {
+            accession = await geradorIds.ProximoAccessionAsync(ct);
+            var exame = new ExameImagem
+            {
+                Id = Guid.CreateVersion7(),
+                Solicitacao = solic,
+                AccessionNumber = accession,
+                StudyInstanceUID = geradorIds.NovoStudyInstanceUid(),
+                TipoExameId = tipoExameId, // nullable = mapeamento pendente
+                Status = StatusSolicitacaoExame.Solicitada,
+                // NADA vai ao PACS automaticamente: só quando a recepção AUTORIZA.
+                ProximaTentativaEm = null,
+                CriadoEm = agora,
+                CriadoPor = usuarioAtual.UsuarioId,
+            };
+            db.ExamesImagem.Add(exame);
+            idPublico = exame.Id;
+        }
+
+        // Notificação WhatsApp de confirmação — só enfileira (o worker envia com ritmo).
         await comunicacoes.EnfileirarAsync(solic, Data.Entities.Enums.FinalidadeComunicacao.ConfirmacaoAgendamento, ct);
         await db.SaveChangesAsync(ct);
-        passos.Add($"Solicitação criada (accession {accession}).");
+        passos.Add(accession is null ? "Solicitação criada." : $"Solicitação criada (accession {accession}).");
 
         return new ImportacaoExecucaoResultado(
-            codigo, true, solic.Id, accession,
+            codigo, true, idPublico, accession ?? string.Empty,
             existente?.NomeCompleto ?? cadsus.Nome, pacienteCriado, solicCriada, execCriada, passos, null);
     }
 
@@ -368,6 +402,23 @@ public sealed class ImportacaoSisregService(
 
     private static string SoDigitos(string? s) =>
         string.IsNullOrEmpty(s) ? string.Empty : new string([.. s.Where(char.IsDigit)]);
+
+    /// <summary>Categoria (natureza clínica) pelo SUBGRUPO SIGTAP (4 primeiros dígitos) — determinístico,
+    /// não adivinha procedimento. Ver ADR-0021. Só <see cref="CategoriaSolicitacao.Imagem"/> cria satélite.</summary>
+    private static CategoriaSolicitacao CategoriaPorSigtap(string? sigtap)
+    {
+        var d = SoDigitos(sigtap);
+        if (d.Length < 4) return CategoriaSolicitacao.Outro;
+        return d[..4] switch
+        {
+            "0301" or "0302" => CategoriaSolicitacao.Consulta,
+            "0204" or "0205" or "0206" => CategoriaSolicitacao.Imagem, // RX/mamo/densito · US · TC/RM
+            "0202" or "0203" => CategoriaSolicitacao.Laboratorio,      // lab clínico · patologia
+            "0211" => CategoriaSolicitacao.GraficoFuncional,          // ECG, EEG, audiometria, espirometria...
+            "0209" => CategoriaSolicitacao.Endoscopia,
+            _ => d[..2] == "04" ? CategoriaSolicitacao.Cirurgia : CategoriaSolicitacao.Outro,
+        };
+    }
 
     private static string Mascara(string? v) =>
         string.IsNullOrEmpty(v) ? string.Empty : v.Length <= 4 ? "***" : v[..3] + "***" + v[^2..];

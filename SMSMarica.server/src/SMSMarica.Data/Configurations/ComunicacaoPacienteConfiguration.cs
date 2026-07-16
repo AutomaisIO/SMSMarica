@@ -16,7 +16,7 @@ internal sealed class ComunicacaoPacienteConfiguration : IEntityTypeConfiguratio
         // Default 1 (ConfirmacaoAgendamento) backfilla as linhas anteriores ao rename.
         builder.Property(n => n.Finalidade).HasColumnName("finalidade").HasConversion<int>()
             .HasDefaultValue(Entities.Enums.FinalidadeComunicacao.ConfirmacaoAgendamento).IsRequired();
-        builder.Property(n => n.SolicitacaoExameId).HasColumnName("solicitacao_exame_id");
+        builder.Property(n => n.SolicitacaoId).HasColumnName("solicitacao_id");
         // PacienteId referencia fhir.patient (hub FHIR) — sem FK local.
         builder.Property(n => n.PacienteId).HasColumnName("paciente_id").IsRequired();
         builder.Property(n => n.Telefone).HasColumnName("telefone").HasMaxLength(20);
@@ -40,9 +40,9 @@ internal sealed class ComunicacaoPacienteConfiguration : IEntityTypeConfiguratio
             .ValueGeneratedOnAddOrUpdate()
             .IsConcurrencyToken();
 
-        builder.HasOne(n => n.SolicitacaoExame)
+        builder.HasOne(n => n.Solicitacao)
             .WithMany()
-            .HasForeignKey(n => n.SolicitacaoExameId)
+            .HasForeignKey(n => n.SolicitacaoId)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(n => n.LoginLink)
@@ -58,9 +58,9 @@ internal sealed class ComunicacaoPacienteConfiguration : IEntityTypeConfiguratio
         // Fila do worker.
         builder.HasIndex(n => new { n.Status, n.ProximaTentativaEm });
         // Uma comunicação por solicitação × finalidade.
-        builder.HasIndex(n => new { n.SolicitacaoExameId, n.Finalidade })
+        builder.HasIndex(n => new { n.SolicitacaoId, n.Finalidade })
             .IsUnique()
-            .HasFilter("solicitacao_exame_id IS NOT NULL");
+            .HasFilter("solicitacao_id IS NOT NULL");
         builder.HasIndex(n => n.MensagemWhatsAppId);
         builder.HasIndex(n => n.PacienteId);
     }

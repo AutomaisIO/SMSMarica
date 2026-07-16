@@ -4,83 +4,93 @@ using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.SolicitacoesExame;
 
+/// <summary>
+/// Mapeia um exame de imagem (<see cref="ExameImagem"/> + sua <see cref="Solicitacao"/> de regulação)
+/// para os DTOs. O <c>Id</c> exposto é o do satélite (id público preservado — ADR-0021); o status é
+/// o de EXECUÇÃO (worklist/PACS); os campos de regulação vêm de <c>s.Solicitacao</c>.
+/// </summary>
 internal static class SolicitacoesExameMapper
 {
-    public static SolicitacaoExameDto ParaDto(SolicitacaoExame s) => new(
-        s.Id,
-        s.AccessionNumber,
-        s.StudyInstanceUID,
-        s.WorklistItemUid,
-        s.PacienteId,
-        // Paciente vive no hub FHIR — consumidor resolve via GET /pacientes/{PacienteId}. TODO embutir.
-        string.Empty,
-        null,
-        null,
-        s.TipoExameId,
-        s.TipoExame?.Nome ?? string.Empty,
-        s.TipoExame?.ModalidadeDicom ?? ModalidadeDicom.OT,
-        s.UnidadeId,
-        s.Unidade?.Nome ?? string.Empty,
-        s.UnidadeSolicitanteId,
-        s.UnidadeSolicitante?.Nome,
-        s.SolicitanteNome,
-        s.CodigoSolicitacao,
-        s.ChaveConfirmacao,
-        s.Justificativa,
-        s.Status,
-        s.Prioridade,
-        s.Observacoes,
-        s.DataSolicitacao,
-        s.DataRegulacao,
-        s.DataAgendada,
-        s.IniciadoEm,
-        s.RealizadoEm,
-        s.ErroIntegracaoPacs,
-        s.CanceladoEm,
-        s.MotivoCancelamento,
-        s.StatusConfirmacao,
-        s.ConfirmadoEm,
-        s.ConfirmadoCanal,
-        s.ConfirmacaoCanceladaEm,
-        s.MotivoCancelamentoPaciente,
-        s.AutorizadoEm,
-        s.AutorizadoPor,
-        false, // PacienteContatoVerificado — calculado no enriquecimento (consulta contato_validado).
-        s.TentativasEnvio,
-        s.UltimaTentativaEm,
-        s.ProximaTentativaEm,
-        s.CriadoEm,
-        s.AtualizadoEm,
-        s.DataEstudo,
-        s.RawSisreg);
-
-    public static SolicitacaoExameListItemDto ParaListItem(SolicitacaoExame s, Guid? unidadeReferencia = null)
+    public static SolicitacaoExameDto ParaDto(ExameImagem s)
     {
+        var reg = s.Solicitacao!;
+        return new(
+            s.Id,
+            s.AccessionNumber,
+            s.StudyInstanceUID,
+            s.WorklistItemUid,
+            reg.PacienteId,
+            // Paciente vive no hub FHIR — consumidor resolve via GET /pacientes/{PacienteId}. TODO embutir.
+            string.Empty,
+            null,
+            null,
+            s.TipoExameId ?? Guid.Empty,
+            s.TipoExame?.Nome ?? string.Empty,
+            s.TipoExame?.ModalidadeDicom ?? ModalidadeDicom.OT,
+            reg.UnidadeExecutanteId,
+            reg.UnidadeExecutante?.Nome ?? string.Empty,
+            reg.UnidadeSolicitanteId,
+            reg.UnidadeSolicitante?.Nome,
+            reg.SolicitanteNome,
+            reg.CodigoSolicitacao,
+            reg.ChaveConfirmacao,
+            reg.Justificativa,
+            s.Status,
+            reg.Prioridade,
+            reg.Observacoes,
+            reg.DataSolicitacao,
+            reg.DataRegulacao,
+            reg.DataAgendada,
+            s.IniciadoEm,
+            s.RealizadoEm,
+            s.ErroIntegracaoPacs,
+            reg.CanceladoEm,
+            reg.MotivoCancelamento,
+            reg.StatusConfirmacao,
+            reg.ConfirmadoEm,
+            reg.ConfirmadoCanal,
+            reg.ConfirmacaoCanceladaEm,
+            reg.MotivoCancelamentoPaciente,
+            reg.AutorizadoEm,
+            reg.AutorizadoPor,
+            false, // PacienteContatoVerificado — calculado no enriquecimento (marcador FHIR).
+            s.TentativasEnvio,
+            s.UltimaTentativaEm,
+            s.ProximaTentativaEm,
+            s.CriadoEm,
+            s.AtualizadoEm,
+            s.DataEstudo,
+            reg.RawSisreg);
+    }
+
+    public static SolicitacaoExameListItemDto ParaListItem(ExameImagem s, Guid? unidadeReferencia = null)
+    {
+        var reg = s.Solicitacao!;
         // Direção relativa à unidade ativa: executora → Recebida; solicitante → Enviada.
         // Quando a mesma unidade é executora e solicitante, prevalece Recebida (é a que atua).
         DirecaoSolicitacao? direcao = unidadeReferencia is { } r
-            ? s.UnidadeId == r ? DirecaoSolicitacao.Recebida
-            : s.UnidadeSolicitanteId == r ? DirecaoSolicitacao.Enviada
+            ? reg.UnidadeExecutanteId == r ? DirecaoSolicitacao.Recebida
+            : reg.UnidadeSolicitanteId == r ? DirecaoSolicitacao.Enviada
             : null
             : null;
 
         return new(
             s.Id,
             s.AccessionNumber,
-            s.CodigoSolicitacao,
-            s.PacienteId,
+            reg.CodigoSolicitacao,
+            reg.PacienteId,
             string.Empty,
-            s.TipoExameId,
+            s.TipoExameId ?? Guid.Empty,
             s.TipoExame?.Nome ?? string.Empty,
             s.TipoExame?.ModalidadeDicom ?? ModalidadeDicom.OT,
-            s.Unidade?.Nome ?? string.Empty,
-            s.SolicitanteNome,
+            reg.UnidadeExecutante?.Nome ?? string.Empty,
+            reg.SolicitanteNome,
             s.Status,
-            s.StatusConfirmacao,
-            s.AutorizadoEm,
+            reg.StatusConfirmacao,
+            reg.AutorizadoEm,
             s.ErroIntegracaoPacs,
-            s.Prioridade,
-            s.DataAgendada,
+            reg.Prioridade,
+            reg.DataAgendada,
             s.CriadoEm,
             s.DataEstudo,
             s.StudyInstanceUID,

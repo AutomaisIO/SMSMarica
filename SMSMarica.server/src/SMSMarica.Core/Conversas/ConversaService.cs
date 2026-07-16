@@ -55,7 +55,7 @@ public sealed class ConversaService(
         var digitos = new string([.. termo.Where(char.IsDigit)]);
         if (digitos.Length >= 4)
         {
-            var solicitacoes = await db.SolicitacoesExame
+            var solicitacoes = await db.Solicitacoes
                 .Where(s => s.ExcluidoEm == null && s.CodigoSolicitacao == digitos)
                 .OrderByDescending(s => s.CriadoEm)
                 .Select(s => new { s.PacienteId, s.CodigoSolicitacao })

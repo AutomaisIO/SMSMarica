@@ -10,7 +10,7 @@ namespace SMSMarica.Core.Notificacoes;
 /// </summary>
 public interface INotificadorExame
 {
-    Task NotificarAgendadoAsync(SolicitacaoExame solicitacao, CancellationToken cancellationToken = default);
+    Task NotificarAgendadoAsync(ExameImagem solicitacao, CancellationToken cancellationToken = default);
 
-    Task NotificarRealizadoAsync(SolicitacaoExame solicitacao, CancellationToken cancellationToken = default);
+    Task NotificarRealizadoAsync(ExameImagem solicitacao, CancellationToken cancellationToken = default);
 }

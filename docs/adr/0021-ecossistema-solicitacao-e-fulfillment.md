@@ -120,6 +120,18 @@ O satélite `ExameImagem` nasce **só** para `Imagem`. Quem decide de fato se va
 `TipoExame` mapeado (`EnviarParaWorklist`); a categoria só roteia a criação do satélite e a UI.
 Subgrupo desconhecido/ambíguo cai em `Outro` (espinha simples) — nunca inventa satélite.
 
+## Identidade pública (id exposto pela API) — decisão do cutover
+
+**Para exames, o id público continua sendo o `ExameImagem.Id` (= o `solicitacao_exame.id` antigo,
+preservado na migração).** A espinha `Solicitacao.Id` (novo GUID) é interna. Racional: zero quebra
+de front, deep-links (`?exame={id}`), anexos, download tokens e associação — todos seguem com os
+mesmos ids; o sync exame↔laudo é por `StudyInstanceUID` (intocado). **Consultas** (sem satélite)
+expõem o próprio `Solicitacao.Id`. `DTO.Id = ExameImagem?.Id ?? Solicitacao.Id`.
+
+Consequência: dependentes ancoradas na espinha (comunicação/contato/declaração/loginlink) exigem
+uma tradução `id público (ExameImagem) → Solicitacao.Id` nos poucos pontos que as tocam. As
+ancoradas no satélite (anexo/associação/anamnese/documento) usam o id público direto.
+
 ## Migração segura (janela noturna pós-17h; downtime OK, dados inegociáveis)
 
 O split é uma **migração de dados** sobre tabela de produção. Downtime após as 17h é aceitável; a

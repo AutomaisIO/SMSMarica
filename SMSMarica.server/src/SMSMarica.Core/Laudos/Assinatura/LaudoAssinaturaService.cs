@@ -414,22 +414,22 @@ public sealed class LaudoAssinaturaService(
             .FirstOrDefaultAsync(ct);
         if (string.IsNullOrWhiteSpace(studyUid)) return;
 
-        var solicitacao = await db.SolicitacoesExame
+        var solicitacao = await db.ExamesImagem.Include(s => s.Solicitacao)
             .FirstOrDefaultAsync(s => s.StudyInstanceUID == studyUid && s.ExcluidoEm == null, ct);
         if (solicitacao is null)
         {
             var solicitacaoId = await db.ExameAssociacoes.AsNoTracking()
                 .Where(a => a.StudyInstanceUID == studyUid && a.ExcluidoEm == null)
-                .Select(a => (Guid?)a.SolicitacaoExameId)
+                .Select(a => (Guid?)a.ExameImagemId)
                 .FirstOrDefaultAsync(ct);
             if (solicitacaoId is { } sid)
-                solicitacao = await db.SolicitacoesExame
+                solicitacao = await db.ExamesImagem.Include(s => s.Solicitacao)
                     .FirstOrDefaultAsync(s => s.Id == sid && s.ExcluidoEm == null, ct);
         }
-        if (solicitacao is null) return;
+        if (solicitacao?.Solicitacao is null) return;
 
         await comunicacoes.Value.EnfileirarAsync(
-            solicitacao, FinalidadeComunicacao.LaudoPronto, ct);
+            solicitacao.Solicitacao, FinalidadeComunicacao.LaudoPronto, ct);
     }
 
     // ---------------- helpers ----------------

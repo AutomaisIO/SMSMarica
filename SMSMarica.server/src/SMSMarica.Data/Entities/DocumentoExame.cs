@@ -16,9 +16,9 @@ public class DocumentoExame
 {
     public Guid Id { get; set; }
 
-    /// <summary>Vínculo com o pedido de exame (FK smsmarica.solicitacao_exame).</summary>
-    public Guid SolicitacaoExameId { get; set; }
-    public SolicitacaoExame? SolicitacaoExame { get; set; }
+    /// <summary>Vínculo com o exame de imagem (FK smsmarica.exame_imagem).</summary>
+    public Guid ExameImagemId { get; set; }
+    public ExameImagem? ExameImagem { get; set; }
 
     /// <summary>Token de upload que originou o documento (auditoria/proveniência). Null se criado por outro fluxo.</summary>
     public Guid? AnexoUploadTokenId { get; set; }

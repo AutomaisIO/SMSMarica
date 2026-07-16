@@ -12,7 +12,7 @@ internal sealed class DocumentoExameConfiguration : IEntityTypeConfiguration<Doc
         builder.HasKey(d => d.Id);
 
         builder.Property(d => d.Id).HasColumnName("id");
-        builder.Property(d => d.SolicitacaoExameId).HasColumnName("solicitacao_exame_id").IsRequired();
+        builder.Property(d => d.ExameImagemId).HasColumnName("exame_imagem_id").IsRequired();
         builder.Property(d => d.AnexoUploadTokenId).HasColumnName("anexo_upload_token_id");
 
         builder.Property(d => d.Nome).HasColumnName("nome").HasMaxLength(200).IsRequired();
@@ -38,9 +38,9 @@ internal sealed class DocumentoExameConfiguration : IEntityTypeConfiguration<Doc
             .ValueGeneratedOnAddOrUpdate()
             .IsConcurrencyToken();
 
-        builder.HasOne(d => d.SolicitacaoExame)
+        builder.HasOne(d => d.ExameImagem)
             .WithMany()
-            .HasForeignKey(d => d.SolicitacaoExameId)
+            .HasForeignKey(d => d.ExameImagemId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(d => d.AnexoUploadToken)
@@ -48,8 +48,8 @@ internal sealed class DocumentoExameConfiguration : IEntityTypeConfiguration<Doc
             .HasForeignKey(d => d.AnexoUploadTokenId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        builder.HasIndex(d => d.SolicitacaoExameId)
-            .HasDatabaseName("ix_documento_exame_solicitacao_exame_id");
+        builder.HasIndex(d => d.ExameImagemId)
+            .HasDatabaseName("ix_documento_exame_exame_imagem_id");
 
         builder.HasIndex(d => d.HashSha256);
     }
