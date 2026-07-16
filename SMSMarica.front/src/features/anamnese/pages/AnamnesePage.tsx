@@ -88,6 +88,18 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
           sintomas: { ...base.queixas.sintomas, ...carregado.queixas?.sintomas },
         },
         avaliacaoRisco: { ...base.avaliacaoRisco, ...carregado.avaliacaoRisco },
+        saudeReprodutiva: {
+          ...base.saudeReprodutiva,
+          ...carregado.saudeReprodutiva,
+          usoAnticoncepcional: {
+            ...base.saudeReprodutiva.usoAnticoncepcional,
+            ...carregado.saudeReprodutiva?.usoAnticoncepcional,
+          },
+          aindaMenstrua: {
+            ...base.saudeReprodutiva.aindaMenstrua,
+            ...carregado.saudeReprodutiva?.aindaMenstrua,
+          },
+        },
       };
       setConteudo(merged);
       setBaseline(JSON.stringify(merged));
@@ -550,10 +562,177 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
             </div>
           </fieldset>
         </section>
+
+        {/* 6. Saúde reprodutiva */}
+        <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+          <TituloSecao numero={6} titulo="SAÚDE REPRODUTIVA" cor="bg-fuchsia-600" />
+          <fieldset disabled={somenteLeitura}>
+            {/* Faz uso de anticoncepcional? */}
+            <div className="mt-3 border-b border-gray-100 pb-2">
+              <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-3">
+                <span className="text-sm text-gray-800">Faz uso de anticoncepcional?</span>
+                <label className="flex w-8 justify-center">
+                  <input
+                    type="checkbox"
+                    checked={conteudo.saudeReprodutiva.usoAnticoncepcional.resposta === true}
+                    onChange={() =>
+                      setConteudo((c) => ({
+                        ...c,
+                        saudeReprodutiva: {
+                          ...c.saudeReprodutiva,
+                          usoAnticoncepcional: {
+                            ...c.saudeReprodutiva.usoAnticoncepcional,
+                            resposta:
+                              c.saudeReprodutiva.usoAnticoncepcional.resposta === true ? null : true,
+                          },
+                        },
+                      }))
+                    }
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                </label>
+                <label className="flex w-8 justify-center">
+                  <input
+                    type="checkbox"
+                    checked={conteudo.saudeReprodutiva.usoAnticoncepcional.resposta === false}
+                    onChange={() =>
+                      setConteudo((c) => ({
+                        ...c,
+                        saudeReprodutiva: {
+                          ...c.saudeReprodutiva,
+                          usoAnticoncepcional: {
+                            ...c.saudeReprodutiva.usoAnticoncepcional,
+                            resposta:
+                              c.saudeReprodutiva.usoAnticoncepcional.resposta === false ? null : false,
+                          },
+                        },
+                      }))
+                    }
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                </label>
+              </div>
+              <div className="mt-1 grid grid-cols-[1fr_auto_auto] gap-x-3 text-[10px] font-semibold uppercase text-gray-400">
+                <span />
+                <span className="w-8 text-center">Sim</span>
+                <span className="w-8 text-center">Não</span>
+              </div>
+              {conteudo.saudeReprodutiva.usoAnticoncepcional.resposta === true ? (
+                <input
+                  type="text"
+                  placeholder="Qual?"
+                  value={conteudo.saudeReprodutiva.usoAnticoncepcional.observacao}
+                  onChange={(e) =>
+                    setConteudo((c) => ({
+                      ...c,
+                      saudeReprodutiva: {
+                        ...c.saudeReprodutiva,
+                        usoAnticoncepcional: {
+                          ...c.saudeReprodutiva.usoAnticoncepcional,
+                          observacao: e.target.value,
+                        },
+                      },
+                    }))
+                  }
+                  className="mt-1 w-full rounded-md border border-gray-200 px-2 py-1 text-xs"
+                />
+              ) : null}
+            </div>
+
+            {/* Ainda menstrua? */}
+            <div className="mt-3 border-b border-gray-100 pb-2">
+              <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-3">
+                <span className="text-sm text-gray-800">Ainda menstrua?</span>
+                <label className="flex w-8 justify-center">
+                  <input
+                    type="checkbox"
+                    checked={conteudo.saudeReprodutiva.aindaMenstrua.resposta === true}
+                    onChange={() =>
+                      setConteudo((c) => ({
+                        ...c,
+                        saudeReprodutiva: {
+                          ...c.saudeReprodutiva,
+                          aindaMenstrua: {
+                            ...c.saudeReprodutiva.aindaMenstrua,
+                            resposta: c.saudeReprodutiva.aindaMenstrua.resposta === true ? null : true,
+                          },
+                        },
+                      }))
+                    }
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                </label>
+                <label className="flex w-8 justify-center">
+                  <input
+                    type="checkbox"
+                    checked={conteudo.saudeReprodutiva.aindaMenstrua.resposta === false}
+                    onChange={() =>
+                      setConteudo((c) => ({
+                        ...c,
+                        saudeReprodutiva: {
+                          ...c.saudeReprodutiva,
+                          aindaMenstrua: {
+                            ...c.saudeReprodutiva.aindaMenstrua,
+                            resposta:
+                              c.saudeReprodutiva.aindaMenstrua.resposta === false ? null : false,
+                          },
+                        },
+                      }))
+                    }
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                </label>
+              </div>
+              {conteudo.saudeReprodutiva.aindaMenstrua.resposta === true ? (
+                <label className="mt-1 block text-xs text-gray-600">
+                  Data da última menstruação:
+                  <input
+                    type="date"
+                    value={conteudo.saudeReprodutiva.aindaMenstrua.dataUltimaMenstruacao}
+                    onChange={(e) =>
+                      setConteudo((c) => ({
+                        ...c,
+                        saudeReprodutiva: {
+                          ...c.saudeReprodutiva,
+                          aindaMenstrua: {
+                            ...c.saudeReprodutiva.aindaMenstrua,
+                            dataUltimaMenstruacao: e.target.value,
+                          },
+                        },
+                      }))
+                    }
+                    className="mt-0.5 w-full rounded-md border border-gray-200 px-2 py-1 text-xs"
+                  />
+                </label>
+              ) : null}
+            </div>
+
+            {/* Número de filhos */}
+            <label className="mt-3 block text-sm text-gray-800">
+              Número de filhos:
+              <input
+                type="number"
+                min={0}
+                inputMode="numeric"
+                value={conteudo.saudeReprodutiva.numeroFilhos ?? ''}
+                onChange={(e) =>
+                  setConteudo((c) => ({
+                    ...c,
+                    saudeReprodutiva: {
+                      ...c.saudeReprodutiva,
+                      numeroFilhos: e.target.value === '' ? null : Math.max(0, Number(e.target.value)),
+                    },
+                  }))
+                }
+                className="mt-0.5 w-28 rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+              />
+            </label>
+          </fieldset>
+        </section>
       </div>
       )}
 
-      {/* 6. Documentos / exames anexados (ponte QR → PWA) */}
+      {/* 7. Documentos / exames anexados (ponte QR → PWA) */}
       <AnexosExameSecao solicitacaoExameId={ctx.solicitacaoExameId} podeEditar={podeEditar} />
 
       {/* Rodapé */}

@@ -12,6 +12,16 @@ export type RespostaSimNao = {
   observacao: string;
 };
 
+/** Saúde reprodutiva (seção 6) — anticoncepcional, menstruação e nº de filhos. */
+export type SaudeReprodutiva = {
+  /** Faz uso de anticoncepcional? Se sim, `observacao` = qual. */
+  usoAnticoncepcional: RespostaSimNao;
+  /** Ainda menstrua? Se sim, `dataUltimaMenstruacao` (yyyy-mm-dd) = data da última menstruação. */
+  aindaMenstrua: { resposta: boolean | null; dataUltimaMenstruacao: string };
+  /** Número de filhos. */
+  numeroFilhos: number | null;
+};
+
 /** Lado da mama no diagrama. */
 export type LadoMama = 'direita' | 'esquerda';
 
@@ -103,6 +113,7 @@ export type AnamneseMamografiaConteudo = {
   avaliacaoRisco: Record<CriterioRisco, boolean | null> & {
     classificacao: ClassificacaoRisco | null;
   };
+  saudeReprodutiva: SaudeReprodutiva;
 };
 
 export function conteudoVazio(): AnamneseMamografiaConteudo {
@@ -150,6 +161,11 @@ export function conteudoVazio(): AnamneseMamografiaConteudo {
       historicoPessoalCancer: null,
       mutacaoGeneticaConhecida: null,
       classificacao: null,
+    },
+    saudeReprodutiva: {
+      usoAnticoncepcional: simNao(),
+      aindaMenstrua: { resposta: null, dataUltimaMenstruacao: '' },
+      numeroFilhos: null,
     },
   };
 }

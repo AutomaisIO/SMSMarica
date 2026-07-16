@@ -58,7 +58,8 @@ function TextoLeitura({ label, valor }: { label: string; valor: string }) {
  * texto apenas com o conteúdo, dentro de uma div de linha fina.
  */
 export function AnamneseLeitura({ conteudo }: { conteudo: AnamneseMamografiaConteudo }) {
-  const { avaliacaoClinica, historicoClinico, queixas, avaliacaoRisco } = conteudo;
+  const { avaliacaoClinica, historicoClinico, queixas, avaliacaoRisco, saudeReprodutiva } = conteudo;
+  const dataMenstruacao = saudeReprodutiva?.aindaMenstrua?.dataUltimaMenstruacao?.trim();
 
   const achados: string[] = [];
   if (avaliacaoClinica.semAlteracoes) achados.push('Sem alterações');
@@ -195,6 +196,47 @@ export function AnamneseLeitura({ conteudo }: { conteudo: AnamneseMamografiaCont
               </span>
             ) : (
               <span className="text-xs italic text-gray-400">não informada</span>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* 6. Saúde reprodutiva */}
+      <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <TituloSecao numero={6} titulo="SAÚDE REPRODUTIVA" cor="bg-fuchsia-600" />
+        <div className="mt-3 space-y-2">
+          <div className="border-b border-gray-100 pb-2">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm text-gray-800">Faz uso de anticoncepcional?</span>
+              <MarcaSimNao valor={saudeReprodutiva?.usoAnticoncepcional?.resposta ?? null} />
+            </div>
+            {saudeReprodutiva?.usoAnticoncepcional?.resposta === true &&
+            saudeReprodutiva.usoAnticoncepcional.observacao.trim() ? (
+              <div className="mt-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-700">
+                Qual: {saudeReprodutiva.usoAnticoncepcional.observacao.trim()}
+              </div>
+            ) : null}
+          </div>
+          <div className="border-b border-gray-100 pb-2">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm text-gray-800">Ainda menstrua?</span>
+              <MarcaSimNao valor={saudeReprodutiva?.aindaMenstrua?.resposta ?? null} />
+            </div>
+            {saudeReprodutiva?.aindaMenstrua?.resposta === true && dataMenstruacao ? (
+              <div className="mt-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-700">
+                Última menstruação:{' '}
+                {new Date(dataMenstruacao).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+              </div>
+            ) : null}
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm text-gray-800">Número de filhos</span>
+            {saudeReprodutiva?.numeroFilhos != null ? (
+              <span className="rounded-full bg-fuchsia-100 px-2.5 py-0.5 text-xs font-semibold text-fuchsia-700">
+                {saudeReprodutiva.numeroFilhos}
+              </span>
+            ) : (
+              <span className="text-xs italic text-gray-400">não informado</span>
             )}
           </div>
         </div>
