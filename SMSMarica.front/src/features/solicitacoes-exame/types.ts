@@ -78,6 +78,8 @@ export type SolicitacaoExame = {
   /** Autorização presencial (recepção entrou com a chave). */
   autorizadoEm: string | null;
   autorizadoPor: string | null;
+  /** Nome de quem autorizou (resolvido no detalhe). */
+  autorizadoPorNome: string | null;
   /** Paciente tem número verificado? (gate do campo de chave). */
   pacienteContatoVerificado: boolean;
 

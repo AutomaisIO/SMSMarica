@@ -58,6 +58,8 @@ public sealed record SolicitacaoExameDto(
     // Autorização presencial (recepção entrou com a chave). Habilita o envio ao PACS.
     DateTime? AutorizadoEm,
     Guid? AutorizadoPor,
+    // Nome de quem autorizou presencialmente (resolvido no detalhe; null na listagem). Ticket #30.
+    string? AutorizadoPorNome,
     // Paciente tem número verificado? (gate do campo de chave na recepção).
     bool PacienteContatoVerificado,
 

@@ -1,4 +1,5 @@
 using Hl7.Fhir.Model;
+using SMSMarica.Core.Common.Dtos;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Pacientes.Dtos;
 using SMSMarica.Core.Pacientes.Fhir;
@@ -144,6 +145,10 @@ public sealed class PacientesService(
 
     public async Task AtualizarAsync(Guid id, AtualizarPacienteRequest request, CancellationToken cancellationToken = default)
     {
+        // Snapshot ANTES para a trilha de auditoria (ticket #30: auditar telefone e demais campos,
+        // não só o nome). Ler o DTO atual custa 1 leitura no hub — aceitável numa edição.
+        var antes = await ObterPorIdAsync(id, cancellationToken);
+
         // Geocodifica uma vez (fora do retry); a coordenada é aplicada em cada tentativa.
         var coord = await GeocodificarAsync(request.Endereco, cancellationToken);
         await AtualizarComRetryAsync(id, patient =>
@@ -152,6 +157,77 @@ public sealed class PacientesService(
             if (coord is not null) PatientMergeFhir.SetGeolocation(patient, coord.Latitude, coord.Longitude);
             return true;
         }, cancellationToken);
+
+        var depois = await ObterPorIdAsync(id, cancellationToken);
+        await RegistrarAlteracoesAsync(id, antes, depois, cancellationToken);
+    }
+
+    /// <summary>
+    /// Compara o paciente antes/depois da edição e grava uma entrada de auditoria por CAMPO
+    /// alterado (ticket #30). Nome/CPF/nascimento são imutáveis aqui (nome tem trilha própria em
+    /// <see cref="AtualizarNomeAsync"/>). null e vazio contam como iguais (não gera ruído).
+    /// </summary>
+    private async Task RegistrarAlteracoesAsync(
+        Guid id, PacienteDto antes, PacienteDto depois, CancellationToken ct)
+    {
+        static string N(string? v) => string.IsNullOrWhiteSpace(v) ? "" : v.Trim();
+        static string Lista(IReadOnlyList<string>? l) => l is { Count: > 0 } ? string.Join(", ", l) : "";
+        static string End(EnderecoDto? e) => e is null ? "" :
+            $"{N(e.Logradouro)}{(string.IsNullOrWhiteSpace(e.Numero) ? "" : ", " + e.Numero)}"
+            + $"{(string.IsNullOrWhiteSpace(e.Complemento) ? "" : " - " + e.Complemento)}, {N(e.Bairro)}, "
+            + $"{N(e.Cidade)}/{N(e.Uf)}{(string.IsNullOrWhiteSpace(e.Cep) ? "" : " CEP " + e.Cep)}";
+        static string Ctt(ContatoEmergenciaDto? c) => c is null ? "" :
+            $"{N(c.Nome)}{(string.IsNullOrWhiteSpace(c.Parentesco) ? "" : " (" + c.Parentesco + ")")} {N(c.Telefone)}".Trim();
+
+        // (rótulo, valor-antes, valor-depois)
+        var campos = new List<(string Rotulo, string Antes, string Depois)>
+        {
+            ("CNS", N(antes.Cns), N(depois.Cns)),
+            ("RG", N(antes.Rg), N(depois.Rg)),
+            ("Sexo", antes.Sexo.ToString(), depois.Sexo.ToString()),
+            ("Estado civil", antes.EstadoCivil.ToString(), depois.EstadoCivil.ToString()),
+            ("Raça/cor", antes.RacaCor.ToString(), depois.RacaCor.ToString()),
+            ("Escolaridade", antes.Escolaridade.ToString(), depois.Escolaridade.ToString()),
+            ("Ocupação", N(antes.Ocupacao), N(depois.Ocupacao)),
+            ("Naturalidade", N(antes.Naturalidade), N(depois.Naturalidade)),
+            ("Nacionalidade", N(antes.Nacionalidade), N(depois.Nacionalidade)),
+            ("Nome da mãe", N(antes.NomeDaMae), N(depois.NomeDaMae)),
+            ("Nome do pai", N(antes.NomeDoPai), N(depois.NomeDoPai)),
+            ("Responsável legal", N(antes.ResponsavelLegal), N(depois.ResponsavelLegal)),
+            ("Endereço", End(antes.Endereco), End(depois.Endereco)),
+            ("Telefone principal", N(antes.TelefonePrincipal), N(depois.TelefonePrincipal)),
+            ("Telefone celular", N(antes.TelefoneCelular), N(depois.TelefoneCelular)),
+            ("Telefone residencial", N(antes.TelefoneResidencial), N(depois.TelefoneResidencial)),
+            ("E-mail", N(antes.Email), N(depois.Email)),
+            ("Contato de emergência", Ctt(antes.ContatoEmergencia), Ctt(depois.ContatoEmergencia)),
+            ("Altura (cm)", antes.AlturaCm?.ToString() ?? "", depois.AlturaCm?.ToString() ?? ""),
+            ("Peso (kg)", antes.PesoKg?.ToString() ?? "", depois.PesoKg?.ToString() ?? ""),
+            ("Tipo sanguíneo", antes.TipoSanguineo.ToString(), depois.TipoSanguineo.ToString()),
+            ("Fator Rh", antes.FatorRh.ToString(), depois.FatorRh.ToString()),
+            ("Alergias", Lista(antes.Alergias), Lista(depois.Alergias)),
+            ("Medicamentos contínuos", Lista(antes.MedicamentosContinuos), Lista(depois.MedicamentosContinuos)),
+            ("Comorbidades", Lista(antes.Comorbidades), Lista(depois.Comorbidades)),
+            ("Deficiências", Lista(antes.Deficiencias), Lista(depois.Deficiencias)),
+            ("Plano de saúde", N(antes.PlanoSaude), N(depois.PlanoSaude)),
+            ("Observações", N(antes.Observacoes), N(depois.Observacoes)),
+            ("Nome social", N(antes.NomeSocial), N(depois.NomeSocial)),
+        };
+
+        foreach (var (rotulo, va, vd) in campos)
+        {
+            if (string.Equals(va, vd, StringComparison.Ordinal)) continue;
+            await auditoria.RegistrarAsync(
+                "Paciente", id.ToString(), $"Alteração de {rotulo}", va, vd, ct);
+        }
+
+        // Foto: não guardar o base64 (enorme) — só registrar que mudou.
+        var fotoAntes = !string.IsNullOrWhiteSpace(antes.FotoBase64);
+        var fotoDepois = !string.IsNullOrWhiteSpace(depois.FotoBase64);
+        if (fotoAntes != fotoDepois || (fotoDepois && antes.FotoBase64 != depois.FotoBase64))
+            await auditoria.RegistrarAsync(
+                "Paciente", id.ToString(), "Alteração de foto",
+                fotoAntes ? "(com foto)" : "(sem foto)",
+                fotoDepois ? "(com foto)" : "(sem foto)", ct);
     }
 
     public async Task AtualizarNomeAsync(Guid id, AtualizarNomePacienteRequest request, CancellationToken cancellationToken = default)

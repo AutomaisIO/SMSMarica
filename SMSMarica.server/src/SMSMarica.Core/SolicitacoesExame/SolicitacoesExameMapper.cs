@@ -53,6 +53,7 @@ internal static class SolicitacoesExameMapper
             reg.MotivoCancelamentoPaciente,
             reg.AutorizadoEm,
             reg.AutorizadoPor,
+            null, // AutorizadoPorNome — resolvido no enriquecimento do detalhe (ticket #30).
             false, // PacienteContatoVerificado — calculado no enriquecimento (marcador FHIR).
             s.TentativasEnvio,
             s.UltimaTentativaEm,

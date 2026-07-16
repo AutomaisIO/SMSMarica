@@ -60,9 +60,20 @@ public sealed class SolicitacoesExameService(
         var r = await _pacienteResolver.ResolverAsync(dto.PacienteId, ct);
         // Verificado = marcador no telecom do Patient FHIR (fonte única; sem tabela local).
         var comVerificado = dto with { PacienteContatoVerificado = r?.TelefoneVerificado is not null };
-        return r is null
+        var enriquecido = r is null
             ? comVerificado
             : comVerificado with { PacienteNome = r.Nome, PacienteCpf = r.Cpf, PacienteCns = r.Cns };
+
+        // Ticket #30: rastro de QUEM confirmou a chave de acesso (autorização presencial).
+        if (dto.AutorizadoPor is { } autorId)
+        {
+            var nome = await _db.Usuarios.AsNoTracking()
+                .Where(u => u.Id == autorId)
+                .Select(u => u.NomeCompleto)
+                .FirstOrDefaultAsync(ct);
+            if (nome is not null) enriquecido = enriquecido with { AutorizadoPorNome = nome };
+        }
+        return enriquecido;
     }
 
     // Marca, em cada linha, o laudo "atual" (maior versão finalizada) do exame e se
