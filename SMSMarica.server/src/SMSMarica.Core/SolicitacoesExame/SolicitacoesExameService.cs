@@ -76,6 +76,64 @@ public sealed class SolicitacoesExameService(
         return enriquecido;
     }
 
+    /// <summary>Existe um laudo (última versão finalizada) ASSINADO para o estudo deste exame?
+    /// Study = o do próprio exame + os das associações ativas (precedência da associação).</summary>
+    private async Task<bool> ExameTemLaudoAssinadoAsync(Guid exameId, CancellationToken ct)
+    {
+        var studyProprio = await _db.ExamesImagem.AsNoTracking()
+            .Where(e => e.Id == exameId).Select(e => e.StudyInstanceUID).FirstOrDefaultAsync(ct);
+        var studyAssoc = await _db.ExameAssociacoes.AsNoTracking()
+            .Where(a => a.ExameImagemId == exameId && a.ExcluidoEm == null)
+            .Select(a => a.StudyInstanceUID).ToListAsync(ct);
+        var studies = studyAssoc.Append(studyProprio ?? string.Empty)
+            .Where(u => !string.IsNullOrWhiteSpace(u)).Distinct().ToArray();
+        if (studies.Length == 0) return false;
+
+        var laudos = await _db.Laudos.AsNoTracking()
+            .Where(l => !l.Excluido && l.Status == StatusLaudo.Finalizado && studies.Contains(l.StudyInstanceUID))
+            .Select(l => new { l.Id, l.StudyInstanceUID, l.Versao })
+            .ToListAsync(ct);
+        if (laudos.Count == 0) return false;
+
+        var atuais = laudos
+            .GroupBy(l => l.StudyInstanceUID)
+            .Select(g => g.OrderByDescending(x => x.Versao).First().Id)
+            .ToArray();
+        var assinados = await _assinaturas.Value.QuaisAssinadosAsync(atuais, ct);
+        return assinados.Count > 0;
+    }
+
+    public async Task EnviarComunicacaoManualAsync(
+        Guid solicitacaoExameId, FinalidadeComunicacao finalidade, bool assumirRisco,
+        CancellationToken cancellationToken = default)
+    {
+        var exame = await _db.ExamesImagem.AsNoTracking()
+            .Where(e => e.Id == solicitacaoExameId && e.ExcluidoEm == null)
+            .Select(e => new { e.Status })
+            .FirstOrDefaultAsync(cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(ExameImagem), solicitacaoExameId);
+
+        switch (finalidade)
+        {
+            case FinalidadeComunicacao.ExameLiberado
+                when exame.Status is not (StatusSolicitacaoExame.Realizada or StatusSolicitacaoExame.Laudada):
+                throw new ConflitoException(
+                    "envio.exame_nao_realizado", "O exame ainda não foi realizado — não há imagem para enviar.");
+            case FinalidadeComunicacao.LaudoPronto
+                when !await ExameTemLaudoAssinadoAsync(solicitacaoExameId, cancellationToken):
+                throw new ConflitoException(
+                    "envio.laudo_nao_assinado", "O laudo ainda não está assinado — não há laudo pronto para enviar.");
+            case FinalidadeComunicacao.ExameLiberado:
+            case FinalidadeComunicacao.LaudoPronto:
+                break;
+            default:
+                throw new ValidacaoException(
+                    "envio.finalidade_invalida", "Envio manual só vale para exame liberado ou laudo pronto.");
+        }
+
+        await _comunicacoes.Value.EnviarManualAsync(solicitacaoExameId, finalidade, assumirRisco, cancellationToken);
+    }
+
     // Marca, em cada linha, o laudo "atual" (maior versão finalizada) do exame e se
     // ele já está ASSINADO digitalmente — o front habilita o botão "ver laudo" só nesse caso.
     // O study do exame pode ser o pré-gerado da solicitação (worklist consumada) OU o gerado

@@ -77,6 +77,21 @@ export async function reenviarComunicacao(id: string, comunicacaoId: string): Pr
   await http.post(`/solicitacoes-exame/${id}/comunicacoes/${comunicacaoId}/reenviar`);
 }
 
+/** Finalidades de envio manual disponíveis ao operador. */
+export type FinalidadeEnvioManual = 'ExameLiberado' | 'LaudoPronto';
+
+/**
+ * Envio MANUAL do resultado ao paciente (botão "Enviar exame"/"Enviar laudo"): cria/reconstrói
+ * a comunicação e dispara na hora. `assumirRisco` envia mesmo sem telefone verificado.
+ */
+export async function enviarComunicacaoManual(
+  id: string,
+  finalidade: FinalidadeEnvioManual,
+  assumirRisco: boolean,
+): Promise<void> {
+  await http.post(`/solicitacoes-exame/${id}/enviar-comunicacao`, { finalidade, assumirRisco });
+}
+
 /** Registra um contato MANUAL com o paciente ("liguei, não atendeu"...). */
 export async function registrarContato(
   id: string,

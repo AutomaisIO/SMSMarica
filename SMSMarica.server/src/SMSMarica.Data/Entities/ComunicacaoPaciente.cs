@@ -39,6 +39,18 @@ public class ComunicacaoPaciente
     /// <summary>Motivo legível da falha (erro Meta code/título) ou "sem celular válido".</summary>
     public string? MotivoFalha { get; set; }
 
+    /// <summary>Automático (gatilho) ou Manual (operador clicou Enviar/Reenviar). Default Automático.</summary>
+    public OrigemComunicacao Origem { get; set; } = OrigemComunicacao.Automatico;
+
+    /// <summary>Usuário que disparou manualmente (null quando automático).</summary>
+    public Guid? EnviadoPor { get; set; }
+
+    /// <summary>
+    /// Envio manual com "assumo o risco": ignora o gate de telefone verificado (dado clínico só
+    /// vai para número verificado por padrão). Persistido para as retentativas honrarem a decisão.
+    /// </summary>
+    public bool IgnorarVerificacaoTelefone { get; set; }
+
     /// <summary>Magic link ativo desta comunicação (renovado a cada reenvio).</summary>
     public Guid? LoginLinkId { get; set; }
     public CidadaoLoginLink? LoginLink { get; set; }

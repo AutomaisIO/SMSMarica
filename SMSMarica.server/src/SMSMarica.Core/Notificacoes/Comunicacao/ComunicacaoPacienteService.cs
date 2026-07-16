@@ -36,6 +36,16 @@ public interface IComunicacaoPacienteService
     /// Envia imediatamente, sem esperar o worker.
     /// </summary>
     Task ReenviarAsync(Guid solicitacaoExameId, Guid comunicacaoId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Envio MANUAL (operador clicou "Enviar exame/laudo"): cria a comunicação se ainda não existe
+    /// (ou reconstrói a existente) para a finalidade, marca origem=Manual + quem enviou, e dispara
+    /// na hora. <paramref name="assumirRisco"/> ignora o gate de telefone verificado (o operador
+    /// assume o risco de mandar o resultado para um número não verificado). A validação de prontidão
+    /// (exame realizado / laudo assinado) é feita pelo chamador.
+    /// </summary>
+    Task EnviarManualAsync(
+        Guid solicitacaoExameId, FinalidadeComunicacao finalidade, bool assumirRisco, CancellationToken ct = default);
 }
 
 public sealed class ComunicacaoPacienteService(
@@ -213,6 +223,95 @@ public sealed class ComunicacaoPacienteService(
         await ProcessarTentativaEnvioAsync(n.Id, ct);
     }
 
+    public async Task EnviarManualAsync(
+        Guid solicitacaoExameId, FinalidadeComunicacao finalidade, bool assumirRisco, CancellationToken ct = default)
+    {
+        if (finalidade is not (FinalidadeComunicacao.ExameLiberado or FinalidadeComunicacao.LaudoPronto))
+            throw new Common.Excecoes.ValidacaoException(
+                "comunicacao.finalidade_invalida", "Envio manual só vale para exame liberado ou laudo pronto.");
+
+        // Id público de um exame = ExameImagem.Id; traduz para o id da espinha (Solicitacao).
+        var solicitacaoId = await db.ExamesImagem.AsNoTracking()
+            .Where(e => e.Id == solicitacaoExameId).Select(e => (Guid?)e.SolicitacaoId).FirstOrDefaultAsync(ct)
+            ?? solicitacaoExameId;
+
+        var s = await db.Solicitacoes
+            .FirstOrDefaultAsync(x => x.Id == solicitacaoId, ct)
+            ?? throw new Common.Excecoes.NaoEncontradoException(nameof(Solicitacao), solicitacaoId);
+        if (s.ExcluidoEm is not null || s.Status == StatusSolicitacao.Cancelada)
+            throw new Common.Excecoes.ConflitoException(
+                "envio.solicitacao_invalida", "A solicitação foi excluída ou cancelada — nada a enviar.");
+
+        var agora = DateTime.UtcNow;
+
+        // Revoga links de acesso ainda ativos da solicitação (e derruba sessões de quem já usou um
+        // link — proteção contra número errado); o envio reconstrói com o contato ATUAL.
+        var linksAtivos = await db.CidadaoLoginLinks
+            .Where(l => l.SolicitacaoId == solicitacaoId && l.ExpiraEm > agora)
+            .ToListAsync(ct);
+        foreach (var l in linksAtivos) l.ExpiraEm = agora;
+        var pacientesComLinkUsado = await db.CidadaoLoginLinks.AsNoTracking()
+            .Where(l => l.SolicitacaoId == solicitacaoId && l.UsadoEm != null)
+            .Select(l => l.PatientId).Distinct().ToListAsync(ct);
+        if (pacientesComLinkUsado.Count > 0)
+            await db.CidadaoSessoes
+                .Where(x => x.RevogadaEm == null && pacientesComLinkUsado.Contains(x.CidadaoAcesso.PatientId))
+                .ExecuteUpdateAsync(u => u.SetProperty(x => x.RevogadaEm, agora), ct);
+
+        // Upsert da comunicação (solicitação × finalidade é único): cria se não existe, senão reusa.
+        var n = await db.ComunicacoesPaciente
+            .FirstOrDefaultAsync(c => c.SolicitacaoId == solicitacaoId && c.Finalidade == finalidade, ct);
+        if (n is null)
+        {
+            n = new ComunicacaoPaciente
+            {
+                Id = Guid.CreateVersion7(),
+                Tipo = s.Categoria == CategoriaSolicitacao.Consulta ? TipoAgendamento.Consulta : TipoAgendamento.Exame,
+                Finalidade = finalidade,
+                SolicitacaoId = solicitacaoId,
+                PacienteId = s.PacienteId,
+                CriadoEm = agora,
+            };
+            db.ComunicacoesPaciente.Add(n);
+        }
+
+        // Reconstrói o estado de envio (o processamento re-resolve o telefone e gera link novo).
+        n.Status = StatusComunicacao.Pendente;
+        n.MotivoFalha = null;
+        n.Telefone = null;
+        n.LoginLinkId = null;
+        n.MensagemWhatsAppId = null;
+        n.Tentativas = 0;
+        n.EnviadoEm = null;
+        n.EntregueEm = null;
+        n.LidoEm = null;
+        n.VisualizadoEm = null;
+        n.ProximaTentativaEm = agora;
+        n.AtualizadoEm = agora;
+        n.Origem = OrigemComunicacao.Manual;
+        n.EnviadoPor = usuarioAtual.UsuarioId;
+        n.IgnorarVerificacaoTelefone = assumirRisco;
+
+        db.ContatosRegistro.Add(new ContatoRegistro
+        {
+            Id = Guid.CreateVersion7(),
+            SolicitacaoId = solicitacaoId,
+            PacienteId = s.PacienteId,
+            Meio = MeioContato.WhatsApp,
+            Resultado = ResultadoContato.Outro,
+            Observacao = $"Envio manual — {RotuloFinalidade(finalidade)}."
+                + (assumirRisco ? " Telefone NÃO verificado: risco assumido pelo operador." : "")
+                + (linksAtivos.Count > 0 ? $" {linksAtivos.Count} link(s) anterior(es) revogado(s)." : ""),
+            CriadoEm = agora,
+            CriadoPor = usuarioAtual.UsuarioId,
+        });
+
+        await db.SaveChangesAsync(ct);
+
+        // Envia JÁ (mesmo caminho do worker; falha vira backoff/estado terminal, visível no histórico).
+        await ProcessarTentativaEnvioAsync(n.Id, ct);
+    }
+
     private static string RotuloFinalidade(FinalidadeComunicacao f) => f switch
     {
         FinalidadeComunicacao.ConfirmacaoAgendamento => "confirmação de agendamento",
@@ -233,7 +332,10 @@ public sealed class ComunicacaoPacienteService(
         var exigeVerificado = n.Finalidade is FinalidadeComunicacao.ExameLiberado
             or FinalidadeComunicacao.LaudoPronto;
 
-        if (exigeVerificado && !TelefoneWhatsApp.EhCelularBr(paciente.TelefoneVerificado))
+        // Envio manual com "assumo o risco" (n.IgnorarVerificacaoTelefone): o operador decidiu
+        // enviar o resultado mesmo sem número verificado — pula o gate e usa o melhor celular.
+        if (exigeVerificado && !n.IgnorarVerificacaoTelefone
+            && !TelefoneWhatsApp.EhCelularBr(paciente.TelefoneVerificado))
         {
             // NÃO é terminal: fica retida e sai sozinha quando a recepção verificar o contato.
             n.Status = StatusComunicacao.AguardandoTelefoneVerificado;

@@ -1,9 +1,20 @@
 using SMSMarica.Core.SolicitacoesExame.Dtos;
+using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.SolicitacoesExame;
 
 public interface ISolicitacoesExameService
 {
+    /// <summary>
+    /// Envio MANUAL do resultado ao paciente (botão "Enviar exame" / "Enviar laudo" no detalhe).
+    /// Valida a prontidão (exame Realizado/Laudado para <c>ExameLiberado</c>; laudo assinado para
+    /// <c>LaudoPronto</c>) e dispara a comunicação na hora, registrando origem=Manual + quem enviou.
+    /// <paramref name="assumirRisco"/> permite enviar mesmo sem telefone verificado.
+    /// </summary>
+    Task EnviarComunicacaoManualAsync(
+        Guid solicitacaoExameId, FinalidadeComunicacao finalidade, bool assumirRisco,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<SolicitacaoExameListItemDto>> ListarAsync(
         FiltroSolicitacoesDto filtro,
         CancellationToken cancellationToken = default);

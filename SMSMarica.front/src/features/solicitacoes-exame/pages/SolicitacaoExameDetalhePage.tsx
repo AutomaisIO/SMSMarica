@@ -9,6 +9,7 @@ import {
   Loader2,
   RotateCw,
   ScanLine,
+  Send,
   Siren,
   Trash2,
   XCircle,
@@ -26,6 +27,7 @@ import { notificar } from '@/shared/ui/Notificacoes';
 import {
   useAutorizarSolicitacao,
   useCancelarSolicitacao,
+  useEnviarComunicacaoManual,
   useExcluirSolicitacao,
   useHistoricoSolicitacao,
   useReenviarComunicacao,
@@ -33,6 +35,7 @@ import {
   useRegistrarContato,
   useSolicitacaoPorId,
 } from '@/features/solicitacoes-exame/api/queries';
+import type { FinalidadeEnvioManual } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
 import { ChecksComunicacao } from '@/features/solicitacoes-exame/components/ChecksComunicacao';
 import { Select } from '@/shared/ui/Select';
 import type { HistoricoComunicacao } from '@/features/solicitacoes-exame/types';
@@ -332,6 +335,8 @@ export function SolicitacaoExameDetalhePage() {
 
         <CardAutorizacao s={s} />
 
+        <CardEnvioManual s={s} />
+
         <CardHistoricoComunicacao solicitacaoId={s.id} />
 
         {s.observacoes ? (
@@ -529,6 +534,92 @@ function CardAutorizacao({ s }: { s: SolicitacaoExame }) {
         </div>
       )}
       {erro ? <p className="mt-2 text-sm text-red-700">{erro}</p> : null}
+    </section>
+  );
+}
+
+/**
+ * Envio MANUAL do resultado ao paciente (exame/laudo). "Enviar exame" quando o exame já foi
+ * realizado; "Enviar laudo" quando o laudo está pronto (Laudada). Se o telefone do paciente NÃO
+ * é verificado, pede confirmação de risco antes de enviar (o operador assume). O envio fica no
+ * histórico com quem enviou (manual).
+ */
+function CardEnvioManual({ s }: { s: SolicitacaoExame }) {
+  const podeEditar = usePermissao('SolicitacoesExame', 'Edicao');
+  const enviar = useEnviarComunicacaoManual();
+  const [confirmarRisco, setConfirmarRisco] = useState<FinalidadeEnvioManual | null>(null);
+
+  const exameRealizado = s.status === 'Realizada' || s.status === 'Laudada';
+  const laudoPronto = s.status === 'Laudada';
+  if (!podeEditar || (!exameRealizado && !laudoPronto)) return null;
+
+  const verificado = s.pacienteContatoVerificado;
+
+  async function disparar(finalidade: FinalidadeEnvioManual, assumirRisco: boolean) {
+    setConfirmarRisco(null);
+    try {
+      await enviar.mutateAsync({ id: s.id, finalidade, assumirRisco });
+      notificar(finalidade === 'LaudoPronto' ? 'Laudo enviado ao paciente.' : 'Exame enviado ao paciente.');
+    } catch (e) {
+      notificar(extrairMensagemDeErro(e), 'erro');
+    }
+  }
+
+  function clicar(finalidade: FinalidadeEnvioManual) {
+    if (verificado) disparar(finalidade, false);
+    else setConfirmarRisco(finalidade); // telefone não verificado → confirma o risco antes
+  }
+
+  return (
+    <section className="lg:col-span-2 rounded-lg border border-sky-200 bg-sky-50/40 p-4 shadow-sm">
+      <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-gray-500">
+        Enviar ao paciente (WhatsApp)
+      </h2>
+      <p className="mb-3 text-xs text-gray-500">
+        Envia o link do resultado para o paciente na hora e registra o envio no histórico (com quem enviou).
+        {verificado ? '' : ' ⚠ O telefone deste paciente NÃO está verificado.'}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {exameRealizado ? (
+          <Button variante="secundaria" onClick={() => clicar('ExameLiberado')} disabled={enviar.isPending}>
+            {enviar.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Send className="mr-1 h-4 w-4" />}
+            Enviar exame
+          </Button>
+        ) : null}
+        {laudoPronto ? (
+          <Button variante="secundaria" onClick={() => clicar('LaudoPronto')} disabled={enviar.isPending}>
+            {enviar.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Send className="mr-1 h-4 w-4" />}
+            Enviar laudo
+          </Button>
+        ) : null}
+      </div>
+
+      <Modal
+        aberto={confirmarRisco !== null}
+        aoFechar={() => setConfirmarRisco(null)}
+        titulo="Telefone não verificado"
+        descricao="O contato deste paciente não foi verificado no WhatsApp — o resultado pode ir para um número errado."
+      >
+        <div className="space-y-3">
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            Enviar mesmo assim é sob sua responsabilidade. O envio ficará registrado como feito <strong>sem
+            verificação</strong> do contato.
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variante="outline" onClick={() => setConfirmarRisco(null)}>
+              Cancelar
+            </Button>
+            <Button
+              variante="danger"
+              disabled={enviar.isPending}
+              onClick={() => confirmarRisco && disparar(confirmarRisco, true)}
+            >
+              {enviar.isPending ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+              Assumo o risco e enviar
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </section>
   );
 }

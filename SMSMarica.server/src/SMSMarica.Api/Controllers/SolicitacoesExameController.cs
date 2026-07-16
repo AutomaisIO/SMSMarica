@@ -214,6 +214,24 @@ public sealed class SolicitacoesExameController(
         return NoContent();
     }
 
+    /// <summary>
+    /// Envio MANUAL do resultado ao paciente: cria/reconstrói a comunicação da finalidade
+    /// (ExameLiberado ou LaudoPronto) e dispara na hora, registrando quem enviou. Com
+    /// <c>assumirRisco=true</c> envia mesmo sem telefone verificado.
+    /// </summary>
+    [HttpPost("{id:guid}/enviar-comunicacao")]
+    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> EnviarComunicacaoManual(
+        Guid id, [FromBody] EnviarComunicacaoManualRequest request, CancellationToken cancellationToken)
+    {
+        await _service.EnviarComunicacaoManualAsync(
+            id, request.Finalidade, request.AssumirRisco, cancellationToken);
+        return NoContent();
+    }
+
     /// <summary>Registra um contato MANUAL com o paciente ("liguei, não atendeu"...). Append-only.</summary>
     [HttpPost("{id:guid}/contatos")]
     [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Edicao)]

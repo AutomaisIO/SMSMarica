@@ -12,6 +12,8 @@ import {
   obterHistorico,
   reenviarComunicacao,
   registrarContato,
+  enviarComunicacaoManual,
+  type FinalidadeEnvioManual,
 } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
 import type {
   AtualizarSolicitacaoPayload,
@@ -145,6 +147,18 @@ export function useReenviarComunicacao() {
   return useMutation({
     mutationFn: ({ id, comunicacaoId }: { id: string; comunicacaoId: string }) =>
       reenviarComunicacao(id, comunicacaoId),
+    onSuccess: (_d, v) => {
+      client.invalidateQueries({ queryKey: [...solicitacoesKeys.raiz, 'historico', v.id] });
+      client.invalidateQueries({ queryKey: ['solicitacoes-exame', 'lista'] }); // checks da lista
+    },
+  });
+}
+
+export function useEnviarComunicacaoManual() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, finalidade, assumirRisco }: { id: string; finalidade: FinalidadeEnvioManual; assumirRisco: boolean }) =>
+      enviarComunicacaoManual(id, finalidade, assumirRisco),
     onSuccess: (_d, v) => {
       client.invalidateQueries({ queryKey: [...solicitacoesKeys.raiz, 'historico', v.id] });
       client.invalidateQueries({ queryKey: ['solicitacoes-exame', 'lista'] }); // checks da lista
