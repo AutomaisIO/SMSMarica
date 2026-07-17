@@ -1,6 +1,8 @@
 import { http } from '@/shared/api/httpClient';
 import type {
   ImportacaoExecucaoResultado,
+  ImportacaoFalha,
+  ImportacaoFalhaReprocessoResultado,
   ImportacaoPreviewResultado,
 } from '@/features/importacao-sisreg/types';
 
@@ -28,4 +30,27 @@ export async function executarImportacaoTxt(
     headers: { 'Content-Type': undefined },
   });
   return data;
+}
+
+/** Linhas que não viraram solicitação. Só leitura. */
+export async function listarFalhasImportacao(somentePendentes: boolean): Promise<ImportacaoFalha[]> {
+  const { data } = await http.get<ImportacaoFalha[]>('/sisreg/importacao/falhas', {
+    params: { somentePendentes },
+  });
+  return data;
+}
+
+/** "Validar": reimporta a linha a partir do RAW guardado — dispensa reenviar o arquivo. ESCRITA. */
+export async function reprocessarFalhaImportacao(
+  id: string,
+): Promise<ImportacaoFalhaReprocessoResultado> {
+  const { data } = await http.post<ImportacaoFalhaReprocessoResultado>(
+    `/sisreg/importacao/falhas/${id}/reprocessar`,
+  );
+  return data;
+}
+
+/** Tira a linha da lista sem importar (inválida na origem, registro cancelado…). */
+export async function descartarFalhaImportacao(id: string, nota?: string): Promise<void> {
+  await http.post(`/sisreg/importacao/falhas/${id}/descartar`, { nota: nota ?? null });
 }

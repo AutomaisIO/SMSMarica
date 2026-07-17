@@ -19,7 +19,14 @@ public static class AgendaTxtParser
 {
     public sealed record Cabecalho(string? CnesUnidade, string? NomeUnidade, DateOnly? Inicio, DateOnly? Fim, int? Total);
 
-    public sealed record Resultado(Cabecalho Cabecalho, IReadOnlyList<MarcacaoSisreg> Marcacoes);
+    /// <summary>Linha que o parser não conseguiu ler como marcação — não some em silêncio, vira
+    /// falha durável para o operador ver e corrigir. <see cref="Numero"/> é 1-based no arquivo.</summary>
+    public sealed record LinhaRejeitada(int Numero, string LinhaRaw, string Motivo);
+
+    public sealed record Resultado(
+        Cabecalho Cabecalho,
+        IReadOnlyList<MarcacaoSisreg> Marcacoes,
+        IReadOnlyList<LinhaRejeitada> Rejeitadas);
 
     // Índices das colunas (0-based) no layout de 38 campos — ver docs SISREG / mapa validado.
     private const int CodigoSolicitacao = 0;
@@ -57,10 +64,11 @@ public static class AgendaTxtParser
         // real (TXT) sobrescreve isto adiante com o CNES + nome de verdade.
         var cab = new Cabecalho(null, NomeExecutanteDoArquivo(nomeArquivo), null, null, null);
         var marcacoes = new List<MarcacaoSisreg>();
+        var rejeitadas = new List<LinhaRejeitada>();
 
-        foreach (var raw in linhas)
+        for (var idx = 0; idx < linhas.Length; idx++)
         {
-            var linha = raw.TrimEnd();
+            var linha = linhas[idx].TrimEnd();
             if (linha.Length == 0) continue;
             var c = linha.Split(';');
 
@@ -79,10 +87,23 @@ public static class AgendaTxtParser
                 continue;
             }
 
-            // Linha de dados: 38 campos, começa com código de solicitação numérico.
-            if (c.Length < TotalCampos) continue;
+            // Linha de dados: 38 campos, começa com código de solicitação numérico. O que não
+            // encaixa é REJEITADO com motivo (antes sumia calado e o registro nunca era importado).
+            if (c.Length < TotalCampos)
+            {
+                rejeitadas.Add(new LinhaRejeitada(idx + 1, linha,
+                    $"Linha com {c.Length} campos — o layout do SISREG tem {TotalCampos}. Arquivo truncado ou fora do formato de agendamentos."));
+                continue;
+            }
             var cod = c[CodigoSolicitacao].Trim();
-            if (cod.Length == 0 || !cod.All(char.IsDigit)) continue;
+            if (cod.Length == 0 || !cod.All(char.IsDigit))
+            {
+                rejeitadas.Add(new LinhaRejeitada(idx + 1, linha,
+                    cod.Length == 0
+                        ? "Linha sem o nº da solicitação (1ª coluna vazia)."
+                        : $"Nº da solicitação inválido (\"{cod}\") — esperado só dígitos."));
+                continue;
+            }
 
             var dataHora = DataHora(c[DataAtendimento], c[HoraAtendimento]);
             var cpfMed = Digitos(c[CpfMedico]);
@@ -116,7 +137,7 @@ public static class AgendaTxtParser
                 LinhaRaw: linha));
         }
 
-        return new Resultado(cab, marcacoes);
+        return new Resultado(cab, marcacoes, rejeitadas);
     }
 
     private static bool EhCnes(string? s) => Digitos(s) is { Length: 7 };

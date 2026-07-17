@@ -83,4 +83,94 @@ public class AgendaTxtParserTests
         r.Marcacoes.Should().ContainSingle();
         r.Marcacoes[0].NomeUnidadeExecutante.Should().Be("USF JOSEFA XAVIER LEAL");
     }
+
+    // ===== Linhas recusadas: nada de dados pode sumir em silêncio (vira falha para o operador) =====
+
+    [Fact]
+    public void Linha_truncada_e_rejeitada_com_o_raw_e_o_numero_da_linha()
+    {
+        var truncada = "670119011;1305007;0204030030"; // 3 campos; o layout pede 38
+        var txt = "3132358;CDT DR ALBERTO;01/07/2026;08/07/2026;1\n" + truncada;
+
+        var r = AgendaTxtParser.Parse(txt);
+
+        r.Marcacoes.Should().BeEmpty();
+        var rej = r.Rejeitadas.Should().ContainSingle().Subject;
+        rej.Numero.Should().Be(2, "1-based, e o cabeçalho ocupa a linha 1");
+        rej.LinhaRaw.Should().Be(truncada, "o RAW é o que o botão Validar reprocessa");
+        rej.Motivo.Should().Contain("38");
+    }
+
+    [Fact]
+    public void Linha_com_numero_de_solicitacao_nao_numerico_e_rejeitada()
+    {
+        var r = AgendaTxtParser.Parse(Linha("ABC-99"));
+
+        r.Marcacoes.Should().BeEmpty();
+        r.Rejeitadas.Should().ContainSingle().Which.Motivo.Should().Contain("ABC-99");
+    }
+
+    [Fact]
+    public void Linha_sem_numero_de_solicitacao_e_rejeitada()
+    {
+        var r = AgendaTxtParser.Parse(Linha(string.Empty));
+
+        r.Marcacoes.Should().BeEmpty();
+        r.Rejeitadas.Should().ContainSingle().Which.Motivo.Should().Contain("sem o nº");
+    }
+
+    [Fact]
+    public void Cabecalhos_e_linhas_vazias_nao_viram_rejeitadas()
+    {
+        // Cabeçalho de unidade, cabeçalho de colunas do CSV e linhas em branco são estrutura
+        // legítima do arquivo — não podem poluir a lista de erros do operador.
+        var txt = "3132358;CDT DR ALBERTO;01/07/2026;08/07/2026;1\n" + CabecalhoColunasCsv + "\n\n   \n" + Linha("670119011");
+
+        var r = AgendaTxtParser.Parse(txt);
+
+        r.Marcacoes.Should().ContainSingle();
+        r.Rejeitadas.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Linhas_boas_continuam_passando_no_meio_das_ruins()
+    {
+        var txt = Linha("111") + "\ncampos;de;menos\n" + Linha("222") + "\n" + Linha("XPTO");
+
+        var r = AgendaTxtParser.Parse(txt);
+
+        r.Marcacoes.Select(m => m.CodigoSolicitacao).Should().Equal("111", "222");
+        r.Rejeitadas.Should().HaveCount(2);
+    }
+
+    /// <summary>
+    /// "Validar" (reprocessar) não tem o arquivo: o serviço reconstrói um cabeçalho sintético
+    /// (<c>CNES;nome;;;0</c>) na frente do RAW guardado e reusa ESTE parser. Se esse contrato
+    /// quebrar, o executante some da linha revalidada — daí o round-trip viver aqui.
+    /// </summary>
+    [Fact]
+    public void Cabecalho_sintetico_do_reprocesso_recompoe_o_executante()
+    {
+        var raw = Linha("670119011");
+
+        var r = AgendaTxtParser.Parse("3132358;CDT DR ALBERTO;;;0\n" + raw);
+
+        var m = r.Marcacoes.Should().ContainSingle().Subject;
+        m.CnesUnidadeExecutante.Should().Be("3132358");
+        m.NomeUnidadeExecutante.Should().Be("CDT DR ALBERTO");
+        m.LinhaRaw.Should().Be(raw);
+        r.Rejeitadas.Should().BeEmpty();
+    }
+
+    /// <summary>Falha sem CNES guardado: a linha sozinha ainda precisa ser reprocessável — aí a
+    /// executante vem do contexto de unidade do operador.</summary>
+    [Fact]
+    public void Linha_sozinha_sem_cabecalho_ainda_parseia()
+    {
+        var r = AgendaTxtParser.Parse(Linha("670119011"));
+
+        var m = r.Marcacoes.Should().ContainSingle().Subject;
+        m.CodigoSolicitacao.Should().Be("670119011");
+        m.CnesUnidadeExecutante.Should().BeNull();
+    }
 }

@@ -17,6 +17,8 @@ import {
   executarImportacaoTxt,
   previewImportacaoTxt,
 } from '@/features/importacao-sisreg/api/importacaoApi';
+import { useFalhasImportacao } from '@/features/importacao-sisreg/api/queries';
+import { ErrosImportacao } from '@/features/importacao-sisreg/components/ErrosImportacao';
 import type {
   ImportacaoExecucaoResultado,
   ImportacaoPreviewItem,
@@ -30,6 +32,7 @@ function formatarDataHora(iso: string | null): string {
 
 export function ImportacaoSisregPage() {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [aba, setAba] = useState<'importar' | 'erros'>('importar');
   const [arquivo, setArquivo] = useState<File | null>(null);
   // Resultado de cada importação (por código), para marcar a linha e abrir o modal.
   const [resultados, setResultados] = useState<Record<string, ImportacaoExecucaoResultado>>({});
@@ -119,6 +122,8 @@ export function ImportacaoSisregPage() {
   const pendentesCount = r
     ? r.itens.filter((i) => !i.jaExiste && resultados[i.codigoSolicitacao]?.sucesso !== true).length
     : 0;
+  // Contador do badge da aba Erros — o que ficou pendente de correção, entre todas as importações.
+  const errosPendentes = useFalhasImportacao(true).data?.length ?? 0;
 
   return (
     <div className="space-y-6">
@@ -133,6 +138,23 @@ export function ImportacaoSisregPage() {
         </p>
       </header>
 
+      <nav className="flex gap-1 border-b border-gray-200">
+        <Aba ativa={aba === 'importar'} onClick={() => setAba('importar')}>
+          Importar
+        </Aba>
+        <Aba ativa={aba === 'erros'} onClick={() => setAba('erros')}>
+          Erros
+          {errosPendentes > 0 ? (
+            <span className="ml-1.5 rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
+              {errosPendentes}
+            </span>
+          ) : null}
+        </Aba>
+      </nav>
+
+      {aba === 'erros' ? <ErrosImportacao /> : null}
+
+      <div className={aba === 'importar' ? 'space-y-6' : 'hidden'}>
       <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-center gap-3">
           <input
@@ -160,6 +182,17 @@ export function ImportacaoSisregPage() {
           <p className="mt-3 text-xs text-gray-500">
             Período do arquivo: {r.inicio} a {r.fim}
           </p>
+        ) : null}
+        {r && r.rejeitadas > 0 ? (
+          <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            <AlertTriangle className="mr-1 inline h-4 w-4" />
+            {r.rejeitadas} linha(s) do arquivo não puderam ser lidas e não aparecem no preview.
+            Elas foram guardadas na{' '}
+            <button type="button" className="font-semibold underline" onClick={() => setAba('erros')}>
+              aba Erros
+            </button>
+            .
+          </div>
         ) : null}
       </section>
 
@@ -271,9 +304,34 @@ export function ImportacaoSisregPage() {
           </section>
         </>
       ) : null}
+      </div>
 
       {modal ? <ModalResultado resultado={modal} aoFechar={() => setModal(null)} /> : null}
     </div>
+  );
+}
+
+function Aba({
+  ativa,
+  onClick,
+  children,
+}: {
+  ativa: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`-mb-px flex items-center border-b-2 px-4 py-2 text-sm font-medium ${
+        ativa
+          ? 'border-red-600 text-red-700'
+          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 

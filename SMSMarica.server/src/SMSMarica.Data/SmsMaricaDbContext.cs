@@ -86,6 +86,9 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<PepSincronizacaoEstado> PepSincronizacaoEstados => Set<PepSincronizacaoEstado>();
     public DbSet<PepSincronizacaoFalha> PepSincronizacaoFalhas => Set<PepSincronizacaoFalha>();
 
+    // Linhas do export do SISREG que não viraram solicitação (com o RAW, para revalidar)
+    public DbSet<Entities.Sisreg.SisregImportacaoFalha> SisregImportacaoFalhas => Set<Entities.Sisreg.SisregImportacaoFalha>();
+
     // Domínio de Agendamento (Especialidade → Agenda → Agendamento) — ADR-0012/0013
     public DbSet<Especialidade> Especialidades => Set<Especialidade>();
     public DbSet<Equipamento> Equipamentos => Set<Equipamento>();

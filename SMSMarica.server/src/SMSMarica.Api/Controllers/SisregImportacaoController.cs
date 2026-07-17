@@ -55,4 +55,41 @@ public sealed class SisregImportacaoController(IImportacaoSisregService importac
         var conteudo = await reader.ReadToEndAsync(cancellationToken);
         return await importacao.ExecutarUmAsync(conteudo, codigo, arquivo.FileName, cancellationToken);
     }
+
+    /// <summary>Linhas do SISREG que não viraram solicitação (com o RAW). Pendentes por padrão.</summary>
+    [HttpGet("falhas")]
+    [RequerPermissao(ModuloPermissao.Sisreg, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<ImportacaoFalhaDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<ImportacaoFalhaDto>> ListarFalhas(
+        [FromQuery] bool somentePendentes = true,
+        CancellationToken cancellationToken = default)
+        => await importacao.ListarFalhasAsync(somentePendentes, cancellationToken);
+
+    /// <summary>"Validar": reimporta a linha a partir do RAW guardado — não precisa do arquivo de
+    /// novo. Se a solicitação já existir, resolve a falha em vez de duplicar. ESCRITA.</summary>
+    [HttpPost("falhas/{id:guid}/reprocessar")]
+    [RequerPermissao(ModuloPermissao.Sisreg, AcoesPermissao.Inclusao)]
+    [ProducesResponseType<ImportacaoFalhaReprocessoResultado>(StatusCodes.Status200OK)]
+    public async Task<ImportacaoFalhaReprocessoResultado> ReprocessarFalha(
+        Guid id,
+        CancellationToken cancellationToken)
+        => await importacao.ReprocessarFalhaAsync(id, cancellationToken);
+
+    /// <summary>Tira a linha da lista sem importar (inválida na origem, registro cancelado…).
+    /// Não apaga nada: só marca a falha como resolvida. Mesma permissão do importar — quem toca
+    /// a fila de importação é quem tria os erros dela.</summary>
+    [HttpPost("falhas/{id:guid}/descartar")]
+    [RequerPermissao(ModuloPermissao.Sisreg, AcoesPermissao.Inclusao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> DescartarFalha(
+        Guid id,
+        [FromBody] DescartarFalhaRequest? corpo,
+        CancellationToken cancellationToken)
+    {
+        await importacao.DescartarFalhaAsync(id, corpo?.Nota, cancellationToken);
+        return NoContent();
+    }
 }
+
+/// <summary>Motivo do descarte (opcional) — fica na trilha da falha.</summary>
+public sealed record DescartarFalhaRequest(string? Nota);

@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Dtos;
 using SMSMarica.Core.Common.Excecoes;
@@ -8,6 +10,7 @@ using SMSMarica.Core.SolicitacoesExame.Identificadores;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
+using SMSMarica.Data.Entities.Sisreg;
 
 namespace SMSMarica.Core.Integracoes.SisregWeb.Importacao;
 
@@ -25,6 +28,16 @@ public interface IImportacaoSisregService
 
     /// <summary>Importa UMA marcação (por código) do arquivo enviado. Cria paciente/unidades/solicitação.</summary>
     Task<ImportacaoExecucaoResultado> ExecutarUmAsync(string conteudo, string codigoSolicitacao, string? nomeArquivo, CancellationToken ct);
+
+    /// <summary>Linhas que não viraram solicitação. <paramref name="somentePendentes"/>=false traz também as já resolvidas.</summary>
+    Task<IReadOnlyList<ImportacaoFalhaDto>> ListarFalhasAsync(bool somentePendentes, CancellationToken ct);
+
+    /// <summary>"Validar": reimporta a linha a partir do RAW guardado. Idempotente — se a
+    /// solicitação já existir, resolve a falha em vez de duplicar. ESCRITA.</summary>
+    Task<ImportacaoFalhaReprocessoResultado> ReprocessarFalhaAsync(Guid falhaId, CancellationToken ct);
+
+    /// <summary>Tira a linha da lista sem importar (linha inválida na origem, registro cancelado…).</summary>
+    Task DescartarFalhaAsync(Guid falhaId, string? nota, CancellationToken ct);
 }
 
 public sealed class ImportacaoSisregService(
@@ -39,12 +52,20 @@ public sealed class ImportacaoSisregService(
 
     public async Task<ImportacaoPreviewResultado> PreviewDeTextoAsync(string conteudo, string? nomeArquivo, CancellationToken ct)
     {
-        var parsed = ParseOuFalhar(conteudo, nomeArquivo);
+        var parsed = ParseArquivo(conteudo, nomeArquivo);
+
+        // O preview é o ponto em que o arquivo inteiro passa pelo parser — é aqui que as linhas
+        // ilegíveis viram falha durável (antes eram descartadas em silêncio e ninguém sabia).
+        // Antes de exigir marcações: um arquivo todo quebrado é justamente o que precisa aparecer.
+        await RegistrarRejeitadasAsync(parsed, nomeArquivo, ct);
+        ExigirMarcacoes(parsed);
+
         var inicio = parsed.Cabecalho.Inicio ?? parsed.Marcacoes.Min(m => m.DataHoraAtendimento)?.ToDateOnly() ?? default;
         var fim = parsed.Cabecalho.Fim ?? parsed.Marcacoes.Max(m => m.DataHoraAtendimento)?.ToDateOnly() ?? default;
         // A unidade EXECUTORA é resolvida uma vez para o arquivo inteiro (é o tenant atual).
         var executante = await ResolverExecutanteAsync(parsed.Cabecalho.CnesUnidade, parsed.Cabecalho.NomeUnidade, ct);
-        return await MontarPreviewAsync(parsed.Marcacoes, inicio, fim, executante, ct);
+        var preview = await MontarPreviewAsync(parsed.Marcacoes, inicio, fim, executante, ct);
+        return preview with { Rejeitadas = parsed.Rejeitadas.Count };
     }
 
     private async Task<ImportacaoPreviewResultado> MontarPreviewAsync(
@@ -100,7 +121,7 @@ public sealed class ImportacaoSisregService(
 
         itens = [.. itens.OrderBy(i => i.JaExiste).ThenBy(i => i.DataHoraAtendimento)];
         var novos = itens.Count(i => !i.JaExiste);
-        return new ImportacaoPreviewResultado(inicio, fim, itens.Count, novos, itens.Count - novos, itens);
+        return new ImportacaoPreviewResultado(inicio, fim, itens.Count, novos, itens.Count - novos, itens, 0);
     }
 
     // ===================== EXECUTAR (1 registro) =====================
@@ -111,13 +132,35 @@ public sealed class ImportacaoSisregService(
         var m = ParseOuFalhar(conteudo, nomeArquivo).Marcacoes.FirstOrDefault(x => x.CodigoSolicitacao == codigo)
             ?? throw new NaoEncontradoException("importacao.marcacao", codigo);
 
+        var (res, jaExistia) = await ExecutarMarcacaoAsync(m, ct);
+
+        // O que não entrou fica registrado com o RAW, para o operador corrigir a causa e revalidar.
+        // "Já existe" não é erro (é a idempotência funcionando): resolve a pendência, não cria uma.
+        if (res.Sucesso || jaExistia)
+            await ResolverFalhaPendenteAsync(codigo, res.SolicitacaoId,
+                jaExistia ? "Já existia uma solicitação com esse nº." : "Importada.", ct);
+        else
+            await RegistrarFalhaExecucaoAsync(m, nomeArquivo, res.Erro ?? "Erro desconhecido.", ct);
+
+        return res;
+    }
+
+    /// <summary>
+    /// Núcleo da importação de UMA marcação — independente de arquivo, para servir tanto ao
+    /// upload quanto ao reprocessamento a partir do RAW guardado.
+    /// </summary>
+    /// <returns><c>jaExistia</c> distingue a idempotência (nº já importado) de uma falha real.</returns>
+    private async Task<(ImportacaoExecucaoResultado Resultado, bool JaExistia)> ExecutarMarcacaoAsync(
+        MarcacaoSisreg m, CancellationToken ct)
+    {
+        var codigo = m.CodigoSolicitacao;
         var passos = new List<string>();
         ImportacaoExecucaoResultado Falha(string erro) => new(codigo, false, null, null, null, false, false, false, passos, erro);
 
         // 1. Idempotência (nº SISREG).
         if (await db.Solicitacoes.AsNoTracking().AnyAsync(
                 s => s.CodigoSolicitacao == codigo && s.ExcluidoEm == null, ct))
-            return Falha("Já existe uma solicitação com esse número do SISREG.");
+            return (Falha("Já existe uma solicitação com esse número do SISREG."), true);
 
         // 2. Natureza pelo subgrupo SIGTAP (roteia satélite/UI). SÓ imagem precisa de TipoExame —
         //    e mesmo SEM tipo mapeado a importação NÃO trava: entra como pendente (ADR-0021).
@@ -141,10 +184,10 @@ public sealed class ImportacaoSisregService(
         }
 
         // 3. Paciente: CNS → cadweb50 (CPF+demografia) → resolve por CPF → cria se não existir.
-        if (string.IsNullOrWhiteSpace(m.CnsPaciente)) return Falha("Marcação sem CNS do paciente.");
+        if (string.IsNullOrWhiteSpace(m.CnsPaciente)) return (Falha("Marcação sem CNS do paciente."), false);
         ConsultaCnsRespostaDto cadsus;
         try { cadsus = await consultaCns.ConsultarPorCnsAsync(m.CnsPaciente!, ct); }
-        catch (Exception ex) { return Falha($"Falha ao consultar o paciente no SISREG (CNS): {ex.Message}"); }
+        catch (Exception ex) { return (Falha($"Falha ao consultar o paciente no SISREG (CNS): {ex.Message}"), false); }
         passos.Add($"CNS {Mascara(m.CnsPaciente)} → CPF {Mascara(cadsus.Cpf)} (cadweb50).");
 
         // Resolve o paciente existente por CPF (do CADSUS) e, se faltar, por CNS — o cidadão
@@ -164,7 +207,7 @@ public sealed class ImportacaoSisregService(
             // Paciente inexistente E sem CPF do CADSUS: não dá para cadastrar com segurança
             // (sem CPF não há identidade). Cai em falha honesta em vez do falso "CPF duplicado".
             if (SoDigitos(cadsus.Cpf).Length != 11)
-                return Falha("O CADSUS não retornou o CPF deste CNS e o paciente ainda não existe no sistema. Cadastre o paciente manualmente e reimporte.");
+                return (Falha("O CADSUS não retornou o CPF deste CNS e o paciente ainda não existe no sistema. Cadastre o paciente manualmente e reimporte."), false);
 
             // Telefone do TXT vai num slot NÃO-principal (celular se móvel, senão residencial) —
             // o principal é o contato validado por OTP e é intocável pela automação (ADR-0020).
@@ -191,7 +234,7 @@ public sealed class ImportacaoSisregService(
         //    atribuição explícita, resolvida uma vez para o arquivo. SOLICITANTE = por CNES do
         //    arquivo (cria se ainda não existir).
         var exec = await ResolverExecutanteAsync(m.CnesUnidadeExecutante, m.NomeUnidadeExecutante, ct);
-        if (exec.Id is null) return Falha(exec.Erro ?? "Não identifiquei a unidade executante.");
+        if (exec.Id is null) return (Falha(exec.Erro ?? "Não identifiquei a unidade executante."), false);
         var unidadeExecId = exec.Id.Value;
         var execCriada = exec.Criada;
         passos.Add(execCriada
@@ -261,22 +304,219 @@ public sealed class ImportacaoSisregService(
         await db.SaveChangesAsync(ct);
         passos.Add(accession is null ? "Solicitação criada." : $"Solicitação criada (accession {accession}).");
 
-        return new ImportacaoExecucaoResultado(
+        return (new ImportacaoExecucaoResultado(
             codigo, true, idPublico, accession ?? string.Empty,
-            existente?.NomeCompleto ?? cadsus.Nome, pacienteCriado, solicCriada, execCriada, passos, null);
+            existente?.NomeCompleto ?? cadsus.Nome, pacienteCriado, solicCriada, execCriada, passos, null), false);
     }
+
+    // ===================== FALHAS (lista + validar) =====================
+
+    public async Task<IReadOnlyList<ImportacaoFalhaDto>> ListarFalhasAsync(bool somentePendentes, CancellationToken ct)
+    {
+        var q = db.SisregImportacaoFalhas.AsNoTracking();
+        if (somentePendentes) q = q.Where(f => f.ResolvidoEm == null);
+        // Multitenancy: o operador vê as falhas da unidade em que está importando. Sem contexto
+        // (admin global) vê tudo — mesma régua da listagem de solicitações.
+        if (usuarioAtual.UnidadeAtivaId is { } uid) q = q.Where(f => f.UnidadeExecutanteId == uid);
+
+        return await q
+            .OrderByDescending(f => f.AtualizadoEm)
+            .Select(f => new ImportacaoFalhaDto(
+                f.Id, f.CodigoSolicitacao, f.Origem, f.Motivo, f.LinhaRaw, f.NomeArquivo,
+                f.NomePaciente, f.ProcedimentoTexto, f.DataAgendada, f.NomeExecutante,
+                f.Tentativas, f.CriadoEm, f.AtualizadoEm, f.ResolvidoEm, f.ResolucaoNota, f.SolicitacaoId))
+            .ToListAsync(ct);
+    }
+
+    public async Task<ImportacaoFalhaReprocessoResultado> ReprocessarFalhaAsync(Guid falhaId, CancellationToken ct)
+    {
+        var f = await db.SisregImportacaoFalhas.FirstOrDefaultAsync(x => x.Id == falhaId, ct)
+            ?? throw new NaoEncontradoException("importacao.falha", falhaId.ToString());
+        if (f.ResolvidoEm is not null)
+            return new(f.Id, true, null, "Esta linha já estava resolvida.");
+
+        var agora = DateTime.UtcNow;
+        f.Tentativas++;
+        f.AtualizadoEm = agora;
+
+        // Reconstrói o mínimo de "arquivo" que o parser precisa (cabeçalho + a linha) — assim o
+        // reprocesso usa exatamente o mesmo parser da importação, sem caminho paralelo.
+        var parsed = AgendaTxtParser.Parse(ReconstruirConteudo(f), f.NomeArquivo);
+        var m = parsed.Marcacoes.FirstOrDefault();
+        if (m is null)
+        {
+            var motivo = parsed.Rejeitadas.FirstOrDefault()?.Motivo ?? "A linha continua ilegível para o parser.";
+            f.Origem = OrigemFalhaImportacao.Parser;
+            f.Motivo = Truncar(motivo, 2000);
+            await db.SaveChangesAsync(ct);
+            return new(f.Id, false, null,
+                $"A linha continua inválida: {motivo} Corrija na origem e reimporte o arquivo, ou descarte esta linha.");
+        }
+
+        var (res, jaExistia) = await ExecutarMarcacaoAsync(m, ct);
+
+        // A linha pôde ser lida agora: carimba o nº que faltava (caso de falha do parser).
+        f.CodigoSolicitacao = m.CodigoSolicitacao;
+        f.NomePaciente = Truncar(m.NomePaciente, 300);
+        f.ProcedimentoTexto = Truncar(m.ProcedimentoTexto, 500);
+        f.DataAgendada = m.DataHoraAtendimento is { } dh ? ParaUtcBrasilia(dh) : null;
+
+        if (res.Sucesso || jaExistia)
+        {
+            // O ponto do ticket: revalidar algo que já foi criado NÃO duplica — dá ok e sai da lista.
+            f.ResolvidoEm = agora;
+            f.ResolvidoPor = usuarioAtual.UsuarioId;
+            f.ResolucaoNota = jaExistia ? "Já existia uma solicitação com esse nº." : "Importada na validação.";
+            f.SolicitacaoId = res.SolicitacaoId;
+            await db.SaveChangesAsync(ct);
+            return new(f.Id, true, res, jaExistia
+                ? "Esta marcação já está no sistema — a linha saiu da lista de erros."
+                : "Importada com sucesso — a linha saiu da lista de erros.");
+        }
+
+        f.Origem = OrigemFalhaImportacao.Execucao;
+        f.Motivo = Truncar(res.Erro ?? "Erro desconhecido.", 2000);
+        await db.SaveChangesAsync(ct);
+        return new(f.Id, false, res, res.Erro ?? "Ainda não foi possível importar esta linha.");
+    }
+
+    public async Task DescartarFalhaAsync(Guid falhaId, string? nota, CancellationToken ct)
+    {
+        var f = await db.SisregImportacaoFalhas.FirstOrDefaultAsync(x => x.Id == falhaId, ct)
+            ?? throw new NaoEncontradoException("importacao.falha", falhaId.ToString());
+        if (f.ResolvidoEm is not null) return;
+
+        f.ResolvidoEm = DateTime.UtcNow;
+        f.AtualizadoEm = f.ResolvidoEm.Value;
+        f.ResolvidoPor = usuarioAtual.UsuarioId;
+        f.ResolucaoNota = Truncar(string.IsNullOrWhiteSpace(nota) ? "Descartada pelo operador." : nota, 500);
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Grava/atualiza a falha de EXECUÇÃO da marcação (upsert pela pendência do mesmo nº).</summary>
+    private async Task RegistrarFalhaExecucaoAsync(MarcacaoSisreg m, string? nomeArquivo, string motivo, CancellationToken ct)
+    {
+        var raw = m.LinhaRaw ?? string.Empty;
+        var f = await db.SisregImportacaoFalhas.FirstOrDefaultAsync(
+            x => x.CodigoSolicitacao == m.CodigoSolicitacao && x.ResolvidoEm == null, ct);
+
+        var agora = DateTime.UtcNow;
+        if (f is null)
+        {
+            f = new SisregImportacaoFalha { Id = Guid.CreateVersion7(), CriadoEm = agora };
+            db.SisregImportacaoFalhas.Add(f);
+        }
+
+        f.CodigoSolicitacao = m.CodigoSolicitacao;
+        f.HashLinha = Sha256(raw);
+        f.LinhaRaw = raw;
+        f.Origem = OrigemFalhaImportacao.Execucao;
+        f.Motivo = Truncar(motivo, 2000);
+        f.NomeArquivo = Truncar(nomeArquivo, 300);
+        f.CnesExecutante = SoDigitos(m.CnesUnidadeExecutante) is { Length: 7 } c ? c : null;
+        f.NomeExecutante = Truncar(m.NomeUnidadeExecutante, 300);
+        f.NomePaciente = Truncar(m.NomePaciente, 300);
+        f.ProcedimentoTexto = Truncar(m.ProcedimentoTexto, 500);
+        f.DataAgendada = m.DataHoraAtendimento is { } dh ? ParaUtcBrasilia(dh) : null;
+        f.UnidadeExecutanteId = usuarioAtual.UnidadeAtivaId;
+        f.Tentativas++;
+        f.AtualizadoEm = agora;
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Grava as linhas que o parser rejeitou. Dedupe pelo hash do RAW (não há nº para usar).</summary>
+    private async Task RegistrarRejeitadasAsync(AgendaTxtParser.Resultado parsed, string? nomeArquivo, CancellationToken ct)
+    {
+        if (parsed.Rejeitadas.Count == 0) return;
+
+        var hashes = parsed.Rejeitadas.Select(r => Sha256(r.LinhaRaw)).ToList();
+        var pendentes = await db.SisregImportacaoFalhas
+            .Where(f => f.CodigoSolicitacao == null && f.ResolvidoEm == null && hashes.Contains(f.HashLinha))
+            .ToDictionaryAsync(f => f.HashLinha, ct);
+
+        var agora = DateTime.UtcNow;
+        var cnes = SoDigitos(parsed.Cabecalho.CnesUnidade) is { Length: 7 } c ? c : null;
+        // Um mesmo arquivo pode repetir a linha ruim: agrupa por hash para não violar o índice único.
+        foreach (var grupo in parsed.Rejeitadas.GroupBy(r => Sha256(r.LinhaRaw)))
+        {
+            var r = grupo.First();
+            if (!pendentes.TryGetValue(grupo.Key, out var f))
+            {
+                f = new SisregImportacaoFalha
+                {
+                    Id = Guid.CreateVersion7(),
+                    CriadoEm = agora,
+                    HashLinha = grupo.Key,
+                    LinhaRaw = r.LinhaRaw,
+                    Origem = OrigemFalhaImportacao.Parser,
+                };
+                db.SisregImportacaoFalhas.Add(f);
+            }
+            f.Motivo = Truncar($"Linha {r.Numero} do arquivo: {r.Motivo}", 2000);
+            f.NomeArquivo = Truncar(nomeArquivo, 300);
+            f.CnesExecutante = cnes;
+            f.NomeExecutante = Truncar(parsed.Cabecalho.NomeUnidade, 300);
+            f.UnidadeExecutanteId = usuarioAtual.UnidadeAtivaId;
+            f.Tentativas++;
+            f.AtualizadoEm = agora;
+        }
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Fecha a pendência do nº quando ele finalmente entrou (ou já estava) no sistema.</summary>
+    private async Task ResolverFalhaPendenteAsync(string codigo, Guid? solicitacaoId, string nota, CancellationToken ct)
+    {
+        var f = await db.SisregImportacaoFalhas.FirstOrDefaultAsync(
+            x => x.CodigoSolicitacao == codigo && x.ResolvidoEm == null, ct);
+        if (f is null) return;
+
+        f.ResolvidoEm = DateTime.UtcNow;
+        f.AtualizadoEm = f.ResolvidoEm.Value;
+        f.ResolvidoPor = usuarioAtual.UsuarioId;
+        f.ResolucaoNota = Truncar(nota, 500);
+        f.SolicitacaoId = solicitacaoId;
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Cabeçalho sintético (CNES;nome;;;0) + a linha — o mínimo que o parser lê como arquivo.</summary>
+    private static string ReconstruirConteudo(SisregImportacaoFalha f) =>
+        f.CnesExecutante is { Length: 7 }
+            ? $"{f.CnesExecutante};{f.NomeExecutante};;;0\n{f.LinhaRaw}"
+            : f.LinhaRaw;
+
+    private static string Sha256(string s) =>
+        Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(s)));
+
+    [return: System.Diagnostics.CodeAnalysis.NotNullIfNotNull(nameof(s))]
+    private static string? Truncar(string? s, int max) =>
+        s is null || s.Length <= max ? s : s[..max];
 
     // ===================== helpers =====================
 
     private static AgendaTxtParser.Resultado ParseOuFalhar(string conteudo, string? nomeArquivo)
     {
+        var parsed = ParseArquivo(conteudo, nomeArquivo);
+        ExigirMarcacoes(parsed);
+        return parsed;
+    }
+
+    /// <summary>Só o parse (rejeita arquivo vazio). Um arquivo 100% malformado ainda volta com as
+    /// <c>Rejeitadas</c> preenchidas — elas precisam ser gravadas ANTES de reclamar da ausência
+    /// de marcações, senão o operador fica sem saber o que o parser recusou.</summary>
+    private static AgendaTxtParser.Resultado ParseArquivo(string conteudo, string? nomeArquivo)
+    {
         if (string.IsNullOrWhiteSpace(conteudo))
             throw new ValidacaoException("importacao.arquivo_vazio", "Arquivo vazio ou ilegível.");
-        var parsed = AgendaTxtParser.Parse(conteudo, nomeArquivo);
-        if (parsed.Marcacoes.Count == 0)
-            throw new ValidacaoException("importacao.sem_registros",
-                "Não encontrei marcações no arquivo. Confirme que é o export de agendamentos do SISREG (TXT ou CSV).");
-        return parsed;
+        return AgendaTxtParser.Parse(conteudo, nomeArquivo);
+    }
+
+    private static void ExigirMarcacoes(AgendaTxtParser.Resultado parsed)
+    {
+        if (parsed.Marcacoes.Count > 0) return;
+        throw new ValidacaoException("importacao.sem_registros",
+            parsed.Rejeitadas.Count > 0
+                ? $"Nenhuma marcação legível: as {parsed.Rejeitadas.Count} linha(s) do arquivo foram recusadas pelo parser e estão na aba Erros. Confirme que é o export de agendamentos do SISREG (TXT ou CSV)."
+                : "Não encontrei marcações no arquivo. Confirme que é o export de agendamentos do SISREG (TXT ou CSV).");
     }
 
     private async Task<HashSet<string>> SigtapComTipoAsync(CancellationToken ct) =>

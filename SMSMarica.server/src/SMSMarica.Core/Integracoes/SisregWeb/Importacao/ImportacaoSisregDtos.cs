@@ -1,3 +1,5 @@
+using SMSMarica.Data.Entities.Sisreg;
+
 namespace SMSMarica.Core.Integracoes.SisregWeb.Importacao;
 
 /// <summary>Uma marcação do SISREG confrontada com a nossa base (o "diff" da importação).</summary>
@@ -48,4 +50,35 @@ public sealed record ImportacaoPreviewResultado(
     int Total,
     int Novos,
     int Existentes,
-    IReadOnlyList<ImportacaoPreviewItem> Itens);
+    IReadOnlyList<ImportacaoPreviewItem> Itens,
+    /// <summary>Linhas do arquivo que o parser rejeitou (já gravadas na lista de erros).</summary>
+    int Rejeitadas);
+
+/// <summary>Uma linha do SISREG que não virou solicitação, como aparece na lista de erros.</summary>
+public sealed record ImportacaoFalhaDto(
+    Guid Id,
+    string? CodigoSolicitacao,
+    OrigemFalhaImportacao Origem,
+    string Motivo,
+    string LinhaRaw,
+    string? NomeArquivo,
+    string? NomePaciente,
+    string? ProcedimentoTexto,
+    DateTime? DataAgendada,
+    string? NomeExecutante,
+    int Tentativas,
+    DateTime CriadoEm,
+    DateTime AtualizadoEm,
+    DateTime? ResolvidoEm,
+    string? ResolucaoNota,
+    Guid? SolicitacaoId);
+
+/// <summary>Resultado de "Validar" (reprocessar) uma falha a partir do RAW guardado.</summary>
+public sealed record ImportacaoFalhaReprocessoResultado(
+    Guid FalhaId,
+    /// <summary>True = a linha saiu da lista de pendências (importou agora ou já existia).</summary>
+    bool Resolvida,
+    /// <summary>Execução completa quando a linha pôde ser reprocessada; null quando nem parseou.</summary>
+    ImportacaoExecucaoResultado? Execucao,
+    /// <summary>O que aconteceu, em uma frase (para o operador).</summary>
+    string Mensagem);
