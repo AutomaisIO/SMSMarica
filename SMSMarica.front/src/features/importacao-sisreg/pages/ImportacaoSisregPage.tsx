@@ -19,6 +19,10 @@ import {
 } from '@/features/importacao-sisreg/api/importacaoApi';
 import { useFalhasImportacao } from '@/features/importacao-sisreg/api/queries';
 import { ErrosImportacao } from '@/features/importacao-sisreg/components/ErrosImportacao';
+import { ImportacaoLote } from '@/features/importacao-sisreg/components/ImportacaoLote';
+import { RastreioImportacao } from '@/features/importacao-sisreg/components/RastreioImportacao';
+import { useQueryClient } from '@tanstack/react-query';
+import { importacaoKeys } from '@/features/importacao-sisreg/api/queries';
 import type {
   ImportacaoExecucaoResultado,
   ImportacaoPreviewItem,
@@ -30,9 +34,12 @@ function formatarDataHora(iso: string | null): string {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 }
 
+type AbaImportacao = 'um' | 'lote' | 'rastreio' | 'erros';
+
 export function ImportacaoSisregPage() {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [aba, setAba] = useState<'importar' | 'erros'>('importar');
+  const queryClient = useQueryClient();
+  const [aba, setAba] = useState<AbaImportacao>('um');
   const [arquivo, setArquivo] = useState<File | null>(null);
   // Resultado de cada importação (por código), para marcar a linha e abrir o modal.
   const [resultados, setResultados] = useState<Record<string, ImportacaoExecucaoResultado>>({});
@@ -130,17 +137,22 @@ export function ImportacaoSisregPage() {
       <header>
         <h1 className="text-2xl font-semibold text-gray-900">Importação SISREG</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Envie o export de agendamentos do SISREG — <strong>TXT</strong> (Arquivo Agendamento) ou{' '}
-          <strong>CSV</strong> — e gere o <strong>preview</strong>. A <strong>unidade executante</strong>{' '}
-          é a do seu <strong>contexto atual</strong> (a unidade selecionada). Use{' '}
-          <strong>Importar todos</strong> para processar a lista inteira de uma vez, ou importe{' '}
-          <strong>um a um</strong> pelo botão de cada linha.
+          Export de agendamentos do SISREG (<strong>TXT</strong> ou <strong>CSV</strong>). A{' '}
+          <strong>unidade executante</strong> é a do seu <strong>contexto atual</strong>. Use{' '}
+          <strong>Um arquivo</strong> para conferir no preview antes de importar, ou{' '}
+          <strong>Vários / pasta / zip</strong> para importar tudo de uma vez.
         </p>
       </header>
 
       <nav className="flex gap-1 border-b border-gray-200">
-        <Aba ativa={aba === 'importar'} onClick={() => setAba('importar')}>
-          Importar
+        <Aba ativa={aba === 'um'} onClick={() => setAba('um')}>
+          Um arquivo
+        </Aba>
+        <Aba ativa={aba === 'lote'} onClick={() => setAba('lote')}>
+          Vários / pasta / zip
+        </Aba>
+        <Aba ativa={aba === 'rastreio'} onClick={() => setAba('rastreio')}>
+          Rastreio
         </Aba>
         <Aba ativa={aba === 'erros'} onClick={() => setAba('erros')}>
           Erros
@@ -152,9 +164,18 @@ export function ImportacaoSisregPage() {
         </Aba>
       </nav>
 
+      {aba === 'lote' ? (
+        <ImportacaoLote
+          aoConcluir={() => {
+            queryClient.invalidateQueries({ queryKey: importacaoKeys.execucoes });
+            queryClient.invalidateQueries({ queryKey: ['importacao-sisreg', 'falhas'] });
+          }}
+        />
+      ) : null}
+      {aba === 'rastreio' ? <RastreioImportacao aoVerErros={() => setAba('erros')} /> : null}
       {aba === 'erros' ? <ErrosImportacao /> : null}
 
-      <div className={aba === 'importar' ? 'space-y-6' : 'hidden'}>
+      <div className={aba === 'um' ? 'space-y-6' : 'hidden'}>
       <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-center gap-3">
           <input

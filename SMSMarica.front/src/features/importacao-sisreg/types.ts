@@ -40,8 +40,8 @@ export type ImportacaoPreviewResultado = {
   rejeitadas: number;
 };
 
-/** Por que a linha não virou solicitação. */
-export type OrigemFalhaImportacao = 'Parser' | 'Execucao';
+/** Por que a linha não virou solicitação. `Arquivo` = o .txt/.csv inteiro não é do SISREG. */
+export type OrigemFalhaImportacao = 'Parser' | 'Execucao' | 'Arquivo';
 
 /** Uma linha do SISREG que não virou solicitação (guardada com o RAW, para revalidar). */
 export type ImportacaoFalha = {
@@ -69,4 +69,67 @@ export type ImportacaoFalhaReprocessoResultado = {
   resolvida: boolean;
   execucao: ImportacaoExecucaoResultado | null;
   mensagem: string;
+};
+
+/** Um campo do SISREG já legível, para o modal exibir ao lado do RAW. */
+export type CampoSisreg = {
+  coluna: number;
+  rotulo: string;
+  valor: string | null;
+};
+
+/** Detalhe da falha: o RAW guardado + o parse dele (campos nomeados + unidades). */
+export type ImportacaoFalhaDetalhe = {
+  falha: ImportacaoFalha;
+  /** False para arquivo incompatível / linha ilegível — aí só há o RAW. */
+  parseavel: boolean;
+  campos: CampoSisreg[];
+  nomeUnidadeSolicitante: string | null;
+  cnesUnidadeSolicitante: string | null;
+  nomeUnidadeExecutante: string | null;
+  cnesUnidadeExecutante: string | null;
+};
+
+export type StatusImportacaoArquivo =
+  | 'Pendente'
+  | 'EmExecucao'
+  | 'Concluida'
+  | 'ArquivoIncompativel'
+  | 'Erro'
+  | 'Cancelada';
+
+/** Uma linha da aba de rastreio: um arquivo importado. */
+export type ImportacaoExecucao = {
+  id: string;
+  loteId: string;
+  nomeArquivo: string;
+  caminhoNoZip: string | null;
+  status: StatusImportacaoArquivo;
+  totalRegistros: number;
+  validos: number;
+  invalidos: number;
+  jaExistiam: number;
+  mensagem: string | null;
+  iniciadoEm: string;
+  concluidoEm: string | null;
+  criadoPorNome: string | null;
+};
+
+/** Progresso do lote em andamento (ou resumo do último). Null quando nunca houve importação. */
+export type StatusLote = {
+  loteId: string;
+  emExecucao: boolean;
+  totalArquivos: number;
+  arquivosFeitos: number;
+  arquivoAtual: string | null;
+  validos: number;
+  invalidos: number;
+};
+
+/** Resposta do envio do lote: o que entrou na fila e o que foi ignorado pela extensão. */
+export type ImportacaoLoteAceito = {
+  loteId: string;
+  arquivosAceitos: number;
+  /** Ignorados por extensão (não .txt/.csv) — nem foram lidos, não viram erro. */
+  arquivosIgnorados: string[];
 };

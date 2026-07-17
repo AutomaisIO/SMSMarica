@@ -1,9 +1,13 @@
 import { http } from '@/shared/api/httpClient';
 import type {
+  ImportacaoExecucao,
   ImportacaoExecucaoResultado,
   ImportacaoFalha,
+  ImportacaoFalhaDetalhe,
   ImportacaoFalhaReprocessoResultado,
+  ImportacaoLoteAceito,
   ImportacaoPreviewResultado,
+  StatusLote,
 } from '@/features/importacao-sisreg/types';
 
 /** Preview a partir do upload do export de agendamentos do SISREG (TXT ou CSV). Só leitura. */
@@ -53,4 +57,38 @@ export async function reprocessarFalhaImportacao(
 /** Tira a linha da lista sem importar (inválida na origem, registro cancelado…). */
 export async function descartarFalhaImportacao(id: string, nota?: string): Promise<void> {
   await http.post(`/sisreg/importacao/falhas/${id}/descartar`, { nota: nota ?? null });
+}
+
+/** Detalhe da falha para o modal: RAW + parse (campos nomeados + unidades). */
+export async function obterFalhaDetalhe(id: string): Promise<ImportacaoFalhaDetalhe> {
+  const { data } = await http.get<ImportacaoFalhaDetalhe>(`/sisreg/importacao/falhas/${id}/detalhe`);
+  return data;
+}
+
+/** Envia vários arquivos (seleção múltipla, pasta ou .zip) para importação em lote no servidor. */
+export async function importarLote(arquivos: File[]): Promise<ImportacaoLoteAceito> {
+  const form = new FormData();
+  for (const f of arquivos) form.append('arquivos', f);
+  const { data } = await http.post<ImportacaoLoteAceito>('/sisreg/importacao/lote', form, {
+    headers: { 'Content-Type': undefined },
+  });
+  return data;
+}
+
+/** Progresso do lote. O backend responde 204 (corpo vazio) quando nunca houve importação. */
+export async function obterStatusLote(): Promise<StatusLote | null> {
+  const { data } = await http.get<StatusLote | ''>('/sisreg/importacao/lote/status');
+  return data ? data : null;
+}
+
+export async function cancelarLote(): Promise<void> {
+  await http.post('/sisreg/importacao/lote/cancelar');
+}
+
+/** Aba de rastreio: uma linha por arquivo importado. */
+export async function listarExecucoesImportacao(limite = 100): Promise<ImportacaoExecucao[]> {
+  const { data } = await http.get<ImportacaoExecucao[]>('/sisreg/importacao/execucoes', {
+    params: { limite },
+  });
+  return data;
 }
