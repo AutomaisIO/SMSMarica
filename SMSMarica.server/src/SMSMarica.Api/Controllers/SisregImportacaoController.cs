@@ -1,8 +1,10 @@
+using System.IO.Compression;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Integracoes.SisregWeb.Importacao;
+using SMSMarica.Core.Integracoes.SisregWeb.Importacao.Background;
 using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
@@ -15,8 +17,14 @@ namespace SMSMarica.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("sisreg/importacao")]
-public sealed class SisregImportacaoController(IImportacaoSisregService importacao) : ControllerBase
+public sealed class SisregImportacaoController(
+    IImportacaoSisregService importacao,
+    IImportacaoLoteService lote) : ControllerBase
 {
+    /// <summary>Extensões que o sistema sequer abre. Fora disto, o arquivo é ignorado antes de
+    /// qualquer leitura — não vira erro nem linha de rastreio, só é sinalizado na resposta.</summary>
+    private static readonly string[] ExtensoesAceitas = [".txt", ".csv"];
+
     /// <summary>Preview a partir do upload do arquivo (TXT ou CSV). Não escreve nada.</summary>
     [HttpPost("preview")]
     [RequerPermissao(ModuloPermissao.Sisreg, AcoesPermissao.Consulta)]
@@ -88,6 +96,110 @@ public sealed class SisregImportacaoController(IImportacaoSisregService importac
     {
         await importacao.DescartarFalhaAsync(id, corpo?.Nota, cancellationToken);
         return NoContent();
+    }
+
+    /// <summary>Detalhe da falha para o modal: o RAW + o parse dele (campos do SISREG nomeados).</summary>
+    [HttpGet("falhas/{id:guid}/detalhe")]
+    [RequerPermissao(ModuloPermissao.Sisreg, AcoesPermissao.Consulta)]
+    [ProducesResponseType<ImportacaoFalhaDetalheDto>(StatusCodes.Status200OK)]
+    public async Task<ImportacaoFalhaDetalheDto> DetalheFalha(Guid id, CancellationToken cancellationToken)
+        => await importacao.ObterFalhaDetalheAsync(id, cancellationToken);
+
+    // ===================== LOTE (vários arquivos / zip / diretório) =====================
+
+    /// <summary>
+    /// Envia vários arquivos de uma vez (seleção múltipla, diretório ou .zip) e importa TUDO no
+    /// servidor, em background. Responde 202 na hora — o front acompanha por <c>GET lote/status</c>.
+    /// <para>
+    /// Arquivos com extensão fora de .txt/.csv são IGNORADOS sem serem abertos (nem viram erro,
+    /// só são listados na resposta). O que é .txt/.csv mas não é do SISREG vira "Arquivo
+    /// incompatível" na aba Erros — aí é sinal de que alguém mandou o arquivo errado.
+    /// </para>
+    /// </summary>
+    [HttpPost("lote")]
+    [RequerPermissao(ModuloPermissao.Sisreg, AcoesPermissao.Inclusao)]
+    [ProducesResponseType<ImportacaoLoteAceitoDto>(StatusCodes.Status202Accepted)]
+    [RequestSizeLimit(200_000_000)]
+    public async Task<IActionResult> ImportarLote(
+        [FromForm] IFormFileCollection arquivos,
+        CancellationToken cancellationToken)
+    {
+        if (arquivos is null || arquivos.Count == 0)
+            throw new ValidacaoException("importacao.arquivo_ausente", "Envie ao menos um arquivo.");
+
+        var aceitos = new List<ArquivoRecebido>();
+        var ignorados = new List<string>();
+
+        foreach (var f in arquivos)
+        {
+            if (EhZip(f.FileName))
+            {
+                await ExtrairZipAsync(f, aceitos, ignorados, cancellationToken);
+                continue;
+            }
+            if (!ExtensaoAceita(f.FileName)) { ignorados.Add(f.FileName); continue; }
+
+            using var reader = new StreamReader(f.OpenReadStream(), Encoding.Latin1);
+            aceitos.Add(new ArquivoRecebido(f.FileName, await reader.ReadToEndAsync(cancellationToken), null));
+        }
+
+        var loteId = await lote.IniciarAsync(aceitos, cancellationToken);
+        return Accepted(new ImportacaoLoteAceitoDto(loteId, aceitos.Count, ignorados));
+    }
+
+    /// <summary>Progresso do lote em andamento (ou o resumo do último). Polling.</summary>
+    [HttpGet("lote/status")]
+    [RequerPermissao(ModuloPermissao.Sisreg, AcoesPermissao.Consulta)]
+    [ProducesResponseType<StatusLote>(StatusCodes.Status200OK)]
+    public async Task<StatusLote?> StatusLote(CancellationToken cancellationToken)
+        => await lote.ObterStatusAsync(cancellationToken);
+
+    /// <summary>Para a importação em andamento. O que já entrou permanece (não faz rollback).</summary>
+    [HttpPost("lote/cancelar")]
+    [RequerPermissao(ModuloPermissao.Sisreg, AcoesPermissao.Inclusao)]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    public IActionResult CancelarLote() => Accepted(new { cancelado = lote.Cancelar() });
+
+    /// <summary>Aba de rastreio: uma linha por arquivo importado (quando, quem, válidos, inválidos).</summary>
+    [HttpGet("execucoes")]
+    [RequerPermissao(ModuloPermissao.Sisreg, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<ImportacaoExecucaoDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<ImportacaoExecucaoDto>> ListarExecucoes(
+        [FromQuery] int limite = 100,
+        CancellationToken cancellationToken = default)
+        => await lote.ListarExecucoesAsync(limite, cancellationToken);
+
+    private static bool ExtensaoAceita(string nome) =>
+        ExtensoesAceitas.Contains(Path.GetExtension(nome), StringComparer.OrdinalIgnoreCase);
+
+    private static bool EhZip(string nome) =>
+        string.Equals(Path.GetExtension(nome), ".zip", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Abre o zip e pega só os .txt/.csv de dentro (em qualquer subpasta).</summary>
+    private static async Task ExtrairZipAsync(
+        IFormFile zip, List<ArquivoRecebido> aceitos, List<string> ignorados, CancellationToken ct)
+    {
+        // Copia pra memória: ZipArchive precisa de stream seekable.
+        using var buffer = new MemoryStream();
+        await zip.CopyToAsync(buffer, ct);
+        buffer.Position = 0;
+
+        using var archive = new ZipArchive(buffer, ZipArchiveMode.Read);
+        foreach (var entrada in archive.Entries)
+        {
+            // Entrada de diretório (nome vazio) — não é arquivo.
+            if (string.IsNullOrEmpty(entrada.Name)) continue;
+
+            if (!ExtensaoAceita(entrada.Name))
+            {
+                ignorados.Add($"{zip.FileName} → {entrada.FullName}");
+                continue;
+            }
+
+            using var s = entrada.Open();
+            using var reader = new StreamReader(s, Encoding.Latin1);
+            aceitos.Add(new ArquivoRecebido(entrada.Name, await reader.ReadToEndAsync(ct), entrada.FullName));
+        }
     }
 }
 

@@ -1,4 +1,4 @@
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Dtos;
@@ -38,6 +38,17 @@ public interface IImportacaoSisregService
 
     /// <summary>Tira a linha da lista sem importar (linha inválida na origem, registro cancelado…).</summary>
     Task DescartarFalhaAsync(Guid falhaId, string? nota, CancellationToken ct);
+
+    /// <summary>Detalhe da falha para o modal: o RAW guardado + os campos do SISREG reparseados
+    /// dele (sem colunas novas no banco — o RAW é a fonte, o parser atual é a lente).</summary>
+    Task<ImportacaoFalhaDetalheDto> ObterFalhaDetalheAsync(Guid falhaId, CancellationToken ct);
+
+    /// <summary>Quem/onde, quando o serviço roda fora de uma request (lote no background).</summary>
+    void DefinirContextoDeBackground(Guid? usuarioId, Guid? unidadeAtivaId);
+
+    /// <summary>Importa UM arquivo inteiro do lote. Reconhece o arquivo antes: se não for do
+    /// SISREG, descarta tudo sem tentar linha a linha.</summary>
+    Task<ResultadoArquivoImportado> ImportarArquivoAsync(Guid execucaoId, string nomeArquivo, string conteudo, CancellationToken ct);
 }
 
 public sealed class ImportacaoSisregService(
@@ -48,6 +59,30 @@ public sealed class ImportacaoSisregService(
     IUsuarioAtualAccessor usuarioAtual,
     Notificacoes.Comunicacao.IComunicacaoPacienteService comunicacoes) : IImportacaoSisregService
 {
+    // ---- Contexto do operador ----
+    // Numa request, vem do IUsuarioAtualAccessor. Num LOTE, o serviço roda no runner, onde não há
+    // HttpContext: UsuarioId e UnidadeAtivaId seriam NULL — o que quebraria a resolução da unidade
+    // executante (que é justamente o contexto do operador) e gravaria auditoria sem autor. Por isso
+    // quem dispara o lote captura os dois na request e injeta aqui. O serviço é scoped e o runner
+    // cria um escopo por lote, então esse override não vaza entre execuções.
+    private Guid? _usuarioOverride;
+    private Guid? _unidadeOverride;
+    private bool _temOverride;
+
+    /// <summary>Execução (arquivo) em curso — carimbada nas falhas para a aba de rastreio poder
+    /// abrir "os erros desta importação". NULL fora de um lote (ex.: preview avulso).</summary>
+    private Guid? _execucaoAtual;
+
+    private Guid? UsuarioIdAtual => _temOverride ? _usuarioOverride : usuarioAtual.UsuarioId;
+    private Guid? UnidadeAtivaAtual => _temOverride ? _unidadeOverride : usuarioAtual.UnidadeAtivaId;
+
+    public void DefinirContextoDeBackground(Guid? usuarioId, Guid? unidadeAtivaId)
+    {
+        _usuarioOverride = usuarioId;
+        _unidadeOverride = unidadeAtivaId;
+        _temOverride = true;
+    }
+
     // ===================== PREVIEW =====================
 
     public async Task<ImportacaoPreviewResultado> PreviewDeTextoAsync(string conteudo, string? nomeArquivo, CancellationToken ct)
@@ -272,7 +307,7 @@ public sealed class ImportacaoSisregService(
             DataSolicitacao = m.DataSolicitacao,
             DataRegulacao = m.DataRegulacao,
             CriadoEm = agora,
-            CriadoPor = usuarioAtual.UsuarioId,
+            CriadoPor = UsuarioIdAtual,
         };
         db.Solicitacoes.Add(solic);
 
@@ -293,7 +328,7 @@ public sealed class ImportacaoSisregService(
                 // NADA vai ao PACS automaticamente: só quando a recepção AUTORIZA.
                 ProximaTentativaEm = null,
                 CriadoEm = agora,
-                CriadoPor = usuarioAtual.UsuarioId,
+                CriadoPor = UsuarioIdAtual,
             };
             db.ExamesImagem.Add(exame);
             idPublico = exame.Id;
@@ -309,6 +344,86 @@ public sealed class ImportacaoSisregService(
             existente?.NomeCompleto ?? cadsus.Nome, pacienteCriado, solicCriada, execCriada, passos, null), false);
     }
 
+    // ===================== LOTE (um arquivo) =====================
+
+    public async Task<ResultadoArquivoImportado> ImportarArquivoAsync(
+        Guid execucaoId, string nomeArquivo, string conteudo, CancellationToken ct)
+    {
+        _execucaoAtual = execucaoId;
+
+        // 1. É mesmo um export do SISREG? Contagem de coluna é teste fraco — a assinatura olha a
+        //    FORMA da primeira linha de dados. Reprovou: descarta o arquivo INTEIRO sem tentar
+        //    linha a linha, senão um CSV alheio viraria centenas de falhas de lixo na aba Erros.
+        var assinatura = AgendaTxtParser.Reconhecer(conteudo);
+        if (!assinatura.Reconhecido)
+        {
+            await RegistrarArquivoIncompativelAsync(execucaoId, nomeArquivo, conteudo, assinatura.Motivo, ct);
+            return new ResultadoArquivoImportado(0, 0, 0, 0, true, assinatura.Motivo);
+        }
+
+        var parsed = AgendaTxtParser.Parse(conteudo, nomeArquivo);
+        await RegistrarRejeitadasAsync(parsed, nomeArquivo, ct);
+
+        // Linha que o parser recusou já nasce inválida (e já está na aba Erros).
+        var invalidos = parsed.Rejeitadas.Count;
+        var validos = 0;
+        var jaExistiam = 0;
+
+        foreach (var m in parsed.Marcacoes)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            var (res, jaExistia) = await ExecutarMarcacaoAsync(m, ct);
+            if (res.Sucesso || jaExistia)
+            {
+                // "Já existia" conta como válido: o arquivo está honrado, não há nada a corrigir.
+                validos++;
+                if (jaExistia) jaExistiam++;
+                await ResolverFalhaPendenteAsync(m.CodigoSolicitacao, res.SolicitacaoId,
+                    jaExistia ? "Já existia uma solicitação com esse nº." : "Importada.", ct);
+            }
+            else
+            {
+                invalidos++;
+                await RegistrarFalhaExecucaoAsync(m, nomeArquivo, res.Erro ?? "Erro desconhecido.", ct);
+            }
+        }
+
+        return new ResultadoArquivoImportado(
+            parsed.Marcacoes.Count + parsed.Rejeitadas.Count, validos, invalidos, jaExistiam, false, null);
+    }
+
+    /// <summary>Arquivo .txt/.csv que não é do SISREG: uma falha só, do arquivo — não uma por linha.</summary>
+    private async Task RegistrarArquivoIncompativelAsync(
+        Guid execucaoId, string nomeArquivo, string conteudo, string motivo, CancellationToken ct)
+    {
+        // Guarda só um trecho: o RAW aqui serve para o operador reconhecer o que mandou, não para
+        // revalidar (não há linha do SISREG). Arquivo inteiro no banco seria desperdício.
+        var trecho = Truncar(conteudo.Replace("\r\n", "\n").Trim(), 2000);
+        var hash = Sha256($"{nomeArquivo}|{trecho}");
+
+        var f = await db.SisregImportacaoFalhas.FirstOrDefaultAsync(
+            x => x.CodigoSolicitacao == null && x.HashLinha == hash && x.ResolvidoEm == null, ct);
+
+        var agora = DateTime.UtcNow;
+        if (f is null)
+        {
+            f = new SisregImportacaoFalha { Id = Guid.CreateVersion7(), CriadoEm = agora, HashLinha = hash };
+            db.SisregImportacaoFalhas.Add(f);
+        }
+
+        f.CodigoSolicitacao = null;
+        f.LinhaRaw = trecho;
+        f.Origem = OrigemFalhaImportacao.Arquivo;
+        f.Motivo = Truncar($"Arquivo incompatível: {motivo}", 2000);
+        f.NomeArquivo = Truncar(nomeArquivo, 300);
+        f.ExecucaoId = execucaoId;
+        f.UnidadeExecutanteId = UnidadeAtivaAtual;
+        f.Tentativas++;
+        f.AtualizadoEm = agora;
+        await db.SaveChangesAsync(ct);
+    }
+
     // ===================== FALHAS (lista + validar) =====================
 
     public async Task<IReadOnlyList<ImportacaoFalhaDto>> ListarFalhasAsync(bool somentePendentes, CancellationToken ct)
@@ -317,7 +432,7 @@ public sealed class ImportacaoSisregService(
         if (somentePendentes) q = q.Where(f => f.ResolvidoEm == null);
         // Multitenancy: o operador vê as falhas da unidade em que está importando. Sem contexto
         // (admin global) vê tudo — mesma régua da listagem de solicitações.
-        if (usuarioAtual.UnidadeAtivaId is { } uid) q = q.Where(f => f.UnidadeExecutanteId == uid);
+        if (UnidadeAtivaAtual is { } uid) q = q.Where(f => f.UnidadeExecutanteId == uid);
 
         return await q
             .OrderByDescending(f => f.AtualizadoEm)
@@ -328,12 +443,73 @@ public sealed class ImportacaoSisregService(
             .ToListAsync(ct);
     }
 
+    public async Task<ImportacaoFalhaDetalheDto> ObterFalhaDetalheAsync(Guid falhaId, CancellationToken ct)
+    {
+        var f = await db.SisregImportacaoFalhas.AsNoTracking().FirstOrDefaultAsync(x => x.Id == falhaId, ct)
+            ?? throw new NaoEncontradoException("importacao.falha", falhaId.ToString());
+
+        var dto = new ImportacaoFalhaDto(
+            f.Id, f.CodigoSolicitacao, f.Origem, f.Motivo, f.LinhaRaw, f.NomeArquivo, f.NomePaciente,
+            f.ProcedimentoTexto, f.DataAgendada, f.NomeExecutante, f.Tentativas, f.CriadoEm,
+            f.AtualizadoEm, f.ResolvidoEm, f.ResolucaoNota, f.SolicitacaoId);
+
+        // Arquivo incompatível não tem linha do SISREG pra parsear — o RAW é um trecho do arquivo.
+        // Degrada pro que existe, em vez de fingir campos.
+        if (f.Origem == OrigemFalhaImportacao.Arquivo)
+            return new(dto, false, [], null, null, null, f.CnesExecutante);
+
+        var parsed = AgendaTxtParser.Parse(ReconstruirConteudo(f), f.NomeArquivo);
+        var m = parsed.Marcacoes.FirstOrDefault();
+        if (m is null)
+            return new(dto, false, [], null, null, f.NomeExecutante, f.CnesExecutante);
+
+        var campos = new List<CampoSisreg>
+        {
+            new(0, "Nº da solicitação", m.CodigoSolicitacao),
+            new(2, "Código SIGTAP", m.CodigoSigtap),
+            new(3, "Procedimento", m.ProcedimentoTexto),
+            new(6, "Data/hora do atendimento", m.DataHoraAtendimento?.ToString("dd/MM/yyyy HH:mm")),
+            new(9, "CNS do paciente", m.CnsPaciente),
+            new(10, "Paciente", m.NomePaciente),
+            new(21, "Telefone", m.TelefonePaciente),
+            new(15, "Endereço", MontarEnderecoTexto(m)),
+            new(20, "CEP", m.Cep),
+            new(22, "Município de residência", m.MunicipioResidencia),
+            new(26, "CNES do solicitante", m.CnesUnidadeSolicitante),
+            new(27, "Unidade solicitante", m.NomeUnidadeSolicitante),
+            new(29, "Data da solicitação", m.DataSolicitacao?.ToString("dd/MM/yyyy")),
+            new(31, "Data da regulação", m.DataRegulacao?.ToString("dd/MM/yyyy")),
+            new(35, "CID", m.Cid),
+            new(36, "CPF do solicitante", m.CpfMedicoSolicitante),
+            new(37, "Médico solicitante", m.NomeMedicoSolicitante),
+        };
+
+        return new(dto, true, campos,
+            m.NomeUnidadeSolicitante, m.CnesUnidadeSolicitante,
+            m.NomeUnidadeExecutante ?? f.NomeExecutante, m.CnesUnidadeExecutante ?? f.CnesExecutante);
+    }
+
+    private static string? MontarEnderecoTexto(MarcacaoSisreg m)
+    {
+        var partes = new[] { m.TipoLogradouro, m.Logradouro, m.Numero, m.Complemento, m.Bairro }
+            .Where(x => !string.IsNullOrWhiteSpace(x));
+        var s = string.Join(' ', partes).Trim();
+        return s.Length == 0 ? null : s;
+    }
+
     public async Task<ImportacaoFalhaReprocessoResultado> ReprocessarFalhaAsync(Guid falhaId, CancellationToken ct)
     {
         var f = await db.SisregImportacaoFalhas.FirstOrDefaultAsync(x => x.Id == falhaId, ct)
             ?? throw new NaoEncontradoException("importacao.falha", falhaId.ToString());
         if (f.ResolvidoEm is not null)
             return new(f.Id, true, null, "Esta linha já estava resolvida.");
+
+        // Arquivo incompatível não se revalida: o RAW aqui é um trecho do arquivo, não uma linha do
+        // SISREG. Não há o que reprocessar — a correção é enviar o arquivo certo. Sem esta guarda,
+        // cairia no parser e devolveria "a linha continua ilegível", que confunde o operador.
+        if (f.Origem == OrigemFalhaImportacao.Arquivo)
+            return new(f.Id, false, null,
+                "Este registro é um arquivo inteiro que não é do SISREG — não há linha para revalidar. Envie o arquivo correto, ou descarte este registro.");
 
         var agora = DateTime.UtcNow;
         f.Tentativas++;
@@ -365,7 +541,7 @@ public sealed class ImportacaoSisregService(
         {
             // O ponto do ticket: revalidar algo que já foi criado NÃO duplica — dá ok e sai da lista.
             f.ResolvidoEm = agora;
-            f.ResolvidoPor = usuarioAtual.UsuarioId;
+            f.ResolvidoPor = UsuarioIdAtual;
             f.ResolucaoNota = jaExistia ? "Já existia uma solicitação com esse nº." : "Importada na validação.";
             f.SolicitacaoId = res.SolicitacaoId;
             await db.SaveChangesAsync(ct);
@@ -388,7 +564,7 @@ public sealed class ImportacaoSisregService(
 
         f.ResolvidoEm = DateTime.UtcNow;
         f.AtualizadoEm = f.ResolvidoEm.Value;
-        f.ResolvidoPor = usuarioAtual.UsuarioId;
+        f.ResolvidoPor = UsuarioIdAtual;
         f.ResolucaoNota = Truncar(string.IsNullOrWhiteSpace(nota) ? "Descartada pelo operador." : nota, 500);
         await db.SaveChangesAsync(ct);
     }
@@ -418,7 +594,8 @@ public sealed class ImportacaoSisregService(
         f.NomePaciente = Truncar(m.NomePaciente, 300);
         f.ProcedimentoTexto = Truncar(m.ProcedimentoTexto, 500);
         f.DataAgendada = m.DataHoraAtendimento is { } dh ? ParaUtcBrasilia(dh) : null;
-        f.UnidadeExecutanteId = usuarioAtual.UnidadeAtivaId;
+        f.ExecucaoId = _execucaoAtual;
+        f.UnidadeExecutanteId = UnidadeAtivaAtual;
         f.Tentativas++;
         f.AtualizadoEm = agora;
         await db.SaveChangesAsync(ct);
@@ -456,7 +633,8 @@ public sealed class ImportacaoSisregService(
             f.NomeArquivo = Truncar(nomeArquivo, 300);
             f.CnesExecutante = cnes;
             f.NomeExecutante = Truncar(parsed.Cabecalho.NomeUnidade, 300);
-            f.UnidadeExecutanteId = usuarioAtual.UnidadeAtivaId;
+            f.ExecucaoId = _execucaoAtual;
+            f.UnidadeExecutanteId = UnidadeAtivaAtual;
             f.Tentativas++;
             f.AtualizadoEm = agora;
         }
@@ -472,7 +650,7 @@ public sealed class ImportacaoSisregService(
 
         f.ResolvidoEm = DateTime.UtcNow;
         f.AtualizadoEm = f.ResolvidoEm.Value;
-        f.ResolvidoPor = usuarioAtual.UsuarioId;
+        f.ResolvidoPor = UsuarioIdAtual;
         f.ResolucaoNota = Truncar(nota, 500);
         f.SolicitacaoId = solicitacaoId;
         await db.SaveChangesAsync(ct);
@@ -541,7 +719,7 @@ public sealed class ImportacaoSisregService(
     /// </summary>
     private async Task<ExecutanteResolvido> ResolverExecutanteAsync(string? cnesArquivo, string? nomeExecArquivo, CancellationToken ct)
     {
-        if (usuarioAtual.UnidadeAtivaId is { } uid)
+        if (UnidadeAtivaAtual is { } uid)
         {
             var u = await db.Unidades.AsNoTracking()
                 .Where(x => x.Id == uid && x.Ativo)

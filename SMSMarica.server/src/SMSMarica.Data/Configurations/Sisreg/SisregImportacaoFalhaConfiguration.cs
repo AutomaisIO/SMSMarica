@@ -19,6 +19,7 @@ internal sealed class SisregImportacaoFalhaConfiguration : IEntityTypeConfigurat
         builder.Property(x => x.Origem).HasColumnName("origem").HasConversion<int>().IsRequired();
         builder.Property(x => x.Motivo).HasColumnName("motivo").HasMaxLength(2000).IsRequired();
         builder.Property(x => x.NomeArquivo).HasColumnName("nome_arquivo").HasMaxLength(300);
+        builder.Property(x => x.ExecucaoId).HasColumnName("execucao_id");
         builder.Property(x => x.CnesExecutante).HasColumnName("cnes_executante").HasMaxLength(7);
         builder.Property(x => x.NomeExecutante).HasColumnName("nome_executante").HasMaxLength(300);
         builder.Property(x => x.NomePaciente).HasColumnName("nome_paciente").HasMaxLength(300);
@@ -50,5 +51,8 @@ internal sealed class SisregImportacaoFalhaConfiguration : IEntityTypeConfigurat
         // Listagem padrão: pendentes da unidade, mais recentes primeiro.
         builder.HasIndex(x => new { x.ResolvidoEm, x.UnidadeExecutanteId })
             .HasDatabaseName("ix_sisreg_falha_resolvido_unidade");
+
+        // "Ver os erros desta importação" (aba de rastreio).
+        builder.HasIndex(x => x.ExecucaoId).HasDatabaseName("ix_sisreg_falha_execucao");
     }
 }

@@ -173,4 +173,95 @@ public class AgendaTxtParserTests
         m.CodigoSolicitacao.Should().Be("670119011");
         m.CnesUnidadeExecutante.Should().BeNull();
     }
+
+    // ===== Reconhecer(): é mesmo um export do SISREG? Decide DESCARTAR o arquivo inteiro. =====
+
+    [Fact]
+    public void Reconhece_txt_com_cabecalho_de_unidade()
+    {
+        var txt = "3132358;CDT DR ALBERTO;01/07/2026;08/07/2026;1\n" + Linha("670119011");
+
+        AgendaTxtParser.Reconhecer(txt).Reconhecido.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Reconhece_csv_com_cabecalho_de_colunas()
+    {
+        var csv = CabecalhoColunasCsv + "\r\n" + Linha("543307499");
+
+        AgendaTxtParser.Reconhecer(csv).Reconhecido.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Reconhece_linha_de_dados_sem_cabecalho_nenhum()
+    {
+        AgendaTxtParser.Reconhecer(Linha("670119011")).Reconhecido.Should().BeTrue();
+    }
+
+    /// <summary>O caso que motivou a checagem de FORMA: contagem de coluna sozinha é fraca demais.
+    /// Um CSV alheio com 38 campos não pode ser aceito e virar 300 falhas de lixo na aba Erros.</summary>
+    [Fact]
+    public void Nao_reconhece_csv_alheio_com_as_mesmas_38_colunas()
+    {
+        var impostor = string.Join(';', Enumerable.Range(0, 38).Select(i => $"valor{i}"));
+
+        var a = AgendaTxtParser.Reconhecer(impostor);
+
+        a.Reconhecido.Should().BeFalse();
+        a.Motivo.Should().Contain("nº da solicitação");
+    }
+
+    [Fact]
+    public void Nao_reconhece_arquivo_com_38_colunas_e_data_em_outro_formato()
+    {
+        // Passa no nº, passa no SIGTAP, tem 38 campos — e ainda assim NÃO é do SISREG:
+        // a data de atendimento é o discriminador forte.
+        var c = Linha("670119011").Split(';');
+        c[6] = "2026-07-01";  // ISO, não dd.MM.yyyy
+        var a = AgendaTxtParser.Reconhecer(string.Join(';', c));
+
+        a.Reconhecido.Should().BeFalse();
+        a.Motivo.Should().Contain("data de atendimento");
+    }
+
+    [Fact]
+    public void Nao_reconhece_data_de_atendimento_invalida_no_calendario()
+    {
+        var c = Linha("670119011").Split(';');
+        c[6] = "31.02.2026"; // formato certo, dia inexistente
+        AgendaTxtParser.Reconhecer(string.Join(';', c)).Reconhecido.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("qualquer coisa\nque nao e csv")]
+    [InlineData("a;b;c")]
+    public void Nao_reconhece_conteudo_que_nao_e_do_sisreg(string conteudo)
+    {
+        AgendaTxtParser.Reconhecer(conteudo).Reconhecido.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Nao_reconhece_arquivo_so_com_cabecalho_e_nenhuma_linha_de_dados()
+    {
+        var a = AgendaTxtParser.Reconhecer("3132358;CDT DR ALBERTO;01/07/2026;08/07/2026;0\n\n");
+
+        a.Reconhecido.Should().BeFalse();
+        a.Motivo.Should().Contain("linha de dados");
+    }
+
+    /// <summary>Campos que vêm vazios em arquivo BOM não podem reprovar o arquivo — CNS ausente é
+    /// falha de LINHA (o operador resolve na aba Erros), não motivo pra jogar o arquivo fora.</summary>
+    [Fact]
+    public void Reconhece_arquivo_bom_mesmo_com_campos_opcionais_vazios()
+    {
+        var c = Linha("670119011").Split(';');
+        c[9] = "";   // sem CNS
+        c[21] = "";  // sem telefone
+        c[37] = "";  // sem médico solicitante
+        c[35] = "";  // sem CID
+
+        AgendaTxtParser.Reconhecer(string.Join(';', c)).Reconhecido.Should().BeTrue();
+    }
 }

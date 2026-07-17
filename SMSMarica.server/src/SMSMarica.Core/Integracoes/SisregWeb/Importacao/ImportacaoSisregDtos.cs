@@ -73,6 +73,60 @@ public sealed record ImportacaoFalhaDto(
     string? ResolucaoNota,
     Guid? SolicitacaoId);
 
+/// <summary>Uma linha da aba de rastreio: um arquivo importado.</summary>
+public sealed record ImportacaoExecucaoDto(
+    Guid Id,
+    Guid LoteId,
+    string NomeArquivo,
+    string? CaminhoNoZip,
+    StatusImportacaoArquivo Status,
+    int TotalRegistros,
+    int Validos,
+    int Invalidos,
+    int JaExistiam,
+    string? Mensagem,
+    DateTime IniciadoEm,
+    DateTime? ConcluidoEm,
+    string? CriadoPorNome);
+
+/// <summary>Resposta do envio do lote: o que entrou na fila e o que foi ignorado pela extensão.</summary>
+public sealed record ImportacaoLoteAceitoDto(
+    Guid LoteId,
+    int ArquivosAceitos,
+    /// <summary>Ignorados por extensão (não .txt/.csv) — nem foram lidos, não viram erro.</summary>
+    IReadOnlyList<string> ArquivosIgnorados);
+
+/// <summary>Contadores de UM arquivo processado no lote.</summary>
+public sealed record ResultadoArquivoImportado(
+    int Total,
+    /// <summary>Entraram agora ou já existiam — o arquivo está honrado.</summary>
+    int Validos,
+    int Invalidos,
+    /// <summary>Subconjunto de <see cref="Validos"/> que já estava no sistema.</summary>
+    int JaExistiam,
+    /// <summary>True = é .txt/.csv mas não é do SISREG; nenhuma linha foi tentada.</summary>
+    bool Incompativel,
+    string? Motivo);
+
+/// <summary>Um campo do SISREG já legível, para o modal exibir ao lado do RAW.</summary>
+public sealed record CampoSisreg(int Coluna, string Rotulo, string? Valor);
+
+/// <summary>
+/// Detalhe da falha para análise: o RAW guardado E o parse dele lado a lado. Os campos vêm de
+/// REPARSEAR o RAW na hora — não há colunas espelho no banco, então o que o modal mostra é sempre
+/// o que o parser atual entende, sem risco de divergir da verdade.
+/// </summary>
+public sealed record ImportacaoFalhaDetalheDto(
+    ImportacaoFalhaDto Falha,
+    /// <summary>False para falhas de arquivo incompatível/linha ilegível — aí só há o RAW.</summary>
+    bool Parseavel,
+    /// <summary>Campos nomeados do layout de 38 colunas (vazio quando não parseável).</summary>
+    IReadOnlyList<CampoSisreg> Campos,
+    string? NomeUnidadeSolicitante,
+    string? CnesUnidadeSolicitante,
+    string? NomeUnidadeExecutante,
+    string? CnesUnidadeExecutante);
+
 /// <summary>Resultado de "Validar" (reprocessar) uma falha a partir do RAW guardado.</summary>
 public sealed record ImportacaoFalhaReprocessoResultado(
     Guid FalhaId,

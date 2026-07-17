@@ -236,6 +236,13 @@ public static class DependencyInjection
         services.AddScoped<Integracoes.SisregWeb.Importacao.IMarcadosRegScraper, Integracoes.SisregWeb.Importacao.MarcadosRegScraper>();
         services.AddScoped<Integracoes.SisregWeb.Importacao.IImportacaoSisregService, Integracoes.SisregWeb.Importacao.ImportacaoSisregService>();
 
+        // Importação SISREG em LOTE (vários arquivos / zip) — processada no servidor, fora da
+        // request: fechar a aba não mata a importação e os contadores do rastreio são confiáveis.
+        services.AddSingleton<Integracoes.SisregWeb.Importacao.Background.ISisregImportacaoFila, Integracoes.SisregWeb.Importacao.Background.SisregImportacaoFila>();
+        services.AddSingleton<Integracoes.SisregWeb.Importacao.Background.SisregImportacaoEstadoVivo>();
+        services.AddScoped<Integracoes.SisregWeb.Importacao.IImportacaoLoteService, Integracoes.SisregWeb.Importacao.ImportacaoLoteService>();
+        services.AddHostedService<Integracoes.SisregWeb.Importacao.Background.SisregImportacaoRunner>();
+
         // ---- Integração SISREG (feed de leitura DATASUS) — ADR-0012 ----
         // BaseUrl e credenciais vêm do banco (tela de configuração), não do registro de DI.
         services.AddScoped<Integracoes.Sisreg.Configuracao.ISisregConfiguracaoService, Integracoes.Sisreg.Configuracao.SisregConfiguracaoService>();

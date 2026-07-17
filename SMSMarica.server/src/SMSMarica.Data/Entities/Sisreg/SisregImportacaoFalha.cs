@@ -8,6 +8,12 @@ public enum OrigemFalhaImportacao
 
     /// <summary>A linha foi lida, mas o fluxo de importação falhou (sem CNS, CADSUS, unidade, etc.).</summary>
     Execucao = 2,
+
+    /// <summary>O ARQUIVO inteiro é .txt/.csv mas não é do SISREG — nenhuma linha foi tentada.
+    /// Aqui <c>LinhaRaw</c> guarda um TRECHO do conteúdo (não uma linha), e não há o que revalidar:
+    /// a correção é reenviar o arquivo certo. Extensão fora de .txt/.csv nem chega aqui — é
+    /// ignorada antes de qualquer leitura.</summary>
+    Arquivo = 3,
 }
 
 /// <summary>
@@ -39,6 +45,10 @@ public class SisregImportacaoFalha
 
     /// <summary>Nome do arquivo de onde a linha veio (proveniência; o CSV deriva o executante dele).</summary>
     public string? NomeArquivo { get; set; }
+
+    /// <summary>Importação que gerou esta falha — dá pra abrir a execução e ver os erros dela.
+    /// NULL nas falhas geradas fora de um lote (ex.: preview avulso).</summary>
+    public Guid? ExecucaoId { get; set; }
 
     /// <summary>CNES da unidade executante do cabeçalho do arquivo — recompõe o contexto no reprocesso.</summary>
     public string? CnesExecutante { get; set; }

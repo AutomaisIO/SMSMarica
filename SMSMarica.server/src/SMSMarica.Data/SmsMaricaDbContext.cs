@@ -89,6 +89,9 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     // Linhas do export do SISREG que não viraram solicitação (com o RAW, para revalidar)
     public DbSet<Entities.Sisreg.SisregImportacaoFalha> SisregImportacaoFalhas => Set<Entities.Sisreg.SisregImportacaoFalha>();
 
+    // Uma linha por arquivo importado (rastreio: quando, quem, válidos, inválidos)
+    public DbSet<Entities.Sisreg.SisregImportacaoExecucao> SisregImportacaoExecucoes => Set<Entities.Sisreg.SisregImportacaoExecucao>();
+
     // Domínio de Agendamento (Especialidade → Agenda → Agendamento) — ADR-0012/0013
     public DbSet<Especialidade> Especialidades => Set<Especialidade>();
     public DbSet<Equipamento> Equipamentos => Set<Equipamento>();

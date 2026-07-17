@@ -54,6 +54,75 @@ public static class AgendaTxtParser
     private const int NomeMedico = 37;
     private const int TotalCampos = 38;
 
+    /// <summary>Veredito de "isto é mesmo um export de agendamentos do SISREG?".</summary>
+    /// <param name="Reconhecido">False = arquivo incompatível; descartar inteiro, sem parsear linha a linha.</param>
+    /// <param name="Motivo">Por que não foi reconhecido (vazio quando reconhecido).</param>
+    public sealed record Assinatura(bool Reconhecido, string Motivo);
+
+    /// <summary>
+    /// Decide se o conteúdo é um export de agendamentos do SISREG, olhando a PRIMEIRA linha de
+    /// dados (cabeçalhos de unidade/colunas e linhas vazias são pulados, como no <see cref="Parse"/>).
+    /// <para>
+    /// Contagem de coluna sozinha é um teste fraco — qualquer CSV alheio com 38 campos passaria e
+    /// geraria centenas de falhas de lixo. Então a checagem é de FORMA: onde o layout exige dígito
+    /// tem que ser dígito, e onde exige data tem que ser data válida em <c>dd.MM.yyyy</c>.
+    /// </para>
+    /// <para>
+    /// Só campos ESTRUTURAIS entram no teste. Campos que legitimamente vêm vazios em arquivo bom
+    /// (CNS, telefone, endereço, médico) NÃO podem reprovar o arquivo — isso é falha de LINHA, que
+    /// o operador resolve na aba Erros, não motivo para jogar o arquivo fora.
+    /// </para>
+    /// </summary>
+    public static Assinatura Reconhecer(string conteudo)
+    {
+        if (string.IsNullOrWhiteSpace(conteudo))
+            return new(false, "Arquivo vazio.");
+
+        var linhas = (conteudo ?? string.Empty).Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
+        foreach (var raw in linhas)
+        {
+            var linha = raw.TrimEnd();
+            if (linha.Length == 0) continue;
+            var c = linha.Split(';');
+            if (EhCabecalhoColunas(c)) continue;
+            if (c.Length == 5 && EhCnes(c[0]) && int.TryParse(c[4].Trim(), out _)) continue;
+
+            // Primeira linha candidata a dados: ela decide o arquivo inteiro.
+            if (c.Length < TotalCampos)
+                return new(false, $"A primeira linha de dados tem {c.Length} campo(s); o export de agendamentos do SISREG tem {TotalCampos}.");
+
+            if (!SoDigitosNaoVazio(c[CodigoSolicitacao]))
+                return new(false, $"O nº da solicitação (1ª coluna) deveria ser numérico, veio \"{Amostra(c[CodigoSolicitacao])}\".");
+
+            if (!SoDigitosNaoVazio(c[CodigoSigtap]))
+                return new(false, $"O código SIGTAP (3ª coluna) deveria ser numérico, veio \"{Amostra(c[CodigoSigtap])}\".");
+
+            // O sinal mais forte: data de atendimento no formato do SISREG.
+            if (Data(c[DataAtendimento]) is null)
+                return new(false, $"A data de atendimento (7ª coluna) deveria estar em dd.MM.aaaa, veio \"{Amostra(c[DataAtendimento])}\".");
+
+            if (Digitos(c[CnesUnidadeSolicitante]) is not { Length: 7 })
+                return new(false, $"O CNES do solicitante (27ª coluna) deveria ter 7 dígitos, veio \"{Amostra(c[CnesUnidadeSolicitante])}\".");
+
+            return new(true, string.Empty);
+        }
+
+        return new(false, "Não há nenhuma linha de dados — só cabeçalho ou linhas em branco.");
+    }
+
+    private static bool SoDigitosNaoVazio(string? s)
+    {
+        var t = (s ?? string.Empty).Trim();
+        return t.Length > 0 && t.All(char.IsDigit);
+    }
+
+    /// <summary>Trecho curto do valor para a mensagem de erro (não despeja a linha toda).</summary>
+    private static string Amostra(string? s)
+    {
+        var t = (s ?? string.Empty).Trim();
+        return t.Length <= 20 ? t : t[..20] + "…";
+    }
+
     /// <param name="conteudo">Texto integral do arquivo (TXT ou CSV).</param>
     /// <param name="nomeArquivo">Nome do arquivo enviado — usado só no CSV, para derivar a
     /// unidade executante (que não vem nas linhas). Ex.: "CDT DR ALBERTO…-20260703.csv".</param>
