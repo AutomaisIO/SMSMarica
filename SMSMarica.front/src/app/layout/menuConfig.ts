@@ -138,7 +138,7 @@ export const SECOES: SecaoMenu[] = [
   },
   {
     id: 'solicitacoes',
-    titulo: 'Solicitações de Exame',
+    titulo: 'Solicitações',
     icone: ClipboardCheck,
     itens: [
       {
