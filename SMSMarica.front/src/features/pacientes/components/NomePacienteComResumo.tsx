@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { Check, Loader2, Pencil, UserRound } from 'lucide-react';
+import { Check, Eye, Loader2, Pencil, UserRound } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/shared/lib/cn';
 import { pedirNavegacaoJanelaPrincipal } from '@/shared/lib/janela';
@@ -248,13 +248,21 @@ export function NomePacienteComResumo({
             aoAbrir={(id) => navegarNaJanelaCerta(`/app/solicitacoes-exame/${id}`)}
           />
         ) : null}
-        <div className="mt-6 flex justify-between gap-3 border-t border-gray-100 pt-4">
-          <Button
-            variante="ghost"
-            onClick={() => navegarNaJanelaCerta(`/app/pacientes/${pacienteId}/editar`)}
-          >
-            <Pencil className="h-4 w-4" /> Editar
-          </Button>
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variante="outline"
+              onClick={() => navegarNaJanelaCerta(`/app/pacientes/${pacienteId}`)}
+            >
+              <Eye className="h-4 w-4" /> Visualizar cadastro
+            </Button>
+            <Button
+              variante="ghost"
+              onClick={() => navegarNaJanelaCerta(`/app/pacientes/${pacienteId}/editar`)}
+            >
+              <Pencil className="h-4 w-4" /> Editar
+            </Button>
+          </div>
           <Button onClick={() => setAberto(false)}>Fechar</Button>
         </div>
       </Modal>

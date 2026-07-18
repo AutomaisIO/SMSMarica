@@ -337,6 +337,10 @@ export function PacienteFormPage() {
   const params = useParams<{ id?: string }>();
   const modo: Modo = params.id ? 'editar' : 'criar';
 
+  // Ao sair da EDIÇÃO (salvar/cancelar/voltar), volta para a tela de cadastro do paciente
+  // (a que abre antes de clicar em Editar), não para a lista. No modo criar, cai na lista.
+  const destinoAoSair = modo === 'editar' && params.id ? `/app/pacientes/${params.id}` : '/app/pacientes';
+
   // CPF pré-preenchido quando o cadastro foi iniciado a partir de uma busca por
   // CPF válido (ex.: tela de solicitação → "Cadastrar paciente"). `origem`
   // marca de onde o fluxo nasceu (ex.: 'solicitacao') para, ao concluir,
@@ -595,7 +599,7 @@ export function PacienteFormPage() {
         navigate('/app/pacientes', { replace: true });
       }
     } else {
-      navigate('/app/pacientes', { replace: false });
+      navigate(destinoAoSair, { replace: false });
     }
   }
 
@@ -799,11 +803,11 @@ export function PacienteFormPage() {
       <Cabecalho
         titulo={modo === 'criar' ? 'Novo paciente' : 'Editar paciente'}
         subtitulo={estado.nomeCompleto || undefined}
-        voltar={() => navigate('/app/pacientes')}
+        voltar={() => navigate(destinoAoSair)}
       />
 
       {/* Ações duplicadas no topo para o operador não precisar rolar até o fim. */}
-      <BarraAcoes salvando={salvando} modo={modo} aoCancelar={() => navigate('/app/pacientes')} />
+      <BarraAcoes salvando={salvando} modo={modo} aoCancelar={() => navigate(destinoAoSair)} />
 
       {carregando ? (
         <div className="text-sm text-gray-500">Carregando dados…</div>
@@ -829,7 +833,7 @@ export function PacienteFormPage() {
         </div>
       ) : null}
 
-      <BarraAcoes salvando={salvando} modo={modo} aoCancelar={() => navigate('/app/pacientes')} />
+      <BarraAcoes salvando={salvando} modo={modo} aoCancelar={() => navigate(destinoAoSair)} />
     </form>
 
     {guardaSaida}
