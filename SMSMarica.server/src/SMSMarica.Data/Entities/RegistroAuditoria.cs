@@ -35,5 +35,9 @@ public sealed class RegistroAuditoria
     /// <summary>Nome do usuário no momento do registro (desnormalizado p/ leitura rápida).</summary>
     public string? UsuarioNome { get; set; }
 
+    /// <summary>IP de onde a ação partiu (X-Forwarded-For já honrado). Null em jobs/seed ou
+    /// registros anteriores à captura.</summary>
+    public string? Ip { get; set; }
+
     public DateTime CriadoEm { get; set; }
 }

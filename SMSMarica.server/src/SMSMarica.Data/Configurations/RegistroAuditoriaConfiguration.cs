@@ -22,6 +22,7 @@ internal sealed class RegistroAuditoriaConfiguration : IEntityTypeConfiguration<
 
         builder.Property(r => r.UsuarioId).HasColumnName("usuario_id");
         builder.Property(r => r.UsuarioNome).HasColumnName("usuario_nome").HasMaxLength(200);
+        builder.Property(r => r.Ip).HasColumnName("ip").HasMaxLength(64);
         builder.Property(r => r.CriadoEm).HasColumnName("criado_em").IsRequired();
 
         builder.HasIndex(r => new { r.Entidade, r.EntidadeId })

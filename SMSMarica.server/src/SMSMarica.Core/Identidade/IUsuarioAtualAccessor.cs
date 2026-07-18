@@ -19,4 +19,8 @@ public interface IUsuarioAtualAccessor
     /// validação é responsabilidade do service que a consome.
     /// </summary>
     Guid? UnidadeAtivaId { get; }
+
+    /// <summary>IP real do cliente na requisição (X-Forwarded-For já honrado), ou <c>null</c>
+    /// fora de uma requisição (jobs/seed). Para a trilha de auditoria.</summary>
+    string? Ip { get; }
 }

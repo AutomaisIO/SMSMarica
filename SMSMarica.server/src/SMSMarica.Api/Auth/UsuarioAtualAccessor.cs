@@ -28,4 +28,13 @@ internal sealed class UsuarioAtualAccessor(IHttpContextAccessor http) : IUsuario
             return Guid.TryParse(valor, out var id) ? id : null;
         }
     }
+
+    public string? Ip
+    {
+        get
+        {
+            var ip = _http.HttpContext?.Connection.RemoteIpAddress?.ToString();
+            return string.IsNullOrWhiteSpace(ip) ? null : ip;
+        }
+    }
 }
