@@ -218,51 +218,69 @@ public sealed class ImportacaoSisregService(
             passos.Add($"Categoria {categoria} (SIGTAP {sig}) — importa como solicitação, sem satélite de execução.");
         }
 
-        // 3. Paciente: CNS → cadweb50 (CPF+demografia) → resolve por CPF → cria se não existir.
+        // 3. Paciente. PRIMEIRO tenta a NOSSA base por CNS — o CADSUS/SISREG tem limite de
+        //    500 req/hora; um lote grande estoura e passa a falhar TUDO como "não encontrado".
+        //    A maioria dos pacientes já existe, então só quem falta de fato consulta o SISREG.
         if (string.IsNullOrWhiteSpace(m.CnsPaciente)) return (Falha("Marcação sem CNS do paciente."), false);
-        ConsultaCnsRespostaDto cadsus;
-        try { cadsus = await consultaCns.ConsultarPorCnsAsync(m.CnsPaciente!, ct); }
-        catch (Exception ex) { return (Falha($"Falha ao consultar o paciente no SISREG (CNS): {ex.Message}"), false); }
-        passos.Add($"CNS {Mascara(m.CnsPaciente)} → CPF {Mascara(cadsus.Cpf)} (cadweb50).");
 
-        // Resolve o paciente existente por CPF (do CADSUS) e, se faltar, por CNS — o cidadão
-        // pode já estar no hub sob o CNS mesmo quando o CADSUS não devolve o CPF. Nunca altera o nome.
-        var existente = await pacientes.ObterPorCpfAsync(cadsus.Cpf, ct)
-                        ?? await pacientes.ObterPorCnsAsync(m.CnsPaciente!, ct);
         Guid pacienteId;
         bool pacienteCriado;
-        if (existente is not null)
+        string? nomeResolvido;
+
+        var porCns = await pacientes.ObterPorCnsAsync(m.CnsPaciente!, ct);
+        if (porCns is not null)
         {
-            pacienteId = existente.Id;
+            pacienteId = porCns.Id;
             pacienteCriado = false;
-            passos.Add("Paciente já cadastrado — reusa, sem alterar o nome.");
+            nomeResolvido = porCns.NomeCompleto;
+            passos.Add($"Paciente já cadastrado (CNS {Mascara(m.CnsPaciente)}) — reusa, sem consultar o SISREG.");
         }
         else
         {
-            // Paciente inexistente E sem CPF do CADSUS: não dá para cadastrar com segurança
-            // (sem CPF não há identidade). Cai em falha honesta em vez do falso "CPF duplicado".
-            if (SoDigitos(cadsus.Cpf).Length != 11)
-                return (Falha("O CADSUS não retornou o CPF deste CNS e o paciente ainda não existe no sistema. Cadastre o paciente manualmente e reimporte."), false);
+            // Só agora vai ao CADSUS (CNS → CPF + demografia) — o passo caro/limitado.
+            ConsultaCnsRespostaDto cadsus;
+            try { cadsus = await consultaCns.ConsultarPorCnsAsync(m.CnsPaciente!, ct); }
+            catch (Exception ex) { return (Falha($"Falha ao consultar o paciente no SISREG (CNS): {ex.Message}"), false); }
+            passos.Add($"CNS {Mascara(m.CnsPaciente)} → CPF {Mascara(cadsus.Cpf)} (cadweb50).");
 
-            // Telefone do TXT vai num slot NÃO-principal (celular se móvel, senão residencial) —
-            // o principal é o contato validado por OTP e é intocável pela automação (ADR-0020).
-            var (celular, residencial) = MontarTelefoneDoTxt(m.TelefonePaciente);
-            // Endereço só entra no CREATE (paciente novo); paciente existente nunca é sobrescrito.
-            var endereco = MontarEnderecoDoTxt(m);
+            // Pode já existir por CPF (mesmo cidadão cadastrado sob outro CNS). Nunca altera o nome.
+            var porCpf = await pacientes.ObterPorCpfAsync(cadsus.Cpf, ct);
+            if (porCpf is not null)
+            {
+                pacienteId = porCpf.Id;
+                pacienteCriado = false;
+                nomeResolvido = porCpf.NomeCompleto;
+                passos.Add("Paciente já cadastrado (por CPF) — reusa, sem alterar o nome.");
+            }
+            else
+            {
+                // Paciente inexistente E sem CPF do CADSUS: não dá para cadastrar com segurança
+                // (sem CPF não há identidade). Cai em falha honesta em vez do falso "CPF duplicado".
+                if (SoDigitos(cadsus.Cpf).Length != 11)
+                    return (Falha("O CADSUS não retornou o CPF deste CNS e o paciente ainda não existe no sistema. Cadastre o paciente manualmente e reimporte."), false);
 
-            pacienteId = await pacientes.CadastrarAsync(new CadastrarPacienteRequest(
-                NomeCompleto: (cadsus.Nome.Length > 0 ? cadsus.Nome : m.NomePaciente) ?? "SEM NOME",
-                Cpf: cadsus.Cpf,
-                DataNascimento: cadsus.DataNascimento ?? default,
-                Cns: cadsus.Cns,
-                Rg: null,
-                Sexo: cadsus.Sexo == "Masculino" ? Sexo.Masculino : cadsus.Sexo == "Feminino" ? Sexo.Feminino : Sexo.NaoInformado,
-                NomeDaMae: cadsus.NomeMae,
-                Endereco: endereco,
-                TelefoneCelular: celular,
-                TelefoneResidencial: residencial), ct);
-            pacienteCriado = true;
-            passos.Add("Paciente novo → criado a partir do CADSUS (+ telefone/endereço do TXT).");
+                // Telefone do TXT vai num slot NÃO-principal (celular se móvel, senão residencial) —
+                // o principal é o contato validado por OTP e é intocável pela automação (ADR-0020).
+                var (celular, residencial) = MontarTelefoneDoTxt(m.TelefonePaciente);
+                // Endereço só entra no CREATE (paciente novo); paciente existente nunca é sobrescrito.
+                var endereco = MontarEnderecoDoTxt(m);
+
+                var nomeNovo = (cadsus.Nome.Length > 0 ? cadsus.Nome : m.NomePaciente) ?? "SEM NOME";
+                pacienteId = await pacientes.CadastrarAsync(new CadastrarPacienteRequest(
+                    NomeCompleto: nomeNovo,
+                    Cpf: cadsus.Cpf,
+                    DataNascimento: cadsus.DataNascimento ?? default,
+                    Cns: cadsus.Cns,
+                    Rg: null,
+                    Sexo: cadsus.Sexo == "Masculino" ? Sexo.Masculino : cadsus.Sexo == "Feminino" ? Sexo.Feminino : Sexo.NaoInformado,
+                    NomeDaMae: cadsus.NomeMae,
+                    Endereco: endereco,
+                    TelefoneCelular: celular,
+                    TelefoneResidencial: residencial), ct);
+                pacienteCriado = true;
+                nomeResolvido = nomeNovo;
+                passos.Add("Paciente novo → criado a partir do CADSUS (+ telefone/endereço do TXT).");
+            }
         }
 
         // 4. Unidades. EXECUTORA = o tenant atual (contexto da unidade em que o operador importa) —
@@ -341,7 +359,7 @@ public sealed class ImportacaoSisregService(
 
         return (new ImportacaoExecucaoResultado(
             codigo, true, idPublico, accession ?? string.Empty,
-            existente?.NomeCompleto ?? cadsus.Nome, pacienteCriado, solicCriada, execCriada, passos, null), false);
+            nomeResolvido, pacienteCriado, solicCriada, execCriada, passos, null), false);
     }
 
     // ===================== LOTE (um arquivo) =====================
