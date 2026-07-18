@@ -3,7 +3,13 @@ using Hl7.Fhir.Model;
 namespace Automais.Fhir.Core.Patients;
 
 /// <summary>Filtros de busca de Patient (search params suportados).</summary>
-public sealed record PatientBusca(string? Cpf = null, string? Cns = null, string? Nome = null, string? Telefone = null);
+public sealed record PatientBusca(
+    string? Cpf = null,
+    string? Cns = null,
+    string? Nome = null,
+    string? Telefone = null,
+    /// <summary>Search param FHIR <c>_id</c>: busca em lote por ids (OR).</summary>
+    IReadOnlyCollection<Guid>? Ids = null);
 
 /// <summary>
 /// Operações sobre o recurso FHIR <c>Patient</c>. Entrada/saída são objetos

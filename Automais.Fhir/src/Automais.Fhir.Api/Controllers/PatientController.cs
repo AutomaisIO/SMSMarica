@@ -75,17 +75,34 @@ public sealed class PatientController(IPatientService service) : ControllerBase
         return FhirResponse.Recurso(bundle);
     }
 
-    /// <summary>GET /fhir/Patient?identifier=system|valor&amp;name=... — busca.</summary>
+    /// <summary>GET /fhir/Patient?identifier=system|valor&amp;name=...&amp;_id=a,b,c — busca.</summary>
     [HttpGet]
     public async Task<IActionResult> Buscar(
         [FromQuery] string? identifier,
         [FromQuery] string? name,
         [FromQuery] string? telecom,
+        [FromQuery(Name = "_id")] string? id,
         CancellationToken ct)
     {
         var (cpf, cns) = SepararIdentifier(identifier);
-        var bundle = await service.BuscarAsync(new PatientBusca(cpf, cns, name, telecom), ct);
+        var ids = ParseIds(id);
+        var bundle = await service.BuscarAsync(new PatientBusca(cpf, cns, name, telecom, ids), ct);
         return FhirResponse.Recurso(bundle);
+    }
+
+    /// <summary>
+    /// Search param <c>_id</c>: lista OR separada por vírgula; valor inválido é ignorado.
+    /// Param presente sem nenhum id válido devolve lista vazia (searchset vazio), não
+    /// null — senão a busca degeneraria para "sem filtro" (últimos 50).
+    /// </summary>
+    private static IReadOnlyCollection<Guid>? ParseIds(string? id)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return null;
+        var ids = new List<Guid>();
+        foreach (var parte in id.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            if (Guid.TryParse(parte, out var g))
+                ids.Add(g);
+        return ids;
     }
 
     private static Guid ParseId(string id) =>

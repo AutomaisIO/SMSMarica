@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.Extensions.Caching.Memory;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Data.Entities.Enums;
@@ -19,6 +20,13 @@ public sealed class RequerPermissaoAttribute(ModuloPermissao modulo, AcoesPermis
 {
     private readonly ModuloPermissao _modulo = modulo;
     private readonly AcoesPermissao _acao = acao;
+
+    /// <summary>
+    /// TTL do cache de permissões resolvidas por usuário. Curto de propósito: uma
+    /// permissão revogada pode sobreviver até isso; em troca, rajadas (ex.: viewer
+    /// PACS pedindo dezenas de frames de uma vez) fazem 1 query em vez de dezenas.
+    /// </summary>
+    private static readonly TimeSpan TtlPermissoes = TimeSpan.FromSeconds(30);
 
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
@@ -45,11 +53,18 @@ public sealed class RequerPermissaoAttribute(ModuloPermissao modulo, AcoesPermis
         }
 
         var service = context.HttpContext.RequestServices.GetRequiredService<IIdentidadeService>();
+        var cache = context.HttpContext.RequestServices.GetRequiredService<IMemoryCache>();
         try
         {
-            var resolvidas = await service.ObterPermissoesResolvidasAsync(
-                usuarioId,
-                context.HttpContext.RequestAborted);
+            var resolvidas = (await cache.GetOrCreateAsync(
+                $"permissoes-resolvidas:{usuarioId}",
+                entrada =>
+                {
+                    entrada.AbsoluteExpirationRelativeToNow = TtlPermissoes;
+                    return service.ObterPermissoesResolvidasAsync(
+                        usuarioId,
+                        context.HttpContext.RequestAborted);
+                }))!;
 
             var entrada = resolvidas.Resolvidas.FirstOrDefault(p => p.Modulo == _modulo);
             if (entrada is null || (entrada.Acoes & _acao) != _acao)

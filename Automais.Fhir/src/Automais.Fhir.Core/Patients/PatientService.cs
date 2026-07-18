@@ -79,6 +79,9 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
     {
         var query = db.Patients.AsNoTracking().Where(p => !p.IsDeleted);
 
+        // Ids não-nulo (mesmo vazio) É filtro: _id sem match devolve searchset vazio.
+        if (filtro.Ids is not null)
+            query = query.Where(p => filtro.Ids.Contains(p.Id));
         if (!string.IsNullOrWhiteSpace(filtro.Cpf))
             query = query.Where(p => p.Cpf == filtro.Cpf);
         if (!string.IsNullOrWhiteSpace(filtro.Cns))
@@ -94,11 +97,15 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
 
         // Sem filtro: últimos incluídos primeiro (LastUpdated desc). Com filtro: por nome.
         var semFiltro = string.IsNullOrWhiteSpace(filtro.Cpf) && string.IsNullOrWhiteSpace(filtro.Cns)
-                        && string.IsNullOrWhiteSpace(filtro.Nome) && string.IsNullOrWhiteSpace(filtro.Telefone);
+                        && string.IsNullOrWhiteSpace(filtro.Nome) && string.IsNullOrWhiteSpace(filtro.Telefone)
+                        && filtro.Ids is null;
         var ordenada = semFiltro
             ? query.OrderByDescending(p => p.LastUpdated)
             : query.OrderBy(p => p.Nome);
-        var rows = await ordenada.Take(LimiteBusca).ToListAsync(ct);
+        // Busca por _id é em lote (resolver de nomes do smsmarica): devolve TODOS os
+        // ids pedidos, não limita a LimiteBusca.
+        var limite = filtro.Ids is { Count: > 0 } ids ? ids.Count : LimiteBusca;
+        var rows = await ordenada.Take(limite).ToListAsync(ct);
 
         var bundle = new Bundle { Type = Bundle.BundleType.Searchset, Total = rows.Count };
         foreach (var row in rows)

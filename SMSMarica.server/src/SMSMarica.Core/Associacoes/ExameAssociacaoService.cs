@@ -96,8 +96,11 @@ public sealed class ExameAssociacaoService(
 
         // TRANSAÇÃO: associação + promoção (com enfileiramento do zap) + revínculo de laudos são um
         // único fato — parcial aqui deixava a solicitação presa em "JaConciliada" sem notificar.
-        await using (var tx = await db.Database.BeginTransactionAsync(cancellationToken))
+        // ExecutionStrategy: obrigatório com EnableRetryOnFailure — transação manual fora dela lança.
+        var strategy = db.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
         {
+            await using var tx = await db.Database.BeginTransactionAsync(cancellationToken);
             db.ExameAssociacoes.Add(assoc);
             await db.SaveChangesAsync(cancellationToken);
 
@@ -109,7 +112,7 @@ public sealed class ExameAssociacaoService(
             await AtualizarPacienteDosLaudosAsync(uid, pacienteId, agora, cancellationToken);
 
             await tx.CommitAsync(cancellationToken);
-        }
+        });
 
         logger.LogInformation(
             "Exame {Uid} associado à solicitação {Accession} (origem {Origem}).", uid, accession, origem);

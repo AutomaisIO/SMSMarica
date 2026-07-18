@@ -44,6 +44,10 @@ public static class DependencyInjection
                 npgsql.MigrationsAssembly(typeof(SmsMaricaDbContext).Assembly.FullName);
                 npgsql.MigrationsHistoryTable("__migrations", SmsMaricaDbContext.SchemaPadrao);
                 npgsql.UseVector(); // pgvector — embeddings do módulo IA
+                // Pool do Postgres da DO é escasso e compartilhado: transientes sob rajada
+                // (ex.: viewer PACS) viravam 500. Transações manuais precisam rodar dentro
+                // de CreateExecutionStrategy().ExecuteAsync(...) com isso ligado.
+                npgsql.EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(3), errorCodesToAdd: null);
             });
 
         // DbContext scoped (uso geral) + DbContextFactory (IaService isola um contexto por fonte

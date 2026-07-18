@@ -16,6 +16,9 @@ public interface IPacienteFhirClient
     /// <summary>Busca por identifier (system|valor), nome e/ou telefone. Devolve o Bundle searchset.</summary>
     Task<Bundle> BuscarAsync(string? identifier = null, string? name = null, string? telecom = null, CancellationToken ct = default);
 
+    /// <summary>Busca em lote por ids (search param FHIR <c>_id</c>, OR por vírgula). Devolve o Bundle searchset.</summary>
+    Task<Bundle> BuscarPorIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default);
+
     /// <summary>Página keyset (por Id) de Patients vivos, para manutenção/backfill (ADR-0020 R3).</summary>
     Task<Bundle> ListarParaManutencaoAsync(Guid? cursor, int count, CancellationToken ct = default);
 }

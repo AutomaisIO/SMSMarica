@@ -35,6 +35,9 @@ public interface IPacienteResolver
 
 public sealed class PacienteResolver(IPacienteFhirClient fhir, ILogger<PacienteResolver> logger) : IPacienteResolver
 {
+    /// <summary>Máximo de ids por busca em lote (_id=...) — limita o tamanho da URL.</summary>
+    private const int TamanhoLoteBusca = 100;
+
     public async Task<PacienteResumo?> ResolverAsync(Guid id, CancellationToken ct = default)
     {
         if (id == Guid.Empty) return null;
@@ -47,11 +50,13 @@ public sealed class PacienteResolver(IPacienteFhirClient fhir, ILogger<PacienteR
             return new PacienteResumo(dto.Id, dto.NomeCompleto, dto.Cpf, dto.Cns, dto.DataNascimento, dto.Sexo,
                 dto.TelefoneVerificado);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
-            // Hub FHIR indisponível/erro NÃO pode derrubar a listagem que só quer
+            // Hub FHIR indisponível/erro/lento NÃO pode derrubar a listagem que só quer
             // exibir o nome: degrada para "sem nome" (o chamador mostra fallback) em
-            // vez de propagar e virar 500. A cancelação legítima segue propagando.
+            // vez de propagar e virar 500. Só a cancelação do CHAMADOR propaga — o
+            // timeout do HttpClient também lança TaskCanceledException, mas com o ct
+            // do chamador intacto, e é hub lento: degrada como qualquer outra falha.
             logger.LogWarning(ex, "Falha ao resolver paciente {PacienteId} no hub FHIR — seguindo sem nome.", id);
             return null;
         }
@@ -63,14 +68,43 @@ public sealed class PacienteResolver(IPacienteFhirClient fhir, ILogger<PacienteR
         var distintos = ids.Where(i => i != Guid.Empty).Distinct().ToArray();
         if (distintos.Length == 0) return new Dictionary<Guid, PacienteResumo>();
 
-        var resumos = await Task.WhenAll(distintos.Select(id => ResolverAsync(id, ct)));
-
         // Indexador (não ToDictionary): se dois ids resolverem para o mesmo paciente
         // canônico (.Id), a chave duplicada sobrescreve em vez de lançar
         // ArgumentException — que viraria 500 na listagem.
         var mapa = new Dictionary<Guid, PacienteResumo>(distintos.Length);
-        foreach (var r in resumos)
-            if (r is not null) mapa[r.Id] = r;
+
+        // 1 busca em lote por chunk (_id=a,b,c) em vez de 1 GET por paciente: o pior caso
+        // da listagem de conversas passava de N chamadas paralelas ao hub para poucas.
+        foreach (var chunk in distintos.Chunk(TamanhoLoteBusca))
+        {
+            try
+            {
+                var bundle = await fhir.BuscarPorIdsAsync(chunk, ct);
+                foreach (var e in bundle?.Entry ?? [])
+                {
+                    if (e.Resource is not Patient patient) continue;
+                    var dto = PacienteFhirMapper.ParaDto(patient);
+                    mapa[dto.Id] = new PacienteResumo(dto.Id, dto.NomeCompleto, dto.Cpf, dto.Cns,
+                        dto.DataNascimento, dto.Sexo, dto.TelefoneVerificado);
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+            {
+                // Mesma régua do ResolverAsync: falha/lentidão do hub degrada; os ids do
+                // chunk caem no fallback individual abaixo.
+                logger.LogWarning(ex, "Busca em lote de pacientes no hub FHIR falhou — caindo no fallback individual.");
+            }
+        }
+
+        // Fallback: o que o lote não devolveu (hub antigo sem _id, paciente excluído,
+        // chunk que falhou) tenta individualmente — cada miss real degrada para null.
+        var faltantes = distintos.Where(id => !mapa.ContainsKey(id)).ToArray();
+        if (faltantes.Length > 0)
+        {
+            var resumos = await Task.WhenAll(faltantes.Select(id => ResolverAsync(id, ct)));
+            foreach (var r in resumos)
+                if (r is not null) mapa[r.Id] = r;
+        }
         return mapa;
     }
 

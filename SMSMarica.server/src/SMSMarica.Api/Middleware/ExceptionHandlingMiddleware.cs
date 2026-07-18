@@ -67,6 +67,13 @@ public sealed partial class ExceptionHandlingMiddleware(
                 "Armazenamento indisponível", $"{ex.Message} (código {reg.Codigo})",
                 type: ex.Codigo, codigoReferencia: reg.Codigo, jaReportado: reg.JaReportado);
         }
+        // Cliente abortou a requisição (fechou a aba, viewer PACS cancelou o download de
+        // frames): não é falha do sistema — não registra em registro_erro nem tenta
+        // responder (a conexão já foi embora). Timeout interno com cliente ainda
+        // conectado NÃO cai aqui e segue sendo registrado como erro real.
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        {
+        }
         catch (Exception ex)
         {
             LogErroNaoTratado(_logger, ex, context.Request.Path);
