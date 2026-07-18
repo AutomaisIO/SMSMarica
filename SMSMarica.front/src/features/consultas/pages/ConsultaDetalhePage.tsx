@@ -3,28 +3,45 @@ import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   CalendarClock,
-  ChevronDown,
-  ChevronUp,
-  FileCode2,
   Loader2,
   MessageSquarePlus,
   Phone,
   RefreshCw,
   Send,
+  Stethoscope,
 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { formatarInstante, formatarInstanteData } from '@/shared/lib/datas';
 import { Button } from '@/shared/ui/Button';
+import { CodigoCopiavel } from '@/shared/ui/CodigoCopiavel';
 import { Modal } from '@/shared/ui/Modal';
 import { Select } from '@/shared/ui/Select';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { ChecksComunicacao } from '@/features/solicitacoes-exame/components/ChecksComunicacao';
+import { ConfirmacaoBadge } from '@/features/solicitacoes-exame/components/ConfirmacaoBadge';
+import { RawSisregDisclosure } from '@/features/solicitacoes-exame/components/RawSisregDisclosure';
+import type { StatusConfirmacaoPaciente } from '@/features/solicitacoes-exame/types';
 import {
   useHistoricoConsulta,
   useObterConsulta,
   useRegistrarContatoConsulta,
   useReenviarComunicacaoConsulta,
 } from '@/features/consultas/api/queries';
+
+const STATUS_COR: Record<string, string> = {
+  Solicitada: 'bg-amber-50 text-amber-700 ring-amber-200',
+  Realizada: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  Cancelada: 'bg-red-50 text-red-700 ring-red-200',
+};
+
+function StatusConsultaBadge({ status }: { status: string }) {
+  const cor = STATUS_COR[status] ?? 'bg-gray-100 text-gray-700 ring-gray-200';
+  return (
+    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${cor}`}>
+      {status}
+    </span>
+  );
+}
 
 const ROTULO_CATEGORIA: Record<string, string> = {
   Consulta: 'Consulta',
@@ -81,13 +98,21 @@ export function ConsultaDetalhePage() {
       ) : (
         <>
           <header>
-            <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold text-gray-900">
-              <NomePacienteComResumo pacienteId={c.pacienteId} nome={c.pacienteNome} />
+            <h1 className="flex flex-wrap items-center gap-3 text-2xl font-semibold text-gray-900">
+              <Stethoscope className="h-6 w-6 text-primary-600" />
+              {c.codigoSolicitacao ? (
+                <CodigoCopiavel codigo={c.codigoSolicitacao} />
+              ) : (
+                <span className="text-gray-400">sem nº</span>
+              )}
+              <StatusConsultaBadge status={c.status} />
+              <ConfirmacaoBadge status={c.statusConfirmacao as StatusConfirmacaoPaciente} />
             </h1>
-            <p className="mt-1 text-sm text-gray-600">
+            <p className="mt-1 flex flex-wrap items-center gap-1.5 text-sm text-gray-600">
+              <NomePacienteComResumo pacienteId={c.pacienteId} nome={c.pacienteNome} classNameNome="font-medium" />
+              <span className="text-gray-400">·</span>
               {ROTULO_CATEGORIA[c.categoria] ?? c.categoria}
               {c.especialidade ? ` · ${c.especialidade}` : ''}
-              {c.codigoSolicitacao ? ` · Nº ${c.codigoSolicitacao}` : ''}
             </p>
           </header>
 
@@ -125,33 +150,10 @@ export function ConsultaDetalhePage() {
 
           <CardComunicacao consultaId={c.id} />
 
-          {c.rawSisreg ? <CardRaw raw={c.rawSisreg} /> : null}
+          {c.rawSisreg ? <RawSisregDisclosure raw={c.rawSisreg} /> : null}
         </>
       )}
     </div>
-  );
-}
-
-/** Proveniência: a linha crua do SISREG que originou a consulta, revelada sob demanda. */
-function CardRaw({ raw }: { raw: string }) {
-  const [aberto, setAberto] = useState(false);
-  return (
-    <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-      <button
-        type="button"
-        onClick={() => setAberto((v) => !v)}
-        className="flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-gray-900"
-      >
-        <FileCode2 className="h-4 w-4 text-gray-400" />
-        Dados brutos do SISREG (RAW)
-        {aberto ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-      </button>
-      {aberto ? (
-        <pre className="mt-3 max-h-60 overflow-auto whitespace-pre-wrap break-all rounded border border-gray-200 bg-gray-50 p-2 font-mono text-[11px] text-gray-700">
-          {raw}
-        </pre>
-      ) : null}
-    </section>
   );
 }
 
