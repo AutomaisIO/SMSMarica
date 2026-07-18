@@ -1,13 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CalendarClock, Search, Stethoscope } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
-import { formatarInstanteData } from '@/shared/lib/datas';
+import { formatarInstanteData, hojeSP } from '@/shared/lib/datas';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Modal } from '@/shared/ui/Modal';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { useListarConsultas, useObterConsulta } from '@/features/consultas/api/queries';
-import type { ConsultaListItem } from '@/features/consultas/types';
+import type { ConsultaListItem, FiltroConsultas } from '@/features/consultas/types';
+
+const CHAVE_TOGGLE_HOJE = 'consultas:filtro-hoje';
 
 const ROTULO_CATEGORIA: Record<string, string> = {
   Consulta: 'Consulta',
@@ -35,19 +38,53 @@ function CategoriaBadge({ categoria }: { categoria: string }) {
 export function ConsultasPage() {
   const [busca, setBusca] = useState('');
   const [buscaAplicada, setBuscaAplicada] = useState('');
+  const [dataInicial, setDataInicial] = useState('');
+  const [dataFinal, setDataFinal] = useState('');
+  const [limite, setLimite] = useState(200);
+  const [hojeAtivo, setHojeAtivo] = useState<boolean>(() => localStorage.getItem(CHAVE_TOGGLE_HOJE) === '1');
   const [detalheId, setDetalheId] = useState<string | null>(null);
 
-  const lista = useListarConsultas({ busca: buscaAplicada || undefined, limite: 200 });
+  // Busca pontual ignora período (mesma régua de Exames); Hoje fixa o dia atual; senão, o range.
+  const filtro: FiltroConsultas = buscaAplicada
+    ? { busca: buscaAplicada, limite }
+    : hojeAtivo
+      ? { dataInicial: hojeSP(), dataFinal: hojeSP(), limite }
+      : { dataInicial: dataInicial || undefined, dataFinal: dataFinal || undefined, limite };
+
+  const lista = useListarConsultas(filtro);
   const detalhe = useObterConsulta(detalheId);
+
+  // Enquanto "Hoje" estiver ligado, mantém a data atual (vira o dia à meia-noite).
+  useEffect(() => {
+    if (!hojeAtivo) return;
+    setDataInicial(hojeSP());
+    setDataFinal(hojeSP());
+  }, [hojeAtivo]);
+
+  function alternarHoje() {
+    setHojeAtivo((atual) => {
+      const proximo = !atual;
+      localStorage.setItem(CHAVE_TOGGLE_HOJE, proximo ? '1' : '0');
+      return proximo;
+    });
+  }
 
   const colunas: Coluna<ConsultaListItem>[] = [
     {
       chave: 'paciente',
       cabecalho: 'Paciente',
       render: (c) => (
-        <div>
-          <div className="font-medium text-gray-900">{c.pacienteNome ?? '—'}</div>
-          {c.codigoSolicitacao ? <div className="text-xs text-gray-500">Nº {c.codigoSolicitacao}</div> : null}
+        <div className="min-w-0">
+          <NomePacienteComResumo
+            pacienteId={c.pacienteId}
+            nome={c.pacienteNome}
+            className="min-w-0"
+            classNameNome="truncate font-medium text-gray-900"
+          />
+          <div className="truncate text-xs text-gray-500">
+            {c.codigoSolicitacao ? `Nº ${c.codigoSolicitacao}` : ''}
+            {c.solicitanteNome ? `${c.codigoSolicitacao ? ' · ' : ''}Por ${c.solicitanteNome}` : ''}
+          </div>
         </div>
       ),
     },
@@ -88,6 +125,37 @@ export function ConsultasPage() {
             className="w-80"
           />
         </Campo>
+        <Campo label="De" htmlFor="consulta-di">
+          <Input
+            id="consulta-di"
+            type="date"
+            value={dataInicial}
+            disabled={hojeAtivo || !!buscaAplicada}
+            onChange={(e) => setDataInicial(e.target.value)}
+          />
+        </Campo>
+        <Campo label="Até" htmlFor="consulta-df">
+          <Input
+            id="consulta-df"
+            type="date"
+            value={dataFinal}
+            disabled={hojeAtivo || !!buscaAplicada}
+            onChange={(e) => setDataFinal(e.target.value)}
+          />
+        </Campo>
+        <button
+          type="button"
+          onClick={alternarHoje}
+          aria-pressed={hojeAtivo}
+          className={`inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm font-medium ${
+            hojeAtivo
+              ? 'border-primary-600 bg-primary-50 text-primary-700'
+              : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          <CalendarClock className="h-4 w-4" />
+          Hoje
+        </button>
         <button
           type="submit"
           className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
@@ -95,6 +163,32 @@ export function ConsultasPage() {
           <Search className="h-4 w-4" />
           Buscar
         </button>
+        {buscaAplicada ? (
+          <button
+            type="button"
+            onClick={() => {
+              setBusca('');
+              setBuscaAplicada('');
+            }}
+            className="inline-flex items-center rounded-md px-2 py-2 text-sm text-gray-500 hover:text-gray-700"
+          >
+            Limpar
+          </button>
+        ) : null}
+        <label className="ml-auto flex items-center gap-1 text-xs text-gray-500">
+          Itens
+          <select
+            value={limite}
+            onChange={(e) => setLimite(Number(e.target.value))}
+            className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+          >
+            {[50, 100, 200, 500].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
       </form>
 
       {lista.isError ? (
