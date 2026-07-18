@@ -25,6 +25,34 @@ public sealed class SisregImportacaoController(
     /// qualquer leitura — não vira erro nem linha de rastreio, só é sinalizado na resposta.</summary>
     private static readonly string[] ExtensoesAceitas = [".txt", ".csv"];
 
+    /// <summary>UTF-8 que LANÇA em bytes inválidos — é o que permite detectar "não é UTF-8".</summary>
+    private static readonly UTF8Encoding Utf8Estrito = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+
+    /// <summary>
+    /// Lê o texto do SISREG detectando o encoding. O export vem ora em UTF-8, ora em ISO-8859-1
+    /// (latin-1) — ler tudo como latin-1 corrompia os acentos dos arquivos UTF-8 (ex.: "AVALIAÇÃO"
+    /// virava "AVALIAÃÃO", porque cada byte do "Ç" UTF-8 vira um caractere latin-1). Estratégia:
+    /// tenta UTF-8 ESTRITO; como quase todo texto latin-1 acentuado NÃO é UTF-8 válido, a exceção
+    /// separa os dois com segurança. Latin-1 aceita qualquer byte, então é o fallback natural.
+    /// </summary>
+    private static async Task<string> LerTextoSisregAsync(Stream stream, CancellationToken ct)
+    {
+        using var buffer = new MemoryStream();
+        await stream.CopyToAsync(buffer, ct);
+        var bytes = buffer.ToArray();
+
+        // BOM UTF-8 no início: é UTF-8 sem ambiguidade; pula os 3 bytes para não deixar U+FEFF.
+        var inicio = bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF ? 3 : 0;
+        try
+        {
+            return Utf8Estrito.GetString(bytes, inicio, bytes.Length - inicio);
+        }
+        catch (DecoderFallbackException)
+        {
+            return Encoding.Latin1.GetString(bytes);
+        }
+    }
+
     /// <summary>Preview a partir do upload do arquivo (TXT ou CSV). Não escreve nada.</summary>
     [HttpPost("preview")]
     [RequerPermissao(ModuloPermissao.Sisreg, AcoesPermissao.Consulta)]
@@ -37,10 +65,7 @@ public sealed class SisregImportacaoController(
         if (arquivo is null || arquivo.Length == 0)
             throw new ValidacaoException("importacao.arquivo_ausente", "Envie o arquivo (TXT ou CSV) do SISREG.");
 
-        // O SISREG exporta em ISO-8859-1 (latin-1); o CSV sai em ASCII (subconjunto), então
-        // ler como latin-1 serve para os dois.
-        using var reader = new StreamReader(arquivo.OpenReadStream(), Encoding.Latin1);
-        var conteudo = await reader.ReadToEndAsync(cancellationToken);
+        var conteudo = await LerTextoSisregAsync(arquivo.OpenReadStream(), cancellationToken);
         return await importacao.PreviewDeTextoAsync(conteudo, arquivo.FileName, cancellationToken);
     }
 
@@ -59,8 +84,7 @@ public sealed class SisregImportacaoController(
         if (string.IsNullOrWhiteSpace(codigo))
             throw new ValidacaoException("importacao.codigo_ausente", "Informe o código da marcação a importar.");
 
-        using var reader = new StreamReader(arquivo.OpenReadStream(), Encoding.Latin1);
-        var conteudo = await reader.ReadToEndAsync(cancellationToken);
+        var conteudo = await LerTextoSisregAsync(arquivo.OpenReadStream(), cancellationToken);
         return await importacao.ExecutarUmAsync(conteudo, codigo, arquivo.FileName, cancellationToken);
     }
 
@@ -139,8 +163,8 @@ public sealed class SisregImportacaoController(
             }
             if (!ExtensaoAceita(f.FileName)) { ignorados.Add(f.FileName); continue; }
 
-            using var reader = new StreamReader(f.OpenReadStream(), Encoding.Latin1);
-            aceitos.Add(new ArquivoRecebido(f.FileName, await reader.ReadToEndAsync(cancellationToken), null));
+            var conteudo = await LerTextoSisregAsync(f.OpenReadStream(), cancellationToken);
+            aceitos.Add(new ArquivoRecebido(f.FileName, conteudo, null));
         }
 
         var loteId = await lote.IniciarAsync(aceitos, cancellationToken);
@@ -197,8 +221,8 @@ public sealed class SisregImportacaoController(
             }
 
             using var s = entrada.Open();
-            using var reader = new StreamReader(s, Encoding.Latin1);
-            aceitos.Add(new ArquivoRecebido(entrada.Name, await reader.ReadToEndAsync(ct), entrada.FullName));
+            var conteudo = await LerTextoSisregAsync(s, ct);
+            aceitos.Add(new ArquivoRecebido(entrada.Name, conteudo, entrada.FullName));
         }
     }
 }
