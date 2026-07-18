@@ -4,6 +4,7 @@ import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { paraUtcDeLocal } from '@/shared/lib/datas';
 import { Input } from '@/shared/ui/Input';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { useBuscarAuditoria } from '@/features/auditoria/api/queries';
 import type { RegistroAuditoria, TipoAtorAuditoria, AuditoriaFiltro } from '@/features/auditoria/types';
 
@@ -72,22 +73,37 @@ export function AuditoriaPage() {
       {
         chave: 'usuario',
         cabecalho: 'Usuário',
-        render: (r) => (
-          <span className={r.usuarioNome ? 'font-medium text-gray-900' : 'text-gray-400'}>
-            {r.usuarioNome ?? 'Não identificado'}
-          </span>
-        ),
+        // Quando o ator é um paciente (app), o usuarioId é o próprio id FHIR dele — então
+        // dá pra pendurar os atalhos de paciente (resumo + WhatsApp) ao lado do nome.
+        render: (r) =>
+          r.atorTipo === 'Paciente' && r.usuarioId ? (
+            <NomePacienteComResumo
+              pacienteId={r.usuarioId}
+              nome={r.usuarioNome}
+              classNameNome="font-medium text-gray-900"
+            />
+          ) : (
+            <span className={r.usuarioNome ? 'font-medium text-gray-900' : 'text-gray-400'}>
+              {r.usuarioNome ?? 'Não identificado'}
+            </span>
+          ),
       },
       { chave: 'ator', cabecalho: 'Origem', render: (r) => <BadgeAtor tipo={r.atorTipo} /> },
       {
         chave: 'entidade',
         cabecalho: 'Registro afetado',
-        render: (r) => (
-          <div>
-            <div className="text-gray-900">{r.entidadeNome ?? r.entidade}</div>
-            {r.entidadeNome ? <div className="text-xs text-gray-400">{r.entidade}</div> : null}
-          </div>
-        ),
+        render: (r) =>
+          r.entidade === 'Paciente' && r.entidadeId ? (
+            <NomePacienteComResumo
+              pacienteId={r.entidadeId}
+              nome={r.entidadeNome ?? r.entidadeId}
+              classNameNome="text-gray-900"
+            />
+          ) : (
+            <div>
+              <div className="text-gray-900">{r.entidadeNome ?? r.entidade}</div>
+            </div>
+          ),
       },
       { chave: 'acao', cabecalho: 'Ação', render: (r) => ACAO_LABEL[r.acao] ?? r.acao },
       {
@@ -177,7 +193,15 @@ function ModalDetalhe({ registro, aoFechar }: { registro: RegistroAuditoria; aoF
         <div className="space-y-3 px-4 py-4 text-sm">
           <div className="flex items-center gap-2">
             <BadgeAtor tipo={registro.atorTipo} />
-            <span className="font-medium text-gray-900">{registro.usuarioNome ?? 'Não identificado'}</span>
+            {registro.atorTipo === 'Paciente' && registro.usuarioId ? (
+              <NomePacienteComResumo
+                pacienteId={registro.usuarioId}
+                nome={registro.usuarioNome}
+                classNameNome="font-medium text-gray-900"
+              />
+            ) : (
+              <span className="font-medium text-gray-900">{registro.usuarioNome ?? 'Não identificado'}</span>
+            )}
           </div>
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
             <Campo rotulo="Quando" valor={formatarDataHora(registro.criadoEm)} />
