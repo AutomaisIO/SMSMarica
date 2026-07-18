@@ -1,3 +1,5 @@
+import type { ComunicacaoChip } from '@/features/solicitacoes-exame/types';
+
 export type ConsultaListItem = {
   id: string;
   codigoSolicitacao: string | null;
@@ -11,6 +13,8 @@ export type ConsultaListItem = {
   dataSolicitacao: string | null;
   status: string;
   statusConfirmacao: string;
+  /** Estado da confirmação por WhatsApp (mesmo chip da lista de exames). */
+  chipConfirmacao: ComunicacaoChip | null;
 };
 
 export type ConsultaDetalhe = {
@@ -40,5 +44,6 @@ export type FiltroConsultas = {
   busca?: string;
   dataInicial?: string;
   dataFinal?: string;
+  status?: string;
   limite?: number;
 };

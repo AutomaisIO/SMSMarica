@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CalendarClock, Search, Stethoscope } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { formatarInstanteData, hojeSP } from '@/shared/lib/datas';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
-import { Modal } from '@/shared/ui/Modal';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
-import { useListarConsultas, useObterConsulta } from '@/features/consultas/api/queries';
+import { ChecksComunicacao } from '@/features/solicitacoes-exame/components/ChecksComunicacao';
+import { useListarConsultas } from '@/features/consultas/api/queries';
 import type { ConsultaListItem, FiltroConsultas } from '@/features/consultas/types';
 
 const CHAVE_TOGGLE_HOJE = 'consultas:filtro-hoje';
@@ -40,19 +41,24 @@ export function ConsultasPage() {
   const [buscaAplicada, setBuscaAplicada] = useState('');
   const [dataInicial, setDataInicial] = useState('');
   const [dataFinal, setDataFinal] = useState('');
+  const [status, setStatus] = useState('');
   const [limite, setLimite] = useState(200);
   const [hojeAtivo, setHojeAtivo] = useState<boolean>(() => localStorage.getItem(CHAVE_TOGGLE_HOJE) === '1');
-  const [detalheId, setDetalheId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   // Busca pontual ignora período (mesma régua de Exames); Hoje fixa o dia atual; senão, o range.
   const filtro: FiltroConsultas = buscaAplicada
-    ? { busca: buscaAplicada, limite }
+    ? { busca: buscaAplicada, status: status || undefined, limite }
     : hojeAtivo
-      ? { dataInicial: hojeSP(), dataFinal: hojeSP(), limite }
-      : { dataInicial: dataInicial || undefined, dataFinal: dataFinal || undefined, limite };
+      ? { dataInicial: hojeSP(), dataFinal: hojeSP(), status: status || undefined, limite }
+      : {
+          dataInicial: dataInicial || undefined,
+          dataFinal: dataFinal || undefined,
+          status: status || undefined,
+          limite,
+        };
 
   const lista = useListarConsultas(filtro);
-  const detalhe = useObterConsulta(detalheId);
 
   // Enquanto "Hoje" estiver ligado, mantém a data atual (vira o dia à meia-noite).
   useEffect(() => {
@@ -92,7 +98,16 @@ export function ConsultasPage() {
     { chave: 'cat', cabecalho: 'Natureza', render: (c) => <CategoriaBadge categoria={c.categoria} /> },
     { chave: 'uni', cabecalho: 'Unidade', render: (c) => c.unidadeExecutanteNome || '—' },
     { chave: 'data', cabecalho: 'Agendada', render: (c) => formatarInstanteData(c.dataAgendada) || '—' },
-    { chave: 'conf', cabecalho: 'Confirmação', render: (c) => c.statusConfirmacao },
+    {
+      chave: 'conf',
+      cabecalho: 'Confirmação',
+      render: (c) =>
+        c.chipConfirmacao ? (
+          <ChecksComunicacao chip={c.chipConfirmacao} finalidade="ConfirmacaoAgendamento" />
+        ) : (
+          <span className="text-xs text-gray-400">{c.statusConfirmacao}</span>
+        ),
+    },
   ];
 
   return (
@@ -142,6 +157,19 @@ export function ConsultasPage() {
             disabled={hojeAtivo || !!buscaAplicada}
             onChange={(e) => setDataFinal(e.target.value)}
           />
+        </Campo>
+        <Campo label="Status" htmlFor="consulta-status">
+          <select
+            id="consulta-status"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            className="rounded-md border border-gray-300 px-2 py-2 text-sm"
+          >
+            <option value="">Todos</option>
+            <option value="Solicitada">Solicitada</option>
+            <option value="Realizada">Realizada</option>
+            <option value="Cancelada">Cancelada</option>
+          </select>
         </Campo>
         <button
           type="button"
@@ -203,51 +231,8 @@ export function ConsultasPage() {
         chaveLinha={(c) => c.id}
         carregando={lista.isPending}
         vazio="Nenhuma consulta encontrada."
-        aoClicarLinha={(c) => setDetalheId(c.id)}
+        aoClicarLinha={(c) => navigate(`/app/consultas/${c.id}`)}
       />
-
-      <Modal aberto={!!detalheId} aoFechar={() => setDetalheId(null)} titulo="Detalhe da consulta">
-        {detalhe.isPending ? (
-          <p className="text-sm text-gray-500">Carregando…</p>
-        ) : detalhe.data ? (
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-            <Item rotulo="Paciente" valor={detalhe.data.pacienteNome} />
-            <Item rotulo="CPF" valor={detalhe.data.pacienteCpf} />
-            <Item rotulo="Natureza" valor={ROTULO_CATEGORIA[detalhe.data.categoria] ?? detalhe.data.categoria} />
-            <Item rotulo="Especialidade" valor={detalhe.data.especialidade} />
-            <Item rotulo="Nº do pedido" valor={detalhe.data.codigoSolicitacao} />
-            <Item rotulo="SIGTAP" valor={detalhe.data.procedimentoSigtapCodigo} />
-            <Item rotulo="Unidade executante" valor={detalhe.data.unidadeExecutanteNome} />
-            <Item rotulo="Unidade solicitante" valor={detalhe.data.unidadeSolicitanteNome} />
-            <Item rotulo="Solicitante" valor={detalhe.data.solicitanteNome} />
-            <Item rotulo="Agendada" valor={formatarInstanteData(detalhe.data.dataAgendada)} />
-            <Item rotulo="Solicitação" valor={detalhe.data.dataSolicitacao} />
-            <Item rotulo="Regulação" valor={detalhe.data.dataRegulacao} />
-            <Item rotulo="Confirmação" valor={detalhe.data.statusConfirmacao} />
-            <Item rotulo="Status" valor={detalhe.data.status} />
-            {detalhe.data.observacoes ? (
-              <div className="col-span-2">
-                <Item rotulo="Observações" valor={detalhe.data.observacoes} />
-              </div>
-            ) : null}
-          </dl>
-        ) : (
-          <p className="text-sm text-gray-500">Não encontrada.</p>
-        )}
-        <div className="mt-4 flex items-center gap-2 text-xs text-gray-500">
-          <CalendarClock className="h-3.5 w-3.5" />
-          Consulta importada do SISREG — não gera exame de imagem nem laudo.
-        </div>
-      </Modal>
-    </div>
-  );
-}
-
-function Item({ rotulo, valor }: { rotulo: string; valor: string | null | undefined }) {
-  return (
-    <div>
-      <dt className="text-xs uppercase tracking-wide text-gray-400">{rotulo}</dt>
-      <dd className="text-gray-900">{valor || '—'}</dd>
     </div>
   );
 }

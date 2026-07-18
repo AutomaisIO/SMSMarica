@@ -32,6 +32,7 @@ import { SolicitacaoExameDetalhePage } from '@/features/solicitacoes-exame/pages
 import { SolicitacaoExameFormPage } from '@/features/solicitacoes-exame/pages/SolicitacaoExameFormPage';
 import { SolicitacoesExamePage } from '@/features/solicitacoes-exame/pages/SolicitacoesExamePage';
 import { ConsultasPage } from '@/features/consultas/pages/ConsultasPage';
+import { ConsultaDetalhePage } from '@/features/consultas/pages/ConsultaDetalhePage';
 import { MapeamentoSigtapPage } from '@/features/mapeamento-sigtap/pages/MapeamentoSigtapPage';
 import { ImportacaoSisregPage } from '@/features/importacao-sisreg/pages/ImportacaoSisregPage';
 import { TipoExameFormPage } from '@/features/tipos-exame/pages/TipoExameFormPage';
@@ -157,6 +158,7 @@ export function AppRouter() {
           <Route path="anamnese" element={<AnamnesePage />} />
           <Route path="tipos-exame" element={<TiposExamePage />} />
           <Route path="consultas" element={<ConsultasPage />} />
+          <Route path="consultas/:id" element={<ConsultaDetalhePage />} />
           <Route path="mapeamento-sigtap" element={<MapeamentoSigtapPage />} />
           <Route path="tipos-exame/novo" element={<TipoExameFormPage />} />
           <Route path="tipos-exame/:id" element={<TipoExameFormPage />} />
