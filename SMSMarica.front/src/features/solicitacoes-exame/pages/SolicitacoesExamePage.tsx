@@ -163,7 +163,7 @@ export function SolicitacoesExamePage() {
     {
       chave: 'accession',
       cabecalho: 'Pedido',
-      className: 'w-px whitespace-nowrap',
+      className: 'w-44 whitespace-nowrap',
       ordenar: (s) => s.accessionNumber,
       render: (s) => (
         <div className="flex items-start gap-1.5">
@@ -180,7 +180,6 @@ export function SolicitacoesExamePage() {
     {
       chave: 'paciente',
       cabecalho: 'Paciente',
-      className: 'w-1/2',
       ordenar: (s) => s.pacienteNome || null,
       render: (s) => (
         <div className="min-w-0">
@@ -204,7 +203,6 @@ export function SolicitacoesExamePage() {
     {
       chave: 'exame',
       cabecalho: 'Exame',
-      className: 'w-1/2',
       ordenar: (s) => s.tipoExameNome || null,
       render: (s) => (
         <div className="min-w-0">
@@ -219,14 +217,14 @@ export function SolicitacoesExamePage() {
     {
       chave: 'data',
       cabecalho: 'Data Agendamento',
-      className: 'w-px whitespace-nowrap',
+      className: 'w-40 whitespace-nowrap',
       ordenar: (s) => s.dataAgendada,
       render: (s) => formatarInstante(s.dataAgendada),
     },
     {
       chave: 'status',
       cabecalho: 'Situação',
-      className: 'w-px whitespace-nowrap',
+      className: 'w-56 whitespace-nowrap',
       ordenar: (s) => derivarSituacao(s)?.rotulo ?? s.status,
       render: (s) => {
         const sit = derivarSituacao(s);
@@ -244,7 +242,7 @@ export function SolicitacoesExamePage() {
     {
       chave: 'acoes',
       cabecalho: 'Ações',
-      className: 'w-px whitespace-nowrap text-right',
+      className: 'w-44 whitespace-nowrap text-right',
       render: (s) => {
         const realizadaOuLaudada = s.status === 'Realizada' || s.status === 'Laudada';
         return (
@@ -432,7 +430,7 @@ export function SolicitacoesExamePage() {
         chaveLinha={(s) => s.id}
         carregando={lista.isPending}
         vazio="Nenhuma solicitação encontrada."
-        scrollXFlutuante
+        layoutFixo
         aoClicarLinha={podeVer ? (s) => navigate(`/app/solicitacoes-exame/${s.id}`) : undefined}
         dicaLinha="Clique para visualizar"
         // Solicitações URGENTES: fundo vermelho claro + filete vermelho fininho à

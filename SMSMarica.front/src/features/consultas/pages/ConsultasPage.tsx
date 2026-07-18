@@ -113,7 +113,7 @@ export function ConsultasPage() {
     {
       chave: 'pedido',
       cabecalho: 'Pedido',
-      className: 'w-px whitespace-nowrap',
+      className: 'w-44 whitespace-nowrap',
       render: (c) => (
         <div className="flex items-start gap-1.5">
           <DirecaoIcone direcao={c.direcao} />
@@ -126,7 +126,6 @@ export function ConsultasPage() {
     {
       chave: 'paciente',
       cabecalho: 'Paciente',
-      className: 'w-1/2',
       render: (c) => (
         <div className="min-w-0">
           <NomePacienteComResumo
@@ -142,7 +141,6 @@ export function ConsultasPage() {
     {
       chave: 'consulta',
       cabecalho: 'Consulta',
-      className: 'w-1/2',
       render: (c) => (
         <div className="min-w-0">
           <TextoLimitado texto={c.especialidade} max={40} className="block text-gray-900" />
@@ -156,13 +154,13 @@ export function ConsultasPage() {
     {
       chave: 'data',
       cabecalho: 'Data Agendamento',
-      className: 'w-px whitespace-nowrap',
+      className: 'w-40 whitespace-nowrap',
       render: (c) => formatarInstanteData(c.dataAgendada) || '—',
     },
     {
       chave: 'situacao',
       cabecalho: 'Situação',
-      className: 'w-px whitespace-nowrap',
+      className: 'w-44 whitespace-nowrap',
       render: (c) => (
         <span className="inline-flex items-center gap-1.5">
           <StatusConsultaBadge status={c.status} />
@@ -296,6 +294,7 @@ export function ConsultasPage() {
         carregando={lista.isPending}
         vazio="Nenhuma consulta encontrada."
         aoClicarLinha={(c) => navigate(`/app/consultas/${c.id}`)}
+        layoutFixo
       />
     </div>
   );

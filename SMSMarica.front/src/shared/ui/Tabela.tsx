@@ -41,9 +41,16 @@ type Props<T> = {
    * sobrepor o hover padrão, devolva também o `hover:` correspondente.
    */
   classeLinha?: (item: T) => string | undefined;
+  /**
+   * Layout fixo (`table-fixed`): as larguras das colunas passam a valer pelas classes
+   * `w-*` do <c>className</c> de cada coluna, e o conteúdo trunca em vez de esticar a
+   * tabela. Colunas SEM largura definida dividem o espaço restante igualmente. Use para
+   * evitar rolagem horizontal quando algumas colunas devem ser fixas e outras "flex".
+   */
+  layoutFixo?: boolean;
 };
 
-export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrollXFlutuante, aoClicarLinha, dicaLinha, classeLinha }: Props<T>) {
+export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrollXFlutuante, aoClicarLinha, dicaLinha, classeLinha, layoutFixo }: Props<T>) {
   // Defensivo: se a API retornar algo não-array (HTML por URL errada, erro
   // serializado, etc.), renderiza vazio em vez de derrubar a tela toda.
   const dadosSeguros: T[] = Array.isArray(dados) ? dados : [];
@@ -114,7 +121,7 @@ export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrol
           escondeBarraNativa && '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
         )}
       >
-        <table className="min-w-full divide-y divide-gray-200">
+        <table className={cn('divide-y divide-gray-200', layoutFixo ? 'w-full table-fixed' : 'min-w-full')}>
           <thead className="bg-gray-50">
             <tr>
               {colunas.map((c) => {
