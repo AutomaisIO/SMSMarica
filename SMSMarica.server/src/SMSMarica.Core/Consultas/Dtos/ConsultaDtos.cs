@@ -1,3 +1,6 @@
+using SMSMarica.Core.SolicitacoesExame.Dtos;
+using SMSMarica.Data.Entities.Enums;
+
 namespace SMSMarica.Core.Consultas.Dtos;
 
 /// <summary>Linha da listagem de consultas (Solicitacao categoria não-imagem). Sem PACS/laudo.</summary>
@@ -13,7 +16,9 @@ public sealed record ConsultaListItemDto(
     DateTime? DataAgendada,
     DateOnly? DataSolicitacao,
     string Status,
-    string StatusConfirmacao);
+    string StatusConfirmacao,
+    /// <summary>Estado da confirmação por WhatsApp (mesmo chip da lista de exames). Null = não houve.</summary>
+    ComunicacaoChipDto? ChipConfirmacao = null);
 
 public sealed record ConsultaDetalheDto(
     Guid Id,
@@ -41,4 +46,5 @@ public sealed record FiltroConsultasDto(
     string? Busca = null,
     DateOnly? DataInicial = null,
     DateOnly? DataFinal = null,
+    StatusSolicitacao? Status = null,
     int Limite = 50);

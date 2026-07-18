@@ -75,12 +75,20 @@ public sealed class SolicitacaoHistoricoService(
             throw new ValidacaoException("contato.resultado_invalido",
                 "Resultado inválido (Atendeu|NaoAtendeu|CaixaPostal|NumeroInvalido|Outro).");
 
-        // Contato é ancorado na espinha; resolve pelo id público do exame.
+        // Contato é ancorado na espinha. Aceita tanto o id público do EXAME (ExameImagem) quanto
+        // o id da própria SOLICITACAO (espinha) — consultas não têm ExameImagem, então o id que
+        // chega já é o da espinha. Sem este fallback, registrar contato numa consulta lançava
+        // NaoEncontrado (assimetria: o ObterAsync já resolvia pela espinha e este não).
         var solicitacao = await db.ExamesImagem.AsNoTracking()
             .Where(e => e.Id == solicitacaoExameId && e.ExcluidoEm == null)
             .Select(e => new { e.SolicitacaoId, e.Solicitacao!.PacienteId })
-            .FirstOrDefaultAsync(ct)
-            ?? throw new NaoEncontradoException(nameof(ExameImagem), solicitacaoExameId);
+            .FirstOrDefaultAsync(ct);
+        solicitacao ??= await db.Solicitacoes.AsNoTracking()
+            .Where(s => s.Id == solicitacaoExameId && s.ExcluidoEm == null)
+            .Select(s => new { SolicitacaoId = s.Id, s.PacienteId })
+            .FirstOrDefaultAsync(ct);
+        if (solicitacao is null)
+            throw new NaoEncontradoException("solicitacao", solicitacaoExameId.ToString());
 
         var obs = request.Observacao?.Trim();
         db.ContatosRegistro.Add(new ContatoRegistro

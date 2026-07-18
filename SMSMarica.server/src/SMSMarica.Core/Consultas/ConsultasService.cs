@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Tempo;
 using SMSMarica.Core.Consultas.Dtos;
 using SMSMarica.Core.Pacientes.Fhir;
+using SMSMarica.Core.SolicitacoesExame.Dtos;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities.Enums;
 
@@ -30,6 +31,7 @@ public sealed class ConsultasService(
             .Where(s => s.ExcluidoEm == null && s.Categoria != CategoriaSolicitacao.Imagem);
 
         if (filtro.PacienteId is { } pid) query = query.Where(s => s.PacienteId == pid);
+        if (filtro.Status is { } st) query = query.Where(s => s.Status == st);
 
         var buscaPontual = !string.IsNullOrWhiteSpace(filtro.Busca);
         if (buscaPontual)
@@ -81,13 +83,28 @@ public sealed class ConsultasService(
             .ToListAsync(ct);
 
         var nomes = await pacienteResolver.ResolverManyAsync(lista.Select(l => l.PacienteId), ct);
+
+        // Chip da confirmação por WhatsApp (mesmos checks da lista de exames). Aqui o id da linha
+        // JÁ É o da espinha, então a comunicação casa direto por SolicitacaoId — sem o mapa
+        // exame→solicitação que os exames precisam.
+        var ids = lista.Select(l => l.Id).ToArray();
+        var chips = (await db.ComunicacoesPaciente.AsNoTracking()
+            .Where(c => c.SolicitacaoId != null && ids.Contains(c.SolicitacaoId.Value)
+                && c.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento)
+            .Select(c => new { c.SolicitacaoId, c.Status, c.VisualizadoEm, c.MotivoFalha })
+            .ToListAsync(ct))
+            .ToDictionary(
+                c => c.SolicitacaoId!.Value,
+                c => new ComunicacaoChipDto(c.Status.ToString(), c.VisualizadoEm != null, c.MotivoFalha));
+
         return [.. lista.Select(l => new ConsultaListItemDto(
             l.Id, l.CodigoSolicitacao, l.PacienteId,
             nomes.TryGetValue(l.PacienteId, out var r) ? r.Nome : null,
             l.Categoria.ToString(),
             l.EspecialidadeTexto ?? l.ProcedimentoTexto,
             l.UnidadeNome, l.SolicitanteNome, l.DataAgendada, l.DataSolicitacao,
-            l.Status.ToString(), l.StatusConfirmacao.ToString()))];
+            l.Status.ToString(), l.StatusConfirmacao.ToString(),
+            chips.GetValueOrDefault(l.Id)))];
     }
 
     public async Task<ConsultaDetalheDto?> ObterPorIdAsync(Guid id, CancellationToken ct = default)
