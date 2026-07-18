@@ -1,9 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Tempo;
 using SMSMarica.Core.Consultas.Dtos;
+using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Core.SolicitacoesExame.Dtos;
 using SMSMarica.Data;
+using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Consultas;
@@ -21,7 +23,8 @@ public interface IConsultasService
 
 public sealed class ConsultasService(
     SmsMaricaDbContext db,
-    IPacienteResolver pacienteResolver) : IConsultasService
+    IPacienteResolver pacienteResolver,
+    IUsuarioAtualAccessor usuarioAtual) : IConsultasService
 {
     public async Task<IReadOnlyList<ConsultaListItemDto>> ListarAsync(
         FiltroConsultasDto filtro, CancellationToken ct = default)
@@ -32,6 +35,11 @@ public sealed class ConsultasService(
 
         if (filtro.PacienteId is { } pid) query = query.Where(s => s.PacienteId == pid);
         if (filtro.Status is { } st) query = query.Where(s => s.Status == st);
+
+        // Multitenancy por unidade (mesmo escopo dos exames): só as consultas cuja EXECUTORA ou
+        // SOLICITANTE está na(s) unidade(s) do usuário. Devolve a unidade de referência p/ a seta.
+        Guid? unidadeReferencia;
+        (query, unidadeReferencia) = await AplicarEscopoUnidadeAsync(query, ct);
 
         var buscaPontual = !string.IsNullOrWhiteSpace(filtro.Busca);
         if (buscaPontual)
@@ -74,6 +82,8 @@ public sealed class ConsultasService(
                 s.EspecialidadeTexto,
                 s.ProcedimentoTexto,
                 UnidadeNome = s.UnidadeExecutante != null ? s.UnidadeExecutante.Nome : string.Empty,
+                s.UnidadeExecutanteId,
+                s.UnidadeSolicitanteId,
                 s.SolicitanteNome,
                 s.DataAgendada,
                 s.DataSolicitacao,
@@ -97,6 +107,15 @@ public sealed class ConsultasService(
                 c => c.SolicitacaoId!.Value,
                 c => new ComunicacaoChipDto(c.Status.ToString(), c.VisualizadoEm != null, c.MotivoFalha));
 
+        // Direção relativa à unidade de referência: executora → Recebida; solicitante → Enviada.
+        // Mesma regra dos exames (Recebida prevalece quando a unidade é as duas coisas).
+        DirecaoSolicitacao? Direcao(Guid execId, Guid? solicId) =>
+            unidadeReferencia is { } r
+                ? execId == r ? DirecaoSolicitacao.Recebida
+                : solicId == r ? DirecaoSolicitacao.Enviada
+                : null
+                : null;
+
         return [.. lista.Select(l => new ConsultaListItemDto(
             l.Id, l.CodigoSolicitacao, l.PacienteId,
             nomes.TryGetValue(l.PacienteId, out var r) ? r.Nome : null,
@@ -104,7 +123,53 @@ public sealed class ConsultasService(
             l.EspecialidadeTexto ?? l.ProcedimentoTexto,
             l.UnidadeNome, l.SolicitanteNome, l.DataAgendada, l.DataSolicitacao,
             l.Status.ToString(), l.StatusConfirmacao.ToString(),
-            chips.GetValueOrDefault(l.Id)))];
+            chips.GetValueOrDefault(l.Id),
+            Direcao(l.UnidadeExecutanteId, l.UnidadeSolicitanteId)))];
+    }
+
+    /// <summary>
+    /// Multitenancy por unidade — igual ao dos exames, mas sobre a espinha <c>Solicitacao</c>
+    /// diretamente (consulta não tem satélite). Restringe às unidades vinculadas ao usuário
+    /// (executora OU solicitante). Usuário sem vínculo/contexto vê tudo. Devolve a unidade de
+    /// referência (a ativa resolvida, ou null na visão do conjunto) — marca a direção da seta.
+    /// </summary>
+    private async Task<(IQueryable<Solicitacao> Query, Guid? UnidadeReferencia)> AplicarEscopoUnidadeAsync(
+        IQueryable<Solicitacao> query, CancellationToken ct)
+    {
+        var usuarioId = usuarioAtual.UsuarioId;
+        if (usuarioId is null) return (query, null);
+
+        var ativa = usuarioAtual.UnidadeAtivaId;
+
+        // Global admin: vínculo implícito a TODAS as unidades; a ativa vira filtro de conveniência.
+        if (usuarioId == IdentificadoresFixos.UsuarioAdminId)
+        {
+            if (ativa.HasValue &&
+                await db.Unidades.AsNoTracking().AnyAsync(u => u.Id == ativa.Value && u.Ativo, ct))
+            {
+                return (query.Where(s => s.UnidadeExecutanteId == ativa.Value
+                    || s.UnidadeSolicitanteId == ativa.Value), ativa);
+            }
+            return (query, null);
+        }
+
+        var vinculos = await db.UsuarioUnidades.AsNoTracking()
+            .Where(v => v.UsuarioId == usuarioId && v.Unidade!.Ativo)
+            .Select(v => v.UnidadeId)
+            .ToArrayAsync(ct);
+        if (vinculos.Length == 0) return (query, null);
+
+        if (ativa.HasValue && vinculos.Contains(ativa.Value))
+        {
+            return (query.Where(s => s.UnidadeExecutanteId == ativa.Value
+                || s.UnidadeSolicitanteId == ativa.Value), ativa);
+        }
+
+        // Visão do conjunto: executora OU solicitante entre as vinculadas. Sem referência → sem seta.
+        return (
+            query.Where(s => vinculos.Contains(s.UnidadeExecutanteId)
+                || (s.UnidadeSolicitanteId != null && vinculos.Contains(s.UnidadeSolicitanteId.Value))),
+            null);
     }
 
     public async Task<ConsultaDetalheDto?> ObterPorIdAsync(Guid id, CancellationToken ct = default)

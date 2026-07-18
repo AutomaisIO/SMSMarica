@@ -15,6 +15,8 @@ export type ConsultaListItem = {
   statusConfirmacao: string;
   /** Estado da confirmação por WhatsApp (mesmo chip da lista de exames). */
   chipConfirmacao: ComunicacaoChip | null;
+  /** Direção relativa à unidade ativa: Recebida (executora) / Enviada (solicitante) / null. */
+  direcao: 'Recebida' | 'Enviada' | null;
 };
 
 export type ConsultaDetalhe = {

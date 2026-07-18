@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarClock, Search, Stethoscope } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpFromLine, CalendarClock, Search, Stethoscope } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { formatarInstanteData, hojeSP } from '@/shared/lib/datas';
 import { Campo } from '@/shared/ui/Campo';
@@ -21,6 +21,22 @@ const ROTULO_CATEGORIA: Record<string, string> = {
   Cirurgia: 'Cirurgia',
   Outro: 'Outro',
 };
+
+function DirecaoIcone({ direcao }: { direcao: 'Recebida' | 'Enviada' | null }) {
+  if (direcao === 'Recebida')
+    return (
+      <span title="Recebida — sua unidade é a executora desta consulta" aria-label="Recebida">
+        <ArrowDownToLine className="h-4 w-4 text-emerald-600" />
+      </span>
+    );
+  if (direcao === 'Enviada')
+    return (
+      <span title="Enviada — sua unidade solicitou esta consulta" aria-label="Enviada">
+        <ArrowUpFromLine className="h-4 w-4 text-sky-600" />
+      </span>
+    );
+  return null;
+}
 
 function CategoriaBadge({ categoria }: { categoria: string }) {
   const cor =
@@ -86,6 +102,7 @@ export function ConsultasPage() {
             nome={c.pacienteNome}
             className="min-w-0"
             classNameNome="truncate font-medium text-gray-900"
+            sufixo={<DirecaoIcone direcao={c.direcao} />}
           />
           <div className="truncate text-xs text-gray-500">
             {c.codigoSolicitacao ? `Nº ${c.codigoSolicitacao}` : ''}

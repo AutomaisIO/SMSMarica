@@ -18,7 +18,10 @@ public sealed record ConsultaListItemDto(
     string Status,
     string StatusConfirmacao,
     /// <summary>Estado da confirmação por WhatsApp (mesmo chip da lista de exames). Null = não houve.</summary>
-    ComunicacaoChipDto? ChipConfirmacao = null);
+    ComunicacaoChipDto? ChipConfirmacao = null,
+    /// <summary>Direção relativa à unidade ativa: Recebida (é a executora) / Enviada (é a solicitante).
+    /// Null quando não há unidade de referência única (visão do conjunto/admin sem unidade).</summary>
+    DirecaoSolicitacao? Direcao = null);
 
 public sealed record ConsultaDetalheDto(
     Guid Id,
