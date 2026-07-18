@@ -17,6 +17,7 @@ import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { formatarInstante, hojeSP } from '@/shared/lib/datas';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
+import { TextoLimitado } from '@/shared/ui/TextoLimitado';
 import { Modal } from '@/shared/ui/Modal';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
@@ -204,7 +205,7 @@ export function SolicitacoesExamePage() {
       ordenar: (s) => s.tipoExameNome || null,
       render: (s) => (
         <div className="min-w-0">
-          <div className="truncate text-gray-900">{s.tipoExameNome}</div>
+          <TextoLimitado texto={s.tipoExameNome} max={40} className="block text-gray-900" />
           <div className="truncate text-xs text-gray-500">
             <span className="uppercase">{s.modalidadeDicom}</span>
             {s.unidadeNome ? <> — {s.unidadeNome}</> : null}

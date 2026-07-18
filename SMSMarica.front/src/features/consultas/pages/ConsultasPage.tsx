@@ -6,6 +6,7 @@ import { formatarInstanteData, hojeSP } from '@/shared/lib/datas';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
+import { TextoLimitado } from '@/shared/ui/TextoLimitado';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { ChecksComunicacao } from '@/features/solicitacoes-exame/components/ChecksComunicacao';
 import { useListarConsultas } from '@/features/consultas/api/queries';
@@ -141,7 +142,7 @@ export function ConsultasPage() {
       cabecalho: 'Consulta',
       render: (c) => (
         <div className="min-w-0">
-          <div className="truncate text-gray-900">{c.especialidade ?? '—'}</div>
+          <TextoLimitado texto={c.especialidade} max={40} className="block text-gray-900" />
           <div className="flex items-center gap-1.5 truncate text-xs text-gray-500">
             <CategoriaBadge categoria={c.categoria} />
             {c.unidadeExecutanteNome ? <span className="truncate">{c.unidadeExecutanteNome}</span> : null}
