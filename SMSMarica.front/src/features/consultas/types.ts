@@ -39,6 +39,8 @@ export type ConsultaDetalhe = {
   status: string;
   statusConfirmacao: string;
   observacoes: string | null;
+  /** Linha crua do SISREG que originou a consulta (proveniência). */
+  rawSisreg: string | null;
 };
 
 export type FiltroConsultas = {

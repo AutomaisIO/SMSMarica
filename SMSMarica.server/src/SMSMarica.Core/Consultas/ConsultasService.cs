@@ -188,6 +188,6 @@ public sealed class ConsultasService(
             s.ProcedimentoSigtapCodigo,
             s.UnidadeExecutante?.Nome ?? string.Empty, s.UnidadeSolicitante?.Nome, s.SolicitanteNome,
             s.DataAgendada, s.DataSolicitacao, s.DataRegulacao,
-            s.Status.ToString(), s.StatusConfirmacao.ToString(), s.Observacoes);
+            s.Status.ToString(), s.StatusConfirmacao.ToString(), s.Observacoes, s.RawSisreg);
     }
 }

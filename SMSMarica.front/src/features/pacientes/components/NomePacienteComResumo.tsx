@@ -222,11 +222,12 @@ export function NomePacienteComResumo({
 
   return (
     <span className={cn('inline-flex items-center gap-1.5', className)}>
-      {nome ? <span className={classNameNome}>{nome}</span> : null}
+      {/* min-w-0 deixa o nome encolher e truncar (…) dentro do flex; sem isso ele vaza a coluna. */}
+      {nome ? <span className={cn('min-w-0', classNameNome)}>{nome}</span> : null}
       <button
         type="button"
         onClick={() => setAberto(true)}
-        className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-red-700"
+        className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-red-700"
         aria-label="Ver resumo do paciente"
         title="Ver resumo do paciente"
       >

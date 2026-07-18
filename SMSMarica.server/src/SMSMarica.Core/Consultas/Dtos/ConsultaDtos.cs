@@ -42,7 +42,9 @@ public sealed record ConsultaDetalheDto(
     DateOnly? DataRegulacao,
     string Status,
     string StatusConfirmacao,
-    string? Observacoes);
+    string? Observacoes,
+    /// <summary>Linha crua do SISREG que originou a consulta (proveniência). Null quando não guardada.</summary>
+    string? RawSisreg = null);
 
 public sealed record FiltroConsultasDto(
     Guid? PacienteId = null,

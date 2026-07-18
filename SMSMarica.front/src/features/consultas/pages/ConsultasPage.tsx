@@ -143,10 +143,14 @@ export function ConsultasPage() {
       cabecalho: 'Consulta',
       render: (c) => (
         <div className="min-w-0">
-          <TextoLimitado texto={c.especialidade} max={40} className="block text-gray-900" />
-          <div className="flex items-center gap-1.5 truncate text-xs text-gray-500">
-            <CategoriaBadge categoria={c.categoria} />
-            {c.unidadeExecutanteNome ? <span className="truncate">{c.unidadeExecutanteNome}</span> : null}
+          <TextoLimitado texto={c.especialidade} max={40} className="block truncate text-gray-900" />
+          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+            <span className="shrink-0">
+              <CategoriaBadge categoria={c.categoria} />
+            </span>
+            {c.unidadeExecutanteNome ? (
+              <span className="min-w-0 truncate">{c.unidadeExecutanteNome}</span>
+            ) : null}
           </div>
         </div>
       ),

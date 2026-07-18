@@ -3,6 +3,9 @@ import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   CalendarClock,
+  ChevronDown,
+  ChevronUp,
+  FileCode2,
   Loader2,
   MessageSquarePlus,
   Phone,
@@ -121,9 +124,34 @@ export function ConsultaDetalhePage() {
           </div>
 
           <CardComunicacao consultaId={c.id} />
+
+          {c.rawSisreg ? <CardRaw raw={c.rawSisreg} /> : null}
         </>
       )}
     </div>
+  );
+}
+
+/** Proveniência: a linha crua do SISREG que originou a consulta, revelada sob demanda. */
+function CardRaw({ raw }: { raw: string }) {
+  const [aberto, setAberto] = useState(false);
+  return (
+    <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+      <button
+        type="button"
+        onClick={() => setAberto((v) => !v)}
+        className="flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-gray-900"
+      >
+        <FileCode2 className="h-4 w-4 text-gray-400" />
+        Dados brutos do SISREG (RAW)
+        {aberto ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+      </button>
+      {aberto ? (
+        <pre className="mt-3 max-h-60 overflow-auto whitespace-pre-wrap break-all rounded border border-gray-200 bg-gray-50 p-2 font-mono text-[11px] text-gray-700">
+          {raw}
+        </pre>
+      ) : null}
+    </section>
   );
 }
 

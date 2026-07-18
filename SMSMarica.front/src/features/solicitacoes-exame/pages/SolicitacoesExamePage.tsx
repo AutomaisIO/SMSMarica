@@ -242,7 +242,7 @@ export function SolicitacoesExamePage() {
     {
       chave: 'acoes',
       cabecalho: 'Ações',
-      className: 'w-44 whitespace-nowrap text-right',
+      className: 'w-40 whitespace-nowrap text-right',
       render: (s) => {
         const realizadaOuLaudada = s.status === 'Realizada' || s.status === 'Laudada';
         return (
