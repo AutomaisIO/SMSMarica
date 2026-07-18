@@ -38,6 +38,21 @@ function DirecaoIcone({ direcao }: { direcao: 'Recebida' | 'Enviada' | null }) {
   return null;
 }
 
+const STATUS_COR: Record<string, string> = {
+  Solicitada: 'bg-amber-50 text-amber-700 ring-amber-200',
+  Realizada: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  Cancelada: 'bg-red-50 text-red-700 ring-red-200',
+};
+
+function StatusConsultaBadge({ status }: { status: string }) {
+  const cor = STATUS_COR[status] ?? 'bg-gray-100 text-gray-700 ring-gray-200';
+  return (
+    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${cor}`}>
+      {status}
+    </span>
+  );
+}
+
 function CategoriaBadge({ categoria }: { categoria: string }) {
   const cor =
     categoria === 'Consulta'
@@ -91,7 +106,21 @@ export function ConsultasPage() {
     });
   }
 
+  // Mesma estrutura de colunas da lista de Exames: Pedido (seta + nº) · Paciente (nome + "Por") ·
+  // Consulta (especialidade + natureza + unidade) · Data Agendamento · Situação (status + checks).
   const colunas: Coluna<ConsultaListItem>[] = [
+    {
+      chave: 'pedido',
+      cabecalho: 'Pedido',
+      render: (c) => (
+        <div className="flex items-start gap-1.5">
+          <DirecaoIcone direcao={c.direcao} />
+          <div className="min-w-0 text-xs text-gray-500">
+            {c.codigoSolicitacao ? <span className="font-mono">SISREG {c.codigoSolicitacao}</span> : '—'}
+          </div>
+        </div>
+      ),
+    },
     {
       chave: 'paciente',
       cabecalho: 'Paciente',
@@ -102,28 +131,36 @@ export function ConsultasPage() {
             nome={c.pacienteNome}
             className="min-w-0"
             classNameNome="truncate font-medium text-gray-900"
-            sufixo={<DirecaoIcone direcao={c.direcao} />}
           />
-          <div className="truncate text-xs text-gray-500">
-            {c.codigoSolicitacao ? `Nº ${c.codigoSolicitacao}` : ''}
-            {c.solicitanteNome ? `${c.codigoSolicitacao ? ' · ' : ''}Por ${c.solicitanteNome}` : ''}
+          {c.solicitanteNome ? <div className="truncate text-xs text-gray-500">Por {c.solicitanteNome}</div> : null}
+        </div>
+      ),
+    },
+    {
+      chave: 'consulta',
+      cabecalho: 'Consulta',
+      render: (c) => (
+        <div className="min-w-0">
+          <div className="truncate text-gray-900">{c.especialidade ?? '—'}</div>
+          <div className="flex items-center gap-1.5 truncate text-xs text-gray-500">
+            <CategoriaBadge categoria={c.categoria} />
+            {c.unidadeExecutanteNome ? <span className="truncate">{c.unidadeExecutanteNome}</span> : null}
           </div>
         </div>
       ),
     },
-    { chave: 'esp', cabecalho: 'Especialidade / procedimento', render: (c) => c.especialidade ?? '—' },
-    { chave: 'cat', cabecalho: 'Natureza', render: (c) => <CategoriaBadge categoria={c.categoria} /> },
-    { chave: 'uni', cabecalho: 'Unidade', render: (c) => c.unidadeExecutanteNome || '—' },
-    { chave: 'data', cabecalho: 'Agendada', render: (c) => formatarInstanteData(c.dataAgendada) || '—' },
+    { chave: 'data', cabecalho: 'Data Agendamento', render: (c) => formatarInstanteData(c.dataAgendada) || '—' },
     {
-      chave: 'conf',
-      cabecalho: 'Confirmação',
-      render: (c) =>
-        c.chipConfirmacao ? (
-          <ChecksComunicacao chip={c.chipConfirmacao} finalidade="ConfirmacaoAgendamento" />
-        ) : (
-          <span className="text-xs text-gray-400">{c.statusConfirmacao}</span>
-        ),
+      chave: 'situacao',
+      cabecalho: 'Situação',
+      render: (c) => (
+        <span className="inline-flex items-center gap-1.5">
+          <StatusConsultaBadge status={c.status} />
+          {c.chipConfirmacao ? (
+            <ChecksComunicacao chip={c.chipConfirmacao} finalidade="ConfirmacaoAgendamento" />
+          ) : null}
+        </span>
+      ),
     },
   ];
 
