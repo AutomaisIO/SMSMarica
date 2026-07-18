@@ -163,6 +163,7 @@ export function SolicitacoesExamePage() {
     {
       chave: 'accession',
       cabecalho: 'Pedido',
+      className: 'w-px whitespace-nowrap',
       ordenar: (s) => s.accessionNumber,
       render: (s) => (
         <div className="flex items-start gap-1.5">
@@ -179,6 +180,7 @@ export function SolicitacoesExamePage() {
     {
       chave: 'paciente',
       cabecalho: 'Paciente',
+      className: 'w-1/2',
       ordenar: (s) => s.pacienteNome || null,
       render: (s) => (
         <div className="min-w-0">
@@ -202,6 +204,7 @@ export function SolicitacoesExamePage() {
     {
       chave: 'exame',
       cabecalho: 'Exame',
+      className: 'w-1/2',
       ordenar: (s) => s.tipoExameNome || null,
       render: (s) => (
         <div className="min-w-0">
@@ -216,12 +219,14 @@ export function SolicitacoesExamePage() {
     {
       chave: 'data',
       cabecalho: 'Data Agendamento',
+      className: 'w-px whitespace-nowrap',
       ordenar: (s) => s.dataAgendada,
       render: (s) => formatarInstante(s.dataAgendada),
     },
     {
       chave: 'status',
       cabecalho: 'Situação',
+      className: 'w-px whitespace-nowrap',
       ordenar: (s) => derivarSituacao(s)?.rotulo ?? s.status,
       render: (s) => {
         const sit = derivarSituacao(s);
@@ -239,7 +244,7 @@ export function SolicitacoesExamePage() {
     {
       chave: 'acoes',
       cabecalho: 'Ações',
-      className: 'text-right',
+      className: 'w-px whitespace-nowrap text-right',
       render: (s) => {
         const realizadaOuLaudada = s.status === 'Realizada' || s.status === 'Laudada';
         return (
