@@ -131,12 +131,12 @@ jobs:
               log "Secret DB_CONNECTION_SMSMARICA não fornecido; mantendo $ENV_FILE existente."
             fi
 
-            # Chave interna do Agente IA: a API (5080) usa para falar com o motor (5083).
+            # Chave interna do Agente IA: a API (5080) usa para falar com o motor (5085).
             # Precisa ser reescrita aqui porque o tee acima recria o env do zero a cada deploy;
             # sem isto o proxy /agente-ia responde 503 depois de qualquer publicação do server.
             if [ -n "${AIENGINE_KEY:-}" ]; then
               printf 'AgenteIa__InternalKey=%s\n' "$AIENGINE_KEY" | $SUDO tee -a "$ENV_FILE" >/dev/null
-              printf 'AgenteIa__BaseUrl=http://127.0.0.1:5083\n' | $SUDO tee -a "$ENV_FILE" >/dev/null
+              printf 'AgenteIa__BaseUrl=http://127.0.0.1:5085\n' | $SUDO tee -a "$ENV_FILE" >/dev/null
             else
               log "AVISO: secret AIENGINE_INTERNAL_KEY ausente — a tela do Agente IA responderá 503."
             fi

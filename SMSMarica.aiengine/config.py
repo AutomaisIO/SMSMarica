@@ -9,8 +9,10 @@ import os
 from pathlib import Path
 
 # HTTP em loopback. A API .NET (5080) fala com este serviço; o nginx nunca o expõe.
-# 5080 server, 5081 fhir, 5082 assinador -> 5083 é o próximo da sequência.
-HTTP_PORT = int(os.getenv("AIENGINE_HTTP_PORT", "5083"))
+# PORTA VERIFICADA NO HOST, não deduzida da sequência. Este servidor hospeda OUTRO produto
+# (CentralIA/Falarmais) em 5083 e 5084 — deduzir 'a próxima livre' colocou o proxy da API
+# conversando com a API do outro produto (2026-07-19). Conferir com `ss -tlnH` antes de mudar.
+HTTP_PORT = int(os.getenv("AIENGINE_HTTP_PORT", "5085"))
 HTTP_HOST = os.getenv("AIENGINE_HTTP_HOST", "127.0.0.1")
 
 # Chave que a API .NET envia no header X-SMSMarica-Internal-Key.

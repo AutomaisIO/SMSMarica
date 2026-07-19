@@ -181,7 +181,8 @@ Servidor `smsmarica.online` (droplet DigitalOcean, Ubuntu).
 | `smsmarica-server` | 5080 (0.0.0.0) | `/opt/smsmarica/server` — usuário `smsmarica` |
 | `automais-fhir` | 5081 (0.0.0.0) | `/opt/automais-fhir/api` — usuário `automais` |
 | `automais-assinador` | 5082 (**loopback**) | `/opt/automais-assinador/api` |
-| `smsmarica-aiengine` | 5083 (**loopback**) | **este serviço** |
+| `smsmarica-aiengine` | 5085 (**loopback**) | **este serviço** |
+| `centralia-server` / `centralia-front` / `centralia-agent-runner` | 5083, 5084 | **Outro produto (CentralIA/Falarmais) no mesmo host.** Não é seu — não reinicie, não mexa. |
 | `wg-quick@wg-mk` | UDP 51830 | Túnel para MikroTik no Brasil — rota só para o SISREG (`189.28.130.13/32`), porque a DO é bloqueada lá |
 
 nginx serve `smsmarica.online` (painel), `app.smsmarica.online` (PWA cidadão),

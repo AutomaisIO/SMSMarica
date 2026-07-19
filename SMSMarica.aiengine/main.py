@@ -2,7 +2,7 @@
 Serviço Agente IA do SMSMarica.
 
 Expõe o Claude Code (rodando no servidor, com o clone do repositório) como API HTTP de
-loopback na 5083. Quem consome é a API .NET (5080), que valida a permissão `AgenteIa`
+loopback na 5085. Quem consome é a API .NET (5080), que valida a permissão `AgenteIa`
 antes de repassar. O nginx nunca expõe esta porta.
 
 Autocontido de propósito: o SMSMarica não tem `shared/python`, então nada aqui depende de

@@ -7,7 +7,7 @@ using SMSMarica.Data.Entities.Enums;
 namespace SMSMarica.Api.Controllers;
 
 /// <summary>
-/// Proxy para o motor do Agente IA (serviço Python em 127.0.0.1:5083).
+/// Proxy para o motor do Agente IA (serviço Python em 127.0.0.1:5085).
 ///
 /// O trabalho roda no servidor: cria-se o turno, recebe-se um id e o painel faz polling.
 /// Fechar a aba não interrompe nada. O corpo das respostas é repassado cru — o formato é
@@ -30,7 +30,7 @@ public sealed class AgenteIaController : ControllerBase
     {
         _httpClientFactory = httpClientFactory;
         _logger = logger;
-        _baseUrl = (configuration["AgenteIa:BaseUrl"] ?? "http://127.0.0.1:5083").TrimEnd('/');
+        _baseUrl = (configuration["AgenteIa:BaseUrl"] ?? "http://127.0.0.1:5085").TrimEnd('/');
         _internalKey = configuration["AgenteIa:InternalKey"];
     }
 

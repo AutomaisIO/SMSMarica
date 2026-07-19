@@ -158,5 +158,5 @@ jobs:
             fi
 
             log "OK — $SERVICE ativo."
-            curl -fsS --max-time 10 http://127.0.0.1:5083/health || true
+            curl -fsS --max-time 10 http://127.0.0.1:5085/health || true
             echo
