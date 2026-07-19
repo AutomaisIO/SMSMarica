@@ -21,6 +21,62 @@ import { PrioridadeBadge, StatusTicketBadge, TipoBadge } from '@/features/ticket
 import type { TicketPrioridade, TicketStatus } from '@/features/tickets/types';
 import { ROTULO_PRIORIDADE, ROTULO_STATUS } from '@/features/tickets/types';
 
+
+/**
+ * Monta o conteúdo integral do ticket para abrir a sessão do agente já com tudo em mãos.
+ *
+ * Inclui os comentários INTERNOS de propósito — são eles que trazem o detalhamento técnico
+ * da triagem. Vai marcado como material de leitura, não como instrução: o texto foi escrito
+ * por usuários do sistema e o agente tem shell no servidor.
+ */
+function montarContextoTicket(t: {
+  numero: number;
+  titulo: string;
+  tipo: string;
+  status: string;
+  prioridade: string;
+  descricao: string;
+  autorNome: string | null;
+  criadoEm: string;
+  respostaFinal: string | null;
+  anexos: { nomeArquivo: string }[];
+  comentarios: { autorNome: string | null; criadoEm: string; texto: string; interno: boolean }[];
+}): string {
+  const linhas: string[] = [];
+  linhas.push(`# Ticket #${t.numero} — ${t.titulo}`);
+  linhas.push('');
+  linhas.push(`Tipo: ${t.tipo} · Status: ${t.status} · Prioridade: ${t.prioridade}`);
+  linhas.push(`Aberto por: ${t.autorNome ?? 'usuário'} em ${t.criadoEm}`);
+  linhas.push('');
+  linhas.push('## Descrição');
+  linhas.push(t.descricao);
+
+  if (t.anexos.length > 0) {
+    linhas.push('');
+    linhas.push('## Anexos');
+    for (const a of t.anexos) linhas.push(`- ${a.nomeArquivo}`);
+  }
+
+  if (t.comentarios.length > 0) {
+    linhas.push('');
+    linhas.push('## Conversa');
+    for (const c of t.comentarios) {
+      const marca = c.interno ? ' [INTERNO — não visível ao autor]' : '';
+      linhas.push('');
+      linhas.push(`### ${c.autorNome ?? 'usuário'} · ${c.criadoEm}${marca}`);
+      linhas.push(c.texto);
+    }
+  }
+
+  if (t.respostaFinal) {
+    linhas.push('');
+    linhas.push('## Resposta final já registrada');
+    linhas.push(t.respostaFinal);
+  }
+
+  return linhas.join('\n');
+}
+
 const STATUS: TicketStatus[] = ['Aberto', 'EmAnalise', 'Concluido', 'Negado'];
 const PRIORIDADES: TicketPrioridade[] = ['Baixa', 'Normal', 'Alta'];
 
@@ -107,7 +163,9 @@ export function TicketDetalhePage({ gestao = false }: { gestao?: boolean }) {
         </div>
       )}
 
-      {gestao && <PainelTriagem ticket={ticket} id={id} numero={ticket.numero} />}
+      {gestao && (
+        <PainelTriagem ticket={ticket} id={id} numero={ticket.numero} ticketCompleto={ticket} />
+      )}
 
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <ConversaTicket ticketId={id} gestao={gestao} comentarios={ticket.comentarios} />
@@ -131,10 +189,14 @@ function PainelTriagem({
   ticket,
   id,
   numero,
+  ticketCompleto,
 }: {
   ticket: { status: TicketStatus; prioridade: TicketPrioridade; respostaFinal: string | null };
   id: string;
   numero: number;
+  // O ticket inteiro (descrição, anexos, conversa com os internos) para abrir a sessão do
+  // agente já com tudo — em vez de ele ter que ir buscar peça por peça.
+  ticketCompleto: Parameters<typeof montarContextoTicket>[0];
 }) {
   const [status, setStatus] = useState<TicketStatus>(ticket.status);
   const [prioridade, setPrioridade] = useState<TicketPrioridade>(ticket.prioridade);
@@ -210,7 +272,11 @@ function PainelTriagem({
           <Button
             variante="secundaria"
             tamanho="sm"
-            onClick={() => navigate(`/app/agente-ia?ticket=${numero}`)}
+            onClick={() =>
+              navigate(`/app/agente-ia?ticket=${numero}`, {
+                state: { contextoTicket: montarContextoTicket(ticketCompleto) },
+              })
+            }
             title="Abre o terminal do agente com o contexto deste ticket"
           >
             <Bot className="mr-1.5 h-4 w-4" />

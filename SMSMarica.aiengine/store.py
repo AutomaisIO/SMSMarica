@@ -50,6 +50,21 @@ CREATE INDEX IF NOT EXISTS idx_turns_session ON turns(session_id, started_at);
 CREATE INDEX IF NOT EXISTS idx_sessions_ticket ON sessions(ticket_numero);
 """
 
+# Colunas acrescentadas depois do schema inicial. SQLite não tem "ADD COLUMN IF NOT EXISTS",
+# então tentamos e ignoramos o erro de duplicata — mais simples que versionar migrations
+# para um banco que é estado local de um único serviço.
+_COLUNAS_EXTRA = [
+    # Diretório em que a sessão do Claude Code nasceu. O transcript é guardado POR PROJETO
+    # (~/.claude/projects/<cwd-slug>/<id>.jsonl); retomar com cwd diferente do original faz o
+    # CLI não achar a sessão e sair com código 1. Aconteceu quando o clone do repositório
+    # passou a existir e sessões criadas em modo degradado (/tmp) viraram 500 (2026-07-19).
+    ("cwd", "TEXT"),
+    # Id da sessão DO CLAUDE. Normalmente igual ao nosso id, mas se o resume ficar
+    # impossível (cwd mudou, transcript corrompido) trocamos só este e preservamos o
+    # histórico que o painel mostra.
+    ("claude_session_id", "TEXT"),
+]
+
 
 class Store:
     def __init__(self, path: Path = DB_PATH) -> None:
@@ -60,6 +75,11 @@ class Store:
         self._db.execute("PRAGMA synchronous=NORMAL")
         self._db.execute("PRAGMA foreign_keys=ON")
         self._db.executescript(_SCHEMA)
+        for coluna, tipo in _COLUNAS_EXTRA:
+            try:
+                self._db.execute(f"ALTER TABLE sessions ADD COLUMN {coluna} {tipo}")
+            except sqlite3.OperationalError:
+                pass  # já existe
         self._db.commit()
         self._lock = threading.Lock()
 
@@ -75,13 +95,22 @@ class Store:
     # ------------------------------------------------------------------ sessões
 
     def create_session(self, sid: str, title: str, ticket_numero: Optional[int],
-                       ticket_titulo: Optional[str]) -> None:
+                       ticket_titulo: Optional[str], cwd: str) -> None:
         now = time.time()
         self._write(
-            "INSERT INTO sessions (id, title, ticket_numero, ticket_titulo, created_at, last_used_at)"
-            " VALUES (?,?,?,?,?,?)",
-            (sid, title, ticket_numero, ticket_titulo, now, now),
+            "INSERT INTO sessions (id, title, ticket_numero, ticket_titulo, created_at,"
+            " last_used_at, cwd, claude_session_id) VALUES (?,?,?,?,?,?,?,?)",
+            (sid, title, ticket_numero, ticket_titulo, now, now, cwd, sid),
         )
+
+    def reset_claude_session(self, sid: str, novo_claude_id: str, cwd: str) -> None:
+        """Troca o id da sessão do Claude preservando o histórico que o painel mostra.
+
+        Usado quando retomar é impossível — a memória do modelo recomeça, mas a conversa
+        na tela continua inteira.
+        """
+        self._write("UPDATE sessions SET claude_session_id=?, cwd=? WHERE id=?",
+                    (novo_claude_id, cwd, sid))
 
     def touch_session(self, sid: str, title: Optional[str] = None) -> None:
         if title:

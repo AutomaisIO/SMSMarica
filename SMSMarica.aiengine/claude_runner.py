@@ -114,7 +114,8 @@ class ClaudeEngine:
 
         self._assert_memory()
         sid = str(uuid.uuid4())  # UUID válido: o CLI exige isso em --session-id
-        store.create_session(sid, title, ticket_numero, ticket_titulo)
+        cwd, _ = config.resolve_cwd()
+        store.create_session(sid, title, ticket_numero, ticket_titulo, cwd)
         logger.info("Sessão %s criada (ticket=%s)", sid, ticket_numero or "-")
         return store.get_session(sid)
 
@@ -147,22 +148,47 @@ class ClaudeEngine:
 
         has_history = bool(store.session_history(sid))
         cwd, repo_available = config.resolve_cwd()
+        claude_id = record.get("claude_session_id") or sid
+        cwd_original = record.get("cwd")
 
-        options = ClaudeAgentOptions(
-            system_prompt=self._build_system_prompt(record, repo_available),
-            cwd=cwd,
-            model=config.MODEL,
-            permission_mode=config.PERMISSION_MODE,
-            max_turns=config.MAX_TURNS,
-            allowed_tools=config.ALLOWED_TOOLS,
-        )
-        if has_history:
-            options.resume = sid
-        else:
-            options.session_id = sid
+        def montar(resume: bool) -> ClaudeAgentOptions:
+            o = ClaudeAgentOptions(
+                system_prompt=self._build_system_prompt(record, repo_available),
+                cwd=cwd,
+                model=config.MODEL,
+                permission_mode=config.PERMISSION_MODE,
+                max_turns=config.MAX_TURNS,
+                allowed_tools=config.ALLOWED_TOOLS,
+            )
+            if resume:
+                o.resume = claude_id
+            else:
+                o.session_id = claude_id
+            return o
 
-        client = ClaudeSDKClient(options=options)
-        await client.connect()
+        # O transcript do Claude Code é guardado POR PROJETO (por cwd). Retomar de um cwd
+        # diferente do original falha — foi o que aconteceu quando o clone passou a existir
+        # e sessões nascidas em /tmp (modo degradado) viraram 500 no painel.
+        mudou_de_cwd = bool(cwd_original) and cwd_original != cwd
+        tentar_resume = has_history and not mudou_de_cwd
+
+        client = ClaudeSDKClient(options=montar(resume=tentar_resume))
+        try:
+            await client.connect()
+        except Exception as exc:  # noqa: BLE001
+            if not (tentar_resume or mudou_de_cwd):
+                raise
+            # Retomar ficou impossível (cwd mudou, transcript sumiu ou corrompeu). Perder a
+            # memória do modelo é ruim; devolver 500 e deixar a conversa inacessível é pior.
+            # O histórico que o painel mostra vem do nosso SQLite e continua intacto.
+            logger.warning(
+                "Retomada da sessão %s falhou (cwd %s -> %s): %s. Começando sessão nova do "
+                "Claude e preservando o histórico do painel.",
+                sid, cwd_original, cwd, exc)
+            claude_id = str(uuid.uuid4())
+            store.reset_claude_session(sid, claude_id, cwd)
+            client = ClaudeSDKClient(options=montar(resume=False))
+            await client.connect()
 
         live = live or LiveSession(id=sid)
         live.client = client
