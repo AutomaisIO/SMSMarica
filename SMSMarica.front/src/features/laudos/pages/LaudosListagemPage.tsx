@@ -12,6 +12,7 @@ import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { useExcluirLaudo, useListarLaudos } from '@/features/laudos/api/queries';
 import { abrirPdfLaudo, baixarPdfLaudo } from '@/features/laudos/lib/pdf';
 import { StatusBadgeLaudo } from '@/features/laudos/components/StatusBadgeLaudo';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { ChecksComunicacao } from '@/features/solicitacoes-exame/components/ChecksComunicacao';
 import { CATEGORIAS_BIRADS, corBiRads } from '@/features/laudos/checklist/birads';
 import type { FiltroLaudos, LaudoListItem, StatusLaudo } from '@/features/laudos/types';
@@ -73,12 +74,16 @@ export function LaudosListagemPage() {
       ordenar: (l) => l.pacienteNome ?? l.pacienteNomeDicom ?? null,
       render: (l) => (
         <div className="min-w-0">
-          {l.pacienteNome ? (
-            <div className="truncate font-medium text-gray-900">{l.pacienteNome}</div>
-          ) : l.pacienteId ? (
-            // Vinculado, mas o nome não resolveu no hub FHIR (indisponível). É vínculo
-            // real — nunca rotular como "não vinculado".
-            <div className="truncate font-medium text-gray-500">Paciente vinculado</div>
+          {l.pacienteId ? (
+            // Paciente cadastrado e navegável: nome + bonequinho (resumo) + WhatsApp.
+            // Quando o nome não resolveu no hub FHIR (indisponível), ainda é vínculo
+            // real — rotula "Paciente vinculado", nunca "não vinculado".
+            <NomePacienteComResumo
+              pacienteId={l.pacienteId}
+              nome={l.pacienteNome ?? 'Paciente vinculado'}
+              className="min-w-0"
+              classNameNome={`truncate font-medium ${l.pacienteNome ? 'text-gray-900' : 'text-gray-500'}`}
+            />
           ) : l.pacienteNomeDicom ? (
             <div
               className="flex items-center gap-1.5"
