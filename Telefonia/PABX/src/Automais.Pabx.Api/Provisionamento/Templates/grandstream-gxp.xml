@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Template Grandstream (linha GXP) no formato XML de P-values.
+  Nao havia exemplo Grandstream no TFTP em producao — validar com um aparelho
+  real na primeira instalacao (ver docs/runbook-unidade.md).
+  P271=conta 1 ativa | P47=SIP server | P35=SIP user | P36=auth ID | P34=senha
+  P3=nome exibido | P270=nome da conta | P57=codec preferido (8=PCMA)
+-->
+<gs_provision version="1">
+    <config version="1">
+        <P271>1</P271>
+        <P270>{{RAMAL}}</P270>
+        <P3>{{RAMAL}}</P3>
+        <P47>{{SERVIDOR}}</P47>
+        <P35>{{RAMAL}}</P35>
+        <P36>{{RAMAL}}</P36>
+        <P34>{{SECRET}}</P34>
+        <P52>2</P52>
+        <P57>8</P57>
+        <P58>0</P58>
+        <P59>18</P59>
+        <P30>{{SERVIDOR}}</P30>
+        <P192>{{SERVIDOR}}</P192>
+        <P237>1</P237>
+        <P145>1</P145>
+    </config>
+</gs_provision>

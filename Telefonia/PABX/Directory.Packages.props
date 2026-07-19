@@ -1,0 +1,37 @@
+<Project>
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <ItemGroup Label="ASP.NET Core / OpenAPI">
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9" />
+    <PackageVersion Include="Scalar.AspNetCore" Version="2.0.22" />
+    <!-- Pin transitivo: corrige GHSA-v5pm-xwqc-g5wc -->
+    <PackageVersion Include="Microsoft.OpenApi" Version="2.10.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="EF Core / SQLite">
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.9" />
+    <!-- Pin transitivo: corrige GHSA-2m69-gcr7-jv3q no e_sqlite3 embutido -->
+    <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
+  </ItemGroup>
+
+  <ItemGroup Label="CDR (MySQL do Asterisk)">
+    <PackageVersion Include="MySqlConnector" Version="2.4.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Validação">
+    <PackageVersion Include="FluentValidation" Version="11.10.0" />
+    <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="11.10.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Logging">
+    <PackageVersion Include="Serilog.AspNetCore" Version="9.0.0" />
+    <PackageVersion Include="Serilog.Sinks.Console" Version="6.0.0" />
+  </ItemGroup>
+
+</Project>

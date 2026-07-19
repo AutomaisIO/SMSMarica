@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Automais.Pabx.Api/Automais.Pabx.Api.csproj" />
+  </Folder>
+</Solution>

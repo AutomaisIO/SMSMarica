@@ -1,0 +1,20 @@
+# /etc/systemd/system/automais-pabx.service
+# Serviço de gestão de ramais SMS Maricá no PABX FalarMais (192.241.153.121).
+# Roda como root: precisa escrever em /etc/asterisk/sip_smsmarica.conf e /var/lib/tftpboot.
+[Unit]
+Description=Automais.Pabx - gestao de ramais SMS Marica
+After=network.target asterisk.service
+
+[Service]
+Type=notify
+WorkingDirectory=/opt/automais-pabx
+ExecStart=/opt/automais-pabx/Automais.Pabx.Api --urls http://0.0.0.0:5090
+Restart=always
+RestartSec=5
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=DOTNET_PrintTelemetryMessage=false
+# Configuração sensível (API key, secret AMI, conn string do CDR) fica em
+# /opt/automais-pabx/appsettings.Production.json — fora do git.
+
+[Install]
+WantedBy=multi-user.target

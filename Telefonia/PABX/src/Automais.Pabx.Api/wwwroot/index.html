@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Automais.Pabx — Ramais SMS Maricá</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <h1>📞 Automais.Pabx <span class="sub">Ramais SMS Maricá — PABX FalarMais</span></h1>
+  <div class="apikey">
+    <input type="password" id="apiKey" placeholder="API key">
+    <button id="salvarKey">Entrar</button>
+    <a href="/docs" target="_blank" rel="noopener">API /docs</a>
+  </div>
+</header>
+
+<nav>
+  <button class="aba ativa" data-aba="ramais">Ramais</button>
+  <button class="aba" data-aba="cdr">Chamadas (CDR)</button>
+  <button class="aba" data-aba="unidades">Unidades</button>
+</nav>
+
+<main>
+  <section id="aba-ramais">
+    <div class="barra">
+      <select id="filtroUnidade"><option value="">Todas as unidades</option></select>
+      <button id="atualizarRamais">Atualizar</button>
+      <label class="auto"><input type="checkbox" id="autoRefresh"> auto (10s)</label>
+      <span class="direita">
+        <button id="abrirNovo">+ Novo ramal</button>
+        <button id="abrirAdotar">Adotar existentes</button>
+        <button id="reaplicar" title="Regenera sip_smsmarica.conf e dá sip reload">Reaplicar config</button>
+      </span>
+    </div>
+    <p id="avisoAmi" class="aviso oculto"></p>
+    <table id="tabelaRamais">
+      <thead>
+        <tr>
+          <th></th><th>Ramal</th><th>Descrição</th><th>Unidade</th><th>IP / unidade detectada</th>
+          <th>Latência</th><th>Telefone</th><th>Origem</th><th></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <section id="aba-cdr" class="oculto">
+    <div class="barra">
+      <input id="cdrRamal" placeholder="Ramal">
+      <input id="cdrNumero" placeholder="Número (qualquer formato)">
+      <input id="cdrDe" type="date">
+      <input id="cdrAte" type="date">
+      <button id="buscarCdr">Buscar</button>
+      <span id="cdrTotal" class="direita"></span>
+    </div>
+    <table id="tabelaCdr">
+      <thead>
+        <tr><th>Data/hora</th><th>Origem</th><th>Destino</th><th>Duração</th><th>Falada</th><th>Resultado</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div class="barra">
+      <button id="cdrAnterior">← Anterior</button>
+      <span id="cdrPagina">1</span>
+      <button id="cdrProxima">Próxima →</button>
+    </div>
+  </section>
+
+  <section id="aba-unidades" class="oculto">
+    <table id="tabelaUnidades">
+      <thead>
+        <tr><th>Id</th><th>Nome</th><th>Grupo</th><th>LAN telefones</th><th>Status VPN</th><th>Ramais</th><th>Gestor</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+</main>
+
+<dialog id="dlgRamal">
+  <form method="dialog" id="formRamal">
+    <h2 id="dlgTitulo">Novo ramal</h2>
+    <label>Número* <input id="fNumero" required pattern="[0-9]{3,6}" placeholder="ex.: 2001"></label>
+    <label>Unidade* <select id="fUnidade" required></select></label>
+    <label>Descrição <input id="fDescricao" placeholder="Recepção, Sala 2, ..."></label>
+    <label>MAC do telefone <input id="fMac" placeholder="ex.: 4851CFD8F560 (vazio = sem provisionamento)"></label>
+    <label>Marca
+      <select id="fMarca">
+        <option value="">—</option>
+        <option>Intelbras</option>
+        <option>Cisco</option>
+        <option>Grandstream</option>
+      </select>
+    </label>
+    <label>Modelo <input id="fModelo" placeholder="TIP125 / 3905 / GXP1610"></label>
+    <label>CallerId <input id="fCallerId" placeholder="vazio = número do ramal"></label>
+    <label id="rotAtivo" class="oculto"><input type="checkbox" id="fAtivo" checked> Ativo</label>
+    <div class="acoes">
+      <button value="cancel" formnovalidate>Cancelar</button>
+      <button value="ok" id="btnSalvarRamal">Salvar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgAdotar">
+  <form method="dialog" id="formAdotar">
+    <h2>Adotar ramais do sip_custom.conf</h2>
+    <p class="ajuda">Importa para o inventário ramais pré-existentes (ex.: 1002, 1003) sem tocar no arquivo legado.</p>
+    <label>Números (separados por vírgula)* <input id="aNumeros" required placeholder="1002, 1003"></label>
+    <label>Unidade* <select id="aUnidade" required></select></label>
+    <div class="acoes">
+      <button value="cancel" formnovalidate>Cancelar</button>
+      <button value="ok">Adotar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgSecret">
+  <h2>Ramal salvo</h2>
+  <p>Anote o secret — ele <strong>não será exibido de novo</strong>:</p>
+  <p class="secret" id="secretValor"></p>
+  <p class="ajuda">Se o telefone tem MAC cadastrado, o XML de provisionamento já foi publicado no TFTP com esse secret.</p>
+  <div class="acoes"><button onclick="this.closest('dialog').close()">Fechar</button></div>
+</dialog>
+
+<div id="toast" class="oculto"></div>
+<script src="app.js"></script>
+</body>
+</html>
