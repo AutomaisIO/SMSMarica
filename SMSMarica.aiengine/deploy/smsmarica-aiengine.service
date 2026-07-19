@@ -1,0 +1,31 @@
+[Unit]
+Description=SMSMarica Agente IA (Claude Code)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/smsmarica-aiengine
+ExecStart=/opt/smsmarica-aiengine/venv/bin/python3 /opt/smsmarica-aiengine/main.py
+Restart=always
+RestartSec=10
+KillSignal=SIGINT
+SyslogIdentifier=smsmarica-aiengine
+
+TimeoutStartSec=60
+TimeoutStopSec=30
+
+Environment="PYTHONUNBUFFERED=1"
+# O SDK invoca o binário `claude`, que a instalação nativa põe em ~/.local/bin. Sob systemd
+# o PATH default NÃO inclui esse diretório (o .bashrc não é lido) — sem esta linha o serviço
+# sobe e só falha na primeira sessão, com "claude: command not found".
+Environment="PATH=/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="HOME=/root"
+EnvironmentFile=/etc/smsmarica-aiengine/env
+# Defesa contra a precedência de credencial do Claude Code: ANTHROPIC_API_KEY vence
+# CLAUDE_CODE_OAUTH_TOKEN e joga o consumo para a API avulsa sem nenhum sinal.
+# O main.py também remove em runtime — este é o reforço.
+UnsetEnvironment=ANTHROPIC_API_KEY
+
+[Install]
+WantedBy=multi-user.target

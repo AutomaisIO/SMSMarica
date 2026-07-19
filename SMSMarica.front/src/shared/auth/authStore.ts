@@ -43,7 +43,8 @@ export type ModuloPermissao =
   | 'Sandbox'
   | 'RespostasRapidas'
   | 'Consultas'
-  | 'MapeamentoSigtap';
+  | 'MapeamentoSigtap'
+  | 'AgenteIa';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 

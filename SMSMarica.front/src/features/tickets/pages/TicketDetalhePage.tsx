@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Archive, ArchiveRestore, ArrowLeft, Trash2 } from 'lucide-react';
+import { Archive, ArchiveRestore, ArrowLeft, Bot, Trash2 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
@@ -106,7 +107,7 @@ export function TicketDetalhePage({ gestao = false }: { gestao?: boolean }) {
         </div>
       )}
 
-      {gestao && <PainelTriagem ticket={ticket} id={id} />}
+      {gestao && <PainelTriagem ticket={ticket} id={id} numero={ticket.numero} />}
 
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <ConversaTicket ticketId={id} gestao={gestao} comentarios={ticket.comentarios} />
@@ -126,11 +127,23 @@ export function TicketDetalhePage({ gestao = false }: { gestao?: boolean }) {
   );
 }
 
-function PainelTriagem({ ticket, id }: { ticket: { status: TicketStatus; prioridade: TicketPrioridade; respostaFinal: string | null }; id: string }) {
+function PainelTriagem({
+  ticket,
+  id,
+  numero,
+}: {
+  ticket: { status: TicketStatus; prioridade: TicketPrioridade; respostaFinal: string | null };
+  id: string;
+  numero: number;
+}) {
   const [status, setStatus] = useState<TicketStatus>(ticket.status);
   const [prioridade, setPrioridade] = useState<TicketPrioridade>(ticket.prioridade);
   const [resposta, setResposta] = useState(ticket.respostaFinal ?? '');
   const atualizar = useAtualizarGestao(id);
+  const navigate = useNavigate();
+  // Só oferece o encaminhamento a quem pode de fato acionar o agente — Edicao, não Consulta:
+  // mandar o agente trabalhar é ação no servidor, não leitura.
+  const podeAgente = usePermissao('AgenteIa', 'Edicao');
 
   useEffect(() => {
     setStatus(ticket.status);
@@ -192,11 +205,30 @@ function PainelTriagem({ ticket, id }: { ticket: { status: TicketStatus; priorid
           className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
         />
       </Campo>
-      <div className="mt-3 flex justify-end">
+      <div className="mt-3 flex items-center justify-between gap-3">
+        {podeAgente ? (
+          <Button
+            variante="secundaria"
+            tamanho="sm"
+            onClick={() => navigate(`/app/agente-ia?ticket=${numero}`)}
+            title="Abre o terminal do agente com o contexto deste ticket"
+          >
+            <Bot className="mr-1.5 h-4 w-4" />
+            Enviar ao Agente IA
+          </Button>
+        ) : (
+          <span />
+        )}
         <Button onClick={salvar} disabled={atualizar.isPending || exigeResposta} tamanho="sm">
           {atualizar.isPending ? 'Salvando…' : 'Salvar triagem'}
         </Button>
       </div>
+      {podeAgente && (
+        <p className="mt-2 text-xs text-slate-500">
+          O agente investiga e propõe a solução. Concluir o ticket continua sendo desta tela —
+          ele não fecha nada sozinho.
+        </p>
+      )}
     </div>
   );
 }

@@ -61,6 +61,7 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'Inteligencia', rotulo: 'IA' },
   { id: 'InteligenciaConfiguracao', rotulo: 'Configuração IA' },
   { id: 'InteligenciaAprendizado', rotulo: 'Aprendizado IA' },
+  { id: 'AgenteIa', rotulo: 'Agente IA — terminal no servidor (administrativo)' },
   { id: 'Especialidades', rotulo: 'Especialidades' },
   { id: 'Equipamentos', rotulo: 'Equipamentos' },
   { id: 'Agendamentos', rotulo: 'Agendamentos' },

@@ -1,0 +1,162 @@
+name: Deploy SMSMarica.aiengine
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'SMSMarica.aiengine/**'
+      - '.github/workflows/deploy-aiengine.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-smsmarica-aiengine
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Pack artifact
+        run: |
+          tar -czf smsmarica-aiengine.tar.gz \
+            --exclude='__pycache__' --exclude='*.pyc' \
+            --exclude='venv' --exclude='.venv' \
+            -C SMSMarica.aiengine .
+          ls -la smsmarica-aiengine.tar.gz
+
+      - name: Copy artifact to server (SCP)
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HOST_SMSMARICA }}
+          username: ${{ secrets.USER_SMSMARICA }}
+          password: ${{ secrets.PASS_SMSMARICA }}
+          port: 22
+          source: smsmarica-aiengine.tar.gz
+          target: /tmp/
+
+      - name: Deploy on server (SSH)
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          AIENGINE_KEY: ${{ secrets.AIENGINE_INTERNAL_KEY }}
+          CLAUDE_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        with:
+          host: ${{ secrets.HOST_SMSMARICA }}
+          username: ${{ secrets.USER_SMSMARICA }}
+          password: ${{ secrets.PASS_SMSMARICA }}
+          port: 22
+          envs: AIENGINE_KEY,CLAUDE_TOKEN
+          command_timeout: 15m
+          script: |
+            set -euo pipefail
+
+            APP_DIR=/opt/smsmarica-aiengine
+            ENV_DIR=/etc/smsmarica-aiengine
+            ENV_FILE=$ENV_DIR/env
+            DATA_DIR=/var/lib/smsmarica-aiengine
+            SERVICE=smsmarica-aiengine
+            TARBALL=/tmp/smsmarica-aiengine.tar.gz
+
+            if [ "$(id -u)" -eq 0 ]; then SUDO=""; else SUDO="sudo -n"; fi
+            log() { echo ">>> $*"; }
+
+            # --- 1. Validar o artefato ANTES de destruir o que está no ar ---
+            if [ ! -f "$TARBALL" ]; then
+              echo "ERRO: $TARBALL não encontrado (scp falhou?)" >&2
+              exit 1
+            fi
+            tar -tzf "$TARBALL" >/dev/null || { echo "ERRO: tarball corrompido" >&2; exit 1; }
+
+            # --- 2. Python (este é o PRIMEIRO serviço Python neste host) ---
+            if ! command -v python3 >/dev/null 2>&1; then
+              $SUDO apt-get update -y
+              $SUDO apt-get install -y python3
+            fi
+            if ! dpkg -s python3-venv >/dev/null 2>&1; then
+              log "Instalando python3-venv..."
+              $SUDO apt-get update -y
+              $SUDO apt-get install -y python3-venv python3-pip
+            fi
+
+            $SUDO mkdir -p "$APP_DIR" "$ENV_DIR" "$DATA_DIR"
+
+            # --- 3. Arquivo de ambiente ---
+            # Reescrito a cada deploy a partir dos Secrets (padrão da casa). O SQLite fica
+            # em $DATA_DIR, FORA de $APP_DIR, porque o passo 5 apaga o app inteiro.
+            {
+              printf 'AIENGINE_INTERNAL_KEY=%s\n' "${AIENGINE_KEY:-}"
+              printf 'CLAUDE_CODE_OAUTH_TOKEN=%s\n' "${CLAUDE_TOKEN:-}"
+              printf 'AIENGINE_DB_PATH=%s/aiengine.db\n' "$DATA_DIR"
+              printf 'AIENGINE_REPO_DIR=/srv/smsmarica-repo\n'
+            } | $SUDO tee "$ENV_FILE" >/dev/null
+            $SUDO chmod 600 "$ENV_FILE"
+
+            if [ -z "${AIENGINE_KEY:-}" ]; then
+              echo "AVISO: secret AIENGINE_INTERNAL_KEY vazio — o serviço não vai subir." >&2
+            fi
+            if [ -z "${CLAUDE_TOKEN:-}" ]; then
+              echo "AVISO: secret CLAUDE_CODE_OAUTH_TOKEN vazio — sem credencial da assinatura." >&2
+            fi
+
+            # --- 4. Backup do que está no ar (rollback) ---
+            if [ -d "$APP_DIR" ] && [ -n "$(ls -A "$APP_DIR" 2>/dev/null)" ]; then
+              $SUDO rm -rf "$APP_DIR.old"
+              $SUDO cp -a "$APP_DIR" "$APP_DIR.old"
+            fi
+
+            if $SUDO systemctl is-active --quiet "$SERVICE"; then
+              log "Parando $SERVICE..."
+              $SUDO systemctl stop "$SERVICE"
+            fi
+
+            # --- 5. Substituir artefatos ---
+            log "Extraindo nova versão em $APP_DIR..."
+            $SUDO find "$APP_DIR" -mindepth 1 -delete
+            $SUDO tar -xzf "$TARBALL" -C "$APP_DIR"
+            rm -f "$TARBALL"
+
+            # --- 6. venv (recriado sempre; evita venv quebrado após upgrade de Python) ---
+            log "Recriando venv..."
+            $SUDO rm -rf "$APP_DIR/venv"
+            $SUDO python3 -m venv "$APP_DIR/venv"
+            $SUDO "$APP_DIR/venv/bin/pip" install --upgrade pip --quiet
+            $SUDO "$APP_DIR/venv/bin/pip" install -r "$APP_DIR/requirements.txt" --quiet
+
+            # --- 7. Unit ---
+            if [ -f "$APP_DIR/deploy/$SERVICE.service" ]; then
+              $SUDO cp "$APP_DIR/deploy/$SERVICE.service" "/etc/systemd/system/$SERVICE.service"
+              $SUDO chmod 644 "/etc/systemd/system/$SERVICE.service"
+            fi
+            $SUDO systemctl daemon-reload
+            $SUDO systemctl enable "$SERVICE" || true
+
+            # O binário `claude` é instalado à mão (deploy/setup-aiengine-host.sh).
+            if [ ! -x /root/.local/bin/claude ]; then
+              echo "AVISO: /root/.local/bin/claude ausente — o serviço sobe mas toda sessão falha." >&2
+            fi
+            if [ ! -d /srv/smsmarica-repo/.git ]; then
+              echo "AVISO: /srv/smsmarica-repo não existe — agente entra em MODO DEGRADADO (sem código)." >&2
+            fi
+
+            # --- 8. Subir e validar, com rollback ---
+            log "Iniciando $SERVICE..."
+            $SUDO systemctl start "$SERVICE"
+            sleep 5
+            if ! $SUDO systemctl is-active --quiet "$SERVICE"; then
+              echo "FALHA: serviço não subiu. Journal:" >&2
+              $SUDO journalctl -u "$SERVICE" -n 80 --no-pager || true
+              if [ -d "$APP_DIR.old" ]; then
+                echo "Revertendo para a versão anterior..." >&2
+                $SUDO find "$APP_DIR" -mindepth 1 -delete
+                $SUDO cp -a "$APP_DIR.old/." "$APP_DIR/"
+                $SUDO systemctl start "$SERVICE" || true
+              fi
+              exit 1
+            fi
+
+            log "OK — $SERVICE ativo."
+            curl -fsS --max-time 10 http://127.0.0.1:5083/health || true
+            echo

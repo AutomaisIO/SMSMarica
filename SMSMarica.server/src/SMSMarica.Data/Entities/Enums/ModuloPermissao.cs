@@ -104,4 +104,10 @@ public enum ModuloPermissao
     /// <summary>Mapeamento SIGTAP→TipoExame: curadoria dos exames de imagem importados sem tipo
     /// (pendentes) — criar/vincular TipoExame com backfill por código SIGTAP.</summary>
     MapeamentoSigtap = 42,
+
+    /// <summary>Agente IA: terminal do agente que roda NO SERVIDOR, com shell, banco de produção
+    /// e o clone do repositório. Pode alterar código e commitar. Conceder apenas a quem já teria
+    /// acesso administrativo ao servidor — não é um assistente de consulta como
+    /// <see cref="Inteligencia"/>.</summary>
+    AgenteIa = 43,
 }

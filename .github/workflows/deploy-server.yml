@@ -59,12 +59,13 @@ jobs:
         uses: appleboy/ssh-action@v1.2.0
         env:
           DB_CS: ${{ secrets.DB_CONNECTION_SMSMARICA }}
+          AIENGINE_KEY: ${{ secrets.AIENGINE_INTERNAL_KEY }}
         with:
           host: ${{ secrets.HOST_SMSMARICA }}
           username: ${{ secrets.USER_SMSMARICA }}
           password: ${{ secrets.PASS_SMSMARICA }}
           port: 22
-          envs: DB_CS
+          envs: DB_CS,AIENGINE_KEY
           command_timeout: 15m
           script: |
             set -euo pipefail
@@ -128,6 +129,16 @@ jobs:
               $SUDO touch "$ENV_FILE"
             else
               log "Secret DB_CONNECTION_SMSMARICA não fornecido; mantendo $ENV_FILE existente."
+            fi
+
+            # Chave interna do Agente IA: a API (5080) usa para falar com o motor (5083).
+            # Precisa ser reescrita aqui porque o tee acima recria o env do zero a cada deploy;
+            # sem isto o proxy /agente-ia responde 503 depois de qualquer publicação do server.
+            if [ -n "${AIENGINE_KEY:-}" ]; then
+              printf 'AgenteIa__InternalKey=%s\n' "$AIENGINE_KEY" | $SUDO tee -a "$ENV_FILE" >/dev/null
+              printf 'AgenteIa__BaseUrl=http://127.0.0.1:5083\n' | $SUDO tee -a "$ENV_FILE" >/dev/null
+            else
+              log "AVISO: secret AIENGINE_INTERNAL_KEY ausente — a tela do Agente IA responderá 503."
             fi
 
             # Migrations + seeds aplicam no startup (AutoMigrate default=false no código —

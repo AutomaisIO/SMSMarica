@@ -83,6 +83,11 @@ builder.Services.AddScoped<SMSMarica.Core.Cidadao.IPacienteTokenService, SMSMari
 builder.Services.AddDataProtection();
 builder.Services.AddScoped<SMSMarica.Core.Inteligencia.Seguranca.IProtetorSegredos, SMSMarica.Api.Auth.ProtetorSegredos>();
 
+// Agente IA — proxy para o motor Python em 127.0.0.1:5083. Cliente nomeado porque o
+// controller repassa JSON cru (o formato é contrato entre o motor e o painel). Timeout
+// generoso: criar sessão sobe um processo do Claude Code; o turno em si é assíncrono.
+builder.Services.AddHttpClient("agente-ia", c => c.Timeout = TimeSpan.FromSeconds(120));
+
 // Autenticação JWT (token emitido em /identidade/login).
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.Secao));
 builder.Services.AddSingleton<ITokenService, JwtTokenService>();

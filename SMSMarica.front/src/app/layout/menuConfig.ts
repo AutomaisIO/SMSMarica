@@ -1,6 +1,7 @@
 import {
   Activity,
   BellRing,
+  Bot,
   Bug,
   Bus,
   Building2,
@@ -255,6 +256,13 @@ export const SECOES: SecaoMenu[] = [
         icone: Sparkles,
         modulo: 'InteligenciaAprendizado',
         descricao: 'Aprendizado e ajustes.',
+      },
+      {
+        rotulo: 'Agente IA',
+        to: '/app/agente-ia',
+        icone: Bot,
+        modulo: 'AgenteIa',
+        descricao: 'Terminal do agente no servidor (administrativo).',
       },
     ],
   },
