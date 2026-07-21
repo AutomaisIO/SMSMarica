@@ -99,10 +99,11 @@ AE do equipamento (Calling AE / local):  FDR-MAMO   (ou o nome já usado na máq
 
 ## 7. Observações
 
-- O AE Title do **equipamento** (Calling AE) pode ser o que a máquina já usa
-  (ex.: `FDR-MAMO`). O servidor não exige cadastro prévio dele hoje, mas use um
-  nome **fixo e único** por equipamento — facilita rastrear e, futuramente,
-  restringir por allowlist.
+- O AE Title do **equipamento** (Calling AE) é `FDR-MAMO`. O servidor dcm4chee não
+  exige cadastro prévio dele, mas a **plataforma SMSMarica exige**: o mesmo valor
+  está em *Exames de Imagem → Equipamentos* (mamógrafo do CDT, modalidade MG) e é
+  dele que sai o `ScheduledStationAETitle` da worklist. Mudar o AE na máquina sem
+  atualizar o cadastro faz a worklist parar de chegar.
 - Se a máquina suportar **MPPS** (Modality Performed Procedure Step), aponte para o
   mesmo AE de worklist **`WORK-CDT`** (porta `11112`).
 - Firewall do lado do CDT: liberar saída TCP para `104.236.203.40:11112`

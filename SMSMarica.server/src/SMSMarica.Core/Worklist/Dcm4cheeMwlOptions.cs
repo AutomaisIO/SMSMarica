@@ -9,8 +9,7 @@ public sealed class Dcm4cheeMwlOptions
     /// <c>http://pacs.../dcm4chee-arc/aets/WORK-CDT/rs/</c></summary>
     public string WorklistBaseUrl { get; set; } = string.Empty;
 
-    /// <summary>AE Title da estação (equipamento) que deve executar — vai em
-    /// ScheduledStationAETitle (0040,0001) e é o filtro que o equipamento (Fuji
-    /// FDR) usa na consulta MWL. Default = <c>FDR-MAMO</c> (mamógrafo do CDT).</summary>
-    public string StationAeTitle { get; set; } = "FDR-MAMO";
+    // O AE Title da estação NÃO é mais configuração: vem do Equipamento cadastrado
+    // (unidade executante + modalidade) via IResolvedorEstacaoWorklist. Sem equipamento,
+    // o envio falha com "Sem equipamento configurado" em vez de cair num AE genérico.
 }

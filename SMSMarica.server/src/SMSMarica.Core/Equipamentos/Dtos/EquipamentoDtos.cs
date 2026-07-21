@@ -18,6 +18,7 @@ public sealed record EquipamentoListItemDto(
     Guid UnidadeId,
     string UnidadeNome,
     ModalidadeDicom ModalidadeDicom,
+    string? IdentificadorDicom,
     bool Ativo);
 
 public sealed record CadastrarEquipamentoRequest(

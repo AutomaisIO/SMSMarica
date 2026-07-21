@@ -33,6 +33,7 @@ export type EquipamentoListItem = {
   unidadeId: string;
   unidadeNome: string;
   modalidadeDicom: ModalidadeDicom;
+  identificadorDicom: string | null;
   ativo: boolean;
 };
 

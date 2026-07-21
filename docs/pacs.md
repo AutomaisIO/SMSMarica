@@ -193,6 +193,31 @@ Equipamentos enviam via **C-STORE para `PACS-CDT@pacs.marica.automais.cloud:1111
 (plain; `DCM4CHEE` ainda aceita pelo alias legado). Lembrar: a porta 11112 está
 aberta para internet — qualquer modalidade configurada pode pushar.
 
+### Estação por equipamento na worklist (AE Title)
+
+O `ScheduledStationAETitle` (0040,0001) de cada item MWL vem do **equipamento
+cadastrado** no painel (*Exames de Imagem → Equipamentos*): casa a **unidade
+executante** da solicitação com a **modalidade** do tipo de exame e usa o
+`IdentificadorDicom` do equipamento — ver `Core/Worklist/ResolvedorEstacaoWorklist.cs`.
+
+**Não há AE de fallback.** Sem equipamento ativo na combinação unidade+modalidade,
+o envio falha com `worklist.sem_equipamento` ("Sem equipamento configurado"), a
+mensagem fica visível no exame (`erro_integracao_pacs`) e o worker retenta com
+backoff — cadastrar o equipamento resolve sozinho, sem reprocessar nada. A
+alternativa (carimbar um AE genérico) mandaria o exame de uma unidade para a
+estação de outra. Os equipamentos que já operavam entraram pela migration
+`SeedEquipamentosCdtCmi`, ancorada no CNES da unidade.
+
+Parâmetros por equipamento (entregáveis ao técnico):
+
+| Equipamento | Unidade | Modalidade | AE Title | Doc |
+|---|---|---|---|---|
+| Fuji FDR-3000AWS | CDT | MG | `FDR-MAMO` | [`pacs-cdt-mamografo.md`](./pacs-cdt-mamografo.md) |
+| Ultrassom | Centro Materno Infantil | US | `US_CMI` | [`pacs-us-cmi.md`](./pacs-us-cmi.md) |
+
+O AE Title do equipamento **não** precisa ser cadastrado no dcm4chee — o servidor
+aceita qualquer Calling AE (§10.4). O cadastro no painel serve à worklist.
+
 ## 9. Endpoints DICOMweb (consumidos pelo SMSMarica)
 
 Base RS: `http://pacs.marica.automais.cloud:8080/dcm4chee-arc/aets/PACS-CDT/rs/`

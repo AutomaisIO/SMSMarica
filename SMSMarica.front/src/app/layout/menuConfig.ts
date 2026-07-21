@@ -118,7 +118,6 @@ export const SECOES: SecaoMenu[] = [
       { rotulo: 'Marcar consulta', to: '/app/agendamentos/marcar', icone: CalendarPlus, modulo: 'Agendamentos', descricao: 'Nova marcação por especialidade.' },
       { rotulo: 'Agendas', to: '/app/agendas', icone: CalendarClock, modulo: 'Agendamentos', descricao: 'Agendas de profissionais e equipamentos.' },
       { rotulo: 'Especialidades', to: '/app/especialidades', icone: Stethoscope, modulo: 'Especialidades', descricao: 'Catálogo de especialidades.' },
-      { rotulo: 'Equipamentos', to: '/app/equipamentos', icone: ScanLine, modulo: 'Equipamentos', descricao: 'Recursos agendáveis.' },
     ],
   },
   {
@@ -211,6 +210,13 @@ export const SECOES: SecaoMenu[] = [
         icone: FileSignature,
         modulo: 'ConfiguracaoLaudo',
         descricao: 'Cabeçalho, rodapé e assinatura.',
+      },
+      {
+        rotulo: 'Equipamentos',
+        to: '/app/equipamentos',
+        icone: ScanLine,
+        modulo: 'Equipamentos',
+        descricao: 'Modalidades, unidade e AE Title da worklist.',
       },
     ],
   },

@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Data.Entities;
@@ -15,21 +14,21 @@ public sealed class Dcm4cheeMwlClient : IDcm4cheeMwlClient
 {
     private readonly HttpClient _http;
     private readonly ILogger<Dcm4cheeMwlClient> _logger;
-    private readonly Dcm4cheeMwlOptions _options;
     private readonly IPacienteResolver _pacienteResolver;
+    private readonly IResolvedorEstacaoWorklist _estacao;
 
     private static readonly MediaTypeHeaderValue DicomJson = new("application/dicom+json");
 
     public Dcm4cheeMwlClient(
         HttpClient http,
         ILogger<Dcm4cheeMwlClient> logger,
-        IOptions<Dcm4cheeMwlOptions> options,
-        IPacienteResolver pacienteResolver)
+        IPacienteResolver pacienteResolver,
+        IResolvedorEstacaoWorklist estacao)
     {
         _http = http;
         _logger = logger;
-        _options = options.Value;
         _pacienteResolver = pacienteResolver;
+        _estacao = estacao;
     }
 
     public async Task<string> CriarOuAtualizarMwlItemAsync(ExameImagem s, CancellationToken ct = default)
@@ -39,8 +38,10 @@ public sealed class Dcm4cheeMwlClient : IDcm4cheeMwlClient
         // 1) Garante o paciente no dcm4chee (o POST /mwlitems exige paciente existente).
         await RegistrarPacienteAsync(s, paciente, ct);
 
-        // 2) Cria/atualiza o MWL item (upsert por StudyInstanceUID + SPS ID).
-        var item = ConstrutorMwlItem.Item(s, paciente, _options.StationAeTitle);
+        // 2) Cria/atualiza o MWL item (upsert por StudyInstanceUID + SPS ID). O AE da
+        //    estação vem do equipamento da unidade executante (fallback no appsettings).
+        var stationAeTitle = await _estacao.ResolverAsync(s, ct);
+        var item = ConstrutorMwlItem.Item(s, paciente, stationAeTitle);
         var req = new HttpRequestMessage(HttpMethod.Post, "mwlitems")
         {
             Content = JsonContent.Create(item, DicomJson),

@@ -21,5 +21,6 @@ internal static class EquipamentosMapper
         e.UnidadeId,
         e.Unidade?.Nome ?? string.Empty,
         e.ModalidadeDicom,
+        e.IdentificadorDicom,
         e.Ativo);
 }

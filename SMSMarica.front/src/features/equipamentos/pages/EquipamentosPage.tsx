@@ -67,7 +67,7 @@ export function EquipamentosPage() {
       nome: e.nome,
       unidadeId: e.unidadeId,
       modalidadeDicom: e.modalidadeDicom,
-      identificadorDicom: '',
+      identificadorDicom: e.identificadorDicom ?? '',
       ativo: e.ativo,
     });
     setModalAberto(true);
@@ -104,6 +104,16 @@ export function EquipamentosPage() {
     { chave: 'nome', cabecalho: 'Equipamento', render: (e) => <span className="font-medium text-gray-900">{e.nome}</span> },
     { chave: 'unidade', cabecalho: 'Unidade', render: (e) => e.unidadeNome },
     { chave: 'modalidade', cabecalho: 'Modalidade', render: (e) => rotuloModalidade(e.modalidadeDicom) },
+    {
+      chave: 'ae',
+      cabecalho: 'AE Title',
+      render: (e) =>
+        e.identificadorDicom ? (
+          <span className="font-mono text-xs text-gray-800">{e.identificadorDicom}</span>
+        ) : (
+          <span className="text-xs text-gray-400">—</span>
+        ),
+    },
     { chave: 'status', cabecalho: 'Status', render: (e) => <StatusBadge ativo={e.ativo} /> },
     {
       chave: 'acoes',
@@ -219,12 +229,16 @@ export function EquipamentosPage() {
             </Campo>
           </div>
 
-          <Campo label="Identificador DICOM" htmlFor="eq-dicom" dica="Opcional — AE Title / Station para o worklist.">
+          <Campo
+            label="AE Title (identificador DICOM)"
+            htmlFor="eq-dicom"
+            dica="AE Title configurado no próprio equipamento. É por ele que a worklist chega só nesta máquina — em branco, os exames desta unidade caem no AE padrão do sistema. Até 16 caracteres, sem espaços nem acentos."
+          >
             <Input
               id="eq-dicom"
               value={form.identificadorDicom}
               onChange={(e) => setForm((f) => ({ ...f, identificadorDicom: e.target.value }))}
-              placeholder="Ex.: US_SALA2"
+              placeholder="Ex.: US_CMI"
             />
           </Campo>
 
