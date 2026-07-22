@@ -11,7 +11,9 @@ import {
 } from '@/app/layout/menuConfig';
 import { useMenuPreferencias } from '@/app/layout/menuPreferencias';
 import { abrirJanelaChat } from '@/features/conversas/lib/janelaChat';
+import { useTicketsBadges } from '@/features/tickets/api/queries';
 import { BrandLogo } from '@/shared/ui/BrandLogo';
+import { CounterBadge } from '@/shared/ui/CounterBadge';
 import { cn } from '@/shared/lib/cn';
 
 const CHAVE_SECAO_ABERTA = 'smsmarica.menu.secaoAberta';
@@ -38,6 +40,19 @@ export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseM
   const permissoes = useAuth((s) => s.permissoes);
   const sair = useAuth((s) => s.sair);
   const defaults = useMenuPreferencias((s) => s.defaults);
+  const badges = useTicketsBadges();
+
+  // Contador do badge de um item de menu (0 = não renderiza).
+  function contadorBadge(item: ItemMenu): number {
+    if (item.badge === 'meusTickets') return badges.meusNaoReconhecidos;
+    if (item.badge === 'ticketsGestao') return badges.gestaoNovos;
+    return 0;
+  }
+
+  // Soma dos badges dos itens visíveis de uma seção (mostrado no cabeçalho quando recolhida).
+  function contadorSecao(itens: ItemMenu[]): number {
+    return itens.reduce((total, item) => total + contadorBadge(item), 0);
+  }
 
   // Qual seção está "ativa" pela rota atual (inclui a própria página-hub).
   const hubMatch = pathname.match(new RegExp(`^${ROTA_HUB}/([^/]+)`));
@@ -72,8 +87,9 @@ export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseM
   const conteudo = (mobile: boolean) => {
     const compacto = isCollapsed && !mobile;
 
-    const renderItem = (item: ItemMenu, indentado: boolean) =>
-      item.acao === 'chat' ? (
+    const renderItem = (item: ItemMenu, indentado: boolean) => {
+      const contador = contadorBadge(item);
+      return item.acao === 'chat' ? (
         // Central de Atendimento abre em JANELA SEPARADA do navegador (como o PACS):
         // minimizada/atrás, o clique traz para frente; fechada, reabre (ticket #18).
         <button
@@ -85,13 +101,18 @@ export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseM
           }}
           title={compacto ? item.rotulo : 'Abrir a Central de Atendimento (janela separada)'}
           className={cn(
-            'flex w-full items-center rounded-md py-2.5 text-sm font-medium transition-all duration-200',
+            'relative flex w-full items-center rounded-md py-2.5 text-sm font-medium transition-all duration-200',
             compacto ? 'justify-center px-3' : indentado ? 'gap-3 pl-9 pr-3' : 'gap-3 px-3',
             'text-white/90 hover:bg-white/10',
           )}
         >
           <item.icone className="w-5 h-5 flex-shrink-0" />
           {!compacto && <span>{item.rotulo}</span>}
+          {compacto ? (
+            <CounterBadge valor={contador} variante="branco" className="absolute right-1 top-1" />
+          ) : (
+            <CounterBadge valor={contador} variante="branco" className="ml-auto" />
+          )}
         </button>
       ) : (
         <NavLink
@@ -103,7 +124,7 @@ export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseM
           title={compacto ? item.rotulo : undefined}
           className={({ isActive }) =>
             cn(
-              'flex items-center rounded-md py-2.5 text-sm font-medium transition-all duration-200',
+              'relative flex items-center rounded-md py-2.5 text-sm font-medium transition-all duration-200',
               compacto ? 'justify-center px-3' : indentado ? 'gap-3 pl-9 pr-3' : 'gap-3 px-3',
               isActive ? 'bg-white text-primary-700 shadow-md' : 'text-white/90 hover:bg-white/10',
             )
@@ -111,8 +132,14 @@ export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseM
         >
           <item.icone className="w-5 h-5 flex-shrink-0" />
           {!compacto && <span>{item.rotulo}</span>}
+          {compacto ? (
+            <CounterBadge valor={contador} variante="branco" className="absolute right-1 top-1" />
+          ) : (
+            <CounterBadge valor={contador} variante="branco" className="ml-auto" />
+          )}
         </NavLink>
       );
+    };
 
     return (
       <div
@@ -180,6 +207,8 @@ export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseM
             const destino = padraoValido ?? caminhoHub(secao.id);
             const ativa = secaoAtivaId === secao.id;
             const aberta = !compacto && secaoAberta === secao.id;
+            // Recolhida/compacta: o badge do cabeçalho resume os itens; aberta, cada item mostra o seu.
+            const totalSecao = aberta ? 0 : contadorSecao(secao.itens);
 
             return (
               <div key={secao.id} className="space-y-1">
@@ -197,12 +226,17 @@ export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseM
                     }}
                     title={compacto ? secao.titulo : undefined}
                     className={cn(
-                      'flex flex-1 items-center py-2.5',
+                      'relative flex flex-1 items-center py-2.5',
                       compacto ? 'justify-center px-3' : 'gap-3 pl-3',
                     )}
                   >
                     {Icone && <Icone className="w-5 h-5 flex-shrink-0" />}
                     {!compacto && <span className="flex-1 truncate">{secao.titulo}</span>}
+                    {compacto ? (
+                      <CounterBadge valor={totalSecao} variante="branco" className="absolute right-1 top-1" />
+                    ) : (
+                      <CounterBadge valor={totalSecao} variante="branco" className="ml-auto mr-1" />
+                    )}
                   </Link>
                   {!compacto && (
                     <button

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { Archive, ArchiveRestore, ArrowLeft, Bot, Trash2 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
@@ -10,6 +11,7 @@ import { Select } from '@/shared/ui/Select';
 import { notificar } from '@/shared/ui/Notificacoes';
 import { formatarInstante } from '@/shared/lib/datas';
 import {
+  ticketsKeys,
   useArquivar,
   useAtualizarGestao,
   useExcluirTicket,
@@ -87,6 +89,18 @@ export function TicketDetalhePage({ gestao = false }: { gestao?: boolean }) {
   const arquivar = useArquivar(gestao);
   const excluir = useExcluirTicket();
   const [confirmarExcluir, setConfirmarExcluir] = useState(false);
+  const queryClient = useQueryClient();
+
+  // Abrir o ticket já reconhece (autor) / marca visto (gestão) no backend — reatualiza os
+  // resumos/badges para a bandeira e os contadores baixarem na hora. Ticket #42.
+  useEffect(() => {
+    if (!ticket) return;
+    void queryClient.invalidateQueries({ queryKey: ticketsKeys.resumoAutor });
+    void queryClient.invalidateQueries({ queryKey: ticketsKeys.resumoGestao });
+    void queryClient.invalidateQueries({ queryKey: ['tickets', 'meus'] });
+    void queryClient.invalidateQueries({ queryKey: ['tickets', 'todos'] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ticket?.id]);
 
   if (isLoading) return <p className="p-6 text-sm text-slate-500">Carregando…</p>;
   if (isError || !ticket) return <p className="p-6 text-sm text-red-600">Ticket não encontrado.</p>;
