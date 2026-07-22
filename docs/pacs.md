@@ -144,7 +144,7 @@ exportação, retenção, etc.) num diretório LDAP — não em arquivo XML.
 | Daemon | `slapd` (`systemd: slapd.service`) |
 | URL | `ldap://localhost:389/dc=dcm4che,dc=org` |
 | DN admin | `cn=admin,dc=dcm4che,dc=org` |
-| Senha | **padrão de instalação `dcmsecret`** — ver §10.4 |
+| Senha | **trocada por senha forte em 2026-07-22** (não é mais o default `dcmsecret`). Em `docs/credenciais_pacs.txt` (gitignored). Usada em 3 pontos, todos no host: `olcRootPW` (slapd), `userPassword` da entrada `cn=admin`, e `ldap.properties` que o dcm4chee lê no boot. |
 | Cliente CLI | `ldapsearch -x -D 'cn=admin,dc=dcm4che,dc=org' -W -b 'dc=dcm4che,dc=org'` |
 
 Também é possível editar tudo via REST do dcm4chee (`/dcm4chee-arc/devices/...`)
@@ -462,9 +462,11 @@ mas o caminho VPN já existe — repontar `Pacs:Dcm4chee:*` para `10.35.0.16` fe
 último acesso público do HTTP (fica só a VPN). Ver plano em §14.
 
 **Ainda pendente (não fechado por firewall):**
-- LDAP com senha **`dcmsecret`** (default público) — trocar por senha forte em
-  `ldap.properties`. Hoje o `:389` não é mais alcançável de fora, mas a senha fraca
-  continua sendo risco para quem entrar na VPN ou no host.
+- ~~LDAP com senha `dcmsecret`~~ **RESOLVIDO 2026-07-22:** trocada por senha forte.
+  Pegadinha que custou tempo — o `dcmsecret` autenticava por **dois** caminhos: o
+  `olcRootPW` (rootDN) **e** a `userPassword` de uma entrada real `cn=admin`. Trocar só
+  o `olcRootPW` não revoga; é preciso trocar os dois + o `ldap.properties`. Senha em
+  `docs/credenciais_pacs.txt`.
 - Deploy `unsecure` (sem auth nos endpoints REST): dentro da VPN, qualquer peer fala
   com o `:8080` sem credencial. A defesa é a membresia da VPN; autenticação de
   aplicação (Keycloak/basic-auth) fica para depois.
