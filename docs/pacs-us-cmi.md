@@ -55,9 +55,9 @@ worklist só para esta máquina, e é o mesmo valor cadastrado no painel da SMS
 | AE Title do equipamento (Calling AE) | `US_CMI` |
 | Filtros | Modalidade = `US`; Data = dia atual; **Scheduled Station AE Title = `US_CMI`** |
 
-> **O filtro por estação não é opcional.** É ele que faz esta máquina receber só os
-> exames do CMI. Sem ele, a lista traz todos os exames de ultrassom do município.
-> (O bloqueio equivalente no servidor exige dcm4chee ≥ 5.33 — ver `pacs.md`.)
+> **O `WORK-CMI` já entrega só os exames do CMI**, mesmo que o filtro por estação não
+> seja configurado: o servidor isola por Worklist Label (ver `pacs.md`). Ainda assim,
+> preencha o filtro quando o aparelho oferecer — é defesa em profundidade.
 
 Se a máquina suportar **MPPS**, aponte para o mesmo **`WORK-CMI`** na porta `11112`.
 

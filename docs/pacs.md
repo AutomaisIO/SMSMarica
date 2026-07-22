@@ -219,39 +219,50 @@ escolher o equipamento resolve sozinho, sem reprocessar nada. Carimbar um AE
 genérico mandaria o exame de uma unidade para a estação de outra. Os equipamentos
 que já operavam entraram pela migration `SeedEquipamentosCdtCmi`, ancorada no CNES.
 
-### Isolamento por unidade — estado atual e limite da versão
+### Isolamento por unidade no servidor (Worklist Label) — ATIVO
 
 Filtrar por `ScheduledStationAETitle` é decisão do **equipamento**: se o técnico não
 configurar o filtro, a máquina recebe todos os itens da modalidade — inclusive de
-outra unidade. Verificado por C-FIND em 2026-07-22: sem a tag (ou com ela vazia), o
-dcm4chee devolve a lista inteira.
+outra unidade. Por isso a separação **não** pode depender só do aparelho.
 
-**Hoje o isolamento depende do equipamento.** O dcm4chee não filtra pelo Calling AE
-de quem consulta — é pedido antigo da comunidade e não existe. A alternativa do
-projeto é o **Worklist Label** `(0074,1202)` com `dcmMWLWorklistLabel` no Archive AE,
-mas o atributo **não existe na 5.32.0** que roda aqui: conferido no
-`dcm4chee-archive.schema` da própria tag, e confirmado na prática (o `PUT` do device
-retorna 204 e descarta o atributo em silêncio). Ele entra a partir da 5.33.
+O dcm4chee não filtra pelo Calling AE de quem consulta (pedido antigo da comunidade,
+inexistente), mas honra o **Worklist Label** `(0074,1202)`: um Archive AE com
+`dcmMWLWorklistLabel` só devolve, no C-FIND MWL, os itens daquele label. **Ativo em
+produção desde 2026-07-22, na própria 5.32.0** — não exigiu upgrade.
 
-O que já está pronto para quando o arquivo for atualizado:
+| AE | Label | Quem usa |
+|---|---|---|
+| `WORK-CDT` | `FDR-MAMO` | mamógrafo do CDT |
+| `WORK-CMI` | `US_CMI` | ultrassom do CMI |
+| **`WORKLIST`** | **nenhum** (enxerga tudo) | **o backend** — `Pacs:Dcm4chee:WorklistBaseUrl` |
 
-| Peça | Estado |
-|---|---|
-| Item MWL carimbado com o label (= AE do equipamento) | **feito** (`ConstrutorMwlItem`), inerte até o arquivo suportar |
-| Itens legados nomeados (estavam com `*`, o curinga padrão) | **feito** via REST |
-| Backend no AE administrativo `WORKLIST` (sem label, enxerga tudo) | **feito** — `Pacs:Dcm4chee:WorklistBaseUrl` |
-| AE `WORK-CMI` criado (clone do `WORK-CDT`) | **feito** — hoje **sem** isolamento, só o nome certo para o CMI apontar |
-| `dcmMWLWorklistLabel` nos AEs | **bloqueado**: exige dcm4chee ≥ 5.33 |
+Prova (C-FIND **sem** filtro de modalidade — o pior caso, equipamento mal configurado):
+`WORK-CDT` devolveu só o exame do CDT, `WORK-CMI` só o do CMI, `WORKLIST` os dois.
 
-> **Item sem label é devolvido a TODOS os AEs** ("com este label ou sem label"). Por
-> isso carimbamos sempre — quando o upgrade acontecer, item não marcado furaria o
-> isolamento.
+> ⚠️ **O atributo só entra por LDAP, não pela API REST.** O `PUT /devices/dcm4chee-arc`
+> da 5.32 **descarta** `dcmMWLWorklistLabel` em silêncio (responde 204 e não grava) —
+> a API não mapeia o campo, embora o schema LDAP e o MWL SCP o suportem. Use
+> `ldapmodify` + `POST /ctrl/reload`:
+>
+> ```ldif
+> dn: dicomAETitle=WORK-CMI,dicomDeviceName=dcm4chee-arc,cn=Devices,cn=DICOM Configuration,dc=dcm4che,dc=org
+> changetype: modify
+> add: dcmMWLWorklistLabel
+> dcmMWLWorklistLabel: US_CMI
+> ```
 
-Enquanto isso, cada equipamento deve filtrar por `ScheduledStationAETitle` na própria
-consulta (é o campo "Scheduled Station AE Title" / "This machine only" no menu de
-worklist). O backend usa o AE administrativo de propósito: se falasse por um AE com
-label, deixaria de enxergar itens de outras unidades e quebraria a confirmação
+> **Item sem label é devolvido a TODOS os AEs** (regra: "com este label ou sem
+> label"). Por isso o `ConstrutorMwlItem` carimba sempre, e os itens legados foram
+> nomeados — item não marcado fura o isolamento. Atenção: item criado por um sistema
+> externo, sem label, apareceria em todos os equipamentos.
+
+O backend usa o AE administrativo de propósito: se falasse por um AE com label,
+deixaria de enxergar itens das outras unidades e quebraria a confirmação
 `Enviada → Recebida` e a limpeza pós-exame.
+
+**Ao cadastrar um equipamento novo:** criar o Archive AE correspondente (clone de um
+existente) e setar o label = AE Title do equipamento. Sem isso, o aparelho novo ou não
+recebe nada, ou recebe a lista de todos.
 
 ### Ciclo de vida do item de worklist (sem MPPS)
 
