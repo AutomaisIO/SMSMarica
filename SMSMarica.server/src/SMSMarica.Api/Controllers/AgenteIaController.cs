@@ -1,7 +1,10 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Net.Mime;
+using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
+using SMSMarica.Core.Identidade;
 using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
@@ -19,16 +22,19 @@ namespace SMSMarica.Api.Controllers;
 public sealed class AgenteIaController : ControllerBase
 {
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IUsuarioAtualAccessor _usuarioAtual;
     private readonly ILogger<AgenteIaController> _logger;
     private readonly string _baseUrl;
     private readonly string? _internalKey;
 
     public AgenteIaController(
         IHttpClientFactory httpClientFactory,
+        IUsuarioAtualAccessor usuarioAtual,
         IConfiguration configuration,
         ILogger<AgenteIaController> logger)
     {
         _httpClientFactory = httpClientFactory;
+        _usuarioAtual = usuarioAtual;
         _logger = logger;
         _baseUrl = (configuration["AgenteIa:BaseUrl"] ?? "http://127.0.0.1:5085").TrimEnd('/');
         _internalKey = configuration["AgenteIa:InternalKey"];
@@ -42,8 +48,19 @@ public sealed class AgenteIaController : ControllerBase
 
     [HttpGet("sessions")]
     [RequerPermissao(ModuloPermissao.AgenteIa, AcoesPermissao.Consulta)]
-    public Task<IActionResult> ListarSessoes(CancellationToken ct) =>
-        ProxyAsync(HttpMethod.Get, "/internal/ai/sessions", null, ct);
+    public Task<IActionResult> ListarSessoes([FromQuery] bool arquivadas, CancellationToken ct) =>
+        ProxyAsync(HttpMethod.Get, $"/internal/ai/sessions?include_archived={(arquivadas ? "true" : "false")}", null, ct);
+
+    /// <summary>Renomeia a conversa. O título default é o começo do primeiro prompt.</summary>
+    [HttpPatch("sessions/{sessionId}")]
+    [RequerPermissao(ModuloPermissao.AgenteIa, AcoesPermissao.Edicao)]
+    public Task<IActionResult> RenomearSessao(string sessionId, [FromBody] object corpo, CancellationToken ct) =>
+        ProxyAsync(HttpMethod.Patch, $"/internal/ai/sessions/{Uri.EscapeDataString(sessionId)}", corpo, ct);
+
+    [HttpPost("sessions/{sessionId}/unarchive")]
+    [RequerPermissao(ModuloPermissao.AgenteIa, AcoesPermissao.Edicao)]
+    public Task<IActionResult> RestaurarSessao(string sessionId, CancellationToken ct) =>
+        ProxyAsync(HttpMethod.Post, $"/internal/ai/sessions/{Uri.EscapeDataString(sessionId)}/unarchive", null, ct);
 
     /// <summary>Histórico completo — o painel usa para reatar ao reabrir a tela.</summary>
     [HttpGet("sessions/{sessionId}")]
@@ -94,6 +111,20 @@ public sealed class AgenteIaController : ControllerBase
                 req.Content = new StringContent(json, Encoding.UTF8, MediaTypeNames.Application.Json);
             }
             req.Headers.TryAddWithoutValidation("X-SMSMarica-Internal-Key", _internalKey.Trim());
+
+            // Quem está do outro lado. A lista de sessões é global — sem isto não dá para
+            // saber quem abriu cada conversa nem quem interagiu nela. O nome vai
+            // percent-encoded: cabeçalho HTTP é latin-1 e nome brasileiro tem acento.
+            if (_usuarioAtual.UsuarioId is Guid usuarioId)
+            {
+                req.Headers.TryAddWithoutValidation("X-SMSMarica-Usuario-Id", usuarioId.ToString());
+            }
+            var nome = User.FindFirstValue(JwtRegisteredClaimNames.Name)
+                ?? User.FindFirstValue(ClaimTypes.Name);
+            if (!string.IsNullOrWhiteSpace(nome))
+            {
+                req.Headers.TryAddWithoutValidation("X-SMSMarica-Usuario-Nome", Uri.EscapeDataString(nome));
+            }
 
             using var res = await client.SendAsync(req, ct);
             var payload = await res.Content.ReadAsStringAsync(ct);

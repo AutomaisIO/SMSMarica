@@ -20,9 +20,25 @@ export async function criarSessao(payload: CriarSessaoPayload = {}) {
   return data;
 }
 
-export async function listarSessoes() {
-  const { data } = await http.get<{ sessions: SessaoResumo[] }>('/agente-ia/sessions');
+export async function listarSessoes(arquivadas = false) {
+  const { data } = await http.get<{ sessions: SessaoResumo[] }>('/agente-ia/sessions', {
+    params: { arquivadas },
+  });
   return data.sessions;
+}
+
+export async function renomearSessao(sessionId: string, title: string) {
+  const { data } = await http.patch<{ renamed: boolean }>(`/agente-ia/sessions/${sessionId}`, {
+    title,
+  });
+  return data;
+}
+
+export async function restaurarSessao(sessionId: string) {
+  const { data } = await http.post<{ unarchived: boolean }>(
+    `/agente-ia/sessions/${sessionId}/unarchive`,
+  );
+  return data;
 }
 
 export async function obterSessao(sessionId: string) {

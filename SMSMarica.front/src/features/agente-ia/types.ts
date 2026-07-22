@@ -18,6 +18,8 @@ export type TurnoResumo = {
   started_at: number;
   finished_at: number | null;
   events: EventoAgente[];
+  /** Quem mandou este turno — pode não ser quem abriu a sessão. */
+  usuario_nome: string | null;
 };
 
 export type SessaoResumo = {
@@ -27,8 +29,13 @@ export type SessaoResumo = {
   ticket_titulo: string | null;
   created_at: number;
   last_used_at: number;
+  archived_at: number | null;
   turn_count: number;
   running: boolean;
+  /** Quem abriu a conversa. */
+  usuario_nome: string | null;
+  /** Todos que interagiram, na ordem em que entraram (inclui o autor se ele mandou algo). */
+  participantes: string[];
 };
 
 export type SessaoDetalhe = SessaoResumo & {
@@ -43,6 +50,11 @@ export type TurnoView = {
   error: string | null;
   events: EventoAgente[];
   cursor: number;
+  /**
+   * Texto do bloco em andamento, para a resposta aparecer sendo escrita. Não é evento
+   * persistido: quando o bloco fecha, ele chega em `events` e isto volta a ser null.
+   */
+  partial: string | null;
 };
 
 export type CriarSessaoPayload = {

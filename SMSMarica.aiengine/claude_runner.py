@@ -1,15 +1,27 @@
 """
 Motor de conversa com o Claude Code.
 
-Dois invariantes:
+Três invariantes:
 
-1. **O trabalho roda no servidor, não no navegador.** Um turno é uma task no processo do
+1. **O trabalho roda no servidor, não no navegador.** Um turno é trabalho do processo do
    serviço; o painel só faz polling. Fechar a aba ou perder internet não interrompe nada.
 
 2. **A sessão sobrevive ao processo.** Sessões, turnos e eventos vão para o SQLite. O
    `ClaudeSDKClient` é um recurso *volátil*: pode ser descartado para liberar memória e
    recriado sob demanda com `resume=<session_id>`, que reconstrói o contexto do transcript
    em disco. O id da nossa sessão É o id da sessão do Claude.
+
+3. **O stream nunca é abandonado no meio.** Existe UMA task leitora por sessão, e só ela
+   consome o cliente — do connect ao disconnect.
+
+O invariante 3 nasceu de um bug: até 2026-07-22 cada turno abria o seu próprio
+`receive_response()`. Esse método para no primeiro `ResultMessage` que aparecer, **sem
+filtrar por turno**. Cancelamento e timeout matavam o consumidor no meio, e as mensagens
+que sobravam ficavam na fila do cliente: o turno SEGUINTE as consumia como se fossem dele e
+encerrava no `ResultMessage` velho. A conversa ficava permanentemente um turno atrasada —
+"mando uma mensagem e ele mostra o que já tinha antes". Com um leitor único isso não tem
+como acontecer: interromper um turno não interrompe a leitura, e o `ResultMessage` do turno
+interrompido é lido e contabilizado no lugar certo.
 """
 import asyncio
 import logging
@@ -28,10 +40,20 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class LiveSession:
+    """Estado volátil de uma sessão. O que importa de verdade está no SQLite."""
     id: str
     client: Optional[ClaudeSDKClient] = None
-    task: Optional[asyncio.Task] = None
+    reader: Optional[asyncio.Task] = None
     current_turn_id: Optional[str] = None
+    seq: int = 0
+    #: Texto do bloco em andamento, para o painel mostrar a digitação ao vivo. NÃO é
+    #: persistido: quando a mensagem completa chega, ela vira evento normal e isto zera.
+    partial_text: str = ""
+    turn_started_at: float = 0.0
+    #: Status/erro decididos por cancelamento ou timeout. Quem aplica é o leitor, ao ver o
+    #: ResultMessage — assim o desfecho é registrado no ponto certo do stream.
+    encerramento_forcado: Optional[tuple[str, str]] = None
+    interrompido_em: float = 0.0
     last_used_at: float = field(default_factory=time.time)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
@@ -103,7 +125,9 @@ class ClaudeEngine:
     # ------------------------------------------------------------------ sessões
 
     async def create_session(self, title: str = "", ticket_numero: Optional[int] = None,
-                             ticket_titulo: Optional[str] = None) -> dict:
+                             ticket_titulo: Optional[str] = None,
+                             usuario_id: Optional[str] = None,
+                             usuario_nome: Optional[str] = None) -> dict:
         # Reabrir o mesmo ticket cai na conversa existente — o operador não perde o que
         # já foi investigado só porque saiu da tela.
         if ticket_numero is not None:
@@ -115,8 +139,10 @@ class ClaudeEngine:
         self._assert_memory()
         sid = str(uuid.uuid4())  # UUID válido: o CLI exige isso em --session-id
         cwd, _ = config.resolve_cwd()
-        store.create_session(sid, title, ticket_numero, ticket_titulo, cwd)
-        logger.info("Sessão %s criada (ticket=%s)", sid, ticket_numero or "-")
+        store.create_session(sid, title, ticket_numero, ticket_titulo, cwd,
+                             usuario_id, usuario_nome)
+        logger.info("Sessão %s criada (ticket=%s, por=%s)", sid, ticket_numero or "-",
+                    usuario_nome or "?")
         return store.get_session(sid)
 
     def _assert_memory(self) -> None:
@@ -132,23 +158,27 @@ class ClaudeEngine:
                 f"{config.MIN_AVAILABLE_MB} MB). Tente novamente em instantes."
             )
 
-    async def _ensure_client(self, sid: str) -> LiveSession:
-        live = self._live.get(sid)
-        if live and live.client is not None:
+    async def _ensure_client(self, live: LiveSession) -> None:
+        """Conecta o cliente e sobe o leitor. Chamado com `live.lock` seguro."""
+        if live.client is not None and live.reader is not None and not live.reader.done():
             live.last_used_at = time.time()
-            return live
+            return
+
+        # Meio-termo (cliente sem leitor, ou leitor morto): descarta e refaz do zero, em vez
+        # de tentar remendar um transporte cujo estado não conhecemos.
+        await self._close_client(live)
 
         self._assert_memory()
         if len(self._live) >= config.MAX_SESSIONS:
             self._reap_idle_clients(force=True)
 
-        record = store.get_session(sid)
+        record = store.get_session(live.id)
         if record is None:
-            raise KeyError(sid)
+            raise KeyError(live.id)
 
-        has_history = bool(store.session_history(sid))
+        has_history = bool(store.session_history(live.id))
         cwd, repo_available = config.resolve_cwd()
-        claude_id = record.get("claude_session_id") or sid
+        claude_id = record.get("claude_session_id") or live.id
         cwd_original = record.get("cwd")
 
         def montar(resume: bool) -> ClaudeAgentOptions:
@@ -160,6 +190,12 @@ class ClaudeEngine:
                 max_turns=config.MAX_TURNS,
                 allowed_tools=config.ALLOWED_TOOLS,
             )
+            # Deltas de texto para o painel mostrar a resposta sendo escrita. Não geram linha
+            # no SQLite — ver LiveSession.partial_text. Atribuído depois, e só se o SDK
+            # conhecer o campo: `ClaudeAgentOptions` é dataclass, e um kwarg desconhecido
+            # numa versão mais velha derrubaria TODA sessão em vez de só perder o efeito.
+            if config.PARTIAL_MESSAGES and hasattr(o, "include_partial_messages"):
+                o.include_partial_messages = True
             if resume:
                 o.resume = claude_id
             else:
@@ -184,18 +220,16 @@ class ClaudeEngine:
             logger.warning(
                 "Retomada da sessão %s falhou (cwd %s -> %s): %s. Começando sessão nova do "
                 "Claude e preservando o histórico do painel.",
-                sid, cwd_original, cwd, exc)
+                live.id, cwd_original, cwd, exc)
             claude_id = str(uuid.uuid4())
-            store.reset_claude_session(sid, claude_id, cwd)
+            store.reset_claude_session(live.id, claude_id, cwd)
             client = ClaudeSDKClient(options=montar(resume=False))
             await client.connect()
 
-        live = live or LiveSession(id=sid)
         live.client = client
         live.last_used_at = time.time()
-        self._live[sid] = live
-        logger.info("Cliente da sessão %s conectado (resume=%s)", sid, has_history)
-        return live
+        live.reader = asyncio.create_task(self._reader_loop(live))
+        logger.info("Cliente da sessão %s conectado (resume=%s)", live.id, tentar_resume)
 
     def _build_system_prompt(self, record: dict, repo_available: bool) -> str:
         prompt = config.load_system_prompt()
@@ -235,11 +269,11 @@ class ClaudeEngine:
             )
         return prompt
 
-    def list_sessions(self) -> list[dict]:
-        sessions = store.list_sessions()
+    def list_sessions(self, include_archived: bool = False) -> list[dict]:
+        sessions = store.list_sessions(include_archived=include_archived)
         for s in sessions:
             live = self._live.get(s["id"])
-            s["running"] = bool(live and live.task and not live.task.done())
+            s["running"] = bool(live and live.current_turn_id)
         return sessions
 
     def session_detail(self, sid: str) -> Optional[dict]:
@@ -250,38 +284,183 @@ class ClaudeEngine:
         return {
             **record,
             "turns": store.session_history(sid),
-            "running": bool(live and live.task and not live.task.done()),
+            "participantes": store.participantes([sid]).get(sid, []),
+            "running": bool(live and live.current_turn_id),
             "currentTurnId": live.current_turn_id if live else None,
         }
 
     async def archive_session(self, sid: str) -> bool:
-        await self._drop_client(sid)
+        await self._drop_client(sid, motivo="Sessão arquivada pelo operador.")
         return store.archive_session(sid)
 
-    async def _drop_client(self, sid: str) -> None:
+    async def _drop_client(self, sid: str, motivo: str = "") -> None:
         live = self._live.pop(sid, None)
         if not live:
             return
-        if live.task and not live.task.done():
-            live.task.cancel()
-        if live.client is not None:
+        if live.current_turn_id:
+            self._fail_current_turn(live, "interrupted",
+                                    motivo or "O turno foi encerrado junto com a sessão.")
+        await self._close_client(live)
+
+    async def _close_client(self, live: LiveSession) -> None:
+        """Derruba leitor e cliente. Nunca deixa um dos dois para trás."""
+        reader, live.reader = live.reader, None
+        client, live.client = live.client, None
+        if reader is not None and not reader.done():
+            reader.cancel()
             try:
-                await live.client.disconnect()
-            except Exception:  # noqa: BLE001
-                logger.exception("Falha ao desconectar cliente da sessão %s", sid)
+                await reader
+            except (asyncio.CancelledError, Exception):  # noqa: BLE001
+                pass
+        if client is not None:
+            await self._safe_disconnect(client, live.id)
+
+    async def _safe_disconnect(self, client: ClaudeSDKClient, sid: str) -> None:
+        try:
+            await client.disconnect()
+        except Exception:  # noqa: BLE001
+            logger.exception("Falha ao desconectar cliente da sessão %s", sid)
+
+    # ------------------------------------------------------------------ leitor
+
+    async def _reader_loop(self, live: LiveSession) -> None:
+        """Consumidor único do stream da sessão. Só ele lê o cliente, do connect ao
+        disconnect — é o que impede um turno de herdar as sobras do anterior."""
+        client = live.client
+        if client is None:
+            return
+        try:
+            async for message in client.receive_messages():
+                try:
+                    self._handle_message(live, message)
+                except Exception:  # noqa: BLE001
+                    # Uma mensagem malformada não pode derrubar o leitor: sem leitor, o
+                    # stream volta a acumular sobra e o bug da defasagem renasce.
+                    logger.exception("Sessão %s: falha ao processar mensagem", live.id)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Sessão %s: leitor morreu", live.id)
+            self._fail_current_turn(live, "interrupted",
+                                    f"A conexão com o Claude caiu durante este turno: {exc}")
+            # O transporte não é mais confiável. Solta o cliente para o próximo turno
+            # reconstruir com `resume` — o histórico do painel continua no SQLite.
+            morto, live.client = live.client, None
+            live.reader = None
+            self._live.pop(live.id, None)
+            if morto is not None:
+                # Desconecta fora deste laço: estamos justamente na task que está morrendo.
+                asyncio.create_task(self._safe_disconnect(morto, live.id))
+
+    def _handle_message(self, live: LiveSession, message: Any) -> None:
+        name = type(message).__name__
+
+        if name == "StreamEvent":
+            self._handle_stream_event(live, getattr(message, "event", None))
+            return
+
+        tid = live.current_turn_id
+        if tid is None:
+            # Sobra de um turno interrompido, ou replay de um `resume`. Antes isto virava
+            # conteúdo do turno seguinte; agora é lixo identificado.
+            logger.info("Sessão %s: %s fora de turno — descartada.", live.id, name)
+            return
+
+        for event in _message_to_events(message):
+            event["seq"] = live.seq
+            store.append_event(tid, live.seq, event)
+            live.seq += 1
+
+        if name == "AssistantMessage":
+            live.partial_text = ""  # o texto completo já foi persistido como evento
+        elif name == "ResultMessage":
+            self._finish_turn(live, message)
+
+    def _handle_stream_event(self, live: LiveSession, evento: Any) -> None:
+        """Acumula os deltas de texto para o painel mostrar a digitação ao vivo.
+
+        Nada aqui é persistido: quando a `AssistantMessage` completa chegar, ela grava o
+        bloco inteiro e zera o parcial. Assim o volume do SQLite não muda e o cursor do
+        painel continua monotônico.
+        """
+        if not isinstance(evento, dict) or not live.current_turn_id:
+            return
+        if evento.get("type") != "content_block_delta":
+            return
+        delta = evento.get("delta")
+        if isinstance(delta, dict) and delta.get("type") == "text_delta":
+            texto = delta.get("text") or ""
+            if texto and len(live.partial_text) < config.PARTIAL_MAX_CHARS:
+                live.partial_text += texto
+
+    def _finish_turn(self, live: LiveSession, result: Any) -> None:
+        tid = live.current_turn_id
+        if tid is None:
+            return
+        if live.encerramento_forcado:
+            status, error = live.encerramento_forcado
+        elif bool(getattr(result, "is_error", False)):
+            status = "error"
+            error = getattr(result, "result", None) or "O turno terminou com erro."
+        else:
+            status, error = "done", None
+        store.finish_turn(tid, status, error)
+        self._clear_turn(live)
+        logger.info("Turno %s da sessão %s encerrado: %s", tid, live.id, status)
+
+    def _fail_current_turn(self, live: LiveSession, status: str, error: str) -> None:
+        """Fecha o turno corrente sem ter visto o ResultMessage (leitor morto, cliente
+        derrubado). Sem isto o painel fica em 'Trabalhando…' para sempre."""
+        tid = live.current_turn_id
+        if tid is None:
+            return
+        current = store.get_turn(tid)
+        if current and current["status"] == "running":
+            store.finish_turn(tid, status, error)
+        self._clear_turn(live)
+
+    def _clear_turn(self, live: LiveSession) -> None:
+        store.touch_session(live.id)
+        live.current_turn_id = None
+        live.partial_text = ""
+        live.encerramento_forcado = None
+        live.turn_started_at = 0.0
+        live.interrompido_em = 0.0
+        live.last_used_at = time.time()
 
     # ------------------------------------------------------------------ turnos
 
-    async def start_turn(self, sid: str, prompt: str) -> dict:
-        live = await self._ensure_client(sid)
-        if live.task and not live.task.done():
-            raise RuntimeError("Já existe um turno em execução nesta sessão.")
+    async def start_turn(self, sid: str, prompt: str, usuario_id: Optional[str] = None,
+                         usuario_nome: Optional[str] = None) -> dict:
+        if store.get_session(sid) is None:
+            raise KeyError(sid)
+        live = self._live.get(sid)
+        if live is None:
+            live = LiveSession(id=sid)
+            self._live[sid] = live
 
-        tid = str(uuid.uuid4())
-        store.create_turn(tid, sid, prompt, time.time())
-        store.touch_session(sid, title=prompt[:80])
-        live.current_turn_id = tid
-        live.task = asyncio.create_task(self._run_turn(live, tid, prompt))
+        async with live.lock:
+            if live.current_turn_id is not None:
+                raise RuntimeError("Já existe um turno em execução nesta sessão.")
+            await self._ensure_client(live)
+            assert live.client is not None
+
+            tid = str(uuid.uuid4())
+            store.create_turn(tid, sid, prompt, time.time(), usuario_id, usuario_nome)
+            store.touch_session(sid, title=prompt[:80])
+            live.current_turn_id = tid
+            live.seq = 0
+            live.partial_text = ""
+            live.encerramento_forcado = None
+            live.interrompido_em = 0.0
+            live.turn_started_at = time.time()
+            live.last_used_at = time.time()
+            try:
+                await live.client.query(prompt)
+            except Exception as exc:  # noqa: BLE001
+                store.finish_turn(tid, "error", f"Falha ao enviar ao Claude: {exc}")
+                self._clear_turn(live)
+                raise
         return store.get_turn(tid)
 
     def turn_view(self, tid: str, cursor: int = 0) -> Optional[dict]:
@@ -289,10 +468,15 @@ class ClaudeEngine:
         if record is None:
             return None
         events = store.events(tid, cursor)
+        live = self._live.get(record["session_id"])
+        # A cauda ao vivo só existe enquanto o turno é o corrente desta sessão.
+        parcial = (live.partial_text
+                   if live and live.current_turn_id == tid and live.partial_text else None)
         return {
             "turnId": record["id"], "sessionId": record["session_id"],
             "status": record["status"], "error": record["error"],
             "events": events, "cursor": cursor + len(events),
+            "partial": parcial,
             "startedAt": record["started_at"], "finishedAt": record["finished_at"],
         }
 
@@ -301,53 +485,56 @@ class ClaudeEngine:
         if record is None or record["status"] != "running":
             return False
         live = self._live.get(record["session_id"])
-        if live and live.client is not None:
-            try:
-                # interrupt() para num ponto seguro — melhor do que matar a task, que
-                # deixaria o processo do Claude órfão.
-                await live.client.interrupt()
-            except Exception:  # noqa: BLE001
-                logger.exception("interrupt() falhou no turno %s; cancelando a task", tid)
-        if live and live.task and not live.task.done():
-            live.task.cancel()
-        store.finish_turn(tid, "cancelled", "Cancelado pelo operador.")
+        if live is None or live.current_turn_id != tid:
+            # Turno órfão: o processo que o rodava morreu. Nada a interromper.
+            store.finish_turn(tid, "cancelled", "Cancelado pelo operador.")
+            return True
+        live.encerramento_forcado = ("cancelled", "Cancelado pelo operador.")
+        live.interrompido_em = time.time()
+        await self._interrupt(live)
+        # Quem marca o turno como cancelado é o leitor, ao ver o ResultMessage. Se ele não
+        # vier, o watchdog derruba o cliente na carência. Em nenhum caso o stream fica com
+        # sobra para o turno seguinte herdar.
         return True
 
-    async def _run_turn(self, live: LiveSession, tid: str, prompt: str) -> None:
-        status, error = "done", None
+    async def _interrupt(self, live: LiveSession) -> None:
+        if live.client is None:
+            return
         try:
-            async with live.lock:
-                await asyncio.wait_for(self._pump(live, tid, prompt),
-                                       timeout=config.TURN_TIMEOUT_SEC)
-        except asyncio.CancelledError:
-            status, error = "cancelled", "Cancelado pelo operador."
-            raise
-        except asyncio.TimeoutError:
-            status = "error"
-            error = f"Turno excedeu {config.TURN_TIMEOUT_SEC}s e foi abortado."
-            logger.warning("Turno %s estourou o timeout", tid)
-        except Exception as exc:  # noqa: BLE001
-            status, error = "error", str(exc)
-            logger.exception("Turno %s falhou", tid)
-        finally:
-            current = store.get_turn(tid)
-            if current and current["status"] == "running":
-                store.finish_turn(tid, status, error)
-            store.touch_session(live.id)
-            live.current_turn_id = None
-            live.last_used_at = time.time()
-
-    async def _pump(self, live: LiveSession, tid: str, prompt: str) -> None:
-        assert live.client is not None
-        seq = store.event_count(tid)
-        await live.client.query(prompt)
-        async for message in live.client.receive_response():
-            for event in _message_to_events(message):
-                event["seq"] = seq
-                store.append_event(tid, seq, event)
-                seq += 1
+            await live.client.interrupt()
+        except Exception:  # noqa: BLE001
+            logger.exception("interrupt() falhou na sessão %s", live.id)
 
     # ------------------------------------------------------------------ manutenção
+
+    async def watchdog(self) -> None:
+        """Interrompe turno que passou do tempo e, na teimosia, derruba o cliente.
+
+        Substitui o antigo `asyncio.wait_for`, que abortava o consumidor do stream e deixava
+        as mensagens restantes na fila para o turno seguinte herdar.
+        """
+        agora = time.time()
+        for sid, live in list(self._live.items()):
+            if not live.current_turn_id or not live.turn_started_at:
+                continue
+            if live.encerramento_forcado and live.interrompido_em:
+                if agora - live.interrompido_em > config.TURN_GRACE_SEC:
+                    status, error = live.encerramento_forcado
+                    logger.warning(
+                        "Sessão %s não respondeu ao interrupt em %ds — derrubando o cliente.",
+                        sid, config.TURN_GRACE_SEC)
+                    # Fecha o turno com o desfecho pedido ANTES de derrubar, senão o drop o
+                    # registra como 'interrupted' e o operador não vê que foi ele que cancelou.
+                    self._fail_current_turn(live, status, error)
+                    await self._drop_client(sid)
+                continue
+            if agora - live.turn_started_at > config.TURN_TIMEOUT_SEC:
+                logger.warning("Turno %s passou de %ds — interrompendo.",
+                               live.current_turn_id, config.TURN_TIMEOUT_SEC)
+                live.encerramento_forcado = (
+                    "error", f"Turno excedeu {config.TURN_TIMEOUT_SEC}s e foi interrompido.")
+                live.interrompido_em = agora
+                await self._interrupt(live)
 
     def _reap_idle_clients(self, force: bool = False) -> int:
         """Descarta o CLIENTE de sessões ociosas — a sessão e o histórico permanecem.
@@ -355,30 +542,25 @@ class ClaudeEngine:
         cutoff = time.time() - config.SESSION_IDLE_TTL_SEC
         reaped = 0
         for sid, live in list(self._live.items()):
-            if live.task and not live.task.done():
+            if live.current_turn_id:
                 continue  # nunca derruba um turno em execução
+            if live.lock.locked():
+                continue  # está no meio de um connect — deixa terminar
             if force or live.last_used_at < cutoff:
-                client, live.client = live.client, None
-                if client is not None:
-                    asyncio.create_task(self._safe_disconnect(client, sid))
                 self._live.pop(sid, None)
+                asyncio.create_task(self._close_client(live))
                 reaped += 1
                 if force and config.available_memory_mb() >= config.MIN_AVAILABLE_MB:
                     break
         return reaped
 
-    async def _safe_disconnect(self, client: ClaudeSDKClient, sid: str) -> None:
-        try:
-            await client.disconnect()
-        except Exception:  # noqa: BLE001
-            logger.exception("Falha ao desconectar cliente ocioso da sessão %s", sid)
-
     async def sweep(self) -> int:
+        await self.watchdog()
         return self._reap_idle_clients()
 
     async def shutdown(self) -> None:
         for sid in list(self._live):
-            await self._drop_client(sid)
+            await self._drop_client(sid, motivo="O serviço foi encerrado durante este turno.")
 
 
 engine = ClaudeEngine()

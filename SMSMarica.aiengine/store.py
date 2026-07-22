@@ -53,17 +53,29 @@ CREATE INDEX IF NOT EXISTS idx_sessions_ticket ON sessions(ticket_numero);
 # Colunas acrescentadas depois do schema inicial. SQLite não tem "ADD COLUMN IF NOT EXISTS",
 # então tentamos e ignoramos o erro de duplicata — mais simples que versionar migrations
 # para um banco que é estado local de um único serviço.
-_COLUNAS_EXTRA = [
-    # Diretório em que a sessão do Claude Code nasceu. O transcript é guardado POR PROJETO
-    # (~/.claude/projects/<cwd-slug>/<id>.jsonl); retomar com cwd diferente do original faz o
-    # CLI não achar a sessão e sair com código 1. Aconteceu quando o clone do repositório
-    # passou a existir e sessões criadas em modo degradado (/tmp) viraram 500 (2026-07-19).
-    ("cwd", "TEXT"),
-    # Id da sessão DO CLAUDE. Normalmente igual ao nosso id, mas se o resume ficar
-    # impossível (cwd mudou, transcript corrompido) trocamos só este e preservamos o
-    # histórico que o painel mostra.
-    ("claude_session_id", "TEXT"),
-]
+_COLUNAS_EXTRA = {
+    "sessions": [
+        # Diretório em que a sessão do Claude Code nasceu. O transcript é guardado POR PROJETO
+        # (~/.claude/projects/<cwd-slug>/<id>.jsonl); retomar com cwd diferente do original faz o
+        # CLI não achar a sessão e sair com código 1. Aconteceu quando o clone do repositório
+        # passou a existir e sessões criadas em modo degradado (/tmp) viraram 500 (2026-07-19).
+        ("cwd", "TEXT"),
+        # Id da sessão DO CLAUDE. Normalmente igual ao nosso id, mas se o resume ficar
+        # impossível (cwd mudou, transcript corrompido) trocamos só este e preservamos o
+        # histórico que o painel mostra.
+        ("claude_session_id", "TEXT"),
+        # Quem abriu a sessão. A lista é global (todo operador do agente vê todas), então sem
+        # isto não dá para saber de quem é cada conversa.
+        ("usuario_id", "TEXT"),
+        ("usuario_nome", "TEXT"),
+    ],
+    # O autor da sessão não é a história toda: um colega pode assumir a investigação no meio.
+    # Guardando quem mandou CADA turno, a sessão mostra todos os que participaram.
+    "turns": [
+        ("usuario_id", "TEXT"),
+        ("usuario_nome", "TEXT"),
+    ],
+}
 
 
 class Store:
@@ -75,11 +87,12 @@ class Store:
         self._db.execute("PRAGMA synchronous=NORMAL")
         self._db.execute("PRAGMA foreign_keys=ON")
         self._db.executescript(_SCHEMA)
-        for coluna, tipo in _COLUNAS_EXTRA:
-            try:
-                self._db.execute(f"ALTER TABLE sessions ADD COLUMN {coluna} {tipo}")
-            except sqlite3.OperationalError:
-                pass  # já existe
+        for tabela, colunas in _COLUNAS_EXTRA.items():
+            for coluna, tipo in colunas:
+                try:
+                    self._db.execute(f"ALTER TABLE {tabela} ADD COLUMN {coluna} {tipo}")
+                except sqlite3.OperationalError:
+                    pass  # já existe
         self._db.commit()
         self._lock = threading.Lock()
 
@@ -95,12 +108,16 @@ class Store:
     # ------------------------------------------------------------------ sessões
 
     def create_session(self, sid: str, title: str, ticket_numero: Optional[int],
-                       ticket_titulo: Optional[str], cwd: str) -> None:
+                       ticket_titulo: Optional[str], cwd: str,
+                       usuario_id: Optional[str] = None,
+                       usuario_nome: Optional[str] = None) -> None:
         now = time.time()
         self._write(
             "INSERT INTO sessions (id, title, ticket_numero, ticket_titulo, created_at,"
-            " last_used_at, cwd, claude_session_id) VALUES (?,?,?,?,?,?,?,?)",
-            (sid, title, ticket_numero, ticket_titulo, now, now, cwd, sid),
+            " last_used_at, cwd, claude_session_id, usuario_id, usuario_nome)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (sid, title, ticket_numero, ticket_titulo, now, now, cwd, sid,
+             usuario_id, usuario_nome),
         )
 
     def reset_claude_session(self, sid: str, novo_claude_id: str, cwd: str) -> None:
@@ -120,10 +137,25 @@ class Store:
         else:
             self._write("UPDATE sessions SET last_used_at=? WHERE id=?", (time.time(), sid))
 
+    def rename_session(self, sid: str, title: str) -> bool:
+        if not self._rows("SELECT id FROM sessions WHERE id=?", (sid,)):
+            return False
+        self._write("UPDATE sessions SET title=? WHERE id=?", (title, sid))
+        return True
+
     def archive_session(self, sid: str) -> bool:
         if not self._rows("SELECT id FROM sessions WHERE id=? AND archived_at IS NULL", (sid,)):
             return False
         self._write("UPDATE sessions SET archived_at=? WHERE id=?", (time.time(), sid))
+        return True
+
+    def unarchive_session(self, sid: str) -> bool:
+        if not self._rows("SELECT id FROM sessions WHERE id=? AND archived_at IS NOT NULL", (sid,)):
+            return False
+        # `last_used_at` volta a ser agora: restaurar uma conversa é para trabalhar nela, e a
+        # lista é ordenada por uso — senão ela reaparece enterrada no fim.
+        self._write("UPDATE sessions SET archived_at=NULL, last_used_at=? WHERE id=?",
+                    (time.time(), sid))
         return True
 
     def get_session(self, sid: str) -> Optional[dict]:
@@ -143,7 +175,29 @@ class Store:
         if not include_archived:
             sql += " WHERE s.archived_at IS NULL"
         sql += " ORDER BY s.last_used_at DESC LIMIT ?"
-        return [dict(r) for r in self._rows(sql, (limit,))]
+        sessoes = [dict(r) for r in self._rows(sql, (limit,))]
+        participantes = self.participantes([s["id"] for s in sessoes])
+        for s in sessoes:
+            s["participantes"] = participantes.get(s["id"], [])
+        return sessoes
+
+    def participantes(self, sids: list[str]) -> dict[str, list[str]]:
+        """Quem interagiu em cada sessão, na ordem em que entrou.
+
+        O autor abre a conversa, mas quem toca nela depois também aparece — é comum um
+        colega assumir a investigação de um ticket no meio.
+        """
+        if not sids:
+            return {}
+        marcas = ",".join("?" * len(sids))
+        rows = self._rows(
+            f"SELECT session_id, usuario_nome, MIN(started_at) AS primeiro FROM turns"
+            f" WHERE session_id IN ({marcas}) AND usuario_nome IS NOT NULL AND usuario_nome <> ''"
+            f" GROUP BY session_id, usuario_nome ORDER BY primeiro", tuple(sids))
+        out: dict[str, list[str]] = {}
+        for r in rows:
+            out.setdefault(r["session_id"], []).append(r["usuario_nome"])
+        return out
 
     def prune_sessions(self, older_than_days: int) -> int:
         cutoff = time.time() - older_than_days * 86400
@@ -154,10 +208,13 @@ class Store:
 
     # ------------------------------------------------------------------ turnos
 
-    def create_turn(self, tid: str, sid: str, prompt: str, started_at: float) -> None:
+    def create_turn(self, tid: str, sid: str, prompt: str, started_at: float,
+                    usuario_id: Optional[str] = None,
+                    usuario_nome: Optional[str] = None) -> None:
         self._write(
-            "INSERT INTO turns (id, session_id, prompt, status, started_at) VALUES (?,?,?,?,?)",
-            (tid, sid, prompt, "running", started_at))
+            "INSERT INTO turns (id, session_id, prompt, status, started_at, usuario_id,"
+            " usuario_nome) VALUES (?,?,?,?,?,?,?)",
+            (tid, sid, prompt, "running", started_at, usuario_id, usuario_nome))
 
     def finish_turn(self, tid: str, status: str, error: Optional[str]) -> None:
         self._write("UPDATE turns SET status=?, error=?, finished_at=? WHERE id=?",

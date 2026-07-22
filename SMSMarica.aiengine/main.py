@@ -15,6 +15,7 @@ import sys
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import unquote
 
 import uvicorn
 from fastapi import Body, FastAPI, Header, HTTPException, Query
@@ -57,6 +58,8 @@ async def sweep_loop() -> None:
     while True:
         _sweep["last_beat"] = time.time()
         try:
+            # `sweep` também roda o watchdog de turno: é ele que interrompe um turno que
+            # passou do tempo. Um loop parado deixa turnos eternos — daí o /health vigiar.
             reaped = await engine.sweep()
             if reaped:
                 logger.info("Sweep descartou %d cliente(s) ocioso(s) (histórico preservado)", reaped)
@@ -127,6 +130,21 @@ def require_internal_key(key: str | None) -> None:
         raise HTTPException(status_code=403, detail="Chave interna inválida ou ausente.")
 
 
+# Quem está do outro lado. A API .NET manda em todo request — é a única fonte de identidade
+# que este serviço tem, e ela já autenticou o usuário. Ausente em chamada de diagnóstico
+# feita direto no loopback (curl), daí ser opcional.
+UsuarioId = Header(default=None, alias="X-SMSMarica-Usuario-Id")
+UsuarioNome = Header(default=None, alias="X-SMSMarica-Usuario-Nome")
+
+
+def _nome(valor: str | None) -> str | None:
+    """Cabeçalho HTTP não carrega acento com segurança (latin-1), e nome brasileiro tem
+    acento na maioria das vezes. A API .NET manda percent-encoded; aqui desfaz."""
+    if not valor:
+        return None
+    return unquote(valor.strip()) or None
+
+
 @app.get("/health")
 async def health():
     ok = sweep_healthy()
@@ -153,7 +171,9 @@ async def health():
 
 @app.post("/internal/ai/sessions", tags=["AI"])
 async def create_session(payload: dict = Body(default={}),
-                         x_smsmarica_internal_key: str | None = Header(default=None)):
+                         x_smsmarica_internal_key: str | None = Header(default=None),
+                         usuario_id: str | None = UsuarioId,
+                         usuario_nome: str | None = UsuarioNome):
     require_internal_key(x_smsmarica_internal_key)
     payload = payload or {}
     try:
@@ -161,6 +181,8 @@ async def create_session(payload: dict = Body(default={}),
             title=payload.get("title", ""),
             ticket_numero=payload.get("ticketNumero"),
             ticket_titulo=payload.get("ticketTitulo"),
+            usuario_id=usuario_id,
+            usuario_nome=_nome(usuario_nome),
         )
     except MemoryError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
@@ -169,9 +191,31 @@ async def create_session(payload: dict = Body(default={}),
 
 
 @app.get("/internal/ai/sessions", tags=["AI"])
-async def list_sessions(x_smsmarica_internal_key: str | None = Header(default=None)):
+async def list_sessions(include_archived: bool = Query(default=False),
+                        x_smsmarica_internal_key: str | None = Header(default=None)):
     require_internal_key(x_smsmarica_internal_key)
-    return {"sessions": engine.list_sessions()}
+    return {"sessions": engine.list_sessions(include_archived=include_archived)}
+
+
+@app.patch("/internal/ai/sessions/{session_id}", tags=["AI"])
+async def rename_session(session_id: str, payload: dict = Body(...),
+                         x_smsmarica_internal_key: str | None = Header(default=None)):
+    require_internal_key(x_smsmarica_internal_key)
+    titulo = (payload or {}).get("title", "").strip()
+    if not titulo:
+        raise HTTPException(status_code=400, detail="Campo 'title' é obrigatório.")
+    if not store.rename_session(session_id, titulo[:120]):
+        raise HTTPException(status_code=404, detail="Sessão não encontrada.")
+    return {"renamed": True}
+
+
+@app.post("/internal/ai/sessions/{session_id}/unarchive", tags=["AI"])
+async def unarchive_session(session_id: str,
+                            x_smsmarica_internal_key: str | None = Header(default=None)):
+    require_internal_key(x_smsmarica_internal_key)
+    if not store.unarchive_session(session_id):
+        raise HTTPException(status_code=404, detail="Sessão arquivada não encontrada.")
+    return {"unarchived": True}
 
 
 @app.get("/internal/ai/sessions/{session_id}", tags=["AI"])
@@ -196,13 +240,15 @@ async def archive_session(session_id: str,
 
 @app.post("/internal/ai/sessions/{session_id}/turns", tags=["AI"])
 async def create_turn(session_id: str, payload: dict = Body(...),
-                      x_smsmarica_internal_key: str | None = Header(default=None)):
+                      x_smsmarica_internal_key: str | None = Header(default=None),
+                      usuario_id: str | None = UsuarioId,
+                      usuario_nome: str | None = UsuarioNome):
     require_internal_key(x_smsmarica_internal_key)
     prompt = (payload or {}).get("prompt", "").strip()
     if not prompt:
         raise HTTPException(status_code=400, detail="Campo 'prompt' é obrigatório.")
     try:
-        record = await engine.start_turn(session_id, prompt)
+        record = await engine.start_turn(session_id, prompt, usuario_id, _nome(usuario_nome))
     except KeyError as exc:
         raise HTTPException(status_code=404, detail="Sessão não encontrada.") from exc
     except MemoryError as exc:

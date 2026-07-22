@@ -38,6 +38,17 @@ ALLOWED_TOOLS = [t.strip() for t in (os.getenv("AIENGINE_ALLOWED_TOOLS", "").str
 
 MAX_TURNS = int(os.getenv("AIENGINE_MAX_TURNS", "60"))
 TURN_TIMEOUT_SEC = int(os.getenv("AIENGINE_TURN_TIMEOUT_SEC", "900"))
+# Depois de mandar interrupt(), quanto esperamos pelo ResultMessage antes de concluir que o
+# processo travou e derrubar o cliente inteiro. Derrubar é o último recurso: enquanto o
+# cliente vive, quem fecha o turno é o leitor, no ponto certo do stream.
+TURN_GRACE_SEC = int(os.getenv("AIENGINE_TURN_GRACE_SEC", "60"))
+
+# Deltas de texto (efeito máquina de escrever no painel). Não geram linha no SQLite — ficam
+# só em memória, na sessão viva, e o painel lê como "cauda" do turno em andamento.
+PARTIAL_MESSAGES = os.getenv("AIENGINE_PARTIAL_MESSAGES", "1").strip() not in ("0", "false", "")
+# Teto da cauda em memória. Uma resposta gigante não pode virar um buffer sem fim: o texto
+# completo chega logo depois como evento persistido.
+PARTIAL_MAX_CHARS = int(os.getenv("AIENGINE_PARTIAL_MAX_CHARS", "20000"))
 
 # Orçamento de memória: cada sessão segura um processo do Claude Code de 80–200 MB.
 # O host roda 3 serviços .NET + nginx + WireGuard; recusar sessão é melhor do que
