@@ -75,4 +75,19 @@ public interface ISolicitacoesExameService
     /// Idempotente — pode ser chamado várias vezes.
     /// </summary>
     Task ProcessarTentativaEnvioAsync(Guid solicitacaoId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Remove do dcm4chee o item de worklist de um exame que não deveria mais estar lá —
+    /// exame já realizado/laudado/cancelado, ou excluído. Faz parte do fluxo: o exame chega,
+    /// o motor tira o item da lista. Sem MPPS, é isso que mantém a worklist do equipamento
+    /// fiel ao que ainda falta fazer.
+    /// <para>
+    /// Ao confirmar a remoção zera <c>WorklistItemUid</c> — o campo é o espelho do que está
+    /// no PACS. Em falha, agenda nova tentativa (o item volta na próxima passagem do worker).
+    /// Exame apenas AGENDADO e não realizado (paciente faltou) nunca é removido por aqui:
+    /// sai só por cancelamento/exclusão explícitos.
+    /// </para>
+    /// Idempotente — pode ser chamado várias vezes.
+    /// </summary>
+    Task ProcessarLimpezaWorklistAsync(Guid exameId, CancellationToken cancellationToken = default);
 }

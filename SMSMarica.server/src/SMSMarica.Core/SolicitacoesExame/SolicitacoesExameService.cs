@@ -563,16 +563,19 @@ public sealed class SolicitacoesExameService(
         }
 
         // Remove o item da worklist no dcm4chee (best-effort — não derruba o cancelamento local).
+        // Se falhar, o campo continua preenchido e o worker refaz a remoção depois: o exame
+        // cancelado entra na fila de limpeza justamente por ter WorklistItemUid.
         if (!string.IsNullOrEmpty(s.WorklistItemUid))
         {
             try
             {
                 await _mwlClient.ExcluirMwlItemAsync(s, cancellationToken);
+                s.WorklistItemUid = null; // espelho do que está no PACS
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogWarning(ex,
-                    "Falha ao remover MWL de {Accession} no cancelamento — segue cancelado localmente.",
+                    "Falha ao remover MWL de {Accession} no cancelamento — segue cancelado localmente; worker retenta.",
                     s.AccessionNumber);
             }
         }
@@ -641,11 +644,17 @@ public sealed class SolicitacoesExameService(
         // Anti-lixo: remove o item da worklist no dcm4chee e confirma; só então apaga localmente.
         if (force)
         {
-            try { await _mwlClient.ExcluirMwlItemAsync(s, cancellationToken); }
+            try
+            {
+                await _mwlClient.ExcluirMwlItemAsync(s, cancellationToken);
+                s.WorklistItemUid = null;
+            }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
+                // Campo fica preenchido de propósito: exame excluído com item pendente continua
+                // elegível para a fila de limpeza do worker, que retenta até o PACS aceitar.
                 _logger.LogWarning(ex,
-                    "Exclusão forçada de {Accession} — falha ao remover MWL no dcm4chee; limpando só a base local.",
+                    "Exclusão forçada de {Accession} — falha ao remover MWL no dcm4chee; worker retenta.",
                     s.AccessionNumber);
             }
         }
@@ -654,6 +663,7 @@ public sealed class SolicitacoesExameService(
             try
             {
                 await _mwlClient.ExcluirMwlItemAsync(s, cancellationToken);
+                s.WorklistItemUid = null;
             }
             catch (ConflitoException)
             {
@@ -821,6 +831,53 @@ public sealed class SolicitacoesExameService(
                 s.TentativasEnvio, s.AccessionNumber, espera);
         }
     }
+
+    public async Task ProcessarLimpezaWorklistAsync(Guid exameId, CancellationToken cancellationToken = default)
+    {
+        // Sem o filtro de ExcluidoEm de propósito: exame soft-deleted também precisa sair da
+        // worklist do equipamento (a exclusão tenta remover na hora, mas pode ter falhado).
+        var s = await _db.ExamesImagem.Include(x => x.Solicitacao)
+            .FirstOrDefaultAsync(x => x.Id == exameId, cancellationToken);
+
+        if (s is null || s.WorklistItemUid is null) return;
+        if (!DeveSairDaWorklist(s)) return;
+
+        var agora = DateTime.UtcNow;
+        try
+        {
+            await _mwlClient.ExcluirMwlItemAsync(s, cancellationToken);
+
+            // Confirmado (404 do dcm4chee também conta como removido) — o espelho zera.
+            s.WorklistItemUid = null;
+            s.ProximaTentativaEm = null;
+            s.AtualizadoEm = agora;
+            await _db.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Worklist de {Accession} removida do PACS (exame {Status}).", s.AccessionNumber, s.Status);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // PACS fora/lento: tenta de novo daqui a pouco. Backoff fixo e curto — diferente do
+            // envio, aqui não há paciente esperando, e o item some assim que o PACS responder.
+            s.ProximaTentativaEm = agora.AddMinutes(5);
+            s.AtualizadoEm = agora;
+            await _db.SaveChangesAsync(cancellationToken);
+            _logger.LogWarning(ex,
+                "Falha ao remover MWL de {Accession} — nova tentativa em 5 min.", s.AccessionNumber);
+        }
+    }
+
+    /// <summary>
+    /// Exame que TEM item de worklist mas não deveria: já executado (Realizada/Laudada),
+    /// cancelado, ou excluído. Agendado-e-não-realizado (faltoso) fica na lista — sai só por
+    /// decisão humana (cancelamento/exclusão).
+    /// </summary>
+    internal static bool DeveSairDaWorklist(ExameImagem e) =>
+        e.ExcluidoEm != null
+        || e.Status is StatusSolicitacaoExame.Realizada
+                    or StatusSolicitacaoExame.Laudada
+                    or StatusSolicitacaoExame.Cancelada;
 
     // ---- helpers ----
 

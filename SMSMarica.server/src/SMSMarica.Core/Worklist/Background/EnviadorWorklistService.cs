@@ -82,24 +82,50 @@ public sealed class EnviadorWorklistService(
             .Select(s => s.Id)
             .ToListAsync(ct);
 
-        if (pendentes.Count == 0) return;
+        await ProcessarAsync(pendentes, solicitacoes.ProcessarTentativaEnvioAsync, "envio", ct);
 
-        _logger.LogDebug("Enviador processando {N} solicitações pendentes.", pendentes.Count);
+        // Segunda fila: exames que AINDA têm item de worklist mas já saíram do jogo (realizados,
+        // laudados, cancelados ou excluídos). Sem MPPS, é este passo que tira o exame feito da
+        // tela do equipamento. ProximaTentativaEm nulo = nunca tentado — pega tambem o legado
+        // acumulado antes desta rotina existir.
+        var paraLimpar = await db.ExamesImagem.AsNoTracking()
+            .Where(s => s.WorklistItemUid != null
+                        && (s.ExcluidoEm != null
+                            || s.Status == StatusSolicitacaoExame.Realizada
+                            || s.Status == StatusSolicitacaoExame.Laudada
+                            || s.Status == StatusSolicitacaoExame.Cancelada)
+                        && (s.ProximaTentativaEm == null || s.ProximaTentativaEm <= agora))
+            .OrderBy(s => s.AtualizadoEm)
+            .Take(max)
+            .Select(s => s.Id)
+            .ToListAsync(ct);
 
-        foreach (var id in pendentes)
+        await ProcessarAsync(paraLimpar, solicitacoes.ProcessarLimpezaWorklistAsync, "limpeza de worklist", ct);
+    }
+
+    private async Task ProcessarAsync(
+        IReadOnlyList<Guid> ids,
+        Func<Guid, CancellationToken, Task> acao,
+        string rotulo,
+        CancellationToken ct)
+    {
+        if (ids.Count == 0) return;
+
+        _logger.LogDebug("Enviador processando {N} exames — {Rotulo}.", ids.Count, rotulo);
+
+        foreach (var id in ids)
         {
             if (ct.IsCancellationRequested) return;
 
             try
             {
-                await solicitacoes.ProcessarTentativaEnvioAsync(id, ct);
+                await acao(id, ct);
             }
             catch (Exception ex)
             {
-                // ProcessarTentativaEnvioAsync já trata as exceções internamente
-                // (atualiza ErroIntegracaoPacs + backoff). Isso aqui é só
-                // defesa pra não derrubar a passagem.
-                _logger.LogError(ex, "Erro inesperado ao processar tentativa de {Id}.", id);
+                // As duas ações já tratam as exceções internamente (erro + backoff). Isso aqui
+                // é só defesa pra não derrubar a passagem inteira por causa de um exame.
+                _logger.LogError(ex, "Erro inesperado em {Rotulo} de {Id}.", rotulo, id);
             }
         }
     }

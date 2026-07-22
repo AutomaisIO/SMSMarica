@@ -208,6 +208,34 @@ alternativa (carimbar um AE genérico) mandaria o exame de uma unidade para a
 estação de outra. Os equipamentos que já operavam entraram pela migration
 `SeedEquipamentosCdtCmi`, ancorada no CNES da unidade.
 
+### Ciclo de vida do item de worklist (sem MPPS)
+
+Nenhum equipamento aqui manda MPPS, então nada avisa o arquivo que o exame acabou —
+item criado ficaria na lista do aparelho para sempre. Quem fecha esse ciclo é o
+**nosso sistema**: quando o exame chega ao PACS e a conciliação o promove a
+*Realizada*, o `EnviadorWorklistService` remove o item no dcm4chee e zera
+`exame_imagem.worklist_item_uid`. **O campo é o espelho do que está na worklist** —
+preenchido significa "tem item lá"; e é por ele que a fila de limpeza do worker
+seleciona o que remover (`ProcessarLimpezaWorklistAsync`).
+
+| Situação do exame | Item na worklist |
+|---|---|
+| Solicitada (sem autorização da recepção) | nunca entrou |
+| Recebida (aguardando execução) | **fica** |
+| Recebida e o paciente faltou | **fica** — só sai por cancelamento/exclusão (decisão humana) |
+| Realizada / Laudada | sai (worker) |
+| Cancelada / excluída | sai na hora; se o PACS falhar, o worker retenta |
+
+Falha na remoção não perde o item: o campo continua preenchido, e o exame volta à
+fila na passagem seguinte (backoff de 5 min). Para recolocar um item removido —
+segunda aquisição do mesmo pedido, por exemplo — existe *Reenviar worklist* na tela
+do exame (`POST /solicitacoes-exame/{id}/reenviar-worklist`).
+
+> **Itens órfãos** (na worklist do dcm4chee sem exame correspondente aqui) **não**
+> são removidos automaticamente: o PACS pode um dia atender outro sistema, e o nosso
+> não é dono absoluto da lista. Auditar comparando o C-FIND MWL com
+> `smsmarica.exame_imagem` e remover à mão.
+
 Parâmetros por equipamento (entregáveis ao técnico):
 
 | Equipamento | Unidade | Modalidade | AE Title | Doc |
