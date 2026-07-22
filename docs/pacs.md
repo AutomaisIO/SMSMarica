@@ -219,27 +219,39 @@ escolher o equipamento resolve sozinho, sem reprocessar nada. Carimbar um AE
 genérico mandaria o exame de uma unidade para a estação de outra. Os equipamentos
 que já operavam entraram pela migration `SeedEquipamentosCdtCmi`, ancorada no CNES.
 
-### Isolamento por unidade no servidor (Worklist Label)
+### Isolamento por unidade — estado atual e limite da versão
 
 Filtrar por `ScheduledStationAETitle` é decisão do **equipamento**: se o técnico não
 configurar o filtro, a máquina recebe todos os itens da modalidade — inclusive de
-outra unidade. O dcm4chee não filtra pelo Calling AE de quem consulta, mas desde a
-5.30 oferece o **Worklist Label** `(0074,1202)`, e é isso que fecha a porta do lado
-do servidor:
+outra unidade. Verificado por C-FIND em 2026-07-22: sem a tag (ou com ela vazia), o
+dcm4chee devolve a lista inteira.
 
-- cada item MWL sai carimbado com o AE do equipamento também no WorklistLabel
-  (`ConstrutorMwlItem`);
-- cada Archive AE de worklist tem `dcmMWLWorklistLabel` com o label da sua estação —
-  `WORK-CDT` → `FDR-MAMO`, `WORK-CMI` → `US_CMI`;
-- o equipamento consulta **o AE da sua unidade**, e o servidor só devolve o que é dele.
+**Hoje o isolamento depende do equipamento.** O dcm4chee não filtra pelo Calling AE
+de quem consulta — é pedido antigo da comunidade e não existe. A alternativa do
+projeto é o **Worklist Label** `(0074,1202)` com `dcmMWLWorklistLabel` no Archive AE,
+mas o atributo **não existe na 5.32.0** que roda aqui: conferido no
+`dcm4chee-archive.schema` da própria tag, e confirmado na prática (o `PUT` do device
+retorna 204 e descarta o atributo em silêncio). Ele entra a partir da 5.33.
 
-> **Item sem label é devolvido a TODOS os AEs** (regra do dcm4chee: "com este label
-> ou sem label"). Por isso carimbamos sempre — item não marcado fura o isolamento.
+O que já está pronto para quando o arquivo for atualizado:
 
-O backend **não** usa os AEs com label: fala pelo AE administrativo **`WORKLIST`**
-(sem label, enxerga tudo) para criar, confirmar e remover itens —
-`Pacs:Dcm4chee:WorklistBaseUrl`. Se ele usasse um AE com label, deixaria de enxergar
-os itens das outras unidades e quebraria a confirmação e a limpeza.
+| Peça | Estado |
+|---|---|
+| Item MWL carimbado com o label (= AE do equipamento) | **feito** (`ConstrutorMwlItem`), inerte até o arquivo suportar |
+| Itens legados nomeados (estavam com `*`, o curinga padrão) | **feito** via REST |
+| Backend no AE administrativo `WORKLIST` (sem label, enxerga tudo) | **feito** — `Pacs:Dcm4chee:WorklistBaseUrl` |
+| AE `WORK-CMI` criado (clone do `WORK-CDT`) | **feito** — hoje **sem** isolamento, só o nome certo para o CMI apontar |
+| `dcmMWLWorklistLabel` nos AEs | **bloqueado**: exige dcm4chee ≥ 5.33 |
+
+> **Item sem label é devolvido a TODOS os AEs** ("com este label ou sem label"). Por
+> isso carimbamos sempre — quando o upgrade acontecer, item não marcado furaria o
+> isolamento.
+
+Enquanto isso, cada equipamento deve filtrar por `ScheduledStationAETitle` na própria
+consulta (é o campo "Scheduled Station AE Title" / "This machine only" no menu de
+worklist). O backend usa o AE administrativo de propósito: se falasse por um AE com
+label, deixaria de enxergar itens de outras unidades e quebraria a confirmação
+`Enviada → Recebida` e a limpeza pós-exame.
 
 ### Ciclo de vida do item de worklist (sem MPPS)
 
