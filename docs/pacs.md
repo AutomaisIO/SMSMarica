@@ -7,7 +7,7 @@ recomendadas.
 
 ## 1. Visão geral
 
-O backend de imagens é um **dcm4chee-arc-light 5.32.0** (open-source DICOM
+O backend de imagens é um **dcm4chee-arc-light 5.34.3** (open-source DICOM
 archive sobre Wildfly/Java) hospedado em DigitalOcean. O frontend `SMSMarica.front`
 fala **DICOMweb (QIDO-RS + WADO-RS)** com ele através do proxy `/pacs/rs/*` do
 backend `SMSMarica.Api`, que apenas encaminha as requisições HTTP sem reescrever
@@ -17,7 +17,7 @@ payload — ver [`PacsProxyService`](../SMSMarica.server/src/SMSMarica.Core/Pacs
 flowchart LR
   Front[SMSMarica.front<br/>Cornerstone3D + WADO-RS]
   Api[SMSMarica.Api<br/>/pacs/rs/* proxy]
-  Arc[dcm4chee-arc 5.32.0<br/>Wildfly :8080]
+  Arc[dcm4chee-arc 5.34.3<br/>Wildfly :8080]
   PG[(PostgreSQL 14<br/>dcmdb)]
   LDAP[(OpenLDAP<br/>cn=admin,dc=dcm4che,dc=org)]
   S3[(DigitalOcean Spaces<br/>images.pacs.marica.automais.tec.br<br/>nyc3.digitaloceanspaces.com)]
@@ -47,8 +47,15 @@ flowchart LR
 
 | Porta | Processo | Domínio | Finalidade |
 |-------|----------|---------|------------|
-| 5000 | `dotnet` | `api.pegaph.automais.app` (via nginx) | Outro produto (não SMSMarica). |
+| 5000 | `dotnet` (**parado**) | `api.pegaph.automais.app` | API do Colégio pH — outro produto. **Parado e desabilitado em 2026-07-22** para liberar RAM (a VM tem 2 GB). Reverter: `systemctl enable --now pegaph`. |
 | 80/443 | nginx | `pegaph.automais.app` / `api.pegaph.automais.app` | Frontend e API do produto acima. |
+
+> O PostgreSQL local **não** é do pegaph: hospeda o `dcmdb`. O pegaph apontava para
+> `ph_saida_escolar`, que não existe neste cluster.
+>
+> **Swap de 4 GB criado em 2026-07-22** (`/swapfile`, `vm.swappiness=10`, persistente em
+> `/etc/fstab`). A VM tem 2 GB de RAM e rodava **sem swap nenhum**, com ~140 MB livres —
+> qualquer pico deixava o OOM killer escolher a vítima, possivelmente o PostgreSQL.
 
 O PACS **não** está atrás do nginx local — fica direto em `:8080` (plain HTTP).
 Ver §10 (problemas conhecidos).
@@ -57,12 +64,12 @@ Ver §10 (problemas conhecidos).
 
 | Item | Valor |
 |------|-------|
-| Versão | `dcm4chee-arc-ear-5.32.0-psql` (build `24e182d`, 2024-04-22) |
-| Container | Wildfly nativo (sem Docker), config `dcm4chee-arc.xml` |
+| Versão | `dcm4chee-arc-ear-5.34.3-psql` — **atualizado de 5.32.0 em 2026-07-22** (ver §13) |
+| Container | WildFly Full 32.0.1 nativo (sem Docker), config `dcm4chee-arc.xml`; Java 17 |
 | Service | `systemd: dcm4chee.service` (User=root, ExecStart=`/opt/wildfly/bin/standalone.sh -c dcm4chee-arc.xml -b 0.0.0.0`) |
 | Dir base | `/opt/wildfly/` (owner `dcm:dcm`) |
 | Config dir | `/opt/wildfly/standalone/configuration/dcm4chee-arc/ldap.properties` |
-| Deploy mode | **unsecure** (`dcm4chee-arc-war-5.32.0-unsecure.war` — Keycloak instalado como módulo mas **não ativo**) |
+| Deploy mode | **unsecure** (`dcm4chee-arc-war-5.34.3-unsecure.war` — Keycloak instalado como módulo mas **não ativo**) |
 | Logs | `/opt/wildfly/standalone/log/server.log` (rotação diária) |
 | UI admin | http://pacs.marica.automais.cloud:8080/dcm4chee-arc/ui2/ |
 
@@ -228,7 +235,8 @@ outra unidade. Por isso a separação **não** pode depender só do aparelho.
 O dcm4chee não filtra pelo Calling AE de quem consulta (pedido antigo da comunidade,
 inexistente), mas honra o **Worklist Label** `(0074,1202)`: um Archive AE com
 `dcmMWLWorklistLabel` só devolve, no C-FIND MWL, os itens daquele label. **Ativo em
-produção desde 2026-07-22, na própria 5.32.0** — não exigiu upgrade.
+produção desde 2026-07-22 — funcionava já na 5.32.0, não exigiu upgrade** (o upgrade
+para 5.34.3 veio depois, por outros motivos).
 
 | AE | Label | Quem usa |
 |---|---|---|
@@ -240,7 +248,7 @@ Prova (C-FIND **sem** filtro de modalidade — o pior caso, equipamento mal conf
 `WORK-CDT` devolveu só o exame do CDT, `WORK-CMI` só o do CMI, `WORKLIST` os dois.
 
 > ⚠️ **O atributo só entra por LDAP, não pela API REST.** O `PUT /devices/dcm4chee-arc`
-> da 5.32 **descarta** `dcmMWLWorklistLabel` em silêncio (responde 204 e não grava) —
+> **descarta** `dcmMWLWorklistLabel` em silêncio (responde 204 e não grava) —
 > a API não mapeia o campo, embora o schema LDAP e o MWL SCP o suportem. Use
 > `ldapmodify` + `POST /ctrl/reload`:
 >
@@ -414,7 +422,7 @@ clicando em dois pontos com distância conhecida).
 
 ### 10.4. **Segurança — deploy `unsecure`**
 
-- `dcm4chee-arc-war-5.32.0-unsecure.war`: **sem autenticação** em nenhum
+- `dcm4chee-arc-war-5.34.3-unsecure.war`: **sem autenticação** em nenhum
   endpoint REST. Keycloak está instalado como módulo do Wildfly mas não
   está em uso.
 - LDAP admin com senha **`dcmsecret`** (default público da imagem upstream).
@@ -510,3 +518,43 @@ sudo -u postgres psql dcmdb -c "SELECT count(*) FROM study;"
 - Cornerstone3D + WADO-RS: https://www.cornerstonejs.org/docs/concepts/cornerstone-core/imageId
 - s3fs-fuse: https://github.com/s3fs-fuse/s3fs-fuse
 - ADR-0004 (arquitetura 3-projetos do backend): [`adr/0004-arquitetura-tres-projetos.md`](./adr/0004-arquitetura-tres-projetos.md)
+
+## 13. Upgrade 5.32.0 → 5.34.3 (2026-07-22)
+
+Feito com o PACS fora de operação, ~25 min de indisponibilidade. Motivação: dois anos
+de correções (a 5.32.0 é de abr/2024). **Não** era pré-requisito do isolamento de
+worklist — esse já funcionava na 5.32 (§8).
+
+**Ordem executada** (upgrades são sequenciais por segundo componente da versão):
+
+1. Backups em `/root/pacs-backups/upgrade-2026-07-22-1810/`: `pg_dump -Fc` do `dcmdb`,
+   `slapcat` (dados + config do slapd), `configuration/` + `data/content` do WildFly e
+   os módulos `org/dcm4che` antigos.
+2. `systemctl stop dcm4chee`.
+3. Banco: `sql/psql/update-5.33-psql.sql` e `update-5.34-psql.sql` (copiar para fora de
+   `/root` — o usuário `postgres` não lê lá).
+4. Schema LDAP: os quatro `ldap/slapd/*-modify.ldif` via `ldapmodify -Y EXTERNAL`.
+5. Config LDAP: `ldap/<versão>/*.ldif` de 5.33.1 → 5.34.3, em ordem.
+6. **Clones precisam do mesmo tratamento**: os LDIFs de AE tocam só `DCM4CHEE`,
+   `AS_RECEIVED`, `IOCM_REGULAR_USE`, `storescp`. `PACS-CDT` é clone e ficou 8 entradas
+   atrás (a 5.34.2 adiciona JPEG XL) — replicado com
+   `sed 's/dicomAETitle=DCM4CHEE,/dicomAETitle=PACS-CDT,/g'`.
+7. Módulos: remover `/opt/wildfly/modules/org/dcm4che` e descompactar os quatro zips de
+   `jboss-modules/` em `/opt/wildfly/modules/`.
+8. Deployments (são *managed*, referenciados por sha1 no `dcm4chee-arc.xml` — não basta
+   copiar arquivo), trocados offline:
+   `jboss-cli.sh --commands="embed-server --server-config=dcm4chee-arc.xml,undeploy <velho>,deploy <novo>,stop-embedded-server"`.
+9. `systemctl start dcm4chee` — subiu em 12 s, 0 erros.
+
+**Verificado depois:** acervo idêntico (1.716 estudos / 7.377 séries / 2.996 pacientes),
+C-ECHO nos 4 AEs, isolamento por label preservado, QIDO/WADO (metadata e frames) OK,
+worklist do backend intacta, 0 erros de integração.
+
+**Pré-requisitos que valem para o próximo upgrade:** a 5.34.3 ainda é Jakarta EE 8
+(namespace `javaee`), então roda no WildFly atual — conferir isso antes, porque uma
+versão que migre para `jakarta.*` exige trocar o WildFly junto.
+
+> **O compressor lossless continua não transcodificando.** Deixou de responder 500, mas
+> pedir `transfer-syntax=1.2.840.10008.1.2.4.90` devolve o frame do mesmo tamanho
+> (16,3 MB) — ou seja, sem compressão. A transcodificação no nosso proxy segue
+> necessária (§10.2 e `Pacs:Compressao` no appsettings).
