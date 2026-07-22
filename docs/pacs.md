@@ -424,28 +424,61 @@ b) **Imagens sem nenhum spacing** (US, SC) — adicionar
 `CalibrationLineTool` do Cornerstone como fallback (usuário calibra
 clicando em dois pontos com distância conhecida).
 
-### 10.4. **Segurança — deploy `unsecure`**
+### 10.4. **Segurança — perímetro fechado por firewall (2026-07-22)**
 
-- `dcm4chee-arc-war-5.34.3-unsecure.war`: **sem autenticação** em nenhum
-  endpoint REST. Keycloak está instalado como módulo do Wildfly mas não
-  está em uso.
-- LDAP admin com senha **`dcmsecret`** (default público da imagem upstream).
-  Qualquer pessoa com acesso ao host pode reconfigurar AEs, storage,
-  exportar/apagar estudos.
-- `:8080` plain HTTP **exposto à internet pública** (não está atrás do
-  nginx). Tráfego DICOMweb inclui dados de paciente em claro.
-- `:11112` (C-STORE) também exposto sem TLS — qualquer modalidade
-  configurada pode pushar para `DCM4CHEE`.
+> **Estado ATUAL.** Até 2026-07-22 o `:8080` (DICOMweb + UI de admin), `:8443`,
+> `:389` (LDAP) e o `dcmdb` estavam **abertos à internet** — qualquer um listava
+> pacientes e estudos sem credencial (comprovado), e ~2.000 IPs já haviam sondado a
+> porta DICOM. Fechado assim:
 
-**Recomendado para LGPD/CFM:**
-1. Trocar `dcmsecret` (LDAP) por senha forte; atualizar `ldap.properties` e
-   reiniciar `dcm4chee.service`.
-2. Colocar o `:8080` atrás do nginx local com TLS (Certbot) e fechar 8080
-   no firewall do Droplet — manter só `127.0.0.1:8080` ouvido.
-3. Avaliar habilitar Keycloak (deploy `secure`) ou ao menos basic-auth no
-   nginx para os endpoints REST.
-4. Restringir `:11112` por firewall às modalidades conhecidas (allowlist
-   de IP da unidade).
+**Firewall `ufw` (default deny incoming), persistente no boot:**
+
+| Porta | Acesso |
+|-------|--------|
+| `22` (SSH) | público — protegido por **fail2ban** |
+| `11112` (DICOM) | público — equipamento ainda envia pelo IP público; filtro por AE cuida do ruído. Fecha quando todas as unidades migrarem para a VPN |
+| `8080` / `8443` / `389` / `443` | **só** backend (`146.190.65.73`), VPN `10.35.0.0/24` e localhost. **Bloqueados da internet** |
+| WireGuard (`43829/udp`, hub `198.211.104.55`) | liberado — mantém o túnel |
+
+Regras (idempotentes):
+```bash
+ufw default deny incoming; ufw default allow outgoing
+ufw allow 22/tcp; ufw allow 11112/tcp; ufw allow 43829/udp
+ufw allow in on wg-automais
+ufw allow from 146.190.65.73      # backend smsmarica (IP público fixo)
+ufw allow from 198.211.104.55     # hub WireGuard
+ufw --force enable
+```
+
+**fail2ban** no `sshd` (havia **42 mil** tentativas de brute-force no `auth.log`):
+`banaction = ufw`, `maxretry=5`, `bantime` incremental até 1 semana. `ignoreip`
+protege localhost + VPN + backend + hub — nunca bane quem é nosso. Config em
+`/etc/fail2ban/jail.local`.
+
+**O PACS está na VPN em `10.35.0.16`** (malha `wg-automais`/automais.io, mesma dos
+MikroTiks `10.35.0.24-.47`); o backend está em `10.35.0.10` e os dois se alcançam pelo
+túnel (~2,7 ms). Hoje o backend ainda fala com o PACS pelo IP **público** (whitelisted),
+mas o caminho VPN já existe — repontar `Pacs:Dcm4chee:*` para `10.35.0.16` fecha o
+último acesso público do HTTP (fica só a VPN). Ver plano em §14.
+
+**Ainda pendente (não fechado por firewall):**
+- LDAP com senha **`dcmsecret`** (default público) — trocar por senha forte em
+  `ldap.properties`. Hoje o `:389` não é mais alcançável de fora, mas a senha fraca
+  continua sendo risco para quem entrar na VPN ou no host.
+- Deploy `unsecure` (sem auth nos endpoints REST): dentro da VPN, qualquer peer fala
+  com o `:8080` sem credencial. A defesa é a membresia da VPN; autenticação de
+  aplicação (Keycloak/basic-auth) fica para depois.
+
+### 10.4b. **Isolamento futuro do DICOM (11112) via VPN**
+
+A `11112` é a última porta pública "larga". O equipamento envia de IPs públicos que
+**rotacionam** (o CDT já apareceu em `186.193.246.x`, `179.42.148.x`, `187.108.190.x`),
+então allowlist de IP fixo quebraria a mamografia na próxima troca. Caminho:
+1. **Agora:** filtro por AE conhecido (`FDR-MAMO`, `IIP_MWL_SCU` = console Fuji,
+   `US_CMI`, `WEASIS*`, `MAMO-SIM`) — barra scanners, não depende de IP.
+2. **Por unidade:** conforme o MikroTik roteia o equipamento para `10.35.0.16` pela
+   VPN, aquele equipamento passa a um endereço **estável**. Quando todas migrarem,
+   fecha-se a `11112` pública.
 
 ### 10.5. **`MahatmaFS` em `/mnt/s3images/` retorna I/O error**
 
@@ -562,3 +595,27 @@ versão que migre para `jakarta.*` exige trocar o WildFly junto.
 > pedir `transfer-syntax=1.2.840.10008.1.2.4.90` devolve o frame do mesmo tamanho
 > (16,3 MB) — ou seja, sem compressão. A transcodificação no nosso proxy segue
 > necessária (§10.2 e `Pacs:Compressao` no appsettings).
+
+## 14. Rede e perímetro (2026-07-22)
+
+Resumo do que mudou na infraestrutura de rede/segurança neste dia (detalhe em §10.4):
+
+- **Host dedicado ao PACS:** o produto `pegaph` (Colégio pH) foi removido (§2).
+- **Swap de 4 GB** criado (`/swapfile`, `vm.swappiness=10`) — a VM tem 2 GB de RAM e
+  rodava sem swap.
+- **Firewall `ufw`** default-deny: só `22` e `11112` públicos; `8080/8443/389/443`
+  restritos ao backend + VPN.
+- **fail2ban** no SSH — `maxretry=5` em `findtime=10m` → ban (incremental até 1 semana).
+- **PACS na VPN** `10.35.0.16` (backend em `10.35.0.10`); caminho privado pronto.
+
+### Próximos passos (ordem sugerida)
+
+1. **Repontar o backend para o PACS via VPN** (`Pacs:Dcm4chee:RsBaseUrl` e
+   `WorklistBaseUrl` → `http://10.35.0.16:8080/...`) e então **fechar o `8080`
+   público também** — o HTTP passa a ser 100% VPN. Validar `10.35.0.10 → 10.35.0.16:8080`
+   antes do cutover.
+2. **Filtro por AE** na `11112` (`dcmAcceptedCallingAETitle` nos AEs, via `ldapmodify`):
+   `FDR-MAMO`, `IIP_MWL_SCU`, `US_CMI`, `WEASIS*`, `MAMO-SIM`.
+3. **Trocar `dcmsecret`** do LDAP por senha forte.
+4. **DICOM na VPN por unidade** — rotear o equipamento pelo MikroTik até `10.35.0.16`;
+   ao final, fechar a `11112` pública.
