@@ -35,28 +35,31 @@ public sealed class IdentidadeService(
 
     public async Task<LoginRespostaDto> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
-        // Identificador único de login: aceita e-mail OU CPF (tanto faz).
+        // Identificador único de login: aceita e-mail, CPF OU nome de usuário (tanto faz).
+        // O nome de usuário não diferencia maiúsculas — "Bernardo" e "bernardo" entram igual.
         var ident = (request.Email ?? string.Empty).Trim();
         var emailCand = ident.ToLowerInvariant();
         var digitos = NormalizarDigitos(ident);
         var cpfCand = digitos.Length == 11 ? digitos : null;
+        var loginCand = LoginValido(ident) ? emailCand : null;
 
         var usuario = await _db.Usuarios
             .Include(u => u.UsuariosPerfis)
             .FirstOrDefaultAsync(
                 u => (u.Email != null && u.Email == emailCand)
-                     || (cpfCand != null && u.Cpf == cpfCand),
+                     || (cpfCand != null && u.Cpf == cpfCand)
+                     || (loginCand != null && u.Login != null && u.Login.ToLower() == loginCand),
                 cancellationToken);
 
         if (usuario is null || !usuario.Ativo || usuario.SenhaHash == SenhaHashPlaceholder)
         {
-            throw new ValidacaoException("identidade.credenciais_invalidas", "E-mail/CPF ou senha inválidos.");
+            throw new ValidacaoException("identidade.credenciais_invalidas", "Usuário/e-mail/CPF ou senha inválidos.");
         }
 
         var verif = _hasher.VerifyHashedPassword(usuario, usuario.SenhaHash, request.Senha ?? string.Empty);
         if (verif == PasswordVerificationResult.Failed)
         {
-            throw new ValidacaoException("identidade.credenciais_invalidas", "E-mail/CPF ou senha inválidos.");
+            throw new ValidacaoException("identidade.credenciais_invalidas", "Usuário/e-mail/CPF ou senha inválidos.");
         }
 
         if (verif == PasswordVerificationResult.SuccessRehashNeeded)
@@ -70,9 +73,9 @@ public sealed class IdentidadeService(
         var (token, expira) = _tokenService.GerarToken(usuario);
         var resolvidas = await ObterPermissoesResolvidasAsync(usuario.Id, cancellationToken);
         var medico = await ResolverMedicoAsync(usuario.Cpf, cancellationToken);
-        // Global admin: vínculo implícito a todas as unidades ativas, sem precisar
+        // Acesso global: vínculo implícito a todas as unidades ativas, sem precisar
         // de linhas em usuario_unidade (nenhuma vira "principal" — entra vendo tudo).
-        var unidades = usuario.Id == IdentificadoresFixos.UsuarioAdminId
+        var unidades = usuario.AcessoGlobal
             ? await _db.Unidades.AsNoTracking()
                 .Where(u => u.Ativo)
                 .OrderBy(u => u.Nome)
@@ -85,6 +88,56 @@ public sealed class IdentidadeService(
                 .Select(v => new UnidadeVinculadaDto(v.UnidadeId, v.Unidade!.Nome, v.Principal))
                 .ToListAsync(cancellationToken);
         return new LoginRespostaDto(token, expira, IdentidadeMapper.ParaDto(usuario, medico: medico), resolvidas.Resolvidas, unidades);
+    }
+
+    /// <summary>
+    /// Formato do nome de usuário: 3 a 40 caracteres, letras/números/ponto/hífen/underscore.
+    /// NUNCA só números (colidiria com o CPF) nem com "@" (colidiria com o e-mail): os três
+    /// identificadores entram pelo MESMO campo na tela de login, e a ambiguidade tornaria uma
+    /// das formas inalcançável.
+    /// </summary>
+    private static bool LoginValido(string valor) =>
+        valor.Length is >= 3 and <= 40
+        && valor.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '_' or '-')
+        && !valor.All(char.IsAsciiDigit);
+
+    /// <summary>Valida formato e unicidade (ignorando maiúsculas). Vazio = sem login.</summary>
+    private async Task<string?> ResolverLoginAsync(string? bruto, Guid? idAtual, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(bruto)) return null;
+
+        var login = bruto.Trim();
+        if (!LoginValido(login))
+        {
+            throw new ValidacaoException(
+                "usuario.login_invalido",
+                "O nome de usuário deve ter de 3 a 40 caracteres (letras, números, ponto, hífen "
+                + "ou _), não pode ser só números nem conter '@'.");
+        }
+
+        var chave = login.ToLowerInvariant();
+        var duplicado = await _db.Usuarios.AsNoTracking().AnyAsync(
+            u => u.Login != null && u.Login.ToLower() == chave && (idAtual == null || u.Id != idAtual),
+            ct);
+        if (duplicado)
+        {
+            throw new ConflitoException("usuario.login_duplicado", "Já existe usuário com este nome de usuário.");
+        }
+        return login;
+    }
+
+    /// <summary>
+    /// Conceder acesso global é elevar privilégio: só quem já o tem pode dar a outro. Sem essa
+    /// trava, qualquer perfil com edição de usuários viraria caminho para ver todas as unidades.
+    /// </summary>
+    private async Task GarantirPodeConcederAcessoGlobalAsync(CancellationToken ct)
+    {
+        if (!await AcessoGlobalUsuario.TemAsync(_db, _atual.UsuarioId, ct))
+        {
+            throw new ValidacaoException(
+                "usuario.acesso_global_negado",
+                "Só um usuário com acesso global pode conceder ou revogar acesso global.");
+        }
     }
 
     public async Task<PermissoesResolvidasDto> ObterPermissoesResolvidasAsync(Guid usuarioId, CancellationToken cancellationToken = default)
@@ -228,11 +281,14 @@ public sealed class IdentidadeService(
             throw new ConflitoException("usuario.cpf_duplicado", "Já existe usuário com este CPF.");
         }
 
+        var login = await ResolverLoginAsync(request.Login, idAtual: null, cancellationToken);
+
         var u = new Usuario
         {
             Id = Guid.CreateVersion7(),
             NomeCompleto = request.NomeCompleto.Trim(),
             Email = email,
+            Login = login,
             Cpf = cpfNormalizado,
             DataNascimento = request.DataNascimento,
             Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim(),
@@ -282,6 +338,18 @@ public sealed class IdentidadeService(
                 throw new ConflitoException("usuario.email_duplicado", "Já existe usuário com este email.");
             }
             u.Email = novoEmail;
+        }
+
+        // Mesma convenção do e-mail: em branco não mexe no atual.
+        if (!string.IsNullOrWhiteSpace(request.Login))
+        {
+            u.Login = await ResolverLoginAsync(request.Login, id, cancellationToken);
+        }
+
+        if (request.AcessoGlobal is bool acessoGlobal && acessoGlobal != u.AcessoGlobal)
+        {
+            await GarantirPodeConcederAcessoGlobalAsync(cancellationToken);
+            u.AcessoGlobal = acessoGlobal;
         }
 
         u.Telefone = string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone.Trim();

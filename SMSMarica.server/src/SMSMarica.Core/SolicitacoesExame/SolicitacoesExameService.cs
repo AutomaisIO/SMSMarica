@@ -328,8 +328,8 @@ public sealed class SolicitacoesExameService(
 
         var ativa = _usuarioAtual.UnidadeAtivaId;
 
-        // Global admin: vínculo implícito a TODAS as unidades — a ativa (se válida) vira filtro de conveniência.
-        if (usuarioId == IdentificadoresFixos.UsuarioAdminId)
+        // Acesso global: vínculo implícito a TODAS as unidades — a ativa (se válida) vira filtro de conveniência.
+        if (await AcessoGlobalUsuario.TemAsync(_db, usuarioId, ct))
         {
             if (ativa.HasValue &&
                 await _db.Unidades.AsNoTracking().AnyAsync(u => u.Id == ativa.Value && u.Ativo, ct))

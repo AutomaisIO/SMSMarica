@@ -18,6 +18,16 @@ public class Usuario
     /// login só pelo CPF. Quando preenchido, é único. Login aceita e-mail OU CPF.
     /// </summary>
     public string? Email { get; set; }
+
+    /// <summary>
+    /// Nome de usuário para login, alternativa ao e-mail/CPF. Opcional (o CPF já serve) e
+    /// único ignorando maiúsculas — "Bernardo" e "bernardo" são o mesmo login. Guardado
+    /// como digitado, para aparecer bonito na tela; a unicidade e a busca usam
+    /// <c>lower(login)</c>. Nunca só dígitos nem com "@": senão ficaria ambíguo com CPF/e-mail
+    /// no campo único de login.
+    /// </summary>
+    public string? Login { get; set; }
+
     public string? Cpf { get; set; }
     public string? Rg { get; set; }
     public DateOnly? DataNascimento { get; set; }
@@ -41,6 +51,19 @@ public class Usuario
     /// Não é marcador de exclusão — para isso use <see cref="ExcluidoEm"/>.
     /// </summary>
     public bool Ativo { get; set; } = true;
+
+    /// <summary>
+    /// Enxerga TODAS as unidades, sem depender de linhas em <c>usuario_unidade</c>.
+    ///
+    /// Até 2026-07-22 esse privilégio estava preso ao GUID do usuário "Administrador"
+    /// semeado no startup (11111111-…), o que impedia ter vários admins com identidade
+    /// própria — todo mundo entrava como o mesmo boneco e a auditoria não distinguia
+    /// quem fez o quê. Agora é um atributo de quem merece, e o admin genérico virou
+    /// apenas mais um usuário (desativável).
+    ///
+    /// Concessão restrita: só quem já tem acesso global pode conceder a outro.
+    /// </summary>
+    public bool AcessoGlobal { get; set; }
 
     public DateTime? UltimoAcessoEm { get; set; }
 

@@ -46,6 +46,10 @@ export type Usuario = {
   papelAtual: PapelAtual | null;
   /** Registro do conselho quando papelAtual = 'Medico' (ex.: "CRM 52702650/RJ"). */
   registroProfissional: string | null;
+  /** Nome de usuário para login, alternativa ao e-mail/CPF. */
+  login: string | null;
+  /** Enxerga todas as unidades, sem depender de vínculo. Só quem tem pode conceder. */
+  acessoGlobal: boolean;
 };
 
 export type CadastrarUsuarioPayload = {
@@ -60,6 +64,8 @@ export type CadastrarUsuarioPayload = {
   senha?: string;
   /** Com senha inicial, exige troca no próximo login. */
   deveTrocarSenha?: boolean;
+  /** Nome de usuário para login. Opcional — o CPF já serve. */
+  login?: string;
 };
 
 export type AtualizarUsuarioPayload = {
@@ -68,6 +74,10 @@ export type AtualizarUsuarioPayload = {
   fotoBase64?: string | null;
   /** E-mail editável/inserível (médicos importados vêm sem e-mail). Em branco = não altera. */
   email?: string;
+  /** Nome de usuário. Em branco = não altera. */
+  login?: string;
+  /** Acesso a todas as unidades. Omitido = não altera; só quem tem pode conceder. */
+  acessoGlobal?: boolean;
 };
 
 export type AtualizarMinhaContaPayload = {

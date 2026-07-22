@@ -14,6 +14,7 @@ internal sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
         builder.Property(u => u.Id).HasColumnName("id");
         builder.Property(u => u.NomeCompleto).HasColumnName("nome_completo").HasMaxLength(200).IsRequired();
         builder.Property(u => u.Email).HasColumnName("email").HasMaxLength(200);
+        builder.Property(u => u.Login).HasColumnName("login").HasMaxLength(40);
         builder.Property(u => u.Cpf).HasColumnName("cpf").HasMaxLength(11);
         builder.Property(u => u.Rg).HasColumnName("rg").HasMaxLength(20);
         builder.Property(u => u.DataNascimento).HasColumnName("data_nascimento");
@@ -24,6 +25,7 @@ internal sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
         builder.Property(u => u.SenhaHash).HasColumnName("senha_hash").HasMaxLength(500).IsRequired();
         builder.Property(u => u.DeveTrocarSenha).HasColumnName("deve_trocar_senha").HasDefaultValue(false).IsRequired();
         builder.Property(u => u.Ativo).HasColumnName("ativo").HasDefaultValue(true).IsRequired();
+        builder.Property(u => u.AcessoGlobal).HasColumnName("acesso_global").HasDefaultValue(false).IsRequired();
         builder.Property(u => u.UltimoAcessoEm).HasColumnName("ultimo_acesso_em");
 
         // Auditoria
@@ -52,6 +54,9 @@ internal sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
         builder.HasIndex(u => u.Cpf)
             .IsUnique()
             .HasFilter("cpf IS NOT NULL");
+        // O índice único do login é sobre lower(login) — EF não modela índice por expressão,
+        // então ele é criado no SQL da migration (ix_usuario_login_lower). Sem ele, "Bernardo"
+        // e "bernardo" seriam dois logins diferentes.
         builder.HasIndex(u => u.ExcluidoEm)
             .HasDatabaseName("ix_usuario_excluido_em")
             .HasFilter("excluido_em IS NULL");

@@ -108,7 +108,7 @@ export function LoginPage() {
 
             <div>
               <label htmlFor="email" className="label">
-                E-mail ou CPF
+                Usuário, e-mail ou CPF
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -120,7 +120,7 @@ export function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="input pl-10"
-                  placeholder="E-mail ou CPF"
+                  placeholder="Usuário, e-mail ou CPF"
                   disabled={carregando}
                 />
               </div>

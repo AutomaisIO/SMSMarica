@@ -13,7 +13,14 @@ public sealed record AtualizarUsuarioRequest(
     string? Telefone,
     EnderecoDto? Endereco,
     string? FotoBase64 = null,
-    string? Email = null);
+    string? Email = null,
+    /// <summary>Nome de usuário para login. Em branco = não mexe no atual.</summary>
+    string? Login = null,
+    /// <summary>
+    /// Enxergar todas as unidades. <c>null</c> = não mexe. Só quem já tem acesso global
+    /// consegue conceder ou revogar.
+    /// </summary>
+    bool? AcessoGlobal = null);
 
 /// <summary>
 /// O próprio usuário atualiza só os campos que podem ser editados sem privilégio

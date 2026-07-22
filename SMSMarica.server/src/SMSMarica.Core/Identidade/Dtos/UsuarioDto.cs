@@ -23,7 +23,11 @@ public sealed record UsuarioDto(
     /// </summary>
     string? PapelAtual,
     /// <summary>Registro do conselho quando o papel é Medico (ex.: "CRM 52702650/RJ"). Null caso contrário.</summary>
-    string? RegistroProfissional = null);
+    string? RegistroProfissional = null,
+    /// <summary>Nome de usuário para login, alternativa ao e-mail/CPF. Null quando não definido.</summary>
+    string? Login = null,
+    /// <summary>Enxerga todas as unidades, sem depender de vínculo em usuario_unidade.</summary>
+    bool AcessoGlobal = false);
 
 public sealed record UsuarioListItemDto(
     Guid Id,

@@ -13,4 +13,6 @@ public sealed record CadastrarUsuarioRequest(
     string? Senha = null,
     string? FotoBase64 = null,
     /// <summary>Quando há senha inicial, exige troca no próximo login. Ignorado sem senha.</summary>
-    bool DeveTrocarSenha = false);
+    bool DeveTrocarSenha = false,
+    /// <summary>Nome de usuário para login, alternativa ao e-mail/CPF. Opcional.</summary>
+    string? Login = null);

@@ -17,6 +17,7 @@ import {
   type EnderecoForm,
 } from '@/shared/ui/FormularioEndereco';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { useAuth } from '@/shared/auth/authStore';
 import {
   useAtualizarOverridesDoUsuario,
   useAtualizarPerfisDoUsuario,
@@ -36,6 +37,8 @@ type Props = { modo: 'criar' | 'editar'; idUsuario?: string | null; aoConcluir: 
 type Valores = {
   nomeCompleto: string;
   email: string;
+  login: string;
+  acessoGlobal: boolean;
   senha: string;
   cpf: string;
   dataNascimento: string;
@@ -48,6 +51,8 @@ type Valores = {
 const INICIAL: Valores = {
   nomeCompleto: '',
   email: '',
+  login: '',
+  acessoGlobal: false,
   senha: '',
   cpf: '',
   dataNascimento: '',
@@ -57,7 +62,9 @@ const INICIAL: Valores = {
   deveTrocarSenha: false,
 };
 
-type Erros = Partial<Record<'nomeCompleto' | 'email' | 'senha' | 'cpf' | 'dataNascimento' | 'telefone', string>>;
+type Erros = Partial<
+  Record<'nomeCompleto' | 'email' | 'login' | 'senha' | 'cpf' | 'dataNascimento' | 'telefone', string>
+>;
 
 function formatarCpfDigitos(cpf: string): string {
   const d = cpf.replace(/\D/g, '');
@@ -95,6 +102,8 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
   }, [modo, unidadesUsuario.data]);
 
   const deveTrocarAtual = detalhe.data?.deveTrocarSenha ?? false;
+  // Espelha a trava do backend: só quem tem acesso global concede acesso global.
+  const podeConcederAcessoGlobal = useAuth((s) => s.usuario?.acessoGlobal ?? false);
 
   useEffect(() => {
     if (modo === 'editar' && detalhe.data) {
@@ -102,6 +111,8 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
       setValores({
         nomeCompleto: detalhe.data.nomeCompleto,
         email: detalhe.data.email ?? '',
+        login: detalhe.data.login ?? '',
+        acessoGlobal: detalhe.data.acessoGlobal,
         senha: '',
         cpf: formatarCpfDigitos(detalhe.data.cpf ?? ''),
         dataNascimento: detalhe.data.dataNascimento ?? '',
@@ -209,6 +220,14 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
     if (nome.length < 3) ne.nomeCompleto = 'Nome obrigatório (mínimo 3 caracteres).';
     // E-mail é opcional (médico importado pode não ter); valida formato só se preenchido.
     if (email && !/^\S+@\S+\.\S+$/.test(email)) ne.email = 'E-mail inválido.';
+    // Mesmas regras do backend: o login divide o campo da tela de entrada com e-mail e CPF,
+    // então não pode ser só números (viraria CPF) nem ter '@' (viraria e-mail).
+    const login = valores.login.trim();
+    if (login && !/^[A-Za-z0-9._-]{3,40}$/.test(login)) {
+      ne.login = 'De 3 a 40 caracteres: letras, números, ponto, hífen ou _.';
+    } else if (login && /^\d+$/.test(login)) {
+      ne.login = 'Não pode ser só números (confundiria com o CPF).';
+    }
     if (modo === 'criar') {
       if (senha && senha.length < 8) ne.senha = 'Mínimo 8 caracteres.';
       // Data de nascimento é opcional: o gate já resolveu a identidade (Receita
@@ -247,6 +266,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
           endereco: enderecoPayload,
           fotoBase64: valores.fotoBase64,
           senha: senha || undefined,
+          login: valores.login.trim() || undefined,
           deveTrocarSenha: senha ? valores.deveTrocarSenha : undefined,
           perfilIds: perfilIdsSelecionados,
         });
@@ -267,6 +287,8 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
             endereco: enderecoPayload,
             fotoBase64: valores.fotoBase64,
             email: email || undefined,
+            login: valores.login.trim() || undefined,
+            acessoGlobal: podeConcederAcessoGlobal ? valores.acessoGlobal : undefined,
           },
         });
         await salvarPerfis.mutateAsync({ id: idUsuario, perfilIds: perfilIdsSelecionados });
@@ -372,6 +394,41 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
         desabilitado={pendente}
         mostrarPontoReferencia={false}
       />
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Campo
+          label="Nome de usuário"
+          htmlFor="login"
+          erro={erros.login}
+          dica="Opcional. Serve para entrar no lugar do e-mail ou do CPF. Não diferencia maiúsculas."
+        >
+          <Input
+            id="login"
+            value={valores.login}
+            onChange={(e) => setCampo('login', e.target.value)}
+            placeholder="ex.: bernardo"
+            autoComplete="off"
+            disabled={pendente}
+          />
+        </Campo>
+      </div>
+
+      {/* Conceder acesso global é elevar privilégio: a caixa só existe para quem já o tem. */}
+      {podeConcederAcessoGlobal && modo === 'editar' ? (
+        <label className="flex items-start gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            checked={valores.acessoGlobal}
+            onChange={(e) => setCampo('acessoGlobal', e.target.checked)}
+            disabled={pendente}
+          />
+          <span>
+            Acesso global — enxerga <strong>todas</strong> as unidades, sem depender dos
+            vínculos abaixo.
+          </span>
+        </label>
+      ) : null}
 
       {modo === 'criar' ? (
         <div className="space-y-3">

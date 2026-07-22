@@ -141,8 +141,8 @@ public sealed class ConsultasService(
 
         var ativa = usuarioAtual.UnidadeAtivaId;
 
-        // Global admin: vínculo implícito a TODAS as unidades; a ativa vira filtro de conveniência.
-        if (usuarioId == IdentificadoresFixos.UsuarioAdminId)
+        // Acesso global: vínculo implícito a TODAS as unidades; a ativa vira filtro de conveniência.
+        if (await AcessoGlobalUsuario.TemAsync(db, usuarioId, ct))
         {
             if (ativa.HasValue &&
                 await db.Unidades.AsNoTracking().AnyAsync(u => u.Id == ativa.Value && u.Ativo, ct))

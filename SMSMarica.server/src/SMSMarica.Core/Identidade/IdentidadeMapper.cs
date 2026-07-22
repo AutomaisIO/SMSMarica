@@ -24,7 +24,9 @@ internal static class IdentidadeMapper
         u.DeveTrocarSenha,
         // Motorista (linha 1:1) tem prioridade; senão, médico resolvido via FHIR pelo CPF.
         DetectarPapel(u) ?? (medico is not null ? "Medico" : null),
-        medico?.Texto);
+        medico?.Texto,
+        u.Login,
+        u.AcessoGlobal);
 
     public static UsuarioListItemDto ParaListItem(Usuario u) =>
         new(u.Id, u.NomeCompleto, u.Cpf, u.Email, u.FotoBase64, u.Ativo, u.DeveTrocarSenha);

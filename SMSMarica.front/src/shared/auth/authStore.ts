@@ -55,6 +55,11 @@ export type UsuarioAutenticado = {
   deveTrocarSenha: boolean;
   /** Papel derivado no hub FHIR: "Medico", "Motorista"… (null para usuário comum). */
   papelAtual?: string;
+  /**
+   * Enxerga todas as unidades. Também é quem pode conceder isso a outro. Opcional porque
+   * sessão gravada antes deste campo existir volta do localStorage sem ele.
+   */
+  acessoGlobal?: boolean;
 };
 
 type PermissaoApi = { modulo: ModuloPermissao; acoes: string };
@@ -141,6 +146,7 @@ type LoginResposta = {
     email: string;
     deveTrocarSenha: boolean;
     papelAtual?: string | null;
+    acessoGlobal?: boolean;
   };
   permissoes: PermissaoApi[];
   unidades?: { id: string; nome: string; principal: boolean }[];
@@ -178,6 +184,7 @@ export const useAuth = create<AuthState>((set, get) => ({
       email: data.usuario.email,
       deveTrocarSenha: data.usuario.deveTrocarSenha,
       papelAtual: data.usuario.papelAtual ?? undefined,
+      acessoGlobal: data.usuario.acessoGlobal ?? false,
     };
     const permissoes = indexarPermissoes(data.permissoes);
     const unidades: UnidadeVinculada[] = data.unidades ?? [];

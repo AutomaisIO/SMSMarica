@@ -304,6 +304,11 @@ public static class DbSeeder
                 Email = AdminEmail,
                 Cpf = AdminCpf,
                 Ativo = true,
+                // Só na CRIAÇÃO (ambiente novo): alguém precisa nascer com acesso global,
+                // senão ninguém consegue conceder a ninguém. Num ambiente já existente o
+                // seeder não passa por aqui — inclusive porque este usuário genérico deve
+                // ser desativado assim que houver administradores com nome próprio.
+                AcessoGlobal = true,
                 CriadoEm = DateTime.UtcNow,
                 SenhaHash = string.Empty,
             };
