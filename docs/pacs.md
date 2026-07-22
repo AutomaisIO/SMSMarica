@@ -43,19 +43,23 @@ flowchart LR
 > Não documentar senhas neste repositório. SSH é por chave/senha mantidas no
 > cofre da equipe.
 
-### Outros serviços no mesmo host (não relacionados ao PACS)
+### Outros serviços no mesmo host
 
-| Porta | Processo | Domínio | Finalidade |
-|-------|----------|---------|------------|
-| 5000 | `dotnet` (**parado**) | `api.pegaph.automais.app` | API do Colégio pH — outro produto. **Parado e desabilitado em 2026-07-22** para liberar RAM (a VM tem 2 GB). Reverter: `systemctl enable --now pegaph`. |
-| 80/443 | nginx | `pegaph.automais.app` / `api.pegaph.automais.app` | Frontend e API do produto acima. |
+**Nenhum.** O host é dedicado ao PACS desde **2026-07-22**: o produto `pegaph`
+(API + frontend do Colégio pH, em `pegaph.automais.app` / `api.pegaph.automais.app`)
+foi **removido** — serviço systemd, `/home/PegaPh`, `/var/www/pegaph`, os dois vhosts
+do nginx e o certificado Let's Encrypt (via `certbot delete`, para não gerar falha de
+renovação). Backup completo em `/root/pacs-backups/pegaph-removido-2026-07-22/`
+(app, frontend, nginx, unit e cert — 4,5 MB).
 
-> O PostgreSQL local **não** é do pegaph: hospeda o `dcmdb`. O pegaph apontava para
-> `ph_saida_escolar`, que não existe neste cluster.
->
-> **Swap de 4 GB criado em 2026-07-22** (`/swapfile`, `vm.swappiness=10`, persistente em
-> `/etc/fstab`). A VM tem 2 GB de RAM e rodava **sem swap nenhum**, com ~140 MB livres —
-> qualquer pico deixava o OOM killer escolher a vítima, possivelmente o PostgreSQL.
+Motivo: a VM tem apenas 2 GB de RAM. Junto com o swap de 4 GB criado no mesmo dia,
+isso tirou o servidor da zona de risco de OOM.
+
+O PostgreSQL local **não** era do pegaph: hospeda o `dcmdb`. O pegaph apontava para
+`ph_saida_escolar`, que não existe neste cluster.
+
+> **nginx continua instalado, sem nenhum site habilitado.** Mantido de propósito: é
+> por ele que o `:8080` deve passar a ser exposto com TLS (§10.4).
 
 O PACS **não** está atrás do nginx local — fica direto em `:8080` (plain HTTP).
 Ver §10 (problemas conhecidos).
