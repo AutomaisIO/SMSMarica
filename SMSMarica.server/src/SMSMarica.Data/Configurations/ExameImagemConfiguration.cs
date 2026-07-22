@@ -23,6 +23,14 @@ internal sealed class ExameImagemConfiguration : IEntityTypeConfiguration<ExameI
         builder.Property(e => e.StudyInstanceUID).HasColumnName("study_instance_uid").HasMaxLength(128).IsRequired();
         builder.Property(e => e.WorklistItemUid).HasColumnName("worklist_item_uid").HasMaxLength(128);
 
+        // Estação escolhida (quando a unidade tem mais de um equipamento na modalidade).
+        // Restrict: equipamento com exame apontando para ele não some do histórico.
+        builder.Property(e => e.EquipamentoId).HasColumnName("equipamento_id");
+        builder.HasOne(e => e.Equipamento)
+            .WithMany()
+            .HasForeignKey(e => e.EquipamentoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.Property(e => e.Status).HasColumnName("status").HasConversion<int>().IsRequired();
 
         builder.Property(e => e.IniciadoEm).HasColumnName("iniciado_em");

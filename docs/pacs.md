@@ -200,13 +200,46 @@ cadastrado** no painel (*Exames de Imagem → Equipamentos*): casa a **unidade
 executante** da solicitação com a **modalidade** do tipo de exame e usa o
 `IdentificadorDicom` do equipamento — ver `Core/Worklist/ResolvedorEstacaoWorklist.cs`.
 
-**Não há AE de fallback.** Sem equipamento ativo na combinação unidade+modalidade,
-o envio falha com `worklist.sem_equipamento` ("Sem equipamento configurado"), a
-mensagem fica visível no exame (`erro_integracao_pacs`) e o worker retenta com
-backoff — cadastrar o equipamento resolve sozinho, sem reprocessar nada. A
-alternativa (carimbar um AE genérico) mandaria o exame de uma unidade para a
-estação de outra. Os equipamentos que já operavam entraram pela migration
-`SeedEquipamentosCdtCmi`, ancorada no CNES da unidade.
+**Não há AE de fallback, e o sistema nunca sorteia estação.** A régua, aplicada
+na autorização da recepção e de novo no envio:
+
+| Equipamentos ativos na unidade+modalidade | O que acontece |
+|---|---|
+| **nenhum** | autorização **passa** (cadastrar equipamento é tarefa de administrador — travar a recepção deixaria o paciente parado no balcão); o envio falha com `worklist.sem_equipamento`, visível no exame |
+| **um** | usado automaticamente e **gravado** em `exame_imagem.equipamento_id` — a decisão fica explícita, e equipamento cadastrado depois não muda o destino deste pedido |
+| **dois ou mais** | a autorização **recusa** com `autorizacao.equipamento_obrigatorio` até a recepção escolher a sala (`POST /solicitacoes-exame/{id}/autorizar` aceita `equipamentoId`; as opções vêm de `GET /solicitacoes-exame/{id}/equipamentos`) |
+
+A escolha é exigida **na autorização** porque é o último ponto do fluxo com uma
+pessoa presente que sabe em qual sala o paciente vai entrar — depois disso o envio
+é do worker. Se o equipamento escolhido for desativado antes do envio, o resolvedor
+volta a deduzir: com um substituto único segue, com dois para e pede escolha nova.
+
+O erro fica em `erro_integracao_pacs` e o worker retenta com backoff — cadastrar ou
+escolher o equipamento resolve sozinho, sem reprocessar nada. Carimbar um AE
+genérico mandaria o exame de uma unidade para a estação de outra. Os equipamentos
+que já operavam entraram pela migration `SeedEquipamentosCdtCmi`, ancorada no CNES.
+
+### Isolamento por unidade no servidor (Worklist Label)
+
+Filtrar por `ScheduledStationAETitle` é decisão do **equipamento**: se o técnico não
+configurar o filtro, a máquina recebe todos os itens da modalidade — inclusive de
+outra unidade. O dcm4chee não filtra pelo Calling AE de quem consulta, mas desde a
+5.30 oferece o **Worklist Label** `(0074,1202)`, e é isso que fecha a porta do lado
+do servidor:
+
+- cada item MWL sai carimbado com o AE do equipamento também no WorklistLabel
+  (`ConstrutorMwlItem`);
+- cada Archive AE de worklist tem `dcmMWLWorklistLabel` com o label da sua estação —
+  `WORK-CDT` → `FDR-MAMO`, `WORK-CMI` → `US_CMI`;
+- o equipamento consulta **o AE da sua unidade**, e o servidor só devolve o que é dele.
+
+> **Item sem label é devolvido a TODOS os AEs** (regra do dcm4chee: "com este label
+> ou sem label"). Por isso carimbamos sempre — item não marcado fura o isolamento.
+
+O backend **não** usa os AEs com label: fala pelo AE administrativo **`WORKLIST`**
+(sem label, enxerga tudo) para criar, confirmar e remover itens —
+`Pacs:Dcm4chee:WorklistBaseUrl`. Se ele usasse um AE com label, deixaria de enxergar
+os itens das outras unidades e quebraria a confirmação e a limpeza.
 
 ### Ciclo de vida do item de worklist (sem MPPS)
 

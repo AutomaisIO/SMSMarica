@@ -215,3 +215,13 @@ export type AtualizarSolicitacaoPayload = {
   /** Data da solicitação (dia de calendário, "yyyy-MM-dd"); opcional. */
   dataSolicitacao: string | null;
 };
+
+/** Estação (equipamento) elegível para executar o exame — usada na autorização. */
+export type EquipamentoExame = {
+  id: string;
+  nome: string;
+  /** AE Title configurado no aparelho — exibido para conferência. */
+  aeTitle: string;
+  /** Já é a estação gravada neste exame. */
+  selecionado: boolean;
+};

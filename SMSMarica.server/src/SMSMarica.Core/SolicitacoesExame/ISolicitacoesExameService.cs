@@ -36,8 +36,24 @@ public interface ISolicitacoesExameService
     /// enfileira o envio ao PACS (se o tipo envia à worklist). Exige que o paciente tenha um
     /// número VERIFICADO (senão lança ValidacaoException). Se a confirmação ainda estava
     /// pendente, marca Confirmada com canal "presencial".
+    /// <para>
+    /// <paramref name="equipamentoId"/> fixa a estação que vai executar. Obrigatório quando a
+    /// unidade tem MAIS DE UM equipamento na modalidade — sem ele, lança
+    /// <c>autorizacao.equipamento_obrigatorio</c> (a recepção é a última pessoa no fluxo que
+    /// sabe em qual sala o paciente entra; depois disso o envio é do worker). Com um único
+    /// equipamento, ele é gravado automaticamente; com nenhum, a autorização passa e o erro
+    /// aparece no envio (cadastrar equipamento é tarefa de administrador, não da recepção).
+    /// </para>
     /// </summary>
-    Task AutorizarAsync(Guid id, string chaveConfirmacao, CancellationToken cancellationToken = default);
+    Task AutorizarAsync(
+        Guid id, string chaveConfirmacao, Guid? equipamentoId = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Equipamentos elegíveis para executar o exame (unidade executante + modalidade). A tela de
+    /// autorização usa para montar a seleção quando há mais de um.
+    /// </summary>
+    Task<IReadOnlyList<EquipamentoExameDto>> ListarEquipamentosDisponiveisAsync(
+        Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>Refaz o POST UPS-RS quando a primeira tentativa falhou (status ainda Solicitada).</summary>
     Task ReenviarWorklistAsync(Guid id, CancellationToken cancellationToken = default);

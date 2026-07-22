@@ -24,6 +24,7 @@ public sealed class SolicitacoesExameService(
     SmsMaricaDbContext db,
     IGeradorIdentificadores geradorIds,
     IDcm4cheeMwlClient mwlClient,
+    IResolvedorEstacaoWorklist estacaoWorklist,
     INotificadorExame notificador,
     IUsuarioAtualAccessor usuarioAtual,
     Pacientes.Fhir.IPacienteResolver pacienteResolver,
@@ -36,6 +37,7 @@ public sealed class SolicitacoesExameService(
     private readonly SmsMaricaDbContext _db = db;
     private readonly IGeradorIdentificadores _geradorIds = geradorIds;
     private readonly IDcm4cheeMwlClient _mwlClient = mwlClient;
+    private readonly IResolvedorEstacaoWorklist _estacaoWorklist = estacaoWorklist;
     private readonly INotificadorExame _notificador = notificador;
     private readonly IUsuarioAtualAccessor _usuarioAtual = usuarioAtual;
     private readonly Pacientes.Fhir.IPacienteResolver _pacienteResolver = pacienteResolver;
@@ -396,7 +398,8 @@ public sealed class SolicitacoesExameService(
         return s is null ? null : await EnriquecerAsync(SolicitacoesExameMapper.ParaDto(s), cancellationToken);
     }
 
-    public async Task AutorizarAsync(Guid id, string chaveConfirmacao, CancellationToken cancellationToken = default)
+    public async Task AutorizarAsync(
+        Guid id, string chaveConfirmacao, Guid? equipamentoId = null, CancellationToken cancellationToken = default)
     {
         var chave = (chaveConfirmacao ?? string.Empty).Trim();
         if (chave.Length == 0)
@@ -418,6 +421,37 @@ public sealed class SolicitacoesExameService(
             throw new ValidacaoException(
                 "autorizacao.sem_numero_verificado",
                 "O paciente ainda não tem um número de telefone verificado. Verifique o contato antes de autorizar.");
+
+        // Gate da estação: a recepção é quem sabe em qual sala o paciente vai entrar. Com duas ou
+        // mais na modalidade, a escolha é EXIGIDA aqui — depois de autorizar, o envio é do worker
+        // e não há mais ninguém para perguntar. Nenhum equipamento cadastrado NÃO bloqueia: isso é
+        // cadastro de administrador, e travar a recepção deixaria o paciente parado no balcão; o
+        // exame é autorizado e o erro "Sem equipamento configurado" aparece no envio.
+        if (s.Status == StatusSolicitacaoExame.Solicitada && (s.TipoExame?.EnviarParaWorklist ?? false))
+        {
+            var candidatos = await _estacaoWorklist.ListarCandidatosAsync(s, cancellationToken);
+
+            if (equipamentoId is { } escolhido)
+            {
+                if (candidatos.All(c => c.Id != escolhido))
+                    throw new ValidacaoException("autorizacao.equipamento_invalido",
+                        "O equipamento selecionado não atende esta unidade/modalidade.");
+                s.EquipamentoId = escolhido;
+            }
+            else if (candidatos.Count > 1)
+            {
+                var nomes = string.Join(", ", candidatos.Select(c => c.Nome));
+                throw new ConflitoException("autorizacao.equipamento_obrigatorio",
+                    $"Esta unidade tem mais de um equipamento para a modalidade do exame ({nomes}). " +
+                    "Selecione em qual o exame será realizado.");
+            }
+            else if (candidatos.Count == 1)
+            {
+                // Registra a estação mesmo quando só há uma: a decisão fica explícita no exame,
+                // e um equipamento novo cadastrado depois não muda o destino deste pedido.
+                s.EquipamentoId = candidatos[0].Id;
+            }
+        }
 
         var agora = DateTime.UtcNow;
         reg.ChaveConfirmacao = chave;
@@ -446,6 +480,19 @@ public sealed class SolicitacoesExameService(
         }
 
         await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<EquipamentoExameDto>> ListarEquipamentosDisponiveisAsync(
+        Guid id, CancellationToken cancellationToken = default)
+    {
+        var s = await _db.ExamesImagem.AsNoTracking()
+            .Include(x => x.TipoExame)
+            .Include(x => x.Solicitacao)
+            .FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(ExameImagem), id);
+
+        var candidatos = await _estacaoWorklist.ListarCandidatosAsync(s, cancellationToken);
+        return [.. candidatos.Select(c => new EquipamentoExameDto(c.Id, c.Nome, c.AeTitle, c.Id == s.EquipamentoId))];
     }
 
     public async Task<Guid> CadastrarAsync(CadastrarSolicitacaoExameRequest request, CancellationToken cancellationToken = default)

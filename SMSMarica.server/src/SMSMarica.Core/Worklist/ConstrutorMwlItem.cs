@@ -43,7 +43,18 @@ internal static class ConstrutorMwlItem
         return cpf.Length == 11 ? cpf : s.Solicitacao!.PacienteId.ToString();
     }
 
-    /// <summary>Item MWL completo (top-level + Scheduled Procedure Step Sequence).</summary>
+    /// <summary>
+    /// Item MWL completo (top-level + Scheduled Procedure Step Sequence).
+    /// <para>
+    /// O <b>WorklistLabel (0074,1202)</b> repete o AE da estação de propósito: um Archive AE do
+    /// dcm4chee configurado com <c>dcmMWLWorklistLabel</c> só devolve, no C-FIND MWL, os itens
+    /// daquele label — é a trava do lado do SERVIDOR para o equipamento de uma unidade não puxar
+    /// a lista de outra, mesmo que o técnico esqueça de filtrar por ScheduledStationAETitle na
+    /// máquina. Item SEM label é devolvido a todos os AEs, então carimbar sempre é o que faz a
+    /// separação valer. O AE administrativo usado por nós (<c>WORKLIST</c>) não tem label e
+    /// continua enxergando tudo — é por ele que criamos, confirmamos e removemos itens.
+    /// </para>
+    /// </summary>
     public static JsonObject Item(ExameImagem s, PacienteResumo paciente, string stationAeTitle)
     {
         var tipo = s.TipoExame ?? throw new InvalidOperationException("TipoExame não carregado.");
@@ -60,6 +71,7 @@ internal static class ConstrutorMwlItem
             ["00321060"] = LoDesc(tipo.RequestedProcedureDescription),      // RequestedProcedureDescription (<= 16, exigência do Fuji)
             ["00401001"] = Sh(RequestedProcedureId(s)),                     // RequestedProcedureID (<=10; se omitido o dcm4chee gera RP-XXXXXXXX >10)
             ["00401003"] = Sh(MapearPrioridade(s.Solicitacao!.Prioridade)),             // RequestedProcedurePriority
+            ["00741202"] = Lo(stationAeTitle),                              // WorklistLabel — ver nota abaixo
             ["00400100"] = new JsonObject                                   // ScheduledProcedureStepSequence
             {
                 ["vr"] = "SQ",

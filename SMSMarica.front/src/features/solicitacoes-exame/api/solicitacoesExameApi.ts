@@ -2,6 +2,7 @@ import { http } from '@/shared/api/httpClient';
 import type {
   AtualizarSolicitacaoPayload,
   CadastrarSolicitacaoPayload,
+  EquipamentoExame,
   FiltroSolicitacoes,
   HistoricoSolicitacao,
   SolicitacaoExame,
@@ -50,9 +51,23 @@ export async function cancelarSolicitacao(id: string, motivo: string): Promise<v
   await http.post(`/solicitacoes-exame/${id}/cancelar`, { motivo });
 }
 
-/** Autorização presencial (recepção): grava a chave e libera o envio ao PACS. */
-export async function autorizarSolicitacao(id: string, chaveConfirmacao: string): Promise<void> {
-  await http.post(`/solicitacoes-exame/${id}/autorizar`, { chaveConfirmacao });
+/**
+ * Autorização presencial (recepção): grava a chave e libera o envio ao PACS.
+ * `equipamentoId` é obrigatório quando a unidade tem mais de um equipamento na
+ * modalidade — o servidor recusa com `autorizacao.equipamento_obrigatorio` sem ele.
+ */
+export async function autorizarSolicitacao(
+  id: string,
+  chaveConfirmacao: string,
+  equipamentoId?: string | null,
+): Promise<void> {
+  await http.post(`/solicitacoes-exame/${id}/autorizar`, { chaveConfirmacao, equipamentoId: equipamentoId ?? null });
+}
+
+/** Equipamentos (estações) elegíveis para executar o exame — unidade executante + modalidade. */
+export async function listarEquipamentosDoExame(id: string): Promise<EquipamentoExame[]> {
+  const { data } = await http.get<EquipamentoExame[]>(`/solicitacoes-exame/${id}/equipamentos`);
+  return data;
 }
 
 export async function reenviarWorklist(id: string): Promise<void> {

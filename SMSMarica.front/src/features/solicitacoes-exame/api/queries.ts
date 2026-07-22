@@ -9,6 +9,7 @@ import {
   obterSolicitacaoPorStudy,
   reenviarWorklist,
   autorizarSolicitacao,
+  listarEquipamentosDoExame,
   obterHistorico,
   reenviarComunicacao,
   registrarContato,
@@ -119,11 +120,34 @@ export function useReenviarWorklist() {
   });
 }
 
+/**
+ * Estações elegíveis para o exame. Só busca quando o card de autorização está em uso
+ * (`habilitado`) — a lista muda pouco, então 5 min de cache evitam ida a cada render.
+ */
+export function useEquipamentosDoExame(id: string | null, habilitado = true) {
+  return useQuery({
+    queryKey: [...solicitacoesKeys.raiz, 'equipamentos', id ?? 'nenhum'],
+    queryFn: () => {
+      if (!id) throw new Error('Id não informado.');
+      return listarEquipamentosDoExame(id);
+    },
+    enabled: !!id && habilitado,
+    staleTime: 5 * 60_000,
+  });
+}
+
 export function useAutorizarSolicitacao() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, chaveConfirmacao }: { id: string; chaveConfirmacao: string }) =>
-      autorizarSolicitacao(id, chaveConfirmacao),
+    mutationFn: ({
+      id,
+      chaveConfirmacao,
+      equipamentoId,
+    }: {
+      id: string;
+      chaveConfirmacao: string;
+      equipamentoId?: string | null;
+    }) => autorizarSolicitacao(id, chaveConfirmacao, equipamentoId),
     onSuccess: (_d, v) => {
       client.invalidateQueries({ queryKey: solicitacoesKeys.raiz });
       client.invalidateQueries({ queryKey: solicitacoesKeys.porId(v.id) });

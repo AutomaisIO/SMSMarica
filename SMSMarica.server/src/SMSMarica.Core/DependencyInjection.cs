@@ -120,7 +120,7 @@ public static class DependencyInjection
         services.Configure<Dcm4cheeMwlOptions>(configuration.GetSection(Dcm4cheeMwlOptions.SecaoConfig));
         services.AddScoped<IResolvedorEstacaoWorklist, ResolvedorEstacaoWorklist>();
         var worklistBaseUrl = configuration["Pacs:Dcm4chee:WorklistBaseUrl"]
-            ?? "http://pacs.marica.automais.cloud:8080/dcm4chee-arc/aets/WORK-CDT/rs/";
+            ?? "http://pacs.marica.automais.cloud:8080/dcm4chee-arc/aets/WORKLIST/rs/";
         services
             .AddHttpClient<IDcm4cheeMwlClient, Dcm4cheeMwlClient>(client =>
             {

@@ -31,6 +31,7 @@ public class LimpezaWorklistTests(PostgresFixture fixture)
             db,
             Substitute.For<IGeradorIdentificadores>(),
             mwl,
+            new ResolvedorEstacaoWorklist(db, NullLogger<ResolvedorEstacaoWorklist>.Instance),
             Substitute.For<INotificadorExame>(),
             new UsuarioAtualAccessorFake(Guid.NewGuid()),
             Substitute.For<IPacienteResolver>(),

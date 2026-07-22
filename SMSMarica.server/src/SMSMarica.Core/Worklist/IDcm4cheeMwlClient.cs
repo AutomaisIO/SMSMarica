@@ -4,7 +4,7 @@ namespace SMSMarica.Core.Worklist;
 
 /// <summary>
 /// Cliente do endpoint de Modality Worklist (MWL) do dcm4chee — REST <c>/mwlitems</c>
-/// no AE WORK-CDT. Cria/atualiza, confirma e exclui itens que o equipamento (Fuji
+/// no AE administrativo WORKLIST. Cria/atualiza, confirma e exclui itens que o equipamento (Fuji
 /// FDR) puxa via C-FIND MWL clássico. Substitui o antigo fluxo UPS-RS.
 /// </summary>
 public interface IDcm4cheeMwlClient

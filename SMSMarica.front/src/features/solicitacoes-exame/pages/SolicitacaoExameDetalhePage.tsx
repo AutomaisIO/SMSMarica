@@ -26,6 +26,7 @@ import { Campo } from '@/shared/ui/Campo';
 import { notificar } from '@/shared/ui/Notificacoes';
 import {
   useAutorizarSolicitacao,
+  useEquipamentosDoExame,
   useCancelarSolicitacao,
   useEnviarComunicacaoManual,
   useExcluirSolicitacao,
@@ -460,15 +461,31 @@ function CardAutorizacao({ s }: { s: SolicitacaoExame }) {
   const podeEditar = usePermissao('SolicitacoesExame', 'Edicao');
   const autorizar = useAutorizarSolicitacao();
   const [chave, setChave] = useState(s.chaveConfirmacao ?? '');
+  const [equipamentoId, setEquipamentoId] = useState('');
   const [erro, setErro] = useState<string | null>(null);
 
   const preRecebido = s.status === 'Solicitada' || s.status === 'Enviada';
+  const pendente = preRecebido && !s.autorizadoEm;
+  // Estações da unidade nesta modalidade. Só interessa enquanto a autorização está pendente.
+  const equipamentos = useEquipamentosDoExame(s.id, pendente && podeEditar);
+  const opcoes = equipamentos.data ?? [];
+  // Uma só (ou nenhuma cadastrada): o servidor resolve sozinho, sem perguntar nada à recepção.
+  const precisaEscolher = opcoes.length > 1;
+
   if (!preRecebido && !s.autorizadoEm) return null;
 
   async function submeter() {
     setErro(null);
+    if (precisaEscolher && !equipamentoId) {
+      setErro('Selecione em qual equipamento o exame será realizado.');
+      return;
+    }
     try {
-      await autorizar.mutateAsync({ id: s.id, chaveConfirmacao: chave.trim() });
+      await autorizar.mutateAsync({
+        id: s.id,
+        chaveConfirmacao: chave.trim(),
+        equipamentoId: equipamentoId || null,
+      });
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
     }
@@ -493,8 +510,8 @@ function CardAutorizacao({ s }: { s: SolicitacaoExame }) {
           nome) antes de autorizar.
         </p>
       ) : (
-        <div className="flex items-end gap-2">
-          <Campo label="Chave de autorização" htmlFor="chave-autorizacao" className="flex-1">
+        <div className="flex flex-wrap items-end gap-2">
+          <Campo label="Chave de autorização" htmlFor="chave-autorizacao" className="flex-1 min-w-[12rem]">
             <Input
               id="chave-autorizacao"
               value={chave}
@@ -502,7 +519,28 @@ function CardAutorizacao({ s }: { s: SolicitacaoExame }) {
               placeholder="Chave da confirmação do SISREG"
             />
           </Campo>
-          <Button onClick={submeter} disabled={autorizar.isPending}>
+          {precisaEscolher ? (
+            <Campo
+              label="Equipamento"
+              htmlFor="equipamento-autorizacao"
+              className="flex-1 min-w-[12rem]"
+              ajuda="Esta unidade tem mais de um equipamento para a modalidade do exame. O escolhido é quem recebe o exame na worklist — selecione a sala em que o paciente será atendido."
+            >
+              <Select
+                id="equipamento-autorizacao"
+                value={equipamentoId}
+                onChange={(e) => setEquipamentoId(e.target.value)}
+              >
+                <option value="">Selecione…</option>
+                {opcoes.map((eq) => (
+                  <option key={eq.id} value={eq.id}>
+                    {eq.nome} ({eq.aeTitle})
+                  </option>
+                ))}
+              </Select>
+            </Campo>
+          ) : null}
+          <Button onClick={submeter} disabled={autorizar.isPending || equipamentos.isPending}>
             {autorizar.isPending ? 'Autorizando…' : 'Autorizar e enviar'}
           </Button>
         </div>

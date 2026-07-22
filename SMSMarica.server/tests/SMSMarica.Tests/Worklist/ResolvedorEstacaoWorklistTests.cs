@@ -19,7 +19,7 @@ public class ResolvedorEstacaoWorklistTests(PostgresFixture fixture)
     private static ResolvedorEstacaoWorklist CriarResolvedor(SmsMaricaDbContext db) =>
         new(db, NullLogger<ResolvedorEstacaoWorklist>.Instance);
 
-    private static async Task AdicionarEquipamentoAsync(
+    private static async Task<Equipamento> AdicionarEquipamentoAsync(
         SmsMaricaDbContext db,
         Guid unidadeId,
         ModalidadeDicom modalidade,
@@ -27,7 +27,7 @@ public class ResolvedorEstacaoWorklistTests(PostgresFixture fixture)
         bool ativo = true,
         string? nome = null)
     {
-        db.Equipamentos.Add(new Equipamento
+        var equipamento = new Equipamento
         {
             Id = Guid.CreateVersion7(),
             Nome = nome ?? $"EQUIP {Guid.NewGuid().ToString("N")[..8]}",
@@ -36,8 +36,24 @@ public class ResolvedorEstacaoWorklistTests(PostgresFixture fixture)
             IdentificadorDicom = identificadorDicom,
             Ativo = ativo,
             CriadoEm = DateTime.UtcNow,
-        });
+        };
+        db.Equipamentos.Add(equipamento);
         await db.SaveChangesAsync();
+        return equipamento;
+    }
+
+    /// <summary>Outra unidade qualquer (FK real — equipamento não aceita unidade inexistente).</summary>
+    private static async Task<Guid> OutraUnidadeAsync(SmsMaricaDbContext db)
+    {
+        var unidade = new Unidade
+        {
+            Id = Guid.NewGuid(),
+            Nome = $"OUTRA UNIDADE {Guid.NewGuid().ToString("N")[..8]}",
+            CriadoEm = DateTime.UtcNow,
+        };
+        db.Unidades.Add(unidade);
+        await db.SaveChangesAsync();
+        return unidade.Id;
     }
 
     private static async Task<ConflitoException> AssertSemEquipamentoAsync(
@@ -104,7 +120,7 @@ public class ResolvedorEstacaoWorklistTests(PostgresFixture fixture)
     }
 
     [Fact]
-    public async Task Com_dois_equipamentos_a_escolha_e_estavel_pelo_nome()
+    public async Task Com_dois_equipamentos_e_sem_escolha_recusa_em_vez_de_sortear()
     {
         await using var db = fixture.CriarDbContext();
         var exame = await SeedSolicitacao.CriarAsync(db, Guid.NewGuid());
@@ -112,8 +128,63 @@ public class ResolvedorEstacaoWorklistTests(PostgresFixture fixture)
         await AdicionarEquipamentoAsync(db, unidadeId, ModalidadeDicom.MG, "SALA_B", nome: "Sala B");
         await AdicionarEquipamentoAsync(db, unidadeId, ModalidadeDicom.MG, "SALA_A", nome: "Sala A");
 
+        var ex = await Assert.ThrowsAsync<ConflitoException>(() => CriarResolvedor(db).ResolverAsync(exame));
+
+        Assert.Contains("Selecione", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Sala A", ex.Message, StringComparison.Ordinal); // a mensagem diz QUAIS
+        Assert.Contains("Sala B", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Equipamento_escolhido_no_exame_manda()
+    {
+        await using var db = fixture.CriarDbContext();
+        var exame = await SeedSolicitacao.CriarAsync(db, Guid.NewGuid());
+        var unidadeId = exame.Solicitacao!.UnidadeExecutanteId;
+        await AdicionarEquipamentoAsync(db, unidadeId, ModalidadeDicom.MG, "SALA_A", nome: "Sala A");
+        var salaB = await AdicionarEquipamentoAsync(db, unidadeId, ModalidadeDicom.MG, "SALA_B", nome: "Sala B");
+
+        exame.EquipamentoId = salaB.Id;   // recepção escolheu a sala B
+        await db.SaveChangesAsync();
+
         var ae = await CriarResolvedor(db).ResolverAsync(exame);
 
-        Assert.Equal("SALA_A", ae);
+        Assert.Equal("SALA_B", ae); // e não a primeira em ordem alfabética
+    }
+
+    [Fact]
+    public async Task Escolha_que_saiu_do_ar_volta_a_deduzir()
+    {
+        // Equipamento escolhido foi desativado depois da autorização: com um único substituto
+        // válido, o exame segue em vez de travar.
+        await using var db = fixture.CriarDbContext();
+        var exame = await SeedSolicitacao.CriarAsync(db, Guid.NewGuid());
+        var unidadeId = exame.Solicitacao!.UnidadeExecutanteId;
+        var desativado = await AdicionarEquipamentoAsync(db, unidadeId, ModalidadeDicom.MG, "SALA_OFF", ativo: false, nome: "Sala Off");
+        await AdicionarEquipamentoAsync(db, unidadeId, ModalidadeDicom.MG, "SALA_OK", nome: "Sala Ok");
+
+        exame.EquipamentoId = desativado.Id;
+        await db.SaveChangesAsync();
+
+        var ae = await CriarResolvedor(db).ResolverAsync(exame);
+
+        Assert.Equal("SALA_OK", ae);
+    }
+
+    [Fact]
+    public async Task Candidatos_lista_apenas_os_da_unidade_e_modalidade()
+    {
+        await using var db = fixture.CriarDbContext();
+        var exame = await SeedSolicitacao.CriarAsync(db, Guid.NewGuid()); // MG
+        var unidadeId = exame.Solicitacao!.UnidadeExecutanteId;
+        await AdicionarEquipamentoAsync(db, unidadeId, ModalidadeDicom.MG, "SALA_B", nome: "Sala B");
+        await AdicionarEquipamentoAsync(db, unidadeId, ModalidadeDicom.MG, "SALA_A", nome: "Sala A");
+        await AdicionarEquipamentoAsync(db, unidadeId, ModalidadeDicom.US, "US_X", nome: "Ultrassom");   // outra modalidade
+        await AdicionarEquipamentoAsync(db, await OutraUnidadeAsync(db), ModalidadeDicom.MG, "OUTRA_UNID");
+
+        var candidatos = await CriarResolvedor(db).ListarCandidatosAsync(exame);
+
+        Assert.Equal(["Sala A", "Sala B"], candidatos.Select(c => c.Nome)); // ordenado por nome
+        Assert.Equal(["SALA_A", "SALA_B"], candidatos.Select(c => c.AeTitle));
     }
 }

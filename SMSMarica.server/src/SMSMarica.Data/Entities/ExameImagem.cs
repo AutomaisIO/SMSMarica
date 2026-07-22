@@ -40,6 +40,14 @@ public class ExameImagem
     /// <summary>UID do workitem no dcm4chee (retornado pelo POST). Permite cancelar/atualizar.</summary>
     public string? WorklistItemUid { get; set; }
 
+    /// <summary>Estação que vai executar — define o ScheduledStationAETitle e o WorklistLabel do
+    /// item MWL. Nulo = deduzido da unidade executante + modalidade no momento do envio (caminho
+    /// normal, quando a unidade tem um único equipamento na modalidade). Preenchido quando a
+    /// recepção teve de ESCOLHER entre dois ou mais — aí a decisão fica registrada no exame, e não
+    /// no acaso da ordem alfabética.</summary>
+    public Guid? EquipamentoId { get; set; }
+    public Equipamento? Equipamento { get; set; }
+
     // ---- Ciclo de aquisição ----
 
     public StatusSolicitacaoExame Status { get; set; } = StatusSolicitacaoExame.Solicitada;

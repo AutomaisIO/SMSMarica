@@ -8,13 +8,12 @@ using SMSMarica.Data.Entities.Enums;
 namespace SMSMarica.Core.Worklist;
 
 /// <summary>
-/// Resolve o AE Title da estação pelo <see cref="Equipamento"/> cadastrado — casa a
-/// unidade executante da solicitação com a modalidade do tipo de exame.
+/// Resolve o AE Title da estação pelo <see cref="Equipamento"/>: o escolhido no exame, ou o
+/// único da unidade executante naquela modalidade.
 ///
-/// Sem equipamento cadastrado, o envio FALHA com "Sem equipamento configurado" em vez
-/// de carimbar um AE genérico: mandar o exame de uma unidade para a estação de outra é
-/// pior que não mandar. O erro aparece no exame (<c>ErroIntegracaoPacs</c>) e o worker
-/// retenta com backoff — cadastrar o equipamento resolve sozinho, sem reprocessar nada.
+/// Nunca inventa destino. Sem equipamento, o envio falha com "Sem equipamento configurado";
+/// com mais de um e sem escolha, falha pedindo a seleção. Mandar o exame de uma unidade para a
+/// estação de outra — ou sortear entre duas salas — é pior que não mandar.
 /// </summary>
 public sealed class ResolvedorEstacaoWorklist(
     SmsMaricaDbContext db,
@@ -25,55 +24,84 @@ public sealed class ResolvedorEstacaoWorklist(
 
     public async Task<string> ResolverAsync(ExameImagem exame, CancellationToken cancellationToken = default)
     {
-        var modalidade = await ResolverModalidadeAsync(exame, cancellationToken)
-            ?? throw new ConflitoException("worklist.sem_modalidade",
-                "Sem tipo de exame definido — não dá para saber a modalidade nem o equipamento de destino.");
+        // Escolha explícita da recepção manda — inclusive se a unidade ganhou outro equipamento depois.
+        if (exame.EquipamentoId is { } escolhido)
+        {
+            var eq = await _db.Equipamentos.AsNoTracking()
+                .Where(e => e.Id == escolhido && e.Ativo && e.ExcluidoEm == null)
+                .Select(e => new { e.Nome, e.IdentificadorDicom })
+                .FirstOrDefaultAsync(cancellationToken);
 
-        var unidadeId = await ResolverUnidadeExecutanteAsync(exame, cancellationToken)
-            ?? throw new ConflitoException("worklist.sem_unidade",
-                "Solicitação sem unidade executante — não dá para determinar o equipamento de destino.");
+            if (eq is not null && AeTitleValido(eq.IdentificadorDicom))
+                return eq.IdentificadorDicom!.Trim();
 
-        // Ordem por nome deixa a escolha estável quando a unidade tem mais de um
-        // equipamento da mesma modalidade (ex.: duas salas de ultrassom).
-        var candidatos = await _db.Equipamentos.AsNoTracking()
+            // Equipamento escolhido saiu do ar (desativado/excluído/AE apagado): cai na dedução,
+            // que ou acha um substituto único ou para e pede escolha nova.
+            _logger.LogWarning(
+                "Equipamento {Id} escolhido para {Accession} não está mais utilizável — rededuzindo.",
+                escolhido, exame.AccessionNumber);
+        }
+
+        var candidatos = await ListarCandidatosAsync(exame, cancellationToken);
+
+        if (candidatos.Count == 0)
+        {
+            var unidade = await NomeUnidadeAsync(exame, cancellationToken);
+            var modalidade = await ResolverModalidadeAsync(exame, cancellationToken);
+            throw new ConflitoException("worklist.sem_equipamento",
+                $"Sem equipamento configurado: a unidade {unidade} não tem equipamento {modalidade} ativo com AE Title. " +
+                "Cadastre em Exames de Imagem → Equipamentos.");
+        }
+
+        if (candidatos.Count > 1)
+        {
+            var nomes = string.Join(", ", candidatos.Select(c => c.Nome));
+            throw new ConflitoException("worklist.equipamento_ambiguo",
+                $"A unidade tem mais de um equipamento para esta modalidade ({nomes}). " +
+                "Selecione em qual o exame será realizado.");
+        }
+
+        return candidatos[0].AeTitle;
+    }
+
+    public async Task<IReadOnlyList<EquipamentoCandidato>> ListarCandidatosAsync(
+        ExameImagem exame, CancellationToken cancellationToken = default)
+    {
+        var modalidade = await ResolverModalidadeAsync(exame, cancellationToken);
+        var unidadeId = await ResolverUnidadeExecutanteAsync(exame, cancellationToken);
+        if (modalidade is null || unidadeId is null) return [];
+
+        var equipamentos = await _db.Equipamentos.AsNoTracking()
             .Where(e => e.UnidadeId == unidadeId
                         && e.ModalidadeDicom == modalidade
                         && e.Ativo
                         && e.ExcluidoEm == null
                         && e.IdentificadorDicom != null)
             .OrderBy(e => e.Nome)
-            .Select(e => new { e.Nome, e.IdentificadorDicom })
+            .Select(e => new { e.Id, e.Nome, e.IdentificadorDicom })
             .ToListAsync(cancellationToken);
 
-        var validos = candidatos.Where(c => AeTitleValido(c.IdentificadorDicom)).ToList();
-
-        foreach (var invalido in candidatos.Except(validos))
+        var validos = new List<EquipamentoCandidato>(equipamentos.Count);
+        foreach (var e in equipamentos)
         {
-            _logger.LogWarning(
-                "Equipamento '{Equipamento}' tem identificador DICOM inválido para AE Title ('{Ae}') — ignorado na worklist.",
-                invalido.Nome, invalido.IdentificadorDicom);
+            if (AeTitleValido(e.IdentificadorDicom))
+                validos.Add(new EquipamentoCandidato(e.Id, e.Nome, e.IdentificadorDicom!.Trim()));
+            else
+                _logger.LogWarning(
+                    "Equipamento '{Equipamento}' tem identificador DICOM inválido para AE Title ('{Ae}') — fora da worklist.",
+                    e.Nome, e.IdentificadorDicom);
         }
+        return validos;
+    }
 
-        if (validos.Count == 0)
-        {
-            var unidade = await _db.Unidades.AsNoTracking()
-                .Where(u => u.Id == unidadeId)
-                .Select(u => u.Nome)
-                .FirstOrDefaultAsync(cancellationToken) ?? unidadeId.ToString();
-
-            throw new ConflitoException("worklist.sem_equipamento",
-                $"Sem equipamento configurado: a unidade {unidade} não tem equipamento {modalidade} ativo com AE Title. " +
-                "Cadastre em Exames de Imagem → Equipamentos.");
-        }
-
-        if (validos.Count > 1)
-        {
-            _logger.LogWarning(
-                "Unidade {Unidade} tem {N} equipamentos {Modalidade} com AE Title — usando '{Ae}' para {Accession}.",
-                unidadeId, validos.Count, modalidade, validos[0].IdentificadorDicom, exame.AccessionNumber);
-        }
-
-        return validos[0].IdentificadorDicom!.Trim();
+    private async Task<string> NomeUnidadeAsync(ExameImagem exame, CancellationToken ct)
+    {
+        var unidadeId = await ResolverUnidadeExecutanteAsync(exame, ct);
+        if (unidadeId is null) return "(sem unidade executante)";
+        return await _db.Unidades.AsNoTracking()
+            .Where(u => u.Id == unidadeId)
+            .Select(u => u.Nome)
+            .FirstOrDefaultAsync(ct) ?? unidadeId.ToString()!;
     }
 
     private async Task<ModalidadeDicom?> ResolverModalidadeAsync(ExameImagem exame, CancellationToken ct)

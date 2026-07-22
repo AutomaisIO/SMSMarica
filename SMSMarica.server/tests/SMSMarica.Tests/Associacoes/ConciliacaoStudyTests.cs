@@ -38,6 +38,7 @@ public class ConciliacaoStudyTests(PostgresFixture fixture)
             db,
             Substitute.For<IGeradorIdentificadores>(),
             Substitute.For<IDcm4cheeMwlClient>(),
+            new ResolvedorEstacaoWorklist(db, NullLogger<ResolvedorEstacaoWorklist>.Instance),
             Substitute.For<INotificadorExame>(),
             new UsuarioAtualAccessorFake(),
             Substitute.For<IPacienteResolver>(),

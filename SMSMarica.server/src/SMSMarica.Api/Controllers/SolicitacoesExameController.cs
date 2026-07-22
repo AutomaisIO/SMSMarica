@@ -256,11 +256,23 @@ public sealed class SolicitacoesExameController(
         [FromBody] AutorizarSolicitacaoRequest request,
         CancellationToken cancellationToken)
     {
-        await _service.AutorizarAsync(id, request.ChaveConfirmacao, cancellationToken);
+        await _service.AutorizarAsync(id, request.ChaveConfirmacao, request.EquipamentoId, cancellationToken);
         return NoContent();
     }
 
-    public sealed record AutorizarSolicitacaoRequest(string ChaveConfirmacao);
+    /// <summary><paramref name="EquipamentoId"/> = estação escolhida. Obrigatório quando a unidade
+    /// tem mais de um equipamento na modalidade (senão a autorização recusa pedindo a seleção).</summary>
+    public sealed record AutorizarSolicitacaoRequest(string ChaveConfirmacao, Guid? EquipamentoId = null);
+
+    /// <summary>Equipamentos elegíveis para executar o exame — a tela de autorização usa para
+    /// montar a seleção da estação quando há mais de um.</summary>
+    [HttpGet("{id:guid}/equipamentos")]
+    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<EquipamentoExameDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IReadOnlyList<EquipamentoExameDto>> EquipamentosDisponiveis(
+        Guid id, CancellationToken cancellationToken) =>
+        await _service.ListarEquipamentosDisponiveisAsync(id, cancellationToken);
 
     [HttpPost("{id:guid}/reenviar-worklist")]
     [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Edicao)]

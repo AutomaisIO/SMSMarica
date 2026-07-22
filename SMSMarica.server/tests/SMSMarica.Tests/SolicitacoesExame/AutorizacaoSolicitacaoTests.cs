@@ -10,6 +10,7 @@ using SMSMarica.Core.SolicitacoesExame;
 using SMSMarica.Core.SolicitacoesExame.Identificadores;
 using SMSMarica.Core.Worklist;
 using SMSMarica.Data;
+using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
 using SMSMarica.Tests.Infraestrutura;
 
@@ -37,6 +38,7 @@ public class AutorizacaoSolicitacaoTests(PostgresFixture fixture)
             db,
             Substitute.For<IGeradorIdentificadores>(),
             Substitute.For<IDcm4cheeMwlClient>(),
+            new ResolvedorEstacaoWorklist(db, NullLogger<ResolvedorEstacaoWorklist>.Instance),
             Substitute.For<INotificadorExame>(),
             new UsuarioAtualAccessorFake(Guid.NewGuid()),
             resolver,
@@ -154,5 +156,112 @@ public class AutorizacaoSolicitacaoTests(PostgresFixture fixture)
 
         var atual = await db.ExamesImagem.Include(x => x.Solicitacao).AsNoTracking().SingleAsync(x => x.Id == s.Id);
         Assert.NotNull(atual.ProximaTentativaEm);
+    }
+
+    // ---- Escolha da estação na autorização ----
+
+    private static async Task<Equipamento> SemearEquipamentoAsync(
+        SmsMaricaDbContext db, Guid unidadeId, string nome, string ae)
+    {
+        var equipamento = new Equipamento
+        {
+            Id = Guid.CreateVersion7(),
+            Nome = nome,
+            UnidadeId = unidadeId,
+            ModalidadeDicom = ModalidadeDicom.MG, // o seed cria TipoExame MG
+            IdentificadorDicom = ae,
+            Ativo = true,
+            CriadoEm = DateTime.UtcNow,
+        };
+        db.Equipamentos.Add(equipamento);
+        await db.SaveChangesAsync();
+        return equipamento;
+    }
+
+    [Fact]
+    public async Task Autorizar_com_duas_estacoes_e_sem_escolha_recusa()
+    {
+        await using var db = fixture.CriarDbContext();
+        var pacienteId = Guid.NewGuid();
+        var s = await SeedSolicitacao.CriarAsync(db, pacienteId);
+        var unidadeId = s.Solicitacao!.UnidadeExecutanteId;
+        await SemearEquipamentoAsync(db, unidadeId, "Sala 1", "SALA_1");
+        await SemearEquipamentoAsync(db, unidadeId, "Sala 2", "SALA_2");
+        var service = CriarService(db, SeedSolicitacao.CpfAleatorio(), pacienteId, telefoneVerificado: "21999990000");
+
+        var ex = await Assert.ThrowsAsync<ConflitoException>(() => service.AutorizarAsync(s.Id, "12345"));
+
+        Assert.Equal("autorizacao.equipamento_obrigatorio", ex.Codigo);
+        // Recusou ANTES de autorizar: o exame não pode ter ido para a fila do PACS.
+        var atual = await db.ExamesImagem.Include(x => x.Solicitacao).AsNoTracking().SingleAsync(x => x.Id == s.Id);
+        Assert.Null(atual.Solicitacao!.AutorizadoEm);
+        Assert.Null(atual.ProximaTentativaEm);
+    }
+
+    [Fact]
+    public async Task Autorizar_com_estacao_escolhida_grava_e_enfileira()
+    {
+        await using var db = fixture.CriarDbContext();
+        var pacienteId = Guid.NewGuid();
+        var s = await SeedSolicitacao.CriarAsync(db, pacienteId);
+        var unidadeId = s.Solicitacao!.UnidadeExecutanteId;
+        await SemearEquipamentoAsync(db, unidadeId, "Sala 1", "SALA_1");
+        var sala2 = await SemearEquipamentoAsync(db, unidadeId, "Sala 2", "SALA_2");
+        var service = CriarService(db, SeedSolicitacao.CpfAleatorio(), pacienteId, telefoneVerificado: "21999990000");
+
+        await service.AutorizarAsync(s.Id, "12345", sala2.Id);
+
+        var atual = await db.ExamesImagem.Include(x => x.Solicitacao).AsNoTracking().SingleAsync(x => x.Id == s.Id);
+        Assert.Equal(sala2.Id, atual.EquipamentoId);
+        Assert.NotNull(atual.Solicitacao!.AutorizadoEm);
+        Assert.NotNull(atual.ProximaTentativaEm);
+    }
+
+    [Fact]
+    public async Task Autorizar_com_estacao_de_outra_unidade_recusa()
+    {
+        await using var db = fixture.CriarDbContext();
+        var pacienteId = Guid.NewGuid();
+        var s = await SeedSolicitacao.CriarAsync(db, pacienteId);
+        var outra = await SeedSolicitacao.CriarAsync(db, Guid.NewGuid()); // outra unidade
+        var intrusa = await SemearEquipamentoAsync(db, outra.Solicitacao!.UnidadeExecutanteId, "Sala X", "SALA_X");
+        await SemearEquipamentoAsync(db, s.Solicitacao!.UnidadeExecutanteId, "Sala 1", "SALA_1");
+        var service = CriarService(db, SeedSolicitacao.CpfAleatorio(), pacienteId, telefoneVerificado: "21999990000");
+
+        var ex = await Assert.ThrowsAsync<ValidacaoException>(() => service.AutorizarAsync(s.Id, "12345", intrusa.Id));
+
+        Assert.Contains("não atende esta unidade", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Autorizar_com_estacao_unica_grava_sozinho()
+    {
+        await using var db = fixture.CriarDbContext();
+        var pacienteId = Guid.NewGuid();
+        var s = await SeedSolicitacao.CriarAsync(db, pacienteId);
+        var unica = await SemearEquipamentoAsync(db, s.Solicitacao!.UnidadeExecutanteId, "Sala Única", "SALA_UNICA");
+        var service = CriarService(db, SeedSolicitacao.CpfAleatorio(), pacienteId, telefoneVerificado: "21999990000");
+
+        await service.AutorizarAsync(s.Id, "12345");
+
+        var atual = await db.ExamesImagem.AsNoTracking().SingleAsync(x => x.Id == s.Id);
+        Assert.Equal(unica.Id, atual.EquipamentoId); // decisão explícita, mesmo sem ninguém escolher
+    }
+
+    [Fact]
+    public async Task Autorizar_sem_equipamento_cadastrado_nao_trava_a_recepcao()
+    {
+        // Cadastro de equipamento é tarefa de administrador: travar aqui deixaria o paciente
+        // parado no balcão. Autoriza, e o erro "Sem equipamento configurado" aparece no envio.
+        await using var db = fixture.CriarDbContext();
+        var pacienteId = Guid.NewGuid();
+        var s = await SeedSolicitacao.CriarAsync(db, pacienteId);
+        var service = CriarService(db, SeedSolicitacao.CpfAleatorio(), pacienteId, telefoneVerificado: "21999990000");
+
+        await service.AutorizarAsync(s.Id, "12345");
+
+        var atual = await db.ExamesImagem.Include(x => x.Solicitacao).AsNoTracking().SingleAsync(x => x.Id == s.Id);
+        Assert.Null(atual.EquipamentoId);
+        Assert.NotNull(atual.Solicitacao!.AutorizadoEm);
     }
 }
