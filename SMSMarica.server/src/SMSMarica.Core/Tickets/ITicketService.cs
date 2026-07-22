@@ -22,9 +22,18 @@ public interface ITicketService
 
     Task<TicketConfiguracaoDto> ObterConfiguracaoAsync(CancellationToken ct = default);
 
+    /// <summary>Autor reconhece a resposta (baixa a "bandeira") sem precisar abrir o ticket.</summary>
+    Task ReconhecerAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>Resumo do autor: quantas respostas ainda não reconhecidas (badge/notificação).</summary>
+    Task<TicketResumoAutorDto> ObterResumoAutorAsync(CancellationToken ct = default);
+
     // ---- Gestão (exige módulo Ticket) ----
 
     Task<IReadOnlyList<TicketListItemDto>> ListarTodosAsync(bool incluirArquivados, CancellationToken ct = default);
+
+    /// <summary>Resumo da gestão (badge do menu + cabeçalho): novos, abertos, em análise.</summary>
+    Task<TicketResumoGestaoDto> ObterResumoGestaoAsync(CancellationToken ct = default);
 
     /// <summary>Detalhe de qualquer ticket, incluindo comentários internos.</summary>
     Task<TicketDto> ObterGestaoAsync(Guid id, CancellationToken ct = default);

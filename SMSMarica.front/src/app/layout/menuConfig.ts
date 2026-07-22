@@ -61,6 +61,11 @@ export type ItemMenu = {
    */
   acao?: 'chat';
   /**
+   * Chave de badge/contador exibido ao lado do rótulo (notificação de tickets, ticket #42).
+   * O valor numérico é resolvido no Sidebar via `useTicketsBadges`.
+   */
+  badge?: 'meusTickets' | 'ticketsGestao';
+  /**
    * Gancho de encadeamento: destino/tela padrão interno do menu. Quando o menu
    * for favoritado na tela Início, o redirect leva a este destino em vez da
    * própria rota do menu. Hoje nenhum menu define — deixe vazio para cair na
@@ -312,6 +317,7 @@ export const SECOES: SecaoMenu[] = [
         to: '/app/tickets',
         icone: LifeBuoy,
         end: true,
+        badge: 'meusTickets',
         descricao: 'Reporte bugs, peça mudanças ou tire dúvidas.',
       },
       {
@@ -319,6 +325,7 @@ export const SECOES: SecaoMenu[] = [
         to: '/app/tickets/gestao',
         icone: Inbox,
         modulo: 'Ticket',
+        badge: 'ticketsGestao',
         descricao: 'Ver, responder e triar todos os tickets.',
       },
     ],

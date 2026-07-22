@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, Building2, Check, ChevronDown, KeyRound, LogOut, Menu, User as UserIcon } from 'lucide-react';
+import { Bell, Building2, Check, ChevronDown, KeyRound, LifeBuoy, LogOut, Menu, User as UserIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/shared/auth/authStore';
 import { useChat } from '@/features/conversas/store/chatStore';
+import { useTicketsBadges } from '@/features/tickets/api/queries';
+import { CounterBadge } from '@/shared/ui/CounterBadge';
 
 type Props = {
   onToggleMobileSidebar: () => void;
@@ -15,6 +17,10 @@ export function Header({ onToggleMobileSidebar }: Props) {
   const sair = useAuth((s) => s.sair);
   const totalNaoLidas = useChat((s) => s.totalNaoLidas);
   const abrirChat = useChat((s) => s.abrir);
+  const badgesTickets = useTicketsBadges();
+  const resumoTickets =
+    badgesTickets.ehGestor &&
+    badgesTickets.gestaoNovos + badgesTickets.gestaoAbertos + badgesTickets.gestaoEmAnalise > 0;
   const unidades = useAuth((s) => s.unidades);
   const unidadeAtivaId = useAuth((s) => s.unidadeAtivaId);
   const definirUnidadeAtiva = useAuth((s) => s.definirUnidadeAtiva);
@@ -81,6 +87,25 @@ export function Header({ onToggleMobileSidebar }: Props) {
         <div className="flex-1" />
 
         <div className="flex items-center gap-3">
+          {resumoTickets && (
+            <button
+              type="button"
+              onClick={() => navigate('/app/tickets/gestao')}
+              title="Ir para a Gestão de Tickets"
+              className="hidden items-center gap-2 rounded-md border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 sm:flex"
+            >
+              <LifeBuoy className="h-4 w-4 text-red-600" />
+              {badgesTickets.gestaoNovos > 0 && (
+                <span className="inline-flex items-center gap-1">
+                  <CounterBadge valor={badgesTickets.gestaoNovos} />
+                  <span>{badgesTickets.gestaoNovos === 1 ? 'novo' : 'novos'}</span>
+                </span>
+              )}
+              <span className="text-gray-500">{badgesTickets.gestaoAbertos} abertos</span>
+              <span className="text-gray-300">·</span>
+              <span className="text-gray-500">{badgesTickets.gestaoEmAnalise} em análise</span>
+            </button>
+          )}
           {unidades.length > 1 && (
             <div className="relative" ref={unidadeRef}>
               <button

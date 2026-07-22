@@ -105,6 +105,30 @@ public sealed class TicketService(SmsMaricaDbContext db, IUsuarioAtualAccessor u
     public async Task<TicketConfiguracaoDto> ObterConfiguracaoAsync(CancellationToken ct = default)
         => new(await ObterVisibilidadeAsync(ct));
 
+    public async Task ReconhecerAsync(Guid id, CancellationToken ct = default)
+    {
+        var ticket = await _db.Tickets.FirstOrDefaultAsync(t => t.Id == id && t.ExcluidoEm == null, ct)
+            ?? throw new NaoEncontradoException(nameof(Ticket), id);
+
+        if (ticket.CriadoPor != _usuarioAtual.UsuarioId)
+        {
+            throw new NaoEncontradoException(nameof(Ticket), id);
+        }
+
+        ticket.RespostaReconhecidaEm = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task<TicketResumoAutorDto> ObterResumoAutorAsync(CancellationToken ct = default)
+    {
+        var meuId = _usuarioAtual.UsuarioId;
+        var naoReconhecidos = await _db.Tickets.AsNoTracking()
+            .Where(t => t.ExcluidoEm == null && t.CriadoPor == meuId && t.ArquivadoPeloAutorEm == null)
+            .CountAsync(t => t.RespondidoEm != null
+                && (t.RespostaReconhecidaEm == null || t.RespostaReconhecidaEm < t.RespondidoEm), ct);
+        return new TicketResumoAutorDto(naoReconhecidos);
+    }
+
     // ================= Gestão =================
 
     public async Task<IReadOnlyList<TicketListItemDto>> ListarTodosAsync(bool incluirArquivados, CancellationToken ct = default)
@@ -119,10 +143,32 @@ public sealed class TicketService(SmsMaricaDbContext db, IUsuarioAtualAccessor u
 
     public Task<TicketDto> ObterGestaoAsync(Guid id, CancellationToken ct = default) => ObterInternoAsync(id, gestao: true, ct);
 
+    public async Task<TicketResumoGestaoDto> ObterResumoGestaoAsync(CancellationToken ct = default)
+    {
+        var baseQuery = _db.Tickets.AsNoTracking()
+            .Where(t => t.ExcluidoEm == null && t.ArquivadoPeloAdminEm == null);
+
+        var novos = await baseQuery.CountAsync(t => t.VistoPelaGestaoEm == null
+            || (t.AtualizadoEm ?? t.CriadoEm) > t.VistoPelaGestaoEm, ct);
+        var abertos = await baseQuery.CountAsync(t => t.Status == TicketStatus.Aberto, ct);
+        var emAnalise = await baseQuery.CountAsync(t => t.Status == TicketStatus.EmAnalise, ct);
+
+        return new TicketResumoGestaoDto(novos, abertos, emAnalise);
+    }
+
     public async Task ComentarGestaoAsync(Guid id, ComentarTicketRequest request, CancellationToken ct = default)
     {
         var ticket = await _db.Tickets.FirstOrDefaultAsync(t => t.Id == id && t.ExcluidoEm == null, ct)
             ?? throw new NaoEncontradoException(nameof(Ticket), id);
+
+        // Comentário público da gestão = resposta ao autor (levanta a bandeira).
+        // Nota interna não vira resposta ao autor. Em ambos os casos a gestão "viu" o ticket.
+        ticket.VistoPelaGestaoEm = DateTime.UtcNow;
+        if (!request.Interno)
+        {
+            ticket.RespondidoEm = DateTime.UtcNow;
+            ticket.RespostaReconhecidaEm = null;
+        }
 
         await AdicionarComentarioAsync(ticket, request, interno: request.Interno, ct);
     }
@@ -142,6 +188,8 @@ public sealed class TicketService(SmsMaricaDbContext db, IUsuarioAtualAccessor u
             ticket.RespostaFinal = string.IsNullOrWhiteSpace(request.RespostaFinal) ? null : request.RespostaFinal.Trim();
         }
 
+        var agora = DateTime.UtcNow;
+
         if (request.Status.HasValue && request.Status.Value != ticket.Status)
         {
             var novo = request.Status.Value;
@@ -152,9 +200,18 @@ public sealed class TicketService(SmsMaricaDbContext db, IUsuarioAtualAccessor u
                 throw new ValidacaoException("respostaFinal", $"Informe {(novo == TicketStatus.Negado ? "a" : "o")} {campo} ao {(novo == TicketStatus.Negado ? "negar" : "concluir")} o ticket.");
             }
             ticket.Status = novo;
+
+            // Conclusão/negação = resposta ao autor → levanta a bandeira dele.
+            if (novo is TicketStatus.Negado or TicketStatus.Concluido)
+            {
+                ticket.RespondidoEm = agora;
+                ticket.RespostaReconhecidaEm = null;
+            }
         }
 
-        ticket.AtualizadoEm = DateTime.UtcNow;
+        // A gestão atuou no ticket → some do "novo" no inbox compartilhado.
+        ticket.VistoPelaGestaoEm = agora;
+        ticket.AtualizadoEm = agora;
         ticket.AtualizadoPor = _usuarioAtual.UsuarioId;
         await _db.SaveChangesAsync(ct);
     }
@@ -243,6 +300,20 @@ public sealed class TicketService(SmsMaricaDbContext db, IUsuarioAtualAccessor u
             {
                 throw new NaoEncontradoException(nameof(Ticket), id);
             }
+
+            // Autor abriu o próprio ticket = reconheceu a resposta (baixa a bandeira).
+            if (ticket.CriadoPor == _usuarioAtual.UsuarioId && ticket.RespondidoEm != null
+                && (ticket.RespostaReconhecidaEm == null || ticket.RespostaReconhecidaEm < ticket.RespondidoEm))
+            {
+                await _db.Tickets.Where(t => t.Id == id)
+                    .ExecuteUpdateAsync(s => s.SetProperty(t => t.RespostaReconhecidaEm, DateTime.UtcNow), ct);
+            }
+        }
+        else if (ticket.VistoPelaGestaoEm == null || (ticket.AtualizadoEm ?? ticket.CriadoEm) > ticket.VistoPelaGestaoEm)
+        {
+            // Gestão abriu o detalhe = visualizou (baixa o "novo" no inbox compartilhado).
+            await _db.Tickets.Where(t => t.Id == id)
+                .ExecuteUpdateAsync(s => s.SetProperty(t => t.VistoPelaGestaoEm, DateTime.UtcNow), ct);
         }
 
         // Coleta ids de usuários para resolver nomes.
@@ -280,6 +351,10 @@ public sealed class TicketService(SmsMaricaDbContext db, IUsuarioAtualAccessor u
                 Arquivado = t.ArquivadoPeloAutorEm != null || t.ArquivadoPeloAdminEm != null,
                 QtdComentarios = t.Comentarios.Count(c => !c.Interno),
                 t.CriadoEm, t.AtualizadoEm,
+                RespostaNaoReconhecida = t.RespondidoEm != null
+                    && (t.RespostaReconhecidaEm == null || t.RespostaReconhecidaEm < t.RespondidoEm),
+                NovoParaGestao = t.VistoPelaGestaoEm == null
+                    || (t.AtualizadoEm ?? t.CriadoEm) > t.VistoPelaGestaoEm,
             })
             .ToListAsync(ct);
 
@@ -288,7 +363,8 @@ public sealed class TicketService(SmsMaricaDbContext db, IUsuarioAtualAccessor u
 
         return [.. linhas.Select(l => new TicketListItemDto(
             l.Id, l.Numero, l.Titulo, l.Tipo, l.Status, l.Prioridade, NomeDe(nomes, l.CriadoPor), l.CriadoPor,
-            l.UnidadeId, l.Arquivado, l.QtdComentarios, l.CriadoEm, l.AtualizadoEm))];
+            l.UnidadeId, l.Arquivado, l.QtdComentarios, l.CriadoEm, l.AtualizadoEm,
+            l.RespostaNaoReconhecida, l.NovoParaGestao))];
     }
 
     private bool PodeVer(Ticket t)

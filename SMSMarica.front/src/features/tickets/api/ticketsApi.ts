@@ -7,6 +7,8 @@ import type {
   Ticket,
   TicketConfiguracao,
   TicketListItem,
+  TicketResumoAutor,
+  TicketResumoGestao,
   TicketVisibilidade,
 } from '@/features/tickets/types';
 
@@ -40,6 +42,17 @@ export async function obterConfiguracao(): Promise<TicketConfiguracao> {
   return data;
 }
 
+/** Resumo do autor: nº de respostas ainda não reconhecidas. */
+export async function obterResumoAutor(): Promise<TicketResumoAutor> {
+  const { data } = await http.get<TicketResumoAutor>('/tickets/resumo');
+  return data;
+}
+
+/** Autor reconhece a resposta (baixa a bandeira) sem abrir o ticket. */
+export async function reconhecerTicket(id: string): Promise<void> {
+  await http.post(`/tickets/${id}/reconhecer`);
+}
+
 /** Envia um print/imagem e devolve a referência para anexar ao ticket/comentário. */
 export async function enviarAnexo(arquivo: File): Promise<AnexoRef> {
   const form = new FormData();
@@ -54,6 +67,12 @@ export async function enviarAnexo(arquivo: File): Promise<AnexoRef> {
 
 export async function listarTodosTickets(incluirArquivados: boolean): Promise<TicketListItem[]> {
   const { data } = await http.get<TicketListItem[]>('/tickets/gestao', { params: { incluirArquivados } });
+  return data;
+}
+
+/** Resumo da gestão (badge do menu + cabeçalho): novos, abertos, em análise. */
+export async function obterResumoGestao(): Promise<TicketResumoGestao> {
+  const { data } = await http.get<TicketResumoGestao>('/tickets/gestao/resumo');
   return data;
 }
 

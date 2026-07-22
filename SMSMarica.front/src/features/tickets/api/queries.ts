@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTemConsulta } from '@/shared/auth/authStore';
 import type {
   AbrirTicketPayload,
   AtualizarGestaoPayload,
@@ -17,9 +18,15 @@ import {
   listarMeusTickets,
   listarTodosTickets,
   obterConfiguracao,
+  obterResumoAutor,
+  obterResumoGestao,
   obterTicket,
   obterTicketGestao,
+  reconhecerTicket,
 } from '@/features/tickets/api/ticketsApi';
+
+/** Intervalo de atualização dos resumos/badges (sem realtime — polling leve). */
+const INTERVALO_RESUMO = 60_000;
 
 export const ticketsKeys = {
   raiz: ['tickets'] as const,
@@ -27,6 +34,8 @@ export const ticketsKeys = {
   todos: (arq: boolean) => ['tickets', 'todos', arq] as const,
   detalhe: (id: string, gestao: boolean) => ['tickets', 'detalhe', gestao, id] as const,
   config: ['tickets', 'config'] as const,
+  resumoAutor: ['tickets', 'resumo', 'autor'] as const,
+  resumoGestao: ['tickets', 'resumo', 'gestao'] as const,
 };
 
 export function useMeusTickets(incluirArquivados: boolean) {
@@ -53,6 +62,50 @@ export function useTicket(id: string, gestao: boolean) {
 
 export function useConfiguracaoTickets() {
   return useQuery({ queryKey: ticketsKeys.config, queryFn: obterConfiguracao });
+}
+
+/** Resumo do autor (bandeira/badge de "Meus Tickets"). Todo usuário autenticado. */
+export function useResumoAutorTickets() {
+  return useQuery({
+    queryKey: ticketsKeys.resumoAutor,
+    queryFn: obterResumoAutor,
+    refetchInterval: INTERVALO_RESUMO,
+  });
+}
+
+/**
+ * Resumo da gestão (badge do menu + cabeçalho). Só habilita para quem tem o módulo,
+ * senão o endpoint devolve 403.
+ */
+export function useResumoGestaoTickets(habilitado: boolean) {
+  return useQuery({
+    queryKey: ticketsKeys.resumoGestao,
+    queryFn: obterResumoGestao,
+    enabled: habilitado,
+    refetchInterval: INTERVALO_RESUMO,
+  });
+}
+
+export function useReconhecerTicket() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => reconhecerTicket(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ticketsKeys.raiz }),
+  });
+}
+
+/** Contadores consolidados para os badges do menu e o resumo do header. */
+export function useTicketsBadges() {
+  const ehGestor = useTemConsulta('Ticket');
+  const autor = useResumoAutorTickets();
+  const gestao = useResumoGestaoTickets(ehGestor);
+  return {
+    ehGestor,
+    meusNaoReconhecidos: autor.data?.naoReconhecidos ?? 0,
+    gestaoNovos: gestao.data?.novos ?? 0,
+    gestaoAbertos: gestao.data?.abertos ?? 0,
+    gestaoEmAnalise: gestao.data?.emAnalise ?? 0,
+  };
 }
 
 export function useAbrirTicket() {

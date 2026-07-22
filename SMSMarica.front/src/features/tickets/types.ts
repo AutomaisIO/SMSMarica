@@ -36,6 +36,10 @@ export type TicketListItem = {
   qtdComentarios: number;
   criadoEm: string;
   atualizadoEm: string | null;
+  /** Autor: há resposta da equipe ainda não reconhecida (mostra a "bandeira"). */
+  respostaNaoReconhecida: boolean;
+  /** Gestão: ticket novo/sem visualização (ou com atividade nova do autor). */
+  novoParaGestao: boolean;
 };
 
 export type Ticket = {
@@ -81,6 +85,12 @@ export type AtualizarGestaoPayload = {
 };
 
 export type TicketConfiguracao = { visibilidade: TicketVisibilidade };
+
+/** Resumo do autor: quantas respostas ainda não reconhecidas (badge/bandeira). */
+export type TicketResumoAutor = { naoReconhecidos: number };
+
+/** Resumo da gestão para o badge do menu e o cabeçalho. */
+export type TicketResumoGestao = { novos: number; abertos: number; emAnalise: number };
 
 // ---- rótulos ----
 

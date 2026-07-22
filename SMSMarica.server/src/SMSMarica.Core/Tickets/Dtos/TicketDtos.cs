@@ -16,7 +16,11 @@ public sealed record TicketListItemDto(
     bool Arquivado,
     int QtdComentarios,
     DateTime CriadoEm,
-    DateTime? AtualizadoEm);
+    DateTime? AtualizadoEm,
+    /// <summary>Autor: há resposta da equipe ainda não reconhecida (mostra a "bandeira").</summary>
+    bool RespostaNaoReconhecida,
+    /// <summary>Gestão: ticket novo/sem visualização (ou com atividade nova do autor).</summary>
+    bool NovoParaGestao);
 
 /// <summary>Anexo (imagem) de um ticket/comentário.</summary>
 public sealed record TicketAnexoDto(
@@ -80,3 +84,11 @@ public sealed record AtualizarTicketGestaoRequest(
 public sealed record AtualizarVisibilidadeRequest(TicketVisibilidade Visibilidade);
 
 public sealed record TicketConfiguracaoDto(TicketVisibilidade Visibilidade);
+
+// ---- Resumos (badges/notificação, ticket #42) ----
+
+/// <summary>Resumo do lado do autor: quantas respostas ainda não foram reconhecidas.</summary>
+public sealed record TicketResumoAutorDto(int NaoReconhecidos);
+
+/// <summary>Resumo do lado da gestão para o badge do menu e o cabeçalho.</summary>
+public sealed record TicketResumoGestaoDto(int Novos, int Abertos, int EmAnalise);

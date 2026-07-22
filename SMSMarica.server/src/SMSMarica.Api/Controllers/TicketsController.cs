@@ -62,6 +62,20 @@ public sealed class TicketsController(ITicketService service, IMidiasService mid
     [ProducesResponseType<TicketConfiguracaoDto>(StatusCodes.Status200OK)]
     public async Task<TicketConfiguracaoDto> ObterConfiguracao(CancellationToken ct) => await _service.ObterConfiguracaoAsync(ct);
 
+    /// <summary>Resumo do autor: nº de respostas ainda não reconhecidas (para a bandeira/badge).</summary>
+    [HttpGet("resumo")]
+    [ProducesResponseType<TicketResumoAutorDto>(StatusCodes.Status200OK)]
+    public async Task<TicketResumoAutorDto> ObterResumo(CancellationToken ct) => await _service.ObterResumoAutorAsync(ct);
+
+    /// <summary>Autor reconhece a resposta do próprio ticket (baixa a bandeira) sem abrir o detalhe.</summary>
+    [HttpPost("{id:guid}/reconhecer")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Reconhecer(Guid id, CancellationToken ct)
+    {
+        await _service.ReconhecerAsync(id, ct);
+        return NoContent();
+    }
+
     /// <summary>Envia um print/imagem e devolve a mídia (para referenciar ao abrir/comentar). Autenticado.</summary>
     [HttpPost("anexos")]
     [RequestSizeLimit(6 * 1024 * 1024)]
@@ -87,6 +101,12 @@ public sealed class TicketsController(ITicketService service, IMidiasService mid
     [ProducesResponseType<IReadOnlyList<TicketListItemDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<TicketListItemDto>> ListarTodos([FromQuery] bool incluirArquivados, CancellationToken ct)
         => await _service.ListarTodosAsync(incluirArquivados, ct);
+
+    /// <summary>Resumo da gestão para o badge do menu e o cabeçalho (novos, abertos, em análise).</summary>
+    [HttpGet("gestao/resumo")]
+    [RequerPermissao(ModuloPermissao.Ticket, AcoesPermissao.Consulta)]
+    [ProducesResponseType<TicketResumoGestaoDto>(StatusCodes.Status200OK)]
+    public async Task<TicketResumoGestaoDto> ObterResumoGestao(CancellationToken ct) => await _service.ObterResumoGestaoAsync(ct);
 
     [HttpGet("gestao/{id:guid}")]
     [RequerPermissao(ModuloPermissao.Ticket, AcoesPermissao.Consulta)]

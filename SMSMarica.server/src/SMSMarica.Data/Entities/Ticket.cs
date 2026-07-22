@@ -35,6 +35,24 @@ public sealed class Ticket
     /// <summary>Arquivado pela equipe/admin (some da gestão, sem excluir).</summary>
     public DateTime? ArquivadoPeloAdminEm { get; set; }
 
+    // ---- Leitura/notificação (ticket #42) ----
+
+    /// <summary>
+    /// Última vez que a gestão respondeu ao autor (conclusão/negação ou comentário público).
+    /// Base da "bandeira" do autor: há resposta a reconhecer quando este valor é mais recente
+    /// que <see cref="RespostaReconhecidaEm"/>.
+    /// </summary>
+    public DateTime? RespondidoEm { get; set; }
+
+    /// <summary>Quando o autor reconheceu a última resposta (clicou em "reconhecer" ou abriu o ticket).</summary>
+    public DateTime? RespostaReconhecidaEm { get; set; }
+
+    /// <summary>
+    /// Última vez que a gestão visualizou/atuou no ticket (inbox compartilhado). Um ticket é "novo"
+    /// para a gestão enquanto isto é nulo ou anterior à última atividade (<see cref="AtualizadoEm"/>/<see cref="CriadoEm"/>).
+    /// </summary>
+    public DateTime? VistoPelaGestaoEm { get; set; }
+
     // ---- Auditoria ADR-0006 (CriadoPor = autor do ticket) ----
     public DateTime CriadoEm { get; set; }
     public Guid? CriadoPor { get; set; }
