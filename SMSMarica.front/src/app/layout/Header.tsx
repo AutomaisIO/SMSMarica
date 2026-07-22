@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, Building2, Check, ChevronDown, KeyRound, LifeBuoy, LogOut, Menu, User as UserIcon } from 'lucide-react';
+import { Bell, Building2, Check, ChevronDown, KeyRound, LifeBuoy, LogOut, Menu, User as UserIcon, Volume2, VolumeX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/shared/auth/authStore';
 import { useChat } from '@/features/conversas/store/chatStore';
+import { definirSomChat } from '@/features/conversas/lib/janelaChat';
 import { useTicketsBadges } from '@/features/tickets/api/queries';
 import { CounterBadge } from '@/shared/ui/CounterBadge';
 
@@ -16,6 +17,7 @@ export function Header({ onToggleMobileSidebar }: Props) {
   const usuario = useAuth((s) => s.usuario);
   const sair = useAuth((s) => s.sair);
   const totalNaoLidas = useChat((s) => s.totalNaoLidas);
+  const somAtivo = useChat((s) => s.somAtivo);
   const abrirChat = useChat((s) => s.abrir);
   const badgesTickets = useTicketsBadges();
   const resumoTickets =
@@ -152,6 +154,17 @@ export function Header({ onToggleMobileSidebar }: Props) {
               )}
             </div>
           )}
+
+          <button
+            type="button"
+            onClick={() => definirSomChat(!somAtivo)}
+            className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
+            aria-label={somAtivo ? 'Silenciar bip do chat' : 'Reativar bip do chat'}
+            aria-pressed={!somAtivo}
+            title={somAtivo ? 'Silenciar o bip do chat' : 'Bip silenciado — clique para reativar'}
+          >
+            {somAtivo ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5 text-gray-400" />}
+          </button>
 
           <button
             type="button"

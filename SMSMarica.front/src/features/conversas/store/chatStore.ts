@@ -7,6 +7,12 @@ type ChatState = {
   conversaAtivaId: string | null;
   /** Alertas do navegador (Notification API) habilitados pelo operador. */
   alertasAtivos: boolean;
+  /**
+   * Bip sonoro de mensagem nova ligado? Preferência SÓ da sessão (memória, sem
+   * persistência): ao (re)logar volta ligado; o operador silencia manualmente
+   * quando quiser (ticket #44). Sincronizada entre a janela principal e a do chat.
+   */
+  somAtivo: boolean;
   /** Total agregado de não-lidas visíveis (alimenta o sino do Header e o título da aba). */
   totalNaoLidas: number;
   /**
@@ -23,6 +29,7 @@ type ChatState = {
   abrirConversa: (id: string) => void;
   setConversaAtiva: (id: string | null) => void;
   setAlertas: (v: boolean) => void;
+  setSom: (v: boolean) => void;
   setTotalNaoLidas: (n: number) => void;
 };
 
@@ -30,6 +37,7 @@ export const useChat = create<ChatState>((set) => ({
   widget: 'fechado',
   conversaAtivaId: null,
   alertasAtivos: false,
+  somAtivo: true,
   totalNaoLidas: 0,
   rascunho: null,
   inserirRascunho: (conversaId, texto) => set({ rascunho: { conversaId, texto } }),
@@ -40,5 +48,6 @@ export const useChat = create<ChatState>((set) => ({
   abrirConversa: (id) => set({ widget: 'aberto', conversaAtivaId: id }),
   setConversaAtiva: (id) => set({ conversaAtivaId: id }),
   setAlertas: (v) => set({ alertasAtivos: v }),
+  setSom: (v) => set({ somAtivo: v }),
   setTotalNaoLidas: (n) => set({ totalNaoLidas: n }),
 }));

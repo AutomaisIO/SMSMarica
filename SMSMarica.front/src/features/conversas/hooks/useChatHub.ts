@@ -5,7 +5,7 @@ import { apiBaseAbsoluto } from '@/shared/api/httpClient';
 import { obterToken, useAuth } from '@/shared/auth/authStore';
 import { useChat } from '@/features/conversas/store/chatStore';
 import { useNotificacoesNavegador } from '@/features/conversas/hooks/useNotificacoesNavegador';
-import { abrirJanelaChat, ehJanelaChat, janelaChatAberta } from '@/features/conversas/lib/janelaChat';
+import { abrirJanelaChat, ehJanelaChat, janelaChatAberta, CANAL_CHAT } from '@/features/conversas/lib/janelaChat';
 import type { ConversaEventoRealtime } from '@/features/conversas/types';
 
 let audioCtx: AudioContext | null = null;
@@ -123,7 +123,7 @@ export function useChatHub(habilitado: boolean) {
       // em dobro — cada janela tem seu próprio hub).
       if (!ehJanelaChat() && janelaChatAberta()) return;
 
-      tocarBip();
+      if (st.somAtivo) tocarBip();
       if (st.alertasAtivos) {
         notificarRef.current(
           evt.nomeContato || evt.telefoneCanonical,
@@ -163,6 +163,19 @@ export function useChatHub(habilitado: boolean) {
       conn.stop().catch(() => {});
     };
   }, [token, habilitado, queryClient]);
+
+  // Sincroniza o mudo do bip (ticket #44) entre a janela principal e a janela do chat:
+  // silenciar em uma vale para a sessão nas duas. Só troca de estado — sem persistência.
+  useEffect(() => {
+    if (!('BroadcastChannel' in window)) return;
+    const canal = new BroadcastChannel(CANAL_CHAT);
+    canal.onmessage = (e) => {
+      if (e.data?.tipo === 'som' && typeof e.data.ativo === 'boolean') {
+        useChat.getState().setSom(e.data.ativo);
+      }
+    };
+    return () => canal.close();
+  }, []);
 
   // Título da aba piscando com o contador quando há não-lidas e a aba/chat não está em foco.
   useEffect(() => {
