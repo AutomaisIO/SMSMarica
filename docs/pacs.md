@@ -618,6 +618,10 @@ Resumo do que mudou na infraestrutura de rede/segurança neste dia (detalhe em �
    antes do cutover.
 2. **Filtro por AE** na `11112` (`dcmAcceptedCallingAETitle` nos AEs, via `ldapmodify`):
    `FDR-MAMO`, `IIP_MWL_SCU`, `US_CMI`, `WEASIS*`, `MAMO-SIM`.
-3. **Trocar `dcmsecret`** do LDAP por senha forte.
+3. ~~**Trocar `dcmsecret`** do LDAP~~ — **FEITO 2026-07-22** (§10.4).
 4. **DICOM na VPN por unidade** — rotear o equipamento pelo MikroTik até `10.35.0.16`;
    ao final, fechar a `11112` pública.
+5. **Whitelist dinâmica por login** (ideia aprovada) — API no PACS que libera IP por
+   X dias quando o backend valida um usuário; para cliente humano direto (Weasis) de
+   IP rotativo. Desenho em
+   [`pendencias/pacs-whitelist-dinamica-por-login.md`](./pendencias/pacs-whitelist-dinamica-por-login.md).
