@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import {
   Bot,
@@ -60,25 +60,61 @@ function turnosParaMensagens(turns: TurnoResumo[] = []): Mensagem[] {
   }));
 }
 
-// Formata **negrito** do texto do agente como negrito em vermelho; o restante fica literal
-// (mantendo as quebras, já que o container usa whitespace-pre-wrap). Escopo intencionalmente
-// só do **bold** — nada de renderizar markdown completo aqui.
+// Aplica **negrito** (vermelho em negrito) dentro de um trecho de linha; o resto fica literal.
+function inlineNegrito(texto: string, chave: string): ReactNode[] {
+  return texto.split(/(\*\*[^*]+?\*\*)/g).map((parte, i) => {
+    const negrito = /^\*\*([^*]+?)\*\*$/.exec(parte);
+    return negrito ? (
+      <strong key={`${chave}-${i}`} className="font-bold text-red-600">
+        {negrito[1]}
+      </strong>
+    ) : (
+      <span key={`${chave}-${i}`}>{parte}</span>
+    );
+  });
+}
+
+// Formata o texto do agente para exibição:
+//  - linhas iniciadas por ### (títulos) viram um bloco destacado na escala de azul
+//    (fundo, borda e cor do texto em azul), ocupando a linha inteira;
+//  - **negrito** vira negrito vermelho;
+//  - o restante é literal, com as quebras preservadas (whitespace-pre-wrap).
+// Escopo intencionalmente restrito — não é um renderizador de markdown completo.
 function TextoFormatado({ texto }: { texto: string }) {
-  const partes = texto.split(/(\*\*[^*]+?\*\*)/g);
-  return (
-    <>
-      {partes.map((parte, i) => {
-        const negrito = /^\*\*([^*]+?)\*\*$/.exec(parte);
-        return negrito ? (
-          <strong key={i} className="font-bold text-red-600">
-            {negrito[1]}
-          </strong>
-        ) : (
-          <span key={i}>{parte}</span>
-        );
-      })}
-    </>
-  );
+  const linhas = texto.split('\n');
+  const blocos: ReactNode[] = [];
+  let buffer: string[] = [];
+
+  const descarregar = (chave: string) => {
+    if (buffer.length === 0) return;
+    const conteudo = buffer.join('\n');
+    blocos.push(
+      <span key={chave} className="whitespace-pre-wrap">
+        {inlineNegrito(conteudo, chave)}
+      </span>,
+    );
+    buffer = [];
+  };
+
+  linhas.forEach((linha, i) => {
+    const titulo = /^(#{3,6})\s*(.*)$/.exec(linha);
+    if (titulo) {
+      descarregar(`p-${i}`);
+      blocos.push(
+        <div
+          key={`h-${i}`}
+          className="my-1 rounded-md border border-l-4 border-blue-200 border-l-blue-500 bg-blue-50 px-3 py-1.5 font-semibold text-blue-800"
+        >
+          {inlineNegrito(titulo[2], `h-${i}`)}
+        </div>,
+      );
+    } else {
+      buffer.push(linha);
+    }
+  });
+  descarregar('final');
+
+  return <>{blocos}</>;
 }
 
 function BlocoFerramenta({ evento }: { evento: Extract<EventoAgente, { type: 'tool_use' }> }) {
@@ -107,9 +143,9 @@ function BlocoFerramenta({ evento }: { evento: Extract<EventoAgente, { type: 'to
 function Evento({ evento }: { evento: EventoAgente }) {
   if (evento.type === 'text') {
     return (
-      <p className="whitespace-pre-wrap leading-relaxed text-slate-800">
+      <div className="leading-relaxed text-slate-800">
         <TextoFormatado texto={evento.text} />
-      </p>
+      </div>
     );
   }
   if (evento.type === 'tool_use') return <BlocoFerramenta evento={evento} />;
@@ -478,10 +514,10 @@ ${contextoTicket}`,
                       <Evento key={j} evento={e} />
                     ))}
                     {m.parcial && (
-                      <p className="whitespace-pre-wrap leading-relaxed text-slate-800">
+                      <div className="leading-relaxed text-slate-800">
                         <TextoFormatado texto={m.parcial} />
                         <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-slate-400 align-text-bottom" />
-                      </p>
+                      </div>
                     )}
                     {m.status === 'running' && !m.parcial && (
                       <div className="flex items-center gap-2 text-sm text-slate-500">
