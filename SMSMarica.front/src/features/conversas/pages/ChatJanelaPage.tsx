@@ -3,6 +3,8 @@ import { Bell, BellOff, Plus } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useTemConsulta } from '@/shared/auth/authStore';
 import { useChat } from '@/features/conversas/store/chatStore';
+import { useComposerPreferencias } from '@/features/conversas/store/composerPreferencias';
+import { obterPreferencias } from '@/shared/auth/preferenciasApi';
 import { useChatHub } from '@/features/conversas/hooks/useChatHub';
 import { useNotificacoesNavegador } from '@/features/conversas/hooks/useNotificacoesNavegador';
 import { ListaConversas } from '@/features/conversas/components/ListaConversas';
@@ -23,10 +25,28 @@ export function ChatJanelaPage() {
   const alertasAtivos = useChat((s) => s.alertasAtivos);
   const { setConversaAtiva } = useChat.getState();
   const { permissao, solicitar } = useNotificacoesNavegador();
+  const hidratarComposer = useComposerPreferencias((s) => s.hidratar);
   const [novaAberta, setNovaAberta] = useState(false);
   const [params] = useSearchParams();
 
   useChatHub(podeVer);
+
+  // A janela solta não tem o Layout, que é quem hidrata as preferências do servidor.
+  // Sem isto, a altura da caixa (e o "Enviar com Enter") não acompanham o usuário ao
+  // (re)abrir esta janela — voltavam ao padrão. Servidor é a fonte da verdade.
+  useEffect(() => {
+    let ativo = true;
+    obterPreferencias()
+      .then((p) => {
+        if (ativo) hidratarComposer({ altura: p.alturaComposerChat, enviarComEnter: p.enviarComEnter });
+      })
+      .catch(() => {
+        /* offline/erro — segue com o cache local. */
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [hidratarComposer]);
 
   // Esta janela É o chat: marca 'aberto' no store DESTE contexto (a conversa em tela
   // não bipa/notifica) e seleciona a conversa pedida na URL da abertura.
