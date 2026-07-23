@@ -510,14 +510,16 @@ ${contextoTicket}`,
             {mensagens.map((m) => (
               <div key={m.chave} className="mb-5">
                 <div className="flex gap-3">
-                  <User className="mt-1 h-4 w-4 shrink-0 text-slate-400" />
-                  <div className="min-w-0 flex-1">
+                  <User className="mt-1 h-4 w-4 shrink-0 text-amber-500" />
+                  {/* Mensagem do usuário destacada (mesmo estilo do aviso de segurança):
+                      borda/fundo/cor âmbar deixam fácil rolar e localizar o que foi pedido. */}
+                  <div className="min-w-0 flex-1 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800">
                     {m.autor && (
-                      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-amber-700">
                         {m.autor}
                       </p>
                     )}
-                    <p className="whitespace-pre-wrap font-medium text-slate-900">{m.prompt}</p>
+                    <p className="whitespace-pre-wrap font-medium text-amber-900">{m.prompt}</p>
                   </div>
                 </div>
 
