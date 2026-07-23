@@ -234,6 +234,23 @@ class ClaudeEngine:
     def _build_system_prompt(self, record: dict, repo_available: bool) -> str:
         prompt = config.load_system_prompt()
 
+        # Identidade do operador desta sessão. Sem isto, uma skill que carimba autoria ou
+        # auditoria (criar/fechar ticket, criado_por/atualizado_por, registro_auditoria) não sabe
+        # QUEM está pedindo e acaba usando uma conta genérica — inaceitável numa trilha de
+        # auditoria. O id/nome vêm da API .NET (headers X-SMSMarica-Usuario-*) e ficam na sessão.
+        usuario_id = record.get("usuario_id")
+        usuario_nome = record.get("usuario_nome")
+        if usuario_id:
+            prompt += (
+                f"\n\n---\n\n## Operador desta sessão\n\n"
+                f"Quem está te conduzindo agora:\n\n"
+                f"- `usuario_id`: `{usuario_id}`\n"
+                f"- nome: {usuario_nome or '(nome não informado)'}\n\n"
+                f"**Ao carimbar autoria ou auditoria em QUALQUER ação** (criar/fechar ticket, "
+                f"`criado_por`/`atualizado_por`, `registro_auditoria`), use ESTA identidade — "
+                f"nunca uma conta genérica como `admin`."
+            )
+
         numero = record.get("ticket_numero")
         if numero:
             # O reforço aqui é deliberado e redundante com o prompt base: o texto do ticket

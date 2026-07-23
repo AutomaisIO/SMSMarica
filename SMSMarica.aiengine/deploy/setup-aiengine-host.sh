@@ -17,6 +17,32 @@ if ! command -v claude >/dev/null 2>&1; then
 fi
 claude --version
 
+echo "=== 1b — ferramental de dev do agente (idempotente) ==="
+# O agente trabalha código NO servidor: precisa buildar .NET, gerar/aplicar migrations EF,
+# usar o GitHub CLI e falar com o Postgres de prod por Python. Instalado à mão porque o
+# GitHub Actions não provisiona o host. Symlinks em /usr/local/bin porque é o que está no
+# PATH do systemd (o serviço não lê .bashrc). Confirmado: dotnet-ef roda sem DOTNET_ROOT.
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -y -q
+apt-get install -y -q python3-psycopg2                       # acesso ao Postgres de prod
+if ! command -v gh >/dev/null 2>&1; then                     # GitHub CLI
+  apt-get install -y -q gh || {
+    mkdir -p -m 755 /etc/apt/keyrings
+    wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg > /etc/apt/keyrings/githubcli-archive-keyring.gpg
+    chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list
+    apt-get update -y -q && apt-get install -y -q gh
+  }
+fi
+if ! /usr/share/dotnet/dotnet --list-sdks 2>/dev/null | grep -q '^10\.'; then   # .NET SDK 10
+  curl -fsSL https://dot.net/v1/dotnet-install.sh | bash -s -- --channel 10.0 --install-dir /usr/share/dotnet
+fi
+ln -sf /usr/share/dotnet/dotnet /usr/local/bin/dotnet
+export PATH="/usr/share/dotnet:/root/.dotnet/tools:$PATH"
+/root/.dotnet/tools/dotnet-ef --version >/dev/null 2>&1 || dotnet tool install --global dotnet-ef
+ln -sf /root/.dotnet/tools/dotnet-ef /usr/local/bin/dotnet-ef
+echo "ferramental: dotnet $(dotnet --version) / ef $(/usr/local/bin/dotnet-ef --version | tail -1) / $(gh --version | head -1)"
+
 echo "=== 2/5 — chave SSH de deploy (push no monorepo) ==="
 if [ ! -f "$KEY_PATH" ]; then
   ssh-keygen -t ed25519 -N "" -C "aiengine@smsmarica" -f "$KEY_PATH"
