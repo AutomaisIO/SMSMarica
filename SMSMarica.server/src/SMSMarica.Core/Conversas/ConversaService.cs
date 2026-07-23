@@ -229,8 +229,29 @@ public sealed class ConversaService(
         if (!string.IsNullOrWhiteSpace(busca))
         {
             var termo = busca.Trim();
+
+            // O nome cadastrado do paciente vive no schema fhir (resolvido pelo hub), não na
+            // tabela conversa. Para achar "telma" pelo cadastro, resolvemos os PacienteIds cujo
+            // nome/CPF/CNS casam com o termo (mesma busca do hub usada em BuscarContatosAsync) e
+            // incluímos no filtro. Só a partir de 3 caracteres (a lista é refeita a cada tecla,
+            // não vale bater no hub para termos muito curtos). Best-effort: qualquer falha do hub
+            // degrada para a busca antiga (telefone + nome do WhatsApp), sem quebrar a listagem.
+            var idsPacientes = new HashSet<Guid>();
+            if (termo.Length >= 3)
+            {
+                try
+                {
+                    idsPacientes = (await pacientes.BuscarAsync(termo, ct)).Select(p => p.Id).ToHashSet();
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+                {
+                    // hub indisponível: segue só com telefone + nome do WhatsApp
+                }
+            }
+
             query = query.Where(c => c.TelefoneCanonical.Contains(termo)
-                || (c.NomeContato != null && c.NomeContato.Contains(termo)));
+                || (c.NomeContato != null && c.NomeContato.Contains(termo))
+                || (c.PacienteId != null && idsPacientes.Contains(c.PacienteId.Value)));
         }
 
         var itens = await query
