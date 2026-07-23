@@ -21,7 +21,8 @@ public sealed record TicketListItemDto(
     bool RespostaNaoReconhecida,
     /// <summary>Gestão: ticket novo/sem visualização (ou com atividade nova do autor).</summary>
     bool NovoParaGestao,
-    /// <summary>Gestão: a equipe já respondeu ao autor (comentário público ou conclusão/negação).</summary>
+    /// <summary>Gestão: a equipe já respondeu ao ticket (retorno/RespostaFinal preenchido,
+    /// comentário público ou conclusão/negação) — mesmo que ainda em aberto.</summary>
     bool Respondido);
 
 /// <summary>Anexo (imagem) de um ticket/comentário.</summary>

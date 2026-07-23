@@ -355,7 +355,8 @@ public sealed class TicketService(SmsMaricaDbContext db, IUsuarioAtualAccessor u
                     && (t.RespostaReconhecidaEm == null || t.RespostaReconhecidaEm < t.RespondidoEm),
                 NovoParaGestao = t.VistoPelaGestaoEm == null
                     || (t.AtualizadoEm ?? t.CriadoEm) > t.VistoPelaGestaoEm,
-                Respondido = t.RespondidoEm != null,
+                Respondido = t.RespondidoEm != null
+                    || (t.RespostaFinal != null && t.RespostaFinal != ""),
             })
             .ToListAsync(ct);
 
