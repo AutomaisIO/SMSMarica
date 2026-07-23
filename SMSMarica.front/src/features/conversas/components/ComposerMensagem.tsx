@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, Send } from 'lucide-react';
+import { AlertTriangle, GripHorizontal, Send } from 'lucide-react';
 import { useEnviarMensagem } from '@/features/conversas/api/queries';
 import { useChat } from '@/features/conversas/store/chatStore';
-import { useComposerPreferencias } from '@/features/conversas/store/composerPreferencias';
+import {
+  ALTURA_MAX,
+  ALTURA_MIN,
+  useComposerPreferencias,
+} from '@/features/conversas/store/composerPreferencias';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 
 type Props = {
@@ -21,15 +25,35 @@ export function ComposerMensagem({ conversaId, podeTextoLivre }: Props) {
   const definirEnviarComEnter = useComposerPreferencias((s) => s.definirEnviarComEnter);
   const taRef = useRef<HTMLTextAreaElement>(null);
 
-  // Aplica a altura preferida no textarea (uncontrolled height): o usuário arrasta a alça
-  // nativa e, ao soltar, gravamos a altura resultante nas preferências (persiste no servidor).
+  // Aplica a altura preferida no textarea (altura controlada por nós, sem resize nativo):
+  // no mount e sempre que a preferência muda. Durante o arrasto mexemos direto no style
+  // (sem re-render) e, ao soltar, gravamos a altura final nas preferências (persiste no servidor).
   useEffect(() => {
     if (taRef.current) taRef.current.style.height = `${altura}px`;
   }, [altura]);
 
-  function aoTerminarResize() {
-    const h = taRef.current?.offsetHeight;
-    if (h && Math.abs(h - altura) > 1) definirAltura(h);
+  // Alça de redimensionar no topo: arrastar para cima aumenta a caixa; para baixo diminui.
+  const arrasteRef = useRef<{ y0: number; h0: number } | null>(null);
+
+  function aoIniciarArraste(e: React.PointerEvent<HTMLDivElement>) {
+    if (!taRef.current) return;
+    e.preventDefault();
+    arrasteRef.current = { y0: e.clientY, h0: taRef.current.offsetHeight };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+
+  function aoArrastar(e: React.PointerEvent<HTMLDivElement>) {
+    const a = arrasteRef.current;
+    if (!a || !taRef.current) return;
+    const nova = Math.min(ALTURA_MAX, Math.max(ALTURA_MIN, a.h0 + (a.y0 - e.clientY)));
+    taRef.current.style.height = `${nova}px`;
+  }
+
+  function aoSoltarArraste(e: React.PointerEvent<HTMLDivElement>) {
+    if (!arrasteRef.current || !taRef.current) return;
+    arrasteRef.current = null;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    definirAltura(taRef.current.offsetHeight);
   }
 
   // Resposta rápida escolhida no painel: o texto já resolvido cai aqui para o operador
@@ -68,6 +92,19 @@ export function ComposerMensagem({ conversaId, podeTextoLivre }: Props) {
   return (
     <div className="border-t border-gray-200 p-2">
       {erro && <p className="px-1 pb-1 text-xs text-red-600">{erro}</p>}
+      {/* Alça de redimensionar: cursor de resize vertical; arraste p/ cima ou p/ baixo. */}
+      <div
+        onPointerDown={aoIniciarArraste}
+        onPointerMove={aoArrastar}
+        onPointerUp={aoSoltarArraste}
+        role="separator"
+        aria-orientation="horizontal"
+        aria-label="Redimensionar a caixa de mensagem (arraste para cima ou para baixo)"
+        title="Arraste para cima ou para baixo para redimensionar"
+        className="group flex touch-none cursor-ns-resize items-center justify-center py-0.5"
+      >
+        <GripHorizontal className="h-3.5 w-5 text-gray-300 group-hover:text-gray-500" />
+      </div>
       <div className="flex items-end gap-2">
         <textarea
           ref={taRef}
@@ -79,13 +116,12 @@ export function ComposerMensagem({ conversaId, podeTextoLivre }: Props) {
               void aoEnviar();
             }
           }}
-          onMouseUp={aoTerminarResize}
           placeholder={
             enviarComEnter
               ? 'Escreva uma mensagem…  (Enter envia, Shift+Enter quebra linha)'
               : 'Escreva uma mensagem…  (Enter quebra linha — envie pelo botão)'
           }
-          className="flex-1 resize-y overflow-y-auto rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-400"
+          className="flex-1 resize-none overflow-y-auto rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-400"
         />
         <button
           type="button"
