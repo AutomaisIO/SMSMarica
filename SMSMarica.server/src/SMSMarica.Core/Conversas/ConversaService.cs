@@ -249,8 +249,10 @@ public sealed class ConversaService(
                 }
             }
 
-            query = query.Where(c => c.TelefoneCanonical.Contains(termo)
-                || (c.NomeContato != null && c.NomeContato.Contains(termo))
+            // ILIKE (não Contains/LIKE) para a busca ser insensível a maiúsculas/minúsculas,
+            // igual à busca de nome do hub (EF.Functions.ILike em PatientService).
+            query = query.Where(c => EF.Functions.ILike(c.TelefoneCanonical, $"%{termo}%")
+                || (c.NomeContato != null && EF.Functions.ILike(c.NomeContato, $"%{termo}%"))
                 || (c.PacienteId != null && idsPacientes.Contains(c.PacienteId.Value)));
         }
 
