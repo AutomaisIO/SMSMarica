@@ -60,6 +60,27 @@ function turnosParaMensagens(turns: TurnoResumo[] = []): Mensagem[] {
   }));
 }
 
+// Formata **negrito** do texto do agente como negrito em vermelho; o restante fica literal
+// (mantendo as quebras, já que o container usa whitespace-pre-wrap). Escopo intencionalmente
+// só do **bold** — nada de renderizar markdown completo aqui.
+function TextoFormatado({ texto }: { texto: string }) {
+  const partes = texto.split(/(\*\*[^*]+?\*\*)/g);
+  return (
+    <>
+      {partes.map((parte, i) => {
+        const negrito = /^\*\*([^*]+?)\*\*$/.exec(parte);
+        return negrito ? (
+          <strong key={i} className="font-bold text-red-600">
+            {negrito[1]}
+          </strong>
+        ) : (
+          <span key={i}>{parte}</span>
+        );
+      })}
+    </>
+  );
+}
+
 function BlocoFerramenta({ evento }: { evento: Extract<EventoAgente, { type: 'tool_use' }> }) {
   const [aberto, setAberto] = useState(false);
   const Chevron = aberto ? ChevronDown : ChevronRight;
@@ -85,7 +106,11 @@ function BlocoFerramenta({ evento }: { evento: Extract<EventoAgente, { type: 'to
 
 function Evento({ evento }: { evento: EventoAgente }) {
   if (evento.type === 'text') {
-    return <p className="whitespace-pre-wrap leading-relaxed text-slate-800">{evento.text}</p>;
+    return (
+      <p className="whitespace-pre-wrap leading-relaxed text-slate-800">
+        <TextoFormatado texto={evento.text} />
+      </p>
+    );
   }
   if (evento.type === 'tool_use') return <BlocoFerramenta evento={evento} />;
   if (evento.type === 'tool_result' && evento.isError) {
@@ -454,7 +479,7 @@ ${contextoTicket}`,
                     ))}
                     {m.parcial && (
                       <p className="whitespace-pre-wrap leading-relaxed text-slate-800">
-                        {m.parcial}
+                        <TextoFormatado texto={m.parcial} />
                         <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-slate-400 align-text-bottom" />
                       </p>
                     )}
