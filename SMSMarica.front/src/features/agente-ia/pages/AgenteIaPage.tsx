@@ -74,9 +74,25 @@ function inlineNegrito(texto: string, chave: string): ReactNode[] {
   });
 }
 
+// Título por nível (nº de #). O agente usa # / ## como seção principal, ### como subseção
+// e ####+ como detalhe — a escala de azul acompanha essa hierarquia: quanto mais alto o
+// nível, mais forte o destaque (fundo/borda/cor/tamanho).
+function classeTitulo(nivel: number): string {
+  if (nivel <= 2) {
+    // Seção (# / ##): destaque mais forte.
+    return 'mt-3 mb-1.5 rounded-md border border-l-4 border-blue-300 border-l-blue-700 bg-blue-100 px-3 py-2 text-base font-bold text-blue-900';
+  }
+  if (nivel === 3) {
+    // Subseção (###): bloco médio.
+    return 'my-1 rounded-md border border-l-4 border-blue-200 border-l-blue-500 bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-800';
+  }
+  // Detalhe (####+): destaque leve, sem preenchimento.
+  return 'mt-2 mb-0.5 border-l-2 border-l-blue-400 pl-2 text-sm font-semibold text-blue-700';
+}
+
 // Formata o texto do agente para exibição:
-//  - linhas iniciadas por ### (títulos) viram um bloco destacado na escala de azul
-//    (fundo, borda e cor do texto em azul), ocupando a linha inteira;
+//  - linhas iniciadas por # ... ###### (título, exige espaço após os #) viram um bloco
+//    destacado na escala de azul, com força proporcional ao nível (ver classeTitulo);
 //  - **negrito** vira negrito vermelho;
 //  - o restante é literal, com as quebras preservadas (whitespace-pre-wrap).
 // Escopo intencionalmente restrito — não é um renderizador de markdown completo.
@@ -97,14 +113,12 @@ function TextoFormatado({ texto }: { texto: string }) {
   };
 
   linhas.forEach((linha, i) => {
-    const titulo = /^(#{3,6})\s*(.*)$/.exec(linha);
+    // Espaço obrigatório após os # evita tratar "#40" (referência de ticket) como título.
+    const titulo = /^(#{1,6})\s+(.*)$/.exec(linha);
     if (titulo) {
       descarregar(`p-${i}`);
       blocos.push(
-        <div
-          key={`h-${i}`}
-          className="my-1 rounded-md border border-l-4 border-blue-200 border-l-blue-500 bg-blue-50 px-3 py-1.5 font-semibold text-blue-800"
-        >
+        <div key={`h-${i}`} className={classeTitulo(titulo[1].length)}>
           {inlineNegrito(titulo[2], `h-${i}`)}
         </div>,
       );
