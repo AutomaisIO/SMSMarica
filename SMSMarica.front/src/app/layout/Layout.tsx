@@ -5,6 +5,7 @@ import { Header } from '@/app/layout/Header';
 import { MenuContextoBar } from '@/app/layout/MenuContextoBar';
 import { Sidebar } from '@/app/layout/Sidebar';
 import { useMenuPreferencias } from '@/app/layout/menuPreferencias';
+import { useComposerPreferencias } from '@/features/conversas/store/composerPreferencias';
 import { obterPreferencias } from '@/shared/auth/preferenciasApi';
 import { useVersaoApp } from '@/shared/hooks/useVersaoApp';
 import { CANAL_NAVEGACAO } from '@/shared/lib/janela';
@@ -14,6 +15,7 @@ export function Layout() {
   const [colapsado, setColapsado] = useState(false);
   const [mobileAberto, setMobileAberto] = useState(false);
   const hidratar = useMenuPreferencias((s) => s.hidratar);
+  const hidratarComposer = useComposerPreferencias((s) => s.hidratar);
   const { novaVersao, atualizar } = useVersaoApp();
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -46,7 +48,9 @@ export function Layout() {
     let ativo = true;
     obterPreferencias()
       .then((p) => {
-        if (ativo) hidratar(p.menuDefaults ?? {});
+        if (!ativo) return;
+        hidratar(p.menuDefaults ?? {});
+        hidratarComposer({ altura: p.alturaComposerChat, enviarComEnter: p.enviarComEnter });
       })
       .catch(() => {
         /* offline/erro — segue com o cache local. */
@@ -54,7 +58,7 @@ export function Layout() {
     return () => {
       ativo = false;
     };
-  }, [hidratar]);
+  }, [hidratar, hidratarComposer]);
 
   return (
     <div className="min-h-screen bg-gray-50">

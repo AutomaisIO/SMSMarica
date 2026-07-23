@@ -384,6 +384,11 @@ public sealed class IdentidadeService(
             .Select(u => u.PreferenciasUi)
             .FirstOrDefaultAsync(cancellationToken);
 
+        return Desserializar(json);
+    }
+
+    private static PreferenciasUiDto Desserializar(string? json)
+    {
         if (string.IsNullOrWhiteSpace(json)) return new PreferenciasUiDto(new());
         try
         {
@@ -400,8 +405,14 @@ public sealed class IdentidadeService(
         var u = await _db.Usuarios.FirstOrDefaultAsync(x => x.Id == usuarioId, cancellationToken)
             ?? throw new NaoEncontradoException(nameof(Usuario), usuarioId);
 
-        var limpo = new PreferenciasUiDto(preferencias.MenuDefaults ?? new());
-        u.PreferenciasUi = JsonSerializer.Serialize(limpo, PreferenciasJson);
+        // Merge no servidor: cada campo não enviado (nulo) preserva o valor atual. Assim telas
+        // independentes (menu, chat) gravam só a sua parte sem sobrescrever a das outras.
+        var atual = Desserializar(u.PreferenciasUi);
+        var mesclado = new PreferenciasUiDto(
+            preferencias.MenuDefaults ?? atual.MenuDefaults ?? new(),
+            preferencias.AlturaComposerChat ?? atual.AlturaComposerChat,
+            preferencias.EnviarComEnter ?? atual.EnviarComEnter);
+        u.PreferenciasUi = JsonSerializer.Serialize(mesclado, PreferenciasJson);
         await _db.SaveChangesAsync(cancellationToken);
     }
 

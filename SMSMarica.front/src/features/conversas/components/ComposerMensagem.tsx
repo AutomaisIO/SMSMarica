@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Send } from 'lucide-react';
 import { useEnviarMensagem } from '@/features/conversas/api/queries';
 import { useChat } from '@/features/conversas/store/chatStore';
+import { useComposerPreferencias } from '@/features/conversas/store/composerPreferencias';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 
 type Props = {
@@ -13,6 +14,23 @@ export function ComposerMensagem({ conversaId, podeTextoLivre }: Props) {
   const [texto, setTexto] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const enviar = useEnviarMensagem();
+
+  const altura = useComposerPreferencias((s) => s.altura);
+  const enviarComEnter = useComposerPreferencias((s) => s.enviarComEnter);
+  const definirAltura = useComposerPreferencias((s) => s.definirAltura);
+  const definirEnviarComEnter = useComposerPreferencias((s) => s.definirEnviarComEnter);
+  const taRef = useRef<HTMLTextAreaElement>(null);
+
+  // Aplica a altura preferida no textarea (uncontrolled height): o usuário arrasta a alça
+  // nativa e, ao soltar, gravamos a altura resultante nas preferências (persiste no servidor).
+  useEffect(() => {
+    if (taRef.current) taRef.current.style.height = `${altura}px`;
+  }, [altura]);
+
+  function aoTerminarResize() {
+    const h = taRef.current?.offsetHeight;
+    if (h && Math.abs(h - altura) > 1) definirAltura(h);
+  }
 
   // Resposta rápida escolhida no painel: o texto já resolvido cai aqui para o operador
   // revisar. Nunca enviamos por ele — o clique é no atalho, o envio continua sendo dele.
@@ -52,17 +70,22 @@ export function ComposerMensagem({ conversaId, podeTextoLivre }: Props) {
       {erro && <p className="px-1 pb-1 text-xs text-red-600">{erro}</p>}
       <div className="flex items-end gap-2">
         <textarea
+          ref={taRef}
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
+            if (e.key === 'Enter' && !e.shiftKey && enviarComEnter) {
               e.preventDefault();
               void aoEnviar();
             }
           }}
-          rows={2}
-          placeholder="Escreva uma mensagem…  (Enter envia, Shift+Enter quebra linha)"
-          className="max-h-32 flex-1 resize-none rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-400"
+          onMouseUp={aoTerminarResize}
+          placeholder={
+            enviarComEnter
+              ? 'Escreva uma mensagem…  (Enter envia, Shift+Enter quebra linha)'
+              : 'Escreva uma mensagem…  (Enter quebra linha — envie pelo botão)'
+          }
+          className="flex-1 resize-y overflow-y-auto rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-400"
         />
         <button
           type="button"
@@ -74,6 +97,15 @@ export function ComposerMensagem({ conversaId, podeTextoLivre }: Props) {
           <Send className="h-4 w-4" />
         </button>
       </div>
+      <label className="mt-1 flex w-fit cursor-pointer select-none items-center gap-1.5 px-1 text-xs text-gray-500">
+        <input
+          type="checkbox"
+          checked={enviarComEnter}
+          onChange={(e) => definirEnviarComEnter(e.target.checked)}
+          className="h-3.5 w-3.5 rounded border-gray-300 text-primary-600 focus:ring-primary-400"
+        />
+        Enviar com Enter
+      </label>
     </div>
   );
 }
