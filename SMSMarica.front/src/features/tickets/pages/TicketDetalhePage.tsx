@@ -15,6 +15,7 @@ import {
   useArquivar,
   useAtualizarGestao,
   useExcluirTicket,
+  useMarcarEnviadoIa,
   useTicket,
 } from '@/features/tickets/api/queries';
 import { AnexosGaleria } from '@/features/tickets/components/AnexosInput';
@@ -216,10 +217,24 @@ function PainelTriagem({
   const [prioridade, setPrioridade] = useState<TicketPrioridade>(ticket.prioridade);
   const [resposta, setResposta] = useState(ticket.respostaFinal ?? '');
   const atualizar = useAtualizarGestao(id);
+  const marcarEnviadoIa = useMarcarEnviadoIa();
   const navigate = useNavigate();
   // Só oferece o encaminhamento a quem pode de fato acionar o agente — Edicao, não Consulta:
   // mandar o agente trabalhar é ação no servidor, não leitura.
   const podeAgente = usePermissao('AgenteIa', 'Edicao');
+
+  // Registra a marca "Enviado à IA" e abre o terminal do agente. Best-effort: se a marcação
+  // falhar, ainda assim navega — o encaminhamento não pode ficar refém do registro.
+  async function enviarAoAgente() {
+    try {
+      await marcarEnviadoIa.mutateAsync(id);
+    } catch {
+      // silencioso: a marca é secundária ao ato de abrir o agente.
+    }
+    navigate(`/app/agente-ia?ticket=${numero}`, {
+      state: { contextoTicket: montarContextoTicket(ticketCompleto) },
+    });
+  }
 
   useEffect(() => {
     setStatus(ticket.status);
@@ -286,11 +301,8 @@ function PainelTriagem({
           <Button
             variante="secundaria"
             tamanho="sm"
-            onClick={() =>
-              navigate(`/app/agente-ia?ticket=${numero}`, {
-                state: { contextoTicket: montarContextoTicket(ticketCompleto) },
-              })
-            }
+            disabled={marcarEnviadoIa.isPending}
+            onClick={enviarAoAgente}
             title="Abre o terminal do agente com o contexto deste ticket"
           >
             <Bot className="mr-1.5 h-4 w-4" />

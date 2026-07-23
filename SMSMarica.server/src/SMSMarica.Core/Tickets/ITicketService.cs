@@ -44,6 +44,9 @@ public interface ITicketService
     /// <summary>Triagem: muda status/prioridade e/ou registra o retorno final.</summary>
     Task AtualizarGestaoAsync(Guid id, AtualizarTicketGestaoRequest request, CancellationToken ct = default);
 
+    /// <summary>Marca que o ticket foi encaminhado ao Agente IA (marca "Enviado à IA" na lista).</summary>
+    Task MarcarEnviadoIaAsync(Guid id, CancellationToken ct = default);
+
     Task ArquivarComoAdminAsync(Guid id, bool arquivar, CancellationToken ct = default);
 
     Task ExcluirAsync(Guid id, CancellationToken ct = default);

@@ -140,6 +140,18 @@ public sealed class TicketsController(ITicketService service, IMidiasService mid
         return NoContent();
     }
 
+    // Encaminhar ao Agente IA exige poder acionar o agente (AgenteIa:Edicao) — a mesma trava
+    // do botão no painel. Só registra a marca "Enviado à IA"; não muda status nem responde ao autor.
+    [HttpPost("gestao/{id:guid}/enviar-ia")]
+    [RequerPermissao(ModuloPermissao.AgenteIa, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> MarcarEnviadoIa(Guid id, CancellationToken ct)
+    {
+        await _service.MarcarEnviadoIaAsync(id, ct);
+        return NoContent();
+    }
+
     [HttpDelete("gestao/{id:guid}")]
     [RequerPermissao(ModuloPermissao.Ticket, AcoesPermissao.Exclusao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

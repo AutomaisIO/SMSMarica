@@ -53,6 +53,12 @@ public sealed class Ticket
     /// </summary>
     public DateTime? VistoPelaGestaoEm { get; set; }
 
+    /// <summary>
+    /// Quando a gestão encaminhou o ticket ao Agente IA (botão "Enviar ao Agente IA").
+    /// Não-nulo = já foi enviado; base da marca "Enviado à IA" na lista da gestão.
+    /// </summary>
+    public DateTime? EnviadoIaEm { get; set; }
+
     // ---- Auditoria ADR-0006 (CriadoPor = autor do ticket) ----
     public DateTime CriadoEm { get; set; }
     public Guid? CriadoPor { get; set; }

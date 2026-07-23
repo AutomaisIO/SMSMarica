@@ -17,6 +17,7 @@ import {
   excluirTicket,
   listarMeusTickets,
   listarTodosTickets,
+  marcarEnviadoIa,
   obterConfiguracao,
   obterResumoAutor,
   obterResumoGestao,
@@ -120,6 +121,15 @@ export function useComentar(id: string, gestao: boolean) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (p: ComentarPayload) => (gestao ? comentarTicketGestao(id, p) : comentarTicket(id, p)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ticketsKeys.raiz }),
+  });
+}
+
+/** Marca o ticket como "Enviado à IA" (chamado ao encaminhar ao Agente IA). */
+export function useMarcarEnviadoIa() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => marcarEnviadoIa(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ticketsKeys.raiz }),
   });
 }

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCheck, Inbox, MessageSquare, Settings2 } from 'lucide-react';
+import { Bot, CheckCheck, Inbox, MessageSquare, Settings2 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
@@ -90,6 +90,15 @@ export function GestaoTicketsPage() {
             >
               <CheckCheck className="h-3 w-3" />
               Respondido
+            </span>
+          )}
+          {t.enviadoIa && (
+            <span
+              className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700 ring-1 ring-inset ring-violet-600/20"
+              title="Ticket encaminhado ao Agente IA"
+            >
+              <Bot className="h-3 w-3" />
+              Enviado à IA
             </span>
           )}
         </div>

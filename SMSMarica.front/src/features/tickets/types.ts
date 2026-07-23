@@ -42,6 +42,8 @@ export type TicketListItem = {
   novoParaGestao: boolean;
   /** Gestão: a equipe já respondeu ao autor (comentário público ou conclusão/negação). */
   respondido: boolean;
+  /** Gestão: o ticket já foi encaminhado ao Agente IA (marca "Enviado à IA"). */
+  enviadoIa: boolean;
 };
 
 export type Ticket = {
