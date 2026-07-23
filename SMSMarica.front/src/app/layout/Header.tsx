@@ -6,7 +6,6 @@ import { useAuth } from '@/shared/auth/authStore';
 import { useChat } from '@/features/conversas/store/chatStore';
 import { definirSomChat } from '@/features/conversas/lib/janelaChat';
 import { useTicketsBadges } from '@/features/tickets/api/queries';
-import { CounterBadge } from '@/shared/ui/CounterBadge';
 
 type Props = {
   onToggleMobileSidebar: () => void;
@@ -94,18 +93,35 @@ export function Header({ onToggleMobileSidebar }: Props) {
               type="button"
               onClick={() => navigate('/app/tickets/gestao')}
               title="Ir para a Gestão de Tickets"
-              className="hidden items-center gap-2 rounded-md border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 sm:flex"
+              className="hidden items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-1.5 shadow-sm transition hover:border-gray-300 hover:bg-gray-50 sm:flex"
             >
-              <LifeBuoy className="h-4 w-4 text-red-600" />
-              {badgesTickets.gestaoNovos > 0 && (
-                <span className="inline-flex items-center gap-1">
-                  <CounterBadge valor={badgesTickets.gestaoNovos} />
-                  <span>{badgesTickets.gestaoNovos === 1 ? 'novo' : 'novos'}</span>
+              <span className="flex items-center gap-1.5 text-sm font-semibold text-gray-700">
+                <LifeBuoy className="h-5 w-5 text-red-600" />
+                <span className="hidden lg:inline">Suporte</span>
+              </span>
+              <span className="h-6 w-px bg-gray-200" />
+              <span className="flex items-center gap-3">
+                <span className="flex items-center gap-1.5" title="Novos (não reconhecidos)">
+                  <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-error-500 px-1.5 text-xs font-bold leading-none text-white">
+                    {badgesTickets.gestaoNovos > 99 ? '99+' : badgesTickets.gestaoNovos}
+                  </span>
+                  <span className="text-xs font-medium text-gray-600">
+                    {badgesTickets.gestaoNovos === 1 ? 'novo' : 'novos'}
+                  </span>
                 </span>
-              )}
-              <span className="text-gray-500">{badgesTickets.gestaoAbertos} abertos</span>
-              <span className="text-gray-300">·</span>
-              <span className="text-gray-500">{badgesTickets.gestaoEmAnalise} em análise</span>
+                <span className="flex items-center gap-1.5" title="Abertos">
+                  <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-amber-100 px-1.5 text-xs font-bold leading-none text-amber-700">
+                    {badgesTickets.gestaoAbertos > 99 ? '99+' : badgesTickets.gestaoAbertos}
+                  </span>
+                  <span className="text-xs font-medium text-gray-600">abertos</span>
+                </span>
+                <span className="flex items-center gap-1.5" title="Em análise">
+                  <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-blue-100 px-1.5 text-xs font-bold leading-none text-blue-700">
+                    {badgesTickets.gestaoEmAnalise > 99 ? '99+' : badgesTickets.gestaoEmAnalise}
+                  </span>
+                  <span className="text-xs font-medium text-gray-600">em análise</span>
+                </span>
+              </span>
             </button>
           )}
           {unidades.length > 1 && (
