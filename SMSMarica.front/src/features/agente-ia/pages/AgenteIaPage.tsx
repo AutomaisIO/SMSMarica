@@ -60,10 +60,12 @@ function turnosParaMensagens(turns: TurnoResumo[] = []): Mensagem[] {
   }));
 }
 
-// Aplica **negrito** (vermelho em negrito) dentro de um trecho de linha; o resto fica literal.
+// Aplica negrito (vermelho em negrito) dentro de um trecho de linha; o resto fica literal.
+// Reconhece tanto **texto** quanto *texto* (a alternância tenta ** antes, para não quebrar
+// o duplo em dois simples).
 function inlineNegrito(texto: string, chave: string): ReactNode[] {
-  return texto.split(/(\*\*[^*]+?\*\*)/g).map((parte, i) => {
-    const negrito = /^\*\*([^*]+?)\*\*$/.exec(parte);
+  return texto.split(/(\*\*[^*]+?\*\*|\*[^*]+?\*)/g).map((parte, i) => {
+    const negrito = /^\*\*([^*]+?)\*\*$/.exec(parte) ?? /^\*([^*]+?)\*$/.exec(parte);
     return negrito ? (
       <strong key={`${chave}-${i}`} className="font-bold text-red-600">
         {negrito[1]}
