@@ -93,6 +93,11 @@ export async function arquivarGestao(id: string, arquivar: boolean): Promise<voi
   await http.post(`/tickets/gestao/${id}/arquivar`, null, { params: { arquivar } });
 }
 
+/** Registra que o ticket foi encaminhado ao Agente IA (marca "Enviado à IA" na lista da gestão). */
+export async function marcarEnviadoIa(id: string): Promise<void> {
+  await http.post(`/tickets/gestao/${id}/enviar-ia`);
+}
+
 export async function excluirTicket(id: string): Promise<void> {
   await http.delete(`/tickets/gestao/${id}`);
 }

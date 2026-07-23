@@ -216,6 +216,17 @@ public sealed class TicketService(SmsMaricaDbContext db, IUsuarioAtualAccessor u
         await _db.SaveChangesAsync(ct);
     }
 
+    public async Task MarcarEnviadoIaAsync(Guid id, CancellationToken ct = default)
+    {
+        var ticket = await _db.Tickets.FirstOrDefaultAsync(t => t.Id == id && t.ExcluidoEm == null, ct)
+            ?? throw new NaoEncontradoException(nameof(Ticket), id);
+
+        // Registra o encaminhamento ao Agente IA. Idempotente: reenviar apenas atualiza o instante.
+        // Não conta como "resposta ao autor" nem mexe no visto da gestão — é só a marca de envio.
+        ticket.EnviadoIaEm = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+    }
+
     public async Task ArquivarComoAdminAsync(Guid id, bool arquivar, CancellationToken ct = default)
     {
         var ticket = await _db.Tickets.FirstOrDefaultAsync(t => t.Id == id && t.ExcluidoEm == null, ct)
@@ -357,6 +368,7 @@ public sealed class TicketService(SmsMaricaDbContext db, IUsuarioAtualAccessor u
                     || (t.AtualizadoEm ?? t.CriadoEm) > t.VistoPelaGestaoEm,
                 Respondido = t.RespondidoEm != null
                     || (t.RespostaFinal != null && t.RespostaFinal != ""),
+                EnviadoIa = t.EnviadoIaEm != null,
             })
             .ToListAsync(ct);
 
@@ -366,7 +378,7 @@ public sealed class TicketService(SmsMaricaDbContext db, IUsuarioAtualAccessor u
         return [.. linhas.Select(l => new TicketListItemDto(
             l.Id, l.Numero, l.Titulo, l.Tipo, l.Status, l.Prioridade, NomeDe(nomes, l.CriadoPor), l.CriadoPor,
             l.UnidadeId, l.Arquivado, l.QtdComentarios, l.CriadoEm, l.AtualizadoEm,
-            l.RespostaNaoReconhecida, l.NovoParaGestao, l.Respondido))];
+            l.RespostaNaoReconhecida, l.NovoParaGestao, l.Respondido, l.EnviadoIa))];
     }
 
     private bool PodeVer(Ticket t)

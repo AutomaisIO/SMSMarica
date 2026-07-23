@@ -29,6 +29,7 @@ internal sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
         builder.Property(t => t.RespondidoEm).HasColumnName("respondido_em");
         builder.Property(t => t.RespostaReconhecidaEm).HasColumnName("resposta_reconhecida_em");
         builder.Property(t => t.VistoPelaGestaoEm).HasColumnName("visto_pela_gestao_em");
+        builder.Property(t => t.EnviadoIaEm).HasColumnName("enviado_ia_em");
 
         builder.Property(t => t.CriadoEm).HasColumnName("criado_em").IsRequired();
         builder.Property(t => t.CriadoPor).HasColumnName("criado_por");

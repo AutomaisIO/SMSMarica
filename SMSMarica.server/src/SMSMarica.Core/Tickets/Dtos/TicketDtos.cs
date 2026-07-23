@@ -23,7 +23,9 @@ public sealed record TicketListItemDto(
     bool NovoParaGestao,
     /// <summary>Gestão: a equipe já respondeu ao ticket (retorno/RespostaFinal preenchido,
     /// comentário público ou conclusão/negação) — mesmo que ainda em aberto.</summary>
-    bool Respondido);
+    bool Respondido,
+    /// <summary>Gestão: o ticket já foi encaminhado ao Agente IA (marca "Enviado à IA").</summary>
+    bool EnviadoIa);
 
 /// <summary>Anexo (imagem) de um ticket/comentário.</summary>
 public sealed record TicketAnexoDto(
