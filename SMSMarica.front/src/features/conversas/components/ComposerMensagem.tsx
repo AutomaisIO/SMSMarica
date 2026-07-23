@@ -25,12 +25,11 @@ export function ComposerMensagem({ conversaId, podeTextoLivre }: Props) {
   const definirEnviarComEnter = useComposerPreferencias((s) => s.definirEnviarComEnter);
   const taRef = useRef<HTMLTextAreaElement>(null);
 
-  // Aplica a altura preferida no textarea (altura controlada por nós, sem resize nativo):
-  // no mount e sempre que a preferência muda. Durante o arrasto mexemos direto no style
-  // (sem re-render) e, ao soltar, gravamos a altura final nas preferências (persiste no servidor).
-  useEffect(() => {
-    if (taRef.current) taRef.current.style.height = `${altura}px`;
-  }, [altura]);
+  // A altura é aplicada de forma DECLARATIVA (style={{ height }} no textarea) — vale sempre
+  // que o textarea é renderizado, inclusive ao remontar (troca de conversa) ou quando ele só
+  // aparece depois que a conversa carrega. Durante o arrasto mexemos direto no style (sem
+  // re-render) e, ao soltar, gravamos a altura final na preferência (persiste no servidor);
+  // o re-render seguinte sincroniza o style declarativo com o novo valor.
 
   // Alça de redimensionar no topo: arrastar para cima aumenta a caixa; para baixo diminui.
   const arrasteRef = useRef<{ y0: number; h0: number } | null>(null);
@@ -121,6 +120,7 @@ export function ComposerMensagem({ conversaId, podeTextoLivre }: Props) {
               ? 'Escreva uma mensagem…  (Enter envia, Shift+Enter quebra linha)'
               : 'Escreva uma mensagem…  (Enter quebra linha — envie pelo botão)'
           }
+          style={{ height: `${altura}px` }}
           className="flex-1 resize-none overflow-y-auto rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-400"
         />
         <button
