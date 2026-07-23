@@ -69,7 +69,10 @@ public static class ProcedimentosSigtapSeed
         Item("a1000000-0000-0000-0000-000000000022", "0205020100",
             "ULTRASSONOGRAFIA OBSTETRICA",
             "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA", "DIAGNOSTICO POR ULTRASSONOGRAFIA", "EXAMES"),
-        Item("a1000000-0000-0000-0000-000000000023", "0205020135",
+        // Código corrigido para o que o SISREG realmente emite (0205020186). O anterior
+        // (0205020135) não aparece uma única vez na extração de agendamentos — com ele, toda
+        // USG transvaginal importava sem tipo mapeado e jamais chegava à worklist.
+        Item("a1000000-0000-0000-0000-000000000023", "0205020186",
             "ULTRASSONOGRAFIA TRANSVAGINAL",
             "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA", "DIAGNOSTICO POR ULTRASSONOGRAFIA", "EXAMES"),
         Item("a1000000-0000-0000-0000-000000000024", "0205020151",
