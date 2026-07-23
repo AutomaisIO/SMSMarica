@@ -40,6 +40,8 @@ export type TicketListItem = {
   respostaNaoReconhecida: boolean;
   /** Gestão: ticket novo/sem visualização (ou com atividade nova do autor). */
   novoParaGestao: boolean;
+  /** Gestão: a equipe já respondeu ao autor (comentário público ou conclusão/negação). */
+  respondido: boolean;
 };
 
 export type Ticket = {

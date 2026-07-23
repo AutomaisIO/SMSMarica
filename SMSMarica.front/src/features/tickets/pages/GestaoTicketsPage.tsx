@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Inbox, MessageSquare, Settings2 } from 'lucide-react';
+import { CheckCheck, Inbox, MessageSquare, Settings2 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
@@ -77,7 +77,24 @@ export function GestaoTicketsPage() {
     },
     { chave: 'autor', cabecalho: 'Autor', className: 'text-sm text-slate-600', render: (t) => t.autorNome ?? '—' },
     { chave: 'prioridade', cabecalho: 'Prioridade', render: (t) => <PrioridadeBadge prioridade={t.prioridade} /> },
-    { chave: 'status', cabecalho: 'Status', render: (t) => <StatusTicketBadge status={t.status} /> },
+    {
+      chave: 'status',
+      cabecalho: 'Status',
+      render: (t) => (
+        <div className="flex items-center gap-1.5">
+          <StatusTicketBadge status={t.status} />
+          {t.respondido && (t.status === 'Aberto' || t.status === 'EmAnalise') && (
+            <span
+              className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20"
+              title="A equipe já respondeu este ticket"
+            >
+              <CheckCheck className="h-3 w-3" />
+              Respondido
+            </span>
+          )}
+        </div>
+      ),
+    },
     {
       chave: 'atualizado',
       cabecalho: 'Atualizado',

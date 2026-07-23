@@ -355,6 +355,7 @@ public sealed class TicketService(SmsMaricaDbContext db, IUsuarioAtualAccessor u
                     && (t.RespostaReconhecidaEm == null || t.RespostaReconhecidaEm < t.RespondidoEm),
                 NovoParaGestao = t.VistoPelaGestaoEm == null
                     || (t.AtualizadoEm ?? t.CriadoEm) > t.VistoPelaGestaoEm,
+                Respondido = t.RespondidoEm != null,
             })
             .ToListAsync(ct);
 
@@ -364,7 +365,7 @@ public sealed class TicketService(SmsMaricaDbContext db, IUsuarioAtualAccessor u
         return [.. linhas.Select(l => new TicketListItemDto(
             l.Id, l.Numero, l.Titulo, l.Tipo, l.Status, l.Prioridade, NomeDe(nomes, l.CriadoPor), l.CriadoPor,
             l.UnidadeId, l.Arquivado, l.QtdComentarios, l.CriadoEm, l.AtualizadoEm,
-            l.RespostaNaoReconhecida, l.NovoParaGestao))];
+            l.RespostaNaoReconhecida, l.NovoParaGestao, l.Respondido))];
     }
 
     private bool PodeVer(Ticket t)

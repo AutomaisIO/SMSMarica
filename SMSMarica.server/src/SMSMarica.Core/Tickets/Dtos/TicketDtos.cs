@@ -20,7 +20,9 @@ public sealed record TicketListItemDto(
     /// <summary>Autor: há resposta da equipe ainda não reconhecida (mostra a "bandeira").</summary>
     bool RespostaNaoReconhecida,
     /// <summary>Gestão: ticket novo/sem visualização (ou com atividade nova do autor).</summary>
-    bool NovoParaGestao);
+    bool NovoParaGestao,
+    /// <summary>Gestão: a equipe já respondeu ao autor (comentário público ou conclusão/negação).</summary>
+    bool Respondido);
 
 /// <summary>Anexo (imagem) de um ticket/comentário.</summary>
 public sealed record TicketAnexoDto(
