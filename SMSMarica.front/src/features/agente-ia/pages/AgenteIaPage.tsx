@@ -202,6 +202,10 @@ export function AgenteIaPage() {
   const [semRede, setSemRede] = useState(false);
   const [iniciando, setIniciando] = useState(true);
   const fimRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  // Enquanto o usuário está "grudado" perto do fim, o autoscroll segue a resposta ao vivo.
+  // Se ele arrasta para cima, soltamos; quando volta a encostar no fim, gruda de novo.
+  const grudadoNoFimRef = useRef(true);
 
   // Cada carregamento ganha um número. O polling só escreve na tela se o seu número ainda
   // for o corrente — é assim que trocar de conversa não deixa dois loops brigando.
@@ -383,8 +387,19 @@ ${contextoTicket}`,
     })();
   }, [podeVer, sessaoId, acompanharTurno, enviarPrompt, contextoTicket]);
 
+  // Detecta se o usuário está perto do fim (margem de 80px cobre o arredondamento do
+  // scroll e a barra de digitação). Só então o autoscroll continua "grudado".
+  const aoRolar = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const distanciaDoFim = el.scrollHeight - el.scrollTop - el.clientHeight;
+    grudadoNoFimRef.current = distanciaDoFim < 80;
+  }, []);
+
   useEffect(() => {
-    fimRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (grudadoNoFimRef.current) {
+      fimRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [mensagens]);
 
   if (!podeVer) {
@@ -402,6 +417,8 @@ ${contextoTicket}`,
     // Não interrompe nada: o turno da conversa anterior segue rodando no servidor e a
     // lista continua mostrando "rodando".
     execucaoRef.current += 1;
+    // Conversa recém-aberta começa grudada no fim (mostra a última mensagem).
+    grudadoNoFimRef.current = true;
     setOcupado(false);
     setTurnoAtivo(null);
     setMensagens([]);
@@ -489,7 +506,7 @@ ${contextoTicket}`,
             </div>
           )}
 
-          <div className="flex-1 overflow-y-auto p-4">
+          <div ref={containerRef} onScroll={aoRolar} className="flex-1 overflow-y-auto p-4">
             {iniciando && (
               <div className="flex items-center gap-2 text-sm text-slate-500">
                 <Loader2 className="h-4 w-4 animate-spin" />
