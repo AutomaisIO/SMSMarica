@@ -33,7 +33,7 @@ function Onda() {
 
 export function FileteEcg({ pausado }: { pausado: boolean }) {
   return (
-    <div className="relative h-[18px] overflow-hidden pb-[2px]" aria-hidden="true">
+    <div className="relative h-[18px] overflow-hidden" aria-hidden="true">
       <div className={clsx('anima-ecg flex h-full w-[200%]', pausado && 'ecg-pausado')}>
         <Onda />
         <Onda />

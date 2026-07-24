@@ -60,7 +60,11 @@ export function Header({ dados, usandoMock }: Props) {
           )}
         </div>
       </div>
-      <FileteEcg pausado={frescor !== 'vivo'} />
+      {/* Respiro de vermelho abaixo do traçado: sem ele o ECG encosta na borda e
+          o corte contra o conteúdo claro fica duro. */}
+      <div className="pb-3">
+        <FileteEcg pausado={frescor !== 'vivo'} />
+      </div>
     </header>
   );
 }
