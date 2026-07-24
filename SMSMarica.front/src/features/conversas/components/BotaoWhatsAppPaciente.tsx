@@ -29,7 +29,7 @@ export function BotaoWhatsAppPaciente({ pacienteId }: Props) {
       <button
         type="button"
         onClick={() => setAberto(true)}
-        className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-emerald-600"
+        className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-emerald-600"
         aria-label="Falar no WhatsApp"
         title="Falar no WhatsApp"
       >

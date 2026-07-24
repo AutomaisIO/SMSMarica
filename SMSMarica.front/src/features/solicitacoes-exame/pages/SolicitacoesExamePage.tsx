@@ -205,8 +205,8 @@ export function SolicitacoesExamePage() {
       cabecalho: 'Exame',
       ordenar: (s) => s.tipoExameNome || null,
       render: (s) => (
-        <div className="min-w-0">
-          <TextoLimitado texto={s.tipoExameNome} max={40} className="block text-gray-900" />
+        <div className="min-w-0" title={s.tipoExameNome ?? undefined}>
+          <TextoLimitado texto={s.tipoExameNome} max={40} className="block truncate text-gray-900" />
           <div className="truncate text-xs text-gray-500">
             <span className="uppercase">{s.modalidadeDicom}</span>
             {s.unidadeNome ? <> — {s.unidadeNome}</> : null}
@@ -216,7 +216,8 @@ export function SolicitacoesExamePage() {
     },
     {
       chave: 'data',
-      cabecalho: 'Data Agendamento',
+      // Rótulo curto: "Data Agendamento" + seta de ordenação estouravam a largura da coluna.
+      cabecalho: 'Agendamento',
       className: 'w-40 whitespace-nowrap',
       ordenar: (s) => s.dataAgendada,
       render: (s) => formatarInstante(s.dataAgendada),
@@ -224,12 +225,14 @@ export function SolicitacoesExamePage() {
     {
       chave: 'status',
       cabecalho: 'Situação',
-      className: 'w-56 whitespace-nowrap',
+      // Estreita (era w-56, sobrava espaço): os checks quebram para a 2ª linha no pior
+      // caso (badge longo + 3 comunicações) — a linha já tem duas linhas de altura.
+      className: 'w-44',
       ordenar: (s) => derivarSituacao(s)?.rotulo ?? s.status,
       render: (s) => {
         const sit = derivarSituacao(s);
         return (
-          <span className="inline-flex items-center gap-1.5">
+          <span className="inline-flex flex-wrap items-center gap-1.5">
             {sit ? <SituacaoBadge situacao={sit} /> : <StatusBadgeSolicitacao status={s.status} />}
             {/* Checks das comunicações: confirmação do agendamento, exame liberado e laudo pronto. */}
             <ChecksComunicacao chip={s.chipConfirmacao} finalidade="ConfirmacaoAgendamento" />
@@ -242,7 +245,8 @@ export function SolicitacoesExamePage() {
     {
       chave: 'acoes',
       cabecalho: 'Ações',
-      className: 'w-40 whitespace-nowrap text-right',
+      // No máximo 4 ícones (anamnese + declaração + exame completo + laudo).
+      className: 'w-36 whitespace-nowrap text-right',
       render: (s) => {
         const realizadaOuLaudada = s.status === 'Realizada' || s.status === 'Laudada';
         return (

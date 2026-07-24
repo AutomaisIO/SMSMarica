@@ -221,7 +221,10 @@ export function NomePacienteComResumo({
   }
 
   return (
-    <span className={cn('inline-flex items-center gap-1.5', className)}>
+    // max-w-full é essencial: sendo inline-flex, a largura é shrink-to-fit e o mínimo é o
+    // texto inteiro (nowrap) — sem o teto de 100% o nome longo vaza para a coluna vizinha
+    // em vez de truncar.
+    <span className={cn('inline-flex max-w-full items-center gap-1.5', className)}>
       {/* min-w-0 deixa o nome encolher e truncar (…) dentro do flex; sem isso ele vaza a coluna. */}
       {nome ? <span className={cn('min-w-0', classNameNome)}>{nome}</span> : null}
       <button

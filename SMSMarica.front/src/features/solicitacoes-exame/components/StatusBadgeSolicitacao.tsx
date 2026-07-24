@@ -25,7 +25,7 @@ const ROTULOS: Record<StatusSolicitacao, string> = {
 
 export function StatusBadgeSolicitacao({ status }: { status: StatusSolicitacao }) {
   return (
-    <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium', ESTILOS[status])}>
+    <span className={cn('inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium', ESTILOS[status])}>
       {ROTULOS[status]}
     </span>
   );
