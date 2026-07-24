@@ -14,8 +14,16 @@ builder.Host.UseSerilog((ctx, cfg) => cfg.ReadFrom.Configuration(ctx.Configurati
 // carga da importação. Defina Db:MaxPoolSize (ou Maximum Pool Size na própria connection string).
 var fhirConn = builder.Configuration.GetConnectionString("FhirDb");
 var fhirMaxPool = builder.Configuration.GetValue<int?>("Db:MaxPoolSize");
-if (fhirMaxPool is > 0 && !string.IsNullOrWhiteSpace(fhirConn))
-    fhirConn = new Npgsql.NpgsqlConnectionStringBuilder(fhirConn) { MaxPoolSize = fhirMaxPool.Value }.ConnectionString;
+if (!string.IsNullOrWhiteSpace(fhirConn))
+{
+    // search_path inclui smsmarica para que a função unaccent() (extensão instalada no schema
+    // smsmarica pela migration do SMSMarica.server, no mesmo banco) resolva na busca de paciente
+    // por nome. As tabelas do hub são qualificadas (schema fhir via HasDefaultSchema), então
+    // manter fhir/public no path preserva o comportamento atual.
+    var csb = new Npgsql.NpgsqlConnectionStringBuilder(fhirConn) { SearchPath = "fhir, smsmarica, public" };
+    if (fhirMaxPool is > 0) csb.MaxPoolSize = fhirMaxPool.Value;
+    fhirConn = csb.ConnectionString;
+}
 
 builder.Services.AddDbContext<FhirDbContext>(opt =>
     opt.UseNpgsql(
