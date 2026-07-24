@@ -18,7 +18,14 @@ public sealed record ResultadoConsulta(
 /// </summary>
 public interface IFonteDados
 {
-    Task<ResultadoConsulta> ExecutarAsync(string sql, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Executa o SELECT read-only. <paramref name="maxLinhasOverride"/> sobe o teto de linhas só
+    /// desta chamada (default = o configurado na fonte). Usado pela introspecção de schema, onde o
+    /// teto normal de 1000 truncaria o dicionário de colunas de um banco grande.
+    /// </summary>
+    Task<ResultadoConsulta> ExecutarAsync(
+        string sql, CancellationToken cancellationToken = default, int? maxLinhasOverride = null);
+
     Task<bool> TestarConexaoAsync(CancellationToken cancellationToken = default);
 }
 

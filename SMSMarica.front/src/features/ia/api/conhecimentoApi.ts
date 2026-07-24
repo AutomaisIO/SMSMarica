@@ -53,7 +53,7 @@ export async function removerDocumento(fonteId: string, docId: string): Promise<
 /** Levanta a estrutura da base (tabelas + relacionamentos) e gera um doc por tabela. */
 export async function extrairModelo(
   fonteId: string,
-  maxTabelas = 400,
+  maxTabelas = 2000,
 ): Promise<ExtracaoModeloResultado> {
   const { data } = await http.post<ExtracaoModeloResultado>(
     `/ia/conhecimento/${fonteId}/extrair-modelo`,

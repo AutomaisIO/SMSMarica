@@ -14,10 +14,12 @@ public sealed class ProxyAgenteFonte(
     int commandTimeoutSegundos,
     int maxLinhas) : IFonteDados
 {
-    public async Task<ResultadoConsulta> ExecutarAsync(string sql, CancellationToken cancellationToken = default)
+    public async Task<ResultadoConsulta> ExecutarAsync(
+        string sql, CancellationToken cancellationToken = default, int? maxLinhasOverride = null)
     {
         SqlReadOnlyGuard.GarantirLeitura(sql);
-        return await registry.ExecutarAsync(agenteId, sql, commandTimeoutSegundos, maxLinhas, cancellationToken);
+        var cap = maxLinhasOverride ?? maxLinhas;
+        return await registry.ExecutarAsync(agenteId, sql, commandTimeoutSegundos, cap, cancellationToken);
     }
 
     public Task<bool> TestarConexaoAsync(CancellationToken cancellationToken = default) =>

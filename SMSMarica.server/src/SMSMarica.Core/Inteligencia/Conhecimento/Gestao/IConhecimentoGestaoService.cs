@@ -9,10 +9,10 @@ public sealed record DocumentoDetalheDto(
 
 public sealed record SalvarDocumentoDto(string Caminho, string Conteudo);
 
-public sealed record ExtrairModeloDto(int MaxTabelas = 400);
+public sealed record ExtrairModeloDto(int MaxTabelas = 2000);
 
 public sealed record ExtracaoModeloResultado(
-    int TotalTabelas, int Documentadas, int TotalFks, int DocumentosGerados, string? Aviso);
+    int TotalTabelas, int TotalViews, int Documentadas, int TotalFks, int DocumentosGerados, string? Aviso);
 
 /// <summary>
 /// Gestão do conhecimento (documentação .md) de uma base do módulo IA: listar/ler/gravar/remover

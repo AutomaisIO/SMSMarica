@@ -54,9 +54,11 @@ public sealed class SaluxOracleFonte : IFonteDados
         _connectionString = builder.ConnectionString;
     }
 
-    public async Task<ResultadoConsulta> ExecutarAsync(string sql, CancellationToken cancellationToken = default)
+    public async Task<ResultadoConsulta> ExecutarAsync(
+        string sql, CancellationToken cancellationToken = default, int? maxLinhasOverride = null)
     {
         SqlReadOnlyGuard.GarantirLeitura(sql);
+        var maxLinhas = maxLinhasOverride ?? _maxLinhas;
 
         for (var tentativa = 1; ; tentativa++)
         {
@@ -86,7 +88,7 @@ public sealed class SaluxOracleFonte : IFonteDados
                 }
 
                 var linhas = new List<IReadOnlyList<object?>>();
-                while (linhas.Count < _maxLinhas && await reader.ReadAsync(cancellationToken))
+                while (linhas.Count < maxLinhas && await reader.ReadAsync(cancellationToken))
                 {
                     var linha = new object?[reader.FieldCount];
                     for (var i = 0; i < reader.FieldCount; i++)

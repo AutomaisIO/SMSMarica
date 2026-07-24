@@ -13,7 +13,7 @@ public static class ModeloMarkdown
     public sealed record TabelaDoc(string Caminho, string Titulo, string Conteudo);
 
     public sealed record Resultado(
-        IReadOnlyList<TabelaDoc> Documentos, int TotalTabelas, int Documentadas, int TotalFks);
+        IReadOnlyList<TabelaDoc> Documentos, int TotalTabelas, int TotalViews, int Documentadas, int TotalFks);
 
     public static Resultado Montar(
         ResultadoConsulta colunas, ResultadoConsulta fks, int maxTabelas)
@@ -25,10 +25,12 @@ public static class ModeloMarkdown
         var iTipo = Idx(colunas, "tipo");
         var iTam = Idx(colunas, "tamanho");
         var iNul = Idx(colunas, "anulavel");
+        var iObj = Idx(colunas, "objeto");
 
         // agrupa colunas por "esquema.tabela" preservando a ordem de chegada (já vem ORDER BY)
         var tabelas = new List<string>();
         var colsPorTabela = new Dictionary<string, List<string[]>>(StringComparer.OrdinalIgnoreCase);
+        var ehView = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
         foreach (var linha in colunas.Linhas)
         {
             var esq = Txt(linha, iEsq);
@@ -39,6 +41,7 @@ public static class ModeloMarkdown
                 lista = [];
                 colsPorTabela[chave] = lista;
                 tabelas.Add(chave);
+                ehView[chave] = string.Equals(Txt(linha, iObj), "VIEW", StringComparison.OrdinalIgnoreCase);
             }
             lista.Add([Txt(linha, iCol), Txt(linha, iTipo), Txt(linha, iTam), Txt(linha, iNul)]);
         }
@@ -65,33 +68,39 @@ public static class ModeloMarkdown
             }
         }
 
-        // ---- catálogo (todas as tabelas, compacto) ----
+        var totalViews = ehView.Count(kv => kv.Value);
+        var totalTabelasBase = tabelas.Count - totalViews;
+
+        // ---- catálogo (todos os objetos, compacto) ----
         var catalogo = new StringBuilder();
-        catalogo.AppendLine("# Catálogo de tabelas");
+        catalogo.AppendLine("# Catálogo de tabelas e views");
         catalogo.AppendLine();
-        catalogo.AppendLine($"A base tem **{tabelas.Count} tabelas**. Cada uma tem um documento próprio ")
-            .AppendLine("com colunas e relacionamentos. Este catálogo é o mapa geral.");
+        catalogo.AppendLine($"A base tem **{totalTabelasBase} tabelas** e **{totalViews} views**. ")
+            .AppendLine("Cada objeto tem um documento próprio com colunas e relacionamentos. ")
+            .AppendLine("Este catálogo é o mapa geral.");
         catalogo.AppendLine();
-        catalogo.AppendLine("| Tabela | Colunas | FKs saindo |");
-        catalogo.AppendLine("|---|---|---|");
+        catalogo.AppendLine("| Objeto | Tipo | Colunas | FKs saindo |");
+        catalogo.AppendLine("|---|---|---|---|");
         foreach (var t in tabelas)
         {
+            var tipo = ehView[t] ? "view" : "tabela";
             var nCols = colsPorTabela[t].Count;
             var nFks = fkPorTabela.TryGetValue(t, out var l) ? l.Count : 0;
-            catalogo.AppendLine($"| {t} | {nCols} | {nFks} |");
+            catalogo.AppendLine($"| {t} | {tipo} | {nCols} | {nFks} |");
         }
 
         var docs = new List<TabelaDoc>
         {
-            new("modelo/00-catalogo.md", "Catálogo de tabelas", catalogo.ToString().TrimEnd()),
+            new("modelo/00-catalogo.md", "Catálogo de tabelas e views", catalogo.ToString().TrimEnd()),
         };
 
-        // ---- um doc por tabela, até o teto (sem truncar em silêncio) ----
+        // ---- um doc por objeto, até o teto (sem truncar em silêncio) ----
         var documentar = tabelas.Take(maxTabelas).ToList();
         foreach (var t in documentar)
         {
+            var rotuloObj = ehView[t] ? "View" : "Tabela";
             var sb = new StringBuilder();
-            sb.AppendLine($"# Tabela {t}");
+            sb.AppendLine($"# {rotuloObj} {t}");
             sb.AppendLine();
             sb.AppendLine("## Colunas");
             sb.AppendLine();
@@ -116,10 +125,10 @@ public static class ModeloMarkdown
             }
 
             var caminho = "modelo/" + t.Replace('.', '-').ToLowerInvariant() + ".md";
-            docs.Add(new TabelaDoc(caminho, $"Tabela {t}", sb.ToString().TrimEnd()));
+            docs.Add(new TabelaDoc(caminho, $"{rotuloObj} {t}", sb.ToString().TrimEnd()));
         }
 
-        return new Resultado(docs, tabelas.Count, documentar.Count, totalFks);
+        return new Resultado(docs, totalTabelasBase, totalViews, documentar.Count, totalFks);
     }
 
     private static int Idx(ResultadoConsulta r, string coluna)

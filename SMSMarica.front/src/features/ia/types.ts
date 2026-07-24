@@ -139,6 +139,7 @@ export type DocumentoConhecimentoDetalhe = {
 
 export type ExtracaoModeloResultado = {
   totalTabelas: number;
+  totalViews: number;
   documentadas: number;
   totalFks: number;
   documentosGerados: number;

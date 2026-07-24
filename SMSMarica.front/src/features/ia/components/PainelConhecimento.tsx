@@ -34,7 +34,7 @@ export function PainelConhecimento({ fonte, onFechar }: Props) {
   const remover = useRemoverDocumento(fonte.id);
 
   const [editor, setEditor] = useState<{ docId: string | null; soLeitura: boolean } | null>(null);
-  const [maxTabelas, setMaxTabelas] = useState('400');
+  const [maxTabelas, setMaxTabelas] = useState('2000');
   const [erro, setErro] = useState<string | null>(null);
   const [extracao, setExtracao] = useState<ExtracaoModeloResultado | null>(null);
 
@@ -42,7 +42,7 @@ export function PainelConhecimento({ fonte, onFechar }: Props) {
     setErro(null);
     setExtracao(null);
     try {
-      setExtracao(await extrair.mutateAsync(Number(maxTabelas) || 400));
+      setExtracao(await extrair.mutateAsync(Number(maxTabelas) || 2000));
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
     }
@@ -115,8 +115,9 @@ export function PainelConhecimento({ fonte, onFechar }: Props) {
               {extracao && (
                 <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">
                   <p>
-                    {extracao.totalTabelas} tabelas · {extracao.documentadas} documentadas ·{' '}
-                    {extracao.totalFks} relacionamentos · {extracao.documentosGerados} documentos.
+                    {extracao.totalTabelas} tabelas · {extracao.totalViews} views ·{' '}
+                    {extracao.documentadas} documentadas · {extracao.totalFks} relacionamentos ·{' '}
+                    {extracao.documentosGerados} documentos.
                   </p>
                   {extracao.aviso && (
                     <p className="mt-1 flex items-start gap-1 text-amber-700">

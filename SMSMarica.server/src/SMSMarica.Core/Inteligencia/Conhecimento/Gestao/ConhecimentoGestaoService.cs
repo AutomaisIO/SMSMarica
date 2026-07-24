@@ -146,14 +146,22 @@ public sealed class ConhecimentoGestaoService(
         var fonte = await GarantirFonteAsync(fonteId, ct);
 
         var origem = fonteFactory.Criar(fonte);
-        var colunas = await origem.ExecutarAsync(IntrospeccaoSql.Colunas(fonte.Dialeto), ct);
+
+        // Introspecção é METADADO: um banco grande tem dezenas de milhares de colunas. O teto normal
+        // de linhas (1000) truncaria o dicionário — daria "83 tabelas" num banco de 1.600. Por isso
+        // o override alto. Ver ADR-0023.
+        const int LimiteIntrospeccao = 2_000_000;
+
+        var colunas = await origem.ExecutarAsync(
+            IntrospeccaoSql.Colunas(fonte.Dialeto), ct, maxLinhasOverride: LimiteIntrospeccao);
         if (!colunas.Sucesso)
         {
             throw new ConflitoException("conhecimento.introspeccao",
                 $"Não foi possível ler o schema da base: {colunas.Erro}");
         }
 
-        var fks = await origem.ExecutarAsync(IntrospeccaoSql.ChavesEstrangeiras(fonte.Dialeto), ct);
+        var fks = await origem.ExecutarAsync(
+            IntrospeccaoSql.ChavesEstrangeiras(fonte.Dialeto), ct, maxLinhasOverride: LimiteIntrospeccao);
         // FK falhando não é fatal — o modelo sai só com as colunas, avisando.
 
         var maxTabelas = Math.Clamp(dto.MaxTabelas, 1, 5000);
@@ -181,11 +189,13 @@ public sealed class ConhecimentoGestaoService(
 
         await db.SaveChangesAsync(ct);
 
+        var totalObjetos = modelo.TotalTabelas + modelo.TotalViews;
         string? aviso = null;
-        if (modelo.Documentadas < modelo.TotalTabelas)
+        if (modelo.Documentadas < totalObjetos)
         {
-            aviso = $"A base tem {modelo.TotalTabelas} tabelas; documentei as primeiras "
-                    + $"{modelo.Documentadas} (teto atual). Aumente o limite para cobrir o resto.";
+            aviso = $"A base tem {totalObjetos} objetos ({modelo.TotalTabelas} tabelas + "
+                    + $"{modelo.TotalViews} views); documentei os primeiros {modelo.Documentadas} "
+                    + "(teto atual). Aumente o limite de tabelas para cobrir o resto.";
         }
         if (!fks.Sucesso)
         {
@@ -194,7 +204,8 @@ public sealed class ConhecimentoGestaoService(
         }
 
         return new ExtracaoModeloResultado(
-            modelo.TotalTabelas, modelo.Documentadas, modelo.TotalFks, modelo.Documentos.Count, aviso);
+            modelo.TotalTabelas, modelo.TotalViews, modelo.Documentadas, modelo.TotalFks,
+            modelo.Documentos.Count, aviso);
     }
 
     /// <summary>Grava o conteúdo, re-chunka e (se habilitado) re-embeda. Idempotente pelo hash.</summary>
