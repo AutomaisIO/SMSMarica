@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -13,9 +14,11 @@ using SMSMarica.Data;
 namespace SMSMarica.Data.Migrations
 {
     [DbContext(typeof(SmsMaricaDbContext))]
-    partial class SmsMaricaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260723034739_BuscaConversaUnaccent")]
+    partial class BuscaConversaUnaccent
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2621,266 +2624,6 @@ namespace SMSMarica.Data.Migrations
                     b.ToTable("ia_fonte", "smsmarica");
                 });
 
-            modelBuilder.Entity("SMSMarica.Data.Entities.Indicador", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<int>("Aba")
-                        .HasColumnType("integer")
-                        .HasColumnName("aba");
-
-                    b.Property<bool>("Ativo")
-                        .HasColumnType("boolean")
-                        .HasColumnName("ativo");
-
-                    b.Property<DateTime?>("AtualizadoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("atualizado_em");
-
-                    b.Property<Guid?>("AtualizadoPor")
-                        .HasColumnType("uuid")
-                        .HasColumnName("atualizado_por");
-
-                    b.Property<DateTime>("CriadoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("criado_em");
-
-                    b.Property<Guid?>("CriadoPor")
-                        .HasColumnType("uuid")
-                        .HasColumnName("criado_por");
-
-                    b.Property<DateTime?>("ExcluidoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("excluido_em");
-
-                    b.Property<Guid?>("ExcluidoPor")
-                        .HasColumnType("uuid")
-                        .HasColumnName("excluido_por");
-
-                    b.Property<decimal?>("FatorDensidade")
-                        .HasPrecision(12, 2)
-                        .HasColumnType("numeric(12,2)")
-                        .HasColumnName("fator_densidade");
-
-                    b.Property<string>("FonteDeclarada")
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)")
-                        .HasColumnName("fonte_declarada");
-
-                    b.Property<Guid?>("FonteId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("fonte_id");
-
-                    b.Property<Guid?>("IndicadorPaiId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("indicador_pai_id");
-
-                    b.Property<string>("MemoriaCalculo")
-                        .HasColumnType("text")
-                        .HasColumnName("memoria_calculo");
-
-                    b.Property<string>("Meta")
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)")
-                        .HasColumnName("meta");
-
-                    b.Property<int?>("MetaOperador")
-                        .HasColumnType("integer")
-                        .HasColumnName("meta_operador");
-
-                    b.Property<decimal?>("MetaValor")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
-                        .HasColumnName("meta_valor");
-
-                    b.Property<decimal?>("MetaValorMaximo")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
-                        .HasColumnName("meta_valor_maximo");
-
-                    b.Property<string>("Nome")
-                        .IsRequired()
-                        .HasMaxLength(400)
-                        .HasColumnType("character varying(400)")
-                        .HasColumnName("nome");
-
-                    b.Property<string>("Numero")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
-                        .HasColumnName("numero");
-
-                    b.Property<int>("Ordem")
-                        .HasColumnType("integer")
-                        .HasColumnName("ordem");
-
-                    b.Property<decimal?>("Pontuacao")
-                        .HasPrecision(6, 2)
-                        .HasColumnType("numeric(6,2)")
-                        .HasColumnName("pontuacao");
-
-                    b.Property<string>("Ressalva")
-                        .HasColumnType("text")
-                        .HasColumnName("ressalva");
-
-                    b.Property<int>("Situacao")
-                        .HasColumnType("integer")
-                        .HasColumnName("situacao");
-
-                    b.Property<string>("Sql")
-                        .HasColumnType("text")
-                        .HasColumnName("sql");
-
-                    b.Property<int>("TipoResultado")
-                        .HasColumnType("integer")
-                        .HasColumnName("tipo_resultado");
-
-                    b.Property<string>("UnidadeMedida")
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
-                        .HasColumnName("unidade_medida");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ExcluidoEm")
-                        .HasDatabaseName("ix_indicador_excluido_em")
-                        .HasFilter("excluido_em IS NULL");
-
-                    b.HasIndex("FonteId");
-
-                    b.HasIndex("IndicadorPaiId");
-
-                    b.HasIndex("Aba", "Numero")
-                        .IsUnique()
-                        .HasDatabaseName("ux_indicador_aba_numero")
-                        .HasFilter("excluido_em IS NULL");
-
-                    b.ToTable("indicador", "smsmarica");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.IndicadorExecucao", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<bool?>("AtingiuMeta")
-                        .HasColumnType("boolean")
-                        .HasColumnName("atingiu_meta");
-
-                    b.Property<decimal?>("Denominador")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
-                        .HasColumnName("denominador");
-
-                    b.Property<string>("DistribuicaoJson")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("distribuicao_json");
-
-                    b.Property<int>("DuracaoMs")
-                        .HasColumnType("integer")
-                        .HasColumnName("duracao_ms");
-
-                    b.Property<string>("Erro")
-                        .HasColumnType("text")
-                        .HasColumnName("erro");
-
-                    b.Property<DateTime>("ExecutadoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("executado_em");
-
-                    b.Property<Guid?>("ExecutadoPor")
-                        .HasColumnType("uuid")
-                        .HasColumnName("executado_por");
-
-                    b.Property<int>("Hospital")
-                        .HasColumnType("integer")
-                        .HasColumnName("hospital");
-
-                    b.Property<Guid>("IndicadorId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("indicador_id");
-
-                    b.Property<Guid?>("IndicadorVersaoId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("indicador_versao_id");
-
-                    b.Property<decimal?>("Numerador")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
-                        .HasColumnName("numerador");
-
-                    b.Property<DateOnly>("PeriodoFim")
-                        .HasColumnType("date")
-                        .HasColumnName("periodo_fim");
-
-                    b.Property<DateOnly>("PeriodoInicio")
-                        .HasColumnType("date")
-                        .HasColumnName("periodo_inicio");
-
-                    b.Property<decimal?>("PontuacaoApurada")
-                        .HasPrecision(6, 2)
-                        .HasColumnType("numeric(6,2)")
-                        .HasColumnName("pontuacao_apurada");
-
-                    b.Property<decimal?>("Valor")
-                        .HasPrecision(18, 4)
-                        .HasColumnType("numeric(18,4)")
-                        .HasColumnName("valor");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IndicadorId", "Hospital", "PeriodoInicio", "PeriodoFim")
-                        .HasDatabaseName("ix_indicador_execucao_periodo");
-
-                    b.ToTable("indicador_execucao", "smsmarica");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.IndicadorVersao", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("CriadoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("criado_em");
-
-                    b.Property<Guid?>("CriadoPor")
-                        .HasColumnType("uuid")
-                        .HasColumnName("criado_por");
-
-                    b.Property<Guid>("IndicadorId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("indicador_id");
-
-                    b.Property<string>("Nota")
-                        .HasColumnType("text")
-                        .HasColumnName("nota");
-
-                    b.Property<int>("Numero")
-                        .HasColumnType("integer")
-                        .HasColumnName("numero");
-
-                    b.Property<string>("Sql")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("sql");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IndicadorId", "Numero")
-                        .IsUnique()
-                        .HasDatabaseName("ux_indicador_versao_num");
-
-                    b.ToTable("indicador_versao", "smsmarica");
-                });
-
             modelBuilder.Entity("SMSMarica.Data.Entities.Integracoes.IntegracaoCredencial", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4135,7 +3878,7 @@ namespace SMSMarica.Data.Migrations
                         {
                             Id = new Guid("a1000000-0000-0000-0000-000000000023"),
                             Ativo = true,
-                            Codigo = "02.05.02.018-6",
+                            Codigo = "02.05.02.013-5",
                             CompetenciaInicio = new DateOnly(2025, 1, 1),
                             Descricao = "ULTRASSONOGRAFIA TRANSVAGINAL",
                             Forma = "EXAMES",
@@ -6704,43 +6447,6 @@ namespace SMSMarica.Data.Migrations
                     b.Navigation("Fonte");
                 });
 
-            modelBuilder.Entity("SMSMarica.Data.Entities.Indicador", b =>
-                {
-                    b.HasOne("SMSMarica.Data.Entities.Ia.IaFonte", "Fonte")
-                        .WithMany()
-                        .HasForeignKey("FonteId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("SMSMarica.Data.Entities.Indicador", null)
-                        .WithMany()
-                        .HasForeignKey("IndicadorPaiId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Fonte");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.IndicadorExecucao", b =>
-                {
-                    b.HasOne("SMSMarica.Data.Entities.Indicador", "Indicador")
-                        .WithMany()
-                        .HasForeignKey("IndicadorId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Indicador");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.IndicadorVersao", b =>
-                {
-                    b.HasOne("SMSMarica.Data.Entities.Indicador", "Indicador")
-                        .WithMany("Versoes")
-                        .HasForeignKey("IndicadorId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Indicador");
-                });
-
             modelBuilder.Entity("SMSMarica.Data.Entities.Laudo", b =>
                 {
                     b.HasOne("SMSMarica.Data.Entities.Laudo", "LaudoAnterior")
@@ -7240,11 +6946,6 @@ namespace SMSMarica.Data.Migrations
             modelBuilder.Entity("SMSMarica.Data.Entities.Ia.IaDocumentoConhecimento", b =>
                 {
                     b.Navigation("Chunks");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.Indicador", b =>
-                {
-                    b.Navigation("Versoes");
                 });
 
             modelBuilder.Entity("SMSMarica.Data.Entities.Perfil", b =>

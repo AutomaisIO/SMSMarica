@@ -145,6 +145,7 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     {
         modelBuilder.HasDefaultSchema(SchemaPadrao);
         modelBuilder.HasPostgresExtension("smsmarica", "vector"); // pgvector — embeddings do módulo IA
+        modelBuilder.HasPostgresExtension("unaccent"); // busca acento-insensível (chat/#45); instalada no schema public
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SmsMaricaDbContext).Assembly);
         base.OnModelCreating(modelBuilder);
     }

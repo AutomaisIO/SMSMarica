@@ -69,7 +69,7 @@ export function ListaConversas({ conversaAtivaId, onSelecionar, podeSupervisao, 
           <input
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            placeholder="Buscar por nome ou telefone"
+            placeholder="Buscar por nome, telefone ou conteúdo"
             className="w-full bg-transparent py-1.5 text-sm outline-none"
           />
         </div>
