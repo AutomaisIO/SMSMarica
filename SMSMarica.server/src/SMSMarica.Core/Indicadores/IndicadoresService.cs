@@ -568,8 +568,9 @@ public sealed class IndicadoresService(
     };
 
     private static IndicadorResumoDto Resumo(Indicador i, IndicadorExecucao? execucao) =>
-        new(i.Id, i.Aba, i.Numero, i.Ordem, i.IndicadorPaiId, i.Nome, i.Meta, i.Pontuacao, i.TipoResultado,
-            i.UnidadeMedida, i.Situacao, !string.IsNullOrWhiteSpace(i.Sql), i.Ressalva,
+        new(i.Id, i.Aba, i.Numero, i.Ordem, i.IndicadorPaiId, i.Nome, i.Meta,
+            i.MetaOperador, i.MetaValor, i.MetaValorMaximo, i.Pontuacao, i.TipoResultado,
+            i.UnidadeMedida, i.FatorDensidade, i.Situacao, !string.IsNullOrWhiteSpace(i.Sql), i.Ressalva,
             execucao is null
                 ? null
                 : new ResultadoIndicadorDto(
