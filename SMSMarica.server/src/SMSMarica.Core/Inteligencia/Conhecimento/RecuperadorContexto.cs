@@ -73,6 +73,21 @@ public sealed class RecuperadorContexto(
             sb.AppendLine(await File.ReadAllTextAsync(arquivo, cancellationToken)).AppendLine();
         }
 
+        // Também os documentos geridos pela tela / extraídos do schema (guardados no banco), para
+        // que valham no modo sem embeddings. Só os geridos (modelo/ e manual/) — os do repo já vêm
+        // do disco acima, não duplicar. ATENÇÃO: sem RAG isto concatena tudo; bases com modelo
+        // extraído grande devem rodar com embeddings ligados. Ver ADR-0023.
+        var doBanco = await db.IaDocumentosConhecimento
+            .Where(d => d.FonteId == fonteId
+                        && (d.Caminho.StartsWith("modelo/") || d.Caminho.StartsWith("manual/")))
+            .OrderBy(d => d.Caminho)
+            .Select(d => d.Conteudo)
+            .ToListAsync(cancellationToken);
+        foreach (var conteudo in doBanco)
+        {
+            sb.AppendLine(conteudo).AppendLine();
+        }
+
         return sb.ToString().Trim();
     }
 

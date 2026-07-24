@@ -331,6 +331,8 @@ public static class DependencyInjection
             Inteligencia.Fontes.Agente.AgenteSqlRegistry>();
         services.AddScoped<Inteligencia.Conhecimento.IConhecimentoService, Inteligencia.Conhecimento.ConhecimentoService>();
         services.AddScoped<Inteligencia.Conhecimento.IRecuperadorContexto, Inteligencia.Conhecimento.RecuperadorContexto>();
+        services.AddScoped<Inteligencia.Conhecimento.Gestao.IConhecimentoGestaoService,
+            Inteligencia.Conhecimento.Gestao.ConhecimentoGestaoService>();
         services.AddScoped<Inteligencia.IIaService, Inteligencia.IaService>();
         services.AddScoped<Inteligencia.Configuracao.IIaConfiguracaoService, Inteligencia.Configuracao.IaConfiguracaoService>();
         services.AddScoped<Inteligencia.Configuracao.IIaFonteService, Inteligencia.Configuracao.IaFonteService>();

@@ -89,6 +89,12 @@ export type FonteConfig = {
   /** Write-only: a senha nunca volta da API. */
   senhaDefinida: boolean;
   ativo: boolean;
+  /** Base alcançada por agente proxy (WSS reverso) — ADR-0023. */
+  viaAgente: boolean;
+  /** Se o agente proxy está conectado agora (só faz sentido com viaAgente). */
+  agenteConectado: boolean;
+  /** Se já existe token de agente gerado. */
+  tokenDefinido: boolean;
 };
 
 /** Payload de criação/edição de base. Senha só vai quando o usuário a digita. */
@@ -106,6 +112,44 @@ export type SalvarFonteConfigPayload = {
   /** Nova senha; omitida mantém a atual. */
   senha?: string;
   ativo: boolean;
+  /** Cria a base como proxy via agente (sem host/senha; credenciais no .env do destino). */
+  viaAgente?: boolean;
+};
+
+/** Documento de conhecimento (.md) de uma base — repositório orientado ao banco. */
+export type DocumentoConhecimento = {
+  id: string;
+  caminho: string;
+  versao: number;
+  tamanho: number;
+  chunks: number;
+  /** Veio de arquivo do repositório (só-leitura na tela). */
+  doRepo: boolean;
+  atualizadoEm: string;
+};
+
+export type DocumentoConhecimentoDetalhe = {
+  id: string;
+  caminho: string;
+  conteudo: string;
+  versao: number;
+  doRepo: boolean;
+  atualizadoEm: string;
+};
+
+export type ExtracaoModeloResultado = {
+  totalTabelas: number;
+  documentadas: number;
+  totalFks: number;
+  documentosGerados: number;
+  aviso?: string | null;
+};
+
+/** Token de agente recém-gerado (mostrado uma vez). */
+export type TokenAgenteGerado = {
+  slug: string;
+  token: string;
+  wssUrl: string;
 };
 
 /** Resultado de POST /ia/configuracao/fontes/{id}/testar-conexao */

@@ -94,7 +94,7 @@ public sealed class ConhecimentoService(SmsMaricaDbContext db, IServicoEmbedding
             db.IaChunksConhecimento.RemoveRange(antigos);
         }
 
-        var pedacos = Chunkificar(conteudo);
+        var pedacos = ChunkificadorMarkdown.Chunkificar(conteudo);
         if (pedacos.Count > 0)
         {
             var vetores = await embeddings.EmbeddarLoteAsync(pedacos, cancellationToken);
@@ -114,77 +114,6 @@ public sealed class ConhecimentoService(SmsMaricaDbContext db, IServicoEmbedding
         }
 
         await db.SaveChangesAsync(cancellationToken);
-    }
-
-    /// <summary>
-    /// Chunking simples: quebra por seções de markdown (linhas iniciadas por '#') e, dentro
-    /// de cada seção, agrupa parágrafos até um limite de caracteres.
-    /// </summary>
-    private static List<string> Chunkificar(string conteudo)
-    {
-        const int maxChars = 1500;
-        var resultado = new List<string>();
-
-        var secoes = QuebrarPorSecao(conteudo);
-        foreach (var secao in secoes)
-        {
-            var paragrafos = secao.Split(["\n\n", "\r\n\r\n"], StringSplitOptions.RemoveEmptyEntries);
-            var atual = new StringBuilder();
-
-            foreach (var paragrafo in paragrafos)
-            {
-                var trecho = paragrafo.Trim();
-                if (trecho.Length == 0)
-                {
-                    continue;
-                }
-
-                if (atual.Length > 0 && atual.Length + trecho.Length > maxChars)
-                {
-                    resultado.Add(atual.ToString().Trim());
-                    atual.Clear();
-                }
-
-                if (atual.Length > 0)
-                {
-                    atual.Append("\n\n");
-                }
-
-                atual.Append(trecho);
-            }
-
-            if (atual.Length > 0)
-            {
-                resultado.Add(atual.ToString().Trim());
-            }
-        }
-
-        return resultado;
-    }
-
-    private static List<string> QuebrarPorSecao(string conteudo)
-    {
-        var linhas = conteudo.Split('\n');
-        var secoes = new List<string>();
-        var atual = new StringBuilder();
-
-        foreach (var linha in linhas)
-        {
-            if (linha.StartsWith('#') && atual.Length > 0)
-            {
-                secoes.Add(atual.ToString());
-                atual.Clear();
-            }
-
-            atual.Append(linha).Append('\n');
-        }
-
-        if (atual.Length > 0)
-        {
-            secoes.Add(atual.ToString());
-        }
-
-        return secoes;
     }
 
     private static string CalcularHash(string conteudo)

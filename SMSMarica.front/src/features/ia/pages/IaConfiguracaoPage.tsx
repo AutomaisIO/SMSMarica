@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Database, Edit2, Loader2, Plus, Settings2, Trash2 } from 'lucide-react';
+import { BookOpen, Database, Edit2, Loader2, Plus, Settings2, Trash2 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
@@ -7,6 +7,7 @@ import { Input } from '@/shared/ui/Input';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { FonteConfigModal } from '@/features/ia/components/FonteConfigModal';
+import { PainelConhecimento } from '@/features/ia/components/PainelConhecimento';
 import {
   useAtualizarConfiguracaoIa,
   useConfiguracaoIa,
@@ -44,6 +45,7 @@ export function IaConfiguracaoPage() {
   const [modalAberto, setModalAberto] = useState(false);
   const [emEdicao, setEmEdicao] = useState<FonteConfig | undefined>(undefined);
   const [erroFonte, setErroFonte] = useState<string | null>(null);
+  const [conhecimentoDe, setConhecimentoDe] = useState<FonteConfig | null>(null);
 
   useEffect(() => {
     if (config.data) {
@@ -133,6 +135,15 @@ export function IaConfiguracaoPage() {
       className: 'text-right',
       render: (f) => (
         <div className="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setConhecimentoDe(f)}
+            title="Conhecimento da base"
+            className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+          >
+            <BookOpen className="h-3.5 w-3.5" />
+            Conhecimento
+          </button>
           <button
             type="button"
             onClick={() => abrirEdicao(f)}
@@ -280,6 +291,10 @@ export function IaConfiguracaoPage() {
         aoFechar={() => setModalAberto(false)}
         fonte={emEdicao}
       />
+
+      {conhecimentoDe && (
+        <PainelConhecimento fonte={conhecimentoDe} onFechar={() => setConhecimentoDe(null)} />
+      )}
     </div>
   );
 }
