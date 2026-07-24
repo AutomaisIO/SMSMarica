@@ -1,0 +1,4 @@
+bin/
+obj/
+snapshot-painel.json
+appsettings.Local.json

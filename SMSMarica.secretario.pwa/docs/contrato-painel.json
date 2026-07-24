@@ -1,0 +1,97 @@
+{
+  "_comentario": "Contrato do GET /api/painel — snapshot único que o front consome. Valores abaixo são REAIS (Oracle Salux, 24/07/2026 ~16h20) e servem de mock para o front em dev. Datas ISO com offset de Brasília.",
+  "_nulabilidade": "No cold start (primeiro deploy, sem snapshot persistido) o back responde 200 com apenas 'agora' preenchida; 'atendimentos'/'internacoes'/'esperaPorCor' podem vir null até o 1º ciclo lento completar (~1-3 min) — o front renderiza cada seção independentemente (skeleton na ausência). 'agora.mediaDiasInternacao' pode ser null (zero internados na janela). Média diária do mês atual (atendimentos E internações) = total dos dias completos ÷ (dias corridos − 1).",
+  "geradoEm": "2026-07-24T16:20:00-03:00",
+  "fonte": "Salux HIS — Hospital Municipal Conde Modesto Leal",
+  "oracle": { "ok": true, "ultimoErro": null, "ultimaAtualizacaoOk": "2026-07-24T16:20:00-03:00" },
+  "agora": {
+    "atualizadoEm": "2026-07-24T16:20:00-03:00",
+    "aguardandoMedico": 70,
+    "aguardandoPorCor": [
+      { "cor": "VERMELHO", "qtd": 0, "minMedioEspera": null },
+      { "cor": "AMARELO", "qtd": 3, "minMedioEspera": 21 },
+      { "cor": "VERDE", "qtd": 46, "minMedioEspera": 116 },
+      { "cor": "AZUL", "qtd": 10, "minMedioEspera": 210 },
+      { "cor": "SEM_CLASSIFICACAO", "qtd": 11, "minMedioEspera": 172 }
+    ],
+    "emAtendimento": 131,
+    "internadosAgora": 164,
+    "internadosUrgencia": 155,
+    "internadosEletiva": 9,
+    "mediaDiasInternacao": 7.6,
+    "atendimentosHoje": 368,
+    "internacoesHoje": 22
+  },
+  "atendimentos": {
+    "atualizadoEm": "2026-07-24T16:15:00-03:00",
+    "mesAnterior": { "rotulo": "junho/2026", "total": 17405, "dias": 30, "mediaDiaria": 580.2 },
+    "mesAtual": { "rotulo": "julho/2026", "total": 13485, "diasCompletos": 23, "totalDiasCompletos": 13117, "mediaDiaria": 570.3 },
+    "hoje": { "total": 368 },
+    "serieDiaria": [
+      { "dia": "2026-07-11", "qtd": 481 },
+      { "dia": "2026-07-12", "qtd": 471 },
+      { "dia": "2026-07-13", "qtd": 613 },
+      { "dia": "2026-07-14", "qtd": 563 },
+      { "dia": "2026-07-15", "qtd": 534 },
+      { "dia": "2026-07-16", "qtd": 514 },
+      { "dia": "2026-07-17", "qtd": 512 },
+      { "dia": "2026-07-18", "qtd": 464 },
+      { "dia": "2026-07-19", "qtd": 436 },
+      { "dia": "2026-07-20", "qtd": 633 },
+      { "dia": "2026-07-21", "qtd": 620 },
+      { "dia": "2026-07-22", "qtd": 595 },
+      { "dia": "2026-07-23", "qtd": 576 },
+      { "dia": "2026-07-24", "qtd": 368 }
+    ],
+    "_serieDiariaNota": "em produção o back devolve os últimos 35 dias; o último ponto é o dia corrente (parcial)",
+    "porHoraHoje": [
+      { "hora": 0, "qtd": 9 }, { "hora": 1, "qtd": 7 }, { "hora": 2, "qtd": 5 },
+      { "hora": 3, "qtd": 4 }, { "hora": 4, "qtd": 3 }, { "hora": 5, "qtd": 5 },
+      { "hora": 6, "qtd": 10 }, { "hora": 7, "qtd": 22 }, { "hora": 8, "qtd": 34 },
+      { "hora": 9, "qtd": 38 }, { "hora": 10, "qtd": 36 }, { "hora": 11, "qtd": 33 },
+      { "hora": 12, "qtd": 28 }, { "hora": 13, "qtd": 31 }, { "hora": 14, "qtd": 35 },
+      { "hora": 15, "qtd": 39 }, { "hora": 16, "qtd": 29 }
+    ],
+    "_porHoraNota": "valores de exemplo plausíveis — o back devolve o dia corrente por hora (0..hora atual)"
+  },
+  "internacoes": {
+    "atualizadoEm": "2026-07-24T16:15:00-03:00",
+    "mesAnterior": { "rotulo": "junho/2026", "total": 739, "urgencia": 642, "eletiva": 97, "mediaDiaria": 24.6 },
+    "mesAtual": { "rotulo": "julho/2026", "total": 604, "urgencia": 522, "eletiva": 82, "mediaDiaria": 25.3 },
+    "hoje": { "total": 22, "urgencia": 19, "eletiva": 3 },
+    "serieDiaria": [
+      { "dia": "2026-07-18", "qtd": 24, "urgencia": 21, "eletiva": 3 }, { "dia": "2026-07-19", "qtd": 21, "urgencia": 19, "eletiva": 2 },
+      { "dia": "2026-07-20", "qtd": 28, "urgencia": 24, "eletiva": 4 }, { "dia": "2026-07-21", "qtd": 26, "urgencia": 22, "eletiva": 4 },
+      { "dia": "2026-07-22", "qtd": 25, "urgencia": 21, "eletiva": 4 }, { "dia": "2026-07-23", "qtd": 27, "urgencia": 24, "eletiva": 3 },
+      { "dia": "2026-07-24", "qtd": 22, "urgencia": 19, "eletiva": 3 }
+    ],
+    "_serieDiariaNota": "em produção: últimos 35 dias por dt_baixa, com split urgencia/eletiva por dia (id_internacao U/E)"
+  },
+  "esperaPorCor": {
+    "atualizadoEm": "2026-07-24T16:15:00-03:00",
+    "_nota": "minutos entre a classificação de risco e o 1º documento médico (eDoc Boletim de Urgência). Cobertura do marcador: ~92,6% dos boletins.",
+    "periodos": {
+      "hoje": [
+        { "cor": "VERMELHO", "pacientes": 2, "comAtendimento": 2, "mediaAteTriagem": 3.7, "mediaEspera": 110.2, "medianaEspera": 110.2, "p90Espera": 147.2, "metaMin": 15, "pctNaMeta": 0.0 },
+        { "cor": "AMARELO", "pacientes": 81, "comAtendimento": 80, "mediaAteTriagem": 7.9, "mediaEspera": 17.8, "medianaEspera": 13.2, "p90Espera": 34.7, "metaMin": 30, "pctNaMeta": 86.3 },
+        { "cor": "VERDE", "pacientes": 174, "comAtendimento": 129, "mediaAteTriagem": 5.6, "mediaEspera": 41.6, "medianaEspera": 20.3, "p90Espera": 132.9, "metaMin": 60, "pctNaMeta": 76.7 },
+        { "cor": "AZUL", "pacientes": 37, "comAtendimento": 27, "mediaAteTriagem": 6.7, "mediaEspera": 73.0, "medianaEspera": 49.4, "p90Espera": 154.8, "metaMin": 1440, "pctNaMeta": 100.0 },
+        { "cor": "SEM_CLASSIFICACAO", "pacientes": 14, "comAtendimento": 12, "mediaAteTriagem": null, "mediaEspera": 86.0, "medianaEspera": 69.5, "p90Espera": 165.3, "metaMin": null, "pctNaMeta": null }
+      ],
+      "mesAtual": [
+        { "cor": "VERMELHO", "pacientes": 21, "comAtendimento": 20, "mediaAteTriagem": 7.5, "mediaEspera": 33.4, "medianaEspera": 23.4, "p90Espera": 66.7, "metaMin": 15, "pctNaMeta": 35.0 },
+        { "cor": "AMARELO", "pacientes": 3385, "comAtendimento": 3290, "mediaAteTriagem": 7.4, "mediaEspera": 23.6, "medianaEspera": 14.7, "p90Espera": 49.4, "metaMin": 30, "pctNaMeta": 77.4 },
+        { "cor": "VERDE", "pacientes": 7095, "comAtendimento": 6534, "mediaAteTriagem": 6.5, "mediaEspera": 52.3, "medianaEspera": 36.4, "p90Espera": 121.8, "metaMin": 60, "pctNaMeta": 67.5 },
+        { "cor": "AZUL", "pacientes": 931, "comAtendimento": 786, "mediaAteTriagem": 5.9, "mediaEspera": 54.7, "medianaEspera": 39.1, "p90Espera": 123.7, "metaMin": 1440, "pctNaMeta": 100.0 },
+        { "cor": "SEM_CLASSIFICACAO", "pacientes": 625, "comAtendimento": 567, "mediaAteTriagem": null, "mediaEspera": 71.1, "medianaEspera": 63.0, "p90Espera": 126.7, "metaMin": null, "pctNaMeta": null }
+      ],
+      "mesAnterior": [
+        { "cor": "VERMELHO", "pacientes": 10, "comAtendimento": 10, "mediaAteTriagem": 11.9, "mediaEspera": 49.1, "medianaEspera": 18.0, "p90Espera": 103.4, "metaMin": 15, "pctNaMeta": 40.0 },
+        { "cor": "AMARELO", "pacientes": 4317, "comAtendimento": 4071, "mediaAteTriagem": 8.0, "mediaEspera": 23.9, "medianaEspera": 15.0, "p90Espera": 49.7, "metaMin": 30, "pctNaMeta": 76.6 },
+        { "cor": "VERDE", "pacientes": 9644, "comAtendimento": 8545, "mediaAteTriagem": 6.8, "mediaEspera": 51.8, "medianaEspera": 35.4, "p90Espera": 114.7, "metaMin": 60, "pctNaMeta": 68.8 },
+        { "cor": "AZUL", "pacientes": 1033, "comAtendimento": 867, "mediaAteTriagem": 5.4, "mediaEspera": 54.0, "medianaEspera": 34.4, "p90Espera": 125.3, "metaMin": 1440, "pctNaMeta": 99.9 },
+        { "cor": "SEM_CLASSIFICACAO", "pacientes": 774, "comAtendimento": 703, "mediaAteTriagem": null, "mediaEspera": 69.6, "medianaEspera": 61.3, "p90Espera": 122.9, "metaMin": null, "pctNaMeta": null }
+      ]
+    }
+  }
+}

@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-painel font-corpo text-[15px] leading-relaxed text-tinta antialiased;
+  }
+
+  /* Foco visível para navegação por teclado — identidade sem ruído. */
+  :focus-visible {
+    outline: 2px solid #c8102e;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+@layer utilities {
+  /* Números tabulares: relógio, números-herói, eixos e contadores. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-grafite;
+  }
+}
+
+/* ————— Filete de ECG do header ————— */
+@keyframes ecg-rolagem {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.anima-ecg {
+  animation: ecg-rolagem 14s linear infinite;
+}
+
+.ecg-pausado {
+  animation-play-state: paused;
+}
+
+/* ————— Ponto pulsante do pill "ao vivo" ————— */
+@keyframes pulso-vivo {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(200, 16, 46, 0.35);
+  }
+  60% {
+    box-shadow: 0 0 0 6px rgba(200, 16, 46, 0);
+  }
+}
+
+.anima-pulso {
+  animation: pulso-vivo 1.8s ease-out infinite;
+}
+
+/* ————— Shimmer do skeleton ————— */
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, #eef0f4 25%, #e4e8ee 50%, #eef0f4 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+/* ————— Entrada suave das seções na primeira carga ————— */
+@keyframes entrada {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.anima-entrada {
+  animation: entrada 0.45s ease-out both;
+}
+
+/* Movimento reduzido: tudo estático, sem exceção. */
+@media (prefers-reduced-motion: reduce) {
+  .anima-ecg,
+  .anima-pulso,
+  .anima-entrada {
+    animation: none;
+  }
+
+  .shimmer {
+    animation: none;
+    background: #eaedf1;
+  }
+}

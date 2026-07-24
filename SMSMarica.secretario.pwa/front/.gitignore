@@ -1,0 +1,19 @@
+# dependências e build
+node_modules
+dist
+dev-dist
+
+# logs
+logs
+*.log
+npm-debug.log*
+
+# editores / SO
+.DS_Store
+*.local
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# cache do tsc -b
+*.tsbuildinfo
