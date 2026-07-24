@@ -80,6 +80,12 @@ export type SecaoMenu = {
   titulo?: string;
   icone?: LucideIcon;
   itens: ItemMenu[];
+  /**
+   * Mantém o grupo (título + expansão) na sidebar mesmo com um único item, em vez
+   * de achatar o item para o topo. Usado quando a seção deve crescer no futuro —
+   * ex.: Indicadores hoje só tem "Conde", mas entrarão outras unidades.
+   */
+  manterGrupo?: boolean;
 };
 
 export const SECOES: SecaoMenu[] = [
@@ -253,6 +259,7 @@ export const SECOES: SecaoMenu[] = [
     id: 'indicadores',
     titulo: 'Indicadores',
     icone: BarChart3,
+    manterGrupo: true,
     itens: [
       {
         rotulo: 'Conde',
