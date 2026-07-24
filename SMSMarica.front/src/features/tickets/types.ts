@@ -65,6 +65,10 @@ export type Ticket = {
   atualizadoEm: string | null;
   anexos: TicketAnexo[];
   comentarios: TicketComentario[];
+  /** Última vez que a equipe respondeu ao autor (gestão usa para saber se ele já visualizou). */
+  respondidoEm: string | null;
+  /** Quando o autor reconheceu/visualizou a última resposta (null = ainda não viu). */
+  respostaReconhecidaEm: string | null;
 };
 
 export type AnexoRef = { midiaId: string; nomeArquivo: string };
@@ -90,8 +94,17 @@ export type AtualizarGestaoPayload = {
 
 export type TicketConfiguracao = { visibilidade: TicketVisibilidade };
 
-/** Resumo do autor: quantas respostas ainda não reconhecidas (badge/bandeira). */
-export type TicketResumoAutor = { naoReconhecidos: number };
+/** Ticket com resposta pendente de reconhecimento (alimenta o modal do autor). */
+export type TicketPendente = {
+  id: string;
+  numero: number;
+  titulo: string;
+  status: TicketStatus;
+  respostaFinal: string | null;
+};
+
+/** Resumo do autor: quantas respostas ainda não reconhecidas + a lista delas (para o modal). */
+export type TicketResumoAutor = { naoReconhecidos: number; pendentes: TicketPendente[] };
 
 /** Resumo da gestão para o badge do menu e o cabeçalho. */
 export type TicketResumoGestao = { novos: number; abertos: number; emAnalise: number };

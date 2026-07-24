@@ -26,8 +26,11 @@ import {
   reconhecerTicket,
 } from '@/features/tickets/api/ticketsApi';
 
-/** Intervalo de atualização dos resumos/badges (sem realtime — polling leve). */
-const INTERVALO_RESUMO = 60_000;
+/**
+ * Intervalo de atualização dos resumos/badges (sem realtime — polling leve). 20s dá ao autor
+ * um retorno quase imediato quando a equipe responde (modal "a equipe respondeu"), sem peso.
+ */
+const INTERVALO_RESUMO = 20_000;
 
 export const ticketsKeys = {
   raiz: ['tickets'] as const,

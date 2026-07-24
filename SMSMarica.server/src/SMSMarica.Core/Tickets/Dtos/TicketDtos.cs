@@ -62,7 +62,12 @@ public sealed record TicketDto(
     DateTime CriadoEm,
     DateTime? AtualizadoEm,
     IReadOnlyList<TicketAnexoDto> Anexos,
-    IReadOnlyList<TicketComentarioDto> Comentarios);
+    IReadOnlyList<TicketComentarioDto> Comentarios,
+    /// <summary>Última vez que a equipe respondeu ao autor (base da bandeira). Gestão usa para
+    /// saber se o autor já visualizou a resposta.</summary>
+    DateTime? RespondidoEm,
+    /// <summary>Quando o autor reconheceu/visualizou a última resposta (nulo = ainda não viu).</summary>
+    DateTime? RespostaReconhecidaEm);
 
 // ---- Requests ----
 
@@ -92,8 +97,19 @@ public sealed record TicketConfiguracaoDto(TicketVisibilidade Visibilidade);
 
 // ---- Resumos (badges/notificação, ticket #42) ----
 
-/// <summary>Resumo do lado do autor: quantas respostas ainda não foram reconhecidas.</summary>
-public sealed record TicketResumoAutorDto(int NaoReconhecidos);
+/// <summary>Ticket com resposta pendente de reconhecimento (alimenta o modal do autor).</summary>
+public sealed record TicketPendenteDto(
+    Guid Id,
+    int Numero,
+    string Titulo,
+    TicketStatus Status,
+    string? RespostaFinal);
+
+/// <summary>
+/// Resumo do lado do autor: quantas respostas ainda não foram reconhecidas e a lista delas
+/// (para o modal "a equipe respondeu"). Um usuário raramente tem muitas pendências.
+/// </summary>
+public sealed record TicketResumoAutorDto(int NaoReconhecidos, IReadOnlyList<TicketPendenteDto> Pendentes);
 
 /// <summary>Resumo do lado da gestão para o badge do menu e o cabeçalho.</summary>
 public sealed record TicketResumoGestaoDto(int Novos, int Abertos, int EmAnalise);
