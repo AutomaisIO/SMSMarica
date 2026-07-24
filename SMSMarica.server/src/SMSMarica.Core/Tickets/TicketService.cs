@@ -122,11 +122,14 @@ public sealed class TicketService(SmsMaricaDbContext db, IUsuarioAtualAccessor u
     public async Task<TicketResumoAutorDto> ObterResumoAutorAsync(CancellationToken ct = default)
     {
         var meuId = _usuarioAtual.UsuarioId;
-        var naoReconhecidos = await _db.Tickets.AsNoTracking()
-            .Where(t => t.ExcluidoEm == null && t.CriadoPor == meuId && t.ArquivadoPeloAutorEm == null)
-            .CountAsync(t => t.RespondidoEm != null
-                && (t.RespostaReconhecidaEm == null || t.RespostaReconhecidaEm < t.RespondidoEm), ct);
-        return new TicketResumoAutorDto(naoReconhecidos);
+        var pendentes = await _db.Tickets.AsNoTracking()
+            .Where(t => t.ExcluidoEm == null && t.CriadoPor == meuId && t.ArquivadoPeloAutorEm == null
+                && t.RespondidoEm != null
+                && (t.RespostaReconhecidaEm == null || t.RespostaReconhecidaEm < t.RespondidoEm))
+            .OrderByDescending(t => t.RespondidoEm)
+            .Select(t => new TicketPendenteDto(t.Id, t.Numero, t.Titulo, t.Status, t.RespostaFinal))
+            .ToListAsync(ct);
+        return new TicketResumoAutorDto(pendentes.Count, pendentes);
     }
 
     // ================= Gestão =================
@@ -349,7 +352,8 @@ public sealed class TicketService(SmsMaricaDbContext db, IUsuarioAtualAccessor u
             ticket.ArquivadoPeloAutorEm != null, ticket.ArquivadoPeloAdminEm != null,
             ticket.CriadoEm, ticket.AtualizadoEm,
             [.. ticket.Anexos.Where(a => a.ComentarioId == null).Select(MapAnexo)],
-            comentarios);
+            comentarios,
+            ticket.RespondidoEm, ticket.RespostaReconhecidaEm);
     }
 
     private async Task<IReadOnlyList<TicketListItemDto>> ProjetarListaAsync(IQueryable<Ticket> query, CancellationToken ct)

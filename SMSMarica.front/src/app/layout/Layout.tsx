@@ -10,6 +10,7 @@ import { obterPreferencias } from '@/shared/auth/preferenciasApi';
 import { useVersaoApp } from '@/shared/hooks/useVersaoApp';
 import { CANAL_NAVEGACAO } from '@/shared/lib/janela';
 import { ChatWidget } from '@/features/conversas/components/ChatWidget';
+import { ModalTicketRespondido } from '@/features/tickets/components/ModalTicketRespondido';
 
 export function Layout() {
   const [colapsado, setColapsado] = useState(false);
@@ -94,6 +95,9 @@ export function Layout() {
 
       {/* Chat flutuante global (só aparece para quem tem o módulo Conversas). */}
       <ChatWidget />
+
+      {/* Modal global: avisa o autor quando a equipe responde/conclui um ticket dele. */}
+      <ModalTicketRespondido />
     </div>
   );
 }

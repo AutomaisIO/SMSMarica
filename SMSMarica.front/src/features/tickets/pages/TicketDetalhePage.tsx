@@ -107,6 +107,10 @@ export function TicketDetalhePage({ gestao = false }: { gestao?: boolean }) {
   if (isError || !ticket) return <p className="p-6 text-sm text-red-600">Ticket não encontrado.</p>;
 
   const arquivado = gestao ? ticket.arquivadoPeloAdmin : ticket.arquivadoPeloAutor;
+  // Gestão: o autor já visualizou/reconheceu a última resposta?
+  const autorReconheceu =
+    !!ticket.respostaReconhecidaEm &&
+    (!ticket.respondidoEm || ticket.respostaReconhecidaEm >= ticket.respondidoEm);
 
   async function alternarArquivo() {
     try {
@@ -176,6 +180,16 @@ export function TicketDetalhePage({ gestao = false }: { gestao?: boolean }) {
           <h3 className="text-sm font-semibold text-green-800">Retorno da equipe</h3>
           <p className="mt-1 whitespace-pre-wrap text-sm text-green-900">{ticket.respostaFinal}</p>
         </div>
+      )}
+
+      {gestao && ticket.respondidoEm && (
+        <p
+          className={`text-xs ${autorReconheceu ? 'text-green-700' : 'text-amber-700'}`}
+        >
+          {autorReconheceu
+            ? `Autor visualizou a resposta em ${formatarInstante(ticket.respostaReconhecidaEm!)}.`
+            : 'Autor ainda não visualizou a resposta.'}
+        </p>
       )}
 
       {gestao && (

@@ -397,6 +397,9 @@ public static class DependencyInjection
         services.AddScoped<Notificacoes.WhatsApp.Manipuladores.IManipuladorMensagemWhatsApp,
             Notificacoes.WhatsApp.Manipuladores.ConfirmacaoAgendamentoWhatsAppHandler>();
 
+        // ---- Estatísticas de atendimento (retrato do WhatsApp) — dashboard gerencial ----
+        services.AddScoped<Estatisticas.IEstatisticasService, Estatisticas.EstatisticasService>();
+
         // Faturamento SUS/BPA (FT10): contabilização proporcional + relatórios.
         services.AddScoped<Faturamento.IFaturamentoService, Faturamento.FaturamentoService>();
 

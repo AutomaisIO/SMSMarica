@@ -59,6 +59,7 @@ import { VeiculoDetalhePage } from '@/features/veiculos/pages/VeiculoDetalhePage
 import { VeiculosPage } from '@/features/veiculos/pages/VeiculosPage';
 import { EspecialidadesPage } from '@/features/especialidades/pages/EspecialidadesPage';
 import { IndicadoresAbaPage } from '@/features/indicadores/pages/IndicadoresAbaPage';
+import { RedirecionaIndicadorLegado } from '@/features/indicadores/pages/RedirecionaIndicadorLegado';
 import { EquipamentosPage } from '@/features/equipamentos/pages/EquipamentosPage';
 import { AgendasPage } from '@/features/agendamentos/pages/AgendasPage';
 import { AgendaDetalhePage } from '@/features/agendamentos/pages/AgendaDetalhePage';
@@ -72,6 +73,7 @@ import { FaturamentoPage } from '@/features/faturamento/pages/FaturamentoPage';
 import { AuditoriaPage } from '@/features/auditoria/pages/AuditoriaPage';
 import { ErrosPage } from '@/features/erros/pages/ErrosPage';
 import { ConversasPage } from '@/features/conversas/pages/ConversasPage';
+import { EstatisticasPage } from '@/features/estatisticas/pages/EstatisticasPage';
 import { ChatJanelaPage } from '@/features/conversas/pages/ChatJanelaPage';
 import { MeusTicketsPage } from '@/features/tickets/pages/MeusTicketsPage';
 import { TicketDetalhePage } from '@/features/tickets/pages/TicketDetalhePage';
@@ -169,7 +171,11 @@ export function AppRouter() {
           <Route path="ia/configuracao" element={<IaConfiguracaoPage />} />
           <Route path="ia/melhorias" element={<IaMelhoriasPage />} />
           <Route path="agente-ia" element={<AgenteIaPage />} />
-          <Route path="indicadores/:aba" element={<IndicadoresAbaPage />} />
+          <Route path="indicadores" element={<Navigate to="/app/indicadores/conde/adulto" replace />} />
+          <Route path="indicadores/conde" element={<Navigate to="/app/indicadores/conde/adulto" replace />} />
+          <Route path="indicadores/conde/:aba" element={<IndicadoresAbaPage />} />
+          {/* Compatibilidade com links antigos (aba direto sob /indicadores) */}
+          <Route path="indicadores/:aba" element={<RedirecionaIndicadorLegado />} />
           <Route path="especialidades" element={<EspecialidadesPage />} />
           <Route path="equipamentos" element={<EquipamentosPage />} />
           <Route path="agendas" element={<AgendasPage />} />
@@ -185,6 +191,7 @@ export function AppRouter() {
           <Route path="conversas" element={<ConversasPage />} />
           <Route path="notificacoes-agendamento" element={<NotificacoesAgendamentoPage />} />
           <Route path="respostas-rapidas" element={<RespostasRapidasPage />} />
+          <Route path="estatisticas" element={<EstatisticasPage />} />
           <Route path="sandbox" element={<SandboxPage />} />
           <Route path="tickets" element={<MeusTicketsPage />} />
           <Route path="tickets/gestao" element={<GestaoTicketsPage />} />

@@ -193,8 +193,9 @@ export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseM
               return secao.itens.map((item) => renderItem(item, false));
             }
 
-            // Seção com 1 item visível: vira um link direto (sem hub/expansão).
-            if (secao.itens.length === 1) {
+            // Seção com 1 item visível: vira um link direto (sem hub/expansão),
+            // exceto quando marcada para manter o grupo (crescerá no futuro).
+            if (secao.itens.length === 1 && !secao.manterGrupo) {
               return renderItem(secao.itens[0], false);
             }
 

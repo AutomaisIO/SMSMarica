@@ -1,6 +1,5 @@
 import {
   Activity,
-  Baby,
   BarChart3,
   BellRing,
   Bot,
@@ -8,7 +7,6 @@ import {
   Bus,
   Building2,
   Calculator,
-  PieChart,
   CalendarClock,
   CalendarPlus,
   BookOpen,
@@ -82,6 +80,12 @@ export type SecaoMenu = {
   titulo?: string;
   icone?: LucideIcon;
   itens: ItemMenu[];
+  /**
+   * Mantém o grupo (título + expansão) na sidebar mesmo com um único item, em vez
+   * de achatar o item para o topo. Usado quando a seção deve crescer no futuro —
+   * ex.: Indicadores hoje só tem "Conde", mas entrarão outras unidades.
+   */
+  manterGrupo?: boolean;
 };
 
 export const SECOES: SecaoMenu[] = [
@@ -255,41 +259,14 @@ export const SECOES: SecaoMenu[] = [
     id: 'indicadores',
     titulo: 'Indicadores',
     icone: BarChart3,
+    manterGrupo: true,
     itens: [
       {
-        rotulo: 'Adulto',
-        to: '/app/indicadores/adulto',
+        rotulo: 'Conde',
+        to: '/app/indicadores/conde',
         icone: BarChart3,
         modulo: 'Indicadores',
-        descricao: 'Urgência e internação de adultos do HMCML.',
-      },
-      {
-        rotulo: 'Pediátrico',
-        to: '/app/indicadores/pediatrico',
-        icone: Baby,
-        modulo: 'Indicadores',
-        descricao: 'Urgência e internação do centro pediátrico.',
-      },
-      {
-        rotulo: 'Materno Infantil',
-        to: '/app/indicadores/materno-infantil',
-        icone: Baby,
-        modulo: 'Indicadores',
-        descricao: 'Urgência e internação do centro materno infantil.',
-      },
-      {
-        rotulo: 'Perfil Epidemiológico',
-        to: '/app/indicadores/perfil-epidemiologico',
-        icone: PieChart,
-        modulo: 'Indicadores',
-        descricao: 'Distribuição dos atendimentos e das internações.',
-      },
-      {
-        rotulo: 'Institucional',
-        to: '/app/indicadores/institucional',
-        icone: Building2,
-        modulo: 'Indicadores',
-        descricao: 'Desempenho institucional (RH, custos, faturamento).',
+        descricao: 'Indicadores contratuais do Hospital Municipal Conde Modesto Leal.',
       },
     ],
   },
@@ -349,6 +326,13 @@ export const SECOES: SecaoMenu[] = [
         icone: Zap,
         modulo: 'RespostasRapidas',
         descricao: 'Respostas rápidas que os atendentes usam no chat.',
+      },
+      {
+        rotulo: 'Estatísticas',
+        to: '/app/estatisticas',
+        icone: BarChart3,
+        modulo: 'Estatistica',
+        descricao: 'Retrato do WhatsApp: envios, sessões, entregas e atendentes.',
       },
     ],
   },
