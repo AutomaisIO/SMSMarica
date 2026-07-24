@@ -110,4 +110,9 @@ public enum ModuloPermissao
     /// acesso administrativo ao servidor — não é um assistente de consulta como
     /// <see cref="Inteligencia"/>.</summary>
     AgenteIa = 43,
+
+    /// <summary>Indicadores contratuais do HMCML: consultar os painéis por aba da planilha.
+    /// A ação de Edição libera alterar o SQL do motor de cada indicador (consulta read-only
+    /// contra a base de origem) — conceder só a quem for aprimorar o cálculo.</summary>
+    Indicadores = 44,
 }

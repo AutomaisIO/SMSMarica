@@ -218,6 +218,9 @@ public static class DependencyInjection
         // relogin), não um HttpClient tipado próprio.
         services.AddScoped<Integracoes.Proxy.IMotorCpf, Integracoes.Proxy.Motores.SisregCadsusMotorCpf>();
 
+        // ---- Indicadores contratuais do HMCML (motor = SQL cadastrado) — ADR-0022 ----
+        services.AddScoped<Indicadores.IIndicadoresService, Indicadores.IndicadoresService>();
+
         // ---- Agendamento (Especialidade/Equipamento → Agenda → Agendamento) — ADR-0012/0013 ----
         services.AddScoped<Especialidades.IEspecialidadesService, Especialidades.EspecialidadesService>();
         services.AddScoped<Equipamentos.IEquipamentosService, Equipamentos.EquipamentosService>();

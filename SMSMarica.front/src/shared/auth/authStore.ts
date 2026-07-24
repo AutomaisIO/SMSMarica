@@ -44,7 +44,8 @@ export type ModuloPermissao =
   | 'RespostasRapidas'
   | 'Consultas'
   | 'MapeamentoSigtap'
-  | 'AgenteIa';
+  | 'AgenteIa'
+  | 'Indicadores';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 

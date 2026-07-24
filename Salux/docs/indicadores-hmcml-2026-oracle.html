@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indicadores HMCML 2026 — extração pelo Oracle Salux</title>
+<style>
+:root {
+  color-scheme: light;
+  --plane:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --line:#c3c2b7; --ring:rgba(11,11,11,.10);
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4;
+  --o1:#86b6ef; --o2:#5598e7; --o3:#2a78d6; --o4:#1c5cab; --o5:#0d366b;
+  --crit:#d03b3b; --good:#0ca30c; --code-bg:#f2f2ee;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --plane:#0d0d0d; --surface:#1a1a19; --ink:#fff; --ink2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --line:#383835; --ring:rgba(255,255,255,.10);
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+    --o1:#3987e5; --o2:#2a78d6; --o3:#256abf; --o4:#1c5cab; --o5:#184f95;
+    --code-bg:#141413;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --plane:#0d0d0d; --surface:#1a1a19; --ink:#fff; --ink2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --line:#383835; --ring:rgba(255,255,255,.10);
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+  --o1:#3987e5; --o2:#2a78d6; --o3:#256abf; --o4:#1c5cab; --o5:#184f95;
+  --code-bg:#141413;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--plane); color:var(--ink);
+  font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
+.wrap { max-width:1240px; margin:0 auto; padding:28px 24px 80px; }
+.nav { display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:26px; font-size:12.5px; }
+.nav b, .nav a { padding:6px 12px; border-radius:999px; border:1px solid var(--ring); }
+.nav b { background:var(--ink); color:var(--surface); border-color:var(--ink); font-weight:600; }
+.nav a { color:var(--ink2); text-decoration:none; background:var(--surface); }
+.nav a:hover { color:var(--ink); border-color:var(--line); }
+header.top { border-bottom:1px solid var(--grid); padding-bottom:28px; margin-bottom:32px; }
+.eyebrow { font-size:12px; letter-spacing:.10em; text-transform:uppercase; color:var(--muted); margin:0 0 10px; }
+h1 { font-size:clamp(26px,3.4vw,38px); line-height:1.15; margin:0 0 12px; letter-spacing:-.02em; }
+.sub { color:var(--ink2); max-width:76ch; margin:0; }
+h2 { font-size:20px; margin:44px 0 6px; letter-spacing:-.01em; }
+h2 + .lead { color:var(--ink2); margin:0 0 18px; max-width:82ch; }
+h3 { font-size:15px; margin:0 0 14px; color:var(--ink2); font-weight:600; }
+p.lead { color:var(--ink2); max-width:82ch; }
+
+.tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin:26px 0 8px; }
+.tile { background:var(--surface); border:1px solid var(--ring); border-radius:12px; padding:18px 18px 16px; }
+.tile .v { font-size:34px; font-weight:650; letter-spacing:-.02em; line-height:1; }
+.tile .v small { font-size:15px; font-weight:500; color:var(--muted); margin-left:3px; }
+.tile .k { font-size:12.5px; color:var(--ink2); margin-top:8px; }
+.tile .n { font-size:12px; color:var(--muted); margin-top:5px; }
+.tile.hero .v { color:var(--s1); }
+.tile.warn .v { color:var(--crit); }
+
+.card { background:var(--surface); border:1px solid var(--ring); border-radius:12px; padding:20px; }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:18px; }
+@media (max-width:860px) { .grid2 { grid-template-columns:1fr; } }
+
+.note { background:var(--surface); border:1px solid var(--ring); border-left:3px solid var(--s2);
+  border-radius:0 10px 10px 0; padding:16px 18px; margin:16px 0; }
+.note.ok { border-left-color:var(--s3); }
+.note.no { border-left-color:var(--crit); }
+.note > b { display:block; margin-bottom:5px; }
+.note p { margin:0; color:var(--ink2); font-size:13.5px; }
+.note p + p { margin-top:9px; }
+
+ol.steps { padding-left:20px; color:var(--ink2); }
+ol.steps li { margin-bottom:11px; }
+ol.steps b { color:var(--ink); }
+ul.plain { list-style:none; padding:0; margin:0; color:var(--ink2); font-size:13.5px; }
+ul.plain li { margin-bottom:9px; padding-left:16px; position:relative; }
+ul.plain li::before { content:"–"; position:absolute; left:0; color:var(--muted); }
+
+table { width:100%; border-collapse:collapse; background:var(--surface);
+  border:1px solid var(--ring); border-radius:12px; overflow:hidden; }
+thead th { text-align:left; font-size:11.5px; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--muted); font-weight:600; padding:12px 14px; border-bottom:1px solid var(--grid); white-space:nowrap; }
+tbody td { padding:13px 14px; border-bottom:1px solid var(--grid); vertical-align:top; font-size:13.5px; }
+tbody tr:last-child td { border-bottom:0; }
+tbody tr:hover { background:color-mix(in srgb, var(--ink) 3%, transparent); }
+.tbl-wrap { overflow-x:auto; }
+code { font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--ink2); word-break:break-word; }
+pre { background:var(--code-bg); border:1px solid var(--ring); border-radius:10px; padding:15px 16px;
+  overflow-x:auto; margin:12px 0 0; }
+pre code { font-size:12px; line-height:1.6; color:var(--ink); white-space:pre; word-break:normal; }
+.kw { color:var(--s1); } .cmt { color:var(--muted); font-style:italic; }
+
+.pill { display:inline-flex; align-items:center; gap:6px; font-size:11.5px; padding:3px 10px 3px 8px;
+  border-radius:999px; color:var(--ink2); border:1px solid var(--ring); white-space:nowrap;
+  background:color-mix(in srgb, var(--pc) 10%, transparent); border-color:color-mix(in srgb, var(--pc) 40%, transparent); }
+.pill::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--pc); flex:none; }
+.p1 { --pc:var(--s1); } .p2 { --pc:var(--s2); } .p3 { --pc:var(--s3); }
+.p4 { --pc:var(--s4); } .p5 { --pc:var(--s5); }
+.sw { width:11px; height:11px; border-radius:3px; display:inline-block; flex:none; position:relative; top:1px; }
+.sw.s1{background:var(--s1)} .sw.s2{background:var(--s2)} .sw.s3{background:var(--s3)}
+.sw.s4{background:var(--s4)} .sw.s5{background:var(--s5)}
+.dots { display:inline-flex; gap:3px; }
+.dots i { width:7px; height:7px; border-radius:50%; display:block; }
+.don { background:var(--ink2); } .doff { background:var(--grid); }
+.dif-n { font-size:12px; color:var(--muted); margin-left:7px; font-variant-numeric:tabular-nums; }
+
+.bar-row { display:grid; grid-template-columns:190px 1fr 34px; align-items:center; gap:12px; margin-bottom:10px; }
+.bar-lbl { font-size:12.5px; color:var(--ink2); }
+.bar-track { height:15px; background:var(--grid); border-radius:4px; overflow:hidden; }
+.bar-fill { display:block; height:100%; border-radius:0 4px 4px 0; transition:width .3s; }
+.bar-val { font-size:13px; text-align:right; font-variant-numeric:tabular-nums; color:var(--ink2); }
+.s1{background:var(--s1)} .s2{background:var(--s2)} .s3{background:var(--s3)} .s4{background:var(--s4)} .s5{background:var(--s5)}
+.o1{background:var(--o1)} .o2{background:var(--o2)} .o3{background:var(--o3)} .o4{background:var(--o4)} .o5{background:var(--o5)}
+
+.motor { background:var(--surface); border:1px solid var(--ring); border-radius:12px; padding:22px 24px; margin-bottom:16px; }
+.motor h3 { font-size:16px; color:var(--ink); margin:0 0 4px; }
+.motor .mid { font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+.motor .cobre { font-size:12.5px; color:var(--muted); margin-top:14px; padding-top:12px; border-top:1px solid var(--grid); }
+.motor .cobre b { color:var(--ink2); font-weight:600; }
+.tabs { font-size:12.5px; color:var(--ink2); margin:8px 0 0; }
+.tabs code { color:var(--ink); }
+
+footer { margin-top:56px; padding-top:20px; border-top:1px solid var(--grid); color:var(--muted); font-size:12.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="nav"><a href="indicadores-hmcml-2026-viabilidade.html">Panorama</a><b>Extração pelo Oracle Salux</b><a href="indicadores-hmcml-2026-fhir.html">Plano de projeção FHIR</a></nav>
+
+<header class="top">
+  <p class="eyebrow">SMS Maricá · Hospital Conde Modesto Leal · relatório 2 de 3</p>
+  <h1>Extraindo os indicadores direto do Oracle Salux</h1>
+  <p class="sub">Este relatório ignora o hub FHIR de propósito: assume que <b>todo</b> indicador será calculado
+  lendo o banco do Salux. São <b>15 motores de cálculo</b> — não 94 consultas — porque a maioria dos indicadores
+  das três abas assistenciais compartilha a mesma consulta com um filtro diferente.</p>
+</header>
+
+<div class="tiles">
+  <div class="tile hero"><div class="v">74<small>/94</small></div>
+    <div class="k">Saem do Oracle</div><div class="n">Com esforço variável</div></div>
+  <div class="tile"><div class="v">15</div>
+    <div class="k">Motores de cálculo</div><div class="n">Cobrem os 74</div></div>
+  <div class="tile"><div class="v">26</div>
+    <div class="k">Dependem do eDoc (EAV)</div><div class="n">Motor M13 — o gargalo real</div></div>
+  <div class="tile warn"><div class="v">20</div>
+    <div class="k">Não existem no Oracle</div><div class="n">RH, CCIH, NSP, custos</div></div>
+</div>
+
+<section>
+  <h2>Antes de escrever a primeira consulta</h2>
+  <div class="grid2">
+    <div class="card">
+      <h3>Acesso</h3>
+      <ul class="plain">
+        <li>O banco é <code>10.50.0.18:1521/ORASX01</code>, <b>somente de dentro da rede do hospital</b> — a nuvem não alcança.</li>
+        <li>PRODUÇÃO é read-only absoluto: toda conexão passa por <code>scripts/_guard.py</code> e abre com <code>SET TRANSACTION READ ONLY</code>.</li>
+        <li><b>A conta <code>salux_obs</code> não serve para isso.</b> Ela só tem <code>SELECT_CATALOG_ROLE</code> (views V$/DBA_),
+        sem grant nas tabelas do schema. As consultas deste relatório precisam da conta com acesso ao <code>INFOSAUDE</code>.</li>
+        <li>O schema físico é <code>INFOSAUDE</code> (3.249 tabelas), acessado pela aplicação como <code>SYBSA</code>.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Convenções que quebram consulta ingênua</h3>
+      <ul class="plain">
+        <li><b>Chave composta, sem ID global:</b> <code>(CD_HOSPITAL, DT_ANO_BAA, NR_BAA)</code> — o número é sequencial por ano e por hospital.</li>
+        <li><b>Paciente unificado:</b> sempre <code>NVL(CD_PACIENTE_UNIFICADO, CD_PACIENTE)</code>, senão o mesmo paciente conta duas vezes.</li>
+        <li><b>Modelo dual:</b> quase toda tabela clínica tem versão BAA (ambulatório/urgência) e FIA (internação).</li>
+        <li><b>Discriminador inline:</b> <code>ID_TIPO</code> = <code>B</code> (BAA) ou <code>F</code> (FIA) em SINAIS_VITAIS e afins.</li>
+        <li><b>Volume:</b> <code>EDOC_MOVIMENTO_ITEM</code> tem 166 milhões de linhas e <code>RASTREABILIDADE_ATENDIMENTO</code> 21,9 milhões. Filtrar sempre.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="note">
+    <b>As consultas abaixo são esqueletos, não código pronto</b>
+    <p>Os nomes de tabela e as chaves vêm do levantamento já feito (<code>Salux/docs/levantamento-banco.md</code>),
+    mas <b>colunas de tabelas ainda não inspecionadas</b> — TRIAGEM, ACOLHIMENTO e boa parte de FIA — estão nomeadas
+    por inferência. Rodar <code>inspecionar_tabela.py</code> em cada uma antes de codificar é mais rápido do que
+    depurar depois.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Os 15 motores de cálculo</h2>
+  <p class="lead">Cada motor é uma consulta que, mudando filtro e recorte, atende vários indicadores das três abas.</p>
+  <div class="motor" id="M1">
+  <div class="mid">M1 · dificuldade <span class="dots"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span></div>
+  <h3>Tempos da urgência</h3>
+  <p class="tabs" style="color:var(--muted)">chegada → triagem → atendimento médico → saída</p>
+  <p class="tabs">Tabelas: <code>BAA · TRIAGEM · ACOLHIMENTO · CLASSIFICACAO_RISCO</code></p>
+  <pre><code>SELECT cr.ds_classificacao_risco                                   AS cor,
+       COUNT(*)                                                     AS pacientes,
+       ROUND(AVG((t.dt_triagem  - b.dt_chegada)     * 1440), 1)     AS min_ate_triagem,
+       ROUND(AVG((b.dt_atendimento - t.dt_triagem)  * 1440), 1)     AS min_espera_medico,
+       ROUND(AVG((b.dt_saida    - b.dt_chegada)     * 60),   1)     AS horas_permanencia
+  FROM infosaude.baa b
+  LEFT JOIN infosaude.triagem t
+         ON t.cd_hospital = b.cd_hospital
+        AND t.dt_ano_baa  = b.dt_ano_baa
+        AND t.nr_baa      = b.nr_baa
+  LEFT JOIN infosaude.classificacao_risco cr
+         ON cr.cd_classificacao_risco = b.cd_classificacao_risco
+ WHERE b.cd_hospital = :cd_hospital
+   AND b.dt_atendimento &gt;= :ini AND b.dt_atendimento &lt; :fim
+   AND NVL(cr.ds_classificacao_risco,&#x27;-&#x27;) &lt;&gt; &#x27;VERMELHO&#x27;   -- regra da planilha
+ GROUP BY cr.ds_classificacao_risco</code></pre>
+  <p class="tabs" style="margin-top:12px">Os nomes de coluna de TRIAGEM ainda não foram inspecionados (a tabela tem 3.023.874 linhas e nunca foi aberta). Primeiro passo obrigatório: rodar <code>inspecionar_tabela.py TRIAGEM</code>. O carimbo do totem (indicador 1) provavelmente está em ACOLHIMENTO ou LISTA_SENHA, não em BAA — confirmar antes de prometer o número.</p>
+  <div class="cobre"><b>Cobre:</b> Adulto 1–4 · Pediátrico 1–3, 7 · Materno 1–3</div>
+</div><div class="motor" id="M2">
+  <div class="mid">M2 · dificuldade <span class="dots"><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i></span></div>
+  <h3>Distribuição dos atendimentos</h3>
+  <p class="tabs" style="color:var(--muted)">motivo, risco, sexo, faixa etária, dia/hora, bairro, município</p>
+  <p class="tabs">Tabelas: <code>BAA · PACIENTE · CIDADE · MOTIVO_ATENDIMENTO</code></p>
+  <pre><code>SELECT ma.ds_motivo_atendimento                          AS motivo,
+       cr.ds_classificacao_risco                          AS risco,
+       p.id_sexo                                          AS sexo,
+       CASE WHEN infosaude.f_busca_idade(p.dt_nascimento, b.dt_atendimento, 2) &lt; 1  THEN &#x27;&lt;1&#x27;
+            WHEN infosaude.f_busca_idade(p.dt_nascimento, b.dt_atendimento, 2) &lt; 5  THEN &#x27;1-4&#x27;
+            WHEN infosaude.f_busca_idade(p.dt_nascimento, b.dt_atendimento, 2) &lt; 10 THEN &#x27;5-9&#x27;
+            -- … 10-12, 13-15, 16-19, 20-29, 30-39, 40-49, 50-59
+            ELSE &#x27;60+&#x27; END                                AS faixa_etaria,
+       TO_CHAR(b.dt_atendimento,&#x27;DY&#x27;)                     AS dia_semana,
+       TO_CHAR(b.dt_atendimento,&#x27;HH24&#x27;)                   AS hora,
+       c.ds_cidade                                        AS municipio,
+       COUNT(*)                                           AS atendimentos
+  FROM infosaude.baa b
+  JOIN infosaude.paciente p ON p.cd_paciente = NVL(b.cd_paciente_unificado, b.cd_paciente)
+  LEFT JOIN infosaude.cidade c ON c.cd_uf = p.cd_uf AND c.cd_cidade = p.cd_cidade
+  LEFT JOIN infosaude.motivo_atendimento ma ON ma.cd_motivo_atendimento = b.cd_motivo_atendimento
+  LEFT JOIN infosaude.classificacao_risco cr ON cr.cd_classificacao_risco = b.cd_classificacao_risco
+ WHERE b.cd_hospital = :cd_hospital
+   AND b.dt_atendimento &gt;= :ini AND b.dt_atendimento &lt; :fim
+ GROUP BY GROUPING SETS ( (ma.ds_motivo_atendimento), (cr.ds_classificacao_risco),
+                          (p.id_sexo), (TO_CHAR(b.dt_atendimento,&#x27;DY&#x27;), TO_CHAR(b.dt_atendimento,&#x27;HH24&#x27;)),
+                          (c.ds_cidade) )</code></pre>
+  <p class="tabs" style="margin-top:12px">Um único GROUPING SETS entrega os seis relatórios de perfil em uma passada. O nome da coluna de bairro em PACIENTE (137 colunas) precisa ser confirmado; 'não residente' sai de <code>c.ds_cidade &lt;&gt; 'MARICA'</code>, atenção a variações de grafia.</p>
+  <div class="cobre"><b>Cobre:</b> Perfil Epidemiológico 1–6</div>
+</div><div class="motor" id="M3">
+  <div class="mid">M3 · dificuldade <span class="dots"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span></div>
+  <h3>Procedimentos ambulatoriais (SIGTAP)</h3>
+  <p class="tabs" style="color:var(--muted)">distribuição por código SUS</p>
+  <p class="tabs">Tabelas: <code>TU_BPA_UNIFICADA · PROCED_SIA</code></p>
+  <pre><code>SELECT bpa.cd_procedimento,
+       ps.ds_procedimento,
+       COUNT(*)          AS quantidade
+  FROM infosaude.tu_bpa_unificada bpa
+  LEFT JOIN infosaude.proced_sia ps ON ps.cd_procedimento = bpa.cd_procedimento
+ WHERE bpa.cd_hospital = :cd_hospital
+   AND bpa.dt_competencia = :competencia
+ GROUP BY bpa.cd_procedimento, ps.ds_procedimento
+ ORDER BY quantidade DESC</code></pre>
+  <p class="tabs" style="margin-top:12px">TU_BPA_UNIFICADA tem 5.174.677 linhas — sempre filtrar por competência. Conferir se o hospital fatura por BPA consolidado ou individualizado antes de usar como denominador.</p>
+  <div class="cobre"><b>Cobre:</b> Perfil Epidemiológico 7</div>
+</div><div class="motor" id="M4">
+  <div class="mid">M4 · dificuldade <span class="dots"><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i></span></div>
+  <h3>Internação: permanência, saídas e CID de saída</h3>
+  <p class="tabs" style="color:var(--muted)">o motor de quase todo o bloco de internação</p>
+  <p class="tabs">Tabelas: <code>FIA · PACIENTE · CID</code></p>
+  <pre><code>SELECT COUNT(*)                                              AS saidas,
+       ROUND(AVG(f.dt_alta - f.dt_baixa), 2)                   AS media_permanencia_dias,
+       SUM(f.dt_alta - f.dt_baixa)                             AS pacientes_dia,
+       cid.ds_cid                                              AS cid_saida
+  FROM infosaude.fia f
+  JOIN infosaude.paciente p ON p.cd_paciente = NVL(f.cd_paciente_unificado, f.cd_paciente)
+  LEFT JOIN infosaude.cid cid ON cid.cd_cid = f.cd_cid
+ WHERE f.cd_hospital = :cd_hospital
+   AND f.dt_alta &gt;= :ini AND f.dt_alta &lt; :fim
+   AND infosaude.f_busca_idade(p.dt_nascimento, f.dt_alta, 2) &lt; 60   -- ou &gt;= 60
+ GROUP BY cid.ds_cid</code></pre>
+  <p class="tabs" style="margin-top:12px">Confirmar os nomes reais das colunas de entrada/saída em FIA (o levantamento registra <code>dt_baixa → dt_alta</code>, mas FIA tem 128 colunas e há também data de alta médica × alta administrativa). A diferença entre as duas muda a média de permanência.</p>
+  <div class="cobre"><b>Cobre:</b> Adulto 12, 13 · Pediátrico 9 · Materno 8 · Perfil Epid. 8–11</div>
+</div><div class="motor" id="M5">
+  <div class="mid">M5 · dificuldade <span class="dots"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span></div>
+  <h3>Ocupação e leito-dia</h3>
+  <p class="tabs" style="color:var(--muted)">paciente-dia ÷ leito-dia operacional</p>
+  <p class="tabs">Tabelas: <code>FIA_LEITO · LEITO · PAC_DIA_UNID_TPQUARTO · LEITO_DIA</code></p>
+  <pre><code>WITH paciente_dia AS (
+  SELECT SUM(LEAST(NVL(fl.dt_saida_leito, :fim), :fim)
+           - GREATEST(fl.dt_transferencia, :ini))        AS pac_dia
+    FROM infosaude.fia_leito fl
+    JOIN infosaude.leito l ON l.cd_hospital = fl.cd_hospital
+                          AND l.cd_unidade  = fl.cd_unidade
+                          AND l.cd_quarto   = fl.cd_quarto
+                          AND l.cd_leito    = fl.cd_leito
+   WHERE fl.cd_hospital = :cd_hospital
+     AND l.cd_unidade   IN (:unidades_do_bloco)
+     AND fl.dt_transferencia &lt; :fim
+     AND NVL(fl.dt_saida_leito, :fim) &gt; :ini
+), leito_dia AS (
+  SELECT COUNT(*) * (:fim - :ini)                        AS leito_dia
+    FROM infosaude.leito
+   WHERE cd_hospital = :cd_hospital
+     AND cd_unidade IN (:unidades_do_bloco)
+     AND NVL(in_extra,&#x27;N&#x27;) = &#x27;N&#x27;                          -- leito extra não é operacional
+)
+SELECT ROUND(pac_dia / NULLIF(leito_dia,0) * 100, 1) AS taxa_ocupacao
+  FROM paciente_dia, leito_dia</code></pre>
+  <p class="tabs" style="margin-top:12px">Aqui a definição vale mais que o SQL: leito bloqueado, em higienização ou extra conta como operacional? Existe caminho mais barato — <code>PAC_DIA_UNID_TPQUARTO</code> (204 mil linhas) e <code>LEITO_DIA</code> (52 mil) já são consolidações do próprio Salux para AIH. Comparar os dois resultados antes de escolher.</p>
+  <div class="cobre"><b>Cobre:</b> Adulto 11 · Pediátrico 8 · Materno 7</div>
+</div><div class="motor" id="M6">
+  <div class="mid">M6 · dificuldade <span class="dots"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span></div>
+  <h3>Reinternação em até 30 dias</h3>
+  <p class="tabs" style="color:var(--muted)">self-join da internação pelo paciente unificado</p>
+  <p class="tabs">Tabelas: <code>FIA</code></p>
+  <pre><code>SELECT ROUND(100 * COUNT(DISTINCT re.nr_fia) / NULLIF(COUNT(DISTINCT f.nr_fia),0), 1) AS pct
+  FROM infosaude.fia f
+  LEFT JOIN infosaude.fia re
+         ON NVL(re.cd_paciente_unificado, re.cd_paciente)
+          = NVL(f.cd_paciente_unificado,  f.cd_paciente)
+        AND re.dt_baixa &gt;  f.dt_alta
+        AND re.dt_baixa &lt;= f.dt_alta + 30
+ WHERE f.cd_hospital = :cd_hospital
+   AND f.dt_alta &gt;= :ini AND f.dt_alta &lt; :fim</code></pre>
+  <p class="tabs" style="margin-top:12px">Pactuar com a SMS: conta reinternação por qualquer causa ou só pela mesma? Exclui internação programada? Sem isso definido, o mesmo SQL entrega números diferentes e defensáveis.</p>
+  <div class="cobre"><b>Cobre:</b> Adulto 14 · Pediátrico 10</div>
+</div><div class="motor" id="M7">
+  <div class="mid">M7 · dificuldade <span class="dots"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span></div>
+  <h3>Óbitos e mortalidade institucional</h3>
+  <p class="tabs" style="color:var(--muted)">óbito após 24h ÷ saídas do período</p>
+  <p class="tabs">Tabelas: <code>FIA · BAA (ID_DESTINO=&#x27;D&#x27;)</code></p>
+  <pre><code>SELECT ROUND(100 * SUM(CASE WHEN f.nr_obito IS NOT NULL
+                         AND f.dt_alta - f.dt_baixa &gt; 1 THEN 1 ELSE 0 END)
+             / NULLIF(COUNT(*),0), 2)                       AS mortalidade_institucional_pct
+  FROM infosaude.fia f
+ WHERE f.cd_hospital = :cd_hospital
+   AND f.dt_alta &gt;= :ini AND f.dt_alta &lt; :fim
+
+-- óbitos ocorridos ainda na urgência (sem internação):
+SELECT COUNT(*) FROM infosaude.baa
+ WHERE cd_hospital = :cd_hospital AND id_destino = &#x27;D&#x27;
+   AND dt_saida &gt;= :ini AND dt_saida &lt; :fim</code></pre>
+  <p class="tabs" style="margin-top:12px"><code>BAA.ID_DESTINO='D'</code> já tem 10.500 registros de óbito na urgência — não confundir com o óbito de internação. O indicador 'taxa de PCR na enfermaria' tem nome de PCR mas memória de cálculo de óbito: alinhar antes.</p>
+  <div class="cobre"><b>Cobre:</b> Adulto 15, 17 · Pediátrico 11, 12 · Materno 17</div>
+</div><div class="motor" id="M8">
+  <div class="mid">M8 · dificuldade <span class="dots"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span></div>
+  <h3>Obstetrícia: partos e via de parto</h3>
+  <p class="tabs" style="color:var(--muted)">cesárea, parto normal, executor, óbito materno</p>
+  <p class="tabs">Tabelas: <code>FIA · PROCEDIMENTO · AIH · MEDICO · CONSELHO_REGIONAL</code></p>
+  <pre><code>SELECT pr.ds_procedimento,
+       COUNT(*)                                                        AS partos,
+       ROUND(100 * COUNT(*) / SUM(COUNT(*)) OVER (), 1)                AS pct,
+       SUM(CASE WHEN cr.cd_conselho = &#x27;COREN&#x27; THEN 1 ELSE 0 END)       AS por_enfermeiro_obstetra
+  FROM infosaude.fia f
+  JOIN infosaude.procedimento pr ON pr.cd_procedimento = f.cd_procedimento
+  LEFT JOIN infosaude.medico md  ON md.cd_medico = f.cd_medico
+  LEFT JOIN infosaude.conselho_regional cr ON cr.cd_conselho = md.cd_conselho
+ WHERE f.cd_hospital = :cd_hospital
+   AND f.dt_alta &gt;= :ini AND f.dt_alta &lt; :fim
+   AND pr.cd_procedimento IN (:sigtap_partos)   -- cesariana 0411010026 · parto normal 0310010039
+ GROUP BY pr.ds_procedimento</code></pre>
+  <p class="tabs" style="margin-top:12px">O 'parto assistido por enfermeiro obstétrico' só sai se o parto for registrado com o executor real — se o sistema grava apenas o médico responsável pela internação, o indicador fica sempre zerado. Verificar em campo antes.</p>
+  <div class="cobre"><b>Cobre:</b> Materno 9, 11, 17</div>
+</div><div class="motor" id="M9">
+  <div class="mid">M9 · dificuldade <span class="dots"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span></div>
+  <h3>Recém-nascido: Apgar e amamentação</h3>
+  <p class="tabs" style="color:var(--muted)">os dois indicadores de RN</p>
+  <p class="tabs">Tabelas: <code>AIH_RECEM_NATO · eDoc Maternidade</code></p>
+  <pre><code>-- Descoberta pendente: confirmar onde o Apgar é gravado.
+SELECT * FROM all_tab_columns
+ WHERE owner = &#x27;INFOSAUDE&#x27;
+   AND (column_name LIKE &#x27;%APGAR%&#x27; OR table_name LIKE &#x27;%RECEM%&#x27; OR table_name LIKE &#x27;%NASC%&#x27;)</code></pre>
+  <p class="tabs" style="margin-top:12px">Este é o único motor que ainda não tem caminho conhecido. Existe <code>AIH_RECEM_NATO</code> (faturamento), mas não foi verificado se o Apgar está colunado ali ou só dentro do formulário da maternidade. Meia hora de discovery resolve a dúvida.</p>
+  <div class="cobre"><b>Cobre:</b> Materno 13, 14</div>
+</div><div class="motor" id="M10">
+  <div class="mid">M10 · dificuldade <span class="dots"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span></div>
+  <h3>Exames e laudos</h3>
+  <p class="tabs" style="color:var(--muted)">porta-tomografia e tempo de resposta do SADT</p>
+  <p class="tabs">Tabelas: <code>SOL_EXAME · SOL_EXAME_ITEM · PROCEDIMENTO · LAUDO</code></p>
+  <pre><code>SELECT ROUND(AVG((si.dt_realizado - b.dt_chegada) * 1440), 1) AS min_porta_tomografia,
+       COUNT(*)                                              AS exames
+  FROM infosaude.sol_exame se
+  JOIN infosaude.sol_exame_item si ON si.nr_sol_exame = se.nr_sol_exame
+  JOIN infosaude.procedimento pr   ON pr.cd_procedimento = si.cd_procedimento
+  JOIN infosaude.baa b ON b.cd_hospital = se.cd_hospital
+                      AND b.dt_ano_baa  = se.dt_ano_baa
+                      AND b.nr_baa      = se.nr_baa
+ WHERE se.cd_hospital = :cd_hospital
+   AND si.dt_realizado &gt;= :ini AND si.dt_realizado &lt; :fim
+   AND UPPER(pr.ds_procedimento) LIKE &#x27;%TOMOGRAFIA%CRANIO%&#x27;
+   AND si.in_exame_cancelado = &#x27;N&#x27;</code></pre>
+  <p class="tabs" style="margin-top:12px">Mede 'chegada → TC realizada'. A planilha pede 'abertura do protocolo de AVC → TC', e esse carimbo de abertura não existe estruturado. Ou a SMS aceita a régua da porta, ou o protocolo precisa passar a ser registrado.</p>
+  <div class="cobre"><b>Cobre:</b> Adulto 6</div>
+</div><div class="motor" id="M11">
+  <div class="mid">M11 · dificuldade <span class="dots"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span></div>
+  <h3>Prescrição e medicação</h3>
+  <p class="tabs" style="color:var(--muted)">trombólise, antibiótico na sepse, profilaxia de TEV</p>
+  <p class="tabs">Tabelas: <code>PRESC_BAA_OPC_PROD · PRESC_FIA_OPC_PROD · MATMED</code></p>
+  <pre><code>SELECT mm.ds_material,
+       COUNT(*)                                              AS prescricoes,
+       MIN(pf.dt_prescricao)                                 AS primeira_prescricao
+  FROM infosaude.presc_fia_opc_prod op
+  JOIN infosaude.prescricao_fia pf ON pf.cd_hospital = op.cd_hospital
+                                  AND pf.dt_ano_fia  = op.dt_ano_fia
+                                  AND pf.nr_fia      = op.nr_fia
+                                  AND pf.nr_prescricao = op.nr_prescricao
+  JOIN infosaude.matmed mm ON mm.cd_material = op.cd_material
+ WHERE op.cd_hospital = :cd_hospital
+   AND UPPER(mm.ds_material) LIKE ANY (:lista_atb)   -- ou enoxaparina / heparina / alteplase
+ GROUP BY mm.ds_material</code></pre>
+  <p class="tabs" style="margin-top:12px">O limite é conceitual, não técnico: o banco sabe a hora em que o remédio foi <b>prescrito</b> e <b>dispensado</b>, não a hora em que foi <b>infundido</b>. Os três indicadores medem a infusão. Sem checagem de administração pela enfermagem, o número não existe — em nenhuma fonte.</p>
+  <div class="cobre"><b>Cobre:</b> Adulto 5, 7, 18</div>
+</div><div class="motor" id="M12">
+  <div class="mid">M12 · dificuldade <span class="dots"><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i></span></div>
+  <h3>eDoc: contagem de documentos</h3>
+  <p class="tabs" style="color:var(--muted)">questionários respondidos, checklists, escalas</p>
+  <p class="tabs">Tabelas: <code>EDOC_MOVIMENTO · EDOC_MODELO</code></p>
+  <pre><code>SELECT mo.ds_modelo,
+       COUNT(*)                                        AS documentos
+  FROM infosaude.edoc_movimento mv
+  JOIN infosaude.edoc_modelo mo ON mo.cd_modelo = mv.cd_modelo
+ WHERE mv.cd_hospital = :cd_hospital
+   AND mv.dt_inclusao &gt;= :ini AND mv.dt_inclusao &lt; :fim
+   AND mv.in_status = &#x27;D&#x27;      -- só definitivo (97,5% da base)
+   AND mv.in_ativo  = &#x27;S&#x27;
+   AND mo.ds_modelo LIKE &#x27;%Pesquisa de satisfa%&#x27;
+ GROUP BY mo.ds_modelo</code></pre>
+  <p class="tabs" style="margin-top:12px">É o motor mais barato da lista: contar documento por modelo. Serve para todo indicador do tipo 'índice de questionários preenchidos' e para a adesão ao checklist de cirurgia segura.</p>
+  <div class="cobre"><b>Cobre:</b> Adulto 8, 23, 24 · Pediátrico 4, 17 · Materno 4, 18</div>
+</div><div class="motor" id="M13">
+  <div class="mid">M13 · dificuldade <span class="dots"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span></div>
+  <h3>eDoc: leitura das respostas (EAV)</h3>
+  <p class="tabs" style="color:var(--muted)">satisfação, NPS, partograma, pele a pele, acompanhante</p>
+  <p class="tabs">Tabelas: <code>EDOC_MOVIMENTO_ITEM · EDOC_DOCUMENTO_ITEM · EDOC_ITEM</code></p>
+  <pre><code>-- Passo 1 — descobrir o cd_item da pergunta dentro do modelo:
+SELECT di.cd_item, it.ds_item, ti.ds_tipo_item
+  FROM infosaude.edoc_documento_item di
+  JOIN infosaude.edoc_item it      ON it.cd_item = di.cd_item
+  JOIN infosaude.edoc_tipo_item ti ON ti.cd_tipo_item = it.cd_tipo_item
+ WHERE di.cd_modelo = :cd_modelo
+ ORDER BY di.nr_sequencia;
+
+-- Passo 2 — agregar as respostas daquele item:
+SELECT mi.ds_resposta, COUNT(*) AS respostas
+  FROM infosaude.edoc_movimento mv
+  JOIN infosaude.edoc_movimento_item mi
+    ON mi.cd_hospital = mv.cd_hospital AND mi.ano_movimento = mv.ano_movimento
+   AND mi.id_movimento = mv.id_movimento
+ WHERE mv.cd_modelo = :cd_modelo
+   AND mv.in_status = &#x27;D&#x27; AND mv.in_ativo = &#x27;S&#x27;
+   AND mv.dt_inclusao &gt;= :ini AND mv.dt_inclusao &lt; :fim
+   AND mi.cd_item = :cd_item
+ GROUP BY mi.ds_resposta</code></pre>
+  <p class="tabs" style="margin-top:12px"><b>Este é o motor que decide metade da planilha.</b> O trabalho não é escrever SQL — é o passo 1, repetido modelo a modelo: descobrir qual <code>cd_item</code> guarda cada pergunta, e se a pergunta existe. <code>EDOC_MOVIMENTO_ITEM</code> tem 166 milhões de linhas: nunca varrer sem filtrar por modelo e período. Perguntas como 'posição verticalizada' ou 'contato pele a pele' podem simplesmente não existir no formulário atual — e aí não é problema de extração, é de formulário.</p>
+  <div class="cobre"><b>Cobre:</b> Adulto 9, 10, 18, 19, 25, 26 · Pediátrico 5, 6, 13, 18, 19 · Materno 5, 6, 10.1–10.5, 12, 14, 19, 20 · Instit. 12</div>
+</div><div class="motor" id="M14">
+  <div class="mid">M14 · dificuldade <span class="dots"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span></div>
+  <h3>Faturamento SUS</h3>
+  <p class="tabs" style="color:var(--muted)">BPA e AIH apresentados × produção realizada</p>
+  <p class="tabs">Tabelas: <code>TU_BPA_UNIFICADA · AIH · FIA</code></p>
+  <pre><code>SELECT ROUND(100 * (SELECT COUNT(*) FROM infosaude.aih a
+                     WHERE a.cd_hospital = :cd_hospital
+                       AND a.dt_competencia = :competencia)
+             / NULLIF((SELECT COUNT(*) FROM infosaude.fia f
+                        WHERE f.cd_hospital = :cd_hospital
+                          AND f.dt_baixa &gt;= :ini AND f.dt_baixa &lt; :fim),0), 1)
+       AS alimentacao_sih_pct
+  FROM dual</code></pre>
+  
+  <div class="cobre"><b>Cobre:</b> Institucional 10, 11</div>
+</div><div class="motor" id="M15">
+  <div class="mid">M15 · dificuldade <span class="dots"><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i></span></div>
+  <h3>Recorte por unidade e bloco assistencial</h3>
+  <p class="tabs" style="color:var(--muted)">a dimensão que atravessa todos os outros motores</p>
+  <p class="tabs">Tabelas: <code>HOSPITAL · UNIDADE_HOSPITALAR · SETOR_FLUXO · SALA_AMBULATORIO</code></p>
+  <pre><code>SELECT sf.cd_setor, sf.ds_setor, sf.tipo_evento, sf.in_ativo
+  FROM infosaude.setor_fluxo sf
+  JOIN infosaude.setor_fluxo_x_hospital sh ON sh.cd_setor = sf.cd_setor
+ WHERE sh.cd_hospital = :cd_hospital
+ ORDER BY sf.ds_setor;
+-- 73 setores: HMCML 38 (inclui PED = pediatria), UPA Inoã 16, Sta Rita 13, genéricos 9</code></pre>
+  <p class="tabs" style="margin-top:12px">Sem esta dimensão amarrada, nenhum indicador das três primeiras abas fecha — a planilha exige Adulto × Pediátrico × Materno Infantil separados. É a primeira coisa a pactuar com o hospital: qual conjunto de <code>cd_unidade</code> / setor define cada bloco.</p>
+  <div class="cobre"><b>Cobre:</b> Todas as abas</div>
+</div>
+</section>
+
+<section>
+  <h2>Ordem de ataque sugerida</h2>
+  <ol class="steps">
+    <li><b>Primeiro o M15 (recorte por bloco).</b> Sem definir quais unidades/setores formam Adulto, Pediátrico e
+    Materno Infantil, nenhum outro motor produz número que a SMS aceite. É reunião, não código.</li>
+    <li><b>Depois M2 e M4</b> — distribuição dos atendimentos e o bloco de internação. São 17 indicadores com duas
+    consultas, e nenhuma dependência de descoberta.</li>
+    <li><b>M12 na sequência</b> — contagem de documentos do eDoc resolve os 'índices de questionários preenchidos'
+    das três abas de uma vez, com uma consulta trivial.</li>
+    <li><b>M1, M5, M6, M7</b> — exigem inspeção de tabela (TRIAGEM, FIA_LEITO) e pactuação de definição, mas o
+    caminho está claro.</li>
+    <li><b>M13 por último e por partes.</b> São 26 indicadores presos ao eDoc. Tratar como projeto próprio:
+    mapear um modelo por vez, começando pelas pesquisas de satisfação (maior volume, 77 mil documentos respondidos).</li>
+    <li><b>M9 é discovery pura</b> — meia hora para descobrir onde mora o Apgar decide se dois indicadores da
+    maternidade são fáceis ou impossíveis.</li>
+  </ol>
+</section>
+
+<section>
+  <h2>O que o Oracle não resolve</h2>
+  <p class="lead">Vinte indicadores não têm origem no Salux. Não é limitação de consulta — o registro não é feito
+  em sistema nenhum. Enquanto o processo não mudar, seguem manuais.</p>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>Indicador</th><th>Onde o dado realmente está</th><th>Linhas da planilha</th></tr></thead>
+    <tbody><tr><td><b>Absenteísmo da enfermagem</b></td><td>Ponto biométrico / RH</td><td><code>Institucional 1</code></td></tr><tr><td><b>Substituição de cargos em vacância</b></td><td>RH</td><td><code>Institucional 2</code></td></tr><tr><td><b>Rotatividade de RH</b></td><td>RH</td><td><code>Institucional 3</code></td></tr><tr><td><b>Acidentes de trabalho</b></td><td>SESMT</td><td><code>Institucional 4</code></td></tr><tr><td><b>Treinamento hora-profissional</b></td><td>NEP</td><td><code>Institucional 5</code></td></tr><tr><td><b>Compras com pesquisa de preço</b></td><td>Plataforma de compras (só o denominador está no Salux)</td><td><code>Institucional 6</code></td></tr><tr><td><b>Tempo de equipamento parado</b></td><td>Sistema de ordem de serviço / manutenção</td><td><code>Institucional 7</code></td></tr><tr><td><b>Custo médio de atendimento e de diária</b></td><td>Contabilidade / centro de custos + TABNET</td><td><code>Institucional 8, 9.1–9.3</code></td></tr><tr><td><b>ITU associada a cateter vesical</b></td><td>Vigilância da CCIH (não há registro de dispositivo-dia)</td><td><code>Adulto 16</code></td></tr><tr><td><b>Infecção de sítio cirúrgico em parto</b></td><td>Vigilância da CCIH (busca ativa pós-alta)</td><td><code>Materno 15</code></td></tr><tr><td><b>Flebite durante uso de CIP</b></td><td>Notificação do NSP</td><td><code>Adulto 20 · Pediátrico 14</code></td></tr><tr><td><b>Quedas com ou sem lesão</b></td><td>Notificação do NSP (denominador sai do Oracle)</td><td><code>Adulto 21 · Pediátrico 15</code></td></tr><tr><td><b>Pacientes identificados com pulseira</b></td><td>Auditoria presencial</td><td><code>Adulto 22 · Pediátrico 16</code></td></tr><tr><td><b>Óbitos fetais e infantis investigados</b></td><td>Ata da Comissão de Revisão de Óbitos</td><td><code>Materno 16</code></td></tr></tbody>
+  </table>
+  </div>
+</section>
+
+<footer>
+  Esqueletos baseados em <code>Salux/docs/levantamento-banco.md</code> (levantamento read-only de 27/05/2026) e nas
+  queries reais capturadas de <code>V$SQL</code>. Nenhuma consulta deste relatório foi executada em produção.
+  Gerado em 23/07/2026.
+</footer>
+</div>
+</body>
+</html>

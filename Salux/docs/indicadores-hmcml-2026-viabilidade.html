@@ -1,0 +1,1019 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indicadores HMCML 2026 — viabilidade de extração (FHIR × Oracle Salux)</title>
+<style>
+:root {
+  color-scheme: light;
+  --plane:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --line:#c3c2b7; --ring:rgba(11,11,11,.10);
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4;
+  --o1:#86b6ef; --o2:#5598e7; --o3:#2a78d6; --o4:#1c5cab; --o5:#0d366b;
+  --crit:#d03b3b; --good:#0ca30c;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --plane:#0d0d0d; --surface:#1a1a19; --ink:#fff; --ink2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --line:#383835; --ring:rgba(255,255,255,.10);
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+    --o1:#3987e5; --o2:#2a78d6; --o3:#256abf; --o4:#1c5cab; --o5:#184f95;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --plane:#0d0d0d; --surface:#1a1a19; --ink:#fff; --ink2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --line:#383835; --ring:rgba(255,255,255,.10);
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+  --o1:#3987e5; --o2:#2a78d6; --o3:#256abf; --o4:#1c5cab; --o5:#184f95;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--plane); color:var(--ink);
+  font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
+.wrap { max-width:1240px; margin:0 auto; padding:28px 24px 80px; }
+.nav { display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:26px; font-size:12.5px; }
+.nav b, .nav a { padding:6px 12px; border-radius:999px; border:1px solid var(--ring); }
+.nav b { background:var(--ink); color:var(--surface); border-color:var(--ink); font-weight:600; }
+.nav a { color:var(--ink2); text-decoration:none; background:var(--surface); }
+.nav a:hover { color:var(--ink); border-color:var(--line); }
+header.top { border-bottom:1px solid var(--grid); padding-bottom:28px; margin-bottom:32px; }
+.eyebrow { font-size:12px; letter-spacing:.10em; text-transform:uppercase; color:var(--muted); margin:0 0 10px; }
+h1 { font-size:clamp(26px,3.4vw,38px); line-height:1.15; margin:0 0 12px; letter-spacing:-.02em; }
+.sub { color:var(--ink2); max-width:76ch; margin:0; }
+h2 { font-size:20px; margin:44px 0 6px; letter-spacing:-.01em; }
+h2 + .lead { color:var(--ink2); margin:0 0 18px; max-width:82ch; }
+h3 { font-size:15px; margin:0 0 14px; color:var(--ink2); font-weight:600; }
+
+.tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin:26px 0 8px; }
+.tile { background:var(--surface); border:1px solid var(--ring); border-radius:12px; padding:18px 18px 16px; }
+.tile .v { font-size:34px; font-weight:650; letter-spacing:-.02em; line-height:1; }
+.tile .v small { font-size:15px; font-weight:500; color:var(--muted); margin-left:3px; }
+.tile .k { font-size:12.5px; color:var(--ink2); margin-top:8px; }
+.tile .n { font-size:12px; color:var(--muted); margin-top:5px; }
+.tile.hero .v { color:var(--s1); }
+.tile.warn .v { color:var(--crit); }
+
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:18px; }
+@media (max-width:820px) { .grid2 { grid-template-columns:1fr; } }
+.card { background:var(--surface); border:1px solid var(--ring); border-radius:12px; padding:20px; }
+.bar-row { display:grid; grid-template-columns:170px 1fr 34px; align-items:center; gap:12px; margin-bottom:10px; }
+.bar-lbl { font-size:12.5px; color:var(--ink2); }
+.bar-track { height:15px; background:var(--grid); border-radius:4px; overflow:hidden; }
+.bar-fill { display:block; height:100%; border-radius:0 4px 4px 0; transition:width .3s; }
+.bar-val { font-size:13px; text-align:right; font-variant-numeric:tabular-nums; color:var(--ink2); }
+.bar-row:hover .bar-lbl { color:var(--ink); }
+.s1{background:var(--s1)} .s2{background:var(--s2)} .s3{background:var(--s3)} .s4{background:var(--s4)} .s5{background:var(--s5)}
+.o1{background:var(--o1)} .o2{background:var(--o2)} .o3{background:var(--o3)} .o4{background:var(--o4)} .o5{background:var(--o5)}
+
+ul.leg { list-style:none; padding:0; margin:0; font-size:13px; color:var(--ink2); }
+ul.leg li { display:flex; gap:9px; align-items:baseline; margin-bottom:9px; }
+ul.leg b { color:var(--ink); font-weight:600; white-space:nowrap; }
+.sw { width:11px; height:11px; border-radius:3px; display:inline-block; flex:none; position:relative; top:1px; }
+.sw.s1{background:var(--s1)} .sw.s2{background:var(--s2)} .sw.s3{background:var(--s3)} .sw.s4{background:var(--s4)} .sw.s5{background:var(--s5)}
+
+.dots { display:inline-flex; gap:3px; }
+.dots i { width:7px; height:7px; border-radius:50%; display:block; }
+.don { background:var(--ink2); } .doff { background:var(--grid); }
+
+.filters { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:22px 0 14px; }
+.chip { font:inherit; font-size:12.5px; color:var(--ink2); background:var(--surface);
+  border:1px solid var(--ring); border-radius:999px; padding:6px 12px; cursor:pointer;
+  display:inline-flex; align-items:center; gap:7px; }
+.chip span { color:var(--muted); font-variant-numeric:tabular-nums; }
+.chip:hover { border-color:var(--line); color:var(--ink); }
+.chip.on { background:var(--ink); color:var(--surface); border-color:var(--ink); }
+.chip.on span { color:var(--surface); opacity:.7; }
+.chip.on .sw { outline:1px solid var(--surface); }
+.sep { width:1px; height:20px; background:var(--grid); margin:0 4px; }
+.count { font-size:12.5px; color:var(--muted); margin-left:auto; font-variant-numeric:tabular-nums; }
+
+table { width:100%; border-collapse:collapse; background:var(--surface);
+  border:1px solid var(--ring); border-radius:12px; overflow:hidden; min-width:1000px; }
+#tbl { table-layout:fixed; }
+#tbl th:nth-child(1),#tbl td:nth-child(1) { width:112px; }
+#tbl th:nth-child(2),#tbl td:nth-child(2) { width:52px; }
+#tbl th:nth-child(3),#tbl td:nth-child(3) { width:29%; }
+#tbl th:nth-child(4),#tbl td:nth-child(4) { width:158px; }
+#tbl th:nth-child(5),#tbl td:nth-child(5) { width:104px; }
+thead th { text-align:left; font-size:11.5px; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--muted); font-weight:600; padding:12px 14px; border-bottom:1px solid var(--grid); white-space:nowrap; }
+tbody td { padding:13px 14px; border-bottom:1px solid var(--grid); vertical-align:top; font-size:13.5px; }
+tbody tr:last-child td { border-bottom:0; }
+tbody tr:hover { background:color-mix(in srgb, var(--ink) 3%, transparent); }
+.tag-aba { font-size:11.5px; color:var(--ink2); white-space:nowrap; }
+.c-num { font-variant-numeric:tabular-nums; color:var(--muted); white-space:nowrap; font-size:12.5px; }
+.c-ind b { font-weight:600; display:block; }
+.meta-inline { display:block; color:var(--muted); font-size:12px; margin-top:3px; }
+.c-dif { white-space:nowrap; }
+.dif-n { font-size:12px; color:var(--muted); margin-left:7px; font-variant-numeric:tabular-nums; }
+.c-onde code { font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--ink2);
+  display:block; word-break:break-word; }
+.obs { display:block; color:var(--muted); font-size:12.5px; margin-top:6px; }
+.pill { display:inline-flex; align-items:center; gap:6px; font-size:11.5px; padding:3px 10px 3px 8px;
+  border-radius:999px; color:var(--ink2); border:1px solid var(--ring);
+  background:color-mix(in srgb, var(--pc) 10%, transparent); border-color:color-mix(in srgb, var(--pc) 40%, transparent); }
+.pill::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--pc); flex:none; }
+.p1 { --pc:var(--s1); } .p2 { --pc:var(--s2); } .p3 { --pc:var(--s3); }
+.p4 { --pc:var(--s4); } .p5 { --pc:var(--s5); }
+.tbl-wrap { overflow-x:auto; }
+
+.note { background:var(--surface); border:1px solid var(--ring); border-left:3px solid var(--s2);
+  border-radius:0 10px 10px 0; padding:16px 18px; margin:16px 0; }
+.note > b { display:block; margin-bottom:5px; }
+.note p { margin:0; color:var(--ink2); font-size:13.5px; }
+ol.steps { padding-left:20px; color:var(--ink2); }
+ol.steps li { margin-bottom:11px; }
+ol.steps b { color:var(--ink); }
+footer { margin-top:56px; padding-top:20px; border-top:1px solid var(--grid); color:var(--muted); font-size:12.5px; }
+.evid { font-size:13px; }
+.evid td { padding:9px 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="nav">
+  <b>Panorama</b>
+  <a href="indicadores-hmcml-2026-oracle.html">Extração pelo Oracle Salux</a>
+  <a href="indicadores-hmcml-2026-fhir.html">Plano de projeção FHIR</a>
+</nav>
+
+<header class="top">
+  <p class="eyebrow">SMS Maricá · Hospital Conde Modesto Leal</p>
+  <h1>Indicadores HMCML 2026 — de onde sai cada número</h1>
+  <p class="sub">Classificação dos 94 indicadores pactuados na planilha por <b>fonte real do dado</b>
+  (hub FHIR × Oracle Salux × fora dos dois) e por <b>dificuldade de extração</b>.
+  A leitura foi feita contra o hub FHIR em produção e contra o levantamento do banco Salux — não é estimativa de escritório.</p>
+</header>
+
+<section>
+  <div class="tiles">
+    <div class="tile hero">
+      <div class="v">11<small>/94</small></div>
+      <div class="k">Saem do hub FHIR hoje</div>
+      <div class="n">Sem tocar no Oracle</div>
+    </div>
+    <div class="tile">
+      <div class="v">6</div>
+      <div class="k">Cabem no FHIR, falta importar</div>
+      <div class="n">Internação, procedimento, motivo</div>
+    </div>
+    <div class="tile">
+      <div class="v">57</div>
+      <div class="k">Dependem do Oracle Salux</div>
+      <div class="n">31 estruturados · 26 dentro do eDoc</div>
+    </div>
+    <div class="tile warn">
+      <div class="v">20</div>
+      <div class="k">Não estão em banco nenhum</div>
+      <div class="n">RH, CCIH, NSP, custos, ouvidoria</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Leitura executiva</h2>
+  <p class="lead">Três conclusões que mudam o plano de trabalho:</p>
+  <ol class="steps">
+    <li><b>O hub FHIR já é um ativo real, não uma promessa.</b> São 252.858 pacientes, 1.306.687 atendimentos
+    (jan/2021 → jun/2026), 1.266.520 diagnósticos CID e 4.863.580 observações clínicas já carregados.
+    Todo o bloco de <b>perfil clínico-epidemiológico da urgência</b> — risco, sexo, faixa etária, bairro,
+    município, dia e hora de pico — sai dele hoje, com uma consulta SQL cada.</li>
+    <li><b>O hub só conhece a urgência.</b> Dos 1,3 milhão de encontros, 99,9% são de emergência (BAA);
+    <b>não há um único registro de internação</b> (FIA). Tudo que é taxa de ocupação, média de permanência,
+    reinternação, mortalidade institucional e obstetrícia depende do Oracle — ou de estender o importador.
+    Esse é, de longe, o maior salto de cobertura disponível por um único esforço.</li>
+    <li><b>Um quarto da planilha não é problema de banco.</b> 20 indicadores (21%)
+    dependem de registros que hoje não existem em sistema nenhum: notificação do Núcleo de Segurança
+    (quedas, flebite, pulseira), vigilância da CCIH (ITU/CVD, infecção de sítio cirúrgico), RH/ponto biométrico
+    e contabilidade de custos. Somados aos que estão no eDoc mas sem campo estruturado, são
+    25 linhas em nível 5 — nenhuma consulta resolve: ou o processo passa a registrar,
+    ou o indicador continua vindo por planilha manual.</li>
+  </ol>
+
+  <div class="note">
+    <b>O recorte por bloco assistencial é o detalhe que trava a entrega</b>
+    <p>A planilha exige separar Adulto × Pediátrico × Materno Infantil. O hub identifica bem a <b>unidade</b>
+    (HMCML 689.950 · UPA Inoã 268.151 · PA Santa Rita 163.620 atendimentos), mas <b>não guarda o setor interno</b>
+    — o Encounter não tem serviço, sala nem leito. No hub, o recorte pediátrico só sai por idade do paciente
+    (aproximação) e o obstétrico por um proxy (o modelo do boletim "Obstetrícia HMCML", 41.738 documentos).
+    Recorte exato = Oracle, ou projetar <code>Encounter.location / serviceType</code> no importador.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Distribuição</h2>
+  <div class="grid2">
+    <div class="card">
+      <h3>Indicadores por fonte do dado</h3>
+      <div class="bar-row" title="Já dá para calcular direto do Automais.Fhir, sem tocar no Oracle.">
+      <span class="bar-lbl">Hub FHIR (hoje)</span>
+      <span class="bar-track"><span class="bar-fill s1" style="width:35%"></span></span>
+      <span class="bar-val">11</span></div>
+<div class="bar-row" title="O dado existe no Salux e cabe no FHIR, mas o hub ainda não carrega.">
+      <span class="bar-lbl">FHIR após enriquecer</span>
+      <span class="bar-track"><span class="bar-fill s2" style="width:19%"></span></span>
+      <span class="bar-val">6</span></div>
+<div class="bar-row" title="Tabela estruturada do Salux; hoje só via importador on-prem.">
+      <span class="bar-lbl">Oracle Salux</span>
+      <span class="bar-track"><span class="bar-fill s3" style="width:100%"></span></span>
+      <span class="bar-val">31</span></div>
+<div class="bar-row" title="Está no Salux, mas dentro do formulário eletrônico — exige mapear campo a campo.">
+      <span class="bar-lbl">Oracle Salux (eDoc/EAV)</span>
+      <span class="bar-track"><span class="bar-fill s4" style="width:84%"></span></span>
+      <span class="bar-val">26</span></div>
+<div class="bar-row" title="Depende de RH, CCIH, NSP, SESMT, NEP, ouvidoria, compras ou contabilidade.">
+      <span class="bar-lbl">Fora dos dois bancos</span>
+      <span class="bar-track"><span class="bar-fill s5" style="width:65%"></span></span>
+      <span class="bar-val">20</span></div>
+    </div>
+    <div class="card">
+      <h3>Indicadores por dificuldade de extração</h3>
+      <div class="bar-row" title="Trivial — consulta direta sobre coluna estruturada">
+      <span class="bar-lbl">Nível 1</span>
+      <span class="bar-track"><span class="bar-fill o1" style="width:15%"></span></span>
+      <span class="bar-val">4</span></div>
+<div class="bar-row" title="Fácil — join simples + agregação">
+      <span class="bar-lbl">Nível 2</span>
+      <span class="bar-track"><span class="bar-fill o2" style="width:52%"></span></span>
+      <span class="bar-val">14</span></div>
+<div class="bar-row" title="Média — múltiplos joins e/ou regra de negócio a pactuar">
+      <span class="bar-lbl">Nível 3</span>
+      <span class="bar-track"><span class="bar-fill o3" style="width:100%"></span></span>
+      <span class="bar-val">27</span></div>
+<div class="bar-row" title="Difícil — EAV, descoberta de campo ou dado parcial">
+      <span class="bar-lbl">Nível 4</span>
+      <span class="bar-track"><span class="bar-fill o4" style="width:89%"></span></span>
+      <span class="bar-val">24</span></div>
+<div class="bar-row" title="Bloqueado — o registro não existe no banco; depende de processo">
+      <span class="bar-lbl">Nível 5</span>
+      <span class="bar-track"><span class="bar-fill o5" style="width:93%"></span></span>
+      <span class="bar-val">25</span></div>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>Legenda — fonte</h3><ul class="leg"><li><i class="sw s1"></i><b>Hub FHIR (hoje)</b> — Já dá para calcular direto do Automais.Fhir, sem tocar no Oracle.</li><li><i class="sw s2"></i><b>FHIR após enriquecer</b> — O dado existe no Salux e cabe no FHIR, mas o hub ainda não carrega.</li><li><i class="sw s3"></i><b>Oracle Salux</b> — Tabela estruturada do Salux; hoje só via importador on-prem.</li><li><i class="sw s4"></i><b>Oracle Salux (eDoc/EAV)</b> — Está no Salux, mas dentro do formulário eletrônico — exige mapear campo a campo.</li><li><i class="sw s5"></i><b>Fora dos dois bancos</b> — Depende de RH, CCIH, NSP, SESMT, NEP, ouvidoria, compras ou contabilidade.</li></ul></div>
+    <div class="card"><h3>Legenda — dificuldade</h3><ul class="leg"><li><span class="dots"><i class="don"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i></span><b>Nível 1</b> — consulta direta sobre coluna estruturada</li><li><span class="dots"><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i></span><b>Nível 2</b> — join simples + agregação</li><li><span class="dots"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><b>Nível 3</b> — múltiplos joins e/ou regra de negócio a pactuar</li><li><span class="dots"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span><b>Nível 4</b> — EAV, descoberta de campo ou dado parcial</li><li><span class="dots"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span><b>Nível 5</b> — o registro não existe no banco; depende de processo</li></ul></div>
+  </div>
+</section>
+
+<section>
+  <h2>Indicador a indicador</h2>
+  <p class="lead">Clique nos filtros para isolar uma aba da planilha ou uma fonte de dado.</p>
+  <div class="filters">
+    <button class="chip" data-f="aba" data-v="Adulto">Adulto <span>26</span></button><button class="chip" data-f="aba" data-v="Pediátrico">Pediátrico <span>19</span></button><button class="chip" data-f="aba" data-v="Materno Infantil">Materno Infantil <span>24</span></button><button class="chip" data-f="aba" data-v="Perfil Epidemiológico">Perfil Epidemiológico <span>11</span></button><button class="chip" data-f="aba" data-v="Institucional">Institucional <span>14</span></button><span class="sep"></span><button class="chip" data-f="classe" data-v="fhir"><i class="sw s1"></i>Hub FHIR (hoje) <span>11</span></button><button class="chip" data-f="classe" data-v="fhir_plus"><i class="sw s2"></i>FHIR após enriquecer <span>6</span></button><button class="chip" data-f="classe" data-v="oracle"><i class="sw s3"></i>Oracle Salux <span>31</span></button><button class="chip" data-f="classe" data-v="edoc"><i class="sw s4"></i>Oracle Salux (eDoc/EAV) <span>26</span></button><button class="chip" data-f="classe" data-v="externo"><i class="sw s5"></i>Fora dos dois bancos <span>20</span></button>
+    <span class="count" id="cnt">94 de 94</span>
+  </div>
+  <div class="tbl-wrap">
+  <table id="tbl">
+    <thead><tr>
+      <th>Aba</th><th>Nº</th><th>Indicador</th><th>Fonte do dado</th><th>Dificuldade</th><th>Onde buscar / ressalva</th>
+    </tr></thead>
+    <tbody>
+    <tr data-aba="Adulto" data-classe="oracle" data-dif="3">
+  <td class="c-aba"><span class="tag-aba">Adulto</span></td>
+  <td class="c-num">1</td>
+  <td class="c-ind"><b>Tempo médio para acolhimento/cadastro (exceto vermelho)</b><span class="meta-inline">meta ≤ 5 min · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Média — múltiplos joins e/ou regra de negócio a pactuar"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">3</span></td>
+  <td class="c-onde"><code>ACOLHIMENTO / LISTA_SENHA / CHAMADA_PACIENTE.DT_HR_CHAMADA → BAA.DT_CHEGADA</code><span class="obs">Falta definir qual carimbo representa a chegada no totem. O hub só guarda o início do encontro (= dt_chegada); o instante do totem nunca foi projetado.</span></td>
+</tr><tr data-aba="Adulto" data-classe="fhir" data-dif="2">
+  <td class="c-aba"><span class="tag-aba">Adulto</span></td>
+  <td class="c-num">2</td>
+  <td class="c-ind"><b>Tempo médio para classificação de risco (exceto vermelho)</b><span class="meta-inline">meta ≤ 10 min · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p1">Hub FHIR (hoje)</span></td>
+  <td class="c-dif"><span class="dots" title="Fácil — join simples + agregação"><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">2</span></td>
+  <td class="c-onde"><code>Encounter.period.start → Observation(classificacao-risco).effectiveDateTime · Oracle: TRIAGEM</code><span class="obs">Único indicador de tempo já fechado dentro do hub: 1.150.427 observações de risco com hora.</span></td>
+</tr><tr data-aba="Adulto" data-classe="oracle" data-dif="3">
+  <td class="c-aba"><span class="tag-aba">Adulto</span></td>
+  <td class="c-num">3.1–3.5</td>
+  <td class="c-ind"><b>Tempo médio de espera para atendimento médico, por cor (vermelho→azul)</b><span class="meta-inline">meta 0 / ≤10 / ≤60 / ≤120 / ≤240 min · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Média — múltiplos joins e/ou regra de negócio a pactuar"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">3</span></td>
+  <td class="c-onde"><code>TRIAGEM → BAA.DT_ATENDIMENTO, agrupado por CLASSIFICACAO_RISCO</code><span class="obs">A cor já está no hub; o que falta é projetar dt_atendimento — hoje o Encounter só tem chegada e saída.</span></td>
+</tr><tr data-aba="Adulto" data-classe="fhir" data-dif="1">
+  <td class="c-aba"><span class="tag-aba">Adulto</span></td>
+  <td class="c-num">4</td>
+  <td class="c-ind"><b>Tempo médio de permanência na emergência</b><span class="meta-inline">meta ≤ 8 h · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p1">Hub FHIR (hoje)</span></td>
+  <td class="c-dif"><span class="dots" title="Trivial — consulta direta sobre coluna estruturada"><i class="don"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">1</span></td>
+  <td class="c-onde"><code>Encounter.period.start → period.end (94% preenchidos) · Oracle: BAA.DT_CHEGADA→DT_SAIDA</code><span class="obs">A memória de cálculo da planilha está trocada (repete a do item 3). Precisa alinhar com a SMS antes de publicar número.</span></td>
+</tr><tr data-aba="Adulto" data-classe="edoc" data-dif="5">
+  <td class="c-aba"><span class="tag-aba">Adulto</span></td>
+  <td class="c-num">5</td>
+  <td class="c-ind"><b>Tempo porta-agulha no IAM com supra (trombólise)</b><span class="meta-inline">meta ≤ 90 min · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p4">Oracle Salux (eDoc/EAV)</span></td>
+  <td class="c-dif"><span class="dots" title="Bloqueado — o registro não existe no banco; depende de processo"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span><span class="dif-n">5</span></td>
+  <td class="c-onde"><code>Protocolo IAM (eDoc grupo Protocolo Médico 10020) + trombolítico em PRESC_*_OPC_PROD ⋈ MATMED</code><span class="obs">Não existe carimbo estruturado de &#x27;abertura do protocolo&#x27;. Exige mapear o cd_item do eDoc e a hora real da infusão.</span></td>
+</tr><tr data-aba="Adulto" data-classe="oracle" data-dif="4">
+  <td class="c-aba"><span class="tag-aba">Adulto</span></td>
+  <td class="c-num">6</td>
+  <td class="c-ind"><b>Tempo porta-tomografia em suspeita de AVC</b><span class="meta-inline">meta ≤ 60 min · fonte declarada: PEP/SIH + laudo de TC</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Difícil — EAV, descoberta de campo ou dado parcial"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span><span class="dif-n">4</span></td>
+  <td class="c-onde"><code>SOL_EXAME ⋈ SOL_EXAME_ITEM.DT_REALIZADO ⋈ LAUDO; protocolo AVC no eDoc</code><span class="obs">Se a SMS aceitar &#x27;chegada → TC realizada&#x27; em vez de &#x27;abertura do protocolo&#x27;, cai para dificuldade 3 e sai só do Oracle.</span></td>
+</tr><tr data-aba="Adulto" data-classe="edoc" data-dif="5">
+  <td class="c-aba"><span class="tag-aba">Adulto</span></td>
+  <td class="c-num">7</td>
+  <td class="c-ind"><b>Sepse com antibiótico em até 3 horas</b><span class="meta-inline">meta 100% · fonte declarada: PEP/SIH + CCIH</span></td>
+  <td class="c-cls"><span class="pill p4">Oracle Salux (eDoc/EAV)</span></td>
+  <td class="c-dif"><span class="dots" title="Bloqueado — o registro não existe no banco; depende de processo"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span><span class="dif-n">5</span></td>
+  <td class="c-onde"><code>CID A41.x em BAA/FIA + hora de infusão do ATB</code><span class="obs">A hora da administração (checagem da enfermagem) não é estruturada — só existe prescrição e dispensação. Hoje é o indicador mais distante.</span></td>
+</tr><tr data-aba="Adulto" data-classe="fhir" data-dif="2">
+  <td class="c-aba"><span class="tag-aba">Adulto</span></td>
+  <td class="c-num">8</td>
+  <td class="c-ind"><b>Índice de questionários preenchidos na U&amp;E</b><span class="meta-inline">meta ≥ 10% · fonte declarada: PEP ou pesquisa</span></td>
+  <td class="c-cls"><span class="pill p1">Hub FHIR (hoje)</span></td>
+  <td class="c-dif"><span class="dots" title="Fácil — join simples + agregação"><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">2</span></td>
+  <td class="c-onde"><code>DocumentReference.type.text = &#x27;Pesquisa de satisfação do usuário - Ambulatório&#x27; (43.476) ÷ Encounters</code><span class="obs">Numerador e denominador já estão no hub. Confirmar se o questionário do HMCML é esse modelo mesmo.</span></td>
+</tr><tr data-aba="Adulto" data-classe="edoc" data-dif="4">
+  <td class="c-aba"><span class="tag-aba">Adulto</span></td>
+  <td class="c-num">9</td>
+  <td class="c-ind"><b>Percentual de usuários da U&amp;E satisfeitos / muito satisfeitos</b><span class="meta-inline">meta ≥ 85% · fonte declarada: PEP ou pesquisa</span></td>
+  <td class="c-cls"><span class="pill p4">Oracle Salux (eDoc/EAV)</span></td>
+  <td class="c-dif"><span class="dots" title="Difícil — EAV, descoberta de campo ou dado parcial"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span><span class="dif-n">4</span></td>
+  <td class="c-onde"><code>EDOC_MOVIMENTO_ITEM.DS_RESPOSTA do modelo de pesquisa</code><span class="obs">No hub o conteúdo veio como HTML em base64 dentro do DocumentReference — dá para extrair, mas o certo é projetar QuestionnaireResponse.</span></td>
+</tr><tr data-aba="Adulto" data-classe="edoc" data-dif="4">
+  <td class="c-aba"><span class="tag-aba">Adulto</span></td>
+  <td class="c-num">10</td>
+  <td class="c-ind"><b>Net Promoter Score (NPS) da U&amp;E</b><span class="meta-inline">meta ≥ 50% · fonte declarada: PEP ou pesquisa</span></td>
+  <td class="c-cls"><span class="pill p4">Oracle Salux (eDoc/EAV)</span></td>
+  <td class="c-dif"><span class="dots" title="Difícil — EAV, descoberta de campo ou dado parcial"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span><span class="dif-n">4</span></td>
+  <td class="c-onde"><code>Mesma origem do item 9</code><span class="obs">Depende de existir a pergunta de recomendação (0–10) no questionário atual. Confirmar antes de prometer o indicador.</span></td>
+</tr><tr data-aba="Adulto" data-classe="oracle" data-dif="3">
+  <td class="c-aba"><span class="tag-aba">Adulto</span></td>
+  <td class="c-num">11</td>
+  <td class="c-ind"><b>Taxa de ocupação hospitalar</b><span class="meta-inline">meta ≥ 85% · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Média — múltiplos joins e/ou regra de negócio a pactuar"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">3</span></td>
+  <td class="c-onde"><code>PAC_DIA_UNID_TPQUARTO · LEITO_DIA · LEITO (548) · FIA_LEITO</code><span class="obs">Precisa pactuar o que é &#x27;leito-dia operacional&#x27; (leito bloqueado/em higienização conta?). Nada de internação existe no hub hoje.</span></td>
+</tr><tr data-aba="Adulto" data-classe="oracle" data-dif="2">
+  <td class="c-aba"><span class="tag-aba">Adulto</span></td>
+  <td class="c-num">12</td>
+  <td class="c-ind"><b>Média de permanência até ≤59 anos</b><span class="meta-inline">meta ≤ 6,5 dias · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Fácil — join simples + agregação"><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">2</span></td>
+  <td class="c-onde"><code>FIA (DT_BAIXA→DT_ALTA) + PACIENTE.DT_NASCIMENTO</code></td>
+</tr><tr data-aba="Adulto" data-classe="oracle" data-dif="2">
+  <td class="c-aba"><span class="tag-aba">Adulto</span></td>
+  <td class="c-num">13</td>
+  <td class="c-ind"><b>Média de permanência ≥60 anos</b><span class="meta-inline">meta ≤ 7,4 dias · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Fácil — join simples + agregação"><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">2</span></td>
+  <td class="c-onde"><code>FIA (DT_BAIXA→DT_ALTA) + idade ≥60</code></td>
+</tr><tr data-aba="Adulto" data-classe="oracle" data-dif="3">
+  <td class="c-aba"><span class="tag-aba">Adulto</span></td>
+  <td class="c-num">14</td>
+  <td class="c-ind"><b>Reinternações em até 30 dias da alta</b><span class="meta-inline">meta ≤ 20% · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Média — múltiplos joins e/ou regra de negócio a pactuar"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">3</span></td>
+  <td class="c-onde"><code>Self-join em FIA por NVL(CD_PACIENTE_UNIFICADO, CD_PACIENTE)</code><span class="obs">Pactuar se conta reinternação por qualquer causa e se exclui internação programada.</span></td>
+</tr><tr data-aba="Adulto" data-classe="oracle" data-dif="3">
+  <td class="c-aba"><span class="tag-aba">Adulto</span></td>
+  <td class="c-num">15</td>
+  <td class="c-ind"><b>Taxa de parada cardiorrespiratória na enfermaria</b><span class="meta-inline">meta ≤ 1 óbito / 1.000 internações · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Média — múltiplos joins e/ou regra de negócio a pactuar"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">3</span></td>
+  <td class="c-onde"><code>FIA (óbito) + unidade de internação</code><span class="obs">O nome do indicador (PCR) não bate com a memória de cálculo (óbitos institucionais). Alinhar com a SMS antes de codificar.</span></td>
+</tr><tr data-aba="Adulto" data-classe="externo" data-dif="5">
+  <td class="c-aba"><span class="tag-aba">Adulto</span></td>
+  <td class="c-num">16</td>
+  <td class="c-ind"><b>Densidade de ITU associada a cateter vesical de demora</b><span class="meta-inline">meta ≤ 3,22 / 1.000 CVD-dia · fonte declarada: Relatório CCIH</span></td>
+  <td class="c-cls"><span class="pill p5">Fora dos dois bancos</span></td>
+  <td class="c-dif"><span class="dots" title="Bloqueado — o registro não existe no banco; depende de processo"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span><span class="dif-n">5</span></td>
+  <td class="c-onde"><code>Vigilância da CCIH</code><span class="obs">&#x27;CVD-dia&#x27; (dispositivo por paciente-dia) não é registrado no Salux. Sem mudança de processo assistencial, não sai do banco.</span></td>
+</tr><tr data-aba="Adulto" data-classe="oracle" data-dif="3">
+  <td class="c-aba"><span class="tag-aba">Adulto</span></td>
+  <td class="c-num">17</td>
+  <td class="c-ind"><b>Taxa de mortalidade institucional (óbito após 24h)</b><span class="meta-inline">meta ≤ 10% · fonte declarada: PEP/SIH + Comissão de Óbitos</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Média — múltiplos joins e/ou regra de negócio a pactuar"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">3</span></td>
+  <td class="c-onde"><code>FIA: óbitos com permanência &gt;24h ÷ total de saídas</code><span class="obs">Tecnicamente fácil; o peso está no corte das 24h e na validação pela Comissão de Revisão de Óbitos.</span></td>
+</tr><tr data-aba="Adulto" data-classe="edoc" data-dif="4">
+  <td class="c-aba"><span class="tag-aba">Adulto</span></td>
+  <td class="c-num">18</td>
+  <td class="c-ind"><b>Taxa de profilaxia de tromboembolismo venoso</b><span class="meta-inline">meta 100% · fonte declarada: Relatório do NSP</span></td>
+  <td class="c-cls"><span class="pill p4">Oracle Salux (eDoc/EAV)</span></td>
+  <td class="c-dif"><span class="dots" title="Difícil — EAV, descoberta de campo ou dado parcial"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span><span class="dif-n">4</span></td>
+  <td class="c-onde"><code>Avaliação de risco trombótico (eDoc) + prescrição de heparina/enoxaparina (MATMED)</code><span class="obs">O denominador (risco não baixo) só existe dentro do formulário — exige mapear o escore.</span></td>
+</tr><tr data-aba="Adulto" data-classe="edoc" data-dif="4">
+  <td class="c-aba"><span class="tag-aba">Adulto</span></td>
+  <td class="c-num">19</td>
+  <td class="c-ind"><b>Incidência de úlcera por pressão (UPP)</b><span class="meta-inline">meta ≤ 5% · fonte declarada: PEP/SIH + NSP</span></td>
+  <td class="c-cls"><span class="pill p4">Oracle Salux (eDoc/EAV)</span></td>
+  <td class="c-dif"><span class="dots" title="Difícil — EAV, descoberta de campo ou dado parcial"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span><span class="dif-n">4</span></td>
+  <td class="c-onde"><code>eDoc &#x27;Evolução de Lesão Diária&#x27; (6.046/ano) + Escala de Braden (41.766/ano) como exposição</code></td>
+</tr><tr data-aba="Adulto" data-classe="externo" data-dif="5">
+  <td class="c-aba"><span class="tag-aba">Adulto</span></td>
+  <td class="c-num">20</td>
+  <td class="c-ind"><b>Incidência de flebite durante uso de CIP</b><span class="meta-inline">meta ≤ 5% · fonte declarada: Relatório do NSP</span></td>
+  <td class="c-cls"><span class="pill p5">Fora dos dois bancos</span></td>
+  <td class="c-dif"><span class="dots" title="Bloqueado — o registro não existe no banco; depende de processo"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span><span class="dif-n">5</span></td>
+  <td class="c-onde"><code>Notificação do Núcleo de Segurança do Paciente</code><span class="obs">Não há registro estruturado de flebite nem de cateter-dia.</span></td>
+</tr><tr data-aba="Adulto" data-classe="externo" data-dif="5">
+  <td class="c-aba"><span class="tag-aba">Adulto</span></td>
+  <td class="c-num">21</td>
+  <td class="c-ind"><b>Densidade de incidência de quedas</b><span class="meta-inline">meta ≤ 2,2 / 1.000 pac-dia · fonte declarada: NSP + censo</span></td>
+  <td class="c-cls"><span class="pill p5">Fora dos dois bancos</span></td>
+  <td class="c-dif"><span class="dots" title="Bloqueado — o registro não existe no banco; depende de processo"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span><span class="dif-n">5</span></td>
+  <td class="c-onde"><code>Numerador no NSP; denominador (pacientes-dia) sai do Oracle</code><span class="obs">Indicador misto: metade dele é calculável, a outra metade depende da notificação.</span></td>
+</tr><tr data-aba="Adulto" data-classe="externo" data-dif="5">
+  <td class="c-aba"><span class="tag-aba">Adulto</span></td>
+  <td class="c-num">22</td>
+  <td class="c-ind"><b>Proporção de pacientes identificados com pulseira</b><span class="meta-inline">meta 100% · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p5">Fora dos dois bancos</span></td>
+  <td class="c-dif"><span class="dots" title="Bloqueado — o registro não existe no banco; depende de processo"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span><span class="dif-n">5</span></td>
+  <td class="c-onde"><code>Auditoria presencial</code><span class="obs">O sistema não registra colocação de pulseira. Só viraria indicador com mudança de processo (registro no eDoc).</span></td>
+</tr><tr data-aba="Adulto" data-classe="edoc" data-dif="4">
+  <td class="c-aba"><span class="tag-aba">Adulto</span></td>
+  <td class="c-num">23</td>
+  <td class="c-ind"><b>Taxa de adesão ao checklist de cirurgia segura</b><span class="meta-inline">meta 100% · fonte declarada: PEP/SIH + NSP</span></td>
+  <td class="c-cls"><span class="pill p4">Oracle Salux (eDoc/EAV)</span></td>
+  <td class="c-dif"><span class="dots" title="Difícil — EAV, descoberta de campo ou dado parcial"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span><span class="dif-n">4</span></td>
+  <td class="c-onde"><code>CIRURGIA + eDoc do grupo Centro Cirúrgico (10023)</code></td>
+</tr><tr data-aba="Adulto" data-classe="fhir_plus" data-dif="3">
+  <td class="c-aba"><span class="tag-aba">Adulto</span></td>
+  <td class="c-num">24</td>
+  <td class="c-ind"><b>Índice de questionários preenchidos pelos internados</b><span class="meta-inline">meta ≥ 30% · fonte declarada: PEP ou pesquisa</span></td>
+  <td class="c-cls"><span class="pill p2">FHIR após enriquecer</span></td>
+  <td class="c-dif"><span class="dots" title="Média — múltiplos joins e/ou regra de negócio a pactuar"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">3</span></td>
+  <td class="c-onde"><code>DocumentReference &#x27;Pesquisa de satisfação do usuário - Internação&#x27; (1.170) ÷ internações</code><span class="obs">Numerador já está no hub; o denominador (internações) não — hoje o cálculo sai misto FHIR + Oracle.</span></td>
+</tr><tr data-aba="Adulto" data-classe="edoc" data-dif="4">
+  <td class="c-aba"><span class="tag-aba">Adulto</span></td>
+  <td class="c-num">25</td>
+  <td class="c-ind"><b>Percentual de internados satisfeitos / muito satisfeitos</b><span class="meta-inline">meta ≥ 85% · fonte declarada: PEP ou pesquisa</span></td>
+  <td class="c-cls"><span class="pill p4">Oracle Salux (eDoc/EAV)</span></td>
+  <td class="c-dif"><span class="dots" title="Difícil — EAV, descoberta de campo ou dado parcial"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span><span class="dif-n">4</span></td>
+  <td class="c-onde"><code>EDOC_MOVIMENTO_ITEM do modelo de pesquisa de internação</code></td>
+</tr><tr data-aba="Adulto" data-classe="edoc" data-dif="4">
+  <td class="c-aba"><span class="tag-aba">Adulto</span></td>
+  <td class="c-num">26</td>
+  <td class="c-ind"><b>Net Promoter Score (NPS) da internação</b><span class="meta-inline">meta ≥ 50% · fonte declarada: PEP ou pesquisa</span></td>
+  <td class="c-cls"><span class="pill p4">Oracle Salux (eDoc/EAV)</span></td>
+  <td class="c-dif"><span class="dots" title="Difícil — EAV, descoberta de campo ou dado parcial"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span><span class="dif-n">4</span></td>
+  <td class="c-onde"><code>Mesma origem do item 25</code></td>
+</tr><tr data-aba="Pediátrico" data-classe="oracle" data-dif="3">
+  <td class="c-aba"><span class="tag-aba">Pediátrico</span></td>
+  <td class="c-num">1</td>
+  <td class="c-ind"><b>Tempo médio para acolhimento/cadastro</b><span class="meta-inline">meta ≤ 5 min · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Média — múltiplos joins e/ou regra de negócio a pactuar"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">3</span></td>
+  <td class="c-onde"><code>Igual ao Adulto #1, filtrado pelo setor pediátrico</code><span class="obs">O recorte pediátrico só existe no Oracle (BAA.CD_UNIDADE / SETOR_FLUXO &#x27;HMCML PED&#x27;).</span></td>
+</tr><tr data-aba="Pediátrico" data-classe="fhir" data-dif="3">
+  <td class="c-aba"><span class="tag-aba">Pediátrico</span></td>
+  <td class="c-num">2</td>
+  <td class="c-ind"><b>Tempo médio para classificação de risco</b><span class="meta-inline">meta ≤ 10 min · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p1">Hub FHIR (hoje)</span></td>
+  <td class="c-dif"><span class="dots" title="Média — múltiplos joins e/ou regra de negócio a pactuar"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">3</span></td>
+  <td class="c-onde"><code>Igual ao Adulto #2</code><span class="obs">No hub o recorte pediátrico só sai por idade do paciente (aproximação) — o setor não foi projetado.</span></td>
+</tr><tr data-aba="Pediátrico" data-classe="oracle" data-dif="3">
+  <td class="c-aba"><span class="tag-aba">Pediátrico</span></td>
+  <td class="c-num">3.1–3.5</td>
+  <td class="c-ind"><b>Tempo de espera para atendimento médico, por cor</b><span class="meta-inline">meta 0 / ≤10 / ≤60 / ≤120 / ≤240 min · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Média — múltiplos joins e/ou regra de negócio a pactuar"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">3</span></td>
+  <td class="c-onde"><code>Igual ao Adulto #3</code></td>
+</tr><tr data-aba="Pediátrico" data-classe="fhir_plus" data-dif="3">
+  <td class="c-aba"><span class="tag-aba">Pediátrico</span></td>
+  <td class="c-num">4</td>
+  <td class="c-ind"><b>Índice de questionários preenchidos na U&amp;E pediátrica</b><span class="meta-inline">meta ≥ 10% · fonte declarada: PEP ou pesquisa</span></td>
+  <td class="c-cls"><span class="pill p2">FHIR após enriquecer</span></td>
+  <td class="c-dif"><span class="dots" title="Média — múltiplos joins e/ou regra de negócio a pactuar"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">3</span></td>
+  <td class="c-onde"><code>DocumentReference por modelo de pesquisa</code><span class="obs">Não há modelo de pesquisa específico do Centro Pediátrico no catálogo — confirmar qual instrumento é usado.</span></td>
+</tr><tr data-aba="Pediátrico" data-classe="edoc" data-dif="4">
+  <td class="c-aba"><span class="tag-aba">Pediátrico</span></td>
+  <td class="c-num">5</td>
+  <td class="c-ind"><b>Percentual de usuários satisfeitos / muito satisfeitos</b><span class="meta-inline">meta ≥ 85% · fonte declarada: PEP ou pesquisa</span></td>
+  <td class="c-cls"><span class="pill p4">Oracle Salux (eDoc/EAV)</span></td>
+  <td class="c-dif"><span class="dots" title="Difícil — EAV, descoberta de campo ou dado parcial"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span><span class="dif-n">4</span></td>
+  <td class="c-onde"><code>Respostas no eDoc</code></td>
+</tr><tr data-aba="Pediátrico" data-classe="edoc" data-dif="4">
+  <td class="c-aba"><span class="tag-aba">Pediátrico</span></td>
+  <td class="c-num">6</td>
+  <td class="c-ind"><b>Net Promoter Score (NPS) da U&amp;E pediátrica</b><span class="meta-inline">meta ≥ 50% · fonte declarada: PEP ou pesquisa</span></td>
+  <td class="c-cls"><span class="pill p4">Oracle Salux (eDoc/EAV)</span></td>
+  <td class="c-dif"><span class="dots" title="Difícil — EAV, descoberta de campo ou dado parcial"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span><span class="dif-n">4</span></td>
+  <td class="c-onde"><code>Respostas no eDoc</code></td>
+</tr><tr data-aba="Pediátrico" data-classe="fhir" data-dif="2">
+  <td class="c-aba"><span class="tag-aba">Pediátrico</span></td>
+  <td class="c-num">7</td>
+  <td class="c-ind"><b>Tempo médio de permanência na emergência</b><span class="meta-inline">meta ≤ 8 h · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p1">Hub FHIR (hoje)</span></td>
+  <td class="c-dif"><span class="dots" title="Fácil — join simples + agregação"><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">2</span></td>
+  <td class="c-onde"><code>Encounter.period.start→end, recortado por idade</code></td>
+</tr><tr data-aba="Pediátrico" data-classe="oracle" data-dif="3">
+  <td class="c-aba"><span class="tag-aba">Pediátrico</span></td>
+  <td class="c-num">8</td>
+  <td class="c-ind"><b>Taxa de ocupação hospitalar</b><span class="meta-inline">meta ≥ 85% · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Média — múltiplos joins e/ou regra de negócio a pactuar"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">3</span></td>
+  <td class="c-onde"><code>PAC_DIA_UNID_TPQUARTO · LEITO_DIA · FIA_LEITO</code></td>
+</tr><tr data-aba="Pediátrico" data-classe="oracle" data-dif="2">
+  <td class="c-aba"><span class="tag-aba">Pediátrico</span></td>
+  <td class="c-num">9</td>
+  <td class="c-ind"><b>Média de permanência na internação</b><span class="meta-inline">meta ≤ 4,7 dias · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Fácil — join simples + agregação"><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">2</span></td>
+  <td class="c-onde"><code>FIA (DT_BAIXA→DT_ALTA)</code></td>
+</tr><tr data-aba="Pediátrico" data-classe="oracle" data-dif="3">
+  <td class="c-aba"><span class="tag-aba">Pediátrico</span></td>
+  <td class="c-num">10</td>
+  <td class="c-ind"><b>Reinternações em até 30 dias</b><span class="meta-inline">meta ≤ 20% · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Média — múltiplos joins e/ou regra de negócio a pactuar"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">3</span></td>
+  <td class="c-onde"><code>Self-join em FIA</code></td>
+</tr><tr data-aba="Pediátrico" data-classe="oracle" data-dif="3">
+  <td class="c-aba"><span class="tag-aba">Pediátrico</span></td>
+  <td class="c-num">11</td>
+  <td class="c-ind"><b>Taxa de parada cardiorrespiratória na enfermaria</b><span class="meta-inline">meta ≤ 1 / 1.000 · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Média — múltiplos joins e/ou regra de negócio a pactuar"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">3</span></td>
+  <td class="c-onde"><code>FIA + unidade</code><span class="obs">Mesma divergência nome × memória de cálculo do Adulto #15.</span></td>
+</tr><tr data-aba="Pediátrico" data-classe="oracle" data-dif="3">
+  <td class="c-aba"><span class="tag-aba">Pediátrico</span></td>
+  <td class="c-num">12</td>
+  <td class="c-ind"><b>Taxa de mortalidade institucional</b><span class="meta-inline">meta ≤ 3,5% · fonte declarada: PEP/SIH + Comissão</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Média — múltiplos joins e/ou regra de negócio a pactuar"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">3</span></td>
+  <td class="c-onde"><code>FIA: óbitos &gt;24h ÷ saídas</code></td>
+</tr><tr data-aba="Pediátrico" data-classe="edoc" data-dif="4">
+  <td class="c-aba"><span class="tag-aba">Pediátrico</span></td>
+  <td class="c-num">13</td>
+  <td class="c-ind"><b>Incidência de úlcera por pressão (UPP)</b><span class="meta-inline">meta ≤ 5% · fonte declarada: PEP/SIH + NSP</span></td>
+  <td class="c-cls"><span class="pill p4">Oracle Salux (eDoc/EAV)</span></td>
+  <td class="c-dif"><span class="dots" title="Difícil — EAV, descoberta de campo ou dado parcial"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span><span class="dif-n">4</span></td>
+  <td class="c-onde"><code>eDoc de lesão + Braden</code></td>
+</tr><tr data-aba="Pediátrico" data-classe="externo" data-dif="5">
+  <td class="c-aba"><span class="tag-aba">Pediátrico</span></td>
+  <td class="c-num">14</td>
+  <td class="c-ind"><b>Incidência de flebite durante uso de CIP</b><span class="meta-inline">meta ≤ 5% · fonte declarada: Relatório do NSP</span></td>
+  <td class="c-cls"><span class="pill p5">Fora dos dois bancos</span></td>
+  <td class="c-dif"><span class="dots" title="Bloqueado — o registro não existe no banco; depende de processo"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span><span class="dif-n">5</span></td>
+  <td class="c-onde"><code>Notificação do NSP</code></td>
+</tr><tr data-aba="Pediátrico" data-classe="externo" data-dif="5">
+  <td class="c-aba"><span class="tag-aba">Pediátrico</span></td>
+  <td class="c-num">15</td>
+  <td class="c-ind"><b>Densidade de incidência de quedas</b><span class="meta-inline">meta ≤ 2,2 / 1.000 · fonte declarada: NSP + censo</span></td>
+  <td class="c-cls"><span class="pill p5">Fora dos dois bancos</span></td>
+  <td class="c-dif"><span class="dots" title="Bloqueado — o registro não existe no banco; depende de processo"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span><span class="dif-n">5</span></td>
+  <td class="c-onde"><code>Notificação do NSP</code></td>
+</tr><tr data-aba="Pediátrico" data-classe="externo" data-dif="5">
+  <td class="c-aba"><span class="tag-aba">Pediátrico</span></td>
+  <td class="c-num">16</td>
+  <td class="c-ind"><b>Proporção de pacientes identificados com pulseira</b><span class="meta-inline">meta 100% · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p5">Fora dos dois bancos</span></td>
+  <td class="c-dif"><span class="dots" title="Bloqueado — o registro não existe no banco; depende de processo"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span><span class="dif-n">5</span></td>
+  <td class="c-onde"><code>Auditoria presencial</code></td>
+</tr><tr data-aba="Pediátrico" data-classe="fhir_plus" data-dif="3">
+  <td class="c-aba"><span class="tag-aba">Pediátrico</span></td>
+  <td class="c-num">17</td>
+  <td class="c-ind"><b>Índice de questionários preenchidos pelos internados</b><span class="meta-inline">meta ≥ 30% · fonte declarada: PEP ou pesquisa</span></td>
+  <td class="c-cls"><span class="pill p2">FHIR após enriquecer</span></td>
+  <td class="c-dif"><span class="dots" title="Média — múltiplos joins e/ou regra de negócio a pactuar"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">3</span></td>
+  <td class="c-onde"><code>DocumentReference ÷ internações</code></td>
+</tr><tr data-aba="Pediátrico" data-classe="edoc" data-dif="4">
+  <td class="c-aba"><span class="tag-aba">Pediátrico</span></td>
+  <td class="c-num">18</td>
+  <td class="c-ind"><b>Percentual de internados satisfeitos / muito satisfeitos</b><span class="meta-inline">meta ≥ 85% · fonte declarada: PEP ou pesquisa</span></td>
+  <td class="c-cls"><span class="pill p4">Oracle Salux (eDoc/EAV)</span></td>
+  <td class="c-dif"><span class="dots" title="Difícil — EAV, descoberta de campo ou dado parcial"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span><span class="dif-n">4</span></td>
+  <td class="c-onde"><code>Respostas no eDoc</code></td>
+</tr><tr data-aba="Pediátrico" data-classe="edoc" data-dif="4">
+  <td class="c-aba"><span class="tag-aba">Pediátrico</span></td>
+  <td class="c-num">19</td>
+  <td class="c-ind"><b>Net Promoter Score (NPS) da internação pediátrica</b><span class="meta-inline">meta ≥ 50% · fonte declarada: PEP ou pesquisa</span></td>
+  <td class="c-cls"><span class="pill p4">Oracle Salux (eDoc/EAV)</span></td>
+  <td class="c-dif"><span class="dots" title="Difícil — EAV, descoberta de campo ou dado parcial"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span><span class="dif-n">4</span></td>
+  <td class="c-onde"><code>Respostas no eDoc</code></td>
+</tr><tr data-aba="Materno Infantil" data-classe="oracle" data-dif="3">
+  <td class="c-aba"><span class="tag-aba">Materno Infantil</span></td>
+  <td class="c-num">1</td>
+  <td class="c-ind"><b>Tempo médio para acolhimento/cadastro</b><span class="meta-inline">meta ≤ 5 min · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Média — múltiplos joins e/ou regra de negócio a pactuar"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">3</span></td>
+  <td class="c-onde"><code>Igual ao Adulto #1, recorte obstétrico</code></td>
+</tr><tr data-aba="Materno Infantil" data-classe="fhir" data-dif="3">
+  <td class="c-aba"><span class="tag-aba">Materno Infantil</span></td>
+  <td class="c-num">2</td>
+  <td class="c-ind"><b>Tempo médio para classificação de risco</b><span class="meta-inline">meta ≤ 10 min · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p1">Hub FHIR (hoje)</span></td>
+  <td class="c-dif"><span class="dots" title="Média — múltiplos joins e/ou regra de negócio a pactuar"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">3</span></td>
+  <td class="c-onde"><code>Igual ao Adulto #2</code><span class="obs">No hub dá para usar o modelo &#x27;BA de Urgência - Obstetrícia HMCML&#x27; (41.738 documentos) como recorte.</span></td>
+</tr><tr data-aba="Materno Infantil" data-classe="oracle" data-dif="3">
+  <td class="c-aba"><span class="tag-aba">Materno Infantil</span></td>
+  <td class="c-num">3.1–3.5</td>
+  <td class="c-ind"><b>Tempo de espera para atendimento médico, por cor</b><span class="meta-inline">meta 0 / ≤10 / ≤60 / ≤120 / ≤240 min · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Média — múltiplos joins e/ou regra de negócio a pactuar"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">3</span></td>
+  <td class="c-onde"><code>Igual ao Adulto #3</code></td>
+</tr><tr data-aba="Materno Infantil" data-classe="fhir_plus" data-dif="3">
+  <td class="c-aba"><span class="tag-aba">Materno Infantil</span></td>
+  <td class="c-num">4</td>
+  <td class="c-ind"><b>Índice de questionários preenchidos na U&amp;E do CMI</b><span class="meta-inline">meta ≥ 10% · fonte declarada: PEP ou pesquisa</span></td>
+  <td class="c-cls"><span class="pill p2">FHIR após enriquecer</span></td>
+  <td class="c-dif"><span class="dots" title="Média — múltiplos joins e/ou regra de negócio a pactuar"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">3</span></td>
+  <td class="c-onde"><code>DocumentReference por modelo</code></td>
+</tr><tr data-aba="Materno Infantil" data-classe="edoc" data-dif="4">
+  <td class="c-aba"><span class="tag-aba">Materno Infantil</span></td>
+  <td class="c-num">5</td>
+  <td class="c-ind"><b>Percentual de satisfação das pacientes da U&amp;E</b><span class="meta-inline">meta ≥ 85% · fonte declarada: PEP ou pesquisa</span></td>
+  <td class="c-cls"><span class="pill p4">Oracle Salux (eDoc/EAV)</span></td>
+  <td class="c-dif"><span class="dots" title="Difícil — EAV, descoberta de campo ou dado parcial"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span><span class="dif-n">4</span></td>
+  <td class="c-onde"><code>Respostas no eDoc</code><span class="obs">A memória de cálculo da planilha está igual à do item 4 (erro de cópia).</span></td>
+</tr><tr data-aba="Materno Infantil" data-classe="edoc" data-dif="4">
+  <td class="c-aba"><span class="tag-aba">Materno Infantil</span></td>
+  <td class="c-num">6</td>
+  <td class="c-ind"><b>Net Promoter Score (NPS) da U&amp;E do CMI</b><span class="meta-inline">meta ≥ 50% · fonte declarada: PEP ou pesquisa</span></td>
+  <td class="c-cls"><span class="pill p4">Oracle Salux (eDoc/EAV)</span></td>
+  <td class="c-dif"><span class="dots" title="Difícil — EAV, descoberta de campo ou dado parcial"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span><span class="dif-n">4</span></td>
+  <td class="c-onde"><code>Respostas no eDoc</code></td>
+</tr><tr data-aba="Materno Infantil" data-classe="oracle" data-dif="3">
+  <td class="c-aba"><span class="tag-aba">Materno Infantil</span></td>
+  <td class="c-num">7</td>
+  <td class="c-ind"><b>Taxa de ocupação hospitalar</b><span class="meta-inline">meta 80 a 85% · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Média — múltiplos joins e/ou regra de negócio a pactuar"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">3</span></td>
+  <td class="c-onde"><code>PAC_DIA_UNID_TPQUARTO · LEITO_DIA</code></td>
+</tr><tr data-aba="Materno Infantil" data-classe="oracle" data-dif="2">
+  <td class="c-aba"><span class="tag-aba">Materno Infantil</span></td>
+  <td class="c-num">8</td>
+  <td class="c-ind"><b>Tempo médio de permanência</b><span class="meta-inline">meta ≤ 2,5 dias · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Fácil — join simples + agregação"><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">2</span></td>
+  <td class="c-onde"><code>FIA (DT_BAIXA→DT_ALTA)</code></td>
+</tr><tr data-aba="Materno Infantil" data-classe="oracle" data-dif="3">
+  <td class="c-aba"><span class="tag-aba">Materno Infantil</span></td>
+  <td class="c-num">9</td>
+  <td class="c-ind"><b>Proporção de parto cesáreo</b><span class="meta-inline">meta ≤ 35% · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Média — múltiplos joins e/ou regra de negócio a pactuar"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">3</span></td>
+  <td class="c-onde"><code>FIA.CD_PROCEDIMENTO / AIH / SIGTAP (cesariana 0411010026 × parto normal 0310010039)</code></td>
+</tr><tr data-aba="Materno Infantil" data-classe="edoc" data-dif="4">
+  <td class="c-aba"><span class="tag-aba">Materno Infantil</span></td>
+  <td class="c-num">10.1</td>
+  <td class="c-ind"><b>Proporção de gestantes com partograma</b><span class="meta-inline">meta ≥ 80% · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p4">Oracle Salux (eDoc/EAV)</span></td>
+  <td class="c-dif"><span class="dots" title="Difícil — EAV, descoberta de campo ou dado parcial"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span><span class="dif-n">4</span></td>
+  <td class="c-onde"><code>eDoc do grupo Maternidade (10028) / Médico Obstetra (10040)</code></td>
+</tr><tr data-aba="Materno Infantil" data-classe="edoc" data-dif="4">
+  <td class="c-aba"><span class="tag-aba">Materno Infantil</span></td>
+  <td class="c-num">10.2</td>
+  <td class="c-ind"><b>Proporção de gestantes com acompanhante na sala</b><span class="meta-inline">meta ≥ 80% · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p4">Oracle Salux (eDoc/EAV)</span></td>
+  <td class="c-dif"><span class="dots" title="Difícil — EAV, descoberta de campo ou dado parcial"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span><span class="dif-n">4</span></td>
+  <td class="c-onde"><code>eDoc da maternidade</code></td>
+</tr><tr data-aba="Materno Infantil" data-classe="edoc" data-dif="5">
+  <td class="c-aba"><span class="tag-aba">Materno Infantil</span></td>
+  <td class="c-num">10.3</td>
+  <td class="c-ind"><b>Proporção de partos em posição verticalizada</b><span class="meta-inline">meta ≥ 20% · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p4">Oracle Salux (eDoc/EAV)</span></td>
+  <td class="c-dif"><span class="dots" title="Bloqueado — o registro não existe no banco; depende de processo"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span><span class="dif-n">5</span></td>
+  <td class="c-onde"><code>eDoc da maternidade</code><span class="obs">Campo pode simplesmente não existir no formulário atual — verificar antes de pactuar.</span></td>
+</tr><tr data-aba="Materno Infantil" data-classe="edoc" data-dif="5">
+  <td class="c-aba"><span class="tag-aba">Materno Infantil</span></td>
+  <td class="c-num">10.4</td>
+  <td class="c-ind"><b>Contato pele a pele por ≥30 min</b><span class="meta-inline">meta ≥ 80% · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p4">Oracle Salux (eDoc/EAV)</span></td>
+  <td class="c-dif"><span class="dots" title="Bloqueado — o registro não existe no banco; depende de processo"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span><span class="dif-n">5</span></td>
+  <td class="c-onde"><code>eDoc da maternidade</code><span class="obs">Idem 10.3.</span></td>
+</tr><tr data-aba="Materno Infantil" data-classe="edoc" data-dif="5">
+  <td class="c-aba"><span class="tag-aba">Materno Infantil</span></td>
+  <td class="c-num">10.5</td>
+  <td class="c-ind"><b>Proporção de gestantes com estimulação do parto normal</b><span class="meta-inline">meta ≤ 20% · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p4">Oracle Salux (eDoc/EAV)</span></td>
+  <td class="c-dif"><span class="dots" title="Bloqueado — o registro não existe no banco; depende de processo"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span><span class="dif-n">5</span></td>
+  <td class="c-onde"><code>eDoc da maternidade</code></td>
+</tr><tr data-aba="Materno Infantil" data-classe="oracle" data-dif="4">
+  <td class="c-aba"><span class="tag-aba">Materno Infantil</span></td>
+  <td class="c-num">11</td>
+  <td class="c-ind"><b>Parto normal assistido por enfermeiro obstétrico</b><span class="meta-inline">meta ≥ 60% · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Difícil — EAV, descoberta de campo ou dado parcial"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span><span class="dif-n">4</span></td>
+  <td class="c-onde"><code>Profissional executor do parto + CONSELHO_REGIONAL = COREN</code><span class="obs">Depende de o parto ser registrado com o executor correto (não só o médico responsável).</span></td>
+</tr><tr data-aba="Materno Infantil" data-classe="edoc" data-dif="5">
+  <td class="c-aba"><span class="tag-aba">Materno Infantil</span></td>
+  <td class="c-num">12</td>
+  <td class="c-ind"><b>Uso de métodos não farmacológicos de alívio da dor</b><span class="meta-inline">meta ≥ 60% · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p4">Oracle Salux (eDoc/EAV)</span></td>
+  <td class="c-dif"><span class="dots" title="Bloqueado — o registro não existe no banco; depende de processo"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span><span class="dif-n">5</span></td>
+  <td class="c-onde"><code>eDoc da maternidade</code></td>
+</tr><tr data-aba="Materno Infantil" data-classe="oracle" data-dif="4">
+  <td class="c-aba"><span class="tag-aba">Materno Infantil</span></td>
+  <td class="c-num">13</td>
+  <td class="c-ind"><b>Nascidos vivos com Apgar &lt; 7 no 5º minuto</b><span class="meta-inline">meta ≤ 1% · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Difícil — EAV, descoberta de campo ou dado parcial"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span><span class="dif-n">4</span></td>
+  <td class="c-onde"><code>AIH_RECEM_NATO / ficha de RN</code><span class="obs">Descoberta pendente: confirmar se o Apgar está colunado ou dentro do eDoc.</span></td>
+</tr><tr data-aba="Materno Infantil" data-classe="edoc" data-dif="5">
+  <td class="c-aba"><span class="tag-aba">Materno Infantil</span></td>
+  <td class="c-num">14</td>
+  <td class="c-ind"><b>Recém-nascidos amamentados na primeira hora</b><span class="meta-inline">meta ≥ 85% · fonte declarada: PEP ou SIH</span></td>
+  <td class="c-cls"><span class="pill p4">Oracle Salux (eDoc/EAV)</span></td>
+  <td class="c-dif"><span class="dots" title="Bloqueado — o registro não existe no banco; depende de processo"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span><span class="dif-n">5</span></td>
+  <td class="c-onde"><code>eDoc da maternidade</code></td>
+</tr><tr data-aba="Materno Infantil" data-classe="externo" data-dif="5">
+  <td class="c-aba"><span class="tag-aba">Materno Infantil</span></td>
+  <td class="c-num">15</td>
+  <td class="c-ind"><b>Densidade de infecção de sítio cirúrgico (parto operatório)</b><span class="meta-inline">meta ≤ 1% · fonte declarada: PEP/SIH + CCIH</span></td>
+  <td class="c-cls"><span class="pill p5">Fora dos dois bancos</span></td>
+  <td class="c-dif"><span class="dots" title="Bloqueado — o registro não existe no banco; depende de processo"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span><span class="dif-n">5</span></td>
+  <td class="c-onde"><code>Vigilância da CCIH</code><span class="obs">Exige busca ativa até 30 dias pós-alta — processo, não consulta.</span></td>
+</tr><tr data-aba="Materno Infantil" data-classe="externo" data-dif="5">
+  <td class="c-aba"><span class="tag-aba">Materno Infantil</span></td>
+  <td class="c-num">16</td>
+  <td class="c-ind"><b>Proporção de óbitos fetais e infantis investigados</b><span class="meta-inline">meta 100% · fonte declarada: Censo + Comissão de Óbitos</span></td>
+  <td class="c-cls"><span class="pill p5">Fora dos dois bancos</span></td>
+  <td class="c-dif"><span class="dots" title="Bloqueado — o registro não existe no banco; depende de processo"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span><span class="dif-n">5</span></td>
+  <td class="c-onde"><code>Numerador é ata da Comissão de Óbitos</code><span class="obs">Denominador sai do Oracle; o numerador não existe em sistema.</span></td>
+</tr><tr data-aba="Materno Infantil" data-classe="oracle" data-dif="3">
+  <td class="c-aba"><span class="tag-aba">Materno Infantil</span></td>
+  <td class="c-num">17</td>
+  <td class="c-ind"><b>Número de óbitos maternos (até 42 dias após o parto)</b><span class="meta-inline">meta 0 · fonte declarada: Censo + Comissão</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Média — múltiplos joins e/ou regra de negócio a pactuar"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">3</span></td>
+  <td class="c-onde"><code>FIA: óbito em unidade obstétrica</code><span class="obs">O corte &#x27;até 42 dias após o parto&#x27; extrapola o episódio hospitalar — óbito fora do HMCML não aparece.</span></td>
+</tr><tr data-aba="Materno Infantil" data-classe="fhir_plus" data-dif="3">
+  <td class="c-aba"><span class="tag-aba">Materno Infantil</span></td>
+  <td class="c-num">18</td>
+  <td class="c-ind"><b>Índice de questionários preenchidos pelas internadas</b><span class="meta-inline">meta ≥ 30% · fonte declarada: PEP ou pesquisa</span></td>
+  <td class="c-cls"><span class="pill p2">FHIR após enriquecer</span></td>
+  <td class="c-dif"><span class="dots" title="Média — múltiplos joins e/ou regra de negócio a pactuar"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">3</span></td>
+  <td class="c-onde"><code>DocumentReference ÷ internações</code></td>
+</tr><tr data-aba="Materno Infantil" data-classe="edoc" data-dif="4">
+  <td class="c-aba"><span class="tag-aba">Materno Infantil</span></td>
+  <td class="c-num">19</td>
+  <td class="c-ind"><b>Percentual de satisfação das internadas</b><span class="meta-inline">meta ≥ 85% · fonte declarada: PEP ou pesquisa</span></td>
+  <td class="c-cls"><span class="pill p4">Oracle Salux (eDoc/EAV)</span></td>
+  <td class="c-dif"><span class="dots" title="Difícil — EAV, descoberta de campo ou dado parcial"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span><span class="dif-n">4</span></td>
+  <td class="c-onde"><code>Respostas no eDoc</code></td>
+</tr><tr data-aba="Materno Infantil" data-classe="edoc" data-dif="4">
+  <td class="c-aba"><span class="tag-aba">Materno Infantil</span></td>
+  <td class="c-num">20</td>
+  <td class="c-ind"><b>Net Promoter Score (NPS) da internação do CMI</b><span class="meta-inline">meta ≥ 50% · fonte declarada: PEP ou pesquisa</span></td>
+  <td class="c-cls"><span class="pill p4">Oracle Salux (eDoc/EAV)</span></td>
+  <td class="c-dif"><span class="dots" title="Difícil — EAV, descoberta de campo ou dado parcial"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span><span class="dif-n">4</span></td>
+  <td class="c-onde"><code>Respostas no eDoc</code></td>
+</tr><tr data-aba="Perfil Epidemiológico" data-classe="fhir_plus" data-dif="2">
+  <td class="c-aba"><span class="tag-aba">Perfil Epidemiológico</span></td>
+  <td class="c-num">1</td>
+  <td class="c-ind"><b>Atendimentos de U&amp;E segundo motivo</b><span class="meta-inline">meta relatório · fonte declarada: PEP</span></td>
+  <td class="c-cls"><span class="pill p2">FHIR após enriquecer</span></td>
+  <td class="c-dif"><span class="dots" title="Fácil — join simples + agregação"><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">2</span></td>
+  <td class="c-onde"><code>BAA.CD_MOTIVO_ATENDIMENTO ⋈ MOTIVO_ATENDIMENTO (20 motivos)</code><span class="obs">Encounter.reasonCode não foi projetado no hub — é acréscimo barato no importador.</span></td>
+</tr><tr data-aba="Perfil Epidemiológico" data-classe="fhir" data-dif="1">
+  <td class="c-aba"><span class="tag-aba">Perfil Epidemiológico</span></td>
+  <td class="c-num">2</td>
+  <td class="c-ind"><b>Atendimentos de U&amp;E segundo classificação de risco</b><span class="meta-inline">meta relatório · fonte declarada: PEP</span></td>
+  <td class="c-cls"><span class="pill p1">Hub FHIR (hoje)</span></td>
+  <td class="c-dif"><span class="dots" title="Trivial — consulta direta sobre coluna estruturada"><i class="don"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">1</span></td>
+  <td class="c-onde"><code>Observation(classificacao-risco) — 1.150.427 registros</code><span class="obs">Pronto para virar relatório hoje.</span></td>
+</tr><tr data-aba="Perfil Epidemiológico" data-classe="fhir" data-dif="1">
+  <td class="c-aba"><span class="tag-aba">Perfil Epidemiológico</span></td>
+  <td class="c-num">3</td>
+  <td class="c-ind"><b>Atendimentos segundo sexo e faixa etária</b><span class="meta-inline">meta relatório · fonte declarada: PEP</span></td>
+  <td class="c-cls"><span class="pill p1">Hub FHIR (hoje)</span></td>
+  <td class="c-dif"><span class="dots" title="Trivial — consulta direta sobre coluna estruturada"><i class="don"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">1</span></td>
+  <td class="c-onde"><code>Patient.gender + Patient.birthDate (100% preenchidos) ⋈ Encounter</code><span class="obs">As 11 faixas etárias da planilha saem de um CASE sobre a idade no atendimento.</span></td>
+</tr><tr data-aba="Perfil Epidemiológico" data-classe="fhir" data-dif="1">
+  <td class="c-aba"><span class="tag-aba">Perfil Epidemiológico</span></td>
+  <td class="c-num">4</td>
+  <td class="c-ind"><b>Atendimentos por dia da semana e horário de pico</b><span class="meta-inline">meta relatório · fonte declarada: PEP</span></td>
+  <td class="c-cls"><span class="pill p1">Hub FHIR (hoje)</span></td>
+  <td class="c-dif"><span class="dots" title="Trivial — consulta direta sobre coluna estruturada"><i class="don"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">1</span></td>
+  <td class="c-onde"><code>fhir.encounter.period_start (coluna indexada)</code></td>
+</tr><tr data-aba="Perfil Epidemiológico" data-classe="fhir" data-dif="2">
+  <td class="c-aba"><span class="tag-aba">Perfil Epidemiológico</span></td>
+  <td class="c-num">5</td>
+  <td class="c-ind"><b>Atendimentos segundo origem (bairro / município)</b><span class="meta-inline">meta relatório · fonte declarada: PEP</span></td>
+  <td class="c-cls"><span class="pill p1">Hub FHIR (hoje)</span></td>
+  <td class="c-dif"><span class="dots" title="Fácil — join simples + agregação"><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">2</span></td>
+  <td class="c-onde"><code>Patient.address.district (bairro) e .city — 99,97% preenchidos</code></td>
+</tr><tr data-aba="Perfil Epidemiológico" data-classe="fhir" data-dif="2">
+  <td class="c-aba"><span class="tag-aba">Perfil Epidemiológico</span></td>
+  <td class="c-num">6</td>
+  <td class="c-ind"><b>Proporção de atendimentos de não residentes de Maricá</b><span class="meta-inline">meta relatório · fonte declarada: PEP</span></td>
+  <td class="c-cls"><span class="pill p1">Hub FHIR (hoje)</span></td>
+  <td class="c-dif"><span class="dots" title="Fácil — join simples + agregação"><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">2</span></td>
+  <td class="c-onde"><code>Patient.address.city ≠ MARICA</code><span class="obs">Atenção a variações de grafia do município no cadastro.</span></td>
+</tr><tr data-aba="Perfil Epidemiológico" data-classe="oracle" data-dif="3">
+  <td class="c-aba"><span class="tag-aba">Perfil Epidemiológico</span></td>
+  <td class="c-num">7</td>
+  <td class="c-ind"><b>Atendimentos segundo procedimentos realizados (SIGTAP)</b><span class="meta-inline">meta relatório · fonte declarada: PEP ou SIA</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Média — múltiplos joins e/ou regra de negócio a pactuar"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">3</span></td>
+  <td class="c-onde"><code>TU_BPA_UNIFICADA / PROCED_SIA</code><span class="obs">O hub não carrega Procedure — hoje isso é exclusivamente Oracle.</span></td>
+</tr><tr data-aba="Perfil Epidemiológico" data-classe="oracle" data-dif="2">
+  <td class="c-aba"><span class="tag-aba">Perfil Epidemiológico</span></td>
+  <td class="c-num">8</td>
+  <td class="c-ind"><b>Internações segundo origem (bairro e município)</b><span class="meta-inline">meta relatório · fonte declarada: PEP</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Fácil — join simples + agregação"><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">2</span></td>
+  <td class="c-onde"><code>FIA ⋈ PACIENTE</code><span class="obs">Vira FHIR assim que a internação for importada.</span></td>
+</tr><tr data-aba="Perfil Epidemiológico" data-classe="oracle" data-dif="2">
+  <td class="c-aba"><span class="tag-aba">Perfil Epidemiológico</span></td>
+  <td class="c-num">9</td>
+  <td class="c-ind"><b>Proporção de internações de não residentes</b><span class="meta-inline">meta relatório · fonte declarada: PEP</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Fácil — join simples + agregação"><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">2</span></td>
+  <td class="c-onde"><code>FIA ⋈ PACIENTE.CD_CIDADE</code></td>
+</tr><tr data-aba="Perfil Epidemiológico" data-classe="oracle" data-dif="2">
+  <td class="c-aba"><span class="tag-aba">Perfil Epidemiológico</span></td>
+  <td class="c-num">10</td>
+  <td class="c-ind"><b>Internações por sexo e faixa etária</b><span class="meta-inline">meta relatório · fonte declarada: PEP</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Fácil — join simples + agregação"><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">2</span></td>
+  <td class="c-onde"><code>FIA ⋈ PACIENTE</code></td>
+</tr><tr data-aba="Perfil Epidemiológico" data-classe="oracle" data-dif="2">
+  <td class="c-aba"><span class="tag-aba">Perfil Epidemiológico</span></td>
+  <td class="c-num">11</td>
+  <td class="c-ind"><b>Internações por CID-10 principal de saída</b><span class="meta-inline">meta relatório · fonte declarada: PEP</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Fácil — join simples + agregação"><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">2</span></td>
+  <td class="c-onde"><code>FIA.CD_CID ⋈ CID</code><span class="obs">O hub tem 1.266.520 Conditions, mas todas de urgência — nenhuma de internação.</span></td>
+</tr><tr data-aba="Institucional" data-classe="externo" data-dif="5">
+  <td class="c-aba"><span class="tag-aba">Institucional</span></td>
+  <td class="c-num">1</td>
+  <td class="c-ind"><b>Taxa de absenteísmo da enfermagem</b><span class="meta-inline">meta ≤ 10% · fonte declarada: Ponto biométrico</span></td>
+  <td class="c-cls"><span class="pill p5">Fora dos dois bancos</span></td>
+  <td class="c-dif"><span class="dots" title="Bloqueado — o registro não existe no banco; depende de processo"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span><span class="dif-n">5</span></td>
+  <td class="c-onde"><code>Sistema de ponto / RH</code><span class="obs">Nenhum dado de RH está no Salux clínico.</span></td>
+</tr><tr data-aba="Institucional" data-classe="externo" data-dif="5">
+  <td class="c-aba"><span class="tag-aba">Institucional</span></td>
+  <td class="c-num">2</td>
+  <td class="c-ind"><b>Tempo médio de substituição de cargos em vacância</b><span class="meta-inline">meta ≤ 10 dias · fonte declarada: Ponto + RH</span></td>
+  <td class="c-cls"><span class="pill p5">Fora dos dois bancos</span></td>
+  <td class="c-dif"><span class="dots" title="Bloqueado — o registro não existe no banco; depende de processo"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span><span class="dif-n">5</span></td>
+  <td class="c-onde"><code>RH</code></td>
+</tr><tr data-aba="Institucional" data-classe="externo" data-dif="4">
+  <td class="c-aba"><span class="tag-aba">Institucional</span></td>
+  <td class="c-num">3</td>
+  <td class="c-ind"><b>Índice de rotatividade de recursos humanos</b><span class="meta-inline">meta ≤ 5% · fonte declarada: Ponto biométrico</span></td>
+  <td class="c-cls"><span class="pill p5">Fora dos dois bancos</span></td>
+  <td class="c-dif"><span class="dots" title="Difícil — EAV, descoberta de campo ou dado parcial"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span><span class="dif-n">4</span></td>
+  <td class="c-onde"><code>RH</code><span class="obs">Cálculo simples — o problema é só a fonte.</span></td>
+</tr><tr data-aba="Institucional" data-classe="externo" data-dif="5">
+  <td class="c-aba"><span class="tag-aba">Institucional</span></td>
+  <td class="c-num">4</td>
+  <td class="c-ind"><b>Índice relativo de acidentes de trabalho</b><span class="meta-inline">meta ≤ 1% · fonte declarada: SESMT + ponto</span></td>
+  <td class="c-cls"><span class="pill p5">Fora dos dois bancos</span></td>
+  <td class="c-dif"><span class="dots" title="Bloqueado — o registro não existe no banco; depende de processo"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span><span class="dif-n">5</span></td>
+  <td class="c-onde"><code>SESMT</code></td>
+</tr><tr data-aba="Institucional" data-classe="externo" data-dif="5">
+  <td class="c-aba"><span class="tag-aba">Institucional</span></td>
+  <td class="c-num">5</td>
+  <td class="c-ind"><b>Taxa de treinamento hora-profissional</b><span class="meta-inline">meta ≥ 1,5 h · fonte declarada: NEP + ponto</span></td>
+  <td class="c-cls"><span class="pill p5">Fora dos dois bancos</span></td>
+  <td class="c-dif"><span class="dots" title="Bloqueado — o registro não existe no banco; depende de processo"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span><span class="dif-n">5</span></td>
+  <td class="c-onde"><code>NEP</code></td>
+</tr><tr data-aba="Institucional" data-classe="externo" data-dif="4">
+  <td class="c-aba"><span class="tag-aba">Institucional</span></td>
+  <td class="c-num">6</td>
+  <td class="c-ind"><b>Compras com pesquisa de preço em plataforma nacional</b><span class="meta-inline">meta ≥ 80% · fonte declarada: Plataforma de compras</span></td>
+  <td class="c-cls"><span class="pill p5">Fora dos dois bancos</span></td>
+  <td class="c-dif"><span class="dots" title="Difícil — EAV, descoberta de campo ou dado parcial"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span><span class="dif-n">4</span></td>
+  <td class="c-onde"><code>Módulo Compras do Salux tem as aquisições</code><span class="obs">O &#x27;pesquisou em plataforma nacional&#x27; é registro externo — só o denominador sai do banco.</span></td>
+</tr><tr data-aba="Institucional" data-classe="externo" data-dif="5">
+  <td class="c-aba"><span class="tag-aba">Institucional</span></td>
+  <td class="c-num">7</td>
+  <td class="c-ind"><b>Tempo de equipamento parado</b><span class="meta-inline">meta ≤ 72 h · fonte declarada: Sistema de ordem de serviço</span></td>
+  <td class="c-cls"><span class="pill p5">Fora dos dois bancos</span></td>
+  <td class="c-dif"><span class="dots" title="Bloqueado — o registro não existe no banco; depende de processo"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span><span class="dif-n">5</span></td>
+  <td class="c-onde"><code>Sistema de OS / manutenção</code></td>
+</tr><tr data-aba="Institucional" data-classe="externo" data-dif="5">
+  <td class="c-aba"><span class="tag-aba">Institucional</span></td>
+  <td class="c-num">8</td>
+  <td class="c-ind"><b>Custo médio do atendimento de U&amp;E</b><span class="meta-inline">meta custo médio · fonte declarada: TABNET + PEP</span></td>
+  <td class="c-cls"><span class="pill p5">Fora dos dois bancos</span></td>
+  <td class="c-dif"><span class="dots" title="Bloqueado — o registro não existe no banco; depende de processo"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span><span class="dif-n">5</span></td>
+  <td class="c-onde"><code>Centro de custos / contabilidade + TABNET</code><span class="obs">Só a partir do 7º mês de contrato. O denominador (atendimentos) já está no hub.</span></td>
+</tr><tr data-aba="Institucional" data-classe="externo" data-dif="5">
+  <td class="c-aba"><span class="tag-aba">Institucional</span></td>
+  <td class="c-num">9.1</td>
+  <td class="c-ind"><b>Custo médio da diária — internação adulto</b><span class="meta-inline">meta custo médio · fonte declarada: TABNET + PEP</span></td>
+  <td class="c-cls"><span class="pill p5">Fora dos dois bancos</span></td>
+  <td class="c-dif"><span class="dots" title="Bloqueado — o registro não existe no banco; depende de processo"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span><span class="dif-n">5</span></td>
+  <td class="c-onde"><code>Centro de custos + pacientes-dia</code></td>
+</tr><tr data-aba="Institucional" data-classe="externo" data-dif="5">
+  <td class="c-aba"><span class="tag-aba">Institucional</span></td>
+  <td class="c-num">9.2</td>
+  <td class="c-ind"><b>Custo médio da diária — internação pediátrica</b><span class="meta-inline">meta custo médio · fonte declarada: TABNET + PEP</span></td>
+  <td class="c-cls"><span class="pill p5">Fora dos dois bancos</span></td>
+  <td class="c-dif"><span class="dots" title="Bloqueado — o registro não existe no banco; depende de processo"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span><span class="dif-n">5</span></td>
+  <td class="c-onde"><code>Centro de custos + pacientes-dia</code></td>
+</tr><tr data-aba="Institucional" data-classe="externo" data-dif="5">
+  <td class="c-aba"><span class="tag-aba">Institucional</span></td>
+  <td class="c-num">9.3</td>
+  <td class="c-ind"><b>Custo médio da diária — maternidade</b><span class="meta-inline">meta custo médio · fonte declarada: TABNET + PEP</span></td>
+  <td class="c-cls"><span class="pill p5">Fora dos dois bancos</span></td>
+  <td class="c-dif"><span class="dots" title="Bloqueado — o registro não existe no banco; depende de processo"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span><span class="dif-n">5</span></td>
+  <td class="c-onde"><code>Centro de custos + pacientes-dia</code></td>
+</tr><tr data-aba="Institucional" data-classe="oracle" data-dif="3">
+  <td class="c-aba"><span class="tag-aba">Institucional</span></td>
+  <td class="c-num">10</td>
+  <td class="c-ind"><b>Faturamento SUS</b><span class="meta-inline">meta 100% · fonte declarada: DATASUS + PEP</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Média — múltiplos joins e/ou regra de negócio a pactuar"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">3</span></td>
+  <td class="c-onde"><code>TU_BPA_UNIFICADA / TU_PREVIA_BPA ÷ atendimentos realizados</code></td>
+</tr><tr data-aba="Institucional" data-classe="oracle" data-dif="3">
+  <td class="c-aba"><span class="tag-aba">Institucional</span></td>
+  <td class="c-num">11</td>
+  <td class="c-ind"><b>Alimentação do SIH/SUS</b><span class="meta-inline">meta 100% · fonte declarada: DATASUS</span></td>
+  <td class="c-cls"><span class="pill p3">Oracle Salux</span></td>
+  <td class="c-dif"><span class="dots" title="Média — múltiplos joins e/ou regra de negócio a pactuar"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span><span class="dif-n">3</span></td>
+  <td class="c-onde"><code>AIH (38k) ÷ internações FIA</code></td>
+</tr><tr data-aba="Institucional" data-classe="edoc" data-dif="4">
+  <td class="c-aba"><span class="tag-aba">Institucional</span></td>
+  <td class="c-num">12</td>
+  <td class="c-ind"><b>Resolubilidade de ouvidorias</b><span class="meta-inline">meta ≥ 90% · fonte declarada: Relatório de ouvidoria</span></td>
+  <td class="c-cls"><span class="pill p4">Oracle Salux (eDoc/EAV)</span></td>
+  <td class="c-dif"><span class="dots" title="Difícil — EAV, descoberta de campo ou dado parcial"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span><span class="dif-n">4</span></td>
+  <td class="c-onde"><code>eDoc dos grupos Ouvidoria UPA (10038) e Sta Rita (10039)</code><span class="obs">Não existe grupo &#x27;Ouvidoria HMCML&#x27; no catálogo de modelos — confirmar por onde entra a ouvidoria do hospital.</span></td>
+</tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section>
+  <h2>Caminho sugerido</h2>
+  <ol class="steps">
+    <li><b>Entrega rápida (dias):</b> as 11 linhas do perfil clínico-epidemiológico da urgência + tempo de
+    permanência na emergência + tempo até a classificação de risco. Tudo em cima do hub, uma consulta cada,
+    sem depender do Oracle nem da rede interna do hospital.</li>
+    <li><b>Maior salto de cobertura:</b> estender o importador on-prem para carregar a <b>internação (FIA)</b>
+    como <code>Encounter class=IMP</code> com <code>period</code>, <code>hospitalization.dischargeDisposition</code>,
+    <code>location</code> (leito) e diagnóstico de saída. Isso destrava ocupação, permanência, reinternação,
+    mortalidade e todo o bloco de internação das três abas de uma vez.</li>
+    <li><b>Projetar o que falta no encontro de urgência:</b> <code>dt_atendimento</code> (hora do atendimento
+    médico), motivo do atendimento e setor/serviço. São três campos que já existem no BAA e fecham mais
+    seis indicadores de tempo.</li>
+    <li><b>Pesquisa de satisfação como dado, não como PDF:</b> hoje as respostas chegam ao hub em HTML
+    dentro do DocumentReference. Projetar <code>QuestionnaireResponse</code> transforma satisfação e NPS
+    das três abas em consulta trivial — são 77.167 questionários já respondidos.</li>
+    <li><b>Decisão de gestão, não técnica:</b> definir com a SMS o que fazer com os 20 indicadores sem
+    fonte em sistema. Enquanto o registro não existir, eles continuam manuais — e vale deixar isso explícito
+    no pacto, não descobrir no fechamento do trimestre.</li>
+  </ol>
+
+  <div class="note">
+    <b>Três divergências na própria planilha, para alinhar com a SMS antes de codificar</b>
+    <p>(1) O item 4 do Adulto — "tempo médio de permanência na emergência" — repete a memória de cálculo do
+    item 3 (classificação → atendimento médico). (2) O item 15 se chama "taxa de parada cardiorrespiratória"
+    mas a memória de cálculo conta óbitos institucionais. (3) No Materno Infantil, o item 5 (satisfação) tem a
+    mesma memória de cálculo do item 4 (índice de questionários). Codificar ao pé da letra vai gerar número errado.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Evidência — o que foi conferido</h2>
+  <p class="lead">Contagens lidas diretamente do banco de produção em 23/07/2026 (somente leitura).</p>
+  <div class="tbl-wrap">
+  <table class="evid">
+    <thead><tr><th>Recurso no hub FHIR</th><th>Volume</th><th>O que isso habilita</th></tr></thead>
+    <tbody>
+      <tr><td><code>fhir.patient</code></td><td>252.858</td><td>Sexo e data de nascimento em 100%; endereço com bairro em 99,97%</td></tr>
+      <tr><td><code>fhir.encounter</code></td><td>1.306.687</td><td>99,9% emergência · 94% com hora de saída · nenhuma internação</td></tr>
+      <tr><td><code>fhir.condition</code></td><td>1.266.520</td><td>CID-10 por atendimento de urgência (não de internação)</td></tr>
+      <tr><td><code>fhir.observation</code></td><td>4.863.580</td><td>Classificação de risco 1.150.427 · temperatura 979.267 · SpO₂ 941.127 · FC 926.530 · PA 745.793 · FR 120.436</td></tr>
+      <tr><td><code>fhir.document_reference</code></td><td>2.869.431</td><td>Boletins, receituários e 77.167 pesquisas de satisfação (conteúdo em HTML)</td></tr>
+      <tr><td><code>fhir.medication_request</code></td><td>1.688.313</td><td>Prescrição da urgência</td></tr>
+      <tr><td><code>fhir.medication_administration</code></td><td>0</td><td>Vazio — por isso porta-agulha e sepse ficam bloqueados</td></tr>
+      <tr><td><code>fhir.practitioner</code></td><td>3.140</td><td>Profissionais</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="lead" style="margin-top:14px">No Oracle Salux, as tabelas que sustentam o bloco de internação já estão
+  mapeadas: <code>FIA</code> (internação), <code>FIA_LEITO</code> (93.078 transferências de leito),
+  <code>LEITO</code> (548 leitos), <code>PAC_DIA_UNID_TPQUARTO</code> (204 mil pacientes-dia),
+  <code>TRIAGEM</code> (3.023.874), <code>AIH</code> (38 mil) e <code>SINAIS_VITAIS</code> (colunada, sem EAV).
+  O acesso é somente leitura e só de dentro da rede do hospital.</p>
+</section>
+
+<footer>
+  Fonte: <i>Planilhas Indicadores HMCML Maricá 2026 (Unidade).xlsx</i> · abas Adulto, Pediátrico, Materno Infantil,
+  Perfil Clínico Epidemiológico e Institucional. Conferido contra o hub Automais.Fhir em produção e contra
+  <code>Salux/docs/levantamento-banco.md</code>. Gerado em 23/07/2026.
+</footer>
+
+</div>
+<script>
+const st = {aba:null, classe:null};
+const rows = [...document.querySelectorAll('#tbl tbody tr')];
+const cnt = document.getElementById('cnt');
+document.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => {
+  const f = c.dataset.f, v = c.dataset.v;
+  st[f] = (st[f] === v) ? null : v;
+  document.querySelectorAll('.chip[data-f="'+f+'"]').forEach(o => o.classList.toggle('on', o.dataset.v === st[f]));
+  let n = 0;
+  rows.forEach(r => {
+    const ok = (!st.aba || r.dataset.aba === st.aba) && (!st.classe || r.dataset.classe === st.classe);
+    r.style.display = ok ? '' : 'none';
+    if (ok) n++;
+  });
+  cnt.textContent = n + ' de 94';
+}));
+</script>
+</body>
+</html>

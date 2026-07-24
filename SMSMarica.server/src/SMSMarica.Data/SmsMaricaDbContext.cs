@@ -92,6 +92,11 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     // Uma linha por arquivo importado (rastreio: quando, quem, válidos, inválidos)
     public DbSet<Entities.Sisreg.SisregImportacaoExecucao> SisregImportacaoExecucoes => Set<Entities.Sisreg.SisregImportacaoExecucao>();
 
+    // Indicadores contratuais do HMCML — o motor de cada indicador é o SQL guardado no cadastro
+    public DbSet<Indicador> Indicadores => Set<Indicador>();
+    public DbSet<IndicadorVersao> IndicadorVersoes => Set<IndicadorVersao>();
+    public DbSet<IndicadorExecucao> IndicadorExecucoes => Set<IndicadorExecucao>();
+
     // Domínio de Agendamento (Especialidade → Agenda → Agendamento) — ADR-0012/0013
     public DbSet<Especialidade> Especialidades => Set<Especialidade>();
     public DbSet<Equipamento> Equipamentos => Set<Equipamento>();

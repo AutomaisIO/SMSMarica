@@ -1,0 +1,1161 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indicadores HMCML — confiança, divergências e prova</title>
+<style>
+:root {
+  color-scheme: light;
+  --plane:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --line:#c3c2b7; --ring:rgba(11,11,11,.10);
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4;
+  --o1:#86b6ef; --o2:#5598e7; --o3:#2a78d6; --o4:#1c5cab; --o5:#0d366b;
+  --crit:#d03b3b; --good:#0ca30c; --code-bg:#f2f2ee;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --plane:#0d0d0d; --surface:#1a1a19; --ink:#fff; --ink2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --line:#383835; --ring:rgba(255,255,255,.10);
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+    --o1:#3987e5; --o2:#2a78d6; --o3:#256abf; --o4:#1c5cab; --o5:#184f95;
+    --code-bg:#141413;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --plane:#0d0d0d; --surface:#1a1a19; --ink:#fff; --ink2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --line:#383835; --ring:rgba(255,255,255,.10);
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+  --o1:#3987e5; --o2:#2a78d6; --o3:#256abf; --o4:#1c5cab; --o5:#184f95;
+  --code-bg:#141413;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--plane); color:var(--ink);
+  font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
+.wrap { max-width:1240px; margin:0 auto; padding:28px 24px 80px; }
+.nav { display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:26px; font-size:12.5px; }
+.nav b, .nav a { padding:6px 12px; border-radius:999px; border:1px solid var(--ring); }
+.nav b { background:var(--ink); color:var(--surface); border-color:var(--ink); font-weight:600; }
+.nav a { color:var(--ink2); text-decoration:none; background:var(--surface); }
+.nav a:hover { color:var(--ink); border-color:var(--line); }
+header.top { border-bottom:1px solid var(--grid); padding-bottom:28px; margin-bottom:32px; }
+.eyebrow { font-size:12px; letter-spacing:.10em; text-transform:uppercase; color:var(--muted); margin:0 0 10px; }
+h1 { font-size:clamp(26px,3.4vw,38px); line-height:1.15; margin:0 0 12px; letter-spacing:-.02em; }
+.sub { color:var(--ink2); max-width:76ch; margin:0; }
+h2 { font-size:20px; margin:44px 0 6px; letter-spacing:-.01em; }
+h2 + .lead { color:var(--ink2); margin:0 0 18px; max-width:82ch; }
+h3 { font-size:15px; margin:0 0 14px; color:var(--ink2); font-weight:600; }
+p.lead { color:var(--ink2); max-width:82ch; }
+
+.tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin:26px 0 8px; }
+.tile { background:var(--surface); border:1px solid var(--ring); border-radius:12px; padding:18px 18px 16px; }
+.tile .v { font-size:34px; font-weight:650; letter-spacing:-.02em; line-height:1; }
+.tile .v small { font-size:15px; font-weight:500; color:var(--muted); margin-left:3px; }
+.tile .k { font-size:12.5px; color:var(--ink2); margin-top:8px; }
+.tile .n { font-size:12px; color:var(--muted); margin-top:5px; }
+.tile.hero .v { color:var(--s1); }
+.tile.warn .v { color:var(--crit); }
+
+.card { background:var(--surface); border:1px solid var(--ring); border-radius:12px; padding:20px; }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:18px; }
+@media (max-width:860px) { .grid2 { grid-template-columns:1fr; } }
+
+.note { background:var(--surface); border:1px solid var(--ring); border-left:3px solid var(--s2);
+  border-radius:0 10px 10px 0; padding:16px 18px; margin:16px 0; }
+.note.ok { border-left-color:var(--s3); }
+.note.no { border-left-color:var(--crit); }
+.note > b { display:block; margin-bottom:5px; }
+.note p { margin:0; color:var(--ink2); font-size:13.5px; }
+.note p + p { margin-top:9px; }
+
+ol.steps { padding-left:20px; color:var(--ink2); }
+ol.steps li { margin-bottom:11px; }
+ol.steps b { color:var(--ink); }
+ul.plain { list-style:none; padding:0; margin:0; color:var(--ink2); font-size:13.5px; }
+ul.plain li { margin-bottom:9px; padding-left:16px; position:relative; }
+ul.plain li::before { content:"–"; position:absolute; left:0; color:var(--muted); }
+
+table { width:100%; border-collapse:collapse; background:var(--surface);
+  border:1px solid var(--ring); border-radius:12px; overflow:hidden; }
+thead th { text-align:left; font-size:11.5px; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--muted); font-weight:600; padding:12px 14px; border-bottom:1px solid var(--grid); white-space:nowrap; }
+tbody td { padding:13px 14px; border-bottom:1px solid var(--grid); vertical-align:top; font-size:13.5px; }
+tbody tr:last-child td { border-bottom:0; }
+tbody tr:hover { background:color-mix(in srgb, var(--ink) 3%, transparent); }
+.tbl-wrap { overflow-x:auto; }
+code { font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--ink2); word-break:break-word; }
+pre { background:var(--code-bg); border:1px solid var(--ring); border-radius:10px; padding:15px 16px;
+  overflow-x:auto; margin:12px 0 0; }
+pre code { font-size:12px; line-height:1.6; color:var(--ink); white-space:pre; word-break:normal; }
+.kw { color:var(--s1); } .cmt { color:var(--muted); font-style:italic; }
+
+.pill { display:inline-flex; align-items:center; gap:6px; font-size:11.5px; padding:3px 10px 3px 8px;
+  border-radius:999px; color:var(--ink2); border:1px solid var(--ring); white-space:nowrap;
+  background:color-mix(in srgb, var(--pc) 10%, transparent); border-color:color-mix(in srgb, var(--pc) 40%, transparent); }
+.pill::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--pc); flex:none; }
+.p1 { --pc:var(--s1); } .p2 { --pc:var(--s2); } .p3 { --pc:var(--s3); }
+.p4 { --pc:var(--s4); } .p5 { --pc:var(--s5); }
+.sw { width:11px; height:11px; border-radius:3px; display:inline-block; flex:none; position:relative; top:1px; }
+.sw.s1{background:var(--s1)} .sw.s2{background:var(--s2)} .sw.s3{background:var(--s3)}
+.sw.s4{background:var(--s4)} .sw.s5{background:var(--s5)}
+.dots { display:inline-flex; gap:3px; }
+.dots i { width:7px; height:7px; border-radius:50%; display:block; }
+.don { background:var(--ink2); } .doff { background:var(--grid); }
+.dif-n { font-size:12px; color:var(--muted); margin-left:7px; font-variant-numeric:tabular-nums; }
+
+.bar-row { display:grid; grid-template-columns:190px 1fr 34px; align-items:center; gap:12px; margin-bottom:10px; }
+.bar-lbl { font-size:12.5px; color:var(--ink2); }
+.bar-track { height:15px; background:var(--grid); border-radius:4px; overflow:hidden; }
+.bar-fill { display:block; height:100%; border-radius:0 4px 4px 0; transition:width .3s; }
+.bar-val { font-size:13px; text-align:right; font-variant-numeric:tabular-nums; color:var(--ink2); }
+.s1{background:var(--s1)} .s2{background:var(--s2)} .s3{background:var(--s3)} .s4{background:var(--s4)} .s5{background:var(--s5)}
+.o1{background:var(--o1)} .o2{background:var(--o2)} .o3{background:var(--o3)} .o4{background:var(--o4)} .o5{background:var(--o5)}
+
+.motor { background:var(--surface); border:1px solid var(--ring); border-radius:12px; padding:22px 24px; margin-bottom:16px; }
+.motor h3 { font-size:16px; color:var(--ink); margin:0 0 4px; }
+.motor .mid { font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+.motor .cobre { font-size:12.5px; color:var(--muted); margin-top:14px; padding-top:12px; border-top:1px solid var(--grid); }
+.motor .cobre b { color:var(--ink2); font-weight:600; }
+.tabs { font-size:12.5px; color:var(--ink2); margin:8px 0 0; }
+.tabs code { color:var(--ink); }
+
+footer { margin-top:56px; padding-top:20px; border-top:1px solid var(--grid); color:var(--muted); font-size:12.5px; }
+
+.score-linha { display:flex; align-items:center; gap:10px; }
+.score-barra { flex:1; height:8px; background:var(--grid); border-radius:4px; overflow:hidden; min-width:120px; }
+.score-fill { display:block; height:100%; border-radius:0 4px 4px 0; }
+.score-linha b { font-variant-numeric:tabular-nums; width:26px; text-align:right; }
+.parc { display:block; margin-top:4px; font-size:11px; color:var(--muted); }
+.c-num { white-space:nowrap; font-size:12px; color:var(--ink2); }
+.c-cob, .c-n, .c-val { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; font-size:12.5px; }
+.nd { color:var(--muted); }
+.marca { display:inline-block; margin:1px 3px 1px 0; padding:1px 7px; border-radius:999px;
+  background:color-mix(in srgb, var(--s2) 12%, transparent); color:var(--ink2); font-size:11px; white-space:nowrap; }
+.tipo { float:right; font-weight:400; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+.mono { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; }
+.right { text-align:right; }
+.filtros { display:flex; gap:8px; margin:18px 0 12px; }
+.fbtn { font:inherit; font-size:12.5px; padding:6px 12px; border-radius:999px; cursor:pointer;
+  border:1px solid var(--ring); background:var(--surface); color:var(--ink2); }
+.fbtn.on { background:var(--ink); color:var(--surface); border-color:var(--ink); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="nav">
+  <a href="indicadores-hmcml-2026-viabilidade.html">Panorama</a>
+  <a href="indicadores-hmcml-2026-oracle.html">Extração pelo Oracle</a>
+  <a href="indicadores-hmcml-2026-fhir.html">Projeção FHIR</a>
+  <b>Confiança e prova</b>
+</nav>
+
+<header class="top">
+  <p class="eyebrow">SMS Maricá · Hospital Conde Modesto Leal · relatório 4 de 4</p>
+  <h1>Quanto dá para confiar em cada indicador</h1>
+  <p class="sub">Os 58 motores escritos foram executados contra o Oracle do Salux em
+  <b>junho/2026</b>. Este relatório mostra o que saiu, o que ficou faltando, onde a planilha
+  contratual diverge de si mesma — e traz um caso real, rastreável no prontuário, para conferir
+  a conta na mão.</p>
+</header>
+
+<div class="tiles">
+  <div class="tile hero"><div class="v">75<small>/100</small></div>
+    <div class="k">Índice médio de segurança</div><div class="n">dos 53 motores que rodam</div></div>
+  <div class="tile"><div class="v">27</div>
+    <div class="k">Confiança alta (≥ 80)</div><div class="n">prontos para publicar</div></div>
+  <div class="tile"><div class="v">16</div>
+    <div class="k">Confiança média (60–79)</div><div class="n">publicar com a ressalva junto</div></div>
+  <div class="tile warn"><div class="v">15</div>
+    <div class="k">Confiança baixa ou sem motor</div><div class="n">não publicar sem decisão da gestão</div></div>
+</div>
+
+<section>
+  <h2>Como o índice é calculado</h2>
+  <p class="lead">Um número de confiança que não se explica não vale nada. Este é a soma de quatro
+  parcelas, todas visíveis na tabela abaixo — dá para refazer a conta linha a linha.</p>
+  <div class="grid2">
+    <div class="card">
+      <h3>As quatro parcelas</h3>
+      <ul class="plain">
+        <li><b>Cobertura (0–50):</b> quanto do denominador o campo-chave realmente cobre. Um tempo
+        médio calculado sobre 45% dos atendimentos não vale o mesmo que sobre 100%.</li>
+        <li><b>Amostra (0–20):</b> n ≥ 100 leva 20; 30–99 leva 12; 5–29 leva 5; abaixo de 5, zero.
+        Média de dois casos não é média.</li>
+        <li><b>Aderência à definição (0–20):</b> 20 quando implementa exatamente a memória de
+        cálculo; 10 quando precisou de campo substituto ou tem definição pendente; 0 quando há
+        divergência aberta com a planilha.</li>
+        <li><b>Conferência (0–10):</b> 10 quando o resultado foi conferido contra o dado real e
+        bate; 4 quando apenas executou.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>O que o índice não é</h3>
+      <ul class="plain">
+        <li>Não é probabilidade estatística. É uma régua de auditoria: mede o quanto o número está
+        apoiado em dado completo, amostra suficiente e definição fechada.</li>
+        <li>Não julga o desempenho do hospital. Um indicador com índice 95 pode mostrar meta não
+        cumprida — e é justamente aí que ele serve.</li>
+        <li>Índice alto não dispensa a ressalva. Todo motor carrega a sua, e ela aparece na tela do
+        módulo colada no número.</li>
+        <li>Cobertura "não declarada" entra com 60% por padrão (conservador). Aparece marcada na
+        tabela para ser medida depois.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Índice por indicador</h2>
+  <div class="filtros">
+    <button class="fbtn on" data-f="todos">Todos (58)</button>
+    <button class="fbtn" data-f="alta">Alta (27)</button>
+    <button class="fbtn" data-f="média">Média (16)</button>
+    <button class="fbtn" data-f="baixa">Baixa (15)</button>
+  </div>
+  <div class="tbl-wrap">
+    <table id="tbl">
+      <thead><tr>
+        <th>Indicador</th><th>Índice de segurança</th><th>Cobertura</th><th>n</th>
+        <th>Resultado jun/26</th><th>Alertas</th>
+      </tr></thead>
+      <tbody><tr data-faixa="alta">
+  <td class="c-num">Adulto A12</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s3" style="width:100%"></span></span>
+      <b>100</b>
+    </div>
+    <span class="parc">cobertura 50/50 · amostra 20/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob">100,0%</td>
+  <td class="c-n">193</td>
+  <td class="c-val">5.94 dias</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="alta">
+  <td class="c-num">Perfil Epidemiológico P1</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s3" style="width:100%"></span></span>
+      <b>100</b>
+    </div>
+    <span class="parc">cobertura 50/50 · amostra 20/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob">100,0%</td>
+  <td class="c-n">17405</td>
+  <td class="c-val">97.08 atendimentos</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="alta">
+  <td class="c-num">Perfil Epidemiológico P3</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s3" style="width:100%"></span></span>
+      <b>100</b>
+    </div>
+    <span class="parc">cobertura 50/50 · amostra 20/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob">100,0%</td>
+  <td class="c-n">17405</td>
+  <td class="c-val">57.73 atendimentos</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="alta">
+  <td class="c-num">Perfil Epidemiológico P4</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s3" style="width:100%"></span></span>
+      <b>100</b>
+    </div>
+    <span class="parc">cobertura 50/50 · amostra 20/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob">100,0%</td>
+  <td class="c-n">17405</td>
+  <td class="c-val">1.6 atendimentos</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="alta">
+  <td class="c-num">Perfil Epidemiológico P5</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s3" style="width:100%"></span></span>
+      <b>100</b>
+    </div>
+    <span class="parc">cobertura 50/50 · amostra 20/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob">100,0%</td>
+  <td class="c-n">17405</td>
+  <td class="c-val">9.15 atendimentos</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="alta">
+  <td class="c-num">Perfil Epidemiológico P8</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s3" style="width:100%"></span></span>
+      <b>100</b>
+    </div>
+    <span class="parc">cobertura 50/50 · amostra 20/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob">100,0%</td>
+  <td class="c-n">734</td>
+  <td class="c-val">106 </td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="alta">
+  <td class="c-num">Adulto A11</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s3" style="width:94%"></span></span>
+      <b>94</b>
+    </div>
+    <span class="parc">cobertura 50/50 · amostra 20/20 ·
+      definição 20/20 · conferência 4/10</span>
+  </td>
+  <td class="c-cob">100,0%</td>
+  <td class="c-n">6300</td>
+  <td class="c-val">50.6 %</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="alta">
+  <td class="c-num">Pediátrico P12</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s3" style="width:92%"></span></span>
+      <b>92</b>
+    </div>
+    <span class="parc">cobertura 50/50 · amostra 12/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob">100,0%</td>
+  <td class="c-n">89</td>
+  <td class="c-val">0 %</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="alta">
+  <td class="c-num">Pediátrico P11</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s3" style="width:90%"></span></span>
+      <b>90</b>
+    </div>
+    <span class="parc">cobertura 50/50 · amostra 20/20 ·
+      definição 10/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob">100,0%</td>
+  <td class="c-n">297.39</td>
+  <td class="c-val">0 /1000 pacientes-dia</td>
+  <td class="c-marcas"><span class="marca">campo substituto</span></td>
+</tr><tr data-faixa="alta">
+  <td class="c-num">Perfil Epidemiológico P10</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s3" style="width:90%"></span></span>
+      <b>90</b>
+    </div>
+    <span class="parc">cobertura 50/50 · amostra 20/20 ·
+      definição 10/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob">100,0%</td>
+  <td class="c-n">734</td>
+  <td class="c-val">22 </td>
+  <td class="c-marcas"><span class="marca">definição pendente</span> <span class="marca">campo substituto</span></td>
+</tr><tr data-faixa="alta">
+  <td class="c-num">Adulto A2</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s3" style="width:84%"></span></span>
+      <b>84</b>
+    </div>
+    <span class="parc">cobertura 44/50 · amostra 20/20 ·
+      definição 10/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob">88,9%</td>
+  <td class="c-n">10699</td>
+  <td class="c-val">7.13 min</td>
+  <td class="c-marcas"><span class="marca">campo substituto</span></td>
+</tr><tr data-faixa="alta">
+  <td class="c-num">Materno Infantil M1</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s3" style="width:83%"></span></span>
+      <b>83</b>
+    </div>
+    <span class="parc">cobertura 39/50 · amostra 20/20 ·
+      definição 20/20 · conferência 4/10</span>
+  </td>
+  <td class="c-cob">78,3%</td>
+  <td class="c-n">727</td>
+  <td class="c-val">29.84 min</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="alta">
+  <td class="c-num">Materno Infantil M2</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s3" style="width:83%"></span></span>
+      <b>83</b>
+    </div>
+    <span class="parc">cobertura 39/50 · amostra 20/20 ·
+      definição 20/20 · conferência 4/10</span>
+  </td>
+  <td class="c-cob">78,3%</td>
+  <td class="c-n">727</td>
+  <td class="c-val">1.21 min</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="alta">
+  <td class="c-num">Adulto A13</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s3" style="width:80%"></span></span>
+      <b>80</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 20/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">244</td>
+  <td class="c-val">9.36 dias</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="alta">
+  <td class="c-num">Adulto A14</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s3" style="width:80%"></span></span>
+      <b>80</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 20/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">431</td>
+  <td class="c-val">9.05 %</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="alta">
+  <td class="c-num">Adulto A8</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s3" style="width:80%"></span></span>
+      <b>80</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 20/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">12034</td>
+  <td class="c-val">11.87 %</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="alta">
+  <td class="c-num">Materno Infantil M8</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s3" style="width:80%"></span></span>
+      <b>80</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 20/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">214</td>
+  <td class="c-val">2.45 dias</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="alta">
+  <td class="c-num">Pediátrico P1</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s3" style="width:80%"></span></span>
+      <b>80</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 20/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">3970</td>
+  <td class="c-val">8.93 min</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="alta">
+  <td class="c-num">Pediátrico P2</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s3" style="width:80%"></span></span>
+      <b>80</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 20/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">4248</td>
+  <td class="c-val">7.59 min</td>
+  <td class="c-marcas"><span class="marca">amostra pequena</span></td>
+</tr><tr data-faixa="alta">
+  <td class="c-num">Pediátrico P3.3</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s3" style="width:80%"></span></span>
+      <b>80</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 20/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">696</td>
+  <td class="c-val">35.3 min</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="alta">
+  <td class="c-num">Pediátrico P3.4</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s3" style="width:80%"></span></span>
+      <b>80</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 20/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">1744</td>
+  <td class="c-val">62.42 min</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="alta">
+  <td class="c-num">Pediátrico P7</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s3" style="width:80%"></span></span>
+      <b>80</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 20/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">3978</td>
+  <td class="c-val">4.29 h</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="alta">
+  <td class="c-num">Perfil Epidemiológico P11</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s3" style="width:80%"></span></span>
+      <b>80</b>
+    </div>
+    <span class="parc">cobertura 50/50 · amostra 20/20 ·
+      definição 0/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob">100,0%</td>
+  <td class="c-n">734</td>
+  <td class="c-val">292 </td>
+  <td class="c-marcas"><span class="marca">divergência</span> <span class="marca">definição pendente</span></td>
+</tr><tr data-faixa="alta">
+  <td class="c-num">Perfil Epidemiológico P2</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s3" style="width:80%"></span></span>
+      <b>80</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 20/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">17405</td>
+  <td class="c-val">55.46 atendimentos</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="alta">
+  <td class="c-num">Perfil Epidemiológico P6</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s3" style="width:80%"></span></span>
+      <b>80</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 20/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">17403</td>
+  <td class="c-val">5.83 %</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="alta">
+  <td class="c-num">Perfil Epidemiológico P7</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s3" style="width:80%"></span></span>
+      <b>80</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 20/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">17405</td>
+  <td class="c-val">99.94 atendimentos</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="alta">
+  <td class="c-num">Perfil Epidemiológico P9</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s3" style="width:80%"></span></span>
+      <b>80</b>
+    </div>
+    <span class="parc">cobertura 50/50 · amostra 20/20 ·
+      definição 0/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob">100,0%</td>
+  <td class="c-n">734</td>
+  <td class="c-val">7.08 %</td>
+  <td class="c-marcas"><span class="marca">divergência</span> <span class="marca">campo substituto</span></td>
+</tr><tr data-faixa="média">
+  <td class="c-num">Adulto A1</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s4" style="width:77%"></span></span>
+      <b>77</b>
+    </div>
+    <span class="parc">cobertura 37/50 · amostra 20/20 ·
+      definição 10/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob">73,2%</td>
+  <td class="c-n">8806</td>
+  <td class="c-val">12.69 min</td>
+  <td class="c-marcas"><span class="marca">campo substituto</span></td>
+</tr><tr data-faixa="média">
+  <td class="c-num">Adulto A3.3</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s4" style="width:76%"></span></span>
+      <b>76</b>
+    </div>
+    <span class="parc">cobertura 26/50 · amostra 20/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob">52,9%</td>
+  <td class="c-n">1685</td>
+  <td class="c-val">40.83 min</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="média">
+  <td class="c-num">Adulto A15</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s4" style="width:74%"></span></span>
+      <b>74</b>
+    </div>
+    <span class="parc">cobertura 50/50 · amostra 20/20 ·
+      definição 0/20 · conferência 4/10</span>
+  </td>
+  <td class="c-cob">100,0%</td>
+  <td class="c-n">294</td>
+  <td class="c-val">98.64 obitos por 1.000 internacoes</td>
+  <td class="c-marcas"><span class="marca">divergência</span> <span class="marca">amostra pequena</span></td>
+</tr><tr data-faixa="média">
+  <td class="c-num">Adulto A24</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s4" style="width:74%"></span></span>
+      <b>74</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 20/20 ·
+      definição 20/20 · conferência 4/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">734</td>
+  <td class="c-val">16.08 %</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="média">
+  <td class="c-num">Adulto A25</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s4" style="width:74%"></span></span>
+      <b>74</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 20/20 ·
+      definição 20/20 · conferência 4/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">114</td>
+  <td class="c-val">100 %</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="média">
+  <td class="c-num">Pediátrico P8</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s4" style="width:74%"></span></span>
+      <b>74</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 20/20 ·
+      definição 20/20 · conferência 4/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">930</td>
+  <td class="c-val">31.98 %</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="média">
+  <td class="c-num">Adulto A3.4</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s4" style="width:73%"></span></span>
+      <b>73</b>
+    </div>
+    <span class="parc">cobertura 23/50 · amostra 20/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob">45,3%</td>
+  <td class="c-n">2938</td>
+  <td class="c-val">71.17 min</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="média">
+  <td class="c-num">Materno Infantil M13</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s4" style="width:72%"></span></span>
+      <b>72</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 12/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">94</td>
+  <td class="c-val">1.06 %</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="média">
+  <td class="c-num">Pediátrico P10</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s4" style="width:72%"></span></span>
+      <b>72</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 12/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">88</td>
+  <td class="c-val">6.82 %</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="média">
+  <td class="c-num">Adulto A17</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s4" style="width:70%"></span></span>
+      <b>70</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 20/20 ·
+      definição 10/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">437</td>
+  <td class="c-val">15.33 %</td>
+  <td class="c-marcas"><span class="marca">campo substituto</span></td>
+</tr><tr data-faixa="média">
+  <td class="c-num">Adulto A3.5</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s4" style="width:70%"></span></span>
+      <b>70</b>
+    </div>
+    <span class="parc">cobertura 20/50 · amostra 20/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob">40,7%</td>
+  <td class="c-n">414</td>
+  <td class="c-val">59.49 min</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="média">
+  <td class="c-num">Materno Infantil M7</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s4" style="width:70%"></span></span>
+      <b>70</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 20/20 ·
+      definição 10/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">2040</td>
+  <td class="c-val">34.1 %</td>
+  <td class="c-marcas"><span class="marca">campo substituto</span></td>
+</tr><tr data-faixa="média">
+  <td class="c-num">Pediátrico P3.5</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s4" style="width:65%"></span></span>
+      <b>65</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 5/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">5</td>
+  <td class="c-val">53.51 min</td>
+  <td class="c-marcas"><span class="marca">amostra pequena</span></td>
+</tr><tr data-faixa="média">
+  <td class="c-num">Institucional I11</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s4" style="width:64%"></span></span>
+      <b>64</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 20/20 ·
+      definição 10/20 · conferência 4/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">644</td>
+  <td class="c-val">74.69 %</td>
+  <td class="c-marcas"><span class="marca">definição pendente</span> <span class="marca">campo substituto</span> <span class="marca">maturação</span></td>
+</tr><tr data-faixa="média">
+  <td class="c-num">Materno Infantil M9</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s4" style="width:62%"></span></span>
+      <b>62</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 12/20 ·
+      definição 10/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">94</td>
+  <td class="c-val">63.8 %</td>
+  <td class="c-marcas"><span class="marca">campo substituto</span></td>
+</tr><tr data-faixa="média">
+  <td class="c-num">Institucional I10</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s4" style="width:60%"></span></span>
+      <b>60</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 20/20 ·
+      definição 0/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">17405</td>
+  <td class="c-val">99.9943 %</td>
+  <td class="c-marcas"><span class="marca">divergência</span> <span class="marca">maturação</span></td>
+</tr><tr data-faixa="baixa">
+  <td class="c-num">Adulto A9</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s2" style="width:55%"></span></span>
+      <b>55</b>
+    </div>
+    <span class="parc">cobertura 5/50 · amostra 20/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob">10,0%</td>
+  <td class="c-n">1784</td>
+  <td class="c-val">98.04 %</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="baixa">
+  <td class="c-num">Adulto A3.1</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s2" style="width:54%"></span></span>
+      <b>54</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 0/20 ·
+      definição 20/20 · conferência 4/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">2</td>
+  <td class="c-val">20.18 min</td>
+  <td class="c-marcas"><span class="marca">amostra pequena</span></td>
+</tr><tr data-faixa="baixa">
+  <td class="c-num">Materno Infantil M3.1</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s2" style="width:54%"></span></span>
+      <b>54</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 0/20 ·
+      definição 20/20 · conferência 4/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">0</td>
+  <td class="c-val">— min</td>
+  <td class="c-marcas"><span class="marca">amostra pequena</span></td>
+</tr><tr data-faixa="baixa">
+  <td class="c-num">Materno Infantil M3.5</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s2" style="width:54%"></span></span>
+      <b>54</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 0/20 ·
+      definição 20/20 · conferência 4/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">0</td>
+  <td class="c-val">— min</td>
+  <td class="c-marcas"><span class="marca">amostra pequena</span></td>
+</tr><tr data-faixa="baixa">
+  <td class="c-num">Pediátrico P3.1</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s2" style="width:54%"></span></span>
+      <b>54</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 0/20 ·
+      definição 20/20 · conferência 4/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">2</td>
+  <td class="c-val">135.67 min</td>
+  <td class="c-marcas"><span class="marca">amostra pequena</span></td>
+</tr><tr data-faixa="baixa">
+  <td class="c-num">Adulto A4</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s2" style="width:53%"></span></span>
+      <b>53</b>
+    </div>
+    <span class="parc">cobertura 29/50 · amostra 20/20 ·
+      definição 0/20 · conferência 4/10</span>
+  </td>
+  <td class="c-cob">58,0%</td>
+  <td class="c-n">6172</td>
+  <td class="c-val">3.44 h</td>
+  <td class="c-marcas"><span class="marca">divergência</span></td>
+</tr><tr data-faixa="baixa">
+  <td class="c-num">Pediátrico P9</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s2" style="width:52%"></span></span>
+      <b>52</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 12/20 ·
+      definição 0/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">89</td>
+  <td class="c-val">3.2 dias</td>
+  <td class="c-marcas"><span class="marca">divergência</span> <span class="marca">campo substituto</span></td>
+</tr><tr data-faixa="baixa">
+  <td class="c-num">Materno Infantil M3.4</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s2" style="width:46%"></span></span>
+      <b>46</b>
+    </div>
+    <span class="parc">cobertura 4/50 · amostra 12/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob">8,7%</td>
+  <td class="c-n">34</td>
+  <td class="c-val">113.19 min</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="baixa">
+  <td class="c-num">Materno Infantil M17</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s2" style="width:44%"></span></span>
+      <b>44</b>
+    </div>
+    <span class="parc">cobertura 30/50 · amostra 0/20 ·
+      definição 10/20 · conferência 4/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">—</td>
+  <td class="c-val">0 </td>
+  <td class="c-marcas"><span class="marca">campo substituto</span></td>
+</tr><tr data-faixa="baixa">
+  <td class="c-num">Materno Infantil M3.3</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s2" style="width:39%"></span></span>
+      <b>39</b>
+    </div>
+    <span class="parc">cobertura 4/50 · amostra 5/20 ·
+      definição 20/20 · conferência 10/10</span>
+  </td>
+  <td class="c-cob">8,7%</td>
+  <td class="c-n">15</td>
+  <td class="c-val">91.98 min</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="baixa">
+  <td class="c-num">Adulto A10</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s2" style="width:0%"></span></span>
+      <b>0</b>
+    </div>
+    <span class="parc">cobertura 0/50 · amostra 0/20 ·
+      definição 0/20 · conferência 0/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">—</td>
+  <td class="c-val">— %</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="baixa">
+  <td class="c-num">Adulto A26</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s2" style="width:0%"></span></span>
+      <b>0</b>
+    </div>
+    <span class="parc">cobertura 0/50 · amostra 0/20 ·
+      definição 0/20 · conferência 0/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">—</td>
+  <td class="c-val">— %</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="baixa">
+  <td class="c-num">Adulto A3.2</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s2" style="width:0%"></span></span>
+      <b>0</b>
+    </div>
+    <span class="parc">cobertura 0/50 · amostra 0/20 ·
+      definição 0/20 · conferência 0/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">0</td>
+  <td class="c-val">— min</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr><tr data-faixa="baixa">
+  <td class="c-num">Materno Infantil M3.2</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s2" style="width:0%"></span></span>
+      <b>0</b>
+    </div>
+    <span class="parc">cobertura 0/50 · amostra 0/20 ·
+      definição 0/20 · conferência 0/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">0</td>
+  <td class="c-val">— min</td>
+  <td class="c-marcas"><span class="marca">campo substituto</span> <span class="marca">amostra pequena</span></td>
+</tr><tr data-faixa="baixa">
+  <td class="c-num">Pediátrico P3.2</td>
+  <td>
+    <div class="score-linha">
+      <span class="score-barra"><span class="score-fill s2" style="width:0%"></span></span>
+      <b>0</b>
+    </div>
+    <span class="parc">cobertura 0/50 · amostra 0/20 ·
+      definição 0/20 · conferência 0/10</span>
+  </td>
+  <td class="c-cob"><span class="nd">não declarada</span></td>
+  <td class="c-n">0</td>
+  <td class="c-val">— min</td>
+  <td class="c-marcas"><span class="nd">—</span></td>
+</tr></tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Divergências que precisam de decisão</h2>
+  <p class="lead">Nenhuma delas é problema de extração. São contradições dentro da própria planilha,
+  descompasso com a operação do hospital, ou prazo de processo. Publicar sem resolver produz
+  número defensável tecnicamente e errado na prática.</p>
+  <div class="note no">
+  <b>A4 · Tempo médio de permanência na emergência <span class="tipo">erro na planilha</span></b>
+  <p>A memória de cálculo da planilha repete a do item 3 (classificação → atendimento médico), que não é permanência. O motor foi escrito pela definição do NOME do indicador (chegada → saída). Precisa de ratificação da SMS antes de publicar número.</p>
+</div><div class="note no">
+  <b>A15 / P11 · Taxa de parada cardiorrespiratória na enfermaria <span class="tipo">erro na planilha</span></b>
+  <p>O indicador se chama PCR e a meta é ≤ 1 por 1.000 internações, mas a memória de cálculo da planilha conta ÓBITOS institucionais. Implementado como óbito, o resultado de junho dá 98,6 por 1.000 — ou seja, quase 100× a meta, porque são coisas diferentes. Publicar sem resolver isso é gerar não-conformidade artificial.</p>
+</div><div class="note no">
+  <b>A19 · Incidência de úlcera por pressão <span class="tipo">erro na planilha</span></b>
+  <p>A fórmula da planilha compara o resultado com 240 (=IF(J26&lt;=240,...)), herdado por cópia da linha de tempo de espera em minutos, quando a meta declarada é ≤ 5%. Com esse limite, o indicador pontua sempre.</p>
+</div><div class="note no">
+  <b>M5 · Percentual de satisfação da U&amp;E do Centro Materno <span class="tipo">erro na planilha</span></b>
+  <p>A memória de cálculo é idêntica à do item 4 (índice de questionários preenchidos). São indicadores diferentes com a mesma conta.</p>
+</div><div class="note ">
+  <b>A3.2 / P3.2 / M3.2 · Tempo de espera — LARANJA <span class="tipo">realidade da operação</span></b>
+  <p>O HMCML não usa a cor laranja. A tabela CLASSIFICACAO_RISCO tem 5 cores ativas: VERMELHO, AMARELO, VERDE, AZUL e SALUX — nenhuma classificação laranja em jan–jun/2026. O contrato pactuou 5 cores sobre uma escala de 4. Esses três subindicadores nunca vão ter numerador.</p>
+</div><div class="note ">
+  <b>A3.1 · Tempo de espera — VERMELHO <span class="tipo">realidade da operação</span></b>
+  <p>A meta contratual é 0 min, mas a parametrização do próprio Salux (CLASSIFICACAO_RISCO.QT_TEMPO) define 15 min para o vermelho no HMCML. Além disso o paciente vermelho vai direto para a emergência e não passa pelo fluxo que grava a hora do atendimento: em junho, só 2 dos 8 vermelhos têm o carimbo.</p>
+</div><div class="note ok">
+  <b>I11 · Alimentação do SIH/SUS <span class="tipo">processo/prazo</span></b>
+  <p>A AIH só é apresentada na competência seguinte à alta. Medir o mês recém-fechado devolve um número artificialmente baixo (junho medido em 23/07 dá 74,7%; com as AIH em digitação vai a ~92%). O indicador só deve ser apurado depois de fechada a segunda competência seguinte.</p>
+</div><div class="note ">
+  <b>A24 / A25 / A26 · Satisfação e NPS da internação <span class="tipo">realidade da operação</span></b>
+  <p>O questionário próprio de internação (modelo 10208) está fora de uso desde maio/2026. Os números que aparecem vêm de formulário de ambulatório aplicado a paciente internado.</p>
+</div>
+</section>
+
+<section>
+  <h2>Onde falta dado</h2>
+  <p class="lead">Campos que existem no schema e vêm vazios, e registros que simplesmente não são
+  feitos. Tudo medido, não suposto.</p>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>O que falta</th><th>O que foi medido</th><th>Indicadores afetados</th></tr></thead>
+      <tbody><tr><td><b>Hora de administração de medicamento</b></td><td>O Salux registra prescrição e dispensação, não a hora em que o remédio foi infundido.</td><td><code>A5 porta-agulha no IAM · A7 antibiótico na sepse em 3h · A18 profilaxia de TEV</code></td></tr><tr><td><b>ACOLHIMENTO.DT_HR_SENHA</b></td><td>Coluna 100% nula em toda a tabela — 0 de 1.569.466 linhas desde 05/2021. A hora real da senha existe em LISTA_SENHA.DT_HR_SENHA, e foi de lá que o motor A1 passou a ler.</td><td><code>A1 · P1 · M1 (tempo de acolhimento)</code></td></tr><tr><td><b>BAA.DT_INICIO_ATEND_MED / DT_FIM_ATEND_MED</b></td><td>Campos existem no schema e estão 0% preenchidos. A hora do atendimento médico usável é DT_ATEND_PAC, presente em 45% dos boletins.</td><td><code>todos os subindicadores 3.x</code></td></tr><tr><td><b>FIA.NR_OBITO</b></td><td>Preenchido em 0 de 734 altas de junho/2026 e em 1 de 4.330 altas do semestre. O óbito precisou ser identificado por outro caminho.</td><td><code>A15/A17 mortalidade · P11/P12 · M17 óbito materno</code></td></tr><tr><td><b>FIA.NR_DIAS_INTERNACAO</b></td><td>Vem 0 em 100% dos registros — campo morto. A permanência é calculada por diferença de datas.</td><td><code>A12 · A13 · P9 · M8 (média de permanência)</code></td></tr><tr><td><b>Pergunta de recomendação 0–10 (NPS)</b></td><td>Não existe em nenhum dos questionários em uso (modelos 10208 e 10209, conferidos item a item). Sem a pergunta, não há numerador possível.</td><td><code>A10 · A26 · P6 · P19 · M6 · M20 (todos os NPS)</code></td></tr><tr><td><b>Notificação do Núcleo de Segurança do Paciente</b></td><td>Quedas, flebite, lesão por pressão e conferência de pulseira não são registradas em sistema.</td><td><code>A19 · A20 · A21 · A22 · P13 · P14 · P15 · P16</code></td></tr><tr><td><b>Vigilância da CCIH</b></td><td>ITU associada a cateter e infecção de sítio cirúrgico exigem dispositivo-dia e busca ativa pós-alta — processo de vigilância que não existe na base.</td><td><code>A16 · M15</code></td></tr><tr><td><b>RH, SESMT, NEP, compras, manutenção e contabilidade</b></td><td>Nada disso está no Salux clínico.</td><td><code>I1 a I9 (10 dos 12 indicadores institucionais)</code></td></tr></tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Prova rastreável no prontuário</h2>
+  <p class="lead">Para conferir que o número não é caixa-preta: abaixo estão os 12 primeiros
+  boletins de <b>02/06/2026</b> que entram no indicador <b>Adulto 2 — tempo médio para
+  classificação de risco</b>. Cada linha é um atendimento real, localizável no Salux pelo número
+  do boletim. A conta é a subtração das duas colunas de data.</p>
+
+  <div class="note ok">
+    <b>Como auditar, passo a passo</b>
+    <p>1. Abra o Salux e localize o boletim pelo número (ex.: <code>87478/2026</code>, hospital 1) —
+    o número do boletim basta.<br>
+    2. Confira a hora de chegada e a hora da classificação de risco na ficha.<br>
+    3. Subtraia: é o valor da coluna "minutos".<br>
+    4. Some os 12 valores e divida por 12 — o resultado tem de bater com o rodapé da tabela.</p>
+    <p>Nome, CPF e número de prontuário foram deixados de fora de propósito — a regra do projeto
+    trata prontuário como dado pessoal. O número do boletim já localiza o atendimento no Salux,
+    então o relatório fica auditável sem carregar PII para dentro do repositório.</p>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>Boletim</th><th>Prontuário</th><th>Chegada</th><th>Classificação de risco</th>
+        <th class="right">Minutos</th><th>Cor</th><th>Setor</th>
+      </tr></thead>
+      <tbody><tr><td class='mono'>87476/2026</td><td class='mono'>—</td><td class='mono'>02/06/2026 00:08:37</td><td class='mono'>02/06/2026 00:19:29</td><td class='mono right'>10,87</td><td>AZUL</td><td class='mono'>49</td></tr><tr><td class='mono'>87478/2026</td><td class='mono'>—</td><td class='mono'>02/06/2026 00:24:18</td><td class='mono'>02/06/2026 00:29:28</td><td class='mono right'>5,17</td><td>VERDE</td><td class='mono'>40</td></tr><tr><td class='mono'>87480/2026</td><td class='mono'>—</td><td class='mono'>02/06/2026 00:47:18</td><td class='mono'>02/06/2026 00:49:35</td><td class='mono right'>2,28</td><td>AMARELO</td><td class='mono'>49</td></tr><tr><td class='mono'>87481/2026</td><td class='mono'>—</td><td class='mono'>02/06/2026 01:01:53</td><td class='mono'>02/06/2026 01:03:37</td><td class='mono right'>1,73</td><td>VERDE</td><td class='mono'>49</td></tr><tr><td class='mono'>87483/2026</td><td class='mono'>—</td><td class='mono'>02/06/2026 01:05:51</td><td class='mono'>02/06/2026 01:13:27</td><td class='mono right'>7,60</td><td>AMARELO</td><td class='mono'>57</td></tr><tr><td class='mono'>87486/2026</td><td class='mono'>—</td><td class='mono'>02/06/2026 01:56:27</td><td class='mono'>02/06/2026 01:59:03</td><td class='mono right'>2,60</td><td>VERDE</td><td class='mono'>40</td></tr><tr><td class='mono'>87487/2026</td><td class='mono'>—</td><td class='mono'>02/06/2026 02:13:23</td><td class='mono'>02/06/2026 02:18:17</td><td class='mono right'>4,90</td><td>VERDE</td><td class='mono'>63</td></tr><tr><td class='mono'>87488/2026</td><td class='mono'>—</td><td class='mono'>02/06/2026 02:14:55</td><td class='mono'>02/06/2026 02:19:55</td><td class='mono right'>5,00</td><td>VERDE</td><td class='mono'>40</td></tr><tr><td class='mono'>87489/2026</td><td class='mono'>—</td><td class='mono'>02/06/2026 03:21:43</td><td class='mono'>02/06/2026 03:23:30</td><td class='mono right'>1,78</td><td>AMARELO</td><td class='mono'>40</td></tr><tr><td class='mono'>87490/2026</td><td class='mono'>—</td><td class='mono'>02/06/2026 03:25:17</td><td class='mono'>02/06/2026 03:28:25</td><td class='mono right'>3,13</td><td>VERDE</td><td class='mono'>40</td></tr><tr><td class='mono'>87491/2026</td><td class='mono'>—</td><td class='mono'>02/06/2026 03:51:19</td><td class='mono'>02/06/2026 03:52:39</td><td class='mono right'>1,33</td><td>AMARELO</td><td class='mono'>40</td></tr><tr><td class='mono'>87494/2026</td><td class='mono'>—</td><td class='mono'>02/06/2026 05:40:20</td><td class='mono'>02/06/2026 05:42:06</td><td class='mono right'>1,77</td><td>VERDE</td><td class='mono'>40</td></tr></tbody>
+      <tfoot>
+        <tr class="bg-slate-50">
+          <td colspan="4" style="text-align:right"><b>Soma dos 12 · média da amostra</b></td>
+          <td class="right mono"><b>48,16</b></td>
+          <td colspan="2" class="mono"><b>4,01 min</b></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Como a amostra se encaixa no indicador</h3>
+      <ul class="plain">
+        <li><b>Amostra (12 boletins):</b> média de 4,01 min — é o recorte acima, conferível à mão.</li>
+        <li><b>Dia 02/06/2026 inteiro:</b> 351 boletins, média de <b>6,15 min</b>.</li>
+        <li><b>Junho/2026 inteiro (o número do indicador):</b> 10.699 boletins, soma de
+        76.268,67 minutos, média de <b>7,13 min</b> — meta de ≤ 10 min <b>cumprida</b>.</li>
+        <li>76.268,67 ÷ 10.699 = 7,129… → 7,13. A conta do indicador é essa, e nada além disso.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>O que essa prova não cobre</h3>
+      <ul class="plain">
+        <li>Ela confirma que <b>a conta está certa</b>, não que <b>o carimbo está certo</b>. Se a
+        enfermagem registrar a classificação com atraso, o dado nasce errado e nenhuma consulta
+        conserta.</li>
+        <li>O indicador exclui 11,1% dos boletins adultos do mês, que não têm hora de
+        classificação. Se esses forem sistematicamente os mais demorados, a média real é maior.</li>
+        <li>95 registros foram descartados por terem classificação carimbada <i>antes</i> da
+        chegada — herança do carimbo do acolhimento. Sem esse filtro a média cairia para 6,94 min.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Índices calculados sobre a execução real dos motores contra o Oracle do Salux (hospital 1,
+  01–30/06/2026), feita em 23/07/2026 por consulta somente-leitura. A amostra rastreável foi
+  extraída da mesma execução. Nenhum dado pessoal (nome, CPF, CNS) consta deste relatório.
+</footer>
+</div>
+<script>
+const linhas = [...document.querySelectorAll('#tbl tbody tr')];
+document.querySelectorAll('.fbtn').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.fbtn').forEach(o => o.classList.toggle('on', o === b));
+  const f = b.dataset.f;
+  linhas.forEach(l => { l.style.display = (f === 'todos' || l.dataset.faixa === f) ? '' : 'none'; });
+}));
+</script>
+</body>
+</html>

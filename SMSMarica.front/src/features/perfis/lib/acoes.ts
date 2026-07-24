@@ -62,6 +62,7 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'InteligenciaConfiguracao', rotulo: 'Configuração IA' },
   { id: 'InteligenciaAprendizado', rotulo: 'Aprendizado IA' },
   { id: 'AgenteIa', rotulo: 'Agente IA — terminal no servidor (administrativo)' },
+  { id: 'Indicadores', rotulo: 'Indicadores contratuais do HMCML' },
   { id: 'Especialidades', rotulo: 'Especialidades' },
   { id: 'Equipamentos', rotulo: 'Equipamentos' },
   { id: 'Agendamentos', rotulo: 'Agendamentos' },

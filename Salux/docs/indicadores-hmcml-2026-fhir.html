@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indicadores HMCML 2026 — plano de projeção FHIR R4</title>
+<style>
+:root {
+  color-scheme: light;
+  --plane:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --line:#c3c2b7; --ring:rgba(11,11,11,.10);
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4;
+  --o1:#86b6ef; --o2:#5598e7; --o3:#2a78d6; --o4:#1c5cab; --o5:#0d366b;
+  --crit:#d03b3b; --good:#0ca30c; --code-bg:#f2f2ee;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --plane:#0d0d0d; --surface:#1a1a19; --ink:#fff; --ink2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --line:#383835; --ring:rgba(255,255,255,.10);
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+    --o1:#3987e5; --o2:#2a78d6; --o3:#256abf; --o4:#1c5cab; --o5:#184f95;
+    --code-bg:#141413;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --plane:#0d0d0d; --surface:#1a1a19; --ink:#fff; --ink2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --line:#383835; --ring:rgba(255,255,255,.10);
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+  --o1:#3987e5; --o2:#2a78d6; --o3:#256abf; --o4:#1c5cab; --o5:#184f95;
+  --code-bg:#141413;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--plane); color:var(--ink);
+  font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
+.wrap { max-width:1240px; margin:0 auto; padding:28px 24px 80px; }
+.nav { display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:26px; font-size:12.5px; }
+.nav b, .nav a { padding:6px 12px; border-radius:999px; border:1px solid var(--ring); }
+.nav b { background:var(--ink); color:var(--surface); border-color:var(--ink); font-weight:600; }
+.nav a { color:var(--ink2); text-decoration:none; background:var(--surface); }
+.nav a:hover { color:var(--ink); border-color:var(--line); }
+header.top { border-bottom:1px solid var(--grid); padding-bottom:28px; margin-bottom:32px; }
+.eyebrow { font-size:12px; letter-spacing:.10em; text-transform:uppercase; color:var(--muted); margin:0 0 10px; }
+h1 { font-size:clamp(26px,3.4vw,38px); line-height:1.15; margin:0 0 12px; letter-spacing:-.02em; }
+.sub { color:var(--ink2); max-width:76ch; margin:0; }
+h2 { font-size:20px; margin:44px 0 6px; letter-spacing:-.01em; }
+h2 + .lead { color:var(--ink2); margin:0 0 18px; max-width:82ch; }
+h3 { font-size:15px; margin:0 0 14px; color:var(--ink2); font-weight:600; }
+p.lead { color:var(--ink2); max-width:82ch; }
+
+.tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin:26px 0 8px; }
+.tile { background:var(--surface); border:1px solid var(--ring); border-radius:12px; padding:18px 18px 16px; }
+.tile .v { font-size:34px; font-weight:650; letter-spacing:-.02em; line-height:1; }
+.tile .v small { font-size:15px; font-weight:500; color:var(--muted); margin-left:3px; }
+.tile .k { font-size:12.5px; color:var(--ink2); margin-top:8px; }
+.tile .n { font-size:12px; color:var(--muted); margin-top:5px; }
+.tile.hero .v { color:var(--s1); }
+.tile.warn .v { color:var(--crit); }
+
+.card { background:var(--surface); border:1px solid var(--ring); border-radius:12px; padding:20px; }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:18px; }
+@media (max-width:860px) { .grid2 { grid-template-columns:1fr; } }
+
+.note { background:var(--surface); border:1px solid var(--ring); border-left:3px solid var(--s2);
+  border-radius:0 10px 10px 0; padding:16px 18px; margin:16px 0; }
+.note.ok { border-left-color:var(--s3); }
+.note.no { border-left-color:var(--crit); }
+.note > b { display:block; margin-bottom:5px; }
+.note p { margin:0; color:var(--ink2); font-size:13.5px; }
+.note p + p { margin-top:9px; }
+
+ol.steps { padding-left:20px; color:var(--ink2); }
+ol.steps li { margin-bottom:11px; }
+ol.steps b { color:var(--ink); }
+ul.plain { list-style:none; padding:0; margin:0; color:var(--ink2); font-size:13.5px; }
+ul.plain li { margin-bottom:9px; padding-left:16px; position:relative; }
+ul.plain li::before { content:"–"; position:absolute; left:0; color:var(--muted); }
+
+table { width:100%; border-collapse:collapse; background:var(--surface);
+  border:1px solid var(--ring); border-radius:12px; overflow:hidden; }
+thead th { text-align:left; font-size:11.5px; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--muted); font-weight:600; padding:12px 14px; border-bottom:1px solid var(--grid); white-space:nowrap; }
+tbody td { padding:13px 14px; border-bottom:1px solid var(--grid); vertical-align:top; font-size:13.5px; }
+tbody tr:last-child td { border-bottom:0; }
+tbody tr:hover { background:color-mix(in srgb, var(--ink) 3%, transparent); }
+.tbl-wrap { overflow-x:auto; }
+code { font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--ink2); word-break:break-word; }
+pre { background:var(--code-bg); border:1px solid var(--ring); border-radius:10px; padding:15px 16px;
+  overflow-x:auto; margin:12px 0 0; }
+pre code { font-size:12px; line-height:1.6; color:var(--ink); white-space:pre; word-break:normal; }
+.kw { color:var(--s1); } .cmt { color:var(--muted); font-style:italic; }
+
+.pill { display:inline-flex; align-items:center; gap:6px; font-size:11.5px; padding:3px 10px 3px 8px;
+  border-radius:999px; color:var(--ink2); border:1px solid var(--ring); white-space:nowrap;
+  background:color-mix(in srgb, var(--pc) 10%, transparent); border-color:color-mix(in srgb, var(--pc) 40%, transparent); }
+.pill::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--pc); flex:none; }
+.p1 { --pc:var(--s1); } .p2 { --pc:var(--s2); } .p3 { --pc:var(--s3); }
+.p4 { --pc:var(--s4); } .p5 { --pc:var(--s5); }
+.sw { width:11px; height:11px; border-radius:3px; display:inline-block; flex:none; position:relative; top:1px; }
+.sw.s1{background:var(--s1)} .sw.s2{background:var(--s2)} .sw.s3{background:var(--s3)}
+.sw.s4{background:var(--s4)} .sw.s5{background:var(--s5)}
+.dots { display:inline-flex; gap:3px; }
+.dots i { width:7px; height:7px; border-radius:50%; display:block; }
+.don { background:var(--ink2); } .doff { background:var(--grid); }
+.dif-n { font-size:12px; color:var(--muted); margin-left:7px; font-variant-numeric:tabular-nums; }
+
+.bar-row { display:grid; grid-template-columns:190px 1fr 34px; align-items:center; gap:12px; margin-bottom:10px; }
+.bar-lbl { font-size:12.5px; color:var(--ink2); }
+.bar-track { height:15px; background:var(--grid); border-radius:4px; overflow:hidden; }
+.bar-fill { display:block; height:100%; border-radius:0 4px 4px 0; transition:width .3s; }
+.bar-val { font-size:13px; text-align:right; font-variant-numeric:tabular-nums; color:var(--ink2); }
+.s1{background:var(--s1)} .s2{background:var(--s2)} .s3{background:var(--s3)} .s4{background:var(--s4)} .s5{background:var(--s5)}
+.o1{background:var(--o1)} .o2{background:var(--o2)} .o3{background:var(--o3)} .o4{background:var(--o4)} .o5{background:var(--o5)}
+
+.motor { background:var(--surface); border:1px solid var(--ring); border-radius:12px; padding:22px 24px; margin-bottom:16px; }
+.motor h3 { font-size:16px; color:var(--ink); margin:0 0 4px; }
+.motor .mid { font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+.motor .cobre { font-size:12.5px; color:var(--muted); margin-top:14px; padding-top:12px; border-top:1px solid var(--grid); }
+.motor .cobre b { color:var(--ink2); font-weight:600; }
+.tabs { font-size:12.5px; color:var(--ink2); margin:8px 0 0; }
+.tabs code { color:var(--ink); }
+
+footer { margin-top:56px; padding-top:20px; border-top:1px solid var(--grid); color:var(--muted); font-size:12.5px; }
+
+.c-num { color:var(--muted); font-variant-numeric:tabular-nums; width:40px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="nav"><a href="indicadores-hmcml-2026-viabilidade.html">Panorama</a><a href="indicadores-hmcml-2026-oracle.html">Extração pelo Oracle Salux</a><b>Plano de projeção FHIR</b></nav>
+
+<header class="top">
+  <p class="eyebrow">SMS Maricá · Hospital Conde Modesto Leal · relatório 3 de 3</p>
+  <h1>O que deve ir para o hub FHIR — e o que não deve</h1>
+  <p class="sub">Onze recursos que, projetados do Salux para o Automais.Fhir, tornam a planilha de indicadores
+  consultável pelo hub. Todos <b>dentro do padrão R4</b>: nenhum campo inventado, nenhuma extensão criada onde
+  já existe elemento padrão, nenhum código gravado em <i>system</i> oficial sem confirmação.</p>
+</header>
+
+<div class="tiles">
+  <div class="tile hero"><div class="v">11</div>
+    <div class="k">Recursos a projetar</div><div class="n">2 já existem · 9 a criar</div></div>
+  <div class="tile"><div class="v">70<small>/94</small></div>
+    <div class="k">Linhas da planilha destravadas</div><div class="n">9 delas presas na origem</div></div>
+  <div class="tile"><div class="v">37</div>
+    <div class="k">Só com F1 + F5</div><div class="n">Esforço pequeno a médio</div></div>
+  <div class="tile warn"><div class="v">6</div>
+    <div class="k">Grupos que não cabem no FHIR</div><div class="n">RH, custos, compras, faturamento</div></div>
+</div>
+
+<section>
+  <h2>A régua</h2>
+  <p class="lead">Três princípios que decidem o que entra — e que valem mais que qualquer lista:</p>
+  <ol class="steps">
+    <li><b>Se o padrão já tem elemento, usa-se o elemento.</b> O caso emblemático é
+    <code>Encounter.statusHistory</code>: quatro indicadores de tempo por aba que hoje parecem exigir campo
+    novo cabem num array que o R4 define desde sempre. Extensão só quando o padrão realmente não cobre.</li>
+    <li><b>Recurso sem origem é recurso vazio.</b> <code>fhir.medication_administration</code> já existe no hub
+    com zero linhas — não por bug, mas porque o Salux não registra a hora da administração. Criar
+    <code>AdverseEvent</code> antes de o NSP notificar em sistema repetiria o mesmo erro.</li>
+    <li><b>Gestão não é clínica.</b> RH, custo, compras, manutenção e faturamento não viram recurso FHIR só
+    porque estão na mesma planilha. Eles têm casa: o schema de negócio do SMSMarica e os sistemas próprios.</li>
+  </ol>
+  <div class="note ok">
+    <b>O que o hub já tem — a linha de base</b>
+    <p>252.858 pacientes · 1.306.687 encontros (jan/2021 → jun/2026) · 1.266.520 diagnósticos CID-10 ·
+    4.863.580 observações · 2.869.431 documentos · 1.688.313 prescrições · 3.140 profissionais.
+    Tudo com <code>meta.source</code> apontando para a base de origem, como manda a proveniência multi-PEP.
+    O plano abaixo é acréscimo sobre isso — não recomeço.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Os onze recursos</h2>
+  <p class="lead">Cada bloco traz o que entra, de onde vem no Salux, a terminologia correta e um exemplo válido
+  em R4 — pronto para virar teste do importador.</p>
+  <div class="motor" id="F1">
+  <div class="mid">F1 · esforço Pequeno · complexidade <span class="dots"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span></div>
+  <h3>Encounter <span class="pill p3" style="font-size:11px;vertical-align:2px">já no hub</span></h3>
+  <p class="tabs" style="color:var(--muted)">enriquecer o que já existe</p>
+  <p class="tabs" style="margin-top:12px"><b>O que entra:</b> <code>statusHistory[]</code> — a linha do tempo do atendimento, com <code>period</code> por status:
+  <code>arrived</code> (chegada/totem) → <code>triaged</code> (classificação de risco) →
+  <code>in-progress</code> (atendimento médico) → <code>finished</code> (saída).<br>
+  <code>participant[].period.start</code> — o instante em que o médico assumiu o paciente.<br>
+  <code>reasonCode</code> — motivo do atendimento · <code>serviceType</code> — setor/especialidade ·
+  <code>serviceProvider</code> → Organization · <code>location[]</code> → Location.</p>
+  <p class="tabs" style="margin-top:10px"><b>Origem no Salux:</b> <code>BAA: DT_CHEGADA, DT_ATENDIMENTO, DT_SAIDA, CD_MOTIVO_ATENDIMENTO, CD_UNIDADE · TRIAGEM · ACOLHIMENTO</code></p>
+  <p class="tabs" style="margin-top:10px"><b>Terminologia:</b> <code>http://hl7.org/fhir/encounter-status</code> (statusHistory) ·
+  <code>…/v3-ActCode</code> (class, já em uso) · <code>…/v3-ParticipationType</code> (ATND / PPRF)</p>
+  <pre><code>{
+  &quot;resourceType&quot;: &quot;Encounter&quot;,
+  &quot;status&quot;: &quot;finished&quot;,
+  &quot;class&quot;: { &quot;system&quot;: &quot;http://terminology.hl7.org/CodeSystem/v3-ActCode&quot;,
+             &quot;code&quot;: &quot;EMER&quot;, &quot;display&quot;: &quot;emergency&quot; },
+  &quot;statusHistory&quot;: [
+    { &quot;status&quot;: &quot;arrived&quot;,     &quot;period&quot;: { &quot;start&quot;: &quot;2026-07-02T08:12:00-03:00&quot;,
+                                           &quot;end&quot;:   &quot;2026-07-02T08:19:00-03:00&quot; } },
+    { &quot;status&quot;: &quot;triaged&quot;,     &quot;period&quot;: { &quot;start&quot;: &quot;2026-07-02T08:19:00-03:00&quot;,
+                                           &quot;end&quot;:   &quot;2026-07-02T09:05:00-03:00&quot; } },
+    { &quot;status&quot;: &quot;in-progress&quot;, &quot;period&quot;: { &quot;start&quot;: &quot;2026-07-02T09:05:00-03:00&quot;,
+                                           &quot;end&quot;:   &quot;2026-07-02T11:40:00-03:00&quot; } }
+  ],
+  &quot;participant&quot;: [{ &quot;individual&quot;: { &quot;reference&quot;: &quot;Practitioner/…&quot; },
+                    &quot;period&quot;: { &quot;start&quot;: &quot;2026-07-02T09:05:00-03:00&quot; } }],
+  &quot;period&quot;: { &quot;start&quot;: &quot;2026-07-02T08:12:00-03:00&quot;, &quot;end&quot;: &quot;2026-07-02T11:40:00-03:00&quot; }
+}</code></pre>
+  <p class="tabs" style="margin-top:12px"><b>É a maior alavanca do plano inteiro.</b> Um único array padrão (<code>statusHistory</code>) resolve quatro indicadores de tempo × três abas, sem inventar extensão nenhuma. Hoje o Encounter só guarda início e fim.</p>
+  <div class="cobre"><b>Destrava (<b>19</b> indicadores):</b> Adulto 1–4 · Pediátrico 1–3, 7 · Materno 1–3 — todos os indicadores de tempo da urgência</div>
+</div><div class="motor" id="F2">
+  <div class="mid">F2 · esforço Médio · complexidade <span class="dots"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span></div>
+  <h3>Encounter (class IMP) <span class="pill p1" style="font-size:11px;vertical-align:2px">a criar</span></h3>
+  <p class="tabs" style="color:var(--muted)">a internação, que não existe no hub</p>
+  <p class="tabs" style="margin-top:12px"><b>O que entra:</b> Mesmo recurso, <code>class = IMP</code> (inpatient), alimentado pela <code>FIA</code>:<br>
+  <code>period.start/end</code> (baixa → alta) · <code>hospitalization.dischargeDisposition</code> ·
+  <code>hospitalization.admitSource</code> · <code>diagnosis[]</code> com
+  <code>use = DD</code> (diagnóstico de saída) e <code>AD</code> (de admissão) ·
+  <code>location[]</code> com período por leito.</p>
+  <p class="tabs" style="margin-top:10px"><b>Origem no Salux:</b> <code>FIA (dt_baixa → dt_alta, cd_cid, id_internacao, nr_obito) · FIA_LEITO (93.078 transferências)</code></p>
+  <p class="tabs" style="margin-top:10px"><b>Terminologia:</b> <code>…/v3-ActCode</code> → <code>IMP</code> ·
+  <code>…/discharge-disposition</code> → <code>home</code> (alta), <code>hosp-trans</code> (transferência),
+  <code>exp</code> (óbito), <code>oth</code> · <code>…/diagnosis-role</code> → <code>DD</code> / <code>AD</code></p>
+  <pre><code>{
+  &quot;resourceType&quot;: &quot;Encounter&quot;,
+  &quot;status&quot;: &quot;finished&quot;,
+  &quot;class&quot;: { &quot;system&quot;: &quot;http://terminology.hl7.org/CodeSystem/v3-ActCode&quot;, &quot;code&quot;: &quot;IMP&quot; },
+  &quot;subject&quot;: { &quot;reference&quot;: &quot;Patient/…&quot; },
+  &quot;period&quot;: { &quot;start&quot;: &quot;2026-06-14T22:10:00-03:00&quot;, &quot;end&quot;: &quot;2026-06-21T10:30:00-03:00&quot; },
+  &quot;diagnosis&quot;: [{ &quot;condition&quot;: { &quot;reference&quot;: &quot;Condition/…&quot; },
+                  &quot;use&quot;: { &quot;coding&quot;: [{ &quot;system&quot;: &quot;http://terminology.hl7.org/CodeSystem/diagnosis-role&quot;,
+                                        &quot;code&quot;: &quot;DD&quot;, &quot;display&quot;: &quot;Discharge diagnosis&quot; }] } }],
+  &quot;hospitalization&quot;: {
+    &quot;dischargeDisposition&quot;: { &quot;coding&quot;: [{ &quot;system&quot;: &quot;http://terminology.hl7.org/CodeSystem/discharge-disposition&quot;,
+                                           &quot;code&quot;: &quot;home&quot; }] } },
+  &quot;location&quot;: [{ &quot;location&quot;: { &quot;reference&quot;: &quot;Location/leito-…&quot; },
+                 &quot;period&quot;: { &quot;start&quot;: &quot;2026-06-14T23:40:00-03:00&quot;,
+                             &quot;end&quot;:   &quot;2026-06-21T10:30:00-03:00&quot; } }]
+}</code></pre>
+  <p class="tabs" style="margin-top:12px">O hub tem 1,3 milhão de encontros e <b>nenhum</b> de internação. Nenhum recurso novo precisa ser criado: é o mesmo Encounter que já está implementado, com outra <code>class</code> e outra origem no Salux.</p>
+  <div class="cobre"><b>Destrava (<b>18</b> indicadores):</b> Adulto 11–15, 17 · Pediátrico 8–12 · Materno 7, 8, 17 · Perfil Epidemiológico 8–11</div>
+</div><div class="motor" id="F3">
+  <div class="mid">F3 · esforço Pequeno · complexidade <span class="dots"><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i></span></div>
+  <h3>Location <span class="pill p1" style="font-size:11px;vertical-align:2px">a criar</span></h3>
+  <p class="tabs" style="color:var(--muted)">unidade, quarto e leito</p>
+  <p class="tabs" style="margin-top:12px"><b>O que entra:</b> Um Location por leito, com <code>partOf</code> apontando para o quarto e este para a unidade —
+  a hierarquia que o padrão espera. <code>physicalType</code> = <code>bd</code> (bed) /
+  <code>ro</code> (room) / <code>wa</code> (ward). <code>operationalStatus</code> carrega ocupado,
+  vago, em higienização ou isolamento.</p>
+  <p class="tabs" style="margin-top:10px"><b>Origem no Salux:</b> <code>LEITO (548) · QUARTO (43) · UNIDADE_HOSPITALAR · FIA_LEITO (situação e higienização)</code></p>
+  <p class="tabs" style="margin-top:10px"><b>Terminologia:</b> <code>…/location-physical-type</code> → <code>bd</code> / <code>ro</code> / <code>wa</code> ·
+  <code>…/v2-0116</code> → <code>O</code> ocupado, <code>U</code> vago, <code>H</code> higienização,
+  <code>I</code> isolado, <code>K</code> contaminado, <code>C</code> fechado</p>
+  <pre><code>{
+  &quot;resourceType&quot;: &quot;Location&quot;,
+  &quot;status&quot;: &quot;active&quot;,
+  &quot;name&quot;: &quot;Leito 302-A&quot;,
+  &quot;mode&quot;: &quot;instance&quot;,
+  &quot;physicalType&quot;: { &quot;coding&quot;: [{ &quot;system&quot;: &quot;http://terminology.hl7.org/CodeSystem/location-physical-type&quot;,
+                                 &quot;code&quot;: &quot;bd&quot;, &quot;display&quot;: &quot;Bed&quot; }] },
+  &quot;operationalStatus&quot;: { &quot;system&quot;: &quot;http://terminology.hl7.org/CodeSystem/v2-0116&quot;,
+                         &quot;code&quot;: &quot;O&quot;, &quot;display&quot;: &quot;Occupied&quot; },
+  &quot;partOf&quot;: { &quot;reference&quot;: &quot;Location/quarto-302&quot; },
+  &quot;managingOrganization&quot;: { &quot;reference&quot;: &quot;Organization/hmcml&quot; }
+}</code></pre>
+  <p class="tabs" style="margin-top:12px">Sem Location o hub nunca vai conseguir separar Adulto × Pediátrico × Materno Infantil — que é exatamente o recorte que a planilha exige e que hoje trava a entrega.</p>
+  <div class="cobre"><b>Destrava (estrutural):</b> Habilita a taxa de ocupação (Adulto 11 · Pediátrico 8 · Materno 7) e o recorte por bloco — sempre junto com F2</div>
+</div><div class="motor" id="F4">
+  <div class="mid">F4 · esforço Trivial · complexidade <span class="dots"><i class="don"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i></span></div>
+  <h3>Organization <span class="pill p1" style="font-size:11px;vertical-align:2px">a criar</span></h3>
+  <p class="tabs" style="color:var(--muted)">as três unidades da rede</p>
+  <p class="tabs" style="margin-top:12px"><b>O que entra:</b> Um Organization por unidade, com o <b>CNES</b> como identifier — o mesmo identificador que o resto do
+  ecossistema SMS Maricá já usa para unidade. Vira o <code>serviceProvider</code> de todo Encounter.</p>
+  <p class="tabs" style="margin-top:10px"><b>Origem no Salux:</b> <code>HOSPITAL · UNIDADE_HOSPITALAR (cd_hospital 1 = HMCML · 2 = UPA Inoã · 3 = PA Santa Rita)</code></p>
+  <p class="tabs" style="margin-top:10px"><b>Terminologia:</b> <code>…/organization-type</code> → <code>prov</code> (healthcare provider) ·
+  identifier CNES (o mesmo já usado em <code>unidade.cnes</code> no SMSMarica)</p>
+  <pre><code>{
+  &quot;resourceType&quot;: &quot;Organization&quot;,
+  &quot;identifier&quot;: [{ &quot;system&quot;: &quot;urn:oid:2.16.840.1.113883.13.36&quot;, &quot;value&quot;: &quot;&lt;CNES&gt;&quot; }],
+  &quot;active&quot;: true,
+  &quot;type&quot;: [{ &quot;coding&quot;: [{ &quot;system&quot;: &quot;http://terminology.hl7.org/CodeSystem/organization-type&quot;,
+                          &quot;code&quot;: &quot;prov&quot; }] }],
+  &quot;name&quot;: &quot;Hospital Conde Modesto Leal&quot;
+}</code></pre>
+  <p class="tabs" style="margin-top:12px">São três registros. O ganho não é volume — é passar a poder responder 'quantos atendimentos na UPA Inoã' sem depender de decifrar o identifier do Encounter, como é preciso hoje.</p>
+  <div class="cobre"><b>Destrava (estrutural):</b> Recorte por unidade em todos os indicadores das três abas</div>
+</div><div class="motor" id="F5">
+  <div class="mid">F5 · esforço Médio · complexidade <span class="dots"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span></div>
+  <h3>QuestionnaireResponse <span class="pill p1" style="font-size:11px;vertical-align:2px">a criar</span></h3>
+  <p class="tabs" style="color:var(--muted)">a pesquisa de satisfação como dado, não como PDF</p>
+  <p class="tabs" style="margin-top:12px"><b>O que entra:</b> Um <code>Questionnaire</code> por modelo de pesquisa do eDoc (a estrutura já existe em
+  <code>EDOC_DOCUMENTO_ITEM</code>) e um <code>QuestionnaireResponse</code> por questionário respondido,
+  com <code>item[].answer</code> tipado — em vez do HTML que chega hoje dentro do DocumentReference.</p>
+  <p class="tabs" style="margin-top:10px"><b>Origem no Salux:</b> <code>EDOC_MOVIMENTO + EDOC_MOVIMENTO_ITEM dos modelos de pesquisa (77.167 já respondidos e no hub como HTML)</code></p>
+  <p class="tabs" style="margin-top:10px"><b>Terminologia:</b> <code>…/questionnaire-answers</code> (status: <code>completed</code>) ·
+  respostas como <code>valueCoding</code> / <code>valueInteger</code> (NPS 0–10) — nunca como texto solto</p>
+  <pre><code>{
+  &quot;resourceType&quot;: &quot;QuestionnaireResponse&quot;,
+  &quot;status&quot;: &quot;completed&quot;,
+  &quot;questionnaire&quot;: &quot;Questionnaire/pesquisa-satisfacao-ambulatorio&quot;,
+  &quot;subject&quot;:   { &quot;reference&quot;: &quot;Patient/…&quot; },
+  &quot;encounter&quot;: { &quot;reference&quot;: &quot;Encounter/…&quot; },
+  &quot;authored&quot;: &quot;2026-07-02T11:55:00-03:00&quot;,
+  &quot;item&quot;: [
+    { &quot;linkId&quot;: &quot;satisfacao-geral&quot;, &quot;text&quot;: &quot;Como você avalia o atendimento?&quot;,
+      &quot;answer&quot;: [{ &quot;valueCoding&quot;: { &quot;code&quot;: &quot;muito-satisfeito&quot;, &quot;display&quot;: &quot;Muito satisfeito&quot; } }] },
+    { &quot;linkId&quot;: &quot;nps&quot;, &quot;text&quot;: &quot;De 0 a 10, o quanto recomendaria?&quot;,
+      &quot;answer&quot;: [{ &quot;valueInteger&quot;: 9 }] }
+  ]
+}</code></pre>
+  <p class="tabs" style="margin-top:12px">Dezoito indicadores com um recurso só — o melhor retorno por esforço da lista, depois do F1. Antes de codificar, confirmar se a pergunta de recomendação (0–10) existe mesmo nos questionários atuais; sem ela, os três NPS não têm numerador — e isso é problema de formulário, não de FHIR.</p>
+  <div class="cobre"><b>Destrava (<b>18</b> indicadores):</b> Adulto 8–10, 24–26 · Pediátrico 4–6, 17–19 · Materno 4–6, 18–20</div>
+</div><div class="motor" id="F6">
+  <div class="mid">F6 · esforço Médio · complexidade <span class="dots"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span></div>
+  <h3>Procedure <span class="pill p1" style="font-size:11px;vertical-align:2px">a criar</span></h3>
+  <p class="tabs" style="color:var(--muted)">partos, cirurgias e procedimentos SUS</p>
+  <p class="tabs" style="margin-top:12px"><b>O que entra:</b> <code>status</code> · <code>code</code> (SIGTAP) · <code>subject</code> · <code>encounter</code> ·
+  <code>performed[x]</code> · <code>performer[].actor</code> + <code>performer[].function</code> —
+  é o <code>function</code> que responde 'parto assistido por enfermeiro obstétrico'.</p>
+  <p class="tabs" style="margin-top:10px"><b>Origem no Salux:</b> <code>FIA.CD_PROCEDIMENTO · PROCEDIMENTO · CIRURGIA · TU_BPA_UNIFICADA · AIH</code></p>
+  <p class="tabs" style="margin-top:10px"><b>Terminologia:</b> SIGTAP — usar o CodeSystem da RNDS quando confirmado; até lá <code>urn:salux:procedimento</code>
+  com o código SIGTAP em <code>code</code>. <b>Não inventar URL de CodeSystem.</b></p>
+  <pre><code>{
+  &quot;resourceType&quot;: &quot;Procedure&quot;,
+  &quot;status&quot;: &quot;completed&quot;,
+  &quot;code&quot;: { &quot;coding&quot;: [{ &quot;system&quot;: &quot;urn:salux:procedimento&quot;, &quot;code&quot;: &quot;0310010039&quot;,
+                         &quot;display&quot;: &quot;Parto normal&quot; }] },
+  &quot;subject&quot;:   { &quot;reference&quot;: &quot;Patient/…&quot; },
+  &quot;encounter&quot;: { &quot;reference&quot;: &quot;Encounter/…&quot; },
+  &quot;performedDateTime&quot;: &quot;2026-06-15T03:22:00-03:00&quot;,
+  &quot;performer&quot;: [{ &quot;actor&quot;: { &quot;reference&quot;: &quot;Practitioner/…&quot; },
+                  &quot;function&quot;: { &quot;text&quot;: &quot;Enfermeiro obstétrico&quot; } }]
+}</code></pre>
+  <p class="tabs" style="margin-top:12px">Depende de o parto ser registrado com o executor real, não só com o médico responsável pela internação. Vale confirmar em campo antes de prometer o indicador.</p>
+  <div class="cobre"><b>Destrava (<b>4</b> indicadores):</b> Materno 9, 11 · Adulto 23 · Perfil Epidemiológico 7</div>
+</div><div class="motor" id="F7">
+  <div class="mid">F7 · esforço Médio · complexidade <span class="dots"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span></div>
+  <h3>ServiceRequest + DiagnosticReport <span class="pill p1" style="font-size:11px;vertical-align:2px">a criar</span></h3>
+  <p class="tabs" style="color:var(--muted)">solicitação e laudo de exame</p>
+  <p class="tabs" style="margin-top:12px"><b>O que entra:</b> <code>ServiceRequest</code> (status, intent, subject, <code>authoredOn</code>) para a solicitação e
+  <code>DiagnosticReport</code> (status, code, subject, <code>effectiveDateTime</code>, <code>issued</code>)
+  para o laudo. A diferença entre <code>authoredOn</code> e <code>effectiveDateTime</code> é o tempo porta-exame.</p>
+  <p class="tabs" style="margin-top:10px"><b>Origem no Salux:</b> <code>SOL_EXAME (1.105.204) · SOL_EXAME_ITEM (3.845.942) · LAUDO (43.204)</code></p>
+  <p class="tabs" style="margin-top:10px"><b>Terminologia:</b> <code>…/observation-category</code> não se aplica; usar <code>DiagnosticReport.category</code> com
+  <code>…/v2-0074</code> (<code>RAD</code> radiologia, <code>LAB</code> laboratório)</p>
+  <pre><code>{
+  &quot;resourceType&quot;: &quot;DiagnosticReport&quot;,
+  &quot;status&quot;: &quot;final&quot;,
+  &quot;category&quot;: [{ &quot;coding&quot;: [{ &quot;system&quot;: &quot;http://terminology.hl7.org/CodeSystem/v2-0074&quot;,
+                              &quot;code&quot;: &quot;RAD&quot; }] }],
+  &quot;code&quot;: { &quot;coding&quot;: [{ &quot;system&quot;: &quot;urn:salux:procedimento&quot;, &quot;code&quot;: &quot;0206010036&quot;,
+                         &quot;display&quot;: &quot;Tomografia computadorizada de crânio&quot; }] },
+  &quot;subject&quot;: { &quot;reference&quot;: &quot;Patient/…&quot; },
+  &quot;effectiveDateTime&quot;: &quot;2026-07-02T09:48:00-03:00&quot;,
+  &quot;issued&quot;: &quot;2026-07-02T10:31:00-03:00&quot;
+}</code></pre>
+  <p class="tabs" style="margin-top:12px"><b>Atenção à régua vigente:</b> a decisão em vigor é que Solicitação de Exame e Laudo do SMSMarica ficam <b>só</b> no schema de negócio e não projetam para o FHIR. Trazer o exame do Salux para o hub é uma mudança dessa régua — precisa de ADR antes de implementar, não só de código.</p>
+  <div class="cobre"><b>Destrava (<b>1</b> indicadores):</b> Adulto 6 (porta-tomografia no AVC)</div>
+</div><div class="motor" id="F8">
+  <div class="mid">F8 · esforço Bloqueado na origem · complexidade <span class="dots"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i></span></div>
+  <h3>MedicationAdministration <span class="pill p5" style="font-size:11px;vertical-align:2px">existe vazio</span></h3>
+  <p class="tabs" style="color:var(--muted)">a hora em que o remédio entrou no paciente</p>
+  <p class="tabs" style="margin-top:12px"><b>O que entra:</b> <code>status</code> · <code>medication[x]</code> · <code>subject</code> · <code>effective[x]</code> —
+  esse <code>effectiveDateTime</code> é literalmente o número que falta para porta-agulha, sepse e TEV.</p>
+  <p class="tabs" style="margin-top:10px"><b>Origem no Salux:</b> <code>Hoje: nada. O Salux registra prescrição e dispensação, não a administração.</code></p>
+  <p class="tabs" style="margin-top:10px"><b>Terminologia:</b> <code>…/medication-admin-status</code> → <code>completed</code> · RxNorm não se aplica; usar <code>urn:salux:matmed</code> como já é feito no MedicationRequest</p>
+  <pre><code>{
+  &quot;resourceType&quot;: &quot;MedicationAdministration&quot;,
+  &quot;status&quot;: &quot;completed&quot;,
+  &quot;medicationCodeableConcept&quot;: { &quot;coding&quot;: [{ &quot;system&quot;: &quot;urn:salux:matmed&quot;,
+                                              &quot;code&quot;: &quot;…&quot;, &quot;display&quot;: &quot;Alteplase 50mg&quot; }] },
+  &quot;subject&quot;:   { &quot;reference&quot;: &quot;Patient/…&quot; },
+  &quot;context&quot;:   { &quot;reference&quot;: &quot;Encounter/…&quot; },
+  &quot;effectiveDateTime&quot;: &quot;2026-07-02T10:22:00-03:00&quot;
+}</code></pre>
+  <p class="tabs" style="margin-top:12px">A tabela <code>fhir.medication_administration</code> já existe no hub e está com <b>zero</b> linhas — não por falha do importador, mas porque o dado não existe na origem. Enquanto a enfermagem não registrar a checagem de administração, estes três indicadores não saem de lugar nenhum.</p>
+  <div class="cobre"><b>Destrava (<b>3</b> indicadores):</b> Adulto 5, 7, 18</div>
+</div><div class="motor" id="F9">
+  <div class="mid">F9 · esforço Pequeno · complexidade <span class="dots"><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i><i class="doff"></i></span></div>
+  <h3>Observation (ampliar) <span class="pill p3" style="font-size:11px;vertical-align:2px">já no hub</span></h3>
+  <p class="tabs" style="color:var(--muted)">Apgar, escalas clínicas e antropometria</p>
+  <p class="tabs" style="margin-top:12px"><b>O que entra:</b> O recurso já está em produção com 4,86 milhões de registros (vitais + classificação de risco).
+  Ampliar para: Apgar do 5º minuto, escalas de Braden / Morse / Glasgow (que o eDoc já calcula e pontua)
+  e peso/altura do recém-nascido.</p>
+  <p class="tabs" style="margin-top:10px"><b>Origem no Salux:</b> <code>SINAIS_VITAIS (colunada) · EDOC_MOVIMENTO_ITEM das escalas (Braden 41.766/ano, Morse 39.748, Glasgow 34.447)</code></p>
+  <p class="tabs" style="margin-top:10px"><b>Terminologia:</b> LOINC — Apgar 5º minuto <code>9274-2</code> (confirmar no LOINC antes de gravar) ·
+  categoria <code>survey</code> para escalas, <code>vital-signs</code> para vitais ·
+  <code>valueInteger</code> para escore, <code>valueQuantity</code> + UCUM para medida</p>
+  <pre><code>{
+  &quot;resourceType&quot;: &quot;Observation&quot;,
+  &quot;status&quot;: &quot;final&quot;,
+  &quot;category&quot;: [{ &quot;coding&quot;: [{ &quot;system&quot;: &quot;http://terminology.hl7.org/CodeSystem/observation-category&quot;,
+                              &quot;code&quot;: &quot;survey&quot; }] }],
+  &quot;code&quot;: { &quot;coding&quot;: [{ &quot;system&quot;: &quot;http://loinc.org&quot;, &quot;code&quot;: &quot;9274-2&quot;,
+                         &quot;display&quot;: &quot;Apgar score at 5 minutes&quot; }] },
+  &quot;subject&quot;: { &quot;reference&quot;: &quot;Patient/recem-nascido-…&quot; },
+  &quot;effectiveDateTime&quot;: &quot;2026-06-15T03:27:00-03:00&quot;,
+  &quot;valueInteger&quot;: 9
+}</code></pre>
+  <p class="tabs" style="margin-top:12px">As escalas do eDoc são um caso raro de EAV bem-comportado: a pergunta, a pontuação e o resultado já estão separados por <code>EDOC_REGRA_FORMULA</code>. Dá para projetar o escore sem interpretar texto livre.</p>
+  <div class="cobre"><b>Destrava (<b>1</b> indicadores):</b> Materno 13 (Apgar) · insumo para UPP e quedas</div>
+</div><div class="motor" id="F10">
+  <div class="mid">F10 · esforço Bloqueado na origem · complexidade <span class="dots"><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i><i class="don"></i></span></div>
+  <h3>AdverseEvent <span class="pill p1" style="font-size:11px;vertical-align:2px">a criar</span></h3>
+  <p class="tabs" style="color:var(--muted)">queda, flebite e lesão por pressão</p>
+  <p class="tabs" style="margin-top:12px"><b>O que entra:</b> <code>subject</code> (único obrigatório) · <code>event</code> · <code>date</code> ·
+  <code>seriousness</code> · <code>suspectEntity</code>. É o recurso correto do R4 para evento de segurança
+  do paciente — não forçar Condition nem Observation.</p>
+  <p class="tabs" style="margin-top:10px"><b>Origem no Salux:</b> <code>Hoje: notificação em papel/planilha do Núcleo de Segurança do Paciente.</code></p>
+  <p class="tabs" style="margin-top:10px"><b>Terminologia:</b> SNOMED CT para o evento quando houver correspondência confirmada; caso contrário, CodeSystem local documentado — <b>nunca</b> um código inventado num system oficial.</p>
+  <pre><code>{
+  &quot;resourceType&quot;: &quot;AdverseEvent&quot;,
+  &quot;actuality&quot;: &quot;actual&quot;,
+  &quot;category&quot;: [{ &quot;coding&quot;: [{ &quot;system&quot;: &quot;http://terminology.hl7.org/CodeSystem/adverse-event-category&quot;,
+                              &quot;code&quot;: &quot;product-use-error&quot; }] }],
+  &quot;event&quot;: { &quot;text&quot;: &quot;Queda da própria altura, sem lesão&quot; },
+  &quot;subject&quot;: { &quot;reference&quot;: &quot;Patient/…&quot; },
+  &quot;date&quot;: &quot;2026-06-18T04:15:00-03:00&quot;,
+  &quot;seriousness&quot;: { &quot;coding&quot;: [{ &quot;system&quot;: &quot;http://terminology.hl7.org/CodeSystem/adverse-event-seriousness&quot;,
+                                &quot;code&quot;: &quot;non-serious&quot; }] }
+}</code></pre>
+  <p class="tabs" style="margin-top:12px">O padrão está pronto e é limpo; a origem é que não existe. Se o NSP passar a notificar em sistema, seis indicadores atravessam de uma vez — e o denominador (pacientes-dia) já vem do F2.</p>
+  <div class="cobre"><b>Destrava (<b>6</b> indicadores):</b> Adulto 19–21 · Pediátrico 13–15</div>
+</div><div class="motor" id="F11">
+  <div class="mid">F11 · esforço Médio · complexidade <span class="dots"><i class="don"></i><i class="don"></i><i class="don"></i><i class="doff"></i><i class="doff"></i></span></div>
+  <h3>Measure + MeasureReport <span class="pill p4" style="font-size:11px;vertical-align:2px">opcional</span></h3>
+  <p class="tabs" style="color:var(--muted)">a própria planilha, como recurso FHIR</p>
+  <p class="tabs" style="margin-top:12px"><b>O que entra:</b> O R4 tem um módulo de Quality Reporting feito exatamente para isto: <code>Measure</code> descreve o
+  indicador (numerador, denominador, meta) e <code>MeasureReport</code> carrega o resultado de um período.
+  A planilha de 94 linhas vira um catálogo versionado, e o resultado trimestral vira dado consultável.</p>
+  <p class="tabs" style="margin-top:10px"><b>Origem no Salux:</b> <code>Os próprios indicadores, uma vez calculados.</code></p>
+  <p class="tabs" style="margin-top:10px"><b>Terminologia:</b> <code>…/measure-scoring</code> → <code>proportion</code> / <code>continuous-variable</code> ·
+  <code>…/measure-population</code> → <code>numerator</code> / <code>denominator</code> ·
+  <code>MeasureReport.type</code> → <code>summary</code></p>
+  <pre><code>{
+  &quot;resourceType&quot;: &quot;MeasureReport&quot;,
+  &quot;status&quot;: &quot;complete&quot;,
+  &quot;type&quot;: &quot;summary&quot;,
+  &quot;measure&quot;: &quot;Measure/hmcml-2026-adulto-04-permanencia-emergencia&quot;,
+  &quot;period&quot;: { &quot;start&quot;: &quot;2026-07-01&quot;, &quot;end&quot;: &quot;2026-09-30&quot; },
+  &quot;group&quot;: [{ &quot;population&quot;: [
+      { &quot;code&quot;: { &quot;coding&quot;: [{ &quot;code&quot;: &quot;numerator&quot;   }] }, &quot;count&quot;: 18422 },
+      { &quot;code&quot;: { &quot;coding&quot;: [{ &quot;code&quot;: &quot;denominator&quot; }] }, &quot;count&quot;:  2610 } ],
+      &quot;measureScore&quot;: { &quot;value&quot;: 7.05, &quot;unit&quot;: &quot;h&quot; } }]
+}</code></pre>
+  <p class="tabs" style="margin-top:12px">É a diferença entre 'a Claude gerou uma planilha' e 'o hub publica o indicador'. Fica para depois dos dados — mas vale decidir cedo, porque muda o desenho da API de relatórios.</p>
+  <div class="cobre"><b>Destrava (estrutural):</b> Não destrava dado — é a forma padrão de publicar o resultado</div>
+</div>
+</section>
+
+<section>
+  <h2>Ordem de implementação por retorno</h2>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>#</th><th>Etapa</th><th>Ganho</th><th>Esforço</th></tr></thead>
+    <tbody><tr><td class='c-num'>1</td><td><b>F1 — statusHistory no Encounter</b><br><span style='color:var(--muted);font-size:12.5px'>Quatro campos de data que já estão no BAA. Nenhum recurso novo, nenhuma migração no hub.</span></td><td>19 indicadores</td><td>Pequeno</td></tr><tr><td class='c-num'>2</td><td><b>F5 — QuestionnaireResponse</b><br><span style='color:var(--muted);font-size:12.5px'>Recurso novo no hub, mas a origem já está mapeada e 77 mil questionários já foram respondidos.</span></td><td>18 indicadores</td><td>Médio</td></tr><tr><td class='c-num'>3</td><td><b>F2 + F3 + F4 — internação, leito e unidade</b><br><span style='color:var(--muted);font-size:12.5px'>O maior salto de cobertura. Reaproveita o Encounter que já existe; o custo está no importador.</span></td><td>18 indicadores</td><td>Médio</td></tr><tr><td class='c-num'>4</td><td><b>F6 + F9 — Procedure e Observation ampliada</b><br><span style='color:var(--muted);font-size:12.5px'>Fecha a obstetrícia estrutural (via de parto, executor) e o Apgar.</span></td><td>5 indicadores</td><td>Médio</td></tr><tr><td class='c-num'>5</td><td><b>F7 — exame e laudo</b><br><span style='color:var(--muted);font-size:12.5px'>Baixo retorno imediato e exige ADR para mudar a régua vigente. Adiar sem culpa.</span></td><td>1 indicador</td><td>Médio</td></tr><tr><td class='c-num'>6</td><td><b>F8 + F10 — administração e evento adverso</b><br><span style='color:var(--muted);font-size:12.5px'>Implementar só quando a origem passar a registrar. Criar o recurso antes disso repete o erro do MedicationAdministration vazio.</span></td><td>9 indicadores</td><td>Bloqueado</td></tr><tr><td class='c-num'>7</td><td><b>F11 — Measure / MeasureReport</b><br><span style='color:var(--muted);font-size:12.5px'>Depois dos dados. Mas decidir cedo, porque muda o desenho da API de relatórios.</span></td><td>publicação</td><td>Médio</td></tr></tbody>
+  </table>
+  </div>
+  <div class="note">
+    <b>Uma restrição de arquitetura que não muda</b>
+    <p>O hub roda na DigitalOcean e <b>não alcança</b> o Oracle do Salux (rede interna 10.50.0.18). Toda projeção
+    continua sendo feita pelo importador <b>on-prem</b>, que lê o Oracle e empurra para a API do hub. Nada aqui
+    pede túnel novo nem acesso da nuvem ao hospital.</p>
+    <p>Conformidade que já está valendo e continua: <code>identifier</code> estável por recurso
+    (<code>salux-hcml:&lt;hospital&gt;-&lt;ano&gt;-&lt;nr&gt;</code>), <code>meta.source</code> por base de origem,
+    <code>If-Match</code>/ETag na atualização e idempotência por identifier — para reimportar sem duplicar.</p>
+  </div>
+</section>
+
+<section>
+  <h2>O que não deve ir para o FHIR</h2>
+  <p class="lead">Não por limitação técnica — por adequação. Empurrar esses dados para dentro do padrão
+  distorceria o hub e não entregaria indicador melhor.</p>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>Grupo de indicadores</th><th>Por quê</th></tr></thead>
+    <tbody><tr><td style='width:34%'><b>Absenteísmo, vacância, rotatividade, acidentes, treinamento</b></td><td>São dados de recursos humanos. O FHIR tem PractitionerRole, mas ele descreve vínculo assistencial — não folha, ponto nem afastamento. Forçar seria violar o padrão.</td></tr><tr><td style='width:34%'><b>Custo médio de atendimento e de diária</b></td><td>Custo hospitalar não é recurso FHIR clínico. Existe ChargeItem/Invoice no R4, mas modelam cobrança de item assistencial, não rateio de centro de custo. Fica na contabilidade.</td></tr><tr><td style='width:34%'><b>Compras com pesquisa de preço e tempo de equipamento parado</b></td><td>Suprimentos e manutenção predial estão fora do escopo do FHIR. Device existe, mas para dispositivo clínico ligado ao paciente — não para gestão de parque de equipamentos.</td></tr><tr><td style='width:34%'><b>Faturamento SUS (BPA / AIH) e alimentação do SIH</b></td><td>O R4 tem Claim/ClaimResponse, mas modelados para seguro-saúde. O faturamento SUS brasileiro tem regra própria e já vive bem no Salux e no schema de negócio. Não vale a distorção.</td></tr><tr><td style='width:34%'><b>Resolubilidade de ouvidorias</b></td><td>Manifestação de ouvidoria não é registro clínico. Cabe no módulo de tickets do SMSMarica, que já existe, e não no hub.</td></tr><tr><td style='width:34%'><b>Vigilância da CCIH (ITU/CVD, infecção de sítio cirúrgico)</b></td><td>O evento até caberia em Condition ou AdverseEvent, mas o indicador exige denominador de dispositivo-dia e busca ativa pós-alta — processo de vigilância que não existe hoje. Projetar o recurso sem o processo só criaria um recurso vazio, como aconteceu com MedicationAdministration.</td></tr></tbody>
+  </table>
+  </div>
+</section>
+
+<footer>
+  Recursos e elementos conferidos contra o FHIR R4 (4.0.1). Códigos de terminologia marcados como
+  "confirmar" não devem ser gravados antes de verificação na fonte oficial. Linha de base lida do hub de
+  produção em 23/07/2026. Gerado em 23/07/2026.
+</footer>
+</div>
+</body>
+</html>

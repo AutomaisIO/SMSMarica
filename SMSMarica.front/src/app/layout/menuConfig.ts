@@ -1,11 +1,14 @@
 import {
   Activity,
+  Baby,
+  BarChart3,
   BellRing,
   Bot,
   Bug,
   Bus,
   Building2,
   Calculator,
+  PieChart,
   CalendarClock,
   CalendarPlus,
   BookOpen,
@@ -246,6 +249,48 @@ export const SECOES: SecaoMenu[] = [
     itens: [
       { rotulo: 'Credenciais', to: '/app/integracoes', icone: Settings2, modulo: 'IntegracoesConfig', descricao: 'Provedores e credenciais.' },
       { rotulo: 'API Tokens', to: '/app/api-tokens', icone: KeySquare, modulo: 'ApiTokens', descricao: 'Tokens de acesso à API.' },
+    ],
+  },
+  {
+    id: 'indicadores',
+    titulo: 'Indicadores',
+    icone: BarChart3,
+    itens: [
+      {
+        rotulo: 'Adulto',
+        to: '/app/indicadores/adulto',
+        icone: BarChart3,
+        modulo: 'Indicadores',
+        descricao: 'Urgência e internação de adultos do HMCML.',
+      },
+      {
+        rotulo: 'Pediátrico',
+        to: '/app/indicadores/pediatrico',
+        icone: Baby,
+        modulo: 'Indicadores',
+        descricao: 'Urgência e internação do centro pediátrico.',
+      },
+      {
+        rotulo: 'Materno Infantil',
+        to: '/app/indicadores/materno-infantil',
+        icone: Baby,
+        modulo: 'Indicadores',
+        descricao: 'Urgência e internação do centro materno infantil.',
+      },
+      {
+        rotulo: 'Perfil Epidemiológico',
+        to: '/app/indicadores/perfil-epidemiologico',
+        icone: PieChart,
+        modulo: 'Indicadores',
+        descricao: 'Distribuição dos atendimentos e das internações.',
+      },
+      {
+        rotulo: 'Institucional',
+        to: '/app/indicadores/institucional',
+        icone: Building2,
+        modulo: 'Indicadores',
+        descricao: 'Desempenho institucional (RH, custos, faturamento).',
+      },
     ],
   },
   {
