@@ -56,9 +56,13 @@ export type IndicadorResumo = {
   indicadorPaiId: string | null;
   nome: string;
   meta: string | null;
+  metaOperador: MetaOperador | null;
+  metaValor: number | null;
+  metaValorMaximo: number | null;
   pontuacao: number | null;
   tipoResultado: TipoResultadoIndicador;
   unidadeMedida: string | null;
+  fatorDensidade: number | null;
   situacao: SituacaoIndicador;
   temMotor: boolean;
   ressalva: string | null;

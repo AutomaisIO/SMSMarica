@@ -87,7 +87,10 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
         if (!string.IsNullOrWhiteSpace(filtro.Cns))
             query = query.Where(p => p.Cns == filtro.Cns);
         if (!string.IsNullOrWhiteSpace(filtro.Nome))
-            query = query.Where(p => p.Nome != null && EF.Functions.ILike(p.Nome, $"%{filtro.Nome}%"));
+            // Insensível a acento E case: unaccent() (extensão, provisionada pela migration do
+            // SMSMarica.server no mesmo banco) normaliza os dois lados; o ILIKE cuida do case.
+            query = query.Where(p => p.Nome != null
+                && EF.Functions.ILike(EF.Functions.Unaccent(p.Nome), EF.Functions.Unaccent($"%{filtro.Nome}%")));
         if (!string.IsNullOrWhiteSpace(filtro.Telefone))
         {
             var fone = Digitos(filtro.Telefone);

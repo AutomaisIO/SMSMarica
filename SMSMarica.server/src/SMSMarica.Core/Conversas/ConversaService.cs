@@ -245,15 +245,27 @@ public sealed class ConversaService(
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
                 {
-                    // hub indisponível: segue só com telefone + nome do WhatsApp
+                    // hub indisponível: segue só com telefone + nome do WhatsApp + conteúdo
                 }
             }
 
-            // ILIKE (não Contains/LIKE) para a busca ser insensível a maiúsculas/minúsculas,
-            // igual à busca de nome do hub (EF.Functions.ILike em PatientService).
-            query = query.Where(c => EF.Functions.ILike(c.TelefoneCanonical, $"%{termo}%")
-                || (c.NomeContato != null && EF.Functions.ILike(c.NomeContato, $"%{termo}%"))
-                || (c.PacienteId != null && idsPacientes.Contains(c.PacienteId.Value)));
+            // Busca insensível a ACENTO e a maiúsculas: unaccent() (extensão) normaliza os dois
+            // lados e o ILIKE cuida do case. Campos cobertos: telefone (substring; + variante só
+            // de dígitos quando a pessoa digita com máscara/separadores), nome do contato (perfil
+            // do WhatsApp), paciente vinculado (via hub) e — novidade do #45 — o CONTEÚDO das
+            // mensagens da conversa, por EXISTS correlacionado em tfd_mensagem_whatsapp. Escala
+            // atual (~10 mil mensagens) dispensa índice full-text; se crescer, indexar depois.
+            var padrao = $"%{termo}%";
+            var digitos = new string([.. termo.Where(char.IsDigit)]);
+            var padraoDigitos = digitos.Length >= 3 ? $"%{digitos}%" : null;
+            query = query.Where(c =>
+                EF.Functions.ILike(c.TelefoneCanonical, padrao)
+                || (padraoDigitos != null && EF.Functions.ILike(c.TelefoneCanonical, padraoDigitos))
+                || (c.NomeContato != null && EF.Functions.ILike(EF.Functions.Unaccent(c.NomeContato), EF.Functions.Unaccent(padrao)))
+                || (c.PacienteId != null && idsPacientes.Contains(c.PacienteId.Value))
+                || db.MensagensWhatsApp.Any(m => m.ConversaId == c.Id
+                    && m.Conteudo != null
+                    && EF.Functions.ILike(EF.Functions.Unaccent(m.Conteudo), EF.Functions.Unaccent(padrao))));
         }
 
         var itens = await query

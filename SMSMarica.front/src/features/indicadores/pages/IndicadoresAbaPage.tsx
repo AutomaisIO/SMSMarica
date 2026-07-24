@@ -1,17 +1,19 @@
 import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { AlertTriangle, BarChart3, Loader2, Plus } from 'lucide-react';
+import { AlertTriangle, BarChart3, FileSpreadsheet, Loader2, Plus } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 import { Modal } from '@/shared/ui/Modal';
 import { FiltroIndicadores } from '@/features/indicadores/components/FiltroIndicadores';
+import { ModalExportar } from '@/features/indicadores/components/ModalExportar';
 import { ModalIndicador } from '@/features/indicadores/components/ModalIndicador';
 import { TabelaIndicadores } from '@/features/indicadores/components/TabelaIndicadores';
 import {
   useApurarAba,
   useApurarIndicador,
   useListarIndicadores,
+  useUnidadesIndicador,
 } from '@/features/indicadores/api/queries';
 import {
   ABAS,
@@ -40,13 +42,22 @@ export function IndicadoresAbaPage() {
   const [filtro, setFiltro] = useState<FiltroIndicador>(() => ({ hospital: 1, ...periodoPadrao() }));
   const [modal, setModal] = useState<{ id: string | null } | null>(null);
   const [ressalva, setRessalva] = useState<IndicadorResumo | null>(null);
+  const [exportarAberto, setExportarAberto] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
+  const unidades = useUnidadesIndicador();
   const lista = useListarIndicadores(aba ?? 'Adulto', filtro);
   const apurarAba = useApurarAba(aba ?? 'Adulto');
   const apurarUm = useApurarIndicador();
 
   const itens = useMemo(() => lista.data ?? [], [lista.data]);
+
+  const unidadeNome = useMemo(
+    () =>
+      (unidades.data ?? []).find((u) => u.hospital === filtro.hospital)?.nome ??
+      `Unidade ${filtro.hospital}`,
+    [unidades.data, filtro.hospital],
+  );
 
   const resumo = useMemo(
     () => ({
@@ -95,12 +106,18 @@ export function IndicadoresAbaPage() {
           </p>
         </div>
 
-        {podeEditar && (
-          <Button variante="secundaria" onClick={() => setModal({ id: null })}>
-            <Plus className="h-4 w-4" />
-            Novo indicador
+        <div className="flex items-center gap-2">
+          <Button variante="outline" onClick={() => setExportarAberto(true)}>
+            <FileSpreadsheet className="h-4 w-4" />
+            Exportar
           </Button>
-        )}
+          {podeEditar && (
+            <Button variante="secundaria" onClick={() => setModal({ id: null })}>
+              <Plus className="h-4 w-4" />
+              Novo indicador
+            </Button>
+          )}
+        </div>
       </header>
 
       <FiltroIndicadores
@@ -147,6 +164,18 @@ export function IndicadoresAbaPage() {
             {ressalva.ressalva}
           </p>
         </Modal>
+      )}
+
+      {exportarAberto && (
+        <ModalExportar
+          aberto
+          aoFechar={() => setExportarAberto(false)}
+          aba={aba}
+          rotuloAba={meta.rotulo}
+          filtro={filtro}
+          unidadeNome={unidadeNome}
+          itensAtual={itens}
+        />
       )}
 
       {modal && (

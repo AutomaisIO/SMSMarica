@@ -3,6 +3,12 @@ using SMSMarica.Data.Entities.Enums;
 namespace SMSMarica.Core.Indicadores.Dtos;
 
 /// <summary>Item da listagem de uma aba — a linha que a tela desenha, espelhando a planilha.</summary>
+/// <remarks>
+/// Os campos numéricos de meta (<see cref="MetaOperador"/>, <see cref="MetaValor"/>,
+/// <see cref="MetaValorMaximo"/>) e o <see cref="FatorDensidade"/> vêm junto da listagem para a
+/// exportação em Excel poder escrever as fórmulas de meta (tudo-ou-nada) e de resultado
+/// (numerador ÷ denominador × fator) direto nas células — sem uma segunda chamada por indicador.
+/// </remarks>
 public sealed record IndicadorResumoDto(
     Guid Id,
     AbaIndicador Aba,
@@ -11,9 +17,13 @@ public sealed record IndicadorResumoDto(
     Guid? IndicadorPaiId,
     string Nome,
     string? Meta,
+    MetaOperador? MetaOperador,
+    decimal? MetaValor,
+    decimal? MetaValorMaximo,
     decimal? Pontuacao,
     TipoResultadoIndicador TipoResultado,
     string? UnidadeMedida,
+    decimal? FatorDensidade,
     SituacaoIndicador Situacao,
     bool TemMotor,
     string? Ressalva,
