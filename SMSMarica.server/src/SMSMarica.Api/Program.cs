@@ -18,6 +18,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
+using SMSMarica.Api.Realtime;
 using Serilog;
 using SMSMarica.Api.Auth;
 using SMSMarica.Api.Middleware;
@@ -280,6 +281,11 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
     Predicate = r => r.Tags.Contains("ready"),
     ResponseWriter = EscreverHealthJson,
 });
+
+// WebSocket para os agentes proxy de SQL (ADR-0023). O handshake do agente é máquina-a-máquina
+// (token por fonte), então o endpoint valida por conta própria e é anônimo ao JWT.
+app.UseWebSockets();
+app.MapAgenteSql();
 
 app.MapControllers();
 app.MapHub<SMSMarica.Api.Hubs.RastreamentoHub>("/hubs/rastreamento");

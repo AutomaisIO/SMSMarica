@@ -37,6 +37,22 @@ public class IaFonte
     /// <summary>Base URL, para fontes acessadas via API (ex.: FHIR).</summary>
     public string? BaseUrl { get; set; }
 
+    /// <summary>
+    /// Quando true, a base NÃO é alcançada diretamente: um agente proxy roda no servidor de
+    /// destino, disca para o smsmarica via WSS (reverso) e executa as consultas localmente.
+    /// Nesse modelo <see cref="Host"/>/<see cref="Usuario"/>/<see cref="SenhaCifrada"/> ficam
+    /// vazios — as credenciais do banco vivem no <c>.env</c> do destino, nunca aqui. O agente
+    /// se identifica pelo <see cref="Slug"/> e autentica com o <see cref="AgenteTokenHash"/>.
+    /// Ver ADR-0023.
+    /// </summary>
+    public bool ViaAgente { get; set; }
+
+    /// <summary>
+    /// Hash (SHA-256) do token de conexão do agente. Gerado no cadastro/rotação e mostrado ao
+    /// operador uma única vez; guardamos só o hash. Nulo quando <see cref="ViaAgente"/> é false.
+    /// </summary>
+    public string? AgenteTokenHash { get; set; }
+
     public bool Ativo { get; set; } = true;
 
     public DateTime CriadoEm { get; set; }

@@ -324,6 +324,11 @@ public static class DependencyInjection
             client.Timeout = TimeSpan.FromSeconds(60);
         });
         services.AddScoped<Inteligencia.Fontes.IFonteDadosFactory, Inteligencia.Fontes.FonteDadosFactory>();
+
+        // Registro de agentes proxy conectados por WSS — singleton (as conexões vivem em memória,
+        // processo único). Ver ADR-0023.
+        services.AddSingleton<Inteligencia.Fontes.Agente.IAgenteSqlRegistry,
+            Inteligencia.Fontes.Agente.AgenteSqlRegistry>();
         services.AddScoped<Inteligencia.Conhecimento.IConhecimentoService, Inteligencia.Conhecimento.ConhecimentoService>();
         services.AddScoped<Inteligencia.Conhecimento.IRecuperadorContexto, Inteligencia.Conhecimento.RecuperadorContexto>();
         services.AddScoped<Inteligencia.IIaService, Inteligencia.IaService>();

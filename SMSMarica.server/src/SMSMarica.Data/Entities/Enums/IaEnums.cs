@@ -8,6 +8,9 @@ public enum TipoFonte
     Eco = 3,
     Fhir = 4,
     Postgres = 5,
+
+    /// <summary>Base SQL Server, tipicamente alcançada por agente proxy (WSS reverso).</summary>
+    SqlServer = 6,
 }
 
 /// <summary>Dialeto SQL gerado/executado para a fonte.</summary>
@@ -15,6 +18,9 @@ public enum DialetoSql
 {
     Oracle = 1,
     Postgres = 2,
+
+    /// <summary>Transact-SQL (SQL Server).</summary>
+    SqlServer = 3,
 }
 
 /// <summary>Ambiente da instância de uma base (rótulo operacional).</summary>

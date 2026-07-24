@@ -19,11 +19,15 @@ public sealed class IaFonteService(
     SmsMaricaDbContext db,
     IProtetorSegredos protetor,
     IFonteDadosFactory fonteDadosFactory,
+    Fontes.Agente.IAgenteSqlRegistry agenteRegistry,
+    Microsoft.Extensions.Configuration.IConfiguration configuracao,
     IUsuarioAtualAccessor usuarioAtual) : IIaFonteService
 {
     private readonly SmsMaricaDbContext _db = db;
     private readonly IProtetorSegredos _protetor = protetor;
     private readonly IFonteDadosFactory _fonteDadosFactory = fonteDadosFactory;
+    private readonly Fontes.Agente.IAgenteSqlRegistry _agenteRegistry = agenteRegistry;
+    private readonly Microsoft.Extensions.Configuration.IConfiguration _configuracao = configuracao;
     private readonly IUsuarioAtualAccessor _usuarioAtual = usuarioAtual;
 
     public async Task<IReadOnlyList<FonteDetalheDto>> ListarAsync(CancellationToken cancellationToken = default)
@@ -53,12 +57,20 @@ public sealed class IaFonteService(
             Servico = Normalizar(request.Servico),
             Usuario = Normalizar(request.Usuario),
             BaseUrl = Normalizar(request.BaseUrl),
+            ViaAgente = request.ViaAgente,
             Ativo = true,
             CriadoEm = DateTime.UtcNow,
             CriadoPor = _usuarioAtual.UsuarioId,
         };
 
-        if (!string.IsNullOrWhiteSpace(request.Senha))
+        if (request.ViaAgente && string.IsNullOrWhiteSpace(slug))
+        {
+            throw new ValidacaoException(
+                "ia.fonte.slug", "Base via agente precisa de um slug — é o identificador do agente.");
+        }
+
+        // Base via agente NÃO guarda credenciais do banco: elas vivem no .env do destino.
+        if (!request.ViaAgente && !string.IsNullOrWhiteSpace(request.Senha))
         {
             fonte.SenhaCifrada = _protetor.Proteger(request.Senha);
         }
@@ -66,6 +78,85 @@ public sealed class IaFonteService(
         _db.IaFontes.Add(fonte);
         await _db.SaveChangesAsync(cancellationToken);
         return fonte.Id;
+    }
+
+    /// <summary>
+    /// Gera (ou rotaciona) o token de conexão do agente de uma base via agente. Devolve o token em
+    /// claro UMA vez — guardamos só o hash. Ver ADR-0023.
+    /// </summary>
+    public async Task<TokenAgenteGerado> GerarTokenAgenteAsync(
+        Guid id, CancellationToken cancellationToken = default)
+    {
+        var fonte = await _db.IaFontes
+            .FirstOrDefaultAsync(f => f.Id == id && f.ExcluidoEm == null, cancellationToken)
+            ?? throw new NaoEncontradoException("Fonte", id);
+
+        if (!fonte.ViaAgente || string.IsNullOrWhiteSpace(fonte.Slug))
+        {
+            throw new ValidacaoException(
+                "ia.fonte.viaAgente", "Só bases via agente (com slug) têm token de agente.");
+        }
+
+        var token = Fontes.Agente.TokenAgente.Gerar();
+        fonte.AgenteTokenHash = Fontes.Agente.TokenAgente.Hash(token);
+        fonte.AtualizadoEm = DateTime.UtcNow;
+        fonte.AtualizadoPor = _usuarioAtual.UsuarioId;
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return MontarToken(fonte.Slug, token);
+    }
+
+    public async Task<TokenAgenteGerado> ProvisionarAgenteAsync(
+        string slug, string? nome, CancellationToken cancellationToken = default)
+    {
+        var slugNorm = NormalizarSlug(slug);
+        if (string.IsNullOrWhiteSpace(slugNorm))
+        {
+            throw new ValidacaoException("ia.fonte.slug", "Informe um slug para o agente.");
+        }
+
+        var fonte = await _db.IaFontes
+            .FirstOrDefaultAsync(f => f.Slug == slugNorm && f.ExcluidoEm == null, cancellationToken);
+
+        if (fonte is null)
+        {
+            // Primeiro run do agente: cria a base via agente já apontando para SQL Server.
+            fonte = new IaFonte
+            {
+                Id = Guid.CreateVersion7(),
+                Nome = string.IsNullOrWhiteSpace(nome) ? slugNorm : nome!.Trim(),
+                Slug = slugNorm,
+                Tipo = TipoFonte.SqlServer,
+                Dialeto = DialetoSql.SqlServer,
+                Ambiente = AmbienteFonte.Producao,
+                ViaAgente = true,
+                Ativo = true,
+                CriadoEm = DateTime.UtcNow,
+                CriadoPor = _usuarioAtual.UsuarioId,
+            };
+            _db.IaFontes.Add(fonte);
+        }
+        else if (!fonte.ViaAgente)
+        {
+            throw new ConflitoException(
+                "ia.fonte.slug",
+                $"Já existe uma base '{slugNorm}' que não é via agente. Use outro slug para o agente.");
+        }
+
+        var token = Fontes.Agente.TokenAgente.Gerar();
+        fonte.AgenteTokenHash = Fontes.Agente.TokenAgente.Hash(token);
+        fonte.AtualizadoEm = DateTime.UtcNow;
+        fonte.AtualizadoPor = _usuarioAtual.UsuarioId;
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return MontarToken(slugNorm, token);
+    }
+
+    private TokenAgenteGerado MontarToken(string slug, string token)
+    {
+        var baseUrl = _configuracao["Ia:AgenteWssBaseUrl"] ?? "wss://api.smsmarica.online";
+        var wss = $"{baseUrl.TrimEnd('/')}/agentes/sql";
+        return new TokenAgenteGerado(slug, token, wss);
     }
 
     public async Task AtualizarAsync(Guid id, AtualizarFonteRequest request, CancellationToken cancellationToken = default)
@@ -148,7 +239,7 @@ public sealed class IaFonteService(
             throw new ConflitoException("iaFonte.slug_duplicado", $"Já existe uma base com o slug '{slug}'.");
     }
 
-    private static FonteDetalheDto ParaDto(IaFonte f) => new(
+    private FonteDetalheDto ParaDto(IaFonte f) => new(
         f.Id,
         f.Nome,
         f.Slug,
@@ -161,7 +252,10 @@ public sealed class IaFonteService(
         f.Usuario,
         f.BaseUrl,
         !string.IsNullOrEmpty(f.SenhaCifrada),
-        f.Ativo);
+        f.Ativo,
+        f.ViaAgente,
+        f.ViaAgente && f.Slug is not null && _agenteRegistry.EstaConectado(f.Slug),
+        !string.IsNullOrEmpty(f.AgenteTokenHash));
 
     private static TipoFonte ParseTipo(string valor) =>
         Enum.TryParse<TipoFonte>(valor, ignoreCase: true, out var v)

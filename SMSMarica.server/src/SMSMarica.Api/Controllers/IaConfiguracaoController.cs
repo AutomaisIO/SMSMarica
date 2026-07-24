@@ -88,4 +88,31 @@ public sealed class IaConfiguracaoController(
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<TestarConexaoResultado> TestarConexao(Guid id, CancellationToken cancellationToken) =>
         await _fonteService.TestarConexaoAsync(id, cancellationToken);
+
+    /// <summary>
+    /// Gera (ou rotaciona) o token de conexão do agente proxy de uma base via agente. O token é
+    /// devolvido em claro UMA vez — guarde-o no .env do servidor de destino. Ver ADR-0023.
+    /// </summary>
+    [HttpPost("fontes/{id:guid}/token-agente")]
+    [RequerPermissao(ModuloPermissao.InteligenciaConfiguracao, AcoesPermissao.Edicao)]
+    [ProducesResponseType<TokenAgenteGerado>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<TokenAgenteGerado> GerarTokenAgente(Guid id, CancellationToken cancellationToken) =>
+        await _fonteService.GerarTokenAgenteAsync(id, cancellationToken);
+
+    /// <summary>
+    /// Auto-provisionamento do agente: o próprio agente chama isto no primeiro run, autenticado com
+    /// o login do admin, informando o slug. Cria a base via agente se não existir e devolve o token
+    /// (uma vez). O agente guarda o token localmente e a partir daí conecta sozinho. Ver ADR-0023.
+    /// </summary>
+    [HttpPost("agentes/provisionar")]
+    [RequerPermissao(ModuloPermissao.InteligenciaConfiguracao, AcoesPermissao.Edicao)]
+    [ProducesResponseType<TokenAgenteGerado>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<TokenAgenteGerado> ProvisionarAgente(
+        [FromBody] ProvisionarAgenteRequest request,
+        CancellationToken cancellationToken) =>
+        await _fonteService.ProvisionarAgenteAsync(request.Slug, request.Nome, cancellationToken);
 }
