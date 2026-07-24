@@ -4,40 +4,47 @@ import { formatarDecimal, formatarInteiro, horaMinuto } from '@/lib/formatos';
 import { Cartao } from '@/components/Cartao';
 import { CabecalhoSecao } from '@/components/CabecalhoSecao';
 import { NumeroAnimado } from '@/components/NumeroAnimado';
-import { GraficoSerieDiaria } from '@/components/graficos/GraficoSerieDiaria';
-
-const VINHO = '#9E1B32';
-const NEUTRO_SERIE = '#C9CED6';
+import { GraficoSerieDiaria, FAIXAS_INTERNACAO } from '@/components/graficos/GraficoSerieDiaria';
 
 /**
- * Proporção maternidade × demais unidades, com legenda — entidade sempre nomeada.
- * O corte é pela UNIDADE do leito, não por "urgência/eletiva": no HMCML o campo
- * ID_INTERNACAO não sustenta essa leitura (ver docs/consultas-oracle.md §Q5).
+ * Composição da internação em três faixas exclusivas, com legenda — entidade
+ * sempre nomeada. O corte é pela UNIDADE do leito e pela IDADE na entrada, não por
+ * "urgência/eletiva": no HMCML o campo ID_INTERNACAO não sustenta essa leitura
+ * (ver docs/consultas-oracle.md §Q5). A maternidade vem primeiro de propósito —
+ * senão os recém-nascidos do berçário engoliriam a faixa infantil.
  */
-function SplitPorUnidade({ maternidade, demais }: { maternidade: number; demais: number }) {
-  const total = maternidade + demais;
+function ComposicaoInternacao({ mes }: { mes: MesInternacao }) {
+  const faixas = [
+    { chave: 'maternidade', valor: mes.maternidade },
+    { chave: 'ate17', valor: mes.ate17 },
+    { chave: 'adultos', valor: mes.adultos },
+  ] as const;
+  const total = faixas.reduce((s, f) => s + f.valor, 0);
   if (total === 0) return null;
+
   return (
     <div className="mt-3">
       <div className="flex h-2 gap-[2px] overflow-hidden rounded-full">
-        <div
-          className="rounded-l-full"
-          style={{ width: `${(maternidade / total) * 100}%`, backgroundColor: VINHO }}
-        />
-        <div
-          className="rounded-r-full"
-          style={{ width: `${(demais / total) * 100}%`, backgroundColor: NEUTRO_SERIE }}
-        />
+        {FAIXAS_INTERNACAO.map((faixa, i) => {
+          const valor = faixas[i].valor;
+          if (valor === 0) return null;
+          return (
+            <div
+              key={faixa.chave}
+              className={i === 0 ? 'rounded-l-full' : i === FAIXAS_INTERNACAO.length - 1 ? 'rounded-r-full' : ''}
+              style={{ width: `${(valor / total) * 100}%`, backgroundColor: faixa.cor }}
+            />
+          );
+        })}
       </div>
-      <div className="tnum mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-0.5 text-[12.5px] text-grafite">
-        <span className="flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: VINHO }} />
-          Maternidade <span className="font-semibold text-tinta">{formatarInteiro(maternidade)}</span>
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: NEUTRO_SERIE }} />
-          Demais <span className="font-semibold text-tinta">{formatarInteiro(demais)}</span>
-        </span>
+      <div className="tnum mt-1.5 flex flex-wrap items-center gap-x-3.5 gap-y-0.5 text-[12.5px] text-grafite">
+        {FAIXAS_INTERNACAO.map((faixa, i) => (
+          <span key={faixa.chave} className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: faixa.cor }} />
+            {faixa.rotulo}{' '}
+            <span className="font-semibold text-tinta">{formatarInteiro(faixas[i].valor)}</span>
+          </span>
+        ))}
       </div>
     </div>
   );
@@ -54,13 +61,13 @@ function CartaoMesInternacao({ mes, destaque }: { mes: MesInternacao; destaque?:
       <p className="tnum mt-2.5 text-[13px] text-grafite">
         {formatarInteiro(mes.total)} internações no mês
       </p>
-      <SplitPorUnidade maternidade={mes.maternidade} demais={mes.demais} />
+      <ComposicaoInternacao mes={mes} />
     </Cartao>
   );
 }
 
 /**
- * Internações: mês atual × anterior com split por unidade e série diária.
+ * Internações: mês atual × anterior com a composição por faixa e série diária.
  * memo: só re-renderiza quando os dados mudam (painel aberto em TV).
  */
 export const SecaoInternacoes = memo(function SecaoInternacoes({

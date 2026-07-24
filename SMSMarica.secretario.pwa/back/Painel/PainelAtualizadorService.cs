@@ -173,21 +173,21 @@ public sealed class PainelAtualizadorService : BackgroundService
 
         var emAtendimento = ComoInt(q1b.Linhas[0][0]);
 
+        // Q1c: total, maternidade, ate17, adultos, mediaDias, atendHoje, internHoje
         var linhaC = q1c.Linhas[0];
-        var internadosAgora = ComoInt(linhaC[0]);
-        var internadosMaternidade = ComoInt(linhaC[1]);
 
         return new AgoraSecao(
             AtualizadoEm: FusoBrasilia.Agora(),
             AguardandoMedico: aguardandoPorCor.Sum(c => c.Qtd),
             AguardandoPorCor: aguardandoPorCor,
             EmAtendimento: emAtendimento,
-            InternadosAgora: internadosAgora,
-            InternadosMaternidade: internadosMaternidade,
-            InternadosDemais: internadosAgora - internadosMaternidade,
-            MediaDiasInternacao: ComoDoubleOuNulo(linhaC[2]),
-            AtendimentosHoje: ComoInt(linhaC[3]),
-            InternacoesHoje: ComoInt(linhaC[4]));
+            InternadosAgora: ComoInt(linhaC[0]),
+            InternadosMaternidade: ComoInt(linhaC[1]),
+            InternadosAte17: ComoInt(linhaC[2]),
+            InternadosAdultos: ComoInt(linhaC[3]),
+            MediaDiasInternacao: ComoDoubleOuNulo(linhaC[4]),
+            AtendimentosHoje: ComoInt(linhaC[5]),
+            InternacoesHoje: ComoInt(linhaC[6]));
     }
 
     // ── Ciclo lento (Q2..Q6) ───────────────────────────────────────────────────
@@ -349,27 +349,30 @@ public sealed class PainelAtualizadorService : BackgroundService
         var diasMesAnterior = DateTime.DaysInMonth(mesAnteriorData.Year, mesAnteriorData.Month);
         var diasCompletos = hoje.Day - 1;
 
-        var (antTotal, antMat, antDem) = LerPeriodoInternacao(mesAnterior);
-        var (atuTotal, atuMat, atuDem) = LerPeriodoInternacao(mesAtual);
-        var (hojTotal, hojMat, hojDem) = LerPeriodoInternacao(diaAtual);
-        var (compTotal, _, _) = LerPeriodoInternacao(diasCompletosPeriodo);
+        var ant = LerPeriodoInternacao(mesAnterior);
+        var atu = LerPeriodoInternacao(mesAtual);
+        var hoj = LerPeriodoInternacao(diaAtual);
+        var comp = LerPeriodoInternacao(diasCompletosPeriodo);
 
         return new InternacoesSecao(
             AtualizadoEm: carimbo,
             MesAnterior: new InternacoesMes(
-                RotuloMes(mesAnteriorData), antTotal, antMat, antDem, MediaDiaria(antTotal, diasMesAnterior)),
+                RotuloMes(mesAnteriorData), ant.Total, ant.Maternidade, ant.Ate17, ant.Adultos,
+                MediaDiaria(ant.Total, diasMesAnterior)),
             MesAtual: new InternacoesMes(
                 // Média diária do mês atual SEGUE a regra dos dias completos (a mesma dos
                 // atendimentos) — decisão confirmada; o contrato foi alinhado a essa regra.
-                RotuloMes(hoje), atuTotal, atuMat, atuDem, MediaDiaria(compTotal, diasCompletos)),
-            Hoje: new InternacoesHoje(hojTotal, hojMat, hojDem),
+                RotuloMes(hoje), atu.Total, atu.Maternidade, atu.Ate17, atu.Adultos,
+                MediaDiaria(comp.Total, diasCompletos)),
+            Hoje: new InternacoesHoje(hoj.Total, hoj.Maternidade, hoj.Ate17, hoj.Adultos),
             SerieDiaria: MontarSerieDiariaInternacoes(serieDiaria, hoje));
     }
 
-    private static (int Total, int Maternidade, int Demais) LerPeriodoInternacao(ResultadoConsulta resultado)
+    private static (int Total, int Maternidade, int Ate17, int Adultos) LerPeriodoInternacao(
+        ResultadoConsulta resultado)
     {
         var linha = resultado.Linhas[0];
-        return (ComoInt(linha[0]), ComoInt(linha[1]), ComoInt(linha[2]));
+        return (ComoInt(linha[0]), ComoInt(linha[1]), ComoInt(linha[2]), ComoInt(linha[3]));
     }
 
     /// <summary>Série de 35 dias contínuos terminando hoje — dias sem linha viram qtd 0 (gráfico sem buraco).</summary>
@@ -395,18 +398,18 @@ public sealed class PainelAtualizadorService : BackgroundService
     }
 
     /// <summary>
-    /// Série de internações (35 dias contínuos) com o split maternidade/demais por dia —
-    /// SÓ esta série carrega o split (contrato); dias sem linha viram 0/0/0.
+    /// Série de internações (35 dias contínuos) com as três faixas por dia — SÓ esta série
+    /// carrega o split (contrato); dias sem linha viram 0/0/0/0.
     /// </summary>
     private static List<DiaQtdInternacao> MontarSerieDiariaInternacoes(ResultadoConsulta resultado, DateTimeOffset hoje)
     {
-        var porDia = new Dictionary<DateOnly, (int Qtd, int? Maternidade, int? Demais)>();
+        var porDia = new Dictionary<DateOnly, (int Qtd, int? Maternidade, int? Ate17, int? Adultos)>();
         foreach (var linha in resultado.Linhas)
         {
             if (linha[0] is DateTime dia)
             {
                 porDia[DateOnly.FromDateTime(dia)] =
-                    (ComoInt(linha[1]), ComoIntOuNulo(linha[2]), ComoIntOuNulo(linha[3]));
+                    (ComoInt(linha[1]), ComoIntOuNulo(linha[2]), ComoIntOuNulo(linha[3]), ComoIntOuNulo(linha[4]));
             }
         }
 
@@ -414,9 +417,9 @@ public sealed class PainelAtualizadorService : BackgroundService
         var serie = new List<DiaQtdInternacao>(35);
         for (var dia = fim.AddDays(-34); dia <= fim; dia = dia.AddDays(1))
         {
-            var (qtd, maternidade, demais) = porDia.GetValueOrDefault(dia, (0, 0, 0));
+            var (qtd, maternidade, ate17, adultos) = porDia.GetValueOrDefault(dia, (0, 0, 0, 0));
             serie.Add(new DiaQtdInternacao(
-                dia.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), qtd, maternidade, demais));
+                dia.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), qtd, maternidade, ate17, adultos));
         }
 
         return serie;

@@ -43,6 +43,42 @@ public static class ConsultasPainel
            WHERE fl.cd_hospital = {hospital}
         """;
 
+    /// <summary>
+    /// As três faixas de internação, mutuamente exclusivas e nesta ordem de precedência:
+    /// <b>maternidade</b> (pela unidade do leito) → <b>até 17 anos</b> (idade na entrada)
+    /// → <b>adultos</b>.
+    ///
+    /// A precedência importa: 114 das 172 internações de menores em julho eram de bebês
+    /// com menos de 1 ano, na maternidade/berçário. Sem colocar a maternidade primeiro, a
+    /// faixa "crianças" viraria um retrato de partos em vez de mostrar pediatria de fato
+    /// (72 em julho, fora da maternidade). Idade sem data de nascimento cai em adultos —
+    /// nenhum caso hoje (0 nascimentos nulos no mês).
+    /// </summary>
+    private const string EhMaternidade = "la.cd_unidade IN (15,16,17,26)";
+    private const string NaoEhMaternidade = "(la.cd_unidade IS NULL OR la.cd_unidade NOT IN (15,16,17,26))";
+
+    private static string FaixasInternacao(string dataReferencia) => $"""
+               SUM(CASE WHEN {EhMaternidade} THEN 1 ELSE 0 END) AS maternidade,
+               SUM(CASE WHEN {NaoEhMaternidade}
+                         AND FLOOR(MONTHS_BETWEEN({dataReferencia}, p.dt_nascimento)/12) <= 17
+                        THEN 1 ELSE 0 END) AS ate17,
+               SUM(CASE WHEN {NaoEhMaternidade}
+                         AND (p.dt_nascimento IS NULL
+                              OR FLOOR(MONTHS_BETWEEN({dataReferencia}, p.dt_nascimento)/12) > 17)
+                        THEN 1 ELSE 0 END) AS adultos
+        """;
+
+    /// <summary>
+    /// Junta paciente (idade) + leito atual (unidade). ATENÇÃO ao montar SQL para o
+    /// sqlplus: linha em branco no meio do comando o encerra (SQLBLANKLINES off).
+    /// </summary>
+    private static string DeInternacaoComFaixas(int hospital) => $"""
+          FROM infosaude.fia f
+          JOIN infosaude.paciente p ON p.cd_paciente = NVL(f.cd_paciente_unificado, f.cd_paciente)
+          LEFT JOIN ({LeitoAtual(hospital)}) la
+                 ON la.dt_ano_fia = f.dt_ano_fia AND la.nr_fia = f.nr_fia AND la.rn = 1
+        """;
+
     // ── Q1 — Agora (tick rápido) ───────────────────────────────────────────────
 
     /// <summary>Q1a: aguardando médico agora, por cor (chegada nas últimas 12h, sem saída, sem doc médico).</summary>
@@ -71,25 +107,24 @@ public static class ConsultasPainel
                           AND mv.dt_ano_baa = b.dt_ano_baa AND mv.nr_baa = b.nr_baa)
         """;
 
-    /// <summary>Q1c: internados agora (com split por maternidade) + totais de hoje.</summary>
+    /// <summary>
+    /// Q1c: internados agora (nas três faixas) + totais de hoje.
+    /// As agregações ficam numa subconsulta: no Oracle, subconsulta escalar no SELECT
+    /// junto de agregação sem GROUP BY dá ORA-00937.
+    /// </summary>
     public static string Q1InternadosEHoje(int hospital) => $"""
-        WITH leito_atual AS (
-        {LeitoAtual(hospital)}
-        ), internados AS (
-          SELECT NVL(la.cd_unidade,0) AS cd_unidade, f.dt_baixa
-            FROM infosaude.fia f
-            LEFT JOIN leito_atual la ON la.dt_ano_fia = f.dt_ano_fia AND la.nr_fia = f.nr_fia AND la.rn = 1
-           WHERE f.cd_hospital = {hospital} AND f.dt_alta IS NULL AND f.dt_baixa >= SYSDATE - 120
-        )
-        SELECT (SELECT COUNT(*) FROM internados)                                                     AS internados_agora,
-               (SELECT SUM(CASE WHEN cd_unidade IN ({UnidadesMaternidade}) THEN 1 ELSE 0 END)
-                  FROM internados)                                                                   AS internados_maternidade,
-               (SELECT ROUND(AVG(SYSDATE - dt_baixa), 1) FROM internados)                            AS media_dias_internado,
+        SELECT i.internados_agora, i.maternidade, i.ate17, i.adultos, i.media_dias_internado,
                (SELECT COUNT(*) FROM infosaude.baa b
-                 WHERE b.cd_hospital = {hospital} AND b.dt_atendimento >= TRUNC(SYSDATE))            AS atendimentos_hoje,
-               (SELECT COUNT(*) FROM infosaude.fia f
-                 WHERE f.cd_hospital = {hospital} AND f.dt_baixa >= TRUNC(SYSDATE))                  AS internacoes_hoje
-          FROM dual
+                 WHERE b.cd_hospital = {hospital} AND b.dt_atendimento >= TRUNC(SYSDATE))  AS atendimentos_hoje,
+               (SELECT COUNT(*) FROM infosaude.fia f2
+                 WHERE f2.cd_hospital = {hospital} AND f2.dt_baixa >= TRUNC(SYSDATE))      AS internacoes_hoje
+          FROM (
+            SELECT COUNT(*) AS internados_agora,
+            {FaixasInternacao("SYSDATE")},
+                   ROUND(AVG(SYSDATE - f.dt_baixa), 1) AS media_dias_internado
+            {DeInternacaoComFaixas(hospital)}
+             WHERE f.cd_hospital = {hospital} AND f.dt_alta IS NULL AND f.dt_baixa >= SYSDATE - 120
+          ) i
         """;
 
     // ── Q2 — Atendimentos por período (tick lento) ─────────────────────────────
@@ -120,28 +155,16 @@ public static class ConsultasPainel
     // ── Q5 — Internações por período + série (tick lento) ──────────────────────
 
     public static string Q5InternacoesPeriodo(int hospital, string ini, string fim) => $"""
-        WITH leito_atual AS (
-        {LeitoAtual(hospital)}
-        )
         SELECT COUNT(*) AS total,
-               SUM(CASE WHEN la.cd_unidade IN ({UnidadesMaternidade}) THEN 1 ELSE 0 END) AS maternidade,
-               SUM(CASE WHEN la.cd_unidade IS NULL
-                          OR la.cd_unidade NOT IN ({UnidadesMaternidade}) THEN 1 ELSE 0 END) AS demais
-          FROM infosaude.fia f
-          LEFT JOIN leito_atual la ON la.dt_ano_fia = f.dt_ano_fia AND la.nr_fia = f.nr_fia AND la.rn = 1
+        {FaixasInternacao("f.dt_baixa")}
+        {DeInternacaoComFaixas(hospital)}
          WHERE f.cd_hospital = {hospital} AND f.dt_baixa >= {ini} AND f.dt_baixa < {fim}
         """;
 
     public static string Q5SerieDiariaInternacoes(int hospital) => $"""
-        WITH leito_atual AS (
-        {LeitoAtual(hospital)}
-        )
         SELECT TRUNC(f.dt_baixa) AS dia, COUNT(*) AS qtd,
-               SUM(CASE WHEN la.cd_unidade IN ({UnidadesMaternidade}) THEN 1 ELSE 0 END) AS maternidade,
-               SUM(CASE WHEN la.cd_unidade IS NULL
-                          OR la.cd_unidade NOT IN ({UnidadesMaternidade}) THEN 1 ELSE 0 END) AS demais
-          FROM infosaude.fia f
-          LEFT JOIN leito_atual la ON la.dt_ano_fia = f.dt_ano_fia AND la.nr_fia = f.nr_fia AND la.rn = 1
+        {FaixasInternacao("f.dt_baixa")}
+        {DeInternacaoComFaixas(hospital)}
          WHERE f.cd_hospital = {hospital} AND f.dt_baixa >= TRUNC(SYSDATE) - 34
          GROUP BY TRUNC(f.dt_baixa) ORDER BY 1
         """;

@@ -30,7 +30,9 @@ export interface Agora {
    * oficial do SUS é urgência em 100% deles. Ver docs/consultas-oracle.md §Q5.
    */
   internadosMaternidade: number;
-  internadosDemais: number;
+  /** Crianças e adolescentes (≤17 na entrada) internados FORA da maternidade. */
+  internadosAte17: number;
+  internadosAdultos: number;
   /** Média de dias dos internados atuais (null quando não calculável — ex.: cold start). */
   mediaDiasInternacao: number | null;
   atendimentosHoje: number;
@@ -41,9 +43,14 @@ export interface PontoDia {
   /** Data ISO (yyyy-mm-dd). */
   dia: string;
   qtd: number;
-  /** Split maternidade/demais — presente na serieDiaria de internações. */
+  /**
+   * Faixas exclusivas — presentes na serieDiaria de internações. A ordem de
+   * precedência é maternidade → até 17 anos → adultos: sem isso os recém-nascidos
+   * (que estão no berçário) dominariam a faixa infantil.
+   */
   maternidade?: number;
-  demais?: number;
+  ate17?: number;
+  adultos?: number;
 }
 
 export interface PontoHora {
@@ -79,7 +86,8 @@ export interface MesInternacao {
   rotulo: string;
   total: number;
   maternidade: number;
-  demais: number;
+  ate17: number;
+  adultos: number;
   mediaDiaria: number;
 }
 
@@ -87,7 +95,7 @@ export interface Internacoes {
   atualizadoEm: string;
   mesAnterior: MesInternacao;
   mesAtual: MesInternacao;
-  hoje: { total: number; maternidade: number; demais: number };
+  hoje: { total: number; maternidade: number; ate17: number; adultos: number };
   serieDiaria: PontoDia[];
 }
 

@@ -29,7 +29,8 @@ public sealed record AgoraSecao(
     int EmAtendimento,
     int InternadosAgora,
     int InternadosMaternidade,
-    int InternadosDemais,
+    int InternadosAte17,
+    int InternadosAdultos,
     double? MediaDiasInternacao,
     int AtendimentosHoje,
     int InternacoesHoje);
@@ -66,12 +67,16 @@ public sealed record InternacoesSecao(
     InternacoesHoje Hoje,
     IReadOnlyList<DiaQtdInternacao> SerieDiaria);
 
-/// <summary>Ponto da série diária de internações — só ela tem o split por unidade (contrato).</summary>
-public sealed record DiaQtdInternacao(string Dia, int Qtd, int? Maternidade, int? Demais);
+/// <summary>
+/// Ponto da série diária de internações — só ela tem o split em faixas (contrato).
+/// As três faixas são exclusivas: maternidade → até 17 anos → adultos.
+/// </summary>
+public sealed record DiaQtdInternacao(string Dia, int Qtd, int? Maternidade, int? Ate17, int? Adultos);
 
-public sealed record InternacoesMes(string Rotulo, int Total, int Maternidade, int Demais, double? MediaDiaria);
+public sealed record InternacoesMes(
+    string Rotulo, int Total, int Maternidade, int Ate17, int Adultos, double? MediaDiaria);
 
-public sealed record InternacoesHoje(int Total, int Maternidade, int Demais);
+public sealed record InternacoesHoje(int Total, int Maternidade, int Ate17, int Adultos);
 
 // ── Maternidade (tick lento — Q7) ───────────────────────────────────────────
 
