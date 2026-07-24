@@ -1,4 +1,3 @@
-import clsx from 'clsx';
 import type { StatusOracle } from '@/types/painel';
 import { horaMinuto, idadeEmMinutos } from '@/lib/formatos';
 
@@ -28,18 +27,22 @@ interface Props {
  * ok; entre 3 e 15 min mostra a hora dos dados; acima disso (ou Oracle fora),
  * "reconectando ao Salux…". Mock é honesto: SÓ o selo "dados de exemplo",
  * nunca o pill de frescor por cima de dados de demonstração.
+ *
+ * Vive dentro da faixa vermelha do header, então todas as variantes são
+ * translúcidas sobre o vermelho — a cor sozinha nunca carrega o significado,
+ * o texto sempre diz o estado.
  */
 export function PillFrescor({ geradoEm, oracle, agora, usandoMock }: Props) {
   const nivel = calcularFrescor(geradoEm, oracle, agora);
+
+  const base =
+    'inline-flex items-center gap-2 rounded-full py-1 pl-2.5 pr-3 text-[12.5px] font-semibold';
 
   if (usandoMock) {
     return (
       <div className="flex items-center gap-2" aria-live="polite">
         <span
-          className={clsx(
-            'inline-flex items-center rounded-full border border-dashed border-grafite/40',
-            'px-2.5 py-1 text-[11.5px] font-medium text-grafite',
-          )}
+          className={`${base} border border-dashed border-white/50 font-medium text-white/85`}
         >
           dados de exemplo
         </span>
@@ -50,20 +53,20 @@ export function PillFrescor({ geradoEm, oracle, agora, usandoMock }: Props) {
   return (
     <div className="flex items-center gap-2" aria-live="polite">
       {nivel === 'vivo' && (
-        <span className="inline-flex items-center gap-2 rounded-full border border-linha bg-papel py-1 pl-2.5 pr-3 text-[12.5px] font-semibold text-tinta">
+        <span className={`${base} bg-white text-vermelho-marica`}>
           <span className="anima-pulso h-2 w-2 rounded-full bg-vermelho-marica" />
           ao vivo
         </span>
       )}
       {nivel === 'defasado' && (
-        <span className="inline-flex items-center gap-2 rounded-full border border-triagem-amarelo/40 bg-triagem-amarelo/10 py-1 pl-2.5 pr-3 text-[12.5px] font-semibold text-triagem-amarelo-apoio">
+        <span className={`${base} bg-white/15 text-white ring-1 ring-inset ring-white/40`}>
           <span className="h-2 w-2 rounded-full bg-triagem-amarelo" />
           dados de {horaMinuto(geradoEm)}
         </span>
       )}
       {nivel === 'desconectado' && (
-        <span className="inline-flex items-center gap-2 rounded-full border border-linha bg-painel py-1 pl-2.5 pr-3 text-[12.5px] font-medium text-grafite">
-          <span className="h-2 w-2 rounded-full bg-triagem-cinza" />
+        <span className={`${base} bg-white/10 font-medium text-white/85 ring-1 ring-inset ring-white/30`}>
+          <span className="h-2 w-2 rounded-full bg-white/60" />
           reconectando ao Salux…
         </span>
       )}

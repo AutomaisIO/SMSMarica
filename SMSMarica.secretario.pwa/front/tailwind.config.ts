@@ -19,8 +19,12 @@ export default {
         linha: '#E6E9EE',
         grade: '#EDF0F3',
         'vermelho-marica': '#C8102E',
+        'vermelho-escuro': '#A00C24',
         vinho: '#9E1B32',
         'neutro-serie': '#C9CED6',
+        // Rodapé institucional: carvão quente + off-white da logo Automais.
+        carvao: '#111820',
+        creme: '#F0EDE8',
         triagem: {
           vermelho: '#D62828',
           'vermelho-forte': '#A31414',

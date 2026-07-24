@@ -53,6 +53,11 @@ export const SecaoEmergencia = memo(function SecaoEmergencia({
           <Pulseira key={item.cor} item={item} />
         ))}
       </div>
+      {/* A ressalva anda colada ao número: limitação escondida vira decisão errada. */}
+      <p className="mt-3 text-[12.5px] leading-relaxed text-grafite">
+        Boletins sem cor registrada aparecem como “Sem classificação” — nunca são
+        descartados.
+      </p>
     </section>
   );
 });

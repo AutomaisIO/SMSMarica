@@ -1,8 +1,10 @@
-import { AlertTriangle, RefreshCw, WifiOff } from 'lucide-react';
+import { AlertTriangle, Download, RefreshCw, WifiOff } from 'lucide-react';
 import type { Painel } from '@/types/painel';
 import { usePainel } from '@/lib/usePainel';
+import { useVersaoApp } from '@/lib/useVersaoApp';
 import { horaMinuto, nomeDoMes } from '@/lib/formatos';
 import { Header } from '@/components/Header';
+import { InstalarApp } from '@/components/InstalarApp';
 import {
   SkeletonPainel,
   SkeletonSecaoAgora,
@@ -13,7 +15,7 @@ import { SecaoAgora } from '@/sections/SecaoAgora';
 import { SecaoEmergencia } from '@/sections/SecaoEmergencia';
 import { SecaoAtendimentos } from '@/sections/SecaoAtendimentos';
 import { SecaoInternacoes } from '@/sections/SecaoInternacoes';
-import { RodapeMetodologia } from '@/sections/RodapeMetodologia';
+import { Rodape } from '@/sections/Rodape';
 
 function EstadoSemConexao({ aoTentar }: { aoTentar: () => void }) {
   return (
@@ -55,10 +57,22 @@ function referenciaOracle(dados: Painel): string {
 
 export default function App() {
   const { dados, usandoMock, erroRede, carregandoInicial, recarregar } = usePainel();
+  const { novaVersao } = useVersaoApp();
 
   return (
     <div className="flex min-h-screen flex-col">
       <Header dados={dados} usandoMock={usandoMock} />
+
+      {/* Cache nunca é problema do Secretário: o app se atualiza sozinho e só
+          avisa que está fazendo isso. */}
+      {novaVersao && (
+        <div className="border-b border-vermelho-marica/20 bg-vermelho-marica/[0.06]">
+          <p className="mx-auto flex max-w-pagina items-center gap-2 px-4 py-2 text-[13px] font-medium text-vermelho-marica sm:px-6">
+            <Download className="h-4 w-4 shrink-0" aria-hidden="true" />
+            Nova versão do painel — atualizando…
+          </p>
+        </div>
+      )}
 
       {erroRede && dados && (
         <div className="border-b border-triagem-amarelo/30 bg-triagem-amarelo/10">
@@ -78,7 +92,10 @@ export default function App() {
         </div>
       )}
 
-      <main className="mx-auto w-full max-w-pagina flex-1 px-4 pb-16 pt-6 sm:px-6">
+      <main className="mx-auto w-full max-w-pagina flex-1 px-4 pb-12 pt-5 sm:px-6">
+        <div className="mb-5 empty:hidden">
+          <InstalarApp />
+        </div>
         {carregandoInicial && <SkeletonPainel />}
         {!carregandoInicial && !dados && <EstadoSemConexao aoTentar={recarregar} />}
         {dados && (
@@ -126,9 +143,17 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {/* Procedência do número, em uma linha — o rodapé é institucional. */}
+        {dados && (
+          <p className="mt-8 text-[12.5px] text-grafite">
+            {dados.fonte} · atualização automática a cada minuto (momento) e 10 minutos
+            (consolidados).
+          </p>
+        )}
       </main>
 
-      {dados && <RodapeMetodologia fonte={dados.fonte} />}
+      <Rodape />
     </div>
   );
 }

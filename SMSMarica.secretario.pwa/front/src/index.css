@@ -26,8 +26,9 @@
     font-feature-settings: 'tnum';
   }
 
+  /* Eyebrow em vermelho: é o fio da marca que costura header, seções e rodapé. */
   .eyebrow {
-    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-grafite;
+    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-vermelho-marica;
   }
 }
 

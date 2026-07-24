@@ -26,7 +26,7 @@ export function SecaoAgora({ agora, internacoesHoje }: Props) {
           <p className="eyebrow">Na emergência agora</p>
           <p className="tnum text-[12px] text-grafite">atualizado às {horaMinuto(agora.atualizadoEm)}</p>
         </div>
-        <p className="mt-3 font-display text-[clamp(44px,9vw,72px)] font-extrabold leading-none tracking-tight text-tinta">
+        <p className="mt-3 font-display text-[clamp(44px,9vw,72px)] font-extrabold leading-none tracking-tight text-vermelho-marica">
           <NumeroAnimado valor={agora.aguardandoMedico} />
         </p>
         <h2 id="titulo-agora" className="mt-2 text-[16px] font-medium text-grafite">

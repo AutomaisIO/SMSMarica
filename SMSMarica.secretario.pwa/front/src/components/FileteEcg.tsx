@@ -1,9 +1,9 @@
 import clsx from 'clsx';
 
 /**
- * Filete de eletrocardiograma que atravessa o header — a marca viva do painel.
- * Traçado 1.5px em vermelho-marica, rolagem contínua e discreta; pausa quando os
- * dados estão velhos e vira estático com prefers-reduced-motion (via CSS).
+ * Filete de eletrocardiograma no pé da faixa vermelha — a marca viva do painel.
+ * Traçado branco 1.5px sobre o vermelho, rolagem contínua e discreta; pausa
+ * quando os dados estão velhos e vira estático com prefers-reduced-motion.
  */
 
 // Unidade de 160 x-units (baseline y=13, viewBox 0 0 1120 20): P — QRS — T.
@@ -21,7 +21,7 @@ function Onda() {
     >
       <path
         d={CAMINHO}
-        stroke="#C8102E"
+        stroke="rgba(255,255,255,0.85)"
         strokeWidth={1.5}
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -33,14 +33,14 @@ function Onda() {
 
 export function FileteEcg({ pausado }: { pausado: boolean }) {
   return (
-    <div className="relative h-[18px] overflow-hidden" aria-hidden="true">
+    <div className="relative h-[18px] overflow-hidden pb-[2px]" aria-hidden="true">
       <div className={clsx('anima-ecg flex h-full w-[200%]', pausado && 'ecg-pausado')}>
         <Onda />
         <Onda />
       </div>
       {/* fade nas bordas para o traçado nascer e morrer suave */}
-      <div className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-papel to-transparent" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-papel to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-vermelho-marica to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-vermelho-marica to-transparent" />
     </div>
   );
 }
