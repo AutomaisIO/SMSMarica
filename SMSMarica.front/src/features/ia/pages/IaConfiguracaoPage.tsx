@@ -231,6 +231,54 @@ export function IaConfiguracaoPage() {
             </Campo>
           </div>
 
+          {/* ── Embeddings (RAG) ─────────────────────────────────────────── */}
+          <div className="border-t border-gray-100 pt-5">
+            <h3 className="text-sm font-semibold text-gray-900">Embeddings (RAG)</h3>
+            <p className="mt-0.5 text-sm text-gray-500">
+              Usados na busca por similaridade do conhecimento das bases. Para bases grandes é o
+              que evita mandar o modelo inteiro no prompt. O token é gravado cifrado e nunca exibido.
+            </p>
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Campo label="Provedor de embeddings" htmlFor="cfg-provedor-emb">
+                <Input
+                  id="cfg-provedor-emb"
+                  value={form.provedorEmbeddings}
+                  onChange={(e) => set('provedorEmbeddings', e.target.value)}
+                  placeholder="voyage"
+                />
+              </Campo>
+              <Campo label="Modelo de embeddings" htmlFor="cfg-modelo-emb">
+                <Input
+                  id="cfg-modelo-emb"
+                  value={form.modeloEmbeddings}
+                  onChange={(e) => set('modeloEmbeddings', e.target.value)}
+                  placeholder="voyage-3"
+                />
+              </Campo>
+              <Campo
+                label="Token de embeddings"
+                htmlFor="cfg-token-emb"
+                className="sm:col-span-2"
+                dica={
+                  config.data?.tokenEmbeddingsDefinido
+                    ? 'Já definido — preencha apenas para substituir.'
+                    : 'Ainda não definido.'
+                }
+              >
+                <Input
+                  id="cfg-token-emb"
+                  type="password"
+                  value={form.tokenEmbeddings}
+                  onChange={(e) => set('tokenEmbeddings', e.target.value)}
+                  placeholder={
+                    config.data?.tokenEmbeddingsDefinido ? '••••••••••••' : 'Cole o token aqui'
+                  }
+                  autoComplete="new-password"
+                />
+              </Campo>
+            </div>
+          </div>
+
           {erroConfig ? (
             <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               {erroConfig}
