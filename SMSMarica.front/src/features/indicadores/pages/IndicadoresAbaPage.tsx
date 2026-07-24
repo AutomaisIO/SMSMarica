@@ -4,6 +4,7 @@ import { AlertTriangle, BarChart3, Loader2, Plus } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
+import { Modal } from '@/shared/ui/Modal';
 import { FiltroIndicadores } from '@/features/indicadores/components/FiltroIndicadores';
 import { ModalIndicador } from '@/features/indicadores/components/ModalIndicador';
 import { TabelaIndicadores } from '@/features/indicadores/components/TabelaIndicadores';
@@ -12,7 +13,12 @@ import {
   useApurarIndicador,
   useListarIndicadores,
 } from '@/features/indicadores/api/queries';
-import { ABAS, abaPorRota, type FiltroIndicador } from '@/features/indicadores/types';
+import {
+  ABAS,
+  abaPorRota,
+  type FiltroIndicador,
+  type IndicadorResumo,
+} from '@/features/indicadores/types';
 
 /** Mês passado fechado — é assim que o contrato é apurado. */
 function periodoPadrao(): { inicio: string; fim: string } {
@@ -33,6 +39,7 @@ export function IndicadoresAbaPage() {
 
   const [filtro, setFiltro] = useState<FiltroIndicador>(() => ({ hospital: 1, ...periodoPadrao() }));
   const [modal, setModal] = useState<{ id: string | null } | null>(null);
+  const [ressalva, setRessalva] = useState<IndicadorResumo | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
   const lista = useListarIndicadores(aba ?? 'Adulto', filtro);
@@ -123,9 +130,23 @@ export function IndicadoresAbaPage() {
           indicadores={itens}
           onEditar={(id) => setModal({ id })}
           onApurar={apurarIndividual}
+          onVerRessalva={setRessalva}
           apurandoId={apurarUm.isPending ? (apurarUm.variables?.id ?? null) : null}
           podeEditar={podeEditar}
         />
+      )}
+
+      {ressalva && (
+        <Modal
+          aberto
+          aoFechar={() => setRessalva(null)}
+          titulo={`Ressalva · ${ressalva.numero} ${ressalva.nome}`}
+          largura="md"
+        >
+          <p className="whitespace-pre-line text-sm leading-relaxed text-slate-700">
+            {ressalva.ressalva}
+          </p>
+        </Modal>
       )}
 
       {modal && (

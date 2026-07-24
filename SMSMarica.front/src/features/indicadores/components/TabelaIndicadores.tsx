@@ -9,6 +9,7 @@ type Props = {
   indicadores: IndicadorResumo[];
   onEditar: (id: string) => void;
   onApurar: (id: string) => void;
+  onVerRessalva: (indicador: IndicadorResumo) => void;
   apurandoId: string | null;
   podeEditar: boolean;
 };
@@ -32,6 +33,7 @@ export function TabelaIndicadores({
   indicadores,
   onEditar,
   onApurar,
+  onVerRessalva,
   apurandoId,
   podeEditar,
 }: Props) {
@@ -108,15 +110,23 @@ export function TabelaIndicadores({
                         {situacao.rotulo}
                       </span>
                     )}
+                    {i.ressalva && (
+                      <button
+                        type="button"
+                        title="Ver ressalva"
+                        onClick={() => onVerRessalva(i)}
+                        className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-amber-700 transition hover:bg-amber-50"
+                      >
+                        <AlertTriangle className="h-3 w-3" />
+                        Ressalva
+                      </button>
+                    )}
                   </div>
-                  {i.ressalva && (
-                    <p className="mt-1 flex items-start gap-1 text-[11px] leading-snug text-slate-400">
-                      <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-amber-400" />
-                      {i.ressalva}
-                    </p>
-                  )}
                   {r?.erro && (
-                    <p className="mt-1 text-[11px] leading-snug text-rose-500">{r.erro}</p>
+                    <p className="mt-1 flex items-start gap-1 text-[11px] leading-snug text-rose-500">
+                      <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                      {r.erro}
+                    </p>
                   )}
                 </td>
 

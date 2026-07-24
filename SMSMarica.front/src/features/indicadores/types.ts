@@ -18,7 +18,8 @@ export type TipoResultadoIndicador =
   | 'Densidade'
   | 'Absoluto'
   | 'Distribuicao'
-  | 'Agrupador';
+  | 'Agrupador'
+  | 'Media';
 
 export type MetaOperador =
   | 'MenorOuIgual'
@@ -165,6 +166,7 @@ export const TIPOS: { valor: TipoResultadoIndicador; rotulo: string; contrato: s
   { valor: 'Absoluto', rotulo: 'Absoluto (contagem)', contrato: 'coluna numerador' },
   { valor: 'Distribuicao', rotulo: 'Distribuição', contrato: 'colunas rotulo e quantidade' },
   { valor: 'Agrupador', rotulo: 'Agrupador (soma dos filhos)', contrato: 'sem SQL' },
+  { valor: 'Media', rotulo: 'Média (AVG pronto no SQL)', contrato: 'coluna valor (e denominador = amostra)' },
 ];
 
 export function abaPorRota(rota: string | undefined): AbaIndicador | undefined {

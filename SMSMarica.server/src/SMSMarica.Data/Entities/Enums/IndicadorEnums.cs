@@ -41,6 +41,14 @@ public enum TipoResultadoIndicador
     /// que só existe como soma de 3.1 a 3.5.
     /// </summary>
     Agrupador = 5,
+
+    /// <summary>
+    /// Média já calculada pelo SQL, devolvida na coluna <c>valor</c> (ex.: <c>AVG(...)</c>).
+    /// Usado para "tempo médio" quando não faz sentido expor a soma bruta como numerador —
+    /// a coluna <c>denominador</c> carrega o tamanho da amostra. Na planilha equivale a
+    /// numerador ÷ denominador, mas o Oracle já faz a divisão.
+    /// </summary>
+    Media = 6,
 }
 
 /// <summary>

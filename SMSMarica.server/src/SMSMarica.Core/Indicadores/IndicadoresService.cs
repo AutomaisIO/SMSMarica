@@ -446,32 +446,59 @@ public sealed class IndicadoresService(
         var linha = retorno.Linhas[0];
         var numerador = Valor(retorno, linha, "numerador");
         var denominador = Valor(retorno, linha, "denominador");
+        var valorDireto = Valor(retorno, linha, "valor");
 
         // Espelha a planilha: resultado = numerador / denominador, com multiplicador só na
-        // densidade. Sem denominador, a planilha mostra "-" e pontua zero — aqui é null.
-        decimal? valor = indicador.TipoResultado switch
+        // densidade. A exceção é Media, cujo SQL já devolve a média pronta em `valor`
+        // (Σ ÷ n calculado no Oracle) — aí o numerador não se aplica.
+        //
+        // IMPORTANTE: numerador ausente NÃO vira zero. Tratar null como 0 mostraria "0" no
+        // lugar de "faltou a coluna", que é o pior tipo de erro — número falso com cara de certo.
+        string? erro = null;
+        decimal? valor = null;
+
+        switch (indicador.TipoResultado)
         {
-            TipoResultadoIndicador.Razao =>
-                denominador is > 0 ? numerador.GetValueOrDefault() / denominador.Value : null,
-            TipoResultadoIndicador.Densidade =>
-                denominador is > 0
-                    ? numerador.GetValueOrDefault() / denominador.Value * (indicador.FatorDensidade ?? 1000)
-                    : null,
-            TipoResultadoIndicador.Absoluto => numerador,
-            _ => null,
-        };
+            case TipoResultadoIndicador.Media:
+                if (valorDireto is null)
+                {
+                    erro = "A consulta não devolveu a coluna 'valor' (média).";
+                }
+                valor = valorDireto;
+                break;
+
+            case TipoResultadoIndicador.Razao:
+            case TipoResultadoIndicador.Densidade:
+                if (numerador is null)
+                {
+                    erro = "A consulta não devolveu a coluna 'numerador'.";
+                }
+                else if (denominador is not > 0)
+                {
+                    erro = "Denominador zerado ou ausente no período — sem base para calcular.";
+                }
+                else
+                {
+                    valor = numerador.Value / denominador.Value;
+                    if (indicador.TipoResultado == TipoResultadoIndicador.Densidade)
+                    {
+                        valor *= indicador.FatorDensidade ?? 1000;
+                    }
+                }
+                break;
+
+            case TipoResultadoIndicador.Absoluto:
+                if (numerador is null)
+                {
+                    erro = "A consulta não devolveu a coluna 'numerador'.";
+                }
+                valor = numerador;
+                break;
+        }
 
         if (valor is not null)
         {
             valor = Math.Round(valor.Value, 6);
-        }
-
-        string? erro = null;
-        if (valor is null)
-        {
-            erro = indicador.TipoResultado == TipoResultadoIndicador.Absoluto
-                ? "A consulta não devolveu a coluna 'numerador'."
-                : "Denominador zerado ou ausente no período — sem base para calcular.";
         }
 
         var (atingiu, pontos) = AvaliarMeta(indicador, valor);
