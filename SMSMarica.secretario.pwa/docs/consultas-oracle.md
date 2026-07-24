@@ -6,6 +6,21 @@ Hospital fixo: `cd_hospital = 1` (HMCML). UPA Inoã (2) e PA Santa Rita (3) exis
 
 ## Fatos do schema que NÃO se pode "corrigir"
 
+0. **`FIA.ID_INTERNACAO` NÃO é urgência/eletiva no HMCML.** O levantamento do banco
+   documenta `'U'`=Urgência e `'E'`=Eletiva, e é assim que o Salux rotula — mas a
+   investigação de 24/07/2026 mostrou que no HMCML esse campo não sustenta a leitura:
+
+   | Evidência | Resultado |
+   |---|---|
+   | `CD_CARATER_INTERNACAO` (caráter **oficial do SUS**, lookup `CARATER_INTERNACAO_SUS`) | `2` = Urgência em **100%** das 604 internações de julho; nenhuma com `1` = Eletivo |
+   | `IN_ORIGEM_BAA` | **99,7%** dos `'E'` entraram pelo boletim da emergência |
+   | Dia da semana (90 d) | sábado 52 e domingo 32 — **mais** que segunda (43) e quarta (42) |
+   | `PRE_INTERNACAO` (internação agendada) | **1 registro** no hospital inteiro |
+   | Unidade do leito | **98%** dos `'E'` na MATERNIDADE, 2% no Centro Cirúrgico, zero nas outras 19 unidades |
+
+   Conclusão: `'E'` é convenção de preenchimento da recepção da maternidade. **O painel
+   separa internação pela UNIDADE DO LEITO** (Q5), nunca por esse campo.
+
 1. `BAA.DT_INICIO_ATEND_MED` / `DT_FIM_ATEND_MED` estão **100% vazias** no HMCML. O marcador do início do atendimento médico é o **primeiro eDoc de boletim médico**: `EDOC_MOVIMENTO` com `CD_MODELO IN (10036, 10232, 10014)` — cobre ~92,6% dos boletins.
 2. `BAA.DT_CHEGADA` = `BAA.DT_ATENDIMENTO` (ambos são a abertura do boletim na recepção).
 3. ~15% dos boletins de emergência **não têm cor** (`CD_CLASSIFICACAO_RISCO NULL`). Reportar como `SEM_CLASSIFICACAO`, nunca descartar silenciosamente.
@@ -91,22 +106,73 @@ SELECT TO_NUMBER(TO_CHAR(b.dt_atendimento,'HH24')) AS hora, COUNT(*) AS qtd
 
 ## Q5 — Internações por período + série (tick lento)
 
+Split por **unidade do leito atual** (ver fato 0): maternidade = unidades `15` (MATERNIDADE),
+`16` (PRE PARTO), `17` (BERCARIO), `26` (MATERNIDADE 2). A paciente troca de leito ao longo da
+estadia — vale o último (`MAX(dt_transferencia)`).
+
 ```sql
+WITH leito_atual AS (
+  SELECT fl.dt_ano_fia, fl.nr_fia, fl.cd_unidade,
+         ROW_NUMBER() OVER (PARTITION BY fl.dt_ano_fia, fl.nr_fia
+                            ORDER BY fl.dt_transferencia DESC) rn
+    FROM infosaude.fia_leito fl
+   WHERE fl.cd_hospital = 1
+)
 -- por período (mesmos :ini/:fim da Q2, sobre dt_baixa)
 SELECT COUNT(*) AS total,
-       SUM(CASE WHEN f.id_internacao='U' THEN 1 ELSE 0 END) AS urgencia,
-       SUM(CASE WHEN f.id_internacao='E' THEN 1 ELSE 0 END) AS eletiva
+       SUM(CASE WHEN la.cd_unidade IN (15,16,17,26) THEN 1 ELSE 0 END) AS maternidade,
+       SUM(CASE WHEN la.cd_unidade IS NULL
+                  OR la.cd_unidade NOT IN (15,16,17,26) THEN 1 ELSE 0 END) AS demais
   FROM infosaude.fia f
+  LEFT JOIN leito_atual la ON la.dt_ano_fia = f.dt_ano_fia AND la.nr_fia = f.nr_fia AND la.rn = 1
  WHERE f.cd_hospital = 1 AND f.dt_baixa >= :ini AND f.dt_baixa < :fim
 
--- série diária 35 dias
-SELECT TRUNC(f.dt_baixa) AS dia, COUNT(*) AS qtd
-  FROM infosaude.fia f
- WHERE f.cd_hospital = 1 AND f.dt_baixa >= TRUNC(SYSDATE) - 34
- GROUP BY TRUNC(f.dt_baixa) ORDER BY 1
+-- série diária 35 dias: mesma CTE, GROUP BY TRUNC(f.dt_baixa)
 ```
 
-Validado: jun 739 (642 U / 97 E, 24,6/dia); jul 604 (522/82, 25,2/dia).
+Validado 24/07: jun 739 (221 maternidade / 518 demais, 24,6/dia); jul 606 (199/407, 25,3/dia).
+Internados no momento: 148 (21 maternidade / 127 demais). Custo ~6 s por consulta.
+
+## Q7 — Maternidade: o livro de partos (tick lento)
+
+Origem: **`INFOSAUDE.NASCIMENTO`** — uma linha por nascimento, viva (último registro no mesmo
+dia da consulta). Não tem `cd_hospital` próprio de filtro: o HMCML é a única maternidade da
+base. Registro **consistente**: 82–137 partos/mês nos últimos 12 meses, sem buracos, com
+peso/prematuridade/APGAR/sexo preenchidos em 100% do mês corrente.
+
+Duas armadilhas:
+- **`PESO` está em QUILOS** (2,165–4,365), não em gramas → baixo peso é `< 2.5`.
+- O tipo do parto vale por **`ID_TP_PARTO`** (`'C'`/`'V'`); a coluna textual `TIPO_PARTO` está
+  sempre nula.
+
+```sql
+SELECT COUNT(*)                                                          AS partos,
+       SUM(CASE WHEN n.id_tp_parto='C' THEN 1 ELSE 0 END)                AS cesareas,
+       SUM(CASE WHEN n.id_tp_parto='V' THEN 1 ELSE 0 END)                AS vaginais,
+       SUM(CASE WHEN n.in_prematuro='S' THEN 1 ELSE 0 END)               AS prematuros,
+       SUM(CASE WHEN n.peso > 0 AND n.peso < 2.5 THEN 1 ELSE 0 END)      AS baixo_peso,
+       ROUND(AVG(CASE WHEN n.peso > 0 THEN n.peso END), 3)               AS peso_medio_kg,
+       SUM(CASE WHEN TO_NUMBER(REGEXP_SUBSTR(n.apgar_5_min,'^\d+')) < 7
+                THEN 1 ELSE 0 END)                                       AS apgar5_abaixo7,
+       SUM(CASE WHEN n.sexo='F' THEN 1 ELSE 0 END)                       AS meninas,
+       SUM(CASE WHEN n.sexo='M' THEN 1 ELSE 0 END)                       AS meninos
+  FROM infosaude.nascimento n
+ WHERE n.dt_parto >= :ini AND n.dt_parto < :fim
+
+-- série diária 35 dias
+SELECT TRUNC(n.dt_parto) AS dia, COUNT(*) AS qtd,
+       SUM(CASE WHEN n.id_tp_parto='C' THEN 1 ELSE 0 END) AS cesareas
+  FROM infosaude.nascimento n
+ WHERE n.dt_parto >= TRUNC(SYSDATE) - 34
+ GROUP BY TRUNC(n.dt_parto) ORDER BY 1
+```
+
+Validado 24/07: jul 83 partos (54,2% cesárea, 1 prematuro, 6 abaixo de 2,5 kg, peso médio
+3,3 kg, 1 Apgar<7); jun 94 (63,8% cesárea, 4 prematuros).
+
+Campos ainda **não** usados que existem na tabela (ideias futuras): `ID_TP_GRAVIDEZ` (única/
+gemelar), `NR_PRE_NATAL` (consultas de pré-natal), `ID_TMP_GESTACAO`, `NR_DNV` (declaração de
+nascido vivo), `ID_MALFORMACAO`, `NM_OBSTETRA`/`NM_PEDIATRA`.
 
 ## Q6 — Espera por cor (tick lento — a consulta PESADA)
 

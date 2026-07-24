@@ -30,19 +30,26 @@ const TINTA = '#131A22';
 
 interface Props {
   dados: PontoDia[];
-  /** Nome da grandeza no tooltip: "atendimentos" | "internações". */
+  /** Nome da grandeza no tooltip: "atendimentos" | "internações" | "partos". */
   rotuloUnidade: string;
   altura?: number;
+  /** Nomes das duas parcelas quando os pontos trazem o split (maternidade/demais). */
+  rotulosEmpilhados?: { a: string; b: string };
 }
 
 /**
  * Série diária de 35 dias: barras finas em vinho, topo arredondado, HOJE (último
  * ponto, parcial) em vermelho-marica com rótulo direto; máximo também rotulado.
  * Fins de semana ganham tick discreto. Baseline sempre em zero, um único eixo y.
- * Se o back passar a mandar o split urgência/eletiva por dia, as barras empilham
- * automaticamente (com legenda).
+ * Quando os pontos trazem o split por dia, as barras empilham automaticamente
+ * (com legenda), usando os rótulos de `rotulosEmpilhados`.
  */
-export function GraficoSerieDiaria({ dados, rotuloUnidade, altura = 240 }: Props) {
+export function GraficoSerieDiaria({
+  dados,
+  rotuloUnidade,
+  altura = 240,
+  rotulosEmpilhados = { a: 'Maternidade', b: 'Demais unidades' },
+}: Props) {
   if (dados.length === 0) {
     return <p className="py-10 text-center text-[13.5px] text-grafite">Sem dados no período.</p>;
   }
@@ -52,7 +59,7 @@ export function GraficoSerieDiaria({ dados, rotuloUnidade, altura = 240 }: Props
   const ultimoEhHoje = dados[dados.length - 1].dia === diaHojeBrasilia();
   const idxHoje = ultimoEhHoje ? dados.length - 1 : -1;
   const idxMax = dados.reduce((max, d, i) => (d.qtd > dados[max].qtd ? i : max), 0);
-  const empilhado = dados.every((d) => d.urgencia != null && d.eletiva != null);
+  const empilhado = dados.every((d) => d.maternidade != null && d.demais != null);
   const animar = !prefereMenosMovimento();
 
   // Rótulo direto só em pontos selecionados: hoje e máximo.
@@ -116,8 +123,16 @@ export function GraficoSerieDiaria({ dados, rotuloUnidade, altura = 240 }: Props
     const titulo = `${diaPorExtenso(ponto.dia)}${hoje ? ' · em andamento' : ''}`;
     const linhas: LinhaTooltip[] = empilhado
       ? [
-          { cor: VINHO, rotulo: 'urgência', valor: formatarInteiro(ponto.urgencia ?? 0) },
-          { cor: NEUTRO_SERIE, rotulo: 'eletiva', valor: formatarInteiro(ponto.eletiva ?? 0) },
+          {
+            cor: VINHO,
+            rotulo: rotulosEmpilhados.a.toLowerCase(),
+            valor: formatarInteiro(ponto.maternidade ?? 0),
+          },
+          {
+            cor: NEUTRO_SERIE,
+            rotulo: rotulosEmpilhados.b.toLowerCase(),
+            valor: formatarInteiro(ponto.demais ?? 0),
+          },
           { rotulo: 'total', valor: formatarInteiro(ponto.qtd) },
         ]
       : [{ rotulo: rotuloUnidade, valor: formatarInteiro(ponto.qtd) }];
@@ -130,11 +145,11 @@ export function GraficoSerieDiaria({ dados, rotuloUnidade, altura = 240 }: Props
         <div className="mb-2 flex items-center gap-4 text-[12.5px] text-grafite">
           <span className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: VINHO }} />
-            Urgência
+            {rotulosEmpilhados.a}
           </span>
           <span className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: NEUTRO_SERIE }} />
-            Eletiva
+            {rotulosEmpilhados.b}
           </span>
         </div>
       )}
@@ -161,7 +176,7 @@ export function GraficoSerieDiaria({ dados, rotuloUnidade, altura = 240 }: Props
           {empilhado ? (
             <>
               <Bar
-                dataKey="urgencia"
+                dataKey="maternidade"
                 stackId="serie"
                 fill={VINHO}
                 stroke="#FFFFFF"
@@ -169,7 +184,7 @@ export function GraficoSerieDiaria({ dados, rotuloUnidade, altura = 240 }: Props
                 isAnimationActive={animar}
               />
               <Bar
-                dataKey="eletiva"
+                dataKey="demais"
                 stackId="serie"
                 fill={NEUTRO_SERIE}
                 stroke="#FFFFFF"

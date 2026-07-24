@@ -24,8 +24,13 @@ export interface Agora {
   aguardandoPorCor: AguardandoPorCor[];
   emAtendimento: number;
   internadosAgora: number;
-  internadosUrgencia: number;
-  internadosEletiva: number;
+  /**
+   * Split por UNIDADE (leito atual), não por FIA.ID_INTERNACAO: no HMCML o 'E'
+   * daquele campo não é "eletiva" — 98% dos casos estão na maternidade e o caráter
+   * oficial do SUS é urgência em 100% deles. Ver docs/consultas-oracle.md §Q5.
+   */
+  internadosMaternidade: number;
+  internadosDemais: number;
   /** Média de dias dos internados atuais (null quando não calculável — ex.: cold start). */
   mediaDiasInternacao: number | null;
   atendimentosHoje: number;
@@ -36,9 +41,9 @@ export interface PontoDia {
   /** Data ISO (yyyy-mm-dd). */
   dia: string;
   qtd: number;
-  /** Split urgência/eletiva — presente na serieDiaria de internações (contrato atualizado). */
-  urgencia?: number;
-  eletiva?: number;
+  /** Split maternidade/demais — presente na serieDiaria de internações. */
+  maternidade?: number;
+  demais?: number;
 }
 
 export interface PontoHora {
@@ -73,8 +78,8 @@ export interface Atendimentos {
 export interface MesInternacao {
   rotulo: string;
   total: number;
-  urgencia: number;
-  eletiva: number;
+  maternidade: number;
+  demais: number;
   mediaDiaria: number;
 }
 
@@ -82,8 +87,41 @@ export interface Internacoes {
   atualizadoEm: string;
   mesAnterior: MesInternacao;
   mesAtual: MesInternacao;
-  hoje: { total: number; urgencia: number; eletiva: number };
+  hoje: { total: number; maternidade: number; demais: number };
   serieDiaria: PontoDia[];
+}
+
+/** Um período do livro de partos (INFOSAUDE.NASCIMENTO). */
+export interface MaternidadePeriodo {
+  rotulo: string;
+  partos: number;
+  cesareas: number;
+  vaginais: number;
+  prematuros: number;
+  /** Nascidos com menos de 2,5 kg (o peso vem em QUILOS na base). */
+  baixoPeso: number;
+  pesoMedioKg: number | null;
+  apgar5Abaixo7: number;
+  meninas: number;
+  meninos: number;
+  /** null no período "hoje" (não faz média de um dia só). */
+  mediaDiaria: number | null;
+  /** 0–100; null quando não houve parto no período. */
+  pctCesarea: number | null;
+}
+
+export interface PontoDiaPartos {
+  dia: string;
+  qtd: number;
+  cesareas?: number;
+}
+
+export interface Maternidade {
+  atualizadoEm: string;
+  mesAnterior: MaternidadePeriodo;
+  mesAtual: MaternidadePeriodo;
+  hoje: MaternidadePeriodo;
+  serieDiaria: PontoDiaPartos[];
 }
 
 export interface EsperaCor {
@@ -124,4 +162,5 @@ export interface Painel {
   atendimentos?: Atendimentos | null;
   internacoes?: Internacoes | null;
   esperaPorCor?: EsperaPorCor | null;
+  maternidade?: Maternidade | null;
 }

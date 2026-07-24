@@ -12,7 +12,8 @@ public sealed record PainelSnapshot(
     AgoraSecao? Agora,
     AtendimentosSecao? Atendimentos,
     InternacoesSecao? Internacoes,
-    EsperaPorCorSecao? EsperaPorCor);
+    EsperaPorCorSecao? EsperaPorCor,
+    MaternidadeSecao? Maternidade);
 
 public sealed record OracleStatus(
     bool Ok,
@@ -27,8 +28,8 @@ public sealed record AgoraSecao(
     IReadOnlyList<CorAguardando> AguardandoPorCor,
     int EmAtendimento,
     int InternadosAgora,
-    int InternadosUrgencia,
-    int InternadosEletiva,
+    int InternadosMaternidade,
+    int InternadosDemais,
     double? MediaDiasInternacao,
     int AtendimentosHoje,
     int InternacoesHoje);
@@ -65,12 +66,38 @@ public sealed record InternacoesSecao(
     InternacoesHoje Hoje,
     IReadOnlyList<DiaQtdInternacao> SerieDiaria);
 
-/// <summary>Ponto da série diária de internações — só ela tem o split urgência/eletiva (contrato).</summary>
-public sealed record DiaQtdInternacao(string Dia, int Qtd, int? Urgencia, int? Eletiva);
+/// <summary>Ponto da série diária de internações — só ela tem o split por unidade (contrato).</summary>
+public sealed record DiaQtdInternacao(string Dia, int Qtd, int? Maternidade, int? Demais);
 
-public sealed record InternacoesMes(string Rotulo, int Total, int Urgencia, int Eletiva, double? MediaDiaria);
+public sealed record InternacoesMes(string Rotulo, int Total, int Maternidade, int Demais, double? MediaDiaria);
 
-public sealed record InternacoesHoje(int Total, int Urgencia, int Eletiva);
+public sealed record InternacoesHoje(int Total, int Maternidade, int Demais);
+
+// ── Maternidade (tick lento — Q7) ───────────────────────────────────────────
+
+public sealed record MaternidadeSecao(
+    DateTimeOffset AtualizadoEm,
+    MaternidadePeriodo MesAnterior,
+    MaternidadePeriodo MesAtual,
+    MaternidadePeriodo Hoje,
+    IReadOnlyList<DiaPartos> SerieDiaria);
+
+public sealed record MaternidadePeriodo(
+    string Rotulo,
+    int Partos,
+    int Cesareas,
+    int Vaginais,
+    int Prematuros,
+    int BaixoPeso,
+    double? PesoMedioKg,
+    int Apgar5Abaixo7,
+    int Meninas,
+    int Meninos,
+    double? MediaDiaria,
+    /// <summary>Fração de cesáreas (0–100) — null quando não houve parto no período.</summary>
+    double? PctCesarea);
+
+public sealed record DiaPartos(string Dia, int Qtd, int? Cesareas);
 
 // ── Espera por cor (tick lento — Q6) ────────────────────────────────────────
 

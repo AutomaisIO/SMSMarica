@@ -15,6 +15,7 @@ import { SecaoAgora } from '@/sections/SecaoAgora';
 import { SecaoEmergencia } from '@/sections/SecaoEmergencia';
 import { SecaoAtendimentos } from '@/sections/SecaoAtendimentos';
 import { SecaoInternacoes } from '@/sections/SecaoInternacoes';
+import { SecaoMaternidade } from '@/sections/SecaoMaternidade';
 import { Rodape } from '@/sections/Rodape';
 
 function EstadoSemConexao({ aoTentar }: { aoTentar: () => void }) {
@@ -137,6 +138,13 @@ export default function App() {
             <div className="anima-entrada" style={{ animationDelay: '210ms' }}>
               {dados.internacoes ? (
                 <SecaoInternacoes internacoes={dados.internacoes} />
+              ) : (
+                <SkeletonSecaoGraficos />
+              )}
+            </div>
+            <div className="anima-entrada" style={{ animationDelay: '280ms' }}>
+              {dados.maternidade ? (
+                <SecaoMaternidade maternidade={dados.maternidade} />
               ) : (
                 <SkeletonSecaoGraficos />
               )}

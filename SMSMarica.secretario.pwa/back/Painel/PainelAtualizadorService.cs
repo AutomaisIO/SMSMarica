@@ -175,7 +175,7 @@ public sealed class PainelAtualizadorService : BackgroundService
 
         var linhaC = q1c.Linhas[0];
         var internadosAgora = ComoInt(linhaC[0]);
-        var internadosUrgencia = ComoInt(linhaC[1]);
+        var internadosMaternidade = ComoInt(linhaC[1]);
 
         return new AgoraSecao(
             AtualizadoEm: FusoBrasilia.Agora(),
@@ -183,8 +183,8 @@ public sealed class PainelAtualizadorService : BackgroundService
             AguardandoPorCor: aguardandoPorCor,
             EmAtendimento: emAtendimento,
             InternadosAgora: internadosAgora,
-            InternadosUrgencia: internadosUrgencia,
-            InternadosEletiva: internadosAgora - internadosUrgencia,
+            InternadosMaternidade: internadosMaternidade,
+            InternadosDemais: internadosAgora - internadosMaternidade,
             MediaDiasInternacao: ComoDoubleOuNulo(linhaC[2]),
             AtendimentosHoje: ComoInt(linhaC[3]),
             InternacoesHoje: ComoInt(linhaC[4]));
@@ -225,6 +225,18 @@ public sealed class PainelAtualizadorService : BackgroundService
                 ConsultasPainel.Q5InternacoesPeriodo(hosp, ConsultasPainel.IniMesAtual, ConsultasPainel.FimDiasCompletos), ct);
             var serieInternacoes = await ConsultarAsync(ConsultasPainel.Q5SerieDiariaInternacoes(hosp), ct);
 
+            // Q7 — maternidade (NASCIMENTO não tem cd_hospital próprio: o livro de partos
+            // é do HMCML, única maternidade da rede na base).
+            var matMesAnterior = await ConsultarAsync(
+                ConsultasPainel.Q7Maternidade(ConsultasPainel.IniMesAnterior, ConsultasPainel.FimMesAnterior), ct);
+            var matMesAtual = await ConsultarAsync(
+                ConsultasPainel.Q7Maternidade(ConsultasPainel.IniMesAtual, ConsultasPainel.FimMesAtual), ct);
+            var matHoje = await ConsultarAsync(
+                ConsultasPainel.Q7Maternidade(ConsultasPainel.IniHoje, ConsultasPainel.FimHoje), ct);
+            var matDiasCompletos = await ConsultarAsync(
+                ConsultasPainel.Q7Maternidade(ConsultasPainel.IniMesAtual, ConsultasPainel.FimDiasCompletos), ct);
+            var seriePartos = await ConsultarAsync(ConsultasPainel.Q7SerieDiariaPartos(), ct);
+
             // Q6 — espera por cor, 1× por período (a PESADA fica por último).
             var esperaHoje = await ConsultarAsync(
                 ConsultasPainel.Q6EsperaPorCor(hosp, ConsultasPainel.IniHoje, ConsultasPainel.FimHoje, "SYSDATE + 3"), ct);
@@ -239,6 +251,8 @@ public sealed class PainelAtualizadorService : BackgroundService
                 hoje, carimbo, totalMesAnterior, totalMesAtual, totalHoje, totalDiasCompletos, serieAtendimentos, porHora);
             var internacoes = MontarInternacoes(
                 hoje, carimbo, intMesAnterior, intMesAtual, intHoje, intDiasCompletos, serieInternacoes);
+            var maternidade = MontarMaternidade(
+                hoje, carimbo, matMesAnterior, matMesAtual, matHoje, matDiasCompletos, seriePartos);
             var espera = new EsperaPorCorSecao(carimbo, new EsperaPeriodos(
                 MontarEsperaPeriodo(esperaHoje),
                 MontarEsperaPeriodo(esperaMesAtual),
@@ -252,6 +266,7 @@ public sealed class PainelAtualizadorService : BackgroundService
                 Atendimentos = atendimentos,
                 Internacoes = internacoes,
                 EsperaPorCor = espera,
+                Maternidade = maternidade,
                 Oracle = StatusOracleAtual(),
             });
 
@@ -334,24 +349,24 @@ public sealed class PainelAtualizadorService : BackgroundService
         var diasMesAnterior = DateTime.DaysInMonth(mesAnteriorData.Year, mesAnteriorData.Month);
         var diasCompletos = hoje.Day - 1;
 
-        var (antTotal, antUrg, antEle) = LerPeriodoInternacao(mesAnterior);
-        var (atuTotal, atuUrg, atuEle) = LerPeriodoInternacao(mesAtual);
-        var (hojTotal, hojUrg, hojEle) = LerPeriodoInternacao(diaAtual);
+        var (antTotal, antMat, antDem) = LerPeriodoInternacao(mesAnterior);
+        var (atuTotal, atuMat, atuDem) = LerPeriodoInternacao(mesAtual);
+        var (hojTotal, hojMat, hojDem) = LerPeriodoInternacao(diaAtual);
         var (compTotal, _, _) = LerPeriodoInternacao(diasCompletosPeriodo);
 
         return new InternacoesSecao(
             AtualizadoEm: carimbo,
             MesAnterior: new InternacoesMes(
-                RotuloMes(mesAnteriorData), antTotal, antUrg, antEle, MediaDiaria(antTotal, diasMesAnterior)),
+                RotuloMes(mesAnteriorData), antTotal, antMat, antDem, MediaDiaria(antTotal, diasMesAnterior)),
             MesAtual: new InternacoesMes(
                 // Média diária do mês atual SEGUE a regra dos dias completos (a mesma dos
                 // atendimentos) — decisão confirmada; o contrato foi alinhado a essa regra.
-                RotuloMes(hoje), atuTotal, atuUrg, atuEle, MediaDiaria(compTotal, diasCompletos)),
-            Hoje: new InternacoesHoje(hojTotal, hojUrg, hojEle),
+                RotuloMes(hoje), atuTotal, atuMat, atuDem, MediaDiaria(compTotal, diasCompletos)),
+            Hoje: new InternacoesHoje(hojTotal, hojMat, hojDem),
             SerieDiaria: MontarSerieDiariaInternacoes(serieDiaria, hoje));
     }
 
-    private static (int Total, int Urgencia, int Eletiva) LerPeriodoInternacao(ResultadoConsulta resultado)
+    private static (int Total, int Maternidade, int Demais) LerPeriodoInternacao(ResultadoConsulta resultado)
     {
         var linha = resultado.Linhas[0];
         return (ComoInt(linha[0]), ComoInt(linha[1]), ComoInt(linha[2]));
@@ -380,12 +395,12 @@ public sealed class PainelAtualizadorService : BackgroundService
     }
 
     /// <summary>
-    /// Série de internações (35 dias contínuos) com o split urgência/eletiva por dia —
+    /// Série de internações (35 dias contínuos) com o split maternidade/demais por dia —
     /// SÓ esta série carrega o split (contrato); dias sem linha viram 0/0/0.
     /// </summary>
     private static List<DiaQtdInternacao> MontarSerieDiariaInternacoes(ResultadoConsulta resultado, DateTimeOffset hoje)
     {
-        var porDia = new Dictionary<DateOnly, (int Qtd, int? Urgencia, int? Eletiva)>();
+        var porDia = new Dictionary<DateOnly, (int Qtd, int? Maternidade, int? Demais)>();
         foreach (var linha in resultado.Linhas)
         {
             if (linha[0] is DateTime dia)
@@ -399,9 +414,83 @@ public sealed class PainelAtualizadorService : BackgroundService
         var serie = new List<DiaQtdInternacao>(35);
         for (var dia = fim.AddDays(-34); dia <= fim; dia = dia.AddDays(1))
         {
-            var (qtd, urgencia, eletiva) = porDia.GetValueOrDefault(dia, (0, 0, 0));
+            var (qtd, maternidade, demais) = porDia.GetValueOrDefault(dia, (0, 0, 0));
             serie.Add(new DiaQtdInternacao(
-                dia.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), qtd, urgencia, eletiva));
+                dia.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), qtd, maternidade, demais));
+        }
+
+        return serie;
+    }
+
+    // ── Maternidade (Q7) ───────────────────────────────────────────────────────
+
+    private static MaternidadeSecao MontarMaternidade(
+        DateTimeOffset hoje,
+        DateTimeOffset carimbo,
+        ResultadoConsulta mesAnterior,
+        ResultadoConsulta mesAtual,
+        ResultadoConsulta diaAtual,
+        ResultadoConsulta diasCompletosPeriodo,
+        ResultadoConsulta serieDiaria)
+    {
+        var mesAnteriorData = hoje.AddMonths(-1);
+        var diasMesAnterior = DateTime.DaysInMonth(mesAnteriorData.Year, mesAnteriorData.Month);
+        var diasCompletos = hoje.Day - 1;
+
+        // Média diária: mesma régua do resto do painel (mês atual = só dias completos).
+        var partosDiasCompletos = ComoInt(diasCompletosPeriodo.Linhas[0][0]);
+
+        return new MaternidadeSecao(
+            AtualizadoEm: carimbo,
+            MesAnterior: LerMaternidade(mesAnterior, RotuloMes(mesAnteriorData), diasMesAnterior, null),
+            MesAtual: LerMaternidade(mesAtual, RotuloMes(hoje), diasCompletos, partosDiasCompletos),
+            Hoje: LerMaternidade(diaAtual, "hoje", 0, null),
+            SerieDiaria: MontarSerieDiariaPartos(serieDiaria, hoje));
+    }
+
+    /// <summary>
+    /// Uma linha da Q7 vira o período do contrato. <paramref name="totalParaMedia"/> permite
+    /// que o mês atual use o total dos dias completos (e não o parcial) no denominador.
+    /// </summary>
+    private static MaternidadePeriodo LerMaternidade(
+        ResultadoConsulta resultado, string rotulo, int dias, int? totalParaMedia)
+    {
+        var l = resultado.Linhas[0];
+        var partos = ComoInt(l[0]);
+        var cesareas = ComoInt(l[1]);
+
+        return new MaternidadePeriodo(
+            Rotulo: rotulo,
+            Partos: partos,
+            Cesareas: cesareas,
+            Vaginais: ComoInt(l[2]),
+            Prematuros: ComoInt(l[3]),
+            BaixoPeso: ComoInt(l[4]),
+            PesoMedioKg: ComoDoubleOuNulo(l[5]),
+            Apgar5Abaixo7: ComoInt(l[6]),
+            Meninas: ComoInt(l[7]),
+            Meninos: ComoInt(l[8]),
+            MediaDiaria: MediaDiaria(totalParaMedia ?? partos, dias),
+            PctCesarea: partos > 0 ? Math.Round(100.0 * cesareas / partos, 1) : null);
+    }
+
+    private static List<DiaPartos> MontarSerieDiariaPartos(ResultadoConsulta resultado, DateTimeOffset hoje)
+    {
+        var porDia = new Dictionary<DateOnly, (int Qtd, int? Cesareas)>();
+        foreach (var linha in resultado.Linhas)
+        {
+            if (linha[0] is DateTime dia)
+            {
+                porDia[DateOnly.FromDateTime(dia)] = (ComoInt(linha[1]), ComoIntOuNulo(linha[2]));
+            }
+        }
+
+        var fim = DateOnly.FromDateTime(hoje.Date);
+        var serie = new List<DiaPartos>(35);
+        for (var dia = fim.AddDays(-34); dia <= fim; dia = dia.AddDays(1))
+        {
+            var (qtd, cesareas) = porDia.GetValueOrDefault(dia, (0, 0));
+            serie.Add(new DiaPartos(dia.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), qtd, cesareas));
         }
 
         return serie;
@@ -542,7 +631,8 @@ public sealed class PainelAtualizadorService : BackgroundService
         Agora: null,
         Atendimentos: null,
         Internacoes: null,
-        EsperaPorCor: null);
+        EsperaPorCor: null,
+        Maternidade: null);
 
     private static string RotuloMes(DateTimeOffset data) =>
         PtBr is not null

@@ -51,7 +51,7 @@ export function SecaoAgora({ agora, internacoesHoje }: Props) {
           rotulo="Internados neste momento"
           valor={agora.internadosAgora}
           detalhes={[
-            `${formatarInteiro(agora.internadosUrgencia)} urgência · ${formatarInteiro(agora.internadosEletiva)} eletiva`,
+            `${formatarInteiro(agora.internadosMaternidade)} na maternidade · ${formatarInteiro(agora.internadosDemais)} nas demais`,
             `média de ${agora.mediaDiasInternacao != null ? formatarDecimal(agora.mediaDiasInternacao) : '—'} dias de internação`,
           ]}
         />
@@ -66,7 +66,7 @@ export function SecaoAgora({ agora, internacoesHoje }: Props) {
           detalhes={
             internacoesHoje
               ? [
-                  `${formatarInteiro(internacoesHoje.urgencia)} urgência · ${formatarInteiro(internacoesHoje.eletiva)} eletiva`,
+                  `${formatarInteiro(internacoesHoje.maternidade)} na maternidade · ${formatarInteiro(internacoesHoje.demais)} nas demais`,
                 ]
               : undefined
           }
