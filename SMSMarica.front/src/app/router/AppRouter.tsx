@@ -72,6 +72,7 @@ import { FaturamentoPage } from '@/features/faturamento/pages/FaturamentoPage';
 import { AuditoriaPage } from '@/features/auditoria/pages/AuditoriaPage';
 import { ErrosPage } from '@/features/erros/pages/ErrosPage';
 import { ConversasPage } from '@/features/conversas/pages/ConversasPage';
+import { EstatisticasPage } from '@/features/estatisticas/pages/EstatisticasPage';
 import { ChatJanelaPage } from '@/features/conversas/pages/ChatJanelaPage';
 import { MeusTicketsPage } from '@/features/tickets/pages/MeusTicketsPage';
 import { TicketDetalhePage } from '@/features/tickets/pages/TicketDetalhePage';
@@ -185,6 +186,7 @@ export function AppRouter() {
           <Route path="conversas" element={<ConversasPage />} />
           <Route path="notificacoes-agendamento" element={<NotificacoesAgendamentoPage />} />
           <Route path="respostas-rapidas" element={<RespostasRapidasPage />} />
+          <Route path="estatisticas" element={<EstatisticasPage />} />
           <Route path="sandbox" element={<SandboxPage />} />
           <Route path="tickets" element={<MeusTicketsPage />} />
           <Route path="tickets/gestao" element={<GestaoTicketsPage />} />

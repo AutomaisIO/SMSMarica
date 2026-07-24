@@ -350,6 +350,13 @@ export const SECOES: SecaoMenu[] = [
         modulo: 'RespostasRapidas',
         descricao: 'Respostas rápidas que os atendentes usam no chat.',
       },
+      {
+        rotulo: 'Estatísticas',
+        to: '/app/estatisticas',
+        icone: BarChart3,
+        modulo: 'Estatistica',
+        descricao: 'Retrato do WhatsApp: envios, sessões, entregas e atendentes.',
+      },
     ],
   },
   {

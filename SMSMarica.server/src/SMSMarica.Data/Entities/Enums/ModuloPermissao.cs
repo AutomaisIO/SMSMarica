@@ -115,4 +115,9 @@ public enum ModuloPermissao
     /// A ação de Edição libera alterar o SQL do motor de cada indicador (consulta read-only
     /// contra a base de origem) — conceder só a quem for aprimorar o cálculo.</summary>
     Indicadores = 44,
+
+    /// <summary>Estatísticas de atendimento (retrato do WhatsApp): dashboard gerencial com
+    /// contagens de mensagens (templates do sistema x atendente, sessão, recebidas), séries
+    /// diárias, status de entrega e ranking de atendentes. Visão global (só leitura).</summary>
+    Estatistica = 45,
 }
