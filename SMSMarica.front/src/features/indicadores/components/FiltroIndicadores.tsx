@@ -2,8 +2,6 @@ import { CalendarRange, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
-import { Select } from '@/shared/ui/Select';
-import { useUnidadesIndicador } from '@/features/indicadores/api/queries';
 import type { FiltroIndicador } from '@/features/indicadores/types';
 
 type Props = {
@@ -48,26 +46,9 @@ function iso(d: Date): string {
 }
 
 export function FiltroIndicadores({ filtro, onChange, onApurar, apurando }: Props) {
-  const unidades = useUnidadesIndicador();
-
   return (
     <div className="sticky top-0 z-10 mb-6 rounded-xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
       <div className="flex flex-wrap items-end gap-3">
-        <div className="min-w-[240px] flex-1">
-          <Campo label="Unidade" htmlFor="ind-unidade">
-            <Select
-              value={String(filtro.hospital)}
-              onChange={(e) => onChange({ ...filtro, hospital: Number(e.target.value) })}
-            >
-              {(unidades.data ?? []).map((u) => (
-                <option key={u.hospital} value={u.hospital}>
-                  {u.nome}
-                </option>
-              ))}
-            </Select>
-          </Campo>
-        </div>
-
         <div className="w-[160px]">
           <Campo label="De" htmlFor="ind-de">
             <Input

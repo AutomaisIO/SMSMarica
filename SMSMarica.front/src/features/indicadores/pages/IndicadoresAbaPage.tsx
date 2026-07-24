@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { AlertTriangle, BarChart3, FileSpreadsheet, Loader2, Plus } from 'lucide-react';
+import { cn } from '@/shared/lib/cn';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
@@ -22,6 +23,12 @@ import {
   type IndicadorResumo,
 } from '@/features/indicadores/types';
 
+/**
+ * Unidade contratada exibida nesta tela. Hoje só o Conde (HMCML); ao entrar outra unidade,
+ * ela vira um novo item de menu apontando para /app/indicadores/{unidade} e o mapa cresce.
+ */
+const HOSPITAL_CONDE = 1;
+
 /** Mês passado fechado — é assim que o contrato é apurado. */
 function periodoPadrao(): { inicio: string; fim: string } {
   const hoje = new Date();
@@ -34,12 +41,16 @@ function periodoPadrao(): { inicio: string; fim: string } {
 
 export function IndicadoresAbaPage() {
   const { aba: rota } = useParams<{ aba: string }>();
+  const navigate = useNavigate();
   const aba = abaPorRota(rota);
   const meta = ABAS.find((a) => a.id === aba);
 
   const podeEditar = usePermissao('Indicadores', 'Edicao');
 
-  const [filtro, setFiltro] = useState<FiltroIndicador>(() => ({ hospital: 1, ...periodoPadrao() }));
+  const [filtro, setFiltro] = useState<FiltroIndicador>(() => ({
+    hospital: HOSPITAL_CONDE,
+    ...periodoPadrao(),
+  }));
   const [modal, setModal] = useState<{ id: string | null } | null>(null);
   const [ressalva, setRessalva] = useState<IndicadorResumo | null>(null);
   const [exportarAberto, setExportarAberto] = useState(false);
@@ -97,9 +108,9 @@ export function IndicadoresAbaPage() {
         <div>
           <div className="flex items-center gap-2 text-xs text-slate-400">
             <BarChart3 className="h-3.5 w-3.5" />
-            Indicadores contratuais · HMCML
+            Indicadores contratuais
           </div>
-          <h1 className="mt-1 text-xl font-semibold text-slate-900">{meta.rotulo}</h1>
+          <h1 className="mt-1 text-xl font-semibold text-slate-900">{unidadeNome}</h1>
           <p className="mt-1 text-sm text-slate-500">
             {resumo.total} indicadores · {resumo.comMotor} com motor · {resumo.validados} validados ·{' '}
             {resumo.apurados} apurados no período
@@ -126,6 +137,28 @@ export function IndicadoresAbaPage() {
         onApurar={apurarTudo}
         apurando={apurarAba.isPending}
       />
+
+      <div className="mb-6 border-b border-gray-200">
+        <nav className="-mb-px flex flex-wrap gap-1" role="tablist">
+          {ABAS.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              role="tab"
+              aria-selected={a.id === aba}
+              onClick={() => navigate(`/app/indicadores/conde/${a.rota}`)}
+              className={cn(
+                'whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors',
+                a.id === aba
+                  ? 'border-red-600 text-red-700'
+                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700',
+              )}
+            >
+              {a.rotulo}
+            </button>
+          ))}
+        </nav>
+      </div>
 
       {erro && (
         <p className="mb-4 flex items-start gap-2 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700">
