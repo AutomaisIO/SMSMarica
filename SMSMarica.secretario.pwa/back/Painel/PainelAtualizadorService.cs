@@ -142,13 +142,16 @@ public sealed class PainelAtualizadorService : BackgroundService
                 continue;
             }
 
+            // Só adota seção COMPLETA. O arquivo pode ter sido gravado por uma versão
+            // anterior do contrato, e uma seção meio preenchida é pior que seção ausente:
+            // ausente vira skeleton por um minuto, meio preenchida vira exceção.
             estado.Agora = unidade.Agora;
             estado.Atendimentos = unidade.Atendimentos;
             estado.Internacoes = unidade.Internacoes;
-            estado.EsperaPorCor = unidade.EsperaPorCor;
+            estado.EsperaPorCor = EstaCompleta(unidade.EsperaPorCor) ? unidade.EsperaPorCor : null;
             estado.Maternidade = unidade.Maternidade;
             estado.Leitos = unidade.Leitos;
-            estado.Diagnosticos = unidade.Diagnosticos;
+            estado.Diagnosticos = EstaCompleto(unidade.Diagnosticos) ? unidade.Diagnosticos : null;
         }
 
         foreach (var fonte in snapshot.Fontes ?? [])
@@ -160,6 +163,16 @@ public sealed class PainelAtualizadorService : BackgroundService
             }
         }
     }
+
+    private static bool EstaCompleta(EsperaPorCorSecao? secao) =>
+        secao?.Periodos is { } p
+        && p.Hoje is not null && p.Ontem is not null
+        && p.MesAtual is not null && p.MesAnterior is not null;
+
+    private static bool EstaCompleto(DiagnosticosSecao? secao) =>
+        secao?.Periodos is { } p
+        && p.Hoje is not null && p.Ontem is not null
+        && p.MesAtual is not null && p.MesAnterior is not null;
 
     private EstadoUnidade? EstadoDe(string id) => id switch
     {
@@ -394,8 +407,32 @@ public sealed class PainelAtualizadorService : BackgroundService
 
     // ── Publicação do snapshot ─────────────────────────────────────────────────
 
-    /// <summary>Remonta o snapshot inteiro (geral + conde + upa) a partir do estado vivo.</summary>
+    /// <summary>
+    /// Remonta o snapshot inteiro (geral + unidades) a partir do estado vivo.
+    ///
+    /// <para>
+    /// <b>Falha aqui não pode derrubar o serviço.</b> O host roda com
+    /// <c>BackgroundServiceExceptionBehavior.StopHost</c>, então uma exceção nesta
+    /// montagem mata o painel inteiro — foi o que aconteceu em 25/07/2026, quando o
+    /// snapshot persistido de um contrato anterior trouxe uma lista de período nula e a
+    /// soma da rede estourou no PRIMEIRO ciclo rápido, antes de o ciclo lento ter chance
+    /// de substituí-la. Servir o snapshot anterior por mais um minuto é sempre melhor
+    /// que devolver 502.
+    /// </para>
+    /// </summary>
     private void Republicar()
+    {
+        try
+        {
+            RepublicarInterno();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Falha ao montar o snapshot — mantendo o anterior.");
+        }
+    }
+
+    private void RepublicarInterno()
     {
         var carimbo = FusoBrasilia.Agora();
 
@@ -576,11 +613,13 @@ public sealed class PainelAtualizadorService : BackgroundService
 
         return new EsperaPorCorSecao(
             MaisAntigo(secoes, s => s.AtualizadoEm),
+            // `?? []` porque um período pode chegar nulo de um snapshot gravado antes de
+            // ele existir no contrato; sem isso a soma da rede estoura (ver Republicar).
             new EsperaPeriodos(
-                SomarEsperaPeriodo(secoes.Select(s => s.Periodos.Hoje)),
-                SomarEsperaPeriodo(secoes.Select(s => s.Periodos.Ontem)),
-                SomarEsperaPeriodo(secoes.Select(s => s.Periodos.MesAtual)),
-                SomarEsperaPeriodo(secoes.Select(s => s.Periodos.MesAnterior))));
+                SomarEsperaPeriodo(secoes.Select(s => s.Periodos?.Hoje ?? [])),
+                SomarEsperaPeriodo(secoes.Select(s => s.Periodos?.Ontem ?? [])),
+                SomarEsperaPeriodo(secoes.Select(s => s.Periodos?.MesAtual ?? [])),
+                SomarEsperaPeriodo(secoes.Select(s => s.Periodos?.MesAnterior ?? []))));
     }
 
     /// <summary>
