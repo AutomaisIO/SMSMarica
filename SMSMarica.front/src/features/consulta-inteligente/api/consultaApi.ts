@@ -37,10 +37,15 @@ export async function arquivarSessao(sessionId: string) {
   return data;
 }
 
-export async function criarTurno(sessionId: string, fonteId: string, prompt: string) {
+export async function criarTurno(
+  sessionId: string,
+  fonteId: string,
+  prompt: string,
+  modoDev: boolean,
+) {
   const { data } = await http.post<{ turnId: string; sessionId: string; status: string }>(
     `/ia/chat/sessions/${sessionId}/turns`,
-    { fonteId, prompt },
+    { fonteId, prompt, modoDev },
   );
   return data;
 }

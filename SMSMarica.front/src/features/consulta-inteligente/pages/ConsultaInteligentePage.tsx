@@ -352,7 +352,7 @@ export function ConsultaInteligentePage() {
         { chave, turnId: null, prompt, eventos: [], status: 'running' },
       ]);
       try {
-        const { turnId } = await criarTurno(sessaoAlvo, fonteId, prompt);
+        const { turnId } = await criarTurno(sessaoAlvo, fonteId, prompt, modoDev);
         setMensagens((prev) => prev.map((m) => (m.chave === chave ? { ...m, turnId } : m)));
         await acompanharTurno(turnId, 0, token);
       } catch (e) {
@@ -364,7 +364,7 @@ export function ConsultaInteligentePage() {
         setOcupado(false);
       }
     },
-    [acompanharTurno],
+    [acompanharTurno, modoDev],
   );
 
   // Carrega o histórico ao trocar de sessão e reata turno rodando.

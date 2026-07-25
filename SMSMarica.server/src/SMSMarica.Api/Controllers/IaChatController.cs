@@ -128,7 +128,8 @@ public sealed class IaChatController : ControllerBase
             return NotFound(new { message = "Base não encontrada ou inativa." });
         }
 
-        var promptFinal = await MontarPromptComContextoAsync(fonte.Id, fonte.Dialeto.ToString(), pergunta, ct);
+        var promptFinal = await MontarPromptComContextoAsync(
+            fonte.Id, fonte.Dialeto.ToString(), pergunta, req.ModoDev, ct);
         return await ProxyAsync(HttpMethod.Post,
             $"/internal/ai/dados/sessions/{Uri.EscapeDataString(sessionId)}/turns",
             new { prompt = promptFinal }, ct);
@@ -149,7 +150,7 @@ public sealed class IaChatController : ControllerBase
     // ------------------------------------------------------------------ contexto
 
     private async Task<string> MontarPromptComContextoAsync(
-        Guid fonteId, string dialeto, string pergunta, CancellationToken ct)
+        Guid fonteId, string dialeto, string pergunta, bool modoDev, CancellationToken ct)
     {
         ContextoRecuperado contexto;
         try
@@ -165,6 +166,14 @@ public sealed class IaChatController : ControllerBase
 
         var sb = new StringBuilder();
         sb.AppendLine(pergunta);
+        sb.AppendLine();
+        // Modo de exibição do operador (o checkbox do painel). Leigo = resposta sem NENHUM termo
+        // técnico; desenvolvedor = pode detalhar tabelas/SQL na explicação (ele vê o raciocínio).
+        sb.AppendLine(modoDev
+            ? "[MODO DESENVOLVEDOR] O operador é técnico e vê o raciocínio. Pode detalhar tabelas/"
+              + "colunas/SQL na explicação, se ajudar. A resposta final ainda deve ter uma linha clara."
+            : "[OPERADOR LEIGO] A resposta final deve ser 100% em linguagem de negócio: sem nome de "
+              + "base, tabela, coluna, slug ou SQL, e sem pedir nada técnico ao operador.");
         sb.AppendLine();
         sb.AppendLine("---");
         sb.AppendLine($"Contexto para montar o SQL (dialeto **{dialeto}**). Use como referência; " +
@@ -244,4 +253,4 @@ public sealed class IaChatController : ControllerBase
 
 public sealed record CriarSessaoChatRequest(Guid FonteId);
 
-public sealed record CriarTurnoChatRequest(Guid FonteId, string? Prompt);
+public sealed record CriarTurnoChatRequest(Guid FonteId, string? Prompt, bool ModoDev = false);
