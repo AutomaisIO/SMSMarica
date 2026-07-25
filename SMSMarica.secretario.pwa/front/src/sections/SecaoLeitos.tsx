@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { AlertTriangle } from 'lucide-react';
-import type { Leitos, Ocupacao, PerfilInternados, Permanencia, SetorOcupacao } from '@/types/painel';
+import type { Leitos, PerfilInternados, Permanencia, SetorOcupacao } from '@/types/painel';
 import {
   formatarDecimal,
   formatarInteiro,
@@ -15,26 +15,30 @@ import { SeloEscopo } from '@/components/SeloEscopo';
 import { StatTile } from '@/components/StatTile';
 
 /**
- * Faixa de ocupação: verde folgado, âmbar apertado, vermelho no limite, vinho acima
- * da capacidade. É a única cor semântica desta tela — e vem sempre com o número ao
- * lado, nunca sozinha. Os cortes (85% e 95%) são os usados em gestão de leitos para
- * "operação tensa" e "sem folga"; o de 100% existe porque a taxa passa de 100 quando
- * há paciente em leito extra, e "sem folga" seria eufemismo para isso.
+ * Faixa de ocupação da BARRA DE CADA SETOR: verde folgado, âmbar apertado, vermelho no
+ * limite, vinho acima da capacidade. Os cortes (85% e 95%) são os usados em gestão de
+ * leitos para "operação tensa" e "sem folga"; o de 100% existe porque a taxa passa de
+ * 100 quando o setor estoura a própria cota.
+ *
+ * Só vale por setor, nunca no número consolidado. A taxa da rede é uma média de
+ * realidades opostas — com a Saúde Mental a 150% e o Pós-Operatório a 37%, pintar os
+ * 70,6% de verde e escrever "com folga" contradiz o próprio painel logo abaixo. O
+ * consolidado é preto e sem adjetivo: quem quer o diagnóstico lê os setores.
  */
-function corDaTaxa(taxa: number): { cor: string; rotulo: string } {
+function corDaTaxa(taxa: number): string {
   // Decide pelo valor JÁ ARREDONDADO, o mesmo que aparece escrito: com 84,6 a tela
   // mostrava "85%" pintado de verde, e o leitor via a régua se contradizer.
   const exibida = Math.round(taxa);
-  if (exibida > 100) return { cor: '#8B0D17', rotulo: 'acima da capacidade' };
-  if (exibida >= 95) return { cor: '#D62828', rotulo: 'sem folga' };
-  if (exibida >= 85) return { cor: '#E9A400', rotulo: 'operação tensa' };
-  return { cor: '#2E9E5B', rotulo: 'com folga' };
+  if (exibida > 100) return '#8B0D17';
+  if (exibida >= 95) return '#D62828';
+  if (exibida >= 85) return '#E9A400';
+  return '#2E9E5B';
 }
 
 function BarraSetor({ setor }: { setor: SetorOcupacao }) {
   const taxa = setor.taxa;
   const largura = taxa != null ? Math.min(100, taxa) : 0;
-  const estilo = taxa != null ? corDaTaxa(taxa) : null;
+  const cor = taxa != null ? corDaTaxa(taxa) : null;
 
   return (
     <div className="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 py-2.5">
@@ -60,75 +64,13 @@ function BarraSetor({ setor }: { setor: SetorOcupacao }) {
         {taxa != null ? formatarPct(taxa) : '—'}
       </p>
       <div className="col-span-2 h-2 w-full overflow-hidden rounded-full bg-grade">
-        {estilo && (
+        {cor && (
           <div
             className="h-full rounded-full transition-[width] duration-500"
-            style={{ width: `${largura}%`, backgroundColor: estilo.cor }}
+            style={{ width: `${largura}%`, backgroundColor: cor }}
           />
         )}
       </div>
-    </div>
-  );
-}
-
-/**
- * O rodapé do cartão de ocupação. Existe porque o número sozinho mentia: o cadastro do
- * Salux guarda leito extra, leito virtual e leito desativado na mesma tabela do leito de
- * internação, e somar tudo dava 426 "leitos" e 41% no Conde, quando a capacidade real é
- * 211 e a taxa 71%. A tela agora nomeia o que ficou de fora e por quê — sem isso, um
- * gestor que conhece o hospital simplesmente não acredita no painel.
- *
- * A última linha reporta a divergência entre cama ROTULADA extra e estouro de cota REAL
- * (21 contra 10 em 25/07). Ela está aqui porque quem conhece o hospital vai perguntar
- * "cadê os extras?" — e a resposta honesta é que o rótulo do cadastro não acompanha a
- * alocação do NIR, que usa cama extra por motivo clínico com leito ordinário livre.
- */
-function NotaDaTaxa({ ocupacao }: { ocupacao: Ocupacao }) {
-  const fora: string[] = [];
-  if (ocupacao.extras > 0) fora.push(`${formatarInteiro(ocupacao.extras)} extras`);
-  if (ocupacao.virtuais > 0) fora.push(`${formatarInteiro(ocupacao.virtuais)} virtuais`);
-  if (ocupacao.desativados > 0) fora.push(`${formatarInteiro(ocupacao.desativados)} desativados`);
-  if (ocupacao.bloqueados > 0) fora.push(`${formatarInteiro(ocupacao.bloqueados)} bloqueados`);
-
-  // "a, b e c" — o "e" antes do último, como se escreve em português.
-  const lista =
-    fora.length > 1 ? `${fora.slice(0, -1).join(', ')} e ${fora[fora.length - 1]}` : fora[0];
-
-  return (
-    <div className="mt-4 space-y-1.5 border-t border-linha pt-3 text-[12.5px] leading-relaxed text-grafite">
-      <p>
-        A taxa é sobre os leitos <span className="font-semibold text-tinta">em operação</span> —
-        leito de internação ativo e liberado.
-      </p>
-      {ocupacao.excedente > 0 && (
-        <p>
-          <span className="font-semibold text-tinta">
-            {formatarInteiro(ocupacao.excedente)}{' '}
-            {ocupacao.excedente === 1 ? 'paciente está' : 'pacientes estão'} acima da capacidade
-            do próprio setor
-          </span>{' '}
-          — é o que faz a taxa passar de 100% onde o setor lotou. Folga em um setor não cobre
-          estouro em outro, então as duas contas andam separadas.
-        </p>
-      )}
-      {lista && (
-        <p>
-          Fora da conta: <span className="font-semibold text-tinta">{lista}</span>. Leito extra é
-          contingência, virtual não existe fisicamente e desativado saiu de operação — nenhum é
-          capacidade.
-        </p>
-      )}
-      {ocupacao.emLeitoExtra > ocupacao.excedente && (
-        <p>
-          {formatarInteiro(ocupacao.emLeitoExtra)} internados estão deitados em cama rotulada
-          extra no cadastro, mas{' '}
-          <span className="font-semibold text-tinta">
-            {formatarInteiro(ocupacao.emLeitoExtra - ocupacao.excedente)}
-          </span>{' '}
-          deles tinham leito comum livre no próprio setor. Cama extra usada por decisão
-          clínica não é lotação, e por isso não entra no estouro.
-        </p>
-      )}
     </div>
   );
 }
@@ -235,7 +177,6 @@ function TabelaPermanencia({ permanencia }: { permanencia: Permanencia }) {
  */
 export const SecaoLeitos = memo(function SecaoLeitos({ leitos }: { leitos: Leitos }) {
   const { ocupacao, perfil, permanencia, observacao } = leitos;
-  const estiloTaxa = ocupacao?.taxa != null ? corDaTaxa(ocupacao.taxa) : null;
 
   return (
     <div className="space-y-10 sm:space-y-12">
@@ -272,19 +213,16 @@ export const SecaoLeitos = memo(function SecaoLeitos({ leitos }: { leitos: Leito
               <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
                   <p className="eyebrow">Taxa de ocupação</p>
-                  <p
-                    className="mt-2 font-display text-[clamp(44px,9vw,72px)] font-extrabold leading-none tracking-tight"
-                    style={{ color: estiloTaxa?.cor }}
-                  >
+                  {/* Preto, sem cor e sem adjetivo. O consolidado é média de setores em
+                      situações opostas — verde "com folga" a 70,6% com a Saúde Mental a
+                      150% logo abaixo desmentia o próprio painel. */}
+                  <p className="mt-2 font-display text-[clamp(44px,9vw,72px)] font-extrabold leading-none tracking-tight text-tinta">
                     {ocupacao.taxa != null ? (
                       <NumeroAnimado valor={ocupacao.taxa} formatar={formatarPct} />
                     ) : (
                       '—'
                     )}
                   </p>
-                  {estiloTaxa && (
-                    <p className="mt-2 text-[15px] font-medium text-grafite">{estiloTaxa.rotulo}</p>
-                  )}
                 </div>
                 <div className="tnum text-right text-[13.5px] leading-relaxed text-grafite">
                   <p>
@@ -297,7 +235,6 @@ export const SecaoLeitos = memo(function SecaoLeitos({ leitos }: { leitos: Leito
                   <p>{formatarInteiro(ocupacao.leitos)} leitos em operação</p>
                 </div>
               </div>
-              <NotaDaTaxa ocupacao={ocupacao} />
             </Cartao>
 
             {leitos.setores.length > 0 && (
