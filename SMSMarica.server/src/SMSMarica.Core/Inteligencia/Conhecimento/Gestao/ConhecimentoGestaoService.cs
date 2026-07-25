@@ -184,7 +184,8 @@ public sealed class ConhecimentoGestaoService(
                 db.IaDocumentosConhecimento.Add(doc);
             }
 
-            await AplicarConteudoAsync(doc, d.Conteudo, ct);
+            // Extração em massa NÃO embeda inline (trava em base grande). Fica para o backfill.
+            await AplicarConteudoAsync(doc, d.Conteudo, ct, embeddar: false);
         }
 
         await db.SaveChangesAsync(ct);
@@ -201,6 +202,11 @@ public sealed class ConhecimentoGestaoService(
         {
             aviso = (aviso is null ? "" : aviso + " ")
                     + "Os relacionamentos (FKs) não puderam ser lidos; o modelo saiu só com colunas.";
+        }
+        if (_embeddingsHabilitado)
+        {
+            aviso = (aviso is null ? "" : aviso + " ")
+                    + "Agora clique em \"Gerar embeddings\" para indexar o modelo (RAG).";
         }
 
         return new ExtracaoModeloResultado(
@@ -258,8 +264,15 @@ public sealed class ConhecimentoGestaoService(
         return new EmbeddingsBackfillResultado(total, jaTinham, gerados, restantes, aviso);
     }
 
-    /// <summary>Grava o conteúdo, re-chunka e (se habilitado) re-embeda. Idempotente pelo hash.</summary>
-    private async Task AplicarConteudoAsync(IaDocumentoConhecimento doc, string conteudo, CancellationToken ct)
+    /// <summary>
+    /// Grava o conteúdo, re-chunka e (se habilitado E <paramref name="embeddar"/>) re-embeda.
+    /// Idempotente pelo hash. Na extração em massa passamos <c>embeddar: false</c>: embedar
+    /// milhares de docs DENTRO do request trava a extração (uma base grande = milhares de
+    /// chamadas ao provedor). O embedding fica para o backfill (botão "Gerar embeddings"),
+    /// que é idempotente. Ver ADR-0023.
+    /// </summary>
+    private async Task AplicarConteudoAsync(
+        IaDocumentoConhecimento doc, string conteudo, CancellationToken ct, bool embeddar = true)
     {
         var hash = Hash(conteudo);
         if (doc.Hash == hash && doc.Versao > 0)
@@ -282,7 +295,7 @@ public sealed class ConhecimentoGestaoService(
         }
 
         IReadOnlyList<float[]>? vetores = null;
-        if (_embeddingsHabilitado)
+        if (_embeddingsHabilitado && embeddar)
         {
             vetores = await embeddings.EmbeddarLoteAsync(pedacos, ct);
         }
