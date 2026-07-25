@@ -6,10 +6,12 @@ import {
   desativarAprendizado,
   listarAprendizados,
   listarCorrecoes,
+  listarFeedbacks,
   listarFontesConfig,
   obterConfiguracao,
   removerFonteConfig,
   testarConexaoFonte,
+  tratarFeedback,
 } from '@/features/ia/api/iaApi';
 import type { AtualizarConfiguracaoPayload, SalvarFonteConfigPayload } from '@/features/ia/types';
 
@@ -20,6 +22,7 @@ export const iaKeys = {
   fontesConfig: ['ia', 'configuracao', 'fontes'] as const,
   aprendizados: (fonteId?: string) => ['ia', 'aprendizados', fonteId ?? 'todas'] as const,
   correcoes: (fonteId?: string) => ['ia', 'correcoes', fonteId ?? 'todas'] as const,
+  feedbacks: (pendentes: boolean) => ['ia', 'feedbacks', pendentes] as const,
 };
 
 // ── Configuração ────────────────────────────────────────────────────────────
@@ -112,5 +115,21 @@ export function useDesativarAprendizado() {
       client.invalidateQueries({ queryKey: ['ia', 'aprendizados'] });
       client.invalidateQueries({ queryKey: ['ia', 'correcoes'] });
     },
+  });
+}
+
+export function useFeedbacks(apenasPendentes = true) {
+  return useQuery({
+    queryKey: iaKeys.feedbacks(apenasPendentes),
+    queryFn: () => listarFeedbacks(apenasPendentes),
+  });
+}
+
+export function useTratarFeedback() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; descartar: boolean; resolucao?: string }) =>
+      tratarFeedback(v.id, v.descartar, v.resolucao),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['ia', 'feedbacks'] }),
   });
 }

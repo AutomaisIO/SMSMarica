@@ -40,4 +40,24 @@ public sealed class IaGovernancaController(IIaGovernancaService service) : Contr
         [FromQuery] Guid? fonteId,
         CancellationToken cancellationToken) =>
         await _service.ListarCorrecoesAsync(fonteId, cancellationToken);
+
+    /// <summary>Avaliações 👎 da Consulta Inteligente pendentes de tratamento.</summary>
+    [HttpGet("feedbacks")]
+    [RequerPermissao(ModuloPermissao.InteligenciaAprendizado, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<FeedbackDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<FeedbackDto>> ListarFeedbacks(
+        [FromQuery] bool apenasPendentes = true,
+        CancellationToken cancellationToken = default) =>
+        await _service.ListarFeedbacksAsync(apenasPendentes, cancellationToken);
+
+    [HttpPost("feedbacks/{id:guid}/tratar")]
+    [RequerPermissao(ModuloPermissao.InteligenciaAprendizado, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> TratarFeedback(
+        Guid id, [FromBody] TratarFeedbackRequest request, CancellationToken cancellationToken)
+    {
+        await _service.TratarFeedbackAsync(id, request, cancellationToken);
+        return NoContent();
+    }
 }

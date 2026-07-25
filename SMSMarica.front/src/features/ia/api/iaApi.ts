@@ -4,6 +4,7 @@ import type {
   AtualizarConfiguracaoPayload,
   ConfiguracaoIa,
   CorrecaoIa,
+  FeedbackIa,
   FonteConfig,
   ResultadoTesteConexao,
   SalvarFonteConfigPayload,
@@ -69,4 +70,17 @@ export async function listarCorrecoes(fonteId?: string): Promise<CorrecaoIa[]> {
     params: fonteId ? { fonteId } : undefined,
   });
   return data;
+}
+
+export async function listarFeedbacks(apenasPendentes = true): Promise<FeedbackIa[]> {
+  const { data } = await http.get<FeedbackIa[]>('/ia/feedbacks', { params: { apenasPendentes } });
+  return data;
+}
+
+export async function tratarFeedback(
+  id: string,
+  descartar: boolean,
+  resolucao?: string,
+): Promise<void> {
+  await http.post(`/ia/feedbacks/${id}/tratar`, { descartar, resolucao: resolucao ?? null });
 }

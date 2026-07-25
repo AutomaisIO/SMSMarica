@@ -139,6 +139,20 @@ export type AprendizadoIa = {
   criadoEm: string;
 };
 
+/** GET /ia/feedbacks — avaliação 👎 da Consulta Inteligente, pendente de tratamento. */
+export type FeedbackIa = {
+  id: string;
+  fonteId: string;
+  fonteNome: string;
+  familia?: string | null;
+  pergunta: string;
+  resposta?: string | null;
+  comentario?: string | null;
+  status: string;
+  resolucao?: string | null;
+  criadoEm: string;
+};
+
 /** GET /ia/correcoes — entrada do histórico de correções automáticas de SQL. */
 export type CorrecaoIa = {
   id: string;

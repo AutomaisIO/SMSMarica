@@ -18,6 +18,14 @@ public interface IIaGovernancaService
     Task<IReadOnlyList<CorrecaoDto>> ListarCorrecoesAsync(
         Guid? fonteId = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Avaliações 👎 da Consulta Inteligente (por padrão só as pendentes de tratamento).</summary>
+    Task<IReadOnlyList<FeedbackDto>> ListarFeedbacksAsync(
+        bool apenasPendentes = true, CancellationToken cancellationToken = default);
+
+    /// <summary>Marca uma avaliação como tratada (virou conhecimento) ou descartada.</summary>
+    Task TratarFeedbackAsync(
+        Guid id, TratarFeedbackRequest request, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Aprendizado incremental de uma fonte (hint, exemplo, glossário, correção).</summary>
@@ -30,6 +38,22 @@ public sealed record AprendizadoDto(
     string Conteudo,
     bool Ativo,
     DateTime CriadoEm);
+
+/// <summary>Avaliação de uma resposta da Consulta Inteligente (👎 gera melhoria).</summary>
+public sealed record FeedbackDto(
+    Guid Id,
+    Guid FonteId,
+    string FonteNome,
+    string? Familia,
+    string Pergunta,
+    string? Resposta,
+    string? Comentario,
+    string Status,
+    string? Resolucao,
+    DateTime CriadoEm);
+
+/// <summary>Tratamento de uma avaliação: virou conhecimento (default) ou foi descartada.</summary>
+public sealed record TratarFeedbackRequest(bool Descartar, string? Resolucao);
 
 /// <summary>Entrada do histórico de correções automáticas de SQL.</summary>
 public sealed record CorrecaoDto(

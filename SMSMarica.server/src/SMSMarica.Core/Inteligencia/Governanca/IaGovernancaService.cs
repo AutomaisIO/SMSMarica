@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Data;
+using SMSMarica.Data.Entities.Enums;
 using SMSMarica.Data.Entities.Ia;
 
 namespace SMSMarica.Core.Inteligencia.Governanca;
@@ -82,5 +83,46 @@ public sealed class IaGovernancaService(
                 c.RevisadoEm,
                 c.RemovidoEm))
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<FeedbackDto>> ListarFeedbacksAsync(
+        bool apenasPendentes = true, CancellationToken cancellationToken = default)
+    {
+        // 👎 (Util=false) são os que geram melhoria. 👍 ficam guardados só como sinal.
+        var query = _db.IaConsultaFeedbacks.AsNoTracking().Where(f => !f.Util);
+        if (apenasPendentes)
+        {
+            query = query.Where(f => f.Status == StatusFeedbackIa.Pendente);
+        }
+
+        return await query
+            .OrderByDescending(f => f.CriadoEm)
+            .Select(f => new FeedbackDto(
+                f.Id,
+                f.FonteId,
+                f.Fonte!.Nome,
+                f.Familia,
+                f.Pergunta,
+                f.Resposta,
+                f.Comentario,
+                f.Status.ToString(),
+                f.Resolucao,
+                f.CriadoEm))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task TratarFeedbackAsync(
+        Guid id, TratarFeedbackRequest request, CancellationToken cancellationToken = default)
+    {
+        var fb = await _db.IaConsultaFeedbacks
+            .FirstOrDefaultAsync(f => f.Id == id, cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(IaConsultaFeedback), id);
+
+        fb.Status = request.Descartar ? StatusFeedbackIa.Descartado : StatusFeedbackIa.Tratado;
+        fb.Resolucao = string.IsNullOrWhiteSpace(request.Resolucao) ? null : request.Resolucao.Trim();
+        fb.TratadoEm = DateTime.UtcNow;
+        fb.TratadoPor = _usuarioAtual.UsuarioId;
+
+        await _db.SaveChangesAsync(cancellationToken);
     }
 }
