@@ -81,7 +81,17 @@ jobs:
               $SUDO apt-get install -y python3-venv python3-pip
             fi
 
-            $SUDO mkdir -p "$APP_DIR" "$ENV_DIR" "$DATA_DIR"
+            # Sandbox do modo `dados` (chat de dados): cwd ISOLADO, fora do repo, onde a sessão
+            # restrita do Claude Code trabalha sem ter o código sequer no diretório.
+            $SUDO mkdir -p "$APP_DIR" "$ENV_DIR" "$DATA_DIR" "$DATA_DIR/dados-sandbox"
+
+            # Token do proxy SQL interno da API .NET: FONTE ÚNICA é /etc/smsmarica-server/proxy-sql.env
+            # (escrito pela fiação do ProxySql). Reusamos aqui para o tool `consultar_base` do modo
+            # `dados` — assim o token não é duplicado num Secret e acompanha o do server.
+            PROXY_TOKEN="$(sed -n 's/^ProxySql__Token=//p' /etc/smsmarica-server/proxy-sql.env 2>/dev/null || true)"
+            if [ -z "$PROXY_TOKEN" ]; then
+              echo "AVISO: ProxySql__Token não encontrado em /etc/smsmarica-server/proxy-sql.env — o chat de dados não conseguirá consultar (o Agente IA segue normal)." >&2
+            fi
 
             # --- 3. Arquivo de ambiente ---
             # Reescrito a cada deploy a partir dos Secrets (padrão da casa). O SQLite fica
@@ -91,6 +101,9 @@ jobs:
               printf 'CLAUDE_CODE_OAUTH_TOKEN=%s\n' "${CLAUDE_TOKEN:-}"
               printf 'AIENGINE_DB_PATH=%s/aiengine.db\n' "$DATA_DIR"
               printf 'AIENGINE_REPO_DIR=/srv/smsmarica-repo\n'
+              printf 'AIENGINE_DADOS_CWD=%s/dados-sandbox\n' "$DATA_DIR"
+              printf 'AIENGINE_PROXYSQL_URL=http://127.0.0.1:5091/proxy-sql\n'
+              printf 'AIENGINE_PROXYSQL_TOKEN=%s\n' "$PROXY_TOKEN"
             } | $SUDO tee "$ENV_FILE" >/dev/null
             $SUDO chmod 600 "$ENV_FILE"
 
