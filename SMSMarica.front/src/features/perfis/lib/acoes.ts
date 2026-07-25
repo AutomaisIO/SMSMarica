@@ -69,6 +69,7 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'Agendamentos', rotulo: 'Agendamentos' },
   { id: 'Sisreg', rotulo: 'SISREG (consulta)' },
   { id: 'SisregConfiguracao', rotulo: 'Configuração SISREG' },
+  { id: 'SisregMapeamento', rotulo: 'Mapeamento SISREG (profissionais e procedimentos da unidade)' },
   { id: 'SincronizacaoPep', rotulo: 'Sincronização PEP (Salux)' },
   { id: 'ApiTokens', rotulo: 'API Tokens' },
   { id: 'IntegracoesConfig', rotulo: 'Integrações (credenciais)' },

@@ -30,6 +30,7 @@ import {
   LayoutDashboard,
   Map,
   MessageCircle,
+  Network,
   Route,
   ScanLine,
   ScrollText,
@@ -140,6 +141,13 @@ export const SECOES: SecaoMenu[] = [
     itens: [
       { rotulo: 'Consultar SISREG', to: '/app/sisreg', icone: ClipboardList, modulo: 'Sisreg', end: true, descricao: 'Consulta integrada (só leitura).' },
       { rotulo: 'Importação SISREG', to: '/app/importacao-sisreg', icone: DownloadCloud, modulo: 'Sisreg', descricao: 'Preview e importação de agendamentos.' },
+      {
+        rotulo: 'Mapeamento',
+        to: '/app/sisreg/mapeamento',
+        icone: Network,
+        modulo: 'SisregMapeamento',
+        descricao: 'Profissionais e procedimentos da unidade no SISREG.',
+      },
       {
         rotulo: 'Configuração SISREG',
         to: '/app/sisreg/configuracao',

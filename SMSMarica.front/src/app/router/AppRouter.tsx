@@ -66,6 +66,7 @@ import { AgendaDetalhePage } from '@/features/agendamentos/pages/AgendaDetalhePa
 import { MarcarConsultaPage } from '@/features/agendamentos/pages/MarcarConsultaPage';
 import { SisregConsultaPage } from '@/features/sisreg/pages/SisregConsultaPage';
 import { SisregConfiguracaoPage } from '@/features/sisreg/pages/SisregConfiguracaoPage';
+import { SisregMapeamentoPage } from '@/features/sisreg-mapeamento/pages/SisregMapeamentoPage';
 import { PepSincronizacaoPage } from '@/features/pep-sincronizacao/pages/PepSincronizacaoPage';
 import { ApiTokensPage } from '@/features/api-tokens/pages/ApiTokensPage';
 import { IntegracoesPage } from '@/features/integracoes/pages/IntegracoesPage';
@@ -183,6 +184,7 @@ export function AppRouter() {
           <Route path="agendamentos/marcar" element={<MarcarConsultaPage />} />
           <Route path="sisreg" element={<SisregConsultaPage />} />
           <Route path="sisreg/configuracao" element={<SisregConfiguracaoPage />} />
+          <Route path="sisreg/mapeamento" element={<SisregMapeamentoPage />} />
           <Route path="pep-sincronizacao" element={<PepSincronizacaoPage />} />
           <Route path="api-tokens" element={<ApiTokensPage />} />
           <Route path="integracoes" element={<IntegracoesPage />} />

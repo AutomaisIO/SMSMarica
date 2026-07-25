@@ -126,4 +126,38 @@ public enum ModuloPermissao
     /// resultado concreto. Puramente de UI — não abre nenhum acesso novo a dado. Conceder a
     /// quem precisa depurar/entender as consultas.</summary>
     InteligenciaConsultaDev = 46,
+
+    // ---- Processo Regulatório (ADR-0024) ----
+    // Cinco módulos e não um, porque AcoesPermissao só tem 4 flags: não há como separar "dar
+    // parecer" de "registrar contato" dentro do mesmo módulo. Mesmo idioma de
+    // Conversas/ConversasSupervisao e Sisreg/SisregConfiguracao.
+
+    /// <summary>Regulação — lado da UNIDADE SOLICITANTE (UBS/unidade especializada): abrir processo,
+    /// anexar documento, enviar, responder pendência, acompanhar e conversar. Escopado por unidade:
+    /// o usuário só vê os processos das unidades a que está vinculado.</summary>
+    Regulacao = 47,
+
+    /// <summary>Regulação — TRIAGEM TÉCNICA (visão global do município): assumir da fila, conferir
+    /// dados e anexos, pedir complementação, encaminhar ao médico, alterar prioridade. A Exclusão
+    /// libera cancelar por duplicidade, rejeitar administrativamente e reabrir processo encerrado.</summary>
+    RegulacaoTriagem = 48,
+
+    /// <summary>Regulação — DECISÃO CLÍNICA do médico regulador (visão global): dar parecer, deferir,
+    /// alterar prioridade/destino/procedimento e ver os documentos marcados como sensíveis. A
+    /// Exclusão libera INDEFERIR. Exige, além da permissão, vínculo com um Practitioner.</summary>
+    RegulacaoMedica = 49,
+
+    /// <summary>Regulação — AGENDAMENTO (visão global): assumir da fila de deferidos, registrar o
+    /// protocolo do sistema de destino (inclusive o nº SISREG marcado à mão), lançar o retorno com
+    /// data/hora/local, reagendar, registrar atendimento e concluir.</summary>
+    RegulacaoAgendamento = 50,
+
+    /// <summary>Regulação — CONFIGURAÇÃO: prazos por etapa, validade do deferimento e
+    /// obrigatoriedades de abertura.</summary>
+    RegulacaoConfiguracao = 51,
+
+    /// <summary>SISREG — MAPEAMENTO: a "verdade" da unidade no SISREG (profissionais executantes e
+    /// seus procedimentos), com habilita/desabilita que define o que entra na varredura de agenda,
+    /// e a credencial de operador do SISREG daquela unidade.</summary>
+    SisregMapeamento = 52,
 }

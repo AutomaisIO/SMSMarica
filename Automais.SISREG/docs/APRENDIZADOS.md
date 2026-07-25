@@ -185,11 +185,107 @@ Códigos operacionais do CDT (profissional/procedimentos) → `capturas/cons_age
 (gitignored, contém CPF). No CDT a agenda de mamografia fica sob o profissional
 **MARCO ANTONIO DE OLIVEIRA APPOLINARIO**, procedimentos MAMOGRAFIA BILATERAL / GRUPO-MAMOGRAFIA.
 
+### ✅ MATERIALIZAR A AGENDA INTEIRA DE UMA UNIDADE (2026-07-25)
+
+Script: **`extrair_agenda_unidade.py`** (somente leitura, `etapa=ListaConsulta`).
+
+```bash
+python extrair_agenda_unidade.py 25/07/2026 31/07/2026 3132358
+```
+
+**Os 3 filtros são obrigatórios NO SERVIDOR, não só no JS.** POST com `ups`
+preenchido mas `cpf`/`pa` vazios responde *"A pesquisa não retornou nenhum
+resultado"* — não existe atalho "toda a agenda de uma vez". Logo, materializar
+a agenda = varrer o produto cartesiano:
+
+```
+para cada profissional da unidade      (AJAX PROFISSIONAIS_POR_UPS)
+  para cada procedimento do profissional (AJAX PROCEDIMENTOS_POR_PROFISSIONAIS_E_UPS)
+    para cada página                     (POST etapa=ListaConsulta, pagina 0-based)
+```
+
+Dedup por **código de solicitação**: os procedimentos `GRUPO - X` repetem os
+itens individuais, então a mesma solicitação aparece em mais de uma combinação.
+
+**Rendimento medido (CDT 3132358, 25→31/07/2026):** 92 profissionais →
+256 combinações prof×proc → **352 requisições HTTP → 753 agendamentos únicos
+em 47s**. Muitos profissionais não têm procedimento com agenda — isso é normal,
+não é falha de sessão.
+
+**Anatomia do registro** — cada agendamento é uma `<table id="tblConsulta<codigo>">`
+com 3 `<tr>`:
+- tr0: Código Solicitação (no `id`), CNS, Paciente, Nascimento, Idade, Origem, Telefone(s)
+- tr1: Unidade Solicitante (+CNES entre parênteses), Vaga Solicitada, Vaga Consumida,
+  CID-10, **Data/Hora** (`28/07/2026 - TER - 08:00`), Situação
+- tr2: Procedimento(s)
+
+Situações observadas: `Agendamento/Pendente Confirmação/Executante`,
+`Agendamento/Confirmado/Executante`, `Agendamento/Falta/Executante`.
+Vaga consumida: `RESERVA` | `1ª VEZ` | `RETORNO`.
+Total de páginas: texto **"Mostrando Página [n] de N"**; JS `Pagina(index, maxcount)`.
+
+**Encoding (pegadinha):** as telas HTML são ASCII com entidades (`&ccedil;`),
+mas o **XML do `sisreg_ajax` é UTF-8 de verdade** — decodificar o AJAX como
+latin-1 corrompe nomes de procedimento (`AVALIAÇÃO` → `AVALIAÃÃO`).
+
+### 🚨 CAPTCHA ANTI-BOT (descoberto 2026-07-25) — LIMITE REAL DO SCRAPING
+
+Depois de **~700 requisições** na mesma sessão/IP, o SISREG passa a responder
+**todas** as telas com `<SCRIPT>window.location="./recaptcha?cod=0"</SCRIPT>`
+(reCAPTCHA, sitekey `6LeMZwgsAAAAAK85NcnUrumUNjhKA2qR2iWXklw4`).
+
+Sintomas e diagnóstico:
+- O `sisreg_ajax` **não** mostra o captcha: devolve `<ROOT></ROOT>` **vazio e
+  silencioso** — idêntico ao sintoma de sessão única derrubada. Para distinguir,
+  fazer um GET numa tela HTML (`cons_agendas`) e procurar `recaptcha`.
+- **Relogar NÃO resolve** — o login continua funcionando (a barra "Operador:"
+  aparece normal), mas toda tela cai no captcha.
+- Só um **humano resolvendo o reCAPTCHA no navegador** com esse operador libera.
+
+Mitigações no script: `PAUSA_SEGUNDOS` (throttle, default 0.35s) entre
+requisições, `CaptchaExigido` abortando com mensagem clara, e o `.jsonl`
+**incremental** — o parcial é sempre preservado e o resumo final diz
+`COBERTURA PARCIAL` com o profissional exato onde parou.
+
+→ **Implicação de arquitetura:** varredura full de período longo (2 meses ≈
+2.000+ requisições) **não passa** sem esbarrar no captcha. Para produção:
+janelas curtas (1 semana), execução espaçada, e/ou preferir o
+**Arquivo Agendamento TXT** (`expo_solicitacoes`) para carga em massa.
+
 ### `expo_solicitacoes` — "Arquivo Agendamento (txt)"
 ⚠️ **Bloqueado das 08h às 15h** (`alert('Aplicativo bloqueado para uso de 8 as 15
 horas.')` → redireciona p/ `/cgi-bin/avisos`). Export em massa provavelmente só
 fora do horário comercial. **Avaliar após 15h** — pode ser o caminho ideal (txt
 estruturado em vez de raspar HTML paginado).
+
+## ✍️ SUBSÍDIO PARA ESCRITA (mapeado 2026-07-25 — NADA FOI EXECUTADO)
+
+Levantamento **só por GET** dos formulários (nenhum POST de escrita disparado),
+para saber o que seria possível automatizar no futuro. **Não usar sem OK explícito.**
+
+| Tela | Endpoint | Etapas de ESCRITA no JS | O que faz |
+|------|----------|------------------------|-----------|
+| Solicitação de Consultas Ambulatoriais | `marcar` | `LST_ITENS_PA`, `LST_VAGAS` → grava na tela de vagas | **Criar** solicitação/agendamento |
+| Consulta de Autorização/Cancelamento | `cons_verificar` | **`EXCLUIR_SOLICITACAO`** | Cancelar solicitação |
+| Consulta de Solicitações Ambulatoriais | `gerenciador_solicitacao` | **`CANCELAR_SOLICITACAO`**, **`REENVIAR_REGULACAO`** | Cancelar / devolver à regulação |
+| Impressão/Confirmação de Agendas | `cons_agendas` | **`Confirma`**, **`Falta`** | Confirmar comparecimento / registrar falta |
+| Consulta de Escalas Ambulatoriais | `cons_escalas` | `EXIBIR_ESCALAS`, `DETALHAR_ESCALA`, `EXPORTAR_ESCALAS` + JS `editarEscala()` | **Grade de vagas** do profissional |
+| Cadastro de Preparo | `config_preparo` | `INSERIR_PREPARO`, `ATUALIZAR_PREPARO`, `EXCLUIR_PREPARO` | Texto de preparo do exame |
+
+**Fluxo de criação (`marcar`)** — encadeado, começa pelo paciente:
+`cadweb50?url=/cgi-bin/marcar` (acha o paciente) → `marcar` (campos `pa`,
+`cid10`, `cpfprofsol`/`nomeprofsol`, `ret` = retorno, `upsexec`) → `ProximaEtapa()`
+decide: se o código do procedimento termina em `000` (é GRUPO) vai para
+`LST_ITENS_PA` (escolher o item), senão vai direto para `LST_VAGAS`, que lista
+as vagas disponíveis — a gravação acontece a partir dessa tela.
+
+**Escalas (`cons_escalas`) é a tela-chave para "editar agenda"** de verdade:
+mesmo modelo `ups`→`cpf`→`pa` do `cons_agendas`, com `EXPORTAR_ESCALAS` (export
+da grade!) e um `editarEscala()` no JS. É onde vivem as vagas, não os pacientes.
+
+⚠️ O perfil da credencial atual é **EXECUTANTE/SOLICITANTE** — ele enxerga essas
+telas, mas **não** foi testado se tem permissão efetiva de gravar em cada uma.
+Confirmar antes de qualquer plano de automação de escrita.
 
 ## 👤 Consulta de paciente por CPF/CNS — `cadweb50` (CADSUS) ✅
 Menu **"CNS"** → `/cgi-bin/cadweb50?standalone=1`. Título "CONSULTA AO CADASTRO DE

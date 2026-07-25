@@ -231,10 +231,23 @@ public static class DependencyInjection
         services.AddScoped<Integracoes.Credenciais.IIntegracaoCredencialService, Integracoes.Credenciais.IntegracaoCredencialService>();
 
         // ---- SISREG III (web scraping): consulta de paciente por CNS (CADSUS) ----
-        // Sessão única por operador → cliente HTTP com cookies persistentes (singleton) que
-        // reloga sozinho quando a sessão cai. Credencial cifrada no store de Integrações ("sisreg").
+        // Sessão única por operador → um cliente HTTP com cookies próprios POR UNIDADE (singleton),
+        // que reloga sozinho quando a sessão cai. Credencial da unidade (sisreg_credencial_unidade)
+        // com fallback na credencial global do store de Integrações ("sisreg").
         services.AddSingleton<Integracoes.SisregWeb.ISisregWebSessao, Integracoes.SisregWeb.SisregWebSessao>();
         services.AddScoped<Integracoes.SisregWeb.IConsultaCnsService, Integracoes.SisregWeb.ConsultaCnsService>();
+
+        // Fluxos que exigem UMA unidade selecionada (credencial e mapeamento).
+        services.AddScoped<Integracoes.SisregWeb.ISisregUnidadeAtual, Integracoes.SisregWeb.SisregUnidadeAtual>();
+        services.AddScoped<
+            Integracoes.SisregWeb.Credencial.ISisregCredencialUnidadeService,
+            Integracoes.SisregWeb.Credencial.SisregCredencialUnidadeService>();
+
+        // Mapeamento: a "verdade" do SISREG (profissionais × procedimentos) com habilita/desabilita
+        // que define o custo de cada varredura de agenda.
+        services.AddScoped<
+            Integracoes.SisregWeb.Mapeamento.ISisregMapeamentoService,
+            Integracoes.SisregWeb.Mapeamento.SisregMapeamentoService>();
 
         // Importação de agendamentos (scraping cons_marcados_reg) → SolicitacaoExame.
         services.AddScoped<Integracoes.SisregWeb.Importacao.IMarcadosRegScraper, Integracoes.SisregWeb.Importacao.MarcadosRegScraper>();
