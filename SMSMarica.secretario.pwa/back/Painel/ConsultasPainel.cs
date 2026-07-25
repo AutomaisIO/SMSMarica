@@ -16,6 +16,8 @@ public static class ConsultasPainel
     public const string FimMesAtual = "SYSDATE";
     public const string IniHoje = "TRUNC(SYSDATE)";
     public const string FimHoje = "SYSDATE";
+    public const string IniOntem = "TRUNC(SYSDATE) - 1";
+    public const string FimOntem = "TRUNC(SYSDATE)";
 
     /// <summary>Fim "dias completos" do mês atual (exclui o dia corrente, parcial).</summary>
     public const string FimDiasCompletos = "TRUNC(SYSDATE)";

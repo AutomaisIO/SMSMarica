@@ -273,6 +273,8 @@ public sealed class PainelAtualizadorService : BackgroundService
         // Q6 — espera por cor, 1× por período (a PESADA fica por último).
         var esperaHoje = await ConsultarAsync(b,
             ConsultasPainel.Q6EsperaPorCor(hosp, ConsultasPainel.IniHoje, ConsultasPainel.FimHoje, "SYSDATE + 3"), ct);
+        var esperaOntem = await ConsultarAsync(b,
+            ConsultasPainel.Q6EsperaPorCor(hosp, ConsultasPainel.IniOntem, ConsultasPainel.FimOntem, "TRUNC(SYSDATE) + 3"), ct);
         var esperaMesAtual = await ConsultarAsync(b,
             ConsultasPainel.Q6EsperaPorCor(hosp, ConsultasPainel.IniMesAtual, ConsultasPainel.FimMesAtual, "SYSDATE + 3"), ct);
         var esperaMesAnterior = await ConsultarAsync(b,
@@ -285,12 +287,21 @@ public sealed class PainelAtualizadorService : BackgroundService
         var permanencia = await ConsultarAsync(b,
             ConsultasPainel.L3Permanencia(hosp, ConsultasPainel.IniMesAtual, ConsultasPainel.FimMesAtual), ct);
 
-        var cids = await ConsultarAsync(b,
+        // Q8 — diagnósticos nos quatro períodos do seletor.
+        var cidsHoje = await ConsultarAsync(b,
+            ConsultasPainel.Q8CidPorCor(hosp, ConsultasPainel.IniHoje, ConsultasPainel.FimHoje, TopCids), ct);
+        var cidsOntem = await ConsultarAsync(b,
+            ConsultasPainel.Q8CidPorCor(hosp, ConsultasPainel.IniOntem, ConsultasPainel.FimOntem, TopCids), ct);
+        var cidsMesAtual = await ConsultarAsync(b,
             ConsultasPainel.Q8CidPorCor(hosp, ConsultasPainel.IniMesAtual, ConsultasPainel.FimMesAtual, TopCids), ct);
+        var cidsMesAnterior = await ConsultarAsync(b,
+            ConsultasPainel.Q8CidPorCor(hosp, ConsultasPainel.IniMesAnterior, ConsultasPainel.FimMesAnterior, TopCids), ct);
 
         var carimbo = FusoBrasilia.Agora();
         _conde.Leitos = MontarLeitosConde(hoje, carimbo, setores, perfil, permanencia);
-        _conde.Diagnosticos = MontarDiagnosticos(carimbo, RotuloMes(hoje), cids);
+        _conde.Diagnosticos = new DiagnosticosSecao(carimbo, new DiagnosticosPeriodos(
+            LerDiagnosticos(cidsHoje), LerDiagnosticos(cidsOntem),
+            LerDiagnosticos(cidsMesAtual), LerDiagnosticos(cidsMesAnterior)), null);
         _conde.Atendimentos = MontarAtendimentos(
             hoje, carimbo, totalMesAnterior, totalMesAtual, totalHoje, totalDiasCompletos, serieAtendimentos, porHora);
         _conde.Internacoes = MontarInternacoes(
@@ -299,6 +310,7 @@ public sealed class PainelAtualizadorService : BackgroundService
             hoje, carimbo, matMesAnterior, matMesAtual, matHoje, matDiasCompletos, seriePartos);
         _conde.EsperaPorCor = new EsperaPorCorSecao(carimbo, new EsperaPeriodos(
             MontarEsperaPeriodo(esperaHoje, Unidades.IdConde),
+            MontarEsperaPeriodo(esperaOntem, Unidades.IdConde),
             MontarEsperaPeriodo(esperaMesAtual, Unidades.IdConde),
             MontarEsperaPeriodo(esperaMesAnterior, Unidades.IdConde)));
     }
@@ -326,6 +338,8 @@ public sealed class PainelAtualizadorService : BackgroundService
 
         var esperaHoje = await ConsultarAsync(b,
             ConsultasUpa.U6EsperaPorCor(unidade, ConsultasUpa.IniHoje, ConsultasUpa.FimHoje, "DATEADD(day,3,GETDATE())"), ct);
+        var esperaOntem = await ConsultarAsync(b,
+            ConsultasUpa.U6EsperaPorCor(unidade, ConsultasUpa.IniOntem, ConsultasUpa.FimOntem, "DATEADD(day,3,GETDATE())"), ct);
         var esperaMesAtual = await ConsultarAsync(b,
             ConsultasUpa.U6EsperaPorCor(unidade, ConsultasUpa.IniMesAtual, ConsultasUpa.FimMesAtual, "DATEADD(day,3,GETDATE())"), ct);
         var esperaMesAnterior = await ConsultarAsync(b,
@@ -344,6 +358,7 @@ public sealed class PainelAtualizadorService : BackgroundService
             hoje, carimbo, totalMesAnterior, totalMesAtual, totalHoje, totalDiasCompletos, serieAtendimentos, porHora);
         estado.EsperaPorCor = new EsperaPorCorSecao(carimbo, new EsperaPeriodos(
             MontarEsperaPeriodo(esperaHoje, Unidades.IdUpa),
+            MontarEsperaPeriodo(esperaOntem, Unidades.IdUpa),
             MontarEsperaPeriodo(esperaMesAtual, Unidades.IdUpa),
             MontarEsperaPeriodo(esperaMesAnterior, Unidades.IdUpa)));
 
@@ -563,6 +578,7 @@ public sealed class PainelAtualizadorService : BackgroundService
             MaisAntigo(secoes, s => s.AtualizadoEm),
             new EsperaPeriodos(
                 SomarEsperaPeriodo(secoes.Select(s => s.Periodos.Hoje)),
+                SomarEsperaPeriodo(secoes.Select(s => s.Periodos.Ontem)),
                 SomarEsperaPeriodo(secoes.Select(s => s.Periodos.MesAtual)),
                 SomarEsperaPeriodo(secoes.Select(s => s.Periodos.MesAnterior))));
     }
@@ -679,11 +695,10 @@ public sealed class PainelAtualizadorService : BackgroundService
     private const int TopCids = 5;
 
     /// <summary>
-    /// Q8 vira uma lista por cor, na ordem clínica. Cores sem CID no período
+    /// Uma rodada da Q8 vira a lista por cor, na ordem clínica. Cores sem CID no período
     /// simplesmente não aparecem — lista vazia é melhor que cor vazia na tela.
     /// </summary>
-    private static DiagnosticosSecao MontarDiagnosticos(
-        DateTimeOffset carimbo, string rotulo, ResultadoConsulta resultado)
+    private static List<DiagnosticosDaCor> LerDiagnosticos(ResultadoConsulta resultado)
     {
         var porCor = new Dictionary<string, (int Total, List<CidRanking> Cids)>();
         // O total vem repetido em toda linha da mesma cor CRUA, então só pode ser somado
@@ -716,17 +731,17 @@ public sealed class PainelAtualizadorService : BackgroundService
             porCor[cor] = atual;
         }
 
-        var lista = Unidades.Cores
-            .Where(porCor.ContainsKey)
-            .Select(cor => new DiagnosticosDaCor(
-                cor,
-                porCor[cor].Total,
-                // A normalização pode fundir cores (SALUX → SEM_CLASSIFICACAO); reordena e
-                // corta de novo para o topo continuar sendo o topo de verdade.
-                [.. porCor[cor].Cids.OrderByDescending(c => c.Qtd).Take(TopCids)]))
-            .ToList();
-
-        return new DiagnosticosSecao(carimbo, rotulo, lista, null);
+        return
+        [
+            .. Unidades.Cores
+                .Where(porCor.ContainsKey)
+                .Select(cor => new DiagnosticosDaCor(
+                    cor,
+                    porCor[cor].Total,
+                    // A normalização pode fundir cores (SALUX → SEM_CLASSIFICACAO); reordena
+                    // e corta de novo para o topo continuar sendo o topo de verdade.
+                    [.. porCor[cor].Cids.OrderByDescending(c => c.Qtd).Take(TopCids)])),
+        ];
     }
 
     /// <summary>Descrição do CID em Caixa de Título — o cadastro grava em CAIXA ALTA.</summary>

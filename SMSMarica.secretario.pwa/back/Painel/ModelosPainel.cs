@@ -234,9 +234,14 @@ public sealed record DiaPartos(string Dia, int Qtd, int? Cesareas);
 /// </summary>
 public sealed record DiagnosticosSecao(
     DateTimeOffset AtualizadoEm,
-    string Rotulo,
-    IReadOnlyList<DiagnosticosDaCor> PorCor,
+    DiagnosticosPeriodos Periodos,
     string? Escopo);
+
+public sealed record DiagnosticosPeriodos(
+    IReadOnlyList<DiagnosticosDaCor> Hoje,
+    IReadOnlyList<DiagnosticosDaCor> Ontem,
+    IReadOnlyList<DiagnosticosDaCor> MesAtual,
+    IReadOnlyList<DiagnosticosDaCor> MesAnterior);
 
 public sealed record DiagnosticosDaCor(
     string Cor,
@@ -253,6 +258,7 @@ public sealed record EsperaPorCorSecao(
 
 public sealed record EsperaPeriodos(
     IReadOnlyList<EsperaCor> Hoje,
+    IReadOnlyList<EsperaCor> Ontem,
     IReadOnlyList<EsperaCor> MesAtual,
     IReadOnlyList<EsperaCor> MesAnterior);
 

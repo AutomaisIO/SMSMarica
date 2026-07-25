@@ -64,6 +64,8 @@ public static class ConsultasUpa
     public const string FimMesAtual = "GETDATE()";
     public const string IniHoje = "CAST(GETDATE() AS date)";
     public const string FimHoje = "GETDATE()";
+    public const string IniOntem = "DATEADD(day,-1,CAST(GETDATE() AS date))";
+    public const string FimOntem = "CAST(GETDATE() AS date)";
 
     /// <summary>Fim "dias completos" do mês atual (exclui o dia corrente, parcial).</summary>
     public const string FimDiasCompletos = "CAST(GETDATE() AS date)";

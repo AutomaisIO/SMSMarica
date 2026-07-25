@@ -207,10 +207,12 @@ export interface EsperaCor {
   pctNaMeta: number | null;
 }
 
-export type PeriodoEspera = 'hoje' | 'mesAtual' | 'mesAnterior';
+/** Os quatro períodos de todo seletor do painel. */
+export type PeriodoPainel = 'hoje' | 'ontem' | 'mesAtual' | 'mesAnterior';
 
 export interface EsperaPorCorPeriodos {
   hoje: EsperaCor[];
+  ontem: EsperaCor[];
   mesAtual: EsperaCor[];
   mesAnterior: EsperaCor[];
 }
@@ -330,11 +332,17 @@ export interface DiagnosticosDaCor {
   cids: CidRanking[];
 }
 
+export interface DiagnosticosPeriodos {
+  hoje: DiagnosticosDaCor[];
+  ontem: DiagnosticosDaCor[];
+  mesAtual: DiagnosticosDaCor[];
+  mesAnterior: DiagnosticosDaCor[];
+}
+
 /** Só o Conde tem: nas UPAs o CID da classificação não é preenchido. */
 export interface Diagnosticos {
   atualizadoEm: string;
-  rotulo: string;
-  porCor: DiagnosticosDaCor[];
+  periodos: DiagnosticosPeriodos;
   escopo: string | null;
 }
 

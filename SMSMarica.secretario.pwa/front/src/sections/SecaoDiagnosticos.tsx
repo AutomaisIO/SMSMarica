@@ -1,11 +1,12 @@
 import { memo, useState } from 'react';
-import type { CorTriagem, Diagnosticos } from '@/types/painel';
+import type { Atendimentos, CorTriagem, Diagnosticos, PeriodoPainel } from '@/types/painel';
 import { TRIAGEM, ORDEM_TRIAGEM } from '@/lib/triagem';
 import { formatarInteiro, formatarPct } from '@/lib/formatos';
 import { Cartao } from '@/components/Cartao';
 import { CabecalhoSecao } from '@/components/CabecalhoSecao';
 import { SeloEscopo } from '@/components/SeloEscopo';
 import { SegmentedControl, type OpcaoSegmento } from '@/components/SegmentedControl';
+import { opcoesDePeriodo } from '@/lib/periodos';
 
 /**
  * Os diagnósticos mais registrados em cada cor da triagem.
@@ -18,18 +19,36 @@ const COR_PADRAO: CorTriagem = 'AMARELO';
 
 export const SecaoDiagnosticos = memo(function SecaoDiagnosticos({
   diagnosticos,
+  atendimentos,
 }: {
   diagnosticos: Diagnosticos;
+  atendimentos?: Atendimentos | null;
 }) {
-  const disponiveis = ORDEM_TRIAGEM.filter((cor) =>
-    diagnosticos.porCor.some((c) => c.cor === cor && c.cids.length > 0),
-  );
-  const [cor, setCor] = useState<CorTriagem>(
-    disponiveis.includes(COR_PADRAO) ? COR_PADRAO : (disponiveis[0] ?? COR_PADRAO),
+  const [periodo, setPeriodo] = useState<PeriodoPainel>('mesAtual');
+  const [cor, setCor] = useState<CorTriagem>(COR_PADRAO);
+
+  const doPeriodo = diagnosticos.periodos[periodo];
+  const disponiveis = ORDEM_TRIAGEM.filter((c) =>
+    doPeriodo.some((d) => d.cor === c && d.cids.length > 0),
   );
 
-  const escolhida = diagnosticos.porCor.find((c) => c.cor === cor) ?? diagnosticos.porCor[0];
-  if (!escolhida) return null;
+  // A cor escolhida pode não ter diagnóstico no período novo (num dia calmo o
+  // Vermelho fica vazio): cai na primeira com dado em vez de mostrar um vazio que
+  // parece defeito. A escolha do usuário não muda — voltando o período, ela volta.
+  const escolhida =
+    doPeriodo.find((c) => c.cor === cor && c.cids.length > 0) ??
+    doPeriodo.find((c) => c.cids.length > 0);
+  if (!escolhida) {
+    return (
+      <section aria-labelledby="titulo-diagnosticos">
+        <Cabecalho diagnosticos={diagnosticos} />
+        <SeletorPeriodo opcoes={opcoesDePeriodo(atendimentos)} valor={periodo} aoMudar={setPeriodo} />
+        <p className="mt-3 text-[13.5px] text-grafite">
+          Nenhum diagnóstico registrado neste período.
+        </p>
+      </section>
+    );
+  }
 
   const estilo = TRIAGEM[escolhida.cor];
   const opcoes: OpcaoSegmento<CorTriagem>[] = disponiveis.map((c) => ({
@@ -40,13 +59,11 @@ export const SecaoDiagnosticos = memo(function SecaoDiagnosticos({
 
   return (
     <section aria-labelledby="titulo-diagnosticos">
-      <CabecalhoSecao
-        eyebrow="Diagnósticos"
-        titulo="Por que estão procurando"
-        tituloId="titulo-diagnosticos"
-        sub={`CIDs mais registrados em ${diagnosticos.rotulo} · escolha a cor da classificação`}
-        direita={<SeloEscopo escopo={diagnosticos.escopo} />}
-      />
+      <Cabecalho diagnosticos={diagnosticos} />
+
+      {/* Período em cima, cor embaixo: primeiro QUANDO, depois QUEM — trocar o
+          período mantendo a cor é o gesto natural de comparar. */}
+      <SeletorPeriodo opcoes={opcoesDePeriodo(atendimentos)} valor={periodo} aoMudar={setPeriodo} />
 
       {opcoes.length > 1 && (
         <div className="mb-3 overflow-x-auto pb-1">
@@ -109,3 +126,31 @@ export const SecaoDiagnosticos = memo(function SecaoDiagnosticos({
     </section>
   );
 });
+
+function Cabecalho({ diagnosticos }: { diagnosticos: Diagnosticos }) {
+  return (
+    <CabecalhoSecao
+      eyebrow="Diagnósticos"
+      titulo="Por que estão procurando"
+      tituloId="titulo-diagnosticos"
+      sub="CIDs mais registrados · escolha o período e a cor da classificação"
+      direita={<SeloEscopo escopo={diagnosticos.escopo} />}
+    />
+  );
+}
+
+function SeletorPeriodo({
+  opcoes,
+  valor,
+  aoMudar,
+}: {
+  opcoes: OpcaoSegmento<PeriodoPainel>[];
+  valor: PeriodoPainel;
+  aoMudar: (v: PeriodoPainel) => void;
+}) {
+  return (
+    <div className="mb-2 overflow-x-auto pb-1">
+      <SegmentedControl opcoes={opcoes} valor={valor} aoMudar={aoMudar} ariaLabel="Período" />
+    </div>
+  );
+}

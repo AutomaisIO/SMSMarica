@@ -1,10 +1,11 @@
 import { memo, useState } from 'react';
-import type { CorTriagem, EsperaPorCor, PeriodoEspera } from '@/types/painel';
+import type { Atendimentos, CorTriagem, EsperaPorCor, PeriodoPainel } from '@/types/painel';
 import { apenasCoresDaUnidade, ordenarPorTriagem } from '@/lib/triagem';
 import { horaMinuto } from '@/lib/formatos';
 import { CabecalhoSecao } from '@/components/CabecalhoSecao';
 import { Pulseira } from '@/components/Pulseira';
-import { SegmentedControl, type OpcaoSegmento } from '@/components/SegmentedControl';
+import { SegmentedControl } from '@/components/SegmentedControl';
+import { opcoesDePeriodo } from '@/lib/periodos';
 
 interface Props {
   espera: EsperaPorCor;
@@ -12,9 +13,8 @@ interface Props {
   coresUsadas: CorTriagem[];
   /** Aba "geral": some com a meta, que é régua de cada unidade (ver Pulseira). */
   consolidado?: boolean;
-  /** Rótulos dos meses, vindos do contrato (ex.: "julho", "junho"). */
-  rotuloMesAtual: string;
-  rotuloMesAnterior: string;
+  /** Fonte dos rótulos de mês do seletor de período. */
+  atendimentos?: Atendimentos | null;
 }
 
 /**
@@ -25,16 +25,10 @@ export const SecaoEmergencia = memo(function SecaoEmergencia({
   espera,
   coresUsadas,
   consolidado = false,
-  rotuloMesAtual,
-  rotuloMesAnterior,
+  atendimentos,
 }: Props) {
-  const [periodo, setPeriodo] = useState<PeriodoEspera>('hoje');
-
-  const opcoes: OpcaoSegmento<PeriodoEspera>[] = [
-    { valor: 'hoje', rotulo: 'Hoje' },
-    { valor: 'mesAtual', rotulo: rotuloMesAtual },
-    { valor: 'mesAnterior', rotulo: rotuloMesAnterior },
-  ];
+  const [periodo, setPeriodo] = useState<PeriodoPainel>('hoje');
+  const opcoes = opcoesDePeriodo(atendimentos);
 
   const pulseiras = ordenarPorTriagem(apenasCoresDaUnidade(espera.periodos[periodo], coresUsadas));
 

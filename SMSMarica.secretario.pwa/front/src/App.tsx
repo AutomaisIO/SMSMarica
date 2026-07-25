@@ -4,7 +4,7 @@ import { usePainel } from '@/lib/usePainel';
 import { useUnidade } from '@/lib/useUnidade';
 import { useVisao } from '@/lib/useVisao';
 import { useVersaoApp } from '@/lib/useVersaoApp';
-import { horaMinuto, nomeDoMes } from '@/lib/formatos';
+import { horaMinuto } from '@/lib/formatos';
 import { Header } from '@/components/Header';
 import { InstalarApp } from '@/components/InstalarApp';
 import { SegmentedControl, type OpcaoSegmento } from '@/components/SegmentedControl';
@@ -117,14 +117,7 @@ function ConteudoUnidade({ unidade, visao }: { unidade: UnidadePainel; visao: Vi
             espera={unidade.esperaPorCor}
             coresUsadas={unidade.coresUsadas}
             consolidado={unidade.id === 'geral'}
-            rotuloMesAtual={
-              unidade.atendimentos ? nomeDoMes(unidade.atendimentos.mesAtual.rotulo) : 'mês atual'
-            }
-            rotuloMesAnterior={
-              unidade.atendimentos
-                ? nomeDoMes(unidade.atendimentos.mesAnterior.rotulo)
-                : 'mês anterior'
-            }
+            atendimentos={unidade.atendimentos}
           />
         ) : (
           <SkeletonSecaoPulseiras />
@@ -146,9 +139,12 @@ function ConteudoUnidade({ unidade, visao }: { unidade: UnidadePainel; visao: Vi
       )}
       {/* Diagnóstico por cor só existe no Conde: nas UPAs o CID da classificação
           não é preenchido e a queixa é texto livre. */}
-      {unidade.diagnosticos && unidade.diagnosticos.porCor.length > 0 && (
+      {unidade.diagnosticos && (
         <div className="anima-entrada" style={{ animationDelay: '280ms' }}>
-          <SecaoDiagnosticos diagnosticos={unidade.diagnosticos} />
+          <SecaoDiagnosticos
+            diagnosticos={unidade.diagnosticos}
+            atendimentos={unidade.atendimentos}
+          />
         </div>
       )}
     </div>

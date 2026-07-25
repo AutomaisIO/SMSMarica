@@ -79,7 +79,9 @@ Resultado real 24/07 16h20: aguardando VERDE 46 / AZUL 10 / AMARELO 3 / SEM_CLAS
 
 ## Q2 — Atendimentos por período (tick lento)
 
-Períodos: mês anterior `[TRUNC(ADD_MONTHS(SYSDATE,-1),'MM'), TRUNC(SYSDATE,'MM'))`, mês atual `[TRUNC(SYSDATE,'MM'), SYSDATE)`, hoje `[TRUNC(SYSDATE), SYSDATE)`.
+Períodos: mês anterior `[TRUNC(ADD_MONTHS(SYSDATE,-1),'MM'), TRUNC(SYSDATE,'MM'))`, mês atual `[TRUNC(SYSDATE,'MM'), SYSDATE)`, hoje `[TRUNC(SYSDATE), SYSDATE)`, **ontem** `[TRUNC(SYSDATE)-1, TRUNC(SYSDATE))`.
+
+Os quatro períodos são os mesmos em TODO seletor do painel (espera por cor e diagnósticos), na mesma ordem. "Ontem" é o único dia fechado disponível — de manhã cedo "hoje" tem meia dúzia de boletins e não sustenta leitura nenhuma.
 
 ```sql
 SELECT COUNT(*) AS total FROM infosaude.baa b
