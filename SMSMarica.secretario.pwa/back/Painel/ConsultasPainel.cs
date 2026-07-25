@@ -38,7 +38,7 @@ public static class ConsultasPainel
     /// estadia; o que vale para classificar é onde ela está/terminou).
     /// </summary>
     private static string LeitoAtual(int hospital) => $"""
-          SELECT fl.dt_ano_fia, fl.nr_fia, fl.cd_unidade,
+          SELECT fl.dt_ano_fia, fl.nr_fia, fl.cd_unidade, fl.cd_quarto, fl.cd_leito,
                  ROW_NUMBER() OVER (PARTITION BY fl.dt_ano_fia, fl.nr_fia
                                     ORDER BY fl.dt_transferencia DESC) rn
             FROM infosaude.fia_leito fl
@@ -289,34 +289,71 @@ public static class ConsultasPainel
     /// uma enfermaria desativada tem leito cadastrado mas não é capacidade, e incluí-la
     /// afundaria a taxa de ocupação com 73 leitos fantasmas.
     ///
-    /// Ocupados = pacientes reais no leito atual; bloqueados = <c>id_sit_leito = 'F'</c>.
+    /// <b>Nem todo registro em <c>LEITO</c> é leito de internação.</b> Contar a tabela
+    /// inteira (o que esta consulta fazia até 25/07) inflava o Conde para 426 "leitos
+    /// cadastrados" e 219 "livres", quando a capacidade real são 211 e as vagas 83. Os
+    /// dois campos que qualificam vêm comentados no próprio dicionário do Salux:
+    ///
+    /// <list type="bullet">
+    ///   <item><c>ID_LEITO</c> — <c>I</c>: Internação · <c>E</c>: <b>Extra</b> ·
+    ///   <c>O</c>: Observação · <c>C</c>: Cirurgia · <c>R</c>: Recuperação ·
+    ///   <c>V</c>: <b>Virtual</b> (não existe fisicamente).</item>
+    ///   <item><c>ID_CONDICAO</c> — <c>A</c>: ativo · <c>I</c>: desativado.</item>
+    /// </list>
+    ///
+    /// Então <b>capacidade = <c>I</c> + ativo + não fechado</b>. Extra é contingência,
+    /// não leito; virtual é registro de fluxo (a maternidade tem 37); desativado saiu de
+    /// operação. Os três são devolvidos à parte, porque o volume deles é informação de
+    /// gestão — mas nenhum entra no denominador.
+    ///
+    /// <c>fora_capacidade</c> conta os internados que estão num leito que NÃO é de
+    /// capacidade (12 em extra, 9 em virtual em 25/07). Eles seguem no numerador — é o
+    /// que faz a taxa passar de 100% num setor lotado, e é justamente o que o painel
+    /// precisa mostrar. Sem isso a Saúde Mental aparecia com 100% em vez dos 150% reais.
     /// </summary>
     public static string L1OcupacaoPorSetor(int hospital) => $"""
         WITH la AS (
         {LeitoAtual(hospital)}
         ), pac AS (
-          SELECT la.cd_unidade, COUNT(*) AS ocupados
+          SELECT la.cd_unidade, COUNT(*) AS ocupados,
+                 SUM(CASE WHEN l.id_leito = 'I' AND l.id_condicao = 'A'
+                          THEN 0 ELSE 1 END) AS fora_capacidade
             FROM infosaude.fia f
             JOIN la ON la.dt_ano_fia = f.dt_ano_fia AND la.nr_fia = f.nr_fia AND la.rn = 1
+            LEFT JOIN infosaude.leito l
+                   ON l.cd_hospital = {hospital} AND l.cd_unidade = la.cd_unidade
+                  AND l.cd_quarto = la.cd_quarto AND l.cd_leito = la.cd_leito
         {InternadosAgora(hospital)}
            GROUP BY la.cd_unidade
         ), lei AS (
-          SELECT l.cd_unidade, COUNT(*) AS leitos,
-                 SUM(CASE WHEN l.id_sit_leito = 'F' THEN 1 ELSE 0 END) AS bloqueados
+          SELECT l.cd_unidade,
+                 SUM(CASE WHEN l.id_leito = 'I' AND l.id_condicao = 'A'
+                           AND NVL(l.id_sit_leito,'?') <> 'F' THEN 1 ELSE 0 END) AS capacidade,
+                 SUM(CASE WHEN l.id_leito = 'I' AND l.id_condicao = 'A'
+                           AND l.id_sit_leito = 'F' THEN 1 ELSE 0 END) AS bloqueados,
+                 SUM(CASE WHEN l.id_leito = 'E' THEN 1 ELSE 0 END) AS extras,
+                 SUM(CASE WHEN l.id_leito = 'V' THEN 1 ELSE 0 END) AS virtuais,
+                 SUM(CASE WHEN l.id_leito = 'I' AND l.id_condicao = 'I'
+                          THEN 1 ELSE 0 END) AS desativados
             FROM infosaude.leito l
             JOIN infosaude.unidade_hospitalar u
               ON u.cd_hospital = l.cd_hospital AND u.cd_unidade = l.cd_unidade
            WHERE l.cd_hospital = {hospital} AND u.id_condicao_unidade = 'A'
            GROUP BY l.cd_unidade
         )
-        SELECT u.sc_unidade AS setor, NVL(lei.leitos,0) AS leitos,
-               NVL(lei.bloqueados,0) AS bloqueados, NVL(pac.ocupados,0) AS ocupados
+        SELECT u.sc_unidade AS setor, NVL(lei.capacidade,0) AS capacidade,
+               NVL(lei.bloqueados,0) AS bloqueados, NVL(pac.ocupados,0) AS ocupados,
+               NVL(pac.fora_capacidade,0) AS fora_capacidade,
+               NVL(lei.extras,0) AS extras, NVL(lei.virtuais,0) AS virtuais,
+               NVL(lei.desativados,0) AS desativados
           FROM infosaude.unidade_hospitalar u
           LEFT JOIN lei ON lei.cd_unidade = u.cd_unidade
           LEFT JOIN pac ON pac.cd_unidade = u.cd_unidade
          WHERE u.cd_hospital = {hospital} AND u.id_condicao_unidade = 'A'
-           AND (NVL(lei.leitos,0) > 0 OR NVL(pac.ocupados,0) > 0)
-         ORDER BY NVL(pac.ocupados,0) DESC, NVL(lei.leitos,0) DESC
+           AND (NVL(lei.capacidade,0) > 0 OR NVL(pac.ocupados,0) > 0
+                OR NVL(lei.extras,0) > 0 OR NVL(lei.virtuais,0) > 0
+                OR NVL(lei.desativados,0) > 0)
+         ORDER BY NVL(pac.ocupados,0) DESC, NVL(lei.capacidade,0) DESC
         """;
 
     /// <summary>

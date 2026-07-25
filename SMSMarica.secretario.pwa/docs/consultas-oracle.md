@@ -232,20 +232,58 @@ Validadas em 25/07/2026.
 
 ### L1 — Ocupação por setor
 
-Setor = `UNIDADE_HOSPITALAR.SC_UNIDADE`. Duas decisões que mudam o número:
+Setor = `UNIDADE_HOSPITALAR.SC_UNIDADE`. Decisões que mudam o número:
 
 - **Só unidades ATIVAS** (`ID_CONDICAO_UNIDADE = 'A'`). Há 6 enfermarias inativas com 73
   leitos cadastrados e zero paciente; incluí-las afundaria a taxa com capacidade que não
   existe.
 - **Ocupados = PACIENTES reais** (internação sem alta, pelo leito atual em `FIA_LEITO`), não
-  o flag `LEITO.ID_SIT_LEITO = 'O'`. Os dois discordam — em 25/07 eram 162 leitos marcados
-  ocupados para 155 pacientes internados. Usar o flag faria a aba de leitos contradizer o
-  "155 internados agora" que o painel já mostra na aba de emergência.
-- **Bloqueados** (`ID_SIT_LEITO = 'F'`, 54 leitos) saem do denominador da taxa mas são
-  reportados: leito interditado não é capacidade, e saber quantos são é informação de gestão.
+  o flag `LEITO.ID_SIT_LEITO = 'O'`. Os dois discordam — em 25/07 eram 156 leitos marcados
+  ocupados para 149 pacientes internados. Usar o flag faria a aba de leitos contradizer o
+  "internados agora" que o painel já mostra na aba de emergência.
+- **Nem todo registro em `LEITO` é leito de internação** — ver o fato abaixo. Capacidade é
+  `ID_LEITO='I' AND ID_CONDICAO='A' AND ID_SIT_LEITO<>'F'`.
 
-Retrato de 25/07: 426 leitos em unidades ativas, 155 ocupados, 54 bloqueados → **41,7%**.
-Setores mais cheios: Saúde Mental 6/6 (100%), Trauma 22/26 (85%), UPG 7/9 (78%).
+#### Fato 1 — `LEITO` mistura capacidade com contingência, fluxo e sucata
+
+Descoberto em 25/07/2026, depois de o painel publicar "426 leitos cadastrados, 219 livres,
+41%" e o número não bater com a percepção de quem opera o hospital. Os dois campos que
+qualificam estão comentados no próprio dicionário do Salux (`ALL_COL_COMMENTS`):
+
+| Campo | Domínio |
+|---|---|
+| `ID_LEITO` | `I` Internação · `E` **Extra** · `O` Observação · `C` Cirurgia · `R` Recuperação · `V` **Virtual** |
+| `ID_CONDICAO` | `A` ativo · `I` desativado |
+
+Os 426 do Conde se decompõem assim — e só a primeira linha é capacidade:
+
+| Bucket | Qtd | Por que fica de fora |
+|---|---|---|
+| Internação, ativo, liberado | **211** | — é a capacidade |
+| **Extra** (`ID_LEITO='E'`) | 98 | contingência: cama a mais no quarto, não vaga |
+| Internação **desativado** (`ID_CONDICAO='I'`) | 71 | saiu de operação |
+| **Virtual** (`ID_LEITO='V'`) | 37 | não existe fisicamente (36 na Maternidade) |
+| Cirurgia / Recuperação (`C`,`R`) | 9 | centro cirúrgico, não é internação |
+
+`IN_EXTRA` **não** serve: está `'N'` em 100% dos registros, inclusive nos 98 com
+`ID_LEITO='E'`. `CD_LEITO_SUS` também não: é sequencial e se repete entre leitos, não é
+registro CNES por leito. O discriminador é `ID_LEITO` + `ID_CONDICAO`, e mais nada.
+
+#### Fato 2 — a taxa PODE passar de 100%, e precisa
+
+Dos 149 internados, 21 não estavam em leito de capacidade: 12 em leito extra e 9 em leito
+virtual (maternidade). Eles continuam no numerador — paciente em cama extra é paciente
+internado. É isso que faz a Saúde Mental aparecer com **150%** (6 internados para 4 leitos)
+em vez do 100% eufemístico que a fórmula antiga produzia. A coluna `fora_capacidade` da L1
+conta esse excedente por setor, para a tela explicar o percentual em vez de só exibi-lo.
+
+Consequência de contrato: `livres + ocupados` **não fecha** com a capacidade, porque
+"livres" é vaga física (leito de capacidade sem ninguém) e parte dos ocupados está fora
+dela. A tela diz isso em letras miúdas; não é bug, é o hospital.
+
+Retrato de 25/07 (recorte novo): 211 leitos em operação, 149 internados (21 fora da
+capacidade), 83 livres → **70,6%**. Antes do recorte: 426 leitos, 219 livres, 41,7%.
+Setores mais cheios: Saúde Mental 6/4 (150%), Maternidade 20/15 (133%), Trauma 22/20 (110%).
 
 ### L2 — Perfil de quem está internado agora
 

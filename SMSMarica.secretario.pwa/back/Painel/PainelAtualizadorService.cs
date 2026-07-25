@@ -805,15 +805,21 @@ public sealed class PainelAtualizadorService : BackgroundService
         var setores = new List<SetorOcupacao>(setoresBrutos.Linhas.Count);
         foreach (var linha in setoresBrutos.Linhas)
         {
-            var leitos = ComoInt(linha[1]);
-            var bloqueados = ComoInt(linha[2]);
+            var capacidade = ComoInt(linha[1]);
             var ocupados = ComoInt(linha[3]);
             setores.Add(new SetorOcupacao(
                 Setor: NomeSetor(linha[0] as string),
-                Leitos: leitos,
+                Leitos: capacidade,
                 Ocupados: ocupados,
-                Bloqueados: bloqueados,
-                Taxa: TaxaOcupacao(ocupados, leitos - bloqueados)));
+                Bloqueados: ComoInt(linha[2]),
+                ForaDaCapacidade: ComoInt(linha[4]),
+                Extras: ComoInt(linha[5]),
+                Virtuais: ComoInt(linha[6]),
+                Desativados: ComoInt(linha[7]),
+                // Denominador já é a capacidade (a L1 tira o bloqueado de dentro dela),
+                // e o numerador inclui quem está em leito extra — por isso passa de 100%
+                // num setor lotado, que é exatamente o que se quer enxergar.
+                Taxa: TaxaOcupacao(ocupados, capacidade)));
         }
 
         var p = perfilBruto.Linhas[0];
@@ -824,8 +830,12 @@ public sealed class PainelAtualizadorService : BackgroundService
 
         return new LeitosSecao(
             AtualizadoEm: carimbo,
+            // A soma leva TODOS os setores — inclusive os que só têm leito extra ou
+            // desativado, senão o rodapé "98 extras" mentiria por baixo. A lista exibida
+            // leva só quem tem capacidade ou paciente: setor sem os dois não é linha de
+            // ocupação, é ruído de cadastro.
             Ocupacao: SomarSetores(setores),
-            Setores: setores,
+            Setores: setores.Where(s => s.Leitos > 0 || s.Ocupados > 0).ToList(),
             Perfil: perfil,
             Permanencia: MontarPermanencia(permanenciaBruta, RotuloMes(hoje)),
             Observacao: null,
@@ -841,9 +851,13 @@ public sealed class PainelAtualizadorService : BackgroundService
         {
             var leitos = ComoInt(linha[1]);
             var ocupados = ComoInt(linha[2]);
-            // Não existe status de bloqueio nestas bases — só livre e ocupado.
+            // Não existe status de bloqueio nestas bases — só livre e ocupado. Nem a
+            // qualificação de tipo de leito (extra/virtual/desativado) que o Salux tem:
+            // aqui todo leito cadastrado é leito de observação em operação.
             setores.Add(new SetorOcupacao(
-                NomeSetor(linha[0] as string), leitos, ocupados, 0, TaxaOcupacao(ocupados, leitos)));
+                NomeSetor(linha[0] as string), leitos, ocupados,
+                Bloqueados: 0, ForaDaCapacidade: 0, Extras: 0, Virtuais: 0, Desativados: 0,
+                Taxa: TaxaOcupacao(ocupados, leitos)));
         }
 
         var f = fluxoBruto.Linhas[0];
@@ -891,7 +905,10 @@ public sealed class PainelAtualizadorService : BackgroundService
         return new Permanencia(rotulo, total.Altas, total.Media, total.Mediana, total.P90, segmentos);
     }
 
-    /// <summary>Consolida setores num total. Bloqueado não conta como capacidade.</summary>
+    /// <summary>
+    /// Consolida setores num total. Capacidade já vem sem bloqueado nem extra/virtual/
+    /// desativado — o que a L1 qualificou por setor só é somado aqui, nunca recalculado.
+    /// </summary>
     private static Ocupacao? SomarSetores(IReadOnlyList<SetorOcupacao> setores)
     {
         if (setores.Count == 0)
@@ -899,23 +916,55 @@ public sealed class PainelAtualizadorService : BackgroundService
             return null;
         }
 
-        var leitos = setores.Sum(s => s.Leitos);
-        var bloqueados = setores.Sum(s => s.Bloqueados);
+        var capacidade = setores.Sum(s => s.Leitos);
         var ocupados = setores.Sum(s => s.Ocupados);
-        var disponiveis = leitos - bloqueados;
+        var foraDaCapacidade = setores.Sum(s => s.ForaDaCapacidade);
 
         return new Ocupacao(
-            Leitos: leitos,
+            Leitos: capacidade,
             Ocupados: ocupados,
-            // Livres nunca é negativo: se o flag do leito e os pacientes discordarem por
-            // um ou dois, o painel mostra 0 em vez de "-2 leitos livres".
-            Livres: Math.Max(0, disponiveis - ocupados),
-            Bloqueados: bloqueados,
-            Taxa: TaxaOcupacao(ocupados, disponiveis));
+            // Vaga é vaga FÍSICA: leito de capacidade sem ninguém. Quem está em leito
+            // extra não libera um leito de internação, então sai da conta aqui — por
+            // isso livres + ocupados pode não fechar com a capacidade, e a tela diz isso.
+            // Nunca negativo: se o flag do leito e os pacientes discordarem por um ou
+            // dois, o painel mostra 0 em vez de "-2 leitos livres".
+            Livres: Math.Max(0, capacidade - (ocupados - foraDaCapacidade)),
+            Bloqueados: setores.Sum(s => s.Bloqueados),
+            ForaDaCapacidade: foraDaCapacidade,
+            Extras: setores.Sum(s => s.Extras),
+            Virtuais: setores.Sum(s => s.Virtuais),
+            Desativados: setores.Sum(s => s.Desativados),
+            Taxa: TaxaOcupacao(ocupados, capacidade));
     }
 
-    private static double? TaxaOcupacao(int ocupados, int disponiveis) =>
-        disponiveis > 0 ? Math.Round(100.0 * ocupados / disponiveis, 1) : null;
+    /// <summary>
+    /// Consolida a rede a partir das ocupações já fechadas por unidade. Só a taxa é
+    /// recalculada — somar percentual de unidades de tamanhos diferentes daria média
+    /// aritmética onde o certo é ponderada pela capacidade.
+    /// </summary>
+    private static Ocupacao? SomarOcupacoes(IReadOnlyList<Ocupacao> ocupacoes)
+    {
+        if (ocupacoes.Count == 0)
+        {
+            return null;
+        }
+
+        var capacidade = ocupacoes.Sum(o => o.Leitos);
+        return new Ocupacao(
+            Leitos: capacidade,
+            Ocupados: ocupacoes.Sum(o => o.Ocupados),
+            Livres: ocupacoes.Sum(o => o.Livres),
+            Bloqueados: ocupacoes.Sum(o => o.Bloqueados),
+            ForaDaCapacidade: ocupacoes.Sum(o => o.ForaDaCapacidade),
+            Extras: ocupacoes.Sum(o => o.Extras),
+            Virtuais: ocupacoes.Sum(o => o.Virtuais),
+            Desativados: ocupacoes.Sum(o => o.Desativados),
+            Taxa: TaxaOcupacao(ocupacoes.Sum(o => o.Ocupados), capacidade));
+    }
+
+    /// <summary>Pode passar de 100%: leito extra em uso é lotação, não capacidade nova.</summary>
+    private static double? TaxaOcupacao(int ocupados, int capacidade) =>
+        capacidade > 0 ? Math.Round(100.0 * ocupados / capacidade, 1) : null;
 
     /// <summary>Nome do setor em Caixa de Título — o cadastro grava tudo em CAIXA ALTA.</summary>
     private static string NomeSetor(string? bruto)
@@ -950,7 +999,10 @@ public sealed class PainelAtualizadorService : BackgroundService
 
         return new LeitosSecao(
             AtualizadoEm: MaisAntigo(todas, s => s.AtualizadoEm),
-            Ocupacao: SomarSetores(setores),
+            // Soma as OCUPAÇÕES já fechadas de cada unidade, não os setores exibidos: a
+            // lista de setores é filtrada (setor só com leito extra não é linha de tela),
+            // e re-somá-la fazia a aba Geral publicar 88 extras onde o Conde sozinho tem 98.
+            Ocupacao: SomarOcupacoes(comLeitos.Select(u => u.Leitos!.Ocupacao!).ToList()),
             Setores: setores.OrderByDescending(s => s.Ocupados).ThenByDescending(s => s.Leitos).ToList(),
             Perfil: doConde?.Perfil,
             Permanencia: doConde?.Permanencia,

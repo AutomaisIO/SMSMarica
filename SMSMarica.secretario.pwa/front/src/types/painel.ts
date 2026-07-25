@@ -224,15 +224,26 @@ export interface EsperaPorCor {
 
 /**
  * Ocupação do momento. O numerador são PACIENTES reais, não o flag do leito —
- * assim casa com "internados agora" no resto do painel. `leitos` inclui os
- * bloqueados; a `taxa` não, porque leito interditado não é capacidade.
+ * assim casa com "internados agora" no resto do painel.
+ *
+ * `leitos` é a CAPACIDADE OPERACIONAL: leito de internação, ativo, não bloqueado.
+ * Leito extra, virtual e desativado não são capacidade e vêm contados à parte.
  */
 export interface Ocupacao {
+  /** Capacidade operacional — o denominador da taxa. */
   leitos: number;
+  /** Internados agora, inclusive quem está em leito extra. */
   ocupados: number;
+  /** Leitos de capacidade sem paciente. Com gente em leito extra, `livres + ocupados` não fecha com `leitos`. */
   livres: number;
+  /** Leito de internação ativo, porém fechado/interditado. */
   bloqueados: number;
-  /** 0–100 sobre os leitos disponíveis; null quando não há leito disponível. */
+  /** Internados em leito extra, virtual ou desativado — o excedente. */
+  foraDaCapacidade: number;
+  extras: number;
+  virtuais: number;
+  desativados: number;
+  /** 0–N sobre a capacidade; passa de 100 quando há leito extra em uso. */
   taxa: number | null;
 }
 
@@ -241,6 +252,10 @@ export interface SetorOcupacao {
   leitos: number;
   ocupados: number;
   bloqueados: number;
+  foraDaCapacidade: number;
+  extras: number;
+  virtuais: number;
+  desativados: number;
   taxa: number | null;
 }
 

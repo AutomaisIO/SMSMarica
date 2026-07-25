@@ -83,13 +83,27 @@ public sealed record LeitosSecao(
 /// Ocupação do momento. O numerador são PACIENTES reais (internação sem alta), não o
 /// flag <c>ID_SIT_LEITO</c> do leito — assim o número casa com "internados agora" do
 /// resto do painel, em vez de divergir dele por alguns leitos (162 × 155 em 25/07).
-/// O denominador exclui leitos bloqueados, que não são capacidade operacional, mas
-/// eles vêm reportados à parte porque leito interditado é informação de gestão.
+///
+/// O denominador é a <b>capacidade operacional</b>: leito de internação, ativo e não
+/// bloqueado (ver <see cref="ConsultasPainel.L1OcupacaoPorSetor"/>). Extra, virtual e
+/// desativado ficam de fora e vêm reportados à parte — são informação de gestão, não
+/// capacidade. Sem esse recorte o Conde publicava 426 leitos e 41%, quando a leitura
+/// honesta é 211 leitos e 71%.
 /// </summary>
+/// <param name="Leitos">Capacidade operacional — o denominador da taxa.</param>
+/// <param name="Ocupados">Internados agora, inclusive os que estão fora da capacidade.</param>
+/// <param name="Livres">Leitos de capacidade sem paciente. Note que
+/// <c>Livres + Ocupados</c> não fecha com <c>Leitos</c> quando há gente em leito extra.</param>
+/// <param name="Bloqueados">Leito de internação ativo, porém fechado/interditado.</param>
+/// <param name="ForaDaCapacidade">Internados em leito extra, virtual ou desativado — o
+/// excedente que empurra a taxa acima de 100%.</param>
 public sealed record Ocupacao(
-    int Leitos, int Ocupados, int Livres, int Bloqueados, double? Taxa);
+    int Leitos, int Ocupados, int Livres, int Bloqueados,
+    int ForaDaCapacidade, int Extras, int Virtuais, int Desativados, double? Taxa);
 
-public sealed record SetorOcupacao(string Setor, int Leitos, int Ocupados, int Bloqueados, double? Taxa);
+public sealed record SetorOcupacao(
+    string Setor, int Leitos, int Ocupados, int Bloqueados,
+    int ForaDaCapacidade, int Extras, int Virtuais, int Desativados, double? Taxa);
 
 public sealed record PerfilInternados(
     int Total, int Homens, int Mulheres, int SemSexo,
