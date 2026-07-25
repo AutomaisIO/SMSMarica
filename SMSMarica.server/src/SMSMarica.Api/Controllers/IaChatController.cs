@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using SMSMarica.Api.Auth;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Inteligencia.Conhecimento;
+using SMSMarica.Core.Tfd.Configuracao;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities.Enums;
 
@@ -28,6 +29,7 @@ public sealed class IaChatController : ControllerBase
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IUsuarioAtualAccessor _usuarioAtual;
     private readonly IRecuperadorContexto _recuperador;
+    private readonly ITfdConfigService _tfdConfig;
     private readonly SmsMaricaDbContext _db;
     private readonly ILogger<IaChatController> _logger;
     private readonly string _baseUrl;
@@ -37,6 +39,7 @@ public sealed class IaChatController : ControllerBase
         IHttpClientFactory httpClientFactory,
         IUsuarioAtualAccessor usuarioAtual,
         IRecuperadorContexto recuperador,
+        ITfdConfigService tfdConfig,
         SmsMaricaDbContext db,
         IConfiguration configuration,
         ILogger<IaChatController> logger)
@@ -44,10 +47,29 @@ public sealed class IaChatController : ControllerBase
         _httpClientFactory = httpClientFactory;
         _usuarioAtual = usuarioAtual;
         _recuperador = recuperador;
+        _tfdConfig = tfdConfig;
         _db = db;
         _logger = logger;
         _baseUrl = (configuration["AgenteIa:BaseUrl"] ?? "http://127.0.0.1:5085").TrimEnd('/');
         _internalKey = configuration["AgenteIa:InternalKey"];
+    }
+
+    /// <summary>
+    /// Chave do Google Maps JS para renderizar os mapas do chat. Reusa a config da Google Maps
+    /// Platform do TFD (mesma chave de geocoding/rotas). A chave é restrita por referrer HTTP ao
+    /// domínio do painel — por isso pode ir ao navegador. Devolve null se não configurada/ativa.
+    /// </summary>
+    [HttpGet("maps-key")]
+    [RequerPermissao(ModuloPermissao.Inteligencia, AcoesPermissao.Consulta)]
+    public async Task<IActionResult> MapsKey(CancellationToken ct)
+    {
+        var g = await _tfdConfig.ObterGoogleAsync(ct);
+        if (!g.Ativo || !g.ChaveConfigurada)
+        {
+            return Ok(new { apiKey = (string?)null });
+        }
+        var ctx = await _tfdConfig.ObterGoogleContextoAsync(ct);
+        return Ok(new { apiKey = string.IsNullOrWhiteSpace(ctx.ApiKey) ? null : ctx.ApiKey });
     }
 
     /// <summary>Abre uma sessão de dados presa a uma base (fonte). Uma sessão = uma conversa.</summary>

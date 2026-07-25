@@ -13,7 +13,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { MapPin } from 'lucide-react';
+import { MapaGoogle } from './MapaGoogle';
 import type { VizSpec } from '../types';
 
 const CORES = ['#C8102E', '#E4572E', '#F4A259', '#1B998B', '#2D7DD2', '#7B2D8B', '#9CA3AF'];
@@ -123,39 +123,10 @@ export function VizRenderer({ spec }: { spec: VizSpec }) {
     );
   }
 
-  // Mapas: fallback até a chave do Google Maps. Mostra o que o agente enviou, sem perder o dado.
-  const pontos = spec.pontos ?? [];
-  const poligonos = spec.poligonos ?? [];
+  // Mapas Google (pontos / calor / polígono).
   return (
     <VizCard titulo={spec.titulo}>
-      <div className="rounded-md border border-dashed border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-        <p className="flex items-center gap-1.5 font-medium">
-          <MapPin className="h-3.5 w-3.5" />
-          Mapa ({spec.tipo.replace('mapa_', '')}) — visualização no mapa entra quando a chave do
-          Google Maps for configurada. Dados abaixo:
-        </p>
-        {pontos.length > 0 && (
-          <ul className="mt-1 max-h-40 space-y-0.5 overflow-y-auto">
-            {pontos.map((p, i) => (
-              <li key={i}>
-                • {p.rotulo ? `${p.rotulo}: ` : ''}({p.lat}, {p.lng})
-                {p.valor != null ? ` — ${p.valor}` : ''}
-                {p.peso != null ? ` — peso ${p.peso}` : ''}
-              </li>
-            ))}
-          </ul>
-        )}
-        {poligonos.length > 0 && (
-          <ul className="mt-1 space-y-0.5">
-            {poligonos.map((pg, i) => (
-              <li key={i}>
-                • {pg.rotulo ?? `Polígono ${i + 1}`} — {pg.coordenadas.length} vértices
-                {pg.valor != null ? ` — ${pg.valor}` : ''}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      <MapaGoogle spec={spec} />
     </VizCard>
   );
 }
