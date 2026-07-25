@@ -5,7 +5,6 @@ using SMSMarica.Data.Entities.Conversas;
 using SMSMarica.Data.Entities.Ia;
 using SMSMarica.Data.Entities.Integracoes;
 using SMSMarica.Data.Entities.Pep;
-using SMSMarica.Data.Entities.Regulacao;
 using SMSMarica.Data.Entities.Sisreg;
 using SMSMarica.Data.Entities.Tfd;
 
@@ -150,14 +149,6 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<ComunicacaoPaciente> ComunicacoesPaciente => Set<ComunicacaoPaciente>();
     public DbSet<AgendamentoConfirmacaoEstado> AgendamentoConfirmacaoEstados => Set<AgendamentoConfirmacaoEstado>();
     public DbSet<ContatoRegistro> ContatosRegistro => Set<ContatoRegistro>();
-
-    // Processo Regulatório (ADR-0024) — a jornada ANTERIOR à espinha Solicitacao: triagem,
-    // complementação, parecer médico, deferimento e desfecho.
-    public DbSet<ProcessoRegulatorio> ProcessosRegulatorios => Set<ProcessoRegulatorio>();
-    public DbSet<ProcessoRegulatorioEvento> ProcessoRegulatorioEventos => Set<ProcessoRegulatorioEvento>();
-    public DbSet<PendenciaRegulatoria> PendenciasRegulatorias => Set<PendenciaRegulatoria>();
-    public DbSet<DocumentoRegulatorio> DocumentosRegulatorios => Set<DocumentoRegulatorio>();
-    public DbSet<ProcessoRegulatorioConfiguracao> ProcessoRegulatorioConfiguracoes => Set<ProcessoRegulatorioConfiguracao>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
