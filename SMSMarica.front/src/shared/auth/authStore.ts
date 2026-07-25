@@ -23,6 +23,7 @@ export type ModuloPermissao =
   | 'Inteligencia'
   | 'InteligenciaConfiguracao'
   | 'InteligenciaAprendizado'
+  | 'InteligenciaConsultaDev'
   | 'Especialidades'
   | 'Equipamentos'
   | 'Agendamentos'

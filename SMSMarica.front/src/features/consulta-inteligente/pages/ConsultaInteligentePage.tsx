@@ -14,7 +14,7 @@ import {
   User,
   WifiOff,
 } from 'lucide-react';
-import { useAuth, useTemConsulta } from '@/shared/auth/authStore';
+import { useAuth, usePermissao, useTemConsulta } from '@/shared/auth/authStore';
 import { cn } from '@/shared/lib/cn';
 import {
   arquivarSessao,
@@ -103,6 +103,96 @@ function lerSpec(input: unknown): VizSpec | null {
   return null;
 }
 
+const MD_COMPONENTS = {
+  p: ({ children }: { children?: React.ReactNode }) => <p className="mb-2 last:mb-0">{children}</p>,
+  ul: ({ children }: { children?: React.ReactNode }) => (
+    <ul className="mb-2 list-disc space-y-0.5 pl-5">{children}</ul>
+  ),
+  ol: ({ children }: { children?: React.ReactNode }) => (
+    <ol className="mb-2 list-decimal space-y-0.5 pl-5">{children}</ol>
+  ),
+  strong: ({ children }: { children?: React.ReactNode }) => (
+    <strong className="font-semibold text-primary-700">{children}</strong>
+  ),
+  table: ({ children }: { children?: React.ReactNode }) => (
+    <div className="overflow-x-auto">
+      <table className="my-2 min-w-full border-collapse text-xs">{children}</table>
+    </div>
+  ),
+  th: ({ children }: { children?: React.ReactNode }) => (
+    <th className="border border-gray-200 bg-gray-50 px-2 py-1 text-left">{children}</th>
+  ),
+  td: ({ children }: { children?: React.ReactNode }) => (
+    <td className="border border-gray-200 px-2 py-1">{children}</td>
+  ),
+};
+
+function Markdown({ children }: { children: string }) {
+  return (
+    <div className="prose prose-sm max-w-none leading-relaxed text-slate-800">
+      <ReactMarkdown components={MD_COMPONENTS}>{children}</ReactMarkdown>
+    </div>
+  );
+}
+
+/** Rótulo de atividade (modo padrão) — reflete o que o motor está fazendo, sem revelar conteúdo. */
+function atividadeLabel(eventos: EventoConsulta[]): string {
+  const ultimoTool = [...eventos].reverse().find((e) => e.type === 'tool_use') as
+    | Extract<EventoConsulta, { type: 'tool_use' }>
+    | undefined;
+  if (ultimoTool?.name === TOOL_CONSULTAR) return 'Consultando a base…';
+  if (ultimoTool?.name === TOOL_VISUALIZAR) return 'Preparando a visualização…';
+  return 'Pensando…';
+}
+
+/** Texto final concreto: o resultado do turno (ou o último bloco de texto). */
+function textoFinal(eventos: EventoConsulta[]): string {
+  const result = [...eventos].reverse().find((e) => e.type === 'result') as
+    | Extract<EventoConsulta, { type: 'result' }>
+    | undefined;
+  if (result?.text && result.text.trim()) return result.text;
+  const ultimoTexto = [...eventos].reverse().find((e) => e.type === 'text' && e.text.trim()) as
+    | Extract<EventoConsulta, { type: 'text' }>
+    | undefined;
+  return ultimoTexto?.text ?? '';
+}
+
+/** Modo padrão: esconde o raciocínio. Enquanto roda, só atividade; ao terminar, gráficos/mapas
+ *  + a resposta concreta. */
+function RespostaConcreta({ m }: { m: Mensagem }) {
+  if (m.status === 'running') {
+    const passos = m.eventos.filter(
+      (e) => e.type === 'tool_use' && (e.name === TOOL_CONSULTAR || e.name === TOOL_VISUALIZAR),
+    ).length;
+    return (
+      <div className="flex items-center gap-2 text-sm text-slate-500">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span>
+          {atividadeLabel(m.eventos)}
+          {passos > 0 ? ` (${passos} passo${passos > 1 ? 's' : ''})` : ''}
+        </span>
+      </div>
+    );
+  }
+  const vizs = m.eventos.filter(
+    (e): e is Extract<EventoConsulta, { type: 'tool_use' }> =>
+      e.type === 'tool_use' && e.name === TOOL_VISUALIZAR,
+  );
+  const final = textoFinal(m.eventos);
+  return (
+    <>
+      {vizs.map((e, j) => {
+        const spec = lerSpec(e.input);
+        return spec ? <VizRenderer key={j} spec={spec} /> : null;
+      })}
+      {final ? <Markdown>{final}</Markdown> : null}
+      {!final && vizs.length === 0 && m.status === 'done' ? (
+        <p className="text-sm text-slate-500">Sem resposta.</p>
+      ) : null}
+    </>
+  );
+}
+
 function Evento({ evento }: { evento: EventoConsulta }) {
   if (evento.type === 'text' && evento.text.trim()) {
     return (
@@ -147,6 +237,7 @@ function Evento({ evento }: { evento: EventoConsulta }) {
 
 export function ConsultaInteligentePage() {
   const podeVer = useTemConsulta('Inteligencia');
+  const podeDevMode = usePermissao('InteligenciaConsultaDev', 'Consulta');
   const usuario = useAuth((s) => s.usuario);
 
   const [fontes, setFontes] = useState<FonteConsulta[]>([]);
@@ -161,6 +252,7 @@ export function ConsultaInteligentePage() {
   const [semRede, setSemRede] = useState(false);
   const [iniciando, setIniciando] = useState(false);
   const [novaBase, setNovaBase] = useState<string>('');
+  const [modoDev, setModoDev] = useState(false);
 
   const fimRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -375,15 +467,28 @@ export function ConsultaInteligentePage() {
 
   return (
     <div className="flex h-[calc(100vh-8rem)] flex-col p-4">
-      <div className="mb-3">
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
-          <Sparkles className="h-6 w-6 text-primary-600" />
-          Consulta Inteligente
-        </h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Pergunte sobre os dados em linguagem natural. Cada conversa consulta uma base — com
-          segurança: somente leitura, sem acesso ao sistema.
-        </p>
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
+            <Sparkles className="h-6 w-6 text-primary-600" />
+            Consulta Inteligente
+          </h1>
+          <p className="mt-1 text-sm text-slate-600">
+            Pergunte sobre os dados em linguagem natural. Cada conversa consulta uma base — com
+            segurança: somente leitura, sem acesso ao sistema.
+          </p>
+        </div>
+        {podeDevMode && (
+          <label className="mt-1 flex shrink-0 cursor-pointer items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600">
+            <input
+              type="checkbox"
+              checked={modoDev}
+              onChange={(e) => setModoDev(e.target.checked)}
+              className="h-3.5 w-3.5 accent-primary-600"
+            />
+            Modo desenvolvedor
+          </label>
+        )}
       </div>
 
       <div className="flex min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white">
@@ -498,19 +603,25 @@ export function ConsultaInteligentePage() {
                 <div className="mt-3 flex gap-3">
                   <Sparkles className="mt-1 h-4 w-4 shrink-0 text-primary-600" />
                   <div className="min-w-0 flex-1">
-                    {m.eventos.map((e, j) => (
-                      <Evento key={j} evento={e} />
-                    ))}
-                    {m.parcial && (
-                      <div className="leading-relaxed text-slate-800">
-                        <ReactMarkdown>{m.parcial}</ReactMarkdown>
-                        <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-slate-400 align-text-bottom" />
-                      </div>
-                    )}
-                    {m.status === 'running' && !m.parcial && (
-                      <div className="flex items-center gap-2 text-sm text-slate-500">
-                        <Loader2 className="h-4 w-4 animate-spin" /> Consultando…
-                      </div>
+                    {modoDev ? (
+                      <>
+                        {m.eventos.map((e, j) => (
+                          <Evento key={j} evento={e} />
+                        ))}
+                        {m.parcial && (
+                          <div className="leading-relaxed text-slate-800">
+                            <ReactMarkdown>{m.parcial}</ReactMarkdown>
+                            <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse bg-slate-400 align-text-bottom" />
+                          </div>
+                        )}
+                        {m.status === 'running' && !m.parcial && (
+                          <div className="flex items-center gap-2 text-sm text-slate-500">
+                            <Loader2 className="h-4 w-4 animate-spin" /> Trabalhando…
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <RespostaConcreta m={m} />
                     )}
                     {m.status === 'cancelled' && <p className="text-sm text-slate-500">Cancelado.</p>}
                     {m.status === 'interrupted' && (

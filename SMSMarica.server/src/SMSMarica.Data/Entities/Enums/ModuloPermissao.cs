@@ -120,4 +120,10 @@ public enum ModuloPermissao
     /// contagens de mensagens (templates do sistema x atendente, sessão, recebidas), séries
     /// diárias, status de entrega e ranking de atendentes. Visão global (só leitura).</summary>
     Estatistica = 45,
+
+    /// <summary>Modo desenvolvedor da Consulta Inteligente: libera o checkbox que mostra o
+    /// raciocínio completo do motor (consultas SQL, ferramentas, passos) em vez de só o
+    /// resultado concreto. Puramente de UI — não abre nenhum acesso novo a dado. Conceder a
+    /// quem precisa depurar/entender as consultas.</summary>
+    InteligenciaConsultaDev = 46,
 }
