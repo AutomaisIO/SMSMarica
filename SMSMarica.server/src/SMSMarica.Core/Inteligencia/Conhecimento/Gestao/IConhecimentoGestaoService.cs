@@ -14,6 +14,9 @@ public sealed record ExtrairModeloDto(int MaxTabelas = 2000);
 public sealed record ExtracaoModeloResultado(
     int TotalTabelas, int TotalViews, int Documentadas, int TotalFks, int DocumentosGerados, string? Aviso);
 
+public sealed record EmbeddingsBackfillResultado(
+    int TotalChunks, int JaTinham, int Gerados, int Restantes, string? Aviso);
+
 /// <summary>
 /// Gestão do conhecimento (documentação .md) de uma base do módulo IA: listar/ler/gravar/remover
 /// documentos guardados no banco (editáveis pela tela) e extrair o modelo da base (tabelas +
@@ -39,4 +42,12 @@ public interface IConhecimentoGestaoService
     /// </summary>
     Task<ExtracaoModeloResultado> ExtrairModeloAsync(
         Guid fonteId, ExtrairModeloDto dto, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gera embeddings para os chunks que ainda não têm (backfill). Roda independente da flag
+    /// <c>Ia:Embeddings:Habilitado</c> — é o que permite gerar tudo ANTES de ligar o RAG. Idempotente:
+    /// só toca chunks com <c>Embedding IS NULL</c>, então pode ser repetido sem custo extra.
+    /// </summary>
+    Task<EmbeddingsBackfillResultado> GerarEmbeddingsPendentesAsync(
+        Guid fonteId, CancellationToken ct = default);
 }

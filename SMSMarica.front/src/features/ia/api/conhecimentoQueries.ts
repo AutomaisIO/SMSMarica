@@ -3,6 +3,7 @@ import {
   atualizarDocumento,
   criarDocumento,
   extrairModelo,
+  gerarEmbeddings,
   listarDocumentos,
   obterDocumento,
   removerDocumento,
@@ -56,6 +57,17 @@ export function useExtrairModelo(fonteId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (maxTabelas: number) => extrairModelo(fonteId, maxTabelas),
+    retry: false,
+    onSuccess: () =>
+      client.invalidateQueries({ queryKey: conhecimentoKeys.documentos(fonteId) }),
+  });
+}
+
+/** Backfill de embeddings (RAG). Pesado e idempotente — sem retry automático. */
+export function useGerarEmbeddings(fonteId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => gerarEmbeddings(fonteId),
     retry: false,
     onSuccess: () =>
       client.invalidateQueries({ queryKey: conhecimentoKeys.documentos(fonteId) }),

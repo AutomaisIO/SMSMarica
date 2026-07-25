@@ -208,6 +208,56 @@ public sealed class ConhecimentoGestaoService(
             modelo.Documentos.Count, aviso);
     }
 
+    public async Task<EmbeddingsBackfillResultado> GerarEmbeddingsPendentesAsync(
+        Guid fonteId, CancellationToken ct = default)
+    {
+        await GarantirFonteAsync(fonteId, ct);
+
+        var total = await db.IaChunksConhecimento.CountAsync(c => c.FonteId == fonteId, ct);
+        var jaTinham = await db.IaChunksConhecimento
+            .CountAsync(c => c.FonteId == fonteId && c.Embedding != null, ct);
+
+        // Lote pequeno o suficiente pra caber num request do provedor (limite de itens/tokens);
+        // teto por chamada segura contra timeout — como é idempotente, chamar de novo continua.
+        const int TamanhoLote = 100;
+        const int TetoPorChamada = 8000;
+        var gerados = 0;
+
+        while (gerados < TetoPorChamada)
+        {
+            var pendentes = await db.IaChunksConhecimento
+                .Where(c => c.FonteId == fonteId && c.Embedding == null)
+                .OrderBy(c => c.Id)
+                .Take(TamanhoLote)
+                .ToListAsync(ct);
+
+            if (pendentes.Count == 0)
+            {
+                break;
+            }
+
+            var vetores = await embeddings.EmbeddarLoteAsync(
+                pendentes.Select(c => c.Conteudo).ToList(), ct);
+
+            for (var i = 0; i < pendentes.Count; i++)
+            {
+                pendentes[i].Embedding = new Vector(vetores[i]);
+            }
+
+            await db.SaveChangesAsync(ct);
+            gerados += pendentes.Count;
+        }
+
+        var restantes = await db.IaChunksConhecimento
+            .CountAsync(c => c.FonteId == fonteId && c.Embedding == null, ct);
+
+        var aviso = restantes > 0
+            ? $"Faltam {restantes} chunks (parou no teto de segurança). Rode de novo pra continuar — é idempotente."
+            : null;
+
+        return new EmbeddingsBackfillResultado(total, jaTinham, gerados, restantes, aviso);
+    }
+
     /// <summary>Grava o conteúdo, re-chunka e (se habilitado) re-embeda. Idempotente pelo hash.</summary>
     private async Task AplicarConteudoAsync(IaDocumentoConhecimento doc, string conteudo, CancellationToken ct)
     {

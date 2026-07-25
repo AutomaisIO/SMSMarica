@@ -66,4 +66,15 @@ public sealed class ConhecimentoController(IConhecimentoGestaoService service) :
     public async Task<ExtracaoModeloResultado> ExtrairModelo(
         Guid fonteId, [FromBody] ExtrairModeloDto dto, CancellationToken ct) =>
         await _service.ExtrairModeloAsync(fonteId, dto, ct);
+
+    /// <summary>
+    /// Gera embeddings para os chunks pendentes desta base (backfill). Roda mesmo com o RAG
+    /// desligado — serve pra preparar a busca vetorial antes de ligar a flag. Idempotente.
+    /// </summary>
+    [HttpPost("{fonteId:guid}/embeddings")]
+    [RequerPermissao(ModuloPermissao.InteligenciaConfiguracao, AcoesPermissao.Edicao)]
+    [ProducesResponseType<EmbeddingsBackfillResultado>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<EmbeddingsBackfillResultado> GerarEmbeddings(Guid fonteId, CancellationToken ct) =>
+        await _service.GerarEmbeddingsPendentesAsync(fonteId, ct);
 }

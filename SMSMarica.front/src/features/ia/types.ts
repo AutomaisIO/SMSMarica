@@ -146,6 +146,15 @@ export type ExtracaoModeloResultado = {
   aviso?: string | null;
 };
 
+/** Resultado do backfill de embeddings (RAG) de uma base. */
+export type EmbeddingsBackfillResultado = {
+  totalChunks: number;
+  jaTinham: number;
+  gerados: number;
+  restantes: number;
+  aviso?: string | null;
+};
+
 /** Token de agente recém-gerado (mostrado uma vez). */
 export type TokenAgenteGerado = {
   slug: string;

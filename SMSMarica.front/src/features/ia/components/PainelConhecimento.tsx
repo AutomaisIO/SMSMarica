@@ -7,6 +7,7 @@ import {
   Lock,
   Pencil,
   Plus,
+  Sparkles,
   Trash2,
 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
@@ -18,9 +19,14 @@ import { EditorDocumento } from '@/features/ia/components/EditorDocumento';
 import {
   useDocumentosConhecimento,
   useExtrairModelo,
+  useGerarEmbeddings,
   useRemoverDocumento,
 } from '@/features/ia/api/conhecimentoQueries';
-import type { ExtracaoModeloResultado, FonteConfig } from '@/features/ia/types';
+import type {
+  EmbeddingsBackfillResultado,
+  ExtracaoModeloResultado,
+  FonteConfig,
+} from '@/features/ia/types';
 
 type Props = {
   fonte: FonteConfig;
@@ -31,18 +37,30 @@ export function PainelConhecimento({ fonte, onFechar }: Props) {
   const podeEditar = usePermissao('InteligenciaConfiguracao', 'Edicao');
   const docs = useDocumentosConhecimento(fonte.id);
   const extrair = useExtrairModelo(fonte.id);
+  const embeddar = useGerarEmbeddings(fonte.id);
   const remover = useRemoverDocumento(fonte.id);
 
   const [editor, setEditor] = useState<{ docId: string | null; soLeitura: boolean } | null>(null);
   const [maxTabelas, setMaxTabelas] = useState('2000');
   const [erro, setErro] = useState<string | null>(null);
   const [extracao, setExtracao] = useState<ExtracaoModeloResultado | null>(null);
+  const [embeddings, setEmbeddings] = useState<EmbeddingsBackfillResultado | null>(null);
 
   async function aoExtrair() {
     setErro(null);
     setExtracao(null);
     try {
       setExtracao(await extrair.mutateAsync(Number(maxTabelas) || 2000));
+    } catch (e) {
+      setErro(extrairMensagemDeErro(e));
+    }
+  }
+
+  async function aoEmbeddar() {
+    setErro(null);
+    setEmbeddings(null);
+    try {
+      setEmbeddings(await embeddar.mutateAsync());
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
     }
@@ -123,6 +141,47 @@ export function PainelConhecimento({ fonte, onFechar }: Props) {
                     <p className="mt-1 flex items-start gap-1 text-amber-700">
                       <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                       {extracao.aviso}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Embeddings (RAG) ───────────────────────────────────────── */}
+        <section className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+          <div className="flex items-start gap-3">
+            <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-primary-600" />
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-semibold text-gray-900">Embeddings (RAG)</h3>
+              <p className="mt-0.5 text-xs text-gray-500">
+                Gera os vetores dos documentos pra busca por similaridade. Necessário em bases
+                grandes (a IA recupera só os trechos relevantes em vez do modelo inteiro). Roda
+                mesmo com o RAG desligado e pode ser repetido — só processa o que falta.
+              </p>
+              {podeEditar && (
+                <div className="mt-3">
+                  <Button onClick={aoEmbeddar} disabled={embeddar.isPending} variante="secundaria">
+                    {embeddar.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-4 w-4" />
+                    )}
+                    Gerar embeddings
+                  </Button>
+                </div>
+              )}
+              {embeddings && (
+                <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">
+                  <p>
+                    {embeddings.gerados} gerados agora · {embeddings.jaTinham} já tinham ·{' '}
+                    {embeddings.totalChunks} chunks no total · {embeddings.restantes} restantes.
+                  </p>
+                  {embeddings.aviso && (
+                    <p className="mt-1 flex items-start gap-1 text-amber-700">
+                      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      {embeddings.aviso}
                     </p>
                   )}
                 </div>

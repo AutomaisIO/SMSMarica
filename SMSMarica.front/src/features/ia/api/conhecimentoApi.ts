@@ -2,6 +2,7 @@ import { http } from '@/shared/api/httpClient';
 import type {
   DocumentoConhecimento,
   DocumentoConhecimentoDetalhe,
+  EmbeddingsBackfillResultado,
   ExtracaoModeloResultado,
   TokenAgenteGerado,
 } from '@/features/ia/types';
@@ -58,6 +59,15 @@ export async function extrairModelo(
   const { data } = await http.post<ExtracaoModeloResultado>(
     `/ia/conhecimento/${fonteId}/extrair-modelo`,
     { maxTabelas },
+  );
+  return data;
+}
+
+/** Gera embeddings dos chunks pendentes desta base (backfill do RAG). Idempotente. */
+export async function gerarEmbeddings(fonteId: string): Promise<EmbeddingsBackfillResultado> {
+  const { data } = await http.post<EmbeddingsBackfillResultado>(
+    `/ia/conhecimento/${fonteId}/embeddings`,
+    {},
   );
   return data;
 }
