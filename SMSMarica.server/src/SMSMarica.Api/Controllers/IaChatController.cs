@@ -10,6 +10,7 @@ using SMSMarica.Core.Inteligencia.Conhecimento;
 using SMSMarica.Core.Tfd.Configuracao;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities.Enums;
+using SMSMarica.Data.Entities.Ia;
 
 namespace SMSMarica.Api.Controllers;
 
@@ -147,6 +148,42 @@ public sealed class IaChatController : ControllerBase
         ProxyAsync(HttpMethod.Post,
             $"/internal/ai/turns/{Uri.EscapeDataString(turnId)}/cancel", null, ct);
 
+    /// <summary>
+    /// Avaliação de uma resposta (👍/👎). Um 👎 vira item pendente na tela de Melhorias de IA.
+    /// Guarda o snapshot (pergunta + resposta) + a família da base, para tratar/enriquecer depois.
+    /// </summary>
+    [HttpPost("feedback")]
+    [RequerPermissao(ModuloPermissao.Inteligencia, AcoesPermissao.Consulta)]
+    public async Task<IActionResult> Feedback([FromBody] FeedbackChatRequest req, CancellationToken ct)
+    {
+        if (req.FonteId == Guid.Empty || string.IsNullOrWhiteSpace(req.Pergunta))
+        {
+            return BadRequest(new { message = "Pergunta e base são obrigatórias." });
+        }
+        var fonte = await _db.IaFontes.AsNoTracking()
+            .FirstOrDefaultAsync(f => f.Id == req.FonteId && f.ExcluidoEm == null, ct);
+        if (fonte is null)
+        {
+            return NotFound(new { message = "Base não encontrada." });
+        }
+
+        _db.IaConsultaFeedbacks.Add(new IaConsultaFeedback
+        {
+            Id = Guid.CreateVersion7(),
+            FonteId = fonte.Id,
+            Familia = fonte.Familia,
+            Pergunta = req.Pergunta.Trim(),
+            Resposta = string.IsNullOrWhiteSpace(req.Resposta) ? null : req.Resposta,
+            Util = req.Util,
+            Comentario = string.IsNullOrWhiteSpace(req.Comentario) ? null : req.Comentario.Trim(),
+            Status = StatusFeedbackIa.Pendente,
+            CriadoEm = DateTime.UtcNow,
+            CriadoPor = _usuarioAtual.UsuarioId,
+        });
+        await _db.SaveChangesAsync(ct);
+        return Ok(new { registrado = true });
+    }
+
     // ------------------------------------------------------------------ contexto
 
     private async Task<string> MontarPromptComContextoAsync(
@@ -254,3 +291,6 @@ public sealed class IaChatController : ControllerBase
 public sealed record CriarSessaoChatRequest(Guid FonteId);
 
 public sealed record CriarTurnoChatRequest(Guid FonteId, string? Prompt, bool ModoDev = false);
+
+public sealed record FeedbackChatRequest(
+    Guid FonteId, string? Pergunta, string? Resposta, bool Util, string? Comentario);

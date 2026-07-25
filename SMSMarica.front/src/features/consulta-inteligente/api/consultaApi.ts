@@ -59,3 +59,14 @@ export async function cancelarTurno(turnId: string) {
   const { data } = await http.post<{ cancelled: boolean }>(`/ia/chat/turns/${turnId}/cancel`);
   return data;
 }
+
+/** Avaliação de uma resposta (👍/👎). Um 👎 vai para Melhorias de IA. */
+export async function enviarFeedback(payload: {
+  fonteId: string;
+  pergunta: string;
+  resposta: string;
+  util: boolean;
+  comentario?: string;
+}): Promise<void> {
+  await http.post('/ia/chat/feedback', payload);
+}

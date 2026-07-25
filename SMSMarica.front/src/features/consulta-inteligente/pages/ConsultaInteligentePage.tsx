@@ -10,6 +10,8 @@ import {
   Send,
   Sparkles,
   Square,
+  ThumbsDown,
+  ThumbsUp,
   Trash2,
   User,
   WifiOff,
@@ -21,6 +23,7 @@ import {
   cancelarTurno,
   criarSessao,
   criarTurno,
+  enviarFeedback,
   listarFontes,
   listarSessoes,
   obterSessao,
@@ -190,6 +193,87 @@ function RespostaConcreta({ m }: { m: Mensagem }) {
         <p className="text-sm text-slate-500">Sem resposta.</p>
       ) : null}
     </>
+  );
+}
+
+/** Barra de avaliação (👍/👎) de uma resposta concluída. Um 👎 vai para Melhorias de IA. */
+function FeedbackBar({
+  fonteId,
+  pergunta,
+  resposta,
+}: {
+  fonteId: string | null;
+  pergunta: string;
+  resposta: string;
+}) {
+  const [estado, setEstado] = useState<'idle' | 'comentando' | 'enviado'>('idle');
+  const [comentario, setComentario] = useState('');
+  const [enviando, setEnviando] = useState(false);
+
+  async function enviar(util: boolean) {
+    if (!fonteId) return;
+    setEnviando(true);
+    try {
+      await enviarFeedback({ fonteId, pergunta, resposta, util, comentario: comentario.trim() || undefined });
+      setEstado('enviado');
+    } catch {
+      /* silencioso: avaliar é secundário */
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  if (estado === 'enviado') {
+    return <p className="mt-2 text-xs text-emerald-600">Obrigado! Avaliação registrada.</p>;
+  }
+  if (estado === 'comentando') {
+    return (
+      <div className="mt-2 flex flex-col gap-1.5">
+        <textarea
+          value={comentario}
+          onChange={(e) => setComentario(e.target.value)}
+          rows={2}
+          placeholder="O que faltou? (opcional) — isto vai para Melhorias de IA"
+          className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-xs text-slate-700 focus:border-primary-500 focus:outline-none"
+        />
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => void enviar(false)}
+            disabled={enviando}
+            className="rounded-md bg-red-600 px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
+          >
+            Enviar para melhorias
+          </button>
+          <button type="button" onClick={() => setEstado('idle')} className="text-xs text-slate-400">
+            cancelar
+          </button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="mt-2 flex items-center gap-2 text-xs text-slate-400">
+      <span>Essa resposta resolveu?</span>
+      <button
+        type="button"
+        onClick={() => void enviar(true)}
+        disabled={enviando}
+        title="Sim, resolveu"
+        className="rounded p-1 hover:bg-emerald-50 hover:text-emerald-600"
+      >
+        <ThumbsUp className="h-3.5 w-3.5" />
+      </button>
+      <button
+        type="button"
+        onClick={() => setEstado('comentando')}
+        disabled={enviando}
+        title="Não resolveu — enviar para melhorias"
+        className="rounded p-1 hover:bg-red-50 hover:text-red-600"
+      >
+        <ThumbsDown className="h-3.5 w-3.5" />
+      </button>
+    </div>
   );
 }
 
@@ -629,6 +713,13 @@ export function ConsultaInteligentePage() {
                     )}
                     {m.status === 'error' && (
                       <p className="text-sm text-red-600">{m.erro ?? 'Falha na consulta.'}</p>
+                    )}
+                    {m.status === 'done' && (
+                      <FeedbackBar
+                        fonteId={fonteIdAtiva}
+                        pergunta={perguntaVisivel(m.prompt)}
+                        resposta={textoFinal(m.eventos)}
+                      />
                     )}
                   </div>
                 </div>

@@ -71,6 +71,7 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<IaAprendizado> IaAprendizados => Set<IaAprendizado>();
     public DbSet<IaConsulta> IaConsultas => Set<IaConsulta>();
     public DbSet<IaCorrecao> IaCorrecoes => Set<IaCorrecao>();
+    public DbSet<IaConsultaFeedback> IaConsultaFeedbacks => Set<IaConsultaFeedback>();
 
     // Integração SISREG (feed de leitura) — ADR-0012
     public DbSet<SisregConfiguracao> SisregConfiguracoes => Set<SisregConfiguracao>();

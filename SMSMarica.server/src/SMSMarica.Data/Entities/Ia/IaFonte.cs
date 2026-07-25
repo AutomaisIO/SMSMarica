@@ -55,6 +55,13 @@ public class IaFonte
 
     public bool Ativo { get; set; } = true;
 
+    /// <summary>
+    /// Família de bases de MESMA estrutura (ex.: <c>klinikos</c> para UPA e Santa Rita). Bases da
+    /// mesma família compartilham conhecimento (docs .md) e agrupam as avaliações — o aprendizado
+    /// de uma vale para todas. Nula = base sem família (conhecimento só dela). Ver ADR-0023.
+    /// </summary>
+    public string? Familia { get; set; }
+
     public DateTime CriadoEm { get; set; }
     public Guid? CriadoPor { get; set; }
     public DateTime? AtualizadoEm { get; set; }
