@@ -37,11 +37,17 @@ public sealed class PainelAtualizadorService : BackgroundService
         }
     }
 
+    /// <summary>Slug da base do HMCML no cadastro do smsmarica (Oracle do Salux).</summary>
+    private const string BaseHmcml = "salux-hcml";
+
+    /// <summary>Código do HMCML dentro do Salux (a base atende mais de um hospital).</summary>
+    private const int HospitalHmcml = 1;
+
     private readonly SnapshotStore _store;
-    private readonly SaluxOpcoes _salux;
+    private readonly ProxySqlOpcoes _proxy;
     private readonly PainelOpcoes _painel;
     private readonly ILogger<PainelAtualizadorService> _logger;
-    private readonly SaluxOracleFonte? _fonte;
+    private readonly ProxySqlFonte? _fonte;
 
     // Estado de erro POR CICLO: um tick rápido OK não pode apagar o erro do ciclo lento
     // (e vice-versa) — cada erro só é limpo por um ciclo bem-sucedido do MESMO tipo.
@@ -52,29 +58,37 @@ public sealed class PainelAtualizadorService : BackgroundService
 
     public PainelAtualizadorService(
         SnapshotStore store,
-        IOptions<SaluxOpcoes> salux,
+        IHttpClientFactory httpFactory,
+        IOptions<ProxySqlOpcoes> proxy,
         IOptions<PainelOpcoes> painel,
         ILogger<PainelAtualizadorService> logger)
     {
         _store = store;
-        _salux = salux.Value;
+        _proxy = proxy.Value;
         _painel = painel.Value;
         _logger = logger;
 
-        _fonte = string.IsNullOrWhiteSpace(_salux.Usuario) || string.IsNullOrWhiteSpace(_salux.Senha)
-            ? null
-            : new SaluxOracleFonte(
-                _salux.Host, _salux.Porta, _salux.Servico, _salux.Usuario, _salux.Senha,
-                _painel.TimeoutConsultaSegundos, maxLinhas: 500);
+        if (string.IsNullOrWhiteSpace(_proxy.Token))
+        {
+            _fonte = null;
+            return;
+        }
+
+        var http = httpFactory.CreateClient("proxy-sql");
+        http.BaseAddress = new Uri(_proxy.BaseUrl);
+        // Timeout do HTTP acima do da consulta: quem deve estourar primeiro é o banco,
+        // com mensagem de erro útil, não o cliente.
+        http.Timeout = TimeSpan.FromSeconds(_painel.TimeoutConsultaSegundos + 30);
+        _fonte = new ProxySqlFonte(http, _proxy.Token, _proxy.MaxLinhas);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         if (_fonte is null)
         {
-            // Sem credencial: sobe mesmo assim e serve o snapshot persistido (ou 503) sem tocar o Oracle.
+            // Sem token do proxy: sobe mesmo assim e serve o snapshot persistido (ou 503).
             _logger.LogWarning(
-                "Credencial do Salux ausente (Salux:Usuario/Salux:Senha) — atualização desativada; servindo snapshot persistido, se houver.");
+                "Token do proxy SQL ausente (ProxySql:Token) — atualização desativada; servindo snapshot persistido, se houver.");
             return;
         }
 
@@ -112,9 +126,9 @@ public sealed class PainelAtualizadorService : BackgroundService
         var cronometro = Stopwatch.StartNew();
         try
         {
-            var q1a = await ConsultarAsync(ConsultasPainel.Q1AguardandoPorCor(_salux.Hospital), ct);
-            var q1b = await ConsultarAsync(ConsultasPainel.Q1EmAtendimento(_salux.Hospital), ct);
-            var q1c = await ConsultarAsync(ConsultasPainel.Q1InternadosEHoje(_salux.Hospital), ct);
+            var q1a = await ConsultarAsync(ConsultasPainel.Q1AguardandoPorCor(HospitalHmcml), ct);
+            var q1b = await ConsultarAsync(ConsultasPainel.Q1EmAtendimento(HospitalHmcml), ct);
+            var q1c = await ConsultarAsync(ConsultasPainel.Q1InternadosEHoje(HospitalHmcml), ct);
 
             var agora = MontarAgora(q1a, q1b, q1c);
             var carimbo = FusoBrasilia.Agora();
@@ -197,7 +211,7 @@ public sealed class PainelAtualizadorService : BackgroundService
         var cronometro = Stopwatch.StartNew();
         try
         {
-            var hosp = _salux.Hospital;
+            var hosp = HospitalHmcml;
             var hoje = FusoBrasilia.Agora();
 
             // Q2 — atendimentos por período (+ total só de dias completos do mês atual).
@@ -615,10 +629,10 @@ public sealed class PainelAtualizadorService : BackgroundService
 
     private async Task<ResultadoConsulta> ConsultarAsync(string sql, CancellationToken ct)
     {
-        var resultado = await _fonte!.ExecutarAsync(sql, ct);
+        var resultado = await _fonte!.ExecutarUmaAsync(BaseHmcml, sql, ct);
         return resultado.Ok
             ? resultado
-            : throw new InvalidOperationException(resultado.Erro ?? "Consulta Oracle falhou.");
+            : throw new InvalidOperationException(resultado.Erro ?? "Consulta falhou no proxy SQL.");
     }
 
     private async Task<int> ConsultarEscalarAsync(string sql, CancellationToken ct)

@@ -4,7 +4,7 @@ using SMSMarica.Secretario.Api.Painel;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Credencial local SEM entrar no git: appsettings.Local.json (gitignored) ou env Salux__Usuario/Salux__Senha.
+// Token do proxy SEM entrar no git: appsettings.Local.json (gitignored) ou env ProxySql__Token.
 // O JSON local é registrado ANTES dos providers de variáveis de ambiente, para env vars
 // vencerem o arquivo (precedência padrão do ASP.NET: appsettings < Local.json < env vars).
 builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: false);
@@ -26,7 +26,9 @@ if (indicePrimeiroEnv >= 0)
     fontes.Insert(indicePrimeiroEnv, fonteLocal);
 }
 
-builder.Services.Configure<SaluxOpcoes>(builder.Configuration.GetSection("Salux"));
+builder.Services.Configure<ProxySqlOpcoes>(builder.Configuration.GetSection("ProxySql"));
+// HttpClient nomeado para o proxy SQL (loopback) — pool de conexões gerido pela factory.
+builder.Services.AddHttpClient("proxy-sql");
 builder.Services.Configure<PainelOpcoes>(builder.Configuration.GetSection("Painel"));
 
 builder.Services.AddSingleton<SnapshotStore>();
