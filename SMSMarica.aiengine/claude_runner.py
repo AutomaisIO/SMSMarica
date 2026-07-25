@@ -25,6 +25,7 @@ interrompido é lido e contabilizado no lugar certo.
 """
 import asyncio
 import logging
+import os
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -33,6 +34,7 @@ from typing import Any, Optional
 from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
 
 import config
+import dados_tool
 from store import store
 
 logger = logging.getLogger(__name__)
@@ -127,22 +129,36 @@ class ClaudeEngine:
     async def create_session(self, title: str = "", ticket_numero: Optional[int] = None,
                              ticket_titulo: Optional[str] = None,
                              usuario_id: Optional[str] = None,
-                             usuario_nome: Optional[str] = None) -> dict:
+                             usuario_nome: Optional[str] = None,
+                             kind: str = "agente",
+                             base_slug: Optional[str] = None) -> dict:
         # Reabrir o mesmo ticket cai na conversa existente — o operador não perde o que
-        # já foi investigado só porque saiu da tela.
-        if ticket_numero is not None:
+        # já foi investigado só porque saiu da tela. (Só vale para o Agente IA.)
+        if kind == "agente" and ticket_numero is not None:
             existing = store.find_open_by_ticket(ticket_numero)
             if existing:
                 logger.info("Reusando sessão %s do ticket #%s", existing["id"], ticket_numero)
                 return existing
 
+        if kind == "dados" and not (base_slug or "").strip():
+            raise ValueError("Sessão de dados exige a base (base_slug).")
+
         self._assert_memory()
         sid = str(uuid.uuid4())  # UUID válido: o CLI exige isso em --session-id
-        cwd, _ = config.resolve_cwd()
+
+        # 'dados' roda num sandbox vazio e isolado — nunca o repo. É o que impede qualquer
+        # contato/vazamento com o código ou o sistema. 'agente' segue no clone do repo.
+        if kind == "dados":
+            cwd = config.DADOS_CWD
+            os.makedirs(cwd, exist_ok=True)
+        else:
+            cwd, _ = config.resolve_cwd()
+
         store.create_session(sid, title, ticket_numero, ticket_titulo, cwd,
-                             usuario_id, usuario_nome)
-        logger.info("Sessão %s criada (ticket=%s, por=%s)", sid, ticket_numero or "-",
-                    usuario_nome or "?")
+                             usuario_id, usuario_nome, kind=kind,
+                             base_slug=(base_slug or None))
+        logger.info("Sessão %s criada (kind=%s, base=%s, ticket=%s, por=%s)", sid, kind,
+                    base_slug or "-", ticket_numero or "-", usuario_nome or "?")
         return store.get_session(sid)
 
     def _assert_memory(self) -> None:
@@ -177,19 +193,11 @@ class ClaudeEngine:
             raise KeyError(live.id)
 
         has_history = bool(store.session_history(live.id))
-        cwd, repo_available = config.resolve_cwd()
+        kind = record.get("kind") or "agente"
         claude_id = record.get("claude_session_id") or live.id
         cwd_original = record.get("cwd")
 
-        def montar(resume: bool) -> ClaudeAgentOptions:
-            o = ClaudeAgentOptions(
-                system_prompt=self._build_system_prompt(record, repo_available),
-                cwd=cwd,
-                model=config.MODEL,
-                permission_mode=config.PERMISSION_MODE,
-                max_turns=config.MAX_TURNS,
-                allowed_tools=config.ALLOWED_TOOLS,
-            )
+        def _extras(o: ClaudeAgentOptions, resume: bool) -> ClaudeAgentOptions:
             # Deltas de texto para o painel mostrar a resposta sendo escrita. Não geram linha
             # no SQLite — ver LiveSession.partial_text. Atribuído depois, e só se o SDK
             # conhecer o campo: `ClaudeAgentOptions` é dataclass, e um kwarg desconhecido
@@ -201,6 +209,38 @@ class ClaudeEngine:
             else:
                 o.session_id = claude_id
             return o
+
+        if kind == "dados":
+            # SANDBOX RESTRITO. cwd isolado (do registro, nunca o repo) e uma ÚNICA ferramenta:
+            # consultar_base (MCP in-process), presa à base desta sessão. Sem Bash/Read/Write/
+            # git/rede — o processo é estruturalmente incapaz de tocar host ou código.
+            cwd = record.get("cwd") or config.DADOS_CWD
+            os.makedirs(cwd, exist_ok=True)
+            repo_available = False
+            mcp_server = dados_tool.make_server(record.get("base_slug") or "")
+
+            def montar(resume: bool) -> ClaudeAgentOptions:
+                return _extras(ClaudeAgentOptions(
+                    system_prompt=self._build_dados_prompt(record),
+                    cwd=cwd,
+                    model=config.MODEL,
+                    permission_mode=config.PERMISSION_MODE,
+                    max_turns=config.MAX_TURNS,
+                    allowed_tools=config.DADOS_ALLOWED_TOOLS,
+                    mcp_servers={dados_tool.SERVER_NAME: mcp_server},
+                ), resume)
+        else:
+            cwd, repo_available = config.resolve_cwd()
+
+            def montar(resume: bool) -> ClaudeAgentOptions:
+                return _extras(ClaudeAgentOptions(
+                    system_prompt=self._build_system_prompt(record, repo_available),
+                    cwd=cwd,
+                    model=config.MODEL,
+                    permission_mode=config.PERMISSION_MODE,
+                    max_turns=config.MAX_TURNS,
+                    allowed_tools=config.ALLOWED_TOOLS,
+                ), resume)
 
         # O transcript do Claude Code é guardado POR PROJETO (por cwd). Retomar de um cwd
         # diferente do original falha — foi o que aconteceu quando o clone passou a existir
@@ -286,8 +326,26 @@ class ClaudeEngine:
             )
         return prompt
 
-    def list_sessions(self, include_archived: bool = False) -> list[dict]:
-        sessions = store.list_sessions(include_archived=include_archived)
+    def _build_dados_prompt(self, record: dict) -> str:
+        """Prompt do modo restrito: DB-only + qual base + quem é o operador. O schema/dialeto
+        relevante vem no contexto de CADA pergunta (a API .NET faz a recuperação/RAG)."""
+        prompt = config.load_dados_prompt()
+        base = record.get("base_slug") or "?"
+        prompt += (
+            f"\n\n---\n\n## Base desta sessão\n\n"
+            f"Você está conectado à base **`{base}`**. A ferramenta `consultar_base` consulta "
+            f"SOMENTE esta base — você não escolhe outra. O dialeto e o schema (tabelas, "
+            f"colunas, relações) relevantes chegam no contexto de cada pergunta do operador."
+        )
+        usuario_nome = record.get("usuario_nome")
+        if usuario_nome:
+            prompt += f"\n\n**Operador desta sessão:** {usuario_nome}."
+        return prompt
+
+    def list_sessions(self, include_archived: bool = False, kind: str = "agente",
+                      usuario_id: Optional[str] = None) -> list[dict]:
+        sessions = store.list_sessions(
+            include_archived=include_archived, kind=kind, usuario_id=usuario_id)
         for s in sessions:
             live = self._live.get(s["id"])
             s["running"] = bool(live and live.current_turn_id)

@@ -68,6 +68,12 @@ _COLUNAS_EXTRA = {
         # isto não dá para saber de quem é cada conversa.
         ("usuario_id", "TEXT"),
         ("usuario_nome", "TEXT"),
+        # Tipo da sessão: 'agente' (Agente IA, trabalha o repo) ou 'dados' (menu IA, só
+        # consulta banco, sandbox restrito). Default 'agente' backfilla as sessões antigas.
+        ("kind", "TEXT NOT NULL DEFAULT 'agente'"),
+        # Slug da base (ia_fonte) desta sessão de dados. Fixo por sessão: o tool consulta
+        # SEMPRE esta base, o modelo não troca. Nulo nas sessões 'agente'.
+        ("base_slug", "TEXT"),
     ],
     # O autor da sessão não é a história toda: um colega pode assumir a investigação no meio.
     # Guardando quem mandou CADA turno, a sessão mostra todos os que participaram.
@@ -110,14 +116,15 @@ class Store:
     def create_session(self, sid: str, title: str, ticket_numero: Optional[int],
                        ticket_titulo: Optional[str], cwd: str,
                        usuario_id: Optional[str] = None,
-                       usuario_nome: Optional[str] = None) -> None:
+                       usuario_nome: Optional[str] = None,
+                       kind: str = "agente", base_slug: Optional[str] = None) -> None:
         now = time.time()
         self._write(
             "INSERT INTO sessions (id, title, ticket_numero, ticket_titulo, created_at,"
-            " last_used_at, cwd, claude_session_id, usuario_id, usuario_nome)"
-            " VALUES (?,?,?,?,?,?,?,?,?,?)",
+            " last_used_at, cwd, claude_session_id, usuario_id, usuario_nome, kind, base_slug)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
             (sid, title, ticket_numero, ticket_titulo, now, now, cwd, sid,
-             usuario_id, usuario_nome),
+             usuario_id, usuario_nome, kind, base_slug),
         )
 
     def reset_claude_session(self, sid: str, novo_claude_id: str, cwd: str) -> None:
@@ -169,13 +176,21 @@ class Store:
             " ORDER BY last_used_at DESC LIMIT 1", (numero,))
         return dict(rows[0]) if rows else None
 
-    def list_sessions(self, include_archived: bool = False, limit: int = 50) -> list[dict]:
+    def list_sessions(self, include_archived: bool = False, limit: int = 50,
+                      kind: str = "agente", usuario_id: Optional[str] = None) -> list[dict]:
+        # Segmentação: 'agente' é global (todo operador vê todas); 'dados' é POR USUÁRIO
+        # (cada um vê só as suas conversas com o banco). Quem decide o kind é o chamador.
         sql = ("SELECT s.*, (SELECT COUNT(*) FROM turns t WHERE t.session_id=s.id) AS turn_count"
-               " FROM sessions s")
+               " FROM sessions s WHERE s.kind = ?")
+        args: list = [kind]
         if not include_archived:
-            sql += " WHERE s.archived_at IS NULL"
+            sql += " AND s.archived_at IS NULL"
+        if usuario_id is not None:
+            sql += " AND s.usuario_id = ?"
+            args.append(usuario_id)
         sql += " ORDER BY s.last_used_at DESC LIMIT ?"
-        sessoes = [dict(r) for r in self._rows(sql, (limit,))]
+        args.append(limit)
+        sessoes = [dict(r) for r in self._rows(sql, tuple(args))]
         participantes = self.participantes([s["id"] for s in sessoes])
         for s in sessoes:
             s["participantes"] = participantes.get(s["id"], [])

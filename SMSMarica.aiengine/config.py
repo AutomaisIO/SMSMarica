@@ -36,6 +36,28 @@ _DEFAULT_TOOLS = "Bash,Read,Edit,Write,Glob,Grep,WebFetch,WebSearch,TodoWrite,Ta
 ALLOWED_TOOLS = [t.strip() for t in (os.getenv("AIENGINE_ALLOWED_TOOLS", "").strip()
                                      or _DEFAULT_TOOLS).split(",") if t.strip()]
 
+# ── Modo `dados` (menu IA: perguntas às bases) ─────────────────────────────────────────
+# Sessão RESTRITA: sobe o Claude Code sem nenhuma ferramenta de host — só o tool MCP
+# `consultar_base`, que executa SQL read-only na base da sessão via /proxy-sql. cwd isolado
+# (nunca o repo), para não haver contato/vazamento com o código ou o sistema. Ver ADR-0023.
+DADOS_TOOL_FQN = "mcp__dados__consultar_base"
+DADOS_VIZ_TOOL_FQN = "mcp__dados__visualizar"
+# As DUAS únicas ferramentas do modo dados. Ambas benignas: consultar (read-only via proxy) e
+# visualizar (só declara um gráfico/mapa; quem renderiza é o painel). Nada de host/código.
+DADOS_ALLOWED_TOOLS = [DADOS_TOOL_FQN, DADOS_VIZ_TOOL_FQN]
+# Sandbox vazio e próprio. Fora de /opt (apagado a cada deploy) e fora do repo (para o agente
+# não ter o código sequer no diretório de trabalho).
+DADOS_CWD = os.getenv("AIENGINE_DADOS_CWD", "/var/lib/smsmarica-aiengine/dados-sandbox")
+DADOS_PROMPT_FILE = Path(os.getenv(
+    "AIENGINE_DADOS_PROMPT_FILE",
+    str(Path(__file__).parent / "prompts" / "dados_system.md"),
+))
+
+# Proxy SQL interno da API .NET (loopback). O tool `consultar_base` fala SÓ com ele.
+PROXYSQL_URL = os.getenv("AIENGINE_PROXYSQL_URL", "http://127.0.0.1:5091/proxy-sql")
+PROXYSQL_TOKEN = os.getenv("AIENGINE_PROXYSQL_TOKEN", "")
+PROXYSQL_TIMEOUT_SEC = int(os.getenv("AIENGINE_PROXYSQL_TIMEOUT_SEC", "60"))
+
 MAX_TURNS = int(os.getenv("AIENGINE_MAX_TURNS", "60"))
 TURN_TIMEOUT_SEC = int(os.getenv("AIENGINE_TURN_TIMEOUT_SEC", "900"))
 # Depois de mandar interrupt(), quanto esperamos pelo ResultMessage antes de concluir que o
@@ -105,3 +127,8 @@ def resolve_cwd() -> tuple[str, bool]:
 def load_system_prompt() -> str:
     """Lido do disco a cada sessão nova — permite ajustar sem reiniciar o serviço."""
     return PROMPT_FILE.read_text(encoding="utf-8").replace("{REPO_DIR}", REPO_DIR)
+
+
+def load_dados_prompt() -> str:
+    """Prompt de sistema do modo `dados` (restrito a consultas ao banco)."""
+    return DADOS_PROMPT_FILE.read_text(encoding="utf-8")

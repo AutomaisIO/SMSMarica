@@ -278,5 +278,98 @@ async def cancel_turn(turn_id: str,
     return {"cancelled": True}
 
 
+# ─────────────────────────── Modo `dados` (menu IA: perguntas às bases) ───────────────────
+# Sessões RESTRITAS (sandbox, só consultam banco), SEPARADAS das do Agente IA (kind='dados')
+# e POR USUÁRIO. O polling/cancelamento de turno reusa /internal/ai/turns/* (id é UUID opaco).
+
+def _guard_dados(session_id: str, usuario_id: str | None) -> dict:
+    """Carrega a sessão e garante que é 'dados' E do próprio usuário. Sem isto, um id de
+    outra pessoa (ou uma sessão do Agente IA) seria acessível pelo menu de dados."""
+    record = store.get_session(session_id)
+    if record is None or (record.get("kind") or "agente") != "dados":
+        raise HTTPException(status_code=404, detail="Sessão de dados não encontrada.")
+    if usuario_id and record.get("usuario_id") and record["usuario_id"] != usuario_id:
+        raise HTTPException(status_code=404, detail="Sessão de dados não encontrada.")
+    return record
+
+
+@app.post("/internal/ai/dados/sessions", tags=["AI-Dados"])
+async def dados_create_session(payload: dict = Body(default={}),
+                               x_smsmarica_internal_key: str | None = Header(default=None),
+                               usuario_id: str | None = UsuarioId,
+                               usuario_nome: str | None = UsuarioNome):
+    require_internal_key(x_smsmarica_internal_key)
+    payload = payload or {}
+    base_slug = (payload.get("baseSlug") or "").strip()
+    if not base_slug:
+        raise HTTPException(status_code=400, detail="Campo 'baseSlug' é obrigatório.")
+    try:
+        record = await engine.create_session(
+            title=payload.get("title", ""),
+            usuario_id=usuario_id,
+            usuario_nome=_nome(usuario_nome),
+            kind="dados",
+            base_slug=base_slug,
+        )
+    except MemoryError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"sessionId": record["id"], "baseSlug": record.get("base_slug"), "model": config.MODEL}
+
+
+@app.get("/internal/ai/dados/sessions", tags=["AI-Dados"])
+async def dados_list_sessions(include_archived: bool = Query(default=False),
+                              x_smsmarica_internal_key: str | None = Header(default=None),
+                              usuario_id: str | None = UsuarioId):
+    require_internal_key(x_smsmarica_internal_key)
+    return {"sessions": engine.list_sessions(
+        include_archived=include_archived, kind="dados", usuario_id=usuario_id)}
+
+
+@app.get("/internal/ai/dados/sessions/{session_id}", tags=["AI-Dados"])
+async def dados_session_detail(session_id: str,
+                               x_smsmarica_internal_key: str | None = Header(default=None),
+                               usuario_id: str | None = UsuarioId):
+    require_internal_key(x_smsmarica_internal_key)
+    _guard_dados(session_id, usuario_id)
+    detail = engine.session_detail(session_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail="Sessão de dados não encontrada.")
+    return detail
+
+
+@app.delete("/internal/ai/dados/sessions/{session_id}", tags=["AI-Dados"])
+async def dados_archive_session(session_id: str,
+                                x_smsmarica_internal_key: str | None = Header(default=None),
+                                usuario_id: str | None = UsuarioId):
+    require_internal_key(x_smsmarica_internal_key)
+    _guard_dados(session_id, usuario_id)
+    if not await engine.archive_session(session_id):
+        raise HTTPException(status_code=404, detail="Sessão de dados não encontrada.")
+    return {"archived": True}
+
+
+@app.post("/internal/ai/dados/sessions/{session_id}/turns", tags=["AI-Dados"])
+async def dados_create_turn(session_id: str, payload: dict = Body(...),
+                            x_smsmarica_internal_key: str | None = Header(default=None),
+                            usuario_id: str | None = UsuarioId,
+                            usuario_nome: str | None = UsuarioNome):
+    require_internal_key(x_smsmarica_internal_key)
+    _guard_dados(session_id, usuario_id)
+    prompt = (payload or {}).get("prompt", "").strip()
+    if not prompt:
+        raise HTTPException(status_code=400, detail="Campo 'prompt' é obrigatório.")
+    try:
+        record = await engine.start_turn(session_id, prompt, usuario_id, _nome(usuario_nome))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="Sessão não encontrada.") from exc
+    except MemoryError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return {"turnId": record["id"], "sessionId": session_id, "status": record["status"]}
+
+
 if __name__ == "__main__":
     uvicorn.run(app, host=config.HTTP_HOST, port=config.HTTP_PORT)
