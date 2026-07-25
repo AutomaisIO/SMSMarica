@@ -19,7 +19,7 @@ interface Props {
  */
 export function Header({ dados, usandoMock }: Props) {
   const agora = useRelogio();
-  const frescor = dados ? calcularFrescor(dados.geradoEm, dados.oracle, agora) : 'desconectado';
+  const frescor = dados ? calcularFrescor(dados.geradoEm, dados.status, agora) : 'desconectado';
   const hora = horaMinutoSegundo(agora);
 
   return (
@@ -53,7 +53,7 @@ export function Header({ dados, usandoMock }: Props) {
           {dados && (
             <PillFrescor
               geradoEm={dados.geradoEm}
-              oracle={dados.oracle}
+              status={dados.status}
               agora={agora}
               usandoMock={usandoMock}
             />

@@ -55,9 +55,24 @@ function BarraMeta({
   );
 }
 
-export function Pulseira({ item }: { item: EsperaCor }) {
+interface Props {
+  item: EsperaCor;
+  /**
+   * Aba "geral": soma de unidades com protocolos diferentes. Meta é assunto da
+   * unidade — Amarelo é 30 min no Conde, 60 na UPA Maricá e 30 em Santa Rita —
+   * então o consolidado mostra só volume e tempo, e a linha de meta some inteira
+   * em vez de virar um alvo médio que não é de ninguém.
+   */
+  consolidado?: boolean;
+}
+
+export function Pulseira({ item, consolidado = false }: Props) {
   const estilo = TRIAGEM[item.cor];
   const temEspera = item.mediaEspera != null;
+  const mostrarMeta = !consolidado;
+  // Boletim que nunca passou pela triagem não tem de onde contar o tempo — e é
+  // diferente de "ninguém foi atendido", que é o que "0 de N" dá a entender.
+  const semTriagem = item.cor === 'SEM_CLASSIFICACAO' && item.comAtendimento === 0;
 
   return (
     <div className="flex items-stretch overflow-hidden rounded-[28px] border border-linha bg-papel shadow-cartao transition-colors duration-200 hover:border-vermelho-marica/30 sm:rounded-full">
@@ -83,8 +98,14 @@ export function Pulseira({ item }: { item: EsperaCor }) {
             {formatarInteiro(item.pacientes)} {item.pacientes === 1 ? 'paciente' : 'pacientes'}
           </p>
           <p className="tnum text-[11.5px] leading-snug text-grafite/80">
-            {formatarInteiro(item.comAtendimento)} de {formatarInteiro(item.pacientes)} com
-            atendimento registrado
+            {semTriagem ? (
+              'sem triagem registrada'
+            ) : (
+              <>
+                {formatarInteiro(item.comAtendimento)} de {formatarInteiro(item.pacientes)} com
+                atendimento registrado
+              </>
+            )}
           </p>
         </div>
 
@@ -105,24 +126,32 @@ export function Pulseira({ item }: { item: EsperaCor }) {
             <>
               <BarraMeta
                 media={item.mediaEspera as number}
-                meta={item.metaMin}
+                meta={mostrarMeta ? item.metaMin : null}
                 cor={estilo.cor}
                 corForte={estilo.corForte}
               />
-              <div className="mt-1.5 flex items-baseline justify-between gap-3 text-[11.5px] text-grafite">
-                <span>
-                  {item.metaMin != null ? `meta ${minutosLegiveis(item.metaMin)}` : 'sem meta definida'}
-                </span>
-                {item.pctNaMeta != null && (
-                  <span className="tnum">
-                    <span className="font-semibold text-tinta">{formatarPct(item.pctNaMeta)}</span> na meta
+              {mostrarMeta && (
+                <div className="mt-1.5 flex items-baseline justify-between gap-3 text-[11.5px] text-grafite">
+                  <span>
+                    {item.metaMin != null
+                      ? `meta ${minutosLegiveis(item.metaMin)}`
+                      : 'sem meta definida'}
                   </span>
-                )}
-              </div>
+                  {item.pctNaMeta != null && (
+                    <span className="tnum">
+                      <span className="font-semibold text-tinta">{formatarPct(item.pctNaMeta)}</span> na meta
+                    </span>
+                  )}
+                </div>
+              )}
             </>
           )}
           {!temEspera && (
-            <p className="text-[12.5px] text-grafite">sem atendimento médico registrado no período</p>
+            <p className="text-[12.5px] text-grafite">
+              {semTriagem
+                ? 'tempo não medido — sem classificação de risco no boletim'
+                : 'sem atendimento médico registrado no período'}
+            </p>
           )}
         </div>
 

@@ -7,10 +7,19 @@ using SMSMarica.Secretario.Api.Oracle;
 namespace SMSMarica.Secretario.Api.Painel;
 
 /// <summary>
-/// Atualiza o snapshot do painel em dois ticks: rápido (Q1a/Q1b/Q1c) e lento (Q2..Q6).
-/// SEMPRE sequencial — uma consulta por vez, o Oracle é produção viva de hospital.
-/// O primeiro ciclo (rápido + lento) roda já no startup. Falha de consulta não derruba
-/// o serviço: loga, marca <c>oracle.ok=false</c> e mantém o último snapshot bom.
+/// Atualiza o snapshot do painel em dois ticks — rápido (o "agora") e lento (os
+/// consolidados) — contra DUAS bases: o Salux/Oracle do Conde Modesto Leal e o HIS em
+/// SQL Server da UPA 24h. SEMPRE sequencial, uma consulta por vez: as duas são produção
+/// viva de unidade de saúde.
+///
+/// <para>
+/// As bases são isoladas entre si. A UPA fora do ar não impede o Conde de atualizar (nem
+/// o contrário): cada uma tem seu próprio estado de erro, o painel segue servindo o
+/// último número bom de cada lado, e <c>fontes[]</c> no contrato diz quem está atrasado.
+/// A aba "geral" é remontada a partir do que houver em memória das duas.
+/// </para>
+///
+/// O primeiro ciclo (rápido + lento) roda já no startup.
 /// </summary>
 public sealed class PainelAtualizadorService : BackgroundService
 {
@@ -21,9 +30,6 @@ public sealed class PainelAtualizadorService : BackgroundService
     private static readonly string[] MesesPtBr =
         ["janeiro", "fevereiro", "março", "abril", "maio", "junho",
          "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
-
-    private static readonly string[] CoresContrato =
-        ["VERMELHO", "AMARELO", "VERDE", "AZUL", "SEM_CLASSIFICACAO"];
 
     private static CultureInfo? ObterPtBr()
     {
@@ -37,9 +43,6 @@ public sealed class PainelAtualizadorService : BackgroundService
         }
     }
 
-    /// <summary>Slug da base do HMCML no cadastro do smsmarica (Oracle do Salux).</summary>
-    private const string BaseHmcml = "salux-hcml";
-
     /// <summary>Código do HMCML dentro do Salux (a base atende mais de um hospital).</summary>
     private const int HospitalHmcml = 1;
 
@@ -49,12 +52,11 @@ public sealed class PainelAtualizadorService : BackgroundService
     private readonly ILogger<PainelAtualizadorService> _logger;
     private readonly ProxySqlFonte? _fonte;
 
-    // Estado de erro POR CICLO: um tick rápido OK não pode apagar o erro do ciclo lento
-    // (e vice-versa) — cada erro só é limpo por um ciclo bem-sucedido do MESMO tipo.
-    // Só o loop do BackgroundService toca nesses campos (sequencial), sem concorrência.
-    private string? _ultimoErroRapido;
-    private string? _ultimoErroLento;
-    private DateTimeOffset? _ultimaAtualizacaoOk;
+    // Seções vivas de cada unidade REAL. A aba "geral" não tem estado próprio: é
+    // recalculada a cada republicação a partir daqui.
+    private readonly EstadoUnidade _conde = new();
+    private readonly EstadoUnidade _upa = new();
+    private readonly EstadoUnidade _santaRita = new();
 
     public PainelAtualizadorService(
         SnapshotStore store,
@@ -84,6 +86,10 @@ public sealed class PainelAtualizadorService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Restart não recomeça do zero: as seções do snapshot persistido voltam a ser o
+        // estado vivo de cada unidade até o primeiro ciclo bom substituí-las.
+        SemearDoSnapshotPersistido();
+
         if (_fonte is null)
         {
             // Sem token do proxy: sobe mesmo assim e serve o snapshot persistido (ou 503).
@@ -119,71 +125,461 @@ public sealed class PainelAtualizadorService : BackgroundService
         }
     }
 
-    // ── Ciclo rápido (Q1) ──────────────────────────────────────────────────────
+    private void SemearDoSnapshotPersistido()
+    {
+        var snapshot = _store.Atual;
+        if (snapshot is null)
+        {
+            return;
+        }
+
+        foreach (var unidade in snapshot.Unidades)
+        {
+            var estado = EstadoDe(unidade.Id);
+
+            if (estado is null)
+            {
+                continue;
+            }
+
+            estado.Agora = unidade.Agora;
+            estado.Atendimentos = unidade.Atendimentos;
+            estado.Internacoes = unidade.Internacoes;
+            estado.EsperaPorCor = unidade.EsperaPorCor;
+            estado.Maternidade = unidade.Maternidade;
+        }
+
+        foreach (var fonte in snapshot.Fontes ?? [])
+        {
+            var estado = EstadoDe(fonte.Id);
+            if (estado is not null)
+            {
+                estado.UltimaAtualizacaoOk = fonte.Status.UltimaAtualizacaoOk;
+            }
+        }
+    }
+
+    private EstadoUnidade? EstadoDe(string id) => id switch
+    {
+        Unidades.IdConde => _conde,
+        Unidades.IdUpa => _upa,
+        Unidades.IdSantaRita => _santaRita,
+        _ => null,
+    };
+
+    // ── Ciclo rápido ───────────────────────────────────────────────────────────
 
     private async Task ExecutarCicloRapidoAsync(CancellationToken ct)
     {
         var cronometro = Stopwatch.StartNew();
+
+        await AtualizarAsync(_conde, "rápido", ct, async token =>
+        {
+            var q1a = await ConsultarAsync(Unidades.BaseConde, ConsultasPainel.Q1AguardandoPorCor(HospitalHmcml), token);
+            var q1b = await ConsultarAsync(Unidades.BaseConde, ConsultasPainel.Q1EmAtendimento(HospitalHmcml), token);
+            var q1c = await ConsultarAsync(Unidades.BaseConde, ConsultasPainel.Q1InternadosEHoje(HospitalHmcml), token);
+            _conde.Agora = MontarAgoraConde(q1a, q1b, q1c);
+        });
+
+        foreach (var (estado, baseSlug, unidade) in Upas())
+        {
+            await AtualizarAsync(estado, "rápido", ct, async token =>
+            {
+                var u1a = await ConsultarAsync(baseSlug, ConsultasUpa.U1AguardandoPorCor(unidade), token);
+                var u1b = await ConsultarAsync(baseSlug, ConsultasUpa.U1EmAtendimentoEHoje(unidade), token);
+                estado.Agora = MontarAgoraUpa(u1a, u1b);
+            });
+        }
+
+        Republicar();
+        _logger.LogInformation("Ciclo rápido em {Ms} ms (conde: {Conde}, upa: {Upa}, santa rita: {SantaRita}).",
+            cronometro.ElapsedMilliseconds, Situacao(_conde), Situacao(_upa), Situacao(_santaRita));
+    }
+
+    /// <summary>As UPAs, que compartilham consulta e diferem só em base e código de unidade.</summary>
+    private (EstadoUnidade Estado, string Base, string Unidade)[] Upas() =>
+    [
+        (_upa, Unidades.BaseUpa, ConsultasUpa.UnidadeUpaMarica),
+        (_santaRita, Unidades.BaseSantaRita, ConsultasUpa.UnidadeSantaRita),
+    ];
+
+    // ── Ciclo lento ────────────────────────────────────────────────────────────
+
+    private async Task ExecutarCicloLentoAsync(CancellationToken ct)
+    {
+        var cronometro = Stopwatch.StartNew();
+
+        await AtualizarAsync(_conde, "lento", ct, token => ExecutarLentoCondeAsync(token));
+        foreach (var (estado, baseSlug, unidade) in Upas())
+        {
+            await AtualizarAsync(estado, "lento", ct, token => ExecutarLentoUpaAsync(estado, baseSlug, unidade, token));
+        }
+
+        Republicar();
+
+        // Persiste após o ciclo lento — restart volta com o painel completo. Grava mesmo
+        // se uma das bases falhou: o que estiver bom vale mais que nada.
+        await _store.PersistirAsync(ct);
+
+        _logger.LogInformation("Ciclo lento em {Ms} ms (conde: {Conde}, upa: {Upa}, santa rita: {SantaRita}).",
+            cronometro.ElapsedMilliseconds, Situacao(_conde), Situacao(_upa), Situacao(_santaRita));
+    }
+
+    private async Task ExecutarLentoCondeAsync(CancellationToken ct)
+    {
+        const int hosp = HospitalHmcml;
+        var hoje = FusoBrasilia.Agora();
+        var b = Unidades.BaseConde;
+
+        // Q2 — atendimentos por período (+ total só de dias completos do mês atual).
+        var totalMesAnterior = await ConsultarEscalarAsync(b,
+            ConsultasPainel.Q2AtendimentosPeriodo(hosp, ConsultasPainel.IniMesAnterior, ConsultasPainel.FimMesAnterior), ct);
+        var totalMesAtual = await ConsultarEscalarAsync(b,
+            ConsultasPainel.Q2AtendimentosPeriodo(hosp, ConsultasPainel.IniMesAtual, ConsultasPainel.FimMesAtual), ct);
+        var totalHoje = await ConsultarEscalarAsync(b,
+            ConsultasPainel.Q2AtendimentosPeriodo(hosp, ConsultasPainel.IniHoje, ConsultasPainel.FimHoje), ct);
+        var totalDiasCompletos = await ConsultarEscalarAsync(b,
+            ConsultasPainel.Q2AtendimentosPeriodo(hosp, ConsultasPainel.IniMesAtual, ConsultasPainel.FimDiasCompletos), ct);
+
+        // Q3/Q4 — séries de atendimento.
+        var serieAtendimentos = await ConsultarAsync(b, ConsultasPainel.Q3SerieDiariaAtendimentos(hosp), ct);
+        var porHora = await ConsultarAsync(b, ConsultasPainel.Q4PorHoraHoje(hosp), ct);
+
+        // Q5 — internações por período + série (+ dias completos p/ média do mês atual).
+        var intMesAnterior = await ConsultarAsync(b,
+            ConsultasPainel.Q5InternacoesPeriodo(hosp, ConsultasPainel.IniMesAnterior, ConsultasPainel.FimMesAnterior), ct);
+        var intMesAtual = await ConsultarAsync(b,
+            ConsultasPainel.Q5InternacoesPeriodo(hosp, ConsultasPainel.IniMesAtual, ConsultasPainel.FimMesAtual), ct);
+        var intHoje = await ConsultarAsync(b,
+            ConsultasPainel.Q5InternacoesPeriodo(hosp, ConsultasPainel.IniHoje, ConsultasPainel.FimHoje), ct);
+        var intDiasCompletos = await ConsultarAsync(b,
+            ConsultasPainel.Q5InternacoesPeriodo(hosp, ConsultasPainel.IniMesAtual, ConsultasPainel.FimDiasCompletos), ct);
+        var serieInternacoes = await ConsultarAsync(b, ConsultasPainel.Q5SerieDiariaInternacoes(hosp), ct);
+
+        // Q7 — maternidade (NASCIMENTO não tem cd_hospital próprio: o livro de partos
+        // é do HMCML, única maternidade da rede na base).
+        var matMesAnterior = await ConsultarAsync(b,
+            ConsultasPainel.Q7Maternidade(ConsultasPainel.IniMesAnterior, ConsultasPainel.FimMesAnterior), ct);
+        var matMesAtual = await ConsultarAsync(b,
+            ConsultasPainel.Q7Maternidade(ConsultasPainel.IniMesAtual, ConsultasPainel.FimMesAtual), ct);
+        var matHoje = await ConsultarAsync(b,
+            ConsultasPainel.Q7Maternidade(ConsultasPainel.IniHoje, ConsultasPainel.FimHoje), ct);
+        var matDiasCompletos = await ConsultarAsync(b,
+            ConsultasPainel.Q7Maternidade(ConsultasPainel.IniMesAtual, ConsultasPainel.FimDiasCompletos), ct);
+        var seriePartos = await ConsultarAsync(b, ConsultasPainel.Q7SerieDiariaPartos(), ct);
+
+        // Q6 — espera por cor, 1× por período (a PESADA fica por último).
+        var esperaHoje = await ConsultarAsync(b,
+            ConsultasPainel.Q6EsperaPorCor(hosp, ConsultasPainel.IniHoje, ConsultasPainel.FimHoje, "SYSDATE + 3"), ct);
+        var esperaMesAtual = await ConsultarAsync(b,
+            ConsultasPainel.Q6EsperaPorCor(hosp, ConsultasPainel.IniMesAtual, ConsultasPainel.FimMesAtual, "SYSDATE + 3"), ct);
+        var esperaMesAnterior = await ConsultarAsync(b,
+            ConsultasPainel.Q6EsperaPorCor(
+                hosp, ConsultasPainel.IniMesAnterior, ConsultasPainel.FimMesAnterior, "TRUNC(SYSDATE,'MM') + 3"), ct);
+
+        var carimbo = FusoBrasilia.Agora();
+        _conde.Atendimentos = MontarAtendimentos(
+            hoje, carimbo, totalMesAnterior, totalMesAtual, totalHoje, totalDiasCompletos, serieAtendimentos, porHora);
+        _conde.Internacoes = MontarInternacoes(
+            hoje, carimbo, intMesAnterior, intMesAtual, intHoje, intDiasCompletos, serieInternacoes);
+        _conde.Maternidade = MontarMaternidade(
+            hoje, carimbo, matMesAnterior, matMesAtual, matHoje, matDiasCompletos, seriePartos);
+        _conde.EsperaPorCor = new EsperaPorCorSecao(carimbo, new EsperaPeriodos(
+            MontarEsperaPeriodo(esperaHoje, Unidades.IdConde),
+            MontarEsperaPeriodo(esperaMesAtual, Unidades.IdConde),
+            MontarEsperaPeriodo(esperaMesAnterior, Unidades.IdConde)));
+    }
+
+    /// <summary>
+    /// Ciclo lento de UMA das UPAs. As duas rodam o mesmo HIS em instâncias separadas, então
+    /// só mudam o slug da base e o <c>unid_codigo</c>.
+    /// </summary>
+    private async Task ExecutarLentoUpaAsync(
+        EstadoUnidade estado, string b, string unidade, CancellationToken ct)
+    {
+        var hoje = FusoBrasilia.Agora();
+
+        var totalMesAnterior = await ConsultarEscalarAsync(b,
+            ConsultasUpa.U2AtendimentosPeriodo(unidade, ConsultasUpa.IniMesAnterior, ConsultasUpa.FimMesAnterior), ct);
+        var totalMesAtual = await ConsultarEscalarAsync(b,
+            ConsultasUpa.U2AtendimentosPeriodo(unidade, ConsultasUpa.IniMesAtual, ConsultasUpa.FimMesAtual), ct);
+        var totalHoje = await ConsultarEscalarAsync(b,
+            ConsultasUpa.U2AtendimentosPeriodo(unidade, ConsultasUpa.IniHoje, ConsultasUpa.FimHoje), ct);
+        var totalDiasCompletos = await ConsultarEscalarAsync(b,
+            ConsultasUpa.U2AtendimentosPeriodo(unidade, ConsultasUpa.IniMesAtual, ConsultasUpa.FimDiasCompletos), ct);
+
+        var serieAtendimentos = await ConsultarAsync(b, ConsultasUpa.U3SerieDiariaAtendimentos(unidade), ct);
+        var porHora = await ConsultarAsync(b, ConsultasUpa.U4PorHoraHoje(unidade), ct);
+
+        var esperaHoje = await ConsultarAsync(b,
+            ConsultasUpa.U6EsperaPorCor(unidade, ConsultasUpa.IniHoje, ConsultasUpa.FimHoje, "DATEADD(day,3,GETDATE())"), ct);
+        var esperaMesAtual = await ConsultarAsync(b,
+            ConsultasUpa.U6EsperaPorCor(unidade, ConsultasUpa.IniMesAtual, ConsultasUpa.FimMesAtual, "DATEADD(day,3,GETDATE())"), ct);
+        var esperaMesAnterior = await ConsultarAsync(b,
+            ConsultasUpa.U6EsperaPorCor(
+                unidade, ConsultasUpa.IniMesAnterior, ConsultasUpa.FimMesAnterior,
+                $"DATEADD(day,3,{ConsultasUpa.FimMesAnterior})"), ct);
+
+        var carimbo = FusoBrasilia.Agora();
+        estado.Atendimentos = MontarAtendimentos(
+            hoje, carimbo, totalMesAnterior, totalMesAtual, totalHoje, totalDiasCompletos, serieAtendimentos, porHora);
+        estado.EsperaPorCor = new EsperaPorCorSecao(carimbo, new EsperaPeriodos(
+            MontarEsperaPeriodo(esperaHoje, Unidades.IdUpa),
+            MontarEsperaPeriodo(esperaMesAtual, Unidades.IdUpa),
+            MontarEsperaPeriodo(esperaMesAnterior, Unidades.IdUpa)));
+
+        // Internações e maternidade continuam nulas de propósito — ver ConsultasUpa.
+    }
+
+    /// <summary>
+    /// Roda um trecho do ciclo para UMA unidade, isolando a falha: erro aqui marca só o
+    /// estado daquela base e deixa o resto do painel seguir com o último número bom.
+    /// </summary>
+    private async Task AtualizarAsync(
+        EstadoUnidade estado, string tipoCiclo, CancellationToken ct, Func<CancellationToken, Task> corpo)
+    {
         try
         {
-            var q1a = await ConsultarAsync(ConsultasPainel.Q1AguardandoPorCor(HospitalHmcml), ct);
-            var q1b = await ConsultarAsync(ConsultasPainel.Q1EmAtendimento(HospitalHmcml), ct);
-            var q1c = await ConsultarAsync(ConsultasPainel.Q1InternadosEHoje(HospitalHmcml), ct);
-
-            var agora = MontarAgora(q1a, q1b, q1c);
-            var carimbo = FusoBrasilia.Agora();
-
-            _ultimoErroRapido = null;
-            _ultimaAtualizacaoOk = carimbo;
-            _store.Atualizar(atual => (atual ?? SnapshotVazio(carimbo)) with
-            {
-                GeradoEm = carimbo,
-                Agora = agora,
-                Oracle = StatusOracleAtual(),
-            });
-
-            _logger.LogInformation("Ciclo rápido OK em {Ms} ms.", cronometro.ElapsedMilliseconds);
+            await corpo(ct);
+            estado.LimparErro(tipoCiclo);
+            estado.UltimaAtualizacaoOk = FusoBrasilia.Agora();
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             throw;
         }
         catch (Exception ex)
         {
             var erro = ErroCurto(ex);
-            _ultimoErroRapido = erro;
-            _store.MarcarFalha(UltimoErroVigente() ?? erro);
-            _logger.LogError("Ciclo rápido FALHOU em {Ms} ms: {Erro}", cronometro.ElapsedMilliseconds, erro);
+            estado.RegistrarErro(tipoCiclo, erro);
+            _logger.LogError("Ciclo {Tipo} FALHOU: {Erro}", tipoCiclo, erro);
         }
     }
 
-    private AgoraSecao MontarAgora(ResultadoConsulta q1a, ResultadoConsulta q1b, ResultadoConsulta q1c)
+    private static string Situacao(EstadoUnidade estado) => estado.ErroVigente is { } erro ? $"ERRO — {erro}" : "OK";
+
+    // ── Publicação do snapshot ─────────────────────────────────────────────────
+
+    /// <summary>Remonta o snapshot inteiro (geral + conde + upa) a partir do estado vivo.</summary>
+    private void Republicar()
     {
-        // Q1a: acumula por cor normalizada (SALUX e afins somam em SEM_CLASSIFICACAO).
-        var qtdPorCor = new Dictionary<string, int>();
-        var somaMinutos = new Dictionary<string, double>(); // ponderada por qtd, p/ média mesclada
-        foreach (var linha in q1a.Linhas)
+        var carimbo = FusoBrasilia.Agora();
+
+        var conde = new UnidadePainel(
+            Unidades.IdConde, "Conde", Unidades.NomeConde, Unidades.FonteConde,
+            Unidades.CoresDe(Unidades.IdConde),
+            _conde.Agora, _conde.Atendimentos, _conde.Internacoes, _conde.EsperaPorCor, _conde.Maternidade);
+
+        // As UPAs não internam nem têm maternidade: passam null de propósito.
+        var upa = new UnidadePainel(
+            Unidades.IdUpa, "UPA", Unidades.NomeUpa, Unidades.FonteUpa,
+            Unidades.CoresDe(Unidades.IdUpa),
+            _upa.Agora, _upa.Atendimentos, null, _upa.EsperaPorCor, null);
+
+        var santaRita = new UnidadePainel(
+            Unidades.IdSantaRita, "Sta. Rita", Unidades.NomeSantaRita, Unidades.FonteSantaRita,
+            Unidades.CoresDe(Unidades.IdSantaRita),
+            _santaRita.Agora, _santaRita.Atendimentos, null, _santaRita.EsperaPorCor, null);
+
+        UnidadePainel[] reais = [conde, upa, santaRita];
+        var geral = MontarGeral(reais);
+
+        var fontes = new[]
         {
-            var cor = NormalizarCor(linha[0] as string);
-            var qtd = ComoInt(linha[1]);
-            var minMedio = ComoDoubleOuNulo(linha[2]);
-            qtdPorCor[cor] = qtdPorCor.GetValueOrDefault(cor) + qtd;
-            if (minMedio is not null)
-            {
-                somaMinutos[cor] = somaMinutos.GetValueOrDefault(cor) + minMedio.Value * qtd;
-            }
+            new FonteInfo(Unidades.IdConde, Unidades.NomeConde, _conde.Status()),
+            new FonteInfo(Unidades.IdUpa, Unidades.NomeUpa, _upa.Status()),
+            new FonteInfo(Unidades.IdSantaRita, Unidades.NomeSantaRita, _santaRita.Status()),
+        };
+
+        EstadoUnidade[] estados = [_conde, _upa, _santaRita];
+
+        // Consolidado: OK só com TODAS as bases OK; a "última atualização boa" da rede é a
+        // MAIS ANTIGA delas — é ela que diz quão velho é o número mais velho da tela.
+        var status = new StatusFonte(
+            Ok: estados.All(e => e.ErroVigente is null),
+            UltimoErro: estados.Select(e => e.ErroVigente).FirstOrDefault(e => e is not null),
+            UltimaAtualizacaoOk: estados
+                .Select(e => e.UltimaAtualizacaoOk)
+                .Aggregate((DateTimeOffset?)null, MenorData));
+
+        _store.Definir(new PainelSnapshot(carimbo, status, fontes, [geral, .. reais]));
+    }
+
+    private static DateTimeOffset? MenorData(DateTimeOffset? a, DateTimeOffset? b) =>
+        a is null ? b : b is null ? a : a < b ? a : b;
+
+    /// <summary>
+    /// A aba "geral": soma o que é somável (fila, atendimentos) e repassa com etiqueta de
+    /// escopo o que só existe no Conde (internações, maternidade). Um número de rede que
+    /// na verdade é de uma unidade só precisa dizer isso na cara do usuário.
+    /// </summary>
+    private static UnidadePainel MontarGeral(IReadOnlyList<UnidadePainel> reais)
+    {
+        var conde = reais.First(u => u.Id == Unidades.IdConde);
+
+        return new UnidadePainel(
+            Unidades.IdGeral, "Geral", "Rede municipal de urgência", Unidades.FonteGeral,
+            Unidades.CoresDe(Unidades.IdGeral),
+            Agora: SomarAgora([.. reais.Select(u => u.Agora).OfType<AgoraSecao>()]),
+            Atendimentos: SomarAtendimentos([.. reais.Select(u => u.Atendimentos).OfType<AtendimentosSecao>()]),
+            Internacoes: conde.Internacoes is { } i ? i with { Escopo = Unidades.NomeConde } : null,
+            EsperaPorCor: SomarEspera([.. reais.Select(u => u.EsperaPorCor).OfType<EsperaPorCorSecao>()]),
+            Maternidade: conde.Maternidade is { } m ? m with { Escopo = Unidades.NomeConde } : null);
+    }
+
+    /// <summary>
+    /// O frescor da rede é o do dado mais VELHO — arredondar para o mais novo esconderia
+    /// uma base parada atrás de outra que está atualizando.
+    /// </summary>
+    private static DateTimeOffset MaisAntigo<T>(IReadOnlyList<T> secoes, Func<T, DateTimeOffset> carimbo) =>
+        secoes.Min(carimbo);
+
+    private static AgoraSecao? SomarAgora(IReadOnlyList<AgoraSecao> secoes)
+    {
+        if (secoes.Count == 0)
+        {
+            return null;
         }
 
-        // Sempre as 5 entradas do contrato, na ordem fixa, mesmo com qtd 0.
-        var aguardandoPorCor = new List<CorAguardando>(CoresContrato.Length);
-        foreach (var cor in CoresContrato)
+        var porCor = new Dictionary<string, (int Qtd, double SomaMinutos, int PesoMinutos)>();
+        foreach (var item in secoes.SelectMany(s => s.AguardandoPorCor))
         {
-            var qtd = qtdPorCor.GetValueOrDefault(cor);
-            int? minMedio = qtd > 0 && somaMinutos.TryGetValue(cor, out var soma)
-                ? (int)Math.Round(soma / qtd)
-                : null;
-            aguardandoPorCor.Add(new CorAguardando(cor, qtd, minMedio));
+            var atual = porCor.GetValueOrDefault(item.Cor);
+            atual.Qtd += item.Qtd;
+            if (item.MinMedioEspera is { } minutos && item.Qtd > 0)
+            {
+                atual.SomaMinutos += (double)minutos * item.Qtd;
+                atual.PesoMinutos += item.Qtd;
+            }
+
+            porCor[item.Cor] = atual;
         }
+
+        var aguardando = Unidades.Cores
+            .Select(cor =>
+            {
+                var (qtd, soma, peso) = porCor.GetValueOrDefault(cor);
+                return new CorAguardando(cor, qtd, peso > 0 ? (int)Math.Round(soma / peso) : null);
+            })
+            .ToList();
+
+        // Só o Conde interna, então o bloco é único — mas vem etiquetado, para o número
+        // não ser lido como se fosse da rede toda.
+        var internados = secoes.Select(s => s.Internados).OfType<InternadosAgora>().FirstOrDefault();
+
+        return new AgoraSecao(
+            AtualizadoEm: MaisAntigo(secoes, s => s.AtualizadoEm),
+            AguardandoMedico: secoes.Sum(s => s.AguardandoMedico),
+            AguardandoPorCor: aguardando,
+            EmAtendimento: secoes.Sum(s => s.EmAtendimento),
+            AtendimentosHoje: secoes.Sum(s => s.AtendimentosHoje),
+            Internados: internados is null ? null : internados with { Escopo = Unidades.NomeConde });
+    }
+
+    private static AtendimentosSecao? SomarAtendimentos(IReadOnlyList<AtendimentosSecao> secoes)
+    {
+        if (secoes.Count == 0)
+        {
+            return null;
+        }
+
+        // Rótulo de mês, dias do mês e dias completos são os mesmos em todas as unidades
+        // (o calendário não muda de prédio); a primeira serve de referência.
+        var referencia = secoes[0];
+        var totalMesAnterior = secoes.Sum(s => s.MesAnterior.Total);
+        var totalDiasCompletos = secoes.Sum(s => s.MesAtual.TotalDiasCompletos);
+
+        return new AtendimentosSecao(
+            AtualizadoEm: MaisAntigo(secoes, s => s.AtualizadoEm),
+            MesAnterior: new AtendimentosMesAnterior(
+                referencia.MesAnterior.Rotulo,
+                totalMesAnterior,
+                referencia.MesAnterior.Dias,
+                MediaDiaria(totalMesAnterior, referencia.MesAnterior.Dias)),
+            MesAtual: new AtendimentosMesAtual(
+                referencia.MesAtual.Rotulo,
+                secoes.Sum(s => s.MesAtual.Total),
+                referencia.MesAtual.DiasCompletos,
+                totalDiasCompletos,
+                MediaDiaria(totalDiasCompletos, referencia.MesAtual.DiasCompletos)),
+            Hoje: new TotalSimples(secoes.Sum(s => s.Hoje.Total)),
+            SerieDiaria: SomarSerie(secoes.SelectMany(s => s.SerieDiaria)),
+            PorHoraHoje: SomarPorHora(secoes.SelectMany(s => s.PorHoraHoje)));
+    }
+
+    private static List<DiaQtd> SomarSerie(IEnumerable<DiaQtd> pontos)
+    {
+        var porDia = new Dictionary<string, int>();
+        foreach (var ponto in pontos)
+        {
+            porDia[ponto.Dia] = porDia.GetValueOrDefault(ponto.Dia) + ponto.Qtd;
+        }
+
+        return [.. porDia.OrderBy(par => par.Key, StringComparer.Ordinal).Select(par => new DiaQtd(par.Key, par.Value))];
+    }
+
+    private static List<HoraQtd> SomarPorHora(IEnumerable<HoraQtd> pontos)
+    {
+        var porHora = new Dictionary<int, int>();
+        foreach (var ponto in pontos)
+        {
+            porHora[ponto.Hora] = porHora.GetValueOrDefault(ponto.Hora) + ponto.Qtd;
+        }
+
+        return [.. porHora.OrderBy(par => par.Key).Select(par => new HoraQtd(par.Key, par.Value))];
+    }
+
+    private static EsperaPorCorSecao? SomarEspera(IReadOnlyList<EsperaPorCorSecao> secoes)
+    {
+        if (secoes.Count == 0)
+        {
+            return null;
+        }
+
+        return new EsperaPorCorSecao(
+            MaisAntigo(secoes, s => s.AtualizadoEm),
+            new EsperaPeriodos(
+                SomarEsperaPeriodo(secoes.Select(s => s.Periodos.Hoje)),
+                SomarEsperaPeriodo(secoes.Select(s => s.Periodos.MesAtual)),
+                SomarEsperaPeriodo(secoes.Select(s => s.Periodos.MesAnterior))));
+    }
+
+    /// <summary>
+    /// Mescla as pulseiras das unidades por média ponderada, para a aba "geral".
+    ///
+    /// <para>
+    /// <b>Meta é assunto da unidade, e só aparece no contexto dela.</b> O Manchester do
+    /// Salux e os cadastros das UPAs usam alvos diferentes para a mesma cor — Amarelo é
+    /// 30 min no Conde, 60 na UPA Maricá e 30 em Santa Rita; Verde é 60, 120 e 60. Não
+    /// existe meta da rede, e um "% na meta" consolidado seria a média de cumprimentos de
+    /// réguas diferentes, um número sem significado clínico. Por isso <c>MetaMin</c> e
+    /// <c>PctNaMeta</c> vêm nulos aqui: o consolidado mostra volume e tempo (média,
+    /// mediana, p90), e quem quiser tempo-contra-meta abre a aba da unidade.
+    /// </para>
+    /// </summary>
+    private static List<EsperaCor> SomarEsperaPeriodo(IEnumerable<IReadOnlyList<EsperaCor>> porUnidade)
+    {
+        var buckets = new Dictionary<string, EsperaAcumulador>();
+        foreach (var item in porUnidade.SelectMany(lista => lista))
+        {
+            var bucket = buckets.TryGetValue(item.Cor, out var existente) ? existente : new EsperaAcumulador();
+            bucket.Somar(item);
+            buckets[item.Cor] = bucket;
+        }
+
+        return
+        [
+            .. Unidades.Cores.Select(cor => (buckets.TryGetValue(cor, out var bucket)
+                ? bucket.Materializar(cor)
+                : EsperaCorVazia(cor)) with { MetaMin = null, PctNaMeta = null }),
+        ];
+    }
+
+    // ── Montagem das seções (Conde) ────────────────────────────────────────────
+
+    private static AgoraSecao MontarAgoraConde(ResultadoConsulta q1a, ResultadoConsulta q1b, ResultadoConsulta q1c)
+    {
+        var aguardandoPorCor = MontarAguardandoPorCor(q1a, Unidades.IdConde);
 
         var emAtendimento = ComoInt(q1b.Linhas[0][0]);
 
@@ -195,125 +591,68 @@ public sealed class PainelAtualizadorService : BackgroundService
             AguardandoMedico: aguardandoPorCor.Sum(c => c.Qtd),
             AguardandoPorCor: aguardandoPorCor,
             EmAtendimento: emAtendimento,
-            InternadosAgora: ComoInt(linhaC[0]),
-            InternadosMaternidade: ComoInt(linhaC[1]),
-            InternadosAte17: ComoInt(linhaC[2]),
-            InternadosAdultos: ComoInt(linhaC[3]),
-            MediaDiasInternacao: ComoDoubleOuNulo(linhaC[4]),
             AtendimentosHoje: ComoInt(linhaC[5]),
-            InternacoesHoje: ComoInt(linhaC[6]));
+            Internados: new InternadosAgora(
+                Total: ComoInt(linhaC[0]),
+                Maternidade: ComoInt(linhaC[1]),
+                Ate17: ComoInt(linhaC[2]),
+                Adultos: ComoInt(linhaC[3]),
+                MediaDiasInternacao: ComoDoubleOuNulo(linhaC[4]),
+                InternacoesHoje: ComoInt(linhaC[6]),
+                Escopo: null));
     }
 
-    // ── Ciclo lento (Q2..Q6) ───────────────────────────────────────────────────
+    // ── Montagem das seções (UPA) ──────────────────────────────────────────────
 
-    private async Task ExecutarCicloLentoAsync(CancellationToken ct)
+    private static AgoraSecao MontarAgoraUpa(ResultadoConsulta u1a, ResultadoConsulta u1b)
     {
-        var cronometro = Stopwatch.StartNew();
-        try
-        {
-            var hosp = HospitalHmcml;
-            var hoje = FusoBrasilia.Agora();
+        var aguardandoPorCor = MontarAguardandoPorCor(u1a, Unidades.IdUpa);
+        var linha = u1b.Linhas[0];
 
-            // Q2 — atendimentos por período (+ total só de dias completos do mês atual).
-            var totalMesAnterior = await ConsultarEscalarAsync(
-                ConsultasPainel.Q2AtendimentosPeriodo(hosp, ConsultasPainel.IniMesAnterior, ConsultasPainel.FimMesAnterior), ct);
-            var totalMesAtual = await ConsultarEscalarAsync(
-                ConsultasPainel.Q2AtendimentosPeriodo(hosp, ConsultasPainel.IniMesAtual, ConsultasPainel.FimMesAtual), ct);
-            var totalHoje = await ConsultarEscalarAsync(
-                ConsultasPainel.Q2AtendimentosPeriodo(hosp, ConsultasPainel.IniHoje, ConsultasPainel.FimHoje), ct);
-            var totalDiasCompletos = await ConsultarEscalarAsync(
-                ConsultasPainel.Q2AtendimentosPeriodo(hosp, ConsultasPainel.IniMesAtual, ConsultasPainel.FimDiasCompletos), ct);
-
-            // Q3/Q4 — séries de atendimento.
-            var serieAtendimentos = await ConsultarAsync(ConsultasPainel.Q3SerieDiariaAtendimentos(hosp), ct);
-            var porHora = await ConsultarAsync(ConsultasPainel.Q4PorHoraHoje(hosp), ct);
-
-            // Q5 — internações por período + série (+ dias completos p/ média do mês atual).
-            var intMesAnterior = await ConsultarAsync(
-                ConsultasPainel.Q5InternacoesPeriodo(hosp, ConsultasPainel.IniMesAnterior, ConsultasPainel.FimMesAnterior), ct);
-            var intMesAtual = await ConsultarAsync(
-                ConsultasPainel.Q5InternacoesPeriodo(hosp, ConsultasPainel.IniMesAtual, ConsultasPainel.FimMesAtual), ct);
-            var intHoje = await ConsultarAsync(
-                ConsultasPainel.Q5InternacoesPeriodo(hosp, ConsultasPainel.IniHoje, ConsultasPainel.FimHoje), ct);
-            var intDiasCompletos = await ConsultarAsync(
-                ConsultasPainel.Q5InternacoesPeriodo(hosp, ConsultasPainel.IniMesAtual, ConsultasPainel.FimDiasCompletos), ct);
-            var serieInternacoes = await ConsultarAsync(ConsultasPainel.Q5SerieDiariaInternacoes(hosp), ct);
-
-            // Q7 — maternidade (NASCIMENTO não tem cd_hospital próprio: o livro de partos
-            // é do HMCML, única maternidade da rede na base).
-            var matMesAnterior = await ConsultarAsync(
-                ConsultasPainel.Q7Maternidade(ConsultasPainel.IniMesAnterior, ConsultasPainel.FimMesAnterior), ct);
-            var matMesAtual = await ConsultarAsync(
-                ConsultasPainel.Q7Maternidade(ConsultasPainel.IniMesAtual, ConsultasPainel.FimMesAtual), ct);
-            var matHoje = await ConsultarAsync(
-                ConsultasPainel.Q7Maternidade(ConsultasPainel.IniHoje, ConsultasPainel.FimHoje), ct);
-            var matDiasCompletos = await ConsultarAsync(
-                ConsultasPainel.Q7Maternidade(ConsultasPainel.IniMesAtual, ConsultasPainel.FimDiasCompletos), ct);
-            var seriePartos = await ConsultarAsync(ConsultasPainel.Q7SerieDiariaPartos(), ct);
-
-            // Q6 — espera por cor, 1× por período (a PESADA fica por último).
-            var esperaHoje = await ConsultarAsync(
-                ConsultasPainel.Q6EsperaPorCor(hosp, ConsultasPainel.IniHoje, ConsultasPainel.FimHoje, "SYSDATE + 3"), ct);
-            var esperaMesAtual = await ConsultarAsync(
-                ConsultasPainel.Q6EsperaPorCor(hosp, ConsultasPainel.IniMesAtual, ConsultasPainel.FimMesAtual, "SYSDATE + 3"), ct);
-            var esperaMesAnterior = await ConsultarAsync(
-                ConsultasPainel.Q6EsperaPorCor(
-                    hosp, ConsultasPainel.IniMesAnterior, ConsultasPainel.FimMesAnterior, "TRUNC(SYSDATE,'MM') + 3"), ct);
-
-            var carimbo = FusoBrasilia.Agora();
-            var atendimentos = MontarAtendimentos(
-                hoje, carimbo, totalMesAnterior, totalMesAtual, totalHoje, totalDiasCompletos, serieAtendimentos, porHora);
-            var internacoes = MontarInternacoes(
-                hoje, carimbo, intMesAnterior, intMesAtual, intHoje, intDiasCompletos, serieInternacoes);
-            var maternidade = MontarMaternidade(
-                hoje, carimbo, matMesAnterior, matMesAtual, matHoje, matDiasCompletos, seriePartos);
-            var espera = new EsperaPorCorSecao(carimbo, new EsperaPeriodos(
-                MontarEsperaPeriodo(esperaHoje),
-                MontarEsperaPeriodo(esperaMesAtual),
-                MontarEsperaPeriodo(esperaMesAnterior)));
-
-            _ultimoErroLento = null;
-            _ultimaAtualizacaoOk = carimbo;
-            _store.Atualizar(atual => (atual ?? SnapshotVazio(carimbo)) with
-            {
-                GeradoEm = carimbo,
-                Atendimentos = atendimentos,
-                Internacoes = internacoes,
-                EsperaPorCor = espera,
-                Maternidade = maternidade,
-                Oracle = StatusOracleAtual(),
-            });
-
-            // Persiste só após ciclo lento OK — restart volta com o painel completo.
-            await _store.PersistirAsync(ct);
-
-            _logger.LogInformation("Ciclo lento OK em {Ms} ms.", cronometro.ElapsedMilliseconds);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            var erro = ErroCurto(ex);
-            _ultimoErroLento = erro;
-            _store.MarcarFalha(UltimoErroVigente() ?? erro);
-            _logger.LogError("Ciclo lento FALHOU em {Ms} ms: {Erro}", cronometro.ElapsedMilliseconds, erro);
-        }
+        return new AgoraSecao(
+            AtualizadoEm: FusoBrasilia.Agora(),
+            AguardandoMedico: aguardandoPorCor.Sum(c => c.Qtd),
+            AguardandoPorCor: aguardandoPorCor,
+            EmAtendimento: ComoInt(linha[0]),
+            AtendimentosHoje: ComoInt(linha[1]),
+            // A UPA não interna — ver a armadilha 3 em ConsultasUpa. Nulo, não zero.
+            Internados: null);
     }
 
     /// <summary>
-    /// Status do Oracle derivado do estado por ciclo: <c>ok</c> exige rápido OK <b>e</b>
-    /// lento OK; <c>ultimoErro</c> é o erro mais relevante ainda vigente (o do lento tem
-    /// precedência e só é limpo por um ciclo LENTO bem-sucedido); <c>ultimaAtualizacaoOk</c>
-    /// é o instante do último ciclo (de qualquer tipo) 100% OK que atualizou seções.
+    /// Fila por cor, normalizada e SEMPRE completa (uma entrada por cor do contrato, na
+    /// ordem clínica), venha de qual base vier.
     /// </summary>
-    private OracleStatus StatusOracleAtual() => new(
-        Ok: _ultimoErroRapido is null && _ultimoErroLento is null,
-        UltimoErro: UltimoErroVigente(),
-        UltimaAtualizacaoOk: _ultimaAtualizacaoOk);
+    private static List<CorAguardando> MontarAguardandoPorCor(ResultadoConsulta resultado, string unidadeId)
+    {
+        var qtdPorCor = new Dictionary<string, int>();
+        var somaMinutos = new Dictionary<string, double>(); // ponderada por qtd, p/ média mesclada
+        foreach (var linha in resultado.Linhas)
+        {
+            var cor = NormalizarCor(linha[0] as string, unidadeId);
+            var qtd = ComoInt(linha[1]);
+            var minMedio = ComoDoubleOuNulo(linha[2]);
+            qtdPorCor[cor] = qtdPorCor.GetValueOrDefault(cor) + qtd;
+            if (minMedio is not null)
+            {
+                somaMinutos[cor] = somaMinutos.GetValueOrDefault(cor) + minMedio.Value * qtd;
+            }
+        }
 
-    private string? UltimoErroVigente() => _ultimoErroLento ?? _ultimoErroRapido;
+        var lista = new List<CorAguardando>(Unidades.Cores.Length);
+        foreach (var cor in Unidades.Cores)
+        {
+            var qtd = qtdPorCor.GetValueOrDefault(cor);
+            int? minMedio = qtd > 0 && somaMinutos.TryGetValue(cor, out var soma)
+                ? (int)Math.Round(soma / qtd)
+                : null;
+            lista.Add(new CorAguardando(cor, qtd, minMedio));
+        }
+
+        return lista;
+    }
+
+    // ── Montagem das seções comuns ─────────────────────────────────────────────
 
     private static AtendimentosSecao MontarAtendimentos(
         DateTimeOffset hoje,
@@ -379,7 +718,8 @@ public sealed class PainelAtualizadorService : BackgroundService
                 RotuloMes(hoje), atu.Total, atu.Maternidade, atu.Ate17, atu.Adultos,
                 MediaDiaria(comp.Total, diasCompletos)),
             Hoje: new InternacoesHoje(hoj.Total, hoj.Maternidade, hoj.Ate17, hoj.Adultos),
-            SerieDiaria: MontarSerieDiariaInternacoes(serieDiaria, hoje));
+            SerieDiaria: MontarSerieDiariaInternacoes(serieDiaria, hoje),
+            Escopo: null);
     }
 
     private static (int Total, int Maternidade, int Ate17, int Adultos) LerPeriodoInternacao(
@@ -462,7 +802,8 @@ public sealed class PainelAtualizadorService : BackgroundService
             MesAnterior: LerMaternidade(mesAnterior, RotuloMes(mesAnteriorData), diasMesAnterior, null),
             MesAtual: LerMaternidade(mesAtual, RotuloMes(hoje), diasCompletos, partosDiasCompletos),
             Hoje: LerMaternidade(diaAtual, "hoje", 0, null),
-            SerieDiaria: MontarSerieDiariaPartos(serieDiaria, hoje));
+            SerieDiaria: MontarSerieDiariaPartos(serieDiaria, hoje),
+            Escopo: null);
     }
 
     /// <summary>
@@ -531,41 +872,38 @@ public sealed class PainelAtualizadorService : BackgroundService
         return lista;
     }
 
-    private static List<EsperaCor> MontarEsperaPeriodo(ResultadoConsulta resultado)
+    private static List<EsperaCor> MontarEsperaPeriodo(ResultadoConsulta resultado, string unidadeId)
     {
-        // Acumula por cor normalizada. SALUX/desconhecidas somam em SEM_CLASSIFICACAO —
-        // médias/mediana/p90 mescladas por média ponderada (aproximação aceitável: a cor
-        // SALUX é meia dúzia de casos/mês).
+        // Acumula por cor normalizada. Cores fora do contrato (SALUX no Conde, variantes
+        // de subdescrição na UPA) somam no bucket certo — médias mescladas por média
+        // ponderada (aproximação aceitável: são caudas de meia dúzia de casos por mês).
         var buckets = new Dictionary<string, EsperaAcumulador>();
         foreach (var linha in resultado.Linhas)
         {
-            var cor = NormalizarCor(linha[0] as string);
+            var cor = NormalizarCor(linha[0] as string, unidadeId);
             var bucket = buckets.TryGetValue(cor, out var existente) ? existente : new EsperaAcumulador();
-            bucket.Somar(
-                pacientes: ComoInt(linha[1]),
-                comAtendimento: ComoInt(linha[2]),
-                mediaAteTriagem: ComoDoubleOuNulo(linha[3]),
-                mediaEspera: ComoDoubleOuNulo(linha[4]),
-                medianaEspera: ComoDoubleOuNulo(linha[5]),
-                p90Espera: ComoDoubleOuNulo(linha[6]),
-                metaMin: ComoIntOuNulo(linha[7]),
-                pctNaMeta: ComoDoubleOuNulo(linha[8]));
+            bucket.Somar(new EsperaCor(
+                Cor: cor,
+                Pacientes: ComoInt(linha[1]),
+                ComAtendimento: ComoInt(linha[2]),
+                MediaAteTriagem: ComoDoubleOuNulo(linha[3]),
+                MediaEspera: ComoDoubleOuNulo(linha[4]),
+                MedianaEspera: ComoDoubleOuNulo(linha[5]),
+                P90Espera: ComoDoubleOuNulo(linha[6]),
+                MetaMin: ComoIntOuNulo(linha[7]),
+                PctNaMeta: ComoDoubleOuNulo(linha[8])));
             buckets[cor] = bucket;
         }
 
-        // Sempre as 5 cores do contrato, ordem fixa, mesmo sem linhas no período.
-        var lista = new List<EsperaCor>(CoresContrato.Length);
-        foreach (var cor in CoresContrato)
-        {
-            lista.Add(buckets.TryGetValue(cor, out var bucket)
-                ? bucket.Materializar(cor)
-                : new EsperaCor(cor, 0, 0, null, null, null, null, null, null));
-        }
-
-        return lista;
+        // Sempre todas as cores do contrato, ordem fixa, mesmo sem linhas no período.
+        return [.. Unidades.Cores.Select(cor => buckets.TryGetValue(cor, out var bucket)
+            ? bucket.Materializar(cor)
+            : EsperaCorVazia(cor))];
     }
 
-    /// <summary>Acumulador p/ mesclar linhas da Q6 que caem na mesma cor do contrato.</summary>
+    private static EsperaCor EsperaCorVazia(string cor) => new(cor, 0, 0, null, null, null, null, null, null);
+
+    /// <summary>Acumulador p/ mesclar linhas que caem na mesma cor do contrato.</summary>
     private sealed class EsperaAcumulador
     {
         private int _pacientes;
@@ -577,38 +915,46 @@ public sealed class PainelAtualizadorService : BackgroundService
         private double _somaP90;
         private double _somaPctNaMeta;
         private int _pesoEspera;
+        private int _pesoPctNaMeta;
         private int? _metaMin;
 
-        public void Somar(
-            int pacientes, int comAtendimento, double? mediaAteTriagem, double? mediaEspera,
-            double? medianaEspera, double? p90Espera, int? metaMin, double? pctNaMeta)
+        public void Somar(EsperaCor item)
         {
-            _pacientes += pacientes;
-            _comAtendimento += comAtendimento;
+            _pacientes += item.Pacientes;
+            _comAtendimento += item.ComAtendimento;
 
-            if (mediaAteTriagem is not null)
+            if (item.MediaAteTriagem is not null)
             {
-                _somaAteTriagem += mediaAteTriagem.Value * pacientes;
-                _pesoAteTriagem += pacientes;
+                _somaAteTriagem += item.MediaAteTriagem.Value * item.Pacientes;
+                _pesoAteTriagem += item.Pacientes;
             }
 
-            if (mediaEspera is not null && comAtendimento > 0)
+            if (item.MediaEspera is not null && item.ComAtendimento > 0)
             {
-                _somaEspera += mediaEspera.Value * comAtendimento;
-                _somaMediana += (medianaEspera ?? 0) * comAtendimento;
-                _somaP90 += (p90Espera ?? 0) * comAtendimento;
-                _somaPctNaMeta += (pctNaMeta ?? 0) * comAtendimento;
-                _pesoEspera += comAtendimento;
+                _somaEspera += item.MediaEspera.Value * item.ComAtendimento;
+                _somaMediana += (item.MedianaEspera ?? 0) * item.ComAtendimento;
+                _somaP90 += (item.P90Espera ?? 0) * item.ComAtendimento;
+                _pesoEspera += item.ComAtendimento;
             }
 
-            _metaMin ??= metaMin;
+            // O "% na meta" só é ponderado por quem tinha meta — quem não tem alvo não
+            // entra no denominador em vez de contar como fora dele.
+            if (item.PctNaMeta is not null && item.ComAtendimento > 0)
+            {
+                _somaPctNaMeta += item.PctNaMeta.Value * item.ComAtendimento;
+                _pesoPctNaMeta += item.ComAtendimento;
+            }
+
+            // Dentro de uma unidade a meta é a mesma para a cor (vem de um cadastro só);
+            // entre unidades ela nem é reportada — ver SomarEsperaPeriodo.
+            _metaMin ??= item.MetaMin;
         }
 
         public EsperaCor Materializar(string cor)
         {
             // SEM_CLASSIFICACAO: contrato reporta média até triagem, meta e % na meta nulos
-            // (não há cor ⇒ não há meta; SALUX mesclada aqui é ruído).
-            var semClassificacao = cor == "SEM_CLASSIFICACAO";
+            // (não há cor ⇒ não há meta).
+            var semClassificacao = cor == Unidades.SemClassificacao;
             return new EsperaCor(
                 Cor: cor,
                 Pacientes: _pacientes,
@@ -618,7 +964,7 @@ public sealed class PainelAtualizadorService : BackgroundService
                 MedianaEspera: Ponderada(_somaMediana, _pesoEspera),
                 P90Espera: Ponderada(_somaP90, _pesoEspera),
                 MetaMin: semClassificacao ? null : _metaMin,
-                PctNaMeta: semClassificacao ? null : Ponderada(_somaPctNaMeta, _pesoEspera));
+                PctNaMeta: semClassificacao ? null : Ponderada(_somaPctNaMeta, _pesoPctNaMeta));
         }
 
         private static double? Ponderada(double soma, int peso) =>
@@ -627,29 +973,64 @@ public sealed class PainelAtualizadorService : BackgroundService
 
     // ── Infra do ciclo ─────────────────────────────────────────────────────────
 
-    private async Task<ResultadoConsulta> ConsultarAsync(string sql, CancellationToken ct)
+    /// <summary>Estado vivo de uma base: as seções mais recentes e o erro por tipo de ciclo.</summary>
+    private sealed class EstadoUnidade
     {
-        var resultado = await _fonte!.ExecutarUmaAsync(BaseHmcml, sql, ct);
+        public AgoraSecao? Agora;
+        public AtendimentosSecao? Atendimentos;
+        public InternacoesSecao? Internacoes;
+        public EsperaPorCorSecao? EsperaPorCor;
+        public MaternidadeSecao? Maternidade;
+        public DateTimeOffset? UltimaAtualizacaoOk;
+
+        // Erro POR CICLO: um tick rápido OK não pode apagar o erro do ciclo lento (e
+        // vice-versa) — cada erro só é limpo por um ciclo bem-sucedido do MESMO tipo.
+        private string? _erroRapido;
+        private string? _erroLento;
+
+        /// <summary>O erro mais relevante ainda vigente — o do ciclo lento tem precedência.</summary>
+        public string? ErroVigente => _erroLento ?? _erroRapido;
+
+        public void RegistrarErro(string tipoCiclo, string erro)
+        {
+            if (tipoCiclo == "lento")
+            {
+                _erroLento = erro;
+            }
+            else
+            {
+                _erroRapido = erro;
+            }
+        }
+
+        public void LimparErro(string tipoCiclo)
+        {
+            if (tipoCiclo == "lento")
+            {
+                _erroLento = null;
+            }
+            else
+            {
+                _erroRapido = null;
+            }
+        }
+
+        public StatusFonte Status() => new(ErroVigente is null, ErroVigente, UltimaAtualizacaoOk);
+    }
+
+    private async Task<ResultadoConsulta> ConsultarAsync(string baseSlug, string sql, CancellationToken ct)
+    {
+        var resultado = await _fonte!.ExecutarUmaAsync(baseSlug, sql, ct);
         return resultado.Ok
             ? resultado
             : throw new InvalidOperationException(resultado.Erro ?? "Consulta falhou no proxy SQL.");
     }
 
-    private async Task<int> ConsultarEscalarAsync(string sql, CancellationToken ct)
+    private async Task<int> ConsultarEscalarAsync(string baseSlug, string sql, CancellationToken ct)
     {
-        var resultado = await ConsultarAsync(sql, ct);
+        var resultado = await ConsultarAsync(baseSlug, sql, ct);
         return ComoInt(resultado.Linhas[0][0]);
     }
-
-    private static PainelSnapshot SnapshotVazio(DateTimeOffset carimbo) => new(
-        GeradoEm: carimbo,
-        Fonte: SnapshotStore.FontePadrao,
-        Oracle: new OracleStatus(true, null, carimbo),
-        Agora: null,
-        Atendimentos: null,
-        Internacoes: null,
-        EsperaPorCor: null,
-        Maternidade: null);
 
     private static string RotuloMes(DateTimeOffset data) =>
         PtBr is not null
@@ -659,18 +1040,28 @@ public sealed class PainelAtualizadorService : BackgroundService
     private static double? MediaDiaria(int total, int dias) =>
         dias > 0 ? Math.Round((double)total / dias, 1) : null;
 
-    /// <summary>Normaliza DS_CLASSIFICACAO_RISCO p/ os valores do contrato ("SALUX" e afins somam em SEM_CLASSIFICACAO).</summary>
-    private static string NormalizarCor(string? ds)
+    /// <summary>
+    /// Normaliza o nome da cor vindo do banco para os valores do contrato.
+    ///
+    /// <para>
+    /// No Conde, <c>DS_CLASSIFICACAO_RISCO</c> traz "SALUX" e afins, que somam em
+    /// SEM_CLASSIFICACAO. Na UPA, o nome vem de <c>risaco_descricao</c> ("Amarelo",
+    /// "Laranja"…) e as variantes de subdescrição (Consultório/Observação) já caem na
+    /// mesma cor porque a subdescrição não entra aqui. LARANJA só é aceito onde a
+    /// unidade usa: se aparecesse no Conde seria dado sujo, não uma cor nova.
+    /// </para>
+    /// </summary>
+    private static string NormalizarCor(string? ds, string unidadeId)
     {
         if (string.IsNullOrWhiteSpace(ds))
         {
-            return "SEM_CLASSIFICACAO";
+            return Unidades.SemClassificacao;
         }
 
         var normalizada = RemoverAcentos(ds.Trim()).ToUpperInvariant();
-        return normalizada is "VERMELHO" or "AMARELO" or "VERDE" or "AZUL"
+        return Unidades.CoresDe(unidadeId).Contains(normalizada) && normalizada != Unidades.SemClassificacao
             ? normalizada
-            : "SEM_CLASSIFICACAO";
+            : Unidades.SemClassificacao;
     }
 
     private static string RemoverAcentos(string texto)
@@ -688,7 +1079,7 @@ public sealed class PainelAtualizadorService : BackgroundService
         return builder.ToString().Normalize(NormalizationForm.FormC);
     }
 
-    /// <summary>Mensagem curta (1ª linha, sem stack) p/ log e p/ oracle.ultimoErro.</summary>
+    /// <summary>Mensagem curta (1ª linha, sem stack) p/ log e p/ o status da fonte.</summary>
     private static string ErroCurto(Exception ex)
     {
         var mensagem = ex.Message;

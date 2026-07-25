@@ -3,6 +3,7 @@ import type { Internacoes, MesInternacao } from '@/types/painel';
 import { formatarDecimal, formatarInteiro, horaMinuto } from '@/lib/formatos';
 import { Cartao } from '@/components/Cartao';
 import { CabecalhoSecao } from '@/components/CabecalhoSecao';
+import { SeloEscopo } from '@/components/SeloEscopo';
 import { NumeroAnimado } from '@/components/NumeroAnimado';
 import { GraficoSerieDiaria, FAIXAS_INTERNACAO } from '@/components/graficos/GraficoSerieDiaria';
 
@@ -82,9 +83,12 @@ export const SecaoInternacoes = memo(function SecaoInternacoes({
         titulo="Internações"
         tituloId="titulo-internacoes"
         direita={
-          <p className="tnum text-[12px] text-grafite">
-            atualizado às {horaMinuto(internacoes.atualizadoEm)}
-          </p>
+          <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1.5">
+            <SeloEscopo escopo={internacoes.escopo} />
+            <p className="tnum text-[12px] text-grafite">
+              atualizado às {horaMinuto(internacoes.atualizadoEm)}
+            </p>
+          </div>
         }
       />
       <div className="space-y-4">

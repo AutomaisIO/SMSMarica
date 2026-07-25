@@ -1,14 +1,14 @@
-import type { StatusOracle } from '@/types/painel';
+import type { StatusFonte } from '@/types/painel';
 import { horaMinuto, idadeEmMinutos } from '@/lib/formatos';
 
 export type NivelFrescor = 'vivo' | 'defasado' | 'desconectado';
 
 export function calcularFrescor(
   geradoEm: string,
-  oracle: StatusOracle,
+  status: StatusFonte,
   agora: Date,
 ): NivelFrescor {
-  if (!oracle.ok) return 'desconectado';
+  if (!status.ok) return 'desconectado';
   const idade = idadeEmMinutos(geradoEm, agora);
   if (idade < 3) return 'vivo';
   if (idade < 15) return 'defasado';
@@ -17,23 +17,23 @@ export function calcularFrescor(
 
 interface Props {
   geradoEm: string;
-  oracle: StatusOracle;
+  status: StatusFonte;
   agora: Date;
   usandoMock: boolean;
 }
 
 /**
- * Indicador de frescor — nunca finge: "ao vivo" só com snapshot < 3 min e Oracle
- * ok; entre 3 e 15 min mostra a hora dos dados; acima disso (ou Oracle fora),
- * "reconectando ao Salux…". Mock é honesto: SÓ o selo "dados de exemplo",
+ * Indicador de frescor — nunca finge: "ao vivo" só com snapshot < 3 min e as DUAS
+ * bases ok; entre 3 e 15 min mostra a hora dos dados; acima disso (ou uma base
+ * fora), "reconectando às unidades…". Mock é honesto: SÓ o selo "dados de exemplo",
  * nunca o pill de frescor por cima de dados de demonstração.
  *
  * Vive dentro da faixa vermelha do header, então todas as variantes são
  * translúcidas sobre o vermelho — a cor sozinha nunca carrega o significado,
  * o texto sempre diz o estado.
  */
-export function PillFrescor({ geradoEm, oracle, agora, usandoMock }: Props) {
-  const nivel = calcularFrescor(geradoEm, oracle, agora);
+export function PillFrescor({ geradoEm, status, agora, usandoMock }: Props) {
+  const nivel = calcularFrescor(geradoEm, status, agora);
 
   const base =
     'inline-flex items-center gap-2 rounded-full py-1 pl-2.5 pr-3 text-[12.5px] font-semibold';
@@ -67,7 +67,7 @@ export function PillFrescor({ geradoEm, oracle, agora, usandoMock }: Props) {
       {nivel === 'desconectado' && (
         <span className={`${base} bg-white/10 font-medium text-white/85 ring-1 ring-inset ring-white/30`}>
           <span className="h-2 w-2 rounded-full bg-white/60" />
-          reconectando ao Salux…
+          reconectando às unidades…
         </span>
       )}
     </div>

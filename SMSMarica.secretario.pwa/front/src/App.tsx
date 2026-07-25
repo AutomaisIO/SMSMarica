@@ -1,10 +1,12 @@
 import { AlertTriangle, Download, RefreshCw, WifiOff } from 'lucide-react';
-import type { Painel } from '@/types/painel';
+import type { Painel, UnidadeId, UnidadePainel } from '@/types/painel';
 import { usePainel } from '@/lib/usePainel';
+import { useUnidade } from '@/lib/useUnidade';
 import { useVersaoApp } from '@/lib/useVersaoApp';
 import { horaMinuto, nomeDoMes } from '@/lib/formatos';
 import { Header } from '@/components/Header';
 import { InstalarApp } from '@/components/InstalarApp';
+import { SegmentedControl, type OpcaoSegmento } from '@/components/SegmentedControl';
 import {
   SkeletonPainel,
   SkeletonSecaoAgora,
@@ -25,10 +27,10 @@ function EstadoSemConexao({ aoTentar }: { aoTentar: () => void }) {
         <WifiOff className="h-6 w-6" aria-hidden="true" />
       </span>
       <div>
-        <p className="font-display text-lg font-bold text-tinta">Sem conexão com o Salux</p>
+        <p className="font-display text-lg font-bold text-tinta">Sem conexão com as unidades</p>
         <p className="mt-1 max-w-sm text-[14px] text-grafite">
-          Não foi possível carregar os números do hospital. A atualização automática
-          continua tentando a cada minuto.
+          Não foi possível carregar os números do hospital e da UPA. A atualização
+          automática continua tentando a cada minuto.
         </p>
       </div>
       <button
@@ -43,22 +45,100 @@ function EstadoSemConexao({ aoTentar }: { aoTentar: () => void }) {
   );
 }
 
-/** Última leitura boa do Oracle: ultimaAtualizacaoOk, senão o atualizadoEm mais recente. */
-function referenciaOracle(dados: Painel): string {
-  if (dados.oracle.ultimaAtualizacaoOk) return dados.oracle.ultimaAtualizacaoOk;
-  const carimbos = [
-    dados.agora?.atualizadoEm,
-    dados.atendimentos?.atualizadoEm,
-    dados.internacoes?.atualizadoEm,
-    dados.esperaPorCor?.atualizadoEm,
-  ].filter((c): c is string => c != null);
+/** Última leitura boa das bases: ultimaAtualizacaoOk, senão o carimbo mais recente. */
+function referenciaFonte(dados: Painel): string {
+  if (dados.status.ultimaAtualizacaoOk) return dados.status.ultimaAtualizacaoOk;
+  const carimbos = dados.unidades
+    .flatMap((u) => [
+      u.agora?.atualizadoEm,
+      u.atendimentos?.atualizadoEm,
+      u.internacoes?.atualizadoEm,
+      u.esperaPorCor?.atualizadoEm,
+    ])
+    .filter((c): c is string => c != null);
   if (carimbos.length === 0) return dados.geradoEm;
   return carimbos.reduce((max, c) => (new Date(c) > new Date(max) ? c : max));
+}
+
+/**
+ * Quem está atrasado, pelo nome. Com duas bases, "sem dados novos" sem dizer de
+ * QUAL unidade obriga o leitor a adivinhar de quem é o número velho na tela.
+ */
+function fontesComProblema(dados: Painel): string {
+  const paradas = dados.fontes.filter((f) => !f.status.ok).map((f) => f.nome);
+  return paradas.length > 0 ? paradas.join(' e ') : 'as unidades';
+}
+
+function ConteudoUnidade({ unidade }: { unidade: UnidadePainel }) {
+  return (
+    <div className="space-y-10 sm:space-y-12">
+      {/* Cada seção renderiza de forma independente — no cold start o back
+          responde 200 só com "agora"; seção ausente vira skeleton, nunca
+          erro global com o back saudável. */}
+      <div className="anima-entrada">
+        {unidade.agora ? (
+          <SecaoAgora
+            agora={unidade.agora}
+            coresUsadas={unidade.coresUsadas}
+            internacoesHoje={unidade.internacoes?.hoje}
+          />
+        ) : (
+          <SkeletonSecaoAgora />
+        )}
+      </div>
+      <div className="anima-entrada" style={{ animationDelay: '70ms' }}>
+        {unidade.esperaPorCor ? (
+          <SecaoEmergencia
+            espera={unidade.esperaPorCor}
+            coresUsadas={unidade.coresUsadas}
+            consolidado={unidade.id === 'geral'}
+            rotuloMesAtual={
+              unidade.atendimentos ? nomeDoMes(unidade.atendimentos.mesAtual.rotulo) : 'mês atual'
+            }
+            rotuloMesAnterior={
+              unidade.atendimentos
+                ? nomeDoMes(unidade.atendimentos.mesAnterior.rotulo)
+                : 'mês anterior'
+            }
+          />
+        ) : (
+          <SkeletonSecaoPulseiras />
+        )}
+      </div>
+      <div className="anima-entrada" style={{ animationDelay: '140ms' }}>
+        {unidade.atendimentos ? (
+          <SecaoAtendimentos atendimentos={unidade.atendimentos} />
+        ) : (
+          <SkeletonSecaoGraficos />
+        )}
+      </div>
+      {/* Internações e maternidade não existem na UPA: a seção some, em vez de
+          aparecer zerada como se a unidade não tivesse internado ninguém. */}
+      {unidade.internacoes && (
+        <div className="anima-entrada" style={{ animationDelay: '210ms' }}>
+          <SecaoInternacoes internacoes={unidade.internacoes} />
+        </div>
+      )}
+      {unidade.maternidade && (
+        <div className="anima-entrada" style={{ animationDelay: '280ms' }}>
+          <SecaoMaternidade maternidade={unidade.maternidade} />
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function App() {
   const { dados, usandoMock, erroRede, carregandoInicial, recarregar } = usePainel();
   const { novaVersao } = useVersaoApp();
+  const [unidadeId, escolherUnidade] = useUnidade();
+
+  // A escolha guardada pode não existir no payload (unidade removida do back):
+  // cai na primeira em vez de renderizar tela em branco.
+  const unidade = dados?.unidades.find((u) => u.id === unidadeId) ?? dados?.unidades[0];
+
+  const opcoes: OpcaoSegmento<UnidadeId>[] =
+    dados?.unidades.map((u) => ({ valor: u.id, rotulo: u.rotulo })) ?? [];
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -79,16 +159,17 @@ export default function App() {
         <div className="border-b border-triagem-amarelo/30 bg-triagem-amarelo/10">
           <p className="mx-auto flex max-w-pagina items-center gap-2 px-4 py-2 text-[13px] font-medium text-triagem-amarelo-apoio sm:px-6">
             <WifiOff className="h-4 w-4 shrink-0" aria-hidden="true" />
-            Sem conexão com o Salux — mostrando dados de {horaMinuto(dados.geradoEm)}.
+            Sem conexão com o painel — mostrando dados de {horaMinuto(dados.geradoEm)}.
           </p>
         </div>
       )}
 
-      {!erroRede && dados && !dados.oracle.ok && (
+      {!erroRede && dados && !dados.status.ok && (
         <div className="border-b border-triagem-amarelo/30 bg-triagem-amarelo/10">
           <p className="mx-auto flex max-w-pagina items-center gap-2 px-4 py-2 text-[13px] font-medium text-triagem-amarelo-apoio sm:px-6">
             <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
-            Sem dados novos do Salux desde {horaMinuto(referenciaOracle(dados))}.
+            Sem dados novos de {fontesComProblema(dados)} desde{' '}
+            {horaMinuto(referenciaFonte(dados))}.
           </p>
         </div>
       )}
@@ -99,63 +180,36 @@ export default function App() {
         </div>
         {carregandoInicial && <SkeletonPainel />}
         {!carregandoInicial && !dados && <EstadoSemConexao aoTentar={recarregar} />}
-        {dados && (
-          <div className="space-y-10 sm:space-y-12">
-            {/* Cada seção renderiza de forma independente — no cold start o back
-                responde 200 só com "agora"; seção ausente vira skeleton, nunca
-                erro global com o back saudável. */}
-            <div className="anima-entrada">
-              {dados.agora ? (
-                <SecaoAgora agora={dados.agora} internacoesHoje={dados.internacoes?.hoje} />
-              ) : (
-                <SkeletonSecaoAgora />
-              )}
-            </div>
-            <div className="anima-entrada" style={{ animationDelay: '70ms' }}>
-              {dados.esperaPorCor ? (
-                <SecaoEmergencia
-                  espera={dados.esperaPorCor}
-                  rotuloMesAtual={
-                    dados.atendimentos ? nomeDoMes(dados.atendimentos.mesAtual.rotulo) : 'mês atual'
-                  }
-                  rotuloMesAnterior={
-                    dados.atendimentos
-                      ? nomeDoMes(dados.atendimentos.mesAnterior.rotulo)
-                      : 'mês anterior'
-                  }
+        {dados && unidade && (
+          <>
+            {/* O seletor fica ACIMA de tudo e mostra o nome por extenso da unidade
+                escolhida: num painel de rede, a pergunta "esse número é de onde?"
+                não pode depender de lembrar qual pílula estava marcada. */}
+            <div className="mb-6 flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+              <div>
+                <p className="eyebrow">Unidade</p>
+                <p className="mt-0.5 font-display text-[19px] font-bold leading-tight tracking-tight text-tinta sm:text-[21px]">
+                  {unidade.nome}
+                </p>
+              </div>
+              {opcoes.length > 1 && (
+                <SegmentedControl
+                  opcoes={opcoes}
+                  valor={unidade.id}
+                  aoMudar={escolherUnidade}
+                  ariaLabel="Unidade exibida no painel"
                 />
-              ) : (
-                <SkeletonSecaoPulseiras />
               )}
             </div>
-            <div className="anima-entrada" style={{ animationDelay: '140ms' }}>
-              {dados.atendimentos ? (
-                <SecaoAtendimentos atendimentos={dados.atendimentos} />
-              ) : (
-                <SkeletonSecaoGraficos />
-              )}
-            </div>
-            <div className="anima-entrada" style={{ animationDelay: '210ms' }}>
-              {dados.internacoes ? (
-                <SecaoInternacoes internacoes={dados.internacoes} />
-              ) : (
-                <SkeletonSecaoGraficos />
-              )}
-            </div>
-            <div className="anima-entrada" style={{ animationDelay: '280ms' }}>
-              {dados.maternidade ? (
-                <SecaoMaternidade maternidade={dados.maternidade} />
-              ) : (
-                <SkeletonSecaoGraficos />
-              )}
-            </div>
-          </div>
+
+            <ConteudoUnidade key={unidade.id} unidade={unidade} />
+          </>
         )}
 
         {/* Procedência do número, em uma linha — o rodapé é institucional. */}
-        {dados && (
+        {unidade && (
           <p className="mt-8 text-[12.5px] text-grafite">
-            {dados.fonte} · atualização automática a cada minuto (momento) e 10 minutos
+            {unidade.fonte} · atualização automática a cada minuto (momento) e 10 minutos
             (consolidados).
           </p>
         )}

@@ -1,625 +1,1622 @@
 {
-  "_comentario": "Contrato do GET /api/painel — snapshot unico que o front consome. Valores REAIS (Oracle Salux, 24/07/2026) servindo de mock em dev. Datas ISO com offset de Brasilia.",
-  "_nulabilidade": "No cold start o back responde 200 com apenas agora preenchida; atendimentos/internacoes/esperaPorCor/maternidade podem vir null ate o 1o ciclo lento (~1-3 min) — o front renderiza cada secao independentemente (skeleton na ausencia). agora.mediaDiasInternacao pode ser null. Media diaria do mes atual = total dos dias completos / (dias corridos - 1).",
+  "_comentario": "Contrato do GET /api/painel — snapshot unico que o front consome. Valores REAIS (Salux/Oracle do Conde e HIS/SQL Server das duas UPAs, 25/07/2026) servindo de mock em dev. Datas ISO com offset de Brasilia. As series diarias/horarias estao ENCURTADAS aqui para o arquivo ser legivel — em producao vem completas (35 dias e 0..hora atual).",
+  "_unidades": "O painel e multi-unidade desde 25/07/2026. unidades[] traz geral, conde, upa e santarita, todas com as MESMAS secoes; o front escolhe qual mostrar (padrao geral, guardado por dispositivo, sobreponivel por ?unidade=). A aba geral soma o que e somavel (fila, atendimentos, espera por cor) e repassa com escopo o que so existe no Conde (internacoes, maternidade).",
+  "_nulabilidade": "Secao ausente e secao NULA, e as duas coisas sao diferentes: no cold start todas vem null ate o 1o ciclo lento (~1-3 min) e o front poe skeleton; ja na UPA internacoes e maternidade sao null PERMANENTE, porque a unidade nao interna (Internacao parada desde 25/01/2026) nem tem maternidade — ali o front some com a secao. Zero seria mentira. agora.internados segue a mesma regra. Media diaria do mes atual = total dos dias completos / (dias corridos - 1).",
+  "_cores": "coresUsadas diz quais cores a unidade usa: o Manchester do Salux no Conde tem quatro (sem laranja) e as UPAs tem cinco. O contrato SEMPRE devolve as seis entradas, em ordem clinica, para o front nao precisar adivinhar o que falta — e o front apaga as que a unidade nao usa.",
+  "_metas": "esperaCor.metaMin e pctNaMeta sao do CADASTRO DA UNIDADE e vem SEMPRE nulos na aba geral. Cada unidade tem sua propria regua para a mesma cor (Amarelo: 30 min no Conde, 60 na UPA Marica, 30 em Santa Rita; Verde: 60, 120 e 60), entao a rede nao tem meta — e um '% na meta' consolidado seria a media de cumprimentos de reguas diferentes, numero sem significado clinico. O consolidado mostra volume e tempo (media, mediana, p90); tempo-contra-meta so na aba da unidade. Nulo tambem dentro da unidade = sem meta cadastrada (Vermelho e as variantes de Observacao nas UPAs).",
   "_splitInternacao": "O split de internacao tem TRES faixas exclusivas, nesta precedencia: maternidade (unidade do leito: 15,16,17,26) -> ate 17 anos (idade na entrada) -> adultos. A precedencia importa: em julho, 114 das 172 internacoes de menores eram bebes de menos de 1 ano no bercario/maternidade; sem a maternidade primeiro, a faixa infantil viraria um retrato de partos (o valor real, fora da maternidade, e 72). NAO usar FIA.ID_INTERNACAO: no HMCML o E nao e eletiva — 98% estao na maternidade, 99,7% entraram pelo boletim da emergencia e o carater oficial do SUS e urgencia em 100%.",
   "_maternidade": "Origem: INFOSAUDE.NASCIMENTO (livro de partos). PESO em QUILOS (baixo peso < 2,5), nao gramas. Tipo do parto por ID_TP_PARTO (C/V) — a coluna textual TIPO_PARTO esta sempre nula. Registro consistente: 82-137 partos/mes nos ultimos 12 meses, com peso/prematuridade/APGAR/sexo em 100% do mes corrente.",
-  "geradoEm": "2026-07-24T18:52:16.1142339-03:00",
-  "fonte": "Salux HIS — Hospital Municipal Conde Modesto Leal",
-  "oracle": {
+  "_upa": "As UPAs vem do mesmo HIS em SQL Server, em instancias SEPARADAS: upa24h-marica-sqlserver (UPA Marica, unid_codigo 0006, servidor UPA-SRV, CNES 7164440) e santarita-marica-sqlserver (UPAM Santa Rita, unid_codigo 0007, servidor STARITA-SRV). As duas bases se chamam UPA24H, entao a unidade so se distingue pelo slug. Armadilhas em docs/consultas-sqlserver-upa.md: gravidade e relativa ao protocolo, quem evadiu so e identificado por UPA_Fila.DATA_CANCELAMENTO, e a meta e por variante (Consultorio x Observacao), nao por cor.",
+  "geradoEm": "2026-07-24T23:27:24.5659924-03:00",
+  "status": {
     "ok": true,
     "ultimoErro": null,
-    "ultimaAtualizacaoOk": "2026-07-24T18:52:16.1142339-03:00"
+    "ultimaAtualizacaoOk": "2026-07-24T23:27:15.1907604-03:00"
   },
-  "agora": {
-    "atualizadoEm": "2026-07-24T18:52:16.1142133-03:00",
-    "aguardandoMedico": 77,
-    "aguardandoPorCor": [
-      {
-        "cor": "VERMELHO",
-        "qtd": 0,
-        "minMedioEspera": null
-      },
-      {
-        "cor": "AMARELO",
-        "qtd": 4,
-        "minMedioEspera": 64
-      },
-      {
-        "cor": "VERDE",
-        "qtd": 49,
-        "minMedioEspera": 195
-      },
-      {
-        "cor": "AZUL",
-        "qtd": 12,
-        "minMedioEspera": 271
-      },
-      {
-        "cor": "SEM_CLASSIFICACAO",
-        "qtd": 12,
-        "minMedioEspera": 279
+  "fontes": [
+    {
+      "id": "conde",
+      "nome": "Hospital Municipal Conde Modesto Leal",
+      "status": {
+        "ok": true,
+        "ultimoErro": null,
+        "ultimaAtualizacaoOk": "2026-07-24T23:27:15.1907604-03:00"
       }
-    ],
-    "emAtendimento": 145,
-    "internadosAgora": 148,
-    "internadosMaternidade": 22,
-    "internadosAte17": 4,
-    "internadosAdultos": 122,
-    "mediaDiasInternacao": 7.7,
-    "atendimentosHoje": 440,
-    "internacoesHoje": 24
-  },
-  "atendimentos": {
-    "atualizadoEm": "2026-07-24T18:47:04.9445765-03:00",
-    "mesAnterior": {
-      "rotulo": "junho/2026",
-      "total": 17405,
-      "dias": 30,
-      "mediaDiaria": 580.2
     },
-    "mesAtual": {
-      "rotulo": "julho/2026",
-      "total": 13557,
-      "diasCompletos": 23,
-      "totalDiasCompletos": 13117,
-      "mediaDiaria": 570.3
-    },
-    "hoje": {
-      "total": 440
-    },
-    "serieDiaria": [
-      {
-        "dia": "2026-07-11",
-        "qtd": 481
-      },
-      {
-        "dia": "2026-07-12",
-        "qtd": 471
-      },
-      {
-        "dia": "2026-07-13",
-        "qtd": 613
-      },
-      {
-        "dia": "2026-07-14",
-        "qtd": 563
-      },
-      {
-        "dia": "2026-07-15",
-        "qtd": 534
-      },
-      {
-        "dia": "2026-07-16",
-        "qtd": 514
-      },
-      {
-        "dia": "2026-07-17",
-        "qtd": 512
-      },
-      {
-        "dia": "2026-07-18",
-        "qtd": 464
-      },
-      {
-        "dia": "2026-07-19",
-        "qtd": 436
-      },
-      {
-        "dia": "2026-07-20",
-        "qtd": 633
-      },
-      {
-        "dia": "2026-07-21",
-        "qtd": 620
-      },
-      {
-        "dia": "2026-07-22",
-        "qtd": 595
-      },
-      {
-        "dia": "2026-07-23",
-        "qtd": 576
-      },
-      {
-        "dia": "2026-07-24",
-        "qtd": 440
+    {
+      "id": "upa",
+      "nome": "UPA 24h Maricá",
+      "status": {
+        "ok": true,
+        "ultimoErro": null,
+        "ultimaAtualizacaoOk": "2026-07-24T23:27:20.8142315-03:00"
       }
-    ],
-    "porHoraHoje": [
-      {
-        "hora": 0,
-        "qtd": 9
-      },
-      {
-        "hora": 1,
-        "qtd": 7
-      },
-      {
-        "hora": 2,
-        "qtd": 4
-      },
-      {
-        "hora": 3,
-        "qtd": 2
-      },
-      {
-        "hora": 4,
-        "qtd": 2
-      },
-      {
-        "hora": 5,
-        "qtd": 3
-      },
-      {
-        "hora": 6,
-        "qtd": 5
-      },
-      {
-        "hora": 7,
-        "qtd": 33
-      },
-      {
-        "hora": 8,
-        "qtd": 32
-      },
-      {
-        "hora": 9,
-        "qtd": 46
-      },
-      {
-        "hora": 10,
-        "qtd": 54
-      },
-      {
-        "hora": 11,
-        "qtd": 39
-      },
-      {
-        "hora": 12,
-        "qtd": 31
-      },
-      {
-        "hora": 13,
-        "qtd": 32
-      },
-      {
-        "hora": 14,
-        "qtd": 34
-      },
-      {
-        "hora": 15,
-        "qtd": 33
-      },
-      {
-        "hora": 16,
-        "qtd": 36
-      },
-      {
-        "hora": 17,
-        "qtd": 16
-      },
-      {
-        "hora": 18,
-        "qtd": 22
+    },
+    {
+      "id": "santarita",
+      "nome": "UPA 24h Santa Rita",
+      "status": {
+        "ok": true,
+        "ultimoErro": null,
+        "ultimaAtualizacaoOk": "2026-07-24T23:27:24.5659875-03:00"
       }
-    ]
-  },
-  "internacoes": {
-    "atualizadoEm": "2026-07-24T18:47:04.9445765-03:00",
-    "mesAnterior": {
-      "rotulo": "junho/2026",
-      "total": 739,
-      "maternidade": 221,
-      "ate17": 102,
-      "adultos": 416,
-      "mediaDiaria": 24.6
-    },
-    "mesAtual": {
-      "rotulo": "julho/2026",
-      "total": 606,
-      "maternidade": 200,
-      "ate17": 72,
-      "adultos": 334,
-      "mediaDiaria": 25.3
-    },
-    "hoje": {
-      "total": 24,
-      "maternidade": 9,
-      "ate17": 1,
-      "adultos": 14
-    },
-    "serieDiaria": [
-      {
-        "dia": "2026-07-11",
-        "qtd": 20,
-        "maternidade": 5,
-        "ate17": 4,
-        "adultos": 11
-      },
-      {
-        "dia": "2026-07-12",
-        "qtd": 21,
-        "maternidade": 5,
-        "ate17": 4,
-        "adultos": 12
-      },
-      {
-        "dia": "2026-07-13",
-        "qtd": 18,
-        "maternidade": 3,
-        "ate17": 1,
-        "adultos": 14
-      },
-      {
-        "dia": "2026-07-14",
-        "qtd": 23,
-        "maternidade": 10,
-        "ate17": 1,
-        "adultos": 12
-      },
-      {
-        "dia": "2026-07-15",
-        "qtd": 24,
-        "maternidade": 6,
-        "ate17": 2,
-        "adultos": 16
-      },
-      {
-        "dia": "2026-07-16",
-        "qtd": 32,
-        "maternidade": 13,
-        "ate17": 5,
-        "adultos": 14
-      },
-      {
-        "dia": "2026-07-17",
-        "qtd": 28,
-        "maternidade": 13,
-        "ate17": 1,
-        "adultos": 14
-      },
-      {
-        "dia": "2026-07-18",
-        "qtd": 22,
-        "maternidade": 10,
-        "ate17": 3,
-        "adultos": 9
-      },
-      {
-        "dia": "2026-07-19",
-        "qtd": 15,
-        "maternidade": 6,
-        "ate17": 0,
-        "adultos": 9
-      },
-      {
-        "dia": "2026-07-20",
-        "qtd": 25,
-        "maternidade": 7,
-        "ate17": 2,
-        "adultos": 16
-      },
-      {
-        "dia": "2026-07-21",
-        "qtd": 29,
-        "maternidade": 9,
-        "ate17": 1,
-        "adultos": 19
-      },
-      {
-        "dia": "2026-07-22",
-        "qtd": 22,
-        "maternidade": 1,
-        "ate17": 4,
-        "adultos": 17
-      },
-      {
-        "dia": "2026-07-23",
-        "qtd": 32,
-        "maternidade": 12,
-        "ate17": 4,
-        "adultos": 16
-      },
-      {
-        "dia": "2026-07-24",
-        "qtd": 24,
-        "maternidade": 9,
-        "ate17": 1,
-        "adultos": 14
-      }
-    ]
-  },
-  "esperaPorCor": {
-    "atualizadoEm": "2026-07-24T18:47:04.9445765-03:00",
-    "periodos": {
-      "hoje": [
-        {
-          "cor": "VERMELHO",
-          "pacientes": 2,
-          "comAtendimento": 2,
-          "mediaAteTriagem": 3.7,
-          "mediaEspera": 110.2,
-          "medianaEspera": 110.2,
-          "p90Espera": 147.2,
-          "metaMin": 15,
-          "pctNaMeta": 0
-        },
-        {
-          "cor": "AMARELO",
-          "pacientes": 98,
-          "comAtendimento": 94,
-          "mediaAteTriagem": 7.7,
-          "mediaEspera": 17.4,
-          "medianaEspera": 13.2,
-          "p90Espera": 34.2,
-          "metaMin": 30,
-          "pctNaMeta": 87.2
-        },
-        {
-          "cor": "VERDE",
-          "pacientes": 209,
-          "comAtendimento": 159,
-          "mediaAteTriagem": 5.6,
-          "mediaEspera": 56.9,
-          "medianaEspera": 23.7,
-          "p90Espera": 173.9,
-          "metaMin": 60,
-          "pctNaMeta": 69.8
-        },
-        {
-          "cor": "AZUL",
-          "pacientes": 43,
-          "comAtendimento": 31,
-          "mediaAteTriagem": 6.1,
-          "mediaEspera": 76.5,
-          "medianaEspera": 49.4,
-          "p90Espera": 159.2,
-          "metaMin": 1440,
-          "pctNaMeta": 100
-        },
-        {
-          "cor": "SEM_CLASSIFICACAO",
-          "pacientes": 20,
-          "comAtendimento": 17,
-          "mediaAteTriagem": null,
-          "mediaEspera": 78,
-          "medianaEspera": 60.8,
-          "p90Espera": 132.9,
-          "metaMin": null,
-          "pctNaMeta": null
-        }
-      ],
-      "mesAtual": [
-        {
-          "cor": "VERMELHO",
-          "pacientes": 21,
-          "comAtendimento": 20,
-          "mediaAteTriagem": 7.5,
-          "mediaEspera": 33.4,
-          "medianaEspera": 23.4,
-          "p90Espera": 66.7,
-          "metaMin": 15,
-          "pctNaMeta": 35
-        },
-        {
-          "cor": "AMARELO",
-          "pacientes": 3402,
-          "comAtendimento": 3304,
-          "mediaAteTriagem": 7.4,
-          "mediaEspera": 23.6,
-          "medianaEspera": 14.7,
-          "p90Espera": 49.4,
-          "metaMin": 30,
-          "pctNaMeta": 77.5
-        },
-        {
-          "cor": "VERDE",
-          "pacientes": 7131,
-          "comAtendimento": 6564,
-          "mediaAteTriagem": 6.5,
-          "mediaEspera": 52.7,
-          "medianaEspera": 36.5,
-          "p90Espera": 122.5,
-          "metaMin": 60,
-          "pctNaMeta": 67.4
-        },
-        {
-          "cor": "AZUL",
-          "pacientes": 937,
-          "comAtendimento": 790,
-          "mediaAteTriagem": 5.8,
-          "mediaEspera": 54.9,
-          "medianaEspera": 39.1,
-          "p90Espera": 124.8,
-          "metaMin": 1440,
-          "pctNaMeta": 100
-        },
-        {
-          "cor": "SEM_CLASSIFICACAO",
-          "pacientes": 632,
-          "comAtendimento": 573,
-          "mediaAteTriagem": null,
-          "mediaEspera": 70.9,
-          "medianaEspera": 62.7,
-          "p90Espera": 126.1,
-          "metaMin": null,
-          "pctNaMeta": null
-        }
-      ],
-      "mesAnterior": [
-        {
-          "cor": "VERMELHO",
-          "pacientes": 10,
-          "comAtendimento": 10,
-          "mediaAteTriagem": 11.9,
-          "mediaEspera": 49.1,
-          "medianaEspera": 18,
-          "p90Espera": 103.4,
-          "metaMin": 15,
-          "pctNaMeta": 40
-        },
-        {
-          "cor": "AMARELO",
-          "pacientes": 4317,
-          "comAtendimento": 4071,
-          "mediaAteTriagem": 8,
-          "mediaEspera": 23.9,
-          "medianaEspera": 15,
-          "p90Espera": 49.7,
-          "metaMin": 30,
-          "pctNaMeta": 76.6
-        },
-        {
-          "cor": "VERDE",
-          "pacientes": 9644,
-          "comAtendimento": 8545,
-          "mediaAteTriagem": 6.8,
-          "mediaEspera": 51.8,
-          "medianaEspera": 35.4,
-          "p90Espera": 114.7,
-          "metaMin": 60,
-          "pctNaMeta": 68.8
-        },
-        {
-          "cor": "AZUL",
-          "pacientes": 1033,
-          "comAtendimento": 867,
-          "mediaAteTriagem": 5.4,
-          "mediaEspera": 54,
-          "medianaEspera": 34.4,
-          "p90Espera": 125.3,
-          "metaMin": 1440,
-          "pctNaMeta": 99.9
-        },
-        {
-          "cor": "SEM_CLASSIFICACAO",
-          "pacientes": 777,
-          "comAtendimento": 706,
-          "mediaAteTriagem": null,
-          "mediaEspera": 69.4,
-          "medianaEspera": 61.2,
-          "p90Espera": 122.6,
-          "metaMin": null,
-          "pctNaMeta": null
-        }
-      ]
     }
-  },
-  "maternidade": {
-    "atualizadoEm": "2026-07-24T18:47:04.9445765-03:00",
-    "mesAnterior": {
-      "rotulo": "junho/2026",
-      "partos": 94,
-      "cesareas": 60,
-      "vaginais": 34,
-      "prematuros": 4,
-      "baixoPeso": 4,
-      "pesoMedioKg": 3.3,
-      "apgar5Abaixo7": 1,
-      "meninas": 46,
-      "meninos": 48,
-      "mediaDiaria": 3.1,
-      "pctCesarea": 63.8
-    },
-    "mesAtual": {
-      "rotulo": "julho/2026",
-      "partos": 83,
-      "cesareas": 45,
-      "vaginais": 38,
-      "prematuros": 1,
-      "baixoPeso": 6,
-      "pesoMedioKg": 3.3,
-      "apgar5Abaixo7": 1,
-      "meninas": 46,
-      "meninos": 37,
-      "mediaDiaria": 3.4,
-      "pctCesarea": 54.2
-    },
-    "hoje": {
-      "rotulo": "hoje",
-      "partos": 4,
-      "cesareas": 2,
-      "vaginais": 2,
-      "prematuros": 0,
-      "baixoPeso": 0,
-      "pesoMedioKg": 3.3,
-      "apgar5Abaixo7": 0,
-      "meninas": 1,
-      "meninos": 3,
-      "mediaDiaria": null,
-      "pctCesarea": 50
-    },
-    "serieDiaria": [
-      {
-        "dia": "2026-07-11",
-        "qtd": 2,
-        "cesareas": 1
+  ],
+  "unidades": [
+    {
+      "id": "geral",
+      "rotulo": "Geral",
+      "nome": "Rede municipal de urgência",
+      "fonte": "Salux HIS (Conde Modesto Leal) + HIS das UPAs Maricá e Santa Rita",
+      "coresUsadas": [
+        "VERMELHO",
+        "LARANJA",
+        "AMARELO",
+        "VERDE",
+        "AZUL",
+        "SEM_CLASSIFICACAO"
+      ],
+      "agora": {
+        "atualizadoEm": "2026-07-24T23:27:03.9784601-03:00",
+        "aguardandoMedico": 55,
+        "aguardandoPorCor": [
+          {
+            "cor": "VERMELHO",
+            "qtd": 0,
+            "minMedioEspera": null
+          },
+          {
+            "cor": "LARANJA",
+            "qtd": 0,
+            "minMedioEspera": null
+          },
+          {
+            "cor": "AMARELO",
+            "qtd": 3,
+            "minMedioEspera": 226
+          },
+          {
+            "cor": "VERDE",
+            "qtd": 34,
+            "minMedioEspera": 319
+          },
+          {
+            "cor": "AZUL",
+            "qtd": 5,
+            "minMedioEspera": 415
+          },
+          {
+            "cor": "SEM_CLASSIFICACAO",
+            "qtd": 13,
+            "minMedioEspera": 352
+          }
+        ],
+        "emAtendimento": 162,
+        "atendimentosHoje": 1144,
+        "internados": {
+          "total": 155,
+          "maternidade": 23,
+          "ate17": 5,
+          "adultos": 127,
+          "mediaDiasInternacao": 7.5,
+          "internacoesHoje": 32,
+          "escopo": "Hospital Municipal Conde Modesto Leal"
+        }
       },
-      {
-        "dia": "2026-07-12",
-        "qtd": 2,
-        "cesareas": 0
+      "atendimentos": {
+        "atualizadoEm": "2026-07-24T23:27:15.02511-03:00",
+        "mesAnterior": {
+          "rotulo": "junho/2026",
+          "total": 38050,
+          "dias": 30,
+          "mediaDiaria": 1268.3
+        },
+        "mesAtual": {
+          "rotulo": "julho/2026",
+          "total": 29921,
+          "diasCompletos": 23,
+          "totalDiasCompletos": 28777,
+          "mediaDiaria": 1251.2
+        },
+        "hoje": {
+          "total": 1144
+        },
+        "serieDiaria": [
+          {
+            "dia": "2026-07-20",
+            "qtd": 1384
+          },
+          {
+            "dia": "2026-07-21",
+            "qtd": 1402
+          },
+          {
+            "dia": "2026-07-22",
+            "qtd": 1296
+          },
+          {
+            "dia": "2026-07-23",
+            "qtd": 1260
+          },
+          {
+            "dia": "2026-07-24",
+            "qtd": 1144
+          }
+        ],
+        "porHoraHoje": [
+          {
+            "hora": 20,
+            "qtd": 45
+          },
+          {
+            "hora": 21,
+            "qtd": 34
+          },
+          {
+            "hora": 22,
+            "qtd": 42
+          },
+          {
+            "hora": 23,
+            "qtd": 11
+          }
+        ]
       },
-      {
-        "dia": "2026-07-13",
-        "qtd": 1,
-        "cesareas": 0
+      "internacoes": {
+        "atualizadoEm": "2026-07-24T23:27:15.02511-03:00",
+        "mesAnterior": {
+          "rotulo": "junho/2026",
+          "total": 739,
+          "maternidade": 221,
+          "ate17": 102,
+          "adultos": 416,
+          "mediaDiaria": 24.6
+        },
+        "mesAtual": {
+          "rotulo": "julho/2026",
+          "total": 614,
+          "maternidade": 201,
+          "ate17": 73,
+          "adultos": 340,
+          "mediaDiaria": 25.3
+        },
+        "hoje": {
+          "total": 32,
+          "maternidade": 10,
+          "ate17": 2,
+          "adultos": 20
+        },
+        "serieDiaria": [
+          {
+            "dia": "2026-07-20",
+            "qtd": 25,
+            "maternidade": 7,
+            "ate17": 2,
+            "adultos": 16
+          },
+          {
+            "dia": "2026-07-21",
+            "qtd": 29,
+            "maternidade": 9,
+            "ate17": 1,
+            "adultos": 19
+          },
+          {
+            "dia": "2026-07-22",
+            "qtd": 22,
+            "maternidade": 1,
+            "ate17": 4,
+            "adultos": 17
+          },
+          {
+            "dia": "2026-07-23",
+            "qtd": 32,
+            "maternidade": 12,
+            "ate17": 4,
+            "adultos": 16
+          },
+          {
+            "dia": "2026-07-24",
+            "qtd": 32,
+            "maternidade": 10,
+            "ate17": 2,
+            "adultos": 20
+          }
+        ],
+        "escopo": "Hospital Municipal Conde Modesto Leal"
       },
-      {
-        "dia": "2026-07-14",
-        "qtd": 3,
-        "cesareas": 2
+      "esperaPorCor": {
+        "atualizadoEm": "2026-07-24T23:27:15.02511-03:00",
+        "periodos": {
+          "hoje": [
+            {
+              "cor": "VERMELHO",
+              "pacientes": 7,
+              "comAtendimento": 7,
+              "mediaAteTriagem": 4.3,
+              "mediaEspera": 57.8,
+              "medianaEspera": 54.3,
+              "p90Espera": 96.6,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "LARANJA",
+              "pacientes": 0,
+              "comAtendimento": 0,
+              "mediaAteTriagem": null,
+              "mediaEspera": null,
+              "medianaEspera": null,
+              "p90Espera": null,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "AMARELO",
+              "pacientes": 206,
+              "comAtendimento": 201,
+              "mediaAteTriagem": 13.6,
+              "mediaEspera": 16.5,
+              "medianaEspera": 13.4,
+              "p90Espera": 31.6,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "VERDE",
+              "pacientes": 760,
+              "comAtendimento": 709,
+              "mediaAteTriagem": 8.8,
+              "mediaEspera": 44,
+              "medianaEspera": 28.2,
+              "p90Espera": 111.6,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "AZUL",
+              "pacientes": 48,
+              "comAtendimento": 38,
+              "mediaAteTriagem": 6.3,
+              "mediaEspera": 82.9,
+              "medianaEspera": 71.1,
+              "p90Espera": 164.6,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "SEM_CLASSIFICACAO",
+              "pacientes": 44,
+              "comAtendimento": 22,
+              "mediaAteTriagem": null,
+              "mediaEspera": 81.6,
+              "medianaEspera": 66.5,
+              "p90Espera": 165.3,
+              "metaMin": null,
+              "pctNaMeta": null
+            }
+          ],
+          "mesAtual": [
+            {
+              "cor": "VERMELHO",
+              "pacientes": 269,
+              "comAtendimento": 251,
+              "mediaAteTriagem": 37.8,
+              "mediaEspera": 15.1,
+              "medianaEspera": 10.3,
+              "p90Espera": 31.9,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "LARANJA",
+              "pacientes": 1,
+              "comAtendimento": 1,
+              "mediaAteTriagem": 8,
+              "mediaEspera": 3,
+              "medianaEspera": 3,
+              "p90Espera": 3,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "AMARELO",
+              "pacientes": 6238,
+              "comAtendimento": 6077,
+              "mediaAteTriagem": 16.3,
+              "mediaEspera": 20.1,
+              "medianaEspera": 13.4,
+              "p90Espera": 41.3,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "VERDE",
+              "pacientes": 19413,
+              "comAtendimento": 18676,
+              "mediaAteTriagem": 11.6,
+              "mediaEspera": 41.6,
+              "medianaEspera": 29.8,
+              "p90Espera": 93.1,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "AZUL",
+              "pacientes": 978,
+              "comAtendimento": 822,
+              "mediaAteTriagem": 7.7,
+              "mediaEspera": 54.7,
+              "medianaEspera": 38.4,
+              "p90Espera": 124.3,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "SEM_CLASSIFICACAO",
+              "pacientes": 1577,
+              "comAtendimento": 578,
+              "mediaAteTriagem": null,
+              "mediaEspera": 71.1,
+              "medianaEspera": 62.9,
+              "p90Espera": 126.5,
+              "metaMin": null,
+              "pctNaMeta": null
+            }
+          ],
+          "mesAnterior": [
+            {
+              "cor": "VERMELHO",
+              "pacientes": 176,
+              "comAtendimento": 159,
+              "mediaAteTriagem": 291.3,
+              "mediaEspera": 30.2,
+              "medianaEspera": 17.9,
+              "p90Espera": 54.5,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "LARANJA",
+              "pacientes": 63,
+              "comAtendimento": 46,
+              "mediaAteTriagem": 152.1,
+              "mediaEspera": 40.5,
+              "medianaEspera": 13.5,
+              "p90Espera": 46.8,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "AMARELO",
+              "pacientes": 8001,
+              "comAtendimento": 7664,
+              "mediaAteTriagem": 27.1,
+              "mediaEspera": 20.3,
+              "medianaEspera": 13.7,
+              "p90Espera": 41.2,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "VERDE",
+              "pacientes": 25140,
+              "comAtendimento": 23863,
+              "mediaAteTriagem": 11,
+              "mediaEspera": 188.3,
+              "medianaEspera": 27.6,
+              "p90Espera": 86.4,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "AZUL",
+              "pacientes": 1065,
+              "comAtendimento": 883,
+              "mediaAteTriagem": 6.3,
+              "mediaEspera": 53.2,
+              "medianaEspera": 33.9,
+              "p90Espera": 123.5,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "SEM_CLASSIFICACAO",
+              "pacientes": 1981,
+              "comAtendimento": 706,
+              "mediaAteTriagem": null,
+              "mediaEspera": 69.4,
+              "medianaEspera": 61.2,
+              "p90Espera": 122.6,
+              "metaMin": null,
+              "pctNaMeta": null
+            }
+          ]
+        }
       },
-      {
-        "dia": "2026-07-15",
-        "qtd": 4,
-        "cesareas": 2
-      },
-      {
-        "dia": "2026-07-16",
-        "qtd": 5,
-        "cesareas": 2
-      },
-      {
-        "dia": "2026-07-17",
-        "qtd": 6,
-        "cesareas": 5
-      },
-      {
-        "dia": "2026-07-18",
-        "qtd": 5,
-        "cesareas": 4
-      },
-      {
-        "dia": "2026-07-19",
-        "qtd": 2,
-        "cesareas": 0
-      },
-      {
-        "dia": "2026-07-20",
-        "qtd": 3,
-        "cesareas": 1
-      },
-      {
-        "dia": "2026-07-21",
-        "qtd": 3,
-        "cesareas": 2
-      },
-      {
-        "dia": "2026-07-22",
-        "qtd": 0,
-        "cesareas": 0
-      },
-      {
-        "dia": "2026-07-23",
-        "qtd": 4,
-        "cesareas": 4
-      },
-      {
-        "dia": "2026-07-24",
-        "qtd": 4,
-        "cesareas": 2
+      "maternidade": {
+        "atualizadoEm": "2026-07-24T23:27:15.02511-03:00",
+        "mesAnterior": {
+          "rotulo": "junho/2026",
+          "partos": 94,
+          "cesareas": 60,
+          "vaginais": 34,
+          "prematuros": 4,
+          "baixoPeso": 4,
+          "pesoMedioKg": 3.3,
+          "apgar5Abaixo7": 1,
+          "meninas": 46,
+          "meninos": 48,
+          "mediaDiaria": 3.1,
+          "pctCesarea": 63.8
+        },
+        "mesAtual": {
+          "rotulo": "julho/2026",
+          "partos": 83,
+          "cesareas": 45,
+          "vaginais": 38,
+          "prematuros": 1,
+          "baixoPeso": 6,
+          "pesoMedioKg": 3.3,
+          "apgar5Abaixo7": 1,
+          "meninas": 46,
+          "meninos": 37,
+          "mediaDiaria": 3.4,
+          "pctCesarea": 54.2
+        },
+        "hoje": {
+          "rotulo": "hoje",
+          "partos": 4,
+          "cesareas": 2,
+          "vaginais": 2,
+          "prematuros": 0,
+          "baixoPeso": 0,
+          "pesoMedioKg": 3.3,
+          "apgar5Abaixo7": 0,
+          "meninas": 1,
+          "meninos": 3,
+          "mediaDiaria": null,
+          "pctCesarea": 50
+        },
+        "serieDiaria": [
+          {
+            "dia": "2026-07-20",
+            "qtd": 3,
+            "cesareas": 1
+          },
+          {
+            "dia": "2026-07-21",
+            "qtd": 3,
+            "cesareas": 2
+          },
+          {
+            "dia": "2026-07-22",
+            "qtd": 0,
+            "cesareas": 0
+          },
+          {
+            "dia": "2026-07-23",
+            "qtd": 4,
+            "cesareas": 4
+          },
+          {
+            "dia": "2026-07-24",
+            "qtd": 4,
+            "cesareas": 2
+          }
+        ],
+        "escopo": "Hospital Municipal Conde Modesto Leal"
       }
-    ]
-  }
+    },
+    {
+      "id": "conde",
+      "rotulo": "Conde",
+      "nome": "Hospital Municipal Conde Modesto Leal",
+      "fonte": "Salux HIS — Hospital Municipal Conde Modesto Leal",
+      "coresUsadas": [
+        "VERMELHO",
+        "AMARELO",
+        "VERDE",
+        "AZUL",
+        "SEM_CLASSIFICACAO"
+      ],
+      "agora": {
+        "atualizadoEm": "2026-07-24T23:27:03.9784601-03:00",
+        "aguardandoMedico": 48,
+        "aguardandoPorCor": [
+          {
+            "cor": "VERMELHO",
+            "qtd": 0,
+            "minMedioEspera": null
+          },
+          {
+            "cor": "LARANJA",
+            "qtd": 0,
+            "minMedioEspera": null
+          },
+          {
+            "cor": "AMARELO",
+            "qtd": 2,
+            "minMedioEspera": 330
+          },
+          {
+            "cor": "VERDE",
+            "qtd": 29,
+            "minMedioEspera": 370
+          },
+          {
+            "cor": "AZUL",
+            "qtd": 5,
+            "minMedioEspera": 415
+          },
+          {
+            "cor": "SEM_CLASSIFICACAO",
+            "qtd": 12,
+            "minMedioEspera": 380
+          }
+        ],
+        "emAtendimento": 140,
+        "atendimentosHoje": 520,
+        "internados": {
+          "total": 155,
+          "maternidade": 23,
+          "ate17": 5,
+          "adultos": 127,
+          "mediaDiasInternacao": 7.5,
+          "internacoesHoje": 32,
+          "escopo": null
+        }
+      },
+      "atendimentos": {
+        "atualizadoEm": "2026-07-24T23:27:15.02511-03:00",
+        "mesAnterior": {
+          "rotulo": "junho/2026",
+          "total": 17405,
+          "dias": 30,
+          "mediaDiaria": 580.2
+        },
+        "mesAtual": {
+          "rotulo": "julho/2026",
+          "total": 13637,
+          "diasCompletos": 23,
+          "totalDiasCompletos": 13117,
+          "mediaDiaria": 570.3
+        },
+        "hoje": {
+          "total": 520
+        },
+        "serieDiaria": [
+          {
+            "dia": "2026-07-20",
+            "qtd": 633
+          },
+          {
+            "dia": "2026-07-21",
+            "qtd": 620
+          },
+          {
+            "dia": "2026-07-22",
+            "qtd": 595
+          },
+          {
+            "dia": "2026-07-23",
+            "qtd": 576
+          },
+          {
+            "dia": "2026-07-24",
+            "qtd": 520
+          }
+        ],
+        "porHoraHoje": [
+          {
+            "hora": 20,
+            "qtd": 17
+          },
+          {
+            "hora": 21,
+            "qtd": 19
+          },
+          {
+            "hora": 22,
+            "qtd": 15
+          },
+          {
+            "hora": 23,
+            "qtd": 6
+          }
+        ]
+      },
+      "internacoes": {
+        "atualizadoEm": "2026-07-24T23:27:15.02511-03:00",
+        "mesAnterior": {
+          "rotulo": "junho/2026",
+          "total": 739,
+          "maternidade": 221,
+          "ate17": 102,
+          "adultos": 416,
+          "mediaDiaria": 24.6
+        },
+        "mesAtual": {
+          "rotulo": "julho/2026",
+          "total": 614,
+          "maternidade": 201,
+          "ate17": 73,
+          "adultos": 340,
+          "mediaDiaria": 25.3
+        },
+        "hoje": {
+          "total": 32,
+          "maternidade": 10,
+          "ate17": 2,
+          "adultos": 20
+        },
+        "serieDiaria": [
+          {
+            "dia": "2026-07-20",
+            "qtd": 25,
+            "maternidade": 7,
+            "ate17": 2,
+            "adultos": 16
+          },
+          {
+            "dia": "2026-07-21",
+            "qtd": 29,
+            "maternidade": 9,
+            "ate17": 1,
+            "adultos": 19
+          },
+          {
+            "dia": "2026-07-22",
+            "qtd": 22,
+            "maternidade": 1,
+            "ate17": 4,
+            "adultos": 17
+          },
+          {
+            "dia": "2026-07-23",
+            "qtd": 32,
+            "maternidade": 12,
+            "ate17": 4,
+            "adultos": 16
+          },
+          {
+            "dia": "2026-07-24",
+            "qtd": 32,
+            "maternidade": 10,
+            "ate17": 2,
+            "adultos": 20
+          }
+        ],
+        "escopo": null
+      },
+      "esperaPorCor": {
+        "atualizadoEm": "2026-07-24T23:27:15.02511-03:00",
+        "periodos": {
+          "hoje": [
+            {
+              "cor": "VERMELHO",
+              "pacientes": 2,
+              "comAtendimento": 2,
+              "mediaAteTriagem": 3.7,
+              "mediaEspera": 110.2,
+              "medianaEspera": 110.2,
+              "p90Espera": 147.2,
+              "metaMin": 15,
+              "pctNaMeta": 0
+            },
+            {
+              "cor": "LARANJA",
+              "pacientes": 0,
+              "comAtendimento": 0,
+              "mediaAteTriagem": null,
+              "mediaEspera": null,
+              "medianaEspera": null,
+              "p90Espera": null,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "AMARELO",
+              "pacientes": 121,
+              "comAtendimento": 119,
+              "mediaAteTriagem": 7.1,
+              "mediaEspera": 17.7,
+              "medianaEspera": 13.4,
+              "p90Espera": 35.3,
+              "metaMin": 30,
+              "pctNaMeta": 85.7
+            },
+            {
+              "cor": "VERDE",
+              "pacientes": 251,
+              "comAtendimento": 217,
+              "mediaAteTriagem": 5.5,
+              "mediaEspera": 70.7,
+              "medianaEspera": 31.2,
+              "p90Espera": 227.3,
+              "metaMin": 60,
+              "pctNaMeta": 64.5
+            },
+            {
+              "cor": "AZUL",
+              "pacientes": 45,
+              "comAtendimento": 36,
+              "mediaAteTriagem": 5.9,
+              "mediaEspera": 86,
+              "medianaEspera": 73.5,
+              "p90Espera": 171.5,
+              "metaMin": 1440,
+              "pctNaMeta": 100
+            },
+            {
+              "cor": "SEM_CLASSIFICACAO",
+              "pacientes": 22,
+              "comAtendimento": 22,
+              "mediaAteTriagem": null,
+              "mediaEspera": 81.6,
+              "medianaEspera": 66.5,
+              "p90Espera": 165.3,
+              "metaMin": null,
+              "pctNaMeta": null
+            }
+          ],
+          "mesAtual": [
+            {
+              "cor": "VERMELHO",
+              "pacientes": 21,
+              "comAtendimento": 20,
+              "mediaAteTriagem": 7.5,
+              "mediaEspera": 33.4,
+              "medianaEspera": 23.4,
+              "p90Espera": 66.7,
+              "metaMin": 15,
+              "pctNaMeta": 35
+            },
+            {
+              "cor": "LARANJA",
+              "pacientes": 0,
+              "comAtendimento": 0,
+              "mediaAteTriagem": null,
+              "mediaEspera": null,
+              "medianaEspera": null,
+              "p90Espera": null,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "AMARELO",
+              "pacientes": 3425,
+              "comAtendimento": 3329,
+              "mediaAteTriagem": 7.4,
+              "mediaEspera": 23.5,
+              "medianaEspera": 14.7,
+              "p90Espera": 49.3,
+              "metaMin": 30,
+              "pctNaMeta": 77.5
+            },
+            {
+              "cor": "VERDE",
+              "pacientes": 7173,
+              "comAtendimento": 6622,
+              "mediaAteTriagem": 6.5,
+              "mediaEspera": 53.1,
+              "medianaEspera": 36.5,
+              "p90Espera": 123.9,
+              "metaMin": 60,
+              "pctNaMeta": 67.2
+            },
+            {
+              "cor": "AZUL",
+              "pacientes": 939,
+              "comAtendimento": 795,
+              "mediaAteTriagem": 5.8,
+              "mediaEspera": 55.5,
+              "medianaEspera": 39.2,
+              "p90Espera": 126.2,
+              "metaMin": 1440,
+              "pctNaMeta": 100
+            },
+            {
+              "cor": "SEM_CLASSIFICACAO",
+              "pacientes": 634,
+              "comAtendimento": 578,
+              "mediaAteTriagem": null,
+              "mediaEspera": 71.1,
+              "medianaEspera": 62.9,
+              "p90Espera": 126.5,
+              "metaMin": null,
+              "pctNaMeta": null
+            }
+          ],
+          "mesAnterior": [
+            {
+              "cor": "VERMELHO",
+              "pacientes": 10,
+              "comAtendimento": 10,
+              "mediaAteTriagem": 11.9,
+              "mediaEspera": 49.1,
+              "medianaEspera": 18,
+              "p90Espera": 103.4,
+              "metaMin": 15,
+              "pctNaMeta": 40
+            },
+            {
+              "cor": "LARANJA",
+              "pacientes": 0,
+              "comAtendimento": 0,
+              "mediaAteTriagem": null,
+              "mediaEspera": null,
+              "medianaEspera": null,
+              "p90Espera": null,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "AMARELO",
+              "pacientes": 4317,
+              "comAtendimento": 4071,
+              "mediaAteTriagem": 8,
+              "mediaEspera": 23.9,
+              "medianaEspera": 15,
+              "p90Espera": 49.7,
+              "metaMin": 30,
+              "pctNaMeta": 76.6
+            },
+            {
+              "cor": "VERDE",
+              "pacientes": 9644,
+              "comAtendimento": 8545,
+              "mediaAteTriagem": 6.8,
+              "mediaEspera": 51.8,
+              "medianaEspera": 35.4,
+              "p90Espera": 114.7,
+              "metaMin": 60,
+              "pctNaMeta": 68.8
+            },
+            {
+              "cor": "AZUL",
+              "pacientes": 1033,
+              "comAtendimento": 867,
+              "mediaAteTriagem": 5.4,
+              "mediaEspera": 54,
+              "medianaEspera": 34.4,
+              "p90Espera": 125.3,
+              "metaMin": 1440,
+              "pctNaMeta": 99.9
+            },
+            {
+              "cor": "SEM_CLASSIFICACAO",
+              "pacientes": 777,
+              "comAtendimento": 706,
+              "mediaAteTriagem": null,
+              "mediaEspera": 69.4,
+              "medianaEspera": 61.2,
+              "p90Espera": 122.6,
+              "metaMin": null,
+              "pctNaMeta": null
+            }
+          ]
+        }
+      },
+      "maternidade": {
+        "atualizadoEm": "2026-07-24T23:27:15.02511-03:00",
+        "mesAnterior": {
+          "rotulo": "junho/2026",
+          "partos": 94,
+          "cesareas": 60,
+          "vaginais": 34,
+          "prematuros": 4,
+          "baixoPeso": 4,
+          "pesoMedioKg": 3.3,
+          "apgar5Abaixo7": 1,
+          "meninas": 46,
+          "meninos": 48,
+          "mediaDiaria": 3.1,
+          "pctCesarea": 63.8
+        },
+        "mesAtual": {
+          "rotulo": "julho/2026",
+          "partos": 83,
+          "cesareas": 45,
+          "vaginais": 38,
+          "prematuros": 1,
+          "baixoPeso": 6,
+          "pesoMedioKg": 3.3,
+          "apgar5Abaixo7": 1,
+          "meninas": 46,
+          "meninos": 37,
+          "mediaDiaria": 3.4,
+          "pctCesarea": 54.2
+        },
+        "hoje": {
+          "rotulo": "hoje",
+          "partos": 4,
+          "cesareas": 2,
+          "vaginais": 2,
+          "prematuros": 0,
+          "baixoPeso": 0,
+          "pesoMedioKg": 3.3,
+          "apgar5Abaixo7": 0,
+          "meninas": 1,
+          "meninos": 3,
+          "mediaDiaria": null,
+          "pctCesarea": 50
+        },
+        "serieDiaria": [
+          {
+            "dia": "2026-07-20",
+            "qtd": 3,
+            "cesareas": 1
+          },
+          {
+            "dia": "2026-07-21",
+            "qtd": 3,
+            "cesareas": 2
+          },
+          {
+            "dia": "2026-07-22",
+            "qtd": 0,
+            "cesareas": 0
+          },
+          {
+            "dia": "2026-07-23",
+            "qtd": 4,
+            "cesareas": 4
+          },
+          {
+            "dia": "2026-07-24",
+            "qtd": 4,
+            "cesareas": 2
+          }
+        ],
+        "escopo": null
+      }
+    },
+    {
+      "id": "upa",
+      "rotulo": "UPA",
+      "nome": "UPA 24h Maricá",
+      "fonte": "HIS da UPA 24h Maricá (CNES 7164440)",
+      "coresUsadas": [
+        "VERMELHO",
+        "LARANJA",
+        "AMARELO",
+        "VERDE",
+        "AZUL",
+        "SEM_CLASSIFICACAO"
+      ],
+      "agora": {
+        "atualizadoEm": "2026-07-24T23:27:05.1731299-03:00",
+        "aguardandoMedico": 2,
+        "aguardandoPorCor": [
+          {
+            "cor": "VERMELHO",
+            "qtd": 0,
+            "minMedioEspera": null
+          },
+          {
+            "cor": "LARANJA",
+            "qtd": 0,
+            "minMedioEspera": null
+          },
+          {
+            "cor": "AMARELO",
+            "qtd": 0,
+            "minMedioEspera": null
+          },
+          {
+            "cor": "VERDE",
+            "qtd": 2,
+            "minMedioEspera": 8
+          },
+          {
+            "cor": "AZUL",
+            "qtd": 0,
+            "minMedioEspera": null
+          },
+          {
+            "cor": "SEM_CLASSIFICACAO",
+            "qtd": 0,
+            "minMedioEspera": null
+          }
+        ],
+        "emAtendimento": 7,
+        "atendimentosHoje": 387,
+        "internados": null
+      },
+      "atendimentos": {
+        "atualizadoEm": "2026-07-24T23:27:20.8137575-03:00",
+        "mesAnterior": {
+          "rotulo": "junho/2026",
+          "total": 12993,
+          "dias": 30,
+          "mediaDiaria": 433.1
+        },
+        "mesAtual": {
+          "rotulo": "julho/2026",
+          "total": 10208,
+          "diasCompletos": 23,
+          "totalDiasCompletos": 9821,
+          "mediaDiaria": 427
+        },
+        "hoje": {
+          "total": 387
+        },
+        "serieDiaria": [
+          {
+            "dia": "2026-07-20",
+            "qtd": 467
+          },
+          {
+            "dia": "2026-07-21",
+            "qtd": 505
+          },
+          {
+            "dia": "2026-07-22",
+            "qtd": 457
+          },
+          {
+            "dia": "2026-07-23",
+            "qtd": 427
+          },
+          {
+            "dia": "2026-07-24",
+            "qtd": 387
+          }
+        ],
+        "porHoraHoje": [
+          {
+            "hora": 20,
+            "qtd": 14
+          },
+          {
+            "hora": 21,
+            "qtd": 8
+          },
+          {
+            "hora": 22,
+            "qtd": 14
+          },
+          {
+            "hora": 23,
+            "qtd": 3
+          }
+        ]
+      },
+      "internacoes": null,
+      "esperaPorCor": {
+        "atualizadoEm": "2026-07-24T23:27:20.8137575-03:00",
+        "periodos": {
+          "hoje": [
+            {
+              "cor": "VERMELHO",
+              "pacientes": 5,
+              "comAtendimento": 5,
+              "mediaAteTriagem": 4.6,
+              "mediaEspera": 36.8,
+              "medianaEspera": 32,
+              "p90Espera": 76.4,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "LARANJA",
+              "pacientes": 0,
+              "comAtendimento": 0,
+              "mediaAteTriagem": null,
+              "mediaEspera": null,
+              "medianaEspera": null,
+              "p90Espera": null,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "AMARELO",
+              "pacientes": 47,
+              "comAtendimento": 47,
+              "mediaAteTriagem": 11,
+              "mediaEspera": 15.6,
+              "medianaEspera": 15,
+              "p90Espera": 29.4,
+              "metaMin": 60,
+              "pctNaMeta": 100
+            },
+            {
+              "cor": "VERDE",
+              "pacientes": 311,
+              "comAtendimento": 300,
+              "mediaAteTriagem": 12.1,
+              "mediaEspera": 40,
+              "medianaEspera": 31.5,
+              "p90Espera": 76.3,
+              "metaMin": 120,
+              "pctNaMeta": 95.7
+            },
+            {
+              "cor": "AZUL",
+              "pacientes": 3,
+              "comAtendimento": 2,
+              "mediaAteTriagem": 12.7,
+              "mediaEspera": 28,
+              "medianaEspera": 28,
+              "p90Espera": 40,
+              "metaMin": 240,
+              "pctNaMeta": 100
+            },
+            {
+              "cor": "SEM_CLASSIFICACAO",
+              "pacientes": 21,
+              "comAtendimento": 0,
+              "mediaAteTriagem": null,
+              "mediaEspera": null,
+              "medianaEspera": null,
+              "p90Espera": null,
+              "metaMin": null,
+              "pctNaMeta": null
+            }
+          ],
+          "mesAtual": [
+            {
+              "cor": "VERMELHO",
+              "pacientes": 69,
+              "comAtendimento": 57,
+              "mediaAteTriagem": 131.3,
+              "mediaEspera": 25.2,
+              "medianaEspera": 19,
+              "p90Espera": 59.2,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "LARANJA",
+              "pacientes": 1,
+              "comAtendimento": 1,
+              "mediaAteTriagem": 8,
+              "mediaEspera": 3,
+              "medianaEspera": 3,
+              "p90Espera": 3,
+              "metaMin": 10,
+              "pctNaMeta": 100
+            },
+            {
+              "cor": "AMARELO",
+              "pacientes": 1624,
+              "comAtendimento": 1582,
+              "mediaAteTriagem": 38.3,
+              "mediaEspera": 14.9,
+              "medianaEspera": 11,
+              "p90Espera": 28.9,
+              "metaMin": 60,
+              "pctNaMeta": 99
+            },
+            {
+              "cor": "VERDE",
+              "pacientes": 7574,
+              "comAtendimento": 7436,
+              "mediaAteTriagem": 18.8,
+              "mediaEspera": 37.1,
+              "medianaEspera": 28,
+              "p90Espera": 80,
+              "metaMin": 120,
+              "pctNaMeta": 97.8
+            },
+            {
+              "cor": "AZUL",
+              "pacientes": 37,
+              "comAtendimento": 25,
+              "mediaAteTriagem": 36.7,
+              "mediaEspera": 31.7,
+              "medianaEspera": 16,
+              "p90Espera": 72.2,
+              "metaMin": 240,
+              "pctNaMeta": 100
+            },
+            {
+              "cor": "SEM_CLASSIFICACAO",
+              "pacientes": 903,
+              "comAtendimento": 0,
+              "mediaAteTriagem": null,
+              "mediaEspera": null,
+              "medianaEspera": null,
+              "p90Espera": null,
+              "metaMin": null,
+              "pctNaMeta": null
+            }
+          ],
+          "mesAnterior": [
+            {
+              "cor": "VERMELHO",
+              "pacientes": 78,
+              "comAtendimento": 62,
+              "mediaAteTriagem": 648,
+              "mediaEspera": 33.8,
+              "medianaEspera": 13.5,
+              "p90Espera": 46.8,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "LARANJA",
+              "pacientes": 54,
+              "comAtendimento": 39,
+              "mediaAteTriagem": 159.7,
+              "mediaEspera": 41.8,
+              "medianaEspera": 13,
+              "p90Espera": 41.4,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "AMARELO",
+              "pacientes": 2039,
+              "comAtendimento": 1972,
+              "mediaAteTriagem": 51.4,
+              "mediaEspera": 14.5,
+              "medianaEspera": 10,
+              "p90Espera": 28.9,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "VERDE",
+              "pacientes": 9670,
+              "comAtendimento": 9543,
+              "mediaAteTriagem": 17,
+              "mediaEspera": 33.1,
+              "medianaEspera": 24,
+              "p90Espera": 71,
+              "metaMin": 120,
+              "pctNaMeta": 98.5
+            },
+            {
+              "cor": "AZUL",
+              "pacientes": 30,
+              "comAtendimento": 14,
+              "mediaAteTriagem": 38.8,
+              "mediaEspera": 11.6,
+              "medianaEspera": 4.5,
+              "p90Espera": 28.4,
+              "metaMin": 240,
+              "pctNaMeta": 100
+            },
+            {
+              "cor": "SEM_CLASSIFICACAO",
+              "pacientes": 1122,
+              "comAtendimento": 0,
+              "mediaAteTriagem": null,
+              "mediaEspera": null,
+              "medianaEspera": null,
+              "p90Espera": null,
+              "metaMin": null,
+              "pctNaMeta": null
+            }
+          ]
+        }
+      },
+      "maternidade": null
+    },
+    {
+      "id": "santarita",
+      "rotulo": "Sta. Rita",
+      "nome": "UPA 24h Santa Rita",
+      "fonte": "HIS da UPA 24h Santa Rita",
+      "coresUsadas": [
+        "VERMELHO",
+        "LARANJA",
+        "AMARELO",
+        "VERDE",
+        "AZUL",
+        "SEM_CLASSIFICACAO"
+      ],
+      "agora": {
+        "atualizadoEm": "2026-07-24T23:27:06.0900689-03:00",
+        "aguardandoMedico": 5,
+        "aguardandoPorCor": [
+          {
+            "cor": "VERMELHO",
+            "qtd": 0,
+            "minMedioEspera": null
+          },
+          {
+            "cor": "LARANJA",
+            "qtd": 0,
+            "minMedioEspera": null
+          },
+          {
+            "cor": "AMARELO",
+            "qtd": 1,
+            "minMedioEspera": 19
+          },
+          {
+            "cor": "VERDE",
+            "qtd": 3,
+            "minMedioEspera": 35
+          },
+          {
+            "cor": "AZUL",
+            "qtd": 0,
+            "minMedioEspera": null
+          },
+          {
+            "cor": "SEM_CLASSIFICACAO",
+            "qtd": 1,
+            "minMedioEspera": 13
+          }
+        ],
+        "emAtendimento": 15,
+        "atendimentosHoje": 237,
+        "internados": null
+      },
+      "atendimentos": {
+        "atualizadoEm": "2026-07-24T23:27:24.5656012-03:00",
+        "mesAnterior": {
+          "rotulo": "junho/2026",
+          "total": 7652,
+          "dias": 30,
+          "mediaDiaria": 255.1
+        },
+        "mesAtual": {
+          "rotulo": "julho/2026",
+          "total": 6076,
+          "diasCompletos": 23,
+          "totalDiasCompletos": 5839,
+          "mediaDiaria": 253.9
+        },
+        "hoje": {
+          "total": 237
+        },
+        "serieDiaria": [
+          {
+            "dia": "2026-07-20",
+            "qtd": 284
+          },
+          {
+            "dia": "2026-07-21",
+            "qtd": 277
+          },
+          {
+            "dia": "2026-07-22",
+            "qtd": 244
+          },
+          {
+            "dia": "2026-07-23",
+            "qtd": 257
+          },
+          {
+            "dia": "2026-07-24",
+            "qtd": 237
+          }
+        ],
+        "porHoraHoje": [
+          {
+            "hora": 20,
+            "qtd": 14
+          },
+          {
+            "hora": 21,
+            "qtd": 7
+          },
+          {
+            "hora": 22,
+            "qtd": 13
+          },
+          {
+            "hora": 23,
+            "qtd": 2
+          }
+        ]
+      },
+      "internacoes": null,
+      "esperaPorCor": {
+        "atualizadoEm": "2026-07-24T23:27:24.5656012-03:00",
+        "periodos": {
+          "hoje": [
+            {
+              "cor": "VERMELHO",
+              "pacientes": 0,
+              "comAtendimento": 0,
+              "mediaAteTriagem": null,
+              "mediaEspera": null,
+              "medianaEspera": null,
+              "p90Espera": null,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "LARANJA",
+              "pacientes": 0,
+              "comAtendimento": 0,
+              "mediaAteTriagem": null,
+              "mediaEspera": null,
+              "medianaEspera": null,
+              "p90Espera": null,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "AMARELO",
+              "pacientes": 38,
+              "comAtendimento": 35,
+              "mediaAteTriagem": 37.4,
+              "mediaEspera": 13.7,
+              "medianaEspera": 11,
+              "p90Espera": 22.2,
+              "metaMin": 30,
+              "pctNaMeta": 93.9
+            },
+            {
+              "cor": "VERDE",
+              "pacientes": 198,
+              "comAtendimento": 192,
+              "mediaAteTriagem": 7.7,
+              "mediaEspera": 20,
+              "medianaEspera": 19.5,
+              "p90Espera": 35.9,
+              "metaMin": 60,
+              "pctNaMeta": 99
+            },
+            {
+              "cor": "AZUL",
+              "pacientes": 0,
+              "comAtendimento": 0,
+              "mediaAteTriagem": null,
+              "mediaEspera": null,
+              "medianaEspera": null,
+              "p90Espera": null,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "SEM_CLASSIFICACAO",
+              "pacientes": 1,
+              "comAtendimento": 0,
+              "mediaAteTriagem": null,
+              "mediaEspera": null,
+              "medianaEspera": null,
+              "p90Espera": null,
+              "metaMin": null,
+              "pctNaMeta": null
+            }
+          ],
+          "mesAtual": [
+            {
+              "cor": "VERMELHO",
+              "pacientes": 179,
+              "comAtendimento": 174,
+              "mediaAteTriagem": 5.3,
+              "mediaEspera": 9.7,
+              "medianaEspera": 6,
+              "p90Espera": 19,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "LARANJA",
+              "pacientes": 0,
+              "comAtendimento": 0,
+              "mediaAteTriagem": null,
+              "mediaEspera": null,
+              "medianaEspera": null,
+              "p90Espera": null,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "AMARELO",
+              "pacientes": 1189,
+              "comAtendimento": 1166,
+              "mediaAteTriagem": 11.9,
+              "mediaEspera": 17.5,
+              "medianaEspera": 13,
+              "p90Espera": 35.5,
+              "metaMin": 30,
+              "pctNaMeta": 85
+            },
+            {
+              "cor": "VERDE",
+              "pacientes": 4666,
+              "comAtendimento": 4618,
+              "mediaAteTriagem": 7.6,
+              "mediaEspera": 32.4,
+              "medianaEspera": 23,
+              "p90Espera": 70,
+              "metaMin": 60,
+              "pctNaMeta": 86.4
+            },
+            {
+              "cor": "AZUL",
+              "pacientes": 2,
+              "comAtendimento": 2,
+              "mediaAteTriagem": 355,
+              "mediaEspera": 11,
+              "medianaEspera": 11,
+              "p90Espera": 12.6,
+              "metaMin": 240,
+              "pctNaMeta": 100
+            },
+            {
+              "cor": "SEM_CLASSIFICACAO",
+              "pacientes": 40,
+              "comAtendimento": 0,
+              "mediaAteTriagem": null,
+              "mediaEspera": null,
+              "medianaEspera": null,
+              "p90Espera": null,
+              "metaMin": null,
+              "pctNaMeta": null
+            }
+          ],
+          "mesAnterior": [
+            {
+              "cor": "VERMELHO",
+              "pacientes": 88,
+              "comAtendimento": 87,
+              "mediaAteTriagem": 6.8,
+              "mediaEspera": 25.5,
+              "medianaEspera": 21,
+              "p90Espera": 54.4,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "LARANJA",
+              "pacientes": 9,
+              "comAtendimento": 7,
+              "mediaAteTriagem": 106.4,
+              "mediaEspera": 33.3,
+              "medianaEspera": 16,
+              "p90Espera": 76.6,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "AMARELO",
+              "pacientes": 1645,
+              "comAtendimento": 1621,
+              "mediaAteTriagem": 47,
+              "mediaEspera": 18.3,
+              "medianaEspera": 15,
+              "p90Espera": 35,
+              "metaMin": null,
+              "pctNaMeta": null
+            },
+            {
+              "cor": "VERDE",
+              "pacientes": 5826,
+              "comAtendimento": 5775,
+              "mediaAteTriagem": 8,
+              "mediaEspera": 646.6,
+              "medianaEspera": 22,
+              "p90Espera": 70,
+              "metaMin": 120,
+              "pctNaMeta": 97.8
+            },
+            {
+              "cor": "AZUL",
+              "pacientes": 2,
+              "comAtendimento": 2,
+              "mediaAteTriagem": 5,
+              "mediaEspera": 14.5,
+              "medianaEspera": 14.5,
+              "p90Espera": 15.7,
+              "metaMin": 240,
+              "pctNaMeta": 100
+            },
+            {
+              "cor": "SEM_CLASSIFICACAO",
+              "pacientes": 82,
+              "comAtendimento": 0,
+              "mediaAteTriagem": null,
+              "mediaEspera": null,
+              "medianaEspera": null,
+              "p90Espera": null,
+              "metaMin": null,
+              "pctNaMeta": null
+            }
+          ]
+        }
+      },
+      "maternidade": null
+    }
+  ]
 }

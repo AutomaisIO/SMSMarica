@@ -8,8 +8,6 @@ namespace SMSMarica.Secretario.Api.Painel;
 /// </summary>
 public sealed class SnapshotStore
 {
-    public const string FontePadrao = "Salux HIS — Hospital Municipal Conde Modesto Leal";
-
     // Web defaults (camelCase) também no arquivo: o que está em disco é o mesmo JSON servido.
     private static readonly JsonSerializerOptions OpcoesJson =
         new(JsonSerializerDefaults.Web) { WriteIndented = true };
@@ -33,34 +31,16 @@ public sealed class SnapshotStore
         get { lock (_trava) { return _atual; } }
     }
 
-    /// <summary>Aplica uma mutação sobre o snapshot corrente (pode ser nulo) e troca a referência.</summary>
-    public PainelSnapshot Atualizar(Func<PainelSnapshot?, PainelSnapshot> mutacao)
-    {
-        lock (_trava)
-        {
-            _atual = mutacao(_atual);
-            return _atual;
-        }
-    }
-
     /// <summary>
-    /// Marca falha do Oracle mantendo o último snapshot bom. Se ainda não há snapshot
-    /// nenhum, não cria um vazio — o endpoint continua respondendo 503.
+    /// Troca o snapshot corrente. Quem monta é o atualizador, que mantém o estado vivo de
+    /// cada base — falha de uma delas chega aqui como snapshot completo com a fonte
+    /// marcada em erro, nunca como snapshot vazio.
     /// </summary>
-    public void MarcarFalha(string erroCurto)
+    public void Definir(PainelSnapshot snapshot)
     {
         lock (_trava)
         {
-            if (_atual is null)
-            {
-                return;
-            }
-
-            _atual = _atual with
-            {
-                GeradoEm = FusoBrasilia.Agora(),
-                Oracle = _atual.Oracle with { Ok = false, UltimoErro = erroCurto },
-            };
+            _atual = snapshot;
         }
     }
 
@@ -77,11 +57,21 @@ public sealed class SnapshotStore
 
             var json = File.ReadAllText(_caminhoArquivo);
             var snapshot = JsonSerializer.Deserialize<PainelSnapshot>(json, OpcoesJson);
-            if (snapshot is not null)
+
+            // Arquivo de uma versão anterior do contrato desserializa SEM erro, só com os
+            // campos novos nulos (foi o caso na virada para multi-unidade em 25/07/2026).
+            // Servir isso quebraria o painel de um jeito difícil de ler; melhor ignorar e
+            // subir 503 até o primeiro ciclo — que leva um minuto.
+            if (snapshot is null || snapshot.Unidades is not { Count: > 0 } || snapshot.Status is null)
             {
-                lock (_trava) { _atual = snapshot; }
-                _logger.LogInformation("Snapshot persistido carregado (gerado em {GeradoEm:o}).", snapshot.GeradoEm);
+                _logger.LogWarning(
+                    "Snapshot persistido em {Caminho} é de um contrato anterior — ignorado; aguardando primeira carga.",
+                    _caminhoArquivo);
+                return;
             }
+
+            lock (_trava) { _atual = snapshot; }
+            _logger.LogInformation("Snapshot persistido carregado (gerado em {GeradoEm:o}).", snapshot.GeradoEm);
         }
         catch (Exception ex)
         {

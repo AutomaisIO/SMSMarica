@@ -27,14 +27,25 @@ function mockForcado(): boolean {
 function mockRebaseado(): Painel {
   const base = mockJson as unknown as Painel;
   const agora = new Date().toISOString();
+  const carimbar = <T extends { atualizadoEm: string }>(secao?: T | null) =>
+    secao ? { ...secao, atualizadoEm: agora } : secao;
+
   return {
     ...base,
     geradoEm: agora,
-    oracle: { ...base.oracle, ultimaAtualizacaoOk: agora },
-    agora: base.agora ? { ...base.agora, atualizadoEm: agora } : base.agora,
-    atendimentos: base.atendimentos ? { ...base.atendimentos, atualizadoEm: agora } : base.atendimentos,
-    internacoes: base.internacoes ? { ...base.internacoes, atualizadoEm: agora } : base.internacoes,
-    esperaPorCor: base.esperaPorCor ? { ...base.esperaPorCor, atualizadoEm: agora } : base.esperaPorCor,
+    status: { ...base.status, ultimaAtualizacaoOk: agora },
+    fontes: base.fontes.map((f) => ({
+      ...f,
+      status: { ...f.status, ultimaAtualizacaoOk: agora },
+    })),
+    unidades: base.unidades.map((u) => ({
+      ...u,
+      agora: carimbar(u.agora),
+      atendimentos: carimbar(u.atendimentos),
+      internacoes: carimbar(u.internacoes),
+      esperaPorCor: carimbar(u.esperaPorCor),
+      maternidade: carimbar(u.maternidade),
+    })),
   };
 }
 
@@ -64,8 +75,9 @@ export function usePainel(): EstadoPainel {
       });
       if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
       const json = (await resposta.json()) as Painel;
-      // Cold start: o back pode responder só com a seção "agora" — é payload válido.
-      if (!json || !json.agora) throw new Error('payload inesperado');
+      // Cold start: as seções podem vir nulas — é payload válido. O que não pode
+      // faltar é a lista de unidades, que é o esqueleto da tela.
+      if (!json?.unidades?.length) throw new Error('payload inesperado');
       temDadosReais.current = true;
       setDados(json);
       setUsandoMock(false);

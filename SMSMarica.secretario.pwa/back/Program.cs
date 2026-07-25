@@ -56,7 +56,7 @@ app.MapGet("/api/painel", (SnapshotStore store, HttpResponse resposta) =>
 
     var snapshot = store.Atual;
     return snapshot is null
-        ? Results.Json(new { mensagem = "aguardando primeira carga do Salux" }, opcoesJson, statusCode: StatusCodes.Status503ServiceUnavailable)
+        ? Results.Json(new { mensagem = "aguardando a primeira carga das bases do Conde e da UPA" }, opcoesJson, statusCode: StatusCodes.Status503ServiceUnavailable)
         : Results.Json(snapshot, opcoesJson);
 });
 

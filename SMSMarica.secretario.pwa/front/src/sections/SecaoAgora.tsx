@@ -1,5 +1,5 @@
-import type { Agora, Internacoes } from '@/types/painel';
-import { ordenarPorTriagem } from '@/lib/triagem';
+import type { Agora, CorTriagem, Internacoes } from '@/types/painel';
+import { apenasCoresDaUnidade, ordenarPorTriagem } from '@/lib/triagem';
 import { formatarDecimal, formatarInteiro, horaMinuto } from '@/lib/formatos';
 import { Cartao } from '@/components/Cartao';
 import { ChipCor } from '@/components/ChipCor';
@@ -8,6 +8,8 @@ import { StatTile } from '@/components/StatTile';
 
 interface Props {
   agora: Agora;
+  /** Cores do protocolo da unidade — as outras nem aparecem na fila. */
+  coresUsadas: CorTriagem[];
   /** Split do dia (seção internações) — pode ainda não existir no cold start. */
   internacoesHoje?: Internacoes['hoje'] | null;
 }
@@ -15,9 +17,14 @@ interface Props {
 /**
  * O herói do painel: quantas pessoas aguardam atendimento médico NESTE momento,
  * com a fila aberta por cor de classificação, e a fileira de indicadores vivos.
+ *
+ * Os dois quadros de internação só existem onde há internação (o Conde, e o
+ * "geral" que a repassa etiquetada). Na UPA a fileira fica com dois quadros em vez
+ * de quatro — melhor do que dois zeros que sugerem hospital vazio.
  */
-export function SecaoAgora({ agora, internacoesHoje }: Props) {
-  const filaPorCor = ordenarPorTriagem(agora.aguardandoPorCor);
+export function SecaoAgora({ agora, coresUsadas, internacoesHoje }: Props) {
+  const filaPorCor = ordenarPorTriagem(apenasCoresDaUnidade(agora.aguardandoPorCor, coresUsadas));
+  const internados = agora.internados;
 
   return (
     <section aria-labelledby="titulo-agora" className="space-y-3">
@@ -47,30 +54,36 @@ export function SecaoAgora({ agora, internacoesHoje }: Props) {
           valor={agora.emAtendimento}
           detalhes={['em atendimento ou observação']}
         />
-        <StatTile
-          rotulo="Internados neste momento"
-          valor={agora.internadosAgora}
-          detalhes={[
-            `${formatarInteiro(agora.internadosMaternidade)} maternidade · ${formatarInteiro(agora.internadosAte17)} até 17 anos · ${formatarInteiro(agora.internadosAdultos)} adultos`,
-            `média de ${agora.mediaDiasInternacao != null ? formatarDecimal(agora.mediaDiasInternacao) : '—'} dias de internação`,
-          ]}
-        />
+        {internados && (
+          <StatTile
+            rotulo="Internados neste momento"
+            valor={internados.total}
+            detalhes={[
+              `${formatarInteiro(internados.maternidade)} maternidade · ${formatarInteiro(internados.ate17)} até 17 anos · ${formatarInteiro(internados.adultos)} adultos`,
+              `média de ${internados.mediaDiasInternacao != null ? formatarDecimal(internados.mediaDiasInternacao) : '—'} dias de internação`,
+              ...(internados.escopo ? [`somente ${internados.escopo}`] : []),
+            ]}
+          />
+        )}
         <StatTile
           rotulo="Atendimentos hoje"
           valor={agora.atendimentosHoje}
           detalhes={['boletins abertos desde a 0h']}
         />
-        <StatTile
-          rotulo="Internações hoje"
-          valor={agora.internacoesHoje}
-          detalhes={
-            internacoesHoje
-              ? [
-                  `${formatarInteiro(internacoesHoje.maternidade)} maternidade · ${formatarInteiro(internacoesHoje.ate17)} até 17 anos · ${formatarInteiro(internacoesHoje.adultos)} adultos`,
-                ]
-              : undefined
-          }
-        />
+        {internados && (
+          <StatTile
+            rotulo="Internações hoje"
+            valor={internados.internacoesHoje}
+            detalhes={[
+              ...(internacoesHoje
+                ? [
+                    `${formatarInteiro(internacoesHoje.maternidade)} maternidade · ${formatarInteiro(internacoesHoje.ate17)} até 17 anos · ${formatarInteiro(internacoesHoje.adultos)} adultos`,
+                  ]
+                : []),
+              ...(internados.escopo ? [`somente ${internados.escopo}`] : []),
+            ]}
+          />
+        )}
       </div>
     </section>
   );

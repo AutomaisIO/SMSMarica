@@ -3,6 +3,7 @@ import type { Maternidade, MaternidadePeriodo } from '@/types/painel';
 import { formatarDecimal, formatarInteiro, horaMinuto } from '@/lib/formatos';
 import { Cartao } from '@/components/Cartao';
 import { CabecalhoSecao } from '@/components/CabecalhoSecao';
+import { SeloEscopo } from '@/components/SeloEscopo';
 import { NumeroAnimado } from '@/components/NumeroAnimado';
 import { StatTile } from '@/components/StatTile';
 import { GraficoSerieDiaria } from '@/components/graficos/GraficoSerieDiaria';
@@ -87,6 +88,7 @@ export const SecaoMaternidade = memo(function SecaoMaternidade({
         titulo="Nascimentos"
         tituloId="titulo-maternidade"
         sub={`Partos registrados no hospital · atualizado às ${horaMinuto(maternidade.atualizadoEm)}`}
+        direita={<SeloEscopo escopo={maternidade.escopo} />}
       />
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

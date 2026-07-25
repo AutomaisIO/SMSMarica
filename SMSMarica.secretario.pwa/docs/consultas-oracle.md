@@ -4,6 +4,8 @@ Todas validadas contra o Oracle PROD do Salux (`10.50.0.18:1521/ORASX01`, schema
 
 Hospital fixo: `cd_hospital = 1` (HMCML). UPA Inoã (2) e PA Santa Rita (3) existem na base mas estão **sem movimento** — não incluir.
 
+> ⚠️ As **UPAs 24h do painel** (Maricá e Santa Rita) não são nenhuma dessas duas — em especial, o "PA Santa Rita" sem movimento aqui **não** é a UPA 24h Santa Rita. Elas rodam em outro sistema, um HIS em SQL Server, e têm documento próprio — [`consultas-sqlserver-upa.md`](./consultas-sqlserver-upa.md). Este arquivo cobre só o Conde Modesto Leal.
+
 ## Fatos do schema que NÃO se pode "corrigir"
 
 0. **`FIA.ID_INTERNACAO` NÃO é urgência/eletiva no HMCML.** O levantamento do banco

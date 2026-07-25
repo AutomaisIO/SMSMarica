@@ -1,14 +1,34 @@
 /**
  * Types do GET /api/painel — gerados a partir de docs/contrato-painel.json.
  * O contrato é a verdade: não acrescentar campos que o back não devolve.
+ *
+ * Desde 25/07/2026 o painel é MULTI-UNIDADE: o snapshot traz `unidades[]` com
+ * geral / conde / upa, cada uma com as mesmas seções. O que não existe na unidade
+ * vem NULO, nunca zerado — a UPA não interna nem tem maternidade.
  */
 
-export type CorTriagem = 'VERMELHO' | 'AMARELO' | 'VERDE' | 'AZUL' | 'SEM_CLASSIFICACAO';
+export type CorTriagem =
+  | 'VERMELHO'
+  | 'LARANJA'
+  | 'AMARELO'
+  | 'VERDE'
+  | 'AZUL'
+  | 'SEM_CLASSIFICACAO';
 
-export interface StatusOracle {
+export type UnidadeId = 'geral' | 'conde' | 'upa' | 'santarita';
+
+export interface StatusFonte {
   ok: boolean;
   ultimoErro: string | null;
   ultimaAtualizacaoOk: string | null;
+}
+
+/** Procedência de uma base, com o estado da última leitura. */
+export interface FonteInfo {
+  /** Casa com o id da unidade real correspondente ('conde' | 'upa'). */
+  id: string;
+  nome: string;
+  status: StatusFonte;
 }
 
 export interface AguardandoPorCor {
@@ -18,25 +38,35 @@ export interface AguardandoPorCor {
   minMedioEspera: number | null;
 }
 
-export interface Agora {
-  atualizadoEm: string;
-  aguardandoMedico: number;
-  aguardandoPorCor: AguardandoPorCor[];
-  emAtendimento: number;
-  internadosAgora: number;
+/**
+ * Internados neste momento, nas três faixas exclusivas. Nulo na UPA — a unidade
+ * não interna (a tabela Internacao do HIS dela parou em 25/01/2026).
+ */
+export interface InternadosAgora {
+  total: number;
   /**
    * Split por UNIDADE (leito atual), não por FIA.ID_INTERNACAO: no HMCML o 'E'
    * daquele campo não é "eletiva" — 98% dos casos estão na maternidade e o caráter
    * oficial do SUS é urgência em 100% deles. Ver docs/consultas-oracle.md §Q5.
    */
-  internadosMaternidade: number;
+  maternidade: number;
   /** Crianças e adolescentes (≤17 na entrada) internados FORA da maternidade. */
-  internadosAte17: number;
-  internadosAdultos: number;
+  ate17: number;
+  adultos: number;
   /** Média de dias dos internados atuais (null quando não calculável — ex.: cold start). */
   mediaDiasInternacao: number | null;
-  atendimentosHoje: number;
   internacoesHoje: number;
+  /** Na aba "geral": diz que o número é só do Conde. */
+  escopo: string | null;
+}
+
+export interface Agora {
+  atualizadoEm: string;
+  aguardandoMedico: number;
+  aguardandoPorCor: AguardandoPorCor[];
+  emAtendimento: number;
+  atendimentosHoje: number;
+  internados: InternadosAgora | null;
 }
 
 export interface PontoDia {
@@ -97,6 +127,8 @@ export interface Internacoes {
   mesAtual: MesInternacao;
   hoje: { total: number; maternidade: number; ate17: number; adultos: number };
   serieDiaria: PontoDia[];
+  /** Na aba "geral": a unidade a que o número pertence de fato. */
+  escopo: string | null;
 }
 
 /** Um período do livro de partos (INFOSAUDE.NASCIMENTO). */
@@ -130,6 +162,8 @@ export interface Maternidade {
   mesAtual: MaternidadePeriodo;
   hoje: MaternidadePeriodo;
   serieDiaria: PontoDiaPartos[];
+  /** Na aba "geral": a única maternidade da rede é a do Conde. */
+  escopo: string | null;
 }
 
 export interface EsperaCor {
@@ -140,6 +174,12 @@ export interface EsperaCor {
   mediaEspera: number | null;
   medianaEspera: number | null;
   p90Espera: number | null;
+  /**
+   * Meta em minutos, do cadastro da unidade. Na aba "geral" `metaMin` e `pctNaMeta`
+   * vêm SEMPRE nulos: cada unidade tem sua própria régua para a mesma cor (Amarelo
+   * é 30 min no Conde, 60 na UPA Maricá e 30 em Santa Rita), então a rede não tem
+   * meta e o consolidado mostra só volume e tempo.
+   */
   metaMin: number | null;
   pctNaMeta: number | null;
 }
@@ -158,17 +198,30 @@ export interface EsperaPorCor {
 }
 
 /**
- * No cold start o back responde 200 com apenas `agora` preenchido — as demais
- * seções chegam null/ausentes até o primeiro ciclo dos consolidados. A UI
- * renderiza cada seção de forma independente (seção ausente → skeleton).
+ * Uma aba do painel. No cold start as seções chegam nulas e a UI renderiza
+ * skeleton por seção — seção ausente nunca vira erro global.
  */
-export interface Painel {
-  geradoEm: string;
+export interface UnidadePainel {
+  id: UnidadeId;
+  /** Rótulo curto do seletor. */
+  rotulo: string;
+  /** Nome por extenso. */
+  nome: string;
+  /** Linha de procedência dos números. */
   fonte: string;
-  oracle: StatusOracle;
+  /** Cores que ESTA unidade usa — as demais são apagadas em vez de mostradas como 0. */
+  coresUsadas: CorTriagem[];
   agora?: Agora | null;
   atendimentos?: Atendimentos | null;
   internacoes?: Internacoes | null;
   esperaPorCor?: EsperaPorCor | null;
   maternidade?: Maternidade | null;
+}
+
+export interface Painel {
+  geradoEm: string;
+  /** Consolidado: só está ok com TODAS as bases ok. */
+  status: StatusFonte;
+  fontes: FonteInfo[];
+  unidades: UnidadePainel[];
 }
