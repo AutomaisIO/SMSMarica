@@ -245,4 +245,105 @@ public static class ConsultasPainel
          GROUP BY cr.ds_classificacao_risco, cr.cd_classificacao_risco
          ORDER BY cr.cd_classificacao_risco
         """;
+
+    // ── L1..L3 — Leitos e permanência (tick lento) ─────────────────────────────
+
+    /// <summary>
+    /// Internados AGORA (a mesma população da Q1c). Fica numa constante porque as três
+    /// consultas de leito precisam exatamente do mesmo recorte — se divergirem, o painel
+    /// mostra ocupação que não bate com o número de internados exibido ao lado.
+    /// </summary>
+    private static string InternadosAgora(int hospital) => $"""
+           WHERE f.cd_hospital = {hospital} AND f.dt_alta IS NULL AND f.dt_baixa >= SYSDATE - 120
+        """;
+
+    /// <summary>
+    /// L1: ocupação por setor. Só unidades ATIVAS (<c>id_condicao_unidade = 'A'</c>) —
+    /// uma enfermaria desativada tem leito cadastrado mas não é capacidade, e incluí-la
+    /// afundaria a taxa de ocupação com 73 leitos fantasmas.
+    ///
+    /// Ocupados = pacientes reais no leito atual; bloqueados = <c>id_sit_leito = 'F'</c>.
+    /// </summary>
+    public static string L1OcupacaoPorSetor(int hospital) => $"""
+        WITH la AS (
+        {LeitoAtual(hospital)}
+        ), pac AS (
+          SELECT la.cd_unidade, COUNT(*) AS ocupados
+            FROM infosaude.fia f
+            JOIN la ON la.dt_ano_fia = f.dt_ano_fia AND la.nr_fia = f.nr_fia AND la.rn = 1
+        {InternadosAgora(hospital)}
+           GROUP BY la.cd_unidade
+        ), lei AS (
+          SELECT l.cd_unidade, COUNT(*) AS leitos,
+                 SUM(CASE WHEN l.id_sit_leito = 'F' THEN 1 ELSE 0 END) AS bloqueados
+            FROM infosaude.leito l
+            JOIN infosaude.unidade_hospitalar u
+              ON u.cd_hospital = l.cd_hospital AND u.cd_unidade = l.cd_unidade
+           WHERE l.cd_hospital = {hospital} AND u.id_condicao_unidade = 'A'
+           GROUP BY l.cd_unidade
+        )
+        SELECT u.sc_unidade AS setor, NVL(lei.leitos,0) AS leitos,
+               NVL(lei.bloqueados,0) AS bloqueados, NVL(pac.ocupados,0) AS ocupados
+          FROM infosaude.unidade_hospitalar u
+          LEFT JOIN lei ON lei.cd_unidade = u.cd_unidade
+          LEFT JOIN pac ON pac.cd_unidade = u.cd_unidade
+         WHERE u.cd_hospital = {hospital} AND u.id_condicao_unidade = 'A'
+           AND (NVL(lei.leitos,0) > 0 OR NVL(pac.ocupados,0) > 0)
+         ORDER BY NVL(pac.ocupados,0) DESC, NVL(lei.leitos,0) DESC
+        """;
+
+    /// <summary>
+    /// L2: quem está internado agora — sexo, faixas etárias e tempo já decorrido. Faixas
+    /// pela idade HOJE (não na entrada): a pergunta aqui é quem ocupa o leito neste
+    /// momento, não como ele entrou.
+    /// </summary>
+    public static string L2PerfilInternados(int hospital) => $"""
+        SELECT COUNT(*) AS internados,
+               SUM(CASE WHEN p.sexo = 'M' THEN 1 ELSE 0 END) AS homens,
+               SUM(CASE WHEN p.sexo = 'F' THEN 1 ELSE 0 END) AS mulheres,
+               SUM(CASE WHEN p.sexo IS NULL OR p.sexo NOT IN ('M','F') THEN 1 ELSE 0 END) AS sem_sexo,
+               SUM(CASE WHEN FLOOR(MONTHS_BETWEEN(SYSDATE, p.dt_nascimento)/12) <= 17 THEN 1 ELSE 0 END) AS ate17,
+               SUM(CASE WHEN FLOOR(MONTHS_BETWEEN(SYSDATE, p.dt_nascimento)/12) BETWEEN 18 AND 59 THEN 1 ELSE 0 END) AS adultos,
+               SUM(CASE WHEN FLOOR(MONTHS_BETWEEN(SYSDATE, p.dt_nascimento)/12) >= 60 THEN 1 ELSE 0 END) AS idosos,
+               ROUND(AVG(FLOOR(MONTHS_BETWEEN(SYSDATE, p.dt_nascimento)/12)), 1) AS idade_media,
+               ROUND(AVG(SYSDATE - f.dt_baixa), 1) AS dias_medios
+          FROM infosaude.fia f
+          JOIN infosaude.paciente p ON p.cd_paciente = NVL(f.cd_paciente_unificado, f.cd_paciente)
+        {InternadosAgora(hospital)}
+        """;
+
+    /// <summary>
+    /// L3: permanência das ALTAS do período — o indicador clássico de tempo médio de
+    /// permanência, que é diferente da média dos internados atuais (essa está no perfil).
+    /// Uma olha para quem já saiu, a outra para quem ainda está lá; misturar as duas é o
+    /// erro clássico do indicador.
+    ///
+    /// Devolve uma linha por segmento (<c>TOTAL</c> primeiro), para o front não precisar
+    /// recompor médias ponderadas — cada segmento já vem medido no banco.
+    /// </summary>
+    public static string L3Permanencia(int hospital, string ini, string fim) => $"""
+        WITH altas AS (
+          SELECT f.dt_alta - f.dt_baixa AS dias, p.sexo,
+                 FLOOR(MONTHS_BETWEEN(f.dt_baixa, p.dt_nascimento)/12) AS idade
+            FROM infosaude.fia f
+            JOIN infosaude.paciente p ON p.cd_paciente = NVL(f.cd_paciente_unificado, f.cd_paciente)
+           WHERE f.cd_hospital = {hospital}
+             AND f.dt_alta >= {ini} AND f.dt_alta < {fim}
+             AND f.dt_alta >= f.dt_baixa
+        )
+        SELECT 'TOTAL' AS segmento, COUNT(*) AS altas, ROUND(AVG(dias),1) AS media,
+               ROUND(MEDIAN(dias),1) AS mediana,
+               ROUND(PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY dias),1) AS p90
+          FROM altas
+        UNION ALL
+        SELECT 'HOMENS', COUNT(*), ROUND(AVG(dias),1), NULL, NULL FROM altas WHERE sexo = 'M'
+        UNION ALL
+        SELECT 'MULHERES', COUNT(*), ROUND(AVG(dias),1), NULL, NULL FROM altas WHERE sexo = 'F'
+        UNION ALL
+        SELECT 'ATE17', COUNT(*), ROUND(AVG(dias),1), NULL, NULL FROM altas WHERE idade <= 17
+        UNION ALL
+        SELECT 'ADULTOS', COUNT(*), ROUND(AVG(dias),1), NULL, NULL FROM altas WHERE idade BETWEEN 18 AND 59
+        UNION ALL
+        SELECT 'IDOSOS', COUNT(*), ROUND(AVG(dias),1), NULL, NULL FROM altas WHERE idade >= 60
+        """;
 }

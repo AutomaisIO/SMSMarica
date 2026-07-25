@@ -198,6 +198,78 @@ export interface EsperaPorCor {
 }
 
 /**
+ * Ocupação do momento. O numerador são PACIENTES reais, não o flag do leito —
+ * assim casa com "internados agora" no resto do painel. `leitos` inclui os
+ * bloqueados; a `taxa` não, porque leito interditado não é capacidade.
+ */
+export interface Ocupacao {
+  leitos: number;
+  ocupados: number;
+  livres: number;
+  bloqueados: number;
+  /** 0–100 sobre os leitos disponíveis; null quando não há leito disponível. */
+  taxa: number | null;
+}
+
+export interface SetorOcupacao {
+  setor: string;
+  leitos: number;
+  ocupados: number;
+  bloqueados: number;
+  taxa: number | null;
+}
+
+export interface PerfilInternados {
+  total: number;
+  homens: number;
+  mulheres: number;
+  semSexo: number;
+  ate17: number;
+  adultos: number;
+  idosos: number;
+  idadeMedia: number | null;
+  /** Dias já decorridos de quem está internado agora (≠ permanência das altas). */
+  diasMedios: number | null;
+}
+
+export interface PermanenciaSegmento {
+  segmento: string;
+  altas: number;
+  mediaDias: number | null;
+}
+
+/** Permanência das ALTAS do período — o indicador clássico. */
+export interface Permanencia {
+  rotulo: string;
+  altas: number;
+  mediaDias: number | null;
+  medianaDias: number | null;
+  p90Dias: number | null;
+  segmentos: PermanenciaSegmento[];
+}
+
+/** Fluxo de encaminhamento à observação (só nas UPAs). */
+export interface ObservacaoFluxo {
+  rotulo: string;
+  encaminhados: number;
+  classificados: number;
+}
+
+export interface Leitos {
+  atualizadoEm: string;
+  /** Null quando o cadastro da unidade não sustenta o número — ver `indisponivel`. */
+  ocupacao: Ocupacao | null;
+  setores: SetorOcupacao[];
+  /** Só onde há internação de verdade (o Conde). */
+  perfil: PerfilInternados | null;
+  permanencia: Permanencia | null;
+  observacao: ObservacaoFluxo | null;
+  escopo: string | null;
+  /** Motivo da ausência de ocupação, para a tela dizer o que falta em vez de zero. */
+  indisponivel: string | null;
+}
+
+/**
  * Uma aba do painel. No cold start as seções chegam nulas e a UI renderiza
  * skeleton por seção — seção ausente nunca vira erro global.
  */
@@ -216,7 +288,11 @@ export interface UnidadePainel {
   internacoes?: Internacoes | null;
   esperaPorCor?: EsperaPorCor | null;
   maternidade?: Maternidade | null;
+  leitos?: Leitos | null;
 }
+
+/** As duas visões do painel — o seletor de cima. */
+export type VisaoPainel = 'emergencia' | 'leitos';
 
 export interface Painel {
   geradoEm: string;

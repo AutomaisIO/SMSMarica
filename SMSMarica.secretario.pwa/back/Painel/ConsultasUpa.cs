@@ -257,4 +257,56 @@ public static class ConsultasUpa
           FROM p
          GROUP BY cor
         """;
+
+    // ── L4/L5 — Leitos de observação (tick lento) ──────────────────────────────
+
+    /// <summary>
+    /// Abaixo disso o cadastro de leitos não descreve a unidade, descreve o abandono do
+    /// cadastro: Santa Rita tem DOIS leitos registrados para 262 atendimentos/dia, e o
+    /// <c>rowversion</c> da tabela está ~13,6 milhões de modificações atrás do banco
+    /// (contra alguns milhares nas tabelas vivas). Nesse caso o painel diz que o dado
+    /// falta, em vez de publicar "0 de 2" e sugerir unidade vazia.
+    ///
+    /// É limiar, não lista fixa: no dia em que a unidade cadastrar os leitos, o painel
+    /// volta a mostrar ocupação sozinho.
+    /// </summary>
+    public const int MinimoLeitosCadastrados = 5;
+
+    /// <summary>
+    /// L4: leitos de observação por setor. As UPAs não internam — o que existe aqui é
+    /// observação, e o cadastro é raso: um único setor ("URGÊNCIA/OBSERVAÇÃO"), sem nome
+    /// de enfermaria e sem tipo de leito preenchido. Agrupar pelo setor é o máximo de
+    /// detalhe honesto; quebrar pelos <c>locatend_codigo</c> (0004..0007) daria quatro
+    /// linhas numeradas que não dizem nada a quem lê.
+    ///
+    /// <c>lei_status</c>: L = livre, O = ocupado. Não há status de bloqueio nestas bases.
+    /// </summary>
+    public static string L4LeitosObservacao() => """
+        SELECT ISNULL(s.set_descricao, 'Observação')                     AS setor,
+               COUNT(*)                                                  AS leitos,
+               SUM(CASE WHEN l.lei_status = 'O' THEN 1 ELSE 0 END)       AS ocupados
+          FROM Leito l
+          LEFT JOIN Local_Atendimento la ON la.locatend_codigo = l.locatend_codigo
+          LEFT JOIN setor s ON s.set_codigo = la.set_codigo
+         GROUP BY s.set_descricao
+         ORDER BY 2 DESC
+        """;
+
+    /// <summary>
+    /// L5: quantos passaram pela observação no período. Sai da SUBDESCRIÇÃO da
+    /// classificação de risco — o cadastro separa Amarelo/Laranja em "Consultório" e
+    /// "Observação", e é essa escolha da triagem que encaminha o paciente ao leito.
+    /// É medida de FLUXO (quantos foram), não de ocupação (quantos estão) — as duas
+    /// aparecem juntas na tela justamente porque respondem perguntas diferentes.
+    /// </summary>
+    public static string L5FluxoObservacao(string unidade, string ini, string fim) => $"""
+        SELECT COUNT(*)                                                          AS classificados,
+               SUM(CASE WHEN ra.risaco_subdescricao LIKE '%bserva%' THEN 1 ELSE 0 END) AS encaminhados
+          FROM Pronto_Atendimento pa
+          JOIN UPA_ACOLHIMENTO ac ON ac.spa_codigo = pa.spa_codigo AND ac.UNID_CODIGO = pa.unid_codigo
+          JOIN UPA_Classificacao_Risco cr ON cr.aco_codigo = ac.ACO_CODIGO
+          JOIN risco_acolhimento ra ON ra.risaco_codigo = cr.risaco_codigo
+         WHERE pa.unid_codigo = '{unidade}'
+           AND pa.spa_chegada >= {ini} AND pa.spa_chegada < {fim}
+        """;
 }

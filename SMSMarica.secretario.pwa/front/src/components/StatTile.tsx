@@ -7,10 +7,16 @@ interface Props {
   formatar?: (n: number) => string;
   /** Linhas de apoio sob o número (ex.: split urgência/eletiva). */
   detalhes?: string[];
+  /**
+   * Unidade a que o número pertence de fato, quando o cartão está numa tela de
+   * rede. Vem em vermelho e por sigla: é ressalva, tem que saltar aos olhos sem
+   * roubar três linhas do cartão.
+   */
+  escopo?: string | null;
 }
 
 /** Tile de indicador: eyebrow + número tabular animado + apoio discreto. */
-export function StatTile({ rotulo, valor, formatar, detalhes }: Props) {
+export function StatTile({ rotulo, valor, formatar, detalhes, escopo }: Props) {
   return (
     <Cartao className="p-4 sm:p-5">
       <p className="eyebrow">{rotulo}</p>
@@ -25,6 +31,11 @@ export function StatTile({ rotulo, valor, formatar, detalhes }: Props) {
             </p>
           ))}
         </div>
+      )}
+      {escopo && (
+        <p className="mt-1.5 text-[12px] font-semibold leading-snug text-vermelho-marica">
+          somente {escopo}
+        </p>
       )}
     </Cartao>
   );

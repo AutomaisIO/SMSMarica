@@ -61,27 +61,29 @@ export function SecaoAgora({ agora, coresUsadas, internacoesHoje }: Props) {
             detalhes={[
               `${formatarInteiro(internados.maternidade)} maternidade · ${formatarInteiro(internados.ate17)} até 17 anos · ${formatarInteiro(internados.adultos)} adultos`,
               `média de ${internados.mediaDiasInternacao != null ? formatarDecimal(internados.mediaDiasInternacao) : '—'} dias de internação`,
-              ...(internados.escopo ? [`somente ${internados.escopo}`] : []),
             ]}
+            escopo={internados.escopo}
           />
         )}
         <StatTile
           rotulo="Atendimentos hoje"
           valor={agora.atendimentosHoje}
-          detalhes={['boletins abertos desde a 0h']}
+          // "abertos" lia como "ainda em aberto"; é a CRIAÇÃO do boletim que conta.
+          // Metade dos de ontem já estava encerrada (260 de 523).
+          detalhes={['boletins registrados desde a 0h']}
         />
         {internados && (
           <StatTile
             rotulo="Internações hoje"
             valor={internados.internacoesHoje}
-            detalhes={[
-              ...(internacoesHoje
+            detalhes={
+              internacoesHoje
                 ? [
                     `${formatarInteiro(internacoesHoje.maternidade)} maternidade · ${formatarInteiro(internacoesHoje.ate17)} até 17 anos · ${formatarInteiro(internacoesHoje.adultos)} adultos`,
                   ]
-                : []),
-              ...(internados.escopo ? [`somente ${internados.escopo}`] : []),
-            ]}
+                : undefined
+            }
+            escopo={internados.escopo}
           />
         )}
       </div>

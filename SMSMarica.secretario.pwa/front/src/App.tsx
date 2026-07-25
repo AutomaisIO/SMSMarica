@@ -1,7 +1,8 @@
 import { AlertTriangle, Download, RefreshCw, WifiOff } from 'lucide-react';
-import type { Painel, UnidadeId, UnidadePainel } from '@/types/painel';
+import type { Painel, UnidadeId, UnidadePainel, VisaoPainel } from '@/types/painel';
 import { usePainel } from '@/lib/usePainel';
 import { useUnidade } from '@/lib/useUnidade';
+import { useVisao } from '@/lib/useVisao';
 import { useVersaoApp } from '@/lib/useVersaoApp';
 import { horaMinuto, nomeDoMes } from '@/lib/formatos';
 import { Header } from '@/components/Header';
@@ -18,7 +19,13 @@ import { SecaoEmergencia } from '@/sections/SecaoEmergencia';
 import { SecaoAtendimentos } from '@/sections/SecaoAtendimentos';
 import { SecaoInternacoes } from '@/sections/SecaoInternacoes';
 import { SecaoMaternidade } from '@/sections/SecaoMaternidade';
+import { SecaoLeitos } from '@/sections/SecaoLeitos';
 import { Rodape } from '@/sections/Rodape';
+
+const VISOES: OpcaoSegmento<VisaoPainel>[] = [
+  { valor: 'emergencia', rotulo: 'Emergência' },
+  { valor: 'leitos', rotulo: 'Leitos e internação' },
+];
 
 function EstadoSemConexao({ aoTentar }: { aoTentar: () => void }) {
   return (
@@ -69,7 +76,11 @@ function fontesComProblema(dados: Painel): string {
   return paradas.length > 0 ? paradas.join(' e ') : 'as unidades';
 }
 
-function ConteudoUnidade({ unidade }: { unidade: UnidadePainel }) {
+function ConteudoUnidade({ unidade, visao }: { unidade: UnidadePainel; visao: VisaoPainel }) {
+  if (visao === 'leitos') {
+    return unidade.leitos ? <SecaoLeitos leitos={unidade.leitos} /> : <SkeletonSecaoGraficos />;
+  }
+
   return (
     <div className="space-y-10 sm:space-y-12">
       {/* Cada seção renderiza de forma independente — no cold start o back
@@ -132,6 +143,7 @@ export default function App() {
   const { dados, usandoMock, erroRede, carregandoInicial, recarregar } = usePainel();
   const { novaVersao } = useVersaoApp();
   const [unidadeId, escolherUnidade] = useUnidade();
+  const [visao, escolherVisao] = useVisao();
 
   // A escolha guardada pode não existir no payload (unidade removida do back):
   // cai na primeira em vez de renderizar tela em branco.
@@ -185,6 +197,18 @@ export default function App() {
             {/* O seletor fica ACIMA de tudo e mostra o nome por extenso da unidade
                 escolhida: num painel de rede, a pergunta "esse número é de onde?"
                 não pode depender de lembrar qual pílula estava marcada. */}
+            {/* Duas escolhas empilhadas: PRIMEIRO o assunto (emergência ou leitos),
+                depois de quem. Invertido, o usuário troca de unidade e perde o
+                assunto que estava olhando. */}
+            <div className="mb-4">
+              <SegmentedControl
+                opcoes={VISOES}
+                valor={visao}
+                aoMudar={escolherVisao}
+                ariaLabel="Assunto exibido no painel"
+              />
+            </div>
+
             <div className="mb-6 flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
               <div>
                 <p className="eyebrow">Unidade</p>
@@ -202,7 +226,7 @@ export default function App() {
               )}
             </div>
 
-            <ConteudoUnidade key={unidade.id} unidade={unidade} />
+            <ConteudoUnidade key={`${unidade.id}-${visao}`} unidade={unidade} visao={visao} />
           </>
         )}
 

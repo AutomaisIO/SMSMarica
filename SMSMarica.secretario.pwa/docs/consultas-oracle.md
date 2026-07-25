@@ -223,3 +223,42 @@ SELECT NVL(cr.ds_classificacao_risco,'SEM_CLASSIFICACAO')                     AS
 ## Substituição de parâmetros
 
 Como no motor de indicadores do server (ADR-0022): `:ini`/`:fim` viram literais `DATE 'yyyy-mm-dd'` / expressões `TRUNC(SYSDATE...)` montadas pelo código — **nunca** texto vindo de fora. Não há input de usuário neste serviço.
+
+## L1..L3 — Leitos e permanência (tick lento)
+
+Validadas em 25/07/2026.
+
+### L1 — Ocupação por setor
+
+Setor = `UNIDADE_HOSPITALAR.SC_UNIDADE`. Duas decisões que mudam o número:
+
+- **Só unidades ATIVAS** (`ID_CONDICAO_UNIDADE = 'A'`). Há 6 enfermarias inativas com 73
+  leitos cadastrados e zero paciente; incluí-las afundaria a taxa com capacidade que não
+  existe.
+- **Ocupados = PACIENTES reais** (internação sem alta, pelo leito atual em `FIA_LEITO`), não
+  o flag `LEITO.ID_SIT_LEITO = 'O'`. Os dois discordam — em 25/07 eram 162 leitos marcados
+  ocupados para 155 pacientes internados. Usar o flag faria a aba de leitos contradizer o
+  "155 internados agora" que o painel já mostra na aba de emergência.
+- **Bloqueados** (`ID_SIT_LEITO = 'F'`, 54 leitos) saem do denominador da taxa mas são
+  reportados: leito interditado não é capacidade, e saber quantos são é informação de gestão.
+
+Retrato de 25/07: 426 leitos em unidades ativas, 155 ocupados, 54 bloqueados → **41,7%**.
+Setores mais cheios: Saúde Mental 6/6 (100%), Trauma 22/26 (85%), UPG 7/9 (78%).
+
+### L2 — Perfil de quem está internado agora
+
+Sexo (`PACIENTE.SEXO`) e faixa etária pela idade HOJE — a pergunta é quem ocupa o leito
+neste momento, não como entrou. Em 25/07: 155 internados, 72 homens · 83 mulheres, 17 até
+17 anos · 52 adultos · 86 idosos (60+), idade média 54,6 anos, 7,6 dias já internados.
+
+### L3 — Permanência das altas
+
+`dt_alta - dt_baixa` das altas do período, uma linha por segmento (`TOTAL` primeiro).
+
+> **Não confundir com a média dos internados atuais.** Uma mede quem já saiu (5,1 dias), a
+> outra quem ainda está lá (7,6 dias). São perguntas diferentes e o painel mostra as duas
+> lado a lado, nomeadas.
+
+Julho/2026: 588 altas, média **5,1** dias, mediana 2,6, p90 11,7. Por segmento — homens 6,2
+(247 altas) · mulheres 4,3 (341) · até 17 anos 2,8 (177) · 18–59 4,4 (231) · 60+ **8,4** (180).
+Sexo e faixa se sobrepõem: cada recorte é sobre o total, não são fatias exclusivas.

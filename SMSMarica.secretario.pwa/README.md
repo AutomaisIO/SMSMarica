@@ -4,9 +4,14 @@ Painel executivo **público** (sem autenticação na v1) para o Secretário de S
 de Maricá, em **secretario.smsmarica.online**. Mostra números **ao vivo** da rede
 municipal de urgência — **Hospital Municipal Conde Modesto Leal** (Oracle do Salux
 HIS), **UPA 24h Maricá** e **UPA 24h Santa Rita** (HIS em SQL Server, uma instância
-cada) — com um seletor de unidade `Geral · Conde · UPA · Sta. Rita`: fila da
-emergência por cor de risco, internados agora, atendimentos e internações por
-período, e tempos de espera por classificação.
+cada) — com dois seletores empilhados: o **assunto** (`Emergência · Leitos e
+internação`) e a **unidade** (`Geral · Conde · UPA · Sta. Rita`).
+
+- **Emergência**: fila por cor de risco, internados agora, atendimentos e
+  internações por período, tempos de espera por classificação, maternidade.
+- **Leitos e internação**: taxa de ocupação, ocupação por setor, perfil de quem
+  está no leito (sexo e faixa etária) e tempo médio de permanência das altas,
+  geral e por segmento.
 
 Internação e maternidade **só existem no Conde**; nas UPAs essas seções não aparecem
 (a tabela de internação do HIS delas parou em 25/01/2026), e na aba Geral vêm
@@ -122,6 +127,14 @@ defasado sem sair do ar.
   nem transporte. Em `/etc/smsmarica-secretario/env` só existe `ProxySql__Token`.
 - **O que não existe vem nulo, nunca zero** — as UPAs não internam; mandar 0 diria
   que elas não internaram ninguém, quando elas não internam. O front some com a seção.
+- **Ocupação sai dos PACIENTES, não do flag do leito** — `ID_SIT_LEITO='O'` e a
+  contagem de internados discordam (162 × 155 em 25/07). Usar o flag faria a aba de
+  leitos contradizer o "internados agora" da aba de emergência. Leitos bloqueados
+  saem do denominador e são reportados à parte.
+- **Cadastro ruim é dito, não maquiado** — Santa Rita tem 2 leitos cadastrados para
+  262 atendimentos/dia e a tabela não é atualizada. Abaixo de 5 leitos o painel manda
+  `indisponivel` com o motivo em vez de publicar "0 de 2". É limiar, não lista fixa:
+  volta sozinho quando a unidade cadastrar.
 - **Meta de triagem é da unidade, não da rede** — cada unidade usa alvos próprios
   para a mesma cor (Amarelo: 30 min no Conde, 60 na UPA Maricá, 30 em Santa Rita).
   Na aba Geral a meta e o "% na meta" simplesmente não aparecem; o consolidado

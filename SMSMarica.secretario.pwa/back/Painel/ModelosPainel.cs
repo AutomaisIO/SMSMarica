@@ -50,7 +50,59 @@ public sealed record UnidadePainel(
     AtendimentosSecao? Atendimentos,
     InternacoesSecao? Internacoes,
     EsperaPorCorSecao? EsperaPorCor,
-    MaternidadeSecao? Maternidade);
+    MaternidadeSecao? Maternidade,
+    LeitosSecao? Leitos);
+
+// ── Leitos e internação (tick lento) ────────────────────────────────────────
+
+/// <summary>
+/// A segunda visão do painel. O Conde tem internação de verdade — 37 setores, perfil
+/// dos internados e permanência das altas. As UPAs têm leitos de OBSERVAÇÃO, que é
+/// outra coisa e aparece como tal.
+/// </summary>
+public sealed record LeitosSecao(
+    DateTimeOffset AtualizadoEm,
+    /// <summary>Nulo quando a unidade não tem cadastro de leito confiável — ver <see cref="Indisponivel"/>.</summary>
+    Ocupacao? Ocupacao,
+    IReadOnlyList<SetorOcupacao> Setores,
+    /// <summary>Quem está internado agora (só onde há internação).</summary>
+    PerfilInternados? Perfil,
+    /// <summary>Permanência das altas do período (só onde há internação).</summary>
+    Permanencia? Permanencia,
+    /// <summary>Fluxo de encaminhamento à observação (só nas UPAs).</summary>
+    ObservacaoFluxo? Observacao,
+    string? Escopo,
+    /// <summary>
+    /// Motivo de não haver ocupação, para a tela dizer o que falta em vez de mostrar
+    /// zero. Preenchido em Santa Rita, cujo cadastro de leitos está vazio e parado.
+    /// </summary>
+    string? Indisponivel);
+
+/// <summary>
+/// Ocupação do momento. O numerador são PACIENTES reais (internação sem alta), não o
+/// flag <c>ID_SIT_LEITO</c> do leito — assim o número casa com "internados agora" do
+/// resto do painel, em vez de divergir dele por alguns leitos (162 × 155 em 25/07).
+/// O denominador exclui leitos bloqueados, que não são capacidade operacional, mas
+/// eles vêm reportados à parte porque leito interditado é informação de gestão.
+/// </summary>
+public sealed record Ocupacao(
+    int Leitos, int Ocupados, int Livres, int Bloqueados, double? Taxa);
+
+public sealed record SetorOcupacao(string Setor, int Leitos, int Ocupados, int Bloqueados, double? Taxa);
+
+public sealed record PerfilInternados(
+    int Total, int Homens, int Mulheres, int SemSexo,
+    int Ate17, int Adultos, int Idosos,
+    double? IdadeMedia, double? DiasMedios);
+
+public sealed record Permanencia(
+    string Rotulo, int Altas,
+    double? MediaDias, double? MedianaDias, double? P90Dias,
+    IReadOnlyList<PermanenciaSegmento> Segmentos);
+
+public sealed record PermanenciaSegmento(string Segmento, int Altas, double? MediaDias);
+
+public sealed record ObservacaoFluxo(string Rotulo, int Encaminhados, int Classificados);
 
 // ── Agora (tick rápido) ─────────────────────────────────────────────────────
 

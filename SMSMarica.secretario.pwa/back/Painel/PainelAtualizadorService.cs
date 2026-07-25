@@ -147,6 +147,7 @@ public sealed class PainelAtualizadorService : BackgroundService
             estado.Internacoes = unidade.Internacoes;
             estado.EsperaPorCor = unidade.EsperaPorCor;
             estado.Maternidade = unidade.Maternidade;
+            estado.Leitos = unidade.Leitos;
         }
 
         foreach (var fonte in snapshot.Fontes ?? [])
@@ -277,7 +278,14 @@ public sealed class PainelAtualizadorService : BackgroundService
             ConsultasPainel.Q6EsperaPorCor(
                 hosp, ConsultasPainel.IniMesAnterior, ConsultasPainel.FimMesAnterior, "TRUNC(SYSDATE,'MM') + 3"), ct);
 
+        // L1..L3 — leitos, perfil dos internados e permanência das altas do mês.
+        var setores = await ConsultarAsync(b, ConsultasPainel.L1OcupacaoPorSetor(hosp), ct);
+        var perfil = await ConsultarAsync(b, ConsultasPainel.L2PerfilInternados(hosp), ct);
+        var permanencia = await ConsultarAsync(b,
+            ConsultasPainel.L3Permanencia(hosp, ConsultasPainel.IniMesAtual, ConsultasPainel.FimMesAtual), ct);
+
         var carimbo = FusoBrasilia.Agora();
+        _conde.Leitos = MontarLeitosConde(hoje, carimbo, setores, perfil, permanencia);
         _conde.Atendimentos = MontarAtendimentos(
             hoje, carimbo, totalMesAnterior, totalMesAtual, totalHoje, totalDiasCompletos, serieAtendimentos, porHora);
         _conde.Internacoes = MontarInternacoes(
@@ -320,7 +328,13 @@ public sealed class PainelAtualizadorService : BackgroundService
                 unidade, ConsultasUpa.IniMesAnterior, ConsultasUpa.FimMesAnterior,
                 $"DATEADD(day,3,{ConsultasUpa.FimMesAnterior})"), ct);
 
+        // L4/L5 — leitos de observação e quantos foram encaminhados a eles no mês.
+        var leitos = await ConsultarAsync(b, ConsultasUpa.L4LeitosObservacao(), ct);
+        var fluxo = await ConsultarAsync(b,
+            ConsultasUpa.L5FluxoObservacao(unidade, ConsultasUpa.IniMesAtual, ConsultasUpa.FimMesAtual), ct);
+
         var carimbo = FusoBrasilia.Agora();
+        estado.Leitos = MontarLeitosUpa(hoje, carimbo, leitos, fluxo);
         estado.Atendimentos = MontarAtendimentos(
             hoje, carimbo, totalMesAnterior, totalMesAtual, totalHoje, totalDiasCompletos, serieAtendimentos, porHora);
         estado.EsperaPorCor = new EsperaPorCorSecao(carimbo, new EsperaPeriodos(
@@ -368,18 +382,19 @@ public sealed class PainelAtualizadorService : BackgroundService
         var conde = new UnidadePainel(
             Unidades.IdConde, "Conde", Unidades.NomeConde, Unidades.FonteConde,
             Unidades.CoresDe(Unidades.IdConde),
-            _conde.Agora, _conde.Atendimentos, _conde.Internacoes, _conde.EsperaPorCor, _conde.Maternidade);
+            _conde.Agora, _conde.Atendimentos, _conde.Internacoes, _conde.EsperaPorCor, _conde.Maternidade,
+            _conde.Leitos);
 
         // As UPAs não internam nem têm maternidade: passam null de propósito.
         var upa = new UnidadePainel(
             Unidades.IdUpa, "UPA", Unidades.NomeUpa, Unidades.FonteUpa,
             Unidades.CoresDe(Unidades.IdUpa),
-            _upa.Agora, _upa.Atendimentos, null, _upa.EsperaPorCor, null);
+            _upa.Agora, _upa.Atendimentos, null, _upa.EsperaPorCor, null, _upa.Leitos);
 
         var santaRita = new UnidadePainel(
             Unidades.IdSantaRita, "Sta. Rita", Unidades.NomeSantaRita, Unidades.FonteSantaRita,
             Unidades.CoresDe(Unidades.IdSantaRita),
-            _santaRita.Agora, _santaRita.Atendimentos, null, _santaRita.EsperaPorCor, null);
+            _santaRita.Agora, _santaRita.Atendimentos, null, _santaRita.EsperaPorCor, null, _santaRita.Leitos);
 
         UnidadePainel[] reais = [conde, upa, santaRita];
         var geral = MontarGeral(reais);
@@ -422,9 +437,10 @@ public sealed class PainelAtualizadorService : BackgroundService
             Unidades.CoresDe(Unidades.IdGeral),
             Agora: SomarAgora([.. reais.Select(u => u.Agora).OfType<AgoraSecao>()]),
             Atendimentos: SomarAtendimentos([.. reais.Select(u => u.Atendimentos).OfType<AtendimentosSecao>()]),
-            Internacoes: conde.Internacoes is { } i ? i with { Escopo = Unidades.NomeConde } : null,
+            Internacoes: conde.Internacoes is { } i ? i with { Escopo = Unidades.SiglaConde } : null,
             EsperaPorCor: SomarEspera([.. reais.Select(u => u.EsperaPorCor).OfType<EsperaPorCorSecao>()]),
-            Maternidade: conde.Maternidade is { } m ? m with { Escopo = Unidades.NomeConde } : null);
+            Maternidade: conde.Maternidade is { } m ? m with { Escopo = Unidades.SiglaConde } : null,
+            Leitos: SomarLeitos(reais));
     }
 
     /// <summary>
@@ -473,7 +489,7 @@ public sealed class PainelAtualizadorService : BackgroundService
             AguardandoPorCor: aguardando,
             EmAtendimento: secoes.Sum(s => s.EmAtendimento),
             AtendimentosHoje: secoes.Sum(s => s.AtendimentosHoje),
-            Internados: internados is null ? null : internados with { Escopo = Unidades.NomeConde });
+            Internados: internados is null ? null : internados with { Escopo = Unidades.SiglaConde });
     }
 
     private static AtendimentosSecao? SomarAtendimentos(IReadOnlyList<AtendimentosSecao> secoes)
@@ -650,6 +666,179 @@ public sealed class PainelAtualizadorService : BackgroundService
         }
 
         return lista;
+    }
+
+    // ── Leitos (L1..L5) ────────────────────────────────────────────────────────
+
+    private static LeitosSecao MontarLeitosConde(
+        DateTimeOffset hoje, DateTimeOffset carimbo,
+        ResultadoConsulta setoresBrutos, ResultadoConsulta perfilBruto, ResultadoConsulta permanenciaBruta)
+    {
+        var setores = new List<SetorOcupacao>(setoresBrutos.Linhas.Count);
+        foreach (var linha in setoresBrutos.Linhas)
+        {
+            var leitos = ComoInt(linha[1]);
+            var bloqueados = ComoInt(linha[2]);
+            var ocupados = ComoInt(linha[3]);
+            setores.Add(new SetorOcupacao(
+                Setor: NomeSetor(linha[0] as string),
+                Leitos: leitos,
+                Ocupados: ocupados,
+                Bloqueados: bloqueados,
+                Taxa: TaxaOcupacao(ocupados, leitos - bloqueados)));
+        }
+
+        var p = perfilBruto.Linhas[0];
+        var perfil = new PerfilInternados(
+            Total: ComoInt(p[0]), Homens: ComoInt(p[1]), Mulheres: ComoInt(p[2]), SemSexo: ComoInt(p[3]),
+            Ate17: ComoInt(p[4]), Adultos: ComoInt(p[5]), Idosos: ComoInt(p[6]),
+            IdadeMedia: ComoDoubleOuNulo(p[7]), DiasMedios: ComoDoubleOuNulo(p[8]));
+
+        return new LeitosSecao(
+            AtualizadoEm: carimbo,
+            Ocupacao: SomarSetores(setores),
+            Setores: setores,
+            Perfil: perfil,
+            Permanencia: MontarPermanencia(permanenciaBruta, RotuloMes(hoje)),
+            Observacao: null,
+            Escopo: null,
+            Indisponivel: null);
+    }
+
+    private static LeitosSecao MontarLeitosUpa(
+        DateTimeOffset hoje, DateTimeOffset carimbo, ResultadoConsulta leitosBrutos, ResultadoConsulta fluxoBruto)
+    {
+        var setores = new List<SetorOcupacao>(leitosBrutos.Linhas.Count);
+        foreach (var linha in leitosBrutos.Linhas)
+        {
+            var leitos = ComoInt(linha[1]);
+            var ocupados = ComoInt(linha[2]);
+            // Não existe status de bloqueio nestas bases — só livre e ocupado.
+            setores.Add(new SetorOcupacao(
+                NomeSetor(linha[0] as string), leitos, ocupados, 0, TaxaOcupacao(ocupados, leitos)));
+        }
+
+        var f = fluxoBruto.Linhas[0];
+        var observacao = new ObservacaoFluxo(RotuloMes(hoje), ComoInt(f[1]), ComoInt(f[0]));
+
+        var ocupacao = SomarSetores(setores);
+        var cadastroRaso = ocupacao is null || ocupacao.Leitos < ConsultasUpa.MinimoLeitosCadastrados;
+
+        return new LeitosSecao(
+            AtualizadoEm: carimbo,
+            // Cadastro raso não vira "0 de 2": vira ausência declarada de dado.
+            Ocupacao: cadastroRaso ? null : ocupacao,
+            Setores: cadastroRaso ? [] : setores,
+            Perfil: null,
+            Permanencia: null,
+            Observacao: observacao,
+            Escopo: null,
+            Indisponivel: cadastroRaso
+                ? "O cadastro de leitos desta unidade está vazio no sistema dela, então não há taxa de ocupação confiável para publicar."
+                : null);
+    }
+
+    private static Permanencia? MontarPermanencia(ResultadoConsulta resultado, string rotulo)
+    {
+        // A L3 devolve uma linha por segmento, com TOTAL primeiro.
+        var porSegmento = new Dictionary<string, (int Altas, double? Media, double? Mediana, double? P90)>();
+        foreach (var linha in resultado.Linhas)
+        {
+            var nome = (linha[0] as string)?.Trim().ToUpperInvariant() ?? "";
+            porSegmento[nome] = (ComoInt(linha[1]), ComoDoubleOuNulo(linha[2]),
+                ComoDoubleOuNulo(linha[3]), ComoDoubleOuNulo(linha[4]));
+        }
+
+        if (!porSegmento.TryGetValue("TOTAL", out var total))
+        {
+            return null;
+        }
+
+        string[] ordem = ["HOMENS", "MULHERES", "ATE17", "ADULTOS", "IDOSOS"];
+        var segmentos = ordem
+            .Where(porSegmento.ContainsKey)
+            .Select(nome => new PermanenciaSegmento(nome, porSegmento[nome].Altas, porSegmento[nome].Media))
+            .ToList();
+
+        return new Permanencia(rotulo, total.Altas, total.Media, total.Mediana, total.P90, segmentos);
+    }
+
+    /// <summary>Consolida setores num total. Bloqueado não conta como capacidade.</summary>
+    private static Ocupacao? SomarSetores(IReadOnlyList<SetorOcupacao> setores)
+    {
+        if (setores.Count == 0)
+        {
+            return null;
+        }
+
+        var leitos = setores.Sum(s => s.Leitos);
+        var bloqueados = setores.Sum(s => s.Bloqueados);
+        var ocupados = setores.Sum(s => s.Ocupados);
+        var disponiveis = leitos - bloqueados;
+
+        return new Ocupacao(
+            Leitos: leitos,
+            Ocupados: ocupados,
+            // Livres nunca é negativo: se o flag do leito e os pacientes discordarem por
+            // um ou dois, o painel mostra 0 em vez de "-2 leitos livres".
+            Livres: Math.Max(0, disponiveis - ocupados),
+            Bloqueados: bloqueados,
+            Taxa: TaxaOcupacao(ocupados, disponiveis));
+    }
+
+    private static double? TaxaOcupacao(int ocupados, int disponiveis) =>
+        disponiveis > 0 ? Math.Round(100.0 * ocupados / disponiveis, 1) : null;
+
+    /// <summary>Nome do setor em Caixa de Título — o cadastro grava tudo em CAIXA ALTA.</summary>
+    private static string NomeSetor(string? bruto)
+    {
+        var texto = bruto?.Trim();
+        if (string.IsNullOrEmpty(texto))
+        {
+            return "Sem setor";
+        }
+
+        var cultura = PtBr ?? CultureInfo.InvariantCulture;
+        return cultura.TextInfo.ToTitleCase(texto.ToLower(cultura));
+    }
+
+    /// <summary>
+    /// A rede soma só os leitos de quem TEM cadastro utilizável, e o escopo diz quem
+    /// entrou. Perfil e permanência vêm do Conde, única unidade que interna.
+    /// </summary>
+    private static LeitosSecao? SomarLeitos(IReadOnlyList<UnidadePainel> reais)
+    {
+        var comLeitos = reais
+            .Where(u => u.Leitos?.Ocupacao is not null)
+            .ToList();
+        var todas = reais.Select(u => u.Leitos).OfType<LeitosSecao>().ToList();
+        if (todas.Count == 0)
+        {
+            return null;
+        }
+
+        var setores = comLeitos.SelectMany(u => u.Leitos!.Setores).ToList();
+        var doConde = reais.First(u => u.Id == Unidades.IdConde).Leitos;
+
+        return new LeitosSecao(
+            AtualizadoEm: MaisAntigo(todas, s => s.AtualizadoEm),
+            Ocupacao: SomarSetores(setores),
+            Setores: setores.OrderByDescending(s => s.Ocupados).ThenByDescending(s => s.Leitos).ToList(),
+            Perfil: doConde?.Perfil,
+            Permanencia: doConde?.Permanencia,
+            Observacao: SomarObservacao(todas),
+            Escopo: comLeitos.Count == 0
+                ? null
+                : string.Join(" + ", comLeitos.Select(u => u.Id == Unidades.IdConde ? Unidades.SiglaConde : u.Nome)),
+            Indisponivel: null);
+    }
+
+    private static ObservacaoFluxo? SomarObservacao(IReadOnlyList<LeitosSecao> secoes)
+    {
+        var fluxos = secoes.Select(s => s.Observacao).OfType<ObservacaoFluxo>().ToList();
+        return fluxos.Count == 0
+            ? null
+            : new ObservacaoFluxo(fluxos[0].Rotulo, fluxos.Sum(f => f.Encaminhados), fluxos.Sum(f => f.Classificados));
     }
 
     // ── Montagem das seções comuns ─────────────────────────────────────────────
@@ -981,6 +1170,7 @@ public sealed class PainelAtualizadorService : BackgroundService
         public InternacoesSecao? Internacoes;
         public EsperaPorCorSecao? EsperaPorCor;
         public MaternidadeSecao? Maternidade;
+        public LeitosSecao? Leitos;
         public DateTimeOffset? UltimaAtualizacaoOk;
 
         // Erro POR CICLO: um tick rápido OK não pode apagar o erro do ciclo lento (e

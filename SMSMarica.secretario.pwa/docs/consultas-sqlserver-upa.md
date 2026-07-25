@@ -189,6 +189,38 @@ Custo por consulta: 0,7 s (hoje), 1,0 s (mês atual), 1,8 s (mês anterior).
   dias até 24/07. A cor existe no protocolo e aparece no painel, mas a maior parte dos dias vem
   zerada. No Conde ela não existe e some da tela (`coresUsadas`).
 
+## L4/L5 — Leitos de observação
+
+As UPAs não internam, mas têm leito de **observação** — e é isso que a aba "Leitos" mostra
+nelas, com esse nome.
+
+- **L4 — ocupação**: `Leito` (inventário) com `lei_status` L/livre e O/ocupado. Não há status
+  de bloqueio nestas bases. O cadastro é raso: um único setor (`URGÊNCIA/OBSERVAÇÃO`), sem
+  nome de enfermaria (`Enfermaria.enf_descricao` vazio) e sem tipo de leito preenchido —
+  quebrar pelos `locatend_codigo` (0004..0007) daria quatro linhas numeradas sem significado.
+- **L5 — fluxo**: quantos foram encaminhados à observação no período, pela SUBDESCRIÇÃO da
+  classificação de risco (`Consultório` × `Observação`). É medida de fluxo, não de ocupação.
+
+### Santa Rita não tem cadastro de leitos utilizável
+
+| | leitos cadastrados | ocupados | `rowversion` da tabela `Leito` |
+|---|---|---|---|
+| UPA Maricá | 23 | 4 | ~376 mil modificações atrás — **viva** |
+| Santa Rita | **2** | 0 | ~13,6 **milhões** atrás — **parada** |
+
+Dois leitos para 262 atendimentos/dia não descrevem a unidade, descrevem o abandono do
+cadastro. O painel aplica um limiar (`ConsultasUpa.MinimoLeitosCadastrados = 5`): abaixo
+dele, manda `ocupacao: null` + `indisponivel` com o motivo, e a tela diz o que falta em vez
+de publicar "0 de 2" e sugerir unidade vazia. **É limiar, não lista fixa** — no dia em que a
+unidade cadastrar os leitos, o painel volta a mostrar ocupação sozinho.
+
+`UPA_CONSOLIDACAO_PACIENTE_OBSERVACAO` não serve como alternativa: 16 linhas, sem coluna de
+data, apontando para internações da safra morta — e com `rowversion` **idêntico** (28.899.986)
+nos dois bancos, ou seja, populada uma vez na implantação e nunca mais tocada.
+
+Retrato de 25/07 — UPA Maricá 4/23 (17,4%), 77 encaminhados à observação em julho de 9.308
+classificados (0,8%); Santa Rita 27 encaminhados de 6.039 (0,4%).
+
 ## Desfechos (não usado no painel — mapeado para referência)
 
 `UPA_Atendimento_Medico.tipsai_codigo` → `Tipo_Saida`. Distribuição na UPA Maricá nos 30 dias até

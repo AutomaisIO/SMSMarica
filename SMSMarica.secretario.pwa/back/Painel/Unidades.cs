@@ -16,6 +16,12 @@ public static class Unidades
     public const string IdSantaRita = "santarita";
 
     public const string NomeConde = "Hospital Municipal Conde Modesto Leal";
+
+    /// <summary>
+    /// Sigla para as etiquetas de escopo. Por extenso, o nome do hospital ocupa três
+    /// linhas dentro de um cartão de indicador e afoga o número que importa.
+    /// </summary>
+    public const string SiglaConde = "HMCML";
     public const string NomeUpa = "UPA 24h Maricá";
     public const string NomeSantaRita = "UPA 24h Santa Rita";
 

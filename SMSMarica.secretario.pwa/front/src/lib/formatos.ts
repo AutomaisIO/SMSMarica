@@ -19,6 +19,15 @@ export function formatarPct(n: number): string {
   return `${fmtInteiro.format(Math.round(n))}%`;
 }
 
+/**
+ * Percentual que NÃO some quando é pequeno: abaixo de 10% mantém uma casa, para
+ * "27 de 6.039" não virar "0%" ao lado do próprio 27 e parecer contradição.
+ */
+export function formatarPctFino(n: number): string {
+  if (n > 0 && n < 10) return `${fmtDecimal.format(n)}%`;
+  return formatarPct(n);
+}
+
 /** Minutos legíveis: 42 → "42 min" · 116 → "1h56" · 1440 → "24h". */
 export function minutosLegiveis(min: number): string {
   const m = Math.round(min);
