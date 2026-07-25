@@ -18,6 +18,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
+using SMSMarica.Api.Interno;
 using SMSMarica.Api.Realtime;
 using Serilog;
 using SMSMarica.Api.Auth;
@@ -91,6 +92,9 @@ builder.Services.AddHttpClient("agente-ia", c => c.Timeout = TimeSpan.FromSecond
 
 // Autenticação JWT (token emitido em /identidade/login).
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.Secao));
+
+// Proxy SQL interno: porta de loopback + token. Sem token configurado, fica desligado.
+builder.Services.Configure<ProxySqlOpcoes>(builder.Configuration.GetSection("ProxySql"));
 builder.Services.AddSingleton<ITokenService, JwtTokenService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IUsuarioAtualAccessor, UsuarioAtualAccessor>();
@@ -286,6 +290,10 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 // (token por fonte), então o endpoint valida por conta própria e é anônimo ao JWT.
 app.UseWebSockets();
 app.MapAgenteSql();
+
+// Proxy SQL interno (porta de loopback + token) — serviços da própria máquina consultam as
+// bases cadastradas sem guardar credencial nem driver. Ver Interno/ProxySqlEndpoint.cs.
+app.MapProxySql();
 
 app.MapControllers();
 app.MapHub<SMSMarica.Api.Hubs.RastreamentoHub>("/hubs/rastreamento");
