@@ -1,28 +1,6 @@
 namespace SMSMarica.Core.Inteligencia.Dtos;
 
-// ---- Perguntar ----
-
-/// <summary>Pergunta do usuário + bases-alvo selecionadas (multi-seleção).</summary>
-public sealed record PerguntarRequest(string Pergunta, IReadOnlyList<Guid> FonteIds);
-
-/// <summary>Resposta agregada: uma entrada por base selecionada.</summary>
-public sealed record PerguntarRespostaDto(IReadOnlyList<RespostaIaDto> Respostas);
-
-/// <summary>Resposta abstraída para o usuário leigo: resumo + dados + plano de visualização.</summary>
-public sealed record RespostaIaDto(
-    Guid FonteId,
-    string FonteNome,
-    string Status,
-    string? Resumo,
-    string? Visualizacao,
-    string? Titulo,
-    IReadOnlyList<string> Colunas,
-    IReadOnlyList<IReadOnlyList<object?>> Dados,
-    string? Sql,
-    Guid ConsultaId,
-    string? Erro);
-
-/// <summary>Item do dropdown de bases na tela de perguntar.</summary>
+/// <summary>Base ativa (para a Consulta Inteligente e a configuração). <c>Slug</c> mapeia a base.</summary>
 public sealed record FonteResumoDto(Guid Id, string Nome, string Tipo, string Ambiente, string Slug);
 
 // ---- Configuração ----

@@ -312,13 +312,11 @@ public static class DependencyInjection
         services.AddScoped<Integracoes.Pep.IPepSincronizacaoService, Integracoes.Pep.PepSincronizacaoService>();
         services.AddHostedService<Integracoes.Pep.Background.PepSincronizacaoRunner>();
 
-        // ---- Módulo IA (consulta em linguagem natural) ----
+        // ---- Módulo IA ----
+        // A consulta conversável usa o motor local (feature consulta-inteligente / IaChatController +
+        // aiengine modo `dados`). O antigo provedor de "perguntar" via API metrada (IProvedorIa/
+        // ClaudeProvedorIa) foi removido. O anthropicBaseUrl ainda serve o DistribuidorIa (FT3).
         var anthropicBaseUrl = configuration["Ia:Anthropic:BaseUrl"] ?? "https://api.anthropic.com/";
-        services.AddHttpClient<Inteligencia.Provedores.IProvedorIa, Inteligencia.Provedores.ClaudeProvedorIa>(client =>
-        {
-            client.BaseAddress = new Uri(anthropicBaseUrl);
-            client.Timeout = TimeSpan.FromSeconds(120);
-        });
         services.AddHttpClient<Inteligencia.Provedores.IServicoEmbeddings, Inteligencia.Provedores.VoyageEmbeddings>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(60);

@@ -6,21 +6,12 @@ using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
 
-/// <summary>Tela de perguntar: envia a pergunta às bases selecionadas e lista as bases ativas.</summary>
+/// <summary>Bases ativas do módulo IA (consumidas pela Consulta Inteligente e pela configuração).</summary>
 [ApiController]
 [Route("ia")]
 public sealed class IaController(IIaService service) : ControllerBase
 {
     private readonly IIaService _service = service;
-
-    [HttpPost("perguntar")]
-    [RequerPermissao(ModuloPermissao.Inteligencia, AcoesPermissao.Consulta)]
-    [ProducesResponseType<PerguntarRespostaDto>(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<PerguntarRespostaDto> Perguntar(
-        [FromBody] PerguntarRequest request,
-        CancellationToken cancellationToken) =>
-        await _service.PerguntarAsync(request, cancellationToken);
 
     [HttpGet("fontes")]
     [RequerPermissao(ModuloPermissao.Inteligencia, AcoesPermissao.Consulta)]

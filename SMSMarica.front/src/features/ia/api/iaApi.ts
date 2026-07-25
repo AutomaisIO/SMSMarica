@@ -5,35 +5,9 @@ import type {
   ConfiguracaoIa,
   CorrecaoIa,
   FonteConfig,
-  FonteIa,
-  PerguntarPayload,
-  PerguntarResposta,
   ResultadoTesteConexao,
   SalvarFonteConfigPayload,
 } from '@/features/ia/types';
-
-// ── Perguntar ───────────────────────────────────────────────────────────────
-
-export async function perguntar(payload: PerguntarPayload): Promise<PerguntarResposta> {
-  const { data } = await http.post<PerguntarResposta>('/ia/perguntar', payload);
-  return data;
-}
-
-export async function listarFontes(): Promise<FonteIa[]> {
-  const { data } = await http.get<FonteIa[]>('/ia/fontes');
-  return data;
-}
-
-/** Feedback de "resposta errada" sobre uma consulta gerada. */
-export async function reportarRespostaErrada(
-  consultaId: string,
-  comentario?: string,
-): Promise<void> {
-  await http.post(`/ia/consultas/${consultaId}/feedback`, {
-    correta: false,
-    comentario: comentario ?? null,
-  });
-}
 
 // ── Configuração ────────────────────────────────────────────────────────────
 

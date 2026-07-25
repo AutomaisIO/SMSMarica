@@ -1,51 +1,8 @@
-// Contrato da API do módulo de Inteligência (IA).
-// Tela de perguntar + configuração de provedor e bases de dados consultáveis.
+// Contrato da API do módulo de Inteligência (IA): configuração de provedor, bases de dados
+// consultáveis, conhecimento (RAG) e governança/melhorias. (A antiga tela de "perguntar" foi
+// substituída pelo menu "Consulta Inteligente" — feature consulta-inteligente.)
 
 export type Ambiente = 'PRODUCAO' | 'TREINAMENTO';
-
-/** Forma de renderização sugerida pelo backend para uma resposta. */
-export type VisualizacaoIa =
-  | 'numero'
-  | 'lista'
-  | 'tabela'
-  | 'grafico_pizza'
-  | 'grafico_barra'
-  | 'grafico_linha';
-
-export type StatusResposta = 'ok' | 'vazio' | 'erro';
-
-/** Resposta de UMA fonte para a pergunta feita. */
-export type RespostaIa = {
-  fonteId: string;
-  fonteNome: string;
-  status: StatusResposta;
-  resumo?: string;
-  visualizacao?: VisualizacaoIa;
-  titulo?: string;
-  colunas: string[];
-  dados: unknown[][];
-  sql?: string;
-  consultaId: string;
-  erro?: string;
-};
-
-/** POST /ia/perguntar */
-export type PerguntarPayload = {
-  pergunta: string;
-  fonteIds: string[];
-};
-
-export type PerguntarResposta = {
-  respostas: RespostaIa[];
-};
-
-/** GET /ia/fontes — fontes disponíveis para consulta (ativas). */
-export type FonteIa = {
-  id: string;
-  nome: string;
-  tipo: string;
-  ambiente: Ambiente;
-};
 
 // ── Configuração ────────────────────────────────────────────────────────────
 

@@ -3,14 +3,11 @@ using SMSMarica.Core.Inteligencia.Dtos;
 namespace SMSMarica.Core.Inteligencia;
 
 /// <summary>
-/// Orquestrador do módulo IA: recebe a pergunta + bases-alvo, recupera conhecimento, gera SQL
-/// via provedor de IA, executa read-only, corrige em caso de erro (gerando aprendizado auto) e
-/// devolve a resposta abstraída (resumo + dados + visualização) por base.
+/// Serviço do módulo IA. Lista as bases ativas usadas pela Consulta Inteligente e pela
+/// configuração. A geração de SQL "perguntar" (via API metrada) foi removida — a consulta
+/// conversável passou para o motor local (feature consulta-inteligente / IaChatController).
 /// </summary>
 public interface IIaService
 {
-    Task<PerguntarRespostaDto> PerguntarAsync(PerguntarRequest request, CancellationToken cancellationToken = default);
-
-    /// <summary>Bases ativas para popular o dropdown de seleção na tela de perguntar.</summary>
     Task<IReadOnlyList<FonteResumoDto>> ListarFontesAtivasAsync(CancellationToken cancellationToken = default);
 }

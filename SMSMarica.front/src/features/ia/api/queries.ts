@@ -6,19 +6,12 @@ import {
   desativarAprendizado,
   listarAprendizados,
   listarCorrecoes,
-  listarFontes,
   listarFontesConfig,
   obterConfiguracao,
-  perguntar,
   removerFonteConfig,
-  reportarRespostaErrada,
   testarConexaoFonte,
 } from '@/features/ia/api/iaApi';
-import type {
-  AtualizarConfiguracaoPayload,
-  PerguntarPayload,
-  SalvarFonteConfigPayload,
-} from '@/features/ia/types';
+import type { AtualizarConfiguracaoPayload, SalvarFonteConfigPayload } from '@/features/ia/types';
 
 export const iaKeys = {
   raiz: ['ia'] as const,
@@ -28,26 +21,6 @@ export const iaKeys = {
   aprendizados: (fonteId?: string) => ['ia', 'aprendizados', fonteId ?? 'todas'] as const,
   correcoes: (fonteId?: string) => ['ia', 'correcoes', fonteId ?? 'todas'] as const,
 };
-
-export function useFontes() {
-  return useQuery({
-    queryKey: iaKeys.fontes,
-    queryFn: listarFontes,
-  });
-}
-
-export function usePerguntar() {
-  return useMutation({
-    mutationFn: (payload: PerguntarPayload) => perguntar(payload),
-  });
-}
-
-export function useReportarRespostaErrada() {
-  return useMutation({
-    mutationFn: ({ consultaId, comentario }: { consultaId: string; comentario?: string }) =>
-      reportarRespostaErrada(consultaId, comentario),
-  });
-}
 
 // ── Configuração ────────────────────────────────────────────────────────────
 
