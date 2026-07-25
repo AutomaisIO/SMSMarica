@@ -97,8 +97,21 @@ public sealed class RecuperadorContexto(
     {
         var vetorPergunta = new Vector(await embeddings.EmbeddarAsync(pergunta, cancellationToken));
 
-        var chunks = await db.IaChunksConhecimento
-            .Where(c => c.FonteId == fonteId && c.Embedding != null)
+        // Bases de MESMA família (ex.: UPA e Santa Rita = klinikos) compartilham conhecimento: o
+        // que foi extraído/enriquecido em uma vale para a outra — inclusive uma base recém-cadastrada
+        // aproveita a extração da irmã sem re-extrair. Ver ADR-0023.
+        var familia = await db.IaFontes
+            .Where(f => f.Id == fonteId)
+            .Select(f => f.Familia)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var query = db.IaChunksConhecimento.Where(c => c.Embedding != null);
+        query = string.IsNullOrEmpty(familia)
+            ? query.Where(c => c.FonteId == fonteId)
+            : query.Where(c => c.FonteId == fonteId
+                || db.IaFontes.Any(f => f.Id == c.FonteId && f.Familia == familia && f.ExcluidoEm == null));
+
+        var chunks = await query
             .OrderBy(c => c.Embedding!.L2Distance(vetorPergunta))
             .Take(TopKChunks)
             .Select(c => c.Conteudo)
