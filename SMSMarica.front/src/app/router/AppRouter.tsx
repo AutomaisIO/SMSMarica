@@ -7,7 +7,7 @@ import { RotaProtegida } from '@/app/router/RotaProtegida';
 import { AvaliacoesPage } from '@/features/avaliacoes/pages/AvaliacoesPage';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { TrocarSenhaPage } from '@/features/auth/pages/TrocarSenhaPage';
-import { IaPage } from '@/features/ia/pages/IaPage';
+import { ConsultaInteligentePage } from '@/features/consulta-inteligente/pages/ConsultaInteligentePage';
 import { IaConfiguracaoPage } from '@/features/ia/pages/IaConfiguracaoPage';
 import { IaMelhoriasPage } from '@/features/ia/pages/IaMelhoriasPage';
 import { AgenteIaPage } from '@/features/agente-ia/pages/AgenteIaPage';
@@ -167,7 +167,7 @@ export function AppRouter() {
           <Route path="tipos-exame/novo" element={<TipoExameFormPage />} />
           <Route path="tipos-exame/:id" element={<TipoExameFormPage />} />
           <Route path="procedimentos-sigtap" element={<ProcedimentosSigtapPage />} />
-          <Route path="ia" element={<IaPage />} />
+          <Route path="consulta-inteligente" element={<ConsultaInteligentePage />} />
           <Route path="ia/configuracao" element={<IaConfiguracaoPage />} />
           <Route path="ia/melhorias" element={<IaMelhoriasPage />} />
           <Route path="agente-ia" element={<AgenteIaPage />} />

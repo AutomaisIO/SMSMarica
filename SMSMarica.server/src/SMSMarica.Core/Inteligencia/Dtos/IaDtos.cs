@@ -23,7 +23,7 @@ public sealed record RespostaIaDto(
     string? Erro);
 
 /// <summary>Item do dropdown de bases na tela de perguntar.</summary>
-public sealed record FonteResumoDto(Guid Id, string Nome, string Tipo, string Ambiente);
+public sealed record FonteResumoDto(Guid Id, string Nome, string Tipo, string Ambiente, string Slug);
 
 // ---- Configuração ----
 

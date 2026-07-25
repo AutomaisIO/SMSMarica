@@ -3,6 +3,7 @@ import {
   BarChart3,
   BellRing,
   Bot,
+  BrainCircuit,
   Bug,
   Bus,
   Building2,
@@ -271,11 +272,23 @@ export const SECOES: SecaoMenu[] = [
     ],
   },
   {
+    id: 'consulta-inteligente',
+    itens: [
+      {
+        rotulo: 'Consulta Inteligente',
+        to: '/app/consulta-inteligente',
+        icone: BrainCircuit,
+        modulo: 'Inteligencia',
+        end: true,
+        descricao: 'Pergunte sobre os dados em linguagem natural (chat com gráficos).',
+      },
+    ],
+  },
+  {
     id: 'inteligencia',
     titulo: 'Inteligência',
     icone: Sparkles,
     itens: [
-      { rotulo: 'IA', to: '/app/ia', icone: Sparkles, modulo: 'Inteligencia', end: true, descricao: 'Consulta em linguagem natural.' },
       {
         rotulo: 'Configuração IA',
         to: '/app/ia/configuracao',

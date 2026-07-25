@@ -54,7 +54,7 @@ public sealed class IaService(
             .AsNoTracking()
             .Where(f => f.Ativo && f.ExcluidoEm == null)
             .OrderBy(f => f.Nome)
-            .Select(f => new FonteResumoDto(f.Id, f.Nome, f.Tipo.ToString(), f.Ambiente.ToString()))
+            .Select(f => new FonteResumoDto(f.Id, f.Nome, f.Tipo.ToString(), f.Ambiente.ToString(), f.Slug ?? string.Empty))
             .ToListAsync(cancellationToken);
     }
 
