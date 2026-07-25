@@ -8,10 +8,14 @@ cada) — com dois seletores empilhados: o **assunto** (`Emergência · Leitos e
 internação`) e a **unidade** (`Geral · Conde · UPA · Sta. Rita`).
 
 - **Emergência**: fila por cor de risco, internados agora, atendimentos e
-  internações por período, tempos de espera por classificação, maternidade.
+  internações por período, tempos de espera por classificação e os CIDs mais
+  registrados em cada cor.
 - **Leitos e internação**: taxa de ocupação, ocupação por setor, perfil de quem
   está no leito (sexo e faixa etária) e tempo médio de permanência das altas,
   geral e por segmento.
+- **Maternidade**: partos e via de parto, desfecho (natimortos, Apgar,
+  malformação), idade gestacional, perfil da mãe (incluindo gravidez na
+  adolescência) e medidas ao nascer.
 
 Internação e maternidade **só existem no Conde**; nas UPAs essas seções não aparecem
 (a tabela de internação do HIS delas parou em 25/01/2026), e na aba Geral vêm
@@ -139,6 +143,10 @@ defasado sem sair do ar.
   para a mesma cor (Amarelo: 30 min no Conde, 60 na UPA Maricá, 30 em Santa Rita).
   Na aba Geral a meta e o "% na meta" simplesmente não aparecem; o consolidado
   mostra volume e tempo, e tempo-contra-meta se vê abrindo a unidade.
+- **Quando duas fontes discordam, vale a mais objetiva** — prematuridade sai da
+  idade gestacional, não do flag `IN_PREMATURO` (marcado à mão, discordava do
+  próprio registro em 11 de 23 casos). Idem ocupação, que sai dos pacientes e não
+  do flag do leito.
 - **Sem auth na v1** — dados agregados públicos por decisão de produto;
   reavaliar se entrar qualquer recorte sensível.
 

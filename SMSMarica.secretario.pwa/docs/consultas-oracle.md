@@ -262,3 +262,55 @@ neste momento, não como entrou. Em 25/07: 155 internados, 72 homens · 83 mulhe
 Julho/2026: 588 altas, média **5,1** dias, mediana 2,6, p90 11,7. Por segmento — homens 6,2
 (247 altas) · mulheres 4,3 (341) · até 17 anos 2,8 (177) · 18–59 4,4 (231) · 60+ **8,4** (180).
 Sexo e faixa se sobrepõem: cada recorte é sobre o total, não são fatias exclusivas.
+
+## Q8 — Diagnósticos mais frequentes por cor (tick lento)
+
+`BAA.CD_CID` é preenchido em **94–98%** dos boletins de emergência — Amarelo 98,1%,
+Vermelho 100%, Verde 94,2%, Azul 89,5%. Ranking sólido, ao contrário das UPAs (ver
+`consultas-sqlserver-upa.md`: CID zero, queixa em texto livre).
+
+O total da cor vem na mesma linha (janela sobre o `GROUP BY`), para o front calcular a
+participação sem uma segunda consulta. **O percentual é sobre os boletins da cor QUE TÊM
+CID**, não sobre o total de atendimentos — está escrito na tela.
+
+TOP 5 do Amarelo em julho/2026: R05 Tosse 198 (5,9%) · I10 Hipertensão 168 (5,0%) ·
+R10 Dor abdominal 133 (3,9%) · R52.0 Dor aguda 118 (3,5%) · J03.9 Amigdalite 101 (3,0%).
+
+## Q7 — Maternidade enriquecida
+
+Além da contagem, o livro de partos sustenta (cobertura medida em 3 meses, 411 partos):
+
+| campo | uso | cobertura |
+|---|---|---|
+| `ID_CONDICAO_NASCIMENTO` | vivo (V) × **natimorto** (M) | 100% |
+| `ID_TMP_GESTACAO` | idade gestacional | 87,6% |
+| `ID_TP_GRAVIDEZ` | única (U) × múltipla | 87,3% |
+| `ID_MALFORMACAO` | S/N | 76,2% |
+| `APGAR_1_MINUTO` | Apgar do 1º minuto | 100% |
+| `ESTATURA`, `PERIMETRO_CEFALICO` | medidas ao nascer | 100% |
+| idade da mãe (via FIA → PACIENTE) | idade materna e gravidez na adolescência | **100%** |
+
+### Decodificação do `ID_TMP_GESTACAO` (SINASC)
+
+`5` = 37–41 semanas (a termo) · `4` = 32–36 (prematuro tardio) · `6` = 42+ (pós-termo).
+Não há tabela de domínio no schema; a decodificação foi **conferida contra os dados**: o
+grupo `4` tem peso médio 2,527 kg e concentra os marcados prematuros, o `5` tem 3,367 kg e
+nenhum prematuro, o `6` tem 3,28 kg.
+
+> **Prematuridade sai da idade gestacional, não de `IN_PREMATURO`.** O flag é marcado à mão
+> e discorda do próprio registro: dos 23 nascidos entre 32 e 36 semanas em 3 meses, 11
+> estavam marcados como NÃO prematuros. Em julho o flag dizia 1 e a idade gestacional
+> dizia 3 — mostrar os dois lado a lado fazia a tela se contradizer.
+
+### `NR_PRE_NATAL` não é publicado
+
+O campo existe e está preenchido em 85,4%, com valores 1..5. A codificação do SINASC prevê
+1=nenhuma, 2=1–3, 3=4–6, 4=7+ — mas aparece um `5` (4 casos) que não está na tabela, e não
+há domínio no schema para confirmar. **Sem confirmar, não publica**: número de consultas de
+pré-natal errado num painel do Secretário é pior que número ausente.
+
+### Mãe e bebê são internações SEPARADAS
+
+Julho/2026: 83 partos, 201 internações na maternidade, das quais **92 de bebês com menos de
+1 ano**. Cada recém-nascido abre a própria FIA. É por isso que o split de internação põe a
+maternidade antes da faixa infantil (ver Q5).

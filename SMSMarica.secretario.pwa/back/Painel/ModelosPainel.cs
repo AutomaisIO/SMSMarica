@@ -51,7 +51,8 @@ public sealed record UnidadePainel(
     InternacoesSecao? Internacoes,
     EsperaPorCorSecao? EsperaPorCor,
     MaternidadeSecao? Maternidade,
-    LeitosSecao? Leitos);
+    LeitosSecao? Leitos,
+    DiagnosticosSecao? Diagnosticos);
 
 // ── Leitos e internação (tick lento) ────────────────────────────────────────
 
@@ -198,9 +199,51 @@ public sealed record MaternidadePeriodo(
     int Meninos,
     double? MediaDiaria,
     /// <summary>Fração de cesáreas (0–100) — null quando não houve parto no período.</summary>
-    double? PctCesarea);
+    double? PctCesarea,
+    /// <summary>Nascidos mortos (<c>ID_CONDICAO_NASCIMENTO = 'M'</c>) — 100% preenchido.</summary>
+    int Natimortos,
+    int ComMalformacao,
+    int MalformacaoSemInfo,
+    /// <summary>
+    /// Idade gestacional pela codificação do SINASC em <c>ID_TMP_GESTACAO</c>: 5 = 37–41
+    /// semanas (a termo), 4 = 32–36 (prematuro tardio), 6 = 42+ (pós-termo). Decodificação
+    /// conferida contra o peso médio (2,5 kg no 4 × 3,37 kg no 5) e contra <c>IN_PREMATURO</c>.
+    /// </summary>
+    int ATermo,
+    int PrematuroTardio,
+    int PosTermo,
+    int GestacaoSemInfo,
+    int GravidezUnica,
+    int GravidezMultipla,
+    int Apgar1Abaixo7,
+    double? EstaturaMedia,
+    double? PerimetroCefalicoMedio,
+    /// <summary>Idade da mãe, pela FIA do parto — ligação de 100% dos nascimentos.</summary>
+    double? IdadeMediaMae,
+    int MaeAte17,
+    int MaeMenor20,
+    int Mae35Mais);
 
 public sealed record DiaPartos(string Dia, int Qtd, int? Cesareas);
+
+// ── Diagnósticos por cor (tick lento — Q8) ──────────────────────────────────
+
+/// <summary>
+/// Os CIDs mais registrados em cada cor da triagem. Só o Conde tem — nas UPAs o CID da
+/// classificação não é preenchido (ver ConsultasUpa).
+/// </summary>
+public sealed record DiagnosticosSecao(
+    DateTimeOffset AtualizadoEm,
+    string Rotulo,
+    IReadOnlyList<DiagnosticosDaCor> PorCor,
+    string? Escopo);
+
+public sealed record DiagnosticosDaCor(
+    string Cor,
+    int Boletins,
+    IReadOnlyList<CidRanking> Cids);
+
+public sealed record CidRanking(string Codigo, string Descricao, int Qtd, double? Pct);
 
 // ── Espera por cor (tick lento — Q6/U6) ─────────────────────────────────────
 

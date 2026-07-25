@@ -148,6 +148,29 @@ export interface MaternidadePeriodo {
   mediaDiaria: number | null;
   /** 0–100; null quando não houve parto no período. */
   pctCesarea: number | null;
+  /** Nascidos mortos (ID_CONDICAO_NASCIMENTO='M') — 100% preenchido. */
+  natimortos: number;
+  comMalformacao: number;
+  malformacaoSemInfo: number;
+  /**
+   * Idade gestacional pela codificação do SINASC: a termo (37–41 semanas),
+   * prematuro tardio (32–36) e pós-termo (42+). Decodificação conferida contra o
+   * peso médio e o campo de prematuridade.
+   */
+  aTermo: number;
+  prematuroTardio: number;
+  posTermo: number;
+  gestacaoSemInfo: number;
+  gravidezUnica: number;
+  gravidezMultipla: number;
+  apgar1Abaixo7: number;
+  estaturaMedia: number | null;
+  perimetroCefalicoMedio: number | null;
+  /** Idade da mãe pela FIA do parto — ligação de 100% dos nascimentos. */
+  idadeMediaMae: number | null;
+  maeAte17: number;
+  maeMenor20: number;
+  mae35Mais: number;
 }
 
 export interface PontoDiaPartos {
@@ -289,10 +312,34 @@ export interface UnidadePainel {
   esperaPorCor?: EsperaPorCor | null;
   maternidade?: Maternidade | null;
   leitos?: Leitos | null;
+  diagnosticos?: Diagnosticos | null;
 }
 
-/** As duas visões do painel — o seletor de cima. */
-export type VisaoPainel = 'emergencia' | 'leitos';
+export interface CidRanking {
+  codigo: string;
+  descricao: string;
+  qtd: number;
+  /** Participação do CID dentro da cor (0–100). */
+  pct: number | null;
+}
+
+export interface DiagnosticosDaCor {
+  cor: CorTriagem;
+  /** Boletins da cor COM CID registrado — é o denominador do `pct`. */
+  boletins: number;
+  cids: CidRanking[];
+}
+
+/** Só o Conde tem: nas UPAs o CID da classificação não é preenchido. */
+export interface Diagnosticos {
+  atualizadoEm: string;
+  rotulo: string;
+  porCor: DiagnosticosDaCor[];
+  escopo: string | null;
+}
+
+/** As visões do painel — o seletor de cima. */
+export type VisaoPainel = 'emergencia' | 'leitos' | 'maternidade';
 
 export interface Painel {
   geradoEm: string;

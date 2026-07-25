@@ -3,7 +3,7 @@ import type { VisaoPainel } from '@/types/painel';
 
 const CHAVE = 'secretario:visao';
 const PADRAO: VisaoPainel = 'emergencia';
-const VALIDAS: VisaoPainel[] = ['emergencia', 'leitos'];
+const VALIDAS: VisaoPainel[] = ['emergencia', 'leitos', 'maternidade'];
 
 function ehValida(valor: string | null | undefined): valor is VisaoPainel {
   return valor != null && (VALIDAS as string[]).includes(valor);

@@ -189,8 +189,33 @@ public static class ConsultasPainel
                SUM(CASE WHEN TO_NUMBER(REGEXP_SUBSTR(n.apgar_5_min,'^\d+')) < 7
                         THEN 1 ELSE 0 END)                                       AS apgar5_abaixo7,
                SUM(CASE WHEN n.sexo='F' THEN 1 ELSE 0 END)                       AS meninas,
-               SUM(CASE WHEN n.sexo='M' THEN 1 ELSE 0 END)                       AS meninos
+               SUM(CASE WHEN n.sexo='M' THEN 1 ELSE 0 END)                       AS meninos,
+               -- ── enriquecimento da aba Maternidade ──
+               SUM(CASE WHEN n.id_condicao_nascimento='M' THEN 1 ELSE 0 END)     AS natimortos,
+               SUM(CASE WHEN n.id_malformacao='S' THEN 1 ELSE 0 END)             AS com_malformacao,
+               SUM(CASE WHEN n.id_malformacao IS NULL THEN 1 ELSE 0 END)         AS malformacao_sem_info,
+               SUM(CASE WHEN n.id_tmp_gestacao='5' THEN 1 ELSE 0 END)            AS a_termo,
+               SUM(CASE WHEN n.id_tmp_gestacao='4' THEN 1 ELSE 0 END)            AS prematuro_tardio,
+               SUM(CASE WHEN n.id_tmp_gestacao='6' THEN 1 ELSE 0 END)            AS pos_termo,
+               SUM(CASE WHEN n.id_tmp_gestacao IS NULL THEN 1 ELSE 0 END)        AS gestacao_sem_info,
+               SUM(CASE WHEN n.id_tp_gravidez='U' THEN 1 ELSE 0 END)             AS gravidez_unica,
+               SUM(CASE WHEN n.id_tp_gravidez IS NOT NULL AND n.id_tp_gravidez<>'U'
+                        THEN 1 ELSE 0 END)                                       AS gravidez_multipla,
+               SUM(CASE WHEN TO_NUMBER(REGEXP_SUBSTR(n.apgar_1_minuto,'^\d+')) < 7
+                        THEN 1 ELSE 0 END)                                       AS apgar1_abaixo7,
+               ROUND(AVG(CASE WHEN n.estatura > 0 THEN n.estatura END), 1)       AS estatura_media,
+               ROUND(AVG(CASE WHEN n.perimetro_cefalico > 0 THEN n.perimetro_cefalico END), 1) AS pc_medio,
+               ROUND(AVG(FLOOR(MONTHS_BETWEEN(n.dt_parto, p.dt_nascimento)/12)), 1) AS idade_media_mae,
+               SUM(CASE WHEN FLOOR(MONTHS_BETWEEN(n.dt_parto,p.dt_nascimento)/12) <= 17
+                        THEN 1 ELSE 0 END)                                       AS mae_ate17,
+               SUM(CASE WHEN FLOOR(MONTHS_BETWEEN(n.dt_parto,p.dt_nascimento)/12) < 20
+                        THEN 1 ELSE 0 END)                                       AS mae_menor20,
+               SUM(CASE WHEN FLOOR(MONTHS_BETWEEN(n.dt_parto,p.dt_nascimento)/12) >= 35
+                        THEN 1 ELSE 0 END)                                       AS mae_35_mais
           FROM infosaude.nascimento n
+          LEFT JOIN infosaude.fia f
+                 ON f.cd_hospital = n.cd_hospital AND f.dt_ano_fia = n.dt_ano_fia AND f.nr_fia = n.nr_fia
+          LEFT JOIN infosaude.paciente p ON p.cd_paciente = NVL(f.cd_paciente_unificado, f.cd_paciente)
          WHERE n.dt_parto >= {ini} AND n.dt_parto < {fim}
         """;
 
@@ -345,5 +370,38 @@ public static class ConsultasPainel
         SELECT 'ADULTOS', COUNT(*), ROUND(AVG(dias),1), NULL, NULL FROM altas WHERE idade BETWEEN 18 AND 59
         UNION ALL
         SELECT 'IDOSOS', COUNT(*), ROUND(AVG(dias),1), NULL, NULL FROM altas WHERE idade >= 60
+        """;
+
+    // ── Q8 — Diagnósticos mais frequentes por cor (tick lento) ─────────────────
+
+    /// <summary>
+    /// Os CIDs mais registrados em cada cor de triagem. <c>BAA.CD_CID</c> é preenchido em
+    /// 94–98% dos boletins de emergência (Amarelo: 98,1%), então o ranking é sólido — ao
+    /// contrário das UPAs, onde o CID da classificação é ZERO e o que existe é queixa em
+    /// texto livre, fragmentada demais para ranquear ("DOR DE DENTE", "DENTISTA" e
+    /// "AVALIAÇÃO ODONTOLOGICA" são a mesma coisa em três linhas). Por isso esta consulta
+    /// só existe do lado do Conde.
+    ///
+    /// Devolve o total da cor junto (janela sobre o GROUP BY) para o front mostrar a
+    /// participação de cada CID sem precisar de uma segunda consulta.
+    /// </summary>
+    public static string Q8CidPorCor(int hospital, string ini, string fim, int topN) => $"""
+        SELECT cor, cd_cid, ds_cid, qtd, total_cor FROM (
+          SELECT NVL(cr.ds_classificacao_risco,'SEM_CLASSIFICACAO')            AS cor,
+                 b.cd_cid, NVL(c.ds_cid, b.cd_cid)                             AS ds_cid,
+                 COUNT(*)                                                      AS qtd,
+                 SUM(COUNT(*)) OVER (PARTITION BY NVL(cr.ds_classificacao_risco,'SEM_CLASSIFICACAO')) AS total_cor,
+                 ROW_NUMBER() OVER (PARTITION BY NVL(cr.ds_classificacao_risco,'SEM_CLASSIFICACAO')
+                                    ORDER BY COUNT(*) DESC, b.cd_cid)          AS rn
+            FROM infosaude.baa b
+            LEFT JOIN infosaude.classificacao_risco cr
+                   ON cr.cd_classificacao_risco = b.cd_classificacao_risco
+            LEFT JOIN infosaude.cid c ON c.cd_cid = b.cd_cid
+           WHERE b.cd_hospital = {hospital} AND b.in_emergencia = 'S'
+             AND b.cd_cid IS NOT NULL
+             AND b.dt_atendimento >= {ini} AND b.dt_atendimento < {fim}
+           GROUP BY cr.ds_classificacao_risco, b.cd_cid, c.ds_cid
+        ) WHERE rn <= {topN}
+        ORDER BY cor, qtd DESC
         """;
 }

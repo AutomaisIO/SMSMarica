@@ -68,6 +68,41 @@ function CartaoMesMaternidade({
   );
 }
 
+/** Linha rótulo → número, com alerta discreto para o que exige atenção. */
+function LinhaIndicador({
+  rotulo,
+  valor,
+  formatar,
+  destaque,
+  alerta,
+  nota,
+}: {
+  rotulo: string;
+  valor: number;
+  formatar?: (n: number) => string;
+  destaque?: boolean;
+  alerta?: boolean;
+  nota?: string;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-[13px] leading-snug text-grafite">{rotulo}</p>
+        {nota && <p className="text-[11.5px] leading-snug text-grafite/75">{nota}</p>}
+      </div>
+      <p
+        className={
+          'tnum shrink-0 font-display font-bold leading-none ' +
+          (destaque ? 'text-[20px] ' : 'text-[17px] ') +
+          (alerta ? 'text-vermelho-marica' : 'text-tinta')
+        }
+      >
+        {formatar ? formatar(valor) : formatarInteiro(valor)}
+      </p>
+    </div>
+  );
+}
+
 /**
  * Maternidade: o livro de partos do hospital (INFOSAUDE.NASCIMENTO), registro
  * consistente e com peso/prematuridade/APGAR preenchidos em 100% do mês.
@@ -112,10 +147,15 @@ export const SecaoMaternidade = memo(function SecaoMaternidade({
             formatar={(n) => (mes.pesoMedioKg == null ? '—' : `${formatarDecimal(n)} kg`)}
             detalhes={[`${formatarInteiro(mes.baixoPeso)} abaixo de 2,5 kg no mês`]}
           />
+          {/* Prematuridade sai da IDADE GESTACIONAL, não do campo IN_PREMATURO: o flag
+              é marcado à mão e discorda do próprio registro (em julho marcava 1, quando
+              3 nasceram entre 32 e 36 semanas). Mostrar os dois lado a lado fazia a tela
+              se contradizer. */}
           <StatTile
             rotulo="Prematuros no mês"
-            valor={mes.prematuros}
+            valor={mes.prematuroTardio}
             detalhes={[
+              'nascidos entre 32 e 36 semanas',
               `${formatarInteiro(mes.apgar5Abaixo7)} com Apgar abaixo de 7 no 5º minuto`,
             ]}
           />
@@ -125,6 +165,73 @@ export const SecaoMaternidade = memo(function SecaoMaternidade({
           <CartaoMesMaternidade periodo={maternidade.mesAtual} destaque />
           <CartaoMesMaternidade periodo={maternidade.mesAnterior} />
         </div>
+
+        {/* Enriquecimento pedido pela gerência do contrato: o que o livro de partos
+            tem além da contagem — desfecho, idade gestacional e perfil da mãe. */}
+        <div className="grid gap-3 lg:grid-cols-3">
+          <Cartao className="p-5">
+            <p className="eyebrow">Desfecho do nascimento</p>
+            <div className="mt-3 space-y-2">
+              <LinhaIndicador rotulo="Nascidos vivos" valor={mes.partos - mes.natimortos} destaque />
+              <LinhaIndicador rotulo="Natimortos" valor={mes.natimortos} alerta={mes.natimortos > 0} />
+              <LinhaIndicador rotulo="Apgar < 7 no 1º minuto" valor={mes.apgar1Abaixo7} />
+              <LinhaIndicador rotulo="Apgar < 7 no 5º minuto" valor={mes.apgar5Abaixo7} alerta={mes.apgar5Abaixo7 > 0} />
+              <LinhaIndicador
+                rotulo="Com malformação"
+                valor={mes.comMalformacao}
+                nota={mes.malformacaoSemInfo > 0 ? `${formatarInteiro(mes.malformacaoSemInfo)} sem informação` : undefined}
+              />
+            </div>
+          </Cartao>
+
+          <Cartao className="p-5">
+            <p className="eyebrow">Idade gestacional</p>
+            <div className="mt-3 space-y-2">
+              <LinhaIndicador rotulo="A termo (37–41 sem.)" valor={mes.aTermo} destaque />
+              <LinhaIndicador rotulo="Prematuro tardio (32–36)" valor={mes.prematuroTardio} />
+              <LinhaIndicador rotulo="Pós-termo (42+)" valor={mes.posTermo} />
+              <LinhaIndicador rotulo="Gravidez múltipla" valor={mes.gravidezMultipla} />
+              {mes.gestacaoSemInfo > 0 && (
+                <LinhaIndicador rotulo="Sem informação" valor={mes.gestacaoSemInfo} />
+              )}
+            </div>
+          </Cartao>
+
+          <Cartao className="p-5">
+            <p className="eyebrow">Perfil da mãe</p>
+            <div className="mt-3 space-y-2">
+              <LinhaIndicador
+                rotulo="Idade média"
+                valor={mes.idadeMediaMae ?? 0}
+                formatar={(n) => (mes.idadeMediaMae == null ? '—' : `${formatarDecimal(n)} anos`)}
+                destaque
+              />
+              <LinhaIndicador rotulo="Mães com até 17 anos" valor={mes.maeAte17} alerta={mes.maeAte17 > 0} />
+              <LinhaIndicador rotulo="Mães com menos de 20" valor={mes.maeMenor20} />
+              <LinhaIndicador rotulo="Mães com 35 anos ou mais" valor={mes.mae35Mais} />
+            </div>
+          </Cartao>
+        </div>
+
+        <Cartao className="p-5">
+          <p className="text-[15px] font-semibold text-tinta">Medidas ao nascer</p>
+          <p className="mb-3 text-[12.5px] text-grafite">média dos nascidos em {mes.rotulo}</p>
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { rotulo: 'Peso', valor: mes.pesoMedioKg, unidade: 'kg' },
+              { rotulo: 'Estatura', valor: mes.estaturaMedia, unidade: 'cm' },
+              { rotulo: 'Perímetro cefálico', valor: mes.perimetroCefalicoMedio, unidade: 'cm' },
+            ].map((m) => (
+              <div key={m.rotulo}>
+                <p className="text-[12.5px] text-grafite">{m.rotulo}</p>
+                <p className="font-display text-[24px] font-bold leading-tight text-tinta">
+                  {m.valor != null ? formatarDecimal(m.valor) : '—'}
+                  <span className="ml-1 font-corpo text-[13px] font-medium text-grafite">{m.unidade}</span>
+                </p>
+              </div>
+            ))}
+          </div>
+        </Cartao>
 
         <Cartao className="p-5">
           <p className="text-[15px] font-semibold text-tinta">Nascimentos por dia</p>

@@ -1,4 +1,4 @@
-import { AlertTriangle, Download, RefreshCw, WifiOff } from 'lucide-react';
+import { AlertTriangle, Baby, Download, RefreshCw, WifiOff } from 'lucide-react';
 import type { Painel, UnidadeId, UnidadePainel, VisaoPainel } from '@/types/painel';
 import { usePainel } from '@/lib/usePainel';
 import { useUnidade } from '@/lib/useUnidade';
@@ -20,11 +20,13 @@ import { SecaoAtendimentos } from '@/sections/SecaoAtendimentos';
 import { SecaoInternacoes } from '@/sections/SecaoInternacoes';
 import { SecaoMaternidade } from '@/sections/SecaoMaternidade';
 import { SecaoLeitos } from '@/sections/SecaoLeitos';
+import { SecaoDiagnosticos } from '@/sections/SecaoDiagnosticos';
 import { Rodape } from '@/sections/Rodape';
 
 const VISOES: OpcaoSegmento<VisaoPainel>[] = [
   { valor: 'emergencia', rotulo: 'Emergência' },
   { valor: 'leitos', rotulo: 'Leitos e internação' },
+  { valor: 'maternidade', rotulo: 'Maternidade' },
 ];
 
 function EstadoSemConexao({ aoTentar }: { aoTentar: () => void }) {
@@ -81,6 +83,18 @@ function ConteudoUnidade({ unidade, visao }: { unidade: UnidadePainel; visao: Vi
     return unidade.leitos ? <SecaoLeitos leitos={unidade.leitos} /> : <SkeletonSecaoGraficos />;
   }
 
+  if (visao === 'maternidade') {
+    // Maternidade só existe no Conde. Nas UPAs a aba diz isso, em vez de sumir do
+    // seletor e deixar o usuário achando que clicou errado.
+    return unidade.maternidade ? (
+      <div className="anima-entrada">
+        <SecaoMaternidade maternidade={unidade.maternidade} />
+      </div>
+    ) : (
+      <SemMaternidade nome={unidade.nome} />
+    );
+  }
+
   return (
     <div className="space-y-10 sm:space-y-12">
       {/* Cada seção renderiza de forma independente — no cold start o back
@@ -130,11 +144,29 @@ function ConteudoUnidade({ unidade, visao }: { unidade: UnidadePainel; visao: Vi
           <SecaoInternacoes internacoes={unidade.internacoes} />
         </div>
       )}
-      {unidade.maternidade && (
+      {/* Diagnóstico por cor só existe no Conde: nas UPAs o CID da classificação
+          não é preenchido e a queixa é texto livre. */}
+      {unidade.diagnosticos && unidade.diagnosticos.porCor.length > 0 && (
         <div className="anima-entrada" style={{ animationDelay: '280ms' }}>
-          <SecaoMaternidade maternidade={unidade.maternidade} />
+          <SecaoDiagnosticos diagnosticos={unidade.diagnosticos} />
         </div>
       )}
+    </div>
+  );
+}
+
+/** A unidade escolhida não tem maternidade — dizer é melhor que sumir com a aba. */
+function SemMaternidade({ nome }: { nome: string }) {
+  return (
+    <div className="flex flex-col items-center gap-3 py-20 text-center">
+      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-painel text-grafite">
+        <Baby className="h-5 w-5" aria-hidden="true" />
+      </span>
+      <p className="font-display text-[17px] font-bold text-tinta">Sem maternidade</p>
+      <p className="max-w-sm text-[13.5px] leading-relaxed text-grafite">
+        {nome} não faz partos. A única maternidade da rede é a do Hospital Municipal
+        Conde Modesto Leal.
+      </p>
     </div>
   );
 }

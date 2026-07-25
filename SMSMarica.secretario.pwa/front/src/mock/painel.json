@@ -1,9 +1,9 @@
 {
-  "geradoEm": "2026-07-25T00:14:25.7639972-03:00",
+  "geradoEm": "2026-07-25T00:35:05.6657378-03:00",
   "status": {
     "ok": true,
     "ultimoErro": null,
-    "ultimaAtualizacaoOk": "2026-07-25T00:14:15.1545388-03:00"
+    "ultimaAtualizacaoOk": "2026-07-25T00:34:55.5942293-03:00"
   },
   "fontes": [
     {
@@ -12,7 +12,7 @@
       "status": {
         "ok": true,
         "ultimoErro": null,
-        "ultimaAtualizacaoOk": "2026-07-25T00:14:15.1545388-03:00"
+        "ultimaAtualizacaoOk": "2026-07-25T00:34:55.5942293-03:00"
       }
     },
     {
@@ -21,7 +21,7 @@
       "status": {
         "ok": true,
         "ultimoErro": null,
-        "ultimaAtualizacaoOk": "2026-07-25T00:14:21.4934856-03:00"
+        "ultimaAtualizacaoOk": "2026-07-25T00:35:01.5502839-03:00"
       }
     },
     {
@@ -30,7 +30,7 @@
       "status": {
         "ok": true,
         "ultimoErro": null,
-        "ultimaAtualizacaoOk": "2026-07-25T00:14:25.763991-03:00"
+        "ultimaAtualizacaoOk": "2026-07-25T00:35:05.665734-03:00"
       }
     }
   ],
@@ -49,8 +49,8 @@
         "SEM_CLASSIFICACAO"
       ],
       "agora": {
-        "atualizadoEm": "2026-07-25T00:14:01.4657498-03:00",
-        "aguardandoMedico": 43,
+        "atualizadoEm": "2026-07-25T00:34:41.5007625-03:00",
+        "aguardandoMedico": 42,
         "aguardandoPorCor": [
           {
             "cor": "VERMELHO",
@@ -65,26 +65,26 @@
           {
             "cor": "AMARELO",
             "qtd": 2,
-            "minMedioEspera": 377
+            "minMedioEspera": 398
           },
           {
             "cor": "VERDE",
-            "qtd": 24,
-            "minMedioEspera": 402
+            "qtd": 21,
+            "minMedioEspera": 424
           },
           {
             "cor": "AZUL",
             "qtd": 5,
-            "minMedioEspera": 462
+            "minMedioEspera": 483
           },
           {
             "cor": "SEM_CLASSIFICACAO",
-            "qtd": 12,
-            "minMedioEspera": 363
+            "qtd": 14,
+            "minMedioEspera": 329
           }
         ],
-        "emAtendimento": 158,
-        "atendimentosHoje": 2,
+        "emAtendimento": 154,
+        "atendimentosHoje": 8,
         "internados": {
           "total": 155,
           "maternidade": 23,
@@ -96,7 +96,7 @@
         }
       },
       "atendimentos": {
-        "atualizadoEm": "2026-07-25T00:14:15.1052874-03:00",
+        "atualizadoEm": "2026-07-25T00:34:55.5389609-03:00",
         "mesAnterior": {
           "rotulo": "junho/2026",
           "total": 38050,
@@ -105,13 +105,13 @@
         },
         "mesAtual": {
           "rotulo": "julho/2026",
-          "total": 29931,
+          "total": 29937,
           "diasCompletos": 24,
           "totalDiasCompletos": 29929,
           "mediaDiaria": 1247
         },
         "hoje": {
-          "total": 2
+          "total": 8
         },
         "serieDiaria": [
           {
@@ -252,18 +252,18 @@
           },
           {
             "dia": "2026-07-25",
-            "qtd": 2
+            "qtd": 8
           }
         ],
         "porHoraHoje": [
           {
             "hora": 0,
-            "qtd": 2
+            "qtd": 8
           }
         ]
       },
       "internacoes": {
-        "atualizadoEm": "2026-07-25T00:14:15.1052874-03:00",
+        "atualizadoEm": "2026-07-25T00:34:55.5389609-03:00",
         "mesAnterior": {
           "rotulo": "junho/2026",
           "total": 739,
@@ -536,7 +536,7 @@
         "escopo": "HMCML"
       },
       "esperaPorCor": {
-        "atualizadoEm": "2026-07-25T00:14:15.1052874-03:00",
+        "atualizadoEm": "2026-07-25T00:34:55.5389609-03:00",
         "periodos": {
           "hoje": [
             {
@@ -574,12 +574,12 @@
             },
             {
               "cor": "VERDE",
-              "pacientes": 1,
-              "comAtendimento": 0,
-              "mediaAteTriagem": 3.4,
-              "mediaEspera": null,
-              "medianaEspera": null,
-              "p90Espera": null,
+              "pacientes": 4,
+              "comAtendimento": 3,
+              "mediaAteTriagem": 4,
+              "mediaEspera": 5.6,
+              "medianaEspera": 5.6,
+              "p90Espera": 6.7,
               "metaMin": null,
               "pctNaMeta": null
             },
@@ -596,7 +596,7 @@
             },
             {
               "cor": "SEM_CLASSIFICACAO",
-              "pacientes": 1,
+              "pacientes": 2,
               "comAtendimento": 0,
               "mediaAteTriagem": null,
               "mediaEspera": null,
@@ -642,8 +642,8 @@
             },
             {
               "cor": "VERDE",
-              "pacientes": 19419,
-              "comAtendimento": 18689,
+              "pacientes": 19422,
+              "comAtendimento": 18693,
               "mediaAteTriagem": 11.6,
               "mediaEspera": 41.6,
               "medianaEspera": 29.8,
@@ -664,7 +664,7 @@
             },
             {
               "cor": "SEM_CLASSIFICACAO",
-              "pacientes": 1577,
+              "pacientes": 1578,
               "comAtendimento": 578,
               "mediaAteTriagem": null,
               "mediaEspera": 71.1,
@@ -745,7 +745,7 @@
         }
       },
       "maternidade": {
-        "atualizadoEm": "2026-07-25T00:14:15.1052874-03:00",
+        "atualizadoEm": "2026-07-25T00:34:55.5389609-03:00",
         "mesAnterior": {
           "rotulo": "junho/2026",
           "partos": 94,
@@ -758,7 +758,23 @@
           "meninas": 46,
           "meninos": 48,
           "mediaDiaria": 3.1,
-          "pctCesarea": 63.8
+          "pctCesarea": 63.8,
+          "natimortos": 0,
+          "comMalformacao": 4,
+          "malformacaoSemInfo": 22,
+          "aTermo": 77,
+          "prematuroTardio": 6,
+          "posTermo": 0,
+          "gestacaoSemInfo": 11,
+          "gravidezUnica": 82,
+          "gravidezMultipla": 0,
+          "apgar1Abaixo7": 5,
+          "estaturaMedia": 50.2,
+          "perimetroCefalicoMedio": 34.5,
+          "idadeMediaMae": 27.8,
+          "maeAte17": 5,
+          "maeMenor20": 11,
+          "mae35Mais": 17
         },
         "mesAtual": {
           "rotulo": "julho/2026",
@@ -772,7 +788,23 @@
           "meninas": 46,
           "meninos": 37,
           "mediaDiaria": 3.5,
-          "pctCesarea": 54.2
+          "pctCesarea": 54.2,
+          "natimortos": 0,
+          "comMalformacao": 1,
+          "malformacaoSemInfo": 23,
+          "aTermo": 69,
+          "prematuroTardio": 3,
+          "posTermo": 1,
+          "gestacaoSemInfo": 10,
+          "gravidezUnica": 73,
+          "gravidezMultipla": 1,
+          "apgar1Abaixo7": 3,
+          "estaturaMedia": 50.5,
+          "perimetroCefalicoMedio": 34.1,
+          "idadeMediaMae": 25.4,
+          "maeAte17": 5,
+          "maeMenor20": 12,
+          "mae35Mais": 4
         },
         "hoje": {
           "rotulo": "hoje",
@@ -786,7 +818,23 @@
           "meninas": 0,
           "meninos": 0,
           "mediaDiaria": null,
-          "pctCesarea": null
+          "pctCesarea": null,
+          "natimortos": 0,
+          "comMalformacao": 0,
+          "malformacaoSemInfo": 0,
+          "aTermo": 0,
+          "prematuroTardio": 0,
+          "posTermo": 0,
+          "gestacaoSemInfo": 0,
+          "gravidezUnica": 0,
+          "gravidezMultipla": 0,
+          "apgar1Abaixo7": 0,
+          "estaturaMedia": null,
+          "perimetroCefalicoMedio": null,
+          "idadeMediaMae": null,
+          "maeAte17": 0,
+          "maeMenor20": 0,
+          "mae35Mais": 0
         },
         "serieDiaria": [
           {
@@ -968,7 +1016,7 @@
         "escopo": "HMCML"
       },
       "leitos": {
-        "atualizadoEm": "2026-07-25T00:14:15.1052874-03:00",
+        "atualizadoEm": "2026-07-25T00:34:55.5389609-03:00",
         "ocupacao": {
           "leitos": 449,
           "ocupados": 159,
@@ -1194,10 +1242,197 @@
         "observacao": {
           "rotulo": "julho/2026",
           "encaminhados": 104,
-          "classificados": 15347
+          "classificados": 15348
         },
         "escopo": "HMCML + UPA 24h Maricá",
         "indisponivel": null
+      },
+      "diagnosticos": {
+        "atualizadoEm": "2026-07-25T00:34:55.5389609-03:00",
+        "rotulo": "julho/2026",
+        "porCor": [
+          {
+            "cor": "VERMELHO",
+            "boletins": 23,
+            "cids": [
+              {
+                "codigo": "I64",
+                "descricao": "Acidente Vascular Cerebral, Não Especificado Como Hemorrágico Ou Isquêmico",
+                "qtd": 2,
+                "pct": 8.7
+              },
+              {
+                "codigo": "E16.1",
+                "descricao": "Outra Hipoglicemia",
+                "qtd": 1,
+                "pct": 4.3
+              },
+              {
+                "codigo": "E87.0",
+                "descricao": "Hiperosmolaridade E Hipernatremia",
+                "qtd": 1,
+                "pct": 4.3
+              },
+              {
+                "codigo": "F23.8",
+                "descricao": "Outros Transtornos Psicóticos Agudos E Transitórios",
+                "qtd": 1,
+                "pct": 4.3
+              },
+              {
+                "codigo": "F41.1",
+                "descricao": "Ansiedade Generalizada",
+                "qtd": 1,
+                "pct": 4.3
+              }
+            ]
+          },
+          {
+            "cor": "AMARELO",
+            "boletins": 3375,
+            "cids": [
+              {
+                "codigo": "R05",
+                "descricao": "Tosse",
+                "qtd": 198,
+                "pct": 5.9
+              },
+              {
+                "codigo": "I10",
+                "descricao": "Hipertensão Essencial (Primária)",
+                "qtd": 168,
+                "pct": 5
+              },
+              {
+                "codigo": "R10",
+                "descricao": "Dor Abdominal E Pelvica",
+                "qtd": 133,
+                "pct": 3.9
+              },
+              {
+                "codigo": "R52.0",
+                "descricao": "Dor Aguda",
+                "qtd": 118,
+                "pct": 3.5
+              },
+              {
+                "codigo": "J03.9",
+                "descricao": "Amigdalite Aguda Não Especificada",
+                "qtd": 101,
+                "pct": 3
+              }
+            ]
+          },
+          {
+            "cor": "VERDE",
+            "boletins": 6772,
+            "cids": [
+              {
+                "codigo": "R05",
+                "descricao": "Tosse",
+                "qtd": 567,
+                "pct": 8.4
+              },
+              {
+                "codigo": "J00",
+                "descricao": "Nasofaringite Aguda [Resfriado Comum]",
+                "qtd": 325,
+                "pct": 4.8
+              },
+              {
+                "codigo": "M54.5",
+                "descricao": "Dor Lombar Baixa",
+                "qtd": 242,
+                "pct": 3.6
+              },
+              {
+                "codigo": "R10",
+                "descricao": "Dor Abdominal E Pelvica",
+                "qtd": 239,
+                "pct": 3.5
+              },
+              {
+                "codigo": "J03.9",
+                "descricao": "Amigdalite Aguda Não Especificada",
+                "qtd": 217,
+                "pct": 3.2
+              }
+            ]
+          },
+          {
+            "cor": "AZUL",
+            "boletins": 840,
+            "cids": [
+              {
+                "codigo": "R05",
+                "descricao": "Tosse",
+                "qtd": 74,
+                "pct": 8.8
+              },
+              {
+                "codigo": "M54.5",
+                "descricao": "Dor Lombar Baixa",
+                "qtd": 49,
+                "pct": 5.8
+              },
+              {
+                "codigo": "D64.9",
+                "descricao": "Anemia Não Especificada",
+                "qtd": 41,
+                "pct": 4.9
+              },
+              {
+                "codigo": "M25.5",
+                "descricao": "Dor Articular",
+                "qtd": 29,
+                "pct": 3.5
+              },
+              {
+                "codigo": "Z00.0",
+                "descricao": "Exame Médico Geral",
+                "qtd": 27,
+                "pct": 3.2
+              }
+            ]
+          },
+          {
+            "cor": "SEM_CLASSIFICACAO",
+            "boletins": 1798,
+            "cids": [
+              {
+                "codigo": "Z04",
+                "descricao": "Outras Razoes",
+                "qtd": 79,
+                "pct": 4.4
+              },
+              {
+                "codigo": "R10",
+                "descricao": "Dor Abdominal E Pelvica",
+                "qtd": 70,
+                "pct": 3.9
+              },
+              {
+                "codigo": "Z34",
+                "descricao": "Supervisao De Gravidez Normal",
+                "qtd": 59,
+                "pct": 3.3
+              },
+              {
+                "codigo": "Z47.8",
+                "descricao": "Outros Seguimentos Ortopédicos Especificados",
+                "qtd": 58,
+                "pct": 3.2
+              },
+              {
+                "codigo": "Z34.9",
+                "descricao": "Supervisão De Gravidez Normal, Não Especificada",
+                "qtd": 57,
+                "pct": 3.2
+              }
+            ]
+          }
+        ],
+        "escopo": "HMCML"
       }
     },
     {
@@ -1213,8 +1448,8 @@
         "SEM_CLASSIFICACAO"
       ],
       "agora": {
-        "atualizadoEm": "2026-07-25T00:14:01.4657498-03:00",
-        "aguardandoMedico": 41,
+        "atualizadoEm": "2026-07-25T00:34:41.5007625-03:00",
+        "aguardandoMedico": 40,
         "aguardandoPorCor": [
           {
             "cor": "VERMELHO",
@@ -1229,26 +1464,26 @@
           {
             "cor": "AMARELO",
             "qtd": 2,
-            "minMedioEspera": 377
+            "minMedioEspera": 398
           },
           {
             "cor": "VERDE",
-            "qtd": 23,
-            "minMedioEspera": 419
+            "qtd": 21,
+            "minMedioEspera": 424
           },
           {
             "cor": "AZUL",
             "qtd": 5,
-            "minMedioEspera": 462
+            "minMedioEspera": 483
           },
           {
             "cor": "SEM_CLASSIFICACAO",
-            "qtd": 11,
-            "minMedioEspera": 395
+            "qtd": 12,
+            "minMedioEspera": 382
           }
         ],
-        "emAtendimento": 133,
-        "atendimentosHoje": 1,
+        "emAtendimento": 131,
+        "atendimentosHoje": 5,
         "internados": {
           "total": 155,
           "maternidade": 23,
@@ -1260,7 +1495,7 @@
         }
       },
       "atendimentos": {
-        "atualizadoEm": "2026-07-25T00:14:15.1052874-03:00",
+        "atualizadoEm": "2026-07-25T00:34:55.5389609-03:00",
         "mesAnterior": {
           "rotulo": "junho/2026",
           "total": 17405,
@@ -1269,13 +1504,13 @@
         },
         "mesAtual": {
           "rotulo": "julho/2026",
-          "total": 13641,
+          "total": 13645,
           "diasCompletos": 24,
           "totalDiasCompletos": 13640,
           "mediaDiaria": 568.3
         },
         "hoje": {
-          "total": 1
+          "total": 5
         },
         "serieDiaria": [
           {
@@ -1416,18 +1651,18 @@
           },
           {
             "dia": "2026-07-25",
-            "qtd": 1
+            "qtd": 5
           }
         ],
         "porHoraHoje": [
           {
             "hora": 0,
-            "qtd": 1
+            "qtd": 5
           }
         ]
       },
       "internacoes": {
-        "atualizadoEm": "2026-07-25T00:14:15.1052874-03:00",
+        "atualizadoEm": "2026-07-25T00:34:55.5389609-03:00",
         "mesAnterior": {
           "rotulo": "junho/2026",
           "total": 739,
@@ -1700,7 +1935,7 @@
         "escopo": null
       },
       "esperaPorCor": {
-        "atualizadoEm": "2026-07-25T00:14:15.1052874-03:00",
+        "atualizadoEm": "2026-07-25T00:34:55.5389609-03:00",
         "periodos": {
           "hoje": [
             {
@@ -1738,14 +1973,14 @@
             },
             {
               "cor": "VERDE",
-              "pacientes": 1,
-              "comAtendimento": 0,
-              "mediaAteTriagem": 3.4,
-              "mediaEspera": null,
-              "medianaEspera": null,
-              "p90Espera": null,
+              "pacientes": 3,
+              "comAtendimento": 2,
+              "mediaAteTriagem": 2.7,
+              "mediaEspera": 5.4,
+              "medianaEspera": 5.4,
+              "p90Espera": 7.1,
               "metaMin": 60,
-              "pctNaMeta": null
+              "pctNaMeta": 100
             },
             {
               "cor": "AZUL",
@@ -1806,8 +2041,8 @@
             },
             {
               "cor": "VERDE",
-              "pacientes": 7175,
-              "comAtendimento": 6627,
+              "pacientes": 7177,
+              "comAtendimento": 6629,
               "mediaAteTriagem": 6.5,
               "mediaEspera": 53.1,
               "medianaEspera": 36.5,
@@ -1909,7 +2144,7 @@
         }
       },
       "maternidade": {
-        "atualizadoEm": "2026-07-25T00:14:15.1052874-03:00",
+        "atualizadoEm": "2026-07-25T00:34:55.5389609-03:00",
         "mesAnterior": {
           "rotulo": "junho/2026",
           "partos": 94,
@@ -1922,7 +2157,23 @@
           "meninas": 46,
           "meninos": 48,
           "mediaDiaria": 3.1,
-          "pctCesarea": 63.8
+          "pctCesarea": 63.8,
+          "natimortos": 0,
+          "comMalformacao": 4,
+          "malformacaoSemInfo": 22,
+          "aTermo": 77,
+          "prematuroTardio": 6,
+          "posTermo": 0,
+          "gestacaoSemInfo": 11,
+          "gravidezUnica": 82,
+          "gravidezMultipla": 0,
+          "apgar1Abaixo7": 5,
+          "estaturaMedia": 50.2,
+          "perimetroCefalicoMedio": 34.5,
+          "idadeMediaMae": 27.8,
+          "maeAte17": 5,
+          "maeMenor20": 11,
+          "mae35Mais": 17
         },
         "mesAtual": {
           "rotulo": "julho/2026",
@@ -1936,7 +2187,23 @@
           "meninas": 46,
           "meninos": 37,
           "mediaDiaria": 3.5,
-          "pctCesarea": 54.2
+          "pctCesarea": 54.2,
+          "natimortos": 0,
+          "comMalformacao": 1,
+          "malformacaoSemInfo": 23,
+          "aTermo": 69,
+          "prematuroTardio": 3,
+          "posTermo": 1,
+          "gestacaoSemInfo": 10,
+          "gravidezUnica": 73,
+          "gravidezMultipla": 1,
+          "apgar1Abaixo7": 3,
+          "estaturaMedia": 50.5,
+          "perimetroCefalicoMedio": 34.1,
+          "idadeMediaMae": 25.4,
+          "maeAte17": 5,
+          "maeMenor20": 12,
+          "mae35Mais": 4
         },
         "hoje": {
           "rotulo": "hoje",
@@ -1950,7 +2217,23 @@
           "meninas": 0,
           "meninos": 0,
           "mediaDiaria": null,
-          "pctCesarea": null
+          "pctCesarea": null,
+          "natimortos": 0,
+          "comMalformacao": 0,
+          "malformacaoSemInfo": 0,
+          "aTermo": 0,
+          "prematuroTardio": 0,
+          "posTermo": 0,
+          "gestacaoSemInfo": 0,
+          "gravidezUnica": 0,
+          "gravidezMultipla": 0,
+          "apgar1Abaixo7": 0,
+          "estaturaMedia": null,
+          "perimetroCefalicoMedio": null,
+          "idadeMediaMae": null,
+          "maeAte17": 0,
+          "maeMenor20": 0,
+          "mae35Mais": 0
         },
         "serieDiaria": [
           {
@@ -2132,7 +2415,7 @@
         "escopo": null
       },
       "leitos": {
-        "atualizadoEm": "2026-07-25T00:14:15.1052874-03:00",
+        "atualizadoEm": "2026-07-25T00:34:55.5389609-03:00",
         "ocupacao": {
           "leitos": 426,
           "ocupados": 155,
@@ -2351,6 +2634,193 @@
         "observacao": null,
         "escopo": null,
         "indisponivel": null
+      },
+      "diagnosticos": {
+        "atualizadoEm": "2026-07-25T00:34:55.5389609-03:00",
+        "rotulo": "julho/2026",
+        "porCor": [
+          {
+            "cor": "VERMELHO",
+            "boletins": 23,
+            "cids": [
+              {
+                "codigo": "I64",
+                "descricao": "Acidente Vascular Cerebral, Não Especificado Como Hemorrágico Ou Isquêmico",
+                "qtd": 2,
+                "pct": 8.7
+              },
+              {
+                "codigo": "E16.1",
+                "descricao": "Outra Hipoglicemia",
+                "qtd": 1,
+                "pct": 4.3
+              },
+              {
+                "codigo": "E87.0",
+                "descricao": "Hiperosmolaridade E Hipernatremia",
+                "qtd": 1,
+                "pct": 4.3
+              },
+              {
+                "codigo": "F23.8",
+                "descricao": "Outros Transtornos Psicóticos Agudos E Transitórios",
+                "qtd": 1,
+                "pct": 4.3
+              },
+              {
+                "codigo": "F41.1",
+                "descricao": "Ansiedade Generalizada",
+                "qtd": 1,
+                "pct": 4.3
+              }
+            ]
+          },
+          {
+            "cor": "AMARELO",
+            "boletins": 3375,
+            "cids": [
+              {
+                "codigo": "R05",
+                "descricao": "Tosse",
+                "qtd": 198,
+                "pct": 5.9
+              },
+              {
+                "codigo": "I10",
+                "descricao": "Hipertensão Essencial (Primária)",
+                "qtd": 168,
+                "pct": 5
+              },
+              {
+                "codigo": "R10",
+                "descricao": "Dor Abdominal E Pelvica",
+                "qtd": 133,
+                "pct": 3.9
+              },
+              {
+                "codigo": "R52.0",
+                "descricao": "Dor Aguda",
+                "qtd": 118,
+                "pct": 3.5
+              },
+              {
+                "codigo": "J03.9",
+                "descricao": "Amigdalite Aguda Não Especificada",
+                "qtd": 101,
+                "pct": 3
+              }
+            ]
+          },
+          {
+            "cor": "VERDE",
+            "boletins": 6772,
+            "cids": [
+              {
+                "codigo": "R05",
+                "descricao": "Tosse",
+                "qtd": 567,
+                "pct": 8.4
+              },
+              {
+                "codigo": "J00",
+                "descricao": "Nasofaringite Aguda [Resfriado Comum]",
+                "qtd": 325,
+                "pct": 4.8
+              },
+              {
+                "codigo": "M54.5",
+                "descricao": "Dor Lombar Baixa",
+                "qtd": 242,
+                "pct": 3.6
+              },
+              {
+                "codigo": "R10",
+                "descricao": "Dor Abdominal E Pelvica",
+                "qtd": 239,
+                "pct": 3.5
+              },
+              {
+                "codigo": "J03.9",
+                "descricao": "Amigdalite Aguda Não Especificada",
+                "qtd": 217,
+                "pct": 3.2
+              }
+            ]
+          },
+          {
+            "cor": "AZUL",
+            "boletins": 840,
+            "cids": [
+              {
+                "codigo": "R05",
+                "descricao": "Tosse",
+                "qtd": 74,
+                "pct": 8.8
+              },
+              {
+                "codigo": "M54.5",
+                "descricao": "Dor Lombar Baixa",
+                "qtd": 49,
+                "pct": 5.8
+              },
+              {
+                "codigo": "D64.9",
+                "descricao": "Anemia Não Especificada",
+                "qtd": 41,
+                "pct": 4.9
+              },
+              {
+                "codigo": "M25.5",
+                "descricao": "Dor Articular",
+                "qtd": 29,
+                "pct": 3.5
+              },
+              {
+                "codigo": "Z00.0",
+                "descricao": "Exame Médico Geral",
+                "qtd": 27,
+                "pct": 3.2
+              }
+            ]
+          },
+          {
+            "cor": "SEM_CLASSIFICACAO",
+            "boletins": 1798,
+            "cids": [
+              {
+                "codigo": "Z04",
+                "descricao": "Outras Razoes",
+                "qtd": 79,
+                "pct": 4.4
+              },
+              {
+                "codigo": "R10",
+                "descricao": "Dor Abdominal E Pelvica",
+                "qtd": 70,
+                "pct": 3.9
+              },
+              {
+                "codigo": "Z34",
+                "descricao": "Supervisao De Gravidez Normal",
+                "qtd": 59,
+                "pct": 3.3
+              },
+              {
+                "codigo": "Z47.8",
+                "descricao": "Outros Seguimentos Ortopédicos Especificados",
+                "qtd": 58,
+                "pct": 3.2
+              },
+              {
+                "codigo": "Z34.9",
+                "descricao": "Supervisão De Gravidez Normal, Não Especificada",
+                "qtd": 57,
+                "pct": 3.2
+              }
+            ]
+          }
+        ],
+        "escopo": null
       }
     },
     {
@@ -2367,8 +2837,8 @@
         "SEM_CLASSIFICACAO"
       ],
       "agora": {
-        "atualizadoEm": "2026-07-25T00:14:02.1310416-03:00",
-        "aguardandoMedico": 2,
+        "atualizadoEm": "2026-07-25T00:34:42.1594228-03:00",
+        "aguardandoMedico": 1,
         "aguardandoPorCor": [
           {
             "cor": "VERMELHO",
@@ -2387,8 +2857,8 @@
           },
           {
             "cor": "VERDE",
-            "qtd": 1,
-            "minMedioEspera": 19
+            "qtd": 0,
+            "minMedioEspera": null
           },
           {
             "cor": "AZUL",
@@ -2398,15 +2868,15 @@
           {
             "cor": "SEM_CLASSIFICACAO",
             "qtd": 1,
-            "minMedioEspera": 6
+            "minMedioEspera": 4
           }
         ],
         "emAtendimento": 9,
-        "atendimentosHoje": 1,
+        "atendimentosHoje": 2,
         "internados": null
       },
       "atendimentos": {
-        "atualizadoEm": "2026-07-25T00:14:21.4903694-03:00",
+        "atualizadoEm": "2026-07-25T00:35:01.5477065-03:00",
         "mesAnterior": {
           "rotulo": "junho/2026",
           "total": 12993,
@@ -2415,13 +2885,13 @@
         },
         "mesAtual": {
           "rotulo": "julho/2026",
-          "total": 10212,
+          "total": 10213,
           "diasCompletos": 24,
           "totalDiasCompletos": 10211,
           "mediaDiaria": 425.5
         },
         "hoje": {
-          "total": 1
+          "total": 2
         },
         "serieDiaria": [
           {
@@ -2562,19 +3032,19 @@
           },
           {
             "dia": "2026-07-25",
-            "qtd": 1
+            "qtd": 2
           }
         ],
         "porHoraHoje": [
           {
             "hora": 0,
-            "qtd": 1
+            "qtd": 2
           }
         ]
       },
       "internacoes": null,
       "esperaPorCor": {
-        "atualizadoEm": "2026-07-25T00:14:21.4903694-03:00",
+        "atualizadoEm": "2026-07-25T00:35:01.5477065-03:00",
         "periodos": {
           "hoje": [
             {
@@ -2612,14 +3082,14 @@
             },
             {
               "cor": "VERDE",
-              "pacientes": 0,
-              "comAtendimento": 0,
-              "mediaAteTriagem": null,
-              "mediaEspera": null,
-              "medianaEspera": null,
-              "p90Espera": null,
-              "metaMin": null,
-              "pctNaMeta": null
+              "pacientes": 1,
+              "comAtendimento": 1,
+              "mediaAteTriagem": 8,
+              "mediaEspera": 6,
+              "medianaEspera": 6,
+              "p90Espera": 6,
+              "metaMin": 120,
+              "pctNaMeta": 100
             },
             {
               "cor": "AZUL",
@@ -2680,10 +3150,10 @@
             },
             {
               "cor": "VERDE",
-              "pacientes": 7576,
-              "comAtendimento": 7439,
+              "pacientes": 7577,
+              "comAtendimento": 7441,
               "mediaAteTriagem": 18.8,
-              "mediaEspera": 37.1,
+              "mediaEspera": 37,
               "medianaEspera": 28,
               "p90Espera": 80,
               "metaMin": 120,
@@ -2784,7 +3254,7 @@
       },
       "maternidade": null,
       "leitos": {
-        "atualizadoEm": "2026-07-25T00:14:21.4903694-03:00",
+        "atualizadoEm": "2026-07-25T00:35:01.5477065-03:00",
         "ocupacao": {
           "leitos": 23,
           "ocupados": 4,
@@ -2806,11 +3276,12 @@
         "observacao": {
           "rotulo": "julho/2026",
           "encaminhados": 77,
-          "classificados": 9308
+          "classificados": 9309
         },
         "escopo": null,
         "indisponivel": null
-      }
+      },
+      "diagnosticos": null
     },
     {
       "id": "santarita",
@@ -2826,8 +3297,8 @@
         "SEM_CLASSIFICACAO"
       ],
       "agora": {
-        "atualizadoEm": "2026-07-25T00:14:02.671814-03:00",
-        "aguardandoMedico": 0,
+        "atualizadoEm": "2026-07-25T00:34:42.7525026-03:00",
+        "aguardandoMedico": 1,
         "aguardandoPorCor": [
           {
             "cor": "VERMELHO",
@@ -2856,16 +3327,16 @@
           },
           {
             "cor": "SEM_CLASSIFICACAO",
-            "qtd": 0,
-            "minMedioEspera": null
+            "qtd": 1,
+            "minMedioEspera": 12
           }
         ],
-        "emAtendimento": 16,
-        "atendimentosHoje": 0,
+        "emAtendimento": 14,
+        "atendimentosHoje": 1,
         "internados": null
       },
       "atendimentos": {
-        "atualizadoEm": "2026-07-25T00:14:25.7633689-03:00",
+        "atualizadoEm": "2026-07-25T00:35:05.6654195-03:00",
         "mesAnterior": {
           "rotulo": "junho/2026",
           "total": 7652,
@@ -2874,13 +3345,13 @@
         },
         "mesAtual": {
           "rotulo": "julho/2026",
-          "total": 6078,
+          "total": 6079,
           "diasCompletos": 24,
           "totalDiasCompletos": 6078,
           "mediaDiaria": 253.2
         },
         "hoje": {
-          "total": 0
+          "total": 1
         },
         "serieDiaria": [
           {
@@ -3021,19 +3492,19 @@
           },
           {
             "dia": "2026-07-25",
-            "qtd": 0
+            "qtd": 1
           }
         ],
         "porHoraHoje": [
           {
             "hora": 0,
-            "qtd": 0
+            "qtd": 1
           }
         ]
       },
       "internacoes": null,
       "esperaPorCor": {
-        "atualizadoEm": "2026-07-25T00:14:25.7633689-03:00",
+        "atualizadoEm": "2026-07-25T00:35:05.6654195-03:00",
         "periodos": {
           "hoje": [
             {
@@ -3093,7 +3564,7 @@
             },
             {
               "cor": "SEM_CLASSIFICACAO",
-              "pacientes": 0,
+              "pacientes": 1,
               "comAtendimento": 0,
               "mediaAteTriagem": null,
               "mediaEspera": null,
@@ -3161,7 +3632,7 @@
             },
             {
               "cor": "SEM_CLASSIFICACAO",
-              "pacientes": 39,
+              "pacientes": 40,
               "comAtendimento": 0,
               "mediaAteTriagem": null,
               "mediaEspera": null,
@@ -3243,7 +3714,7 @@
       },
       "maternidade": null,
       "leitos": {
-        "atualizadoEm": "2026-07-25T00:14:25.7633689-03:00",
+        "atualizadoEm": "2026-07-25T00:35:05.6654195-03:00",
         "ocupacao": null,
         "setores": [],
         "perfil": null,
@@ -3255,7 +3726,8 @@
         },
         "escopo": null,
         "indisponivel": "O cadastro de leitos desta unidade está vazio no sistema dela, então não há taxa de ocupação confiável para publicar."
-      }
+      },
+      "diagnosticos": null
     }
   ]
 }

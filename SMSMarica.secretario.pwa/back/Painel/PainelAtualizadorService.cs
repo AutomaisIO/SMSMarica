@@ -148,6 +148,7 @@ public sealed class PainelAtualizadorService : BackgroundService
             estado.EsperaPorCor = unidade.EsperaPorCor;
             estado.Maternidade = unidade.Maternidade;
             estado.Leitos = unidade.Leitos;
+            estado.Diagnosticos = unidade.Diagnosticos;
         }
 
         foreach (var fonte in snapshot.Fontes ?? [])
@@ -284,8 +285,12 @@ public sealed class PainelAtualizadorService : BackgroundService
         var permanencia = await ConsultarAsync(b,
             ConsultasPainel.L3Permanencia(hosp, ConsultasPainel.IniMesAtual, ConsultasPainel.FimMesAtual), ct);
 
+        var cids = await ConsultarAsync(b,
+            ConsultasPainel.Q8CidPorCor(hosp, ConsultasPainel.IniMesAtual, ConsultasPainel.FimMesAtual, TopCids), ct);
+
         var carimbo = FusoBrasilia.Agora();
         _conde.Leitos = MontarLeitosConde(hoje, carimbo, setores, perfil, permanencia);
+        _conde.Diagnosticos = MontarDiagnosticos(carimbo, RotuloMes(hoje), cids);
         _conde.Atendimentos = MontarAtendimentos(
             hoje, carimbo, totalMesAnterior, totalMesAtual, totalHoje, totalDiasCompletos, serieAtendimentos, porHora);
         _conde.Internacoes = MontarInternacoes(
@@ -383,18 +388,18 @@ public sealed class PainelAtualizadorService : BackgroundService
             Unidades.IdConde, "Conde", Unidades.NomeConde, Unidades.FonteConde,
             Unidades.CoresDe(Unidades.IdConde),
             _conde.Agora, _conde.Atendimentos, _conde.Internacoes, _conde.EsperaPorCor, _conde.Maternidade,
-            _conde.Leitos);
+            _conde.Leitos, _conde.Diagnosticos);
 
         // As UPAs não internam nem têm maternidade: passam null de propósito.
         var upa = new UnidadePainel(
             Unidades.IdUpa, "UPA", Unidades.NomeUpa, Unidades.FonteUpa,
             Unidades.CoresDe(Unidades.IdUpa),
-            _upa.Agora, _upa.Atendimentos, null, _upa.EsperaPorCor, null, _upa.Leitos);
+            _upa.Agora, _upa.Atendimentos, null, _upa.EsperaPorCor, null, _upa.Leitos, null);
 
         var santaRita = new UnidadePainel(
             Unidades.IdSantaRita, "Sta. Rita", Unidades.NomeSantaRita, Unidades.FonteSantaRita,
             Unidades.CoresDe(Unidades.IdSantaRita),
-            _santaRita.Agora, _santaRita.Atendimentos, null, _santaRita.EsperaPorCor, null, _santaRita.Leitos);
+            _santaRita.Agora, _santaRita.Atendimentos, null, _santaRita.EsperaPorCor, null, _santaRita.Leitos, null);
 
         UnidadePainel[] reais = [conde, upa, santaRita];
         var geral = MontarGeral(reais);
@@ -440,7 +445,9 @@ public sealed class PainelAtualizadorService : BackgroundService
             Internacoes: conde.Internacoes is { } i ? i with { Escopo = Unidades.SiglaConde } : null,
             EsperaPorCor: SomarEspera([.. reais.Select(u => u.EsperaPorCor).OfType<EsperaPorCorSecao>()]),
             Maternidade: conde.Maternidade is { } m ? m with { Escopo = Unidades.SiglaConde } : null,
-            Leitos: SomarLeitos(reais));
+            Leitos: SomarLeitos(reais),
+            // Diagnóstico por cor só existe no Conde: na rede ele vem etiquetado, não somado.
+            Diagnosticos: conde.Diagnosticos is { } d ? d with { Escopo = Unidades.SiglaConde } : null);
     }
 
     /// <summary>
@@ -666,6 +673,73 @@ public sealed class PainelAtualizadorService : BackgroundService
         }
 
         return lista;
+    }
+
+    /// <summary>Quantos CIDs por cor — cinco é o que cabe numa olhada sem virar tabela.</summary>
+    private const int TopCids = 5;
+
+    /// <summary>
+    /// Q8 vira uma lista por cor, na ordem clínica. Cores sem CID no período
+    /// simplesmente não aparecem — lista vazia é melhor que cor vazia na tela.
+    /// </summary>
+    private static DiagnosticosSecao MontarDiagnosticos(
+        DateTimeOffset carimbo, string rotulo, ResultadoConsulta resultado)
+    {
+        var porCor = new Dictionary<string, (int Total, List<CidRanking> Cids)>();
+        // O total vem repetido em toda linha da mesma cor CRUA, então só pode ser somado
+        // uma vez por cor crua — e a normalização funde cores (SALUX → SEM_CLASSIFICACAO),
+        // caso em que os dois totais precisam somar.
+        var totaisContados = new HashSet<string>();
+
+        foreach (var linha in resultado.Linhas)
+        {
+            var corCrua = (linha[0] as string)?.Trim() ?? "";
+            var cor = NormalizarCor(corCrua, Unidades.IdConde);
+            var qtd = ComoInt(linha[3]);
+            var totalCor = ComoInt(linha[4]);
+
+            if (!porCor.TryGetValue(cor, out var atual))
+            {
+                atual = (0, []);
+            }
+
+            if (totaisContados.Add(corCrua))
+            {
+                atual.Total += totalCor;
+            }
+
+            atual.Cids.Add(new CidRanking(
+                Codigo: (linha[1] as string)?.Trim() ?? "",
+                Descricao: NomeCid(linha[2] as string),
+                Qtd: qtd,
+                Pct: totalCor > 0 ? Math.Round(100.0 * qtd / totalCor, 1) : null));
+            porCor[cor] = atual;
+        }
+
+        var lista = Unidades.Cores
+            .Where(porCor.ContainsKey)
+            .Select(cor => new DiagnosticosDaCor(
+                cor,
+                porCor[cor].Total,
+                // A normalização pode fundir cores (SALUX → SEM_CLASSIFICACAO); reordena e
+                // corta de novo para o topo continuar sendo o topo de verdade.
+                [.. porCor[cor].Cids.OrderByDescending(c => c.Qtd).Take(TopCids)]))
+            .ToList();
+
+        return new DiagnosticosSecao(carimbo, rotulo, lista, null);
+    }
+
+    /// <summary>Descrição do CID em Caixa de Título — o cadastro grava em CAIXA ALTA.</summary>
+    private static string NomeCid(string? bruto)
+    {
+        var texto = bruto?.Trim();
+        if (string.IsNullOrEmpty(texto))
+        {
+            return "Sem descrição";
+        }
+
+        var cultura = PtBr ?? CultureInfo.InvariantCulture;
+        return cultura.TextInfo.ToTitleCase(texto.ToLower(cultura));
     }
 
     // ── Leitos (L1..L5) ────────────────────────────────────────────────────────
@@ -1018,7 +1092,23 @@ public sealed class PainelAtualizadorService : BackgroundService
             Meninas: ComoInt(l[7]),
             Meninos: ComoInt(l[8]),
             MediaDiaria: MediaDiaria(totalParaMedia ?? partos, dias),
-            PctCesarea: partos > 0 ? Math.Round(100.0 * cesareas / partos, 1) : null);
+            PctCesarea: partos > 0 ? Math.Round(100.0 * cesareas / partos, 1) : null,
+            Natimortos: ComoInt(l[9]),
+            ComMalformacao: ComoInt(l[10]),
+            MalformacaoSemInfo: ComoInt(l[11]),
+            ATermo: ComoInt(l[12]),
+            PrematuroTardio: ComoInt(l[13]),
+            PosTermo: ComoInt(l[14]),
+            GestacaoSemInfo: ComoInt(l[15]),
+            GravidezUnica: ComoInt(l[16]),
+            GravidezMultipla: ComoInt(l[17]),
+            Apgar1Abaixo7: ComoInt(l[18]),
+            EstaturaMedia: ComoDoubleOuNulo(l[19]),
+            PerimetroCefalicoMedio: ComoDoubleOuNulo(l[20]),
+            IdadeMediaMae: ComoDoubleOuNulo(l[21]),
+            MaeAte17: ComoInt(l[22]),
+            MaeMenor20: ComoInt(l[23]),
+            Mae35Mais: ComoInt(l[24]));
     }
 
     private static List<DiaPartos> MontarSerieDiariaPartos(ResultadoConsulta resultado, DateTimeOffset hoje)
@@ -1171,6 +1261,7 @@ public sealed class PainelAtualizadorService : BackgroundService
         public EsperaPorCorSecao? EsperaPorCor;
         public MaternidadeSecao? Maternidade;
         public LeitosSecao? Leitos;
+        public DiagnosticosSecao? Diagnosticos;
         public DateTimeOffset? UltimaAtualizacaoOk;
 
         // Erro POR CICLO: um tick rápido OK não pode apagar o erro do ciclo lento (e
