@@ -812,12 +812,12 @@ public sealed class PainelAtualizadorService : BackgroundService
                 Leitos: capacidade,
                 Ocupados: ocupados,
                 Bloqueados: ComoInt(linha[2]),
-                ForaDaCapacidade: ComoInt(linha[4]),
+                EmLeitoExtra: ComoInt(linha[4]),
                 Extras: ComoInt(linha[5]),
                 Virtuais: ComoInt(linha[6]),
                 Desativados: ComoInt(linha[7]),
                 // Denominador já é a capacidade (a L1 tira o bloqueado de dentro dela),
-                // e o numerador inclui quem está em leito extra — por isso passa de 100%
+                // e o numerador são TODOS os internados do setor — por isso passa de 100%
                 // num setor lotado, que é exatamente o que se quer enxergar.
                 Taxa: TaxaOcupacao(ocupados, capacidade)));
         }
@@ -856,7 +856,7 @@ public sealed class PainelAtualizadorService : BackgroundService
             // aqui todo leito cadastrado é leito de observação em operação.
             setores.Add(new SetorOcupacao(
                 NomeSetor(linha[0] as string), leitos, ocupados,
-                Bloqueados: 0, ForaDaCapacidade: 0, Extras: 0, Virtuais: 0, Desativados: 0,
+                Bloqueados: 0, EmLeitoExtra: 0, Extras: 0, Virtuais: 0, Desativados: 0,
                 Taxa: TaxaOcupacao(ocupados, leitos)));
         }
 
@@ -918,19 +918,18 @@ public sealed class PainelAtualizadorService : BackgroundService
 
         var capacidade = setores.Sum(s => s.Leitos);
         var ocupados = setores.Sum(s => s.Ocupados);
-        var foraDaCapacidade = setores.Sum(s => s.ForaDaCapacidade);
 
         return new Ocupacao(
             Leitos: capacidade,
             Ocupados: ocupados,
-            // Vaga é vaga FÍSICA: leito de capacidade sem ninguém. Quem está em leito
-            // extra não libera um leito de internação, então sai da conta aqui — por
-            // isso livres + ocupados pode não fechar com a capacidade, e a tela diz isso.
-            // Nunca negativo: se o flag do leito e os pacientes discordarem por um ou
-            // dois, o painel mostra 0 em vez de "-2 leitos livres".
-            Livres: Math.Max(0, capacidade - (ocupados - foraDaCapacidade)),
+            // Folga e estouro se compensariam se medidos no total (149 contra 211 daria
+            // zero estouro, escondendo a Saúde Mental a 150%). Some-se o que cada setor
+            // tem de folga e o que cada um tem de estouro, separadamente — vaga na
+            // Pediatria não alivia a Maternidade.
+            Livres: setores.Sum(s => s.Livres),
             Bloqueados: setores.Sum(s => s.Bloqueados),
-            ForaDaCapacidade: foraDaCapacidade,
+            Excedente: setores.Sum(s => s.Excedente),
+            EmLeitoExtra: setores.Sum(s => s.EmLeitoExtra),
             Extras: setores.Sum(s => s.Extras),
             Virtuais: setores.Sum(s => s.Virtuais),
             Desativados: setores.Sum(s => s.Desativados),
@@ -955,7 +954,8 @@ public sealed class PainelAtualizadorService : BackgroundService
             Ocupados: ocupacoes.Sum(o => o.Ocupados),
             Livres: ocupacoes.Sum(o => o.Livres),
             Bloqueados: ocupacoes.Sum(o => o.Bloqueados),
-            ForaDaCapacidade: ocupacoes.Sum(o => o.ForaDaCapacidade),
+            Excedente: ocupacoes.Sum(o => o.Excedente),
+            EmLeitoExtra: ocupacoes.Sum(o => o.EmLeitoExtra),
             Extras: ocupacoes.Sum(o => o.Extras),
             Virtuais: ocupacoes.Sum(o => o.Virtuais),
             Desativados: ocupacoes.Sum(o => o.Desativados),

@@ -89,21 +89,44 @@ public sealed record LeitosSecao(
 /// desativado ficam de fora e vêm reportados à parte — são informação de gestão, não
 /// capacidade. Sem esse recorte o Conde publicava 426 leitos e 41%, quando a leitura
 /// honesta é 211 leitos e 71%.
+///
+/// <b>Excedente ≠ deitado em leito rotulado extra.</b> O rótulo <c>ID_LEITO='E'</c> é
+/// atributo do CADASTRO da cama, não estado de operação: o NIR aloca em leito extra por
+/// motivo clínico ou logístico (isolamento, separação por sexo no quarto, proximidade do
+/// posto) mesmo com leito ordinário LIVRE ao lado — verificado em 25/07, quando o
+/// Pós-Operatório 03 tinha 1 paciente em extra e 14 ordinários livres. Isso não é
+/// lotação e não consome cota. Estouro é <c>internados &gt; capacidade</c>, medido POR
+/// SETOR e só então somado: vaga na Pediatria não alivia a Saúde Mental. Dos 21
+/// internados em leito não-ordinário naquele dia, só 10 eram excedente real.
 /// </summary>
 /// <param name="Leitos">Capacidade operacional — o denominador da taxa.</param>
-/// <param name="Ocupados">Internados agora, inclusive os que estão fora da capacidade.</param>
-/// <param name="Livres">Leitos de capacidade sem paciente. Note que
-/// <c>Livres + Ocupados</c> não fecha com <c>Leitos</c> quando há gente em leito extra.</param>
+/// <param name="Ocupados">Internados agora, inclusive os que excedem a capacidade.</param>
+/// <param name="Livres">Soma da capacidade ainda disponível por setor. Não é vaga física:
+/// desconta quem está no setor mesmo deitado em cama rotulada extra, para não prometer
+/// leito que, ocupado, jogaria o setor acima da cota.</param>
 /// <param name="Bloqueados">Leito de internação ativo, porém fechado/interditado.</param>
-/// <param name="ForaDaCapacidade">Internados em leito extra, virtual ou desativado — o
-/// excedente que empurra a taxa acima de 100%.</param>
+/// <param name="Excedente">Internados além da capacidade do PRÓPRIO setor — o que
+/// empurra a taxa acima de 100%. Invariante: <c>Ocupados = Leitos - Livres + Excedente</c>.</param>
+/// <param name="EmLeitoExtra">Internados deitados em cama rotulada extra, virtual ou
+/// desativada. Diagnóstico de cadastro, NÃO medida de lotação — a distância entre este
+/// número e <see cref="Excedente"/> é o descolamento entre etiqueta e alocação real.</param>
 public sealed record Ocupacao(
-    int Leitos, int Ocupados, int Livres, int Bloqueados,
-    int ForaDaCapacidade, int Extras, int Virtuais, int Desativados, double? Taxa);
+    int Leitos, int Ocupados, int Livres, int Bloqueados, int Excedente,
+    int EmLeitoExtra, int Extras, int Virtuais, int Desativados, double? Taxa);
 
+/// <summary>
+/// Um setor. <see cref="Livres"/> e <see cref="Excedente"/> são derivados e mutuamente
+/// exclusivos — um setor ou tem folga ou está estourado, nunca os dois —, por isso são
+/// calculados aqui em vez de trafegarem como campo que pode divergir do resto do registro.
+/// </summary>
 public sealed record SetorOcupacao(
     string Setor, int Leitos, int Ocupados, int Bloqueados,
-    int ForaDaCapacidade, int Extras, int Virtuais, int Desativados, double? Taxa);
+    int EmLeitoExtra, int Extras, int Virtuais, int Desativados, double? Taxa)
+{
+    public int Livres => Math.Max(0, Leitos - Ocupados);
+
+    public int Excedente => Math.Max(0, Ocupados - Leitos);
+}
 
 public sealed record PerfilInternados(
     int Total, int Homens, int Mulheres, int SemSexo,

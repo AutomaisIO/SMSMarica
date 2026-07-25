@@ -42,11 +42,13 @@ function BarraSetor({ setor }: { setor: SetorOcupacao }) {
         <p className="truncate text-[14px] font-semibold leading-tight text-tinta">{setor.setor}</p>
         <p className="tnum text-[12px] text-grafite">
           {formatarInteiro(setor.ocupados)} de {formatarInteiro(setor.leitos)} leitos
-          {/* O excedente é a explicação de um percentual acima de 100 — vem colado nele. */}
-          {setor.foraDaCapacidade > 0 && (
+          {/* O excedente é a explicação de um percentual acima de 100 — vem colado nele.
+              NÃO usar emLeitoExtra aqui: paciente em cama rotulada extra num setor com
+              leito ordinário livre não é lotação, e anunciá-lo como se fosse era o erro. */}
+          {setor.excedente > 0 && (
             <span className="font-semibold text-tinta">
               {' '}
-              · {formatarInteiro(setor.foraDaCapacidade)} em leito extra
+              · {formatarInteiro(setor.excedente)} acima da capacidade
             </span>
           )}
           {setor.bloqueados > 0 && (
@@ -75,6 +77,11 @@ function BarraSetor({ setor }: { setor: SetorOcupacao }) {
  * internação, e somar tudo dava 426 "leitos" e 41% no Conde, quando a capacidade real é
  * 211 e a taxa 71%. A tela agora nomeia o que ficou de fora e por quê — sem isso, um
  * gestor que conhece o hospital simplesmente não acredita no painel.
+ *
+ * A última linha reporta a divergência entre cama ROTULADA extra e estouro de cota REAL
+ * (21 contra 10 em 25/07). Ela está aqui porque quem conhece o hospital vai perguntar
+ * "cadê os extras?" — e a resposta honesta é que o rótulo do cadastro não acompanha a
+ * alocação do NIR, que usa cama extra por motivo clínico com leito ordinário livre.
  */
 function NotaDaTaxa({ ocupacao }: { ocupacao: Ocupacao }) {
   const fora: string[] = [];
@@ -93,14 +100,15 @@ function NotaDaTaxa({ ocupacao }: { ocupacao: Ocupacao }) {
         A taxa é sobre os leitos <span className="font-semibold text-tinta">em operação</span> —
         leito de internação ativo e liberado.
       </p>
-      {ocupacao.foraDaCapacidade > 0 && (
+      {ocupacao.excedente > 0 && (
         <p>
           <span className="font-semibold text-tinta">
-            {formatarInteiro(ocupacao.foraDaCapacidade)}{' '}
-            {ocupacao.foraDaCapacidade === 1 ? 'paciente está' : 'pacientes estão'} em leito extra
+            {formatarInteiro(ocupacao.excedente)}{' '}
+            {ocupacao.excedente === 1 ? 'paciente está' : 'pacientes estão'} acima da capacidade
+            do próprio setor
           </span>{' '}
-          — por isso a taxa passa de 100% quando o hospital lota, e por isso internados mais
-          livres não fecham com o total.
+          — é o que faz a taxa passar de 100% onde o setor lotou. Folga em um setor não cobre
+          estouro em outro, então as duas contas andam separadas.
         </p>
       )}
       {lista && (
@@ -108,6 +116,17 @@ function NotaDaTaxa({ ocupacao }: { ocupacao: Ocupacao }) {
           Fora da conta: <span className="font-semibold text-tinta">{lista}</span>. Leito extra é
           contingência, virtual não existe fisicamente e desativado saiu de operação — nenhum é
           capacidade.
+        </p>
+      )}
+      {ocupacao.emLeitoExtra > ocupacao.excedente && (
+        <p>
+          {formatarInteiro(ocupacao.emLeitoExtra)} internados estão deitados em cama rotulada
+          extra no cadastro, mas{' '}
+          <span className="font-semibold text-tinta">
+            {formatarInteiro(ocupacao.emLeitoExtra - ocupacao.excedente)}
+          </span>{' '}
+          deles tinham leito comum livre no próprio setor. Cama extra usada por decisão
+          clínica não é lotação, e por isso não entra no estouro.
         </p>
       )}
     </div>

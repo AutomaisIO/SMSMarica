@@ -618,14 +618,15 @@
         "atualizadoEm": "2026-07-25T00:56:28.2710817-03:00",
         "ocupacao": {
           "leitos": 234,
-          "ocupados": 153,
-          "livres": 102,
+          "ocupados": 155,
+          "livres": 89,
           "bloqueados": 0,
-          "foraDaCapacidade": 21,
+          "excedente": 10,
+          "emLeitoExtra": 21,
           "extras": 98,
           "virtuais": 37,
           "desativados": 71,
-          "taxa": 65.4
+          "taxa": 66.2
         },
         "setores": [
           {
@@ -633,231 +634,273 @@
             "leitos": 25,
             "ocupados": 24,
             "bloqueados": 0,
-            "foraDaCapacidade": 1,
+            "emLeitoExtra": 1,
             "extras": 7,
             "virtuais": 0,
             "desativados": 38,
-            "taxa": 96
+            "taxa": 96,
+            "livres": 1,
+            "excedente": 0
           },
           {
             "setor": "Clínica Médica Masc",
             "leitos": 24,
             "ocupados": 23,
             "bloqueados": 0,
-            "foraDaCapacidade": 2,
+            "emLeitoExtra": 2,
             "extras": 3,
             "virtuais": 0,
             "desativados": 4,
-            "taxa": 95.8
+            "taxa": 95.8,
+            "livres": 1,
+            "excedente": 0
           },
           {
             "setor": "Trauma",
             "leitos": 20,
-            "ocupados": 22,
+            "ocupados": 23,
             "bloqueados": 0,
-            "foraDaCapacidade": 3,
+            "emLeitoExtra": 3,
             "extras": 13,
             "virtuais": 0,
             "desativados": 0,
-            "taxa": 110
+            "taxa": 115,
+            "livres": 0,
+            "excedente": 3
           },
           {
             "setor": "Maternidade",
             "leitos": 15,
             "ocupados": 20,
             "bloqueados": 0,
-            "foraDaCapacidade": 9,
+            "emLeitoExtra": 9,
             "extras": 25,
             "virtuais": 37,
             "desativados": 2,
-            "taxa": 133.3
+            "taxa": 133.3,
+            "livres": 0,
+            "excedente": 5
           },
           {
             "setor": "Hipodermia",
             "leitos": 22,
             "ocupados": 19,
             "bloqueados": 0,
-            "foraDaCapacidade": 3,
+            "emLeitoExtra": 3,
             "extras": 9,
             "virtuais": 0,
             "desativados": 7,
-            "taxa": 86.4
+            "taxa": 86.4,
+            "livres": 3,
+            "excedente": 0
           },
           {
             "setor": "Upg",
             "leitos": 9,
             "ocupados": 7,
             "bloqueados": 0,
-            "foraDaCapacidade": 0,
+            "emLeitoExtra": 0,
             "extras": 2,
             "virtuais": 0,
             "desativados": 0,
-            "taxa": 77.8
+            "taxa": 77.8,
+            "livres": 2,
+            "excedente": 0
           },
           {
             "setor": "Pos Operatorio 03",
             "leitos": 19,
             "ocupados": 6,
             "bloqueados": 0,
-            "foraDaCapacidade": 1,
+            "emLeitoExtra": 1,
             "extras": 4,
             "virtuais": 0,
             "desativados": 4,
-            "taxa": 31.6
+            "taxa": 31.6,
+            "livres": 13,
+            "excedente": 0
           },
           {
             "setor": "Sala Amarela 1 Grave",
             "leitos": 8,
             "ocupados": 6,
             "bloqueados": 0,
-            "foraDaCapacidade": 0,
+            "emLeitoExtra": 0,
             "extras": 0,
             "virtuais": 0,
             "desativados": 7,
-            "taxa": 75
+            "taxa": 75,
+            "livres": 2,
+            "excedente": 0
           },
           {
             "setor": "Saude Mental",
             "leitos": 4,
             "ocupados": 6,
             "bloqueados": 0,
-            "foraDaCapacidade": 2,
+            "emLeitoExtra": 2,
             "extras": 2,
             "virtuais": 0,
             "desativados": 0,
-            "taxa": 150
+            "taxa": 150,
+            "livres": 0,
+            "excedente": 2
           },
           {
             "setor": "Covid 1",
             "leitos": 9,
             "ocupados": 5,
             "bloqueados": 0,
-            "foraDaCapacidade": 0,
+            "emLeitoExtra": 0,
             "extras": 13,
             "virtuais": 0,
             "desativados": 1,
-            "taxa": 55.6
+            "taxa": 55.6,
+            "livres": 4,
+            "excedente": 0
           },
           {
             "setor": "Urgência/Observação",
             "leitos": 23,
             "ocupados": 4,
             "bloqueados": 0,
-            "foraDaCapacidade": 0,
+            "emLeitoExtra": 0,
             "extras": 0,
             "virtuais": 0,
             "desativados": 0,
-            "taxa": 17.4
+            "taxa": 17.4,
+            "livres": 19,
+            "excedente": 0
           },
           {
             "setor": "Pos Operatorio 02",
             "leitos": 6,
             "ocupados": 4,
             "bloqueados": 0,
-            "foraDaCapacidade": 0,
+            "emLeitoExtra": 0,
             "extras": 4,
             "virtuais": 0,
             "desativados": 3,
-            "taxa": 66.7
+            "taxa": 66.7,
+            "livres": 2,
+            "excedente": 0
           },
           {
             "setor": "Pos Operatorio 01",
             "leitos": 13,
             "ocupados": 3,
             "bloqueados": 0,
-            "foraDaCapacidade": 0,
+            "emLeitoExtra": 0,
             "extras": 2,
             "virtuais": 0,
             "desativados": 0,
-            "taxa": 23.1
+            "taxa": 23.1,
+            "livres": 10,
+            "excedente": 0
+          },
+          {
+            "setor": "Hipodermia Pediatric",
+            "leitos": 6,
+            "ocupados": 1,
+            "bloqueados": 0,
+            "emLeitoExtra": 0,
+            "extras": 1,
+            "virtuais": 0,
+            "desativados": 0,
+            "taxa": 16.7,
+            "livres": 5,
+            "excedente": 0
           },
           {
             "setor": "Bercario",
             "leitos": 6,
             "ocupados": 1,
             "bloqueados": 0,
-            "foraDaCapacidade": 0,
+            "emLeitoExtra": 0,
             "extras": 2,
             "virtuais": 0,
             "desativados": 2,
-            "taxa": 16.7
+            "taxa": 16.7,
+            "livres": 5,
+            "excedente": 0
           },
           {
             "setor": "Enfermaria Lua",
             "leitos": 6,
             "ocupados": 1,
             "bloqueados": 0,
-            "foraDaCapacidade": 0,
+            "emLeitoExtra": 0,
             "extras": 0,
             "virtuais": 0,
             "desativados": 0,
-            "taxa": 16.7
+            "taxa": 16.7,
+            "livres": 5,
+            "excedente": 0
           },
           {
             "setor": "Enfermaria Sol",
             "leitos": 6,
             "ocupados": 1,
             "bloqueados": 0,
-            "foraDaCapacidade": 0,
+            "emLeitoExtra": 0,
             "extras": 0,
             "virtuais": 0,
             "desativados": 0,
-            "taxa": 16.7
+            "taxa": 16.7,
+            "livres": 5,
+            "excedente": 0
           },
           {
             "setor": "Isolamento Pediatria",
             "leitos": 2,
             "ocupados": 1,
             "bloqueados": 0,
-            "foraDaCapacidade": 0,
+            "emLeitoExtra": 0,
             "extras": 0,
             "virtuais": 0,
             "desativados": 0,
-            "taxa": 50
-          },
-          {
-            "setor": "Hipodermia Pediatric",
-            "leitos": 6,
-            "ocupados": 0,
-            "bloqueados": 0,
-            "foraDaCapacidade": 0,
-            "extras": 1,
-            "virtuais": 0,
-            "desativados": 0,
-            "taxa": 0
+            "taxa": 50,
+            "livres": 1,
+            "excedente": 0
           },
           {
             "setor": "Pediatria",
             "leitos": 6,
             "ocupados": 0,
             "bloqueados": 0,
-            "foraDaCapacidade": 0,
+            "emLeitoExtra": 0,
             "extras": 0,
             "virtuais": 0,
             "desativados": 0,
-            "taxa": 0
+            "taxa": 0,
+            "livres": 6,
+            "excedente": 0
           },
           {
             "setor": "Trauma Pediatria",
             "leitos": 3,
             "ocupados": 0,
             "bloqueados": 0,
-            "foraDaCapacidade": 0,
+            "emLeitoExtra": 0,
             "extras": 1,
             "virtuais": 0,
             "desativados": 0,
-            "taxa": 0
+            "taxa": 0,
+            "livres": 3,
+            "excedente": 0
           },
           {
             "setor": "Pre Parto",
             "leitos": 2,
             "ocupados": 0,
             "bloqueados": 0,
-            "foraDaCapacidade": 0,
+            "emLeitoExtra": 0,
             "extras": 0,
             "virtuais": 0,
             "desativados": 1,
-            "taxa": 0
+            "taxa": 0,
+            "livres": 2,
+            "excedente": 0
           }
         ],
         "perfil": {
@@ -2069,14 +2112,15 @@
         "atualizadoEm": "2026-07-25T00:56:28.2710817-03:00",
         "ocupacao": {
           "leitos": 211,
-          "ocupados": 149,
-          "livres": 83,
+          "ocupados": 151,
+          "livres": 70,
           "bloqueados": 0,
-          "foraDaCapacidade": 21,
+          "excedente": 10,
+          "emLeitoExtra": 21,
           "extras": 98,
           "virtuais": 37,
           "desativados": 71,
-          "taxa": 70.6
+          "taxa": 71.6
         },
         "setores": [
           {
@@ -2084,220 +2128,260 @@
             "leitos": 25,
             "ocupados": 24,
             "bloqueados": 0,
-            "foraDaCapacidade": 1,
+            "emLeitoExtra": 1,
             "extras": 7,
             "virtuais": 0,
             "desativados": 38,
-            "taxa": 96
+            "taxa": 96,
+            "livres": 1,
+            "excedente": 0
           },
           {
             "setor": "Clínica Médica Masc",
             "leitos": 24,
             "ocupados": 23,
             "bloqueados": 0,
-            "foraDaCapacidade": 2,
+            "emLeitoExtra": 2,
             "extras": 3,
             "virtuais": 0,
             "desativados": 4,
-            "taxa": 95.8
+            "taxa": 95.8,
+            "livres": 1,
+            "excedente": 0
           },
           {
             "setor": "Trauma",
             "leitos": 20,
-            "ocupados": 22,
+            "ocupados": 23,
             "bloqueados": 0,
-            "foraDaCapacidade": 3,
+            "emLeitoExtra": 3,
             "extras": 13,
             "virtuais": 0,
             "desativados": 0,
-            "taxa": 110
+            "taxa": 115,
+            "livres": 0,
+            "excedente": 3
           },
           {
             "setor": "Maternidade",
             "leitos": 15,
             "ocupados": 20,
             "bloqueados": 0,
-            "foraDaCapacidade": 9,
+            "emLeitoExtra": 9,
             "extras": 25,
             "virtuais": 37,
             "desativados": 2,
-            "taxa": 133.3
+            "taxa": 133.3,
+            "livres": 0,
+            "excedente": 5
           },
           {
             "setor": "Hipodermia",
             "leitos": 22,
             "ocupados": 19,
             "bloqueados": 0,
-            "foraDaCapacidade": 3,
+            "emLeitoExtra": 3,
             "extras": 9,
             "virtuais": 0,
             "desativados": 7,
-            "taxa": 86.4
+            "taxa": 86.4,
+            "livres": 3,
+            "excedente": 0
           },
           {
             "setor": "Upg",
             "leitos": 9,
             "ocupados": 7,
             "bloqueados": 0,
-            "foraDaCapacidade": 0,
+            "emLeitoExtra": 0,
             "extras": 2,
             "virtuais": 0,
             "desativados": 0,
-            "taxa": 77.8
+            "taxa": 77.8,
+            "livres": 2,
+            "excedente": 0
           },
           {
             "setor": "Pos Operatorio 03",
             "leitos": 19,
             "ocupados": 6,
             "bloqueados": 0,
-            "foraDaCapacidade": 1,
+            "emLeitoExtra": 1,
             "extras": 4,
             "virtuais": 0,
             "desativados": 4,
-            "taxa": 31.6
+            "taxa": 31.6,
+            "livres": 13,
+            "excedente": 0
           },
           {
             "setor": "Sala Amarela 1 Grave",
             "leitos": 8,
             "ocupados": 6,
             "bloqueados": 0,
-            "foraDaCapacidade": 0,
+            "emLeitoExtra": 0,
             "extras": 0,
             "virtuais": 0,
             "desativados": 7,
-            "taxa": 75
+            "taxa": 75,
+            "livres": 2,
+            "excedente": 0
           },
           {
             "setor": "Saude Mental",
             "leitos": 4,
             "ocupados": 6,
             "bloqueados": 0,
-            "foraDaCapacidade": 2,
+            "emLeitoExtra": 2,
             "extras": 2,
             "virtuais": 0,
             "desativados": 0,
-            "taxa": 150
+            "taxa": 150,
+            "livres": 0,
+            "excedente": 2
           },
           {
             "setor": "Covid 1",
             "leitos": 9,
             "ocupados": 5,
             "bloqueados": 0,
-            "foraDaCapacidade": 0,
+            "emLeitoExtra": 0,
             "extras": 13,
             "virtuais": 0,
             "desativados": 1,
-            "taxa": 55.6
+            "taxa": 55.6,
+            "livres": 4,
+            "excedente": 0
           },
           {
             "setor": "Pos Operatorio 02",
             "leitos": 6,
             "ocupados": 4,
             "bloqueados": 0,
-            "foraDaCapacidade": 0,
+            "emLeitoExtra": 0,
             "extras": 4,
             "virtuais": 0,
             "desativados": 3,
-            "taxa": 66.7
+            "taxa": 66.7,
+            "livres": 2,
+            "excedente": 0
           },
           {
             "setor": "Pos Operatorio 01",
             "leitos": 13,
             "ocupados": 3,
             "bloqueados": 0,
-            "foraDaCapacidade": 0,
+            "emLeitoExtra": 0,
             "extras": 2,
             "virtuais": 0,
             "desativados": 0,
-            "taxa": 23.1
+            "taxa": 23.1,
+            "livres": 10,
+            "excedente": 0
+          },
+          {
+            "setor": "Hipodermia Pediatric",
+            "leitos": 6,
+            "ocupados": 1,
+            "bloqueados": 0,
+            "emLeitoExtra": 0,
+            "extras": 1,
+            "virtuais": 0,
+            "desativados": 0,
+            "taxa": 16.7,
+            "livres": 5,
+            "excedente": 0
           },
           {
             "setor": "Bercario",
             "leitos": 6,
             "ocupados": 1,
             "bloqueados": 0,
-            "foraDaCapacidade": 0,
+            "emLeitoExtra": 0,
             "extras": 2,
             "virtuais": 0,
             "desativados": 2,
-            "taxa": 16.7
+            "taxa": 16.7,
+            "livres": 5,
+            "excedente": 0
           },
           {
             "setor": "Enfermaria Lua",
             "leitos": 6,
             "ocupados": 1,
             "bloqueados": 0,
-            "foraDaCapacidade": 0,
+            "emLeitoExtra": 0,
             "extras": 0,
             "virtuais": 0,
             "desativados": 0,
-            "taxa": 16.7
+            "taxa": 16.7,
+            "livres": 5,
+            "excedente": 0
           },
           {
             "setor": "Enfermaria Sol",
             "leitos": 6,
             "ocupados": 1,
             "bloqueados": 0,
-            "foraDaCapacidade": 0,
+            "emLeitoExtra": 0,
             "extras": 0,
             "virtuais": 0,
             "desativados": 0,
-            "taxa": 16.7
+            "taxa": 16.7,
+            "livres": 5,
+            "excedente": 0
           },
           {
             "setor": "Isolamento Pediatria",
             "leitos": 2,
             "ocupados": 1,
             "bloqueados": 0,
-            "foraDaCapacidade": 0,
+            "emLeitoExtra": 0,
             "extras": 0,
             "virtuais": 0,
             "desativados": 0,
-            "taxa": 50
-          },
-          {
-            "setor": "Hipodermia Pediatric",
-            "leitos": 6,
-            "ocupados": 0,
-            "bloqueados": 0,
-            "foraDaCapacidade": 0,
-            "extras": 1,
-            "virtuais": 0,
-            "desativados": 0,
-            "taxa": 0
+            "taxa": 50,
+            "livres": 1,
+            "excedente": 0
           },
           {
             "setor": "Pediatria",
             "leitos": 6,
             "ocupados": 0,
             "bloqueados": 0,
-            "foraDaCapacidade": 0,
+            "emLeitoExtra": 0,
             "extras": 0,
             "virtuais": 0,
             "desativados": 0,
-            "taxa": 0
+            "taxa": 0,
+            "livres": 6,
+            "excedente": 0
           },
           {
             "setor": "Trauma Pediatria",
             "leitos": 3,
             "ocupados": 0,
             "bloqueados": 0,
-            "foraDaCapacidade": 0,
+            "emLeitoExtra": 0,
             "extras": 1,
             "virtuais": 0,
             "desativados": 0,
-            "taxa": 0
+            "taxa": 0,
+            "livres": 3,
+            "excedente": 0
           },
           {
             "setor": "Pre Parto",
             "leitos": 2,
             "ocupados": 0,
             "bloqueados": 0,
-            "foraDaCapacidade": 0,
+            "emLeitoExtra": 0,
             "extras": 0,
             "virtuais": 0,
             "desativados": 1,
-            "taxa": 0
+            "taxa": 0,
+            "livres": 2,
+            "excedente": 0
           }
         ],
         "perfil": {
@@ -3319,7 +3403,8 @@
           "ocupados": 4,
           "livres": 19,
           "bloqueados": 0,
-          "foraDaCapacidade": 0,
+          "excedente": 0,
+          "emLeitoExtra": 0,
           "extras": 0,
           "virtuais": 0,
           "desativados": 0,
@@ -3331,11 +3416,13 @@
             "leitos": 23,
             "ocupados": 4,
             "bloqueados": 0,
-            "foraDaCapacidade": 0,
+            "emLeitoExtra": 0,
             "extras": 0,
             "virtuais": 0,
             "desativados": 0,
-            "taxa": 17.4
+            "taxa": 17.4,
+            "livres": 19,
+            "excedente": 0
           }
         ],
         "perfil": null,

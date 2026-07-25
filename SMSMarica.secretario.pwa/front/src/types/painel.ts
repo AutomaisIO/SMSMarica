@@ -228,22 +228,28 @@ export interface EsperaPorCor {
  *
  * `leitos` é a CAPACIDADE OPERACIONAL: leito de internação, ativo, não bloqueado.
  * Leito extra, virtual e desativado não são capacidade e vêm contados à parte.
+ *
+ * `excedente` (estouro de cota) NÃO é o mesmo que `emLeitoExtra` (deitado em cama
+ * rotulada extra). O rótulo é do cadastro da cama; o NIR aloca em extra por motivo
+ * clínico mesmo com ordinário livre. Só `excedente` mede lotação.
  */
 export interface Ocupacao {
   /** Capacidade operacional — o denominador da taxa. */
   leitos: number;
-  /** Internados agora, inclusive quem está em leito extra. */
+  /** Internados agora, inclusive quem excede a capacidade. */
   ocupados: number;
-  /** Leitos de capacidade sem paciente. Com gente em leito extra, `livres + ocupados` não fecha com `leitos`. */
+  /** Capacidade ainda disponível, somada por setor. Invariante: `ocupados = leitos - livres + excedente`. */
   livres: number;
   /** Leito de internação ativo, porém fechado/interditado. */
   bloqueados: number;
-  /** Internados em leito extra, virtual ou desativado — o excedente. */
-  foraDaCapacidade: number;
+  /** Internados além da capacidade do próprio setor — a lotação de verdade. */
+  excedente: number;
+  /** Deitados em cama rotulada extra/virtual/desativada. Diagnóstico de cadastro, não lotação. */
+  emLeitoExtra: number;
   extras: number;
   virtuais: number;
   desativados: number;
-  /** 0–N sobre a capacidade; passa de 100 quando há leito extra em uso. */
+  /** 0–N sobre a capacidade; passa de 100 quando o setor estoura a cota. */
   taxa: number | null;
 }
 
@@ -252,7 +258,11 @@ export interface SetorOcupacao {
   leitos: number;
   ocupados: number;
   bloqueados: number;
-  foraDaCapacidade: number;
+  /** Derivado no back: `max(0, leitos - ocupados)`. */
+  livres: number;
+  /** Derivado no back: `max(0, ocupados - leitos)`. Exclusivo com `livres`. */
+  excedente: number;
+  emLeitoExtra: number;
   extras: number;
   virtuais: number;
   desativados: number;

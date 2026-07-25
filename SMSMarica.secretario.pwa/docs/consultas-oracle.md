@@ -271,19 +271,58 @@ registro CNES por leito. O discriminador é `ID_LEITO` + `ID_CONDICAO`, e mais n
 
 #### Fato 2 — a taxa PODE passar de 100%, e precisa
 
-Dos 149 internados, 21 não estavam em leito de capacidade: 12 em leito extra e 9 em leito
-virtual (maternidade). Eles continuam no numerador — paciente em cama extra é paciente
-internado. É isso que faz a Saúde Mental aparecer com **150%** (6 internados para 4 leitos)
-em vez do 100% eufemístico que a fórmula antiga produzia. A coluna `fora_capacidade` da L1
-conta esse excedente por setor, para a tela explicar o percentual em vez de só exibi-lo.
+Todos os internados entram no numerador, inclusive quem está em cama extra — paciente em
+cama extra é paciente internado. É isso que faz a Saúde Mental aparecer com **150%**
+(6 internados para 4 leitos) em vez do 100% eufemístico que a fórmula antiga produzia.
 
-Consequência de contrato: `livres + ocupados` **não fecha** com a capacidade, porque
-"livres" é vaga física (leito de capacidade sem ninguém) e parte dos ocupados está fora
-dela. A tela diz isso em letras miúdas; não é bug, é o hospital.
+#### Fato 3 — cama ROTULADA extra ≠ estouro de cota
 
-Retrato de 25/07 (recorte novo): 211 leitos em operação, 149 internados (21 fora da
-capacidade), 83 livres → **70,6%**. Antes do recorte: 426 leitos, 219 livres, 41,7%.
-Setores mais cheios: Saúde Mental 6/4 (150%), Maternidade 20/15 (133%), Trauma 22/20 (110%).
+O erro mais sutil desta aba, e o que motivou a segunda correção (25/07/2026, mesma tarde
+da primeira). `ID_LEITO='E'` é atributo do **cadastro da cama**, não estado de operação. O
+NIR aloca em leito extra por motivo clínico ou logístico — isolamento, separação por sexo
+no quarto, proximidade do posto — **mesmo com leito ordinário livre no mesmo setor**.
+
+Verificado no dado, não suposto. Situação às 14h de 25/07:
+
+| Setor | Em leito `E`/`V` | Ordinários **livres** (`ID_SIT_LEITO='L'`) | Acima da cota |
+|---|---|---|---|
+| Pós-Operatório 03 | 1 | **14** | 0 |
+| Hipodermia | 3 | 4 | 0 |
+| Clínica Médica Masc | 2 | 3 | 0 |
+| Clínica Médica Fem | 1 | 2 | 0 |
+| Maternidade | 9 | 4 | 5 |
+| Trauma | 3 | 0 | 3 |
+| Saúde Mental | 2 | 0 | 2 |
+
+Os leitos ordinários vagos estavam marcados `L` (Livre) — não era higienização, manutenção
+nem reserva. Dos **21** internados em cama não-ordinária, só **10** excediam a cota do
+próprio setor; 11 tinham leito comum disponível ao lado. Só Trauma e Saúde Mental usavam
+extra por lotação de verdade.
+
+Então **estouro é `internados > capacidade`**, medido **por setor** e só depois somado —
+folga na Pediatria não alivia a Maternidade, e medir no total daria zero estouro (149 para
+211) escondendo a Saúde Mental a 150%. As duas contas andam separadas:
+
+```
+livres    = Σ max(0, capacidade − internados)   -- por setor
+excedente = Σ max(0, internados − capacidade)   -- por setor
+```
+
+Invariante que fecha e é auditável na tela: **`internados = capacidade − livres + excedente`**.
+
+A contagem de quem está deitado em cama rotulada extra continua no motor
+(`em_leito_extra`), mas como **diagnóstico de cadastro**, nunca como manchete: a distância
+entre ela e o excedente (21 contra 10) é a medida do descolamento entre etiqueta e
+alocação real. O rodapé do cartão publica essa diferença em uma linha.
+
+Retrato de 25/07 (recorte novo): 211 leitos em operação, 149 internados, 83 livres →
+**70,6%**, com 10 acima da cota. Antes do recorte: 426 leitos, 219 livres, 41,7%.
+Setores mais cheios: Saúde Mental 6/4 (150%), Maternidade 20/15 (133%), Trauma 23/20 (115%).
+
+> **Pendência**: assumimos que a capacidade cadastrada no Salux (211) equivale à cota de
+> leitos do HMCML no CNES, mas isso **não foi conferido**. `CD_LEITO_SUS` não serve de
+> ponte (é sequencial e repete entre leitos). Vale bater os 211 contra o CNES da unidade
+> antes de usar o número em relatório contratual.
 
 ### L2 — Perfil de quem está internado agora
 
