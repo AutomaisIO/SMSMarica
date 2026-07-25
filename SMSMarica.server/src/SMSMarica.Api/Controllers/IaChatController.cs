@@ -201,9 +201,13 @@ public sealed class IaChatController : ControllerBase
             contexto = new ContextoRecuperado(string.Empty, string.Empty);
         }
 
+        // IMPORTANTE: só a PERGUNTA fica antes do "---". O painel mostra ao operador tudo que
+        // vem antes do "---" como a pergunta — qualquer diretriz aqui VAZA na tela. Todo o resto
+        // (modo de exibição + contexto/RAG) vai DEPOIS do "---".
         var sb = new StringBuilder();
         sb.AppendLine(pergunta);
         sb.AppendLine();
+        sb.AppendLine("---");
         // Modo de exibição do operador (o checkbox do painel). Leigo = resposta sem NENHUM termo
         // técnico; desenvolvedor = pode detalhar tabelas/SQL na explicação (ele vê o raciocínio).
         sb.AppendLine(modoDev
@@ -212,7 +216,6 @@ public sealed class IaChatController : ControllerBase
             : "[OPERADOR LEIGO] A resposta final deve ser 100% em linguagem de negócio: sem nome de "
               + "base, tabela, coluna, slug ou SQL, e sem pedir nada técnico ao operador.");
         sb.AppendLine();
-        sb.AppendLine("---");
         sb.AppendLine($"Contexto para montar o SQL (dialeto **{dialeto}**). Use como referência; " +
                       "não repita isto ao operador.");
 
