@@ -153,7 +153,27 @@ public sealed record AgoraSecao(
     /// <summary>Nulo na UPA — a unidade não interna (ver ConsultasUpa §Internação).</summary>
     InternadosAgora? Internados);
 
-public sealed record CorAguardando(string Cor, int Qtd, int? MinMedioEspera);
+/// <summary>
+/// Uma cor na fila viva, com a jornada partida nos DOIS marcos que a gerência cobra.
+/// </summary>
+/// <param name="MinMedioEspera">
+/// Minutos médios desde a chegada. Intervalo cheio (T1 + T2), mantido como conferência —
+/// não é o número que responde "há quanto tempo espera o médico".
+/// </param>
+/// <param name="MinMedioAteClassificacao">
+/// <b>T1</b> — chegada → classificação de risco. Intervalo FECHADO: já aconteceu. Nulo
+/// quando ninguém da cor foi classificado ainda.
+/// </param>
+/// <param name="MinMedioDesdeClassificacao">
+/// <b>T2</b> — classificação → agora, relógio CORRENDO. É a espera pelo médico, e é o que
+/// vai contra a meta da cor quando o atendimento acontecer.
+/// </param>
+public sealed record CorAguardando(
+    string Cor,
+    int Qtd,
+    int? MinMedioEspera,
+    int? MinMedioAteClassificacao,
+    int? MinMedioDesdeClassificacao);
 
 /// <summary>
 /// Internados neste momento, nas três faixas exclusivas. Na aba "geral" o bloco vem

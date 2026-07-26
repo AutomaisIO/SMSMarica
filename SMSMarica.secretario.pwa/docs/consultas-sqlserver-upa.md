@@ -100,7 +100,23 @@ atendimento médico é `atendimento_ambulatorial`.
 Janela de 12h, a mesma do Conde.
 
 **U1a — aguardando médico por cor**: boletim sem `atendamb_datainicio` e ainda na fila não
-cancelada, agrupado pela primeira classificação de risco.
+cancelada, agrupado pela primeira classificação de risco. Devolve os **dois tempos** da
+jornada, iguais aos do Conde: `min_medio_ate_classificacao` (T1, chegada → classificação,
+intervalo fechado) e `min_medio_desde_classificacao` (T2, classificação → agora, relógio
+correndo). Três detalhes que mandam no SQL:
+
+- **`CASE`, não `GREATEST`** — a função só existe no SQL Server 2022 e estas bases são
+  **2014**. O `CASE` faz o mesmo clamp de classificação anterior à chegada.
+- **`CAST(... AS float)` antes do `AVG`** — `DATEDIFF` devolve `int` e `AVG` de `int` no
+  SQL Server é **divisão inteira**: sem o cast, uma média de 28,8 min vira 28.
+- **Quem não tem classificação nenhuma fica com T1/T2 nulos**, de propósito. Não é caso
+  raro aqui: em 25/07 às 16h a UPA Maricá tinha **20 pessoas sem nenhuma linha de
+  classificação** — essas esperam a TRIAGEM, não o médico, e o chip do front cai no texto
+  "na fila há X · sem classificação" em vez de fingir um tempo que não existe.
+
+O marcador de atendimento **não** precisou ser ampliado como no Conde: aqui
+`atendimento_ambulatorial` já cobre 96–98% dos boletins e não há segunda fonte equivalente
+mapeada nesta base.
 
 **U1b — em atendimento + atendimentos de hoje**: `dt_med` preenchido e `dt_fim` nulo; o total do
 dia vem na mesma ida ao agente, para não gastar dois round-trips.
@@ -122,19 +138,10 @@ Tempo da **classificação de risco** ao **primeiro atendimento médico**, por c
 indicador da Q6 do Conde. `fimDoc` = fim + 3 dias, porque o atendimento pode ser lavrado depois
 do fim do período.
 
-### A meta é por variante, não por cor
+### A meta saiu do cadastro (25/07) — e a máquina de "variante predominante" saiu junto
 
-O cadastro quebra Amarelo e Laranja em **Consultório** (com meta) e **Observação** (sem meta),
-mas o painel mostra uma linha por cor. Colapsar com `MAX(meta)` dá número errado: em junho/2026,
-**2.038 dos 2.039 amarelos foram Observação** (sem meta) e **um único** foi Consultório — e esse
-um puxava a meta de 60 min para o grupo inteiro, jogando o "% na meta" para **0%** com mediana de
-10 minutos.
-
-A consulta reporta a meta da variante **predominante** (CTE `modo`) e calcula o percentual só
-sobre os pacientes daquela variante. Quando a predominante não tem meta, os dois campos vêm
-nulos e a pulseira mostra "sem meta definida" — em vez de um zero inexplicável.
-
-**As metas também mudam de unidade para unidade**, no mesmo protocolo. Cadastro em minutos:
+O cadastro (`risco_acolhimento.risaco_Tempo_Espera`) é por **protocolo** e por **variante**
+(Consultório tem meta, Observação não), e as unidades divergem entre si e de si mesmas:
 
 | protocolo | | Azul | Verde | Amarelo/Consultório | Laranja/Consultório | Vermelho |
 |---|---|---|---|---|---|---|
@@ -142,14 +149,24 @@ nulos e a pulseira mostra "sem meta definida" — em vez de um zero inexplicáve
 | 0005 | Santa Rita | 240 | **60** | **30** | (não existe) | — |
 | 0006 | ambas | 240 | 120 | 60 | 10 | — |
 
-As variantes de Observação e o Vermelho não têm meta cadastrada em lugar nenhum. Santa Rita usa
-os dois protocolos ao mesmo tempo (0005 no grosso, 0006 no restante), o que faz o Verde dela ter
-duas metas em vigor — daí a regra da variante predominante valer também aqui.
+Santa Rita usa **os dois protocolos ao mesmo tempo** — 30 dias: 4.858 classificações pelo 0005
+contra 1.006 pelo 0006 — então lá o mesmo Verde era medido contra 60 ou 120 min conforme a tela
+que a enfermagem abriu. E o Conde tinha ainda uma terceira régua (Vermelho 15 · Amarelo 30 ·
+Verde 60 · Azul 1440).
 
-Como o Conde usa outros alvos ainda (Vermelho 15 · Amarelo 30 · Verde 60 · Azul 1440), **meta é
-assunto da unidade e só aparece no contexto dela**: na aba Geral o painel manda `metaMin` e
-`pctNaMeta` nulos e mostra só volume e tempo (média, mediana, p90). Um "% na meta" de rede seria a
-média de cumprimentos de réguas diferentes — número sem significado clínico.
+Por decisão do usuário, a régua agora é **fixa e única nas três unidades** (protocolo de
+Manchester, no back em `MetasTriagem`): **Vermelho 0 (imediato) · Laranja 10 · Amarelo 60 ·
+Verde 120 · Azul 240**. Com isso:
+
+- caiu a CTE `modo` e o `espera_com_meta` — existiam só para escolher entre metas que brigavam;
+- a **aba Geral voltou a mostrar meta e "% na meta"**, que antes vinham nulos justamente porque
+  as réguas divergiam.
+
+### O vermelho tem regra própria
+
+Igual à do Conde: a espera é da **chegada até a primeira interação** (a classificação já conta),
+porque no vermelho o médico assiste antes de registrar. Meta zero ⇒ `pct_na_meta` nulo.
+Validado em 24/07: UPA Maricá 5 vermelhos, média **4,6 min**.
 
 ### Resultado validado (25/07/2026)
 

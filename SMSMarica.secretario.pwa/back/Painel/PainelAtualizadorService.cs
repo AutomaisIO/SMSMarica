@@ -516,26 +516,18 @@ public sealed class PainelAtualizadorService : BackgroundService
             return null;
         }
 
-        var porCor = new Dictionary<string, (int Qtd, double SomaMinutos, int PesoMinutos)>();
+        var porCor = new Dictionary<string, FilaAcumulador>();
         foreach (var item in secoes.SelectMany(s => s.AguardandoPorCor))
         {
-            var atual = porCor.GetValueOrDefault(item.Cor);
-            atual.Qtd += item.Qtd;
-            if (item.MinMedioEspera is { } minutos && item.Qtd > 0)
-            {
-                atual.SomaMinutos += (double)minutos * item.Qtd;
-                atual.PesoMinutos += item.Qtd;
-            }
-
-            porCor[item.Cor] = atual;
+            var bucket = porCor.TryGetValue(item.Cor, out var existente) ? existente : new FilaAcumulador();
+            bucket.Somar(item.Qtd, item.MinMedioEspera, item.MinMedioAteClassificacao, item.MinMedioDesdeClassificacao);
+            porCor[item.Cor] = bucket;
         }
 
         var aguardando = Unidades.Cores
-            .Select(cor =>
-            {
-                var (qtd, soma, peso) = porCor.GetValueOrDefault(cor);
-                return new CorAguardando(cor, qtd, peso > 0 ? (int)Math.Round(soma / peso) : null);
-            })
+            .Select(cor => porCor.TryGetValue(cor, out var bucket)
+                ? bucket.Materializar(cor)
+                : new CorAguardando(cor, 0, null, null, null))
             .ToList();
 
         // Só o Conde interna, então o bloco é único — mas vem etiquetado, para o número
@@ -626,13 +618,12 @@ public sealed class PainelAtualizadorService : BackgroundService
     /// Mescla as pulseiras das unidades por média ponderada, para a aba "geral".
     ///
     /// <para>
-    /// <b>Meta é assunto da unidade, e só aparece no contexto dela.</b> O Manchester do
-    /// Salux e os cadastros das UPAs usam alvos diferentes para a mesma cor — Amarelo é
-    /// 30 min no Conde, 60 na UPA Maricá e 30 em Santa Rita; Verde é 60, 120 e 60. Não
-    /// existe meta da rede, e um "% na meta" consolidado seria a média de cumprimentos de
-    /// réguas diferentes, um número sem significado clínico. Por isso <c>MetaMin</c> e
-    /// <c>PctNaMeta</c> vêm nulos aqui: o consolidado mostra volume e tempo (média,
-    /// mediana, p90), e quem quiser tempo-contra-meta abre a aba da unidade.
+    /// <b>A meta VOLTOU para a rede em 25/07.</b> Ela tinha sido apagada daqui porque cada
+    /// base cadastrava um alvo diferente para a mesma cor (Amarelo 30 no Conde, 60 na UPA
+    /// Maricá, 30 em Santa Rita), e um "% na meta" consolidado seria a média de
+    /// cumprimentos de réguas diferentes. Com <see cref="MetasTriagem"/> a régua é única
+    /// nas três unidades — não há mais divergência para esconder, e o consolidado passa a
+    /// ter meta e percentual de verdade.
     /// </para>
     /// </summary>
     private static List<EsperaCor> SomarEsperaPeriodo(IEnumerable<IReadOnlyList<EsperaCor>> porUnidade)
@@ -647,9 +638,9 @@ public sealed class PainelAtualizadorService : BackgroundService
 
         return
         [
-            .. Unidades.Cores.Select(cor => (buckets.TryGetValue(cor, out var bucket)
+            .. Unidades.Cores.Select(cor => buckets.TryGetValue(cor, out var bucket)
                 ? bucket.Materializar(cor)
-                : EsperaCorVazia(cor)) with { MetaMin = null, PctNaMeta = null }),
+                : EsperaCorVazia(cor)),
         ];
     }
 
@@ -703,28 +694,25 @@ public sealed class PainelAtualizadorService : BackgroundService
     /// </summary>
     private static List<CorAguardando> MontarAguardandoPorCor(ResultadoConsulta resultado, string unidadeId)
     {
-        var qtdPorCor = new Dictionary<string, int>();
-        var somaMinutos = new Dictionary<string, double>(); // ponderada por qtd, p/ média mesclada
+        var porCor = new Dictionary<string, FilaAcumulador>();
         foreach (var linha in resultado.Linhas)
         {
             var cor = NormalizarCor(linha[0] as string, unidadeId);
-            var qtd = ComoInt(linha[1]);
-            var minMedio = ComoDoubleOuNulo(linha[2]);
-            qtdPorCor[cor] = qtdPorCor.GetValueOrDefault(cor) + qtd;
-            if (minMedio is not null)
-            {
-                somaMinutos[cor] = somaMinutos.GetValueOrDefault(cor) + minMedio.Value * qtd;
-            }
+            var bucket = porCor.TryGetValue(cor, out var existente) ? existente : new FilaAcumulador();
+            bucket.Somar(
+                qtd: ComoInt(linha[1]),
+                desdeChegada: ComoDoubleOuNulo(linha[2]),
+                ateClassificacao: ComoDoubleOuNulo(linha[3]),
+                desdeClassificacao: ComoDoubleOuNulo(linha[4]));
+            porCor[cor] = bucket;
         }
 
         var lista = new List<CorAguardando>(Unidades.Cores.Length);
         foreach (var cor in Unidades.Cores)
         {
-            var qtd = qtdPorCor.GetValueOrDefault(cor);
-            int? minMedio = qtd > 0 && somaMinutos.TryGetValue(cor, out var soma)
-                ? (int)Math.Round(soma / qtd)
-                : null;
-            lista.Add(new CorAguardando(cor, qtd, minMedio));
+            lista.Add(porCor.TryGetValue(cor, out var bucket)
+                ? bucket.Materializar(cor)
+                : new CorAguardando(cor, 0, null, null, null));
         }
 
         return lista;
@@ -1287,6 +1275,56 @@ public sealed class PainelAtualizadorService : BackgroundService
     }
 
     private static EsperaCor EsperaCorVazia(string cor) => new(cor, 0, 0, null, null, null, null, null, null);
+
+    /// <summary>
+    /// Acumulador da fila viva. Cada tempo tem PESO PRÓPRIO: uma cor pode ter gente na
+    /// fila sem ninguém classificado ainda (T1/T2 nulos com Qtd &gt; 0), e usar a
+    /// quantidade como peso único diluiria a média com quem não entrou nela.
+    /// </summary>
+    private sealed class FilaAcumulador
+    {
+        private int _qtd;
+        private double _somaDesdeChegada;
+        private int _pesoDesdeChegada;
+        private double _somaAteClassificacao;
+        private int _pesoAteClassificacao;
+        private double _somaDesdeClassificacao;
+        private int _pesoDesdeClassificacao;
+
+        public void Somar(int qtd, double? desdeChegada, double? ateClassificacao, double? desdeClassificacao)
+        {
+            _qtd += qtd;
+            if (qtd <= 0)
+            {
+                return;
+            }
+
+            Acumular(desdeChegada, qtd, ref _somaDesdeChegada, ref _pesoDesdeChegada);
+            Acumular(ateClassificacao, qtd, ref _somaAteClassificacao, ref _pesoAteClassificacao);
+            Acumular(desdeClassificacao, qtd, ref _somaDesdeClassificacao, ref _pesoDesdeClassificacao);
+        }
+
+        public CorAguardando Materializar(string cor) => new(
+            Cor: cor,
+            Qtd: _qtd,
+            MinMedioEspera: Ponderada(_somaDesdeChegada, _pesoDesdeChegada),
+            MinMedioAteClassificacao: Ponderada(_somaAteClassificacao, _pesoAteClassificacao),
+            MinMedioDesdeClassificacao: Ponderada(_somaDesdeClassificacao, _pesoDesdeClassificacao));
+
+        private static void Acumular(double? valor, int qtd, ref double soma, ref int peso)
+        {
+            if (valor is null)
+            {
+                return;
+            }
+
+            soma += valor.Value * qtd;
+            peso += qtd;
+        }
+
+        private static int? Ponderada(double soma, int peso) =>
+            peso > 0 ? (int)Math.Round(soma / peso) : null;
+    }
 
     /// <summary>Acumulador p/ mesclar linhas que caem na mesma cor do contrato.</summary>
     private sealed class EsperaAcumulador

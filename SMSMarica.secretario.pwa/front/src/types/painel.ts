@@ -34,8 +34,18 @@ export interface FonteInfo {
 export interface AguardandoPorCor {
   cor: CorTriagem;
   qtd: number;
-  /** Minutos médios desde a chegada (null quando não há ninguém na fila). */
+  /** Minutos médios desde a chegada — o intervalo cheio (T1 + T2), como conferência. */
   minMedioEspera: number | null;
+  /**
+   * T1: chegada → classificação de risco. Intervalo FECHADO (já aconteceu). Null quando
+   * ninguém da cor foi classificado ainda.
+   */
+  minMedioAteClassificacao: number | null;
+  /**
+   * T2: classificação → agora, relógio CORRENDO. É a espera pelo médico — a que vai
+   * contra a meta da cor quando o atendimento sair.
+   */
+  minMedioDesdeClassificacao: number | null;
 }
 
 /**
@@ -193,15 +203,21 @@ export interface EsperaCor {
   cor: CorTriagem;
   pacientes: number;
   comAtendimento: number;
+  /** T1: chegada → classificação de risco. */
   mediaAteTriagem: number | null;
+  /**
+   * T2: classificação → primeiro atendimento médico. **Exceto no VERMELHO**, onde é
+   * da CHEGADA até a primeira interação de qualquer natureza (a classificação já
+   * conta) — ali o médico assiste antes de registrar.
+   */
   mediaEspera: number | null;
   medianaEspera: number | null;
   p90Espera: number | null;
   /**
-   * Meta em minutos, do cadastro da unidade. Na aba "geral" `metaMin` e `pctNaMeta`
-   * vêm SEMPRE nulos: cada unidade tem sua própria régua para a mesma cor (Amarelo
-   * é 30 min no Conde, 60 na UPA Maricá e 30 em Santa Rita), então a rede não tem
-   * meta e o consolidado mostra só volume e tempo.
+   * Meta em minutos do protocolo de Manchester, igual nas três unidades (fixada no
+   * back em `MetasTriagem`, não lida do cadastro das bases — elas discordam entre si e
+   * a Santa Rita discorda de si mesma). `0` no vermelho significa alvo IMEDIATO: nesse
+   * caso `pctNaMeta` vem nulo, porque percentual contra alvo zero não informa nada.
    */
   metaMin: number | null;
   pctNaMeta: number | null;

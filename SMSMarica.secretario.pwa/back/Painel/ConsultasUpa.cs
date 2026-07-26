@@ -118,6 +118,15 @@ public static class ConsultasUpa
     /// U1a: aguardando médico agora, por cor. Janela de 12h (a mesma do Conde), sem
     /// atendimento médico iniciado e AINDA NA FILA (não cancelada) — ver a armadilha 2
     /// na documentação da classe.
+    ///
+    /// <para>
+    /// Devolve os mesmos DOIS tempos do Conde (ver <c>ConsultasPainel.Q1AguardandoPorCor</c>):
+    /// <b>T1</b> chegada → classificação, fechado; <b>T2</b> classificação → agora, correndo.
+    /// O <c>CASE</c> no lugar de <c>GREATEST</c> não é preciosismo: a função só existe no
+    /// SQL Server 2022 e estas bases são <b>2014</b>. Aqui o marcador de atendimento
+    /// (<c>atendimento_ambulatorial</c>) NÃO precisou ser ampliado como no Conde — ele já
+    /// cobre 96–98% dos boletins e não há segunda fonte equivalente mapeada nesta base.
+    /// </para>
     /// </summary>
     public static string U1AguardandoPorCor(string unidade) => $"""
         WITH pa AS (
@@ -126,20 +135,35 @@ public static class ConsultasUpa
         {PrimeiraClassificacao(unidade, "DATEADD(hour,-36,GETDATE())", "GETDATE()")}
         ), am AS (
         {AtendimentoMedico("DATEADD(day,-2,GETDATE())", "GETDATE()")}
+        ), f AS (
+          SELECT ISNULL(ra.risaco_descricao,'SEM_CLASSIFICACAO')          AS cor,
+                 DATEDIFF(minute, pa.spa_chegada, GETDATE())              AS desde_chegada,
+                 CASE WHEN cl.upaclaris_datahora IS NULL THEN NULL
+                      WHEN cl.upaclaris_datahora < pa.spa_chegada THEN 0
+                      ELSE DATEDIFF(minute, pa.spa_chegada, cl.upaclaris_datahora)
+                 END                                                      AS ate_classificacao,
+                 CASE WHEN cl.upaclaris_datahora IS NULL THEN NULL
+                      WHEN cl.upaclaris_datahora < pa.spa_chegada
+                      THEN DATEDIFF(minute, pa.spa_chegada, GETDATE())
+                      ELSE DATEDIFF(minute, cl.upaclaris_datahora, GETDATE())
+                 END                                                      AS desde_classificacao
+            FROM pa
+            LEFT JOIN cl ON cl.spa_codigo = pa.spa_codigo AND cl.rn = 1
+            LEFT JOIN risco_acolhimento ra ON ra.risaco_codigo = cl.risaco_codigo
+            LEFT JOIN am ON am.spa_codigo = pa.spa_codigo
+           WHERE am.dt_med IS NULL
+             -- EXISTS, não JOIN: a UPA_Fila tem reentradas do mesmo boletim (514 linhas
+             -- para 474 boletins) e um join duplicaria o paciente na contagem da fila.
+             AND EXISTS (SELECT 1 FROM UPA_Fila f2
+                          WHERE f2.SPA_CODIGO = pa.spa_codigo AND f2.DATA_CANCELAMENTO IS NULL)
         )
-        SELECT ISNULL(ra.risaco_descricao,'SEM_CLASSIFICACAO')            AS cor,
+        SELECT cor                                                        AS cor,
                COUNT(*)                                                   AS qtd,
-               AVG(DATEDIFF(minute, pa.spa_chegada, GETDATE()))           AS min_medio_desde_chegada
-          FROM pa
-          LEFT JOIN cl ON cl.spa_codigo = pa.spa_codigo AND cl.rn = 1
-          LEFT JOIN risco_acolhimento ra ON ra.risaco_codigo = cl.risaco_codigo
-          LEFT JOIN am ON am.spa_codigo = pa.spa_codigo
-         WHERE am.dt_med IS NULL
-           -- EXISTS, não JOIN: a UPA_Fila tem reentradas do mesmo boletim (514 linhas
-           -- para 474 boletins) e um join duplicaria o paciente na contagem da fila.
-           AND EXISTS (SELECT 1 FROM UPA_Fila f
-                        WHERE f.SPA_CODIGO = pa.spa_codigo AND f.DATA_CANCELAMENTO IS NULL)
-         GROUP BY ra.risaco_descricao
+               AVG(CAST(desde_chegada AS float))                          AS min_medio_desde_chegada,
+               ROUND(AVG(CAST(ate_classificacao AS float)), 1)            AS min_medio_ate_classificacao,
+               AVG(CAST(desde_classificacao AS float))                    AS min_medio_desde_classificacao
+          FROM f
+         GROUP BY cor
         """;
 
     /// <summary>
@@ -201,16 +225,21 @@ public static class ConsultasUpa
     /// </para>
     ///
     /// <para>
-    /// <b>A meta é por VARIANTE, não por cor.</b> O cadastro quebra Amarelo e Laranja em
-    /// Consultório (meta em minutos: Azul 240, Verde 120, Amarelo 60, Laranja 10) e
-    /// Observação (sem meta) — e o painel mostra uma linha por cor. Colapsar com
-    /// <c>MAX(meta)</c> produz número errado: em junho/2026, 2.038 dos 2.039 amarelos
-    /// foram Observação (sem meta) e UM único foi Consultório, e esse um puxava a meta de
-    /// 60 min para o grupo inteiro, jogando o "% na meta" para 0. Por isso a meta
-    /// reportada é a da variante PREDOMINANTE (<c>rn = 1</c> em <c>modo</c>) e o
-    /// percentual só considera os pacientes que caíram nessa variante. Quando a
-    /// predominante não tem meta cadastrada, os dois campos vêm nulos — a pulseira
-    /// mostra "sem meta definida" em vez de um zero que ninguém sabe de onde veio.
+    /// <b>A meta NÃO vem mais do cadastro</b> (25/07). Vinha de
+    /// <c>risco_acolhimento.risaco_Tempo_Espera</c>, que é por PROTOCOLO e por VARIANTE —
+    /// e a Santa Rita usa dois protocolos ao mesmo tempo (30 dias: 4.858 classificações
+    /// pelo 0005, onde Verde é 60, contra 1.006 pelo 0006, onde Verde é 120). Medir o
+    /// mesmo verde contra duas réguas conforme a tela que a enfermagem abriu não é
+    /// "respeitar a unidade", é herdar inconsistência. A régua agora é
+    /// <see cref="MetasTriagem"/>, igual nas três unidades — e com isso some toda a
+    /// máquina de "variante predominante" (<c>modo</c>/<c>espera_com_meta</c>) que existia
+    /// só para escolher entre metas que brigavam.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>O VERMELHO tem regra própria</b>, igual à do Conde: espera é da CHEGADA até a
+    /// primeira interação (a classificação já conta), porque no vermelho o médico assiste
+    /// antes de registrar. Meta zero ⇒ sem percentual.
     /// </para>
     /// </summary>
     public static string U6EsperaPorCor(string unidade, string ini, string fim, string fimDoc) => $"""
@@ -222,28 +251,28 @@ public static class ConsultasUpa
         {AtendimentoMedico(ini, fimDoc)}
         ), e AS (
           SELECT ISNULL(ra.risaco_descricao,'SEM_CLASSIFICACAO') AS cor,
-                 ra.risaco_Tempo_Espera                          AS meta,
+                 {MetasTriagem.CaseUpa("ra.risaco_descricao")}   AS meta,
                  CASE WHEN cl.upaclaris_datahora >= pa.spa_chegada
                       THEN DATEDIFF(minute, pa.spa_chegada, cl.upaclaris_datahora) END AS ate_triagem,
-                 CASE WHEN am.dt_med >= cl.upaclaris_datahora
-                      THEN DATEDIFF(minute, cl.upaclaris_datahora, am.dt_med) END      AS espera
+                 CASE WHEN UPPER(ra.risaco_descricao) = 'VERMELHO'
+                      THEN CASE WHEN cl.upaclaris_datahora IS NULL THEN NULL
+                                WHEN cl.upaclaris_datahora < pa.spa_chegada THEN 0
+                                WHEN am.dt_med IS NOT NULL AND am.dt_med < cl.upaclaris_datahora
+                                THEN DATEDIFF(minute, pa.spa_chegada, am.dt_med)
+                                ELSE DATEDIFF(minute, pa.spa_chegada, cl.upaclaris_datahora)
+                           END
+                      WHEN am.dt_med >= cl.upaclaris_datahora
+                      THEN DATEDIFF(minute, cl.upaclaris_datahora, am.dt_med)
+                 END                                                                   AS espera
             FROM pa
             LEFT JOIN cl ON cl.spa_codigo = pa.spa_codigo AND cl.rn = 1
             LEFT JOIN risco_acolhimento ra ON ra.risaco_codigo = cl.risaco_codigo
             LEFT JOIN am ON am.spa_codigo = pa.spa_codigo
-        ), modo AS (
-          -- O desempate por meta é só para o resultado não oscilar entre um ciclo e
-          -- outro quando duas variantes empatam em volume.
-          SELECT cor, meta,
-                 ROW_NUMBER() OVER (PARTITION BY cor ORDER BY COUNT(*) DESC, meta) AS rn
-            FROM e GROUP BY cor, meta
         ), p AS (
-          SELECT e.cor, e.ate_triagem, e.espera,
-                 modo.meta AS meta_predominante,
-                 CASE WHEN e.meta = modo.meta THEN e.espera END AS espera_com_meta,
+          SELECT e.cor, e.meta, e.ate_triagem, e.espera,
                  PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY e.espera) OVER (PARTITION BY e.cor) AS p50,
                  PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY e.espera) OVER (PARTITION BY e.cor) AS p90
-            FROM e JOIN modo ON modo.cor = e.cor AND modo.rn = 1
+            FROM e
         )
         SELECT cor,
                COUNT(*)                                                     AS pacientes,
@@ -252,10 +281,10 @@ public static class ConsultasUpa
                ROUND(AVG(CAST(espera AS float)), 1)                         AS media_espera,
                ROUND(MAX(p50), 1)                                           AS mediana_espera,
                ROUND(MAX(p90), 1)                                           AS p90_espera,
-               MAX(meta_predominante)                                       AS meta_min,
-               CASE WHEN MAX(meta_predominante) IS NULL THEN NULL ELSE
-                 ROUND(100.0 * SUM(CASE WHEN espera_com_meta <= meta_predominante THEN 1 ELSE 0 END)
-                       / NULLIF(SUM(CASE WHEN espera_com_meta IS NOT NULL THEN 1 ELSE 0 END),0), 1) END AS pct_na_meta
+               MAX(meta)                                                    AS meta_min,
+               CASE WHEN MAX(meta) > 0 THEN
+                 ROUND(100.0 * SUM(CASE WHEN espera <= meta THEN 1 ELSE 0 END)
+                       / NULLIF(SUM(CASE WHEN espera IS NOT NULL THEN 1 ELSE 0 END),0), 1) END AS pct_na_meta
           FROM p
          GROUP BY cor
         """;

@@ -57,22 +57,23 @@ function BarraMeta({
 
 interface Props {
   item: EsperaCor;
-  /**
-   * Aba "geral": soma de unidades com protocolos diferentes. Meta é assunto da
-   * unidade — Amarelo é 30 min no Conde, 60 na UPA Maricá e 30 em Santa Rita —
-   * então o consolidado mostra só volume e tempo, e a linha de meta some inteira
-   * em vez de virar um alvo médio que não é de ninguém.
-   */
-  consolidado?: boolean;
 }
 
-export function Pulseira({ item, consolidado = false }: Props) {
+export function Pulseira({ item }: Props) {
   const estilo = TRIAGEM[item.cor];
   const temEspera = item.mediaEspera != null;
-  const mostrarMeta = !consolidado;
   // Boletim que nunca passou pela triagem não tem de onde contar o tempo — e é
   // diferente de "ninguém foi atendido", que é o que "0 de N" dá a entender.
   const semTriagem = item.cor === 'SEM_CLASSIFICACAO' && item.comAtendimento === 0;
+
+  // No VERMELHO o relógio é outro: conta da CHEGADA até a primeira interação de
+  // qualquer natureza (a classificação já vale), porque ali o médico assiste antes de
+  // registrar — medir "classificação → documento" mediria o papel, não o cuidado.
+  const vermelho = item.cor === 'VERMELHO';
+  const rotuloEspera = vermelho ? 'chegada → 1ª interação' : 'classificação → médico';
+
+  // Meta zero é alvo IMEDIATO, não prazo: não vira tick na barra nem percentual.
+  const metaEhPrazo = item.metaMin != null && item.metaMin > 0;
 
   return (
     <div className="flex items-stretch overflow-hidden rounded-[28px] border border-linha bg-papel shadow-cartao transition-colors duration-200 hover:border-vermelho-marica/30 sm:rounded-full">
@@ -90,7 +91,7 @@ export function Pulseira({ item, consolidado = false }: Props) {
         ))}
       </div>
 
-      <div className="grid flex-1 grid-cols-[1fr_auto] items-center gap-x-4 gap-y-2 py-3.5 pl-4 pr-5 sm:grid-cols-[150px_112px_1fr_auto] sm:gap-x-6 sm:py-3 sm:pr-7">
+      <div className="grid flex-1 grid-cols-[1fr_auto] items-center gap-x-4 gap-y-2 py-3.5 pl-4 pr-5 sm:grid-cols-[150px_148px_1fr_auto] sm:gap-x-6 sm:py-3 sm:pr-7">
         {/* nome + N de pacientes + cobertura visível (alvo é celular/touch — nada só em title) */}
         <div className="min-w-0">
           <p className="text-[15px] font-semibold leading-tight text-tinta">{estilo.nome}</p>
@@ -109,8 +110,24 @@ export function Pulseira({ item, consolidado = false }: Props) {
           </p>
         </div>
 
-        {/* tempo médio em número grande — mesmo formatador dos demais (1h50 / 42 min) */}
+        {/*
+          Os DOIS tempos da jornada, um sobre o outro e nomeados. Separados porque cobram
+          donos diferentes: o primeiro é da enfermagem da porta, o segundo é do plantão
+          médico. Só o segundo é o número-herói (é o que vai contra a meta), mas o
+          primeiro deixou de ser invisível — ele vinha no contrato desde sempre e nunca
+          chegava à tela.
+        */}
         <div className="text-right sm:text-left">
+          <p className="text-[10.5px] uppercase leading-tight tracking-wide text-grafite/85">
+            chegada → classificação
+          </p>
+          <p className="tnum font-display text-[17px] font-semibold leading-none text-tinta sm:text-[19px]">
+            {item.mediaAteTriagem != null ? minutosLegiveis(item.mediaAteTriagem) : '—'}
+          </p>
+
+          <p className="mt-2 text-[10.5px] uppercase leading-tight tracking-wide text-grafite/85">
+            {rotuloEspera}
+          </p>
           {temEspera ? (
             <p className="font-display text-[26px] font-bold leading-none tracking-tight text-tinta sm:text-[30px]">
               <NumeroAnimado valor={item.mediaEspera as number} formatar={minutosLegiveis} />
@@ -124,26 +141,33 @@ export function Pulseira({ item, consolidado = false }: Props) {
         <div className="col-span-2 sm:col-span-1">
           {temEspera && (
             <>
-              <BarraMeta
-                media={item.mediaEspera as number}
-                meta={mostrarMeta ? item.metaMin : null}
-                cor={estilo.cor}
-                corForte={estilo.corForte}
-              />
-              {mostrarMeta && (
-                <div className="mt-1.5 flex items-baseline justify-between gap-3 text-[11.5px] text-grafite">
-                  <span>
-                    {item.metaMin != null
-                      ? `meta ${minutosLegiveis(item.metaMin)}`
-                      : 'sem meta definida'}
-                  </span>
-                  {item.pctNaMeta != null && (
-                    <span className="tnum">
-                      <span className="font-semibold text-tinta">{formatarPct(item.pctNaMeta)}</span> na meta
-                    </span>
-                  )}
-                </div>
+              {/*
+                Alvo imediato (meta 0) não desenha barra: sem prazo não há régua, e uma
+                barra cheia da cor da triagem lê como alarme — no vermelho, 4 minutos
+                apareciam como uma faixa vermelha de ponta a ponta.
+              */}
+              {item.metaMin !== 0 && (
+                <BarraMeta
+                  media={item.mediaEspera as number}
+                  meta={metaEhPrazo ? item.metaMin : null}
+                  cor={estilo.cor}
+                  corForte={estilo.corForte}
+                />
               )}
+              <div className="mt-1.5 flex items-baseline justify-between gap-3 text-[11.5px] text-grafite">
+                <span>
+                  {metaEhPrazo
+                    ? `meta ${minutosLegiveis(item.metaMin as number)}`
+                    : item.metaMin === 0
+                      ? 'alvo: atendimento imediato'
+                      : 'sem meta definida'}
+                </span>
+                {item.pctNaMeta != null && (
+                  <span className="tnum">
+                    <span className="font-semibold text-tinta">{formatarPct(item.pctNaMeta)}</span> na meta
+                  </span>
+                )}
+              </div>
             </>
           )}
           {!temEspera && (

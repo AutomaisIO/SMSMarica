@@ -116,7 +116,6 @@ function ConteudoUnidade({ unidade, visao }: { unidade: UnidadePainel; visao: Vi
           <SecaoEmergencia
             espera={unidade.esperaPorCor}
             coresUsadas={unidade.coresUsadas}
-            consolidado={unidade.id === 'geral'}
             atendimentos={unidade.atendimentos}
           />
         ) : (

@@ -38,28 +38,77 @@ Hospital fixo: `cd_hospital = 1` (HMCML). UPA Inoã (2) e PA Santa Rita (3) exis
 
 ## Q1 — Agora (tick rápido)
 
+### Marcador de atendimento médico (usado pela Q1a, Q1b e Q6)
+
+`BAA.DT_INICIO_ATEND_MED` é 100% vazia, então o relógio do médico é o **primeiro rastro**
+dele no boletim. Os três modelos de boletim (10036/10232/10014) **não bastam** — ver
+[§Fato 3](#fato-3--o-marcador-só-por-modelo-de-boletim-produzia-fantasmas-de-9-horas). O
+marcador é a UNIÃO de:
+
 ```sql
--- Q1a: aguardando médico agora, por cor (chegada nas últimas 12h, sem saída, sem doc médico)
+(EXISTS (SELECT 1 FROM infosaude.edoc_movimento mv
+          WHERE mv.cd_hospital = 1
+            AND mv.dt_ano_baa = b.dt_ano_baa AND mv.nr_baa = b.nr_baa
+            AND (mv.cd_modelo IN (10036,10232,10014)
+                 OR REGEXP_LIKE(mv.cd_funcionario_inc,'MED')))
+     OR EXISTS (SELECT 1 FROM infosaude.prescricao_baa pb
+                 WHERE pb.cd_hospital = 1
+                   AND pb.dt_ano_baa = b.dt_ano_baa AND pb.nr_baa = b.nr_baa))
+```
+
+O papel do autor está no próprio código do funcionário e os papéis são **disjuntos**
+(numa semana: MED 8.616 · ENF 5.022 · ADM 337 · TEC 287 · PSI 29 · ASS 20…), então o
+`REGEXP_LIKE(...,'MED')` sozinho já exclui escala de enfermagem, SAE e pesquisa de
+satisfação. Os modelos ficam na regra **além** do autor porque 31 dos 480 boletins de
+24/07 foram lavrados por quem não é MED (há códigos legados como `1ME932` e `1AMD68`).
+
+#### Fato 3 — o marcador só por modelo de boletim produzia "fantasmas de 9 horas"
+
+Descoberto em 25/07/2026 investigando por que o painel mostrava "Amarelo 2 · 9h07" no
+Conde. Os dois eram boletins da manhã que ninguém encerrou, e **um deles recebeu
+Receituário de Controle Especial 3 minutos depois da classificação** — atendido, mas
+invisível ao marcador. Como 47% dos boletins nunca recebem `DT_SAIDA` (242 de 519 em
+24/07) e a Q1a só exclui quem tem saída, quem vai embora envelhece na fila até cair da
+janela de 12h. Medições da troca:
+
+| | marcador antigo | marcador novo |
+|---|---|---|
+| Boletins com atendimento (24/07) | 402 | 404 |
+| Mediana da espera (24/07) | 23,3 min | **18,8 min** |
+| Boletins com rastro ANTES do boletim | — | **83**, em média 16 min mais cedo |
+| Fila viva no instante do teste | 38 | **22** |
+
+```sql
+-- Q1a: aguardando médico agora, por cor (chegada nas últimas 12h, sem saída, sem rastro
+-- médico), com os DOIS tempos da jornada separados:
+--   T1 = chegada → classificação  (intervalo FECHADO, já aconteceu)
+--   T2 = classificação → agora    (relógio CORRENDO: é a espera pelo médico)
+-- GREATEST é obrigatório: em 5,7% dos boletins (197 de 3.432 numa semana) a classificação
+-- é carimbada ANTES da chegada — o acolhimento/senha abre antes do BAA — e o pior caso é
+-- -184 min. Quem ainda não foi classificado conta em qtd e fica fora das médias (AVG
+-- ignora nulo), que é o comportamento honesto.
 SELECT NVL(cr.ds_classificacao_risco,'SEM_CLASSIFICACAO') AS cor, COUNT(*) AS qtd,
-       ROUND(AVG((SYSDATE - b.dt_chegada) * 1440), 0) AS min_medio_desde_chegada
+       ROUND(AVG((SYSDATE - b.dt_chegada) * 1440), 0) AS min_medio_desde_chegada,
+       ROUND(AVG(GREATEST((b.dt_classifica_atual - b.dt_chegada) * 1440, 0)), 1)
+         AS min_medio_ate_classificacao,
+       ROUND(AVG((SYSDATE - GREATEST(b.dt_classifica_atual, b.dt_chegada)) * 1440), 0)
+         AS min_medio_desde_classificacao
   FROM infosaude.baa b
   LEFT JOIN infosaude.classificacao_risco cr ON cr.cd_classificacao_risco = b.cd_classificacao_risco
  WHERE b.cd_hospital = 1 AND b.in_emergencia = 'S'
    AND b.dt_chegada >= SYSDATE - 0.5
    AND b.dt_saida IS NULL
-   AND NOT EXISTS (SELECT 1 FROM infosaude.edoc_movimento mv
-                    WHERE mv.cd_hospital = 1 AND mv.cd_modelo IN (10036,10232,10014)
-                      AND mv.dt_ano_baa = b.dt_ano_baa AND mv.nr_baa = b.nr_baa)
+   AND NOT <marcador de atendimento médico>
  GROUP BY cr.ds_classificacao_risco
 
--- Q1b: em atendimento/observação (mesma janela, COM doc médico, sem saída)
+-- Q1b: em atendimento/observação (mesma janela, COM rastro médico, sem saída).
+-- MESMO marcador da Q1a — se divergirem, quem sai da fila some do painel em vez de
+-- aparecer em atendimento.
 SELECT COUNT(*) AS em_atendimento
   FROM infosaude.baa b
  WHERE b.cd_hospital = 1 AND b.in_emergencia = 'S'
    AND b.dt_chegada >= SYSDATE - 0.5 AND b.dt_saida IS NULL
-   AND EXISTS (SELECT 1 FROM infosaude.edoc_movimento mv
-                WHERE mv.cd_hospital = 1 AND mv.cd_modelo IN (10036,10232,10014)
-                  AND mv.dt_ano_baa = b.dt_ano_baa AND mv.nr_baa = b.nr_baa)
+   AND <marcador de atendimento médico>
 
 -- Q1c: internados agora + atendimentos/internações de hoje
 SELECT (SELECT COUNT(*) FROM infosaude.fia f
@@ -182,6 +231,41 @@ nascido vivo), `ID_MALFORMACAO`, `NM_OBSTETRA`/`NM_PEDIATRA`.
 
 Rodar 1× por período (hoje / mês atual / mês anterior), substituindo `:ini`/`:fim` como na Q2. `:fim_doc` = `:fim + 3` (doc pode ser lavrado depois do fim do período).
 
+Usa o **mesmo marcador ampliado** da Q1a (§ acima) — se o histórico e a fila viva
+contarem populações diferentes, as duas telas do painel se contradizem.
+
+### A régua de meta NÃO sai do cadastro (25/07)
+
+As metas do painel são as do protocolo de Manchester, fixas no código (`MetasTriagem`) e
+iguais nas três unidades: **Vermelho 0 (imediato) · Laranja 10 · Amarelo 60 · Verde 120 ·
+Azul 240**. O cadastro das bases não serve como fonte porque as três discordam — e uma
+delas discorda de si mesma:
+
+| Base | Onde | O que tem |
+|---|---|---|
+| Salux/Conde | `CLASSIFICACAO_RISCO.QT_TEMPO` | Linhas de nome clínico (cd 1–5) trazem **exatamente** esta régua e estão **mortas** (0 boletins em 30 d). As vivas são as de nome de cor (cd 7–10): Vermelho 15, Amarelo 30, Verde 60, Azul 1440. |
+| UPA Maricá | `risco_acolhimento.risaco_Tempo_Espera` | Protocolo 0006 bate com a régua; 0002 é todo vazio. |
+| Santa Rita | idem | Usa **os dois protocolos ao mesmo tempo** — 30 d: 4.858 classificações pelo 0005 (Verde 60) contra 1.006 pelo 0006 (Verde 120). |
+
+Com régua única some também a máquina de "meta da variante predominante" da U6 e a regra
+de esconder meta na aba Geral — não há mais divergência para esconder.
+
+### O vermelho tem regra de medição própria
+
+Decisão do usuário, 25/07: no vermelho o médico assiste o paciente **antes** de se lavrar
+classificação, boletim ou prescrição. Medir "classificação → documento" ali mede o papel,
+não o cuidado. Então para o vermelho:
+
+- a espera é da **chegada até a primeira interação de qualquer natureza** — a própria
+  classificação já conta;
+- todo vermelho classificado é **atendido por definição** (`com_atendimento = pacientes`);
+- meta zero ⇒ **sem percentual** (`pct_na_meta` nulo): alvo imediato não tem "% cumprido"
+  que informe; a tela mostra "alvo: atendimento imediato" e o tempo real.
+
+Efeito nos dois vermelhos de 24/07: 63,9 e 156,5 min viram **1,9 e 5,4 min** (média
+110,2 → **3,7**). O que o painel exibia como "1h50 de espera no vermelho" era atraso de
+**registro**, não de atendimento.
+
 ```sql
 WITH b AS (
   SELECT b.dt_ano_baa, b.nr_baa, b.cd_classificacao_risco,
@@ -191,34 +275,58 @@ WITH b AS (
      AND b.dt_atendimento >= :ini AND b.dt_atendimento < :fim
      AND b.in_emergencia = 'S'
 ), d AS (
-  SELECT mv.dt_ano_baa, mv.nr_baa, MIN(mv.dt_inclusao) AS dt_med
-    FROM infosaude.edoc_movimento mv
-   WHERE mv.cd_hospital = 1
-     AND mv.cd_modelo IN (10036, 10232, 10014)
-     AND mv.dt_inclusao >= :ini AND mv.dt_inclusao < :fim_doc
-   GROUP BY mv.dt_ano_baa, mv.nr_baa
+  -- primeiro rastro médico: modelos de boletim OU autor MED, unido à prescrição
+  SELECT r.dt_ano_baa, r.nr_baa, MIN(r.dt_med) AS dt_med
+    FROM (SELECT mv.dt_ano_baa, mv.nr_baa, mv.dt_inclusao AS dt_med
+            FROM infosaude.edoc_movimento mv
+           WHERE mv.cd_hospital = 1
+             AND (mv.cd_modelo IN (10036,10232,10014)
+                  OR REGEXP_LIKE(mv.cd_funcionario_inc,'MED'))
+             AND mv.dt_inclusao >= :ini AND mv.dt_inclusao < :fim_doc
+          UNION ALL
+          SELECT pb.dt_ano_baa, pb.nr_baa, pb.dt_prescricao
+            FROM infosaude.prescricao_baa pb
+           WHERE pb.cd_hospital = 1
+             AND pb.dt_prescricao >= :ini AND pb.dt_prescricao < :fim_doc) r
+   GROUP BY r.dt_ano_baa, r.nr_baa
+), e AS (
+  SELECT NVL(cr.ds_classificacao_risco,'SEM_CLASSIFICACAO')                   AS cor,
+         cr.cd_classificacao_risco                                            AS ordem,
+         cr.qt_tempo                                                          AS meta,
+         CASE WHEN d.dt_med IS NOT NULL THEN 1 ELSE 0 END                     AS atendido,
+         GREATEST((b.dt_classifica_atual - b.dt_chegada) * 1440, 0)           AS ate_triagem,
+         GREATEST((d.dt_med - b.dt_classifica_atual) * 1440, 0)               AS espera
+    FROM b
+    LEFT JOIN d ON d.dt_ano_baa = b.dt_ano_baa AND d.nr_baa = b.nr_baa
+    LEFT JOIN infosaude.classificacao_risco cr
+           ON cr.cd_classificacao_risco = b.cd_classificacao_risco
+   WHERE b.dt_classifica_atual IS NOT NULL
 )
-SELECT NVL(cr.ds_classificacao_risco,'SEM_CLASSIFICACAO')                     AS cor,
-       COUNT(*)                                                              AS pacientes,
-       SUM(CASE WHEN d.dt_med IS NOT NULL THEN 1 ELSE 0 END)                 AS com_atendimento,
-       ROUND(AVG((b.dt_classifica_atual - b.dt_chegada) * 1440), 1)          AS media_ate_triagem,
-       ROUND(AVG((d.dt_med - b.dt_classifica_atual) * 1440), 1)              AS media_espera,
-       ROUND(MEDIAN((d.dt_med - b.dt_classifica_atual) * 1440), 1)           AS mediana_espera,
-       ROUND(PERCENTILE_CONT(0.9) WITHIN GROUP
-             (ORDER BY (d.dt_med - b.dt_classifica_atual) * 1440), 1)        AS p90_espera,
-       MAX(cr.qt_tempo)                                                      AS meta_min,
-       ROUND(100 * SUM(CASE WHEN (d.dt_med - b.dt_classifica_atual) * 1440
-                                 <= cr.qt_tempo THEN 1 ELSE 0 END)
-             / NULLIF(SUM(CASE WHEN d.dt_med IS NOT NULL THEN 1 ELSE 0 END),0), 1) AS pct_na_meta
-  FROM b
-  LEFT JOIN d ON d.dt_ano_baa = b.dt_ano_baa AND d.nr_baa = b.nr_baa
-  LEFT JOIN infosaude.classificacao_risco cr
-         ON cr.cd_classificacao_risco = b.cd_classificacao_risco
- WHERE b.dt_classifica_atual IS NOT NULL
-   AND (d.dt_med IS NULL OR d.dt_med >= b.dt_classifica_atual)
- GROUP BY cr.ds_classificacao_risco, cr.cd_classificacao_risco
- ORDER BY cr.cd_classificacao_risco
+SELECT cor                                                                    AS cor,
+       COUNT(*)                                                               AS pacientes,
+       SUM(atendido)                                                          AS com_atendimento,
+       ROUND(AVG(ate_triagem), 1)                                             AS media_ate_triagem,
+       ROUND(AVG(espera), 1)                                                  AS media_espera,
+       ROUND(MEDIAN(espera), 1)                                               AS mediana_espera,
+       ROUND(PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY espera), 1)          AS p90_espera,
+       MAX(meta)                                                              AS meta_min,
+       ROUND(100 * SUM(CASE WHEN espera <= meta THEN 1 ELSE 0 END)
+             / NULLIF(SUM(atendido),0), 1)                                    AS pct_na_meta
+  FROM e
+ GROUP BY cor, ordem
+ ORDER BY ordem
 ```
+
+**Clamp em vez de descarte** (25/07): a versão anterior tinha
+`AND (d.dt_med IS NULL OR d.dt_med >= b.dt_classifica_atual)`, que **jogava fora** o
+paciente atendido antes de o carimbo da triagem sair. São 9 em 3.432 (0,3%) com o
+marcador novo — e descartar tira o paciente da conta inteira, inclusive do denominador da
+meta. `GREATEST(...,0)` o mantém com espera zero, que é o que de fato aconteceu. Efeito na
+semana medida: média 40,3 → 40,1 min.
+
+Efeito da troca de marcador nos números de 24/07 (antes → depois): Vermelho 110,2 → 108,9;
+Amarelo 17,6 → 15,5 (85,8% → 89,3% na meta); Verde 69,7 → 66,4 (mediana 30,6 → 21,1);
+Azul 86,0 → 77,1 com um atendimento a mais reconhecido.
 
 **Observações**: cor SALUX (cd 11) — somar em SEM_CLASSIFICACAO ou omitir; N do VERMELHO é minúsculo (10–20/mês), o front deve exibir o N junto. Boletins sem `dt_classifica_atual` ficam fora (o contrato reporta só quem foi classificado; SEM_CLASSIFICACAO cobre quem tem carimbo de classificação sem cor).
 

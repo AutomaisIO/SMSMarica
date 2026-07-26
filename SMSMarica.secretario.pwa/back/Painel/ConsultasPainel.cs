@@ -34,6 +34,13 @@ public static class ConsultasPainel
     public const string UnidadesMaternidade = "15,16,17,26";
 
     /// <summary>
+    /// Código da cor VERMELHO em <c>INFOSAUDE.CLASSIFICACAO_RISCO</c> (o cadastro tem
+    /// duas famílias de linhas; a viva é a de nomes de cor, 7–10). Ele merece constante
+    /// porque a Q6 dá ao vermelho uma regra de medição PRÓPRIA — ver lá.
+    /// </summary>
+    public const int CodigoVermelho = 7;
+
+    /// <summary>
     /// Último leito ocupado de cada internação (a paciente troca de leito ao longo da
     /// estadia; o que vale para classificar é onde ela está/terminou).
     /// </summary>
@@ -81,32 +88,116 @@ public static class ConsultasPainel
                  ON la.dt_ano_fia = f.dt_ano_fia AND la.nr_fia = f.nr_fia AND la.rn = 1
         """;
 
+    // ── Marcador do atendimento médico ────────────────────────────────────────
+
+    /// <summary>
+    /// Boletins que carimbam início de atendimento médico. <c>BAA.DT_INICIO_ATEND_MED</c>
+    /// é 100% vazia no HMCML, então o relógio do médico vem do primeiro documento.
+    /// </summary>
+    private const string ModelosBoletimMedico = "10036,10232,10014";
+
+    /// <summary>
+    /// "O médico assumiu o paciente" — EXISTS reutilizado pelas consultas do agora.
+    ///
+    /// <para>
+    /// Só os três modelos de boletim NÃO bastam: em 24/07/2026 o painel mostrou uma
+    /// paciente da pediatria "esperando há 9 horas" quando ela recebera um Receituário de
+    /// Controle Especial <b>3 minutos</b> depois da classificação — receituário, atestado,
+    /// laudo AIH e encaminhamento não estão na lista, e o boletim dela nunca foi aberto.
+    /// Como 47% dos boletins nunca recebem <c>DT_SAIDA</c>, quem some sem o boletim ser
+    /// encerrado envelhece na fila até cair da janela de 12h e contamina a média.
+    /// </para>
+    ///
+    /// <para>
+    /// A regra é a UNIÃO de três rastros: (1) os modelos de boletim, qualquer autor —
+    /// 31 dos 480 de 24/07 foram lavrados por quem não é <c>MED</c>; (2) <b>qualquer</b>
+    /// eDoc cujo autor seja médico (<c>cd_funcionario_inc</c> casa <c>MED</c>: os papéis
+    /// são disjuntos e legíveis no código — MED, ENF, TEC, PSI, ASS…), o que exclui
+    /// sozinho escalas de enfermagem, SAE e pesquisa de satisfação; (3) prescrição médica
+    /// em <c>PRESCRICAO_BAA</c>. Medido em 24/07: cobertura 402 → 404 boletins e, em 83
+    /// deles, o rastro é <b>16 min mais cedo</b> que o boletim (mediana da espera 23,3 →
+    /// 18,8 min). Na fila viva do momento do teste, tirou 16 dos 38 fantasmas.
+    /// </para>
+    /// </summary>
+    private static string TemAtendimentoMedico(int hospital, string alias) => $"""
+        (EXISTS (SELECT 1 FROM infosaude.edoc_movimento mv
+                  WHERE mv.cd_hospital = {hospital}
+                    AND mv.dt_ano_baa = {alias}.dt_ano_baa AND mv.nr_baa = {alias}.nr_baa
+                    AND (mv.cd_modelo IN ({ModelosBoletimMedico})
+                         OR REGEXP_LIKE(mv.cd_funcionario_inc,'MED')))
+             OR EXISTS (SELECT 1 FROM infosaude.prescricao_baa pb
+                         WHERE pb.cd_hospital = {hospital}
+                           AND pb.dt_ano_baa = {alias}.dt_ano_baa AND pb.nr_baa = {alias}.nr_baa))
+        """;
+
+    /// <summary>
+    /// Primeiro rastro médico de cada boletim, na mesma união de
+    /// <see cref="TemAtendimentoMedico"/> — versão datada, para as consultas de período.
+    /// </summary>
+    private static string PrimeiroAtendimentoMedico(int hospital, string ini, string fim) => $"""
+          SELECT r.dt_ano_baa, r.nr_baa, MIN(r.dt_med) AS dt_med
+            FROM (SELECT mv.dt_ano_baa, mv.nr_baa, mv.dt_inclusao AS dt_med
+                    FROM infosaude.edoc_movimento mv
+                   WHERE mv.cd_hospital = {hospital}
+                     AND (mv.cd_modelo IN ({ModelosBoletimMedico})
+                          OR REGEXP_LIKE(mv.cd_funcionario_inc,'MED'))
+                     AND mv.dt_inclusao >= {ini} AND mv.dt_inclusao < {fim}
+                  UNION ALL
+                  SELECT pb.dt_ano_baa, pb.nr_baa, pb.dt_prescricao
+                    FROM infosaude.prescricao_baa pb
+                   WHERE pb.cd_hospital = {hospital}
+                     AND pb.dt_prescricao >= {ini} AND pb.dt_prescricao < {fim}) r
+           GROUP BY r.dt_ano_baa, r.nr_baa
+        """;
+
     // ── Q1 — Agora (tick rápido) ───────────────────────────────────────────────
 
-    /// <summary>Q1a: aguardando médico agora, por cor (chegada nas últimas 12h, sem saída, sem doc médico).</summary>
+    /// <summary>
+    /// Q1a: aguardando médico agora, por cor (chegada nas últimas 12h, sem saída, sem
+    /// rastro médico), com os DOIS tempos da jornada separados.
+    ///
+    /// <para>
+    /// <b>T1 — chegada → classificação</b> é intervalo fechado (já aconteceu). <b>T2 —
+    /// classificação → agora</b> é relógio correndo: é ele que responde "há quanto tempo
+    /// essa pessoa espera o médico". A média desde a chegada continua vindo porque
+    /// mistura os dois e serve de conferência.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Clamp obrigatório</b>: em 5,7% dos boletins (197 de 3.432 numa semana) a
+    /// classificação é carimbada ANTES da chegada — o acolhimento/senha abre antes do
+    /// BAA — e o pior caso é −184 min. Sem <c>GREATEST</c> isso vira tempo negativo na
+    /// tela. Quem ainda não foi classificado entra na contagem mas fica fora das duas
+    /// médias (<c>AVG</c> ignora nulo), que é o comportamento honesto.
+    /// </para>
+    /// </summary>
     public static string Q1AguardandoPorCor(int hospital) => $"""
         SELECT NVL(cr.ds_classificacao_risco,'SEM_CLASSIFICACAO') AS cor, COUNT(*) AS qtd,
-               ROUND(AVG((SYSDATE - b.dt_chegada) * 1440), 0) AS min_medio_desde_chegada
+               ROUND(AVG((SYSDATE - b.dt_chegada) * 1440), 0) AS min_medio_desde_chegada,
+               ROUND(AVG(GREATEST((b.dt_classifica_atual - b.dt_chegada) * 1440, 0)), 1)
+                 AS min_medio_ate_classificacao,
+               ROUND(AVG((SYSDATE - GREATEST(b.dt_classifica_atual, b.dt_chegada)) * 1440), 0)
+                 AS min_medio_desde_classificacao
           FROM infosaude.baa b
           LEFT JOIN infosaude.classificacao_risco cr ON cr.cd_classificacao_risco = b.cd_classificacao_risco
          WHERE b.cd_hospital = {hospital} AND b.in_emergencia = 'S'
            AND b.dt_chegada >= SYSDATE - 0.5
            AND b.dt_saida IS NULL
-           AND NOT EXISTS (SELECT 1 FROM infosaude.edoc_movimento mv
-                            WHERE mv.cd_hospital = {hospital} AND mv.cd_modelo IN (10036,10232,10014)
-                              AND mv.dt_ano_baa = b.dt_ano_baa AND mv.nr_baa = b.nr_baa)
+           AND NOT {TemAtendimentoMedico(hospital, "b")}
          GROUP BY cr.ds_classificacao_risco
         """;
 
-    /// <summary>Q1b: em atendimento/observação (mesma janela, COM doc médico, sem saída).</summary>
+    /// <summary>
+    /// Q1b: em atendimento/observação (mesma janela, COM rastro médico, sem saída).
+    /// Usa o MESMO marcador da Q1a — se divergirem, quem sai da fila some do painel em
+    /// vez de aparecer em atendimento.
+    /// </summary>
     public static string Q1EmAtendimento(int hospital) => $"""
         SELECT COUNT(*) AS em_atendimento
           FROM infosaude.baa b
          WHERE b.cd_hospital = {hospital} AND b.in_emergencia = 'S'
            AND b.dt_chegada >= SYSDATE - 0.5 AND b.dt_saida IS NULL
-           AND EXISTS (SELECT 1 FROM infosaude.edoc_movimento mv
-                        WHERE mv.cd_hospital = {hospital} AND mv.cd_modelo IN (10036,10232,10014)
-                          AND mv.dt_ano_baa = b.dt_ano_baa AND mv.nr_baa = b.nr_baa)
+           AND {TemAtendimentoMedico(hospital, "b")}
         """;
 
     /// <summary>
@@ -234,6 +325,37 @@ public static class ConsultasPainel
     /// <summary>
     /// Rodar 1× por período (hoje / mês atual / mês anterior). <paramref name="fimDoc"/> =
     /// fim + 3 dias — o doc médico pode ser lavrado depois do fim do período.
+    ///
+    /// <para>
+    /// Usa o mesmo marcador ampliado do agora (<see cref="PrimeiroAtendimentoMedico"/>),
+    /// senão o histórico e a fila viva contariam populações diferentes.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>O VERMELHO tem regra de medição PRÓPRIA</b> (decisão do usuário, 25/07). Ali o
+    /// médico costuma assistir o paciente primeiro e só depois se lavram classificação,
+    /// boletim e prescrição — medir "classificação → documento" mede o papel, não o
+    /// cuidado. Então no vermelho a espera é <b>da chegada até a primeira interação de
+    /// qualquer natureza</b> (a própria classificação já conta), e todo vermelho
+    /// classificado é atendido por definição. Efeito nos dois casos de 24/07: 63,9 e
+    /// 156,5 min viram <b>1,9 e 5,4 min</b> — o que o painel exibia como "1h50 de espera
+    /// no vermelho" era atraso de REGISTRO, não de atendimento.
+    /// </para>
+    ///
+    /// <para>
+    /// A meta vem de <see cref="MetasTriagem"/>, não do cadastro das bases — as três
+    /// discordam entre si e a Santa Rita discorda de si mesma. Meta zero (vermelho) sai
+    /// com <c>pct_na_meta</c> nulo: alvo imediato não tem percentual que informe.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Clamp em vez de descarte</b>: a versão anterior jogava fora o paciente cujo
+    /// rastro médico antecedia a classificação (<c>d.dt_med >= dt_classifica_atual</c>).
+    /// Com o marcador ampliado esses casos são 9 em 3.432 (0,3%) — e descartar some com o
+    /// paciente da conta inteira, inclusive do denominador da meta. <c>GREATEST(...,0)</c>
+    /// mantém o paciente com espera zero, que é o que de fato aconteceu: foi atendido
+    /// antes de o carimbo da triagem sair. Efeito na semana medida: média 40,3 → 40,1 min.
+    /// </para>
     /// </summary>
     public static string Q6EsperaPorCor(int hospital, string ini, string fim, string fimDoc) => $"""
         WITH b AS (
@@ -244,33 +366,41 @@ public static class ConsultasPainel
              AND b.dt_atendimento >= {ini} AND b.dt_atendimento < {fim}
              AND b.in_emergencia = 'S'
         ), d AS (
-          SELECT mv.dt_ano_baa, mv.nr_baa, MIN(mv.dt_inclusao) AS dt_med
-            FROM infosaude.edoc_movimento mv
-           WHERE mv.cd_hospital = {hospital}
-             AND mv.cd_modelo IN (10036, 10232, 10014)
-             AND mv.dt_inclusao >= {ini} AND mv.dt_inclusao < {fimDoc}
-           GROUP BY mv.dt_ano_baa, mv.nr_baa
+        {PrimeiroAtendimentoMedico(hospital, ini, fimDoc)}
+        ), e AS (
+          SELECT NVL(cr.ds_classificacao_risco,'SEM_CLASSIFICACAO')                   AS cor,
+                 cr.cd_classificacao_risco                                            AS ordem,
+                 {MetasTriagem.CaseSalux("cr.cd_classificacao_risco")}                AS meta,
+                 CASE WHEN {CodigoVermelho} = cr.cd_classificacao_risco THEN 1
+                      WHEN d.dt_med IS NOT NULL THEN 1 ELSE 0 END                     AS atendido,
+                 GREATEST((b.dt_classifica_atual - b.dt_chegada) * 1440, 0)           AS ate_triagem,
+                 CASE WHEN {CodigoVermelho} = cr.cd_classificacao_risco
+                      THEN GREATEST((LEAST(b.dt_classifica_atual,
+                                           NVL(d.dt_med, b.dt_classifica_atual))
+                                     - b.dt_chegada) * 1440, 0)
+                      ELSE GREATEST((d.dt_med - b.dt_classifica_atual) * 1440, 0)
+                 END                                                                  AS espera
+            FROM b
+            LEFT JOIN d ON d.dt_ano_baa = b.dt_ano_baa AND d.nr_baa = b.nr_baa
+            LEFT JOIN infosaude.classificacao_risco cr
+                   ON cr.cd_classificacao_risco = b.cd_classificacao_risco
+           WHERE b.dt_classifica_atual IS NOT NULL
         )
-        SELECT NVL(cr.ds_classificacao_risco,'SEM_CLASSIFICACAO')                     AS cor,
-               COUNT(*)                                                              AS pacientes,
-               SUM(CASE WHEN d.dt_med IS NOT NULL THEN 1 ELSE 0 END)                 AS com_atendimento,
-               ROUND(AVG((b.dt_classifica_atual - b.dt_chegada) * 1440), 1)          AS media_ate_triagem,
-               ROUND(AVG((d.dt_med - b.dt_classifica_atual) * 1440), 1)              AS media_espera,
-               ROUND(MEDIAN((d.dt_med - b.dt_classifica_atual) * 1440), 1)           AS mediana_espera,
-               ROUND(PERCENTILE_CONT(0.9) WITHIN GROUP
-                     (ORDER BY (d.dt_med - b.dt_classifica_atual) * 1440), 1)        AS p90_espera,
-               MAX(cr.qt_tempo)                                                      AS meta_min,
-               ROUND(100 * SUM(CASE WHEN (d.dt_med - b.dt_classifica_atual) * 1440
-                                         <= cr.qt_tempo THEN 1 ELSE 0 END)
-                     / NULLIF(SUM(CASE WHEN d.dt_med IS NOT NULL THEN 1 ELSE 0 END),0), 1) AS pct_na_meta
-          FROM b
-          LEFT JOIN d ON d.dt_ano_baa = b.dt_ano_baa AND d.nr_baa = b.nr_baa
-          LEFT JOIN infosaude.classificacao_risco cr
-                 ON cr.cd_classificacao_risco = b.cd_classificacao_risco
-         WHERE b.dt_classifica_atual IS NOT NULL
-           AND (d.dt_med IS NULL OR d.dt_med >= b.dt_classifica_atual)
-         GROUP BY cr.ds_classificacao_risco, cr.cd_classificacao_risco
-         ORDER BY cr.cd_classificacao_risco
+        SELECT cor                                                                    AS cor,
+               COUNT(*)                                                               AS pacientes,
+               SUM(atendido)                                                          AS com_atendimento,
+               ROUND(AVG(ate_triagem), 1)                                             AS media_ate_triagem,
+               ROUND(AVG(espera), 1)                                                  AS media_espera,
+               ROUND(MEDIAN(espera), 1)                                               AS mediana_espera,
+               ROUND(PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY espera), 1)          AS p90_espera,
+               MAX(meta)                                                              AS meta_min,
+               CASE WHEN MAX(meta) > 0
+                    THEN ROUND(100 * SUM(CASE WHEN espera <= meta THEN 1 ELSE 0 END)
+                               / NULLIF(SUM(atendido),0), 1)
+               END                                                                    AS pct_na_meta
+          FROM e
+         GROUP BY cor, ordem
+         ORDER BY ordem
         """;
 
     // ── L1..L3 — Leitos e permanência (tick lento) ─────────────────────────────
