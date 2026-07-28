@@ -182,20 +182,28 @@ Mesma estrutura do adulto, **sem o #1** (a pediatria NÃO usa totem: 2 senhas em
 | 3.1 Vermelho / 3.2 Laranja | **ForaDoBanco** | 2 casos / não existe | |
 | 3.3 Amarelo · 3.4 Verde · 3.5 Azul | Validado | 25,6 · 46,4 · 34,5 | ✓✓✓ |
 
-### Materno Infantil (aba 3) — ⏳ PENDENTE (usuário adiou em 28/07)
-Diagnóstico já feito (jun/26, 928 boletins): **sem totem** (64 senhas) → #1 ForaDoBanco. **#2 = 1,21 min**
-(n=727) — a maternidade **classifica quase junto do acolhimento** (usa o eDoc **10043 "Classificação de
-Risco Maternidade"**); bate ≤10 mas com fluxo próprio. **#3 NÃO funciona por cor**: 89% dos boletins
-(650/731) **não têm cor Manchester** — a maternidade tem protocolo de risco próprio, não amarelo/verde/azul.
-Ao retomar: achar as categorias/metas do protocolo de risco de maternidade (10043) ou medir #3 como
-agregado único (classificação→1º boletim médico, modelos 10036/14/232 + o obstétrico 10232).
-**CONFIRMADO (28/07, dado jun/26): a classificação da maternidade é o eDoc `cd_modelo=10043`
-("Classificação de Risco Maternidade")** — 848/928 (91%) das FIA/BAA de maternidade têm o 10043, e ele
-fica **~46 min DEPOIS** de `DT_CLASSIFICA_ATUAL` (que na maternidade ≈ acolhimento, o que explicava o
-#2 falso de 1,21 min). **Na maternidade o carimbo REAL da classificação = `MIN(dt_inclusao)` do 10043,
-NÃO `DT_CLASSIFICA_ATUAL`.** ⚠️ Isso vale SÓ para maternidade: **adulto usa 10043 em ~0% (19/12.034) e a
-pediatria em 0% (0/4.443)** — adulto e pediatria classificam no `DT_CLASSIFICA_ATUAL` (Manchester), então
-os indicadores adulto/pediátrico já gravados estão corretos e não dependem do 10043.
+### Materno Infantil (aba 3) — ✅ GRAVADO EM PROD (2026-07-28)
+**A classificação da maternidade NÃO é `DT_CLASSIFICA_ATUAL`** (esse ≈ acolhimento; dava o #2 falso de
+1,21 min). É a tela de triagem própria, o **eDoc `cd_modelo=10043` "Classificação de Risco Maternidade"**
+(91% das BAA de maternidade têm; fica ~46 min depois do DT_CLASSIFICA_ATUAL). ⚠️ Vale SÓ p/ maternidade:
+adulto usa 10043 em ~0% (19/12.034) e pediatria em 0% — esses classificam no `DT_CLASSIFICA_ATUAL`.
+- **O 10043 TEM cor**: o item `EDOC_ITEM.DS_ITEM='Classificação de Risco'` (resposta em
+  `EDOC_MOVIMENTO_ITEM.DS_RESPOSTA`) traz as 5 cores com alvo próprio: Vermelho-Imediato, **Laranja-15min**
+  (a maternidade TEM laranja, ≠ adulto/ped), Amarelo-30min, Verde-60min, Azul-120min. **A meta que pontua
+  é a da planilha** (≤10/60/120/240), não o alvo interno.
+- Padrão de join p/ tirar classificação+cor por BAA: `EDOC_MOVIMENTO mv (cd_modelo=10043)` → `EDOC_MOVIMENTO_ITEM mi`
+  (por cd_hospital/ano_movimento/id_movimento/cd_modelo/cd_documento) → `EDOC_ITEM it (ds_item='Classificação de Risco')`;
+  `ROW_NUMBER() ... rn=1` p/ o 1º 10043 do boletim. Boletim médico = mesmos 10036/10014/10232.
+- **#1** senha→acolhe: ForaDoBanco (sem totem, 64/928). **#2** acolhe→10043: **46,52 min** (n=683, exceto
+  vermelho), falha ≤10. **3.1 Vermelho**: ForaDoBanco (4 casos, imediato/doc-lag). **3.2 Laranja**: 21,17 (4
+  casos, falha ≤10). **3.3 Amarelo 23,4 · 3.4 Verde 32,4 · 3.5 Azul 42,2**: BATEM (≤60/120/240).
+
+### Sweep de habilitação (2026-07-28) — padronização
+Regra do usuário: **o que não temos dado nem como comprovar fica DESABILITADO** (`ativo=false`) — aparece
+esmaecido só com o nome (feature "Habilita"). Aplicado em todas as abas: `ativo=false` onde
+`situacao=ForaDoBanco(4)` OU (`situacao=SemMotor(3)` E **não** for agrupador `tipo_resultado=5`);
+`ativo=true` onde `situacao in (Validado,NaoValidado)` OU for agrupador. Estado 28/07: 41 Validado + 5
+NaoValid + 4 agrupadores habilitados; 33 ForaDoBanco + 25 SemMotor desabilitados (108 total).
 
 ### Internação Adulto (aba 1, #11–#26) — ✅ REPASSADO E HONESTO (2026-07-28)
 Regra aplicada: cada indicador tem de ser **honesto, validado e apurável** — onde não dá pra validar
