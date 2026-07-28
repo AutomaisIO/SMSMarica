@@ -164,7 +164,7 @@ function PainelTriagem({
   id,
   numero,
 }: {
-  ticket: { status: TicketStatus; prioridade: TicketPrioridade; respostaFinal: string | null };
+  ticket: { status: TicketStatus; prioridade: TicketPrioridade; respostaFinal: string | null; enviadoIa: boolean };
   id: string;
   numero: number;
 }) {
@@ -262,10 +262,14 @@ function PainelTriagem({
             tamanho="sm"
             disabled={marcarEnviadoIa.isPending}
             onClick={enviarAoAgente}
-            title="Abre o terminal do agente com o contexto deste ticket"
+            title={
+              ticket.enviadoIa
+                ? 'Reabre a conversa em andamento com o agente'
+                : 'Abre o terminal do agente com o contexto deste ticket'
+            }
           >
             <Bot className="mr-1.5 h-4 w-4" />
-            Enviar ao Agente IA
+            {ticket.enviadoIa ? 'Acompanhar no Agente IA' : 'Enviar ao Agente IA'}
           </Button>
         ) : (
           <span />

@@ -69,6 +69,8 @@ export type Ticket = {
   respondidoEm: string | null;
   /** Quando o autor reconheceu/visualizou a última resposta (null = ainda não viu). */
   respostaReconhecidaEm: string | null;
+  /** Gestão: o ticket já foi encaminhado ao Agente IA (base do rótulo do botão de encaminhamento). */
+  enviadoIa: boolean;
 };
 
 export type AnexoRef = { midiaId: string; nomeArquivo: string };

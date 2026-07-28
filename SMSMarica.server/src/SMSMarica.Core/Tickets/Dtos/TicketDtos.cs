@@ -67,7 +67,9 @@ public sealed record TicketDto(
     /// saber se o autor já visualizou a resposta.</summary>
     DateTime? RespondidoEm,
     /// <summary>Quando o autor reconheceu/visualizou a última resposta (nulo = ainda não viu).</summary>
-    DateTime? RespostaReconhecidaEm);
+    DateTime? RespostaReconhecidaEm,
+    /// <summary>Gestão: o ticket já foi encaminhado ao Agente IA (base do rótulo do botão de encaminhamento).</summary>
+    bool EnviadoIa);
 
 // ---- Requests ----
 

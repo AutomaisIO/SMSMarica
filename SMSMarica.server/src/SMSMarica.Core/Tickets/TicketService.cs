@@ -353,7 +353,8 @@ public sealed class TicketService(SmsMaricaDbContext db, IUsuarioAtualAccessor u
             ticket.CriadoEm, ticket.AtualizadoEm,
             [.. ticket.Anexos.Where(a => a.ComentarioId == null).Select(MapAnexo)],
             comentarios,
-            ticket.RespondidoEm, ticket.RespostaReconhecidaEm);
+            ticket.RespondidoEm, ticket.RespostaReconhecidaEm,
+            ticket.EnviadoIaEm != null);
     }
 
     private async Task<IReadOnlyList<TicketListItemDto>> ProjetarListaAsync(IQueryable<Ticket> query, CancellationToken ct)
