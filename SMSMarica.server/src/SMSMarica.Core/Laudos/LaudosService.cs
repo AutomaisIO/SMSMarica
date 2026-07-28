@@ -102,6 +102,8 @@ public sealed class LaudosService(
         else if (filtro.Assinado == false)
             query = query.Where(l => !_db.LaudoAssinaturas.Any(a => a.LaudoId == l.Id && a.Status == StatusAssinatura.Concluida));
 
+        query = await AplicarEscopoUnidadeAsync(query, cancellationToken);
+
         var limite = filtro.Limite is <= 0 or > 500 ? 50 : filtro.Limite;
         var lista = await query
             .OrderByDescending(l => l.CriadoEm)
@@ -157,6 +159,63 @@ public sealed class LaudosService(
             && chips.TryGetValue(sid, out var chip)
                 ? d with { ChipLaudoPronto = chip }
                 : d)];
+    }
+
+    // Multitenancy por unidade (mesmo escopo de exames/consultas): restringe a listagem aos
+    // laudos cujo study resolve a uma solicitação de unidade vinculada ao usuário — direto pela
+    // worklist consumada (ExameImagem) ou via associação explícita. Usuário sem vínculo (ou
+    // background sem contexto) vê tudo; acesso global vê tudo, com a unidade ativa como filtro
+    // de conveniência quando selecionada.
+    private async Task<IQueryable<Laudo>> AplicarEscopoUnidadeAsync(
+        IQueryable<Laudo> query, CancellationToken ct)
+    {
+        var usuarioId = _usuarioAtual.UsuarioId;
+        if (usuarioId is null) return query;
+
+        var ativa = _usuarioAtual.UnidadeAtivaId;
+
+        if (await AcessoGlobalUsuario.TemAsync(_db, usuarioId, ct))
+        {
+            if (ativa.HasValue &&
+                await _db.Unidades.AsNoTracking().AnyAsync(u => u.Id == ativa.Value && u.Ativo, ct))
+            {
+                return FiltrarPorUnidades(query, [ativa.Value]);
+            }
+            return query;
+        }
+
+        var vinculos = await _db.UsuarioUnidades.AsNoTracking()
+            .Where(v => v.UsuarioId == usuarioId && v.Unidade!.Ativo)
+            .Select(v => v.UnidadeId)
+            .ToArrayAsync(ct);
+        if (vinculos.Length == 0) return query;
+
+        if (ativa.HasValue && vinculos.Contains(ativa.Value))
+            return FiltrarPorUnidades(query, [ativa.Value]);
+
+        return FiltrarPorUnidades(query, vinculos);
+    }
+
+    // O laudo não tem FK de unidade: a tradução study → solicitação usa os dois caminhos que o
+    // serviço já usa nas comunicações, exigindo EXECUTORA ou SOLICITANTE dentro do escopo. Laudo
+    // ÓRFÃO (study sem vínculo com solicitação nenhuma) permanece visível: sem solicitação não há
+    // unidade dona, e escondê-lo tiraria a linha da tela de gestão de órfãos.
+    private IQueryable<Laudo> FiltrarPorUnidades(IQueryable<Laudo> query, Guid[] unidades)
+    {
+        return query.Where(l =>
+            _db.ExamesImagem.Any(e => e.StudyInstanceUID == l.StudyInstanceUID
+                && e.ExcluidoEm == null && e.Solicitacao!.ExcluidoEm == null
+                && (unidades.Contains(e.Solicitacao!.UnidadeExecutanteId)
+                    || (e.Solicitacao!.UnidadeSolicitanteId != null
+                        && unidades.Contains(e.Solicitacao!.UnidadeSolicitanteId.Value))))
+            || _db.ExameAssociacoes.Any(a => a.StudyInstanceUID == l.StudyInstanceUID
+                && a.ExcluidoEm == null
+                && a.ExameImagem!.ExcluidoEm == null && a.ExameImagem!.Solicitacao!.ExcluidoEm == null
+                && (unidades.Contains(a.ExameImagem!.Solicitacao!.UnidadeExecutanteId)
+                    || (a.ExameImagem!.Solicitacao!.UnidadeSolicitanteId != null
+                        && unidades.Contains(a.ExameImagem!.Solicitacao!.UnidadeSolicitanteId.Value))))
+            || (!_db.ExamesImagem.Any(e => e.StudyInstanceUID == l.StudyInstanceUID && e.ExcluidoEm == null)
+                && !_db.ExameAssociacoes.Any(a => a.StudyInstanceUID == l.StudyInstanceUID && a.ExcluidoEm == null)));
     }
 
     private async Task<HashSet<Guid>> ResolverAssinadosAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct)
