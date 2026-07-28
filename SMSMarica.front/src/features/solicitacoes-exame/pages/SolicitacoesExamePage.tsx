@@ -5,6 +5,7 @@ import {
   ArrowUpFromLine,
   CalendarDays,
   ClipboardCheck,
+  ListOrdered,
   Loader2,
   Plus,
   Search,
@@ -88,6 +89,11 @@ export function SolicitacoesExamePage() {
     () => !accessionUrl && localStorage.getItem(CHAVE_TOGGLE_HOJE) === '1',
   );
 
+  // Ordem de Chegada: reordena a página por quando a recepção AUTORIZOU (autorizadoEm),
+  // do primeiro ao último — quem chegou/foi autorizado primeiro fica no topo. Só faz
+  // sentido dentro de um dia, então o toggle só aparece com "Hoje" ligado.
+  const [ordemChegada, setOrdemChegada] = useState(false);
+
   const filtroInicial: FiltroSolicitacoes = accessionUrl
     ? { limite: 50, busca: accessionUrl }
     : hojeAtivo
@@ -120,15 +126,31 @@ export function SolicitacoesExamePage() {
       const proximo = !atual;
       localStorage.setItem(CHAVE_TOGGLE_HOJE, proximo ? '1' : '0');
       if (!proximo) {
-        // Desligou: libera os campos e limpa o período travado.
+        // Desligou: libera os campos, limpa o período travado e a ordem de chegada
+        // (que só existe no contexto "Hoje").
         setFiltroDigitado((f) => ({ ...f, dataInicial: undefined, dataFinal: undefined }));
         setFiltroAplicado((f) => ({ ...f, dataInicial: undefined, dataFinal: undefined }));
+        setOrdemChegada(false);
       }
       return proximo;
     });
   }
 
   const lista = useListarSolicitacoes(filtroAplicado);
+
+  // Reordena a página por ordem de chegada (autorização da recepção), do mais antigo
+  // ao mais recente. Não-autorizadas (autorizadoEm null) ficam no fim. Datas ISO em
+  // UTC comparam corretamente como string. Clicar num cabeçalho na Tabela sobrepõe.
+  const dadosOrdenados = useMemo(() => {
+    const base = lista.data ?? [];
+    if (!ordemChegada) return base;
+    return [...base].sort((a, b) => {
+      if (a.autorizadoEm && b.autorizadoEm) return a.autorizadoEm.localeCompare(b.autorizadoEm);
+      if (a.autorizadoEm) return -1;
+      if (b.autorizadoEm) return 1;
+      return 0;
+    });
+  }, [lista.data, ordemChegada]);
 
   function setCampo<K extends keyof FiltroSolicitacoes>(k: K, v: FiltroSolicitacoes[K]) {
     setFiltroDigitado((f) => ({ ...f, [k]: v }));
@@ -402,16 +424,36 @@ export function SolicitacoesExamePage() {
       ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-gray-500">
-          {lista.data ? (
-            <>
-              {lista.data.length} {lista.data.length === 1 ? 'solicitação' : 'solicitações'}
-              {lista.data.length >= limiteAtual ? (
-                <span className="text-gray-400"> · pode haver mais — aumente os itens por página</span>
-              ) : null}
-            </>
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-sm text-gray-500">
+            {lista.data ? (
+              <>
+                {lista.data.length} {lista.data.length === 1 ? 'solicitação' : 'solicitações'}
+                {lista.data.length >= limiteAtual ? (
+                  <span className="text-gray-400"> · pode haver mais — aumente os itens por página</span>
+                ) : null}
+              </>
+            ) : null}
+          </p>
+          {/* Ordem de Chegada: só no contexto "Hoje". Ordena por quando a recepção autorizou. */}
+          {hojeAtivo ? (
+            <button
+              type="button"
+              onClick={() => setOrdemChegada((v) => !v)}
+              aria-pressed={ordemChegada}
+              title="Ordenar pela ordem em que a recepção autorizou (quem chegou primeiro no topo)"
+              className={cn(
+                'inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors',
+                ordemChegada
+                  ? 'border-primary-600 bg-primary-600 text-white hover:bg-primary-700'
+                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50',
+              )}
+            >
+              <ListOrdered className="h-4 w-4" />
+              Ordem de Chegada
+            </button>
           ) : null}
-        </p>
+        </div>
         <label className="flex items-center gap-2 text-sm text-gray-600">
           Itens por página:
           <Select
@@ -430,7 +472,7 @@ export function SolicitacoesExamePage() {
 
       <Tabela
         colunas={colunas}
-        dados={lista.data ?? []}
+        dados={dadosOrdenados}
         chaveLinha={(s) => s.id}
         carregando={lista.isPending}
         vazio="Nenhuma solicitação encontrada."
