@@ -197,6 +197,11 @@ export interface Maternidade {
   serieDiaria: PontoDiaPartos[];
   /** Na aba "geral": a única maternidade da rede é a do Conde. */
   escopo: string | null;
+  /**
+   * Triagem obstétrica por cor (do eDoc 10043, com os alvos próprios da maternidade),
+   * nos quatro períodos do seletor. Mesmo shape da espera-por-cor da emergência.
+   */
+  triagem: EsperaPorCorPeriodos | null;
 }
 
 export interface EsperaCor {

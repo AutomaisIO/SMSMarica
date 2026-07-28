@@ -241,7 +241,13 @@ public sealed record MaternidadeSecao(
     MaternidadePeriodo Hoje,
     IReadOnlyList<DiaPartos> SerieDiaria,
     /// <summary>Preenchido na aba "geral": a única maternidade da rede é a do Conde.</summary>
-    string? Escopo);
+    string? Escopo,
+    /// <summary>
+    /// Triagem obstétrica por cor (do eDoc 10043, com os alvos próprios da maternidade),
+    /// nos quatro períodos do seletor. Reusa o shape da espera-por-cor da emergência.
+    /// Nulo enquanto a leitura não completa.
+    /// </summary>
+    EsperaPeriodos? Triagem);
 
 public sealed record MaternidadePeriodo(
     string Rotulo,

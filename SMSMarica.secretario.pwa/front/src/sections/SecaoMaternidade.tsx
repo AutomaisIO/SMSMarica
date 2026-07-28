@@ -1,11 +1,15 @@
-import { memo } from 'react';
-import type { Maternidade, MaternidadePeriodo } from '@/types/painel';
+import { memo, useState } from 'react';
+import type { Maternidade, MaternidadePeriodo, PeriodoPainel } from '@/types/painel';
 import { formatarDecimal, formatarInteiro, horaMinuto } from '@/lib/formatos';
+import { ordenarPorTriagem } from '@/lib/triagem';
+import { opcoesDePeriodo } from '@/lib/periodos';
 import { Cartao } from '@/components/Cartao';
 import { CabecalhoSecao } from '@/components/CabecalhoSecao';
 import { SeloEscopo } from '@/components/SeloEscopo';
 import { NumeroAnimado } from '@/components/NumeroAnimado';
 import { StatTile } from '@/components/StatTile';
+import { Pulseira } from '@/components/Pulseira';
+import { SegmentedControl } from '@/components/SegmentedControl';
 import { GraficoSerieDiaria } from '@/components/graficos/GraficoSerieDiaria';
 
 const VINHO = '#9E1B32';
@@ -116,6 +120,16 @@ export const SecaoMaternidade = memo(function SecaoMaternidade({
   const mes = maternidade.mesAtual;
   const hoje = maternidade.hoje;
 
+  const [periodoTriagem, setPeriodoTriagem] = useState<PeriodoPainel>('hoje');
+  const triagem = maternidade.triagem;
+  // A maternidade não tem SEM_CLASSIFICACAO (todas passam pelo eDoc de risco); mostra só
+  // as cores com paciente no período, na ordem clínica.
+  const pulseirasTriagem = triagem
+    ? ordenarPorTriagem(
+        triagem[periodoTriagem].filter((c) => c.cor !== 'SEM_CLASSIFICACAO' && c.pacientes > 0),
+      )
+    : [];
+
   return (
     <section aria-labelledby="titulo-maternidade">
       <CabecalhoSecao
@@ -165,6 +179,43 @@ export const SecaoMaternidade = memo(function SecaoMaternidade({
           <CartaoMesMaternidade periodo={maternidade.mesAtual} destaque />
           <CartaoMesMaternidade periodo={maternidade.mesAnterior} />
         </div>
+
+        {/* Triagem obstétrica por cor — do eDoc de risco da maternidade (não o Manchester
+            geral), com os alvos próprios dela. Mesmas pulseiras da emergência. */}
+        {triagem && (
+          <Cartao className="p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-[15px] font-semibold text-tinta">Triagem obstétrica por cor</p>
+                <p className="text-[12.5px] text-grafite">
+                  classificação de risco → atendimento · alvos próprios da maternidade
+                </p>
+              </div>
+              <SegmentedControl
+                opcoes={opcoesDePeriodo()}
+                valor={periodoTriagem}
+                aoMudar={setPeriodoTriagem}
+                ariaLabel="Período da triagem obstétrica"
+              />
+            </div>
+            {pulseirasTriagem.length > 0 ? (
+              <div className="mt-4 space-y-3">
+                {pulseirasTriagem.map((item) => (
+                  <Pulseira key={item.cor} item={item} />
+                ))}
+              </div>
+            ) : (
+              <p className="mt-4 text-[13px] text-grafite">
+                Sem classificações obstétricas no período.
+              </p>
+            )}
+            <p className="mt-3 text-[12.5px] leading-relaxed text-grafite">
+              A maternidade classifica na própria tela de triagem, com alvos mais rígidos que o
+              Manchester geral: Vermelho imediato, Laranja 15, Amarelo 30, Verde 60, Azul 120 min.
+              No <strong>vermelho</strong> o tempo conta da chegada até a 1ª interação.
+            </p>
+          </Cartao>
+        )}
 
         {/* Enriquecimento pedido pela gerência do contrato: o que o livro de partos
             tem além da contagem — desfecho, idade gestacional e perfil da mãe. */}

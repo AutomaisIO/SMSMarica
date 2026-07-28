@@ -294,6 +294,18 @@ public sealed class PainelAtualizadorService : BackgroundService
             ConsultasPainel.Q6EsperaPorCor(
                 hosp, ConsultasPainel.IniMesAnterior, ConsultasPainel.FimMesAnterior, "TRUNC(SYSDATE,'MM') + 3"), ct);
 
+        // Q9 — triagem obstétrica por cor (aba Maternidade), mesmos 4 períodos e mesmo fimDoc
+        // que a Q6. Classificação = eDoc 10043 (não DT_CLASSIFICA_ATUAL); alvos da maternidade.
+        var matTriagemHoje = await ConsultarAsync(b,
+            ConsultasPainel.Q9MaternidadeTriagem(hosp, ConsultasPainel.IniHoje, ConsultasPainel.FimHoje, "SYSDATE + 3"), ct);
+        var matTriagemOntem = await ConsultarAsync(b,
+            ConsultasPainel.Q9MaternidadeTriagem(hosp, ConsultasPainel.IniOntem, ConsultasPainel.FimOntem, "TRUNC(SYSDATE) + 3"), ct);
+        var matTriagemMesAtual = await ConsultarAsync(b,
+            ConsultasPainel.Q9MaternidadeTriagem(hosp, ConsultasPainel.IniMesAtual, ConsultasPainel.FimMesAtual, "SYSDATE + 3"), ct);
+        var matTriagemMesAnterior = await ConsultarAsync(b,
+            ConsultasPainel.Q9MaternidadeTriagem(
+                hosp, ConsultasPainel.IniMesAnterior, ConsultasPainel.FimMesAnterior, "TRUNC(SYSDATE,'MM') + 3"), ct);
+
         // L1..L3 — leitos, perfil dos internados e permanência das altas do mês.
         var setores = await ConsultarAsync(b, ConsultasPainel.L1OcupacaoPorSetor(hosp), ct);
         var perfil = await ConsultarAsync(b, ConsultasPainel.L2PerfilInternados(hosp), ct);
@@ -320,7 +332,12 @@ public sealed class PainelAtualizadorService : BackgroundService
         _conde.Internacoes = MontarInternacoes(
             hoje, carimbo, intMesAnterior, intMesAtual, intHoje, intDiasCompletos, serieInternacoes);
         _conde.Maternidade = MontarMaternidade(
-            hoje, carimbo, matMesAnterior, matMesAtual, matHoje, matDiasCompletos, seriePartos);
+            hoje, carimbo, matMesAnterior, matMesAtual, matHoje, matDiasCompletos, seriePartos,
+            new EsperaPeriodos(
+                MontarEsperaPeriodo(matTriagemHoje, Unidades.IdConde),
+                MontarEsperaPeriodo(matTriagemOntem, Unidades.IdConde),
+                MontarEsperaPeriodo(matTriagemMesAtual, Unidades.IdConde),
+                MontarEsperaPeriodo(matTriagemMesAnterior, Unidades.IdConde)));
         _conde.EsperaPorCor = new EsperaPorCorSecao(carimbo, new EsperaPeriodos(
             MontarEsperaPeriodo(esperaHoje, Unidades.IdConde),
             MontarEsperaPeriodo(esperaOntem, Unidades.IdConde),
@@ -1145,7 +1162,8 @@ public sealed class PainelAtualizadorService : BackgroundService
         ResultadoConsulta mesAtual,
         ResultadoConsulta diaAtual,
         ResultadoConsulta diasCompletosPeriodo,
-        ResultadoConsulta serieDiaria)
+        ResultadoConsulta serieDiaria,
+        EsperaPeriodos? triagem)
     {
         var mesAnteriorData = hoje.AddMonths(-1);
         var diasMesAnterior = DateTime.DaysInMonth(mesAnteriorData.Year, mesAnteriorData.Month);
@@ -1160,7 +1178,8 @@ public sealed class PainelAtualizadorService : BackgroundService
             MesAtual: LerMaternidade(mesAtual, RotuloMes(hoje), diasCompletos, partosDiasCompletos),
             Hoje: LerMaternidade(diaAtual, "hoje", 0, null),
             SerieDiaria: MontarSerieDiariaPartos(serieDiaria, hoje),
-            Escopo: null);
+            Escopo: null,
+            Triagem: triagem);
     }
 
     /// <summary>

@@ -320,6 +320,78 @@ public static class ConsultasPainel
          GROUP BY TRUNC(n.dt_parto) ORDER BY 1
         """;
 
+    // ── Q9 — Triagem obstétrica por cor (tick lento — aba Maternidade) ─────────
+
+    /// <summary>
+    /// A maternidade NÃO classifica em <c>BAA.DT_CLASSIFICA_ATUAL</c> (que ali equivale ao
+    /// acolhimento e daria ~1 min de espera falso): ela usa a SUA tela de triagem, o eDoc
+    /// <c>cd_modelo=10043</c> ("Classificação de Risco Maternidade"). A cor e o carimbo da
+    /// classificação saem do próprio eDoc — item <c>EDOC_ITEM.DS_ITEM='Classificação de Risco'</c>,
+    /// resposta em <c>DS_RESPOSTA</c> no formato "Amarelo - 30 min". Alvos PRÓPRIOS da
+    /// maternidade (embutidos no rótulo, mais rígidos que o Manchester geral): Vermelho
+    /// imediato, Laranja 15, Amarelo 30, Verde 60, Azul 120 min.
+    ///
+    /// <para>
+    /// Devolve as MESMAS colunas da <see cref="Q6EsperaPorCor"/> para reusar o parser
+    /// (<c>MontarEsperaPeriodo</c>) e o MESMO marcador médico ampliado
+    /// (<see cref="PrimeiroAtendimentoMedico"/>). O vermelho segue a regra própria (chegada →
+    /// 1ª interação), como no resto do painel.
+    /// </para>
+    /// </summary>
+    public static string Q9MaternidadeTriagem(int hospital, string ini, string fim, string fimDoc) => $"""
+        WITH c AS (
+          SELECT nr_baa, dt_ano_baa, t_class, cor FROM (
+            SELECT mv.nr_baa, mv.dt_ano_baa, mv.dt_inclusao AS t_class,
+                   UPPER(TRIM(REGEXP_SUBSTR(mi.ds_resposta,'^[^-]+'))) AS cor,
+                   ROW_NUMBER() OVER (PARTITION BY mv.nr_baa, mv.dt_ano_baa
+                                      ORDER BY mv.dt_inclusao) rn
+              FROM infosaude.edoc_movimento mv
+              JOIN infosaude.edoc_movimento_item mi
+                ON mi.cd_hospital = mv.cd_hospital AND mi.ano_movimento = mv.ano_movimento
+               AND mi.id_movimento = mv.id_movimento AND mi.cd_modelo = mv.cd_modelo
+               AND mi.cd_documento = mv.cd_documento
+              JOIN infosaude.edoc_item it
+                ON it.cd_item = mi.cd_item AND it.ds_item = 'Classificação de Risco'
+             WHERE mv.cd_modelo = 10043 AND mv.cd_hospital = {hospital}
+               AND mv.dt_inclusao >= {ini} AND mv.dt_inclusao < {fim}
+          ) WHERE rn = 1
+        ), d AS (
+        {PrimeiroAtendimentoMedico(hospital, ini, fimDoc)}
+        ), e AS (
+          SELECT c.cor,
+                 CASE c.cor WHEN 'VERMELHO' THEN 0 WHEN 'LARANJA' THEN 15 WHEN 'AMARELO' THEN 30
+                            WHEN 'VERDE' THEN 60 WHEN 'AZUL' THEN 120 END           AS meta,
+                 CASE WHEN c.cor = 'VERMELHO' THEN 1
+                      WHEN d.dt_med IS NOT NULL THEN 1 ELSE 0 END                   AS atendido,
+                 GREATEST((c.t_class - b.dt_chegada) * 1440, 0)                     AS ate_triagem,
+                 CASE WHEN c.cor = 'VERMELHO'
+                      THEN GREATEST((LEAST(c.t_class, NVL(d.dt_med, c.t_class))
+                                     - b.dt_chegada) * 1440, 0)
+                      ELSE GREATEST((d.dt_med - c.t_class) * 1440, 0)
+                 END                                                                AS espera
+            FROM c
+            JOIN infosaude.baa b
+              ON b.nr_baa = c.nr_baa AND b.dt_ano_baa = c.dt_ano_baa AND b.cd_hospital = {hospital}
+            LEFT JOIN d ON d.dt_ano_baa = c.dt_ano_baa AND d.nr_baa = c.nr_baa
+        )
+        SELECT cor                                                                 AS cor,
+               COUNT(*)                                                            AS pacientes,
+               SUM(atendido)                                                       AS com_atendimento,
+               ROUND(AVG(ate_triagem), 1)                                          AS media_ate_triagem,
+               ROUND(AVG(espera), 1)                                               AS media_espera,
+               ROUND(MEDIAN(espera), 1)                                            AS mediana_espera,
+               ROUND(PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY espera), 1)       AS p90_espera,
+               MAX(meta)                                                           AS meta_min,
+               CASE WHEN MAX(meta) > 0
+                    THEN ROUND(100 * SUM(CASE WHEN espera <= meta THEN 1 ELSE 0 END)
+                               / NULLIF(SUM(atendido),0), 1)
+               END                                                                 AS pct_na_meta
+          FROM e
+         GROUP BY cor
+         ORDER BY CASE cor WHEN 'VERMELHO' THEN 1 WHEN 'LARANJA' THEN 2 WHEN 'AMARELO' THEN 3
+                           WHEN 'VERDE' THEN 4 WHEN 'AZUL' THEN 5 ELSE 6 END
+        """;
+
     // ── Q6 — Espera por cor (tick lento — a consulta PESADA) ───────────────────
 
     /// <summary>
