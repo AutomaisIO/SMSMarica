@@ -1,4 +1,4 @@
-import { AlertTriangle, Check, Loader2, Pencil, Play, X } from 'lucide-react';
+import { AlertTriangle, Check, HelpCircle, Loader2, Pencil, Play, X } from 'lucide-react';
 import {
   formatarResultado,
   type IndicadorResumo,
@@ -140,11 +140,11 @@ export function TabelaIndicadores({
                       <button
                         type="button"
                         title="Ver ressalva"
+                        aria-label="Ver ressalva"
                         onClick={() => onVerRessalva(i)}
-                        className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-amber-700 transition hover:bg-amber-50"
+                        className="inline-flex shrink-0 items-center rounded p-0.5 text-amber-600 transition hover:bg-amber-50 hover:text-amber-700"
                       >
-                        <AlertTriangle className="h-3 w-3" />
-                        Ressalva
+                        <HelpCircle className="h-4 w-4" />
                       </button>
                     )}
                   </div>
