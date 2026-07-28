@@ -189,6 +189,13 @@ Risco Maternidade"**); bate ≤10 mas com fluxo próprio. **#3 NÃO funciona por
 (650/731) **não têm cor Manchester** — a maternidade tem protocolo de risco próprio, não amarelo/verde/azul.
 Ao retomar: achar as categorias/metas do protocolo de risco de maternidade (10043) ou medir #3 como
 agregado único (classificação→1º boletim médico, modelos 10036/14/232 + o obstétrico 10232).
+**CONFIRMADO (28/07, dado jun/26): a classificação da maternidade é o eDoc `cd_modelo=10043`
+("Classificação de Risco Maternidade")** — 848/928 (91%) das FIA/BAA de maternidade têm o 10043, e ele
+fica **~46 min DEPOIS** de `DT_CLASSIFICA_ATUAL` (que na maternidade ≈ acolhimento, o que explicava o
+#2 falso de 1,21 min). **Na maternidade o carimbo REAL da classificação = `MIN(dt_inclusao)` do 10043,
+NÃO `DT_CLASSIFICA_ATUAL`.** ⚠️ Isso vale SÓ para maternidade: **adulto usa 10043 em ~0% (19/12.034) e a
+pediatria em 0% (0/4.443)** — adulto e pediatria classificam no `DT_CLASSIFICA_ATUAL` (Manchester), então
+os indicadores adulto/pediátrico já gravados estão corretos e não dependem do 10043.
 
 ### Internação Adulto (aba 1, #11–#26) — ✅ REPASSADO E HONESTO (2026-07-28)
 Regra aplicada: cada indicador tem de ser **honesto, validado e apurável** — onde não dá pra validar
