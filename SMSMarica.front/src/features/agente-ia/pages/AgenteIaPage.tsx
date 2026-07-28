@@ -4,6 +4,8 @@ import {
   Bot,
   ChevronDown,
   ChevronRight,
+  ExternalLink,
+  ImageIcon,
   Loader2,
   Send,
   Square,
@@ -13,6 +15,8 @@ import {
   WifiOff,
 } from 'lucide-react';
 import { useAuth, usePermissao, useTemConsulta } from '@/shared/auth/authStore';
+import { VisualizadorImagem } from '@/shared/ui/VisualizadorImagem';
+import { ehUrlDominioConfiavel } from '@/shared/lib/dominio';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   cancelarTurno,
@@ -76,6 +80,84 @@ function inlineNegrito(texto: string, chave: string): ReactNode[] {
   });
 }
 
+// Marcador de imagem inline emitido pelo agente: `<abreimagem url="..." legenda="...">`.
+// Ocupa a linha inteira (sozinho). `url` é obrigatório; `legenda` é opcional. As aspas
+// podem ser " ou ' ou ausentes (valor sem espaço). Devolve null se a linha não for um
+// marcador válido — aí ela segue como texto comum.
+function parseMarcadorImagem(linha: string): { url: string; legenda?: string } | null {
+  const m = /^<abreimagem\b([^>]*)>$/i.exec(linha.trim());
+  if (!m) return null;
+  const attrs: Record<string, string> = {};
+  const re = /(\w+)\s*=\s*(?:"([^"]*)"|'([^']*)'|(\S+))/g;
+  let a: RegExpExecArray | null;
+  while ((a = re.exec(m[1])) !== null) {
+    attrs[a[1].toLowerCase()] = a[2] ?? a[3] ?? a[4] ?? '';
+  }
+  if (!attrs.url) return null;
+  return { url: attrs.url, legenda: attrs.legenda || undefined };
+}
+
+// Cartão de imagem dentro do chat. Só carrega a <img> de verdade se a URL for do domínio
+// SMSMarica (ver ehUrlDominioConfiavel) — origem externa NÃO é renderizada como imagem
+// (evita carregamento automático de recurso de terceiro); vira um link discreto. Clicar no
+// cartão abre o VisualizadorImagem (o mesmo lightbox com zoom / Salvar como / etc.).
+function ImagemChat({ url, legenda }: { url: string; legenda?: string }) {
+  const [aberto, setAberto] = useState(false);
+  const [falhou, setFalhou] = useState(false);
+
+  if (!ehUrlDominioConfiavel(url)) {
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="my-1 inline-flex max-w-full items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800 hover:bg-amber-100"
+        title="Imagem fora do domínio SMSMarica — abre em nova aba"
+      >
+        <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+        <span className="truncate">{legenda ?? 'Imagem externa'}</span>
+      </a>
+    );
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setAberto(true)}
+        className="group my-1 flex w-full max-w-xs items-center gap-2 overflow-hidden rounded-lg border border-slate-200 bg-white p-1.5 text-left transition hover:border-red-300 hover:ring-1 hover:ring-red-200"
+        title={`${legenda ?? 'Imagem'} — clique para ampliar`}
+      >
+        {falhou ? (
+          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-400">
+            <ImageIcon className="h-6 w-6" />
+          </span>
+        ) : (
+          <img
+            src={url}
+            alt={legenda ?? 'Imagem'}
+            loading="lazy"
+            onError={() => setFalhou(true)}
+            className="h-16 w-16 shrink-0 rounded-md object-cover ring-1 ring-slate-200"
+          />
+        )}
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium text-slate-700">
+            {legenda ?? 'Imagem'}
+          </span>
+          <span className="block text-xs text-slate-400">Clique para ampliar</span>
+        </span>
+      </button>
+      {aberto ? (
+        <VisualizadorImagem
+          imagens={[{ url, legenda, nomeArquivo: legenda }]}
+          aoFechar={() => setAberto(false)}
+        />
+      ) : null}
+    </>
+  );
+}
+
 // Título por nível (nº de #). O agente usa # / ## como seção principal, ### como subseção
 // e ####+ como detalhe — a escala de azul acompanha essa hierarquia: quanto mais alto o
 // nível, mais forte o destaque (fundo/borda/cor/tamanho).
@@ -115,6 +197,13 @@ function TextoFormatado({ texto }: { texto: string }) {
   };
 
   linhas.forEach((linha, i) => {
+    // Marcador de imagem (linha inteira): fecha o parágrafo aberto e vira um cartão.
+    const imagem = parseMarcadorImagem(linha);
+    if (imagem) {
+      descarregar(`p-${i}`);
+      blocos.push(<ImagemChat key={`img-${i}`} url={imagem.url} legenda={imagem.legenda} />);
+      return;
+    }
     // Espaço obrigatório após os # evita tratar "#40" (referência de ticket) como título.
     const titulo = /^(#{1,6})\s+(.*)$/.exec(linha);
     if (titulo) {
