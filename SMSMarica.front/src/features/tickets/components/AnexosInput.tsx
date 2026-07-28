@@ -26,17 +26,23 @@ export function AnexosInput({ anexos, aoMudar, disabled }: Props) {
 
     setEnviando(true);
     try {
-      const novos: AnexoRef[] = [];
+      // Commit incremental: cada upload bem-sucedido é vinculado na hora. Assim, uma falha
+      // em um arquivo seguinte (rede, tipo, tamanho) NÃO descarta os que já subiram — evita
+      // mídias órfãs (persistidas no servidor, mas sem referência no ticket).
+      let atuais = anexos;
       for (const arq of arquivos) {
         if (!arq.type.startsWith('image/')) {
           notificar(`"${arq.name}" não é uma imagem.`, 'erro');
           continue;
         }
-        novos.push(await enviarAnexo(arq));
+        try {
+          const ref = await enviarAnexo(arq);
+          atuais = [...atuais, ref];
+          aoMudar(atuais);
+        } catch (erro) {
+          notificar(`Falha ao anexar "${arq.name}": ${extrairMensagemDeErro(erro)}`, 'erro');
+        }
       }
-      if (novos.length) aoMudar([...anexos, ...novos]);
-    } catch (erro) {
-      notificar(extrairMensagemDeErro(erro), 'erro');
     } finally {
       setEnviando(false);
     }
