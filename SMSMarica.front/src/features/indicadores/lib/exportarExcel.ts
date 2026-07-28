@@ -1,6 +1,11 @@
 import ExcelJS from 'exceljs';
 import { renderizarPizza, type FatiaPizza } from '@/features/indicadores/lib/graficoPizza';
-import type { AbaIndicador, IndicadorResumo, MetaOperador } from '@/features/indicadores/types';
+import type {
+  AbaIndicador,
+  IndicadorResumo,
+  MetaOperador,
+  SituacaoIndicador,
+} from '@/features/indicadores/types';
 
 /** Uma aba (submenu) com seus indicadores já apurados para o período. */
 export type AbaExportacao = {
@@ -30,7 +35,15 @@ const COR_ATINGIDO = '#16A34A';
 const COR_NAO_ATINGIDO = '#C8102E';
 const CORES_ABA = ['#C8102E', '#E03C52', '#A80C27', '#EE6B7B', '#6C0819', '#F2A0AB'];
 
-const COLS_ABA = ['Nº', 'Indicador', 'Meta', 'Peso', 'Numerador', 'Denominador', 'Resultado', 'Pontuação'];
+const COLS_ABA = ['Nº', 'Indicador', 'Meta', 'Peso', 'Numerador', 'Denominador', 'Resultado', 'Pontuação', 'Situação'];
+
+/** Rótulo legível da situação de validação (coluna "Situação" da exportação). */
+const SITUACAO_ROTULO: Record<SituacaoIndicador, string> = {
+  Validado: 'Validado',
+  NaoValidado: 'Não validado',
+  SemMotor: 'Sem motor',
+  ForaDoBanco: 'Fora do banco',
+};
 
 type AgregadoAba = {
   aba: AbaExportacao;
@@ -185,19 +198,20 @@ function estiloCabecalhoTabela(ws: ExcelJS.Worksheet, linha: number, colunas: st
 
 /** Monta a planilha de uma aba com as fórmulas vivas. Devolve a linha do total. */
 function montarPlanilhaAba(ws: ExcelJS.Worksheet, logoId: number | undefined, dados: DadosExportacao, aba: AbaExportacao): number {
-  const larguras = [7, 50, 22, 8, 14, 14, 15, 12];
+  const larguras = [7, 50, 22, 8, 14, 14, 15, 12, 16];
   larguras.forEach((w, i) => (ws.getColumn(i + 1).width = w));
 
   cabecalho(
     ws,
     logoId,
-    'H',
+    'I',
     `Indicadores contratuais · HMCML — ${aba.rotulo}`,
     `Unidade: ${dados.unidadeNome}   ·   Período: ${formatarData(dados.inicio)} a ${formatarData(dados.fim)}`,
   );
 
   const linhaHeader = 6;
   estiloCabecalhoTabela(ws, linhaHeader, COLS_ABA);
+  ws.getRow(linhaHeader).getCell(9).alignment = { vertical: 'middle', horizontal: 'center' };
   ws.views = [{ state: 'frozen', ySplit: linhaHeader }];
 
   const itens = aba.itens;
@@ -214,6 +228,38 @@ function montarPlanilhaAba(ws: ExcelJS.Worksheet, logoId: number | undefined, da
     const agr = ehAgrupador(it, filhos);
     const res = it.resultado;
     const filhosDoItem = filhos.get(it.id) ?? [];
+
+    // I · Situação de validação (validado / não validado / fora do banco / sem motor).
+    const escreverSituacao = () => {
+      const s = row.getCell(9);
+      s.value = SITUACAO_ROTULO[it.situacao] ?? it.situacao;
+      s.alignment = { horizontal: 'center', vertical: 'middle' };
+      s.border = borda();
+      const cor =
+        it.situacao === 'Validado' ? VERDE : it.situacao === 'ForaDoBanco' ? VERMELHO : CINZA_TEXTO;
+      s.font = { color: { argb: cor }, size: 10 };
+    };
+
+    // Indicadores desabilitados (fora do banco / sem motor) entram só como linha
+    // informativa — Nº, nome, meta e situação —, sem números nem pontuação (não são
+    // apurados). Dá visibilidade do status sem contaminar os totais.
+    if (!it.ativo) {
+      row.getCell(1).value = it.numero;
+      row.getCell(1).alignment = { horizontal: 'center' };
+      const nomeDes = row.getCell(2);
+      nomeDes.value = it.nome;
+      if (it.indicadorPaiId) nomeDes.alignment = { indent: 2 };
+      row.getCell(3).value = it.meta ?? '';
+      for (let c = 1; c <= 8; c++) {
+        const cell = row.getCell(c);
+        cell.border = borda();
+        cell.font = { color: { argb: CINZA_TEXTO }, italic: true };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: CINZA_SUAVE } };
+      }
+      escreverSituacao();
+      row.getCell(9).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: CINZA_SUAVE } };
+      return;
+    }
 
     // A · Nº
     row.getCell(1).value = it.numero;
@@ -292,10 +338,12 @@ function montarPlanilhaAba(ws: ExcelJS.Worksheet, logoId: number | undefined, da
     }
     if (agr) {
       row.font = { bold: true };
-      for (let c = 1; c <= 8; c++) {
+      for (let c = 1; c <= 9; c++) {
         row.getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: CINZA_SUAVE } };
       }
     }
+
+    escreverSituacao();
   });
 
   // Linha de total (soma só o topo — não conta agrupador + filhos duas vezes)
@@ -311,7 +359,7 @@ function montarPlanilhaAba(ws: ExcelJS.Worksheet, logoId: number | undefined, da
   }
   total.getCell(4).numFmt = '#,##0.##';
   total.getCell(8).numFmt = '#,##0.##';
-  for (let c = 1; c <= 8; c++) {
+  for (let c = 1; c <= 9; c++) {
     const cell = total.getCell(c);
     cell.font = { bold: true, color: { argb: VERMELHO_ESCURO } };
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: CINZA_SUAVE } };
@@ -448,12 +496,10 @@ function montarResumo(
 
 /** Gera o arquivo .xlsx (Blob) com o resumo + uma planilha por aba. */
 export async function gerarXlsxIndicadores(dados: DadosExportacao): Promise<Blob> {
-  // Indicadores desabilitados não entram na exportação — coerente com a tabela (sem informação).
-  const dadosAtivos: DadosExportacao = {
-    ...dados,
-    abas: dados.abas.map((a) => ({ ...a, itens: a.itens.filter((i) => i.ativo) })),
-  };
-  const abas = dadosAtivos.abas.filter((a) => a.itens.length > 0);
+  // Todos os indicadores entram — inclusive os desabilitados (fora do banco / sem motor),
+  // que aparecem como linha informativa só com Nº, nome e situação. Isso dá visibilidade do
+  // status de validação; a apuração e os totais continuam considerando só os ativos.
+  const abas = dados.abas.filter((a) => a.itens.length > 0);
   const wb = new ExcelJS.Workbook();
   wb.creator = 'SMSMarica';
   wb.created = new Date();
@@ -468,12 +514,13 @@ export async function gerarXlsxIndicadores(dados: DadosExportacao): Promise<Blob
   for (const aba of abas) {
     const nome = nomePlanilha(aba.rotulo, usados);
     const ws = wb.addWorksheet(nome, { views: [{ showGridLines: false }] });
-    const linhaTotal = montarPlanilhaAba(ws, logoId, dadosAtivos, aba);
-    const ag = agregar(aba.itens);
+    const linhaTotal = montarPlanilhaAba(ws, logoId, dados, aba);
+    // Só os ativos entram nos totais/pizzas do resumo (os desabilitados não são pontuados).
+    const ag = agregar(aba.itens.filter((i) => i.ativo));
     agregados.push({ aba, nomePlanilha: nome, linhaTotal, ...ag });
   }
 
-  montarResumo(wsResumo, wb, logoId, dadosAtivos, agregados);
+  montarResumo(wsResumo, wb, logoId, dados, agregados);
 
   const buffer = await wb.xlsx.writeBuffer();
   return new Blob([buffer], {
