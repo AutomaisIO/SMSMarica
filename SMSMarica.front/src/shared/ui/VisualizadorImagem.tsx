@@ -1,7 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Minus, Plus, RotateCcw, X } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Download,
+  ExternalLink,
+  Minus,
+  Plus,
+  RotateCcw,
+  X,
+} from 'lucide-react';
+import { notificar } from '@/shared/ui/Notificacoes';
 
-export type ImagemVisualizador = { url: string; legenda?: string };
+export type ImagemVisualizador = {
+  url: string;
+  legenda?: string;
+  /** Nome sugerido ao salvar (Salvar como). Se ausente, deriva da legenda ou da URL. */
+  nomeArquivo?: string;
+};
 
 type Props = {
   imagens: ImagemVisualizador[];
@@ -84,6 +100,37 @@ export function VisualizadorImagem({ imagens, indiceInicial = 0, aoFechar }: Pro
       return nova;
     });
 
+  // Salvar como: baixa via blob (funciona cross-origin, força o nome do arquivo). Se falhar
+  // — rede/CORS —, cai para abrir em nova aba, deixando o próprio browser oferecer o salvamento.
+  async function salvarComo() {
+    if (!atual) return;
+    const nome = nomeSugerido(atual);
+    try {
+      const resp = await fetch(atual.url);
+      if (!resp.ok) throw new Error(String(resp.status));
+      const blob = await resp.blob();
+      const href = URL.createObjectURL(blob);
+      baixarLink(href, nome);
+      URL.revokeObjectURL(href);
+    } catch {
+      window.open(atual.url, '_blank', 'noopener,noreferrer');
+    }
+  }
+
+  function abrirNovaAba() {
+    if (atual) window.open(atual.url, '_blank', 'noopener,noreferrer');
+  }
+
+  async function copiarLink() {
+    if (!atual) return;
+    try {
+      await navigator.clipboard.writeText(atual.url);
+      notificar('Link copiado para a área de transferência.', 'sucesso');
+    } catch {
+      notificar('Não foi possível copiar o link.', 'erro');
+    }
+  }
+
   if (!atual) return null;
 
   return (
@@ -116,6 +163,17 @@ export function VisualizadorImagem({ imagens, indiceInicial = 0, aoFechar }: Pro
           <BotaoBarra titulo="Redefinir" aoClicar={resetar} disabled={escala === 1 && pos.x === 0 && pos.y === 0}>
             <RotateCcw className="h-5 w-5" />
           </BotaoBarra>
+          <span className="mx-1 h-5 w-px bg-white/20" aria-hidden />
+          <BotaoBarra titulo="Salvar como…" aoClicar={salvarComo}>
+            <Download className="h-5 w-5" />
+          </BotaoBarra>
+          <BotaoBarra titulo="Abrir em nova aba" aoClicar={abrirNovaAba}>
+            <ExternalLink className="h-5 w-5" />
+          </BotaoBarra>
+          <BotaoBarra titulo="Copiar link" aoClicar={copiarLink}>
+            <Copy className="h-5 w-5" />
+          </BotaoBarra>
+          <span className="mx-1 h-5 w-px bg-white/20" aria-hidden />
           <BotaoBarra titulo="Fechar (Esc)" aoClicar={aoFechar}>
             <X className="h-5 w-5" />
           </BotaoBarra>
@@ -183,6 +241,30 @@ function BotaoBarra({
       {children}
     </button>
   );
+}
+
+/** Nome sugerido para o download: nomeArquivo > legenda > último segmento da URL > padrão. */
+function nomeSugerido(img: ImagemVisualizador): string {
+  if (img.nomeArquivo) return img.nomeArquivo;
+  if (img.legenda) return img.legenda;
+  try {
+    const caminho = new URL(img.url, window.location.href).pathname;
+    const ultimo = caminho.split('/').filter(Boolean).pop();
+    if (ultimo) return decodeURIComponent(ultimo);
+  } catch {
+    /* URL inválida: usa o padrão abaixo */
+  }
+  return 'imagem';
+}
+
+/** Dispara o download de um href via âncora temporária. */
+function baixarLink(href: string, nome: string) {
+  const a = document.createElement('a');
+  a.href = href;
+  a.download = nome;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
 function BotaoSeta({

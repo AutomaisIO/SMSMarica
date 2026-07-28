@@ -123,7 +123,11 @@ export function AnexosGaleria({ anexos }: { anexos: { midiaId: string; nomeArqui
       </div>
       {aberto !== null ? (
         <VisualizadorImagem
-          imagens={anexos.map((a) => ({ url: urlMidiaAbsoluta(a.midiaId), legenda: a.nomeArquivo }))}
+          imagens={anexos.map((a) => ({
+            url: urlMidiaAbsoluta(a.midiaId),
+            legenda: a.nomeArquivo,
+            nomeArquivo: a.nomeArquivo,
+          }))}
           indiceInicial={aberto}
           aoFechar={() => setAberto(null)}
         />
