@@ -43,7 +43,6 @@ improvise um fluxo que já tem skill:**
 | Consultar o Postgres de produção | `acessar-banco-no-servidor` |
 | Qualquer coisa de infraestrutura do host (units, portas, logs, deploy, nginx, migrations) | `operar-servidor` |
 | Antes de ler/editar/commitar código | `sincronizar-antes-de-editar` |
-| Módulos de permissão (enum ↔ front ↔ controllers) | `sincronizar-permissoes` |
 | Marcar um ERRO-XXXXXX como resolvido | `resolver-erro` |
 
 Antes de decisão arquitetural, leia `CLAUDE.md` e `docs/` no clone — as regras (dois schemas,
