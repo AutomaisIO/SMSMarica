@@ -14,7 +14,11 @@ trilha, no formato do `AuditoriaService.RegistrarAsync`).
 ## Só com instrução explícita
 
 Concluir/negar é escrita em produção e vira resposta ao autor. Faça **apenas** quando o operador
-mandar nesta conversa. `RespostaFinal` é **obrigatória** para Concluido/Negado (o service lançaria
+mandar nesta conversa. E atenção à regra dura do sistema: se o desfecho depende de uma mudança
+(código/deploy/configuração/dado) que ainda não foi feita, **só o administrador Bernardo Almeida**
+(`usuario_id 019dc264-7de1-78cc-b6ff-0be0c0e8b714`) pode fazê-la — com outro operador, o ticket
+fica aberto/Em análise com o diagnóstico registrado como comentário interno; não conclua ticket
+cujo tratamento não aconteceu. `RespostaFinal` é **obrigatória** para Concluido/Negado (o service lançaria
 `ValidacaoException` sem ela) — linguagem simples ao autor, **sem jargão nem PII**. O detalhe
 técnico vai no comentário interno.
 

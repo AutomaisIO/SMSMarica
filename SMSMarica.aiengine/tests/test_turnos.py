@@ -118,6 +118,10 @@ class ClienteFalso:
 sdk = types.ModuleType("claude_agent_sdk")
 sdk.ClaudeAgentOptions = ClaudeAgentOptions
 sdk.ClaudeSDKClient = ClienteFalso
+# dados_tool importa estes dois no nível do módulo; o teste não exercita o modo dados,
+# então stubs inertes bastam para o import de claude_runner não quebrar.
+sdk.create_sdk_mcp_server = lambda **kwargs: object()
+sdk.tool = lambda *a, **k: (lambda fn: fn)
 sys.modules["claude_agent_sdk"] = sdk
 
 import claude_runner  # noqa: E402
@@ -228,11 +232,56 @@ async def test_watchdog_encerra_turno_estourado() -> None:
            "o turno seguinte não herda nada do turno estourado")
 
 
+async def test_autorizacao_por_operador() -> None:
+    print("\n[5] autorização: só admin sobe com ferramentas de escrita")
+    admin_id = next(iter(claude_runner.config.ADMIN_USUARIO_IDS))
+
+    sessao = await engine.create_session(title="autorizacao", usuario_nome="Bernardo")
+    sid = sessao["id"]
+
+    # Turno do admin: conjunto completo.
+    await esperar_fim((await engine.start_turn(
+        sid, "oi", usuario_id=admin_id, usuario_nome="Bernardo"))["id"])
+    opcoes_admin = engine._live[sid].client.options
+    checar("Edit" in opcoes_admin.allowed_tools and "Write" in opcoes_admin.allowed_tools,
+           "operador admin tem Edit/Write")
+    checar("MODO SOMENTE LEITURA" not in opcoes_admin.system_prompt.upper()
+           or "COMPLETA" in opcoes_admin.system_prompt,
+           "system prompt do admin declara autorização completa")
+    cliente_admin = engine._live[sid].client
+
+    # Outro operador continua a MESMA sessão: cliente é reconstruído sem escrita.
+    await esperar_fim((await engine.start_turn(
+        sid, "oi de novo", usuario_id=str(__import__("uuid").uuid4()),
+        usuario_nome="Ana"))["id"])
+    live = engine._live[sid]
+    checar(live.client is not cliente_admin,
+           "trocar de operador reconstrói o cliente  <- sem herdar ferramentas do admin")
+    opcoes_ana = live.client.options
+    checar("Edit" not in opcoes_ana.allowed_tools and "Write" not in opcoes_ana.allowed_tools
+           and "Task" not in opcoes_ana.allowed_tools,
+           f"operador comum NÃO tem Edit/Write/Task (veio {opcoes_ana.allowed_tools})")
+    checar("SOMENTE LEITURA" in opcoes_ana.system_prompt,
+           "system prompt do operador comum declara o modo somente leitura")
+    checar(getattr(opcoes_ana, "disallowed_tools", None) ==
+           claude_runner.config.READONLY_DISALLOWED_TOOLS,
+           "negações extras (git commit/push, systemctl...) aplicadas ao operador comum")
+    checar("criar-ticket" in opcoes_ana.system_prompt,
+           "o caminho oficial (abrir ticket) está no prompt do operador comum")
+
+    # Turno sem identidade (curl de diagnóstico): menor privilégio.
+    await esperar_fim((await engine.start_turn(sid, "anonimo"))["id"])
+    opcoes_anon = engine._live[sid].client.options
+    checar("Edit" not in opcoes_anon.allowed_tools,
+           "turno sem usuario_id cai no somente leitura (menor privilégio)")
+
+
 async def main() -> int:
     for teste in (test_cancelamento_nao_contamina_o_proximo_turno,
                   test_participantes_e_autoria,
                   test_texto_ao_vivo,
-                  test_watchdog_encerra_turno_estourado):
+                  test_watchdog_encerra_turno_estourado,
+                  test_autorizacao_por_operador):
         await teste()
     await engine.shutdown()
 

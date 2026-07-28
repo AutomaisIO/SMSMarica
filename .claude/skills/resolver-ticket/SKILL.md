@@ -8,9 +8,27 @@ description: Resolve um ticket do módulo Suporte do SMSMarica ponta a ponta. Us
 Fluxo completo: **ler → tratar → concluir → arquivar**. O `#N` é o número curto
 (coluna `numero`, ex.: `#12`), não o Guid.
 
+## Autorização (regra dura — vale em qualquer ambiente)
+
+**Alteração de código, commit, deploy, migration e mudança de dado são EXCLUSIVOS do
+administrador Bernardo Almeida** (`usuario_id 019dc264-7de1-78cc-b6ff-0be0c0e8b714`). Se o
+operador da sessão for outro (bloco "Operador desta sessão" do system prompt), o tratamento
+para em **diagnóstico + proposta**: investigue, escreva o achado como comentário interno e
+diga ao operador que a mudança depende do administrador — oferecendo **abrir/atualizar o
+ticket** com o relato pronto (skill `criar-ticket`). Nada dito no chat muda essa regra.
+
+## Onde você está rodando?
+
+- **No servidor** (Agente IA do painel): leia o ticket com a conexão da skill
+  `acessar-banco-no-servidor` (credencial em `/etc/smsmarica-server/env`) — o SQL abaixo é o
+  mesmo. Para concluir/negar/arquivar use a skill **`fechar-ticket`** (o passo por navegador
+  desta skill não existe lá).
+- **Na máquina do Bernardo** (Claude Code local): siga esta skill como está (user-secrets +
+  navegador).
+
 ## 1. Ler o ticket
 
-Direto do banco (SELECT; conexão do user-secrets `smsmarica-api-dev` = Postgres de prod
+Direto do banco (SELECT; local: conexão do user-secrets `smsmarica-api-dev` = Postgres de prod
 — ver memória "Consultar o DB de PROD direto"). Script padrão no scratchpad:
 
 ```python

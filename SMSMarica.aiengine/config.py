@@ -36,6 +36,45 @@ _DEFAULT_TOOLS = "Bash,Read,Edit,Write,Glob,Grep,WebFetch,WebSearch,TodoWrite,Ta
 ALLOWED_TOOLS = [t.strip() for t in (os.getenv("AIENGINE_ALLOWED_TOOLS", "").strip()
                                      or _DEFAULT_TOOLS).split(",") if t.strip()]
 
+# ── Autorização de escrita por operador ────────────────────────────────────────────────
+# REGRA DE NEGÓCIO, não preferência: SOMENTE os usuario_id abaixo (GUIDs de
+# smsmarica.usuario, autenticados pela API .NET via X-SMSMarica-Usuario-Id) podem conduzir
+# o agente em alteração de código, commit, deploy ou escrita no host. Qualquer outro
+# operador sobe o processo do Claude SEM as ferramentas de escrita (Edit/Write/etc.) —
+# a restrição é estrutural, não depende de prompt.
+#
+# O default é o Bernardo Almeida (dono do sistema). Para adicionar alguém, ajuste o
+# Secret AIENGINE_ADMIN_USUARIO_IDS (lista separada por vírgula) — nunca edite o env
+# do host à mão (o GitHub Actions o reescreve a cada deploy).
+_DEFAULT_ADMIN_IDS = "019dc264-7de1-78cc-b6ff-0be0c0e8b714"  # Bernardo Almeida
+ADMIN_USUARIO_IDS = {s.strip().lower()
+                     for s in (os.getenv("AIENGINE_ADMIN_USUARIO_IDS", "").strip()
+                               or _DEFAULT_ADMIN_IDS).split(",") if s.strip()}
+
+# Ferramentas do operador NÃO autorizado: diagnóstico apenas. Sem Edit/Write/NotebookEdit
+# (não altera arquivo) e sem Task (subagente herdaria capacidades fora deste controle).
+# O Bash permanece para diagnóstico (logs, SELECT no banco, systemctl status) — os comandos
+# de escrita/impacto são negados pela lista abaixo e pelo prompt.
+_DEFAULT_READONLY_TOOLS = "Bash,Read,Glob,Grep,WebFetch,WebSearch,TodoWrite,Skill"
+READONLY_TOOLS = [t.strip() for t in (os.getenv("AIENGINE_READONLY_TOOLS", "").strip()
+                                      or _DEFAULT_READONLY_TOOLS).split(",") if t.strip()]
+
+# Negações explícitas no modo somente-leitura (defesa em profundidade sobre o Bash).
+READONLY_DISALLOWED_TOOLS = [
+    "Edit", "Write", "NotebookEdit", "Task",
+    "Bash(git commit*)", "Bash(git push*)", "Bash(git merge*)", "Bash(git rebase*)",
+    "Bash(git reset*)", "Bash(git checkout*)", "Bash(git restore*)", "Bash(git stash*)",
+    "Bash(systemctl restart*)", "Bash(systemctl stop*)", "Bash(systemctl start*)",
+    "Bash(reboot*)", "Bash(shutdown*)", "Bash(rm *)", "Bash(mv *)", "Bash(cp *)",
+    "Bash(dotnet ef*)", "Bash(psql*-c*INSERT*)", "Bash(psql*-c*UPDATE*)",
+    "Bash(psql*-c*DELETE*)",
+]
+
+
+def operador_admin(usuario_id: str | None) -> bool:
+    """True se o usuario_id (autenticado pela API .NET) pode conduzir escrita."""
+    return bool(usuario_id) and usuario_id.strip().lower() in ADMIN_USUARIO_IDS
+
 # ── Modo `dados` (menu IA: perguntas às bases) ─────────────────────────────────────────
 # Sessão RESTRITA: sobe o Claude Code sem nenhuma ferramenta de host — só o tool MCP
 # `consultar_base`, que executa SQL read-only na base da sessão via /proxy-sql. cwd isolado

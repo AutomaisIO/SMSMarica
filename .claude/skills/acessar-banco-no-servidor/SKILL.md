@@ -38,8 +38,11 @@ está instalado (`/usr/bin/psql`).
 - **Banco compartilhado** com outros produtos da Prefeitura (Centralia, Automais.Fhir). Uma query
   pesada afeta sistemas que não são seus — filtre, use `LIMIT`, evite varrer tabela inteira.
 - **Leitura é livre; escrita não.** `SELECT` à vontade para diagnóstico. `INSERT/UPDATE/DELETE`
-  só quando uma skill específica (ex.: `fechar-ticket`) ou o operador mandar — e mesmo assim
-  espelhando a regra de negócio (auditoria, soft-delete), nunca "na mão" sem critério.
+  só quando uma skill específica (ex.: `criar-ticket`/`fechar-ticket`) ou o operador mandar — e
+  mesmo assim espelhando a regra de negócio (auditoria, soft-delete), nunca "na mão" sem critério.
+- **Mudança de dado fora do fluxo de ticket é EXCLUSIVA do administrador Bernardo Almeida**
+  (`usuario_id 019dc264-7de1-78cc-b6ff-0be0c0e8b714`), com confirmação por ação. Com outro
+  operador na sessão: diagnóstico (SELECT) + skill `criar-ticket` para registrar a necessidade.
 - **Dois schemas:** `smsmarica` (negócio, pt-BR) e `fhir` (identidade clínica, en). Identidade de
   paciente/profissional vive em `fhir.*`.
 - **Nunca imprima a connection string nem a senha** em respostas, logs ou comentários de ticket.
