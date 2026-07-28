@@ -211,6 +211,18 @@ em unidade materna são idosos 60-76a não-obstétricos, 3 em 2026-S1). Jun/26: 
 partos** — zero verificável, não de campo morto. **Regra p/ óbitos:** nr_obito/id_obito_mulher são MORTOS;
 usar sempre `cd_mot_cobranca_sus IN (41,42,43)` (41=DO médico, 42=IML, 43=SVO), 100% preenchido.
 
+### Perfil Epidemiológico (aba 4) e Institucional (aba 5) — ✅ repassadas (2026-07-28), sem conserto
+- **Perfil Epid. (aba 4): 11/11 sólidos** — distribuições (motivo/cor/faixa/dia/origem/procedimento/CID) +
+  2 proporções de não-residentes. Ressalvas exemplares (ex.: #6 usa código IBGE Maricá=330270, cobertura
+  99,99%). Nada a mexer.
+- **Institucional (aba 5):** #1–#9,#12 corretamente ForaDoBanco/desabilitados (RH/custos/compras/ouvidoria =
+  processos externos, não estão na base clínica). **#10 Faturamento SUS (Validado)**: mede se o atendimento
+  entrou no BPA (produção SIA), **satura ~99,99%** (Salux gera BPA-C automático) → falha meta 100% por um fio;
+  mede produção, NÃO pagamento (glosa invisível); só com competência fechada. **#11 Alimentação SIH
+  (NaoValidado de propósito)**: % internações com AIH liberada; a AIH amadurece na competência seguinte
+  (junho em julho ~75% → ~92% quando liberarem) → só medir após ~60 dias. Ambos honestos com ressalva; sem
+  conserto.
+
 ### Apuração
 Snapshot por período fica em `smsmarica.indicador_execucao` (a app grava via ApurarAsync; `ListarAsync`
 mostra a última execução com `periodo_inicio`/`periodo_fim` EXATOS do filtro). Front usa por padrão o **mês
