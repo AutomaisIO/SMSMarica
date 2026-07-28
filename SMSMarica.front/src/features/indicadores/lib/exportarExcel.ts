@@ -448,7 +448,12 @@ function montarResumo(
 
 /** Gera o arquivo .xlsx (Blob) com o resumo + uma planilha por aba. */
 export async function gerarXlsxIndicadores(dados: DadosExportacao): Promise<Blob> {
-  const abas = dados.abas.filter((a) => a.itens.length > 0);
+  // Indicadores desabilitados não entram na exportação — coerente com a tabela (sem informação).
+  const dadosAtivos: DadosExportacao = {
+    ...dados,
+    abas: dados.abas.map((a) => ({ ...a, itens: a.itens.filter((i) => i.ativo) })),
+  };
+  const abas = dadosAtivos.abas.filter((a) => a.itens.length > 0);
   const wb = new ExcelJS.Workbook();
   wb.creator = 'SMSMarica';
   wb.created = new Date();
@@ -463,12 +468,12 @@ export async function gerarXlsxIndicadores(dados: DadosExportacao): Promise<Blob
   for (const aba of abas) {
     const nome = nomePlanilha(aba.rotulo, usados);
     const ws = wb.addWorksheet(nome, { views: [{ showGridLines: false }] });
-    const linhaTotal = montarPlanilhaAba(ws, logoId, dados, aba);
+    const linhaTotal = montarPlanilhaAba(ws, logoId, dadosAtivos, aba);
     const ag = agregar(aba.itens);
     agregados.push({ aba, nomePlanilha: nome, linhaTotal, ...ag });
   }
 
-  montarResumo(wsResumo, wb, logoId, dados, agregados);
+  montarResumo(wsResumo, wb, logoId, dadosAtivos, agregados);
 
   const buffer = await wb.xlsx.writeBuffer();
   return new Blob([buffer], {

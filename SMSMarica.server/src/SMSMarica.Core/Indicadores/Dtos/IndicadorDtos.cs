@@ -27,6 +27,7 @@ public sealed record IndicadorResumoDto(
     SituacaoIndicador Situacao,
     bool TemMotor,
     string? Ressalva,
+    bool Ativo,
     ResultadoIndicadorDto? Resultado);
 
 /// <summary>Detalhe completo — tudo é editável, porque a planilha contratual muda.</summary>

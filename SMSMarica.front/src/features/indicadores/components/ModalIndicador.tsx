@@ -268,6 +268,39 @@ export function ModalIndicador({
             </div>
           </div>
 
+          {/* ---- habilita / desabilita ---- */}
+          <div
+            className={`flex items-center justify-between gap-3 rounded-lg border p-3 ${
+              form.ativo ? 'border-slate-200' : 'border-amber-200 bg-amber-50/40'
+            }`}
+          >
+            <div className="text-xs">
+              <span className="font-medium text-slate-700">
+                {form.ativo ? 'Indicador habilitado' : 'Indicador desabilitado'}
+              </span>
+              <span className="mt-0.5 block text-[11px] leading-relaxed text-slate-400">
+                Desligado, aparece esmaecido na tabela — só o nome, sem número, badge, meta ou
+                ressalva — e não conta na pontuação da aba.
+              </span>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={form.ativo}
+              disabled={somenteLeitura}
+              onClick={() => alterar('ativo', !form.ativo)}
+              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition ${
+                form.ativo ? 'bg-emerald-500' : 'bg-slate-300'
+              } ${somenteLeitura ? 'cursor-not-allowed opacity-60' : ''}`}
+            >
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
+                  form.ativo ? 'translate-x-5' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+          </div>
+
           <Campo label="Memória de cálculo (como pactuada na planilha)" htmlFor="ind-memoria">
             <textarea
               id="ind-memoria"

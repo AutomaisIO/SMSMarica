@@ -66,6 +66,7 @@ export type IndicadorResumo = {
   situacao: SituacaoIndicador;
   temMotor: boolean;
   ressalva: string | null;
+  ativo: boolean;
   resultado: ResultadoIndicador | null;
 };
 

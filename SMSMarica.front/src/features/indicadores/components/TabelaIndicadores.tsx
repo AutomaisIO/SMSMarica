@@ -46,13 +46,13 @@ export function TabelaIndicadores({
   }
 
   function pesoDe(i: IndicadorResumo): number {
-    const filhos = filhosPorPai.get(i.id);
+    const filhos = filhosPorPai.get(i.id)?.filter((f) => f.ativo);
     if (filhos?.length) return filhos.reduce((s, f) => s + (f.pontuacao ?? 0), 0);
     return i.pontuacao ?? 0;
   }
 
   function pontosDe(i: IndicadorResumo): number | null {
-    const filhos = filhosPorPai.get(i.id);
+    const filhos = filhosPorPai.get(i.id)?.filter((f) => f.ativo);
     if (filhos?.length) {
       const apurados = filhos.filter((f) => f.resultado?.pontuacaoApurada != null);
       if (apurados.length === 0) return null;
@@ -62,7 +62,8 @@ export function TabelaIndicadores({
   }
 
   // Totais da aba: só as linhas de topo, para não contar o agrupador e os filhos duas vezes.
-  const topo = indicadores.filter((i) => !i.indicadorPaiId);
+  // Indicadores desabilitados não entram em peso nem pontuação.
+  const topo = indicadores.filter((i) => !i.indicadorPaiId && i.ativo);
   const pesoTotal = topo.reduce((s, i) => s + pesoDe(i), 0);
   const pontosTotal = topo.reduce((s, i) => s + (pontosDe(i) ?? 0), 0);
   const percentual = pesoTotal > 0 ? (pontosTotal / pesoTotal) * 100 : 0;
@@ -85,6 +86,31 @@ export function TabelaIndicadores({
         </thead>
         <tbody>
           {indicadores.map((i) => {
+            // Desabilitado: só o texto do indicador, esmaecido — sem badge, número, ressalva ou meta.
+            // Mantém o lápis para poder reabilitar.
+            if (!i.ativo) {
+              return (
+                <tr key={i.id} className="border-b border-slate-100 opacity-50 last:border-0">
+                  <td className="px-3 py-2.5 font-mono text-xs text-slate-300">{i.numero}</td>
+                  <td className={`px-3 py-2.5 ${i.indicadorPaiId ? 'pl-8' : ''}`} colSpan={7}>
+                    <span className="italic text-slate-400">{i.nome}</span>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <div className="flex items-center justify-end">
+                      <button
+                        type="button"
+                        onClick={() => onEditar(i.id)}
+                        title={podeEditar ? 'Editar indicador' : 'Ver indicador'}
+                        className="rounded p-1.5 text-slate-300 transition hover:bg-slate-100 hover:text-slate-600"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            }
+
             const r = i.resultado;
             const agrupador = i.tipoResultado === 'Agrupador' || !!filhosPorPai.get(i.id)?.length;
             const pontos = pontosDe(i);
