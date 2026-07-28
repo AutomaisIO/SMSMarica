@@ -198,6 +198,27 @@ adulto usa 10043 em ~0% (19/12.034) e pediatria em 0% — esses classificam no `
   vermelho), falha ≤10. **3.1 Vermelho**: ForaDoBanco (4 casos, imediato/doc-lag). **3.2 Laranja**: 21,17 (4
   casos, falha ≤10). **3.3 Amarelo 23,4 · 3.4 Verde 32,4 · 3.5 Azul 42,2**: BATEM (≤60/120/240).
 
+### Internação Pediátrica e Materna — ✅ repassada (2026-07-28)
+Mesmo crivo do adulto. **Pediátrica (aba 2):** #7 permanência emergência, #9 permanência internação,
+#10 reinternação, #12 mortalidade = OK (Validado, mesmos métodos do adulto). **#8 ocupação = NaoValidado**
+(denominador de leitos incerto, igual ao adulto #11). **#11 "PCR" → ForaDoBanco/desabilitado** (não existe
+PCR na base; media óbito, rótulo falso — mesmo do adulto #15; na pediatria daria 0). **#12** teve o operador
+alinhado de `>= 1` para `> 1` (igual ao adulto #17). **Materna (aba 3):** #7 ocupação, #8 permanência,
+#9 cesárea, #13 apgar = OK. **#17 óbitos maternos CONSERTADO**: retornava `valor` (dava erro "sem numerador")
+e usava campos mortos (`id_obito_mulher`/`nr_obito`, 100% nulos). Novo motor = **Absoluto**, óbito SUS
+(`cd_mot_cobranca_sus IN 41,42,43`) na **FIA da mãe ligada a NASCIMENTO** (exclui os falsos positivos: óbitos
+em unidade materna são idosos 60-76a não-obstétricos, 3 em 2026-S1). Jun/26: **0 óbitos maternos em 647
+partos** — zero verificável, não de campo morto. **Regra p/ óbitos:** nr_obito/id_obito_mulher são MORTOS;
+usar sempre `cd_mot_cobranca_sus IN (41,42,43)` (41=DO médico, 42=IML, 43=SVO), 100% preenchido.
+
+### Apuração
+Snapshot por período fica em `smsmarica.indicador_execucao` (a app grava via ApurarAsync; `ListarAsync`
+mostra a última execução com `periodo_inicio`/`periodo_fim` EXATOS do filtro). Front usa por padrão o **mês
+anterior** (`periodoPadrao`: 1º ao último dia do mês passado). Para apurar fora da app: script
+`scratchpad/apurar_junho.py` roda no droplet (lê catálogo + roda cada SQL pelo proxy 5091 + replica
+`Interpretar`/`AvaliarMeta` + grava execução). `:fim` no SQL = fim+1 dia (a app soma). Só apura `ativo=true`,
+com `sql`+`fonte`, tipo≠Agrupador.
+
 ### Sweep de habilitação (2026-07-28) — padronização
 Regra do usuário: **o que não temos dado nem como comprovar fica DESABILITADO** (`ativo=false`) — aparece
 esmaecido só com o nome (feature "Habilita"). Aplicado em todas as abas: `ativo=false` onde
