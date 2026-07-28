@@ -30,6 +30,7 @@ internal sealed class IndicadorConfiguration : IEntityTypeConfiguration<Indicado
         builder.Property(i => i.Situacao).HasColumnName("situacao").HasConversion<int>().IsRequired();
         builder.Property(i => i.FonteId).HasColumnName("fonte_id");
         builder.Property(i => i.Sql).HasColumnName("sql");
+        builder.Property(i => i.SqlAnalitico).HasColumnName("sql_analitico");
         builder.Property(i => i.Ressalva).HasColumnName("ressalva");
         builder.Property(i => i.Ativo).HasColumnName("ativo").IsRequired();
 

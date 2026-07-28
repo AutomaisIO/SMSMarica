@@ -1,6 +1,7 @@
 import { http } from '@/shared/api/httpClient';
 import type {
   AbaIndicador,
+  AnaliticoIndicador,
   FiltroIndicador,
   FonteIndicador,
   IndicadorDetalhe,
@@ -54,6 +55,18 @@ export async function apurarIndicador(
   const { data } = await http.post<ResultadoIndicador>(`/indicadores/${id}/apurar`, filtro, {
     params: { previa: previa ? 'true' : undefined },
   });
+  return data;
+}
+
+/**
+ * Evidência linha a linha do indicador no período. Consulta a base do hospital na hora — não é
+ * cache nem histórico. Só existe para quem tem SQL analítico cadastrado (`temAnalitico`).
+ */
+export async function obterAnalitico(
+  id: string,
+  filtro: FiltroIndicador,
+): Promise<AnaliticoIndicador> {
+  const { data } = await http.post<AnaliticoIndicador>(`/indicadores/${id}/analitico`, filtro);
   return data;
 }
 

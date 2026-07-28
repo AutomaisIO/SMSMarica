@@ -44,4 +44,12 @@ public interface IIndicadoresService
     /// <summary>Apura todos os indicadores com motor de uma aba, em sequência (não paraleliza no Oracle).</summary>
     Task<IReadOnlyList<IndicadorResumoDto>> ApurarAbaAsync(
         AbaIndicador aba, FiltroIndicadorDto filtro, CancellationToken ct = default);
+
+    /// <summary>
+    /// Executa o SQL analítico e devolve a evidência linha a linha do período: os registros que
+    /// entraram na conta e os que foram excluídos, com o motivo. Nada é persistido — é sempre
+    /// uma leitura nova da base de origem, feita na hora da exportação.
+    /// </summary>
+    Task<AnaliticoIndicadorDto> AnaliticoAsync(
+        Guid id, FiltroIndicadorDto filtro, CancellationToken ct = default);
 }

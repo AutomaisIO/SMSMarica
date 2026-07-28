@@ -68,6 +68,40 @@ export type IndicadorResumo = {
   ressalva: string | null;
   ativo: boolean;
   resultado: ResultadoIndicador | null;
+  /**
+   * Campos de rastreabilidade — vêm na listagem para a exportação em Excel ser um documento
+   * auditável e autossuficiente (quem recebe a planilha vê de onde o número saiu sem precisar
+   * de acesso ao sistema).
+   */
+  memoriaCalculo: string | null;
+  fonteDeclarada: string | null;
+  fonteNome: string | null;
+  sql: string | null;
+  temAnalitico: boolean;
+};
+
+/**
+ * Evidência linha a linha por trás de um indicador: os registros que entraram na conta e os que
+ * foram excluídos, com o motivo. Retorno cru do SQL analítico — colunas do jeito que a consulta
+ * as nomeou. Nada é persistido: é sempre uma leitura nova da base de origem.
+ */
+export type AnaliticoIndicador = {
+  indicadorId: string;
+  numero: string;
+  nome: string;
+  colunas: string[];
+  linhas: (string | number | boolean | null)[][];
+  /** Posição da coluna `incluido` em `colunas`; -1 quando o SQL não a trouxe. */
+  indiceIncluido: number;
+  indiceMotivo: number;
+  incluidos: number;
+  excluidos: number;
+  /** Bateu no teto de linhas — a evidência está incompleta e a planilha precisa dizer isso. */
+  truncado: boolean;
+  limiteLinhas: number;
+  duracaoMs: number;
+  executadoEm: string;
+  erro: string | null;
 };
 
 export type IndicadorDetalhe = {
@@ -91,6 +125,7 @@ export type IndicadorDetalhe = {
   fonteId: string | null;
   fonteNome: string | null;
   sql: string | null;
+  sqlAnalitico: string | null;
   ressalva: string | null;
   ativo: boolean;
   totalVersoes: number;
@@ -135,6 +170,7 @@ export type SalvarIndicadorPayload = {
   situacao: SituacaoIndicador;
   fonteId: string | null;
   sql: string | null;
+  sqlAnalitico: string | null;
   ressalva: string | null;
   ativo: boolean;
   nota: string | null;

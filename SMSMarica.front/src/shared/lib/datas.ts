@@ -63,6 +63,34 @@ export function paraUtcDeLocal(inputLocal: string | null | undefined): string | 
   return new Date(`${y}-${mo}-${d}T${h}:${mi}:00-03:00`).toISOString();
 }
 
+const MS_HORA = 3_600_000;
+/** Brasil (SP/RJ) é UTC-3 fixo — sem horário de verão desde 2019. */
+const OFFSET_BR_HORAS = -3;
+
+/**
+ * (a→planilha) ISO → `Date` pronto para virar célula de data no Excel.
+ *
+ * O Excel guarda data como número absoluto, sem fuso, e o `exceljs` serializa os campos **UTC**
+ * do `Date`. Gravar o instante cru, portanto, mostraria a hora em UTC na célula — três horas
+ * adiantada. Aqui o instante é deslocado para que seus campos UTC sejam o relógio de Brasília;
+ * wall-clock (ISO sem fuso) passa direto, porque já é o relógio local.
+ */
+export function paraDataPlanilha(iso: string | null | undefined): Date | null {
+  if (!iso) return null;
+  const s = String(iso);
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  if (!m) return null;
+
+  if (!temFuso(s)) {
+    return new Date(
+      Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4] ?? 0), Number(m[5] ?? 0), Number(m[6] ?? 0)),
+    );
+  }
+
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : new Date(d.getTime() + OFFSET_BR_HORAS * MS_HORA);
+}
+
 /** Partes de uma data em Brasília, no formato estável en-CA. */
 function partesSP(d: Date): { data: string; hora: string } {
   const dp = new Intl.DateTimeFormat('en-CA', {

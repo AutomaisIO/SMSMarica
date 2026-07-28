@@ -30,6 +30,13 @@ public sealed class IndicadoresService(
         new(1, "Hospital Municipal Conde Modesto Leal"),
     ];
 
+    /// <summary>
+    /// Teto de linhas do relatório analítico. É um dump de auditoria contra o Oracle vivo do
+    /// hospital: melhor devolver 5.000 linhas e dizer "truncado" do que arrastar a base inteira
+    /// para dentro de uma planilha.
+    /// </summary>
+    private const int LimiteLinhasAnalitico = 5_000;
+
     public IReadOnlyList<UnidadeIndicadorDto> Unidades() => UnidadesContratadas;
 
     public async Task<IReadOnlyList<IndicadorResumoDto>> ListarAsync(
@@ -39,6 +46,7 @@ public sealed class IndicadoresService(
 
         var indicadores = await db.Indicadores
             .AsNoTracking()
+            .Include(i => i.Fonte)
             .Where(i => i.Aba == aba && i.ExcluidoEm == null)
             .OrderBy(i => i.Ordem)
             .ToListAsync(ct);
@@ -202,12 +210,19 @@ public sealed class IndicadoresService(
         }
 
         var sql = string.IsNullOrWhiteSpace(dto.Sql) ? null : dto.Sql.Trim();
+        var analitico = string.IsNullOrWhiteSpace(dto.SqlAnalitico) ? null : dto.SqlAnalitico.Trim();
 
-        if (sql is not null)
+        // Falha cedo: valida o SQL ja com os parametros resolvidos, como vai rodar de verdade.
+        var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        foreach (var candidato in new[] { sql, analitico })
         {
-            // Falha cedo: valida o SQL ja com os parametros resolvidos, como vai rodar de verdade.
-            var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
-            var comParametros = ParametrosIndicador.Aplicar(sql, 1, hoje.AddMonths(-1), hoje);
+            if (candidato is null)
+            {
+                continue;
+            }
+
+            var comParametros = ParametrosIndicador.Aplicar(candidato, 1, hoje.AddMonths(-1), hoje);
             Inteligencia.Validacao.SqlReadOnlyGuard.GarantirLeitura(comParametros);
 
             if (dto.FonteId is null)
@@ -215,6 +230,14 @@ public sealed class IndicadoresService(
                 throw new ValidacaoException(
                     "indicador.fonte", "Escolha a base onde o SQL do indicador vai rodar.");
             }
+        }
+
+        // O analitico e evidencia do numero, nao substituto dele: sem motor nao ha o que auditar.
+        if (analitico is not null && sql is null)
+        {
+            throw new ValidacaoException(
+                "indicador.sqlAnalitico",
+                "O SQL analítico é a evidência do resultado — cadastre primeiro o SQL do motor.");
         }
 
         if (dto.FonteId is { } fonteId &&
@@ -268,6 +291,7 @@ public sealed class IndicadoresService(
         indicador.FatorDensidade = dto.FatorDensidade;
         indicador.FonteId = dto.FonteId;
         indicador.Sql = string.IsNullOrWhiteSpace(dto.Sql) ? null : dto.Sql.Trim();
+        indicador.SqlAnalitico = string.IsNullOrWhiteSpace(dto.SqlAnalitico) ? null : dto.SqlAnalitico.Trim();
         indicador.Ressalva = dto.Ressalva;
         indicador.Ativo = dto.Ativo;
 
@@ -398,6 +422,105 @@ public sealed class IndicadoresService(
 
         return await ListarAsync(aba, filtro, ct);
     }
+
+    public async Task<AnaliticoIndicadorDto> AnaliticoAsync(
+        Guid id, FiltroIndicadorDto filtro, CancellationToken ct = default)
+    {
+        GarantirUnidade(filtro.Hospital);
+
+        var indicador = await db.Indicadores
+            .AsNoTracking()
+            .Include(i => i.Fonte)
+            .FirstOrDefaultAsync(i => i.Id == id && i.ExcluidoEm == null, ct)
+            ?? throw new NaoEncontradoException("Indicador", id);
+
+        if (string.IsNullOrWhiteSpace(indicador.SqlAnalitico))
+        {
+            throw new ValidacaoException(
+                "indicador.sqlAnalitico",
+                "Este indicador ainda não tem relatório analítico — cadastre o SQL da evidência.");
+        }
+
+        if (indicador.Fonte is null)
+        {
+            throw new ValidacaoException(
+                "indicador.fonte", "Este indicador não tem base de dados configurada.");
+        }
+
+        var sql = ParametrosIndicador.Aplicar(
+            indicador.SqlAnalitico, filtro.Hospital, filtro.Inicio, filtro.Fim);
+        var fonte = fonteFactory.Criar(indicador.Fonte);
+
+        var cronometro = Stopwatch.StartNew();
+        var retorno = await fonte.ExecutarAsync(sql, ct, LimiteLinhasAnalitico);
+        cronometro.Stop();
+
+        var vazio = Array.Empty<IReadOnlyList<object?>>();
+
+        if (!retorno.Sucesso)
+        {
+            return new AnaliticoIndicadorDto(
+                indicador.Id, indicador.Numero, indicador.Nome, [], vazio, -1, -1, 0, 0, false,
+                LimiteLinhasAnalitico, (int)cronometro.ElapsedMilliseconds, DateTime.UtcNow, retorno.Erro);
+        }
+
+        var iIncluido = Indice(retorno, "incluido");
+        var iMotivo = Indice(retorno, "motivo_exclusao");
+
+        // Sem a coluna `incluido` o dump ainda tem valor (mostra o que o SQL leu), mas deixa de
+        // provar o que ficou de fora — que é metade do pedido. Avisa em vez de fingir que está ok.
+        var erro = iIncluido < 0
+            ? "O SQL analítico não devolveu a coluna 'incluido' (S/N) — sem ela não dá para "
+              + "separar o que entrou na conta do que foi excluído."
+            : null;
+
+        var incluidos = 0;
+        var excluidos = 0;
+
+        if (iIncluido >= 0)
+        {
+            foreach (var linha in retorno.Linhas)
+            {
+                if (EhIncluido(linha[iIncluido]))
+                {
+                    incluidos++;
+                }
+                else
+                {
+                    excluidos++;
+                }
+            }
+        }
+
+        return new AnaliticoIndicadorDto(
+            indicador.Id,
+            indicador.Numero,
+            indicador.Nome,
+            retorno.Colunas,
+            retorno.Linhas,
+            iIncluido,
+            iMotivo,
+            incluidos,
+            excluidos,
+            retorno.Linhas.Count >= LimiteLinhasAnalitico,
+            LimiteLinhasAnalitico,
+            (int)cronometro.ElapsedMilliseconds,
+            DateTime.UtcNow,
+            erro);
+    }
+
+    /// <summary>
+    /// Aceita as formas que o Oracle costuma devolver um sim: 'S', 'SIM', 'Y', 1, true. Qualquer
+    /// outra coisa conta como excluído — na dúvida o registro fica de fora do numerador, nunca
+    /// dentro dele.
+    /// </summary>
+    private static bool EhIncluido(object? bruto) => bruto switch
+    {
+        null => false,
+        bool b => b,
+        string t => t.Trim().ToUpperInvariant() is "S" or "SIM" or "Y" or "YES" or "1" or "TRUE",
+        _ => Decimal(bruto) == 1m,
+    };
 
     private static void GarantirUnidade(int hospital)
     {
@@ -579,11 +702,13 @@ public sealed class IndicadoresService(
                         ? null
                         : JsonSerializer.Deserialize<List<LinhaDistribuicaoDto>>(execucao.DistribuicaoJson),
                     execucao.AtingiuMeta, execucao.PontuacaoApurada,
-                    execucao.DuracaoMs, execucao.ExecutadoEm, execucao.Erro));
+                    execucao.DuracaoMs, execucao.ExecutadoEm, execucao.Erro),
+            i.MemoriaCalculo, i.FonteDeclarada, i.Fonte?.Nome, i.Sql,
+            !string.IsNullOrWhiteSpace(i.SqlAnalitico));
 
     private static IndicadorDetalheDto Detalhe(Indicador i, int totalVersoes) =>
         new(i.Id, i.Aba, i.Numero, i.Ordem, i.IndicadorPaiId, i.Nome, i.MemoriaCalculo,
             i.FonteDeclarada, i.Meta, i.MetaOperador, i.MetaValor, i.MetaValorMaximo,
             i.Pontuacao, i.TipoResultado, i.UnidadeMedida, i.FatorDensidade, i.Situacao,
-            i.FonteId, i.Fonte?.Nome, i.Sql, i.Ressalva, i.Ativo, totalVersoes);
+            i.FonteId, i.Fonte?.Nome, i.Sql, i.SqlAnalitico, i.Ressalva, i.Ativo, totalVersoes);
 }

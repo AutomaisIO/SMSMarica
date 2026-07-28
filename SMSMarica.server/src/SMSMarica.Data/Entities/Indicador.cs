@@ -79,6 +79,22 @@ public class Indicador
     public string? Sql { get; set; }
 
     /// <summary>
+    /// SQL do relatório analítico — a evidência linha a linha por trás do número. Opcional e
+    /// independente do motor: o <see cref="Sql"/> continua devolvendo só o agregado (é ele que
+    /// pontua), e este devolve os registros que o compõem, para auditoria.
+    ///
+    /// Contrato: N linhas, colunas livres (atendimento, paciente, data…) mais duas obrigatórias:
+    /// <list type="bullet">
+    ///   <item><c>incluido</c> — <c>'S'</c> se o registro entrou na conta, <c>'N'</c> se foi excluído.</item>
+    ///   <item><c>motivo_exclusao</c> — por que saiu (nulo quando <c>incluido = 'S'</c>).</item>
+    /// </list>
+    /// Ou seja: o analítico <b>classifica</b> em vez de filtrar — sem isso não há como provar o
+    /// que ficou de fora. Mesmos parâmetros do motor: <c>:ini</c>, <c>:fim</c>, <c>:hospital</c>.
+    /// Roda sob demanda na exportação; nada é persistido.
+    /// </summary>
+    public string? SqlAnalitico { get; set; }
+
+    /// <summary>
     /// Ressalva honesta exibida junto do número: cobertura do campo, definição pendente,
     /// divergência com a planilha. Nunca esconder limitação atrás de um número bonito.
     /// </summary>

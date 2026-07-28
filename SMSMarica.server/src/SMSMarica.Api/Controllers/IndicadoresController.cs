@@ -69,6 +69,22 @@ public sealed class IndicadoresController(IIndicadoresService service) : Control
         CancellationToken cancellationToken) =>
         await _service.ApurarAsync(id, filtro, persistir: !previa, cancellationToken);
 
+    /// <summary>
+    /// Relatório analítico do indicador: os registros que entraram na conta e os que foram
+    /// excluídos (com o motivo), do jeito que o SQL analítico os devolveu. Consulta a base de
+    /// origem na hora e não grava nada — é a evidência do número, não um resultado novo.
+    /// </summary>
+    [HttpPost("{id:guid}/analitico")]
+    [RequerPermissao(ModuloPermissao.Indicadores, AcoesPermissao.Consulta)]
+    [ProducesResponseType<AnaliticoIndicadorDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<AnaliticoIndicadorDto> Analitico(
+        Guid id,
+        [FromBody] FiltroIndicadorDto filtro,
+        CancellationToken cancellationToken) =>
+        await _service.AnaliticoAsync(id, filtro, cancellationToken);
+
     /// <summary>Bases de dados onde um motor pode rodar.</summary>
     [HttpGet("fontes")]
     [RequerPermissao(ModuloPermissao.Indicadores, AcoesPermissao.Consulta)]

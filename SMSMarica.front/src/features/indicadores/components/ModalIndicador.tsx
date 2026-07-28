@@ -63,6 +63,7 @@ type Form = {
   situacao: SituacaoIndicador;
   fonteId: string;
   sql: string;
+  sqlAnalitico: string;
   ressalva: string;
   ativo: boolean;
   nota: string;
@@ -86,6 +87,7 @@ const VAZIO: Form = {
   situacao: 'SemMotor',
   fonteId: '',
   sql: '',
+  sqlAnalitico: '',
   ressalva: '',
   ativo: true,
   nota: '',
@@ -143,6 +145,7 @@ export function ModalIndicador({
       situacao: d.situacao,
       fonteId: d.fonteId ?? '',
       sql: d.sql ?? '',
+      sqlAnalitico: d.sqlAnalitico ?? '',
       ressalva: d.ressalva ?? '',
       ativo: d.ativo,
       nota: '',
@@ -173,6 +176,7 @@ export function ModalIndicador({
       situacao: form.situacao,
       fonteId: form.fonteId || null,
       sql: s(form.sql),
+      sqlAnalitico: s(form.sqlAnalitico),
       ressalva: s(form.ressalva),
       ativo: form.ativo,
       nota: s(form.nota),
@@ -509,6 +513,51 @@ export function ModalIndicador({
                 chegar ao banco do hospital.
               </p>
             </div>
+          </fieldset>
+
+          {/* ---- evidência (relatório analítico) ---- */}
+          <fieldset className="rounded-lg border border-slate-200 p-3">
+            <legend className="px-1 text-xs font-medium text-slate-600">
+              Evidência (relatório analítico)
+            </legend>
+            <p className="mb-2 text-[11px] leading-relaxed text-slate-500">
+              Opcional. É o que sustenta o número na exportação: uma linha por registro, dizendo
+              quais entraram na conta e quais ficaram de fora — e por quê. Repare que o analítico{' '}
+              <strong>classifica</strong> em vez de filtrar: se os excluídos sumirem no{' '}
+              <code>WHERE</code>, não há o que auditar.
+            </p>
+            <div className="mb-1.5 flex items-baseline justify-between">
+              <label htmlFor="ind-sql-analitico" className="text-xs font-medium text-slate-700">
+                SQL analítico
+              </label>
+              <span className="text-[11px] text-slate-400">
+                colunas livres + <code>incluido</code> (S/N) e <code>motivo_exclusao</code>
+              </span>
+            </div>
+            <textarea
+              id="ind-sql-analitico"
+              value={form.sqlAnalitico}
+              readOnly={somenteLeitura}
+              onChange={(e) => alterar('sqlAnalitico', e.target.value)}
+              spellCheck={false}
+              rows={10}
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-xs leading-relaxed text-slate-800 focus:border-slate-400 focus:outline-none"
+              placeholder={
+                'SELECT a.cd_atendimento    AS atendimento,\n' +
+                '       a.nm_paciente       AS paciente,\n' +
+                '       a.dt_chegada        AS chegada,\n' +
+                "       CASE WHEN a.dt_atend_medico IS NULL THEN 'N' ELSE 'S' END AS incluido,\n" +
+                "       CASE WHEN a.dt_atend_medico IS NULL\n" +
+                "            THEN 'Sem hora de atendimento médico registrada' END AS motivo_exclusao\n" +
+                '  FROM infosaude.baa a\n' +
+                ' WHERE a.cd_hospital = :hospital\n' +
+                '   AND a.dt_chegada >= :ini AND a.dt_chegada < :fim'
+              }
+            />
+            <p className="mt-1 text-[11px] text-slate-400">
+              Roda sob demanda, só quando alguém exporta — nada é gravado. Teto de 5.000 linhas por
+              indicador; acima disso a planilha avisa que a evidência veio truncada.
+            </p>
           </fieldset>
 
           <Campo label="Ressalva (aparece junto do número na tabela)" htmlFor="ind-ressalva">

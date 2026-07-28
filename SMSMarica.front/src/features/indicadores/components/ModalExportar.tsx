@@ -3,7 +3,7 @@ import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, Loader2, Refres
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 import { Modal } from '@/shared/ui/Modal';
-import { apurarAba, listarIndicadores } from '@/features/indicadores/api/indicadoresApi';
+import { apurarAba, listarIndicadores, obterAnalitico } from '@/features/indicadores/api/indicadoresApi';
 import {
   baixarBlob,
   gerarXlsxIndicadores,
@@ -12,6 +12,7 @@ import {
 import {
   ABAS,
   type AbaIndicador,
+  type AnaliticoIndicador,
   type FiltroIndicador,
   type IndicadorResumo,
 } from '@/features/indicadores/types';
@@ -29,7 +30,7 @@ type Props = {
 type Fase =
   | { tipo: 'idle' }
   | { tipo: 'trabalhando'; texto: string }
-  | { tipo: 'ok'; arquivo: string }
+  | { tipo: 'ok'; arquivo: string; evidencias: number; falhas: number }
   | { tipo: 'erro'; texto: string };
 
 function formatarData(iso: string): string {
@@ -42,21 +43,82 @@ function nomeArquivo(escopo: string, filtro: FiltroIndicador): string {
   return `Indicadores_${limpo}_${filtro.inicio}_a_${filtro.fim}.xlsx`;
 }
 
+/** Indicadores que podem render evidência: habilitados e com SQL analítico cadastrado. */
+function comAnalitico(abas: AbaExportacao[]): IndicadorResumo[] {
+  return abas.flatMap((a) => a.itens.filter((i) => i.ativo && i.temAnalitico));
+}
+
 export function ModalExportar({ aberto, aoFechar, aba, rotuloAba, filtro, unidadeNome, itensAtual }: Props) {
   const [fase, setFase] = useState<Fase>({ tipo: 'idle' });
+  const [comEvidencia, setComEvidencia] = useState(true);
   const ocupado = fase.tipo === 'trabalhando';
 
+  /**
+   * Busca a evidência de cada indicador, em sequência. É o Oracle vivo do hospital do outro
+   * lado — nada de disparar dezenas de consultas em paralelo para montar uma planilha. Falha de
+   * um indicador não derruba a exportação: vira uma planilha de evidência com o erro escrito,
+   * que é mais honesto do que a planilha simplesmente não existir.
+   */
+  async function buscarEvidencias(
+    abasDados: AbaExportacao[],
+  ): Promise<{ mapa: Map<string, AnaliticoIndicador>; falhas: number }> {
+    const alvos = comAnalitico(abasDados);
+    const mapa = new Map<string, AnaliticoIndicador>();
+    let falhas = 0;
+
+    for (let i = 0; i < alvos.length; i++) {
+      const it = alvos[i];
+      setFase({
+        tipo: 'trabalhando',
+        texto: `Levantando a evidência de ${it.numero} (${i + 1}/${alvos.length})…`,
+      });
+      try {
+        mapa.set(it.id, await obterAnalitico(it.id, filtro));
+      } catch (e) {
+        falhas += 1;
+        mapa.set(it.id, {
+          indicadorId: it.id,
+          numero: it.numero,
+          nome: it.nome,
+          colunas: [],
+          linhas: [],
+          indiceIncluido: -1,
+          indiceMotivo: -1,
+          incluidos: 0,
+          excluidos: 0,
+          truncado: false,
+          limiteLinhas: 0,
+          duracaoMs: 0,
+          executadoEm: new Date().toISOString(),
+          erro: extrairMensagemDeErro(e),
+        });
+      }
+    }
+
+    return { mapa, falhas };
+  }
+
   async function gerar(abasDados: AbaExportacao[], escopo: string) {
+    let analiticos: Map<string, AnaliticoIndicador> | undefined;
+    let falhas = 0;
+
+    if (comEvidencia) {
+      const r = await buscarEvidencias(abasDados);
+      analiticos = r.mapa;
+      falhas = r.falhas;
+    }
+
     setFase({ tipo: 'trabalhando', texto: 'Gerando a planilha…' });
     const blob = await gerarXlsxIndicadores({
       abas: abasDados,
       unidadeNome,
       inicio: filtro.inicio,
       fim: filtro.fim,
+      analiticos,
     });
     const arquivo = nomeArquivo(escopo, filtro);
     baixarBlob(blob, arquivo);
-    setFase({ tipo: 'ok', arquivo });
+    setFase({ tipo: 'ok', arquivo, evidencias: analiticos?.size ?? 0, falhas });
   }
 
   async function exportarAtual() {
@@ -101,6 +163,8 @@ export function ModalExportar({ aberto, aoFechar, aba, rotuloAba, filtro, unidad
     aoFechar();
   }
 
+  const alvosAtual = comAnalitico([{ aba, rotulo: rotuloAba, itens: itensAtual }]).length;
+
   return (
     <Modal aberto={aberto} aoFechar={fecharTudo} titulo="Exportar indicadores para Excel" largura="md">
       <div className="space-y-4">
@@ -117,11 +181,42 @@ export function ModalExportar({ aberto, aoFechar, aba, rotuloAba, filtro, unidad
           </ul>
         </div>
 
+        <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 px-4 py-3">
+          <input
+            type="checkbox"
+            checked={comEvidencia}
+            disabled={ocupado}
+            onChange={(e) => setComEvidencia(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-primary-600"
+          />
+          <span>
+            <span className="block text-sm font-medium text-slate-800">
+              Incluir a evidência linha a linha
+            </span>
+            <span className="block text-xs text-slate-500">
+              Uma planilha por indicador com os registros que entraram na conta e os que foram
+              excluídos, com o motivo. Consulta a base do hospital na hora — deixa a exportação bem
+              mais lenta.{' '}
+              {alvosAtual > 0
+                ? `Na aba ${rotuloAba}, ${alvosAtual} indicador(es) têm analítico cadastrado.`
+                : `Nenhum indicador da aba ${rotuloAba} tem SQL analítico cadastrado ainda.`}
+            </span>
+          </span>
+        </label>
+
         {fase.tipo === 'ok' ? (
-          <p className="flex items-start gap-2 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          <div className="flex items-start gap-2 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-            Arquivo <strong>{fase.arquivo}</strong> gerado. Verifique os downloads do navegador.
-          </p>
+            <span>
+              Arquivo <strong>{fase.arquivo}</strong> gerado. Verifique os downloads do navegador.
+              {fase.evidencias > 0 && (
+                <span className="mt-0.5 block text-xs">
+                  {fase.evidencias} planilha(s) de evidência
+                  {fase.falhas > 0 && ` · ${fase.falhas} falhou/falharam (o erro está escrito na planilha)`}
+                </span>
+              )}
+            </span>
+          </div>
         ) : fase.tipo === 'erro' ? (
           <p className="flex items-start gap-2 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
