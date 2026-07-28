@@ -9,6 +9,21 @@
 
   body {
     @apply bg-painel font-corpo text-[15px] leading-relaxed text-tinta antialiased;
+    /* Comporta como app nativo: sem seleção de texto, sem callout de long-press,
+       sem flash cinza de toque. É um painel de exibição, não um documento. */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Defensivo: se algum dia houver campo de entrada, ele volta a permitir seleção. */
+  input,
+  textarea,
+  [contenteditable='true'] {
+    -webkit-user-select: text;
+    user-select: text;
   }
 
   /* Foco visível para navegação por teclado — identidade sem ruído. */
