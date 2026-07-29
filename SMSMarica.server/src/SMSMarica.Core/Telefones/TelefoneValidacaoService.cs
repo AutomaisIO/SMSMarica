@@ -21,6 +21,7 @@ public sealed class TelefoneValidacaoService(
     IConfiguration config,
     IUsuarioAtualAccessor atual,
     IPacienteFhirClient fhir,
+    IDispensaContatoService dispensas,
     ILogger<TelefoneValidacaoService> logger) : ITelefoneValidacaoService
 {
     private static readonly TimeSpan Validade = TimeSpan.FromMinutes(5);
@@ -135,12 +136,22 @@ public sealed class TelefoneValidacaoService(
                 "telefone.sem_paciente",
                 "Não encontramos o cadastro de paciente desta pessoa — o telefone é alterado no cadastro do paciente.");
 
+        // Número que estava no cadastro ANTES da troca — decide se a dispensa cai (abaixo).
+        var anterior = Canonizar(Pacientes.PacienteFhirMapper.ParaDto(patient).TelefonePrincipal);
+
         // Edição manual do principal: o merge derruba o marcador de verificado quando o
         // número muda (o novo nasce não-verificado; verificar depois é opcional).
         var nacional = canon.Length > 11 ? canon[2..] : canon;
         PatientMergeFhir.AplicarContatos(patient, principal: nacional,
             celular: null, residencial: null, email: null, manual: true);
-        await fhir.AtualizarAsync(Guid.Parse(patient.Id!), patient, ct);
+        var pacienteId = Guid.Parse(patient.Id!);
+        await fhir.AtualizarAsync(pacienteId, patient, ct);
+
+        // Número NOVO merece uma tentativa nova de verificar: a dispensa foi dada olhando o
+        // número antigo ("não tem celular", "é o da filha") e não vale para este. Só cai quando
+        // o número de fato mudou — reescrever o mesmo número não deve punir a recepção.
+        if (anterior != canon)
+            await dispensas.RevogarAsync(pacienteId, "Telefone principal alterado", ct);
 
         logger.LogInformation("Telefone principal do CPF {Cpf} alterado manualmente para {Num} (usuário {Usuario}).",
             cpfDig, canon, atual.UsuarioId);
@@ -179,7 +190,14 @@ public sealed class TelefoneValidacaoService(
                 "telefone.sem_paciente",
                 "Não encontramos o cadastro de paciente desta pessoa — a verificação de contato é feita no cadastro do paciente.");
 
-        if (patientId is { } id) await LiberarComunicacoesRetidasAsync(id, agora, ct);
+        if (patientId is { } id)
+        {
+            // O verificado é mais forte que a dispensa: quem validou o número não precisa mais
+            // do consentimento de não validar. Deixar a dispensa de pé manteria a régua fraca
+            // (envio "assumindo risco") para alguém que já provou o número.
+            await dispensas.RevogarAsync(id, "Contato verificado por código", ct);
+            await LiberarComunicacoesRetidasAsync(id, agora, ct);
+        }
 
         logger.LogInformation("Contato {Num} validado para CPF {Cpf} (origem {Origem}; FHIR {Fhir}).",
             canon, cpfDig, origem, patientId is not null ? "estampado" : "sem-paciente");

@@ -10,6 +10,7 @@ import {
   RotateCw,
   ScanLine,
   Send,
+  ShieldOff,
   Siren,
   Trash2,
   XCircle,
@@ -37,6 +38,7 @@ import {
   useSolicitacaoPorId,
 } from '@/features/solicitacoes-exame/api/queries';
 import type { FinalidadeEnvioManual } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
+import { BotaoDispensarVerificacao } from '@/features/telefone-validacao/components/BotaoDispensarVerificacao';
 import { ChecksComunicacao } from '@/features/solicitacoes-exame/components/ChecksComunicacao';
 import { RawSisregDisclosure } from '@/features/solicitacoes-exame/components/RawSisregDisclosure';
 import { Select } from '@/shared/ui/Select';
@@ -466,6 +468,8 @@ function CardAutorizacao({ s }: { s: SolicitacaoExame }) {
 
   const preRecebido = s.status === 'Solicitada' || s.status === 'Enviada';
   const pendente = preRecebido && !s.autorizadoEm;
+  // Contato verificado OU dispensa registrada — a mesma régua do gate no backend.
+  const liberado = s.pacienteContatoVerificado || s.pacienteContatoDispensado;
   // Estações da unidade nesta modalidade. Só interessa enquanto a autorização está pendente.
   const equipamentos = useEquipamentosDoExame(s.id, pendente && podeEditar);
   const opcoes = equipamentos.data ?? [];
@@ -503,14 +507,39 @@ function CardAutorizacao({ s }: { s: SolicitacaoExame }) {
         </p>
       ) : !podeEditar ? (
         <p className="text-sm text-gray-500">Você não tem permissão para autorizar.</p>
-      ) : !s.pacienteContatoVerificado ? (
-        <p className="flex items-center gap-2 text-sm text-amber-800">
-          <AlertTriangle className="h-4 w-4 shrink-0" />
-          Paciente sem número verificado. Verifique o contato (no <strong>resumo do paciente</strong>, ao lado do
-          nome) antes de autorizar.
-        </p>
+      ) : !liberado ? (
+        // Sem verificado E sem dispensa: o caminho normal é verificar; quem não pode validar
+        // (não tem celular, não consegue confirmar) sai por aqui, com o motivo registrado.
+        <div className="space-y-2">
+          <p className="flex items-center gap-2 text-sm text-amber-800">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            Paciente sem número verificado. Verifique o contato (no <strong>resumo do paciente</strong>, ao
+            lado do nome) antes de autorizar.
+          </p>
+          <p className="text-sm text-gray-600">
+            O paciente não tem celular ou não consegue confirmar o código?{' '}
+            <BotaoDispensarVerificacao
+              pacienteId={s.pacienteId}
+              pacienteNome={s.pacienteNome}
+              className="align-middle"
+            />
+          </p>
+        </div>
       ) : (
         <div className="flex flex-wrap items-end gap-2">
+          {/* Liberado por DISPENSA, não por verificação: a recepção precisa ver o porquê — e
+              se o resultado vai por WhatsApp ou tem de ser entregue na mão. */}
+          {s.pacienteContatoDispensado ? (
+            <p className="flex w-full items-center gap-2 text-sm text-amber-800">
+              <ShieldOff className="h-4 w-4 shrink-0" />
+              <span>
+                Verificação dispensada: <strong>{s.pacienteContatoDispensaMotivo}</strong>.
+                {s.pacienteContatoDispensaPermiteEnvio
+                  ? ' Avisos seguem para o número do cadastro.'
+                  : ' Resultado e laudo NÃO serão enviados por WhatsApp — entrega presencial.'}
+              </span>
+            </p>
+          ) : null}
           <Campo label="Chave de autorização" htmlFor="chave-autorizacao" className="flex-1 min-w-[12rem]">
             <Input
               id="chave-autorizacao"
@@ -590,6 +619,11 @@ function CardEnvioManual({ s }: { s: SolicitacaoExame }) {
       <p className="mb-3 text-xs text-gray-500">
         Envia o link do resultado para o paciente na hora e registra o envio no histórico (com quem enviou).
         {verificado ? '' : ' ⚠ O telefone deste paciente NÃO está verificado.'}
+        {/* Com dispensa registrada, o motivo é a informação que decide o envio: "não tem
+            celular" significa que não adianta mandar — a entrega tem de ser presencial. */}
+        {!verificado && s.pacienteContatoDispensado
+          ? ` Verificação dispensada: ${s.pacienteContatoDispensaMotivo}.`
+          : ''}
       </p>
       <div className="flex flex-wrap gap-2">
         {exameRealizado ? (
@@ -617,6 +651,14 @@ function CardEnvioManual({ s }: { s: SolicitacaoExame }) {
             Enviar mesmo assim é sob sua responsabilidade. O envio ficará registrado como feito <strong>sem
             verificação</strong> do contato.
           </div>
+          {/* Motivo que já diz "não há canal": insistir aqui manda o resultado para um número
+              que o próprio paciente avisou que não usa. */}
+          {s.pacienteContatoDispensado && !s.pacienteContatoDispensaPermiteEnvio ? (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+              A recepção registrou <strong>{s.pacienteContatoDispensaMotivo}</strong> — este paciente não
+              tem canal de WhatsApp. O resultado deve ser entregue presencialmente.
+            </div>
+          ) : null}
           <div className="flex justify-end gap-2">
             <Button variante="outline" onClick={() => setConfirmarRisco(null)}>
               Cancelar

@@ -8,6 +8,7 @@ using SMSMarica.Core.Notificacoes.Comunicacao;
 using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Core.SolicitacoesExame;
 using SMSMarica.Core.SolicitacoesExame.Identificadores;
+using SMSMarica.Core.Telefones;
 using SMSMarica.Core.Worklist;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities;
@@ -35,6 +36,7 @@ public class LimpezaWorklistTests(PostgresFixture fixture)
             Substitute.For<INotificadorExame>(),
             new UsuarioAtualAccessorFake(Guid.NewGuid()),
             Substitute.For<IPacienteResolver>(),
+            Substitute.For<IDispensaContatoService>(),
             new Lazy<ILaudoAssinaturaService>(() => Substitute.For<ILaudoAssinaturaService>()),
             new Lazy<IComunicacaoPacienteService>(() => Substitute.For<IComunicacaoPacienteService>()),
             NullLogger<SolicitacoesExameService>.Instance);

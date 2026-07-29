@@ -13,6 +13,8 @@ import { WhatsappIcon } from '@/shared/ui/WhatsappIcon';
 import { usePacientePorId } from '@/features/pacientes/api/queries';
 import { definirTelefonePrincipal } from '@/features/telefone-validacao/api/telefoneValidacaoApi';
 import { BotaoVerificarTelefonePaciente } from '@/features/telefone-validacao/components/BotaoVerificarTelefonePaciente';
+import { BotaoDispensarVerificacao } from '@/features/telefone-validacao/components/BotaoDispensarVerificacao';
+import { SeloDispensaContato } from '@/features/telefone-validacao/components/SeloDispensaContato';
 import { UltimaSolicitacaoPaciente } from '@/features/solicitacoes-exame/components/UltimaSolicitacaoPaciente';
 import { BotaoWhatsAppPaciente } from '@/features/conversas/components/BotaoWhatsAppPaciente';
 import type { Paciente } from '@/features/pacientes/types';
@@ -132,11 +134,17 @@ function ResumoConteudo({ pacienteId }: { pacienteId: string }) {
                 <Check className="h-3.5 w-3.5" strokeWidth={3} />
               </span>
             ) : (
-              <BotaoVerificarTelefonePaciente
-                cpf={p.cpf}
-                numeroInicial={p.telefonePrincipal}
-                aoValidado={() => detalhe.refetch()}
-              />
+              <>
+                <BotaoVerificarTelefonePaciente
+                  cpf={p.cpf}
+                  numeroInicial={p.telefonePrincipal}
+                  aoValidado={() => detalhe.refetch()}
+                />
+                {/* Saída para quem não pode validar. O selo aparece quando já há dispensa; o
+                    botão se esconde nesse caso — nunca os dois ao mesmo tempo. */}
+                <SeloDispensaContato pacienteId={pacienteId} podeRevogar />
+                <BotaoDispensarVerificacao pacienteId={pacienteId} pacienteNome={p.nomeCompleto} />
+              </>
             )}
             <button
               type="button"

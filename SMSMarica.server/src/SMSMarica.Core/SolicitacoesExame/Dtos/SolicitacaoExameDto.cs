@@ -76,7 +76,16 @@ public sealed record SolicitacaoExameDto(
 
     // Linha crua do TXT do SISREG que originou a solicitação (proveniência). Null quando
     // não veio de importação. Exibida na tela de detalhe atrás de um botão discreto.
-    string? RawSisreg);
+    string? RawSisreg,
+
+    // Dispensa de verificação do contato (paciente consentiu em não validar o WhatsApp). Quando
+    // ativa, libera a autorização presencial mesmo sem número verificado. Resolvida só no
+    // DETALHE (a listagem não precisa) — daí os defaults.
+    bool PacienteContatoDispensado = false,
+    // Motivo em texto pronto para a tela (a descrição livre quando o motivo é "Outro").
+    string? PacienteContatoDispensaMotivo = null,
+    // A dispensa deixa resultado/laudo saírem por WhatsApp? false = entrega presencial.
+    bool PacienteContatoDispensaPermiteEnvio = false);
 
 /// <summary>
 /// Direção da solicitação RELATIVA à unidade ativa da sessão. <c>Recebida</c> = a unidade

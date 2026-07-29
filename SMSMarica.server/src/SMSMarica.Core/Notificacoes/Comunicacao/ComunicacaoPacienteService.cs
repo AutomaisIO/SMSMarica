@@ -55,6 +55,7 @@ public sealed class ComunicacaoPacienteService(
     IWhatsAppCliente whatsApp,
     IOptions<ComunicacaoPacienteOptions> options,
     Identidade.IUsuarioAtualAccessor usuarioAtual,
+    Telefones.IDispensaContatoService dispensasContato,
     ILogger<ComunicacaoPacienteService> logger) : IComunicacaoPacienteService
 {
     private static readonly CultureInfo PtBr = CultureInfo.GetCultureInfo("pt-BR");
@@ -337,12 +338,23 @@ public sealed class ComunicacaoPacienteService(
         if (exigeVerificado && !n.IgnorarVerificacaoTelefone
             && !TelefoneWhatsApp.EhCelularBr(paciente.TelefoneVerificado))
         {
-            // NÃO é terminal: fica retida e sai sozinha quando a recepção verificar o contato.
-            n.Status = StatusComunicacao.AguardandoTelefoneVerificado;
-            n.MotivoFalha = "Contato não verificado — resultado e laudo só vão para telefone verificado.";
-            n.ProximaTentativaEm = null;
-            await db.SaveChangesAsync(ct);
-            return;
+            // Dispensa registrada na recepção: o paciente consentiu em não validar. Parte dos
+            // motivos ainda tem um número utilizável ("é o celular da filha", "não consegue
+            // digitar o código") — nesses o resultado segue para o cadastro. Os demais ("não tem
+            // celular", "recusa") não têm para onde ir: continua retida e a entrega é presencial.
+            var dispensa = await dispensasContato.ObterAtivaAsync(n.PacienteId, ct);
+            if (dispensa is not { PermiteEnvio: true })
+            {
+                // NÃO é terminal: fica retida e sai sozinha quando a recepção verificar o contato.
+                n.Status = StatusComunicacao.AguardandoTelefoneVerificado;
+                n.MotivoFalha = dispensa is null
+                    ? "Contato não verificado — resultado e laudo só vão para telefone verificado."
+                    : $"Verificação dispensada ({dispensa.MotivoTexto}) — resultado e laudo devem ser "
+                      + "entregues presencialmente.";
+                n.ProximaTentativaEm = null;
+                await db.SaveChangesAsync(ct);
+                return;
+            }
         }
 
         // Telefone: contato VERIFICADO (marcador no telecom FHIR, já vem no DTO) > qualquer

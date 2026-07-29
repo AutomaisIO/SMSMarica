@@ -28,6 +28,7 @@ public sealed class SolicitacoesExameService(
     INotificadorExame notificador,
     IUsuarioAtualAccessor usuarioAtual,
     Pacientes.Fhir.IPacienteResolver pacienteResolver,
+    Telefones.IDispensaContatoService dispensasContato,
     Lazy<Laudos.Assinatura.ILaudoAssinaturaService> assinaturas,
     // Lazy: quebra o ciclo Solicitacoes → Comunicacao → LoginLink → Solicitacoes.
     Lazy<Notificacoes.Comunicacao.IComunicacaoPacienteService> comunicacoes,
@@ -41,6 +42,7 @@ public sealed class SolicitacoesExameService(
     private readonly INotificadorExame _notificador = notificador;
     private readonly IUsuarioAtualAccessor _usuarioAtual = usuarioAtual;
     private readonly Pacientes.Fhir.IPacienteResolver _pacienteResolver = pacienteResolver;
+    private readonly Telefones.IDispensaContatoService _dispensasContato = dispensasContato;
     // Lazy: ponto de entrada do subsistema de Laudos. Sem isso a construção do
     // SolicitacoesExameService puxa Assinatura → PdfRenderer → Laudos, que reentra
     // aqui por várias arestas (direta e via ExameAssociacao) — dependência circular.
@@ -65,6 +67,20 @@ public sealed class SolicitacoesExameService(
         var enriquecido = r is null
             ? comVerificado
             : comVerificado with { PacienteNome = r.Nome, PacienteCpf = r.Cpf, PacienteCns = r.Cns };
+
+        // Dispensa de verificação: a recepção precisa ver POR QUE este exame pode ser autorizado
+        // sem contato verificado — e se o resultado sairá por WhatsApp ou só presencialmente.
+        // Só consulta quando não há verificado: com selo, a dispensa já caiu.
+        if (!enriquecido.PacienteContatoVerificado
+            && await _dispensasContato.ObterAtivaAsync(dto.PacienteId, ct) is { } dispensa)
+        {
+            enriquecido = enriquecido with
+            {
+                PacienteContatoDispensado = true,
+                PacienteContatoDispensaMotivo = dispensa.MotivoTexto,
+                PacienteContatoDispensaPermiteEnvio = dispensa.PermiteEnvio,
+            };
+        }
 
         // Ticket #30: rastro de QUEM confirmou a chave de acesso (autorização presencial).
         if (dto.AutorizadoPor is { } autorId)
@@ -415,12 +431,16 @@ public sealed class SolicitacoesExameService(
             ?? throw new NaoEncontradoException(nameof(ExameImagem), id);
         var reg = s.Solicitacao!;
 
-        // Gate: paciente precisa ter um número VERIFICADO (marcador no telecom do Patient FHIR).
+        // Gate: paciente precisa ter um número VERIFICADO (marcador no telecom do Patient FHIR)
+        // OU uma dispensa registrada. A dispensa existe porque o gate rígido travava o balcão:
+        // quem não tem celular, ou não consegue confirmar o código, ficava sem caminho de saída.
         var paciente = await _pacienteResolver.ResolverAsync(reg.PacienteId, cancellationToken);
-        if (paciente?.TelefoneVerificado is null)
+        if (paciente?.TelefoneVerificado is null
+            && await _dispensasContato.ObterAtivaAsync(reg.PacienteId, cancellationToken) is null)
             throw new ValidacaoException(
                 "autorizacao.sem_numero_verificado",
-                "O paciente ainda não tem um número de telefone verificado. Verifique o contato antes de autorizar.");
+                "O paciente ainda não tem um número de telefone verificado. Verifique o contato — ou, " +
+                "se ele não puder validar, registre a dispensa com o motivo antes de autorizar.");
 
         // Gate da estação: a recepção é quem sabe em qual sala o paciente vai entrar. Com duas ou
         // mais na modalidade, a escolha é EXIGIDA aqui — depois de autorizar, o envio é do worker

@@ -82,6 +82,12 @@ export type SolicitacaoExame = {
   autorizadoPorNome: string | null;
   /** Paciente tem número verificado? (gate do campo de chave). */
   pacienteContatoVerificado: boolean;
+  /** Dispensa de verificação ativa — libera a autorização mesmo sem número verificado. */
+  pacienteContatoDispensado: boolean;
+  /** Motivo em texto pronto para a tela (a descrição livre quando o motivo é "Outro"). */
+  pacienteContatoDispensaMotivo: string | null;
+  /** A dispensa deixa resultado/laudo saírem por WhatsApp? false = entrega presencial. */
+  pacienteContatoDispensaPermiteEnvio: boolean;
 
   tentativasEnvio: number;
   ultimaTentativaEm: string | null;

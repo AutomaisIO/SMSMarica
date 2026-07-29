@@ -150,6 +150,10 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<AgendamentoConfirmacaoEstado> AgendamentoConfirmacaoEstados => Set<AgendamentoConfirmacaoEstado>();
     public DbSet<ContatoRegistro> ContatosRegistro => Set<ContatoRegistro>();
 
+    // Consentimento de NÃO validar o WhatsApp (com motivo) — válvula de escape do gate de
+    // contato verificado na recepção. Uma ativa por paciente; as revogadas ficam de trilha.
+    public DbSet<DispensaVerificacaoContato> DispensasVerificacaoContato => Set<DispensaVerificacaoContato>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(SchemaPadrao);

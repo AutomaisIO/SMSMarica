@@ -8,6 +8,7 @@ using SMSMarica.Core.Notificacoes.Comunicacao;
 using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Core.SolicitacoesExame;
 using SMSMarica.Core.SolicitacoesExame.Identificadores;
+using SMSMarica.Core.Telefones;
 using SMSMarica.Core.Worklist;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities;
@@ -42,9 +43,35 @@ public class AutorizacaoSolicitacaoTests(PostgresFixture fixture)
             Substitute.For<INotificadorExame>(),
             new UsuarioAtualAccessorFake(Guid.NewGuid()),
             resolver,
+            // Serviço REAL de dispensa: o gate consulta o banco, e é isso que os testes de
+            // dispensa exercitam (o mock esconderia justamente a leitura que importa).
+            CriarDispensas(db),
             new Lazy<ILaudoAssinaturaService>(() => Substitute.For<ILaudoAssinaturaService>()),
             new Lazy<IComunicacaoPacienteService>(() => Substitute.For<IComunicacaoPacienteService>()),
             NullLogger<SolicitacoesExameService>.Instance);
+    }
+
+    /// <summary>Dispensa real sobre o banco de teste. O hub FHIR só é tocado no Registrar —
+    /// aqui as dispensas são semeadas direto na tabela, então o cliente pode ser substitute.</summary>
+    private static DispensaContatoService CriarDispensas(SmsMaricaDbContext db) =>
+        new(db,
+            Substitute.For<IPacienteFhirClient>(),
+            new UsuarioAtualAccessorFake(Guid.NewGuid()),
+            NullLogger<DispensaContatoService>.Instance);
+
+    /// <summary>Semeia uma dispensa ATIVA para o paciente (o que a recepção teria registrado).</summary>
+    private static async Task SemearDispensaAsync(
+        SmsMaricaDbContext db, Guid pacienteId, MotivoDispensaContato motivo)
+    {
+        db.DispensasVerificacaoContato.Add(new DispensaVerificacaoContato
+        {
+            Id = Guid.CreateVersion7(),
+            PacienteId = pacienteId,
+            Motivo = motivo,
+            PacienteCiente = true,
+            CriadoEm = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
     }
 
     [Fact]
@@ -54,6 +81,39 @@ public class AutorizacaoSolicitacaoTests(PostgresFixture fixture)
         var pacienteId = Guid.NewGuid();
         var s = await SeedSolicitacao.CriarAsync(db, pacienteId);
         var service = CriarService(db, SeedSolicitacao.CpfAleatorio(), pacienteId); // sem telefone verificado
+
+        var ex = await Assert.ThrowsAsync<ValidacaoException>(() => service.AutorizarAsync(s.Id, "12345"));
+        Assert.Contains("verificado", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Autorizar_sem_verificado_mas_com_dispensa_ativa_libera()
+    {
+        // Caso do balcão: paciente sem celular. A dispensa registrada é o que substitui o OTP —
+        // sem ela, a recepção não tinha como liberar o exame e o paciente ficava parado.
+        await using var db = fixture.CriarDbContext();
+        var pacienteId = Guid.NewGuid();
+        var s = await SeedSolicitacao.CriarAsync(db, pacienteId);
+        await SemearDispensaAsync(db, pacienteId, MotivoDispensaContato.SemCelular);
+        var service = CriarService(db, SeedSolicitacao.CpfAleatorio(), pacienteId); // sem telefone verificado
+
+        await service.AutorizarAsync(s.Id, "12345");
+
+        var atual = await db.ExamesImagem.Include(x => x.Solicitacao).AsNoTracking().SingleAsync(x => x.Id == s.Id);
+        Assert.NotNull(atual.Solicitacao!.AutorizadoEm);
+    }
+
+    [Fact]
+    public async Task Autorizar_com_dispensa_revogada_volta_a_recusar()
+    {
+        // A dispensa é temporária por natureza (cai quando o contato é verificado ou o telefone
+        // muda). Revogada, o gate tem de voltar a valer — senão a válvula viraria porta aberta.
+        await using var db = fixture.CriarDbContext();
+        var pacienteId = Guid.NewGuid();
+        var s = await SeedSolicitacao.CriarAsync(db, pacienteId);
+        await SemearDispensaAsync(db, pacienteId, MotivoDispensaContato.SemCelular);
+        await CriarDispensas(db).RevogarAsync(pacienteId, "teste");
+        var service = CriarService(db, SeedSolicitacao.CpfAleatorio(), pacienteId);
 
         var ex = await Assert.ThrowsAsync<ValidacaoException>(() => service.AutorizarAsync(s.Id, "12345"));
         Assert.Contains("verificado", ex.Message, StringComparison.OrdinalIgnoreCase);
