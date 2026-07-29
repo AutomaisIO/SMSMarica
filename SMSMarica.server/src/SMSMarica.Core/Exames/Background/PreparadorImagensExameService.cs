@@ -27,6 +27,26 @@ public sealed class PreparadorImagensOptions
     /// <summary>Só prepara exames realizados nos últimos N dias — o histórico antigo
     /// continua on-demand (e entra no cache no primeiro acesso).</summary>
     public int JanelaDias { get; set; } = 7;
+
+    // ---- Re-validação: conserta exames cujo estudo CRESCEU no PACS após a materialização
+    //      (envio parcial do equipamento seguido de reenvio). Ver ticket #68. ----
+
+    /// <summary>Liga/desliga a re-validação de imagens (o reparo on-demand continua valendo).</summary>
+    public bool RevalidacaoHabilitada { get; set; } = true;
+
+    /// <summary>Janela (HORAS) de exames re-verificados. Cobre reenvios tardios do equipamento.
+    /// Alargar temporariamente (ex.: 1440 = 60 dias) faz uma varredura histórica única.</summary>
+    public int RevalidacaoJanelaHoras { get; set; } = 72;
+
+    /// <summary>Após N horas do exame sem o estudo crescer, considera-se estável e para de re-verificar
+    /// (evita re-ler S3/PACS de exames já íntegros).</summary>
+    public int RevalidacaoEstavelHoras { get; set; } = 24;
+
+    /// <summary>Intervalo entre passagens de re-verificação.</summary>
+    public int RevalidacaoIntervaloSegundos { get; set; } = 300;
+
+    /// <summary>Máximo de exames re-verificados por passagem (SEQUENCIAL — throttle do PACS/S3).</summary>
+    public int RevalidacaoMaxPorPassagem { get; set; } = 10;
 }
 
 /// <summary>
@@ -44,6 +64,11 @@ public sealed class PreparadorImagensExameService(
     ILogger<PreparadorImagensExameService> logger) : BackgroundService
 {
     private readonly PreparadorImagensOptions _options = options.Value;
+
+    // Exames já confirmados íntegros (cache == PACS e estudo estável): não re-verifica de novo.
+    // Só o loop de fundo (single-thread) acessa — sem concorrência. Limpo na saída da janela.
+    private readonly HashSet<Guid> _estaveis = [];
+    private DateTime _ultimaRevalidacao = DateTime.MinValue;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -65,6 +90,14 @@ public sealed class PreparadorImagensExameService(
             try
             {
                 await ExecutarUmaPassagemAsync(stoppingToken);
+
+                if (_options.RevalidacaoHabilitada
+                    && DateTime.UtcNow - _ultimaRevalidacao
+                       >= TimeSpan.FromSeconds(Math.Max(30, _options.RevalidacaoIntervaloSegundos)))
+                {
+                    await RevalidarUmaPassagemAsync(stoppingToken);
+                    _ultimaRevalidacao = DateTime.UtcNow;
+                }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -151,5 +184,85 @@ public sealed class PreparadorImagensExameService(
         }
 
         await db.SaveChangesAsync(ct);
+    }
+
+    // ---------------- Re-validação (ticket #68): estudo que cresceu no PACS após materializado ----------------
+
+    private async Task RevalidarUmaPassagemAsync(CancellationToken ct)
+    {
+        List<(Guid Id, DateTime? RealizadoEm)> candidatos;
+        using (var scope = scopeFactory.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<SmsMaricaDbContext>();
+            var corte = DateTime.UtcNow.AddHours(-Math.Max(1, _options.RevalidacaoJanelaHoras));
+
+            candidatos = await db.ExamesImagem.AsNoTracking()
+                .Where(s => s.ExcluidoEm == null
+                            && (s.Status == StatusSolicitacaoExame.Realizada
+                                || s.Status == StatusSolicitacaoExame.Laudada)
+                            && s.ImagensPreparadasEm != null
+                            && s.RealizadoEm != null
+                            && s.RealizadoEm >= corte)
+                .OrderByDescending(s => s.RealizadoEm)
+                .Select(s => new ValueTuple<Guid, DateTime?>(s.Id, s.RealizadoEm))
+                .ToListAsync(ct);
+        }
+
+        // Poda o skip-set: tira quem saiu da janela (mantém o set pequeno).
+        var idsNaJanela = candidatos.Select(c => c.Id).ToHashSet();
+        _estaveis.RemoveWhere(id => !idsNaJanela.Contains(id));
+
+        var pendentes = candidatos.Where(c => !_estaveis.Contains(c.Id)).ToList();
+        if (pendentes.Count == 0) return;
+
+        var max = Math.Clamp(_options.RevalidacaoMaxPorPassagem, 1, 50);
+        var estavelCorte = DateTime.UtcNow.AddHours(-Math.Max(1, _options.RevalidacaoEstavelHoras));
+
+        var processados = 0;
+        foreach (var (id, realizadoEm) in pendentes)
+        {
+            if (ct.IsCancellationRequested) return;
+            if (processados >= max) break;
+            processados++;
+            await RevalidarUmAsync(id, realizadoEm, estavelCorte, ct);
+        }
+    }
+
+    private async Task RevalidarUmAsync(Guid id, DateTime? realizadoEm, DateTime estavelCorte, CancellationToken ct)
+    {
+        using var scope = scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<SmsMaricaDbContext>();
+        var pdfImagens = scope.ServiceProvider.GetRequiredService<IExameImagensPdfService>();
+
+        var r = await pdfImagens.ReavaliarAsync(id, ct);
+
+        if (r.Defasado)
+        {
+            // O cache serviu MENOS imagens do que o PACS tem: o estudo foi completado (reenvio) depois.
+            // Invalida os dois caches e regenera com o conjunto COMPLETO.
+            await pdfImagens.InvalidarAsync(id, ct);
+            await pdfImagens.GerarOuObterAsync(id, ct);
+
+            var sol = await db.ExamesImagem.FirstOrDefaultAsync(s => s.Id == id && s.ExcluidoEm == null, ct);
+            if (sol is not null)
+            {
+                sol.ImagensPreparadasEm = DateTime.UtcNow;
+                await db.SaveChangesAsync(ct);
+            }
+
+            logger.LogInformation(
+                "Re-validação: exame {Id} reprocessado — cache {De} -> PACS {Para} imagens (estudo completado após materialização).",
+                id, r.ImagensCache, r.ImagensPacs);
+            return;
+        }
+
+        // Cache bate com o PACS. Se o exame já é antigo o bastante (sem crescer), marca estável e
+        // para de re-verificar — até lá segue sendo re-checado (janela em que um reenvio ainda chega).
+        if (r.ImagensCache is not null && r.ImagensPacs > 0
+            && r.ImagensCache == r.ImagensPacs
+            && realizadoEm is { } rz && rz <= estavelCorte)
+        {
+            _estaveis.Add(id);
+        }
     }
 }

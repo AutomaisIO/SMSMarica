@@ -26,6 +26,15 @@ public interface IExamePacsImagensReader
     /// estudo não existir/sem imagens. Trunca em <paramref name="maxImagens"/>.
     /// </summary>
     Task<IReadOnlyList<byte[]>> ObterImagensAsync(string studyInstanceUID, int maxImagens, CancellationToken cancellationToken = default);
+
+    /// <summary>Nº de instâncias do estudo no PACS AGORA (QIDO). 0 se inexistente/indisponível.</summary>
+    Task<int> ContarInstanciasPacsAsync(string studyInstanceUID, CancellationToken cancellationToken = default);
+
+    /// <summary>Nº de imagens guardadas no render-cache do estudo. <c>null</c> se não há cache.</summary>
+    Task<int?> ContarImagensCacheadasAsync(string studyInstanceUID, CancellationToken cancellationToken = default);
+
+    /// <summary>Apaga o render-cache do estudo (idempotente). A próxima leitura re-materializa do PACS.</summary>
+    Task InvalidarCacheAsync(string studyInstanceUID, CancellationToken cancellationToken = default);
 }
 
 public sealed class ExamePacsImagensReader(
@@ -73,6 +82,38 @@ public sealed class ExamePacsImagensReader(
             await GravarCacheAsync(chaveCache, imagens, cancellationToken);
 
         return imagens;
+    }
+
+    public async Task<int> ContarInstanciasPacsAsync(string studyInstanceUID, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(studyInstanceUID)) return 0;
+        var instancias = await ListarInstanciasAsync(studyInstanceUID.Trim(), cancellationToken);
+        return instancias.Count;
+    }
+
+    public async Task<int?> ContarImagensCacheadasAsync(string studyInstanceUID, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(studyInstanceUID)) return null;
+        var chaveCache = $"render-cache/{studyInstanceUID.Trim()}.zip";
+        try
+        {
+            var zip = await armazenamento.LerAsync(chaveCache, cancellationToken);
+            if (zip is not { Length: > 0 }) return null;
+            // Conta as entradas pelo diretório central do zip — não descomprime os JPEGs.
+            using var arquivo = new ZipArchive(new MemoryStream(zip), ZipArchiveMode.Read);
+            return arquivo.Entries.Count(e => e.Length > 0);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Falha ao contar o cache de imagens {Chave}.", chaveCache);
+            return null;
+        }
+    }
+
+    public async Task InvalidarCacheAsync(string studyInstanceUID, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(studyInstanceUID)) return;
+        await armazenamento.ExcluirAsync($"render-cache/{studyInstanceUID.Trim()}.zip", cancellationToken);
     }
 
     // ---------------- Cache S3 (zip de JPEGs, ordem preservada pelo nome da entrada) ----------------
