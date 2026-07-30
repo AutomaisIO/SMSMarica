@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Catálogo de equipamentos — enlace de rádio SMS Maricá</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>Catálogo de equipamentos — enlace de rádio SMS Maricá</h1>
+<p>Todos os modelos avaliados para o projeto, com especificações, prós/contras e compatibilidade. Valores de banda são <strong>reais/agregados aproximados</strong> (não o número de marketing PHY); preços são <strong>tabela EUA sem impostos</strong> (importado no Brasil costuma dar 2–2,5×). Specs de Wave conferidas em techspecs.ui.com em 29/07/2026.</p>
+<h2>Como a chuva afeta cada faixa</h2>
+<div class="tw"><table><thead><tr><th>Faixa</th><th>Atenuação em chuva tropical forte (~100 mm/h)</th><th>Efeito prático</th></tr></thead><tbody>
+<tr><td>5 GHz</td><td>&lt; 0,1 dB/km — desprezível</td><td>Enlace estável em qualquer clima</td></tr>
+<tr><td>11 GHz (licenciada)</td><td>~1,5–2 dB/km</td><td>Projetável com margem; padrão de operadora</td></tr>
+<tr><td>60 GHz</td><td>~10–30 dB/km <strong>+ ~15 dB/km de absorção de oxigênio (sempre)</strong></td><td>Enlace curto (≤ 2–3 km) sente pouco; enlace longo <strong>cai para o rádio backup</strong> durante o temporal</td></tr>
+</tbody></table></div>
+<p>Regra de bolso: <strong>60 GHz = banda enorme e espectro vazio, mas só é "seguro" sozinho em salto curto</strong>. Os equipamentos Wave contornam isso com um segundo rádio 5 GHz embutido que assume automaticamente (o enlace degrada, não cai).</p>
+<hr>
+<h2>Família Ubiquiti Wave (60 GHz + backup 5 GHz integrado)</h2>
+<p>Plataforma proprietária. Todos têm failover automático para 5 GHz WiFi 6, gestão UISP e GPS.</p>
+<h3>Wave Pro — ~US$ 999</h3>
+<p>PtP de longa distância. 60 GHz (57–71 GHz), canal até 2160 MHz, antena integrada 46 dBi com feixe de 1,3°.</p>
+<ul>
+<li><strong>Banda:</strong> 5,4 Gbps agregado (2,5 Gbps full-duplex) · backup 5 GHz 22 dBi (centenas de Mbps)</li>
+<li><strong>Alcance:</strong> PtP até 15 km · como cliente PtMP até 8 km</li>
+<li>✅ O rádio não-licenciado mais rápido da linha; feixe fino = imune a interferência; failover embutido</li>
+<li>❌ Caro; em salto de 9–12 km a chuva forte derruba para o backup com frequência; feixe de 1,3° exige alinhamento e torre rígida (oscilação de mastro desalinha)</li>
+</ul>
+<h3>Wave AP — ~US$ 1.299</h3>
+<p>AP PtMP de setor <strong>estreito (30° azimute)</strong>, 5,4 Gbps agregado, até 31 clientes.</p>
+<ul>
+<li><strong>Alcance por cliente:</strong> Wave LR/Pro 8 km · Nano 5 km · Pico 1,3 km</li>
+<li>✅ Maior alcance PtMP da família</li>
+<li>❌ Setor de 30° cobre pouco — para arcos largos multiplica APs; para este projeto o AP Micro serve melhor</li>
+</ul>
+<h3>Wave AP Micro — ~US$ 499</h3>
+<p>AP PtMP de setor <strong>largo (90°)</strong>, antena 20 dBi. 5 Gbps agregado (2,5 duplex), 15–31 clientes (firmware atual).</p>
+<ul>
+<li><strong>Alcance por cliente:</strong> Wave LR/Pro 6 km · Nano 4 km</li>
+<li><strong>Backup:</strong> 5 GHz WiFi 6, 800+ Mbps</li>
+<li>✅ Melhor custo/cobertura para célula urbana; gigabit por ponta a ≤ 4 km; chuva quase não afeta em célula curta</li>
+<li>❌ Alcance menor que o Wave AP; 60 GHz exige visada totalmente limpa (nem galho de árvore)</li>
+</ul>
+<h3>Wave LR — ~US$ 599</h3>
+<p>Estação de longo alcance; funciona como <strong>cliente PtMP (até 8 km)</strong> ou <strong>PtP par-a-par</strong> (desde o firmware 3.2).</p>
+<ul>
+<li><strong>Banda:</strong> 2 Gbps agregado · backup 5 GHz</li>
+<li>✅ Resolve saltos de 4–8 km onde o Nano não chega; serve de PtP dedicado barato</li>
+<li>❌ Em PtP longo (6–8 km) a chuva forte joga para o backup; menos banda que o Wave Pro</li>
+</ul>
+<h3>Wave Nano — ~US$ 249</h3>
+<p>CPE padrão da família. Antena 60 GHz 41 dBi + backup 5 GHz 19 dBi.</p>
+<ul>
+<li><strong>Banda:</strong> 2 Gbps agregado · <strong>Alcance:</strong> até 5 km (4 km com AP Micro)</li>
+<li>✅ Gigabit real na ponta por preço de CPE; instalação simples (alinhamento assistido no app)</li>
+<li>❌ Só fala com APs Wave; sem visada perfeita não fecha enlace</li>
+</ul>
+<p><em>(Existe ainda o Wave Pico, cliente econômico de até 1,3 km — não considerado: as pontas do projeto ficam melhor servidas pelo Nano.)</em></p>
+<hr>
+<h2>Ubiquiti 5 GHz TDMA (airFiber / LTU)</h2>
+<p>Rádios proprietários em 5 GHz — <strong>imunes a chuva</strong> — com TDMA (sem colisão, latência estável com muitos clientes). Gestão UISP.</p>
+<h3>airFiber 5XHD — ~US$ 649</h3>
+<p>PtP "carrier class" em 5 GHz com tecnologia LTU, canal até 100 MHz, GPS sync (permite reuso de frequência entre setores).</p>
+<ul>
+<li><strong>Banda:</strong> ~1 Gbps real · <strong>Alcance:</strong> até 100 km (fecha 9–12 km com folga enorme)</li>
+<li>✅ Tronco que <strong>não degrada nunca</strong> com clima; filtragem forte contra interferência; a escolha "dorme tranquilo"</li>
+<li>❌ Teto de ~1 Gbps; usa espectro 5 GHz compartilhado com Wi-Fi da cidade (mitigado por GPS sync + canal limpo); PtP apenas</li>
+</ul>
+<h3>LTU Rocket — ~US$ 299 (+ setorial airMAX ~US$ 150)</h3>
+<p>AP PtMP 5 GHz da linha LTU, antena conectorizada (usa setorial airMAX de 60°/90°/120°).</p>
+<ul>
+<li><strong>Banda:</strong> até ~600 Mbps por cliente (canal 50 MHz) · TDMA proprietário</li>
+<li>✅ PtMP 5 GHz mais rápido do mercado não-licenciado; aguenta dezenas de clientes; imune a chuva</li>
+<li>❌ Não interopera com airMAX AC nem com Wave; precisa comprar a setorial separada</li>
+</ul>
+<h3>LTU LR — ~US$ 179</h3>
+<p>CPE de longo alcance da linha LTU, prato integrado de alto ganho.</p>
+<ul>
+<li><strong>Banda:</strong> 300–600 Mbps · <strong>Alcance:</strong> dezenas de km (cobre de 0,12 a 7,6 km deste projeto com folga)</li>
+<li>✅ Uma CPE única para todas as distâncias do projeto; imune a chuva; barata</li>
+<li>❌ Sem gigabit; só fala com APs LTU (Rocket)</li>
+</ul>
+<hr>
+<h2>MikroTik (opção econômica)</h2>
+<p>RouterOS/RouterBOARD — integra com o automais.io já usado no rollout. TDMA próprio (Nv2).</p>
+<h3>NetMetal ax + prato mANT30 — ~US$ 249 + US$ 115</h3>
+<p>Rádio PtP 802.11ax conectorizado + prato 30 dBi.</p>
+<ul>
+<li><strong>Banda:</strong> ~400–700 Mbps reais em canal 80 MHz · <strong>Alcance:</strong> 10–15+ km</li>
+<li>✅ Melhor PtP MikroTik; imune a chuva; RouterOS completo (o rádio é também roteador)</li>
+<li>❌ Metade da banda do AF-5XHD na prática; 802.11 mesmo com Nv2 sofre mais com interferência que LTU</li>
+</ul>
+<h3>mANTBox 19s — ~US$ 149</h3>
+<p>AP setorial integrado: antena 120° 19 dBi + rádio 5 GHz ac.</p>
+<ul>
+<li><strong>Banda:</strong> ~200–400 Mbps agregado por setor (dividido entre clientes) · Nv2 TDMA</li>
+<li>✅ Setor largo e barato; um produto só (antena+rádio)</li>
+<li>❌ Geração ac; agregado modesto para 17 clientes com tráfego de imagem</li>
+</ul>
+<h3>LHG 5 ac — ~US$ 89 · LHG XL 5 ac — ~US$ 99</h3>
+<p>CPE/PtP de grade: 24,5 dBi (LHG) / 27 dBi (XL).</p>
+<ul>
+<li><strong>Banda:</strong> ~200–300 Mbps · <strong>Alcance:</strong> LHG até ~10 km, XL um pouco mais</li>
+<li>✅ Muito barato; leve; ganho alto ajuda em folga apertada</li>
+<li>❌ Banda limitada; grade aberta acumula menos vento mas exige bom aterramento</li>
+</ul>
+<h3>SXTsq 5 ac — ~US$ 49</h3>
+<p>CPE painel 16 dBi para curta distância (≤ 2–3 km).</p>
+<ul>
+<li>✅ O menor custo por ponta do mercado</li>
+<li>❌ ~200 Mbps; só para célula curta</li>
+</ul>
+<h3>Cube Pro 60 (Wireless Wire Cube Pro) — ~US$ 249</h3>
+<p>PtP 60 GHz (802.11ad) com failover 5 GHz embutido.</p>
+<ul>
+<li><strong>Banda:</strong> ~1 Gbps agregado · <strong>Alcance:</strong> até ~2 km</li>
+<li>✅ Gigabit barato em salto curto; espectro vazio</li>
+<li>❌ Só PtP curto; 802.11ad não fala com a família Wave da Ubiquiti</li>
+</ul>
+<h3>OmniTik 5 ac — ~US$ 95</h3>
+<p>AP omnidirecional 7,5 dBi com 5 portas Ethernet.</p>
+<ul>
+<li>✅ 360° num produto só; serve célula pequena (≤ 2–3 km) com poucas pontas</li>
+<li>❌ Ganho baixo + agregado dividido entre todos — não recomendado para 17 pontas com tráfego sério</li>
+</ul>
+<hr>
+<h2>Matriz de compatibilidade</h2>
+<p><strong>Regra geral: rádio só fala com rádio da MESMA família/protocolo.</strong> Entre famílias diferentes a integração é sempre via cabo Ethernet no mesmo site (ex.: um Wave Pro entrega o tronco num switch e um LTU Rocket distribui dali).</p>
+<div class="tw"><table><thead><tr><th></th><th>Wave (UI 60G)</th><th>airFiber 5XHD</th><th>LTU</th><th>airMAX AC</th><th>MikroTik 5G (Nv2)</th><th>MikroTik 60G (11ad)</th></tr></thead><tbody>
+<tr><td><strong>Wave (UI 60G)</strong></td><td>✅ AP↔cliente e PtP dentro da família</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td></tr>
+<tr><td><strong>airFiber 5XHD</strong></td><td>❌</td><td>✅ par fechado (mesmo modelo nas 2 pontas)</td><td>⚠️ mesma tecnologia LTU, mas trate cada enlace como par do mesmo modelo</td><td>❌</td><td>❌</td><td>❌</td></tr>
+<tr><td><strong>LTU (Rocket/LR)</strong></td><td>❌</td><td>⚠️</td><td>✅ Rocket (AP) ↔ LTU clientes</td><td>❌</td><td>❌</td><td>❌</td></tr>
+<tr><td><strong>airMAX AC</strong></td><td>❌</td><td>❌</td><td>❌</td><td>✅</td><td>⚠️ só em modo 802.11 padrão, perdendo TDMA</td><td>❌</td></tr>
+<tr><td><strong>MikroTik 5G</strong></td><td>❌</td><td>❌</td><td>❌</td><td>⚠️</td><td>✅ Nv2 entre MikroTiks</td><td>❌</td></tr>
+<tr><td><strong>MikroTik 60G</strong></td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>✅</td></tr>
+</tbody></table></div>
+<p>Gestão: toda a linha Ubiquiti (Wave, airFiber, LTU) entra no <strong>UISP</strong>; toda a linha MikroTik entra no <strong>RouterOS/automais.io</strong>. Misturar fabricantes = dois painéis de gestão.</p>
+<h2>Resumo de decisão rápida</h2>
+<div class="tw"><table><thead><tr><th>Necessidade</th><th>Melhor escolha</th><th>Alternativa</th></tr></thead><tbody>
+<tr><td>Tronco 9–12 km com máxima banda</td><td>Wave Pro (5,4 Gbps, degrada na chuva)</td><td>—</td></tr>
+<tr><td>Tronco 9–12 km que nunca degrada</td><td>airFiber 5XHD (~1 Gbps)</td><td>NetMetal ax + mANT30 (mais barato, ~½ da banda)</td></tr>
+<tr><td>Célula urbana ≤ 4 km, gigabit por ponta</td><td>Wave AP Micro + Wave Nano</td><td>LTU Rocket + LTU LR (imune a chuva, sem gigabit)</td></tr>
+<tr><td>Salto PtP 4–8 km</td><td>par Wave LR (2 Gbps c/ failover)</td><td>LTU (par Rocket+LR) ou LHG XL 5 ac</td></tr>
+<tr><td>Salto PtP ≤ 2 km gigabit barato</td><td>Cube Pro 60 (MikroTik)</td><td>Wave Nano ↔ AP</td></tr>
+<tr><td>Ponta de custo mínimo</td><td>SXTsq 5 ac</td><td>LHG 5 ac</td></tr>
+</tbody></table></div>
+<h2>Fontes</h2>
+<ul>
+<li><a href="https://techspecs.ui.com/uisp/60ghz-wireless/wave-pro">Wave Pro — Tech Specs</a> · <a href="https://techspecs.ui.com/uisp/60ghz-wireless/wave-ap">Wave AP — Tech Specs</a> · <a href="https://techspecs.ui.com/uisp/60ghz-wireless/wave-nano">Wave Nano — Tech Specs</a></li>
+<li><a href="https://www.amazon.com/Ubiquiti-Multipoint-Sectoral-Coverage-Symmetrical/dp/B0CZ7H6MK5">Wave AP Micro — spec</a> · <a href="https://store.ui.com/us/en/products/wave-lr">Wave LR — Ubiquiti Store</a></li>
+<li><a href="https://dl.ubnt.com/datasheets/airfiber/airFiber_5XHD_DS.pdf">airFiber 5XHD — datasheet</a></li>
+<li>MikroTik: datasheets em mikrotik.com (NetMetal ax, mANTBox 19s, LHG, SXTsq, Cube Pro 60, OmniTik)</li>
+</ul>
+</main>
+</body>
+</html>

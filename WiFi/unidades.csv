@@ -1,0 +1,31 @@
+id,nome,grupo,endereco,lat,long,precisao,endereco_google,gestor
+0,COMPLEXO REGULADOR,ESPECIALIZADA,"Rua Albatroz, Lt.1320 Qd.46, Parque Nanci",-22.9153017,-42.8476915,RUA,"R. Albatroz - Itapeba",Vivian / 21 997670154
+1,Ambulatório Péricles Siqueira Pereira,ESPECIALIZADA,"Rua Dr. Milton de Souza Pacheco, 6 - Parque Eldorado",-22.9181287,-42.8238067,EXATA,"R. Dr. Milton de Souza Pacheco, 6 - Camburi",Adriana / 21 972252643
+2,Central de Assistência Farmacêutica - CAF,ESPECIALIZADA,"Rua Ary Spindola, 23 - Flamengo/Centro",-22.9179637,-42.8105967,EXATA,"R. Ari Spindola, 23 - Jardim Adalberto Alves",Daniele / 21 989861277
+3,CAPS III,ESPECIALIZADA,"Rua Clímaco Pereira, 259 - Centro",-22.9238190,-42.8152362,EXATA,"R. Clímaco Pereira, 259 - Eldorado",Lorena / 21 986221605
+4,CAPS AD (Álcool e Drogas),ESPECIALIZADA,"Rua Jovino Duarte de Oliveira, 23 - Centro",-22.9193892,-42.8265147,EXATA,"R. Jovino Duarte de Oliveira, 23 - Eldorado",Givana / 21 998134279
+5,CAPSI (Infantojuvenil),ESPECIALIZADA,"Rua Homero de Queiroz da Silva, 363 - Eldorado",-22.9149511,-42.8214897,VERIFICAR,"R. Eugênia Modesto da Silva, 363 - Eldorado",Sara / 21 997464692
+6,Centro de Diagnóstico e Tratamento - CDT,ESPECIALIZADA,"Rua Ary Spindola, 520 - Centro",-22.9218481,-42.8117550,EXATA,"R. Ari Spindola, 520 - Jardim Adalberto Alves",Adriana / 21 995072131
+7,CEO Boqueirão (Odonto),ESPECIALIZADA,"Av. Pref. Ivan Mundim, 737 - Araçatiba",-22.9291660,-42.8209490,EXATA,"Av. Pref. Ivan Mundin, 737 - Centro",Fred / 21 996997761
+8,CEO Itaipuaçu (Odonto),ESPECIALIZADA,"R. Prof. Cardoso de Menezes, s/n - Itaipuaçu",-22.9571704,-42.9621956,RUA,"R. Prof. Cardoso de Menezes - Jardim Atlântico Oeste",Isadora / 21 994529105
+9,CRAD (Reabilitação),ESPECIALIZADA,"Av. Roberto Silveira, 2158 - Flamengo",-22.9085023,-42.8011978,EXATA,"Av. Roberto Silveira, 2158 - Flamengo",Roberta / 21 986300335
+10,Centro Materno Infantil - CMI,ESPECIALIZADA,"Rua Clímaco Pereira, 375 - Centro",-22.9234375,-42.8155667,EXATA,"R. Clímaco Pereira, 375 - Centro",Jessé / 21 971724365
+11,CEREST,ESPECIALIZADA,"Rua Dr. Jovino Duarte, 2142 - Araçatiba",-22.9226334,-42.8263818,POI,"CEREST METRO 2 MARICÁ",Viviane / 21 981295699
+12,CIEVIS,ESPECIALIZADA,"Rua Clímaco Pereira, 367 - Centro (SMS 2o andar)",-22.9245125,-42.8143164,EXATA,"R. Clímaco Pereira, 367 - Eldorado",Daniela / 21 983510920
+13,CVI,ESPECIALIZADA,"Av. Roberto Silveira, 46 - Centro (TACO 1o andar)",-22.9164113,-42.8168522,EXATA,"Av. Roberto Silveira, 46 - Centro",
+14,Gerência Administrativa,ESPECIALIZADA,"Rua Clímaco Pereira, 367 - Centro (SMS 2o andar)",-22.9245125,-42.8143164,EXATA,"R. Clímaco Pereira, 367 - Eldorado (mesmo prédio da SMS)",
+15,Núcleo de Imunização,ESPECIALIZADA,"Rua Um, 50, Qd.02 - São José do Imbassaí",-22.9333264,-42.8720638,BAIRRO,"São José de Imbassaí (centroide do bairro)",André / 21 972734518
+16,SAD (Atendimento Domiciliar),ESPECIALIZADA,"Rua Adelaide Bezerra, 247",-22.9215783,-42.8166710,EXATA,"R. Adelaíde Bezerra, 247 - Eldorado",Ramile / 21 968812266
+17,SAE (Atendimento Especializado),ESPECIALIZADA,"Rua Joaquim Ferreira da Silva, Qd.160 Lt.03 - Araçatiba",-22.9203134,-42.8261736,VERIFICAR,"R. Noventa e Três - Maricá",Daniele / 21 996306658
+18,SRT I - Araçatiba,ESPECIALIZADA,"Rua Alberto Santos Dumont, 326 - Araçatiba",-22.9203151,-42.8242338,EXATA,"R. Alberto Santos Dumont, 326 - Eldorado",Áquila / 21 997169385
+19,SRT II - Centro,ESPECIALIZADA,"Rua Cel. Bittencourt, Qd.10 Lt.08 Casa 01 - Boa Vista",-22.9191122,-42.8178375,RUA,"R. Cel. Bitencourt - Maricá",
+20,SRT III - Centro,ESPECIALIZADA,"Rua Bacellar da Silva Bezerra, Qd.10 Lt.08 Casa 02 - Boa Vista",-22.9210418,-42.8153285,RUA,"R. Bacellar da Silva Bezerra - Maricá",
+21,TFD (Transporte Fora do Domicílio),ESPECIALIZADA,"Rua das Gaivotas, 12 - Camburi",-22.9074036,-42.8170650,EXATA,"R. das Gaivotas, 12 - Camburi",Júlio / 21 985233170
+22,Transporte Sanitário,ESPECIALIZADA,"Rua das Gaivotas, 12 - Camburi",-22.9074036,-42.8170650,EXATA,"R. das Gaivotas, 12 - Camburi (mesmo endereço do TFD)",Sandra / 21 968816908
+23,Unidade Móvel de Odontologia (itinerante),ESPECIALIZADA,Itinerante,,,SEM_PONTO_FIXO,,
+24,Unidade Móvel de Odontologia - Clube Maricá,ESPECIALIZADA,"Rua Álvaro de Castro, 172 - Centro",-22.9192494,-42.8194916,EXATA,"R. Álvares de Castro, 172 - Eldorado",
+25,Vigilância Epidemiológica/Sanitária/Ambiental,ESPECIALIZADA,"Av. Roberto Silveira, 46 - Centro (TACO 3o andar)",-22.9164113,-42.8168522,EXATA,"Av. Roberto Silveira, 46 - Centro (mesmo prédio do CVI)",Willian / 21 997516738
+26,Hospital Municipal Conde Modesto Leal - HMCML,RUE,"Rua Domício da Gama, 433 - Centro",-22.9227833,-42.8166337,POI,"Hospital Municipal Conde Modesto Leal",
+27,UPA Inoã,RUE,"Rua Euclides Paulo da Silva, s/n - Inoã",-22.9136442,-42.9303968,POI,"UPA Inoã",
+28,UPA Ponta Negra,RUE,"Rua Alcebíades Teodoro Pereira, s/n - Ponta Negra",-22.9035347,-42.7271587,POI,"UPA Ponta Negra",
+29,Posto Santa Rita,RUE,,,,SEM_ENDERECO,,

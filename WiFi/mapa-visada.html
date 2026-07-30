@@ -1,0 +1,605 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<title>Enlace de Rádio — Unidades Especializadas SMS Maricá</title>
+<style>
+  :root {
+    --bg: #f4f6f5;
+    --surface: #ffffff;
+    --ink: #1b2427;
+    --muted: #5c6b70;
+    --faint: #8a979b;
+    --grid: #dde4e3;
+    --border: #d3dcda;
+    --ptmp: #0782a1;
+    --ptmp-soft: rgba(7,130,161,.28);
+    --ptp: #b45309;
+    --blocked: #b3383d;
+    --terrain: #c9d4cf;
+    --warn-bg: #fdf3e3;
+    --warn-border: #e4c48a;
+    --halo: #f4f6f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14181b; --surface: #1c2226; --ink: #e6ebec; --muted: #93a1a6;
+      --faint: #6b787d; --grid: #262e33; --border: #2e383d;
+      --ptmp: #189aa8; --ptmp-soft: rgba(24,154,168,.32); --ptp: #c67927;
+      --blocked: #d16a6e; --terrain: #2f3a3c;
+      --warn-bg: #2a2117; --warn-border: #59431f; --halo: #14181b;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14181b; --surface: #1c2226; --ink: #e6ebec; --muted: #93a1a6;
+    --faint: #6b787d; --grid: #262e33; --border: #2e383d;
+    --ptmp: #189aa8; --ptmp-soft: rgba(24,154,168,.32); --ptp: #c67927;
+    --blocked: #d16a6e; --terrain: #2f3a3c;
+    --warn-bg: #2a2117; --warn-border: #59431f; --halo: #14181b;
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f6f5; --surface: #ffffff; --ink: #1b2427; --muted: #5c6b70;
+    --faint: #8a979b; --grid: #dde4e3; --border: #d3dcda;
+    --ptmp: #0782a1; --ptmp-soft: rgba(7,130,161,.28); --ptp: #b45309;
+    --blocked: #b3383d; --terrain: #c9d4cf;
+    --warn-bg: #fdf3e3; --warn-border: #e4c48a; --halo: #f4f6f5;
+  }
+
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.55; padding: 28px 20px 64px;
+  }
+  .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace; }
+  .wrap { max-width: 1160px; margin: 0 auto; }
+
+  .titlebar {
+    border: 1px solid var(--border); background: var(--surface);
+    display: grid; grid-template-columns: 1fr auto auto auto; align-items: stretch;
+    margin-bottom: 28px;
+  }
+  .titlebar .cell { padding: 14px 18px; border-left: 1px solid var(--border); }
+  .titlebar .cell:first-child { border-left: none; }
+  .titlebar h1 {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace;
+    font-size: 1.05rem; font-weight: 600; letter-spacing: .04em;
+    text-transform: uppercase; text-wrap: balance; margin: 0 0 2px;
+  }
+  .titlebar .sub { color: var(--muted); font-size: .82rem; }
+  .kv { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .09em; white-space: nowrap; }
+  .kv b { display: block; color: var(--ink); font-size: .82rem; letter-spacing: .03em; margin-top: 3px; font-weight: 600; }
+  @media (max-width: 860px) { .titlebar { grid-template-columns: 1fr 1fr; } .titlebar .cell:first-child { grid-column: 1 / -1; } }
+
+  h2 {
+    font-size: .78rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .12em; color: var(--muted); margin: 34px 0 10px;
+  }
+  h2 .n { color: var(--ptmp); margin-right: 8px; }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); position: relative; }
+  .panel svg { display: block; width: 100%; height: auto; }
+
+  .maprow { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(240px, 1fr); gap: 16px; align-items: start; }
+  @media (max-width: 860px) { .maprow { grid-template-columns: 1fr; } }
+
+  .side { display: flex; flex-direction: column; gap: 16px; }
+  .legend { background: var(--surface); border: 1px solid var(--border); padding: 14px 16px; font-size: .78rem; }
+  .legend .row { display: flex; align-items: center; gap: 10px; margin: 5px 0; color: var(--muted); }
+  .legend svg { flex: none; }
+  .index { background: var(--surface); border: 1px solid var(--border); padding: 12px 16px; font-size: .76rem; }
+  .index ol { list-style: none; margin: 0; padding: 0; }
+  .index li { display: flex; gap: 7px; padding: 2.5px 0; color: var(--ink); align-items: baseline; }
+  .index li .id { color: var(--ptmp); min-width: 2.4em; text-align: right; font-weight: 600; }
+  .index li .d { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .index li .ok { color: var(--ptmp); font-weight: 600; }
+  .index li .bad { color: var(--blocked); font-weight: 600; }
+  .index li .via { color: var(--ptp); font-weight: 600; }
+
+  .groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+  .gcard { background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--ptmp); padding: 12px 16px 14px; }
+  .gcard.ptp { border-top-color: var(--ptp); }
+  .gcard.bad { border-top-color: var(--blocked); }
+  .gcard h3 { margin: 0 0 2px; font-size: .82rem; letter-spacing: .02em; }
+  .gcard .cnt { font-family: ui-monospace, Consolas, monospace; font-size: 1.5rem; font-weight: 600; line-height: 1.2; }
+  .gcard p { margin: 4px 0 0; font-size: .76rem; color: var(--muted); }
+
+  table { border-collapse: collapse; width: 100%; background: var(--surface); border: 1px solid var(--border); font-size: .82rem; }
+  th, td { text-align: left; padding: 8px 13px; border-top: 1px solid var(--border); }
+  thead th { border-top: none; font-size: .66rem; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); font-weight: 600; }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td .ok { color: var(--ptmp); font-weight: 600; }
+  td .bad { color: var(--blocked); font-weight: 600; }
+  .tag { display: inline-block; font-size: .66rem; padding: 1px 7px; border: 1px solid var(--ptmp); color: var(--ptmp); border-radius: 999px; letter-spacing: .04em; white-space: nowrap; }
+  .tag.ptp { border-color: var(--ptp); color: var(--ptp); }
+  .tag.bad { border-color: var(--blocked); color: var(--blocked); }
+  .tablewrap { overflow-x: auto; }
+
+  .profiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 12px; }
+  .prof { background: var(--surface); border: 1px solid var(--border); padding: 10px 12px 6px; }
+  .prof h4 { margin: 0 0 2px; font-size: .76rem; font-weight: 600; font-family: ui-monospace, Consolas, monospace; letter-spacing: .02em; }
+  .prof .meta { font-size: .7rem; color: var(--muted); margin-bottom: 4px; }
+  .prof svg { display: block; width: 100%; height: auto; }
+
+  .note {
+    background: var(--warn-bg); border: 1px solid var(--warn-border);
+    padding: 14px 18px; font-size: .84rem; margin-top: 16px;
+  }
+  .note ul { margin: 6px 0 0; padding-left: 18px; }
+  .note li { margin: 3px 0; }
+
+  .tooltip {
+    position: absolute; pointer-events: none; z-index: 5;
+    background: var(--surface); border: 1px solid var(--border);
+    box-shadow: 0 4px 14px rgba(0,0,0,.18);
+    padding: 8px 11px; font-size: .74rem; max-width: 260px;
+    display: none; line-height: 1.45;
+  }
+  .tooltip .t { font-weight: 600; }
+  .tooltip .m { color: var(--muted); }
+
+  .caption { color: var(--muted); font-size: .74rem; margin-top: 8px; }
+  footer { color: var(--faint); font-size: .72rem; margin-top: 40px; border-top: 1px solid var(--border); padding-top: 12px; }
+
+  circle.site, line.link { transition: opacity .15s; }
+  @media (prefers-reduced-motion: reduce) { circle.site, line.link { transition: none; } }
+</style>
+
+<div class="wrap">
+  <div class="titlebar">
+    <div class="cell">
+      <h1>Enlace de rádio — unidades especializadas</h1>
+      <div class="sub">SMS Maricá · estudo de visada com terreno SRTM 30 m · 5,8 GHz · k=4/3 · 60% Fresnel</div>
+    </div>
+    <div class="cell kv">Coordenadas<b class="mono">Google Maps · 29/07/2026</b></div>
+    <div class="cell kv">Elevação<b class="mono">SRTM 30 m</b></div>
+    <div class="cell kv">Mastros<b class="mono">hub 15 m · pontas 10 m · rep. 20 m</b></div>
+  </div>
+
+  <h2><span class="n">01</span>Grupos de visada calculados</h2>
+  <div class="groups">
+    <div class="gcard"><h3>Grupo A — direto do hub (sede SMS)</h3><div class="cnt mono">15 pontas ✓</div>
+      <p>PtMP em raio ≤ 3,6 km, incluindo o Complexo Regulador. Mais 2 marginais (TACO −0,8 m, SRT III −4 m) que fecham com mastro um pouco mais alto.</p></div>
+    <div class="gcard ptp"><h3>Grupo B — via REP-1 · Serra (~345 m)</h3><div class="cnt mono">3 pontas ✓</div>
+      <p>CEO Itaipuaçu (+11 m), UPA Inoã (+14 m), Núcleo de Imunização (+14 m). A serra enxerga o hub com +18 m de folga.</p></div>
+    <div class="gcard ptp"><h3>Grupo C — via REP-2 · Caju/Itaocaia (~301 m)</h3><div class="cnt mono">3 pontas ✓</div>
+      <p>UPA Ponta Negra (+2 m, apertada), TFD/Transporte (+4 m), CRAD (+6 m). Alimentada pela REP-1 (backbone +25 m em 11,9 km).</p></div>
+    <div class="gcard bad"><h3>Grupo D — sem visada nas rotas testadas</h3><div class="cnt mono">2 pontas ✗</div>
+      <p>CAF (−10 m) e CEO Boqueirão (−21 m): morros de 36–44 m colados no caminho. Opções: mastro alto, NLOS curto ou fibra local.</p></div>
+  </div>
+
+  <h2><span class="n">02</span>Topologia proposta — 24 km de ponta a ponta</h2>
+  <div class="panel" id="overviewPanel"></div>
+  <p class="caption">▲ = repetidora proposta (coordenada é o pico aproximado no raster SRTM — exige site survey). Linhas laranja = backbone e enlaces PtP; rótulo = distância. O retângulo tracejado é a célula PtMP do Centro, detalhada abaixo.</p>
+
+  <h2><span class="n">03</span>Célula Centro/Eldorado — PtMP a partir da sede da SMS</h2>
+  <div class="maprow">
+    <div>
+      <div class="panel" id="detailPanel"></div>
+      <p class="caption">Números = id da unidade no CSV. Linha tracejada vermelha = sem visada do hub; tracejada azul = marginal (resolve com mastro). CRAD e TFD são servidos pela REP-2 (▲ a nordeste). Passe o mouse para detalhes.</p>
+    </div>
+    <div class="side">
+      <div class="legend" id="legendBox"></div>
+      <div class="index" id="indexBox"></div>
+    </div>
+  </div>
+
+  <h2><span class="n">04</span>Enlaces — distância, azimute e folga de visada</h2>
+  <div class="tablewrap">
+    <table id="ptpTable">
+      <thead><tr><th>Enlace</th><th>Tipo</th><th>Distância</th><th>Azimute</th><th>Folga*</th><th>Equipamento (opção Premium)</th><th>Observação</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <p class="caption">* Pior folga ao longo do caminho: altura da linha de visada menos (terreno + curvatura k=4/3 + 60% da 1ª zona de Fresnel a 5,8 GHz). Positiva = visada limpa.<br>
+  Equipamento da <b>opção Premium</b> (Ubiquiti Wave, 60 GHz + failover 5 GHz integrado — multi-gigabit, degrada p/ centenas de Mbps em chuva forte). Alternativa <b>intermediária</b> imune a chuva: airFiber 5XHD no tronco + LTU Rocket/LTU LR nas células (~1 Gbps tronco, 300–600 Mbps por ponta) — detalhes no WiFi/README.md.</p>
+
+  <h2><span class="n">05</span>Perfis de elevação</h2>
+  <div class="profiles" id="profilesBox"></div>
+  <p class="caption">Terreno efetivo (SRTM + curvatura da Terra) em cinza; linha reta = visada entre os topos dos mastros; ● = ponto crítico com a folga anotada.</p>
+
+  <div class="note">
+    <b>Limites deste estudo.</b>
+    <ul>
+      <li><b>SRTM é modelo de superfície de ~2000, resolução 30 m:</b> não enxerga prédios, vegetação atual nem torres. Folgas menores que ~10 m (UPA Ponta Negra +2, TFD +4, CAPSI +4, SRT II +3) exigem confirmação em campo.</li>
+      <li><b>REP-1 e REP-2 são picos do raster, não sites reais:</b> verificar acesso, energia e propriedade — a Serra do Espraiado tem trilhas e antenas existentes que podem servir de referência.</li>
+      <li><b>Núcleo de Imunização (15):</b> coordenada é centroide de bairro — a folga +14 via REP-1 usa esse ponto aproximado.</li>
+      <li><b>CAPSI (5) e SAE (17):</b> Google devolveu logradouro diferente do cadastrado; confirmar o ponto.</li>
+      <li><b>Posto Santa Rita (29)</b> segue sem endereço na relação da Telefonia.</li>
+      <li>Dados completos (50 enlaces testados, perfis ponto a ponto) em <span class="mono">WiFi/perfis-visada.json</span>.</li>
+    </ul>
+  </div>
+
+  <footer class="mono">Telefonia/registro/unidades.csv + Google Maps + SRTM30m via opentopodata.org · distâncias equiretangulares · premissas: 5,8 GHz, k=4/3, 60% F1, mastros 15/10/20 m</footer>
+</div>
+
+<div class="tooltip" id="tip"></div>
+
+<script>
+const SITES = [
+  { id:"0",  ids:"0",     nome:"Complexo Regulador",              end:"Rua Albatroz, Parque Nanci",                lat:-22.9153017, lng:-42.8476915, elev:10, flag:"RUA" },
+  { id:"1",  ids:"1",     nome:"Ambulatório Péricles Siqueira",   end:"R. Dr. Milton de Souza Pacheco, 6",         lat:-22.9181287, lng:-42.8238067, elev:4 },
+  { id:"2",  ids:"2",     nome:"CAF (Farmacêutica)",              end:"R. Ari Spindola, 23",                       lat:-22.9179637, lng:-42.8105967, elev:18 },
+  { id:"3",  ids:"3",     nome:"CAPS III",                        end:"R. Clímaco Pereira, 259",                   lat:-22.9238190, lng:-42.8152362, elev:10 },
+  { id:"4",  ids:"4",     nome:"CAPS AD",                         end:"R. Jovino Duarte de Oliveira, 23",          lat:-22.9193892, lng:-42.8265147, elev:4 },
+  { id:"5",  ids:"5",     nome:"CAPSI",                           end:"R. Homero de Queiroz da Silva, 363",        lat:-22.9149511, lng:-42.8214897, elev:6, flag:"VERIFICAR" },
+  { id:"6",  ids:"6",     nome:"CDT",                             end:"R. Ari Spindola, 520",                      lat:-22.9218481, lng:-42.8117550, elev:20 },
+  { id:"7",  ids:"7",     nome:"CEO Boqueirão",                   end:"Av. Pref. Ivan Mundim, 737",                lat:-22.9291660, lng:-42.8209490, elev:14 },
+  { id:"8",  ids:"8",     nome:"CEO Itaipuaçu",                   end:"R. Prof. Cardoso de Menezes, s/n",          lat:-22.9571704, lng:-42.9621956, elev:6, flag:"RUA" },
+  { id:"9",  ids:"9",     nome:"CRAD (Reabilitação)",             end:"Av. Roberto Silveira, 2158 — Flamengo",     lat:-22.9085023, lng:-42.8011978, elev:51 },
+  { id:"10", ids:"10",    nome:"CMI (Materno Infantil)",          end:"R. Clímaco Pereira, 375",                   lat:-22.9234375, lng:-42.8155667, elev:10 },
+  { id:"11", ids:"11",    nome:"CEREST",                          end:"R. Jovino Duarte de Oliveira, 2142",        lat:-22.9226334, lng:-42.8263818, elev:5 },
+  { id:"12", ids:"12+14", nome:"Sede SMS — CIEVIS + Ger. Adm.",   end:"R. Clímaco Pereira, 367 (2º andar)",        lat:-22.9245125, lng:-42.8143164, elev:10, hub:true },
+  { id:"13", ids:"13+25", nome:"TACO — CVI + Vigilância",         end:"Av. Roberto Silveira, 46",                  lat:-22.9164113, lng:-42.8168522, elev:9 },
+  { id:"15", ids:"15",    nome:"Núcleo de Imunização",            end:"Rua Um, 50 — São José do Imbassaí",         lat:-22.9333264, lng:-42.8720638, elev:9, flag:"BAIRRO" },
+  { id:"16", ids:"16",    nome:"SAD (Atend. Domiciliar)",         end:"R. Adelaíde Bezerra, 247",                  lat:-22.9215783, lng:-42.8166710, elev:11 },
+  { id:"17", ids:"17",    nome:"SAE (Atend. Especializado)",      end:"R. Joaquim Ferreira da Silva — Araçatiba",  lat:-22.9203134, lng:-42.8261736, elev:6, flag:"VERIFICAR" },
+  { id:"18", ids:"18",    nome:"SRT I — Araçatiba",               end:"R. Alberto Santos Dumont, 326",             lat:-22.9203151, lng:-42.8242338, elev:5 },
+  { id:"19", ids:"19",    nome:"SRT II — Centro",                 end:"R. Cel. Bittencourt — Boa Vista",           lat:-22.9191122, lng:-42.8178375, elev:14, flag:"RUA" },
+  { id:"20", ids:"20",    nome:"SRT III — Centro",                end:"R. Bacellar da Silva Bezerra — Boa Vista",  lat:-22.9210418, lng:-42.8153285, elev:7, flag:"RUA" },
+  { id:"21", ids:"21+22", nome:"TFD + Transporte Sanitário",      end:"R. das Gaivotas, 12 — Camburi",             lat:-22.9074036, lng:-42.8170650, elev:8 },
+  { id:"24", ids:"24",    nome:"Un. Móvel Odonto — Clube Maricá", end:"R. Álvares de Castro, 172",                 lat:-22.9192494, lng:-42.8194916, elev:5 },
+  { id:"26", ids:"26",    nome:"HMCML (Hospital)",                end:"R. Domício da Gama, 433",                   lat:-22.9227833, lng:-42.8166337, elev:11 },
+  { id:"27", ids:"27",    nome:"UPA Inoã",                        end:"R. Euclides Paulo da Silva, s/n",           lat:-22.9136442, lng:-42.9303968, elev:19 },
+  { id:"28", ids:"28",    nome:"UPA Ponta Negra",                 end:"R. Alcebíades Teodoro Pereira, s/n",        lat:-22.9035347, lng:-42.7271587, elev:19 },
+  { id:"R1", ids:"R1",   nome:"REP-1 — Serra do Espraiado",      end:"pico ~345 m (aprox. no raster)",            lat:-22.9162,    lng:-42.9030,    elev:345, rep:true },
+  { id:"R2", ids:"R2",   nome:"REP-2 — Morro Caju/Itaocaia",     end:"pico ~301 m (aprox. no raster)",            lat:-22.90939,   lng:-42.78718,   elev:301, rep:true },
+];
+const HUB = SITES.find(s => s.hub);
+const KMLAT = 110.86, KMLNG = 102.53;
+const kmE = (a, b) => (b.lng - a.lng) * KMLNG;
+const kmN = (a, b) => (b.lat - a.lat) * KMLAT;
+const dist = (a, b) => Math.hypot(kmE(a, b), kmN(a, b));
+const azim = (a, b) => { let d = Math.atan2(kmE(a, b), kmN(a, b)) * 180 / Math.PI; return (d + 360) % 360; };
+const fmtKm = k => k.toFixed(2).replace(".", ",") + " km";
+const fmtAz = a => Math.round(a) + "°";
+const fmtM = m => (m > 0 ? "+" : "−") + Math.abs(m).toFixed(1).replace(".", ",") + " m";
+const byId = id => SITES.find(s => s.id === id);
+
+// folga da visada hub → ponta (mastros 15/10 m), calculada com SRTM
+const FOLGA_HUB = { "0":9.6, "1":7.6, "2":-10, "3":10.1, "4":8.2, "5":3.8, "6":7.7, "7":-20.6, "9":-9.2,
+  "10":9.1, "11":7.2, "13":-0.8, "16":7.6, "17":9.9, "18":9.3, "19":2.5, "20":-4, "21":-13, "24":7.9, "26":10.9 };
+
+// topologia proposta (folgas calculadas)
+const LINKS = [
+  { a:"12", b:"R1", tipo:"backbone", folga:18.2,  eq:"par Wave Pro",                    obs:"alimenta todo o oeste" },
+  { a:"R1", b:"R2", tipo:"backbone", folga:25.2,  eq:"par Wave Pro",                    obs:"cruza o vale do centro de pico a pico" },
+  { a:"12", b:"0",  tipo:"ptp",      folga:9.6,   eq:"Wave Nano → setor oeste do hub",  obs:"vira cliente PtMP do hub (3,6 km ≤ 4 km)" },
+  { a:"R1", b:"27", tipo:"ptp",      folga:13.8,  eq:"par Wave LR",                     obs:"UPA Inoã fica no pé da serra" },
+  { a:"R1", b:"8",  tipo:"ptp",      folga:11.4,  eq:"par Wave LR",                     obs:"desce a serra até Itaipuaçu" },
+  { a:"R1", b:"15", tipo:"ptp",      folga:14.3,  eq:"par Wave LR",                     obs:"coordenada da ponta é centroide de bairro" },
+  { a:"R2", b:"28", tipo:"ptp",      folga:2.2,   eq:"par Wave LR",                     obs:"folga apertada — confirmar em campo" },
+  { a:"R2", b:"21", tipo:"ptp",      folga:3.6,   eq:"Wave Nano → AP Micro da REP-2",   obs:"TFD + Transporte Sanitário" },
+  { a:"R2", b:"9",  tipo:"ptp",      folga:5.8,   eq:"Wave Nano → AP Micro da REP-2",   obs:"CRAD já está a 51 m de altitude" },
+];
+// pontas PtMP do hub (célula centro) — exclui 9 e 21 (vão pela REP-2)
+const SPOKES = SITES.filter(s => !s.hub && !s.rep && !["0","8","15","27","28","9","21"].includes(s.id));
+
+const SVGNS = "http://www.w3.org/2000/svg";
+const el = (n, at, parent) => {
+  const e = document.createElementNS(SVGNS, n);
+  for (const k in at) e.setAttribute(k, at[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+};
+
+const tip = document.getElementById("tip");
+function bindTip(node, html) {
+  node.addEventListener("pointerenter", () => { tip.innerHTML = html; tip.style.display = "block"; });
+  node.addEventListener("pointermove", ev => {
+    const pad = 14;
+    let x = ev.clientX + pad, y = ev.clientY + pad;
+    const r = tip.getBoundingClientRect();
+    if (x + r.width > innerWidth - 8) x = ev.clientX - r.width - pad;
+    if (y + r.height > innerHeight - 8) y = ev.clientY - r.height - pad;
+    tip.style.left = (x + scrollX) + "px";
+    tip.style.top = (y + scrollY) + "px";
+  });
+  node.addEventListener("pointerleave", () => { tip.style.display = "none"; });
+}
+const siteTip = s => {
+  const f = FOLGA_HUB[s.id];
+  return `<div class="t">${s.rep ? s.nome : (s.ids !== s.id ? "ids " + s.ids + " · " : "id " + s.id + " · ") + (s.rep ? "" : s.nome)}</div>
+  <div class="m">${s.end}</div>
+  <div class="m mono">${s.lat.toFixed(6)}, ${s.lng.toFixed(6)} · solo ${s.elev} m</div>
+  <div class="m">${s.flag ? "precisão: " + s.flag.toLowerCase() + " · " : ""}${s.hub ? "hub proposto (torre 15 m)" : s.rep ? "repetidora proposta (torre 20 m)" : "hub a " + fmtKm(dist(HUB, s)) + (f !== undefined ? " · folga " + fmtM(f) : "")}</div>`;
+};
+
+function drawSite(g, s, x, y, r, showNum) {
+  if (s.rep) {
+    const tr = el("path", { d: `M ${x} ${y - r - 2} L ${x + r + 1.5} ${y + r - 1} L ${x - r - 1.5} ${y + r - 1} Z`,
+      fill: "var(--ptp)", stroke: "var(--halo)", "stroke-width": 1.5 }, g);
+  } else {
+    el("circle", {
+      class: "site", cx: x, cy: y, r: s.hub ? r + 2.5 : r,
+      fill: s.flag ? "var(--surface)" : (s.hub ? "var(--ptmp)" : "var(--ink)"),
+      stroke: s.flag ? "var(--ptp)" : "var(--halo)",
+      "stroke-width": s.flag ? 1.6 : 1.5,
+      "stroke-dasharray": s.flag ? "2.5 2" : "none",
+    }, g);
+    if (s.hub) el("circle", { cx: x, cy: y, r: r + 7, fill: "none", stroke: "var(--ptmp)", "stroke-width": 1, opacity: .55 }, g);
+  }
+  const hit = el("circle", { cx: x, cy: y, r: Math.max(r + 8, 12), fill: "transparent", style: "cursor:help" }, g);
+  bindTip(hit, siteTip(s));
+  if (showNum) {
+    const [dx, dy] = s.off || [8, -5];
+    el("text", {
+      x: x + dx, y: y + dy, "font-size": 10.5, "font-weight": 600,
+      "font-family": "ui-monospace, Consolas, monospace",
+      fill: s.hub ? "var(--ptmp)" : s.rep ? "var(--ptp)" : "var(--muted)",
+      stroke: "var(--halo)", "stroke-width": 3, "paint-order": "stroke",
+      "text-anchor": dx < 0 ? "end" : "start",
+    }, g).textContent = s.hub ? "HUB" : s.rep ? s.id.replace("R", "REP-") : s.id;
+  }
+}
+
+function scaleBar(svg, x, y, pxPerKm, km, label) {
+  el("line", { x1: x, y1: y, x2: x + km * pxPerKm, y2: y, stroke: "var(--muted)", "stroke-width": 1.4 }, svg);
+  el("line", { x1: x, y1: y - 4, x2: x, y2: y + 4, stroke: "var(--muted)", "stroke-width": 1.4 }, svg);
+  el("line", { x1: x + km * pxPerKm, y1: y - 4, x2: x + km * pxPerKm, y2: y + 4, stroke: "var(--muted)", "stroke-width": 1.4 }, svg);
+  el("text", { x: x + km * pxPerKm / 2, y: y - 7, "font-size": 10, "text-anchor": "middle", fill: "var(--muted)", "font-family": "ui-monospace, Consolas, monospace" }, svg).textContent = label;
+}
+function north(svg, x, y) {
+  el("text", { x, y, "font-size": 11, fill: "var(--muted)", "text-anchor": "middle", "font-family": "ui-monospace, Consolas, monospace" }, svg).textContent = "N";
+  el("line", { x1: x, y1: y + 4, x2: x, y2: y + 18, stroke: "var(--muted)", "stroke-width": 1.4 }, svg);
+  el("path", { d: `M ${x - 3.5} ${y + 9} L ${x} ${y + 3} L ${x + 3.5} ${y + 9}`, fill: "none", stroke: "var(--muted)", "stroke-width": 1.4 }, svg);
+}
+function gridLines(svg, W, H, step) {
+  for (let gx = step; gx < W; gx += step) el("line", { x1: gx, y1: 0, x2: gx, y2: H, stroke: "var(--grid)", "stroke-width": 1 }, svg);
+  for (let gy = step; gy < H; gy += step) el("line", { x1: 0, y1: gy, x2: W, y2: gy, stroke: "var(--grid)", "stroke-width": 1 }, svg);
+}
+function linkLabel(svg, x, y, txt, color) {
+  el("text", {
+    x, y, "font-size": 10.5, fill: color, "text-anchor": "middle",
+    "font-family": "ui-monospace, Consolas, monospace", "font-weight": 600,
+    stroke: "var(--halo)", "stroke-width": 3.5, "paint-order": "stroke",
+  }, svg).textContent = txt;
+}
+const linkTip = (a, b, l) => `<div class="t">${a.hub ? "HUB (sede SMS)" : a.nome} ⇄ ${b.nome}</div>
+  <div class="m mono">${fmtKm(dist(a, b))} · azimute ${fmtAz(azim(a, b))} · folga ${fmtM(l.folga)}</div>
+  <div class="m">${l.obs || ""}</div>`;
+
+/* ---------- VISÃO GERAL ---------- */
+(function overview() {
+  const panel = document.getElementById("overviewPanel");
+  const W = 1120, H = 340, pad = 26;
+  const lngW = -42.977, lngE = -42.712, latN = -22.892;
+  const pxKm = (W - 2 * pad) / ((lngE - lngW) * KMLNG);
+  const X = lng => pad + (lng - lngW) * KMLNG * pxKm;
+  const Y = lat => pad + (latN - lat) * KMLAT * pxKm;
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Mapa geral com topologia proposta" });
+  panel.appendChild(svg);
+  gridLines(svg, W, H, pxKm * 2);
+
+  const cell = { x: X(-42.8302), y: Y(-22.9048), w: X(-42.784) - X(-42.8302), h: Y(-22.9315) - Y(-22.9048) };
+  el("rect", { x: cell.x, y: cell.y, width: cell.w, height: cell.h,
+    fill: "var(--ptmp-soft)", stroke: "var(--ptmp)", "stroke-width": 1.1, "stroke-dasharray": "5 4", opacity: .9 }, svg);
+  el("text", { x: cell.x + cell.w / 2, y: cell.y + cell.h + 15, "font-size": 10.5,
+    fill: "var(--ptmp)", "text-anchor": "middle", "font-family": "ui-monospace, Consolas, monospace",
+    stroke: "var(--halo)", "stroke-width": 3, "paint-order": "stroke" }, svg)
+    .textContent = "célula PtMP Centro/Eldorado — 17 pontas (detalhe abaixo)";
+
+  for (const l of LINKS) {
+    const a = byId(l.a), b = byId(l.b);
+    const ln = el("line", {
+      class: "link", x1: X(a.lng), y1: Y(a.lat), x2: X(b.lng), y2: Y(b.lat),
+      stroke: "var(--ptp)", "stroke-width": l.tipo === "backbone" ? 3 : 1.8,
+      "stroke-linecap": "round", opacity: l.tipo === "backbone" ? 1 : .85,
+    }, svg);
+    bindTip(ln, linkTip(a, b, l));
+    const mx = (X(a.lng) + X(b.lng)) / 2, my = (Y(a.lat) + Y(b.lat)) / 2;
+    linkLabel(svg, mx, my - 7, fmtKm(dist(a, b)), "var(--ptp)");
+  }
+
+  const named = [
+    { s: byId("8"),  dx: 8,  dy: 16 },
+    { s: byId("27"), dx: 4, dy: 18 },
+    { s: byId("15"), dx: 6,  dy: 18 },
+    { s: byId("0"),  dx: -2, dy: -12 },
+    { s: byId("28"), dx: -10, dy: -10, anchor: "end" },
+    { s: byId("R1"), dx: -10, dy: -10, anchor: "end" },
+    { s: byId("R2"), dx: 12, dy: -8 },
+    { s: HUB,        dx: -4, dy: 20 },
+  ];
+  for (const { s, dx, dy, anchor } of named) {
+    drawSite(svg, s, X(s.lng), Y(s.lat), 5, false);
+    el("text", {
+      x: X(s.lng) + dx, y: Y(s.lat) + dy, "font-size": 11,
+      fill: "var(--ink)", "text-anchor": anchor || (dx < 0 ? "end" : "start"),
+      stroke: "var(--halo)", "stroke-width": 3, "paint-order": "stroke",
+    }, svg).textContent = (s.hub ? "HUB · Sede SMS" : s.nome + (s.flag ? " ◌" : "")) + (s.elev >= 100 ? ` · ${s.elev} m` : "");
+  }
+  scaleBar(svg, pad + 4, H - 16, pxKm, 5, "5 km");
+  north(svg, W - 30, 22);
+})();
+
+/* ---------- DETALHE ---------- */
+(function detail() {
+  const panel = document.getElementById("detailPanel");
+  const OFF = { "3": [9, 11], "10": [-9, -7], "26": [-10, 9], "20": [9, 3], "16": [-10, 2],
+                "17": [-9, -6], "18": [9, -6], "24": [-9, -6], "19": [9, 8], "12": [11, -9],
+                "9": [9, 11], "21": [-9, -6], "R2": [-11, 3] };
+  const W = 880, H = 600, pad = 34;
+  const lngW = -42.8302, lngE = -42.7840, latN = -22.9040;
+  const pxKm = (W - 2 * pad) / ((lngE - lngW) * KMLNG);
+  const X = lng => pad + (lng - lngW) * KMLNG * pxKm;
+  const Y = lat => pad + (latN - lat) * KMLAT * pxKm;
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Detalhe da célula PtMP no centro de Maricá" });
+  panel.appendChild(svg);
+  gridLines(svg, W, H, pxKm * 0.5);
+
+  el("circle", { cx: X(HUB.lng), cy: Y(HUB.lat), r: 2.5 * pxKm, fill: "var(--ptmp-soft)", opacity: .3, stroke: "var(--ptmp)", "stroke-width": 1, "stroke-dasharray": "3 4" }, svg);
+
+  // spokes do hub, com estado de visada
+  for (const s of SPOKES) {
+    const f = FOLGA_HUB[s.id];
+    const blocked = f < -5, marginal = f >= -5 && f < 0;
+    const ln = el("line", {
+      class: "link", x1: X(HUB.lng), y1: Y(HUB.lat), x2: X(s.lng), y2: Y(s.lat),
+      stroke: blocked ? "var(--blocked)" : "var(--ptmp)",
+      "stroke-width": 1.6, opacity: blocked ? .8 : .75,
+      "stroke-dasharray": blocked ? "6 4" : marginal ? "2.5 3" : "none",
+      "stroke-linecap": "round",
+    }, svg);
+    bindTip(ln, `<div class="t">HUB ⇄ ${s.nome}</div><div class="m mono">${fmtKm(dist(HUB, s))} · azimute ${fmtAz(azim(HUB, s))} · folga ${fmtM(f)}</div><div class="m">${blocked ? "sem visada — morro no caminho" : marginal ? "marginal — resolve com mastro mais alto" : "visada limpa"}</div>`);
+  }
+  // REP-2 e suas pontas no quadro (9 e 21); 28 sai do quadro
+  const R2 = byId("R2"), s9 = byId("9"), s21 = byId("21");
+  for (const [s, l] of [[s9, LINKS.find(x => x.b === "9")], [s21, LINKS.find(x => x.b === "21")]]) {
+    const ln = el("line", { class: "link", x1: X(R2.lng), y1: Y(R2.lat), x2: X(s.lng), y2: Y(s.lat),
+      stroke: "var(--ptp)", "stroke-width": 1.8, "stroke-linecap": "round", opacity: .9 }, svg);
+    bindTip(ln, linkTip(R2, s, l));
+  }
+  // saída p/ UPA Ponta Negra (fora do quadro)
+  const l28 = LINKS.find(x => x.b === "28"), s28 = byId("28");
+  const ang = Math.atan2(kmE(R2, s28), kmN(R2, s28));
+  const ex = X(R2.lng) + Math.sin(ang) * 1.1 * pxKm, ey = Y(R2.lat) - Math.cos(ang) * 1.1 * pxKm;
+  const out = el("line", { x1: X(R2.lng), y1: Y(R2.lat), x2: ex, y2: ey, stroke: "var(--ptp)", "stroke-width": 1.8, "stroke-dasharray": "2 3" }, svg);
+  bindTip(out, linkTip(R2, s28, l28));
+  el("text", { x: ex + 4, y: ey - 4, "font-size": 10, fill: "var(--ptp)", "font-family": "ui-monospace, Consolas, monospace",
+    stroke: "var(--halo)", "stroke-width": 3, "paint-order": "stroke" }, svg).textContent = "→ UPA Ponta Negra 6,2 km";
+
+  for (const s of SPOKES) { s.off = OFF[s.id]; drawSite(svg, s, X(s.lng), Y(s.lat), 5.5, true); }
+  for (const s of [s9, s21, R2]) { s.off = OFF[s.id]; drawSite(svg, s, X(s.lng), Y(s.lat), 5.5, true); }
+  HUB.off = OFF["12"];
+  drawSite(svg, HUB, X(HUB.lng), Y(HUB.lat), 6, true);
+
+  scaleBar(svg, pad + 2, H - 18, pxKm, 0.5, "500 m");
+  north(svg, W - 28, 24);
+})();
+
+/* ---------- legenda ---------- */
+(function legend() {
+  const box = document.getElementById("legendBox");
+  const sw = (inner) => `<svg width="30" height="16" viewBox="0 0 30 16">${inner}</svg>`;
+  box.innerHTML = `
+    <div class="row">${sw('<circle cx="9" cy="8" r="6" fill="var(--ptmp)"/><circle cx="9" cy="8" r="9" fill="none" stroke="var(--ptmp)" stroke-width="1" opacity=".55"/>')}Hub — sede da SMS (torre 15 m)</div>
+    <div class="row">${sw('<path d="M 9 2 L 15.5 14 L 2.5 14 Z" fill="var(--ptp)"/>')}Repetidora proposta (torre 20 m)</div>
+    <div class="row">${sw('<circle cx="9" cy="8" r="5" fill="var(--ink)" stroke="var(--halo)" stroke-width="1.5"/>')}Unidade (coordenada exata / POI)</div>
+    <div class="row">${sw('<circle cx="9" cy="8" r="5" fill="var(--surface)" stroke="var(--ptp)" stroke-width="1.6" stroke-dasharray="2.5 2"/>')}Unidade com coordenada aproximada ◌</div>
+    <div class="row">${sw('<line x1="2" y1="8" x2="28" y2="8" stroke="var(--ptmp)" stroke-width="1.8"/>')}PtMP com visada limpa</div>
+    <div class="row">${sw('<line x1="2" y1="8" x2="28" y2="8" stroke="var(--ptmp)" stroke-width="1.8" stroke-dasharray="2.5 3"/>')}PtMP marginal (mastro resolve)</div>
+    <div class="row">${sw('<line x1="2" y1="8" x2="28" y2="8" stroke="var(--blocked)" stroke-width="1.8" stroke-dasharray="6 4"/>')}Sem visada do hub</div>
+    <div class="row">${sw('<line x1="2" y1="8" x2="28" y2="8" stroke="var(--ptp)" stroke-width="3"/>')}Backbone / PtP via repetidora</div>`;
+})();
+
+/* ---------- índice ---------- */
+(function index() {
+  const box = document.getElementById("indexBox");
+  const entries = [
+    ...SPOKES.map(s => ({ s, d: dist(HUB, s), f: FOLGA_HUB[s.id], via: null })),
+    { s: byId("9"),  d: dist(HUB, byId("9")),  f: 5.8, via: "REP-2" },
+    { s: byId("21"), d: dist(HUB, byId("21")), f: 3.6, via: "REP-2" },
+  ].sort((a, b) => a.d - b.d);
+  box.innerHTML = `<ol>${entries.map(({ s, d, f, via }) => {
+    const st = via ? `<span class="via">▲ ${via}</span>`
+      : f >= 0 ? `<span class="ok">✓ ${fmtM(f)}</span>`
+      : f >= -5 ? `<span class="via">~ ${fmtM(f)}</span>`
+      : `<span class="bad">✗ ${fmtM(f)}</span>`;
+    return `<li><span class="id mono">${s.ids}</span><span class="nm">${s.nome}</span><span class="d mono">${st} · ${fmtKm(d)}</span></li>`;
+  }).join("")}</ol>
+  <div style="margin-top:8px;color:var(--muted);font-size:.7rem">Folga de visada ao hub (✓ limpa · ~ marginal · ✗ bloqueada · ▲ atendida por repetidora) e distância ao hub.</div>`;
+})();
+
+/* ---------- tabela ---------- */
+(function table() {
+  const tb = document.querySelector("#ptpTable tbody");
+  const nm = s => s.hub ? "Sede SMS (hub)" : s.nome;
+  const rows = LINKS.map(l => {
+    const a = byId(l.a), b = byId(l.b);
+    return `<tr>
+      <td>${nm(a)} ⇄ ${nm(b)}</td>
+      <td><span class="tag ptp">${l.tipo === "backbone" ? "backbone" : "PtP"}</span></td>
+      <td class="num mono">${fmtKm(dist(a, b))}</td>
+      <td class="num mono">${fmtAz(azim(a, b))}</td>
+      <td class="num mono"><span class="${l.folga >= 0 ? "ok" : "bad"}">${fmtM(l.folga)}</span></td>
+      <td>${l.eq}</td>
+      <td>${l.obs}</td>
+    </tr>`;
+  });
+  rows.push(`<tr>
+    <td>Célula PtMP Centro/Eldorado — 15 pontas ✓ + 2 marginais</td>
+    <td><span class="tag">PtMP</span></td>
+    <td class="num mono">≤ 1,37 km</td>
+    <td class="num mono">360°</td>
+    <td class="num mono"><span class="ok">≥ +2,5 m</span></td>
+    <td>2× Wave AP Micro (90°) no hub + Wave Nano nas pontas</td>
+    <td>marginais: TACO (−0,8 m) e SRT III (−4 m) — mastro mais alto resolve</td>
+  </tr>`);
+  for (const id of ["2", "7"]) {
+    const s = byId(id);
+    rows.push(`<tr>
+      <td>Sede SMS (hub) ⇄ ${s.nome}</td>
+      <td><span class="tag bad">pendente</span></td>
+      <td class="num mono">${fmtKm(dist(HUB, s))}</td>
+      <td class="num mono">${fmtAz(azim(HUB, s))}</td>
+      <td class="num mono"><span class="bad">${fmtM(FOLGA_HUB[id])}</span></td>
+      <td>—</td>
+      <td>morro de ${id === "2" ? "36" : "44"} m no caminho — mastro alto, NLOS curto ou fibra local</td>
+    </tr>`);
+  }
+  tb.innerHTML = rows.join("");
+})();
+
+/* ---------- perfis ---------- */
+const PROFILES = [{"a":"12","b":"0","km":3.57,"n":90,"profile":[10,8,8,9,9,8,7,8,7,6,6,7,7,4,4,2,3,4,5,5,4,4,5,6,6,7,6,6,6,6,6,6,7,7,5,2,3,4,4,6,8,6,4,3,2,3,4,5,4,4,4,3,3,3,3,1,2,3,2,1,2,3,3,1,1,1,2,2,3,4,4,5,6,6,7,7,5,5,7,8,8,8,6,7,8,8,8,9,10,10],"worst":9.6,"worstAt":3.53,"worstTer":10},{"a":"12","b":"2","km":0.82,"n":21,"profile":[10,12,12,14,16,22,28,32,33,30,29,31,34,36,36,33,28,22,16,16,18],"worst":-10,"worstAt":0.53,"worstTer":36},{"a":"12","b":"7","km":0.85,"n":22,"profile":[10,8,8,10,11,13,15,17,23,32,39,44,44,40,34,28,23,21,20,18,15,14],"worst":-20.6,"worstAt":0.49,"worstTer":44},{"a":"R1","b":"12","km":9.14,"n":200,"profile":[345,337,327,318,297,283,274,260,238,201,178,161,139,119,106,97,96,97,101,120,144,160,157,145,125,111,103,89,78,74,77,89,102,122,140,154,160,151,138,124,108,88,81,65,51,36,27,25,24,24,24,27,28,28,27,25,23,22,21,22,25,27,24,23,25,23,21,22,32,50,74,104,118,139,149,148,142,139,144,148,140,124,110,107,107,89,76,66,46,33,24,16,14,21,30,43,55,59,57,47,39,31,25,24,19,16,14,12,9,10,11,16,20,20,20,19,16,10,11,11,10,10,9,7,7,5,4,3,4,4,5,1,1,1,1,1,1,1,1,1,1,1,1,1,1,4,5,3,1,3,5,6,6,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,3,4,7,8,8,6,4,4,5,7,9,10,10,8,5,5,5,6,7,6,6,8,9,7,8,8,8,8,10],"worst":18.2,"worstAt":9.09,"worstTer":8},{"a":"R1","b":"8","km":7.58,"n":190,"profile":[345,326,310,285,262,241,221,196,168,146,126,115,103,89,83,80,81,87,99,111,121,135,153,174,196,218,238,250,254,238,212,197,188,183,186,183,178,170,167,165,165,163,166,166,164,156,148,136,123,110,91,72,65,60,53,41,34,33,29,25,22,21,19,18,18,18,18,22,24,22,17,13,14,17,17,19,22,25,30,31,31,28,25,24,23,20,16,13,12,13,16,18,20,20,19,19,22,26,30,37,53,66,77,86,91,92,91,83,67,54,41,29,19,17,14,11,10,9,9,8,11,11,11,12,9,8,8,7,6,5,7,7,6,7,6,5,5,6,7,5,5,6,6,4,4,5,5,5,4,4,4,3,3,4,4,5,4,4,5,6,5,3,3,4,5,6,6,5,4,4,5,5,5,7,7,6,5,5,5,6,7,6,6,6,8,8,6,6,6,6],"worst":11.4,"worstAt":7.54,"worstTer":6},{"a":"R1","b":"15","km":3.7,"n":93,"profile":[345,332,315,302,287,272,265,259,247,226,202,173,139,117,97,80,64,52,47,51,63,77,97,158,205,216,218,209,191,166,146,129,135,138,129,116,104,87,79,62,40,31,24,21,20,19,17,16,15,15,17,18,17,16,15,15,15,14,14,14,13,14,15,15,16,19,22,25,30,26,17,13,13,13,12,11,9,8,8,7,8,8,7,7,7,8,8,7,7,6,7,8,9],"worst":14.3,"worstAt":3.66,"worstTer":8},{"a":"R1","b":"27","km":2.82,"n":71,"profile":[345,340,338,336,327,314,304,297,291,277,265,241,198,152,126,103,82,65,58,48,38,36,33,31,29,26,26,27,27,25,24,24,23,22,23,22,21,20,19,18,18,19,19,18,17,18,19,23,27,27,26,23,18,18,19,19,19,18,17,18,18,19,19,20,21,20,18,17,17,18,19],"worst":13.8,"worstAt":0.12,"worstTer":336},{"a":"R2","b":"28","km":6.19,"n":155,"profile":[301,298,292,277,263,259,248,245,246,244,239,230,220,218,216,213,216,216,217,221,225,232,240,244,250,256,261,261,253,239,224,210,202,193,185,177,168,159,152,148,142,136,134,134,132,126,117,109,112,119,124,125,122,127,140,143,129,110,93,75,66,65,72,76,73,59,46,41,41,37,42,50,59,64,61,52,43,34,27,28,33,36,36,38,47,63,76,85,95,106,112,119,118,104,89,77,64,49,40,34,29,25,23,20,20,21,21,20,19,18,18,18,17,18,20,18,16,14,15,15,16,16,16,15,14,13,12,11,12,13,12,11,11,12,13,13,13,12,12,11,7,5,5,6,4,3,4,5,4,7,15,26,30,26,19],"worst":2.2,"worstAt":6.11,"worstTer":30},{"a":"R2","b":"21","km":3.07,"n":77,"profile":[301,296,281,257,231,203,182,160,141,125,111,95,82,77,71,61,52,39,32,29,29,27,26,25,27,28,29,35,45,56,66,73,75,72,66,57,46,38,32,25,21,22,20,18,20,25,32,42,49,57,62,64,58,46,33,28,28,33,42,49,54,51,43,39,41,43,47,49,42,30,21,14,10,8,8,9,8],"worst":3.6,"worstAt":2.71,"worstTer":49},{"a":"R2","b":"9","km":1.44,"n":37,"profile":[301,296,281,257,232,204,183,161,142,126,113,97,84,78,73,63,54,42,32,30,29,28,26,25,26,28,28,33,43,54,64,73,76,74,69,61,51],"worst":5.8,"worstAt":1.36,"worstTer":69},{"a":"R1","b":"R2","km":11.9,"n":200,"profile":[345,339,330,312,293,279,251,209,184,159,147,132,124,126,134,145,155,154,150,143,134,131,134,142,159,174,197,208,209,211,212,204,184,162,134,108,95,74,50,40,41,39,37,44,66,96,120,145,172,181,177,157,136,105,71,44,33,28,23,22,22,23,22,22,22,21,23,24,20,18,18,17,18,17,17,16,17,17,17,17,18,19,16,18,18,17,19,22,23,19,19,21,23,19,15,14,11,11,7,6,8,9,11,11,10,10,9,9,10,8,8,7,5,6,6,7,8,7,5,5,7,8,9,5,5,7,5,6,7,4,3,4,5,8,9,9,7,6,7,7,6,8,7,8,7,8,11,11,9,10,11,11,12,14,15,12,16,25,39,46,49,43,34,32,28,24,20,19,22,21,30,52,62,72,79,87,98,107,96,75,56,46,42,47,44,43,49,58,77,92,99,106,120,136,153,183,219,256,290,301],"worst":25.2,"worstAt":0.06,"worstTer":339}];
+(function profiles() {
+  const box = document.getElementById("profilesBox");
+  const NAME = id => id === "12" ? "SMS (hub)" : id === "R1" ? "REP-1 Serra" : id === "R2" ? "REP-2 Caju" : byId(id).nome;
+  const MAST = id => id === "12" ? 15 : (id === "R1" || id === "R2") ? 20 : 10;
+  const ORDER = [["12","R1"],["R1","R2"],["R1","27"],["R1","8"],["R1","15"],["R2","9"],["R2","21"],["R2","28"],["12","0"],["12","2"],["12","7"]];
+  const find = ([a, b]) => PROFILES.find(l => (l.a === a && l.b === b) || (l.a === b && l.b === a));
+  const K = 4 / 3, R_E = 6371;
+
+  for (const pair of ORDER) {
+    const L = find(pair);
+    if (!L) continue;
+    let prof = L.profile, a = L.a, b = L.b;
+    if (a !== pair[0]) { prof = [...prof].reverse(); a = pair[0]; b = pair[1]; }
+    const D = L.km, n = prof.length;
+    const eff = prof.map((h, i) => { const d1 = D * i / (n - 1); return h + (d1 * (D - d1)) / (2 * K * R_E) * 1000; });
+    const hA = prof[0] + MAST(a), hB = prof[n - 1] + MAST(b);
+    const yMax = Math.max(...eff, hA, hB) * 1.15 + 5, yMin = 0;
+    const W = 340, H = 130, padL = 6, padR = 6, padT = 8, padB = 16;
+    const X = i => padL + (W - padL - padR) * i / (n - 1);
+    const Yc = v => padT + (H - padT - padB) * (1 - (v - yMin) / (yMax - yMin));
+    const ok = L.worst >= 0;
+
+    const div = document.createElement("div");
+    div.className = "prof";
+    div.innerHTML = `<h4>${NAME(a)} → ${NAME(b)}</h4>
+      <div class="meta mono">${fmtKm(D)} · folga <span style="color:${ok ? "var(--ptmp)" : "var(--blocked)"};font-weight:600">${fmtM(L.worst)}</span> @ ${String(L.worstAt).replace(".", ",")} km</div>`;
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": `Perfil de elevação ${NAME(a)} a ${NAME(b)}` });
+    div.appendChild(svg);
+    box.appendChild(div);
+
+    let d = `M ${X(0)} ${Yc(eff[0])}`;
+    for (let i = 1; i < n; i++) d += ` L ${X(i)} ${Yc(eff[i])}`;
+    d += ` L ${X(n - 1)} ${H - padB} L ${X(0)} ${H - padB} Z`;
+    el("path", { d, fill: "var(--terrain)", stroke: "none" }, svg);
+    el("line", { x1: X(0), y1: H - padB, x2: X(n - 1), y2: H - padB, stroke: "var(--border)", "stroke-width": 1 }, svg);
+
+    // mastros
+    el("line", { x1: X(0), y1: Yc(prof[0]), x2: X(0), y2: Yc(hA), stroke: "var(--muted)", "stroke-width": 2 }, svg);
+    el("line", { x1: X(n - 1), y1: Yc(prof[n - 1]), x2: X(n - 1), y2: Yc(hB), stroke: "var(--muted)", "stroke-width": 2 }, svg);
+    // LOS
+    el("line", { x1: X(0), y1: Yc(hA), x2: X(n - 1), y2: Yc(hB), stroke: ok ? "var(--ptmp)" : "var(--blocked)", "stroke-width": 1.8 }, svg);
+    // ponto crítico
+    const wi = Math.round(L.worstAt / D * (n - 1));
+    el("circle", { cx: X(wi), cy: Yc(eff[wi]), r: 3.5, fill: ok ? "var(--ptmp)" : "var(--blocked)", stroke: "var(--halo)", "stroke-width": 1.5 }, svg);
+    // rótulos de altitude
+    el("text", { x: X(0) + 3, y: Yc(hA) - 4, "font-size": 9, fill: "var(--muted)", "font-family": "ui-monospace, Consolas, monospace" }, svg).textContent = `${prof[0]}m`;
+    el("text", { x: X(n - 1) - 3, y: Yc(hB) - 4, "font-size": 9, fill: "var(--muted)", "text-anchor": "end", "font-family": "ui-monospace, Consolas, monospace" }, svg).textContent = `${prof[n - 1]}m`;
+    const maxI = eff.indexOf(Math.max(...eff));
+    if (maxI > 2 && maxI < n - 3) {
+      el("text", { x: X(maxI), y: Yc(eff[maxI]) - 5, "font-size": 9, fill: "var(--muted)", "text-anchor": "middle",
+        "font-family": "ui-monospace, Consolas, monospace", stroke: "var(--halo)", "stroke-width": 2.5, "paint-order": "stroke" }, svg).textContent = `${Math.round(prof[maxI])}m`;
+    }
+  }
+})();
+</script>
+
+</body>
+</html>
