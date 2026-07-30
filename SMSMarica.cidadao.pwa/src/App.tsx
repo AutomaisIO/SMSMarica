@@ -4,6 +4,7 @@ import { AppShell } from '@/components/AppShell';
 import { ConsentGate } from '@/components/ConsentGate';
 import { Login } from '@/pages/Login';
 import { Otp } from '@/pages/Otp';
+import { Verificacao } from '@/pages/Verificacao';
 import { Home } from '@/pages/Home';
 import { Perfil } from '@/pages/Perfil';
 import { Atendimentos } from '@/pages/Atendimentos';
@@ -26,6 +27,7 @@ export function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/login/verificacao" element={<Verificacao />} />
         <Route path="/login/codigo" element={<Otp />} />
         {/* Link público de download (uso único) enviado ao paciente — sem autenticação. */}
         <Route path="/documento/:token" element={<Documento />} />

@@ -52,7 +52,7 @@ public sealed class TelefoneValidacaoService(
             throw new ValidacaoException("telefone.invalido", "Informe um número de celular com DDD.");
 
         // Pré-checagem: o número já é contato principal de OUTRA pessoa? (UX melhor que falhar no confirmar)
-        await GarantirNumeroLivreAsync(cpfDig, canon, ct);
+        await GarantirNumeroLivreCanonAsync(cpfDig, canon, ct);
 
         var codigo = GerarCodigo();
         cache.Set(Chave(cpfDig, canon), new Entry(codigo), Validade);
@@ -129,7 +129,7 @@ public sealed class TelefoneValidacaoService(
             throw new ValidacaoException("telefone.invalido", "Informe um número de telefone com DDD.");
 
         // O número não pode ser o contato CONFIRMADO de outra pessoa (caso das Márcias).
-        await GarantirNumeroLivreAsync(cpfDig, canon, ct);
+        await GarantirNumeroLivreCanonAsync(cpfDig, canon, ct);
 
         var patient = await ObterPatientPorCpfAsync(cpfDig, ct)
             ?? throw new ValidacaoException(
@@ -158,8 +158,11 @@ public sealed class TelefoneValidacaoService(
         return new TelefoneValidadoDto(canon, PatientMergeFhir.TelefoneEstaConfirmado(patient, canon), null);
     }
 
+    public Task GarantirNumeroLivreAsync(string cpf, string numero, CancellationToken ct = default) =>
+        GarantirNumeroLivreCanonAsync(CpfDigitos(cpf), Canonizar(numero), ct);
+
     /// <summary>Lança 409 se o número já é contato CONFIRMADO de OUTRO CPF (busca por telecom no hub).</summary>
-    private async Task GarantirNumeroLivreAsync(string cpfDig, string canon, CancellationToken ct)
+    private async Task GarantirNumeroLivreCanonAsync(string cpfDig, string canon, CancellationToken ct)
     {
         // O hub guarda a forma nacional (sem DDI) — busca pelos últimos 11 dígitos.
         var nacional = canon.Length > 11 ? canon[^11..] : canon;
@@ -176,7 +179,7 @@ public sealed class TelefoneValidacaoService(
     private async Task<DateTime> MarcarValidadoInternoAsync(
         string cpfDig, string canon, string origem, Guid? por, bool exigirFhir, CancellationToken ct)
     {
-        await GarantirNumeroLivreAsync(cpfDig, canon, ct);
+        await GarantirNumeroLivreCanonAsync(cpfDig, canon, ct);
 
         var agora = DateTime.UtcNow;
 

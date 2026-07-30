@@ -222,6 +222,18 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0,
             }));
 
+    // Login do cidadão (anônimo por natureza). Barra a varredura de CPF/nº de solicitação e o
+    // abuso do envio de OTP — cada tentativa custa um WhatsApp e uma consulta à Receita.
+    options.AddPolicy("login-cidadao", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "desconhecido",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
+
     // Defesa em profundidade nos endpoints anônimos do PWA de anexos (o token É a
     // autorização). Particiona por IP; barra brute-force de token / abuso de upload.
     options.AddPolicy("anexos-sessao", httpContext =>

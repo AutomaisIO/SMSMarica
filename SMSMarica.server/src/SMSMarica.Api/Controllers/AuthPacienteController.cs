@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using SMSMarica.Core.Cidadao;
 using SMSMarica.Core.Cidadao.Dtos;
 
@@ -12,6 +13,7 @@ namespace SMSMarica.Api.Controllers;
 [ApiController]
 [Route("auth/paciente")]
 [AllowAnonymous]
+[EnableRateLimiting("login-cidadao")]
 public sealed class AuthPacienteController(
     IPacienteAuthService service,
     ICidadaoLoginLinkService loginLinks) : ControllerBase
@@ -24,6 +26,19 @@ public sealed class AuthPacienteController(
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<OtpEmitidoDto> SolicitarOtp([FromBody] SolicitarOtpRequest request, CancellationToken cancellationToken) =>
         await _service.SolicitarOtpAsync(request, cancellationToken);
+
+    /// <summary>
+    /// Passo 2 de quem não tem contato verificado (ou perdeu o número): nascimento + nº da
+    /// solicitação SISREG + telefone que vai receber o código. Sem cadastro, o par CPF/nascimento
+    /// é conferido na Receita e o paciente é criado ao confirmar o código.
+    /// </summary>
+    [HttpPost("solicitar-otp-verificacao")]
+    [ProducesResponseType<OtpEmitidoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<OtpEmitidoDto> SolicitarOtpVerificacao(
+        [FromBody] SolicitarOtpVerificacaoRequest request, CancellationToken cancellationToken) =>
+        await _service.SolicitarOtpVerificacaoAsync(request, cancellationToken);
 
     [HttpPost("validar-otp")]
     [ProducesResponseType<RespostaLoginPacienteDto>(StatusCodes.Status200OK)]

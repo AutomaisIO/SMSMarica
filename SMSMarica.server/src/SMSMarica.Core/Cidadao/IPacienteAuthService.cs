@@ -8,7 +8,22 @@ namespace SMSMarica.Core.Cidadao;
 /// </summary>
 public interface IPacienteAuthService
 {
+    /// <summary>
+    /// Passo 1: só CPF. Envia o código apenas quando o contato do cadastro está VERIFICADO
+    /// (<c>situacao=otp</c>). Sem verificação devolve <c>situacao=verificacao</c> e, sem cadastro,
+    /// <c>situacao=cadastro</c> — em ambos nada é enviado e o app segue para
+    /// <see cref="SolicitarOtpVerificacaoAsync"/>.
+    /// </summary>
     Task<OtpEmitidoDto> SolicitarOtpAsync(SolicitarOtpRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Passo 2 (contato não verificado, ou número perdido): confere a identidade e envia o código
+    /// para o telefone informado. Com cadastro: data de nascimento + nº da solicitação SISREG do
+    /// próprio paciente. Sem cadastro: par CPF/nascimento conferido na Receita (proxy CPF) — o
+    /// paciente é criado só quando o código é confirmado em <see cref="ValidarOtpAsync"/>.
+    /// </summary>
+    Task<OtpEmitidoDto> SolicitarOtpVerificacaoAsync(
+        SolicitarOtpVerificacaoRequest request, CancellationToken ct = default);
 
     /// <summary>
     /// Valida o OTP e abre a sessão (single-device). <paramref name="dispositivo"/> e

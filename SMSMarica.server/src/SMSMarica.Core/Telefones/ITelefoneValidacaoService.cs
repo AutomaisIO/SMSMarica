@@ -23,6 +23,13 @@ public interface ITelefoneValidacaoService
     Task MarcarValidadoAsync(string cpf, string numero, string origem, Guid? validadoPor, CancellationToken ct = default);
 
     /// <summary>
+    /// Lança <c>ConflitoException</c> se o número já é o contato CONFIRMADO de OUTRO CPF. Existe
+    /// para quem gera o próprio OTP (login do PWA) poder barrar ANTES de mandar o código — falhar
+    /// só na confirmação queimaria o código do cidadão por um erro que já era conhecido.
+    /// </summary>
+    Task GarantirNumeroLivreAsync(string cpf, string numero, CancellationToken ct = default);
+
+    /// <summary>
     /// Define o telefone PRINCIPAL do paciente (por CPF) SEM exigir verificação — edição manual
     /// rápida pelo painel (ticket #16). Trocar o número derruba o marcador de verificado
     /// (o novo número nasce não-verificado; verificar depois é opcional).

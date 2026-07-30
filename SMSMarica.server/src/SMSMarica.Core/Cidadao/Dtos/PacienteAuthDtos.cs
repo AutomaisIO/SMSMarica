@@ -3,14 +3,52 @@ namespace SMSMarica.Core.Cidadao.Dtos;
 public sealed record SolicitarOtpRequest(string Cpf);
 
 /// <summary>
+/// O que o app deve fazer depois de informar o CPF (passo 1 do login).
+/// </summary>
+public static class SituacaoLoginCidadao
+{
+    /// <summary>Contato verificado: o código já foi enviado para o número verificado.</summary>
+    public const string Otp = "otp";
+
+    /// <summary>
+    /// Cadastro existe mas o contato NÃO é verificado: o cidadão precisa provar quem é
+    /// (nascimento + nº da solicitação SISREG) e informar o telefone que vai receber o código.
+    /// </summary>
+    public const string Verificacao = "verificacao";
+
+    /// <summary>
+    /// CPF sem cadastro na Saúde: o cidadão informa nascimento + telefone; o par CPF/nascimento
+    /// é conferido na Receita (proxy CPF) e o cadastro é criado quando o código é confirmado.
+    /// </summary>
+    public const string Cadastro = "cadastro";
+}
+
+/// <summary>
 /// Resultado de solicitar o código. No fluxo normal o código vai só pelo WhatsApp e
 /// <see cref="CodigoTeste"/> é null. Ele só é preenchido como <b>fallback</b> quando o
 /// WhatsApp não está configurado no servidor (ou <c>Tfd:Otp:ModoTeste=true</c>), para não
 /// travar o login — aí o código é exibido na tela. <see cref="TelefoneMascarado"/> traz uma
 /// dica do destino (ex.: <c>***-1234</c>) para o usuário conferir.
+/// <see cref="Situacao"/> (ver <see cref="SituacaoLoginCidadao"/>) diz ao app se o código saiu
+/// (<c>otp</c>) ou se ainda faltam dados (<c>verificacao</c> | <c>cadastro</c>) — nesses dois
+/// casos nada foi enviado e <see cref="Enviado"/> é <c>false</c>.
 /// </summary>
 public sealed record OtpEmitidoDto(
-    bool Enviado, string Canal, string? CodigoTeste, int ValidadeSegundos, string? TelefoneMascarado = null);
+    bool Enviado,
+    string Canal,
+    string? CodigoTeste,
+    int ValidadeSegundos,
+    string? TelefoneMascarado = null,
+    string Situacao = SituacaoLoginCidadao.Otp);
+
+/// <summary>
+/// Passo 2 do login de quem NÃO tem contato verificado (ou perdeu o número): prova de identidade
+/// + o telefone que vai receber o código. <see cref="CodigoSolicitacao"/> é o nº da solicitação
+/// do SISREG e é <b>obrigatório</b> quando já existe cadastro; é ignorado no cadastro novo
+/// (não há solicitação nossa para conferir — quem valida é a Receita).
+/// </summary>
+public sealed record SolicitarOtpVerificacaoRequest(
+    string Cpf, DateOnly DataNascimento, string? CodigoSolicitacao, string Telefone);
 
 public sealed record ValidarOtpRequest(string Cpf, string Codigo);
 

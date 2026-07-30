@@ -13,11 +13,16 @@ export function Otp() {
   const location = useLocation();
   const entrar = useAuth((s) => s.entrar);
   const estado = location.state as
-    | { cpf?: string; codigoTeste?: string; telefoneMascarado?: string }
+    | { cpf?: string; codigoTeste?: string; telefoneMascarado?: string; semTroca?: boolean }
     | null;
   const cpf = estado?.cpf;
   const codigoTeste = estado?.codigoTeste;
   const telefoneMascarado = estado?.telefoneMascarado;
+  // Últimos 4 dígitos do destino — é como a pessoa reconhece o aparelho que vai tocar.
+  const finalDoNumero = telefoneMascarado?.replace(/\D/g, '');
+  // O código acabou de ser enviado para um número que a própria pessoa digitou: oferecer
+  // "trocar de número" aqui seria um laço sem fim.
+  const podeTrocarNumero = !codigoTeste && !estado?.semTroca;
 
   const [codigo, setCodigo] = useState(codigoTeste ?? '');
   const [enviando, setEnviando] = useState(false);
@@ -54,9 +59,13 @@ export function Otp() {
           Seu código: <span className="font-mono text-xl font-bold tracking-[0.3em]">{codigoTeste}</span>
         </div>
       ) : (
-        telefoneMascarado && (
+        finalDoNumero && (
           <p className="mb-6 text-center text-sm text-tinta-mute">
-            Enviado para o WhatsApp <span className="font-semibold text-tinta">{telefoneMascarado}</span>.
+            Enviado para o WhatsApp final{' '}
+            <span className="font-display text-lg font-semibold tabular-nums tracking-[0.12em] text-tinta">
+              {finalDoNumero}
+            </span>
+            .
           </p>
         )
       )}
@@ -66,6 +75,19 @@ export function Otp() {
         <PrimaryButton type="submit" disabled={!valido} carregando={enviando}>
           Entrar
         </PrimaryButton>
+        {podeTrocarNumero && (
+          <button
+            type="button"
+            onClick={() =>
+              navigate('/login/verificacao', {
+                state: { cpf, situacao: 'verificacao', telefoneMascarado },
+              })
+            }
+            className="block w-full text-center text-sm font-medium text-lagoa underline"
+          >
+            Não tenho mais esse número
+          </button>
+        )}
         <button
           type="button"
           onClick={() => navigate('/login')}

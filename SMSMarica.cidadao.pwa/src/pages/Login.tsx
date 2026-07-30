@@ -27,14 +27,25 @@ export function Login() {
     setErro(null);
     setEnviando(true);
     try {
-      // O código vai pelo WhatsApp. `codigoTeste` só vem como fallback se o servidor não
-      // estiver com o WhatsApp configurado (aí o backend o exibe na tela para não travar).
-      const { data } = await http.post<{ codigoTeste?: string; telefoneMascarado?: string }>(
-        '/auth/paciente/solicitar-otp',
-        { cpf: cpfLimpo },
-      );
-      navigate('/login/codigo', {
-        state: { cpf: cpfLimpo, codigoTeste: data?.codigoTeste, telefoneMascarado: data?.telefoneMascarado },
+      // O código só sai quando o WhatsApp do cadastro está VERIFICADO (situacao "otp"). Sem
+      // verificação ("verificacao") ou sem cadastro ("cadastro"), o backend não envia nada e a
+      // pessoa passa pela tela de confirmação de dados. `codigoTeste` só vem como fallback se o
+      // servidor não estiver com o WhatsApp configurado (aí o backend o exibe na tela).
+      const { data } = await http.post<{
+        situacao?: string;
+        codigoTeste?: string;
+        telefoneMascarado?: string;
+      }>('/auth/paciente/solicitar-otp', { cpf: cpfLimpo });
+
+      const situacao = data?.situacao ?? 'otp';
+      if (situacao === 'otp') {
+        navigate('/login/codigo', {
+          state: { cpf: cpfLimpo, codigoTeste: data?.codigoTeste, telefoneMascarado: data?.telefoneMascarado },
+        });
+        return;
+      }
+      navigate('/login/verificacao', {
+        state: { cpf: cpfLimpo, situacao, telefoneMascarado: data?.telefoneMascarado },
       });
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
@@ -73,7 +84,8 @@ export function Login() {
           Receber código
         </PrimaryButton>
         <p className="mx-auto max-w-[17rem] text-center text-xs leading-relaxed text-tinta-mute">
-          Sem cadastro na Saúde de Maricá? Procure a sua unidade.
+          É a sua primeira vez? Informe o CPF do mesmo jeito — confirmamos seus dados no passo
+          seguinte.
         </p>
       </form>
     </AuthShell>
