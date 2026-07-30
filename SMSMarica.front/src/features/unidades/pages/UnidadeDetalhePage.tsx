@@ -10,6 +10,8 @@ import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { Tabs, type Aba } from '@/shared/ui/Tabs';
 import { useUnidadePorId, useUsuariosDaUnidade } from '@/features/unidades/api/queries';
 import { UsuariosDaUnidadeSecao } from '@/features/unidades/components/UsuariosDaUnidadeSecao';
+import { EquipamentosDaUnidadeSecao } from '@/features/unidades/components/EquipamentosDaUnidadeSecao';
+import { useListarEquipamentos } from '@/features/equipamentos/api/queries';
 import { useListarTratamentos } from '@/features/tratamentos/api/queries';
 import type { TratamentoListItem } from '@/features/tratamentos/types';
 import { formatarDataBr } from '@/features/tratamentos/lib/expansor';
@@ -55,6 +57,7 @@ export function UnidadeDetalhePage() {
   const detalhe = useUnidadePorId(id || null);
   const tratamentos = useListarTratamentos({ unidadeId: id });
   const usuariosDaUnidade = useUsuariosDaUnidade(id || null);
+  const equipamentosDaUnidade = useListarEquipamentos(id || undefined, false);
 
   const u = detalhe.data;
 
@@ -125,6 +128,12 @@ export function UnidadeDetalhePage() {
       rotulo: 'Tratamentos',
       conteudo: abaTratamentos,
       badge: tratamentos.data?.length || undefined,
+    },
+    {
+      id: 'equipamentos',
+      rotulo: 'Equipamentos',
+      conteudo: <EquipamentosDaUnidadeSecao unidadeId={id} />,
+      badge: equipamentosDaUnidade.data?.length || undefined,
     },
     {
       id: 'usuarios',
