@@ -59,6 +59,15 @@ public interface ISolicitacoesExameService
     Task ReenviarWorklistAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Troca a estação (equipamento) de destino de um exame já enviado à worklist (ticket #72).
+    /// A FONTE DA VERDADE é o dcm4chee, não o Status/WorklistItemUid local: SEMPRE consulta a
+    /// existência do item; se houver, exclui e CONFIRMA a remoção antes de recriar no novo destino
+    /// (e verifica a presença). Só é permitido enquanto o exame não foi executado; PACS
+    /// indisponível aborta sem alterar nada; falha na recriação reenfileira para o worker.
+    /// </summary>
+    Task AlterarEquipamentoDestinoAsync(Guid id, Guid equipamentoId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Exclui (soft-delete) a solicitação. Antes, remove o item de worklist do
     /// dcm4chee e confirma (anti-lixo); se a remoção no PACS falhar e
     /// <paramref name="force"/> for false, lança ConflitoException

@@ -61,7 +61,10 @@ internal static class SolicitacoesExameMapper
             s.CriadoEm,
             s.AtualizadoEm,
             s.DataEstudo,
-            reg.RawSisreg);
+            reg.RawSisreg,
+            s.EquipamentoId,
+            s.Equipamento?.Nome,
+            s.Equipamento?.IdentificadorDicom);
     }
 
     public static SolicitacaoExameListItemDto ParaListItem(ExameImagem s, Guid? unidadeReferencia = null)

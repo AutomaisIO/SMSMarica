@@ -694,6 +694,106 @@ public sealed class SolicitacoesExameService(
         await _db.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task AlterarEquipamentoDestinoAsync(
+        Guid id, Guid equipamentoId, CancellationToken cancellationToken = default)
+    {
+        var s = await _db.ExamesImagem
+            .Include(x => x.TipoExame)
+            .Include(x => x.Solicitacao)
+            .FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(ExameImagem), id);
+
+        // 1) Elegibilidade (regra de negócio, não do PACS): só faz sentido trocar a sala ENQUANTO o
+        //    exame não foi executado. Com imagem já adquirida (em execução/realizado/laudado) ou
+        //    terminal (cancelado), a troca é proibida — não decide "há item a apagar" (isso é o PACS).
+        if (s.Status is StatusSolicitacaoExame.EmExecucao or StatusSolicitacaoExame.Realizada
+                or StatusSolicitacaoExame.Laudada or StatusSolicitacaoExame.Cancelada
+            || s.RealizadoEm is not null)
+        {
+            throw new ConflitoException(
+                "solicitacaoExame.equipamento_nao_alteravel",
+                $"Não é possível trocar o equipamento de um exame no status '{s.Status}' (já em execução/realizado/cancelado).");
+        }
+
+        if (!(s.TipoExame?.EnviarParaWorklist ?? false))
+        {
+            throw new ConflitoException(
+                "solicitacaoExame.sem_worklist",
+                "Este tipo de exame não é enviado à worklist; não há equipamento de destino a trocar.");
+        }
+
+        // Não fura o gate de autorização: um exame Solicitada que nunca foi autorizado pela recepção
+        // não pode ir ao PACS por esta via (mesma régua do reenvio). Enviada/Recebida já estão lá.
+        if (s.Status == StatusSolicitacaoExame.Solicitada && s.Solicitacao!.AutorizadoEm is null)
+        {
+            throw new ConflitoException(
+                "solicitacaoExame.nao_autorizada",
+                "Este exame ainda não foi autorizado pela recepção. Autorize com a chave antes de trocar o equipamento de destino.");
+        }
+
+        // 2) Valida o destino contra os candidatos (unidade executante + modalidade) — mesma régua da
+        //    autorização. Rejeita destino inválido e no-op (já é a estação atual).
+        var candidatos = await _estacaoWorklist.ListarCandidatosAsync(s, cancellationToken);
+        if (candidatos.All(c => c.Id != equipamentoId))
+            throw new ValidacaoException("solicitacaoExame.equipamento_invalido",
+                "O equipamento selecionado não atende esta unidade/modalidade.");
+        if (s.EquipamentoId == equipamentoId)
+            throw new ConflitoException("solicitacaoExame.equipamento_inalterado",
+                "O exame já está destinado a este equipamento.");
+
+        // 3) FONTE DA VERDADE É O PACS, não o Status/WorklistItemUid (espelho, que o worker atualiza em
+        //    varredura e pode estar dessincronizado). SEMPRE consulta o dcm4chee: se houver item na sala
+        //    atual, remove e CONFIRMA a remoção antes de recriar — nunca cria com o antigo ainda vivo,
+        //    nunca omite a exclusão por confiar no status. PACS indisponível aqui aborta sem tocar nada.
+        if (await _mwlClient.MwlItemExisteAsync(s, cancellationToken))
+        {
+            await _mwlClient.ExcluirMwlItemAsync(s, cancellationToken);
+            s.WorklistItemUid = null;
+
+            if (await _mwlClient.MwlItemExisteAsync(s, cancellationToken))
+                throw new ConflitoException("solicitacaoExame.remocao_nao_confirmada",
+                    "Removi o item da worklist, mas o PACS ainda o lista. Aguarde um instante e tente de novo.");
+        }
+
+        // 4) Grava o novo destino (agora que a sala antiga está comprovadamente limpa).
+        var agora = DateTime.UtcNow;
+        s.EquipamentoId = equipamentoId;
+        s.AtualizadoEm = agora;
+        s.AtualizadoPor = _usuarioAtual.UsuarioId;
+
+        // 5) Cria no destino correto e VERIFICA a presença. Se a criação falhar depois do delete, não
+        //    deixa órfão nem estado travado: zera o espelho, marca o erro e reenfileira — o
+        //    EnviadorWorklistService recria pela via resiliente (reversível, sem meio-caminho no PACS).
+        try
+        {
+            s.WorklistItemUid = await _mwlClient.CriarOuAtualizarMwlItemAsync(s, cancellationToken);
+            s.ErroIntegracaoPacs = null;
+
+            if (await _mwlClient.MwlItemExisteAsync(s, cancellationToken))
+            {
+                s.Status = StatusSolicitacaoExame.Recebida; // confirmado na worklist consultável
+                s.ProximaTentativaEm = null;
+            }
+            else
+            {
+                s.Status = StatusSolicitacaoExame.Enviada; // criado; worker fecha Enviada→Recebida
+                s.ProximaTentativaEm = agora;
+            }
+        }
+        catch (ConflitoException ex)
+        {
+            _logger.LogWarning(ex,
+                "Troca de equipamento de {Accession}: item antigo removido, mas a criação no novo destino falhou; worker recria.",
+                s.AccessionNumber);
+            s.WorklistItemUid = null;
+            s.Status = StatusSolicitacaoExame.Solicitada;
+            s.ErroIntegracaoPacs = ex.Message;
+            s.ProximaTentativaEm = agora;
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task ExcluirAsync(Guid id, bool force, CancellationToken cancellationToken = default)
     {
         var s = await _db.ExamesImagem.Include(x => x.Solicitacao)
@@ -972,6 +1072,7 @@ public sealed class SolicitacoesExameService(
     {
         return await _db.ExamesImagem.AsNoTracking()
             .Include(e => e.TipoExame)
+            .Include(e => e.Equipamento)
             .Include(e => e.Solicitacao!).ThenInclude(so => so.UnidadeExecutante)
             .Include(e => e.Solicitacao!).ThenInclude(so => so.UnidadeSolicitante)
             .Where(e => e.ExcluidoEm == null && e.Solicitacao!.ExcluidoEm == null)

@@ -286,6 +286,31 @@ public sealed class SolicitacoesExameController(
     }
 
     /// <summary>
+    /// Troca o equipamento (estação) de destino de um exame já enviado à worklist (ticket #72).
+    /// Verifica no dcm4chee se o item existe, exclui e confirma a remoção, e só então recria no
+    /// novo destino — a existência real no PACS manda, não o status local. Responde 409 quando o
+    /// exame já foi executado, quando o destino é inválido/inalterado, ou quando o PACS recusa/cai.
+    /// </summary>
+    [HttpPost("{id:guid}/alterar-equipamento")]
+    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> AlterarEquipamento(
+        Guid id,
+        [FromBody] AlterarEquipamentoRequest request,
+        CancellationToken cancellationToken)
+    {
+        await _service.AlterarEquipamentoDestinoAsync(id, request.EquipamentoId, cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary><paramref name="EquipamentoId"/> = nova estação de destino (entre as elegíveis
+    /// em <c>GET /solicitacoes-exame/{id}/equipamentos</c>).</summary>
+    public sealed record AlterarEquipamentoRequest(Guid EquipamentoId);
+
+    /// <summary>
     /// Exclui a solicitação. Requer permissão de Exclusão (concedida apenas a perfis
     /// administrativos). Por padrão remove primeiro o item de worklist no dcm4chee e
     /// confirma (anti-lixo); se o PACS recusar/cair, responde 409

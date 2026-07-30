@@ -78,6 +78,13 @@ public sealed record SolicitacaoExameDto(
     // não veio de importação. Exibida na tela de detalhe atrás de um botão discreto.
     string? RawSisreg,
 
+    // Equipamento (estação) de destino do envio ao PACS — define o ScheduledStationAETitle
+    // e o WorklistLabel do item MWL. Null enquanto não escolhido/deduzido. Exibido no detalhe
+    // ("informação enviada ao PACS") e é o alvo da troca de destino (ticket #72).
+    Guid? EquipamentoId,
+    string? EquipamentoNome,
+    string? EquipamentoAeTitle,
+
     // Dispensa de verificação do contato (paciente consentiu em não validar o WhatsApp). Quando
     // ativa, libera a autorização presencial mesmo sem número verificado. Resolvida só no
     // DETALHE (a listagem não precisa) — daí os defaults.

@@ -8,6 +8,7 @@ import {
   obterSolicitacao,
   obterSolicitacaoPorStudy,
   reenviarWorklist,
+  alterarEquipamentoDestino,
   autorizarSolicitacao,
   listarEquipamentosDoExame,
   obterHistorico,
@@ -116,6 +117,20 @@ export function useReenviarWorklist() {
     onSuccess: (_d, id) => {
       client.invalidateQueries({ queryKey: solicitacoesKeys.raiz });
       client.invalidateQueries({ queryKey: solicitacoesKeys.porId(id) });
+    },
+  });
+}
+
+/** Troca a estação (equipamento) de destino de um exame já enviado à worklist (ticket #72). */
+export function useAlterarEquipamentoDestino() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, equipamentoId }: { id: string; equipamentoId: string }) =>
+      alterarEquipamentoDestino(id, equipamentoId),
+    onSuccess: (_d, v) => {
+      client.invalidateQueries({ queryKey: solicitacoesKeys.raiz });
+      client.invalidateQueries({ queryKey: solicitacoesKeys.porId(v.id) });
+      client.invalidateQueries({ queryKey: [...solicitacoesKeys.raiz, 'equipamentos', v.id] });
     },
   });
 }
