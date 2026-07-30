@@ -5,6 +5,7 @@ import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
+import { SisregSenhasPorUnidadeSecao } from '@/features/sisreg-mapeamento/components/SisregSenhasPorUnidadeSecao';
 import { testarConexaoSisreg } from '@/features/sisreg/api/sisregApi';
 import {
   useAtualizarConfiguracaoSisreg,
@@ -256,6 +257,8 @@ export function SisregConfiguracaoPage() {
           </div>
         </form>
       </section>
+
+      <SisregSenhasPorUnidadeSecao />
     </div>
   );
 }

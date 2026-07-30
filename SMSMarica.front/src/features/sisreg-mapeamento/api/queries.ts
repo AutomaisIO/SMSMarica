@@ -30,7 +30,7 @@ export function useMapeamento(unidadeId: string | null) {
 export function useCredencialUnidade(unidadeId: string | null) {
   return useQuery({
     queryKey: mapeamentoKeys.credencial(unidadeId),
-    queryFn: obterCredencial,
+    queryFn: () => obterCredencial(unidadeId),
     enabled: Boolean(unidadeId),
   });
 }
@@ -81,7 +81,7 @@ export function useSincronizarFhir(unidadeId: string | null) {
 export function useSalvarCredencial(unidadeId: string | null) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (payload: SalvarCredencialPayload) => salvarCredencial(payload),
+    mutationFn: (payload: SalvarCredencialPayload) => salvarCredencial(payload, unidadeId),
     onSuccess: () => client.invalidateQueries({ queryKey: mapeamentoKeys.credencial(unidadeId) }),
   });
 }
@@ -89,7 +89,7 @@ export function useSalvarCredencial(unidadeId: string | null) {
 export function useTestarCredencial(unidadeId: string | null) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: testarCredencial,
+    mutationFn: () => testarCredencial(unidadeId),
     onSuccess: () => client.invalidateQueries({ queryKey: mapeamentoKeys.credencial(unidadeId) }),
   });
 }
@@ -97,7 +97,7 @@ export function useTestarCredencial(unidadeId: string | null) {
 export function useRemoverCredencial(unidadeId: string | null) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: removerCredencial,
+    mutationFn: () => removerCredencial(unidadeId),
     onSuccess: () => client.invalidateQueries({ queryKey: mapeamentoKeys.credencial(unidadeId) }),
   });
 }

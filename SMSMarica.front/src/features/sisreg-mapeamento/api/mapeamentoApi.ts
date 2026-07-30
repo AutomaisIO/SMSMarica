@@ -40,23 +40,46 @@ export async function sincronizarFhir(): Promise<SisregSincronizacaoFhir> {
   return data;
 }
 
-export async function obterCredencial(): Promise<SisregCredencialUnidade> {
-  const { data } = await http.get<SisregCredencialUnidade>('/sisreg/mapeamento/credencial');
+/**
+ * As operações de credencial rodam sobre a unidade do header X-Unidade-Id. Quando um
+ * `unidadeId` é informado, ele é enviado explicitamente na requisição (o interceptor não
+ * o sobrescreve com a unidade ativa) — é o que permite configurar a senha de uma unidade
+ * qualquer a partir da Configuração SISREG ou do detalhe da unidade, sem depender do
+ * seletor de unidade ativa do topo.
+ */
+function cabecalhoUnidade(unidadeId?: string | null) {
+  return unidadeId ? { headers: { 'X-Unidade-Id': unidadeId } } : undefined;
+}
+
+export async function obterCredencial(unidadeId?: string | null): Promise<SisregCredencialUnidade> {
+  const { data } = await http.get<SisregCredencialUnidade>(
+    '/sisreg/mapeamento/credencial',
+    cabecalhoUnidade(unidadeId),
+  );
   return data;
 }
 
 export async function salvarCredencial(
   payload: SalvarCredencialPayload,
+  unidadeId?: string | null,
 ): Promise<SisregAutenticacaoResultado> {
-  const { data } = await http.put<SisregAutenticacaoResultado>('/sisreg/mapeamento/credencial', payload);
+  const { data } = await http.put<SisregAutenticacaoResultado>(
+    '/sisreg/mapeamento/credencial',
+    payload,
+    cabecalhoUnidade(unidadeId),
+  );
   return data;
 }
 
-export async function testarCredencial(): Promise<SisregAutenticacaoResultado> {
-  const { data } = await http.post<SisregAutenticacaoResultado>('/sisreg/mapeamento/credencial/testar');
+export async function testarCredencial(unidadeId?: string | null): Promise<SisregAutenticacaoResultado> {
+  const { data } = await http.post<SisregAutenticacaoResultado>(
+    '/sisreg/mapeamento/credencial/testar',
+    undefined,
+    cabecalhoUnidade(unidadeId),
+  );
   return data;
 }
 
-export async function removerCredencial(): Promise<void> {
-  await http.delete('/sisreg/mapeamento/credencial');
+export async function removerCredencial(unidadeId?: string | null): Promise<void> {
+  await http.delete('/sisreg/mapeamento/credencial', cabecalhoUnidade(unidadeId));
 }

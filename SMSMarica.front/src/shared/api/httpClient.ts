@@ -28,8 +28,12 @@ http.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // Só injeta a unidade ativa quando a chamada não passou um X-Unidade-Id explícito.
+  // Telas que operam sobre uma unidade-alvo diferente da ativa (ex.: cadastro de senha
+  // do SISREG por unidade na Configuração/detalhe da unidade) mandam o header na própria
+  // requisição e ele tem precedência.
   const unidadeId = obterUnidadeAtivaId();
-  if (unidadeId) {
+  if (unidadeId && !config.headers['X-Unidade-Id']) {
     config.headers['X-Unidade-Id'] = unidadeId;
   }
   return config;

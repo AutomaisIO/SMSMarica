@@ -3,6 +3,7 @@ import { ArrowLeft, MapPin, Pencil, Phone } from 'lucide-react';
 import { TelefoneCopiavel } from '@/shared/ui/TelefoneCopiavel';
 import { useNavigate, useParams } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+import { useTemConsulta } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 import { MapaSeletor } from '@/shared/ui/MapaSeletor';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
@@ -11,6 +12,7 @@ import { Tabs, type Aba } from '@/shared/ui/Tabs';
 import { useUnidadePorId, useUsuariosDaUnidade } from '@/features/unidades/api/queries';
 import { UsuariosDaUnidadeSecao } from '@/features/unidades/components/UsuariosDaUnidadeSecao';
 import { EquipamentosDaUnidadeSecao } from '@/features/unidades/components/EquipamentosDaUnidadeSecao';
+import { CredencialSisregSecao } from '@/features/sisreg-mapeamento/components/CredencialSisregSecao';
 import { useListarEquipamentos } from '@/features/equipamentos/api/queries';
 import { useListarTratamentos } from '@/features/tratamentos/api/queries';
 import type { TratamentoListItem } from '@/features/tratamentos/types';
@@ -58,6 +60,7 @@ export function UnidadeDetalhePage() {
   const tratamentos = useListarTratamentos({ unidadeId: id });
   const usuariosDaUnidade = useUsuariosDaUnidade(id || null);
   const equipamentosDaUnidade = useListarEquipamentos(id || undefined, false);
+  const podeGerirSisreg = useTemConsulta('SisregMapeamento');
 
   const u = detalhe.data;
 
@@ -141,6 +144,23 @@ export function UnidadeDetalhePage() {
       conteudo: <UsuariosDaUnidadeSecao unidadeId={id} />,
       badge: usuariosDaUnidade.data?.length || undefined,
     },
+    ...(podeGerirSisreg && id
+      ? [
+          {
+            id: 'sisreg',
+            rotulo: 'SISREG',
+            conteudo: (
+              <div className="space-y-3">
+                <p className="text-sm text-gray-600">
+                  Credencial do operador do SISREG desta unidade. Ao salvar, autenticamos no SISREG
+                  e conferimos se a credencial pertence mesmo a esta unidade antes de gravar.
+                </p>
+                <CredencialSisregSecao unidadeId={id} nomeUnidade={u?.nome} />
+              </div>
+            ),
+          } satisfies Aba,
+        ]
+      : []),
   ];
 
   return (

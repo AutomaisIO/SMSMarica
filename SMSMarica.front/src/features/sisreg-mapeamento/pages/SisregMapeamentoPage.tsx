@@ -5,27 +5,21 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
-  KeyRound,
   Loader2,
   Network,
   RefreshCw,
-  Trash2,
-  UserCheck,
 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { useAuth } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
-import { ModalCredencial } from '@/features/sisreg-mapeamento/components/ModalCredencial';
+import { CredencialSisregSecao } from '@/features/sisreg-mapeamento/components/CredencialSisregSecao';
 import {
   useAlternarProcedimento,
   useAlternarProfissional,
   useAlternarProfissionaisEmLote,
   useAtualizarMapeamento,
-  useCredencialUnidade,
   useMapeamento,
-  useRemoverCredencial,
   useSincronizarFhir,
-  useTestarCredencial,
 } from '@/features/sisreg-mapeamento/api/queries';
 import type { SisregProfissional } from '@/features/sisreg-mapeamento/types';
 
@@ -40,17 +34,13 @@ export function SisregMapeamentoPage() {
   const unidades = useAuth((s) => s.unidades);
 
   const mapeamento = useMapeamento(unidadeAtivaId);
-  const credencial = useCredencialUnidade(unidadeAtivaId);
   const atualizar = useAtualizarMapeamento(unidadeAtivaId);
   const sincronizar = useSincronizarFhir(unidadeAtivaId);
-  const testar = useTestarCredencial(unidadeAtivaId);
-  const remover = useRemoverCredencial(unidadeAtivaId);
   const alternarProf = useAlternarProfissional(unidadeAtivaId);
   const alternarProc = useAlternarProcedimento(unidadeAtivaId);
   const alternarLote = useAlternarProfissionaisEmLote(unidadeAtivaId);
 
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
-  const [modalAberto, setModalAberto] = useState(false);
   const [aviso, setAviso] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
   const [filtro, setFiltro] = useState('');
   const [soHabilitados, setSoHabilitados] = useState(false);
@@ -115,95 +105,15 @@ export function SisregMapeamentoPage() {
   }
 
   const dados = mapeamento.data;
-  const semCredencialPropria = credencial.data?.usandoFallbackGlobal ?? false;
 
   return (
     <div className="p-6">
       <Cabecalho nomeUnidade={nomeUnidade} />
 
       {/* ---------------------------------------------------------- credencial */}
-      <section className="mt-6 rounded-lg border border-gray-200 bg-white p-4">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex gap-3">
-            <KeyRound className="mt-0.5 h-5 w-5 shrink-0 text-gray-500" />
-            <div>
-              <h2 className="font-medium text-gray-900">Credencial do SISREG desta unidade</h2>
-              {credencial.isLoading ? (
-                <p className="mt-1 text-sm text-gray-500">Carregando…</p>
-              ) : credencial.data?.usuario ? (
-                <div className="mt-1 space-y-1 text-sm text-gray-600">
-                  <p>
-                    Usuário <strong className="font-mono">{credencial.data.usuario}</strong>
-                    {credencial.data.unidadeSisregNome && (
-                      <>
-                        {' '}— confirmado em{' '}
-                        <strong>{credencial.data.unidadeSisregNome}</strong>
-                        {credencial.data.cnesConfirmado ? ` (CNES ${credencial.data.cnesConfirmado})` : ''}
-                      </>
-                    )}
-                  </p>
-                  {credencial.data.validadoEm && (
-                    <p className="text-xs text-gray-500">
-                      Última validação em{' '}
-                      {new Date(credencial.data.validadoEm).toLocaleString('pt-BR')}
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="mt-1 text-sm text-gray-600">
-                  Nenhuma credencial própria — esta unidade está usando a credencial global das
-                  Integrações, que enxerga apenas a unidade do operador dela.
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Button variante="outline" onClick={() => setModalAberto(true)}>
-              <KeyRound className="h-4 w-4" />
-              {credencial.data?.usuario ? 'Trocar usuário/senha' : 'Cadastrar credencial'}
-            </Button>
-            <Button
-              variante="secundaria"
-              disabled={testar.isPending}
-              onClick={() =>
-                executar(
-                  () => testar.mutateAsync(),
-                  (r) => (r as { mensagem: string }).mensagem,
-                )
-              }
-            >
-              {testar.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <UserCheck className="h-4 w-4" />
-              )}
-              Testar
-            </Button>
-            {credencial.data?.usuario && (
-              <Button
-                variante="ghost"
-                disabled={remover.isPending}
-                onClick={() =>
-                  executar(
-                    () => remover.mutateAsync(),
-                    () => 'Credencial da unidade removida — voltou a usar a credencial global.',
-                  )
-                }
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {semCredencialPropria && !credencial.isLoading && (
-          <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
-            Sem credencial própria, atualizar o mapeamento vai falhar se a credencial global for de
-            outra unidade — a conferência de unidade barra antes de gravar qualquer coisa errada.
-          </p>
-        )}
-      </section>
+      <div className="mt-6">
+        <CredencialSisregSecao unidadeId={unidadeAtivaId} nomeUnidade={nomeUnidade} />
+      </div>
 
       {aviso && (
         <div
@@ -357,13 +267,6 @@ export function SisregMapeamentoPage() {
           </ul>
         )}
       </section>
-
-      <ModalCredencial
-        aberto={modalAberto}
-        unidadeId={unidadeAtivaId}
-        credencial={credencial.data}
-        aoFechar={() => setModalAberto(false)}
-      />
     </div>
   );
 }
