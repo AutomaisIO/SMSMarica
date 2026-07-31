@@ -281,14 +281,21 @@ API `POST /api/managed-devices/{id}/vpn-links` com `{ "linkRole": "A|B|C", "labe
 
 **Por que**: gestão sobrevive à queda de qualquer link (todos os túneis ficam de pé, sem
 failover de VPN), e o handshake/ping POR túnel no painel é telemetria POR LINK — túnel A morto
-+ túnel B vivo = perna da Prefeitura caída, sem investigação. (Resolve a cegueira do incidente
-Péricles 29/07: com um túnel por link dá pra ver QUAL perna sumiu.)
++ túnel B vivo = perna da Prefeitura caída, sem investigação.
+
+⚠️ **Não é o que teria resolvido o incidente Péricles 29/07** (correção de 31/07 — a redação
+anterior prometia isso). Lá **os dois túneis saíam pelo MESMO link**: a única rota default do
+MK é via a Connect, e o link da Prefeitura é só bridgeado — o MK não tem rota por ele. O
+`wg-voip` ficou de pé o tempo todo e só o `automais-vpn` caiu, então não foi "uma perna que
+sumiu", foi o peer do automais.io sobre um caminho que estava funcionando. O que o multi-link
+acrescenta nesse cenário é outra coisa, e é útil: se os auxiliares ficarem de pé e só o
+primário cair, o problema fica **localizado no peer primário** em vez de virar mistério.
 
 **Convenção SMS Maricá (papel do link é FIXO, espelha as portas do hEX):**
 
 | Role | Link | `mikrotikGateway` | Observação |
 |---|---|---|---|
-| `A` | **Prefeitura** (ether1/bridge) | `<GATEWAY_REAL>` da LAN da unidade | O MK JÁ tem L3 nesse caminho (`<IP_MK_LAN>` na bridge/VLAN, §2). ⚠️ **PORTÃO**: confirmar que a borda da Prefeitura deixa **UDP sair** até `api.automais.io` (proxy pode bloquear) — testar na 1ª unidade antes de replicar |
+| `A` | **Prefeitura** (ether1 → bridge **ou** interface VLAN da LAN, se a unidade for tagged) | `<GATEWAY_REAL>` da LAN da unidade | O MK JÁ tem L3 nesse caminho (`<IP_MK_LAN>`, §2) e a rota resolve certo — medido no CAPS AD: `immediate-gw=10.1.96.1%vlan1102-lan`, rota `As`. 🔴 **PORTÃO — sonda NEGATIVA, ver aviso abaixo** |
 | `B` | **Connect** (ether2) | gw do dhcp-client da ether2 (tipicamente `192.168.0.1`) | Pinado à Connect por rota própria — segue medindo a Connect mesmo se a default route mudar um dia |
 | `C` | **Reserva** (ether3, futuro) | **null** (sem gateway) | **Criar JÁ** — peer/chaves/IP ficam provisionados; sem gateway o túnel sai pela default route (sobe e handshaka via Connect, telemetria duplica a B até existir link). Quando o link chegar: `PATCH .../vpn-links/{linkId}` com o gateway + re-bootstrap → pina na ether3 |
 
@@ -304,6 +311,31 @@ papéis removidos no painel são limpos no re-bootstrap):
   mark-connection faz a resposta sair pela interface por onde entrou);
 - regras de firewall input (ICMP/22/8728 da origem do servidor VPN) em CADA interface aux —
   gestão funciona por qualquer túnel vivo.
+
+🔴 **O portão da Prefeitura NÃO deixou o MK sair — sondado no CAPS AD em 31/07.** Teste:
+routing table temporária com `default via 10.1.96.1`, mangle `output dst-address=1.1.1.1`
+marcando para ela, e `/ping 1.1.1.1` → **100% de timeout**. Pela Connect o mesmo MK navega
+normalmente. Ou seja, o link da Prefeitura entrega **a LAN da unidade**, mas não dá saída
+livre à internet para o próprio MK (proxy/borda filtrando, e o `10.1.96.254` provavelmente
+nem está autorizado a sair). **Consequência: o link A pode simplesmente não subir.** Não
+tratar como detalhe de config — na unidade piloto, validar **handshake real** do túnel A, não
+só a criação do link no painel. Se não subir, o caminho é liberar o MK na borda da Prefeitura
+(assunto com a TI deles), não insistir no MK. Ressalva honesta: a sonda foi **ICMP**; é
+possível que UDP para `api.automais.io` tenha tratamento diferente — mas a premissa "o MK sai
+pela Prefeitura" está, hoje, **desmentida** e não pode ser assumida.
+(`/ping` do RouterOS 7.23 **não** aceita `routing-table=` — por isso o mangle; use um IP que
+nada no MK use: 1.1.1.1 serve, `8.8.8.8`/`9.9.9.9` NÃO, que são os forwarders do `/ip dns`.)
+
+⚠️ **Interação com o failover (§4) — verificada, e é benigna.** Durante o failover o MK
+**assume o `<GATEWAY_REAL>`** (`FAILOVER gw takeover`), que é justamente o `mikrotikGateway`
+do link A. A dúvida era se o `check-gateway=ping` passaria a acertar o próprio MK (self-ping)
+e reportar o link A como vivo com a Prefeitura morta — **não acontece**. Testado no CAPS AD:
+rota com next-hop num IP que o próprio MK possui fica **`Is` (inativa)** com
+`immediate-gw=""`; o RouterOS recusa resolver endereço local como next-hop. Então o túnel A
+cai durante o failover, que é o sinal semanticamente correto. **Mas registre o limite:** o
+túnel A fica inativo *por construção* enquanto o failover durar, então **o painel não serve
+para detectar a VOLTA do link da Prefeitura** — quem detecta a volta continua sendo o delta de
+`rx-packet` do script (§4). Não trocar um pelo outro.
 
 ⚠️ **Blindagem (§5)**: a regra `WireGuard VPNs` na entrada da Connect precisa incluir as portas
 dos túneis que saem pela Connect — além da `<PORTA_AUTOMAIS_VPN>` (133xx), somar a do túnel B
