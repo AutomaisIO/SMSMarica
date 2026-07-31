@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import { api, type Agendamento } from '@/lib/api';
+import { classificarErro } from '@/lib/httpClient';
 import { Card, GhostButton, PrimaryButton } from '@/components/ui';
 import { Lista } from '@/components/Lista';
 import { Etiqueta } from '@/components/Etiqueta';
@@ -171,6 +172,20 @@ function EtiquetaAgendamento({ agendamento: a }: { agendamento: Agendamento }) {
   return <Etiqueta status={a.status} />;
 }
 
+/**
+ * Texto amigável para a falha ao responder o agendamento. Traduzimos o código de negócio
+ * para uma frase da linguagem do cidadão — a mensagem do servidor nunca é exibida.
+ */
+function mensagemDeFalha(erro: unknown): string {
+  const { status, codigo } = classificarErro(erro);
+  if (codigo === 'confirmacao.ja_respondida')
+    return 'Este agendamento já foi respondido. Puxe a tela para baixo para atualizar.';
+  if (codigo === 'confirmacao.exame_passado')
+    return 'A data deste agendamento já passou. Procure a unidade para remarcar.';
+  if (status === 404) return 'Não encontramos este agendamento. Puxe a tela para baixo para atualizar.';
+  return 'Não foi possível registrar. Tente novamente.';
+}
+
 /** Botões Confirmar / Não poderei ir do exame ainda sem resposta (importado do SISREG). */
 function RespostaConfirmacao({
   solicitacaoExameId,
@@ -190,8 +205,8 @@ function RespostaConfirmacao({
     try {
       await api.confirmarExame(solicitacaoExameId);
       aoResponder?.();
-    } catch {
-      setErro('Não foi possível registrar. Tente novamente.');
+    } catch (e) {
+      setErro(mensagemDeFalha(e));
       setEnviando(false);
     }
   }
@@ -206,8 +221,8 @@ function RespostaConfirmacao({
     try {
       await api.cancelarExame(solicitacaoExameId, motivo.trim());
       aoResponder?.();
-    } catch {
-      setErro('Não foi possível registrar. Tente novamente.');
+    } catch (e) {
+      setErro(mensagemDeFalha(e));
       setEnviando(false);
     }
   }

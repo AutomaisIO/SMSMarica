@@ -49,6 +49,17 @@ export type ProblemaApi = {
   errors?: Record<string, string[]>;
 };
 
+/**
+ * Status HTTP + código de negócio (o `type` do ProblemDetails, ex.: "confirmacao.ja_respondida")
+ * de um erro da API. Serve para a tela escolher um texto AMIGÁVEL — nunca exibimos ao
+ * cidadão a mensagem crua vinda do servidor.
+ */
+export function classificarErro(erro: unknown): { status?: number; codigo?: string } {
+  if (!(erro instanceof AxiosError)) return {};
+  const dados = erro.response?.data as ProblemaApi | undefined;
+  return { status: erro.response?.status, codigo: dados?.type ?? undefined };
+}
+
 export function extrairMensagemDeErro(erro: unknown): string {
   if (erro instanceof AxiosError) {
     const dados = erro.response?.data as ProblemaApi | undefined;
