@@ -1,14 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using SMSMarica.Data.Entities.Tfd;
+using SMSMarica.Data.Entities.Notificacoes;
 
 namespace SMSMarica.Data.Configurations;
 
-internal sealed class TfdConfigWhatsAppConfiguration : IEntityTypeConfiguration<TfdConfigWhatsApp>
+internal sealed class WhatsAppConfiguracaoConfiguration : IEntityTypeConfiguration<WhatsAppConfiguracao>
 {
-    public void Configure(EntityTypeBuilder<TfdConfigWhatsApp> builder)
+    public void Configure(EntityTypeBuilder<WhatsAppConfiguracao> builder)
     {
-        builder.ToTable("tfd_config_whatsapp");
+        builder.ToTable("whatsapp_configuracao");
         builder.HasKey(c => c.Id);
 
         builder.Property(c => c.Id).HasColumnName("id");

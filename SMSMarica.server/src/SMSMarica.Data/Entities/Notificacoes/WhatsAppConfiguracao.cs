@@ -1,11 +1,15 @@
-namespace SMSMarica.Data.Entities.Tfd;
+namespace SMSMarica.Data.Entities.Notificacoes;
 
 /// <summary>
-/// Configuração (linha única) da integração WhatsApp (Meta Cloud API) do TFD.
+/// Configuração (linha única) da integração WhatsApp (Meta Cloud API) do município.
 /// Segredos (token do System User, verify token, app secret) cifrados em repouso
 /// (IProtetorSegredos), write-only na API.
 /// </summary>
-public class TfdConfigWhatsApp
+/// <remarks>
+/// Antiga <c>TfdConfigWhatsApp</c> / <c>tfd_config_whatsapp</c>. O canal WhatsApp é do
+/// município e atende todo o sistema — nunca foi do TFD (ADR-0038).
+/// </remarks>
+public class WhatsAppConfiguracao
 {
     public Guid Id { get; set; }
     public string BaseUrl { get; set; } = "https://graph.facebook.com/v21.0/";

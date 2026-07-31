@@ -22,7 +22,7 @@ public sealed class WhatsAppNotificador(
         var texto = $"Olá {primeiroNome}! Sobre o seu transporte de saúde do dia "
             + $"{sessao.DataPrevista:dd/MM}: você vai com acompanhante? "
             + "Responda *1* para SIM ou *2* para NÃO.";
-        await cliente.EnviarTextoAsync(fone, texto, sessaoId, trat.PacienteId, ct);
+        await cliente.EnviarTextoAsync(fone, texto, trat.PacienteId, ct);
     }
 
     public async Task AvisarColetaAsync(Guid sessaoId, CancellationToken ct = default)
@@ -34,7 +34,7 @@ public sealed class WhatsAppNotificador(
         var hora = sessao.HoraPrevistaBusca?.ToString("HH:mm") ?? "a confirmar";
         var texto = $"Olá {primeiroNome}! Seu transporte de saúde está agendado para "
             + $"{sessao.DataPrevista:dd/MM} às {hora}. Por favor, esteja pronto(a) no horário. 🚐";
-        await cliente.EnviarTextoAsync(fone, texto, sessaoId, trat.PacienteId, ct);
+        await cliente.EnviarTextoAsync(fone, texto, trat.PacienteId, ct);
     }
 
     private async Task<(SessaoDeTratamento Sessao, Tratamento Tratamento)> CarregarAsync(Guid sessaoId, CancellationToken ct)

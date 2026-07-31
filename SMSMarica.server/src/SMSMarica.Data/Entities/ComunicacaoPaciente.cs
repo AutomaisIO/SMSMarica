@@ -1,5 +1,5 @@
 using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Tfd;
+using SMSMarica.Data.Entities.Notificacoes;
 
 namespace SMSMarica.Data.Entities;
 

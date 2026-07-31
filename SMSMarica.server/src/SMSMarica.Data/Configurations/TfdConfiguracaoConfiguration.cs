@@ -4,11 +4,11 @@ using SMSMarica.Data.Entities.Tfd;
 
 namespace SMSMarica.Data.Configurations;
 
-internal sealed class TfdConfigFaturamentoConfiguration : IEntityTypeConfiguration<TfdConfigFaturamento>
+internal sealed class TfdConfiguracaoConfiguration : IEntityTypeConfiguration<TfdConfiguracao>
 {
-    public void Configure(EntityTypeBuilder<TfdConfigFaturamento> builder)
+    public void Configure(EntityTypeBuilder<TfdConfiguracao> builder)
     {
-        builder.ToTable("tfd_config_faturamento");
+        builder.ToTable("tfd_configuracao");
         builder.HasKey(c => c.Id);
 
         builder.Property(c => c.Id).HasColumnName("id");

@@ -5,6 +5,8 @@ using SMSMarica.Data.Entities.Conversas;
 using SMSMarica.Data.Entities.Ia;
 using SMSMarica.Data.Entities.Integracoes;
 using SMSMarica.Data.Entities.Pep;
+using SMSMarica.Data.Entities.Geo;
+using SMSMarica.Data.Entities.Notificacoes;
 using SMSMarica.Data.Entities.Sisreg;
 using SMSMarica.Data.Entities.Tfd;
 
@@ -115,13 +117,18 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<BloqueioAgenda> BloqueiosAgenda => Set<BloqueioAgenda>();
     public DbSet<Agendamento> Agendamentos => Set<Agendamento>();
 
-    // Módulo TFD (geocodificação, WhatsApp, configs de integração) — ADR-0017
-    public DbSet<Geocodigo> Geocodigos => Set<Geocodigo>();
+    // Mensageria WhatsApp — infraestrutura transversal do município (ADR-0038).
+    // NÃO é do TFD: o TFD é um dos consumidores, como qualquer outro módulo.
     public DbSet<MensagemWhatsApp> MensagensWhatsApp => Set<MensagemWhatsApp>();
-    public DbSet<TfdConfigGoogle> TfdConfigGoogle => Set<TfdConfigGoogle>();
-    public DbSet<TfdConfigWhatsApp> TfdConfigWhatsApp => Set<TfdConfigWhatsApp>();
+    public DbSet<WhatsAppConfiguracao> WhatsAppConfiguracao => Set<WhatsAppConfiguracao>();
+
+    // Geo — cache de geocodificação e credencial do Google Maps (ADR-0038).
+    public DbSet<GeoEndereco> GeoEnderecos => Set<GeoEndereco>();
+    public DbSet<GeoConfiguracao> GeoConfiguracao => Set<GeoConfiguracao>();
+
+    // Módulo TFD propriamente dito (transporte sanitário) — ADR-0017.
     public DbSet<RegistroFaturamento> RegistrosFaturamento => Set<RegistroFaturamento>();
-    public DbSet<TfdConfigFaturamento> TfdConfigFaturamento => Set<TfdConfigFaturamento>();
+    public DbSet<TfdConfiguracao> TfdConfiguracao => Set<TfdConfiguracao>();
 
     // Autenticação do cidadão (paciente no app) — credenciais + sessão única por device.
     // NÃO é Usuario/RBAC. Fonte da verdade = CPF. Ver ADR-0018.

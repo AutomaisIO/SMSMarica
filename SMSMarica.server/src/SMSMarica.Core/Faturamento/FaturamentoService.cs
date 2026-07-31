@@ -192,17 +192,17 @@ public sealed class FaturamentoService(
 
     private async Task<(decimal Valor, int KmPorUnidade, string? Codigo)> ObterContextoConfigAsync(CancellationToken ct)
     {
-        var c = await db.TfdConfigFaturamento.AsNoTracking().FirstOrDefaultAsync(ct);
+        var c = await db.TfdConfiguracao.AsNoTracking().FirstOrDefaultAsync(ct);
         if (c is null || !c.Ativo) return (0m, 50, c?.CodigoSigtap);
         return (c.ValorPor50Km, c.KmPorUnidade <= 0 ? 50 : c.KmPorUnidade, c.CodigoSigtap);
     }
 
-    private async Task<TfdConfigFaturamento> ObterOuCriarConfigAsync(CancellationToken ct)
+    private async Task<TfdConfiguracao> ObterOuCriarConfigAsync(CancellationToken ct)
     {
-        var c = await db.TfdConfigFaturamento.FirstOrDefaultAsync(ct);
+        var c = await db.TfdConfiguracao.FirstOrDefaultAsync(ct);
         if (c is not null) return c;
-        c = new TfdConfigFaturamento { Id = Guid.CreateVersion7(), KmPorUnidade = 50, CriadoEm = DateTime.UtcNow };
-        db.TfdConfigFaturamento.Add(c);
+        c = new TfdConfiguracao { Id = Guid.CreateVersion7(), KmPorUnidade = 50, CriadoEm = DateTime.UtcNow };
+        db.TfdConfiguracao.Add(c);
         await db.SaveChangesAsync(ct);
         return c;
     }

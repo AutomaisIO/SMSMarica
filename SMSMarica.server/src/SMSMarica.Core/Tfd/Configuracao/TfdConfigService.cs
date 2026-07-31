@@ -2,7 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Inteligencia.Seguranca;
 using SMSMarica.Data;
-using SMSMarica.Data.Entities.Tfd;
+using SMSMarica.Data.Entities.Geo;
+using SMSMarica.Data.Entities.Notificacoes;
 
 namespace SMSMarica.Core.Tfd.Configuracao;
 
@@ -30,7 +31,7 @@ public sealed class TfdConfigService(SmsMaricaDbContext db, IProtetorSegredos pr
 
     public async Task<TfdGoogleContexto> ObterGoogleContextoAsync(CancellationToken ct = default)
     {
-        var c = await db.TfdConfigGoogle.AsNoTracking().FirstOrDefaultAsync(ct)
+        var c = await db.GeoConfiguracao.AsNoTracking().FirstOrDefaultAsync(ct)
             ?? throw new ValidacaoException("google.nao_configurado", "Integração Google Maps ainda não configurada.");
         if (!c.Ativo) throw new ValidacaoException("google.inativo", "Integração Google Maps está desativada.");
         if (string.IsNullOrEmpty(c.ApiKeyCifrada)) throw new ValidacaoException("google.sem_chave", "Chave da API Google não configurada.");
@@ -65,7 +66,7 @@ public sealed class TfdConfigService(SmsMaricaDbContext db, IProtetorSegredos pr
 
     public async Task<TfdWhatsAppContexto> ObterWhatsAppContextoAsync(CancellationToken ct = default)
     {
-        var c = await db.TfdConfigWhatsApp.AsNoTracking().FirstOrDefaultAsync(ct)
+        var c = await db.WhatsAppConfiguracao.AsNoTracking().FirstOrDefaultAsync(ct)
             ?? throw new ValidacaoException("whatsapp.nao_configurado", "Integração WhatsApp ainda não configurada.");
         if (!c.Ativo) throw new ValidacaoException("whatsapp.inativo", "Integração WhatsApp está desativada.");
         if (string.IsNullOrEmpty(c.TokenCifrado) || string.IsNullOrWhiteSpace(c.PhoneNumberId))
@@ -79,22 +80,22 @@ public sealed class TfdConfigService(SmsMaricaDbContext db, IProtetorSegredos pr
             string.IsNullOrEmpty(c.AppSecretCifrado) ? null : protetor.Revelar(c.AppSecretCifrado));
     }
 
-    private async Task<TfdConfigGoogle> ObterOuCriarGoogleAsync(CancellationToken ct)
+    private async Task<GeoConfiguracao> ObterOuCriarGoogleAsync(CancellationToken ct)
     {
-        var c = await db.TfdConfigGoogle.FirstOrDefaultAsync(ct);
+        var c = await db.GeoConfiguracao.FirstOrDefaultAsync(ct);
         if (c is not null) return c;
-        c = new TfdConfigGoogle { Id = Guid.CreateVersion7(), CriadoEm = DateTime.UtcNow };
-        db.TfdConfigGoogle.Add(c);
+        c = new GeoConfiguracao { Id = Guid.CreateVersion7(), CriadoEm = DateTime.UtcNow };
+        db.GeoConfiguracao.Add(c);
         await db.SaveChangesAsync(ct);
         return c;
     }
 
-    private async Task<TfdConfigWhatsApp> ObterOuCriarWhatsAppAsync(CancellationToken ct)
+    private async Task<WhatsAppConfiguracao> ObterOuCriarWhatsAppAsync(CancellationToken ct)
     {
-        var c = await db.TfdConfigWhatsApp.FirstOrDefaultAsync(ct);
+        var c = await db.WhatsAppConfiguracao.FirstOrDefaultAsync(ct);
         if (c is not null) return c;
-        c = new TfdConfigWhatsApp { Id = Guid.CreateVersion7(), CriadoEm = DateTime.UtcNow };
-        db.TfdConfigWhatsApp.Add(c);
+        c = new WhatsAppConfiguracao { Id = Guid.CreateVersion7(), CriadoEm = DateTime.UtcNow };
+        db.WhatsAppConfiguracao.Add(c);
         await db.SaveChangesAsync(ct);
         return c;
     }

@@ -40,17 +40,17 @@ public sealed record TemplateWhatsApp(
 /// <summary>
 /// Cliente do WhatsApp Cloud API (Meta). Token/PhoneNumberId vêm da configuração cifrada
 /// (<see cref="Tfd.Configuracao.ITfdConfigService"/>). Cada envio é auditado em
-/// <c>tfd_mensagem_whatsapp</c>. Mensagens iniciadas pelo sistema (fora da janela de 24h)
+/// <c>whatsapp_mensagem</c>. Mensagens iniciadas pelo sistema (fora da janela de 24h)
 /// exigem template HSM aprovado; dentro da janela, texto livre.
 /// </summary>
 public interface IWhatsAppCliente
 {
     Task<EnvioWhatsAppResultado> EnviarTextoAsync(
-        string telefone, string texto, Guid? sessaoId = null, Guid? pacienteId = null, CancellationToken ct = default);
+        string telefone, string texto, Guid? pacienteId = null, CancellationToken ct = default);
 
     Task<EnvioWhatsAppResultado> EnviarTemplateAsync(
         string telefone, string template, string idiomaBcp47, IReadOnlyList<string> parametros,
-        Guid? sessaoId = null, Guid? pacienteId = null, CancellationToken ct = default);
+        Guid? pacienteId = null, CancellationToken ct = default);
 
     /// <summary>
     /// Envia um template da categoria <b>AUTHENTICATION</b> (OTP). Diferente de um template
@@ -60,7 +60,7 @@ public interface IWhatsAppCliente
     /// </summary>
     Task<EnvioWhatsAppResultado> EnviarTemplateAutenticacaoAsync(
         string telefone, string template, string idiomaBcp47, string codigo,
-        Guid? sessaoId = null, Guid? pacienteId = null, CancellationToken ct = default);
+        Guid? pacienteId = null, CancellationToken ct = default);
 
     /// <summary>
     /// Envia um template com componentes de botão (URL dinâmica e/ou quick reply), além dos
@@ -69,7 +69,7 @@ public interface IWhatsAppCliente
     Task<EnvioWhatsAppResultado> EnviarTemplateComBotoesAsync(
         string telefone, string template, string idiomaBcp47,
         IReadOnlyList<string> parametrosBody, IReadOnlyList<BotaoTemplateWhatsApp> botoes,
-        Guid? sessaoId = null, Guid? pacienteId = null, CancellationToken ct = default);
+        Guid? pacienteId = null, CancellationToken ct = default);
 
     /// <summary>
     /// Envia mensagem interativa com botões de resposta (só dentro da janela de 24h — fora dela
@@ -78,7 +78,7 @@ public interface IWhatsAppCliente
     /// </summary>
     Task<EnvioWhatsAppResultado> EnviarInterativoBotoesAsync(
         string telefone, string texto, IReadOnlyList<BotaoInterativoWhatsApp> botoes,
-        Guid? sessaoId = null, Guid? pacienteId = null, CancellationToken ct = default);
+        Guid? pacienteId = null, CancellationToken ct = default);
 
     /// <summary>
     /// Lista os templates <b>APPROVED</b> da WABA (catálogo Meta), para o operador escolher ao

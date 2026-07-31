@@ -10,7 +10,7 @@ using SMSMarica.Core.Pacientes;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Tfd;
+using SMSMarica.Data.Entities.Notificacoes;
 using SMSMarica.Tests.Infraestrutura;
 
 namespace SMSMarica.Tests.Notificacoes;

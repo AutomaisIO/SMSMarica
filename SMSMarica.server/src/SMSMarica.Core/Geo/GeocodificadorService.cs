@@ -8,7 +8,7 @@ using SMSMarica.Core.Geo.Google;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Tfd;
+using SMSMarica.Data.Entities.Geo;
 
 namespace SMSMarica.Core.Geo;
 
@@ -23,7 +23,7 @@ public sealed class GeocodificadorService(
         if (normalizado is null) return null;
 
         var hash = Hash(normalizado);
-        var existente = await db.Geocodigos.FirstOrDefaultAsync(g => g.Hash == hash, ct);
+        var existente = await db.GeoEnderecos.FirstOrDefaultAsync(g => g.Hash == hash, ct);
 
         // Cache válido (coordenada confiável já resolvida).
         if (existente is not null && !existente.RevisaoPendente && !(existente.Latitude == 0 && existente.Longitude == 0))
@@ -63,7 +63,7 @@ public sealed class GeocodificadorService(
 
     public async Task<IReadOnlyList<GeocodigoDto>> ListarRevisaoPendenteAsync(CancellationToken ct = default)
     {
-        var lista = await db.Geocodigos.AsNoTracking()
+        var lista = await db.GeoEnderecos.AsNoTracking()
             .Where(g => g.RevisaoPendente)
             .OrderBy(g => g.GeocodificadoEm)
             .ToListAsync(ct);
@@ -72,8 +72,8 @@ public sealed class GeocodificadorService(
 
     public async Task FixarManualAsync(FixarGeocodigoRequest request, CancellationToken ct = default)
     {
-        var g = await db.Geocodigos.FirstOrDefaultAsync(x => x.Id == request.Id, ct)
-            ?? throw new NaoEncontradoException(nameof(Geocodigo), request.Id);
+        var g = await db.GeoEnderecos.FirstOrDefaultAsync(x => x.Id == request.Id, ct)
+            ?? throw new NaoEncontradoException(nameof(GeoEndereco), request.Id);
 
         g.Latitude = request.Latitude;
         g.Longitude = request.Longitude;
@@ -85,12 +85,12 @@ public sealed class GeocodificadorService(
     }
 
     private void Upsert(
-        Geocodigo? existente, string hash, string normalizado,
+        GeoEndereco? existente, string hash, string normalizado,
         double lat, double lng, FonteGeocodigo fonte, string? precisao, bool revisaoPendente)
     {
         if (existente is null)
         {
-            db.Geocodigos.Add(new Geocodigo
+            db.GeoEnderecos.Add(new GeoEndereco
             {
                 Id = Guid.CreateVersion7(),
                 Hash = hash,
@@ -149,7 +149,7 @@ public sealed class GeocodificadorService(
     private static string Hash(string s) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(s))).ToLowerInvariant();
 
-    private static GeocodigoDto ParaDto(Geocodigo g) => new(
+    private static GeocodigoDto ParaDto(GeoEndereco g) => new(
         g.Id, g.EnderecoNormalizado, g.Latitude, g.Longitude,
         g.Fonte.ToString(), g.Precisao, g.RevisaoPendente, g.GeocodificadoEm);
 }

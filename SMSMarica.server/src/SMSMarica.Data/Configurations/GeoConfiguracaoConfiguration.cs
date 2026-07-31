@@ -1,14 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using SMSMarica.Data.Entities.Tfd;
+using SMSMarica.Data.Entities.Geo;
 
 namespace SMSMarica.Data.Configurations;
 
-internal sealed class TfdConfigGoogleConfiguration : IEntityTypeConfiguration<TfdConfigGoogle>
+internal sealed class GeoConfiguracaoConfiguration : IEntityTypeConfiguration<GeoConfiguracao>
 {
-    public void Configure(EntityTypeBuilder<TfdConfigGoogle> builder)
+    public void Configure(EntityTypeBuilder<GeoConfiguracao> builder)
     {
-        builder.ToTable("tfd_config_google");
+        builder.ToTable("geo_configuracao");
         builder.HasKey(c => c.Id);
 
         builder.Property(c => c.Id).HasColumnName("id");

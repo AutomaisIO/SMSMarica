@@ -8,7 +8,7 @@ using SMSMarica.Data;
 namespace SMSMarica.Core.Estatisticas;
 
 /// <summary>
-/// Agrega o histórico de mensagens WhatsApp (<c>tfd_mensagem_whatsapp</c>) e conversas em números
+/// Agrega o histórico de mensagens WhatsApp (<c>whatsapp_mensagem</c>) e conversas em números
 /// gerenciais. Usa SQL agregado direto na conexão do contexto (nunca materializa linhas) porque o
 /// banco é compartilhado com outros produtos e as contagens varreriam a tabela à toa via EF.
 /// </summary>
@@ -41,13 +41,13 @@ public sealed class EstatisticasService(SmsMaricaDbContext db) : IEstatisticasSe
             var porDia = await LerPorDiaAsync(conn, de, ate, ct);
             var porTemplate = await LerRotuloAsync(conn,
                 $"SELECT COALESCE(NULLIF(m.template,''),'(sem template)') AS r, count(*) AS c " +
-                $"FROM smsmarica.tfd_mensagem_whatsapp m WHERE {FiltroPeriodoSimulado} " +
+                $"FROM smsmarica.whatsapp_mensagem m WHERE {FiltroPeriodoSimulado} " +
                 "AND m.template IS NOT NULL AND m.template <> '' GROUP BY 1 ORDER BY 2 DESC LIMIT 12",
                 de, ate, ct);
             var porStatus = await LerStatusAsync(conn, de, ate, ct);
             var porAtendente = await LerRotuloAsync(conn,
                 "SELECT COALESCE(NULLIF(m.autor_nome_exibicao,''),'(sem nome)') AS r, count(*) AS c " +
-                $"FROM smsmarica.tfd_mensagem_whatsapp m WHERE {FiltroPeriodoSimulado} " +
+                $"FROM smsmarica.whatsapp_mensagem m WHERE {FiltroPeriodoSimulado} " +
                 "AND m.autor_usuario_id IS NOT NULL GROUP BY 1 ORDER BY 2 DESC LIMIT 12",
                 de, ate, ct);
             var conversasNovas = await LerEscalarAsync(conn,
@@ -111,7 +111,7 @@ public sealed class EstatisticasService(SmsMaricaDbContext db) : IEstatisticasSe
               count(*) FILTER (WHERE m.direcao=1 AND m.status IN (2,3)) AS entregues,
               count(*) FILTER (WHERE m.direcao=1 AND m.status=3) AS lidas,
               count(DISTINCT m.autor_usuario_id) FILTER (WHERE m.autor_usuario_id IS NOT NULL) AS atendentes
-            FROM smsmarica.tfd_mensagem_whatsapp m
+            FROM smsmarica.whatsapp_mensagem m
             WHERE {FiltroPeriodoSimulado}
             """, de, ate);
         await using var r = await cmd.ExecuteReaderAsync(ct);
@@ -127,7 +127,7 @@ public sealed class EstatisticasService(SmsMaricaDbContext db) : IEstatisticasSe
         await using var cmd = CriarComando(conn,
             "SELECT m.ocorrido_em::date AS dia, " +
             "count(*) FILTER (WHERE m.direcao=1) AS env, count(*) FILTER (WHERE m.direcao=2) AS rec " +
-            $"FROM smsmarica.tfd_mensagem_whatsapp m WHERE {FiltroPeriodoSimulado} GROUP BY 1 ORDER BY 1",
+            $"FROM smsmarica.whatsapp_mensagem m WHERE {FiltroPeriodoSimulado} GROUP BY 1 ORDER BY 1",
             de, ate);
         var lista = new List<SerieDiaDto>();
         await using var r = await cmd.ExecuteReaderAsync(ct);
@@ -151,7 +151,7 @@ public sealed class EstatisticasService(SmsMaricaDbContext db) : IEstatisticasSe
         DbConnection conn, DateOnly de, DateOnly ate, CancellationToken ct)
     {
         await using var cmd = CriarComando(conn,
-            "SELECT m.status, count(*) FROM smsmarica.tfd_mensagem_whatsapp m " +
+            "SELECT m.status, count(*) FROM smsmarica.whatsapp_mensagem m " +
             $"WHERE {FiltroPeriodoSimulado} GROUP BY 1 ORDER BY 1", de, ate);
         var lista = new List<RotuloContagemDto>();
         await using var r = await cmd.ExecuteReaderAsync(ct);

@@ -37,7 +37,6 @@ public sealed class AcompanhanteWhatsAppHandler(SmsMaricaDbContext db) : IManipu
         sessao.AcompanhanteConfirmadoEm = DateTime.UtcNow;
         sessao.AcompanhanteCanal = CanalConfirmacao.WhatsApp;
         sessao.AtualizadoEm = DateTime.UtcNow;
-        ctx.Mensagem.SessaoId = sessao.Id;
     }
 
     private static bool? InterpretarSimNao(string? texto)

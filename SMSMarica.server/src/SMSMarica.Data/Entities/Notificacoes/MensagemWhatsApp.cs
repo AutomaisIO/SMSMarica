@@ -1,18 +1,25 @@
 using SMSMarica.Data.Entities.Conversas;
 using SMSMarica.Data.Entities.Enums;
 
-namespace SMSMarica.Data.Entities.Tfd;
+namespace SMSMarica.Data.Entities.Notificacoes;
 
 /// <summary>
-/// Trilha de auditoria das mensagens WhatsApp (Meta Cloud API) — envios e recebimentos, hoje
-/// transversal a todo o SMSMarica (não só TFD). A idempotência do webhook se apoia em
-/// <see cref="WaMessageId"/>. Colunas <c>conversa_*</c> são aditivas (nullable): linhas legadas
-/// (anteriores ao módulo Conversas) permanecem com <see cref="ConversaId"/> nulo.
+/// Trilha de auditoria das mensagens WhatsApp (Meta Cloud API) — envios e recebimentos.
+/// É infraestrutura transversal do SMSMarica: serve a Central de Atendimento, as
+/// comunicações ao paciente e qualquer módulo que precise falar por WhatsApp. A
+/// idempotência do webhook se apoia em <see cref="WaMessageId"/>. Colunas
+/// <c>conversa_*</c> são aditivas (nullable): linhas legadas (anteriores ao módulo
+/// Conversas) permanecem com <see cref="ConversaId"/> nulo.
 /// </summary>
+/// <remarks>
+/// Esta entidade NÃO conhece o TFD (ADR-0038). Quem precisar amarrar uma mensagem a um
+/// evento de domínio referencia a mensagem — como <c>ComunicacaoPaciente</c> faz — e não
+/// o contrário. A antiga coluna <c>sessao_id</c> (FK para a sessão de tratamento) foi
+/// removida: nunca teve uma única linha preenchida em 26 mil mensagens.
+/// </remarks>
 public class MensagemWhatsApp
 {
     public Guid Id { get; set; }
-    public Guid? SessaoId { get; set; }
 
     /// <summary>Identidade do paciente no hub FHIR (sem FK local).</summary>
     public Guid? PacienteId { get; set; }
@@ -51,6 +58,5 @@ public class MensagemWhatsApp
     /// <summary>Natureza da mensagem. Nulo em linhas legadas (tratar como texto/template).</summary>
     public TipoMensagem? TipoMensagem { get; set; }
 
-    public SessaoDeTratamento? Sessao { get; set; }
     public Conversa? Conversa { get; set; }
 }

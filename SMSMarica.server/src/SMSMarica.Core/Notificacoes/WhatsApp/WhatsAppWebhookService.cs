@@ -10,7 +10,7 @@ using SMSMarica.Core.Pacientes;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities.Conversas;
 using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Tfd;
+using SMSMarica.Data.Entities.Notificacoes;
 
 namespace SMSMarica.Core.Notificacoes.WhatsApp;
 

@@ -1,10 +1,16 @@
 namespace SMSMarica.Data.Entities.Tfd;
 
 /// <summary>
-/// Configuração (linha única) do faturamento TFD: valor por unidade (a cada
+/// Configuração (linha única) do TFD: valor por unidade de faturamento (a cada
 /// <see cref="KmPorUnidade"/> km) e código SIGTAP do procedimento de transporte.
 /// </summary>
-public class TfdConfigFaturamento
+/// <remarks>
+/// Antiga <c>TfdConfigFaturamento</c> / <c>tfd_config_faturamento</c>. Continua sendo do
+/// TFD — só adota o sufixo <c>_configuracao</c> em pt-BR usado por
+/// <c>ia_configuracao</c>, <c>laudo_configuracao</c>, <c>sisreg_configuracao</c> e
+/// <c>ticket_configuracao</c> (ADR-0038).
+/// </remarks>
+public class TfdConfiguracao
 {
     public Guid Id { get; set; }
 

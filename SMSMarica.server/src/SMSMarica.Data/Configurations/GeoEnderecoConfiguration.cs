@@ -1,14 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using SMSMarica.Data.Entities.Tfd;
+using SMSMarica.Data.Entities.Geo;
 
 namespace SMSMarica.Data.Configurations;
 
-internal sealed class GeocodigoConfiguration : IEntityTypeConfiguration<Geocodigo>
+internal sealed class GeoEnderecoConfiguration : IEntityTypeConfiguration<GeoEndereco>
 {
-    public void Configure(EntityTypeBuilder<Geocodigo> builder)
+    public void Configure(EntityTypeBuilder<GeoEndereco> builder)
     {
-        builder.ToTable("tfd_geocodigo");
+        builder.ToTable("geo_endereco");
         builder.HasKey(g => g.Id);
 
         builder.Property(g => g.Id).HasColumnName("id");

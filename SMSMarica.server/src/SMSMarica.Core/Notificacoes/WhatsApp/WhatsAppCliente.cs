@@ -9,7 +9,7 @@ using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Tfd.Configuracao;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Tfd;
+using SMSMarica.Data.Entities.Notificacoes;
 
 namespace SMSMarica.Core.Notificacoes.WhatsApp;
 
@@ -143,24 +143,24 @@ public sealed class WhatsAppCliente(
     }
 
     public async Task<EnvioWhatsAppResultado> EnviarTextoAsync(
-        string telefone, string texto, Guid? sessaoId = null, Guid? pacienteId = null, CancellationToken ct = default)
+        string telefone, string texto, Guid? pacienteId = null, CancellationToken ct = default)
     {
         var fone = NormalizarTelefone(telefone);
         var ctx = await ObterContextoOuNuloAsync(ct);
-        if (ctx is null) return await SimularAsync(fone, template: null, texto, sessaoId, pacienteId, ct);
+        if (ctx is null) return await SimularAsync(fone, template: null, texto, pacienteId, ct);
 
         object body = new { messaging_product = "whatsapp", to = fone, type = "text", text = new { body = texto } };
-        return await EnviarRealAsync(ctx, body, fone, template: null, conteudo: texto, sessaoId, pacienteId, ct);
+        return await EnviarRealAsync(ctx, body, fone, template: null, conteudo: texto, pacienteId, ct);
     }
 
     public async Task<EnvioWhatsAppResultado> EnviarTemplateAsync(
         string telefone, string template, string idiomaBcp47, IReadOnlyList<string> parametros,
-        Guid? sessaoId = null, Guid? pacienteId = null, CancellationToken ct = default)
+        Guid? pacienteId = null, CancellationToken ct = default)
     {
         var fone = NormalizarTelefone(telefone);
         var conteudo = parametros.Count == 0 ? $"[template:{template}]" : $"[template:{template}] {string.Join(" | ", parametros)}";
         var ctx = await ObterContextoOuNuloAsync(ct);
-        if (ctx is null) return await SimularAsync(fone, template, conteudo, sessaoId, pacienteId, ct);
+        if (ctx is null) return await SimularAsync(fone, template, conteudo, pacienteId, ct);
 
         object[]? components = parametros.Count == 0
             ? null
@@ -172,20 +172,20 @@ public sealed class WhatsAppCliente(
             type = "template",
             template = new { name = template, language = new { code = idiomaBcp47 }, components },
         };
-        return await EnviarRealAsync(ctx, body, fone, template, conteudo, sessaoId, pacienteId, ct);
+        return await EnviarRealAsync(ctx, body, fone, template, conteudo, pacienteId, ct);
     }
 
     public async Task<EnvioWhatsAppResultado> EnviarTemplateComBotoesAsync(
         string telefone, string template, string idiomaBcp47,
         IReadOnlyList<string> parametrosBody, IReadOnlyList<BotaoTemplateWhatsApp> botoes,
-        Guid? sessaoId = null, Guid? pacienteId = null, CancellationToken ct = default)
+        Guid? pacienteId = null, CancellationToken ct = default)
     {
         var fone = NormalizarTelefone(telefone);
         var conteudo = parametrosBody.Count == 0
             ? $"[template:{template}]"
             : $"[template:{template}] {string.Join(" | ", parametrosBody)}";
         var ctx = await ObterContextoOuNuloAsync(ct);
-        if (ctx is null) return await SimularAsync(fone, template, conteudo, sessaoId, pacienteId, ct);
+        if (ctx is null) return await SimularAsync(fone, template, conteudo, pacienteId, ct);
 
         var components = new List<object>();
         if (parametrosBody.Count > 0)
@@ -217,17 +217,17 @@ public sealed class WhatsAppCliente(
             type = "template",
             template = new { name = template, language = new { code = idiomaBcp47 }, components = components.ToArray() },
         };
-        return await EnviarRealAsync(ctx, body, fone, template, conteudo, sessaoId, pacienteId, ct);
+        return await EnviarRealAsync(ctx, body, fone, template, conteudo, pacienteId, ct);
     }
 
     public async Task<EnvioWhatsAppResultado> EnviarInterativoBotoesAsync(
         string telefone, string texto, IReadOnlyList<BotaoInterativoWhatsApp> botoes,
-        Guid? sessaoId = null, Guid? pacienteId = null, CancellationToken ct = default)
+        Guid? pacienteId = null, CancellationToken ct = default)
     {
         var fone = NormalizarTelefone(telefone);
         var conteudo = $"{texto} [{string.Join(" / ", botoes.Select(b => b.Titulo))}]";
         var ctx = await ObterContextoOuNuloAsync(ct);
-        if (ctx is null) return await SimularAsync(fone, template: null, conteudo, sessaoId, pacienteId, ct);
+        if (ctx is null) return await SimularAsync(fone, template: null, conteudo, pacienteId, ct);
 
         object body = new
         {
@@ -244,18 +244,18 @@ public sealed class WhatsAppCliente(
                 },
             },
         };
-        return await EnviarRealAsync(ctx, body, fone, template: null, conteudo, sessaoId, pacienteId, ct);
+        return await EnviarRealAsync(ctx, body, fone, template: null, conteudo, pacienteId, ct);
     }
 
     public async Task<EnvioWhatsAppResultado> EnviarTemplateAutenticacaoAsync(
         string telefone, string template, string idiomaBcp47, string codigo,
-        Guid? sessaoId = null, Guid? pacienteId = null, CancellationToken ct = default)
+        Guid? pacienteId = null, CancellationToken ct = default)
     {
         var fone = NormalizarTelefone(telefone);
         // Auditoria sem o código em claro (é credencial de uso único).
         var conteudo = $"[template:{template}] código de acesso";
         var ctx = await ObterContextoOuNuloAsync(ct);
-        if (ctx is null) return await SimularAsync(fone, template, conteudo, sessaoId, pacienteId, ct);
+        if (ctx is null) return await SimularAsync(fone, template, conteudo, pacienteId, ct);
 
         object[] components =
         [
@@ -275,7 +275,7 @@ public sealed class WhatsAppCliente(
             type = "template",
             template = new { name = template, language = new { code = idiomaBcp47 }, components },
         };
-        return await EnviarRealAsync(ctx, body, fone, template, conteudo, sessaoId, pacienteId, ct);
+        return await EnviarRealAsync(ctx, body, fone, template, conteudo, pacienteId, ct);
     }
 
     private async Task<TfdWhatsAppContexto?> ObterContextoOuNuloAsync(CancellationToken ct)
@@ -286,10 +286,10 @@ public sealed class WhatsAppCliente(
     }
 
     private async Task<EnvioWhatsAppResultado> SimularAsync(
-        string telefone, string? template, string conteudo, Guid? sessaoId, Guid? pacienteId, CancellationToken ct)
+        string telefone, string? template, string conteudo, Guid? pacienteId, CancellationToken ct)
     {
         var wamid = "simulado-" + Guid.CreateVersion7().ToString("N");
-        var msg = NovaMensagem(telefone, template, Truncar($"[SIMULADO] {conteudo}"), sessaoId, pacienteId);
+        var msg = NovaMensagem(telefone, template, Truncar($"[SIMULADO] {conteudo}"), pacienteId);
         msg.WaMessageId = wamid;
         db.MensagensWhatsApp.Add(msg);
         try { await db.SaveChangesAsync(ct); } catch { /* best-effort */ }
@@ -299,10 +299,10 @@ public sealed class WhatsAppCliente(
 
     private async Task<EnvioWhatsAppResultado> EnviarRealAsync(
         TfdWhatsAppContexto ctx, object body, string telefone, string? template, string conteudo,
-        Guid? sessaoId, Guid? pacienteId, CancellationToken ct)
+        Guid? pacienteId, CancellationToken ct)
     {
         var url = $"{ctx.BaseUrl.TrimEnd('/')}/{ctx.PhoneNumberId}/messages";
-        var msg = NovaMensagem(telefone, template, conteudo, sessaoId, pacienteId);
+        var msg = NovaMensagem(telefone, template, conteudo, pacienteId);
 
         try
         {
@@ -338,10 +338,9 @@ public sealed class WhatsAppCliente(
         }
     }
 
-    private static MensagemWhatsApp NovaMensagem(string telefone, string? template, string conteudo, Guid? sessaoId, Guid? pacienteId) => new()
+    private static MensagemWhatsApp NovaMensagem(string telefone, string? template, string conteudo, Guid? pacienteId) => new()
     {
         Id = Guid.CreateVersion7(),
-        SessaoId = sessaoId,
         PacienteId = pacienteId,
         Telefone = telefone,
         Template = template,

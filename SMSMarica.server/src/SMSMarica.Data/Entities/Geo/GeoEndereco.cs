@@ -1,12 +1,16 @@
 using SMSMarica.Data.Entities.Enums;
 
-namespace SMSMarica.Data.Entities.Tfd;
+namespace SMSMarica.Data.Entities.Geo;
 
 /// <summary>
 /// Cache local de geocodificação (schema smsmarica). Evita regeocodificar o mesmo
 /// endereço e mantém o hub FHIR intocado. Chave = hash do endereço normalizado.
 /// </summary>
-public class Geocodigo
+/// <remarks>
+/// Antiga <c>Geocodigo</c> / <c>tfd_geocodigo</c>. Geocodificação é infraestrutura
+/// compartilhada (o TFD é um dos consumidores, não o dono) — ADR-0038.
+/// </remarks>
+public class GeoEndereco
 {
     public Guid Id { get; set; }
 
