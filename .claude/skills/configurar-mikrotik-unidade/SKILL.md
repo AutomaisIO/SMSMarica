@@ -141,6 +141,23 @@ Templates `.rsc` validados: `Telefonia/scripts/templates/hardening-hex.rsc` e
 
 0. **Checar a versão do RouterOS (§0.1)** antes de qualquer coisa. Se ether1/ether4 ainda
    estiverem sem link, essa é a janela ideal para o upgrade — aproveite-a antes do survey.
+
+0b. 🛑 **CONFIRMAR QUE A `ether4` ESTÁ `RUNNING` ANTES DE SURVEYAR.** `/interface ethernet
+   print where name~"ether"` — se a `ether4` aparecer só com `S` (sem `R`), ou se ela estiver
+   `I` (inactive) na `/interface bridge port print`, **a LAN da unidade não está plugada e o
+   survey vai MENTIR**. Sem clientes gerando tráfego, o `torch` na ether1 volta **vazio** (não
+   dá para detectar VLAN) e o `dhcp-client` pode ser atendido por **qualquer outro DHCP no
+   segmento** em vez do da Prefeitura.
+   **Comprovado no CAPS III (31/07):** com a ether4 dark **e o cabo da Prefeitura na porta
+   errada**, o survey trouxe `192.168.1.3/24 gw/DHCP/DNS=192.168.1.1` e o quadro parecia "esta
+   unidade não tem link corporativo" — cheguei a documentar uma anomalia que não existia.
+   Depois do cabo corrigido e da ether4 plugada, o mesmo survey trouxe o real
+   (`10.1.55.0/24`, gw `10.1.55.1`, DHCP `10.1.201.254`, DNS `10.135.16.119`/`.17`) em
+   **4 de 4** tentativas, e o torch mostrou a LAN inteira. Se tivéssemos aplicado o padrão
+   sobre os dados errados, o failover ficaria apontado para o gateway errado.
+   ⇒ **ether4 dark = pare, faça só o upgrade (§0.1, janela de graça) e volte depois.**
+   ⇒ E se o survey trouxer algo que **não** é `10.1.x.0/24` com DHCP `10.1.201.254`,
+   desconfie de **cabeamento** antes de concluir que a unidade é exceção.
 1. Levantar a LAN local: sub-rede, **gateway real**, IP que o MK assume. Truque validado
    (CMI): **dhcp-client temporário na bridge-transparente** (`add-default-route=no
    use-peer-dns=no use-peer-ntp=no comment="TEMP survey LAN"`) revela sub-rede/gateway/DNS;
@@ -312,19 +329,48 @@ papéis removidos no painel são limpos no re-bootstrap):
 - regras de firewall input (ICMP/22/8728 da origem do servidor VPN) em CADA interface aux —
   gestão funciona por qualquer túnel vivo.
 
-🔴 **O portão da Prefeitura NÃO deixou o MK sair — sondado no CAPS AD em 31/07.** Teste:
-routing table temporária com `default via 10.1.96.1`, mangle `output dst-address=1.1.1.1`
-marcando para ela, e `/ping 1.1.1.1` → **100% de timeout**. Pela Connect o mesmo MK navega
-normalmente. Ou seja, o link da Prefeitura entrega **a LAN da unidade**, mas não dá saída
-livre à internet para o próprio MK (proxy/borda filtrando, e o `10.1.96.254` provavelmente
-nem está autorizado a sair). **Consequência: o link A pode simplesmente não subir.** Não
-tratar como detalhe de config — na unidade piloto, validar **handshake real** do túnel A, não
-só a criação do link no painel. Se não subir, o caminho é liberar o MK na borda da Prefeitura
-(assunto com a TI deles), não insistir no MK. Ressalva honesta: a sonda foi **ICMP**; é
-possível que UDP para `api.automais.io` tenha tratamento diferente — mas a premissa "o MK sai
-pela Prefeitura" está, hoje, **desmentida** e não pode ser assumida.
-(`/ping` do RouterOS 7.23 **não** aceita `routing-table=` — por isso o mangle; use um IP que
-nada no MK use: 1.1.1.1 serve, `8.8.8.8`/`9.9.9.9` NÃO, que são os forwarders do `/ip dns`.)
+🔴 **O link A NÃO se sustenta pela Prefeitura — a IDA funciona, a VOLTA não.** Testado de
+verdade no CAPS AD em 31/07: link A criado no automais.io (`vpnIp 10.35.0.50`, porta `14350`,
+gw `10.1.96.1`), bootstrap importado, interface `automais-vpn-a` RUNNING e **handshake
+completou**. E aí parou. Números, medidos em janelas de 30s nos dois lados:
+
+| | MK | Servidor |
+|---|---|---|
+| Enviado | `tx` 15,0 → 15,9 KiB (cresce) | `sent` 10,27 → 10,81 KiB (cresce) |
+| Recebido | `rx` **284 B — congelado** | `received` 13,16 → 14,03 KiB (cresce) |
+
+O servidor **recebe** os pacotes do MK (contador sobe) e o endpoint aparece como
+`186.193.246.225` — o NAT público da Prefeitura, provando que o tráfego saiu mesmo por lá e
+não pela Connect (que é `179.42.148.53`). Mas o `rx` do MK ficou travado nos 284 bytes do
+primeiro handshake e **nunca mais subiu**: a borda deixou passar uma janela inicial e depois
+fechou o retorno. Handshake envelhece indefinidamente, ping do painel a `10.35.0.50` dá 100%
+de perda nos dois sentidos.
+
+**Descartado o que parecia culpado:** MK, rotas (`As`, `immediate-gw` correto), mangles
+(contadores subindo), AllowedIPs (só o peer A reivindica `.50`, sem sobreposição), rota e
+nftables do servidor (`.50` salta para a mesma chain de `.27`). Está tudo certo dos dois lados
+— **o problema é a borda da Prefeitura**. Também não adianta criar redes/segmentos separados
+por link no automais.io: o escopo compartilhado `10.35.0.0/24` não é o problema.
+
+Sondas auxiliares (mangle `chain=output` + routing table temporária, com `pref-src` correto):
+**ICMP volta** (~3ms, TTL 118); **TCP 443 e UDP 53 saem e não voltam**. Coerente com o achado
+do túnel: saída NATeada normalmente, retorno de sessão negado para esse host.
+
+**Pedido concreto para a TI da Prefeitura:** liberar, para o host `<IP_MK_LAN>` (MikroTik de
+borda da unidade), **retorno de sessão estabelecida** em TCP e UDP — destino necessário
+`api.automais.io` (`198.211.104.55`) **UDP 51825**. Enquanto isso não existir, **não criar o
+link A**: ele só gera keepalive inútil e fica vermelho no painel. Os links **B (Connect)** e
+**C** não têm esse problema.
+
+⚠️ **Duas armadilhas de MEDIÇÃO que me fizeram concluir errado antes** (a redação anterior
+desta seção dizia que o MK nem saía — estava errada):
+1. **`pref-src` é obrigatório na rota de teste.** Sem ele, o MK escolhe origem pela interface
+   e pode sair com `10.200.<ID>.1` (a rede dos telefones), que a borda descarta com razão —
+   dá 100% de timeout e imita "portão fechado". Fixe `pref-src=<IP_MK_LAN>`.
+2. **Escolha do alvo.** `/ping` do RouterOS 7.23 **não** aceita `routing-table=` (por isso o
+   mangle). Use um IP que nada no MK use: `1.1.1.1` serve, `8.8.8.8`/`9.9.9.9` **não** (são os
+   forwarders do `/ip dns`). E **nunca** mangleie `198.211.104.55` nem `192.241.153.121` —
+   desviar esses derruba a própria gestão e o VOIP.
 
 ⚠️ **Interação com o failover (§4) — verificada, e é benigna.** Durante o failover o MK
 **assume o `<GATEWAY_REAL>`** (`FAILOVER gw takeover`), que é justamente o `mikrotikGateway`
@@ -545,18 +591,18 @@ direções antes de deixar em produção.
 Padrão-alvo: **detecção v2** + **DHCP sempre ligado com delay (v3)** + **redirect `:53`
 alternado pelo script** + **conntrack limpo nas duas transições (v4)**.
 
-| Item do padrão | id=0 Regulação (CCR) | id=1 Péricles | id=4 CAPS AD | id=6 CDT | id=7 Boqueirão | id=10 CMI |
-|---|---|---|---|---|---|---|
-| VPN de gestão | `10.35.0.23` | `10.35.0.24` | `10.35.0.27` | `10.35.0.29` | `10.35.0.30` | `10.35.0.33` |
-| LAN | `10.3.74.0/24` | `10.1.19.0/24` | `10.1.96.0/24` **VLAN 1102** | `10.1.92.0/24` **VLAN 1092** | `10.1.108.0/24` | `10.1.18.0/24` |
-| Script | `failover-eth3-check` | `FAILOVER-ether1` | `FAILOVER-ether1` | `FAILOVER-ether1` | `FAILOVER-ether1` | `FAILOVER-ether1` |
-| Detecção v2 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ *(era v1)* |
-| DHCP v3 (sempre ligado) | ✓ *(era liga/desliga)* | ✓ | ✓ | ✓ | ✓ | ✓ *(não existia)* |
-| DNS reais no escopo | ✓ *(era `8.8.8.8,1.1.1.1`)* | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Redirect `:53` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Conntrack v4 | ✓ | ✓ *(31/07)* | ✓ | ✓ | ✓ | ✓ |
-| Anti-bypass (MAC antigo) | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| RouterOS | 7.23.2 | 7.23.2 | 7.23.2 | 7.23.2 | 7.23.2 | 7.19.6 ⚠ |
+| Item do padrão | id=0 Regulação (CCR) | id=1 Péricles | id=3 CAPS III | id=4 CAPS AD | id=6 CDT | id=7 Boqueirão | id=10 CMI |
+|---|---|---|---|---|---|---|---|
+| VPN de gestão | `10.35.0.23` | `10.35.0.24` | `10.35.0.26` | `10.35.0.27` | `10.35.0.29` | `10.35.0.30` | `10.35.0.33` |
+| LAN | `10.3.74.0/24` | `10.1.19.0/24` | `10.1.55.0/24` | `10.1.96.0/24` **VLAN 1102** | `10.1.92.0/24` **VLAN 1092** | `10.1.108.0/24` | `10.1.18.0/24` |
+| Script | `failover-eth3-check` | `FAILOVER-ether1` | `FAILOVER-ether1` | `FAILOVER-ether1` | `FAILOVER-ether1` | `FAILOVER-ether1` | `FAILOVER-ether1` |
+| Detecção v2 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ *(era v1)* |
+| DHCP v3 (sempre ligado) | ✓ *(era liga/desliga)* | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ *(não existia)* |
+| DNS reais no escopo | ✓ *(era `8.8.8.8,1.1.1.1`)* | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Redirect `:53` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Conntrack v4 | ✓ | ✓ *(31/07)* | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Anti-bypass (MAC antigo) | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| RouterOS | 7.23.2 | 7.23.2 | 7.23.2 | 7.23.2 | 7.23.2 | 7.23.2 | 7.19.6 ⚠ |
 
 > **Firmware do routerboard ≠ versão do pacote.** Em todos os MKs que subiram para 7.23.2 o
 > `/system routerboard print` continua com `current-firmware: 7.19.6` e `upgrade-firmware:
@@ -655,6 +701,22 @@ LAN física (pode não caber um segundo MK de borda).
   com 0 leases, hub VOIP a 111ms/0% perda), mas o teste de cabo é da equipe no local. Não há
   nenhum aparelho em `10.200.4.0/24` — quando chegarem: IP fixo `.10-.200`, gw `10.200.4.1`,
   SIP `10.201.0.1`.
+- ℹ️ **id=3 CAPS III — o "192.168.1.x" era CABO TROCADO, não anomalia da unidade.** Vale
+  registrar porque me levou a um diagnóstico errado por um bom tempo. Durante a fase site
+  (31/07) o survey trouxe `192.168.1.3/24` com gw/DHCP/DNS todos em `192.168.1.1` (MAC
+  `00:67:62:3A:DD:B0`, lease 2h) e cheguei a documentar isso como "ONU da Prefeitura roteando
+  com DHCP concorrente". **Não era:** o cabo da Prefeitura estava conectado na porta errada
+  (informação do usuário). Depois de corrigido — e com a `ether4` plugada — o survey passou a
+  trazer o real (`10.1.55.0/24`, gw `10.1.55.1`, DHCP `10.1.201.254`, DNS `10.135.16.119`/`.17`)
+  em **4 de 4** tentativas, untagged, padrão PMM puro. Ainda se vê tráfego residual
+  `192.168.1.x` no segmento (um KMS em `:1688`), sem impacto conhecido — se voltar a aparecer
+  concessão `192.168.1.x` para cliente, aí sim virou problema real.
+  **Lição que ficou:** dado de survey só vale com o cabeamento confirmado — ver §0b da FASE
+  SITE. Config em `unidades-config/id03-caps-iii-site.rsc`.
+- **id=3 CAPS III — teste de failover pendente + nenhum telefone ainda.** Validado em repouso
+  (script byte a byte, 0 objetos `FAILOVER` ligados, `FAILOVER-dhcp` com 0 leases, hub VOIP a
+  112ms/0% perda, gw local a 3,4ms/0%). Teste de cabo é da equipe no local. Quando os aparelhos
+  chegarem: IP fixo `.10-.200`, gw `10.200.3.1`, SIP `10.201.0.1`.
 - **Todas:** anti-bypass, se aprovada. ROS 7.19.6 restante: **id=10 CMI** e **id=21 TFD**.
   **O upgrade com a unidade viva é mais barato do que a skill sugeria** — no CAPS AD (31/07) a
   janela dark tinha passado, o usuário autorizou subir no meio do expediente e o MK ficou fora
