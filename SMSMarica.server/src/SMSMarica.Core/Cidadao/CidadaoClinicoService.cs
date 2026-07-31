@@ -211,7 +211,7 @@ public sealed class CidadaoClinicoService(
         // um DateTime Kind=Utc quebra no Npgsql. Usamos a data local de Brasília como Unspecified.
         var hojeLocal = DateTime.SpecifyKind(FusoBrasilia.ParaExibicao(DateTime.UtcNow).Date, DateTimeKind.Unspecified);
         // Solicitacao.DataAgendada é "timestamp with time zone" (Kind=Utc).
-        var inicioHojeUtc = InicioDoDiaBrasiliaEmUtc();
+        var inicioHojeUtc = FusoBrasilia.InicioDoDiaAtualEmUtc();
 
         var query = db.Agendamentos.AsNoTracking()
             .Where(a => a.PacienteId == pacienteId && a.ExcluidoEm == null
@@ -387,20 +387,11 @@ public sealed class CidadaoClinicoService(
         // Mesma régua da listagem: vale enquanto o exame for do dia (Brasília). Exigir hora
         // futura recusava quem abria o app no dia, depois do horário marcado — o card
         // aparecia com o botão e o POST devolvia 409.
-        if (s.DataAgendada is not { } da || da < InicioDoDiaBrasiliaEmUtc())
+        if (s.DataAgendada is not { } da || da < FusoBrasilia.InicioDoDiaAtualEmUtc())
             throw new Common.Excecoes.ConflitoException(
                 "confirmacao.exame_passado", "Este exame já aconteceu ou não tem data futura.");
         return s;
     }
-
-    /// <summary>
-    /// Início do dia corrente de Brasília expresso em UTC — <c>Solicitacao.DataAgendada</c> é
-    /// "timestamp with time zone" (instante UTC). Usar <c>DateTime.UtcNow.Date</c> cortaria o dia
-    /// às 21h de Brasília.
-    /// </summary>
-    private static DateTime InicioDoDiaBrasiliaEmUtc() => DateTime.SpecifyKind(
-        FusoBrasilia.ParaExibicao(DateTime.UtcNow).Date.AddHours(-FusoBrasilia.OffsetHoras),
-        DateTimeKind.Utc);
 
     private static string DescreverStatusConfirmacao(StatusConfirmacaoAgendamento status) => status switch
     {

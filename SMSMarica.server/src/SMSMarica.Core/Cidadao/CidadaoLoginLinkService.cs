@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using SMSMarica.Core.Cidadao.Dtos;
 using SMSMarica.Core.Common.Excecoes;
+using SMSMarica.Core.Common.Tempo;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Laudos.Configuracao;
 using SMSMarica.Core.Pacientes;
@@ -142,8 +143,11 @@ public sealed class CidadaoLoginLinkService(
             if (s is not null)
             {
                 var confirmadaAgora = false;
+                // Mesma régua do app (CidadaoClinicoService): vale enquanto o exame for do dia
+                // corrente de Brasília. Exigir hora futura fazia o clique no botão do WhatsApp,
+                // no dia do exame depois do horário, não confirmar nada — e em silêncio.
                 if (s.StatusConfirmacao == Data.Entities.Enums.StatusConfirmacaoAgendamento.Pendente
-                    && s.DataAgendada is { } da && da > DateTime.UtcNow)
+                    && s.DataAgendada is { } da && da >= FusoBrasilia.InicioDoDiaAtualEmUtc())
                 {
                     s.StatusConfirmacao = Data.Entities.Enums.StatusConfirmacaoAgendamento.Confirmada;
                     s.ConfirmadoEm = DateTime.UtcNow;
