@@ -1,6 +1,6 @@
 ---
 name: configurar-mikrotik-unidade
-description: Padrão ponta-a-ponta para configurar o MikroTik (hEX RB750Gr3 novo padrão do rollout; CCR no Complexo) de uma unidade da SMS Maricá — bridge transparente entre o uplink da Prefeitura e a LAN da unidade, VPN VOIP WireGuard até o hub Asterisk, failover de internet pela Connect, registro do router no automais.io (tenant Saúde Maricá) com bootstrap, e blindagem de segurança. Use quando o usuário disser "configurar o mikrotik da unidade X", "plugar unidade nova na telefonia", "subir o MK do <unidade>", "failover da unidade", "blindar/endurecer o MK", "cadastrar o MK no automais.io". SEMPRE começa perguntando a unidade (id+nome); as portas do hEX seguem convenção FIXA (ether1=Prefeitura, ether2=Connect, ether3=reserva/gestão, ether4=LAN unidade, ether5=Wi-Fi) — só pergunte portas se o modelo NÃO for o hEX padrão. Qualquer mudança no procedimento atualiza ESTA skill + a documentação em Telefonia/docs + registro/unidades.csv.
+description: Padrão ponta-a-ponta para configurar o MikroTik (hEX RB750Gr3 novo padrão do rollout; CCR no Complexo) de uma unidade da SMS Maricá — bridge transparente entre o uplink da Prefeitura e a LAN da unidade, VPN VOIP WireGuard até o hub Asterisk, failover de internet pela Connect, registro do router no automais.io (tenant Saúde Maricá) com bootstrap, e blindagem de segurança. Use quando o usuário disser "configurar o mikrotik da unidade X", "plugar unidade nova na telefonia", "subir o MK do <unidade>", "failover da unidade", "blindar/endurecer o MK", "cadastrar o MK no automais.io", "criar as VPNs multi-link / VPN por link (A/B/C) do MK". SEMPRE começa perguntando a unidade (id+nome); as portas do hEX seguem convenção FIXA (ether1=Prefeitura, ether2=Connect, ether3=reserva/gestão, ether4=LAN unidade, ether5=Wi-Fi) — só pergunte portas se o modelo NÃO for o hEX padrão. Qualquer mudança no procedimento atualiza ESTA skill + a documentação em Telefonia/docs + registro/unidades.csv.
 ---
 
 # Configurar MikroTik de uma unidade (padrão SMS Maricá)
@@ -266,8 +266,59 @@ SAFETY-revert (§5) não podem ser criados. **Habilitar no setup de bancada:**
 **confirmação física** (apertar o botão reset OU desligar/ligar o aparelho) em ~5 min —
 precisa de alguém junto do MK. Sem isso o failover não roda.
 
-Cada MK termina com **2 WireGuards**: `wg-voip` (51820, hub Asterisk) + `automais-vpn`
-(133xx, gestão automais.io).
+Cada MK termina com **pelo menos 2 WireGuards**: `wg-voip` (51820, hub Asterisk) + `automais-vpn`
+(133xx, gestão automais.io) — e, com o multi-link do §3c, até mais 3 auxiliares
+(`automais-vpn-a/b/c`, um por link WAN).
+
+## 3c. VPN multi-link no automais.io — um túnel de gestão POR LINK (A/B/C)
+
+Recurso da plataforma (2026-07-31, `docs/FOR_AI_AGENTS_VPN.md` §Multi-link no repo Automais.IO).
+Além do `automais-vpn` (peer primário), o device pode ter até **3 túneis auxiliares**, um por
+link WAN, criados **direto no automais.io** — painel (device → aba Network → "VPN por link") ou
+API `POST /api/managed-devices/{id}/vpn-links` com `{ "linkRole": "A|B|C", "label": "...",
+"mikrotikGateway": "<gw do link ou null>" }`. Cada link ganha peer/keypair/IP VPN próprios;
+**re-rodar o bootstrap** (§3b — SFTP+`/import` por causa do device-mode) aplica tudo no MK.
+
+**Por que**: gestão sobrevive à queda de qualquer link (todos os túneis ficam de pé, sem
+failover de VPN), e o handshake/ping POR túnel no painel é telemetria POR LINK — túnel A morto
++ túnel B vivo = perna da Prefeitura caída, sem investigação. (Resolve a cegueira do incidente
+Péricles 29/07: com um túnel por link dá pra ver QUAL perna sumiu.)
+
+**Convenção SMS Maricá (papel do link é FIXO, espelha as portas do hEX):**
+
+| Role | Link | `mikrotikGateway` | Observação |
+|---|---|---|---|
+| `A` | **Prefeitura** (ether1/bridge) | `<GATEWAY_REAL>` da LAN da unidade | O MK JÁ tem L3 nesse caminho (`<IP_MK_LAN>` na bridge/VLAN, §2). ⚠️ **PORTÃO**: confirmar que a borda da Prefeitura deixa **UDP sair** até `api.automais.io` (proxy pode bloquear) — testar na 1ª unidade antes de replicar |
+| `B` | **Connect** (ether2) | gw do dhcp-client da ether2 (tipicamente `192.168.0.1`) | Pinado à Connect por rota própria — segue medindo a Connect mesmo se a default route mudar um dia |
+| `C` | **Reserva** (ether3, futuro) | **null** (sem gateway) | **Criar JÁ** — peer/chaves/IP ficam provisionados; sem gateway o túnel sai pela default route (sobe e handshaka via Connect, telemetria duplica a B até existir link). Quando o link chegar: `PATCH .../vpn-links/{linkId}` com o gateway + re-bootstrap → pina na ether3 |
+
+**O que o bootstrap gera no MK por link** (tudo taggeado `Automais.IO multilink`, idempotente,
+papéis removidos no painel são limpos no re-bootstrap):
+- interface `automais-vpn-<role>` com keypair próprio e porta determinística:
+  **A = `14300+octeto`, B = `15300+octeto`, C = `16300+octeto`** (octeto = último octeto do IP
+  VPN do túnel auxiliar, visível no painel);
+- endereço **/32** (só o primário leva /24 — evita rota conectada duplicada cuja resposta
+  assimétrica o servidor dropa por crypto-key routing);
+- routing table `automais-link-<role>` (CIDR da VPN via a própria interface + default via o
+  gateway do link com `check-gateway=ping`) + mangles (src-port pina o UDP cifrado ao link;
+  mark-connection faz a resposta sair pela interface por onde entrou);
+- regras de firewall input (ICMP/22/8728 da origem do servidor VPN) em CADA interface aux —
+  gestão funciona por qualquer túnel vivo.
+
+⚠️ **Blindagem (§5)**: a regra `WireGuard VPNs` na entrada da Connect precisa incluir as portas
+dos túneis que saem pela Connect — além da `<PORTA_AUTOMAIS_VPN>` (133xx), somar a do túnel B
+(`153xx`) e a do C enquanto ele não estiver pinado (`163xx`). O túnel A entra pela
+Prefeitura/bridge e não passa por essa regra.
+
+⚠️ **O que o multi-link NÃO faz (fase 2 pendente)**: a LAN da unidade (RemoteNetworks) continua
+roteada pelo peer primário. Os auxiliares são gestão+telemetria; mover o payload de LAN pra um
+túnel sobrevivente é escopo futuro na plataforma.
+
+**Fluxo resumido pra "pegar um MK e criar as VPNs dos 3 links"**: device já registrado (§3b) →
+criar links A (gw real da LAN), B (gw da Connect) e C (sem gw) no painel/API →
+`bootstrap-activate` → SFTP+`/import` → validar: 4 handshakes
+(`/interface wireguard peers print detail`), ping do painel nos 3 IPs auxiliares, e painel
+mostrando os 3 links verdes. Piloto natural: Complexo Regulador (3 links reais).
 
 ## 4. Failover de internet pela Connect (detecção v2 em camadas + DHCP de contingência)
 
