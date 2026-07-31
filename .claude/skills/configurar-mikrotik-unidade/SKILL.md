@@ -348,7 +348,21 @@ cada um antes de assumir que "o DHCP nosso só entra se o real cair":
    de quem está **ligado e respondendo agora** — não protege contra entregar o IP de um
    dispositivo com reserva estática no DHCP real que esteja **desligado** no momento (ARP não
    denuncia isso).
-3. **Não existe "tabela do IP" compartilhada entre os dois servidores.** Cada DHCP mantém sua
+3. **Uma corrida perdida captura o host até ele reiniciar** (constatado no Péricles, 31/07).
+   O `delay-threshold` só filtra **DISCOVER** — ou seja, broadcast. Depois que o cliente aceita
+   nosso OFFER, a **renovação é unicast direto pro servidor que concedeu o lease** (T1, metade
+   do lease): não passa por broadcast, não passa pelo `delay-threshold`, e o servidor real nunca
+   fica sabendo. O cliente só volta a fazer broadcast se a gente parar de responder (rebind) ou
+   se ele reiniciar / trocar de rede. **Efeito prático:** o DHCP de retaguarda acumula hosts
+   capturados ao longo do tempo, em silêncio. No Péricles eram 3 estações (`DLM44W2`,
+   `D5LLSY2`, `micro-PC` — Dell/Windows) renovando contra nós a cada 10 min, com só **4
+   concessões em ~4 h de log** (padrão bem diferente do Boqueirão, onde os mesmos MACs
+   reapareciam a cada ciclo). Não quebra nada — a gente entrega cópia fiel do escopo real
+   (gw, DNS, domínio corretos) — mas esses hosts ficam **fora dos registros do DHCP da
+   Prefeitura**: sem honrar reserva, com lease de 10 min em vez de 8 h, e invisíveis no IPAM
+   deles. Para devolver um host ao servidor real não basta esperar: tem que reiniciar o
+   cliente (ou dar `/ip dhcp-server lease remove` e forçar rebind).
+4. **Não existe "tabela do IP" compartilhada entre os dois servidores.** Cada DHCP mantém sua
    própria base de leases isolada; o nosso não sabe quais IPs o real já reservou. Como copiamos o
    **mesmo pool** (`.10-.200`, igual ao real), qualquer IP que o real considere reservado pra um
    dispositivo específico, mas que não esteja ativo no momento, é IP livre do ponto de vista do
@@ -453,11 +467,11 @@ alternado pelo script** + **conntrack limpo nas duas transições (v4)**.
 | VPN de gestão | `10.35.0.23` | `10.35.0.24` | `10.35.0.27` | `10.35.0.29` | `10.35.0.30` | `10.35.0.33` |
 | LAN | `10.3.74.0/24` | `10.1.19.0/24` | `10.1.96.0/24` **VLAN 1102** | `10.1.92.0/24` **VLAN 1092** | `10.1.108.0/24` | `10.1.18.0/24` |
 | Script | `failover-eth3-check` | `FAILOVER-ether1` | `FAILOVER-ether1` | `FAILOVER-ether1` | `FAILOVER-ether1` | `FAILOVER-ether1` |
-| Detecção v2 | ✓ | ? | ✓ | ✓ | ✓ | ✓ *(era v1)* |
-| DHCP v3 (sempre ligado) | ✓ *(era liga/desliga)* | ? | ✓ | ✓ | ✓ | ✓ *(não existia)* |
-| DNS reais no escopo | ✓ *(era `8.8.8.8,1.1.1.1`)* | ? | ✓ | ✓ | ✓ | ✓ |
-| Redirect `:53` | ✓ | ? | ✓ | ✓ | ✓ | ✓ |
-| Conntrack v4 | ✓ | ✗ | ✓ | ✓ | ✓ | ✓ |
+| Detecção v2 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ *(era v1)* |
+| DHCP v3 (sempre ligado) | ✓ *(era liga/desliga)* | ✓ | ✓ | ✓ | ✓ | ✓ *(não existia)* |
+| DNS reais no escopo | ✓ *(era `8.8.8.8,1.1.1.1`)* | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Redirect `:53` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Conntrack v4 | ✓ | ✓ *(31/07)* | ✓ | ✓ | ✓ | ✓ |
 | Anti-bypass (MAC antigo) | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
 | RouterOS | 7.23.2 | 7.23.2 | 7.23.2 | 7.23.2 | 7.23.2 | 7.19.6 ⚠ |
 
@@ -467,9 +481,12 @@ alternado pelo script** + **conntrack limpo nas duas transições (v4)**.
 > CDT e CAPS AD. Está assim na frota inteira e foi mantido de propósito; se um dia valer
 > subir, é `/system routerboard upgrade` + mais um reboot, e aí vale fazer em todos de uma vez.
 
-> **id=1 Péricles voltou a responder em 31/07/2026** (`10.35.0.24`, SSH OK). A pendência
-> "gestão inalcançável" de 29/07 está encerrada; as células `?` continuam abertas porque o
-> conteúdo do MK não foi reavaliado desde então.
+> **id=1 Péricles nivelado em 31/07/2026.** Voltou a responder (`10.35.0.24`) e foi auditado:
+> estava melhor do que as células `?` sugeriam — já tinha detecção v2, DHCP v3 com DNS reais e
+> os redirects `:53`. Faltavam só **`delay-threshold` em 3s** (o valor antigo) e o **conntrack
+> v4**. Delta aplicado em `unidades-config/id01-amb-pericles-nivelamento` (gerado a partir do
+> `id01-amb-pericles-site.rsc`, que já reflete o estado final). Não reiniciou em nenhum momento
+> — uptime contínuo de 1d12h atravessando a janela em que ficou inalcançável.
 
 Cada aplicação foi validada com: fonte do script conferido **byte a byte** após gravar, script
 executado uma vez sem erro, zero objetos `FAILOVER` habilitados no estado normal, e ping ao hub
@@ -524,14 +541,21 @@ LAN física (pode não caber um segundo MK de borda).
 
 **Pendências abertas:**
 
-- ⚠️ **id=1 Péricles — gestão VOLTOU, conteúdo por reavaliar.** Em 31/07 o `10.35.0.24`
-  respondeu SSH normalmente (a queda de 29/07 se resolveu sozinha; causa não apurada). Segue
-  sendo **o único MK ativo que não recebeu a atualização de 29/07** — detecção v2, DHCP v3,
-  DNS reais no escopo e conntrack v4 continuam por conferir/aplicar. Agora dá pra fazer remoto.
-- ⚠️ **id=7 Boqueirão — o `delay-threshold=5s` não resolveu.** Reconferido com o link normal:
-  2 leases ativos, incluindo **`ESFCORD0435` `class-id="MSFT 5.0"` (estação Windows)**, e log
-  rotativo com NVRs/Pantum/TL-WR940N. Já subiu de 3s→5s sem efeito → indício de **relay DHCP
-  da Prefeitura lento nesse segmento**; abrir com a TI da Prefeitura em vez de aumentar o valor.
+- ❓ **id=1 Péricles — por que a gestão caiu em 29/07 continua sem explicação.** Voltou sozinho
+  em 31/07, **sem reiniciar** (uptime contínuo de 1d12h atravessando a janela). Os dois túneis
+  saem pelo **mesmo link** (a Connect / ether2 — a única rota default é `0.0.0.0/0` via
+  `192.168.0.1`, e o link da Prefeitura é só bridgeado, o MK não tem rota por ele). Como o
+  `wg-voip` ficou de pé o tempo todo e só o `automais-vpn` caiu, **não foi o link**: sobra
+  problema do lado do automais.io (peer/porta 133xx/NAT do endpoint). Se repetir, olhar por lá
+  antes de ir ao site. Já nivelado no resto (ver nota da tabela acima).
+- ⚠️ **id=7 Boqueirão e id=1 Péricles — o DHCP de retaguarda está capturando estações.**
+  Boqueirão: 2 leases, incluindo `ESFCORD0435` (`class-id="MSFT 5.0"`), com log rotativo de
+  NVRs/Pantum/TL-WR940N; já subiu 3s→5s **sem efeito**. Péricles: 3 estações Dell/Windows
+  presas, mas com padrão diferente — poucas concessões, e depois renovação unicast (ver item 3
+  de "Como o `delay-threshold` REALMENTE funciona"). **Subir o valor não resolve nenhum dos
+  dois** e já foi tentado: no Boqueirão porque o relay real é genuinamente lento nesse
+  segmento, no Péricles porque a renovação nem passa pelo `delay-threshold`. É assunto pra
+  abrir com a TI da Prefeitura (lentidão do relay), não pra continuar ajustando o parâmetro.
 - ⚠️ **id=10 CMI — firewall de entrada fora do padrão.** As 4 primeiras regras da chain `input`
   aceitam SIP (`5060-5061`) e RTP (`10000-20000`) de **qualquer** interface, incluindo a
   Connect — contradiz o modelo *Connect = NÃO confiável* (§5). Os telefones falam com o hub
