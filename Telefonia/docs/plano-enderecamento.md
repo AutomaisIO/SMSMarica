@@ -68,9 +68,40 @@
 | 27 | UPA Inoã | RUE | `10.200.27.0/24` | `10.200.27.1` | `10.200.27.10 - 10.200.27.200` | `10.201.0.37` |
 | 28 | UPA Ponta Negra | RUE | `10.200.28.0/24` | `10.200.28.1` | `10.200.28.10 - 10.200.28.200` | `10.201.0.38` |
 | 29 | Posto Santa Rita | RUE | `10.200.29.0/24` | `10.200.29.1` | `10.200.29.10 - 10.200.29.200` | `10.201.0.39` |
+| 30 | SAMU Ponta Negra | RUE | `10.200.30.0/24` | `10.200.30.1` | `10.200.30.10 - 10.200.30.200` | `10.201.0.40` |
 
 ## Como adicionar uma unidade fora da lista (id ≥ 30)
 
 1. Pegue o **próximo `id` livre** (30, 31, …) — os IPs saem da fórmula acima.
 2. Acrescente a linha no [`../registro/unidades.csv`](../registro/unidades.csv).
 3. Siga [`mikrotik-unidade.md`](mikrotik-unidade.md) + `hub-add-unidade.sh`.
+
+### Caso especial: id 30 (SAMU Ponta Negra) — MK pré-existente, sem acesso direto
+
+Primeiro caso de unidade **fora do rollout hEX**: o MK já existia antes do projeto Telefonia
+(RouterBOARD **RB3011UiAS**, identity `SAMU-PTN`), atendendo outra rede local (`10.106.0.0/24`,
+com telefones Cisco próprios via DHCP option 150 — sistema à parte, não mexido) e **sem IP
+público próprio alcançável por nós**: só é acessível de fora através de um túnel **L2TP já
+existente com o Router Conde** (`175.10.10.1` Conde ↔ `175.10.10.2` SAMU-PTN, interface
+`l2tp-SAMUPTN`/`l2tp-out1`, caller-id do SAMU muda por ser round-trip via internet do próprio
+SAMU). Para gerir esse MK pela primeira vez foi necessário, na plataforma automais.io:
+- Registrar `175.10.10.2/32` como **Remote Network** do peer do Router Conde (rede
+  `10.35.0.0/24`, VpnPeerId do Conde) — sem isso o server automais.io não tinha rota.
+- Criar uma regra de **firewall Input** no device Conde (`TargetScope=SpecificRemoteIp`,
+  `TargetValue=175.10.10.2`) liberando o tráfego de gestão.
+- Adicionar no **Conde** (não no SAMU) uma regra `srcnat masquerade dst-address=175.10.10.2`
+  **escopada só a esse destino** — o MK do SAMU só aceita tráfego cuja origem seja o próprio
+  Conde (`175.10.10.1`); sem essa regra o forward chegava lá mas a resposta nunca voltava.
+
+O MK estava em **RouterOS 6.49.20 (long-term)** — sem suporte a WireGuard. Upgrade em
+**duas etapas** (pulo direto de v6 pra v7 mais recente não é confiável): primeiro
+**7.1.5** (primeira release estável da série v7), reboot, valida; depois **7.23.2**
+(mesma versão já usada no resto da frota hEX), reboot, valida. As duas etapas rodaram sem
+perda de configuração (backup `/system backup save` tirado antes + cópia extra puxada para
+fora do equipamento). Depois do upgrade: `wg-voip` criado normalmente (peer no hub, handshake OK 10.201.0.40) +
+`hub-add-unidade.sh --id 30 --pubkey ... --nome "SAMU Ponta Negra"`; e `automais-vpn`
+cadastrado no tenant Saúde Maricá como `ManagedDevice` Kind=MikrotikRouter ("Router SAMU
+Ponta Negra"), bootstrap via `/tool fetch` + `/import` (funcionou normal, esse MK não tem a
+restrição de device-mode dos hEX novos), VPN IP `10.35.0.49`, device Online e com API
+RouterOS autenticando (`apiAuthStatus=Ok`) minutos depois. Nada mais no MK foi alterado
+(LAN/DHCP/telefonia Cisco existentes ficaram intocados).
