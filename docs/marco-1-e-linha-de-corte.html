@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marco 1 e linha de corte — inventário de 31/07/2026</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>Marco 1 e linha de corte — inventário de 31/07/2026</h1>
+<p>Levantamento do que existe no monorepo, do que está de fato em produção, do que foi documentado e nunca implementado, e do que está implementado e nunca entregue. Objetivo: <strong>fechar o Marco 1</strong>, passar uma linha, e sair daqui com uma lista curta do que fica, do que sai e do que entra na fila.</p>
+<p>Este documento é uma <strong>folha de decisão</strong>, não um registro do que já foi decidido. As seções §7 e §9 esperam o seu OK.</p>
+<hr>
+<h2>1. Como foi medido</h2>
+<p>Tudo abaixo é medição, não estimativa:</p>
+<div class="tw"><table><thead><tr><th>Fonte</th><th>O que foi lido</th></tr></thead><tbody>
+<tr><td>Banco de <strong>produção</strong> (DigitalOcean, <code>defaultdb</code>)</td><td>contagem de linhas das 93 tabelas de <code>smsmarica</code>; histórico de migrations de <code>smsmarica.__migrations</code> e <code>fhir."__EFMigrationsHistory"</code></td></tr>
+<tr><td><code>git</code></td><td><code>HEAD</code> vs <code>origin/main</code>, working tree sujo, 39 refs de branch, commits fora de <code>main</code></td></tr>
+<tr><td>Repositório</td><td>37 ADRs, 47 features do front, 68 controllers, 52 valores de <code>ModuloPermissao</code>, 11 migrations locais</td></tr>
+</tbody></table></div>
+<p><strong>Fato âncora:</strong> <code>HEAD</code> local = <code>origin/main</code> = <code>83f8abb</code>. Nada pendente de push. Logo, <strong>os 217 arquivos não commitados são 100% inéditos em produção</strong> — o deploy é automático no push para <code>main</code>.</p>
+<hr>
+<h2>2. Marco 1 — o que já está em produção e vivo</h2>
+<p>Estas são as entregas reais. Números são de produção, hoje.</p>
+<h3>2.1 Núcleo clínico de imagem (a espinha dorsal)</h3>
+<div class="tw"><table><thead><tr><th>Entrega</th><th>Evidência em prod</th></tr></thead><tbody>
+<tr><td>Solicitação de exame → Worklist → PACS → Laudo</td><td>1.560 solicitações · 890 exames de imagem · 664 laudos</td></tr>
+<tr><td>Assinatura digital de laudo (PAdES/VIDaaS, ADR-0015)</td><td>452 assinaturas · 2 médicos assinantes</td></tr>
+<tr><td>Associação exame↔pedido↔paciente (ADR-0016)</td><td>267 associações</td></tr>
+<tr><td>Anamnese</td><td>351</td></tr>
+<tr><td>Templates + cabeçalho/rodapé global do laudo</td><td>1 template · 1 configuração</td></tr>
+</tbody></table></div>
+<h3>2.2 Canal com o cidadão</h3>
+<div class="tw"><table><thead><tr><th>Entrega</th><th>Evidência em prod</th></tr></thead><tbody>
+<tr><td>Central de Atendimento WhatsApp multi-operador (ADR-0026)</td><td><strong>5.632 conversas</strong> · 5.632 eventos</td></tr>
+<tr><td>Comunicações ao paciente (confirmação/autorização)</td><td>1.548 comunicações · 26.038 mensagens WhatsApp</td></tr>
+<tr><td>PWA do cidadão + identidade/sessão própria (ADR-0018/0036)</td><td>1.358 sessões · 991 magic links · 891 acessos</td></tr>
+<tr><td>Consentimento LGPD</td><td>846 consentimentos</td></tr>
+<tr><td>Anexos de exame via QR (ADR-0019)</td><td>105 tokens de upload</td></tr>
+</tbody></table></div>
+<h3>2.3 Dados, integração e governança do sistema</h3>
+<div class="tw"><table><thead><tr><th>Entrega</th><th>Evidência em prod</th></tr></thead><tbody>
+<tr><td>Hub FHIR autônomo <code>Automais.Fhir</code> (ADR-0010)</td><td>schema <code>fhir</code> em prod na 5081, 9 migrations aplicadas</td></tr>
+<tr><td>Importação SISREG (ADR-0012)</td><td>alimenta as 1.560 solicitações</td></tr>
+<tr><td>Módulo IA + conhecimento por base (ADR-0011/0023)</td><td>18.051 chunks · 7.276 documentos · 3 fontes</td></tr>
+<tr><td>Indicadores contratuais HMCML (ADR-0022)</td><td>108 indicadores · 425 execuções</td></tr>
+<tr><td>Painel do Secretário (PWA público)</td><td>em prod desde 24/07</td></tr>
+<tr><td>Auditoria (ADR-0006)</td><td>480 registros</td></tr>
+<tr><td>Tratamento global de 500 + código de referência</td><td>764 erros catalogados</td></tr>
+<tr><td>Multitenancy por unidade</td><td>199 vínculos usuário↔unidade</td></tr>
+<tr><td>Suporte/Tickets</td><td>módulo 37 em prod</td></tr>
+</tbody></table></div>
+<p><strong>Isso é o Marco 1.</strong> É um sistema de gestão clínica e regulação de exames com canal de WhatsApp e hub FHIR — <strong>não</strong> o sistema de transporte sanitário que o <code>docs/roadmap.md</code> ainda descreve.</p>
+<hr>
+<h2>3. Em produção, mas sem uso — candidatos a corte ou congelamento</h2>
+<p>Tabelas com <strong>0 ou quase 0 linhas</strong> depois de meses no ar. Cada uma tem tela, endpoint, módulo de permissão e código de manutenção.</p>
+<p>&gt; <strong>Leitura correta destes números (revisão de 31/07):</strong> "sem uso" aqui <strong>não</strong> quer dizer &gt; "desnecessário". Quer dizer <strong>ainda não definido e ainda não implantado</strong> — outras frentes &gt; entraram na frente. Nada nesta seção é candidato a remoção; é candidato a <strong>fila com &gt; definição</strong>. A única ação imediata que estas tabelas justificam é a correção de modelagem &gt; da §10, que deve ser feita <strong>agora, enquanto o domínio está vazio e barato de mexer</strong>.</p>
+<h3>3.1 Núcleo TFD / transporte sanitário — ainda não implantado</h3>
+<div class="tw"><table><thead><tr><th>Tabela</th><th>Linhas</th></tr></thead><tbody>
+<tr><td><code>avaliacao</code></td><td><strong>0</strong></td></tr>
+<tr><td><code>rastreamento_ponto_gps</code></td><td><strong>0</strong></td></tr>
+<tr><td><code>rastreamento_geofence</code></td><td><strong>0</strong></td></tr>
+<tr><td><code>rastreamento_evento_chegada</code></td><td><strong>0</strong></td></tr>
+<tr><td><code>tfd_registro_faturamento</code></td><td><strong>0</strong></td></tr>
+<tr><td><code>veiculo</code></td><td>1</td></tr>
+<tr><td><code>motorista</code></td><td>2</td></tr>
+<tr><td><code>tipo_tratamento</code></td><td>2</td></tr>
+<tr><td><code>tratamento</code> / <code>tratamento_periodicidade</code></td><td>3 / 3</td></tr>
+<tr><td><code>translado_alocacao</code></td><td>4</td></tr>
+<tr><td><code>translado_rota_diaria</code></td><td>5</td></tr>
+<tr><td><code>veiculo_fileira</code></td><td>5</td></tr>
+<tr><td><code>sessao_de_tratamento</code></td><td>112 (legado, sem movimento)</td></tr>
+</tbody></table></div>
+<p>Isso é o <strong>produto original inteiro</strong> (M2..M6 do roadmap) ainda sem definição fechada e sem implantação. Ele permanece no escopo: falta decidir o desenho, não decidir se fica.</p>
+<p>&gt; <strong>Atenção — não confundir o TFD com a mensageria que ele usaria.</strong> <code>tfd_mensagem_whatsapp</code> &gt; (26.045) e <code>tfd_geocodigo</code> (696) têm muito volume, mas <strong>não são do TFD</strong>: são &gt; infraestrutura compartilhada que nasceu dentro da pasta do TFD e ficou com o prefixo &gt; errado. A prova está na §10.1. Isso é um <strong>erro de modelagem a corrigir</strong>, não uma &gt; reclassificação do TFD.</p>
+<h3>3.2 Agendamento local — natimorto</h3>
+<div class="tw"><table><thead><tr><th>Tabela</th><th>Linhas</th></tr></thead><tbody>
+<tr><td><code>bloqueio_agenda</code></td><td><strong>0</strong></td></tr>
+<tr><td><code>disponibilidade_avulsa</code></td><td>1</td></tr>
+<tr><td><code>especialidade</code></td><td>2</td></tr>
+<tr><td><code>agenda</code></td><td>3</td></tr>
+<tr><td><code>agendamento</code></td><td>3</td></tr>
+</tbody></table></div>
+<p>ADR-0012 e ADR-0013 (agenda multi-recurso) foram implementados e <strong>nunca adotados</strong>. Na prática a regulação real acontece no SISREG e no processo regulatório (§5).</p>
+<h3>3.3 Construído nas últimas semanas e ainda sem adoção</h3>
+<div class="tw"><table><thead><tr><th>Tabela</th><th>Linhas</th><th>Observação</th></tr></thead><tbody>
+<tr><td><code>sisreg_profissional_unidade</code></td><td><strong>0</strong></td><td>Módulo 52 (<code>SisregMapeamento</code>) — tela pronta, zero dado</td></tr>
+<tr><td><code>sisreg_procedimento_profissional</code></td><td><strong>0</strong></td><td>idem</td></tr>
+<tr><td><code>sisreg_credencial_unidade</code></td><td><strong>0</strong></td><td>idem</td></tr>
+<tr><td><code>ia_consulta_feedback</code></td><td><strong>0</strong></td><td>feedback da Consulta Inteligente nunca usado</td></tr>
+<tr><td><code>download_token</code></td><td><strong>0</strong></td><td>sem função aparente</td></tr>
+</tbody></table></div>
+<h3>3.4 Sinal de alarme operacional (não é código morto — é dado ruim)</h3>
+<p><code>sisreg_importacao_falha</code> = <strong>4.382 linhas</strong> contra 1.560 solicitações importadas. Mais falhas do que sucessos. Isso é a pendência de qualidade de dados de importação, e é um item de produto, não de limpeza.</p>
+<hr>
+<h2>4. Implementado e NÃO entregue — o WIP local</h2>
+<p>217 arquivos no working tree, zero commitados. É a maior "ponta solta" do repositório. Agrupando por frente:</p>
+<div class="tw"><table><thead><tr><th>Frente</th><th>ADR</th><th>Estado</th><th>Migration pendente</th></tr></thead><tbody>
+<tr><td><strong>Painel de Início</strong> (lentes, raias, cancelamento, pendências)</td><td>0033 / 0034 / 0035</td><td>back + front completos</td><td><code>20260730132138_AddCausaFalhaImportacaoEIndicesPainel</code></td></tr>
+<tr><td><strong>Sincronismo contínuo Salux + Internação</strong></td><td>0024 / 0025</td><td>server + FHIR (Location, Encounter IMP)</td><td><code>20260727122701_AddPepSincronizacaoContinua</code> + FHIR <code>20260727020900_AddIdentifierClinicoELocation</code></td></tr>
+<tr><td><strong>Processo Regulatório</strong></td><td>0021</td><td>só entidades + máquina de estado</td><td><code>20260725152753_AddProcessoRegulatorio</code></td></tr>
+<tr><td><strong>Escopo de unidade fail-closed</strong></td><td>0037</td><td>Core/Common/Unidades + testes</td><td>—</td></tr>
+<tr><td><strong>Trilha de falhas de importação + fix CID</strong></td><td>—</td><td>server + front</td><td>—</td></tr>
+<tr><td><strong>Correção SIGTAP (US mamas bilateral)</strong></td><td>—</td><td>migration de dados</td><td><code>20260728132644_CorrigeSigtapUsMamasBilateral</code></td></tr>
+</tbody></table></div>
+<h3>4.1 Risco concreto: migration fora de ordem</h3>
+<p>Produção tem aplicada a <code>20260725<strong>154214</strong>_AddSisregMapeamentoECredencialUnidade</code>, mas <strong>não</strong> a <code>20260725<strong>152753</strong>_AddProcessoRegulatorio</code> — que é <strong>anterior</strong> no timestamp. Quando a de regulação for aplicada, ela entra "no passado" do histórico. O EF tolera, mas qualquer <code>dotnet ef database update</code> seletivo ou rollback fica imprevisível. <strong>Decidir isto antes de deployar</strong> (§9, D3).</p>
+<h3>4.2 Estado das migrations</h3>
+<ul>
+<li><strong><code>smsmarica</code></strong> — prod parou em <code>20260729152102_DispensaVerificacaoContato</code>. <strong>4 pendentes</strong> no repo.</li>
+<li><strong><code>fhir</code></strong> — prod parou em <code>20260616155731_AddTelefoneSearch</code> (16/06!). <strong>1 pendente</strong>, que traz Location e o identifier clínico.</li>
+</ul>
+<p>Lembrete que já custou caro 3 vezes: <strong>o AutoMigrate do startup não aplica migration</strong>. Conferir <code>smsmarica.__migrations</code> depois de todo deploy.</p>
+<hr>
+<h2>5. Documentado e NÃO implementado — ADRs sem código</h2>
+<p>De 37 ADRs, <strong>12 estão marcados "proposto"</strong>. Cruzando com o código:</p>
+<div class="tw"><table><thead><tr><th>ADR</th><th>Assunto</th><th>Código encontrado</th><th>Veredito</th></tr></thead><tbody>
+<tr><td>0029</td><td>Unidade habilitada + capacidades</td><td><strong>nenhum</strong></td><td>papel puro</td></tr>
+<tr><td>0030</td><td>Robô de triagem em camadas</td><td><strong>nenhum</strong></td><td>papel puro</td></tr>
+<tr><td>0031</td><td>Costura do motor de triagem</td><td><strong>nenhum</strong></td><td>papel puro</td></tr>
+<tr><td>0032</td><td>Intenção reaproveitável para voz</td><td><strong>nenhum</strong></td><td>papel puro</td></tr>
+<tr><td>0021</td><td>Ecossistema de Solicitação / regulação</td><td>entidades + máquina de estado, <strong>0 endpoint, 0 tela</strong></td><td>meio-caminho</td></tr>
+<tr><td>0027</td><td>Ciclo de vida da conversa e fila</td><td>enums e eventos existem e rodam em prod</td><td><strong>status errado — já é realidade</strong></td></tr>
+<tr><td>0028</td><td>Roteamento por unidade</td><td><code>Conversa.UnidadeId</code> existe em prod</td><td><strong>status errado — já é realidade</strong></td></tr>
+<tr><td>0033/0034/0035</td><td>Painel de Início</td><td>implementado, não deployado</td><td>vira "aceito" no deploy</td></tr>
+<tr><td>0037</td><td>Escopo fail-closed</td><td>implementado, não deployado</td><td>idem</td></tr>
+<tr><td>0020</td><td>Paciente FHIR nativo</td><td><strong>em produção</strong></td><td><strong>status errado — é "aceito"</strong></td></tr>
+</tbody></table></div>
+<h3>5.1 A dívida específica da Regulação</h3>
+<p><code>ModuloPermissao</code> já tem <strong>5 valores reservados</strong> (47–51) para Regulação. O front, honestamente, só expõe 3 deles e deixa comentário explicando que 47 e 51 "existem no enum do backend mas ainda não têm nenhum endpoint nem tela".</p>
+<p>Ou seja: o enum de permissões virou lista de intenções. Isso confunde quem administra perfis.</p>
+<hr>
+<h2>6. Dívida de governança — a causa-raiz das pontas soltas</h2>
+<h3>6.1 O roadmap está morto</h3>
+<p><code>docs/roadmap.md</code> é de 22/04 e descreve um produto de transporte sanitário em M1..M8. O checklist final tem <strong><code>[ ] F1 (scaffold Vite + React)</code> desmarcado</strong> — enquanto o front tem 47 features em produção. Nenhum dos marcos M2..M7 corresponde ao que foi construído. Ninguém consulta, e por isso ninguém atualiza. <strong>Documento a substituir, não a corrigir.</strong></p>
+<h3>6.2 ADR não tem status de implantação</h3>
+<p>O campo <code>Status</code> de um ADR responde "a decisão foi aceita?" — nunca "isso está rodando?". Por isso ADR-0020 está "Proposto" estando em prod, e ADR-0030 está "proposto" sem uma linha de código. <strong>São duas dimensões diferentes e hoje há só um campo.</strong></p>
+<h3>6.3 Numeração de ADR duplicada e uso indevido da pasta</h3>
+<ul>
+<li><code>0020-paciente-fhir-nativo.md</code> <strong>e</strong> <code>0020-plano-fase1.md</code></li>
+<li><code>0021-ecossistema-solicitacao-e-fulfillment.md</code> <strong>e</strong> <code>0021-runbook-deploy.md</code></li>
+</ul>
+<p>Plano de fase e runbook de deploy <strong>não são decisões arquiteturais</strong>. Estão inflando a contagem de ADRs e quebrando a numeração.</p>
+<h3>6.4 39 branches, 33 delas lixo</h3>
+<p>De 17 branches locais + 22 remotas, <strong>33 não têm um único commit fora de <code>main</code></strong> — já foram integradas. Só 6 têm conteúdo próprio, e várias são versões pré-squash do que já entrou. Restam de verdade: <code>feat/tfd-implementacao</code> (2), <code>origin/fix/pool-conexoes-500</code> (3), <code>origin/feat/laudos-filtros</code> (2), <code>origin/feat/solicitacao-paciente-ux</code> (2), <code>origin/feat/resync-associacao</code> (1), <code>origin/feat/solicitante-coren</code> (1) — e estas duas últimas descrevem trabalho que a memória do projeto já dá como em produção.</p>
+<h3>6.5 Lixo na raiz e em <code>docs/</code></h3>
+<ul>
+<li>Um arquivo de scratchpad com nome corrompido (<code>C:Usersberna...pacs_flow.txt</code>) commitável na raiz do repo.</li>
+<li>Pasta <code>alterações entre sessoes/</code> com 4 notas de sessão soltas — não é documentação nem código.</li>
+<li><code>docs/</code> na raiz mistura documentação canônica com <code>.docx</code>, <code>.csv</code>, <code>.png</code> e credenciais.</li>
+</ul>
+<p>  As credenciais <strong>estão corretamente gitignoradas</strong> (verificado), mas o ruído atrapalha.</p>
+<hr>
+<h2>7. Proposta de linha de corte</h2>
+<h3>7.1 FICA — núcleo do produto (investir)</h3>
+<p>Clínico de imagem (solicitação → PACS → laudo → assinatura) · Central de Atendimento WhatsApp · Comunicações ao paciente · PWA do cidadão · hub FHIR + sincronismo Salux · Importação SISREG · IA/conhecimento · Indicadores HMCML · Auditoria/Erros/Tickets · Multitenancy por unidade.</p>
+<h3>7.2 FICA NA FILA — necessário, sem definição fechada (arrumar a casa agora)</h3>
+<p><strong>Núcleo TFD/transporte</strong> (Tratamentos, Translados, Rotas, Rastreamento, Avaliações, Motoristas, Veículos, Faturamento) e <strong>Agendamento local</strong> (Agendas, Especialidades, Agendamentos, ADR-0013).</p>
+<p>Estes módulos <strong>continuam no produto</strong>. O que falta é definição — e outras frentes entraram na frente. Como estão <strong>vazios</strong>, esta é a janela mais barata que vai existir para corrigir modelagem:</p>
+<ol>
+<li><strong>Corrigir a fronteira TFD × infraestrutura compartilhada agora</strong> (§10). Custo hoje:</li>
+</ol>
+<p>   um rename. Custo depois de o TFD entrar em operação: migração de dados com sistema no ar.</p>
+<ol>
+<li>Marcar ADR-0013 e ADR-0017 como <em>Aceito — implantação não iniciada</em> (§8.5), para parar</li>
+</ol>
+<p>   de parecerem entregues.</p>
+<ol>
+<li>Não investir em feature nova nestes módulos antes da definição — mas <strong>não</strong> removê-los</li>
+</ol>
+<p>   do menu nem do escopo.</p>
+<ol>
+<li><code>agente.app</code> (ADR-0003) segue no escopo, aguardando a definição do TFD.</li>
+</ol>
+<h3>7.3 SAI — remover de verdade</h3>
+<div class="tw"><table><thead><tr><th>Item</th><th>Por quê</th></tr></thead><tbody>
+<tr><td>33 branches já mergeadas (locais e remotas)</td><td>ruído puro</td></tr>
+<tr><td><code>C:Usersberna...pacs_flow.txt</code> na raiz</td><td>lixo de scratchpad</td></tr>
+<tr><td><code>alterações entre sessoes/</code></td><td>notas de sessão; arquivar fora do repo</td></tr>
+<tr><td><code>docs/roadmap.md</code> na forma atual</td><td>substituir pelo roadmap real</td></tr>
+<tr><td><code>0020-plano-fase1.md</code> e <code>0021-runbook-deploy.md</code> fora de <code>adr/</code></td><td>mover para <code>docs/runbooks/</code></td></tr>
+<tr><td><code>download_token</code>, <code>ia_consulta_feedback</code></td><td>avaliar remoção — 0 linhas, sem função observável</td></tr>
+<tr><td>O prefixo <code>tfd_</code> de tabelas que não são TFD</td><td>erro de modelagem — ver §10</td></tr>
+</tbody></table></div>
+<h3>7.4 DECIDE — meio-caminho que precisa de rumo</h3>
+<div class="tw"><table><thead><tr><th>Item</th><th>Escolha</th></tr></thead><tbody>
+<tr><td><strong>Processo Regulatório (ADR-0021)</strong></td><td>terminar (endpoint + tela) <strong>ou</strong> reverter o schema e liberar os módulos 47–51</td></tr>
+<tr><td><strong>Mapeamento SISREG (módulo 52)</strong></td><td>tem tela e 0 dados: falta adoção ou falta função?</td></tr>
+<tr><td><strong>Robô de triagem (0029–0032)</strong></td><td>4 ADRs de papel: viram fila real, ou marcam-se "adiado"</td></tr>
+<tr><td><strong>Qualidade da importação SISREG</strong></td><td>4.382 falhas × 1.560 sucessos é um problema de produto</td></tr>
+</tbody></table></div>
+<hr>
+<h2>8. Plano de virada de página (ordem sugerida)</h2>
+<p>Cada passo é pequeno e verificável; nenhum depende do seguinte.</p>
+<ol>
+<li><strong>Limpar o git</strong> — apagar as 33 branches mergeadas, tirar o lixo da raiz. Zero risco.</li>
+<li><strong>Fatiar e commitar o WIP</strong> em 6 commits por frente (§4), sem deployar ainda.</li>
+</ol>
+<p>   <em>Atenção ao snapshot do EF, que é compartilhado entre frentes.</em></p>
+<ol>
+<li><strong>Resolver a migration fora de ordem</strong> da Regulação (§4.1) antes de qualquer deploy.</li>
+<li><strong>Deployar por frente</strong>, do menor risco ao maior:</li>
+</ol>
+<p>   correção SIGTAP → trilha de falhas → escopo fail-closed → Painel de Início →    sincronismo contínuo (inclui a migration do FHIR, parada desde 16/06).    Conferir <code>smsmarica.__migrations</code> <strong>a cada</strong> deploy.</p>
+<ol>
+<li><strong>Acertar a governança de ADR</strong> — acrescentar o campo <code>Implantação:</code></li>
+</ol>
+<p>   (<code>não iniciada</code> / <code>parcial</code> / <code>em produção</code>) e corrigir de uma vez os status errados    (0020, 0027, 0028) e os de papel puro (0029–0032).</p>
+<ol>
+<li><strong>Reescrever o roadmap</strong> a partir da §2 e da §7: Marco 1 fechado com o que está em</li>
+</ol>
+<p>   prod, e M2 sendo a fila de fato.</p>
+<ol>
+<li><strong>Corrigir a fronteira TFD × infraestrutura compartilhada</strong> (§10) — enquanto o domínio</li>
+</ol>
+<p>   TFD está vazio e a correção custa um rename.</p>
+<hr>
+<h2>9. Decisões que dependem de você</h2>
+<div class="tw"><table><thead><tr><th>#</th><th>Decisão</th><th>Recomendação</th></tr></thead><tbody>
+<tr><td><strong>D1</strong></td><td>~~Congelar o TFD?~~ <strong>Decidido em 31/07: o TFD fica.</strong> Falta definição, não escopo.</td><td>fila (§7.2)</td></tr>
+<tr><td><strong>D1b</strong></td><td>Executar agora a correção TFD × mensageria/geo (§10)?</td><td><strong>sim — a janela é agora</strong></td></tr>
+<tr><td><strong>D2</strong></td><td>Regulação (ADR-0021): terminar ou reverter?</td><td>—</td></tr>
+<tr><td><strong>D3</strong></td><td>Como tratar a migration <code>AddProcessoRegulatorio</code> fora de ordem?</td><td>depende de D2</td></tr>
+<tr><td><strong>D4</strong></td><td>Deployar o WIP inteiro ou só as frentes de baixo risco?</td><td>fatiar e deployar por frente (§8.4)</td></tr>
+<tr><td><strong>D5</strong></td><td>ADRs 0029–0032 (triagem): fila real ou "adiado"?</td><td>—</td></tr>
+<tr><td><strong>D6</strong></td><td>Apagar as 33 branches mergeadas?</td><td>sim</td></tr>
+<tr><td><strong>D7</strong></td><td>Substituir o <code>roadmap.md</code> pelo roadmap real?</td><td>sim</td></tr>
+</tbody></table></div>
+<hr>
+<h2>10. Correção de modelagem: TFD <strong>usa</strong> mensageria, TFD <strong>não é</strong> mensageria</h2>
+<p>O canal de WhatsApp e a geocodificação nasceram dentro da pasta do TFD, porque o TFD foi o primeiro a precisar deles. Ficaram com o prefixo <code>tfd_</code> e nunca saíram de lá — mesmo depois de virarem infraestrutura de todo o sistema.</p>
+<p>Isso não é cosmético. Enquanto a mensageria se chamar <code>tfd_*</code>, qualquer pessoa (ou IA) lendo o schema conclui que o WhatsApp do município pertence ao transporte sanitário — e quem for mexer no TFD acha que pode mexer nas 26 mil mensagens.</p>
+<h3>10.1 A prova</h3>
+<p><code>tfd_mensagem_whatsapp</code> tem uma FK <code>sessao_id</code> para <code>sessao_de_tratamento</code> (a sessão de TFD):</p>
+<div class="tw"><table><thead><tr><th>Coluna</th><th>Preenchidas</th></tr></thead><tbody>
+<tr><td><code>sessao_id</code> — <strong>o vínculo com o TFD</strong></td><td><strong>0</strong> de 26.045</td></tr>
+<tr><td><code>conversa_id</code> — Central de Atendimento</td><td>22.928</td></tr>
+<tr><td><code>autor_usuario_id</code> — operador humano</td><td>11.850</td></tr>
+</tbody></table></div>
+<p><strong>A tabela chamada "tfd_" nunca carregou uma única mensagem de TFD.</strong> São 26 mil mensagens da Central de Atendimento e das comunicações ao paciente. O <code>sessao_id</code> é o cordão umbilical do nascimento, e está vazio desde sempre.</p>
+<h3>10.2 O que é TFD de verdade e o que não é</h3>
+<div class="tw"><table><thead><tr><th>Tabela</th><th>Veredito</th><th>Por quê</th></tr></thead><tbody>
+<tr><td><code>tfd_registro_faturamento</code></td><td><strong>é TFD</strong></td><td>tem <code>motorista_id</code>, <code>veiculo_id</code>, <code>sessao_id</code>, km, BPA</td></tr>
+<tr><td><code>tfd_config_faturamento</code></td><td><strong>é TFD</strong></td><td>valor por 50 km, SIGTAP do transporte</td></tr>
+<tr><td><code>tfd_mensagem_whatsapp</code></td><td><strong>não é</strong></td><td>log de mensagens de todo o sistema</td></tr>
+<tr><td><code>tfd_config_whatsapp</code></td><td><strong>não é</strong></td><td>credenciais da WhatsApp Cloud API do município</td></tr>
+<tr><td><code>tfd_geocodigo</code></td><td><strong>não é</strong></td><td>cache de geocodificação de endereço</td></tr>
+<tr><td><code>tfd_config_google</code></td><td><strong>não é</strong></td><td>chave da API do Google Maps</td></tr>
+</tbody></table></div>
+<p>Detalhe importante: <strong>a camada <code>Core</code> já está certa</strong> — o código vive em <code>Core/Notificacoes/WhatsApp/</code> e <code>Core/Geo/</code>, não em <code>Core/Tfd/</code>. O erro está confinado à camada <code>Data</code> (nome da tabela + pasta da entidade) e ao <code>TfdConfigService</code>/<code>TfdConfigController</code>, que empacotam três configurações de domínios diferentes só porque as três nasceram juntas.</p>
+<h3>10.3 Renomeações propostas</h3>
+<p>Nomes finais, derivados da convenção real do banco (prefixo = dono; <code>snake_case</code> singular; config singleton com sufixo <code>_configuracao</code> em pt-BR, como <code>ia_configuracao</code>, <code>laudo_configuracao</code>, <code>sisreg_configuracao</code>, <code>ticket_configuracao</code>):</p>
+<div class="tw"><table><thead><tr><th>Hoje</th><th>Passa a ser</th><th>Entidade</th></tr></thead><tbody>
+<tr><td><code>tfd_mensagem_whatsapp</code></td><td><code>whatsapp_mensagem</code></td><td><code>MensagemWhatsApp</code> → <code>Entities/Notificacoes/</code></td></tr>
+<tr><td><code>tfd_config_whatsapp</code></td><td><code>whatsapp_configuracao</code></td><td><code>WhatsAppConfiguracao</code> → <code>Entities/Notificacoes/</code></td></tr>
+<tr><td><code>tfd_geocodigo</code></td><td><code>geo_endereco</code></td><td><code>GeoEndereco</code> → <code>Entities/Geo/</code></td></tr>
+<tr><td><code>tfd_config_google</code></td><td><code>geo_configuracao</code></td><td><code>GeoConfiguracao</code> → <code>Entities/Geo/</code></td></tr>
+<tr><td><code>tfd_config_faturamento</code></td><td><code>tfd_configuracao</code></td><td><code>TfdConfiguracao</code> — <strong>continua no TFD</strong></td></tr>
+<tr><td><code>tfd_registro_faturamento</code></td><td><em>(sem mudança)</em></td><td><code>RegistroFaturamento</code> — <strong>continua no TFD</strong></td></tr>
+</tbody></table></div>
+<p>&gt; As três <code>tfd_config_*</code> eram a <strong>única</strong> exceção de nomenclatura do banco inteiro, e erravam &gt; duas vezes: <code>config</code> em inglês e dono errado.</p>
+<p><strong>Cortar o cordão umbilical:</strong> remover a FK <code>mensagem_whatsapp.sessao_id</code>. É ela que inverte a dependência. Quando o TFD entrar em operação e precisar avisar o paciente, ele referencia a mensagem — exatamente como <code>comunicacao_paciente.mensagem_whatsapp_id</code> já faz hoje. A mensagem não deve saber que o TFD existe. <strong>Essa remoção é a materialização técnica de "TFD usa mensageria".</strong></p>
+<p><strong>Separar o serviço de configuração:</strong> quebrar <code>TfdConfigService</code> em três, cada um no seu domínio (WhatsApp → <code>Core/Notificacoes</code>, Google Maps → <code>Core/Geo</code>, faturamento → <code>Core/Tfd</code>). Isso mexe nas rotas <code>/tfd/config/*</code> que o front consome em <code>features/integracoes</code> (<code>WhatsAppCard</code>, <code>GoogleMapsCard</code>, <code>NavigationSdkCard</code>) — back e front precisam ir juntos.</p>
+<h3>10.4 Por que é seguro fazer agora (medido, não estimado)</h3>
+<div class="tw"><table><thead><tr><th>Dependência oculta</th><th>Encontrado</th></tr></thead><tbody>
+<tr><td>SQL de indicadores citando <code>tfd_</code> (colunas <code>sql</code> e <code>sql_analitico</code>)</td><td><strong>0</strong></td></tr>
+<tr><td>Documentos / chunks de conhecimento da IA citando <code>tfd_</code></td><td><strong>0 / 0</strong></td></tr>
+<tr><td>Views ou materialized views dependentes</td><td><strong>0</strong></td></tr>
+<tr><td>Arquivos <code>.cs</code> afetados (fora de <code>Migrations</code>)</td><td>19 (mensagem) · 8 (geo) · 7 (configs)</td></tr>
+<tr><td>Linhas de TFD a migrar</td><td><strong>0</strong> — o domínio está vazio</td></tr>
+</tbody></table></div>
+<p>Ou seja: nada além do EF conhece esses nomes. É <code>ALTER TABLE ... RENAME TO</code>, que preserva os dados e é instantâneo — <strong>não há cópia de 26 mil linhas</strong>.</p>
+<h3>10.5 Riscos e como tratar</h3>
+<ol>
+<li><strong>Janela de indisponibilidade.</strong> Rename de tabela é <em>breaking</em>: entre a migration rodar e</li>
+</ol>
+<p>   o serviço reiniciar, o código antigo quebra. São segundos, mas com a Central de    Atendimento ativa. → <strong>Executar fora do horário de atendimento.</strong></p>
+<ol>
+<li><strong>Snapshot do EF é compartilhado entre frentes.</strong> Há 4 migrations pendentes e WIP de</li>
+</ol>
+<p>   outras frentes no mesmo snapshot. → <strong>Entrar depois do deploy do WIP atual</strong> (§8.4),    nunca no meio dele.</p>
+<ol>
+<li>*<em>Front e back acoplados pelas rotas <code>/tfd/config/</em></code>.** → Deployar juntos, ou manter as</li>
+</ol>
+<p>   rotas antigas respondendo por uma versão antes de removê-las.</p>
+<ol>
+<li><strong>A migration precisa renomear também índices e constraints</strong>, senão fica <code>ix_tfd_...</code></li>
+</ol>
+<p>   apontando para <code>mensagem_whatsapp</code> — que é a mesma sujeira, só que escondida.</p>
+<h3>10.6 Merece ADR</h3>
+<p>"Mensageria e geocodificação são infraestrutura compartilhada, não submódulos do TFD" é uma decisão de fronteira de domínio, e é exatamente o tipo de coisa que se perde sem registro — foi a ausência dela que criou o problema. Proposta: <strong>ADR-0038</strong>, já com o campo de implantação da §8.5.</p>
+<hr>
+<h2>11. Ponto de retomada — onde paramos em 31/07/2026</h2>
+<p><strong>Nada foi commitado. Nada foi deployado. Produção está intacta e sem nenhuma alteração.</strong> O working tree compila (0 erros, 0 avisos) e tem, agora, o WIP anterior <strong>mais</strong> a correção do TFD.</p>
+<h3>11.1 O que foi FEITO hoje (só no working tree)</h3>
+<div class="tw"><table><thead><tr><th>Item</th><th>Estado</th></tr></thead><tbody>
+<tr><td>Levantamento completo (§1–§9)</td><td>pronto, medido contra produção</td></tr>
+<tr><td><strong>ADR-0038</strong> (<code>docs/adr/0038-mensageria-e-geo-fora-do-tfd.md</code>)</td><td>escrito</td></tr>
+<tr><td>Renome das 6 tabelas + entidades movidas</td><td>implementado</td></tr>
+<tr><td>Remoção da FK morta <code>sessao_id</code> + do parâmetro <code>sessaoId</code> em <code>IWhatsAppCliente</code></td><td>implementado</td></tr>
+<tr><td>Migration <code>20260731214803_RenomeiaMensageriaEGeoForaDoTfd</code></td><td><strong>reescrita à mão</strong>, SQL conferido</td></tr>
+<tr><td>5 SQLs crus do <code>EstatisticasService</code></td><td>corrigidos</td></tr>
+<tr><td>Backup CSV das 6 tabelas + <code>MANIFESTO.json</code></td><td><code>%USERPROFILE%\Backups\SMSMarica\pre-rename-20260731\</code></td></tr>
+<tr><td>Verificador pós-migração</td><td><code>scripts/verificar-rename-tfd.py</code> (roda e sai 1 corretamente)</td></tr>
+<tr><td>Build</td><td>0 erros, 0 avisos · <strong>342 testes passam</strong></td></tr>
+</tbody></table></div>
+<h3>11.2 O que NÃO foi verificado (importante ao retomar)</h3>
+<ul>
+<li><strong>83 testes de integração não rodaram</strong> — Docker não estava de pé na máquina. As 83 falhas</li>
+</ul>
+<p>  são todas de Testcontainers, nenhuma é falha real. Mas é ausência de prova.</p>
+<ul>
+<li><strong>A migration nunca foi executada</strong> — nem em produção, nem localmente (não há Postgres</li>
+</ul>
+<p>  local). Está validada por <strong>inspeção do SQL gerado</strong>, não por execução.</p>
+<h3>11.3 A armadilha que quase custou 26 mil mensagens</h3>
+<p>O <code>dotnet ef migrations add</code> gerou <strong><code>DropTable</code> + <code>CreateTable</code></strong> para o rename. Se aquilo tivesse sido aplicado, teria apagado <code>whatsapp_mensagem</code> inteira. O EF não infere rename.</p>
+<p>O arquivo da migration hoje é <strong>manual</strong> e traz esse aviso no topo. Conferência feita sobre o SQL emitido: <strong>10 <code>RENAME TO</code>, 0 <code>DROP TABLE</code>, 0 <code>CREATE TABLE</code>, 0 <code>DELETE</code>, 0 <code>TRUNCATE</code>, 1 <code>DROP COLUMN</code></strong> (a coluna morta). <strong>Se precisar regerar, não aceitar o scaffold cru.</strong></p>
+<h3>11.4 O nó que trava o commit — ler antes de mexer</h3>
+<p><code>SmsMaricaDbContext.cs</code> e <code>SmsMaricaDbContextModelSnapshot.cs</code> carregam, <strong>nos mesmos arquivos</strong>, as entidades da Regulação (<code>ProcessoRegulatorio</code>, <code>DocumentoRegulatorio</code>, <code>PendenciaRegulatoria</code>, <code>ProcessoRegulatorioEvento</code>, <code>ProcessoRegulatorioConfiguracao</code>) e <code>PepSincronizacaoAgenda</code>, vindas de outras frentes. Consequências:</p>
+<ol>
+<li><strong>Não dá para commitar o rename sozinho</strong> — o DbContext referencia tipos cujas entidades</li>
+</ol>
+<p>   ficariam de fora, e o commit não compilaria.</p>
+<ol>
+<li><strong>Não dá para deployar o rename sozinho</strong> — o EF aplica migrations em ordem, então as</li>
+</ol>
+<p>   <strong>4 pendentes vão junto, obrigatoriamente</strong>.</p>
+<p>Ordem forçada, portanto: <strong>commitar o WIP fatiado por frente → deployar do menor risco ao maior → o rename por último</strong>, na janela fora do atendimento.</p>
+<h3>11.5 Decisões que faltam para prosseguir</h3>
+<div class="tw"><table><thead><tr><th>#</th><th>Pergunta</th><th>Por que trava</th></tr></thead><tbody>
+<tr><td><strong>A</strong></td><td>Pode subir a <strong>sincronização contínua do Salux</strong> (<code>AddPepSincronizacaoContinua</code>)?</td><td>liga um scheduler de fundo contra o <strong>Oracle de produção do hospital</strong>; não deve ir de carona num rename</td></tr>
+<tr><td><strong>B</strong></td><td><strong>Regulação (ADR-0021)</strong>: terminar ou reverter?</td><td>a migration <code>AddProcessoRegulatorio</code> cria 5 tabelas de um módulo com 0 endpoint e 0 tela</td></tr>
+<tr><td><strong>C</strong></td><td>Qual a <strong>janela fora do horário de atendimento</strong> para o rename?</td><td>é <em>breaking</em> por segundos, com a Central de Atendimento ativa</td></tr>
+<tr><td><strong>D</strong></td><td>Apagar as <strong>33 branches já mergeadas</strong>?</td><td>risco zero, só esperando o OK</td></tr>
+</tbody></table></div>
+<h3>11.6 Riscos de deixar parado</h3>
+<ul>
+<li>O working tree tem <strong>200+ arquivos não commitados</strong>. Outra instância trabalhando na mesma</li>
+</ul>
+<p>  pasta pode atropelar — atenção redobrada com git destrutivo.</p>
+<ul>
+<li>O schema <code>fhir</code> de produção está parado em <strong>16/06</strong>; a migration de Location/Encounter IMP</li>
+</ul>
+<p>  segue sem aplicar.</p>
+<ul>
+<li>O backup CSV é de <strong>31/07</strong>. Se o rename só acontecer semanas depois, <strong>tirar backup novo</strong></li>
+</ul>
+<p>  antes — o de hoje envelhece (só a conversa de hoje já somou 10 mensagens).</p>
+<hr>
+<p><em>Levantamento de 31/07/2026. Números de produção medidos na mesma data.</em> <em>Revisão de 31/07: §3.1, §7.2, §8.7 e D1 corrigidos — o TFD permanece no escopo; §10 e §11 acrescentadas.</em></p>
+</main>
+</body>
+</html>

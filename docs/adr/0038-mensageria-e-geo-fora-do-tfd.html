@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0038 — Mensageria WhatsApp e geocodificação são infraestrutura compartilhada, não submódulos do TFD</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0038 — Mensageria WhatsApp e geocodificação são infraestrutura compartilhada, não submódulos do TFD</h1>
+<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-07-31 <strong>Implantação:</strong> não iniciada <em>(migration pronta, ainda não aplicada em produção)</em></p>
+<h2>Contexto</h2>
+<p>O canal de WhatsApp e a geocodificação nasceram dentro do TFD, porque o TFD foi o primeiro a precisar deles. Ficaram com o prefixo <code>tfd_</code> e nunca saíram de lá — mesmo depois de virarem infraestrutura de todo o sistema (Central de Atendimento, comunicações ao paciente, OTP do app do cidadão, painel do secretário).</p>
+<p>Isso não é cosmético. Enquanto a mensageria se chamar <code>tfd_*</code>, quem lê o schema — pessoa ou IA — conclui que o WhatsApp do município pertence ao transporte sanitário; e quem for mexer no TFD acredita que pode mexer nas 26 mil mensagens.</p>
+<h3>A prova</h3>
+<p><code>tfd_mensagem_whatsapp</code> tinha uma FK <code>sessao_id</code> apontando para <code>sessao_de_tratamento</code> (a sessão de TFD). Medido em produção em 31/07/2026:</p>
+<div class="tw"><table><thead><tr><th>Coluna</th><th>Preenchidas</th></tr></thead><tbody>
+<tr><td><code>sessao_id</code> — <strong>o vínculo com o TFD</strong></td><td><strong>0</strong> de 26.055</td></tr>
+<tr><td><code>conversa_id</code> — Central de Atendimento</td><td>22.928</td></tr>
+<tr><td><code>autor_usuario_id</code> — operador humano</td><td>11.850</td></tr>
+</tbody></table></div>
+<p><strong>A tabela chamada <code>tfd_</code> nunca carregou uma única mensagem de TFD.</strong> O <code>sessao_id</code> era o cordão umbilical do nascimento, vazio desde sempre.</p>
+<h3>Por que agora</h3>
+<p>O TFD <strong>permanece no escopo do produto</strong> — o que falta nele é definição, não decisão de manter. Mas seu domínio está <strong>vazio</strong> (<code>avaliacao</code> 0, <code>rastreamento_*</code> 0, <code>veiculo</code> 1, <code>tratamento</code> 3). Corrigir a fronteira hoje custa um rename; corrigir depois de o TFD entrar em operação custa migração de dados com o sistema no ar.</p>
+<h2>Decisão</h2>
+<p><strong>1. Mensageria e geo saem de baixo do TFD.</strong> O prefixo da tabela declara o dono real:</p>
+<div class="tw"><table><thead><tr><th>Antes</th><th>Depois</th><th>Dono</th></tr></thead><tbody>
+<tr><td><code>tfd_mensagem_whatsapp</code></td><td><code>whatsapp_mensagem</code></td><td>canal WhatsApp do município</td></tr>
+<tr><td><code>tfd_config_whatsapp</code></td><td><code>whatsapp_configuracao</code></td><td>credenciais Meta Cloud API</td></tr>
+<tr><td><code>tfd_geocodigo</code></td><td><code>geo_endereco</code></td><td>cache de geocodificação</td></tr>
+<tr><td><code>tfd_config_google</code></td><td><code>geo_configuracao</code></td><td>chave Google Maps Platform</td></tr>
+<tr><td><code>tfd_config_faturamento</code></td><td><code>tfd_configuracao</code></td><td><strong>continua TFD</strong> (só adota o sufixo pt-BR)</td></tr>
+<tr><td><code>tfd_registro_faturamento</code></td><td><em>(inalterada)</em></td><td><strong>continua TFD</strong></td></tr>
+</tbody></table></div>
+<p>Entidades acompanham: <code>Data/Entities/Notificacoes/</code> e <code>Data/Entities/Geo/</code>. <code>TfdConfigWhatsApp</code> → <code>WhatsAppConfiguracao</code>, <code>TfdConfigGoogle</code> → <code>GeoConfiguracao</code>, <code>TfdConfigFaturamento</code> → <code>TfdConfiguracao</code>, <code>Geocodigo</code> → <code>GeoEndereco</code>.</p>
+<p><strong>2. A dependência aponta numa direção só: domínio → mensageria.</strong> A coluna <code>sessao_id</code> foi removida da mensagem, junto com o parâmetro <code>sessaoId</code> que atravessava toda a interface <code>IWhatsAppCliente</code>. Quem precisa amarrar uma mensagem a um evento de domínio <strong>referencia a mensagem</strong> — como <code>comunicacao_paciente.mensagem_whatsapp_id</code> já faz — e não o contrário. O <code>WhatsAppNotificador</code> do TFD continua sabendo da sessão; a mensagem é que não sabe mais do TFD.</p>
+<p><strong>3. Convenção de nome, derivada do schema real</strong> (e não do <code>database.md</code>, que estava desatualizado): prefixo = quem é dono; <code>snake_case</code> singular; configuração singleton com sufixo <code>_configuracao</code> em pt-BR — como <code>ia_configuracao</code>, <code>laudo_configuracao</code>, <code>sisreg_configuracao</code>, <code>ticket_configuracao</code>. As três <code>tfd_config_*</code> eram a única exceção do banco, e erravam duas vezes: <code>config</code> em inglês e dono errado.</p>
+<h2>Consequências</h2>
+<h3>O rename é feito com <code>ALTER TABLE ... RENAME</code>, nunca com copiar-e-dropar</h3>
+<p>O scaffolder do EF <strong>gerou <code>DropTable</code> + <code>CreateTable</code></strong> para esta mudança — ele não sabe inferir rename, enxerga "tabela sumiu, tabela nova apareceu". Aquilo teria apagado as 26 mil mensagens. <strong>A migration foi reescrita à mão</strong> e o SQL gerado foi conferido: 10 <code>RENAME TO</code>, zero <code>DROP TABLE</code>, zero <code>CREATE TABLE</code>, zero <code>DELETE</code>, zero <code>TRUNCATE</code>, e um único <code>DROP COLUMN</code> (a coluna morta).</p>
+<p>Rename no PostgreSQL é operação de catálogo: instantânea, não move dado, e as FKs continuam válidas sozinhas porque a constraint referencia a tabela por <strong>OID</strong>, não por nome. Só os <strong>nomes</strong> de índices e constraints precisam ser acertados — senão sobra <code>PK_tfd_mensagem_whatsapp</code> numa tabela <code>whatsapp_mensagem</code>, e o próximo <code>migrations add</code> gera diff fantasma.</p>
+<p>&gt; <strong>Regra que fica:</strong> se esta migration precisar ser regerada, <strong>não aceitar o scaffold cru</strong>.</p>
+<h3>O compilador não cobre tudo</h3>
+<p>Havia 5 SQLs crus em <code>EstatisticasService.cs</code> montando <code>FROM smsmarica.tfd_mensagem_whatsapp</code> em string interpolada — invisíveis ao compilador, quebrariam em runtime no dashboard. Foram corrigidos. Antes do rename foi verificado que <strong>nada mais</strong> depende dos nomes: 0 indicadores com SQL citando <code>tfd_</code>, 0 documentos/chunks de conhecimento da IA, 0 views.</p>
+<h3>Não há passo irreversível</h3>
+<p>O rollback primário é outro <code>RENAME</code> — que preserva inclusive as mensagens chegadas depois da ida. A única remoção (<code>sessao_id</code>) tinha 0 de 26.055 linhas preenchidas, então recriar a coluna restaura o estado idêntico. Backup CSV das 6 tabelas + manifesto (linhas, bytes, md5) foi tirado antes, e há verificação pós-migração id-a-id em <code>scripts/verificar-rename-tfd.py</code> — comparação por <strong>id</strong>, não por contagem, porque o WhatsApp grava durante a janela e a contagem cresce legitimamente.</p>
+<h3>Janela de indisponibilidade</h3>
+<p>Rename é <em>breaking</em>: entre a migration rodar e o serviço reiniciar, o código antigo quebra. São segundos, mas com a Central de Atendimento ativa. <strong>Aplicar fora do horário de atendimento.</strong></p>
+<h2>Pendências que este ADR abre (não fazem parte desta entrega)</h2>
+<ol>
+<li><strong>Chaves de configuração ainda dizem <code>Tfd:</code></strong> — <code>Tfd:Otp:ModoTeste</code>,</li>
+</ol>
+<p>   <code>Tfd:Otp:WhatsAppTemplate</code>, <code>Tfd:WhatsApp:Simular</code>, <code>Tfd:Cidadao:SessaoDias</code>. Mesmo    vazamento, mas trocar exige atualizar variável de ambiente no servidor <strong>no mesmo    instante</strong>, senão a chave nova lê o default em silêncio. Fica para um passo próprio.</p>
+<ol>
+<li>**<code>TfdConfigService</code>/<code>TfdConfigController</code> empacotam três configurações de domínios</li>
+</ol>
+<p>   diferentes*<em> (WhatsApp, Google Maps, faturamento). Quebrar em três mexe nas rotas    <code>/tfd/config/</em></code> que o front consome em <code>features/integracoes</code> — exige deploy coordenado    back+front, por isso ficou fora desta entrega.</p>
+<ol>
+<li><strong><code>WhatsAppNotificador</code> mora em <code>Core/Notificacoes/WhatsApp/</code>, mas é código do TFD</strong></li>
+</ol>
+<p>   (fala de <code>SessaoDeTratamento</code>). O lugar dele é <code>Core/Tfd/</code>. Cosmético, sem risco.</p>
+<h2>Alternativas descartadas</h2>
+<ul>
+<li><strong>Criar tabelas novas, copiar os dados e dropar as antigas.</strong> O webhook do WhatsApp grava</li>
+</ul>
+<p>  continuamente: mensagem chegando durante a cópia se perderia ou duplicaria. Além disso   exigiria dropar e revalidar a FK de <code>comunicacao_paciente</code> (1.548 linhas). Copiar só se   justifica quando a <em>forma</em> muda — aqui só muda o nome.</p>
+<ul>
+<li><strong>Deixar como está e documentar.</strong> Foi o que aconteceu por meses: o XML doc de</li>
+</ul>
+<p>  <code>MensagemWhatsApp</code> já dizia "hoje transversal a todo o SMSMarica (não só TFD)" e o nome   continuou mentindo. Comentário não corrige schema.</p>
+</main>
+</body>
+</html>
