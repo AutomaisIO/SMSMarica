@@ -141,6 +141,9 @@ e é um item de produto, não de limpeza.
 
 ## 4. Implementado e NÃO entregue — o WIP local
 
+> **Atualizado em 01/08:** a frente do TFD (§10) saiu daqui e **está em produção**. As demais
+> seguem paradas — a lista viva está em **§11.2**, que é a que vale para planejar.
+
 217 arquivos no working tree, zero commitados. É a maior "ponta solta" do repositório.
 Agrupando por frente:
 
@@ -430,76 +433,115 @@ implantação da §8.5.
 
 ---
 
-## 11. Ponto de retomada — onde paramos em 31/07/2026
+## 11. Pontas soltas — backlog vivo
 
-**Nada foi commitado. Nada foi deployado. Produção está intacta e sem nenhuma alteração.**
-O working tree compila (0 erros, 0 avisos) e tem, agora, o WIP anterior **mais** a correção
-do TFD.
+> **Atualizado em 01/08/2026.** Esta é a seção para consultar antes de decidir o próximo passo.
+> As de cima destravam as de baixo.
 
-### 11.1 O que foi FEITO hoje (só no working tree)
+### 11.0 O que FOI resolvido (sai da lista)
 
-| Item | Estado |
+| Item | Quando |
 |---|---|
-| Levantamento completo (§1–§9) | pronto, medido contra produção |
-| **ADR-0038** (`docs/adr/0038-mensageria-e-geo-fora-do-tfd.md`) | escrito |
-| Renome das 6 tabelas + entidades movidas | implementado |
-| Remoção da FK morta `sessao_id` + do parâmetro `sessaoId` em `IWhatsAppCliente` | implementado |
-| Migration `20260731214803_RenomeiaMensageriaEGeoForaDoTfd` | **reescrita à mão**, SQL conferido |
-| 5 SQLs crus do `EstatisticasService` | corrigidos |
-| Backup CSV das 6 tabelas + `MANIFESTO.json` | `%USERPROFILE%\Backups\SMSMarica\pre-rename-20260731\` |
-| Verificador pós-migração | `scripts/verificar-rename-tfd.py` (roda e sai 1 corretamente) |
-| Build | 0 erros, 0 avisos · **342 testes passam** |
+| **Rename TFD × mensageria/geo** — 6 tabelas, ADR-0038 | **em produção 31/07**, verificado id-a-id, 0 perda |
+| **Drift do snapshot do EF no `main`** — declarava tabelas de regulação sem migration | corrigido no mesmo commit (`70c8405`) |
+| **Inventário do Marco 1** e ADR-0038 documentados e commitados | 31/07 (`1d5bd46`) |
+| **Bancada de ensaio de migration** (schemas no cluster do Maestro) | disponível para reuso |
 
-### 11.2 O que NÃO foi verificado (importante ao retomar)
+### 11.1 Imediatas — destravam o resto
 
-- **83 testes de integração não rodaram** — Docker não estava de pé na máquina. As 83 falhas
-  são todas de Testcontainers, nenhuma é falha real. Mas é ausência de prova.
-- **A migration nunca foi executada** — nem em produção, nem localmente (não há Postgres
-  local). Está validada por **inspeção do SQL gerado**, não por execução.
+**A. Reconciliar a árvore principal.**
+`C:\Projetos GIT\SMSMarica` ficou em `1d5bd46`; `origin/main` está em `70c8405`. Há ~252
+arquivos não commitados, incluindo duplicatas do rename **que já estão no `main`**.
+O cuidado: `SmsMaricaDbContext.cs` tem o bloco do rename **e** os DbSets de Regulação/PEP de
+outras frentes — um `git checkout` cego perde o trabalho alheio. Fazer com instância única
+aberta na pasta.
 
-### 11.3 A armadilha que quase custou 26 mil mensagens
+**B. Apagar o schema `backup_20260731_tfd`** depois de alguns dias de confiança. O backup CSV
+em `%USERPROFILE%\Backups\SMSMarica\pre-rename-20260731-final\` pode ficar.
 
-O `dotnet ef migrations add` gerou **`DropTable` + `CreateTable`** para o rename. Se aquilo
-tivesse sido aplicado, teria apagado `whatsapp_mensagem` inteira. O EF não infere rename.
+**C. Docker não roda nesta máquina.** 83 testes de integração (Testcontainers) não executam.
+Enquanto isso, toda validação de banco depende da bancada do Maestro — que funciona, mas é
+manual. Instalar Docker Desktop devolve a suíte inteira.
 
-O arquivo da migration hoje é **manual** e traz esse aviso no topo. Conferência feita sobre
-o SQL emitido: **10 `RENAME TO`, 0 `DROP TABLE`, 0 `CREATE TABLE`, 0 `DELETE`, 0 `TRUNCATE`,
-1 `DROP COLUMN`** (a coluna morta). **Se precisar regerar, não aceitar o scaffold cru.**
+### 11.2 Entrega — código pronto que nunca foi ao ar
 
-### 11.4 O nó que trava o commit — ler antes de mexer
+Cinco frentes seguem no working tree, **nenhuma commitada**. Cada uma vira uma sessão própria,
+no método que funcionou: worktree limpo do `main` → ensaio na bancada → deploy → verificação.
 
-`SmsMaricaDbContext.cs` e `SmsMaricaDbContextModelSnapshot.cs` carregam, **nos mesmos
-arquivos**, as entidades da Regulação (`ProcessoRegulatorio`, `DocumentoRegulatorio`,
-`PendenciaRegulatoria`, `ProcessoRegulatorioEvento`, `ProcessoRegulatorioConfiguracao`) e
-`PepSincronizacaoAgenda`, vindas de outras frentes. Consequências:
+| Frente | ADR | Migration pendente | Observação |
+|---|---|---|---|
+| Painel de Início | 0033/0034/0035 | `AddCausaFalhaImportacaoEIndicesPainel` | back + front completos |
+| Sincronismo contínuo Salux + Internação | 0024/0025 | `AddPepSincronizacaoContinua` | **inerte no deploy**: o scheduler sai pelo `if (agendas.Count == 0) return`, e a tabela nasce vazia |
+| Processo Regulatório | 0021 | `AddProcessoRegulatorio` | só entidades e máquina de estado; **0 endpoint, 0 tela** |
+| Escopo de unidade fail-closed | 0037 | — | `Core/Common/Unidades` + testes |
+| Trilha de falhas de importação | — | — | server + front |
 
-1. **Não dá para commitar o rename sozinho** — o DbContext referencia tipos cujas entidades
-   ficariam de fora, e o commit não compilaria.
-2. **Não dá para deployar o rename sozinho** — o EF aplica migrations em ordem, então as
-   **4 pendentes vão junto, obrigatoriamente**.
+**Schema `fhir` de produção parado em 16/06.** A migration `AddIdentifierClinicoELocation`
+(Location + Encounter IMP) nunca foi aplicada. É outro serviço (`Automais.Fhir`), outro deploy,
+outra solução — trata-se separadamente.
 
-Ordem forçada, portanto: **commitar o WIP fatiado por frente → deployar do menor risco ao
-maior → o rename por último**, na janela fora do atendimento.
+### 11.3 Governança — a causa-raiz das pontas soltas
 
-### 11.5 Decisões que faltam para prosseguir
+**D. `docs/roadmap.md` está morto.** É de 22/04, descreve um produto de transporte em M1..M8 e
+ainda tem `[ ] F1 (scaffold do front)` desmarcado com 47 features do front em produção.
+Reescrever a partir da §2 (Marco 1 real) e da §7.
 
-| # | Pergunta | Por que trava |
+**E. ADR não tem status de implantação.** O ADR-0038 já nasceu com o campo
+`Implantação: não iniciada | parcial | em produção`. Falta aplicar aos outros 37 e corrigir os
+errados: 0020 está "Proposto" **estando em produção**; 0027/0028 "proposto" com código rodando;
+0029–0032 "proposto" com **zero linha de código**.
+
+**F. `docs/database.md` está desatualizado** — manda `removido_em` (o real é `excluido_em`),
+prefixo `eh_`/`tem_` em booleano (o real é `ativo`), cita tabelas que não existem e afirma um
+`DbContext` por módulo, revogado pelo ADR-0004. Foi ele que deixou nascer o `tfd_config_*`.
+Reescrever com a convenção real, derivada das 93 tabelas.
+
+**G. Numeração de ADR duplicada e uso indevido da pasta**: `0020-plano-fase1.md` e
+`0021-runbook-deploy.md` não são decisões arquiteturais. Mover para `docs/runbooks/`.
+
+**H. 33 branches já mergeadas** (locais e remotas) sem um único commit fora de `main`.
+
+**I. Lixo no repositório**: `alterações entre sessoes/` (4 notas de sessão) e um arquivo de
+scratchpad com nome corrompido na raiz — este último **tem conteúdo real** (fluxo do PACS),
+então renomear, não apagar.
+
+### 11.4 Produto — decisões suas
+
+| # | Decisão | Contexto |
 |---|---|---|
-| **A** | Pode subir a **sincronização contínua do Salux** (`AddPepSincronizacaoContinua`)? | liga um scheduler de fundo contra o **Oracle de produção do hospital**; não deve ir de carona num rename |
-| **B** | **Regulação (ADR-0021)**: terminar ou reverter? | a migration `AddProcessoRegulatorio` cria 5 tabelas de um módulo com 0 endpoint e 0 tela |
-| **C** | Qual a **janela fora do horário de atendimento** para o rename? | é *breaking* por segundos, com a Central de Atendimento ativa |
-| **D** | Apagar as **33 branches já mergeadas**? | risco zero, só esperando o OK |
+| **P1** | **Regulação (ADR-0021)**: terminar ou reverter? | 5 módulos de permissão reservados (47–51), 0 endpoint, 0 tela; o front já expõe só 3 e documenta a lacuna |
+| **P2** | **Qualidade da importação SISREG** | 4.382 falhas contra 1.560 solicitações importadas — mais falhas que sucessos |
+| **P3** | **ADRs 0029–0032** (capacidades, robô de triagem, intenção para voz) | 4 ADRs de papel puro: viram fila real ou marcam-se "adiado" |
+| **P4** | **Mapeamento SISREG** (módulo 52) | tela pronta, 3 tabelas com 0 linhas: falta adoção ou falta função? |
+| **P5** | **TFD e Agendamento local** | ficam no escopo (decidido 31/07); falta a definição para saírem do papel |
 
-### 11.6 Riscos de deixar parado
+### 11.5 Herdadas do ADR-0038
 
-- O working tree tem **200+ arquivos não commitados**. Outra instância trabalhando na mesma
-  pasta pode atropelar — atenção redobrada com git destrutivo.
-- O schema `fhir` de produção está parado em **16/06**; a migration de Location/Encounter IMP
-  segue sem aplicar.
-- O backup CSV é de **31/07**. Se o rename só acontecer semanas depois, **tirar backup novo**
-  antes — o de hoje envelhece (só a conversa de hoje já somou 10 mensagens).
+**J. Chaves de configuração ainda dizem `Tfd:`** — `Tfd:Otp:ModoTeste`,
+`Tfd:Otp:WhatsAppTemplate`, `Tfd:WhatsApp:Simular`, `Tfd:Cidadao:SessaoDias`. Mesmo vazamento
+do prefixo, mas trocar exige atualizar o env do servidor **no mesmo instante**, senão a chave
+nova lê o default em silêncio.
+
+**K. `TfdConfigService` / rotas `/tfd/config/*` empacotam três domínios** (WhatsApp, Google
+Maps, faturamento). Quebrar em três exige deploy coordenado back+front.
+
+**L. `WhatsAppNotificador` mora em `Core/Notificacoes/`, mas é código do TFD** (fala de
+`SessaoDeTratamento`). O lugar é `Core/Tfd/`. Cosmético, sem risco.
+
+### 11.6 Lições que viraram regra
+
+1. **O EF não infere rename.** `migrations add` gera `DropTable` + `CreateTable` e apagaria os
+   dados. Toda migration que renomeia tabela é **escrita à mão** e tem o SQL conferido antes.
+2. **O deploy não aplica migration** — o workflow só para o serviço, copia e sobe. Migration é
+   passo manual. Conferir `smsmarica.__migrations` depois de todo deploy.
+3. **Verificar por id, nunca por contagem.** O sistema está vivo durante a janela: a contagem
+   cresce legitimamente e mascara perda.
+4. **Ensaiar antes.** Worktree limpo do `main` + bancada com dados reais + teste de rollback.
+   Foi o ensaio que revelou o drift do snapshot, que nenhuma inspeção de código teria mostrado.
+5. **Push só do que se entende.** Empurrar 250 arquivos de 7 frentes junto é o oposto de tratar
+   pendência a pendência.
 
 ---
 
-*Levantamento de 31/07/2026. Números de produção medidos na mesma data.*
-*Revisão de 31/07: §3.1, §7.2, §8.7 e D1 corrigidos — o TFD permanece no escopo; §10 e §11 acrescentadas.*
+*Levantamento de 31/07/2026; §11 atualizada em 01/08/2026 após o deploy do ADR-0038.*
+*Números de produção medidos nas respectivas datas.*
