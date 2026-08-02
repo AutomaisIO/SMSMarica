@@ -26,7 +26,6 @@ import { Input } from '@/shared/ui/Input';
 import { Campo } from '@/shared/ui/Campo';
 import { notificar } from '@/shared/ui/Notificacoes';
 import {
-  useAlterarEquipamentoDestino,
   useAutorizarSolicitacao,
   useEquipamentosDoExame,
   useCancelarSolicitacao,
@@ -293,24 +292,6 @@ export function SolicitacaoExameDetalhePage() {
             <span>{s.unidadeNome}</span>
             <span className="font-mono text-xs">Study {s.studyInstanceUID}</span>
           </div>
-          {/* Estação de destino enviada ao PACS + troca de equipamento (ticket #72). */}
-          <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-2 text-sm">
-            <span className="inline-flex items-center gap-1.5 text-gray-700">
-              <ScanLine className="h-4 w-4 text-gray-400" />
-              Equipamento de destino:{' '}
-              {s.equipamentoNome ? (
-                <span className="font-medium text-gray-900">
-                  {s.equipamentoNome}
-                  {s.equipamentoAeTitle ? (
-                    <span className="ml-1 font-mono text-xs text-gray-500">({s.equipamentoAeTitle})</span>
-                  ) : null}
-                </span>
-              ) : (
-                <span className="text-gray-500">definido no envio</span>
-              )}
-            </span>
-            <TrocaEquipamentoDestino s={s} />
-          </div>
         </section>
 
         <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
@@ -478,102 +459,6 @@ export function SolicitacaoExameDetalhePage() {
 const fmt = formatarInstante;
 
 /** Autorização presencial: recepção entra com a chave (só se o paciente tem número verificado). */
-/**
- * Troca a estação (equipamento) de destino de um exame já enviado à worklist (ticket #72).
- * Só aparece com permissão de edição, enquanto o exame não foi executado e quando a unidade tem
- * MAIS DE UM equipamento na modalidade (senão não há o que escolher). Ao confirmar, o servidor
- * verifica no dcm4chee, exclui e confirma a remoção do item na sala antiga e recria no novo destino.
- */
-function TrocaEquipamentoDestino({ s }: { s: SolicitacaoExame }) {
-  const podeEditar = usePermissao('SolicitacoesExame', 'Edicao');
-  // Só faz sentido antes da execução — mesma janela em que o item vive na worklist.
-  const elegivel = podeEditar && (s.status === 'Solicitada' || s.status === 'Enviada' || s.status === 'Recebida');
-  const equipamentos = useEquipamentosDoExame(s.id, elegivel);
-  const opcoes = equipamentos.data ?? [];
-  const alterar = useAlterarEquipamentoDestino();
-
-  const [aberto, setAberto] = useState(false);
-  const [equipamentoId, setEquipamentoId] = useState('');
-  const [erro, setErro] = useState<string | null>(null);
-
-  // Trocar só faz sentido com duas ou mais salas na modalidade.
-  if (!elegivel || opcoes.length <= 1) return null;
-
-  function abrir() {
-    setErro(null);
-    // Pré-seleciona a estação atual (marcada pelo backend com `selecionado`).
-    setEquipamentoId(opcoes.find((o) => o.selecionado)?.id ?? '');
-    setAberto(true);
-  }
-
-  async function confirmar() {
-    setErro(null);
-    if (!equipamentoId) {
-      setErro('Selecione o novo equipamento de destino.');
-      return;
-    }
-    if (equipamentoId === opcoes.find((o) => o.selecionado)?.id) {
-      setErro('Este já é o equipamento de destino atual.');
-      return;
-    }
-    try {
-      await alterar.mutateAsync({ id: s.id, equipamentoId });
-      setAberto(false);
-      notificar('Equipamento de destino alterado.', 'sucesso');
-    } catch (e) {
-      setErro(extrairMensagemDeErro(e));
-    }
-  }
-
-  return (
-    <>
-      <Button variante="outline" tamanho="sm" onClick={abrir}>
-        <RotateCw className="mr-1.5 h-3.5 w-3.5" />
-        Trocar equipamento
-      </Button>
-      <Modal
-        aberto={aberto}
-        aoFechar={() => setAberto(false)}
-        titulo="Trocar equipamento de destino"
-        descricao="O item é removido da sala atual no PACS (com confirmação) e recriado no destino escolhido."
-        largura="sm"
-      >
-        <div className="space-y-4">
-          <Campo label="Novo equipamento" htmlFor="equipamento-troca">
-            <Select
-              id="equipamento-troca"
-              value={equipamentoId}
-              onChange={(e) => setEquipamentoId(e.target.value)}
-            >
-              <option value="">Selecione…</option>
-              {opcoes.map((eq) => (
-                <option key={eq.id} value={eq.id}>
-                  {eq.nome} ({eq.aeTitle}){eq.selecionado ? ' — atual' : ''}
-                </option>
-              ))}
-            </Select>
-          </Campo>
-          {erro ? <p className="text-sm text-red-700">{erro}</p> : null}
-          <div className="flex justify-end gap-2">
-            <Button variante="outline" onClick={() => setAberto(false)} disabled={alterar.isPending}>
-              Cancelar
-            </Button>
-            <Button onClick={confirmar} disabled={alterar.isPending}>
-              {alterar.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Trocando…
-                </>
-              ) : (
-                'Confirmar troca'
-              )}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-    </>
-  );
-}
-
 function CardAutorizacao({ s }: { s: SolicitacaoExame }) {
   const podeEditar = usePermissao('SolicitacoesExame', 'Edicao');
   const autorizar = useAutorizarSolicitacao();
@@ -614,12 +499,25 @@ function CardAutorizacao({ s }: { s: SolicitacaoExame }) {
     <section className="lg:col-span-2 rounded-lg border border-orange-200 bg-orange-50/40 p-4 shadow-sm">
       <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">Autorização (recepção)</h2>
       {s.autorizadoEm ? (
-        <p className="flex items-center gap-2 text-sm text-green-700">
-          <CheckCircle2 className="h-4 w-4" />
-          Autorizado em {fmt(s.autorizadoEm)}
-          {s.autorizadoPorNome ? ` por ${s.autorizadoPorNome}` : ''}
-          {s.chaveConfirmacao ? ` — chave ${s.chaveConfirmacao}` : ''}. Envio ao PACS liberado.
-        </p>
+        <div className="space-y-2">
+          <p className="flex items-center gap-2 text-sm text-green-700">
+            <CheckCircle2 className="h-4 w-4" />
+            Autorizado em {fmt(s.autorizadoEm)}
+            {s.autorizadoPorNome ? ` por ${s.autorizadoPorNome}` : ''}
+            {s.chaveConfirmacao ? ` — chave ${s.chaveConfirmacao}` : ''}.
+            {/* Só afirma "liberado" quando o envio de fato está no caminho. Dizer isso com o
+                exame travado fazia a recepção liberar o paciente para um aparelho sem worklist. */}
+            {!s.erroIntegracaoPacs ? ' Envio ao PACS liberado.' : ''}
+          </p>
+          {s.erroIntegracaoPacs ? (
+            <p className="flex items-start gap-2 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-800">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                <strong>Não foi enviado ao PACS.</strong> {s.erroIntegracaoPacs}
+              </span>
+            </p>
+          ) : null}
+        </div>
       ) : !podeEditar ? (
         <p className="text-sm text-gray-500">Você não tem permissão para autorizar.</p>
       ) : !liberado ? (

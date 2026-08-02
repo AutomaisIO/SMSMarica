@@ -10,6 +10,7 @@ using SMSMarica.Core.SolicitacoesExame;
 using SMSMarica.Core.SolicitacoesExame.Identificadores;
 using SMSMarica.Core.Telefones;
 using SMSMarica.Core.Worklist;
+using SMSMarica.Core.Erros;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
@@ -48,6 +49,7 @@ public class AutorizacaoSolicitacaoTests(PostgresFixture fixture)
             CriarDispensas(db),
             new Lazy<ILaudoAssinaturaService>(() => Substitute.For<ILaudoAssinaturaService>()),
             new Lazy<IComunicacaoPacienteService>(() => Substitute.For<IComunicacaoPacienteService>()),
+            Substitute.For<IRegistroErroService>(),
             NullLogger<SolicitacoesExameService>.Instance);
     }
 
@@ -118,6 +120,7 @@ public class AutorizacaoSolicitacaoTests(PostgresFixture fixture)
         var ex = await Assert.ThrowsAsync<ValidacaoException>(() => service.AutorizarAsync(s.Id, "12345"));
         Assert.Contains("verificado", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
+
 
     [Theory]
     [InlineData("123")]     // abaixo do mínimo (9999)

@@ -17,6 +17,45 @@ public enum OrigemFalhaImportacao
 }
 
 /// <summary>
+/// A causa da falha, tipada — o que decide QUAL AÇÃO a tela oferece para cada linha.
+///
+/// Distinta de <see cref="SisregImportacaoFalha.Motivo"/> de propósito: <c>Motivo</c> é o texto que
+/// o operador lê, <c>Causa</c> é o que o sistema decide. Derivar a segunda do primeiro em tempo de
+/// leitura funcionaria hoje e quebraria — em silêncio — na primeira vez que alguém melhorasse uma
+/// mensagem de erro. Por isso é carimbada no ponto de aborto, onde a informação é inequívoca.
+///
+/// Note o que NÃO está aqui: SIGTAP sem tipo mapeado <b>não é falha</b>. A importação segue e cria a
+/// solicitação pendente de mapeamento (ADR-0021), tratada na tela de Mapeamento SIGTAP. Ver ADR-0035.
+/// </summary>
+public enum CausaFalhaImportacao : short
+{
+    /// <summary>A marcação veio sem CNS do paciente. Sem ação automática — o dado não existe na
+    /// origem; só resta descartar com nota.</summary>
+    SemCns = 1,
+
+    /// <summary>O CADSUS/cadweb50 falhou ou está indisponível (o limite de 500 req/h estoura em lote
+    /// grande). Transitório: a ação certa é simplesmente revalidar mais tarde.</summary>
+    CadsusIndisponivel = 2,
+
+    /// <summary>O CADSUS não devolveu CPF para este CNS e o paciente ainda não existe no sistema.
+    /// <b>É a causa acionável</b>: o operador informa o CPF e a linha é reimportada.</summary>
+    CpfNaoResolvido = 3,
+
+    /// <summary>Não foi possível identificar a unidade executante. A ação é entrar no contexto da
+    /// unidade certa e revalidar.</summary>
+    UnidadeNaoResolvida = 4,
+
+    /// <summary>O parser rejeitou a linha (layout fora do esperado). Corrige-se na origem.</summary>
+    LinhaInvalida = 5,
+
+    /// <summary>O arquivo inteiro não é do SISREG. A correção é reenviar o arquivo certo.</summary>
+    ArquivoIncompativel = 6,
+
+    /// <summary>Falha não classificada — inclusive o acervo anterior ao backfill.</summary>
+    Outro = 99,
+}
+
+/// <summary>
 /// Uma linha do export do SISREG que NÃO virou solicitação — gravada na hora em que falha, com o
 /// conteúdo RAW da linha. É o insumo do reprocessamento direcionado: o operador corrige a causa
 /// (cadastra o paciente, entra no contexto da unidade, mapeia o SIGTAP…) e clica em "Validar" —
@@ -40,6 +79,9 @@ public class SisregImportacaoFalha
 
     public OrigemFalhaImportacao Origem { get; set; }
 
+    /// <summary>Causa tipada — decide a ação que a tela oferece. Ver <see cref="CausaFalhaImportacao"/>.</summary>
+    public CausaFalhaImportacao Causa { get; set; } = CausaFalhaImportacao.Outro;
+
     /// <summary>Motivo da falha, em linguagem de operador.</summary>
     public string Motivo { get; set; } = string.Empty;
 
@@ -60,6 +102,11 @@ public class SisregImportacaoFalha
     public string? NomePaciente { get; set; }
     public string? ProcedimentoTexto { get; set; }
     public DateTime? DataAgendada { get; set; }
+
+    /// <summary>CNS do paciente, carimbado do RAW no momento da falha. É a chave mais confiável de
+    /// busca (a recepção procura pela pessoa que "não tem agendamento") e o que pré-carrega a
+    /// resolução por CPF. NULL no acervo anterior — o backfill não reparseia o RAW histórico.</summary>
+    public string? PacienteCns { get; set; }
 
     /// <summary>Quantas vezes já se tentou importar esta linha (o "Validar" incrementa).</summary>
     public int Tentativas { get; set; }

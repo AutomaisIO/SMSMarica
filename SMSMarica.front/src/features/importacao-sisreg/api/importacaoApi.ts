@@ -37,9 +37,12 @@ export async function executarImportacaoTxt(
 }
 
 /** Linhas que não viraram solicitação. Só leitura. */
-export async function listarFalhasImportacao(somentePendentes: boolean): Promise<ImportacaoFalha[]> {
+export async function listarFalhasImportacao(
+  somentePendentes: boolean,
+  busca?: string,
+): Promise<ImportacaoFalha[]> {
   const { data } = await http.get<ImportacaoFalha[]>('/sisreg/importacao/falhas', {
-    params: { somentePendentes },
+    params: { somentePendentes, busca: busca?.trim() || undefined },
   });
   return data;
 }

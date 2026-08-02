@@ -1,7 +1,8 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Common.Tempo;
+using SMSMarica.Core.Common.Unidades;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Notificacoes;
 using SMSMarica.Core.SolicitacoesExame.Dtos;
@@ -32,6 +33,7 @@ public sealed class SolicitacoesExameService(
     Lazy<Laudos.Assinatura.ILaudoAssinaturaService> assinaturas,
     // Lazy: quebra o ciclo Solicitacoes → Comunicacao → LoginLink → Solicitacoes.
     Lazy<Notificacoes.Comunicacao.IComunicacaoPacienteService> comunicacoes,
+    Erros.IRegistroErroService registroErros,
     ILogger<SolicitacoesExameService> logger)
     : ISolicitacoesExameService
 {
@@ -48,6 +50,7 @@ public sealed class SolicitacoesExameService(
     // aqui por várias arestas (direta e via ExameAssociacao) — dependência circular.
     private readonly Lazy<Laudos.Assinatura.ILaudoAssinaturaService> _assinaturas = assinaturas;
     private readonly Lazy<Notificacoes.Comunicacao.IComunicacaoPacienteService> _comunicacoes = comunicacoes;
+    private readonly Erros.IRegistroErroService _registroErros = registroErros;
     private readonly ILogger<SolicitacoesExameService> _logger = logger;
 
     // Resolve nome/CPF/CNS do paciente (hub FHIR) e embute nos DTOs.
@@ -265,6 +268,29 @@ public sealed class SolicitacoesExameService(
             query = query.Where(e => e.Solicitacao!.DataAgendada != null && e.Solicitacao!.DataAgendada <= fim);
         }
 
+        // Recorte do painel de início ("ver todos" de uma raia). Os predicados são os MESMOS de
+        // PainelInicioService — se divergirem, o total do painel deixa de bater com a lista que
+        // ele abre, que é o jeito mais rápido de perder a confiança do operador.
+        if (filtro.Painel == RecortePainel.Cancelados)
+        {
+            query = query.Where(e =>
+                e.Solicitacao!.StatusConfirmacao == StatusConfirmacaoAgendamento.Cancelada
+                && (e.Solicitacao!.Status == StatusSolicitacao.Solicitada
+                    || e.Solicitacao!.Status == StatusSolicitacao.Agendada));
+        }
+        else if (filtro.Painel == RecortePainel.Aguardando)
+        {
+            var agora = DateTime.UtcNow;
+            var limiteJanela = agora.AddDays(PainelInicio.JanelasPainel.AguardandoDias);
+            query = query.Where(e =>
+                e.Solicitacao!.StatusConfirmacao == StatusConfirmacaoAgendamento.Pendente
+                && (e.Solicitacao!.Status == StatusSolicitacao.Solicitada
+                    || e.Solicitacao!.Status == StatusSolicitacao.Agendada)
+                && e.Solicitacao!.DataAgendada != null
+                && e.Solicitacao!.DataAgendada >= agora
+                && e.Solicitacao!.DataAgendada <= limiteJanela);
+        }
+
         var (queryEscopo, unidadeReferencia) = await AplicarEscopoUnidadeAsync(query, cancellationToken);
         query = queryEscopo;
 
@@ -335,46 +361,31 @@ public sealed class SolicitacoesExameService(
     }
 
     // Multitenancy por unidade: restringe a listagem às unidades vinculadas ao usuário
-    // (usuario_unidade), casando tanto pela EXECUTORA quanto pela SOLICITANTE. Usuário sem vínculo
-    // (ou background sem contexto) vê tudo. Retorna a "unidade de referência" (a ativa resolvida,
-    // ou null na visão do conjunto/admin-todas) — marca a direção (recebida/enviada) de cada linha.
+    // (usuario_unidade), casando tanto pela EXECUTORA quanto pela SOLICITANTE. A cascata de
+    // resolução vive em EscopoUnidade (ADR-0033); aqui só se aplica o filtro, porque o exame chega
+    // à unidade navegando pela espinha. Sem vínculo nenhum ⇒ não vê nada (fail-closed, ADR-0037).
+    // Retorna a "unidade de referência" (a ativa resolvida, ou null na visão do conjunto) — é ela
+    // que marca a direção (recebida/enviada) de cada linha.
     private async Task<(IQueryable<ExameImagem> Query, Guid? UnidadeReferencia)> AplicarEscopoUnidadeAsync(
         IQueryable<ExameImagem> query, CancellationToken ct)
     {
-        var usuarioId = _usuarioAtual.UsuarioId;
-        if (usuarioId is null) return (query, null);
+        var escopo = await EscopoUnidade.ResolverAsync(_db, _usuarioAtual, ct);
 
-        var ativa = _usuarioAtual.UnidadeAtivaId;
+        if (escopo.VeTudo) return (query, null);
+        if (escopo.SemAcesso) return (query.Where(_ => false), null);
 
-        // Acesso global: vínculo implícito a TODAS as unidades — a ativa (se válida) vira filtro de conveniência.
-        if (await AcessoGlobalUsuario.TemAsync(_db, usuarioId, ct))
+        if (escopo.UnidadeUnica is { } uma)
         {
-            if (ativa.HasValue &&
-                await _db.Unidades.AsNoTracking().AnyAsync(u => u.Id == ativa.Value && u.Ativo, ct))
-            {
-                return (query.Where(e => e.Solicitacao!.UnidadeExecutanteId == ativa.Value
-                    || e.Solicitacao!.UnidadeSolicitanteId == ativa.Value), ativa);
-            }
-            return (query, null);
-        }
-
-        var vinculos = await _db.UsuarioUnidades.AsNoTracking()
-            .Where(v => v.UsuarioId == usuarioId && v.Unidade!.Ativo)
-            .Select(v => v.UnidadeId)
-            .ToArrayAsync(ct);
-        if (vinculos.Length == 0) return (query, null);
-
-        if (ativa.HasValue && vinculos.Contains(ativa.Value))
-        {
-            return (query.Where(e => e.Solicitacao!.UnidadeExecutanteId == ativa.Value
-                || e.Solicitacao!.UnidadeSolicitanteId == ativa.Value), ativa);
+            return (query.Where(e => e.Solicitacao!.UnidadeExecutanteId == uma
+                || e.Solicitacao!.UnidadeSolicitanteId == uma), escopo.Referencia);
         }
 
         // Visão do conjunto: executora OU solicitante entre as vinculadas. Sem referência única → sem seta.
+        var unidades = escopo.Unidades;
         return (
-            query.Where(e => vinculos.Contains(e.Solicitacao!.UnidadeExecutanteId)
-                || (e.Solicitacao!.UnidadeSolicitanteId != null && vinculos.Contains(e.Solicitacao!.UnidadeSolicitanteId.Value))),
-            null);
+            query.Where(e => unidades.Contains(e.Solicitacao!.UnidadeExecutanteId)
+                || (e.Solicitacao!.UnidadeSolicitanteId != null && unidades.Contains(e.Solicitacao!.UnidadeSolicitanteId.Value))),
+            escopo.Referencia);
     }
 
     public async Task<SolicitacaoExameDto> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default)
@@ -492,14 +503,78 @@ public sealed class SolicitacoesExameService(
         }
 
         // Só AGORA enfileira o envio ao PACS (se o tipo envia à worklist e ainda não foi enviado).
-        if (s.Status == StatusSolicitacaoExame.Solicitada && (s.TipoExame?.EnviarParaWorklist ?? false))
+        var impedimento = s.Status == StatusSolicitacaoExame.Solicitada ? ImpedimentoEnvioPacs(s, reg) : null;
+
+        if (s.Status == StatusSolicitacaoExame.Solicitada)
         {
-            s.ProximaTentativaEm = agora;
-            s.ErroIntegracaoPacs = null;
+            if (impedimento is null)
+            {
+                s.ProximaTentativaEm = agora;
+                s.ErroIntegracaoPacs = null;
+            }
+            else
+            {
+                // Autorizar sem poder enviar NÃO passa em silêncio: a recepção liberava o paciente
+                // achando que o exame estava na worklist do aparelho. Carimba o motivo no exame (a
+                // tela mostra) e abre um erro rastreável em Sistema → Erros.
+                s.ProximaTentativaEm = null;
+                s.ErroIntegracaoPacs = impedimento;
+            }
             s.AtualizadoEm = agora;
         }
 
         await _db.SaveChangesAsync(cancellationToken);
+
+        if (impedimento is not null)
+            await ReportarImpedimentoAsync(s, reg, impedimento, cancellationToken);
+    }
+
+    /// <summary>
+    /// Motivo pelo qual um exame autorizado NÃO chegará à worklist — null quando o caminho está
+    /// livre. Cobre os dois furos já vistos em produção, ambos silenciosos: exame importado sem
+    /// TipoExame (código SIGTAP do SISREG não bate com nenhum cadastrado) e tipo com o envio à
+    /// worklist desligado. Nos dois casos o worker nem enxerga a linha — ele filtra por
+    /// <c>TipoExame.EnviarParaWorklist</c>, que é INNER JOIN e descarta quem não tem tipo.
+    /// </summary>
+    private static string? ImpedimentoEnvioPacs(ExameImagem s, Solicitacao reg)
+    {
+        if (s.TipoExameId is null)
+            return $"Exame sem tipo mapeado — o procedimento SIGTAP {reg.ProcedimentoSigtapCodigo ?? "(não informado)"} " +
+                   $"(\"{reg.ProcedimentoTexto}\") não está vinculado a nenhum tipo de exame. " +
+                   "Vincule em Exames de Imagem → Mapeamento SIGTAP para que o exame vá à worklist.";
+
+        if (!(s.TipoExame?.EnviarParaWorklist ?? false))
+            return $"O tipo de exame \"{s.TipoExame?.Nome}\" está com o envio à worklist desligado. " +
+                   "Ligue em Exames de Imagem → Tipos de Exame para que o exame chegue ao equipamento.";
+
+        return null;
+    }
+
+    private async Task ReportarImpedimentoAsync(
+        ExameImagem s, Solicitacao reg, string motivo, CancellationToken ct)
+    {
+        _logger.LogError(
+            "Exame {Accession} autorizado mas NÃO será enviado ao PACS: {Motivo}", s.AccessionNumber, motivo);
+
+        try
+        {
+            await _registroErros.RegistrarAsync(new Erros.Dtos.RegistrarErroDados(
+                Metodo: "POST",
+                Caminho: $"/solicitacoes-exame/{s.Id}/autorizar",
+                QueryString: null,
+                StatusCode: 409,
+                TipoExcecao: "EnvioWorklistImpedido",
+                Mensagem: $"Exame {s.AccessionNumber} autorizado sem poder ir à worklist. {motivo}",
+                StackTrace: null,
+                Interna: $"SIGTAP={reg.ProcedimentoSigtapCodigo}; procedimento={reg.ProcedimentoTexto}",
+                TraceId: null,
+                UserAgent: null), ct);
+        }
+        catch (Exception ex)
+        {
+            // Best-effort: falha ao registrar não pode derrubar a autorização (paciente no balcão).
+            _logger.LogWarning(ex, "Falha ao registrar o impedimento de envio de {Accession}.", s.AccessionNumber);
+        }
     }
 
     public async Task<IReadOnlyList<EquipamentoExameDto>> ListarEquipamentosDisponiveisAsync(
@@ -690,106 +765,6 @@ public sealed class SolicitacoesExameService(
         s.ErroIntegracaoPacs = null;
         s.AtualizadoEm = DateTime.UtcNow;
         s.AtualizadoPor = _usuarioAtual.UsuarioId;
-
-        await _db.SaveChangesAsync(cancellationToken);
-    }
-
-    public async Task AlterarEquipamentoDestinoAsync(
-        Guid id, Guid equipamentoId, CancellationToken cancellationToken = default)
-    {
-        var s = await _db.ExamesImagem
-            .Include(x => x.TipoExame)
-            .Include(x => x.Solicitacao)
-            .FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
-            ?? throw new NaoEncontradoException(nameof(ExameImagem), id);
-
-        // 1) Elegibilidade (regra de negócio, não do PACS): só faz sentido trocar a sala ENQUANTO o
-        //    exame não foi executado. Com imagem já adquirida (em execução/realizado/laudado) ou
-        //    terminal (cancelado), a troca é proibida — não decide "há item a apagar" (isso é o PACS).
-        if (s.Status is StatusSolicitacaoExame.EmExecucao or StatusSolicitacaoExame.Realizada
-                or StatusSolicitacaoExame.Laudada or StatusSolicitacaoExame.Cancelada
-            || s.RealizadoEm is not null)
-        {
-            throw new ConflitoException(
-                "solicitacaoExame.equipamento_nao_alteravel",
-                $"Não é possível trocar o equipamento de um exame no status '{s.Status}' (já em execução/realizado/cancelado).");
-        }
-
-        if (!(s.TipoExame?.EnviarParaWorklist ?? false))
-        {
-            throw new ConflitoException(
-                "solicitacaoExame.sem_worklist",
-                "Este tipo de exame não é enviado à worklist; não há equipamento de destino a trocar.");
-        }
-
-        // Não fura o gate de autorização: um exame Solicitada que nunca foi autorizado pela recepção
-        // não pode ir ao PACS por esta via (mesma régua do reenvio). Enviada/Recebida já estão lá.
-        if (s.Status == StatusSolicitacaoExame.Solicitada && s.Solicitacao!.AutorizadoEm is null)
-        {
-            throw new ConflitoException(
-                "solicitacaoExame.nao_autorizada",
-                "Este exame ainda não foi autorizado pela recepção. Autorize com a chave antes de trocar o equipamento de destino.");
-        }
-
-        // 2) Valida o destino contra os candidatos (unidade executante + modalidade) — mesma régua da
-        //    autorização. Rejeita destino inválido e no-op (já é a estação atual).
-        var candidatos = await _estacaoWorklist.ListarCandidatosAsync(s, cancellationToken);
-        if (candidatos.All(c => c.Id != equipamentoId))
-            throw new ValidacaoException("solicitacaoExame.equipamento_invalido",
-                "O equipamento selecionado não atende esta unidade/modalidade.");
-        if (s.EquipamentoId == equipamentoId)
-            throw new ConflitoException("solicitacaoExame.equipamento_inalterado",
-                "O exame já está destinado a este equipamento.");
-
-        // 3) FONTE DA VERDADE É O PACS, não o Status/WorklistItemUid (espelho, que o worker atualiza em
-        //    varredura e pode estar dessincronizado). SEMPRE consulta o dcm4chee: se houver item na sala
-        //    atual, remove e CONFIRMA a remoção antes de recriar — nunca cria com o antigo ainda vivo,
-        //    nunca omite a exclusão por confiar no status. PACS indisponível aqui aborta sem tocar nada.
-        if (await _mwlClient.MwlItemExisteAsync(s, cancellationToken))
-        {
-            await _mwlClient.ExcluirMwlItemAsync(s, cancellationToken);
-            s.WorklistItemUid = null;
-
-            if (await _mwlClient.MwlItemExisteAsync(s, cancellationToken))
-                throw new ConflitoException("solicitacaoExame.remocao_nao_confirmada",
-                    "Removi o item da worklist, mas o PACS ainda o lista. Aguarde um instante e tente de novo.");
-        }
-
-        // 4) Grava o novo destino (agora que a sala antiga está comprovadamente limpa).
-        var agora = DateTime.UtcNow;
-        s.EquipamentoId = equipamentoId;
-        s.AtualizadoEm = agora;
-        s.AtualizadoPor = _usuarioAtual.UsuarioId;
-
-        // 5) Cria no destino correto e VERIFICA a presença. Se a criação falhar depois do delete, não
-        //    deixa órfão nem estado travado: zera o espelho, marca o erro e reenfileira — o
-        //    EnviadorWorklistService recria pela via resiliente (reversível, sem meio-caminho no PACS).
-        try
-        {
-            s.WorklistItemUid = await _mwlClient.CriarOuAtualizarMwlItemAsync(s, cancellationToken);
-            s.ErroIntegracaoPacs = null;
-
-            if (await _mwlClient.MwlItemExisteAsync(s, cancellationToken))
-            {
-                s.Status = StatusSolicitacaoExame.Recebida; // confirmado na worklist consultável
-                s.ProximaTentativaEm = null;
-            }
-            else
-            {
-                s.Status = StatusSolicitacaoExame.Enviada; // criado; worker fecha Enviada→Recebida
-                s.ProximaTentativaEm = agora;
-            }
-        }
-        catch (ConflitoException ex)
-        {
-            _logger.LogWarning(ex,
-                "Troca de equipamento de {Accession}: item antigo removido, mas a criação no novo destino falhou; worker recria.",
-                s.AccessionNumber);
-            s.WorklistItemUid = null;
-            s.Status = StatusSolicitacaoExame.Solicitada;
-            s.ErroIntegracaoPacs = ex.Message;
-            s.ProximaTentativaEm = agora;
-        }
 
         await _db.SaveChangesAsync(cancellationToken);
     }
@@ -1072,7 +1047,6 @@ public sealed class SolicitacoesExameService(
     {
         return await _db.ExamesImagem.AsNoTracking()
             .Include(e => e.TipoExame)
-            .Include(e => e.Equipamento)
             .Include(e => e.Solicitacao!).ThenInclude(so => so.UnidadeExecutante)
             .Include(e => e.Solicitacao!).ThenInclude(so => so.UnidadeSolicitante)
             .Where(e => e.ExcluidoEm == null && e.Solicitacao!.ExcluidoEm == null)
@@ -1101,4 +1075,104 @@ public sealed class SolicitacoesExameService(
 
     private static string? NormalizaOpcional(string? valor) =>
         string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();
+
+    public async Task AlterarEquipamentoDestinoAsync(
+        Guid id, Guid equipamentoId, CancellationToken cancellationToken = default)
+    {
+        var s = await _db.ExamesImagem
+            .Include(x => x.TipoExame)
+            .Include(x => x.Solicitacao)
+            .FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(ExameImagem), id);
+
+        // 1) Elegibilidade (regra de negócio, não do PACS): só faz sentido trocar a sala ENQUANTO o
+        //    exame não foi executado. Com imagem já adquirida (em execução/realizado/laudado) ou
+        //    terminal (cancelado), a troca é proibida — não decide "há item a apagar" (isso é o PACS).
+        if (s.Status is StatusSolicitacaoExame.EmExecucao or StatusSolicitacaoExame.Realizada
+                or StatusSolicitacaoExame.Laudada or StatusSolicitacaoExame.Cancelada
+            || s.RealizadoEm is not null)
+        {
+            throw new ConflitoException(
+                "solicitacaoExame.equipamento_nao_alteravel",
+                $"Não é possível trocar o equipamento de um exame no status '{s.Status}' (já em execução/realizado/cancelado).");
+        }
+
+        if (!(s.TipoExame?.EnviarParaWorklist ?? false))
+        {
+            throw new ConflitoException(
+                "solicitacaoExame.sem_worklist",
+                "Este tipo de exame não é enviado à worklist; não há equipamento de destino a trocar.");
+        }
+
+        // Não fura o gate de autorização: um exame Solicitada que nunca foi autorizado pela recepção
+        // não pode ir ao PACS por esta via (mesma régua do reenvio). Enviada/Recebida já estão lá.
+        if (s.Status == StatusSolicitacaoExame.Solicitada && s.Solicitacao!.AutorizadoEm is null)
+        {
+            throw new ConflitoException(
+                "solicitacaoExame.nao_autorizada",
+                "Este exame ainda não foi autorizado pela recepção. Autorize com a chave antes de trocar o equipamento de destino.");
+        }
+
+        // 2) Valida o destino contra os candidatos (unidade executante + modalidade) — mesma régua da
+        //    autorização. Rejeita destino inválido e no-op (já é a estação atual).
+        var candidatos = await _estacaoWorklist.ListarCandidatosAsync(s, cancellationToken);
+        if (candidatos.All(c => c.Id != equipamentoId))
+            throw new ValidacaoException("solicitacaoExame.equipamento_invalido",
+                "O equipamento selecionado não atende esta unidade/modalidade.");
+        if (s.EquipamentoId == equipamentoId)
+            throw new ConflitoException("solicitacaoExame.equipamento_inalterado",
+                "O exame já está destinado a este equipamento.");
+
+        // 3) FONTE DA VERDADE É O PACS, não o Status/WorklistItemUid (espelho, que o worker atualiza em
+        //    varredura e pode estar dessincronizado). SEMPRE consulta o dcm4chee: se houver item na sala
+        //    atual, remove e CONFIRMA a remoção antes de recriar — nunca cria com o antigo ainda vivo,
+        //    nunca omite a exclusão por confiar no status. PACS indisponível aqui aborta sem tocar nada.
+        if (await _mwlClient.MwlItemExisteAsync(s, cancellationToken))
+        {
+            await _mwlClient.ExcluirMwlItemAsync(s, cancellationToken);
+            s.WorklistItemUid = null;
+
+            if (await _mwlClient.MwlItemExisteAsync(s, cancellationToken))
+                throw new ConflitoException("solicitacaoExame.remocao_nao_confirmada",
+                    "Removi o item da worklist, mas o PACS ainda o lista. Aguarde um instante e tente de novo.");
+        }
+
+        // 4) Grava o novo destino (agora que a sala antiga está comprovadamente limpa).
+        var agora = DateTime.UtcNow;
+        s.EquipamentoId = equipamentoId;
+        s.AtualizadoEm = agora;
+        s.AtualizadoPor = _usuarioAtual.UsuarioId;
+
+        // 5) Cria no destino correto e VERIFICA a presença. Se a criação falhar depois do delete, não
+        //    deixa órfão nem estado travado: zera o espelho, marca o erro e reenfileira — o
+        //    EnviadorWorklistService recria pela via resiliente (reversível, sem meio-caminho no PACS).
+        try
+        {
+            s.WorklistItemUid = await _mwlClient.CriarOuAtualizarMwlItemAsync(s, cancellationToken);
+            s.ErroIntegracaoPacs = null;
+
+            if (await _mwlClient.MwlItemExisteAsync(s, cancellationToken))
+            {
+                s.Status = StatusSolicitacaoExame.Recebida; // confirmado na worklist consultável
+                s.ProximaTentativaEm = null;
+            }
+            else
+            {
+                s.Status = StatusSolicitacaoExame.Enviada; // criado; worker fecha Enviada→Recebida
+                s.ProximaTentativaEm = agora;
+            }
+        }
+        catch (ConflitoException ex)
+        {
+            _logger.LogWarning(ex,
+                "Troca de equipamento de {Accession}: item antigo removido, mas a criação no novo destino falhou; worker recria.",
+                s.AccessionNumber);
+            s.WorklistItemUid = null;
+            s.Status = StatusSolicitacaoExame.Solicitada;
+            s.ErroIntegracaoPacs = ex.Message;
+            s.ProximaTentativaEm = agora;
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+    }
 }

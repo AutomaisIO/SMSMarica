@@ -94,8 +94,9 @@ public sealed class SisregImportacaoController(
     [ProducesResponseType<IReadOnlyList<ImportacaoFalhaDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<ImportacaoFalhaDto>> ListarFalhas(
         [FromQuery] bool somentePendentes = true,
+        [FromQuery] string? busca = null,
         CancellationToken cancellationToken = default)
-        => await importacao.ListarFalhasAsync(somentePendentes, cancellationToken);
+        => await importacao.ListarFalhasAsync(somentePendentes, busca, cancellationToken);
 
     /// <summary>"Validar": reimporta a linha a partir do RAW guardado — não precisa do arquivo de
     /// novo. Se a solicitação já existir, resolve a falha em vez de duplicar. ESCRITA.</summary>
@@ -106,6 +107,26 @@ public sealed class SisregImportacaoController(
         Guid id,
         CancellationToken cancellationToken)
         => await importacao.ReprocessarFalhaAsync(id, cancellationToken);
+
+    /// <summary>
+    /// "Informar CPF e importar" (ADR-0035): resolve o paciente e replica a linha com ele fixado.
+    /// É a ação da pendência cuja causa é <c>CpfNaoResolvido</c> — o CADSUS não devolveu o CPF e o
+    /// paciente não existia. Só vincula paciente JÁ cadastrado: o SISREG não informa data de
+    /// nascimento, então cadastrar por aqui gravaria data default no hub.
+    /// </summary>
+    [HttpPost("falhas/{id:guid}/resolver-com-paciente")]
+    [RequerPermissao(ModuloPermissao.Sisreg, AcoesPermissao.Inclusao)]
+    [ProducesResponseType<ImportacaoFalhaReprocessoResultado>(StatusCodes.Status200OK)]
+    public async Task<ImportacaoFalhaReprocessoResultado> ResolverFalhaComPaciente(
+        Guid id,
+        [FromBody] ResolverFalhaComPacienteRequest corpo,
+        CancellationToken cancellationToken)
+    {
+        if (corpo is null || (string.IsNullOrWhiteSpace(corpo.Cpf) && corpo.PacienteId is null))
+            throw new ValidacaoException("falha.paciente_ausente", "Informe o CPF ou selecione o paciente.");
+
+        return await importacao.ResolverComPacienteAsync(id, corpo.Cpf, corpo.PacienteId, cancellationToken);
+    }
 
     /// <summary>Tira a linha da lista sem importar (inválida na origem, registro cancelado…).
     /// Não apaga nada: só marca a falha como resolvida. Mesma permissão do importar — quem toca
@@ -229,3 +250,9 @@ public sealed class SisregImportacaoController(
 
 /// <summary>Motivo do descarte (opcional) — fica na trilha da falha.</summary>
 public sealed record DescartarFalhaRequest(string? Nota);
+
+/// <summary>
+/// Quem é o paciente desta pendência. <c>PacienteId</c> tem precedência (o operador escolheu na
+/// busca, olhando nome e nascimento); <c>Cpf</c> é o atalho de digitação. Um dos dois é obrigatório.
+/// </summary>
+public sealed record ResolverFalhaComPacienteRequest(string? Cpf, Guid? PacienteId);

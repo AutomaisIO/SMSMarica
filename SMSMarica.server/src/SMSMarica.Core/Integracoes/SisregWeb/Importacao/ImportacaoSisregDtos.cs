@@ -41,7 +41,10 @@ public sealed record ImportacaoExecucaoResultado(
     /// <summary>Passos executados, em ordem (para o operador conferir o fluxo).</summary>
     IReadOnlyList<string> Passos,
     /// <summary>Mensagem de erro/impedimento quando Sucesso=false.</summary>
-    string? Erro);
+    string? Erro,
+    /// <summary>Causa tipada do impedimento — é o que a lista de pendências grava para saber qual
+    /// ação oferecer. <c>null</c> quando houve sucesso. Ver ADR-0035.</summary>
+    CausaFalhaImportacao? Causa = null);
 
 /// <summary>Resultado do preview de importação para um período.</summary>
 public sealed record ImportacaoPreviewResultado(
@@ -71,7 +74,19 @@ public sealed record ImportacaoFalhaDto(
     DateTime AtualizadoEm,
     DateTime? ResolvidoEm,
     string? ResolucaoNota,
-    Guid? SolicitacaoId);
+    Guid? SolicitacaoId,
+    /// <summary>Causa tipada — decide a ação que a tela oferece nesta linha.</summary>
+    CausaFalhaImportacao Causa = CausaFalhaImportacao.Outro,
+    string? PacienteCns = null)
+{
+    /// <summary>
+    /// A linha é resolvível informando o CPF? Só a causa <c>CpfNaoResolvido</c> — as demais ou são
+    /// transitórias (revalidar basta) ou não têm o dado na origem. A tela usa isto para não oferecer
+    /// um botão que fatalmente falharia.
+    /// </summary>
+    public bool PodeInformarCpf =>
+        ResolvidoEm is null && Causa == CausaFalhaImportacao.CpfNaoResolvido;
+}
 
 /// <summary>Uma linha da aba de rastreio: um arquivo importado.</summary>
 public sealed record ImportacaoExecucaoDto(

@@ -10,6 +10,7 @@ using SMSMarica.Core.SolicitacoesExame;
 using SMSMarica.Core.SolicitacoesExame.Identificadores;
 using SMSMarica.Core.Telefones;
 using SMSMarica.Core.Worklist;
+using SMSMarica.Core.Erros;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities.Enums;
 using SMSMarica.Tests.Infraestrutura;
@@ -46,6 +47,7 @@ public class ConciliacaoStudyTests(PostgresFixture fixture)
             Substitute.For<IDispensaContatoService>(),
             new Lazy<ILaudoAssinaturaService>(() => Substitute.For<ILaudoAssinaturaService>()),
             new Lazy<IComunicacaoPacienteService>(() => Substitute.For<IComunicacaoPacienteService>()),
+            Substitute.For<IRegistroErroService>(),
             NullLogger<SolicitacoesExameService>.Instance);
 
         return new ExameAssociacaoService(

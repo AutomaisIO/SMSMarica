@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import {
   UploadCloud,
@@ -39,7 +40,13 @@ type AbaImportacao = 'um' | 'lote' | 'rastreio' | 'erros';
 export function ImportacaoSisregPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
-  const [aba, setAba] = useState<AbaImportacao>('um');
+  // Deep-link do painel de início: "ver todos" da raia de pendências abre direto a aba de erros
+  // (opcionalmente já filtrada pelo paciente) — o painel nunca cria tela nova (ADR-0033 §4).
+  const [searchParams] = useSearchParams();
+  const buscaUrl = searchParams.get('busca') ?? '';
+  const [aba, setAba] = useState<AbaImportacao>(
+    searchParams.get('aba') === 'erros' ? 'erros' : 'um',
+  );
   const [arquivo, setArquivo] = useState<File | null>(null);
   // Resultado de cada importação (por código), para marcar a linha e abrir o modal.
   const [resultados, setResultados] = useState<Record<string, ImportacaoExecucaoResultado>>({});
@@ -173,7 +180,7 @@ export function ImportacaoSisregPage() {
         />
       ) : null}
       {aba === 'rastreio' ? <RastreioImportacao aoVerErros={() => setAba('erros')} /> : null}
-      {aba === 'erros' ? <ErrosImportacao /> : null}
+      {aba === 'erros' ? <ErrosImportacao buscaInicial={buscaUrl} /> : null}
 
       <div className={aba === 'um' ? 'space-y-6' : 'hidden'}>
       <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">

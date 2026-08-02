@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Associacoes;
 using SMSMarica.Core.Common.Excecoes;
+using SMSMarica.Core.Common.Unidades;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Laudos.BiRads;
 using SMSMarica.Core.Laudos.Dtos;
@@ -163,37 +164,16 @@ public sealed class LaudosService(
 
     // Multitenancy por unidade (mesmo escopo de exames/consultas): restringe a listagem aos
     // laudos cujo study resolve a uma solicitação de unidade vinculada ao usuário — direto pela
-    // worklist consumada (ExameImagem) ou via associação explícita. Usuário sem vínculo (ou
-    // background sem contexto) vê tudo; acesso global vê tudo, com a unidade ativa como filtro
-    // de conveniência quando selecionada.
+    // worklist consumada (ExameImagem) ou via associação explícita. A cascata de resolução vive em
+    // EscopoUnidade (ADR-0033); aqui só se aplica o filtro, porque o caminho do laudo até a unidade
+    // é indireto (via study). Sem vínculo nenhum ⇒ não vê nada (fail-closed, ADR-0037).
     private async Task<IQueryable<Laudo>> AplicarEscopoUnidadeAsync(
         IQueryable<Laudo> query, CancellationToken ct)
     {
-        var usuarioId = _usuarioAtual.UsuarioId;
-        if (usuarioId is null) return query;
-
-        var ativa = _usuarioAtual.UnidadeAtivaId;
-
-        if (await AcessoGlobalUsuario.TemAsync(_db, usuarioId, ct))
-        {
-            if (ativa.HasValue &&
-                await _db.Unidades.AsNoTracking().AnyAsync(u => u.Id == ativa.Value && u.Ativo, ct))
-            {
-                return FiltrarPorUnidades(query, [ativa.Value]);
-            }
-            return query;
-        }
-
-        var vinculos = await _db.UsuarioUnidades.AsNoTracking()
-            .Where(v => v.UsuarioId == usuarioId && v.Unidade!.Ativo)
-            .Select(v => v.UnidadeId)
-            .ToArrayAsync(ct);
-        if (vinculos.Length == 0) return query;
-
-        if (ativa.HasValue && vinculos.Contains(ativa.Value))
-            return FiltrarPorUnidades(query, [ativa.Value]);
-
-        return FiltrarPorUnidades(query, vinculos);
+        var escopo = await EscopoUnidade.ResolverAsync(_db, _usuarioAtual, ct);
+        if (escopo.VeTudo) return query;
+        if (escopo.SemAcesso) return query.Where(_ => false);
+        return FiltrarPorUnidades(query, escopo.Unidades);
     }
 
     // O laudo não tem FK de unidade: a tradução study → solicitação usa os dois caminhos que o

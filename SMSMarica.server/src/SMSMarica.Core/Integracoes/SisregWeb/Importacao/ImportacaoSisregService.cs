@@ -6,6 +6,7 @@ using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.Pacientes.Dtos;
+using SMSMarica.Core.SolicitacoesExame;
 using SMSMarica.Core.SolicitacoesExame.Identificadores;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities;
@@ -29,12 +30,23 @@ public interface IImportacaoSisregService
     /// <summary>Importa UMA marcação (por código) do arquivo enviado. Cria paciente/unidades/solicitação.</summary>
     Task<ImportacaoExecucaoResultado> ExecutarUmAsync(string conteudo, string codigoSolicitacao, string? nomeArquivo, CancellationToken ct);
 
-    /// <summary>Linhas que não viraram solicitação. <paramref name="somentePendentes"/>=false traz também as já resolvidas.</summary>
-    Task<IReadOnlyList<ImportacaoFalhaDto>> ListarFalhasAsync(bool somentePendentes, CancellationToken ct);
+    /// <summary>Linhas que não viraram solicitação. <paramref name="somentePendentes"/>=false traz
+    /// também as já resolvidas. <paramref name="busca"/> filtra por nome do paciente, CNS ou nº do
+    /// SISREG (ignorado abaixo de 3 caracteres).</summary>
+    Task<IReadOnlyList<ImportacaoFalhaDto>> ListarFalhasAsync(bool somentePendentes, string? busca, CancellationToken ct);
+
+    /// <summary>As pendências que casam com o termo — o bloco exibido na busca de Solicitações para
+    /// a recepção achar quem "não tem agendamento" (ADR-0035). Só pendentes, escopo por unidade.</summary>
+    Task<IReadOnlyList<ImportacaoFalhaDto>> BuscarPendenciasPorPacienteAsync(string busca, int limite, CancellationToken ct);
 
     /// <summary>"Validar": reimporta a linha a partir do RAW guardado. Idempotente — se a
     /// solicitação já existir, resolve a falha em vez de duplicar. ESCRITA.</summary>
     Task<ImportacaoFalhaReprocessoResultado> ReprocessarFalhaAsync(Guid falhaId, CancellationToken ct);
+
+    /// <summary>"Informar CPF e importar": resolve o paciente (dedup por CPF e CNS; paciente
+    /// existente nunca tem o nome alterado) e replica a linha com ele fixado. ESCRITA.</summary>
+    Task<ImportacaoFalhaReprocessoResultado> ResolverComPacienteAsync(
+        Guid falhaId, string? cpf, Guid? pacienteId, CancellationToken ct);
 
     /// <summary>Tira a linha da lista sem importar (linha inválida na origem, registro cancelado…).</summary>
     Task DescartarFalhaAsync(Guid falhaId, string? nota, CancellationToken ct);
@@ -130,7 +142,7 @@ public sealed class ImportacaoSisregService(
         var itens = new List<ImportacaoPreviewItem>(marcacoes.Count);
         foreach (var m in marcacoes)
         {
-            var categoria = CategoriaPorSigtap(m.CodigoSigtap);
+            var categoria = CategoriaSigtap.Resolver(m.CodigoSigtap);
             // "Mapeia" só faz sentido para imagem (é quem vira satélite/worklist).
             var procMapeia = categoria == CategoriaSolicitacao.Imagem
                 && m.CodigoSigtap is { } sig && sigtapComTipo.Contains(sig);
@@ -175,7 +187,8 @@ public sealed class ImportacaoSisregService(
             await ResolverFalhaPendenteAsync(codigo, res.SolicitacaoId,
                 jaExistia ? "Já existia uma solicitação com esse nº." : "Importada.", ct);
         else
-            await RegistrarFalhaExecucaoAsync(m, nomeArquivo, res.Erro ?? "Erro desconhecido.", ct);
+            await RegistrarFalhaExecucaoAsync(m, nomeArquivo, res.Erro ?? "Erro desconhecido.",
+                res.Causa ?? CausaFalhaImportacao.Outro, ct);
 
         return res;
     }
@@ -185,22 +198,28 @@ public sealed class ImportacaoSisregService(
     /// upload quanto ao reprocessamento a partir do RAW guardado.
     /// </summary>
     /// <returns><c>jaExistia</c> distingue a idempotência (nº já importado) de uma falha real.</returns>
+    /// <param name="pacienteIdForcado">
+    /// Paciente já resolvido pelo operador (fluxo "informar CPF e importar" — ADR-0035). Quando
+    /// preenchido, o bloco CNS→CADSUS inteiro é pulado; todo o resto do fluxo é idêntico, de
+    /// propósito: é um caminho privilegiado, não um caminho paralelo.
+    /// </param>
     private async Task<(ImportacaoExecucaoResultado Resultado, bool JaExistia)> ExecutarMarcacaoAsync(
-        MarcacaoSisreg m, CancellationToken ct)
+        MarcacaoSisreg m, CancellationToken ct, Guid? pacienteIdForcado = null)
     {
         var codigo = m.CodigoSolicitacao;
         var passos = new List<string>();
-        ImportacaoExecucaoResultado Falha(string erro) => new(codigo, false, null, null, null, false, false, false, passos, erro);
+        ImportacaoExecucaoResultado Falha(string erro, CausaFalhaImportacao causa) =>
+            new(codigo, false, null, null, null, false, false, false, passos, erro, causa);
 
         // 1. Idempotência (nº SISREG).
         if (await db.Solicitacoes.AsNoTracking().AnyAsync(
                 s => s.CodigoSolicitacao == codigo && s.ExcluidoEm == null, ct))
-            return (Falha("Já existe uma solicitação com esse número do SISREG."), true);
+            return (Falha("Já existe uma solicitação com esse número do SISREG.", CausaFalhaImportacao.Outro), true);
 
         // 2. Natureza pelo subgrupo SIGTAP (roteia satélite/UI). SÓ imagem precisa de TipoExame —
         //    e mesmo SEM tipo mapeado a importação NÃO trava: entra como pendente (ADR-0021).
         var sig = SoDigitos(m.CodigoSigtap);
-        var categoria = CategoriaPorSigtap(sig);
+        var categoria = CategoriaSigtap.Resolver(sig);
         Guid? tipoExameId = null;
         if (categoria == CategoriaSolicitacao.Imagem)
         {
@@ -221,14 +240,28 @@ public sealed class ImportacaoSisregService(
         // 3. Paciente. PRIMEIRO tenta a NOSSA base por CNS — o CADSUS/SISREG tem limite de
         //    500 req/hora; um lote grande estoura e passa a falhar TUDO como "não encontrado".
         //    A maioria dos pacientes já existe, então só quem falta de fato consulta o SISREG.
-        if (string.IsNullOrWhiteSpace(m.CnsPaciente)) return (Falha("Marcação sem CNS do paciente."), false);
-
         Guid pacienteId;
         bool pacienteCriado;
         string? nomeResolvido;
 
-        var porCns = await pacientes.ObterPorCnsAsync(m.CnsPaciente!, ct);
-        if (porCns is not null)
+        // Caminho privilegiado: o operador já identificou o paciente na tela de pendências
+        // (ADR-0035). Não há CNS a consultar nem CADSUS a chamar — a identidade já foi decidida
+        // por uma pessoa, que é uma fonte melhor que o cadweb50.
+        if (pacienteIdForcado is { } forcado)
+        {
+            // ObterPorIdAsync lança NaoEncontrado se sumiu — que é a resposta honesta: o operador
+            // escolheu um paciente que não existe mais, e isso não é uma falha de importação.
+            var informado = await pacientes.ObterPorIdAsync(forcado, ct);
+            pacienteId = informado.Id;
+            pacienteCriado = false;
+            nomeResolvido = informado.NomeCompleto;
+            passos.Add($"Paciente informado pelo operador: {informado.NomeCompleto}.");
+        }
+        else if (string.IsNullOrWhiteSpace(m.CnsPaciente))
+        {
+            return (Falha("Marcação sem CNS do paciente.", CausaFalhaImportacao.SemCns), false);
+        }
+        else if (await pacientes.ObterPorCnsAsync(m.CnsPaciente!, ct) is { } porCns)
         {
             pacienteId = porCns.Id;
             pacienteCriado = false;
@@ -240,7 +273,7 @@ public sealed class ImportacaoSisregService(
             // Só agora vai ao CADSUS (CNS → CPF + demografia) — o passo caro/limitado.
             ConsultaCnsRespostaDto cadsus;
             try { cadsus = await consultaCns.ConsultarPorCnsAsync(m.CnsPaciente!, ct); }
-            catch (Exception ex) { return (Falha($"Falha ao consultar o paciente no SISREG (CNS): {ex.Message}"), false); }
+            catch (Exception ex) { return (Falha($"Falha ao consultar o paciente no SISREG (CNS): {ex.Message}", CausaFalhaImportacao.CadsusIndisponivel), false); }
             passos.Add($"CNS {Mascara(m.CnsPaciente)} → CPF {Mascara(cadsus.Cpf)} (cadweb50).");
 
             // Pode já existir por CPF (mesmo cidadão cadastrado sob outro CNS). Nunca altera o nome.
@@ -257,7 +290,9 @@ public sealed class ImportacaoSisregService(
                 // Paciente inexistente E sem CPF do CADSUS: não dá para cadastrar com segurança
                 // (sem CPF não há identidade). Cai em falha honesta em vez do falso "CPF duplicado".
                 if (SoDigitos(cadsus.Cpf).Length != 11)
-                    return (Falha("O CADSUS não retornou o CPF deste CNS e o paciente ainda não existe no sistema. Cadastre o paciente manualmente e reimporte."), false);
+                    return (Falha(
+                        "O CADSUS não retornou o CPF deste CNS e o paciente ainda não existe no sistema. Informe o CPF nesta pendência para importar.",
+                        CausaFalhaImportacao.CpfNaoResolvido), false);
 
                 // Telefone do TXT vai num slot NÃO-principal (celular se móvel, senão residencial) —
                 // o principal é o contato validado por OTP e é intocável pela automação (ADR-0020).
@@ -287,7 +322,8 @@ public sealed class ImportacaoSisregService(
         //    atribuição explícita, resolvida uma vez para o arquivo. SOLICITANTE = por CNES do
         //    arquivo (cria se ainda não existir).
         var exec = await ResolverExecutanteAsync(m.CnesUnidadeExecutante, m.NomeUnidadeExecutante, ct);
-        if (exec.Id is null) return (Falha(exec.Erro ?? "Não identifiquei a unidade executante."), false);
+        if (exec.Id is null)
+            return (Falha(exec.Erro ?? "Não identifiquei a unidade executante.", CausaFalhaImportacao.UnidadeNaoResolvida), false);
         var unidadeExecId = exec.Id.Value;
         var execCriada = exec.Criada;
         passos.Add(execCriada
@@ -403,7 +439,8 @@ public sealed class ImportacaoSisregService(
             else
             {
                 invalidos++;
-                await RegistrarFalhaExecucaoAsync(m, nomeArquivo, res.Erro ?? "Erro desconhecido.", ct);
+                await RegistrarFalhaExecucaoAsync(m, nomeArquivo, res.Erro ?? "Erro desconhecido.",
+                    res.Causa ?? CausaFalhaImportacao.Outro, ct);
             }
         }
 
@@ -433,6 +470,7 @@ public sealed class ImportacaoSisregService(
         f.CodigoSolicitacao = null;
         f.LinhaRaw = trecho;
         f.Origem = OrigemFalhaImportacao.Arquivo;
+        f.Causa = CausaFalhaImportacao.ArquivoIncompativel;
         f.Motivo = Truncar($"Arquivo incompatível: {motivo}", 2000);
         f.NomeArquivo = Truncar(nomeArquivo, 300);
         f.ExecucaoId = execucaoId;
@@ -444,20 +482,64 @@ public sealed class ImportacaoSisregService(
 
     // ===================== FALHAS (lista + validar) =====================
 
-    public async Task<IReadOnlyList<ImportacaoFalhaDto>> ListarFalhasAsync(bool somentePendentes, CancellationToken ct)
+    public async Task<IReadOnlyList<ImportacaoFalhaDto>> ListarFalhasAsync(
+        bool somentePendentes, string? busca, CancellationToken ct)
     {
         var q = db.SisregImportacaoFalhas.AsNoTracking();
         if (somentePendentes) q = q.Where(f => f.ResolvidoEm == null);
         // Multitenancy: o operador vê as falhas da unidade em que está importando. Sem contexto
         // (admin global) vê tudo — mesma régua da listagem de solicitações.
         if (UnidadeAtivaAtual is { } uid) q = q.Where(f => f.UnidadeExecutanteId == uid);
+        q = AplicarBuscaDeFalha(q, busca);
 
-        return await q
-            .OrderByDescending(f => f.AtualizadoEm)
-            .Select(f => new ImportacaoFalhaDto(
-                f.Id, f.CodigoSolicitacao, f.Origem, f.Motivo, f.LinhaRaw, f.NomeArquivo,
-                f.NomePaciente, f.ProcedimentoTexto, f.DataAgendada, f.NomeExecutante,
-                f.Tentativas, f.CriadoEm, f.AtualizadoEm, f.ResolvidoEm, f.ResolucaoNota, f.SolicitacaoId))
+        return await ProjetarFalhas(q.OrderByDescending(f => f.AtualizadoEm)).ToListAsync(ct);
+    }
+
+    /// <summary>
+    /// Busca da pendência por paciente — nome, CNS ou nº do SISREG. É o que faz a recepção achar a
+    /// pessoa que chegou e "não tem agendamento" (ADR-0035). Termo curto demais não filtra nada:
+    /// devolveria a lista inteira disfarçada de resultado de busca.
+    /// </summary>
+    private static IQueryable<SisregImportacaoFalha> AplicarBuscaDeFalha(
+        IQueryable<SisregImportacaoFalha> q, string? busca)
+    {
+        var termo = busca?.Trim();
+        if (string.IsNullOrEmpty(termo) || termo.Length < 3) return q;
+
+        var padrao = $"%{termo}%";
+        var digitos = SoDigitos(termo);
+        // A condição sobre o TAMANHO é decidida aqui, em C#: dentro da expressão o EF a traduziria
+        // para SQL, e um termo sem dígitos viraria LIKE '%%' — a lista inteira disfarçada de busca.
+        var comDigitos = digitos.Length >= 3;
+
+        return q.Where(f =>
+            (f.NomePaciente != null && EF.Functions.ILike(f.NomePaciente, padrao))
+            || (comDigitos && f.PacienteCns != null && f.PacienteCns.Contains(digitos))
+            || (comDigitos && f.CodigoSolicitacao != null && f.CodigoSolicitacao.Contains(digitos)));
+    }
+
+    private static IQueryable<ImportacaoFalhaDto> ProjetarFalhas(IQueryable<SisregImportacaoFalha> q) =>
+        q.Select(f => new ImportacaoFalhaDto(
+            f.Id, f.CodigoSolicitacao, f.Origem, f.Motivo, f.LinhaRaw, f.NomeArquivo,
+            f.NomePaciente, f.ProcedimentoTexto, f.DataAgendada, f.NomeExecutante,
+            f.Tentativas, f.CriadoEm, f.AtualizadoEm, f.ResolvidoEm, f.ResolucaoNota, f.SolicitacaoId,
+            f.Causa, f.PacienteCns));
+
+    /// <summary>
+    /// As pendências que casam com o termo — o bloco que a busca de Solicitações mostra acima da
+    /// lista. Escopo por unidade executante, só pendentes, teto baixo: é um aviso, não uma listagem.
+    /// </summary>
+    public async Task<IReadOnlyList<ImportacaoFalhaDto>> BuscarPendenciasPorPacienteAsync(
+        string busca, int limite, CancellationToken ct)
+    {
+        var termo = busca?.Trim();
+        if (string.IsNullOrEmpty(termo) || termo.Length < 3) return [];
+
+        var q = db.SisregImportacaoFalhas.AsNoTracking().Where(f => f.ResolvidoEm == null);
+        if (UnidadeAtivaAtual is { } uid) q = q.Where(f => f.UnidadeExecutanteId == uid);
+
+        return await ProjetarFalhas(AplicarBuscaDeFalha(q, termo).OrderByDescending(f => f.DataAgendada))
+            .Take(limite)
             .ToListAsync(ct);
     }
 
@@ -469,7 +551,7 @@ public sealed class ImportacaoSisregService(
         var dto = new ImportacaoFalhaDto(
             f.Id, f.CodigoSolicitacao, f.Origem, f.Motivo, f.LinhaRaw, f.NomeArquivo, f.NomePaciente,
             f.ProcedimentoTexto, f.DataAgendada, f.NomeExecutante, f.Tentativas, f.CriadoEm,
-            f.AtualizadoEm, f.ResolvidoEm, f.ResolucaoNota, f.SolicitacaoId);
+            f.AtualizadoEm, f.ResolvidoEm, f.ResolucaoNota, f.SolicitacaoId, f.Causa, f.PacienteCns);
 
         // Arquivo incompatível não tem linha do SISREG pra parsear — o RAW é um trecho do arquivo.
         // Degrada pro que existe, em vez de fingir campos.
@@ -515,7 +597,64 @@ public sealed class ImportacaoSisregService(
         return s.Length == 0 ? null : s;
     }
 
-    public async Task<ImportacaoFalhaReprocessoResultado> ReprocessarFalhaAsync(Guid falhaId, CancellationToken ct)
+    public Task<ImportacaoFalhaReprocessoResultado> ReprocessarFalhaAsync(Guid falhaId, CancellationToken ct) =>
+        ReplicarFalhaAsync(falhaId, pacienteIdForcado: null, ct);
+
+    /// <summary>
+    /// "Informar CPF e importar" (ADR-0035). Resolve o paciente — respeitando a régua de dedup do hub
+    /// (procura por CPF **e** CNS antes de criar; paciente existente NUNCA tem o nome alterado) — e
+    /// então replica a linha com esse paciente fixado.
+    /// </summary>
+    public async Task<ImportacaoFalhaReprocessoResultado> ResolverComPacienteAsync(
+        Guid falhaId, string? cpf, Guid? pacienteId, CancellationToken ct)
+    {
+        var f = await db.SisregImportacaoFalhas.AsNoTracking().FirstOrDefaultAsync(x => x.Id == falhaId, ct)
+            ?? throw new NaoEncontradoException("importacao.falha", falhaId.ToString());
+        if (f.ResolvidoEm is not null)
+            throw new ConflitoException("falha.ja_resolvida", "Esta pendência já foi resolvida por outro operador.");
+
+        var resolvido = pacienteId ?? await ResolverPacienteInformadoAsync(f, cpf, ct);
+        return await ReplicarFalhaAsync(falhaId, resolvido, ct);
+    }
+
+    /// <summary>
+    /// CPF informado → paciente EXISTENTE. A ordem é a regra de dedup do hub, não deste fluxo:
+    /// procura por CPF, depois pelo CNS que a própria pendência carimbou (o mesmo cidadão pode já
+    /// estar cadastrado sob outra chave). Reusar sem procurar é como se fabricam as duplicatas que
+    /// partem o histórico clínico em dois.
+    ///
+    /// Não encontrando, <b>não cadastra</b>: o export do SISREG não traz data de nascimento, e criar
+    /// um Patient no hub com nascimento default gravaria lixo permanente na identidade do cidadão —
+    /// exatamente o que o ADR-0035 quis evitar ao recusar o "paciente provisório". O operador
+    /// cadastra na tela de Pacientes (onde os campos obrigatórios são cobrados) e volta aqui.
+    /// </summary>
+    private async Task<Guid> ResolverPacienteInformadoAsync(
+        SisregImportacaoFalha f, string? cpf, CancellationToken ct)
+    {
+        var digitos = SoDigitos(cpf);
+        if (digitos.Length != 11)
+            throw new ValidacaoException("falha.cpf_invalido", "Informe um CPF válido (11 dígitos).");
+
+        if (await pacientes.ObterPorCpfAsync(digitos, ct) is { } porCpf) return porCpf.Id;
+
+        // O CNS da pendência é a segunda chance de achar o mesmo cidadão sob outro cadastro.
+        if (!string.IsNullOrWhiteSpace(f.PacienteCns)
+            && await pacientes.ObterPorCnsAsync(f.PacienteCns!, ct) is { } porCns)
+            return porCns.Id;
+
+        throw new ValidacaoException("falha.paciente_nao_cadastrado",
+            $"Não há paciente cadastrado com o CPF {digitos}. Cadastre-o em Pacientes (o SISREG não "
+            + "informa a data de nascimento, então o cadastro não pode ser feito por aqui) e depois "
+            + "volte para importar esta pendência.");
+    }
+
+    /// <summary>
+    /// O replay da linha a partir do RAW guardado — único caminho, com ou sem paciente informado.
+    /// Idempotente por nº do SISREG: revalidar algo que já foi criado resolve a pendência em vez de
+    /// duplicar. Falha por outro motivo mantém a pendência ABERTA, com tentativa e causa atualizadas.
+    /// </summary>
+    private async Task<ImportacaoFalhaReprocessoResultado> ReplicarFalhaAsync(
+        Guid falhaId, Guid? pacienteIdForcado, CancellationToken ct)
     {
         var f = await db.SisregImportacaoFalhas.FirstOrDefaultAsync(x => x.Id == falhaId, ct)
             ?? throw new NaoEncontradoException("importacao.falha", falhaId.ToString());
@@ -541,18 +680,20 @@ public sealed class ImportacaoSisregService(
         {
             var motivo = parsed.Rejeitadas.FirstOrDefault()?.Motivo ?? "A linha continua ilegível para o parser.";
             f.Origem = OrigemFalhaImportacao.Parser;
+            f.Causa = CausaFalhaImportacao.LinhaInvalida;
             f.Motivo = Truncar(motivo, 2000);
             await db.SaveChangesAsync(ct);
             return new(f.Id, false, null,
                 $"A linha continua inválida: {motivo} Corrija na origem e reimporte o arquivo, ou descarte esta linha.");
         }
 
-        var (res, jaExistia) = await ExecutarMarcacaoAsync(m, ct);
+        var (res, jaExistia) = await ExecutarMarcacaoAsync(m, ct, pacienteIdForcado);
 
         // A linha pôde ser lida agora: carimba o nº que faltava (caso de falha do parser).
         f.CodigoSolicitacao = m.CodigoSolicitacao;
         f.NomePaciente = Truncar(m.NomePaciente, 300);
         f.ProcedimentoTexto = Truncar(m.ProcedimentoTexto, 500);
+        f.PacienteCns ??= Truncar(SoDigitos(m.CnsPaciente) is { Length: > 0 } cns ? cns : null, 15);
         f.DataAgendada = m.DataHoraAtendimento is { } dh ? ParaUtcBrasilia(dh) : null;
 
         if (res.Sucesso || jaExistia)
@@ -560,7 +701,9 @@ public sealed class ImportacaoSisregService(
             // O ponto do ticket: revalidar algo que já foi criado NÃO duplica — dá ok e sai da lista.
             f.ResolvidoEm = agora;
             f.ResolvidoPor = UsuarioIdAtual;
-            f.ResolucaoNota = jaExistia ? "Já existia uma solicitação com esse nº." : "Importada na validação.";
+            f.ResolucaoNota = jaExistia
+                ? "Já existia uma solicitação com esse nº."
+                : pacienteIdForcado is null ? "Importada na validação." : "Importada com o CPF informado pelo operador.";
             f.SolicitacaoId = res.SolicitacaoId;
             await db.SaveChangesAsync(ct);
             return new(f.Id, true, res, jaExistia
@@ -569,6 +712,7 @@ public sealed class ImportacaoSisregService(
         }
 
         f.Origem = OrigemFalhaImportacao.Execucao;
+        f.Causa = res.Causa ?? CausaFalhaImportacao.Outro;
         f.Motivo = Truncar(res.Erro ?? "Erro desconhecido.", 2000);
         await db.SaveChangesAsync(ct);
         return new(f.Id, false, res, res.Erro ?? "Ainda não foi possível importar esta linha.");
@@ -588,7 +732,8 @@ public sealed class ImportacaoSisregService(
     }
 
     /// <summary>Grava/atualiza a falha de EXECUÇÃO da marcação (upsert pela pendência do mesmo nº).</summary>
-    private async Task RegistrarFalhaExecucaoAsync(MarcacaoSisreg m, string? nomeArquivo, string motivo, CancellationToken ct)
+    private async Task RegistrarFalhaExecucaoAsync(
+        MarcacaoSisreg m, string? nomeArquivo, string motivo, CausaFalhaImportacao causa, CancellationToken ct)
     {
         var raw = m.LinhaRaw ?? string.Empty;
         var f = await db.SisregImportacaoFalhas.FirstOrDefaultAsync(
@@ -605,12 +750,14 @@ public sealed class ImportacaoSisregService(
         f.HashLinha = Sha256(raw);
         f.LinhaRaw = raw;
         f.Origem = OrigemFalhaImportacao.Execucao;
+        f.Causa = causa;
         f.Motivo = Truncar(motivo, 2000);
         f.NomeArquivo = Truncar(nomeArquivo, 300);
         f.CnesExecutante = SoDigitos(m.CnesUnidadeExecutante) is { Length: 7 } c ? c : null;
         f.NomeExecutante = Truncar(m.NomeUnidadeExecutante, 300);
         f.NomePaciente = Truncar(m.NomePaciente, 300);
         f.ProcedimentoTexto = Truncar(m.ProcedimentoTexto, 500);
+        f.PacienteCns = Truncar(SoDigitos(m.CnsPaciente) is { Length: > 0 } cns ? cns : null, 15);
         f.DataAgendada = m.DataHoraAtendimento is { } dh ? ParaUtcBrasilia(dh) : null;
         f.ExecucaoId = _execucaoAtual;
         f.UnidadeExecutanteId = UnidadeAtivaAtual;
@@ -647,6 +794,7 @@ public sealed class ImportacaoSisregService(
                 };
                 db.SisregImportacaoFalhas.Add(f);
             }
+            f.Causa = CausaFalhaImportacao.LinhaInvalida;
             f.Motivo = Truncar($"Linha {r.Numero} do arquivo: {r.Motivo}", 2000);
             f.NomeArquivo = Truncar(nomeArquivo, 300);
             f.CnesExecutante = cnes;
@@ -838,23 +986,6 @@ public sealed class ImportacaoSisregService(
 
     private static string SoDigitos(string? s) =>
         string.IsNullOrEmpty(s) ? string.Empty : new string([.. s.Where(char.IsDigit)]);
-
-    /// <summary>Categoria (natureza clínica) pelo SUBGRUPO SIGTAP (4 primeiros dígitos) — determinístico,
-    /// não adivinha procedimento. Ver ADR-0021. Só <see cref="CategoriaSolicitacao.Imagem"/> cria satélite.</summary>
-    private static CategoriaSolicitacao CategoriaPorSigtap(string? sigtap)
-    {
-        var d = SoDigitos(sigtap);
-        if (d.Length < 4) return CategoriaSolicitacao.Outro;
-        return d[..4] switch
-        {
-            "0301" or "0302" => CategoriaSolicitacao.Consulta,
-            "0204" or "0205" or "0206" => CategoriaSolicitacao.Imagem, // RX/mamo/densito · US · TC/RM
-            "0202" or "0203" => CategoriaSolicitacao.Laboratorio,      // lab clínico · patologia
-            "0211" => CategoriaSolicitacao.GraficoFuncional,          // ECG, EEG, audiometria, espirometria...
-            "0209" => CategoriaSolicitacao.Endoscopia,
-            _ => d[..2] == "04" ? CategoriaSolicitacao.Cirurgia : CategoriaSolicitacao.Outro,
-        };
-    }
 
     private static string Mascara(string? v) =>
         string.IsNullOrEmpty(v) ? string.Empty : v.Length <= 4 ? "***" : v[..3] + "***" + v[^2..];

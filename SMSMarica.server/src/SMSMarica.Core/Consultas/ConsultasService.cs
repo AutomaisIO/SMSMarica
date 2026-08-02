@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Tempo;
+using SMSMarica.Core.Common.Unidades;
 using SMSMarica.Core.Consultas.Dtos;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Pacientes.Fhir;
@@ -107,15 +108,6 @@ public sealed class ConsultasService(
                 c => c.SolicitacaoId!.Value,
                 c => new ComunicacaoChipDto(c.Status.ToString(), c.VisualizadoEm != null, c.MotivoFalha));
 
-        // Direção relativa à unidade de referência: executora → Recebida; solicitante → Enviada.
-        // Mesma regra dos exames (Recebida prevalece quando a unidade é as duas coisas).
-        DirecaoSolicitacao? Direcao(Guid execId, Guid? solicId) =>
-            unidadeReferencia is { } r
-                ? execId == r ? DirecaoSolicitacao.Recebida
-                : solicId == r ? DirecaoSolicitacao.Enviada
-                : null
-                : null;
-
         return [.. lista.Select(l => new ConsultaListItemDto(
             l.Id, l.CodigoSolicitacao, l.PacienteId,
             nomes.TryGetValue(l.PacienteId, out var r) ? r.Nome : null,
@@ -124,52 +116,21 @@ public sealed class ConsultasService(
             l.UnidadeNome, l.SolicitanteNome, l.DataAgendada, l.DataSolicitacao,
             l.Status.ToString(), l.StatusConfirmacao.ToString(),
             chips.GetValueOrDefault(l.Id),
-            Direcao(l.UnidadeExecutanteId, l.UnidadeSolicitanteId)))];
+            SolicitacaoNoEscopo.Direcao(unidadeReferencia, l.UnidadeExecutanteId, l.UnidadeSolicitanteId)))];
     }
 
     /// <summary>
     /// Multitenancy por unidade — igual ao dos exames, mas sobre a espinha <c>Solicitacao</c>
-    /// diretamente (consulta não tem satélite). Restringe às unidades vinculadas ao usuário
-    /// (executora OU solicitante). Usuário sem vínculo/contexto vê tudo. Devolve a unidade de
-    /// referência (a ativa resolvida, ou null na visão do conjunto) — marca a direção da seta.
+    /// diretamente (consulta não tem satélite). A cascata de resolução vive em
+    /// <see cref="EscopoUnidade"/> (ADR-0033); aqui só se aplica o filtro, porque o caminho até a
+    /// unidade é específico da entidade. Devolve a unidade de referência (a ativa resolvida, ou
+    /// null na visão do conjunto) — marca a direção da seta.
     /// </summary>
     private async Task<(IQueryable<Solicitacao> Query, Guid? UnidadeReferencia)> AplicarEscopoUnidadeAsync(
         IQueryable<Solicitacao> query, CancellationToken ct)
     {
-        var usuarioId = usuarioAtual.UsuarioId;
-        if (usuarioId is null) return (query, null);
-
-        var ativa = usuarioAtual.UnidadeAtivaId;
-
-        // Acesso global: vínculo implícito a TODAS as unidades; a ativa vira filtro de conveniência.
-        if (await AcessoGlobalUsuario.TemAsync(db, usuarioId, ct))
-        {
-            if (ativa.HasValue &&
-                await db.Unidades.AsNoTracking().AnyAsync(u => u.Id == ativa.Value && u.Ativo, ct))
-            {
-                return (query.Where(s => s.UnidadeExecutanteId == ativa.Value
-                    || s.UnidadeSolicitanteId == ativa.Value), ativa);
-            }
-            return (query, null);
-        }
-
-        var vinculos = await db.UsuarioUnidades.AsNoTracking()
-            .Where(v => v.UsuarioId == usuarioId && v.Unidade!.Ativo)
-            .Select(v => v.UnidadeId)
-            .ToArrayAsync(ct);
-        if (vinculos.Length == 0) return (query, null);
-
-        if (ativa.HasValue && vinculos.Contains(ativa.Value))
-        {
-            return (query.Where(s => s.UnidadeExecutanteId == ativa.Value
-                || s.UnidadeSolicitanteId == ativa.Value), ativa);
-        }
-
-        // Visão do conjunto: executora OU solicitante entre as vinculadas. Sem referência → sem seta.
-        return (
-            query.Where(s => vinculos.Contains(s.UnidadeExecutanteId)
-                || (s.UnidadeSolicitanteId != null && vinculos.Contains(s.UnidadeSolicitanteId.Value))),
-            null);
+        var escopo = await EscopoUnidade.ResolverAsync(db, usuarioAtual, ct);
+        return (SolicitacaoNoEscopo.Filtrar(query, escopo), escopo.Referencia);
     }
 
     public async Task<ConsultaDetalheDto?> ObterPorIdAsync(Guid id, CancellationToken ct = default)

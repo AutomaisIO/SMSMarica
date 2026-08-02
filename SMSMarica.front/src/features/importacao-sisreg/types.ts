@@ -61,7 +61,21 @@ export type ImportacaoFalha = {
   resolvidoEm: string | null;
   resolucaoNota: string | null;
   solicitacaoId: string | null;
+  /** Causa tipada — decide qual ação a tela oferece nesta linha (ADR-0035). */
+  causa: CausaFalhaImportacao;
+  pacienteCns: string | null;
+  /** Só a causa `CpfNaoResolvido` é resolvível informando o CPF. */
+  podeInformarCpf: boolean;
 };
+
+export type CausaFalhaImportacao =
+  | 'SemCns'
+  | 'CadsusIndisponivel'
+  | 'CpfNaoResolvido'
+  | 'UnidadeNaoResolvida'
+  | 'LinhaInvalida'
+  | 'ArquivoIncompativel'
+  | 'Outro';
 
 export type ImportacaoFalhaReprocessoResultado = {
   falhaId: string;

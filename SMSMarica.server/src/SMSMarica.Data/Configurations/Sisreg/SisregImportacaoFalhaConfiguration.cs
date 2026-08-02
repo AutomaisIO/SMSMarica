@@ -17,6 +17,7 @@ internal sealed class SisregImportacaoFalhaConfiguration : IEntityTypeConfigurat
         // Sem maxLength: é o RAW as-is da linha do SISREG (38 campos) — text.
         builder.Property(x => x.LinhaRaw).HasColumnName("linha_raw").IsRequired();
         builder.Property(x => x.Origem).HasColumnName("origem").HasConversion<int>().IsRequired();
+        builder.Property(x => x.Causa).HasColumnName("causa").HasConversion<short>().IsRequired();
         builder.Property(x => x.Motivo).HasColumnName("motivo").HasMaxLength(2000).IsRequired();
         builder.Property(x => x.NomeArquivo).HasColumnName("nome_arquivo").HasMaxLength(300);
         builder.Property(x => x.ExecucaoId).HasColumnName("execucao_id");
@@ -25,6 +26,7 @@ internal sealed class SisregImportacaoFalhaConfiguration : IEntityTypeConfigurat
         builder.Property(x => x.NomePaciente).HasColumnName("nome_paciente").HasMaxLength(300);
         builder.Property(x => x.ProcedimentoTexto).HasColumnName("procedimento_texto").HasMaxLength(500);
         builder.Property(x => x.DataAgendada).HasColumnName("data_agendada");
+        builder.Property(x => x.PacienteCns).HasColumnName("paciente_cns").HasMaxLength(15);
         builder.Property(x => x.Tentativas).HasColumnName("tentativas").IsRequired();
         builder.Property(x => x.UnidadeExecutanteId).HasColumnName("unidade_executante_id");
         builder.Property(x => x.CriadoEm).HasColumnName("criado_em").IsRequired();
@@ -54,5 +56,17 @@ internal sealed class SisregImportacaoFalhaConfiguration : IEntityTypeConfigurat
 
         // "Ver os erros desta importação" (aba de rastreio).
         builder.HasIndex(x => x.ExecucaoId).HasDatabaseName("ix_sisreg_falha_execucao");
+
+        // Busca da RECEPÇÃO pela pessoa que "não tem agendamento": procura pelo nome (e pelo CNS,
+        // quando ela tem o cartão em mãos) entre as pendências. Parciais porque falha resolvida
+        // nunca é procurada assim. O índice de nome usa lower() — a busca é case-insensitive
+        // (ILIKE com prefixo); ver ADR-0035.
+        builder.HasIndex(x => x.PacienteCns)
+            .HasDatabaseName("ix_sisreg_falha_cns")
+            .HasFilter("resolvido_em IS NULL");
+
+        // O índice irmão de nome — ix_sisreg_falha_paciente sobre lower(nome_paciente) — é criado por
+        // SQL na migration: índice de EXPRESSÃO não é expressável pelo fluent API, e portanto não
+        // aparece no snapshot. Não é esquecimento; ver AddCausaFalhaImportacaoEIndicesPainel.
     }
 }

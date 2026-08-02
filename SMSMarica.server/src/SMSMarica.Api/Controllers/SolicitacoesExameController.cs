@@ -4,6 +4,7 @@ using SMSMarica.Core.Cidadao;
 using SMSMarica.Core.Cidadao.Dtos;
 using SMSMarica.Core.Downloads;
 using SMSMarica.Core.Exames;
+using SMSMarica.Core.Integracoes.SisregWeb.Importacao;
 using SMSMarica.Core.SolicitacoesExame;
 using SMSMarica.Core.SolicitacoesExame.Declaracao;
 using SMSMarica.Core.SolicitacoesExame.Dtos;
@@ -24,7 +25,8 @@ public sealed class SolicitacoesExameController(
     IDownloadTokenService downloads,
     ICidadaoLoginLinkService loginLinks,
     ISolicitacaoHistoricoService historico,
-    IBackfillDataEstudoService backfill) : ControllerBase
+    IBackfillDataEstudoService backfill,
+    IImportacaoSisregService importacao) : ControllerBase
 {
     private readonly ISolicitacoesExameService _service = service;
     private readonly IDeclaracaoComparecimentoService _declaracao = declaracao;
@@ -46,11 +48,35 @@ public sealed class SolicitacoesExameController(
         [FromQuery] DateOnly? dataFinal,
         [FromQuery] string? accessionNumber,
         [FromQuery] string? busca,
+        /// <summary>Recorte do painel de início ("ver todos" de uma raia) — ADR-0033.</summary>
+        [FromQuery] RecortePainel? painel = null,
         [FromQuery] int limite = 50,
         CancellationToken cancellationToken = default) =>
         await _service.ListarAsync(
-            new FiltroSolicitacoesDto(status, pacienteId, unidadeId, tipoExameId, dataInicial, dataFinal, accessionNumber, busca, limite),
+            new FiltroSolicitacoesDto(
+                status, pacienteId, unidadeId, tipoExameId, dataInicial, dataFinal,
+                accessionNumber, busca, painel, limite),
             cancellationToken);
+
+    /// <summary>
+    /// Pendências de importação que casam com o termo buscado — o bloco exibido ACIMA da lista para
+    /// a recepção achar quem chegou e "não tem agendamento" (ADR-0035). São linhas do SISREG que
+    /// NÃO entraram no sistema: nunca devem ser confundidas com solicitações reais.
+    ///
+    /// <b>Gateado por <c>SolicitacoesExame/Consulta</c>, não por <c>Sisreg</c></b>: quem precisa
+    /// disto é a recepção, que quase nunca tem permissão do módulo SISREG. É a mesma exceção que o
+    /// ADR-0029 abriu para <c>GET /unidades/atendimento</c> — gatear pela permissão do módulo dono
+    /// do dado, e não pela da tela que consome, sobe a feature quebrada.
+    /// </summary>
+    [HttpGet("pendencias-importacao")]
+    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<ImportacaoFalhaDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<ImportacaoFalhaDto>> PendenciasImportacao(
+        [FromQuery] string? busca,
+        [FromQuery] int limite = 5,
+        CancellationToken cancellationToken = default)
+        => await importacao.BuscarPendenciasPorPacienteAsync(
+            busca ?? string.Empty, limite is <= 0 or > 25 ? 5 : limite, cancellationToken);
 
     [HttpGet("{id:guid}")]
     [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
@@ -284,31 +310,6 @@ public sealed class SolicitacoesExameController(
         await _service.ReenviarWorklistAsync(id, cancellationToken);
         return NoContent();
     }
-
-    /// <summary>
-    /// Troca o equipamento (estação) de destino de um exame já enviado à worklist (ticket #72).
-    /// Verifica no dcm4chee se o item existe, exclui e confirma a remoção, e só então recria no
-    /// novo destino — a existência real no PACS manda, não o status local. Responde 409 quando o
-    /// exame já foi executado, quando o destino é inválido/inalterado, ou quando o PACS recusa/cai.
-    /// </summary>
-    [HttpPost("{id:guid}/alterar-equipamento")]
-    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Edicao)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> AlterarEquipamento(
-        Guid id,
-        [FromBody] AlterarEquipamentoRequest request,
-        CancellationToken cancellationToken)
-    {
-        await _service.AlterarEquipamentoDestinoAsync(id, request.EquipamentoId, cancellationToken);
-        return NoContent();
-    }
-
-    /// <summary><paramref name="EquipamentoId"/> = nova estação de destino (entre as elegíveis
-    /// em <c>GET /solicitacoes-exame/{id}/equipamentos</c>).</summary>
-    public sealed record AlterarEquipamentoRequest(Guid EquipamentoId);
 
     /// <summary>
     /// Exclui a solicitação. Requer permissão de Exclusão (concedida apenas a perfis

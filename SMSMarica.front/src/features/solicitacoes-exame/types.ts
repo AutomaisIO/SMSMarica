@@ -100,12 +100,6 @@ export type SolicitacaoExame = {
   dataEstudo: string | null;
   /** Linha crua do TXT do SISREG que originou a solicitação (proveniência). Null se não veio de import. */
   rawSisreg: string | null;
-
-  /** Equipamento (estação) de destino no PACS — define o AE Title/WorklistLabel do item MWL.
-   *  Null enquanto não escolhido/deduzido. Alvo da troca de destino (ticket #72). */
-  equipamentoId: string | null;
-  equipamentoNome: string | null;
-  equipamentoAeTitle: string | null;
 };
 
 export type SolicitacaoExameListItem = {
@@ -194,8 +188,13 @@ export type FiltroSolicitacoes = {
   accessionNumber?: string;
   /** Busca livre: nome, CPF, CNS ou nº do pedido/accession/código. */
   busca?: string;
+  /** Recorte aberto pelo "ver todos" de uma raia do painel de início (ADR-0033). */
+  painel?: RecortePainel;
   limite?: number;
 };
+
+/** Recortes que o painel de início abre nesta listagem. */
+export type RecortePainel = 'Cancelados' | 'Aguardando';
 
 export type CadastrarSolicitacaoPayload = {
   pacienteId: string;

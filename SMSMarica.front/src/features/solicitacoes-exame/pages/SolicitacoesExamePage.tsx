@@ -35,8 +35,10 @@ import { BotaoBaixarExameCompleto } from '@/features/solicitacoes-exame/componen
 import { BotaoVisualizarLaudo } from '@/features/solicitacoes-exame/components/BotaoVisualizarLaudo';
 import { BotaoAnamnese } from '@/features/anamnese/components/BotaoAnamnese';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
+import { BlocoPendenciasBusca } from '@/features/painel-inicio/components/BlocoPendenciasBusca';
 import type {
   FiltroSolicitacoes,
+  RecortePainel,
   SolicitacaoExameListItem,
   StatusSolicitacao,
 } from '@/features/solicitacoes-exame/types';
@@ -83,10 +85,19 @@ export function SolicitacoesExamePage() {
   // Deep-link vindo da coluna "Pedido" do PACS: cai na busca livre (que casa accession).
   const accessionUrl = searchParams.get('accessionNumber') ?? undefined;
 
+  // Deep-link vindo do "ver todos" de uma raia do painel de início. O recorte é filtro de
+  // SERVIDOR (ADR-0033 §4): o painel nunca cria listagem nova, aponta para esta.
+  const painelUrl = (() => {
+    const v = searchParams.get('painel');
+    return v === 'cancelados' ? 'Cancelados' : v === 'aguardando' ? 'Aguardando' : undefined;
+  })() as RecortePainel | undefined;
+
   // Toggle "Hoje": persistido em localStorage. Quando ligado, trava as datas no dia
   // corrente e desabilita os campos de período. Deep-link do PACS tem prioridade.
+  // O recorte do painel também ignora o "Hoje": a raia de cancelados inclui exames de qualquer
+  // data (inclusive passada — é justamente o caso esquecido).
   const [hojeAtivo, setHojeAtivo] = useState<boolean>(
-    () => !accessionUrl && localStorage.getItem(CHAVE_TOGGLE_HOJE) === '1',
+    () => !accessionUrl && !painelUrl && localStorage.getItem(CHAVE_TOGGLE_HOJE) === '1',
   );
 
   // Ordem de Chegada: reordena a página por quando a recepção AUTORIZOU (autorizadoEm),
@@ -96,9 +107,11 @@ export function SolicitacoesExamePage() {
 
   const filtroInicial: FiltroSolicitacoes = accessionUrl
     ? { limite: 50, busca: accessionUrl }
-    : hojeAtivo
-      ? { limite: 50, dataInicial: hojeISO(), dataFinal: hojeISO() }
-      : { limite: 50 };
+    : painelUrl
+      ? { limite: 50, painel: painelUrl }
+      : hojeAtivo
+        ? { limite: 50, dataInicial: hojeISO(), dataFinal: hojeISO() }
+        : { limite: 50 };
   const [filtroAplicado, setFiltroAplicado] = useState<FiltroSolicitacoes>(filtroInicial);
   const [filtroDigitado, setFiltroDigitado] = useState<FiltroSolicitacoes>(filtroInicial);
 
@@ -158,7 +171,10 @@ export function SolicitacoesExamePage() {
 
   function aoBuscar(e: FormEvent) {
     e.preventDefault();
-    setFiltroAplicado(filtroDigitado);
+    // Buscar manualmente encerra o recorte do painel: a partir daqui quem dirige o filtro é o
+    // operador, e manter um recorte invisível faria a lista "esconder" resultados sem explicação.
+    setFiltroAplicado({ ...filtroDigitado, painel: undefined });
+    setFiltroDigitado((f) => ({ ...f, painel: undefined }));
   }
 
   // Itens por página (backend limita a 500). Aplica na hora, sem precisar clicar em Buscar.
@@ -422,6 +438,35 @@ export function SolicitacoesExamePage() {
           {extrairMensagemDeErro(lista.error)}
         </div>
       ) : null}
+
+      {/* Recorte ativo vindo do painel de início: dito em voz alta, para a lista nunca esconder
+          resultados sem o operador saber por quê. */}
+      {filtroAplicado.painel ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-800">
+          <span>
+            Mostrando apenas:{' '}
+            <strong>
+              {filtroAplicado.painel === 'Cancelados'
+                ? 'quem cancelou pelo WhatsApp e ainda não foi tratado'
+                : 'quem ainda não respondeu, com exame próximo'}
+            </strong>
+          </span>
+          <button
+            type="button"
+            className="ml-auto font-medium underline"
+            onClick={() => {
+              setFiltroAplicado((f) => ({ ...f, painel: undefined }));
+              setFiltroDigitado((f) => ({ ...f, painel: undefined }));
+            }}
+          >
+            ver todas
+          </button>
+        </div>
+      ) : null}
+
+      {/* A pessoa que chegou e "não tem agendamento" pode estar numa linha do SISREG que não
+          entrou. O bloco fica ACIMA e visualmente distinto — nunca uma linha da tabela. */}
+      <BlocoPendenciasBusca busca={filtroAplicado.busca ?? ''} />
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-3">

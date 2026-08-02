@@ -17,10 +17,11 @@ export const importacaoKeys = {
   execucoes: ['importacao-sisreg', 'execucoes'] as const,
 };
 
-export function useFalhasImportacao(somentePendentes: boolean) {
+export function useFalhasImportacao(somentePendentes: boolean, busca = '') {
+  const termo = busca.trim();
   return useQuery({
-    queryKey: importacaoKeys.falhas(somentePendentes),
-    queryFn: () => listarFalhasImportacao(somentePendentes),
+    queryKey: [...importacaoKeys.falhas(somentePendentes), termo],
+    queryFn: () => listarFalhasImportacao(somentePendentes, termo),
   });
 }
 
