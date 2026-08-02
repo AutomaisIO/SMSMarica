@@ -22,6 +22,8 @@ internal sealed class PepSincronizacaoExecucaoConfiguration : IEntityTypeConfigu
         builder.Property(x => x.MaxPacientes).HasColumnName("max_pacientes");
 
         builder.Property(x => x.Status).HasColumnName("status").HasConversion<int>().IsRequired();
+        builder.Property(x => x.Disparo).HasColumnName("disparo").HasConversion<int>().IsRequired()
+            .HasDefaultValue(Entities.Enums.DisparoSincronizacao.Manual);
 
         builder.Property(x => x.IniciadoEm).HasColumnName("iniciado_em").IsRequired();
         builder.Property(x => x.FinalizadoEm).HasColumnName("finalizado_em");

@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Integracoes.Pep.Background;
+using SMSMarica.Core.Integracoes.Pep.Divergencias;
 using SMSMarica.Core.Integracoes.Pep.Dtos;
 using SMSMarica.Core.Integracoes.Pep.Estrategias;
 using SMSMarica.Core.Integracoes.Pep.Falhas;
@@ -26,10 +27,18 @@ public sealed class PepSincronizacaoService(
     IPepSincronizacaoFila fila,
     PepSincronizacaoEstadoVivo estadoVivo,
     IUsuarioAtualAccessor usuarioAtual,
+    IVerificadorDivergenciasPep verificadorDivergencias,
     IConfiguration configuration,
     ILogger<PepSincronizacaoService> logger) : IPepSincronizacaoService
 {
     private readonly int _timeoutSegundos = configuration.GetValue("Pep:TimeoutSegundos", 120);
+
+    /// <summary>
+    /// Teto de divergências arbitradas ao fim de cada run. Cada arbitragem custa 1–2 consultas
+    /// externas pagas — o teto evita queimar saldo num run e deixa a fila andar aos poucos.
+    /// </summary>
+    private readonly int _maxArbitragensPorRun =
+        configuration.GetValue("Pep:Divergencias:MaxPorRun", 50);
 
     /// <summary>Tempo máximo reenviando um recurso por saturação transitória antes de desistir (vira falha).</summary>
     private readonly TimeSpan _hubRetryBudget =
@@ -81,6 +90,18 @@ public sealed class PepSincronizacaoService(
             request is { MaxMedicos: null or <= 0, MaxPacientes: null or <= 0 })
             throw new ValidacaoException("pep.limites",
                 "No escopo Limitado informe ao menos um limite (médicos e/ou pacientes) maior que zero.");
+
+        // "Apagar antes" purga a base INTEIRA (do source) antes do laço de pacientes; se o laço
+        // for parcial — retomado de um cursor ou limitado por N — tudo que ficou de fora seria
+        // apagado e NUNCA reescrito (o incremental não repõe: as marcas seguem avançando).
+        // Combinação proibida, não apenas desaconselhada.
+        if (request.ApagarAntes && request.Escopo == EscopoSincronizacao.Limitado)
+            throw new ValidacaoException("pep.apagar_antes_limitado",
+                "\"Apagar antes\" só pode ser usado com escopo Tudo: no escopo Limitado a purga apagaria a base inteira e a reescrita cobriria apenas parte dela.");
+
+        if (request.ApagarAntes && request.CursorPacienteInicial is not null)
+            throw new ValidacaoException("pep.apagar_antes_cursor",
+                "\"Apagar antes\" não pode ser combinado com retomada por cursor: a purga apaga toda a base e a reescrita começaria do cursor, deixando sem dado clínico todos os pacientes anteriores a ele.");
 
         // No máximo uma importação por vez — mas só bloqueia se há run VIVO (em memória).
         if (estadoVivo.ObterAtual() is not null)
@@ -135,17 +156,212 @@ public sealed class PepSincronizacaoService(
         return execucao.Id;
     }
 
-    public Task CancelarAsync(CancellationToken ct = default)
+    public async Task<Guid?> IniciarAgendadoAsync(Guid fonteId, bool forcarMedicos, CancellationToken ct = default)
     {
-        if (estadoVivo.ObterAtual() is null)
-            throw new ConflitoException("pep.sem_importacao", "Não há importação em andamento para parar.");
+        // Disparo do scheduler: colisão e indisponibilidade NÃO são erro — devolve null e o
+        // scheduler reprograma. Só configuração inválida merece log (alguém precisa agir).
+        var fonte = await db.IaFontes.AsNoTracking()
+            .FirstOrDefaultAsync(f => f.Id == fonteId && f.ExcluidoEm == null, ct);
+        if (fonte is null || !fonte.Ativo || string.IsNullOrWhiteSpace(fonte.Slug)
+            || estrategias.All(e => e.Tipo != fonte.Tipo))
+        {
+            logger.LogWarning("Agenda da fonte {Fonte}: base ausente/inativa/sem slug/não suportada — disparo agendado ignorado.", fonteId);
+            return null;
+        }
+
+        if (estadoVivo.ObterAtual() is not null) return null;
+
+        var orfas = await db.PepSincronizacaoExecucoes
+            .Where(e => e.Status == StatusSincronizacao.Pendente || e.Status == StatusSincronizacao.EmExecucao)
+            .ToListAsync(ct);
+        foreach (var o in orfas)
+        {
+            o.Status = StatusSincronizacao.Erro;
+            o.MensagemErro ??= "Execução interrompida (órfã) — encerrada ao iniciar nova importação.";
+            o.FinalizadoEm ??= DateTime.UtcNow;
+        }
+
+        var execucao = new PepSincronizacaoExecucao
+        {
+            Id = Guid.CreateVersion7(),
+            FonteId = fonte.Id,
+            FonteNome = fonte.Nome,
+            Modo = ModoSincronizacao.Incremental,
+            Escopo = EscopoSincronizacao.Tudo,
+            ApagarAntes = false,
+            Status = StatusSincronizacao.Pendente,
+            Disparo = DisparoSincronizacao.Agendado,
+            IniciadoEm = DateTime.UtcNow,
+            CriadoPor = null,
+        };
+        db.PepSincronizacaoExecucoes.Add(execucao);
+        await db.SaveChangesAsync(ct);
+
+        var opcoes = new OpcoesImportacao(ModoSincronizacao.Incremental, EscopoSincronizacao.Tudo,
+            null, null, ApagarAntes: false, ForcarMedicos: forcarMedicos);
+        if (!fila.TentarEnfileirar(new PepImportacaoJob(execucao.Id, fonte.Id, opcoes, null)))
+        {
+            execucao.Status = StatusSincronizacao.Erro;
+            execucao.MensagemErro = "Fila ocupada — já há uma importação enfileirada.";
+            execucao.FinalizadoEm = DateTime.UtcNow;
+            await db.SaveChangesAsync(ct);
+            return null;
+        }
+
+        return execucao.Id;
+    }
+
+    public async Task<IReadOnlyList<AgendaPepDto>> ListarAgendasAsync(CancellationToken ct = default)
+    {
+        var agendas = await db.PepSincronizacaoAgendas.AsNoTracking().ToListAsync(ct);
+        var nomes = await db.IaFontes.AsNoTracking()
+            .Where(f => f.ExcluidoEm == null)
+            .ToDictionaryAsync(f => f.Id, f => f.Nome, ct);
+        return agendas
+            .OrderBy(a => nomes.GetValueOrDefault(a.FonteId, string.Empty))
+            .Select(a => new AgendaPepDto(
+                a.FonteId, nomes.GetValueOrDefault(a.FonteId, "(base excluída)"), a.Ativo, a.IntervaloMinutos,
+                a.JanelaInicioLocal, a.JanelaFimLocal, a.MedicoRescanHoras, a.FalhasConsecutivas,
+                a.ProximoRunEm, a.PausadoAte, a.AtualizadoEm))
+            .ToList();
+    }
+
+    public async Task<AgendaPepDto> SalvarAgendaAsync(SalvarAgendaPepRequest request, CancellationToken ct = default)
+    {
+        var fonte = await db.IaFontes.AsNoTracking()
+            .FirstOrDefaultAsync(f => f.Id == request.FonteId && f.ExcluidoEm == null, ct)
+            ?? throw new NaoEncontradoException("IaFonte", request.FonteId);
+
+        if (request.IntervaloMinutos < 5)
+            throw new ValidacaoException("pep.agenda_intervalo", "O intervalo mínimo da agenda é 5 minutos.");
+        if (request.MedicoRescanHoras is { } h && h < 1)
+            throw new ValidacaoException("pep.agenda_medico_rescan", "O re-scan de médicos precisa de pelo menos 1 hora.");
+        if (request.JanelaInicioLocal is null != request.JanelaFimLocal is null)
+            throw new ValidacaoException("pep.agenda_janela", "Informe início E fim da janela, ou nenhum dos dois.");
+
+        var agenda = await db.PepSincronizacaoAgendas.FirstOrDefaultAsync(a => a.FonteId == request.FonteId, ct);
+        if (agenda is null)
+        {
+            agenda = new PepSincronizacaoAgenda { FonteId = request.FonteId };
+            db.PepSincronizacaoAgendas.Add(agenda);
+        }
+        agenda.Ativo = request.Ativo;
+        agenda.IntervaloMinutos = request.IntervaloMinutos;
+        // Janela e pausa são PATCH, não PUT: a tela envia payload mínimo (ativo + intervalo) e,
+        // se sobrescrevêssemos com null, salvar pela UI apagaria em silêncio a janela noturna e
+        // a pausa administrativa configuradas por fora. Só muda quem foi informado — mesma regra
+        // já usada em MedicoRescanHoras. Para LIMPAR a janela, mande início e fim vazios juntos
+        // (o par é validado acima), e para tirar a pausa use PausadoAte no passado.
+        if (request.JanelaInicioLocal is not null || request.JanelaFimLocal is not null)
+        {
+            agenda.JanelaInicioLocal = request.JanelaInicioLocal;
+            agenda.JanelaFimLocal = request.JanelaFimLocal;
+        }
+        if (request.MedicoRescanHoras is { } rescan) agenda.MedicoRescanHoras = rescan;
+        if (request.PausadoAte is not null) agenda.PausadoAte = request.PausadoAte;
+        // Religar/editar zera o backoff — o operador acabou de mexer, quer ver rodando.
+        agenda.FalhasConsecutivas = 0;
+        agenda.ProximoRunEm = null;
+        agenda.AtualizadoEm = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+
+        return new AgendaPepDto(agenda.FonteId, fonte.Nome, agenda.Ativo, agenda.IntervaloMinutos,
+            agenda.JanelaInicioLocal, agenda.JanelaFimLocal, agenda.MedicoRescanHoras,
+            agenda.FalhasConsecutivas, agenda.ProximoRunEm, agenda.PausadoAte, agenda.AtualizadoEm);
+    }
+
+    public async Task<DiagnosticoPepDto> ObterDiagnosticoAsync(Guid fonteId, CancellationToken ct = default)
+    {
+        var fonte = await db.IaFontes.AsNoTracking()
+            .FirstOrDefaultAsync(f => f.Id == fonteId && f.ExcluidoEm == null, ct)
+            ?? throw new NaoEncontradoException("IaFonte", fonteId);
+        if (fonte.Tipo != TipoFonte.Salux || string.IsNullOrWhiteSpace(fonte.Slug))
+            throw new ValidacaoException("pep.diagnostico", "Diagnóstico disponível apenas para bases Salux com slug.");
+
+        var estado = await db.PepSincronizacaoEstados.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.FonteId == fonteId, ct);
+
+        // Pendências na ORIGEM desde cada marca (queries de contagem baratas/indexáveis).
+        long? pacPend = null, baaPend = null, fiaPend = null, edocLogPend = null;
+        if (!string.IsNullOrWhiteSpace(fonte.Host) && !string.IsNullOrWhiteSpace(fonte.SenhaCifrada))
+        {
+            await using var oracle = new Integracoes.Pep.Leitura.LeitorOracleHis(
+                fonte.Host!, fonte.Porta ?? 1521, fonte.Servico!, fonte.Usuario!,
+                protetor.Revelar(fonte.SenhaCifrada!), _timeoutSegundos, tentativasConexao: 1);
+            await oracle.AbrirAsync(ct, _ => { });
+
+            async Task<long> Contar(string sql) =>
+                (await oracle.LerAsync(sql, r => Col(r), ct)).FirstOrDefault();
+
+            if (estado?.UltimoSyncPacienteEm is { } mp)
+                pacPend = await Contar(Estrategias.Salux.SaluxImportacaoStrategy.SqlContagemPacientesPendentes(mp));
+            if (estado?.UltimoSyncBaaEm is { } mb)
+                baaPend = await Contar(Estrategias.Salux.SaluxImportacaoStrategy.SqlContagemBaasPendentes(mb));
+            if (estado?.UltimoSyncFiaEm is { } mf)
+                fiaPend = await Contar(Estrategias.Salux.SaluxImportacaoStrategy.SqlContagemFiasPendentes(mf));
+            if (estado?.UltimoSyncEdocLogId is { } ml)
+                edocLogPend = await Contar(Estrategias.Salux.SaluxImportacaoStrategy.SqlContagemEdocLogPendentes(ml));
+        }
+
+        var source = $"{Estrategias.Salux.SaluxFhirMapper.SourceBase}/salux/{fonte.Slug}";
+        var hubJson = await escritor.ObterEstatisticasAsync(source, ct);
+        var hub = JsonSerializer.Deserialize<JsonElement>(hubJson);
+
+        return new DiagnosticoPepDto(
+            fonte.Id, fonte.Nome, fonte.Slug!,
+            estado?.UltimoSyncMedicoEm, estado?.UltimoSyncPacienteEm, estado?.UltimoSyncBaaEm,
+            estado?.UltimoSyncEdocEm, estado?.UltimoSyncFiaEm, estado?.UltimoSyncEdocLogId,
+            pacPend, baaPend, fiaPend, edocLogPend, hub);
+
+        static long Col(Oracle.ManagedDataAccess.Client.OracleDataReader r) =>
+            r.IsDBNull(0) ? 0 : Convert.ToInt64(r.GetValue(0), System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
+    /// Para o run em andamento e, opcionalmente, PAUSA o motor. Sem a pausa, parar não é
+    /// backout: o cancelamento conta como sucesso no pós-run e o scheduler religa sozinho no
+    /// próximo intervalo (com agenda de 30 min, a importação renasce em até 30 min). Em
+    /// incidente é o oposto do que o operador espera.
+    /// </summary>
+    public async Task CancelarAsync(int? pausarHoras = null, CancellationToken ct = default)
+    {
+        var vivo = estadoVivo.ObterAtual()
+            ?? throw new ConflitoException("pep.sem_importacao", "Não há importação em andamento para parar.");
 
         if (!estadoVivo.Cancelar())
             throw new ConflitoException("pep.cancelamento_indisponivel",
                 "Não foi possível solicitar o cancelamento — a importação pode já ter finalizado.");
 
         logger.LogInformation("Cancelamento de importação solicitado por {Usuario}.", usuarioAtual.UsuarioId);
-        return Task.CompletedTask;
+
+        if (pausarHoras is { } horas && horas > 0 && vivo.FonteId is { } fonteId)
+        {
+            await PausarMotorAsync(fonteId, horas, ct);
+            logger.LogWarning(
+                "Motor da base {Fonte} PAUSADO por {Horas}h junto com a parada, por {Usuario}.",
+                fonteId, horas, usuarioAtual.UsuarioId);
+        }
+    }
+
+    /// <summary>
+    /// Pausa administrativa do motor de uma base: <paramref name="horas"/> &gt; 0 pausa até
+    /// lá; null ou 0 RETOMA (limpa a pausa). Para desligar de vez, desative a agenda.
+    /// </summary>
+    public async Task<AgendaPepDto> PausarMotorAsync(Guid fonteId, int? horas, CancellationToken ct = default)
+    {
+        var agenda = await db.PepSincronizacaoAgendas.FirstOrDefaultAsync(a => a.FonteId == fonteId, ct)
+            ?? throw new NaoEncontradoException("PepSincronizacaoAgenda", fonteId);
+
+        agenda.PausadoAte = horas is { } h && h > 0 ? DateTime.UtcNow.AddHours(Math.Min(h, 24 * 30)) : null;
+        agenda.AtualizadoEm = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+
+        var nome = await db.IaFontes.AsNoTracking()
+            .Where(f => f.Id == fonteId).Select(f => f.Nome).FirstOrDefaultAsync(ct) ?? string.Empty;
+        return new AgendaPepDto(
+            agenda.FonteId, nome, agenda.Ativo, agenda.IntervaloMinutos,
+            agenda.JanelaInicioLocal, agenda.JanelaFimLocal, agenda.MedicoRescanHoras,
+            agenda.FalhasConsecutivas, agenda.ProximoRunEm, agenda.PausadoAte, agenda.AtualizadoEm);
     }
 
     public async Task<StatusImportacaoDto> ObterStatusAsync(CancellationToken ct = default)
@@ -173,7 +389,8 @@ public sealed class PepSincronizacaoService(
         var execs = await q.OrderByDescending(e => e.IniciadoEm).Take(50).ToListAsync(ct);
         return execs.Select(e => new ExecucaoImportacaoDto(
             e.Id, e.FonteId, e.FonteNome, e.Modo.ToString(), e.Escopo.ToString(), e.Status.ToString(),
-            e.IniciadoEm, e.FinalizadoEm, e.DuracaoSegundos, Contadores(e), e.TemposJson, e.MensagemErro)).ToList();
+            e.IniciadoEm, e.FinalizadoEm, e.DuracaoSegundos, Contadores(e), e.TemposJson, e.MensagemErro,
+            e.Disparo.ToString())).ToList();
     }
 
     public async Task<IReadOnlyList<FalhaImportacaoDto>> ListarFalhasAsync(
@@ -187,6 +404,108 @@ public sealed class PepSincronizacaoService(
         var falhas = await q.OrderByDescending(f => f.CriadoEm).Take(1000).ToListAsync(ct);
         return falhas.Select(f => new FalhaImportacaoDto(
             f.Id, f.ExecucaoId, f.FonteId, f.FonteSlug, f.CdPaciente, f.Mensagem, f.CriadoEm, f.ResolvidoEm)).ToList();
+    }
+
+    /// <summary>
+    /// Retrato das divergências já conhecidas da base: CPF → congelar? Carregado uma vez por run.
+    /// Congelam as que ainda não têm veredicto (pendente/não conclusiva) e as que já apontaram
+    /// contra a origem (hub correto / ambos negados). Não congelam — mas continuam conhecidas,
+    /// para não re-registrar — "origem correta" (aí a origem deve mesmo corrigir o hub) e as
+    /// ignoradas por um operador.
+    /// </summary>
+    private async Task<IReadOnlyDictionary<string, bool>> CarregarDivergenciasConhecidasAsync(
+        Guid fonteId, CancellationToken ct)
+    {
+        var linhas = await db.PepDivergenciasIdentidade.AsNoTracking()
+            .Where(d => d.FonteId == fonteId)
+            .Select(d => new { d.Cpf, d.Status, d.Veredicto })
+            .ToListAsync(ct);
+
+        var mapa = new Dictionary<string, bool>(linhas.Count, StringComparer.Ordinal);
+        foreach (var l in linhas)
+        {
+            var congelar = l.Status switch
+            {
+                StatusDivergenciaIdentidade.Ignorada => false,
+                StatusDivergenciaIdentidade.Verificada =>
+                    l.Veredicto is VeredictoDivergenciaIdentidade.HubCorreto
+                        or VeredictoDivergenciaIdentidade.AmbosNegados,
+                _ => true, // pendente / não conclusiva → na dúvida, o hub prevalece
+            };
+            mapa[l.Cpf] = congelar;
+        }
+        return mapa;
+    }
+
+    public async Task<IReadOnlyList<DivergenciaIdentidadeDto>> ListarDivergenciasAsync(
+        Guid? fonteId = null, StatusDivergenciaIdentidade? status = null, CancellationToken ct = default)
+    {
+        var q = db.PepDivergenciasIdentidade.AsNoTracking().AsQueryable();
+        if (fonteId is { } fid) q = q.Where(d => d.FonteId == fid);
+        if (status is { } st) q = q.Where(d => d.Status == st);
+
+        var linhas = await q
+            .OrderBy(d => d.Status)
+            .ThenByDescending(d => d.AtualizadoEm)
+            .Take(1000)
+            .ToListAsync(ct);
+
+        return linhas.Select(d => new DivergenciaIdentidadeDto(
+            d.Id, d.FonteId, d.FonteSlug, d.CdPaciente, d.Cpf, d.Tipo.ToString(),
+            d.ValorOrigem, d.ValorHub, d.NomeOrigem, d.NomeHub, d.PatientIdHub,
+            d.Status.ToString(), d.Veredicto.ToString(), d.VeredictoMotor, d.ValorCorreto,
+            d.NomeOficial, d.Detalhe, d.Ocorrencias, d.CriadoEm, d.AtualizadoEm,
+            d.VerificadoEm, d.ResolvidoEm)).ToList();
+    }
+
+    public async Task<ResumoDivergenciasDto> ResumoDivergenciasAsync(
+        Guid? fonteId = null, CancellationToken ct = default)
+    {
+        var q = db.PepDivergenciasIdentidade.AsNoTracking().AsQueryable();
+        if (fonteId is { } fid) q = q.Where(d => d.FonteId == fid);
+
+        var porStatus = await q.GroupBy(d => d.Status)
+            .Select(g => new { Status = g.Key, N = g.Count() }).ToListAsync(ct);
+        var porVeredicto = await q.Where(d => d.Status == StatusDivergenciaIdentidade.Verificada)
+            .GroupBy(d => d.Veredicto)
+            .Select(g => new { V = g.Key, N = g.Count() }).ToListAsync(ct);
+
+        int St(StatusDivergenciaIdentidade s) => porStatus.FirstOrDefault(x => x.Status == s)?.N ?? 0;
+        int Vr(VeredictoDivergenciaIdentidade v) => porVeredicto.FirstOrDefault(x => x.V == v)?.N ?? 0;
+
+        return new ResumoDivergenciasDto(
+            Total: porStatus.Sum(x => x.N),
+            Pendentes: St(StatusDivergenciaIdentidade.Pendente),
+            NaoConclusivas: St(StatusDivergenciaIdentidade.NaoConclusiva),
+            Ignoradas: St(StatusDivergenciaIdentidade.Ignorada),
+            OrigemCorreta: Vr(VeredictoDivergenciaIdentidade.OrigemCorreta),
+            HubCorreto: Vr(VeredictoDivergenciaIdentidade.HubCorreto),
+            AmbosNegados: Vr(VeredictoDivergenciaIdentidade.AmbosNegados),
+            Congelados: St(StatusDivergenciaIdentidade.Pendente)
+                + St(StatusDivergenciaIdentidade.NaoConclusiva)
+                + Vr(VeredictoDivergenciaIdentidade.HubCorreto)
+                + Vr(VeredictoDivergenciaIdentidade.AmbosNegados));
+    }
+
+    public async Task<ResultadoVerificacaoDivergencias> VerificarDivergenciasAsync(
+        Guid? fonteId = null, int? max = null, CancellationToken ct = default) =>
+        await verificadorDivergencias.VerificarPendentesAsync(fonteId, max ?? _maxArbitragensPorRun, ct);
+
+    public async Task<DivergenciaIdentidadeDto> IgnorarDivergenciaAsync(
+        Guid id, string? motivo = null, CancellationToken ct = default)
+    {
+        var d = await db.PepDivergenciasIdentidade.FirstOrDefaultAsync(x => x.Id == id, ct)
+            ?? throw new NaoEncontradoException("Divergência", id);
+
+        d.Status = StatusDivergenciaIdentidade.Ignorada;
+        d.ResolvidoEm = DateTime.UtcNow;
+        d.ResolvidoPor = usuarioAtual.UsuarioId;
+        d.AtualizadoEm = DateTime.UtcNow;
+        if (!string.IsNullOrWhiteSpace(motivo))
+            d.Detalhe = motivo.Length <= 500 ? motivo : motivo[..500];
+        await db.SaveChangesAsync(ct);
+
+        return (await ListarDivergenciasAsync(d.FonteId, null, ct)).First(x => x.Id == id);
     }
 
     public async Task ExecutarAsync(PepImportacaoJob job, CancellationToken ct = default)
@@ -213,6 +532,7 @@ public sealed class PepSincronizacaoService(
         estadoVivo.Iniciar(execucao.Id, execucao.FonteId, execucao.FonteNome, execucao.Modo, execucao.Escopo, execucao.IniciadoEm, progresso, cts);
 
         RegistradorFalhasPep? registrador = null;
+        RegistradorDivergenciasPep? divergencias = null;
         try
         {
             if (fonte is null) throw new ValidacaoException("pep.base", "Base não encontrada.");
@@ -230,10 +550,17 @@ public sealed class PepSincronizacaoService(
                 PacienteEm = estadoEntidade?.UltimoSyncPacienteEm,
                 BaaEm = estadoEntidade?.UltimoSyncBaaEm,
                 EdocEm = estadoEntidade?.UltimoSyncEdocEm,
+                FiaEm = estadoEntidade?.UltimoSyncFiaEm,
+                EdocLogId = estadoEntidade?.UltimoSyncEdocLogId,
             };
 
             // Trilha durável de falhas (grava na hora, sobrevive a crash; alimenta o reimport por cd).
             registrador = new RegistradorFalhasPep(dbFactory, logger, execucao.Id, fonte.Id, fonte.Slug!);
+
+            // Divergências de identidade: sink durável + o retrato do que JÁ é conhecido desta
+            // base, para o upsert saber quando congelar sem consultar o banco no caminho quente.
+            divergencias = new RegistradorDivergenciasPep(dbFactory, logger, execucao.Id, fonte.Id, fonte.Slug!);
+            var conhecidas = await CarregarDivergenciasConhecidasAsync(fonte.Id, ct);
 
             var contexto = new ContextoImportacaoPep
             {
@@ -247,12 +574,38 @@ public sealed class PepSincronizacaoService(
                 Progresso = progresso,
                 BaseSlug = fonte.Slug!,
                 Falhas = registrador,
+                Divergencias = divergencias,
+                DivergenciasConhecidas = conhecidas,
                 // Persiste o cursor de retomada num contexto isolado (não interfere no
                 // 'db' scoped que grava a execução). Chamado em série, um por bloco.
                 SalvarCursorPaciente = (cursor, c) => SalvarCursorPacienteAsync(fonte.Id, cursor, c),
+                // Persiste a marca d'água ao fim de cada fase concluída — um run que morre
+                // no meio preserva o avanço das fases anteriores (D2, ADR-0024).
+                SalvarMarca = (m, c) => SalvarMarcaAsync(fonte.Id, m, c),
             };
 
             await estrategia.ImportarAsync(contexto, tokenRun);
+
+            // Fase final: arbitrar as divergências de identidade contra a consulta oficial de CPF.
+            // Drena o sink ANTES — o que foi detectado agora precisa estar no banco para entrar
+            // nesta rodada. Nunca derruba o run: o dado clínico já está salvo.
+            progresso.FaseAtual = "conciliando identidades divergentes";
+            await divergencias.DisposeAsync();
+            divergencias = null;
+            try
+            {
+                var arb = await verificadorDivergencias.VerificarPendentesAsync(
+                    fonte.Id, _maxArbitragensPorRun, tokenRun);
+                if (arb.Analisadas > 0)
+                    logger.LogInformation(
+                        "Execução {Id}: {N} divergências arbitradas (origem {O} · hub {H} · ambos negados {A} · inconclusivas {I}).",
+                        execucao.Id, arb.Analisadas, arb.OrigemCorreta, arb.HubCorreto, arb.AmbosNegados, arb.NaoConclusivas);
+            }
+            catch (OperationCanceledException) when (cts.IsCancellationRequested) { throw; }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Arbitragem de divergências da execução {Id} falhou (o run segue válido).", execucao.Id);
+            }
 
             // Sucesso: persiste contadores, tempos e watermarks.
             AplicarContadores(execucao, progresso);
@@ -291,17 +644,74 @@ public sealed class PepSincronizacaoService(
         finally
         {
             estadoVivo.Finalizar();
-            // Drena o que faltou da trilha de falhas antes de fechar a execução.
+            // Drena o que faltou das trilhas antes de fechar a execução (em run cancelado/com
+            // erro o sink de divergências ainda não passou pela drenagem da fase de arbitragem).
             if (registrador is not null) await registrador.DisposeAsync();
-            try { await db.SaveChangesAsync(ct); }
+            if (divergencias is not null) await divergencias.DisposeAsync();
+            try
+            {
+                if (execucao.Disparo == DisparoSincronizacao.Agendado)
+                    await AtualizarAgendaPosRunAsync(execucao, ct);
+                await db.SaveChangesAsync(ct);
+            }
             catch (Exception ex) { logger.LogError(ex, "Falha ao salvar resultado da execução {Id}.", execucao.Id); }
         }
+    }
+
+    /// <summary>
+    /// Pós-run de execução AGENDADA: falha alimenta o backoff exponencial; sucesso (ou
+    /// cancelamento manual) zera. O alerta de falhas consecutivas usa marcador estável no log.
+    /// </summary>
+    private async Task AtualizarAgendaPosRunAsync(PepSincronizacaoExecucao execucao, CancellationToken ct)
+    {
+        var agenda = await db.PepSincronizacaoAgendas.FirstOrDefaultAsync(a => a.FonteId == execucao.FonteId, ct);
+        if (agenda is null) return;
+
+        var agora = DateTime.UtcNow;
+        if (execucao.Status == StatusSincronizacao.Erro)
+        {
+            agenda.FalhasConsecutivas++;
+            agenda.ProximoRunEm = Background.DecididorAgendaPep.ProximoAposErro(agenda, agora);
+            var limite = configuration.GetValue("Pep:Agenda:LimiteFalhasAlerta", 5);
+            if (agenda.FalhasConsecutivas >= limite)
+                logger.LogError("PEP_SYNC_FALHAS_CONSECUTIVAS: base {Fonte} falhou {N} execuções agendadas seguidas — próximo run em {Proximo:u}.",
+                    execucao.FonteNome, agenda.FalhasConsecutivas, agenda.ProximoRunEm);
+        }
+        else
+        {
+            agenda.FalhasConsecutivas = 0;
+            agenda.ProximoRunEm = Background.DecididorAgendaPep.ProximoAposSucesso(agenda, agora);
+        }
+        agenda.AtualizadoEm = agora;
     }
 
     /// <summary>
     /// Grava o cursor de retomada (cd_paciente do último bloco) num contexto próprio,
     /// fora da transação da execução — chamado a cada bloco do modo COMPLETO.
     /// </summary>
+    /// <summary>
+    /// Grava a marca d'água num contexto próprio, fora da transação da execução — chamado
+    /// pela estratégia ao FIM de cada fase concluída (médicos/pacientes/atendimentos).
+    /// </summary>
+    private async Task SalvarMarcaAsync(Guid fonteId, MarcaDagua marca, CancellationToken ct)
+    {
+        await using var ctx = await dbFactory.CreateDbContextAsync(ct);
+        var estado = await ctx.PepSincronizacaoEstados.FirstOrDefaultAsync(s => s.FonteId == fonteId, ct);
+        if (estado is null)
+        {
+            estado = new PepSincronizacaoEstado { FonteId = fonteId };
+            ctx.PepSincronizacaoEstados.Add(estado);
+        }
+        estado.UltimoSyncMedicoEm = marca.MedicoEm;
+        estado.UltimoSyncPacienteEm = marca.PacienteEm;
+        estado.UltimoSyncBaaEm = marca.BaaEm;
+        estado.UltimoSyncEdocEm = marca.EdocEm;
+        estado.UltimoSyncFiaEm = marca.FiaEm;
+        estado.UltimoSyncEdocLogId = marca.EdocLogId;
+        estado.AtualizadoEm = DateTime.UtcNow;
+        await ctx.SaveChangesAsync(ct);
+    }
+
     private async Task SalvarCursorPacienteAsync(Guid fonteId, long? cursor, CancellationToken ct)
     {
         await using var ctx = await dbFactory.CreateDbContextAsync(ct);
@@ -328,6 +738,8 @@ public sealed class PepSincronizacaoService(
         estado.UltimoSyncPacienteEm = marca.PacienteEm;
         estado.UltimoSyncBaaEm = marca.BaaEm;
         estado.UltimoSyncEdocEm = marca.EdocEm;
+        estado.UltimoSyncFiaEm = marca.FiaEm;
+        estado.UltimoSyncEdocLogId = marca.EdocLogId;
         estado.AtualizadoEm = DateTime.UtcNow;
     }
 

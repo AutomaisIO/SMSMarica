@@ -24,6 +24,9 @@ public class PepSincronizacaoExecucao
 
     public StatusSincronizacao Status { get; set; } = StatusSincronizacao.Pendente;
 
+    /// <summary>Origem do disparo (operador ou scheduler). Runs antigos ficam como Manual.</summary>
+    public DisparoSincronizacao Disparo { get; set; } = DisparoSincronizacao.Manual;
+
     public DateTime IniciadoEm { get; set; }
     public DateTime? FinalizadoEm { get; set; }
     public double? DuracaoSegundos { get; set; }

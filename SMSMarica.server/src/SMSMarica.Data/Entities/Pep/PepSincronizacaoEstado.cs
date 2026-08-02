@@ -16,6 +16,12 @@ public class PepSincronizacaoEstado
     public DateTime? UltimoSyncBaaEm { get; set; }
     public DateTime? UltimoSyncEdocEm { get; set; }
 
+    /// <summary>Internação (FIA): máximo de GREATEST(dt_baixa, dt_alta) importado — ADR-0025.</summary>
+    public DateTime? UltimoSyncFiaEm { get; set; }
+
+    /// <summary>CDC de eDoc: último ID_EDOC_MOVIMENTO_LOG processado (poll por PK — ADR-0024).</summary>
+    public long? UltimoSyncEdocLogId { get; set; }
+
     /// <summary>
     /// Cursor de retomada do modo COMPLETO (escopo Tudo): <c>cd_paciente</c> do
     /// último bloco totalmente processado (paginação keyset, <c>cd_paciente DESC</c>).

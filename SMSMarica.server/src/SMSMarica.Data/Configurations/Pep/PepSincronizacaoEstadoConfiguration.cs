@@ -16,6 +16,8 @@ internal sealed class PepSincronizacaoEstadoConfiguration : IEntityTypeConfigura
         builder.Property(x => x.UltimoSyncPacienteEm).HasColumnName("ultimo_sync_paciente_em");
         builder.Property(x => x.UltimoSyncBaaEm).HasColumnName("ultimo_sync_baa_em");
         builder.Property(x => x.UltimoSyncEdocEm).HasColumnName("ultimo_sync_edoc_em");
+        builder.Property(x => x.UltimoSyncFiaEm).HasColumnName("ultimo_sync_fia_em");
+        builder.Property(x => x.UltimoSyncEdocLogId).HasColumnName("ultimo_sync_edoc_log_id");
         builder.Property(x => x.PacienteCursorCd).HasColumnName("paciente_cursor_cd");
         builder.Property(x => x.AtualizadoEm).HasColumnName("atualizado_em").IsRequired();
     }

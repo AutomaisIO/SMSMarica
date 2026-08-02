@@ -44,8 +44,18 @@ internal sealed class SaluxFhirMapper(string slug, string source)
     private const string SysObsCat = "http://terminology.hl7.org/CodeSystem/observation-category";
     private const string SysBaa = "urn:salux:baa";
     private const string SysEdoc = "urn:salux:edoc";
+    private const string SysPresc = "urn:salux:presc";
     private const string SysMatmed = "urn:salux:matmed";
     private const string SysRisco = "urn:salux:classificacao-risco";
+
+    // Internação (ADR-0025)
+    private const string SysFia = "urn:salux:fia";
+    private const string SysUnidade = "urn:salux:unidade";
+    private const string SysQuarto = "urn:salux:quarto";
+    private const string SysLeito = "urn:salux:leito";
+    private const string SysPriority = "http://terminology.hl7.org/CodeSystem/v3-ActPriority";
+    private const string SysDischarge = "http://terminology.hl7.org/CodeSystem/discharge-disposition";
+    private const string SysLocPhysType = "http://terminology.hl7.org/CodeSystem/location-physical-type";
 
     // Sistemas de chave NACIONAL (globais) — chave de dedup canônica de Patient/Practitioner.
     public const string IdentCpf = SysCpf;
@@ -53,10 +63,19 @@ internal sealed class SaluxFhirMapper(string slug, string source)
     /// <summary>System do código interno do paciente no Salux (valor é prefixado pelo slug).</summary>
     public const string IdentSaluxPaciente = SysSaluxPac;
 
+    /// <summary>Systems dos identifiers determinísticos dos recursos clínicos (valores prefixados pelo slug).</summary>
+    public const string IdentSaluxBaa = SysBaa;
+    public const string IdentSaluxEdoc = SysEdoc;
+    public const string IdentSaluxPresc = SysPresc;
+    public const string IdentSaluxFia = SysFia;
+    public const string IdentSaluxUnidade = SysUnidade;
+    public const string IdentSaluxQuarto = SysQuarto;
+    public const string IdentSaluxLeito = SysLeito;
+
     private readonly string _slug = slug;
 
     /// <summary>Prefixa um código interno do Salux com o slug da base (unicidade + rastreio).</summary>
-    private string Pref(string valor) => $"{_slug}:{valor}";
+    public string Pref(string valor) => $"{_slug}:{valor}";
 
     /// <summary>Extrai o código nativo de um identifier prefixado por este slug (ou null se for de outra base).</summary>
     public string? DesprefixarPaciente(string? valor) =>
@@ -326,7 +345,158 @@ internal sealed class SaluxFhirMapper(string slug, string source)
             Subject = new ResourceReference(patientRef),
             Encounter = new ResourceReference(encRef),
             Code = code,
+            // Identifier determinístico (ADR-0024): 1 Condition por BAA → reimport atualiza, não duplica.
+            Identifier = [new Identifier(SysBaa, Pref(b.Chave) + ":cond")],
         };
+    }
+
+    // ---------------- Internação: FIA → Encounter IMP + Location (ADR-0025) ----------------
+
+    /// <summary>Janela além da qual FIA sem alta é "zumbi" (mesma régua do painel).</summary>
+    public static readonly TimeSpan JanelaEmCurso = TimeSpan.FromDays(120);
+
+    /// <summary>
+    /// Encounter class=IMP a partir da FIA. Diagnóstico vai como Condition separada (mesmo
+    /// padrão do BAA — o consumidor liga por Condition.encounter, não por Encounter.diagnosis).
+    /// Óbito hospitalar vira dischargeDisposition=exp; o óbito do PACIENTE continua fluindo
+    /// só por paciente.dt_obito no fluxo canônico (duas fontes = conflito).
+    /// </summary>
+    public Encounter BuildEncounterInternacao(FiaLinha f, string patientRef, string? leitoRef, FiaLeitoLinha? leitoAtual, DateTime agoraUtc)
+    {
+        // status R4 (não existe "discharged" em R4): em curso / finalizada / zumbi.
+        var baixaUtc = Leitura.SaluxTempo.ParseUtc(f.DtBaixa);
+        var status = f.DtAlta is not null ? Encounter.EncounterStatus.Finished
+            : baixaUtc is { } b && agoraUtc - b <= JanelaEmCurso ? Encounter.EncounterStatus.InProgress
+            : Encounter.EncounterStatus.Unknown;
+
+        var enc = new Encounter
+        {
+            Meta = Meta(),
+            Status = status,
+            Class = new Coding { System = SysClass, Code = "IMP", Display = "inpatient encounter" },
+            Subject = new ResourceReference(patientRef),
+            Identifier = [new Identifier(SysFia, Pref(f.Chave))],
+        };
+
+        if (Dt(f.DtBaixa) is { } inicio)
+        {
+            enc.Period = new Period { Start = inicio };
+            if (Dt(f.DtAlta) is { } fim) enc.Period.End = fim;
+        }
+
+        // Caráter SUS → v3-ActPriority. FIA.ID_INTERNACAO ('U'/'E') NÃO é usado — no HMCML é
+        // convenção de recepção, não urgência/eletiva (fato documentado no painel/ADR-0025).
+        if (PriorityDoCarater(f.Carater) is { } prio)
+            enc.Priority = new CodeableConcept(SysPriority, prio.Codigo, prio.Display, null);
+
+        // Óbito hospitalar. Alta comum NÃO recebe código — a FIA não tem motivo de alta
+        // levantado; inventar "home" seria fabricar dado.
+        if (S(f.NrObito) is not null)
+            enc.Hospitalization = new Encounter.HospitalizationComponent
+            {
+                DischargeDisposition = new CodeableConcept(SysDischarge, "exp", "Expired", null),
+            };
+
+        if (leitoRef is not null)
+        {
+            var loc = new Encounter.LocationComponent
+            {
+                Location = new ResourceReference(leitoRef),
+                Status = status == Encounter.EncounterStatus.InProgress && leitoAtual?.DtSaidaLeito is null
+                    ? Encounter.EncounterLocationStatus.Active
+                    : Encounter.EncounterLocationStatus.Completed,
+            };
+            if (Dt(leitoAtual?.DtTransferencia) is { } t)
+            {
+                loc.Period = new Period { Start = t };
+                if (Dt(leitoAtual?.DtSaidaLeito) is { } sfim) loc.Period.End = sfim;
+            }
+            enc.Location = [loc];
+        }
+
+        var extras = new Dictionary<string, string>();
+        if (S(f.DtPrevisaoAlta) is { } prev) extras["dt_previsao_alta"] = prev;
+        if (S(f.DtAltaMedica) is { } am) extras["dt_alta_medica"] = am;
+        if (S(f.Carater) is { } car) extras["carater_internacao"] = car;
+        if (S(f.CaraterDs) is { } cds) extras["carater_internacao_ds"] = cds;
+        Extras(enc, extras);
+        return enc;
+    }
+
+    /// <summary>Caráter de internação SUS → v3-ActPriority (EL eletivo / UR urgência). Null = não mapeável.</summary>
+    private static (string Codigo, string Display)? PriorityDoCarater(string? carater) => S(carater) switch
+    {
+        "1" or "11" => ("EL", "elective"),
+        "2" or "20" or "21" or "26" or "27" or "28" or "29" => ("UR", "urgent"),
+        _ => null,
+    };
+
+    public Condition? BuildConditionFia(FiaLinha f, string patientRef, string encRef)
+    {
+        var cid = S(f.Cid);
+        if (cid is null) return null;
+        var ds = S(f.CidDs);
+
+        var codigo = LimparCodigoCid(cid);
+        var code = new CodeableConcept { Text = ds ?? cid };
+        if (codigo is not null)
+            code.Coding = [new Coding { System = SysCid, Code = codigo, Display = ds }];
+
+        var cond = new Condition
+        {
+            Meta = Meta(),
+            Subject = new ResourceReference(patientRef),
+            Encounter = new ResourceReference(encRef),
+            Code = code,
+            Identifier = [new Identifier(SysFia, Pref(f.Chave) + ":cond")],
+        };
+        return cond;
+    }
+
+    public Location BuildLocationSetor(UnidadeLinha u) => LocationBase(
+        SysUnidade, Pref(u.Chave), S(u.Nome) ?? $"Setor {u.Cd}", "wa", "Ward",
+        (u.Condicao ?? "A").Trim().ToUpperInvariant() == "A" ? Location.LocationStatus.Active : Location.LocationStatus.Inactive,
+        partOfRef: null);
+
+    public Location BuildLocationQuarto(QuartoLinha q, string? setorRef)
+    {
+        var loc = LocationBase(SysQuarto, Pref(q.Chave), $"Quarto {S(q.CdQuarto)}", "ro", "Room",
+            Location.LocationStatus.Active, setorRef);
+        var extras = new Dictionary<string, string>();
+        if (S(q.Isolamento) is { } iso) extras["in_isolamento"] = iso;
+        if (S(q.Sexo) is { } sx) extras["sexo"] = sx;
+        Extras(loc, extras);
+        return loc;
+    }
+
+    public Location BuildLocationLeito(LeitoLinha l, string? quartoRef)
+    {
+        // Bloqueado ('F') é estado semi-duradouro → suspended; desativado → inactive.
+        // Ocupado/livre é foto operacional e NÃO entra no hub (ADR-0025).
+        var status = (l.IdCondicao ?? "A").Trim().ToUpperInvariant() == "I" ? Location.LocationStatus.Inactive
+            : (l.IdSitLeito ?? string.Empty).Trim().ToUpperInvariant() == "F" ? Location.LocationStatus.Suspended
+            : Location.LocationStatus.Active;
+        var loc = LocationBase(SysLeito, Pref(l.Chave), $"Leito {S(l.CdLeito)}", "bd", "Bed", status, quartoRef);
+        var extras = new Dictionary<string, string>();
+        if (S(l.IdLeito) is { } tipo) extras["id_leito"] = tipo; // I/E/O/C/R/V
+        Extras(loc, extras);
+        return loc;
+    }
+
+    private Location LocationBase(string system, string valor, string nome, string physCode, string physDisplay,
+        Location.LocationStatus status, string? partOfRef)
+    {
+        var loc = new Location
+        {
+            Meta = Meta(),
+            Identifier = [new Identifier(system, valor)],
+            Name = nome,
+            Status = status,
+            Mode = Location.LocationMode.Instance,
+            PhysicalType = new CodeableConcept(SysLocPhysType, physCode, physDisplay, null),
+        };
+        if (partOfRef is not null) loc.PartOf = new ResourceReference(partOfRef);
+        return loc;
     }
 
     /// <summary>
@@ -366,6 +536,8 @@ internal sealed class SaluxFhirMapper(string slug, string source)
         var mr = new MedicationRequest
         {
             Meta = Meta(),
+            // Identifier determinístico por ITEM de prescrição (nr_prescricao + seq_item).
+            Identifier = [new Identifier(SysPresc, Pref($"{item.ChaveBaa}-{item.NrPrescricao}-{item.SeqItem}"))],
             Status = MedicationRequest.MedicationrequestStatus.Completed,
             Intent = MedicationRequest.MedicationRequestIntent.Order,
             Medication = new CodeableConcept
@@ -458,9 +630,10 @@ internal sealed class SaluxFhirMapper(string slug, string source)
         return o;
     }
 
-    public Observation BuildObsRisco(string patientRef, string encRef, string? eff, string cor)
+    public Observation BuildObsRisco(string chaveBaa, string patientRef, string encRef, string? eff, string cor)
     {
         var o = Esqueleto(patientRef, encRef, eff, "survey");
+        o.Identifier = [new Identifier(SysBaa, Pref(chaveBaa) + ":risco")];
         o.Code = new CodeableConcept
         {
             Coding = [new Coding { System = SysRisco, Code = "classificacao-risco", Display = "Classificação de risco" }],
@@ -484,7 +657,7 @@ internal sealed class SaluxFhirMapper(string slug, string source)
         return null;
     }
 
-    public List<Observation> ObservationsDeEdoc(IReadOnlyList<EdocItemLinha> itens, string patientRef, string encRef, string? effective)
+    public List<Observation> ObservationsDeEdoc(string chaveDoc, IReadOnlyList<EdocItemLinha> itens, string patientRef, string encRef, string? effective)
     {
         var porTipo = new Dictionary<string, string>();
         foreach (var it in itens.OrderBy(x => (x.Label ?? string.Empty).ToLowerInvariant().Contains("acolhimento") ? 0 : 1))
@@ -496,19 +669,33 @@ internal sealed class SaluxFhirMapper(string slug, string source)
         }
 
         var obs = new List<Observation>();
+        // Identifier determinístico: 1 Observation por TIPO de vital por documento.
+        void Ident(Observation o, string tipo) => o.Identifier = [new Identifier(SysEdoc, Pref(chaveDoc) + ":" + tipo)];
+
         if (porTipo.TryGetValue("pa", out var pa))
         {
             var (sist, diast) = ParsePa(pa);
-            if (sist is not null || diast is not null) obs.Add(BuildObsPressao(patientRef, encRef, effective, sist, diast));
+            if (sist is not null || diast is not null)
+            {
+                var o = BuildObsPressao(patientRef, encRef, effective, sist, diast);
+                Ident(o, "pa");
+                obs.Add(o);
+            }
+        }
+        void Add(string tipo, string loinc, string display, decimal valor, string unidade, string ucum)
+        {
+            var o = BuildObsQuantity(patientRef, encRef, effective, loinc, display, valor, unidade, ucum);
+            Ident(o, tipo);
+            obs.Add(o);
         }
         if (porTipo.TryGetValue("fc", out var fc) && Num(fc) is { } vfc)
-            obs.Add(BuildObsQuantity(patientRef, encRef, effective, "8867-4", "Frequência cardíaca", vfc, "bpm", "/min"));
+            Add("fc", "8867-4", "Frequência cardíaca", vfc, "bpm", "/min");
         if (porTipo.TryGetValue("fr", out var fr) && Num(fr) is { } vfr)
-            obs.Add(BuildObsQuantity(patientRef, encRef, effective, "9279-1", "Frequência respiratória", vfr, "irpm", "/min"));
+            Add("fr", "9279-1", "Frequência respiratória", vfr, "irpm", "/min");
         if (porTipo.TryGetValue("temp", out var tp) && Num(tp) is { } vtp)
-            obs.Add(BuildObsQuantity(patientRef, encRef, effective, "8310-5", "Temperatura", vtp, "°C", "Cel"));
+            Add("temp", "8310-5", "Temperatura", vtp, "°C", "Cel");
         if (porTipo.TryGetValue("spo2", out var sp) && Num(sp) is { } vsp)
-            obs.Add(BuildObsQuantity(patientRef, encRef, effective, "2708-6", "Saturação de O₂", vsp, "%", "%"));
+            Add("spo2", "2708-6", "Saturação de O₂", vsp, "%", "%");
         return obs;
     }
 

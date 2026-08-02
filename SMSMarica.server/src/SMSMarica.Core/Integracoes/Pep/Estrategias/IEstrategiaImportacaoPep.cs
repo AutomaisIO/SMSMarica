@@ -1,3 +1,4 @@
+using SMSMarica.Core.Integracoes.Pep.Divergencias;
 using SMSMarica.Core.Integracoes.Pep.Falhas;
 using SMSMarica.Core.Integracoes.Pep.Fhir;
 using SMSMarica.Core.Integracoes.Pep.Progresso;
@@ -43,12 +44,19 @@ public sealed record OpcoesImportacao(
     /// a paginação a partir dele (retoma de onde parou ou de um ponto manual).
     /// Null = começa do topo. Ignorado nos demais modos/escopos.
     /// </summary>
-    long? CursorPacienteInicial = null);
+    long? CursorPacienteInicial = null,
+    /// <summary>
+    /// Força o re-scan integral de médicos mesmo com a marca preenchida. O scheduler liga
+    /// isto quando a marca de médicos envelhece além de <c>MedicoRescanHoras</c> da agenda.
+    /// </summary>
+    bool ForcarMedicos = false);
 
 /// <summary>
 /// Marca d'água por entidade (in/out). No modo incremental a estratégia usa os valores de
-/// entrada como filtro <c>since</c> e atualiza para o máximo importado; o orquestrador
-/// persiste só ao concluir com sucesso.
+/// entrada como filtro <c>since</c> e atualiza para o MÁXIMO DO TIMESTAMP DA ORIGEM
+/// processado (nunca "agora"). A estratégia persiste ao fim de cada fase concluída via
+/// <see cref="ContextoImportacaoPep.SalvarMarca"/> — um run que morre no meio preserva o
+/// avanço das fases anteriores (ADR-0024); o orquestrador persiste de novo no sucesso.
 /// </summary>
 public sealed class MarcaDagua
 {
@@ -56,6 +64,15 @@ public sealed class MarcaDagua
     public DateTime? PacienteEm { get; set; }
     public DateTime? BaaEm { get; set; }
     public DateTime? EdocEm { get; set; }
+
+    /// <summary>Internação (FIA): máximo de GREATEST(dt_baixa, dt_alta) processado — ADR-0025.</summary>
+    public DateTime? FiaEm { get; set; }
+
+    /// <summary>
+    /// CDC de eDoc: último <c>ID_EDOC_MOVIMENTO_LOG</c> processado (poll por PK sequencial —
+    /// as tabelas de log não têm índice por data). Null = ainda não ancorado.
+    /// </summary>
+    public long? EdocLogId { get; set; }
 }
 
 /// <summary>Tudo que a estratégia precisa para rodar um run, mais o canal de progresso.</summary>
@@ -78,9 +95,37 @@ public sealed class ContextoImportacaoPep
     public IRegistradorFalhasPep? Falhas { get; init; }
 
     /// <summary>
+    /// Sink de divergências de identidade (origem × hub para o mesmo CPF). Null em cenários
+    /// sem persistência (testes) — a detecção simplesmente não é registrada.
+    /// </summary>
+    public IRegistradorDivergenciasPep? Divergencias { get; init; }
+
+    /// <summary>
+    /// Divergências de identidade JÁ CONHECIDAS desta base: CPF → <c>true</c> se o campo em
+    /// disputa deve ficar <b>congelado</b> (origem não sobrescreve o hub). Carregado uma vez no
+    /// início do run — são poucas centenas, e nada de I/O no caminho quente do upsert.
+    ///
+    /// <para>Congelam: pendente de arbitragem, não conclusiva, veredicto "hub correto" e
+    /// "ambos negados". NÃO congelam (mas continuam conhecidas, para não re-registrar):
+    /// veredicto "origem correta" — aí a origem deve mesmo corrigir o hub — e as que um
+    /// operador marcou como ignoradas.</para>
+    /// </summary>
+    public IReadOnlyDictionary<string, bool> DivergenciasConhecidas { get; init; } =
+        new Dictionary<string, bool>();
+
+    /// <summary>
     /// Callback para persistir o cursor de retomada (cd_paciente do último bloco
     /// concluído) a cada bloco do modo COMPLETO; recebe <c>null</c> ao terminar a
     /// base inteira. Null em cenários sem persistência (testes).
     /// </summary>
     public Func<long?, CancellationToken, Task>? SalvarCursorPaciente { get; init; }
+
+    /// <summary>
+    /// Callback para persistir a marca d'água ao FIM de cada fase concluída (médicos →
+    /// pacientes → atendimentos), num contexto isolado, fora da transação do run. A fase
+    /// precisa estar INTEIRA concluída antes de avançar a marca — a paginação é por cd, não
+    /// por data, então uma marca parcial pularia registros dos blocos não processados.
+    /// Null em cenários sem persistência (testes).
+    /// </summary>
+    public Func<MarcaDagua, CancellationToken, Task>? SalvarMarca { get; init; }
 }

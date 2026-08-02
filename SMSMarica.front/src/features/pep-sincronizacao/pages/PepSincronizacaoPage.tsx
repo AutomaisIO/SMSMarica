@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { DatabaseZap, Loader2, Play, RefreshCw, StopCircle } from 'lucide-react';
+import { Activity, DatabaseZap, Loader2, Play, RefreshCw, StopCircle } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
@@ -7,12 +7,17 @@ import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import {
+  useAgendasPep,
   useBasesPep,
   useCancelarImportacaoPep,
+  useDiagnosticoPep,
   useExecucoesPep,
   useIniciarImportacaoPep,
+  usePausarMotorPep,
+  useSalvarAgendaPep,
   useStatusPep,
 } from '@/features/pep-sincronizacao/api/queries';
+import { SecaoDivergencias } from '@/features/pep-sincronizacao/components/SecaoDivergencias';
 import type {
   EscopoSincronizacao,
   ModoSincronizacao,
@@ -95,6 +100,181 @@ function PainelContadores({ s }: { s: StatusImportacao }) {
   );
 }
 
+/** Rótulos amigáveis das contagens do hub no diagnóstico. */
+const ROTULOS_HUB: Record<string, string> = {
+  patients: 'Pacientes',
+  practitioners: 'Médicos',
+  encounters: 'Atendimentos',
+  encountersInternacao: 'Internações',
+  encountersInternacaoEmCurso: 'Internados agora',
+  conditions: 'Diagnósticos',
+  documentReferences: 'Documentos',
+  medicationRequests: 'Medicações',
+  observations: 'Sinais/risco',
+  locations: 'Setores/leitos',
+};
+
+/** Cartão do sincronismo contínuo (ADR-0024): agenda + diagnóstico origem×hub. */
+function SecaoContinuidade({ fonteId, podeEditar }: { fonteId: string; podeEditar: boolean }) {
+  const agendas = useAgendasPep();
+  const salvar = useSalvarAgendaPep();
+  const pausar = usePausarMotorPep();
+  const diagnostico = useDiagnosticoPep(fonteId);
+
+  const agenda = agendas.data?.find((a) => a.fonteId === fonteId);
+  const pausado = !!agenda?.pausadoAte && new Date(agenda.pausadoAte) > new Date();
+
+  function aoPausar() {
+    if (!fonteId) return;
+    if (pausado) {
+      pausar.mutate({ fonteId, horas: undefined });
+      return;
+    }
+    const resp = window.prompt('Pausar o motor por quantas horas? (o sincronismo não dispara nesse período)', '4');
+    if (resp === null) return;
+    const horas = Number(resp);
+    if (!Number.isFinite(horas) || horas <= 0) {
+      window.alert('Informe um número de horas maior que zero.');
+      return;
+    }
+    pausar.mutate({ fonteId, horas });
+  }
+  const [ativo, setAtivo] = useState(false);
+  const [intervalo, setIntervalo] = useState('30');
+  const [erro, setErro] = useState<string | null>(null);
+
+  useEffect(() => {
+    setAtivo(agenda?.ativo ?? false);
+    setIntervalo(String(agenda?.intervaloMinutos ?? 30));
+  }, [agenda?.fonteId, agenda?.ativo, agenda?.intervaloMinutos]);
+
+  if (!fonteId) return null;
+
+  function aoSalvar() {
+    setErro(null);
+    salvar.mutate(
+      { fonteId, ativo, intervaloMinutos: Number(intervalo) || 30 },
+      { onError: (err) => setErro(extrairMensagemDeErro(err)) },
+    );
+  }
+
+  const d = diagnostico.data;
+
+  return (
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-gray-900">
+        <Activity className="h-5 w-5 text-primary-600" />
+        Sincronismo contínuo
+      </h2>
+
+      <div className="flex flex-wrap items-end gap-4">
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input type="checkbox" checked={ativo} disabled={!podeEditar} onChange={(e) => setAtivo(e.target.checked)} />
+          Manter o hub em dia automaticamente (modo Incremental)
+        </label>
+        <Campo label="Intervalo (min)" htmlFor="pep-agenda-int">
+          <Input
+            id="pep-agenda-int"
+            type="number"
+            min={5}
+            className="w-24"
+            value={intervalo}
+            disabled={!podeEditar}
+            onChange={(e) => setIntervalo(e.target.value)}
+          />
+        </Campo>
+        <Button type="button" tamanho="sm" onClick={aoSalvar} disabled={!podeEditar || salvar.isPending}>
+          {salvar.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+          Salvar agenda
+        </Button>
+        {podeEditar && agenda ? (
+          <Button
+            type="button"
+            tamanho="sm"
+            variante={pausado ? 'secundaria' : 'danger'}
+            onClick={aoPausar}
+            disabled={pausar.isPending}
+          >
+            {pausar.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            {pausado ? 'Retomar motor' : 'Pausar motor'}
+          </Button>
+        ) : null}
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-3">
+        <div>
+          <span className="text-gray-500">Próximo ciclo:</span>{' '}
+          {pausado ? (
+            <span className="font-semibold text-red-600">
+              PAUSADO até {dataHora(agenda?.pausadoAte ?? null)}
+            </span>
+          ) : (
+            dataHora(agenda?.proximoRunEm ?? null)
+          )}
+        </div>
+        <div>
+          <span className="text-gray-500">Re-scan médicos/estrutura:</span> a cada {agenda?.medicoRescanHoras ?? 24}h
+        </div>
+        <div>
+          <span className="text-gray-500">Falhas consecutivas:</span>{' '}
+          {agenda && agenda.falhasConsecutivas > 0 ? (
+            <span className={agenda.falhasConsecutivas >= 5 ? 'font-semibold text-red-600' : 'font-semibold text-amber-600'}>
+              {agenda.falhasConsecutivas} {agenda.falhasConsecutivas >= 5 ? '— verificar túnel/hub!' : '(em backoff)'}
+            </span>
+          ) : (
+            '0'
+          )}
+        </div>
+      </div>
+
+      {erro ? (
+        <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{erro}</div>
+      ) : null}
+
+      <div className="mt-4 border-t border-gray-100 pt-4">
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            variante="secundaria"
+            tamanho="sm"
+            onClick={() => diagnostico.refetch()}
+            disabled={diagnostico.isFetching}
+          >
+            {diagnostico.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            {diagnostico.isFetching ? 'Consultando origem e hub…' : 'Ver diagnóstico origem × hub'}
+          </Button>
+          {diagnostico.isError ? (
+            <span className="text-sm text-red-600">{extrairMensagemDeErro(diagnostico.error)}</span>
+          ) : null}
+        </div>
+
+        {d ? (
+          <div className="mt-3 space-y-3">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-4">
+              <div><span className="text-gray-500">Pacientes pendentes:</span> {d.pacientesPendentes ?? '—'}</div>
+              <div><span className="text-gray-500">Atendimentos pendentes:</span> {d.baasPendentes ?? '—'}</div>
+              <div><span className="text-gray-500">Internações pendentes:</span> {d.fiasPendentes ?? '—'}</div>
+              <div><span className="text-gray-500">Docs no log pendentes:</span> {d.edocLogPendentes ?? '—'}</div>
+              <div><span className="text-gray-500">Marca de atendimentos:</span> {dataHora(d.ultimoSyncBaaEm)}</div>
+              <div><span className="text-gray-500">Marca de internações:</span> {dataHora(d.ultimoSyncFiaEm)}</div>
+              <div><span className="text-gray-500">Marca de pacientes:</span> {dataHora(d.ultimoSyncPacienteEm)}</div>
+              <div><span className="text-gray-500">Marca de médicos:</span> {dataHora(d.ultimoSyncMedicoEm)}</div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+              {Object.entries(ROTULOS_HUB).map(([chave, rotulo]) => (
+                <div key={chave} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                  <div className="text-lg font-semibold text-gray-900">{d.hub?.[chave] ?? '—'}</div>
+                  <div className="text-xs text-gray-500">{rotulo} no hub</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
 export function PepSincronizacaoPage() {
   const bases = useBasesPep();
   const status = useStatusPep();
@@ -150,7 +330,15 @@ export function PepSincronizacaoPage() {
     if (!window.confirm('Parar a importação em andamento? No modo Completo, dá para retomar de onde parou depois.')) {
       return;
     }
-    cancelar.mutate(undefined, { onError: (err) => window.alert(extrairMensagemDeErro(err)) });
+    // Parar sem pausar NÃO segura o motor: o scheduler religa no próximo intervalo. Por isso
+    // a pausa vem oferecida junto, e por padrão (é o que o operador espera ao mandar parar).
+    const pausar = window.confirm(
+      'Pausar também o motor por 4 horas? OK = para e pausa (o sincronismo NÃO religa sozinho). ' +
+        'Cancelar = só para este run; o próximo ciclo agendado dispara normalmente.',
+    );
+    cancelar.mutate(pausar ? 4 : undefined, {
+      onError: (err) => window.alert(extrairMensagemDeErro(err)),
+    });
   }
 
   return (
@@ -282,6 +470,12 @@ export function PepSincronizacaoPage() {
         </form>
       </section>
 
+      {/* ---- Sincronismo contínuo (agenda + diagnóstico) ---- */}
+      <SecaoContinuidade fonteId={fonteId} podeEditar={podeImportar} />
+
+      {/* ---- Divergências de identidade (origem × hub) ---- */}
+      <SecaoDivergencias fonteId={fonteId} podeEditar={podeImportar} />
+
       {/* ---- Status / progresso ---- */}
       {status.data ? (
         <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -345,6 +539,7 @@ export function PepSincronizacaoPage() {
                 <tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-500">
                   <th className="py-2 pr-3">Base</th>
                   <th className="py-2 pr-3">Modo</th>
+                  <th className="py-2 pr-3">Disparo</th>
                   <th className="py-2 pr-3">Status</th>
                   <th className="py-2 pr-3">Início</th>
                   <th className="py-2 pr-3">Duração</th>
@@ -358,6 +553,7 @@ export function PepSincronizacaoPage() {
                   <tr key={e.id} className="border-b border-gray-100">
                     <td className="py-2 pr-3">{e.fonteNome}</td>
                     <td className="py-2 pr-3">{e.modo} / {e.escopo}</td>
+                    <td className="py-2 pr-3 text-xs text-gray-600">{e.disparo === 'Agendado' ? '⏱ Agendado' : 'Manual'}</td>
                     <td className="py-2 pr-3"><Badge status={e.status} /></td>
                     <td className="py-2 pr-3 whitespace-nowrap">{dataHora(e.iniciadoEm)}</td>
                     <td className="py-2 pr-3">{duracao(e.duracaoSegundos)}</td>

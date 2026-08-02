@@ -19,6 +19,7 @@ public sealed class LeitorOracleHis : IAsyncDisposable
 {
     private readonly string _connectionString;
     private readonly int _timeout;
+    private readonly int _maxTentativas;
     private OracleConnection? _con;
 
     private const int IntervaloSegundos = 10;     // retry CONSTANTE (sem aumento sucessivo)
@@ -28,9 +29,15 @@ public sealed class LeitorOracleHis : IAsyncDisposable
     private static readonly int[] CodigosTransitorios =
         [12170, 12541, 12543, 12535, 12537, 12152, 3113, 3114, 50201];
 
-    public LeitorOracleHis(string host, int porta, string servico, string usuario, string senha, int timeoutSegundos)
+    /// <param name="tentativasConexao">
+    /// Teto de tentativas de conexão. Default = retry permanente (~15 min) para runs de
+    /// importação; use 1 em chamadas interativas (diagnóstico) que não podem pendurar.
+    /// </param>
+    public LeitorOracleHis(string host, int porta, string servico, string usuario, string senha, int timeoutSegundos,
+        int tentativasConexao = MaxTentativas)
     {
         _timeout = timeoutSegundos;
+        _maxTentativas = Math.Max(1, tentativasConexao);
         var dataSource =
             $"(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST={host})(PORT={porta}))" +
             $"(CONNECT_DATA=(SERVICE_NAME={servico})))";
@@ -63,7 +70,7 @@ public sealed class LeitorOracleHis : IAsyncDisposable
                 await cmd.ExecuteNonQueryAsync(ct);
                 return;
             }
-            catch (OracleException ex) when (tentativa < MaxTentativas && EhTransitorio(ex))
+            catch (OracleException ex) when (tentativa < _maxTentativas && EhTransitorio(ex))
             {
                 await DescartarAsync();
                 await Task.Delay(TimeSpan.FromSeconds(IntervaloSegundos), ct);
@@ -100,7 +107,7 @@ public sealed class LeitorOracleHis : IAsyncDisposable
                 }
                 return linhas;
             }
-            catch (OracleException ex) when (tentativa < MaxTentativas && EhTransitorio(ex))
+            catch (OracleException ex) when (tentativa < _maxTentativas && EhTransitorio(ex))
             {
                 await DescartarAsync();
                 await Task.Delay(TimeSpan.FromSeconds(IntervaloSegundos), ct);

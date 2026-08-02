@@ -83,4 +83,101 @@ public sealed record ExecucaoImportacaoDto(
     double? DuracaoSegundos,
     ContadoresImportacaoDto Contadores,
     string? TemposJson,
-    string? MensagemErro);
+    string? MensagemErro,
+    /// <summary>Origem do disparo: Manual (operador) ou Agendado (scheduler contínuo).</summary>
+    string Disparo = "Manual");
+
+/// <summary>Agenda do sincronismo contínuo de uma base (ADR-0024).</summary>
+public sealed record AgendaPepDto(
+    Guid FonteId,
+    string FonteNome,
+    bool Ativo,
+    int IntervaloMinutos,
+    TimeOnly? JanelaInicioLocal,
+    TimeOnly? JanelaFimLocal,
+    int MedicoRescanHoras,
+    int FalhasConsecutivas,
+    DateTime? ProximoRunEm,
+    DateTime? PausadoAte,
+    DateTime AtualizadoEm);
+
+/// <summary>
+/// Diagnóstico origem×hub (ADR-0024): marcas d'água, quanto ainda falta na ORIGEM desde cada
+/// marca, e as contagens do hub por tipo (JSON cru do <c>/fhir/_estatisticas</c>). Pendências
+/// próximas de zero logo após um ciclo = sincronismo em dia.
+/// </summary>
+public sealed record DiagnosticoPepDto(
+    Guid FonteId,
+    string FonteNome,
+    string Slug,
+    DateTime? UltimoSyncMedicoEm,
+    DateTime? UltimoSyncPacienteEm,
+    DateTime? UltimoSyncBaaEm,
+    DateTime? UltimoSyncEdocEm,
+    DateTime? UltimoSyncFiaEm,
+    long? UltimoSyncEdocLogId,
+    long? PacientesPendentes,
+    long? BaasPendentes,
+    long? FiasPendentes,
+    long? EdocLogPendentes,
+    System.Text.Json.JsonElement Hub);
+
+/// <summary>Criação/edição da agenda de uma base. Janela em hora LOCAL de Brasília.</summary>
+public sealed record SalvarAgendaPepRequest(
+    Guid FonteId,
+    bool Ativo,
+    int IntervaloMinutos,
+    TimeOnly? JanelaInicioLocal = null,
+    TimeOnly? JanelaFimLocal = null,
+    int? MedicoRescanHoras = null,
+    DateTime? PausadoAte = null);
+
+/// <summary>
+/// Uma divergência de identidade origem×hub para o mesmo CPF (hoje: data de nascimento).
+/// <c>Veredicto</c> diz quem está certo segundo a consulta oficial de CPF; enquanto não há
+/// veredicto — ou quando ele aponta contra a origem — o campo fica congelado no hub.
+/// </summary>
+public sealed record DivergenciaIdentidadeDto(
+    Guid Id,
+    Guid FonteId,
+    string FonteSlug,
+    long CdPaciente,
+    string Cpf,
+    string Tipo,
+    string ValorOrigem,
+    string ValorHub,
+    string? NomeOrigem,
+    string? NomeHub,
+    string? PatientIdHub,
+    string Status,
+    string Veredicto,
+    string? VeredictoMotor,
+    string? ValorCorreto,
+    string? NomeOficial,
+    string? Detalhe,
+    int Ocorrencias,
+    DateTime CriadoEm,
+    DateTime AtualizadoEm,
+    DateTime? VerificadoEm,
+    DateTime? ResolvidoEm);
+
+/// <summary>Contadores do relatório de divergências (cabeçalho da tela).</summary>
+public sealed record ResumoDivergenciasDto(
+    int Total,
+    int Pendentes,
+    int NaoConclusivas,
+    int Ignoradas,
+    int OrigemCorreta,
+    int HubCorreto,
+    int AmbosNegados,
+    /// <summary>Quantos CPFs estão com o campo congelado agora (a origem não sobrescreve).</summary>
+    int Congelados);
+
+/// <summary>Pedido de arbitragem manual pela tela.</summary>
+public sealed record VerificarDivergenciasRequest(Guid? FonteId = null, int? Max = null);
+
+/// <summary>Marcar uma divergência como falso positivo.</summary>
+public sealed record IgnorarDivergenciaRequest(string? Motivo = null);
+
+/// <summary>Pausa administrativa do motor. <c>Horas</c> ausente ou 0 = retomar.</summary>
+public sealed record PausarMotorRequest(Guid FonteId, int? Horas = null);

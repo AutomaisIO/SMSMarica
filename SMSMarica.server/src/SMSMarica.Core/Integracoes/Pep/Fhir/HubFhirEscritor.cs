@@ -32,6 +32,13 @@ public sealed class HubFhirEscritor(HttpClient http) : IHubFhirEscritor
         return await Ler(resp, ct);
     }
 
+    public async Task<Resource> UpsertPorIdentifierAsync(Resource recurso, string system, string value, CancellationToken ct = default)
+    {
+        var query = Uri.EscapeDataString($"{system}|{value}");
+        using var resp = await http.PutAsync($"fhir/{recurso.TypeName}?identifier={query}", Body(recurso), ct);
+        return await Ler(resp, ct);
+    }
+
     public async Task ExcluirAsync(string tipo, string id, CancellationToken ct = default)
     {
         using var resp = await http.DeleteAsync($"fhir/{tipo}/{id}", ct);
@@ -48,6 +55,16 @@ public sealed class HubFhirEscritor(HttpClient http) : IHubFhirEscritor
 
     public Task<Bundle> ListarAsync(string tipo, CancellationToken ct = default) =>
         BuscarBundle($"fhir/{tipo}", ct);
+
+    public async Task<string> ObterEstatisticasAsync(string source, CancellationToken ct = default)
+    {
+        var url = $"fhir/_estatisticas?source={Uri.EscapeDataString(source)}";
+        using var resp = await http.GetAsync(url, ct);
+        var json = await resp.Content.ReadAsStringAsync(ct);
+        if (!resp.IsSuccessStatusCode)
+            throw new HubFhirHttpException((int)resp.StatusCode, json, $"GET {url}");
+        return json;
+    }
 
     private async Task<Bundle> BuscarBundle(string url, CancellationToken ct)
     {

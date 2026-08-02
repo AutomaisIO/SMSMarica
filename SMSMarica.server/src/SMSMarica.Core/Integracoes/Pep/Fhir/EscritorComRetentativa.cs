@@ -31,6 +31,9 @@ public sealed class EscritorComRetentativa(
     public Task<Resource> AtualizarAsync(string tipo, string id, Resource recurso, CancellationToken ct = default) =>
         Com(c => inner.AtualizarAsync(tipo, id, recurso, c), idempotente: true, ct);
 
+    public Task<Resource> UpsertPorIdentifierAsync(Resource recurso, string system, string value, CancellationToken ct = default) =>
+        Com(c => inner.UpsertPorIdentifierAsync(recurso, system, value, c), idempotente: true, ct);
+
     public Task ExcluirAsync(string tipo, string id, CancellationToken ct = default) =>
         Com(async c => { await inner.ExcluirAsync(tipo, id, c); return 0; }, idempotente: true, ct);
 
@@ -42,6 +45,9 @@ public sealed class EscritorComRetentativa(
 
     public Task<Bundle> ListarAsync(string tipo, CancellationToken ct = default) =>
         Com(c => inner.ListarAsync(tipo, c), idempotente: true, ct);
+
+    public Task<string> ObterEstatisticasAsync(string source, CancellationToken ct = default) =>
+        Com(c => inner.ObterEstatisticasAsync(source, c), idempotente: true, ct);
 
     private async Task<T> Com<T>(Func<CancellationToken, Task<T>> op, bool idempotente, CancellationToken ct)
     {
