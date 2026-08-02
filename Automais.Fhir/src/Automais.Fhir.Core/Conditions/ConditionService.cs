@@ -59,6 +59,29 @@ public sealed class ConditionService(FhirDbContext db, TimeProvider clock) : ICo
         return condition;
     }
 
+    public async Task<Condition> UpsertPorIdentifierAsync(string system, string value, Condition recurso, CancellationToken ct = default)
+    {
+        FhirIdentifier.Garantir(recurso.Identifier ??= [], system, value);
+
+        var existente = await db.Conditions.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.IdentifierSystem == system && x.IdentifierValue == value && !x.IsDeleted, ct);
+        if (existente is not null)
+            return await AtualizarAsync(existente.Id, recurso, ct);
+
+        try
+        {
+            return await CriarAsync(recurso, ct);
+        }
+        catch (DbUpdateException) // corrida: outro create do mesmo identifier venceu (índice único)
+        {
+            db.ChangeTracker.Clear();
+            existente = await db.Conditions.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.IdentifierSystem == system && x.IdentifierValue == value && !x.IsDeleted, ct)
+                ?? throw new RecursoNaoEncontradoException(TipoRecurso, $"{system}|{value}");
+            return await AtualizarAsync(existente.Id, recurso, ct);
+        }
+    }
+
     public async Task ExcluirAsync(Guid id, CancellationToken ct = default)
     {
         var row = await db.Conditions.FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted, ct);
@@ -73,6 +96,9 @@ public sealed class ConditionService(FhirDbContext db, TimeProvider clock) : ICo
     public async Task<Bundle> BuscarAsync(ConditionBusca filtro, CancellationToken ct = default)
     {
         var query = db.Conditions.AsNoTracking().Where(c => !c.IsDeleted);
+
+        if (!string.IsNullOrWhiteSpace(filtro.IdentifierSystem) && !string.IsNullOrWhiteSpace(filtro.IdentifierValue))
+            query = query.Where(x => x.IdentifierSystem == filtro.IdentifierSystem && x.IdentifierValue == filtro.IdentifierValue);
 
         if (filtro.PatientId is { } pid)
             query = query.Where(c => c.PatientId == pid);
@@ -107,6 +133,7 @@ public sealed class ConditionService(FhirDbContext db, TimeProvider clock) : ICo
 
     private static void ExtrairSearchParams(ConditionRow row, Condition c)
     {
+        (row.IdentifierSystem, row.IdentifierValue) = FhirIdentifier.Primeiro(c.Identifier);
         row.PatientId = FhirRef.ParseId(c.Subject?.Reference);
         row.EncounterId = FhirRef.ParseId(c.Encounter?.Reference);
         row.Code = c.Code?.Coding?.FirstOrDefault()?.Code;

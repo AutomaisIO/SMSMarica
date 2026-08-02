@@ -42,4 +42,10 @@ public static class FhirSystems
     public const string SaluxPaciente = "urn:salux:cd_paciente";
     public const string SaluxFia = "urn:salux:fia";
     public const string SaluxBaa = "urn:salux:baa";
+    public const string SaluxEdoc = "urn:salux:edoc";
+
+    // Estrutura física do hospital (Location — ADR-0025)
+    public const string SaluxUnidade = "urn:salux:unidade";
+    public const string SaluxQuarto = "urn:salux:quarto";
+    public const string SaluxLeito = "urn:salux:leito";
 }

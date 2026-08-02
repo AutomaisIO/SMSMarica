@@ -32,6 +32,15 @@ public sealed class ConditionController(IConditionService service) : ControllerB
         return FhirResponse.Recurso(await service.AtualizarAsync(ParseId(id), c, ct));
     }
 
+    /// <summary>PUT /fhir/Condition?identifier=system|value — conditional update (upsert idempotente).</summary>
+    [HttpPut]
+    public async Task<IActionResult> AtualizarCondicional([FromQuery] string? identifier, CancellationToken ct)
+    {
+        var (system, value) = FhirIdentifier.ParseParam(identifier);
+        var recurso = await LerCorpoAsync(ct);
+        return FhirResponse.Recurso(await service.UpsertPorIdentifierAsync(system, value, recurso, ct));
+    }
+
     [HttpDelete("{id}")]
     public async Task<IActionResult> Excluir(string id, CancellationToken ct)
     {
@@ -44,9 +53,13 @@ public sealed class ConditionController(IConditionService service) : ControllerB
     public async Task<IActionResult> Buscar(
         [FromQuery] string? patient,
         [FromQuery] string? encounter,
+        [FromQuery] string? identifier,
         CancellationToken ct)
     {
-        var bundle = await service.BuscarAsync(new ConditionBusca(FhirRef.ParseId(patient), FhirRef.ParseId(encounter)), ct);
+        string? idSystem = null, idValue = null;
+        if (!string.IsNullOrWhiteSpace(identifier))
+            (idSystem, idValue) = FhirIdentifier.ParseParam(identifier);
+        var bundle = await service.BuscarAsync(new ConditionBusca(FhirRef.ParseId(patient), FhirRef.ParseId(encounter), IdentifierSystem: idSystem, IdentifierValue: idValue), ct);
         return FhirResponse.Recurso(bundle);
     }
 

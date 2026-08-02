@@ -18,4 +18,10 @@ public sealed class ObservationRow : ResourceRow
 
     /// <summary>Momento da aferição (effective[x]) — para ordenar.</summary>
     public DateTimeOffset? Effective { get; set; }
+
+    /// <summary>System do identifier de negócio (urn:salux:*) — habilita o conditional update.</summary>
+    public string? IdentifierSystem { get; set; }
+
+    /// <summary>Valor do identifier de negócio (prefixado pelo slug da base).</summary>
+    public string? IdentifierValue { get; set; }
 }

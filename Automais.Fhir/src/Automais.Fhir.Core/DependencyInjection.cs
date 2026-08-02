@@ -23,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<IMedicationRequestService, MedicationRequestService>();
         services.AddScoped<IMedicationAdministrationService, MedicationAdministrationService>();
         services.AddScoped<IObservationService, ObservationService>();
+        services.AddScoped<Locations.ILocationService, Locations.LocationService>();
         return services;
     }
 }

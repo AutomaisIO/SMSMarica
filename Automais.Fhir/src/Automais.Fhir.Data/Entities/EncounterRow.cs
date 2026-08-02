@@ -18,4 +18,13 @@ public sealed class EncounterRow : ResourceRow
 
     /// <summary>Início do período (Encounter.period.start) — usado para ordenar a timeline.</summary>
     public DateTimeOffset? PeriodStart { get; set; }
+
+    /// <summary>Fim do período (Encounter.period.end) — "altas do período" nos recortes de internação.</summary>
+    public DateTimeOffset? PeriodEnd { get; set; }
+
+    /// <summary>System do identifier de negócio (ex.: urn:salux:baa, urn:salux:fia) — habilita o conditional update.</summary>
+    public string? IdentifierSystem { get; set; }
+
+    /// <summary>Valor do identifier de negócio (prefixado pelo slug da base).</summary>
+    public string? IdentifierValue { get; set; }
 }

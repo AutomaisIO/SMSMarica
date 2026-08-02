@@ -50,13 +50,23 @@ if (app.Configuration.GetValue("AutoMigrate:Enabled", defaultValue: true))
     {
         app.Logger.LogInformation("Garantindo schema {Schema} e aplicando migrations...", FhirDbContext.Schema);
         await db.Database.ExecuteSqlRawAsync($"CREATE SCHEMA IF NOT EXISTS {FhirDbContext.Schema}");
+        // CREATE INDEX em tabela de milhões de linhas (observation tem 4,2M) passa MUITO do
+        // CommandTimeout padrão de 30s. Sem este teto ampliado, a migration é abortada no meio,
+        // faz rollback e o serviço sobe com o modelo EF desalinhado do banco.
+        db.Database.SetCommandTimeout(
+            TimeSpan.FromMinutes(app.Configuration.GetValue("AutoMigrate:TimeoutMinutos", 30)));
         await db.Database.MigrateAsync();
         app.Logger.LogInformation("Schema/migrations OK.");
     }
     catch (Exception ex)
     {
-        app.Logger.LogError(ex, "Falha provisionando o banco no startup ({Tipo}: {Mensagem}).",
+        // FAIL-FAST: engolir a falha aqui era pior que não migrar — o serviço subia "saudável"
+        // com o banco em versão anterior à do modelo, e TODO endpoint clínico devolvia 500
+        // (coluna inexistente), com a causa escondida numa linha do log de startup. Migration
+        // que falha tem de derrubar o boot: o deploy falha alto, o serviço antigo continua no ar.
+        app.Logger.LogCritical(ex, "Falha provisionando o banco no startup ({Tipo}: {Mensagem}). Abortando.",
             ex.GetType().Name, ex.Message);
+        throw;
     }
 }
 

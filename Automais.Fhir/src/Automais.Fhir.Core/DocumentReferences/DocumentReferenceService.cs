@@ -59,6 +59,29 @@ public sealed class DocumentReferenceService(FhirDbContext db, TimeProvider cloc
         return doc;
     }
 
+    public async Task<DocumentReference> UpsertPorIdentifierAsync(string system, string value, DocumentReference recurso, CancellationToken ct = default)
+    {
+        FhirIdentifier.Garantir(recurso.Identifier ??= [], system, value);
+
+        var existente = await db.DocumentReferences.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.IdentifierSystem == system && x.IdentifierValue == value && !x.IsDeleted, ct);
+        if (existente is not null)
+            return await AtualizarAsync(existente.Id, recurso, ct);
+
+        try
+        {
+            return await CriarAsync(recurso, ct);
+        }
+        catch (DbUpdateException) // corrida: outro create do mesmo identifier venceu (índice único)
+        {
+            db.ChangeTracker.Clear();
+            existente = await db.DocumentReferences.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.IdentifierSystem == system && x.IdentifierValue == value && !x.IsDeleted, ct)
+                ?? throw new RecursoNaoEncontradoException(TipoRecurso, $"{system}|{value}");
+            return await AtualizarAsync(existente.Id, recurso, ct);
+        }
+    }
+
     public async Task ExcluirAsync(Guid id, CancellationToken ct = default)
     {
         var row = await db.DocumentReferences.FirstOrDefaultAsync(d => d.Id == id && !d.IsDeleted, ct);
@@ -73,6 +96,9 @@ public sealed class DocumentReferenceService(FhirDbContext db, TimeProvider cloc
     public async Task<Bundle> BuscarAsync(DocumentReferenceBusca filtro, CancellationToken ct = default)
     {
         var query = db.DocumentReferences.AsNoTracking().Where(d => !d.IsDeleted);
+
+        if (!string.IsNullOrWhiteSpace(filtro.IdentifierSystem) && !string.IsNullOrWhiteSpace(filtro.IdentifierValue))
+            query = query.Where(x => x.IdentifierSystem == filtro.IdentifierSystem && x.IdentifierValue == filtro.IdentifierValue);
 
         if (filtro.PatientId is { } pid)
             query = query.Where(d => d.PatientId == pid);
@@ -107,6 +133,7 @@ public sealed class DocumentReferenceService(FhirDbContext db, TimeProvider cloc
 
     private static void ExtrairSearchParams(DocumentReferenceRow row, DocumentReference d)
     {
+        (row.IdentifierSystem, row.IdentifierValue) = FhirIdentifier.Primeiro(d.Identifier);
         row.PatientId = FhirRef.ParseId(d.Subject?.Reference);
         row.EncounterId = FhirRef.ParseId(d.Context?.Encounter?.FirstOrDefault()?.Reference);
         row.Tipo = d.Type?.Text;

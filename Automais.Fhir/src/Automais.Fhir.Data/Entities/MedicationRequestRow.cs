@@ -18,4 +18,10 @@ public sealed class MedicationRequestRow : ResourceRow
 
     /// <summary>Data da prescrição (MedicationRequest.authoredOn) — para ordenar.</summary>
     public DateTimeOffset? AuthoredOn { get; set; }
+
+    /// <summary>System do identifier de negócio (urn:salux:*) — habilita o conditional update.</summary>
+    public string? IdentifierSystem { get; set; }
+
+    /// <summary>Valor do identifier de negócio (prefixado pelo slug da base).</summary>
+    public string? IdentifierValue { get; set; }
 }

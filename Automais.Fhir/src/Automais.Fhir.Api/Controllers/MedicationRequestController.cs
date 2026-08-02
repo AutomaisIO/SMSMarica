@@ -32,6 +32,15 @@ public sealed class MedicationRequestController(IMedicationRequestService servic
         return FhirResponse.Recurso(await service.AtualizarAsync(ParseId(id), m, ct));
     }
 
+    /// <summary>PUT /fhir/MedicationRequest?identifier=system|value — conditional update (upsert idempotente).</summary>
+    [HttpPut]
+    public async Task<IActionResult> AtualizarCondicional([FromQuery] string? identifier, CancellationToken ct)
+    {
+        var (system, value) = FhirIdentifier.ParseParam(identifier);
+        var recurso = await LerCorpoAsync(ct);
+        return FhirResponse.Recurso(await service.UpsertPorIdentifierAsync(system, value, recurso, ct));
+    }
+
     [HttpDelete("{id}")]
     public async Task<IActionResult> Excluir(string id, CancellationToken ct)
     {
@@ -44,9 +53,13 @@ public sealed class MedicationRequestController(IMedicationRequestService servic
     public async Task<IActionResult> Buscar(
         [FromQuery] string? patient,
         [FromQuery] string? encounter,
+        [FromQuery] string? identifier,
         CancellationToken ct)
     {
-        var bundle = await service.BuscarAsync(new MedicationRequestBusca(FhirRef.ParseId(patient), FhirRef.ParseId(encounter)), ct);
+        string? idSystem = null, idValue = null;
+        if (!string.IsNullOrWhiteSpace(identifier))
+            (idSystem, idValue) = FhirIdentifier.ParseParam(identifier);
+        var bundle = await service.BuscarAsync(new MedicationRequestBusca(FhirRef.ParseId(patient), FhirRef.ParseId(encounter), IdentifierSystem: idSystem, IdentifierValue: idValue), ct);
         return FhirResponse.Recurso(bundle);
     }
 

@@ -29,5 +29,12 @@ public sealed class ObservationRowConfiguration : IEntityTypeConfiguration<Obser
         builder.HasIndex(o => o.EncounterId).HasFilter("encounter_id IS NOT NULL");
         builder.HasIndex(o => o.Code).HasFilter("code IS NOT NULL");
         builder.HasIndex(o => o.MetaSource);
+        builder.Property(x => x.IdentifierSystem).HasColumnName("identifier_system").HasMaxLength(100);
+        builder.Property(x => x.IdentifierValue).HasColumnName("identifier_value").HasMaxLength(200);
+
+        // Conditional update (ADR-0024): no máximo UMA linha viva por identifier de negócio.
+        builder.HasIndex(x => new { x.IdentifierSystem, x.IdentifierValue })
+            .IsUnique()
+            .HasFilter("identifier_system IS NOT NULL AND NOT is_deleted");
     }
 }

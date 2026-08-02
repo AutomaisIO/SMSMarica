@@ -38,10 +38,14 @@ public sealed class EncounterService(FhirDbContext db, TimeProvider clock) : IEn
         return FhirJson.Parse<Encounter>(row.Content);
     }
 
-    public async Task<Encounter> AtualizarAsync(Guid id, Encounter encounter, CancellationToken ct = default)
+    public async Task<Encounter> AtualizarAsync(Guid id, Encounter encounter, int? versaoEsperada = null, CancellationToken ct = default)
     {
         var row = await db.Encounters.FirstOrDefaultAsync(e => e.Id == id && !e.IsDeleted, ct)
             ?? throw new RecursoNaoEncontradoException(TipoRecurso, id.ToString());
+
+        // Concorrência otimista (If-Match): rejeita escrita sobre versão obsoleta.
+        if (versaoEsperada is int esperada && esperada != row.VersionId)
+            throw new ConflitoVersaoException(TipoRecurso, id.ToString(), esperada, row.VersionId);
 
         var agora = clock.GetUtcNow();
         var versao = row.VersionId + 1;
@@ -57,6 +61,29 @@ public sealed class EncounterService(FhirDbContext db, TimeProvider clock) : IEn
 
         await db.SaveChangesAsync(ct);
         return encounter;
+    }
+
+    public async Task<Encounter> UpsertPorIdentifierAsync(string system, string value, Encounter encounter, CancellationToken ct = default)
+    {
+        FhirIdentifier.Garantir(encounter.Identifier ??= [], system, value);
+
+        var existente = await db.Encounters.AsNoTracking()
+            .FirstOrDefaultAsync(e => e.IdentifierSystem == system && e.IdentifierValue == value && !e.IsDeleted, ct);
+        if (existente is not null)
+            return await AtualizarAsync(existente.Id, encounter, null, ct);
+
+        try
+        {
+            return await CriarAsync(encounter, ct);
+        }
+        catch (DbUpdateException) // corrida: outro create do mesmo identifier venceu (índice único)
+        {
+            db.ChangeTracker.Clear();
+            existente = await db.Encounters.AsNoTracking()
+                .FirstOrDefaultAsync(e => e.IdentifierSystem == system && e.IdentifierValue == value && !e.IsDeleted, ct)
+                ?? throw new RecursoNaoEncontradoException(TipoRecurso, $"{system}|{value}");
+            return await AtualizarAsync(existente.Id, encounter, null, ct);
+        }
     }
 
     public async Task ExcluirAsync(Guid id, CancellationToken ct = default)
@@ -78,6 +105,8 @@ public sealed class EncounterService(FhirDbContext db, TimeProvider clock) : IEn
             query = query.Where(e => e.PatientId == pid);
         if (!string.IsNullOrWhiteSpace(filtro.Status))
             query = query.Where(e => e.Status == filtro.Status);
+        if (!string.IsNullOrWhiteSpace(filtro.IdentifierSystem) && !string.IsNullOrWhiteSpace(filtro.IdentifierValue))
+            query = query.Where(e => e.IdentifierSystem == filtro.IdentifierSystem && e.IdentifierValue == filtro.IdentifierValue);
 
         // Timeline: mais recente primeiro.
         var rows = await query
@@ -112,6 +141,8 @@ public sealed class EncounterService(FhirDbContext db, TimeProvider clock) : IEn
         row.Status = e.Status?.ToString().ToLowerInvariant();
         row.Classe = e.Class?.Code;
         row.PeriodStart = ParseInstant(e.Period?.Start);
+        row.PeriodEnd = ParseInstant(e.Period?.End);
+        (row.IdentifierSystem, row.IdentifierValue) = FhirIdentifier.Primeiro(e.Identifier);
     }
 
     private static DateTimeOffset? ParseInstant(string? fhirDateTime) =>

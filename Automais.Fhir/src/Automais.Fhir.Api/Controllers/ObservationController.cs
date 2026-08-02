@@ -32,6 +32,15 @@ public sealed class ObservationController(IObservationService service) : Control
         return FhirResponse.Recurso(await service.AtualizarAsync(ParseId(id), o, ct));
     }
 
+    /// <summary>PUT /fhir/Observation?identifier=system|value — conditional update (upsert idempotente).</summary>
+    [HttpPut]
+    public async Task<IActionResult> AtualizarCondicional([FromQuery] string? identifier, CancellationToken ct)
+    {
+        var (system, value) = FhirIdentifier.ParseParam(identifier);
+        var recurso = await LerCorpoAsync(ct);
+        return FhirResponse.Recurso(await service.UpsertPorIdentifierAsync(system, value, recurso, ct));
+    }
+
     [HttpDelete("{id}")]
     public async Task<IActionResult> Excluir(string id, CancellationToken ct)
     {
@@ -45,10 +54,14 @@ public sealed class ObservationController(IObservationService service) : Control
         [FromQuery] string? patient,
         [FromQuery] string? encounter,
         [FromQuery] string? code,
+        [FromQuery] string? identifier,
         CancellationToken ct)
     {
+        string? idSystem = null, idValue = null;
+        if (!string.IsNullOrWhiteSpace(identifier))
+            (idSystem, idValue) = FhirIdentifier.ParseParam(identifier);
         var bundle = await service.BuscarAsync(
-            new ObservationBusca(FhirRef.ParseId(patient), FhirRef.ParseId(encounter), code),
+            new ObservationBusca(FhirRef.ParseId(patient), FhirRef.ParseId(encounter), code, IdentifierSystem: idSystem, IdentifierValue: idValue),
             ct);
         return FhirResponse.Recurso(bundle);
     }
