@@ -17,7 +17,11 @@ public sealed record ResultadoVerificacaoDivergencias(
     int HubCorreto,
     int AmbosNegados,
     int NaoConclusivas,
-    bool InterrompidaPorIndisponibilidade);
+    bool InterrompidaPorIndisponibilidade,
+    /// <summary>A rodada parou por ter estourado o teto de TEMPO, não por acabar a fila.</summary>
+    bool InterrompidaPorTempo = false,
+    /// <summary>Quantas ficaram sem análise nesta rodada (voltam na próxima).</summary>
+    int Restantes = 0);
 
 /// <summary>
 /// Arbitra divergências de identidade contra a consulta oficial de CPF (Hub do Desenvolvedor,
@@ -25,8 +29,15 @@ public sealed record ResultadoVerificacaoDivergencias(
 /// </summary>
 public interface IVerificadorDivergenciasPep
 {
+    /// <param name="max">Teto de divergências por rodada.</param>
+    /// <param name="teto">
+    /// Teto de TEMPO da rodada. Limitar só a quantidade não protege: 50 divergências lentas
+    /// seguram a rodada por dezenas de minutos (foi o que aconteceu em 02/08). O que se quer
+    /// limitar é o tempo de parede, porque quem está do outro lado é um serviço externo pago
+    /// e de latência imprevisível. Null = 2 minutos.
+    /// </param>
     Task<ResultadoVerificacaoDivergencias> VerificarPendentesAsync(
-        Guid? fonteId, int max, CancellationToken ct = default);
+        Guid? fonteId, int max, TimeSpan? teto = null, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -57,29 +68,49 @@ public sealed class VerificadorDivergenciasPep(
     /// <summary>Respiro entre consultas — não martelar o serviço externo.</summary>
     private static readonly TimeSpan Intervalo = TimeSpan.FromMilliseconds(400);
 
+    /// <summary>Teto de tempo padrão de uma rodada, quando o chamador não informa.</summary>
+    public static readonly TimeSpan TetoTempoPadrao = TimeSpan.FromMinutes(2);
+
     public async Task<ResultadoVerificacaoDivergencias> VerificarPendentesAsync(
-        Guid? fonteId, int max, CancellationToken ct = default)
+        Guid? fonteId, int max, TimeSpan? teto = null, CancellationToken ct = default)
     {
-        var teto = Math.Clamp(max, 1, 500);
+        var limite = Math.Clamp(max, 1, 500);
+        var orcamento = teto is { } t && t > TimeSpan.Zero ? t : TetoTempoPadrao;
+        var relogio = System.Diagnostics.Stopwatch.StartNew();
+
         var q = db.PepDivergenciasIdentidade.Where(d =>
             d.Status == StatusDivergenciaIdentidade.Pendente ||
             d.Status == StatusDivergenciaIdentidade.NaoConclusiva);
         if (fonteId is { } fid) q = q.Where(d => d.FonteId == fid);
 
         // Mais antigas primeiro: a fila anda de forma justa entre rodadas.
-        var pendentes = await q.OrderBy(d => d.AtualizadoEm).Take(teto).ToListAsync(ct);
+        var pendentes = await q.OrderBy(d => d.AtualizadoEm).Take(limite).ToListAsync(ct);
         if (pendentes.Count == 0)
             return new ResultadoVerificacaoDivergencias(0, 0, 0, 0, 0, false);
 
         int origem = 0, hub = 0, ambos = 0, inconclusivas = 0, seguidasIndisponivel = 0;
         var abortou = false;
+        var estourouTempo = false;
+        var analisadas = 0;
 
         foreach (var d in pendentes)
         {
             ct.ThrowIfCancellationRequested();
 
+            // Teto de TEMPO, checado ANTES de gastar a próxima consulta. Limitar só a quantidade
+            // não bastava: em 02/08, 35 divergências lentas seguraram a rodada por >11 min.
+            if (relogio.Elapsed >= orcamento)
+            {
+                logger.LogInformation(
+                    "Arbitragem interrompida pelo teto de tempo ({Teto}): {Feitas}/{Total} analisadas; o resto volta na próxima rodada.",
+                    orcamento, analisadas, pendentes.Count);
+                estourouTempo = true;
+                break;
+            }
+
             var (veredicto, motor, valorCorreto, nomeOficial, detalhe, indisponivel) =
                 await ArbitrarAsync(d, ct);
+            analisadas++;
 
             if (indisponivel)
             {
@@ -124,13 +155,16 @@ public sealed class VerificadorDivergenciasPep(
             await Task.Delay(Intervalo, ct);
         }
 
+        // Salva mesmo em interrupção: o que foi arbitrado até aqui não se perde (e sem isto o
+        // teto de tempo seria inútil — a rodada pararia sem registrar nada).
         await db.SaveChangesAsync(ct);
 
         var resultado = new ResultadoVerificacaoDivergencias(
-            origem + hub + ambos + inconclusivas, origem, hub, ambos, inconclusivas, abortou);
+            origem + hub + ambos + inconclusivas, origem, hub, ambos, inconclusivas,
+            abortou, estourouTempo, Math.Max(0, pendentes.Count - analisadas));
         logger.LogInformation(
-            "Arbitragem de divergências: {Analisadas} analisadas — origem {O}, hub {H}, ambos negados {A}, inconclusivas {I}.",
-            resultado.Analisadas, origem, hub, ambos, inconclusivas);
+            "Arbitragem: {Analisadas} analisadas em {Seg:F1}s — origem {O}, hub {H}, ambos negados {A}, inconclusivas {I}, restam {R}.",
+            resultado.Analisadas, relogio.Elapsed.TotalSeconds, origem, hub, ambos, inconclusivas, resultado.Restantes);
         return resultado;
     }
 

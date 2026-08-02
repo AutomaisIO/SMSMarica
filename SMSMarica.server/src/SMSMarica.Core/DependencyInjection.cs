@@ -1,4 +1,4 @@
-using FluentValidation;
+﻿using FluentValidation;
 using Ganss.Xss;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
@@ -329,6 +329,9 @@ public static class DependencyInjection
         services.AddScoped<Integracoes.Pep.IPepSincronizacaoService, Integracoes.Pep.PepSincronizacaoService>();
         services.AddHostedService<Integracoes.Pep.Background.PepSincronizacaoRunner>();
         services.AddHostedService<Integracoes.Pep.Background.PepSincronizacaoScheduler>();
+        // Arbitragem das divergências de identidade: job PRÓPRIO, desacoplado do run — depende
+        // de serviço externo pago e não pode segurar o fechamento de um ciclo de importação.
+        services.AddHostedService<Integracoes.Pep.Background.VerificadorDivergenciasScheduler>();
 
         // ---- Módulo IA ----
         // A consulta conversável usa o motor local (feature consulta-inteligente / IaChatController +

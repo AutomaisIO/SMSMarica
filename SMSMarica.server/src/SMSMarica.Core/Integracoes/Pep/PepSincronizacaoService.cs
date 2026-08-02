@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -34,11 +34,15 @@ public sealed class PepSincronizacaoService(
     private readonly int _timeoutSegundos = configuration.GetValue("Pep:TimeoutSegundos", 120);
 
     /// <summary>
-    /// Teto de divergências arbitradas ao fim de cada run. Cada arbitragem custa 1–2 consultas
-    /// externas pagas — o teto evita queimar saldo num run e deixa a fila andar aos poucos.
+    /// Teto de divergências por rodada de arbitragem MANUAL (pela tela). O job automático
+    /// (<see cref="Background.VerificadorDivergenciasScheduler"/>) tem a própria configuração.
     /// </summary>
-    private readonly int _maxArbitragensPorRun =
-        configuration.GetValue("Pep:Divergencias:MaxPorRun", 50);
+    private readonly int _maxArbitragensPorRodada =
+        configuration.GetValue("Pep:Divergencias:MaxPorRodada", 50);
+
+    /// <summary>Teto de TEMPO da rodada manual — protege a request de ficar pendurada.</summary>
+    private readonly TimeSpan _tetoArbitragem = TimeSpan.FromSeconds(
+        Math.Clamp(configuration.GetValue("Pep:Divergencias:TetoSegundos", 120), 10, 600));
 
     /// <summary>Tempo máximo reenviando um recurso por saturação transitória antes de desistir (vira falha).</summary>
     private readonly TimeSpan _hubRetryBudget =
@@ -489,7 +493,8 @@ public sealed class PepSincronizacaoService(
 
     public async Task<ResultadoVerificacaoDivergencias> VerificarDivergenciasAsync(
         Guid? fonteId = null, int? max = null, CancellationToken ct = default) =>
-        await verificadorDivergencias.VerificarPendentesAsync(fonteId, max ?? _maxArbitragensPorRun, ct);
+        await verificadorDivergencias.VerificarPendentesAsync(
+            fonteId, max ?? _maxArbitragensPorRodada, _tetoArbitragem, ct);
 
     public async Task<DivergenciaIdentidadeDto> IgnorarDivergenciaAsync(
         Guid id, string? motivo = null, CancellationToken ct = default)
@@ -586,26 +591,15 @@ public sealed class PepSincronizacaoService(
 
             await estrategia.ImportarAsync(contexto, tokenRun);
 
-            // Fase final: arbitrar as divergências de identidade contra a consulta oficial de CPF.
-            // Drena o sink ANTES — o que foi detectado agora precisa estar no banco para entrar
-            // nesta rodada. Nunca derruba o run: o dado clínico já está salvo.
-            progresso.FaseAtual = "conciliando identidades divergentes";
+            // Drena o sink de divergências: o que foi detectado agora fica no banco (e já
+            // congelando o campo em disputa) antes de a execução fechar.
+            //
+            // A ARBITRAGEM NÃO RODA AQUI. Ela é job próprio (VerificadorDivergenciasScheduler):
+            // depende de um serviço externo pago e de latência imprevisível, e em 02/08 segurou
+            // o fechamento de um ciclo por mais de 11 minutos. O sincronismo não pode nem
+            // atrasar nem falhar por causa do fornecedor de consulta de CPF.
             await divergencias.DisposeAsync();
             divergencias = null;
-            try
-            {
-                var arb = await verificadorDivergencias.VerificarPendentesAsync(
-                    fonte.Id, _maxArbitragensPorRun, tokenRun);
-                if (arb.Analisadas > 0)
-                    logger.LogInformation(
-                        "Execução {Id}: {N} divergências arbitradas (origem {O} · hub {H} · ambos negados {A} · inconclusivas {I}).",
-                        execucao.Id, arb.Analisadas, arb.OrigemCorreta, arb.HubCorreto, arb.AmbosNegados, arb.NaoConclusivas);
-            }
-            catch (OperationCanceledException) when (cts.IsCancellationRequested) { throw; }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Arbitragem de divergências da execução {Id} falhou (o run segue válido).", execucao.Id);
-            }
 
             // Sucesso: persiste contadores, tempos e watermarks.
             AplicarContadores(execucao, progresso);
