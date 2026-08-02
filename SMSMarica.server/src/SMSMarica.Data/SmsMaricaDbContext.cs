@@ -1,13 +1,13 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Agendamentos;
 using SMSMarica.Data.Entities.Conversas;
 using SMSMarica.Data.Entities.Ia;
 using SMSMarica.Data.Entities.Integracoes;
 using SMSMarica.Data.Entities.Pep;
+using SMSMarica.Data.Entities.Sisreg;
 using SMSMarica.Data.Entities.Geo;
 using SMSMarica.Data.Entities.Notificacoes;
-using SMSMarica.Data.Entities.Sisreg;
 using SMSMarica.Data.Entities.Tfd;
 
 namespace SMSMarica.Data;
@@ -88,6 +88,8 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<PepSincronizacaoExecucao> PepSincronizacaoExecucoes => Set<PepSincronizacaoExecucao>();
     public DbSet<PepSincronizacaoEstado> PepSincronizacaoEstados => Set<PepSincronizacaoEstado>();
     public DbSet<PepSincronizacaoFalha> PepSincronizacaoFalhas => Set<PepSincronizacaoFalha>();
+    public DbSet<PepSincronizacaoAgenda> PepSincronizacaoAgendas => Set<PepSincronizacaoAgenda>();
+    public DbSet<PepDivergenciaIdentidade> PepDivergenciasIdentidade => Set<PepDivergenciaIdentidade>();
 
     // Linhas do export do SISREG que não viraram solicitação (com o RAW, para revalidar)
     public DbSet<Entities.Sisreg.SisregImportacaoFalha> SisregImportacaoFalhas => Set<Entities.Sisreg.SisregImportacaoFalha>();

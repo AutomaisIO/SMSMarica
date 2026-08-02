@@ -96,6 +96,8 @@ public static class DependencyInjection
         services.AddScoped<ISolicitacoesExameService, SolicitacoesExameService>();
         services.AddScoped<ISolicitacaoHistoricoService, SolicitacaoHistoricoService>();
         services.AddScoped<Consultas.IConsultasService, Consultas.ConsultasService>();
+        // Painel da tela de início (read model; ADR-0033).
+        services.AddScoped<PainelInicio.IPainelInicioService, PainelInicio.PainelInicioService>();
         services.AddScoped<Mapeamento.IMapeamentoSigtapService, Mapeamento.MapeamentoSigtapService>();
         // Backfill de data_estudo (DICOM) — depende só de DbContext + IConsultaStudyClient (sem ciclo).
         services.AddScoped<SolicitacoesExame.IBackfillDataEstudoService, SolicitacoesExame.BackfillDataEstudoService>();
@@ -322,8 +324,11 @@ public static class DependencyInjection
         services.AddSingleton<Integracoes.Pep.Background.IPepSincronizacaoFila, Integracoes.Pep.Background.PepSincronizacaoFila>();
         services.AddSingleton<Integracoes.Pep.Progresso.PepSincronizacaoEstadoVivo>();
         services.AddScoped<Integracoes.Pep.Estrategias.IEstrategiaImportacaoPep, Integracoes.Pep.Estrategias.Salux.SaluxImportacaoStrategy>();
+        // Árbitro das divergências de identidade: usa a cadeia de motores de CPF (Receita/CADSUS).
+        services.AddScoped<Integracoes.Pep.Divergencias.IVerificadorDivergenciasPep, Integracoes.Pep.Divergencias.VerificadorDivergenciasPep>();
         services.AddScoped<Integracoes.Pep.IPepSincronizacaoService, Integracoes.Pep.PepSincronizacaoService>();
         services.AddHostedService<Integracoes.Pep.Background.PepSincronizacaoRunner>();
+        services.AddHostedService<Integracoes.Pep.Background.PepSincronizacaoScheduler>();
 
         // ---- Módulo IA ----
         // A consulta conversável usa o motor local (feature consulta-inteligente / IaChatController +

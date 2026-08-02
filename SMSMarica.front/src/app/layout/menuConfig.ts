@@ -67,7 +67,7 @@ export type ItemMenu = {
    * Chave de badge/contador exibido ao lado do rótulo (notificação de tickets, ticket #42).
    * O valor numérico é resolvido no Sidebar via `useTicketsBadges`.
    */
-  badge?: 'meusTickets' | 'ticketsGestao';
+  badge?: 'meusTickets' | 'ticketsGestao' | 'painelInicio';
   /**
    * Gancho de encadeamento: destino/tela padrão interno do menu. Quando o menu
    * for favoritado na tela Início, o redirect leva a este destino em vez da
@@ -93,7 +93,10 @@ export type SecaoMenu = {
 export const SECOES: SecaoMenu[] = [
   {
     id: 'inicio',
-    itens: [{ rotulo: 'Início', to: '/app', icone: LayoutDashboard, end: true }],
+    // O badge é condição de existência do painel, não enfeite: quem tem menu favorito é
+    // redirecionado ao entrar e NUNCA vê a home. Sem o contador aqui, o painel nasceria invisível
+    // justamente para os usuários mais frequentes (ADR-0033 §8).
+    itens: [{ rotulo: 'Início', to: '/app', icone: LayoutDashboard, end: true, badge: 'painelInicio' }],
   },
   {
     id: 'cadastros',

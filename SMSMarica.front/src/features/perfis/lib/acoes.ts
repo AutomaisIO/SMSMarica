@@ -85,6 +85,13 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'Sandbox', rotulo: 'Sandbox de testes (QA)' },
   { id: 'Consultas', rotulo: 'Consultas reguladas (SISREG)' },
   { id: 'MapeamentoSigtap', rotulo: 'Mapeamento SIGTAP → tipo de exame' },
+  // Só os TRÊS de visão global do Processo Regulatório entram na matriz: são os únicos que hoje
+  // concedem alguma coisa de fato — a lente "Município" do painel de início (ADR-0033 §5).
+  // `Regulacao` (47) e `RegulacaoConfiguracao` (51) existem no enum do backend mas ainda não têm
+  // nenhum endpoint nem tela; listá-los aqui faria o administrador acreditar que o módulo existe.
+  { id: 'RegulacaoTriagem', rotulo: 'Regulação — triagem técnica (visão do município no painel)' },
+  { id: 'RegulacaoMedica', rotulo: 'Regulação — médico regulador (visão do município no painel)' },
+  { id: 'RegulacaoAgendamento', rotulo: 'Regulação — agendamento (visão do município no painel)' },
 ];
 
 export const ACOES: { id: AcaoPermissao; rotulo: string }[] = [

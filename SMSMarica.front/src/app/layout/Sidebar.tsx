@@ -12,6 +12,7 @@ import {
 import { useMenuPreferencias } from '@/app/layout/menuPreferencias';
 import { abrirJanelaChat } from '@/features/conversas/lib/janelaChat';
 import { useTicketsBadges } from '@/features/tickets/api/queries';
+import { usePainelBadge } from '@/features/painel-inicio/api/queries';
 import { BrandLogo } from '@/shared/ui/BrandLogo';
 import { CounterBadge } from '@/shared/ui/CounterBadge';
 import { cn } from '@/shared/lib/cn';
@@ -41,11 +42,13 @@ export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseM
   const sair = useAuth((s) => s.sair);
   const defaults = useMenuPreferencias((s) => s.defaults);
   const badges = useTicketsBadges();
+  const painelCritico = usePainelBadge();
 
   // Contador do badge de um item de menu (0 = não renderiza).
   function contadorBadge(item: ItemMenu): number {
     if (item.badge === 'meusTickets') return badges.meusNaoReconhecidos;
     if (item.badge === 'ticketsGestao') return badges.gestaoNovos;
+    if (item.badge === 'painelInicio') return painelCritico;
     return 0;
   }
 

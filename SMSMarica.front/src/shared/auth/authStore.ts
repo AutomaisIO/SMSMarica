@@ -48,7 +48,14 @@ export type ModuloPermissao =
   | 'MapeamentoSigtap'
   | 'AgenteIa'
   | 'Indicadores'
-  | 'Estatistica';
+  | 'Estatistica'
+  // Processo Regulatório (47–51). O módulo em si ainda não existe no front; os três de VISÃO
+  // GLOBAL já valem hoje: são eles que liberam a lente "Município" do painel de início (ADR-0033).
+  | 'Regulacao'
+  | 'RegulacaoTriagem'
+  | 'RegulacaoMedica'
+  | 'RegulacaoAgendamento'
+  | 'RegulacaoConfiguracao';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 
