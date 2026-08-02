@@ -18,7 +18,19 @@ internal static class HubDoDesenvolvedor
     public static bool EhNegativaAutoritativa(string? retorno, string? mensagem)
     {
         var texto = RemoverAcentos($"{retorno} {mensagem}").ToLowerInvariant();
-        return SinaisNegativa.Any(texto.Contains);
+        if (SinaisNegativa.Any(texto.Contains)) return true;
+
+        // Casamento por FRASE EXATA é frágil: o Hub escreve "Data Nascimento invalida" (sem o
+        // "de"), e a entrada "data de nascimento invalida" não casava — a negativa mais comum
+        // do serviço caía em "indisponível" e disparava 3 tentativas + fallback ao SISREG a cada
+        // consulta. Aqui o teste é por TERMOS: o assunto (cpf/data/nascimento) junto do defeito
+        // (invalid/incorret), tolerando qualquer redação. Continua fora "token invalido" ou
+        // "requisicao invalida", que não citam o assunto e são problema do fornecedor.
+        var temAssunto = texto.Contains("nascimento") || texto.Contains("cpf") || texto.Contains("data");
+        var temDefeito = texto.Contains("invalid") || texto.Contains("incorret");
+        var ehDoFornecedor = texto.Contains("token") || texto.Contains("saldo")
+            || texto.Contains("requisicao") || texto.Contains("credito");
+        return temAssunto && temDefeito && !ehDoFornecedor;
     }
 
     private static readonly string[] SinaisNegativa =
