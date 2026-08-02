@@ -138,7 +138,7 @@ public sealed class EncounterService(FhirDbContext db, TimeProvider clock) : IEn
     private static void ExtrairSearchParams(EncounterRow row, Encounter e)
     {
         row.PatientId = FhirRef.ParseId(e.Subject?.Reference);
-        row.Status = e.Status?.ToString().ToLowerInvariant();
+        row.Status = Fhir.CodigoFhir.De(e.Status);
         row.Classe = e.Class?.Code;
         row.PeriodStart = ParseInstant(e.Period?.Start);
         row.PeriodEnd = ParseInstant(e.Period?.End);

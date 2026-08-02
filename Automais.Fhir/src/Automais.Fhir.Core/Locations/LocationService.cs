@@ -133,7 +133,7 @@ public sealed class LocationService(FhirDbContext db, TimeProvider clock) : ILoc
     private static void ExtrairSearchParams(LocationRow row, Location l)
     {
         row.Name = l.Name;
-        row.Status = l.Status?.ToString().ToLowerInvariant();
+        row.Status = Fhir.CodigoFhir.De(l.Status);
         row.PhysicalType = l.PhysicalType?.Coding?.FirstOrDefault()?.Code;
         row.PartOfId = FhirRef.ParseId(l.PartOf?.Reference);
         (row.IdentifierSystem, row.IdentifierValue) = FhirIdentifier.Primeiro(l.Identifier);
