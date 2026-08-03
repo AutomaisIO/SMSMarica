@@ -46,6 +46,31 @@ import type {
 const CHAVE_TOGGLE_HOJE = 'solicitacoes-exame:filtro-hoje';
 
 /**
+ * Filtro em curso, guardado para sobreviver à ida e volta ao detalhe da solicitação. O botão
+ * "Voltar" do detalhe faz uma navegação NOVA (`navigate('/app/solicitacoes-exame')`), não history
+ * back — então a página remonta e o estado de React se perde. Sem isto, quem filtrava um dia e
+ * abria uma solicitação voltava para a lista inteira e refazia o filtro a cada exame conferido.
+ *
+ * <p><b>sessionStorage, não localStorage:</b> um período é contexto de trabalho, não preferência.
+ * Reabrir o sistema amanhã com o filtro de hoje ainda aplicado — silenciosamente — esconderia
+ * exames sem o operador entender por quê. O toggle "Hoje" ao lado é preferência de verdade e
+ * continua em localStorage, de propósito.</p>
+ */
+const CHAVE_FILTRO = 'solicitacoes-exame:filtro';
+
+function lerFiltroGuardado(): FiltroSolicitacoes | null {
+  try {
+    const bruto = sessionStorage.getItem(CHAVE_FILTRO);
+    if (!bruto) return null;
+    const f = JSON.parse(bruto) as FiltroSolicitacoes;
+    return typeof f === 'object' && f !== null ? f : null;
+  } catch {
+    // Guardado corrompido não pode quebrar a tela: cai no filtro padrão.
+    return null;
+  }
+}
+
+/**
  * Direção relativa à unidade ativa: recebida (executora, seta para dentro) vs.
  * enviada (a unidade ativa é a solicitante, seta para fora). Nada quando não há
  * unidade de referência (ex.: "Todas as unidades").
@@ -105,13 +130,25 @@ export function SolicitacoesExamePage() {
   // sentido dentro de um dia, então o toggle só aparece com "Hoje" ligado.
   const [ordemChegada, setOrdemChegada] = useState(false);
 
+  // Precedência: deep-link do PACS > recorte do painel > filtro guardado da sessão > padrão.
+  // O deep-link é uma intenção explícita e recém-expressa; o guardado é contexto anterior.
   const filtroInicial: FiltroSolicitacoes = accessionUrl
     ? { limite: 50, busca: accessionUrl }
     : painelUrl
       ? { limite: 50, painel: painelUrl }
-      : hojeAtivo
-        ? { limite: 50, dataInicial: hojeISO(), dataFinal: hojeISO() }
-        : { limite: 50 };
+      : (() => {
+          const guardado = lerFiltroGuardado();
+          if (guardado) {
+            // Com "Hoje" ligado o período é sempre o dia corrente — o efeito abaixo reaplica,
+            // mas já entra certo aqui para a lista não piscar com as datas antigas.
+            return hojeAtivo
+              ? { ...guardado, dataInicial: hojeISO(), dataFinal: hojeISO() }
+              : guardado;
+          }
+          return hojeAtivo
+            ? { limite: 50, dataInicial: hojeISO(), dataFinal: hojeISO() }
+            : { limite: 50 };
+        })();
   const [filtroAplicado, setFiltroAplicado] = useState<FiltroSolicitacoes>(filtroInicial);
   const [filtroDigitado, setFiltroDigitado] = useState<FiltroSolicitacoes>(filtroInicial);
 
@@ -123,6 +160,19 @@ export function SolicitacoesExamePage() {
       setFiltroDigitado(novo);
     }
   }, [accessionUrl]);
+
+  // Guarda o filtro em vigor para a volta do detalhe. Deep-link não é guardado: ele é uma
+  // navegação pontual (veio do PACS ou do painel), não o recorte de trabalho do operador —
+  // gravá-lo faria a próxima visita à tela repetir um filtro que ninguém pediu.
+  useEffect(() => {
+    if (accessionUrl || painelUrl) return;
+    try {
+      sessionStorage.setItem(CHAVE_FILTRO, JSON.stringify(filtroAplicado));
+    } catch {
+      // Sem sessionStorage (aba anônima restrita, cota cheia) a tela segue funcionando —
+      // só perde a memória do filtro, que é exatamente o comportamento anterior.
+    }
+  }, [filtroAplicado, accessionUrl, painelUrl]);
 
   // A cada abertura da página com o toggle ligado, recalcula "hoje" e reaplica o filtro.
   useEffect(() => {
