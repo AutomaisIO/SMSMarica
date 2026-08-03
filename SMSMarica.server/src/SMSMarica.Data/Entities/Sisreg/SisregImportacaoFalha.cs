@@ -14,6 +14,13 @@ public enum OrigemFalhaImportacao
     /// a correção é reenviar o arquivo certo. Extensão fora de .txt/.csv nem chega aqui — é
     /// ignorada antes de qualquer leitura.</summary>
     Arquivo = 3,
+
+    /// <summary>
+    /// Veio da VARREDURA da agenda (<c>cons_agendas</c>), não de arquivo. Aqui <c>LinhaRaw</c>
+    /// guarda o envelope JSON do registro observado (<c>RegistroVarreduraRaw</c>), não uma linha de
+    /// TXT — é o discriminador que faz o "Validar" e o modal de detalhe lerem o RAW pela lente certa.
+    /// </summary>
+    Varredura = 4,
 }
 
 /// <summary>
@@ -26,6 +33,8 @@ public enum OrigemFalhaImportacao
 ///
 /// Note o que NÃO está aqui: SIGTAP sem tipo mapeado <b>não é falha</b>. A importação segue e cria a
 /// solicitação pendente de mapeamento (ADR-0021), tratada na tela de Mapeamento SIGTAP. Ver ADR-0035.
+/// Não confundir com <see cref="SigtapNaoMapeado"/>, que é o caso oposto e só existe na varredura:
+/// lá o código SIGTAP <b>não existe</b>, e sem ele a solicitação nem categoria consegue ter.
 /// </summary>
 public enum CausaFalhaImportacao : short
 {
@@ -50,6 +59,15 @@ public enum CausaFalhaImportacao : short
 
     /// <summary>O arquivo inteiro não é do SISREG. A correção é reenviar o arquivo certo.</summary>
     ArquivoIncompativel = 6,
+
+    /// <summary>
+    /// <b>Só da varredura.</b> O procedimento do SISREG (o <c>pa</c>) ainda não tem código SIGTAP
+    /// confirmado no de-para, e a agenda não informa SIGTAP nenhum. Sem ele a solicitação nasceria
+    /// com categoria <c>Outro</c>, sem worklist — então a linha vira pendência em vez de virar lixo.
+    /// <b>É acionável</b>: o operador confirma o SIGTAP daquele procedimento e revalida; o replay
+    /// resolve o de-para de novo e a linha entra. Resolve todas as pendências do mesmo <c>pa</c>.
+    /// </summary>
+    SigtapNaoMapeado = 7,
 
     /// <summary>Falha não classificada — inclusive o acervo anterior ao backfill.</summary>
     Outro = 99,

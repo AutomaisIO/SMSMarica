@@ -251,8 +251,30 @@ public static class DependencyInjection
             Integracoes.SisregWeb.Mapeamento.ISisregMapeamentoService,
             Integracoes.SisregWeb.Mapeamento.SisregMapeamentoService>();
 
-        // Importação de agendamentos (scraping cons_marcados_reg) → SolicitacaoExame.
-        services.AddScoped<Integracoes.SisregWeb.Importacao.IMarcadosRegScraper, Integracoes.SisregWeb.Importacao.MarcadosRegScraper>();
+        // De-para do código de procedimento do SISREG (o `pa`) para o SIGTAP oficial: a agenda não
+        // informa SIGTAP, e sem ele a solicitação nasceria sem categoria e sem worklist.
+        services.AddScoped<
+            Integracoes.SisregWeb.Varredura.Sigtap.IMapeadorSigtapSisreg,
+            Integracoes.SisregWeb.Varredura.Sigtap.MapeadorSigtapSisreg>();
+
+        // Motor de varredura da agenda (cons_agendas). Uma varredura por vez em toda a instalação:
+        // as unidades saem para o SISREG pelo mesmo IP, então paralelizar só aproxima o CAPTCHA.
+        services.Configure<Integracoes.SisregWeb.Varredura.VarreduraSisregOpcoes>(
+            configuration.GetSection(Integracoes.SisregWeb.Varredura.VarreduraSisregOpcoes.Secao));
+        services.AddSingleton<
+            Integracoes.SisregWeb.Varredura.Background.IVarreduraSisregFila,
+            Integracoes.SisregWeb.Varredura.Background.VarreduraSisregFila>();
+        services.AddSingleton<Integracoes.SisregWeb.Varredura.Background.VarreduraSisregEstadoVivo>();
+        services.AddScoped<
+            Integracoes.SisregWeb.Varredura.IVarreduraAgendaService,
+            Integracoes.SisregWeb.Varredura.VarreduraAgendaService>();
+        services.AddHostedService<Integracoes.SisregWeb.Varredura.Background.VarreduraSisregRunner>();
+        services.AddHostedService<Integracoes.SisregWeb.Varredura.Background.VarreduraSisregScheduler>();
+
+        // Importação de agendamentos → Solicitacao. A leitura do SISREG é a varredura da agenda
+        // do executante (cons_agendas); o scraper de cons_marcados_reg foi aposentado por mirar a
+        // visão do solicitante e custar 1 requisição de ficha POR agendamento — sozinho estouraria
+        // o limite anti-robô do SISREG.
         services.AddScoped<Integracoes.SisregWeb.Importacao.IImportacaoSisregService, Integracoes.SisregWeb.Importacao.ImportacaoSisregService>();
 
         // Importação SISREG em LOTE (vários arquivos / zip) — processada no servidor, fora da

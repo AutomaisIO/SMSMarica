@@ -3,7 +3,7 @@ import { ArrowLeft, MapPin, Pencil, Phone } from 'lucide-react';
 import { TelefoneCopiavel } from '@/shared/ui/TelefoneCopiavel';
 import { useNavigate, useParams } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
-import { useTemConsulta } from '@/shared/auth/authStore';
+import { usePermissao, useTemConsulta } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 import { MapaSeletor } from '@/shared/ui/MapaSeletor';
 import { StatusBadge } from '@/shared/ui/StatusBadge';
@@ -13,6 +13,8 @@ import { useUnidadePorId, useUsuariosDaUnidade } from '@/features/unidades/api/q
 import { UsuariosDaUnidadeSecao } from '@/features/unidades/components/UsuariosDaUnidadeSecao';
 import { EquipamentosDaUnidadeSecao } from '@/features/unidades/components/EquipamentosDaUnidadeSecao';
 import { CredencialSisregSecao } from '@/features/sisreg-mapeamento/components/CredencialSisregSecao';
+import { MapeamentoSisregSecao } from '@/features/sisreg-mapeamento/components/MapeamentoSisregSecao';
+import { SincronismoSisregSecao } from '@/features/sisreg-mapeamento/components/SincronismoSisregSecao';
 import { useListarEquipamentos } from '@/features/equipamentos/api/queries';
 import { useListarTratamentos } from '@/features/tratamentos/api/queries';
 import type { TratamentoListItem } from '@/features/tratamentos/types';
@@ -61,6 +63,9 @@ export function UnidadeDetalhePage() {
   const usuariosDaUnidade = useUsuariosDaUnidade(id || null);
   const equipamentosDaUnidade = useListarEquipamentos(id || undefined, false);
   const podeGerirSisreg = useTemConsulta('SisregMapeamento');
+  // Consulta abre a aba; ligar o motor, mexer nos checkboxes e disparar varredura exigem Edição —
+  // uma varredura fora de hora derruba a sessão de quem está atendendo pela unidade.
+  const podeEditarSisreg = usePermissao('SisregMapeamento', 'Edicao');
 
   const u = detalhe.data;
 
@@ -150,12 +155,14 @@ export function UnidadeDetalhePage() {
             id: 'sisreg',
             rotulo: 'SISREG',
             conteudo: (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <p className="text-sm text-gray-600">
                   Credencial do operador do SISREG desta unidade. Ao salvar, autenticamos no SISREG
                   e conferimos se a credencial pertence mesmo a esta unidade antes de gravar.
                 </p>
                 <CredencialSisregSecao unidadeId={id} nomeUnidade={u?.nome} />
+                <MapeamentoSisregSecao unidadeId={id} podeEditar={podeEditarSisreg} />
+                <SincronismoSisregSecao unidadeId={id} podeEditar={podeEditarSisreg} />
               </div>
             ),
           } satisfies Aba,

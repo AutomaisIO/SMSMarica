@@ -105,6 +105,14 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<SisregProfissionalUnidade> SisregProfissionaisUnidade => Set<SisregProfissionalUnidade>();
     public DbSet<SisregProcedimentoProfissional> SisregProcedimentosProfissional => Set<SisregProcedimentoProfissional>();
 
+    // De-para global do código de procedimento do SISREG (o `pa`) para o SIGTAP oficial — a agenda
+    // não informa SIGTAP, e sem ele a solicitação nasceria sem categoria e sem worklist
+    public DbSet<SisregProcedimentoSigtap> SisregProcedimentosSigtap => Set<SisregProcedimentoSigtap>();
+
+    // Motor diário que varre a agenda do SISREG por unidade: agenda (quando roda) e rastreio (o que rodou)
+    public DbSet<SisregVarreduraAgenda> SisregVarreduraAgendas => Set<SisregVarreduraAgenda>();
+    public DbSet<SisregVarreduraExecucao> SisregVarreduraExecucoes => Set<SisregVarreduraExecucao>();
+
     // Indicadores contratuais do HMCML — o motor de cada indicador é o SQL guardado no cadastro
     public DbSet<Indicador> Indicadores => Set<Indicador>();
     public DbSet<IndicadorVersao> IndicadorVersoes => Set<IndicadorVersao>();

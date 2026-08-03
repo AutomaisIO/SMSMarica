@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -13,9 +14,11 @@ using SMSMarica.Data;
 namespace SMSMarica.Data.Migrations
 {
     [DbContext(typeof(SmsMaricaDbContext))]
-    partial class SmsMaricaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260803181129_AddSisregVarreduraAgenda")]
+    partial class AddSisregVarreduraAgenda
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -5616,12 +5619,6 @@ namespace SMSMarica.Data.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("codigo");
 
-                    b.Property<bool>("EnviarConfirmacao")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true)
-                        .HasColumnName("enviar_confirmacao");
-
                     b.Property<bool>("Grupo")
                         .HasColumnType("boolean")
                         .HasColumnName("grupo");
@@ -5831,12 +5828,6 @@ namespace SMSMarica.Data.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(21)
                         .HasColumnName("dias_a_frente");
-
-                    b.Property<bool>("EnviarConfirmacao")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true)
-                        .HasColumnName("enviar_confirmacao");
 
                     b.Property<int>("FalhasConsecutivas")
                         .ValueGeneratedOnAdd()

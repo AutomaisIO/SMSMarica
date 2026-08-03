@@ -23,6 +23,13 @@ public interface ISisregMapeamentoService
 
     Task AlternarProcedimentoAsync(Guid procedimentoId, bool habilitado, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Liga/desliga o aviso por WhatsApp ao paciente quando este procedimento é importado NESTA
+    /// unidade. Aplica a todas as linhas do mesmo procedimento na unidade (ele costuma aparecer
+    /// sob vários profissionais) e devolve quantas foram afetadas.
+    /// </summary>
+    Task<int> AlternarEnvioConfirmacaoAsync(Guid procedimentoId, bool enviar, CancellationToken cancellationToken = default);
+
     /// <summary>Liga/desliga vários profissionais de uma vez.</summary>
     Task AlternarProfissionaisEmLoteAsync(IReadOnlyList<Guid> ids, bool habilitado, CancellationToken cancellationToken = default);
 

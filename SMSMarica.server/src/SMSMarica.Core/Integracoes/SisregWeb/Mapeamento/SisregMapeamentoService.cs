@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Integracoes.SisregWeb.Mapeamento.Dtos;
+using SMSMarica.Core.Integracoes.SisregWeb.Varredura.Sigtap;
 using SMSMarica.Core.Medicos.Fhir;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities;
@@ -27,6 +28,7 @@ public sealed class SisregMapeamentoService(
     ISisregWebSessao sessao,
     ISisregUnidadeAtual unidadeAtual,
     IPractitionerFhirClient fhir,
+    IMapeadorSigtapSisreg mapeadorSigtap,
     IUsuarioAtualAccessor usuarioAtual,
     ILogger<SisregMapeamentoService> logger) : ISisregMapeamentoService
 {
@@ -37,7 +39,31 @@ public sealed class SisregMapeamentoService(
     {
         var unidade = await unidadeAtual.ObterObrigatoriaAsync(cancellationToken);
         var profissionais = await CarregarProfissionaisAsync(unidade.Id, rastrear: false, cancellationToken);
-        return ParaDto(unidade, profissionais);
+
+        var codigos = profissionais.SelectMany(p => p.Procedimentos).Select(p => p.Codigo).ToArray();
+        var catalogo = await mapeadorSigtap.ObterCatalogoAsync(codigos, cancellationToken);
+
+        return ParaDto(unidade, profissionais, catalogo);
+    }
+
+    /// <summary>
+    /// Um procedimento com o estado do seu de-para. Sem SIGTAP confirmado ele é exibido como
+    /// pendente e a varredura o pula — habilitar não basta.
+    /// </summary>
+    private static SisregProcedimentoDto ParaProcedimentoDto(
+        SisregProcedimentoProfissional procedimento,
+        IReadOnlyDictionary<string, ProcedimentoCatalogoInfo> catalogo)
+    {
+        var noCatalogo = catalogo.GetValueOrDefault(procedimento.Codigo);
+        var confirmado = noCatalogo is { Confirmado: true, CodigoSigtap: not null };
+
+        return new SisregProcedimentoDto(
+            procedimento.Id, procedimento.Codigo, procedimento.Nome, procedimento.Habilitado,
+            procedimento.Grupo, procedimento.Ausente,
+            confirmado ? noCatalogo!.CodigoSigtap : null,
+            SigtapPendente: !confirmado,
+            DeParaId: noCatalogo?.DeParaId,
+            EnviarConfirmacao: procedimento.EnviarConfirmacao);
     }
 
     public async Task<SisregMapeamentoAtualizacaoDto> AtualizarAsync(CancellationToken cancellationToken = default)
@@ -86,6 +112,11 @@ public sealed class SisregMapeamentoService(
         var procedimentosNovos = 0;
         var vistosAgora = new HashSet<string>(StringComparer.Ordinal);
 
+        // Código do SISREG → nome, para alimentar o catálogo do de-para com o SIGTAP. A varredura
+        // da agenda não informa SIGTAP, e sem ele a solicitação nasceria sem categoria; catalogar
+        // aqui é de graça (os procedimentos já vieram nesta mesma requisição).
+        var paraDePara = new Dictionary<string, string>(StringComparer.Ordinal);
+
         foreach (var linha in doSisreg)
         {
             var cpf = SoDigitos(linha.Codigo);
@@ -131,6 +162,12 @@ public sealed class SisregMapeamentoService(
             var procedimentos = SisregAjaxParser.LerLinhas(xmlProcedimentos);
             procedimentosEncontrados += procedimentos.Count;
             procedimentosNovos += ReconciliarProcedimentos(profissional, procedimentos, agora);
+
+            foreach (var procedimento in procedimentos)
+            {
+                var codigo = procedimento.Codigo.Trim();
+                if (codigo.Length > 0) paraDePara[codigo] = procedimento.Descricao;
+            }
         }
 
         // Sumiu do SISREG: não apagamos (perderia habilitação e vínculo FHIR) — marcamos.
@@ -147,6 +184,13 @@ public sealed class SisregMapeamentoService(
         var procedimentosAusentes = porCpf.Values.SelectMany(p => p.Procedimentos).Count(x => x.Ausente);
 
         await db.SaveChangesAsync(cancellationToken);
+
+        // Depois do SaveChanges: o catálogo do de-para é global e não deve prender a transação do
+        // mapeamento da unidade. Falhar aqui não pode desfazer o mapeamento que já foi gravado.
+        await mapeadorSigtap.RegistrarVistosAsync(
+            [.. paraDePara.Select(p => new ProcedimentoVisto(
+                p.Key, p.Value, p.Key.EndsWith("000", StringComparison.Ordinal)))],
+            cancellationToken);
 
         logger.LogInformation(
             "SISREG: mapeamento da unidade {Unidade} atualizado — {Total} profissionais ({Novos} novos), {Req} requisições.",
@@ -186,6 +230,31 @@ public sealed class SisregMapeamentoService(
 
         procedimento.Habilitado = habilitado;
         await db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<int> AlternarEnvioConfirmacaoAsync(
+        Guid procedimentoId, bool enviar, CancellationToken cancellationToken = default)
+    {
+        var unidade = await unidadeAtual.ObterObrigatoriaAsync(cancellationToken);
+        var procedimento = await db.SisregProcedimentosProfissional
+                .Include(x => x.Profissional)
+                .FirstOrDefaultAsync(
+                    x => x.Id == procedimentoId && x.Profissional!.UnidadeId == unidade.Id, cancellationToken)
+            ?? throw new NaoEncontradoException("Procedimento do mapeamento SISREG", procedimentoId);
+
+        // Aplica a TODAS as linhas do mesmo procedimento NESTA unidade. O mesmo código costuma
+        // aparecer sob vários profissionais, e a decisão de avisar o paciente é do procedimento na
+        // unidade — não do par com o profissional. Sem isto o operador desligaria o aviso num
+        // profissional e continuaria enviando pelos outros, sem nada indicar.
+        var irmaos = await db.SisregProcedimentosProfissional
+            .Include(x => x.Profissional)
+            .Where(x => x.Codigo == procedimento.Codigo && x.Profissional!.UnidadeId == unidade.Id)
+            .ToListAsync(cancellationToken);
+
+        foreach (var irmao in irmaos) irmao.EnviarConfirmacao = enviar;
+
+        await db.SaveChangesAsync(cancellationToken);
+        return irmaos.Count;
     }
 
     public async Task AlternarProfissionaisEmLoteAsync(
@@ -363,7 +432,10 @@ public sealed class SisregMapeamentoService(
 
     private static string SoDigitos(string valor) => new([.. valor.Where(char.IsDigit)]);
 
-    private static SisregMapeamentoDto ParaDto(Unidade unidade, List<SisregProfissionalUnidade> profissionais)
+    private static SisregMapeamentoDto ParaDto(
+        Unidade unidade,
+        List<SisregProfissionalUnidade> profissionais,
+        IReadOnlyDictionary<string, ProcedimentoCatalogoInfo> catalogo)
     {
         var visiveis = profissionais.Where(p => !p.Ausente || p.Habilitado).ToList();
         var procedimentos = visiveis.SelectMany(p => p.Procedimentos).ToList();
@@ -383,6 +455,6 @@ public sealed class SisregMapeamentoService(
                 [.. p.Procedimentos
                     .Where(x => !x.Ausente || x.Habilitado)
                     .OrderBy(x => x.Nome)
-                    .Select(x => new SisregProcedimentoDto(x.Id, x.Codigo, x.Nome, x.Habilitado, x.Grupo, x.Ausente))]))]);
+                    .Select(x => ParaProcedimentoDto(x, catalogo))]))]);
     }
 }

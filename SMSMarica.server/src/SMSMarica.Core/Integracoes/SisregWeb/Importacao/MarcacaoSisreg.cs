@@ -42,5 +42,34 @@ public sealed record MarcacaoSisreg(
     string? MunicipioResidencia = null,
     string? CodigoIbgeResidencia = null,
 
-    /// <summary>Linha crua do TXT (as-is) que originou esta marcação — proveniência.</summary>
-    string? LinhaRaw = null);
+    /// <summary>Linha crua do TXT (as-is) que originou esta marcação — proveniência.
+    /// Na VARREDURA guarda o envelope JSON do registro observado (<c>RegistroVarreduraRaw</c>).</summary>
+    string? LinhaRaw = null,
+
+    // ---- Só a VARREDURA (cons_agendas) preenche; o TXT não traz nenhum destes ----
+
+    /// <summary>Nascimento do paciente. <b>O TXT não traz</b> — é por isso que a resolução de
+    /// pendência por CPF recusa criar paciente novo. Com a varredura, passa a existir.</summary>
+    DateOnly? NascimentoPaciente = null,
+
+    /// <summary>Situação no SISREG (ex.: <c>Agendamento/Pendente Confirmação/Executante</c>).
+    /// <b>Não confundir</b> com o nosso <c>StatusConfirmacao</c>, que é a confirmação do PACIENTE
+    /// por WhatsApp/app (ADR-0034). Este é a recepção registrando comparecimento lá — coisas
+    /// diferentes, deliberadamente não mapeadas uma na outra.</summary>
+    string? SituacaoAgendamento = null,
+
+    /// <summary>Vaga solicitada no SISREG (<c>1ª VEZ</c> / <c>RETORNO</c>).</summary>
+    string? VagaSolicitada = null,
+
+    /// <summary>Vaga consumida (<c>RESERVA</c> / <c>1ª VEZ</c> / <c>RETORNO</c>).</summary>
+    string? VagaConsumida = null,
+
+    /// <summary>CPF do profissional EXECUTANTE — o eixo da varredura. Não confundir com o
+    /// solicitante: são papéis opostos na mesma solicitação.</summary>
+    string? CpfProfissionalExecutante = null,
+
+    string? NomeProfissionalExecutante = null,
+
+    /// <summary>Código do procedimento no SISREG (o <c>pa</c>, 7 dígitos). É a chave do de-para
+    /// que resolve o <see cref="CodigoSigtap"/>.</summary>
+    string? CodigoProcedimentoSisreg = null);

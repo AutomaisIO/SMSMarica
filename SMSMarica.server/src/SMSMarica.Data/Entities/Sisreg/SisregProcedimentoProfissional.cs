@@ -27,6 +27,23 @@ public class SisregProcedimentoProfissional
     /// <summary>Entra na varredura de agenda.</summary>
     public bool Habilitado { get; set; }
 
+    /// <summary>
+    /// Ao importar uma solicitação deste procedimento nesta unidade, avisar o paciente por
+    /// WhatsApp? Combina por "E" com o gatilho mestre da unidade
+    /// (<c>SisregVarreduraAgenda.EnviarConfirmacao</c>): desligar lá corta tudo; ligado lá, cada
+    /// procedimento ainda pode vetar o seu.
+    ///
+    /// <para><b>Nasce ligado</b> — é o comportamento que roda em produção desde 06/07. Um flag
+    /// novo nascendo desligado silenciaria confirmações que hoje saem, sem ninguém perceber.</para>
+    ///
+    /// <para><b>É por unidade, não nacional</b> (ao contrário do de-para SIGTAP): quem decide se
+    /// um exame merece aviso é a unidade que o executa. Como o mesmo procedimento pode aparecer
+    /// sob vários profissionais da mesma unidade, o serviço mantém todas as linhas do mesmo
+    /// <see cref="Codigo"/> naquela unidade em sincronia — senão o operador desligaria o aviso num
+    /// profissional e continuaria enviando pelos outros, sem perceber.</para>
+    /// </summary>
+    public bool EnviarConfirmacao { get; set; } = true;
+
     /// <summary>Código terminado em <c>000</c>: a consulta traz também os itens individuais.</summary>
     public bool Grupo { get; set; }
 

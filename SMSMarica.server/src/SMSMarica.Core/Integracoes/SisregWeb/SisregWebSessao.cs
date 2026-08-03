@@ -55,6 +55,22 @@ public sealed class SisregWebSessao(
     public const string Provedor = "sisreg";
     private const string BaseUrlPadrao = "https://sisregiii.saude.gov.br";
 
+    /// <summary>
+    /// Campo da <see cref="ValidacaoException"/> lançada quando o SISREG passa a exigir CAPTCHA.
+    /// É constante porque quem varre a agenda precisa <b>reagir</b> ao CAPTCHA (parar como parcial,
+    /// guardar o cursor, pausar a unidade) em vez de tratar como erro genérico — e um
+    /// <c>catch (Exception)</c> cego engoliria falha de rede junto.
+    /// </summary>
+    public const string CodigoCaptcha = "sisreg.captcha_exigido";
+
+    /// <summary>
+    /// A exceção é o CAPTCHA anti-robô? Use em <c>catch (Exception ex) when (...)</c>.
+    /// O tipo continua <see cref="ValidacaoException"/> de propósito: o middleware já a mapeia
+    /// para 400, e um tipo novo cairia em 500 nas telas interativas.
+    /// </summary>
+    public static bool EhCaptcha(Exception excecao) =>
+        excecao is ValidacaoException validacao && validacao.Erros.ContainsKey(CodigoCaptcha);
+
     /// <summary>Chave usada quando não há unidade no contexto (credencial global).</summary>
     private static readonly Guid ChaveGlobal = Guid.Empty;
 
@@ -175,7 +191,7 @@ public sealed class SisregWebSessao(
     {
         if (!SisregHomeParser.ExigeCaptcha(html)) return;
         throw new ValidacaoException(
-            "sisreg.captcha_exigido",
+            CodigoCaptcha,
             "O SISREG passou a exigir CAPTCHA para este operador (proteção anti-robô por volume de "
             + "acessos). Relogar não resolve: é preciso abrir o SISREG no navegador com esse usuário "
             + "e resolver o CAPTCHA. Depois disso, tente de novo.");

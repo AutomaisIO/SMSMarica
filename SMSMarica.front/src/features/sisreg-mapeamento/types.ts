@@ -9,6 +9,17 @@ export type SisregProcedimento = {
   grupo: boolean;
   /** Sumiu da última atualização vinda do SISREG. */
   ausente: boolean;
+  /** SIGTAP confirmado no de-para (só dígitos). Null = pendente. */
+  codigoSigtap: string | null;
+  /**
+   * Sem SIGTAP confirmado o procedimento NÃO entra na varredura, mesmo habilitado: a agenda do
+   * SISREG não informa SIGTAP, e sem ele a solicitação nasceria sem categoria e sem worklist.
+   */
+  sigtapPendente: boolean;
+  /** Id no catálogo global — é por ele que se confirma o de-para SIGTAP (esse sim é nacional). */
+  deParaId: string | null;
+  /** Importar este procedimento NESTA unidade avisa o paciente por WhatsApp. Decisão da unidade. */
+  enviarConfirmacao: boolean;
 };
 
 export type SisregProfissional = {
@@ -83,3 +94,102 @@ export type SisregAutenticacaoResultado = {
 };
 
 export type SalvarCredencialPayload = { usuario: string; senha: string };
+
+/** Um procedimento do SISREG e o estado do seu de-para para o SIGTAP. Catálogo global. */
+export type ProcedimentoSigtapDePara = {
+  id: string;
+  /** O `pa` do SISREG (7 dígitos). */
+  codigo: string;
+  nome: string;
+  grupo: boolean;
+  codigoSigtap: string | null;
+  confirmado: boolean;
+  sugeridoSigtapId: string | null;
+  sugeridoCodigo: string | null;
+  sugeridoNome: string | null;
+  sugeridoScore: number | null;
+  confirmadoEm: string | null;
+};
+
+/** Agenda do motor diário da unidade + custo estimado da próxima varredura. */
+export type VarreduraAgenda = {
+  unidadeId: string;
+  unidadeNome: string;
+  ativo: boolean;
+  /** "HH:mm:ss" em hora de Brasília. */
+  horaLocal: string;
+  diasAFrente: number;
+  proximoRunEm: string | null;
+  pausadoAte: string | null;
+  ultimaExecucaoEm: string | null;
+  falhasConsecutivas: number;
+  /** Pares habilitados COM SIGTAP confirmado — o que de fato será varrido. */
+  combinacoesProntas: number;
+  /** Habilitados de fora por falta do de-para. > 0 significa cobertura incompleta. */
+  combinacoesSemSigtap: number;
+  requisicoesEstimadas: number;
+  tetoPorExecucao: number;
+  janelaInicioLocal: string;
+  janelaFimLocal: string;
+  temCredencial: boolean;
+  /** Gatilho mestre da unidade: importar solicitação avisa o paciente por WhatsApp? Vale para
+   * toda importação — varredura e upload de arquivo. */
+  enviarConfirmacao: boolean;
+};
+
+export type SalvarVarreduraAgendaPayload = {
+  ativo: boolean;
+  /** "HH:mm" — hora de Brasília. */
+  horaLocal: string;
+  diasAFrente: number;
+  /** Omitido mantém o valor atual — dá para salvar só a agenda sem mexer no gatilho. */
+  enviarConfirmacao?: boolean;
+};
+
+export type StatusVarredura =
+  | 'Pendente'
+  | 'EmExecucao'
+  | 'Concluida'
+  /** Cobertura incompleta declarada: parou no CAPTCHA ou no teto, preservando o que entrou. */
+  | 'Parcial'
+  | 'Erro'
+  | 'Cancelada';
+
+export type VarreduraExecucao = {
+  id: string;
+  unidadeId: string;
+  unidadeNome: string;
+  disparo: 'Manual' | 'Agendado';
+  status: StatusVarredura;
+  janelaInicio: string;
+  janelaFim: string;
+  combinacoesTotal: number;
+  combinacoesFeitas: number;
+  requisicoes: number;
+  registrosEncontrados: number;
+  validos: number;
+  invalidos: number;
+  jaExistiam: number;
+  mensagemErro: string | null;
+  iniciadoEm: string;
+  finalizadoEm: string | null;
+  duracaoSegundos: number | null;
+  criadoPorNome: string | null;
+};
+
+export type StatusVarreduraVivo = {
+  execucaoId: string;
+  unidadeId: string;
+  unidadeNome: string;
+  emExecucao: boolean;
+  combinacoesTotal: number;
+  combinacoesFeitas: number;
+  requisicoes: number;
+  registrosEncontrados: number;
+  validos: number;
+  invalidos: number;
+  profissionalAtual: string | null;
+  procedimentoAtual: string | null;
+};
+
+export type VarreduraAceita = { execucaoId: string; mensagem: string };

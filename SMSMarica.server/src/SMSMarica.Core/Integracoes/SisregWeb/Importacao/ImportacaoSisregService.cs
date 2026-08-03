@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Dtos;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
+using SMSMarica.Core.Integracoes.SisregWeb.Varredura;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.Pacientes.Dtos;
 using SMSMarica.Core.SolicitacoesExame;
@@ -61,6 +62,17 @@ public interface IImportacaoSisregService
     /// <summary>Importa UM arquivo inteiro do lote. Reconhece o arquivo antes: se não for do
     /// SISREG, descarta tudo sem tentar linha a linha.</summary>
     Task<ResultadoArquivoImportado> ImportarArquivoAsync(Guid execucaoId, string nomeArquivo, string conteudo, CancellationToken ct);
+
+    /// <summary>
+    /// Importa marcações que NÃO vieram de arquivo — a varredura da agenda (<c>cons_agendas</c>).
+    /// Mesmo núcleo, mesma idempotência por nº do SISREG, mesma pendência de 1ª classe (ADR-0035):
+    /// só a proveniência muda.
+    ///
+    /// <para>Pode ser chamado várias vezes com lotes pequenos dentro da MESMA execução — é assim
+    /// que a varredura preserva o parcial quando o SISREG dispara o CAPTCHA no meio.</para>
+    /// </summary>
+    Task<ResultadoArquivoImportado> ImportarMarcacoesAsync(
+        Guid execucaoId, IReadOnlyList<MarcacaoSisreg> marcacoes, CancellationToken ct);
 }
 
 public sealed class ImportacaoSisregService(
@@ -69,6 +81,7 @@ public sealed class ImportacaoSisregService(
     IPacientesService pacientes,
     IGeradorIdentificadores geradorIds,
     IUsuarioAtualAccessor usuarioAtual,
+    Varredura.Sigtap.IMapeadorSigtapSisreg mapeadorSigtap,
     Notificacoes.Comunicacao.IComunicacaoPacienteService comunicacoes) : IImportacaoSisregService
 {
     // ---- Contexto do operador ----
@@ -389,7 +402,18 @@ public sealed class ImportacaoSisregService(
         }
 
         // Notificação WhatsApp de confirmação — só enfileira (o worker envia com ritmo).
-        await comunicacoes.EnfileirarAsync(solic, Data.Entities.Enums.FinalidadeComunicacao.ConfirmacaoAgendamento, ct);
+        // Dois gates, em "E": o da unidade executante e o do procedimento. Ambos nascem ligados,
+        // e ausência de configuração significa ENVIAR — silenciar o paciente por causa de uma
+        // lacuna de cadastro seria pior do que uma mensagem a mais.
+        if (await DeveEnviarConfirmacaoAsync(unidadeExecId, m, ct))
+        {
+            await comunicacoes.EnfileirarAsync(solic, Data.Entities.Enums.FinalidadeComunicacao.ConfirmacaoAgendamento, ct);
+        }
+        else
+        {
+            passos.Add("Confirmação por WhatsApp não enviada (desligada para esta unidade ou procedimento).");
+        }
+
         await db.SaveChangesAsync(ct);
         passos.Add(accession is null ? "Solicitação criada." : $"Solicitação criada (accession {accession}).");
 
@@ -446,6 +470,54 @@ public sealed class ImportacaoSisregService(
 
         return new ResultadoArquivoImportado(
             parsed.Marcacoes.Count + parsed.Rejeitadas.Count, validos, invalidos, jaExistiam, false, null);
+    }
+
+    public async Task<ResultadoArquivoImportado> ImportarMarcacoesAsync(
+        Guid execucaoId, IReadOnlyList<MarcacaoSisreg> marcacoes, CancellationToken ct)
+    {
+        _execucaoAtual = execucaoId;
+
+        var validos = 0;
+        var invalidos = 0;
+        var jaExistiam = 0;
+
+        foreach (var m in marcacoes)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            // Gate do SIGTAP. Sem ele, ExecutarMarcacaoAsync criaria a solicitação com categoria
+            // "Outro", sem satélite de imagem, sem worklist — e marcada como SUCESSO. Lixo
+            // silencioso em escala de centenas por dia, que nenhuma tela mostraria. Vira pendência
+            // acionável: o operador confirma o de-para uma vez e revalida.
+            if (string.IsNullOrWhiteSpace(m.CodigoSigtap))
+            {
+                invalidos++;
+                await RegistrarFalhaExecucaoAsync(
+                    m, nomeArquivo: null,
+                    $"O procedimento \"{m.ProcedimentoTexto ?? m.CodigoProcedimentoSisreg}\" "
+                    + $"(código SISREG {m.CodigoProcedimentoSisreg}) ainda não tem código SIGTAP confirmado. "
+                    + "Confirme o SIGTAP dele no mapeamento do SISREG e valide esta pendência.",
+                    CausaFalhaImportacao.SigtapNaoMapeado, ct, OrigemFalhaImportacao.Varredura);
+                continue;
+            }
+
+            var (res, jaExistia) = await ExecutarMarcacaoAsync(m, ct);
+            if (res.Sucesso || jaExistia)
+            {
+                validos++;
+                if (jaExistia) jaExistiam++;
+                await ResolverFalhaPendenteAsync(m.CodigoSolicitacao, res.SolicitacaoId,
+                    jaExistia ? "Já existia uma solicitação com esse nº." : "Importada pela varredura da agenda.", ct);
+            }
+            else
+            {
+                invalidos++;
+                await RegistrarFalhaExecucaoAsync(m, nomeArquivo: null, res.Erro ?? "Erro desconhecido.",
+                    res.Causa ?? CausaFalhaImportacao.Outro, ct, OrigemFalhaImportacao.Varredura);
+            }
+        }
+
+        return new ResultadoArquivoImportado(marcacoes.Count, validos, invalidos, jaExistiam, false, null);
     }
 
     /// <summary>Arquivo .txt/.csv que não é do SISREG: uma falha só, do arquivo — não uma por linha.</summary>
@@ -557,6 +629,40 @@ public sealed class ImportacaoSisregService(
         // Degrada pro que existe, em vez de fingir campos.
         if (f.Origem == OrigemFalhaImportacao.Arquivo)
             return new(dto, false, [], null, null, null, f.CnesExecutante);
+
+        // Varredura: o RAW é o envelope da agenda. Os rótulos são os da tela do SISREG, e a ordem
+        // é a de leitura — não há coluna de TXT a que se referir, então o índice é só ordinal.
+        if (f.Origem == OrigemFalhaImportacao.Varredura)
+        {
+            var raw = RegistroVarreduraRaw.Desserializar(f.LinhaRaw);
+            if (raw is null)
+                return new(dto, false, [], null, null, f.NomeExecutante, f.CnesExecutante);
+
+            var camposVarredura = new List<CampoSisreg>
+            {
+                new(0, "Nº da solicitação", raw.CoSolicitacao),
+                new(1, "Paciente", raw.Paciente),
+                new(2, "CNS do paciente", raw.Cns),
+                new(3, "Nascimento", raw.Nascimento),
+                new(4, "Idade", raw.Idade),
+                new(5, "Telefone(s)", raw.Telefones),
+                new(6, "Data/hora do atendimento", $"{raw.Data} {raw.Hora}".Trim()),
+                new(7, "Situação no SISREG", raw.Situacao),
+                new(8, "Procedimento(s)", raw.Procedimentos),
+                new(9, "Procedimento do SISREG", $"{raw.PaNome} ({raw.PaCodigo})"),
+                new(10, "Profissional executante", $"{raw.ProfNome} ({raw.ProfCpf})"),
+                new(11, "Unidade solicitante", raw.UnidadeSolicitante),
+                new(12, "CNES do solicitante", raw.CnesSolicitante),
+                new(13, "CID-10", raw.Cid10),
+                new(14, "Vaga solicitada", raw.VagaSolicitada),
+                new(15, "Vaga consumida", raw.VagaConsumida),
+                new(16, "Origem do paciente", raw.Origem),
+            };
+
+            return new(dto, true, camposVarredura,
+                raw.UnidadeSolicitante, raw.CnesSolicitante,
+                raw.NomeExecutante, raw.CnesExecutante);
+        }
 
         var parsed = AgendaTxtParser.Parse(ReconstruirConteudo(f), f.NomeArquivo);
         var m = parsed.Marcacoes.FirstOrDefault();
@@ -672,19 +778,56 @@ public sealed class ImportacaoSisregService(
         f.Tentativas++;
         f.AtualizadoEm = agora;
 
-        // Reconstrói o mínimo de "arquivo" que o parser precisa (cabeçalho + a linha) — assim o
-        // reprocesso usa exatamente o mesmo parser da importação, sem caminho paralelo.
-        var parsed = AgendaTxtParser.Parse(ReconstruirConteudo(f), f.NomeArquivo);
-        var m = parsed.Marcacoes.FirstOrDefault();
-        if (m is null)
+        MarcacaoSisreg? m;
+
+        if (f.Origem == OrigemFalhaImportacao.Varredura)
         {
-            var motivo = parsed.Rejeitadas.FirstOrDefault()?.Motivo ?? "A linha continua ilegível para o parser.";
-            f.Origem = OrigemFalhaImportacao.Parser;
-            f.Causa = CausaFalhaImportacao.LinhaInvalida;
-            f.Motivo = Truncar(motivo, 2000);
-            await db.SaveChangesAsync(ct);
-            return new(f.Id, false, null,
-                $"A linha continua inválida: {motivo} Corrija na origem e reimporte o arquivo, ou descarte esta linha.");
+            // O RAW aqui é o envelope da agenda, não uma linha de TXT — o parser de arquivo não o
+            // entenderia e responderia "linha ilegível", mandando o operador procurar um arquivo
+            // que nunca existiu.
+            var raw = RegistroVarreduraRaw.Desserializar(f.LinhaRaw);
+            if (raw is null)
+            {
+                f.Causa = CausaFalhaImportacao.LinhaInvalida;
+                f.Motivo = "O registro guardado desta varredura está ilegível.";
+                await db.SaveChangesAsync(ct);
+                return new(f.Id, false, null,
+                    "O registro guardado desta varredura está ilegível. Rode a varredura de novo para esta unidade, ou descarte este registro.");
+            }
+
+            // O de-para é resolvido AGORA, não congelado no RAW: é isto que faz o "Validar"
+            // funcionar depois que o operador confirmou o SIGTAP que faltava.
+            var sigtap = await mapeadorSigtap.ResolverConfirmadoAsync(raw.PaCodigo, ct);
+            if (string.IsNullOrWhiteSpace(sigtap))
+            {
+                f.Causa = CausaFalhaImportacao.SigtapNaoMapeado;
+                f.Motivo = Truncar(
+                    $"O procedimento \"{raw.PaNome}\" (código SISREG {raw.PaCodigo}) continua sem código "
+                    + "SIGTAP confirmado.", 2000);
+                await db.SaveChangesAsync(ct);
+                return new(f.Id, false, null,
+                    $"Confirme o código SIGTAP do procedimento \"{raw.PaNome}\" no mapeamento do SISREG e valide de novo. "
+                    + "Uma confirmação resolve todas as pendências desse mesmo procedimento.");
+            }
+
+            m = VarreduraMapper.ParaMarcacao(raw, sigtap);
+        }
+        else
+        {
+            // Reconstrói o mínimo de "arquivo" que o parser precisa (cabeçalho + a linha) — assim o
+            // reprocesso usa exatamente o mesmo parser da importação, sem caminho paralelo.
+            var parsed = AgendaTxtParser.Parse(ReconstruirConteudo(f), f.NomeArquivo);
+            m = parsed.Marcacoes.FirstOrDefault();
+            if (m is null)
+            {
+                var motivo = parsed.Rejeitadas.FirstOrDefault()?.Motivo ?? "A linha continua ilegível para o parser.";
+                f.Origem = OrigemFalhaImportacao.Parser;
+                f.Causa = CausaFalhaImportacao.LinhaInvalida;
+                f.Motivo = Truncar(motivo, 2000);
+                await db.SaveChangesAsync(ct);
+                return new(f.Id, false, null,
+                    $"A linha continua inválida: {motivo} Corrija na origem e reimporte o arquivo, ou descarte esta linha.");
+            }
         }
 
         var (res, jaExistia) = await ExecutarMarcacaoAsync(m, ct, pacienteIdForcado);
@@ -711,7 +854,12 @@ public sealed class ImportacaoSisregService(
                 : "Importada com sucesso — a linha saiu da lista de erros.");
         }
 
-        f.Origem = OrigemFalhaImportacao.Execucao;
+        // Preserva a Varredura: a origem é o que decide COMO ler o RAW no próximo reprocesso.
+        // Sobrescrever com Execucao mandaria a próxima validação parsear um envelope JSON com o
+        // parser de TXT — e a pendência ficaria presa para sempre em "linha ilegível".
+        if (f.Origem != OrigemFalhaImportacao.Varredura)
+            f.Origem = OrigemFalhaImportacao.Execucao;
+
         f.Causa = res.Causa ?? CausaFalhaImportacao.Outro;
         f.Motivo = Truncar(res.Erro ?? "Erro desconhecido.", 2000);
         await db.SaveChangesAsync(ct);
@@ -732,8 +880,49 @@ public sealed class ImportacaoSisregService(
     }
 
     /// <summary>Grava/atualiza a falha de EXECUÇÃO da marcação (upsert pela pendência do mesmo nº).</summary>
+    /// <summary>
+    /// Avisar o paciente por WhatsApp ao importar esta marcação? Exige que o gatilho da UNIDADE
+    /// executante e o do PROCEDIMENTO naquela unidade estejam ligados.
+    ///
+    /// <para><b>Ausência de configuração = enviar.</b> Unidade sem linha de configuração e
+    /// procedimento fora do mapeamento continuam enviando, que é o comportamento em produção desde
+    /// 06/07. Um gate novo que silencia por omissão quebraria o combinado com o paciente sem que
+    /// nenhuma tela mostrasse.</para>
+    /// </summary>
+    private async Task<bool> DeveEnviarConfirmacaoAsync(
+        Guid unidadeExecutanteId, MarcacaoSisreg m, CancellationToken ct)
+    {
+        var daUnidade = await db.SisregVarreduraAgendas.AsNoTracking()
+            .Where(a => a.UnidadeId == unidadeExecutanteId)
+            .Select(a => (bool?)a.EnviarConfirmacao)
+            .FirstOrDefaultAsync(ct);
+
+        if (daUnidade is false) return false;
+
+        // A varredura traz o código do SISREG. A importação por ARQUIVO não — e para essa (que
+        // está em extinção) resolvemos os códigos equivalentes pelo de-para, para o mesmo exame
+        // não se comportar diferente conforme o caminho pelo qual entrou.
+        var codigos = !string.IsNullOrWhiteSpace(m.CodigoProcedimentoSisreg)
+            ? [m.CodigoProcedimentoSisreg!.Trim()]
+            : await mapeadorSigtap.ResolverCodigosPorSigtapAsync(m.CodigoSigtap ?? string.Empty, ct);
+
+        if (codigos.Count == 0) return true;
+
+        var flags = await db.SisregProcedimentosProfissional.AsNoTracking()
+            .Where(x => codigos.Contains(x.Codigo) && x.Profissional!.UnidadeId == unidadeExecutanteId)
+            .Select(x => x.EnviarConfirmacao)
+            .ToListAsync(ct);
+
+        // Procedimento fora do mapeamento da unidade continua enviando. Só silencia quando existe
+        // decisão explícita e ela é unânime — na dúvida, o paciente é avisado.
+        return flags.Count == 0 || flags.Any(f => f);
+    }
+
+    /// <param name="origem">Execução (TXT) por padrão. A varredura carimba <c>Varredura</c>, que é
+    /// o que faz o reprocesso e o modal lerem o RAW como envelope JSON em vez de linha de TXT.</param>
     private async Task RegistrarFalhaExecucaoAsync(
-        MarcacaoSisreg m, string? nomeArquivo, string motivo, CausaFalhaImportacao causa, CancellationToken ct)
+        MarcacaoSisreg m, string? nomeArquivo, string motivo, CausaFalhaImportacao causa, CancellationToken ct,
+        OrigemFalhaImportacao origem = OrigemFalhaImportacao.Execucao)
     {
         var raw = m.LinhaRaw ?? string.Empty;
         var f = await db.SisregImportacaoFalhas.FirstOrDefaultAsync(
@@ -749,7 +938,7 @@ public sealed class ImportacaoSisregService(
         f.CodigoSolicitacao = m.CodigoSolicitacao;
         f.HashLinha = Sha256(raw);
         f.LinhaRaw = raw;
-        f.Origem = OrigemFalhaImportacao.Execucao;
+        f.Origem = origem;
         f.Causa = causa;
         f.Motivo = Truncar(motivo, 2000);
         f.NomeArquivo = Truncar(nomeArquivo, 300);
