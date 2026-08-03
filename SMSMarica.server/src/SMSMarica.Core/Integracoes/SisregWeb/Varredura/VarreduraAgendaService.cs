@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -6,7 +7,6 @@ using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Integracoes.SisregWeb.Importacao;
 using SMSMarica.Core.Integracoes.SisregWeb.Varredura.Background;
 using SMSMarica.Core.Integracoes.SisregWeb.Varredura.Dtos;
-using SMSMarica.Core.Integracoes.SisregWeb.Varredura.Sigtap;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
@@ -37,22 +37,31 @@ public interface IVarreduraAgendaService
 }
 
 /// <summary>
-/// Varre a agenda do SISREG (<c>cons_agendas</c>) de uma unidade e entrega as marcações ao mesmo
-/// fluxo de importação do TXT.
+/// Varre a agenda do SISREG de uma unidade exportando o arquivo de agendamentos
+/// (<c>expo_solicitacoes</c>) e entrega as marcações ao mesmo fluxo de importação do upload manual.
 ///
-/// <para><b>Por que o produto cartesiano:</b> o SISREG exige, NO SERVIDOR, unidade + profissional
-/// + procedimento. POST com só a unidade responde "nenhum resultado" — não existe "toda a agenda
-/// de uma vez". Logo, varrer = percorrer os pares habilitados, e é por isso que os checkboxes do
-/// mapeamento são a régua de custo.</para>
+/// <para><b>Por que a exportação e não a raspagem da tela de agenda</b> (medido em 03/08/2026, no
+/// CDT, mesmo par profissional × procedimento, 419 registros em julho): a exportação custa <b>1
+/// requisição</b> contra <b>9</b> da tela paginada de 50 em 50 — e o orçamento de requisições é o
+/// recurso escasso aqui. Além disso o arquivo traz o <b>código SIGTAP</b> (coluna 2), as datas de
+/// solicitação e regulação e o endereço do paciente, que a tela de agenda simplesmente não
+/// informa. E reusa o <see cref="AgendaTxtParser"/>, que já roda em produção.</para>
 ///
-/// <para><b>Somente leitura:</b> usa exclusivamente <c>etapa=ListaConsulta</c>.
-/// <c>Confirma</c>/<c>Falta</c> são escrita na agenda de verdade e nunca aparecem aqui.</para>
+/// <para><b>Por que o produto cartesiano:</b> a exportação exige profissional e procedimento, como
+/// a tela de agenda. Logo, varrer = percorrer os pares habilitados, e é por isso que os checkboxes
+/// do mapeamento são a régua de custo.</para>
+///
+/// <para><b>Somente leitura:</b> <c>etapa=exportar</c> apenas gera o arquivo. Confirmar presença ou
+/// registrar falta escreveria na agenda de verdade e não acontece em lugar nenhum daqui.</para>
+///
+/// <para><b>Bloqueio de horário:</b> o <c>expo_solicitacoes</c> é bloqueado pelo SISREG das 8h às
+/// 15h. A janela de execução (22:00–06:00) já respeita isso — mas aqui isso deixa de ser só
+/// cortesia com o operador humano e passa a ser requisito do próprio recurso.</para>
 /// </summary>
 public sealed class VarreduraAgendaService(
     SmsMaricaDbContext db,
     ISisregWebSessao sessao,
     ISisregUnidadeAtual unidadeAtual,
-    IMapeadorSigtapSisreg mapeadorSigtap,
     IImportacaoSisregService importacao,
     IVarreduraSisregFila fila,
     VarreduraSisregEstadoVivo estadoVivo,
@@ -61,7 +70,10 @@ public sealed class VarreduraAgendaService(
     IOptions<VarreduraSisregOpcoes> opcoes,
     ILogger<VarreduraAgendaService> logger) : IVarreduraAgendaService
 {
-    private const string Caminho = "/cgi-bin/cons_agendas";
+    private const string Caminho = "/cgi-bin/expo_solicitacoes";
+
+    /// <summary>Teto de registros por exportação, medido no SISREG. Ver ExportarComTetoAsync.</summary>
+    private const int TetoRegistrosPorExportacao = 700;
     private static readonly TimeZoneInfo Brasilia = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
 
     private readonly VarreduraSisregOpcoes _opcoes = opcoes.Value;
@@ -346,14 +358,9 @@ public sealed class VarreduraAgendaService(
 
         var combinacoes = await CarregarCombinacoesAsync(unidade.Id, ct);
 
-        // De-para confirmado pelo operador, por código do SISREG. É o FALLBACK: a resolução
-        // principal é pelo nome do procedimento que vem no próprio agendamento.
-        var deParaPorCodigo = await mapeadorSigtap.ResolverConfirmadosAsync(
-            [.. combinacoes.Select(c => c.Codigo).Distinct(StringComparer.Ordinal)], ct);
-
-        // Cache do run: dentro de uma varredura o mesmo nome de procedimento se repete muito, e
-        // cada resolução varre o catálogo SIGTAP inteiro.
-        var sigtapPorNome = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        // Nada de resolver SIGTAP aqui: a exportação traz o código na coluna 2 de cada linha,
+        // dito pelo próprio SISREG. É a razão principal de esta fonte ser melhor que raspar o HTML
+        // da agenda, que não informa SIGTAP nenhum.
 
         // Retomada: o cursor só vale enquanto a janela for a mesma. Janela vencida é passado, e
         // refazer o passado gasta orçamento com dado que não muda mais.
@@ -366,11 +373,8 @@ public sealed class VarreduraAgendaService(
                 unidade.Nome, agenda!.CursorProfissionalCpf, agenda.CursorProcedimentoCodigo, combinacoes.Count, antes);
         }
 
-        var inicio = execucao.JanelaInicio.ToString("dd/MM/yyyy");
-        var fimTexto = execucao.JanelaFim.ToString("dd/MM/yyyy");
-
-        // Dedup global do run: procedimentos "GRUPO - X" repetem os itens individuais, então a mesma
-        // solicitação aparece em mais de uma combinação.
+        // Dedup global do run. Com o TXT o grupo não devolve nada (ver abaixo), então na prática
+        // não há repetição — mas custa um HashSet e protege de reprocessar se isso mudar.
         var vistos = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var combinacao in combinacoes)
@@ -390,37 +394,32 @@ public sealed class VarreduraAgendaService(
             progresso.CpfAtual = combinacao.Cpf;
             progresso.CodigoAtual = combinacao.Codigo;
 
-            var totalPaginas = 1;
-            for (var pagina = 0; pagina < totalPaginas && pagina < _opcoes.MaxPaginasPorCombinacao; pagina++)
+            // Medido em 03/08/2026: a exportação de um código "GRUPO - X" devolve ZERO, mesmo em
+            // período que o item individual devolve centenas. Diferente do cons_agendas, o grupo
+            // não agrega aqui. Varrer por ele seria gastar requisição para não receber nada.
+            if (combinacao.Codigo.EndsWith("000", StringComparison.Ordinal))
             {
-                ct.ThrowIfCancellationRequested();
+                logger.LogInformation(
+                    "SISREG_VARREDURA_GRUPO_IGNORADO: {Proc} ({Codigo}) — a exportação não devolve "
+                    + "nada para código de grupo; habilite os procedimentos individuais.",
+                    combinacao.NomeProcedimento, combinacao.Codigo);
+                Interlocked.Increment(ref progresso.CombinacoesFeitas);
+                continue;
+            }
 
-                var html = await ConsultarAsync(unidade.Id, cnes, inicio, fimTexto, combinacao, pagina, ct);
-                Interlocked.Increment(ref progresso.Requisicoes);
+            var marcacoes = await ExportarComTetoAsync(
+                unidade.Id, cnes, execucao.JanelaInicio, execucao.JanelaFim, combinacao, progresso, ct);
 
-                var lida = VarreduraAgendaParser.Parse(html);
-                if (pagina == 0) totalPaginas = lida.TotalPaginas;
-
-                var novas = new List<MarcacaoSisreg>();
-                foreach (var linha in lida.Linhas)
-                {
-                    if (!vistos.Add(linha.CoSolicitacao)) continue;
-
-                    var raw = MontarEnvelope(linha, combinacao, lida, cnes, unidade.Nome);
-                    var sigtap = await ResolverSigtapAsync(raw, combinacao, deParaPorCodigo, sigtapPorNome, ct);
-                    novas.Add(VarreduraMapper.ParaMarcacao(raw, sigtap));
-                }
-
-                if (novas.Count > 0)
-                {
-                    // Importa a cada página, não no fim: é isto que faz o parcial ser útil quando o
-                    // CAPTCHA interrompe a varredura no meio.
-                    var resultado = await importacao.ImportarMarcacoesAsync(execucao.Id, novas, ct);
-                    Interlocked.Add(ref progresso.RegistrosEncontrados, novas.Count);
-                    Interlocked.Add(ref progresso.Validos, resultado.Validos);
-                    Interlocked.Add(ref progresso.Invalidos, resultado.Invalidos);
-                    execucao.JaExistiam += resultado.JaExistiam;
-                }
+            var novas = marcacoes.Where(m => vistos.Add(m.CodigoSolicitacao)).ToList();
+            if (novas.Count > 0)
+            {
+                // Importa a cada combinação, não no fim: é isto que faz o parcial ser útil quando
+                // a varredura é interrompida no meio.
+                var resultado = await importacao.ImportarMarcacoesAsync(execucao.Id, novas, ct);
+                Interlocked.Add(ref progresso.RegistrosEncontrados, novas.Count);
+                Interlocked.Add(ref progresso.Validos, resultado.Validos);
+                Interlocked.Add(ref progresso.Invalidos, resultado.Invalidos);
+                execucao.JaExistiam += resultado.JaExistiam;
             }
 
             Interlocked.Increment(ref progresso.CombinacoesFeitas);
@@ -455,104 +454,77 @@ public sealed class VarreduraAgendaService(
             progresso.RegistrosEncontrados, progresso.Validos, progresso.Invalidos);
     }
 
-    private async Task<string> ConsultarAsync(
-        Guid unidadeId, string cnes, string inicio, string fim, Combinacao combinacao, int pagina, CancellationToken ct)
+    /// <summary>
+    /// Exporta a agenda de UM par profissional × procedimento e devolve as marcações.
+    ///
+    /// <para><b>Teto de 700 registros por exportação</b>, medido em 03/08/2026: intervalos de 61 e
+    /// de 212 dias devolveram exatamente 700 — é limite do SISREG, não coincidência. E é
+    /// truncamento <b>silencioso</b>: o cabeçalho informa 700 e as linhas são 700, sem nada
+    /// dizendo que faltou. Por isso, ao bater no teto, a janela é partida ao meio e reconsultada:
+    /// perder agendamento sem avisar seria o pior desfecho possível aqui.</para>
+    /// </summary>
+    private async Task<List<MarcacaoSisreg>> ExportarComTetoAsync(
+        Guid unidadeId,
+        string cnes,
+        DateOnly inicio,
+        DateOnly fim,
+        Combinacao combinacao,
+        ProgressoVarredura progresso,
+        CancellationToken ct)
     {
-        // Pausa ANTES da requisição, como no script que rodou sem disparar o anti-bot. Fica aqui e
-        // não na sessão HTTP de propósito: atrasar a sessão penalizaria as telas interativas
-        // (mapeamento, credencial, CADSUS), que não têm nada a ver com o volume da varredura.
+        var texto = await ExportarAsync(unidadeId, cnes, inicio, fim, combinacao, ct);
+        Interlocked.Increment(ref progresso.Requisicoes);
+
+        var parsed = AgendaTxtParser.Parse(texto, NomeArquivoSintetico(combinacao, inicio, fim));
+
+        var bateuNoTeto = parsed.Marcacoes.Count >= TetoRegistrosPorExportacao;
+        if (!bateuNoTeto || inicio >= fim) return [.. parsed.Marcacoes];
+
+        // Parte ao meio e reconsulta cada metade. A recursão termina porque a janela encolhe a cada
+        // nível e para quando inicio == fim (um único dia).
+        var meio = inicio.AddDays((fim.DayNumber - inicio.DayNumber) / 2);
+        logger.LogWarning(
+            "SISREG_EXPORT_TRUNCADA: {Proc} em {Ini}..{Fim} bateu o teto de {Teto} registros — "
+            + "partindo a janela em {Ini}..{Meio} e {Meio2}..{Fim}.",
+            combinacao.NomeProcedimento, inicio, fim, TetoRegistrosPorExportacao,
+            inicio, meio, meio.AddDays(1), fim);
+
+        var esquerda = await ExportarComTetoAsync(unidadeId, cnes, inicio, meio, combinacao, progresso, ct);
+        var direita = await ExportarComTetoAsync(unidadeId, cnes, meio.AddDays(1), fim, combinacao, progresso, ct);
+
+        esquerda.AddRange(direita);
+        return esquerda;
+    }
+
+    private async Task<string> ExportarAsync(
+        Guid unidadeId, string cnes, DateOnly inicio, DateOnly fim, Combinacao combinacao, CancellationToken ct)
+    {
+        // Pausa ANTES da requisição. Fica aqui e não na sessão HTTP de propósito: atrasar a sessão
+        // penalizaria as telas interativas (mapeamento, credencial, CADSUS), que não têm nada a ver
+        // com o volume da varredura.
         if (_opcoes.PausaMs > 0) await Task.Delay(_opcoes.PausaMs, ct);
 
         return await sessao.PostFormAsync(unidadeId, Caminho, new Dictionary<string, string>
         {
-            ["co_solicitacao"] = string.Empty,
-            ["cns_paciente"] = string.Empty,
-            ["dataInicial"] = inicio,
-            ["dataFinal"] = fim,
-            ["ups"] = cnes,
+            // Cultura invariante explícita: em "dd/MM/yyyy" a barra é o SEPARADOR DA CULTURA, não
+            // um literal. Num host com locale que use "." ou "-", a data sairia deformada e o
+            // SISREG responderia vazio — falha silenciosa, idêntica a uma agenda sem movimento.
+            ["data1"] = inicio.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture),
+            ["data2"] = fim.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture),
             ["cpf"] = combinacao.Cpf,
-            ["pa"] = combinacao.Codigo,
-            ["cmbTipoOperacao"] = "Consulta",
-            ["chkboxExibirProcedimentos"] = "on",
-            ["chkboxExibirTelefones"] = "on",
-            ["cmbOrdenacao"] = "1",
-            ["cmbMaxResults"] = "50",
-            // SOMENTE LEITURA. 'Confirma'/'Falta' escrevem na agenda de verdade — nunca aqui.
-            ["etapa"] = "ListaConsulta",
-            ["pagina"] = pagina.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            ["linhas"] = "0",
+            ["procedimento"] = combinacao.Codigo,
+            ["tp_arquivo"] = "0", // 0 = TXT, 1 = CSV
+            ["etapa"] = "exportar",
+            ["unidade"] = cnes,
         }, ct);
     }
 
     /// <summary>
-    /// SIGTAP de UM agendamento. A ordem é o ponto do desenho: o procedimento que o registro
-    /// informa manda, e o código da consulta é só desempate.
-    ///
-    /// <para>É isso que torna seguro varrer por um "GRUPO -": os agendamentos voltam com o
-    /// procedimento individual de cada um, então uma mamografia unilateral e uma bilateral colhidas
-    /// pelo mesmo grupo entram com SIGTAPs diferentes — e corretos.</para>
+    /// O parser do TXT usa o nome do arquivo para derivar a unidade executante no formato CSV.
+    /// Aqui o cabeçalho já traz o CNES, mas um nome estável ajuda a proveniência da pendência.
     /// </summary>
-    private async Task<string?> ResolverSigtapAsync(
-        RegistroVarreduraRaw raw,
-        Combinacao combinacao,
-        IReadOnlyDictionary<string, string> deParaPorCodigo,
-        Dictionary<string, string?> cachePorNome,
-        CancellationToken ct)
-    {
-        var nome = VarreduraMapper.LimparProcedimento(raw.Procedimentos);
-
-        if (!string.IsNullOrWhiteSpace(nome))
-        {
-            if (!cachePorNome.TryGetValue(nome, out var doNome))
-            {
-                doNome = await mapeadorSigtap.ResolverPorNomeExatoAsync(nome, ct);
-                cachePorNome[nome] = doNome;
-            }
-
-            if (!string.IsNullOrWhiteSpace(doNome)) return doNome;
-        }
-
-        // Fallback: o de-para que o operador confirmou para o código consultado. Só acerta quando
-        // a consulta foi por procedimento individual — num grupo, apontaria o procedimento errado.
-        return !combinacao.Codigo.EndsWith("000", StringComparison.Ordinal)
-               && deParaPorCodigo.TryGetValue(combinacao.Codigo, out var doDePara)
-            ? doDePara
-            : null;
-    }
-
-    private static RegistroVarreduraRaw MontarEnvelope(
-        VarreduraAgendaParser.Linha linha,
-        Combinacao combinacao,
-        VarreduraAgendaParser.Pagina pagina,
-        string cnesUnidade,
-        string nomeUnidade) =>
-        new(
-            V: RegistroVarreduraRaw.VersaoAtual,
-            CoSolicitacao: linha.CoSolicitacao,
-            Cns: linha.Cns,
-            Paciente: linha.Paciente,
-            Nascimento: linha.Nascimento,
-            Idade: linha.Idade,
-            Origem: linha.Origem,
-            Telefones: linha.Telefones,
-            UnidadeSolicitante: linha.UnidadeSolicitante,
-            CnesSolicitante: linha.CnesSolicitante,
-            VagaSolicitada: linha.VagaSolicitada,
-            VagaConsumida: linha.VagaConsumida,
-            Cid10: linha.Cid10,
-            Data: linha.Data,
-            DiaSemana: linha.DiaSemana,
-            Hora: linha.Hora,
-            Situacao: linha.Situacao,
-            Procedimentos: linha.Procedimentos,
-            ProfCpf: combinacao.Cpf,
-            ProfNome: combinacao.NomeProfissional,
-            PaCodigo: combinacao.Codigo,
-            PaNome: combinacao.NomeProcedimento,
-            // O cabeçalho da própria página é mais confiável que o cadastro; o cadastro é o fallback.
-            CnesExecutante: pagina.CnesExecutante ?? cnesUnidade,
-            NomeExecutante: pagina.NomeExecutante ?? nomeUnidade,
-            CapturadoEm: DateTime.UtcNow);
+    private static string NomeArquivoSintetico(Combinacao combinacao, DateOnly inicio, DateOnly fim) =>
+        $"sisreg-{combinacao.Codigo}-{inicio:yyyyMMdd}-{fim:yyyyMMdd}.txt";
 
     private async Task TratarCaptchaAsync(
         SisregVarreduraExecucao execucao,

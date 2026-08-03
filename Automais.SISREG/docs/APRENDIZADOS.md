@@ -252,12 +252,50 @@ requisições, `CaptchaExigido` abortando com mensagem clara, e o `.jsonl`
 janelas curtas (1 semana), execução espaçada, e/ou preferir o
 **Arquivo Agendamento TXT** (`expo_solicitacoes`) para carga em massa.
 
+### `expo_solicitacoes` — "Arquivo Agendamento (txt)" ✅ MAPEADO (2026-08-03)
+
+**É a MELHOR fonte para materializar agenda** — melhor que raspar o `cons_agendas`. Medido no CDT,
+mesmo par profissional × procedimento, 419 registros em julho: **1 requisição** contra **9** da tela
+paginada de 50 em 50. E o arquivo ainda traz SIGTAP, datas de solicitação/regulação e endereço, que
+a tela de agenda não informa. É a fonte que o motor do `SMSMarica.server` usa (ADR-0040).
+
+**Formulário** — `GET /cgi-bin/expo_solicitacoes` e depois `POST` no mesmo caminho:
+
+| Campo | Valor |
+|---|---|
+| `data1`, `data2` | `dd/MM/yyyy` |
+| `cpf` | CPF do profissional (select; mesmos valores do `cons_agendas`) |
+| `procedimento` | código `pa` (select, populado por AJAX ao escolher o profissional) |
+| `tp_arquivo` | `0` = TXT, `1` = CSV |
+| `etapa` | `exportar` |
+| `unidade` | CNES (hidden) |
+
+Resposta: `text/plain; charset=utf-8`, direto no corpo — sem download intermediário. Cabeçalho
+`CNES;Nome;dt_ini;dt_fim;total` e 38 colunas por linha.
+
+**Coluna 1 = `pa`, coluna 2 = SIGTAP.** É o de-para autoritativo, dito pelo próprio SISREG — não
+precisa adivinhar por nome.
+
+⚠️ **Teto de 700 registros por exportação.** Intervalos de 61 e de 212 dias devolveram exatamente
+700. Truncamento **silencioso**: o cabeçalho diz 700 e as linhas são 700, nada indica que faltou.
+Quem consumir tem que partir a janela ao bater no teto.
+
+⚠️ **Código de GRUPO devolve 0.** `1305000 GRUPO - MAMOGRAFIA` retorna vazio no mesmo período em
+que `1305007` retorna 419. Diferente do `cons_agendas`, aqui o grupo **não** agrega os itens — use
+os procedimentos individuais.
+
+⚠️ **Bloqueado das 08h às 15h.** Confirmado que fora desse horário abre normalmente.
+
+<details>
+<summary>Registro anterior, de quando a tela era desconhecida</summary>
+
 ### `expo_solicitacoes` — "Arquivo Agendamento (txt)"
 ⚠️ **Bloqueado das 08h às 15h** (`alert('Aplicativo bloqueado para uso de 8 as 15
 horas.')` → redireciona p/ `/cgi-bin/avisos`). Export em massa provavelmente só
 fora do horário comercial. **Avaliar após 15h** — pode ser o caminho ideal (txt
 estruturado em vez de raspar HTML paginado).
 
+</details>
 ## ✍️ SUBSÍDIO PARA ESCRITA (mapeado 2026-07-25 — NADA FOI EXECUTADO)
 
 Levantamento **só por GET** dos formulários (nenhum POST de escrita disparado),

@@ -642,40 +642,9 @@ public sealed class ImportacaoSisregService(
         if (f.Origem == OrigemFalhaImportacao.Arquivo)
             return new(dto, false, [], null, null, null, f.CnesExecutante);
 
-        // Varredura: o RAW é o envelope da agenda. Os rótulos são os da tela do SISREG, e a ordem
-        // é a de leitura — não há coluna de TXT a que se referir, então o índice é só ordinal.
-        if (f.Origem == OrigemFalhaImportacao.Varredura)
-        {
-            var raw = RegistroVarreduraRaw.Desserializar(f.LinhaRaw);
-            if (raw is null)
-                return new(dto, false, [], null, null, f.NomeExecutante, f.CnesExecutante);
-
-            var camposVarredura = new List<CampoSisreg>
-            {
-                new(0, "Nº da solicitação", raw.CoSolicitacao),
-                new(1, "Paciente", raw.Paciente),
-                new(2, "CNS do paciente", raw.Cns),
-                new(3, "Nascimento", raw.Nascimento),
-                new(4, "Idade", raw.Idade),
-                new(5, "Telefone(s)", raw.Telefones),
-                new(6, "Data/hora do atendimento", $"{raw.Data} {raw.Hora}".Trim()),
-                new(7, "Situação no SISREG", raw.Situacao),
-                new(8, "Procedimento(s)", raw.Procedimentos),
-                new(9, "Procedimento do SISREG", $"{raw.PaNome} ({raw.PaCodigo})"),
-                new(10, "Profissional executante", $"{raw.ProfNome} ({raw.ProfCpf})"),
-                new(11, "Unidade solicitante", raw.UnidadeSolicitante),
-                new(12, "CNES do solicitante", raw.CnesSolicitante),
-                new(13, "CID-10", raw.Cid10),
-                new(14, "Vaga solicitada", raw.VagaSolicitada),
-                new(15, "Vaga consumida", raw.VagaConsumida),
-                new(16, "Origem do paciente", raw.Origem),
-            };
-
-            return new(dto, true, camposVarredura,
-                raw.UnidadeSolicitante, raw.CnesSolicitante,
-                raw.NomeExecutante, raw.CnesExecutante);
-        }
-
+        // A varredura da agenda também produz linha de TXT (ela exporta o mesmo arquivo do
+        // expo_solicitacoes), então não há caminho separado: o RAW é sempre uma linha do SISREG e
+        // o parser abaixo serve às duas origens.
         var parsed = AgendaTxtParser.Parse(ReconstruirConteudo(f), f.NomeArquivo);
         var m = parsed.Marcacoes.FirstOrDefault();
         if (m is null)
@@ -790,59 +759,20 @@ public sealed class ImportacaoSisregService(
         f.Tentativas++;
         f.AtualizadoEm = agora;
 
-        MarcacaoSisreg? m;
-
-        if (f.Origem == OrigemFalhaImportacao.Varredura)
+        // Reconstrói o mínimo de "arquivo" que o parser precisa (cabeçalho + a linha) — assim o
+        // reprocesso usa exatamente o mesmo parser da importação, sem caminho paralelo. Vale para
+        // as duas origens: a varredura também produz linha do mesmo TXT.
+        var parsed = AgendaTxtParser.Parse(ReconstruirConteudo(f), f.NomeArquivo);
+        var m = parsed.Marcacoes.FirstOrDefault();
+        if (m is null)
         {
-            // O RAW aqui é o envelope da agenda, não uma linha de TXT — o parser de arquivo não o
-            // entenderia e responderia "linha ilegível", mandando o operador procurar um arquivo
-            // que nunca existiu.
-            var raw = RegistroVarreduraRaw.Desserializar(f.LinhaRaw);
-            if (raw is null)
-            {
-                f.Causa = CausaFalhaImportacao.LinhaInvalida;
-                f.Motivo = "O registro guardado desta varredura está ilegível.";
-                await db.SaveChangesAsync(ct);
-                return new(f.Id, false, null,
-                    "O registro guardado desta varredura está ilegível. Rode a varredura de novo para esta unidade, ou descarte este registro.");
-            }
-
-            // O SIGTAP é resolvido AGORA, não congelado no RAW — é isto que faz o "Validar"
-            // funcionar depois que alguém confirmou o mapeamento que faltava. Mesma ordem da
-            // varredura: o procedimento do próprio agendamento manda; o código consultado desempata.
-            var nomeProcedimento = VarreduraMapper.LimparProcedimento(raw.Procedimentos) ?? raw.PaNome;
-            var sigtap = await mapeadorSigtap.ResolverPorNomeExatoAsync(nomeProcedimento, ct)
-                ?? await mapeadorSigtap.ResolverConfirmadoAsync(raw.PaCodigo, ct);
-
-            if (string.IsNullOrWhiteSpace(sigtap))
-            {
-                f.Causa = CausaFalhaImportacao.SigtapNaoMapeado;
-                f.Motivo = Truncar(
-                    $"O procedimento \"{nomeProcedimento}\" continua sem código SIGTAP.", 2000);
-                await db.SaveChangesAsync(ct);
-                return new(f.Id, false, null,
-                    $"O procedimento \"{nomeProcedimento}\" ainda não tem código SIGTAP. Mapeie-o e valide de novo — "
-                    + "um mapeamento resolve todas as pendências desse mesmo procedimento.");
-            }
-
-            m = VarreduraMapper.ParaMarcacao(raw, sigtap);
-        }
-        else
-        {
-            // Reconstrói o mínimo de "arquivo" que o parser precisa (cabeçalho + a linha) — assim o
-            // reprocesso usa exatamente o mesmo parser da importação, sem caminho paralelo.
-            var parsed = AgendaTxtParser.Parse(ReconstruirConteudo(f), f.NomeArquivo);
-            m = parsed.Marcacoes.FirstOrDefault();
-            if (m is null)
-            {
-                var motivo = parsed.Rejeitadas.FirstOrDefault()?.Motivo ?? "A linha continua ilegível para o parser.";
-                f.Origem = OrigemFalhaImportacao.Parser;
-                f.Causa = CausaFalhaImportacao.LinhaInvalida;
-                f.Motivo = Truncar(motivo, 2000);
-                await db.SaveChangesAsync(ct);
-                return new(f.Id, false, null,
-                    $"A linha continua inválida: {motivo} Corrija na origem e reimporte o arquivo, ou descarte esta linha.");
-            }
+            var motivo = parsed.Rejeitadas.FirstOrDefault()?.Motivo ?? "A linha continua ilegível para o parser.";
+            f.Origem = OrigemFalhaImportacao.Parser;
+            f.Causa = CausaFalhaImportacao.LinhaInvalida;
+            f.Motivo = Truncar(motivo, 2000);
+            await db.SaveChangesAsync(ct);
+            return new(f.Id, false, null,
+                $"A linha continua inválida: {motivo} Corrija na origem e reimporte o arquivo, ou descarte esta linha.");
         }
 
         var (res, jaExistia) = await ExecutarMarcacaoAsync(m, ct, pacienteIdForcado);
@@ -900,7 +830,7 @@ public sealed class ImportacaoSisregService(
                 Texto = g.Key,
                 // O `pa` sai do envelope; pode divergir dentro do grupo quando a varredura passou
                 // pelo "GRUPO -" e pelo item individual. O primeiro serve de referência.
-                Codigo = g.Select(x => CodigoDoEnvelope(x.LinhaRaw)).FirstOrDefault(c => c is not null),
+                Codigo = g.Select(x => CodigoDoRaw(x.LinhaRaw)).FirstOrDefault(c => c is not null),
                 Qtd = g.Count(),
                 Primeira = g.Min(x => x.CriadoEm),
                 Ultima = g.Max(x => x.CriadoEm),
@@ -961,8 +891,17 @@ public sealed class ImportacaoSisregService(
         return new ReprocessoLoteResultado(ids.Count, importadas, continuam, mensagem);
     }
 
-    private static string? CodigoDoEnvelope(string? raw) =>
-        RegistroVarreduraRaw.Desserializar(raw)?.PaCodigo;
+    /// <summary>
+    /// Código do procedimento no SISREG (o <c>pa</c>) — coluna 1 da linha do TXT. O parser não o
+    /// carrega para <see cref="MarcacaoSisreg"/> (ele usa o SIGTAP da coluna 2), mas a tela de
+    /// pendências agrupadas precisa dele para apontar qual procedimento mapear.
+    /// </summary>
+    private static string? CodigoDoRaw(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        var campos = raw.Split(';');
+        return campos.Length > 1 && campos[1].Trim() is { Length: > 0 } c ? c : null;
+    }
 
     public async Task DescartarFalhaAsync(Guid falhaId, string? nota, CancellationToken ct)
     {

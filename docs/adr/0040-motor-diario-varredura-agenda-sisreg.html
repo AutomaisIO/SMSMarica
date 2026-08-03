@@ -35,22 +35,43 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p>As peças para automatizar já existiam pela metade: a tela de Mapeamento SISREG cadastrava credencial por unidade e listava profissionais com seus procedimentos, com checkbox nos dois níveis. Mas <strong>nada consumia esses checkboxes</strong> além do "Sincronizar profissionais (FHIR)". A tela até exibia "Requisições por varredura" — de uma varredura que nunca foi escrita.</p>
 <h2>Decisão</h2>
 <p>Um motor diário, <strong>por unidade</strong>, que varre a agenda do SISREG pela tela <code>cons_agendas</code> e entrega as marcações ao mesmo fluxo de importação do TXT.</p>
-<h3>1. A fonte é a varredura, não o TXT</h3>
-<p>Descartamos o <code>expo_solicitacoes</code>: nunca foi aberto com sucesso (a única captura é o bloqueio "Aplicativo bloqueado para uso de 8 as 15 horas"), e o arquivo é <strong>da unidade inteira</strong> num intervalo — a seleção de profissional/procedimento não o filtraria.</p>
-<p>O <code>cons_agendas</code> exige, <strong>no servidor</strong>, unidade + profissional + procedimento. POST só com a unidade responde "nenhum resultado" (provado em <code>Automais.SISREG/capturas/agendas_3132358_*.html</code>). Logo, varrer = percorrer o produto cartesiano dos pares habilitados — e é isso que dá sentido aos checkboxes: <strong>eles são a régua de custo</strong>.</p>
-<p>Referência funcional portada: <code>Automais.SISREG/extrair_agenda_unidade.py</code>. Rendimento medido no CDT: 92 profissionais → 256 combinações → <strong>352 requisições → 753 agendamentos em 47s</strong>.</p>
-<h3>2. O código do SISREG é filtro; o SIGTAP se resolve na importação</h3>
-<p>A agenda entrega o <code>pa</code> (código interno do SISREG, 7 dígitos), <strong>nunca o SIGTAP</strong>. Sem SIGTAP, <code>ExecutarMarcacaoAsync</code> resolve <code>CategoriaSigtap.Resolver("")</code> → <code>Outro</code>, não cria satélite de imagem, não gera worklist — e <strong>cria a solicitação como sucesso</strong>. Seria lixo silencioso.</p>
-<p>A primeira versão tratava isso com um portão: procedimento sem de-para confirmado não era varrido. <strong>Foi descartado.</strong> Obrigava a mapear procedimento que talvez nunca tivesse agendamento (116 no CDT), e — pior — atribuía errado: varrendo por um <code>GRUPO - MAMOGRAFIA</code>, todos os agendamentos seriam carimbados com o procedimento do grupo, misturando unilateral e bilateral.</p>
-<p>O desenho vigente: <strong>o <code>pa</code> é só o filtro da varredura — o que consultar. Quem diz o que o exame é de verdade é o próprio agendamento</strong>, que traz o procedimento individual na listagem. A resolução acontece na importação, nesta ordem:</p>
+<h3>1. A fonte é a exportação de arquivo (<code>expo_solicitacoes</code>)</h3>
+<p>&gt; <strong>Revisto em 03/08/2026.</strong> A primeira versão raspava a tela de agenda (<code>cons_agendas</code>), porque o &gt; <code>expo_solicitacoes</code> nunca tinha sido aberto com sucesso — a única captura era o bloqueio &gt; <em>"Aplicativo bloqueado para uso de 8 as 15 horas"</em>. Aberto fora do horário, ele se mostrou &gt; <strong>estritamente melhor</strong>, e a fonte foi trocada.</p>
+<p>Medido no CDT, mesmo par profissional × procedimento, 419 registros em julho:</p>
+<div class="tw"><table><thead><tr><th></th><th>Raspagem (<code>cons_agendas</code>)</th><th>Exportação (<code>expo_solicitacoes</code>)</th></tr></thead><tbody>
+<tr><td>Requisições</td><td>9 (paginado de 50)</td><td><strong>1</strong></td></tr>
+<tr><td>Código SIGTAP</td><td>não informa</td><td><strong>coluna 2</strong></td></tr>
+<tr><td>Datas de solicitação e regulação</td><td>não informa</td><td>sim</td></tr>
+<tr><td>Endereço do paciente</td><td>não informa</td><td>sim</td></tr>
+</tbody></table></div>
+<p>A exportação é <strong>9× mais barata no recurso escasso</strong> (o orçamento anti-robô) e mais rica. E reusa o <code>AgendaTxtParser</code>, que já roda em produção no upload manual — validado contra o arquivo real: 91/91 marcações, 0 rejeitadas, SIGTAP em todas.</p>
+<p>Ela exige profissional e procedimento, como a tela de agenda. Logo, varrer = percorrer o produto cartesiano dos pares habilitados — e é isso que dá sentido aos checkboxes: <strong>eles são a régua de custo</strong>.</p>
+<p>Duas restrições medidas, ambas tratadas em código:</p>
+<ul>
+<li><strong>Teto de 700 registros por exportação.</strong> Intervalos de 61 e de 212 dias devolveram exatamente</li>
+</ul>
 <ol>
-<li>nome do procedimento do registro, casado <strong>exatamente</strong> com o catálogo SIGTAP oficial;</li>
-<li>de-para confirmado para o <code>pa</code> consultado (ignorado quando a consulta foi por grupo);</li>
-<li>sem resolver → pendência <code>SigtapNaoMapeado</code> no histórico de erro de importação.</li>
+<li>É truncamento <strong>silencioso</strong> (o cabeçalho diz 700, as linhas são 700), então ao bater no</li>
 </ol>
-<p>Isso torna seguro varrer por grupo e faz o mapeamento ser <strong>orientado a demanda</strong>: só se mapeia o que de fato apareceu na agenda.</p>
-<p><strong>Nunca há resolução automática abaixo de igualdade exata de nome</strong> — nem por semelhança, nem quando dois SIGTAPs compartilham o mesmo nome normalizado (aí vira pendência e loga <code>SIGTAP_NOME_AMBIGUO</code>). SIGTAP errado não estoura em lugar nenhum: vira worklist errada, exame errado no PACS e laudo no lugar errado, semanas depois.</p>
+<p>  teto a janela é partida ao meio e reconsultada.</p>
+<ul>
+<li><strong>Código de grupo não devolve nada.</strong> <code>GRUPO - MAMOGRAFIA</code> retorna 0 mesmo no período em que o</li>
+</ul>
+<p>  item individual retorna 419 — diferente do <code>cons_agendas</code>, aqui o grupo não agrega. A varredura   pula códigos terminados em <code>000</code> e loga, em vez de gastar requisição à toa.</p>
+<h3>2. O SIGTAP vem no arquivo; o código do SISREG é só filtro</h3>
+<p>O arquivo traz, lado a lado, o código do SISREG (coluna 1) e o <strong>SIGTAP</strong> (coluna 2) — dito pelo próprio SISREG, não inferido. Isso dissolve o problema que dominou o desenho anterior.</p>
+<p>Duas versões descartadas, registradas porque o raciocínio se repete:</p>
+<ol>
+<li><strong>Portão antes de varrer</strong> (procedimento sem de-para confirmado não era varrido). Obrigava a</li>
+</ol>
+<p>   mapear 116 procedimentos que talvez nunca tivessem agendamento.</p>
+<ol>
+<li><strong>Resolução por nome exato contra o catálogo SIGTAP.</strong> Necessária enquanto a fonte era a</li>
+</ol>
+<p>   raspagem, que não informa SIGTAP. Com a exportação, é redundante para o caminho feliz.</p>
+<p>Vale a régua de sempre: sem SIGTAP, <code>CategoriaSigtap.Resolver("")</code> devolve <code>Outro</code>, a solicitação nasce sem satélite de imagem e sem worklist — <strong>e marcada como sucesso</strong>. Por isso a marcação sem SIGTAP vira pendência <code>SigtapNaoMapeado</code> em vez de entrar torta. Com a exportação isso passa a ser exceção, não regra.</p>
 <p>Como a pendência é por solicitação e a correção é por procedimento, a aba de Erros agrupa as de causa <code>SigtapNaoMapeado</code> por procedimento — 1 linha "MAMOGRAFIA BILATERAL — 200 solicitações" — com mapeamento e revalidação em lote. Sem isso, resolver 200 pendências idênticas seria clicar 200 vezes, e elas afogariam as pendências que exigem olhar caso a caso.</p>
+<p><strong>Nunca há resolução automática de SIGTAP abaixo de igualdade exata de nome</strong>, onde ela ainda acontece. SIGTAP errado não estoura em lugar nenhum: vira worklist errada, exame errado no PACS e laudo no lugar errado, semanas depois.</p>
 <h3>3. A ingestão é aditiva — o caminho do TXT não muda</h3>
 <p><code>IImportacaoSisregService</code> ganhou <strong>um</strong> membro (<code>ImportarMarcacoesAsync</code>), <code>RegistrarFalhaExecucaoAsync</code> ganhou um parâmetro opcional (<code>origem</code>), e <code>ReplicarFalhaAsync</code>/<code>ObterFalhaDetalheAsync</code> ganharam um branch cada. O núcleo <code>ExecutarMarcacaoAsync</code> — idempotência por nº do SISREG, resolução CNS→local→CADSUS→CPF, criação de solicitação, fila de WhatsApp — <strong>não foi tocado</strong>. Extraí-lo para um serviço próprio era refatorar 190 linhas em produção sem ganho para o motor.</p>
 <p>A proveniência vira <code>RegistroVarreduraRaw</code>, envelope JSON versionado gravado no mesmo <code>LinhaRaw</code> que o TXT usa. <strong>O envelope guarda o <code>pa</code>, nunca o SIGTAP</strong>: o de-para é <em>configuração</em>, não observação, e é resolvido de novo no reprocesso. É isso que faz o botão "Validar" funcionar depois que o operador confirma o SIGTAP que faltava.</p>

@@ -39,9 +39,6 @@ public sealed class VarreduraSisregOpcoes
     /// humano abrindo o SISREG no navegador com aquele operador.</summary>
     public int CaptchaPausaHoras { get; set; } = 24;
 
-    /// <summary>Freio contra loop de paginação mal parseada.</summary>
-    public int MaxPaginasPorCombinacao { get; set; } = 40;
-
     /// <summary>Intervalo do tick do scheduler, em segundos.</summary>
     public int TickSegundos { get; set; } = 60;
 

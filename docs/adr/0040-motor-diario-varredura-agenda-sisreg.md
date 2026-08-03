@@ -21,51 +21,64 @@ até exibia "Requisições por varredura" — de uma varredura que nunca foi esc
 Um motor diário, **por unidade**, que varre a agenda do SISREG pela tela `cons_agendas` e entrega
 as marcações ao mesmo fluxo de importação do TXT.
 
-### 1. A fonte é a varredura, não o TXT
+### 1. A fonte é a exportação de arquivo (`expo_solicitacoes`)
 
-Descartamos o `expo_solicitacoes`: nunca foi aberto com sucesso (a única captura é o bloqueio
-"Aplicativo bloqueado para uso de 8 as 15 horas"), e o arquivo é **da unidade inteira** num
-intervalo — a seleção de profissional/procedimento não o filtraria.
+> **Revisto em 03/08/2026.** A primeira versão raspava a tela de agenda (`cons_agendas`), porque o
+> `expo_solicitacoes` nunca tinha sido aberto com sucesso — a única captura era o bloqueio
+> *"Aplicativo bloqueado para uso de 8 as 15 horas"*. Aberto fora do horário, ele se mostrou
+> **estritamente melhor**, e a fonte foi trocada.
 
-O `cons_agendas` exige, **no servidor**, unidade + profissional + procedimento. POST só com a
-unidade responde "nenhum resultado" (provado em `Automais.SISREG/capturas/agendas_3132358_*.html`).
-Logo, varrer = percorrer o produto cartesiano dos pares habilitados — e é isso que dá sentido aos
-checkboxes: **eles são a régua de custo**.
+Medido no CDT, mesmo par profissional × procedimento, 419 registros em julho:
 
-Referência funcional portada: `Automais.SISREG/extrair_agenda_unidade.py`. Rendimento medido no
-CDT: 92 profissionais → 256 combinações → **352 requisições → 753 agendamentos em 47s**.
+| | Raspagem (`cons_agendas`) | Exportação (`expo_solicitacoes`) |
+|---|---|---|
+| Requisições | 9 (paginado de 50) | **1** |
+| Código SIGTAP | não informa | **coluna 2** |
+| Datas de solicitação e regulação | não informa | sim |
+| Endereço do paciente | não informa | sim |
 
-### 2. O código do SISREG é filtro; o SIGTAP se resolve na importação
+A exportação é **9× mais barata no recurso escasso** (o orçamento anti-robô) e mais rica. E reusa o
+`AgendaTxtParser`, que já roda em produção no upload manual — validado contra o arquivo real:
+91/91 marcações, 0 rejeitadas, SIGTAP em todas.
 
-A agenda entrega o `pa` (código interno do SISREG, 7 dígitos), **nunca o SIGTAP**. Sem SIGTAP,
-`ExecutarMarcacaoAsync` resolve `CategoriaSigtap.Resolver("")` → `Outro`, não cria satélite de
-imagem, não gera worklist — e **cria a solicitação como sucesso**. Seria lixo silencioso.
+Ela exige profissional e procedimento, como a tela de agenda. Logo, varrer = percorrer o produto
+cartesiano dos pares habilitados — e é isso que dá sentido aos checkboxes: **eles são a régua de
+custo**.
 
-A primeira versão tratava isso com um portão: procedimento sem de-para confirmado não era varrido.
-**Foi descartado.** Obrigava a mapear procedimento que talvez nunca tivesse agendamento (116 no
-CDT), e — pior — atribuía errado: varrendo por um `GRUPO - MAMOGRAFIA`, todos os agendamentos
-seriam carimbados com o procedimento do grupo, misturando unilateral e bilateral.
+Duas restrições medidas, ambas tratadas em código:
 
-O desenho vigente: **o `pa` é só o filtro da varredura — o que consultar. Quem diz o que o exame é
-de verdade é o próprio agendamento**, que traz o procedimento individual na listagem. A resolução
-acontece na importação, nesta ordem:
+- **Teto de 700 registros por exportação.** Intervalos de 61 e de 212 dias devolveram exatamente
+  700. É truncamento **silencioso** (o cabeçalho diz 700, as linhas são 700), então ao bater no
+  teto a janela é partida ao meio e reconsultada.
+- **Código de grupo não devolve nada.** `GRUPO - MAMOGRAFIA` retorna 0 mesmo no período em que o
+  item individual retorna 419 — diferente do `cons_agendas`, aqui o grupo não agrega. A varredura
+  pula códigos terminados em `000` e loga, em vez de gastar requisição à toa.
 
-1. nome do procedimento do registro, casado **exatamente** com o catálogo SIGTAP oficial;
-2. de-para confirmado para o `pa` consultado (ignorado quando a consulta foi por grupo);
-3. sem resolver → pendência `SigtapNaoMapeado` no histórico de erro de importação.
+### 2. O SIGTAP vem no arquivo; o código do SISREG é só filtro
 
-Isso torna seguro varrer por grupo e faz o mapeamento ser **orientado a demanda**: só se mapeia o
-que de fato apareceu na agenda.
+O arquivo traz, lado a lado, o código do SISREG (coluna 1) e o **SIGTAP** (coluna 2) — dito pelo
+próprio SISREG, não inferido. Isso dissolve o problema que dominou o desenho anterior.
 
-**Nunca há resolução automática abaixo de igualdade exata de nome** — nem por semelhança, nem
-quando dois SIGTAPs compartilham o mesmo nome normalizado (aí vira pendência e loga
-`SIGTAP_NOME_AMBIGUO`). SIGTAP errado não estoura em lugar nenhum: vira worklist errada, exame
-errado no PACS e laudo no lugar errado, semanas depois.
+Duas versões descartadas, registradas porque o raciocínio se repete:
+
+1. **Portão antes de varrer** (procedimento sem de-para confirmado não era varrido). Obrigava a
+   mapear 116 procedimentos que talvez nunca tivessem agendamento.
+2. **Resolução por nome exato contra o catálogo SIGTAP.** Necessária enquanto a fonte era a
+   raspagem, que não informa SIGTAP. Com a exportação, é redundante para o caminho feliz.
+
+Vale a régua de sempre: sem SIGTAP, `CategoriaSigtap.Resolver("")` devolve `Outro`, a solicitação
+nasce sem satélite de imagem e sem worklist — **e marcada como sucesso**. Por isso a marcação sem
+SIGTAP vira pendência `SigtapNaoMapeado` em vez de entrar torta. Com a exportação isso passa a ser
+exceção, não regra.
 
 Como a pendência é por solicitação e a correção é por procedimento, a aba de Erros agrupa as de
 causa `SigtapNaoMapeado` por procedimento — 1 linha "MAMOGRAFIA BILATERAL — 200 solicitações" — com
 mapeamento e revalidação em lote. Sem isso, resolver 200 pendências idênticas seria clicar 200
 vezes, e elas afogariam as pendências que exigem olhar caso a caso.
+
+**Nunca há resolução automática de SIGTAP abaixo de igualdade exata de nome**, onde ela ainda
+acontece. SIGTAP errado não estoura em lugar nenhum: vira worklist errada, exame errado no PACS e
+laudo no lugar errado, semanas depois.
 
 ### 3. A ingestão é aditiva — o caminho do TXT não muda
 
