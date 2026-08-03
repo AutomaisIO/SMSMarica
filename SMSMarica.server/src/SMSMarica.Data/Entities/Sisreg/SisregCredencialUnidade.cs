@@ -24,7 +24,8 @@ public class SisregCredencialUnidade
     /// <summary>Unidade dona da credencial. Uma credencial por unidade (índice único).</summary>
     public Guid UnidadeId { get; set; }
 
-    /// <summary>Usuário do SISREG (ex.: <c>022-ADRIANA</c>). Público — aparece na tela.</summary>
+    /// <summary>Usuário do SISREG, no formato <c>NNN-NOME</c>. Público — aparece na tela.
+    /// Não usar login de operador real como exemplo, aqui nem no placeholder da tela.</summary>
     public string Usuario { get; set; } = string.Empty;
 
     /// <summary>Senha cifrada em repouso. Nunca sai da API.</summary>

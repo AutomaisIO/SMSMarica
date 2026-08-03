@@ -66,12 +66,14 @@ export function ModalCredencial({ aberto, unidadeId, credencial, aoFechar }: Pro
           esse usuário tiver aberta no navegador é encerrada.
         </div>
 
+        {/* O placeholder mostra só o FORMATO. Nunca o login de um operador real: ele fica visível
+            para todo mundo que abre esta tela, em qualquer unidade. */}
         <Campo label="Usuário do SISREG" htmlFor="sisreg-usuario">
           <Input
             id="sisreg-usuario"
             value={usuario}
             onChange={(e) => setUsuario(e.target.value.toUpperCase())}
-            placeholder="EX.: 022-ADRIANA"
+            placeholder="EX.: 000-USUARIO"
             autoFocus
           />
         </Campo>

@@ -15,3 +15,9 @@ docs/PACS/conteudo inteiro/
 .playwright-mcp/
 # Mural local de coordenação entre sessões da Claude (não é código do projeto).
 alterações entre sessoes/
+
+# --- Protegido em 2026-08-03 ---
+# Exports do SISREG usados para conferir a importação do CMI: são linhas REAIS de agenda,
+# com nome completo, CNS, nascimento, telefone e CID de paciente. Estavam só "não rastreados",
+# ou seja, a um `git add -A` de irem para o GitHub. Manter local.
+docs/Importacao CMI/
