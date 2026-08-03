@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -120,6 +120,16 @@ internal sealed class SaluxFhirMapper(string slug, string source)
 
     private Meta Meta() => new() { Source = Source };
 
+    /// <summary>
+    /// Descarta identifiers sem valor. Rede de segurança, não conserto pontual: UM identifier
+    /// com <c>value</c> vazio faz o hub rejeitar o RECURSO INTEIRO com 400
+    /// (<c>'' is not a correct literal for a string</c>) — o paciente simplesmente não entra.
+    /// Aconteceu em 03/08 com o CPF, e a mesma armadilha existe para RG, PIS, passaporte e
+    /// qualquer campo opcional que a origem devolva em branco.
+    /// </summary>
+    private static List<Identifier> SemVazios(IEnumerable<Identifier> ids) =>
+        [.. ids.Where(i => !string.IsNullOrWhiteSpace(i.Value) && !string.IsNullOrWhiteSpace(i.System))];
+
     /// <summary>System da tag de qualidade do dado (buscável por <c>?_tag=</c>).</summary>
     public const string SysQualidade = "urn:smsmarica:qualidade";
 
@@ -191,7 +201,7 @@ internal sealed class SaluxFhirMapper(string slug, string source)
         var p = new Practitioner
         {
             Meta = Meta(),
-            Identifier = ident,
+            Identifier = SemVazios(ident),
             Name = [new HumanName { Use = HumanName.NameUse.Official, Text = S(m.Nome) }],
             Active = Verdadeiro(m.Ativo),
             Gender = Genero(m.Sexo),
@@ -239,7 +249,13 @@ internal sealed class SaluxFhirMapper(string slug, string source)
     {
         var cpf = Dig(p.Cpf);
 
-        var ident = new List<Identifier> { new(SysCpf, cpf) }; // nacional (chave de dedup)
+        // CPF é a chave de dedup, mas NÃO é obrigatório: desde 03/08 o paciente sem CPF entra
+        // marcado (recém-nascido, indigente, urgência sem documento). Emitir o identifier com
+        // valor vazio faz o hub rejeitar o recurso inteiro com 400 — "'' is not a correct
+        // literal for a string. At Patient.identifier[0].value" —, que foi exatamente o que
+        // aconteceu nos primeiros ciclos após aquele deploy.
+        var ident = new List<Identifier>();
+        if (cpf.Length > 0) ident.Add(new Identifier(SysCpf, cpf));
         if (Dig(p.Cns).Length > 0) ident.Add(new Identifier(SysCns, Dig(p.Cns)));
         if (S(p.Rg) is { } rg)
         {
