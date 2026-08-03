@@ -300,11 +300,11 @@ public sealed class PepSincronizacaoService(
 
             if (estado?.UltimoSyncPacienteEm is { } mp)
                 pacPend = await Contar(Estrategias.Salux.SaluxImportacaoStrategy.SqlContagemPacientesPendentes(mp));
-            if (estado?.UltimoSyncBaaEm is { } mb)
+            if (estado?.UltimoSyncAtendimentoEm is { } mb)
                 baaPend = await Contar(Estrategias.Salux.SaluxImportacaoStrategy.SqlContagemBaasPendentes(mb));
-            if (estado?.UltimoSyncFiaEm is { } mf)
+            if (estado?.UltimoSyncInternacaoEm is { } mf)
                 fiaPend = await Contar(Estrategias.Salux.SaluxImportacaoStrategy.SqlContagemFiasPendentes(mf));
-            if (estado?.UltimoSyncEdocLogId is { } ml)
+            if (estado?.UltimoSyncLogDocumentoId is { } ml)
                 edocLogPend = await Contar(Estrategias.Salux.SaluxImportacaoStrategy.SqlContagemEdocLogPendentes(ml));
         }
 
@@ -314,8 +314,8 @@ public sealed class PepSincronizacaoService(
 
         return new DiagnosticoPepDto(
             fonte.Id, fonte.Nome, fonte.Slug!,
-            estado?.UltimoSyncMedicoEm, estado?.UltimoSyncPacienteEm, estado?.UltimoSyncBaaEm,
-            estado?.UltimoSyncEdocEm, estado?.UltimoSyncFiaEm, estado?.UltimoSyncEdocLogId,
+            estado?.UltimoSyncProfissionalEm, estado?.UltimoSyncPacienteEm, estado?.UltimoSyncAtendimentoEm,
+            estado?.UltimoSyncDocumentoEm, estado?.UltimoSyncInternacaoEm, estado?.UltimoSyncLogDocumentoId,
             pacPend, baaPend, fiaPend, edocLogPend, hub);
 
         static long Col(Oracle.ManagedDataAccess.Client.OracleDataReader r) =>
@@ -592,12 +592,12 @@ public sealed class PepSincronizacaoService(
             var estadoEntidade = await db.PepSincronizacaoEstados.FirstOrDefaultAsync(s => s.FonteId == fonte.Id, ct);
             var marca = new MarcaDagua
             {
-                MedicoEm = estadoEntidade?.UltimoSyncMedicoEm,
+                ProfissionalEm = estadoEntidade?.UltimoSyncProfissionalEm,
                 PacienteEm = estadoEntidade?.UltimoSyncPacienteEm,
-                BaaEm = estadoEntidade?.UltimoSyncBaaEm,
-                EdocEm = estadoEntidade?.UltimoSyncEdocEm,
-                FiaEm = estadoEntidade?.UltimoSyncFiaEm,
-                EdocLogId = estadoEntidade?.UltimoSyncEdocLogId,
+                AtendimentoEm = estadoEntidade?.UltimoSyncAtendimentoEm,
+                DocumentoEm = estadoEntidade?.UltimoSyncDocumentoEm,
+                InternacaoEm = estadoEntidade?.UltimoSyncInternacaoEm,
+                LogDocumentoId = estadoEntidade?.UltimoSyncLogDocumentoId,
             };
 
             // Trilha durável de falhas (grava na hora, sobrevive a crash; alimenta o reimport por cd).
@@ -737,12 +737,12 @@ public sealed class PepSincronizacaoService(
             estado = new PepSincronizacaoEstado { FonteId = fonteId };
             ctx.PepSincronizacaoEstados.Add(estado);
         }
-        estado.UltimoSyncMedicoEm = marca.MedicoEm;
+        estado.UltimoSyncProfissionalEm = marca.ProfissionalEm;
         estado.UltimoSyncPacienteEm = marca.PacienteEm;
-        estado.UltimoSyncBaaEm = marca.BaaEm;
-        estado.UltimoSyncEdocEm = marca.EdocEm;
-        estado.UltimoSyncFiaEm = marca.FiaEm;
-        estado.UltimoSyncEdocLogId = marca.EdocLogId;
+        estado.UltimoSyncAtendimentoEm = marca.AtendimentoEm;
+        estado.UltimoSyncDocumentoEm = marca.DocumentoEm;
+        estado.UltimoSyncInternacaoEm = marca.InternacaoEm;
+        estado.UltimoSyncLogDocumentoId = marca.LogDocumentoId;
         estado.AtualizadoEm = DateTime.UtcNow;
         await ctx.SaveChangesAsync(ct);
     }
@@ -769,12 +769,12 @@ public sealed class PepSincronizacaoService(
             estado = new PepSincronizacaoEstado { FonteId = fonteId };
             db.PepSincronizacaoEstados.Add(estado);
         }
-        estado.UltimoSyncMedicoEm = marca.MedicoEm;
+        estado.UltimoSyncProfissionalEm = marca.ProfissionalEm;
         estado.UltimoSyncPacienteEm = marca.PacienteEm;
-        estado.UltimoSyncBaaEm = marca.BaaEm;
-        estado.UltimoSyncEdocEm = marca.EdocEm;
-        estado.UltimoSyncFiaEm = marca.FiaEm;
-        estado.UltimoSyncEdocLogId = marca.EdocLogId;
+        estado.UltimoSyncAtendimentoEm = marca.AtendimentoEm;
+        estado.UltimoSyncDocumentoEm = marca.DocumentoEm;
+        estado.UltimoSyncInternacaoEm = marca.InternacaoEm;
+        estado.UltimoSyncLogDocumentoId = marca.LogDocumentoId;
         estado.AtualizadoEm = DateTime.UtcNow;
     }
 

@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Globalization;
 using Hl7.Fhir.Model;
 using Microsoft.Extensions.Logging;
@@ -69,10 +69,10 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
         // longas. Seguro porque TODA escrita clínica é upsert por identifier — reprocessar a
         // janela sobrescreve a mesma linha, não duplica.
         var lag = TimeSpan.FromMinutes(5);
-        var sinceBaa = incremental ? ctx.Marca.BaaEm - lag : null;
-        var sinceEdoc = incremental ? ctx.Marca.EdocEm - lag : null;
-        var sinceFia = incremental ? ctx.Marca.FiaEm - lag : null;
-        DateTime? maxBaa = ctx.Marca.BaaEm, maxEdoc = ctx.Marca.EdocEm, maxFia = ctx.Marca.FiaEm;
+        var sinceBaa = incremental ? ctx.Marca.AtendimentoEm - lag : null;
+        var sinceEdoc = incremental ? ctx.Marca.DocumentoEm - lag : null;
+        var sinceFia = incremental ? ctx.Marca.InternacaoEm - lag : null;
+        DateTime? maxBaa = ctx.Marca.AtendimentoEm, maxEdoc = ctx.Marca.DocumentoEm, maxFia = ctx.Marca.InternacaoEm;
         var segPac = 0d; var segAtend = 0d;
         // Cache de Location por run: preenchido pela carga de referência (quando roda) e
         // completado sob demanda pelo hub.
@@ -81,7 +81,7 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
         // ---------- Médicos (paginado) ----------
         // Re-scan integral também quando o scheduler força (marca de médicos envelheceu) —
         // sem isso médico novo/alterado nunca mais entrava depois da 1ª importação.
-        if (!incremental || ctx.Marca.MedicoEm is null || ctx.Opcoes.ForcarMedicos)
+        if (!incremental || ctx.Marca.ProfissionalEm is null || ctx.Opcoes.ForcarMedicos)
         {
             p.FaseAtual = "médicos";
             var t0 = Cronometro();
@@ -120,7 +120,7 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
 
             // Médicos é re-scan integral: a marca é o instante do scan (não há watermark de
             // origem confiável em `medico`). Persistida já — fase concluída sobrevive a queda.
-            ctx.Marca.MedicoEm = DateTime.UtcNow;
+            ctx.Marca.ProfissionalEm = DateTime.UtcNow;
             if (ctx.SalvarMarca is { } salvarMed) await salvarMed(ctx.Marca, ct);
         }
 
@@ -184,12 +184,12 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
 
             // ---------- CDC de eDoc (edições e exclusões) — poll por PK do log ----------
             p.FaseAtual = "edições de documentos";
-            if (ctx.Marca.EdocLogId is null)
+            if (ctx.Marca.LogDocumentoId is null)
             {
                 // Primeira ativação: ancora no fim do log. O passado já entrou (e continua
                 // entrando) pelo fluxo normal de dt_inclusao — o CDC só cuida do que MUDA.
                 var maxIds = await oracle.LerAsync(SqlEdocLogMax(), r => Col.Long(r, "id"), ct);
-                ctx.Marca.EdocLogId = maxIds.Count > 0 ? maxIds[0] : 0;
+                ctx.Marca.LogDocumentoId = maxIds.Count > 0 ? maxIds[0] : 0;
                 if (ctx.SalvarMarca is { } ancorar) await ancorar(ctx.Marca, ct);
             }
             else
@@ -197,11 +197,11 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
                 while (true)
                 {
                     ct.ThrowIfCancellationRequested();
-                    var logs = await oracle.LerAsync(SqlEdocLog(ctx.Marca.EdocLogId.Value, TamanhoLoteLog), MapEdocLog, ct);
+                    var logs = await oracle.LerAsync(SqlEdocLog(ctx.Marca.LogDocumentoId.Value, TamanhoLoteLog), MapEdocLog, ct);
                     if (logs.Count == 0) break;
                     await ProcessarEdocLogAsync(oracle, mapper, ctx, logs, sourcesPurga, gate, p, Falhou, ct);
                     // Lote do log processado inteiro → a marca avança e persiste (retomável).
-                    ctx.Marca.EdocLogId = logs[^1].Id;
+                    ctx.Marca.LogDocumentoId = logs[^1].Id;
                     if (ctx.SalvarMarca is { } salvarLog) await salvarLog(ctx.Marca, ct);
                     if (logs.Count < TamanhoLoteLog) break;
                 }
@@ -263,9 +263,9 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
 
         // Marca = máximo da ORIGEM processado (nunca "agora"); persiste ao fim do run —
         // redundante com a persistência por fase, mas cobre os caminhos completo/lista.
-        ctx.Marca.BaaEm = maxBaa ?? ctx.Marca.BaaEm;
-        ctx.Marca.EdocEm = maxEdoc ?? ctx.Marca.EdocEm;
-        ctx.Marca.FiaEm = maxFia ?? ctx.Marca.FiaEm;
+        ctx.Marca.AtendimentoEm = maxBaa ?? ctx.Marca.AtendimentoEm;
+        ctx.Marca.DocumentoEm = maxEdoc ?? ctx.Marca.DocumentoEm;
+        ctx.Marca.InternacaoEm = maxFia ?? ctx.Marca.InternacaoEm;
         if (ctx.SalvarMarca is { } salvarFim) await salvarFim(ctx.Marca, ct);
 
         logger.LogInformation("Importação Salux ({Slug}) concluída: {Pac} pacientes, {Enc} atendimentos, {Falhas} falhas.",
@@ -575,7 +575,7 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
         // Pacientes dos movimentos vivos: upsert canônico (mesmo caminho — preserva telefone).
         // LOTEADO: um poll traz até TamanhoLoteLog (5.000) linhas de log, que podem render bem
         // mais de 1.000 cd_paciente distintos — e um IN acima de 1.000 estoura ORA-01795, que
-        // NÃO é transitório: o run morre, o EdocLogId não avança e o retry relê o MESMO lote,
+        // NÃO é transitório: o run morre, o LogDocumentoId não avança e o retry relê o MESMO lote,
         // travando o CDC para sempre. Por isso o IN é sempre quebrado em lotes.
         var cds = movimentos.Values.Select(m => m.CdPaciente).Where(c => c > 0).Distinct().ToList();
         var map = new ConcurrentDictionary<long, string>();

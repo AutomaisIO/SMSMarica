@@ -1,4 +1,4 @@
-using SMSMarica.Data.Entities.Enums;
+﻿using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Integracoes.Pep.Dtos;
 
@@ -116,12 +116,12 @@ public sealed record DiagnosticoPepDto(
     Guid FonteId,
     string FonteNome,
     string Slug,
-    DateTime? UltimoSyncMedicoEm,
+    DateTime? UltimoSyncProfissionalEm,
     DateTime? UltimoSyncPacienteEm,
-    DateTime? UltimoSyncBaaEm,
-    DateTime? UltimoSyncEdocEm,
-    DateTime? UltimoSyncFiaEm,
-    long? UltimoSyncEdocLogId,
+    DateTime? UltimoSyncAtendimentoEm,
+    DateTime? UltimoSyncDocumentoEm,
+    DateTime? UltimoSyncInternacaoEm,
+    long? UltimoSyncLogDocumentoId,
     long? PacientesPendentes,
     long? BaasPendentes,
     long? FiasPendentes,

@@ -1,4 +1,4 @@
-using SMSMarica.Core.Integracoes.Pep.Divergencias;
+﻿using SMSMarica.Core.Integracoes.Pep.Divergencias;
 using SMSMarica.Core.Integracoes.Pep.Falhas;
 using SMSMarica.Core.Integracoes.Pep.Fhir;
 using SMSMarica.Core.Integracoes.Pep.Progresso;
@@ -60,19 +60,19 @@ public sealed record OpcoesImportacao(
 /// </summary>
 public sealed class MarcaDagua
 {
-    public DateTime? MedicoEm { get; set; }
+    public DateTime? ProfissionalEm { get; set; }
     public DateTime? PacienteEm { get; set; }
-    public DateTime? BaaEm { get; set; }
-    public DateTime? EdocEm { get; set; }
+    public DateTime? AtendimentoEm { get; set; }
+    public DateTime? DocumentoEm { get; set; }
 
     /// <summary>Internação (FIA): máximo de GREATEST(dt_baixa, dt_alta) processado — ADR-0025.</summary>
-    public DateTime? FiaEm { get; set; }
+    public DateTime? InternacaoEm { get; set; }
 
     /// <summary>
     /// CDC de eDoc: último <c>ID_EDOC_MOVIMENTO_LOG</c> processado (poll por PK sequencial —
     /// as tabelas de log não têm índice por data). Null = ainda não ancorado.
     /// </summary>
-    public long? EdocLogId { get; set; }
+    public long? LogDocumentoId { get; set; }
 }
 
 /// <summary>Tudo que a estratégia precisa para rodar um run, mais o canal de progresso.</summary>

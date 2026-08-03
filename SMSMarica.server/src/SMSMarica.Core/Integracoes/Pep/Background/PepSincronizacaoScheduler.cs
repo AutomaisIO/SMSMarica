@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -67,7 +67,7 @@ public sealed class PepSincronizacaoScheduler(
                 var estado = await db.PepSincronizacaoEstados.AsNoTracking()
                     .FirstOrDefaultAsync(s => s.FonteId == agenda.FonteId, ct);
                 var forcarMedicos = DecididorAgendaPep.DeveForcarMedicos(
-                    estado?.UltimoSyncMedicoEm, agenda.MedicoRescanHoras, agora);
+                    estado?.UltimoSyncProfissionalEm, agenda.MedicoRescanHoras, agora);
 
                 var execucaoId = await servico.IniciarAgendadoAsync(agenda.FonteId, forcarMedicos, ct);
                 // Colisão/indisponibilidade → tenta de novo no próximo tick; sucesso → o
