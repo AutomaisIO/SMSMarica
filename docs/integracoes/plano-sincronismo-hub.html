@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plano do sincronismo com o hub — Salux hoje, Klinikos em seguida (01/08/2026)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>Plano do sincronismo com o hub — Salux hoje, Klinikos em seguida (01/08/2026)</h1>
+<p>&gt; ## ⏱ Onde a frente está — atualizado 03/08/2026 &gt; &gt; <strong>Em produção e saudável.</strong> 47 ciclos em 24 h, todos concluídos, 0 erros, média de 10,6 s. &gt; Marcas d'água com ~10 min de atraso (o esperado num ciclo de 30 min). <strong>Zero duplicatas &gt; novas</strong> — o upsert por identifier está segurando. &gt; &gt; | Entregue | Quando | &gt; |---|---| &gt; | Saneamento das duplicatas pré-identifier (2.723 Encounters, 6.494 DocRefs) | 02/08 | &gt; | Migration do hub + backfill (1,1 M + 2,4 M identifiers) | 02/08 | &gt; | Sincronismo contínuo, conciliação de identidade, Painel, escopo fail-closed, SIGTAP | 02/08 | &gt; | Hotfix da negativa do Hub do Desenvolvedor (<code>"Data Nascimento invalida"</code>) | 02/08 | &gt; | Arbitragem vira job próprio, com teto de tempo | 02/08 | &gt; | Fix do código FHIR na coluna de busca (<code>inprogress</code> → <code>in-progress</code>) | 02/08 | &gt; | <strong>Limpeza das duplicatas clínicas do legado — 12.357 linhas</strong> | <strong>03/08</strong> | &gt; | Reprocesso direcionado de divergências resolvidas | 03/08 | &gt; &gt; <strong>A conciliação de identidade já pagou o investimento:</strong> das 37 divergências arbitradas, &gt; <strong>5 apontaram o HUB como correto</strong> — a origem insistia com data de nascimento errada (uma &gt; delas com 3 anos de diferença) e o congelamento protegeu os cinco pacientes. &gt; &gt; <strong>Aberto:</strong> expurgo dos 1,7 M de tombstones (~14% de todas as tabelas, ~3,4 GB — item S9); &gt; reimport dos 261 pares residuais da limpeza; alocar a unidade dos 5 usuários do fail-closed. &gt; &gt; <strong>Erro meu que vale registrar:</strong> classifiquei o risco do legado sem identifier em &gt; <code>medication_request</code>/<code>observation</code> como "limitado à janela 06/06–20/06". A janela de 120 dias &gt; do CDC alcança <strong>abril</strong>, e o resultado foram ~12 mil registros clínicos duplicados. O que &gt; evitou o dano virar permanente foi medir antes de agir — a mesma disciplina que barrou o &gt; backfill no dia 02.</p>
+<p>Documento-mestre da frente <strong>sincronismo contínuo → hub FHIR</strong>. Consolida três coisas medidas em 01/08/2026: (1) o double-check completo do motor Salux→hub (ADR-0024/0025) que está no working tree e nunca foi ao ar; (2) a entrada do <strong>Klinikos</strong> (2 instâncias: <code>upa24h-marica-sqlserver</code> e <code>santarita-marica-sqlserver</code>); (3) o <strong>censo de identidade</strong> nas 3 bases (hub, Salux, Klinikos UPA).</p>
+<p>Este documento é <strong>plano de execução com gates</strong> — não substitui o backlog vivo do <a href="../marco-1-e-linha-de-corte.md">marco-1 §11.2</a>, que continua sendo a lista canônica de pontas soltas do repositório. A §9 daqui <strong>complementa</strong> aquela seção com o que é específico desta frente; o que já está lá não é repetido aqui.</p>
+<p>Tudo abaixo é medição (auditoria de código com arquivo:linha, builds executados, censo via SQL read-only e cruzamento por CPF validado), não estimativa. O único braço não medido — Santa Rita, agente offline durante toda a sessão — está dito com todas as letras onde falta.</p>
+<hr>
+<h2>1. Estado real medido (produção + working tree)</h2>
+<h3>1.1 O motor existe, funciona no papel, e nunca rodou de verdade</h3>
+<div class="tw"><table><thead><tr><th>Fato</th><th>Medição</th></tr></thead><tbody>
+<tr><td>Código do motor (scheduler, CDC, marcas, upsert, tela)</td><td><strong>100% no working tree, zero commitado</strong> — inédito em produção</td></tr>
+<tr><td>Migrations <code>smsmarica</code> pendentes</td><td><code>20260727122701_AddPepSincronizacaoContinua</code> + <code>20260802002528_AddPepDivergenciaIdentidade</code> (§3.4)</td></tr>
+<tr><td>Migration <code>fhir</code> pendente</td><td><code>20260727020900_AddIdentifierClinicoELocation</code> — <strong>schema <code>fhir</code> de prod parado em 16/06</strong> (<code>20260616155731_AddTelefoneSearch</code>)</td></tr>
+<tr><td>Última execução de importação</td><td><strong>20/06</strong>, morta com <code>ORA-01013</code> (cancelamento)</td></tr>
+<tr><td>Marcas d'água em produção</td><td><strong>06/06</strong> — o hub está ~2 meses atrás da origem</td></tr>
+<tr><td>Cursor do full-load interrompido</td><td><code>cd_paciente</code> <strong>182576</strong> (de ~370 mil) — metade da base nunca teve a clínica completa importada</td></tr>
+<tr><td>Deploy do motor é inerte</td><td>scheduler sai em <code>agendas.Count == 0</code> e a tabela de agenda nasce vazia (confirmado na auditoria de docs)</td></tr>
+</tbody></table></div>
+<p>Tradução: o hub tem ~10,5 milhões de registros clínicos (1,3M Encounter, 2,5M DocumentReference, 4,2M Observation, 1,46M MedicationRequest, 1,09M Condition) importados por um mecanismo antigo (POST cego, sem identifier), congelados desde junho. O motor novo que resolveria isso está pronto e parado no disco.</p>
+<h3>1.2 O hub está CEGO em duas unidades desde abril/2025</h3>
+<p>O cutover do Klinikos tirou a <strong>UPA Inoã</strong> e o <strong>PA Santa Rita</strong> do Salux em <strong>07–08/04/2025</strong>. Desde então, nada dessas unidades chega ao hub — o sincronismo Salux não as vê porque elas não escrevem mais no Salux, e não existe conector Klinikos.</p>
+<p>O tamanho do buraco foi medido no censo (base UPA, 01/08/2026):</p>
+<div class="tw"><table><thead><tr><th>Medição (Klinikos UPA Maricá)</th><th>Valor</th></tr></thead><tbody>
+<tr><td>Primeiro boletim da base</td><td><strong>07/04/2025 13:52</strong> — a base inteira é pós-cutover</td></tr>
+<tr><td>Boletins acumulados (= o buraco do hub)</td><td><strong>178.682</strong></td></tr>
+<tr><td>Atendimentos médicos acumulados</td><td><strong>170.391</strong></td></tr>
+<tr><td>Ritmo atual (últimos 30 dias)</td><td>12.337 boletins · 11.858 atendimentos</td></tr>
+<tr><td>Pacientes cadastrados</td><td>83.624</td></tr>
+</tbody></table></div>
+<p>Santa Rita <strong>não foi medida nesta data</strong> (agente WSS offline durante toda a sessão); a referência histórica de 26/07 dava 50.748 pacientes — ordem de grandeza, não censo. O buraco cresce ~12 mil boletins/mês só na UPA. Cada mês de atraso do conector Klinikos é um mês a mais de prontuário invisível para o hub em duas unidades de urgência.</p>
+<h3>1.3 Identidade de unidade: resolvível com zero configuração</h3>
+<p><code>INFOSAUDE.HOSPITAL</code> (Salux) tem <code>NR_CNES</code> e <code>DS_HOSPITAL</code> nas 3 linhas; a tabela <code>unidade</code> do Klinikos tem <code>unid_codigoCNES</code>. O conector resolve unidade por CNES sem tabela de de-para manual:</p>
+<div class="tw"><table><thead><tr><th>CD</th><th>Nome no Salux</th><th>CNES</th><th>Contraparte</th></tr></thead><tbody>
+<tr><td>1</td><td>HOSPITAL MUNICIPAL CONDE MODESTO LEAL</td><td>2266733</td><td>— (segue no Salux)</td></tr>
+<tr><td>2</td><td>UPA 24H INOÃ</td><td>7164440</td><td>Klinikos "UPA MARICA" — <strong>mesmo CNES, nome divergente</strong> (confirmar que é a mesma unidade real antes de resolver por CNES)</td></tr>
+<tr><td>3</td><td>PA 24H PS SANTA RITA</td><td>2266792</td><td>Klinikos Santa Rita (não medido)</td></tr>
+</tbody></table></div>
+<hr>
+<h2>2. Resultado do double-check</h2>
+<p>Quatro auditorias independentes (motor, hub, front, docs×código) + builds. Placar das alegações: <strong>motor</strong> 6 confirmadas / 2 parciais (de 8); <strong>hub</strong> 5 confirmadas / <strong>1 refutada</strong> (a refutada é a mais grave — ver achado nº 1); <strong>front</strong> 5 confirmadas / 1 parcial (de 6); <strong>docs</strong> majoritariamente fiel, com o ADR-0008 como exceção grande.</p>
+<h3>2.1 O que foi confirmado que funciona (o desenho é sólido)</h3>
+<ul>
+<li>Disparo agendado é sempre Incremental/Tudo/ApagarAntes=false (<code>PepSincronizacaoService.cs:163-180</code>).</li>
+<li>Marca d'água por fase com MAX da origem + lag de 5 min; conversões centralizadas em <code>SaluxTempo</code> (exceção deliberada: marca de médicos é UtcNow, comentada).</li>
+<li>CDC de eDoc ancora sem reprocessar o passado, poll por faixa de PK, tombstone sempre escopado pelos DOIS <code>meta.source</code>.</li>
+<li>Merge de telefone confirmado é idempotente no retry; ciclo If-Match→409→re-merge limitado a <strong>3 tentativas</strong> — não loopa.</li>
+<li>Scheduler inerte com agenda vazia; anti-sobreposição; backoff exponencial teto 4h; janela que cruza meia-noite; re-scan de médicos por envelhecimento.</li>
+<li>Paciente novo com atendimento novo entra sozinho (UNION BAA+eDoc+FIA na origem).</li>
+<li>FIA: internação em curso re-lida a cada ciclo; status in-progress/finished/unknown; óbito → <code>dischargeDisposition=exp</code>; marca por GREATEST(dt_baixa, dt_alta).</li>
+<li>Verificado explicitamente: <strong>não</strong> há SemaphoreSlim aninhado; CancellationToken propagado a todas as fases longas.</li>
+<li>Hub: upsert condicional <code>PUT ?identifier=</code> nos 5 clínicos + Location, preservando id lógico; Patient/Practitioner corretamente fora (merge canônico no importador); Encounter com period_end + If-Match/ETag; índice único parcial fecha a corrida create-create.</li>
+<li>Front: polling 1s/15s; 9 endpoints todos com <code>[RequerPermissao]</code> (SincronizacaoPep=27); tela mostra próximo ciclo, falhas consecutivas (alerta ≥5), coluna Disparo, diagnóstico origem×hub.</li>
+<li>Docs: §11.2 do marco-1 é fiel (migrations existem com os nomes exatos; "inerte no deploy" confere). ADR-0024: 6 de 7 decisões batem com o código. ADR-0025 B1: status/priority/óbito/Location 3 níveis/leito atual — tudo confere.</li>
+</ul>
+<h3>2.2 Achados, do mais grave ao menos grave</h3>
+<p><strong>CRÍTICOS — bloqueiam o deploy:</strong></p>
+<div class="tw"><table><thead><tr><th>#</th><th>Achado</th><th>Onde</th><th>Consequência</th></tr></thead><tbody>
+<tr><td>1</td><td><strong>Sem backfill dos identifiers no hub</strong>: a migration <code>AddIdentifierClinicoELocation</code> só cria colunas nullable + índices — <strong>zero</strong> <code>migrationBuilder.Sql()</code>. A busca do upsert é 100% pelas colunas, sem fallback ao JSONB.</td><td><code>Automais.Fhir.Data/Migrations/20260727020900_AddIdentifierClinicoELocation.cs:12</code></td><td>Os ~10,5M registros de prod ficam com <code>identifier_system=NULL</code>, <strong>invisíveis ao upsert</strong>. BAA editado que reentra na janela → Encounter + Condition <strong>duplicados vivos</strong> (o índice único não impede: a linha legada está fora do predicado). Pior: no CDC de eDoc o lookup do Encounter legado volta vazio → <code>return</code> silencioso com a marca avançando → <strong>edição perdida para sempre, sem trilha</strong>. É o item nº 1 do plano (§4.1).</td></tr>
+<tr><td>2</td><td><strong>ORA-01795 trava o CDC de eDoc permanentemente</strong>: <code>ProcessarEdocLogAsync</code> monta <code>IN</code> com até 5.000 cds sem lotear (limite Oracle = 1.000).</td><td><code>SaluxImportacaoStrategy.cs:516</code></td><td>Agenda pausada ~1 dia (~7k ops/dia no log) → primeiro poll estoura → run inteiro morre → retry relê <strong>o mesmo lote</strong> → falha idêntica para sempre; arrasta o run agendado junto.</td></tr>
+</tbody></table></div>
+<p><strong>ALTOS:</strong></p>
+<div class="tw"><table><thead><tr><th>#</th><th>Achado</th><th>Onde</th><th>Consequência</th></tr></thead><tbody>
+<tr><td>3</td><td><code>MigrateAsync</code> no startup com CommandTimeout default (30s) e <strong>catch que engole a falha</strong></td><td><code>Automais.Fhir.Api/Program.cs:49</code></td><td>CREATE INDEX não-concorrente em observation (4,2M) tende a estourar 30s → rollback da migration inteira → serviço sobe com modelo EF desalinhado → <strong>500 em todos os 5 recursos clínicos</strong>, erro só no log de startup.</td></tr>
+<tr><td>4</td><td><code>ApagarAntes</code> + cursor/Limitado <strong>purga a base inteira e reescreve só uma parte</strong></td><td><code>SaluxImportacaoStrategy.cs:61</code></td><td>Operador retoma o full-load do cursor 182576 com ApagarAntes → todos os pacientes acima do cursor ficam sem clínica, e o incremental nunca repõe. <code>IniciarAsync</code> não bloqueia a combinação.</td></tr>
+<tr><td>5</td><td><strong>"Parar importação" não segura o motor</strong> — cancelamento é tratado como sucesso e o scheduler religa no próximo intervalo</td><td><code>PepSincronizacaoService.cs:484</code></td><td>Em incidente (hub gravando lixo), o operador acha que parou; com agenda de 30 min a importação renasce sozinha em até 30 min. <code>PausadoAte</code> existe na pilha inteira (entidade/DTO/request/type TS) mas <strong>não tem nenhum controle na UI</strong>.</td></tr>
+<tr><td>6</td><td><strong>PUT /agenda destrutivo</strong>: o front envia payload mínimo e o back sobrescreve <code>JanelaInicioLocal</code>/<code>JanelaFimLocal</code>/<code>PausadoAte</code> com null</td><td><code>PepSincronizacaoService.cs:229</code></td><td>Qualquer "Salvar agenda" pela tela apaga janela e pausa configuradas por fora, sem aviso — e ainda zera <code>ProximoRunEm</code>, disparando run no tick seguinte.</td></tr>
+<tr><td>7</td><td><strong>ADR-0008 "Aceito" descreve um design que nunca existiu</strong>: eDoc deveria virar Questionnaire/QuestionnaireResponse SDC; o código gera DocumentReference com HTML achatado</td><td><code>docs/adr/0008-mapeamento-clinico-fhir.md:66</code></td><td>Perdem-se: pares EAV estruturados, tipos de widget, itens não respondidos, status P/D, autor, escalas (Glasgow/Braden/Morse) e — o mais grave — o <strong>PDF assinado (<code>DOC_ASSINADO</code>) nunca é lido</strong>: o documento legal não chega ao hub. Vira decisão consciente na §7.</td></tr>
+</tbody></table></div>
+<p><strong>MÉDIOS</strong> (não bloqueiam, mas entram na mesma janela de correção — §4.2):</p>
+<div class="tw"><table><thead><tr><th>#</th><th>Achado</th><th>Onde</th></tr></thead><tbody>
+<tr><td>8</td><td>Retry de POST em 502/504/408/429 pode <strong>duplicar Patient/Practitioner</strong> (contradiz o próprio doc-comment "só 503")</td><td><code>EscritorComRetentativa.cs:82</code></td></tr>
+<tr><td>9</td><td>Corrida de dedup por CPF: dois cds com o mesmo CPF no mesmo chunk → dois Patients canônicos (o Salux tem 5.656 cadastros redundantes por CPF — §3)</td><td><code>SaluxImportacaoStrategy.cs:404</code></td></tr>
+<tr><td>10</td><td>Watermark avança por cima de registros que falharam na escrita; trilha durável engole erro de persistência; <strong>reimport por <code>CdsPacientes</code> não tem nenhum produtor</strong> (código morto sem chamador)</td><td><code>SaluxImportacaoStrategy.cs:317</code></td></tr>
+<tr><td>11</td><td>eDoc novo anexado a BAA antigo perdido <strong>em silêncio nos dois caminhos</strong> (fluxo dt_inclusao e CDC)</td><td><code>SaluxImportacaoStrategy.cs:364</code></td></tr>
+<tr><td>12</td><td>Escopo Limitado envenena marcas (médicos = UtcNow sem guard; clínicas avançam com varredura parcial) — o guard <code>!limitado</code> existe para cursor/PacienteEm, só não cobre o resto</td><td><code>SaluxImportacaoStrategy.cs:123</code></td></tr>
+<tr><td>13</td><td>Hub: <code>period_end</code> sem backfill — recortes por "altas do período" ignoram os 1,3M encounters pré-migration</td><td>migration fhir <code>:62</code></td></tr>
+<tr><td>14</td><td>Hub: catch amplo de <code>DbUpdateException</code> mascara erros reais como 404; update-update concorrente perde escrita (VersionId não é concurrency token)</td><td><code>EncounterService.cs:79</code></td></tr>
+<tr><td>15</td><td>Front: datas no fuso do browser (viola a regra Brasília fixo; util central <code>shared/lib/datas.ts</code> existe e não é usado)</td><td><code>PepSincronizacaoPage.tsx:25</code></td></tr>
+<tr><td>16</td><td>Front: race no useEffect da agenda (poll de 30s sobrescreve edição não salva; troca de base mantém form sujo)</td><td><code>PepSincronizacaoPage.tsx:126</code></td></tr>
+<tr><td>17</td><td>Docs: rede de segurança LOG_BAA (pendência A3) e LOG_FIA não implementadas; alerta de falhas consecutivas é LogError, <strong>não</strong> gera ERRO-XXXXXX como o ADR-0024 promete; admitSource=emd ausente</td><td><code>SaluxImportacaoStrategy.cs:893</code> · <code>PepSincronizacaoService.cs:481</code></td></tr>
+</tbody></table></div>
+<p><strong>BAIXOS/INFO</strong> (registrados, não bloqueiam): corrida List&amp;lt;T&amp;gt; no endpoint de status; ParaCada abandona tasks em voo no cancelamento; READ ONLY + reconexão silenciosa (ORA-01555 provável em Completo de 12,8h; 1555 não é transitório); janela de corrida no anti-overlap; SQL 100% literal (sem injeção evidenciada, mas hard parse contínuo no Oracle vivo); <code>_estatisticas</code> roda ~10 COUNTs full-scan sem cache e sem auth; conditional update sempre 200 (nunca 201) e POST duplicado vira 500 genérico; tombstones se multiplicam a cada Completo sem expurgo físico; <code>location.part_of_id</code> sem FK.</p>
+<h3>2.3 Sobre a alegação "trocar <code>purgarPorPaciente</code> para false é seguro"</h3>
+<p><strong>Não é — hoje.</strong> Os danos da purga são reais (churn de id lógico a cada Completo, janela sem dado se o run morrer entre purga e reescrita), mas a purga ainda é o único mecanismo que: (a) alcança o legado pré-identifier — ~1,12M Encounters de POST cego que o upsert não casa e <strong>duplicaria</strong>; (b) remove exclusões da origem de BAA/prescrição/FIA (o CDC cobre só eDoc). Pré-condição para desligar a purga: <strong>backfill do identifier no hub</strong> (§4.1) + aceitar retenção de exclusões da origem até LOG_BAA/LOG_FIA existirem.</p>
+<h3>2.5 ✅ Achado novo (01/08) e SANEADO (02/08): duplicatas que já estavam em produção</h3>
+<p>&gt; <strong>Executado em produção em 02/08/2026, com autorização explícita.</strong> Backup em &gt; <code>backup_20260802_dedup</code> (52 MB, inclui o mapa dos 47.011 filhos antes do re-apontamento). &gt; Resultado: <strong>2.723</strong> Encounters unificados · <strong>2.345</strong> Conditions e <strong>6.494</strong> &gt; DocumentReferences deduplicados · gates <strong>0/0/0</strong> · <strong>0 órfãos criados</strong>. Auditoria em &gt; <code>fhir.saneamento_duplicata_20260801</code>. Em seguida a migration &gt; <code>20260727020900_AddIdentifierClinicoELocation</code> foi aplicada (23,8 s). O texto abaixo é o &gt; diagnóstico original, mantido como registro do que foi encontrado.</p>
+<p>O pré-check do backfill — leitura pura, antes de qualquer escrita — revelou um problema que <strong>ninguém sabia que existia e que já está em produção hoje</strong>, independente do sincronismo novo:</p>
+<div class="tw"><table><thead><tr><th>Tabela</th><th>Chaves duplicadas</th><th>Cópias por chave</th><th>Linhas excedentes</th></tr></thead><tbody>
+<tr><td><code>fhir.encounter</code></td><td><strong>2.723</strong></td><td>exatamente 2</td><td>2.723</td></tr>
+<tr><td><code>fhir.document_reference</code></td><td><strong>6.494</strong></td><td>exatamente 2</td><td>6.494</td></tr>
+<tr><td><code>fhir.observation</code></td><td>0</td><td>—</td><td>—</td></tr>
+</tbody></table></div>
+<p><strong>2.258 pacientes</strong> têm o <strong>mesmo atendimento duas vezes</strong> na linha do tempo — e o pior: os filhos clínicos ficaram <strong>divididos entre as duas cópias</strong> (2.689 das 2.723 chaves têm filhos nas duas). Estão pendurados nas cópias: 4.890 <code>Condition</code>, 22.010 <code>Observation</code>, 7.709 <code>MedicationRequest</code>, 12.402 <code>DocumentReference</code>. Ou seja: abrir o atendimento pela cópia "errada" mostra um prontuário <strong>incompleto</strong>.</p>
+<p>Origem identificada com precisão: as duas cópias são <strong>idênticas em conteúdo</strong> (amostra de 200 chaves: 200 idênticas) e foram criadas <strong>no mesmo run</strong> (amostra de 500: 500 com menos de 1 h de diferença), entre <strong>07/06 e 20/06/2026</strong> — o run que morreu com <code>ORA-01013</code>. É a assinatura exata do bug corrigido em código no commit <code>88175e9</code> (busca do hub capada em 200/500 sem paginação + <code>CriarAsync</code> como POST cego): <strong>o código foi consertado, os dados duplicados ficaram.</strong></p>
+<p>Consequências:</p>
+<ol>
+<li><strong>Bloqueia o backfill</strong> (§4.1-0): o índice único parcial rejeitaria a segunda cópia — o</li>
+</ol>
+<p>   backfill falharia no primeiro lote com duplicata.</p>
+<ol>
+<li><strong>É um problema clínico de hoje</strong>, não do sincronismo: 2.258 pacientes com prontuário</li>
+</ol>
+<p>   partido ao meio no hub, agora, em produção.</p>
+<ol>
+<li>Depois de juntar os filhos, <strong>2.345 chaves</strong> ficariam com 2 <code>Condition</code> idênticas — hoje</li>
+</ol>
+<p>   nenhum encounter tem mais de uma. O saneamento precisa deduplicar isso também, senão o    backfill de <code>condition</code> (derivado <code>:cond</code>) colide.</p>
+<p>Isto <strong>não estava no plano</strong> e muda o caminho crítico: entra um passo 0 antes do backfill. O achado é, por si só, a justificativa do pré-check — e do gate de bancada da §5 passo 2.</p>
+<h3>2.4 Veredito dos builds</h3>
+<div class="tw"><table><thead><tr><th>Build</th><th>Resultado</th><th>Conforme a régua da casa (0/0)?</th></tr></thead><tbody>
+<tr><td><code>SMSMarica.server</code> — dotnet build</td><td>0 erros, 0 warnings (2m00s)</td><td><strong>sim</strong></td></tr>
+<tr><td><code>Automais.Fhir</code> — dotnet build</td><td>0 erros, <strong>2 warnings CS8604</strong> (<code>UpsertPorIdentifierTests.cs:77</code> e <code>:123</code>)</td><td><strong>não</strong> — corrigir antes do commit</td></tr>
+<tr><td><code>SMSMarica.front</code> — npm run build</td><td>tsc 0 erros; warnings não-bloqueantes (chunk 5,3 MB, imports mistos)</td><td>sim (com ressalva do chunk)</td></tr>
+</tbody></table></div>
+<hr>
+<h2>3. Censo de identidade nas 3 bases</h2>
+<p>Executado em 01/08/2026, tudo read-only. Hub via conexão direta ao Postgres; Salux e Klinikos via proxy SQL interno no droplet. <strong>Extratos com PII ficaram fora do repo</strong> (scratchpad local para o hub; <code>/root/tmp/censo/</code> no droplet para as origens).</p>
+<h3>3.1 Números por base</h3>
+<div class="tw"><table><thead><tr><th></th><th>Hub (<code>fhir.patient</code> vivos)</th><th>Salux (INFOSAUDE.PACIENTE)</th><th>Klinikos UPA</th><th>Klinikos Sta Rita</th></tr></thead><tbody>
+<tr><td>Cadastros</td><td><strong>252.766</strong></td><td><strong>370.431</strong></td><td><strong>83.624</strong></td><td><strong>não coletado</strong> (agente offline)</td></tr>
+<tr><td>Com CPF</td><td>252.766 (<strong>100%</strong>)</td><td>307.105 (82,9%)</td><td>69.479 (83,1%)</td><td>ref. 26/07: ~82%</td></tr>
+<tr><td>Com CNS</td><td>175.201 (69,3%)</td><td>226.246 (61,1%)</td><td><strong>130 (0,16%)</strong> no cadastro</td><td>ref. 26/07: 389 (0,77%)</td></tr>
+<tr><td>Com ambos</td><td>175.201</td><td>213.422 (57,6%)</td><td>117</td><td>—</td></tr>
+<tr><td><strong>Sem nenhum</strong></td><td><strong>0</strong></td><td><strong>50.502 (13,6%)</strong></td><td><strong>14.132 (16,9%)</strong></td><td>—</td></tr>
+<tr><td>Duplicatas internas por CPF</td><td><strong>60 CPFs × 2 = 120 patients</strong></td><td>5.656 cadastros redundantes (307.105 com CPF ÷ 301.449 distintos)</td><td>—</td><td>—</td></tr>
+<tr><td>Duplicatas por CNS</td><td>0</td><td>226.245 distintos (≈0)</td><td>—</td><td>—</td></tr>
+</tbody></table></div>
+<p>Notas medidas:</p>
+<ul>
+<li><strong>Hub</strong>: 99,77% dos patients vêm do Salux HCML (252.196); 570 nativos do smsmarica.</li>
+</ul>
+<p>  Todo patient com CNS também tem CPF; <strong>nenhum</strong> sem ambos. Colunas de busca cpf/cns   estão <strong>100% sincronizadas</strong> com o JSONB (a pendência conhecida de backfill de colunas   não se manifesta nesses dois campos).</p>
+<ul>
+<li><strong>Hub, 60 CPFs duplicados</strong>: violação direta da promessa 1 pessoa = 1 Patient. Máximo</li>
+</ul>
+<p>  2 repetições por CPF. É exatamente o padrão que o achado nº 9 (§2.2) produz — e a razão   de corrigi-lo antes de qualquer run novo. Cruzar os 570 nativos com esses 60 pares.</p>
+<ul>
+<li><strong>Klinikos</strong>: a premissa "CNS mora em <code>Paciente_CNS</code>" é <strong>falsa</strong> — aquela tabela é o</li>
+</ul>
+<p>  dossiê CadSUS (PIS, certidão, CTPS) <strong>sem</strong> número de CNS; o CNS mora em   <code>paciente.pac_cartao_nsaude</code> (130 preenchidos) e há 17.324 CNS <strong>provisórios</strong> em   <code>pac_cartao_nsaude_provisorio</code>, não incluídos no extrato — decidir se valem para   cruzamento.</p>
+<ul>
+<li><strong>Salux</strong>: extrato final (319.929 linhas esperadas) ainda estava <strong>em geração</strong> no</li>
+</ul>
+<p>  droplet ao fechar esta medição (<code>grep FIM /root/tmp/censo/salux-hcml.log</code> confirma o   término).</p>
+<h3>3.2 Cruzamento entre bases — EXECUTADO em 01/08 (parcial: <strong>sem Santa Rita</strong>)</h3>
+<p>Cruzamento por <strong>CPF válido</strong> (dígito verificador conferido; zero CPFs sintaticamente inválidos nas 3 fontes) sobre os extratos completos: hub 252.766 linhas · Salux <strong>319.930</strong> (os 370.431 cadastros menos os 50.502 sem CPF nem CNS) · UPA 69.492. Santa Rita segue pendente (agente WSS offline) — os números abaixo são <strong>de 2 bases + hub</strong>, e a tripla só fecha com ela (S1/S2 da §9).</p>
+<p><strong>Ocorrências do mesmo paciente (a pergunta central):</strong></p>
+<div class="tw"><table><thead><tr><th>Medição</th><th>Valor</th><th>Leitura</th></tr></thead><tbody>
+<tr><td>CPFs distintos válidos</td><td>hub 252.706 · Salux 301.450 · UPA 69.478</td><td>Salux: 307.106 cadastros com CPF → 301.450 pessoas (5.656 redundantes intra-base)</td></tr>
+<tr><td><strong>Salux ∩ UPA (mesma pessoa nas 2 bases)</strong></td><td><strong>50.539 CPFs</strong></td><td><strong>72,7% dos pacientes da UPA já passaram pelo Salux</strong> — o cutover partiu a história clínica de 50 mil pessoas ao meio; só o hub reunifica</td></tr>
+<tr><td>Pessoas únicas na união (2 bases)</td><td>320.389</td><td>vs 389.422 cadastros brutos — ~69 mil registros são a mesma pessoa em outra base</td></tr>
+<tr><td>Interseção por CNS (entre os sem-CPF)</td><td>1</td><td>CNS não ajuda no cruzamento hoje (Klinikos quase não tem CNS de cadastro)</td></tr>
+</tbody></table></div>
+<p><strong>Cobertura do hub (quem está faltando):</strong></p>
+<div class="tw"><table><thead><tr><th>Medição</th><th>Valor</th><th>Leitura</th></tr></thead><tbody>
+<tr><td>CPFs do Salux presentes no hub</td><td><strong>83,7%</strong> (48.989 fora)</td><td>a cauda do full-load interrompido (cursor 182576) medida com precisão</td></tr>
+<tr><td>CPFs da UPA presentes no hub</td><td><strong>56,5%</strong> (30.213 fora)</td><td>o buraco do cutover em pessoas</td></tr>
+<tr><td>UPA fora do hub <strong>e</strong> fora do Salux</td><td><strong>18.907</strong></td><td>pessoas 100% invisíveis ao hub — só o conector Klinikos as traz</td></tr>
+</tbody></table></div>
+<p><strong>Qualidade/risco (o sinal sério — mesmo CPF, nascimento divergente):</strong></p>
+<div class="tw"><table><thead><tr><th>Par</th><th>Divergências</th><th>Com ANO diferente</th></tr></thead><tbody>
+<tr><td>Salux × UPA</td><td>1.099</td><td><strong>371</strong></td></tr>
+<tr><td>hub × UPA</td><td>941</td><td>317</td></tr>
+<tr><td>hub × Salux</td><td>142</td><td>81</td></tr>
+</tbody></table></div>
+<p>Divergência de dia/mês costuma ser digitação; <strong>ano diferente</strong> no mesmo CPF é candidato a cadastro trocado (CPF digitado errado numa das bases → risco de fundir a história de duas pessoas). Consequência de desenho: os <strong>371</strong> pares Salux×UPA <strong>não podem ser mesclados às cegas pelo conector Klinikos</strong> — o merge por CPF precisa de um guarda de plausibilidade (nascimento a mais de N anos de distância → fila de divergência, não merge automático). Isso vira requisito do conector (§6.2) e reforça a regra fail-closed do ADR-0039. Exemplos mascarados ficaram no relatório da sessão; os extratos com PII <strong>não</strong> entram no repo (§8.3).</p>
+<h3>3.4 Conciliação de identidade no motor — IMPLEMENTADO em 01/08</h3>
+<p>O achado acima deixou de ser relatório e virou comportamento do motor. Três partes:</p>
+<p><strong>1. Detecção, no upsert canônico do Patient.</strong> Quando a origem traz um nascimento diferente do que o hub já tem para o mesmo CPF, o hub <strong>prevalece</strong> (o campo é congelado) e a divergência é registrada na tabela nova <code>smsmarica.pep_sincronizacao_divergencia</code> (migration <code>20260802002528_AddPepDivergenciaIdentidade</code> — só <code>CREATE TABLE</code> + índices). Uma linha viva por (base, CPF, tipo): re-detecção soma ocorrência, nunca duplica. O sink é o mesmo padrão durável da trilha de falhas (Channel + <code>IDbContextFactory</code>, sobrevive a crash) e o conjunto do que já é conhecido é carregado <strong>uma vez por run</strong> — zero I/O no caminho quente do upsert.</p>
+<p><strong>2. Arbitragem pela consulta oficial de CPF.</strong> O árbitro não somos nós: a consulta de CPF (Hub do Desenvolvedor, com CADSUS/SISREG como fallback — a cadeia de <code>proxy_motor</code> que já está em produção) <strong>só valida quando o par CPF + nascimento confere</strong>. Então perguntar pelas duas datas em disputa resolve o conflito:</p>
+<div class="tw"><table><thead><tr><th>Resultado da consulta</th><th>Veredicto</th><th>Efeito no motor</th></tr></thead><tbody>
+<tr><td>a data da <strong>origem</strong> valida</td><td><code>OrigemCorreta</code></td><td>descongela — o próximo run corrige o hub sozinho</td></tr>
+<tr><td>a data do <strong>hub</strong> valida</td><td><code>HubCorreto</code></td><td>congelamento <strong>permanente</strong>: a origem está errada</td></tr>
+<tr><td>nenhuma valida</td><td><code>AmbosNegados</code></td><td>CPF suspeito (provável troca de titular) — congelado, exige olho humano</td></tr>
+<tr><td>ninguém respondeu</td><td><code>NaoConclusiva</code></td><td>volta para a fila da próxima rodada</td></tr>
+</tbody></table></div>
+<p>Economia deliberada, porque cada consulta custa saldo: a origem é perguntada primeiro e, validando, a segunda consulta é dispensada (a Receita casa data exata — duas datas diferentes não podem validar as duas); há teto por rodada (<code>Pep:Divergencias:MaxPorRun</code>, padrão 50); e 3 indisponibilidades seguidas abortam a rodada em vez de queimar a fila. A arbitragem roda como <strong>fase final de cada sincronização</strong> e também sob demanda pela tela.</p>
+<p><strong>3. Relatório.</strong> Seção "Divergências de identidade" na tela de Sincronização, com contadores (pendentes, <strong>congelados agora</strong>, origem correta, hub correto, CPF suspeito), a tabela caso a caso (CPF mascarado, os dois valores, veredicto, valor correto, nome oficial devolvido pela consulta) e as ações <em>Arbitrar pendentes</em> e <em>ignorar</em> (falso positivo — descongela). Endpoints: <code>GET /pep-sincronizacao/divergencias</code>, <code>GET …/divergencias/resumo</code>, <code>POST …/divergencias/verificar</code>, <code>POST …/divergencias/{id}/ignorar</code> — todos sob <code>SincronizacaoPep</code>.</p>
+<p>A lógica de arbitragem é <strong>pura e testada</strong> (<code>ArbitroIdentidade</code> + 11 testes, sem banco, sem rede, sem Docker — rodam nesta máquina), no mesmo padrão do <code>DecididorAgendaPep</code>.</p>
+<h3>3.3 A regra de dedup que rege tudo isso (fixada em 26/07)</h3>
+<p>Já decidida e registrada em <a href="../klinikos/mapeamento-fhir.md"><code>docs/klinikos/mapeamento-fhir.md</code></a>:</p>
+<ol>
+<li><strong>Buscar por CPF e/ou CNS no hub antes de criar</strong> qualquer Patient (CPF primeiro,</li>
+</ol>
+<p>   cair para CNS).</p>
+<ol>
+<li>Se existir, <strong>não criar</strong> — anexar identifiers que faltam (merge existente:</li>
+</ol>
+<p>   <code>UnirIdentifiers</code> + <code>PreservarDoExistente</code> + PUT com If-Match).</p>
+<ol>
+<li><code>meta.source</code> obrigatório + código interno prefixado por slug (ADR-0009).</li>
+<li><strong>Sem CPF e sem CNS → fica fora</strong>, com <strong>contador exposto por run</strong> (métrica de</li>
+</ol>
+<p>   cobertura, não silêncio). A exclusão se autocorrige quando o cadastro ganha documento    na origem.</p>
+<p>Aplicada aos números do censo: ficam fora 50.502 do Salux (13,6%) e 14.132 da UPA (16,9%) — e é por isso que o contador exposto importa: são ~65 mil pessoas cuja entrada depende da origem completar o cadastro, e alguém precisa enxergar esse número subir ou descer.</p>
+<hr>
+<h2>4. Correções ANTES do deploy</h2>
+<p>&gt; <strong>Status em 01/08 (fim do dia): 6 dos 8 bloqueantes APLICADOS no working tree.</strong> &gt; Builds nas três soluções em <strong>0 erros / 0 warnings</strong>; 60 testes unitários verdes. &gt; Resta o item 1 (backfill — script pronto, falta <strong>ensaiar na bancada</strong>) e o item 3 &gt; (Organization no hub). Detalhe do que foi feito: &gt; &gt; | # | Correção | Estado | &gt; |---|---|---| &gt; | 1 | Backfill do identifier no hub | <strong>script pronto</strong> (<code>Automais.Fhir/scripts/backfill-identifier-clinico.sql</code>), não executado | &gt; | 2 | Migration do hub fora do startup + fail-fast | ✅ <code>Program.cs</code>: timeout de 30 min configurável + <code>throw</code> (era log-e-segue) | &gt; | 3 | Organization + <code>serviceProvider</code> | ⏳ pendente | &gt; | 4 | ORA-01795: lotear os cds no CDC | ✅ lote de 500 + <code>ListaInt</code> blindado (falha alto acima de 1.000) | &gt; | 5 | Purga por paciente → reconciliação | ⏳ depende do item 1 (desligar antes duplicaria o legado) | &gt; | 6 | Pausar motor / parar-que-pausa | ✅ <code>POST /agenda/pausar</code>, <code>cancelar?pausarHoras=</code>, botão <strong>Pausar/Retomar motor</strong> e aviso "PAUSADO até…" na tela | &gt; | 7 | <code>PUT /agenda</code> não-destrutivo | ✅ janela e pausa viraram PATCH — salvar pela tela não apaga mais o que foi configurado por fora | &gt; | 8 | Guard <code>ApagarAntes</code> × cursor/Limitado | ✅ <code>ValidacaoException</code> nas duas combinações | &gt; &gt; Extra da mesma janela: os 2 warnings CS8604 do <code>Automais.Fhir</code> saíram (régua 0/0 restaurada).</p>
+<h3>4.1 Bloqueantes (críticos + altos) — nesta ordem</h3>
+<div class="tw"><table><thead><tr><th>#</th><th>Correção</th><th>O que fazer</th><th>Esforço</th></tr></thead><tbody>
+<tr><td><strong>0</strong></td><td>🔴 <strong>SANEAR as duplicatas pré-identifier</strong> (achado novo de 01/08 — ver §2.5)</td><td>Sem isto o backfill <strong>falha no primeiro lote</strong>: o índice único rejeita a segunda cópia. Script pronto: <code>Automais.Fhir/scripts/sanear-duplicatas-pre-identifier.sql</code> (elege sobrevivente → re-aponta ~47 mil filhos → soft-delete da perdedora → dedup das Conditions resultantes), com tabela de auditoria e reversão. <strong>Exige backup e aprovação explícita.</strong></td><td>½ dia + ensaio</td></tr>
+<tr><td>1</td><td><strong>Backfill do identifier no hub</strong> (achado nº 1)</td><td>Script SQL controlado (não no startup): <code>encounter</code> e <code>document_reference</code> são backfilláveis direto do JSONB (o importador em prod já gravava o identifier no content — <code>content#&gt;&gt;'{identifier,0,system}'</code>), <strong>com dedup prévio</strong> para não violar o índice único; <code>condition</code> derivável via <code>encounter_id</code> → chave do BAA + <code>:cond</code>; <code>medication_request</code>/<code>observation</code> legados <strong>não têm</strong> identifier no content → decisão formal: derivação onde possível ou um único Completo com purga como passo de cutover documentado (ciente do churn de ids). Incluir no mesmo script o backfill de <code>period_end</code> (achado nº 13).</td><td>1–2 dias (script + ensaio na bancada com contagens antes/depois)</td></tr>
+<tr><td>2</td><td><strong>Migration do hub fora do startup + fail-fast</strong> (achado nº 3)</td><td>Aplicar via psql/bundle EF com statement_timeout desligado; os 6 índices como <code>CREATE INDEX CONCURRENTLY</code>; no <code>Program.cs</code>, falha de migration → <strong>abort do startup</strong>, nunca logar-e-seguir.</td><td>½ dia</td></tr>
+<tr><td>3</td><td><strong>Organization + <code>serviceProvider</code> na MESMA migration do hub — E no conector</strong></td><td>Lado hub: a migration <code>AddIdentifierClinicoELocation</code> <strong>nunca foi aplicada</strong> — janela única para incluir a tabela <code>organization</code> (hoje zero ocorrências no Automais.Fhir) e a coluna de <code>serviceProvider</code> no Encounter sem custo extra de deploy; aproveitar para a FK de <code>location.part_of_id</code>. Lado conector (sem isso o passo 7 da §5 <strong>não</strong> backfilla o estoque): resolução de <code>Organization</code> no <strong>início do run</strong> (upsert por identifier CNES + <code>urn:salux:hospital</code>, cache por run do mapa <code>CD_HOSPITAL</code> → id) e <code>SaluxFhirMapper</code> emitindo <code>serviceProvider</code> em <strong>todo</strong> Encounter (BAA e FIA). O de-para já está resolvido por CNES com zero configuração (§1.3).</td><td>1,5–2 dias (entidade + service + controller + migration editada antes de aplicar + fase de Organizations e serviceProvider no conector)</td></tr>
+<tr><td>4</td><td><strong>ORA-01795: lotear os cds no CDC</strong> (achado nº 2)</td><td><code>EmLotes(cds, TamanhoLote)</code> antes de <code>SqlPacientes</code> (padrão já usado nas linhas 174-177) + blindar <code>ListaInt</code> para nunca emitir lista &gt;1000.</td><td>horas</td></tr>
+<tr><td>5</td><td><strong>Purga por paciente → reconciliação sem purga</strong> (achado §2.3; linha ~67 da strategy)</td><td>Depois do backfill (item 1): trocar <code>purgarPorPaciente</code> para reconciliação por upsert; exclusões da origem ficam explicitamente retidas até LOG_BAA/LOG_FIA (registrado na §9). Enquanto o item 1 não rodar, <strong>a purga fica como está</strong> — desligá-la antes duplica o legado.</td><td>1 dia</td></tr>
+<tr><td>6</td><td><strong>Botão Pausar motor + parar-que-pausa</strong> (achado nº 5)</td><td><code>PausadoAte</code> já existe em entidade/DTO/request/type TS. UI: expor pausa de um clique; no modal do "Parar", oferecer (ou aplicar por padrão) "parar E pausar por X horas". Mínimo aceitável: <code>CancelarAsync</code> seta <code>PausadoAte</code> curto quando a agenda está ativa.</td><td>½ dia</td></tr>
+<tr><td>7</td><td><strong>PUT /agenda não-destrutivo</strong> (achado nº 6)</td><td>Janela/PausadoAte só sobrescrevem quando informados (mesmo padrão do <code>MedicoRescanHoras</code>, linha 231) — ou o front ecoa os valores do GET.</td><td>horas</td></tr>
+<tr><td>8</td><td><strong>Guard ApagarAntes × cursor/Limitado</strong> (achado nº 4)</td><td><code>ValidacaoException</code> em <code>IniciarAsync</code> quando <code>ApagarAntes=true</code> com <code>CursorPacienteInicial != null</code> ou <code>Escopo=Limitado</code>.</td><td>horas</td></tr>
+</tbody></table></div>
+<h3>4.2 Recomendadas na mesma janela (médios que custam pouco)</h3>
+<div class="tw"><table><thead><tr><th>Correção</th><th>Esforço</th></tr></thead><tbody>
+<tr><td>Retry de POST restrito a 503 explícito (ou If-None-Exist no hub) — evita duplicar Patient (nº 8)</td><td>horas</td></tr>
+<tr><td>Dedup por CPF dentro do chunk (processar 1 cd por CPF, ou striped lock por chave) (nº 9)</td><td>½ dia</td></tr>
+<tr><td>CDC: <code>encId</code> nulo → pendência re-processável na trilha (não <code>return</code> silencioso); <code>falhou(l.CdPaciente)</code> em vez de 0; expor disparo com <code>CdsPacientes</code> na API (hoje é promessa sem consumidor) (nº 10/11)</td><td>1 dia</td></tr>
+<tr><td>Guard <code>!limitado</code> para <code>MedicoEm</code>/<code>BaaEm</code>/<code>EdocEm</code>/<code>FiaEm</code> (nº 12)</td><td>horas</td></tr>
+<tr><td>Catch do upsert restrito a 23505; considerar VersionId como concurrency token (nº 14)</td><td>horas</td></tr>
+<tr><td>Front: datas via <code>shared/lib/datas.ts</code> (Brasília fixo); dirty-state no form da agenda; invalidar histórico na transição emExecucao true→false (nº 15/16)</td><td>½ dia</td></tr>
+<tr><td>Alerta de falhas consecutivas via <code>IRegistroErroService</code> (ERRO-XXXXXX, como o ADR-0024 promete) (nº 17)</td><td>horas</td></tr>
+<tr><td>2 warnings CS8604 nos testes do Automais.Fhir (régua 0/0)</td><td>minutos</td></tr>
+</tbody></table></div>
+<p>Total honesto da §4: <strong>~5 a 7 dias úteis</strong> de trabalho focado antes do primeiro deploy, sendo o caminho crítico o item 1 (backfill) + item 3 (Organization na mesma migration).</p>
+<hr>
+<h2>5. Ordem de entrega com gates verificáveis</h2>
+<p>Método que funcionou no ADR-0038: worktree limpo → ensaio na bancada → deploy → verificação por id. Regras da casa em vigor em todos os passos: <strong>migration é passo manual</strong> (o deploy não aplica — já custou caro 3 vezes), <strong>conferir <code>smsmarica.__migrations</code> / <code>fhir."__EFMigrationsHistory"</code> depois de todo deploy</strong>, e <strong>produção só com OK explícito por ação</strong>.</p>
+<div class="tw"><table><thead><tr><th>Passo</th><th>O quê</th><th>Gate para avançar</th></tr></thead><tbody>
+<tr><td>0</td><td>Correções §4.1 aplicadas no working tree</td><td>builds 0 erros / 0 warnings nas duas soluções; testes de upsert verdes</td></tr>
+<tr><td>1</td><td><strong>Commit fatiado por frente</strong> (motor server / hub / front), sem deploy</td><td>cuidado com o snapshot do EF compartilhado entre frentes — commitar só o próprio hunk; <code>git status</code> limpo para esta frente</td></tr>
+<tr><td>2</td><td><strong>Bancada Maestro</strong>: aplicar as 2 migrations + backfill em schemas com cópia de dados; medir o tempo dos CREATE INDEX; ensaiar rollback</td><td>contagens antes/depois batendo; <strong>0 linhas vivas com identifier NULL em encounter, document_reference E condition</strong> (a dupla do achado nº 1: BAA editado duplica Encounter <strong>e</strong> a Condition <code>:cond</code>); <strong>decisão formal registrada</strong> para o legado de medication_request/observation (derivação impossível pelo content → ou cutover documentado com purga ou convivência com órfãos); tempo de índice conhecido</td></tr>
+<tr><td>3</td><td><strong>Deploy hub (Automais.Fhir)</strong>: migration manual via psql/bundle (índices CONCURRENTLY), depois o backfill, depois o serviço</td><td><code>fhir."__EFMigrationsHistory"</code> tem a <code>20260727020900</code>; smoke: <code>PUT ?identifier=</code> sobre registro legado <strong>atualiza</strong> (não cria); <code>GET ?identifier=</code> devolve no máximo 1</td></tr>
+<tr><td>4</td><td><strong>Deploy server (SMSMarica.server)</strong>: migration <code>20260727122701</code> manual; serviço sobe com o motor <strong>inerte</strong> (agenda vazia)</td><td><code>smsmarica.__migrations</code> confere; tabela de agenda vazia; zero runs espontâneos por 24h</td></tr>
+<tr><td>5</td><td><strong>Ligar a agenda com janela</strong> (ex.: madrugada, intervalo 30 min) — OK explícito</td><td>primeiro run agendado completo sem Erro; diagnóstico origem×hub coerente; query de duplicatas (identifier com &gt;1 linha viva) = <strong>0</strong></td></tr>
+<tr><td>6</td><td><strong>Observar</strong> N ciclos (sugestão: 3 dias)</td><td>falhas consecutivas = 0; marcas avançando; sem crescimento anômalo de tombstones</td></tr>
+<tr><td>7</td><td><strong>Reconciliação noturna</strong>: um Completo controlado (sem ApagarAntes) para fechar o gap 06/06→hoje e a metade da base acima do cursor 182576 — <strong>é este passe que backfilla a unidade no estoque</strong>: com a §4.1-3 no lugar, cada Encounter reescrito por upsert sai com <code>serviceProvider</code>, sem passo extra</td><td>contagens origem×hub batendo no diagnóstico; <strong>3 Organizations vivas no hub</strong> (criadas pelo próprio run); amostra de Encounters antigos reescritos carrega <code>serviceProvider</code>; duração medida (última referência: 12,8h — atenção ao ORA-01555, achado baixo da §2.2)</td></tr>
+<tr><td>8</td><td><strong>Verificação do eixo unidade</strong> (fecha o ADR-0039 decisão 7)</td><td>cobertura de <code>serviceProvider</code> no estoque Salux ≈ 100% dos Encounters vivos; Encounter novo do incremental sai com serviceProvider; contagem por Organization bate com a distribuição por <code>CD_HOSPITAL</code> (§1 da conversa: 689.950 / 268.151 / 163.620 + o delta do gap)</td></tr>
+</tbody></table></div>
+<p>Backout por passo: ver §8.4.</p>
+<hr>
+<h2>6. Klinikos: o que reusa, o que é novo, o que o hub precisa crescer</h2>
+<p>Base de análise: <a href="../klinikos/mapeamento-fhir.md"><code>docs/klinikos/mapeamento-fhir.md</code></a> (26/07/2026). Síntese de lá que continua valendo: <strong>o Klinikos é mais compatível com FHIR do que o Salux</strong> em prescrição (Dosage estruturado), sinais vitais (colunados), administração de medicamento (<code>Item_Aprazamento</code>) e jornada (statusHistory de graça).</p>
+<h3>6.1 O motor reusa (sem tocar)</h3>
+<ul>
+<li><strong>Scheduler + agenda + fila + decisor</strong> (<code>PepSincronizacaoScheduler</code>/<code>DecididorAgendaPep</code>) — já são por fonte (<code>fonteId</code>), multi-base por construção.</li>
+<li><strong>Marcas d'água por fase</strong> com lag — o mecanismo; os <em>campos</em> precisam generalizar (§9).</li>
+<li><strong>Upsert por identifier</strong> no hub (<code>PUT ?identifier=</code>) e <strong>merge canônico</strong> de Patient/Practitioner (<code>UpsertCanonicoAsync</code> + <code>PatientMergeFhir</code>) — idênticos; muda só o system (<code>urn:klinikos:*</code>).</li>
+<li><strong>Tela de Sincronização PEP</strong> + trilha de falhas + diagnóstico origem×hub — a UI já lista bases.</li>
+<li><strong>Canal de leitura</strong>: o proxy/agente WSS para SQL Server já existe (é o mesmo do módulo IA — as duas instâncias já são fontes cadastradas).</li>
+</ul>
+<h3>6.2 O que é novo (escrever)</h3>
+<ul>
+<li><strong><code>KlinikosImportacaoStrategy</code></strong> — estratégia própria por instância (2 slugs:</li>
+</ul>
+<p>  <code>upa24h-marica-sqlserver</code>, <code>santarita-marica-sqlserver</code>), unidade resolvida por CNES.</p>
+<ul>
+<li><strong>CDC próprio, com redundância tripla já identificada na origem</strong>: <code>rowversion</code> +</li>
+</ul>
+<p>  <code>pac_dt_ultima_alteracao</code> + <code>historico_paciente</code> — melhor sinal de mudança do que o   Salux oferece; escolher a âncora e usar as outras duas como verificação.</p>
+<ul>
+<li><strong>Mapper próprio</strong> (<code>KlinikosFhirMapper</code>): Encounter EMER com statusHistory,</li>
+</ul>
+<p>  Observation colunada (inclui HGT/glicemia e Glasgow estruturado), MedicationRequest   com Dosage estruturado, CNS do boletim complementando o cadastro.</p>
+<ul>
+<li><strong>Contador de excluídos por run</strong> (regra de dedup §3.3, item 4) — novo no motor,</li>
+</ul>
+<p>  exposto na tela.</p>
+<ul>
+<li><strong>Conciliação de identidade — quase pronta para reuso.</strong> O mecanismo do §3.4 (detecção,</li>
+</ul>
+<p>  congelamento, arbitragem pela consulta oficial, relatório) é <strong>agnóstico de base</strong>: a   tabela é por <code>fonte_id</code> e o árbitro é lógica pura. O conector Klinikos só precisa chamar   a mesma conciliação no seu upsert de Patient. São <strong>371</strong> casos já medidos entre Salux e   UPA esperando por isso — fundir às cegas mistura a história clínica de duas pessoas, o   desastre exato que este projeto não pode cometer.</p>
+<h3>6.3 O que o HUB precisa crescer (recursos que o Klinikos traz e não existem)</h3>
+<p>Hoje o Automais.Fhir tem 9 DbSets. O Klinikos entrega, e o hub <strong>não tem onde guardar</strong>:</p>
+<div class="tw"><table><thead><tr><th>Recurso</th><th>Origem no Klinikos</th><th>Situação no hub</th></tr></thead><tbody>
+<tr><td><strong>AllergyIntolerance</strong></td><td><code>Atendimento_Alergia</code> (texto livre, 85% negação)</td><td>tabela <strong>não existe</strong></td></tr>
+<tr><td><strong>Procedure</strong> (SIGTAP)</td><td><code>Producao_Spa</code>/<code>procedimento_ambulatorial_real</code></td><td>não existe</td></tr>
+<tr><td><strong>ServiceRequest / DiagnosticReport</strong></td><td><code>resultado_exame_radiologico</code> (radiologia; lab interno morto)</td><td>não existe — e é o mesmo recurso que o F7 do Salux exigiria</td></tr>
+<tr><td>MedicationAdministration</td><td><code>Item_Aprazamento</code> (dose_adm, checagem)</td><td>tabela existe <strong>vazia</strong> — o Klinikos é quem a destrava (pendência conhecida do BAU)</td></tr>
+</tbody></table></div>
+<p>Decidir cedo: esses recursos entram numa migration própria do hub <strong>antes</strong> do conector Klinikos, no mesmo padrão (colunas de identifier já nascendo com backfill vazio — sem repetir o erro do achado nº 1).</p>
+<h3>6.4 O risco da internação — pergunta a fazer AGORA</h3>
+<p>O módulo <code>Internacao</code> do Klinikos está <strong>morto desde 25/01/2026</strong> (medido no levantamento de 26/07). O Conde (HCML) <strong>interna</strong> — é a única unidade com Encounter IMP, recém-implementado no ADR-0025 via FIA do Salux — <strong>e vai migrar para o Klinikos</strong>.</p>
+<p>Se a migração do Conde for para o Klinikos <em>como ele roda hoje nas UPAs</em>, o hub perde a internação no dia do cutover: FIA morre no Salux e não nasce equivalente no Klinikos.</p>
+<p><strong>Pergunta a levar ao projeto da migração agora, não no cutover:</strong> o módulo de internação do Klinikos será reativado/parametrizado para o Conde? Com quais tabelas (a <code>Internacao</code> atual ou outra)? Haverá equivalente de FIA/leito/transferência que o conector possa mapear para Encounter IMP + Location? A resposta muda o desenho do conector (e o prazo da §7).</p>
+<hr>
+<h2>7. Salux com prazo de validade</h2>
+<p>A migração do Conde para o Klinikos põe <strong>data de morte no Oracle do Salux</strong> (ainda sem dia marcado, mas certa). Duas consequências práticas:</p>
+<ol>
+<li><strong>A extração final vira deadline.</strong> O último Completo + reconciliação contra o Salux</li>
+</ol>
+<p>   precisa acontecer <strong>antes do desligamento</strong>, com o gap zerado e verificado    (contagens origem×hub por fase). Depois disso o hub é a única cópia. Tratar como    marco com dono e data assim que o projeto da migração der o cronograma.</p>
+<ol>
+<li><strong>O que o achatamento perdeu só é recuperável com o Oracle vivo.</strong> O ADR-0008 mandava</li>
+</ol>
+<p>   eDoc → QuestionnaireResponse (lossless); o código gera HTML achatado (achado nº 7).    Ficam presos na origem: os pares EAV estruturados, os tipos de widget, os itens não    respondidos, o autor, o status P/D, as escalas como dado discreto e — o item legal —    o <strong>PDF assinado (<code>DOC_ASSINADO</code> + <code>HASH_ASSINATURA_DIGITAL</code>), que nunca foi lido    pelo importador</strong>. Morreu o Oracle, morreu a chance.</p>
+<p>Decisão consciente a tomar (uma das duas, registrada em ADR):</p>
+<div class="tw"><table><thead><tr><th>Opção</th><th>O que significa</th></tr></thead><tbody>
+<tr><td><strong>Fazer antes do desligamento</strong></td><td>Implementar a re-extração estruturada (QR SDC, ou no mínimo: EAV bruto + PDFs assinados arquivados em storage próprio com hash) e rodá-la na extração final. Custo: frente nova de trabalho com deadline externo.</td></tr>
+<tr><td><strong>Adiar assumidamente</strong></td><td>Aceitar que o hub fica com o HTML renderizado como registro definitivo do eDoc e que o documento assinado permanece apenas no backup final do Oracle (que então precisa ser <strong>preservável e legível a longo prazo</strong> — decisão de infra, não de código). Rebaixar as decisões 3/4 do ADR-0008 formalmente.</td></tr>
+</tbody></table></div>
+<p>O que não é aceitável é a terceira opção implícita: não decidir e deixar o desligamento do Conde escolher por nós.</p>
+<hr>
+<h2>8. Riscos e salvaguardas</h2>
+<h3>8.1 Telefone verificado do paciente (3 camadas, confirmadas na auditoria)</h3>
+<ol>
+<li><code>PatientMergeFhir.PreservarDoExistente</code> remove qualquer confirmado injetado por</li>
+</ol>
+<p>   tentativa anterior e reinjeta clones do hub — <strong>idempotente no retry</strong>    (<code>PatientMergeFhir.cs:423-431</code>).</p>
+<ol>
+<li>Confirmado é <strong>único rank 1</strong>; o número equivalente vindo do Oracle é demovido</li>
+</ol>
+<p>   (tolerância a DDI).</p>
+<ol>
+<li>Escrita com <strong>If-Match</strong>: 409 → re-lê → re-mergeia, máximo 3 tentativas, depois vira</li>
+</ol>
+<p>   falha do paciente na trilha — nunca sobrescreve às cegas.</p>
+<h3>8.2 Oracle de produção read-only (3 barreiras)</h3>
+<ol>
+<li><code>SqlReadOnlyGuard</code> valida todo SQL do importador (só leitura).</li>
+<li>Cada conexão abre <code>SET TRANSACTION READ ONLY</code> (<code>LeitorOracleHis.cs:68</code>) — com a</li>
+</ol>
+<p>   ressalva conhecida do ORA-01555 em Completo longo (achado baixo, §2.2).</p>
+<ol>
+<li>Regra não-negociável do projeto (<code>Salux/CLAUDE.md</code>): PROD Oracle é live de hospital,</li>
+</ol>
+<p>   só SELECT — vale para humanos e para o motor.</p>
+<h3>8.3 PII</h3>
+<ul>
+<li>Extratos do censo <strong>nunca entram no repo</strong>: hub no scratchpad local da sessão; Salux e</li>
+</ul>
+<p>  Klinikos em <code>/root/tmp/censo/</code> no droplet. Este documento e os JSONs de auditoria não   carregam nenhum CPF/CNS/nome.</p>
+<ul>
+<li>Vale a regra permanente: nunca <code>git add -A</code>, nunca commitar dump/captura.</li>
+</ul>
+<h3>8.4 Backout por passo do plano (§5)</h3>
+<div class="tw"><table><thead><tr><th>Passo</th><th>Backout</th></tr></thead><tbody>
+<tr><td>Migration hub</td><td>AddColumn nullable + CreateTable novos = <strong>não destrutivo</strong>; índices CONCURRENTLY que falharem são dropados e re-tentados; <code>Down()</code> existe. Antes de tudo: ensaio + rollback na bancada (passo 2).</td></tr>
+<tr><td>Backfill hub</td><td>UPDATE idempotente (<code>WHERE identifier_system IS NULL</code>) — re-executável; erro no meio não corrompe (colunas continuam NULL onde não passou).</td></tr>
+<tr><td>Deploy server</td><td>Motor <strong>inerte por construção</strong> (agenda vazia) — o backout é não ligar a agenda.</td></tr>
+<tr><td>Agenda ligada</td><td>Desativar a agenda + <strong>Pausar motor</strong> (novo controle da §4.1-6). O "Parar" sozinho <strong>não</strong> é backout (achado nº 5) até a correção entrar.</td></tr>
+<tr><td>Completo de reconciliação</td><td>Sem ApagarAntes, nunca (guard da §4.1-8). Se morrer no meio: as marcas por fase só avançam ao fim da fase — re-rodar continua de onde parou; o risco de janela-sem-dado da purga desaparece quando a §4.1-5 entrar.</td></tr>
+<tr><td>Conector Klinikos (futuro)</td><td>Mesmo padrão: fonte nova nasce com agenda desativada; slug próprio permite tombstone escopado por <code>meta.source</code> sem tocar o que veio do Salux.</td></tr>
+</tbody></table></div>
+<hr>
+<h2>9. Backlog vivo desta frente</h2>
+<p>Complementa o <a href="../marco-1-e-linha-de-corte.md">marco-1 §11.2</a> — o que já está lá (commit fatiado, Docker/Testcontainers, governança de ADR) não se repete; abaixo só o específico do sincronismo. Ao resolver, mover a linha para "resolvido" com data, como lá.</p>
+<div class="tw"><table><thead><tr><th>#</th><th>Item</th><th>Contexto / gatilho</th></tr></thead><tbody>
+<tr><td>S1</td><td>~~Cruzamento das 3 bases~~ — <strong>executado em 01/08 para hub+Salux+UPA (§3.2)</strong>; falta SÓ a perna Santa Rita para fechar a tripla</td><td>gatilho: agente WSS de Santa Rita voltar → S2 → re-rodar <code>cruzar.py</code> (scratchpad da sessão) com o 4º extrato</td></tr>
+<tr><td>S2</td><td><strong>Censo Santa Rita</strong> — agente WSS offline em 01/08</td><td>quando o agente voltar: <code>python3 /root/tmp/censo/extrair_censo.py santarita-marica-sqlserver sqlserver</code> + mesmas queries da UPA</td></tr>
+<tr><td>S3</td><td><strong>Merge dos 60 CPFs duplicados do hub</strong> (120 patients)</td><td>fazer <strong>antes</strong> de ligar a agenda, ou o merge canônico alterna entre os dois; cruzar com os 570 nativos smsmarica</td></tr>
+<tr><td>S4</td><td><strong>Enriquecimento de CNS</strong> — 77.565 patients do hub (30,7%) sem CNS</td><td>avaliar via cadweb50 (mesmo caminho da resolução SISREG CNS→CPF)</td></tr>
+<tr><td>S5</td><td><strong>CNS provisório do Klinikos</strong> — 17.324 em <code>pac_cartao_nsaude_provisorio</code></td><td>decidir se vale para cruzamento/dedup antes do conector</td></tr>
+<tr><td>S6</td><td><strong>CNES 7164440 com nome divergente</strong> (UPA 24H INOÃ × UPA MARICA)</td><td>confirmar mesma unidade real antes de resolver unidade por CNES no conector</td></tr>
+<tr><td>S7</td><td>~~<code>docs/integracoes/salux/de-para.md</code>~~ — <strong>feito em 01/08</strong> (<a href="./salux/de-para.md">o documento</a>, com a seção obrigatória "o que se perde")</td><td>resta o candidato a teste: identifier systems/extensões do mapper ⊆ de-para</td></tr>
+<tr><td>S8</td><td><strong>LOG_BAA rede de segurança</strong> (pendência A3 do ADR-0024) + <strong>LOG_FIA</strong> (correção retroativa de internação)</td><td>hoje existem só em comentário de código; edição de BAA &gt;120d e FIA corrigida/excluída ficam invisíveis</td></tr>
+<tr><td>S9</td><td><strong>Tombstone de BAA: expurgo físico</strong> — cada Completo com purga soma ~1,3M tombstones</td><td>DELETE de tombstones antigos + VACUUM; some da pauta se a §4.1-5 (reconciliação sem purga) entrar antes do próximo Completo</td></tr>
+<tr><td>S10</td><td><strong>MarcaDagua genérica por fase nomeada</strong> — hoje os campos chamam <code>BaaEm</code>/<code>EdocEm</code>/<code>FiaEm</code> (nomes Salux)</td><td>endurecer <strong>antes</strong> da 2ª base (Klinikos), senão a estratégia nova herda campos com nome errado</td></tr>
+<tr><td>S11</td><td><strong>ADR-0039</strong> — sincronismo multi-PEP (Salux + Klinikos) com campo <code>Implantação:</code> desde o nascimento</td><td>consolida ADR-0024/0025 + as decisões deste plano (backfill, reconciliação sem purga, regra de dedup §3.3); rebaixa formalmente as decisões 3/4 do ADR-0008 (§7)</td></tr>
+<tr><td>S12</td><td><strong>Recursos novos do hub para o Klinikos</strong> (AllergyIntolerance, Procedure, ServiceRequest/DiagnosticReport)</td><td>migration própria, com lição do achado nº 1 aprendida: identifier + backfill pensados juntos</td></tr>
+<tr><td>S13</td><td><strong>Pergunta da internação ao projeto de migração do Conde</strong> (§6.4)</td><td>fazer agora; a resposta dimensiona o conector e o prazo da §7</td></tr>
+<tr><td>S14</td><td><strong><code>_estatisticas</code> sem cache/auth</strong> e listagens sem índice de ordenação no hub</td><td>cache curto ou <code>pg_class.reltuples</code>; garantir 5081 fechada para fora</td></tr>
+</tbody></table></div>
+<hr>
+<p><em>Medições de 01/08/2026 (auditorias de código no working tree, builds, censo read-only).</em> <em>Nenhum número deste documento é estimativa, exceto os esforços da §4 — e estes estão marcados como tal.</em></p>
+</main>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reconciliação do working tree com o origin/main — mapa arquivo a arquivo (02/08/2026)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>Reconciliação do working tree com o <code>origin/main</code> — mapa arquivo a arquivo (02/08/2026)</h1>
+<p>&gt; <strong>Status em 03/08:</strong> a entrega NÃO usou o procedimento abaixo. Optou-se pelo caminho mais &gt; seguro — um <strong>worktree limpo do <code>origin/main</code></strong> (<code>_wt-entrega-sync</code>), para onde só o &gt; trabalho da frente foi copiado, com as migrations <strong>regeradas</strong> ali para nascerem coerentes. &gt; O working tree principal segue <strong>intocado</strong>, ainda com Regulação, equipamentos, &gt; sisreg-mapeamento e tickets — e agora bem atrás do <code>main</code>, que andou vários commits. &gt; &gt; Este documento continua valendo como <strong>mapa</strong> (a classificação A/B/C/D e os achados são &gt; reais e verificados), mas o passo a passo precisa ser <strong>regerado</strong> antes de uso: as &gt; distâncias mudaram. O achado que mais importa aqui segue de pé: existe uma migration do &gt; rename <strong>duplicada e morta</strong> (<code>20260731214803</code>) no working tree principal, que jamais pode &gt; ser commitada — a boa é a <code>20260731230018</code>, já aplicada em produção.</p>
+<p>Preparado para <strong>revisão antes de qualquer commit</strong>. Nada foi commitado, nada foi apagado.</p>
+<h2>Por que existe</h2>
+<p>Este working tree (<code>C:\Projetos GIT\SMSMarica</code>) ficou numa linhagem <strong>anterior</strong> ao commit <code>70c8405</code> (o rename mensageria/geo fora do TFD, ADR-0038 — em produção desde 31/07). O rename foi feito e commitado a partir de um <strong>git worktree separado</strong> (<code>_wt-tfd-mensageria</code>), então aqui os arquivos criados por ele nunca foram rastreados.</p>
+<p>À primeira vista o <code>git diff origin/main</code> assusta: <strong>126 arquivos, 4.925 inserções, 9.894 deleções</strong>, incluindo a deleção da migration do rename que <strong>está aplicada em produção</strong>. Commitar assim reverteria o ADR-0038. Por isso o deploy foi interrompido.</p>
+<p><strong>Depois do mapeamento, o susto passa: não há conflito real.</strong> As "deleções" são artefato de arquivos <em>untracked</em>, que existem no disco e são bit-a-bit idênticos aos do <code>origin/main</code>.</p>
+<h2>O mapa</h2>
+<div class="tw"><table><thead><tr><th>Grupo</th><th>Arquivos</th><th>O que é</th><th>Ação</th></tr></thead><tbody>
+<tr><td><strong>A. Trabalho novo</strong></td><td><strong>113</strong></td><td>só o working tree tem — as 5 frentes</td><td><strong>manter</strong> (é o que vai virar commit)</td></tr>
+<tr><td><strong>B. Untracked idênticos</strong></td><td><strong>9</strong></td><td>existem no disco, <code>git hash-object</code> <strong>igual</strong> ao <code>origin/main</code>; o git os lê como "deletados" só porque nunca foram rastreados aqui</td><td><strong>nenhuma</strong> — o reset ao <code>origin/main</code> os torna "sem alteração"</td></tr>
+<tr><td><strong>C. Ausentes no disco</strong></td><td><strong>2</strong></td><td>a migration do rename (<code>.cs</code> + <code>.Designer.cs</code>)</td><td><strong>restaurar do <code>origin/main</code></strong></td></tr>
+<tr><td><strong>D. Cirurgia</strong></td><td><strong>2</strong></td><td><code>SmsMaricaDbContext.cs</code> e <code>SmsMaricaDbContextModelSnapshot.cs</code></td><td><strong>manter a versão do working tree</strong> — verificado abaixo</td></tr>
+</tbody></table></div>
+<h3>B — os 9 idênticos (verificados por hash)</h3>
+<p>``<code> Configurations/GeoConfiguracaoConfiguration.cs      Entities/Geo/GeoConfiguracao.cs Configurations/GeoEnderecoConfiguration.cs          Entities/Geo/GeoEndereco.cs Configurations/TfdConfiguracaoConfiguration.cs      Entities/Notificacoes/MensagemWhatsApp.cs Configurations/WhatsAppConfiguracaoConfiguration.cs Entities/Notificacoes/WhatsAppConfiguracao.cs Entities/Tfd/TfdConfiguracao.cs </code>``</p>
+<h3>C — os 2 ausentes</h3>
+<p>``<code> Migrations/20260731230018_RenomeiaMensageriaEGeoForaDoTfd.cs Migrations/20260731230018_RenomeiaMensageriaEGeoForaDoTfd.Designer.cs </code>``</p>
+<p>Migration <strong>já aplicada em produção</strong> (é a última em <code>smsmarica.__migrations</code>). Vem inteira do <code>origin/main</code>; o working tree não tem versão concorrente dela.</p>
+<h3>D — os 2 que precisavam de análise (ambos aprovados)</h3>
+<p><strong><code>SmsMaricaDbContext.cs</code></strong> — o diff contra o <code>origin/main</code> é <strong>puramente aditivo</strong>: 1 <code>using</code> de Regulação e 7 <code>DbSet</code> novos (2 de PEP + 5 de Regulação). A única linha removida é o <code>using</code> de Sisreg, reinserido em ordem alfabética. <strong>Nada do rename se perde.</strong></p>
+<p><strong><code>SmsMaricaDbContextModelSnapshot.cs</code></strong> — é <strong>superset estrito</strong>:</p>
+<div class="tw"><table><thead><tr><th></th><th>Entidades</th></tr></thead><tbody>
+<tr><td><code>origin/main</code></td><td>171</td></tr>
+<tr><td>working tree</td><td><strong>183</strong></td></tr>
+<tr><td>no <code>origin/main</code> e <strong>ausentes</strong> no working tree</td><td><strong>0</strong></td></tr>
+</tbody></table></div>
+<p>As 12 a mais são de PEP e Regulação. O rename está presente e idêntico (<code>MensagemWhatsApp → whatsapp_mensagem</code> nos dois). As "92 linhas removidas" do diff são reordenação alfabética que o EF faz ao inserir entidades novas, não perda.</p>
+<p>Confirmação independente do próprio EF:</p>
+<p>``<code> dotnet ef migrations has-pending-model-changes → No changes have been made to the model since the last migration. </code>``</p>
+<h3>O commit local <code>1afd148</code></h3>
+<p>Mesma mensagem do <code>38abcc9</code> do <code>origin/main</code> (instâncias paralelas). Verificado por hash: os <strong>2 arquivos</strong> que ele toca (<code>docs/marco-1-e-linha-de-corte.md</code> e <code>.html</code>) têm conteúdo <strong>idêntico</strong> no <code>origin/main</code>. Descartá-lo não perde nada.</p>
+<hr>
+<h2>Procedimento proposto</h2>
+<p>Pré-requisito: <strong>uma única instância</strong> aberta nesta pasta.</p>
+<p>```bash</p>
+<h1>1. Ponto de retorno do estado atual (não commitado) — tarball fora do repo</h1>
+<p>git stash list                      # conferir que não há stash pendente tar -czf ~/Backups/smsmarica-wt-20260802.tgz --exclude=node_modules --exclude=bin \         --exclude=obj --exclude=.git .</p>
+<h1>2. Mover HEAD para origin/main SEM tocar no working tree.</h1>
+<h1>--mixed reseta só HEAD e o índice; o disco fica intacto.</h1>
+<p>git reset --mixed origin/main</p>
+<h1>3. Restaurar os 2 arquivos do grupo C (a migration do rename)</h1>
+<p>git checkout -- SMSMarica.server/src/SMSMarica.Data/Migrations/20260731230018_RenomeiaMensageriaEGeoForaDoTfd.cs \                 SMSMarica.server/src/SMSMarica.Data/Migrations/20260731230018_RenomeiaMensageriaEGeoForaDoTfd.Designer.cs</p>
+<h1>4. Conferir: o status agora deve mostrar SÓ o trabalho novo.</h1>
+<h1>Os 9 do grupo B somem (viram "sem alteração"); nenhuma deleção deve aparecer.</h1>
+<p>git status --porcelain | grep '^ D\|^D' || echo "OK: nenhuma deleção pendente"</p>
+<h1>5. Build das três soluções antes de commitar</h1>
+<p>```</p>
+<p>Depois disso, commit <strong>fatiado por frente</strong> — cada um com seu escopo de caminhos:</p>
+<div class="tw"><table><thead><tr><th>#</th><th>Frente</th><th>Caminhos</th><th>Deploy que dispara</th></tr></thead><tbody>
+<tr><td>1</td><td>Hub FHIR (upsert por identifier + Location + fail-fast)</td><td><code>Automais.Fhir/**</code></td><td><code>deploy-fhir.yml</code></td></tr>
+<tr><td>2</td><td>Motor de sincronismo + conciliação de identidade</td><td><code>SMSMarica.server/src/SMSMarica.Core/Integracoes/Pep/<strong></code>, <code>Data/Entities/Pep/</strong></code>, <code>Data/Configurations/Pep/<strong></code>, <code>Api/Controllers/PepSincronizacaoController.cs</code>, <code>tests/.../Integracoes/Pep/</strong></code>, front <code>features/pep-sincronizacao/**</code></td><td><code>deploy-server.yml</code> + <code>deploy-front.yml</code></td></tr>
+<tr><td>3</td><td>Painel de Início</td><td>ADR-0033/34/35</td><td>idem</td></tr>
+<tr><td>4</td><td>Processo Regulatório</td><td><code>Data/Entities/Regulacao/**</code></td><td>idem</td></tr>
+<tr><td>5</td><td>Escopo fail-closed</td><td><code>Core/Common/Unidades/**</code></td><td>idem</td></tr>
+<tr><td>6</td><td>Trilha de falhas + fix CID</td><td>—</td><td>idem</td></tr>
+<tr><td>—</td><td>Documentação</td><td><code>docs/**</code></td><td>nenhum</td></tr>
+</tbody></table></div>
+<p>⚠️ <strong>Os dois arquivos compartilhados</strong> (<code>SmsMaricaDbContext.cs</code> e o snapshot) contêm hunks de mais de uma frente. Commitar por hunk (<code>git add -p</code>) ou concentrá-los no primeiro commit de servidor e referenciar nos demais.</p>
+<p>⚠️ <strong>Migration fora de ordem, ainda pendente de decisão</strong> (§4.1 do plano): produção tem a <code>20260725154214_AddSisregMapeamentoECredencialUnidade</code> aplicada mas <strong>não</strong> a <code>20260725152753_AddProcessoRegulatorio</code>, que é anterior. Qualquer <code>database update</code> no servidor vai arrastar as 5 migrations pendentes de uma vez — inclusive de frentes cujo código não estará deployado. Tabela sem código é inofensiva, mas <strong>decidir antes</strong>, não durante o deploy.</p>
+<h2>Estado do banco (já feito, não depende disto)</h2>
+<p>Saneamento das duplicatas, migration do hub e backfill dos identifiers <strong>já foram aplicados em produção em 02/08</strong> e estão verificados — ver <code>plano-sincronismo-hub.md</code> §2.5 e §4. O deploy de código é o que falta, e é só ele que depende desta reconciliação.</p>
+</main>
+</body>
+</html>

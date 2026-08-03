@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>De-para Salux → FHIR R4 — o mapeamento REAL (derivado do código)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>De-para Salux → FHIR R4 — o mapeamento REAL (derivado do código)</h1>
+<p><strong>Fonte da verdade:</strong> <code>SaluxFhirMapper.cs</code> + <code>SaluxLinhas.cs</code> + SQLs da <code>SaluxImportacaoStrategy.cs</code> (working tree, inventariado por auditoria em <strong>01/08/2026</strong>). Este documento descreve <strong>o que o código faz</strong>, não o que os ADRs desejam — onde os dois divergem, a divergência está anotada. Manutenção: toda mudança no mapper atualiza este arquivo no mesmo commit (candidato a teste: todo <code>identifier system</code> e URL de extensão referenciados no mapper devem constar aqui).</p>
+<p>Legenda das colunas de destino:</p>
+<ul>
+<li><strong>nativo</strong> — campo FHIR de verdade (buscável, interoperável);</li>
+<li><strong>extras</strong> — par chave/valor no <code>urn:salux:extras</code> (JSON string; sobra curada do de-para);</li>
+<li><strong>descartado</strong> — lido da origem e jogado fora em silêncio;</li>
+<li><strong>nem lido</strong> — a coluna existe na origem e o SQL nem a traz.</li>
+</ul>
+<p>A seção de <strong>perdas</strong> é obrigatória por regra deste catálogo: um de-para que só lista sucesso esconde exatamente o que importa saber antes de desligar o sistema de origem.</p>
+<p>Identifiers: todo valor interno é prefixado pelo slug da base (<code>{slug}:{valor}</code>), e o <code>meta.source</code> é sempre <code>https://smsmarica.saude.marica/source/salux/{slug}</code> (ADR-0009).</p>
+<hr>
+<h2>Practitioner (<code>MedicoLinha</code>, 18 campos — nenhum descartado)</h2>
+<div class="tw"><table><thead><tr><th>Origem</th><th>Destino</th><th>Detalhe</th></tr></thead><tbody>
+<tr><td>cpf / cns</td><td>nativo</td><td>identifiers nacionais (<code>sid/cpf</code>, <code>sid/cns</code>)</td></tr>
+<tr><td>crm + uf + conselho</td><td>nativo</td><td>identifier <code>urn:br:conselho:{sigla}:{uf}</code> + <code>qualification</code></td></tr>
+<tr><td>rg + órgão</td><td>nativo</td><td>identifier + <code>assigner.display</code></td></tr>
+<tr><td>cd</td><td>nativo</td><td><code>urn:salux:cd_medico</code> prefixado</td></tr>
+<tr><td>nome</td><td>nativo</td><td><code>name.text</code></td></tr>
+<tr><td>ativo / sexo / nasc / email</td><td>nativo</td><td><code>active</code> / <code>gender</code> / <code>birthDate</code> / <code>telecom</code></td></tr>
+<tr><td>especialidade</td><td>nativo</td><td><code>qualification.code.text</code></td></tr>
+<tr><td>mãe, pai, órgão, categoria, cbo, especialidade (dup.)</td><td>extras</td><td></td></tr>
+</tbody></table></div>
+<h2>Patient (<code>PacienteLinha</code>, 53 campos)</h2>
+<div class="tw"><table><thead><tr><th>Origem</th><th>Destino</th><th>Detalhe</th></tr></thead><tbody>
+<tr><td>cpf, cns, rg+órgão, pis, passaporte, rne, certidão, sgh, cem, cd_paciente</td><td>nativo</td><td>identifiers (cd_paciente = <code>urn:salux:cd_paciente</code>)</td></tr>
+<tr><td>nome + nome social/flag</td><td>nativo</td><td><code>name</code> official / nickname</td></tr>
+<tr><td>ativo / sexo / nasc</td><td>nativo</td><td><code>active</code> / <code>gender</code> / <code>birthDate</code></td></tr>
+<tr><td>óbito</td><td>nativo</td><td><code>deceasedDateTime</code></td></tr>
+<tr><td>logr, nr, compl, bairro, cep, cidade, uf, ref</td><td>nativo</td><td><code>address</code> (ref vira <code>address.text</code> "Ref: …")</td></tr>
+<tr><td>estado_civil_ds</td><td>nativo</td><td><code>maritalStatus.text</code></td></tr>
+<tr><td>ddd+fone / email</td><td>nativo</td><td><code>telecom</code> (<strong>sujeito ao merge</strong>: confirmado é intocável — <code>PatientMergeFhir</code>)</td></tr>
+<tr><td>mãe, pai, cônjuge, responsável+fone</td><td>nativo</td><td><code>contact</code> MTH/FTH/SPS/GUARD</td></tr>
+<tr><td>cd_cor, nacionalidade, país, profissão, ocupação, <strong>peso, altura, sangue, rh</strong>, etnia, grau_parentesco, entrada_pais, estado_civil (código), escolaridade, religião, barreira_comunicacao</td><td>extras</td><td>⚠️ peso/altura/tipo sanguíneo em extras, <strong>não</strong> viram Observation; grau_parentesco não vinculado ao contact do responsável</td></tr>
+<tr><td>dt_cadastro / dt_alteracao</td><td>consumido fora</td><td>só marca d'água</td></tr>
+</tbody></table></div>
+<h2>Encounter AMB/EMER (<code>BaaLinha</code>)</h2>
+<div class="tw"><table><thead><tr><th>Origem</th><th>Destino</th><th>Detalhe</th></tr></thead><tbody>
+<tr><td>emerg (<code>in_emergencia</code>)</td><td>nativo</td><td><code>class</code> AMB/EMER</td></tr>
+<tr><td>dt_cheg\</td><td>dt_atend → dt_saida</td><td>nativo</td><td><code>period</code></td></tr>
+<tr><td>chave (h-ano-nr)</td><td>nativo</td><td>identifier <code>urn:salux:baa</code> — <strong>carrega o CD_HOSPITAL</strong> (eixo unidade, ADR-0039)</td></tr>
+<tr><td>médico</td><td>nativo (raso)</td><td><code>participant.individual.display</code> — <strong>SÓ display</strong>, sem referência a Practitioner</td></tr>
+<tr><td>cid / cid_ds</td><td>derivado</td><td><code>Condition</code> própria (identifier <code>:cond</code>); CID limpo de †/‡/*/+ (<code>LimparCodigoCid</code>), original preservado em <code>code.text</code></td></tr>
+<tr><td>risco_ds</td><td>derivado</td><td><code>Observation</code> survey <code>urn:salux:classificacao-risco</code> (<code>:risco</code>)</td></tr>
+<tr><td>status</td><td>fixo</td><td><strong>sempre <code>finished</code></strong> (divergência do ADR-0008, que previa in-progress)</td></tr>
+</tbody></table></div>
+<h2>MedicationRequest (<code>PrescricaoLinha</code>)</h2>
+<div class="tw"><table><thead><tr><th>Origem</th><th>Destino</th><th>Detalhe</th></tr></thead><tbody>
+<tr><td>cd_mat + mat</td><td>nativo</td><td><code>medicationCodeableConcept</code> <code>urn:salux:matmed</code></td></tr>
+<tr><td>urg = 'S'</td><td>nativo</td><td><code>priority</code> urgent</td></tr>
+<tr><td>médico</td><td>nativo (raso)</td><td><code>requester.display</code></td></tr>
+<tr><td>chave_baa + nr_prescricao + seq_item</td><td>nativo</td><td>identifier <code>urn:salux:presc</code></td></tr>
+<tr><td>qt / horário / obs</td><td><strong>achatado</strong></td><td><code>dosageInstruction[0].text</code> ("Qtd: X — horário — obs") — o ADR-0008 §5 previa Dosage estruturado</td></tr>
+<tr><td>status / intent</td><td>fixo</td><td>completed / order</td></tr>
+</tbody></table></div>
+<h2>DocumentReference (<code>EdocLinha</code>)</h2>
+<div class="tw"><table><thead><tr><th>Origem</th><th>Destino</th><th>Detalhe</th></tr></thead><tbody>
+<tr><td>modelo</td><td>nativo</td><td><code>type.text</code> + <code>attachment.title</code></td></tr>
+<tr><td>dt (dt_episodio)</td><td>nativo</td><td><code>date</code></td></tr>
+<tr><td>chave_doc (h-ano-idm)</td><td>nativo</td><td>identifier <code>urn:salux:edoc</code></td></tr>
+<tr><td>baa</td><td>nativo</td><td><code>context.encounter</code></td></tr>
+<tr><td>itens EAV</td><td><strong>achatado</strong></td><td><code>attachment.data</code> = HTML <code>text/html</code> renderizado (ADR-0008 mandava Questionnaire/QuestionnaireResponse SDC — nunca implementado)</td></tr>
+<tr><td>dt_incl</td><td>consumido fora</td><td>marca d'água do CDC</td></tr>
+</tbody></table></div>
+<h2>Observation de vitais (derivadas do eDoc, <code>EdocItemLinha</code>)</h2>
+<p>Heurística por rótulo do item (pressão / pulso / freq. cardíaca / freq. respiratória / sat O2 / temperatura) → <strong>5 tipos</strong>: identifier <code>urn:salux:edoc</code> <code>{chave}:{pa|fc|fr|temp|spo2}</code>, LOINC 85354-9 (+8480-6/8462-4), 8867-4, 9279-1, 8310-5, 2708-6, unidades UCUM. Só o <strong>1º valor por tipo</strong> (preferência ao "acolhimento").</p>
+<h2>Encounter IMP (<code>FiaLinha</code>) — ADR-0025 B1</h2>
+<div class="tw"><table><thead><tr><th>Origem</th><th>Destino</th><th>Detalhe</th></tr></thead><tbody>
+<tr><td>dt_baixa / dt_alta</td><td>nativo</td><td><code>period</code></td></tr>
+<tr><td>(derivado)</td><td>nativo</td><td><code>status</code> finished / in-progress / unknown (janela 120d)</td></tr>
+<tr><td>carater</td><td>nativo</td><td><code>priority</code> EL/UR (lookup SUS)</td></tr>
+<tr><td>nr_obito (presença)</td><td>nativo</td><td><code>hospitalization.dischargeDisposition = exp</code></td></tr>
+<tr><td>chave (h-ano-nr)</td><td>nativo</td><td>identifier <code>urn:salux:fia</code> — carrega o CD_HOSPITAL</td></tr>
+<tr><td>cid / cid_ds</td><td>derivado</td><td><code>Condition</code> <code>:cond</code></td></tr>
+<tr><td>dt_previsao_alta, dt_alta_medica, carater, carater_ds</td><td>extras</td><td></td></tr>
+</tbody></table></div>
+<h2>Encounter.location (<code>FiaLeitoLinha</code>) e Location (wa/ro/bd)</h2>
+<p>Tudo usado: <code>dt_transferencia</code>/<code>dt_saida_leito</code> → <code>period</code> (active/completed); leito → referência <code>Location</code> resolvida no hub. Unidade (<code>wa</code>): nome + condição→status. Quarto (<code>ro</code>): nome; extras <code>in_isolamento</code>, <code>sexo</code>. Leito (<code>bd</code>): condição→status (I→inactive, F→suspended); extras <code>id_leito</code>.</p>
+<h2>EDOC_MOVIMENTO_LOG (<code>EdocLogLinha</code>)</h2>
+<p><code>IN_OPERACAO</code> é lido e <strong>deliberadamente ignorado</strong> — o CDC relê a origem e decide (existe → upsert; sumiu → tombstone escopado por <code>meta.source</code>). Documentado no código.</p>
+<hr>
+<h2>⚠️ O QUE SE PERDE (a seção que importa)</h2>
+<h3>Descartado no mapper (lido e jogado fora)</h3>
+<div class="tw"><table><thead><tr><th>Item</th><th>Consequência</th></tr></thead><tbody>
+<tr><td><strong>Tipo do widget e itens não-vitais do eDoc como dado discreto</strong></td><td>ficam SÓ no HTML — nenhuma escala (Glasgow, Braden, Morse…) vira dado consultável</td></tr>
+<tr><td>Itens do eDoc com resposta NULL</td><td>filtrados no SQL — "não respondido" é indistinguível de "não perguntado"</td></tr>
+<tr><td>Vitais além do 1º valor por tipo</td><td>série temporal dentro do mesmo documento se perde</td></tr>
+<tr><td>seq_docto, cd_item_grupo, cd_item</td><td>só ORDER BY</td></tr>
+<tr><td>O <strong>valor</strong> de nr_obito (FIA)</td><td>só a presença é usada</td></tr>
+</tbody></table></div>
+<h3>Nem lido do Oracle (o SQL não traz)</h3>
+<div class="tw"><table><thead><tr><th>Item</th><th>Consequência</th></tr></thead><tbody>
+<tr><td><strong><code>EDOC_MOVIMENTO.DOC_ASSINADO</code> + <code>HASH_ASSINATURA_DIGITAL</code></strong></td><td><strong>o PDF assinado — documento legal — nunca chega ao hub.</strong> Recuperável só com o Oracle vivo (plano §7)</td></tr>
+<tr><td><code>EDOC_MOVIMENTO.IN_STATUS</code> (P/D)</td><td>rascunho e definitivo entram iguais</td></tr>
+<tr><td><code>CD_FUNCIONARIO_INC</code> (autor do eDoc)</td><td>documento sem autor no hub</td></tr>
+<tr><td><code>cd_modelo</code> (código do modelo)</td><td>só o nome descritivo vai</td></tr>
+<tr><td>BAA: <code>in_baa_atendido</code>, <code>id_destino</code>, <code>cd_medico</code> (como FK), triagem</td><td>destino da urgência (ex.: internação, <code>id_destino='I'</code> → <code>admitSource=emd</code> do ADR-0025) não mapeado</td></tr>
+<tr><td>Prescrição: <code>cd_via</code>, <code>in_criterio_medico</code>, <code>in_controlado</code>, <code>in_alto_risco</code>, <code>id_tipo_prescricao</code></td><td>via de administração e flags clínicas fora do hub</td></tr>
+<tr><td>FIA: <code>id_internacao</code> (deliberado — convenção de recepção), <code>fia_medico</code></td><td>médico responsável pela internação fora</td></tr>
+</tbody></table></div>
+<h3>Divergências código × ADR (anotadas, decisão pendente)</h3>
+<ol>
+<li>eDoc → <code>DocumentReference</code> HTML em vez de <code>Questionnaire</code>/<code>QuestionnaireResponse</code> (ADR-0008 §3) — decisão fazer×adiar no plano §7.</li>
+<li><code>MedicationRequest.dosageInstruction</code> texto livre em vez de Dosage estruturado (ADR-0008 §5).</li>
+<li><code>Encounter.diagnosis</code> com use AD/DD (ADR-0025) substituído por Condition avulsa sem <code>use</code>.</li>
+<li><code>admitSource=emd</code> + chave do BAA de origem em extras (ADR-0025 B1) não implementados.</li>
+<li>Médico como <code>display</code> em participant/requester — sem resolução para o Practitioner canônico.</li>
+</ol>
+</main>
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0039 — Unidade de saúde é o eixo durável do dado clínico; o PEP é proveniência transitória</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0039 — Unidade de saúde é o eixo durável do dado clínico; o PEP é proveniência transitória</h1>
+<p><strong>Status:</strong> proposto · <strong>Data:</strong> 2026-08-01 <strong>Implantação:</strong> não iniciada</p>
+<h2>Contexto</h2>
+<p>O hub FHIR nasceu dirigido por PEP: cada conector (Salux hoje, Klinikos a caminho) carimba <code>meta.source</code> e anexa identifiers da fonte (<a href="./0009-identidade-e-proveniencia-multi-pep.md">ADR-0009</a>). Isso responde bem "<strong>de qual sistema</strong> veio" — mas nada no hub responde "<strong>onde</strong> aconteceu". Medido em produção (01/08/2026):</p>
+<div class="tw"><table><thead><tr><th>Fato medido</th><th>Número</th><th>Leitura</th></tr></thead><tbody>
+<tr><td><code>Encounter.serviceProvider</code> preenchido</td><td><strong>0</strong> recursos</td><td>o hub não sabe a unidade de nenhum atendimento</td></tr>
+<tr><td>Recursos <code>Organization</code> no hub</td><td><strong>0</strong> (recurso inexistente)</td><td>não há o que referenciar</td></tr>
+<tr><td>Encounters com <code>CD_HOSPITAL=1</code> (HCM Conde)</td><td>689.950 — até 20/06/2026</td><td>Conde <strong>ainda opera no Salux</strong>; migrará para o Klinikos</td></tr>
+<tr><td>Encounters com <code>CD_HOSPITAL=2</code> (UPA Inoã)</td><td>268.151 — parou em 07/04/2025</td><td>cutover para o Klinikos em abr/2025</td></tr>
+<tr><td>Encounters com <code>CD_HOSPITAL=3</code> (Sta Rita)</td><td>163.620 — parou em 08/04/2025</td><td>idem</td></tr>
+</tbody></table></div>
+<p>A tabela conta a história inteira: <strong>a unidade sobrevive ao PEP</strong>. UPA Inoã e Santa Rita já trocaram de sistema (Salux → Klinikos em abril/2025) sem deixar de ser as mesmas unidades; o Conde fará o mesmo caminho. Se a unidade estivesse codificada no <code>meta.source</code> ou no slug da base, a linha do tempo clínica de cada unidade quebraria em "era Salux" e "era Klinikos" — exatamente o que um repositório longitudinal não pode fazer.</p>
+<p>Dois insumos técnicos já existem e foram verificados:</p>
+<ol>
+<li><strong>O mecanismo de idempotência está provado.</strong> A auditoria do motor de sincronismo</li>
+</ol>
+<p>   (<a href="./0024-sincronismo-continuo-salux.md">ADR-0024</a>/<a href="./0025-internacao-salux-no-hub-fhir.md">0025</a>)    em 01/08 confirmou o desenho central: upsert condicional por identifier, marcas por fase    com <code>MAX</code> da origem, lag de 5 min, CDC do eDoc por faixa de PK. É esse mecanismo — não um    novo — que resolve a <code>Organization</code>.</p>
+<ol>
+<li><strong>O dado do backfill já está dentro do hub.</strong> O <code>CD_HOSPITAL</code> de cada atendimento viaja</li>
+</ol>
+<p>   nos identifiers <code>urn:salux:baa</code> / <code>urn:salux:fia</code> (<code>{slug}:{hosp}-{ano}-{nr}</code>). Ligar os    Encounters existentes às suas unidades é releitura do que o hub já tem, não reimport da    origem.</p>
+<h2>Decisão</h2>
+<p><strong>A unidade de saúde passa a ser o eixo durável do dado clínico no hub; o PEP é proveniência transitória.</strong> Sete decisões, em ordem de importância:</p>
+<ol>
+<li><strong>Dois eixos ortogonais, nunca misturados.</strong> <code>meta.source</code> responde "de qual sistema</li>
+</ol>
+<p>   veio" (ADR-0009); a <strong>unidade</strong> responde "onde aconteceu". Salux ontem, Klinikos hoje,    outro amanhã — o PEP passa, a unidade fica. <strong>Proibido</strong> codificar unidade dentro de    <code>meta.source</code> ou de slug de base. Um <code>meta.source</code> por unidade (ou um slug <code>salux-inoa</code>)    parece atalho e é bomba-relógio: o próximo cutover de PEP partiria a história da unidade    ao meio.</p>
+<ol>
+<li><strong><code>Organization</code> vira recurso de 1ª classe no hub</strong>, resolvida por **upsert condicional</li>
+</ol>
+<p>   por identifier<strong> — idempotente, mesmo mecanismo do ADR-0024 §5. A âncora é o </strong>id interno<strong>    do hub; </strong>CNES é identifier, não chave primária<strong> (CNES muda — recredenciamento, correção    de cadastro). Cada PEP anexa o seu código interno como identifier próprio:    <code>urn:salux:hospital|{slug}:{cd}</code>, <code>urn:klinikos:unidade|{slug}:{cd}</code>. É a mesma filosofia    do Patient canônico do ADR-0009: uma âncora interna + N identifiers de fonte, e cada fonte    nova só </strong>anexa** o seu identifier ao recurso que já existe.</p>
+<ol>
+<li><strong>Referências FHIR padrão, e só onde fazem sentido.</strong> <code>Encounter.serviceProvider</code> →</li>
+</ol>
+<p>   <code>Organization</code>; <code>Location.managingOrganization</code> → <code>Organization</code>;    <code>Organization.partOf</code> fica disponível para hierarquia futura (rede/município), sem uso    obrigatório agora. <strong><code>Patient</code> NÃO recebe unidade</strong> — pessoa não pertence a unidade; o    vínculo com o lugar é do <strong>evento clínico</strong>, nunca do cidadão.</p>
+<ol>
+<li><strong>O cadastro <code>smsmarica.unidade</code> NÃO se relaciona com o schema <code>fhir</code></strong> (decisão</li>
+</ol>
+<p>   explícita). O hub se resolve <strong>sozinho</strong>, a partir da ORIGEM (tabela <code>HOSPITAL</code> do Salux,    cadastro de unidades do Klinikos) ou, na ausência de dado na origem, de um <strong>mapa mínimo    na configuração da base</strong> (<code>IaFonte</code>: código da fonte → CNES/nome). Sem FK cross-sistema,    sem chamada ao painel, sem dependência de deploy conjunto. Quando o painel precisar    correlacionar, correlaciona por <strong>CNES em consulta</strong> — dependência na direção    consumidor → hub, nunca hub → consumidor.</p>
+<ol>
+<li><strong>Fail-closed.</strong> Encerrado o período de transição/backfill, **recurso clínico novo não</li>
+</ol>
+<p>   entra no hub sem unidade resolvida<strong>. Código de unidade desconhecido na origem →    </strong>fila de divergência** (a exemplo do SISREG→SIGTAP e do escopo fail-closed do    <a href="./0037-escopo-unidade-fail-closed.md">ADR-0037</a>) — nunca gravação cega, nunca descarte    silencioso.</p>
+<ol>
+<li><strong>Critério verificável de "consolidado"</strong> — três propriedades testáveis, sem juízo</li>
+</ol>
+<p>   subjetivo:    - <strong>(a)</strong> rodar o conector N vezes produz o <strong>mesmo hub</strong> (mesmos ids lógicos, mesmas      contagens);    - <strong>(b)</strong> <strong>nenhum</strong> recurso clínico novo sem unidade;    - <strong>(c)</strong> o hub <strong>não conhece "Maricá"</strong> — só conhece Organizations com CNES. É a      propriedade (c) que permite replicar o case em outra cidade ou outra instalação Salux      sem tocar no motor.</p>
+<ol>
+<li><strong>Backfill do estoque existente de Encounters (~1,3 milhão)</strong> via **passe de reconciliação</li>
+</ol>
+<p>   idempotente — modo Completo SEM purga<strong> — lendo o <code>CD_HOSPITAL</code> que </strong>já está<strong> nos    identifiers <code>urn:salux:baa</code>/<code>urn:salux:fia</code> (<code>{slug}:{hosp}-{ano}-{nr}</code>). O slug    <code>salux-hcml</code> </strong>não muda** — mudar o slug seria justamente violar a decisão 1    (unidade contrabandeada para dentro da proveniência).</p>
+<h2>Consequências</h2>
+<ul>
+<li><strong>Ordem de fases no conector</strong>: a resolução de <code>Organization</code> roda antes das fases</li>
+</ul>
+<p>  clínicas (ou junto, com cache por run do mapa código-da-fonte → id de Organization). O   upsert condicional garante que N conectores e N execuções convergem para a mesma   Organization — nunca duplicam.</p>
+<ul>
+<li><strong>Automais.Fhir ganha o recurso <code>Organization</code></strong> com o mesmo ferramental dos demais:</li>
+</ul>
+<p>  colunas de busca de identifier, índice único parcial e endpoint de <em>conditional update</em>   (<code>PUT /fhir/Organization?identifier=system|value</code>), conforme ADR-0024 §5. <code>Location</code>   (ADR-0025) passa a apontar <code>managingOrganization</code> — internações ganham dono institucional.</p>
+<ul>
+<li><strong>Pré-condição do passe sem purga</strong>: a auditoria do motor (01/08) confirmou que o modo</li>
+</ul>
+<p>  Completo sem purga só é seguro quando <strong>todo</strong> o estoque casável carrega identifier — no   estado auditado ainda existia legado de POST cego sem identifier (~1,12 M Encounters), que   um Completo sem purga <strong>duplicaria</strong>. O passe da decisão 7 lê identifiers já gravados;   antes de rodá-lo, conferir que a cobertura de identifiers no estoque é 100% (ou tratar o   resíduo à parte). A propósito: os três <code>CD_HOSPITAL</code> medidos somam 1.121.721 — o número   redondo ~1,3 M é estimativa do estoque no momento da execução; medir na hora.</p>
+<ul>
+<li><strong>O contrato do conector muda</strong>: depois da transição, "unidade não resolvida" deixa de ser</li>
+</ul>
+<p>  ignorável e vira item de fila de divergência com gestão (quem resolve, como resolve —   tipicamente completando o mapa mínimo da <code>IaFonte</code> ou corrigindo a origem). O fim do   período de transição é uma <strong>chave explícita</strong>, não um comportamento implícito.</p>
+<ul>
+<li><strong>Portabilidade vira propriedade de projeto</strong>: a checagem (c) — nenhum conhecimento</li>
+</ul>
+<p>  municipal hardcoded no hub — passa a ser critério de code review para qualquer código novo   do conector e do hub.</p>
+<ul>
+<li><strong><code>smsmarica.unidade</code> segue intocado</strong> no seu papel (cadastro de gestão, executante ×</li>
+</ul>
+<p>  solicitante, CNES para SISREG). Nada neste ADR cria FK, view ou sync entre os dois lados.</p>
+<h3>Pendências que este ADR abre (não fazem parte desta entrega)</h3>
+<ol>
+<li><strong>CNES na origem — MEDIDO em 01/08</strong>: a tabela <code>INFOSAUDE.HOSPITAL</code> do Salux <strong>carrega</strong></li>
+</ol>
+<p>   CNES e nome oficial (<code>NR_CNES</code>, <code>DS_HOSPITAL</code>): <code>1</code> → HOSPITAL MUNICIPAL CONDE MODESTO    LEAL (CNES <strong>2266733</strong>); <code>2</code> → UPA 24H INOÃ (CNES <strong>7164440</strong>); <code>3</code> → PRONTO ATENDIMENTO    24H DO POSTO DE SAÚDE SANTA RITA (CNES <strong>2266792</strong>). O conector Salux resolve unidades    com <strong>zero configuração</strong>; o mapa mínimo na <code>IaFonte</code> fica como fallback para origens    sem esse dado. Resta: <strong>(a)</strong> validar os 3 códigos contra o CNES/DataSUS; <strong>(b)</strong> tratar    a divergência de nome no CNES 7164440 — o cadastro do Klinikos chama a mesma unidade de    "UPA MARICA" enquanto o Salux diz "UPA 24H INOÃ" (mesmo CNES ⇒ mesma Organization; o    nome oficial vem do CNES, os demais viram alias).</p>
+<ol>
+<li><strong>Klinikos</strong>: identificar onde vive o código interno de unidade no Klinikos e o seu</li>
+</ol>
+<p>   formato, antes do conector existir (a análise em <code>docs/klinikos/</code> ainda não cobriu isso).</p>
+<ol>
+<li><strong>Forma da fila de divergência</strong>: reusar a pendência de importação de 1ª classe</li>
+</ol>
+<p>   (<a href="./0035-pendencia-importacao-primeira-classe.md">ADR-0035</a>) ou fila própria — decidir na    implementação.</p>
+<ol>
+<li><strong>Formato do mapa mínimo na <code>IaFonte</code></strong> (schema da configuração) e a chave que encerra o</li>
+</ol>
+<p>   período de transição do fail-closed.</p>
+<h2>Alternativas rejeitadas</h2>
+<ul>
+<li><strong>Unidade dentro do <code>meta.source</code> (ou um slug de base por unidade).</strong> Mistura os dois</li>
+</ul>
+<p>  eixos: <code>meta.source</code> é proveniência de <strong>sistema</strong> (ADR-0009) e a unidade é <strong>lugar</strong>. O   caso concreto já aconteceu — Inoã e Santa Rita saíram do Salux em abr/2025: com unidade no   source, a mesma UPA teria duas identidades ("salux/inoa" e "klinikos/inoa") e a linha do   tempo dela quebraria a cada troca de PEP. Além disso o tombstone escopado por <code>meta.source</code>   (CDC do eDoc) passaria a ter N sources por base, multiplicando a superfície de erro.</p>
+<ul>
+<li><strong>FK do hub para <code>smsmarica.unidade</code>.</strong> Acopla o repositório canônico ao sistema de</li>
+</ul>
+<p>  gestão: são bancos e serviços distintos (Automais.Fhir é autônomo,   <a href="./0010-servico-fhir-autonomo.md">ADR-0010</a>), então a "FK" viraria dependência de API e de   deploy coordenado — e destruiria a propriedade (c): replicar o hub em outra cidade exigiria   levar o painel junto. A direção certa é o painel consumir o hub, nunca o hub depender do   painel.</p>
+<ul>
+<li><strong>CNES como chave primária da <code>Organization</code>.</strong> CNES <strong>muda</strong> (recredenciamento, correção</li>
+</ul>
+<p>  de cadastro) e unidade pode operar antes de ter CNES definitivo. Chave natural externa como   PK contaminaria toda referência (<code>Encounter.serviceProvider</code>, <code>Location.managingOrganization</code>)   com um dado mutável. CNES é identifier de 1ª classe — buscável, exibível — mas a âncora é o   id interno, exatamente como CPF/CNS no Patient.</p>
+</main>
+</body>
+</html>
