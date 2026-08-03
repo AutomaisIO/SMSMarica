@@ -21,3 +21,11 @@ alterações entre sessoes/
 # com nome completo, CNS, nascimento, telefone e CID de paciente. Estavam só "não rastreados",
 # ou seja, a um `git add -A` de irem para o GitHub. Manter local.
 docs/Importacao CMI/
+
+# Agente SQL (docs/agente-sql): segredos e artefatos.
+# O .env e o .agente_token guardam credencial de acesso a base — nunca versionar.
+docs/agente-sql/**/.env
+docs/agente-sql/**/.agente_token
+docs/agente-sql/**/__pycache__/
+docs/agente-sql/**/*.pyc
+docs/agente-sql/*.rar
