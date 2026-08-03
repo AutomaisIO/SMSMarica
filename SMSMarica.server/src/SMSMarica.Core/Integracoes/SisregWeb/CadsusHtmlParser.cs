@@ -96,7 +96,12 @@ public static partial class CadsusHtmlParser
     public static bool SessaoInvalida(string html) =>
         EhTelaLogin(html)
         || html.Contains("logon em outra", StringComparison.OrdinalIgnoreCase)
-        || html.Contains("foi finalizada", StringComparison.OrdinalIgnoreCase);
+        || html.Contains("foi finalizada", StringComparison.OrdinalIgnoreCase)
+        // A tela sisreg_erro nem sempre traz as frases acima. Sem estes dois marcadores a sessão
+        // derrubada passava batido e caía no detector de CAPTCHA — que acusava anti-bot quando o
+        // que houve foi o operador humano logar e derrubar a sessão do robô (sessão única).
+        || html.Contains("sisreg_erro", StringComparison.OrdinalIgnoreCase)
+        || html.Contains("erro ao carregar a sess", StringComparison.OrdinalIgnoreCase);
 
     private static List<string> Celulas(AngleSharp.Dom.IElement tr) =>
         [.. tr.QuerySelectorAll("td, th").Select(c => EspacosRegex().Replace(c.TextContent, " ").Trim())];
