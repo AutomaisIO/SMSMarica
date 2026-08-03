@@ -15,9 +15,9 @@ internal sealed class SisregVarreduraAgendaConfiguration : IEntityTypeConfigurat
 
         builder.Property(x => x.UnidadeId).HasColumnName("unidade_id");
         builder.Property(x => x.Ativo).HasColumnName("ativo").IsRequired().HasDefaultValue(false);
-        // Default TRUE: preserva o envio que já roda em produção nas unidades existentes.
+        // Default FALSE por decisão do operador: nada avisa o paciente sem alguém ligar.
         builder.Property(x => x.EnviarConfirmacao).HasColumnName("enviar_confirmacao")
-            .IsRequired().HasDefaultValue(true);
+            .IsRequired().HasDefaultValue(false);
         builder.Property(x => x.HoraLocal).HasColumnName("hora_local").IsRequired();
         builder.Property(x => x.DiasAFrente).HasColumnName("dias_a_frente").IsRequired().HasDefaultValue(21);
         builder.Property(x => x.FalhasConsecutivas).HasColumnName("falhas_consecutivas").IsRequired().HasDefaultValue(0);

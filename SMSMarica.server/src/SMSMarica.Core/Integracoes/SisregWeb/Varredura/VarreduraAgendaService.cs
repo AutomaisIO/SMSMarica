@@ -677,8 +677,8 @@ public sealed class VarreduraAgendaService(
             _opcoes.JanelaInicioLocal,
             _opcoes.JanelaFimLocal,
             temCredencial,
-            // Unidade sem linha de configuração continua enviando — é o comportamento em produção.
-            agenda?.EnviarConfirmacao ?? true);
+            // Unidade sem linha de configuração NÃO envia: o gatilho é opt-in.
+            agenda?.EnviarConfirmacao ?? false);
     }
 
     private async Task<string?> NomeDoUsuarioAsync(Guid usuarioId, CancellationToken ct) =>

@@ -31,13 +31,14 @@ public class SisregVarreduraAgenda
     /// Gatilho mestre da unidade: ao importar uma solicitação, avisar o paciente por WhatsApp?
     /// Vale para <b>toda</b> importação da unidade — varredura e upload de arquivo.
     ///
-    /// <para>Combina com <c>SisregProcedimentoSigtap.EnviarConfirmacao</c> por "E": desligar aqui
-    /// corta tudo; ligado aqui, cada procedimento ainda pode vetar o seu.</para>
+    /// <para>Combina com <c>SisregProcedimentoProfissional.EnviarConfirmacao</c> por "E": desligar
+    /// aqui corta tudo; ligado aqui, cada procedimento ainda precisa estar ligado.</para>
     ///
-    /// <para><b>Nasce ligado</b>, e unidade SEM linha nesta tabela também envia — o default
-    /// preserva o comportamento que roda em produção.</para>
+    /// <para><b>Nasce DESLIGADO</b>, e unidade sem linha nesta tabela também não envia. É opt-in
+    /// deliberado: mensagem ao paciente só sai depois que alguém decidiu que deve sair, unidade a
+    /// unidade e procedimento a procedimento.</para>
     /// </summary>
-    public bool EnviarConfirmacao { get; set; } = true;
+    public bool EnviarConfirmacao { get; set; }
 
     /// <summary>Hora do disparo diário, em hora LOCAL de Brasília.</summary>
     public TimeOnly HoraLocal { get; set; } = new(4, 30);

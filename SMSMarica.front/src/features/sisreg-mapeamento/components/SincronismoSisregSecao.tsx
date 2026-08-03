@@ -43,19 +43,26 @@ const ROTULO_STATUS: Record<StatusVarredura, string> = {
  * habilitados sem SIGTAP confirmado não são varridos).
  */
 export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
-  const agenda = useVarreduraAgenda(unidadeId);
-  const salvar = useSalvarVarreduraAgenda(unidadeId);
-  const executar = useExecutarVarredura(unidadeId);
-  const cancelar = useCancelarVarredura(unidadeId);
-  const status = useStatusVarredura(unidadeId);
-  const execucoes = useVarreduraExecucoes(unidadeId);
-
   const [ativo, setAtivo] = useState(false);
   const [hora, setHora] = useState('04:30');
   const [dias, setDias] = useState('21');
   const [aviso, setAviso] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
 
+  /**
+   * Ligado ao disparar. Enquanto vale, status e histórico se refazem sozinhos — a varredura pode
+   * terminar em 2 s, e sem isto a tela fica parada mostrando "Rodando" de algo já encerrado.
+   */
+  const [acompanhando, setAcompanhando] = useState(false);
+
+  const agenda = useVarreduraAgenda(unidadeId);
+  const salvar = useSalvarVarreduraAgenda(unidadeId);
+  const executar = useExecutarVarredura(unidadeId);
+  const cancelar = useCancelarVarredura(unidadeId);
+  const status = useStatusVarredura(unidadeId, acompanhando);
+  const execucoes = useVarreduraExecucoes(unidadeId, acompanhando);
+
   const dados = agenda.data;
+  const rodando = Boolean(status.data);
 
   useEffect(() => {
     if (!dados) return;
@@ -64,7 +71,15 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
     setDias(String(dados.diasAFrente));
   }, [dados?.unidadeId, dados?.ativo, dados?.horaLocal, dados?.diasAFrente]);
 
-  const rodando = Boolean(status.data);
+  /**
+   * Para de acompanhar quando a varredura sai do ar. O atraso dá tempo de a última atualização do
+   * histórico chegar — parar no mesmo instante deixaria a linha final desatualizada na tela.
+   */
+  useEffect(() => {
+    if (!acompanhando || rodando) return;
+    const t = setTimeout(() => setAcompanhando(false), 6000);
+    return () => clearTimeout(t);
+  }, [acompanhando, rodando]);
   const pausado = Boolean(dados?.pausadoAte && new Date(dados.pausadoAte) > new Date());
 
   async function comAviso(acao: () => Promise<unknown>, sucesso: (r: unknown) => string) {
@@ -234,12 +249,15 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
               variante="outline"
               tamanho="sm"
               disabled={executar.isPending}
-              onClick={() =>
-                comAviso(
+              onClick={() => {
+                // Acompanha a partir do clique, não a partir da primeira resposta: a varredura
+                // leva 1–2 s para se registrar, e esperar por ela é o que congelava a tela.
+                setAcompanhando(true);
+                void comAviso(
                   () => executar.mutateAsync(),
                   (r) => (r as { mensagem: string }).mensagem,
-                )
-              }
+                );
+              }}
             >
               {executar.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -296,27 +314,41 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
 
 function LinhaExecucao({ execucao: e }: { execucao: VarreduraExecucao }) {
   return (
-    <tr className="text-gray-700">
-      <td className="py-1.5 pr-3 whitespace-nowrap">{dataHora(e.iniciadoEm)}</td>
-      <td className="py-1.5 pr-3">{e.disparo === 'Agendado' ? '⏱ Agendado' : 'Manual'}</td>
-      <td className="py-1.5 pr-3">
-        <span className={`rounded px-1.5 py-0.5 text-xs ${CLASSE_STATUS[e.status]}`}>
-          {ROTULO_STATUS[e.status]}
-        </span>
-        {/* Parcial precisa dizer o porquê: senão o operador conclui que o dia está importado. */}
-        {e.status === 'Parcial' && e.mensagemErro && (
-          <span className="ml-1 text-xs text-amber-700" title={e.mensagemErro}>
-            (incompleta)
+    <>
+      <tr className="text-gray-700">
+        <td className="py-1.5 pr-3 whitespace-nowrap">{dataHora(e.iniciadoEm)}</td>
+        <td className="py-1.5 pr-3">{e.disparo === 'Agendado' ? '⏱ Agendado' : 'Manual'}</td>
+        <td className="py-1.5 pr-3">
+          <span className={`rounded px-1.5 py-0.5 text-xs ${CLASSE_STATUS[e.status]}`}>
+            {ROTULO_STATUS[e.status]}
           </span>
-        )}
-      </td>
-      <td className="py-1.5 pr-3 whitespace-nowrap">
-        {e.combinacoesFeitas}/{e.combinacoesTotal}
-      </td>
-      <td className="py-1.5 pr-3">{e.requisicoes}</td>
-      <td className="py-1.5 pr-3">{e.validos}</td>
-      <td className="py-1.5 pr-3">{e.invalidos > 0 ? e.invalidos : '—'}</td>
-    </tr>
+        </td>
+        <td className="py-1.5 pr-3 whitespace-nowrap">
+          {e.combinacoesFeitas}/{e.combinacoesTotal}
+        </td>
+        <td className="py-1.5 pr-3">{e.requisicoes}</td>
+        <td className="py-1.5 pr-3">{e.validos}</td>
+        <td className="py-1.5 pr-3">{e.invalidos > 0 ? e.invalidos : '—'}</td>
+      </tr>
+
+      {/* O motivo fica VISÍVEL, não num tooltip. É exatamente quando algo deu errado que o
+          operador precisa saber o que fazer — e "Parcial" sozinho não diz nada. */}
+      {e.mensagemErro && (
+        <tr>
+          <td colSpan={7} className="pb-2 pr-3">
+            <p
+              className={`rounded-md border px-3 py-2 text-xs ${
+                e.status === 'Erro'
+                  ? 'border-red-200 bg-red-50 text-red-700'
+                  : 'border-amber-200 bg-amber-50 text-amber-800'
+              }`}
+            >
+              {e.mensagemErro}
+            </p>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 

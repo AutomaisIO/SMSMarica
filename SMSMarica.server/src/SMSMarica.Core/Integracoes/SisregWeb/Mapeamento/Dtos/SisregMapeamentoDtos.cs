@@ -39,8 +39,9 @@ public sealed record SisregProcedimentoDto(
     /// procedimento não foi catalogado (entra ao "Atualizar mapeamento").</summary>
     Guid? DeParaId = null,
     /// <summary>Importar este procedimento NESTA unidade avisa o paciente por WhatsApp?
-    /// Decisão da unidade — outra unidade pode decidir diferente para o mesmo procedimento.</summary>
-    bool EnviarConfirmacao = true);
+    /// Decisão da unidade — outra unidade pode decidir diferente para o mesmo procedimento.
+    /// Opt-in: nasce desligado.</summary>
+    bool EnviarConfirmacao = false);
 
 /// <summary>Resultado de uma atualização do mapeamento contra o SISREG.</summary>
 public sealed record SisregMapeamentoAtualizacaoDto(

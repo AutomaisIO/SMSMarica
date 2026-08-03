@@ -33,8 +33,8 @@ public class SisregProcedimentoProfissional
     /// (<c>SisregVarreduraAgenda.EnviarConfirmacao</c>): desligar lá corta tudo; ligado lá, cada
     /// procedimento ainda pode vetar o seu.
     ///
-    /// <para><b>Nasce ligado</b> — é o comportamento que roda em produção desde 06/07. Um flag
-    /// novo nascendo desligado silenciaria confirmações que hoje saem, sem ninguém perceber.</para>
+    /// <para><b>Nasce DESLIGADO</b>, e procedimento fora do mapeamento também não envia. É opt-in
+    /// deliberado: mensagem ao paciente só sai depois que alguém decidiu que deve sair.</para>
     ///
     /// <para><b>É por unidade, não nacional</b> (ao contrário do de-para SIGTAP): quem decide se
     /// um exame merece aviso é a unidade que o executa. Como o mesmo procedimento pode aparecer
@@ -42,7 +42,7 @@ public class SisregProcedimentoProfissional
     /// <see cref="Codigo"/> naquela unidade em sincronia — senão o operador desligaria o aviso num
     /// profissional e continuaria enviando pelos outros, sem perceber.</para>
     /// </summary>
-    public bool EnviarConfirmacao { get; set; } = true;
+    public bool EnviarConfirmacao { get; set; }
 
     /// <summary>Código terminado em <c>000</c>: a consulta traz também os itens individuais.</summary>
     public bool Grupo { get; set; }

@@ -188,15 +188,21 @@ export function useExecutarVarredura(unidadeId: string | null) {
 }
 
 /**
- * Enquanto há varredura viva, faz poll de 3s. Parada, o poll cessa — a varredura leva minutos e
- * o custo aqui é do nosso servidor, não do SISREG.
+ * Progresso da varredura em curso.
+ *
+ * <p><b>Por que `acompanhando` existe:</b> a versão anterior só refazia a consulta enquanto já
+ * houvesse dados. Ao disparar, a varredura leva 1–2 s para se registrar — o primeiro retorno vinha
+ * vazio, o poll nunca começava, e a tela ficava congelada no que tinha visto por último. Quem
+ * dispara passa a acompanhar por um tempo, mesmo sem resposta ainda.</p>
+ *
+ * <p>O custo é do nosso servidor, não do SISREG: este endpoint lê um objeto em memória.</p>
  */
-export function useStatusVarredura(unidadeId: string | null) {
+export function useStatusVarredura(unidadeId: string | null, acompanhando = false) {
   return useQuery({
     queryKey: mapeamentoKeys.varreduraStatus(unidadeId),
     queryFn: () => obterStatusVarredura(unidadeId),
     enabled: Boolean(unidadeId),
-    refetchInterval: (query) => (query.state.data ? 3000 : false),
+    refetchInterval: (query) => (acompanhando || query.state.data ? 2000 : false),
   });
 }
 
@@ -208,11 +214,16 @@ export function useCancelarVarredura(unidadeId: string | null) {
   });
 }
 
-export function useVarreduraExecucoes(unidadeId: string | null) {
+/**
+ * Varreduras recentes. Enquanto o operador acompanha, refaz sozinha — é onde o resultado final
+ * aparece, e uma varredura pode terminar em 2 s. Sem isso a linha fica em "Rodando" para sempre.
+ */
+export function useVarreduraExecucoes(unidadeId: string | null, acompanhando = false) {
   return useQuery({
     queryKey: mapeamentoKeys.varreduraExecucoes(unidadeId),
     queryFn: () => listarVarreduraExecucoes(unidadeId),
     enabled: Boolean(unidadeId),
+    refetchInterval: acompanhando ? 2000 : false,
   });
 }
 

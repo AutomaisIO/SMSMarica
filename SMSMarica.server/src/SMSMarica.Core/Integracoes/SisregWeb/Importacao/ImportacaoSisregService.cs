@@ -919,12 +919,12 @@ public sealed class ImportacaoSisregService(
     /// <summary>Grava/atualiza a falha de EXECUÇÃO da marcação (upsert pela pendência do mesmo nº).</summary>
     /// <summary>
     /// Avisar o paciente por WhatsApp ao importar esta marcação? Exige que o gatilho da UNIDADE
-    /// executante e o do PROCEDIMENTO naquela unidade estejam ligados.
+    /// executante <b>e</b> o do PROCEDIMENTO naquela unidade estejam ligados.
     ///
-    /// <para><b>Ausência de configuração = enviar.</b> Unidade sem linha de configuração e
-    /// procedimento fora do mapeamento continuam enviando, que é o comportamento em produção desde
-    /// 06/07. Um gate novo que silencia por omissão quebraria o combinado com o paciente sem que
-    /// nenhuma tela mostrasse.</para>
+    /// <para><b>É opt-in: ausência de configuração = NÃO enviar.</b> Unidade sem linha de
+    /// configuração e procedimento fora do mapeamento não avisam ninguém. Mensagem ao paciente só
+    /// sai depois que alguém decidiu, explicitamente, que deve sair — decisão do operador em
+    /// 03/08/2026.</para>
     /// </summary>
     private async Task<bool> DeveEnviarConfirmacaoAsync(
         Guid unidadeExecutanteId, MarcacaoSisreg m, CancellationToken ct)
@@ -934,7 +934,8 @@ public sealed class ImportacaoSisregService(
             .Select(a => (bool?)a.EnviarConfirmacao)
             .FirstOrDefaultAsync(ct);
 
-        if (daUnidade is false) return false;
+        // Null = unidade nunca configurada. Não envia.
+        if (daUnidade is not true) return false;
 
         // A varredura traz o código do SISREG. A importação por ARQUIVO não — e para essa (que
         // está em extinção) resolvemos os códigos equivalentes pelo de-para, para o mesmo exame
@@ -943,16 +944,14 @@ public sealed class ImportacaoSisregService(
             ? [m.CodigoProcedimentoSisreg!.Trim()]
             : await mapeadorSigtap.ResolverCodigosPorSigtapAsync(m.CodigoSigtap ?? string.Empty, ct);
 
-        if (codigos.Count == 0) return true;
+        if (codigos.Count == 0) return false;
 
-        var flags = await db.SisregProcedimentosProfissional.AsNoTracking()
-            .Where(x => codigos.Contains(x.Codigo) && x.Profissional!.UnidadeId == unidadeExecutanteId)
-            .Select(x => x.EnviarConfirmacao)
-            .ToListAsync(ct);
-
-        // Procedimento fora do mapeamento da unidade continua enviando. Só silencia quando existe
-        // decisão explícita e ela é unânime — na dúvida, o paciente é avisado.
-        return flags.Count == 0 || flags.Any(f => f);
+        // Basta UM procedimento ligado com esse código na unidade. Nenhum ligado — ou nenhum
+        // encontrado — não envia.
+        return await db.SisregProcedimentosProfissional.AsNoTracking()
+            .AnyAsync(x => codigos.Contains(x.Codigo)
+                           && x.Profissional!.UnidadeId == unidadeExecutanteId
+                           && x.EnviarConfirmacao, ct);
     }
 
     /// <param name="origem">Execução (TXT) por padrão. A varredura carimba <c>Varredura</c>, que é
