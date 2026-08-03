@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   cancelarImportacaoPep,
   iniciarImportacaoPep,
@@ -9,6 +9,7 @@ import {
   listarExecucoesPep,
   obterDiagnosticoPep,
   obterResumoDivergenciasPep,
+  reprocessarDivergenciasPep,
   obterStatusPep,
   pausarMotorPep,
   salvarAgendaPep,
@@ -136,5 +137,18 @@ export function useIgnorarDivergenciaPep() {
   return useMutation({
     mutationFn: ({ id, motivo }: { id: string; motivo?: string }) => ignorarDivergenciaPep(id, motivo),
     onSuccess: () => client.invalidateQueries({ queryKey: ['pep', 'divergencias'] }),
+  });
+}
+
+/** Empurra a correção: sem isto o hub só se corrige quando o paciente voltar a ter atendimento. */
+export function useReprocessarDivergenciasPep() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ fonteId, ids }: { fonteId: string; ids?: string[] }) =>
+      reprocessarDivergenciasPep(fonteId, ids),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ['pep', 'divergencias'] });
+      client.invalidateQueries({ queryKey: pepKeys.status });
+    },
   });
 }

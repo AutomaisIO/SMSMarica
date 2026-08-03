@@ -81,6 +81,14 @@ public interface IPepSincronizacaoService
     Task<DivergenciaIdentidadeDto> IgnorarDivergenciaAsync(
         Guid id, string? motivo = null, CancellationToken ct = default);
 
+    /// <summary>
+    /// Dispara um reimport DIRECIONADO dos pacientes cujas divergências foram arbitradas como
+    /// "origem correta" — sem isso o hub só se corrige quando o paciente voltar a ter
+    /// atendimento. Devolve o id da execução enfileirada.
+    /// </summary>
+    Task<Guid> ReprocessarDivergenciasResolvidasAsync(
+        Guid fonteId, IReadOnlyList<Guid>? ids = null, CancellationToken ct = default);
+
     /// <summary>Executa um job (chamado pelo runner em background). Não lança — registra o erro na execução.</summary>
     Task ExecutarAsync(PepImportacaoJob job, CancellationToken ct = default);
 }

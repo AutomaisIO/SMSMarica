@@ -25,7 +25,13 @@ public sealed record IniciarImportacaoRequest(
     int? MaxPacientes,
     bool ApagarAntes,
     int? Concorrencia,
-    long? CursorPacienteInicial = null);
+    long? CursorPacienteInicial = null,
+    /// <summary>
+    /// Reimport DIRECIONADO: processa exatamente estes <c>cd_paciente</c> da origem,
+    /// ignorando limite e recência. É o caminho para corrigir casos pontuais sem esperar
+    /// o paciente ter atendimento novo — usado pelo reprocesso de divergências resolvidas.
+    /// </summary>
+    IReadOnlyList<long>? CdsPacientes = null);
 
 /// <summary>Contadores por tipo de recurso de uma execução.</summary>
 public sealed record ContadoresImportacaoDto(
@@ -181,3 +187,9 @@ public sealed record IgnorarDivergenciaRequest(string? Motivo = null);
 
 /// <summary>Pausa administrativa do motor. <c>Horas</c> ausente ou 0 = retomar.</summary>
 public sealed record PausarMotorRequest(Guid FonteId, int? Horas = null);
+
+/// <summary>
+/// Reprocessar da origem os pacientes das divergências já arbitradas como "origem correta".
+/// <c>Ids</c> vazio = todas as elegíveis da base.
+/// </summary>
+public sealed record ReprocessarDivergenciasRequest(Guid FonteId, IReadOnlyList<Guid>? Ids = null);

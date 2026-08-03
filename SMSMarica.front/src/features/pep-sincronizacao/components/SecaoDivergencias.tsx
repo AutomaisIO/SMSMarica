@@ -1,10 +1,11 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Loader2, RefreshCw, ShieldAlert } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 import {
   useDivergenciasPep,
   useIgnorarDivergenciaPep,
+  useReprocessarDivergenciasPep,
   useResumoDivergenciasPep,
   useVerificarDivergenciasPep,
 } from '@/features/pep-sincronizacao/api/queries';
@@ -47,6 +48,7 @@ export function SecaoDivergencias({ fonteId, podeEditar }: { fonteId: string; po
   const resumo = useResumoDivergenciasPep(fonteId || undefined);
   const lista = useDivergenciasPep(fonteId || undefined, somentePendentes ? 'Pendente' : undefined);
   const verificar = useVerificarDivergenciasPep();
+  const reprocessar = useReprocessarDivergenciasPep();
   const ignorar = useIgnorarDivergenciaPep();
   const [msg, setMsg] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -62,6 +64,24 @@ export function SecaoDivergencias({ fonteId, podeEditar }: { fonteId: string; po
           : `${r.analisadas} arbitradas — origem ${r.origemCorreta} · hub ${r.hubCorreto} · CPF suspeito ${r.ambosNegados} · inconclusivas ${r.naoConclusivas}` +
               (r.interrompidaPorIndisponibilidade ? ' (interrompida: consulta indisponível)' : ''),
       );
+    } catch (e) {
+      setErro(extrairMensagemDeErro(e));
+    }
+  }
+
+  async function aoReprocessar() {
+    if (!fonteId) return;
+    const n = resumo.data?.origemCorreta ?? 0;
+    const ok = window.confirm(
+      `Reprocessar da origem os ${n} pacientes cuja divergência foi resolvida como "origem correta"? ` +
+        'O hub recebe o valor correto agora, em vez de esperar o paciente ter atendimento novo.',
+    );
+    if (!ok) return;
+    setMsg(null);
+    setErro(null);
+    try {
+      await reprocessar.mutateAsync({ fonteId });
+      setMsg('Reprocessamento enfileirado — acompanhe no cartão de status acima.');
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
     }
@@ -112,6 +132,19 @@ export function SecaoDivergencias({ fonteId, podeEditar }: { fonteId: string; po
                 <RefreshCw className="mr-2 h-4 w-4" />
               )}
               Arbitrar pendentes
+            </Button>
+          ) : null}
+          {podeEditar && (resumo.data?.origemCorreta ?? 0) > 0 ? (
+            <Button
+              type="button"
+              tamanho="sm"
+              variante="secundaria"
+              onClick={aoReprocessar}
+              disabled={reprocessar.isPending}
+              title="Traz da origem o valor correto sem esperar o paciente ter atendimento novo"
+            >
+              {reprocessar.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Reprocessar {resumo.data?.origemCorreta} corrigidos
             </Button>
           ) : null}
         </div>

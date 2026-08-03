@@ -147,7 +147,8 @@ public sealed class PepSincronizacaoService(
             : null;
 
         var opcoes = new OpcoesImportacao(request.Modo, request.Escopo, request.MaxMedicos, request.MaxPacientes,
-            request.ApagarAntes, Concorrencia: request.Concorrencia, CursorPacienteInicial: cursorInicial);
+            request.ApagarAntes, CdsPacientes: request.CdsPacientes,
+            Concorrencia: request.Concorrencia, CursorPacienteInicial: cursorInicial);
         if (!fila.TentarEnfileirar(new PepImportacaoJob(execucao.Id, fonte.Id, opcoes, usuarioAtual.UsuarioId)))
         {
             execucao.Status = StatusSincronizacao.Erro;
@@ -495,6 +496,46 @@ public sealed class PepSincronizacaoService(
         Guid? fonteId = null, int? max = null, CancellationToken ct = default) =>
         await verificadorDivergencias.VerificarPendentesAsync(
             fonteId, max ?? _maxArbitragensPorRodada, _tetoArbitragem, ct);
+
+    /// <summary>
+    /// Reprocessa da origem os pacientes cujas divergências já foram arbitradas como
+    /// <see cref="VeredictoDivergenciaIdentidade.OrigemCorreta"/>.
+    ///
+    /// <para><b>Por que é preciso empurrar.</b> Quando o veredicto diz que a origem está
+    /// certa, o congelamento cai — mas o valor só chega ao hub quando aquele paciente for
+    /// tocado de novo, e quem não tem atendimento novo pode ficar meses com o dado errado.
+    /// Este disparo relê os pacientes na origem e deixa o caminho normal escrever: mesmo
+    /// merge, mesmo If-Match, mesma trilha. É o oposto de acertar a coluna na mão.</para>
+    /// </summary>
+    public async Task<Guid> ReprocessarDivergenciasResolvidasAsync(
+        Guid fonteId, IReadOnlyList<Guid>? ids = null, CancellationToken ct = default)
+    {
+        var q = db.PepDivergenciasIdentidade.AsNoTracking()
+            .Where(d => d.FonteId == fonteId
+                     && d.Status == StatusDivergenciaIdentidade.Verificada
+                     && d.Veredicto == VeredictoDivergenciaIdentidade.OrigemCorreta);
+        if (ids is { Count: > 0 }) q = q.Where(d => ids.Contains(d.Id));
+
+        // cd_paciente == 0 é divergência vinda do CDC, que não sabe o cd — não dá para
+        // reprocessar por essa via (e reprocessar "todos" seria o oposto de direcionado).
+        var cds = await q.Where(d => d.CdPaciente > 0)
+            .Select(d => d.CdPaciente).Distinct().ToListAsync(ct);
+
+        if (cds.Count == 0)
+            throw new ConflitoException("pep.sem_divergencia_reprocessavel",
+                "Não há divergência com veredicto \"origem correta\" e código de paciente conhecido para reprocessar.");
+
+        return await IniciarAsync(new IniciarImportacaoRequest(
+            FonteId: fonteId,
+            Modo: ModoSincronizacao.Incremental,
+            Escopo: EscopoSincronizacao.Tudo,
+            MaxMedicos: null,
+            MaxPacientes: null,
+            ApagarAntes: false,
+            Concorrencia: null,
+            CursorPacienteInicial: null,
+            CdsPacientes: cds), ct);
+    }
 
     public async Task<DivergenciaIdentidadeDto> IgnorarDivergenciaAsync(
         Guid id, string? motivo = null, CancellationToken ct = default)

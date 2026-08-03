@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
 using SMSMarica.Core.Integracoes.Pep;
 using SMSMarica.Core.Integracoes.Pep.Divergencias;
@@ -136,6 +136,21 @@ public sealed class PepSincronizacaoController(IPepSincronizacaoService service)
     public async Task<ResultadoVerificacaoDivergencias> VerificarDivergencias(
         [FromBody] VerificarDivergenciasRequest request, CancellationToken ct) =>
         await service.VerificarDivergenciasAsync(request.FonteId, request.Max, ct);
+
+    /// <summary>
+    /// Reprocessa da origem os pacientes das divergências arbitradas como "origem correta".
+    /// Sem isto o hub só se corrige quando o paciente voltar a ter atendimento.
+    /// </summary>
+    [HttpPost("divergencias/reprocessar")]
+    [RequerPermissao(ModuloPermissao.SincronizacaoPep, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> ReprocessarDivergencias(
+        [FromBody] ReprocessarDivergenciasRequest request, CancellationToken ct)
+    {
+        var id = await service.ReprocessarDivergenciasResolvidasAsync(request.FonteId, request.Ids, ct);
+        return Accepted(new { execucaoId = id });
+    }
 
     /// <summary>Marca a divergência como falso positivo: descongela o campo para a origem.</summary>
     [HttpPost("divergencias/{id:guid}/ignorar")]

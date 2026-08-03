@@ -1,4 +1,4 @@
-import { http } from '@/shared/api/httpClient';
+﻿import { http } from '@/shared/api/httpClient';
 import type {
   AgendaPep,
   BasePep,
@@ -104,6 +104,18 @@ export async function ignorarDivergenciaPep(
   const { data } = await http.post<DivergenciaIdentidade>(
     `/pep-sincronizacao/divergencias/${id}/ignorar`,
     { motivo: motivo ?? null },
+  );
+  return data;
+}
+
+/** Reprocessa da origem os pacientes das divergências arbitradas como "origem correta". */
+export async function reprocessarDivergenciasPep(
+  fonteId: string,
+  ids?: string[],
+): Promise<{ execucaoId: string }> {
+  const { data } = await http.post<{ execucaoId: string }>(
+    '/pep-sincronizacao/divergencias/reprocessar',
+    { fonteId, ids: ids ?? null },
   );
   return data;
 }
