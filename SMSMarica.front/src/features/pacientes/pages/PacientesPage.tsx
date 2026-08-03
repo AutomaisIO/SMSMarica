@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Eye, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+﻿import { useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, Eye, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { aoColarSoDigitosSeDocumento } from '@/shared/lib/colarDocumento';
@@ -63,6 +63,15 @@ export function PacientesPage() {
           >
             {p.nomeCompleto}
           </button>
+          {p.identidadeIncompleta ? (
+            <span
+              className="inline-flex shrink-0 items-center gap-1 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-800"
+              title="Cadastro sem CPF, importado do prontuário de origem. Como não há CPF, este paciente não pode ser unido ao mesmo cidadão em outras bases — ele pode aparecer mais de uma vez. Confirme a identidade antes de usar para algo definitivo."
+            >
+              <AlertTriangle className="h-3 w-3" />
+              sem CPF
+            </span>
+          ) : null}
           <NomePacienteComResumo pacienteId={p.id} />
         </div>
       ),

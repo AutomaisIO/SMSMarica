@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using Hl7.Fhir.Model;
@@ -277,8 +277,18 @@ internal static class PacienteFhirMapper
             Guid.Parse(p.Id!), NomeNativo(p) ?? pl.NomeCompleto, IdentValor(p, SystemCpf) ?? pl.Cpf ?? string.Empty,
             ParseData(p.BirthDate) ?? pl.DataNascimento, ContatoNome(p, "MTH") ?? pl.NomeDaMae,
             TelefonePrincipalNativo(p) ?? pl.TelefonePrincipal,
-            pl.FotoBase64, p.Active ?? true, NomeSocialNativo(p) ?? pl.NomeSocial);
+            pl.FotoBase64, p.Active ?? true, NomeSocialNativo(p) ?? pl.NomeSocial,
+            TemIdentidadeIncompleta(p));
     }
+
+    /// <summary>
+    /// Paciente marcado pelo importador como SEM CPF (<c>meta.tag</c>
+    /// <c>urn:smsmarica:qualidade|identidade-incompleta</c>). Não dá para uni-lo ao mesmo
+    /// cidadão em outra base, então ele pode aparecer repetido — a tela avisa quem atende.
+    /// </summary>
+    public static bool TemIdentidadeIncompleta(Patient p) =>
+        p.Meta?.Tag?.Any(t => t.System == "urn:smsmarica:qualidade"
+                           && t.Code == "identidade-incompleta") == true;
 
     /// <summary>Nome do paciente (para snapshots em recursos dependentes).</summary>
     public static string NomeDe(Patient p) => NomeNativo(p) ?? LerPayload(p).NomeCompleto;

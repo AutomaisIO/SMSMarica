@@ -272,7 +272,28 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
             ctx.BaseSlug, p.Pacientes, p.Encounters, p.Falhas.Count);
     }
 
-    /// <summary>Upsert canônico (merge por CPF) de um bloco de pacientes; devolve o mapa cd → Patient/{id}.</summary>
+    /// <summary>
+    /// Upsert de um bloco de pacientes; devolve o mapa cd → Patient/{id}.
+    ///
+    /// <para>Dois caminhos, e a diferença importa:</para>
+    /// <list type="bullet">
+    /// <item><b>Com CPF</b> — upsert CANÔNICO por CPF, com merge. É o caminho que une a mesma
+    /// pessoa entre bases (Salux e Klinikos convergem para um único Patient).</item>
+    /// <item><b>Sem CPF</b> — upsert pelo identificador LOCAL da base
+    /// (<c>urn:salux:cd_paciente</c>), marcado com a tag de identidade incompleta. Nunca entra
+    /// no casamento por CPF, porque não há o que casar.</item>
+    /// </list>
+    ///
+    /// <para><b>Por que passou a entrar.</b> Até 03/08 o filtro exigia CPF e 63.324 pacientes
+    /// do Salux (17,1%) eram descartados EM SILÊNCIO — junto com 127 mil atendimentos e 8.216
+    /// internações, das quais <b>6.697 são recém-nascidos</b> (o HMCML é hospital maternal:
+    /// bebê não tem CPF). Perder o registro de nascimento para preservar uma promessa de
+    /// unicidade é a troca errada. Agora o dado entra e a incerteza fica <b>declarada</b>.</para>
+    ///
+    /// <para><b>A trava que protege a unicidade</b>: quem tem a tag só é encontrado pelo próprio
+    /// identificador local. Nenhuma heurística — nome, nascimento, mãe — pode uni-lo a outro
+    /// registro; entre bases ele PODE se repetir, e é exatamente isso que a tag declara.</para>
+    /// </summary>
     private static async Task<ConcurrentDictionary<long, string>> UpsertPacientesChunkAsync(
         ContextoImportacaoPep ctx, SaluxFhirMapper mapper, IReadOnlyList<PacienteLinha> chunk,
         SemaphoreSlim gate, Progresso.ProgressoImportacao p, Action<long, Exception> falhou, CancellationToken ct)
@@ -280,11 +301,25 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
         var map = new ConcurrentDictionary<long, string>();
         await ParaCada(chunk, gate, async pac =>
         {
+            if (pac.Nome is null) return;
             var cpf = Digitos(pac.Cpf);
-            if (cpf.Length == 0 || pac.Nome is null) return;
             try
             {
-                var fhirId = await UpsertCanonicoAsync(ctx, "Patient", SaluxFhirMapper.IdentCpf, cpf, mapper.BuildPatient(pac), ct);
+                string fhirId;
+                if (cpf.Length == 11)
+                {
+                    fhirId = await UpsertCanonicoAsync(
+                        ctx, "Patient", SaluxFhirMapper.IdentCpf, cpf, mapper.BuildPatient(pac), ct);
+                }
+                else
+                {
+                    var recurso = mapper.BuildPatient(pac);
+                    SaluxFhirMapper.MarcarIdentidadeIncompleta(recurso);
+                    fhirId = await UpsertCanonicoAsync(
+                        ctx, "Patient", SaluxFhirMapper.IdentSaluxPaciente, mapper.Pref(pac.Cd.ToString(CultureInfo.InvariantCulture)),
+                        recurso, ct);
+                    Interlocked.Increment(ref p.PacientesIdentidadeIncompleta);
+                }
                 map[pac.Cd] = $"Patient/{fhirId}";
                 Interlocked.Increment(ref p.Pacientes);
             }
@@ -818,7 +853,7 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
                    (SELECT bc.ds_barreira_comunicacao FROM barreira_comunicacao bc WHERE TO_CHAR(bc.cd_barreira_comunicacao)=TO_CHAR(pac.cd_barreira_comunicacao) AND ROWNUM=1) AS barreira_ds,
                    TO_CHAR(pac.dt_cadastro,{FmtDt}) AS dt_cadastro, TO_CHAR(pac.dt_alteracao,{FmtDt}) AS dt_alteracao
             FROM (SELECT * FROM paciente
-                  WHERE cpf_paciente IS NOT NULL AND nm_paciente IS NOT NULL AND dt_nascimento IS NOT NULL {filtro}
+                  WHERE nm_paciente IS NOT NULL AND dt_nascimento IS NOT NULL {filtro}
                   {ordemLimite}) pac
             """;
     }

@@ -1,4 +1,4 @@
-namespace SMSMarica.Core.Integracoes.Pep.Progresso;
+﻿namespace SMSMarica.Core.Integracoes.Pep.Progresso;
 
 /// <summary>
 /// Acumulador mutável de progresso de uma importação: fase corrente, contadores por tipo
@@ -22,6 +22,13 @@ public sealed class ProgressoImportacao
     /// "farol" de backpressure: sobe enquanto há registros pendentes esperando o
     /// banco liberar; não é falha — esses registros não foram descartados.
     /// </summary>
+    /// <summary>
+    /// Pacientes importados SEM CPF, marcados com a tag de identidade incompleta. É o número
+    /// que responde "quantos dados incertos entraram neste ciclo" — antes de 03/08 eles eram
+    /// descartados em silêncio, sem nenhum contador.
+    /// </summary>
+    public int PacientesIdentidadeIncompleta;
+
     public int Retentativas;
 
     /// <summary>Falhas por paciente: (cd_paciente, mensagem).</summary>

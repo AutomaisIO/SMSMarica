@@ -1,4 +1,4 @@
-export const SEXOS = ['NaoInformado', 'Masculino', 'Feminino', 'Outro'] as const;
+﻿export const SEXOS = ['NaoInformado', 'Masculino', 'Feminino', 'Outro'] as const;
 export type Sexo = (typeof SEXOS)[number];
 
 export const ESTADOS_CIVIS = [
@@ -68,6 +68,11 @@ export type PacienteListItem = {
   telefonePrincipal?: string | null;
   fotoBase64?: string | null;
   ativo: boolean;
+  /**
+   * Paciente sem CPF, vindo de um PEP. Não dá para uni-lo ao mesmo cidadão em outra base,
+   * então PODE aparecer repetido — por isso o selo ao lado do nome.
+   */
+  identidadeIncompleta?: boolean;
 };
 
 export type Paciente = {

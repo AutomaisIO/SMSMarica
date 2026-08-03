@@ -120,6 +120,33 @@ internal sealed class SaluxFhirMapper(string slug, string source)
 
     private Meta Meta() => new() { Source = Source };
 
+    /// <summary>System da tag de qualidade do dado (buscável por <c>?_tag=</c>).</summary>
+    public const string SysQualidade = "urn:smsmarica:qualidade";
+
+    /// <summary>Código da tag: paciente sem identificador nacional (CPF).</summary>
+    public const string TagIdentidadeIncompleta = "identidade-incompleta";
+
+    /// <summary>
+    /// Marca o Patient como de IDENTIDADE INCOMPLETA — sem CPF, portanto impossível de casar
+    /// com o mesmo cidadão em outra base. Usa <c>meta.tag</c>, que é o mecanismo do próprio
+    /// FHIR para qualificar o registro sem sujar o dado clínico, e é buscável:
+    /// <c>GET /fhir/Patient?_tag=urn:smsmarica:qualidade|identidade-incompleta</c> responde
+    /// "quantos registros incertos existem" a qualquer momento, sem contador paralelo.
+    ///
+    /// <para>Idempotente: aplicar de novo não duplica a tag. E some sozinha — no dia em que a
+    /// origem ganhar o CPF, o paciente passa pelo caminho canônico e sobe sem a marca.</para>
+    /// </summary>
+    public static void MarcarIdentidadeIncompleta(Patient p)
+    {
+        p.Meta ??= new Meta();
+        p.Meta.Tag ??= [];
+        if (p.Meta.Tag.Any(t => t.System == SysQualidade && t.Code == TagIdentidadeIncompleta)) return;
+        p.Meta.Tag.Add(new Coding(SysQualidade, TagIdentidadeIncompleta)
+        {
+            Display = "Sem CPF — não é possível unir a outras bases",
+        });
+    }
+
     private static AdministrativeGender Genero(string? sexo) => (sexo ?? string.Empty).Trim().ToUpperInvariant() switch
     {
         "M" => AdministrativeGender.Male,

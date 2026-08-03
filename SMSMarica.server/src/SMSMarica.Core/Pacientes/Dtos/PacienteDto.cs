@@ -1,4 +1,4 @@
-using SMSMarica.Core.Common.Dtos;
+﻿using SMSMarica.Core.Common.Dtos;
 using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Pacientes.Dtos;
@@ -84,7 +84,13 @@ public sealed record PacienteListItemDto(
     string? TelefonePrincipal,
     string? FotoBase64,
     bool Ativo,
-    string? NomeSocial = null);
+    string? NomeSocial = null,
+    /// <summary>
+    /// Paciente sem CPF, vindo de um PEP — não é possível uni-lo ao mesmo cidadão em outra
+    /// base, então ele PODE aparecer repetido. A tela mostra o selo ao lado do nome para que
+    /// quem atende saiba que aquela identidade não está confirmada.
+    /// </summary>
+    bool IdentidadeIncompleta = false);
 
 public sealed record ContatoEmergenciaDto(
     string Nome,
