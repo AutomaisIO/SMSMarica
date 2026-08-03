@@ -5,9 +5,11 @@ import {
   importarLote,
   listarExecucoesImportacao,
   listarFalhasImportacao,
+  listarPendenciasSigtap,
   obterFalhaDetalhe,
   obterStatusLote,
   reprocessarFalhaImportacao,
+  reprocessarPendenciasSigtap,
 } from '@/features/importacao-sisreg/api/importacaoApi';
 
 export const importacaoKeys = {
@@ -15,6 +17,7 @@ export const importacaoKeys = {
   falhaDetalhe: (id: string) => ['importacao-sisreg', 'falha-detalhe', id] as const,
   statusLote: ['importacao-sisreg', 'lote-status'] as const,
   execucoes: ['importacao-sisreg', 'execucoes'] as const,
+  pendenciasSigtap: ['importacao-sisreg', 'pendencias-sigtap'] as const,
 };
 
 export function useFalhasImportacao(somentePendentes: boolean, busca = '') {
@@ -93,5 +96,24 @@ export function useCancelarLote() {
   return useMutation({
     mutationFn: cancelarLote,
     onSuccess: () => client.invalidateQueries({ queryKey: importacaoKeys.statusLote }),
+  });
+}
+
+/** Fila de trabalho do mapeamento: o que a varredura trouxe e não conseguiu classificar. */
+export function usePendenciasSigtap() {
+  return useQuery({
+    queryKey: importacaoKeys.pendenciasSigtap,
+    queryFn: listarPendenciasSigtap,
+  });
+}
+
+export function useReprocessarPendenciasSigtap() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (procedimentoTexto: string) => reprocessarPendenciasSigtap(procedimentoTexto),
+    onSuccess: () => {
+      // O lote mexe nas duas visões: some do agrupamento e some da lista individual.
+      client.invalidateQueries({ queryKey: ['importacao-sisreg'] });
+    },
   });
 }

@@ -109,6 +109,30 @@ public sealed class SisregImportacaoController(
         => await importacao.ReprocessarFalhaAsync(id, cancellationToken);
 
     /// <summary>
+    /// Pendências de SIGTAP agrupadas por procedimento. Uma varredura sem mapeamento gera uma
+    /// pendência por solicitação — todas com a mesma causa e a mesma correção. Agrupadas, viram a
+    /// fila de trabalho de quem vai mapear, em vez de ruído que esconde as pendências individuais.
+    /// </summary>
+    [HttpGet("falhas/sigtap")]
+    [RequerPermissao(ModuloPermissao.Sisreg, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<PendenciaSigtapAgrupadaDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<PendenciaSigtapAgrupadaDto>> PendenciasSigtap(
+        CancellationToken cancellationToken)
+        => await importacao.ListarPendenciasSigtapAsync(cancellationToken);
+
+    /// <summary>
+    /// Revalida TODAS as pendências de SIGTAP de um procedimento — o par do mapeamento: mapeia-se
+    /// uma vez, as solicitações entram de uma vez. ESCRITA.
+    /// </summary>
+    [HttpPost("falhas/sigtap/reprocessar")]
+    [RequerPermissao(ModuloPermissao.Sisreg, AcoesPermissao.Inclusao)]
+    [ProducesResponseType<ReprocessoLoteResultado>(StatusCodes.Status200OK)]
+    public async Task<ReprocessoLoteResultado> ReprocessarPendenciasSigtap(
+        [FromBody] ReprocessarSigtapRequest request,
+        CancellationToken cancellationToken)
+        => await importacao.ReprocessarPendenciasSigtapAsync(request.ProcedimentoTexto, cancellationToken);
+
+    /// <summary>
     /// "Informar CPF e importar" (ADR-0035): resolve o paciente e replica a linha com ele fixado.
     /// É a ação da pendência cuja causa é <c>CpfNaoResolvido</c> — o CADSUS não devolveu o CPF e o
     /// paciente não existia. Só vincula paciente JÁ cadastrado: o SISREG não informa data de

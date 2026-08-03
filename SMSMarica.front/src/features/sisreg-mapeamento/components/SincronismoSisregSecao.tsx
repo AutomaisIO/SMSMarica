@@ -102,17 +102,6 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
         </p>
       )}
 
-      {(dados?.combinacoesSemSigtap ?? 0) > 0 && (
-        <p className="mb-3 flex items-start gap-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>
-            <strong>{dados!.combinacoesSemSigtap}</strong> combinações habilitadas estão de fora da
-            varredura porque o procedimento ainda não tem código SIGTAP confirmado. Sem ele a
-            solicitação nasceria sem categoria e sem worklist — por isso o motor as pula.
-          </span>
-        </p>
-      )}
-
       {/* Configuração */}
       <div className="flex flex-wrap items-end gap-4">
         <label className="flex items-center gap-2 text-sm text-gray-700">

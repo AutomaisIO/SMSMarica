@@ -44,6 +44,18 @@ public interface IImportacaoSisregService
     /// solicitação já existir, resolve a falha em vez de duplicar. ESCRITA.</summary>
     Task<ImportacaoFalhaReprocessoResultado> ReprocessarFalhaAsync(Guid falhaId, CancellationToken ct);
 
+    /// <summary>
+    /// Pendências de SIGTAP agrupadas por procedimento — a fila de trabalho de quem vai mapear.
+    /// Escopo por unidade, como o resto da aba de Erros.
+    /// </summary>
+    Task<IReadOnlyList<PendenciaSigtapAgrupadaDto>> ListarPendenciasSigtapAsync(CancellationToken ct);
+
+    /// <summary>
+    /// Revalida TODAS as pendências de SIGTAP de um procedimento. É o par do mapeamento: mapeia-se
+    /// uma vez e as solicitações entram de uma vez. ESCRITA.
+    /// </summary>
+    Task<ReprocessoLoteResultado> ReprocessarPendenciasSigtapAsync(string procedimentoTexto, CancellationToken ct);
+
     /// <summary>"Informar CPF e importar": resolve o paciente (dedup por CPF e CNS; paciente
     /// existente nunca tem o nome alterado) e replica a linha com ele fixado. ESCRITA.</summary>
     Task<ImportacaoFalhaReprocessoResultado> ResolverComPacienteAsync(
@@ -494,9 +506,9 @@ public sealed class ImportacaoSisregService(
                 invalidos++;
                 await RegistrarFalhaExecucaoAsync(
                     m, nomeArquivo: null,
-                    $"O procedimento \"{m.ProcedimentoTexto ?? m.CodigoProcedimentoSisreg}\" "
-                    + $"(código SISREG {m.CodigoProcedimentoSisreg}) ainda não tem código SIGTAP confirmado. "
-                    + "Confirme o SIGTAP dele no mapeamento do SISREG e valide esta pendência.",
+                    $"O procedimento \"{m.ProcedimentoTexto ?? m.CodigoProcedimentoSisreg}\" não tem "
+                    + "código SIGTAP: o nome não bate exatamente com nenhum procedimento do catálogo. "
+                    + "Mapeie-o para liberar todas as solicitações deste procedimento.",
                     CausaFalhaImportacao.SigtapNaoMapeado, ct, OrigemFalhaImportacao.Varredura);
                 continue;
             }
@@ -795,19 +807,22 @@ public sealed class ImportacaoSisregService(
                     "O registro guardado desta varredura está ilegível. Rode a varredura de novo para esta unidade, ou descarte este registro.");
             }
 
-            // O de-para é resolvido AGORA, não congelado no RAW: é isto que faz o "Validar"
-            // funcionar depois que o operador confirmou o SIGTAP que faltava.
-            var sigtap = await mapeadorSigtap.ResolverConfirmadoAsync(raw.PaCodigo, ct);
+            // O SIGTAP é resolvido AGORA, não congelado no RAW — é isto que faz o "Validar"
+            // funcionar depois que alguém confirmou o mapeamento que faltava. Mesma ordem da
+            // varredura: o procedimento do próprio agendamento manda; o código consultado desempata.
+            var nomeProcedimento = VarreduraMapper.LimparProcedimento(raw.Procedimentos) ?? raw.PaNome;
+            var sigtap = await mapeadorSigtap.ResolverPorNomeExatoAsync(nomeProcedimento, ct)
+                ?? await mapeadorSigtap.ResolverConfirmadoAsync(raw.PaCodigo, ct);
+
             if (string.IsNullOrWhiteSpace(sigtap))
             {
                 f.Causa = CausaFalhaImportacao.SigtapNaoMapeado;
                 f.Motivo = Truncar(
-                    $"O procedimento \"{raw.PaNome}\" (código SISREG {raw.PaCodigo}) continua sem código "
-                    + "SIGTAP confirmado.", 2000);
+                    $"O procedimento \"{nomeProcedimento}\" continua sem código SIGTAP.", 2000);
                 await db.SaveChangesAsync(ct);
                 return new(f.Id, false, null,
-                    $"Confirme o código SIGTAP do procedimento \"{raw.PaNome}\" no mapeamento do SISREG e valide de novo. "
-                    + "Uma confirmação resolve todas as pendências desse mesmo procedimento.");
+                    $"O procedimento \"{nomeProcedimento}\" ainda não tem código SIGTAP. Mapeie-o e valide de novo — "
+                    + "um mapeamento resolve todas as pendências desse mesmo procedimento.");
             }
 
             m = VarreduraMapper.ParaMarcacao(raw, sigtap);
@@ -865,6 +880,89 @@ public sealed class ImportacaoSisregService(
         await db.SaveChangesAsync(ct);
         return new(f.Id, false, res, res.Erro ?? "Ainda não foi possível importar esta linha.");
     }
+
+    public async Task<IReadOnlyList<PendenciaSigtapAgrupadaDto>> ListarPendenciasSigtapAsync(CancellationToken ct)
+    {
+        var unidade = UnidadeAtivaAtual;
+
+        var pendentes = await db.SisregImportacaoFalhas.AsNoTracking()
+            .Where(f => f.ResolvidoEm == null
+                        && f.Causa == CausaFalhaImportacao.SigtapNaoMapeado
+                        && (unidade == null || f.UnidadeExecutanteId == unidade))
+            .Select(f => new { f.ProcedimentoTexto, f.CriadoEm, f.LinhaRaw })
+            .ToListAsync(ct);
+
+        var grupos = pendentes
+            .Where(x => !string.IsNullOrWhiteSpace(x.ProcedimentoTexto))
+            .GroupBy(x => x.ProcedimentoTexto!, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new
+            {
+                Texto = g.Key,
+                // O `pa` sai do envelope; pode divergir dentro do grupo quando a varredura passou
+                // pelo "GRUPO -" e pelo item individual. O primeiro serve de referência.
+                Codigo = g.Select(x => CodigoDoEnvelope(x.LinhaRaw)).FirstOrDefault(c => c is not null),
+                Qtd = g.Count(),
+                Primeira = g.Min(x => x.CriadoEm),
+                Ultima = g.Max(x => x.CriadoEm),
+            })
+            .ToList();
+
+        var catalogo = await mapeadorSigtap.ObterCatalogoAsync(
+            [.. grupos.Select(g => g.Codigo).Where(c => c is not null).Distinct(StringComparer.Ordinal)!], ct);
+
+        return [.. grupos
+            .Select(g => new PendenciaSigtapAgrupadaDto(
+                g.Texto,
+                g.Codigo,
+                g.Codigo is not null && catalogo.TryGetValue(g.Codigo, out var info) ? info.DeParaId : null,
+                g.Qtd,
+                g.Primeira,
+                g.Ultima))
+            .OrderByDescending(x => x.Solicitacoes)
+            .ThenBy(x => x.ProcedimentoTexto, StringComparer.OrdinalIgnoreCase)];
+    }
+
+    public async Task<ReprocessoLoteResultado> ReprocessarPendenciasSigtapAsync(
+        string procedimentoTexto, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(procedimentoTexto))
+            throw new ValidacaoException("importacao.procedimento_obrigatorio", "Informe o procedimento.");
+
+        var unidade = UnidadeAtivaAtual;
+
+        var ids = await db.SisregImportacaoFalhas.AsNoTracking()
+            .Where(f => f.ResolvidoEm == null
+                        && f.Causa == CausaFalhaImportacao.SigtapNaoMapeado
+                        && f.ProcedimentoTexto == procedimentoTexto
+                        && (unidade == null || f.UnidadeExecutanteId == unidade))
+            .Select(f => f.Id)
+            .ToListAsync(ct);
+
+        var importadas = 0;
+        foreach (var id in ids)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            // Reusa o "Validar" de uma pendência só — mesmo caminho, mesma idempotência. Uma linha
+            // que falhe por OUTRA causa (paciente sem CNS) segue pendente com a causa nova, e é
+            // isso que se quer: o lote resolve o SIGTAP, não varre problema para debaixo do tapete.
+            var r = await ReprocessarFalhaAsync(id, ct);
+            if (r.Resolvida) importadas++;
+        }
+
+        var continuam = ids.Count - importadas;
+        var mensagem = ids.Count == 0
+            ? "Não havia pendências deste procedimento."
+            : continuam == 0
+                ? $"{importadas} solicitações importadas."
+                : $"{importadas} importadas; {continuam} continuam pendentes por outro motivo "
+                  + "(veja a lista de erros).";
+
+        return new ReprocessoLoteResultado(ids.Count, importadas, continuam, mensagem);
+    }
+
+    private static string? CodigoDoEnvelope(string? raw) =>
+        RegistroVarreduraRaw.Desserializar(raw)?.PaCodigo;
 
     public async Task DescartarFalhaAsync(Guid falhaId, string? nota, CancellationToken ct)
     {

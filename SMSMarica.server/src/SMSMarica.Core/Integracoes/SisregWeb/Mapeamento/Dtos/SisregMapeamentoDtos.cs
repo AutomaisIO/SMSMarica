@@ -32,18 +32,11 @@ public sealed record SisregProcedimentoDto(
     bool Habilitado,
     bool Grupo,
     bool Ausente,
-    /// <summary>SIGTAP confirmado para este procedimento (só dígitos). NULL = de-para pendente.</summary>
-    string? CodigoSigtap = null,
-    /// <summary>
-    /// Sem SIGTAP confirmado o procedimento <b>não entra na varredura</b>, mesmo habilitado — a
-    /// agenda do SISREG não informa SIGTAP, e sem ele a solicitação nasceria sem categoria e sem
-    /// worklist. A tela usa isto para avisar o operador antes que ele ligue o sincronismo e
-    /// conclua, erradamente, que a unidade está coberta.
-    /// </summary>
-    bool SigtapPendente = false,
-    /// <summary>Id da linha no CATÁLOGO global de procedimentos — é por ele que a tela confirma o
-    /// de-para SIGTAP. NULL enquanto o procedimento não foi catalogado (só entra no catálogo ao
-    /// "Atualizar mapeamento"). O de-para é nacional; o aviso ao paciente NÃO é.</summary>
+    // O SIGTAP não aparece aqui de propósito: este código é só o FILTRO da varredura. Quem diz o
+    // que o exame é de verdade é o próprio agendamento, na importação — e o que não resolver lá
+    // vira pendência no histórico de erro, junto das outras.
+    /// <summary>Id da linha no catálogo global de procedimentos do SISREG. NULL enquanto o
+    /// procedimento não foi catalogado (entra ao "Atualizar mapeamento").</summary>
     Guid? DeParaId = null,
     /// <summary>Importar este procedimento NESTA unidade avisa o paciente por WhatsApp?
     /// Decisão da unidade — outra unidade pode decidir diferente para o mesmo procedimento.</summary>

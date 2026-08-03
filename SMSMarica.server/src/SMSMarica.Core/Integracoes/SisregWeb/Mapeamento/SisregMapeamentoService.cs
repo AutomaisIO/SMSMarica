@@ -55,13 +55,10 @@ public sealed class SisregMapeamentoService(
         IReadOnlyDictionary<string, ProcedimentoCatalogoInfo> catalogo)
     {
         var noCatalogo = catalogo.GetValueOrDefault(procedimento.Codigo);
-        var confirmado = noCatalogo is { Confirmado: true, CodigoSigtap: not null };
 
         return new SisregProcedimentoDto(
             procedimento.Id, procedimento.Codigo, procedimento.Nome, procedimento.Habilitado,
             procedimento.Grupo, procedimento.Ausente,
-            confirmado ? noCatalogo!.CodigoSigtap : null,
-            SigtapPendente: !confirmado,
             DeParaId: noCatalogo?.DeParaId,
             EnviarConfirmacao: procedimento.EnviarConfirmacao);
     }

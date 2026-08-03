@@ -4,6 +4,7 @@ import { Button } from '@/shared/ui/Button';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { useFalhasImportacao } from '@/features/importacao-sisreg/api/queries';
 import { ModalFalha } from '@/features/importacao-sisreg/components/ModalFalha';
+import { PendenciasSigtapSecao } from '@/features/importacao-sisreg/components/PendenciasSigtapSecao';
 import { ModalInformarCpf } from '@/features/painel-inicio/components/ModalInformarCpf';
 import { ROTULO_CAUSA } from '@/features/painel-inicio/components/LinhaPendencia';
 import type { ImportacaoFalha } from '@/features/importacao-sisreg/types';
@@ -38,6 +39,10 @@ export function ErrosImportacao({ buscaInicial = '' }: { buscaInicial?: string }
   const pendentes = lista.filter((f) => !f.resolvidoEm).length;
 
   return (
+    <>
+    {/* Vem ANTES da lista: é trabalho em lote, e resolver aqui esvazia dezenas de linhas abaixo. */}
+    <PendenciasSigtapSecao />
+
     <section className="rounded-lg border border-gray-200 bg-white shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-4 py-3">
         <div>
@@ -202,5 +207,6 @@ export function ErrosImportacao({ buscaInicial = '' }: { buscaInicial?: string }
         aoFechar={() => setPendenciaCpf(null)}
       />
     </section>
+    </>
   );
 }

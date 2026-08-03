@@ -345,8 +345,15 @@ public sealed class VarreduraAgendaService(
         }
 
         var combinacoes = await CarregarCombinacoesAsync(unidade.Id, ct);
-        var sigtapPorCodigo = await mapeadorSigtap.ResolverConfirmadosAsync(
+
+        // De-para confirmado pelo operador, por código do SISREG. É o FALLBACK: a resolução
+        // principal é pelo nome do procedimento que vem no próprio agendamento.
+        var deParaPorCodigo = await mapeadorSigtap.ResolverConfirmadosAsync(
             [.. combinacoes.Select(c => c.Codigo).Distinct(StringComparer.Ordinal)], ct);
+
+        // Cache do run: dentro de uma varredura o mesmo nome de procedimento se repete muito, e
+        // cada resolução varre o catálogo SIGTAP inteiro.
+        var sigtapPorNome = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
 
         // Retomada: o cursor só vale enquanto a janela for a mesma. Janela vencida é passado, e
         // refazer o passado gasta orçamento com dado que não muda mais.
@@ -400,7 +407,7 @@ public sealed class VarreduraAgendaService(
                     if (!vistos.Add(linha.CoSolicitacao)) continue;
 
                     var raw = MontarEnvelope(linha, combinacao, lida, cnes, unidade.Nome);
-                    sigtapPorCodigo.TryGetValue(combinacao.Codigo, out var sigtap);
+                    var sigtap = await ResolverSigtapAsync(raw, combinacao, deParaPorCodigo, sigtapPorNome, ct);
                     novas.Add(VarreduraMapper.ParaMarcacao(raw, sigtap));
                 }
 
@@ -475,6 +482,42 @@ public sealed class VarreduraAgendaService(
             ["pagina"] = pagina.ToString(System.Globalization.CultureInfo.InvariantCulture),
             ["linhas"] = "0",
         }, ct);
+    }
+
+    /// <summary>
+    /// SIGTAP de UM agendamento. A ordem é o ponto do desenho: o procedimento que o registro
+    /// informa manda, e o código da consulta é só desempate.
+    ///
+    /// <para>É isso que torna seguro varrer por um "GRUPO -": os agendamentos voltam com o
+    /// procedimento individual de cada um, então uma mamografia unilateral e uma bilateral colhidas
+    /// pelo mesmo grupo entram com SIGTAPs diferentes — e corretos.</para>
+    /// </summary>
+    private async Task<string?> ResolverSigtapAsync(
+        RegistroVarreduraRaw raw,
+        Combinacao combinacao,
+        IReadOnlyDictionary<string, string> deParaPorCodigo,
+        Dictionary<string, string?> cachePorNome,
+        CancellationToken ct)
+    {
+        var nome = VarreduraMapper.LimparProcedimento(raw.Procedimentos);
+
+        if (!string.IsNullOrWhiteSpace(nome))
+        {
+            if (!cachePorNome.TryGetValue(nome, out var doNome))
+            {
+                doNome = await mapeadorSigtap.ResolverPorNomeExatoAsync(nome, ct);
+                cachePorNome[nome] = doNome;
+            }
+
+            if (!string.IsNullOrWhiteSpace(doNome)) return doNome;
+        }
+
+        // Fallback: o de-para que o operador confirmou para o código consultado. Só acerta quando
+        // a consulta foi por procedimento individual — num grupo, apontaria o procedimento errado.
+        return !combinacao.Codigo.EndsWith("000", StringComparison.Ordinal)
+               && deParaPorCodigo.TryGetValue(combinacao.Codigo, out var doDePara)
+            ? doDePara
+            : null;
     }
 
     private static RegistroVarreduraRaw MontarEnvelope(
@@ -613,8 +656,12 @@ public sealed class VarreduraAgendaService(
     // ============================================================ apoio
 
     /// <summary>
-    /// Pares habilitados COM SIGTAP confirmado, na ordem determinística do cursor. Sem o de-para o
-    /// par é excluído aqui — varrê-lo só produziria pendência.
+    /// Pares habilitados, na ordem determinística do cursor.
+    ///
+    /// <para>O código do SISREG aqui é <b>só o filtro da varredura</b> — o que consultar. Ele não
+    /// decide o que o exame é: isso vem do próprio agendamento, na importação. Por isso não há
+    /// nenhum pré-requisito de SIGTAP aqui: exigir o de-para antes de varrer obrigaria a mapear
+    /// procedimento que talvez nunca tenha agendamento nenhum.</para>
     /// </summary>
     private async Task<List<Combinacao>> CarregarCombinacoesAsync(Guid unidadeId, CancellationToken ct)
     {
@@ -625,13 +672,7 @@ public sealed class VarreduraAgendaService(
                 .Select(x => new Combinacao(p.Cpf, p.Nome, x.Codigo, x.Nome)))
             .ToListAsync(ct);
 
-        if (candidatos.Count == 0) return [];
-
-        var comSigtap = await mapeadorSigtap.ResolverConfirmadosAsync(
-            [.. candidatos.Select(c => c.Codigo).Distinct(StringComparer.Ordinal)], ct);
-
         return [.. candidatos
-            .Where(c => comSigtap.ContainsKey(c.Codigo))
             .OrderBy(c => c.Cpf, StringComparer.Ordinal)
             .ThenBy(c => c.Codigo, StringComparer.Ordinal)];
     }
@@ -639,15 +680,11 @@ public sealed class VarreduraAgendaService(
     private async Task<VarreduraAgendaDto> MontarAgendaDtoAsync(
         Unidade unidade, SisregVarreduraAgenda? agenda, CancellationToken ct)
     {
-        var habilitados = await db.SisregProfissionaisUnidade.AsNoTracking()
+        var prontas = await db.SisregProfissionaisUnidade.AsNoTracking()
             .Where(p => p.UnidadeId == unidade.Id && p.Habilitado && !p.Ausente)
             .SelectMany(p => p.Procedimentos.Where(x => x.Habilitado && !x.Ausente).Select(x => x.Codigo))
-            .ToListAsync(ct);
+            .CountAsync(ct);
 
-        var comSigtap = await mapeadorSigtap.ResolverConfirmadosAsync(
-            [.. habilitados.Distinct(StringComparer.Ordinal)], ct);
-
-        var prontas = habilitados.Count(c => comSigtap.ContainsKey(c));
         var temCredencial = await db.SisregCredenciaisUnidade.AsNoTracking()
             .AnyAsync(c => c.UnidadeId == unidade.Id && c.Ativo, ct);
 
@@ -662,7 +699,6 @@ public sealed class VarreduraAgendaService(
             agenda?.UltimaExecucaoEm,
             agenda?.FalhasConsecutivas ?? 0,
             prontas,
-            habilitados.Count - prontas,
             // +1 do double-check de unidade; páginas extras entram por cima.
             prontas + 1,
             _opcoes.TetoPorExecucao,

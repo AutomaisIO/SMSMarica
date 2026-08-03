@@ -71,16 +71,6 @@ export function MapeamentoSisregSecao({ unidadeId, podeEditar }: Props) {
     });
   }, [dados, filtro, soHabilitados]);
 
-  /** Habilitados que a varredura vai pular por falta do de-para SIGTAP. */
-  const semSigtap = useMemo(
-    () =>
-      (dados?.profissionais ?? [])
-        .filter((p) => p.habilitado)
-        .flatMap((p) => p.procedimentos)
-        .filter((proc) => proc.habilitado && proc.sigtapPendente).length,
-    [dados],
-  );
-
   async function executar(acao: () => Promise<unknown>, sucesso: (r: unknown) => string) {
     setAviso(null);
     try {
@@ -230,17 +220,6 @@ export function MapeamentoSisregSecao({ unidadeId, podeEditar }: Props) {
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             Nenhum paciente desta unidade receberá confirmação por WhatsApp ao ser importado —
             nem pela varredura, nem por arquivo.
-          </p>
-        )}
-
-        {semSigtap > 0 && (
-          <p className="flex items-start gap-2 border-b border-amber-100 bg-amber-50 px-4 py-2 text-sm text-amber-800">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>
-              <strong>{semSigtap}</strong> procedimentos habilitados ainda não têm código SIGTAP
-              confirmado e <strong>não serão varridos</strong>. A agenda do SISREG não informa
-              SIGTAP; sem ele a solicitação nasceria sem categoria e sem worklist.
-            </span>
           </p>
         )}
 
@@ -451,21 +430,6 @@ function LinhaProfissional({
                     title="Grupo: a consulta já traz os itens individuais — habilitar os dois duplica requisição"
                   >
                     grupo
-                  </span>
-                )}
-                {proc.sigtapPendente ? (
-                  <span
-                    className="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800"
-                    title="Sem código SIGTAP confirmado, este procedimento NÃO entra na varredura: a agenda do SISREG não informa SIGTAP, e sem ele a solicitação nasceria sem categoria e sem worklist."
-                  >
-                    sem SIGTAP
-                  </span>
-                ) : (
-                  <span
-                    className="rounded bg-emerald-50 px-1.5 py-0.5 font-mono text-xs text-emerald-700"
-                    title="Código SIGTAP confirmado no de-para"
-                  >
-                    {proc.codigoSigtap}
                   </span>
                 )}
                 {proc.ausente && (

@@ -147,3 +147,26 @@ export type ImportacaoLoteAceito = {
   /** Ignorados por extensão (não .txt/.csv) — nem foram lidos, não viram erro. */
   arquivosIgnorados: string[];
 };
+
+/**
+ * Pendências de SIGTAP agrupadas por procedimento. Uma varredura sem mapeamento gera uma pendência
+ * por solicitação — todas com a mesma causa e a mesma correção.
+ */
+export type PendenciaSigtapAgrupada = {
+  procedimentoTexto: string;
+  /** O código do procedimento no SISREG (o `pa`). */
+  codigoSisreg: string | null;
+  /** Linha do catálogo a mapear. Null = código ainda não catalogado (rode "Atualizar mapeamento"). */
+  deParaId: string | null;
+  solicitacoes: number;
+  primeiraEm: string;
+  ultimaEm: string;
+};
+
+export type ReprocessoLoteResultado = {
+  total: number;
+  importadas: number;
+  /** Continuam pendentes por OUTRO motivo (paciente sem CNS, CPF não resolvido…). */
+  continuam: number;
+  mensagem: string;
+};

@@ -7,6 +7,8 @@ import type {
   ImportacaoFalhaReprocessoResultado,
   ImportacaoLoteAceito,
   ImportacaoPreviewResultado,
+  PendenciaSigtapAgrupada,
+  ReprocessoLoteResultado,
   StatusLote,
 } from '@/features/importacao-sisreg/types';
 
@@ -93,5 +95,26 @@ export async function listarExecucoesImportacao(limite = 100): Promise<Importaca
   const { data } = await http.get<ImportacaoExecucao[]>('/sisreg/importacao/execucoes', {
     params: { limite },
   });
+  return data;
+}
+
+/**
+ * Pendências de SIGTAP agrupadas por PROCEDIMENTO. Uma varredura sem mapeamento gera uma pendência
+ * por solicitação, todas com a mesma causa e a mesma correção — agrupadas, viram a fila de
+ * trabalho de quem vai mapear, em vez de ruído que esconde as pendências individuais.
+ */
+export async function listarPendenciasSigtap(): Promise<PendenciaSigtapAgrupada[]> {
+  const { data } = await http.get<PendenciaSigtapAgrupada[]>('/sisreg/importacao/falhas/sigtap');
+  return data;
+}
+
+/** Revalida TODAS as pendências de um procedimento — o par do mapeamento. ESCRITA. */
+export async function reprocessarPendenciasSigtap(
+  procedimentoTexto: string,
+): Promise<ReprocessoLoteResultado> {
+  const { data } = await http.post<ReprocessoLoteResultado>(
+    '/sisreg/importacao/falhas/sigtap/reprocessar',
+    { procedimentoTexto },
+  );
   return data;
 }

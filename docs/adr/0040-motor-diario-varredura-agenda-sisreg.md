@@ -35,22 +35,37 @@ checkboxes: **eles são a régua de custo**.
 Referência funcional portada: `Automais.SISREG/extrair_agenda_unidade.py`. Rendimento medido no
 CDT: 92 profissionais → 256 combinações → **352 requisições → 753 agendamentos em 47s**.
 
-### 2. Sem código SIGTAP confirmado, o procedimento não é varrido
+### 2. O código do SISREG é filtro; o SIGTAP se resolve na importação
 
 A agenda entrega o `pa` (código interno do SISREG, 7 dígitos), **nunca o SIGTAP**. Sem SIGTAP,
 `ExecutarMarcacaoAsync` resolve `CategoriaSigtap.Resolver("")` → `Outro`, não cria satélite de
-imagem, não gera worklist — e **cria a solicitação como sucesso**. Seria lixo silencioso em escala
-de centenas por dia, invisível em qualquer tela.
+imagem, não gera worklist — e **cria a solicitação como sucesso**. Seria lixo silencioso.
 
-Por isso existe `sisreg_procedimento_sigtap`: um de-para **global, chaveado pelo `pa`** (que é
-identificador nacional), com sugestão automática por nome e confirmação do operador. Procedimento
-habilitado sem SIGTAP confirmado é excluído da varredura e, se chegar marcação assim, vira
-pendência `SigtapNaoMapeado` — acionável: confirmar o de-para uma vez resolve todas as pendências
-daquele procedimento.
+A primeira versão tratava isso com um portão: procedimento sem de-para confirmado não era varrido.
+**Foi descartado.** Obrigava a mapear procedimento que talvez nunca tivesse agendamento (116 no
+CDT), e — pior — atribuía errado: varrendo por um `GRUPO - MAMOGRAFIA`, todos os agendamentos
+seriam carimbados com o procedimento do grupo, misturando unilateral e bilateral.
 
-**A heurística nunca auto-confirma abaixo de igualdade exata de nome.** SIGTAP errado não estoura
-em lugar nenhum: vira worklist errada, exame errado no PACS e laudo no lugar errado, semanas
-depois.
+O desenho vigente: **o `pa` é só o filtro da varredura — o que consultar. Quem diz o que o exame é
+de verdade é o próprio agendamento**, que traz o procedimento individual na listagem. A resolução
+acontece na importação, nesta ordem:
+
+1. nome do procedimento do registro, casado **exatamente** com o catálogo SIGTAP oficial;
+2. de-para confirmado para o `pa` consultado (ignorado quando a consulta foi por grupo);
+3. sem resolver → pendência `SigtapNaoMapeado` no histórico de erro de importação.
+
+Isso torna seguro varrer por grupo e faz o mapeamento ser **orientado a demanda**: só se mapeia o
+que de fato apareceu na agenda.
+
+**Nunca há resolução automática abaixo de igualdade exata de nome** — nem por semelhança, nem
+quando dois SIGTAPs compartilham o mesmo nome normalizado (aí vira pendência e loga
+`SIGTAP_NOME_AMBIGUO`). SIGTAP errado não estoura em lugar nenhum: vira worklist errada, exame
+errado no PACS e laudo no lugar errado, semanas depois.
+
+Como a pendência é por solicitação e a correção é por procedimento, a aba de Erros agrupa as de
+causa `SigtapNaoMapeado` por procedimento — 1 linha "MAMOGRAFIA BILATERAL — 200 solicitações" — com
+mapeamento e revalidação em lote. Sem isso, resolver 200 pendências idênticas seria clicar 200
+vezes, e elas afogariam as pendências que exigem olhar caso a caso.
 
 ### 3. A ingestão é aditiva — o caminho do TXT não muda
 

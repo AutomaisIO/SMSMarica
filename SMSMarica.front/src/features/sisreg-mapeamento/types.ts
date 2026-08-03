@@ -10,13 +10,9 @@ export type SisregProcedimento = {
   /** Sumiu da última atualização vinda do SISREG. */
   ausente: boolean;
   /** SIGTAP confirmado no de-para (só dígitos). Null = pendente. */
-  codigoSigtap: string | null;
-  /**
-   * Sem SIGTAP confirmado o procedimento NÃO entra na varredura, mesmo habilitado: a agenda do
-   * SISREG não informa SIGTAP, e sem ele a solicitação nasceria sem categoria e sem worklist.
-   */
-  sigtapPendente: boolean;
-  /** Id no catálogo global — é por ele que se confirma o de-para SIGTAP (esse sim é nacional). */
+  // O SIGTAP não vem aqui: este código é só o FILTRO da varredura. O procedimento de verdade é
+  // resolvido na importação, a partir do que cada agendamento informa.
+  /** Id no catálogo global de procedimentos do SISREG. */
   deParaId: string | null;
   /** Importar este procedimento NESTA unidade avisa o paciente por WhatsApp. Decisão da unidade. */
   enviarConfirmacao: boolean;
@@ -123,10 +119,8 @@ export type VarreduraAgenda = {
   pausadoAte: string | null;
   ultimaExecucaoEm: string | null;
   falhasConsecutivas: number;
-  /** Pares habilitados COM SIGTAP confirmado — o que de fato será varrido. */
+  /** Pares habilitados — o que será varrido. O SIGTAP é resolvido depois, na importação. */
   combinacoesProntas: number;
-  /** Habilitados de fora por falta do de-para. > 0 significa cobertura incompleta. */
-  combinacoesSemSigtap: number;
   requisicoesEstimadas: number;
   tetoPorExecucao: number;
   janelaInicioLocal: string;

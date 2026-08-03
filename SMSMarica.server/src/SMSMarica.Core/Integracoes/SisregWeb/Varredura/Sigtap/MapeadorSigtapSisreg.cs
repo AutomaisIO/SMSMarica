@@ -29,6 +29,18 @@ public interface IMapeadorSigtapSisreg
     /// <summary>SIGTAP (só dígitos) CONFIRMADO para um código do SISREG. Null = ainda não mapeado.</summary>
     Task<string?> ResolverConfirmadoAsync(string codigoSisreg, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// SIGTAP a partir do NOME do procedimento como o agendamento o informa. É a resolução
+    /// principal: o código do SISREG usado na consulta é só o filtro da varredura — quem diz o que
+    /// o exame é de verdade é o próprio registro. Assim, varrer por um "GRUPO -" não carimba todos
+    /// os agendamentos com o procedimento do grupo.
+    ///
+    /// <para><b>Só nome idêntico</b> (depois de normalizar). "MAMOGRAFIA BILATERAL" e "MAMOGRAFIA
+    /// BILATERAL PARA RASTREAMENTO" são SIGTAPs diferentes com nomes vizinhos: um palpite aqui não
+    /// dá erro em lugar nenhum — dá worklist errada e laudo no exame errado, semanas depois.</para>
+    /// </summary>
+    Task<string?> ResolverPorNomeExatoAsync(string? nomeProcedimento, CancellationToken cancellationToken);
+
     /// <summary>Versão em lote: código do SISREG → SIGTAP confirmado. Só entram os confirmados.</summary>
     Task<IReadOnlyDictionary<string, string>> ResolverConfirmadosAsync(
         IReadOnlyCollection<string> codigosSisreg, CancellationToken cancellationToken);
@@ -186,6 +198,39 @@ public sealed class MapeadorSigtapSisreg(
             x => new ProcedimentoCatalogoInfo(
                 x.Id, x.CodigoSigtap, x.ConfirmadoEm is not null),
             StringComparer.Ordinal);
+    }
+
+    public async Task<string?> ResolverPorNomeExatoAsync(
+        string? nomeProcedimento, CancellationToken cancellationToken)
+    {
+        var alvo = SugestaoSigtap.Normalizar(nomeProcedimento ?? string.Empty);
+        if (alvo.Length == 0) return null;
+
+        // Normalização (acento, pontuação, prefixo "GRUPO -") não tem equivalente em SQL aqui —
+        // pg_trgm/unaccent não cobrem o mesmo conjunto de regras. O catálogo tem alguns milhares
+        // de linhas; comparar em memória custa menos que manter duas implementações divergentes.
+        var catalogo = await db.ProcedimentosSigtap.AsNoTracking()
+            .Where(p => p.Ativo)
+            .Select(p => new { p.Codigo, p.Nome })
+            .ToListAsync(cancellationToken);
+
+        var achados = catalogo
+            .Where(p => string.Equals(SugestaoSigtap.Normalizar(p.Nome), alvo, StringComparison.Ordinal))
+            .Select(p => SoDigitos(p.Codigo))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        if (achados.Count == 1) return achados[0];
+
+        if (achados.Count > 1)
+        {
+            // Dois SIGTAPs com o mesmo nome normalizado: escolher um seria sortear. Vira pendência.
+            logger.LogWarning(
+                "SIGTAP_NOME_AMBIGUO: \"{Nome}\" casa com {Qtd} procedimentos SIGTAP ({Codigos}) — "
+                + "sem resolucao automatica.", nomeProcedimento, achados.Count, string.Join(", ", achados));
+        }
+
+        return null;
     }
 
     public async Task<IReadOnlyList<string>> ResolverCodigosPorSigtapAsync(

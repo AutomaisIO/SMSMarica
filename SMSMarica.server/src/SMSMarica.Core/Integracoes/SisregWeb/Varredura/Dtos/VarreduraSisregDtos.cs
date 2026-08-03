@@ -14,12 +14,9 @@ public sealed record VarreduraAgendaDto(
     DateTime? PausadoAte,
     DateTime? UltimaExecucaoEm,
     int FalhasConsecutivas,
-    /// <summary>Pares profissional × procedimento habilitados COM SIGTAP confirmado — o que de
-    /// fato será varrido.</summary>
+    /// <summary>Pares profissional × procedimento habilitados — o que será varrido. O SIGTAP não
+    /// entra aqui: ele é resolvido na importação, a partir do procedimento de cada agendamento.</summary>
     int CombinacoesProntas,
-    /// <summary>Habilitados que estão de fora por falta do de-para SIGTAP. Se isto for &gt; 0, o
-    /// operador precisa saber ANTES de concluir que a unidade está coberta.</summary>
-    int CombinacoesSemSigtap,
     /// <summary>Estimativa de requisições da próxima varredura, para comparar com o teto.</summary>
     int RequisicoesEstimadas,
     int TetoPorExecucao,

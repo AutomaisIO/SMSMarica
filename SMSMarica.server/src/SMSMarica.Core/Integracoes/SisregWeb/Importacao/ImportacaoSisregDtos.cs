@@ -58,6 +58,34 @@ public sealed record ImportacaoPreviewResultado(
     int Rejeitadas);
 
 /// <summary>Uma linha do SISREG que não virou solicitação, como aparece na lista de erros.</summary>
+/// <summary>
+/// Pendências de SIGTAP agrupadas por PROCEDIMENTO. Uma varredura de mamografia com 200
+/// agendamentos e sem mapeamento gera 200 pendências — todas com a mesma causa e a mesma
+/// correção. Listadas uma a uma, inundam a aba de Erros e escondem as pendências que são
+/// realmente individuais (paciente sem CNS, CPF não resolvido).
+/// </summary>
+/// <param name="CodigoSisreg">O <c>pa</c> — pode variar entre as pendências do mesmo nome quando
+/// a varredura passou por um "GRUPO -" e pelo item individual.</param>
+public sealed record PendenciaSigtapAgrupadaDto(
+    string ProcedimentoTexto,
+    string? CodigoSisreg,
+    /// <summary>Linha do catálogo a mapear. NULL quando o código não foi catalogado — nesse caso
+    /// a correção é rodar "Atualizar mapeamento" na unidade antes.</summary>
+    Guid? DeParaId,
+    int Solicitacoes,
+    DateTime PrimeiraEm,
+    DateTime UltimaEm);
+
+/// <summary>Qual procedimento revalidar em lote.</summary>
+public sealed record ReprocessarSigtapRequest(string ProcedimentoTexto);
+
+/// <summary>Resultado de revalidar em lote as pendências de um procedimento.</summary>
+public sealed record ReprocessoLoteResultado(
+    int Total,
+    int Importadas,
+    int Continuam,
+    string Mensagem);
+
 public sealed record ImportacaoFalhaDto(
     Guid Id,
     string? CodigoSolicitacao,
