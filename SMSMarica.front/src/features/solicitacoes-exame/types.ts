@@ -100,6 +100,12 @@ export type SolicitacaoExame = {
   dataEstudo: string | null;
   /** Linha crua do TXT do SISREG que originou a solicitação (proveniência). Null se não veio de import. */
   rawSisreg: string | null;
+
+  /** Equipamento (estação) de destino no PACS — define o AE Title/WorklistLabel do item MWL.
+   *  Null enquanto não escolhido/deduzido. Alvo da troca de destino (ticket #72). */
+  equipamentoId: string | null;
+  equipamentoNome: string | null;
+  equipamentoAeTitle: string | null;
 };
 
 export type SolicitacaoExameListItem = {

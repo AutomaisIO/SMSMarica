@@ -1061,6 +1061,7 @@ public sealed class SolicitacoesExameService(
     {
         return await _db.ExamesImagem.AsNoTracking()
             .Include(e => e.TipoExame)
+            .Include(e => e.Equipamento)
             .Include(e => e.Solicitacao!).ThenInclude(so => so.UnidadeExecutante)
             .Include(e => e.Solicitacao!).ThenInclude(so => so.UnidadeSolicitante)
             .Where(e => e.ExcluidoEm == null && e.Solicitacao!.ExcluidoEm == null)

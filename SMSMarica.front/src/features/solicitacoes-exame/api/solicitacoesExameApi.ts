@@ -76,6 +76,16 @@ export async function reenviarWorklist(id: string): Promise<void> {
   await http.post(`/solicitacoes-exame/${id}/reenviar-worklist`);
 }
 
+/**
+ * Troca a estação (equipamento) de destino de um exame já enviado à worklist (ticket #72).
+ * O servidor consulta o dcm4chee, exclui e confirma a remoção do item na sala antiga e só então
+ * recria no novo destino. Responde 409 quando o exame já foi executado, o destino é inválido/
+ * inalterado ou o PACS recusa/cai.
+ */
+export async function alterarEquipamentoDestino(id: string, equipamentoId: string): Promise<void> {
+  await http.post(`/solicitacoes-exame/${id}/alterar-equipamento`, { equipamentoId });
+}
+
 export async function excluirSolicitacao(id: string, force = false): Promise<void> {
   await http.delete(`/solicitacoes-exame/${id}`, { params: force ? { force: true } : undefined });
 }
