@@ -17,6 +17,7 @@ import {
   useSalvarAgendaPep,
   useStatusPep,
 } from '@/features/pep-sincronizacao/api/queries';
+import { QuadroMotores } from '@/features/pep-sincronizacao/components/QuadroMotores';
 import { SecaoDivergencias } from '@/features/pep-sincronizacao/components/SecaoDivergencias';
 import type {
   EscopoSincronizacao,
@@ -353,6 +354,8 @@ export function PepSincronizacaoPage() {
           hub FHIR. Roda em segundo plano; acompanhe o progresso e os tempos abaixo.
         </p>
       </header>
+
+      <QuadroMotores status={status.data} fonteSelecionada={fonteId} aoSelecionar={setFonteId} />
 
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <form onSubmit={aoIniciar} className="space-y-5">
