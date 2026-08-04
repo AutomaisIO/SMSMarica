@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Klinikos → FHIR: levantamento e de-para (03/08/2026)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>Klinikos → FHIR: levantamento e de-para (03/08/2026)</h1>
+<p>&gt; <strong>Como isto foi feito.</strong> Tudo aqui foi <strong>medido ao vivo</strong> contra a instância da <strong>UPA Maricá</strong> &gt; (SQL Server, base <code>UPA24H</code>) pelo proxy SQL interno (<code>/root/pq.sh upa24h-marica-sqlserver</code>), em &gt; 03/08/2026. Nada é presumido a partir de documentação do fornecedor. Onde não deu para medir, &gt; está escrito que não deu. &gt; &gt; <strong>PII fica fora deste arquivo.</strong> As consultas devolvem nome de paciente; nenhum entrou aqui. &gt; &gt; Este documento substitui a referência quebrada que o &gt; <a href="../integracoes/plano-sincronismo-hub.md">plano de sincronismo</a> apontava — a versão de 26/07 &gt; nunca foi commitada.</p>
+<hr>
+<h2>1. As duas instâncias</h2>
+<p>O Klinikos assumiu a <strong>UPA Inoã</strong> e o <strong>PA Santa Rita</strong> em <strong>07/04/2025</strong> (data do primeiro boletim medido), substituindo o Salux. O <strong>Conde</strong> ainda é Salux e migrará.</p>
+<div class="tw"><table><thead><tr><th>Instância</th><th>Slug da base</th><th>Estado em 03/08</th></tr></thead><tbody>
+<tr><td>UPA Maricá</td><td><code>upa24h-marica-sqlserver</code></td><td>agente WSS <strong>conectado</strong>, tudo abaixo medido aqui</td></tr>
+<tr><td>PA Santa Rita</td><td><code>santarita-marica-sqlserver</code></td><td>agente <strong>offline</strong> — "não está conectado". Estrutura declarada idêntica; <strong>não medida</strong></td></tr>
+</tbody></table></div>
+<p>&gt; <strong>Ponta aberta P1.</strong> Enquanto o agente de Santa Rita não subir, o censo daquela instância é &gt; desconhecido. O conector é por instância (slug próprio), então Santa Rita pode entrar depois &gt; sem tocar no que já roda.</p>
+<hr>
+<h2>2. A unidade: a ponte do CNES existe e fecha</h2>
+<p>Esta era a pergunta que o <a href="../adr/0039-unidade-de-saude-eixo-duravel.md">ADR-0039</a> precisava responder antes de casar unidade por CNES: <strong>a UPA do Klinikos e a UPA do Salux são a mesma unidade real?</strong></p>
+<div class="tw"><table><thead><tr><th></th><th>Salux (<code>infosaude.hospital</code>)</th><th>Klinikos (<code>unidade</code>)</th></tr></thead><tbody>
+<tr><td>Chave interna</td><td><code>cd_hospital</code> = 2</td><td><code>unid_codigo</code> = <code>0006</code></td></tr>
+<tr><td>Nome</td><td><code>UPA 24H INOÃ</code></td><td><code>UPA MARICA</code></td></tr>
+<tr><td><strong>CNES</strong></td><td><strong>7164440</strong></td><td><strong>7164440</strong></td></tr>
+</tbody></table></div>
+<p><strong>Fecha.</strong> Nome divergente, unidade idêntica — exatamente o cenário que o ADR previu e a razão pela qual o nome não pode ser chave. O upsert de <code>Organization</code> casa por CNES antes de criar, e os dois códigos internos acumulam como <code>identifier</code> no mesmo recurso.</p>
+<p><strong>Atenção à coluna certa:</strong> o CNES está em <code>unidade.unid_codigoCNES</code>. Existe também <code>unidade.unidade_municipioCNES</code>, que está <strong>vazia</strong> — não é essa.</p>
+<p>O CNPJ (<code>unid_cgc</code> = <code>42498717011351</code>) é da mantenedora, não da unidade; não serve de âncora.</p>
+<hr>
+<h2>3. O que está vivo e o que está morto</h2>
+<p>Esta é a correção mais importante do levantamento. O Klinikos tem <strong>1.604 tabelas</strong> e boa parte do modelo de emergência <strong>não é usada nesta implantação</strong>. Mapear pelo nome da tabela levaria a um conector que lê tabelas vazias e conclui que a UPA não atende ninguém.</p>
+<div class="tw"><table><thead><tr><th>Tabela</th><th>Linhas</th><th>Veredicto</th></tr></thead><tbody>
+<tr><td><code>Pronto_Atendimento</code></td><td><strong>179.522</strong></td><td><strong>VIVA</strong> — é o boletim. Toda a jornada pendura aqui (<code>spa_codigo</code>)</td></tr>
+<tr><td><code>UPA_Evolucao</code></td><td><strong>644.732</strong></td><td><strong>VIVA</strong> — é o registro clínico: nota, CID, sinais, prescrição</td></tr>
+<tr><td><code>UPA_SinaisVitais</code></td><td><strong>382.590</strong></td><td><strong>VIVA</strong> — sinais vitais colunados</td></tr>
+<tr><td><code>paciente</code></td><td>83.878</td><td><strong>VIVA</strong></td></tr>
+<tr><td><code>profissional</code></td><td>495</td><td><strong>VIVA</strong> (485 ativos)</td></tr>
+<tr><td><code>Emergencia</code></td><td><strong>0</strong></td><td>morta — o módulo de emergência não é usado</td></tr>
+<tr><td><code>Atendimento_Emergencia</code></td><td><strong>0</strong></td><td>morta — <strong>é aqui que estaria o CID</strong>, se o módulo fosse usado</td></tr>
+<tr><td><code>atendimento_spa</code></td><td><strong>0</strong></td><td>morta — o atendimento médico <strong>não</strong> mora aqui</td></tr>
+<tr><td><code>Internacao</code></td><td>—</td><td>parada desde 25/01/2026 (medido em 26/07)</td></tr>
+</tbody></table></div>
+<p><strong>Consequência de projeto:</strong> o atendimento médico e o CID <strong>não</strong> vêm de uma tabela de atendimento. Vêm da <strong>evolução</strong>. O conector precisa reconstruir o Encounter a partir do boletim e derivar diagnóstico das linhas de <code>UPA_Evolucao</code>.</p>
+<h3>3.1 A anatomia da evolução</h3>
+<p><code>UPA_Evolucao.Tipo</code> diz o que cada linha é:</p>
+<div class="tw"><table><thead><tr><th><code>Tipo</code></th><th>Linhas</th><th>Com CID primário</th><th>Boletins distintos</th><th>Papel no FHIR</th></tr></thead><tbody>
+<tr><td>REAVALIAÇÃO</td><td>184.222</td><td>176.724</td><td>153.911</td><td>Condition (atualiza) + nota</td></tr>
+<tr><td>INÍCIO DO ATENDIMENTO MÉDICO</td><td>165.777</td><td>139.000</td><td>165.777</td><td><strong>início do atendimento</strong> — 1 por boletim</td></tr>
+<tr><td>RECEITA</td><td>141.917</td><td>0</td><td>130.462</td><td>MedicationRequest (texto)</td></tr>
+<tr><td>PRESCRIÇÃO</td><td>100.506</td><td>0</td><td>82.169</td><td>MedicationRequest (texto)</td></tr>
+<tr><td>EVOLUÇÃO DE ENFERMAGEM</td><td>19.225</td><td>0</td><td>2.194</td><td>DocumentReference</td></tr>
+<tr><td>EVOLUÇÃO</td><td>19.054</td><td>14</td><td>2.135</td><td>DocumentReference</td></tr>
+<tr><td>EVOLUÇÃO MÉDICA</td><td>10.971</td><td>699</td><td>3.108</td><td>DocumentReference</td></tr>
+<tr><td>ESTORNO</td><td>1.529</td><td>0</td><td>1.355</td><td><strong>ignorar</strong> — é anulação</td></tr>
+<tr><td>ENTRADA NA SALA AMARELA</td><td>1.105</td><td>1.105</td><td>1.047</td><td><code>statusHistory</code></td></tr>
+<tr><td>ENTRADA NA SALA VERMELHA</td><td>338</td><td>338</td><td>324</td><td><code>statusHistory</code></td></tr>
+<tr><td>PARECER SOLICITADO</td><td>59</td><td>0</td><td>58</td><td>DocumentReference</td></tr>
+<tr><td>PROTOCOLO DENGUE</td><td>32</td><td>0</td><td>32</td><td>DocumentReference</td></tr>
+</tbody></table></div>
+<p><strong>165.777 dos 179.522 boletins (92,3%)</strong> chegaram a ter atendimento médico iniciado. Os ~13,7 mil restantes são evasão/desistência — e <strong>têm de entrar como Encounter mesmo assim</strong>, com status próprio: o paciente esteve lá, e isso é informação clínica.</p>
+<hr>
+<h2>4. Identidade do paciente — o número que preocupava</h2>
+<div class="tw"><table><thead><tr><th></th><th>Total</th><th>%</th></tr></thead><tbody>
+<tr><td>Pacientes no cadastro</td><td>83.878</td><td>100%</td></tr>
+<tr><td>Com CPF</td><td>69.713</td><td>83,1%</td></tr>
+<tr><td>Com CNS no cadastro</td><td>132</td><td><strong>0,16%</strong></td></tr>
+<tr><td><strong>Sem CPF e sem CNS</strong></td><td><strong>14.152</strong></td><td><strong>16,9%</strong></td></tr>
+<tr><td>Com data de nascimento</td><td>83.855</td><td>99,97%</td></tr>
+</tbody></table></div>
+<p>O CNS do cadastro é praticamente inexistente — a premissa antiga de que "o CNS mora em <code>Paciente_CNS</code>" é falsa, e a coluna <code>pac_cartao_nsaude</code> também não é preenchida na prática.</p>
+<p><strong>Os 14.152 são reais e foram atendidos: todos os 14.152 têm pelo menos um boletim.</strong> Não é lixo de cadastro; são pessoas que passaram pela UPA.</p>
+<p>Tentativas de resgate, medidas:</p>
+<div class="tw"><table><thead><tr><th>Caminho</th><th>Resgata</th><th>Sobra</th></tr></thead><tbody>
+<tr><td>CNS capturado no boletim (<code>spa_cartao_nsaude</code>)</td><td>863 (6,1%)</td><td>13.289</td></tr>
+<tr><td>CNS provisório (<code>pac_cartao_nsaude_provisorio</code>)</td><td>859</td><td>~13.3 mil</td></tr>
+</tbody></table></div>
+<p>Os dois caminhos se sobrepõem quase inteiramente. <strong>Não há resgate em massa</strong> — o dado simplesmente não foi coletado no atendimento.</p>
+<p><strong>Decisão aplicada</strong> (a mesma já em produção para o Salux): esses pacientes <strong>entram no hub</strong>, identificados por <code>identifier</code> local da base, e marcados com <code>meta.tag</code> = <code>urn:smsmarica:qualidade|identidade-incompleta</code>. O painel mostra o selo "sem CPF" ao lado do nome. Não entram no merge canônico por CPF — não há como deduplicá-los com segurança, e forçar dedup por nome+nascimento é o caminho mais rápido para fundir dois pacientes distintos.</p>
+<p>&gt; <strong>CNS provisório: decidir.</strong> Os 17.361 CNS provisórios da base <strong>não</strong> são identificador &gt; nacional e não devem virar <code>identifier</code> de sistema CNS. Ficam de fora até alguém da operação &gt; dizer o que eles significam.</p>
+<p>Profissionais: 495 (485 ativos), CPF em 464, CNS em 322, nº de conselho em 360.</p>
+<hr>
+<h2>5. CDC: <code>rv_atualizacao</code> é o melhor watermark que temos</h2>
+<p>Quase toda tabela relevante tem <code>rv_atualizacao</code> (<code>timestamp</code>/<code>rowversion</code> do SQL Server): um <strong>bigint monotônico global</strong> que o banco incrementa em toda escrita, sem depender de o aplicativo lembrar de atualizar uma data.</p>
+<p>``<code>sql SELECT TOP 3 pac_codigo, CONVERT(BIGINT, rv_atualizacao) rv FROM paciente ORDER BY rv_atualizacao DESC -- 226712823 / 226712766 / 226712364 </code>``</p>
+<p>É <strong>estritamente melhor</strong> que o CDC do Salux (janela de 120 dias sobre <code>dt_atualizacao</code>, com lag de segurança): não tem fuso, não tem relógio, não tem registro que escapa por a origem não ter mexido na data. A marca d'água por fase vira um <code>long</code>, e o filtro é <code>WHERE rv_atualizacao &gt; @marca</code>.</p>
+<div class="tw"><table><thead><tr><th>Fase</th><th>Tabela</th><th>Coluna de corte</th></tr></thead><tbody>
+<tr><td>Unidades</td><td><code>unidade</code></td><td>(3 linhas — upsert integral todo ciclo)</td></tr>
+<tr><td>Profissionais</td><td><code>profissional</code></td><td><code>rv_atualizacao</code></td></tr>
+<tr><td>Pacientes</td><td><code>paciente</code></td><td><code>rv_atualizacao</code></td></tr>
+<tr><td>Atendimentos</td><td><code>Pronto_Atendimento</code></td><td><code>rv_atualizacao</code></td></tr>
+<tr><td>Clínico</td><td><code>UPA_Evolucao</code></td><td><code>rv_atualizacao</code></td></tr>
+<tr><td>Sinais vitais</td><td><code>UPA_SinaisVitais</code></td><td><code>rv_atualizacao</code></td></tr>
+</tbody></table></div>
+<p>&gt; <strong>Impacto no modelo compartilhado.</strong> <code>MarcaDagua</code> hoje só tem campos <code>DateTime?</code>. Precisa de &gt; campos <code>long?</code> por fase para o Klinikos. Os nomes já foram neutralizados &gt; (<code>AtendimentoEm</code>, <code>DocumentoEm</code>…) — falta a variante numérica.</p>
+<hr>
+<h2>6. De-para por recurso</h2>
+<p>Sistema base dos identifiers internos: <code>urn:klinikos:&lt;entidade&gt;</code>, valor prefixado pelo slug da instância (<code>upa24h-marica:0006</code>) — duas instâncias nunca colidem.</p>
+<h3>Organization ← <code>unidade</code></h3>
+<div class="tw"><table><thead><tr><th>FHIR</th><th>Origem</th><th>Nota</th></tr></thead><tbody>
+<tr><td><code>identifier[CNES]</code></td><td><code>unid_codigoCNES</code></td><td>ponte entre bases (§2)</td></tr>
+<tr><td><code>identifier[interno]</code></td><td><code>unid_codigo</code></td><td><code>upa24h-marica:0006</code></td></tr>
+<tr><td><code>name</code></td><td><code>unid_descricao</code></td><td>"UPA MARICA"</td></tr>
+<tr><td><code>alias</code></td><td><code>Unid_nome_fantasia</code>, <code>unid_sigla</code></td><td></td></tr>
+<tr><td><code>telecom</code></td><td><code>unid_telefone</code>, <code>unid_email</code></td><td></td></tr>
+</tbody></table></div>
+<h3>Practitioner ← <code>profissional</code></h3>
+<div class="tw"><table><thead><tr><th>FHIR</th><th>Origem</th></tr></thead><tbody>
+<tr><td><code>identifier[CPF]</code></td><td><code>PROF_CPF</code> (464/495)</td></tr>
+<tr><td><code>identifier[CNS]</code></td><td><code>PROF_CNS</code> (322/495)</td></tr>
+<tr><td><code>identifier[conselho]</code></td><td><code>PROF_NUMCONSELHO</code> (360/495)</td></tr>
+<tr><td><code>name</code></td><td><code>PROF_NOME</code></td></tr>
+<tr><td><code>active</code></td><td><code>PROF_ATIVO</code></td></tr>
+<tr><td><code>qualification.code</code></td><td><code>CBO_CODIGO</code></td></tr>
+</tbody></table></div>
+<h3>Patient ← <code>paciente</code></h3>
+<div class="tw"><table><thead><tr><th>FHIR</th><th>Origem</th><th>Nota</th></tr></thead><tbody>
+<tr><td><code>identifier[CPF]</code></td><td><code>pac_cpf</code></td><td>âncora do merge canônico</td></tr>
+<tr><td><code>identifier[interno]</code></td><td><code>pac_codigo</code></td><td>sempre presente</td></tr>
+<tr><td><code>name.text</code></td><td><code>pac_nome</code></td><td></td></tr>
+<tr><td><code>name[usual]</code></td><td><code>spa_nomesocial</code> (boletim)</td><td>nome social só existe no boletim</td></tr>
+<tr><td><code>birthDate</code></td><td><code>pac_nascimento</code></td><td></td></tr>
+<tr><td><code>gender</code></td><td><code>pac_sexo</code></td><td></td></tr>
+<tr><td><code>telecom</code></td><td><code>pac_telefone</code>, <code>pac_celular</code>, <code>pac_email</code></td><td><strong>nunca sobrescreve telefone verificado no hub</strong></td></tr>
+<tr><td><code>deceased</code></td><td><code>pac_dtobito</code> + <code>UPA_Obito</code></td><td><code>pac_obito</code> é morta; usar <code>UPA_Obito</code></td></tr>
+<tr><td><code>contact</code></td><td><code>pac_responsavel</code>, <code>pac_telefone_responsavel</code></td><td></td></tr>
+<tr><td><code>meta.tag</code></td><td>—</td><td><code>identidade-incompleta</code> quando sem CPF (§4)</td></tr>
+</tbody></table></div>
+<h3>Encounter ← <code>Pronto_Atendimento</code> (+ evolução)</h3>
+<div class="tw"><table><thead><tr><th>FHIR</th><th>Origem</th><th>Nota</th></tr></thead><tbody>
+<tr><td><code>identifier</code></td><td><code>spa_codigo</code></td><td>chave do boletim</td></tr>
+<tr><td><code>class</code></td><td>—</td><td><code>EMER</code> (é UPA 24h)</td></tr>
+<tr><td><code>subject</code></td><td><code>pac_codigo</code></td><td>FK real, 100% preenchida</td></tr>
+<tr><td><code>serviceProvider</code></td><td><code>unid_codigo</code> → Organization</td><td>ADR-0039</td></tr>
+<tr><td><code>period.start</code></td><td><code>spa_chegada</code></td><td></td></tr>
+<tr><td><code>participant</code></td><td><code>prof_codigo</code> da evolução de início</td><td></td></tr>
+<tr><td><code>statusHistory</code></td><td>entradas sala amarela/vermelha</td><td>de graça, o Salux não tem</td></tr>
+<tr><td><code>status</code></td><td>derivado</td><td><code>finished</code> com atendimento; sem evolução médica → não atendido</td></tr>
+</tbody></table></div>
+<h3>Condition ← <code>UPA_Evolucao.cid_codigo_primario</code> / <code>_secundario</code></h3>
+<p>Só das linhas com CID (INÍCIO, REAVALIAÇÃO, salas). A <strong>reavaliação</strong> pode mudar o CID — a última prevalece; as anteriores não somem, viram histórico da mesma Condition.</p>
+<h3>Observation ← <code>UPA_SinaisVitais</code></h3>
+<p>Colunas separadas (<code>pressaoarterial</code>, <code>pulso</code>, <code>temperatura</code>, <code>frequenciarespiratoria</code>, <code>hgt</code>, <code>saturacaoO2</code>, <code>peso</code>) — <strong>muito</strong> melhor que o EAV do eDoc do Salux. Cada uma vira uma Observation LOINC com <code>encounter</code> amarrado. A pressão vem como texto ("120/80") e precisa ser partida em sistólica/diastólica.</p>
+<h3>DocumentReference ← <code>UPA_Evolucao</code> (tipos narrativos)</h3>
+<p><code>upaevo_descricao</code> é o texto. Uma DocumentReference por linha de evolução, <code>type</code> derivado do <code>Tipo</code>. <strong><code>ESTORNO</code> não entra</strong> — é anulação, e importá-lo colocaria no prontuário um registro que a origem considera cancelado.</p>
+<h3>MedicationRequest ← <code>UPA_Evolucao</code> tipos RECEITA/PRESCRIÇÃO</h3>
+<p>Nesta implantação a prescrição é <strong>texto livre</strong> na evolução (242.423 linhas). A prescrição estruturada (<code>UPA_ITEM_PRESCRICAO_MEDICA</code> + <code>Item_Aprazamento</code>) existe no esquema mas precisa ser medida antes de prometer <code>Dosage</code> estruturado ou <code>MedicationAdministration</code>.</p>
+<p>&gt; <strong>Ponta aberta P2.</strong> Medir <code>UPA_ITEM_PRESCRICAO_MEDICA</code> e <code>Item_Aprazamento</code> nesta instância. &gt; Se estiverem vivas, destravam o <code>MedicationAdministration</code> (hoje vazio no hub) — que é a &gt; pendência mais antiga do BAU clínico.</p>
+<hr>
+<h2>7. O que o hub ainda não tem</h2>
+<p>O Klinikos não exige recurso novo para a Fase 1: Organization, Practitioner, Patient, Encounter, Condition, Observation, DocumentReference e MedicationRequest <strong>já existem</strong> no Automais.Fhir.</p>
+<p>Fica para depois, quando as pontas P2 e a alergia forem medidas: <code>AllergyIntolerance</code> (<code>Atendimento_Alergia</code>), <code>Procedure</code>, <code>ServiceRequest</code>, <code>DiagnosticReport</code>.</p>
+<hr>
+<h2>8. Transporte: o conector não fala com o banco</h2>
+<p>Diferença estrutural em relação ao Salux: <strong>não há rota de rede</strong> do servidor até o SQL Server da UPA. Tudo passa pelo <strong>agente WSS reverso</strong> (<a href="../adr/0023-bases-ia-por-agente-proxy.md">ADR-0023</a>), que já existe e está em produção para o módulo IA.</p>
+<p>Consequências para o conector:</p>
+<ol>
+<li>A estratégia usa <code>IFonteDados</code> (<code>ProxyAgenteFonte</code>), não uma conexão própria.</li>
+<li>O orquestrador hoje <strong>exige</strong> host/serviço/usuário/senha antes de rodar — uma base</li>
+</ol>
+<p>   <code>ViaAgente</code> não tem nada disso. Essa guarda precisa virar condicional.</p>
+<ol>
+<li>Os limites do módulo IA (<code>Ia:RowLimit</code> = 1.000, <code>Ia:TimeoutSegundos</code> = 30) são pequenos demais</li>
+</ol>
+<p>   para importação em lote. O conector precisa construir o proxy com limites próprios.</p>
+<ol>
+<li>T-SQL <strong>não tem tuple-IN</strong>. Onde o Salux faz <code>WHERE (a,b) IN (...)</code>, aqui vira <code>JOIN</code> com</li>
+</ol>
+<p>   <code>VALUES</code>. E o limite de 1.000 itens por <code>IN</code> do Oracle vira o limite de <strong>2.100 parâmetros</strong>    do SQL Server — o lote continua obrigatório, só muda o número.</p>
+<hr>
+<h2>9. Pontas abertas</h2>
+<div class="tw"><table><thead><tr><th>#</th><th>Ponta</th><th>Bloqueia?</th></tr></thead><tbody>
+<tr><td>P1</td><td>Agente de Santa Rita offline — instância não medida</td><td>não bloqueia a UPA</td></tr>
+<tr><td>P2</td><td>Prescrição estruturada / aprazamento não medidos nesta instância</td><td>não bloqueia a Fase 1</td></tr>
+<tr><td>P3</td><td>CNS provisório (17.361): o que significa?</td><td>não — ficam de fora até decidir</td></tr>
+<tr><td>P4</td><td><code>MarcaDagua</code> precisa de watermark numérica (<code>long?</code>) por fase</td><td><strong>bloqueia o conector</strong></td></tr>
+<tr><td>P5</td><td>Guarda de credencial do orquestrador rejeita base <code>ViaAgente</code></td><td><strong>bloqueia o conector</strong></td></tr>
+<tr><td>P6</td><td>Semântica dos códigos de administração de dose (<code>C</code>/<code>V</code>)</td><td>só quando P2 abrir</td></tr>
+<tr><td>P7</td><td>Internação: morta no Klinikos desde 25/01/2026. Se o Conde migrar como a UPA roda hoje, o hub <strong>perde a internação no dia do cutover</strong></td><td>não bloqueia hoje; <strong>bloqueia o cutover do Conde</strong></td></tr>
+</tbody></table></div>
+</main>
+</body>
+</html>

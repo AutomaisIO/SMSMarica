@@ -18,6 +18,7 @@ internal sealed class PepSincronizacaoEstadoConfiguration : IEntityTypeConfigura
         builder.Property(x => x.UltimoSyncDocumentoEm).HasColumnName("ultimo_sync_edoc_em");
         builder.Property(x => x.UltimoSyncInternacaoEm).HasColumnName("ultimo_sync_fia_em");
         builder.Property(x => x.UltimoSyncLogDocumentoId).HasColumnName("ultimo_sync_edoc_log_id");
+        builder.Property(x => x.PonteirosJson).HasColumnName("ponteiros_json").HasColumnType("jsonb");
         builder.Property(x => x.PacienteCursorCd).HasColumnName("paciente_cursor_cd");
         builder.Property(x => x.AtualizadoEm).HasColumnName("atualizado_em").IsRequired();
     }

@@ -34,6 +34,18 @@ public class PepSincronizacaoEstado
     public long? UltimoSyncLogDocumentoId { get; set; }
 
     /// <summary>
+    /// Ponteiros de CDC <b>numéricos</b> por fase, em JSON (<c>{"paciente": 226712823, ...}</c>).
+    /// Nem toda origem corta por data: o Klinikos tem <c>rv_atualizacao</c> (rowversion do SQL
+    /// Server) — um bigint monotônico global, estritamente melhor que data (não tem fuso, não
+    /// tem relógio, e nenhum registro escapa por a origem ter esquecido de atualizar a coluna).
+    ///
+    /// <para>É JSON, e não uma coluna por fase, porque o formato do ponteiro é <b>propriedade da
+    /// origem</b>, não do modelo: a terceira base pode chegar com LSN, SCN ou cursor composto.
+    /// Uma coluna por fase por base transformaria cada conector novo numa migration.</para>
+    /// </summary>
+    public string? PonteirosJson { get; set; }
+
+    /// <summary>
     /// Cursor de retomada do modo COMPLETO (escopo Tudo): <c>cd_paciente</c> do
     /// último bloco totalmente processado (paginação keyset, <c>cd_paciente DESC</c>).
     /// Gravado a cada bloco; permite retomar de onde parou após queda. Fica

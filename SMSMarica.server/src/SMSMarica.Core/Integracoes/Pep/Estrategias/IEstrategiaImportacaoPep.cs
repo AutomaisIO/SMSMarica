@@ -3,6 +3,7 @@ using SMSMarica.Core.Integracoes.Pep.Falhas;
 using SMSMarica.Core.Integracoes.Pep.Fhir;
 using SMSMarica.Core.Integracoes.Pep.Progresso;
 using SMSMarica.Data.Entities.Enums;
+using SMSMarica.Data.Entities.Ia;
 
 namespace SMSMarica.Core.Integracoes.Pep.Estrategias;
 
@@ -14,6 +15,19 @@ namespace SMSMarica.Core.Integracoes.Pep.Estrategias;
 public interface IEstrategiaImportacaoPep
 {
     TipoFonte Tipo { get; }
+
+    /// <summary>
+    /// Família de bases que esta estratégia atende (<c>IaFonte.Familia</c>), ou null para as
+    /// bases sem família. <see cref="Tipo"/> sozinho não basta como discriminador: ele diz o
+    /// <b>tipo de banco</b> (SQL Server), não o <b>produto de PEP</b> — dois prontuários
+    /// diferentes podem rodar sobre SQL Server, e um casaria com a estratégia do outro.
+    /// </summary>
+    string? Familia => null;
+
+    /// <summary>Esta estratégia atende esta base?</summary>
+    bool Atende(IaFonte fonte) =>
+        fonte.Tipo == Tipo
+        && string.Equals(fonte.Familia?.Trim(), Familia, StringComparison.OrdinalIgnoreCase);
 
     Task ImportarAsync(ContextoImportacaoPep contexto, CancellationToken ct);
 }
@@ -73,12 +87,44 @@ public sealed class MarcaDagua
     /// as tabelas de log não têm índice por data). Null = ainda não ancorado.
     /// </summary>
     public long? LogDocumentoId { get; set; }
+
+    /// <summary>
+    /// Ponteiros de CDC <b>numéricos</b> por fase, para origens que não cortam por data — o
+    /// Klinikos corta por <c>rv_atualizacao</c> (rowversion do SQL Server: bigint monotônico
+    /// global). A chave é o nome da fase (<c>"paciente"</c>, <c>"atendimento"</c>…); quem
+    /// escreve e quem lê é a mesma estratégia, então o vocabulário é dela.
+    /// </summary>
+    public Dictionary<string, long> Ponteiros { get; init; } = [];
+
+    /// <summary>Ponteiro da fase, ou <c>0</c> quando ainda não ancorado (traz tudo).</summary>
+    public long Ponteiro(string fase) => Ponteiros.TryGetValue(fase, out var v) ? v : 0;
+
+    /// <summary>Avança o ponteiro da fase — nunca retrocede, mesmo se a origem devolver fora de ordem.</summary>
+    public void AvancarPonteiro(string fase, long valor)
+    {
+        if (valor > Ponteiro(fase)) Ponteiros[fase] = valor;
+    }
 }
 
 /// <summary>Tudo que a estratégia precisa para rodar um run, mais o canal de progresso.</summary>
 public sealed class ContextoImportacaoPep
 {
-    public required ConexaoFonte Conexao { get; init; }
+    /// <summary>
+    /// Credenciais de conexão DIRETA à origem. Só faz sentido para bases que o servidor alcança
+    /// por rede (o Oracle do Salux, pelo túnel). Null nas bases atendidas por agente — ali quem
+    /// tem a credencial é o agente, no servidor de destino, e o smsmarica nunca a vê (ADR-0023).
+    /// </summary>
+    public ConexaoFonte? Conexao { get; init; }
+
+    /// <summary>
+    /// Transporte de consulta para bases <b>sem rota direta</b>: o SQL sai daqui, o agente WSS
+    /// executa lá e devolve as linhas. Null nas bases de conexão direta.
+    ///
+    /// <para>Exatamente uma das duas — <see cref="Conexao"/> ou esta — vem preenchida; a
+    /// estratégia sabe qual esperar, porque o transporte é característica da base que ela
+    /// atende, não uma escolha de runtime.</para>
+    /// </summary>
+    public Inteligencia.Fontes.IFonteDados? Consulta { get; init; }
     public required OpcoesImportacao Opcoes { get; init; }
     public required MarcaDagua Marca { get; init; }
     public required IHubFhirEscritor Escritor { get; init; }

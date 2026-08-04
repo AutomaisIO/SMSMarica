@@ -2,6 +2,7 @@
 using System.Globalization;
 using Hl7.Fhir.Model;
 using Microsoft.Extensions.Logging;
+using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Integracoes.Pep.Leitura;
 using SMSMarica.Data.Entities.Enums;
 
@@ -50,9 +51,13 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
             ctx.Falhas?.Registrar(cd, msg); // trilha durável + insumo do reimport direcionado
         }
 
+        var conexao = ctx.Conexao
+            ?? throw new ValidacaoException("pep.base_sem_conexao",
+                "O conector do Salux fala direto com o Oracle e precisa de host/serviço/usuário/senha.");
+
         await using var oracle = new LeitorOracleHis(
-            ctx.Conexao.Host, ctx.Conexao.Porta, ctx.Conexao.Servico,
-            ctx.Conexao.Usuario, ctx.Conexao.Senha, ctx.Conexao.TimeoutSegundos);
+            conexao.Host, conexao.Porta, conexao.Servico,
+            conexao.Usuario, conexao.Senha, conexao.TimeoutSegundos);
         p.FaseAtual = "conectando ao Oracle…";
         await oracle.AbrirAsync(ct, n => p.FaseAtual = n == 1
             ? "conectando ao Oracle…"

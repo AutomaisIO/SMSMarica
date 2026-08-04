@@ -16,13 +16,23 @@
 > | Fix do código FHIR na coluna de busca (`inprogress` → `in-progress`) | 02/08 |
 > | **Limpeza das duplicatas clínicas do legado — 12.357 linhas** | **03/08** |
 > | Reprocesso direcionado de divergências resolvidas | 03/08 |
+> | Expurgo dos tombstones (1.708.651 linhas; 311 preservadas por terem filho vivo) | 03/08 |
+> | **ADR-0039 — `Organization` no hub + `serviceProvider` nos Encounters** | **03/08** |
+> | **Conector Klinikos — Fase 1 (não ligado; a base não tem agenda)** | **03/08** |
 >
 > **A conciliação de identidade já pagou o investimento:** das 37 divergências arbitradas,
 > **5 apontaram o HUB como correto** — a origem insistia com data de nascimento errada (uma
 > delas com 3 anos de diferença) e o congelamento protegeu os cinco pacientes.
 >
-> **Aberto:** expurgo dos 1,7 M de tombstones (~14% de todas as tabelas, ~3,4 GB — item S9);
-> reimport dos 261 pares residuais da limpeza; alocar a unidade dos 5 usuários do fail-closed.
+> **ADR-0039 verificado em produção** (ciclo das 00:11 de 04/08): as 3 Organizations nasceram
+> com o CNES certo — Conde 2266733, UPA Inoã 7164440, Sta Rita 2266792 — e **156 de 156**
+> Encounters novos saíram com `serviceProvider`. E a ponte fechou: o Klinikos declara **7164440**
+> para a "UPA MARICA", o mesmo CNES que o Salux declara para a "UPA 24H INOÃ". Nome divergente,
+> unidade idêntica — exatamente o cenário que o ADR previu.
+>
+> **Aberto:** `VACUUM FULL` numa janela (o expurgo liberou espaço para reuso, não devolveu ao
+> disco); reimport dos 261 pares residuais da limpeza; alocar a unidade dos 4 usuários do
+> fail-closed; **agente de Santa Rita offline** — aquela instância segue sem censo.
 >
 > **Erro meu que vale registrar:** classifiquei o risco do legado sem identifier em
 > `medication_request`/`observation` como "limitado à janela 06/06–20/06". A janela de 120 dias
@@ -353,7 +363,9 @@ sem rede, sem Docker — rodam nesta máquina), no mesmo padrão do `DecididorAg
 
 ### 3.3 A regra de dedup que rege tudo isso (fixada em 26/07)
 
-Já decidida e registrada em [`docs/klinikos/mapeamento-fhir.md`](../klinikos/mapeamento-fhir.md):
+Já decidida e registrada em [`docs/klinikos/mapeamento-fhir.md`](../klinikos/mapeamento-fhir.md)
+— **refeito em 03/08 contra a base viva**, porque a versão de 26/07 nunca chegou a ser
+commitada e o link daqui apontava para o vazio:
 
 1. **Buscar por CPF e/ou CNS no hub antes de criar** qualquer Patient (CPF primeiro,
    cair para CNS).

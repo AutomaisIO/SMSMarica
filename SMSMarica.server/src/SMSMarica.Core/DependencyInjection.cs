@@ -346,6 +346,7 @@ public static class DependencyInjection
         services.AddSingleton<Integracoes.Pep.Background.IPepSincronizacaoFila, Integracoes.Pep.Background.PepSincronizacaoFila>();
         services.AddSingleton<Integracoes.Pep.Progresso.PepSincronizacaoEstadoVivo>();
         services.AddScoped<Integracoes.Pep.Estrategias.IEstrategiaImportacaoPep, Integracoes.Pep.Estrategias.Salux.SaluxImportacaoStrategy>();
+        services.AddScoped<Integracoes.Pep.Estrategias.IEstrategiaImportacaoPep, Integracoes.Pep.Estrategias.Klinikos.KlinikosImportacaoStrategy>();
         // Árbitro das divergências de identidade: usa a cadeia de motores de CPF (Receita/CADSUS).
         services.AddScoped<Integracoes.Pep.Divergencias.IVerificadorDivergenciasPep, Integracoes.Pep.Divergencias.VerificadorDivergenciasPep>();
         services.AddScoped<Integracoes.Pep.IPepSincronizacaoService, Integracoes.Pep.PepSincronizacaoService>();

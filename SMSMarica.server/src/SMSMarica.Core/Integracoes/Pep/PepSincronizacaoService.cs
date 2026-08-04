@@ -28,10 +28,19 @@ public sealed class PepSincronizacaoService(
     PepSincronizacaoEstadoVivo estadoVivo,
     IUsuarioAtualAccessor usuarioAtual,
     IVerificadorDivergenciasPep verificadorDivergencias,
+    Inteligencia.Fontes.Agente.IAgenteSqlRegistry agenteRegistry,
     IConfiguration configuration,
     ILogger<PepSincronizacaoService> logger) : IPepSincronizacaoService
 {
     private readonly int _timeoutSegundos = configuration.GetValue("Pep:TimeoutSegundos", 120);
+
+    /// <summary>
+    /// Teto de linhas por consulta ao agente na IMPORTAÇÃO. Não dá para reusar o
+    /// <c>Ia:RowLimit</c> (1.000): ele existe para uma pessoa fazendo pergunta na tela, e aqui
+    /// truncaria a página em silêncio — o pior modo de falhar, porque o run termina "com
+    /// sucesso" tendo pulado registros.
+    /// </summary>
+    private readonly int _agenteMaxLinhas = configuration.GetValue("Pep:Agente:MaxLinhas", 20_000);
 
     /// <summary>
     /// Teto de divergências por rodada de arbitragem MANUAL (pela tela). O job automático
@@ -64,11 +73,9 @@ public sealed class PepSincronizacaoService(
         var cursores = await db.PepSincronizacaoEstados.AsNoTracking()
             .ToDictionaryAsync(e => e.FonteId, e => e.PacienteCursorCd, ct);
 
-        var tiposSuportados = estrategias.Select(e => e.Tipo).ToHashSet();
-
         return fontes.Select(f => new BasePepDto(
             f.Id, f.Nome, f.Tipo.ToString(), f.Ambiente.ToString(),
-            tiposSuportados.Contains(f.Tipo),
+            estrategias.Any(e => e.Atende(f)),
             ultimas.GetValueOrDefault(f.Id),
             cursores.GetValueOrDefault(f.Id))).ToList();
     }
@@ -82,9 +89,9 @@ public sealed class PepSincronizacaoService(
         if (!fonte.Ativo)
             throw new ValidacaoException("pep.base_inativa", $"Base '{fonte.Nome}' está inativa.");
 
-        if (estrategias.All(e => e.Tipo != fonte.Tipo))
+        if (!estrategias.Any(e => e.Atende(fonte)))
             throw new ValidacaoException("pep.tipo_nao_suportado",
-                $"Importação ainda não suportada para o tipo de PEP '{fonte.Tipo}'.");
+                $"Importação ainda não suportada para a base '{fonte.Nome}' (tipo '{fonte.Tipo}', família '{fonte.Familia ?? "—"}').");
 
         if (string.IsNullOrWhiteSpace(fonte.Slug))
             throw new ValidacaoException("pep.base_sem_slug",
@@ -564,7 +571,7 @@ public sealed class PepSincronizacaoService(
         }
 
         var fonte = await db.IaFontes.AsNoTracking().FirstOrDefaultAsync(f => f.Id == job.FonteId, ct);
-        var estrategia = fonte is null ? null : estrategias.FirstOrDefault(e => e.Tipo == fonte.Tipo);
+        var estrategia = fonte is null ? null : estrategias.FirstOrDefault(e => e.Atende(fonte));
 
         var progresso = new ProgressoImportacao();
         execucao.Status = StatusSincronizacao.EmExecucao;
@@ -583,8 +590,13 @@ public sealed class PepSincronizacaoService(
         {
             if (fonte is null) throw new ValidacaoException("pep.base", "Base não encontrada.");
             if (estrategia is null) throw new ValidacaoException("pep.tipo_nao_suportado", $"Tipo '{fonte.Tipo}' não suportado.");
-            if (string.IsNullOrWhiteSpace(fonte.Host) || string.IsNullOrWhiteSpace(fonte.Servico)
-                || string.IsNullOrWhiteSpace(fonte.Usuario) || string.IsNullOrWhiteSpace(fonte.SenhaCifrada))
+            // A exigência de credencial vale só para quem o servidor alcança por rede. Uma base
+            // atendida por agente (ADR-0023) NÃO tem host/usuário/senha aqui de propósito — a
+            // credencial mora no servidor de destino e o smsmarica nunca a vê. Cobrar os campos
+            // dela seria exigir justamente o que a arquitetura evita guardar.
+            if (!fonte.ViaAgente
+                && (string.IsNullOrWhiteSpace(fonte.Host) || string.IsNullOrWhiteSpace(fonte.Servico)
+                    || string.IsNullOrWhiteSpace(fonte.Usuario) || string.IsNullOrWhiteSpace(fonte.SenhaCifrada)))
                 throw new ValidacaoException("pep.base_incompleta", $"Base '{fonte.Nome}' sem host/serviço/usuário/senha configurados.");
             if (string.IsNullOrWhiteSpace(fonte.Slug))
                 throw new ValidacaoException("pep.base_sem_slug", $"Base '{fonte.Nome}' sem slug — defina no cadastro da base.");
@@ -598,6 +610,7 @@ public sealed class PepSincronizacaoService(
                 DocumentoEm = estadoEntidade?.UltimoSyncDocumentoEm,
                 InternacaoEm = estadoEntidade?.UltimoSyncInternacaoEm,
                 LogDocumentoId = estadoEntidade?.UltimoSyncLogDocumentoId,
+                Ponteiros = DesserializarPonteiros(estadoEntidade?.PonteirosJson),
             };
 
             // Trilha durável de falhas (grava na hora, sobrevive a crash; alimenta o reimport por cd).
@@ -610,8 +623,16 @@ public sealed class PepSincronizacaoService(
 
             var contexto = new ContextoImportacaoPep
             {
-                Conexao = new ConexaoFonte(fonte.Host!, fonte.Porta ?? 1521, fonte.Servico!, fonte.Usuario!,
-                    protetor.Revelar(fonte.SenhaCifrada!), _timeoutSegundos),
+                // Um transporte OU o outro, nunca os dois — quem alcança por rede recebe
+                // credencial; quem depende de agente recebe o canal de consulta (ADR-0023).
+                Conexao = fonte.ViaAgente
+                    ? null
+                    : new ConexaoFonte(fonte.Host!, fonte.Porta ?? 1521, fonte.Servico!, fonte.Usuario!,
+                        protetor.Revelar(fonte.SenhaCifrada!), _timeoutSegundos),
+                Consulta = fonte.ViaAgente
+                    ? new Inteligencia.Fontes.ProxyAgenteFonte(
+                        agenteRegistry, fonte.Slug!, _timeoutSegundos, _agenteMaxLinhas)
+                    : null,
                 Opcoes = job.Opcoes,
                 Marca = marca,
                 // Decorator de retry-in-place: saturação transitória do hub vira reenvio
@@ -743,6 +764,7 @@ public sealed class PepSincronizacaoService(
         estado.UltimoSyncDocumentoEm = marca.DocumentoEm;
         estado.UltimoSyncInternacaoEm = marca.InternacaoEm;
         estado.UltimoSyncLogDocumentoId = marca.LogDocumentoId;
+        estado.PonteirosJson = SerializarPonteiros(marca.Ponteiros);
         estado.AtualizadoEm = DateTime.UtcNow;
         await ctx.SaveChangesAsync(ct);
     }
@@ -775,8 +797,24 @@ public sealed class PepSincronizacaoService(
         estado.UltimoSyncDocumentoEm = marca.DocumentoEm;
         estado.UltimoSyncInternacaoEm = marca.InternacaoEm;
         estado.UltimoSyncLogDocumentoId = marca.LogDocumentoId;
+        estado.PonteirosJson = SerializarPonteiros(marca.Ponteiros);
         estado.AtualizadoEm = DateTime.UtcNow;
     }
+
+    /// <summary>
+    /// Ponteiros de CDC numéricos (§ <see cref="MarcaDagua.Ponteiros"/>). JSON ilegível não
+    /// derruba o run — vale o mesmo que "nunca ancorado", e o ciclo re-varre. Perder tempo é
+    /// aceitável; parar o sincronismo por um campo auxiliar corrompido, não.
+    /// </summary>
+    private static Dictionary<string, long> DesserializarPonteiros(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return [];
+        try { return JsonSerializer.Deserialize<Dictionary<string, long>>(json) ?? []; }
+        catch (JsonException) { return []; }
+    }
+
+    private static string? SerializarPonteiros(Dictionary<string, long> ponteiros) =>
+        ponteiros.Count == 0 ? null : JsonSerializer.Serialize(ponteiros);
 
     private static void AplicarContadores(PepSincronizacaoExecucao e, ProgressoImportacao p)
     {
