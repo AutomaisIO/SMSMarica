@@ -294,6 +294,20 @@ public sealed class SolicitacoesExameService(
         var (queryEscopo, unidadeReferencia) = await AplicarEscopoUnidadeAsync(query, cancellationToken);
         query = queryEscopo;
 
+        // Recorte por VISÃO (ticket #84): só quando há uma unidade de referência única (a ativa) e
+        // NÃO é busca pontual. O escopo acima já limitou a executora OU solicitante entre as
+        // vinculadas; aqui estreita para UM dos lados. Padrão = executante (o que a recepção
+        // realiza); solicitante = o que a unidade pediu a outra. Sem referência única (VeTudo /
+        // visão do conjunto) não há visão que faça sentido, e o comportamento anterior (os dois
+        // lados) fica intacto. Busca pontual (nº do pedido/CPF/CNS) IGNORA a visão pelo mesmo motivo
+        // que ignora o período: quem procura um pedido específico quer achá-lo mesmo do outro lado.
+        if (unidadeReferencia is { } refVisao && !buscaPontual)
+        {
+            query = filtro.VisaoSolicitante
+                ? query.Where(e => e.Solicitacao!.UnidadeSolicitanteId == refVisao)
+                : query.Where(e => e.Solicitacao!.UnidadeExecutanteId == refVisao);
+        }
+
         var limite = filtro.Limite is <= 0 or > 500 ? 50 : filtro.Limite;
         // Urgentes sempre no topo, independente da data (Prioridade: Urgente=3 > Prioritaria=2 > Eletiva=1).
         var lista = await query

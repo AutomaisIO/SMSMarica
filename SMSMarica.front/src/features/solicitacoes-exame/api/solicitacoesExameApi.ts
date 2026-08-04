@@ -21,6 +21,7 @@ export async function listarSolicitacoes(filtro: FiltroSolicitacoes): Promise<So
       accessionNumber: filtro.accessionNumber,
       busca: filtro.busca,
       painel: filtro.painel,
+      visaoSolicitante: filtro.visaoSolicitante ? true : undefined,
       limite: filtro.limite ?? 50,
     },
   });

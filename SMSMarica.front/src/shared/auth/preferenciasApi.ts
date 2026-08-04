@@ -8,6 +8,8 @@ export type PreferenciasUi = {
   alturaComposerChat?: number;
   /** Enter envia a mensagem no chat (Shift+Enter quebra linha). */
   enviarComEnter?: boolean;
+  /** Na lista de Solicitações de Exame, ver por padrão a visão de solicitante (ticket #84). */
+  verComoSolicitante?: boolean;
 };
 
 export async function obterPreferencias(): Promise<PreferenciasUi> {
@@ -16,6 +18,7 @@ export async function obterPreferencias(): Promise<PreferenciasUi> {
     menuDefaults: data?.menuDefaults ?? {},
     alturaComposerChat: data?.alturaComposerChat ?? undefined,
     enviarComEnter: data?.enviarComEnter ?? undefined,
+    verComoSolicitante: data?.verComoSolicitante ?? undefined,
   };
 }
 

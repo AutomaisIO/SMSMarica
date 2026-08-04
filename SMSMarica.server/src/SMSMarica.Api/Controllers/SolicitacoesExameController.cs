@@ -50,12 +50,14 @@ public sealed class SolicitacoesExameController(
         [FromQuery] string? busca,
         /// <summary>Recorte do painel de início ("ver todos" de uma raia) — ADR-0033.</summary>
         [FromQuery] RecortePainel? painel = null,
+        /// <summary>Visão relativa à unidade ativa: false = executante (padrão), true = solicitante (ticket #84).</summary>
+        [FromQuery] bool visaoSolicitante = false,
         [FromQuery] int limite = 50,
         CancellationToken cancellationToken = default) =>
         await _service.ListarAsync(
             new FiltroSolicitacoesDto(
                 status, pacienteId, unidadeId, tipoExameId, dataInicial, dataFinal,
-                accessionNumber, busca, painel, limite),
+                accessionNumber, busca, painel, visaoSolicitante, limite),
             cancellationToken);
 
     /// <summary>

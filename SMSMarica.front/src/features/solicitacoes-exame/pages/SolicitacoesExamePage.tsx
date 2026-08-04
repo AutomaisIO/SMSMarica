@@ -16,7 +16,8 @@ import { cn } from '@/shared/lib/cn';
 import { aoColarSoDigitosSeDocumento } from '@/shared/lib/colarDocumento';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { formatarInstante, hojeSP } from '@/shared/lib/datas';
-import { usePermissao } from '@/shared/auth/authStore';
+import { useAuth, usePermissao } from '@/shared/auth/authStore';
+import { useVisaoSolicitacoes } from '@/features/solicitacoes-exame/store/visaoPreferencia';
 import { Button } from '@/shared/ui/Button';
 import { TextoLimitado } from '@/shared/ui/TextoLimitado';
 import { Modal } from '@/shared/ui/Modal';
@@ -102,6 +103,11 @@ export function SolicitacoesExamePage() {
   const podeCriar = usePermissao('SolicitacoesExame', 'Inclusao');
   const podeVer = usePermissao('SolicitacoesExame', 'Consulta');
   const podeExcluir = usePermissao('SolicitacoesExame', 'Exclusao');
+  // Visão executante x solicitante (ticket #84): só existe com UMA unidade ativa (referência
+  // única). A preferência é por-usuário (servidor); configura uma vez e fica.
+  const unidadeAtivaId = useAuth((s) => s.unidadeAtivaId);
+  const verComoSolicitante = useVisaoSolicitacoes((s) => s.verComoSolicitante);
+  const definirVisao = useVisaoSolicitacoes((s) => s.definir);
   const excluir = useExcluirSolicitacao();
   const [paraExcluir, setParaExcluir] = useState<SolicitacaoExameListItem | null>(null);
   const [erroExcluir, setErroExcluir] = useState<string | null>(null);
@@ -132,7 +138,7 @@ export function SolicitacoesExamePage() {
 
   // Precedência: deep-link do PACS > recorte do painel > filtro guardado da sessão > padrão.
   // O deep-link é uma intenção explícita e recém-expressa; o guardado é contexto anterior.
-  const filtroInicial: FiltroSolicitacoes = accessionUrl
+  const filtroInicialBase: FiltroSolicitacoes = accessionUrl
     ? { limite: 50, busca: accessionUrl }
     : painelUrl
       ? { limite: 50, painel: painelUrl }
@@ -149,6 +155,9 @@ export function SolicitacoesExamePage() {
             ? { limite: 50, dataInicial: hojeISO(), dataFinal: hojeISO() }
             : { limite: 50 };
         })();
+  // A visão (ticket #84) vem da preferência do usuário, não do filtro guardado da sessão —
+  // por isso sobrepõe qualquer valor herdado, para a lista já entrar na visão certa.
+  const filtroInicial: FiltroSolicitacoes = { ...filtroInicialBase, visaoSolicitante: verComoSolicitante };
   const [filtroAplicado, setFiltroAplicado] = useState<FiltroSolicitacoes>(filtroInicial);
   const [filtroDigitado, setFiltroDigitado] = useState<FiltroSolicitacoes>(filtroInicial);
 
@@ -183,6 +192,13 @@ export function SolicitacoesExamePage() {
     // Intencional: roda no mount (e ao ligar o toggle), não a cada tecla.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hojeAtivo]);
+
+  // Visão (ticket #84): quando a preferência muda (toggle ou hidratação do servidor), reaplica
+  // na lista na hora, sem passar por "Buscar" — é troca de visão, não de recorte digitado.
+  useEffect(() => {
+    setFiltroDigitado((f) => ({ ...f, visaoSolicitante: verComoSolicitante }));
+    setFiltroAplicado((f) => ({ ...f, visaoSolicitante: verComoSolicitante }));
+  }, [verComoSolicitante]);
 
   function alternarHoje() {
     setHojeAtivo((atual) => {
@@ -547,6 +563,24 @@ export function SolicitacoesExamePage() {
               <ListOrdered className="h-4 w-4" />
               Ordem de Chegada
             </button>
+          ) : null}
+          {/* Visão solicitante (ticket #84): só aparece com UMA unidade ativa (referência única).
+              Desmarcado = executante (o que a unidade REALIZA, padrão da recepção); marcado = o que
+              a unidade SOLICITOU a outra. A preferência fica salva no usuário. */}
+          {unidadeAtivaId ? (
+            <label
+              className="inline-flex h-8 cursor-pointer select-none items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              title="Marque para ver os exames que sua unidade SOLICITOU a outra. Desmarcado, mostra os que sua unidade REALIZA (executante)."
+            >
+              <input
+                type="checkbox"
+                checked={verComoSolicitante}
+                onChange={(e) => definirVisao(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              <ArrowUpFromLine className="h-4 w-4 text-sky-600" />
+              Ver como solicitante
+            </label>
           ) : null}
         </div>
         <label className="flex items-center gap-2 text-sm text-gray-600">

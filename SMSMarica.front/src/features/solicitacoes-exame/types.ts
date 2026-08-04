@@ -190,6 +190,11 @@ export type FiltroSolicitacoes = {
   busca?: string;
   /** Recorte aberto pelo "ver todos" de uma raia do painel de início (ADR-0033). */
   painel?: RecortePainel;
+  /**
+   * Visão relativa à unidade ativa: false/ausente = executante (o que a unidade realiza — padrão),
+   * true = solicitante (o que a unidade pediu). Só faz efeito com UMA unidade ativa (ticket #84).
+   */
+  visaoSolicitante?: boolean;
   limite?: number;
 };
 

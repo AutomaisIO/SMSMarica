@@ -16,6 +16,12 @@ public sealed record FiltroSolicitacoesDto(
     // link do painel caia na tela que já existe em vez de criar listagem nova, e é filtro de
     // SERVIDOR porque filtrar a página no cliente devolveria um subconjunto arbitrário.
     RecortePainel? Painel = null,
+    // Visão da lista relativa à unidade de referência (a ativa da sessão), quando há UMA só:
+    // false/padrão = EXECUTANTE (o que a unidade realiza — o que a recepção quer ver);
+    // true = SOLICITANTE (o que a unidade pediu a outra). Sem unidade de referência única
+    // (acesso global sem ativa, ou visão do conjunto) o recorte é ignorado — não há "solicitante
+    // vs executante" bem-definido. Ver ticket #84.
+    bool VisaoSolicitante = false,
     int Limite = 50);
 
 /// <summary>Recortes que o painel de início abre na listagem de solicitações.</summary>

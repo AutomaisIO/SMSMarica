@@ -411,7 +411,8 @@ public sealed class IdentidadeService(
         var mesclado = new PreferenciasUiDto(
             preferencias.MenuDefaults ?? atual.MenuDefaults ?? new(),
             preferencias.AlturaComposerChat ?? atual.AlturaComposerChat,
-            preferencias.EnviarComEnter ?? atual.EnviarComEnter);
+            preferencias.EnviarComEnter ?? atual.EnviarComEnter,
+            preferencias.VerComoSolicitante ?? atual.VerComoSolicitante);
         u.PreferenciasUi = JsonSerializer.Serialize(mesclado, PreferenciasJson);
         await _db.SaveChangesAsync(cancellationToken);
     }
