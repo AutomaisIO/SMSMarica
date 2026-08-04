@@ -100,7 +100,8 @@ const hojeISO = hojeSP;
 export function SolicitacoesExamePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const podeCriar = usePermissao('SolicitacoesExame', 'Inclusao');
+  // Botão "Nova solicitação": gate próprio (ticket #89), não a Inclusão genérica do módulo.
+  const podeCriar = usePermissao('SolicitacaoExameManual', 'Inclusao');
   const podeVer = usePermissao('SolicitacoesExame', 'Consulta');
   const podeExcluir = usePermissao('SolicitacoesExame', 'Exclusao');
   // Visão executante x solicitante (ticket #84): só existe com UMA unidade ativa (referência

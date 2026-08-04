@@ -171,8 +171,10 @@ public sealed class SolicitacoesExameController(
     public async Task<MagicLinkDto> GerarLinkAcesso(Guid id, CancellationToken cancellationToken) =>
         await _loginLinks.GerarParaSolicitacaoAsync(id, cancellationToken: cancellationToken);
 
+    // Criação MANUAL (botão "Nova solicitação"): gate próprio (ticket #89), separado da Inclusão
+    // genérica de SolicitacoesExame. A importação do SISREG cria pelo serviço, não por aqui.
     [HttpPost]
-    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Inclusao)]
+    [RequerPermissao(ModuloPermissao.SolicitacaoExameManual, AcoesPermissao.Inclusao)]
     [ProducesResponseType<Guid>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

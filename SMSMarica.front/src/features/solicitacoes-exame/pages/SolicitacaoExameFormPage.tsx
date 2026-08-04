@@ -73,6 +73,14 @@ export function SolicitacaoExameFormPage() {
   const { id } = useParams<{ id: string }>();
   const ehNovo = !id || id === 'novo';
   const podeCadastrarPaciente = usePermissao('Pacientes', 'Inclusao');
+  // Defesa em profundidade (ticket #89): sem a permissão de solicitação manual, quem chegar na
+  // rota /novo por URL é mandado de volta à lista. Só vale para a criação — a edição tem gate próprio.
+  const podeCriarManual = usePermissao('SolicitacaoExameManual', 'Inclusao');
+  useEffect(() => {
+    if (ehNovo && !podeCriarManual) {
+      navigate('/app/solicitacoes-exame', { replace: true });
+    }
+  }, [ehNovo, podeCriarManual, navigate]);
 
   const detalhe = useSolicitacaoPorId(ehNovo ? null : id ?? null);
   const cadastrar = useCadastrarSolicitacao();

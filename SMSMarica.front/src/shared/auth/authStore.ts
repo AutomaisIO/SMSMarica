@@ -18,6 +18,7 @@ export type ModuloPermissao =
   | 'Laudos'
   | 'LaudosTemplates'
   | 'SolicitacoesExame'
+  | 'SolicitacaoExameManual'
   | 'TiposExame'
   | 'ProcedimentosSigtap'
   | 'Inteligencia'

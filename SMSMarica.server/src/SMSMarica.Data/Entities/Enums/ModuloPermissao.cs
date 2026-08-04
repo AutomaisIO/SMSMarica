@@ -160,4 +160,11 @@ public enum ModuloPermissao
     /// seus procedimentos), com habilita/desabilita que define o que entra na varredura de agenda,
     /// e a credencial de operador do SISREG daquela unidade.</summary>
     SisregMapeamento = 52,
+
+    /// <summary>Abrir SOLICITAÇÃO DE EXAME MANUAL (o botão "Nova solicitação" da tela de exames /
+    /// <c>POST /solicitacoes-exame</c>). Separado de <see cref="SolicitacoesExame"/> porque criar
+    /// à mão é a exceção — o fluxo normal entra pela importação do SISREG (serviço, sem passar por
+    /// este gate) — e queremos liberar o botão só a usuários específicos, não a todo perfil com
+    /// Inclusão no módulo. Usa apenas a ação <c>Inclusao</c> (ticket #89).</summary>
+    SolicitacaoExameManual = 53,
 }

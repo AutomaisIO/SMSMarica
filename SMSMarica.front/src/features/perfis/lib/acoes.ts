@@ -52,6 +52,7 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'Rastreamento', rotulo: 'Rastreamento' },
   { id: 'Avaliacoes', rotulo: 'Avaliações' },
   { id: 'SolicitacoesExame', rotulo: 'Solicitações de exame' },
+  { id: 'SolicitacaoExameManual', rotulo: 'Solicitação manual de exame (botão "Nova solicitação")' },
   { id: 'TiposExame', rotulo: 'Tipos de exame' },
   { id: 'ProcedimentosSigtap', rotulo: 'Catálogo SIGTAP' },
   { id: 'Pacs', rotulo: 'PACS' },
@@ -114,5 +115,9 @@ export const APELIDOS_ACOES_POR_MODULO: Partial<
     Consulta: 'Abrir exame',
     Edicao: 'Salvar anotações',
     Exclusao: 'Excluir exame',
+  },
+  // Só a Inclusão vale aqui: é a permissão que libera o botão "Nova solicitação" (ticket #89).
+  SolicitacaoExameManual: {
+    Inclusao: 'Abrir solicitação manual',
   },
 };
