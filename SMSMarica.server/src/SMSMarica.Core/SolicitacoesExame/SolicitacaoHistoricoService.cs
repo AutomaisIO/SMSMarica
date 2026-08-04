@@ -63,7 +63,23 @@ public sealed class SolicitacaoHistoricoService(
                 u != null ? u.NomeCompleto : null))
             .ToListAsync(ct);
 
-        return new HistoricoSolicitacaoDto(comunicacoes, contatos);
+        // Eventos de negócio (trilha de auditoria) — ancorados no id PÚBLICO do exame, que é como
+        // AlterarUnidadeExecutanteAsync grava em registro_auditoria. Uma única escrita alimenta a
+        // tela de Auditoria e esta linha do tempo. UsuarioNome já vem resolvido na escrita.
+        var idPublico = solicitacaoExameId.ToString();
+        var eventos = await db.RegistrosAuditoria.AsNoTracking()
+            .Where(r => r.Entidade == "SolicitacaoExame" && r.EntidadeId == idPublico)
+            .OrderByDescending(r => r.CriadoEm)
+            .Select(r => new HistoricoEventoDto(
+                r.Id,
+                r.Acao,
+                r.ValorAnterior,
+                r.ValorNovo,
+                r.UsuarioNome,
+                r.CriadoEm))
+            .ToListAsync(ct);
+
+        return new HistoricoSolicitacaoDto(comunicacoes, contatos, eventos);
     }
 
     public async Task RegistrarContatoAsync(

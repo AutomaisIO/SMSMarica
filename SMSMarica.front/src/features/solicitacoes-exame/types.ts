@@ -179,9 +179,20 @@ export type HistoricoContato = {
   registradoPorNome: string | null;
 };
 
+/** Evento de negócio na linha do tempo (trilha de auditoria — ex.: troca de unidade executante). */
+export type HistoricoEvento = {
+  id: string;
+  acao: string;
+  valorAnterior: string | null;
+  valorNovo: string | null;
+  registradoPorNome: string | null;
+  criadoEm: string;
+};
+
 export type HistoricoSolicitacao = {
   comunicacoes: HistoricoComunicacao[];
   contatos: HistoricoContato[];
+  eventos: HistoricoEvento[];
 };
 
 export type FiltroSolicitacoes = {

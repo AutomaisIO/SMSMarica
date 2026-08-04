@@ -48,6 +48,7 @@ public class ConciliacaoStudyTests(PostgresFixture fixture)
             new Lazy<ILaudoAssinaturaService>(() => Substitute.For<ILaudoAssinaturaService>()),
             new Lazy<IComunicacaoPacienteService>(() => Substitute.For<IComunicacaoPacienteService>()),
             Substitute.For<IRegistroErroService>(),
+            Substitute.For<SMSMarica.Core.Auditoria.IAuditoriaService>(),
             NullLogger<SolicitacoesExameService>.Instance);
 
         return new ExameAssociacaoService(

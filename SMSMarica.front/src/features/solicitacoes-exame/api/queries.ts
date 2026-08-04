@@ -9,6 +9,7 @@ import {
   obterSolicitacaoPorStudy,
   reenviarWorklist,
   alterarEquipamentoDestino,
+  alterarUnidadeExecutante,
   autorizarSolicitacao,
   listarEquipamentosDoExame,
   obterHistorico,
@@ -131,6 +132,20 @@ export function useAlterarEquipamentoDestino() {
       client.invalidateQueries({ queryKey: solicitacoesKeys.raiz });
       client.invalidateQueries({ queryKey: solicitacoesKeys.porId(v.id) });
       client.invalidateQueries({ queryKey: [...solicitacoesKeys.raiz, 'equipamentos', v.id] });
+    },
+  });
+}
+
+export function useAlterarUnidadeExecutante() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, unidadeId, motivo }: { id: string; unidadeId: string; motivo: string }) =>
+      alterarUnidadeExecutante(id, unidadeId, motivo),
+    onSuccess: (_d, v) => {
+      client.invalidateQueries({ queryKey: solicitacoesKeys.raiz });
+      client.invalidateQueries({ queryKey: solicitacoesKeys.porId(v.id) });
+      client.invalidateQueries({ queryKey: [...solicitacoesKeys.raiz, 'equipamentos', v.id] });
+      client.invalidateQueries({ queryKey: [...solicitacoesKeys.raiz, 'historico', v.id] });
     },
   });
 }

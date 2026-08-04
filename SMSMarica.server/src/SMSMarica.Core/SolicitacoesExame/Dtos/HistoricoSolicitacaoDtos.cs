@@ -24,10 +24,22 @@ public sealed record HistoricoContatoDto(
     DateTime CriadoEm,
     string? RegistradoPorNome);
 
+/// <summary>Evento de negócio da solicitação na linha do tempo (trilha de auditoria — ex.: troca
+/// de unidade executante). Lido de <c>registro_auditoria</c> (uma única escrita alimenta a tela
+/// de Auditoria e esta linha do tempo).</summary>
+public sealed record HistoricoEventoDto(
+    Guid Id,
+    string Acao,
+    string? ValorAnterior,
+    string? ValorNovo,
+    string? RegistradoPorNome,
+    DateTime CriadoEm);
+
 /// <summary>Histórico do processo de comunicação da solicitação (para a linha do tempo do detalhe).</summary>
 public sealed record HistoricoSolicitacaoDto(
     IReadOnlyList<HistoricoComunicacaoDto> Comunicacoes,
-    IReadOnlyList<HistoricoContatoDto> Contatos);
+    IReadOnlyList<HistoricoContatoDto> Contatos,
+    IReadOnlyList<HistoricoEventoDto> Eventos);
 
 public sealed record RegistrarContatoRequest(string Meio, string Resultado, string? Observacao);
 

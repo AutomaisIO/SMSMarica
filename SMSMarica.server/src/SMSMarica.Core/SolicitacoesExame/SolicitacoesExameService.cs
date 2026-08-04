@@ -34,6 +34,7 @@ public sealed class SolicitacoesExameService(
     // Lazy: quebra o ciclo Solicitacoes → Comunicacao → LoginLink → Solicitacoes.
     Lazy<Notificacoes.Comunicacao.IComunicacaoPacienteService> comunicacoes,
     Erros.IRegistroErroService registroErros,
+    Auditoria.IAuditoriaService auditoria,
     ILogger<SolicitacoesExameService> logger)
     : ISolicitacoesExameService
 {
@@ -51,6 +52,7 @@ public sealed class SolicitacoesExameService(
     private readonly Lazy<Laudos.Assinatura.ILaudoAssinaturaService> _assinaturas = assinaturas;
     private readonly Lazy<Notificacoes.Comunicacao.IComunicacaoPacienteService> _comunicacoes = comunicacoes;
     private readonly Erros.IRegistroErroService _registroErros = registroErros;
+    private readonly Auditoria.IAuditoriaService _auditoria = auditoria;
     private readonly ILogger<SolicitacoesExameService> _logger = logger;
 
     // Resolve nome/CPF/CNS do paciente (hub FHIR) e embute nos DTOs.
@@ -1189,5 +1191,97 @@ public sealed class SolicitacoesExameService(
         }
 
         await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Troca a UNIDADE EXECUTANTE de um exame (ticket #92). Espelha a régua PACS-first da troca de
+    /// equipamento: se houver item na worklist do dcm4chee, remove e CONFIRMA a remoção antes de
+    /// efetuar a troca — a existência real no PACS manda, não o status local. Ao trocar, o exame
+    /// VOLTA AO ESTADO ZERO na nova unidade — perde o equipamento escolhido e a autorização da
+    /// recepção — e só reentra na worklist pelo fluxo normal (a recepção da nova unidade readmite/
+    /// autoriza via <see cref="AutorizarAsync"/>). Proibido depois que a imagem já voltou do PACS
+    /// (em execução/realizado/laudado/cancelado ou <c>RealizadoEm</c> preenchido). Registra na
+    /// trilha de auditoria, que também alimenta a linha do tempo do detalhe.
+    /// </summary>
+    public async Task AlterarUnidadeExecutanteAsync(
+        Guid id, Guid novaUnidadeId, string motivo, CancellationToken cancellationToken = default)
+    {
+        var justificativa = (motivo ?? string.Empty).Trim();
+        if (justificativa.Length == 0)
+            throw new ValidacaoException("solicitacaoExame.motivo_obrigatorio",
+                "Informe o motivo da alteração da unidade executante.");
+
+        var s = await _db.ExamesImagem
+            .Include(x => x.Solicitacao)
+            .FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(ExameImagem), id);
+        var reg = s.Solicitacao!;
+
+        // 1) Elegibilidade (regra do ticket): só bloqueia quando a imagem JÁ voltou do PACS. Nos
+        //    status anteriores (Solicitada/Enviada/Recebida) a troca é permitida.
+        if (s.Status is StatusSolicitacaoExame.EmExecucao or StatusSolicitacaoExame.Realizada
+                or StatusSolicitacaoExame.Laudada or StatusSolicitacaoExame.Cancelada
+            || s.RealizadoEm is not null)
+        {
+            throw new ConflitoException(
+                "solicitacaoExame.unidade_nao_alteravel",
+                $"Não é possível alterar a unidade executante de um exame no status '{s.Status}' (imagem já recebida do PACS).");
+        }
+
+        // 2) Valida a nova unidade e rejeita no-op.
+        if (!await _db.Unidades.AsNoTracking().AnyAsync(u => u.Id == novaUnidadeId, cancellationToken))
+            throw new NaoEncontradoException(nameof(Unidade), novaUnidadeId);
+        if (reg.UnidadeExecutanteId == novaUnidadeId)
+            throw new ConflitoException("solicitacaoExame.unidade_inalterada",
+                "O exame já está nesta unidade executante.");
+
+        var unidadeAntigaNome = await _db.Unidades.AsNoTracking()
+            .Where(u => u.Id == reg.UnidadeExecutanteId).Select(u => u.Nome)
+            .FirstOrDefaultAsync(cancellationToken);
+        var unidadeNovaNome = await _db.Unidades.AsNoTracking()
+            .Where(u => u.Id == novaUnidadeId).Select(u => u.Nome)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        // 3) FONTE DA VERDADE É O PACS: se houver item na worklist do dcm4chee, remove e CONFIRMA a
+        //    remoção ANTES de trocar. PACS indisponível/recusa aqui aborta sem tocar em nada.
+        if (await _mwlClient.MwlItemExisteAsync(s, cancellationToken))
+        {
+            await _mwlClient.ExcluirMwlItemAsync(s, cancellationToken);
+            s.WorklistItemUid = null;
+
+            if (await _mwlClient.MwlItemExisteAsync(s, cancellationToken))
+                throw new ConflitoException("solicitacaoExame.remocao_nao_confirmada",
+                    "Removi o item da worklist, mas o PACS ainda o lista. Aguarde um instante e tente de novo.");
+        }
+
+        // 4) Troca + "estado zero" na nova unidade: sem equipamento, sem autorização, fora da
+        //    worklist e SEM tentativa agendada. Só reentra na worklist pelo processo normal — a
+        //    recepção da nova unidade readmite/autoriza. A partir daqui a solicitação já aparece na
+        //    lista da nova unidade (a listagem filtra por UnidadeExecutanteId).
+        var agora = DateTime.UtcNow;
+        reg.UnidadeExecutanteId = novaUnidadeId;
+        reg.AutorizadoEm = null;
+        reg.AutorizadoPor = null;
+        reg.AtualizadoEm = agora;
+        reg.AtualizadoPor = _usuarioAtual.UsuarioId;
+
+        s.EquipamentoId = null;
+        s.WorklistItemUid = null;
+        s.Status = StatusSolicitacaoExame.Solicitada;
+        s.ProximaTentativaEm = null;
+        s.ErroIntegracaoPacs = null;
+        s.AtualizadoEm = agora;
+        s.AtualizadoPor = _usuarioAtual.UsuarioId;
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        // 5) Trilha de auditoria (também alimenta a linha do tempo do detalhe). O motivo entra no
+        //    valor novo para ficar visível na tela de Auditoria e no histórico. Só audita depois de
+        //    a troca persistir.
+        await _auditoria.RegistrarAsync(
+            "SolicitacaoExame", id.ToString(), "AlteracaoUnidadeExecutante",
+            unidadeAntigaNome,
+            $"{unidadeNovaNome} — Motivo: {justificativa}",
+            cancellationToken);
     }
 }

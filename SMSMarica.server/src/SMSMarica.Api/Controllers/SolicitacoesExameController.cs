@@ -341,6 +341,34 @@ public sealed class SolicitacoesExameController(
     public sealed record AlterarEquipamentoRequest(Guid EquipamentoId);
 
     /// <summary>
+    /// Altera a unidade executante de um exame (ticket #92). Se houver item na worklist do
+    /// dcm4chee, remove e confirma a remoção antes de trocar; então o exame volta ao estado zero
+    /// na nova unidade (sem equipamento, sem autorização, fora da worklist) e passa a aparecer na
+    /// lista da nova unidade — reentrando na worklist só pela recepção da nova unidade. A troca
+    /// entra na trilha de auditoria e na linha do tempo. Responde 400 quando o motivo falta,
+    /// 409 quando o exame já recebeu imagem do PACS, quando a unidade é a mesma, ou quando o PACS
+    /// recusa/cai.
+    /// </summary>
+    [HttpPost("{id:guid}/alterar-unidade-executante")]
+    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> AlterarUnidadeExecutante(
+        Guid id,
+        [FromBody] AlterarUnidadeExecutanteRequest request,
+        CancellationToken cancellationToken)
+    {
+        await _service.AlterarUnidadeExecutanteAsync(id, request.UnidadeId, request.Motivo, cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary><paramref name="UnidadeId"/> = nova unidade executante; <paramref name="Motivo"/>
+    /// é obrigatório (registrado na auditoria e no histórico).</summary>
+    public sealed record AlterarUnidadeExecutanteRequest(Guid UnidadeId, string Motivo);
+
+    /// <summary>
     /// Exclui a solicitação. Requer permissão de Exclusão (concedida apenas a perfis
     /// administrativos). Por padrão remove primeiro o item de worklist no dcm4chee e
     /// confirma (anti-lixo); se o PACS recusar/cair, responde 409

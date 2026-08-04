@@ -86,6 +86,18 @@ export async function alterarEquipamentoDestino(id: string, equipamentoId: strin
   await http.post(`/solicitacoes-exame/${id}/alterar-equipamento`, { equipamentoId });
 }
 
+/**
+ * Altera a unidade executante de um exame (ticket #92). O servidor consulta o dcm4chee, remove e
+ * confirma a remoção do item na worklist da unidade antiga, e só então efetua a troca — deixando o
+ * exame no "estado zero" na nova unidade (sem equipamento, sem autorização, fora da worklist), que
+ * só reentra na worklist pela recepção da nova unidade. `motivo` é obrigatório (auditoria +
+ * histórico). Responde 409 quando o exame já recebeu imagem do PACS, a unidade é a mesma, ou o PACS
+ * recusa/cai.
+ */
+export async function alterarUnidadeExecutante(id: string, unidadeId: string, motivo: string): Promise<void> {
+  await http.post(`/solicitacoes-exame/${id}/alterar-unidade-executante`, { unidadeId, motivo });
+}
+
 export async function excluirSolicitacao(id: string, force = false): Promise<void> {
   await http.delete(`/solicitacoes-exame/${id}`, { params: force ? { force: true } : undefined });
 }

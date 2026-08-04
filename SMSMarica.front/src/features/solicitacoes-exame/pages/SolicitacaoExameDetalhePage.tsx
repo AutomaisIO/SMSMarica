@@ -27,6 +27,7 @@ import { Campo } from '@/shared/ui/Campo';
 import { notificar } from '@/shared/ui/Notificacoes';
 import {
   useAlterarEquipamentoDestino,
+  useAlterarUnidadeExecutante,
   useAutorizarSolicitacao,
   useEquipamentosDoExame,
   useCancelarSolicitacao,
@@ -39,6 +40,7 @@ import {
   useSolicitacaoPorId,
 } from '@/features/solicitacoes-exame/api/queries';
 import type { FinalidadeEnvioManual } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
+import { useListarUnidades } from '@/features/unidades/api/queries';
 import { BotaoDispensarVerificacao } from '@/features/telefone-validacao/components/BotaoDispensarVerificacao';
 import { ChecksComunicacao } from '@/features/solicitacoes-exame/components/ChecksComunicacao';
 import { RawSisregDisclosure } from '@/features/solicitacoes-exame/components/RawSisregDisclosure';
@@ -72,6 +74,7 @@ export function SolicitacaoExameDetalhePage() {
   const [modalCancelar, setModalCancelar] = useState(false);
   const [modalExcluir, setModalExcluir] = useState(false);
   const [modalEquip, setModalEquip] = useState(false);
+  const [modalUnidade, setModalUnidade] = useState(false);
   const [motivo, setMotivo] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [erroExcluir, setErroExcluir] = useState<string | null>(null);
@@ -106,6 +109,9 @@ export function SolicitacaoExameDetalhePage() {
   // tem MAIS DE UMA sala na modalidade (senão o servidor resolve sozinho).
   const preExecucao = s.status === 'Solicitada' || s.status === 'Enviada' || s.status === 'Recebida';
   const temEscolhaEquip = podeEditar && preExecucao && (equipamentos.data?.length ?? 0) > 1;
+  // Alterar unidade executante (ticket #92). Permitido antes de a imagem voltar do PACS — mesma
+  // régua de preExecucao (Solicitada/Enviada/Recebida). Depois disso o backend recusa (409).
+  const podeAlterarUnidade = podeEditar && preExecucao;
   // Destino ainda indefinido + escolha ambígua = o envio à worklist SEMPRE falha até escolher a sala.
   // Nesse caso o botão de envio guia para o modal, em vez de reenviar à toa.
   const precisaDefinirEquip = temEscolhaEquip && !s.equipamentoId;
@@ -305,9 +311,17 @@ export function SolicitacaoExameDetalhePage() {
         <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">Exame</h2>
           <div className="text-base font-medium text-gray-900">{s.tipoExameNome}</div>
-          <div className="mt-1 flex flex-wrap gap-x-3 text-sm text-gray-600">
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-600">
             <span className="uppercase">{s.modalidadeDicom}</span>
-            <span>{s.unidadeNome}</span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="font-medium text-gray-900">{s.unidadeNome}</span>
+              {podeAlterarUnidade ? (
+                <Button variante="outline" tamanho="sm" onClick={() => setModalUnidade(true)}>
+                  <RotateCw className="mr-1.5 h-3.5 w-3.5" />
+                  Alterar unidade executante
+                </Button>
+              ) : null}
+            </span>
             <span className="font-mono text-xs">Study {s.studyInstanceUID}</span>
           </div>
           {/* Estação de destino enviada ao PACS + troca de equipamento (ticket #72). */}
@@ -438,6 +452,7 @@ export function SolicitacaoExameDetalhePage() {
       </div>
 
       <ModalEquipamentoDestino s={s} aberto={modalEquip} aoFechar={() => setModalEquip(false)} />
+      <ModalUnidadeExecutante s={s} aberto={modalUnidade} aoFechar={() => setModalUnidade(false)} />
 
       <Modal
         aberto={modalCancelar}
@@ -604,6 +619,114 @@ function ModalEquipamentoDestino({
               'Confirmar troca'
             ) : (
               'Definir e enviar'
+            )}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+/**
+ * Modal de troca da UNIDADE EXECUTANTE (ticket #92). Ao confirmar, o servidor remove o item da
+ * worklist na unidade antiga (com confirmação no dcm4chee) e deixa o exame no "estado zero" na nova
+ * unidade — sem equipamento, sem autorização, fora da worklist —, que só reentra na worklist pela
+ * recepção da nova unidade. Motivo é obrigatório (registrado na auditoria e na linha do tempo).
+ */
+function ModalUnidadeExecutante({
+  s,
+  aberto,
+  aoFechar,
+}: {
+  s: SolicitacaoExame;
+  aberto: boolean;
+  aoFechar: () => void;
+}) {
+  const unidades = useListarUnidades();
+  const opcoes = unidades.data ?? [];
+  const alterar = useAlterarUnidadeExecutante();
+
+  const [unidadeId, setUnidadeId] = useState('');
+  const [motivo, setMotivo] = useState('');
+  const [erro, setErro] = useState<string | null>(null);
+
+  // Ao abrir, limpa os campos (sem pré-selecionar — a troca é sempre para OUTRA unidade).
+  useEffect(() => {
+    if (aberto) {
+      setErro(null);
+      setUnidadeId('');
+      setMotivo('');
+    }
+  }, [aberto]);
+
+  async function confirmar() {
+    setErro(null);
+    if (!unidadeId) {
+      setErro('Selecione a nova unidade executante.');
+      return;
+    }
+    if (unidadeId === s.unidadeId) {
+      setErro('O exame já está nesta unidade executante.');
+      return;
+    }
+    if (!motivo.trim()) {
+      setErro('Informe o motivo da alteração.');
+      return;
+    }
+    try {
+      await alterar.mutateAsync({ id: s.id, unidadeId, motivo: motivo.trim() });
+      aoFechar();
+      notificar('Unidade executante alterada. O exame voltou ao início na nova unidade.', 'sucesso');
+    } catch (e) {
+      setErro(extrairMensagemDeErro(e));
+    }
+  }
+
+  return (
+    <Modal
+      aberto={aberto}
+      aoFechar={aoFechar}
+      titulo="Alterar unidade executante"
+      descricao="O item é removido da worklist da unidade atual (com confirmação no PACS) e o exame volta ao início na nova unidade — a recepção da nova unidade precisará autorizá-lo de novo para entrar na worklist. Não é possível alterar depois que a imagem já voltou do PACS."
+      largura="sm"
+    >
+      <div className="space-y-4">
+        <Campo label="Nova unidade executante" htmlFor="unidade-executante">
+          <Select
+            id="unidade-executante"
+            value={unidadeId}
+            onChange={(e) => setUnidadeId(e.target.value)}
+          >
+            <option value="">Selecione…</option>
+            {opcoes
+              .filter((u) => u.id !== s.unidadeId)
+              .map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.nome}
+                </option>
+              ))}
+          </Select>
+        </Campo>
+        <Campo label="Motivo" htmlFor="motivo-unidade">
+          <Input
+            id="motivo-unidade"
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+            placeholder="Ex.: exame remanejado do CDT para o CMI"
+          />
+        </Campo>
+        {erro ? <p className="text-sm text-red-700">{erro}</p> : null}
+        <div className="flex justify-end gap-2">
+          <Button variante="outline" onClick={aoFechar} disabled={alterar.isPending}>
+            Cancelar
+          </Button>
+          <Button onClick={confirmar} disabled={alterar.isPending || unidades.isPending}>
+            {alterar.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Alterando…
+              </>
+            ) : (
+              'Confirmar troca'
             )}
           </Button>
         </div>
@@ -857,6 +980,9 @@ const ROTULO_RESULTADO: Record<string, string> = {
   Atendeu: 'Atendeu', NaoAtendeu: 'Não atendeu', CaixaPostal: 'Caixa postal',
   NumeroInvalido: 'Número inválido', Outro: 'Outro',
 };
+const ROTULO_EVENTO: Record<string, string> = {
+  AlteracaoUnidadeExecutante: 'Unidade executante alterada:',
+};
 
 /** Histórico do processo: comunicações WhatsApp (com checks) + contatos manuais + registrar. */
 function CardHistoricoComunicacao({ solicitacaoId }: { solicitacaoId: string }) {
@@ -873,7 +999,8 @@ function CardHistoricoComunicacao({ solicitacaoId }: { solicitacaoId: string }) 
   const [paraReenviar, setParaReenviar] = useState<HistoricoComunicacao | null>(null);
 
   const h = q.data;
-  const vazio = !h || (h.comunicacoes.length === 0 && h.contatos.length === 0);
+  const eventos = h?.eventos ?? [];
+  const vazio = !h || (h.comunicacoes.length === 0 && h.contatos.length === 0 && eventos.length === 0);
 
   async function confirmarReenvio() {
     if (!paraReenviar) return;
@@ -917,6 +1044,26 @@ function CardHistoricoComunicacao({ solicitacaoId }: { solicitacaoId: string }) 
         <p className="text-sm text-gray-500">Nenhuma comunicação registrada ainda.</p>
       ) : (
         <div className="space-y-3">
+          {eventos.length > 0 ? (
+            <ul className="space-y-1 text-sm text-gray-700">
+              {eventos.map((ev) => (
+                <li key={ev.id} className="flex flex-wrap items-baseline gap-x-1.5">
+                  <RotateCw className="h-3.5 w-3.5 shrink-0 self-center text-gray-400" />
+                  <span className="font-medium">{ROTULO_EVENTO[ev.acao] ?? ev.acao}</span>
+                  {ev.valorAnterior || ev.valorNovo ? (
+                    <span className="text-gray-600">
+                      {ev.valorAnterior ? `${ev.valorAnterior} → ` : ''}
+                      {ev.valorNovo}
+                    </span>
+                  ) : null}
+                  <span className="text-xs text-gray-500">
+                    · {fmt(ev.criadoEm)}
+                    {ev.registradoPorNome ? ` · por ${ev.registradoPorNome}` : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
           {h!.comunicacoes.map((c) => (
             <div key={c.id} className="rounded-md border border-gray-100 bg-gray-50/60 px-3 py-2 text-sm">
               <div className="flex flex-wrap items-center gap-2">

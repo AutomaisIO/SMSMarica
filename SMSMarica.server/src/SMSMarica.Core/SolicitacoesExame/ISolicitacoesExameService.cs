@@ -68,6 +68,15 @@ public interface ISolicitacoesExameService
     Task AlterarEquipamentoDestinoAsync(Guid id, Guid equipamentoId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Troca a UNIDADE EXECUTANTE de um exame (ticket #92). Régua PACS-first: se houver item na
+    /// worklist do dcm4chee, remove e CONFIRMA a remoção antes de trocar. Ao trocar, o exame VOLTA
+    /// AO ESTADO ZERO na nova unidade (perde equipamento e a autorização da recepção) e só reentra
+    /// na worklist pelo fluxo normal. Bloqueado depois que a imagem já voltou do PACS. Registra na
+    /// trilha de auditoria. <paramref name="motivo"/> é obrigatório.
+    /// </summary>
+    Task AlterarUnidadeExecutanteAsync(Guid id, Guid novaUnidadeId, string motivo, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Exclui (soft-delete) a solicitação. Antes, remove o item de worklist do
     /// dcm4chee e confirma (anti-lixo); se a remoção no PACS falhar e
     /// <paramref name="force"/> for false, lança ConflitoException
