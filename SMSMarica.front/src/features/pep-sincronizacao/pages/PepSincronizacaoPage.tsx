@@ -276,6 +276,48 @@ function SecaoContinuidade({ fonteId, podeEditar }: { fonteId: string; podeEdita
   );
 }
 
+/**
+ * O que o operador quer fazer — em vez de Modo × Escopo × limites × purga, que eram flags
+ * ortogonais cujas combinações inválidas o servidor tinha de recusar uma a uma.
+ *
+ * Fora de propósito: "apagar antes" (o upsert reconcilia sem apagar, e uma purga interrompida
+ * some com prontuário), concorrência e cursor digitado à mão — viraram, respectivamente,
+ * bloqueio no servidor, default e um "retomar de onde parou".
+ */
+type Intencao = 'ensaio' | 'carga' | 'atualizar';
+
+const INTENCOES: {
+  id: Intencao; titulo: string; acao: string; duracao: string; corDuracao: string; descricao: string;
+}[] = [
+  {
+    id: 'ensaio',
+    titulo: 'Ensaio',
+    acao: 'Rodar ensaio',
+    duracao: 'minutos',
+    corDuracao: 'bg-green-100 text-green-800',
+    descricao:
+      'Importa alguns pacientes e só o histórico deles, para conferir o conector contra a base real. Não avança marca d\'água nenhuma.',
+  },
+  {
+    id: 'carga',
+    titulo: 'Carga inicial',
+    acao: 'Iniciar carga',
+    duracao: 'horas',
+    corDuracao: 'bg-amber-100 text-amber-800',
+    descricao:
+      'Traz a base inteira. Para base nova ou reconciliação geral. Segura os outros motores enquanto roda, e um deploy interrompe (dá para retomar).',
+  },
+  {
+    id: 'atualizar',
+    titulo: 'Atualizar agora',
+    acao: 'Atualizar',
+    duracao: 'minutos',
+    corDuracao: 'bg-green-100 text-green-800',
+    descricao:
+      'Antecipa o ciclo automático: traz só o que mudou na origem desde o último sincronismo.',
+  },
+];
+
 export function PepSincronizacaoPage() {
   const bases = useBasesPep();
   const status = useStatusPep();
@@ -285,13 +327,9 @@ export function PepSincronizacaoPage() {
   const podeImportar = usePermissao('SincronizacaoPep', 'Edicao');
 
   const [fonteId, setFonteId] = useState('');
-  const [modo, setModo] = useState<ModoSincronizacao>('Completo');
-  const [escopo, setEscopo] = useState<EscopoSincronizacao>('Limitado');
-  const [maxMedicos, setMaxMedicos] = useState('10');
-  const [maxPacientes, setMaxPacientes] = useState('10');
-  const [concorrencia, setConcorrencia] = useState('8');
-  const [apagarAntes, setApagarAntes] = useState(false);
-  const [cursorInicial, setCursorInicial] = useState('');
+  const [intencao, setIntencao] = useState<Intencao>('ensaio');
+  const [quantosEnsaio, setQuantosEnsaio] = useState('100');
+  const [retomar, setRetomar] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
   // Seleciona a primeira base suportada por padrão.
@@ -308,21 +346,30 @@ export function PepSincronizacaoPage() {
   function aoIniciar(e: React.FormEvent) {
     e.preventDefault();
     setErro(null);
-    const cursor =
-      modo === 'Completo' && escopo === 'Tudo' ? Number(cursorInicial) || null : null;
+
+    if (intencao === 'carga' && !window.confirm(
+      `Carga inicial de "${baseSel?.nome}": traz a base INTEIRA e leva horas. ` +
+      'Enquanto roda, os outros motores ficam esperando (roda uma importação por vez) ' +
+      'e um deploy interrompe — dá para retomar depois. Continuar?')) {
+      return;
+    }
+
+    const n = Math.max(Number(quantosEnsaio) || 0, 1);
+    // "Apagar antes" NÃO é enviado por nenhuma intenção: o upsert já reconcilia, e uma purga
+    // interrompida deixaria o prontuário incompleto sem aviso. O servidor também recusa.
+    const payload =
+      intencao === 'ensaio'
+        ? { modo: 'Completo' as ModoSincronizacao, escopo: 'Limitado' as EscopoSincronizacao,
+            maxMedicos: n, maxPacientes: n, cursorPacienteInicial: null }
+        : intencao === 'carga'
+          ? { modo: 'Completo' as ModoSincronizacao, escopo: 'Tudo' as EscopoSincronizacao,
+              maxMedicos: null, maxPacientes: null,
+              cursorPacienteInicial: retomar ? baseSel?.cursorPacienteCd ?? null : null }
+          : { modo: 'Incremental' as ModoSincronizacao, escopo: 'Tudo' as EscopoSincronizacao,
+              maxMedicos: null, maxPacientes: null, cursorPacienteInicial: null };
+
     iniciar.mutate(
-      {
-        fonteId,
-        modo,
-        escopo,
-        maxMedicos: escopo === 'Limitado' ? Number(maxMedicos) || null : null,
-        maxPacientes: escopo === 'Limitado' ? Number(maxPacientes) || null : null,
-        // Com cursor, NÃO apaga antes: senão zeraria a base e recomeçaria do ponteiro,
-        // perdendo tudo antes dele sem repor nesta rodada.
-        apagarAntes: modo === 'Completo' && cursor == null ? apagarAntes : false,
-        concorrencia: Number(concorrencia) || null,
-        cursorPacienteInicial: cursor,
-      },
+      { fonteId, ...payload, apagarAntes: false, concorrencia: null },
       { onError: (err) => setErro(extrairMensagemDeErro(err)) },
     );
   }
@@ -359,100 +406,71 @@ export function PepSincronizacaoPage() {
 
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <form onSubmit={aoIniciar} className="space-y-5">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Campo label="Base de origem" htmlFor="pep-base" className="sm:col-span-2">
-              <Select id="pep-base" value={fonteId} onChange={(e) => setFonteId(e.target.value)}>
-                <option value="" disabled>
-                  {bases.isPending ? 'Carregando bases…' : 'Selecione uma base'}
+          <Campo label="Base de origem" htmlFor="pep-base">
+            <Select id="pep-base" value={fonteId} onChange={(e) => setFonteId(e.target.value)}>
+              <option value="" disabled>
+                {bases.isPending ? 'Carregando bases…' : 'Selecione uma base'}
+              </option>
+              {bases.data?.map((b) => (
+                <option key={b.id} value={b.id} disabled={!b.suportada}>
+                  {b.nome} ({b.tipo} · {b.ambiente}){b.suportada ? '' : ' — sem conector'}
                 </option>
-                {bases.data?.map((b) => (
-                  <option key={b.id} value={b.id} disabled={!b.suportada}>
-                    {b.nome} ({b.tipo} · {b.ambiente}){b.suportada ? '' : ' — não suportada'}
-                  </option>
-                ))}
-              </Select>
-            </Campo>
+              ))}
+            </Select>
+          </Campo>
 
-            <Campo label="Modo" htmlFor="pep-modo" dica="Completo = do zero; Incremental = só o que mudou desde o último sincronismo.">
-              <Select id="pep-modo" value={modo} onChange={(e) => setModo(e.target.value as ModoSincronizacao)}>
-                <option value="Completo">Completo</option>
-                <option value="Incremental">Incremental (desde o último)</option>
-              </Select>
-            </Campo>
+          <div className="space-y-2">
+            {INTENCOES.map((op) => {
+              const ativa = intencao === op.id;
+              return (
+                <label
+                  key={op.id}
+                  className={`flex cursor-pointer gap-3 rounded-lg border p-3 transition ${
+                    ativa ? 'border-primary-500 bg-primary-50/40 ring-1 ring-primary-200' : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="pep-intencao"
+                    className="mt-1"
+                    checked={ativa}
+                    onChange={() => setIntencao(op.id)}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-medium text-gray-900">{op.titulo}</span>
+                      <span className={`rounded-full px-2 py-0.5 text-xs ${op.corDuracao}`}>{op.duracao}</span>
+                    </div>
+                    <p className="mt-0.5 text-xs text-gray-600">{op.descricao}</p>
 
-            <Campo label="Escopo" htmlFor="pep-escopo" dica="Limitado = quantidade fixa (fase de teste); Tudo = base inteira.">
-              <Select id="pep-escopo" value={escopo} onChange={(e) => setEscopo(e.target.value as EscopoSincronizacao)}>
-                <option value="Limitado">Limitado (N médicos / N pacientes)</option>
-                <option value="Tudo">Tudo</option>
-              </Select>
-            </Campo>
+                    {ativa && op.id === 'ensaio' ? (
+                      <div className="mt-2 flex items-center gap-2 text-xs text-gray-700">
+                        <span>Quantos pacientes:</span>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={5000}
+                          className="w-24"
+                          value={quantosEnsaio}
+                          onChange={(e) => setQuantosEnsaio(e.target.value)}
+                        />
+                        <span className="text-gray-500">não move os ponteiros — pode repetir à vontade</span>
+                      </div>
+                    ) : null}
 
-            {escopo === 'Limitado' ? (
-              <>
-                <Campo label="Máx. médicos" htmlFor="pep-med">
-                  <Input id="pep-med" type="number" min={0} value={maxMedicos} onChange={(e) => setMaxMedicos(e.target.value)} />
-                </Campo>
-                <Campo label="Máx. pacientes" htmlFor="pep-pac">
-                  <Input id="pep-pac" type="number" min={0} value={maxPacientes} onChange={(e) => setMaxPacientes(e.target.value)} />
-                </Campo>
-              </>
-            ) : null}
-
-            <Campo
-              label="Requisições em paralelo"
-              htmlFor="pep-conc"
-              dica="Quantas escritas simultâneas no hub (1–64). Mais = mais rápido; menos = menos memória/carga."
-            >
-              <Input id="pep-conc" type="number" min={1} max={64} value={concorrencia} onChange={(e) => setConcorrencia(e.target.value)} />
-            </Campo>
+                    {ativa && op.id === 'carga' && baseSel?.cursorPacienteCd != null ? (
+                      <label className="mt-2 flex items-center gap-2 text-xs text-amber-800">
+                        <input type="checkbox" checked={retomar} onChange={(e) => setRetomar(e.target.checked)} />
+                        Retomar de onde parou (paciente{' '}
+                        <span className="font-mono font-semibold">{baseSel.cursorPacienteCd}</span>) — desmarque para
+                        recomeçar do zero
+                      </label>
+                    ) : null}
+                  </div>
+                </label>
+              );
+            })}
           </div>
-
-          {modo === 'Completo' && escopo === 'Tudo' ? (
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-              <Campo
-                label="Iniciar a partir do cd_paciente (opcional)"
-                htmlFor="pep-cursor"
-                dica="Vazio = base inteira, do começo. Informe um cd para retomar/recomeçar de um ponto (a paginação é decrescente; reprocessar a fronteira é seguro)."
-              >
-                <Input
-                  id="pep-cursor"
-                  type="number"
-                  min={0}
-                  value={cursorInicial}
-                  onChange={(e) => setCursorInicial(e.target.value)}
-                  placeholder="ex.: 238000"
-                />
-              </Campo>
-              {baseSel?.cursorPacienteCd != null ? (
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-amber-700">
-                  <span>
-                    Importação completa interrompida nesta base — último bloco em{' '}
-                    <span className="font-mono font-semibold">{baseSel.cursorPacienteCd}</span>.
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setCursorInicial(String(baseSel.cursorPacienteCd))}
-                    className="rounded-md border border-amber-300 bg-white px-2 py-0.5 font-medium text-amber-800 hover:bg-amber-50"
-                  >
-                    Retomar daqui
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-
-          {modo === 'Completo' ? (
-            <label className={`flex items-center gap-2 text-sm ${cursorInicial ? 'text-gray-400' : 'text-gray-700'}`}>
-              <input
-                type="checkbox"
-                checked={apagarAntes && !cursorInicial}
-                disabled={!!cursorInicial}
-                onChange={(e) => setApagarAntes(e.target.checked)}
-              />
-              Apagar os recursos do hub antes de importar (full refresh)
-              {cursorInicial ? <span className="text-xs">— desabilitado ao usar ponteiro inicial</span> : null}
-            </label>
-          ) : null}
 
           {erro ? (
             <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{erro}</div>
@@ -467,7 +485,7 @@ export function PepSincronizacaoPage() {
             ) : null}
             <Button type="submit" disabled={!podeImportar || !fonteId || !baseSel?.suportada || emExecucao || iniciar.isPending}>
               {iniciar.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-              Iniciar importação
+              {INTENCOES.find((o) => o.id === intencao)?.acao ?? 'Importar'}
             </Button>
           </div>
         </form>
@@ -504,7 +522,6 @@ export function PepSincronizacaoPage() {
             <div><span className="font-medium text-gray-700">Fase:</span> <span className="font-semibold text-primary-700">{status.data.faseAtual ?? '—'}</span></div>
             <div><span className="text-gray-500">Decorrido:</span> {duracao(status.data.decorridoSegundos)}</div>
             <div><span className="text-gray-500">Vazão:</span> {vazao(status.data)}</div>
-            {emExecucao ? <div><span className="text-gray-500">Paralelas:</span> {concorrencia}</div> : null}
             <div><span className="text-gray-500">Início:</span> {dataHora(status.data.iniciadoEm)}</div>
             <div><span className="text-gray-500">Fim:</span> {dataHora(status.data.finalizadoEm)}</div>
           </div>

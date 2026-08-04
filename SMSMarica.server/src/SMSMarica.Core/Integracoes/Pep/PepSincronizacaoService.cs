@@ -43,6 +43,19 @@ public sealed class PepSincronizacaoService(
     private readonly int _agenteMaxLinhas = configuration.GetValue("Pep:Agente:MaxLinhas", 20_000);
 
     /// <summary>
+    /// "Apagar antes" purga a base INTEIRA do hub e reescreve. Fica <b>desligado por padrão</b>:
+    /// com todo recurso clínico entrando por upsert idempotente, ele não é necessário para
+    /// reconciliar — e, se o run for interrompido no meio (a API reinicia a cada deploy), o que
+    /// já foi apagado e ainda não reescrito simplesmente some do prontuário até alguém notar.
+    ///
+    /// <para>A capacidade continua existindo para o caso real de precisar reconstruir uma base
+    /// do zero, mas ligar exige mudar <c>Pep:PermitirApagarAntes</c> e reiniciar o serviço —
+    /// um ato deliberado e auditável, não um checkbox na tela.</para>
+    /// </summary>
+    private readonly bool _permitirApagarAntes =
+        configuration.GetValue("Pep:PermitirApagarAntes", false);
+
+    /// <summary>
     /// Teto de divergências por rodada de arbitragem MANUAL (pela tela). O job automático
     /// (<see cref="Background.VerificadorDivergenciasScheduler"/>) tem a própria configuração.
     /// </summary>
@@ -106,6 +119,12 @@ public sealed class PepSincronizacaoService(
         // for parcial — retomado de um cursor ou limitado por N — tudo que ficou de fora seria
         // apagado e NUNCA reescrito (o incremental não repõe: as marcas seguem avançando).
         // Combinação proibida, não apenas desaconselhada.
+        if (request.ApagarAntes && !_permitirApagarAntes)
+            throw new ValidacaoException("pep.apagar_antes_bloqueado",
+                "\"Apagar antes\" está bloqueado: ele apaga a base inteira do hub antes de reescrever, "
+                + "e uma interrupção no meio (deploy, queda) deixaria o prontuário incompleto sem aviso. "
+                + "O upsert já reconcilia sem apagar. Para um rebuild real, ligue Pep:PermitirApagarAntes no servidor.");
+
         if (request.ApagarAntes && request.Escopo == EscopoSincronizacao.Limitado)
             throw new ValidacaoException("pep.apagar_antes_limitado",
                 "\"Apagar antes\" só pode ser usado com escopo Tudo: no escopo Limitado a purga apagaria a base inteira e a reescrita cobriria apenas parte dela.");

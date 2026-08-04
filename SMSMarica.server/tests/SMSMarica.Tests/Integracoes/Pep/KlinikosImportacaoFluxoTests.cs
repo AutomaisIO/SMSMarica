@@ -757,6 +757,33 @@ public class KlinikosImportacaoFluxoTests
         Assert.Equal("J18.9", cond.Code!.Coding[0].Code); // a reavaliação (14h) prevaleceu
     }
 
+    /// <summary>
+    /// "Apagar antes" purga a base inteira do hub antes de reescrever. Numa API que reinicia a
+    /// cada deploy, uma purga interrompida deixa o prontuário incompleto SEM AVISO — e o upsert
+    /// idempotente já reconcilia sem apagar nada. O conector recusa na entrada; o serviço
+    /// recusa antes disso (Pep:PermitirApagarAntes, desligado por padrão); e a tela nem oferece.
+    /// Três camadas porque o custo de errar aqui é prontuário sumido.
+    /// </summary>
+    [Fact]
+    public async Task Apagar_antes_e_recusado_pelo_conector()
+    {
+        var estrategia = new KlinikosImportacaoStrategy(NullLogger<KlinikosImportacaoStrategy>.Instance);
+
+        var ex = await Assert.ThrowsAsync<SMSMarica.Core.Common.Excecoes.ValidacaoException>(() =>
+            estrategia.ImportarAsync(new ContextoImportacaoPep
+            {
+                Consulta = OrigemPadrao(),
+                Opcoes = new OpcoesImportacao(
+                    ModoSincronizacao.Completo, EscopoSincronizacao.Tudo, null, null, ApagarAntes: true),
+                Marca = new MarcaDagua(),
+                Escritor = new HubFake(),
+                Progresso = new ProgressoImportacao(),
+                BaseSlug = Slug,
+            }, CancellationToken.None));
+
+        Assert.Contains("Apagar antes", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>O total de falhas conta além do teto do detalhe — o detalhe é amostra, o número é exato.</summary>
     [Fact]
     public void Detalhe_de_falhas_e_amostra_mas_o_total_e_exato()
