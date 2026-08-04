@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -66,9 +66,12 @@ export function SolicitacaoExameDetalhePage() {
 
   const podeEditar = usePermissao('SolicitacoesExame', 'Edicao');
   const podeExcluir = usePermissao('SolicitacoesExame', 'Exclusao');
+  // Estações elegíveis (unidade executante + modalidade) — para gatear os botões de destino.
+  const equipamentos = useEquipamentosDoExame(id ?? null, podeEditar);
 
   const [modalCancelar, setModalCancelar] = useState(false);
   const [modalExcluir, setModalExcluir] = useState(false);
+  const [modalEquip, setModalEquip] = useState(false);
   const [motivo, setMotivo] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [erroExcluir, setErroExcluir] = useState<string | null>(null);
@@ -98,6 +101,14 @@ export function SolicitacaoExameDetalhePage() {
   // Exclusão (admin): permitida em qualquer status, exceto exame iniciado/realizado/laudado.
   const podeExcluirAgora =
     podeExcluir && s.status !== 'EmExecucao' && s.status !== 'Realizada' && s.status !== 'Laudada';
+
+  // Troca/definição de estação de destino (ticket #72). Só antes da execução e quando a unidade
+  // tem MAIS DE UMA sala na modalidade (senão o servidor resolve sozinho).
+  const preExecucao = s.status === 'Solicitada' || s.status === 'Enviada' || s.status === 'Recebida';
+  const temEscolhaEquip = podeEditar && preExecucao && (equipamentos.data?.length ?? 0) > 1;
+  // Destino ainda indefinido + escolha ambígua = o envio à worklist SEMPRE falha até escolher a sala.
+  // Nesse caso o botão de envio guia para o modal, em vez de reenviar à toa.
+  const precisaDefinirEquip = temEscolhaEquip && !s.equipamentoId;
 
   async function confirmarCancelamento() {
     setErro(null);
@@ -169,7 +180,13 @@ export function SolicitacaoExameDetalhePage() {
               <BotaoLinkDownload solicitacaoId={s.id} />
             </>
           ) : null}
-          {podeReenviar ? (
+          {precisaDefinirEquip ? (
+            // Destino indefinido + unidade ambígua: reenviar só repetiria o erro. Guia para a escolha.
+            <Button onClick={() => setModalEquip(true)}>
+              <ScanLine className="mr-2 h-4 w-4" />
+              Definir equipamento e enviar
+            </Button>
+          ) : podeReenviar ? (
             <Button onClick={reenviarAgora} disabled={reenviar.isPending} variante="outline">
               {reenviar.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RotateCw className="mr-2 h-4 w-4" />}
               Reenviar worklist
@@ -309,7 +326,12 @@ export function SolicitacaoExameDetalhePage() {
                 <span className="text-gray-500">definido no envio</span>
               )}
             </span>
-            <TrocaEquipamentoDestino s={s} />
+            {temEscolhaEquip ? (
+              <Button variante="outline" tamanho="sm" onClick={() => setModalEquip(true)}>
+                <RotateCw className="mr-1.5 h-3.5 w-3.5" />
+                {s.equipamentoId ? 'Trocar equipamento' : 'Definir equipamento'}
+              </Button>
+            ) : null}
           </div>
         </section>
 
@@ -415,6 +437,8 @@ export function SolicitacaoExameDetalhePage() {
         {s.rawSisreg ? <RawSisregDisclosure raw={s.rawSisreg} /> : null}
       </div>
 
+      <ModalEquipamentoDestino s={s} aberto={modalEquip} aoFechar={() => setModalEquip(false)} />
+
       <Modal
         aberto={modalCancelar}
         aoFechar={() => setModalCancelar(false)}
@@ -484,93 +508,107 @@ const fmt = formatarInstante;
  * MAIS DE UM equipamento na modalidade (senão não há o que escolher). Ao confirmar, o servidor
  * verifica no dcm4chee, exclui e confirma a remoção do item na sala antiga e recria no novo destino.
  */
-function TrocaEquipamentoDestino({ s }: { s: SolicitacaoExame }) {
-  const podeEditar = usePermissao('SolicitacoesExame', 'Edicao');
-  // Só faz sentido antes da execução — mesma janela em que o item vive na worklist.
-  const elegivel = podeEditar && (s.status === 'Solicitada' || s.status === 'Enviada' || s.status === 'Recebida');
-  const equipamentos = useEquipamentosDoExame(s.id, elegivel);
+/**
+ * Modal de escolha da estação (equipamento) de destino — controlado pela página. Serve tanto para
+ * TROCAR (exame já com destino) quanto para DEFINIR (destino ainda em branco, chamado pelo botão de
+ * envio quando a unidade é ambígua). Ao confirmar, o backend verifica o item no dcm4chee, remove e
+ * confirma a remoção da sala antiga (se houver) e recria no novo destino — para um exame que nunca
+ * foi ao PACS, apenas grava o destino e envia. Ticket #72.
+ */
+function ModalEquipamentoDestino({
+  s,
+  aberto,
+  aoFechar,
+}: {
+  s: SolicitacaoExame;
+  aberto: boolean;
+  aoFechar: () => void;
+}) {
+  const equipamentos = useEquipamentosDoExame(s.id, aberto);
   const opcoes = equipamentos.data ?? [];
   const alterar = useAlterarEquipamentoDestino();
+  const atualId = opcoes.find((o) => o.selecionado)?.id ?? '';
+  const temAtual = Boolean(s.equipamentoId);
 
-  const [aberto, setAberto] = useState(false);
   const [equipamentoId, setEquipamentoId] = useState('');
   const [erro, setErro] = useState<string | null>(null);
 
-  // Trocar só faz sentido com duas ou mais salas na modalidade.
-  if (!elegivel || opcoes.length <= 1) return null;
-
-  function abrir() {
-    setErro(null);
-    // Pré-seleciona a estação atual (marcada pelo backend com `selecionado`).
-    setEquipamentoId(opcoes.find((o) => o.selecionado)?.id ?? '');
-    setAberto(true);
-  }
+  // Ao abrir (e quando a lista chega), pré-seleciona a estação atual e limpa o erro.
+  useEffect(() => {
+    if (aberto) {
+      setErro(null);
+      setEquipamentoId(atualId);
+    }
+  }, [aberto, atualId]);
 
   async function confirmar() {
     setErro(null);
     if (!equipamentoId) {
-      setErro('Selecione o novo equipamento de destino.');
+      setErro('Selecione o equipamento de destino.');
       return;
     }
-    if (equipamentoId === opcoes.find((o) => o.selecionado)?.id) {
+    if (temAtual && equipamentoId === atualId) {
       setErro('Este já é o equipamento de destino atual.');
       return;
     }
     try {
       await alterar.mutateAsync({ id: s.id, equipamentoId });
-      setAberto(false);
-      notificar('Equipamento de destino alterado.', 'sucesso');
+      aoFechar();
+      notificar(
+        temAtual ? 'Equipamento de destino alterado.' : 'Equipamento definido — exame enviado à worklist.',
+        'sucesso',
+      );
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
     }
   }
 
   return (
-    <>
-      <Button variante="outline" tamanho="sm" onClick={abrir}>
-        <RotateCw className="mr-1.5 h-3.5 w-3.5" />
-        Trocar equipamento
-      </Button>
-      <Modal
-        aberto={aberto}
-        aoFechar={() => setAberto(false)}
-        titulo="Trocar equipamento de destino"
-        descricao="O item é removido da sala atual no PACS (com confirmação) e recriado no destino escolhido."
-        largura="sm"
-      >
-        <div className="space-y-4">
-          <Campo label="Novo equipamento" htmlFor="equipamento-troca">
-            <Select
-              id="equipamento-troca"
-              value={equipamentoId}
-              onChange={(e) => setEquipamentoId(e.target.value)}
-            >
-              <option value="">Selecione…</option>
-              {opcoes.map((eq) => (
-                <option key={eq.id} value={eq.id}>
-                  {eq.nome} ({eq.aeTitle}){eq.selecionado ? ' — atual' : ''}
-                </option>
-              ))}
-            </Select>
-          </Campo>
-          {erro ? <p className="text-sm text-red-700">{erro}</p> : null}
-          <div className="flex justify-end gap-2">
-            <Button variante="outline" onClick={() => setAberto(false)} disabled={alterar.isPending}>
-              Cancelar
-            </Button>
-            <Button onClick={confirmar} disabled={alterar.isPending}>
-              {alterar.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Trocando…
-                </>
-              ) : (
-                'Confirmar troca'
-              )}
-            </Button>
-          </div>
+    <Modal
+      aberto={aberto}
+      aoFechar={aoFechar}
+      titulo={temAtual ? 'Trocar equipamento de destino' : 'Definir equipamento de destino'}
+      descricao={
+        temAtual
+          ? 'O item é removido da sala atual no PACS (com confirmação) e recriado no destino escolhido.'
+          : 'Escolha a sala em que o exame será realizado — o pedido entra na worklist desse equipamento.'
+      }
+      largura="sm"
+    >
+      <div className="space-y-4">
+        <Campo label="Equipamento" htmlFor="equipamento-destino">
+          <Select
+            id="equipamento-destino"
+            value={equipamentoId}
+            onChange={(e) => setEquipamentoId(e.target.value)}
+          >
+            <option value="">Selecione…</option>
+            {opcoes.map((eq) => (
+              <option key={eq.id} value={eq.id}>
+                {eq.nome} ({eq.aeTitle}){eq.selecionado ? ' — atual' : ''}
+              </option>
+            ))}
+          </Select>
+        </Campo>
+        {erro ? <p className="text-sm text-red-700">{erro}</p> : null}
+        <div className="flex justify-end gap-2">
+          <Button variante="outline" onClick={aoFechar} disabled={alterar.isPending}>
+            Cancelar
+          </Button>
+          <Button onClick={confirmar} disabled={alterar.isPending || equipamentos.isPending}>
+            {alterar.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {temAtual ? 'Trocando…' : 'Enviando…'}
+              </>
+            ) : temAtual ? (
+              'Confirmar troca'
+            ) : (
+              'Definir e enviar'
+            )}
+          </Button>
         </div>
-      </Modal>
-    </>
+      </div>
+    </Modal>
   );
 }
 
