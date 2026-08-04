@@ -303,7 +303,8 @@ Consequências para o conector:
 
 | # | Ponta | Bloqueia? |
 |---|---|---|
-| P1 | Agente de Santa Rita offline — instância não medida | não bloqueia a UPA |
+| ~~P1~~ | ~~Agente de Santa Rita offline~~ | **resolvido 04/08** — instância medida (§1.1) |
+| P13 | **Os agentes caem sozinhos.** O da UPA caiu 8× em 04/08 (intervalos de 12 a 60 min) e não volta quando o processo morre na ponta — não parece ter supervisor (serviço/tarefa com reinício). Sem agente, o conector nem começa | **bloqueia carga e ciclo** |
 | P2 | Prescrição estruturada / aprazamento não medidos nesta instância | não bloqueia a Fase 1 |
 | P3 | CNS provisório (17.361): o que significa? | não — ficam de fora até decidir |
 | P4 | ~~`MarcaDagua` precisa de watermark numérica por fase~~ | **resolvido 03/08** — ponteiros em `jsonb` |
