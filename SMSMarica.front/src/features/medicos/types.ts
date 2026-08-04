@@ -94,15 +94,5 @@ export type AtualizarMedicoPayload = {
   fotoBase64?: string | null;
 };
 
-export type PromoverMedicoPayload = {
-  usuarioId: string;
-  conselho: string;
-  registro: string;
-  ufConselho: string;
-  especialidade?: string;
-  rqe?: string;
-  validadeRegistro?: string;
-};
-
 /** Filtro de conselho aplicado na busca: exata (conselho) ou exclusão (conselhoExceto). */
 export type FiltroConselho = { conselho?: string; conselhoExceto?: string };

@@ -5,13 +5,11 @@ import {
   cadastrarMedico,
   desativarMedico,
   obterMedicoPorId,
-  promoverMedico,
 } from '@/features/medicos/api/medicosApi';
 import type {
   AtualizarMedicoPayload,
   CadastrarMedicoPayload,
   FiltroConselho,
-  PromoverMedicoPayload,
 } from '@/features/medicos/types';
 
 export const medicosKeys = {
@@ -48,14 +46,6 @@ export function useCadastrarMedico() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (payload: CadastrarMedicoPayload) => cadastrarMedico(payload),
-    onSuccess: () => client.invalidateQueries({ queryKey: medicosKeys.raiz }),
-  });
-}
-
-export function usePromoverMedico() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (payload: PromoverMedicoPayload) => promoverMedico(payload),
     onSuccess: () => client.invalidateQueries({ queryKey: medicosKeys.raiz }),
   });
 }

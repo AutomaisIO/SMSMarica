@@ -5,7 +5,6 @@ import type {
   FiltroConselho,
   Medico,
   MedicoListItem,
-  PromoverMedicoPayload,
 } from '@/features/medicos/types';
 
 export async function buscarMedicos(
@@ -33,11 +32,6 @@ export async function obterMedicoPorId(id: string): Promise<Medico> {
 
 export async function cadastrarMedico(payload: CadastrarMedicoPayload): Promise<string> {
   const { data } = await http.post<string>('/medicos', payload);
-  return data;
-}
-
-export async function promoverMedico(payload: PromoverMedicoPayload): Promise<string> {
-  const { data } = await http.post<string>('/medicos/promover', payload);
   return data;
 }
 

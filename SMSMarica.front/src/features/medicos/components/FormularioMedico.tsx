@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Loader2, Search, UserPlus } from 'lucide-react';
+import { Loader2, Search } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
@@ -19,7 +19,6 @@ import {
   useAtualizarMedico,
   useCadastrarMedico,
   useMedicoPorId,
-  usePromoverMedico,
 } from '@/features/medicos/api/queries';
 import {
   useAtualizarOverridesDoUsuario,
@@ -96,12 +95,6 @@ type Erros = Partial<
   >
 >;
 
-type PromocaoPendente = {
-  usuarioId: string;
-  nome: string;
-  email: string;
-};
-
 export function FormularioMedico({
   modo,
   idMedico,
@@ -115,14 +108,15 @@ export function FormularioMedico({
   const [erroGlobal, setErroGlobal] = useState<string | null>(null);
   const [passoCpfConcluido, setPassoCpfConcluido] = useState(modo === 'editar');
   const [consultandoCpf, setConsultandoCpf] = useState(false);
-  const [promocao, setPromocao] = useState<PromocaoPendente | null>(null);
+  // Nome do usuário (login) já existente para o CPF informado, sem papel definido.
+  // Apenas informativo: ao cadastrar o médico, o vínculo é feito pelo CPF no back.
+  const [usuarioExistenteNome, setUsuarioExistenteNome] = useState<string | null>(null);
 
   const [perfilIdsSelecionados, setPerfilIdsSelecionados] = useState<string[]>([]);
   const [overrides, setOverrides] = useState<MatrizEdicao>({});
 
   const cadastrar = useCadastrarMedico();
   const atualizar = useAtualizarMedico();
-  const promover = usePromoverMedico();
   const detalhe = useMedicoPorId(modo === 'editar' ? idMedico ?? null : null);
   const salvarPerfis = useAtualizarPerfisDoUsuario();
   const salvarOverrides = useAtualizarOverridesDoUsuario();
@@ -184,7 +178,7 @@ export function FormularioMedico({
   async function aoConfirmarPasso1() {
     setErros({});
     setErroGlobal(null);
-    setPromocao(null);
+    setUsuarioExistenteNome(null);
 
     const cpfLimpo = valores.cpf.replace(/\D/g, '');
     const ne: Erros = {};
@@ -209,11 +203,10 @@ export function FormularioMedico({
           );
           return;
         }
-        setPromocao({
-          usuarioId: existente.id,
-          nome: existente.nomeCompleto,
-          email: existente.email ?? '',
-        });
+        // Usuário (login) já existe sem papel. Não há mais "promover": cadastra-se o
+        // médico normalmente (POST /medicos) e o vínculo usuário↔médico é resolvido
+        // pelo CPF no back. Pré-preenche os dados dele e segue pelo fluxo padrão.
+        setUsuarioExistenteNome(existente.nomeCompleto);
         setValores((s) => ({
           ...s,
           nomeCompleto: existente.nomeCompleto,
@@ -262,36 +255,6 @@ export function FormularioMedico({
     e.preventDefault();
     setErros({});
     setErroGlobal(null);
-
-    if (modo === 'criar' && promocao) {
-      const ne: Erros = {};
-      const registro = valores.registro.trim();
-      const uf = valores.ufConselho.trim().toUpperCase();
-      const conselho = valores.conselho.trim().toUpperCase();
-      if (conselho.length < 2) ne.conselho = 'Informe o conselho.';
-      if (registro.length < 3) ne.registro = 'Número do registro obrigatório.';
-      if (uf.length !== 2) ne.ufConselho = 'UF do conselho deve ter 2 letras.';
-      if (Object.keys(ne).length > 0) {
-        setErros(ne);
-        return;
-      }
-      try {
-        await promover.mutateAsync({
-          usuarioId: promocao.usuarioId,
-          conselho,
-          registro,
-          ufConselho: uf,
-          especialidade: valores.especialidade.trim() || undefined,
-          rqe: valores.rqe.trim() || undefined,
-          validadeRegistro: valores.validadeRegistro || undefined,
-        });
-        await aplicarPermissoes(promocao.usuarioId);
-        aoConcluir();
-      } catch (erro) {
-        setErroGlobal(extrairMensagemDeErro(erro));
-      }
-      return;
-    }
 
     const enderecoForm = paraPayload(valores.endereco);
     const enderecoPayload = enderecoForm
@@ -369,7 +332,7 @@ export function FormularioMedico({
   }
 
   const pendente =
-    cadastrar.isPending || atualizar.isPending || promover.isPending
+    cadastrar.isPending || atualizar.isPending
     || salvarPerfis.isPending || salvarOverrides.isPending;
 
   if (modo === 'criar' && !passoCpfConcluido) {
@@ -434,53 +397,6 @@ export function FormularioMedico({
     );
   }
 
-  // Modo promoção: usuário existe sem papel → só campos do papel médico.
-  if (modo === 'criar' && promocao) {
-    return (
-      <form onSubmit={aoEnviar} className="space-y-5">
-        <div className="rounded-md border border-amber-300 bg-amber-50 p-4">
-          <div className="flex items-start gap-3">
-            <UserPlus className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-700" />
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-amber-900">
-                Promover usuário existente a médico
-              </p>
-              <p className="mt-1 text-sm text-amber-800">
-                <strong>{promocao.nome}</strong> ({promocao.email}) já está cadastrado como
-                usuário e ainda não tem papel definido. Ao continuar, será promovido a médico.
-                Os dados pessoais (nome, CPF, endereço, telefone, foto) permanecem como estão e
-                podem ser ajustados depois em <em>Editar médico</em>.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <CamposMedicoEspecificos
-          valores={valores}
-          erros={erros}
-          setCampo={setCampo}
-          permitirEscolherConselho={permitirEscolherConselho}
-          autoFocusRegistro
-        />
-
-        {erroGlobal ? (
-          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {erroGlobal}
-          </div>
-        ) : null}
-
-        <div className="flex items-center justify-end gap-3 pt-2">
-          <Button type="button" variante="ghost" onClick={aoConcluir} disabled={pendente}>
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={pendente}>
-            {pendente ? 'Promovendo…' : `Promover ${promocao.nome.split(' ')[0]} a ${substantivo}`}
-          </Button>
-        </div>
-      </form>
-    );
-  }
-
   const dadosPessoaisValores = {
     nomeCompleto: valores.nomeCompleto,
     cpf: valores.cpf,
@@ -495,6 +411,14 @@ export function FormularioMedico({
     <div className="space-y-5">
       {modo === 'editar' && detalhe.isFetching ? (
         <div className="text-sm text-gray-500">Carregando dados…</div>
+      ) : null}
+
+      {modo === 'criar' && usuarioExistenteNome ? (
+        <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+          <strong>{usuarioExistenteNome}</strong> já tem um usuário de acesso (login) com este
+          CPF. Ao cadastrar, o médico será vinculado automaticamente a esse usuário — perfis e
+          permissões definidos aqui já valem para o login dele.
+        </div>
       ) : null}
 
       <DadosPessoaisCampos
