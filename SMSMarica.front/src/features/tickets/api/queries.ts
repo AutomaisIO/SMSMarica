@@ -19,6 +19,7 @@ import {
   listarTodosTickets,
   marcarEnviadoIa,
   obterConfiguracao,
+  obterContextoTicketPorNumero,
   obterResumoAutor,
   obterResumoGestao,
   obterTicket,
@@ -40,6 +41,7 @@ export const ticketsKeys = {
   config: ['tickets', 'config'] as const,
   resumoAutor: ['tickets', 'resumo', 'autor'] as const,
   resumoGestao: ['tickets', 'resumo', 'gestao'] as const,
+  contextoNumero: (numero: number) => ['tickets', 'contexto', numero] as const,
 };
 
 export function useMeusTickets(incluirArquivados: boolean) {
@@ -53,6 +55,19 @@ export function useTodosTickets(incluirArquivados: boolean) {
   return useQuery({
     queryKey: ticketsKeys.todos(incluirArquivados),
     queryFn: () => listarTodosTickets(incluirArquivados),
+  });
+}
+
+/**
+ * Contexto (título/tipo/status) de um ticket por número — alimenta a faixa do Agente IA.
+ * Fica atualizado enquanto a conversa está aberta (o status pode mudar durante o trabalho).
+ */
+export function useContextoTicketPorNumero(numero: number | null | undefined) {
+  return useQuery({
+    queryKey: ticketsKeys.contextoNumero(numero ?? 0),
+    queryFn: () => obterContextoTicketPorNumero(numero as number),
+    enabled: typeof numero === 'number' && numero > 0,
+    staleTime: 15_000,
   });
 }
 

@@ -146,6 +146,15 @@ public sealed class TicketService(SmsMaricaDbContext db, IUsuarioAtualAccessor u
 
     public Task<TicketDto> ObterGestaoAsync(Guid id, CancellationToken ct = default) => ObterInternoAsync(id, gestao: true, ct);
 
+    public async Task<TicketContextoDto> ObterContextoPorNumeroAsync(int numero, CancellationToken ct = default)
+    {
+        var contexto = await _db.Tickets.AsNoTracking()
+            .Where(t => t.ExcluidoEm == null && t.Numero == numero)
+            .Select(t => new TicketContextoDto(t.Numero, t.Titulo, t.Tipo, t.Status))
+            .FirstOrDefaultAsync(ct);
+        return contexto ?? throw new NaoEncontradoException(nameof(Ticket), numero);
+    }
+
     public async Task<TicketResumoGestaoDto> ObterResumoGestaoAsync(CancellationToken ct = default)
     {
         var baseQuery = _db.Tickets.AsNoTracking()

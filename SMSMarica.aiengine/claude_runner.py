@@ -160,6 +160,14 @@ class ClaudeEngine:
         else:
             cwd, _ = config.resolve_cwd()
 
+        # Sessão de ticket ganha um nome legível na lista ("#88 — <título>") em vez de
+        # herdar os primeiros 80 caracteres do primeiro prompt (ver touch_session). Só
+        # quando o chamador não mandou um título explícito.
+        if kind == "agente" and ticket_numero is not None and not (title or "").strip():
+            title = f"#{ticket_numero}"
+            if (ticket_titulo or "").strip():
+                title += f" — {ticket_titulo.strip()}"
+
         store.create_session(sid, title, ticket_numero, ticket_titulo, cwd,
                              usuario_id, usuario_nome, kind=kind,
                              base_slug=(base_slug or None))

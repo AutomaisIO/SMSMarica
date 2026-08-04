@@ -38,6 +38,9 @@ public interface ITicketService
     /// <summary>Detalhe de qualquer ticket, incluindo comentários internos.</summary>
     Task<TicketDto> ObterGestaoAsync(Guid id, CancellationToken ct = default);
 
+    /// <summary>Contexto enxuto (número/título/tipo/status) por número — alimenta a faixa do Agente IA.</summary>
+    Task<TicketContextoDto> ObterContextoPorNumeroAsync(int numero, CancellationToken ct = default);
+
     /// <summary>Comenta em qualquer ticket; pode marcar como nota interna.</summary>
     Task ComentarGestaoAsync(Guid id, ComentarTicketRequest request, CancellationToken ct = default);
 

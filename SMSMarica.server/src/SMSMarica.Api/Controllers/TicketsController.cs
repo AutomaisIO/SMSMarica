@@ -113,6 +113,16 @@ public sealed class TicketsController(ITicketService service, IMidiasService mid
     [ProducesResponseType<TicketDto>(StatusCodes.Status200OK)]
     public async Task<TicketDto> ObterGestao(Guid id, CancellationToken ct) => await _service.ObterGestaoAsync(id, ct);
 
+    // Contexto enxuto por número (título/tipo/status) para a faixa do painel do Agente IA.
+    // Gated em AgenteIa:Consulta — a mesma trava do painel que consome este dado (não expõe
+    // o corpo do ticket, só o metadado do cabeçalho).
+    [HttpGet("gestao/por-numero/{numero:int}")]
+    [RequerPermissao(ModuloPermissao.AgenteIa, AcoesPermissao.Consulta)]
+    [ProducesResponseType<TicketContextoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<TicketContextoDto> ObterContextoPorNumero(int numero, CancellationToken ct)
+        => await _service.ObterContextoPorNumeroAsync(numero, ct);
+
     [HttpPost("gestao/{id:guid}/comentarios")]
     [RequerPermissao(ModuloPermissao.Ticket, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

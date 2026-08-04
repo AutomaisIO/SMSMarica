@@ -3,6 +3,14 @@ export type TicketStatus = 'Aberto' | 'EmAnalise' | 'Concluido' | 'Negado';
 export type TicketPrioridade = 'Baixa' | 'Normal' | 'Alta';
 export type TicketVisibilidade = 'Privado' | 'PorUnidade' | 'Publico';
 
+/** Contexto enxuto de um ticket (para a faixa do Agente IA): número, título, tipo e status. */
+export type TicketContexto = {
+  numero: number;
+  titulo: string;
+  tipo: TicketTipo;
+  status: TicketStatus;
+};
+
 export type TicketAnexo = {
   id: string;
   midiaId: string;

@@ -6,6 +6,7 @@ import type {
   ComentarPayload,
   Ticket,
   TicketConfiguracao,
+  TicketContexto,
   TicketListItem,
   TicketResumoAutor,
   TicketResumoGestao,
@@ -78,6 +79,12 @@ export async function obterResumoGestao(): Promise<TicketResumoGestao> {
 
 export async function obterTicketGestao(id: string): Promise<Ticket> {
   const { data } = await http.get<Ticket>(`/tickets/gestao/${id}`);
+  return data;
+}
+
+/** Contexto enxuto por número (título/tipo/status) para a faixa do Agente IA. */
+export async function obterContextoTicketPorNumero(numero: number): Promise<TicketContexto> {
+  const { data } = await http.get<TicketContexto>(`/tickets/gestao/por-numero/${numero}`);
   return data;
 }
 

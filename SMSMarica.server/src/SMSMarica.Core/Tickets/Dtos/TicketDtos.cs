@@ -27,6 +27,13 @@ public sealed record TicketListItemDto(
     /// <summary>Gestão: o ticket já foi encaminhado ao Agente IA (marca "Enviado à IA").</summary>
     bool EnviadoIa);
 
+/// <summary>Contexto enxuto de um ticket (número/título/tipo/status) para a faixa do Agente IA.</summary>
+public sealed record TicketContextoDto(
+    int Numero,
+    string Titulo,
+    TicketTipo Tipo,
+    TicketStatus Status);
+
 /// <summary>Anexo (imagem) de um ticket/comentário.</summary>
 public sealed record TicketAnexoDto(
     Guid Id,

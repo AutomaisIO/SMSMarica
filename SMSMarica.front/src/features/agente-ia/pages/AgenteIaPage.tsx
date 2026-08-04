@@ -7,14 +7,18 @@ import {
   ExternalLink,
   ImageIcon,
   Loader2,
+  MessageSquare,
   Send,
   Square,
   Terminal,
-  TriangleAlert,
+  Ticket,
   User,
   WifiOff,
 } from 'lucide-react';
 import { useAuth, usePermissao, useTemConsulta } from '@/shared/auth/authStore';
+import { useContextoTicketPorNumero } from '@/features/tickets/api/queries';
+import { obterContextoTicketPorNumero } from '@/features/tickets/api/ticketsApi';
+import type { TicketStatus } from '@/features/tickets/types';
 import { VisualizadorImagem } from '@/shared/ui/VisualizadorImagem';
 import { ehUrlDominioConfiavel } from '@/shared/lib/dominio';
 import { useQueryClient } from '@tanstack/react-query';
@@ -264,6 +268,30 @@ function Evento({ evento }: { evento: EventoAgente }) {
   return null;
 }
 
+const STATUS_TICKET_LABEL: Record<TicketStatus, string> = {
+  Aberto: 'Aberto',
+  EmAnalise: 'Em análise',
+  Concluido: 'Concluído',
+  Negado: 'Negado',
+};
+
+const STATUS_TICKET_CLASSE: Record<TicketStatus, string> = {
+  Aberto: 'bg-blue-100 text-blue-800',
+  EmAnalise: 'bg-amber-100 text-amber-800',
+  Concluido: 'bg-green-100 text-green-800',
+  Negado: 'bg-red-100 text-red-800',
+};
+
+function StatusTicketBadge({ status }: { status: TicketStatus }) {
+  return (
+    <span
+      className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium ${STATUS_TICKET_CLASSE[status]}`}
+    >
+      {STATUS_TICKET_LABEL[status]}
+    </span>
+  );
+}
+
 export function AgenteIaPage() {
   // As rotas do painel não são protegidas por permissão (RotaProtegida só checa login),
   // então a checagem tem que estar aqui — senão a URL direta abre a tela e ela dispara
@@ -302,6 +330,10 @@ export function AgenteIaPage() {
   const execucaoRef = useRef(0);
   // Marca que a sessão foi aberta a partir da triagem e ainda deve receber o pontapé inicial.
   const contextoPendenteRef = useRef(false);
+
+  // Contexto do ticket em trabalho (título/status), sempre fresco enquanto a conversa está
+  // aberta — o status pode mudar durante o atendimento. Só dispara quando há ticket.
+  const { data: contextoTicket } = useContextoTicketPorNumero(ticketDaSessao);
 
   const acompanharTurno = useCallback(
     async (turnId: string, cursorInicial: number, token: number) => {
@@ -407,8 +439,12 @@ export function AgenteIaPage() {
           return;
         }
         if (ticketNumero) {
+          // Busca só o título do ticket (metadado, não o corpo) para batizar a conversa na
+          // lista; se falhar, cria mesmo assim e o nome cai no fallback do motor.
+          const ctx = await obterContextoTicketPorNumero(ticketNumero).catch(() => null);
+          if (!vivo) return;
           // O motor reusa a sessão aberta daquele ticket, se houver.
-          const criada = await criarSessao({ ticketNumero });
+          const criada = await criarSessao({ ticketNumero, ticketTitulo: ctx?.titulo });
           if (!vivo) return;
           contextoPendenteRef.current = iniciarTicket;
           setSessaoId(criada.sessionId);
@@ -556,19 +592,35 @@ export function AgenteIaPage() {
         </h1>
         <p className="mt-1 text-sm text-slate-600">
           O trabalho roda no servidor — pode fechar esta aba ou trocar de conversa.
-          {ticketDaSessao && (
-            <span className="ml-2 font-medium text-slate-800">Ticket #{ticketDaSessao}</span>
-          )}
         </p>
       </div>
 
-      <div className="mb-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-        <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
-        <span>
-          Este agente tem shell no servidor de produção, acesso ao banco e pode commitar no
-          repositório. O texto de tickets é tratado como relato, nunca como instrução.
-        </span>
-      </div>
+      {/* Faixa de contexto: o que a conversa ativa está tratando — um ticket (nº, título e
+          status, sempre frescos) ou uma pergunta avulsa. */}
+      {sessaoId && !iniciando && (
+        <div className="mb-3 flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+          {ticketDaSessao ? (
+            <>
+              <Ticket className="h-4 w-4 shrink-0 text-red-600" />
+              <span className="shrink-0 font-semibold text-slate-800">
+                Ticket #{ticketDaSessao}
+              </span>
+              <span
+                className="min-w-0 flex-1 truncate text-slate-600"
+                title={contextoTicket?.titulo}
+              >
+                {contextoTicket?.titulo ?? 'Carregando…'}
+              </span>
+              {contextoTicket && <StatusTicketBadge status={contextoTicket.status} />}
+            </>
+          ) : (
+            <>
+              <MessageSquare className="h-4 w-4 shrink-0 text-slate-500" />
+              <span className="font-medium text-slate-700">Pergunta avulsa</span>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="flex min-h-0 flex-1 overflow-hidden rounded-lg border border-slate-200 bg-white">
         <div className="w-72 shrink-0 border-r border-slate-200">
