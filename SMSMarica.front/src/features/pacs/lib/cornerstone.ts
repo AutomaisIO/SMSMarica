@@ -76,8 +76,11 @@ export function wadoRsRoot(): string {
  * v3: frames YBR planar (US Mindray DC-28) passam a ser servidos CRUS — o transcode
  *     reordenava os samples e o viewer exibia listras; expurga os J2K corrompidos
  *     dos caches (browser e disco do proxy, já que ?ev entra na chave).
+ * v4: na janela entre os deploys do v3 e do TransferSyntaxPreferido, o caminho cru
+ *     repassou RLE (sintaxe de gravação do Mindray) e ficou preso no cache imutável
+ *     do browser; agora o proxy pede Explicit LE ao dcm4chee e o v4 fura esse cache.
  */
-const VERSAO_ENCODING = 3;
+const VERSAO_ENCODING = 4;
 
 /** imageId WADO-RS para uma instância (frame único por padrão). */
 export function construirImageId(
