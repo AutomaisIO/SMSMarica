@@ -49,6 +49,8 @@ internal sealed class SaluxFhirMapper(string slug, string source)
     private const string SysRisco = "urn:salux:classificacao-risco";
 
     // Internação (ADR-0025)
+    private const string SysHospital = "urn:salux:hospital";
+    private const string SysCnes = "https://fhir.saude.gov.br/sid/cnes";
     private const string SysFia = "urn:salux:fia";
     private const string SysUnidade = "urn:salux:unidade";
     private const string SysQuarto = "urn:salux:quarto";
@@ -68,6 +70,10 @@ internal sealed class SaluxFhirMapper(string slug, string source)
     public const string IdentSaluxEdoc = SysEdoc;
     public const string IdentSaluxPresc = SysPresc;
     public const string IdentSaluxFia = SysFia;
+    /// <summary>System do código interno da UNIDADE no Salux (ADR-0039).</summary>
+    public const string IdentSaluxHospital = SysHospital;
+    /// <summary>CNES — identificador NACIONAL da unidade; é a ponte entre PEPs diferentes.</summary>
+    public const string IdentCnes = SysCnes;
     public const string IdentSaluxUnidade = SysUnidade;
     public const string IdentSaluxQuarto = SysQuarto;
     public const string IdentSaluxLeito = SysLeito;
@@ -245,6 +251,27 @@ internal sealed class SaluxFhirMapper(string slug, string source)
         return c;
     }
 
+    /// <summary>
+    /// Unidade de saúde → <c>Organization</c> (ADR-0039). O CNES entra como identifier NACIONAL
+    /// — é ele que une a mesma unidade entre PEPs, porque o nome diverge: a mesma UPA é
+    /// "UPA 24H INOÃ" no Salux e "UPA MARICA" no Klinikos. O código interno entra prefixado
+    /// pelo slug, para o conector reencontrar a linha que ele mesmo criou.
+    /// </summary>
+    public Organization BuildOrganization(HospitalLinha h)
+    {
+        var ident = new List<Identifier>();
+        if (Dig(h.Cnes) is { Length: > 0 } cnes) ident.Add(new Identifier(SysCnes, cnes));
+        ident.Add(new Identifier(SysHospital, Pref(h.Chave)));
+
+        return new Organization
+        {
+            Meta = Meta(),
+            Identifier = SemVazios(ident),
+            Name = S(h.Nome),
+            Active = h.Ativo is null || Verdadeiro(h.Ativo),
+        };
+    }
+
     public Patient BuildPatient(PacienteLinha p)
     {
         var cpf = Dig(p.Cpf);
@@ -341,7 +368,7 @@ internal sealed class SaluxFhirMapper(string slug, string source)
 
     // ---------------- Atendimentos (Encounter/DocRef prefixados por base) ----------------
 
-    public Encounter BuildEncounter(BaaLinha b, string patientRef)
+    public Encounter BuildEncounter(BaaLinha b, string patientRef, string? organizationRef = null)
     {
         var emerg = (b.Emerg ?? string.Empty).ToUpperInvariant() == "S";
         var start = Dt(b.DtCheg) ?? Dt(b.DtAtend);
@@ -358,6 +385,9 @@ internal sealed class SaluxFhirMapper(string slug, string source)
             Subject = new ResourceReference(patientRef),
             Identifier = [new Identifier(SysBaa, Pref(b.Chave))],
         };
+        // ONDE aconteceu (ADR-0039). Dimensão ortogonal ao meta.source, que diz de qual SISTEMA
+        // veio: a unidade sobrevive à troca de PEP, o sistema não.
+        if (organizationRef is not null) enc.ServiceProvider = new ResourceReference(organizationRef);
         if (start is not null)
         {
             enc.Period = new Period { Start = start };
@@ -404,7 +434,7 @@ internal sealed class SaluxFhirMapper(string slug, string source)
     /// Óbito hospitalar vira dischargeDisposition=exp; o óbito do PACIENTE continua fluindo
     /// só por paciente.dt_obito no fluxo canônico (duas fontes = conflito).
     /// </summary>
-    public Encounter BuildEncounterInternacao(FiaLinha f, string patientRef, string? leitoRef, FiaLeitoLinha? leitoAtual, DateTime agoraUtc)
+    public Encounter BuildEncounterInternacao(FiaLinha f, string patientRef, string? leitoRef, FiaLeitoLinha? leitoAtual, DateTime agoraUtc, string? organizationRef = null)
     {
         // status R4 (não existe "discharged" em R4): em curso / finalizada / zumbi.
         var baixaUtc = Leitura.SaluxTempo.ParseUtc(f.DtBaixa);
@@ -420,6 +450,9 @@ internal sealed class SaluxFhirMapper(string slug, string source)
             Subject = new ResourceReference(patientRef),
             Identifier = [new Identifier(SysFia, Pref(f.Chave))],
         };
+        // Internação também carrega a unidade: é o dado que responde "onde a pessoa esteve
+        // internada" mesmo depois de o PEP de origem ser desligado (ADR-0039).
+        if (organizationRef is not null) enc.ServiceProvider = new ResourceReference(organizationRef);
 
         if (Dt(f.DtBaixa) is { } inicio)
         {

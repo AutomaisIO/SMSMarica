@@ -78,6 +78,24 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
         // completado sob demanda pelo hub.
         var leitoRefs = new ConcurrentDictionary<string, string?>();
 
+        // ---------- Unidades de saúde (ADR-0039) ----------
+        // Roda ANTES de qualquer coisa clínica, e todo ciclo: são 3 linhas, o upsert é
+        // idempotente, e sem esse mapa nenhum Encounter sai com serviceProvider. O CNES vem da
+        // própria origem (INFOSAUDE.HOSPITAL), então não há de-para configurado à mão.
+        var orgPorHospital = new Dictionary<long, string>();
+        {
+            p.FaseAtual = "unidades";
+            foreach (var h in await oracle.LerAsync(SqlHospitais(), MapHospital, ct))
+            {
+                try
+                {
+                    var org = await ctx.Escritor.UpsertPorIdentifierAsync(
+                        mapper.BuildOrganization(h), SaluxFhirMapper.IdentSaluxHospital, mapper.Pref(h.Chave), ct);
+                    orgPorHospital[h.Cd] = $"Organization/{org.Id}";
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException) { Falhou(h.Cd, ex); }
+            }
+        }
         // ---------- Médicos (paginado) ----------
         // Re-scan integral também quando o scheduler força (marca de médicos envelheceu) —
         // sem isso médico novo/alterado nunca mais entrava depois da 1ª importação.
@@ -135,9 +153,9 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
             segPac += Decorrido(tpc);
             p.FaseAtual = "atendimentos";
             var ta = Cronometro();
-            var (cb, ce) = await ProcessarAtendimentosAsync(oracle, mapper, ctx, map, sinceBaa, sinceEdoc, purgarPorPaciente, sourcesPurga, gate, p, Falhou, ct);
+            var (cb, ce) = await ProcessarAtendimentosAsync(oracle, mapper, ctx, map, orgPorHospital, sinceBaa, sinceEdoc, purgarPorPaciente, sourcesPurga, gate, p, Falhou, ct);
             maxBaa = Max(maxBaa, cb); maxEdoc = Max(maxEdoc, ce);
-            maxFia = Max(maxFia, await ProcessarInternacoesAsync(oracle, mapper, ctx, map, sinceFia, leitoRefs, gate, p, Falhou, ct));
+            maxFia = Max(maxFia, await ProcessarInternacoesAsync(oracle, mapper, ctx, map, orgPorHospital, sinceFia, leitoRefs, gate, p, Falhou, ct));
             segAtend += Decorrido(ta);
         }
         else if (incremental)
@@ -176,9 +194,9 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
                 ct.ThrowIfCancellationRequested();
                 var linhas = await oracle.LerAsync(SqlPacientes(null, null, null, lote), MapPaciente, ct);
                 var map = await UpsertPacientesChunkAsync(ctx, mapper, linhas, gate, p, Falhou, ct);
-                var (cb, ce) = await ProcessarAtendimentosAsync(oracle, mapper, ctx, map, sinceBaa, sinceEdoc, false, sourcesPurga, gate, p, Falhou, ct);
+                var (cb, ce) = await ProcessarAtendimentosAsync(oracle, mapper, ctx, map, orgPorHospital, sinceBaa, sinceEdoc, false, sourcesPurga, gate, p, Falhou, ct);
                 maxBaa = Max(maxBaa, cb); maxEdoc = Max(maxEdoc, ce);
-                maxFia = Max(maxFia, await ProcessarInternacoesAsync(oracle, mapper, ctx, map, sinceFia, leitoRefs, gate, p, Falhou, ct));
+                maxFia = Max(maxFia, await ProcessarInternacoesAsync(oracle, mapper, ctx, map, orgPorHospital, sinceFia, leitoRefs, gate, p, Falhou, ct));
             }
             segAtend += Decorrido(ta);
 
@@ -237,9 +255,9 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
 
                 p.FaseAtual = "atendimentos";
                 var ta = Cronometro();
-                var (cb, ce) = await ProcessarAtendimentosAsync(oracle, mapper, ctx, map, null, null, purgarPorPaciente, sourcesPurga, gate, p, Falhou, ct);
+                var (cb, ce) = await ProcessarAtendimentosAsync(oracle, mapper, ctx, map, orgPorHospital, null, null, purgarPorPaciente, sourcesPurga, gate, p, Falhou, ct);
                 maxBaa = Max(maxBaa, cb); maxEdoc = Max(maxEdoc, ce);
-                maxFia = Max(maxFia, await ProcessarInternacoesAsync(oracle, mapper, ctx, map, null, leitoRefs, gate, p, Falhou, ct));
+                maxFia = Max(maxFia, await ProcessarInternacoesAsync(oracle, mapper, ctx, map, orgPorHospital, null, leitoRefs, gate, p, Falhou, ct));
                 segAtend += Decorrido(ta);
 
                 // Checkpoint: bloco totalmente concluído (pacientes + atendimentos).
@@ -331,7 +349,8 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
     /// <summary>Lê e grava os atendimentos (Encounter/Condition/Medication/DocRef/Observation) de UM bloco de pacientes.</summary>
     private async Task<(DateTime? MaxBaa, DateTime? MaxEdoc)> ProcessarAtendimentosAsync(
         LeitorOracleHis oracle, SaluxFhirMapper mapper, ContextoImportacaoPep ctx,
-        ConcurrentDictionary<long, string> pacientes, DateTime? sinceBaa, DateTime? sinceEdoc,
+        ConcurrentDictionary<long, string> pacientes, IReadOnlyDictionary<long, string> orgPorHospital,
+        DateTime? sinceBaa, DateTime? sinceEdoc,
         bool purgarPorPaciente, IReadOnlySet<string> sourcesPurga, SemaphoreSlim gate,
         Progresso.ProgressoImportacao p, Action<long, Exception> falhou, CancellationToken ct)
     {
@@ -367,7 +386,7 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
             try
             {
                 var enc = (Encounter)await ctx.Escritor.UpsertPorIdentifierAsync(
-                    mapper.BuildEncounter(b, patientRef), SaluxFhirMapper.IdentSaluxBaa, mapper.Pref(b.Chave), ct);
+                    mapper.BuildEncounter(b, patientRef, orgPorHospital.GetValueOrDefault(b.H)), SaluxFhirMapper.IdentSaluxBaa, mapper.Pref(b.Chave), ct);
                 encPorBaa[b.Chave] = $"Encounter/{enc.Id}";
                 Interlocked.Increment(ref p.Encounters);
             }
@@ -748,7 +767,7 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
     /// </summary>
     private async Task<DateTime?> ProcessarInternacoesAsync(
         LeitorOracleHis oracle, SaluxFhirMapper mapper, ContextoImportacaoPep ctx,
-        ConcurrentDictionary<long, string> pacientes, DateTime? sinceFia,
+        ConcurrentDictionary<long, string> pacientes, IReadOnlyDictionary<long, string> orgPorHospital, DateTime? sinceFia,
         ConcurrentDictionary<string, string?> leitoRefs, SemaphoreSlim gate,
         Progresso.ProgressoImportacao p, Action<long, Exception> falhou, CancellationToken ct)
     {
@@ -775,7 +794,7 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
                 var la = leitoAtual.GetValueOrDefault(f.Chave);
                 var leitoRef = la is null ? null : await ResolverLeitoRefAsync(ctx, mapper, la.ChaveLeito, leitoRefs, ct);
                 var enc = (Encounter)await ctx.Escritor.UpsertPorIdentifierAsync(
-                    mapper.BuildEncounterInternacao(f, patientRef, leitoRef, la, agora),
+                    mapper.BuildEncounterInternacao(f, patientRef, leitoRef, la, agora, orgPorHospital.GetValueOrDefault(f.H)),
                     SaluxFhirMapper.IdentSaluxFia, mapper.Pref(f.Chave), ct);
                 Interlocked.Increment(ref p.Encounters);
 
@@ -968,6 +987,17 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
         WHERE (mov.cd_hospital, mov.ano_movimento, mov.id_movimento) IN ({tuplas}) AND mov.nr_baa IS NOT NULL
         """;
 
+    /// <summary>
+    /// As unidades de saúde da instalação (ADR-0039). São TRÊS no Salux de Maricá, e a tabela
+    /// já traz CNES e nome oficial — por isso o conector resolve a unidade sem nenhum de-para
+    /// configurado à mão.
+    /// </summary>
+    internal static string SqlHospitais() => """
+        SELECT h.cd_hospital AS cd, h.ds_hospital AS nome, h.nr_cnes AS cnes, h.in_ativo AS ativo
+        FROM infosaude.hospital h
+        ORDER BY h.cd_hospital
+        """;
+
     internal static string SqlUnidades() => """
         SELECT u.cd_hospital AS h, u.cd_unidade AS cd, u.sc_unidade AS nome, u.id_condicao_unidade AS cond
         FROM infosaude.unidade_hospitalar u
@@ -1103,6 +1133,9 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
     private static EdocLogLinha MapEdocLog(Oracle.ManagedDataAccess.Client.OracleDataReader r) => new(
         Col.Long(r, "id"), Col.Long(r, "h"), Col.Long(r, "ano"), Col.Long(r, "idm"),
         Col.Long(r, "cd_paciente"), Col.Str(r, "op"));
+
+    private static HospitalLinha MapHospital(Oracle.ManagedDataAccess.Client.OracleDataReader r) => new(
+        Col.Long(r, "cd"), Col.Str(r, "nome"), Col.Str(r, "cnes"), Col.Str(r, "ativo"));
 
     private static UnidadeLinha MapUnidade(Oracle.ManagedDataAccess.Client.OracleDataReader r) => new(
         Col.Long(r, "h"), Col.Long(r, "cd"), Col.Str(r, "nome"), Col.Str(r, "cond"));

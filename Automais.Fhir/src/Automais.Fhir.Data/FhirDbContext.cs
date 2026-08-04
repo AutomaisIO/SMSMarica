@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Automais.Fhir.Data.Entities;
 
 namespace Automais.Fhir.Data;
@@ -21,6 +21,9 @@ public sealed class FhirDbContext(DbContextOptions<FhirDbContext> options) : DbC
     public DbSet<MedicationAdministrationRow> MedicationAdministrations => Set<MedicationAdministrationRow>();
     public DbSet<ObservationRow> Observations => Set<ObservationRow>();
     public DbSet<LocationRow> Locations => Set<LocationRow>();
+
+    /// <summary>Unidade de saúde — eixo durável do dado clínico (ADR-0039).</summary>
+    public DbSet<OrganizationRow> Organizations => Set<OrganizationRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

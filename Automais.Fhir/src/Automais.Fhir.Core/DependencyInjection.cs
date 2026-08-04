@@ -1,4 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Automais.Fhir.Core.Conditions;
 using Automais.Fhir.Core.DocumentReferences;
 using Automais.Fhir.Core.Encounters;
@@ -24,6 +24,7 @@ public static class DependencyInjection
         services.AddScoped<IMedicationAdministrationService, MedicationAdministrationService>();
         services.AddScoped<IObservationService, ObservationService>();
         services.AddScoped<Locations.ILocationService, Locations.LocationService>();
+        services.AddScoped<Organizations.IOrganizationService, Organizations.OrganizationService>();
         return services;
     }
 }

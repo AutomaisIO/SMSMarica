@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Oracle.ManagedDataAccess.Client;
 
 namespace SMSMarica.Core.Integracoes.Pep.Estrategias.Salux;
@@ -28,6 +28,17 @@ internal sealed record MedicoLinha(
     string? Email, string? Ativo, string? Mae, string? Pai, string? Categoria, string? Cbo, string? Especialidade);
 
 /// <summary>Paciente do Salux (tabela <c>paciente</c> + lookups resolvidos).</summary>
+/// <summary>
+/// Uma unidade de saúde do Salux (INFOSAUDE.HOSPITAL). A instalação serve TRÊS unidades —
+/// Conde (1), UPA Inoã (2) e PA Santa Rita (3) —, e o CNES vem da própria origem, então o
+/// conector resolve a unidade com zero configuração (ADR-0039).
+/// </summary>
+internal sealed record HospitalLinha(long Cd, string? Nome, string? Cnes, string? Ativo)
+{
+    /// <summary>Chave do identifier interno: o código do hospital, prefixado pelo slug.</summary>
+    public string Chave => Cd.ToString(System.Globalization.CultureInfo.InvariantCulture);
+}
+
 internal sealed record PacienteLinha(
     long Cd, string? Nome, string? Social, string? FlagSocial, string? Nasc, string? Sexo,
     string? Cpf, string? Cns, string? Rg, string? Orgao, string? Pis, string? Passaporte, string? Rne,
