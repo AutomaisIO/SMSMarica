@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { buscarEstudos, excluirEstudo, listarSeries } from '@/features/pacs/api/pacsApi';
 import {
   associarExame,
@@ -19,10 +19,23 @@ export const associacoesKeys = {
   preview: (accession: string) => ['exames', 'associacoes', 'preview', accession] as const,
 };
 
-/** Busca de estudos via mutation (disparada pelo formulário do modal). */
+/** Busca de estudos via mutation (disparada pelo formulário do modal de associação). */
 export function useBuscarEstudos() {
   return useMutation({
     mutationFn: (filtro: FiltroBusca) => buscarEstudos(filtro),
+  });
+}
+
+/**
+ * Busca de estudos AO VIVO (listagem PACS): reage ao filtro (debounced na página) e paginação.
+ * `signal` deixa o React Query abortar a busca anterior ao mudar o filtro; keepPreviousData
+ * evita a tabela piscar entre buscas/páginas.
+ */
+export function usePesquisaEstudos(filtro: FiltroBusca) {
+  return useQuery({
+    queryKey: ['pacs', 'estudos', filtro] as const,
+    queryFn: ({ signal }) => buscarEstudos(filtro, signal),
+    placeholderData: keepPreviousData,
   });
 }
 

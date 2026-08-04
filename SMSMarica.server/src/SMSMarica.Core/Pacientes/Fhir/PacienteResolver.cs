@@ -26,11 +26,12 @@ public interface IPacienteResolver
     Task<IReadOnlyDictionary<Guid, PacienteResumo>> ResolverManyAsync(IEnumerable<Guid> ids, CancellationToken ct = default);
 
     /// <summary>
-    /// Busca ids de pacientes no hub FHIR por um termo livre (nome e/ou CPF/CNS).
-    /// Para a busca da tela de solicitações. Nunca lança: hub indisponível → conjunto
-    /// vazio (o chamador cai no match local por accession/código).
+    /// Busca ids de pacientes no hub FHIR por um termo livre (nome por prefixo/contém e/ou
+    /// CPF/CNS por prefixo). Para as barras de pesquisa (solicitações, laudos, consultas).
+    /// <paramref name="limite"/> segue o "itens por página" da tela. Nunca lança: hub
+    /// indisponível → conjunto vazio (o chamador cai no match local por accession/código).
     /// </summary>
-    Task<IReadOnlySet<Guid>> BuscarIdsPorTermoAsync(string termo, CancellationToken ct = default);
+    Task<IReadOnlySet<Guid>> BuscarIdsPorTermoAsync(string termo, int limite = 50, CancellationToken ct = default);
 }
 
 public sealed class PacienteResolver(IPacienteFhirClient fhir, ILogger<PacienteResolver> logger) : IPacienteResolver
@@ -108,22 +109,17 @@ public sealed class PacienteResolver(IPacienteFhirClient fhir, ILogger<PacienteR
         return mapa;
     }
 
-    public async Task<IReadOnlySet<Guid>> BuscarIdsPorTermoAsync(string termo, CancellationToken ct = default)
+    public async Task<IReadOnlySet<Guid>> BuscarIdsPorTermoAsync(string termo, int limite = 50, CancellationToken ct = default)
     {
         var ids = new HashSet<Guid>();
         if (string.IsNullOrWhiteSpace(termo)) return ids;
 
-        var t = termo.Trim();
-        var digitos = new string([.. t.Where(char.IsDigit)]);
         try
         {
-            // Por nome (o hub trata acento/casing) — só quando o termo tem letra.
-            if (t.Any(char.IsLetter))
-                ColetarIds(await fhir.BuscarAsync(name: t, ct: ct), ids);
-
-            // Por identifier (CPF=11 / CNS=15 dígitos).
-            if (digitos.Length >= 11)
-                ColetarIds(await fhir.BuscarAsync(identifier: digitos, ct: ct), ids);
+            // Uma chamada só: o hub casa nome (contém, sem acento/caso) OU CPF/CNS por prefixo
+            // e ordena prefixo-primeiro. Antes eram duas buscas (name + identifier) e a de nome
+            // era cortada em 50 alfabéticos — origem do ticket #91.
+            ColetarIds(await fhir.BuscarPorTermoAsync(termo.Trim(), limite, ct), ids);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

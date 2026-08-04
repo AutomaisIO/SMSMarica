@@ -119,7 +119,19 @@ export type FiltroLaudos = {
   vinculado?: boolean;
   /** true = só assinados; false = só não assinados; undefined = todos. */
   assinado?: boolean;
+  /** Busca livre: nome/CPF/CNS do paciente, nome DICOM, nº do pedido ou nº SISREG. */
+  termo?: string;
   limite?: number;
+  /** Página 1-based (paginação offset). Tamanho da página = limite. */
+  pagina?: number;
+};
+
+/** Página de resultados da listagem de laudos (paginação offset + total). */
+export type PaginaLaudos = {
+  itens: LaudoListItem[];
+  total: number;
+  pagina: number;
+  tamanho: number;
 };
 
 export type CadastrarLaudoPayload = {

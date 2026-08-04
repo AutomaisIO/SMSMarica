@@ -213,6 +213,16 @@ export type FiltroSolicitacoes = {
    */
   visaoSolicitante?: boolean;
   limite?: number;
+  /** Página 1-based (paginação offset). Tamanho da página = limite. */
+  pagina?: number;
+};
+
+/** Página de resultados da listagem (paginação offset + total para os controles). */
+export type PaginaSolicitacoes = {
+  itens: SolicitacaoExameListItem[];
+  total: number;
+  pagina: number;
+  tamanho: number;
 };
 
 /** Recortes que o painel de início abre nesta listagem. */

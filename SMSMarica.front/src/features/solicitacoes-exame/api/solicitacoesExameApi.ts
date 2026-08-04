@@ -5,12 +5,16 @@ import type {
   EquipamentoExame,
   FiltroSolicitacoes,
   HistoricoSolicitacao,
+  PaginaSolicitacoes,
   SolicitacaoExame,
-  SolicitacaoExameListItem,
 } from '@/features/solicitacoes-exame/types';
 
-export async function listarSolicitacoes(filtro: FiltroSolicitacoes): Promise<SolicitacaoExameListItem[]> {
-  const { data } = await http.get<SolicitacaoExameListItem[]>('/solicitacoes-exame', {
+export async function listarSolicitacoes(
+  filtro: FiltroSolicitacoes,
+  signal?: AbortSignal,
+): Promise<PaginaSolicitacoes> {
+  const { data } = await http.get<PaginaSolicitacoes>('/solicitacoes-exame', {
+    signal,
     params: {
       status: filtro.status,
       pacienteId: filtro.pacienteId,
@@ -23,6 +27,7 @@ export async function listarSolicitacoes(filtro: FiltroSolicitacoes): Promise<So
       painel: filtro.painel,
       visaoSolicitante: filtro.visaoSolicitante ? true : undefined,
       limite: filtro.limite ?? 50,
+      pagina: filtro.pagina ?? 1,
     },
   });
   return data;

@@ -5,7 +5,7 @@ namespace SMSMarica.Core.Laudos;
 
 public interface ILaudosService
 {
-    Task<IReadOnlyList<LaudoListItemDto>> ListarAsync(
+    Task<PaginaLaudosDto> ListarAsync(
         FiltroLaudosDto filtro,
         CancellationToken cancellationToken = default);
 

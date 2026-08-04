@@ -31,9 +31,10 @@ export function UltimaSolicitacaoPaciente({ pacienteId, aoAbrir }: Props) {
   if (!podeVer) return null;
 
   // A listagem ordena urgentes primeiro; a "última" aqui é a mais RECENTE por criação.
+  const itens = consulta.data?.itens ?? [];
   const ultima =
-    consulta.data && consulta.data.length > 0
-      ? [...consulta.data].sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))[0]
+    itens.length > 0
+      ? [...itens].sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))[0]
       : null;
 
   return (

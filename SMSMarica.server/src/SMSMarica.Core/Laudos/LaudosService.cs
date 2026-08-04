@@ -65,10 +65,13 @@ public sealed class LaudosService(
         return r is null ? dto : dto with { PacienteNome = r.Nome, PacienteCpf = r.Cpf };
     }
 
-    public async Task<IReadOnlyList<LaudoListItemDto>> ListarAsync(
+    public async Task<PaginaLaudosDto> ListarAsync(
         FiltroLaudosDto filtro,
         CancellationToken cancellationToken = default)
     {
+        var tamanho = filtro.Limite is <= 0 or > 500 ? 50 : filtro.Limite;
+        var pagina = filtro.Pagina < 1 ? 1 : filtro.Pagina;
+
         IQueryable<Laudo> query = _db.Laudos.AsNoTracking().Where(l => !l.Excluido);
 
         if (!string.IsNullOrWhiteSpace(filtro.StudyInstanceUID))
@@ -103,18 +106,46 @@ public sealed class LaudosService(
         else if (filtro.Assinado == false)
             query = query.Where(l => !_db.LaudoAssinaturas.Any(a => a.LaudoId == l.Id && a.Status == StatusAssinatura.Concluida));
 
+        if (!string.IsNullOrWhiteSpace(filtro.Termo))
+        {
+            // Busca livre: paciente (nome/CPF/CNS via hub → ids) OU nome DICOM do estudo OU nº do
+            // pedido (accession/nosso número) e nº SISREG (código da solicitação) — estes casam
+            // pelos studies dos exames correspondentes (study próprio do exame + associações).
+            var termo = filtro.Termo.Trim();
+            var padrao = $"%{termo}%";
+            var idsPaciente = (await _pacienteResolver.BuscarIdsPorTermoAsync(termo, tamanho, cancellationToken)).ToArray();
+
+            var examesCasando = _db.ExamesImagem.AsNoTracking().Where(e => e.ExcluidoEm == null
+                && (EF.Functions.ILike(e.AccessionNumber, padrao)
+                    || (e.Solicitacao!.CodigoSolicitacao != null
+                        && EF.Functions.ILike(e.Solicitacao!.CodigoSolicitacao, padrao))));
+            var studiesProprios = examesCasando.Select(e => e.StudyInstanceUID);
+            var idsExamesCasando = examesCasando.Select(e => e.Id);
+            var studiesAssociados = _db.ExameAssociacoes.AsNoTracking()
+                .Where(a => a.ExcluidoEm == null && idsExamesCasando.Contains(a.ExameImagemId))
+                .Select(a => a.StudyInstanceUID);
+
+            query = query.Where(l =>
+                (l.PacienteId != null && idsPaciente.Contains(l.PacienteId.Value))
+                || (l.PacienteNomeDicom != null && EF.Functions.ILike(l.PacienteNomeDicom, padrao))
+                || studiesProprios.Contains(l.StudyInstanceUID)
+                || studiesAssociados.Contains(l.StudyInstanceUID));
+        }
+
         query = await AplicarEscopoUnidadeAsync(query, cancellationToken);
 
-        var limite = filtro.Limite is <= 0 or > 500 ? 50 : filtro.Limite;
+        var total = await query.CountAsync(cancellationToken);
         var lista = await query
             .OrderByDescending(l => l.CriadoEm)
-            .Take(limite)
+            .Skip((pagina - 1) * tamanho)
+            .Take(tamanho)
             .ToListAsync(cancellationToken);
 
         var dtos = await EnriquecerAsync([.. lista.Select(LaudosMapper.ParaListItem)], cancellationToken);
         var assinados = await ResolverAssinadosAsync([.. dtos.Select(d => d.Id)], cancellationToken);
         var comAssinatura = dtos.Select(d => assinados.Contains(d.Id) ? d with { Assinado = true } : d).ToList();
-        return await EnriquecerComunicacoesAsync(comAssinatura, cancellationToken);
+        var itens = await EnriquecerComunicacoesAsync(comAssinatura, cancellationToken);
+        return new PaginaLaudosDto(itens, total, pagina, tamanho);
     }
 
     // Checks do aviso "laudo pronto" (zap) na lista: resolve a solicitação de cada study

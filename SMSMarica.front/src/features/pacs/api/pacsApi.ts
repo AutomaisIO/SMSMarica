@@ -44,7 +44,7 @@ function mapearSerie(ds: DatasetDicom): Serie {
   };
 }
 
-export async function buscarEstudos(filtro: FiltroBusca): Promise<Estudo[]> {
+export async function buscarEstudos(filtro: FiltroBusca, signal?: AbortSignal): Promise<Estudo[]> {
   // fuzzymatching=true quebra wildcard PN (testado contra esse dcm4chee — sempre
   // retorna 204 com *NOME*), então deixamos desligado. A normalização do nome
   // (NFD + uppercase + espaços→*) já cobre acentos e variações.
@@ -87,6 +87,7 @@ export async function buscarEstudos(filtro: FiltroBusca): Promise<Estudo[]> {
   const { data } = await http.get<DatasetDicom[]>('/pacs/rs/studies', {
     params,
     headers: HEADERS_DICOM,
+    signal,
   });
   // QIDO-RS responde 204 No Content quando não há matches — axios entrega "" em vez de array.
   return (Array.isArray(data) ? data : []).map(mapearEstudo);

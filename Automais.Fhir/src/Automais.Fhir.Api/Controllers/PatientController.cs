@@ -75,18 +75,21 @@ public sealed class PatientController(IPatientService service) : ControllerBase
         return FhirResponse.Recurso(bundle);
     }
 
-    /// <summary>GET /fhir/Patient?identifier=system|valor&amp;name=...&amp;_id=a,b,c — busca.</summary>
+    /// <summary>GET /fhir/Patient?identifier=system|valor&amp;name=...&amp;termo=...&amp;_count=N&amp;_id=a,b,c — busca.</summary>
     [HttpGet]
     public async Task<IActionResult> Buscar(
         [FromQuery] string? identifier,
         [FromQuery] string? name,
         [FromQuery] string? telecom,
+        [FromQuery] string? termo,
+        [FromQuery(Name = "_count")] int? count,
         [FromQuery(Name = "_id")] string? id,
         CancellationToken ct)
     {
         var (cpf, cns, sys, valor) = SepararIdentifier(identifier);
         var ids = ParseIds(id);
-        var bundle = await service.BuscarAsync(new PatientBusca(cpf, cns, name, telecom, ids, sys, valor), ct);
+        var bundle = await service.BuscarAsync(
+            new PatientBusca(cpf, cns, name, telecom, ids, sys, valor, termo, count), ct);
         return FhirResponse.Recurso(bundle);
     }
 

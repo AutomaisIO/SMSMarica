@@ -25,8 +25,8 @@ public sealed class LaudosController(ILaudosService service, ILaudoAssinaturaSer
     /// <summary>Lista laudos (filtros opcionais; default: últimos 50).</summary>
     [HttpGet]
     [RequerPermissao(ModuloPermissao.Laudos, AcoesPermissao.Consulta)]
-    [ProducesResponseType<IReadOnlyList<LaudoListItemDto>>(StatusCodes.Status200OK)]
-    public async Task<IReadOnlyList<LaudoListItemDto>> Listar(
+    [ProducesResponseType<PaginaLaudosDto>(StatusCodes.Status200OK)]
+    public async Task<PaginaLaudosDto> Listar(
         [FromQuery] string? studyInstanceUID,
         [FromQuery] Guid? pacienteId,
         [FromQuery] Guid? medicoId,
@@ -36,12 +36,14 @@ public sealed class LaudosController(ILaudosService service, ILaudoAssinaturaSer
         [FromQuery] string? biRads,
         [FromQuery] bool? vinculado,
         [FromQuery] bool? assinado,
+        [FromQuery] string? termo,
         [FromQuery] int limite = 50,
+        [FromQuery] int pagina = 1,
         CancellationToken cancellationToken = default) =>
         await _service.ListarAsync(
             new FiltroLaudosDto(
                 studyInstanceUID, pacienteId, medicoId, status, dataInicial, dataFinal, biRads,
-                vinculado, assinado, limite),
+                vinculado, assinado, termo, limite, pagina),
             cancellationToken);
 
     /// <summary>

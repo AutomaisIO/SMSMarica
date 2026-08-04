@@ -15,7 +15,7 @@ public interface ISolicitacoesExameService
         Guid solicitacaoExameId, FinalidadeComunicacao finalidade, bool assumirRisco,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<SolicitacaoExameListItemDto>> ListarAsync(
+    Task<PaginaSolicitacoesDto> ListarAsync(
         FiltroSolicitacoesDto filtro,
         CancellationToken cancellationToken = default);
 

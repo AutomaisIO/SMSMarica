@@ -38,8 +38,8 @@ public sealed class SolicitacoesExameController(
 
     [HttpGet]
     [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
-    [ProducesResponseType<IReadOnlyList<SolicitacaoExameListItemDto>>(StatusCodes.Status200OK)]
-    public async Task<IReadOnlyList<SolicitacaoExameListItemDto>> Listar(
+    [ProducesResponseType<PaginaSolicitacoesDto>(StatusCodes.Status200OK)]
+    public async Task<PaginaSolicitacoesDto> Listar(
         [FromQuery] StatusSolicitacaoExame? status,
         [FromQuery] Guid? pacienteId,
         [FromQuery] Guid? unidadeId,
@@ -53,11 +53,12 @@ public sealed class SolicitacoesExameController(
         /// <summary>Visão relativa à unidade ativa: false = executante (padrão), true = solicitante (ticket #84).</summary>
         [FromQuery] bool visaoSolicitante = false,
         [FromQuery] int limite = 50,
+        [FromQuery] int pagina = 1,
         CancellationToken cancellationToken = default) =>
         await _service.ListarAsync(
             new FiltroSolicitacoesDto(
                 status, pacienteId, unidadeId, tipoExameId, dataInicial, dataFinal,
-                accessionNumber, busca, painel, visaoSolicitante, limite),
+                accessionNumber, busca, painel, visaoSolicitante, limite, pagina),
             cancellationToken);
 
     /// <summary>

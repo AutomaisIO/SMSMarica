@@ -4,15 +4,17 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   ClipboardCheck,
   ListOrdered,
   Loader2,
   Plus,
-  Search,
   Siren,
   Trash2,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
+import { useDebounce } from '@/shared/hooks/useDebounce';
 import { aoColarSoDigitosSeDocumento } from '@/shared/lib/colarDocumento';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { formatarInstante, hojeSP } from '@/shared/lib/datas';
@@ -201,6 +203,29 @@ export function SolicitacoesExamePage() {
     setFiltroAplicado((f) => ({ ...f, visaoSolicitante: verComoSolicitante }));
   }, [verComoSolicitante]);
 
+  // Busca AO VIVO: o que está digitado vira filtro aplicado sozinho, 500ms após a última tecla —
+  // sem botão "Buscar". Mudar dia/status/itens por página também reaplica na hora. O React Query
+  // ABORTA a requisição anterior (signal na queryFn) quando o filtro muda: nada empilha.
+  const filtroDebounced = useDebounce(filtroDigitado, 500);
+  useEffect(() => {
+    setFiltroAplicado(filtroDebounced);
+  }, [filtroDebounced]);
+
+  // Paginação (offset). Volta à página 1 sempre que o recorte efetivo muda — senão a pessoa
+  // poderia ficar "presa" numa página que não existe mais no novo resultado.
+  const [pagina, setPagina] = useState(1);
+  useEffect(() => {
+    setPagina(1);
+  }, [
+    filtroAplicado.busca,
+    filtroAplicado.status,
+    filtroAplicado.dataInicial,
+    filtroAplicado.dataFinal,
+    filtroAplicado.painel,
+    filtroAplicado.visaoSolicitante,
+    filtroAplicado.limite,
+  ]);
+
   function alternarHoje() {
     setHojeAtivo((atual) => {
       const proximo = !atual;
@@ -216,13 +241,13 @@ export function SolicitacoesExamePage() {
     });
   }
 
-  const lista = useListarSolicitacoes(filtroAplicado);
+  const lista = useListarSolicitacoes({ ...filtroAplicado, pagina });
 
   // Reordena a página por ordem de chegada (autorização da recepção), do mais antigo
   // ao mais recente. Não-autorizadas (autorizadoEm null) ficam no fim. Datas ISO em
   // UTC comparam corretamente como string. Clicar num cabeçalho na Tabela sobrepõe.
   const dadosOrdenados = useMemo(() => {
-    const base = lista.data ?? [];
+    const base = lista.data?.itens ?? [];
     if (!ordemChegada) return base;
     return [...base].sort((a, b) => {
       if (a.autorizadoEm && b.autorizadoEm) return a.autorizadoEm.localeCompare(b.autorizadoEm);
@@ -236,12 +261,16 @@ export function SolicitacoesExamePage() {
     setFiltroDigitado((f) => ({ ...f, [k]: v }));
   }
 
+  // Digitar na busca encerra o recorte do painel de início: a partir daí quem dirige o filtro é o
+  // operador, e manter um recorte invisível faria a lista "esconder" resultados sem explicação.
+  function mudarBusca(v: string) {
+    setFiltroDigitado((f) => ({ ...f, busca: v, painel: undefined }));
+  }
+
+  // Enter no formulário não recarrega a página (busca já é ao vivo). Mantido só para o submit
+  // nativo não navegar; a aplicação do filtro é feita pelo debounce.
   function aoBuscar(e: FormEvent) {
     e.preventDefault();
-    // Buscar manualmente encerra o recorte do painel: a partir daqui quem dirige o filtro é o
-    // operador, e manter um recorte invisível faria a lista "esconder" resultados sem explicação.
-    setFiltroAplicado({ ...filtroDigitado, painel: undefined });
-    setFiltroDigitado((f) => ({ ...f, painel: undefined }));
   }
 
   // Itens por página (backend limita a 500). Aplica na hora, sem precisar clicar em Buscar.
@@ -250,6 +279,9 @@ export function SolicitacoesExamePage() {
     setFiltroDigitado((f) => ({ ...f, limite: novo }));
     setFiltroAplicado((f) => ({ ...f, limite: novo }));
   }
+
+  const total = lista.data?.total ?? 0;
+  const totalPaginas = Math.max(1, Math.ceil(total / limiteAtual));
 
   async function confirmarExclusao(force: boolean) {
     if (!paraExcluir) return;
@@ -414,16 +446,22 @@ export function SolicitacoesExamePage() {
 
       <form
         onSubmit={aoBuscar}
-        className="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-7"
+        className="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-6"
       >
         <Campo label="Buscar" htmlFor="busca" className="sm:col-span-2">
-          <Input
-            id="busca"
-            value={filtroDigitado.busca ?? ''}
-            onChange={(e) => setCampo('busca', e.target.value)}
-            onPaste={aoColarSoDigitosSeDocumento((v) => setCampo('busca', v))}
-            placeholder="Nome, CPF, CNS ou nº do pedido"
-          />
+          <div className="relative">
+            <Input
+              id="busca"
+              value={filtroDigitado.busca ?? ''}
+              onChange={(e) => mudarBusca(e.target.value)}
+              onPaste={aoColarSoDigitosSeDocumento((v) => mudarBusca(v))}
+              placeholder="Nome, CPF, CNS, nº SISREG ou nº do pedido"
+            />
+            {/* Spinner discreto enquanto a busca ao vivo carrega (não desabilita nada). */}
+            {lista.isFetching ? (
+              <Loader2 className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-gray-400" />
+            ) : null}
+          </div>
           {/* O backend ignora o período em busca pontual — avisa para as datas
               preenchidas (ex.: toggle Hoje) não parecerem contraditórias. */}
           {filtroDigitado.busca?.trim() ? (
@@ -486,18 +524,6 @@ export function SolicitacoesExamePage() {
             Hoje
           </button>
         </Campo>
-        <div className="flex items-end">
-          {/* isLoading (1ª carga do filtro), não isFetching: o auto-refresh de 10s em
-              background não pode ficar piscando/desabilitando o botão. */}
-          <Button type="submit" disabled={lista.isLoading} className="w-full">
-            {lista.isLoading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Search className="mr-2 h-4 w-4" />
-            )}
-            Buscar
-          </Button>
-        </div>
       </form>
 
       {lista.isError ? (
@@ -540,9 +566,9 @@ export function SolicitacoesExamePage() {
           <p className="text-sm text-gray-500">
             {lista.data ? (
               <>
-                {lista.data.length} {lista.data.length === 1 ? 'solicitação' : 'solicitações'}
-                {lista.data.length >= limiteAtual ? (
-                  <span className="text-gray-400"> · pode haver mais — aumente os itens por página</span>
+                {total} {total === 1 ? 'solicitação' : 'solicitações'}
+                {totalPaginas > 1 ? (
+                  <span className="text-gray-400"> · página {pagina} de {totalPaginas}</span>
                 ) : null}
               </>
             ) : null}
@@ -619,6 +645,32 @@ export function SolicitacoesExamePage() {
               : undefined
         }
       />
+
+      {totalPaginas > 1 ? (
+        <div className="flex items-center justify-center gap-3 text-sm text-gray-600">
+          <button
+            type="button"
+            onClick={() => setPagina((p) => Math.max(1, p - 1))}
+            disabled={pagina <= 1 || lista.isFetching}
+            className="inline-flex h-8 items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Anterior
+          </button>
+          <span>
+            Página {pagina} de {totalPaginas}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
+            disabled={pagina >= totalPaginas || lista.isFetching}
+            className="inline-flex h-8 items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Próxima
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      ) : null}
 
       <Modal
         aberto={!!paraExcluir}

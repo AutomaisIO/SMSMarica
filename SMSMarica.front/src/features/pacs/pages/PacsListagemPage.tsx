@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Edit2, FilePlus, FileText, Link2, Loader2, RotateCw, Search, Siren, Trash2, Unlink } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit2, FilePlus, FileText, Link2, Loader2, RotateCw, Siren, Trash2, Unlink } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { usePermissao } from '@/shared/auth/authStore';
+import { useDebounce } from '@/shared/hooks/useDebounce';
 import { Button } from '@/shared/ui/Button';
 import { notificar } from '@/shared/ui/Notificacoes';
 import { Campo } from '@/shared/ui/Campo';
@@ -16,9 +17,9 @@ import { BotaoAnamnese } from '@/features/anamnese/components/BotaoAnamnese';
 import type { LaudoPorStudy } from '@/features/laudos/types';
 import {
   useAssociacoesPorStudyUIDs,
-  useBuscarEstudos,
   useDesassociarExame,
   useExcluirEstudo,
+  usePesquisaEstudos,
   useResincronizarExames,
 } from '@/features/pacs/api/queries';
 import { ModalAssociarExame } from '@/features/pacs/components/ModalAssociarExame';
@@ -81,7 +82,7 @@ export function PacsListagemPage() {
   const permitirLaudarSemAssociacao = regras?.permitirLaudarSemAssociacao ?? false;
   const permitirLaudarSemAnamnese = regras?.permitirLaudarSemAnamnese ?? false;
 
-  const busca = useBuscarEstudos();
+  const [pagina, setPagina] = useState(1);
   const exclusao = useExcluirEstudo();
   const desassociar = useDesassociarExame();
   const resync = useResincronizarExames();
@@ -91,11 +92,17 @@ export function PacsListagemPage() {
   const [erroAssoc, setErroAssoc] = useState<string | null>(null);
   const [associarEstudo, setAssociarEstudo] = useState<Estudo | null>(null);
 
-  // Carga inicial: busca já com o último filtro restaurado.
+  // Busca AO VIVO: aplica 500ms após a última mudança (nome/data/modo/limite) — sem botão
+  // "Buscar". O QIDO-RS não devolve total, então a paginação é por offset com "próxima"
+  // liberada quando a página vem cheia.
+  const filtroDebounced = useDebounce(filtro, 500);
+  const limiteAtual = filtroDebounced.limite || 10;
+  const busca = usePesquisaEstudos({ ...filtroDebounced, offset: (pagina - 1) * limiteAtual });
+
+  // Volta à página 1 sempre que o recorte muda.
   useEffect(() => {
-    busca.mutate(filtro);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    setPagina(1);
+  }, [filtroDebounced]);
 
   // Salva o filtro a cada mudança — sobrevive à troca de tela e ao fechar/abrir o browser.
   useEffect(() => {
@@ -126,15 +133,15 @@ export function PacsListagemPage() {
             : `Resincronização: nenhum vínculo novo — ${r.semExameNoPacs} estudo(s) sem pedido correspondente${sufixoFalha}.`) +
           sufixoTeto;
         notificar(msg);
-        busca.mutate(filtro); // recarrega a lista para refletir os novos vínculos
+        busca.refetch(); // recarrega a lista para refletir os novos vínculos
       },
       onError: (e) => setErroAssoc(extrairMensagemDeErro(e)),
     });
   }
 
+  // Enter não recarrega a página (busca já é ao vivo).
   function aoBuscar(e: FormEvent) {
     e.preventDefault();
-    busca.mutate(filtro);
   }
 
   function abrirViewer(estudo: Estudo) {
@@ -181,7 +188,9 @@ export function PacsListagemPage() {
     setErroExclusao(null);
     setExcluindoUid(estudo.studyInstanceUID);
     exclusao.mutate(estudo.studyInstanceUID, {
-      onSuccess: () => busca.mutate(filtro),
+      onSuccess: () => {
+        busca.refetch();
+      },
       onError: (e) => setErroExclusao(extrairMensagemDeErro(e)),
       onSettled: () => setExcluindoUid(null),
     });
@@ -463,15 +472,20 @@ export function PacsListagemPage() {
 
       <form
         onSubmit={aoBuscar}
-        className="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-7"
+        className="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-6"
       >
         <Campo label="Nome do paciente" htmlFor="nome" className="sm:col-span-2">
-          <Input
-            id="nome"
-            value={filtro.nome}
-            onChange={(e) => setCampo('nome', e.target.value)}
-            placeholder={filtro.tipoBuscaNome === 'inicio' ? 'Início do nome…' : 'Qualquer parte do nome…'}
-          />
+          <div className="relative">
+            <Input
+              id="nome"
+              value={filtro.nome}
+              onChange={(e) => setCampo('nome', e.target.value)}
+              placeholder={filtro.tipoBuscaNome === 'inicio' ? 'Início do nome…' : 'Qualquer parte do nome…'}
+            />
+            {busca.isFetching ? (
+              <Loader2 className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-gray-400" />
+            ) : null}
+          </div>
         </Campo>
         <Campo label="Modo" htmlFor="modo">
           <Select
@@ -512,12 +526,6 @@ export function PacsListagemPage() {
             ))}
           </Select>
         </Campo>
-        <div className="flex items-end">
-          <Button type="submit" disabled={busca.isPending} className="w-full">
-            <Search className="mr-2 h-4 w-4" />
-            {busca.isPending ? 'Buscando…' : 'Buscar'}
-          </Button>
-        </div>
       </form>
 
       {busca.isError ? (
@@ -553,6 +561,32 @@ export function PacsListagemPage() {
 
       {!busca.isPending && exames.length === 0 ? (
         <p className="text-center text-sm text-gray-500">Nenhum exame encontrado com esses filtros.</p>
+      ) : null}
+
+      {/* Paginação offset. O QIDO-RS do dcm4chee não devolve total, então não há "página X de Y":
+          "Próxima" fica liberada enquanto a página vier cheia (pode haver mais). */}
+      {pagina > 1 || (busca.data?.length ?? 0) >= limiteAtual ? (
+        <div className="flex items-center justify-center gap-3 text-sm text-gray-600">
+          <button
+            type="button"
+            onClick={() => setPagina((p) => Math.max(1, p - 1))}
+            disabled={pagina <= 1 || busca.isFetching}
+            className="inline-flex h-8 items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Anterior
+          </button>
+          <span>Página {pagina}</span>
+          <button
+            type="button"
+            onClick={() => setPagina((p) => p + 1)}
+            disabled={(busca.data?.length ?? 0) < limiteAtual || busca.isFetching}
+            className="inline-flex h-8 items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Próxima
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
       ) : null}
 
       <ModalAssociarExame estudo={associarEstudo} aoFechar={() => setAssociarEstudo(null)} />

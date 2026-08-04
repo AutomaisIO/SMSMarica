@@ -12,6 +12,7 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
 {
     private const string TipoRecurso = "Patient";
     private const int LimiteBusca = 50;
+    private const int LimiteMaximoBusca = 500;
 
     public async Task<Patient> CriarAsync(Patient patient, CancellationToken ct = default)
     {
@@ -103,6 +104,22 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
             // SMSMarica.server no mesmo banco) normaliza os dois lados; o ILIKE cuida do case.
             query = query.Where(p => p.Nome != null
                 && EF.Functions.ILike(EF.Functions.Unaccent(p.Nome), EF.Functions.Unaccent($"%{filtro.Nome}%")));
+
+        // Busca humana unificada: nome (contém) OU CPF/CNS por PREFIXO (não espera terminar).
+        // `%` do termo é escapado para não virar wildcard vindo do usuário.
+        var termo = filtro.Termo?.Trim();
+        var digitos = Digitos(termo);
+        var buscaTermo = !string.IsNullOrWhiteSpace(termo);
+        if (buscaTermo)
+        {
+            var contemNome = $"%{EscaparLike(termo!)}%";
+            var prefixoDoc = digitos.Length > 0 ? digitos + "%" : null;
+            query = query.Where(p =>
+                (p.Nome != null && EF.Functions.ILike(EF.Functions.Unaccent(p.Nome), EF.Functions.Unaccent(contemNome)))
+                || (prefixoDoc != null && p.Cpf != null && EF.Functions.Like(p.Cpf, prefixoDoc))
+                || (prefixoDoc != null && p.Cns != null && EF.Functions.Like(p.Cns, prefixoDoc)));
+        }
+
         if (!string.IsNullOrWhiteSpace(filtro.Telefone))
         {
             var fone = Digitos(filtro.Telefone);
@@ -113,14 +130,33 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
         // Sem filtro: últimos incluídos primeiro (LastUpdated desc). Com filtro: por nome.
         var semFiltro = string.IsNullOrWhiteSpace(filtro.Cpf) && string.IsNullOrWhiteSpace(filtro.Cns)
                         && string.IsNullOrWhiteSpace(filtro.Nome) && string.IsNullOrWhiteSpace(filtro.Telefone)
-                        && string.IsNullOrWhiteSpace(filtro.IdentifierValue)
+                        && string.IsNullOrWhiteSpace(filtro.IdentifierValue) && !buscaTermo
                         && filtro.Ids is null;
-        var ordenada = semFiltro
-            ? query.OrderByDescending(p => p.LastUpdated)
-            : query.OrderBy(p => p.Nome);
+        IOrderedQueryable<PatientRow> ordenada;
+        if (semFiltro)
+            ordenada = query.OrderByDescending(p => p.LastUpdated);
+        else if (buscaTermo)
+        {
+            // Prefixo-primeiro: quem o NOME começa com o termo aparece no topo (antes dos
+            // "contém no meio"). Resolve o caso do ticket #91 — nome fora dos 50 primeiros
+            // alfabéticos sumia da busca mesmo estando na lista.
+            // O `unaccent(...)` do padrão fica DENTRO da árvore de expressão (é função de banco;
+            // chamá-lo em C# lançaria). Só a string do padrão é montada aqui.
+            var padraoPrefixo = $"{EscaparLike(termo!)}%";
+            ordenada = query
+                .OrderByDescending(p => p.Nome != null
+                    && EF.Functions.ILike(EF.Functions.Unaccent(p.Nome), EF.Functions.Unaccent(padraoPrefixo)))
+                .ThenBy(p => p.Nome);
+        }
+        else
+            ordenada = query.OrderBy(p => p.Nome);
+
         // Busca por _id é em lote (resolver de nomes do smsmarica): devolve TODOS os
-        // ids pedidos, não limita a LimiteBusca.
-        var limite = filtro.Ids is { Count: > 0 } ids ? ids.Count : LimiteBusca;
+        // ids pedidos, não limita ao teto. Demais buscas seguem o Limite pedido pela tela
+        // (o "itens por página"), com fallback no padrão do serviço.
+        var limite = filtro.Ids is { Count: > 0 } ids
+            ? ids.Count
+            : Math.Clamp(filtro.Limite ?? LimiteBusca, 1, LimiteMaximoBusca);
         var rows = await ordenada.Take(limite).ToListAsync(ct);
 
         var bundle = new Bundle { Type = Bundle.BundleType.Searchset, Total = rows.Count };
@@ -191,6 +227,11 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
 
     private static string Digitos(string? valor) =>
         string.IsNullOrEmpty(valor) ? string.Empty : new string([.. valor.Where(char.IsDigit)]);
+
+    /// <summary>Escapa os curingas do LIKE/ILIKE (<c>%</c>, <c>_</c>, <c>\</c>) num termo digitado
+    /// pelo usuário, para que ele seja casado literalmente e não como padrão.</summary>
+    private static string EscaparLike(string valor) =>
+        valor.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
 
     private static DateOnly? ParseDataNascimento(string? birthDate) =>
         DateOnly.TryParseExact(birthDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)

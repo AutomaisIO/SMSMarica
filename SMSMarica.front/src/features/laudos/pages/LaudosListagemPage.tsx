@@ -1,9 +1,10 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Download, Edit2, FileText, Loader2, Search, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Edit2, FileText, Loader2, Trash2 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { formatarInstante } from '@/shared/lib/datas';
 import { usePermissao } from '@/shared/auth/authStore';
+import { useDebounce } from '@/shared/hooks/useDebounce';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
@@ -19,20 +20,33 @@ import type { FiltroLaudos, LaudoListItem, StatusLaudo } from '@/features/laudos
 
 export function LaudosListagemPage() {
   const navigate = useNavigate();
-  const [filtro, setFiltro] = useState<FiltroLaudos>({ limite: 50 });
   const [filtroDigitado, setFiltroDigitado] = useState<FiltroLaudos>({ limite: 50 });
+  const [pagina, setPagina] = useState(1);
   const [excluindoId, setExcluindoId] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
-  const lista = useListarLaudos(filtro);
+  // Busca AO VIVO: o filtro digitado é aplicado sozinho 500ms após a última mudança —
+  // sem botão "Buscar". Mudar data/status/limite também reaplica na hora.
+  const filtro = useDebounce(filtroDigitado, 500);
+
+  // Volta à página 1 sempre que o recorte muda (senão a pessoa fica presa numa página inexistente).
+  useEffect(() => {
+    setPagina(1);
+  }, [filtro]);
+
+  const lista = useListarLaudos({ ...filtro, pagina });
   const excluir = useExcluirLaudo();
 
   const podeEditar = usePermissao('Laudos', 'Edicao');
   const podeExcluir = usePermissao('Laudos', 'Exclusao');
 
+  const limiteAtual = filtro.limite ?? 50;
+  const total = lista.data?.total ?? 0;
+  const totalPaginas = Math.max(1, Math.ceil(total / limiteAtual));
+
+  // Enter não recarrega a página (busca já é ao vivo).
   function aoBuscar(e: FormEvent) {
     e.preventDefault();
-    setFiltro(filtroDigitado);
   }
 
   function setCampo<K extends keyof FiltroLaudos>(k: K, v: FiltroLaudos[K]) {
@@ -231,6 +245,19 @@ export function LaudosListagemPage() {
         onSubmit={aoBuscar}
         className="grid grid-cols-2 gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-4 lg:grid-cols-8"
       >
+        <Campo label="Buscar" htmlFor="termo" className="sm:col-span-2">
+          <div className="relative">
+            <Input
+              id="termo"
+              value={filtroDigitado.termo ?? ''}
+              onChange={(e) => setCampo('termo', e.target.value)}
+              placeholder="Nome, CPF, CNS, nº SISREG ou nº do pedido"
+            />
+            {lista.isFetching ? (
+              <Loader2 className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-gray-400" />
+            ) : null}
+          </div>
+        </Campo>
         <Campo label="Study UID" htmlFor="study" className="sm:col-span-2">
           <Input
             id="study"
@@ -325,12 +352,6 @@ export function LaudosListagemPage() {
             ))}
           </Select>
         </Campo>
-        <div className="flex items-end">
-          <Button type="submit" disabled={lista.isPending} className="w-full">
-            <Search className="mr-2 h-4 w-4" />
-            Buscar
-          </Button>
-        </div>
       </form>
 
       {erro ? (
@@ -345,13 +366,50 @@ export function LaudosListagemPage() {
         </div>
       ) : null}
 
+      <p className="text-sm text-gray-500">
+        {lista.data ? (
+          <>
+            {total} {total === 1 ? 'laudo' : 'laudos'}
+            {totalPaginas > 1 ? (
+              <span className="text-gray-400"> · página {pagina} de {totalPaginas}</span>
+            ) : null}
+          </>
+        ) : null}
+      </p>
+
       <Tabela
         colunas={colunas}
-        dados={lista.data ?? []}
+        dados={lista.data?.itens ?? []}
         chaveLinha={(l) => l.id}
         carregando={lista.isPending}
         vazio="Nenhum laudo encontrado para os filtros."
       />
+
+      {totalPaginas > 1 ? (
+        <div className="flex items-center justify-center gap-3 text-sm text-gray-600">
+          <button
+            type="button"
+            onClick={() => setPagina((p) => Math.max(1, p - 1))}
+            disabled={pagina <= 1 || lista.isFetching}
+            className="inline-flex h-8 items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Anterior
+          </button>
+          <span>
+            Página {pagina} de {totalPaginas}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
+            disabled={pagina >= totalPaginas || lista.isFetching}
+            className="inline-flex h-8 items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Próxima
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -8,12 +8,13 @@ import type {
   IniciarAssinaturaResp,
   Laudo,
   LaudoHistoricoItem,
-  LaudoListItem,
   LaudoPorStudy,
+  PaginaLaudos,
 } from '@/features/laudos/types';
 
-export async function listarLaudos(filtro: FiltroLaudos): Promise<LaudoListItem[]> {
-  const { data } = await http.get<LaudoListItem[]>('/laudos', {
+export async function listarLaudos(filtro: FiltroLaudos, signal?: AbortSignal): Promise<PaginaLaudos> {
+  const { data } = await http.get<PaginaLaudos>('/laudos', {
+    signal,
     params: {
       studyInstanceUID: filtro.studyInstanceUID || undefined,
       pacienteId: filtro.pacienteId || undefined,
@@ -24,7 +25,9 @@ export async function listarLaudos(filtro: FiltroLaudos): Promise<LaudoListItem[
       biRads: filtro.biRads || undefined,
       vinculado: filtro.vinculado,
       assinado: filtro.assinado,
+      termo: filtro.termo || undefined,
       limite: filtro.limite ?? 50,
+      pagina: filtro.pagina ?? 1,
     },
   });
   return data;

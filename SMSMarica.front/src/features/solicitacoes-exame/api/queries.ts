@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   atualizarSolicitacao,
   cadastrarSolicitacao,
@@ -34,11 +34,15 @@ export const solicitacoesKeys = {
 export function useListarSolicitacoes(filtro: FiltroSolicitacoes) {
   return useQuery({
     queryKey: solicitacoesKeys.lista(filtro),
-    queryFn: () => listarSolicitacoes(filtro),
+    // O `signal` faz o React Query ABORTAR a requisição anterior quando o filtro muda
+    // (busca ao vivo digitando): nada de requisições empilhadas, só a última vale.
+    queryFn: ({ signal }) => listarSolicitacoes(filtro, signal),
     // Auto-refresh assíncrono: status/checks mudam no servidor (sincronizador PACS,
     // recibos do zap) sem ação do usuário. Refetch em background não pisca a tabela
     // (isPending fica false) e pausa quando a aba perde o foco (default do react-query).
     refetchInterval: 10_000,
+    // Mantém a página anterior visível enquanto a nova busca/página carrega — sem "piscar".
+    placeholderData: keepPreviousData,
   });
 }
 

@@ -219,10 +219,12 @@ public sealed class SolicitacoesExameService(
         if (!string.IsNullOrEmpty(d.StudyInstanceUID)) yield return d.StudyInstanceUID;
     }
 
-    public async Task<IReadOnlyList<SolicitacaoExameListItemDto>> ListarAsync(
+    public async Task<PaginaSolicitacoesDto> ListarAsync(
         FiltroSolicitacoesDto filtro,
         CancellationToken cancellationToken = default)
     {
+        var tamanho = filtro.Limite is <= 0 or > 500 ? 50 : filtro.Limite;
+        var pagina = filtro.Pagina < 1 ? 1 : filtro.Pagina;
         // Exames de imagem = satélite; regulação vem por .Solicitacao (não-excluída dos dois lados).
         IQueryable<ExameImagem> query = _db.ExamesImagem.AsNoTracking()
             .Include(e => e.TipoExame)
@@ -244,7 +246,9 @@ public sealed class SolicitacoesExameService(
             // resolvidos no hub FHIR (ids). Hub fora do ar → só match local (nunca 500).
             var termo = filtro.Busca.Trim();
             var padrao = $"%{termo}%";
-            var idsPaciente = (await _pacienteResolver.BuscarIdsPorTermoAsync(termo, cancellationToken)).ToArray();
+            // Teto de pacientes resolvidos segue o tamanho da página pedido (item do ticket #91:
+            // "o teto deve obedecer ao dropdown da tela").
+            var idsPaciente = (await _pacienteResolver.BuscarIdsPorTermoAsync(termo, tamanho, cancellationToken)).ToArray();
             query = query.Where(e =>
                 EF.Functions.ILike(e.AccessionNumber, padrao)
                 || (e.Solicitacao!.CodigoSolicitacao != null && EF.Functions.ILike(e.Solicitacao!.CodigoSolicitacao, padrao))
@@ -310,18 +314,21 @@ public sealed class SolicitacoesExameService(
                 : query.Where(e => e.Solicitacao!.UnidadeExecutanteId == refVisao);
         }
 
-        var limite = filtro.Limite is <= 0 or > 500 ? 50 : filtro.Limite;
+        var total = await query.CountAsync(cancellationToken);
+
         // Urgentes sempre no topo, independente da data (Prioridade: Urgente=3 > Prioritaria=2 > Eletiva=1).
         var lista = await query
             .OrderByDescending(e => e.Solicitacao!.Prioridade)
             .ThenByDescending(e => e.CriadoEm)
-            .Take(limite)
+            .Skip((pagina - 1) * tamanho)
+            .Take(tamanho)
             .ToListAsync(cancellationToken);
 
         var dtos = await EnriquecerAsync([.. lista.Select(e => SolicitacoesExameMapper.ParaListItem(e, unidadeReferencia))], cancellationToken);
         var comLaudos = await EnriquecerLaudosAsync([.. dtos], cancellationToken);
         var comAnamnese = await EnriquecerAnamneseAsync([.. comLaudos], cancellationToken);
-        return await EnriquecerComunicacoesAsync([.. comAnamnese], cancellationToken);
+        var itens = await EnriquecerComunicacoesAsync([.. comAnamnese], cancellationToken);
+        return new PaginaSolicitacoesDto(itens, total, pagina, tamanho);
     }
 
     // Marca as linhas que já têm anamnese preenchida (muda a cor do botão Anamnese na lista).

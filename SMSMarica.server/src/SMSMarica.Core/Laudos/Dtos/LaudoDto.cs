@@ -60,6 +60,13 @@ public sealed record LaudoListItemDto(
     // lida/visualizada, ⚠ falha). Null quando não há comunicação (ex.: não assinado).
     ComunicacaoChipDto? ChipLaudoPronto = null);
 
+/// <summary>Página da listagem de laudos (paginação offset + total para os controles).</summary>
+public sealed record PaginaLaudosDto(
+    IReadOnlyList<LaudoListItemDto> Itens,
+    int Total,
+    int Pagina,
+    int Tamanho);
+
 public sealed record LaudoHistoricoItemDto(
     Guid Id,
     int Versao,

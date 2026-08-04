@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   aprovarAssinatura,
   atualizarLaudo,
@@ -32,7 +32,10 @@ export const laudosKeys = {
 export function useListarLaudos(filtro: FiltroLaudos) {
   return useQuery({
     queryKey: laudosKeys.lista(filtro),
-    queryFn: () => listarLaudos(filtro),
+    // `signal`: React Query aborta a busca anterior ao mudar o filtro (busca ao vivo).
+    queryFn: ({ signal }) => listarLaudos(filtro, signal),
+    // Mantém a página anterior enquanto a nova carrega — sem piscar.
+    placeholderData: keepPreviousData,
   });
 }
 

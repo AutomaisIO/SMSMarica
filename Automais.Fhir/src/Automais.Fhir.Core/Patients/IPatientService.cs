@@ -17,7 +17,17 @@ public sealed record PatientBusca(
     /// (medido em 04/08: 25 pacientes viraram 260 recursos).
     /// </summary>
     string? IdentifierSystem = null,
-    string? IdentifierValue = null);
+    string? IdentifierValue = null,
+    /// <summary>
+    /// Busca HUMANA unificada (barra de pesquisa): casa <b>nome</b> (contém, sem acento/caso)
+    /// OU <b>CPF/CNS por prefixo</b> (não espera o documento terminar). Ordena
+    /// <i>prefixo-primeiro</i> — quem o nome COMEÇA com o termo vem antes. Distinta do match
+    /// exato de <see cref="Cpf"/>/<see cref="Cns"/>/identifier, que os conectores usam para
+    /// reconciliação e NÃO pode virar prefixo.
+    /// </summary>
+    string? Termo = null,
+    /// <summary>Teto de resultados (segue o "itens por página" da tela). Null = padrão do serviço.</summary>
+    int? Limite = null);
 
 /// <summary>
 /// Operações sobre o recurso FHIR <c>Patient</c>. Entrada/saída são objetos

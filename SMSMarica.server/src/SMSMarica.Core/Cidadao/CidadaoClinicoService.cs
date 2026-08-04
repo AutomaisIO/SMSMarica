@@ -165,7 +165,7 @@ public sealed class CidadaoClinicoService(
         var lista = await laudos.ListarAsync(
             new FiltroLaudosDto(PacienteId: pacienteId, Limite: 200), cancellationToken);
 
-        return [.. lista
+        return [.. lista.Itens
             .Where(l => l.Assinado)
             .Select(l => new LaudoResumoDto(l.Id, l.FinalizadoEm ?? l.CriadoEm, l.Titulo, "Assinado"))];
     }

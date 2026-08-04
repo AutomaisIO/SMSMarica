@@ -47,7 +47,7 @@ public sealed class ConsultasService(
         {
             var termo = filtro.Busca!.Trim();
             var padrao = $"%{termo}%";
-            var idsPaciente = (await pacienteResolver.BuscarIdsPorTermoAsync(termo, ct)).ToArray();
+            var idsPaciente = (await pacienteResolver.BuscarIdsPorTermoAsync(termo, ct: ct)).ToArray();
             query = query.Where(s =>
                 (s.CodigoSolicitacao != null && EF.Functions.ILike(s.CodigoSolicitacao, padrao))
                 || (s.EspecialidadeTexto != null && EF.Functions.ILike(s.EspecialidadeTexto, padrao))

@@ -143,3 +143,10 @@ public sealed record SolicitacaoExameListItemDto(
     ComunicacaoChipDto? ChipLaudoPronto = null,
     // Anamnese (questionário pré-exame) já preenchida — muda a cor do botão na lista.
     bool TemAnamnese = false);
+
+/// <summary>Página da listagem de solicitações (paginação offset + total para os controles).</summary>
+public sealed record PaginaSolicitacoesDto(
+    IReadOnlyList<SolicitacaoExameListItemDto> Itens,
+    int Total,
+    int Pagina,
+    int Tamanho);

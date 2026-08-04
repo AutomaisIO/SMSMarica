@@ -103,7 +103,7 @@ export function SolicitacaoExameFormPage() {
     dataInicial10d,
   );
   const duplicatas = useMemo(
-    () => (recentes.data ?? []).filter((s) => s.status !== 'Cancelada'),
+    () => (recentes.data?.itens ?? []).filter((s) => s.status !== 'Cancelada'),
     [recentes.data],
   );
 

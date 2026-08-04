@@ -22,7 +22,9 @@ public sealed record FiltroSolicitacoesDto(
     // (acesso global sem ativa, ou visão do conjunto) o recorte é ignorado — não há "solicitante
     // vs executante" bem-definido. Ver ticket #84.
     bool VisaoSolicitante = false,
-    int Limite = 50);
+    int Limite = 50,
+    // Página 1-based da listagem (paginação offset). Tamanho da página = Limite.
+    int Pagina = 1);
 
 /// <summary>Recortes que o painel de início abre na listagem de solicitações.</summary>
 public enum RecortePainel

@@ -41,7 +41,7 @@ public sealed class SandboxService(
     public async Task<IReadOnlyList<SandboxPacienteDto>> BuscarPacientesAsync(string termo, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(termo) || termo.Trim().Length < 3) return [];
-        var ids = await pacientes.BuscarIdsPorTermoAsync(termo.Trim(), ct);
+        var ids = await pacientes.BuscarIdsPorTermoAsync(termo.Trim(), ct: ct);
         if (ids.Count == 0) return [];
         var mapa = await pacientes.ResolverManyAsync(ids.Take(20), ct);
         return [.. mapa.Values
