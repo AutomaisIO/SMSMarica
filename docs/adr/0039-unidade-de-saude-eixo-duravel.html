@@ -24,7 +24,7 @@ li{margin:3px 0}p,li{max-width:75ch}
 <body>
 <main>
 <h1>ADR-0039 — Unidade de saúde é o eixo durável do dado clínico; o PEP é proveniência transitória</h1>
-<p><strong>Status:</strong> proposto · <strong>Data:</strong> 2026-08-01 <strong>Implantação:</strong> não iniciada</p>
+<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-08-01 <strong>Implantação:</strong> <strong>em produção desde 04/08/2026</strong> — 3 Organizations criadas com o CNES medido (Conde 2266733, UPA Inoã 7164440, Sta Rita 2266792) e 156/156 dos Encounters do primeiro ciclo pós-deploy saíram com <code>serviceProvider</code>. A ponte do CNES foi confirmada contra a segunda base: o Klinikos declara <strong>7164440</strong> para a "UPA MARICA" — mesma unidade, nome diferente.</p>
 <h2>Contexto</h2>
 <p>O hub FHIR nasceu dirigido por PEP: cada conector (Salux hoje, Klinikos a caminho) carimba <code>meta.source</code> e anexa identifiers da fonte (<a href="./0009-identidade-e-proveniencia-multi-pep.md">ADR-0009</a>). Isso responde bem "<strong>de qual sistema</strong> veio" — mas nada no hub responde "<strong>onde</strong> aconteceu". Medido em produção (01/08/2026):</p>
 <div class="tw"><table><thead><tr><th>Fato medido</th><th>Número</th><th>Leitura</th></tr></thead><tbody>

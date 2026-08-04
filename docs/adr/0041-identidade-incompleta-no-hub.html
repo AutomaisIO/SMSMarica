@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0041 — Paciente sem CPF entra no hub, marcado; a incerteza é declarada, não escondida</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0041 — Paciente sem CPF entra no hub, marcado; a incerteza é declarada, não escondida</h1>
+<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-08-03 <strong>Implantação:</strong> <strong>em produção desde 03/08/2026</strong> (Salux) — conector Klinikos com a mesma regra, ainda não ligado.</p>
+<h2>Contexto</h2>
+<p>O hub deduplica cidadão por chave nacional: CPF, e secundariamente CNS (<a href="./0009-identidade-e-proveniencia-multi-pep.md">ADR-0009</a>). Isso funciona bem — até o dia em que a origem não tem nenhuma das duas.</p>
+<p>Medido nas bases reais:</p>
+<div class="tw"><table><thead><tr><th>Base</th><th>Pacientes</th><th>Sem CPF <strong>e</strong> sem CNS</th><th>%</th></tr></thead><tbody>
+<tr><td>Salux (HMCML)</td><td>370.226</td><td><strong>63.324</strong></td><td>17,1%</td></tr>
+<tr><td>Klinikos UPA Maricá</td><td>83.878</td><td><strong>14.152</strong></td><td>16,9%</td></tr>
+</tbody></table></div>
+<p>Não é lixo de cadastro. No Salux, esses 63.324 respondem por <strong>127.145 boletins</strong> e <strong>8.216 internações — das quais 6.697 são recém-nascidos</strong> (o HMCML é maternidade). Na UPA, <strong>todos os 14.152 têm pelo menos um boletim</strong>: são pessoas que foram atendidas.</p>
+<p>Tentativas de resgate na UPA, medidas: o CNS capturado no boletim recupera <strong>863</strong> (6,1%); o CNS provisório, <strong>859</strong> — e os dois conjuntos quase coincidem. <strong>Não existe resgate em massa.</strong> O dado não foi coletado no atendimento, e não há de onde tirá-lo.</p>
+<p>Ou seja: um sexto do cidadão atendido na rede não tem identificador nacional na origem. Não é uma exceção a tratar depois; é uma característica permanente do dado de urgência — recém-nascido sem registro, indigente, paciente que chega inconsciente.</p>
+<h3>As duas saídas ruins</h3>
+<p><strong>Deixar de fora.</strong> Foi a decisão inicial, e é defensável: sem CPF não há como afirmar que o "João da Silva" de uma base é o mesmo de outra, e uma dedup errada <strong>funde dois prontuários</strong> — o pior desfecho possível num repositório clínico. Mas o preço é o hub afirmar, por omissão, que aquele atendimento não existiu. Um recém-nascido que passou 12 dias internado simplesmente não consta. Para um repositório longitudinal, silêncio e ausência são indistinguíveis.</p>
+<p><strong>Deduplicar por nome + nascimento.</strong> É o caminho mais curto para fundir dois pacientes distintos. Homônimos com a mesma data de nascimento existem, e são mais comuns do que a intuição sugere. Descartado.</p>
+<h2>Decisão</h2>
+<p><strong>O paciente sem CPF entra no hub, identificado apenas pela chave interna da base de origem, e marcado como de identidade incompleta.</strong></p>
+<ol>
+<li><strong>Identifier local, nunca vazio.</strong> O recurso carrega <code>urn:&lt;pep&gt;:paciente</code> com o código da</li>
+</ol>
+<p>   origem prefixado pelo slug da base. <strong>Não</strong> carrega um <code>Identifier</code> de CPF com <code>value</code> em    branco — o hub rejeita o recurso inteiro com 400.</p>
+<ol>
+<li><strong>A marca é <code>meta.tag</code></strong>, não um campo nosso:</li>
+</ol>
+<p>   <code>urn:smsmarica:qualidade|identidade-incompleta</code>. É o mecanismo do próprio FHIR para    qualificar um registro sem sujar o dado clínico, e é buscável — <code>GET    /fhir/Patient?_tag=urn:smsmarica:qualidade|identidade-incompleta</code> responde "quantos    registros incertos existem" a qualquer momento, <strong>sem contador paralelo para desincronizar</strong>.</p>
+<ol>
+<li><strong>Uma tag só para todo o hub.</strong> Salux e Klinikos usam exatamente o mesmo system e code. A</li>
+</ol>
+<p>   pergunta "quantos registros incertos temos?" tem de ter uma resposta, não uma por base.</p>
+<ol>
+<li><strong>Fora do merge canônico.</strong> Esses pacientes nunca entram no caminho de dedup por CPF. Cada</li>
+</ol>
+<p>   base tem o seu; se a mesma pessoa aparecer em duas, serão dois recursos. <strong>É o resultado    correto</strong>: é melhor ter dois registros que sabemos separados do que um que achamos unificado.</p>
+<ol>
+<li><strong>A marca some sozinha.</strong> No dia em que a origem ganhar o CPF, o paciente passa pelo caminho</li>
+</ol>
+<p>   canônico e sobe sem a tag. Não há processo de limpeza a manter.</p>
+<ol>
+<li><strong>Visível na operação.</strong> O painel mostra o selo "sem CPF" ao lado do nome na busca de</li>
+</ol>
+<p>   pacientes. Quem atende precisa saber que aquele cadastro não é confiável para cruzar    informação — a incerteza tem de aparecer onde a decisão é tomada, não só num relatório.</p>
+<ol>
+<li><strong>CNS provisório não vale.</strong> Os 17.361 CNS provisórios do Klinikos <strong>não</strong> são identificador</li>
+</ol>
+<p>   nacional e não viram <code>identifier</code> de system CNS. Ficam de fora até a operação dizer o que    significam.</p>
+<h2>Consequências</h2>
+<p><strong>A favor</strong></p>
+<ul>
+<li>O hub deixa de mentir por omissão: o atendimento existe, com o aviso de que a identidade não</li>
+</ul>
+<p>  foi confirmada.</p>
+<ul>
+<li>A contagem de dados ruins é uma query, não uma estimativa. E é a mesma query para sempre.</li>
+<li>O risco de fusão indevida não aumenta — esses recursos ficam explicitamente fora do merge.</li>
+</ul>
+<p><strong>Contra, e assumido</strong></p>
+<ul>
+<li><strong>O hub passa a conter duplicatas conhecidas.</strong> A mesma pessoa atendida no Conde e na UPA sem</li>
+</ul>
+<p>  documento vira dois Patients. Isso é deliberado; a alternativa é fundir sem base.</p>
+<ul>
+<li>Qualquer consumidor que conte pacientes distintos precisa saber da tag. Contagem populacional</li>
+</ul>
+<p>  sobre o hub tem de excluí-los ou tratá-los à parte.</p>
+<ul>
+<li>A quantidade só cresce enquanto a origem não coletar documento. O número é um **indicador de</li>
+</ul>
+<p>  qualidade da recepção**, não um bug a corrigir no hub — e é aí que ele deve ser cobrado.</p>
+<p><strong>Não decidido aqui</strong></p>
+<ul>
+<li>O que fazer com os já existentes: se um dia houver identificação retroativa (por prontuário</li>
+</ul>
+<p>  físico, por exemplo), o merge desses recursos precisa de desenho próprio — e de um caminho de   desfazimento, porque merge errado em prontuário é dano difícil de reverter.</p>
+</main>
+</body>
+</html>

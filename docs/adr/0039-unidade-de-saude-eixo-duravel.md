@@ -1,7 +1,10 @@
 # ADR-0039 — Unidade de saúde é o eixo durável do dado clínico; o PEP é proveniência transitória
 
-**Status:** proposto · **Data:** 2026-08-01
-**Implantação:** não iniciada
+**Status:** aceito · **Data:** 2026-08-01
+**Implantação:** **em produção desde 04/08/2026** — 3 Organizations criadas com o CNES medido
+(Conde 2266733, UPA Inoã 7164440, Sta Rita 2266792) e 156/156 dos Encounters do primeiro ciclo
+pós-deploy saíram com `serviceProvider`. A ponte do CNES foi confirmada contra a segunda base:
+o Klinikos declara **7164440** para a "UPA MARICA" — mesma unidade, nome diferente.
 
 ## Contexto
 
