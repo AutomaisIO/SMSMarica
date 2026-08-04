@@ -2,6 +2,7 @@
 using Hl7.Fhir.Model;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Common.Excecoes;
+using SMSMarica.Core.Integracoes.Pep.Fhir;
 using SMSMarica.Core.Integracoes.Pep.Leitura;
 using SMSMarica.Data.Entities.Enums;
 
@@ -23,6 +24,21 @@ namespace SMSMarica.Core.Integracoes.Pep.Estrategias.Klinikos;
 /// implantação; CID, nota e prescrição vêm de <c>UPA_Evolucao</c>, por <c>Tipo</c>.</item>
 /// </list>
 ///
+/// <para><b>Identidade passa pelo canônico</b> (<see cref="UpsertCanonicoPep"/>): paciente e
+/// profissional com CPF são amarrados pela chave nacional — a mesma pessoa vista pelo Salux e
+/// pelo Klinikos converge para UM recurso, com merge que preserva telefone verificado e
+/// conciliação de nascimento divergente. Sem CPF, o paciente entra pela chave local, marcado
+/// (ADR-0041), e NUNCA entra no merge — dois registros sabidamente separados valem mais que um
+/// unificado no chute. A primeira versão deste conector usou o atalho dos recursos clínicos
+/// (<c>PUT ?identifier=</c>) e o hub respondeu 405 em 606 mil upserts de paciente: aquele
+/// caminho é bloqueado para identidade DE PROPÓSITO.</para>
+///
+/// <para><b>A marca d'água é fail-closed</b> (<see cref="FasePonteiro"/>): escrita que falha
+/// segura o ponteiro da fase no registro anterior à falha. No incidente de 04/08 o ponteiro
+/// avançou até o fim da base com ZERO registros gravados — 1,43 milhão de linhas ficaram
+/// invisíveis ao incremental. Re-varrer é barato (upsert é idempotente); pular dado clínico em
+/// silêncio é permanente.</para>
+///
 /// <para>Mapeamento medido e justificado em <c>docs/klinikos/mapeamento-fhir.md</c>.</para>
 /// </summary>
 internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrategy> logger)
@@ -43,8 +59,10 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
     private const string FaseEvolucao = "evolucao";
     private const string FaseSinais = "sinais-vitais";
 
-    /// <summary>Boletim resolvido no hub: as duas referências que todo recurso clínico precisa.</summary>
-    private readonly record struct Atendimento(string EncRef, string PacRef);
+    private const string TipoInicioAtendimento = "INICIO DO ATENDIMENTO MEDICO";
+
+    /// <summary>Boletim resolvido no hub: as referências que todo recurso clínico precisa.</summary>
+    private readonly record struct Atendimento(string EncRef, string PacRef, bool TeveAtendimento);
 
     public async Task ImportarAsync(ContextoImportacaoPep ctx, CancellationToken ct)
     {
@@ -58,12 +76,32 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
         var leitor = new LeitorAgenteSql(consulta, Math.Max(TamanhoPagina * 2, 5_000));
         var incremental = ctx.Opcoes.Modo == ModoSincronizacao.Incremental;
 
-        void Falhou(string chave, Exception ex)
+        void Falhou(string chave, long cd, Exception ex)
         {
             var msg = ex.Message.Split('\n')[0];
-            lock (p.Falhas) { p.Falhas.Add((0, $"{chave}: {msg}")); }
-            ctx.Falhas?.Registrar(0, $"{chave}: {msg}");
+            p.RegistrarFalha(cd, $"{chave}: {msg}");
+            ctx.Falhas?.Registrar(cd, $"{chave}: {msg}");
         }
+
+        // Opções que este conector ainda NÃO implementa são REJEITADAS, não ignoradas: um
+        // "apagar antes" silenciosamente pulado deixaria o operador certo de que purgou — e o
+        // reimport por códigos assumiria formato de cd que esta base não tem (char com zeros à
+        // esquerda). Falhar alto aqui é o que evita a próxima surpresa em produção.
+        if (ctx.Opcoes.ApagarAntes)
+            throw new ValidacaoException("pep.opcao_nao_suportada",
+                "\"Apagar antes\" ainda não é suportado para bases Klinikos.");
+        if (ctx.Opcoes.CdsPacientes is { Count: > 0 })
+            throw new ValidacaoException("pep.opcao_nao_suportada",
+                "Reimport direcionado por códigos ainda não é suportado para bases Klinikos.");
+
+        // Escopo LIMITADO = ensaio: importa até N pacientes e SÓ o clínico deles, e não move
+        // NENHUM ponteiro — um teste não pode deixar marca que faça o incremental pular dado.
+        var limitado = ctx.Opcoes.Escopo == EscopoSincronizacao.Limitado;
+        var maxPacientes = limitado ? Math.Max(ctx.Opcoes.MaxPacientes ?? 0, 0) : int.MaxValue;
+        var maxMedicos = limitado ? Math.Max(ctx.Opcoes.MaxMedicos ?? 0, 0) : int.MaxValue;
+        if (limitado && maxPacientes == 0 && maxMedicos == 0)
+            throw new ValidacaoException("pep.limites",
+                "No escopo Limitado informe ao menos um limite (médicos e/ou pacientes).");
 
         p.FaseAtual = "verificando o agente…";
         if (!await consulta.TestarConexaoAsync(ct))
@@ -91,110 +129,188 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
                     mapper.BuildOrganization(u), KlinikosFhirMapper.IdentUnidade, mapper.Pref(u.Codigo), ct);
                 orgPorUnidade[u.Codigo] = $"Organization/{salvo.Id}";
             }
-            catch (Exception ex) { Falhou($"unidade {u.Codigo}", ex); }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                Falhou($"unidade {u.Codigo}", Cd(u.Codigo), ex);
+            }
         }
         logger.LogInformation("Klinikos {Slug}: {N} unidade(s) resolvida(s).", slug, orgPorUnidade.Count);
 
         // ---------- 2. Profissionais ----------
         // Varredura INTEGRAL todo ciclo: `profissional` é a única das tabelas de interesse que
         // NÃO tem `rv_atualizacao` — medido, e a razão pela qual "rowversion em quase toda
-        // tabela" não vira "em toda tabela" sem conferir. São 495 linhas; varrer todas custa
-        // menos que qualquer CDC improvisado sobre uma coluna que não foi feita para isso.
+        // tabela" não vira "em toda tabela" sem conferir. São 495 linhas.
+        //
+        // Profissional SEM CPF não entra — mesma régua do conector do Salux: Practitioner é
+        // canônico por chave nacional, e sem ela não há como afirmar que o "João" de uma base
+        // é o da outra. São 31 de 495 na UPA; nenhum recurso da Fase 1 os referencia.
         p.FaseAtual = "profissionais…";
+        var profSemCpf = 0;
         foreach (var linha in await leitor.ConsultarAsync(SqlProfissionais(), ct))
         {
+            if (p.Medicos >= maxMedicos) break;
             if (MapProfissional(linha) is not { } pr) continue;
+            var cpfProf = Digitos(pr.Cpf);
+            if (pr.Nome is null || !CpfPep.Valido(cpfProf)) { profSemCpf++; continue; }
             try
             {
-                await ctx.Escritor.UpsertPorIdentifierAsync(
-                    mapper.BuildPractitioner(pr), KlinikosFhirMapper.IdentProfissional, mapper.Pref(pr.Codigo), ct);
+                await UpsertCanonicoPep.UpsertAsync(
+                    ctx, "Practitioner", UpsertCanonicoPep.SysCpf, cpfProf,
+                    mapper.BuildPractitioner(pr), KlinikosFhirMapper.IdentProfissional, ct);
                 p.Medicos++;
             }
-            catch (Exception ex) { Falhou($"profissional {pr.Codigo}", ex); }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                Falhou($"profissional {pr.Codigo}", Cd(pr.Codigo), ex);
+            }
         }
+        if (profSemCpf > 0)
+            logger.LogInformation("Klinikos {Slug}: {N} profissional(is) sem CPF ficaram fora (regra canônica).", slug, profSemCpf);
 
         // ---------- 3. Pacientes ----------
         p.FaseAtual = "pacientes…";
-        await PaginarAsync(leitor, FasePaciente, ctx, incremental, SqlPacientes, async (linhas, marcar) =>
+        await PaginarAsync(leitor, FasePaciente, ctx, incremental, SqlPacientes, async (linhas, fase) =>
         {
             foreach (var linha in linhas)
             {
+                if (p.Pacientes >= maxPacientes) break;
                 if (MapPaciente(linha) is not { } pac) continue;
+                fase.Visto(pac.Rv);
                 try
                 {
                     pacPorCodigo[pac.Codigo] = await UpsertPacienteAsync(ctx, mapper, pac, ct);
                     p.Pacientes++;
-                    if (pac.CpfDigitos.Length == 0) p.PacientesIdentidadeIncompleta++;
+                    if (!CpfPep.Valido(pac.Cpf)) p.PacientesIdentidadeIncompleta++;
                 }
-                catch (Exception ex) { Falhou($"paciente {pac.Codigo}", ex); }
-                marcar(pac.Rv);
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    fase.Falhou(pac.Rv);
+                    Falhou($"paciente {pac.Codigo}", Cd(pac.Codigo), ex);
+                }
             }
-        }, ct);
+        }, ct, persistirPonteiro: !limitado, pararQuando: () => p.Pacientes >= maxPacientes);
 
         // ---------- 4. Boletins → Encounter ----------
         p.FaseAtual = "atendimentos…";
-        await PaginarAsync(leitor, FaseAtendimento, ctx, incremental, SqlBoletins, async (linhas, marcar) =>
+        await PaginarAsync(leitor, FaseAtendimento, ctx, incremental, SqlBoletins, async (linhas, fase) =>
         {
             var boletins = linhas.Select(MapBoletim).OfType<BoletimLinha>().ToList();
-            await GarantirPacientesAsync(ctx, mapper, leitor, boletins.Select(b => b.PacCodigo), pacPorCodigo, Falhou, ct);
+            if (limitado)
+            {
+                // Ensaio: só o clínico dos pacientes que o ensaio importou — os demais NÃO são
+                // falha, estão fora do escopo; e o ponteiro não anda, então nada é pulado.
+                boletins = [.. boletins.Where(b => b.PacCodigo is { } pc && pacPorCodigo.ContainsKey(pc))];
+            }
+            var comAtendimento = await CarregarFlagsAtendimentoAsync(
+                leitor, boletins.Select(b => b.Codigo), ct);
+            if (!limitado)
+            {
+                await GarantirPacientesAsync(ctx, mapper, leitor, boletins.Select(b => b.PacCodigo),
+                    pacPorCodigo, Falhou, ct);
+            }
 
             foreach (var b in boletins)
             {
+                fase.Visto(b.Rv);
                 try
                 {
-                    if (await UpsertBoletimAsync(ctx, mapper, b, orgPorUnidade, pacPorCodigo, ct) is { } a)
+                    if (await UpsertBoletimAsync(ctx, mapper, b, comAtendimento.Contains(b.Codigo),
+                            orgPorUnidade, pacPorCodigo, ct) is { } a)
                     {
                         atendPorBoletim[b.Codigo] = a;
                         p.Encounters++;
                     }
                     else
                     {
-                        Falhou($"boletim {b.Codigo}", new InvalidOperationException(
-                            $"paciente {b.PacCodigo ?? "(nulo)"} não resolvido no hub"));
+                        fase.Falhou(b.Rv);
+                        Falhou($"boletim {b.Codigo}", Cd(b.PacCodigo),
+                            new InvalidOperationException($"paciente {b.PacCodigo ?? "(nulo)"} não resolvido no hub"));
                     }
                 }
-                catch (Exception ex) { Falhou($"boletim {b.Codigo}", ex); }
-                marcar(b.Rv);
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    fase.Falhou(b.Rv);
+                    Falhou($"boletim {b.Codigo}", Cd(b.PacCodigo), ex);
+                }
             }
-        }, ct);
+        }, ct, persistirPonteiro: !limitado);
 
         // ---------- 5. Evoluções → Condition / DocumentReference / MedicationRequest ----------
         p.FaseAtual = "evoluções…";
-        await PaginarAsync(leitor, FaseEvolucao, ctx, incremental, SqlEvolucoes, async (linhas, marcar) =>
+        // CID por boletim: a evolução clinicamente mais RECENTE (datahora) vence. Sem esta
+        // guarda, a EDIÇÃO de uma evolução antiga (rowversion novo, datahora velha) regrediria
+        // o diagnóstico já revisado.
+        var cidDataPorBoletim = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        await PaginarAsync(leitor, FaseEvolucao, ctx, incremental, SqlEvolucoes, async (linhas, fase) =>
         {
             var evolucoes = linhas.Select(MapEvolucao).OfType<EvolucaoLinha>().ToList();
-            await GarantirAtendimentosAsync(ctx, mapper, leitor, evolucoes.Select(e => e.SpaCodigo),
-                orgPorUnidade, pacPorCodigo, atendPorBoletim, Falhou, ct);
+            if (limitado)
+                evolucoes = [.. evolucoes.Where(ev => ev.SpaCodigo is { } sp && atendPorBoletim.ContainsKey(sp))];
+
+            // Evolução que chega agora pode pertencer a um boletim importado num ciclo
+            // ANTERIOR como "não atendido" (o paciente ainda esperava quando o boletim subiu).
+            // Evict do cache força o re-fetch abaixo, que recalcula a flag — agora verdadeira —
+            // e re-upserta o Encounter como atendido. Sem isso, o status errado seria permanente.
+            foreach (var e in evolucoes)
+            {
+                if (e.TipoNorm != "ESTORNO" && e.SpaCodigo is { } spa
+                    && atendPorBoletim.TryGetValue(spa, out var atd) && !atd.TeveAtendimento)
+                {
+                    atendPorBoletim.Remove(spa);
+                }
+            }
+
+            if (!limitado)
+            {
+                await GarantirAtendimentosAsync(ctx, mapper, leitor, evolucoes.Select(e => e.SpaCodigo),
+                    orgPorUnidade, pacPorCodigo, atendPorBoletim, Falhou, ct);
+            }
 
             foreach (var e in evolucoes)
             {
+                fase.Visto(e.Rv);
                 if (e.SpaCodigo is null || !atendPorBoletim.TryGetValue(e.SpaCodigo, out var a))
                 {
-                    Falhou($"evolução {e.Codigo}", new InvalidOperationException(
-                        $"boletim {e.SpaCodigo ?? "(nulo)"} não resolvido no hub"));
-                    marcar(e.Rv);
+                    fase.Falhou(e.Rv);
+                    Falhou($"evolução {e.Codigo}", e.Codigo,
+                        new InvalidOperationException($"boletim {e.SpaCodigo ?? "(nulo)"} não resolvido no hub"));
                     continue;
                 }
-                try { await ProcessarEvolucaoAsync(ctx, mapper, e, a, ct); }
-                catch (Exception ex) { Falhou($"evolução {e.Codigo}", ex); }
-                marcar(e.Rv);
+                try { await ProcessarEvolucaoAsync(ctx, mapper, e, a, cidDataPorBoletim, ct); }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    fase.Falhou(e.Rv);
+                    Falhou($"evolução {e.Codigo}", e.Codigo, ex);
+                }
             }
-        }, ct);
+        }, ct, persistirPonteiro: !limitado);
 
         // ---------- 6. Sinais vitais → Observation ----------
         p.FaseAtual = "sinais vitais…";
-        await PaginarAsync(leitor, FaseSinais, ctx, incremental, SqlSinaisVitais, async (linhas, marcar) =>
+        await PaginarAsync(leitor, FaseSinais, ctx, incremental, SqlSinaisVitais, async (linhas, fase) =>
         {
             var vitais = linhas.Select(MapSinaisVitais).OfType<SinaisVitaisLinha>().ToList();
-            await GarantirAtendimentosAsync(ctx, mapper, leitor, vitais.Select(v => v.SpaCodigo),
-                orgPorUnidade, pacPorCodigo, atendPorBoletim, Falhou, ct);
+            if (limitado)
+            {
+                vitais = [.. vitais.Where(v => v.SpaCodigo is { } sp && atendPorBoletim.ContainsKey(sp))];
+            }
+            else
+            {
+                await GarantirAtendimentosAsync(ctx, mapper, leitor, vitais.Select(v => v.SpaCodigo),
+                    orgPorUnidade, pacPorCodigo, atendPorBoletim, Falhou, ct);
+            }
 
             foreach (var sv in vitais)
             {
+                fase.Visto(sv.Rv);
                 if (sv.SpaCodigo is null || !atendPorBoletim.TryGetValue(sv.SpaCodigo, out var a))
                 {
-                    marcar(sv.Rv);
-                    continue;   // sinal vital sem boletim resolvido: o boletim virá noutro ciclo
+                    // Sem boletim resolvido o ponteiro NÃO passa por cima: o boletim pode
+                    // chegar no próximo ciclo, e a medida tem de vir junto.
+                    fase.Falhou(sv.Rv);
+                    Falhou($"sinal vital {sv.Codigo}", sv.Codigo,
+                        new InvalidOperationException($"boletim {sv.SpaCodigo ?? "(nulo)"} não resolvido no hub"));
+                    continue;
                 }
                 foreach (var (chave, obs) in mapper.BuildObservacoesVitais(sv, a.PacRef, a.EncRef))
                 {
@@ -204,16 +320,43 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
                             obs, KlinikosFhirMapper.IdentSinais, chave, ct);
                         p.Observations++;
                     }
-                    catch (Exception ex) { Falhou($"sinal vital {sv.Codigo}", ex); }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        fase.Falhou(sv.Rv);
+                        Falhou($"sinal vital {sv.Codigo}", sv.Codigo, ex);
+                    }
                 }
-                marcar(sv.Rv);
             }
-        }, ct);
+        }, ct, persistirPonteiro: !limitado);
 
         p.FaseAtual = "concluído";
     }
 
-    // ================= paginação por rowversion =================
+    // ================= ponteiro fail-closed =================
+
+    /// <summary>
+    /// Ponteiro de UMA fase durante o run. A regra que o incidente de 04/08 tornou inegociável:
+    /// <b>escrita que falhou segura a marca</b>. O ponteiro persistido é
+    /// <c>min(menor rv que falhou − 1, maior rv visto)</c> — a fase re-varre a partir da
+    /// primeira falha no próximo ciclo, e re-varrer é barato porque todo upsert é idempotente.
+    ///
+    /// <para>Um registro permanentemente quebrado ("veneno") trava o ponteiro da fase e força
+    /// re-varredura a cada ciclo. É o comportamento CERTO: barulhento, visível na trilha de
+    /// falhas, e ninguém perde dado — o oposto do run que "concluiu" pulando 1,43 milhão de
+    /// linhas em silêncio.</para>
+    /// </summary>
+    internal sealed class FasePonteiro
+    {
+        public long MaxVisto { get; private set; }
+        public long? MenorRvFalho { get; private set; }
+
+        public void Visto(long rv) { if (rv > MaxVisto) MaxVisto = rv; }
+
+        public void Falhou(long rv) { if (MenorRvFalho is null || rv < MenorRvFalho) MenorRvFalho = rv; }
+
+        /// <summary>Até onde é SEGURO afirmar "tudo processado": nunca além de uma falha.</summary>
+        public long PonteiroSeguro => MenorRvFalho is { } f ? Math.Min(f - 1, MaxVisto) : MaxVisto;
+    }
 
     /// <summary>
     /// Varre uma fase por keyset sobre <c>rv_atualizacao</c>. O ponteiro é persistido ao FIM da
@@ -226,12 +369,23 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
         ContextoImportacaoPep ctx,
         bool incremental,
         Func<long, int, string> sql,
-        Func<IReadOnlyList<LinhaSql>, Action<long>, Task> processar,
-        CancellationToken ct)
+        Func<IReadOnlyList<LinhaSql>, FasePonteiro, Task> processar,
+        CancellationToken ct,
+        bool persistirPonteiro = true,
+        Func<bool>? pararQuando = null)
     {
         var desde = incremental ? ctx.Marca.Ponteiro(fase) : 0;
-        var maxVisto = desde;
+        var ponteiro = new FasePonteiro();
         var paginas = 0;
+
+        // Rowversion tem uma corrida clássica: transação ABERTA na origem já consumiu um rv
+        // MENOR que o máximo que vamos ler, mas ainda não é visível; se o ponteiro passar do
+        // rv dela, o commit posterior fica para trás do corte — invisível para sempre.
+        // MIN_ACTIVE_ROWVERSION() é o teto seguro: nada abaixo dele está em voo.
+        var capSeguro = long.MaxValue;
+        var capLinhas = await leitor.ConsultarAsync(SqlCapRowversion(), ct);
+        if (capLinhas.Count > 0 && capLinhas[0].Numero("cap") is { } cap && cap > 0)
+            capSeguro = cap;
 
         while (true)
         {
@@ -248,38 +402,72 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
                     + "Reduza o tamanho da página ou aumente Pep:Agente:MaxLinhas.");
             }
 
-            await processar(linhas, rv => { if (rv > maxVisto) maxVisto = rv; });
+            await processar(linhas, ponteiro);
             paginas++;
 
-            // Origem não avançou o rowversion (linha sem rv, ou tudo já visto): sair evita
-            // reler a mesma página para sempre.
-            if (maxVisto <= desde) break;
-            desde = maxVisto;
+            // A PAGINAÇÃO navega pelo MaxVisto — uma falha não pode travar o laço dentro do
+            // run; ela só segura o ponteiro PERSISTIDO. Origem sem avanço = fim (evita laço
+            // infinito quando a página inteira não tem rv maior).
+            if (pararQuando?.Invoke() == true) break;
+            if (ponteiro.MaxVisto <= desde) break;
+            desde = ponteiro.MaxVisto;
             if (linhas.Count < TamanhoPagina) break;
         }
 
         ct.ThrowIfCancellationRequested();
-        ctx.Marca.AvancarPonteiro(fase, maxVisto);
+        // Ensaio (escopo Limitado) NÃO move ponteiro: um teste que avançasse a marca faria o
+        // incremental seguinte pular tudo que o ensaio não importou.
+        if (!persistirPonteiro) return;
+        var alvo = Math.Min(ponteiro.PonteiroSeguro, capSeguro);
+        if (incremental)
+        {
+            ctx.Marca.AvancarPonteiro(fase, alvo);
+        }
+        else
+        {
+            // COMPLETO é re-varredura integral: falha abaixo do ponteiro guardado RECUA a
+            // marca — senão o registro falho ficaria atrás do corte, invisível para sempre.
+            ctx.Marca.DefinirPonteiro(fase, alvo);
+        }
         if (ctx.SalvarMarca is not null) await ctx.SalvarMarca(ctx.Marca, ct);
-        logger.LogInformation("Klinikos: fase '{Fase}' em {N} página(s); ponteiro {Rv}.", fase, paginas, maxVisto);
+
+        if (ponteiro.MenorRvFalho is { } falho)
+        {
+            logger.LogWarning(
+                "Klinikos: fase '{Fase}' teve falha de escrita — ponteiro segurado em {Seguro} "
+                + "(viu até {Max}); o próximo ciclo re-varre a partir da falha.",
+                fase, ponteiro.PonteiroSeguro, ponteiro.MaxVisto);
+        }
+        else
+        {
+            logger.LogInformation("Klinikos: fase '{Fase}' em {N} página(s); ponteiro {Rv}.",
+                fase, paginas, ponteiro.MaxVisto);
+        }
     }
 
     // ================= paciente =================
 
     /// <summary>
-    /// Paciente COM CPF entra pelo caminho canônico (dedup nacional pelo CPF); SEM CPF entra
-    /// pelo identifier local da base, já marcado pelo mapper. São 16,9% do cadastro da UPA —
-    /// pessoas reais, todas com atendimento (ver <c>docs/klinikos/mapeamento-fhir.md §4</c>).
+    /// Paciente pelo caminho CANÔNICO (<see cref="UpsertCanonicoPep"/>). Com CPF, a âncora é a
+    /// chave nacional — é o que amarra a mesma pessoa entre Salux e Klinikos num recurso só,
+    /// preserva telefone verificado e congela nascimento divergente. Sem CPF, a âncora é a
+    /// chave local e o recurso já vem marcado pelo mapper (ADR-0041) — upsert idempotente da
+    /// própria base, nunca merge com as outras.
     /// </summary>
     private static async Task<string> UpsertPacienteAsync(
         ContextoImportacaoPep ctx, KlinikosFhirMapper mapper, PacienteLinha pac, CancellationToken ct)
     {
         var recurso = mapper.BuildPatient(pac);
-        var cpf = pac.CpfDigitos;
-        var salvo = cpf.Length > 0
-            ? await ctx.Escritor.UpsertPorIdentifierAsync(recurso, KlinikosFhirMapper.IdentCpf, cpf, ct)
-            : await ctx.Escritor.UpsertPorIdentifierAsync(recurso, KlinikosFhirMapper.IdentPaciente, mapper.Pref(pac.Codigo), ct);
-        return $"Patient/{salvo.Id}";
+        // Mesma régua do mapper: só CPF VÁLIDO ancora — "00000000000" fundiria duas pessoas.
+        var cpf = CpfPep.Valido(pac.Cpf) ? pac.CpfDigitos : string.Empty;
+        var id = cpf.Length == 11
+            ? await UpsertCanonicoPep.UpsertAsync(
+                ctx, "Patient", UpsertCanonicoPep.SysCpf, cpf, recurso,
+                KlinikosFhirMapper.IdentPaciente, ct)
+            : await UpsertCanonicoPep.UpsertAsync(
+                ctx, "Patient", KlinikosFhirMapper.IdentPaciente, mapper.Pref(pac.Codigo), recurso,
+                KlinikosFhirMapper.IdentPaciente, ct);
+        return $"Patient/{id}";
     }
 
     /// <summary>
@@ -290,7 +478,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
     private static async Task GarantirPacientesAsync(
         ContextoImportacaoPep ctx, KlinikosFhirMapper mapper, LeitorAgenteSql leitor,
         IEnumerable<string?> codigos, Dictionary<string, string> cache,
-        Action<string, Exception> falhou, CancellationToken ct)
+        Action<string, long, Exception> falhou, CancellationToken ct)
     {
         var faltantes = codigos.OfType<string>()
             .Where(c => !cache.ContainsKey(c))
@@ -304,15 +492,39 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
             {
                 if (MapPaciente(linha) is not { } pac) continue;
                 try { cache[pac.Codigo] = await UpsertPacienteAsync(ctx, mapper, pac, ct); }
-                catch (Exception ex) { falhou($"paciente {pac.Codigo}", ex); }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    falhou($"paciente {pac.Codigo}", Cd(pac.Codigo), ex);
+                }
             }
         }
     }
 
     // ================= boletim =================
 
+    /// <summary>
+    /// Quais destes boletins tiveram atendimento médico iniciado? Uma consulta em LOTE por
+    /// página (<c>IN</c> de até 500) — e não um <c>EXISTS</c> correlacionado por linha, que
+    /// dependeria de um índice em <c>UPA_Evolucao(SPA_CODIGO)</c> cuja existência não dá para
+    /// verificar com o agente offline. O lote tem custo previsível: uma passada por consulta.
+    /// </summary>
+    private static async Task<HashSet<string>> CarregarFlagsAtendimentoAsync(
+        LeitorAgenteSql leitor, IEnumerable<string> boletins, CancellationToken ct)
+    {
+        var todos = boletins.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var com = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var lote in EmLotes(todos, TamanhoLote))
+        {
+            foreach (var linha in await leitor.ConsultarAsync(SqlFlagsAtendimento(lote), ct))
+            {
+                if (linha.Texto("SPA_CODIGO") is { } spa) com.Add(spa);
+            }
+        }
+        return com;
+    }
+
     private static async Task<Atendimento?> UpsertBoletimAsync(
-        ContextoImportacaoPep ctx, KlinikosFhirMapper mapper, BoletimLinha b,
+        ContextoImportacaoPep ctx, KlinikosFhirMapper mapper, BoletimLinha b, bool teveAtendimento,
         IReadOnlyDictionary<string, string> orgPorUnidade,
         IReadOnlyDictionary<string, string> pacPorCodigo,
         CancellationToken ct)
@@ -321,19 +533,21 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
 
         var orgRef = b.UnidCodigo is not null ? orgPorUnidade.GetValueOrDefault(b.UnidCodigo) : null;
 
-        // Todo boletim vira Encounter, inclusive o de quem desistiu antes de ser atendido: a
-        // pessoa esteve na unidade, e isso é informação clínica. O status é refinado pela fase
-        // de evoluções; presumir "atendido" acerta em 92,3% dos casos.
-        var enc = mapper.BuildEncounter(b, pacRef, orgRef, teveAtendimento: true);
+        // Todo boletim vira Encounter, inclusive o de quem desistiu antes de ser atendido
+        // (7,7% na UPA): a pessoa esteve na unidade, e isso é informação clínica. O que muda
+        // é o status — nunca a existência.
+        var enc = mapper.BuildEncounter(b, pacRef, orgRef, teveAtendimento);
         var salvo = await ctx.Escritor.UpsertPorIdentifierAsync(
             enc, KlinikosFhirMapper.IdentBoletim, mapper.Pref(b.Codigo), ct);
 
-        return new Atendimento($"Encounter/{salvo.Id}", pacRef);
+        return new Atendimento($"Encounter/{salvo.Id}", pacRef, teveAtendimento);
     }
 
     /// <summary>
     /// Resolve boletins citados por evolução/sinal vital que ainda não estão no cache do run —
     /// é o caso normal no incremental: uma reavaliação de hoje pendura num boletim de ontem.
+    /// O re-fetch recalcula a flag de atendimento, então também é o caminho que CURA o status
+    /// de um boletim importado antes de o atendimento começar.
     /// </summary>
     private static async Task GarantirAtendimentosAsync(
         ContextoImportacaoPep ctx, KlinikosFhirMapper mapper, LeitorAgenteSql leitor,
@@ -341,7 +555,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
         IReadOnlyDictionary<string, string> orgPorUnidade,
         Dictionary<string, string> pacPorCodigo,
         Dictionary<string, Atendimento> cache,
-        Action<string, Exception> falhou, CancellationToken ct)
+        Action<string, long, Exception> falhou, CancellationToken ct)
     {
         var faltantes = boletins.OfType<string>()
             .Where(c => !cache.ContainsKey(c))
@@ -353,6 +567,8 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
         {
             var linhas = await leitor.ConsultarAsync(SqlBoletinsPorCodigo(lote), ct);
             var achados = linhas.Select(MapBoletim).OfType<BoletimLinha>().ToList();
+            var comAtendimento = await CarregarFlagsAtendimentoAsync(
+                leitor, achados.Select(b => b.Codigo), ct);
 
             await GarantirPacientesAsync(ctx, mapper, leitor, achados.Select(b => b.PacCodigo),
                 pacPorCodigo, falhou, ct);
@@ -361,10 +577,14 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
             {
                 try
                 {
-                    if (await UpsertBoletimAsync(ctx, mapper, b, orgPorUnidade, pacPorCodigo, ct) is { } a)
+                    if (await UpsertBoletimAsync(ctx, mapper, b, comAtendimento.Contains(b.Codigo),
+                            orgPorUnidade, pacPorCodigo, ct) is { } a)
                         cache[b.Codigo] = a;
                 }
-                catch (Exception ex) { falhou($"boletim {b.Codigo}", ex); }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    falhou($"boletim {b.Codigo}", Cd(b.PacCodigo), ex);
+                }
             }
         }
     }
@@ -373,7 +593,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
 
     private static async Task ProcessarEvolucaoAsync(
         ContextoImportacaoPep ctx, KlinikosFhirMapper mapper, EvolucaoLinha e, Atendimento a,
-        CancellationToken ct)
+        Dictionary<string, string> cidDataPorBoletim, CancellationToken ct)
     {
         // ESTORNO é anulação: importá-lo colocaria no prontuário um registro que a própria
         // origem considera cancelado.
@@ -390,9 +610,17 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
         if (e.SpaCodigo is { } boletim
             && mapper.BuildCondition(boletim, e.CidPrimario, a.PacRef, a.EncRef) is { } cond)
         {
-            await ctx.Escritor.UpsertPorIdentifierAsync(
-                cond, KlinikosFhirMapper.IdentBoletim, mapper.Pref(boletim) + ":cond", ct);
-            p.Conditions++;
+            // Só grava se esta evolução é clinicamente mais recente que a última que já gravou
+            // CID para o boletim — rowversion ordena EDIÇÕES, não o curso clínico.
+            var quando = e.DataHora ?? string.Empty;
+            if (!cidDataPorBoletim.TryGetValue(boletim, out var ultima)
+                || string.CompareOrdinal(quando, ultima) >= 0)
+            {
+                await ctx.Escritor.UpsertPorIdentifierAsync(
+                    cond, KlinikosFhirMapper.IdentBoletim, mapper.Pref(boletim) + ":cond", ct);
+                cidDataPorBoletim[boletim] = quando;
+                p.Conditions++;
+            }
         }
 
         switch (e.TipoNorm)
@@ -405,14 +633,17 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
                 p.MedicationRequests++;
                 break;
 
-            // Entradas de sala não têm texto útil: são marco de jornada, e viram statusHistory
-            // do Encounter no dia em que o hub aceitar atualização parcial. Guardar uma
-            // DocumentReference vazia para elas só sujaria o prontuário.
+            // Marcos de jornada, não documentos: o INÍCIO é texto constante ("Início do
+            // Atendimento") e as entradas de sala não têm narrativa. O que eles carregam já
+            // foi extraído acima (o CID); uma DocumentReference de texto vazio ou boilerplate
+            // só sujaria o prontuário — seriam 165 mil iguais.
+            case TipoInicioAtendimento:
             case "ENTRADA NA SALA AMARELA":
             case "ENTRADA NA SALA VERMELHA":
                 break;
 
             default:
+                if (string.IsNullOrWhiteSpace(e.Descricao)) break; // sem texto não há documento
                 await ctx.Escritor.UpsertPorIdentifierAsync(
                     mapper.BuildDocRef(e, a.PacRef, a.EncRef),
                     KlinikosFhirMapper.IdentEvolucao, chave, ct);
@@ -487,6 +718,24 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
            AND pac_codigo IS NOT NULL
         """;
 
+    /// <summary>
+    /// Quais boletins tiveram ALGUM atendimento — qualquer evolução que não seja ESTORNO.
+    /// A régua anterior (só "INÍCIO DO ATENDIMENTO MÉDICO") rotularia como "não atendido"
+    /// os ~2.200 boletins atendidos apenas pela enfermagem — status clínico FALSO no hub.
+    /// "Não atendido" de verdade = boletim sem evolução nenhuma (evasão antes de tudo).
+    /// O <c>%</c> no fim do LIKE blinda contra padding de <c>char</c>/espaço à direita.
+    /// </summary>
+    internal static string SqlFlagsAtendimento(IReadOnlyList<string> boletins) => $"""
+        SELECT DISTINCT SPA_CODIGO
+          FROM UPA_Evolucao
+         WHERE SPA_CODIGO IN ({ListaTexto(boletins)})
+           AND Tipo NOT LIKE 'ESTORNO%'
+        """;
+
+    /// <summary>Teto seguro do rowversion: nada abaixo dele pertence a transacao em voo.</summary>
+    internal static string SqlCapRowversion() =>
+        "SELECT CONVERT(BIGINT, MIN_ACTIVE_ROWVERSION()) - 1 AS cap";
+
     internal static string SqlEvolucoes(long desde, int top) => $"""
         SELECT TOP {top} upaevo_codigo, SPA_CODIGO, Tipo, upaevo_datahora, upaevo_descricao,
                prof_codigo, cid_codigo_primario, cid_codigo_secundario,
@@ -526,6 +775,18 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
         for (var i = 0; i < itens.Count; i += tamanho)
             yield return [.. itens.Skip(i).Take(tamanho)];
     }
+
+    // ================= helpers =================
+
+    /// <summary>Código da origem → número para a trilha de falhas (0 quando não numérico).</summary>
+    private static long Cd(string? codigo)
+    {
+        var d = Digitos(codigo);
+        return d.Length is > 0 and <= 18 && long.TryParse(d, out var n) ? n : 0;
+    }
+
+    private static string Digitos(string? v) =>
+        string.IsNullOrEmpty(v) ? string.Empty : new string([.. v.Where(char.IsDigit)]);
 
     // ================= mapeamento de linha =================
 

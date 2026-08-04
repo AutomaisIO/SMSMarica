@@ -310,4 +310,8 @@ Consequências para o conector:
 | P5 | ~~Guarda de credencial do orquestrador rejeita base `ViaAgente`~~ | **resolvido 03/08** — guarda condicional |
 | P8 | Primeiro run da UPA ainda **não foi disparado**: a base não tem agenda, então nada roda sozinho | decisão de quando ligar |
 | P6 | Semântica dos códigos de administração de dose (`C`/`V`) | só quando P2 abrir |
+| P9 | **ESTORNO não retroage**: a evolução anulada permanece `current` no hub (só a nova não entra). Retração precisa do vínculo estorno→alvo, que a origem não expõe | qualidade, não bloqueia |
+| P10 | CNS não é âncora secundária de dedup (cobertura de 0,16% no cadastro; provisórios sem semântica) | decidir com validação CADSUS |
+| P11 | Entradas de sala amarela/vermelha não viram `statusHistory` (o CID delas JÁ é extraído) | Fase 2 |
+| P12 | `MedicationRequest.status` fixo em `completed` para prescrição histórica | aceito para importação |
 | P7 | Internação: morta no Klinikos desde 25/01/2026. Se o Conde migrar como a UPA roda hoje, o hub **perde a internação no dia do cutover** | não bloqueia hoje; **bloqueia o cutover do Conde** |

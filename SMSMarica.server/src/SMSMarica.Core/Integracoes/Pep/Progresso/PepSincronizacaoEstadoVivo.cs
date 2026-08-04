@@ -1,4 +1,4 @@
-using SMSMarica.Core.Integracoes.Pep.Dtos;
+﻿using SMSMarica.Core.Integracoes.Pep.Dtos;
 using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Integracoes.Pep.Progresso;
@@ -78,7 +78,7 @@ public sealed class PepSincronizacaoEstadoVivo
             var p = _progresso;
             var contadores = new ContadoresImportacaoDto(
                 p.Medicos, p.Pacientes, p.Encounters, p.Conditions,
-                p.MedicationRequests, p.DocumentReferences, p.Observations, p.Falhas.Count,
+                p.MedicationRequests, p.DocumentReferences, p.Observations, p.FalhasTotal,
                 p.Retentativas);
 
             // Snapshot das últimas falhas (cópia sob lock) — diagnóstico em tempo real.

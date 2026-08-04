@@ -49,8 +49,30 @@ public sealed class RegistradorFalhasPep : IRegistradorFalhasPep
         _consumidor = Task.Run(ConsumirAsync);
     }
 
+    /// <summary>
+    /// Teto de falhas persistidas POR EXECUÇÃO. A trilha existe para alimentar o reimport
+    /// direcionado; um run com mais falhas que isso está sistemicamente quebrado, e gravar o
+    /// resto só incha a tabela — o incidente de 04/08 depositou 1,43 milhão de linhas idênticas
+    /// aqui. O excedente é contado e logado, não gravado.
+    /// </summary>
+    private const int MaxPorExecucao = 20_000;
+
+    private int _registradas;
+    private long _suprimidas;
+
     public void Registrar(long cdPaciente, string mensagem)
     {
+        if (Interlocked.Increment(ref _registradas) > MaxPorExecucao)
+        {
+            if (Interlocked.Increment(ref _suprimidas) == 1)
+            {
+                _logger.LogWarning(
+                    "Trilha de falhas da execução {Execucao} atingiu o teto de {Max} — as demais serão contadas, não gravadas.",
+                    _execucaoId, MaxPorExecucao);
+            }
+            return;
+        }
+
         _canal.Writer.TryWrite(new PepSincronizacaoFalha
         {
             Id = Guid.CreateVersion7(),

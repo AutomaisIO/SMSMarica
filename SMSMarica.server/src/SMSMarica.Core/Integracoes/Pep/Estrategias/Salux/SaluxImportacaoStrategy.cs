@@ -38,7 +38,6 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
         var incremental = ctx.Opcoes.Modo == ModoSincronizacao.Incremental;
         var limitado = ctx.Opcoes.Escopo == EscopoSincronizacao.Limitado;
         var gate = new SemaphoreSlim(LerConcorrencia(ctx.Opcoes.Concorrencia));
-        var falhasLock = new object();
 
         var source = $"{SaluxFhirMapper.SourceBase}/salux/{ctx.BaseSlug}";
         var mapper = new SaluxFhirMapper(ctx.BaseSlug, source);
@@ -47,7 +46,7 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
         void Falhou(long cd, Exception ex)
         {
             var msg = ex.Message.Split('\n')[0];
-            lock (falhasLock) { p.Falhas.Add((cd, msg)); }
+            p.RegistrarFalha(cd, msg);
             ctx.Falhas?.Registrar(cd, msg); // trilha durável + insumo do reimport direcionado
         }
 
@@ -120,10 +119,10 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
                 await ParaCada(chunk, gate, async m =>
                 {
                     var cpf = Digitos(m.Cpf);
-                    if (m.Nome is null || cpf.Length == 0) return;
+                    if (m.Nome is null || !CpfPep.Valido(cpf)) return; // CPF-lixo não ancora Practitioner
                     try
                     {
-                        await UpsertCanonicoAsync(ctx, "Practitioner", SaluxFhirMapper.IdentCpf, cpf, mapper.BuildPractitioner(m), ct);
+                        await Fhir.UpsertCanonicoPep.UpsertAsync(ctx, "Practitioner", SaluxFhirMapper.IdentCpf, cpf, mapper.BuildPractitioner(m), SaluxFhirMapper.IdentSaluxPaciente, ct);
                         Interlocked.Increment(ref p.Medicos);
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException) { Falhou(m.Cd, ex); }
@@ -292,7 +291,7 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
         if (ctx.SalvarMarca is { } salvarFim) await salvarFim(ctx.Marca, ct);
 
         logger.LogInformation("Importação Salux ({Slug}) concluída: {Pac} pacientes, {Enc} atendimentos, {Falhas} falhas.",
-            ctx.BaseSlug, p.Pacientes, p.Encounters, p.Falhas.Count);
+            ctx.BaseSlug, p.Pacientes, p.Encounters, p.FalhasTotal);
     }
 
     /// <summary>
@@ -329,18 +328,20 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
             try
             {
                 string fhirId;
-                if (cpf.Length == 11)
+                // CPF VÁLIDO (não apenas 11 dígitos): "00000000000" fundiria duas pessoas.
+                if (CpfPep.Valido(cpf))
                 {
-                    fhirId = await UpsertCanonicoAsync(
-                        ctx, "Patient", SaluxFhirMapper.IdentCpf, cpf, mapper.BuildPatient(pac), ct);
+                    fhirId = await Fhir.UpsertCanonicoPep.UpsertAsync(
+                        ctx, "Patient", SaluxFhirMapper.IdentCpf, cpf, mapper.BuildPatient(pac),
+                        SaluxFhirMapper.IdentSaluxPaciente, ct);
                 }
                 else
                 {
                     var recurso = mapper.BuildPatient(pac);
                     SaluxFhirMapper.MarcarIdentidadeIncompleta(recurso);
-                    fhirId = await UpsertCanonicoAsync(
+                    fhirId = await Fhir.UpsertCanonicoPep.UpsertAsync(
                         ctx, "Patient", SaluxFhirMapper.IdentSaluxPaciente, mapper.Pref(pac.Cd.ToString(CultureInfo.InvariantCulture)),
-                        recurso, ct);
+                        recurso, SaluxFhirMapper.IdentSaluxPaciente, ct);
                     Interlocked.Increment(ref p.PacientesIdentidadeIncompleta);
                 }
                 map[pac.Cd] = $"Patient/{fhirId}";
@@ -458,114 +459,6 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
             contar();
         }
         catch (Exception ex) when (ex is not OperationCanceledException) { falhou(cd, ex); }
-    }
-
-    private static async Task<string> UpsertCanonicoAsync(ContextoImportacaoPep ctx, string tipo, string system, string valor, Resource novo, CancellationToken ct)
-    {
-        var existentes = await ctx.Escritor.BuscarPorIdentifierAsync(tipo, system, valor, ct);
-        var atual = existentes.Entry.Select(e => e.Resource).FirstOrDefault(r => r is not null);
-
-        for (var tentativa = 1; atual is not null; tentativa++)
-        {
-            UnirIdentifiers(novo, atual);
-            // Merge/preserve (ADR-0020): reimport NÃO sobrescreve blob, campos editados no painel
-            // nem telefones confirmados; o resto (identidade/filiação/extras) vem do Oracle.
-            if (novo is Patient np && atual is Patient ap)
-            {
-                Pacientes.Fhir.PatientMergeFhir.PreservarDoExistente(np, ap);
-                // Conflito de VERDADE (não de escrita): mesmo CPF, nascimento diferente. Registra
-                // e CONGELA — origem não sobrescreve o hub até a arbitragem dizer quem está certo.
-                ConciliarNascimento(ctx, system, valor, np, ap);
-            }
-            novo.Id = atual.Id;
-            // If-Match: se o painel editou entre a leitura e o PUT, re-lê e re-mergeia (preserva a edição).
-            novo.Meta ??= new Meta();
-            novo.Meta.VersionId = atual.Meta?.VersionId;
-            try
-            {
-                var atualizado = await ctx.Escritor.AtualizarAsync(tipo, atual.Id!, novo, ct);
-                return atualizado.Id!;
-            }
-            catch (Pacientes.Fhir.ConflitoVersaoHubException) when (tentativa < 3)
-            {
-                var refetch = await ctx.Escritor.BuscarPorIdentifierAsync(tipo, system, valor, ct);
-                atual = refetch.Entry.Select(e => e.Resource).FirstOrDefault(r => r is not null);
-            }
-        }
-
-        var criado = await ctx.Escritor.CriarAsync(novo, ct);
-        return criado.Id!;
-    }
-
-    /// <summary>
-    /// Conciliação de nascimento no upsert canônico do Patient (ADR-0039 / plano §3.2). Medido
-    /// em 01/08/2026: 142 CPFs com nascimento diferente entre hub e Salux (81 com ANO diferente)
-    /// — candidatos a cadastro trocado. Fundir às cegas mistura o histórico de duas pessoas.
-    ///
-    /// <para>Regra: divergiu ⇒ o hub PREVALECE (congelamento) e a divergência vai para a fila de
-    /// arbitragem, que pergunta à consulta oficial de CPF qual das duas datas confere. Quando o
-    /// veredicto disser "origem correta", o CPF sai do congelamento e o próximo run corrige o hub
-    /// sozinho — sem nenhuma escrita especial.</para>
-    /// </summary>
-    private static void ConciliarNascimento(
-        ContextoImportacaoPep ctx, string system, string cpf, Patient novo, Patient atual)
-    {
-        if (system != SaluxFhirMapper.IdentCpf) return;
-
-        var origem = DataCompleta(novo.BirthDate);
-        var hub = DataCompleta(atual.BirthDate);
-        if (origem is null || hub is null || origem == hub) return;
-
-        // Já conhecida: respeita a decisão vigente (congelar ou não) sem re-registrar —
-        // senão um ciclo de 30 min ficaria somando ocorrência no mesmo conflito para sempre.
-        if (ctx.DivergenciasConhecidas.TryGetValue(cpf, out var congelar))
-        {
-            if (congelar) novo.BirthDate = atual.BirthDate;
-            return;
-        }
-
-        novo.BirthDate = atual.BirthDate; // congela até a arbitragem
-        ctx.Divergencias?.Registrar(new Divergencias.DivergenciaDetectada(
-            CdPaciente: CdDe(novo),
-            Cpf: cpf,
-            Tipo: TipoDivergenciaIdentidade.NascimentoDivergente,
-            ValorOrigem: origem,
-            ValorHub: hub,
-            NomeOrigem: NomeOficial(novo),
-            NomeHub: NomeOficial(atual),
-            PatientIdHub: atual.Id));
-    }
-
-    /// <summary>Data só quando é ISO completa (<c>yyyy-MM-dd</c>) — parcial não é divergência.</summary>
-    private static string? DataCompleta(string? d) =>
-        d is { Length: 10 } && DateOnly.TryParseExact(
-            d, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _) ? d : null;
-
-    private static string? NomeOficial(Patient p) =>
-        p.Name?.FirstOrDefault(n => n.Use == HumanName.NameUse.Official)?.Text
-        ?? p.Name?.FirstOrDefault()?.Text;
-
-    /// <summary>cd_paciente da origem, lido do identifier interno (0 quando ausente).</summary>
-    private static long CdDe(Patient p)
-    {
-        var v = p.Identifier?.FirstOrDefault(i => i.System == SaluxFhirMapper.IdentSaluxPaciente)?.Value;
-        var digitos = new string([.. (v ?? string.Empty).Where(char.IsDigit)]);
-        return long.TryParse(digitos, out var cd) ? cd : 0;
-    }
-
-    private static List<Identifier> IdentificadoresDe(Resource r) => r switch
-    {
-        Patient p => p.Identifier ??= [],
-        Practitioner pr => pr.Identifier ??= [],
-        _ => [],
-    };
-
-    private static void UnirIdentifiers(Resource novo, Resource existente)
-    {
-        var nv = IdentificadoresDe(novo);
-        foreach (var id in IdentificadoresDe(existente))
-            if (!nv.Any(x => x.System == id.System && x.Value == id.Value))
-                nv.Add(id);
     }
 
     /// <summary>

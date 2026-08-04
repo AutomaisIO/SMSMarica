@@ -24,6 +24,44 @@
 > **5 apontaram o HUB como correto** — a origem insistia com data de nascimento errada (uma
 > delas com 3 anos de diferença) e o congelamento protegeu os cinco pacientes.
 >
+> ### ⚠ Incidente 04/08 — o primeiro contato do conector Klinikos com produção
+>
+> A agenda da UPA foi ligada e **5 runs falharam com zero registros gravados**. Dois defeitos
+> meus, ambos agora com teste que os torna irreintroduzíveis:
+>
+> 1. **Identidade pelo atalho errado.** Patient/Practitioner foram enviados por
+>    `PUT ?identifier=` — o hub responde **405 de propósito** (identidade só entra pelo caminho
+>    canônico). 606 mil upserts de paciente recusados; sem paciente, 180 mil boletins e 645 mil
+>    evoluções falharam em cascata (1,43 M de falhas no primeiro run).
+> 2. **Ponteiro avançou sobre a falha.** As marcas d'água de CDC foram até o fim da base com
+>    NADA escrito — o incremental ficaria cego para tudo. É o modo de falha mais perigoso que
+>    existe aqui: o run "conclui" e o buraco é invisível.
+>
+> **Correção estrutural (04/08):** o upsert canônico virou classe compartilhada
+> (`UpsertCanonicoPep`) — Salux delega, Klinikos usa; CPF é a âncora, sem-CPF entra marcado
+> (ADR-0041), merge preserva telefone verificado, nascimento divergente congela. O ponteiro é
+> **fail-closed**: persiste `min(menor rv falho − 1, max visto)` — falha re-varre, nunca pula.
+> Escopo Limitado virou ensaio de verdade (N pacientes, só o clínico deles, ponteiro parado).
+> Teto no detalhe de falhas (o run quebrado depositou 1,43 M de linhas na trilha).
+> 8 testes de fluxo com hub fake que **devolve 405 no atalho**, como o real.
+>
+> **Auditoria adversarial (workflow, 15 agentes, 5 lentes):** 35 achados, 9 confirmados —
+> e o mais grave era INVISÍVEL para os testes: o hub não sabia buscar Patient por identifier
+> local (`SepararIdentifier` tratava system desconhecido como CPF), então **todo paciente sem
+> CPF duplicava a cada ciclo** — pré-existente no Salux e já sangrando em produção: **25
+> pacientes tinham virado 260 recursos** (um com 28 cópias). Corrigido na raiz (busca genérica
+> por identifier + índice GIN no hub) e nos vizinhos que a mesma auditoria achou: CPF só
+> ancora com **dígito verificador válido** (adendo no ADR-0041); ponte local→CPF quando o
+> paciente ganha CPF; óbito não some quando outra base re-upserta (preservação clínica entre
+> bases); modo Completo **recua** o ponteiro sobre falha; cap em `MIN_ACTIVE_ROWVERSION()`
+> (corrida de transação em voo); "atendido" = qualquer evolução não-ESTORNO (enfermagem
+> conta); CID não regride com edição de evolução antiga; vitais implausíveis (pulso 999,
+> "PA 12x8") não viram Observation. Tudo com teste.
+>
+> Saneamento: ponteiros da UPA zerados, trilha lixo removida, **260 duplicatas sem-CPF do
+> Salux mescladas**, agenda OFF até a carga deliberada. O agente da UPA caiu durante o
+> incidente e segue offline.
+>
 > **ADR-0039 verificado em produção** (ciclo das 00:11 de 04/08): as 3 Organizations nasceram
 > com o CNES certo — Conde 2266733, UPA Inoã 7164440, Sta Rita 2266792 — e **156 de 156**
 > Encounters novos saíram com `serviceProvider`. E a ponte fechou: o Klinikos declara **7164440**

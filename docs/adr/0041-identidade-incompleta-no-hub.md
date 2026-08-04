@@ -1,6 +1,10 @@
 # ADR-0041 — Paciente sem CPF entra no hub, marcado; a incerteza é declarada, não escondida
 
-**Status:** aceito · **Data:** 2026-08-03
+**Status:** aceito · **Data:** 2026-08-03 · **Adendo 04/08:** a régua é CPF **VÁLIDO**
+(dígito verificador), não "11 dígitos" — a auditoria adversarial mostrou que `00000000000`
+(preenchimento clássico de campo obrigatório) passaria como chave nacional e **fundiria duas
+pessoas** num único Patient. CPF inválido = identidade incompleta: entra marcado, pela chave
+local, e não vira identifier de CPF.
 **Implantação:** **em produção desde 03/08/2026** (Salux) — conector Klinikos com a mesma regra,
 ainda não ligado.
 

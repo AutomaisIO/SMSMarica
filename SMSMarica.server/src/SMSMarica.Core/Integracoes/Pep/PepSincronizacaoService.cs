@@ -666,9 +666,16 @@ public sealed class PepSincronizacaoService(
             // Sucesso: persiste contadores, tempos e watermarks.
             AplicarContadores(execucao, progresso);
             execucao.TemposJson = JsonSerializer.Serialize(progresso.Tempos);
-            execucao.FalhasJson = progresso.Falhas.Count == 0 ? null
-                : JsonSerializer.Serialize(progresso.Falhas.Select(f => new { cd = f.Cd, mensagem = f.Mensagem }));
-            execucao.Status = progresso.Falhas.Count > 0 && progresso.Pacientes == 0
+            // O detalhe é AMOSTRA (teto em ProgressoImportacao.MaxDetalheFalhas); o total real
+            // vai junto — 1,4 milhão de falhas idênticas num json de execução não informam mais
+            // que quinhentas, e quase derrubaram o processo por memória em 04/08.
+            execucao.FalhasJson = progresso.FalhasTotal == 0 ? null
+                : JsonSerializer.Serialize(new
+                {
+                    total = progresso.FalhasTotal,
+                    amostra = progresso.Falhas.Select(f => new { cd = f.Cd, mensagem = f.Mensagem }),
+                });
+            execucao.Status = progresso.FalhasTotal > 0 && progresso.Pacientes == 0
                 ? StatusSincronizacao.Erro
                 : StatusSincronizacao.Concluido;
             execucao.FinalizadoEm = DateTime.UtcNow;
@@ -825,7 +832,7 @@ public sealed class PepSincronizacaoService(
         e.MedicationRequests = p.MedicationRequests;
         e.DocumentReferences = p.DocumentReferences;
         e.Observations = p.Observations;
-        e.Falhas = p.Falhas.Count;
+        e.Falhas = p.FalhasTotal;
     }
 
     private static ContadoresImportacaoDto Contadores(PepSincronizacaoExecucao e) => new(

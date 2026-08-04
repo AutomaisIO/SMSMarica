@@ -24,7 +24,7 @@ li{margin:3px 0}p,li{max-width:75ch}
 <body>
 <main>
 <h1>ADR-0041 — Paciente sem CPF entra no hub, marcado; a incerteza é declarada, não escondida</h1>
-<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-08-03 <strong>Implantação:</strong> <strong>em produção desde 03/08/2026</strong> (Salux) — conector Klinikos com a mesma regra, ainda não ligado.</p>
+<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-08-03 · <strong>Adendo 04/08:</strong> a régua é CPF <strong>VÁLIDO</strong> (dígito verificador), não "11 dígitos" — a auditoria adversarial mostrou que <code>00000000000</code> (preenchimento clássico de campo obrigatório) passaria como chave nacional e <strong>fundiria duas pessoas</strong> num único Patient. CPF inválido = identidade incompleta: entra marcado, pela chave local, e não vira identifier de CPF. <strong>Implantação:</strong> <strong>em produção desde 03/08/2026</strong> (Salux) — conector Klinikos com a mesma regra, ainda não ligado.</p>
 <h2>Contexto</h2>
 <p>O hub deduplica cidadão por chave nacional: CPF, e secundariamente CNS (<a href="./0009-identidade-e-proveniencia-multi-pep.md">ADR-0009</a>). Isso funciona bem — até o dia em que a origem não tem nenhuma das duas.</p>
 <p>Medido nas bases reais:</p>

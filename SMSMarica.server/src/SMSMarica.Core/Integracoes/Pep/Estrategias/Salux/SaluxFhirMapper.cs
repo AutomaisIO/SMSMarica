@@ -193,7 +193,9 @@ internal sealed class SaluxFhirMapper(string slug, string source)
         var sysConselho = SysConselho + sigla.ToLowerInvariant() + ":" + uf;
 
         var ident = new List<Identifier>();
-        if (cpf.Length > 0) ident.Add(new Identifier(SysCpf, cpf));                 // nacional
+        // Só CPF VÁLIDO vira identifier de CPF — repdigit/dígito errado é preenchimento de
+        // campo obrigatório, não chave nacional (mesma régua do conector Klinikos).
+        if (CpfPep.Valido(cpf)) ident.Add(new Identifier(SysCpf, cpf));                 // nacional
         if (Dig(m.Cns).Length > 0) ident.Add(new Identifier(SysCns, Dig(m.Cns)));   // nacional
         if (registro.Length > 0) ident.Add(new Identifier(sysConselho, registro));  // nacional (conselho)
         if (S(m.Rg) is { } rg)

@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Hl7.Fhir.Model;
 using Microsoft.EntityFrameworkCore;
 using Automais.Fhir.Core.Common.Excecoes;
@@ -77,7 +77,19 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
 
     public async Task<Bundle> BuscarAsync(PatientBusca filtro, CancellationToken ct = default)
     {
-        var query = db.Patients.AsNoTracking().Where(p => !p.IsDeleted);
+        // Busca exata por identifier de QUALQUER system, por containment no jsonb — atendida
+        // pelo índice GIN de expressão em (content->'identifier'). É o caminho pelo qual os
+        // conectores reencontram paciente SEM CPF (chave local da base de origem); sem isso,
+        // cada ciclo incremental criava uma cópia nova (25 pacientes viraram 260 recursos).
+        var baseQuery = db.Patients.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(filtro.IdentifierSystem) && !string.IsNullOrWhiteSpace(filtro.IdentifierValue))
+        {
+            var alvo = System.Text.Json.JsonSerializer.Serialize(
+                new[] { new { system = filtro.IdentifierSystem, value = filtro.IdentifierValue } });
+            baseQuery = db.Patients.FromSqlInterpolated(
+                $"SELECT * FROM fhir.patient WHERE (content->'identifier') @> {alvo}::jsonb");
+        }
+        var query = baseQuery.AsNoTracking().Where(p => !p.IsDeleted);
 
         // Ids não-nulo (mesmo vazio) É filtro: _id sem match devolve searchset vazio.
         if (filtro.Ids is not null)
@@ -101,6 +113,7 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
         // Sem filtro: últimos incluídos primeiro (LastUpdated desc). Com filtro: por nome.
         var semFiltro = string.IsNullOrWhiteSpace(filtro.Cpf) && string.IsNullOrWhiteSpace(filtro.Cns)
                         && string.IsNullOrWhiteSpace(filtro.Nome) && string.IsNullOrWhiteSpace(filtro.Telefone)
+                        && string.IsNullOrWhiteSpace(filtro.IdentifierValue)
                         && filtro.Ids is null;
         var ordenada = semFiltro
             ? query.OrderByDescending(p => p.LastUpdated)

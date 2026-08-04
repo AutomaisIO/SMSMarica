@@ -31,8 +31,31 @@ public sealed class ProgressoImportacao
 
     public int Retentativas;
 
-    /// <summary>Falhas por paciente: (cd_paciente, mensagem).</summary>
+    /// <summary>
+    /// Teto do DETALHE de falhas em memória. No incidente de 04/08 um run acumulou 1,43 milhão
+    /// de tuplas nesta lista — dezenas de MB no heap e um <c>falhas_json</c> gigante — sem
+    /// nenhuma informação nova depois da centésima: eram todas o mesmo 405. O TOTAL continua
+    /// exato em <see cref="FalhasTotal"/>; só o detalhe é amostrado.
+    /// </summary>
+    public const int MaxDetalheFalhas = 500;
+
+    /// <summary>Total REAL de falhas do run — conta além do teto do detalhe.</summary>
+    public int FalhasTotal;
+
+    /// <summary>Falhas por paciente: (cd_paciente, mensagem). Amostra — ver <see cref="MaxDetalheFalhas"/>.</summary>
     public List<(long Cd, string Mensagem)> Falhas { get; } = [];
+
+    private readonly Lock _falhasLock = new();
+
+    /// <summary>Registra uma falha: total sempre conta; o detalhe para no teto. Thread-safe.</summary>
+    public void RegistrarFalha(long cd, string mensagem)
+    {
+        lock (_falhasLock)
+        {
+            FalhasTotal++;
+            if (Falhas.Count < MaxDetalheFalhas) Falhas.Add((cd, mensagem));
+        }
+    }
 
     /// <summary>Duração por fase em segundos (ex.: "medicos", "pacientes", "atendimentos").</summary>
     public Dictionary<string, double> Tempos { get; } = [];

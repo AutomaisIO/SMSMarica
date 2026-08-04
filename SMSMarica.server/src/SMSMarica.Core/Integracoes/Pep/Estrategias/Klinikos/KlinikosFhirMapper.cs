@@ -177,7 +177,10 @@ internal sealed class KlinikosFhirMapper(string slug, string source)
     /// </summary>
     public Patient BuildPatient(PacienteLinha p)
     {
-        var cpf = p.CpfDigitos;
+        // Só CPF VÁLIDO (dígito verificador) vira identifier de CPF: "00000000000" e CPF
+        // digitado errado são preenchimento de campo obrigatório, não chave nacional — como
+        // identifier, poluiriam a coluna de busca do hub; como âncora, FUNDIRIAM duas pessoas.
+        var cpf = CpfPep.Valido(p.Cpf) ? p.CpfDigitos : string.Empty;
         var ident = new List<Identifier>();
         if (cpf.Length > 0) ident.Add(new Identifier(SysCpf, cpf));
         if (Dig(p.Cns) is { Length: > 0 } cns) ident.Add(new Identifier(SysCns, cns));
@@ -217,7 +220,7 @@ internal sealed class KlinikosFhirMapper(string slug, string source)
 
         if (SoData(p.Obito) is { } obito) pac.Deceased = new FhirDateTime(obito);
 
-        if (cpf.Length == 0) MarcarIdentidadeIncompleta(pac);
+        if (cpf.Length == 0) MarcarIdentidadeIncompleta(pac); // sem CPF VÁLIDO = identidade incompleta
         return pac;
     }
 
@@ -266,20 +269,6 @@ internal sealed class KlinikosFhirMapper(string slug, string source)
             if (Dt(fim) is { } f) enc.Period.End = f;
         }
         return enc;
-    }
-
-    /// <summary>
-    /// Passagem por sala amarela/vermelha vira <c>statusHistory</c> — a jornada dentro da
-    /// unidade sai de graça aqui, e o Salux não tem equivalente.
-    /// </summary>
-    public static void AcrescentarPassagem(Encounter enc, string? quando)
-    {
-        if (S(quando) is not { } q) return;
-        (enc.StatusHistory ??= []).Add(new Encounter.StatusHistoryComponent
-        {
-            Status = Encounter.EncounterStatus.InProgress,
-            Period = new Period { Start = q + "-03:00" },
-        });
     }
 
     // ---------------- Condition ----------------
@@ -354,7 +343,7 @@ internal sealed class KlinikosFhirMapper(string slug, string source)
                 "peso" => sv.Peso,
                 _ => sv.Hgt,
             };
-            if (Decimal(bruto) is not { } valor) continue;
+            if (Plausivel(campo, Decimal(bruto)) is not { } valor) continue;
             obs.Add((ChaveVital(sv, campo), Observacao(sv, patientRef, encRef, eff, loinc, nome, campo, valor, unidade)));
         }
 
@@ -412,6 +401,26 @@ internal sealed class KlinikosFhirMapper(string slug, string source)
             ? d : null;
     }
 
+    /// <summary>
+    /// Faixas de PLAUSIBILIDADE por medida — deliberadamente largas (só matam o absurdo):
+    /// pulso 999, "PA 12x8" (shorthand de digitação) e peso 0 não são medidas, são erro de
+    /// digitação — e uma Observation <c>final</c> com valor absurdo é informação clínica
+    /// FALSA no prontuário. Adivinhar o valor pretendido seria pior: inventaríamos dado.
+    /// </summary>
+    private static readonly Dictionary<string, (decimal Min, decimal Max)> Faixas = new()
+    {
+        ["pulso"] = (10, 350),
+        ["temperatura"] = (25, 46),
+        ["frequenciaRespiratoria"] = (2, 120),
+        ["saturacaoO2"] = (10, 100),
+        ["hgt"] = (5, 2000),
+        ["peso"] = (0.3m, 600),
+    };
+
+    private static decimal? Plausivel(string campo, decimal? valor) =>
+        valor is { } v && Faixas.TryGetValue(campo, out var f) && v >= f.Min && v <= f.Max
+            ? v : valor is { } fora && !Faixas.ContainsKey(campo) ? fora : null;
+
     private static (decimal Sis, decimal Dia)? Pressao(string? v)
     {
         var s = S(v);
@@ -419,6 +428,8 @@ internal sealed class KlinikosFhirMapper(string slug, string source)
         var partes = s.Split(['/', 'x', 'X'], StringSplitOptions.RemoveEmptyEntries);
         if (partes.Length != 2) return null;
         if (Decimal(partes[0]) is not { } sis || Decimal(partes[1]) is not { } dia) return null;
+        // "12x8" é shorthand de digitação, não uma pressão de 12/8 mmHg.
+        if (sis is < 30 or > 350 || dia is < 10 or > 250 || dia >= sis) return null;
         return (sis, dia);
     }
 
@@ -438,7 +449,11 @@ internal sealed class KlinikosFhirMapper(string slug, string source)
             Status = DocumentReferenceStatus.Current,
             Type = new CodeableConcept { Text = S(e.Tipo) ?? "Evolução" },
             Subject = new ResourceReference(patientRef),
-            Date = Dt(e.DataHora) is { } d ? new DateTimeOffset(DateTime.Parse(d, CultureInfo.InvariantCulture)) : null,
+            // DateTimeOffset.Parse preserva o -03:00 que o Dt() põe; DateTime.Parse converteria
+            // para o fuso da MÁQUINA — e o servidor roda em UTC, não em Brasília.
+            Date = Dt(e.DataHora) is { } d
+                ? DateTimeOffset.Parse(d, CultureInfo.InvariantCulture)
+                : null,
             Identifier =
             [
                 new Identifier(SysEvolucao, Pref(e.Codigo.ToString(CultureInfo.InvariantCulture))),

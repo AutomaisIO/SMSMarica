@@ -104,6 +104,15 @@ public sealed class MarcaDagua
     {
         if (valor > Ponteiro(fase)) Ponteiros[fase] = valor;
     }
+
+    /// <summary>
+    /// Define o ponteiro em valor ABSOLUTO — inclusive para trás. Exclusivo do modo COMPLETO:
+    /// uma re-varredura integral que encontra falha ABAIXO do ponteiro guardado precisa
+    /// recuá-lo, senão o incremental seguinte pula o registro falho para sempre (o
+    /// "nunca retrocede" do incremental viraria exatamente o buraco silencioso que o
+    /// fail-closed existe para impedir). Recuar só custa re-varredura — upsert é idempotente.
+    /// </summary>
+    public void DefinirPonteiro(string fase, long valor) => Ponteiros[fase] = Math.Max(valor, 0);
 }
 
 /// <summary>Tudo que a estratégia precisa para rodar um run, mais o canal de progresso.</summary>

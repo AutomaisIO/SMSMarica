@@ -1,4 +1,4 @@
-using Hl7.Fhir.Model;
+﻿using Hl7.Fhir.Model;
 using Microsoft.AspNetCore.Mvc;
 using Automais.Fhir.Api.Infra;
 using Automais.Fhir.Core.Common.Excecoes;
@@ -84,9 +84,9 @@ public sealed class PatientController(IPatientService service) : ControllerBase
         [FromQuery(Name = "_id")] string? id,
         CancellationToken ct)
     {
-        var (cpf, cns) = SepararIdentifier(identifier);
+        var (cpf, cns, sys, valor) = SepararIdentifier(identifier);
         var ids = ParseIds(id);
-        var bundle = await service.BuscarAsync(new PatientBusca(cpf, cns, name, telecom, ids), ct);
+        var bundle = await service.BuscarAsync(new PatientBusca(cpf, cns, name, telecom, ids, sys, valor), ct);
         return FhirResponse.Recurso(bundle);
     }
 
@@ -120,20 +120,25 @@ public sealed class PatientController(IPatientService service) : ControllerBase
         return FhirJson.Parse<Patient>(json);
     }
 
-    private static (string? Cpf, string? Cns) SepararIdentifier(string? identifier)
+    private static (string? Cpf, string? Cns, string? Sys, string? Valor) SepararIdentifier(string? identifier)
     {
         if (string.IsNullOrWhiteSpace(identifier))
-            return (null, null);
+            return (null, null, null, null);
 
         // Formato FHIR: system|value. Sem '|', trata como valor solto (tenta CPF).
         var partes = identifier.Split('|', 2);
         var (system, valor) = partes.Length == 2 ? (partes[0], partes[1]) : (string.Empty, partes[0]);
 
+        // System desconhecido vai para a busca GENÉRICA por identifier — nunca para o filtro
+        // de CPF. O fallback antigo (`_ => (valor, null)`) fazia `urn:klinikos:paciente|X`
+        // virar WHERE cpf='X': sempre vazio, em silêncio — e o conector, sem reencontrar o
+        // paciente sem CPF que ele mesmo criou, duplicava o recurso a cada ciclo.
         return system switch
         {
-            FhirSystems.Cpf => (valor, null),
-            FhirSystems.Cns => (null, valor),
-            _ => (valor, null),
+            FhirSystems.Cpf => (valor, null, null, null),
+            FhirSystems.Cns => (null, valor, null, null),
+            "" => (valor, null, null, null),
+            _ => (null, null, system, valor),
         };
     }
 }

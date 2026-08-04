@@ -198,6 +198,10 @@ li{margin:3px 0}p,li{max-width:75ch}
 <tr><td>P5</td><td>~~Guarda de credencial do orquestrador rejeita base <code>ViaAgente</code>~~</td><td><strong>resolvido 03/08</strong> — guarda condicional</td></tr>
 <tr><td>P8</td><td>Primeiro run da UPA ainda <strong>não foi disparado</strong>: a base não tem agenda, então nada roda sozinho</td><td>decisão de quando ligar</td></tr>
 <tr><td>P6</td><td>Semântica dos códigos de administração de dose (<code>C</code>/<code>V</code>)</td><td>só quando P2 abrir</td></tr>
+<tr><td>P9</td><td><strong>ESTORNO não retroage</strong>: a evolução anulada permanece <code>current</code> no hub (só a nova não entra). Retração precisa do vínculo estorno→alvo, que a origem não expõe</td><td>qualidade, não bloqueia</td></tr>
+<tr><td>P10</td><td>CNS não é âncora secundária de dedup (cobertura de 0,16% no cadastro; provisórios sem semântica)</td><td>decidir com validação CADSUS</td></tr>
+<tr><td>P11</td><td>Entradas de sala amarela/vermelha não viram <code>statusHistory</code> (o CID delas JÁ é extraído)</td><td>Fase 2</td></tr>
+<tr><td>P12</td><td><code>MedicationRequest.status</code> fixo em <code>completed</code> para prescrição histórica</td><td>aceito para importação</td></tr>
 <tr><td>P7</td><td>Internação: morta no Klinikos desde 25/01/2026. Se o Conde migrar como a UPA roda hoje, o hub <strong>perde a internação no dia do cutover</strong></td><td>não bloqueia hoje; <strong>bloqueia o cutover do Conde</strong></td></tr>
 </tbody></table></div>
 </main>

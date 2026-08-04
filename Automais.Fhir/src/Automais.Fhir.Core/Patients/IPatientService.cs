@@ -1,4 +1,4 @@
-using Hl7.Fhir.Model;
+﻿using Hl7.Fhir.Model;
 
 namespace Automais.Fhir.Core.Patients;
 
@@ -9,7 +9,15 @@ public sealed record PatientBusca(
     string? Nome = null,
     string? Telefone = null,
     /// <summary>Search param FHIR <c>_id</c>: busca em lote por ids (OR).</summary>
-    IReadOnlyCollection<Guid>? Ids = null);
+    IReadOnlyCollection<Guid>? Ids = null,
+    /// <summary>
+    /// Busca EXATA por identifier de qualquer system (<c>urn:klinikos:paciente</c>,
+    /// <c>urn:salux:cd_paciente</c>…). É o que permite ao conector reencontrar o paciente SEM
+    /// CPF que ele mesmo criou — sem isso, cada ciclo incremental criava uma cópia nova
+    /// (medido em 04/08: 25 pacientes viraram 260 recursos).
+    /// </summary>
+    string? IdentifierSystem = null,
+    string? IdentifierValue = null);
 
 /// <summary>
 /// Operações sobre o recurso FHIR <c>Patient</c>. Entrada/saída são objetos
