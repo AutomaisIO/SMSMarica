@@ -73,8 +73,11 @@ export function wadoRsRoot(): string {
  * browser rebaixa fresco — sem depender de hard-reload manual. O backend remove
  * esse parâmetro antes de encaminhar ao dcm4chee (que não o conhece).
  * v2: migração JPEG-LS → JPEG 2000 Lossless (JPEG-LS quebrava mamografia 12-bit).
+ * v3: frames YBR planar (US Mindray DC-28) passam a ser servidos CRUS — o transcode
+ *     reordenava os samples e o viewer exibia listras; expurga os J2K corrompidos
+ *     dos caches (browser e disco do proxy, já que ?ev entra na chave).
  */
-const VERSAO_ENCODING = 2;
+const VERSAO_ENCODING = 3;
 
 /** imageId WADO-RS para uma instância (frame único por padrão). */
 export function construirImageId(

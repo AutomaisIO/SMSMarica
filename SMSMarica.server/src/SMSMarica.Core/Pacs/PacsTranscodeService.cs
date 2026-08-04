@@ -99,6 +99,20 @@ public sealed partial class PacsTranscodeService : IPacsTranscodeService
             using var origem = new MemoryStream(dicomBytes);
             var arquivo = await DicomFile.OpenAsync(origem);
 
+            // Cor YBR em planos separados (PlanarConfiguration=1, ex.: US Mindray DC-28): o
+            // roundtrip de codec reordena os samples para intercalado mas preserva as tags
+            // YBR/planar — o Cornerstone então "des-planariza" um buffer já intercalado e a
+            // imagem sai listrada. O frame CRU renderiza correto (o loader converte YBR planar
+            // nativamente), então este caso fica FORA da compressão e segue pelo fallback cru.
+            var fotometria = arquivo.Dataset.GetSingleValueOrDefault(DicomTag.PhotometricInterpretation, string.Empty);
+            var planar = arquivo.Dataset.GetSingleValueOrDefault(DicomTag.PlanarConfiguration, (ushort)0);
+            if (planar == 1 && fotometria.StartsWith("YBR", StringComparison.Ordinal))
+            {
+                _logger.LogDebug(
+                    "Frame {Caminho} é {Fotometria} planar — servido cru (sem transcode).", caminho, fotometria);
+                return null;
+            }
+
             // 2) Transcoda o dataset para o alvo (JPEG-LS Lossless) e extrai o frame.
             var sintaxeOrigem = arquivo.Dataset.InternalTransferSyntax;
             var sintaxeAlvo = DicomTransferSyntax.Parse(_transferSyntaxAlvo);
