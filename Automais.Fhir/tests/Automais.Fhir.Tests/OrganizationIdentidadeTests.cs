@@ -1,4 +1,4 @@
-using Automais.Fhir.Core.Organizations;
+﻿using Automais.Fhir.Core.Organizations;
 using FluentAssertions;
 using Hl7.Fhir.Model;
 
@@ -64,6 +64,44 @@ public class OrganizationIdentidadeTests
 
         OrganizationService.CnesDe(noSalux).Should().Be(OrganizationService.CnesDe(noKlinikos));
         noSalux.Name.Should().NotBe(noKlinikos.Name);
+    }
+
+    /// <summary>
+    /// O nome da unidade NÃO pode oscilar com quem sincronizou por último. Medido em prod
+    /// (04/08): a UPA acumulou 5 versões a mais que as unidades de uma base só, alternando
+    /// entre "UPA 24H INOÃ" (Salux) e "UPA MARICA" (Klinikos). Quem nomeou primeiro fica;
+    /// o outro nome vira alias — nada se perde, e a identidade para de piscar.
+    /// </summary>
+    [Fact]
+    public void Nome_da_unidade_nao_oscila_entre_conectores__o_outro_vira_alias()
+    {
+        var noHub = new Organization
+        {
+            Name = "UPA 24H INOÃ",
+            Identifier = [new Identifier(SysCnes, "7164440"), new Identifier("urn:salux:hospital", "salux-hcml:2")],
+        };
+        var doKlinikos = new Organization
+        {
+            Name = "UPA MARICA",
+            Identifier = [new Identifier(SysCnes, "7164440"), new Identifier("urn:klinikos:unidade", "upa:0006")],
+        };
+
+        OrganizationService.EstabilizarNome(doKlinikos, noHub);
+
+        doKlinikos.Name.Should().Be("UPA 24H INOÃ", "quem nomeou primeiro permanece");
+        doKlinikos.Alias.Should().Contain("UPA MARICA", "o nome da outra base fica buscável");
+    }
+
+    [Fact]
+    public void Nome_igual_nao_vira_alias_duplicado()
+    {
+        var noHub = new Organization { Name = "UPA MARICA" };
+        var entrante = new Organization { Name = "UPA MARICA" };
+
+        OrganizationService.EstabilizarNome(entrante, noHub);
+
+        entrante.Name.Should().Be("UPA MARICA");
+        entrante.Alias.Should().BeEmpty();
     }
 
     [Fact]

@@ -1,4 +1,4 @@
-using Automais.Fhir.Core.Common.Excecoes;
+﻿using Automais.Fhir.Core.Common.Excecoes;
 using Automais.Fhir.Core.Fhir;
 using Automais.Fhir.Data;
 using Automais.Fhir.Data.Entities;
@@ -57,6 +57,7 @@ public sealed class OrganizationService(FhirDbContext db, TimeProvider clock) : 
         // princípio do Patient canônico (ADR-0009), aplicado à unidade.
         var atual = FhirJson.Parse<Organization>(row.Content);
         UnirIdentifiers(org, atual);
+        EstabilizarNome(org, atual);
 
         CarimbarMeta(org, id, versao, agora, source);
 
@@ -155,6 +156,41 @@ public sealed class OrganizationService(FhirDbContext db, TimeProvider clock) : 
             if (!novo.Identifier.Any(x => x.System == id.System && x.Value == id.Value))
                 novo.Identifier.Add((Identifier)id.DeepCopy());
         }
+    }
+
+    /// <summary>
+    /// O NOME da unidade não oscila: quem nomeou primeiro permanece, e o nome trazido pelos
+    /// outros PEPs entra como <c>alias</c>.
+    ///
+    /// <para>Sem isto, a mesma unidade fica trocando de nome a cada ciclo — a UPA Inoã é
+    /// "UPA 24H INOÃ" no Salux e "UPA MARICA" no Klinikos, e o último conector a rodar
+    /// venceria. Medido em 04/08/2026: 5 versões a mais que as unidades de uma base só, com o
+    /// nome exibido dependendo de quem sincronizou por último. Numa base cujo princípio é
+    /// "a unidade é o eixo DURÁVEL" (ADR-0039), identidade que pisca é defeito — e é a mesma
+    /// classe do PUT replace-all que apagava fato clínico do Patient entre bases.</para>
+    ///
+    /// <para>Nada se perde: os dois nomes ficam buscáveis, um em <c>name</c> e o outro em
+    /// <c>alias</c>.</para>
+    /// </summary>
+    public static void EstabilizarNome(Organization novo, Organization atual)
+    {
+        if (string.IsNullOrWhiteSpace(atual.Name)) return;
+
+        var entrante = novo.Name;
+        novo.Name = atual.Name;
+
+        var apelidos = novo.Alias?.ToList() ?? [];
+        foreach (var a in atual.Alias ?? [])
+            if (!apelidos.Contains(a, StringComparer.OrdinalIgnoreCase)) apelidos.Add(a);
+        if (!string.IsNullOrWhiteSpace(entrante)
+            && !string.Equals(entrante, atual.Name, StringComparison.OrdinalIgnoreCase)
+            && !apelidos.Contains(entrante, StringComparer.OrdinalIgnoreCase))
+        {
+            apelidos.Add(entrante);
+        }
+
+        novo.AliasElement.Clear();
+        foreach (var a in apelidos) novo.AliasElement.Add(new FhirString(a));
     }
 
     private static void CarimbarMeta(Organization o, Guid id, int versao, DateTimeOffset agora, string source)
