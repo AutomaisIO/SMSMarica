@@ -229,6 +229,50 @@ public class KlinikosConectorTests
         Assert.All(chaves, c => Assert.StartsWith("upa24h-marica:777:", c, StringComparison.Ordinal));
     }
 
+    // ---------------- higiene do dado da origem ----------------
+
+    /// <summary>
+    /// A recepção preenche o campo obrigatório com lixo quando o paciente não informa telefone
+    /// — <c>0000000000</c> está no PRIMEIRO registro da base. Telefone falso é pior que nenhum:
+    /// alguém tenta ligar, e o paciente entra em relatório de "contactável" sem ser.
+    /// </summary>
+    [Theory]
+    [InlineData("0000000000")]
+    [InlineData("9999999999")]
+    [InlineData("123")]
+    [InlineData("")]
+    public void Telefone_de_preenchimento_obrigatorio_nao_entra(string lixo)
+    {
+        var pac = Pac() with { Telefone = lixo, Celular = null };
+
+        Assert.DoesNotContain(Mapper().BuildPatient(pac).Telecom,
+            t => t.System == ContactPoint.ContactPointSystem.Phone);
+    }
+
+    [Fact]
+    public void Telefone_de_verdade_entra()
+    {
+        var pac = Pac() with { Telefone = "2126000000", Celular = "21993094621" };
+
+        Assert.Equal(2, Mapper().BuildPatient(pac).Telecom
+            .Count(t => t.System == ContactPoint.ContactPointSystem.Phone));
+    }
+
+    /// <summary>
+    /// <c>profissional</c> é a ÚNICA das tabelas lidas sem <c>rv_atualizacao</c> — medido contra
+    /// a base. Um SQL que corte por rowversion ali falha com "Invalid column name" e derruba a
+    /// fase inteira no primeiro run.
+    /// </summary>
+    [Fact]
+    public void O_SQL_de_profissionais_nao_corta_por_rowversion()
+    {
+        var sql = KlinikosImportacaoStrategy.SqlProfissionais();
+
+        Assert.DoesNotContain("rv_atualizacao", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("TOP", sql, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("PROF_CODIGO", sql, StringComparison.Ordinal);
+    }
+
     // ---------------- CDC e paginação ----------------
 
     [Fact]

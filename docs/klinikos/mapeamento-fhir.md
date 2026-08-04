@@ -157,12 +157,17 @@ mexido na data. A marca d'água por fase vira um `long`, e o filtro é
 
 | Fase | Tabela | Coluna de corte |
 |---|---|---|
-| Unidades | `unidade` | (3 linhas — upsert integral todo ciclo) |
-| Profissionais | `profissional` | `rv_atualizacao` |
+| Unidades | `unidade` | (1 linha por instância — upsert integral todo ciclo) |
+| Profissionais | `profissional` | **não tem `rv_atualizacao`** — varredura integral (495 linhas) |
 | Pacientes | `paciente` | `rv_atualizacao` |
 | Atendimentos | `Pronto_Atendimento` | `rv_atualizacao` |
 | Clínico | `UPA_Evolucao` | `rv_atualizacao` |
 | Sinais vitais | `UPA_SinaisVitais` | `rv_atualizacao` |
+
+> **"Quase" é literal.** Conferido coluna a coluna: `paciente`, `Pronto_Atendimento`,
+> `UPA_Evolucao`, `UPA_SinaisVitais` e `unidade` têm; **`profissional` não tem**. Um SQL que
+> corte por rowversion ali falha com *Invalid column name* e derruba a fase inteira. São 495
+> linhas — varredura integral custa menos que qualquer CDC improvisado sobre outra coluna.
 
 > **Impacto no modelo compartilhado.** `MarcaDagua` hoje só tem campos `DateTime?`. Precisa de
 > campos `long?` por fase para o Klinikos. Os nomes já foram neutralizados
@@ -248,6 +253,17 @@ Nesta implantação a prescrição é **texto livre** na evolução (242.423 lin
 estruturada (`UPA_ITEM_PRESCRICAO_MEDICA` + `Item_Aprazamento`) existe no esquema mas precisa ser
 medida antes de prometer `Dosage` estruturado ou `MedicationAdministration`.
 
+### Higiene medida no dado real
+
+O primeiro registro da base já mostra o padrão: `pac_telefone` = `0000000000`. É campo de
+preenchimento obrigatório que a recepção completa com lixo quando o paciente não informa. O
+conector descarta telefone com menos de 8 dígitos ou de dígito único — telefone falso no hub é
+pior que telefone nenhum, porque alguém tenta ligar e o paciente entra em relatório de
+"contactável" sem ser.
+
+Outros formatos vistos e tratados: peso com vírgula decimal (`11,30`), pressão arterial como
+`/` (sem medida), CID com padding à direita (`B34      `).
+
 > **Ponta aberta P2.** Medir `UPA_ITEM_PRESCRICAO_MEDICA` e `Item_Aprazamento` nesta instância.
 > Se estiverem vivas, destravam o `MedicationAdministration` (hoje vazio no hub) — que é a
 > pendência mais antiga do BAU clínico.
@@ -290,7 +306,8 @@ Consequências para o conector:
 | P1 | Agente de Santa Rita offline — instância não medida | não bloqueia a UPA |
 | P2 | Prescrição estruturada / aprazamento não medidos nesta instância | não bloqueia a Fase 1 |
 | P3 | CNS provisório (17.361): o que significa? | não — ficam de fora até decidir |
-| P4 | `MarcaDagua` precisa de watermark numérica (`long?`) por fase | **bloqueia o conector** |
-| P5 | Guarda de credencial do orquestrador rejeita base `ViaAgente` | **bloqueia o conector** |
+| P4 | ~~`MarcaDagua` precisa de watermark numérica por fase~~ | **resolvido 03/08** — ponteiros em `jsonb` |
+| P5 | ~~Guarda de credencial do orquestrador rejeita base `ViaAgente`~~ | **resolvido 03/08** — guarda condicional |
+| P8 | Primeiro run da UPA ainda **não foi disparado**: a base não tem agenda, então nada roda sozinho | decisão de quando ligar |
 | P6 | Semântica dos códigos de administração de dose (`C`/`V`) | só quando P2 abrir |
 | P7 | Internação: morta no Klinikos desde 25/01/2026. Se o Conde migrar como a UPA roda hoje, o hub **perde a internação no dia do cutover** | não bloqueia hoje; **bloqueia o cutover do Conde** |

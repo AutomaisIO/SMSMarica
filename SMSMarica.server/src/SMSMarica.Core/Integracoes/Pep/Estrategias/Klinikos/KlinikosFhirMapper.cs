@@ -82,6 +82,20 @@ internal sealed class KlinikosFhirMapper(string slug, string source)
         _ => AdministrativeGender.Unknown,
     };
 
+    /// <summary>
+    /// Telefone que vale a pena guardar. A recepção preenche o campo obrigatório com lixo
+    /// quando o paciente não informa número — <c>0000000000</c> aparece no primeiro registro da
+    /// base. Um telefone falso no hub é pior que telefone nenhum: alguém vai tentar ligar, e o
+    /// contato entra em relatório de "paciente contactável" sem ser.
+    /// </summary>
+    private static string? Telefone(string? v)
+    {
+        var d = Dig(v);
+        if (d.Length < 8) return null;
+        if (d.Distinct().Count() == 1) return null;   // 0000000000, 9999999999…
+        return S(v);
+    }
+
     /// <summary>Só a data (o Klinikos guarda nascimento como datetime com hora zerada).</summary>
     private static string? SoData(string? v) =>
         S(v) is { } s && s.Length >= 10 ? s[..10] : null;
@@ -180,7 +194,7 @@ internal sealed class KlinikosFhirMapper(string slug, string source)
         if (S(p.Nome) is { } nome)
             pac.Name = [new HumanName { Use = HumanName.NameUse.Official, Text = nome }];
 
-        foreach (var tel in new[] { S(p.Telefone), S(p.Celular) }.OfType<string>().Distinct())
+        foreach (var tel in new[] { Telefone(p.Telefone), Telefone(p.Celular) }.OfType<string>().Distinct())
             pac.Telecom.Add(new ContactPoint(ContactPoint.ContactPointSystem.Phone, null, tel));
         if (S(p.Email) is { } mail)
             pac.Telecom.Add(new ContactPoint(ContactPoint.ContactPointSystem.Email, null, mail));

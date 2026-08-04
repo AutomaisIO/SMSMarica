@@ -102,13 +102,14 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p>``<code>sql SELECT TOP 3 pac_codigo, CONVERT(BIGINT, rv_atualizacao) rv FROM paciente ORDER BY rv_atualizacao DESC -- 226712823 / 226712766 / 226712364 </code>``</p>
 <p>É <strong>estritamente melhor</strong> que o CDC do Salux (janela de 120 dias sobre <code>dt_atualizacao</code>, com lag de segurança): não tem fuso, não tem relógio, não tem registro que escapa por a origem não ter mexido na data. A marca d'água por fase vira um <code>long</code>, e o filtro é <code>WHERE rv_atualizacao &gt; @marca</code>.</p>
 <div class="tw"><table><thead><tr><th>Fase</th><th>Tabela</th><th>Coluna de corte</th></tr></thead><tbody>
-<tr><td>Unidades</td><td><code>unidade</code></td><td>(3 linhas — upsert integral todo ciclo)</td></tr>
-<tr><td>Profissionais</td><td><code>profissional</code></td><td><code>rv_atualizacao</code></td></tr>
+<tr><td>Unidades</td><td><code>unidade</code></td><td>(1 linha por instância — upsert integral todo ciclo)</td></tr>
+<tr><td>Profissionais</td><td><code>profissional</code></td><td><strong>não tem <code>rv_atualizacao</code></strong> — varredura integral (495 linhas)</td></tr>
 <tr><td>Pacientes</td><td><code>paciente</code></td><td><code>rv_atualizacao</code></td></tr>
 <tr><td>Atendimentos</td><td><code>Pronto_Atendimento</code></td><td><code>rv_atualizacao</code></td></tr>
 <tr><td>Clínico</td><td><code>UPA_Evolucao</code></td><td><code>rv_atualizacao</code></td></tr>
 <tr><td>Sinais vitais</td><td><code>UPA_SinaisVitais</code></td><td><code>rv_atualizacao</code></td></tr>
 </tbody></table></div>
+<p>&gt; <strong>"Quase" é literal.</strong> Conferido coluna a coluna: <code>paciente</code>, <code>Pronto_Atendimento</code>, &gt; <code>UPA_Evolucao</code>, <code>UPA_SinaisVitais</code> e <code>unidade</code> têm; <strong><code>profissional</code> não tem</strong>. Um SQL que &gt; corte por rowversion ali falha com <em>Invalid column name</em> e derruba a fase inteira. São 495 &gt; linhas — varredura integral custa menos que qualquer CDC improvisado sobre outra coluna.</p>
 <p>&gt; <strong>Impacto no modelo compartilhado.</strong> <code>MarcaDagua</code> hoje só tem campos <code>DateTime?</code>. Precisa de &gt; campos <code>long?</code> por fase para o Klinikos. Os nomes já foram neutralizados &gt; (<code>AtendimentoEm</code>, <code>DocumentoEm</code>…) — falta a variante numérica.</p>
 <hr>
 <h2>6. De-para por recurso</h2>
@@ -162,6 +163,9 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p><code>upaevo_descricao</code> é o texto. Uma DocumentReference por linha de evolução, <code>type</code> derivado do <code>Tipo</code>. <strong><code>ESTORNO</code> não entra</strong> — é anulação, e importá-lo colocaria no prontuário um registro que a origem considera cancelado.</p>
 <h3>MedicationRequest ← <code>UPA_Evolucao</code> tipos RECEITA/PRESCRIÇÃO</h3>
 <p>Nesta implantação a prescrição é <strong>texto livre</strong> na evolução (242.423 linhas). A prescrição estruturada (<code>UPA_ITEM_PRESCRICAO_MEDICA</code> + <code>Item_Aprazamento</code>) existe no esquema mas precisa ser medida antes de prometer <code>Dosage</code> estruturado ou <code>MedicationAdministration</code>.</p>
+<h3>Higiene medida no dado real</h3>
+<p>O primeiro registro da base já mostra o padrão: <code>pac_telefone</code> = <code>0000000000</code>. É campo de preenchimento obrigatório que a recepção completa com lixo quando o paciente não informa. O conector descarta telefone com menos de 8 dígitos ou de dígito único — telefone falso no hub é pior que telefone nenhum, porque alguém tenta ligar e o paciente entra em relatório de "contactável" sem ser.</p>
+<p>Outros formatos vistos e tratados: peso com vírgula decimal (<code>11,30</code>), pressão arterial como <code>/</code> (sem medida), CID com padding à direita (<code>B34      </code>).</p>
 <p>&gt; <strong>Ponta aberta P2.</strong> Medir <code>UPA_ITEM_PRESCRICAO_MEDICA</code> e <code>Item_Aprazamento</code> nesta instância. &gt; Se estiverem vivas, destravam o <code>MedicationAdministration</code> (hoje vazio no hub) — que é a &gt; pendência mais antiga do BAU clínico.</p>
 <hr>
 <h2>7. O que o hub ainda não tem</h2>
@@ -190,8 +194,9 @@ li{margin:3px 0}p,li{max-width:75ch}
 <tr><td>P1</td><td>Agente de Santa Rita offline — instância não medida</td><td>não bloqueia a UPA</td></tr>
 <tr><td>P2</td><td>Prescrição estruturada / aprazamento não medidos nesta instância</td><td>não bloqueia a Fase 1</td></tr>
 <tr><td>P3</td><td>CNS provisório (17.361): o que significa?</td><td>não — ficam de fora até decidir</td></tr>
-<tr><td>P4</td><td><code>MarcaDagua</code> precisa de watermark numérica (<code>long?</code>) por fase</td><td><strong>bloqueia o conector</strong></td></tr>
-<tr><td>P5</td><td>Guarda de credencial do orquestrador rejeita base <code>ViaAgente</code></td><td><strong>bloqueia o conector</strong></td></tr>
+<tr><td>P4</td><td>~~<code>MarcaDagua</code> precisa de watermark numérica por fase~~</td><td><strong>resolvido 03/08</strong> — ponteiros em <code>jsonb</code></td></tr>
+<tr><td>P5</td><td>~~Guarda de credencial do orquestrador rejeita base <code>ViaAgente</code>~~</td><td><strong>resolvido 03/08</strong> — guarda condicional</td></tr>
+<tr><td>P8</td><td>Primeiro run da UPA ainda <strong>não foi disparado</strong>: a base não tem agenda, então nada roda sozinho</td><td>decisão de quando ligar</td></tr>
 <tr><td>P6</td><td>Semântica dos códigos de administração de dose (<code>C</code>/<code>V</code>)</td><td>só quando P2 abrir</td></tr>
 <tr><td>P7</td><td>Internação: morta no Klinikos desde 25/01/2026. Se o Conde migrar como a UPA roda hoje, o hub <strong>perde a internação no dia do cutover</strong></td><td>não bloqueia hoje; <strong>bloqueia o cutover do Conde</strong></td></tr>
 </tbody></table></div>

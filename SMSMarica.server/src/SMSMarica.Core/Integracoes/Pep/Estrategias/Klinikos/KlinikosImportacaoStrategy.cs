@@ -38,7 +38,6 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
     /// <summary>Lote de códigos por <c>IN</c>. O SQL Server admite 2.100 parâmetros; 500 dá folga larga.</summary>
     private const int TamanhoLote = 500;
 
-    private const string FaseProfissional = "profissional";
     private const string FasePaciente = "paciente";
     private const string FaseAtendimento = "atendimento";
     private const string FaseEvolucao = "evolucao";
@@ -97,22 +96,22 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
         logger.LogInformation("Klinikos {Slug}: {N} unidade(s) resolvida(s).", slug, orgPorUnidade.Count);
 
         // ---------- 2. Profissionais ----------
+        // Varredura INTEGRAL todo ciclo: `profissional` é a única das tabelas de interesse que
+        // NÃO tem `rv_atualizacao` — medido, e a razão pela qual "rowversion em quase toda
+        // tabela" não vira "em toda tabela" sem conferir. São 495 linhas; varrer todas custa
+        // menos que qualquer CDC improvisado sobre uma coluna que não foi feita para isso.
         p.FaseAtual = "profissionais…";
-        await PaginarAsync(leitor, FaseProfissional, ctx, incremental, SqlProfissionais, async (linhas, marcar) =>
+        foreach (var linha in await leitor.ConsultarAsync(SqlProfissionais(), ct))
         {
-            foreach (var linha in linhas)
+            if (MapProfissional(linha) is not { } pr) continue;
+            try
             {
-                if (MapProfissional(linha) is not { } pr) continue;
-                try
-                {
-                    await ctx.Escritor.UpsertPorIdentifierAsync(
-                        mapper.BuildPractitioner(pr), KlinikosFhirMapper.IdentProfissional, mapper.Pref(pr.Codigo), ct);
-                    p.Medicos++;
-                }
-                catch (Exception ex) { Falhou($"profissional {pr.Codigo}", ex); }
-                marcar(pr.Rv);
+                await ctx.Escritor.UpsertPorIdentifierAsync(
+                    mapper.BuildPractitioner(pr), KlinikosFhirMapper.IdentProfissional, mapper.Pref(pr.Codigo), ct);
+                p.Medicos++;
             }
-        }, ct);
+            catch (Exception ex) { Falhou($"profissional {pr.Codigo}", ex); }
+        }
 
         // ---------- 3. Pacientes ----------
         p.FaseAtual = "pacientes…";
@@ -434,12 +433,14 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
           FROM unidade
         """;
 
-    internal static string SqlProfissionais(long desde, int top) => $"""
-        SELECT TOP {top} PROF_CODIGO, PROF_NOME, PROF_CPF, PROF_CNS, PROF_NUMCONSELHO,
-               CBO_CODIGO, PROF_ATIVO, CONVERT(BIGINT, rv_atualizacao) AS rv
+    /// <summary>
+    /// <c>profissional</c> NÃO tem <c>rv_atualizacao</c> — é a exceção entre as tabelas que o
+    /// conector lê. Varredura integral (495 linhas na UPA).
+    /// </summary>
+    internal static string SqlProfissionais() => """
+        SELECT PROF_CODIGO, PROF_NOME, PROF_CPF, PROF_CNS, PROF_NUMCONSELHO,
+               CBO_CODIGO, PROF_ATIVO
           FROM profissional
-         WHERE CONVERT(BIGINT, rv_atualizacao) > {desde}
-         ORDER BY CONVERT(BIGINT, rv_atualizacao)
         """;
 
     private const string ColunasPaciente =
@@ -538,8 +539,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
     private static ProfissionalLinha? MapProfissional(LinhaSql l) =>
         l.Texto("PROF_CODIGO") is { } cod
             ? new ProfissionalLinha(cod, l.Texto("PROF_NOME"), l.Texto("PROF_CPF"), l.Texto("PROF_CNS"),
-                l.Texto("PROF_NUMCONSELHO"), l.Texto("CBO_CODIGO"), l.Texto("PROF_ATIVO"),
-                l.Numero("rv") ?? 0)
+                l.Texto("PROF_NUMCONSELHO"), l.Texto("CBO_CODIGO"), l.Texto("PROF_ATIVO"), 0)
             : null;
 
     private static PacienteLinha? MapPaciente(LinhaSql l) =>
