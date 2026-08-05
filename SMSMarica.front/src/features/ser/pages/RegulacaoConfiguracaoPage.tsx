@@ -1,6 +1,7 @@
 import { Settings2 } from 'lucide-react';
 import { Tabs, type Aba } from '@/shared/ui/Tabs';
 import { AbaSerConfiguracao } from '@/features/ser/components/AbaSerConfiguracao';
+import { AbaSerConsultaDireta } from '@/features/ser/components/AbaSerConsultaDireta';
 
 /**
  * Configuração da Regulação. Nasce com uma aba (SER) porque é a primeira fonte externa de
@@ -13,6 +14,11 @@ export function RegulacaoConfiguracaoPage() {
       id: 'ser',
       rotulo: 'SER',
       conteudo: <AbaSerConfiguracao />,
+    },
+    {
+      id: 'ser-teste',
+      rotulo: 'SER — consulta direta',
+      conteudo: <AbaSerConsultaDireta />,
     },
   ];
 

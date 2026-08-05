@@ -299,6 +299,10 @@ public static class DependencyInjection
         services.AddScoped<Ser.ISerConsultaService, Ser.SerConsultaService>();
         services.AddScoped<Ser.ISerMotorService, Ser.SerMotorService>();
 
+        // Consulta DIRETA ao SER: a bancada de testes da integração. Exercita login, módulo,
+        // ViewState, busca, paginação e parser em segundos, sem gravar nada.
+        services.AddScoped<Ser.ISerConsultaDiretaService, Ser.SerConsultaDiretaService>();
+
         // Importação de agendamentos → Solicitacao. A leitura do SISREG é a varredura da agenda
         // do executante (cons_agendas); o scraper de cons_marcados_reg foi aposentado por mirar a
         // visão do solicitante e custar 1 requisição de ficha POR agendamento — sozinho estouraria

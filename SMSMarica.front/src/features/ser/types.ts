@@ -166,3 +166,62 @@ export type DispararVarreduraPayload = {
   fim?: string;
   situacoes?: SituacaoSer[];
 };
+
+// ---- Consulta DIRETA (tela de testes: vai ao SER ao vivo, nada é gravado) ----
+
+export type ConsultaDiretaFiltro = {
+  situacao: SituacaoSer;
+  tipo?: TipoRecursoSer;
+  dataSolicitacaoInicio?: string;
+  dataSolicitacaoFim?: string;
+  cpf?: string;
+  nome?: string;
+  cns?: string;
+  idSolicitacao?: string;
+  pagina?: number;
+};
+
+/** Linha crua do SER — tudo string, exatamente como o parser leu da grade. */
+export type LinhaDiretaSer = {
+  idSer: string;
+  tipo: string | null;
+  recurso: string | null;
+  dataSolicitacao: string | null;
+  paciente: string | null;
+  idade: string | null;
+  cpf: string | null;
+  cns: string | null;
+  cid: string | null;
+  solicitante: string | null;
+  municipioSolicitante: string | null;
+  agendadoPara: string | null;
+  situacao: string | null;
+};
+
+export type ConsultaDiretaResultado = {
+  linhas: LinhaDiretaSer[];
+  paginas: number;
+  /** 5 páginas = o corte de 100 registros da tela do SER. */
+  bateuNoTeto: boolean;
+  duracaoMs: number;
+};
+
+export type EventoDiretoSer = {
+  data: string | null;
+  evento: string | null;
+  estadoAnterior: string | null;
+  estadoAtual: string | null;
+  centralRegulacao: string | null;
+  unidadeExecutora: string | null;
+  usuario: string | null;
+  lotacaoEvento: string | null;
+  ip: string | null;
+  observacao: string | null;
+};
+
+export type HistoricoDiretoResultado = {
+  idSer: string;
+  paciente: Record<string, string>;
+  eventos: EventoDiretoSer[];
+  duracaoMs: number;
+};

@@ -4,6 +4,7 @@ using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Ser;
 using SMSMarica.Core.Ser.Dtos;
 using SMSMarica.Data.Entities.Enums;
+using SMSMarica.Data.Entities.Ser;
 
 namespace SMSMarica.Api.Controllers;
 
@@ -56,8 +57,33 @@ public sealed class SerController(ISerConsultaService consulta) : ControllerBase
 [Route("regulacao/ser/configuracao")]
 public sealed class SerConfiguracaoController(
     ISerMotorService motor,
+    ISerConsultaDiretaService consultaDireta,
     IUsuarioAtualAccessor usuarioAtual) : ControllerBase
 {
+    /// <summary>
+    /// Consulta DIRETA ao SER — mesmos filtros da tela de lá, resultado cru, <b>nada gravado</b>.
+    /// É o ensaio que valida o motor inteiro (login, AJAXREQUEST, ViewState, busca, paginação e
+    /// parser) em segundos, antes de confiar numa varredura de uma hora.
+    ///
+    /// <para>Cuidado: derruba a sessão de quem estiver logado no SER com essa credencial.</para>
+    /// </summary>
+    [HttpPost("consulta-direta")]
+    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<SerConsultaDiretaDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public Task<SerConsultaDiretaDto> ConsultaDireta(
+        [FromBody] SerConsultaDiretaRequest requisicao, CancellationToken cancellationToken) =>
+        consultaDireta.ConsultarAsync(requisicao, cancellationToken);
+
+    /// <summary>Histórico lido AO VIVO no SER, para conferir contra a tela de lá.</summary>
+    [HttpGet("consulta-direta/{idSer}/historico")]
+    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<SerHistoricoDiretoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public Task<SerHistoricoDiretoDto> HistoricoDireto(
+        string idSer, [FromQuery] SituacaoSer situacao, CancellationToken cancellationToken) =>
+        consultaDireta.HistoricoAsync(idSer, situacao, cancellationToken);
+
     /// <summary>Estado do motor: credencial, rodada em andamento, totais e a última execução.</summary>
     [HttpGet("status")]
     [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Consulta)]

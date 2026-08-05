@@ -131,6 +131,69 @@ public sealed record SerExecucaoDto(
     int? DuracaoSegundos,
     string? CriadoPorNome);
 
+/// <summary>
+/// Consulta DIRETA ao SER — a "tela de testes": mesmos filtros da busca de lá, resultado cru,
+/// <b>nada é gravado</b>. Serve para validar o motor (login, módulo, ViewState, parsers) com um
+/// clique, sem disparar uma varredura inteira.
+/// </summary>
+public sealed record SerConsultaDiretaRequest
+{
+    public SituacaoSer Situacao { get; init; } = SituacaoSer.EmFila;
+    public TipoRecursoSer? Tipo { get; init; }
+    public DateOnly? DataSolicitacaoInicio { get; init; }
+    public DateOnly? DataSolicitacaoFim { get; init; }
+    public string? Cpf { get; init; }
+    public string? Nome { get; init; }
+    public string? Cns { get; init; }
+    public string? IdSolicitacao { get; init; }
+
+    /// <summary>Página do datascroller (1..5 — a tela do SER não vai além).</summary>
+    public int Pagina { get; init; } = 1;
+}
+
+/// <summary>Linha crua devolvida pelo SER, exatamente como o parser leu.</summary>
+public sealed record SerLinhaDiretaDto(
+    string IdSer,
+    string? Tipo,
+    string? Recurso,
+    string? DataSolicitacao,
+    string? Paciente,
+    string? Idade,
+    string? Cpf,
+    string? Cns,
+    string? Cid,
+    string? Solicitante,
+    string? MunicipioSolicitante,
+    string? AgendadoPara,
+    string? Situacao);
+
+/// <summary>Resultado da consulta direta, com o diagnóstico que interessa a quem testa.</summary>
+public sealed record SerConsultaDiretaDto(
+    IReadOnlyList<SerLinhaDiretaDto> Linhas,
+    /// <summary>Páginas que o datascroller expôs. <b>5 = bateu no teto de 100</b> da tela do SER.</summary>
+    int Paginas,
+    bool BateuNoTeto,
+    int DuracaoMs);
+
+/// <summary>Histórico lido ao vivo de uma solicitação, para conferir contra a tela do SER.</summary>
+public sealed record SerHistoricoDiretoDto(
+    string IdSer,
+    IReadOnlyDictionary<string, string> Paciente,
+    IReadOnlyList<SerEventoDiretoDto> Eventos,
+    int DuracaoMs);
+
+public sealed record SerEventoDiretoDto(
+    string? Data,
+    string? Evento,
+    string? EstadoAnterior,
+    string? EstadoAtual,
+    string? CentralRegulacao,
+    string? UnidadeExecutora,
+    string? Usuario,
+    string? LotacaoEvento,
+    string? Ip,
+    string? Observacao);
+
 /// <summary>Pedido de varredura vindo da tela.</summary>
 public sealed record SerDispararVarreduraDto
 {

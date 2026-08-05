@@ -1,6 +1,10 @@
 import { http } from '@/shared/api/httpClient';
 import type {
   BuscaSerFiltro,
+  ConsultaDiretaFiltro,
+  ConsultaDiretaResultado,
+  HistoricoDiretoResultado,
+  SituacaoSer,
   BuscaSerResultado,
   DispararVarreduraPayload,
   ExecucaoSer,
@@ -50,4 +54,27 @@ export async function testarCredencialSer(usuario: string, senha: string): Promi
 /** Grava a credencial (cifrada). O backend autentica antes de persistir. */
 export async function salvarCredencialSer(usuario: string, senha: string): Promise<void> {
   await http.put('/regulacao/ser/configuracao/credencial', { usuario, senha });
+}
+
+/** Consulta AO VIVO no SER (tela de testes). Nada é gravado na nossa base. */
+export async function consultaDiretaSer(
+  filtro: ConsultaDiretaFiltro,
+): Promise<ConsultaDiretaResultado> {
+  const { data } = await http.post<ConsultaDiretaResultado>(
+    '/regulacao/ser/configuracao/consulta-direta',
+    filtro,
+  );
+  return data;
+}
+
+/** Histórico lido ao vivo no SER, para conferir contra a tela de lá. */
+export async function historicoDiretoSer(
+  idSer: string,
+  situacao: SituacaoSer,
+): Promise<HistoricoDiretoResultado> {
+  const { data } = await http.get<HistoricoDiretoResultado>(
+    `/regulacao/ser/configuracao/consulta-direta/${idSer}/historico`,
+    { params: { situacao } },
+  );
+  return data;
 }
