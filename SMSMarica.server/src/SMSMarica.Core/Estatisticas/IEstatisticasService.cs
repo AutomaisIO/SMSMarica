@@ -31,4 +31,14 @@ public interface IEstatisticasService
     Task<ExportacaoImagemDto> ObterExportacaoImagemAsync(
         DateOnly de, DateOnly ate, Guid? unidadeId, Data.Entities.Enums.ModalidadeDicom? modalidade,
         Guid? tipoExameId, ConteudoExportacaoImagem conteudo, CancellationToken ct = default);
+
+    /// <summary>
+    /// Lista de FATURAMENTO dos exames de imagem realizados no período (uma linha por exame, da menor
+    /// para a maior data de realização). Mesmo recorte/escopo das demais visões. CARREGA PII do paciente
+    /// (nome/CPF/CNS/nascimento/CEP/celular) porque o faturamento precisa identificar o cidadão —
+    /// ticket #74. Registra auditoria de quem exportou. O front monta o .xlsx formatado.
+    /// </summary>
+    Task<IReadOnlyList<ExameFaturamentoDto>> ObterFaturamentoImagemAsync(
+        DateOnly de, DateOnly ate, Guid? unidadeId, Data.Entities.Enums.ModalidadeDicom? modalidade,
+        Guid? tipoExameId, CancellationToken ct = default);
 }

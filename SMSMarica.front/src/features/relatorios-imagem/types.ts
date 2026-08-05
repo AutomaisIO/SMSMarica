@@ -26,6 +26,18 @@ export type SerieExamesDia = {
 
 export type RotuloContagem = { rotulo: string; total: number };
 
+/** Linha da exportação de FATURAMENTO (com PII, ticket #74). Uma por exame realizado. */
+export type ExameFaturamento = {
+  paciente: string;
+  cpf: string | null;
+  cns: string | null;
+  nascimento: string | null; // yyyy-MM-dd
+  cep: string | null;
+  celular: string | null;
+  exame: string | null;
+  realizacao: string | null; // ISO
+};
+
 export type EstatisticasExamesImagem = {
   de: string;
   ate: string;

@@ -22,6 +22,7 @@ import { MODALIDADES_DICOM, type ModalidadeDicom } from '@/features/tipos-exame/
 import { useEstatisticasExamesImagem } from '@/features/relatorios-imagem/api/queries';
 import {
   exportarExamesImagem,
+  exportarFaturamentoImagemXlsx,
   type ConteudoExportacao,
 } from '@/features/relatorios-imagem/api/relatoriosImagemApi';
 import type { RotuloContagem } from '@/features/relatorios-imagem/types';
@@ -194,6 +195,25 @@ export function RelatoriosImagemPage() {
     }
   }
 
+  async function exportarFaturamento() {
+    setMenuExport(false);
+    setErroExport(null);
+    setExportando(true);
+    try {
+      await exportarFaturamentoImagemXlsx(
+        de,
+        ate,
+        unidadeId || undefined,
+        modalidade || undefined,
+        tipoExameId || undefined,
+      );
+    } catch {
+      setErroExport('Não foi possível exportar a planilha de faturamento. Tente novamente.');
+    } finally {
+      setExportando(false);
+    }
+  }
+
   return (
     <div className="space-y-4 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -321,6 +341,14 @@ export function RelatoriosImagemPage() {
                         {o.r}
                       </button>
                     ))}
+                    <div className="my-1 border-t border-gray-100" />
+                    <button
+                      type="button"
+                      onClick={exportarFaturamento}
+                      className="block w-full px-3 py-1.5 text-left text-xs font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      Faturamento (.xlsx)
+                    </button>
                   </div>
                 </>
               ) : null}

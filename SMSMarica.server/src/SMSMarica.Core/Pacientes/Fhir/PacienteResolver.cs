@@ -13,7 +13,11 @@ public sealed record PacienteResumo(
     DateOnly? DataNascimento,
     Sexo Sexo,
     /// <summary>Número do contato verificado (marcador no telecom FHIR), se houver.</summary>
-    string? TelefoneVerificado = null);
+    string? TelefoneVerificado = null,
+    /// <summary>CEP do endereço do paciente (só dígitos ou como veio do hub), se houver.</summary>
+    string? Cep = null,
+    /// <summary>Melhor número de contato (celular &gt; verificado &gt; principal), se houver.</summary>
+    string? Celular = null);
 
 /// <summary>
 /// Resolve dados de paciente do hub FHIR por id. Os dependentes (Laudo,
@@ -49,7 +53,8 @@ public sealed class PacienteResolver(IPacienteFhirClient fhir, ILogger<PacienteR
 
             var dto = PacienteFhirMapper.ParaDto(patient);
             return new PacienteResumo(dto.Id, dto.NomeCompleto, dto.Cpf, dto.Cns, dto.DataNascimento, dto.Sexo,
-                dto.TelefoneVerificado);
+                dto.TelefoneVerificado, dto.Endereco?.Cep,
+                dto.TelefoneCelular ?? dto.TelefoneVerificado ?? dto.TelefonePrincipal);
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
@@ -86,7 +91,8 @@ public sealed class PacienteResolver(IPacienteFhirClient fhir, ILogger<PacienteR
                     if (e.Resource is not Patient patient) continue;
                     var dto = PacienteFhirMapper.ParaDto(patient);
                     mapa[dto.Id] = new PacienteResumo(dto.Id, dto.NomeCompleto, dto.Cpf, dto.Cns,
-                        dto.DataNascimento, dto.Sexo, dto.TelefoneVerificado);
+                        dto.DataNascimento, dto.Sexo, dto.TelefoneVerificado, dto.Endereco?.Cep,
+                        dto.TelefoneCelular ?? dto.TelefoneVerificado ?? dto.TelefonePrincipal);
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)

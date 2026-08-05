@@ -24,6 +24,7 @@ namespace SMSMarica.Core.Estatisticas;
 public sealed class EstatisticasService(
     SmsMaricaDbContext db,
     IUsuarioAtualAccessor usuarioAtual,
+    Pacientes.Fhir.IPacienteResolver pacienteResolver,
     ILogger<EstatisticasService> logger) : IEstatisticasService
 {
     private const int MaxDiasPeriodo = 400;
@@ -256,6 +257,43 @@ public sealed class EstatisticasService(
             conteudo, usuarioAtual.UsuarioId, de, ate, unidadeId, linhasExame.Count, linhasLaudo.Count);
 
         return new ExportacaoImagemDto(linhasExame, linhasLaudo);
+    }
+
+    public async Task<IReadOnlyList<ExameFaturamentoDto>> ObterFaturamentoImagemAsync(
+        DateOnly de, DateOnly ate, Guid? unidadeId, ModalidadeDicom? modalidade, Guid? tipoExameId,
+        CancellationToken ct = default)
+    {
+        if (ate < de) (de, ate) = (ate, de);
+        if (ate.DayNumber - de.DayNumber + 1 > MaxDiasPeriodo)
+            throw new ValidacaoException("periodo", $"O período não pode exceder {MaxDiasPeriodo} dias.");
+
+        var (todos, _) = await CarregarExamesAsync(de, ate, unidadeId, modalidade, tipoExameId, ct);
+
+        // Faturamento é sobre o que foi REALIZADO: descarta pendentes/agendados (sem data de
+        // realização), que só virariam ruído/linha inválida na planilha de faturamento.
+        var exames = todos.Where(e => e.Realizado).ToList();
+
+        // Resolve a PII do paciente no hub FHIR em lote (nome/CPF/CNS/nascimento/CEP/celular). O hub
+        // indisponível degrada por paciente (linha sai só com o que houver), nunca derruba a exportação.
+        var pacientes = await pacienteResolver.ResolverManyAsync(exames.Select(e => e.PacienteId), ct);
+
+        // Da menor para a maior data de realização.
+        var linhas = exames
+            .OrderBy(e => e.RealizadoEm ?? e.DataRef)
+            .Select(e =>
+            {
+                pacientes.TryGetValue(e.PacienteId, out var p);
+                return new ExameFaturamentoDto(
+                    p?.Nome ?? "(sem nome)", p?.Cpf, p?.Cns, p?.DataNascimento, p?.Cep, p?.Celular,
+                    e.TipoExameNome, e.RealizadoEm);
+            })
+            .ToList();
+
+        logger.LogInformation(
+            "Auditoria: exportação de FATURAMENTO (com PII) de imagem por usuário {UsuarioId} — período {De}..{Ate}, unidade {Unidade}, {Linhas} linha(s).",
+            usuarioAtual.UsuarioId, de, ate, unidadeId, linhas.Count);
+
+        return linhas;
     }
 
     /// <summary>Duração em horas entre dois instantes UTC (null se algum falta ou for regressivo).</summary>

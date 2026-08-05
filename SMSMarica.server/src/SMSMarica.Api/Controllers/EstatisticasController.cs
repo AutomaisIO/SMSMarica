@@ -87,6 +87,28 @@ public sealed class EstatisticasController(IEstatisticasService service) : Contr
         return File(bytes, "text/csv; charset=utf-8", nome);
     }
 
+    /// <summary>
+    /// Lista de FATURAMENTO dos exames de imagem realizados no período (JSON). Uma linha por exame, da
+    /// menor para a maior data de realização, COM PII do paciente (nome/CPF/CNS/nascimento/CEP/celular)
+    /// necessária ao faturamento — ticket #74. Sem accession nem números internos. O painel monta o
+    /// .xlsx formatado a partir desta lista. Mesmo gate/escopo da exportação; a leitura é auditada.
+    /// </summary>
+    [HttpGet("exames-imagem/faturamento")]
+    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<ExameFaturamentoDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<ExameFaturamentoDto>> FaturamentoExamesImagem(
+        [FromQuery] DateOnly? de = null,
+        [FromQuery] DateOnly? ate = null,
+        [FromQuery] Guid? unidadeId = null,
+        [FromQuery] ModalidadeDicom? modalidade = null,
+        [FromQuery] Guid? tipoExameId = null,
+        CancellationToken ct = default)
+    {
+        var fim = ate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var inicio = de ?? fim.AddDays(-29);
+        return await service.ObterFaturamentoImagemAsync(inicio, fim, unidadeId, modalidade, tipoExameId, ct);
+    }
+
     // ---- CSV (separador ';' + BOM UTF-8: abre direto no Excel pt-BR) ----
 
     private static string MontarCsvExames(IReadOnlyList<ExameImagemAnaliticoDto> linhas, bool incluirLaudo)
