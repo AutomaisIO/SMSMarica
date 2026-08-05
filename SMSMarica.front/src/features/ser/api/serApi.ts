@@ -46,3 +46,8 @@ export async function dispararVarreduraSer(payload: DispararVarreduraPayload): P
 export async function testarCredencialSer(usuario: string, senha: string): Promise<void> {
   await http.post('/regulacao/ser/configuracao/testar-credencial', { usuario, senha });
 }
+
+/** Grava a credencial (cifrada). O backend autentica antes de persistir. */
+export async function salvarCredencialSer(usuario: string, senha: string): Promise<void> {
+  await http.put('/regulacao/ser/configuracao/credencial', { usuario, senha });
+}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, KeyRound, Loader2, Play, RefreshCw } from 'lucide-react';
+import { AlertTriangle, KeyRound, Loader2, Play, RefreshCw, Save } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
@@ -9,6 +9,7 @@ import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import {
   useDispararVarreduraSer,
   useExecucoesSer,
+  useSalvarCredencialSer,
   useStatusMotorSer,
   useTestarCredencialSer,
 } from '@/features/ser/api/queries';
@@ -47,6 +48,7 @@ export function AbaSerConfiguracao() {
   const { data: execucoes } = useExecucoesSer();
   const disparar = useDispararVarreduraSer();
   const testar = useTestarCredencialSer();
+  const salvar = useSalvarCredencialSer();
 
   const [modo, setModo] = useState<ModoVarreduraSer>('Diaria');
   const [usuario, setUsuario] = useState('');
@@ -71,6 +73,19 @@ export function AbaSerConfiguracao() {
     try {
       await testar.mutateAsync({ usuario, senha });
       setAviso('Credencial aceita pelo SER e módulo Ambulatório acessível.');
+    } catch (e) {
+      setErro(extrairMensagemDeErro(e));
+    }
+  }
+
+  async function aoSalvar() {
+    setErro(null);
+    setAviso(null);
+    try {
+      await salvar.mutateAsync({ usuario, senha });
+      // A senha não fica na tela depois de salva: ela é write-only no store.
+      setSenha('');
+      setAviso('Credencial validada no SER e salva (cifrada). O motor já pode rodar.');
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
     }
@@ -230,7 +245,7 @@ export function AbaSerConfiguracao() {
 
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-          <KeyRound className="size-4 text-red-600" /> Testar credencial
+          <KeyRound className="size-4 text-red-600" /> Credencial do SER
         </h3>
         <div className="flex flex-wrap items-end gap-3">
           <Campo label="Usuário" htmlFor="ser-usuario" className="w-56">
@@ -245,15 +260,24 @@ export function AbaSerConfiguracao() {
               autoComplete="new-password"
             />
           </Campo>
-          <Button variante="secundaria" onClick={aoTestar} disabled={testar.isPending}>
+          <Button variante="secundaria" onClick={aoTestar} disabled={testar.isPending || salvar.isPending}>
             {testar.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
             Testar
           </Button>
+          <Button onClick={aoSalvar} disabled={salvar.isPending || testar.isPending || !usuario || !senha}>
+            {salvar.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+            Salvar
+          </Button>
         </div>
         <p className="mt-2 text-xs text-slate-500">
-          O teste só autentica e confere se o módulo Ambulatório abre — nada é gravado no SER e a
-          senha não é salva aqui. Atenção: a sessão do SER é única por operador, então testar
-          derruba a sessão de quem estiver logado com esse usuário.
+          <strong>Testar</strong> só autentica e confere se o módulo Ambulatório abre, sem gravar
+          nada. <strong>Salvar</strong> valida primeiro e só então guarda a credencial cifrada —
+          credencial que não funciona faria o motor falhar de madrugada, sem ninguém por perto.
+          A senha é write-only: depois de salva, não volta para a tela.
+        </p>
+        <p className="mt-1 text-xs text-amber-700">
+          Atenção: a sessão do SER é única por operador. Testar ou salvar derruba a sessão de quem
+          estiver logado no SER com esse usuário.
         </p>
       </section>
 

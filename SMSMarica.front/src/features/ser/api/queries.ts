@@ -6,6 +6,7 @@ import {
   obterResumoSer,
   obterSolicitacaoSer,
   obterStatusMotorSer,
+  salvarCredencialSer,
   testarCredencialSer,
 } from '@/features/ser/api/serApi';
 import type { BuscaSerFiltro, DispararVarreduraPayload } from '@/features/ser/types';
@@ -69,5 +70,14 @@ export function useTestarCredencialSer() {
   return useMutation({
     mutationFn: ({ usuario, senha }: { usuario: string; senha: string }) =>
       testarCredencialSer(usuario, senha),
+  });
+}
+
+export function useSalvarCredencialSer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ usuario, senha }: { usuario: string; senha: string }) =>
+      salvarCredencialSer(usuario, senha),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: serKeys.status }),
   });
 }

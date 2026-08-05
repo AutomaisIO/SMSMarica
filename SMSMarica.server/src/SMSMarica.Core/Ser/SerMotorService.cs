@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Integracoes.Credenciais;
+using SMSMarica.Core.Integracoes.Credenciais.Dtos;
 using SMSMarica.Core.Integracoes.SerWeb;
 using SMSMarica.Core.Integracoes.SerWeb.Varredura.Background;
 using SMSMarica.Core.Ser.Dtos;
@@ -28,6 +29,15 @@ public interface ISerMotorService
 
     /// <summary>Testa uma credencial avulsa contra o SER sem gravá-la.</summary>
     Task TestarCredencialAsync(string usuario, string senha, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Grava a credencial do SER (cifrada) no store de integrações.
+    ///
+    /// <para><b>Só grava depois que o SER aceitou.</b> Autentica antes de persistir — mesma régua
+    /// da credencial do SISREG por unidade. Salvar uma credencial que não funciona deixaria o
+    /// motor falhando de madrugada, sem ninguém por perto para entender o porquê.</para>
+    /// </summary>
+    Task SalvarCredencialAsync(string usuario, string senha, CancellationToken cancellationToken);
 }
 
 public sealed class SerMotorService(
@@ -116,9 +126,30 @@ public sealed class SerMotorService(
             throw new ValidacaoException("ser.credencial_incompleta", "Informe usuário e senha.");
         }
 
-        // Só autentica e confirma que o módulo Ambulatório abre. Nada é gravado — quem grava a
-        // credencial é a tela de Integrações, depois que o SER aceitou.
+        // Só autentica e confirma que o módulo Ambulatório abre. Nada é gravado.
         await sessao.AutenticarAvulsoAsync(usuario, senha, cancellationToken);
+    }
+
+    public async Task SalvarCredencialAsync(
+        string usuario, string senha, CancellationToken cancellationToken)
+    {
+        // Valida ANTES de persistir: credencial que não funciona faria o motor falhar de
+        // madrugada, sem ninguém por perto para entender o porquê.
+        await TestarCredencialAsync(usuario, senha, cancellationToken);
+
+        await credenciais.AtualizarAsync(
+            SerWebSessao.Provedor,
+            new AtualizarIntegracaoCredencialRequest(
+                ClientId: usuario,
+                ClientSecret: senha,
+                RedirectUri: null,
+                ParametrosJson: null,
+                Ativo: true),
+            cancellationToken);
+
+        // A sessão em memória guarda a credencial antiga; sem isto o motor só usaria a nova
+        // depois de reiniciar o serviço.
+        sessao.Reiniciar();
     }
 
     private async Task<bool> CredencialConfiguradaAsync(CancellationToken cancellationToken)

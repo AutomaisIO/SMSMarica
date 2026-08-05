@@ -48,6 +48,10 @@ public static class ProvedoresIntegracao
         // SISREG III (web scraping): consulta de paciente por CNS (CADSUS).
         // clientId=usuário (operador), clientSecret=senha, parametrosJson={baseUrl}.
         ["sisreg"] = "SISREG (consulta de paciente por CNS)",
+        // SER — Sistema Estadual de Regulação (SES-RJ), web scraping SOMENTE LEITURA (ADR-0042).
+        // clientId=usuário (operador), clientSecret=senha, parametrosJson={baseUrl}.
+        // Cadastrada pela aba SER de Regulação → Configuração, não por esta tela.
+        ["ser"] = "SER — Sistema Estadual de Regulação (SES-RJ)",
     };
 
     public static bool EhSuportado(string provedor) => Suportados.ContainsKey(provedor);

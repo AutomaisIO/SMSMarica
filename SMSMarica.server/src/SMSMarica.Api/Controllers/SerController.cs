@@ -93,6 +93,21 @@ public sealed class SerConfiguracaoController(
         return Accepted();
     }
 
+    /// <summary>
+    /// Grava a credencial do SER (cifrada no store de integrações). Autentica antes de
+    /// persistir — só salva o que o SER aceitou.
+    /// </summary>
+    [HttpPut("credencial")]
+    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SalvarCredencial(
+        [FromBody] SerTestarCredencialRequest requisicao, CancellationToken cancellationToken)
+    {
+        await motor.SalvarCredencialAsync(requisicao.Usuario, requisicao.Senha, cancellationToken);
+        return NoContent();
+    }
+
     /// <summary>Testa uma credencial contra o SER sem gravá-la. Só autentica e confere se o
     /// módulo Ambulatório abre — nenhuma escrita no SER.</summary>
     [HttpPost("testar-credencial")]
