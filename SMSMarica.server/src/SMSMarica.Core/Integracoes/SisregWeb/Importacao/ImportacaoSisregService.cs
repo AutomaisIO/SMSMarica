@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Dtos;
 using SMSMarica.Core.Common.Excecoes;
+using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Integracoes.SisregWeb.Varredura;
 using SMSMarica.Core.Pacientes;
@@ -94,6 +95,7 @@ public sealed class ImportacaoSisregService(
     IGeradorIdentificadores geradorIds,
     IUsuarioAtualAccessor usuarioAtual,
     Varredura.Sigtap.IMapeadorSigtapSisreg mapeadorSigtap,
+    ILogger<ImportacaoSisregService> logger,
     Notificacoes.Comunicacao.IComunicacaoPacienteService comunicacoes) : IImportacaoSisregService
 {
     // ---- Contexto do operador ----
@@ -253,6 +255,13 @@ public sealed class ImportacaoSisregService(
                 .Select(t => new { t.Id, Codigo = t.ProcedimentoSigtap!.Codigo })
                 .ToListAsync(ct);
             tipoExameId = tipos.FirstOrDefault(t => SoDigitos(t.Codigo) == sig)?.Id;
+
+            // Sem tipo mapeado, a tela "Mapeamento pendente" mostra o exame — mas só resolve se
+            // houver um TipoExame para vincular. E criar TipoExame exige um procedimento no
+            // catálogo SIGTAP (FK obrigatória). Se o código nem estiver catalogado, o operador vê
+            // a pendência e não tem como sair dela: beco sem saída.
+            if (tipoExameId is null) await CatalogarSigtapSeNovoAsync(sig, m.ProcedimentoTexto, ct);
+
             passos.Add(tipoExameId is null
                 ? $"Exame de imagem \"{m.ProcedimentoTexto}\" (SIGTAP {sig}) — SEM tipo mapeado; importa como PENDENTE."
                 : $"Exame de imagem \"{m.ProcedimentoTexto}\" → tipo mapeado (SIGTAP {sig}).");
@@ -917,6 +926,58 @@ public sealed class ImportacaoSisregService(
     }
 
     /// <summary>Grava/atualiza a falha de EXECUÇÃO da marcação (upsert pela pendência do mesmo nº).</summary>
+    /// <summary>
+    /// Registra no catálogo SIGTAP um código que o SISREG mandou e nós não tínhamos.
+    ///
+    /// <para><b>Por que existe:</b> o catálogo é semeado à mão e cobre uma fração do SIGTAP real.
+    /// Todo código novo que o SISREG passa a emitir chegava aqui e parava: o exame entrava sem
+    /// tipo, aparecia em "Mapeamento pendente", e o operador não conseguia resolver porque criar
+    /// um TipoExame exige um procedimento catalogado. Catalogar na chegada desfaz o beco sem
+    /// saída — a pendência passa a ser resolvível na tela que já existe.</para>
+    ///
+    /// <para><b>O nome vem do SISREG e NÃO é o nome oficial do SIGTAP</b> — é o nome local da
+    /// unidade, com as abreviações e erros de digitação dela ("ABDOMEM"). Fica marcado na
+    /// descrição, porque foi confiar em nome semeado à mão que fez 51 exames de próstata serem
+    /// classificados como obstétricos. Serve para identificar e mapear, não como verdade oficial.</para>
+    /// </summary>
+    private async Task CatalogarSigtapSeNovoAsync(string sigtapSoDigitos, string? nomeDoSisreg, CancellationToken ct)
+    {
+        if (sigtapSoDigitos.Length != 10) return;
+
+        var jaExiste = await db.ProcedimentosSigtap.AsNoTracking()
+            .AnyAsync(p => p.Codigo.Replace(".", "").Replace("-", "") == sigtapSoDigitos, ct);
+        if (jaExiste) return;
+
+        var nome = string.IsNullOrWhiteSpace(nomeDoSisreg)
+            ? $"PROCEDIMENTO {sigtapSoDigitos}"
+            : nomeDoSisreg.Trim().ToUpperInvariant();
+
+        db.ProcedimentosSigtap.Add(new ProcedimentoSigtap
+        {
+            Id = Guid.CreateVersion7(),
+            Codigo = FormatarSigtap(sigtapSoDigitos),
+            Nome = Truncar(nome, 300)!,
+            Descricao = "Cadastrado automaticamente a partir de uma importação do SISREG. "
+                        + "O nome é o que o SISREG informou (nome local da unidade), NÃO o nome "
+                        + "oficial do SIGTAP — confira na tabela oficial antes de usar como referência.",
+            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
+            Subgrupo = "(a conferir — veio do SISREG)",
+            Forma = "EXAMES",
+            Ativo = true,
+            CompetenciaInicio = DateOnly.FromDateTime(DateTime.UtcNow),
+        });
+
+        logger.LogWarning(
+            "SIGTAP_CODIGO_NOVO: {Codigo} (\"{Nome}\") não estava no catálogo e foi cadastrado a "
+            + "partir da importação do SISREG. Confira o nome na tabela oficial e crie o tipo de "
+            + "exame para tirar as solicitações de \"Mapeamento pendente\".",
+            sigtapSoDigitos, nome);
+    }
+
+    /// <summary>10 dígitos → <c>NN.NN.NN.NNN-N</c>, o formato do catálogo.</summary>
+    private static string FormatarSigtap(string d) =>
+        $"{d[..2]}.{d[2..4]}.{d[4..6]}.{d[6..9]}-{d[9]}";
+
     /// <summary>
     /// Avisar o paciente por WhatsApp ao importar esta marcação? Exige que o gatilho da UNIDADE
     /// executante <b>e</b> o do PROCEDIMENTO naquela unidade estejam ligados.
