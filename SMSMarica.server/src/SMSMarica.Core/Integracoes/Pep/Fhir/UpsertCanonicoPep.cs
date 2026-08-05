@@ -113,7 +113,8 @@ internal static class UpsertCanonicoPep
 
         novo.BirthDate = atual.BirthDate; // congela até a arbitragem
         ctx.Divergencias?.Registrar(new DivergenciaDetectada(
-            CdPaciente: CdInterno(novo, systemCdInterno),
+            CdPaciente: CdNumerico(CodigoNativo(novo, systemCdInterno)),
+            CodigoOrigem: CodigoNativo(novo, systemCdInterno),
             Cpf: cpf,
             Tipo: TipoDivergenciaIdentidade.NascimentoDivergente,
             ValorOrigem: origem,
@@ -123,13 +124,26 @@ internal static class UpsertCanonicoPep
             PatientIdHub: atual.Id));
     }
 
-    /// <summary>Código nativo da origem, lido do identifier interno (0 quando ausente).</summary>
-    private static long CdInterno(Patient p, string systemCdInterno)
+    /// <summary>
+    /// Código do paciente NA ORIGEM, extraído do identifier interno. O valor é
+    /// <c>{slug}:{codigo}</c>, então o corte é no ÚLTIMO <c>:</c> — e o resultado sai tal e
+    /// qual, com zeros à esquerda e tudo.
+    ///
+    /// <para>A versão anterior fazia "todos os dígitos do valor inteiro", o que engolia os
+    /// dígitos do próprio slug (<c>upa24h</c> → <c>24</c>) e descartava zeros à esquerda.</para>
+    /// </summary>
+    private static string? CodigoNativo(Patient p, string systemCdInterno)
     {
         var v = p.Identifier?.FirstOrDefault(i => i.System == systemCdInterno)?.Value;
-        var digitos = new string([.. (v ?? string.Empty).Where(char.IsDigit)]);
-        return long.TryParse(digitos, out var cd) ? cd : 0;
+        if (string.IsNullOrWhiteSpace(v)) return null;
+        var corte = v.LastIndexOf(':');
+        var codigo = corte >= 0 ? v[(corte + 1)..] : v;
+        return string.IsNullOrWhiteSpace(codigo) ? null : codigo.Trim();
     }
+
+    /// <summary>Forma numérica do código (0 quando a origem não usa código numérico).</summary>
+    private static long CdNumerico(string? codigo) =>
+        long.TryParse(codigo, out var cd) ? cd : 0;
 
     /// <summary>Data só quando é ISO completa (<c>yyyy-MM-dd</c>) — parcial não é divergência.</summary>
     private static string? DataCompleta(string? d) =>

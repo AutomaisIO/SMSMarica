@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SMSMarica.Data.Entities.Pep;
 
@@ -16,6 +16,7 @@ internal sealed class PepDivergenciaIdentidadeConfiguration : IEntityTypeConfigu
         builder.Property(x => x.FonteId).HasColumnName("fonte_id").IsRequired();
         builder.Property(x => x.FonteSlug).HasColumnName("fonte_slug").HasMaxLength(100).IsRequired();
         builder.Property(x => x.CdPaciente).HasColumnName("cd_paciente").IsRequired();
+        builder.Property(x => x.CodigoOrigem).HasColumnName("codigo_origem").HasMaxLength(64);
         builder.Property(x => x.Cpf).HasColumnName("cpf").HasMaxLength(11).IsRequired();
         builder.Property(x => x.Tipo).HasColumnName("tipo").HasConversion<int>().IsRequired();
         builder.Property(x => x.ValorOrigem).HasColumnName("valor_origem").HasMaxLength(40).IsRequired();

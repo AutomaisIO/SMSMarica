@@ -52,6 +52,11 @@ public sealed record OpcoesImportacao(
     int? MaxPacientes,
     bool ApagarAntes,
     IReadOnlyList<long>? CdsPacientes = null,
+    /// <summary>
+    /// Reimport direcionado em bases cujo código de paciente NÃO é numérico (o Klinikos usa
+    /// <c>char</c> com zeros à esquerda). Mesma semântica de <see cref="CdsPacientes"/>.
+    /// </summary>
+    IReadOnlyList<string>? CodigosPacientes = null,
     int? Concorrencia = null,
     /// <summary>
     /// Ponteiro inicial de <c>cd_paciente</c> no modo COMPLETO/escopo Tudo: começa

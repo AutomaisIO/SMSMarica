@@ -68,7 +68,7 @@ public class KlinikosImportacaoFluxoTests
             // Flag de atendimento: DISTINCT SPA_CODIGO das evoluções não-ESTORNO.
             if (sql.Contains("DISTINCT SPA_CODIGO", StringComparison.OrdinalIgnoreCase))
             {
-                var lista = ListaIn(sql);
+                var lista = FiltroIn(sql).Valores;
                 var spas = Evolucoes
                     .Where(e => e["SPA_CODIGO"] is string spa && lista.Contains(spa)
                         && e["Tipo"] is string t && !t.StartsWith("ESTORNO", StringComparison.OrdinalIgnoreCase))
@@ -82,11 +82,12 @@ public class KlinikosImportacaoFluxoTests
             var tabela = TabelaDe(sql);
             var linhas = tabela;
 
-            if (ListaIn(sql) is { Count: > 0 } codigos)
+            if (FiltroIn(sql) is ({ } coluna, { Count: > 0 } codigos))
             {
-                var chave = sql.Contains("FROM paciente", StringComparison.OrdinalIgnoreCase)
-                    ? "pac_codigo" : "spa_codigo";
-                linhas = [.. tabela.Where(r => r[chave] is string c && codigos.Contains(c))];
+                // A coluna do filtro é a que está ESCRITA no WHERE — adivinhá-la pela tabela
+                // fazia `Pronto_Atendimento WHERE pac_codigo IN (...)` filtrar por spa_codigo
+                // e devolver vazio, escondendo do teste um caminho que funciona em produção.
+                linhas = [.. tabela.Where(r => r.GetValueOrDefault(coluna) is string c && codigos.Contains(c))];
             }
             else if (Regex.Match(sql, @">\s*(\d+)") is { Success: true } m)
             {
@@ -112,12 +113,13 @@ public class KlinikosImportacaoFluxoTests
             _ => throw new InvalidOperationException($"SQL não previsto pelo fake: {sql[..Math.Min(80, sql.Length)]}"),
         };
 
-        private static HashSet<string> ListaIn(string sql)
+        /// <summary>Coluna e valores de um <c>&lt;coluna&gt; IN ('a','b')</c>, como o conector escreve.</summary>
+        private static (string? Coluna, HashSet<string> Valores) FiltroIn(string sql)
         {
-            var m = Regex.Match(sql, @"IN \(([^)]+)\)");
+            var m = Regex.Match(sql, @"(\w+)\s+IN \(([^)]+)\)");
             return !m.Success
-                ? []
-                : [.. m.Groups[1].Value.Split(',').Select(v => v.Trim().Trim('\''))];
+                ? (null, [])
+                : (m.Groups[1].Value, [.. m.Groups[2].Value.Split(',').Select(v => v.Trim().Trim('\''))]);
         }
 
         private static ResultadoConsulta Tabela(List<Dictionary<string, object?>> linhas)
@@ -782,6 +784,92 @@ public class KlinikosImportacaoFluxoTests
             }, CancellationToken.None));
 
         Assert.Contains("Apagar antes", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// O código do paciente na divergência tem de ser o da ORIGEM, tal e qual. O extrator
+    /// antigo pegava "os dígitos" do identifier prefixado
+    /// (<c>upa24h-marica-sqlserver:062608050044</c>) — capturava o <c>24</c> do próprio slug e
+    /// perdia os zeros à esquerda, virando <c>24062608050044</c>. As 959 divergências da UPA
+    /// nasceram assim, apontando para um paciente que não existe.
+    /// </summary>
+    [Fact]
+    public async Task Divergencia_guarda_o_codigo_da_origem_tal_e_qual()
+    {
+        var hub = new HubFake();
+        await hub.CriarAsync(new Patient
+        {
+            Name = [new HumanName { Use = HumanName.NameUse.Official, Text = "ANA COM CPF" }],
+            BirthDate = "1979-02-02",
+            Identifier = [new Identifier(SysCpf, "52998224725")],
+        });
+        var origem = OrigemPadrao();
+        // código com zeros à esquerda, como o Klinikos escreve de verdade
+        origem.Pacientes.Single(x => (string?)x["pac_codigo"] == "P1")["pac_codigo"] = "062608050044";
+        origem.Boletins.Single(b => (string?)b["spa_codigo"] == "B1")["pac_codigo"] = "062608050044";
+
+        var (_, _, div) = await RodarAsync(origem, hub);
+
+        var d = Assert.Single(div.Registradas);
+        Assert.Equal("062608050044", d.CodigoOrigem);   // sem o "24" do slug, com os zeros
+        Assert.Equal(62608050044L, d.CdPaciente);        // forma numérica, para o Salux
+    }
+
+    /// <summary>
+    /// Reimport direcionado: a arbitragem devolve ao hub um paciente cuja origem foi declarada
+    /// correta. Processa exatamente os códigos pedidos, com o clínico deles — e NÃO move
+    /// ponteiro, porque é reparo pontual, fora do fluxo do CDC.
+    /// </summary>
+    [Fact]
+    public async Task Reimport_direcionado_traz_so_os_codigos_pedidos_e_nao_move_ponteiro()
+    {
+        var hub = new HubFake();
+        var marca = new MarcaDagua();
+        var progresso = new ProgressoImportacao();
+        var ctx = new ContextoImportacaoPep
+        {
+            Consulta = OrigemPadrao(),
+            Opcoes = new OpcoesImportacao(
+                ModoSincronizacao.Incremental, EscopoSincronizacao.Tudo, null, null, false,
+                CodigosPacientes: ["P3"]),
+            Marca = marca,
+            Escritor = hub,
+            Progresso = progresso,
+            BaseSlug = Slug,
+        };
+        await new KlinikosImportacaoStrategy(NullLogger<KlinikosImportacaoStrategy>.Instance)
+            .ImportarAsync(ctx, CancellationToken.None);
+
+        Assert.Equal(0, progresso.FalhasTotal);
+        var pac = Assert.Single(hub.Do<Patient>());
+        Assert.Contains(pac.Identifier, i => i.Value == $"{Slug}:P3");
+        var enc = Assert.Single(hub.Do<Encounter>());
+        Assert.Contains(enc.Identifier, i => i.Value == $"{Slug}:B3");
+
+        Assert.Equal(0, marca.Ponteiro("paciente"));
+        Assert.Equal(0, marca.Ponteiro("atendimento"));
+    }
+
+    /// <summary>Código NUMÉRICO nesta base é recusado: perderia os zeros e apontaria para outro paciente.</summary>
+    [Fact]
+    public async Task Reimport_por_codigo_numerico_e_recusado_nesta_base()
+    {
+        var estrategia = new KlinikosImportacaoStrategy(NullLogger<KlinikosImportacaoStrategy>.Instance);
+
+        var ex = await Assert.ThrowsAsync<SMSMarica.Core.Common.Excecoes.ValidacaoException>(() =>
+            estrategia.ImportarAsync(new ContextoImportacaoPep
+            {
+                Consulta = OrigemPadrao(),
+                Opcoes = new OpcoesImportacao(
+                    ModoSincronizacao.Incremental, EscopoSincronizacao.Tudo, null, null, false,
+                    CdsPacientes: [62608050044]),
+                Marca = new MarcaDagua(),
+                Escritor = new HubFake(),
+                Progresso = new ProgressoImportacao(),
+                BaseSlug = Slug,
+            }, CancellationToken.None));
+
+        Assert.Contains("zeros à esquerda", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>O total de falhas conta além do teto do detalhe — o detalhe é amostra, o número é exato.</summary>

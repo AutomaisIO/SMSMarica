@@ -174,7 +174,8 @@ public sealed class PepSincronizacaoService(
 
         var opcoes = new OpcoesImportacao(request.Modo, request.Escopo, request.MaxMedicos, request.MaxPacientes,
             request.ApagarAntes, CdsPacientes: request.CdsPacientes,
-            Concorrencia: request.Concorrencia, CursorPacienteInicial: cursorInicial);
+            Concorrencia: request.Concorrencia, CursorPacienteInicial: cursorInicial,
+            CodigosPacientes: request.CodigosPacientes);
         if (!fila.TentarEnfileirar(new PepImportacaoJob(execucao.Id, fonte.Id, opcoes, usuarioAtual.UsuarioId)))
         {
             execucao.Status = StatusSincronizacao.Erro;
@@ -542,14 +543,20 @@ public sealed class PepSincronizacaoService(
                      && d.Veredicto == VeredictoDivergenciaIdentidade.OrigemCorreta);
         if (ids is { Count: > 0 }) q = q.Where(d => ids.Contains(d.Id));
 
-        // cd_paciente == 0 é divergência vinda do CDC, que não sabe o cd — não dá para
-        // reprocessar por essa via (e reprocessar "todos" seria o oposto de direcionado).
-        var cds = await q.Where(d => d.CdPaciente > 0)
-            .Select(d => d.CdPaciente).Distinct().ToListAsync(ct);
+        // Sem código conhecido não há o que direcionar (divergência vinda do CDC, que não sabe
+        // o paciente) — e reprocessar "todos" seria o oposto de direcionado.
+        var alvos = await q.Where(d => d.CdPaciente > 0 || d.CodigoOrigem != null)
+            .Select(d => new { d.CdPaciente, d.CodigoOrigem }).Distinct().ToListAsync(ct);
 
-        if (cds.Count == 0)
+        if (alvos.Count == 0)
             throw new ConflitoException("pep.sem_divergencia_reprocessavel",
                 "Não há divergência com veredicto \"origem correta\" e código de paciente conhecido para reprocessar.");
+
+        // O código de TEXTO é a forma que serve a qualquer base; o numérico fica para as
+        // divergências antigas do Salux, gravadas antes de a coluna existir.
+        var codigos = alvos.Where(a => a.CodigoOrigem != null).Select(a => a.CodigoOrigem!).Distinct().ToList();
+        var cds = alvos.Where(a => a.CodigoOrigem == null && a.CdPaciente > 0)
+            .Select(a => a.CdPaciente).Distinct().ToList();
 
         return await IniciarAsync(new IniciarImportacaoRequest(
             FonteId: fonteId,
@@ -560,7 +567,8 @@ public sealed class PepSincronizacaoService(
             ApagarAntes: false,
             Concorrencia: null,
             CursorPacienteInicial: null,
-            CdsPacientes: cds), ct);
+            CdsPacientes: cds.Count > 0 ? cds : null,
+            CodigosPacientes: codigos.Count > 0 ? codigos : null), ct);
     }
 
     public async Task<DivergenciaIdentidadeDto> IgnorarDivergenciaAsync(

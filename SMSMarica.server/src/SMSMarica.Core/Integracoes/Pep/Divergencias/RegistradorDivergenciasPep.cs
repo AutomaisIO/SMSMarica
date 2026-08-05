@@ -1,4 +1,4 @@
-using System.Threading.Channels;
+﻿using System.Threading.Channels;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Data;
@@ -16,7 +16,9 @@ public sealed record DivergenciaDetectada(
     string ValorHub,
     string? NomeOrigem,
     string? NomeHub,
-    string? PatientIdHub);
+    string? PatientIdHub,
+    /// <summary>Código do paciente na origem, como texto — ver <c>PepDivergenciaIdentidade.CodigoOrigem</c>.</summary>
+    string? CodigoOrigem = null);
 
 /// <summary>
 /// Sink durável de divergências de identidade de um run (mesmo padrão do
@@ -108,6 +110,7 @@ public sealed class RegistradorDivergenciasPep : IRegistradorDivergenciasPep
                         FonteId = _fonteId,
                         FonteSlug = _fonteSlug,
                         CdPaciente = d.CdPaciente,
+                        CodigoOrigem = d.CodigoOrigem,
                         Cpf = d.Cpf,
                         Tipo = d.Tipo,
                         ValorOrigem = d.ValorOrigem,
@@ -127,6 +130,7 @@ public sealed class RegistradorDivergenciasPep : IRegistradorDivergenciasPep
                 // Re-detecção: soma ocorrência e atualiza o retrato atual dos valores.
                 atual.ExecucaoId = _execucaoId;
                 atual.CdPaciente = d.CdPaciente;
+                atual.CodigoOrigem = d.CodigoOrigem;
                 atual.Ocorrencias++;
                 atual.AtualizadoEm = agora;
                 atual.PatientIdHub = d.PatientIdHub ?? atual.PatientIdHub;

@@ -90,9 +90,17 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
         if (ctx.Opcoes.ApagarAntes)
             throw new ValidacaoException("pep.opcao_nao_suportada",
                 "\"Apagar antes\" ainda não é suportado para bases Klinikos.");
+        // Reimport DIRECIONADO: processa exatamente estes pacientes. É o caminho pelo qual a
+        // arbitragem de identidade devolve ao hub um paciente cuja origem foi declarada correta.
+        // O código vem como TEXTO porque aqui ele é `char` com zeros à esquerda — tratá-lo como
+        // número perderia os zeros e apontaria para outro paciente (ou para nenhum).
+        var direcionado = ctx.Opcoes.CodigosPacientes is { Count: > 0 }
+            ? [.. ctx.Opcoes.CodigosPacientes]
+            : new List<string>();
         if (ctx.Opcoes.CdsPacientes is { Count: > 0 })
-            throw new ValidacaoException("pep.opcao_nao_suportada",
-                "Reimport direcionado por códigos ainda não é suportado para bases Klinikos.");
+            throw new ValidacaoException("pep.codigo_numerico",
+                "Esta base identifica paciente por código de texto (com zeros à esquerda). "
+                + "Use CodigosPacientes — CdsPacientes numérico apontaria para outro paciente.");
 
         // Escopo LIMITADO = ensaio: importa até N pacientes e SÓ o clínico deles, e não move
         // NENHUM ponteiro — um teste não pode deixar marca que faça o incremental pular dado.
@@ -169,6 +177,40 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
 
         // ---------- 3. Pacientes ----------
         p.FaseAtual = "pacientes…";
+        if (direcionado.Count > 0)
+        {
+            // Lista explícita: nenhum ponteiro se move — é reparo pontual, fora do fluxo do CDC.
+            await GarantirPacientesAsync(ctx, mapper, leitor, direcionado, pacPorCodigo, Falhou, ct);
+            p.Pacientes += pacPorCodigo.Count;
+
+            p.FaseAtual = "atendimentos…";
+            foreach (var lote in EmLotes(direcionado, TamanhoLote))
+            {
+                var achados = (await leitor.ConsultarAsync(SqlBoletinsDePacientes(lote), ct))
+                    .Select(MapBoletim).OfType<BoletimLinha>().ToList();
+                var comAtd = await CarregarFlagsAtendimentoAsync(leitor, achados.Select(b => b.Codigo), ct);
+                foreach (var b in achados)
+                {
+                    try
+                    {
+                        if (await UpsertBoletimAsync(ctx, mapper, b, comAtd.Contains(b.Codigo),
+                                orgPorUnidade, pacPorCodigo, ct) is { } a)
+                        {
+                            atendPorBoletim[b.Codigo] = a;
+                            p.Encounters++;
+                        }
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        Falhou($"boletim {b.Codigo}", Cd(b.PacCodigo), ex);
+                    }
+                }
+            }
+
+            p.FaseAtual = "concluído";
+            return;
+        }
+
         await PaginarAsync(leitor, FasePaciente, ctx, incremental, SqlPacientes, async (linhas, fase) =>
         {
             foreach (var linha in linhas)
@@ -709,6 +751,13 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
          WHERE CONVERT(BIGINT, rv_atualizacao) > {desde}
            AND pac_codigo IS NOT NULL
          ORDER BY CONVERT(BIGINT, rv_atualizacao)
+        """;
+
+    /// <summary>Boletins DE uma lista de pacientes (reimport direcionado).</summary>
+    internal static string SqlBoletinsDePacientes(IReadOnlyList<string> pacientes) => $"""
+        SELECT {ColunasBoletim}
+          FROM Pronto_Atendimento
+         WHERE pac_codigo IN ({ListaTexto(pacientes)})
         """;
 
     internal static string SqlBoletinsPorCodigo(IReadOnlyList<string> codigos) => $"""

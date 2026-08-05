@@ -31,7 +31,9 @@ public sealed record IniciarImportacaoRequest(
     /// ignorando limite e recência. É o caminho para corrigir casos pontuais sem esperar
     /// o paciente ter atendimento novo — usado pelo reprocesso de divergências resolvidas.
     /// </summary>
-    IReadOnlyList<long>? CdsPacientes = null);
+    IReadOnlyList<long>? CdsPacientes = null,
+    /// <summary>Reimport direcionado em bases de código NÃO numérico (Klinikos).</summary>
+    IReadOnlyList<string>? CodigosPacientes = null);
 
 /// <summary>Contadores por tipo de recurso de uma execução.</summary>
 public sealed record ContadoresImportacaoDto(

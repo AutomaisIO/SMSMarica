@@ -1,4 +1,4 @@
-using SMSMarica.Data.Entities.Enums;
+﻿using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Data.Entities.Pep;
 
@@ -30,8 +30,23 @@ public class PepDivergenciaIdentidade
     /// <summary>Slug da base no momento da detecção (sobrevive à edição da fonte).</summary>
     public string FonteSlug { get; set; } = string.Empty;
 
-    /// <summary>Código do paciente na origem (cd_paciente) — permite reimport direcionado.</summary>
+    /// <summary>
+    /// Código do paciente na origem, NUMÉRICO. Serve ao Salux, cujo <c>cd_paciente</c> é number.
+    /// Zero quando a origem não usa código numérico — aí o que vale é <see cref="CodigoOrigem"/>.
+    /// </summary>
     public long CdPaciente { get; set; }
+
+    /// <summary>
+    /// Código do paciente na origem, <b>como texto e exatamente como a origem o escreve</b> —
+    /// é o que permite o reimport direcionado em qualquer base.
+    ///
+    /// <para>Existe porque <see cref="CdPaciente"/> mentia fora do Salux: o código do Klinikos é
+    /// <c>char</c> com zeros à esquerda (<c>062608050044</c>), e extrair "os dígitos" do
+    /// identifier prefixado (<c>upa24h-marica-sqlserver:062608050044</c>) capturava o <c>24</c>
+    /// do próprio slug e perdia os zeros — 959 divergências da UPA nasceram apontando para um
+    /// paciente que não existe. Texto não tem esse problema.</para>
+    /// </summary>
+    public string? CodigoOrigem { get; set; }
 
     /// <summary>CPF normalizado (11 dígitos) — a chave da identidade em disputa.</summary>
     public string Cpf { get; set; } = string.Empty;

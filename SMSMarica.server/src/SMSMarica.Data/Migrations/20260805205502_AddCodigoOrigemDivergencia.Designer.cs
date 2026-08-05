@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -13,9 +14,11 @@ using SMSMarica.Data;
 namespace SMSMarica.Data.Migrations
 {
     [DbContext(typeof(SmsMaricaDbContext))]
-    partial class SmsMaricaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260805205502_AddCodigoOrigemDivergencia")]
+    partial class AddCodigoOrigemDivergencia
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -4708,10 +4711,10 @@ namespace SMSMarica.Data.Migrations
                             Ativo = true,
                             Codigo = "02.05.02.010-0",
                             CompetenciaInicio = new DateOnly(2025, 1, 1),
-                            Descricao = "ULTRASSONOGRAFIA DE PROSTATA (VIA ABDOMINAL)",
+                            Descricao = "ULTRASSONOGRAFIA OBSTETRICA",
                             Forma = "EXAMES",
                             Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
-                            Nome = "ULTRASSONOGRAFIA DE PROSTATA (VIA ABDOMINAL)",
+                            Nome = "ULTRASSONOGRAFIA OBSTETRICA",
                             Subgrupo = "DIAGNOSTICO POR ULTRASSONOGRAFIA"
                         },
                         new
@@ -4742,7 +4745,7 @@ namespace SMSMarica.Data.Migrations
                         {
                             Id = new Guid("a1000000-0000-0000-0000-000000000025"),
                             Ativo = true,
-                            Codigo = "02.05.02.009-7",
+                            Codigo = "02.05.02.005-4",
                             CompetenciaInicio = new DateOnly(2025, 1, 1),
                             Descricao = "ULTRASSONOGRAFIA MAMARIA BILATERAL",
                             Forma = "EXAMES",
@@ -4760,30 +4763,6 @@ namespace SMSMarica.Data.Migrations
                             Forma = "EXAMES",
                             Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
                             Nome = "ULTRASSONOGRAFIA PELVICA (GINECOLOGICA)",
-                            Subgrupo = "DIAGNOSTICO POR ULTRASSONOGRAFIA"
-                        },
-                        new
-                        {
-                            Id = new Guid("a1000000-0000-0000-0000-000000000027"),
-                            Ativo = true,
-                            Codigo = "02.05.02.005-4",
-                            CompetenciaInicio = new DateOnly(2025, 1, 1),
-                            Descricao = "ULTRASSONOGRAFIA DE APARELHO URINARIO",
-                            Forma = "EXAMES",
-                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
-                            Nome = "ULTRASSONOGRAFIA DE APARELHO URINARIO",
-                            Subgrupo = "DIAGNOSTICO POR ULTRASSONOGRAFIA"
-                        },
-                        new
-                        {
-                            Id = new Guid("a1000000-0000-0000-0000-000000000028"),
-                            Ativo = true,
-                            Codigo = "02.05.02.003-8",
-                            CompetenciaInicio = new DateOnly(2025, 1, 1),
-                            Descricao = "ULTRASSONOGRAFIA DE ABDOME SUPERIOR",
-                            Forma = "EXAMES",
-                            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
-                            Nome = "ULTRASSONOGRAFIA DE ABDOME SUPERIOR",
                             Subgrupo = "DIAGNOSTICO POR ULTRASSONOGRAFIA"
                         },
                         new
