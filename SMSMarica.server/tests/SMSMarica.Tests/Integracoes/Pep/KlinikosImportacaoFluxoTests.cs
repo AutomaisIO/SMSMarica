@@ -912,6 +912,41 @@ public class KlinikosImportacaoFluxoTests
                                     && f.Mensagem.Contains($"{Slug}:P1", StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// Interrupção no meio de uma fase (deploy, queda) não pode custar a fase inteira. O
+    /// ponteiro é salvo a cada PÁGINA — em 05/08 três cargas morreram por deploy e cada
+    /// retomada relia a fase do zero, 78 minutos de evoluções repetidos.
+    /// </summary>
+    [Fact]
+    public async Task Ponteiro_e_salvo_a_cada_pagina__interrupcao_nao_custa_a_fase_inteira()
+    {
+        var hub = new HubFake();
+        var marca = new MarcaDagua();
+        var salvos = new List<long>();
+
+        var ctx = new ContextoImportacaoPep
+        {
+            Consulta = OrigemPadrao(),
+            Opcoes = new OpcoesImportacao(ModoSincronizacao.Incremental, EscopoSincronizacao.Tudo, null, null, false),
+            Marca = marca,
+            Escritor = hub,
+            Progresso = new ProgressoImportacao(),
+            BaseSlug = Slug,
+            SalvarMarca = (m, _) =>
+            {
+                salvos.Add(m.Ponteiro("paciente"));
+                return Task.CompletedTask;
+            },
+        };
+        await new KlinikosImportacaoStrategy(NullLogger<KlinikosImportacaoStrategy>.Instance)
+            .ImportarAsync(ctx, CancellationToken.None);
+
+        // Salvou durante a varredura, não só no fim — e sempre para a frente.
+        Assert.NotEmpty(salvos);
+        Assert.Equal(salvos.OrderBy(x => x), salvos);
+        Assert.Equal(300, marca.Ponteiro("paciente"));
+    }
+
     /// <summary>O total de falhas conta além do teto do detalhe — o detalhe é amostra, o número é exato.</summary>
     [Fact]
     public void Detalhe_de_falhas_e_amostra_mas_o_total_e_exato()

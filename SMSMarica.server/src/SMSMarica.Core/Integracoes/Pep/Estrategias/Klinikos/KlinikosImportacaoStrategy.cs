@@ -447,6 +447,20 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
             await processar(linhas, ponteiro);
             paginas++;
 
+            // Ponteiro salvo A CADA PÁGINA, não só ao fim da fase. É seguro justamente porque
+            // a paginação é POR ele: PonteiroSeguro nunca passa de uma falha, então o que ele
+            // marca como feito está feito. E é o que torna a interrupção barata — em 05/08 três
+            // cargas longas morreram por deploy, e cada uma recomeçava a fase do zero: 78
+            // minutos de evoluções relidos porque a fase não tinha chegado ao fim.
+            //
+            // (O conector do Salux salva por fase porque lá a paginação é por cd, não pela
+            // marca — uma marca parcial pularia registros de blocos não processados. Aqui não.)
+            if (persistirPonteiro && ctx.SalvarMarca is not null && ponteiro.PonteiroSeguro > desde)
+            {
+                ctx.Marca.AvancarPonteiro(fase, ponteiro.PonteiroSeguro);
+                await ctx.SalvarMarca(ctx.Marca, ct);
+            }
+
             // A PAGINAÇÃO navega pelo MaxVisto — uma falha não pode travar o laço dentro do
             // run; ela só segura o ponteiro PERSISTIDO. Origem sem avanço = fim (evita laço
             // infinito quando a página inteira não tem rv maior).
