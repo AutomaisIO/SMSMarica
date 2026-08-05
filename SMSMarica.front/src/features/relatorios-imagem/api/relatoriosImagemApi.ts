@@ -12,14 +12,22 @@ export async function obterEstatisticasExamesImagem(
   return data;
 }
 
-/** Baixa o CSV analítico (uma linha por exame, com PII). O download já sai autenticado. */
+export type ConteudoExportacao = 'Exames' | 'Laudos' | 'ExamesLaudos';
+
+/** Baixa o CSV analítico (sem PII), no conteúdo escolhido. O download já sai autenticado. */
 export async function exportarExamesImagem(
   de?: string,
   ate?: string,
   unidadeId?: string,
+  conteudo: ConteudoExportacao = 'ExamesLaudos',
 ): Promise<void> {
   const resp = await http.get('/estatisticas/exames-imagem/exportar', {
-    params: { de: de || undefined, ate: ate || undefined, unidadeId: unidadeId || undefined },
+    params: {
+      de: de || undefined,
+      ate: ate || undefined,
+      unidadeId: unidadeId || undefined,
+      conteudo,
+    },
     responseType: 'blob',
   });
 

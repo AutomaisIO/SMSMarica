@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { BarChart3, Download } from 'lucide-react';
+import { BarChart3, ChevronDown, Download } from 'lucide-react';
 import {
   Bar,
   BarChart,
@@ -18,7 +18,10 @@ import {
 import { useTemConsulta } from '@/shared/auth/authStore';
 import { useListarUnidades } from '@/features/unidades/api/queries';
 import { useEstatisticasExamesImagem } from '@/features/relatorios-imagem/api/queries';
-import { exportarExamesImagem } from '@/features/relatorios-imagem/api/relatoriosImagemApi';
+import {
+  exportarExamesImagem,
+  type ConteudoExportacao,
+} from '@/features/relatorios-imagem/api/relatoriosImagemApi';
 import type { RotuloContagem } from '@/features/relatorios-imagem/types';
 
 // Paleta categórica CVD-safe (Okabe-Ito + vermelho Maricá). Ordem fixa, nunca ciclada.
@@ -28,13 +31,29 @@ const COR_LAUDADOS = '#C8102E'; // vermelho Maricá
 const PALETA_CATEGORIA = ['#2563EB', '#C8102E', '#059669', '#D97706', '#6B7280', '#7C3AED', '#0891B2'];
 const PALETA_BARRAS = '#C8102E';
 
-function isoHoje(): string {
-  return new Date().toISOString().slice(0, 10);
+function isoLocal(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
-function isoMenosDias(dias: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - dias);
-  return d.toISOString().slice(0, 10);
+function isoHoje(): string {
+  return isoLocal(new Date());
+}
+
+type PresetMes = { rotulo: string; de: string; ate: string };
+
+/** Dois meses anteriores + o mês corrente. Ex.: em agosto → [Junho, Julho, Atual]. */
+function presetsMeses(): PresetMes[] {
+  const hoje = new Date();
+  const out: PresetMes[] = [];
+  for (let off = 2; off >= 0; off -= 1) {
+    const ini = new Date(hoje.getFullYear(), hoje.getMonth() - off, 1);
+    const fim = off === 0 ? hoje : new Date(hoje.getFullYear(), hoje.getMonth() - off + 1, 0);
+    const rotulo =
+      off === 0
+        ? 'Atual'
+        : ini.toLocaleDateString('pt-BR', { month: 'long' }).replace(/^./, (c) => c.toUpperCase());
+    out.push({ rotulo, de: isoLocal(ini), ate: isoLocal(fim) });
+  }
+  return out;
 }
 function nf(n: number): string {
   return n.toLocaleString('pt-BR');
@@ -125,10 +144,12 @@ function BarrasHorizontais({ dados, cor }: { dados: RotuloContagem[]; cor?: stri
 export function RelatoriosImagemPage() {
   const pode = useTemConsulta('Estatistica');
   const podeExportar = useTemConsulta('SolicitacoesExame');
-  const [de, setDe] = useState(() => isoMenosDias(29));
+  const presets = useMemo(presetsMeses, []);
+  const [de, setDe] = useState(() => presets[presets.length - 1].de);
   const [ate, setAte] = useState(() => isoHoje());
   const [unidadeId, setUnidadeId] = useState('');
   const [exportando, setExportando] = useState(false);
+  const [menuExport, setMenuExport] = useState(false);
   const [erroExport, setErroExport] = useState<string | null>(null);
 
   const unidades = useListarUnidades();
@@ -148,16 +169,12 @@ export function RelatoriosImagemPage() {
     );
   }
 
-  function preset(dias: number) {
-    setDe(isoMenosDias(dias - 1));
-    setAte(isoHoje());
-  }
-
-  async function exportar() {
+  async function exportar(conteudo: ConteudoExportacao) {
+    setMenuExport(false);
     setErroExport(null);
     setExportando(true);
     try {
-      await exportarExamesImagem(de, ate, unidadeId || undefined);
+      await exportarExamesImagem(de, ate, unidadeId || undefined, conteudo);
     } catch {
       setErroExport('Não foi possível exportar a lista. Tente novamente.');
     } finally {
@@ -173,20 +190,24 @@ export function RelatoriosImagemPage() {
         </h1>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex overflow-hidden rounded-md border border-gray-200">
-            {[
-              { r: '7d', d: 7 },
-              { r: '30d', d: 30 },
-              { r: '90d', d: 90 },
-            ].map((b) => (
-              <button
-                key={b.r}
-                type="button"
-                onClick={() => preset(b.d)}
-                className="border-r border-gray-200 px-2.5 py-1 text-xs text-gray-600 last:border-r-0 hover:bg-gray-50"
-              >
-                {b.r}
-              </button>
-            ))}
+            {presets.map((p) => {
+              const ativo = de === p.de && ate === p.ate;
+              return (
+                <button
+                  key={p.rotulo}
+                  type="button"
+                  onClick={() => {
+                    setDe(p.de);
+                    setAte(p.ate);
+                  }}
+                  className={`border-r border-gray-200 px-2.5 py-1 text-xs capitalize last:border-r-0 hover:bg-gray-50 ${
+                    ativo ? 'bg-primary-50 font-medium text-primary-700' : 'text-gray-600'
+                  }`}
+                >
+                  {p.rotulo}
+                </button>
+              );
+            })}
           </div>
           <input
             type="date"
@@ -220,15 +241,47 @@ export function RelatoriosImagemPage() {
               ))}
           </select>
           {podeExportar ? (
-            <button
-              type="button"
-              onClick={exportar}
-              disabled={exportando}
-              className="flex items-center gap-1.5 rounded-md bg-primary-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-primary-700 disabled:opacity-60"
-            >
-              <Download className="h-3.5 w-3.5" />
-              {exportando ? 'Exportando…' : 'Exportar CSV'}
-            </button>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setMenuExport((v) => !v)}
+                disabled={exportando}
+                className="flex items-center gap-1.5 rounded-md bg-primary-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-primary-700 disabled:opacity-60"
+              >
+                <Download className="h-3.5 w-3.5" />
+                {exportando ? 'Exportando…' : 'Exportar CSV'}
+                <ChevronDown className="h-3.5 w-3.5" />
+              </button>
+              {menuExport ? (
+                <>
+                  <button
+                    type="button"
+                    aria-hidden
+                    tabIndex={-1}
+                    className="fixed inset-0 z-10 cursor-default"
+                    onClick={() => setMenuExport(false)}
+                  />
+                  <div className="absolute right-0 z-20 mt-1 w-44 overflow-hidden rounded-md border border-gray-200 bg-white py-1 shadow-lg">
+                    {(
+                      [
+                        { c: 'Exames', r: 'Somente Exames' },
+                        { c: 'Laudos', r: 'Somente Laudos' },
+                        { c: 'ExamesLaudos', r: 'Exames e Laudos' },
+                      ] as { c: ConteudoExportacao; r: string }[]
+                    ).map((o) => (
+                      <button
+                        key={o.c}
+                        type="button"
+                        onClick={() => exportar(o.c)}
+                        className="block w-full px-3 py-1.5 text-left text-xs text-gray-700 hover:bg-gray-50"
+                      >
+                        {o.r}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>

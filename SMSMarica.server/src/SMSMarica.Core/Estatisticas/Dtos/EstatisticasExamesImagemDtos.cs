@@ -44,19 +44,28 @@ public sealed record ExamesImagemResumoDto(
 /// <summary>Ponto da série temporal (um dia): exames registrados x realizados x laudados.</summary>
 public sealed record SerieExamesDiaDto(DateOnly Dia, long Registrados, long Realizados, long Laudados);
 
+/// <summary>O que exportar na lista analítica de imagem.</summary>
+public enum ConteudoExportacaoImagem
+{
+    Exames = 1,
+    Laudos = 2,
+    ExamesLaudos = 3,
+}
+
 /// <summary>
-/// Linha da lista ANALÍTICA de exames de imagem que sustenta os agregados (uma por exame).
-/// Contém PII de paciente — só é produzida para exportação autenticada e auditada, atrás do
-/// gate <c>SolicitacoesExame</c>.
+/// Pacote da exportação analítica: as duas visões materializadas (exames e laudos) do mesmo
+/// recorte. O endpoint escolhe qual serializar conforme <see cref="ConteudoExportacaoImagem"/>.
+/// SEM PII de paciente — apenas números do exame/solicitação/laudo (decisão do ticket #94).
 /// </summary>
+public sealed record ExportacaoImagemDto(
+    IReadOnlyList<ExameImagemAnaliticoDto> Exames,
+    IReadOnlyList<LaudoAnaliticoDto> Laudos);
+
+/// <summary>Linha analítica de um EXAME (uma por exame). Sem identificação de paciente.</summary>
 public sealed record ExameImagemAnaliticoDto(
     string? NumeroSolicitacao,
     string AccessionNumber,
     string StudyInstanceUID,
-    string? PacienteNome,
-    string? PacienteCpf,
-    string? PacienteCns,
-    DateOnly? PacienteNascimento,
     string Modalidade,
     string? TipoExame,
     string? UnidadeExecutante,
@@ -72,3 +81,19 @@ public sealed record ExameImagemAnaliticoDto(
     double? TempoChegadaExecucaoHoras,
     double? TempoExecucaoLaudoHoras,
     double? TempoTotalHoras);
+
+/// <summary>Linha analítica de um LAUDO (uma por laudo finalizado). Sem identificação de paciente.</summary>
+public sealed record LaudoAnaliticoDto(
+    string? NumeroSolicitacao,
+    string AccessionNumber,
+    string StudyInstanceUID,
+    int Versao,
+    string Modalidade,
+    string? TipoExame,
+    string? UnidadeExecutante,
+    DateTime? DataEstudo,
+    DateTime? RealizadoEm,
+    DateTime? LaudoFinalizadoEm,
+    string? MedicoLaudo,
+    string? MedicoCrm,
+    double? TempoExecucaoLaudoHoras);

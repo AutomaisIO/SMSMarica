@@ -51,10 +51,10 @@ public sealed class EstatisticasController(IEstatisticasService service) : Contr
     }
 
     /// <summary>
-    /// Exporta a lista ANALÍTICA (CSV) que sustenta os agregados de imagem — uma linha por exame,
-    /// com PII de paciente. Gate próprio (<see cref="ModuloPermissao.SolicitacoesExame"/>): quem
-    /// exporta identificação de paciente é quem já pode ver a listagem de exames. A leitura é
-    /// auditada no serviço (quem/quando/recorte/quantidade).
+    /// Exporta a lista ANALÍTICA (CSV) que sustenta os agregados de imagem, no conteúdo escolhido
+    /// (<c>Exames</c>, <c>Laudos</c> ou <c>ExamesLaudos</c>). SEM PII de paciente — só números do
+    /// exame/solicitação/laudo (decisão do ticket #94). Gate <see cref="ModuloPermissao.SolicitacoesExame"/>
+    /// (nível da listagem de exames); a leitura é auditada no serviço.
     /// </summary>
     [HttpGet("exames-imagem/exportar")]
     [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Consulta)]
@@ -63,43 +63,81 @@ public sealed class EstatisticasController(IEstatisticasService service) : Contr
         [FromQuery] DateOnly? de = null,
         [FromQuery] DateOnly? ate = null,
         [FromQuery] Guid? unidadeId = null,
+        [FromQuery] ConteudoExportacaoImagem conteudo = ConteudoExportacaoImagem.ExamesLaudos,
         CancellationToken ct = default)
     {
         var fim = ate ?? DateOnly.FromDateTime(DateTime.UtcNow);
         var inicio = de ?? fim.AddDays(-29);
-        var linhas = await service.ListarAnaliticoExamesImagemAsync(inicio, fim, unidadeId, ct);
+        var dados = await service.ObterExportacaoImagemAsync(inicio, fim, unidadeId, conteudo, ct);
 
-        var csv = MontarCsv(linhas);
+        var (csv, sufixo) = conteudo switch
+        {
+            ConteudoExportacaoImagem.Laudos => (MontarCsvLaudos(dados.Laudos), "laudos"),
+            ConteudoExportacaoImagem.Exames => (MontarCsvExames(dados.Exames, incluirLaudo: false), "exames"),
+            _ => (MontarCsvExames(dados.Exames, incluirLaudo: true), "exames-e-laudos"),
+        };
+
         var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv)).ToArray();
-        var nome = $"exames-imagem_{inicio:yyyy-MM-dd}_a_{fim:yyyy-MM-dd}.csv";
+        var nome = $"imagem-{sufixo}_{inicio:yyyy-MM-dd}_a_{fim:yyyy-MM-dd}.csv";
         return File(bytes, "text/csv; charset=utf-8", nome);
     }
 
     // ---- CSV (separador ';' + BOM UTF-8: abre direto no Excel pt-BR) ----
 
-    private static readonly string[] Cabecalho =
-    [
-        "Nº solicitação", "Accession", "Paciente", "CPF", "CNS", "Nascimento",
-        "Modalidade", "Tipo de exame", "Unidade executante", "Unidade solicitante", "Status",
-        "Data solicitação", "Autorizado em", "Data do estudo", "Realizado em",
-        "Laudo finalizado em", "Médico do laudo", "CRM",
-        "Chegada→execução (h)", "Execução→laudo (h)", "Total (h)",
-    ];
-
-    private static string MontarCsv(IReadOnlyList<ExameImagemAnaliticoDto> linhas)
+    private static string MontarCsvExames(IReadOnlyList<ExameImagemAnaliticoDto> linhas, bool incluirLaudo)
     {
+        string[] cab =
+        [
+            "Nº solicitação", "Accession", "Study UID", "Modalidade", "Tipo de exame",
+            "Unidade executante", "Unidade solicitante", "Status",
+            "Data solicitação", "Autorizado em", "Data do estudo", "Realizado em",
+            .. incluirLaudo
+                ? new[] { "Laudo finalizado em", "Médico do laudo", "CRM",
+                          "Execução→laudo (h)", "Total (h)" }
+                : Array.Empty<string>(),
+            "Chegada→execução (h)",
+        ];
+
         var sb = new StringBuilder();
-        sb.AppendLine(string.Join(';', Cabecalho.Select(Escapar)));
+        sb.AppendLine(string.Join(';', cab.Select(Escapar)));
         foreach (var l in linhas)
         {
             string[] campos =
             [
-                l.NumeroSolicitacao ?? "", l.AccessionNumber, l.PacienteNome ?? "",
-                l.PacienteCpf ?? "", l.PacienteCns ?? "", Data(l.PacienteNascimento),
-                l.Modalidade, l.TipoExame ?? "", l.UnidadeExecutante ?? "", l.UnidadeSolicitante ?? "",
-                l.Status, Data(l.DataSolicitacao), DataHora(l.AutorizadoEm), DataHora(l.DataEstudo),
-                DataHora(l.RealizadoEm), DataHora(l.LaudoFinalizadoEm), l.MedicoLaudo ?? "", l.MedicoCrm ?? "",
-                Num(l.TempoChegadaExecucaoHoras), Num(l.TempoExecucaoLaudoHoras), Num(l.TempoTotalHoras),
+                l.NumeroSolicitacao ?? "", l.AccessionNumber, l.StudyInstanceUID, l.Modalidade,
+                l.TipoExame ?? "", l.UnidadeExecutante ?? "", l.UnidadeSolicitante ?? "", l.Status,
+                Data(l.DataSolicitacao), DataHora(l.AutorizadoEm), DataHora(l.DataEstudo), DataHora(l.RealizadoEm),
+                .. incluirLaudo
+                    ? new[] { DataHora(l.LaudoFinalizadoEm), l.MedicoLaudo ?? "", l.MedicoCrm ?? "",
+                              Num(l.TempoExecucaoLaudoHoras), Num(l.TempoTotalHoras) }
+                    : Array.Empty<string>(),
+                Num(l.TempoChegadaExecucaoHoras),
+            ];
+            sb.AppendLine(string.Join(';', campos.Select(Escapar)));
+        }
+        return sb.ToString();
+    }
+
+    private static string MontarCsvLaudos(IReadOnlyList<LaudoAnaliticoDto> linhas)
+    {
+        string[] cab =
+        [
+            "Nº solicitação", "Accession", "Study UID", "Versão", "Modalidade", "Tipo de exame",
+            "Unidade executante", "Data do estudo", "Realizado em", "Laudo finalizado em",
+            "Médico do laudo", "CRM", "Execução→laudo (h)",
+        ];
+
+        var sb = new StringBuilder();
+        sb.AppendLine(string.Join(';', cab.Select(Escapar)));
+        foreach (var l in linhas)
+        {
+            string[] campos =
+            [
+                l.NumeroSolicitacao ?? "", l.AccessionNumber, l.StudyInstanceUID,
+                l.Versao.ToString(CultureInfo.InvariantCulture), l.Modalidade, l.TipoExame ?? "",
+                l.UnidadeExecutante ?? "", DataHora(l.DataEstudo), DataHora(l.RealizadoEm),
+                DataHora(l.LaudoFinalizadoEm), l.MedicoLaudo ?? "", l.MedicoCrm ?? "",
+                Num(l.TempoExecucaoLaudoHoras),
             ];
             sb.AppendLine(string.Join(';', campos.Select(Escapar)));
         }

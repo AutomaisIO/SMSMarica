@@ -23,10 +23,11 @@ public interface IEstatisticasService
         DateOnly de, DateOnly ate, Guid? unidadeId, CancellationToken ct = default);
 
     /// <summary>
-    /// Lista ANALÍTICA (uma linha por exame) que sustenta os agregados de imagem, com PII de
-    /// paciente, para exportação. Mesmo recorte/escopo de <see cref="ObterExamesImagemAsync"/>.
-    /// Registra auditoria de quem exportou. Deve ser chamado apenas por endpoint com gate de PII.
+    /// Materializa a lista ANALÍTICA de imagem (exames e/ou laudos) que sustenta os agregados, para
+    /// exportação. Mesmo recorte/escopo de <see cref="ObterExamesImagemAsync"/>. SEM PII de paciente
+    /// (só números do exame/solicitação/laudo). Registra auditoria de quem exportou e o quê.
     /// </summary>
-    Task<IReadOnlyList<ExameImagemAnaliticoDto>> ListarAnaliticoExamesImagemAsync(
-        DateOnly de, DateOnly ate, Guid? unidadeId, CancellationToken ct = default);
+    Task<ExportacaoImagemDto> ObterExportacaoImagemAsync(
+        DateOnly de, DateOnly ate, Guid? unidadeId, ConteudoExportacaoImagem conteudo,
+        CancellationToken ct = default);
 }

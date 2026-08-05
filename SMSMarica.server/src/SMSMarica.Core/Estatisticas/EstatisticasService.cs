@@ -6,7 +6,6 @@ using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Common.Unidades;
 using SMSMarica.Core.Estatisticas.Dtos;
 using SMSMarica.Core.Identidade;
-using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities.Enums;
 
@@ -25,7 +24,6 @@ namespace SMSMarica.Core.Estatisticas;
 public sealed class EstatisticasService(
     SmsMaricaDbContext db,
     IUsuarioAtualAccessor usuarioAtual,
-    IPacienteResolver pacienteResolver,
     ILogger<EstatisticasService> logger) : IEstatisticasService
 {
     private const int MaxDiasPeriodo = 400;
@@ -116,7 +114,9 @@ public sealed class EstatisticasService(
         if (ate.DayNumber - de.DayNumber + 1 > MaxDiasPeriodo)
             throw new ValidacaoException("periodo", $"O período não pode exceder {MaxDiasPeriodo} dias.");
 
-        var (exames, laudoPorEstudo, laudosFinalizados) = await CarregarExamesAsync(de, ate, unidadeId, ct);
+        var (exames, laudos) = await CarregarExamesAsync(de, ate, unidadeId, ct);
+        var laudoPorEstudo = UltimoLaudoPorEstudo(laudos);
+        long laudosFinalizados = laudos.Count;
 
         var dias = ate.DayNumber - de.DayNumber + 1;
         long total = exames.Count;
@@ -201,53 +201,72 @@ public sealed class EstatisticasService(
             de, ate, unidadeId, resumo, porDia, porModalidade, porUnidade, porStatus, porTipo, porMedico);
     }
 
-    public async Task<IReadOnlyList<ExameImagemAnaliticoDto>> ListarAnaliticoExamesImagemAsync(
-        DateOnly de, DateOnly ate, Guid? unidadeId, CancellationToken ct = default)
+    public async Task<ExportacaoImagemDto> ObterExportacaoImagemAsync(
+        DateOnly de, DateOnly ate, Guid? unidadeId, ConteudoExportacaoImagem conteudo,
+        CancellationToken ct = default)
     {
         if (ate < de) (de, ate) = (ate, de);
         if (ate.DayNumber - de.DayNumber + 1 > MaxDiasPeriodo)
             throw new ValidacaoException("periodo", $"O período não pode exceder {MaxDiasPeriodo} dias.");
 
-        var (exames, laudoPorEstudo, _) = await CarregarExamesAsync(de, ate, unidadeId, ct);
+        var (exames, laudos) = await CarregarExamesAsync(de, ate, unidadeId, ct);
+        var laudoPorEstudo = UltimoLaudoPorEstudo(laudos);
 
-        // Nomes de paciente do hub FHIR (PII). Degrada para sem-nome se o hub falhar — não vale
-        // derrubar a exportação inteira por causa da coluna nome.
-        IReadOnlyDictionary<Guid, PacienteResumo> pacientes;
-        try { pacientes = await pacienteResolver.ResolverManyAsync(exames.Select(e => e.PacienteId), ct); }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        var linhasExame = new List<ExameImagemAnaliticoDto>();
+        var linhasLaudo = new List<LaudoAnaliticoDto>();
+
+        // Visão EXAME (uma por exame) — para "Exames" e "Exames e Laudos".
+        if (conteudo is ConteudoExportacaoImagem.Exames or ConteudoExportacaoImagem.ExamesLaudos)
         {
-            logger.LogWarning(ex, "Export analítico de imagem: hub FHIR indisponível — seguindo sem nomes.");
-            pacientes = new Dictionary<Guid, PacienteResumo>();
+            foreach (var e in exames.OrderBy(x => x.DataRef))
+            {
+                DateTime? fin = laudoPorEstudo.TryGetValue(e.StudyInstanceUID, out var laudo) ? laudo.FinalizadoEm : null;
+                linhasExame.Add(new ExameImagemAnaliticoDto(
+                    e.CodigoSolicitacao, e.AccessionNumber, e.StudyInstanceUID,
+                    RotuloModalidade(e.Modalidade), e.TipoExameNome,
+                    e.UnidadeExecutante, e.UnidadeSolicitante, RotuloStatusExame(e.Status),
+                    e.DataSolicitacao, e.AutorizadoEm, e.DataEstudo, e.RealizadoEm,
+                    fin, laudo?.MedicoNome, laudo?.MedicoCrm,
+                    Horas(e.AutorizadoEm, e.RealizadoEm), Horas(e.RealizadoEm, fin), Horas(e.AutorizadoEm, fin)));
+            }
         }
 
-        var linhas = new List<ExameImagemAnaliticoDto>(exames.Count);
-        foreach (var e in exames.OrderBy(x => x.DataRef))
+        // Visão LAUDO (uma por laudo finalizado, todas as versões) — para "Laudos".
+        if (conteudo is ConteudoExportacaoImagem.Laudos)
         {
-            pacientes.TryGetValue(e.PacienteId, out var p);
-            DateTime? fin = laudoPorEstudo.TryGetValue(e.StudyInstanceUID, out var laudo) ? laudo.FinalizadoEm : null;
+            var examePorEstudo = exames
+                .GroupBy(e => e.StudyInstanceUID, StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
 
-            double? t1 = e.AutorizadoEm is { } a1 && e.RealizadoEm is { } r1 && r1 >= a1
-                ? Math.Round((r1 - a1).TotalHours, 1) : null;
-            double? t2 = e.RealizadoEm is { } r2 && fin is { } f2 && f2 >= r2
-                ? Math.Round((f2 - r2).TotalHours, 1) : null;
-            double? t3 = e.AutorizadoEm is { } a3 && fin is { } f3 && f3 >= a3
-                ? Math.Round((f3 - a3).TotalHours, 1) : null;
-
-            linhas.Add(new ExameImagemAnaliticoDto(
-                e.CodigoSolicitacao, e.AccessionNumber, e.StudyInstanceUID,
-                p?.Nome, p?.Cpf, p?.Cns, p?.DataNascimento,
-                RotuloModalidade(e.Modalidade), e.TipoExameNome,
-                e.UnidadeExecutante, e.UnidadeSolicitante, RotuloStatusExame(e.Status),
-                e.DataSolicitacao, e.AutorizadoEm, e.DataEstudo, e.RealizadoEm,
-                fin, laudo?.MedicoNome, laudo?.MedicoCrm, t1, t2, t3));
+            foreach (var l in laudos.OrderBy(x => x.FinalizadoEm))
+            {
+                examePorEstudo.TryGetValue(l.StudyInstanceUID, out var e);
+                linhasLaudo.Add(new LaudoAnaliticoDto(
+                    e?.CodigoSolicitacao, e?.AccessionNumber ?? "", l.StudyInstanceUID, l.Versao,
+                    RotuloModalidade(e?.Modalidade), e?.TipoExameNome, e?.UnidadeExecutante,
+                    e?.DataEstudo, e?.RealizadoEm, l.FinalizadoEm, l.MedicoNome, l.MedicoCrm,
+                    Horas(e?.RealizadoEm, l.FinalizadoEm)));
+            }
         }
 
-        // Trilha de auditoria: quem exportou PII, de qual recorte e quantas linhas.
+        // Trilha de auditoria: quem exportou, o quê e quantas linhas.
         logger.LogInformation(
-            "Auditoria: exportação analítica de exames de imagem por usuário {UsuarioId} — período {De}..{Ate}, unidade {Unidade}, {Linhas} linhas.",
-            usuarioAtual.UsuarioId, de, ate, unidadeId, linhas.Count);
+            "Auditoria: exportação analítica de imagem ({Conteudo}) por usuário {UsuarioId} — período {De}..{Ate}, unidade {Unidade}, {Exames} exame(s)/{Laudos} laudo(s).",
+            conteudo, usuarioAtual.UsuarioId, de, ate, unidadeId, linhasExame.Count, linhasLaudo.Count);
 
-        return linhas;
+        return new ExportacaoImagemDto(linhasExame, linhasLaudo);
+    }
+
+    /// <summary>Duração em horas entre dois instantes UTC (null se algum falta ou for regressivo).</summary>
+    private static double? Horas(DateTime? inicio, DateTime? fim) =>
+        inicio is { } i && fim is { } f && f >= i ? Math.Round((f - i).TotalHours, 1) : null;
+
+    private static Dictionary<string, LaudoRaw> UltimoLaudoPorEstudo(List<LaudoRaw> laudos)
+    {
+        var dict = new Dictionary<string, LaudoRaw>(StringComparer.Ordinal);
+        foreach (var g in laudos.GroupBy(l => l.StudyInstanceUID, StringComparer.Ordinal))
+            dict[g.Key] = g.OrderByDescending(l => l.Versao).First();
+        return dict;
     }
 
     /// <summary>Projeção enxuta de um exame de imagem para os agregados/exportação.</summary>
@@ -265,9 +284,11 @@ public sealed class EstatisticasService(
         public DateTime DataRef => RealizadoEm ?? DataAgendada ?? CriadoEm;
     }
 
-    private sealed record LaudoInfo(DateTime? FinalizadoEm, Guid MedicoId, string? MedicoNome, string? MedicoCrm);
+    private sealed record LaudoRaw(
+        string StudyInstanceUID, int Versao, DateTime? FinalizadoEm,
+        Guid MedicoId, string? MedicoNome, string? MedicoCrm);
 
-    private async Task<(List<ExameLinha> Exames, Dictionary<string, LaudoInfo> LaudoPorEstudo, long LaudosFinalizados)>
+    private async Task<(List<ExameLinha> Exames, List<LaudoRaw> Laudos)>
         CarregarExamesAsync(DateOnly de, DateOnly ate, Guid? unidadeId, CancellationToken ct)
     {
         var deUtc = new DateTime(de.Year, de.Month, de.Day, 0, 0, 0, DateTimeKind.Utc);
@@ -275,7 +296,7 @@ public sealed class EstatisticasService(
 
         var escopo = await EscopoUnidade.ResolverAsync(db, usuarioAtual, ct);
         if (escopo.SemAcesso)
-            return ([], new Dictionary<string, LaudoInfo>(StringComparer.Ordinal), 0);
+            return ([], []);
 
         var q = db.ExamesImagem.AsNoTracking()
             .Where(e => e.ExcluidoEm == null
@@ -310,29 +331,16 @@ public sealed class EstatisticasService(
         var uids = exames.Select(e => e.StudyInstanceUID)
             .Where(u => !string.IsNullOrEmpty(u)).Distinct().ToArray();
 
-        var laudoPorEstudo = new Dictionary<string, LaudoInfo>(StringComparer.Ordinal);
-        long laudosFinalizados = 0;
-        if (uids.Length > 0)
-        {
-            var laudos = await db.Laudos.AsNoTracking()
+        var laudos = uids.Length == 0
+            ? []
+            : await db.Laudos.AsNoTracking()
                 .Where(l => !l.Excluido && l.Status == StatusLaudo.Finalizado && uids.Contains(l.StudyInstanceUID))
-                .Select(l => new
-                {
-                    l.StudyInstanceUID, l.Versao, l.FinalizadoEm, l.MedicoId,
-                    l.MedicoNomeSnapshot, l.MedicoCrmSnapshot,
-                })
+                .Select(l => new LaudoRaw(
+                    l.StudyInstanceUID, l.Versao, l.FinalizadoEm,
+                    l.MedicoId, l.MedicoNomeSnapshot, l.MedicoCrmSnapshot))
                 .ToListAsync(ct);
 
-            laudosFinalizados = laudos.Count;
-            foreach (var g in laudos.GroupBy(l => l.StudyInstanceUID, StringComparer.Ordinal))
-            {
-                var ultimo = g.OrderByDescending(l => l.Versao).First();
-                laudoPorEstudo[g.Key] = new LaudoInfo(
-                    ultimo.FinalizadoEm, ultimo.MedicoId, ultimo.MedicoNomeSnapshot, ultimo.MedicoCrmSnapshot);
-            }
-        }
-
-        return (exames, laudoPorEstudo, laudosFinalizados);
+        return (exames, laudos);
     }
 
     private static double? Media(List<double> valores) =>
