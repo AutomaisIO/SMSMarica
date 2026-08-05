@@ -45,18 +45,38 @@ internal static class UpsertCanonicoPep
         var existentes = await ctx.Escritor.BuscarPorIdentifierAsync(tipo, system, valor, ct);
         var atual = existentes.Entry.Select(e => e.Resource).FirstOrDefault(r => r is not null);
 
-        // PONTE local→CPF: paciente importado SEM CPF ganhou CPF na origem. A busca pela chave
-        // nacional não acha nada — mas o recurso EXISTE, ancorado pela chave local da base.
-        // Sem esta segunda busca nasceria uma duplicata permanente, com o histórico clínico
-        // pendurado no recurso antigo; com ela, o mesmo recurso ganha o CPF e a tag de
-        // identidade incompleta sai naturalmente (o conteúdo novo substitui o antigo).
-        if (atual is null && system == SysCpf && novo is Patient pNovo)
+        // PONTE local→CPF: paciente importado SEM CPF ganhou CPF na origem. Duas situações,
+        // e a segunda me escapou na primeira versão:
+        //
+        //   (a) a busca por CPF não acha nada → o recurso EXISTE sob a chave local desta base.
+        //       Reaproveita: ganha o CPF, e a tag de identidade incompleta sai naturalmente.
+        //
+        //   (b) a busca por CPF ACHA — mas num recurso de OUTRA base (a mesma pessoa já estava
+        //       no hub pelo Salux). O registro que esta base criou sob a chave local continua
+        //       lá, órfão, com parte do histórico. Medido em 05/08: 2 pacientes da UPA com o
+        //       prontuário partido assim. Aqui isso vira FALHA REGISTRADA — a fusão de dois
+        //       recursos com clínica pendurada é cirurgia (repontar referências, apagar o
+        //       perdedor) e não pode ser improvisada no caminho quente do upsert. O que não
+        //       pode é seguir invisível.
+        if (system == SysCpf && novo is Patient pNovo
+            && pNovo.Identifier?.FirstOrDefault(i => i.System == systemCdInterno)?.Value is { Length: > 0 } chaveLocal)
         {
-            var chaveLocal = pNovo.Identifier?.FirstOrDefault(i => i.System == systemCdInterno)?.Value;
-            if (!string.IsNullOrWhiteSpace(chaveLocal))
+            var porLocal = await ctx.Escritor.BuscarPorIdentifierAsync(tipo, systemCdInterno, chaveLocal, ct);
+            var local = porLocal.Entry.Select(e => e.Resource).FirstOrDefault(r => r is not null);
+
+            if (atual is null)
             {
-                var porLocal = await ctx.Escritor.BuscarPorIdentifierAsync(tipo, systemCdInterno, chaveLocal, ct);
-                atual = porLocal.Entry.Select(e => e.Resource).FirstOrDefault(r => r is not null);
+                atual = local;                                   // (a)
+            }
+            else if (local is not null && local.Id != atual.Id)  // (b)
+            {
+                var aviso =
+                    $"paciente {chaveLocal}: prontuário partido — o CPF resolve em Patient/{atual.Id} "
+                    + $"mas a chave local desta base aponta Patient/{local.Id}. "
+                    + "Precisa de mesclagem (repontar clínica e remover o duplicado).";
+                // Nos DOIS canais: o painel mostra que houve, a trilha durável diz quais.
+                ctx.Progresso.RegistrarFalha(0, aviso);
+                ctx.Falhas?.Registrar(0, aviso);
             }
         }
 

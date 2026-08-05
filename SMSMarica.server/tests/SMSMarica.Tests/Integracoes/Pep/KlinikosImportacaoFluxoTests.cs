@@ -872,6 +872,46 @@ public class KlinikosImportacaoFluxoTests
         Assert.Contains("zeros à esquerda", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Prontuário partido, medido em produção em 05/08: o paciente entra SEM CPF (registro pela
+    /// chave local), a recepção preenche o CPF depois, e o ciclo seguinte resolve por CPF num
+    /// registro que JÁ existia por OUTRA base — deixando o primeiro órfão, com parte do
+    /// histórico. A ponte só cobria o caso em que a busca por CPF não achava nada.
+    ///
+    /// <para>Fundir dois recursos com clínica pendurada é cirurgia (repontar referências,
+    /// remover o perdedor) e não se improvisa no caminho quente do upsert — mas TEM de ficar
+    /// visível. Vira falha registrada.</para>
+    /// </summary>
+    [Fact]
+    public async Task Prontuario_partido_entre_bases_vira_falha_registrada()
+    {
+        var hub = new HubFake();
+        // (1) a UPA já tinha criado o paciente SEM CPF, pela chave local
+        await hub.CriarAsync(new Patient
+        {
+            Name = [new HumanName { Use = HumanName.NameUse.Official, Text = "ANA COM CPF" }],
+            BirthDate = "1980-05-10",
+            Identifier = [new Identifier("urn:klinikos:paciente", $"{Slug}:P1")],
+        });
+        // (2) e a MESMA pessoa já estava no hub pelo Salux, com o CPF
+        await hub.CriarAsync(new Patient
+        {
+            Name = [new HumanName { Use = HumanName.NameUse.Official, Text = "ANA COM CPF" }],
+            BirthDate = "1980-05-10",
+            Identifier =
+            [
+                new Identifier(SysCpf, "52998224725"),
+                new Identifier("urn:salux:cd_paciente", "salux-hcml:777"),
+            ],
+        });
+
+        // (3) agora a origem tem o CPF: resolve no registro do Salux e o local fica órfão
+        var (_, p, _) = await RodarAsync(OrigemPadrao(), hub);
+
+        Assert.Contains(p.Falhas, f => f.Mensagem.Contains("prontuário partido", StringComparison.OrdinalIgnoreCase)
+                                    && f.Mensagem.Contains($"{Slug}:P1", StringComparison.Ordinal));
+    }
+
     /// <summary>O total de falhas conta além do teto do detalhe — o detalhe é amostra, o número é exato.</summary>
     [Fact]
     public void Detalhe_de_falhas_e_amostra_mas_o_total_e_exato()
