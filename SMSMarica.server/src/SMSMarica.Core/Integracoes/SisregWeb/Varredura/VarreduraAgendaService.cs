@@ -394,18 +394,15 @@ public sealed class VarreduraAgendaService(
             progresso.CpfAtual = combinacao.Cpf;
             progresso.CodigoAtual = combinacao.Codigo;
 
-            // Medido em 03/08/2026: a exportação de um código "GRUPO - X" devolve ZERO, mesmo em
-            // período que o item individual devolve centenas. Diferente do cons_agendas, o grupo
-            // não agrega aqui. Varrer por ele seria gastar requisição para não receber nada.
-            if (combinacao.Codigo.EndsWith("000", StringComparison.Ordinal))
-            {
-                logger.LogInformation(
-                    "SISREG_VARREDURA_GRUPO_IGNORADO: {Proc} ({Codigo}) — a exportação não devolve "
-                    + "nada para código de grupo; habilite os procedimentos individuais.",
-                    combinacao.NomeProcedimento, combinacao.Codigo);
-                Interlocked.Increment(ref progresso.CombinacoesFeitas);
-                continue;
-            }
+            // Código de GRUPO é varrido normalmente. Houve uma versão que os pulava, por eu ter
+            // generalizado de um único caso (GRUPO - MAMOGRAFIA devolveu 0 — mas naquele período a
+            // agenda estava vazia de qualquer jeito). Medido em 05/08/2026:
+            // GRUPO - ULTRASONOGRAFIA devolve 120 registros, cada linha com o SEU procedimento e o
+            // SEU SIGTAP nas colunas 1 e 2. E há profissional cujo SISREG só lista códigos de
+            // grupo — para ele, pular o grupo é descartar a agenda inteira.
+            //
+            // A preocupação de "o grupo carimbaria tudo com o procedimento do grupo" era da
+            // RASPAGEM, onde o procedimento vinha da consulta. Na exportação vem da linha.
 
             var marcacoes = await ExportarComTetoAsync(
                 unidade.Id, cnes, execucao.JanelaInicio, execucao.JanelaFim, combinacao, progresso, ct);

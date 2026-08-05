@@ -53,11 +53,14 @@ li{margin:3px 0}p,li{max-width:75ch}
 <ol>
 <li>É truncamento <strong>silencioso</strong> (o cabeçalho diz 700, as linhas são 700), então ao bater no</li>
 </ol>
-<p>  teto a janela é partida ao meio e reconsultada.</p>
-<ul>
-<li><strong>Código de grupo não devolve nada.</strong> <code>GRUPO - MAMOGRAFIA</code> retorna 0 mesmo no período em que o</li>
-</ul>
-<p>  item individual retorna 419 — diferente do <code>cons_agendas</code>, aqui o grupo não agrega. A varredura   pula códigos terminados em <code>000</code> e loga, em vez de gastar requisição à toa.</p>
+<p>  teto a janela é partida ao meio e reconsultada. Sobre <strong>códigos de grupo</strong> houve um erro que vale registrar, porque a forma dele se repete. Uma versão pulava códigos terminados em <code>000</code>, a partir de um único caso: <code>GRUPO - MAMOGRAFIA</code> devolveu</p>
+<ol>
+<li>Só que naquele período a agenda estava vazia de qualquer jeito — o item individual também</li>
+</ol>
+<p>devolvia 0 para agosto. Generalização de uma amostra em que a variável observada nem era a causa.</p>
+<p>Medido em 05/08/2026: <strong><code>GRUPO - ULTRASONOGRAFIA</code> devolve 120 registros</strong>, cada linha com o seu próprio procedimento e SIGTAP (4 procedimentos distintos no mesmo arquivo). E existe profissional cujo SISREG <strong>só lista códigos de grupo</strong> — para ele, pular o grupo descarta a agenda inteira. Era exatamente o caso da unidade em produção, e o motor entregava 0 sem que a tela dissesse por quê.</p>
+<p>O grupo é, na prática, mais barato: 1 requisição traz o que 4 trariam separadamente. Habilitar grupo <strong>e</strong> itens continua sendo desperdício — o dedup por nº de solicitação joga fora a repetição.</p>
+<p>A preocupação original de que "o grupo carimbaria todos os agendamentos com o procedimento do grupo" era da <strong>raspagem</strong>, onde o procedimento vinha da consulta. Na exportação vem da linha. A preocupação foi transportada para a fonte nova sem ser reverificada.</p>
 <h3>2. O SIGTAP vem no arquivo; o código do SISREG é só filtro</h3>
 <p>O arquivo traz, lado a lado, o código do SISREG (coluna 1) e o <strong>SIGTAP</strong> (coluna 2) — dito pelo próprio SISREG, não inferido. Isso dissolve o problema que dominou o desenho anterior.</p>
 <p>Duas versões descartadas, registradas porque o raciocínio se repete:</p>

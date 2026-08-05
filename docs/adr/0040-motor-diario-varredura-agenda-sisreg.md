@@ -50,9 +50,22 @@ Duas restrições medidas, ambas tratadas em código:
 - **Teto de 700 registros por exportação.** Intervalos de 61 e de 212 dias devolveram exatamente
   700. É truncamento **silencioso** (o cabeçalho diz 700, as linhas são 700), então ao bater no
   teto a janela é partida ao meio e reconsultada.
-- **Código de grupo não devolve nada.** `GRUPO - MAMOGRAFIA` retorna 0 mesmo no período em que o
-  item individual retorna 419 — diferente do `cons_agendas`, aqui o grupo não agrega. A varredura
-  pula códigos terminados em `000` e loga, em vez de gastar requisição à toa.
+Sobre **códigos de grupo** houve um erro que vale registrar, porque a forma dele se repete. Uma
+versão pulava códigos terminados em `000`, a partir de um único caso: `GRUPO - MAMOGRAFIA` devolveu
+0. Só que naquele período a agenda estava vazia de qualquer jeito — o item individual também
+devolvia 0 para agosto. Generalização de uma amostra em que a variável observada nem era a causa.
+
+Medido em 05/08/2026: **`GRUPO - ULTRASONOGRAFIA` devolve 120 registros**, cada linha com o seu
+próprio procedimento e SIGTAP (4 procedimentos distintos no mesmo arquivo). E existe profissional
+cujo SISREG **só lista códigos de grupo** — para ele, pular o grupo descarta a agenda inteira. Era
+exatamente o caso da unidade em produção, e o motor entregava 0 sem que a tela dissesse por quê.
+
+O grupo é, na prática, mais barato: 1 requisição traz o que 4 trariam separadamente. Habilitar
+grupo **e** itens continua sendo desperdício — o dedup por nº de solicitação joga fora a repetição.
+
+A preocupação original de que "o grupo carimbaria todos os agendamentos com o procedimento do
+grupo" era da **raspagem**, onde o procedimento vinha da consulta. Na exportação vem da linha. A
+preocupação foi transportada para a fonte nova sem ser reverificada.
 
 ### 2. O SIGTAP vem no arquivo; o código do SISREG é só filtro
 

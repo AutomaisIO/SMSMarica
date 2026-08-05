@@ -280,9 +280,21 @@ precisa adivinhar por nome.
 700. Truncamento **silencioso**: o cabeçalho diz 700 e as linhas são 700, nada indica que faltou.
 Quem consumir tem que partir a janela ao bater no teto.
 
-⚠️ **Código de GRUPO devolve 0.** `1305000 GRUPO - MAMOGRAFIA` retorna vazio no mesmo período em
-que `1305007` retorna 419. Diferente do `cons_agendas`, aqui o grupo **não** agrega os itens — use
-os procedimentos individuais.
+✅ **Código de GRUPO agrega, e é mais barato** (corrigido em 05/08/2026).
+`1402000 GRUPO - ULTRASONOGRAFIA` devolve **120 registros** em 1 requisição, com 4 procedimentos
+distintos dentro — e **cada linha traz o SEU `pa` e o SEU SIGTAP** nas colunas 1 e 2, não os do
+grupo. Habilitar o grupo custa 1 requisição onde os itens custariam 4.
+
+Há profissional cujo AJAX de procedimentos **só lista códigos de grupo** (ex.: CPF 085…766 no CDT,
+com `1402000` e `2500000` e nada mais). Para ele o grupo é o **único** caminho até a agenda.
+
+> ⚠️ Registro do erro, porque a forma se repete: por um tempo esta seção afirmava "grupo devolve 0",
+> generalizado de um único teste com `1305000 GRUPO - MAMOGRAFIA`. Aquele grupo devolveu 0 porque a
+> agenda de mamografia estava vazia no período — o item individual também devolvia 0 para agosto.
+> A amostra era de 1, e a variável observada não era a causa.
+
+⚠️ **Grupo + itens ao mesmo tempo desperdiça requisição** — o mesmo agendamento vem duas vezes e o
+consumidor deduplica por nº de solicitação. Habilite um dos dois.
 
 ⚠️ **Bloqueado das 08h às 15h.** Confirmado que fora desse horário abre normalmente.
 
