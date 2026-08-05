@@ -5,7 +5,21 @@ docs/Integração SISREG/
 # Credenciais Google (OAuth client secret + API keys da Directions API).
 # Segredos — nunca versionar; manter só localmente / em secret manager.
 docs/client_secret_*.json
-docs/credenciais_*.txt
+
+# --- Credenciais em QUALQUER subprojeto (2026-08-05) ---
+# Os padrões acima eram presos a `docs/`, e por isso três arquivos de segredo passaram
+# despercebidos fora dela: Automais.Assinador/credenciais_vidaas.txt, Automais.SER/.env e
+# Automais.SER/credenciais_ser.txt. Nenhum chegou a ser rastreado, mas estavam todos a um
+# `git add -A` de ir para o GitHub. Sem barra no padrão, casa em qualquer profundidade —
+# a proteção deixa de depender de alguém lembrar de listar o caminho novo.
+credenciais_*.txt
+client_secret_*.json
+.env
+
+# `.env.example` é template SEM segredo e continua versionado (front e Salux dependem dele
+# para documentar as variáveis esperadas).
+!.env.example
+!**/.env.example
 
 # --- Protegido em 2026-06-24: nunca versionar (perigoso / sem valor em git) ---
 # Dump de 3,7GB do console FujiFilm: contém ftp.dat/encrypttype/private.dat (credenciais)
