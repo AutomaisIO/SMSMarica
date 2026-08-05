@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0042 — SER como segunda fonte de regulação: espelho antes de promoção</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0042 — SER como segunda fonte de regulação: espelho antes de promoção</h1>
+<ul>
+<li><strong>Status:</strong> aceito</li>
+<li><strong>Data:</strong> 2026-08-05</li>
+<li><strong>Contexto:</strong> ADR-0021 (ecossistema de solicitação), ADR-0040 (motor diário de</li>
+</ul>
+<p>  varredura), ADR-0001 / ADR-0007 (schemas)</p>
+<h2>Contexto</h2>
+<p>O <strong>SER — Sistema Estadual de Regulação</strong> (SES-RJ, <code>ser.saude.rj.gov.br</code>) é a segunda fonte de regulação a entrar no ecossistema, depois do SISREG. É por ele que Maricá pede ao Estado consultas e exames que o município não executa: hoje há <strong>1.484 solicitações "Em fila"</strong> (medição de 05/08/2026), a mais antiga de 2016.</p>
+<p>O SER não tem API. O acesso é por <em>web scraping</em> de uma aplicação <strong>JSF 1.2 + RichFaces 3.3.3 sobre JBoss Seam</strong> — protocolo mapeado no laboratório <code>Automais.SER/</code> e documentado em <a href="../ser.md"><code>docs/ser.md</code></a>.</p>
+<p>Três características do SER moldam tudo o que vem abaixo:</p>
+<ol>
+<li><strong>Não existe filtro "alterado desde".</strong> As três telas do módulo filtram por data</li>
+</ol>
+<p>   de evento de negócio (solicitação, consulta/exame, agendamento, competência,    alta) — nenhuma por data de auditoria. <strong>O delta só existe por comparação de    snapshots.</strong></p>
+<ol>
+<li><strong>A tela corta em 100 registros</strong> (5 páginas de 20). Não é limite do scraper.</li>
+<li><strong><code>Situação</code> é obrigatória na busca</strong> — pesquisar sem ela devolve zero. Logo, uma</li>
+</ol>
+<p>   varredura completa é sempre <em>N</em> passadas, uma por situação.</p>
+<h2>Decisão</h2>
+<h3>1. Schema <code>smsmarica</code>, tabelas <code>ser_*</code> — sem schema novo</h3>
+<p>O SER <strong>não</strong> ganha schema próprio. O ADR-0001/0007 fixa dois schemas, e o critério que justifica o <code>fhir</code> é ser um <strong>modelo canônico diferente</strong>, não "é outro sistema". O SISREG — mesma classe de coisa — já vive em <code>smsmarica</code> (<code>sisreg_configuracao</code>, <code>sisreg_varredura_agenda</code>, …). Schema por sistema externo não escala: seriam <code>sisreg</code>, <code>ser</code>, <code>salux</code>, <code>klinikos</code>.</p>
+<h3>2. Espelho fiel primeiro; promoção a <code>solicitacao</code> só quando for acionável</h3>
+<p>As solicitações do SER <strong>não</strong> entram direto em <code>smsmarica.solicitacao</code>. Motivos concretos, não estéticos:</p>
+<ul>
+<li><code>Solicitacao.UnidadeExecutanteId</code> é <code>Guid</code> <strong>não-nulo</strong>. Solicitação do SER não tem</li>
+</ul>
+<p>  unidade executante em Maricá — quem executa é o Estado. Seria preciso inventar uma   unidade fantasma.</p>
+<ul>
+<li>O SER não fornece código SIGTAP; fornece <strong>"Recurso" em texto</strong></li>
+</ul>
+<p>  ("CONSULTA EM OFTALMOLOGIA - PLASTICA OCULAR"). <code>ProcedimentoSigtapCodigo</code> ficaria   sempre nulo e <code>Categoria</code> não teria de onde ser derivada.</p>
+<ul>
+<li>O vocabulário de situação é outro (Em fila / Pendente / Chegada Confirmada / Alta)</li>
+</ul>
+<p>  e não mapeia 1-para-1 em <code>StatusSolicitacao</code>.</p>
+<ul>
+<li><strong>Contaminação:</strong> ~5.000 linhas alheias entrariam em toda query e tela que lê</li>
+</ul>
+<p>  <code>solicitacao</code> — worklist, recepção, gate do PACS, indicadores. Cada uma precisaria   de um filtro novo.</p>
+<p>Promover é sempre possível; despoluir depois, não. A promoção acontece quando a solicitação vira acionável para o município (agendada → avisar o cidadão, TFD).</p>
+<h3>3. Chave externa qualificada pela fonte</h3>
+<p>Quando a promoção for implementada, a ligação <strong>não</strong> reutiliza <code>Solicitacao.CodigoSolicitacao</code>. O índice único hoje é global:</p>
+<p>``<code> codigo_solicitacao IS NOT NULL AND codigo_solicitacao &lt;&gt; '0000' AND excluido_em IS NULL </code>``</p>
+<p>Os IDs do SER são numéricos de 7 dígitos (<code>3968616</code>, <code>1555533</code>); os códigos SISREG são maiores ou iguais a 9999. <strong>Colisão é possível.</strong> A ligação correta é uma tabela <code>solicitacao_origem_externa (solicitacao_id, fonte_id, codigo_externo, raw)</code>, única por <code>(fonte_id, codigo_externo)</code> — que de quebra aposenta <code>Solicitacao.RawSisreg</code>, nome herdado do primeiro conector. É a mesma lição já registrada em <code>PepSincronizacaoEstado</code>, cujos nomes de fase foram neutralizados quando a segunda base de PEP chegou.</p>
+<p><em>(Esta tabela não entra na primeira entrega — fica registrada como a forma correta quando a promoção for implementada.)</em></p>
+<h3>4. Uma tabela para todas as situações</h3>
+<p><code>ser_solicitacao</code> guarda <strong>todas</strong> as situações; o que varia é a coluna <code>situacao</code>. Não há tabela por status. A varredura roda uma passada por situação apenas porque o SER exige o filtro — o destino é o mesmo.</p>
+<h3>5. Bisecção adaptativa por Data da Solicitação</h3>
+<p><code>Data da Solicitação</code> é imutável (data de criação), logo serve de eixo estável de fatiamento. O motor pesquisa uma faixa; se o datascroller mostrar 5 páginas (o teto), parte a faixa ao meio e refaz. Faixa de 1 dia que ainda estoure é fatiada por <code>Tipo</code> (CONSULTA/EXAME). O que ainda assim não couber é <strong>registrado como truncado</strong> — nunca truncamos em silêncio.</p>
+<h3>6. Histórico: quando reler</h3>
+<div class="tw"><table><thead><tr><th>Gatilho</th><th>Ação</th></tr></thead><tbody>
+<tr><td>Solicitação nova</td><td>lê o histórico inteiro</td></tr>
+<tr><td>Mudou de situação</td><td>relê o histórico e faz diff dos eventos</td></tr>
+<tr><td>Está em <code>EM_FILA</code></td><td><strong>relê o histórico todo dia</strong>, mesmo sem mudar de situação</td></tr>
+</tbody></table></div>
+<p>A terceira linha é a que custa caro e é a que não dá para evitar: <strong>FollowUP não muda a situação</strong> (<code>Em fila -&gt; Em fila</code>). Sem reler, tentativa de contato com paciente é invisível.</p>
+<p><strong>Por que reler só <code>EM_FILA</code> é suficiente.</strong> O menu <em>Opções</em> oferece "Registrar FollowUP" também em solicitações canceladas, o que sugeriria um furo. Não é, por duas razões operacionais:</p>
+<ol>
+<li><strong>O FollowUP precede o cancelamento.</strong> As tentativas de contato acontecem enquanto</li>
+</ol>
+<p>   a solicitação está em fila; o cancelamento é a consequência delas. Logo o evento é    capturado na releitura diária do <code>EM_FILA</code>, antes de a situação mudar.</p>
+<ol>
+<li><strong>Cancelada volta para <code>EM_FILA</code>.</strong> O descancelamento é comum (visto em produção:</li>
+</ol>
+<p>   <code>15/05/2024 Cancelar</code> → <code>13/06/2024 Solicitar</code>, descancelamento por deliberação da    CIB). Voltar é mudança de situação, o diff pega, e a regra da segunda linha manda    <strong>reler o histórico inteiro</strong> — como <code>ser_evento</code> é único por    <code>(solicitação, data, evento)</code>, tudo que tenha sido registrado durante a janela    cancelada entra nesse momento.</p>
+<p>Ou seja: a releitura por mudança de situação é a <strong>rede de segurança</strong> da releitura diária. Nada se perde; no pior caso, um FollowUP registrado durante o período cancelado só é conhecido quando a solicitação retorna à fila.</p>
+<h3>6.1 Máquina de estados: <code>EmFila</code> é o centro; <code>Alta</code> é terminal</h3>
+<p><strong>Qualquer situação pode voltar para <code>EmFila</code> — exceto <code>Alta</code>.</strong> Cancelada volta por descancelamento, pendente volta por resolução de pendência, agendada volta se a marcação cair. <code>Alta</code> é o único estado absorvente.</p>
+<p>Duas consequências de projeto:</p>
+<ol>
+<li><strong>Toda solicitação vista em <code>EmFila</code> precisa ser comparada com a situação anterior</strong></li>
+</ol>
+<p>   antes de decidir o que fazer: se mudou, é transição (gatilho + releitura de    histórico com diff); se já era, é releitura diária (caça ao FollowUP). É o mesmo    ramo condicional, e é por isso que <code>ser_solicitacao</code> guarda    <code>situacao_anterior</code> + <code>situacao_mudou_em</code>.</p>
+<ol>
+<li><strong><code>Alta</code> fecha a porta do histórico para sempre.</strong> Solicitação em Alta não oferece</li>
+</ol>
+<p>   "Histórico da Solicitação" no menu <em>Opções</em>, e como o estado é absorvente ela nunca    mais voltará a um estado que ofereça. <strong>A nossa cópia em <code>ser_evento</code> passa a ser o    único registro daquela trilha.</strong> Isso transforma a releitura diária do <code>EmFila</code> de    otimização em <em>captura enquanto é possível</em>.</p>
+<p>   <em>Pendência de investigação:</em> a tela <strong>Consulta → Histórico de Consulta/Exame</strong>    (<code>historico-pesquisar.seam</code>) tem coluna "Ação/Histórico" própria e pode oferecer a    trilha de solicitações em Alta. Não foi testada. Se oferecer, o ponto 2 deixa de ser    irreversível.</p>
+<p>Custo medido (05/08/2026): <strong>0,617 s por solicitação</strong> (2 requisições — pesquisar por <code>ID Solicitação</code> reusando o form + abrir o histórico). 1.484 em fila é cerca de 15 min; 5.000 é cerca de 50 min.</p>
+<p><strong>Solicitações em <code>Alta</code> não têm histórico</strong> — o menu <em>Opções</em> não oferece o item. O motor registra <code>HistoricoIndisponivel</code> em vez de fingir que leu.</p>
+<h3>7. Gatilhos: estrutura agora, consumo depois</h3>
+<p><code>ser_gatilho</code> nasce nesta entrega <strong>sem consumidor</strong>. Registra <code>MudancaSituacao</code> e <code>NovoFollowUp</code> com o payload do que mudou. A decisão de existir desde já é deliberada: o dado que dispara o gatilho é justamente o que se perde se não for capturado no momento da varredura.</p>
+<h3>8. Somente leitura, com trava estrutural</h3>
+<p>O motor <strong>não escreve no SER</strong>. A trava tem duas camadas, porque uma só não cobre JSF: bloqueio por <strong>nome de parâmetro</strong> e por <strong>rótulo visível do componente</strong>. O menu <em>Opções</em> de cada linha tem <code>Editar</code>, <code>Cancelar</code> e <strong><code>Registrar FollowUP</code></strong> — este último tem id opaco (<code>j_id169</code>) e o verbo só existe no texto do elemento.</p>
+<h2>Consequências</h2>
+<p><strong>Positivas</strong></p>
+<ul>
+<li>Re-varrer é idempotente: o espelho é fiel e chaveado por <code>id_ser</code>.</li>
+<li>Zero risco aos fluxos existentes — nenhuma linha do SER aparece em <code>solicitacao</code>.</li>
+<li>A trilha de eventos (<code>ser_evento</code>) responde "quando foi cancelado/agendado/</li>
+</ul>
+<p>  pendência/alta/contato" com usuário, IP e observação — dado que o SISREG não dá.</p>
+<ul>
+<li>Os dados cadastrais que vêm no histórico (nome da mãe, nascimento, endereço, três</li>
+</ul>
+<p>  telefones incluindo WhatsApp) alimentam o hub FHIR e a dedup por CPF/CNS.</p>
+<p><strong>Negativas / custos aceitos</strong></p>
+<ul>
+<li>Duplicação conceitual: uma solicitação regulada pelo Estado existe em <code>ser_*</code> e</li>
+</ul>
+<p>  (quando promovida) em <code>solicitacao</code>. Aceito em troca de não contaminar a execução.</p>
+<ul>
+<li>A varredura completa é O(N/20) requisições — não há incremental possível.</li>
+<li>Depende de HTML: recompilação da página pela SES-RJ quebra os parsers. Mitigado</li>
+</ul>
+<p>  procurando componentes por <strong>rótulo</strong> (<code>title="Pesquisar"</code>, texto   <code>Historico da Solicitação</code>) em vez de <code>j_id</code> fixo.</p>
+<h2>Alternativas descartadas</h2>
+<ul>
+<li><strong>Schema <code>ser</code> próprio</strong> — contraria ADR-0001/0007 e não escala por sistema externo.</li>
+<li><strong>Gravar direto em <code>smsmarica.solicitacao</code></strong> — quebra em <code>UnidadeExecutanteId</code></li>
+</ul>
+<p>  não-nulo, força unidade fantasma e contamina worklist/recepção/PACS.</p>
+<ul>
+<li><strong>Incremental por data</strong> — não existe filtro de atualização em nenhuma tela do SER.</li>
+<li><strong>Reusar <code>CodigoSolicitacao</code></strong> — índice único global; IDs do SER colidem com SISREG.</li>
+</ul>
+</main>
+</body>
+</html>

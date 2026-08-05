@@ -31,6 +31,7 @@ export type ModuloPermissao =
   | 'Sisreg'
   | 'SisregConfiguracao'
   | 'SisregMapeamento'
+  | 'RegulacaoSer'
   | 'SincronizacaoPep'
   | 'ApiTokens'
   | 'Cidadao'

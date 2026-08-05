@@ -5,6 +5,7 @@ using SMSMarica.Data.Entities.Conversas;
 using SMSMarica.Data.Entities.Ia;
 using SMSMarica.Data.Entities.Integracoes;
 using SMSMarica.Data.Entities.Pep;
+using SMSMarica.Data.Entities.Ser;
 using SMSMarica.Data.Entities.Sisreg;
 using SMSMarica.Data.Entities.Geo;
 using SMSMarica.Data.Entities.Notificacoes;
@@ -112,6 +113,15 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     // Motor diário que varre a agenda do SISREG por unidade: agenda (quando roda) e rastreio (o que rodou)
     public DbSet<SisregVarreduraAgenda> SisregVarreduraAgendas => Set<SisregVarreduraAgenda>();
     public DbSet<SisregVarreduraExecucao> SisregVarreduraExecucoes => Set<SisregVarreduraExecucao>();
+
+    // SER (Sistema Estadual de Regulação, SES-RJ) — ESPELHO da fila do Estado, ADR-0042.
+    // Deliberadamente separado de `solicitacao`: solicitação do SER não tem unidade executante
+    // em Maricá nem código SIGTAP, e misturá-las contaminaria worklist/recepção/PACS.
+    public DbSet<SerSolicitacao> SerSolicitacoes => Set<SerSolicitacao>();
+    public DbSet<SerEvento> SerEventos => Set<SerEvento>();
+    public DbSet<SerGatilho> SerGatilhos => Set<SerGatilho>();
+    public DbSet<SerVarreduraExecucao> SerVarreduraExecucoes => Set<SerVarreduraExecucao>();
+    public DbSet<SerVarreduraFalha> SerVarreduraFalhas => Set<SerVarreduraFalha>();
 
     // Indicadores contratuais do HMCML — o motor de cada indicador é o SQL guardado no cadastro
     public DbSet<Indicador> Indicadores => Set<Indicador>();

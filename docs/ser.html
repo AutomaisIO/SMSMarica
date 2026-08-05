@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SER — Sistema Estadual de Regulação (SES-RJ)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>SER — Sistema Estadual de Regulação (SES-RJ)</h1>
+<p>Integração de <strong>leitura</strong> com <code>ser.saude.rj.gov.br</code>. Decisão de arquitetura em <a href="./adr/0042-ser-segunda-fonte-de-regulacao.md">ADR-0042</a>. O protocolo abaixo foi levantado no laboratório <code>Automais.SER/</code> (Python) e portado para <code>SMSMarica.Core/Integracoes/SerWeb/</code> (.NET).</p>
+<p>&gt; <strong>Somente leitura.</strong> O motor nunca escreve no SER. A trava está em &gt; <code>SerWebSessao</code> e é descrita no fim deste documento.</p>
+<h2>1. Stack do SER</h2>
+<div class="tw"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td>Servidor</td><td>WildFly 10 / Undertow</td></tr>
+<tr><td>Camada web</td><td>JSF 1.2 (Mojarra) + RichFaces / Ajax4JSF 3.3.3</td></tr>
+<tr><td>Framework</td><td>JBoss Seam (páginas <code>.seam</code>, conversas com <code>cid</code>)</td></tr>
+<tr><td>Build observada</td><td><code>2026-06-30#26-80.00</code></td></tr>
+</tbody></table></div>
+<h2>2. Sessão: três coisas andam juntas</h2>
+<ol>
+<li><strong><code>JSESSIONID</code></strong> — cookie, path <code>/ser</code>. A sessão de verdade.</li>
+<li><strong><code>SERVERID</code></strong> — cookie do balanceador (<code>server2</code>). Perdê-lo cai em outro nó e a</li>
+</ol>
+<p>   sessão "some".</p>
+<ol>
+<li><strong><code>cid</code></strong> — <em>conversation id</em> do Seam. Contador <strong>por sessão</strong>; o servidor emite</li>
+</ol>
+<p>   um novo a cada conversa (entrar em módulo, abrir tela). Vem diferente toda vez —    <strong>nunca fixar</strong>, sempre ler da página ou do <code>Location</code> corrente.</p>
+<h2>3. Fluxo obrigatório até a fila</h2>
+<p>Pular etapa dá <strong>HTTP 500</strong>.</p>
+<div class="tw"><table><thead><tr><th>#</th><th>Requisição</th><th>Detalhe crítico</th></tr></thead><tbody>
+<tr><td>1</td><td><code>GET /ser/login</code></td><td>form <code>login</code>, ViewState inicial <code>j_id1</code></td></tr>
+<tr><td>2</td><td><code>POST /ser/login</code></td><td><code>login:username</code>, <code>login:password</code>, <code>login:entrar=Entrar</code>, <code>javax.faces.ViewState</code>. O <code>action</code> já vem com <code>;jsessionid=…</code> — usar cru.</td></tr>
+<tr><td>3</td><td><code>GET /ser/home.seam</code></td><td>módulos: <code>ambulatorial</code>, <code>internacao</code>, <code>oncologia</code>, <code>neonatal</code>, <code>ostomizados</code></td></tr>
+<tr><td>4</td><td><code>POST /ser/home</code></td><td><code>{form}:goModulo</code>, <code>param1=&lt;modulo&gt;</code>, <strong><code>AJAXREQUEST={form}</code></strong>, <code>AJAX:EVENTS_COUNT=1</code>, ViewState</td></tr>
+<tr><td>5</td><td><code>GET /ser/pages/principal.seam?cid=N</code></td><td>seguir o <code>Location</code> do passo 4 — é o que ativa o módulo na sessão</td></tr>
+<tr><td>6</td><td><code>GET .../solicitar-consulta-pesquisar.seam</code></td><td>500 se o passo 5 não rodou. Não precisa de <code>cid</code>.</td></tr>
+<tr><td>7</td><td><code>POST</code> no mesmo endereço</td><td>botão <code>form0:j_id96</code> (<code>title="Pesquisar"</code>)</td></tr>
+</tbody></table></div>
+<h3>3.1 A armadilha do <code>AJAXREQUEST</code></h3>
+<p>O Ajax4JSF <strong>só reconhece a requisição como AJAX se o parâmetro <code>AJAXREQUEST</code> estiver presente</strong> (valor = id da região/form). Sem ele o WildFly trata o POST como postback comum, re-renderiza a mesma página e <strong>a ação nem roda</strong> — HTTP 200, sem erro nenhum. É a falha mais difícil de diagnosticar do SER.</p>
+<p>Com ele, a resposta vira:</p>
+<p>``<code> ajax-response: redirect location: /ser/pages/principal.seam?cid=16273 </code>``</p>
+<h3>3.2 A armadilha do ViewState por form</h3>
+<p>A home tem vários <code>&lt;form&gt;</code>, e o <code>javax.faces.ViewState</code> <strong>pode diferir entre eles</strong>. Pegar o primeiro do documento faz o JSF restaurar a view errada — mesmo sintoma silencioso. Sempre extrair o ViewState <strong>de dentro do form que está sendo submetido</strong>.</p>
+<h3>3.3 A armadilha da resposta parcial</h3>
+<p>O submit do datascroller responde <code>ajax-response: true</code> com a grade nova mas <strong>sem <code>&lt;form id="form0"&gt;</code></strong>. Reaproveitar essa resposta como base do próximo submit quebra. O motor guarda dois HTMLs: o último <strong>completo</strong> (fonte dos campos) e o último <strong>recebido</strong> (fonte das linhas).</p>
+<h2>4. Tela de pesquisa (<code>form0</code>)</h2>
+<div class="tw"><table><thead><tr><th>Campo</th><th>Id JSF</th><th>Valores</th></tr></thead><tbody>
+<tr><td>Situação</td><td><code>form0:j_id75</code></td><td><code>EM_FILA</code>, <code>PENDENTE</code>, <code>AGENDADA</code>, <code>CHEGADA_NAO_CONFIRMADA</code>, <code>CHEGADA_CONFIRMADA</code>, <code>CANCELADA</code>, <code>ALTA</code></td></tr>
+<tr><td>Tipo</td><td><code>form0:comboTipoRecurso</code></td><td><code>CONSULTA</code>, <code>EXAME</code></td></tr>
+<tr><td>CPF / Nome / CNS</td><td><code>form0:cpf</code>, <code>form0:nome</code>, <code>form0:cns</code></td><td>texto</td></tr>
+<tr><td>Id Solicitação</td><td><code>form0:idSolicitacao</code></td><td>texto</td></tr>
+<tr><td>Datas (3 pares)</td><td><code>form0:dt{Inicial,Final}{Solicitacao,ConsultaExame,Agendamento}InputDate</code></td><td><code>dd/mm/aaaa</code></td></tr>
+<tr><td><strong>Pesquisar</strong></td><td><code>form0:j_id96</code></td><td><code>A4J.AJAX.Submit('form0', …)</code></td></tr>
+<tr><td>Exportar Excel</td><td><code>form0:btnExport</code></td><td>não avaliado</td></tr>
+</tbody></table></div>
+<p><strong>Situação é obrigatória</strong> — buscar sem ela devolve zero.</p>
+<p>Grade <code>form0:listagem</code>, 14 colunas: ID, Tipo, Recurso, Data da Solicitação, Paciente, Idade, CPF, CNS, CID, Solicitante, Município Solicitante, Agendado para, Situação, Ação.</p>
+<h3>4.1 Paginação e o teto de 100</h3>
+<p><code>rich:datascroller</code> <code>form0:sc1</code>: POST com <code>ajaxSingle=form0:sc1</code> + <code>form0:sc1=&lt;n&gt;</code>. <strong>20 por página, 5 páginas.</strong> Para varrer além disso, bisecção adaptativa por <code>Data da Solicitação</code> (ADR-0042 §5).</p>
+<h3>4.2 O menu <em>Opções</em> muda conforme a situação</h3>
+<div class="tw"><table><thead><tr><th>Situação</th><th>Itens</th></tr></thead><tbody>
+<tr><td>Em fila</td><td>Visualizar, Editar, <strong>Histórico</strong>, Cancelar, Registrar FollowUP</td></tr>
+<tr><td>Cancelada</td><td>Visualizar, <strong>Histórico</strong>, Registrar FollowUP</td></tr>
+<tr><td><strong>Alta</strong></td><td><strong>nenhuma ação — não tem Histórico</strong></td></tr>
+</tbody></table></div>
+<p>Os ids são <code>form0:listagem:&lt;i&gt;:j_idNN</code>, com <code>&lt;i&gt;</code> 0-based <strong>na página corrente</strong> (não é o ID da solicitação). O motor localiza o item pelo <strong>texto</strong> e falha explicitamente quando não existe — chutar um <code>j_id</code> fixo faz o SER responder <strong>página vazia sem erro</strong>, e o chamador acha que leu o histórico de alguém.</p>
+<h2>5. Tela de histórico</h2>
+<p>Chega por redirect A4J embutido no corpo (não no header):</p>
+<p>``<code>html &lt;meta name="Location" content="/ser/pages/consultas-exames/solicitacao/solicitar-consulta-historico.seam?cid=16453" /&gt; </code>``</p>
+<p>Dois blocos:</p>
+<ul>
+<li><strong>Dados do paciente</strong> — inputs <em>readonly</em> com id volátil. Parsear pelo <code>&lt;label&gt;</code> do</li>
+</ul>
+<p>  mesmo <code>&lt;td&gt;</code>. Campos: ID Solicitação, Paciente, CNS, CPF, <strong>Nome Mãe</strong>, Sexo,   <strong>Data Nascimento</strong>, Etnia, CEP, UF, Município, Bairro, Tipo Logradouro,   Logradouro, Número, Complemento, <strong>Telefone Residencial, Telefone WhatsApp,   Telefone Contato</strong>.</p>
+<ul>
+<li><strong>Trilha de eventos</strong> — tabela <code>form0:historicoList</code>: Data, Evento, Estado</li>
+</ul>
+<p>  Anterior, Estado Atual, Central regulação, Unidade Executora, Usuário, Lotação   Evento, <strong>IP</strong>, Observação. Eventos vistos: <code>Solicitar</code>, <code>FollowUP</code>, <code>Pendenciar</code>,   <code>Cancelar</code>.</p>
+<p>O <code>tbody</code> <strong>repete o cabeçalho</strong> e traz linhas-tooltip só com a observação — filtrar por <code>Data</code> casando <code>dd/mm/aaaa</code>.</p>
+<h2>6. Custo medido (05/08/2026, produção)</h2>
+<div class="tw"><table><thead><tr><th>Operação</th><th>Requisições</th><th>Custo</th></tr></thead><tbody>
+<tr><td>Varredura por faixa de data</td><td>1 busca + N páginas</td><td>~15 reg/s</td></tr>
+<tr><td>EM_FILA 2022→hoje (1.484 registros)</td><td>238</td><td>100 s</td></tr>
+<tr><td>Histórico, ciclo otimizado</td><td>2</td><td>0,617 s / solicitação</td></tr>
+<tr><td>Histórico de 5.000 solicitações</td><td>—</td><td>≈ 50 min</td></tr>
+</tbody></table></div>
+<p>O ciclo otimizado do histórico é <strong>pesquisar por <code>ID Solicitação</code> reusando o form + abrir o histórico</strong>. Duas requisições é o piso: abrir o histórico descarta o resultado da busca (a aba "Pesquisar" volta com a grade vazia).</p>
+<h2>7. Trava de somente-leitura</h2>
+<p>Duas camadas, porque uma só não cobre JSF:</p>
+<ol>
+<li><strong>Nome do parâmetro</strong> — pega ids falantes (<code>form0:btnSalvar</code>, <code>…:agendarLink</code>).</li>
+<li><strong>Rótulo visível do componente clicado</strong> — indispensável: o botão <em>Gravar</em> do modal</li>
+</ol>
+<p>   de cancelamento é <code>j_id189:j_id195</code> e <strong>Registrar FollowUP</strong> é <code>j_id169</code>. O verbo    só existe no <code>value</code>/texto do elemento, nunca no nome.</p>
+<p>Estado verificado no menu <em>Opções</em>: <code>Editar</code>, <code>Cancelar</code> e <code>Registrar FollowUP</code> <strong>bloqueados</strong>; <code>Visualizar</code> e <code>Histórico da Solicitação</code> permitidos.</p>
+<h2>8. Laboratório</h2>
+<p><code>Automais.SER/</code> (Python) continua como bancada de recon — é onde se investiga tela nova antes de portar. Não roda em produção. <code>.env</code>, <code>credenciais_ser.txt</code> e <code>capturas/</code> são gitignored (credencial e PII).</p>
+</main>
+</body>
+</html>
