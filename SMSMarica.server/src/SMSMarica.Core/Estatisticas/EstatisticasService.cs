@@ -1,9 +1,14 @@
 using System.Data;
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Common.Excecoes;
+using SMSMarica.Core.Common.Unidades;
 using SMSMarica.Core.Estatisticas.Dtos;
+using SMSMarica.Core.Identidade;
+using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Data;
+using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Estatisticas;
 
@@ -11,8 +16,17 @@ namespace SMSMarica.Core.Estatisticas;
 /// Agrega o histórico de mensagens WhatsApp (<c>whatsapp_mensagem</c>) e conversas em números
 /// gerenciais. Usa SQL agregado direto na conexão do contexto (nunca materializa linhas) porque o
 /// banco é compartilhado com outros produtos e as contagens varreriam a tabela à toa via EF.
+///
+/// Os agregados de EXAMES DE IMAGEM seguem outra estratégia: materializam uma projeção enxuta do
+/// conjunto (recorte por categoria Imagem + período + escopo de unidade) e calculam em memória —
+/// o volume por período é pequeno (centenas/poucos milhares), e assim se evita a mistura de fuso
+/// entre <c>DataEstudo</c> (wall-clock local) e os timestamps UTC no SQL.
 /// </summary>
-public sealed class EstatisticasService(SmsMaricaDbContext db) : IEstatisticasService
+public sealed class EstatisticasService(
+    SmsMaricaDbContext db,
+    IUsuarioAtualAccessor usuarioAtual,
+    IPacienteResolver pacienteResolver,
+    ILogger<EstatisticasService> logger) : IEstatisticasService
 {
     private const int MaxDiasPeriodo = 400;
 
@@ -92,6 +106,264 @@ public sealed class EstatisticasService(SmsMaricaDbContext db) : IEstatisticasSe
             if (abriuAqui) await conn.CloseAsync();
         }
     }
+
+    // ===================== EXAMES DE IMAGEM =====================
+
+    public async Task<EstatisticasExamesImagemDto> ObterExamesImagemAsync(
+        DateOnly de, DateOnly ate, Guid? unidadeId, CancellationToken ct = default)
+    {
+        if (ate < de) (de, ate) = (ate, de);
+        if (ate.DayNumber - de.DayNumber + 1 > MaxDiasPeriodo)
+            throw new ValidacaoException("periodo", $"O período não pode exceder {MaxDiasPeriodo} dias.");
+
+        var (exames, laudoPorEstudo, laudosFinalizados) = await CarregarExamesAsync(de, ate, unidadeId, ct);
+
+        var dias = ate.DayNumber - de.DayNumber + 1;
+        long total = exames.Count;
+        long realizados = exames.Count(e => e.Realizado);
+        long laudados = exames.Count(e => laudoPorEstudo.ContainsKey(e.StudyInstanceUID));
+        long cancelados = exames.Count(e => e.Status == StatusSolicitacaoExame.Cancelada);
+        long aguardandoLaudo = Math.Max(0, realizados - laudados);
+        int medicosLaudando = exames
+            .Where(e => laudoPorEstudo.ContainsKey(e.StudyInstanceUID))
+            .Select(e => laudoPorEstudo[e.StudyInstanceUID].MedicoId)
+            .Distinct().Count();
+
+        // Tempos médios (horas) por trecho — só timestamps UTC, pares válidos e monotônicos.
+        var chegExec = new List<double>();
+        var execLaudo = new List<double>();
+        var totalCiclo = new List<double>();
+        foreach (var e in exames)
+        {
+            DateTime? fin = laudoPorEstudo.TryGetValue(e.StudyInstanceUID, out var l) ? l.FinalizadoEm : null;
+            if (e.AutorizadoEm is { } a1 && e.RealizadoEm is { } r1 && r1 >= a1)
+                chegExec.Add((r1 - a1).TotalHours);
+            if (e.RealizadoEm is { } r2 && fin is { } f2 && f2 >= r2)
+                execLaudo.Add((f2 - r2).TotalHours);
+            if (e.AutorizadoEm is { } a3 && fin is { } f3 && f3 >= a3)
+                totalCiclo.Add((f3 - a3).TotalHours);
+        }
+
+        var resumo = new ExamesImagemResumoDto(
+            TotalExames: total,
+            Realizados: realizados,
+            Laudados: laudados,
+            AguardandoLaudo: aguardandoLaudo,
+            LaudosEmitidos: laudosFinalizados,
+            Cancelados: cancelados,
+            MedicosLaudando: medicosLaudando,
+            DiasNoPeriodo: dias,
+            MediaExamesDia: dias > 0 ? Math.Round((double)total / dias, 1) : 0,
+            PercentualLaudados: realizados > 0 ? Math.Round(100.0 * laudados / realizados, 1) : 0,
+            TempoMedioChegadaExecucaoHoras: Media(chegExec),
+            TempoMedioExecucaoLaudoHoras: Media(execLaudo),
+            TempoMedioTotalHoras: Media(totalCiclo),
+            AmostraChegadaExecucao: chegExec.Count,
+            AmostraExecucaoLaudo: execLaudo.Count,
+            AmostraTotal: totalCiclo.Count);
+
+        var porDia = exames
+            .GroupBy(e => DateOnly.FromDateTime(e.DataRef))
+            .Select(g => new SerieExamesDiaDto(
+                g.Key, g.LongCount(), g.LongCount(e => e.Realizado),
+                g.LongCount(e => laudoPorEstudo.ContainsKey(e.StudyInstanceUID))))
+            .OrderBy(s => s.Dia)
+            .ToList();
+
+        var porModalidade = exames
+            .GroupBy(e => e.Modalidade)
+            .Select(g => new RotuloContagemDto(RotuloModalidade(g.Key), g.LongCount()))
+            .OrderByDescending(r => r.Total).ToList();
+
+        var porUnidade = exames
+            .GroupBy(e => e.UnidadeExecutante ?? "(sem unidade)")
+            .Select(g => new RotuloContagemDto(g.Key, g.LongCount()))
+            .OrderByDescending(r => r.Total).Take(15).ToList();
+
+        var porStatus = exames
+            .GroupBy(e => e.Status)
+            .Select(g => new RotuloContagemDto(RotuloStatusExame(g.Key), g.LongCount()))
+            .OrderByDescending(r => r.Total).ToList();
+
+        var porTipo = exames
+            .GroupBy(e => e.TipoExameNome ?? "(sem tipo)")
+            .Select(g => new RotuloContagemDto(g.Key, g.LongCount()))
+            .OrderByDescending(r => r.Total).Take(15).ToList();
+
+        var porMedico = exames
+            .Where(e => laudoPorEstudo.ContainsKey(e.StudyInstanceUID))
+            .Select(e => laudoPorEstudo[e.StudyInstanceUID].MedicoNome ?? "(sem nome)")
+            .GroupBy(nome => nome)
+            .Select(g => new RotuloContagemDto(g.Key, g.LongCount()))
+            .OrderByDescending(r => r.Total).Take(15).ToList();
+
+        return new EstatisticasExamesImagemDto(
+            de, ate, unidadeId, resumo, porDia, porModalidade, porUnidade, porStatus, porTipo, porMedico);
+    }
+
+    public async Task<IReadOnlyList<ExameImagemAnaliticoDto>> ListarAnaliticoExamesImagemAsync(
+        DateOnly de, DateOnly ate, Guid? unidadeId, CancellationToken ct = default)
+    {
+        if (ate < de) (de, ate) = (ate, de);
+        if (ate.DayNumber - de.DayNumber + 1 > MaxDiasPeriodo)
+            throw new ValidacaoException("periodo", $"O período não pode exceder {MaxDiasPeriodo} dias.");
+
+        var (exames, laudoPorEstudo, _) = await CarregarExamesAsync(de, ate, unidadeId, ct);
+
+        // Nomes de paciente do hub FHIR (PII). Degrada para sem-nome se o hub falhar — não vale
+        // derrubar a exportação inteira por causa da coluna nome.
+        IReadOnlyDictionary<Guid, PacienteResumo> pacientes;
+        try { pacientes = await pacienteResolver.ResolverManyAsync(exames.Select(e => e.PacienteId), ct); }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Export analítico de imagem: hub FHIR indisponível — seguindo sem nomes.");
+            pacientes = new Dictionary<Guid, PacienteResumo>();
+        }
+
+        var linhas = new List<ExameImagemAnaliticoDto>(exames.Count);
+        foreach (var e in exames.OrderBy(x => x.DataRef))
+        {
+            pacientes.TryGetValue(e.PacienteId, out var p);
+            DateTime? fin = laudoPorEstudo.TryGetValue(e.StudyInstanceUID, out var laudo) ? laudo.FinalizadoEm : null;
+
+            double? t1 = e.AutorizadoEm is { } a1 && e.RealizadoEm is { } r1 && r1 >= a1
+                ? Math.Round((r1 - a1).TotalHours, 1) : null;
+            double? t2 = e.RealizadoEm is { } r2 && fin is { } f2 && f2 >= r2
+                ? Math.Round((f2 - r2).TotalHours, 1) : null;
+            double? t3 = e.AutorizadoEm is { } a3 && fin is { } f3 && f3 >= a3
+                ? Math.Round((f3 - a3).TotalHours, 1) : null;
+
+            linhas.Add(new ExameImagemAnaliticoDto(
+                e.CodigoSolicitacao, e.AccessionNumber, e.StudyInstanceUID,
+                p?.Nome, p?.Cpf, p?.Cns, p?.DataNascimento,
+                RotuloModalidade(e.Modalidade), e.TipoExameNome,
+                e.UnidadeExecutante, e.UnidadeSolicitante, RotuloStatusExame(e.Status),
+                e.DataSolicitacao, e.AutorizadoEm, e.DataEstudo, e.RealizadoEm,
+                fin, laudo?.MedicoNome, laudo?.MedicoCrm, t1, t2, t3));
+        }
+
+        // Trilha de auditoria: quem exportou PII, de qual recorte e quantas linhas.
+        logger.LogInformation(
+            "Auditoria: exportação analítica de exames de imagem por usuário {UsuarioId} — período {De}..{Ate}, unidade {Unidade}, {Linhas} linhas.",
+            usuarioAtual.UsuarioId, de, ate, unidadeId, linhas.Count);
+
+        return linhas;
+    }
+
+    /// <summary>Projeção enxuta de um exame de imagem para os agregados/exportação.</summary>
+    private sealed record ExameLinha(
+        Guid Id, string? CodigoSolicitacao, string AccessionNumber, string StudyInstanceUID,
+        Guid PacienteId, StatusSolicitacaoExame Status, ModalidadeDicom? Modalidade, string? TipoExameNome,
+        string? UnidadeExecutante, string? UnidadeSolicitante, DateTime? AutorizadoEm, DateTime? RealizadoEm,
+        DateTime? DataEstudo, DateTime? DataAgendada, DateOnly? DataSolicitacao, DateTime CriadoEm)
+    {
+        /// <summary>Executado: detectado no PACS ou já em status Realizada/Laudada.</summary>
+        public bool Realizado => RealizadoEm != null
+            || Status == StatusSolicitacaoExame.Realizada || Status == StatusSolicitacaoExame.Laudada;
+
+        /// <summary>Âncora do período/série (UTC): quando aconteceu, senão o previsto, senão o registro.</summary>
+        public DateTime DataRef => RealizadoEm ?? DataAgendada ?? CriadoEm;
+    }
+
+    private sealed record LaudoInfo(DateTime? FinalizadoEm, Guid MedicoId, string? MedicoNome, string? MedicoCrm);
+
+    private async Task<(List<ExameLinha> Exames, Dictionary<string, LaudoInfo> LaudoPorEstudo, long LaudosFinalizados)>
+        CarregarExamesAsync(DateOnly de, DateOnly ate, Guid? unidadeId, CancellationToken ct)
+    {
+        var deUtc = new DateTime(de.Year, de.Month, de.Day, 0, 0, 0, DateTimeKind.Utc);
+        var ateUtc = new DateTime(ate.Year, ate.Month, ate.Day, 0, 0, 0, DateTimeKind.Utc).AddDays(1);
+
+        var escopo = await EscopoUnidade.ResolverAsync(db, usuarioAtual, ct);
+        if (escopo.SemAcesso)
+            return ([], new Dictionary<string, LaudoInfo>(StringComparer.Ordinal), 0);
+
+        var q = db.ExamesImagem.AsNoTracking()
+            .Where(e => e.ExcluidoEm == null
+                && e.Solicitacao != null
+                && e.Solicitacao.ExcluidoEm == null
+                && e.Solicitacao.Categoria == CategoriaSolicitacao.Imagem
+                && (e.RealizadoEm ?? e.Solicitacao.DataAgendada ?? e.CriadoEm) >= deUtc
+                && (e.RealizadoEm ?? e.Solicitacao.DataAgendada ?? e.CriadoEm) < ateUtc);
+
+        if (!escopo.VeTudo)
+        {
+            var unidades = escopo.Unidades;
+            q = q.Where(e => unidades.Contains(e.Solicitacao!.UnidadeExecutanteId)
+                || (e.Solicitacao!.UnidadeSolicitanteId != null
+                    && unidades.Contains(e.Solicitacao!.UnidadeSolicitanteId.Value)));
+        }
+
+        if (unidadeId is { } uid)
+            q = q.Where(e => e.Solicitacao!.UnidadeExecutanteId == uid);
+
+        var exames = await q.Select(e => new ExameLinha(
+                e.Id, e.Solicitacao!.CodigoSolicitacao, e.AccessionNumber, e.StudyInstanceUID,
+                e.Solicitacao!.PacienteId, e.Status,
+                e.TipoExame != null ? e.TipoExame.ModalidadeDicom : (ModalidadeDicom?)null,
+                e.TipoExame != null ? e.TipoExame.Nome : null,
+                e.Solicitacao!.UnidadeExecutante != null ? e.Solicitacao!.UnidadeExecutante.Nome : null,
+                e.Solicitacao!.UnidadeSolicitante != null ? e.Solicitacao!.UnidadeSolicitante.Nome : null,
+                e.Solicitacao!.AutorizadoEm, e.RealizadoEm, e.DataEstudo,
+                e.Solicitacao!.DataAgendada, e.Solicitacao!.DataSolicitacao, e.CriadoEm))
+            .ToListAsync(ct);
+
+        var uids = exames.Select(e => e.StudyInstanceUID)
+            .Where(u => !string.IsNullOrEmpty(u)).Distinct().ToArray();
+
+        var laudoPorEstudo = new Dictionary<string, LaudoInfo>(StringComparer.Ordinal);
+        long laudosFinalizados = 0;
+        if (uids.Length > 0)
+        {
+            var laudos = await db.Laudos.AsNoTracking()
+                .Where(l => !l.Excluido && l.Status == StatusLaudo.Finalizado && uids.Contains(l.StudyInstanceUID))
+                .Select(l => new
+                {
+                    l.StudyInstanceUID, l.Versao, l.FinalizadoEm, l.MedicoId,
+                    l.MedicoNomeSnapshot, l.MedicoCrmSnapshot,
+                })
+                .ToListAsync(ct);
+
+            laudosFinalizados = laudos.Count;
+            foreach (var g in laudos.GroupBy(l => l.StudyInstanceUID, StringComparer.Ordinal))
+            {
+                var ultimo = g.OrderByDescending(l => l.Versao).First();
+                laudoPorEstudo[g.Key] = new LaudoInfo(
+                    ultimo.FinalizadoEm, ultimo.MedicoId, ultimo.MedicoNomeSnapshot, ultimo.MedicoCrmSnapshot);
+            }
+        }
+
+        return (exames, laudoPorEstudo, laudosFinalizados);
+    }
+
+    private static double? Media(List<double> valores) =>
+        valores.Count > 0 ? Math.Round(valores.Average(), 1) : null;
+
+    private static string RotuloModalidade(ModalidadeDicom? m) => m switch
+    {
+        ModalidadeDicom.CR => "CR — RX (placa)",
+        ModalidadeDicom.DX => "DX — RX (direto)",
+        ModalidadeDicom.MG => "MG — Mamografia",
+        ModalidadeDicom.US => "US — Ultrassom",
+        ModalidadeDicom.CT => "CT — Tomografia",
+        ModalidadeDicom.MR => "MR — Ressonância",
+        ModalidadeDicom.NM => "NM — Med. Nuclear",
+        ModalidadeDicom.PT => "PT — PET",
+        ModalidadeDicom.OT => "OT — Outra",
+        _ => "(sem tipo)",
+    };
+
+    private static string RotuloStatusExame(StatusSolicitacaoExame s) => s switch
+    {
+        StatusSolicitacaoExame.Solicitada => "Solicitada",
+        StatusSolicitacaoExame.Agendada => "Agendada",
+        StatusSolicitacaoExame.EmExecucao => "Em execução",
+        StatusSolicitacaoExame.Realizada => "Realizada",
+        StatusSolicitacaoExame.Laudada => "Laudada",
+        StatusSolicitacaoExame.Cancelada => "Cancelada",
+        StatusSolicitacaoExame.Enviada => "Enviada",
+        StatusSolicitacaoExame.Recebida => "Recebida",
+        _ => s.ToString(),
+    };
 
     private sealed record ResumoBruto(
         long Enviadas, long Recebidas, long TemplatesSistema, long TemplatesAtendente,

@@ -237,6 +237,13 @@ export const SECOES: SecaoMenu[] = [
         modulo: 'Equipamentos',
         descricao: 'Modalidades, unidade e AE Title da worklist.',
       },
+      {
+        rotulo: 'Relatórios e Estatísticas',
+        to: '/app/relatorios-imagem',
+        icone: BarChart3,
+        modulo: 'Estatistica',
+        descricao: 'Dashboard de exames, laudos, tempos médios e exportação analítica.',
+      },
     ],
   },
   {
