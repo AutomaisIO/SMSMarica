@@ -66,8 +66,13 @@ public static class ProcedimentosSigtapSeed
         Item("a1000000-0000-0000-0000-000000000021", "0205020178",
             "ULTRASSONOGRAFIA DE TIREOIDE",
             "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA", "DIAGNOSTICO POR ULTRASSONOGRAFIA", "EXAMES"),
+        // Nome corrigido em 05/08/2026. Estava "ULTRASSONOGRAFIA OBSTETRICA", e por causa disso
+        // 51 exames de PRÓSTATA importados desde 31/07 foram classificados como obstétricos —
+        // a worklist teria ido ao aparelho com "US OBSTETRICO". O SISREG emite este código para
+        // próstata de forma consistente (50 registros numa única exportação); ver o RAW das
+        // solicitações, coluna 2, que é o que ele manda.
         Item("a1000000-0000-0000-0000-000000000022", "0205020100",
-            "ULTRASSONOGRAFIA OBSTETRICA",
+            "ULTRASSONOGRAFIA DE PROSTATA (VIA ABDOMINAL)",
             "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA", "DIAGNOSTICO POR ULTRASSONOGRAFIA", "EXAMES"),
         // Código corrigido para o que o SISREG realmente emite (0205020186). O anterior
         // (0205020135) não aparece uma única vez na extração de agendamentos — com ele, toda
@@ -78,11 +83,23 @@ public static class ProcedimentosSigtapSeed
         Item("a1000000-0000-0000-0000-000000000024", "0205020151",
             "ULTRASSONOGRAFIA MORFOLOGICA DO 1 TRIMESTRE",
             "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA", "DIAGNOSTICO POR ULTRASSONOGRAFIA", "EXAMES"),
-        Item("a1000000-0000-0000-0000-000000000025", "0205020054",
+        // Código alinhado ao que já está em produção. A migration CorrigeSigtapUsMamasBilateral
+        // (02/08/2026) trocou este código no BANCO mas não aqui, e a divergência ficou: um banco
+        // novo nasceria com o código errado outra vez, e gerar migration a partir deste seed
+        // tentaria reverter a correção. Seed e banco voltam a dizer a mesma coisa.
+        Item("a1000000-0000-0000-0000-000000000025", "0205020097",
             "ULTRASSONOGRAFIA MAMARIA BILATERAL",
             "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA", "DIAGNOSTICO POR ULTRASSONOGRAFIA", "EXAMES"),
         Item("a1000000-0000-0000-0000-000000000026", "0205020127",
             "ULTRASSONOGRAFIA PELVICA (GINECOLOGICA)",
+            "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA", "DIAGNOSTICO POR ULTRASSONOGRAFIA", "EXAMES"),
+        // Códigos que o SISREG emite e o catálogo não tinha — os exames chegavam sem tipo, sem
+        // worklist e sem PACS. Extraídos do RAW das solicitações importadas (coluna 2).
+        Item("a1000000-0000-0000-0000-000000000027", "0205020054",
+            "ULTRASSONOGRAFIA DE APARELHO URINARIO",
+            "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA", "DIAGNOSTICO POR ULTRASSONOGRAFIA", "EXAMES"),
+        Item("a1000000-0000-0000-0000-000000000028", "0205020038",
+            "ULTRASSONOGRAFIA DE ABDOME SUPERIOR",
             "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA", "DIAGNOSTICO POR ULTRASSONOGRAFIA", "EXAMES"),
 
         // ---- Tomografia (02.06.x) ----
