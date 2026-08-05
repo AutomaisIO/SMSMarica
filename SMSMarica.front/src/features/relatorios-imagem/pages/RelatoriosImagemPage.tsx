@@ -17,6 +17,8 @@ import {
 } from 'recharts';
 import { useTemConsulta } from '@/shared/auth/authStore';
 import { useListarUnidades } from '@/features/unidades/api/queries';
+import { useListarTiposExame } from '@/features/tipos-exame/api/queries';
+import { MODALIDADES_DICOM, type ModalidadeDicom } from '@/features/tipos-exame/types';
 import { useEstatisticasExamesImagem } from '@/features/relatorios-imagem/api/queries';
 import {
   exportarExamesImagem,
@@ -148,12 +150,15 @@ export function RelatoriosImagemPage() {
   const [de, setDe] = useState(() => presets[presets.length - 1].de);
   const [ate, setAte] = useState(() => isoHoje());
   const [unidadeId, setUnidadeId] = useState('');
+  const [modalidade, setModalidade] = useState<ModalidadeDicom | ''>('');
+  const [tipoExameId, setTipoExameId] = useState('');
   const [exportando, setExportando] = useState(false);
   const [menuExport, setMenuExport] = useState(false);
   const [erroExport, setErroExport] = useState<string | null>(null);
 
   const unidades = useListarUnidades();
-  const q = useEstatisticasExamesImagem(de, ate, unidadeId);
+  const tipos = useListarTiposExame(modalidade || undefined);
+  const q = useEstatisticasExamesImagem(de, ate, unidadeId, modalidade, tipoExameId);
   const dados = q.data;
 
   const serieDia = useMemo(
@@ -174,7 +179,14 @@ export function RelatoriosImagemPage() {
     setErroExport(null);
     setExportando(true);
     try {
-      await exportarExamesImagem(de, ate, unidadeId || undefined, conteudo);
+      await exportarExamesImagem(
+        de,
+        ate,
+        unidadeId || undefined,
+        modalidade || undefined,
+        tipoExameId || undefined,
+        conteudo,
+      );
     } catch {
       setErroExport('Não foi possível exportar a lista. Tente novamente.');
     } finally {
@@ -237,6 +249,37 @@ export function RelatoriosImagemPage() {
               .map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.nome}
+                </option>
+              ))}
+          </select>
+          <select
+            value={modalidade}
+            onChange={(e) => {
+              setModalidade(e.target.value as ModalidadeDicom | '');
+              setTipoExameId('');
+            }}
+            className="rounded-md border border-gray-200 px-2 py-1 text-xs"
+            title="Modalidade"
+          >
+            <option value="">Todas modalidades</option>
+            {MODALIDADES_DICOM.map((mod) => (
+              <option key={mod.valor} value={mod.valor}>
+                {mod.rotulo}
+              </option>
+            ))}
+          </select>
+          <select
+            value={tipoExameId}
+            onChange={(e) => setTipoExameId(e.target.value)}
+            className="max-w-[220px] rounded-md border border-gray-200 px-2 py-1 text-xs"
+            title="Tipo de exame"
+          >
+            <option value="">Todos os tipos</option>
+            {(tipos.data ?? [])
+              .filter((t) => t.ativo)
+              .map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.nome}
                 </option>
               ))}
           </select>

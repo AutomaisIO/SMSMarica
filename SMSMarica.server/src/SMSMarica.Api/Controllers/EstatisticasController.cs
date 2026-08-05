@@ -43,11 +43,13 @@ public sealed class EstatisticasController(IEstatisticasService service) : Contr
         [FromQuery] DateOnly? de = null,
         [FromQuery] DateOnly? ate = null,
         [FromQuery] Guid? unidadeId = null,
+        [FromQuery] ModalidadeDicom? modalidade = null,
+        [FromQuery] Guid? tipoExameId = null,
         CancellationToken ct = default)
     {
         var fim = ate ?? DateOnly.FromDateTime(DateTime.UtcNow);
         var inicio = de ?? fim.AddDays(-29);
-        return await service.ObterExamesImagemAsync(inicio, fim, unidadeId, ct);
+        return await service.ObterExamesImagemAsync(inicio, fim, unidadeId, modalidade, tipoExameId, ct);
     }
 
     /// <summary>
@@ -63,12 +65,15 @@ public sealed class EstatisticasController(IEstatisticasService service) : Contr
         [FromQuery] DateOnly? de = null,
         [FromQuery] DateOnly? ate = null,
         [FromQuery] Guid? unidadeId = null,
+        [FromQuery] ModalidadeDicom? modalidade = null,
+        [FromQuery] Guid? tipoExameId = null,
         [FromQuery] ConteudoExportacaoImagem conteudo = ConteudoExportacaoImagem.ExamesLaudos,
         CancellationToken ct = default)
     {
         var fim = ate ?? DateOnly.FromDateTime(DateTime.UtcNow);
         var inicio = de ?? fim.AddDays(-29);
-        var dados = await service.ObterExportacaoImagemAsync(inicio, fim, unidadeId, conteudo, ct);
+        var dados = await service.ObterExportacaoImagemAsync(
+            inicio, fim, unidadeId, modalidade, tipoExameId, conteudo, ct);
 
         var (csv, sufixo) = conteudo switch
         {

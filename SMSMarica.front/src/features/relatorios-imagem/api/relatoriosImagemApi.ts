@@ -1,13 +1,22 @@
 import { http } from '@/shared/api/httpClient';
 import type { EstatisticasExamesImagem } from '@/features/relatorios-imagem/types';
+import type { ModalidadeDicom } from '@/features/tipos-exame/types';
 
 export async function obterEstatisticasExamesImagem(
   de?: string,
   ate?: string,
   unidadeId?: string,
+  modalidade?: ModalidadeDicom,
+  tipoExameId?: string,
 ): Promise<EstatisticasExamesImagem> {
   const { data } = await http.get<EstatisticasExamesImagem>('/estatisticas/exames-imagem', {
-    params: { de: de || undefined, ate: ate || undefined, unidadeId: unidadeId || undefined },
+    params: {
+      de: de || undefined,
+      ate: ate || undefined,
+      unidadeId: unidadeId || undefined,
+      modalidade: modalidade || undefined,
+      tipoExameId: tipoExameId || undefined,
+    },
   });
   return data;
 }
@@ -19,6 +28,8 @@ export async function exportarExamesImagem(
   de?: string,
   ate?: string,
   unidadeId?: string,
+  modalidade?: ModalidadeDicom,
+  tipoExameId?: string,
   conteudo: ConteudoExportacao = 'ExamesLaudos',
 ): Promise<void> {
   const resp = await http.get('/estatisticas/exames-imagem/exportar', {
@@ -26,6 +37,8 @@ export async function exportarExamesImagem(
       de: de || undefined,
       ate: ate || undefined,
       unidadeId: unidadeId || undefined,
+      modalidade: modalidade || undefined,
+      tipoExameId: tipoExameId || undefined,
       conteudo,
     },
     responseType: 'blob',

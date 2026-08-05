@@ -20,7 +20,8 @@ public interface IEstatisticasService
     /// opcionalmente, restrito a uma única unidade EXECUTANTE. Só contagens/médias — sem PII.
     /// </summary>
     Task<EstatisticasExamesImagemDto> ObterExamesImagemAsync(
-        DateOnly de, DateOnly ate, Guid? unidadeId, CancellationToken ct = default);
+        DateOnly de, DateOnly ate, Guid? unidadeId, Data.Entities.Enums.ModalidadeDicom? modalidade,
+        Guid? tipoExameId, CancellationToken ct = default);
 
     /// <summary>
     /// Materializa a lista ANALÍTICA de imagem (exames e/ou laudos) que sustenta os agregados, para
@@ -28,6 +29,6 @@ public interface IEstatisticasService
     /// (só números do exame/solicitação/laudo). Registra auditoria de quem exportou e o quê.
     /// </summary>
     Task<ExportacaoImagemDto> ObterExportacaoImagemAsync(
-        DateOnly de, DateOnly ate, Guid? unidadeId, ConteudoExportacaoImagem conteudo,
-        CancellationToken ct = default);
+        DateOnly de, DateOnly ate, Guid? unidadeId, Data.Entities.Enums.ModalidadeDicom? modalidade,
+        Guid? tipoExameId, ConteudoExportacaoImagem conteudo, CancellationToken ct = default);
 }

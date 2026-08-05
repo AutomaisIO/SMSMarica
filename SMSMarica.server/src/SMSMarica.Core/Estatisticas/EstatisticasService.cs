@@ -108,13 +108,14 @@ public sealed class EstatisticasService(
     // ===================== EXAMES DE IMAGEM =====================
 
     public async Task<EstatisticasExamesImagemDto> ObterExamesImagemAsync(
-        DateOnly de, DateOnly ate, Guid? unidadeId, CancellationToken ct = default)
+        DateOnly de, DateOnly ate, Guid? unidadeId, ModalidadeDicom? modalidade, Guid? tipoExameId,
+        CancellationToken ct = default)
     {
         if (ate < de) (de, ate) = (ate, de);
         if (ate.DayNumber - de.DayNumber + 1 > MaxDiasPeriodo)
             throw new ValidacaoException("periodo", $"O período não pode exceder {MaxDiasPeriodo} dias.");
 
-        var (exames, laudos) = await CarregarExamesAsync(de, ate, unidadeId, ct);
+        var (exames, laudos) = await CarregarExamesAsync(de, ate, unidadeId, modalidade, tipoExameId, ct);
         var laudoPorEstudo = UltimoLaudoPorEstudo(laudos);
         long laudosFinalizados = laudos.Count;
 
@@ -202,14 +203,14 @@ public sealed class EstatisticasService(
     }
 
     public async Task<ExportacaoImagemDto> ObterExportacaoImagemAsync(
-        DateOnly de, DateOnly ate, Guid? unidadeId, ConteudoExportacaoImagem conteudo,
-        CancellationToken ct = default)
+        DateOnly de, DateOnly ate, Guid? unidadeId, ModalidadeDicom? modalidade, Guid? tipoExameId,
+        ConteudoExportacaoImagem conteudo, CancellationToken ct = default)
     {
         if (ate < de) (de, ate) = (ate, de);
         if (ate.DayNumber - de.DayNumber + 1 > MaxDiasPeriodo)
             throw new ValidacaoException("periodo", $"O período não pode exceder {MaxDiasPeriodo} dias.");
 
-        var (exames, laudos) = await CarregarExamesAsync(de, ate, unidadeId, ct);
+        var (exames, laudos) = await CarregarExamesAsync(de, ate, unidadeId, modalidade, tipoExameId, ct);
         var laudoPorEstudo = UltimoLaudoPorEstudo(laudos);
 
         var linhasExame = new List<ExameImagemAnaliticoDto>();
@@ -289,7 +290,8 @@ public sealed class EstatisticasService(
         Guid MedicoId, string? MedicoNome, string? MedicoCrm);
 
     private async Task<(List<ExameLinha> Exames, List<LaudoRaw> Laudos)>
-        CarregarExamesAsync(DateOnly de, DateOnly ate, Guid? unidadeId, CancellationToken ct)
+        CarregarExamesAsync(DateOnly de, DateOnly ate, Guid? unidadeId,
+            ModalidadeDicom? modalidade, Guid? tipoExameId, CancellationToken ct)
     {
         var deUtc = new DateTime(de.Year, de.Month, de.Day, 0, 0, 0, DateTimeKind.Utc);
         var ateUtc = new DateTime(ate.Year, ate.Month, ate.Day, 0, 0, 0, DateTimeKind.Utc).AddDays(1);
@@ -316,6 +318,12 @@ public sealed class EstatisticasService(
 
         if (unidadeId is { } uid)
             q = q.Where(e => e.Solicitacao!.UnidadeExecutanteId == uid);
+
+        if (modalidade is { } mod)
+            q = q.Where(e => e.TipoExame != null && e.TipoExame.ModalidadeDicom == mod);
+
+        if (tipoExameId is { } tipo)
+            q = q.Where(e => e.TipoExameId == tipo);
 
         var exames = await q.Select(e => new ExameLinha(
                 e.Id, e.Solicitacao!.CodigoSolicitacao, e.AccessionNumber, e.StudyInstanceUID,
