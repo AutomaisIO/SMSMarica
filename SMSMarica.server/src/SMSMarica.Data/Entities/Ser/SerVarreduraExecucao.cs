@@ -79,6 +79,37 @@ public class SerVarreduraExecucao
     /// </summary>
     public int FatiasTruncadas { get; set; }
 
+    // ---- Ponteiro de retomada ----
+    // A rodada é longa (grade + histórico de milhares). Deploy, restart ou queda no meio NÃO
+    // podem custar a rodada inteira: o ponteiro guarda onde parou e a execução continua
+    // PENDENTE até terminar de verdade.
+
+    /// <summary>Fase em que a execução está — define o que retomar.</summary>
+    public FaseVarreduraSer Fase { get; set; } = FaseVarreduraSer.Grade;
+
+    /// <summary>Situação que estava sendo varrida quando parou (fase de grade).</summary>
+    public SituacaoSer? CursorSituacao { get; set; }
+
+    /// <summary>
+    /// Data da Solicitação a partir da qual continuar. É o cursor do varredor por export: cada
+    /// lote devolve até 500 e o ponteiro avança para a última data lida.
+    /// </summary>
+    public DateOnly? CursorData { get; set; }
+
+    /// <summary>Último <c>IdSer</c> cujo histórico foi lido com sucesso (fase de histórico).</summary>
+    public string? CursorIdSer { get; set; }
+
+    /// <summary>Quantas solicitações a fase de histórico ainda tem para ler. Alimenta a barra de
+    /// progresso da tela sem precisar recontar a fila toda a cada refresh.</summary>
+    public int HistoricosPendentes { get; set; }
+
+    /// <summary>Quantas vezes esta execução foi retomada após parada. Mais de duas ou três
+    /// seguidas é sinal de que o serviço está reiniciando sozinho.</summary>
+    public int Retomadas { get; set; }
+
+    /// <summary>Quando foi retomada pela última vez.</summary>
+    public DateTime? RetomadaEm { get; set; }
+
     public string? MensagemErro { get; set; }
 
     public DateTime IniciadoEm { get; set; }
@@ -88,6 +119,19 @@ public class SerVarreduraExecucao
     /// <summary>Quem disparou. NULL no disparo agendado — a autoria é o <see cref="Disparo"/>.</summary>
     public Guid? CriadoPor { get; set; }
     public string? CriadoPorNome { get; set; }
+}
+
+/// <summary>Fase da varredura — o que retomar quando a execução volta.</summary>
+public enum FaseVarreduraSer
+{
+    /// <summary>Lendo a grade (espelho das solicitações).</summary>
+    Grade = 1,
+
+    /// <summary>Lendo o histórico das solicitações que precisam.</summary>
+    Historico = 2,
+
+    /// <summary>Nada mais a fazer.</summary>
+    Finalizada = 3,
 }
 
 /// <summary>Estado de uma varredura do SER.</summary>
@@ -108,4 +152,14 @@ public enum StatusVarreduraSer
 
     Erro = 5,
     Cancelada = 6,
+
+    /// <summary>
+    /// <b>Parada por queda do serviço, e RETOMÁVEL.</b> Deploy/restart/crash no meio da rodada
+    /// não podem custar horas de trabalho nem fingir que terminou: a execução permanece
+    /// pendente, o ponteiro guarda onde parou, e o runner retoma quando o serviço sobe.
+    ///
+    /// <para>Status próprio, e não <see cref="Erro"/>, porque erro é algo que exige alguém olhar
+    /// — e isto aqui se resolve sozinho.</para>
+    /// </summary>
+    Interrompida = 7,
 }

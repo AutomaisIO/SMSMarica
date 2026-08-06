@@ -12,7 +12,9 @@ public sealed record PedidoVarreduraSer(
     DateOnly Fim,
     IReadOnlyList<SituacaoSer>? Situacoes,
     Guid? UsuarioId,
-    string? UsuarioNome);
+    string? UsuarioNome,
+    /// <summary>Execução a RETOMAR (do ponteiro) em vez de criar uma nova. Null = rodada nova.</summary>
+    Guid? ExecucaoParaRetomar = null);
 
 /// <summary>
 /// Fila de varreduras do SER.

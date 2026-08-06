@@ -28,6 +28,7 @@ public interface ISerSincronizacaoService
         IReadOnlyList<SituacaoSer>? situacoes,
         Guid? usuarioId,
         string? usuarioNome,
+        Guid? execucaoParaRetomar,
         CancellationToken cancellationToken);
 }
 
@@ -58,24 +59,47 @@ public sealed class SerSincronizacaoService(
         IReadOnlyList<SituacaoSer>? situacoes,
         Guid? usuarioId,
         string? usuarioNome,
+        Guid? execucaoParaRetomar,
         CancellationToken cancellationToken)
     {
         var alvo = situacoes is { Count: > 0 } ? situacoes : TodasSituacoes;
 
-        var execucao = new SerVarreduraExecucao
+        // RETOMADA: continua a execução existente a partir do ponteiro, em vez de abrir outra.
+        // Abrir uma nova a cada restart perderia o progresso e encheria o histórico de rodadas
+        // fantasma.
+        var execucao = execucaoParaRetomar is { } idRetomar
+            ? await db.SerVarreduraExecucoes.FirstOrDefaultAsync(x => x.Id == idRetomar, cancellationToken)
+            : null;
+
+        if (execucao is not null)
         {
-            Id = Guid.NewGuid(),
-            Modo = modo,
-            Disparo = disparo,
-            Status = StatusVarreduraSer.EmExecucao,
-            JanelaInicio = inicio,
-            JanelaFim = fim,
-            SituacoesVarridas = string.Join(',', alvo.Select(s => s.ToString())),
-            IniciadoEm = DateTime.UtcNow,
-            CriadoPor = usuarioId,
-            CriadoPorNome = usuarioNome,
-        };
-        db.SerVarreduraExecucoes.Add(execucao);
+            execucao.Status = StatusVarreduraSer.EmExecucao;
+            execucao.Retomadas++;
+            execucao.RetomadaEm = DateTime.UtcNow;
+            logger.LogInformation(
+                "SER: retomando execução {Execucao} na fase {Fase} (retomada nº {N}); cursor: "
+                + "situação={Situacao} data={Data} idSer={IdSer}.",
+                execucao.Id, execucao.Fase, execucao.Retomadas,
+                execucao.CursorSituacao, execucao.CursorData, execucao.CursorIdSer);
+        }
+        else
+        {
+            execucao = new SerVarreduraExecucao
+            {
+                Id = Guid.NewGuid(),
+                Modo = modo,
+                Disparo = disparo,
+                Status = StatusVarreduraSer.EmExecucao,
+                Fase = FaseVarreduraSer.Grade,
+                JanelaInicio = inicio,
+                JanelaFim = fim,
+                SituacoesVarridas = string.Join(',', alvo.Select(s => s.ToString())),
+                IniciadoEm = DateTime.UtcNow,
+                CriadoPor = usuarioId,
+                CriadoPorNome = usuarioNome,
+            };
+            db.SerVarreduraExecucoes.Add(execucao);
+        }
         await db.SaveChangesAsync(cancellationToken);
 
         try

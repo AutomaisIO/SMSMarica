@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SER — ponto de retomada (sessão de 05–06/08/2026)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>SER — ponto de retomada (sessão de 05–06/08/2026)</h1>
+<p>Documento de handoff. Quem retomar deve ler <strong>este arquivo primeiro</strong>, depois <a href="./ser.md"><code>docs/ser.md</code></a> (protocolo) e <a href="./adr/0042-ser-segunda-fonte-de-regulacao.md">ADR-0042</a> (decisão de arquitetura).</p>
+<p>&gt; <strong>Frase para retomar:</strong> <em>"Continuar o SER a partir de <code>docs/ser-continuacao.md</code>: &gt; migrar a fase de grade para export de 500 e fazer o ponteiro funcionar."</em></p>
+<hr>
+<h2>1. Onde estamos</h2>
+<p><strong>Em produção</strong> (branch <code>main</code>, deployado):</p>
+<ul>
+<li>Tabelas <code>ser_solicitacao</code>, <code>ser_evento</code>, <code>ser_gatilho</code>, <code>ser_varredura_execucao</code>,</li>
+</ul>
+<p>  <code>ser_varredura_falha</code> — migration aplicada.</p>
+<ul>
+<li>Motor <code>SMSMarica.Core/Integracoes/SerWeb/</code> (sessão JSF/Seam, parsers, varredor, runner).</li>
+<li>Telas: <code>Regulação → SER</code> (fila + detalhe com histórico) e <code>Regulação → Configuração</code></li>
+</ul>
+<p>  (aba SER com credencial/motor + aba <strong>SER — consulta direta</strong>).</p>
+<ul>
+<li>Permissões <code>RegulacaoSer = 54</code> e <code>RegulacaoConfiguracao = 51</code>.</li>
+<li>14 testes unitários de parser/trava.</li>
+</ul>
+<p><strong>Branch <code>feat/ser-varredura-por-export</code></strong> (NÃO deployada): ponteiro de retomada, começado nesta sessão — ver §4.</p>
+<p><strong>Estado dos dados em produção — não confiar:</strong></p>
+<div class="tw"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td>Solicitações espelhadas</td><td>14.163 (<strong>~35% incompletas</strong>)</td></tr>
+<tr><td>Eventos de histórico</td><td><strong>1</strong> de 14.163</td></tr>
+<tr><td>Gatilhos na fila</td><td>14.163 (sem consumidor)</td></tr>
+<tr><td>Execuções</td><td>2, ambas em erro</td></tr>
+</tbody></table></div>
+<p>Conferência contra a tela do SER (feita pelo Bernardo, 06/08):</p>
+<div class="tw"><table><thead><tr><th>Recorte (só CONSULTA)</th><th>No SER</th><th>Na base</th><th>Falta</th></tr></thead><tbody>
+<tr><td>Chegada confirmada</td><td>7.723</td><td>4.895</td><td>37%</td></tr>
+<tr><td>Chegada não confirmada</td><td>3.471</td><td>2.252</td><td>35%</td></tr>
+<tr><td>Alta</td><td>&gt; 0</td><td><strong>0</strong></td><td>tudo</td></tr>
+</tbody></table></div>
+<p>A perda constante de ~35% bate com a paginação morrendo por volta da 3ª de 5 páginas.</p>
+<hr>
+<h2>2. O que fazer, em ordem</h2>
+<h3>Passo 1 — Validar a correção do <code>action</code> (30 min, é o portão)</h3>
+<p>O bug de postar em caminho fixo em vez do <code>action</code> do form foi corrigido (<code>a483e8f</code>) mas <strong>nunca exercitado</strong>. Antes de reescrever qualquer coisa:</p>
+<ol>
+<li><code>Regulação → Configuração → SER — consulta direta</code></li>
+<li>Filtrar <code>Chegada confirmada</code> + <code>CONSULTA</code></li>
+<li>Comparar a contagem com <strong>7.723</strong></li>
+</ol>
+<p>Se bater, o motor está curado e a base pode ser refeita. Se não bater, <strong>parar e investigar</strong> — não adianta migrar para o export com o transporte quebrado.</p>
+<h3>Passo 2 — Migrar a fase de grade para EXPORT (o grosso do trabalho)</h3>
+<p>Trocar <code>busca → paginar 20 em 20</code> por <code>busca → exportar → parsear</code>.</p>
+<p><strong>Provado nesta sessão:</strong></p>
+<ul>
+<li>O botão <code>form0:btnExport</code> da tela de Histórico devolve <code>historico-pesquisar.xls</code>,</li>
+</ul>
+<p>  <strong>192 KB, BIFF8 real</strong> (OLE2, assinatura <code>D0 CF 11 E0</code>) com <strong>501 registros ROW</strong>   = 1 cabeçalho + <strong>500 linhas</strong>. Traz o resultado inteiro, não a página.</p>
+<ul>
+<li>É submit JSF comum: <code>jsfcljs(form0, {'form0:btnExport':'form0:btnExport'}, '')</code>.</li>
+<li>Filtro de escopo: <strong><code>form0:suggUnidadeSol</code> = <code>GESTOR SMS MARICA</code> em TEXTO PURO</strong>. O</li>
+</ul>
+<p>  hidden <code>form0:j_id37_selection</code> fica vazio mesmo clicando na sugestão — não é preciso.</p>
+<ul>
+<li><strong>Não</strong> marcar <code>form0:municipio</code> (é <em>Município do Paciente</em>): paciente de outro município</li>
+</ul>
+<p>  pode ter solicitação aberta por Maricá.</p>
+<ul>
+<li>A tela avisa explicitamente quando corta: *"Consulta muito ampla, retorno limitado em</li>
+</ul>
+<p>  500 resultados"* — usar essa string como sinal de truncamento, não inferir por páginas.</p>
+<p><strong>Limitações da tela de Histórico</strong> (<code>historico-pesquisar.seam</code>):</p>
+<ul>
+<li><strong>Não tem ALTA</strong> no combo de situação → ALTA continua pela tela de Solicitação.</li>
+<li><strong>Não oferece "Histórico da Solicitação"</strong> no menu da linha → a fase de histórico</li>
+</ul>
+<p>  continua na tela de Solicitação.</p>
+<ul>
+<li>Sem Situação preenchida, exige nome/código/CNS/CPF/ID do paciente.</li>
+</ul>
+<p><strong>Cursor por data</strong> (ideia do Bernardo, substitui a bisecção): exporta um lote, lê a maior <code>Data da Solicitação</code> do arquivo, refaz a busca a partir dali, repete até o lote voltar abaixo de 500 sem aviso de corte.</p>
+<p><strong>Decisão pendente:</strong> biblioteca para ler <code>.xls</code> BIFF8 em .NET. Nenhuma está no <code>Directory.Packages.props</code>. Recomendação: <strong>ExcelDataReader</strong> (menor, só leitura) sobre NPOI.</p>
+<h3>Passo 3 — Fazer o ponteiro funcionar</h3>
+<p>Os campos existem (§4) mas <strong>ninguém grava neles</strong>. Falta:</p>
+<ul>
+<li><code>SerSincronizacaoService</code> gravar <code>Fase</code>, <code>CursorSituacao</code>, <code>CursorData</code>, <code>CursorIdSer</code> e</li>
+</ul>
+<p>  <code>HistoricosPendentes</code> <strong>a cada lote</strong>, não só no fim.</p>
+<ul>
+<li>Na retomada, pular o que já foi feito usando esses cursores.</li>
+<li>Migration para as colunas novas.</li>
+</ul>
+<h3>Passo 4 — Mostrar na tela de Configuração da Regulação</h3>
+<p>Fase atual, cursor, quantos faltam, nº de retomadas, e o status <code>Interrompida</code>.</p>
+<h3>Passo 5 — Recarregar a base</h3>
+<p><strong>Antes de recarregar, limpar</strong> <code>ser_solicitacao</code>, <code>ser_evento</code> e <code>ser_gatilho</code>: os 14.163 gatilhos atuais nasceram de uma varredura errada e virariam lixo permanente.</p>
+<p>Depois conferir contra os números do §1.</p>
+<h3>Passo 6 — Scheduler diário</h3>
+<p>Ainda não existe. Hoje só há disparo manual.</p>
+<hr>
+<h2>3. Regras que não podem ser esquecidas</h2>
+<ol>
+<li><strong>Postar sempre no <code>action</code> lido do <code>&lt;form&gt;</code></strong>, nunca em caminho constante. Com os mesmos</li>
+</ol>
+<p>   campos, headers e ViewState, o caminho fixo devolve listagem <strong>diferente e incompleta</strong>,    sem erro nenhum. Foi o que corrompeu a carga inicial. (<code>docs/ser.md §3.3</code>)</p>
+<ol>
+<li><strong><code>AJAXREQUEST</code> é obrigatório</strong> nos submits A4J; sem ele a ação não roda e devolve 200.</li>
+<li><strong>ViewState vem de dentro do form submetido</strong>, não o primeiro do documento.</li>
+<li><strong>A tela de histórico também tem <code>form0</code></strong> mas não tem o botão Pesquisar — o</li>
+</ol>
+<p>   discriminador de "página de formulário" é o BOTÃO.</p>
+<ol>
+<li><strong>Sessão do SER é única por operador</strong>: varrer derruba quem estiver logado. Uma rodada</li>
+</ol>
+<p>   por vez, sempre.</p>
+<ol>
+<li><strong>FollowUP é <code>Em fila → Em fila</code></strong> — não aparece em diff de grade. Por isso todo <code>EM_FILA</code></li>
+</ol>
+<p>   tem o histórico relido diariamente, um a um (2 requisições, ~0,6 s cada).</p>
+<ol>
+<li><strong><code>Alta</code> é estado terminal e não tem histórico</strong> no SER. O que não foi capturado antes da</li>
+</ol>
+<p>   alta, perdeu-se.</p>
+<ol>
+<li><strong>Somente leitura.</strong> A trava tem duas camadas (nome do parâmetro <strong>e</strong> rótulo visível),</li>
+</ol>
+<p>   porque <code>Registrar FollowUP</code> tem id opaco <code>j_id169</code>.</p>
+<h2>4. O que está na branch <code>feat/ser-varredura-por-export</code></h2>
+<p>Compila, <strong>sem migration</strong>, não deployado:</p>
+<ul>
+<li><code>StatusVarreduraSer.Interrompida</code> — parada retomável (não é erro, não é concluída).</li>
+<li><code>FaseVarreduraSer</code> (Grade / Historico / Finalizada).</li>
+<li>Colunas de ponteiro em <code>SerVarreduraExecucao</code>: <code>Fase</code>, <code>CursorSituacao</code>, <code>CursorData</code>,</li>
+</ul>
+<p>  <code>CursorIdSer</code>, <code>HistoricosPendentes</code>, <code>Retomadas</code>, <code>RetomadaEm</code>.</p>
+<ul>
+<li><code>VarreduraSerRunner</code> <strong>retoma</strong> interrompidas na subida em vez de marcá-las como erro</li>
+</ul>
+<p>  (o comportamento anterior contrariava o requisito de sobreviver a restart).</p>
+<ul>
+<li><code>PedidoVarreduraSer.ExecucaoParaRetomar</code> e a assinatura de <code>ExecutarAsync</code>.</li>
+</ul>
+<h2>5. Erros de diagnóstico desta sessão (para não repetir)</h2>
+<p>Três conclusões minhas que <strong>estavam erradas</strong>, todas por inferir de amostra pequena:</p>
+<ol>
+<li>"A tela de Histórico traz PII de outros municípios" — <strong>não traz</strong>. IDs baixos (2.7M) são</li>
+</ol>
+<p>   de Maricá; a faixa da base é 873.917–8.147.763.</p>
+<ol>
+<li>"A listagem descarta silenciosamente os mais antigos ao bater no teto" — <strong>não descarta</strong>.</li>
+<li>"A base inteira é não-confiável por causa disso" — a causa era o <code>action</code>, não o teto.</li>
+</ol>
+<p>O que destravou foi o Bernardo dizer <em>"quando eu opero na mão, na primeira consulta vem certo"</em>. <strong>Desconfiar do próprio scraper antes de acusar o sistema alvo.</strong></p>
+</main>
+</body>
+</html>

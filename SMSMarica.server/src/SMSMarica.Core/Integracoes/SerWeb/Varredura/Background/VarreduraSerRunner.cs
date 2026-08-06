@@ -21,7 +21,7 @@ public sealed class VarreduraSerRunner(
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await LimparOrfasAsync(stoppingToken);
+        await RetomarInterrompidasAsync(stoppingToken);
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -46,7 +46,7 @@ public sealed class VarreduraSerRunner(
 
                 var execucaoId = await sincronizacao.ExecutarAsync(
                     pedido.Modo, pedido.Disparo, pedido.Inicio, pedido.Fim, pedido.Situacoes,
-                    pedido.UsuarioId, pedido.UsuarioNome, stoppingToken);
+                    pedido.UsuarioId, pedido.UsuarioNome, pedido.ExecucaoParaRetomar, stoppingToken);
 
                 logger.LogInformation("SER: varredura {Execucao} finalizada.", execucaoId);
             }
@@ -68,44 +68,55 @@ public sealed class VarreduraSerRunner(
     }
 
     /// <summary>
-    /// Fecha rodadas que ficaram <c>EmExecucao</c> quando o processo caiu (deploy, restart,
-    /// crash). Sem isso elas ficam abertas para sempre e o guard de concorrência —
-    /// que olha o banco — passa a recusar toda varredura nova, com a tela dizendo
-    /// "já existe uma em andamento" sobre algo que morreu há dias.
+    /// Rodadas que ficaram <c>EmExecucao</c> quando o processo caiu (deploy, restart, crash)
+    /// são marcadas como <see cref="StatusVarreduraSer.Interrompida"/> e <b>reenfileiradas</b>.
+    ///
+    /// <para><b>Não são marcadas como erro.</b> A rodada leva horas; perdê-la por um deploy
+    /// significaria refazer tudo, e marcá-la "concluída" faria o operador acreditar numa
+    /// cobertura que não existe. O ponteiro (fase + situação + data + último IdSer) diz onde
+    /// continuar, então a retomada custa só o que faltava.</para>
     /// </summary>
-    private async Task LimparOrfasAsync(CancellationToken cancellationToken)
+    private async Task RetomarInterrompidasAsync(CancellationToken cancellationToken)
     {
         try
         {
             using var scope = scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<SmsMaricaDbContext>();
 
-            var orfas = await db.SerVarreduraExecucoes
+            var pendentes = await db.SerVarreduraExecucoes
                 .Where(x => x.Status == StatusVarreduraSer.EmExecucao
-                            || x.Status == StatusVarreduraSer.Pendente)
+                            || x.Status == StatusVarreduraSer.Pendente
+                            || x.Status == StatusVarreduraSer.Interrompida)
+                .OrderBy(x => x.IniciadoEm)
                 .ToListAsync(cancellationToken);
 
-            if (orfas.Count == 0) return;
+            if (pendentes.Count == 0) return;
 
-            foreach (var execucao in orfas)
+            foreach (var execucao in pendentes)
             {
-                // Erro, não Concluída: a cobertura ficou incompleta e fingir o contrário faria o
-                // operador acreditar que a base está inteira.
-                execucao.Status = StatusVarreduraSer.Erro;
+                execucao.Status = StatusVarreduraSer.Interrompida;
                 execucao.MensagemErro =
-                    "Interrompida pelo desligamento do serviço (deploy/restart). Cobertura incompleta.";
-                execucao.FinalizadoEm = DateTime.UtcNow;
-                execucao.DuracaoSegundos =
-                    (int)(execucao.FinalizadoEm.Value - execucao.IniciadoEm).TotalSeconds;
+                    $"Interrompida pelo desligamento do serviço na fase {execucao.Fase}. "
+                    + "Retomada automática a partir do ponteiro.";
             }
-
             await db.SaveChangesAsync(cancellationToken);
-            logger.LogWarning("SER: {Qtd} varredura(s) órfã(s) fechada(s) na subida do serviço.", orfas.Count);
+
+            // Só a mais antiga volta para a fila: a sessão do SER é única por operador e duas
+            // rodadas concorrentes se derrubariam. As demais continuam pendentes e entram depois.
+            var primeira = pendentes[0];
+            var enfileirou = fila.TentarEnfileirar(new PedidoVarreduraSer(
+                primeira.Modo, primeira.Disparo, primeira.JanelaInicio, primeira.JanelaFim,
+                null, primeira.CriadoPor, primeira.CriadoPorNome, primeira.Id));
+
+            logger.LogWarning(
+                "SER: {Qtd} varredura(s) interrompida(s) encontrada(s) na subida. Retomando {Execucao} "
+                + "na fase {Fase} (enfileirada: {Ok}).",
+                pendentes.Count, primeira.Id, primeira.Fase, enfileirou);
         }
         catch (Exception ex)
         {
             // Falhar aqui não pode impedir o runner de subir.
-            logger.LogError(ex, "SER: não foi possível fechar varreduras órfãs na subida.");
+            logger.LogError(ex, "SER: não foi possível retomar varreduras interrompidas na subida.");
         }
     }
 }
