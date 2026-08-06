@@ -22,6 +22,8 @@ const CLASSE_STATUS: Record<StatusVarreduraSer, string> = {
   Parcial: 'bg-amber-50 text-amber-700 border-amber-200',
   Erro: 'bg-red-50 text-red-700 border-red-200',
   Cancelada: 'bg-orange-50 text-orange-700 border-orange-200',
+  // Roxo, e não vermelho: parada retomável não é erro — ninguém precisa agir, ela volta sozinha.
+  Interrompida: 'bg-purple-50 text-purple-700 border-purple-200',
 };
 
 const ROTULO_MODO: Record<ModoVarreduraSer, string> = {
@@ -34,6 +36,33 @@ function dataHora(iso: string | null): string {
   if (!iso) return '—';
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString('pt-BR');
+}
+
+function data(iso: string | null): string {
+  if (!iso) return '—';
+  const [ano, mes, dia] = iso.slice(0, 10).split('-');
+  return dia && mes && ano ? `${dia}/${mes}/${ano}` : '—';
+}
+
+/**
+ * O ponteiro de retomada em uma linha. Sem isso, uma rodada de horas que reinicia parece travada:
+ * o operador precisa enxergar que ela ANDOU, e a partir de onde ela continua.
+ */
+function descreverFase(x: ExecucaoSer): string {
+  switch (x.fase) {
+    case 'Grade':
+      return x.cursorSituacao
+        ? `Grade · ${x.cursorSituacao} a partir de ${data(x.cursorData)}`
+        : 'Grade · começando';
+    case 'Historico':
+      return x.historicosPendentes > 0
+        ? `Histórico · faltam ${x.historicosPendentes}`
+        : 'Histórico · terminando';
+    case 'Finalizada':
+      return 'Finalizada';
+    default:
+      return '—';
+  }
 }
 
 function duracao(seg: number | null): string {
@@ -148,6 +177,23 @@ export function AbaSerConfiguracao() {
         ) : (
           <span className="text-xs text-slate-500">completa</span>
         ),
+    },
+    {
+      chave: 'progresso',
+      cabecalho: 'Progresso',
+      className: 'w-56',
+      render: (x) => (
+        <div className="space-y-0.5 text-xs">
+          <div className="text-slate-700">{descreverFase(x)}</div>
+          {x.retomadas > 0 && (
+            // Rodada que reinicia sozinha é normal (deploy no meio); reiniciar MUITAS vezes é
+            // sintoma de serviço caindo — por isso o número aparece.
+            <div className="text-purple-700">
+              retomada {x.retomadas}× · última em {dataHora(x.retomadaEm)}
+            </div>
+          )}
+        </div>
+      ),
     },
     {
       chave: 'duracao',

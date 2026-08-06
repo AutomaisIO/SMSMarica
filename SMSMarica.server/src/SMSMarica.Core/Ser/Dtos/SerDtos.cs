@@ -129,7 +129,17 @@ public sealed record SerExecucaoDto(
     DateTime IniciadoEm,
     DateTime? FinalizadoEm,
     int? DuracaoSegundos,
-    string? CriadoPorNome);
+    string? CriadoPorNome,
+    // ---- Ponteiro de retomada ----
+    // Aparecem na tela porque uma rodada de horas que reinicia precisa poder ser acompanhada:
+    // sem isso, "Interrompida" fica indistinguível de travada.
+    FaseVarreduraSer Fase,
+    SituacaoSer? CursorSituacao,
+    DateOnly? CursorData,
+    string? CursorIdSer,
+    int HistoricosPendentes,
+    int Retomadas,
+    DateTime? RetomadaEm);
 
 /// <summary>
 /// Consulta DIRETA ao SER — a "tela de testes": mesmos filtros da busca de lá, resultado cru,

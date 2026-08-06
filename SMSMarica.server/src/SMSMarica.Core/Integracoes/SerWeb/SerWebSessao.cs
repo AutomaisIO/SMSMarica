@@ -27,11 +27,26 @@ public interface ISerWebSessao
     /// <summary>Garante sessão logada + módulo ativo e devolve a tela de pesquisa (HTML completo).</summary>
     Task<string> AbrirTelaPesquisaAsync(CancellationToken cancellationToken);
 
+    /// <summary>Garante sessão logada + módulo ativo e devolve QUALQUER tela do módulo. A tela de
+    /// Histórico de Consulta/Exame (a do export) mora em outro caminho, mas na mesma conversa Seam.</summary>
+    Task<string> AbrirTelaAsync(string caminho, CancellationToken cancellationToken);
+
     /// <summary>Submete o form da tela de pesquisa. <paramref name="htmlForm"/> é o último HTML
     /// COMPLETO (com <c>&lt;form id="form0"&gt;</c>); a resposta de paginação é parcial.</summary>
     Task<string> SubmeterPesquisaAsync(
         string htmlForm, IReadOnlyDictionary<string, string> extras, string? viewState,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Submete um form qualquer e devolve a resposta <b>em bytes</b>.
+    ///
+    /// <para>O botão <i>Exportar</i> responde um <c>.xls</c> BIFF8 (OLE2), não HTML: decodificar a
+    /// resposta como UTF-8 corrompe a planilha de forma irreversível. Por isso o transporte devolve
+    /// bytes e quem sabe o que pediu decide se aquilo é texto ou arquivo.</para>
+    /// </summary>
+    Task<RespostaSer> SubmeterFormAsync(
+        string htmlPagina, string formId, IReadOnlyDictionary<string, string> extras,
+        string? viewState, CancellationToken cancellationToken);
 
     /// <summary>Autentica uma credencial avulsa (ainda não salva) — usado na tela de configuração.</summary>
     Task<string> AutenticarAvulsoAsync(string usuario, string senha, CancellationToken cancellationToken);
@@ -86,27 +101,30 @@ public sealed partial class SerWebSessao(
 
     // ------------------------------------------------------------------ público
 
-    public async Task<string> AbrirTelaPesquisaAsync(CancellationToken cancellationToken)
+    public Task<string> AbrirTelaPesquisaAsync(CancellationToken cancellationToken) =>
+        AbrirTelaAsync(CaminhoPesquisa, cancellationToken);
+
+    public async Task<string> AbrirTelaAsync(string caminho, CancellationToken cancellationToken)
     {
         await _gate.WaitAsync(cancellationToken);
         try
         {
             var sessao = await GarantirSessaoAsync(cancellationToken);
-            var html = await GetAsync(sessao, CaminhoPesquisa, cancellationToken);
+            var html = await GetAsync(sessao, caminho, cancellationToken);
 
             // HTTP 500 aqui significa quase sempre "módulo não ativo na sessão" (o Seam exige a
             // navegação pelo menu). Refazemos o caminho uma vez antes de desistir.
             if (html is null)
             {
-                logger.LogInformation("SER: tela de pesquisa recusada — reativando o módulo.");
+                logger.LogInformation("SER: tela {Caminho} recusada — reativando o módulo.", caminho);
                 await EntrarNoModuloAsync(sessao, cancellationToken);
-                html = await GetAsync(sessao, CaminhoPesquisa, cancellationToken);
+                html = await GetAsync(sessao, caminho, cancellationToken);
             }
 
             return html ?? throw new ValidacaoException(
                 "ser.tela_indisponivel",
-                "O SER recusou a tela de pesquisa de consultas/exames. Verifique se a credencial "
-                + "tem acesso ao módulo Ambulatório.");
+                $"O SER recusou a tela {caminho}. Verifique se a credencial tem acesso ao módulo "
+                + "Ambulatório.");
         }
         finally
         {
@@ -118,7 +136,16 @@ public sealed partial class SerWebSessao(
         string htmlForm, IReadOnlyDictionary<string, string> extras, string? viewState,
         CancellationToken cancellationToken)
     {
-        var doc = SerHtmlParser.Documento(htmlForm);
+        var resposta = await SubmeterFormAsync(
+            htmlForm, SerHtmlParser.FormPesquisa, extras, viewState, cancellationToken);
+        return resposta.Texto;
+    }
+
+    public async Task<RespostaSer> SubmeterFormAsync(
+        string htmlPagina, string formId, IReadOnlyDictionary<string, string> extras,
+        string? viewState, CancellationToken cancellationToken)
+    {
+        var doc = SerHtmlParser.Documento(htmlPagina);
         GarantirLeitura(extras, doc);
 
         await _gate.WaitAsync(cancellationToken);
@@ -126,17 +153,20 @@ public sealed partial class SerWebSessao(
         {
             var sessao = await GarantirSessaoAsync(cancellationToken);
 
-            var campos = SerHtmlParser.CamposDoForm(doc, SerHtmlParser.FormPesquisa);
-            campos[SerHtmlParser.FormPesquisa] = SerHtmlParser.FormPesquisa;
+            var campos = SerHtmlParser.CamposDoForm(doc, formId);
+            campos[formId] = formId;
             foreach (var (k, v) in extras) campos[k] = v;
 
             // ViewState: o fresco vence. A resposta de paginação é parcial (traz a grade sem
             // form nenhum), então quem pagina passa o ViewState lido da última resposta.
             var vs = viewState
-                     ?? SerHtmlParser.ViewStateDoForm(doc, SerHtmlParser.FormPesquisa)
+                     ?? SerHtmlParser.ViewStateDoForm(doc, formId)
                      ?? sessao.UltimoViewState;
             if (!string.IsNullOrEmpty(vs)) campos["javax.faces.ViewState"] = vs;
-            campos["AJAX:EVENTS_COUNT"] = "1";
+
+            // `AJAX:EVENTS_COUNT` só faz sentido em submit A4J. O Exportar é um commandLink comum
+            // (`jsfcljs`, Mojarra) e não é ajax — mandar contador de evento ajax nele é ruído.
+            if (campos.ContainsKey("AJAXREQUEST")) campos["AJAX:EVENTS_COUNT"] = "1";
 
             // POSTAR NO `action` DO FORM, NUNCA NUMA CONSTANTE. Descoberto em 06/08/2026: com os
             // MESMOS campos, headers e ViewState, postar no caminho fixo devolve um conjunto de
@@ -144,12 +174,15 @@ public sealed partial class SerWebSessao(
             // encontráveis por ID) somem da listagem. Só postando no action lido da página o
             // resultado bate com o do navegador. É a mesma regra que o cliente do SISREG já
             // documenta ("o action vem com ;jsessionid — usar cru").
-            var destino = SerHtmlParser.ActionDoForm(doc, SerHtmlParser.FormPesquisa)
-                          ?? CaminhoPesquisa;
+            var destino = SerHtmlParser.ActionDoForm(doc, formId)
+                          ?? throw new ValidacaoException(
+                              "ser.form_sem_action",
+                              $"O form '{formId}' da tela do SER veio sem `action`. Postar em caminho "
+                              + "constante devolve listagem incompleta — ver docs/ser.md §3.3.");
 
-            var (html, _) = await PostAsync(sessao, destino, campos, cancellationToken);
-            AbsorverViewState(sessao, html);
-            return html;
+            var resposta = await PostAsync(sessao, destino, campos, cancellationToken);
+            if (resposta.EhTexto) AbsorverViewState(sessao, resposta.Texto);
+            return resposta;
         }
         finally
         {
@@ -253,7 +286,7 @@ public sealed partial class SerWebSessao(
         campos["login:entrar"] = "Entrar";
         campos["javax.faces.ViewState"] = SerHtmlParser.ViewStateDoForm(doc, "login") ?? "j_id1";
 
-        var (html, _) = await PostAsync(sessao, action, campos, cancellationToken);
+        var html = (await PostAsync(sessao, action, campos, cancellationToken)).Texto;
 
         // A tela de login de volta = credencial recusada.
         if (html.Contains("id=\"login:username\"", StringComparison.Ordinal)
@@ -296,10 +329,10 @@ public sealed partial class SerWebSessao(
 
         // Mesma regra do submit de pesquisa: o destino sai do `action` da página, não de constante.
         var acaoModulo = SerHtmlParser.ActionDoForm(doc, formId) ?? CaminhoModulo;
-        var (corpo, location) = await PostAsync(sessao, acaoModulo, campos, cancellationToken);
+        var resposta = await PostAsync(sessao, acaoModulo, campos, cancellationToken);
 
         // A resposta é um redirect A4J: header Location (aqui) ou <meta> no corpo (histórico).
-        var destino = location ?? SerHtmlParser.RedirectNoCorpo(corpo);
+        var destino = resposta.Location ?? SerHtmlParser.RedirectNoCorpo(resposta.Texto);
         if (string.IsNullOrWhiteSpace(destino))
         {
             throw new ValidacaoException(
@@ -340,11 +373,11 @@ public sealed partial class SerWebSessao(
     {
         var uri = new Uri(sessao.BaseUri, caminho);
         using var resposta = await sessao.Http.GetAsync(uri, cancellationToken);
-        var corpo = await LerAsync(resposta, cancellationToken);
-        return (int)resposta.StatusCode >= 500 ? null : corpo;
+        var bytes = await resposta.Content.ReadAsByteArrayAsync(cancellationToken);
+        return (int)resposta.StatusCode >= 500 ? null : Encoding.UTF8.GetString(bytes);
     }
 
-    private static async Task<(string corpo, string? location)> PostAsync(
+    private static async Task<RespostaSer> PostAsync(
         Sessao sessao, string caminho, IReadOnlyDictionary<string, string> campos,
         CancellationToken cancellationToken)
     {
@@ -354,18 +387,17 @@ public sealed partial class SerWebSessao(
         requisicao.Headers.TryAddWithoutValidation("X-Requested-With", "XMLHttpRequest");
 
         using var resposta = await sessao.Http.SendAsync(requisicao, cancellationToken);
-        var corpo = await LerAsync(resposta, cancellationToken);
+        var bytes = await resposta.Content.ReadAsByteArrayAsync(cancellationToken);
 
         // O A4J devolve 200 + header Location (não é 3xx, então o HttpClient não segue sozinho).
         var location = resposta.Headers.Location?.ToString()
                        ?? (resposta.Headers.TryGetValues("location", out var vs) ? vs.FirstOrDefault() : null);
-        return (corpo, location);
-    }
 
-    private static async Task<string> LerAsync(HttpResponseMessage resposta, CancellationToken cancellationToken)
-    {
-        var bytes = await resposta.Content.ReadAsByteArrayAsync(cancellationToken);
-        return Encoding.UTF8.GetString(bytes);
+        return new RespostaSer(
+            bytes,
+            resposta.Content.Headers.ContentType?.MediaType,
+            resposta.Content.Headers.ContentDisposition?.FileName?.Trim('"'),
+            location);
     }
 
     private static void AbsorverViewState(Sessao sessao, string html)

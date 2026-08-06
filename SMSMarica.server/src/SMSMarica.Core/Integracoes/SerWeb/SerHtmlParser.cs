@@ -21,6 +21,7 @@ public static partial class SerHtmlParser
     public const string TabelaGrade = "form0:listagem";
     public const string TabelaHistorico = "form0:historicoList";
     public const string Scroller = "form0:sc1";
+    public const string CaixaMensagens = "form0:messages";
 
     private static readonly HtmlParser Parser = new();
 
@@ -161,6 +162,69 @@ public static partial class SerHtmlParser
         }
 
         return linhas;
+    }
+
+    // ------------------------------------------------------------------ tela de export
+
+    /// <summary>Mensagens que a tela devolve em <c>form0:messages</c> (avisos e erros do SER).</summary>
+    public static IReadOnlyList<string> Mensagens(IHtmlDocument doc)
+    {
+        var caixa = doc.GetElementById(CaixaMensagens);
+        if (caixa is null) return [];
+        return caixa.QuerySelectorAll("li")
+            .Select(Texto)
+            .Where(t => t.Length > 0)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Aviso de corte da tela de Histórico, ou <c>null</c> quando o resultado veio inteiro.
+    ///
+    /// <para>Essa tela <b>avisa</b> quando trunca — <i>"Consulta muito ampla, retorno limitado em
+    /// 500 resultados"</i> — ao contrário da tela de Solicitação, que corta em 100 calada. Usar o
+    /// aviso como sinal é o que permite afirmar cobertura: sem aviso, o lote é completo. Inferir
+    /// truncamento por contagem de linhas seria adivinhação (500 exatos podem ser o total real).</para>
+    /// </summary>
+    public static string? AvisoDeLimite(IHtmlDocument doc) =>
+        Mensagens(doc).FirstOrDefault(m =>
+            m.Contains("retorno limitado", StringComparison.OrdinalIgnoreCase)
+            || m.Contains("muito ampla", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// <c>name</c> do <c>&lt;select&gt;</c> do form que oferece determinada <c>&lt;option&gt;</c>,
+    /// ou <c>null</c>.
+    ///
+    /// <para>Serve para achar combos cujo id é opaco — o de Situação da tela de Histórico se chama
+    /// <c>form0:j_id57</c>, e <c>j_id</c> é posicional: basta a SES-RJ recompilar a página para ele
+    /// virar outro campo. Procurar pelo <i>conteúdo</i> (quem tem a opção <c>EM_FILA</c> é o combo
+    /// de situação) é estável e ainda valida que o combo é mesmo o esperado.</para>
+    /// </summary>
+    public static string? SelectComOpcao(IHtmlDocument doc, string formId, string valorDeOpcao)
+    {
+        if (doc.GetElementById(formId) is not IHtmlFormElement form) return null;
+
+        foreach (var el in form.QuerySelectorAll("select"))
+        {
+            if (el is not IHtmlSelectElement select || string.IsNullOrEmpty(select.Name)) continue;
+
+            var tem = select.QuerySelectorAll("option")
+                .Any(o => string.Equals(o.GetAttribute("value"), valorDeOpcao, StringComparison.Ordinal));
+
+            if (tem) return select.Name;
+        }
+
+        return null;
+    }
+
+    /// <summary>Id do link "Exportar", localizado pelo <c>title</c> — nunca pelo <c>j_id</c>.</summary>
+    public static string? BotaoExportar(IHtmlDocument doc)
+    {
+        var el = doc.QuerySelectorAll("a[title]")
+            .FirstOrDefault(e =>
+                (e.Id ?? string.Empty).StartsWith("form0:", StringComparison.Ordinal)
+                && (e.GetAttribute("title") ?? string.Empty)
+                    .Contains("Exportar", StringComparison.OrdinalIgnoreCase));
+        return el?.Id;
     }
 
     // ------------------------------------------------------------------ menu Opções

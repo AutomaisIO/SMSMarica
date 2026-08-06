@@ -284,6 +284,15 @@ public static class DependencyInjection
             Integracoes.SerWeb.Varredura.ISerLeitorService,
             Integracoes.SerWeb.Varredura.SerLeitorService>();
         services.AddScoped<Integracoes.SerWeb.Varredura.VarredorSer>();
+
+        // Leitor por EXPORT (tela de Histórico de Consulta/Exame): 500 registros por lote num .xls,
+        // com aviso explícito de corte. É o caminho normal da grade — a paginação de 20 em 20 da
+        // tela de Solicitação só sobrou para a situação ALTA, que o combo do export não oferece.
+        services.AddScoped<
+            Integracoes.SerWeb.Varredura.Export.ISerExportLeitor,
+            Integracoes.SerWeb.Varredura.Export.SerExportLeitor>();
+        services.AddScoped<Integracoes.SerWeb.Varredura.Export.VarredorSerPorExport>();
+
         services.AddScoped<
             Integracoes.SerWeb.Varredura.ISerSincronizacaoService,
             Integracoes.SerWeb.Varredura.SerSincronizacaoService>();
@@ -294,6 +303,12 @@ public static class DependencyInjection
             Integracoes.SerWeb.Varredura.Background.IVarreduraSerFila,
             Integracoes.SerWeb.Varredura.Background.VarreduraSerFila>();
         services.AddHostedService<Integracoes.SerWeb.Varredura.Background.VarreduraSerRunner>();
+
+        // Disparo diário. Vem DESLIGADO por padrão (Ser:Varredura:Ativo): ligar sozinho num
+        // ambiente novo derrubaria a sessão do operador do SER sem ninguém entender por quê.
+        services.Configure<Integracoes.SerWeb.Varredura.Background.VarreduraSerOpcoes>(
+            configuration.GetSection(Integracoes.SerWeb.Varredura.Background.VarreduraSerOpcoes.Secao));
+        services.AddHostedService<Integracoes.SerWeb.Varredura.Background.VarreduraSerScheduler>();
 
         // Consumo pelas telas: a busca lê o ESPELHO (nosso banco), não o SER.
         services.AddScoped<Ser.ISerConsultaService, Ser.SerConsultaService>();

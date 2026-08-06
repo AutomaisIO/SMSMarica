@@ -6,6 +6,7 @@ using SMSMarica.Core.Common.Tempo;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities.Enums;
 using SMSMarica.Data.Entities.Ser;
+using SMSMarica.Core.Integracoes.SerWeb.Varredura.Export;
 
 namespace SMSMarica.Core.Integracoes.SerWeb.Varredura;
 
@@ -35,7 +36,9 @@ public interface ISerSincronizacaoService
 public sealed class SerSincronizacaoService(
     SmsMaricaDbContext db,
     ISerLeitorService leitor,
+    ISerExportLeitor exportLeitor,
     VarredorSer varredor,
+    VarredorSerPorExport varredorExport,
     ILogger<SerSincronizacaoService> logger) : ISerSincronizacaoService
 {
     /// <summary>Todas as situações do SER. A busca EXIGE o filtro, então varrer "tudo" é
@@ -104,49 +107,32 @@ public sealed class SerSincronizacaoService(
 
         try
         {
-            await leitor.PrepararAsync(cancellationToken);
-
             // ---- fase 1: grade (todas as situações) ----
             var precisamHistorico = new List<(string IdSer, SituacaoSer Situacao, string Motivo)>();
 
-            foreach (var situacao in alvo)
+            // Retomada: a fase de histórico já começou, então a grade inteira está feita.
+            if (execucao.Fase != FaseVarreduraSer.Historico)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                var resultado = await varredor.VarrerAsync(situacao, inicio, fim, cancellationToken);
-                execucao.Buscas += resultado.Buscas;
-                execucao.Paginas += resultado.Paginas;
-                execucao.SolicitacoesEncontradas += resultado.Total;
-
-                foreach (var fatia in resultado.Truncadas)
-                {
-                    execucao.FatiasTruncadas++;
-                    db.SerVarreduraFalhas.Add(new SerVarreduraFalha
-                    {
-                        Id = Guid.NewGuid(),
-                        ExecucaoId = execucao.Id,
-                        Tipo = TipoFalhaSer.FatiaTruncada,
-                        Situacao = fatia.Situacao,
-                        FatiaInicio = fatia.Dia,
-                        FatiaFim = fatia.Dia,
-                        TipoRecurso = fatia.Tipo,
-                        Mensagem =
-                            $"Mais de 100 registros em {fatia.Dia:dd/MM/yyyy} ({fatia.Situacao}"
-                            + (fatia.Tipo is { } t ? $", {t}" : string.Empty)
-                            + "). A tela do SER não pagina além disso — há registros NÃO lidos.",
-                        CriadoEm = DateTime.UtcNow,
-                    });
-                }
-
-                await AplicarGradeAsync(execucao, situacao, resultado, precisamHistorico, cancellationToken);
+                execucao.Fase = FaseVarreduraSer.Grade;
+                await VarrerGradeAsync(
+                    execucao, alvo, inicio, fim, precisamHistorico, cancellationToken);
+            }
+            else
+            {
+                logger.LogInformation(
+                    "SER: retomando {Execucao} direto na fase de histórico — a grade já foi varrida.",
+                    execucao.Id);
             }
 
             // ---- fase 2: histórico ----
             if (modo != ModoVarreduraSer.SomenteGrade)
             {
+                execucao.Fase = FaseVarreduraSer.Historico;
+                await db.SaveChangesAsync(cancellationToken);
                 await AplicarHistoricosAsync(execucao, modo, precisamHistorico, cancellationToken);
             }
 
+            execucao.Fase = FaseVarreduraSer.Finalizada;
             execucao.Status = execucao.FatiasTruncadas > 0
                 ? StatusVarreduraSer.Parcial
                 : StatusVarreduraSer.Concluida;
@@ -174,22 +160,141 @@ public sealed class SerSincronizacaoService(
 
     // ------------------------------------------------------------------ grade
 
-    private async Task AplicarGradeAsync(
+    /// <summary>
+    /// Fase 1: espelha a grade, situação por situação.
+    ///
+    /// <para><b>Cada lote é gravado com o cursor na mesma passada.</b> Acumular tudo em memória e
+    /// gravar no fim faria uma queda no meio jogar horas fora; e avançar o cursor sem ter gravado o
+    /// lote seria pior ainda — a retomada pularia o trecho e deixaria um buraco que ninguém veria.</para>
+    ///
+    /// <para><b>ALTA vai pela tela de Solicitação</b> (paginada, teto de 100): o combo da tela de
+    /// Histórico, que é a que exporta, não oferece essa situação.</para>
+    /// </summary>
+    private async Task VarrerGradeAsync(
         SerVarreduraExecucao execucao,
-        SituacaoSer situacao,
-        ResultadoVarreduraSer resultado,
+        IReadOnlyList<SituacaoSer> alvo,
+        DateOnly inicio,
+        DateOnly fim,
         List<(string, SituacaoSer, string)> precisamHistorico,
         CancellationToken cancellationToken)
     {
-        var ids = resultado.Solicitacoes.Keys.ToList();
+        // Retomada: as situações antes do cursor já foram varridas por inteiro; a do cursor
+        // recomeça na primeira data ainda não varrida.
+        var indiceInicial = 0;
+        var inicioDaPrimeira = inicio;
+
+        if (execucao.CursorSituacao is { } cursorSituacao)
+        {
+            var i = alvo.ToList().IndexOf(cursorSituacao);
+            if (i >= 0)
+            {
+                indiceInicial = i;
+                inicioDaPrimeira = execucao.CursorData ?? inicio;
+            }
+        }
+
+        for (var i = indiceInicial; i < alvo.Count; i++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var situacao = alvo[i];
+            var de = i == indiceInicial ? inicioDaPrimeira : inicio;
+            if (de > fim) continue;
+
+            var vistos = new HashSet<string>(StringComparer.Ordinal);
+
+            async Task AplicarAsync(
+                IReadOnlyList<SerLinhaGrade> linhas, DateOnly cursorConcluido, CancellationToken ct)
+            {
+                if (linhas.Count > 0)
+                {
+                    await AplicarGradeAsync(execucao, situacao, linhas, vistos, precisamHistorico, ct);
+                }
+
+                execucao.CursorSituacao = situacao;
+                execucao.CursorData = cursorConcluido;
+                await db.SaveChangesAsync(ct);
+            }
+
+            await AplicarAsync([], de, cancellationToken);
+
+            ResultadoVarreduraSer resultado;
+
+            if (situacao == SituacaoSer.Alta)
+            {
+                await leitor.PrepararAsync(cancellationToken);
+                resultado = await varredor.VarrerAsync(situacao, de, fim, cancellationToken);
+                execucao.Paginas += resultado.Paginas;
+                await AplicarAsync([.. resultado.Solicitacoes.Values], fim.AddDays(1), cancellationToken);
+                RegistrarTruncadas(execucao, resultado, teto: 100, tela: "de Solicitação");
+            }
+            else
+            {
+                await exportLeitor.PrepararAsync(cancellationToken);
+                resultado = await varredorExport.VarrerAsync(
+                    situacao, de, fim, AplicarAsync, cancellationToken);
+                RegistrarTruncadas(execucao, resultado, teto: 500, tela: "de Histórico");
+            }
+
+            execucao.Buscas += resultado.Buscas;
+            execucao.SolicitacoesEncontradas += vistos.Count;
+            await db.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    /// <summary>Fatia que estourou o teto = registros NÃO lidos. Fica declarada, e a rodada vira
+    /// Parcial em vez de Concluída.</summary>
+    private void RegistrarTruncadas(
+        SerVarreduraExecucao execucao, ResultadoVarreduraSer resultado, int teto, string tela)
+    {
+        foreach (var fatia in resultado.Truncadas)
+        {
+            execucao.FatiasTruncadas++;
+            db.SerVarreduraFalhas.Add(new SerVarreduraFalha
+            {
+                Id = Guid.NewGuid(),
+                ExecucaoId = execucao.Id,
+                Tipo = TipoFalhaSer.FatiaTruncada,
+                Situacao = fatia.Situacao,
+                FatiaInicio = fatia.Dia,
+                FatiaFim = fatia.Dia,
+                TipoRecurso = fatia.Tipo,
+                Mensagem =
+                    $"Mais de {teto} registros em {fatia.Dia:dd/MM/yyyy} ({fatia.Situacao}"
+                    + (fatia.Tipo is { } t ? $", {t}" : string.Empty)
+                    + $"). A tela {tela} do SER não devolve além disso — há registros NÃO lidos.",
+                CriadoEm = DateTime.UtcNow,
+            });
+        }
+    }
+
+    private async Task AplicarGradeAsync(
+        SerVarreduraExecucao execucao,
+        SituacaoSer situacao,
+        IReadOnlyList<SerLinhaGrade> linhas,
+        HashSet<string> vistos,
+        List<(string, SituacaoSer, string)> precisamHistorico,
+        CancellationToken cancellationToken)
+    {
+        // Dedup dentro do lote: o SER pode repetir a mesma solicitação entre fatias vizinhas.
+        var doLote = new Dictionary<string, SerLinhaGrade>(StringComparer.Ordinal);
+        foreach (var l in linhas)
+        {
+            if (!string.IsNullOrWhiteSpace(l.IdSer)) doLote[l.IdSer] = l;
+        }
+        if (doLote.Count == 0) return;
+
+        var ids = doLote.Keys.ToList();
         var existentes = await db.SerSolicitacoes
             .Where(x => ids.Contains(x.IdSer) && x.ExcluidoEm == null)
             .ToDictionaryAsync(x => x.IdSer, cancellationToken);
 
         var agora = DateTime.UtcNow;
 
-        foreach (var (idSer, linha) in resultado.Solicitacoes)
+        foreach (var (idSer, linha) in doLote)
         {
+            vistos.Add(idSer);
+
             if (!existentes.TryGetValue(idSer, out var atual))
             {
                 var nova = new SerSolicitacao
@@ -265,6 +370,9 @@ public sealed class SerSincronizacaoService(
         alvo.Cid = linha.Cid ?? alvo.Cid;
         alvo.SolicitanteNome = linha.Solicitante ?? alvo.SolicitanteNome;
         alvo.MunicipioSolicitante = linha.MunicipioSolicitante ?? alvo.MunicipioSolicitante;
+        // Só a tela de Histórico traz executora; `??` para a varredura de ALTA (tela de
+        // Solicitação, sem essa coluna) não apagar o que o export já tinha descoberto.
+        alvo.UnidadeExecutora = linha.UnidadeExecutora ?? alvo.UnidadeExecutora;
         alvo.AgendadoParaTexto = linha.AgendadoPara;
         alvo.Situacao = situacao;
     }
@@ -277,18 +385,34 @@ public sealed class SerSincronizacaoService(
         List<(string IdSer, SituacaoSer Situacao, string Motivo)> pedidos,
         CancellationToken cancellationToken)
     {
-        // Na carga inicial lemos o histórico de TUDO; nos demais modos, só de quem a fase 1
-        // marcou (nova, mudou de situação, remarcou, ou está em fila).
-        IReadOnlyList<(string IdSer, SituacaoSer Situacao, string Motivo)> lista = modo == ModoVarreduraSer.CargaInicial
-            ? await db.SerSolicitacoes
-                .Where(x => x.ExcluidoEm == null && !x.HistoricoIndisponivel)
-                .Select(x => new { x.IdSer, x.Situacao })
-                .ToListAsync(cancellationToken)
-                .ContinueWith(t => (IReadOnlyList<(string, SituacaoSer, string)>)
-                    t.Result.Select(x => (x.IdSer, x.Situacao, "carga_inicial")).ToList(), cancellationToken)
-            : pedidos.DistinctBy(p => p.IdSer).ToList();
+        var lista = await MontarFilaDeHistoricoAsync(execucao, modo, pedidos, cancellationToken);
 
-        foreach (var (idSer, situacao, motivo) in lista)
+        // Ordem NUMÉRICA e estável: o cursor de retomada é um IdSer, e "já passei por este" só faz
+        // sentido se a fila sair na mesma ordem toda vez. Ordenar como texto colocaria 8.147.763
+        // antes de 873.917 (7 dígitos contra 6) e a retomada pularia meia base.
+        var fila = lista
+            .DistinctBy(p => p.IdSer)
+            .OrderBy(p => ChaveNumerica(p.IdSer), StringComparer.Ordinal)
+            .ToList();
+
+        if (execucao.CursorIdSer is { } cursor)
+        {
+            var antes = fila.Count;
+            var chaveCursor = ChaveNumerica(cursor);
+            fila = fila
+                .Where(p => string.CompareOrdinal(ChaveNumerica(p.IdSer), chaveCursor) > 0)
+                .ToList();
+
+            logger.LogInformation(
+                "SER: retomando a fase de histórico de {Execucao} depois de {Cursor} — "
+                + "{Pulados} já lidos, {Faltam} pela frente.",
+                execucao.Id, cursor, antes - fila.Count, fila.Count);
+        }
+
+        execucao.HistoricosPendentes = fila.Count;
+        await db.SaveChangesAsync(cancellationToken);
+
+        foreach (var (idSer, situacao, motivo) in fila)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -324,9 +448,65 @@ public sealed class SerSincronizacaoService(
                     idSer, ex.Message, situacao));
             }
 
+            // O cursor avança mesmo quando a leitura falhou: a falha ficou registrada em
+            // `ser_varredura_falha` e retentar em loop travaria a rodada inteira num único registro.
+            execucao.CursorIdSer = idSer;
+            execucao.HistoricosPendentes = Math.Max(0, execucao.HistoricosPendentes - 1);
             await db.SaveChangesAsync(cancellationToken);
         }
     }
+
+    /// <summary>
+    /// Quem tem o histórico relido nesta rodada.
+    ///
+    /// <para><b>Na retomada a lista é remontada do banco, não da memória.</b> A fase 1 marca os
+    /// candidatos numa lista em memória; se o serviço cai durante a fase 2, essa lista se perde, e
+    /// retomar com ela vazia faria a rodada terminar "concluída" sem ter lido histórico nenhum. A
+    /// remontagem é de propósito um <b>superconjunto</b> (todo mundo em fila + tudo que nasceu ou
+    /// mudou de situação depois do início da rodada): reler histórico é idempotente — os eventos
+    /// deduplicam por (data, evento) —, então sobrar custa tempo, mas faltar deixa buraco.</para>
+    /// </summary>
+    private async Task<List<(string IdSer, SituacaoSer Situacao, string Motivo)>> MontarFilaDeHistoricoAsync(
+        SerVarreduraExecucao execucao,
+        ModoVarreduraSer modo,
+        List<(string IdSer, SituacaoSer Situacao, string Motivo)> pedidos,
+        CancellationToken cancellationToken)
+    {
+        // Na carga inicial lemos o histórico de TUDO.
+        if (modo == ModoVarreduraSer.CargaInicial)
+        {
+            var todas = await db.SerSolicitacoes
+                .Where(x => x.ExcluidoEm == null && !x.HistoricoIndisponivel)
+                .Select(x => new { x.IdSer, x.Situacao })
+                .ToListAsync(cancellationToken);
+
+            return todas.Select(x => (x.IdSer, x.Situacao, "carga_inicial")).ToList();
+        }
+
+        if (pedidos.Count > 0) return pedidos;
+
+        // Sem pedidos em memória numa execução que já foi retomada: remonta do banco.
+        if (execucao.Retomadas == 0) return [];
+
+        var candidatos = await db.SerSolicitacoes
+            .Where(x => x.ExcluidoEm == null
+                        && !x.HistoricoIndisponivel
+                        && (x.Situacao == SituacaoSer.EmFila
+                            || x.CriadoEm >= execucao.IniciadoEm
+                            || (x.SituacaoMudouEm != null && x.SituacaoMudouEm >= execucao.IniciadoEm)))
+            .Select(x => new { x.IdSer, x.Situacao })
+            .ToListAsync(cancellationToken);
+
+        logger.LogInformation(
+            "SER: fila de histórico remontada do banco na retomada de {Execucao} — {Qtd} candidatas.",
+            execucao.Id, candidatos.Count);
+
+        return candidatos.Select(x => (x.IdSer, x.Situacao, "retomada")).ToList();
+    }
+
+    /// <summary>IdSer alinhado à direita para comparar como número usando comparação de texto.</summary>
+    private static string ChaveNumerica(string idSer) =>
+        idSer.Length >= 12 ? idSer : idSer.PadLeft(12, '0');
 
     private async Task AplicarHistoricoAsync(
         SerVarreduraExecucao execucao,

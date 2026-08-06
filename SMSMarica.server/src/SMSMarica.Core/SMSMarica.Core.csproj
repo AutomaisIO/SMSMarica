@@ -30,6 +30,8 @@
     <PackageReference Include="QRCoder" />
     <PackageReference Include="Pgvector" />
     <PackageReference Include="Oracle.ManagedDataAccess.Core" />
+    <!-- Export da tela de Histórico do SER: .xls BIFF8 (OLE2), 500 linhas por lote. -->
+    <PackageReference Include="ExcelDataReader" />
     <!-- DICOM: transcode JPEG-LS Lossless feito no NOSSO proxy (dcm4chee tem o compressor quebrado). -->
     <PackageReference Include="fo-dicom" />
     <PackageReference Include="fo-dicom.Codecs" />

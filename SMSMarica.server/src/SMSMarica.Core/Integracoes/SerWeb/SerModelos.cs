@@ -1,6 +1,30 @@
+using System.Text;
 using SMSMarica.Data.Entities.Ser;
 
 namespace SMSMarica.Core.Integracoes.SerWeb;
+
+/// <summary>
+/// Resposta crua do SER. <b>Bytes, não string:</b> o botão Exportar devolve um <c>.xls</c> BIFF8
+/// (OLE2) e decodificá-lo como UTF-8 destrói a planilha silenciosamente — sobram caracteres de
+/// substituição no lugar dos bytes, e o arquivo deixa de abrir sem nenhum erro no caminho.
+/// </summary>
+public sealed record RespostaSer(byte[] Corpo, string? ContentType, string? NomeArquivo, string? Location)
+{
+    private string? _texto;
+
+    /// <summary>Corpo decodificado como UTF-8. Só faz sentido quando <see cref="EhPlanilha"/> é falso.</summary>
+    public string Texto => _texto ??= Encoding.UTF8.GetString(Corpo);
+
+    /// <summary>Assinatura de arquivo composto OLE2 (<c>D0 CF 11 E0 A1 B1 1A E1</c>) — é o
+    /// invólucro do BIFF8. Reconhecer pelo conteúdo, e não pelo <c>Content-Type</c>, porque o
+    /// WildFly do SER responde a planilha com <c>text/html</c> quando a sessão azeda.</summary>
+    public bool EhPlanilha =>
+        Corpo.Length >= 8
+        && Corpo[0] == 0xD0 && Corpo[1] == 0xCF && Corpo[2] == 0x11 && Corpo[3] == 0xE0
+        && Corpo[4] == 0xA1 && Corpo[5] == 0xB1 && Corpo[6] == 0x1A && Corpo[7] == 0xE1;
+
+    public bool EhTexto => !EhPlanilha;
+}
 
 /// <summary>Uma linha da grade "Solicitações de Consulta ou Exame" do SER, ainda crua.</summary>
 public sealed record SerLinhaGrade
@@ -18,6 +42,12 @@ public sealed record SerLinhaGrade
     public string? MunicipioSolicitante { get; init; }
     public string? AgendadoPara { get; init; }
     public string? Situacao { get; init; }
+
+    /// <summary>
+    /// Onde o paciente vai ser atendido. <b>Só a tela de Histórico (a do export) traz isso</b> — a
+    /// grade da tela de Solicitação não tem essa coluna, então fica nulo quando a linha veio de lá.
+    /// </summary>
+    public string? UnidadeExecutora { get; init; }
 }
 
 /// <summary>Resultado de uma pesquisa: as linhas da página + quantas páginas o scroller expõe.</summary>
@@ -60,6 +90,40 @@ public sealed record SerFiltroPesquisa
     public string? Nome { get; init; }
     public string? Cns { get; init; }
     public string? IdSolicitacao { get; init; }
+}
+
+/// <summary>
+/// Filtros da tela <b>Consulta → Histórico de Consulta/Exame</b> (<c>historico-pesquisar.seam</c>),
+/// que é a que exporta 500 de uma vez.
+///
+/// <para>O eixo de recorte é <c>Data da Solicitação</c> (<c>form0:dataInicial/FinalInputDate</c>),
+/// e não a data de agendamento: só a data da solicitação é imutável, então as mesmas fatias saem
+/// iguais entre execuções.</para>
+/// </summary>
+public sealed record SerFiltroExport
+{
+    public required SituacaoSer Situacao { get; init; }
+    public TipoRecursoSer? Tipo { get; init; }
+    public required DateOnly DataSolicitacaoInicio { get; init; }
+    public required DateOnly DataSolicitacaoFim { get; init; }
+
+    /// <summary>
+    /// Unidade solicitante, em <b>texto puro</b>, no campo <c>form0:suggUnidadeSol</c>. É o que
+    /// recorta a consulta para Maricá. O hidden <c>_selection</c> do autocomplete fica vazio mesmo
+    /// quando se clica na sugestão pelo navegador — medido em 06/08/2026 — então não o mandamos.
+    ///
+    /// <para><b>Não usar <c>form0:municipio</c>:</b> aquele campo é <i>Município do Paciente</i>, e
+    /// paciente de outro município pode ter solicitação aberta por Maricá — filtrar por ele
+    /// esconderia gente que é nossa.</para>
+    /// </summary>
+    public string UnidadeSolicitante { get; init; } = "GESTOR SMS MARICA";
+}
+
+/// <summary>Um lote exportado: as linhas da planilha + se o SER avisou que cortou em 500.</summary>
+public sealed record LoteExportSer(IReadOnlyList<SerLinhaGrade> Linhas, bool Truncado)
+{
+    /// <summary>Maior <c>Data da Solicitação</c> do lote, quando legível.</summary>
+    public DateOnly? MaiorDataSolicitacao { get; init; }
 }
 
 /// <summary>Tradução entre os enums do domínio e os <c>value</c> dos combos do SER.</summary>

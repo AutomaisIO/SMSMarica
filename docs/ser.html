@@ -84,7 +84,8 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p><strong>Situação é obrigatória</strong> — buscar sem ela devolve zero.</p>
 <p>Grade <code>form0:listagem</code>, 14 colunas: ID, Tipo, Recurso, Data da Solicitação, Paciente, Idade, CPF, CNS, CID, Solicitante, Município Solicitante, Agendado para, Situação, Ação.</p>
 <h3>4.1 Paginação e o teto de 100</h3>
-<p><code>rich:datascroller</code> <code>form0:sc1</code>: POST com <code>ajaxSingle=form0:sc1</code> + <code>form0:sc1=&lt;n&gt;</code>. <strong>20 por página, 5 páginas.</strong> Para varrer além disso, bisecção adaptativa por <code>Data da Solicitação</code> (ADR-0042 §5).</p>
+<p><code>rich:datascroller</code> <code>form0:sc1</code>: POST com <code>ajaxSingle=form0:sc1</code> + <code>form0:sc1=&lt;n&gt;</code>. <strong>20 por página, 5 páginas.</strong> E corta <strong>em silêncio</strong>: não há aviso nenhum de que existe mais coisa além da 5ª página.</p>
+<p>&gt; <strong>Esta tela deixou de ser o caminho da varredura.</strong> Desde 06/08/2026 a grade é lida &gt; pela tela de Histórico (§4.3), que devolve 500 por lote e <strong>avisa</strong> quando trunca. &gt; A tela de Solicitação continua sendo usada para duas coisas que só ela faz: a &gt; situação <strong>ALTA</strong> e o <strong>Histórico da Solicitação</strong> (§5).</p>
 <h3>4.2 O menu <em>Opções</em> muda conforme a situação</h3>
 <div class="tw"><table><thead><tr><th>Situação</th><th>Itens</th></tr></thead><tbody>
 <tr><td>Em fila</td><td>Visualizar, Editar, <strong>Histórico</strong>, Cancelar, Registrar FollowUP</td></tr>
@@ -92,6 +93,40 @@ li{margin:3px 0}p,li{max-width:75ch}
 <tr><td><strong>Alta</strong></td><td><strong>nenhuma ação — não tem Histórico</strong></td></tr>
 </tbody></table></div>
 <p>Os ids são <code>form0:listagem:&lt;i&gt;:j_idNN</code>, com <code>&lt;i&gt;</code> 0-based <strong>na página corrente</strong> (não é o ID da solicitação). O motor localiza o item pelo <strong>texto</strong> e falha explicitamente quando não existe — chutar um <code>j_id</code> fixo faz o SER responder <strong>página vazia sem erro</strong>, e o chamador acha que leu o histórico de alguém.</p>
+<h3>4.3 Tela de Histórico de Consulta/Exame — a que exporta 500</h3>
+<p><code>/ser/pages/historico/consulta-exame/solicitacao/historico-pesquisar.seam</code>. Também tem <code>form0</code> e também tem botão <em>Pesquisar</em>, então serve de "página de formulário" (§3.4).</p>
+<div class="tw"><table><thead><tr><th>Campo</th><th>Id/name JSF</th><th>Observação</th></tr></thead><tbody>
+<tr><td>Situação</td><td><code>form0:j_id57</code></td><td><strong>6 valores, sem <code>ALTA</code></strong> — localizar pelo <code>&lt;select&gt;</code> que oferece <code>EM_FILA</code>, não pelo <code>j_id</code></td></tr>
+<tr><td>Tipo</td><td><code>form0:tipo</code></td><td><code>CONSULTA</code>, <code>EXAME</code></td></tr>
+<tr><td>Data da Solicitação</td><td><code>form0:data{Inicial,Final}InputDate</code></td><td>é o eixo do fatiamento</td></tr>
+<tr><td>Data do Agendamento</td><td><code>form0:dataAgendamento{Inicial,Final}InputDate</code></td><td><strong>não usar</strong> — é mutável</td></tr>
+<tr><td>Unidade solicitante</td><td><code>form0:suggUnidadeSol</code></td><td><strong>texto puro</strong> <code>GESTOR SMS MARICA</code></td></tr>
+<tr><td>Município do Paciente</td><td><code>form0:municipio</code></td><td><strong>não usar</strong> — paciente de outro município pode ter solicitação aberta por Maricá</td></tr>
+<tr><td>Pesquisar</td><td><code>form0:btnSearch</code></td><td><code>A4J.AJAX.Submit</code> (precisa de <code>AJAXREQUEST</code>)</td></tr>
+<tr><td><strong>Exportar</strong></td><td><code>form0:btnExport</code></td><td><code>jsfcljs</code> (Mojarra) — <strong>POST comum, sem <code>AJAXREQUEST</code></strong></td></tr>
+</tbody></table></div>
+<p>Diferenças que importam em relação à tela de Solicitação:</p>
+<ul>
+<li><strong>Avisa quando trunca</strong>, em <code>form0:messages</code>: *"Consulta muito ampla, retorno limitado</li>
+</ul>
+<p>  em 500 resultados"*. É esse aviso — e não contagem de linhas — que autoriza afirmar   "este lote está completo".</p>
+<ul>
+<li>Traz <strong>Unidade executora</strong>, que a outra não tem.</li>
+<li><strong>Não</strong> traz CPF, Solicitante nem Município solicitante.</li>
+<li><strong>Não</strong> oferece "Histórico da Solicitação" no menu da linha.</li>
+<li>Sem Situação preenchida, exige nome/código/CNS/CPF/ID do paciente.</li>
+</ul>
+<p>O <code>btnExport</code> responde <code>historico-pesquisar.xls</code>: <strong>BIFF8 dentro de OLE2</strong> (assinatura <code>D0 CF 11 E0 A1 B1 1A E1</code>), ~192 KB para 500 linhas. Duas armadilhas:</p>
+<ol>
+<li><strong>Ler a resposta como texto destrói o arquivo.</strong> O transporte devolve <code>byte[]</code>; quem</li>
+</ol>
+<p>   decodifica UTF-8 num BIFF8 troca os bytes por caracteres de substituição e a planilha    deixa de abrir — sem erro em lugar nenhum.</p>
+<ol>
+<li><strong>Reconhecer a planilha pelo conteúdo, não pelo <code>Content-Type</code>.</strong> Quando a sessão cai</li>
+</ol>
+<p>   (outro login do mesmo operador), o SER responde a tela de login com HTTP 200 no lugar    do arquivo.</p>
+<p><strong>Varredura:</strong> janela adaptativa sobre <code>Data da Solicitação</code>, da esquerda para a direita — tenta a maior janela, encolhe pela metade enquanto vier o aviso de corte, aplica o lote e avança. Dia único que ainda passa de 500 é fatiado por Tipo; o que nem assim couber vira fatia truncada declarada.</p>
+<p>&gt; <strong>Por que não pular para <code>max(data)</code> do lote:</strong> só seria correto se o corte de 500 fosse &gt; aplicado <em>depois</em> de ordenar por data da solicitação, e isso <strong>nunca foi verificado</strong>. Se &gt; o SER cortar em qualquer outra ordem, o salto passa por cima das solicitações antigas que &gt; ficaram de fora do lote — em silêncio. É a mesma classe de perda invisível que custou &gt; ~35% da carga inicial. Se um dia a ordenação for confirmada, é trocar só o laço.</p>
 <h2>5. Tela de histórico</h2>
 <p>Chega por redirect A4J embutido no corpo (não no header):</p>
 <p>``<code>html &lt;meta name="Location" content="/ser/pages/consultas-exames/solicitacao/solicitar-consulta-historico.seam?cid=16453" /&gt; </code>``</p>

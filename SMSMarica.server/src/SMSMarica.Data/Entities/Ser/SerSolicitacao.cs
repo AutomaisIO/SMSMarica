@@ -74,6 +74,14 @@ public class SerSolicitacao
 
     public string? MunicipioSolicitante { get; set; }
 
+    /// <summary>
+    /// Unidade onde o paciente vai ser atendido, como texto do SER.
+    ///
+    /// <para>Só a tela de <b>Histórico de Consulta/Exame</b> (a do export) traz essa coluna — a
+    /// grade da tela de Solicitação não tem. Fica nulo para o que foi lido por lá, inclusive ALTA.</para>
+    /// </summary>
+    public string? UnidadeExecutora { get; set; }
+
     /// <summary>Coluna "Agendado para" da grade. Texto porque o SER mistura formatos
     /// (data, data+hora, data+hora+unidade) conforme a situação.</summary>
     public string? AgendadoParaTexto { get; set; }

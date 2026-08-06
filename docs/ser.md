@@ -110,8 +110,13 @@ Ação.
 ### 4.1 Paginação e o teto de 100
 
 `rich:datascroller` `form0:sc1`: POST com `ajaxSingle=form0:sc1` + `form0:sc1=<n>`.
-**20 por página, 5 páginas.** Para varrer além disso, bisecção adaptativa por
-`Data da Solicitação` (ADR-0042 §5).
+**20 por página, 5 páginas.** E corta **em silêncio**: não há aviso nenhum de que
+existe mais coisa além da 5ª página.
+
+> **Esta tela deixou de ser o caminho da varredura.** Desde 06/08/2026 a grade é lida
+> pela tela de Histórico (§4.3), que devolve 500 por lote e **avisa** quando trunca.
+> A tela de Solicitação continua sendo usada para duas coisas que só ela faz: a
+> situação **ALTA** e o **Histórico da Solicitação** (§5).
 
 ### 4.2 O menu *Opções* muda conforme a situação
 
@@ -125,6 +130,53 @@ Os ids são `form0:listagem:<i>:j_idNN`, com `<i>` 0-based **na página corrente
 é o ID da solicitação). O motor localiza o item pelo **texto** e falha explicitamente
 quando não existe — chutar um `j_id` fixo faz o SER responder **página vazia sem
 erro**, e o chamador acha que leu o histórico de alguém.
+
+### 4.3 Tela de Histórico de Consulta/Exame — a que exporta 500
+
+`/ser/pages/historico/consulta-exame/solicitacao/historico-pesquisar.seam`. Também tem
+`form0` e também tem botão *Pesquisar*, então serve de "página de formulário" (§3.4).
+
+| Campo | Id/name JSF | Observação |
+|---|---|---|
+| Situação | `form0:j_id57` | **6 valores, sem `ALTA`** — localizar pelo `<select>` que oferece `EM_FILA`, não pelo `j_id` |
+| Tipo | `form0:tipo` | `CONSULTA`, `EXAME` |
+| Data da Solicitação | `form0:data{Inicial,Final}InputDate` | é o eixo do fatiamento |
+| Data do Agendamento | `form0:dataAgendamento{Inicial,Final}InputDate` | **não usar** — é mutável |
+| Unidade solicitante | `form0:suggUnidadeSol` | **texto puro** `GESTOR SMS MARICA` |
+| Município do Paciente | `form0:municipio` | **não usar** — paciente de outro município pode ter solicitação aberta por Maricá |
+| Pesquisar | `form0:btnSearch` | `A4J.AJAX.Submit` (precisa de `AJAXREQUEST`) |
+| **Exportar** | `form0:btnExport` | `jsfcljs` (Mojarra) — **POST comum, sem `AJAXREQUEST`** |
+
+Diferenças que importam em relação à tela de Solicitação:
+
+- **Avisa quando trunca**, em `form0:messages`: *"Consulta muito ampla, retorno limitado
+  em 500 resultados"*. É esse aviso — e não contagem de linhas — que autoriza afirmar
+  "este lote está completo".
+- Traz **Unidade executora**, que a outra não tem.
+- **Não** traz CPF, Solicitante nem Município solicitante.
+- **Não** oferece "Histórico da Solicitação" no menu da linha.
+- Sem Situação preenchida, exige nome/código/CNS/CPF/ID do paciente.
+
+O `btnExport` responde `historico-pesquisar.xls`: **BIFF8 dentro de OLE2** (assinatura
+`D0 CF 11 E0 A1 B1 1A E1`), ~192 KB para 500 linhas. Duas armadilhas:
+
+1. **Ler a resposta como texto destrói o arquivo.** O transporte devolve `byte[]`; quem
+   decodifica UTF-8 num BIFF8 troca os bytes por caracteres de substituição e a planilha
+   deixa de abrir — sem erro em lugar nenhum.
+2. **Reconhecer a planilha pelo conteúdo, não pelo `Content-Type`.** Quando a sessão cai
+   (outro login do mesmo operador), o SER responde a tela de login com HTTP 200 no lugar
+   do arquivo.
+
+**Varredura:** janela adaptativa sobre `Data da Solicitação`, da esquerda para a direita —
+tenta a maior janela, encolhe pela metade enquanto vier o aviso de corte, aplica o lote e
+avança. Dia único que ainda passa de 500 é fatiado por Tipo; o que nem assim couber vira
+fatia truncada declarada.
+
+> **Por que não pular para `max(data)` do lote:** só seria correto se o corte de 500 fosse
+> aplicado *depois* de ordenar por data da solicitação, e isso **nunca foi verificado**. Se
+> o SER cortar em qualquer outra ordem, o salto passa por cima das solicitações antigas que
+> ficaram de fora do lote — em silêncio. É a mesma classe de perda invisível que custou
+> ~35% da carga inicial. Se um dia a ordenação for confirmada, é trocar só o laço.
 
 ## 5. Tela de histórico
 

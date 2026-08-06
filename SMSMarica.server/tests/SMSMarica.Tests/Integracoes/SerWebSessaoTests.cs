@@ -237,4 +237,106 @@ public class SerWebSessaoTests
             .Should().Be(Data.Entities.Ser.SituacaoSer.ChegadaNaoConfirmada);
         SerCodigos.DoTextoSituacao("desconhecido").Should().BeNull();
     }
+
+    // ------------------------------------------------------------------ tela de export
+    // Fixtures reproduzem a ESTRUTURA das capturas de 06/08/2026 (capturas/ é gitignored por
+    // conter PII de paciente) — mesmos ids, mesmas classes, mesmo texto de aviso.
+
+    /// <summary>
+    /// O aviso de corte é o que sustenta a afirmação de cobertura: sem ele, o lote é completo.
+    /// Se a SES-RJ mudar essa frase e a detecção parar de casar, o varredor passa a tratar lote
+    /// cortado como completo — e volta a perder registro em silêncio.
+    /// </summary>
+    [Fact]
+    public void Aviso_de_limite_e_reconhecido_na_tela_de_historico()
+    {
+        const string html = """
+            <html><body><form id="form0" action="/ser/pages/historico/x.seam">
+              <div id="form0:divMensagens">
+                <ul id="form0:messages" class="message">
+                  <li style="font-weight: bold; color: blue;">
+                    Consulta muito ampla, retorno limitado em 500 resultados.
+                    &Eacute; recomendado restringir a consulta.
+                  </li>
+                </ul>
+              </div>
+            </form></body></html>
+            """;
+
+        SerHtmlParser.AvisoDeLimite((IHtmlDocument)SerHtmlParser.Documento(html))
+            .Should().Contain("retorno limitado em 500");
+    }
+
+    [Fact]
+    public void Sem_aviso_o_lote_e_considerado_completo()
+    {
+        const string html = """
+            <html><body><form id="form0">
+              <div id="form0:divMensagens"><ul id="form0:messages"></ul></div>
+            </form></body></html>
+            """;
+
+        SerHtmlParser.AvisoDeLimite((IHtmlDocument)SerHtmlParser.Documento(html)).Should().BeNull();
+    }
+
+    [Fact]
+    public void Link_exportar_e_achado_pelo_title()
+    {
+        const string html = """
+            <html><body><form id="form0">
+              <a id="form0:btnExport" href="#" title="Exportar para Excel"
+                 onclick="if(typeof jsfcljs == 'function'){jsfcljs(document.getElementById('form0'),{'form0:btnExport':'form0:btnExport'},'');}return false">
+                 <span>Exportar</span></a>
+            </form></body></html>
+            """;
+
+        SerHtmlParser.BotaoExportar((IHtmlDocument)SerHtmlParser.Documento(html))
+            .Should().Be("form0:btnExport");
+    }
+
+    /// <summary>
+    /// O combo de Situação da tela de Histórico se chama <c>form0:j_id57</c> — e <c>j_id</c> é
+    /// posicional. Localizar pelo conteúdo (quem oferece <c>EM_FILA</c>) sobrevive à recompilação
+    /// da página; amarrar no id faria a consulta sair por outro campo, devolvendo outra listagem
+    /// sem erro nenhum.
+    /// </summary>
+    [Fact]
+    public void Combo_de_situacao_e_achado_pela_opcao_e_nao_pelo_j_id()
+    {
+        const string html = """
+            <html><body><form id="form0">
+              <select name="form0:tipo"><option value="CONSULTA">CONSULTA</option></select>
+              <select name="form0:j_id57">
+                <option value="AGENDADA">Agendada</option>
+                <option value="EM_FILA">Em fila</option>
+              </select>
+            </form></body></html>
+            """;
+        var doc = (IHtmlDocument)SerHtmlParser.Documento(html);
+
+        SerHtmlParser.SelectComOpcao(doc, "form0", "EM_FILA").Should().Be("form0:j_id57");
+        SerHtmlParser.SelectComOpcao(doc, "form0", "CONSULTA").Should().Be("form0:tipo");
+        SerHtmlParser.SelectComOpcao(doc, "form0", "ALTA").Should().BeNull();
+    }
+
+    /// <summary>
+    /// A trava é agressiva de propósito, mas não pode barrar a própria leitura: "Exportar para
+    /// Excel" não é escrita. Se um dia o regex de escrita crescer e pegar isso, a varredura inteira
+    /// para — este teste é o alarme.
+    /// </summary>
+    [Fact]
+    public void Trava_permite_o_link_exportar()
+    {
+        const string html = """
+            <html><body><form id="form0">
+              <a id="form0:btnExport" title="Exportar para Excel"><span>Exportar</span></a>
+            </form></body></html>
+            """;
+        var doc = (IHtmlDocument)SerHtmlParser.Documento(html);
+        var extras = new Dictionary<string, string> { ["form0:btnExport"] = "form0:btnExport" };
+
+        var acao = () => SerWebSessao.GarantirLeitura(extras, doc);
+
+        acao.Should().NotThrow();
+    }
 }

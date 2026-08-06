@@ -36,6 +36,19 @@ internal sealed class SerVarreduraExecucaoConfiguration : IEntityTypeConfigurati
         builder.Property(x => x.GatilhosGerados).HasColumnName("gatilhos_gerados").IsRequired();
         builder.Property(x => x.FatiasTruncadas).HasColumnName("fatias_truncadas").IsRequired();
 
+        // ---- Ponteiro de retomada ----
+        // `fase` tem default para as linhas que já existem em produção: sem ele, uma execução
+        // antiga voltaria como Grade=0 e a retomada não saberia onde estava.
+        builder.Property(x => x.Fase).HasColumnName("fase").IsRequired()
+            .HasDefaultValue(FaseVarreduraSer.Grade);
+        builder.Property(x => x.CursorSituacao).HasColumnName("cursor_situacao");
+        builder.Property(x => x.CursorData).HasColumnName("cursor_data");
+        builder.Property(x => x.CursorIdSer).HasColumnName("cursor_id_ser").HasMaxLength(20);
+        builder.Property(x => x.HistoricosPendentes).HasColumnName("historicos_pendentes")
+            .IsRequired().HasDefaultValue(0);
+        builder.Property(x => x.Retomadas).HasColumnName("retomadas").IsRequired().HasDefaultValue(0);
+        builder.Property(x => x.RetomadaEm).HasColumnName("retomada_em");
+
         builder.Property(x => x.MensagemErro).HasColumnName("mensagem_erro").HasMaxLength(2000);
         builder.Property(x => x.IniciadoEm).HasColumnName("iniciado_em").IsRequired();
         builder.Property(x => x.FinalizadoEm).HasColumnName("finalizado_em");

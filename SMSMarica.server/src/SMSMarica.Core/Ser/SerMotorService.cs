@@ -171,5 +171,7 @@ public sealed class SerMotorService(
         x.Buscas, x.Paginas, x.SolicitacoesEncontradas, x.SolicitacoesNovas, x.SolicitacoesAtualizadas,
         x.MudancasSituacao, x.HistoricosLidos, x.EventosNovos, x.FollowUpsNovos,
         x.HistoricosIndisponiveis, x.GatilhosGerados, x.FatiasTruncadas,
-        x.MensagemErro, x.IniciadoEm, x.FinalizadoEm, x.DuracaoSegundos, x.CriadoPorNome);
+        x.MensagemErro, x.IniciadoEm, x.FinalizadoEm, x.DuracaoSegundos, x.CriadoPorNome,
+        x.Fase, x.CursorSituacao, x.CursorData, x.CursorIdSer, x.HistoricosPendentes,
+        x.Retomadas, x.RetomadaEm);
 }

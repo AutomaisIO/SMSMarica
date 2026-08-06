@@ -36,10 +36,15 @@ export type StatusVarreduraSer =
   | 'Pendente'
   | 'EmExecucao'
   | 'Concluida'
-  /** Terminou, mas alguma fatia estourou o teto de 100 do SER — há registros NÃO lidos. */
+  /** Terminou, mas alguma fatia estourou o teto do SER — há registros NÃO lidos. */
   | 'Parcial'
   | 'Erro'
-  | 'Cancelada';
+  | 'Cancelada'
+  /** Parada por queda/deploy do serviço e RETOMÁVEL — o runner continua do ponteiro. */
+  | 'Interrompida';
+
+/** Em que ponto a rodada está. Grade = espelho da fila; Historico = trilha de eventos. */
+export type FaseVarreduraSer = 'Grade' | 'Historico' | 'Finalizada';
 
 export type SolicitacaoSerLista = {
   id: string;
@@ -149,6 +154,14 @@ export type ExecucaoSer = {
   finalizadoEm: string | null;
   duracaoSegundos: number | null;
   criadoPorNome: string | null;
+  /** Ponteiro de retomada: onde a rodada está e de onde ela continua se o serviço cair. */
+  fase: FaseVarreduraSer;
+  cursorSituacao: SituacaoSer | null;
+  cursorData: string | null;
+  cursorIdSer: string | null;
+  historicosPendentes: number;
+  retomadas: number;
+  retomadaEm: string | null;
 };
 
 export type StatusMotorSer = {

@@ -24,6 +24,7 @@ internal sealed class SerSolicitacaoConfiguration : IEntityTypeConfiguration<Ser
         builder.Property(x => x.Cid).HasColumnName("cid").HasMaxLength(300);
         builder.Property(x => x.SolicitanteNome).HasColumnName("solicitante_nome").HasMaxLength(200);
         builder.Property(x => x.MunicipioSolicitante).HasColumnName("municipio_solicitante").HasMaxLength(120);
+        builder.Property(x => x.UnidadeExecutora).HasColumnName("unidade_executora").HasMaxLength(300);
         builder.Property(x => x.AgendadoParaTexto).HasColumnName("agendado_para_texto").HasMaxLength(300);
         builder.Property(x => x.Situacao).HasColumnName("situacao").IsRequired();
 
