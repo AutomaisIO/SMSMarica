@@ -35,6 +35,12 @@ alterações entre sessoes/
 # com nome completo, CNS, nascimento, telefone e CID de paciente. Estavam só "não rastreados",
 # ou seja, a um `git add -A` de irem para o GitHub. Manter local.
 docs/Importacao CMI/
+# Mesma coisa, cópia nova dos mesmos 32 PDFs (2026-08-06) + os TXT gerados a partir deles
+# pela skill converter-pdf-sisreg. Linhas reais de agenda: nome, CNS, nascimento, telefone, CID.
+docs/PDFs CMI/
+# Agendas do CDT (US do Dr. Rodrigo, 2026-08-06) + os TXT gerados delas. Mesma PII: nome,
+# CNS, nascimento, telefone e CID. A pasta é curta e genérica, fácil de recriar sem pensar.
+docs/PDF/
 
 # Agente SQL (docs/agente-sql): segredos e artefatos.
 # O .env e o .agente_token guardam credencial de acesso a base — nunca versionar.
