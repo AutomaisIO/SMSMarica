@@ -123,6 +123,7 @@ public sealed class SerConsultaDiretaService(
                 DataSolicitacaoInicio = r.DataSolicitacaoInicio ?? InicioPadrao,
                 DataSolicitacaoFim = r.DataSolicitacaoFim
                                      ?? DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
+                UnidadeSolicitante = r.FiltrarPorSolicitante ? "GESTOR SMS MARICA" : null,
             },
             cancellationToken);
 

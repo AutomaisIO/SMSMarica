@@ -108,15 +108,21 @@ public sealed record SerFiltroExport
     public required DateOnly DataSolicitacaoFim { get; init; }
 
     /// <summary>
-    /// Unidade solicitante, em <b>texto puro</b>, no campo <c>form0:suggUnidadeSol</c>. É o que
-    /// recorta a consulta para Maricá. O hidden <c>_selection</c> do autocomplete fica vazio mesmo
-    /// quando se clica na sugestão pelo navegador — medido em 06/08/2026 — então não o mandamos.
+    /// Unidade solicitante, em <b>texto puro</b>, no campo <c>form0:suggUnidadeSol</c>.
+    /// <c>null</c> ou vazio = não enviar o filtro.
+    ///
+    /// <para><b>SOB SUSPEITA.</b> A ideia de que "GESTOR SMS MARICA em texto puro recorta a
+    /// consulta" nunca foi confirmada por uma resposta bem-sucedida: a única captura do SER que
+    /// devolveu linhas tinha este campo <b>vazio</b>. Como o <c>_selection</c> do autocomplete não
+    /// é preenchido, isto é texto solto — e texto que o SER não resolva pode zerar o resultado sem
+    /// avisar. A credencial já é de um operador GESTOR SMS MARICA, então é bem possível que o SER
+    /// escope sozinho e este filtro só atrapalhe. Conferir pela consulta direta antes de confiar.</para>
     ///
     /// <para><b>Não usar <c>form0:municipio</c>:</b> aquele campo é <i>Município do Paciente</i>, e
     /// paciente de outro município pode ter solicitação aberta por Maricá — filtrar por ele
     /// esconderia gente que é nossa.</para>
     /// </summary>
-    public string UnidadeSolicitante { get; init; } = "GESTOR SMS MARICA";
+    public string? UnidadeSolicitante { get; init; } = "GESTOR SMS MARICA";
 }
 
 /// <summary>Um lote exportado: as linhas da planilha + se o SER avisou que cortou em 500.</summary>

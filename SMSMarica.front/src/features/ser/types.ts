@@ -197,6 +197,11 @@ export type ConsultaDiretaFiltro = {
    * É o caminho que a varredura usa de verdade — e o único em que a contagem significa algo.
    */
   porExport?: boolean;
+  /**
+   * No export, mandar o filtro de unidade solicitante. Existe para testar a suspeita de que esse
+   * campo (autocomplete com hidden vazio) zera a consulta em silêncio.
+   */
+  filtrarPorSolicitante?: boolean;
 };
 
 /** Qual tela do SER respondeu. Muda o teto e o que a resposta prova. */

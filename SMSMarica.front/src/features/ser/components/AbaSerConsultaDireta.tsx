@@ -48,6 +48,7 @@ export function AbaSerConsultaDireta() {
   const [fim, setFim] = useState('');
   const [pagina, setPagina] = useState(1);
   const [porExport, setPorExport] = useState(true);
+  const [filtrarPorSolicitante, setFiltrarPorSolicitante] = useState(false);
 
   const [carregando, setCarregando] = useState(false);
   const [resultado, setResultado] = useState<ConsultaDiretaResultado | null>(null);
@@ -71,6 +72,7 @@ export function AbaSerConsultaDireta() {
         dataSolicitacaoFim: fim || undefined,
         pagina: paginaAlvo,
         porExport,
+        filtrarPorSolicitante,
       });
       setResultado(r);
       setPagina(paginaAlvo);
@@ -196,6 +198,20 @@ export function AbaSerConsultaDireta() {
           Usar o export (tela de Histórico, até 500 e avisa quando corta)
         </label>
 
+        {porExport && (
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={filtrarPorSolicitante}
+              onChange={(e) => setFiltrarPorSolicitante(e.target.checked)}
+              className="size-4"
+            />
+            {/* SOB SUSPEITA: o autocomplete manda texto solto (o hidden de seleção fica vazio) e
+                texto não resolvido pode zerar a consulta sem avisar. */}
+            Filtrar por “GESTOR SMS MARICA”
+          </label>
+        )}
+
         <Button onClick={() => consultar(1)} disabled={carregando}>
           {carregando ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
           Consultar o SER
@@ -223,7 +239,8 @@ export function AbaSerConsultaDireta() {
                   'Bateu no teto de 100 — o SER não pagina além disso. A varredura resolve fatiando por data.'}
               </span>
             ) : (
-              resultado.fonte === 'ExportHistorico' && (
+              resultado.fonte === 'ExportHistorico' &&
+              resultado.linhas.length > 0 && (
                 // SEM aviso no export significa cobertura completa daquele recorte. É a única
                 // tela do SER em que "não avisou" é informação, e não silêncio.
                 <span className="text-green-700">

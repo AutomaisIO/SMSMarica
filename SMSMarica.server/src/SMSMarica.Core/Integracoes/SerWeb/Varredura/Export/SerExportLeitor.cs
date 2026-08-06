@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.Extensions.Logging;
+using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Data.Entities.Ser;
 
 namespace SMSMarica.Core.Integracoes.SerWeb.Varredura.Export;
@@ -82,6 +83,22 @@ public sealed class SerExportLeitor(
 
         var aviso = SerHtmlParser.AvisoDeLimite(docResultado);
         var truncado = aviso is not null;
+
+        // O SER RECUSA a consulta por escrito quando algo está errado — p.ex. "Para listar todos
+        // os tipos de situação, é necessário informar um dos campos: nome do paciente, código,
+        // CNS, CPF ou ID da solicitação". Sem tratar isso, a recusa chega aqui como "zero linhas,
+        // sem aviso de corte" e vira "recorte completo": silêncio virando prova de cobertura, que
+        // é exatamente o erro que custou 35% da base. Qualquer mensagem que não seja o aviso de
+        // limite é falha, e sobe com as palavras do próprio SER.
+        var recusa = SerHtmlParser.Mensagens(docResultado)
+            .FirstOrDefault(m => !string.Equals(m, aviso, StringComparison.Ordinal));
+
+        if (recusa is not null)
+        {
+            throw new ValidacaoException(
+                "ser.consulta_recusada",
+                $"O SER recusou a consulta: \"{recusa}\"");
+        }
 
         // Sem linha nenhuma na grade não há o que exportar — e a planilha vazia do SER só custaria
         // mais uma requisição e um arquivo sem cabeçalho reconhecível.
@@ -189,8 +206,16 @@ public sealed class SerExportLeitor(
             [campoSituacao] = SerCodigos.Codigo(filtro.Situacao),
             [CampoDataInicio] = Br(filtro.DataSolicitacaoInicio),
             [CampoDataFim] = Br(filtro.DataSolicitacaoFim),
-            [CampoUnidadeSolicitante] = filtro.UnidadeSolicitante,
         };
+
+        // Só manda o solicitante quando pedido. O autocomplete devolve o hidden `_selection`
+        // VAZIO, então isto é texto solto — e texto que o SER não resolva pode zerar a consulta
+        // sem avisar. A única captura de sucesso que temos tinha este campo vazio, e a credencial
+        // já é de GESTOR SMS MARICA (o SER pode escopar sozinho pelo operador logado).
+        if (!string.IsNullOrWhiteSpace(filtro.UnidadeSolicitante))
+        {
+            campos[CampoUnidadeSolicitante] = filtro.UnidadeSolicitante;
+        }
 
         if (filtro.Tipo is { } tipo) campos[CampoTipo] = SerCodigos.Codigo(tipo);
 

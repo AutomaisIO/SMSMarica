@@ -169,6 +169,16 @@ public sealed record SerConsultaDiretaRequest
     /// conferir cobertura por ela é impossível. Continua somente leitura — nada é gravado.</para>
     /// </summary>
     public bool PorExport { get; init; }
+
+    /// <summary>
+    /// No export, mandar também o filtro de unidade solicitante (<c>GESTOR SMS MARICA</c>).
+    ///
+    /// <para>Existe para <b>testar a suspeita</b>: esse campo é um autocomplete cujo hidden de
+    /// seleção fica vazio, então vai como texto solto, e texto não resolvido pode zerar a consulta
+    /// em silêncio. Desmarcado por padrão porque a única resposta do SER que trouxe linhas tinha o
+    /// campo vazio.</para>
+    /// </summary>
+    public bool FiltrarPorSolicitante { get; init; }
 }
 
 /// <summary>Qual tela do SER respondeu — muda o teto e o que a resposta significa.</summary>
