@@ -91,14 +91,25 @@ public sealed class SerConsultaService(SmsMaricaDbContext db) : ISerConsultaServ
     }
 
     public async Task<IReadOnlyList<SerResumoSituacaoDto>> ResumoPorSituacaoAsync(
-        CancellationToken cancellationToken) =>
-        await db.SerSolicitacoes
+        CancellationToken cancellationToken)
+    {
+        // Projeta para tipo ANÔNIMO e ordena em memória. Ordenar por uma propriedade do DTO
+        // (`OrderByDescending(x => x.Quantidade)`) depois de projetar num construtor de record
+        // NÃO é traduzível pelo EF — quebrava com InvalidOperationException em runtime, não em
+        // compilação (ERRO-T8E5Q9, 06/08/2026). São no máximo 7 linhas (uma por situação),
+        // então ordenar no cliente não custa nada.
+        var contagens = await db.SerSolicitacoes
             .AsNoTracking()
             .Where(x => x.ExcluidoEm == null)
             .GroupBy(x => x.Situacao)
-            .Select(g => new SerResumoSituacaoDto(g.Key, g.Count()))
-            .OrderByDescending(x => x.Quantidade)
+            .Select(g => new { Situacao = g.Key, Quantidade = g.Count() })
             .ToListAsync(cancellationToken);
+
+        return contagens
+            .OrderByDescending(x => x.Quantidade)
+            .Select(x => new SerResumoSituacaoDto(x.Situacao, x.Quantidade))
+            .ToList();
+    }
 
     private static SerSolicitacaoListaDto ParaLista(SerSolicitacao s) => new(
         s.Id, s.IdSer, s.Tipo, s.Recurso, s.DataSolicitacao, s.PacienteNome, s.IdadeTexto,
