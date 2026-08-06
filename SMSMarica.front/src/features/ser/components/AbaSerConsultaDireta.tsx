@@ -5,6 +5,7 @@ import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
+import { Modal } from '@/shared/ui/Modal';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { consultaDiretaSer, historicoDiretoSer } from '@/features/ser/api/serApi';
 import {
@@ -24,6 +25,19 @@ import {
  * É o ensaio que valida o motor inteiro — login, AJAXREQUEST, ativação de módulo, ViewState,
  * busca, paginação e parsers — em segundos, antes de confiar numa varredura de uma hora.
  */
+/**
+ * Mesma régua de cor do detalhe da solicitação: FollowUP em roxo, porque é a tentativa de
+ * contato com o paciente — o evento que a regulação procura e o único que não muda a situação.
+ */
+function corDoEvento(evento: string): string {
+  const e = evento.toLowerCase();
+  if (e.includes('followup') || e.includes('follow-up')) return 'bg-purple-500';
+  if (e.includes('cancel')) return 'bg-red-500';
+  if (e.includes('pendenc')) return 'bg-orange-500';
+  if (e.includes('solicit')) return 'bg-blue-500';
+  return 'bg-slate-400';
+}
+
 export function AbaSerConsultaDireta() {
   const [situacao, setSituacao] = useState<SituacaoSer>('EmFila');
   const [tipo, setTipo] = useState<TipoRecursoSer | ''>('');
@@ -38,6 +52,7 @@ export function AbaSerConsultaDireta() {
   const [resultado, setResultado] = useState<ConsultaDiretaResultado | null>(null);
   const [historico, setHistorico] = useState<HistoricoDiretoResultado | null>(null);
   const [carregandoHistorico, setCarregandoHistorico] = useState<string | null>(null);
+  const [linhaDoHistorico, setLinhaDoHistorico] = useState<LinhaDiretaSer | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
   async function consultar(paginaAlvo = 1) {
@@ -69,6 +84,7 @@ export function AbaSerConsultaDireta() {
     setCarregandoHistorico(linha.idSer);
     setErro(null);
     try {
+      setLinhaDoHistorico(linha);
       setHistorico(await historicoDiretoSer(linha.idSer, situacao));
     } catch (e) {
       setHistorico(null);
@@ -216,54 +232,81 @@ export function AbaSerConsultaDireta() {
         </>
       )}
 
-      {historico && (
-        <section className="rounded-lg border border-slate-200 bg-white p-4">
-          <h3 className="mb-3 text-sm font-semibold">
-            Histórico ao vivo da solicitação <span className="font-mono">{historico.idSer}</span>
-            <span className="ml-2 text-xs font-normal text-slate-500">
-              {historico.eventos.length} eventos · {historico.duracaoMs} ms
-            </span>
-          </h3>
-
-          <div className="mb-4 grid gap-2 sm:grid-cols-3">
-            {Object.entries(historico.paciente).map(([chave, valor]) => (
-              <div key={chave}>
-                <div className="text-xs text-slate-500">{chave}</div>
-                <div className="text-sm">{valor}</div>
-              </div>
-            ))}
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead className="border-b text-left text-slate-500">
-                <tr>
-                  <th className="py-1 pr-3">Data</th>
-                  <th className="py-1 pr-3">Evento</th>
-                  <th className="py-1 pr-3">De → Para</th>
-                  <th className="py-1 pr-3">Usuário</th>
-                  <th className="py-1 pr-3">IP</th>
-                  <th className="py-1">Observação</th>
-                </tr>
-              </thead>
-              <tbody>
-                {historico.eventos.map((e, i) => (
-                  <tr key={`${e.data}-${e.evento}-${i}`} className="border-b last:border-0 align-top">
-                    <td className="py-1 pr-3 whitespace-nowrap">{e.data}</td>
-                    <td className="py-1 pr-3 font-medium">{e.evento}</td>
-                    <td className="py-1 pr-3 whitespace-nowrap">
-                      {e.estadoAnterior} → {e.estadoAtual}
-                    </td>
-                    <td className="py-1 pr-3">{e.usuario}</td>
-                    <td className="py-1 pr-3 font-mono">{e.ip}</td>
-                    <td className="py-1">{e.observacao}</td>
-                  </tr>
+      <Modal
+        aberto={historico !== null}
+        aoFechar={() => {
+          setHistorico(null);
+          setLinhaDoHistorico(null);
+        }}
+        titulo={`Histórico da solicitação ${historico?.idSer ?? ''}`}
+        descricao={
+          historico
+            ? `${linhaDoHistorico?.paciente ?? ''} — ${historico.eventos.length} evento(s) lidos ao vivo no SER em ${historico.duracaoMs} ms`
+            : undefined
+        }
+        largura="lg"
+      >
+        {historico && (
+          <div className="space-y-4">
+            <section>
+              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Paciente
+              </h4>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {Object.entries(historico.paciente).map(([chave, valor]) => (
+                  <div key={chave}>
+                    <div className="text-xs text-slate-500">{chave}</div>
+                    <div className="text-sm">{valor}</div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </section>
+
+            <section>
+              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Trilha de eventos
+              </h4>
+              {historico.eventos.length === 0 ? (
+                <p className="text-sm text-slate-500">O SER não devolveu nenhum evento.</p>
+              ) : (
+                <ol className="space-y-2">
+                  {historico.eventos.map((e, i) => (
+                    <li
+                      key={`${e.data}-${e.evento}-${i}`}
+                      className="rounded-lg border border-slate-200 p-3"
+                    >
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span
+                          className={`inline-block size-2.5 rounded-full ${corDoEvento(e.evento ?? '')}`}
+                        />
+                        <span className="text-sm font-semibold">{e.evento}</span>
+                        <span className="text-xs text-slate-500">{e.data}</span>
+                        {e.estadoAnterior && e.estadoAtual && (
+                          <span className="text-xs text-slate-500">
+                            {e.estadoAnterior} → {e.estadoAtual}
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-x-4 text-xs text-slate-500">
+                        {e.usuario && <span>por {e.usuario}</span>}
+                        {e.centralRegulacao && <span>{e.centralRegulacao}</span>}
+                        {e.lotacaoEvento && <span>{e.lotacaoEvento}</span>}
+                        {e.ip && <span className="font-mono">IP {e.ip}</span>}
+                      </div>
+                      {e.observacao && (
+                        <p className="mt-2 whitespace-pre-wrap rounded bg-slate-50 p-2 text-sm text-slate-700">
+                          {e.observacao}
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </section>
           </div>
-        </section>
-      )}
+        )}
+      </Modal>
+
     </div>
   );
 }
