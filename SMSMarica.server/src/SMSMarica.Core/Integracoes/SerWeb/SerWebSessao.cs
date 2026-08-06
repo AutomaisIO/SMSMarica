@@ -138,7 +138,16 @@ public sealed partial class SerWebSessao(
             if (!string.IsNullOrEmpty(vs)) campos["javax.faces.ViewState"] = vs;
             campos["AJAX:EVENTS_COUNT"] = "1";
 
-            var (html, _) = await PostAsync(sessao, CaminhoPesquisa, campos, cancellationToken);
+            // POSTAR NO `action` DO FORM, NUNCA NUMA CONSTANTE. Descoberto em 06/08/2026: com os
+            // MESMOS campos, headers e ViewState, postar no caminho fixo devolve um conjunto de
+            // resultados DIFERENTE do que a tela mostra — registros que existem (e são
+            // encontráveis por ID) somem da listagem. Só postando no action lido da página o
+            // resultado bate com o do navegador. É a mesma regra que o cliente do SISREG já
+            // documenta ("o action vem com ;jsessionid — usar cru").
+            var destino = SerHtmlParser.ActionDoForm(doc, SerHtmlParser.FormPesquisa)
+                          ?? CaminhoPesquisa;
+
+            var (html, _) = await PostAsync(sessao, destino, campos, cancellationToken);
             AbsorverViewState(sessao, html);
             return html;
         }
@@ -285,7 +294,9 @@ public sealed partial class SerWebSessao(
         var vs = SerHtmlParser.ViewStateDoForm(doc, formId) ?? SerHtmlParser.ViewStateQualquer(home);
         if (!string.IsNullOrEmpty(vs)) campos["javax.faces.ViewState"] = vs;
 
-        var (corpo, location) = await PostAsync(sessao, CaminhoModulo, campos, cancellationToken);
+        // Mesma regra do submit de pesquisa: o destino sai do `action` da página, não de constante.
+        var acaoModulo = SerHtmlParser.ActionDoForm(doc, formId) ?? CaminhoModulo;
+        var (corpo, location) = await PostAsync(sessao, acaoModulo, campos, cancellationToken);
 
         // A resposta é um redirect A4J: header Location (aqui) ou <meta> no corpo (histórico).
         var destino = location ?? SerHtmlParser.RedirectNoCorpo(corpo);

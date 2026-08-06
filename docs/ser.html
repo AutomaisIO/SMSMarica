@@ -60,7 +60,16 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p>``<code> ajax-response: redirect location: /ser/pages/principal.seam?cid=16273 </code>``</p>
 <h3>3.2 A armadilha do ViewState por form</h3>
 <p>A home tem vários <code>&lt;form&gt;</code>, e o <code>javax.faces.ViewState</code> <strong>pode diferir entre eles</strong>. Pegar o primeiro do documento faz o JSF restaurar a view errada — mesmo sintoma silencioso. Sempre extrair o ViewState <strong>de dentro do form que está sendo submetido</strong>.</p>
-<h3>3.3 A armadilha da resposta parcial</h3>
+<h3>3.3 A armadilha do destino do POST (a pior de todas)</h3>
+<p><strong>Postar sempre no <code>action</code> lido do <code>&lt;form&gt;</code>, nunca num caminho constante.</strong></p>
+<p>Com os <strong>mesmos campos, os mesmos headers e o mesmo ViewState</strong>, postar numa URL fixa devolve um conjunto de resultados <strong>diferente</strong> do que a tela mostra — registros que existem, e que são encontráveis por <code>Id Solicitação</code>, simplesmente <strong>não aparecem na listagem</strong>. Não há erro, não há aviso: a resposta é uma listagem plausível, só que incompleta.</p>
+<p>Medição de 06/08/2026, filtro <code>Solicitante=GESTOR SMS MARICA</code> + <code>AGENDADA</code> + <code>CONSULTA</code>:</p>
+<div class="tw"><table><thead><tr><th>Destino do POST</th><th>1º registro</th><th>Solicitação 2727024 presente?</th></tr></thead><tbody>
+<tr><td>caminho constante</td><td>2875441 (01/06/2020)</td><td><strong>não</strong></td></tr>
+<tr><td><strong><code>action</code> do form</strong></td><td><strong>2727024 (06/01/2020)</strong></td><td><strong>sim</strong></td></tr>
+</tbody></table></div>
+<p>É a mesma regra que o cliente do SISREG já documentava (<em>"o action vem com <code>;jsessionid</code> — usar cru"</em>), e ignorá-la aqui custou uma carga inicial inteira e três diagnósticos errados (suspeita de vazamento de outro município, de corte silencioso da listagem e de base inteira não-confiável — nenhum procedia).</p>
+<h3>3.4 A armadilha da resposta parcial</h3>
 <p>O submit do datascroller responde <code>ajax-response: true</code> com a grade nova mas <strong>sem <code>&lt;form id="form0"&gt;</code></strong>. Reaproveitar essa resposta como base do próximo submit quebra. O motor guarda dois HTMLs: o último <strong>completo</strong> (fonte dos campos) e o último <strong>recebido</strong> (fonte das linhas).</p>
 <h2>4. Tela de pesquisa (<code>form0</code>)</h2>
 <div class="tw"><table><thead><tr><th>Campo</th><th>Id JSF</th><th>Valores</th></tr></thead><tbody>

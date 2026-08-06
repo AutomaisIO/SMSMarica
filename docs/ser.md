@@ -60,7 +60,29 @@ A home tem vários `<form>`, e o `javax.faces.ViewState` **pode diferir entre el
 Pegar o primeiro do documento faz o JSF restaurar a view errada — mesmo sintoma
 silencioso. Sempre extrair o ViewState **de dentro do form que está sendo submetido**.
 
-### 3.3 A armadilha da resposta parcial
+### 3.3 A armadilha do destino do POST (a pior de todas)
+
+**Postar sempre no `action` lido do `<form>`, nunca num caminho constante.**
+
+Com os **mesmos campos, os mesmos headers e o mesmo ViewState**, postar numa URL fixa
+devolve um conjunto de resultados **diferente** do que a tela mostra — registros que
+existem, e que são encontráveis por `Id Solicitação`, simplesmente **não aparecem na
+listagem**. Não há erro, não há aviso: a resposta é uma listagem plausível, só que
+incompleta.
+
+Medição de 06/08/2026, filtro `Solicitante=GESTOR SMS MARICA` + `AGENDADA` + `CONSULTA`:
+
+| Destino do POST | 1º registro | Solicitação 2727024 presente? |
+|---|---|---|
+| caminho constante | 2875441 (01/06/2020) | **não** |
+| **`action` do form** | **2727024 (06/01/2020)** | **sim** |
+
+É a mesma regra que o cliente do SISREG já documentava (*"o action vem com
+`;jsessionid` — usar cru"*), e ignorá-la aqui custou uma carga inicial inteira e três
+diagnósticos errados (suspeita de vazamento de outro município, de corte silencioso da
+listagem e de base inteira não-confiável — nenhum procedia).
+
+### 3.4 A armadilha da resposta parcial
 
 O submit do datascroller responde `ajax-response: true` com a grade nova mas **sem
 `<form id="form0">`**. Reaproveitar essa resposta como base do próximo submit quebra.
