@@ -58,8 +58,15 @@ function presetsMeses(): PresetMes[] {
   }
   return out;
 }
-function nf(n: number): string {
-  return n.toLocaleString('pt-BR');
+/**
+ * Formata número tolerando ausência. O front e o backend deployam por workflows SEPARADOS, e o do
+ * front é mais rápido — entre um e outro a tela roda contra uma API que ainda não conhece os campos
+ * novos. Sem esta guarda, um `undefined.toLocaleString()` derruba o relatório INTEIRO em vez de
+ * deixar um traço no cartão que ainda não existe. Aconteceu em 06/08/2026, quando o deploy do
+ * servidor falhou por indisponibilidade do GitHub Actions e só o front subiu.
+ */
+function nf(n: number | null | undefined): string {
+  return n == null || Number.isNaN(n) ? '—' : n.toLocaleString('pt-BR');
 }
 function horas(v: number | null): string {
   if (v == null) return '—';
@@ -116,12 +123,12 @@ function TabelaProducaoMedicos({ dados }: { dados: ProducaoMedico[] }) {
           </tr>
         </thead>
         <tbody>
-          {dados.map((m) => {
+          {dados.map((m, i) => {
             const pct = m.laudosEmitidos > 0 ? (100 * m.laudosAssinados) / m.laudosEmitidos : 0;
             return (
-              <tr key={`${m.medico}-${m.crm ?? ''}`} className="border-b border-gray-100 last:border-0">
+              <tr key={`${m.medico ?? i}-${m.crm ?? ''}`} className="border-b border-gray-100 last:border-0">
                 <td className="py-2 pr-3">
-                  <div className="font-medium text-gray-900">{m.medico}</div>
+                  <div className="font-medium text-gray-900">{m.medico ?? '(sem nome)'}</div>
                   {m.crm ? <div className="text-[11px] text-gray-500">{m.crm}</div> : null}
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums text-gray-700">
