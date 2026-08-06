@@ -140,12 +140,33 @@ internal sealed class KlinikosFhirMapper(string slug, string source)
 
     // ---------------- Practitioner ----------------
 
-    public Practitioner BuildPractitioner(ProfissionalLinha p)
+    /// <summary>
+    /// Profissional a partir de <b>TODAS as linhas do mesmo <c>PROF_CODIGO</c></b>.
+    ///
+    /// <para>A tabela <c>profissional</c> do Klinikos não é uma linha por pessoa: é uma linha por
+    /// <b>(pessoa × qualificação)</b>. Medido em prod 06/08/2026 na UPA: 496 linhas para 395
+    /// profissionais; o código <c>2988</c> tem SETE linhas, mesmo nome e CPF, com sete CBOs e
+    /// quatro números de conselho.</para>
+    ///
+    /// <para>Enquanto o conector tratava cada linha como uma pessoa, o efeito era duplo e os dois
+    /// lados passavam despercebidos: o <c>qualification</c> era <b>sobrescrito</b> a cada linha —
+    /// o hub guardava só o CBO da última e perdia os outros seis em silêncio — enquanto os
+    /// identifiers de conselho <b>acumulavam</b> (o merge canônico faz o seu trabalho). Um campo
+    /// atropelava, o outro somava. E cada linha era uma escrita: sete versões novas por ciclo,
+    /// de 11 em 11 minutos, sempre terminando no mesmo estado final.</para>
+    ///
+    /// <para><c>Practitioner.qualification</c> é uma <b>lista</b> no FHIR exatamente para isto.</para>
+    /// </summary>
+    /// <param name="linhas">Linhas de um mesmo <c>PROF_CODIGO</c>; a identidade vem da primeira.</param>
+    public Practitioner BuildPractitioner(IReadOnlyList<ProfissionalLinha> linhas)
     {
+        var p = linhas[0];
+
         var ident = new List<Identifier>();
         if (Dig(p.Cpf) is { Length: > 0 } cpf) ident.Add(new Identifier(SysCpf, cpf));
         if (Dig(p.Cns) is { Length: > 0 } cns) ident.Add(new Identifier(SysCns, cns));
-        if (S(p.Conselho) is { } conselho)
+        // Um conselho por linha: entram TODOS, sem repetir.
+        foreach (var conselho in linhas.Select(l => S(l.Conselho)).OfType<string>().Distinct(StringComparer.Ordinal))
             ident.Add(new Identifier(SysConselho + "crm", conselho));
         ident.Add(new Identifier(SysProfissional, Pref(p.Codigo)));
 
@@ -153,17 +174,19 @@ internal sealed class KlinikosFhirMapper(string slug, string source)
         {
             Meta = Meta(),
             Identifier = SemVazios(ident),
-            Active = p.Ativo is null || Verdadeiro(p.Ativo),
+            // Ativo se QUALQUER qualificação estiver ativa: o profissional que deixou de exercer
+            // uma ocupação e continua em outra não pode sair do cadastro.
+            Active = linhas.Any(l => l.Ativo is null || Verdadeiro(l.Ativo)),
         };
         if (S(p.Nome) is { } nome)
             pr.Name = [new HumanName { Use = HumanName.NameUse.Official, Text = nome }];
-        if (S(p.Cbo) is { } cbo)
-        {
-            pr.Qualification = [new Practitioner.QualificationComponent
+
+        pr.Qualification = [.. linhas
+            .Select(l => S(l.Cbo)).OfType<string>().Distinct(StringComparer.Ordinal)
+            .Select(cbo => new Practitioner.QualificationComponent
             {
                 Code = new CodeableConcept { Coding = [new Coding("urn:br:gov:cbo", cbo)] },
-            }];
-        }
+            })];
         return pr;
     }
 

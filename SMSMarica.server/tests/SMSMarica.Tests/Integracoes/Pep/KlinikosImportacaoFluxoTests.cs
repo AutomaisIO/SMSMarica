@@ -1111,6 +1111,87 @@ public class KlinikosImportacaoFluxoTests
             $"inalterados ({p.PacientesInalterados}) não pode passar do total ({p.Pacientes})");
     }
 
+    /// <summary>
+    /// A tabela <c>profissional</c> é uma linha por <b>(pessoa × qualificação)</b>, não por
+    /// pessoa. Medido em prod 06/08/2026 na UPA: 496 linhas para 395 profissionais; o código
+    /// 2988 tem SETE linhas, mesmo nome e CPF, sete CBOs e quatro conselhos.
+    ///
+    /// <para>Tratando linha a linha, o <c>qualification</c> era sobrescrito a cada uma — o hub
+    /// guardava só o CBO da última e perdia os outros seis em silêncio — e cada linha era uma
+    /// versão nova (sete por ciclo, de 11 em 11 minutos). Agrupado: UMA escrita, TODAS as
+    /// qualificações.</para>
+    /// </summary>
+    [Fact]
+    public async Task Profissional_com_varias_linhas_vira_UM_recurso_com_TODAS_as_qualificacoes()
+    {
+        var hub = new HubFake();
+        var origem = OrigemPadrao();
+        origem.Profissionais.Clear();
+        // Mesma pessoa em 3 linhas: 3 CBOs, 2 conselhos (um repetido, um vazio).
+        foreach (var (cbo, conselho) in new[] { ("225125", "52123"), ("223208", "21424"), ("411010", (string?)null) })
+        {
+            var l = Prof("0001", "DR HOUSE", "39053344705");
+            l["CBO_CODIGO"] = cbo;
+            l["PROF_NUMCONSELHO"] = conselho;
+            origem.Profissionais.Add(l);
+        }
+
+        var (_, p, _) = await RodarAsync(origem, hub);
+
+        var house = Assert.Single(hub.Do<Practitioner>());
+        Assert.Equal("1", house.Meta?.VersionId);   // UMA escrita, não três
+
+        var cbos = house.Qualification
+            .Select(q => q.Code.Coding[0].Code).OrderBy(x => x, StringComparer.Ordinal);
+        Assert.Equal(["223208", "225125", "411010"], cbos);   // nenhuma qualificação perdida
+
+        var conselhos = house.Identifier
+            .Where(i => i.System == "urn:br:conselho:crm").Select(i => i.Value)
+            .OrderBy(x => x, StringComparer.Ordinal);
+        Assert.Equal(["21424", "52123"], conselhos);
+
+        Assert.Equal(1, p.Medicos);   // conta PESSOA, não linha
+    }
+
+    /// <summary>
+    /// Re-scan de profissional é gated como no Salux: cadastro muda raramente e reler ~500 linhas
+    /// a cada ciclo de 11 min é desperdício. O scheduler já calculava <c>ForcarMedicos</c> —
+    /// faltava o conector consumir.
+    /// </summary>
+    [Fact]
+    public async Task Rescan_de_profissional_so_roda_na_primeira_vez_ou_quando_forcado()
+    {
+        var hub = new HubFake();
+        var origem = OrigemPadrao();
+        var marca = new MarcaDagua();
+
+        await RodarAsync(origem, hub, marca);                  // 1ª vez: marca nula → roda
+        Assert.Single(hub.Do<Practitioner>());
+        Assert.NotNull(marca.ProfissionalEm);
+
+        // Ciclo seguinte: a marca está fresca e ninguém forçou → nem consulta a origem.
+        origem.Profissionais.Add(Prof("0009", "DR NOVO", "11144477735"));
+        var (_, p2, _) = await RodarAsync(origem, hub, marca);
+        Assert.Equal(0, p2.Medicos);
+        Assert.Single(hub.Do<Practitioner>());                 // o novo NÃO entrou ainda
+
+        // Scheduler decide que a marca envelheceu → força, e aí sim entra.
+        var progresso = new ProgressoImportacao();
+        var ctx = new ContextoImportacaoPep
+        {
+            Consulta = origem,
+            Opcoes = new OpcoesImportacao(ModoSincronizacao.Incremental, EscopoSincronizacao.Tudo,
+                null, null, false, ForcarMedicos: true),
+            Marca = marca,
+            Escritor = hub,
+            Progresso = progresso,
+            BaseSlug = Slug,
+        };
+        await new KlinikosImportacaoStrategy(NullLogger<KlinikosImportacaoStrategy>.Instance)
+            .ImportarAsync(ctx, CancellationToken.None);
+        Assert.Equal(2, hub.Do<Practitioner>().Count);
+    }
+
     /// <summary>O total de falhas conta além do teto do detalhe — o detalhe é amostra, o número é exato.</summary>
     [Fact]
     public void Detalhe_de_falhas_e_amostra_mas_o_total_e_exato()
