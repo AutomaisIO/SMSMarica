@@ -56,9 +56,37 @@ public sealed class PostgresFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        if (_container is not null) await _container.StartAsync();
+        if (_container is not null)
+        {
+            await _container.StartAsync();
+            await CriarExtensaoVetorAsync();
+        }
+
         await using var db = CriarDbContext();
         await db.Database.MigrateAsync();
+    }
+
+    /// <summary>
+    /// Cria a extensão <c>vector</c> no <c>public</c> ANTES das migrations.
+    ///
+    /// <para>A migration <c>AddInteligenciaIa</c> declara a extensão no schema <c>smsmarica</c>
+    /// (<c>Npgsql:PostgresExtension:smsmarica.vector</c>), mas as colunas são <c>vector(1024)</c>
+    /// <b>sem qualificar</b> — e o <c>search_path</c> da conexão não inclui <c>smsmarica</c>. Em
+    /// produção isso passa porque lá a extensão está no <c>public</c> e o tipo resolve; num
+    /// container limpo não está em lugar nenhum e o <c>CREATE TABLE</c> morre em
+    /// <c>type "vector" does not exist</c>. Aqui a bancada de container passa a espelhar
+    /// produção.</para>
+    ///
+    /// <para>Quem roda por <c>SMSMARICA_TESTS_CONNECTION</c> não passa por aqui: naquele cluster a
+    /// extensão já existe, e um banco emprestado não é lugar de criar extensão por conta própria.</para>
+    /// </summary>
+    private async Task CriarExtensaoVetorAsync()
+    {
+        await using var conexao = new Npgsql.NpgsqlConnection(ConnectionString);
+        await conexao.OpenAsync();
+        await using var comando = new Npgsql.NpgsqlCommand(
+            "CREATE EXTENSION IF NOT EXISTS vector;", conexao);
+        await comando.ExecuteNonQueryAsync();
     }
 
     public async Task DisposeAsync()
