@@ -25,7 +25,7 @@ import {
   exportarFaturamentoImagemXlsx,
   type ConteudoExportacao,
 } from '@/features/relatorios-imagem/api/relatoriosImagemApi';
-import type { RotuloContagem } from '@/features/relatorios-imagem/types';
+import type { ProducaoMedico, RotuloContagem } from '@/features/relatorios-imagem/types';
 
 // Paleta categórica CVD-safe (Okabe-Ito + vermelho Maricá). Ordem fixa, nunca ciclada.
 const COR_REGISTRADOS = '#2563EB'; // azul
@@ -91,6 +91,60 @@ function Tile({
         {valor}
         {sufixo ? <span className="ml-0.5 text-sm font-normal text-gray-400">{sufixo}</span> : null}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Produção de quem lauda. Tabela e não barra de propósito: são três medidas diferentes por médico
+ * (exame coberto, laudo escrito, laudo assinado) e a comparação que importa é entre as COLUNAS de
+ * uma mesma linha — emitidos acima de exames laudados é retrabalho; assinados abaixo de emitidos é
+ * documento que ainda não saiu. Uma barra por médico esconderia exatamente isso.
+ */
+function TabelaProducaoMedicos({ dados }: { dados: ProducaoMedico[] }) {
+  if (dados.length === 0) return <SemDados altura={120} />;
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 text-[11px] uppercase tracking-wide text-gray-500">
+            <th className="py-2 pr-3 text-left font-medium">Médico</th>
+            <th className="px-3 py-2 text-right font-medium">Exames laudados</th>
+            <th className="px-3 py-2 text-right font-medium">Laudos emitidos</th>
+            <th className="px-3 py-2 text-right font-medium">Assinados</th>
+            <th className="py-2 pl-3 text-right font-medium">% assinado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {dados.map((m) => {
+            const pct = m.laudosEmitidos > 0 ? (100 * m.laudosAssinados) / m.laudosEmitidos : 0;
+            return (
+              <tr key={`${m.medico}-${m.crm ?? ''}`} className="border-b border-gray-100 last:border-0">
+                <td className="py-2 pr-3">
+                  <div className="font-medium text-gray-900">{m.medico}</div>
+                  {m.crm ? <div className="text-[11px] text-gray-500">{m.crm}</div> : null}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums text-gray-700">
+                  {nf(m.examesLaudados)}
+                </td>
+                <td className="px-3 py-2 text-right font-semibold tabular-nums text-gray-900">
+                  {nf(m.laudosEmitidos)}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums text-gray-700">
+                  {nf(m.laudosAssinados)}
+                </td>
+                <td
+                  className={`py-2 pl-3 text-right tabular-nums ${
+                    pct >= 99 ? 'text-emerald-700' : pct >= 80 ? 'text-gray-700' : 'text-amber-700'
+                  }`}
+                >
+                  {nf(Math.round(pct * 10) / 10)}%
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -377,9 +431,29 @@ export function RelatoriosImagemPage() {
             <Tile rotulo="Realizados" valor={nf(dados.resumo.realizados)} />
             <Tile rotulo="Laudados" valor={nf(dados.resumo.laudados)} />
             <Tile rotulo="Aguardando laudo" valor={nf(dados.resumo.aguardandoLaudo)} />
-            <Tile rotulo="Laudos emitidos" valor={nf(dados.resumo.laudosEmitidos)} />
+            <Tile
+              rotulo="Assinados"
+              valor={nf(dados.resumo.assinados)}
+              dica="Exames cujo laudo vigente tem assinatura ICP-Brasil concluída — o que efetivamente foi entregue."
+            />
+            <Tile
+              rotulo="Aguardando assinatura"
+              valor={nf(dados.resumo.aguardandoAssinatura)}
+              dica="Laudado, mas o laudo vigente ainda não foi assinado. É fila de trabalho, não exame parado."
+            />
+            <Tile
+              rotulo="Laudos emitidos"
+              valor={nf(dados.resumo.laudosEmitidos)}
+              dica={`Laudos escritos, retificações inclusas — por isso passa de "Laudados", que conta exame. Destes, ${nf(dados.resumo.laudosAssinados)} assinado(s).`}
+            />
             <Tile rotulo="Cancelados" valor={nf(dados.resumo.cancelados)} />
             <Tile rotulo="% laudados" valor={nf(dados.resumo.percentualLaudados)} sufixo="%" />
+            <Tile
+              rotulo="% assinados"
+              valor={nf(dados.resumo.percentualAssinados)}
+              sufixo="%"
+              dica="Assinados sobre laudados."
+            />
             <Tile rotulo="Média por dia" valor={nf(dados.resumo.mediaExamesDia)} sufixo="/dia" />
             <Tile rotulo="Médicos laudando" valor={nf(dados.resumo.medicosLaudando)} />
             <Tile
@@ -391,6 +465,11 @@ export function RelatoriosImagemPage() {
               rotulo="Execução → laudo"
               valor={horas(dados.resumo.tempoMedioExecucaoLaudoHoras)}
               dica={`Média sobre ${nf(dados.resumo.amostraExecucaoLaudo)} exame(s) executados e laudados.`}
+            />
+            <Tile
+              rotulo="Laudo → assinatura"
+              valor={horas(dados.resumo.tempoMedioLaudoAssinaturaHoras)}
+              dica={`Média sobre ${nf(dados.resumo.amostraLaudoAssinatura)} laudo(s) assinado(s).`}
             />
             <Tile
               rotulo="Ciclo total"
@@ -489,9 +568,9 @@ export function RelatoriosImagemPage() {
               <BarrasHorizontais dados={dados.porTipoExame} cor={COR_REALIZADOS} />
             </Painel>
 
-            {/* Por médico que laudou */}
-            <Painel titulo="Laudos por médico" className="lg:col-span-2">
-              <BarrasHorizontais dados={dados.porMedico} cor={COR_LAUDADOS} />
+            {/* Produção de quem lauda */}
+            <Painel titulo="Produção por médico" className="lg:col-span-2">
+              <TabelaProducaoMedicos dados={dados.porMedico} />
             </Painel>
           </div>
         </>

@@ -116,32 +116,46 @@ public sealed class EstatisticasService(
         if (ate.DayNumber - de.DayNumber + 1 > MaxDiasPeriodo)
             throw new ValidacaoException("periodo", $"O período não pode exceder {MaxDiasPeriodo} dias.");
 
-        var (exames, laudos) = await CarregarExamesAsync(de, ate, unidadeId, modalidade, tipoExameId, ct);
-        var laudoPorEstudo = UltimoLaudoPorEstudo(laudos);
-        long laudosFinalizados = laudos.Count;
+        var recorte = await CarregarExamesAsync(de, ate, unidadeId, modalidade, tipoExameId, ct);
+        var exames = recorte.Exames;
+        var laudoPorExame = recorte.LaudoPorExame;
+        long laudosFinalizados = recorte.Laudos.Count;
 
         var dias = ate.DayNumber - de.DayNumber + 1;
         long total = exames.Count;
         long realizados = exames.Count(e => e.Realizado);
-        long laudados = exames.Count(e => laudoPorEstudo.ContainsKey(e.StudyInstanceUID));
+        long laudados = exames.Count(e => laudoPorExame.ContainsKey(e.Id));
         long cancelados = exames.Count(e => e.Status == StatusSolicitacaoExame.Cancelada);
         long aguardandoLaudo = Math.Max(0, realizados - laudados);
-        int medicosLaudando = exames
-            .Where(e => laudoPorEstudo.ContainsKey(e.StudyInstanceUID))
-            .Select(e => laudoPorEstudo[e.StudyInstanceUID].MedicoId)
+        int medicosLaudando = laudoPorExame.Values
+            .Select(l => l.MedicoId)
             .Distinct().Count();
+
+        // Assinatura sobre o laudo VIGENTE de cada exame — nunca sobre todas as versões. Uma
+        // retificação deixa a versão anterior para trás por design: cobrá-la de assinatura contaria
+        // como pendente um trabalho que já foi substituído, e a fila viraria ficção.
+        long assinados = laudoPorExame.Values.Count(l => l.Assinado);
+        long aguardandoAssinatura = Math.Max(0, laudados - assinados);
+        long laudosAssinados = recorte.Laudos.Count(l => l.Assinado);
 
         // Tempos médios (horas) por trecho — só timestamps UTC, pares válidos e monotônicos.
         var chegExec = new List<double>();
         var execLaudo = new List<double>();
+        var laudoAssin = new List<double>();
         var totalCiclo = new List<double>();
         foreach (var e in exames)
         {
-            DateTime? fin = laudoPorEstudo.TryGetValue(e.StudyInstanceUID, out var l) ? l.FinalizadoEm : null;
+            var l = laudoPorExame.GetValueOrDefault(e.Id);
+            DateTime? fin = l?.FinalizadoEm;
             if (e.AutorizadoEm is { } a1 && e.RealizadoEm is { } r1 && r1 >= a1)
                 chegExec.Add((r1 - a1).TotalHours);
             if (e.RealizadoEm is { } r2 && fin is { } f2 && f2 >= r2)
                 execLaudo.Add((f2 - r2).TotalHours);
+            if (fin is { } f4 && l?.AssinadoEm is { } s4 && s4 >= f4)
+                laudoAssin.Add((s4 - f4).TotalHours);
+            // Ciclo total continua sendo chegada → LAUDO (não até a assinatura): é o número que o
+            // painel já publica sob esse nome, e reancorá-lo em silêncio quebraria a comparação com
+            // os períodos anteriores. A etapa da assinatura tem métrica própria, acima.
             if (e.AutorizadoEm is { } a3 && fin is { } f3 && f3 >= a3)
                 totalCiclo.Add((f3 - a3).TotalHours);
         }
@@ -152,23 +166,29 @@ public sealed class EstatisticasService(
             Laudados: laudados,
             AguardandoLaudo: aguardandoLaudo,
             LaudosEmitidos: laudosFinalizados,
+            LaudosAssinados: laudosAssinados,
+            Assinados: assinados,
+            AguardandoAssinatura: aguardandoAssinatura,
             Cancelados: cancelados,
             MedicosLaudando: medicosLaudando,
             DiasNoPeriodo: dias,
             MediaExamesDia: dias > 0 ? Math.Round((double)total / dias, 1) : 0,
             PercentualLaudados: realizados > 0 ? Math.Round(100.0 * laudados / realizados, 1) : 0,
+            PercentualAssinados: laudados > 0 ? Math.Round(100.0 * assinados / laudados, 1) : 0,
             TempoMedioChegadaExecucaoHoras: Media(chegExec),
             TempoMedioExecucaoLaudoHoras: Media(execLaudo),
+            TempoMedioLaudoAssinaturaHoras: Media(laudoAssin),
             TempoMedioTotalHoras: Media(totalCiclo),
             AmostraChegadaExecucao: chegExec.Count,
             AmostraExecucaoLaudo: execLaudo.Count,
+            AmostraLaudoAssinatura: laudoAssin.Count,
             AmostraTotal: totalCiclo.Count);
 
         var porDia = exames
             .GroupBy(e => DateOnly.FromDateTime(e.DataRef))
             .Select(g => new SerieExamesDiaDto(
                 g.Key, g.LongCount(), g.LongCount(e => e.Realizado),
-                g.LongCount(e => laudoPorEstudo.ContainsKey(e.StudyInstanceUID))))
+                g.LongCount(e => laudoPorExame.ContainsKey(e.Id))))
             .OrderBy(s => s.Dia)
             .ToList();
 
@@ -192,12 +212,23 @@ public sealed class EstatisticasService(
             .Select(g => new RotuloContagemDto(g.Key, g.LongCount()))
             .OrderByDescending(r => r.Total).Take(15).ToList();
 
-        var porMedico = exames
-            .Where(e => laudoPorEstudo.ContainsKey(e.StudyInstanceUID))
-            .Select(e => laudoPorEstudo[e.StudyInstanceUID].MedicoNome ?? "(sem nome)")
-            .GroupBy(nome => nome)
-            .Select(g => new RotuloContagemDto(g.Key, g.LongCount()))
-            .OrderByDescending(r => r.Total).Take(15).ToList();
+        // Produção por médico. As três contagens medem coisas diferentes de propósito:
+        // ExamesLaudados é cobertura (exame que saiu da fila), LaudosEmitidos é o trabalho de fato
+        // (retificação é laudo escrito de novo) e Assinados é o que virou documento válido. Um
+        // médico com muitos emitidos e poucos exames laudados está retrabalhando.
+        var porMedico = recorte.Laudos
+            .GroupBy(l => l.MedicoId)
+            .Select(g =>
+            {
+                var refer = g.OrderByDescending(l => l.FinalizadoEm).First();
+                var exames = laudoPorExame.Values.Count(l => l.MedicoId == g.Key);
+                return new ProducaoMedicoDto(
+                    refer.MedicoNome ?? "(sem nome)", refer.MedicoCrm,
+                    ExamesLaudados: exames,
+                    LaudosEmitidos: g.LongCount(),
+                    LaudosAssinados: g.LongCount(l => l.Assinado));
+            })
+            .OrderByDescending(m => m.LaudosEmitidos).Take(15).ToList();
 
         return new EstatisticasExamesImagemDto(
             de, ate, unidadeId, resumo, porDia, porModalidade, porUnidade, porStatus, porTipo, porMedico);
@@ -211,8 +242,9 @@ public sealed class EstatisticasService(
         if (ate.DayNumber - de.DayNumber + 1 > MaxDiasPeriodo)
             throw new ValidacaoException("periodo", $"O período não pode exceder {MaxDiasPeriodo} dias.");
 
-        var (exames, laudos) = await CarregarExamesAsync(de, ate, unidadeId, modalidade, tipoExameId, ct);
-        var laudoPorEstudo = UltimoLaudoPorEstudo(laudos);
+        var recorte = await CarregarExamesAsync(de, ate, unidadeId, modalidade, tipoExameId, ct);
+        var exames = recorte.Exames;
+        var laudoPorExame = recorte.LaudoPorExame;
 
         var linhasExame = new List<ExameImagemAnaliticoDto>();
         var linhasLaudo = new List<LaudoAnaliticoDto>();
@@ -222,7 +254,7 @@ public sealed class EstatisticasService(
         {
             foreach (var e in exames.OrderBy(x => x.DataRef))
             {
-                DateTime? fin = laudoPorEstudo.TryGetValue(e.StudyInstanceUID, out var laudo) ? laudo.FinalizadoEm : null;
+                DateTime? fin = laudoPorExame.TryGetValue(e.Id, out var laudo) ? laudo.FinalizadoEm : null;
                 linhasExame.Add(new ExameImagemAnaliticoDto(
                     e.CodigoSolicitacao, e.AccessionNumber, e.StudyInstanceUID,
                     RotuloModalidade(e.Modalidade), e.TipoExameNome,
@@ -236,18 +268,15 @@ public sealed class EstatisticasService(
         // Visão LAUDO (uma por laudo finalizado, todas as versões) — para "Laudos".
         if (conteudo is ConteudoExportacaoImagem.Laudos)
         {
-            var examePorEstudo = exames
-                .GroupBy(e => e.StudyInstanceUID, StringComparer.Ordinal)
-                .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
-
-            foreach (var l in laudos.OrderBy(x => x.FinalizadoEm))
+            foreach (var l in recorte.Laudos.OrderBy(x => x.FinalizadoEm))
             {
-                examePorEstudo.TryGetValue(l.StudyInstanceUID, out var e);
+                recorte.ExamePorUid.TryGetValue(l.StudyInstanceUID, out var e);
                 linhasLaudo.Add(new LaudoAnaliticoDto(
                     e?.CodigoSolicitacao, e?.AccessionNumber ?? "", l.StudyInstanceUID, l.Versao,
                     RotuloModalidade(e?.Modalidade), e?.TipoExameNome, e?.UnidadeExecutante,
                     e?.DataEstudo, e?.RealizadoEm, l.FinalizadoEm, l.MedicoNome, l.MedicoCrm,
-                    Horas(e?.RealizadoEm, l.FinalizadoEm)));
+                    Horas(e?.RealizadoEm, l.FinalizadoEm),
+                    l.AssinadoEm, Horas(l.FinalizadoEm, l.AssinadoEm)));
             }
         }
 
@@ -267,11 +296,11 @@ public sealed class EstatisticasService(
         if (ate.DayNumber - de.DayNumber + 1 > MaxDiasPeriodo)
             throw new ValidacaoException("periodo", $"O período não pode exceder {MaxDiasPeriodo} dias.");
 
-        var (todos, _) = await CarregarExamesAsync(de, ate, unidadeId, modalidade, tipoExameId, ct);
+        var recorte = await CarregarExamesAsync(de, ate, unidadeId, modalidade, tipoExameId, ct);
 
         // Faturamento é sobre o que foi REALIZADO: descarta pendentes/agendados (sem data de
         // realização), que só virariam ruído/linha inválida na planilha de faturamento.
-        var exames = todos.Where(e => e.Realizado).ToList();
+        var exames = recorte.Exames.Where(e => e.Realizado).ToList();
 
         // Resolve a PII do paciente no hub FHIR em lote (nome/CPF/CNS/nascimento/CEP/celular). O hub
         // indisponível degrada por paciente (linha sai só com o que houver), nunca derruba a exportação.
@@ -300,13 +329,18 @@ public sealed class EstatisticasService(
     private static double? Horas(DateTime? inicio, DateTime? fim) =>
         inicio is { } i && fim is { } f && f >= i ? Math.Round((f - i).TotalHours, 1) : null;
 
-    private static Dictionary<string, LaudoRaw> UltimoLaudoPorEstudo(List<LaudoRaw> laudos)
-    {
-        var dict = new Dictionary<string, LaudoRaw>(StringComparer.Ordinal);
-        foreach (var g in laudos.GroupBy(l => l.StudyInstanceUID, StringComparer.Ordinal))
-            dict[g.Key] = g.OrderByDescending(l => l.Versao).First();
-        return dict;
-    }
+    /// <summary>
+    /// Recorte materializado do período: os exames, os laudos que incidem sobre eles e os dois
+    /// índices que ligam um ao outro.
+    /// </summary>
+    private sealed record RecorteImagem(
+        List<ExameLinha> Exames,
+        /// <summary>Todas as versões finalizadas que incidem sobre os exames do recorte.</summary>
+        List<LaudoRaw> Laudos,
+        /// <summary>Exame → laudo VIGENTE (última versão). Ausente = exame sem laudo.</summary>
+        Dictionary<Guid, LaudoRaw> LaudoPorExame,
+        /// <summary>Qualquer UID do exame (próprio ou conciliado) → o exame.</summary>
+        Dictionary<string, ExameLinha> ExamePorUid);
 
     /// <summary>Projeção enxuta de um exame de imagem para os agregados/exportação.</summary>
     private sealed record ExameLinha(
@@ -323,11 +357,19 @@ public sealed class EstatisticasService(
         public DateTime DataRef => RealizadoEm ?? DataAgendada ?? CriadoEm;
     }
 
+    /// <param name="AssinadoEm">
+    /// Instante da assinatura ICP-Brasil CONCLUÍDA (PAdES). Null = laudo emitido mas ainda não
+    /// assinado — juridicamente o laudo só vale assinado, então este campo é o que separa
+    /// "escreveu" de "entregou".
+    /// </param>
     private sealed record LaudoRaw(
-        string StudyInstanceUID, int Versao, DateTime? FinalizadoEm,
-        Guid MedicoId, string? MedicoNome, string? MedicoCrm);
+        Guid Id, string StudyInstanceUID, int Versao, DateTime? FinalizadoEm,
+        Guid MedicoId, string? MedicoNome, string? MedicoCrm, DateTime? AssinadoEm)
+    {
+        public bool Assinado => AssinadoEm != null;
+    }
 
-    private async Task<(List<ExameLinha> Exames, List<LaudoRaw> Laudos)>
+    private async Task<RecorteImagem>
         CarregarExamesAsync(DateOnly de, DateOnly ate, Guid? unidadeId,
             ModalidadeDicom? modalidade, Guid? tipoExameId, CancellationToken ct)
     {
@@ -336,7 +378,7 @@ public sealed class EstatisticasService(
 
         var escopo = await EscopoUnidade.ResolverAsync(db, usuarioAtual, ct);
         if (escopo.SemAcesso)
-            return ([], []);
+            return new RecorteImagem([], [], [], new(StringComparer.Ordinal));
 
         var q = db.ExamesImagem.AsNoTracking()
             .Where(e => e.ExcluidoEm == null
@@ -374,19 +416,80 @@ public sealed class EstatisticasService(
                 e.Solicitacao!.DataAgendada, e.Solicitacao!.DataSolicitacao, e.CriadoEm))
             .ToListAsync(ct);
 
-        var uids = exames.Select(e => e.StudyInstanceUID)
-            .Where(u => !string.IsNullOrEmpty(u)).Distinct().ToArray();
+        // Um exame pode ser conhecido por MAIS DE UM StudyInstanceUID: o que geramos ao publicar o
+        // item na worklist (gravado em ExameImagem) e o REAL do equipamento, quando ele não honra o
+        // da worklist e o estudo precisa ser conciliado depois (ExameAssociacao — ver a entidade).
+        // O laudo é gravado sobre o UID que o médico abriu, então casar só pelo primeiro deixaria o
+        // exame eternamente "aguardando laudo" mesmo já laudado. Aqui o exame vale por TODOS os
+        // seus UIDs — é a mesma régua que LaudosService usa para decidir se um estudo tem vínculo.
+        var idsExame = exames.Select(e => e.Id).ToArray();
+        var conciliados = idsExame.Length == 0
+            ? []
+            : await db.ExameAssociacoes.AsNoTracking()
+                .Where(a => a.ExcluidoEm == null && idsExame.Contains(a.ExameImagemId))
+                .Select(a => new { a.ExameImagemId, a.StudyInstanceUID })
+                .ToListAsync(ct);
 
-        var laudos = uids.Length == 0
+        var examePorUid = new Dictionary<string, ExameLinha>(StringComparer.Ordinal);
+        foreach (var e in exames)
+            if (!string.IsNullOrEmpty(e.StudyInstanceUID))
+                examePorUid.TryAdd(e.StudyInstanceUID, e);
+
+        var porId = exames.ToDictionary(e => e.Id);
+        foreach (var a in conciliados)
+            if (!string.IsNullOrEmpty(a.StudyInstanceUID) && porId.TryGetValue(a.ExameImagemId, out var e))
+                examePorUid.TryAdd(a.StudyInstanceUID, e);
+
+        var uids = examePorUid.Keys.ToArray();
+
+        var laudosBrutos = uids.Length == 0
             ? []
             : await db.Laudos.AsNoTracking()
                 .Where(l => !l.Excluido && l.Status == StatusLaudo.Finalizado && uids.Contains(l.StudyInstanceUID))
-                .Select(l => new LaudoRaw(
-                    l.StudyInstanceUID, l.Versao, l.FinalizadoEm,
-                    l.MedicoId, l.MedicoNomeSnapshot, l.MedicoCrmSnapshot))
+                .Select(l => new
+                {
+                    l.Id, l.StudyInstanceUID, l.Versao, l.FinalizadoEm,
+                    l.MedicoId, l.MedicoNomeSnapshot, l.MedicoCrmSnapshot,
+                })
                 .ToListAsync(ct);
 
-        return (exames, laudos);
+        // Assinatura CONCLUÍDA por laudo. Só o status Concluida vale: os intermediários (preparada,
+        // aguardando aprovação do médico) são tentativa em curso, e Cancelada/Falhou não assinam
+        // nada — contá-los inflaria a produção com trabalho que ainda não saiu.
+        var idsLaudo = laudosBrutos.Select(l => l.Id).ToArray();
+        var assinadoEmPorLaudo = idsLaudo.Length == 0
+            ? []
+            : await db.LaudoAssinaturas.AsNoTracking()
+                .Where(a => idsLaudo.Contains(a.LaudoId) && a.Status == StatusAssinatura.Concluida)
+                .GroupBy(a => a.LaudoId)
+                .Select(g => new { LaudoId = g.Key, AssinadoEm = g.Max(a => a.AssinadoEm) })
+                .ToDictionaryAsync(x => x.LaudoId, x => x.AssinadoEm, ct);
+
+        var laudos = laudosBrutos
+            .Select(l => new LaudoRaw(
+                l.Id, l.StudyInstanceUID, l.Versao, l.FinalizadoEm,
+                l.MedicoId, l.MedicoNomeSnapshot, l.MedicoCrmSnapshot,
+                assinadoEmPorLaudo.GetValueOrDefault(l.Id)))
+            .ToList();
+
+        // Laudo VIGENTE do exame: a versão mais recente entre todos os UIDs que o representam
+        // (retificação sobe a versão dentro do mesmo estudo; entre estudos, vale o mais novo).
+        var laudoPorExame = new Dictionary<Guid, LaudoRaw>();
+        foreach (var l in laudos)
+        {
+            if (!examePorUid.TryGetValue(l.StudyInstanceUID, out var e)) continue;
+            if (!laudoPorExame.TryGetValue(e.Id, out var atual) || MaisRecente(l, atual))
+                laudoPorExame[e.Id] = l;
+        }
+
+        return new RecorteImagem(exames, laudos, laudoPorExame, examePorUid);
+
+        static bool MaisRecente(LaudoRaw candidato, LaudoRaw atual)
+        {
+            var fc = candidato.FinalizadoEm ?? DateTime.MinValue;
+            var fa = atual.FinalizadoEm ?? DateTime.MinValue;
+            return fc != fa ? fc > fa : candidato.Versao > atual.Versao;
+        }
     }
 
     private static double? Media(List<double> valores) =>

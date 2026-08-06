@@ -152,6 +152,7 @@ public sealed class EstatisticasController(IEstatisticasService service) : Contr
             "Nº solicitação", "Accession", "Study UID", "Versão", "Modalidade", "Tipo de exame",
             "Unidade executante", "Data do estudo", "Realizado em", "Laudo finalizado em",
             "Médico do laudo", "CRM", "Execução→laudo (h)",
+            "Assinado em", "Laudo→assinatura (h)",
         ];
 
         var sb = new StringBuilder();
@@ -165,6 +166,7 @@ public sealed class EstatisticasController(IEstatisticasService service) : Contr
                 l.UnidadeExecutante ?? "", DataHora(l.DataEstudo), DataHora(l.RealizadoEm),
                 DataHora(l.LaudoFinalizadoEm), l.MedicoLaudo ?? "", l.MedicoCrm ?? "",
                 Num(l.TempoExecucaoLaudoHoras),
+                DataHora(l.AssinadoEm), Num(l.TempoLaudoAssinaturaHoras),
             ];
             sb.AppendLine(string.Join(';', campos.Select(Escapar)));
         }

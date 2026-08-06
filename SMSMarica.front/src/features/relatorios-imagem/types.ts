@@ -1,20 +1,41 @@
+/**
+ * Três eixos que NÃO são o mesmo número:
+ * - `laudados`/`assinados` contam EXAMES (cobertura da fila);
+ * - `laudosEmitidos`/`laudosAssinados` contam LAUDOS, retificação inclusa (produção médica).
+ * Um exame retificado 3x é 1 laudado e 3 emitidos.
+ */
 export type ExamesImagemResumo = {
   totalExames: number;
   realizados: number;
   laudados: number;
   aguardandoLaudo: number;
   laudosEmitidos: number;
+  laudosAssinados: number;
+  assinados: number;
+  aguardandoAssinatura: number;
   cancelados: number;
   medicosLaudando: number;
   diasNoPeriodo: number;
   mediaExamesDia: number;
   percentualLaudados: number;
+  percentualAssinados: number;
   tempoMedioChegadaExecucaoHoras: number | null;
   tempoMedioExecucaoLaudoHoras: number | null;
+  tempoMedioLaudoAssinaturaHoras: number | null;
   tempoMedioTotalHoras: number | null;
   amostraChegadaExecucao: number;
   amostraExecucaoLaudo: number;
+  amostraLaudoAssinatura: number;
   amostraTotal: number;
+};
+
+/** Produção de um médico no período — trabalho feito, não só exame coberto. */
+export type ProducaoMedico = {
+  medico: string;
+  crm: string | null;
+  examesLaudados: number;
+  laudosEmitidos: number;
+  laudosAssinados: number;
 };
 
 export type SerieExamesDia = {
@@ -49,5 +70,5 @@ export type EstatisticasExamesImagem = {
   porUnidade: RotuloContagem[];
   porStatus: RotuloContagem[];
   porTipoExame: RotuloContagem[];
-  porMedico: RotuloContagem[];
+  porMedico: ProducaoMedico[];
 };

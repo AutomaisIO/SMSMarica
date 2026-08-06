@@ -19,27 +19,59 @@ public sealed record EstatisticasExamesImagemDto(
     IReadOnlyList<RotuloContagemDto> PorUnidade,
     IReadOnlyList<RotuloContagemDto> PorStatus,
     IReadOnlyList<RotuloContagemDto> PorTipoExame,
-    IReadOnlyList<RotuloContagemDto> PorMedico);
+    IReadOnlyList<ProducaoMedicoDto> PorMedico);
 
-/// <summary>Cartões-resumo (KPIs) do período.</summary>
+/// <summary>
+/// Cartões-resumo (KPIs) do período.
+///
+/// <para><b>Exame x laudo x assinatura</b> — os três eixos não são o mesmo número, e confundi-los é
+/// o erro clássico desta tela. <see cref="Laudados"/>/<see cref="Assinados"/> contam EXAMES (quantos
+/// saíram da fila, quantos viraram documento válido); <see cref="LaudosEmitidos"/>/
+/// <see cref="LaudosAssinados"/> contam LAUDOS, retificações inclusas — é a produção da equipe que
+/// lauda. Um exame retificado três vezes é 1 laudado e 3 emitidos.</para>
+/// </summary>
 public sealed record ExamesImagemResumoDto(
     long TotalExames,
     long Realizados,
+    /// <summary>Exames com laudo finalizado (vigente). Cobertura.</summary>
     long Laudados,
     long AguardandoLaudo,
+    /// <summary>Laudos finalizados, TODAS as versões. Volume de trabalho médico.</summary>
     long LaudosEmitidos,
+    /// <summary>Laudos finalizados com assinatura ICP-Brasil concluída, todas as versões.</summary>
+    long LaudosAssinados,
+    /// <summary>Exames cujo laudo VIGENTE está assinado — o que efetivamente foi entregue.</summary>
+    long Assinados,
+    /// <summary>Exames laudados cujo laudo vigente ainda não foi assinado. É fila de trabalho.</summary>
+    long AguardandoAssinatura,
     long Cancelados,
     int MedicosLaudando,
     int DiasNoPeriodo,
     double MediaExamesDia,
     double PercentualLaudados,
+    /// <summary>Assinados sobre laudados — quanto do que foi escrito já virou documento válido.</summary>
+    double PercentualAssinados,
     // Tempos médios (horas) por trecho do ciclo. Null quando não há amostra no período.
     double? TempoMedioChegadaExecucaoHoras,
     double? TempoMedioExecucaoLaudoHoras,
+    double? TempoMedioLaudoAssinaturaHoras,
     double? TempoMedioTotalHoras,
     int AmostraChegadaExecucao,
     int AmostraExecucaoLaudo,
+    int AmostraLaudoAssinatura,
     int AmostraTotal);
+
+/// <summary>
+/// Produção de um médico no período. Substitui a contagem única anterior: medir quem lauda por
+/// "exames cobertos" escondia a retificação (trabalho refeito) e a assinatura pendente (trabalho
+/// escrito que ainda não valia como documento).
+/// </summary>
+public sealed record ProducaoMedicoDto(
+    string Medico,
+    string? Crm,
+    long ExamesLaudados,
+    long LaudosEmitidos,
+    long LaudosAssinados);
 
 /// <summary>Ponto da série temporal (um dia): exames registrados x realizados x laudados.</summary>
 public sealed record SerieExamesDiaDto(DateOnly Dia, long Registrados, long Realizados, long Laudados);
@@ -113,4 +145,7 @@ public sealed record LaudoAnaliticoDto(
     DateTime? LaudoFinalizadoEm,
     string? MedicoLaudo,
     string? MedicoCrm,
-    double? TempoExecucaoLaudoHoras);
+    double? TempoExecucaoLaudoHoras,
+    /// <summary>Quando a assinatura ICP-Brasil foi concluída. Null = laudo emitido e não assinado.</summary>
+    DateTime? AssinadoEm,
+    double? TempoLaudoAssinaturaHoras);
