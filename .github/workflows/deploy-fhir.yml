@@ -35,6 +35,14 @@ jobs:
         working-directory: Automais.Fhir
         run: dotnet restore
 
+      # Gate antes de publicar: nada sobe sem a suíte verde. Os testes de banco usam
+      # Testcontainers, que funciona direto no runner do GitHub (tem Docker) — não precisa
+      # de serviço nem de secret. Na máquina de dev, que não tem Docker, a mesma suíte roda
+      # apontando FHIR_TESTS_CONNECTION para a bancada.
+      - name: Testes
+        working-directory: Automais.Fhir
+        run: dotnet test --configuration Release
+
       - name: Publish (framework-dependent, linux-x64)
         working-directory: Automais.Fhir
         run: |

@@ -238,6 +238,20 @@ internal static class UpsertCanonicoPep
     /// deliberada: identifier de CPF INVÁLIDO (repdigit/dígito verificador errado) do recurso
     /// antigo NÃO é copiado quando o novo não o traz — é lixo de preenchimento que poluiria a
     /// coluna de busca de CPF do hub para sempre.
+    ///
+    /// <para><b>A lista sai em ordem canônica (system, depois value)</b>, e isso não é estética.
+    /// Cada mapper monta os identifiers DELE primeiro e a união anexa o resto no fim, então a
+    /// ordem final dependia de <b>qual base escreveu por último</b>. Para quem existe em mais de
+    /// uma base isso é um ping-pong sem fim: a UPA grava numa ordem, a Santa Rita regrava na
+    /// outra, e a guarda de no-op (<see cref="Identico"/>) — que compara texto — via diferença
+    /// onde não havia mudança nenhuma. Medido em prod 06/08: profissionais com o mesmo
+    /// <c>system</c> repetido eram reescritos em 100% dos ciclos, um deles em <c>version_id</c>
+    /// 585. Ordenar torna o recurso convergente: toda base produz exatamente a mesma lista.</para>
+    ///
+    /// <para>Ordenar é seguro aqui porque <c>identifier</c> é semanticamente um conjunto, e
+    /// nenhum consumidor de Patient/Practitioner lê por índice — a resolução é sempre por
+    /// <c>system</c> (CPF, CNS, chave local). Quem usa <c>Identifier[0]</c> são os recursos
+    /// CLÍNICOS, que não passam por aqui.</para>
     /// </summary>
     public static void UnirIdentifiers(Resource novo, Resource existente)
     {
@@ -248,6 +262,13 @@ internal static class UpsertCanonicoPep
             if (id.System == SysCpf && !CpfPep.Valido(id.Value)) continue;
             nv.Add(id);
         }
+
+        var ordenados = nv
+            .OrderBy(x => x.System, StringComparer.Ordinal)
+            .ThenBy(x => x.Value, StringComparer.Ordinal)
+            .ToList();
+        nv.Clear();
+        nv.AddRange(ordenados);
     }
 
     /// <summary>

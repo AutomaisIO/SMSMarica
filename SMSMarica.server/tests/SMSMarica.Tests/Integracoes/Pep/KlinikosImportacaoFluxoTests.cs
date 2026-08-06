@@ -1012,6 +1012,82 @@ public class KlinikosImportacaoFluxoTests
         Assert.Equal("1", versao);                                   // If-Match preservado pela guarda
     }
 
+    /// <summary>
+    /// Pessoa que existe em MAIS DE UMA base não pode ficar em ping-pong de identifiers.
+    ///
+    /// <para>Cada mapper monta os identifiers dele primeiro e a união anexa o resto no fim, então
+    /// a ordem final dependia de qual base escreveu por último — a UPA gravava numa ordem, a
+    /// Santa Rita regravava na outra, para sempre, e a guarda de no-op via diferença onde não
+    /// havia mudança. Medido em prod 06/08: profissionais com o mesmo system repetido reescritos
+    /// em 100% dos ciclos, um deles em version_id 585.</para>
+    ///
+    /// <para>A ordem canônica é o que fecha isso: se toda base produz a MESMA lista a partir do
+    /// mesmo conjunto, não importa quem escreve por último — o resultado converge.</para>
+    /// </summary>
+    [Fact]
+    public async Task Pessoa_em_duas_bases_sai_com_identifiers_em_ordem_canonica_e_para_de_ser_reescrita()
+    {
+        var hub = new HubFake();
+        // O Salux já gravou esta pessoa, na ordem DELE (chave local antes do CPF).
+        await hub.CriarAsync(new Patient
+        {
+            Name = [new HumanName { Use = HumanName.NameUse.Official, Text = "ANA COM CPF" }],
+            BirthDate = "1980-05-10",
+            Identifier =
+            [
+                new Identifier("urn:salux:cd_paciente", "salux-hcml:777"),
+                new Identifier(SysCpf, "52998224725"),
+            ],
+        });
+        var origem = OrigemPadrao();
+
+        await RodarAsync(origem, hub);   // 1º ciclo do Klinikos: funde e regrava ordenado
+
+        var ana = Assert.Single(hub.Do<Patient>(), x =>
+            x.Identifier.Any(i => i.System == SysCpf && i.Value == "52998224725"));
+        Assert.Equal(
+            ["https://fhir.saude.gov.br/sid/cpf", "urn:klinikos:paciente", "urn:salux:cd_paciente"],
+            ana.Identifier.Select(i => i.System));
+        var versaoAposFusao = ana.Meta?.VersionId;
+
+        // 2º ciclo: nada mudou na origem — e agora a ordem também não muda.
+        var (_, p2, _) = await RodarAsync(origem, hub);
+
+        ana = Assert.Single(hub.Do<Patient>(), x =>
+            x.Identifier.Any(i => i.System == SysCpf && i.Value == "52998224725"));
+        Assert.Equal(versaoAposFusao, ana.Meta?.VersionId);
+        Assert.Equal(3, p2.PacientesInalterados);   // os 3 pacientes, nenhum reescrito
+    }
+
+    /// <summary>
+    /// Vários identifiers sob o MESMO system (o caso que reescrevia 100% dos ciclos: profissional
+    /// com um CRM por base) também sai ordenado — o desempate é pelo valor.
+    /// </summary>
+    [Fact]
+    public async Task Identifiers_repetindo_o_mesmo_system_desempatam_pelo_valor()
+    {
+        var hub = new HubFake();
+        await hub.CriarAsync(new Practitioner
+        {
+            Name = [new HumanName { Use = HumanName.NameUse.Official, Text = "DR HOUSE" }],
+            Identifier =
+            [
+                new Identifier("urn:br:conselho:crm", "99999"),
+                new Identifier("urn:br:conselho:crm", "11111"),
+                new Identifier(SysCpf, "39053344705"),
+            ],
+        });
+
+        await RodarAsync(OrigemPadrao(), hub);
+
+        var house = Assert.Single(hub.Do<Practitioner>());
+        var crms = house.Identifier.Where(i => i.System == "urn:br:conselho:crm").Select(i => i.Value).ToList();
+        Assert.Equal(crms.OrderBy(v => v, StringComparer.Ordinal), crms);
+        // e o bloco de CRMs é contíguo (ordenado por system antes do valor)
+        var sistemas = house.Identifier.Select(i => i.System).ToList();
+        Assert.Equal(sistemas.OrderBy(s => s, StringComparer.Ordinal), sistemas);
+    }
+
     /// <summary>O total de falhas conta além do teto do detalhe — o detalhe é amostra, o número é exato.</summary>
     [Fact]
     public void Detalhe_de_falhas_e_amostra_mas_o_total_e_exato()
