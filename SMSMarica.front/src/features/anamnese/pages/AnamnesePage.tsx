@@ -59,7 +59,12 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
     accessionNumber: accession,
   });
   const salvar = useSalvarAnamnese();
-  const podeEditar = usePermissao('SolicitacoesExame', 'Edicao') && !janela && !leitura;
+  // Anexar documento NÃO é edição do questionário: o médico precisa disso
+  // justamente enquanto lauda (janela solta) ou olhando o exame pelo PACS
+  // (`?leitura=1`). O gate é só a permissão — que o backend também exige no
+  // endpoint. Já o questionário continua somente-leitura fora de Solicitações.
+  const podeAnexar = usePermissao('SolicitacoesExame', 'Edicao');
+  const podeEditar = podeAnexar && !janela && !leitura;
 
   const [conteudo, setConteudo] = useState<AnamneseMamografiaConteudo>(conteudoVazio);
   const [erro, setErro] = useState<string | null>(null);
@@ -733,7 +738,7 @@ export function AnamnesePage({ janela = false }: { janela?: boolean } = {}) {
       )}
 
       {/* 7. Documentos / exames anexados (ponte QR → PWA) */}
-      <AnexosExameSecao solicitacaoExameId={ctx.solicitacaoExameId} podeEditar={podeEditar} />
+      <AnexosExameSecao solicitacaoExameId={ctx.solicitacaoExameId} podeEditar={podeAnexar} />
 
       {/* Rodapé */}
       <div className="flex flex-wrap items-center justify-between gap-3">
