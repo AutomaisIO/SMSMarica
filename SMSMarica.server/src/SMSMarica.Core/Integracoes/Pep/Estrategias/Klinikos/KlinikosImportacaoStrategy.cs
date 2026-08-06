@@ -547,7 +547,17 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
             foreach (var linha in await leitor.ConsultarAsync(SqlPacientesPorCodigo(lote), ct))
             {
                 if (MapPaciente(linha) is not { } pac) continue;
-                try { cache[pac.Codigo] = await UpsertPacienteAsync(ctx, mapper, pac, ct); }
+                try
+                {
+                    cache[pac.Codigo] = await UpsertPacienteAsync(ctx, mapper, pac, ct);
+                    // Conta AQUI também: este caminho processa paciente igual ao da fase de
+                    // cadastro, e ficava invisível no contador. Além de subnotificar o trabalho
+                    // do run, isso quebrava a conta do painel — `PacientesInalterados` conta os
+                    // dois caminhos (mora no upsert canônico), então "alterados = total −
+                    // inalterados" saía NEGATIVO quando o run resolvia mais paciente por
+                    // boletim do que por cadastro. Visto em prod 06/08: 2 e 5 na Santa Rita.
+                    ctx.Progresso.Pacientes++;
+                }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     falhou($"paciente {pac.Codigo}", Cd(pac.Codigo), ex);

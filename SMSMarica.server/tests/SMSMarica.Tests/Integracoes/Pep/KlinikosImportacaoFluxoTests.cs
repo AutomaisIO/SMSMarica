@@ -1088,6 +1088,29 @@ public class KlinikosImportacaoFluxoTests
         Assert.Equal(sistemas.OrderBy(s => s, StringComparer.Ordinal), sistemas);
     }
 
+    /// <summary>
+    /// Paciente resolvido pelo BOLETIM (não veio na fase de cadastro porque a linha dele não
+    /// mudou) também entra no contador. Ficava invisível, o que subnotificava o trabalho do run
+    /// e — depois que passou a existir <c>PacientesInalterados</c>, contado dentro do upsert
+    /// canônico e portanto nos DOIS caminhos — fazia "alterados = total − inalterados" dar
+    /// NEGATIVO no painel. Visto em prod 06/08 na Santa Rita: total 2, inalterados 5.
+    /// </summary>
+    [Fact]
+    public async Task Paciente_resolvido_por_boletim_conta__inalterados_nunca_passa_do_total()
+    {
+        var hub = new HubFake();
+        var origem = OrigemPadrao();
+        var marca = new MarcaDagua();
+        marca.AvancarPonteiro("paciente", 300);   // cadastro já visto: só os boletins são novos
+
+        var (_, p, _) = await RodarAsync(origem, hub, marca);
+
+        Assert.Equal(3, hub.Do<Patient>().Count);   // entraram pelo caminho do boletim
+        Assert.Equal(3, p.Pacientes);
+        Assert.True(p.Pacientes >= p.PacientesInalterados,
+            $"inalterados ({p.PacientesInalterados}) não pode passar do total ({p.Pacientes})");
+    }
+
     /// <summary>O total de falhas conta além do teto do detalhe — o detalhe é amostra, o número é exato.</summary>
     [Fact]
     public void Detalhe_de_falhas_e_amostra_mas_o_total_e_exato()
