@@ -271,6 +271,38 @@ public static class DependencyInjection
         services.AddHostedService<Integracoes.SisregWeb.Varredura.Background.VarreduraSisregRunner>();
         services.AddHostedService<Integracoes.SisregWeb.Varredura.Background.VarreduraSisregScheduler>();
 
+        // ---- SER (Sistema Estadual de Regulação, SES-RJ) — ADR-0042 ----
+        // Sessão ÚNICA por operador, como no SISREG: um cliente HTTP singleton com cookies
+        // próprios (JSESSIONID + SERVERID do balanceador) e o módulo Ambulatório ativo na conversa
+        // Seam. Duas varreduras concorrentes se derrubariam, por isso a sessão serializa por
+        // semáforo interno.
+        services.AddSingleton<Integracoes.SerWeb.ISerWebSessao, Integracoes.SerWeb.SerWebSessao>();
+
+        // Leitor (fala "SER", não conhece o banco) + varredor (bisecção por Data da Solicitação,
+        // que é o eixo imutável) + sincronizador (espelha, faz diff e gera gatilhos).
+        services.AddScoped<
+            Integracoes.SerWeb.Varredura.ISerLeitorService,
+            Integracoes.SerWeb.Varredura.SerLeitorService>();
+        services.AddScoped<Integracoes.SerWeb.Varredura.VarredorSer>();
+        services.AddScoped<
+            Integracoes.SerWeb.Varredura.ISerSincronizacaoService,
+            Integracoes.SerWeb.Varredura.SerSincronizacaoService>();
+
+        // A rodada leva de 15 min a ~1 h — nunca pode rodar dentro de um POST. Fila de
+        // capacidade 1 que RECUSA em vez de esperar: a sessão do SER é única por operador.
+        services.AddSingleton<
+            Integracoes.SerWeb.Varredura.Background.IVarreduraSerFila,
+            Integracoes.SerWeb.Varredura.Background.VarreduraSerFila>();
+        services.AddHostedService<Integracoes.SerWeb.Varredura.Background.VarreduraSerRunner>();
+
+        // Consumo pelas telas: a busca lê o ESPELHO (nosso banco), não o SER.
+        services.AddScoped<Ser.ISerConsultaService, Ser.SerConsultaService>();
+        services.AddScoped<Ser.ISerMotorService, Ser.SerMotorService>();
+
+        // Consulta DIRETA ao SER: a bancada de testes da integração. Exercita login, módulo,
+        // ViewState, busca, paginação e parser em segundos, sem gravar nada.
+        services.AddScoped<Ser.ISerConsultaDiretaService, Ser.SerConsultaDiretaService>();
+
         // Importação de agendamentos → Solicitacao. A leitura do SISREG é a varredura da agenda
         // do executante (cons_agendas); o scraper de cons_marcados_reg foi aposentado por mirar a
         // visão do solicitante e custar 1 requisição de ficha POR agendamento — sozinho estouraria

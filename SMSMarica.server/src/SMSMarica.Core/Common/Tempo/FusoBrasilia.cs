@@ -23,4 +23,16 @@ public static class FusoBrasilia
     /// </summary>
     public static DateTime InicioDoDiaAtualEmUtc() => DateTime.SpecifyKind(
         ParaExibicao(DateTime.UtcNow).Date.AddHours(-OffsetHoras), DateTimeKind.Utc);
+
+    /// <summary>
+    /// Caminho inverso de <see cref="ParaExibicao(DateTime)"/>: um wall-clock de Brasília lido de
+    /// sistema externo (SER, SISREG, PEP) vira o instante UTC correspondente.
+    ///
+    /// <para>Existe porque as colunas de instante são <c>timestamp with time zone</c> e o Npgsql
+    /// <b>recusa</b> gravar <c>DateTimeKind.Unspecified</c> nelas — o que transforma "esqueci de
+    /// converter" em erro de runtime na hora do SaveChanges, não em dado com 3 horas de erro.</para>
+    /// </summary>
+    public static DateTime DeBrasiliaParaUtc(DateTime brasilia) => DateTime.SpecifyKind(
+        DateTime.SpecifyKind(brasilia, DateTimeKind.Unspecified).AddHours(-OffsetHoras),
+        DateTimeKind.Utc);
 }

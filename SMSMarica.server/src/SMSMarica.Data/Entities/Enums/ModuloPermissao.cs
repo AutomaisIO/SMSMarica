@@ -167,4 +167,11 @@ public enum ModuloPermissao
     /// este gate) — e queremos liberar o botão só a usuários específicos, não a todo perfil com
     /// Inclusão no módulo. Usa apenas a ação <c>Inclusao</c> (ticket #89).</summary>
     SolicitacaoExameManual = 53,
+
+    /// <summary>Regulação — **SER** (Sistema Estadual de Regulação, SES-RJ): a fila do Estado
+    /// espelhada na nossa base (ADR-0042), com o histórico de cada solicitação. É **só leitura
+    /// por natureza** — nada aqui escreve no SER —, então usa apenas <c>Consulta</c>. Separado de
+    /// <see cref="RegulacaoAgendamento"/> porque é outra fonte, com outro vocabulário de situação
+    /// e outra operação (acompanhar fila estadual, não marcar).</summary>
+    RegulacaoSer = 54,
 }

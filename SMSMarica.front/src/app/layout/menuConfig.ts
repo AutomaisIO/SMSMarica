@@ -137,6 +137,28 @@ export const SECOES: SecaoMenu[] = [
     ],
   },
   {
+    id: 'regulacao',
+    titulo: 'Regulação',
+    icone: ClipboardCheck,
+    itens: [
+      {
+        rotulo: 'SER',
+        to: '/app/regulacao/ser',
+        icone: ClipboardList,
+        modulo: 'RegulacaoSer',
+        end: true,
+        descricao: 'Fila do Estado (SES-RJ) espelhada — consulta e histórico.',
+      },
+      {
+        rotulo: 'Configuração',
+        to: '/app/regulacao/configuracao',
+        icone: Settings2,
+        modulo: 'RegulacaoConfiguracao',
+        descricao: 'Credenciais e motor de atualização das fontes de regulação.',
+      },
+    ],
+  },
+  {
     id: 'sisreg',
     titulo: 'SISREG',
     icone: ClipboardList,

@@ -67,6 +67,9 @@ import { MarcarConsultaPage } from '@/features/agendamentos/pages/MarcarConsulta
 import { SisregConsultaPage } from '@/features/sisreg/pages/SisregConsultaPage';
 import { SisregConfiguracaoPage } from '@/features/sisreg/pages/SisregConfiguracaoPage';
 import { SisregMapeamentoPage } from '@/features/sisreg-mapeamento/pages/SisregMapeamentoPage';
+import { SerFilaPage } from '@/features/ser/pages/SerFilaPage';
+import { SerSolicitacaoDetalhePage } from '@/features/ser/pages/SerSolicitacaoDetalhePage';
+import { RegulacaoConfiguracaoPage } from '@/features/ser/pages/RegulacaoConfiguracaoPage';
 import { PepSincronizacaoPage } from '@/features/pep-sincronizacao/pages/PepSincronizacaoPage';
 import { ApiTokensPage } from '@/features/api-tokens/pages/ApiTokensPage';
 import { IntegracoesPage } from '@/features/integracoes/pages/IntegracoesPage';
@@ -183,6 +186,9 @@ export function AppRouter() {
           <Route path="agendas" element={<AgendasPage />} />
           <Route path="agendas/:id" element={<AgendaDetalhePage />} />
           <Route path="agendamentos/marcar" element={<MarcarConsultaPage />} />
+          <Route path="regulacao/ser" element={<SerFilaPage />} />
+          <Route path="regulacao/ser/:id" element={<SerSolicitacaoDetalhePage />} />
+          <Route path="regulacao/configuracao" element={<RegulacaoConfiguracaoPage />} />
           <Route path="sisreg" element={<SisregConsultaPage />} />
           <Route path="sisreg/configuracao" element={<SisregConfiguracaoPage />} />
           <Route path="sisreg/mapeamento" element={<SisregMapeamentoPage />} />

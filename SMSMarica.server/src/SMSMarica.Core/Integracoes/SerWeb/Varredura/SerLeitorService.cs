@@ -1,0 +1,187 @@
+using System.Globalization;
+using AngleSharp.Html.Dom;
+using Microsoft.Extensions.Logging;
+using SMSMarica.Data.Entities.Ser;
+
+namespace SMSMarica.Core.Integracoes.SerWeb.Varredura;
+
+/// <summary>
+/// Leitura da fila do SER: pesquisa, paginação e histórico. É a camada que fala "SER" —
+/// não conhece o banco. Quem persiste é o runner da varredura.
+///
+/// <para><b>Estado interno:</b> guarda DOIS HTMLs. O último <b>completo</b> (com
+/// <c>&lt;form id="form0"&gt;</c>) é a fonte dos campos do submit; o último <b>recebido</b> é a
+/// fonte das linhas. A resposta do <c>rich:datascroller</c> é parcial — traz a grade nova sem
+/// form nenhum — e usá-la como base do próximo submit quebra (docs/ser.md §3.3).</para>
+/// </summary>
+public interface ISerLeitorService
+{
+    Task PrepararAsync(CancellationToken cancellationToken);
+
+    Task<SerPaginaGrade> PesquisarAsync(SerFiltroPesquisa filtro, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<SerLinhaGrade>> IrParaPaginaAsync(int pagina, CancellationToken cancellationToken);
+
+    /// <summary>Abre o "Histórico da Solicitação" da linha indicada (índice 0-based NA PÁGINA).</summary>
+    Task<SerHistorico> AbrirHistoricoAsync(int indiceNaPagina, CancellationToken cancellationToken);
+
+    /// <summary>Ciclo otimizado de histórico por ID: pesquisa o ID exato (1 linha) e abre o
+    /// histórico. Duas requisições — é o piso, porque abrir o histórico descarta a busca.</summary>
+    Task<SerHistorico> LerHistoricoPorIdAsync(
+        string idSer, SituacaoSer situacao, CancellationToken cancellationToken);
+}
+
+public sealed class SerLeitorService(
+    ISerWebSessao sessao,
+    ILogger<SerLeitorService> logger) : ISerLeitorService
+{
+    private const string CampoSituacao = "form0:j_id75";
+    private const string CampoTipo = "form0:comboTipoRecurso";
+    private const string CampoCpf = "form0:cpf";
+    private const string CampoNome = "form0:nome";
+    private const string CampoCns = "form0:cns";
+    private const string CampoIdSolicitacao = "form0:idSolicitacao";
+    private const string CampoDataInicio = "form0:dtInicialSolicitacaoInputDate";
+    private const string CampoDataFim = "form0:dtFinalSolicitacaoInputDate";
+
+    /// <summary>Último HTML COMPLETO (fonte dos campos do form).</summary>
+    private string _htmlForm = string.Empty;
+
+    /// <summary>Último HTML recebido (fonte das linhas). Pode ser parcial.</summary>
+    private string _htmlDados = string.Empty;
+
+    private string? _ultimoViewState;
+
+    public async Task PrepararAsync(CancellationToken cancellationToken)
+    {
+        var html = await sessao.AbrirTelaPesquisaAsync(cancellationToken);
+        Absorver(html);
+    }
+
+    public async Task<SerPaginaGrade> PesquisarAsync(
+        SerFiltroPesquisa filtro, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(_htmlForm)) await PrepararAsync(cancellationToken);
+
+        var doc = SerHtmlParser.Documento(_htmlForm);
+        var botao = SerHtmlParser.BotaoPesquisar(doc)
+            ?? throw new InvalidOperationException(
+                "Botão Pesquisar não encontrado na tela do SER (a página foi recompilada?).");
+
+        var extras = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [botao] = botao,
+            ["AJAXREQUEST"] = SerHtmlParser.FormPesquisa,
+            // Situação é OBRIGATÓRIA no SER — pesquisar sem ela devolve zero.
+            [CampoSituacao] = SerCodigos.Codigo(filtro.Situacao),
+        };
+
+        if (filtro.Tipo is { } tipo) extras[CampoTipo] = SerCodigos.Codigo(tipo);
+        if (filtro.DataSolicitacaoInicio is { } di) extras[CampoDataInicio] = Br(di);
+        if (filtro.DataSolicitacaoFim is { } df) extras[CampoDataFim] = Br(df);
+        if (!string.IsNullOrWhiteSpace(filtro.Cpf)) extras[CampoCpf] = filtro.Cpf!;
+        if (!string.IsNullOrWhiteSpace(filtro.Nome)) extras[CampoNome] = filtro.Nome!;
+        if (!string.IsNullOrWhiteSpace(filtro.Cns)) extras[CampoCns] = filtro.Cns!;
+        if (!string.IsNullOrWhiteSpace(filtro.IdSolicitacao)) extras[CampoIdSolicitacao] = filtro.IdSolicitacao!;
+
+        var html = await sessao.SubmeterPesquisaAsync(_htmlForm, extras, _ultimoViewState, cancellationToken);
+        Absorver(html);
+
+        var respostaDoc = SerHtmlParser.Documento(_htmlDados);
+        return new SerPaginaGrade(
+            SerHtmlParser.LerGrade(respostaDoc),
+            SerHtmlParser.PaginasNaResposta(respostaDoc));
+    }
+
+    public async Task<IReadOnlyList<SerLinhaGrade>> IrParaPaginaAsync(
+        int pagina, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(_htmlForm))
+            throw new InvalidOperationException("Pesquise antes de paginar.");
+
+        var extras = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["AJAXREQUEST"] = SerHtmlParser.FormPesquisa,
+            ["ajaxSingle"] = SerHtmlParser.Scroller,
+            [SerHtmlParser.Scroller] = pagina.ToString(CultureInfo.InvariantCulture),
+        };
+
+        // Estrutura vem do último HTML COMPLETO; o ViewState, da última resposta (parcial).
+        var html = await sessao.SubmeterPesquisaAsync(_htmlForm, extras, _ultimoViewState, cancellationToken);
+        Absorver(html);
+        return SerHtmlParser.LerGrade(SerHtmlParser.Documento(_htmlDados));
+    }
+
+    public async Task<SerHistorico> AbrirHistoricoAsync(
+        int indiceNaPagina, CancellationToken cancellationToken)
+    {
+        var dados = SerHtmlParser.Documento(_htmlDados);
+        var item = SerHtmlParser.ItemHistorico(dados, indiceNaPagina);
+        if (item is null)
+        {
+            var disponiveis = string.Join(", ", SerHtmlParser.ItensDeOpcoes(dados, indiceNaPagina).Keys);
+            throw new HistoricoSerIndisponivelException(
+                $"A linha {indiceNaPagina} não oferece 'Histórico da Solicitação' no menu Opções "
+                + $"(solicitações em Alta não oferecem). Itens disponíveis: [{disponiveis}]");
+        }
+
+        var extras = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [item] = item,
+            ["AJAXREQUEST"] = SerHtmlParser.FormPesquisa,
+        };
+
+        var resposta = await sessao.SubmeterPesquisaAsync(
+            _htmlForm, extras, _ultimoViewState, cancellationToken);
+
+        // O item responde 200 com um XHTML minúsculo mandando redirecionar por <meta Location>.
+        if (sessao is SerWebSessao concreta)
+        {
+            var destino = await concreta.SeguirRedirectNoCorpoAsync(resposta, cancellationToken);
+            if (destino is not null) resposta = destino;
+        }
+
+        Absorver(resposta);
+        return SerHtmlParser.LerHistorico(SerHtmlParser.Documento(resposta));
+    }
+
+    public async Task<SerHistorico> LerHistoricoPorIdAsync(
+        string idSer, SituacaoSer situacao, CancellationToken cancellationToken)
+    {
+        var pagina = await PesquisarAsync(
+            new SerFiltroPesquisa { Situacao = situacao, IdSolicitacao = idSer }, cancellationToken);
+
+        if (pagina.Linhas.Count != 1)
+        {
+            throw new InvalidOperationException(
+                $"A busca pelo ID {idSer} em {situacao} devolveu {pagina.Linhas.Count} linhas — "
+                + "esperava exatamente 1. A solicitação pode ter mudado de situação.");
+        }
+
+        var historico = await AbrirHistoricoAsync(0, cancellationToken);
+
+        // Conferência de identidade: o SER pode devolver a tela de outra solicitação se o
+        // ViewState estiver defasado. Sem esta checagem, gravaríamos a trilha do paciente errado.
+        var voltou = historico.IdSolicitacao;
+        if (!string.IsNullOrWhiteSpace(voltou) && !string.Equals(voltou, idSer, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"O SER devolveu o histórico da solicitação {voltou} quando pedimos {idSer}. "
+                + "Nada foi gravado.");
+        }
+
+        logger.LogDebug("SER: histórico de {IdSer} lido com {Eventos} eventos.", idSer, historico.Eventos.Count);
+        return historico;
+    }
+
+    private void Absorver(string html)
+    {
+        _htmlDados = html;
+        if (html.Contains("<form id=\"form0\"", StringComparison.Ordinal)) _htmlForm = html;
+
+        var vs = SerHtmlParser.ViewStateQualquer(html);
+        if (!string.IsNullOrEmpty(vs)) _ultimoViewState = vs;
+    }
+
+    private static string Br(DateOnly d) => d.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+}
