@@ -26,6 +26,8 @@ namespace SMSMarica.Core.Integracoes.Pep.Fhir;
 /// <item><b>Conciliação de identidade</b>: mesmo CPF com nascimento diferente NÃO sobrescreve —
 /// congela o valor do hub e registra a divergência para a arbitragem (ADR-0039 §3.2).</item>
 /// <item><b>Concorrência otimista</b>: If-Match; se o painel editou no meio, re-lê e re-mergeia.</item>
+/// <item><b>Guarda de no-op</b> (<see cref="Identico"/>): se o recurso montado é igual ao que já
+/// está no hub, o PUT não sai.</item>
 /// </list>
 /// </summary>
 internal static class UpsertCanonicoPep
@@ -92,6 +94,22 @@ internal static class UpsertCanonicoPep
             novo.Id = atual.Id;
             novo.Meta ??= new Meta();
             novo.Meta.VersionId = atual.Meta?.VersionId;
+
+            // Nada mudou → não escreve. O ciclo incremental relê de propósito um bloco fixo de
+            // pessoas todo poll (internação em curso é re-lida a cada ciclo — ADR-0025; médicos
+            // são re-scan integral), e sem esta guarda cada poll gravava um PUT idêntico ao
+            // anterior: medido em 06/08, pacientes internados chegaram a version_id 226, ~150
+            // pacientes + ~750 médicos reescritos a cada 11 minutos. Não corrompia nada (o merge
+            // preserva), mas queimava escrita no hub e enchia o histórico de versões de ruído,
+            // deixando `last_updated` sem significado para auditoria.
+            if (Identico(novo, atual))
+            {
+                Interlocked.Increment(ref tipo == "Practitioner"
+                    ? ref ctx.Progresso.MedicosInalterados
+                    : ref ctx.Progresso.PacientesInalterados);
+                return atual.Id!;
+            }
+
             try
             {
                 var atualizado = await ctx.Escritor.AtualizarAsync(tipo, atual.Id!, novo, ct);
@@ -106,6 +124,40 @@ internal static class UpsertCanonicoPep
 
         var criado = await ctx.Escritor.CriarAsync(novo, ct);
         return criado.Id!;
+    }
+
+    /// <summary>
+    /// O recurso montado é idêntico ao que já está no hub? Compara o JSON FHIR inteiro, com
+    /// <c>meta.versionId</c> e <c>meta.lastUpdated</c> zerados dos dois lados — são exatamente
+    /// os campos que o hub carimba a cada escrita, e compará-los faria toda comparação falhar.
+    /// Todo o resto participa, <c>meta.source</c> inclusive: se a pessoa passou a ser vista por
+    /// outra base, isso É uma mudança e o PUT deve sair.
+    ///
+    /// <para><b>Por que a ordem das listas não atrapalha.</b> A comparação é textual, então
+    /// identifiers/telecoms em ordem diferente contariam como "mudou". Não acontece em regime:
+    /// o que está no hub é o <c>novo</c> do ciclo anterior, e o build do mapper mais o
+    /// <see cref="UnirIdentifiers"/> são determinísticos — a ordem converge no primeiro ciclo.
+    /// No pior caso a guarda erra para o lado seguro (escreve à toa, como antes).</para>
+    /// </summary>
+    private static bool Identico(Resource novo, Resource atual)
+    {
+        if (novo.TypeName != atual.TypeName) return false;
+
+        var (vN, luN) = (novo.Meta?.VersionId, novo.Meta?.LastUpdated);
+        var (vA, luA) = (atual.Meta?.VersionId, atual.Meta?.LastUpdated);
+        try
+        {
+            if (novo.Meta is { } mn) { mn.VersionId = null; mn.LastUpdated = null; }
+            if (atual.Meta is { } ma) { ma.VersionId = null; ma.LastUpdated = null; }
+            return Pacientes.Fhir.FhirJson.Serialize(novo) == Pacientes.Fhir.FhirJson.Serialize(atual);
+        }
+        finally
+        {
+            // Restaura SEMPRE: o VersionId de `novo` é o If-Match do PUT logo abaixo — perdê-lo
+            // desligaria a concorrência otimista e o painel voltaria a ser sobrescrito.
+            if (novo.Meta is { } mn) { mn.VersionId = vN; mn.LastUpdated = luN; }
+            if (atual.Meta is { } ma) { ma.VersionId = vA; ma.LastUpdated = luA; }
+        }
     }
 
     /// <summary>

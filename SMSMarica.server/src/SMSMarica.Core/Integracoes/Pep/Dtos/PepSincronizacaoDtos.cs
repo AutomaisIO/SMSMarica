@@ -46,7 +46,15 @@ public sealed record ContadoresImportacaoDto(
     int Observations,
     int Falhas,
     /// <summary>Reenvios por saturação transitória (farol de backpressure). Só no run vivo.</summary>
-    int Retentativas = 0);
+    int Retentativas = 0,
+    /// <summary>
+    /// Quantos dos <see cref="Pacientes"/> já estavam idênticos no hub e não viraram escrita.
+    /// Num incremental o normal é ficar perto do total: o ciclo relê de propósito quem está
+    /// internado. Quem mudou de verdade é <c>Pacientes - PacientesInalterados</c>.
+    /// </summary>
+    int PacientesInalterados = 0,
+    /// <summary>O mesmo para <see cref="Medicos"/>, que é re-scan integral do cadastro.</summary>
+    int MedicosInalterados = 0);
 
 /// <summary>
 /// Status corrente da importação (run vivo se em execução; senão a última execução do banco).

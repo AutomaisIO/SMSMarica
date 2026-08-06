@@ -55,10 +55,23 @@ public sealed class PatientService(FhirDbContext db, TimeProvider clock) : IPati
 
         CarimbarMeta(patient, id, versao, agora, source);
 
-        row.VersionId = versao;
-        row.LastUpdated = agora;
+        // Colunas derivadas do content sempre: podem estar dessincronizadas por backfill parcial,
+        // e era a reescrita que vinha consertando isso em silêncio. Se SÓ elas mudarem, o
+        // SaveChanges abaixo persiste a correção sem inventar uma versão nova.
         row.MetaSource = source;
         ExtrairSearchParams(row, patient);
+
+        if (EscritaFhir.SemMudanca(patient, row.Content))
+        {
+            // Devolve a versão VIGENTE, nunca a incrementada: um versionId que não existe no
+            // banco faria o próximo If-Match do chamador dar 409 para sempre.
+            CarimbarMeta(patient, id, row.VersionId, row.LastUpdated, source);
+            await db.SaveChangesAsync(ct);
+            return patient;
+        }
+
+        row.VersionId = versao;
+        row.LastUpdated = agora;
         row.Content = FhirJson.Serialize(patient);
 
         await db.SaveChangesAsync(ct);

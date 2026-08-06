@@ -158,9 +158,17 @@ public class KlinikosImportacaoFluxoTests
             return Task.FromResult((Resource)copia.DeepCopy());
         }
 
+        /// <summary>
+        /// <c>meta.versionId</c> que chegou em cada PUT — é o If-Match da concorrência otimista.
+        /// Fica registrado para provar que a guarda de no-op devolve o campo que ela zera para
+        /// comparar: perdê-lo desligaria a proteção da edição do painel em silêncio.
+        /// </summary>
+        public List<string?> VersoesRecebidasNoUpdate { get; } = [];
+
         public Task<Resource> AtualizarAsync(string tipo, string id, Resource recurso, CancellationToken ct = default)
         {
             Falha(recurso);
+            VersoesRecebidasNoUpdate.Add(recurso.Meta?.VersionId);
             var i = Recursos.FindIndex(r => r.TypeName == tipo && r.Id == id);
             if (i < 0) throw new HubFhirHttpException(404, "não achado", $"PUT {tipo}/{id}");
             var copia = (Resource)recurso.DeepCopy();
@@ -945,6 +953,63 @@ public class KlinikosImportacaoFluxoTests
         Assert.NotEmpty(salvos);
         Assert.Equal(salvos.OrderBy(x => x), salvos);
         Assert.Equal(300, marca.Ponteiro("paciente"));
+    }
+
+    // ---------------------------------------------------------------- guarda de no-op (06/08)
+
+    /// <summary>
+    /// Ciclo que relê a mesma pessoa sem mudança NÃO escreve. O incremental relê um bloco fixo
+    /// de gente todo poll de propósito (internação em curso é re-lida a cada ciclo — ADR-0025;
+    /// médicos são re-scan integral), e antes da guarda cada poll gravava um PUT idêntico ao
+    /// anterior: em produção, pacientes internados no HMCML chegaram a <c>version_id</c> 226.
+    /// </summary>
+    [Fact]
+    public async Task Ciclo_repetido_sem_mudanca_nao_reescreve_a_pessoa_no_hub()
+    {
+        var hub = new HubFake();
+        var origem = OrigemPadrao();
+
+        await RodarAsync(origem, hub);
+        var versoesApos1 = hub.Do<Patient>().Select(x => x.Meta?.VersionId).ToList();
+
+        // Marca nova de novo: força o ciclo a reler exatamente as mesmas pessoas.
+        var (_, p2, _) = await RodarAsync(origem, hub);
+
+        Assert.Equal(3, hub.Do<Patient>().Count);                    // nada duplicou
+        Assert.Equal(versoesApos1, hub.Do<Patient>().Select(x => x.Meta?.VersionId));
+        Assert.All(hub.Do<Patient>(), x => Assert.Equal("1", x.Meta?.VersionId));
+        Assert.Equal("1", Assert.Single(hub.Do<Practitioner>()).Meta?.VersionId);
+
+        // E o run diz quantas releituras descartou, separando por cartão do painel.
+        Assert.Equal(3, p2.PacientesInalterados);
+        Assert.Equal(1, p2.MedicosInalterados);
+        Assert.Empty(hub.VersoesRecebidasNoUpdate);                  // nenhum PUT saiu
+    }
+
+    /// <summary>
+    /// A guarda não pode virar cegueira: mudança de verdade na origem continua escrevendo — e
+    /// com o <c>versionId</c> intacto no PUT, que é o If-Match que protege a edição do painel.
+    /// </summary>
+    [Fact]
+    public async Task Mudanca_real_na_origem_ainda_escreve__com_If_Match_intacto()
+    {
+        var hub = new HubFake();
+        var origem = OrigemPadrao();
+
+        await RodarAsync(origem, hub);
+
+        // A recepção corrige o nome de P3.
+        origem.Pacientes.Single(x => (string?)x["pac_codigo"] == "P3")["pac_nome"] = "CARLA COM CPF CORRIGIDA";
+        var (_, p2, _) = await RodarAsync(origem, hub);
+
+        var carla = Assert.Single(hub.Do<Patient>(), x => x.Identifier.Any(i => i.Value == $"{Slug}:P3"));
+        Assert.Equal("CARLA COM CPF CORRIGIDA", carla.Name[0].Text);
+        Assert.Equal("2", carla.Meta?.VersionId);                    // escreveu, uma vez só
+
+        Assert.Equal(2, p2.PacientesInalterados);                    // os outros dois não mudaram
+        Assert.Equal(1, p2.MedicosInalterados);
+        var versao = Assert.Single(hub.VersoesRecebidasNoUpdate);
+        Assert.Equal("1", versao);                                   // If-Match preservado pela guarda
     }
 
     /// <summary>O total de falhas conta além do teto do detalhe — o detalhe é amostra, o número é exato.</summary>

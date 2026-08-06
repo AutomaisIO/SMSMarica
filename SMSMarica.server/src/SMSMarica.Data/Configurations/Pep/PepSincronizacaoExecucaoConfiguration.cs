@@ -37,6 +37,8 @@ internal sealed class PepSincronizacaoExecucaoConfiguration : IEntityTypeConfigu
         builder.Property(x => x.DocumentReferences).HasColumnName("document_references").IsRequired();
         builder.Property(x => x.Observations).HasColumnName("observations").IsRequired();
         builder.Property(x => x.Falhas).HasColumnName("falhas").IsRequired();
+        builder.Property(x => x.PacientesInalterados).HasColumnName("pacientes_inalterados").IsRequired().HasDefaultValue(0);
+        builder.Property(x => x.MedicosInalterados).HasColumnName("medicos_inalterados").IsRequired().HasDefaultValue(0);
 
         builder.Property(x => x.TemposJson).HasColumnName("tempos_json");
         builder.Property(x => x.FalhasJson).HasColumnName("falhas_json");

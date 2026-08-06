@@ -40,6 +40,17 @@ public class PepSincronizacaoExecucao
     public int Observations { get; set; }
     public int Falhas { get; set; }
 
+    /// <summary>
+    /// Quantos dos <see cref="Pacientes"/> já estavam idênticos no hub e não viraram escrita.
+    /// Sem este número o contador bruto engana: num ciclo incremental a maior parte do que entra
+    /// é <b>releitura obrigatória</b> — internação em curso volta todo poll (ADR-0025), o que no
+    /// HMCML são ~150 pacientes fixos por ciclo. Quem mudou é <c>Pacientes - PacientesInalterados</c>.
+    /// </summary>
+    public int PacientesInalterados { get; set; }
+
+    /// <summary>O mesmo para <see cref="Medicos"/>, que é re-scan integral do cadastro.</summary>
+    public int MedicosInalterados { get; set; }
+
     /// <summary>Duração por fase (JSON: ex. {"medicos":1.2,"pacientes":3.4,"atendimentos":42.1}).</summary>
     public string? TemposJson { get; set; }
 

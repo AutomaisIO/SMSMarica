@@ -36,6 +36,14 @@ export type ContadoresImportacao = {
   falhas: number;
   /** Reenvios por saturação transitória (farol de backpressure). Só conta no run vivo. */
   retentativas: number;
+  /**
+   * Quantos dos `pacientes` já estavam idênticos no hub e não viraram escrita. Num ciclo
+   * incremental a maior parte do que entra é releitura obrigatória (internação em curso volta
+   * todo poll), não gente que mudou — quem mudou é `pacientes - pacientesInalterados`.
+   */
+  pacientesInalterados: number;
+  /** O mesmo para `medicos`, que é re-scan integral do cadastro. */
+  medicosInalterados: number;
 };
 
 export type StatusImportacao = {

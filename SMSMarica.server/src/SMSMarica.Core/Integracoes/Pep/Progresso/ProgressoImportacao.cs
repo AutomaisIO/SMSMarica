@@ -32,6 +32,18 @@ public sealed class ProgressoImportacao
     public int Retentativas;
 
     /// <summary>
+    /// Quantos dos <see cref="Pacientes"/> a guarda de no-op descartou — o recurso montado era
+    /// idêntico ao que o hub já tinha. É o complemento honesto do contador bruto: num ciclo
+    /// incremental a maior parte do que entra é <b>releitura obrigatória</b> (internação em
+    /// curso volta todo poll — ADR-0025), não gente que mudou. Quem mudou de verdade é
+    /// <c>Pacientes - PacientesInalterados</c>.
+    /// </summary>
+    public int PacientesInalterados;
+
+    /// <summary>O mesmo para <see cref="Medicos"/>, que é re-scan integral do cadastro.</summary>
+    public int MedicosInalterados;
+
+    /// <summary>
     /// Teto do DETALHE de falhas em memória. No incidente de 04/08 um run acumulou 1,43 milhão
     /// de tuplas nesta lista — dezenas de MB no heap e um <c>falhas_json</c> gigante — sem
     /// nenhuma informação nova depois da centésima: eram todas o mesmo 405. O TOTAL continua

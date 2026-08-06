@@ -290,8 +290,9 @@ public sealed class SaluxImportacaoStrategy(ILogger<SaluxImportacaoStrategy> log
         ctx.Marca.InternacaoEm = maxFia ?? ctx.Marca.InternacaoEm;
         if (ctx.SalvarMarca is { } salvarFim) await salvarFim(ctx.Marca, ct);
 
-        logger.LogInformation("Importação Salux ({Slug}) concluída: {Pac} pacientes, {Enc} atendimentos, {Falhas} falhas.",
-            ctx.BaseSlug, p.Pacientes, p.Encounters, p.FalhasTotal);
+        logger.LogInformation(
+            "Importação Salux ({Slug}) concluída: {Pac} pacientes ({Inalterados} sem mudança), {Enc} atendimentos, {Falhas} falhas.",
+            ctx.BaseSlug, p.Pacientes, p.PacientesInalterados, p.Encounters, p.FalhasTotal);
     }
 
     /// <summary>

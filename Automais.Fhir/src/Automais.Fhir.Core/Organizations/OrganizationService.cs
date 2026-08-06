@@ -61,10 +61,23 @@ public sealed class OrganizationService(FhirDbContext db, TimeProvider clock) : 
 
         CarimbarMeta(org, id, versao, agora, source);
 
-        row.VersionId = versao;
-        row.LastUpdated = agora;
+        // Colunas derivadas do content sempre: podem estar dessincronizadas por backfill parcial,
+        // e era a reescrita que vinha consertando isso em silêncio. Se SÓ elas mudarem, o
+        // SaveChanges abaixo persiste a correção sem inventar uma versão nova.
         row.MetaSource = source;
         ExtrairSearchParams(row, org);
+
+        if (EscritaFhir.SemMudanca(org, row.Content))
+        {
+            // Devolve a versão VIGENTE, nunca a incrementada: um versionId que não existe no
+            // banco faria o próximo If-Match do chamador dar 409 para sempre.
+            CarimbarMeta(org, id, row.VersionId, row.LastUpdated, source);
+            await db.SaveChangesAsync(ct);
+            return org;
+        }
+
+        row.VersionId = versao;
+        row.LastUpdated = agora;
         row.Content = FhirJson.Serialize(org);
 
         await db.SaveChangesAsync(ct);

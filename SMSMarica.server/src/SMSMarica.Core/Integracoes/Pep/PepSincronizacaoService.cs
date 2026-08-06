@@ -860,8 +860,11 @@ public sealed class PepSincronizacaoService(
         e.DocumentReferences = p.DocumentReferences;
         e.Observations = p.Observations;
         e.Falhas = p.FalhasTotal;
+        e.PacientesInalterados = p.PacientesInalterados;
+        e.MedicosInalterados = p.MedicosInalterados;
     }
 
     private static ContadoresImportacaoDto Contadores(PepSincronizacaoExecucao e) => new(
-        e.Medicos, e.Pacientes, e.Encounters, e.Conditions, e.MedicationRequests, e.DocumentReferences, e.Observations, e.Falhas);
+        e.Medicos, e.Pacientes, e.Encounters, e.Conditions, e.MedicationRequests, e.DocumentReferences, e.Observations, e.Falhas,
+        Retentativas: 0, PacientesInalterados: e.PacientesInalterados, MedicosInalterados: e.MedicosInalterados);
 }

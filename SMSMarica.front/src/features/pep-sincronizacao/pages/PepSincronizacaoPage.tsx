@@ -66,25 +66,35 @@ function Badge({ status }: { status: string }) {
   );
 }
 
+/**
+ * Nota do cartão quando parte do número é releitura. O ciclo incremental relê um bloco fixo de
+ * pessoas de propósito — internação em curso volta a cada poll, o que no HMCML são ~150 pacientes
+ * sempre os mesmos. Sem esta linha o cartão dizia "170 pacientes" e parecia movimento de cadastro.
+ */
+function notaReleitura(inalterados: number): string | undefined {
+  return inalterados > 0 ? `${inalterados} relido(s) sem mudança` : undefined;
+}
+
 function PainelContadores({ s }: { s: StatusImportacao }) {
   const c = s.contadores;
-  const itens = [
-    ['Médicos', c.medicos],
-    ['Pacientes', c.pacientes],
+  const itens: Array<[string, number, string?]> = [
+    ['Médicos', c.medicos - c.medicosInalterados, notaReleitura(c.medicosInalterados)],
+    ['Pacientes', c.pacientes - c.pacientesInalterados, notaReleitura(c.pacientesInalterados)],
     ['Atendimentos', c.encounters],
     ['Diagnósticos', c.conditions],
     ['Medicações', c.medicationRequests],
     ['Documentos', c.documentReferences],
     ['Sinais/risco', c.observations],
     ['Falhas', c.falhas],
-  ] as const;
+  ];
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {itens.map(([rotulo, valor]) => (
+        {itens.map(([rotulo, valor, nota]) => (
           <div key={rotulo} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
             <div className="text-lg font-semibold text-gray-900">{valor}</div>
             <div className="text-xs text-gray-500">{rotulo}</div>
+            {nota ? <div className="mt-0.5 text-[11px] text-gray-400">{nota}</div> : null}
           </div>
         ))}
       </div>
@@ -563,7 +573,9 @@ export function PepSincronizacaoPage() {
                   <th className="py-2 pr-3">Status</th>
                   <th className="py-2 pr-3">Início</th>
                   <th className="py-2 pr-3">Duração</th>
-                  <th className="py-2 pr-3 text-right">Pac.</th>
+                  <th className="py-2 pr-3 text-right" title="Pacientes alterados; o +N em cinza são releituras que não mudaram nada">
+                    Pac.
+                  </th>
                   <th className="py-2 pr-3 text-right">Atend.</th>
                   <th className="py-2 text-right">Obs.</th>
                 </tr>
@@ -577,7 +589,14 @@ export function PepSincronizacaoPage() {
                     <td className="py-2 pr-3"><Badge status={e.status} /></td>
                     <td className="py-2 pr-3 whitespace-nowrap">{dataHora(e.iniciadoEm)}</td>
                     <td className="py-2 pr-3">{duracao(e.duracaoSegundos)}</td>
-                    <td className="py-2 pr-3 text-right">{e.contadores.pacientes}</td>
+                    <td className="py-2 pr-3 text-right">
+                      {e.contadores.pacientes - e.contadores.pacientesInalterados}
+                      {e.contadores.pacientesInalterados > 0 ? (
+                        <span className="text-gray-400" title={`${e.contadores.pacientesInalterados} relido(s) sem mudança`}>
+                          {' '}+{e.contadores.pacientesInalterados}
+                        </span>
+                      ) : null}
+                    </td>
                     <td className="py-2 pr-3 text-right">{e.contadores.encounters}</td>
                     <td className="py-2 text-right">{e.contadores.observations}</td>
                   </tr>
