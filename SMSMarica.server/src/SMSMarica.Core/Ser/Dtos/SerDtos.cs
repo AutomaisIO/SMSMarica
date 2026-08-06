@@ -157,8 +157,28 @@ public sealed record SerConsultaDiretaRequest
     public string? Cns { get; init; }
     public string? IdSolicitacao { get; init; }
 
-    /// <summary>Página do datascroller (1..5 — a tela do SER não vai além).</summary>
+    /// <summary>Página do datascroller (1..5 — a tela do SER não vai além). Ignorado no export.</summary>
     public int Pagina { get; init; } = 1;
+
+    /// <summary>
+    /// Consultar pela tela de <b>Histórico</b> (export de 500) em vez da tela de Solicitação
+    /// (paginada, teto de 100).
+    ///
+    /// <para>É o caminho que a varredura usa de verdade desde 06/08/2026, e o único que permite
+    /// <b>contar</b> alguma coisa: a tela de Solicitação trava em 100 por construção, então
+    /// conferir cobertura por ela é impossível. Continua somente leitura — nada é gravado.</para>
+    /// </summary>
+    public bool PorExport { get; init; }
+}
+
+/// <summary>Qual tela do SER respondeu — muda o teto e o que a resposta significa.</summary>
+public enum FonteConsultaSer
+{
+    /// <summary>Tela de Solicitação: 20 por página, 5 páginas, corta em 100 <b>em silêncio</b>.</summary>
+    TelaSolicitacao = 1,
+
+    /// <summary>Tela de Histórico: até 500 num .xls, e <b>avisa</b> quando corta.</summary>
+    ExportHistorico = 2,
 }
 
 /// <summary>Linha crua devolvida pelo SER, exatamente como o parser leu.</summary>
@@ -180,10 +200,18 @@ public sealed record SerLinhaDiretaDto(
 /// <summary>Resultado da consulta direta, com o diagnóstico que interessa a quem testa.</summary>
 public sealed record SerConsultaDiretaDto(
     IReadOnlyList<SerLinhaDiretaDto> Linhas,
-    /// <summary>Páginas que o datascroller expôs. <b>5 = bateu no teto de 100</b> da tela do SER.</summary>
+    /// <summary>Páginas que o datascroller expôs. <b>5 = bateu no teto de 100</b> da tela do SER.
+    /// Sempre 0 no export: aquela tela devolve o lote inteiro de uma vez, não pagina.</summary>
     int Paginas,
     bool BateuNoTeto,
-    int DuracaoMs);
+    int DuracaoMs,
+    FonteConsultaSer Fonte,
+    /// <summary>
+    /// O aviso de corte, <b>com as palavras do próprio SER</b>, ou nulo quando o lote veio
+    /// inteiro. Só a tela de Histórico avisa; por isso "sem aviso" ali significa cobertura
+    /// completa daquele recorte, enquanto na tela de Solicitação não significa nada.
+    /// </summary>
+    string? AvisoDoSer);
 
 /// <summary>Histórico lido ao vivo de uma solicitação, para conferir contra a tela do SER.</summary>
 public sealed record SerHistoricoDiretoDto(

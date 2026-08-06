@@ -90,7 +90,7 @@ public sealed class SerExportLeitor(
             logger.LogDebug(
                 "SER/export: {Situacao} {Inicio:dd/MM/yyyy}..{Fim:dd/MM/yyyy} não devolveu linhas.",
                 filtro.Situacao, filtro.DataSolicitacaoInicio, filtro.DataSolicitacaoFim);
-            return new LoteExportSer([], truncado);
+            return new LoteExportSer([], truncado) { Aviso = aviso };
         }
 
         var botaoExportar = SerHtmlParser.BotaoExportar(docResultado)
@@ -139,6 +139,7 @@ public sealed class SerExportLeitor(
         return new LoteExportSer(linhas, truncado)
         {
             MaiorDataSolicitacao = datas.Count > 0 ? datas.Max() : null,
+            Aviso = aviso,
         };
     }
 

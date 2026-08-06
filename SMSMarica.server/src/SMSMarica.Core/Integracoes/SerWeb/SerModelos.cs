@@ -124,6 +124,10 @@ public sealed record LoteExportSer(IReadOnlyList<SerLinhaGrade> Linhas, bool Tru
 {
     /// <summary>Maior <c>Data da Solicitação</c> do lote, quando legível.</summary>
     public DateOnly? MaiorDataSolicitacao { get; init; }
+
+    /// <summary>O aviso de corte com as palavras do próprio SER, para mostrar a quem opera em vez
+    /// de um "truncado: true" que não explica nada.</summary>
+    public string? Aviso { get; init; }
 }
 
 /// <summary>Tradução entre os enums do domínio e os <c>value</c> dos combos do SER.</summary>

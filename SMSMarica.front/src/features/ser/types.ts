@@ -192,7 +192,15 @@ export type ConsultaDiretaFiltro = {
   cns?: string;
   idSolicitacao?: string;
   pagina?: number;
+  /**
+   * Consultar pela tela de Histórico (export de 500) em vez da tela de Solicitação (teto de 100).
+   * É o caminho que a varredura usa de verdade — e o único em que a contagem significa algo.
+   */
+  porExport?: boolean;
 };
+
+/** Qual tela do SER respondeu. Muda o teto e o que a resposta prova. */
+export type FonteConsultaSer = 'TelaSolicitacao' | 'ExportHistorico';
 
 /** Linha crua do SER — tudo string, exatamente como o parser leu da grade. */
 export type LinhaDiretaSer = {
@@ -213,10 +221,14 @@ export type LinhaDiretaSer = {
 
 export type ConsultaDiretaResultado = {
   linhas: LinhaDiretaSer[];
+  /** Páginas do datascroller. Sempre 0 no export: aquela tela não pagina. */
   paginas: number;
-  /** 5 páginas = o corte de 100 registros da tela do SER. */
+  /** Na tela de Solicitação, 5 páginas = corte de 100. No export, é o aviso do próprio SER. */
   bateuNoTeto: boolean;
   duracaoMs: number;
+  fonte: FonteConsultaSer;
+  /** O aviso de corte nas palavras do SER, ou null quando o lote veio inteiro. */
+  avisoDoSer: string | null;
 };
 
 export type EventoDiretoSer = {

@@ -47,6 +47,7 @@ export function AbaSerConsultaDireta() {
   const [inicio, setInicio] = useState('');
   const [fim, setFim] = useState('');
   const [pagina, setPagina] = useState(1);
+  const [porExport, setPorExport] = useState(true);
 
   const [carregando, setCarregando] = useState(false);
   const [resultado, setResultado] = useState<ConsultaDiretaResultado | null>(null);
@@ -69,6 +70,7 @@ export function AbaSerConsultaDireta() {
         dataSolicitacaoInicio: inicio || undefined,
         dataSolicitacaoFim: fim || undefined,
         pagina: paginaAlvo,
+        porExport,
       });
       setResultado(r);
       setPagina(paginaAlvo);
@@ -182,6 +184,18 @@ export function AbaSerConsultaDireta() {
           <Input id="cd-fim" type="date" value={fim} onChange={(e) => setFim(e.target.value)} />
         </Campo>
 
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={porExport}
+            onChange={(e) => setPorExport(e.target.checked)}
+            className="size-4"
+          />
+          {/* É o caminho que a varredura usa. A tela de Solicitação trava em 100 por construção,
+              então conferir cobertura por ela é impossível — só o export permite CONTAR. */}
+          Usar o export (tela de Histórico, até 500 e avisa quando corta)
+        </label>
+
         <Button onClick={() => consultar(1)} disabled={carregando}>
           {carregando ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
           Consultar o SER
@@ -194,15 +208,28 @@ export function AbaSerConsultaDireta() {
         <>
           <div className="flex flex-wrap items-center gap-4 text-sm">
             <span className="text-slate-600">
-              {resultado.linhas.length} linha(s) · {resultado.paginas} página(s) ·{' '}
-              <strong>{resultado.duracaoMs} ms</strong>
+              {resultado.linhas.length} linha(s)
+              {resultado.fonte === 'ExportHistorico'
+                ? ' · export (tela de Histórico)'
+                : ` · ${resultado.paginas} página(s) · tela de Solicitação`}{' '}
+              · <strong>{resultado.duracaoMs} ms</strong>
             </span>
-            {resultado.bateuNoTeto && (
-              // 5 páginas é o corte da tela do SER: existem mais registros que ela não mostra.
+            {resultado.bateuNoTeto ? (
               <span className="inline-flex items-center gap-1 text-amber-700">
                 <AlertTriangle className="size-4" />
-                Bateu no teto de 100 — o SER não pagina além disso. A varredura resolve fatiando por data.
+                {/* No export o aviso é do PRÓPRIO SER, por escrito. Na tela de Solicitação o corte
+                    é mudo e o teto de 100 é a única pista. */}
+                {resultado.avisoDoSer ??
+                  'Bateu no teto de 100 — o SER não pagina além disso. A varredura resolve fatiando por data.'}
               </span>
+            ) : (
+              resultado.fonte === 'ExportHistorico' && (
+                // SEM aviso no export significa cobertura completa daquele recorte. É a única
+                // tela do SER em que "não avisou" é informação, e não silêncio.
+                <span className="text-green-700">
+                  O SER não avisou corte — este recorte veio completo.
+                </span>
+              )
             )}
           </div>
 

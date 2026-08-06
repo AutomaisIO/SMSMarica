@@ -27,14 +27,21 @@ public interface ISerConsultaDiretaService
         string idSer, Data.Entities.Ser.SituacaoSer situacao, CancellationToken cancellationToken);
 }
 
-public sealed class SerConsultaDiretaService(ISerLeitorService leitor) : ISerConsultaDiretaService
+public sealed class SerConsultaDiretaService(
+    ISerLeitorService leitor,
+    Integracoes.SerWeb.Varredura.Export.ISerExportLeitor exportLeitor) : ISerConsultaDiretaService
 {
-    /// <summary>5 páginas × 20 linhas: o teto da tela do SER.</summary>
+    /// <summary>5 páginas × 20 linhas: o teto da tela de Solicitação.</summary>
     private const int TetoPaginas = 5;
+
+    /// <summary>A solicitação mais antiga vista em produção é de 2016.</summary>
+    private static readonly DateOnly InicioPadrao = new(2015, 1, 1);
 
     public async Task<SerConsultaDiretaDto> ConsultarAsync(
         SerConsultaDiretaRequest r, CancellationToken cancellationToken)
     {
+        if (r.PorExport) return await ConsultarPorExportAsync(r, cancellationToken);
+
         var relogio = Stopwatch.StartNew();
 
         await leitor.PrepararAsync(cancellationToken);
@@ -76,7 +83,60 @@ public sealed class SerConsultaDiretaService(ISerLeitorService leitor) : ISerCon
                 l.Cns, l.Cid, l.Solicitante, l.MunicipioSolicitante, l.AgendadoPara, l.Situacao)).ToList(),
             pagina.Paginas,
             pagina.Paginas >= TetoPaginas,
-            (int)relogio.ElapsedMilliseconds);
+            (int)relogio.ElapsedMilliseconds,
+            FonteConsultaSer.TelaSolicitacao,
+            // A tela de Solicitação corta calada: não existe aviso nenhum para repassar.
+            AvisoDoSer: null);
+    }
+
+    /// <summary>
+    /// Consulta pela tela de Histórico (export de 500) — o caminho que a varredura usa de verdade.
+    ///
+    /// <para><b>É o único que permite contar.</b> A tela de Solicitação trava em 100 por
+    /// construção, então "bateu no teto" ali não diz se existem 101 ou 8.000 registros. Aqui o
+    /// número de linhas é real até 500, e o SER avisa por escrito quando cortou — é isso que
+    /// transforma conferência de cobertura em algo verificável.</para>
+    ///
+    /// <para>Somente leitura, como o resto desta bancada: baixa a planilha, parseia em memória e
+    /// <b>não grava nada</b> no nosso banco.</para>
+    /// </summary>
+    private async Task<SerConsultaDiretaDto> ConsultarPorExportAsync(
+        SerConsultaDiretaRequest r, CancellationToken cancellationToken)
+    {
+        if (r.Situacao == Data.Entities.Ser.SituacaoSer.Alta)
+        {
+            throw new ValidacaoException(
+                "ser.export_sem_alta",
+                "A tela de Histórico do SER não oferece a situação ALTA no combo. Para conferir "
+                + "ALTA, use a consulta pela tela de Solicitação (que trava em 100).");
+        }
+
+        var relogio = Stopwatch.StartNew();
+
+        await exportLeitor.PrepararAsync(cancellationToken);
+
+        var lote = await exportLeitor.ExportarAsync(
+            new SerFiltroExport
+            {
+                Situacao = r.Situacao,
+                Tipo = r.Tipo,
+                DataSolicitacaoInicio = r.DataSolicitacaoInicio ?? InicioPadrao,
+                DataSolicitacaoFim = r.DataSolicitacaoFim
+                                     ?? DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1)),
+            },
+            cancellationToken);
+
+        relogio.Stop();
+
+        return new SerConsultaDiretaDto(
+            lote.Linhas.Select(l => new SerLinhaDiretaDto(
+                l.IdSer, l.Tipo, l.Recurso, l.DataSolicitacao, l.Paciente, l.Idade, l.Cpf,
+                l.Cns, l.Cid, l.Solicitante, l.MunicipioSolicitante, l.AgendadoPara, l.Situacao)).ToList(),
+            Paginas: 0,
+            BateuNoTeto: lote.Truncado,
+            (int)relogio.ElapsedMilliseconds,
+            FonteConsultaSer.ExportHistorico,
+            lote.Aviso);
     }
 
     public async Task<SerHistoricoDiretoDto> HistoricoAsync(
