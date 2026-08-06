@@ -25,7 +25,12 @@ public sealed class PostgresFixture : IAsyncLifetime
     private readonly PostgreSqlContainer? _container = ConexaoExterna is not null
         ? null
         : new PostgreSqlBuilder()
-            .WithImage("postgres:16-alpine")
+            // pgvector, não o postgres puro: a migration AddInteligenciaIa cria a extensão
+            // `vector` (IaAprendizado.Embedding é vector(1024)) e a imagem oficial do Postgres
+            // não a traz — `extension "vector" is not available` derruba a fixture antes do
+            // primeiro teste. Só aparece com Docker; quem roda pela bancada
+            // (SMSMARICA_TESTS_CONNECTION) tem a extensão no cluster e não vê o problema.
+            .WithImage("pgvector/pgvector:pg16")
             .WithDatabase("defaultdb")
             .WithUsername("postgres")
             .WithPassword("postgres")
