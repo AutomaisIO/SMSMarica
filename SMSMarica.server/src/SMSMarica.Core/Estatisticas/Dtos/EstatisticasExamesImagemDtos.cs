@@ -84,9 +84,9 @@ public sealed record ExameImagemAnaliticoDto(
 
 /// <summary>
 /// Linha da exportação de FATURAMENTO de exames de imagem (uma por exame realizado). Diferente das
-/// demais visões analíticas, esta CARREGA PII do paciente (nome, CPF, CNS, nascimento, CEP, celular)
-/// porque o faturamento precisa localizar/identificar o cidadão — ticket #74. Não traz accession nem
-/// números internos de controle. Ordenada por data de realização crescente na origem.
+/// demais visões analíticas, esta CARREGA PII do paciente (nome, CPF, CNS, nascimento, CEP, logradouro,
+/// celular) porque o faturamento precisa localizar/identificar o cidadão — ticket #74/#98. Não traz
+/// accession nem números internos de controle. Ordenada por data de realização crescente na origem.
 /// </summary>
 public sealed record ExameFaturamentoDto(
     string Paciente,
@@ -94,6 +94,7 @@ public sealed record ExameFaturamentoDto(
     string? Cns,
     DateOnly? Nascimento,
     string? Cep,
+    string? Logradouro,
     string? Celular,
     string? Exame,
     DateTime? Realizacao);

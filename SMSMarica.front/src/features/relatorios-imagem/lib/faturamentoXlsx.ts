@@ -39,6 +39,7 @@ const COLUNAS: Coluna[] = [
     valor: (l) => paraDataPlanilha(l.nascimento),
   },
   { titulo: 'CEP', larguraMin: 11, valor: (l) => formatarCep(l.cep) },
+  { titulo: 'LOGRADOURO', larguraMin: 28, valor: (l) => l.logradouro ?? '' },
   { titulo: 'CELULAR', larguraMin: 16, valor: (l) => l.celular ?? '' },
   { titulo: 'EXAME', larguraMin: 24, valor: (l) => l.exame ?? '' },
   {

@@ -312,7 +312,7 @@ export function RelatoriosImagemPage() {
                 className="flex items-center gap-1.5 rounded-md bg-primary-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-primary-700 disabled:opacity-60"
               >
                 <Download className="h-3.5 w-3.5" />
-                {exportando ? 'Exportando…' : 'Exportar CSV'}
+                {exportando ? 'Exportando…' : 'Exportar'}
                 <ChevronDown className="h-3.5 w-3.5" />
               </button>
               {menuExport ? (

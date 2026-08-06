@@ -33,6 +33,7 @@ export type ExameFaturamento = {
   cns: string | null;
   nascimento: string | null; // yyyy-MM-dd
   cep: string | null;
+  logradouro: string | null;
   celular: string | null;
   exame: string | null;
   realizacao: string | null; // ISO

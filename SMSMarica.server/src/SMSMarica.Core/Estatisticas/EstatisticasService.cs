@@ -284,8 +284,8 @@ public sealed class EstatisticasService(
             {
                 pacientes.TryGetValue(e.PacienteId, out var p);
                 return new ExameFaturamentoDto(
-                    p?.Nome ?? "(sem nome)", p?.Cpf, p?.Cns, p?.DataNascimento, p?.Cep, p?.Celular,
-                    e.TipoExameNome, e.RealizadoEm);
+                    p?.Nome ?? "(sem nome)", p?.Cpf, p?.Cns, p?.DataNascimento, p?.Cep, p?.Logradouro,
+                    p?.Celular, e.TipoExameNome, e.RealizadoEm);
             })
             .ToList();
 
