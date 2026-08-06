@@ -35,6 +35,12 @@ internal static class UpsertCanonicoPep
     /// <summary>System do CPF — a chave nacional que une a mesma pessoa entre PEPs.</summary>
     public const string SysCpf = "https://fhir.saude.gov.br/sid/cpf";
 
+    /// <summary>
+    /// Prefixo dos systems de conselho profissional. É prefixo porque cada mapper especializa
+    /// (<c>urn:br:conselho:crm</c> no Klinikos, <c>urn:br:conselho:crm:RJ</c> no Salux).
+    /// </summary>
+    private const string SysConselhoPrefixo = "urn:br:conselho:";
+
     /// <param name="systemCdInterno">
     /// System do identifier INTERNO da base de origem (ex.: <c>urn:salux:cd_paciente</c>,
     /// <c>urn:klinikos:paciente</c>) — usado só para extrair o código nativo que rotula a
@@ -260,6 +266,12 @@ internal static class UpsertCanonicoPep
         {
             if (nv.Any(x => x.System == id.System && x.Value == id.Value)) continue;
             if (id.System == SysCpf && !CpfPep.Valido(id.Value)) continue;
+            // Conselho fora da forma canônica não é copiado adiante: o build atual já emite a
+            // versão normalizada, então manter a antiga deixaria o mesmo CRM duas vezes no
+            // recurso, com e sem máscara — e o `&nbsp;` para sempre. Como o descarte só vale
+            // quando o novo NÃO traz o valor, registro que sumiu da origem também não persiste.
+            if (id.System?.StartsWith(SysConselhoPrefixo, StringComparison.Ordinal) == true
+                && !ConselhoPep.Valido(id.Value)) continue;
             nv.Add(id);
         }
 

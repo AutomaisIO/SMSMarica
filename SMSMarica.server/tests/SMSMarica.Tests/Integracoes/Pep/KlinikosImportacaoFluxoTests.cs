@@ -1088,6 +1088,162 @@ public class KlinikosImportacaoFluxoTests
         Assert.Equal(sistemas.OrderBy(s => s, StringComparer.Ordinal), sistemas);
     }
 
+    /// <summary>
+    /// Paciente resolvido pelo BOLETIM (não veio na fase de cadastro porque a linha dele não
+    /// mudou) também entra no contador. Ficava invisível, o que subnotificava o trabalho do run
+    /// e — depois que passou a existir <c>PacientesInalterados</c>, contado dentro do upsert
+    /// canônico e portanto nos DOIS caminhos — fazia "alterados = total − inalterados" dar
+    /// NEGATIVO no painel. Visto em prod 06/08 na Santa Rita: total 2, inalterados 5.
+    /// </summary>
+    [Fact]
+    public async Task Paciente_resolvido_por_boletim_conta__inalterados_nunca_passa_do_total()
+    {
+        var hub = new HubFake();
+        var origem = OrigemPadrao();
+        var marca = new MarcaDagua();
+        marca.AvancarPonteiro("paciente", 300);   // cadastro já visto: só os boletins são novos
+
+        var (_, p, _) = await RodarAsync(origem, hub, marca);
+
+        Assert.Equal(3, hub.Do<Patient>().Count);   // entraram pelo caminho do boletim
+        Assert.Equal(3, p.Pacientes);
+        Assert.True(p.Pacientes >= p.PacientesInalterados,
+            $"inalterados ({p.PacientesInalterados}) não pode passar do total ({p.Pacientes})");
+    }
+
+    /// <summary>
+    /// A tabela <c>profissional</c> é uma linha por <b>(pessoa × qualificação)</b>, não por
+    /// pessoa. Medido em prod 06/08/2026 na UPA: 496 linhas para 395 profissionais; o código
+    /// 2988 tem SETE linhas, mesmo nome e CPF, sete CBOs e quatro conselhos.
+    ///
+    /// <para>Tratando linha a linha, o <c>qualification</c> era sobrescrito a cada uma — o hub
+    /// guardava só o CBO da última e perdia os outros seis em silêncio — e cada linha era uma
+    /// versão nova (sete por ciclo, de 11 em 11 minutos). Agrupado: UMA escrita, TODAS as
+    /// qualificações.</para>
+    /// </summary>
+    [Fact]
+    public async Task Profissional_com_varias_linhas_vira_UM_recurso_com_TODAS_as_qualificacoes()
+    {
+        var hub = new HubFake();
+        var origem = OrigemPadrao();
+        origem.Profissionais.Clear();
+        // Mesma pessoa em 3 linhas: 3 CBOs, 2 conselhos (um repetido, um vazio).
+        foreach (var (cbo, conselho) in new[] { ("225125", "52123"), ("223208", "21424"), ("411010", (string?)null) })
+        {
+            var l = Prof("0001", "DR HOUSE", "39053344705");
+            l["CBO_CODIGO"] = cbo;
+            l["PROF_NUMCONSELHO"] = conselho;
+            origem.Profissionais.Add(l);
+        }
+
+        var (_, p, _) = await RodarAsync(origem, hub);
+
+        var house = Assert.Single(hub.Do<Practitioner>());
+        Assert.Equal("1", house.Meta?.VersionId);   // UMA escrita, não três
+
+        var cbos = house.Qualification
+            .Select(q => q.Code.Coding[0].Code).OrderBy(x => x, StringComparer.Ordinal);
+        Assert.Equal(["223208", "225125", "411010"], cbos);   // nenhuma qualificação perdida
+
+        var conselhos = house.Identifier
+            .Where(i => i.System == "urn:br:conselho:crm").Select(i => i.Value)
+            .OrderBy(x => x, StringComparer.Ordinal);
+        Assert.Equal(["21424", "52123"], conselhos);
+
+        Assert.Equal(1, p.Medicos);   // conta PESSOA, não linha
+    }
+
+    /// <summary>
+    /// Re-scan de profissional é gated como no Salux: cadastro muda raramente e reler ~500 linhas
+    /// a cada ciclo de 11 min é desperdício. O scheduler já calculava <c>ForcarMedicos</c> —
+    /// faltava o conector consumir.
+    /// </summary>
+    [Fact]
+    public async Task Rescan_de_profissional_so_roda_na_primeira_vez_ou_quando_forcado()
+    {
+        var hub = new HubFake();
+        var origem = OrigemPadrao();
+        var marca = new MarcaDagua();
+
+        await RodarAsync(origem, hub, marca);                  // 1ª vez: marca nula → roda
+        Assert.Single(hub.Do<Practitioner>());
+        Assert.NotNull(marca.ProfissionalEm);
+
+        // Ciclo seguinte: a marca está fresca e ninguém forçou → nem consulta a origem.
+        origem.Profissionais.Add(Prof("0009", "DR NOVO", "11144477735"));
+        var (_, p2, _) = await RodarAsync(origem, hub, marca);
+        Assert.Equal(0, p2.Medicos);
+        Assert.Single(hub.Do<Practitioner>());                 // o novo NÃO entrou ainda
+
+        // Scheduler decide que a marca envelheceu → força, e aí sim entra.
+        var progresso = new ProgressoImportacao();
+        var ctx = new ContextoImportacaoPep
+        {
+            Consulta = origem,
+            Opcoes = new OpcoesImportacao(ModoSincronizacao.Incremental, EscopoSincronizacao.Tudo,
+                null, null, false, ForcarMedicos: true),
+            Marca = marca,
+            Escritor = hub,
+            Progresso = progresso,
+            BaseSlug = Slug,
+        };
+        await new KlinikosImportacaoStrategy(NullLogger<KlinikosImportacaoStrategy>.Instance)
+            .ImportarAsync(ctx, CancellationToken.None);
+        Assert.Equal(2, hub.Do<Practitioner>().Count);
+    }
+
+    /// <summary>
+    /// Número de conselho vem de campo LIVRE na origem. Medido no hub em 06/08/2026: 13
+    /// profissionais com <c>52137902-8</c>, <c>52.137338-8</c>, <c>52 1341308</c>,
+    /// <c>&amp;nbsp;</c>. A régua NORMALIZA, não descarta — a maioria é registro real só mal
+    /// formatado, e jogar fora perderia dado profissional legítimo. Some só o que não deixa
+    /// dígito nenhum.
+    ///
+    /// <para>E o lixo que JÁ está no hub não é arrastado adiante: o merge deixa de copiar
+    /// conselho fora da forma canônica, então o re-scan cura sozinho — mesmo padrão que já
+    /// valia para CPF inválido.</para>
+    /// </summary>
+    [Fact]
+    public async Task Conselho_e_normalizado_e_o_lixo_ja_gravado_nao_sobrevive_ao_merge()
+    {
+        var hub = new HubFake();
+        // O que já está no hub: mascarado e lixo puro.
+        await hub.CriarAsync(new Practitioner
+        {
+            Name = [new HumanName { Use = HumanName.NameUse.Official, Text = "DR HOUSE" }],
+            Identifier =
+            [
+                new Identifier(SysCpf, "39053344705"),
+                new Identifier("urn:br:conselho:crm", "52.137338-8"),
+                new Identifier("urn:br:conselho:crm", "&nbsp;"),
+            ],
+        });
+
+        var origem = OrigemPadrao();
+        origem.Profissionais.Clear();
+        var l = Prof("0001", "DR HOUSE", "39053344705");
+        l["PROF_NUMCONSELHO"] = "52 1341308";   // formatado na origem
+        origem.Profissionais.Add(l);
+
+        await RodarAsync(origem, hub);
+
+        var house = Assert.Single(hub.Do<Practitioner>());
+        var conselhos = house.Identifier.Where(i => i.System == "urn:br:conselho:crm").Select(i => i.Value).ToList();
+        Assert.Equal(["521341308"], conselhos);   // normalizado; mascarado e &nbsp; não sobreviveram
+    }
+
+    [Theory]
+    [InlineData("52137902-8", "521379028")]
+    [InlineData("52.137338-8", "521373388")]
+    [InlineData("52 1341308", "521341308")]
+    [InlineData("821.756", "821756")]
+    [InlineData("&nbsp;", null)]
+    [InlineData("", null)]
+    [InlineData("  ", null)]
+    [InlineData("12", null)]          // abaixo do piso: não é número de conselho
+    public void Regua_do_conselho(string bruto, string? esperado) =>
+        Assert.Equal(esperado, SMSMarica.Core.Integracoes.Pep.ConselhoPep.Normalizar(bruto));
+
     /// <summary>O total de falhas conta além do teto do detalhe — o detalhe é amostra, o número é exato.</summary>
     [Fact]
     public void Detalhe_de_falhas_e_amostra_mas_o_total_e_exato()

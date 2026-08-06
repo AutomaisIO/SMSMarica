@@ -188,7 +188,9 @@ internal sealed class SaluxFhirMapper(string slug, string source)
     {
         var cpf = Dig(m.Cpf);
         var uf = string.IsNullOrWhiteSpace(m.Uf) ? "RJ" : m.Uf.Trim().ToUpperInvariant();
-        var registro = Dig(m.Crm);
+        // Mesma régua canônica do Klinikos: só dígitos, e nada com menos de 3 — senão o
+        // UnirIdentifiers derrubaria no merge o que este mapper acabou de emitir.
+        var registro = ConselhoPep.Normalizar(m.Crm) ?? string.Empty;
         var sigla = SiglaConselho(m.Conselho);
         var sysConselho = SysConselho + sigla.ToLowerInvariant() + ":" + uf;
 

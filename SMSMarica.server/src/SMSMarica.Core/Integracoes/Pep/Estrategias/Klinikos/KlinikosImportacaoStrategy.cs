@@ -152,28 +152,48 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
         // Profissional SEM CPF não entra — mesma régua do conector do Salux: Practitioner é
         // canônico por chave nacional, e sem ela não há como afirmar que o "João" de uma base
         // é o da outra. São 31 de 495 na UPA; nenhum recurso da Fase 1 os referencia.
-        p.FaseAtual = "profissionais…";
-        var profSemCpf = 0;
-        foreach (var linha in await leitor.ConsultarAsync(SqlProfissionais(), ct))
+        // Re-scan INTEGRAL — não há watermark confiável em `profissional`. Por isso é gated:
+        // cadastro de profissional muda raramente, e reler as ~500 linhas a cada ciclo de 11 min
+        // é desperdício puro. O Salux já fazia assim (ADR-0024); aqui faltava, e o scheduler já
+        // calculava o `ForcarMedicos` que ninguém consumia.
+        if (!incremental || ctx.Marca.ProfissionalEm is null || ctx.Opcoes.ForcarMedicos)
         {
-            if (p.Medicos >= maxMedicos) break;
-            if (MapProfissional(linha) is not { } pr) continue;
-            var cpfProf = Digitos(pr.Cpf);
-            if (pr.Nome is null || !CpfPep.Valido(cpfProf)) { profSemCpf++; continue; }
-            try
+            p.FaseAtual = "profissionais…";
+            var profSemCpf = 0;
+
+            // AGRUPADO por código: a tabela é uma linha por (profissional × qualificação), não
+            // por profissional — 496 linhas para 395 pessoas na UPA. Linha a linha, cada uma
+            // sobrescrevia o `qualification` da anterior (o hub ficava só com o último CBO) e
+            // gravava uma versão nova. Ver KlinikosFhirMapper.BuildPractitioner.
+            var linhas = (await leitor.ConsultarAsync(SqlProfissionais(), ct))
+                .Select(MapProfissional).OfType<ProfissionalLinha>().ToList();
+
+            foreach (var grupo in linhas.GroupBy(x => x.Codigo, StringComparer.OrdinalIgnoreCase))
             {
-                await UpsertCanonicoPep.UpsertAsync(
-                    ctx, "Practitioner", UpsertCanonicoPep.SysCpf, cpfProf,
-                    mapper.BuildPractitioner(pr), KlinikosFhirMapper.IdentProfissional, ct);
-                p.Medicos++;
+                if (p.Medicos >= maxMedicos) break;
+                var doProf = grupo.ToList();
+                var pr = doProf[0];
+                var cpfProf = Digitos(pr.Cpf);
+                if (pr.Nome is null || !CpfPep.Valido(cpfProf)) { profSemCpf++; continue; }
+                try
+                {
+                    await UpsertCanonicoPep.UpsertAsync(
+                        ctx, "Practitioner", UpsertCanonicoPep.SysCpf, cpfProf,
+                        mapper.BuildPractitioner(doProf), KlinikosFhirMapper.IdentProfissional, ct);
+                    p.Medicos++;
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    Falhou($"profissional {pr.Codigo}", Cd(pr.Codigo), ex);
+                }
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                Falhou($"profissional {pr.Codigo}", Cd(pr.Codigo), ex);
-            }
+            if (profSemCpf > 0)
+                logger.LogInformation("Klinikos {Slug}: {N} profissional(is) sem CPF ficaram fora (regra canônica).", slug, profSemCpf);
+
+            // Fase concluída → marca no instante do scan (não há watermark de origem) e persiste.
+            ctx.Marca.ProfissionalEm = DateTime.UtcNow;
+            if (ctx.SalvarMarca is { } salvarProf) await salvarProf(ctx.Marca, ct);
         }
-        if (profSemCpf > 0)
-            logger.LogInformation("Klinikos {Slug}: {N} profissional(is) sem CPF ficaram fora (regra canônica).", slug, profSemCpf);
 
         // ---------- 3. Pacientes ----------
         p.FaseAtual = "pacientes…";
@@ -547,7 +567,17 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
             foreach (var linha in await leitor.ConsultarAsync(SqlPacientesPorCodigo(lote), ct))
             {
                 if (MapPaciente(linha) is not { } pac) continue;
-                try { cache[pac.Codigo] = await UpsertPacienteAsync(ctx, mapper, pac, ct); }
+                try
+                {
+                    cache[pac.Codigo] = await UpsertPacienteAsync(ctx, mapper, pac, ct);
+                    // Conta AQUI também: este caminho processa paciente igual ao da fase de
+                    // cadastro, e ficava invisível no contador. Além de subnotificar o trabalho
+                    // do run, isso quebrava a conta do painel — `PacientesInalterados` conta os
+                    // dois caminhos (mora no upsert canônico), então "alterados = total −
+                    // inalterados" saía NEGATIVO quando o run resolvia mais paciente por
+                    // boletim do que por cadastro. Visto em prod 06/08: 2 e 5 na Santa Rita.
+                    ctx.Progresso.Pacientes++;
+                }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     falhou($"paciente {pac.Codigo}", Cd(pac.Codigo), ex);
