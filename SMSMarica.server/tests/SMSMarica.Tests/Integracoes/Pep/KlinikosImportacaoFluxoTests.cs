@@ -1192,6 +1192,58 @@ public class KlinikosImportacaoFluxoTests
         Assert.Equal(2, hub.Do<Practitioner>().Count);
     }
 
+    /// <summary>
+    /// Número de conselho vem de campo LIVRE na origem. Medido no hub em 06/08/2026: 13
+    /// profissionais com <c>52137902-8</c>, <c>52.137338-8</c>, <c>52 1341308</c>,
+    /// <c>&amp;nbsp;</c>. A régua NORMALIZA, não descarta — a maioria é registro real só mal
+    /// formatado, e jogar fora perderia dado profissional legítimo. Some só o que não deixa
+    /// dígito nenhum.
+    ///
+    /// <para>E o lixo que JÁ está no hub não é arrastado adiante: o merge deixa de copiar
+    /// conselho fora da forma canônica, então o re-scan cura sozinho — mesmo padrão que já
+    /// valia para CPF inválido.</para>
+    /// </summary>
+    [Fact]
+    public async Task Conselho_e_normalizado_e_o_lixo_ja_gravado_nao_sobrevive_ao_merge()
+    {
+        var hub = new HubFake();
+        // O que já está no hub: mascarado e lixo puro.
+        await hub.CriarAsync(new Practitioner
+        {
+            Name = [new HumanName { Use = HumanName.NameUse.Official, Text = "DR HOUSE" }],
+            Identifier =
+            [
+                new Identifier(SysCpf, "39053344705"),
+                new Identifier("urn:br:conselho:crm", "52.137338-8"),
+                new Identifier("urn:br:conselho:crm", "&nbsp;"),
+            ],
+        });
+
+        var origem = OrigemPadrao();
+        origem.Profissionais.Clear();
+        var l = Prof("0001", "DR HOUSE", "39053344705");
+        l["PROF_NUMCONSELHO"] = "52 1341308";   // formatado na origem
+        origem.Profissionais.Add(l);
+
+        await RodarAsync(origem, hub);
+
+        var house = Assert.Single(hub.Do<Practitioner>());
+        var conselhos = house.Identifier.Where(i => i.System == "urn:br:conselho:crm").Select(i => i.Value).ToList();
+        Assert.Equal(["521341308"], conselhos);   // normalizado; mascarado e &nbsp; não sobreviveram
+    }
+
+    [Theory]
+    [InlineData("52137902-8", "521379028")]
+    [InlineData("52.137338-8", "521373388")]
+    [InlineData("52 1341308", "521341308")]
+    [InlineData("821.756", "821756")]
+    [InlineData("&nbsp;", null)]
+    [InlineData("", null)]
+    [InlineData("  ", null)]
+    [InlineData("12", null)]          // abaixo do piso: não é número de conselho
+    public void Regua_do_conselho(string bruto, string? esperado) =>
+        Assert.Equal(esperado, SMSMarica.Core.Integracoes.Pep.ConselhoPep.Normalizar(bruto));
+
     /// <summary>O total de falhas conta além do teto do detalhe — o detalhe é amostra, o número é exato.</summary>
     [Fact]
     public void Detalhe_de_falhas_e_amostra_mas_o_total_e_exato()

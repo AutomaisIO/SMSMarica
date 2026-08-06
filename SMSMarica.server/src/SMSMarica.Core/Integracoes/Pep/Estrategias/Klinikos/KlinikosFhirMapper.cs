@@ -165,8 +165,8 @@ internal sealed class KlinikosFhirMapper(string slug, string source)
         var ident = new List<Identifier>();
         if (Dig(p.Cpf) is { Length: > 0 } cpf) ident.Add(new Identifier(SysCpf, cpf));
         if (Dig(p.Cns) is { Length: > 0 } cns) ident.Add(new Identifier(SysCns, cns));
-        // Um conselho por linha: entram TODOS, sem repetir.
-        foreach (var conselho in linhas.Select(l => S(l.Conselho)).OfType<string>().Distinct(StringComparer.Ordinal))
+        // Um conselho por linha: entram TODOS, sem repetir, e NORMALIZADOS.
+        foreach (var conselho in linhas.Select(l => ConselhoPep.Normalizar(l.Conselho)).OfType<string>().Distinct(StringComparer.Ordinal))
             ident.Add(new Identifier(SysConselho + "crm", conselho));
         ident.Add(new Identifier(SysProfissional, Pref(p.Codigo)));
 
