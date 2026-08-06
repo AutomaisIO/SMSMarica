@@ -1,6 +1,9 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using SMSMarica.Data;
+using SMSMarica.Data.Entities.Ser;
 
 namespace SMSMarica.Core.Integracoes.SerWeb.Varredura.Background;
 
@@ -18,6 +21,8 @@ public sealed class VarreduraSerRunner(
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        await LimparOrfasAsync(stoppingToken);
+
         while (!stoppingToken.IsCancellationRequested)
         {
             PedidoVarreduraSer pedido;
@@ -59,6 +64,48 @@ public sealed class VarreduraSerRunner(
             {
                 fila.Liberar();
             }
+        }
+    }
+
+    /// <summary>
+    /// Fecha rodadas que ficaram <c>EmExecucao</c> quando o processo caiu (deploy, restart,
+    /// crash). Sem isso elas ficam abertas para sempre e o guard de concorrência —
+    /// que olha o banco — passa a recusar toda varredura nova, com a tela dizendo
+    /// "já existe uma em andamento" sobre algo que morreu há dias.
+    /// </summary>
+    private async Task LimparOrfasAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var scope = scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<SmsMaricaDbContext>();
+
+            var orfas = await db.SerVarreduraExecucoes
+                .Where(x => x.Status == StatusVarreduraSer.EmExecucao
+                            || x.Status == StatusVarreduraSer.Pendente)
+                .ToListAsync(cancellationToken);
+
+            if (orfas.Count == 0) return;
+
+            foreach (var execucao in orfas)
+            {
+                // Erro, não Concluída: a cobertura ficou incompleta e fingir o contrário faria o
+                // operador acreditar que a base está inteira.
+                execucao.Status = StatusVarreduraSer.Erro;
+                execucao.MensagemErro =
+                    "Interrompida pelo desligamento do serviço (deploy/restart). Cobertura incompleta.";
+                execucao.FinalizadoEm = DateTime.UtcNow;
+                execucao.DuracaoSegundos =
+                    (int)(execucao.FinalizadoEm.Value - execucao.IniciadoEm).TotalSeconds;
+            }
+
+            await db.SaveChangesAsync(cancellationToken);
+            logger.LogWarning("SER: {Qtd} varredura(s) órfã(s) fechada(s) na subida do serviço.", orfas.Count);
+        }
+        catch (Exception ex)
+        {
+            // Falhar aqui não pode impedir o runner de subir.
+            logger.LogError(ex, "SER: não foi possível fechar varreduras órfãs na subida.");
         }
     }
 }

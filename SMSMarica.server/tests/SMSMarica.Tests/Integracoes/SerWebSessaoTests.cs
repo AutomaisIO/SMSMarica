@@ -202,6 +202,33 @@ public class SerWebSessaoTests
         historico.Paciente["Telefone WhatsApp"].Should().Be("(21) 96715-6518");
     }
 
+    /// <summary>
+    /// REGRESSÃO da carga inicial de 06/08/2026: a tela de HISTÓRICO também tem
+    /// &lt;form id="form0"&gt; (as abas Pesquisar/Editar/Historico vivem nele), mas NÃO tem o
+    /// botão Pesquisar. Tratá-la como "página de formulário" fez o 1º histórico ser lido e os
+    /// 10.501 seguintes falharem. O discriminador é o botão, não o form.
+    /// </summary>
+    [Fact]
+    public void Tela_de_historico_nao_tem_botao_pesquisar()
+    {
+        const string historico = """
+            <html><body><form id="form0">
+              <td id="form0:pesquisar_cell"><span id="form0:pesquisar_lbl">Pesquisar</span></td>
+              <table id="form0:historicoList"></table>
+            </form></body></html>
+            """;
+        const string pesquisa = """
+            <html><body><form id="form0">
+              <a class="rf-btn" id="form0:j_id96" title="Pesquisar"><span>Pesquisar</span></a>
+            </form></body></html>
+            """;
+
+        SerHtmlParser.BotaoPesquisar((IHtmlDocument)SerHtmlParser.Documento(historico))
+            .Should().BeNull("a tela de histórico não oferece o botão de pesquisa");
+        SerHtmlParser.BotaoPesquisar((IHtmlDocument)SerHtmlParser.Documento(pesquisa))
+            .Should().Be("form0:j_id96");
+    }
+
     [Fact]
     public void Situacao_traduz_texto_da_grade_para_enum()
     {

@@ -64,9 +64,20 @@ public sealed class SerLeitorService(
         if (string.IsNullOrEmpty(_htmlForm)) await PrepararAsync(cancellationToken);
 
         var doc = SerHtmlParser.Documento(_htmlForm);
+        if (SerHtmlParser.BotaoPesquisar(doc) is null)
+        {
+            // Auto-recuperação: perdemos a tela de pesquisa (navegamos para outra view, ou o
+            // Seam expirou a conversa). Reabrir custa um GET e evita que a rodada inteira morra
+            // — foi assim que a carga inicial perdeu 10.501 históricos por um único desvio.
+            logger.LogInformation("SER: tela de pesquisa perdida — reabrindo antes de pesquisar.");
+            await PrepararAsync(cancellationToken);
+            doc = SerHtmlParser.Documento(_htmlForm);
+        }
+
         var botao = SerHtmlParser.BotaoPesquisar(doc)
             ?? throw new InvalidOperationException(
-                "Botão Pesquisar não encontrado na tela do SER (a página foi recompilada?).");
+                "Botão Pesquisar não encontrado na tela do SER nem após reabri-la "
+                + "(a página foi recompilada pela SES-RJ?).");
 
         var extras = new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -177,7 +188,18 @@ public sealed class SerLeitorService(
     private void Absorver(string html)
     {
         _htmlDados = html;
-        if (html.Contains("<form id=\"form0\"", StringComparison.Ordinal)) _htmlForm = html;
+
+        // ATENÇÃO: a tela de HISTÓRICO também tem um <form id="form0"> (as abas
+        // Pesquisar/Editar/Historico vivem no mesmo form). Promover qualquer página com form0 a
+        // "página do formulário" fazia a tela de histórico virar a base dos submits seguintes —
+        // e ela não tem o botão Pesquisar. Resultado: o 1º histórico era lido e TODOS os
+        // seguintes falhavam com "Botão Pesquisar não encontrado" (10.501 falhas na carga
+        // inicial de 06/08/2026). Só é página de formulário quem tem o botão de pesquisa.
+        if (html.Contains("<form id=\"form0\"", StringComparison.Ordinal)
+            && SerHtmlParser.BotaoPesquisar(SerHtmlParser.Documento(html)) is not null)
+        {
+            _htmlForm = html;
+        }
 
         var vs = SerHtmlParser.ViewStateQualquer(html);
         if (!string.IsNullOrEmpty(vs)) _ultimoViewState = vs;
