@@ -62,7 +62,7 @@ internal static class PlanilhaSerParser
                 IdSer = id,
                 Tipo = Campo(colunas, celulas, "tipo"),
                 Recurso = Campo(colunas, celulas, "recurso"),
-                DataSolicitacao = Campo(colunas, celulas, "data_solicitacao"),
+                DataSolicitacao = Data(colunas, celulas, "data_solicitacao"),
                 Paciente = Campo(colunas, celulas, "paciente"),
                 Idade = Campo(colunas, celulas, "idade"),
                 Cpf = Campo(colunas, celulas, "cpf"),
@@ -71,7 +71,7 @@ internal static class PlanilhaSerParser
                 Solicitante = Campo(colunas, celulas, "solicitante"),
                 MunicipioSolicitante = Campo(colunas, celulas, "municipio_solicitante"),
                 UnidadeExecutora = Campo(colunas, celulas, "unidade_executora"),
-                AgendadoPara = Campo(colunas, celulas, "agendado_para"),
+                AgendadoPara = Data(colunas, celulas, "agendado_para"),
                 Situacao = Campo(colunas, celulas, "situacao"),
             });
         }
@@ -129,6 +129,47 @@ internal static class PlanilhaSerParser
             if (Sinonimos.TryGetValue(nome, out var chave) && !mapa.ContainsKey(chave)) mapa[chave] = i;
         }
         return mapa;
+    }
+
+    /// <summary>Menor e maior serial aceitos: 1990-01-01 e 2100-01-01. Fora disso é outra coisa
+    /// travestida de número (CNS tem 15 dígitos, ID tem 7).</summary>
+    private const double SerialMinimo = 32874;
+    private const double SerialMaximo = 73051;
+
+    /// <summary>
+    /// Coluna de data → <c>dd/MM/yyyy</c>.
+    ///
+    /// <para><b>O SER exporta data como número de série do Excel</b> (medido em 06/08/2026:
+    /// <c>46204.37281195602</c> = 01/07/2026 08:56), não como texto nem como data formatada. Sem
+    /// converter, a solicitação entraria no espelho <b>sem data de solicitação</b> — que é o eixo
+    /// de todo o fatiamento — e sem erro nenhum, porque o parse de "46204,37" só devolve nulo.</para>
+    ///
+    /// <para>A conversão é feita SÓ nas colunas de data: o ID também chega como número
+    /// (<c>8000763.0</c>) e virar data seria pior que ficar nulo.</para>
+    /// </summary>
+    private static string? Data(Dictionary<string, int> colunas, string?[] celulas, string chave) =>
+        ConverterData(Campo(colunas, celulas, chave));
+
+    /// <summary>Exposto para teste: a conversão do serial é a parte que, errada, some com a data
+    /// sem levantar erro.</summary>
+    internal static string? ConverterData(string? bruto)
+    {
+        if (string.IsNullOrWhiteSpace(bruto)) return null;
+
+        // Já veio no formato certo (ExcelDataReader reconheceu o formato de data da célula).
+        if (DateOnly.TryParseExact(bruto, "dd/MM/yyyy", CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out _))
+        {
+            return bruto;
+        }
+
+        if (double.TryParse(bruto, NumberStyles.Float, CultureInfo.InvariantCulture, out var serial)
+            && serial is >= SerialMinimo and <= SerialMaximo)
+        {
+            return DateTime.FromOADate(serial).ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);
+        }
+
+        return bruto;
     }
 
     private static string? Campo(Dictionary<string, int> colunas, string?[] celulas, string chave) =>

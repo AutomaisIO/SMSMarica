@@ -77,7 +77,27 @@ public sealed class SerExportLeitor(
                 + "lugar. Nada foi lido.");
         }
 
+        // A BUSCA NÃO DEVOLVE O RESULTADO: devolve um redirect A4J de ~267 bytes com
+        // <meta name="Location"> apontando para a mesma tela com o ?cid da conversa Seam. O
+        // resultado só existe na página de destino.
+        //
+        // Medido no SER em 06/08/2026: sem seguir o redirect, o parser lê os 267 bytes, não acha
+        // grade nem mensagem, e devolve "zero linhas, sem aviso de corte" — que a tela traduzia
+        // como "recorte completo". Silêncio virando prova de cobertura, de novo. É o mesmo
+        // mecanismo que a tela de histórico já usava (docs/ser.md §5); só faltava aqui.
         var htmlResultado = resposta.Texto;
+
+        if (SerHtmlParser.RedirectNoCorpo(htmlResultado) is { Length: > 0 } destino)
+        {
+            htmlResultado = await sessao.AbrirTelaAsync(destino, cancellationToken);
+        }
+        else
+        {
+            logger.LogWarning(
+                "SER/export: a busca não devolveu redirect A4J ({Bytes} bytes). O SER mudou o "
+                + "fluxo da tela de Histórico?", resposta.Corpo.Length);
+        }
+
         Absorver(htmlResultado);
         var docResultado = SerHtmlParser.Documento(htmlResultado);
 

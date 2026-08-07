@@ -44,36 +44,44 @@ na base; Chegada não confirmada 3.471 × 2.252; Alta > 0 × **0**.
 
 ## 2. O que fazer, em ordem
 
-### Passo 1 — Validar a correção do `action` — **PENDENTE, é o portão**
+### Passo 1 — ~~Validar a contagem pela consulta direta~~ **INEXECUTÁVEL como estava escrito**
 
-O bug de postar em caminho fixo foi corrigido (`a483e8f`) mas **nunca exercitado**.
+A instrução anterior mandava comparar a contagem da consulta direta com **7.723**. Aquela tela
+usava a tela de Solicitação, que **trava em 100 por construção** — 5 páginas × 20. "Bateu no
+teto" ali não distingue 101 de 8.000, então nunca daria para conferir cobertura por ela.
 
-1. `Regulação → Configuração → SER — consulta direta`
-2. Filtrar `Chegada confirmada` + `CONSULTA`
-3. Comparar a contagem com **7.723**
+Corrigido em 06/08: a consulta direta ganhou um seletor de fonte e usa o **export** por padrão,
+onde a contagem é real até 500 e o SER **avisa por escrito** quando corta.
 
-Se bater, o transporte está curado. Se não bater, **parar e investigar** — não adianta
-recarregar a base com o transporte quebrado.
+### Passo 2 — ~~Deployar a branch~~ **FEITO em 06/08**
 
-### Passo 2 — Deployar a branch
-
-Precisa de `dotnet ef database update` **explícito**: o AutoMigrate do startup não aplica
-migration (já mordeu três vezes). Conferir `smsmarica.__migrations` depois.
+`main` em `1767848`+; migration `20260806200219_SerPonteiroRetomadaEExport` aplicada e conferida
+em produção (8 colunas, `ser_solicitacao` intacta em 14.163). Lembrete que continua valendo: o
+AutoMigrate do startup **não** aplica — conferir `smsmarica.__migrations` a cada deploy.
 
 ### Passo 3 — Exercitar o export uma vez, com janela curta
+
+> **06/08 noite:** o export foi exercitado CONTRA O SER REAL por sonda local somente-leitura, e
+> dois defeitos foram achados e corrigidos: (1) a busca responde com **redirect A4J** e o motor
+> parseava os 267 bytes do redirect como se fossem o resultado — zero linhas viravam "cobertura
+> completa"; (2) a **data vem como serial do Excel** e entraria nula no espelho. O layout do
+> `.xls` foi confirmado (12 colunas, `Sheet1`) e o teto de 500 + aviso foram medidos: 310 linhas
+> em julho/2026 sem aviso, 500 com aviso na janela toda. Falta rodar pelo painel.
 
 Antes de confiar na rodada inteira: disparar `Só a grade` numa janela de poucos meses e
 conferir nos logs `SER/export:` que os lotes saem, que o aviso de corte é reconhecido e que
 o parser da planilha achou o cabeçalho.
 
-**O que pode dar errado aqui, e nunca foi testado contra o SER real:**
+**O que continua sem prova:**
 
-- **O layout de colunas do `.xls`.** Nunca guardamos uma amostra do arquivo. O parser mapeia
-  **por nome de coluna** e procura a linha de cabeçalho nas 8 primeiras — se não reconhecer
-  ao menos 4 colunas, ele **explode em vez de importar lixo**. Se explodir, é só acrescentar
-  o sinônimo em `PlanilhaSerParser.Sinonimos`.
-- **Se o export respeita o filtro re-enviado** ou se exporta o resultado guardado na conversa
-  Seam. Mandamos os filtros nas duas requisições justamente para não depender da resposta.
+- **Se o `suggUnidadeSol` de fato recorta para Maricá.** Medido: mandá-lo **não zera** a
+  consulta. Se ele filtra alguma coisa, não se sabe — e a credencial já é de um operador GESTOR
+  SMS MARICA, então pode ser redundante. Enquanto não houver prova, não confiar nele para
+  afirmar escopo.
+- **Se o export refaz a consulta ou devolve o resultado guardado na conversa Seam.** Mandamos os
+  filtros nas duas requisições justamente para não depender da resposta.
+- **A sonda local** (`Automais.SER`, somente leitura) é o caminho mais barato para responder
+  qualquer uma dessas: bate no SER real e salva o HTML, sem deploy.
 
 ### Passo 4 — Recarregar a base
 
@@ -121,6 +129,17 @@ Da sessão de 06/08, todos por inferir de amostra pequena:
    de Maricá; a faixa da base é 873.917–8.147.763.
 2. "A listagem descarta silenciosamente os mais antigos ao bater no teto" — **não descarta**.
 3. "A base inteira é não-confiável por causa disso" — a causa era o `action`, não o teto.
+
+Da noite de 06/08, investigando a grade vazia do export — **três hipóteses, todas erradas**:
+
+4. "O filtro de data está matando a consulta" — **não está**; a data funciona e é o que faz o
+   aviso de corte sumir quando a janela é estreita.
+5. "O `GESTOR SMS MARICA` em texto solto zera o resultado" — **não zera**.
+6. "O tipo CONSULTA atrapalha" — **não atrapalha**.
+
+A causa era o **redirect A4J não seguido**. A lição se repete: quando o alvo responde 200 e vazio,
+o suspeito é o próprio transporte, não os filtros — e uma sonda que salva a resposta crua responde
+em minutos o que três ciclos de deploy não responderam.
 
 O que destravou foi o Bernardo dizer *"quando eu opero na mão, na primeira consulta vem
 certo"*. **Desconfiar do próprio scraper antes de acusar o sistema alvo.**

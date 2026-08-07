@@ -56,27 +56,27 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p>Conferência contra a tela do SER (Bernardo, 06/08): Chegada confirmada 7.723 no SER × 4.895 na base; Chegada não confirmada 3.471 × 2.252; Alta &gt; 0 × <strong>0</strong>.</p>
 <hr>
 <h2>2. O que fazer, em ordem</h2>
-<h3>Passo 1 — Validar a correção do <code>action</code> — <strong>PENDENTE, é o portão</strong></h3>
-<p>O bug de postar em caminho fixo foi corrigido (<code>a483e8f</code>) mas <strong>nunca exercitado</strong>.</p>
-<ol>
-<li><code>Regulação → Configuração → SER — consulta direta</code></li>
-<li>Filtrar <code>Chegada confirmada</code> + <code>CONSULTA</code></li>
-<li>Comparar a contagem com <strong>7.723</strong></li>
-</ol>
-<p>Se bater, o transporte está curado. Se não bater, <strong>parar e investigar</strong> — não adianta recarregar a base com o transporte quebrado.</p>
-<h3>Passo 2 — Deployar a branch</h3>
-<p>Precisa de <code>dotnet ef database update</code> <strong>explícito</strong>: o AutoMigrate do startup não aplica migration (já mordeu três vezes). Conferir <code>smsmarica.__migrations</code> depois.</p>
+<h3>Passo 1 — ~~Validar a contagem pela consulta direta~~ <strong>INEXECUTÁVEL como estava escrito</strong></h3>
+<p>A instrução anterior mandava comparar a contagem da consulta direta com <strong>7.723</strong>. Aquela tela usava a tela de Solicitação, que <strong>trava em 100 por construção</strong> — 5 páginas × 20. "Bateu no teto" ali não distingue 101 de 8.000, então nunca daria para conferir cobertura por ela.</p>
+<p>Corrigido em 06/08: a consulta direta ganhou um seletor de fonte e usa o <strong>export</strong> por padrão, onde a contagem é real até 500 e o SER <strong>avisa por escrito</strong> quando corta.</p>
+<h3>Passo 2 — ~~Deployar a branch~~ <strong>FEITO em 06/08</strong></h3>
+<p><code>main</code> em <code>1767848</code>+; migration <code>20260806200219_SerPonteiroRetomadaEExport</code> aplicada e conferida em produção (8 colunas, <code>ser_solicitacao</code> intacta em 14.163). Lembrete que continua valendo: o AutoMigrate do startup <strong>não</strong> aplica — conferir <code>smsmarica.__migrations</code> a cada deploy.</p>
 <h3>Passo 3 — Exercitar o export uma vez, com janela curta</h3>
+<p>&gt; <strong>06/08 noite:</strong> o export foi exercitado CONTRA O SER REAL por sonda local somente-leitura, e &gt; dois defeitos foram achados e corrigidos: (1) a busca responde com <strong>redirect A4J</strong> e o motor &gt; parseava os 267 bytes do redirect como se fossem o resultado — zero linhas viravam "cobertura &gt; completa"; (2) a <strong>data vem como serial do Excel</strong> e entraria nula no espelho. O layout do &gt; <code>.xls</code> foi confirmado (12 colunas, <code>Sheet1</code>) e o teto de 500 + aviso foram medidos: 310 linhas &gt; em julho/2026 sem aviso, 500 com aviso na janela toda. Falta rodar pelo painel.</p>
 <p>Antes de confiar na rodada inteira: disparar <code>Só a grade</code> numa janela de poucos meses e conferir nos logs <code>SER/export:</code> que os lotes saem, que o aviso de corte é reconhecido e que o parser da planilha achou o cabeçalho.</p>
-<p><strong>O que pode dar errado aqui, e nunca foi testado contra o SER real:</strong></p>
+<p><strong>O que continua sem prova:</strong></p>
 <ul>
-<li><strong>O layout de colunas do <code>.xls</code>.</strong> Nunca guardamos uma amostra do arquivo. O parser mapeia</li>
+<li><strong>Se o <code>suggUnidadeSol</code> de fato recorta para Maricá.</strong> Medido: mandá-lo <strong>não zera</strong> a</li>
 </ul>
-<p>  <strong>por nome de coluna</strong> e procura a linha de cabeçalho nas 8 primeiras — se não reconhecer   ao menos 4 colunas, ele <strong>explode em vez de importar lixo</strong>. Se explodir, é só acrescentar   o sinônimo em <code>PlanilhaSerParser.Sinonimos</code>.</p>
+<p>  consulta. Se ele filtra alguma coisa, não se sabe — e a credencial já é de um operador GESTOR   SMS MARICA, então pode ser redundante. Enquanto não houver prova, não confiar nele para   afirmar escopo.</p>
 <ul>
-<li><strong>Se o export respeita o filtro re-enviado</strong> ou se exporta o resultado guardado na conversa</li>
+<li><strong>Se o export refaz a consulta ou devolve o resultado guardado na conversa Seam.</strong> Mandamos os</li>
 </ul>
-<p>  Seam. Mandamos os filtros nas duas requisições justamente para não depender da resposta.</p>
+<p>  filtros nas duas requisições justamente para não depender da resposta.</p>
+<ul>
+<li><strong>A sonda local</strong> (<code>Automais.SER</code>, somente leitura) é o caminho mais barato para responder</li>
+</ul>
+<p>  qualquer uma dessas: bate no SER real e salva o HTML, sem deploy.</p>
 <h3>Passo 4 — Recarregar a base</h3>
 <p><strong>Antes de recarregar, limpar</strong> <code>ser_solicitacao</code>, <code>ser_evento</code> e <code>ser_gatilho</code>: os 14.163 gatilhos atuais nasceram de uma varredura errada e virariam lixo permanente. Depois conferir contra os números do §1.</p>
 <h3>Passo 5 — Ligar o scheduler</h3>
@@ -129,6 +129,16 @@ li{margin:3px 0}p,li{max-width:75ch}
 <li>"A listagem descarta silenciosamente os mais antigos ao bater no teto" — <strong>não descarta</strong>.</li>
 <li>"A base inteira é não-confiável por causa disso" — a causa era o <code>action</code>, não o teto.</li>
 </ol>
+<p>Da noite de 06/08, investigando a grade vazia do export — <strong>três hipóteses, todas erradas</strong>:</p>
+<ol>
+<li>"O filtro de data está matando a consulta" — <strong>não está</strong>; a data funciona e é o que faz o</li>
+</ol>
+<p>   aviso de corte sumir quando a janela é estreita.</p>
+<ol>
+<li>"O <code>GESTOR SMS MARICA</code> em texto solto zera o resultado" — <strong>não zera</strong>.</li>
+<li>"O tipo CONSULTA atrapalha" — <strong>não atrapalha</strong>.</li>
+</ol>
+<p>A causa era o <strong>redirect A4J não seguido</strong>. A lição se repete: quando o alvo responde 200 e vazio, o suspeito é o próprio transporte, não os filtros — e uma sonda que salva a resposta crua responde em minutos o que três ciclos de deploy não responderam.</p>
 <p>O que destravou foi o Bernardo dizer <em>"quando eu opero na mão, na primeira consulta vem certo"</em>. <strong>Desconfiar do próprio scraper antes de acusar o sistema alvo.</strong></p>
 </main>
 </body>

@@ -157,8 +157,51 @@ Diferenças que importam em relação à tela de Solicitação:
 - **Não** oferece "Histórico da Solicitação" no menu da linha.
 - Sem Situação preenchida, exige nome/código/CNS/CPF/ID do paciente.
 
+#### A armadilha da busca que não devolve o resultado
+
+**O POST do `btnSearch` responde ~267 bytes**, e não a grade:
+
+```xml
+<meta name="Ajax-Response" content="redirect" />
+<meta name="Location" content="/ser/pages/.../historico-pesquisar.seam?cid=25509" />
+```
+
+É o **mesmo redirect A4J embutido no corpo** que a tela de histórico usa (§5), apontando
+para a própria tela com o `?cid` da conversa Seam. **O resultado só existe na página de
+destino.** Quem parseia os 267 bytes encontra grade vazia, nenhuma mensagem e nenhum aviso
+de corte — e conclui *"recorte vazio, cobertura completa"*. Custou uma noite em 06/08/2026,
+com três hipóteses erradas pelo caminho (data, tipo e unidade solicitante).
+
+Medido na mesma sessão, seguindo o redirect: **todas** as situações devolvem grade. E o
+filtro `suggUnidadeSol=GESTOR SMS MARICA` **não zera a consulta** — mas se ele de fato
+recorta alguma coisa continua sem prova.
+
+#### O arquivo
+
 O `btnExport` responde `historico-pesquisar.xls`: **BIFF8 dentro de OLE2** (assinatura
-`D0 CF 11 E0 A1 B1 1A E1`), ~192 KB para 500 linhas. Duas armadilhas:
+`D0 CF 11 E0 A1 B1 1A E1`), `Content-Type: application/vnd.ms-excel`. Medido em 06/08/2026:
+
+| recorte | bytes | linhas | aviso de corte |
+|---|---|---|---|
+| EM_FILA, 01/07–31/07/2026 | 130.560 | 1 + **310** | **não** (completo) |
+| EM_FILA, sem data | 179.200 | 1 + **500** | **sim** |
+
+Aba única `Sheet1`, **12 colunas, nesta ordem**: Tipo, Recurso, ID Solicitação, Data da
+Solicitação, CNS, Paciente, Idade, CID, Unidade executora, Data do agendamento, Situação,
+Ação. (Mapear por NOME mesmo assim — a ordem é observação, não contrato.)
+
+**Tipos das células, que não são os óbvios:**
+
+- **Data vem como número de série do Excel**: `46204.37281195602` = 01/07/2026 08:56. Não é
+  texto nem data formatada. Sem converter, a solicitação entra no espelho **sem data de
+  solicitação** — o eixo de todo o fatiamento — e sem erro nenhum.
+- **ID e demais numéricos vêm como `double`**: `8000763.0`. Formatar com `ToString()` puro
+  produziria notação científica.
+- CNS, Idade, CID e Situação vêm como texto.
+- Converter serial só nas COLUNAS DE DATA: o ID também é número, e virar data seria pior
+  que ficar nulo.
+
+Duas armadilhas do transporte:
 
 1. **Ler a resposta como texto destrói o arquivo.** O transporte devolve `byte[]`; quem
    decodifica UTF-8 num BIFF8 troca os bytes por caracteres de substituição e a planilha
