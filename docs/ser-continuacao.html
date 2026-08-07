@@ -47,6 +47,7 @@ li{margin:3px 0}p,li{max-width:75ch}
 <tr><td>Tela</td><td>coluna <em>Progresso</em> (fase, cursor, pendentes) + status <code>Interrompida</code> em roxo</td></tr>
 <tr><td>Testes</td><td>25 unitários verdes, incluindo prova de cobertura sob corte de 500</td></tr>
 </tbody></table></div>
+<p><strong>Sessão de 07/08 (tarde):</strong> a amarração do filtro de Solicitante foi decifrada, provada por sonda e portada para o motor — <code>SerExportLeitor.AmarrarSolicitanteAsync</code> + parsers novos em <code>SerHtmlParser</code>, com testes (<code>SerExportLeitorTests</code>). Ver o Passo 3 abaixo e <code>docs/ser.md §4.3</code>.</p>
 <p><strong>Estado dos dados em produção — continua sem valer para decisão operacional:</strong></p>
 <div class="tw"><table><thead><tr><th></th><th></th></tr></thead><tbody>
 <tr><td>Solicitações espelhadas</td><td>14.163 (<strong>~35% incompletas</strong>)</td></tr>
@@ -64,22 +65,82 @@ li{margin:3px 0}p,li{max-width:75ch}
 <h3>Passo 3 — Exercitar o export uma vez, com janela curta</h3>
 <p>&gt; <strong>06/08 noite:</strong> o export foi exercitado CONTRA O SER REAL por sonda local somente-leitura, e &gt; dois defeitos foram achados e corrigidos: (1) a busca responde com <strong>redirect A4J</strong> e o motor &gt; parseava os 267 bytes do redirect como se fossem o resultado — zero linhas viravam "cobertura &gt; completa"; (2) a <strong>data vem como serial do Excel</strong> e entraria nula no espelho. O layout do &gt; <code>.xls</code> foi confirmado (12 colunas, <code>Sheet1</code>) e o teto de 500 + aviso foram medidos: 310 linhas &gt; em julho/2026 sem aviso, 500 com aviso na janela toda. Falta rodar pelo painel.</p>
 <p>Antes de confiar na rodada inteira: disparar <code>Só a grade</code> numa janela de poucos meses e conferir nos logs <code>SER/export:</code> que os lotes saem, que o aviso de corte é reconhecido e que o parser da planilha achou o cabeçalho.</p>
-<p>&gt; <strong>PARE AQUI ANTES DE RECARREGAR (07/08/2026).</strong> Está provado que o export lê a fila do &gt; <strong>Estado inteiro</strong>, não a de Maricá: o filtro de Solicitante só é aplicado quando a &gt; requisição A4J do autocomplete acontece, e o motor manda só o texto. Recarregar agora &gt; traria PII de outros municípios. O próximo passo é capturar o request real do &gt; <code>rich:suggestionbox</code> (DevTools → Network → Copy as cURL) e reproduzi-lo antes da busca — &gt; a tentativa de deduzir os parâmetros pela inicialização da página não funcionou.</p>
+<p>&gt; ~~<strong>PARE AQUI ANTES DE RECARREGAR (07/08/2026).</strong>~~ <strong>RESOLVIDO na tarde de 07/08/2026.</strong> &gt; O protocolo da amarração foi lido direto do <code>ui.pack.js</code>/<code>framework.pack.js</code> que o SER serve &gt; (sem DevTools): são <strong>duas</strong> requisições A4J — fetch com <code>inputvalue</code> + onselect com o &gt; <strong>índice da linha no hidden <code>_selection</code></strong>, ambas com <code>AJAXREQUEST=_viewRoot</code>. O <code>_selection</code> &gt; parecia "sempre vazio" porque o RichFaces o preenche só durante o submit e o limpa em seguida. &gt; Provado por sonda em 3 rodadas (recorte de Maricá determinístico, 1º = 2727024; controle &gt; só-texto instável e de outro recorte) e portado para o motor &gt; (<code>SerExportLeitor.AmarrarSolicitanteAsync</code>, com falha explícita quando a sugestão não vem). &gt; Protocolo completo em <code>docs/ser.md §4.3</code>.</p>
 <p><strong>O que continua sem prova:</strong></p>
 <ul>
-<li><strong>Se o <code>suggUnidadeSol</code> de fato recorta para Maricá.</strong> Medido: mandá-lo <strong>não zera</strong> a</li>
+<li>~~Se o <code>suggUnidadeSol</code> de fato recorta para Maricá~~ — <strong>provado em 07/08</strong>: com a amarração,</li>
 </ul>
-<p>  consulta. Se ele filtra alguma coisa, não se sabe — e a credencial já é de um operador GESTOR   SMS MARICA, então pode ser redundante. Enquanto não houver prova, não confiar nele para   afirmar escopo.</p>
+<p>  recorta (1º = 2727024, determinístico); sem ela, é o Estado inteiro. A credencial GESTOR SMS   MARICA <strong>não</strong> escopa sozinha esta tela.</p>
 <ul>
 <li><strong>Se o export refaz a consulta ou devolve o resultado guardado na conversa Seam.</strong> Mandamos os</li>
 </ul>
-<p>  filtros nas duas requisições justamente para não depender da resposta.</p>
+<p>  filtros nas duas requisições justamente para não depender da resposta. (O export da sonda   filtrada veio do recorte certo — 500 linhas abrindo no mesmo 1º registro da grade — então o   caminho está coerente nas duas hipóteses.)</p>
 <ul>
-<li><strong>A sonda local</strong> (<code>Automais.SER</code>, somente leitura) é o caminho mais barato para responder</li>
+<li><strong>A sonda local</strong> (<code>Automais.SER</code>, somente leitura) segue sendo o caminho mais barato para</li>
 </ul>
-<p>  qualquer uma dessas: bate no SER real e salva o HTML, sem deploy.</p>
+<p>  qualquer pergunta nova: bate no SER real e salva o HTML, sem deploy.</p>
 <h3>Passo 4 — Recarregar a base</h3>
 <p><strong>Antes de recarregar, limpar</strong> <code>ser_solicitacao</code>, <code>ser_evento</code> e <code>ser_gatilho</code>: os 14.163 gatilhos atuais nasceram de uma varredura errada e virariam lixo permanente. Depois conferir contra os números do §1.</p>
+<p>&gt; <strong>A limpeza é SQL manual</strong> (não há caminho no código; mitigante: as FKs têm <code>ON DELETE &gt; CASCADE</code>, então o DELETE em <code>ser_solicitacao</code> arrasta eventos e gatilhos). E antes de rodar a &gt; recarga inteira, resolver os achados marcados <strong>[recarga]</strong> no §2b — em especial o gatilho &gt; reincidente, que envenena a varredura em loop.</p>
+<h2>2b. Repasse de 07/08/2026 — revisão adversarial do stack</h2>
+<p>33 achados brutos, 28 confirmados por verificação adversarial (5 refutados). <strong>Corrigidos no mesmo dia</strong> (todos com teste): busca sem redirect A4J era warning e virava "lote vazio = cobertura completa" com cursor avançando (agora falha dura); onselect sem validação podia degradar para busca sem filtro com cara de filtrada (agora exige o envelope A4J); <code>PrepararAsync</code> retinha a tela velha em silêncio (agora falha); consulta direta lia o Estado inteiro POR PADRÃO com justificativa já desmentida (agora filtra por padrão, e leitura sem filtro deixa rastro em log); cabeçalho da planilha aceitava 4 colunas quaisquer sem as estruturais (agora exige ID + Data da Solicitação, com off-by-one da janela de busca corrigido); login/módulo tinham fallback para caminho constante (agora <code>ser.form_sem_action</code>); canários novos para a trava × parâmetros da amarração e para a assinatura OLE2.</p>
+<p><strong>Abertos, em ordem de urgência</strong> (os <code>[recarga]</code> precisam sair antes do Passo 4):</p>
+<ol>
+<li><strong>[recarga] Gatilho reincidente viola o índice único e trava a varredura em loop</strong></li>
+</ol>
+<p>   (<code>SerSincronizacaoService.RegistrarGatilho:621</code>): <code>Add</code> cego contra    <code>ux_ser_gatilho_solicitacao_tipo_chave</code>; a mesma transição repetida (remarcação, ciclo    Cancelada→EmFila→Cancelada) estoura o unique e derruba o <code>SaveChanges</code> do lote.</p>
+<ol>
+<li><strong>[recarga] <code>SaveChanges</code> do <code>finally</code> com change tracker envenenado</strong></li>
+</ol>
+<p>   (<code>SerSincronizacaoService:155</code>): após <code>DbUpdateException</code>, o <code>Status=Erro</code> nunca persiste, a    execução fica <code>EmExecucao</code> no banco e o scheduler adia o disparo diário para sempre.</p>
+<ol>
+<li><strong>[recarga] <code>FatiaTruncada</code> só vive em memória</strong> (<code>VarredorSerPorExport:128</code>): o cursor do</li>
+</ol>
+<p>   dia truncado avança e persiste na hora, mas a fatia truncada só é gravada quando a situação    INTEIRA termina — queda no meio vira Concluída com buraco não declarado.</p>
+<ol>
+<li><strong>[recarga] Retomada no meio da grade monta fila de histórico parcial</strong></li>
+</ol>
+<p>   (<code>SerSincronizacaoService.MontarFilaDeHistoricoAsync:486</code>): a remontagem-superconjunto do    banco só roda com <code>pedidos</code> vazio, e a retomada chega com a lista parcialmente populada — o    histórico dos trechos pré-queda é pulado.</p>
+<ol>
+<li>Desligamento gracioso grava <code>Cancelada</code> e <code>RetomarInterrompidasAsync</code> não retoma <code>Cancelada</code></li>
+</ol>
+<p>   (<code>SerSincronizacaoService:142</code> + <code>VarreduraSerRunner:87</code>) — todo deploy no meio de rodada    vira rodada perdida que exige disparo manual.</p>
+<ol>
+<li>Retomada descarta o escopo de situações original (<code>VarreduraSerRunner:108</code> passa</li>
+</ol>
+<p>   <code>Situacoes=null</code> ignorando <code>execucao.SituacoesVarridas</code>) — rodada parcial por escopo vira    varredura de tudo.</p>
+<ol>
+<li>Varredura de <strong>ALTA</strong> não aplica recorte de solicitante nenhum (a tela de Solicitação nem tem</li>
+</ol>
+<p>   o campo) — o escopo Maricá ali depende de a tela ser escopada pelo operador, <strong>o que nunca    foi provado</strong>. Medir com a sonda antes de confiar (os indícios são bons: a busca manual do    Bernardo em 07/08 na tela de Solicitação devolveu o recorte de Maricá).</p>
+<ol>
+<li><code>PlanilhaSerParser.Ler()</code> inteiro sem teste de integração (só <code>ConverterData</code> é coberto) —</li>
+</ol>
+<p>   falta um BIFF8 sintético pequeno no repositório, sem PII, exercitando cabeçalho, sinônimos,    linha-lixo e encoding cp1252.</p>
+<ol>
+<li>Dívida de releitura de histórico é edge-triggered e se perde quando a rodada morre com Erro</li>
+</ol>
+<p>   ou roda <code>SomenteGrade</code> (<code>SerSincronizacaoService:486</code>).</p>
+<ol>
+<li><code>Interrompida</code> órfã: a retomada da subida reenfileira só a mais antiga e nada volta a ler as</li>
+</ol>
+<p>    demais; o scheduler adia enquanto existir qualquer pendente (<code>VarreduraSerRunner:106</code>).</p>
+<ol>
+<li>Encolhimento de janela clampada repete exports idênticos truncados contra o SER até o passo</li>
+</ol>
+<p>    caber (<code>VarredorSerPorExport:72</code>) — desperdício, sem perda.</p>
+<ol>
+<li>Trava de leitura: dois pontos cegos na camada de rótulo (componente que só existe em script</li>
+</ol>
+<p>    nunca é conferido; <code>alt</code>/<code>onclick</code> não entram no rótulo). Sem furo ativo hoje.</p>
+<ol>
+<li>Bordas de <code>ConverterData</code> sem teste (limites 32874/73051 inclusive, serial inteiro à</li>
+</ol>
+<p>    meia-noite, número abaixo do mínimo).</p>
+<ol>
+<li>Registrado por projeto (não é defeito): a tela de <strong>Solicitação</strong> reusa a página de</li>
+</ol>
+<p>    resultado como base do submit seguinte (ciclo otimizado do histórico, <code>docs/ser.md §6</code>) — a     regra do "GET novo por busca" foi medida e vale para a tela de <strong>Histórico</strong>; a instabilidade     equivalente na tela de Solicitação nunca foi medida. Se aparecer não-determinismo lá, esse é     o primeiro suspeito.</p>
 <h3>Passo 5 — Ligar o scheduler</h3>
 <p><code>Ser:Varredura:Ativo=true</code> (hora padrão 02:30 de Brasília). Só depois que a carga bater.</p>
 <h3>Passo 6 — Consumir os gatilhos</h3>
@@ -141,6 +202,11 @@ li{margin:3px 0}p,li{max-width:75ch}
 </ol>
 <p>A causa era o <strong>redirect A4J não seguido</strong>. A lição se repete: quando o alvo responde 200 e vazio, o suspeito é o próprio transporte, não os filtros — e uma sonda que salva a resposta crua responde em minutos o que três ciclos de deploy não responderam.</p>
 <p>O que destravou foi o Bernardo dizer <em>"quando eu opero na mão, na primeira consulta vem certo"</em>. <strong>Desconfiar do próprio scraper antes de acusar o sistema alvo.</strong></p>
+<p>Da tarde de 07/08, fechando o caso do Solicitante:</p>
+<ol>
+<li>"O hidden <code>_selection</code> fica vazio, então não é por ele que o servidor sabe" — <strong>era por ele</strong>.</li>
+</ol>
+<p>   O RichFaces escreve o índice, submete e <strong>limpa o campo em seguida</strong>: olhar o DOM depois do    clique não diz o que viajou no request. E o que resolveu de vez não foi capturar tráfego, foi    <strong>ler o JS do componente</strong> (<code>ui.pack.js</code> servido pelo próprio SER): o protocolo inteiro estava    declarado lá — inclusive o <code>inputvalue</code> (param default que o init não sobrescreve) e o    <code>AJAXREQUEST=_viewRoot</code> (o init não passa <code>containerId</code>). Fonte primária antes de dedução.</p>
 </main>
 </body>
 </html>

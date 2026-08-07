@@ -100,7 +100,7 @@ li{margin:3px 0}p,li{max-width:75ch}
 <tr><td>Tipo</td><td><code>form0:tipo</code></td><td><code>CONSULTA</code>, <code>EXAME</code></td></tr>
 <tr><td>Data da Solicitação</td><td><code>form0:data{Inicial,Final}InputDate</code></td><td>é o eixo do fatiamento</td></tr>
 <tr><td>Data do Agendamento</td><td><code>form0:dataAgendamento{Inicial,Final}InputDate</code></td><td><strong>não usar</strong> — é mutável</td></tr>
-<tr><td>Unidade solicitante</td><td><code>form0:suggUnidadeSol</code></td><td><strong>texto puro</strong> <code>GESTOR SMS MARICA</code></td></tr>
+<tr><td>Unidade solicitante</td><td><code>form0:suggUnidadeSol</code></td><td><strong>exige a amarração pelo autocomplete</strong> — texto puro é decorativo (ver abaixo)</td></tr>
 <tr><td>Município do Paciente</td><td><code>form0:municipio</code></td><td><strong>não usar</strong> — paciente de outro município pode ter solicitação aberta por Maricá</td></tr>
 <tr><td>Pesquisar</td><td><code>form0:btnSearch</code></td><td><code>A4J.AJAX.Submit</code> (precisa de <code>AJAXREQUEST</code>)</td></tr>
 <tr><td><strong>Exportar</strong></td><td><code>form0:btnExport</code></td><td><code>jsfcljs</code> (Mojarra) — <strong>POST comum, sem <code>AJAXREQUEST</code></strong></td></tr>
@@ -120,15 +120,29 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p><strong>O POST do <code>btnSearch</code> responde ~267 bytes</strong>, e não a grade:</p>
 <p>``<code>xml &lt;meta name="Ajax-Response" content="redirect" /&gt; &lt;meta name="Location" content="/ser/pages/.../historico-pesquisar.seam?cid=25509" /&gt; </code>``</p>
 <p>É o <strong>mesmo redirect A4J embutido no corpo</strong> que a tela de histórico usa (§5), apontando para a própria tela com o <code>?cid</code> da conversa Seam. <strong>O resultado só existe na página de destino.</strong> Quem parseia os 267 bytes encontra grade vazia, nenhuma mensagem e nenhum aviso de corte — e conclui <em>"recorte vazio, cobertura completa"</em>. Custou uma noite em 06/08/2026, com três hipóteses erradas pelo caminho (data, tipo e unidade solicitante).</p>
-<h4>O filtro de Solicitante NÃO funciona por texto (medido 07/08/2026)</h4>
+<h4>O filtro de Solicitante NÃO funciona por texto — o protocolo da amarração (resolvido 07/08/2026)</h4>
 <p><strong>O SER amarra a unidade solicitante no servidor, durante a ida-e-volta do autocomplete.</strong> Mandar o texto no campo do submit não filtra nada — o texto é decorativo.</p>
 <p>Prova, no mesmo navegador, mesma tela, mesmo valor visível no campo:</p>
 <div class="tw"><table><thead><tr><th>como <code>form0:suggUnidadeSol</code> foi preenchido</th><th>1º registro</th></tr></thead><tbody>
 <tr><td>digitado + <strong>clique na sugestão</strong></td><td><strong>2727024</strong> (06/01/2020) — recorte de Maricá</td></tr>
-<tr><td>atribuído por código (= o que o motor faz)</td><td><strong>2875441</strong> (01/06/2020) — <strong>sem filtro</strong></td></tr>
+<tr><td>atribuído por código (= o que o motor fazia)</td><td><strong>2875441</strong> (01/06/2020) — <strong>sem filtro</strong></td></tr>
 </tbody></table></div>
-<p>O hidden <code>form0:j_id37_selection</code> <strong>permanece vazio</strong> nos dois casos, então não é por ele que o servidor sabe: a ligação acontece na requisição A4J do <code>rich:suggestionbox</code>.</p>
-<p>&gt; <strong>CONSEQUÊNCIA GRAVE:</strong> enquanto isso não for reproduzido, o export lê a <strong>fila do Estado &gt; inteiro</strong>, não a de Maricá — inclusive PII de pacientes de outros municípios. Não recarregar &gt; a base até resolver. Reproduzir o request do suggestionbox pelos parâmetros declarados na &gt; página (<code>{'form0:j_id37':'form0:j_id37','ajaxSingle':'form0:j_id37'}</code>) <strong>não bastou</strong> — &gt; pegar o request real no DevTools (<em>Copy as cURL</em>) é o caminho.</p>
+<p><strong>O mecanismo</strong> (lido no <code>ui.pack.js</code>/<code>framework.pack.js</code> que o próprio SER serve — não foi preciso DevTools): o <code>rich:suggestionbox</code> faz <strong>duas</strong> requisições A4J, e a segunda é a que importa.</p>
+<div class="tw"><table><thead><tr><th>#</th><th>Requisição</th><th>Parâmetros além dos campos do form</th></tr></thead><tbody>
+<tr><td>1</td><td><strong>fetch de sugestões</strong> (ao digitar)</td><td><code>inputvalue=&lt;texto&gt;</code> (param default do RichFaces — o init não o sobrescreve), <code>&lt;box&gt;=&lt;box&gt;</code>, <code>ajaxSingle=&lt;box&gt;</code></td></tr>
+<tr><td>2</td><td><strong>onselect</strong> (ao clicar na sugestão)</td><td><code>&lt;box&gt;:&lt;support&gt;=&lt;box&gt;:&lt;support&gt;</code>, <code>ajaxSingle=&lt;box&gt;</code>, <strong><code>&lt;box&gt;_selection=&lt;índice da linha escolhida&gt;</code></strong></td></tr>
+</tbody></table></div>
+<p>Em ambas, <code>AJAXREQUEST=_viewRoot</code> — o init do componente não passa <code>containerId</code> e o <code>A4J.Query</code> cai no default <code>A4J.AJAX.VIEW_ROOT_ID</code>, não no id do form.</p>
+<p>O servidor guarda a lista de sugestões do fetch na conversa Seam e resolve o índice do <code>_selection</code> contra ela no onselect — só então a unidade fica amarrada e a busca seguinte sai recortada.</p>
+<p><strong>Por que o <code>_selection</code> parecia sempre vazio:</strong> o <code>selectEntry</code> do RichFaces escreve o índice no hidden, dispara o submit do onselect <strong>e limpa o campo em seguida</strong> (<code>A.value=this.index; …; A.value=""</code>). Olhar o DOM depois do clique mostra vazio; o valor só existe DENTRO do request. Observar o DOM após o fato não diz o que viajou — ler o JS do componente resolveu em minutos o que a dedução por tentativa não resolveu em uma noite.</p>
+<p>Prova de reprodução headless (sonda <code>probe_solicitante.py</code>, 07/08/2026, 3 rodadas):</p>
+<div class="tw"><table><thead><tr><th>rodada</th><th>1º registro</th><th>conjunto</th></tr></thead><tbody>
+<tr><td>A — com amarração</td><td><strong>2727024</strong> (DAIANA, recorte de Maricá)</td><td>idêntico ao de B</td></tr>
+<tr><td>B — com amarração (repetição)</td><td><strong>2727024</strong></td><td><strong>idêntico ao de A</strong></td></tr>
+<tr><td>C — só texto (o motor de antes)</td><td>2790533 (outro recorte)</td><td><strong>variou entre execuções</strong></td></tr>
+</tbody></table></div>
+<p>O export da rodada A veio com 500 linhas abrindo em 2727024 — grade e planilha do mesmo recorte. A instabilidade "aleatória" que se via na plataforma era isto: sem amarração, a consulta é do <strong>Estado inteiro</strong> e o SER não a devolve em ordem estável.</p>
+<p>&gt; <strong>No motor:</strong> <code>SerExportLeitor.AmarrarSolicitanteAsync</code> reproduz as duas requisições antes de &gt; toda busca com solicitante; os ids voláteis (<code>j_id37</code>/<code>j_id42</code>) são extraídos do script de &gt; init da página a cada tela (<code>SerHtmlParser.SuggestionBoxDoCampo</code>), nunca fixados. Sem sugestão &gt; que case, a leitura <strong>falha alto</strong> (<code>ser.solicitante_nao_resolvido</code>) — degradar para busca sem &gt; filtro leria o Estado inteiro, com PII de outros municípios. A credencial GESTOR SMS MARICA &gt; <strong>não</strong> escopa sozinha esta tela; foi medido.</p>
 <h4>O filtro de Tipo não filtra (é do SER)</h4>
 <p>Medido no navegador: com <code>Tipo = CONSULTA</code> a própria tela do SER devolve linhas <strong>EXAME</strong> (Cateterismo Cardíaco). Não é defeito do motor — é da tela. Não confiar nesse combo para fatiar nada.</p>
 <h4>E a armadilha de reusar a página de resultado</h4>

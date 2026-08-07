@@ -142,7 +142,7 @@ erro**, e o chamador acha que leu o histórico de alguém.
 | Tipo | `form0:tipo` | `CONSULTA`, `EXAME` |
 | Data da Solicitação | `form0:data{Inicial,Final}InputDate` | é o eixo do fatiamento |
 | Data do Agendamento | `form0:dataAgendamento{Inicial,Final}InputDate` | **não usar** — é mutável |
-| Unidade solicitante | `form0:suggUnidadeSol` | **texto puro** `GESTOR SMS MARICA` |
+| Unidade solicitante | `form0:suggUnidadeSol` | **exige a amarração pelo autocomplete** — texto puro é decorativo (ver abaixo) |
 | Município do Paciente | `form0:municipio` | **não usar** — paciente de outro município pode ter solicitação aberta por Maricá |
 | Pesquisar | `form0:btnSearch` | `A4J.AJAX.Submit` (precisa de `AJAXREQUEST`) |
 | **Exportar** | `form0:btnExport` | `jsfcljs` (Mojarra) — **POST comum, sem `AJAXREQUEST`** |
@@ -172,7 +172,7 @@ destino.** Quem parseia os 267 bytes encontra grade vazia, nenhuma mensagem e ne
 de corte — e conclui *"recorte vazio, cobertura completa"*. Custou uma noite em 06/08/2026,
 com três hipóteses erradas pelo caminho (data, tipo e unidade solicitante).
 
-#### O filtro de Solicitante NÃO funciona por texto (medido 07/08/2026)
+#### O filtro de Solicitante NÃO funciona por texto — o protocolo da amarração (resolvido 07/08/2026)
 
 **O SER amarra a unidade solicitante no servidor, durante a ida-e-volta do autocomplete.**
 Mandar o texto no campo do submit não filtra nada — o texto é decorativo.
@@ -182,16 +182,48 @@ Prova, no mesmo navegador, mesma tela, mesmo valor visível no campo:
 | como `form0:suggUnidadeSol` foi preenchido | 1º registro |
 |---|---|
 | digitado + **clique na sugestão** | **2727024** (06/01/2020) — recorte de Maricá |
-| atribuído por código (= o que o motor faz) | **2875441** (01/06/2020) — **sem filtro** |
+| atribuído por código (= o que o motor fazia) | **2875441** (01/06/2020) — **sem filtro** |
 
-O hidden `form0:j_id37_selection` **permanece vazio** nos dois casos, então não é por ele que
-o servidor sabe: a ligação acontece na requisição A4J do `rich:suggestionbox`.
+**O mecanismo** (lido no `ui.pack.js`/`framework.pack.js` que o próprio SER serve — não foi
+preciso DevTools): o `rich:suggestionbox` faz **duas** requisições A4J, e a segunda é a que
+importa.
 
-> **CONSEQUÊNCIA GRAVE:** enquanto isso não for reproduzido, o export lê a **fila do Estado
-> inteiro**, não a de Maricá — inclusive PII de pacientes de outros municípios. Não recarregar
-> a base até resolver. Reproduzir o request do suggestionbox pelos parâmetros declarados na
-> página (`{'form0:j_id37':'form0:j_id37','ajaxSingle':'form0:j_id37'}`) **não bastou** —
-> pegar o request real no DevTools (*Copy as cURL*) é o caminho.
+| # | Requisição | Parâmetros além dos campos do form |
+|---|---|---|
+| 1 | **fetch de sugestões** (ao digitar) | `inputvalue=<texto>` (param default do RichFaces — o init não o sobrescreve), `<box>=<box>`, `ajaxSingle=<box>` |
+| 2 | **onselect** (ao clicar na sugestão) | `<box>:<support>=<box>:<support>`, `ajaxSingle=<box>`, **`<box>_selection=<índice da linha escolhida>`** |
+
+Em ambas, `AJAXREQUEST=_viewRoot` — o init do componente não passa `containerId` e o
+`A4J.Query` cai no default `A4J.AJAX.VIEW_ROOT_ID`, não no id do form.
+
+O servidor guarda a lista de sugestões do fetch na conversa Seam e resolve o índice do
+`_selection` contra ela no onselect — só então a unidade fica amarrada e a busca seguinte sai
+recortada.
+
+**Por que o `_selection` parecia sempre vazio:** o `selectEntry` do RichFaces escreve o índice
+no hidden, dispara o submit do onselect **e limpa o campo em seguida** (`A.value=this.index; …;
+A.value=""`). Olhar o DOM depois do clique mostra vazio; o valor só existe DENTRO do request.
+Observar o DOM após o fato não diz o que viajou — ler o JS do componente resolveu em minutos o
+que a dedução por tentativa não resolveu em uma noite.
+
+Prova de reprodução headless (sonda `probe_solicitante.py`, 07/08/2026, 3 rodadas):
+
+| rodada | 1º registro | conjunto |
+|---|---|---|
+| A — com amarração | **2727024** (DAIANA, recorte de Maricá) | idêntico ao de B |
+| B — com amarração (repetição) | **2727024** | **idêntico ao de A** |
+| C — só texto (o motor de antes) | 2790533 (outro recorte) | **variou entre execuções** |
+
+O export da rodada A veio com 500 linhas abrindo em 2727024 — grade e planilha do mesmo
+recorte. A instabilidade "aleatória" que se via na plataforma era isto: sem amarração, a
+consulta é do **Estado inteiro** e o SER não a devolve em ordem estável.
+
+> **No motor:** `SerExportLeitor.AmarrarSolicitanteAsync` reproduz as duas requisições antes de
+> toda busca com solicitante; os ids voláteis (`j_id37`/`j_id42`) são extraídos do script de
+> init da página a cada tela (`SerHtmlParser.SuggestionBoxDoCampo`), nunca fixados. Sem sugestão
+> que case, a leitura **falha alto** (`ser.solicitante_nao_resolvido`) — degradar para busca sem
+> filtro leria o Estado inteiro, com PII de outros municípios. A credencial GESTOR SMS MARICA
+> **não** escopa sozinha esta tela; foi medido.
 
 #### O filtro de Tipo não filtra (é do SER)
 
