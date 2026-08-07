@@ -176,6 +176,17 @@ Medido na mesma sessão, seguindo o redirect: **todas** as situações devolvem 
 filtro `suggUnidadeSol=GESTOR SMS MARICA` **não zera a consulta** — mas se ele de fato
 recorta alguma coisa continua sem prova.
 
+#### E a armadilha de reusar a página de resultado
+
+**Cada busca exige um GET novo da tela.** Medido em 07/08/2026: três buscas idênticas, cada
+uma precedida de GET, devolvem conjunto e ordem **idênticos**; encadeadas — usando a página
+de resultado como base do submit seguinte, e portanto o `?cid` da conversa anterior — o SER
+passa a devolver **conjuntos instáveis** entre chamadas.
+
+É a mesma família do §3.3: **o que muda o resultado não é o filtro, é de onde se posta.** A
+página de resultado serve para UMA coisa — o POST do Exportar, que precisa do `action` com o
+`cid` que produziu aquele lote — e morre ali. Nunca vira base da busca seguinte.
+
 #### O arquivo
 
 O `btnExport` responde `historico-pesquisar.xls`: **BIFF8 dentro de OLE2** (assinatura

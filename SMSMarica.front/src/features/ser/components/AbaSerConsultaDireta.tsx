@@ -135,19 +135,15 @@ export function AbaSerConsultaDireta() {
 
   return (
     <div className="space-y-4">
-      <p className="flex items-start gap-2 rounded bg-blue-50 p-3 text-sm text-blue-900">
-        <Radio className="mt-0.5 size-4 shrink-0" />
-        <span>
-          Esta consulta vai <strong>ao vivo no SER</strong>, com os mesmos filtros da tela de lá, e
-          mostra o resultado cru — <strong>nada é gravado</strong> na nossa base. Serve para
-          conferir campo a campo contra o SER antes de confiar na varredura.
-          <br />
-          <span className="text-blue-700">
-            A sessão do SER é única por operador: consultar aqui derruba a sessão de quem estiver
-            logado lá com a credencial cadastrada.
-          </span>
-        </span>
-      </p>
+      {/* Só o selo de "ao vivo". O texto longo explicava o que a tela já demonstra, e quem usa
+          esta aba é quem opera o SER — não precisa ser lembrado da sessão única toda vez. */}
+      <span
+        className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-800"
+        title="Consulta ao vivo no SER — nada é gravado na nossa base. A sessão do SER é única por operador."
+      >
+        <Radio className="size-3.5" />
+        ao vivo no SER
+      </span>
 
       <div className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4">
         <Campo label="Situação" htmlFor="cd-situacao" className="w-52">

@@ -52,7 +52,14 @@ public sealed class SerExportLeitor(
     public async Task<LoteExportSer> ExportarAsync(
         SerFiltroExport filtro, CancellationToken cancellationToken)
     {
-        var doc = await GarantirTelaAsync(cancellationToken);
+        // SEMPRE uma tela nova antes de pesquisar. Reusar a página de RESULTADO como base do
+        // submit seguinte reaproveita o `?cid` da conversa Seam anterior — e aí o SER devolve
+        // conjuntos INSTÁVEIS: medido em 07/08/2026, três buscas idênticas com GET novo dão
+        // resultado idêntico, enquanto encadeadas pelo resultado anterior variam entre si. É a
+        // mesma família da armadilha do `action` (docs/ser.md §3.3): o que muda o resultado não é
+        // o filtro, é de onde se posta. Custa um GET por lote e compra determinismo.
+        await PrepararAsync(cancellationToken);
+        var doc = SerHtmlParser.Documento(_html);
 
         var botaoPesquisar = SerHtmlParser.BotaoPesquisar(doc)
             ?? throw new InvalidOperationException(
@@ -98,7 +105,9 @@ public sealed class SerExportLeitor(
                 + "fluxo da tela de Histórico?", resposta.Corpo.Length);
         }
 
-        Absorver(htmlResultado);
+        // NÃO absorve: a página de resultado serve para ESTE export e morre aqui. Promovê-la a
+        // fonte dos submits seguintes é o que tornava o resultado instável.
+        var viewStateResultado = SerHtmlParser.ViewStateQualquer(htmlResultado) ?? _viewState;
         var docResultado = SerHtmlParser.Documento(htmlResultado);
 
         var aviso = SerHtmlParser.AvisoDeLimite(docResultado);
@@ -144,7 +153,8 @@ public sealed class SerExportLeitor(
         };
 
         var arquivo = await sessao.SubmeterFormAsync(
-            _html, SerHtmlParser.FormPesquisa, extrasExport, _viewState, cancellationToken);
+            htmlResultado, SerHtmlParser.FormPesquisa, extrasExport, viewStateResultado,
+            cancellationToken);
 
         if (!arquivo.EhPlanilha)
         {
@@ -181,21 +191,6 @@ public sealed class SerExportLeitor(
     }
 
     // ------------------------------------------------------------------ interno
-
-    private async Task<AngleSharp.Html.Dom.IHtmlDocument> GarantirTelaAsync(
-        CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrEmpty(_html)) await PrepararAsync(cancellationToken);
-
-        var doc = SerHtmlParser.Documento(_html);
-        if (SerHtmlParser.BotaoPesquisar(doc) is not null) return doc;
-
-        // Perdemos a tela (navegação para outra view, ou o Seam expirou a conversa). Reabrir custa
-        // um GET e evita que a rodada inteira morra — foi o que aconteceu na carga inicial.
-        logger.LogInformation("SER/export: tela de Histórico perdida — reabrindo.");
-        await PrepararAsync(cancellationToken);
-        return SerHtmlParser.Documento(_html);
-    }
 
     /// <summary>
     /// Campos do recorte, usados nas DUAS requisições do lote.
