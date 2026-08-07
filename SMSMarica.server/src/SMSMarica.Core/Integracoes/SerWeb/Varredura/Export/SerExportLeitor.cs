@@ -39,6 +39,12 @@ public sealed class SerExportLeitor(
     private const string CampoDataFim = "form0:dataFinalInputDate";
     private const string CampoUnidadeSolicitante = "form0:suggUnidadeSol";
 
+    /// <summary>Container A4J default (<c>A4J.AJAX.VIEW_ROOT_ID</c>). É o que o navegador manda em
+    /// <c>AJAXREQUEST</c> nas requisições do suggestionbox — o init do componente não passa
+    /// <c>containerId</c>, então o framework cai no view root. Extraído do
+    /// <c>framework.pack.js</c> servido pelo próprio SER (07/08/2026).</summary>
+    private const string RegiaoViewRoot = "_viewRoot";
+
     /// <summary>Último HTML COMPLETO da tela (fonte dos campos do submit).</summary>
     private string _html = string.Empty;
     private string? _viewState;
@@ -46,7 +52,21 @@ public sealed class SerExportLeitor(
     public async Task PrepararAsync(CancellationToken cancellationToken)
     {
         var html = await sessao.AbrirTelaAsync(CaminhoTela, cancellationToken);
-        Absorver(html);
+
+        // Se o GET não devolveu a tela de pesquisa, FALHA — reter a página do lote anterior em
+        // silêncio quebraria a regra do "GET novo por busca" (docs/ser.md §4.3) sem ninguém ver:
+        // a busca sairia da conversa velha e o resultado voltaria instável.
+        if (SerHtmlParser.BotaoPesquisar(SerHtmlParser.Documento(html)) is null)
+        {
+            throw new InvalidOperationException(
+                "O GET da tela de Histórico do SER não devolveu a tela de pesquisa (sem botão "
+                + "Pesquisar). Costuma ser a sessão derrubada por outro login do mesmo operador. "
+                + "Nada foi lido.");
+        }
+
+        _html = html;
+        var vs = SerHtmlParser.ViewStateQualquer(html);
+        if (!string.IsNullOrEmpty(vs)) _viewState = vs;
     }
 
     public async Task<LoteExportSer> ExportarAsync(
@@ -68,14 +88,39 @@ public sealed class SerExportLeitor(
 
         var filtros = MontarFiltros(doc, filtro);
 
+        // O filtro de Solicitante NÃO liga por texto: o SER amarra a unidade no servidor durante
+        // a ida-e-volta A4J do autocomplete, e só então a busca sai recortada. Sem essa amarração
+        // o export lê a fila do ESTADO INTEIRO — inclusive PII de pacientes de outros municípios —
+        // parecendo "aleatório" entre chamadas. Medido em 07/08/2026 (docs/ser.md §4.3).
+        var viewState = _viewState;
+        var solicitanteAmarrado = false;
+        if (!string.IsNullOrWhiteSpace(filtro.UnidadeSolicitante))
+        {
+            viewState = await AmarrarSolicitanteAsync(
+                filtro.UnidadeSolicitante.Trim(), filtros, viewState, cancellationToken);
+            solicitanteAmarrado = true;
+        }
+        else
+        {
+            // Legítimo quando alguém pede o Estado inteiro DE PROPÓSITO — mas nunca sem rastro:
+            // foi exatamente essa leitura, sem ninguém perceber, que alimentou a base até 07/08.
+            logger.LogWarning(
+                "SER/export: consulta SEM filtro de solicitante — o recorte é o ESTADO INTEIRO "
+                + "({Situacao} {Inicio:dd/MM/yyyy}..{Fim:dd/MM/yyyy}).",
+                filtro.Situacao, filtro.DataSolicitacaoInicio, filtro.DataSolicitacaoFim);
+        }
+
         var extras = new Dictionary<string, string>(filtros, StringComparer.Ordinal)
         {
             [botaoPesquisar] = botaoPesquisar,
-            ["AJAXREQUEST"] = SerHtmlParser.FormPesquisa,
+            // Com o solicitante amarrado, a busca replica o navegador por inteiro (a sequência
+            // provada na sonda usa _viewRoot nas três requisições). Sem solicitante, mantém o
+            // form0 que a varredura sempre usou.
+            ["AJAXREQUEST"] = solicitanteAmarrado ? RegiaoViewRoot : SerHtmlParser.FormPesquisa,
         };
 
         var resposta = await sessao.SubmeterFormAsync(
-            _html, SerHtmlParser.FormPesquisa, extras, _viewState, cancellationToken);
+            _html, SerHtmlParser.FormPesquisa, extras, viewState, cancellationToken);
 
         if (resposta.EhPlanilha)
         {
@@ -100,14 +145,21 @@ public sealed class SerExportLeitor(
         }
         else
         {
-            logger.LogWarning(
-                "SER/export: a busca não devolveu redirect A4J ({Bytes} bytes). O SER mudou o "
-                + "fluxo da tela de Histórico?", resposta.Corpo.Length);
+            // FALHA DURA, não warning. A ausência do redirect é quase sempre a sessão derrubada
+            // por outro login: o SER responde a tela de LOGIN com HTTP 200, que não tem grade nem
+            // mensagens — seguir adiante viraria "lote vazio, sem aviso de corte", o varredor
+            // aplicaria o vazio e AVANÇARIA o cursor por cima de um recorte nunca lido. É a mesma
+            // classe de perda invisível dos ~35%; o leg do export já tratava a queda como erro
+            // duro (EhPlanilha), o da busca deixava passar. Achado do repasse de 07/08/2026.
+            throw new InvalidOperationException(
+                "A busca da tela de Histórico do SER não devolveu o redirect A4J "
+                + $"({resposta.Corpo.Length} bytes). Costuma ser a sessão derrubada por outro "
+                + "login do mesmo operador. Nada foi lido — o recorte fica para a retomada.");
         }
 
         // NÃO absorve: a página de resultado serve para ESTE export e morre aqui. Promovê-la a
         // fonte dos submits seguintes é o que tornava o resultado instável.
-        var viewStateResultado = SerHtmlParser.ViewStateQualquer(htmlResultado) ?? _viewState;
+        var viewStateResultado = SerHtmlParser.ViewStateQualquer(htmlResultado) ?? viewState;
         var docResultado = SerHtmlParser.Documento(htmlResultado);
 
         var aviso = SerHtmlParser.AvisoDeLimite(docResultado);
@@ -145,8 +197,11 @@ public sealed class SerExportLeitor(
                 + "Layout mudou — não dá para garantir cobertura por paginação nesta tela.");
 
         // O Exportar é `jsfcljs` (commandLink do Mojarra): POST comum, SEM AJAXREQUEST. Os filtros
-        // vão de novo junto — se o SER refizer a consulta em vez de reaproveitar o resultado da
-        // conversa, a planilha ainda sai do recorte certo.
+        // de situação/tipo/data vão de novo junto — mas o SOLICITANTE não se re-amarra por texto:
+        // o que garante o recorte da planilha é a amarração feita antes da busca NESTA MESMA
+        // conversa Seam, e por isso o POST sai do action da página de resultado (com o `cid` que
+        // produziu o lote). Medido em 07/08: export da rodada amarrada abre no mesmo 1º registro
+        // da grade.
         var extrasExport = new Dictionary<string, string>(filtros, StringComparer.Ordinal)
         {
             [botaoExportar] = botaoExportar,
@@ -193,6 +248,118 @@ public sealed class SerExportLeitor(
     // ------------------------------------------------------------------ interno
 
     /// <summary>
+    /// Reproduz a ida-e-volta do <c>rich:suggestionbox</c> que amarra a unidade solicitante na
+    /// conversa Seam — o que o operador faz sem perceber ao digitar e <b>clicar na sugestão</b>.
+    ///
+    /// <para>Duas requisições, com o protocolo lido do <c>ui.pack.js</c>/<c>framework.pack.js</c>
+    /// servidos pelo próprio SER (07/08/2026):</para>
+    ///
+    /// <list type="number">
+    /// <item><b>Fetch de sugestões</b> — o texto vai no parâmetro <c>inputvalue</c> (default do
+    /// RichFaces; o init não o sobrescreve) + <c>ajaxSingle=&lt;box&gt;</c>. A resposta traz a
+    /// tabela <c>&lt;box&gt;:suggest</c>, e a LISTA fica guardada na conversa do servidor.</item>
+    /// <item><b>Onselect</b> — o hidden <c>&lt;box&gt;_selection</c> leva o <b>índice da linha
+    /// escolhida</b> (o RichFaces o preenche só durante este submit e o limpa em seguida — por
+    /// isso ele parecia "sempre vazio" e o filtro parecia não ter mecanismo). O servidor resolve
+    /// o índice contra a lista guardada e grava a unidade na conversa.</item>
+    /// </list>
+    ///
+    /// <para><b>Sem sugestão que case, a leitura FALHA</b> — nunca degrada para busca sem filtro,
+    /// porque busca sem filtro aqui significa ler a fila do Estado inteiro, com PII de pacientes
+    /// de outros municípios (medido em 07/08/2026; ver docs/ser.md §4.3).</para>
+    /// </summary>
+    /// <returns>O ViewState mais fresco após as duas respostas, para a busca que vem em seguida.</returns>
+    private async Task<string?> AmarrarSolicitanteAsync(
+        string solicitante,
+        Dictionary<string, string> filtros,
+        string? viewState,
+        CancellationToken cancellationToken)
+    {
+        var caixa = SerHtmlParser.SuggestionBoxDoCampo(_html, CampoUnidadeSolicitante)
+            ?? throw new InvalidOperationException(
+                $"Não encontrei o script do autocomplete de Solicitante ({CampoUnidadeSolicitante}) "
+                + "na tela de Histórico do SER. Sem ele o filtro não amarra e a consulta leria o "
+                + "Estado inteiro — nada foi lido.");
+
+        // --- 1) fetch de sugestões ---
+        var extrasFetch = new Dictionary<string, string>(filtros, StringComparer.Ordinal)
+        {
+            ["AJAXREQUEST"] = RegiaoViewRoot,
+            ["inputvalue"] = solicitante,
+            [caixa.BoxId] = caixa.BoxId,
+            ["ajaxSingle"] = caixa.BoxId,
+        };
+
+        var respostaFetch = await sessao.SubmeterFormAsync(
+            _html, SerHtmlParser.FormPesquisa, extrasFetch, viewState, cancellationToken);
+
+        var docFetch = SerHtmlParser.Documento(respostaFetch.Texto);
+        var sugestoes = SerHtmlParser.LinhasDeSugestao(docFetch, caixa.BoxId)
+            ?? throw new ValidacaoException(
+                "ser.autocomplete_sem_resposta",
+                "O autocomplete de Solicitante do SER não devolveu a tabela de sugestões — o "
+                + "protocolo mudou? Sem a amarração a consulta leria o Estado inteiro; nada foi lido.");
+
+        // O índice enviado no _selection é a POSIÇÃO DA LINHA na tabela, então o casamento é pela
+        // primeira célula (o nome da unidade), nunca por "contains" no texto da linha inteira —
+        // a linha repete o nome em outras colunas e um contains casaria a linha errada.
+        var indice = -1;
+        for (var i = 0; i < sugestoes.Count; i++)
+        {
+            var primeira = sugestoes[i].Count > 0 ? sugestoes[i][0] : string.Empty;
+            if (string.Equals(primeira.Trim(), solicitante, StringComparison.OrdinalIgnoreCase))
+            {
+                indice = i;
+                break;
+            }
+        }
+
+        if (indice < 0)
+        {
+            var vistas = string.Join("; ", sugestoes.Select(s => string.Join(" | ", s)).Take(5));
+            throw new ValidacaoException(
+                "ser.solicitante_nao_resolvido",
+                $"O SER não sugeriu \"{solicitante}\" no autocomplete de Solicitante "
+                + $"(veio: {(vistas.Length > 0 ? vistas : "nada")}). Sem a amarração a consulta "
+                + "leria o Estado inteiro; nada foi lido.");
+        }
+
+        viewState = SerHtmlParser.ViewStateQualquer(respostaFetch.Texto) ?? viewState;
+
+        // --- 2) onselect, com o índice no hidden _selection ---
+        var extrasSelect = new Dictionary<string, string>(filtros, StringComparer.Ordinal)
+        {
+            ["AJAXREQUEST"] = RegiaoViewRoot,
+            [caixa.OnselectId] = caixa.OnselectId,
+            ["ajaxSingle"] = caixa.BoxId,
+            [caixa.CampoSelecao] = indice.ToString(CultureInfo.InvariantCulture),
+        };
+
+        var respostaSelect = await sessao.SubmeterFormAsync(
+            _html, SerHtmlParser.FormPesquisa, extrasSelect, viewState, cancellationToken);
+
+        // A resposta boa do onselect é um envelope A4J (<meta name="Ajax-Response">, medido na
+        // sonda de 07/08). A tela de login — sessão derrubada — não o tem, e o efeito do onselect
+        // é INVISÍVEL (estado na conversa Seam): sem esta checagem, um onselect que não rodou
+        // deixaria a busca sair sem filtro com cara de filtrada — o Estado inteiro importado como
+        // recorte de Maricá. Achado do repasse de 07/08/2026.
+        if (!respostaSelect.Texto.Contains("name=\"Ajax-Response\"", StringComparison.Ordinal))
+        {
+            throw new ValidacaoException(
+                "ser.amarracao_sem_confirmacao",
+                "O onselect do autocomplete de Solicitante não devolveu o envelope A4J — a "
+                + "amarração não aconteceu (sessão derrubada?). Buscar assim leria o Estado "
+                + "inteiro; nada foi lido.");
+        }
+
+        logger.LogDebug(
+            "SER/export: solicitante \"{Solicitante}\" amarrado pelo autocomplete (índice {Indice}).",
+            solicitante, indice);
+
+        return SerHtmlParser.ViewStateQualquer(respostaSelect.Texto) ?? viewState;
+    }
+
+    /// <summary>
     /// Campos do recorte, usados nas DUAS requisições do lote.
     ///
     /// <para>A situação é localizada pelo <c>&lt;select&gt;</c> que oferece a opção <c>EM_FILA</c>,
@@ -223,29 +390,17 @@ public sealed class SerExportLeitor(
             [CampoDataFim] = Br(filtro.DataSolicitacaoFim),
         };
 
-        // Só manda o solicitante quando pedido. O autocomplete devolve o hidden `_selection`
-        // VAZIO, então isto é texto solto — e texto que o SER não resolva pode zerar a consulta
-        // sem avisar. A única captura de sucesso que temos tinha este campo vazio, e a credencial
-        // já é de GESTOR SMS MARICA (o SER pode escopar sozinho pelo operador logado).
+        // O texto do solicitante vai junto (o navegador também o manda), mas quem FILTRA é a
+        // amarração feita em AmarrarSolicitanteAsync — texto sozinho é decorativo e a consulta
+        // sai do Estado inteiro (medido em 07/08/2026).
         if (!string.IsNullOrWhiteSpace(filtro.UnidadeSolicitante))
         {
-            campos[CampoUnidadeSolicitante] = filtro.UnidadeSolicitante;
+            campos[CampoUnidadeSolicitante] = filtro.UnidadeSolicitante.Trim();
         }
 
         if (filtro.Tipo is { } tipo) campos[CampoTipo] = SerCodigos.Codigo(tipo);
 
         return campos;
-    }
-
-    private void Absorver(string html)
-    {
-        // Mesma regra da tela de Solicitação: só é "página de formulário" quem tem o botão de
-        // pesquisa. A resposta A4J pode vir parcial, e promovê-la a base dos submits seguintes
-        // quebra tudo o que vem depois (docs/ser.md §3.4).
-        if (SerHtmlParser.BotaoPesquisar(SerHtmlParser.Documento(html)) is not null) _html = html;
-
-        var vs = SerHtmlParser.ViewStateQualquer(html);
-        if (!string.IsNullOrEmpty(vs)) _viewState = vs;
     }
 
     private static DateOnly? ParseData(string? texto) =>

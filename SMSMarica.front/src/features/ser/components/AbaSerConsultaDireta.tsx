@@ -48,7 +48,9 @@ export function AbaSerConsultaDireta() {
   const [fim, setFim] = useState('');
   const [pagina, setPagina] = useState(1);
   const [porExport, setPorExport] = useState(true);
-  const [filtrarPorSolicitante, setFiltrarPorSolicitante] = useState(false);
+  // Ligado por padrão (07/08/2026): sem a amarração do autocomplete a consulta devolve a fila do
+  // ESTADO INTEIRO (PII de outros municípios) em ordem instável. Desligar é diagnóstico, não uso.
+  const [filtrarPorSolicitante, setFiltrarPorSolicitante] = useState(true);
 
   const [carregando, setCarregando] = useState(false);
   const [resultado, setResultado] = useState<ConsultaDiretaResultado | null>(null);
@@ -202,9 +204,9 @@ export function AbaSerConsultaDireta() {
               onChange={(e) => setFiltrarPorSolicitante(e.target.checked)}
               className="size-4"
             />
-            {/* SOB SUSPEITA: o autocomplete manda texto solto (o hidden de seleção fica vazio) e
-                texto não resolvido pode zerar a consulta sem avisar. */}
-            Filtrar por “GESTOR SMS MARICA”
+            {/* Resolvido em 07/08/2026: o motor amarra o solicitante pela ida-e-volta do
+                autocomplete (docs/ser.md §4.3). Desmarcado = fila do ESTADO INTEIRO. */}
+            Filtrar por “GESTOR SMS MARICA” (desmarcado = Estado inteiro)
           </label>
         )}
 

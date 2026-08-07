@@ -171,14 +171,16 @@ public sealed record SerConsultaDiretaRequest
     public bool PorExport { get; init; }
 
     /// <summary>
-    /// No export, mandar também o filtro de unidade solicitante (<c>GESTOR SMS MARICA</c>).
+    /// No export, aplicar o filtro de unidade solicitante (<c>GESTOR SMS MARICA</c>), amarrado
+    /// pela ida-e-volta do autocomplete (docs/ser.md §4.3).
     ///
-    /// <para>Existe para <b>testar a suspeita</b>: esse campo é um autocomplete cujo hidden de
-    /// seleção fica vazio, então vai como texto solto, e texto não resolvido pode zerar a consulta
-    /// em silêncio. Desmarcado por padrão porque a única resposta do SER que trouxe linhas tinha o
-    /// campo vazio.</para>
+    /// <para><b>Ligado por padrão desde 07/08/2026:</b> foi medido que sem a amarração a consulta
+    /// devolve a fila do <b>Estado inteiro</b> — PII de pacientes de outros municípios — e em
+    /// ordem instável entre chamadas. Desligar é escolha deliberada (diagnóstico), nunca default:
+    /// a justificativa antiga ("texto não resolvido pode zerar a consulta") caiu junto com a
+    /// teoria do texto puro.</para>
     /// </summary>
-    public bool FiltrarPorSolicitante { get; init; }
+    public bool FiltrarPorSolicitante { get; init; } = true;
 }
 
 /// <summary>Qual tela do SER respondeu — muda o teto e o que a resposta significa.</summary>

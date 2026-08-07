@@ -69,7 +69,6 @@ public sealed partial class SerWebSessao(
     private const string BaseUrlPadrao = "https://ser.saude.rj.gov.br";
     private const string CaminhoLogin = "/ser/login";
     private const string CaminhoHome = "/ser/home.seam";
-    private const string CaminhoModulo = "/ser/home";
 
     public const string CaminhoPesquisa =
         "/ser/pages/consultas-exames/solicitacao/solicitar-consulta-pesquisar.seam";
@@ -276,8 +275,15 @@ public sealed partial class SerWebSessao(
             ?? throw new ValidacaoException("ser.login_indisponivel", "A tela de login do SER não respondeu.");
 
         var doc = SerHtmlParser.Documento(pagina);
-        // O action do form já vem com ";jsessionid=..." — usar cru, não reescrever.
-        var action = SerHtmlParser.ActionDoForm(doc, "login") ?? CaminhoLogin;
+        // O action do form já vem com ";jsessionid=..." — usar cru, não reescrever. E SEM
+        // fallback para caminho constante: postar em constante devolve resultado diferente sem
+        // erro (docs/ser.md §3.3), e o fallback aqui faria a falha aflorar depois com o
+        // diagnóstico ERRADO ("verifique usuário e senha").
+        var action = SerHtmlParser.ActionDoForm(doc, "login")
+            ?? throw new ValidacaoException(
+                "ser.form_sem_action",
+                "O form de login do SER veio sem `action` — layout mudou? Postar em caminho "
+                + "constante devolve comportamento diferente sem erro (docs/ser.md §3.3).");
 
         var campos = SerHtmlParser.CamposDoForm(doc, "login");
         campos["login"] = "login";
@@ -327,8 +333,13 @@ public sealed partial class SerWebSessao(
         var vs = SerHtmlParser.ViewStateDoForm(doc, formId) ?? SerHtmlParser.ViewStateQualquer(home);
         if (!string.IsNullOrEmpty(vs)) campos["javax.faces.ViewState"] = vs;
 
-        // Mesma regra do submit de pesquisa: o destino sai do `action` da página, não de constante.
-        var acaoModulo = SerHtmlParser.ActionDoForm(doc, formId) ?? CaminhoModulo;
+        // Mesma regra do submit de pesquisa: o destino sai do `action` da página, não de
+        // constante — e sem fallback, senão a falha aflora como "ser.modulo_nao_ativou" com o
+        // diagnóstico errado (docs/ser.md §3.3).
+        var acaoModulo = SerHtmlParser.ActionDoForm(doc, formId)
+            ?? throw new ValidacaoException(
+                "ser.form_sem_action",
+                $"O form '{formId}' da home do SER veio sem `action` — layout mudou?");
         var resposta = await PostAsync(sessao, acaoModulo, campos, cancellationToken);
 
         // A resposta é um redirect A4J: header Location (aqui) ou <meta> no corpo (histórico).

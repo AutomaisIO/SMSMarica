@@ -108,15 +108,17 @@ public sealed record SerFiltroExport
     public required DateOnly DataSolicitacaoFim { get; init; }
 
     /// <summary>
-    /// Unidade solicitante, em <b>texto puro</b>, no campo <c>form0:suggUnidadeSol</c>.
-    /// <c>null</c> ou vazio = não enviar o filtro.
+    /// Unidade solicitante. <c>null</c> ou vazio = não filtrar (a consulta sai do <b>Estado
+    /// inteiro</b> — só faça isso de propósito).
     ///
-    /// <para><b>SOB SUSPEITA.</b> A ideia de que "GESTOR SMS MARICA em texto puro recorta a
-    /// consulta" nunca foi confirmada por uma resposta bem-sucedida: a única captura do SER que
-    /// devolveu linhas tinha este campo <b>vazio</b>. Como o <c>_selection</c> do autocomplete não
-    /// é preenchido, isto é texto solto — e texto que o SER não resolva pode zerar o resultado sem
-    /// avisar. A credencial já é de um operador GESTOR SMS MARICA, então é bem possível que o SER
-    /// escope sozinho e este filtro só atrapalhe. Conferir pela consulta direta antes de confiar.</para>
+    /// <para><b>RESOLVIDO em 07/08/2026:</b> texto puro no campo é decorativo — o SER amarra a
+    /// unidade no servidor durante a ida-e-volta A4J do autocomplete (fetch de sugestões +
+    /// <c>onselect</c> com o índice da linha no hidden <c>_selection</c>). O
+    /// <see cref="Varredura.Export.SerExportLeitor"/> reproduz essa ida-e-volta antes da busca e
+    /// <b>falha alto</b> quando a sugestão não vem — nunca degrada para leitura sem filtro, que
+    /// traria PII de pacientes de outros municípios. A credencial GESTOR SMS MARICA <b>não</b>
+    /// escopa sozinha: foi medido — sem a amarração, o primeiro registro é de outro recorte e o
+    /// conjunto varia entre chamadas; com ela, o resultado é o mesmo do navegador e determinístico.</para>
     ///
     /// <para><b>Não usar <c>form0:municipio</c>:</b> aquele campo é <i>Município do Paciente</i>, e
     /// paciente de outro município pode ter solicitação aberta por Maricá — filtrar por ele

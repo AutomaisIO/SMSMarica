@@ -6,6 +6,27 @@ using AngleSharp.Html.Parser;
 namespace SMSMarica.Core.Integracoes.SerWeb;
 
 /// <summary>
+/// Um <c>rich:suggestionbox</c> e seus três ids voláteis, extraídos do script de inicialização
+/// que o próprio SER manda na página — nunca de captura antiga, porque <c>j_id</c> é posicional
+/// e muda quando a SES-RJ recompila.
+///
+/// <para><b>Por que isso importa:</b> o filtro de Solicitante da tela de Histórico só é aplicado
+/// no servidor durante a ida-e-volta A4J do autocomplete (fetch de sugestões + <c>onselect</c>).
+/// Mandar o texto no campo é decorativo — medido em 07/08/2026: com texto solto o export devolve
+/// a fila do <b>Estado inteiro</b>; com a ida-e-volta reproduzida, o recorte de Maricá, idêntico
+/// ao do navegador e determinístico entre chamadas.</para>
+/// </summary>
+/// <param name="CampoTexto">o input visível (<c>form0:suggUnidadeSol</c>).</param>
+/// <param name="BoxId">o container do suggestionbox — vai em <c>ajaxSingle</c> nas duas idas.</param>
+/// <param name="OnselectId">o <c>a4j:support event="onselect"</c> — é ele que amarra a escolha.</param>
+public sealed record SerSuggestionBox(string CampoTexto, string BoxId, string OnselectId)
+{
+    /// <summary>Hidden que carrega o índice da linha escolhida. O RichFaces o preenche SÓ durante
+    /// o submit do onselect e o limpa em seguida — por isso ele parece "sempre vazio" no DOM.</summary>
+    public string CampoSelecao => $"{BoxId}_selection";
+}
+
+/// <summary>
 /// Leitura das telas do SER (JSF 1.2 + RichFaces 3.3.3). Ver <c>docs/ser.md</c>.
 ///
 /// <para><b>Princípio de projeto: nunca casar por <c>j_id</c> fixo.</b> Os ids do JSF são
@@ -225,6 +246,50 @@ public static partial class SerHtmlParser
                 && (e.GetAttribute("title") ?? string.Empty)
                     .Contains("Exportar", StringComparison.OrdinalIgnoreCase));
         return el?.Id;
+    }
+
+    /// <summary>
+    /// Localiza o <c>rich:suggestionbox</c> amarrado a um campo de texto, lendo os ids do script
+    /// <c>new RichFaces.Suggestion('form0','&lt;campo&gt;','&lt;box&gt;',{...})</c> que a própria
+    /// página traz. O id do <c>onselect</c> sai do bloco <c>'parameters':{'&lt;box&gt;:j_idNN':...}</c>
+    /// dentro do handler — é o <c>a4j:support</c> que faz o servidor gravar a escolha na conversa.
+    /// </summary>
+    public static SerSuggestionBox? SuggestionBoxDoCampo(string html, string campoTexto)
+    {
+        var box = Regex.Match(html,
+            @"RichFaces\.Suggestion\(\s*'[^']*'\s*,\s*'" + Regex.Escape(campoTexto) + @"'\s*,\s*'([^']+)'");
+        if (!box.Success) return null;
+
+        var boxId = box.Groups[1].Value;
+
+        // `'form0:j_id37:j_id42':'form0:j_id37:j_id42'` — o parâmetro do onselect é o único cujo
+        // nome é o PRÓPRIO box seguido de mais um segmento. O parâmetro do fetch ('form0:j_id37')
+        // não tem o segmento extra e não casa.
+        var onselect = Regex.Match(html,
+            @"'(" + Regex.Escape(boxId) + @":[A-Za-z_]\w*)'\s*:\s*'\1'");
+        if (!onselect.Success) return null;
+
+        return new SerSuggestionBox(campoTexto, boxId, onselect.Groups[1].Value);
+    }
+
+    /// <summary>
+    /// Linhas da tabela de sugestões (<c>&lt;box&gt;:suggest</c>) na <b>ordem do DOM</b>, cada uma
+    /// como lista de células. <c>null</c> quando a resposta não trouxe a tabela (aí não houve
+    /// autocomplete nenhum — o chamador decide falhar, nunca seguir sem filtro).
+    ///
+    /// <para>A posição da linha nessa ordem é exatamente o índice que o RichFaces escreve no
+    /// hidden <c>_selection</c> ao clicar (<c>selectEntry</c> usa <c>tbody.childNodes[i]</c>).</para>
+    /// </summary>
+    public static IReadOnlyList<IReadOnlyList<string>>? LinhasDeSugestao(IHtmlDocument doc, string boxId)
+    {
+        var tabela = doc.GetElementById($"{boxId}:suggest");
+        if (tabela is null) return null;
+
+        var corpo = tabela.QuerySelector("tbody") ?? tabela;
+        return corpo.Children
+            .Where(tr => tr.TagName.Equals("TR", StringComparison.OrdinalIgnoreCase))
+            .Select(tr => (IReadOnlyList<string>)tr.QuerySelectorAll("td").Select(Texto).ToList())
+            .ToList();
     }
 
     // ------------------------------------------------------------------ menu Opções

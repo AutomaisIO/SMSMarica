@@ -47,8 +47,17 @@ internal static class PlanilhaSerParser
             {
                 lidas++;
                 var candidato = MapearCabecalho(celulas);
-                if (candidato.Count >= ColunasReconhecidasMinimo) colunas = candidato;
-                else if (lidas > LinhasDeTopoParaProcurarCabecalho) break;
+                if (candidato.Count >= ColunasReconhecidasMinimo)
+                {
+                    GarantirColunasEstruturais(candidato);
+                    colunas = candidato;
+                }
+                else if (lidas >= LinhasDeTopoParaProcurarCabecalho)
+                {
+                    // >= e não >: com >, a janela efetiva era 9 linhas enquanto a constante e a
+                    // mensagem de erro diziam 8 — diagnóstico que mente por um.
+                    break;
+                }
                 continue;
             }
 
@@ -118,6 +127,28 @@ internal static class PlanilhaSerParser
         ["agendado para"] = "agendado_para",
         ["situacao"] = "situacao",
     };
+
+    /// <summary>
+    /// Cabeçalho aceito precisa das colunas ESTRUTURAIS, não de 4 quaisquer.
+    ///
+    /// <para>Sem a coluna de ID, o filtro de "linha de dado tem ID numérico" descartaria TODAS as
+    /// linhas e <c>Ler</c> devolveria vazio sem exceção — que o varredor leria como "trecho folgado
+    /// da linha do tempo", aplicando lote vazio e avançando o cursor. Sem a de data, tudo entraria
+    /// sem o eixo do fatiamento. Um renomeio da SES-RJ fora dos sinônimos precisa PARAR a carga
+    /// com nome e sobrenome, não escoar como cobertura. Achado do repasse de 07/08/2026.</para>
+    /// </summary>
+    internal static void GarantirColunasEstruturais(Dictionary<string, int> colunas)
+    {
+        var faltando = new List<string>(2);
+        if (!colunas.ContainsKey("id")) faltando.Add("ID Solicitação");
+        if (!colunas.ContainsKey("data_solicitacao")) faltando.Add("Data da Solicitação");
+        if (faltando.Count == 0) return;
+
+        throw new InvalidOperationException(
+            "A planilha do SER tem um cabeçalho reconhecível, mas sem coluna(s) estrutural(is): "
+            + $"{string.Join(" e ", faltando)}. A SES-RJ renomeou a coluna? Atualize os sinônimos "
+            + "do PlanilhaSerParser — importar sem elas perderia a carga em silêncio.");
+    }
 
     private static Dictionary<string, int> MapearCabecalho(string?[] celulas)
     {
