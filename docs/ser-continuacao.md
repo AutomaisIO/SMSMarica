@@ -72,6 +72,13 @@ Antes de confiar na rodada inteira: disparar `Só a grade` numa janela de poucos
 conferir nos logs `SER/export:` que os lotes saem, que o aviso de corte é reconhecido e que
 o parser da planilha achou o cabeçalho.
 
+> **PARE AQUI ANTES DE RECARREGAR (07/08/2026).** Está provado que o export lê a fila do
+> **Estado inteiro**, não a de Maricá: o filtro de Solicitante só é aplicado quando a
+> requisição A4J do autocomplete acontece, e o motor manda só o texto. Recarregar agora
+> traria PII de outros municípios. O próximo passo é capturar o request real do
+> `rich:suggestionbox` (DevTools → Network → Copy as cURL) e reproduzi-lo antes da busca —
+> a tentativa de deduzir os parâmetros pela inicialização da página não funcionou.
+
 **O que continua sem prova:**
 
 - **Se o `suggUnidadeSol` de fato recorta para Maricá.** Medido: mandá-lo **não zera** a

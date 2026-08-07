@@ -120,7 +120,17 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p><strong>O POST do <code>btnSearch</code> responde ~267 bytes</strong>, e não a grade:</p>
 <p>``<code>xml &lt;meta name="Ajax-Response" content="redirect" /&gt; &lt;meta name="Location" content="/ser/pages/.../historico-pesquisar.seam?cid=25509" /&gt; </code>``</p>
 <p>É o <strong>mesmo redirect A4J embutido no corpo</strong> que a tela de histórico usa (§5), apontando para a própria tela com o <code>?cid</code> da conversa Seam. <strong>O resultado só existe na página de destino.</strong> Quem parseia os 267 bytes encontra grade vazia, nenhuma mensagem e nenhum aviso de corte — e conclui <em>"recorte vazio, cobertura completa"</em>. Custou uma noite em 06/08/2026, com três hipóteses erradas pelo caminho (data, tipo e unidade solicitante).</p>
-<p>Medido na mesma sessão, seguindo o redirect: <strong>todas</strong> as situações devolvem grade. E o filtro <code>suggUnidadeSol=GESTOR SMS MARICA</code> <strong>não zera a consulta</strong> — mas se ele de fato recorta alguma coisa continua sem prova.</p>
+<h4>O filtro de Solicitante NÃO funciona por texto (medido 07/08/2026)</h4>
+<p><strong>O SER amarra a unidade solicitante no servidor, durante a ida-e-volta do autocomplete.</strong> Mandar o texto no campo do submit não filtra nada — o texto é decorativo.</p>
+<p>Prova, no mesmo navegador, mesma tela, mesmo valor visível no campo:</p>
+<div class="tw"><table><thead><tr><th>como <code>form0:suggUnidadeSol</code> foi preenchido</th><th>1º registro</th></tr></thead><tbody>
+<tr><td>digitado + <strong>clique na sugestão</strong></td><td><strong>2727024</strong> (06/01/2020) — recorte de Maricá</td></tr>
+<tr><td>atribuído por código (= o que o motor faz)</td><td><strong>2875441</strong> (01/06/2020) — <strong>sem filtro</strong></td></tr>
+</tbody></table></div>
+<p>O hidden <code>form0:j_id37_selection</code> <strong>permanece vazio</strong> nos dois casos, então não é por ele que o servidor sabe: a ligação acontece na requisição A4J do <code>rich:suggestionbox</code>.</p>
+<p>&gt; <strong>CONSEQUÊNCIA GRAVE:</strong> enquanto isso não for reproduzido, o export lê a <strong>fila do Estado &gt; inteiro</strong>, não a de Maricá — inclusive PII de pacientes de outros municípios. Não recarregar &gt; a base até resolver. Reproduzir o request do suggestionbox pelos parâmetros declarados na &gt; página (<code>{'form0:j_id37':'form0:j_id37','ajaxSingle':'form0:j_id37'}</code>) <strong>não bastou</strong> — &gt; pegar o request real no DevTools (<em>Copy as cURL</em>) é o caminho.</p>
+<h4>O filtro de Tipo não filtra (é do SER)</h4>
+<p>Medido no navegador: com <code>Tipo = CONSULTA</code> a própria tela do SER devolve linhas <strong>EXAME</strong> (Cateterismo Cardíaco). Não é defeito do motor — é da tela. Não confiar nesse combo para fatiar nada.</p>
 <h4>E a armadilha de reusar a página de resultado</h4>
 <p><strong>Cada busca exige um GET novo da tela.</strong> Medido em 07/08/2026: três buscas idênticas, cada uma precedida de GET, devolvem conjunto e ordem <strong>idênticos</strong>; encadeadas — usando a página de resultado como base do submit seguinte, e portanto o <code>?cid</code> da conversa anterior — o SER passa a devolver <strong>conjuntos instáveis</strong> entre chamadas.</p>
 <p>É a mesma família do §3.3: <strong>o que muda o resultado não é o filtro, é de onde se posta.</strong> A página de resultado serve para UMA coisa — o POST do Exportar, que precisa do <code>action</code> com o <code>cid</code> que produziu aquele lote — e morre ali. Nunca vira base da busca seguinte.</p>

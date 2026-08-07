@@ -172,9 +172,32 @@ destino.** Quem parseia os 267 bytes encontra grade vazia, nenhuma mensagem e ne
 de corte — e conclui *"recorte vazio, cobertura completa"*. Custou uma noite em 06/08/2026,
 com três hipóteses erradas pelo caminho (data, tipo e unidade solicitante).
 
-Medido na mesma sessão, seguindo o redirect: **todas** as situações devolvem grade. E o
-filtro `suggUnidadeSol=GESTOR SMS MARICA` **não zera a consulta** — mas se ele de fato
-recorta alguma coisa continua sem prova.
+#### O filtro de Solicitante NÃO funciona por texto (medido 07/08/2026)
+
+**O SER amarra a unidade solicitante no servidor, durante a ida-e-volta do autocomplete.**
+Mandar o texto no campo do submit não filtra nada — o texto é decorativo.
+
+Prova, no mesmo navegador, mesma tela, mesmo valor visível no campo:
+
+| como `form0:suggUnidadeSol` foi preenchido | 1º registro |
+|---|---|
+| digitado + **clique na sugestão** | **2727024** (06/01/2020) — recorte de Maricá |
+| atribuído por código (= o que o motor faz) | **2875441** (01/06/2020) — **sem filtro** |
+
+O hidden `form0:j_id37_selection` **permanece vazio** nos dois casos, então não é por ele que
+o servidor sabe: a ligação acontece na requisição A4J do `rich:suggestionbox`.
+
+> **CONSEQUÊNCIA GRAVE:** enquanto isso não for reproduzido, o export lê a **fila do Estado
+> inteiro**, não a de Maricá — inclusive PII de pacientes de outros municípios. Não recarregar
+> a base até resolver. Reproduzir o request do suggestionbox pelos parâmetros declarados na
+> página (`{'form0:j_id37':'form0:j_id37','ajaxSingle':'form0:j_id37'}`) **não bastou** —
+> pegar o request real no DevTools (*Copy as cURL*) é o caminho.
+
+#### O filtro de Tipo não filtra (é do SER)
+
+Medido no navegador: com `Tipo = CONSULTA` a própria tela do SER devolve linhas **EXAME**
+(Cateterismo Cardíaco). Não é defeito do motor — é da tela. Não confiar nesse combo para
+fatiar nada.
 
 #### E a armadilha de reusar a página de resultado
 
