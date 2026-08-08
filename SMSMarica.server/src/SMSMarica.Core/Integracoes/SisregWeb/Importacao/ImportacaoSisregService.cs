@@ -375,7 +375,6 @@ public sealed class ImportacaoSisregService(
             Id = Guid.CreateVersion7(),
             PacienteId = pacienteId,
             Categoria = categoria,
-            ProcedimentoCodigoSisreg = m.CodigoProcedimentoSisreg,
             ProcedimentoSigtapCodigo = m.CodigoSigtap,
             ProcedimentoTexto = m.ProcedimentoTexto,
             // Consulta colapsa no SIGTAP 0301010072 — a especialidade só existe no texto.

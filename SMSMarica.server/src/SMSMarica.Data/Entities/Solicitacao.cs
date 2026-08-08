@@ -24,23 +24,8 @@ public class Solicitacao
 
     // ---- Procedimento (como veio do SISREG; cru, sem depender de mapeamento) ----
 
-    /// <summary>
-    /// Código do procedimento <b>no SISREG</b> (o <c>pa</c>, coluna 2 da linha). É a identidade
-    /// do procedimento para nós: nome do exame, nome do laudo, modalidade DICOM e vínculo com o
-    /// PACS saem dele.
-    /// <para><b>Não confundir com <see cref="ProcedimentoSigtapCodigo"/>.</b> O SISREG numera
-    /// procedimento num espaço PRÓPRIO, derivado de uma versão defasada do SIGTAP. Os números se
-    /// parecem — dez dígitos, mesmos prefixos — e às vezes até coincidem, mas coincidência não é
-    /// equivalência: o mesmo <c>0205010040</c> é "bolsa escrotal" para o SISREG e "doppler
-    /// colorido de vasos" no SIGTAP oficial. Tratar um como o outro já colocou tipo de exame
-    /// pendurado no procedimento errado. O médico regulador escolhe olhando o SISREG, então é o
-    /// SISREG que manda aqui.</para>
-    /// </summary>
-    public string? ProcedimentoCodigoSisreg { get; set; }
-
     /// <summary>Código SIGTAP cru do procedimento (só dígitos). Ex.: "0211020036" (ECG). Null em
-    /// pedidos manuais sem SIGTAP. Serve ao FATURAMENTO e só é confiável quando veio de um de-para
-    /// confirmado por gente — ver <see cref="ProcedimentoCodigoSisreg"/>.</summary>
+    /// pedidos manuais sem SIGTAP.</summary>
     public string? ProcedimentoSigtapCodigo { get; set; }
 
     /// <summary>Descrição do procedimento como veio na origem ("ELETROCARDIOGRAMA",

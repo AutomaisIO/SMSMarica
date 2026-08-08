@@ -3,16 +3,10 @@ using SMSMarica.Data.Entities.Enums;
 namespace SMSMarica.Data.Entities;
 
 /// <summary>
-/// Curadoria local que torna um procedimento "selecionável no formulário de solicitação" e
-/// executável: adiciona modalidade DICOM, textos do worklist item e nome amigável. Ver ADR-0006
-/// para auditoria.
-///
-/// <para><b>O eixo é o procedimento do SISREG</b> (<see cref="SisregProcedimentoId"/>), não o
-/// SIGTAP. O SISREG numera procedimento num espaço próprio, derivado de um SIGTAP defasado; os
-/// números se parecem e às vezes coincidem, mas não são equivalentes. Pendurar o tipo de exame no
-/// SIGTAP já fez o procedimento errado ser escolhido — "transfontanelar" do SISREG caiu na linha
-/// SIGTAP de tireoide e o exame de dois recém-nascidos foi para o aparelho rotulado como tireoide.
-/// Como o médico regulador escolhe olhando o SISREG, é o SISREG que identifica o procedimento.</para>
+/// Curadoria local que traduz um <see cref="ProcedimentoSigtap"/> em algo
+/// "selecionável no formulário de solicitação". Adiciona o que o SIGTAP não
+/// tem (modalidade DICOM, textos do worklist item) e permite que a equipe da
+/// SMS personalize nomes amigáveis. Ver ADR-0006 para auditoria.
 /// </summary>
 public class TipoExame
 {
@@ -20,17 +14,7 @@ public class TipoExame
 
     public string Nome { get; set; } = string.Empty;
 
-    /// <summary>Procedimento do SISREG que este tipo executa — o vínculo que vale.</summary>
-    public Guid? SisregProcedimentoId { get; set; }
-    public Sisreg.SisregProcedimentoSigtap? SisregProcedimento { get; set; }
-
-    /// <summary>
-    /// SIGTAP oficial, quando alguém já confirmou o de-para. Serve ao FATURAMENTO e é opcional:
-    /// um procedimento novo do SISREG entra e fica executável sem nunca ter passado por aqui.
-    /// <para>Era obrigatório e virou nullable quando o eixo passou a ser o SISREG — os tipos
-    /// antigos seguem apontando para cá até serem convertidos.</para>
-    /// </summary>
-    public Guid? ProcedimentoSigtapId { get; set; }
+    public Guid ProcedimentoSigtapId { get; set; }
     public ProcedimentoSigtap? ProcedimentoSigtap { get; set; }
 
     public ModalidadeDicom ModalidadeDicom { get; set; }

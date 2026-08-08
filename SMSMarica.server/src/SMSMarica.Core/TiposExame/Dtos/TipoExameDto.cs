@@ -5,12 +5,7 @@ namespace SMSMarica.Core.TiposExame.Dtos;
 public sealed record TipoExameDto(
     Guid Id,
     string Nome,
-    // Procedimento do SISREG — o vínculo que identifica o exame. Ver TipoExame.
-    Guid? SisregProcedimentoId,
-    string SisregProcedimentoCodigo,
-    string SisregProcedimentoNome,
-    // SIGTAP: opcional, para faturamento.
-    Guid? ProcedimentoSigtapId,
+    Guid ProcedimentoSigtapId,
     string ProcedimentoSigtapCodigo,
     string ProcedimentoSigtapNome,
     ModalidadeDicom ModalidadeDicom,
