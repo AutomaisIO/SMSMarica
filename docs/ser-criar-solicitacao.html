@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SER — a tela de CRIAR solicitação (aba Editar)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>SER — a tela de CRIAR solicitação (aba <em>Editar</em>)</h1>
+<p>Levantado por sonda somente-leitura em 08/08/2026 (<code>Automais.SER/probe_campos_dinamicos.py</code>). Complementa <a href="./ser.md"><code>docs/ser.md</code></a>, que cobre a leitura da fila.</p>
+<p>&gt; <strong>Nada foi criado no SER.</strong> A sonda só troca aba e combos, que apenas re-renderizam a view. &gt; O botão <code>Gravar</code> (<code>form0:j_id313</code>) nunca foi acionado — e a trava da sonda recusa qualquer &gt; parâmetro com verbo de escrita.</p>
+<h2>1. Como se chega lá</h2>
+<p>Mesma tela da fila (<code>solicitar-consulta-pesquisar.seam</code>), aba <strong>Editar</strong>. A troca de aba é <code>_JSFFormSubmit</code> — <strong>POST comum</strong>, sem <code>AJAXREQUEST</code>, mandando os campos do form mais:</p>
+<p>``<code> form0:editar_server_submit = form0:editar_server_submit </code>``</p>
+<h2>2. O formulário tem duas partes</h2>
+<p>Um <strong>bloco fixo</strong>, igual para todo pedido, e um <strong>bloco dinâmico</strong> (<code>form0:camposDinamicos</code>) que muda conforme o Recurso escolhido. É o bloco dinâmico que responde à pergunta "por que oncologia pede campos diferentes".</p>
+<h3>2.1 Bloco fixo</h3>
+<div class="tw"><table><thead><tr><th>Campo</th><th>id JSF</th><th>Tipo</th><th>Obrigatório</th></tr></thead><tbody>
+<tr><td>É Ambulatório Estadual?</td><td><code>form0:comboSisReg</code></td><td>select (Sim/Não)</td><td></td></tr>
+<tr><td>Tipo</td><td><code>form0:comboTipoRecurso</code></td><td>select (CONSULTA/EXAME)</td><td>sim</td></tr>
+<tr><td>Recurso</td><td><code>form0:comboRecurso</code></td><td>select (populado por Tipo)</td><td>sim</td></tr>
+<tr><td>Recurso (autocomplete)</td><td><code>form0:suggRecurso</code></td><td>suggestionbox</td><td></td></tr>
+<tr><td>CNS do paciente</td><td><code>form0:numeroCADSUS</code></td><td>text</td><td></td></tr>
+<tr><td>Médico solicitante identificado?</td><td><code>form0:booleanMedicoSolicitanteIdentificado_radio</code></td><td>radio S/N</td><td></td></tr>
+<tr><td>Médico responsável</td><td><code>form0:medicoResp</code></td><td>select (876 opções)</td><td></td></tr>
+<tr><td>Telefone do médico</td><td><code>form0:telefoneCelularMedico</code></td><td>text</td><td></td></tr>
+<tr><td>Especialidade do médico</td><td><code>form0:especialidadeMedico</code></td><td>text</td><td></td></tr>
+<tr><td>Classificação de Risco</td><td><code>form0:classificacao_risco</code></td><td>select (Prioridade 1–4)</td><td>sim</td></tr>
+<tr><td>Hipótese</td><td><code>form0:procedimento</code></td><td>text</td><td>sim</td></tr>
+<tr><td>Mandado Judicial</td><td><code>form0:naturezaSolicitacaoMandato_radio</code></td><td>radio S/N</td><td></td></tr>
+<tr><td>Unidade de origem identificada?</td><td><code>form0:unidadeDeOrigemIdentificada_radio</code></td><td>radio S/N</td><td></td></tr>
+<tr><td>Unidade de origem (texto livre)</td><td><code>form0:unidadeNaoIdentificada</code></td><td>text</td><td>sim</td></tr>
+</tbody></table></div>
+<p>Ações da aba: <code>form0:addMedico</code> (Adicionar médico), <code>form0:j_id299</code> (Anexar Arquivo) e <strong><code>form0:j_id313</code> (Gravar)</strong> — este último é escrita e está fora de qualquer uso nosso.</p>
+<h3>2.2 Bloco dinâmico</h3>
+<p>Cada campo é um par <code>form0:container_dinamico_id_&lt;N&gt;</code> (rótulo) + <code>form0:dinamico_id_&lt;N&gt;</code> (o campo). Trocar o Recurso dispara A4J (<code>form0:j_id57</code>, com <code>ajaxSingle=form0:comboRecurso</code>) e o SER devolve o bloco re-renderizado. O <code>oncomplete</code> chama <code>verificarPetCt()</code> — o PET-CT tem regra própria, e de fato é o único recurso com formulário exclusivo (§4).</p>
+<p>&gt; <strong>A resposta é PARCIAL</strong>: não traz <code>&lt;form id="form0"&gt;</code>. Vale a regra de sempre — usar a &gt; última página completa como fonte dos campos e o parcial só como fonte do conteúdo novo.</p>
+<h2>3. O catálogo medido</h2>
+<p><strong>203 recursos</strong> (120 consultas + 83 exames) produzem <strong>21 formulários distintos</strong>, com <strong>163 campos dinâmicos únicos</strong> (90 obrigatórios).</p>
+<p>O formulário padrão — <strong>Queixa Principal, Resultado de Exames, Observações</strong>, todos obrigatórios — cobre 138 dos 203 recursos. O resto é especialidade pedindo dado clínico.</p>
+<h2>4. CONSULTA — 120 recursos, 15 formulários</h2>
+<h3>63 recurso(s) · 3 campos</h3>
+<div class="tw"><table><thead><tr><th></th><th>Campo</th><th>Tipo</th></tr></thead><tbody>
+<tr><td><strong>obrig.</strong></td><td>Queixa Principal</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Resultado de Exames</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Observações</td><td><code>textarea</code></td></tr>
+</tbody></table></div>
+<ul>
+<li>Ambulatório 1ª vez em Cardiologia - Cardiopatia Congênita (Adulto)</li>
+<li>Ambulatório 1ª vez em Cardiologia - Cirurgia Cardíaca Pediátrica</li>
+<li>Ambulatório 1ª vez em Cardiologia - Hipertensão Arterial Resistente (Adulto)</li>
+<li>Avaliação de Cardiopatia Congênita Pediátrica (Internados)</li>
+<li>Reabilitação Cardíaca</li>
+<li>Ambulatório 1ª vez em Cardiologia - Doenças Neuromusculares</li>
+<li><em>… e mais 57</em></li>
+</ul>
+<h3>30 recurso(s) · 9 campos</h3>
+<div class="tw"><table><thead><tr><th></th><th>Campo</th><th>Tipo</th></tr></thead><tbody>
+<tr><td><strong>obrig.</strong></td><td>Peso do Paciente (gramas)</td><td><code>text</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Altura do Paciente (cm)</td><td><code>text</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>IMC do Paciente</td><td><code>text</code></td></tr>
+<tr><td></td><td>Paciente já realizou cirurgia oncológica? Sim Não</td><td><code>radio</code></td></tr>
+<tr><td></td><td>Data da coleta da biópsia</td><td><code>text</code></td></tr>
+<tr><td></td><td>Data do resultado da biópsia</td><td><code>text</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Queixa Principal</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Resultado de Exames</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Observações</td><td><code>textarea</code></td></tr>
+</tbody></table></div>
+<ul>
+<li>Ambulatório 1ª vez em Cirurgia Plástica Reparadora - Mama (Oncologia)</li>
+<li>Ambulatório 1ª vez - Hematologia (Oncologia)</li>
+<li>Ambulatório 1ª vez - Oncologia Geral (Adulto)</li>
+<li>Ambulatório 1ª vez - Mastologia (Oncologia)</li>
+<li>Ambulatório 1ª vez em Neurocirurgia - Neurocirurgia (Oncologia)</li>
+<li>Ambulatório 1ª vez - Urologia (Oncologia)</li>
+<li><em>… e mais 24</em></li>
+</ul>
+<h3>4 recurso(s) · 5 campos</h3>
+<div class="tw"><table><thead><tr><th></th><th>Campo</th><th>Tipo</th></tr></thead><tbody>
+<tr><td><strong>obrig.</strong></td><td>Descreva o Tratamento Conservador realizado, se houver</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Quanto tempo durou o tratamento?</td><td><code>text</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Observações</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Queixa Principal</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Resultado de Exames</td><td><code>textarea</code></td></tr>
+</tbody></table></div>
+<ul>
+<li>Ambulatório 1ª vez - Cranio Maxilo Facial (Infantil)</li>
+<li>Ambulatório 1ª vez - Cranio Maxilo Facial (Adulto)</li>
+<li>Ambulatório 1ª vez - Microcirurgia Reconstrutora (Adulto)</li>
+<li>Ambulatório 1ª Vez em Ortopedia - Reconstrução e Alongamento Ósseo (Fixador Externo)</li>
+</ul>
+<h3>4 recurso(s) · 8 campos</h3>
+<div class="tw"><table><thead><tr><th></th><th>Campo</th><th>Tipo</th></tr></thead><tbody>
+<tr><td><strong>obrig.</strong></td><td>Peso do Paciente (gramas)</td><td><code>text</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>IMC do Paciente</td><td><code>text</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Comorbidades: Diabetes Hipertensão Doenças articulares Doenças vasculares Depressão</td><td><code>checkbox</code></td></tr>
+<tr><td></td><td>Exames Complementares (Data e Laudo)</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Medicação em Uso (especificar Droga, Dosagem, e Tempo de Uso)</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Laudo/Anamnese</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Altura do Paciente (cm)</td><td><code>text</code></td></tr>
+<tr><td></td><td>Outras comorbidades</td><td><code>textarea</code></td></tr>
+</tbody></table></div>
+<ul>
+<li>Readequação Corporal Pós-Cirurgia Bariátrica</li>
+<li>Ambulatório 1ª vez - Cirurgia Bariátrica (Adulto)</li>
+<li>Ambulatório 1ª vez - Cirurgia Bariátrica - Superobesidade (IMC acima 55)</li>
+<li>Ambulatório 1ª Vez em Gestação pós cirurgia bariátrica</li>
+</ul>
+<h3>4 recurso(s) · 4 campos</h3>
+<div class="tw"><table><thead><tr><th></th><th>Campo</th><th>Tipo</th></tr></thead><tbody>
+<tr><td><strong>obrig.</strong></td><td>Principais Sinais e Sintomas Clínicos</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Condições que Justificam a Internação</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Principais Resultados de Provas Diagnósticas (Resultados de Exames Realizados)</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Observações</td><td><code>textarea</code></td></tr>
+</tbody></table></div>
+<ul>
+<li>Avaliação diagnóstica infecção congênita Zika/Storch/Oropuche</li>
+<li>Ambulatório de 1ª Vez - Transplante de Fígado (Infantil)</li>
+<li>Ambulatório de 1ª Vez - Transplante Renal (Adulto)</li>
+<li>Ambulatório de 1ª Vez - Transplante de Fígado (Adulto)</li>
+</ul>
+<h3>3 recurso(s) · 13 campos</h3>
+<div class="tw"><table><thead><tr><th></th><th>Campo</th><th>Tipo</th></tr></thead><tbody>
+<tr><td></td><td>Medicação em uso</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Rx de Tórax</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Hemograma Completo</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Coagulograma</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Glicose</td><td><code>text</code></td></tr>
+<tr><td></td><td>Ureia</td><td><code>text</code></td></tr>
+<tr><td></td><td>Creatinina</td><td><code>text</code></td></tr>
+<tr><td></td><td>Grupo Sanguineo: Tipo A Tipo B Tipo O Tipo AB</td><td><code>radio</code></td></tr>
+<tr><td></td><td>Fator RH</td><td><code>text</code></td></tr>
+<tr><td></td><td>Descrição do Laudo do Ultrasson Doppler Arterial</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Descrição do Laudo da Arteriografia</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Telefone de contato</td><td><code>text</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Principais Sinais e Sintomas Clínicos</td><td><code>textarea</code></td></tr>
+</tbody></table></div>
+<ul>
+<li>Ambulatório 1ª vez em Cirurgia Vascular - Vasculopatia Arterial Periférica</li>
+<li>Ambulatório 1ª vez em Cirurgia Vascular - Pé diabético</li>
+<li>Ambulatório 1ª vez em Cirurgia Vascular - Vasculopatia Carotídea</li>
+</ul>
+<h3>2 recurso(s) · 6 campos</h3>
+<div class="tw"><table><thead><tr><th></th><th>Campo</th><th>Tipo</th></tr></thead><tbody>
+<tr><td><strong>obrig.</strong></td><td>História clínica</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Medicação em uso</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Resultado de exames pré-operatórios de rotina (hemograma completo e coagulograma)</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Descrição do laudo do ECG</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Telefone de Contato</td><td><code>text</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Principais Sinais e Sintomas Clínicos</td><td><code>textarea</code></td></tr>
+</tbody></table></div>
+<ul>
+<li>Ambulatório 1ª vez em Cardiologia - Arritimias (Infantil)</li>
+<li>Ambulatório 1ª vez em Cardiologia Estudo Eletrofisiológico / Ablação</li>
+</ul>
+<h3>2 recurso(s) · 13 campos</h3>
+<div class="tw"><table><thead><tr><th></th><th>Campo</th><th>Tipo</th></tr></thead><tbody>
+<tr><td></td><td>Classificação funcional da New York Heart Associaton (NYHA): I Atividade física comum como</td><td><code>select</code></td></tr>
+<tr><td></td><td>Medicação em uso</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Rx de Tórax</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Hemograma Completo</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Coagulograma</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Glicose</td><td><code>text</code></td></tr>
+<tr><td></td><td>Ureia</td><td><code>text</code></td></tr>
+<tr><td></td><td>Creatinina</td><td><code>text</code></td></tr>
+<tr><td></td><td>Grupo Sanguineo: Tipo A Tipo B Tipo O Tipo AB</td><td><code>radio</code></td></tr>
+<tr><td></td><td>Fator RH</td><td><code>text</code></td></tr>
+<tr><td></td><td>Descrição do laudo do ECG e ou Holter</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Telefone de contato</td><td><code>text</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Principais Sinais e Sintomas Clínicos</td><td><code>textarea</code></td></tr>
+</tbody></table></div>
+<ul>
+<li>Ambulatório 1ª vez em Cardiologia - Implante de Marcapasso</li>
+<li>Ambulatório 1ª vez em Cardiologia - Implante de Ressincronizador Cardíaco</li>
+</ul>
+<h3>2 recurso(s) · 14 campos</h3>
+<div class="tw"><table><thead><tr><th></th><th>Campo</th><th>Tipo</th></tr></thead><tbody>
+<tr><td></td><td>Classificação de Stanford: Tipo A) Dissecções em que há o comprometimento da aorta ascende</td><td><code>select</code></td></tr>
+<tr><td></td><td>Medicação em uso</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Rx de Tórax</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Hemograma Completo</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Coagulograma</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Glicose</td><td><code>text</code></td></tr>
+<tr><td></td><td>Ureia</td><td><code>text</code></td></tr>
+<tr><td></td><td>Creatinina</td><td><code>text</code></td></tr>
+<tr><td></td><td>Grupo Sanguineo: Tipo A Tipo B Tipo O Tipo AB</td><td><code>radio</code></td></tr>
+<tr><td></td><td>Fator RH</td><td><code>text</code></td></tr>
+<tr><td></td><td>Descrição do Laudo do Cateterismo</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Descrição do Laudo da TC ou Ultrasson detalhado com medidas do diâmetro da Aorta</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Telefone de contato</td><td><code>text</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Principais Sinais e Sintomas Clínicos</td><td><code>textarea</code></td></tr>
+</tbody></table></div>
+<ul>
+<li>Ambulatório 1ª vez em Cirurgia Cardiovascular - Aneurisma / Dissecção de Aorta Torácica</li>
+<li>Ambulatório 1ª vez em Cirurgia Vascular - Aneurisma / Dissecção de Aorta Abdominal</li>
+</ul>
+<h3>1 recurso(s) · 14 campos</h3>
+<div class="tw"><table><thead><tr><th></th><th>Campo</th><th>Tipo</th></tr></thead><tbody>
+<tr><td></td><td>Classificação funcional da New York Heart Associaton (NYHA): I Atividade física comum como</td><td><code>select</code></td></tr>
+<tr><td></td><td>Medicação em uso</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Rx de Tórax</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Hemograma Completo</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Coagulograma</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Glicose</td><td><code>text</code></td></tr>
+<tr><td></td><td>Ureia</td><td><code>text</code></td></tr>
+<tr><td></td><td>Creatinina</td><td><code>text</code></td></tr>
+<tr><td></td><td>Grupo Sanguineo: Tipo A Tipo B Tipo O Tipo AB</td><td><code>radio</code></td></tr>
+<tr><td></td><td>Fator RH</td><td><code>text</code></td></tr>
+<tr><td></td><td>Descrição do laudo do Cateterismo</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Descrição do laudo do Ecocardiograma</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Telefone de contato</td><td><code>text</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Principais Sinais e Sintomas Clínicos</td><td><code>textarea</code></td></tr>
+</tbody></table></div>
+<ul>
+<li>Ambulatório 1ª vez em Cirurgia Cardiovascular - Cirurgia Orovalvar</li>
+</ul>
+<h3>1 recurso(s) · 15 campos</h3>
+<div class="tw"><table><thead><tr><th></th><th>Campo</th><th>Tipo</th></tr></thead><tbody>
+<tr><td><strong>obrig.</strong></td><td>Classificação funcional da Sociedade Canadense de Cardiologia ( CSCC ): I Paciente cardiop</td><td><code>select</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Classificação funcional da New York Heart Associaton (NYHA): I Atividade física comum como</td><td><code>select</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Medicação em uso</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Rx de Tórax</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Hemograma Completo</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Coagulograma</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Glicose</td><td><code>text</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Ureia</td><td><code>text</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Creatinina</td><td><code>text</code></td></tr>
+<tr><td></td><td>Grupo Sanguineo: Tipo A Tipo B Tipo O Tipo AB</td><td><code>radio</code></td></tr>
+<tr><td></td><td>Fator RH</td><td><code>text</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Descrição do laudo do Cateterismo</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Descrição do laudo do Ecocardiograma</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Telefone de contato</td><td><code>text</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Principais Sinais e Sintomas Clínicos</td><td><code>textarea</code></td></tr>
+</tbody></table></div>
+<ul>
+<li>Ambulatório 1ª vez em Cardiologia - Cirurgia de Revascularização do Miocárdio</li>
+</ul>
+<h3>1 recurso(s) · 9 campos</h3>
+<div class="tw"><table><thead><tr><th></th><th>Campo</th><th>Tipo</th></tr></thead><tbody>
+<tr><td><strong>obrig.</strong></td><td>História clínica</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Medicação em uso</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Classificação ;funcional da New York Heart Associaton (NYHA): I Atividade física comum com</td><td><code>select</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Resultado de exames pré-operatórios de rotina (Rx de tórax, hemograma completo, coagulogra</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Descrição do laudo do Ecocardiograma, com função de VE [colocando o % da fração de ejeção</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Descrição do laudo do ECG e ou Holter, com a duração do QRS</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Resultado do estudo eletrofisiológico</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Telefone de contato</td><td><code>text</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Principais Sinais e Sintomas Clínicos</td><td><code>textarea</code></td></tr>
+</tbody></table></div>
+<ul>
+<li>Ambulatório 1ª Vez em Cardiologia - Implante de Cardiodesfibrilador (CDI)</li>
+</ul>
+<h3>1 recurso(s) · 9 campos</h3>
+<div class="tw"><table><thead><tr><th></th><th>Campo</th><th>Tipo</th></tr></thead><tbody>
+<tr><td><strong>obrig.</strong></td><td>Classificação funcional da Sociedade Canadense de Cardiologia (CSCC), para angina: I Pacie</td><td><code>radio</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Classificação funcional da New York Heart Associaton (NYHA), para insuficiência cardíaca:</td><td><code>radio</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Medicação em uso</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Laudo da Ergometria, Cintilografia, Ecocardiograma com Dobutamina ou ECG e Enzimas</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>História clínica</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Telefone de contato</td><td><code>text</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Principais Sinais e Sintomas Clínicos</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Peso do paciente (gramas)</td><td><code>text</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Altura do Paciente (cm)</td><td><code>text</code></td></tr>
+</tbody></table></div>
+<ul>
+<li>Ambulatório 1ª vez em Cardiologia - Pré Angioplastia Coronariana</li>
+</ul>
+<h3>1 recurso(s) · 6 campos</h3>
+<div class="tw"><table><thead><tr><th></th><th>Campo</th><th>Tipo</th></tr></thead><tbody>
+<tr><td><strong>obrig.</strong></td><td>Principais Sinais e Sintomas Clínicos</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Condições que Justificam a Internação</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Principais Resultados de Provas Diagnósticas (Resultados de Exames Realizados)</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Observações</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Descrição do laudo da TC</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Descrição do laudo da Angiografia Cerebral</td><td><code>textarea</code></td></tr>
+</tbody></table></div>
+<ul>
+<li>Ambulatório 1ª vez em Neurocirurgia - Neurovascular</li>
+</ul>
+<h3>1 recurso(s) · 10 campos</h3>
+<div class="tw"><table><thead><tr><th></th><th>Campo</th><th>Tipo</th></tr></thead><tbody>
+<tr><td><strong>obrig.</strong></td><td>História clínica</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Resultado do histopatológico</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Exames complementares</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Observações</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Peso do Paciente (gramas)</td><td><code>text</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Altura do Paciente (cm)</td><td><code>text</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>IMC do Paciente</td><td><code>text</code></td></tr>
+<tr><td></td><td>Paciente já realizou cirurgia oncológica? Sim Não</td><td><code>radio</code></td></tr>
+<tr><td></td><td>Data da coleta da biópsia</td><td><code>text</code></td></tr>
+<tr><td></td><td>Data do resultado da biópsia</td><td><code>text</code></td></tr>
+</tbody></table></div>
+<ul>
+<li>Ambulatório 1ª vez - Planejamento em Radioterapia (Infantil)</li>
+</ul>
+<h2>5. EXAME — 83 recursos, 6 formulários</h2>
+<h3>75 recurso(s) · 3 campos</h3>
+<div class="tw"><table><thead><tr><th></th><th>Campo</th><th>Tipo</th></tr></thead><tbody>
+<tr><td><strong>obrig.</strong></td><td>Queixa Principal</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Resultado de Exames</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Observações</td><td><code>textarea</code></td></tr>
+</tbody></table></div>
+<ul>
+<li>Ecocardiograma Transesofágico (ambulatorial)</li>
+<li>Ecocardiograma de Estresse</li>
+<li>Toracocentese</li>
+<li>Biópsia de Pleura</li>
+<li>Biópsia de Gânglio</li>
+<li>Escarro Induzido</li>
+<li><em>… e mais 69</em></li>
+</ul>
+<h3>3 recurso(s) · 9 campos</h3>
+<div class="tw"><table><thead><tr><th></th><th>Campo</th><th>Tipo</th></tr></thead><tbody>
+<tr><td><strong>obrig.</strong></td><td>Classificação funcional da Sociedade Canadense de Cardiologia (CSCC), para angina: I Pacie</td><td><code>radio</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Classificação funcional da New York Heart Associaton (NYHA), para insuficiência cardíaca:</td><td><code>radio</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Medicação em uso</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Laudo da Ergometria, Cintilografia, Ecocardiograma com Dobutamina ou ECG e Enzimas</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>História clínica</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Telefone de contato</td><td><code>text</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Principais Sinais e Sintomas Clínicos</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Peso do paciente (gramas)</td><td><code>text</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Altura do Paciente (cm)</td><td><code>text</code></td></tr>
+</tbody></table></div>
+<ul>
+<li>Cateterismo Cardíaco (Internados)</li>
+<li>Cateterismo Cardíaco (Ambulatorial)</li>
+<li>Cateterismo Cardíaco Pediatrico (Ambulatorial)</li>
+</ul>
+<h3>2 recurso(s) · 5 campos</h3>
+<div class="tw"><table><thead><tr><th></th><th>Campo</th><th>Tipo</th></tr></thead><tbody>
+<tr><td><strong>obrig.</strong></td><td>História clínica</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Medicação em uso</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Descrição do Laudo do Ultrasson Doppler Arterial e/ou TC</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Telefone de contato</td><td><code>text</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Principais Sinais e Sintomas Clínicos</td><td><code>textarea</code></td></tr>
+</tbody></table></div>
+<ul>
+<li>Arteriografia Periférica (Ambulatorial)</li>
+<li>Arteriografia Periférica (Internados)</li>
+</ul>
+<h3>1 recurso(s) · 10 campos</h3>
+<div class="tw"><table><thead><tr><th></th><th>Campo</th><th>Tipo</th></tr></thead><tbody>
+<tr><td><strong>obrig.</strong></td><td>Presença de massa ou neoformação pulmonar? SIM NÃO</td><td><code>radio</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Necessita de biópsia brônquica ou transbrônquica? SIM NÃO</td><td><code>radio</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Paciente com hemoptise ou escarro hemoptoico? SIM NÃO</td><td><code>radio</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Suspeita de Estenose de traquéia/estridor/cornagem? SIM NÃO</td><td><code>radio</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Paciente intubado? SIM NÃO</td><td><code>radio</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Paciente traqueostomizado? SIM NÃO</td><td><code>radio</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Paciente com idade menor ou igual a 16 anos? SIM NÃO</td><td><code>radio</code></td></tr>
+<tr><td></td><td>Observações</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Hipótese diagnóstica</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Quadro Clínico</td><td><code>textarea</code></td></tr>
+</tbody></table></div>
+<ul>
+<li>Broncoscopia (Internados)</li>
+</ul>
+<h3>1 recurso(s) · 4 campos</h3>
+<div class="tw"><table><thead><tr><th></th><th>Campo</th><th>Tipo</th></tr></thead><tbody>
+<tr><td><strong>obrig.</strong></td><td>Principais Sinais e Sintomas Clínicos</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Condições que Justificam a Internação</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Principais Resultados de Provas Diagnósticas (Resultados de Exames Realizados)</td><td><code>textarea</code></td></tr>
+<tr><td></td><td>Observações</td><td><code>textarea</code></td></tr>
+</tbody></table></div>
+<ul>
+<li>Cintilografias (Internados)</li>
+</ul>
+<h3>1 recurso(s) · 10 campos</h3>
+<div class="tw"><table><thead><tr><th></th><th>Campo</th><th>Tipo</th></tr></thead><tbody>
+<tr><td><strong>obrig.</strong></td><td>Laudo Histopatológico/Exame Imagem</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Grau Histopatológico Gx G1 G2 G3 G4</td><td><code>select</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>PSA/Outros</td><td><code>text</code></td></tr>
+<tr><td></td><td>Observação</td><td><code>textarea</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Peso do Paciente (gramas)</td><td><code>text</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>Altura do Paciente (cm)</td><td><code>text</code></td></tr>
+<tr><td><strong>obrig.</strong></td><td>IMC do Paciente</td><td><code>text</code></td></tr>
+<tr><td></td><td>Paciente já realizou cirurgia oncológica? Sim Não</td><td><code>radio</code></td></tr>
+<tr><td></td><td>Data da coleta da biópsia</td><td><code>text</code></td></tr>
+<tr><td></td><td>Data do resultado da biópsia</td><td><code>text</code></td></tr>
+</tbody></table></div>
+<ul>
+<li>Tomografia por Emissão de Pósitrons (PET-CT)</li>
+</ul>
+</main>
+</body>
+</html>

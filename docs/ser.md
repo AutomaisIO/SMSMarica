@@ -417,7 +417,21 @@ Duas camadas, porque uma só não cobre JSF:
 Estado verificado no menu *Opções*: `Editar`, `Cancelar` e `Registrar FollowUP`
 **bloqueados**; `Visualizar` e `Histórico da Solicitação` permitidos.
 
-## 8. Laboratório
+## 8. A tela de CRIAR solicitação (aba *Editar*)
+
+Levantada em 08/08/2026 e documentada à parte, por volume:
+[`docs/ser-criar-solicitacao.md`](./ser-criar-solicitacao.md).
+
+Resumo do que importa saber daqui: o formulário de pedido tem um **bloco fixo** (tipo, recurso,
+CNS, médico, classificação de risco, hipótese, unidade de origem) e um **bloco dinâmico**
+(`form0:camposDinamicos`) que **muda conforme o Recurso escolhido** — 203 recursos produzem
+**21 formulários diferentes**, com 163 campos únicos. Oncologia, por exemplo, acrescenta
+peso/altura/IMC obrigatórios, "já realizou cirurgia oncológica?" e as datas da biópsia.
+
+> **Continua valendo a trava de somente-leitura.** Abrir a aba e trocar combos só re-renderiza a
+> view; o botão *Gravar* (`form0:j_id313`) nunca é acionado por nada nosso.
+
+## 9. Laboratório
 
 `Automais.SER/` (Python) continua como bancada de recon — é onde se investiga tela
 nova antes de portar. Não roda em produção. `.env`, `credenciais_ser.txt` e

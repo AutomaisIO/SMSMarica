@@ -243,7 +243,11 @@ li{margin:3px 0}p,li{max-width:75ch}
 </ol>
 <p>   de cancelamento é <code>j_id189:j_id195</code> e <strong>Registrar FollowUP</strong> é <code>j_id169</code>. O verbo    só existe no <code>value</code>/texto do elemento, nunca no nome.</p>
 <p>Estado verificado no menu <em>Opções</em>: <code>Editar</code>, <code>Cancelar</code> e <code>Registrar FollowUP</code> <strong>bloqueados</strong>; <code>Visualizar</code> e <code>Histórico da Solicitação</code> permitidos.</p>
-<h2>8. Laboratório</h2>
+<h2>8. A tela de CRIAR solicitação (aba <em>Editar</em>)</h2>
+<p>Levantada em 08/08/2026 e documentada à parte, por volume: <a href="./ser-criar-solicitacao.md"><code>docs/ser-criar-solicitacao.md</code></a>.</p>
+<p>Resumo do que importa saber daqui: o formulário de pedido tem um <strong>bloco fixo</strong> (tipo, recurso, CNS, médico, classificação de risco, hipótese, unidade de origem) e um <strong>bloco dinâmico</strong> (<code>form0:camposDinamicos</code>) que <strong>muda conforme o Recurso escolhido</strong> — 203 recursos produzem <strong>21 formulários diferentes</strong>, com 163 campos únicos. Oncologia, por exemplo, acrescenta peso/altura/IMC obrigatórios, "já realizou cirurgia oncológica?" e as datas da biópsia.</p>
+<p>&gt; <strong>Continua valendo a trava de somente-leitura.</strong> Abrir a aba e trocar combos só re-renderiza a &gt; view; o botão <em>Gravar</em> (<code>form0:j_id313</code>) nunca é acionado por nada nosso.</p>
+<h2>9. Laboratório</h2>
 <p><code>Automais.SER/</code> (Python) continua como bancada de recon — é onde se investiga tela nova antes de portar. Não roda em produção. <code>.env</code>, <code>credenciais_ser.txt</code> e <code>capturas/</code> são gitignored (credencial e PII).</p>
 </main>
 </body>
