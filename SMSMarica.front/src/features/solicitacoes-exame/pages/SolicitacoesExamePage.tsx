@@ -633,6 +633,8 @@ export function SolicitacoesExamePage() {
         carregando={lista.isPending}
         vazio="Nenhuma solicitação encontrada."
         layoutFixo
+        redimensionavel
+        idTabela="solicitacoes-exame"
         aoClicarLinha={podeVer ? (s) => navigate(`/app/solicitacoes-exame/${s.id}`) : undefined}
         dicaLinha="Clique para visualizar"
         // Solicitações URGENTES: fundo vermelho claro + filete vermelho fininho à

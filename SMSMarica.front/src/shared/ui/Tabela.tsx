@@ -1,6 +1,7 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { ChevronDown, ChevronUp, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
+import { clampLargura, useTabelaPreferencias } from '@/shared/ui/tabelaPreferencias';
 
 export type Coluna<T> = {
   chave: string;
@@ -48,9 +49,18 @@ type Props<T> = {
    * evitar rolagem horizontal quando algumas colunas devem ser fixas e outras "flex".
    */
   layoutFixo?: boolean;
+  /**
+   * Habilita o redimensionamento de colunas por um separador arrastável no cabeçalho
+   * (ticket #99). Exige <c>idTabela</c> para saber sob qual chave salvar as larguras no
+   * perfil do usuário. Opt-in: sem esta prop, a tabela renderiza como antes. Ativar isto
+   * força <c>table-fixed</c> (as larguras salvas passam a valer em px).
+   */
+  redimensionavel?: boolean;
+  /** Identificador estável desta tela/tabela — chave sob a qual as larguras de coluna são salvas no perfil. */
+  idTabela?: string;
 };
 
-export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrollXFlutuante, aoClicarLinha, dicaLinha, classeLinha, layoutFixo }: Props<T>) {
+export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrollXFlutuante, aoClicarLinha, dicaLinha, classeLinha, layoutFixo, redimensionavel, idTabela }: Props<T>) {
   // Defensivo: se a API retornar algo não-array (HTML por URL errada, erro
   // serializado, etc.), renderiza vazio em vez de derrubar a tela toda.
   const dadosSeguros: T[] = Array.isArray(dados) ? dados : [];
@@ -76,6 +86,64 @@ export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrol
     setOrdem((atual) =>
       atual?.chave !== chave ? { chave, desc: false } : atual.desc ? null : { chave, desc: true },
     );
+  }
+
+  // ── Redimensionamento de coluna (opt-in via `redimensionavel` + `idTabela`) ──────────
+  const redim = Boolean(redimensionavel && idTabela);
+  const largurasSalvas = useTabelaPreferencias((s) => (idTabela ? s.larguras[idTabela] : undefined));
+  const definirVarias = useTabelaPreferencias((s) => s.definirVarias);
+  // Estado "ao vivo" durante o arrasto; re-semeado quando o perfil hidrata/muda.
+  const [larguras, setLarguras] = useState<Record<string, number>>(() => ({ ...(largurasSalvas ?? {}) }));
+  useEffect(() => {
+    setLarguras({ ...(largurasSalvas ?? {}) });
+  }, [largurasSalvas]);
+  const arrasto = useRef<{ chave: string; startX: number; startWidth: number } | null>(null);
+  const [emArrasto, setEmArrasto] = useState(false);
+  // Só vira table-fixed quando há largura (salva ou em edição): antes disso a tabela
+  // mantém o layout automático (colunas ajustam ao conteúdo), sem regressão visual.
+  const temLarguras = redim && Object.keys(larguras).length > 0;
+  const larguraFixa = layoutFixo || temLarguras;
+
+  function iniciarArrasto(e: ReactPointerEvent<HTMLDivElement>, chave: string) {
+    const th = (e.currentTarget as HTMLElement).closest('th');
+    if (!th) return;
+    // Primeiro arrasto sem larguras salvas: semeia TODAS as colunas com a largura
+    // renderizada atual, para congelar o visual exato antes de entrar em table-fixed.
+    if (Object.keys(larguras).length === 0) {
+      const tr = th.parentElement;
+      const ths = tr ? Array.from(tr.querySelectorAll('th')) : [];
+      if (ths.length === colunas.length) {
+        const semente: Record<string, number> = {};
+        colunas.forEach((c, idx) => {
+          semente[c.chave] = clampLargura(ths[idx].getBoundingClientRect().width);
+        });
+        setLarguras(semente);
+      }
+    }
+    arrasto.current = { chave, startX: e.clientX, startWidth: th.getBoundingClientRect().width };
+    setEmArrasto(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  function moverArrasto(e: ReactPointerEvent<HTMLDivElement>) {
+    const st = arrasto.current;
+    if (!st) return;
+    const nova = clampLargura(st.startWidth + (e.clientX - st.startX));
+    setLarguras((m) => ({ ...m, [st.chave]: nova }));
+  }
+  function terminarArrasto(e: ReactPointerEvent<HTMLDivElement>) {
+    const st = arrasto.current;
+    if (!st) return;
+    arrasto.current = null;
+    setEmArrasto(false);
+    const nova = clampLargura(st.startWidth + (e.clientX - st.startX));
+    setLarguras((m) => {
+      const proximo = { ...m, [st.chave]: nova };
+      // Persiste o mapa inteiro (inclui as colunas semeadas no 1º arrasto) em 1 PUT.
+      if (idTabela) definirVarias(idTabela, proximo);
+      return proximo;
+    });
   }
 
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -121,16 +189,31 @@ export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrol
           escondeBarraNativa && '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
         )}
       >
-        <table className={cn('divide-y divide-gray-200', layoutFixo ? 'w-full table-fixed' : 'min-w-full')}>
+        <table
+          className={cn(
+            'divide-y divide-gray-200',
+            larguraFixa ? 'w-full table-fixed' : 'min-w-full',
+            emArrasto && 'select-none',
+          )}
+        >
+          {redim ? (
+            <colgroup>
+              {colunas.map((c) => (
+                <col key={c.chave} style={larguras[c.chave] ? { width: larguras[c.chave] } : undefined} />
+              ))}
+            </colgroup>
+          ) : null}
           <thead className="bg-gray-50">
             <tr>
-              {colunas.map((c) => {
+              {colunas.map((c, i) => {
                 const ativa = ordem?.chave === c.chave && Boolean(c.ordenar);
+                const podeRedimensionar = redim && i < colunas.length - 1; // última coluna absorve o resto
                 return (
                   <th
                     key={c.chave}
                     className={cn(
                       'px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500',
+                      redim && 'relative',
                       c.className,
                     )}
                   >
@@ -164,6 +247,21 @@ export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrol
                     ) : (
                       c.cabecalho
                     )}
+                    {podeRedimensionar ? (
+                      <div
+                        role="separator"
+                        aria-orientation="vertical"
+                        title="Arraste para ajustar a largura da coluna"
+                        onPointerDown={(e) => iniciarArrasto(e, c.chave)}
+                        onPointerMove={moverArrasto}
+                        onPointerUp={terminarArrasto}
+                        onPointerCancel={terminarArrasto}
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute right-0 top-0 z-10 flex h-full w-3 cursor-col-resize touch-none items-center justify-center hover:bg-primary-100/60"
+                      >
+                        <span className="h-4 w-px bg-gray-300" />
+                      </div>
+                    ) : null}
                   </th>
                 );
               })}

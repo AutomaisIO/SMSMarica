@@ -383,6 +383,8 @@ export function LaudosListagemPage() {
         chaveLinha={(l) => l.id}
         carregando={lista.isPending}
         vazio="Nenhum laudo encontrado para os filtros."
+        redimensionavel
+        idTabela="laudos"
       />
 
       {totalPaginas > 1 ? (

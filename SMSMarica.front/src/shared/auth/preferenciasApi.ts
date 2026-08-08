@@ -10,6 +10,11 @@ export type PreferenciasUi = {
   enviarComEnter?: boolean;
   /** Na lista de Solicitações de Exame, ver por padrão a visão de solicitante (ticket #84). */
   verComoSolicitante?: boolean;
+  /**
+   * Larguras (px) das colunas das tabelas redimensionáveis, por tela (ticket #99):
+   * id da tela → (chave da coluna → largura). Enviar sempre o mapa completo.
+   */
+  largurasTabela?: Record<string, Record<string, number>>;
 };
 
 export async function obterPreferencias(): Promise<PreferenciasUi> {
@@ -19,6 +24,7 @@ export async function obterPreferencias(): Promise<PreferenciasUi> {
     alturaComposerChat: data?.alturaComposerChat ?? undefined,
     enviarComEnter: data?.enviarComEnter ?? undefined,
     verComoSolicitante: data?.verComoSolicitante ?? undefined,
+    largurasTabela: data?.largurasTabela ?? undefined,
   };
 }
 

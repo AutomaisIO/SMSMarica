@@ -249,6 +249,7 @@ export function PacsListagemPage() {
     {
       chave: 'paciente',
       cabecalho: 'Paciente',
+      ordenar: (e) => e.associacao?.pacienteNome ?? e.patientName ?? null,
       render: (e) => {
         const assoc = e.associacao;
         const nome = assoc?.pacienteNome ?? e.patientName;
@@ -303,6 +304,8 @@ export function PacsListagemPage() {
     {
       chave: 'data',
       cabecalho: 'Data / Hora',
+      // studyDate/studyTime são texto DICOM (YYYYMMDD/HHMMSS): concatenar ordena cronologicamente.
+      ordenar: (e) => (e.studyDate ? `${e.studyDate}${e.studyTime ?? ''}` : null),
       render: (e) => {
         const hora = formatarHoraDicom(e.studyTime);
         return (
@@ -316,6 +319,7 @@ export function PacsListagemPage() {
     {
       chave: 'pedido',
       cabecalho: 'Pedido',
+      ordenar: (e) => e.accessionNumber?.trim() || null,
       render: (e) => {
         const acc = e.accessionNumber?.trim() ?? '';
         return acc ? (
@@ -328,6 +332,7 @@ export function PacsListagemPage() {
     {
       chave: 'modalidade',
       cabecalho: 'Modalidade',
+      ordenar: (e) => e.modalidade || null,
       render: (e) => (
         <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium uppercase text-gray-700">
           {e.modalidade || '—'}
@@ -337,6 +342,7 @@ export function PacsListagemPage() {
     {
       chave: 'descricao',
       cabecalho: 'Descrição',
+      ordenar: (e) => e.studyDescription || null,
       render: (e) => <span className="text-gray-700">{e.studyDescription || '—'}</span>,
     },
     {
@@ -555,6 +561,8 @@ export function PacsListagemPage() {
         dados={exames}
         chaveLinha={(e) => e.studyInstanceUID}
         carregando={busca.isPending}
+        redimensionavel
+        idTabela="pacs"
         aoClicarLinha={podeAbrir ? (e) => abrirViewer(e) : undefined}
         dicaLinha="Clique para visualizar"
       />
