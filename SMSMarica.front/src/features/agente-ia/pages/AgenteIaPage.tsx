@@ -226,6 +226,17 @@ function TextoFormatado({ texto }: { texto: string }) {
   return <>{blocos}</>;
 }
 
+// Rótulo enxuto da ferramenta. Para `Skill`, mostra QUAL skill (`Skill: resolver-ticket`),
+// lendo `input.skill` — assim a conversa indica o que está sendo feito sem despejar o corpo
+// da skill (o corpo já não vira mais evento de texto no motor — ver ticket #90).
+function rotuloFerramenta(evento: Extract<EventoAgente, { type: 'tool_use' }>): string {
+  if (evento.name === 'Skill' && evento.input && typeof evento.input === 'object') {
+    const skill = (evento.input as { skill?: unknown }).skill;
+    if (typeof skill === 'string' && skill) return `Skill: ${skill}`;
+  }
+  return evento.name;
+}
+
 function BlocoFerramenta({ evento }: { evento: Extract<EventoAgente, { type: 'tool_use' }> }) {
   const [aberto, setAberto] = useState(false);
   const Chevron = aberto ? ChevronDown : ChevronRight;
@@ -238,7 +249,7 @@ function BlocoFerramenta({ evento }: { evento: Extract<EventoAgente, { type: 'to
       >
         <Chevron className="h-3.5 w-3.5 shrink-0" />
         <Terminal className="h-3.5 w-3.5 shrink-0" />
-        <span className="truncate">{evento.name}</span>
+        <span className="truncate">{rotuloFerramenta(evento)}</span>
       </button>
       {aberto && (
         <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-all border-t border-slate-200 px-3 py-2 text-[11px] leading-relaxed text-slate-600">

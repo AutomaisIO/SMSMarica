@@ -121,6 +121,16 @@ def _message_to_events(message: Any) -> list[dict]:
     content = getattr(message, "content", None)
     if content is None:
         return []
+    # `UserMessage` = injeção de volta ao modelo (resultado de skill/ferramenta), NÃO prosa
+    # do agente. O prompt do operador é gravado à parte (Turn.prompt) e exibido na bolha do
+    # usuário — nunca chega aqui. Uma skill carregada volta como UserMessage de conteúdo
+    # string com o corpo INTEIRO da skill; renderizá-lo como texto poluía o painel com o
+    # "Base directory for this skill: …" (ticket #90). Conteúdo em lista (ToolResultBlocks)
+    # segue o caminho normal e cai em tool_result (oculto no painel, salvo erro).
+    if name == "UserMessage":
+        if isinstance(content, str):
+            return []
+        return [e for e in (_block_to_event(b) for b in content) if e]
     if isinstance(content, str):
         return [{"type": "text", "text": content}]
     return [e for e in (_block_to_event(b) for b in content) if e]
