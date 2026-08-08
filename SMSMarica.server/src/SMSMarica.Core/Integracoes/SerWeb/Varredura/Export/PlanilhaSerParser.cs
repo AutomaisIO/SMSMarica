@@ -64,7 +64,11 @@ internal static class PlanilhaSerParser
             var id = Campo(colunas, celulas, "id");
             // O ID é o discriminador: linha de rodapé, cabeçalho repetido ou totalizador não têm
             // ID numérico. Sem esse filtro, entraria lixo com IdSer vazio no espelho.
-            if (string.IsNullOrWhiteSpace(id) || !id.All(char.IsDigit)) continue;
+            if (string.IsNullOrWhiteSpace(id) || !id.All(char.IsDigit))
+            {
+                AnexarContinuacao(linhas, colunas, celulas);
+                continue;
+            }
 
             linhas.Add(new SerLinhaGrade
             {
@@ -94,6 +98,46 @@ internal static class PlanilhaSerParser
         }
 
         return linhas;
+    }
+
+    /// <summary>
+    /// Junta ao registro anterior os fragmentos da coluna <b>Agendado para</b>.
+    ///
+    /// <para>O export da tela de Solicitação quebra essa coluna — que na tela é
+    /// <c>data - UNIDADE</c> — em até <b>três linhas</b> do arquivo: a do registro (com a data),
+    /// uma só com o hífen e outra só com o nome da unidade. Medido em 08/08/2026: 100 registros de
+    /// ALTA viraram 300 linhas, e foi por isso que a contagem crua do arquivo mentiu que o teto de
+    /// 100 tinha sido superado.</para>
+    ///
+    /// <para>Sem juntar, a <b>unidade onde o paciente foi atendido se perde</b> — e para ALTA ela
+    /// não vem de mais lugar nenhum, já que a tela de Histórico (que tem coluna própria de Unidade
+    /// executora) não oferece essa situação.</para>
+    ///
+    /// <para>Só é tratada como continuação a linha VAZIA em todas as outras colunas mapeadas:
+    /// rodapé ou totalizador com conteúdo em qualquer outro campo não pode ser grudado no registro
+    /// anterior — seria inventar dado.</para>
+    /// </summary>
+    internal static void AnexarContinuacao(
+        List<SerLinhaGrade> linhas, Dictionary<string, int> colunas, string?[] celulas)
+    {
+        if (linhas.Count == 0) return;
+
+        var fragmento = Campo(colunas, celulas, "agendado_para");
+        if (string.IsNullOrWhiteSpace(fragmento)) return;
+
+        foreach (var (chave, indice) in colunas)
+        {
+            if (chave == "agendado_para") continue;
+            if (indice < celulas.Length && !string.IsNullOrWhiteSpace(celulas[indice])) return;
+        }
+
+        var anterior = linhas[^1];
+        linhas[^1] = anterior with
+        {
+            AgendadoPara = string.IsNullOrWhiteSpace(anterior.AgendadoPara)
+                ? fragmento.Trim()
+                : $"{anterior.AgendadoPara} {fragmento.Trim()}",
+        };
     }
 
     // ------------------------------------------------------------------ cabeçalho

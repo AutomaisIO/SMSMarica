@@ -17,8 +17,11 @@ namespace SMSMarica.Tests.Integracoes;
 /// </summary>
 public class VarredorSerPorExportTests
 {
-    private static VarredorSerPorExport Varredor(SerFalso ser) =>
-        new(ser, NullLogger<VarredorSerPorExport>.Instance);
+    /// <summary>O leitor não entra mais no construtor: o varredor serve as DUAS telas do SER
+    /// (Histórico, teto 500 com aviso escrito; Solicitação, teto 100 sem aviso — a única com
+    /// ALTA), e quem escolhe é o chamador, por situação.</summary>
+    private static VarredorSerPorExport Varredor() =>
+        new(NullLogger<VarredorSerPorExport>.Instance);
 
     /// <summary>Base pequena, cabe num lote só: uma requisição e nada de fatiar.</summary>
     [Fact]
@@ -27,7 +30,7 @@ public class VarredorSerPorExportTests
         var ser = new SerFalso(PopularPorDia(new DateOnly(2026, 1, 1), dias: 10, porDia: 3));
 
         var lidas = new List<SerLinhaGrade>();
-        var resultado = await Varredor(ser).VarrerAsync(
+        var resultado = await Varredor().VarrerAsync(ser,
             SituacaoSer.EmFila, new DateOnly(2026, 1, 1), new DateOnly(2026, 1, 10),
             (linhas, _, _) => { lidas.AddRange(linhas); return Task.CompletedTask; },
             CancellationToken.None);
@@ -49,7 +52,7 @@ public class VarredorSerPorExportTests
         var ser = new SerFalso(populacao);
 
         var lidas = new List<SerLinhaGrade>();
-        var resultado = await Varredor(ser).VarrerAsync(
+        var resultado = await Varredor().VarrerAsync(ser,
             SituacaoSer.EmFila, new DateOnly(2026, 1, 1), new DateOnly(2026, 3, 1),
             (linhas, _, _) => { lidas.AddRange(linhas); return Task.CompletedTask; },
             CancellationToken.None);
@@ -80,7 +83,7 @@ public class VarredorSerPorExportTests
         var ser = new SerFalso(populacao);
 
         var lidas = new List<SerLinhaGrade>();
-        var resultado = await Varredor(ser).VarrerAsync(
+        var resultado = await Varredor().VarrerAsync(ser,
             SituacaoSer.EmFila, dia, dia,
             (linhas, _, _) => { lidas.AddRange(linhas); return Task.CompletedTask; },
             CancellationToken.None);
@@ -102,7 +105,7 @@ public class VarredorSerPorExportTests
         var dia = new DateOnly(2026, 2, 10);
         var ser = new SerFalso(Popular(dia, 700, TipoRecursoSer.Consulta, inicioId: 1_000_000));
 
-        var resultado = await Varredor(ser).VarrerAsync(
+        var resultado = await Varredor().VarrerAsync(ser,
             SituacaoSer.EmFila, dia, dia,
             (_, _, _) => Task.CompletedTask,
             CancellationToken.None);
@@ -123,7 +126,7 @@ public class VarredorSerPorExportTests
         var cursores = new List<DateOnly>();
         var aplicadasAteOCursor = 0;
 
-        await Varredor(ser).VarrerAsync(
+        await Varredor().VarrerAsync(ser,
             SituacaoSer.EmFila, new DateOnly(2026, 1, 1), new DateOnly(2026, 2, 9),
             (linhas, cursor, _) =>
             {
@@ -160,6 +163,80 @@ public class VarredorSerPorExportTests
         await acao.Should().ThrowAsync<InvalidOperationException>().WithMessage("*ALTA*");
     }
 
+    // ------------------------------------------------------------------ ALTA (tela de 100)
+
+    /// <summary>
+    /// ALTA vem da tela de Solicitação, que corta em 100 e <b>não avisa</b>. É o recorte que em
+    /// 07/08/2026 perdeu 853 registros em produção declarando cobertura completa: nenhum ID pode
+    /// faltar, e a rodada não pode terminar sem nada declarado.
+    /// </summary>
+    [Fact]
+    public async Task Alta_nao_perde_ninguem_com_o_teto_de_100_sem_aviso()
+    {
+        // 3.300 registros: a ordem de grandeza real da ALTA de Maricá (3.307 no SER em 08/08).
+        var populacao = PopularPorDia(new DateOnly(2020, 1, 1), dias: 330, porDia: 10);
+        var ser = new SerFalso(populacao, teto: 100, avisaPorEscrito: false);
+
+        var lidas = new List<SerLinhaGrade>();
+        var resultado = await Varredor().VarrerAsync(ser,
+            SituacaoSer.Alta, new DateOnly(2020, 1, 1), new DateOnly(2020, 11, 25),
+            (linhas, _, _) => { lidas.AddRange(linhas); return Task.CompletedTask; },
+            CancellationToken.None);
+
+        lidas.Select(l => l.IdSer).Distinct()
+            .Should().BeEquivalentTo(populacao.Select(p => p.IdSer).Distinct());
+        resultado.Truncadas.Should().BeEmpty();
+        ser.LotesEntregues.Should().Contain(l => l.Truncado, "o teto precisa ter sido exercitado");
+    }
+
+    /// <summary>
+    /// Sem aviso escrito, um lote que volta CHEIO é indistinguível de um recorte que por acaso tem
+    /// exatamente o teto. O varredor tem que tratar como cortado — errar para o lado de fatiar à
+    /// toa é barato; errar para o lado de concluir cobertura é o que custou a base.
+    /// </summary>
+    [Fact]
+    public async Task Alta_trata_lote_exatamente_no_teto_como_cortado()
+    {
+        var dia = new DateOnly(2020, 5, 10);
+        var ser = new SerFalso(
+            Popular(dia, 100, TipoRecursoSer.Consulta, inicioId: 900_000),
+            teto: 100, avisaPorEscrito: false);
+
+        var resultado = await Varredor().VarrerAsync(ser,
+            SituacaoSer.Alta, dia, dia,
+            (_, _, _) => Task.CompletedTask,
+            CancellationToken.None);
+
+        resultado.Truncadas.Should().ContainSingle()
+            .Which.Tipo.Should().Be(TipoRecursoSer.Consulta);
+    }
+
+    /// <summary>
+    /// Perto do fim do intervalo a janela já vem grudada em <c>fim</c>. Partir ao meio um passo
+    /// grande que não encosta nela repetia o MESMO lote cortado várias vezes contra a produção do
+    /// Estado sem trazer nada novo — e com teto de 100 esse desperdício é 5× mais frequente.
+    /// </summary>
+    [Fact]
+    public async Task Encolhimento_nao_repete_o_mesmo_recorte_no_fim_da_janela()
+    {
+        var inicio = new DateOnly(2020, 1, 1);
+        var fim = new DateOnly(2020, 1, 3);
+        var ser = new SerFalso(PopularPorDia(inicio, dias: 3, porDia: 60), teto: 100, avisaPorEscrito: false);
+
+        await Varredor().VarrerAsync(ser,
+            SituacaoSer.Alta, inicio, fim,
+            (_, _, _) => Task.CompletedTask,
+            CancellationToken.None);
+
+        var repetidos = ser.FiltrosPedidos
+            .GroupBy(f => (f.DataSolicitacaoInicio, f.DataSolicitacaoFim, f.Tipo))
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
+
+        repetidos.Should().BeEmpty("nenhum recorte idêntico pode ser pedido duas vezes ao SER");
+    }
+
     // ------------------------------------------------------------------ fakes
 
     private sealed record LinhaFalsa(string IdSer, DateOnly Data, TipoRecursoSer Tipo);
@@ -194,9 +271,12 @@ public class VarredorSerPorExportTests
     /// ordenação do export nunca foi provada, e um varredor que só funcione se o SER cortar
     /// ordenado por data seria correto no teste e furado em produção.</para>
     /// </summary>
-    private sealed class SerFalso(List<LinhaFalsa> populacao) : ISerExportLeitor
+    private sealed class SerFalso(List<LinhaFalsa> populacao, int teto = 500, bool avisaPorEscrito = true)
+        : ISerExportLeitor
     {
-        private const int Teto = 500;
+        public int TetoPorLote { get; } = teto;
+
+        public string Tela => avisaPorEscrito ? "de Histórico" : "de Solicitação";
 
         public List<LinhaFalsa> Populacao { get; } = populacao;
         public List<SerFiltroExport> FiltrosPedidos { get; } = [];
@@ -215,9 +295,16 @@ public class VarredorSerPorExportTests
                 .OrderBy(p => p.IdSer.GetHashCode())
                 .ToList();
 
-            var truncado = casam.Count > Teto;
+            // Duas telas, dois jeitos de saber que cortou. A de Histórico AVISA por escrito — e
+            // por isso sabe distinguir "exatamente o teto" de "mais que o teto". A de Solicitação
+            // não avisa nada: o único sinal é o lote voltar cheio, então lote no teto é tratado
+            // como cortado mesmo quando por acaso era o total exato.
+            var truncado = avisaPorEscrito
+                ? casam.Count > TetoPorLote
+                : casam.Count >= TetoPorLote;
+
             var linhas = casam
-                .Take(Teto)
+                .Take(TetoPorLote)
                 .Select(p => new SerLinhaGrade
                 {
                     IdSer = p.IdSer,

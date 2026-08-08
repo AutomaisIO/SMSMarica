@@ -79,13 +79,21 @@ li{margin:3px 0}p,li{max-width:75ch}
 <tr><td>Id Solicitação</td><td><code>form0:idSolicitacao</code></td><td>texto</td></tr>
 <tr><td>Datas (3 pares)</td><td><code>form0:dt{Inicial,Final}{Solicitacao,ConsultaExame,Agendamento}InputDate</code></td><td><code>dd/mm/aaaa</code></td></tr>
 <tr><td><strong>Pesquisar</strong></td><td><code>form0:j_id96</code></td><td><code>A4J.AJAX.Submit('form0', …)</code></td></tr>
-<tr><td>Exportar Excel</td><td><code>form0:btnExport</code></td><td>não avaliado</td></tr>
+<tr><td><strong>Exportar</strong></td><td><code>form0:btnExport</code></td><td><code>jsfcljs</code> (Mojarra) — <strong>POST comum, sem <code>AJAXREQUEST</code></strong>. É por aqui que ALTA é lida (§4.4)</td></tr>
 </tbody></table></div>
 <p><strong>Situação é obrigatória</strong> — buscar sem ela devolve zero.</p>
 <p>Grade <code>form0:listagem</code>, 14 colunas: ID, Tipo, Recurso, Data da Solicitação, Paciente, Idade, CPF, CNS, CID, Solicitante, Município Solicitante, Agendado para, Situação, Ação.</p>
 <h3>4.1 Paginação e o teto de 100</h3>
 <p><code>rich:datascroller</code> <code>form0:sc1</code>: POST com <code>ajaxSingle=form0:sc1</code> + <code>form0:sc1=&lt;n&gt;</code>. <strong>20 por página, 5 páginas.</strong> E corta <strong>em silêncio</strong>: não há aviso nenhum de que existe mais coisa além da 5ª página.</p>
-<p>&gt; <strong>Esta tela deixou de ser o caminho da varredura.</strong> Desde 06/08/2026 a grade é lida &gt; pela tela de Histórico (§4.3), que devolve 500 por lote e <strong>avisa</strong> quando trunca. &gt; A tela de Solicitação continua sendo usada para duas coisas que só ela faz: a &gt; situação <strong>ALTA</strong> e o <strong>Histórico da Solicitação</strong> (§5).</p>
+<p>&gt; <strong>Esta tela deixou de ser o caminho da varredura.</strong> Desde 06/08/2026 a grade é lida &gt; pela tela de Histórico (§4.3), que devolve 500 por lote e <strong>avisa</strong> quando trunca. &gt; A tela de Solicitação continua sendo usada para duas coisas que só ela faz: a &gt; situação <strong>ALTA</strong> e o <strong>Histórico da Solicitação</strong> (§5). &gt; &gt; <strong>E desde 08/08/2026 nem a ALTA passa por esta paginação</strong> — ela é lida pelo <em>Exportar</em> &gt; desta mesma tela (§4.4). A paginação sobrou só para a consulta direta de diagnóstico.</p>
+<h4>A paginação perdia registro em silêncio</h4>
+<p>Medido em produção em 07/08/2026: a varredura terminou <strong><code>fatias_truncadas = 0</code></strong> — afirmando cobertura completa — com <strong>853 registros de ALTA faltando</strong> (2.454 lidos contra 3.307 no SER). A detecção do teto funcionava (a Alta acusa as 5 páginas corretamente); quem perdia era o trajeto de página em página, que tem dois caminhos de perda calada:</p>
+<ol>
+<li>o laço interrompe <strong>sem avisar</strong> quando uma página volta vazia (<code>if (linhas.Count == 0) break</code>);</li>
+<li>a contagem de páginas devolve <strong>zero</strong> quando o paginador não é achado no HTML, e aí a leitura</li>
+</ol>
+<p>   fica só na primeira página — 20 de 100.</p>
+<p>Por isso a leitura passou a ser <strong>sempre por arquivo</strong>, nas duas telas.</p>
 <h3>4.2 O menu <em>Opções</em> muda conforme a situação</h3>
 <div class="tw"><table><thead><tr><th>Situação</th><th>Itens</th></tr></thead><tbody>
 <tr><td>Em fila</td><td>Visualizar, Editar, <strong>Histórico</strong>, Cancelar, Registrar FollowUP</td></tr>
@@ -180,6 +188,27 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p>   (outro login do mesmo operador), o SER responde a tela de login com HTTP 200 no lugar    do arquivo.</p>
 <p><strong>Varredura:</strong> janela adaptativa sobre <code>Data da Solicitação</code>, da esquerda para a direita — tenta a maior janela, encolhe pela metade enquanto vier o aviso de corte, aplica o lote e avança. Dia único que ainda passa de 500 é fatiado por Tipo; o que nem assim couber vira fatia truncada declarada.</p>
 <p>&gt; <strong>Por que não pular para <code>max(data)</code> do lote:</strong> só seria correto se o corte de 500 fosse &gt; aplicado <em>depois</em> de ordenar por data da solicitação, e isso <strong>nunca foi verificado</strong>. Se &gt; o SER cortar em qualquer outra ordem, o salto passa por cima das solicitações antigas que &gt; ficaram de fora do lote — em silêncio. É a mesma classe de perda invisível que custou &gt; ~35% da carga inicial. Se um dia a ordenação for confirmada, é trocar só o laço.</p>
+<h3>4.4 O export da tela de Solicitação — o caminho da ALTA (medido 08/08/2026)</h3>
+<p>A tela de Solicitação também tem <code>form0:btnExport</code>, e é assim que <strong>ALTA</strong> é varrida: ela é a única situação que o combo da tela de Histórico não oferece.</p>
+<p><strong>O teto de 100 vale para o arquivo também</strong> — o export <em>não</em> escapa dele. Medido:</p>
+<div class="tw"><table><thead><tr><th>recorte</th><th>linhas no arquivo</th><th>registros com ID</th></tr></thead><tbody>
+<tr><td>ALTA, sem data</td><td>300</td><td><strong>100</strong></td></tr>
+<tr><td>ALTA, <code>Tipo=CONSULTA</code></td><td>300</td><td><strong>100</strong></td></tr>
+<tr><td>EM_FILA, sem data</td><td>100</td><td><strong>100</strong></td></tr>
+</tbody></table></div>
+<p>&gt; <strong>A contagem crua do arquivo mente.</strong> As 300 linhas da ALTA são 100 registros: o export quebra &gt; a coluna <em>Agendado para</em> — que na tela é <code>data - UNIDADE</code> — em até <strong>três linhas</strong>, uma com a &gt; data, uma só com o hífen, outra só com a unidade. O parser junta os fragmentos de volta &gt; (<code>PlanilhaSerParser.AnexarContinuacao</code>); sem isso a unidade se perderia, e para ALTA ela não &gt; vem de mais lugar nenhum. É a regra de sempre: <strong>nunca inferir por contagem de linhas</strong> — eu &gt; mesmo conclui "ignora o teto" na primeira leitura, e estava errado.</p>
+<p><strong>Por que trocar paginação por arquivo se o teto é o mesmo:</strong> o ganho não é cobertura, é <strong>uma requisição no lugar de cinco</strong>, sem os dois caminhos de perda silenciosa da paginação (§4.1).</p>
+<p>Colunas (14): ID, Tipo, Recurso, Data da Solicitação, Paciente, Idade, <strong>CPF</strong>, CNS, CID, <strong>Solicitante</strong>, <strong>Município Solicitante</strong>, Agendado para, Situação, Ação. As três em negrito a tela de Histórico <strong>não</strong> tem — e foram elas que provaram o escopo: 100 de 100 linhas de ALTA vieram com <code>GESTOR SMS MARICA</code> / <code>MARICA</code>. <strong>Esta tela é escopada pela credencial do operador</strong>, então aqui não há amarração de autocomplete a fazer (ela nem tem campo de solicitante).</p>
+<p>Duas diferenças de comportamento em relação à tela de Histórico:</p>
+<ul>
+<li><strong>A busca devolve a grade no próprio corpo</strong> — sem o redirect A4J. O motor ainda segue o</li>
+</ul>
+<p>  redirect se ele aparecer, para o dia em que a SES-RJ mudar isso.</p>
+<ul>
+<li><strong>O filtro de Tipo FUNCIONA aqui.</strong> Medido: ALTA sem filtro traz 37 CONSULTA + 63 EXAME; com</li>
+</ul>
+<p>  <code>Tipo=CONSULTA</code> traz 100 CONSULTA, conjunto diferente. Na tela de Histórico o mesmo combo é   decorativo (§4.3) — e é isso que torna o corte por Tipo confiável como último recurso da   bisecção <strong>apenas aqui</strong>.</p>
+<p><strong>Sem aviso escrito de corte.</strong> A caixa <code>form0:messages</code> volta vazia mesmo com a ALTA estourando. O único sinal é o lote voltar <strong>cheio</strong>, e o motor trata lote cheio como cortado: é inferência, mas na direção segura — no máximo fatia à toa. Concluir "completo" de um lote cheio é que seria a perda invisível de novo.</p>
 <h2>5. Tela de histórico</h2>
 <p>Chega por redirect A4J embutido no corpo (não no header):</p>
 <p>``<code>html &lt;meta name="Location" content="/ser/pages/consultas-exames/solicitacao/solicitar-consulta-historico.seam?cid=16453" /&gt; </code>``</p>

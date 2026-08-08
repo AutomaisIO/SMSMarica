@@ -15,14 +15,19 @@ public delegate Task AplicarLoteSer(
     IReadOnlyList<SerLinhaGrade> linhas, DateOnly cursorConcluido, CancellationToken cancellationToken);
 
 /// <summary>
-/// Varredura da grade pelo <b>export de 500</b> da tela de Histórico — substitui a paginação de 20
-/// em 20 da tela de Solicitação (ADR-0042 §5, revisto em 06/08/2026).
+/// Varredura da grade <b>por arquivo exportado</b> — nunca por paginação (ADR-0042 §5, revisto em
+/// 06 e 08/08/2026).
+///
+/// <para><b>Serve as duas telas do SER.</b> A de Histórico devolve 500 por lote e avisa por escrito
+/// quando corta: é o caminho das seis situações que ela oferece. A de Solicitação devolve 100 e não
+/// avisa nada, mas é a <b>única com ALTA</b>. Em ambas o motor baixa o arquivo em vez de paginar —
+/// a leitura de 20 em 20 tinha caminhos de perda silenciosa e foi por eles que a varredura de
+/// 07/08/2026 perdeu 853 registros de ALTA <i>declarando cobertura completa</i>.</para>
 ///
 /// <para><b>Janela adaptativa sobre <c>Data da Solicitação</c>, varrendo da esquerda para a
-/// direita.</b> Tenta a maior janela possível; quando o SER avisa que cortou em 500, corta a janela
-/// ao meio e refaz <i>sem avançar</i>; quando cabe, aplica o lote, avança o cursor e vai
-/// aumentando a janela de novo. A data da solicitação é imutável, então as mesmas fatias saem
-/// iguais entre execuções.</para>
+/// direita.</b> Tenta a maior janela possível; quando o lote vem cortado, parte a janela ao meio e
+/// refaz <i>sem avançar</i>; quando cabe, aplica o lote, avança o cursor e vai aumentando a janela
+/// de novo. A data da solicitação é imutável, então as mesmas fatias saem iguais entre execuções.</para>
 ///
 /// <para><b>Por que não o cursor por <c>max(data)</c> do lote</b> (a ideia original do handoff):
 /// ele só é correto se o corte de 500 for feito <i>depois</i> de ordenar por data da solicitação —
@@ -32,17 +37,18 @@ public delegate Task AplicarLoteSer(
 /// algumas requisições a mais e é correta sob qualquer ordenação; se um dia a ordenação for
 /// confirmada, dá para trocar só este laço.</para>
 /// </summary>
-public sealed class VarredorSerPorExport(
-    ISerExportLeitor leitor,
-    ILogger<VarredorSerPorExport> logger)
+public sealed class VarredorSerPorExport(ILogger<VarredorSerPorExport> logger)
 {
-    /// <summary>Teto declarado pela tela de Histórico ("retorno limitado em 500 resultados").</summary>
-    private const int TetoExport = 500;
-
-    /// <summary>Abaixo disso o lote está folgado e a janela pode dobrar.</summary>
-    private const int FolgaParaCrescer = TetoExport / 2;
-
+    /// <summary>
+    /// Varre uma situação inteira pelo export da tela que <paramref name="leitor"/> representa.
+    ///
+    /// <para>O leitor entra por parâmetro (e não pelo construtor) porque a varredura usa <b>duas</b>
+    /// telas: a de Histórico para as seis situações que ela oferece, e a de Solicitação para ALTA,
+    /// que só existe lá. A lógica de janela é a mesma; o que muda é o teto e como cada tela avisa
+    /// que cortou — uma por escrito, a outra só devolvendo o lote cheio.</para>
+    /// </summary>
     public async Task<ResultadoVarreduraSer> VarrerAsync(
+        ISerExportLeitor leitor,
         SituacaoSer situacao,
         DateOnly inicio,
         DateOnly fim,
@@ -51,6 +57,9 @@ public sealed class VarredorSerPorExport(
         ResultadoVarreduraSer? acumulado = null)
     {
         var resultado = acumulado ?? new ResultadoVarreduraSer();
+
+        // Abaixo da metade do teto o lote está folgado e a janela pode dobrar.
+        var folgaParaCrescer = leitor.TetoPorLote / 2;
 
         var cursor = inicio;
         var passo = DiasEntre(inicio, fim);
@@ -61,15 +70,20 @@ public sealed class VarredorSerPorExport(
             cancellationToken.ThrowIfCancellationRequested();
 
             var janelaFim = Menor(fim, cursor.AddDays(passo - 1));
-            var lote = await ExportarAsync(situacao, cursor, janelaFim, null, resultado, cancellationToken);
+            var lote = await ExportarAsync(leitor, situacao, cursor, janelaFim, null, resultado, cancellationToken);
 
             if (lote.Truncado)
             {
                 if (janelaFim > cursor)
                 {
                     // Não avança: a janela inteira é refeita menor, senão o pedaço que não coube
-                    // nos 500 ficaria para trás sem ninguém notar.
-                    passo = Math.Max(1, passo / 2);
+                    // no teto ficaria para trás sem ninguém notar.
+                    //
+                    // O passo é primeiro CLAMPADO na janela real antes de ser partido ao meio:
+                    // perto do fim do intervalo `janelaFim` já vem grudado em `fim`, e partir um
+                    // passo grande que não encosta na janela repetia o MESMO export truncado
+                    // várias vezes contra a produção do Estado sem trazer nada novo.
+                    passo = Math.Max(1, DiasEntre(cursor, janelaFim) / 2);
                     logger.LogInformation(
                         "SER/export: corte em {Situacao} {Inicio:dd/MM/yyyy}..{Fim:dd/MM/yyyy} — "
                         + "encolhendo a janela para {Passo} dia(s).",
@@ -77,8 +91,8 @@ public sealed class VarredorSerPorExport(
                     continue;
                 }
 
-                // Um único dia estoura 500: só resta fatiar por Tipo.
-                await VarrerDiaPorTipoAsync(situacao, cursor, aplicar, resultado, cancellationToken);
+                // Um único dia estoura o teto: só resta fatiar por Tipo.
+                await VarrerDiaPorTipoAsync(leitor, situacao, cursor, aplicar, resultado, cancellationToken);
                 cursor = cursor.AddDays(1);
                 passo = 1;
                 await aplicar([], cursor, cancellationToken);
@@ -90,7 +104,7 @@ public sealed class VarredorSerPorExport(
 
             // Trecho folgado (ou vazio) da linha do tempo: dobra a janela para não gastar uma
             // requisição por semana em 2022, quando o volume era baixo.
-            if (lote.Linhas.Count <= FolgaParaCrescer)
+            if (lote.Linhas.Count <= folgaParaCrescer)
             {
                 passo = Math.Min(Math.Max(passo * 2, 1), passoMaximo);
             }
@@ -100,11 +114,17 @@ public sealed class VarredorSerPorExport(
     }
 
     /// <summary>
-    /// Último recurso: o dia inteiro não coube em 500, então lê CONSULTA e EXAME separados. O que
+    /// Último recurso: o dia inteiro não coube no teto, então lê CONSULTA e EXAME separados. O que
     /// ainda assim não couber vira <see cref="FatiaTruncada"/> — registros <b>não lidos</b>,
     /// declarados, que impedem a rodada de ser marcada como Concluída.
+    ///
+    /// <para><b>Só é confiável na tela de Solicitação.</b> Na de Histórico o combo de Tipo é
+    /// decorativo (medido: com CONSULTA ela devolve linhas de EXAME), então lá esta última fatia
+    /// tende a não separar nada e o recorte acaba declarado truncado — que é o comportamento
+    /// correto: declarar perda em vez de fingir cobertura.</para>
     /// </summary>
     private async Task VarrerDiaPorTipoAsync(
+        ISerExportLeitor leitor,
         SituacaoSer situacao,
         DateOnly dia,
         AplicarLoteSer aplicar,
@@ -112,12 +132,12 @@ public sealed class VarredorSerPorExport(
         CancellationToken cancellationToken)
     {
         logger.LogInformation(
-            "SER/export: {Dia:dd/MM/yyyy} ({Situacao}) passa de 500 num dia só — fatiando por Tipo.",
-            dia, situacao);
+            "SER/export: {Dia:dd/MM/yyyy} ({Situacao}) passa de {Teto} num dia só — fatiando por Tipo.",
+            dia, situacao, leitor.TetoPorLote);
 
         foreach (var tipo in new[] { TipoRecursoSer.Consulta, TipoRecursoSer.Exame })
         {
-            var lote = await ExportarAsync(situacao, dia, dia, tipo, resultado, cancellationToken);
+            var lote = await ExportarAsync(leitor, situacao, dia, dia, tipo, resultado, cancellationToken);
 
             // O lote é aplicado mesmo truncado: o que foi lido é real e vale espelhar. O que se
             // perde fica declarado na fatia truncada abaixo.
@@ -127,13 +147,14 @@ public sealed class VarredorSerPorExport(
 
             resultado.Truncadas.Add(new FatiaTruncada(situacao, dia, tipo));
             logger.LogWarning(
-                "SER/export: FATIA TRUNCADA — {Situacao} {Dia:dd/MM/yyyy} tipo={Tipo} passa de 500 "
-                + "registros. Há solicitações NÃO lidas nesse recorte.",
-                situacao, dia, tipo);
+                "SER/export: FATIA TRUNCADA — {Situacao} {Dia:dd/MM/yyyy} tipo={Tipo} passa de "
+                + "{Teto} registros na tela {Tela}. Há solicitações NÃO lidas nesse recorte.",
+                situacao, dia, tipo, leitor.TetoPorLote, leitor.Tela);
         }
     }
 
     private async Task<LoteExportSer> ExportarAsync(
+        ISerExportLeitor leitor,
         SituacaoSer situacao,
         DateOnly inicio,
         DateOnly fim,

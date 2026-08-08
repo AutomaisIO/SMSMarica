@@ -99,7 +99,7 @@ O motor guarda dois HTMLs: o último **completo** (fonte dos campos) e o último
 | Id Solicitação | `form0:idSolicitacao` | texto |
 | Datas (3 pares) | `form0:dt{Inicial,Final}{Solicitacao,ConsultaExame,Agendamento}InputDate` | `dd/mm/aaaa` |
 | **Pesquisar** | `form0:j_id96` | `A4J.AJAX.Submit('form0', …)` |
-| Exportar Excel | `form0:btnExport` | não avaliado |
+| **Exportar** | `form0:btnExport` | `jsfcljs` (Mojarra) — **POST comum, sem `AJAXREQUEST`**. É por aqui que ALTA é lida (§4.4) |
 
 **Situação é obrigatória** — buscar sem ela devolve zero.
 
@@ -117,6 +117,22 @@ existe mais coisa além da 5ª página.
 > pela tela de Histórico (§4.3), que devolve 500 por lote e **avisa** quando trunca.
 > A tela de Solicitação continua sendo usada para duas coisas que só ela faz: a
 > situação **ALTA** e o **Histórico da Solicitação** (§5).
+>
+> **E desde 08/08/2026 nem a ALTA passa por esta paginação** — ela é lida pelo *Exportar*
+> desta mesma tela (§4.4). A paginação sobrou só para a consulta direta de diagnóstico.
+
+#### A paginação perdia registro em silêncio
+
+Medido em produção em 07/08/2026: a varredura terminou **`fatias_truncadas = 0`** — afirmando
+cobertura completa — com **853 registros de ALTA faltando** (2.454 lidos contra 3.307 no SER).
+A detecção do teto funcionava (a Alta acusa as 5 páginas corretamente); quem perdia era o
+trajeto de página em página, que tem dois caminhos de perda calada:
+
+1. o laço interrompe **sem avisar** quando uma página volta vazia (`if (linhas.Count == 0) break`);
+2. a contagem de páginas devolve **zero** quando o paginador não é achado no HTML, e aí a leitura
+   fica só na primeira página — 20 de 100.
+
+Por isso a leitura passou a ser **sempre por arquivo**, nas duas telas.
 
 ### 4.2 O menu *Opções* muda conforme a situação
 
@@ -286,6 +302,49 @@ fatia truncada declarada.
 > o SER cortar em qualquer outra ordem, o salto passa por cima das solicitações antigas que
 > ficaram de fora do lote — em silêncio. É a mesma classe de perda invisível que custou
 > ~35% da carga inicial. Se um dia a ordenação for confirmada, é trocar só o laço.
+
+### 4.4 O export da tela de Solicitação — o caminho da ALTA (medido 08/08/2026)
+
+A tela de Solicitação também tem `form0:btnExport`, e é assim que **ALTA** é varrida: ela é a
+única situação que o combo da tela de Histórico não oferece.
+
+**O teto de 100 vale para o arquivo também** — o export *não* escapa dele. Medido:
+
+| recorte | linhas no arquivo | registros com ID |
+|---|---|---|
+| ALTA, sem data | 300 | **100** |
+| ALTA, `Tipo=CONSULTA` | 300 | **100** |
+| EM_FILA, sem data | 100 | **100** |
+
+> **A contagem crua do arquivo mente.** As 300 linhas da ALTA são 100 registros: o export quebra
+> a coluna *Agendado para* — que na tela é `data - UNIDADE` — em até **três linhas**, uma com a
+> data, uma só com o hífen, outra só com a unidade. O parser junta os fragmentos de volta
+> (`PlanilhaSerParser.AnexarContinuacao`); sem isso a unidade se perderia, e para ALTA ela não
+> vem de mais lugar nenhum. É a regra de sempre: **nunca inferir por contagem de linhas** — eu
+> mesmo conclui "ignora o teto" na primeira leitura, e estava errado.
+
+**Por que trocar paginação por arquivo se o teto é o mesmo:** o ganho não é cobertura, é **uma
+requisição no lugar de cinco**, sem os dois caminhos de perda silenciosa da paginação (§4.1).
+
+Colunas (14): ID, Tipo, Recurso, Data da Solicitação, Paciente, Idade, **CPF**, CNS, CID,
+**Solicitante**, **Município Solicitante**, Agendado para, Situação, Ação. As três em negrito a
+tela de Histórico **não** tem — e foram elas que provaram o escopo: 100 de 100 linhas de ALTA
+vieram com `GESTOR SMS MARICA` / `MARICA`. **Esta tela é escopada pela credencial do operador**,
+então aqui não há amarração de autocomplete a fazer (ela nem tem campo de solicitante).
+
+Duas diferenças de comportamento em relação à tela de Histórico:
+
+- **A busca devolve a grade no próprio corpo** — sem o redirect A4J. O motor ainda segue o
+  redirect se ele aparecer, para o dia em que a SES-RJ mudar isso.
+- **O filtro de Tipo FUNCIONA aqui.** Medido: ALTA sem filtro traz 37 CONSULTA + 63 EXAME; com
+  `Tipo=CONSULTA` traz 100 CONSULTA, conjunto diferente. Na tela de Histórico o mesmo combo é
+  decorativo (§4.3) — e é isso que torna o corte por Tipo confiável como último recurso da
+  bisecção **apenas aqui**.
+
+**Sem aviso escrito de corte.** A caixa `form0:messages` volta vazia mesmo com a ALTA estourando.
+O único sinal é o lote voltar **cheio**, e o motor trata lote cheio como cortado: é inferência,
+mas na direção segura — no máximo fatia à toa. Concluir "completo" de um lote cheio é que seria
+a perda invisível de novo.
 
 ## 5. Tela de histórico
 

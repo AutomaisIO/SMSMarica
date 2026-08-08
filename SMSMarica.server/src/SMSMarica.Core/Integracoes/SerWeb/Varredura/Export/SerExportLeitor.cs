@@ -20,6 +20,18 @@ namespace SMSMarica.Core.Integracoes.SerWeb.Varredura.Export;
 /// </summary>
 public interface ISerExportLeitor
 {
+    /// <summary>
+    /// Quantos registros a tela devolve por lote antes de cortar.
+    ///
+    /// <para>Existe porque a varredura roda sobre <b>duas</b> telas com tetos diferentes — 500 na
+    /// de Histórico, 100 na de Solicitação (a única com ALTA) — e o varredor precisa saber quando
+    /// a janela está folgada o bastante para crescer.</para>
+    /// </summary>
+    int TetoPorLote { get; }
+
+    /// <summary>Nome da tela, para as mensagens de fatia truncada dizerem de onde veio o corte.</summary>
+    string Tela { get; }
+
     Task PrepararAsync(CancellationToken cancellationToken);
 
     /// <summary>Pesquisa a fatia e baixa a planilha. Duas requisições por lote.</summary>
@@ -38,6 +50,13 @@ public sealed class SerExportLeitor(
     private const string CampoDataInicio = "form0:dataInicialInputDate";
     private const string CampoDataFim = "form0:dataFinalInputDate";
     private const string CampoUnidadeSolicitante = "form0:suggUnidadeSol";
+
+    /// <summary>Teto declarado pela própria tela ("retorno limitado em 500 resultados"). Aqui ele
+    /// é só a régua de folga do varredor: quem decide se o lote foi cortado é o AVISO, nunca a
+    /// contagem — 500 exatos podem ser o total real.</summary>
+    public int TetoPorLote => 500;
+
+    public string Tela => "de Histórico";
 
     /// <summary>Container A4J default (<c>A4J.AJAX.VIEW_ROOT_ID</c>). É o que o navegador manda em
     /// <c>AJAXREQUEST</c> nas requisições do suggestionbox — o init do componente não passa

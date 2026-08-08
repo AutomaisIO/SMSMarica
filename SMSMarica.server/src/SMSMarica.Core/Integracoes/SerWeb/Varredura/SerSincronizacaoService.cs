@@ -37,7 +37,7 @@ public sealed class SerSincronizacaoService(
     SmsMaricaDbContext db,
     ISerLeitorService leitor,
     ISerExportLeitor exportLeitor,
-    VarredorSer varredor,
+    ISerExportSolicitacaoLeitor exportSolicitacaoLeitor,
     VarredorSerPorExport varredorExport,
     ILogger<SerSincronizacaoService> logger) : ISerSincronizacaoService
 {
@@ -218,23 +218,16 @@ public sealed class SerSincronizacaoService(
 
             await AplicarAsync([], de, cancellationToken);
 
-            ResultadoVarreduraSer resultado;
+            // ALTA só existe no combo da tela de Solicitação (teto de 100, sem aviso de corte); as
+            // outras seis vêm da de Histórico, que devolve 500 e avisa por escrito. As duas são
+            // lidas por ARQUIVO: a leitura paginada foi aposentada em 08/08/2026 depois de perder
+            // 853 registros de ALTA declarando cobertura completa.
+            var leitorDaVez = situacao == SituacaoSer.Alta ? exportSolicitacaoLeitor : exportLeitor;
 
-            if (situacao == SituacaoSer.Alta)
-            {
-                await leitor.PrepararAsync(cancellationToken);
-                resultado = await varredor.VarrerAsync(situacao, de, fim, cancellationToken);
-                execucao.Paginas += resultado.Paginas;
-                await AplicarAsync([.. resultado.Solicitacoes.Values], fim.AddDays(1), cancellationToken);
-                RegistrarTruncadas(execucao, resultado, teto: 100, tela: "de Solicitação");
-            }
-            else
-            {
-                await exportLeitor.PrepararAsync(cancellationToken);
-                resultado = await varredorExport.VarrerAsync(
-                    situacao, de, fim, AplicarAsync, cancellationToken);
-                RegistrarTruncadas(execucao, resultado, teto: 500, tela: "de Histórico");
-            }
+            await leitorDaVez.PrepararAsync(cancellationToken);
+            var resultado = await varredorExport.VarrerAsync(
+                leitorDaVez, situacao, de, fim, AplicarAsync, cancellationToken);
+            RegistrarTruncadas(execucao, resultado, leitorDaVez);
 
             execucao.Buscas += resultado.Buscas;
             execucao.SolicitacoesEncontradas += vistos.Count;
@@ -245,8 +238,11 @@ public sealed class SerSincronizacaoService(
     /// <summary>Fatia que estourou o teto = registros NÃO lidos. Fica declarada, e a rodada vira
     /// Parcial em vez de Concluída.</summary>
     private void RegistrarTruncadas(
-        SerVarreduraExecucao execucao, ResultadoVarreduraSer resultado, int teto, string tela)
+        SerVarreduraExecucao execucao, ResultadoVarreduraSer resultado, ISerExportLeitor leitor)
     {
+        var teto = leitor.TetoPorLote;
+        var tela = leitor.Tela;
+
         foreach (var fatia in resultado.Truncadas)
         {
             execucao.FatiasTruncadas++;
@@ -338,7 +334,16 @@ public sealed class SerSincronizacaoService(
                 // cancelada: ao voltar para EmFila, a trilha inteira é relida e deduplicada.
                 precisamHistorico.Add((idSer, situacao, "mudou_situacao"));
             }
-            else if (!string.Equals(agendadoAnterior, linha.AgendadoPara, StringComparison.Ordinal)
+            // Compara pela DATA, não pelo texto cru: as duas telas escrevem o mesmo agendamento de
+            // formas diferentes ("28/01/2020 13:15 - HOSPITAL X" na de Solicitação, "28/01/2020"
+            // na de Histórico). Comparando texto, toda linha lida por uma tela e relida pela outra
+            // virava "remarcação" — 7.388 gatilhos falsos numa rodada só em 07/08/2026, cada um
+            // ainda enfileirando uma releitura de histórico de ~0,6 s contra o SER. Quem decide se
+            // houve remarcação é a data.
+            else if (!string.Equals(
+                         DataDoAgendamento(agendadoAnterior),
+                         DataDoAgendamento(linha.AgendadoPara),
+                         StringComparison.Ordinal)
                      && !string.IsNullOrWhiteSpace(linha.AgendadoPara))
             {
                 RegistrarGatilho(execucao, atual, TipoGatilhoSer.MudancaAgendamento,
@@ -653,6 +658,20 @@ public sealed class SerSincronizacaoService(
         if (string.IsNullOrWhiteSpace(v)) return null;
         var digitos = new string(v.Where(char.IsDigit).ToArray());
         return digitos.Length == 0 ? null : digitos;
+    }
+
+    /// <summary>
+    /// A data <c>dd/MM/yyyy</c> de dentro do texto de agendamento, ou <c>null</c>.
+    ///
+    /// <para>Serve só para COMPARAR duas leituras do mesmo agendamento — o que é gravado continua
+    /// sendo o texto que a tela devolveu, com hora e unidade quando ela os tiver.</para>
+    /// </summary>
+    internal static string? DataDoAgendamento(string? texto)
+    {
+        var t = texto?.Trim();
+        if (string.IsNullOrEmpty(t)) return null;
+        var m = System.Text.RegularExpressions.Regex.Match(t, @"\d{2}/\d{2}/\d{4}");
+        return m.Success ? m.Value : t;
     }
 
     private static DateOnly? ParseData(string? texto) =>

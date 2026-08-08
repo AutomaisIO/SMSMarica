@@ -84,6 +84,37 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p>&gt; <strong>A limpeza é SQL manual</strong> (não há caminho no código; mitigante: as FKs têm <code>ON DELETE &gt; CASCADE</code>, então o DELETE em <code>ser_solicitacao</code> arrasta eventos e gatilhos). E antes de rodar a &gt; recarga inteira, resolver os achados marcados <strong>[recarga]</strong> no §2b — em especial o gatilho &gt; reincidente, que envenena a varredura em loop.</p>
 <h2>2b. Repasse de 07/08/2026 — revisão adversarial do stack</h2>
 <p>33 achados brutos, 28 confirmados por verificação adversarial (5 refutados). <strong>Corrigidos no mesmo dia</strong> (todos com teste): busca sem redirect A4J era warning e virava "lote vazio = cobertura completa" com cursor avançando (agora falha dura); onselect sem validação podia degradar para busca sem filtro com cara de filtrada (agora exige o envelope A4J); <code>PrepararAsync</code> retinha a tela velha em silêncio (agora falha); consulta direta lia o Estado inteiro POR PADRÃO com justificativa já desmentida (agora filtra por padrão, e leitura sem filtro deixa rastro em log); cabeçalho da planilha aceitava 4 colunas quaisquer sem as estruturais (agora exige ID + Data da Solicitação, com off-by-one da janela de busca corrigido); login/módulo tinham fallback para caminho constante (agora <code>ser.form_sem_action</code>); canários novos para a trava × parâmetros da amarração e para a assinatura OLE2.</p>
+<h3>Sessão de 08/08/2026 — o portão de sincronismo e a ALTA</h3>
+<p><strong>Primeira varredura completa da grade com o filtro certo:</strong> Concluída em 26 min, 244 buscas, 24.298 solicitações, <strong>0 fatias truncadas</strong>.</p>
+<p><strong>O portão foi medido</strong> (contagem do Bernardo situação a situação na tela do SER × espelho):</p>
+<div class="tw"><table><thead><tr><th>Situação</th><th>nosso CONSULTA / SER</th><th>nosso EXAME / SER</th><th></th></tr></thead><tbody>
+<tr><td>Em fila</td><td>1.670 / 1.670</td><td>753 / 753</td><td><strong>exato</strong></td></tr>
+<tr><td>Agendada</td><td>729 / 729</td><td>334 / 334</td><td><strong>exato</strong></td></tr>
+<tr><td>Chegada não confirmada</td><td>3.471 / 3.471</td><td>1.163 / 1.163</td><td><strong>exato</strong></td></tr>
+<tr><td>Cancelada</td><td>3.970 / 3.970</td><td>1.499 / 1.499</td><td><strong>exato</strong></td></tr>
+<tr><td>Pendente</td><td>51 / &lt;100</td><td>33 / &lt;50</td><td>compatível</td></tr>
+<tr><td>Chegada confirmada</td><td>7.700 / 7.722</td><td>759 / 759</td><td>−22</td></tr>
+<tr><td>Alta</td><td>737 / 1.067</td><td>1.717 / 2.240</td><td><strong>−853</strong></td></tr>
+</tbody></table></div>
+<p>Quatro situações batendo exatas nos dois tipos (12.796 registros) é a <strong>validação definitiva da amarração do solicitante em produção</strong> — lendo o Estado inteiro esses números viriam muito maiores, não idênticos. O −22 em Chegada confirmada é compatível com movimento da fila entre a varredura (21:33–21:53) e a contagem; confirma-se sozinho na próxima rodada.</p>
+<p><strong>O −853 da ALTA foi diagnosticado e corrigido:</strong> a detecção do teto funcionava; quem perdia era a leitura paginada. ALTA passou a ser lida pelo <strong>export da tela de Solicitação</strong> (<code>docs/ser.md §4.4</code>) — uma requisição no lugar de cinco, sem os caminhos de perda calada. Junto saíram:</p>
+<ul>
+<li><strong>Achado 7 RESPONDIDO</strong> — a tela de Solicitação <strong>é</strong> escopada pela credencial: 100 de 100</li>
+</ul>
+<p>  linhas de ALTA vieram com <code>GESTOR SMS MARICA</code>/<code>MARICA</code>. Nunca foi vazamento de escopo, era   buraco de cobertura.</p>
+<ul>
+<li><strong>Achado 11 corrigido</strong> — o encolhimento da janela agora clampa no intervalo real antes de</li>
+</ul>
+<p>  partir ao meio; antes repetia o mesmo lote cortado contra o SER sem trazer nada novo.</p>
+<ul>
+<li><strong>Falso positivo de remarcação corrigido</strong> — o diff de agendamento passa a comparar pela</li>
+</ul>
+<p>  <strong>data</strong>, não pelo texto cru. As duas telas escrevem o mesmo agendamento de formas diferentes   (<code>28/01/2020 13:15 - HOSPITAL X</code> × <code>28/01/2020</code>), e comparar texto gerou <strong>7.388 gatilhos   falsos numa rodada só</strong>. Era pré-requisito do marco zero.</p>
+<ul>
+<li>A leitura paginada (<code>VarredorSer</code>) foi <strong>removida</strong> — código morto que fala com produção é</li>
+</ul>
+<p>  passivo.</p>
+<p><strong>O segundo eixo do sincronismo continua em zero:</strong> histórico lido em <strong>1 de 24.586</strong>. Sem histórico não há FollowUP, e é por isso que o gatilho <code>NovoFollowUp</code> está zerado — não por não haver, mas por nunca termos lido.</p>
 <p><strong>Abertos, em ordem de urgência</strong> (os <code>[recarga]</code> precisam sair antes do Passo 4):</p>
 <ol>
 <li><strong>[recarga] Gatilho reincidente viola o índice único e trava a varredura em loop</strong></li>
@@ -110,13 +141,13 @@ li{margin:3px 0}p,li{max-width:75ch}
 </ol>
 <p>   <code>Situacoes=null</code> ignorando <code>execucao.SituacoesVarridas</code>) — rodada parcial por escopo vira    varredura de tudo.</p>
 <ol>
-<li>Varredura de <strong>ALTA</strong> não aplica recorte de solicitante nenhum (a tela de Solicitação nem tem</li>
+<li>~~Varredura de <strong>ALTA</strong> não aplica recorte de solicitante~~ — <strong>RESPONDIDO em 08/08</strong>: a tela</li>
 </ol>
-<p>   o campo) — o escopo Maricá ali depende de a tela ser escopada pelo operador, <strong>o que nunca    foi provado</strong>. Medir com a sonda antes de confiar (os indícios são bons: a busca manual do    Bernardo em 07/08 na tela de Solicitação devolveu o recorte de Maricá).</p>
+<p>   é escopada pela credencial do operador (100 de 100 linhas com <code>MARICA</code>). Não era vazamento.</p>
 <ol>
-<li><code>PlanilhaSerParser.Ler()</code> inteiro sem teste de integração (só <code>ConverterData</code> é coberto) —</li>
+<li><code>PlanilhaSerParser.Ler()</code> inteiro sem teste de integração (só <code>ConverterData</code> e a continuação</li>
 </ol>
-<p>   falta um BIFF8 sintético pequeno no repositório, sem PII, exercitando cabeçalho, sinônimos,    linha-lixo e encoding cp1252.</p>
+<p>   de linha são cobertos) — falta um BIFF8 sintético pequeno no repositório, sem PII,    exercitando cabeçalho, sinônimos, linha-lixo e encoding cp1252.</p>
 <ol>
 <li>Dívida de releitura de histórico é edge-triggered e se perde quando a rodada morre com Erro</li>
 </ol>
@@ -126,9 +157,9 @@ li{margin:3px 0}p,li{max-width:75ch}
 </ol>
 <p>    demais; o scheduler adia enquanto existir qualquer pendente (<code>VarreduraSerRunner:106</code>).</p>
 <ol>
-<li>Encolhimento de janela clampada repete exports idênticos truncados contra o SER até o passo</li>
+<li>~~Encolhimento de janela clampada repete exports idênticos~~ — <strong>corrigido em 08/08</strong>, com</li>
 </ol>
-<p>    caber (<code>VarredorSerPorExport:72</code>) — desperdício, sem perda.</p>
+<p>    teste que proíbe pedir o mesmo recorte duas vezes ao SER.</p>
 <ol>
 <li>Trava de leitura: dois pontos cegos na camada de rótulo (componente que só existe em script</li>
 </ol>
@@ -141,6 +172,11 @@ li{margin:3px 0}p,li{max-width:75ch}
 <li>Registrado por projeto (não é defeito): a tela de <strong>Solicitação</strong> reusa a página de</li>
 </ol>
 <p>    resultado como base do submit seguinte (ciclo otimizado do histórico, <code>docs/ser.md §6</code>) — a     regra do "GET novo por busca" foi medida e vale para a tela de <strong>Histórico</strong>; a instabilidade     equivalente na tela de Solicitação nunca foi medida. Se aparecer não-determinismo lá, esse é     o primeiro suspeito.</p>
+<h3>Passo 4b — Marco zero dos gatilhos (decisão do Bernardo, 08/08/2026)</h3>
+<p><strong>Só depois de sincronizado.</strong> A regra é dele e está certa: enquanto o espelho está incompleto, toda "solicitação nova" que a varredura acha não é novidade — é coisa que a gente ainda não tinha lido. Gatilho nessa fase é ruído, não sinal. Zerar antes de sincronizar também não adianta: a própria carga geraria a pilha de volta.</p>
+<p>Ordem: <strong>sincronizar → conferir o portão → zerar → a partir dali, diferença é diferença.</strong></p>
+<p><strong>Zerar = carimbar <code>processado_em</code> + <code>processado_por = 'marco-zero'</code></strong>, não apagar: preserva a trilha e é reversível.</p>
+<p>&gt; <strong>Pré-requisito técnico:</strong> o <strong>gatilho reincidente</strong> (item 1 dos abertos) precisa estar &gt; corrigido antes. O índice único é <code>(solicitação, tipo, chave)</code> <strong>sem filtro por processado</strong> — &gt; carimbar como processado <strong>não libera a chave</strong>, então a próxima repetição da mesma transição &gt; estoura o índice e derruba a varredura. Marcar sem corrigir troca um problema por outro.</p>
 <h3>Passo 5 — Ligar o scheduler</h3>
 <p><code>Ser:Varredura:Ativo=true</code> (hora padrão 02:30 de Brasília). Só depois que a carga bater.</p>
 <h3>Passo 6 — Consumir os gatilhos</h3>
