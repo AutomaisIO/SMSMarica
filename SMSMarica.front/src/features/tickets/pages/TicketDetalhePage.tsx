@@ -7,6 +7,7 @@ import { usePermissao } from '@/shared/auth/authStore';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog';
+import { Modal } from '@/shared/ui/Modal';
 import { Select } from '@/shared/ui/Select';
 import { notificar } from '@/shared/ui/Notificacoes';
 import { formatarInstante } from '@/shared/lib/datas';
@@ -21,7 +22,7 @@ import {
 import { AnexosGaleria } from '@/features/tickets/components/AnexosInput';
 import { ConversaTicket } from '@/features/tickets/components/ConversaTicket';
 import { PrioridadeBadge, StatusTicketBadge, TipoBadge } from '@/features/tickets/components/badges';
-import type { TicketPrioridade, TicketStatus } from '@/features/tickets/types';
+import type { TicketComentario, TicketPrioridade, TicketStatus } from '@/features/tickets/types';
 import { ROTULO_PRIORIDADE, ROTULO_STATUS } from '@/features/tickets/types';
 
 
@@ -164,13 +165,22 @@ function PainelTriagem({
   id,
   numero,
 }: {
-  ticket: { status: TicketStatus; prioridade: TicketPrioridade; respostaFinal: string | null; enviadoIa: boolean };
+  ticket: {
+    status: TicketStatus;
+    prioridade: TicketPrioridade;
+    respostaFinal: string | null;
+    enviadoIa: boolean;
+    autorId: string | null;
+    comentarios: TicketComentario[];
+  };
   id: string;
   numero: number;
 }) {
   const [status, setStatus] = useState<TicketStatus>(ticket.status);
   const [prioridade, setPrioridade] = useState<TicketPrioridade>(ticket.prioridade);
   const [resposta, setResposta] = useState(ticket.respostaFinal ?? '');
+  const [modalInstrucao, setModalInstrucao] = useState(false);
+  const [instrucao, setInstrucao] = useState('');
   const atualizar = useAtualizarGestao(id);
   const marcarEnviadoIa = useMarcarEnviadoIa();
   const navigate = useNavigate();
@@ -178,21 +188,38 @@ function PainelTriagem({
   // mandar o agente trabalhar é ação no servidor, não leitura.
   const podeAgente = usePermissao('AgenteIa', 'Edicao');
 
+  // "Cego": o ticket só tem o relato do autor — nenhum comentário interno e nenhum comentário
+  // de outra pessoa. Nesse caso o agente começaria guiado só pela descrição (Ticket #95), então
+  // perguntamos ao operador se ele quer deixar uma instrução antes de disparar.
+  const temContextoAlemDoAutor = ticket.comentarios.some(
+    (c) => c.interno || c.autorId !== ticket.autorId,
+  );
+
   // Registra a marca "Enviado à IA" e abre o terminal do agente. Best-effort: se a marcação
   // falhar, ainda assim navega — o encaminhamento não pode ficar refém do registro.
   //
-  // Só a REFERÊNCIA (#N) viaja: o agente lê o conteúdo do ticket direto do banco, pela skill
-  // `resolver-ticket` — sempre fresco e sem o texto de terceiros (não-confiável) passar pelo
-  // prompt do navegador.
-  async function enviarAoAgente() {
+  // Só a REFERÊNCIA (#N) e a instrução do operador (canal confiável) viajam: o agente lê o
+  // conteúdo do ticket direto do banco, pela skill `resolver-ticket` — sempre fresco e sem o
+  // texto de terceiros (não-confiável) passar pelo prompt do navegador.
+  async function prosseguirAoAgente(instrucaoOperador?: string) {
     try {
       await marcarEnviadoIa.mutateAsync(id);
     } catch {
       // silencioso: a marca é secundária ao ato de abrir o agente.
     }
     navigate(`/app/agente-ia?ticket=${numero}`, {
-      state: { iniciarTicket: true },
+      state: { iniciarTicket: true, instrucaoOperador: instrucaoOperador?.trim() || undefined },
     });
+  }
+
+  function enviarAoAgente() {
+    // Só há o relato do autor: pergunta uma instrução antes de o agente iniciar "cego".
+    if (!temContextoAlemDoAutor) {
+      setInstrucao('');
+      setModalInstrucao(true);
+      return;
+    }
+    void prosseguirAoAgente();
   }
 
   useEffect(() => {
@@ -284,6 +311,57 @@ function PainelTriagem({
           ele não fecha nada sozinho.
         </p>
       )}
+
+      <Modal
+        aberto={modalInstrucao}
+        aoFechar={() => setModalInstrucao(false)}
+        titulo="Enviar ao Agente IA"
+        descricao="Este ticket só tem o relato do autor. Quer deixar alguma instrução antes de o agente começar?"
+        largura="md"
+      >
+        <div className="space-y-4">
+          <Campo
+            label="Alguma instrução para o agente sobre esse ticket?"
+            htmlFor="instrucao-agente"
+            dica="Opcional. Ex.: onde já olharam, hipótese de causa, prioridade real, o que não fazer."
+          >
+            <textarea
+              id="instrucao-agente"
+              value={instrucao}
+              rows={4}
+              maxLength={2000}
+              autoFocus
+              placeholder="Deixe em branco para enviar sem instrução."
+              onChange={(e) => setInstrucao(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+            />
+          </Campo>
+          <div className="flex items-center justify-end gap-3">
+            <Button
+              variante="ghost"
+              tamanho="sm"
+              disabled={marcarEnviadoIa.isPending}
+              onClick={() => {
+                setModalInstrucao(false);
+                void prosseguirAoAgente();
+              }}
+            >
+              Enviar sem instrução
+            </Button>
+            <Button
+              tamanho="sm"
+              disabled={marcarEnviadoIa.isPending}
+              onClick={() => {
+                const texto = instrucao;
+                setModalInstrucao(false);
+                void prosseguirAoAgente(texto);
+              }}
+            >
+              Enviar ao agente
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

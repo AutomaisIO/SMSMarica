@@ -307,8 +307,13 @@ export function AgenteIaPage() {
   // Vindo da triagem, viaja só a INTENÇÃO de iniciar o trabalho — nunca o conteúdo do
   // ticket. O agente lê o ticket direto do banco (skill resolver-ticket): sempre fresco, e o
   // texto de terceiros (não-confiável) não passa pelo prompt.
-  const { state } = useLocation() as { state?: { iniciarTicket?: boolean } };
+  const { state } = useLocation() as {
+    state?: { iniciarTicket?: boolean; instrucaoOperador?: string };
+  };
   const iniciarTicket = state?.iniciarTicket === true;
+  // Instrução opcional que o operador digitou na triagem antes de mandar o agente começar.
+  // É texto do OPERADOR (canal confiável, como o chat) — não o conteúdo do ticket.
+  const instrucaoOperador = state?.instrucaoOperador?.trim() || undefined;
 
   const [sessaoId, setSessaoId] = useState<string | null>(sessaoDaUrl);
   const [ticketDaSessao, setTicketDaSessao] = useState<number | null>(null);
@@ -330,6 +335,8 @@ export function AgenteIaPage() {
   const execucaoRef = useRef(0);
   // Marca que a sessão foi aberta a partir da triagem e ainda deve receber o pontapé inicial.
   const contextoPendenteRef = useRef(false);
+  // Instrução do operador (se houve) a anexar ao pontapé inicial.
+  const instrucaoPendenteRef = useRef<string | undefined>(undefined);
 
   // Contexto do ticket em trabalho (título/status), sempre fresco enquanto a conversa está
   // aberta — o status pode mudar durante o atendimento. Só dispara quando há ticket.
@@ -447,6 +454,7 @@ export function AgenteIaPage() {
           const criada = await criarSessao({ ticketNumero, ticketTitulo: ctx?.titulo });
           if (!vivo) return;
           contextoPendenteRef.current = iniciarTicket;
+          instrucaoPendenteRef.current = instrucaoOperador;
           setSessaoId(criada.sessionId);
           return;
         }
@@ -464,7 +472,7 @@ export function AgenteIaPage() {
     return () => {
       vivo = false;
     };
-  }, [podeVer, ticketNumero, sessaoDaUrl, iniciarTicket]);
+  }, [podeVer, ticketNumero, sessaoDaUrl, iniciarTicket, instrucaoOperador]);
 
   // Carrega o histórico da conversa ativa e reata um turno que esteja rodando no servidor.
   useEffect(() => {
@@ -491,10 +499,13 @@ export function AgenteIaPage() {
         // pela skill resolver-ticket.
         if (contextoPendenteRef.current && (detalhe.turns?.length ?? 0) === 0) {
           contextoPendenteRef.current = false;
+          const instrucao = instrucaoPendenteRef.current;
+          instrucaoPendenteRef.current = undefined;
           void enviarPrompt(
             `Trabalhe no ticket #${detalhe.ticket_numero}. Leia-o direto do banco com a ` +
               `skill resolver-ticket (descrição, comentários internos e anexos), investigue, ` +
-              `diga o que encontrou e proponha a solução. Não conclua o ticket.`,
+              `diga o que encontrou e proponha a solução. Não conclua o ticket.` +
+              (instrucao ? `\n\nInstrução do operador para este ticket: ${instrucao}` : ''),
             detalhe.id,
             token,
           );
