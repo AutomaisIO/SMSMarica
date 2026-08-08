@@ -13,7 +13,10 @@ internal sealed class TipoExameConfiguration : IEntityTypeConfiguration<TipoExam
 
         builder.Property(t => t.Id).HasColumnName("id");
         builder.Property(t => t.Nome).HasColumnName("nome").HasMaxLength(200).IsRequired();
-        builder.Property(t => t.ProcedimentoSigtapId).HasColumnName("procedimento_sigtap_id").IsRequired();
+        builder.Property(t => t.SisregProcedimentoId).HasColumnName("sisreg_procedimento_id");
+        // Deixou de ser obrigatório: o eixo virou o procedimento do SISREG e o SIGTAP passou a ser
+        // atributo de faturamento, confirmado por gente. Procedimento novo entra sem ele.
+        builder.Property(t => t.ProcedimentoSigtapId).HasColumnName("procedimento_sigtap_id");
         builder.Property(t => t.ModalidadeDicom).HasColumnName("modalidade_dicom").HasConversion<int>().IsRequired();
         builder.Property(t => t.RequestedProcedureDescription).HasColumnName("requested_procedure_description").HasMaxLength(200).IsRequired();
         builder.Property(t => t.ScheduledProcedureStepDescription).HasColumnName("scheduled_procedure_step_description").HasMaxLength(200).IsRequired();
@@ -30,6 +33,11 @@ internal sealed class TipoExameConfiguration : IEntityTypeConfiguration<TipoExam
         builder.Property(t => t.ExcluidoEm).HasColumnName("excluido_em");
         builder.Property(t => t.ExcluidoPor).HasColumnName("excluido_por");
 
+        builder.HasOne(t => t.SisregProcedimento)
+            .WithMany()
+            .HasForeignKey(t => t.SisregProcedimentoId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasOne(t => t.ProcedimentoSigtap)
             .WithMany()
             .HasForeignKey(t => t.ProcedimentoSigtapId)
@@ -42,6 +50,7 @@ internal sealed class TipoExameConfiguration : IEntityTypeConfiguration<TipoExam
 
         // Nome único entre não-excluídos.
         builder.HasIndex(t => t.Nome).IsUnique().HasFilter("excluido_em IS NULL");
+        builder.HasIndex(t => t.SisregProcedimentoId);
         builder.HasIndex(t => t.ProcedimentoSigtapId);
         builder.HasIndex(t => t.ModalidadeDicom);
         builder.HasIndex(t => t.Ativo);

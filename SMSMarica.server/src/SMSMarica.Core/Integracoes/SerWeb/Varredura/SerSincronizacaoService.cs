@@ -378,7 +378,11 @@ public sealed class SerSincronizacaoService(
         // Só a tela de Histórico traz executora; `??` para a varredura de ALTA (tela de
         // Solicitação, sem essa coluna) não apagar o que o export já tinha descoberto.
         alvo.UnidadeExecutora = linha.UnidadeExecutora ?? alvo.UnidadeExecutora;
-        alvo.AgendadoParaTexto = linha.AgendadoPara;
+        // `??` e truncado: a tela de Solicitação (ALTA) não devolve agendamento parseável e manda
+        // nulo — sem o `??`, reler uma solicitação por ela APAGARIA o agendamento que a tela de
+        // Histórico já tinha trazido. O truncamento é cinto de segurança: em 08/08/2026 um texto
+        // acima de 300 caracteres estourou a coluna e derrubou a rodada inteira no SaveChanges.
+        alvo.AgendadoParaTexto = Truncar(linha.AgendadoPara, 300) ?? alvo.AgendadoParaTexto;
         alvo.Situacao = situacao;
     }
 
@@ -692,6 +696,7 @@ public sealed class SerSincronizacaoService(
             : null;
     }
 
-    private static string Truncar(string texto, int max) =>
-        texto.Length <= max ? texto : texto[..max];
+    [return: System.Diagnostics.CodeAnalysis.NotNullIfNotNull(nameof(texto))]
+    private static string? Truncar(string? texto, int max) =>
+        texto is null || texto.Length <= max ? texto : texto[..max];
 }

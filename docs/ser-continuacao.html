@@ -115,6 +115,19 @@ li{margin:3px 0}p,li{max-width:75ch}
 </ul>
 <p>  passivo.</p>
 <p><strong>O segundo eixo do sincronismo continua em zero:</strong> histórico lido em <strong>1 de 24.586</strong>. Sem histórico não há FollowUP, e é por isso que o gatilho <code>NovoFollowUp</code> está zerado — não por não haver, mas por nunca termos lido.</p>
+<h3>Incidente de 08/08/2026 — a remontagem de "Agendado para" derrubou a varredura</h3>
+<p>A primeira versão do leitor de ALTA tentou remontar a coluna <em>Agendado para</em> juntando os fragmentos ao registro anterior. <strong>O layout não é esse</strong> (<code>docs/ser.md §4.4</code>): os registros vêm todos primeiro e os fragmentos num bloco depois, e o número de linhas por registro é variável — não há como remontar. O resultado em produção foi concatenar agendamentos alheios num registro só, estourar o <code>varchar(300)</code> e <strong>matar a rodada</strong> no <code>SaveChanges</code>.</p>
+<p><strong>Dois bloqueadores previstos no §2b saíram do papel na mesma queda:</strong></p>
+<ul>
+<li>o <code>finally</code> tentou salvar com o change tracker envenenado, o <code>Status=Erro</code> <strong>não persistiu</strong> e a</li>
+</ul>
+<p>  execução ficou presa em <code>EmExecucao</code> (item 2);</p>
+<ul>
+<li>presa assim, ela <strong>trava o disparo diário</strong>, porque o scheduler adia enquanto houver pendente</li>
+</ul>
+<p>  (item 10).</p>
+<p><strong>Corrigido:</strong> a coluna passou a ser descartada nesse export; o merge preserva com <code>??</code> o agendamento que a tela de Histórico trouxe; e o texto é truncado antes de gravar, para que campo grande nunca mais derrube uma rodada inteira.</p>
+<p><strong>O que ficou provado de bom na mesma rodada:</strong> as seis situações não-Alta foram varridas gerando <strong>5 gatilhos</strong>, contra 18.564 da rodada anterior — a normalização do agendamento eliminou os 7.388 falsos "remarcou", como previsto.</p>
 <p><strong>Abertos, em ordem de urgência</strong> (os <code>[recarga]</code> precisam sair antes do Passo 4):</p>
 <ol>
 <li><strong>[recarga] Gatilho reincidente viola o índice único e trava a varredura em loop</strong></li>

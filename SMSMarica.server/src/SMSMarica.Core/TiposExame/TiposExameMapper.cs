@@ -8,6 +8,9 @@ internal static class TiposExameMapper
     public static TipoExameDto ParaDto(TipoExame t) => new(
         t.Id,
         t.Nome,
+        t.SisregProcedimentoId,
+        t.SisregProcedimento?.Codigo ?? string.Empty,
+        t.SisregProcedimento?.Nome ?? string.Empty,
         t.ProcedimentoSigtapId,
         t.ProcedimentoSigtap?.Codigo ?? string.Empty,
         t.ProcedimentoSigtap?.Nome ?? string.Empty,

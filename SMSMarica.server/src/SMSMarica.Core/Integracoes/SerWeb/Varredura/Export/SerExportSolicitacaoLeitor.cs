@@ -171,7 +171,23 @@ public sealed class SerExportSolicitacaoLeitor(
                 + "Costuma ser a sessão derrubada por outro login do mesmo operador.");
         }
 
-        var linhas = PlanilhaSerParser.Ler(arquivo.Corpo);
+        // "Agendado para" É DESCARTADO desta tela — a coluna não é parseável (incidente 08/08/2026).
+        //
+        // O export a quebra em várias linhas do arquivo (`data`, `-`, `UNIDADE`) formando um FLUXO
+        // que NÃO se alinha com as linhas de registro: os 100 registros ocupam as 100 primeiras
+        // linhas e os fragmentos vêm todos depois, num bloco. Só o 1º registro fica com o próprio
+        // valor certo; do 2º em diante a célula da linha pertence a outro agendamento. E o número
+        // de linhas por registro é variável (1 quando não há agendamento, 3 quando há data +
+        // unidade), então não dá para remontar contando — a informação de qual fragmento é de quem
+        // simplesmente não está no arquivo.
+        //
+        // A primeira tentativa de remontar grudou fragmentos alheios no registro anterior,
+        // estourou o `varchar(300)` de `agendado_para_texto` e derrubou a varredura em produção.
+        // Dado errado é pior que dado ausente: aqui ele fica nulo, e quem preenche a coluna é a
+        // tela de Histórico, que traz "Data do agendamento" em campo próprio e alinhado.
+        var linhas = PlanilhaSerParser.Ler(arquivo.Corpo)
+            .Select(l => l with { AgendadoPara = null })
+            .ToList();
 
         // SEM aviso escrito, o único sinal é o lote vir com o teto cheio. É inferência — 100
         // exatos podem ser o total real —, mas na direção segura: no máximo o varredor fatia à

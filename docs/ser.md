@@ -317,11 +317,34 @@ A tela de Solicitação também tem `form0:btnExport`, e é assim que **ALTA** �
 | EM_FILA, sem data | 100 | **100** |
 
 > **A contagem crua do arquivo mente.** As 300 linhas da ALTA são 100 registros: o export quebra
-> a coluna *Agendado para* — que na tela é `data - UNIDADE` — em até **três linhas**, uma com a
-> data, uma só com o hífen, outra só com a unidade. O parser junta os fragmentos de volta
-> (`PlanilhaSerParser.AnexarContinuacao`); sem isso a unidade se perderia, e para ALTA ela não
-> vem de mais lugar nenhum. É a regra de sempre: **nunca inferir por contagem de linhas** — eu
-> mesmo conclui "ignora o teto" na primeira leitura, e estava errado.
+> a coluna *Agendado para* — que na tela é `data - UNIDADE` — em várias linhas. É a regra de
+> sempre: **nunca inferir por contagem de linhas**.
+
+#### A coluna *Agendado para* deste export é inútil — e por quê (incidente de 08/08/2026)
+
+**O layout não é "registro seguido dos seus fragmentos".** Os **100 registros ocupam as 100
+primeiras linhas**; os 200 fragmentos vêm **todos depois**, num bloco. A coluna forma um *fluxo*
+que não se alinha com as linhas de registro: só o 1º registro fica com o próprio valor correto,
+e do 2º em diante a célula da linha pertence a outro agendamento.
+
+E não dá para remontar contando, porque o **número de linhas por registro é variável**: 1 quando
+não há agendamento (o EM_FILA devolveu 100 linhas para 100 registros) e 3 quando há data +
+unidade. A informação de qual fragmento é de quem simplesmente **não está no arquivo**.
+
+> **O que custou aprender isso:** a primeira versão do parser tentou remontar grudando os
+> fragmentos no registro anterior. Em produção isso concatenou vários agendamentos num único
+> registro, estourou o `varchar(300)` de `agendado_para_texto` e **derrubou a varredura inteira**
+> no `SaveChanges` (`22001: value too long`). A queda ainda acionou dois defeitos conhecidos em
+> cadeia: o `finally` tentou salvar com o change tracker envenenado, o `Status=Erro` não
+> persistiu, e a execução ficou **presa em `EmExecucao`**, travando o scheduler.
+>
+> **O erro de método:** inferi o layout do arquivo a partir de uma amostra de três linhas, tendo
+> o arquivo inteiro salvo na sonda. É a versão estrutural do mesmo "nunca inferir por contagem".
+
+**Por isso o motor descarta essa coluna:** `SerExportSolicitacaoLeitor` zera `AgendadoPara` das
+linhas que vêm daqui. Dado errado é pior que dado ausente. Quem preenche a coluna é a tela de
+Histórico, que traz *Data do agendamento* em campo próprio e alinhado — e o merge usa `??` para
+que uma releitura por ALTA **não apague** o que a outra tela já sabia.
 
 **Por que trocar paginação por arquivo se o teto é o mesmo:** o ganho não é cobertura, é **uma
 requisição no lugar de cinco**, sem os dois caminhos de perda silenciosa da paginação (§4.1).

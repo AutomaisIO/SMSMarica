@@ -30,6 +30,10 @@ public static class AgendaTxtParser
 
     // Índices das colunas (0-based) no layout de 38 campos — ver docs SISREG / mapa validado.
     private const int CodigoSolicitacao = 0;
+    /// <summary>O <c>pa</c> — código do procedimento no espaço de numeração do SISREG. É a
+    /// identidade do procedimento; não é SIGTAP, ainda que se pareça. Ver
+    /// <c>Solicitacao.ProcedimentoCodigoSisreg</c>.</summary>
+    private const int CodigoProcedimentoSisreg = 1;
     private const int CodigoSigtap = 2;
     private const int ProcedimentoTexto = 3;
     private const int DataAtendimento = 6;
@@ -203,7 +207,8 @@ public static class AgendaTxtParser
                 Cep: Digitos(c[Cep]) is { Length: 8 } cep ? cep : LimparNulo(c[Cep]),
                 MunicipioResidencia: LimparNulo(c[MunicipioResidencia]),
                 CodigoIbgeResidencia: Digitos(c[CodigoIbgeResidencia]) is { Length: >= 6 } ibge ? ibge : null,
-                LinhaRaw: linha));
+                LinhaRaw: linha,
+                CodigoProcedimentoSisreg: LimparNulo(c[CodigoProcedimentoSisreg])));
         }
 
         return new Resultado(cab, marcacoes, rejeitadas);

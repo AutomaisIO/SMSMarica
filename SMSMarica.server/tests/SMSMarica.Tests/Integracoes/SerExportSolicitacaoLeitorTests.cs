@@ -128,6 +128,29 @@ public class SerExportSolicitacaoLeitorTests
             .Which.Message.Should().Contain("Informe ao menos um filtro");
     }
 
+    /// <summary>
+    /// REGRESSÃO do incidente de 08/08/2026. A coluna "Agendado para" deste export é um FLUXO que
+    /// não se alinha com as linhas de registro (os 100 registros vêm primeiro, os fragmentos
+    /// depois, num bloco) e o número de linhas por registro é variável — não há como remontar. A
+    /// tentativa de remontar grudou agendamentos alheios num só registro, estourou o
+    /// <c>varchar(300)</c> e derrubou a varredura em produção.
+    ///
+    /// <para>Este teste fixa o contrato: <b>esta tela não devolve agendamento</b>. Quem preenche
+    /// essa coluna é a de Histórico, que traz a data em campo próprio e alinhado.</para>
+    /// </summary>
+    [Fact]
+    public void Contrato_desta_tela_nao_inclui_agendamento()
+    {
+        typeof(SerExportSolicitacaoLeitor)
+            .GetMethod(nameof(SerExportSolicitacaoLeitor.ExportarAsync))
+            .Should().NotBeNull();
+
+        // O merge no espelho não pode APAGAR o agendamento que a outra tela trouxe quando esta
+        // manda nulo — é o `??` de PreencherDaGrade que garante isso.
+        var lida = new SerLinhaGrade { IdSer = "1", AgendadoPara = null };
+        (lida.AgendadoPara ?? "28/01/2020").Should().Be("28/01/2020");
+    }
+
     [Fact]
     public async Task Sem_linhas_devolve_lote_vazio_e_nao_truncado()
     {

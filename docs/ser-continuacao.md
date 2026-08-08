@@ -164,6 +164,29 @@ a leitura paginada. ALTA passou a ser lida pelo **export da tela de Solicitaçã
 histórico não há FollowUP, e é por isso que o gatilho `NovoFollowUp` está zerado — não por não
 haver, mas por nunca termos lido.
 
+### Incidente de 08/08/2026 — a remontagem de "Agendado para" derrubou a varredura
+
+A primeira versão do leitor de ALTA tentou remontar a coluna *Agendado para* juntando os
+fragmentos ao registro anterior. **O layout não é esse** (`docs/ser.md §4.4`): os registros vêm
+todos primeiro e os fragmentos num bloco depois, e o número de linhas por registro é variável —
+não há como remontar. O resultado em produção foi concatenar agendamentos alheios num registro
+só, estourar o `varchar(300)` e **matar a rodada** no `SaveChanges`.
+
+**Dois bloqueadores previstos no §2b saíram do papel na mesma queda:**
+
+- o `finally` tentou salvar com o change tracker envenenado, o `Status=Erro` **não persistiu** e a
+  execução ficou presa em `EmExecucao` (item 2);
+- presa assim, ela **trava o disparo diário**, porque o scheduler adia enquanto houver pendente
+  (item 10).
+
+**Corrigido:** a coluna passou a ser descartada nesse export; o merge preserva com `??` o
+agendamento que a tela de Histórico trouxe; e o texto é truncado antes de gravar, para que campo
+grande nunca mais derrube uma rodada inteira.
+
+**O que ficou provado de bom na mesma rodada:** as seis situações não-Alta foram varridas gerando
+**5 gatilhos**, contra 18.564 da rodada anterior — a normalização do agendamento eliminou os
+7.388 falsos "remarcou", como previsto.
+
 **Abertos, em ordem de urgência** (os `[recarga]` precisam sair antes do Passo 4):
 
 1. **[recarga] Gatilho reincidente viola o índice único e trava a varredura em loop**

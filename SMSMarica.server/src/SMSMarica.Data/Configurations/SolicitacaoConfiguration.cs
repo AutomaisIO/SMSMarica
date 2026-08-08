@@ -19,6 +19,7 @@ internal sealed class SolicitacaoConfiguration : IEntityTypeConfiguration<Solici
         builder.Property(s => s.PacienteId).HasColumnName("paciente_id").IsRequired();
         builder.Property(s => s.Categoria).HasColumnName("categoria").HasConversion<int>().IsRequired();
 
+        builder.Property(s => s.ProcedimentoCodigoSisreg).HasColumnName("procedimento_codigo_sisreg").HasMaxLength(20);
         builder.Property(s => s.ProcedimentoSigtapCodigo).HasColumnName("procedimento_sigtap_codigo").HasMaxLength(20);
         builder.Property(s => s.ProcedimentoTexto).HasColumnName("procedimento_texto").HasMaxLength(300);
         builder.Property(s => s.EspecialidadeTexto).HasColumnName("especialidade_texto").HasMaxLength(200);
