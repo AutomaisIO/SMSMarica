@@ -52,6 +52,22 @@ li{margin:3px 0}p,li{max-width:75ch}
 <h3>2.2 Bloco dinâmico</h3>
 <p>Cada campo é um par <code>form0:container_dinamico_id_&lt;N&gt;</code> (rótulo) + <code>form0:dinamico_id_&lt;N&gt;</code> (o campo). Trocar o Recurso dispara A4J (<code>form0:j_id57</code>, com <code>ajaxSingle=form0:comboRecurso</code>) e o SER devolve o bloco re-renderizado. O <code>oncomplete</code> chama <code>verificarPetCt()</code> — o PET-CT tem regra própria, e de fato é o único recurso com formulário exclusivo (§4).</p>
 <p>&gt; <strong>A resposta é PARCIAL</strong>: não traz <code>&lt;form id="form0"&gt;</code>. Vale a regra de sempre — usar a &gt; última página completa como fonte dos campos e o parcial só como fonte do conteúdo novo.</p>
+<h2>2.3 Anexar arquivo — como o upload funciona</h2>
+<p>Levantado em 08/08/2026 lendo o <code>ui.pack.js</code> do próprio SER. <strong>Nunca exercitado</strong>: subir arquivo é escrita, e a sonda para antes disso. O que está aqui é o protocolo, não uma prova de execução.</p>
+<p>O botão <em>Anexar Arquivo</em> (<code>form0:j_id299</code>) é um A4J cujo <code>oncomplete</code> abre o modal <code>modalAnexarArquivo</code>. Dentro do modal vive <strong>outro form</strong>, separado do <code>form0</code>:</p>
+<div class="tw"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td>Form</td><td><code>formAnexar</code>, <code>enctype="multipart/form-data"</code></td></tr>
+<tr><td>Componente</td><td><code>rich:fileUpload</code> (<code>formAnexar:upload</code>)</td></tr>
+<tr><td>Campo do arquivo</td><td><code>formAnexar:upload:file</code></td></tr>
+<tr><td>Botões</td><td><code>formAnexar:j_id320</code> (<strong>Anexar</strong> — escrita) e <code>formAnexar:j_id319</code> (Cancelar)</td></tr>
+<tr><td>Limites declarados</td><td><code>maxFileBatchSize: 2</code>, <code>noDuplicate: true</code></td></tr>
+</tbody></table></div>
+<p><strong>O envio dos bytes não usa o <code>action</code> do form.</strong> O RichFaces reescreve o <code>action</code> na hora e submete num iframe escondido — um POST <code>multipart/form-data</code> por arquivo, para:</p>
+<p>``<code> /ser/pages/consultas-exames/solicitacao/solicitar-consulta-editar.seam   ?_richfaces_upload_uid=&lt;uid aleatório&gt;   &amp;formAnexar:upload=formAnexar:upload   &amp;_richfaces_upload_file_indicator=true   &amp;AJAXREQUEST=_viewRoot </code>``</p>
+<p>Antes de submeter, o componente <strong>desabilita todos os outros <code>input[type=file]</code></strong> do form, para que vá exatamente um arquivo por requisição. O progresso e o cancelamento andam por fora, num A4J paralelo com <code>_richfaces_file_upload_action</code> + <code>_richfaces_upload_uid</code>.</p>
+<p>Há um caminho alternativo por <strong>Flash</strong> (<code>FileUploadComponent.swf</code>), que monta a mesma URL mas embute <code>;jsessionid=</code> no caminho e acrescenta <code>_richfaces_size</code> e <code>_richfaces_send_http_error</code>. Para isso, <strong>o <code>JSESSIONID</code> é impresso em texto claro no HTML da página</strong>, como argumento do construtor do componente — o plugin não enxerga cookie. É observação de segurança do alvo, não algo que a gente use.</p>
+<p>Os anexos já enviados aparecem em <code>form0:anexoList</code>, com as colunas <strong>Data, Nome do Arquivo, Usuário e Ação</strong>.</p>
+<p>&gt; <strong>Para uma futura integração de escrita</strong>, o anexo é o passo mais delicado: são duas conversas &gt; distintas (o <code>form0</code> do pedido e o <code>formAnexar</code> do arquivo) amarradas pela mesma sessão Seam, &gt; e o arquivo sobe <em>antes</em> de o pedido ser gravado.</p>
 <h2>3. O catálogo medido</h2>
 <p><strong>203 recursos</strong> (120 consultas + 83 exames) produzem <strong>21 formulários distintos</strong>, com <strong>163 campos dinâmicos únicos</strong> (90 obrigatórios).</p>
 <p>O formulário padrão — <strong>Queixa Principal, Resultado de Exames, Observações</strong>, todos obrigatórios — cobre 138 dos 203 recursos. O resto é especialidade pedindo dado clínico.</p>

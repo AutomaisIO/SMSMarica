@@ -54,6 +54,50 @@ regra própria, e de fato é o único recurso com formulário exclusivo (§4).
 > **A resposta é PARCIAL**: não traz `<form id="form0">`. Vale a regra de sempre — usar a
 > última página completa como fonte dos campos e o parcial só como fonte do conteúdo novo.
 
+## 2.3 Anexar arquivo — como o upload funciona
+
+Levantado em 08/08/2026 lendo o `ui.pack.js` do próprio SER. **Nunca exercitado**: subir arquivo
+é escrita, e a sonda para antes disso. O que está aqui é o protocolo, não uma prova de execução.
+
+O botão *Anexar Arquivo* (`form0:j_id299`) é um A4J cujo `oncomplete` abre o modal
+`modalAnexarArquivo`. Dentro do modal vive **outro form**, separado do `form0`:
+
+| | |
+|---|---|
+| Form | `formAnexar`, `enctype="multipart/form-data"` |
+| Componente | `rich:fileUpload` (`formAnexar:upload`) |
+| Campo do arquivo | `formAnexar:upload:file` |
+| Botões | `formAnexar:j_id320` (**Anexar** — escrita) e `formAnexar:j_id319` (Cancelar) |
+| Limites declarados | `maxFileBatchSize: 2`, `noDuplicate: true` |
+
+**O envio dos bytes não usa o `action` do form.** O RichFaces reescreve o `action` na hora e
+submete num iframe escondido — um POST `multipart/form-data` por arquivo, para:
+
+```
+/ser/pages/consultas-exames/solicitacao/solicitar-consulta-editar.seam
+  ?_richfaces_upload_uid=<uid aleatório>
+  &formAnexar:upload=formAnexar:upload
+  &_richfaces_upload_file_indicator=true
+  &AJAXREQUEST=_viewRoot
+```
+
+Antes de submeter, o componente **desabilita todos os outros `input[type=file]`** do form, para
+que vá exatamente um arquivo por requisição. O progresso e o cancelamento andam por fora, num A4J
+paralelo com `_richfaces_file_upload_action` + `_richfaces_upload_uid`.
+
+Há um caminho alternativo por **Flash** (`FileUploadComponent.swf`), que monta a mesma URL mas
+embute `;jsessionid=` no caminho e acrescenta `_richfaces_size` e `_richfaces_send_http_error`.
+Para isso, **o `JSESSIONID` é impresso em texto claro no HTML da página**, como argumento do
+construtor do componente — o plugin não enxerga cookie. É observação de segurança do alvo, não
+algo que a gente use.
+
+Os anexos já enviados aparecem em `form0:anexoList`, com as colunas **Data, Nome do Arquivo,
+Usuário e Ação**.
+
+> **Para uma futura integração de escrita**, o anexo é o passo mais delicado: são duas conversas
+> distintas (o `form0` do pedido e o `formAnexar` do arquivo) amarradas pela mesma sessão Seam,
+> e o arquivo sobe *antes* de o pedido ser gravado.
+
 ## 3. O catálogo medido
 
 **203 recursos** (120 consultas + 83 exames)
