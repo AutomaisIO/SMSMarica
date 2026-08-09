@@ -128,6 +128,17 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p>  (item 10).</p>
 <p><strong>Corrigido:</strong> a coluna passou a ser descartada nesse export; o merge preserva com <code>??</code> o agendamento que a tela de Histórico trouxe; e o texto é truncado antes de gravar, para que campo grande nunca mais derrube uma rodada inteira.</p>
 <p><strong>O que ficou provado de bom na mesma rodada:</strong> as seis situações não-Alta foram varridas gerando <strong>5 gatilhos</strong>, contra 18.564 da rodada anterior — a normalização do agendamento eliminou os 7.388 falsos "remarcou", como previsto.</p>
+<h3>Incidente de 08/08/2026 (noite) — a fase de histórico falhava em ~100%</h3>
+<p>A Carga Inicial de 22:03 varreu a grade sem problema e <strong>morreu na fase de histórico</strong>: 14.363 falhas, todas <em>"A busca pelo ID X em &lt;situação&gt; devolveu 0 linhas — esperava exatamente 1"</em>, com <strong>2 leituras boas</strong> (a primeira, às 22:20:04, e mais uma). Rodou 1h30 processando ~2 itens/s sem gravar nada.</p>
+<p><strong>Causa, provada contra o SER:</strong> <code>SerLeitorService.Absorver</code> atualizava <code>_ultimoViewState</code> a partir de <strong>qualquer</strong> página — inclusive a tela de histórico, que é <strong>outra view JSF</strong>. O ciclo alterna pesquisa → histórico → pesquisa, então da segunda leitura em diante o motor postava o form de PESQUISA com o ViewState do HISTÓRICO. O JSF restaurava a view errada, a ação não rodava e a grade voltava vazia — HTTP 200, sem erro. É o §3.2 do <code>docs/ser.md</code> na veia.</p>
+<p>Medição que fecha o caso (sonda, mesmo ID e mesma situação):</p>
+<div class="tw"><table><thead><tr><th>ViewState usado</th><th>resultado</th></tr></thead><tbody>
+<tr><td><code>j_id5</code> (da tela de pesquisa)</td><td><strong>1 linha</strong></td></tr>
+<tr><td><code>j_id6</code> (da tela de histórico)</td><td><strong>0 linhas</strong></td></tr>
+</tbody></table></div>
+<p><strong>Corrigido:</strong> o ViewState agora só é aceito da página de formulário ou de resposta <strong>parcial</strong> (o datascroller re-renderiza a mesma view). Outra página completa é recusada. Com teste de regressão nos dois sentidos — o parcial continua sendo aceito, senão a paginação quebraria.</p>
+<p>&gt; <strong>Como isso passou despercebido:</strong> em 06/08 o mesmo ciclo já tinha quebrado, com o sintoma &gt; barulhento <em>"Botão Pesquisar não encontrado"</em> (10.501 falhas), e a correção de então tratou só &gt; a metade barulhenta — parou de promover a tela de histórico a <code>_htmlForm</code>, mas continuou &gt; absorvendo o ViewState dela. Sobrou a metade silenciosa.</p>
+<p><strong>Também nesta leva:</strong> os contadores <code>Buscas</code> e <code>Solicitações encontradas</code> passaram a ser gravados <strong>a cada lote</strong>, e não só quando a situação inteira termina. A tela ficava minutos sem mudar número nenhum no meio de uma situação longa, e quem olhava concluía que a rodada tinha travado.</p>
 <p><strong>Abertos, em ordem de urgência</strong> (os <code>[recarga]</code> precisam sair antes do Passo 4):</p>
 <ol>
 <li><strong>[recarga] Gatilho reincidente viola o índice único e trava a varredura em loop</strong></li>

@@ -187,6 +187,39 @@ grande nunca mais derrube uma rodada inteira.
 **5 gatilhos**, contra 18.564 da rodada anterior — a normalização do agendamento eliminou os
 7.388 falsos "remarcou", como previsto.
 
+### Incidente de 08/08/2026 (noite) — a fase de histórico falhava em ~100%
+
+A Carga Inicial de 22:03 varreu a grade sem problema e **morreu na fase de histórico**: 14.363
+falhas, todas *"A busca pelo ID X em <situação> devolveu 0 linhas — esperava exatamente 1"*, com
+**2 leituras boas** (a primeira, às 22:20:04, e mais uma). Rodou 1h30 processando ~2 itens/s sem
+gravar nada.
+
+**Causa, provada contra o SER:** `SerLeitorService.Absorver` atualizava `_ultimoViewState` a
+partir de **qualquer** página — inclusive a tela de histórico, que é **outra view JSF**. O ciclo
+alterna pesquisa → histórico → pesquisa, então da segunda leitura em diante o motor postava o
+form de PESQUISA com o ViewState do HISTÓRICO. O JSF restaurava a view errada, a ação não rodava
+e a grade voltava vazia — HTTP 200, sem erro. É o §3.2 do `docs/ser.md` na veia.
+
+Medição que fecha o caso (sonda, mesmo ID e mesma situação):
+
+| ViewState usado | resultado |
+|---|---|
+| `j_id5` (da tela de pesquisa) | **1 linha** |
+| `j_id6` (da tela de histórico) | **0 linhas** |
+
+**Corrigido:** o ViewState agora só é aceito da página de formulário ou de resposta **parcial**
+(o datascroller re-renderiza a mesma view). Outra página completa é recusada. Com teste de
+regressão nos dois sentidos — o parcial continua sendo aceito, senão a paginação quebraria.
+
+> **Como isso passou despercebido:** em 06/08 o mesmo ciclo já tinha quebrado, com o sintoma
+> barulhento *"Botão Pesquisar não encontrado"* (10.501 falhas), e a correção de então tratou só
+> a metade barulhenta — parou de promover a tela de histórico a `_htmlForm`, mas continuou
+> absorvendo o ViewState dela. Sobrou a metade silenciosa.
+
+**Também nesta leva:** os contadores `Buscas` e `Solicitações encontradas` passaram a ser gravados
+**a cada lote**, e não só quando a situação inteira termina. A tela ficava minutos sem mudar
+número nenhum no meio de uma situação longa, e quem olhava concluía que a rodada tinha travado.
+
 **Abertos, em ordem de urgência** (os `[recarga]` precisam sair antes do Passo 4):
 
 1. **[recarga] Gatilho reincidente viola o índice único e trava a varredura em loop**

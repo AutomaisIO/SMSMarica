@@ -195,14 +195,30 @@ public sealed class SerLeitorService(
         // e ela não tem o botão Pesquisar. Resultado: o 1º histórico era lido e TODOS os
         // seguintes falhavam com "Botão Pesquisar não encontrado" (10.501 falhas na carga
         // inicial de 06/08/2026). Só é página de formulário quem tem o botão de pesquisa.
-        if (html.Contains("<form id=\"form0\"", StringComparison.Ordinal)
-            && SerHtmlParser.BotaoPesquisar(SerHtmlParser.Documento(html)) is not null)
-        {
-            _htmlForm = html;
-        }
+        var ehPaginaCompleta = html.Contains("<form id=\"form0\"", StringComparison.Ordinal);
+        var ehPaginaDeFormulario =
+            ehPaginaCompleta && SerHtmlParser.BotaoPesquisar(SerHtmlParser.Documento(html)) is not null;
 
-        var vs = SerHtmlParser.ViewStateQualquer(html);
-        if (!string.IsNullOrEmpty(vs)) _ultimoViewState = vs;
+        if (ehPaginaDeFormulario) _htmlForm = html;
+
+        // O VIEWSTATE TEM DE SER DA MESMA VIEW QUE O FORM — senão o JSF restaura a view errada e
+        // a ação não roda: HTTP 200, grade vazia, nenhum erro (docs/ser.md §3.2).
+        //
+        // Aceita de dois lugares: da página de formulário (mesma view do `_htmlForm`) e de
+        // resposta PARCIAL — o datascroller re-renderiza a mesma view e devolve o ViewState novo,
+        // que é o correto para o submit seguinte.
+        //
+        // RECUSA de outra página completa. A tela de HISTÓRICO é outra view: absorver o ViewState
+        // dela deixava `_htmlForm` (pesquisa) e `_ultimoViewState` (histórico) apontando para
+        // views diferentes, e a busca seguinte voltava vazia. Custou 14.363 falhas na carga
+        // inicial de 08/08/2026 — o 1º histórico era lido e todos os outros morriam com
+        // "devolveu 0 linhas". Medido contra o SER: mesma busca dá 1 linha com o ViewState da
+        // pesquisa e 0 com o do histórico.
+        if (!ehPaginaCompleta || ehPaginaDeFormulario)
+        {
+            var vs = SerHtmlParser.ViewStateQualquer(html);
+            if (!string.IsNullOrEmpty(vs)) _ultimoViewState = vs;
+        }
     }
 
     private static string Br(DateOnly d) => d.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture);

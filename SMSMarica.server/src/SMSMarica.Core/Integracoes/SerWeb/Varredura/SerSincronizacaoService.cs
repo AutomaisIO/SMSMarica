@@ -203,6 +203,13 @@ public sealed class SerSincronizacaoService(
 
             var vistos = new HashSet<string>(StringComparer.Ordinal);
 
+            // Contadores desta situação, para gravar o progresso A CADA LOTE. O `resultado` é
+            // criado aqui (e não dentro do varredor) justamente para que o número de buscas já
+            // feitas seja legível enquanto a situação ainda está em curso.
+            var resultado = new ResultadoVarreduraSer();
+            var buscasAntes = execucao.Buscas;
+            var encontradasAntes = execucao.SolicitacoesEncontradas;
+
             async Task AplicarAsync(
                 IReadOnlyList<SerLinhaGrade> linhas, DateOnly cursorConcluido, CancellationToken ct)
             {
@@ -213,6 +220,14 @@ public sealed class SerSincronizacaoService(
 
                 execucao.CursorSituacao = situacao;
                 execucao.CursorData = cursorConcluido;
+
+                // Antes estes dois só eram gravados quando a situação INTEIRA terminava, e a tela
+                // ficava minutos sem mudar número nenhum — quem olhava concluía que a rodada tinha
+                // travado. (Aconteceu comigo em 08/08: "buscas=120" parado por vários minutos era
+                // uma varredura saudável no meio de uma situação longa.)
+                execucao.Buscas = buscasAntes + resultado.Buscas;
+                execucao.SolicitacoesEncontradas = encontradasAntes + vistos.Count;
+
                 await db.SaveChangesAsync(ct);
             }
 
@@ -225,12 +240,14 @@ public sealed class SerSincronizacaoService(
             var leitorDaVez = situacao == SituacaoSer.Alta ? exportSolicitacaoLeitor : exportLeitor;
 
             await leitorDaVez.PrepararAsync(cancellationToken);
-            var resultado = await varredorExport.VarrerAsync(
-                leitorDaVez, situacao, de, fim, AplicarAsync, cancellationToken);
+            await varredorExport.VarrerAsync(
+                leitorDaVez, situacao, de, fim, AplicarAsync, cancellationToken, resultado);
             RegistrarTruncadas(execucao, resultado, leitorDaVez);
 
-            execucao.Buscas += resultado.Buscas;
-            execucao.SolicitacoesEncontradas += vistos.Count;
+            // Fecha a situação com o número final (o último lote pode ter vindo depois do
+            // penúltimo SaveChanges).
+            execucao.Buscas = buscasAntes + resultado.Buscas;
+            execucao.SolicitacoesEncontradas = encontradasAntes + vistos.Count;
             await db.SaveChangesAsync(cancellationToken);
         }
     }
