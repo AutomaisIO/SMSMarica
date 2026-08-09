@@ -306,9 +306,15 @@ trilha e é reversível.
    herdada do SISREG por analogia e nunca testada; ela justificava "uma rodada por vez" e o
    scheduler de madrugada — nenhuma das duas coisas se sustenta por esse motivo.
    Throughput medido: 4 workers fizeram 12 buscas em 2,0s contra 3,9s de um worker (**~2x**,
-   não 4x — o gargalo passa a ser o backend do SER). Paralelizar é viável e está na fila de
-   trabalho, com ressalva: o SER é produção do Estado inteiro, compartilhada com todos os
-   municípios, então a recomendação é **3 a 4 workers**, não 10.
+   não 4x — o gargalo passa a ser o backend do SER).
+
+   > **DECISÃO (Bernardo, 08/08/2026): paralelismo DESCARTADO.** Não é para implementar. O ganho
+   > medido (~2x) não paga o custo: exigiria um pool de sessões isoladas por worker, e é
+   > justamente o estado de sessão (`_htmlForm` + ViewState) cujo vazamento entre views custou
+   > 14.363 leituras nesta mesma data. Some-se que o SER é produção do Estado inteiro,
+   > compartilhada com todos os municípios. **O motor continua sequencial.** O que fica do
+   > achado é só isto: a afirmação de sessão única é falsa, então a rodada NÃO derruba quem
+   > estiver operando o SER — e por isso ela não precisa mais ser de madrugada por esse motivo.
 6. **FollowUP é `Em fila → Em fila`** — não aparece em diff de grade. Por isso todo `EM_FILA`
    tem o histórico relido diariamente.
 7. **`Alta` é estado terminal, não tem histórico e não existe no combo da tela de export.**
