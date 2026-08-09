@@ -154,7 +154,19 @@ li{margin:3px 0}p,li{max-width:75ch}
 <tr><td><code>participant</code></td><td><code>prof_codigo</code> da evolução de início</td><td></td></tr>
 <tr><td><code>statusHistory</code></td><td>entradas sala amarela/vermelha</td><td>de graça, o Salux não tem</td></tr>
 <tr><td><code>status</code></td><td>derivado</td><td><code>finished</code> com atendimento; sem evolução médica → não atendido</td></tr>
+<tr><td><code>period.end</code></td><td><code>atendimento_ambulatorial.atendamb_datafinal</code></td><td>ver 6.1</td></tr>
+<tr><td><code>hospitalization.dischargeDisposition</code></td><td><code>UPA_Atendimento_Medico.tipsai_codigo</code> → <code>Tipo_Saida</code></td><td>ver 6.1</td></tr>
 </tbody></table></div>
+<h4>6.1 O fechamento do boletim (medido em 08/08/2026)</h4>
+<p><code>Pronto_Atendimento</code> <strong>só tem a chegada</strong>. Quando a pessoa saiu e por quê está em outras duas tabelas, ambas 1:1 com o boletim (90 dias na UPA: 36.075 linhas para 36.075 boletins distintos):</p>
+<div class="tw"><table><thead><tr><th>Campo</th><th>UPA Inoã</th><th>Santa Rita</th><th>Serve?</th></tr></thead><tbody>
+<tr><td><code>atendimento_ambulatorial.atendamb_datafinal</code></td><td>95,1%</td><td>96,9%</td><td><strong>sim</strong> — é a hora da saída</td></tr>
+<tr><td><code>UPA_Atendimento_Medico.tipsai_codigo</code></td><td>89,9%</td><td>97,0%</td><td><strong>sim</strong> — é o desfecho</td></tr>
+<tr><td><code>UPA_Atendimento_Medico.upaatemed_DataSaida</code></td><td>6,0%</td><td>0,2%</td><td><strong>não</strong> — nome certo, campo morto</td></tr>
+</tbody></table></div>
+<p><code>atendamb_datafinal</code> é evento real, não fechamento em lote: se espalha pelas 24h do dia e 97,0% cai dentro de 24h da chegada. Os 3% restantes são fechamento administrativo tardio — quem usar isso como gatilho de contato com o paciente precisa da guarda de janela.</p>
+<p><code>Tipo_Saida</code> tem 17 desfechos nomeados; na UPA em 30 dias: 9.820 "A.1 – Atendimento em consultório concluído", 385 evasão, 101 evasão sem atendimento médico, 67 alta por decisão médica, 31 transferência, 12 óbito, 3 alta a pedido, 1 chegou cadáver. O conector traduz para o ValueSet <code>discharge-disposition</code> do R4 <strong>e preserva o código da origem</strong> numa segunda <code>Coding</code> (<code>urn:klinikos:tiposaida</code>): o R4 achata em <code>aadvice</code> tanto a evasão quanto a alta a pedido, e a diferença importa para quem consome.</p>
+<p><strong>Fechar o boletim não toca o boletim.</strong> Dos 2.350 boletins fechados em 7 dias, <strong>zero</strong> tiveram o <code>rv_atualizacao</code> do <code>Pronto_Atendimento</code> avançado — a escrita acontece na <code>atendimento_ambulatorial</code>. Por isso o fechamento tem <strong>fase de CDC própria</strong> (<code>fechamento</code>), com ponteiro no <code>rv_atualizacao</code> daquela tabela. Um CDC só pelo boletim importaria a chegada de todo mundo e a saída de ninguém, que foi o estado do hub até 08/08/2026 (295 mil Encounters do Klinikos, nenhum com <code>period.end</code>).</p>
 <h3>Condition ← <code>UPA_Evolucao.cid_codigo_primario</code> / <code>_secundario</code></h3>
 <p>Só das linhas com CID (INÍCIO, REAVALIAÇÃO, salas). A <strong>reavaliação</strong> pode mudar o CID — a última prevalece; as anteriores não somem, viram histórico da mesma Condition.</p>
 <h3>Observation ← <code>UPA_SinaisVitais</code></h3>

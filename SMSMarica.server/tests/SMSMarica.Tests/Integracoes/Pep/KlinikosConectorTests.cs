@@ -1,4 +1,5 @@
-﻿using Hl7.Fhir.Model;
+﻿using System.Globalization;
+using Hl7.Fhir.Model;
 using SMSMarica.Core.Integracoes.Pep.Estrategias;
 using SMSMarica.Core.Integracoes.Pep.Estrategias.Klinikos;
 using SMSMarica.Data.Entities.Enums;
@@ -148,6 +149,85 @@ public class KlinikosConectorTests
 
         Assert.Equal(Encounter.EncounterStatus.Cancelled, e.Status);
         Assert.Null(e.ServiceProvider);
+    }
+
+    /// <summary>
+    /// O fechamento é o único sinal de que a pessoa foi embora — <c>status=finished</c> é gravado
+    /// desde a primeira evolução, com o paciente ainda na unidade. Sem <c>period.end</c> o hub
+    /// não sabe distinguir quem saiu de quem está lá, que era o estado até 08/08/2026.
+    /// </summary>
+    [Fact]
+    public void Boletim_fechado_carrega_a_hora_da_saida()
+    {
+        var e = Mapper().BuildEncounter(Bol(), "Patient/abc", null, teveAtendimento: true,
+            new DesfechoBoletim("2026-08-04T01:40:00", 17, "A.1 - Atendimento em consultório concluído"));
+
+        Assert.StartsWith("2026-08-04T01:40:00", e.Period!.End, StringComparison.Ordinal);
+    }
+
+    /// <summary>Boletim ainda aberto não pode ganhar fim inventado — nem desfecho.</summary>
+    [Fact]
+    public void Boletim_sem_fechamento_fica_sem_fim_e_sem_desfecho()
+    {
+        var e = Mapper().BuildEncounter(Bol(), "Patient/abc", null, teveAtendimento: true);
+
+        Assert.Null(e.Period!.End);
+        Assert.Null(e.Hospitalization);
+    }
+
+    /// <summary>
+    /// A saída fica no ValueSet do R4 <b>e</b> preserva o código da origem: a pesquisa de
+    /// satisfação precisa separar evasão de alta, e o R4 achata as duas em <c>aadvice</c>.
+    /// </summary>
+    [Theory]
+    [InlineData(17, "home")]
+    [InlineData(1, "home")]
+    [InlineData(14, "home")]
+    [InlineData(3, "aadvice")]
+    [InlineData(12, "aadvice")]
+    [InlineData(5, "other-hcf")]
+    [InlineData(6, "exp")]
+    [InlineData(8, "exp")]
+    [InlineData(9, "oth")]
+    public void Tipo_de_saida_da_origem_vira_discharge_disposition_do_R4(int tipsai, string esperado)
+    {
+        var e = Mapper().BuildEncounter(Bol(), "Patient/abc", null, teveAtendimento: true,
+            new DesfechoBoletim("2026-08-04T01:40:00", tipsai, "descrição da origem"));
+
+        var cc = e.Hospitalization!.DischargeDisposition!;
+        Assert.Equal(esperado,
+            Assert.Single(cc.Coding, c => c.System == "http://terminology.hl7.org/CodeSystem/discharge-disposition").Code);
+        Assert.Equal(tipsai.ToString(CultureInfo.InvariantCulture),
+            Assert.Single(cc.Coding, c => c.System == "urn:klinikos:tiposaida").Code);
+        Assert.Equal("descrição da origem", cc.Text);
+    }
+
+    /// <summary>
+    /// 4,9% dos boletins fecham sem passar pelo médico — têm hora de saída e não têm tipo. Ficar
+    /// sem desfecho é diferente de ficar sem saída; o Encounter tem de sair com um e sem o outro.
+    /// </summary>
+    [Fact]
+    public void Fechamento_sem_tipo_de_saida_ainda_registra_a_saida()
+    {
+        var e = Mapper().BuildEncounter(Bol(), "Patient/abc", null, teveAtendimento: true,
+            new DesfechoBoletim("2026-08-04T01:40:00", null, null));
+
+        Assert.StartsWith("2026-08-04T01:40:00", e.Period!.End, StringComparison.Ordinal);
+        Assert.Null(e.Hospitalization);
+    }
+
+    /// <summary>
+    /// O fechamento vem de <c>atendimento_ambulatorial</c>, não do <c>Pronto_Atendimento</c>, e
+    /// <b>não</b> de <c>upaatemed_DataSaida</c> — campo com nome certo e 6,0% de preenchimento.
+    /// </summary>
+    [Fact]
+    public void Consulta_de_desfecho_le_a_coluna_medida_e_nao_a_homonima()
+    {
+        var sql = KlinikosImportacaoStrategy.SqlDesfechos(["0006202608030001"]);
+
+        Assert.Contains("atendamb_datafinal", sql, StringComparison.Ordinal);
+        Assert.Contains("FROM atendimento_ambulatorial", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("upaatemed_DataSaida", sql, StringComparison.OrdinalIgnoreCase);
     }
 
     // ---------------- evolução ----------------

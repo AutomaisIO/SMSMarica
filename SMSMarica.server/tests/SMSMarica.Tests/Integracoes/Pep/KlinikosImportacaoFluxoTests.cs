@@ -45,6 +45,13 @@ public class KlinikosImportacaoFluxoTests
         public List<Dictionary<string, object?>> Profissionais { get; } = [];
         public List<Dictionary<string, object?>> Pacientes { get; } = [];
         public List<Dictionary<string, object?>> Boletins { get; } = [];
+
+        /// <summary>
+        /// Fechamento do boletim (<c>atendimento_ambulatorial</c> + <c>UPA_Atendimento_Medico</c>).
+        /// Vazio por padrão: o boletim ainda aberto é o caso normal do incremental, e é o estado
+        /// em que a maioria dos testes deste arquivo lê a origem.
+        /// </summary>
+        public List<Dictionary<string, object?>> Desfechos { get; } = [];
         public List<Dictionary<string, object?>> Evolucoes { get; } = [];
         public List<Dictionary<string, object?>> Sinais { get; } = [];
 
@@ -108,6 +115,7 @@ public class KlinikosImportacaoFluxoTests
             _ when sql.Contains("FROM profissional", StringComparison.OrdinalIgnoreCase) => Profissionais,
             _ when sql.Contains("FROM paciente", StringComparison.OrdinalIgnoreCase) => Pacientes,
             _ when sql.Contains("FROM Pronto_Atendimento", StringComparison.OrdinalIgnoreCase) => Boletins,
+            _ when sql.Contains("FROM atendimento_ambulatorial", StringComparison.OrdinalIgnoreCase) => Desfechos,
             _ when sql.Contains("FROM UPA_Evolucao", StringComparison.OrdinalIgnoreCase) => Evolucoes,
             _ when sql.Contains("FROM UPA_SinaisVitais", StringComparison.OrdinalIgnoreCase) => Sinais,
             _ => throw new InvalidOperationException($"SQL não previsto pelo fake: {sql[..Math.Min(80, sql.Length)]}"),
@@ -294,6 +302,13 @@ public class KlinikosImportacaoFluxoTests
         ["spa_chegada"] = "2026-08-01T09:00:00", ["spa_dt_boletim"] = "2026-08-01T09:05:00",
         ["spa_nomesocial"] = null, ["spa_cartao_nsaude"] = null, ["spa_forma_chegada"] = "1",
         ["risaco_codigo"] = "3", ["rv"] = rv,
+    };
+
+    /// <summary>Linha de fechamento — o rowversion é o da <c>atendimento_ambulatorial</c>, não o do boletim.</summary>
+    private static Dictionary<string, object?> Desf(string spa, string fim, int? tipsai, string? tipsaiDs, long rv) => new()
+    {
+        ["spa_codigo"] = spa, ["atendamb_datafinal"] = fim, ["tipsai_codigo"] = tipsai,
+        ["tipsai_Descricao"] = tipsaiDs, ["rv"] = rv,
     };
 
     private static Dictionary<string, object?> Evo(long cod, string spa, string tipo, string desc, string? cid, long rv) => new()
@@ -502,6 +517,38 @@ public class KlinikosImportacaoFluxoTests
 
         b1 = Assert.Single(hub.Do<Encounter>(), e => e.Identifier.Any(i => i.Value == $"{Slug}:B1"));
         Assert.Equal(Encounter.EncounterStatus.Finished, b1.Status);
+    }
+
+    /// <summary>
+    /// A alta chega num ciclo POSTERIOR e o boletim não muda — é o caso normal, não a exceção.
+    /// Medido na UPA em 08/08/2026: dos 2.350 boletins fechados em 7 dias, zero tiveram o
+    /// <c>rv_atualizacao</c> do <c>Pronto_Atendimento</c> avançado. Se o fechamento dependesse
+    /// do CDC do boletim, o hub registraria a chegada de todo mundo e a saída de ninguém.
+    /// </summary>
+    [Fact]
+    public async Task Alta_lancada_depois_fecha_o_Encounter_mesmo_sem_o_boletim_mudar()
+    {
+        var hub = new HubFake();
+        var origem = OrigemPadrao();
+        var marca = new MarcaDagua();
+
+        await RodarAsync(origem, hub, marca);
+        var b1 = Assert.Single(hub.Do<Encounter>(), e => e.Identifier.Any(i => i.Value == $"{Slug}:B1"));
+        Assert.Null(b1.Period!.End);          // ainda na unidade
+        Assert.Null(b1.Hospitalization);
+
+        // Paciente vai embora. Só a `atendimento_ambulatorial` é tocada — o boletim fica intacto.
+        origem.Desfechos.Add(Desf("B1", "2026-08-01T15:30:00", 17, "A.1 - Atendimento em consultório concluído", 5000));
+        await RodarAsync(origem, hub, marca);
+
+        b1 = Assert.Single(hub.Do<Encounter>(), e => e.Identifier.Any(i => i.Value == $"{Slug}:B1"));
+        Assert.StartsWith("2026-08-01T15:30:00", b1.Period!.End, StringComparison.Ordinal);
+        Assert.Equal("home", b1.Hospitalization!.DischargeDisposition!.Coding
+            .Single(c => c.System == "http://terminology.hl7.org/CodeSystem/discharge-disposition").Code);
+        Assert.Equal(5000, marca.Ponteiro("fechamento"));
+
+        // E não nasceu Encounter novo: o upsert por identifier reaproveitou o mesmo recurso.
+        Assert.Equal(3, hub.Do<Encounter>().Count);
     }
 
     /// <summary>Divergência já conhecida e descongelada ("origem correta") deixa a origem corrigir o hub.</summary>

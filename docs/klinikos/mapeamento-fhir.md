@@ -228,6 +228,37 @@ instância (`upa24h-marica:0006`) — duas instâncias nunca colidem.
 | `participant` | `prof_codigo` da evolução de início | |
 | `statusHistory` | entradas sala amarela/vermelha | de graça, o Salux não tem |
 | `status` | derivado | `finished` com atendimento; sem evolução médica → não atendido |
+| `period.end` | `atendimento_ambulatorial.atendamb_datafinal` | ver 6.1 |
+| `hospitalization.dischargeDisposition` | `UPA_Atendimento_Medico.tipsai_codigo` → `Tipo_Saida` | ver 6.1 |
+
+#### 6.1 O fechamento do boletim (medido em 08/08/2026)
+
+`Pronto_Atendimento` **só tem a chegada**. Quando a pessoa saiu e por quê está em outras duas
+tabelas, ambas 1:1 com o boletim (90 dias na UPA: 36.075 linhas para 36.075 boletins distintos):
+
+| Campo | UPA Inoã | Santa Rita | Serve? |
+|---|---|---|---|
+| `atendimento_ambulatorial.atendamb_datafinal` | 95,1% | 96,9% | **sim** — é a hora da saída |
+| `UPA_Atendimento_Medico.tipsai_codigo` | 89,9% | 97,0% | **sim** — é o desfecho |
+| `UPA_Atendimento_Medico.upaatemed_DataSaida` | 6,0% | 0,2% | **não** — nome certo, campo morto |
+
+`atendamb_datafinal` é evento real, não fechamento em lote: se espalha pelas 24h do dia e 97,0%
+cai dentro de 24h da chegada. Os 3% restantes são fechamento administrativo tardio — quem usar
+isso como gatilho de contato com o paciente precisa da guarda de janela.
+
+`Tipo_Saida` tem 17 desfechos nomeados; na UPA em 30 dias: 9.820 "A.1 – Atendimento em
+consultório concluído", 385 evasão, 101 evasão sem atendimento médico, 67 alta por decisão
+médica, 31 transferência, 12 óbito, 3 alta a pedido, 1 chegou cadáver. O conector traduz para o
+ValueSet `discharge-disposition` do R4 **e preserva o código da origem** numa segunda `Coding`
+(`urn:klinikos:tiposaida`): o R4 achata em `aadvice` tanto a evasão quanto a alta a pedido, e a
+diferença importa para quem consome.
+
+**Fechar o boletim não toca o boletim.** Dos 2.350 boletins fechados em 7 dias, **zero** tiveram
+o `rv_atualizacao` do `Pronto_Atendimento` avançado — a escrita acontece na
+`atendimento_ambulatorial`. Por isso o fechamento tem **fase de CDC própria** (`fechamento`),
+com ponteiro no `rv_atualizacao` daquela tabela. Um CDC só pelo boletim importaria a chegada de
+todo mundo e a saída de ninguém, que foi o estado do hub até 08/08/2026 (295 mil Encounters do
+Klinikos, nenhum com `period.end`).
 
 ### Condition ← `UPA_Evolucao.cid_codigo_primario` / `_secundario`
 

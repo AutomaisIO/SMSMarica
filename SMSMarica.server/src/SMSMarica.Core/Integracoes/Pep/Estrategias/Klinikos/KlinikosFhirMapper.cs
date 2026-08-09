@@ -13,9 +13,15 @@ namespace SMSMarica.Core.Integracoes.Pep.Estrategias.Klinikos;
 /// internos entram prefixados pelo slug da instância, para as duas UPAs não colidirem; e
 /// <c>meta.source</c> diz de qual base veio cada recurso.</para>
 ///
-/// <para><b>A diferença que mais pesa</b>: aqui não existe tabela de atendimento. O CID, a nota
-/// e a prescrição saem todos de <c>UPA_Evolucao</c>, discriminados por <c>Tipo</c> — o módulo de
-/// emergência do produto não é usado nesta implantação e suas tabelas estão vazias.</para>
+/// <para><b>A diferença que mais pesa</b>: o CONTEÚDO clínico não tem tabela própria. O CID, a
+/// nota e a prescrição saem todos de <c>UPA_Evolucao</c>, discriminados por <c>Tipo</c> — as
+/// tabelas de registro clínico do módulo de emergência (<c>Resumo_Alta</c>,
+/// <c>Evolucao_Diagnosticos</c>, <c>Atendimento</c>) estão vazias nesta implantação.</para>
+///
+/// <para>O que <b>não</b> está vazio é o esqueleto administrativo do atendimento:
+/// <c>atendimento_ambulatorial</c> e <c>UPA_Atendimento_Medico</c> têm uma linha por boletim e
+/// carregam o fechamento — quando saiu e por quê. É de onde vem o <c>period.end</c> do Encounter
+/// (ver <c>DesfechoBoletim</c>).</para>
 /// </summary>
 internal sealed class KlinikosFhirMapper(string slug, string source)
 {
@@ -32,8 +38,10 @@ internal sealed class KlinikosFhirMapper(string slug, string source)
     private const string SysLoinc = "http://loinc.org";
     private const string SysUcum = "http://unitsofmeasure.org";
     private const string SysObsCat = "http://terminology.hl7.org/CodeSystem/observation-category";
+    private const string SysDischarge = "http://terminology.hl7.org/CodeSystem/discharge-disposition";
 
     private const string SysUnidade = "urn:klinikos:unidade";
+    private const string SysTipoSaida = "urn:klinikos:tiposaida";
     private const string SysProfissional = "urn:klinikos:profissional";
     private const string SysPaciente = "urn:klinikos:paciente";
     private const string SysBoletim = "urn:klinikos:boletim";
@@ -270,9 +278,14 @@ internal sealed class KlinikosFhirMapper(string slug, string source)
     /// <para><paramref name="teveAtendimento"/> decide o status: 92,3% dos boletins chegam a ter
     /// atendimento médico; o resto é evasão. <b>Os dois entram</b> — o paciente esteve na
     /// unidade, e isso é informação clínica. O que muda é o status, não a existência.</para>
+    ///
+    /// <para><b>Status não é estado de alta.</b> Quem precisa saber que a pessoa foi embora lê
+    /// <c>period.end</c>: <c>finished</c> aqui significa "teve atendimento", e é gravado desde a
+    /// primeira evolução — enquanto o paciente ainda está na unidade.</para>
     /// </summary>
     public Encounter BuildEncounter(
-        BoletimLinha b, string patientRef, string? organizationRef, bool teveAtendimento, string? fim = null)
+        BoletimLinha b, string patientRef, string? organizationRef, bool teveAtendimento,
+        DesfechoBoletim? desfecho = null)
     {
         var enc = new Encounter
         {
@@ -289,9 +302,45 @@ internal sealed class KlinikosFhirMapper(string slug, string source)
         if ((Dt(b.Chegada) ?? Dt(b.DataBoletim)) is { } inicio)
         {
             enc.Period = new Period { Start = inicio };
-            if (Dt(fim) is { } f) enc.Period.End = f;
+            if (Dt(desfecho?.Fim) is { } f) enc.Period.End = f;
         }
+
+        if (DischargeDoTipoSaida(desfecho) is { } alta)
+            enc.Hospitalization = new Encounter.HospitalizationComponent { DischargeDisposition = alta };
+
         return enc;
+    }
+
+    /// <summary>
+    /// <c>Tipo_Saida</c> do Klinikos (17 códigos) → ValueSet <c>discharge-disposition</c> do R4.
+    /// O código da origem vai junto, como segunda <c>Coding</c>, e a descrição original no
+    /// <c>text</c>: o R4 tem 11 códigos genéricos e a origem distingue coisas que importam aqui
+    /// (evasão antes × depois do médico, encaminhamento à rede básica × à emergência). Traduzir
+    /// só para o padrão perderia o que decide se cabe pesquisa de satisfação.
+    /// </summary>
+    private static CodeableConcept? DischargeDoTipoSaida(DesfechoBoletim? d)
+    {
+        if (d?.TipoSaida is not { } cod) return null;
+
+        // Medido na UPA em 30 dias (08/08/2026): 9.820 do código 17, 385 do 3, 101 do 12,
+        // 67 do 1, 31 do 5, 12 do 6, 3 do 2, 1 do 8. O resto do catálogo é cauda.
+        var (padrao, display) = cod switch
+        {
+            1 or 10 or 14 or 17 => ("home", "Home"),              // alta para casa, com ou sem encaminhamento
+            2 => ("aadvice", "Left against advice"),               // alta a pedido
+            3 or 12 => ("aadvice", "Left against advice"),         // evasão (o R4 não tem "eloped")
+            4 or 5 or 7 or 11 or 15 => ("other-hcf", "Other healthcare facility"),
+            6 or 8 => ("exp", "Expired"),                          // óbito / chegou cadáver
+            _ => ("oth", "Other"),                                 // 9 extraviado, 13/16 baixa administrativa
+        };
+
+        var cc = new CodeableConcept { Text = S(d.TipoSaidaDs) };
+        cc.Coding =
+        [
+            new Coding(SysDischarge, padrao, display),
+            new Coding(SysTipoSaida, cod.ToString(CultureInfo.InvariantCulture), S(d.TipoSaidaDs)),
+        ];
+        return cc;
     }
 
     // ---------------- Condition ----------------

@@ -56,6 +56,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
 
     private const string FasePaciente = "paciente";
     private const string FaseAtendimento = "atendimento";
+    private const string FaseFechamento = "fechamento";
     private const string FaseEvolucao = "evolucao";
     private const string FaseSinais = "sinais-vitais";
 
@@ -209,12 +210,13 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
                 var achados = (await leitor.ConsultarAsync(SqlBoletinsDePacientes(lote), ct))
                     .Select(MapBoletim).OfType<BoletimLinha>().ToList();
                 var comAtd = await CarregarFlagsAtendimentoAsync(leitor, achados.Select(b => b.Codigo), ct);
+                var desfechos = await CarregarDesfechosAsync(leitor, achados.Select(b => b.Codigo), ct);
                 foreach (var b in achados)
                 {
                     try
                     {
                         if (await UpsertBoletimAsync(ctx, mapper, b, comAtd.Contains(b.Codigo),
-                                orgPorUnidade, pacPorCodigo, ct) is { } a)
+                                orgPorUnidade, pacPorCodigo, desfechos.GetValueOrDefault(b.Codigo), ct) is { } a)
                         {
                             atendPorBoletim[b.Codigo] = a;
                             p.Encounters++;
@@ -265,6 +267,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
             }
             var comAtendimento = await CarregarFlagsAtendimentoAsync(
                 leitor, boletins.Select(b => b.Codigo), ct);
+            var desfechos = await CarregarDesfechosAsync(leitor, boletins.Select(b => b.Codigo), ct);
             if (!limitado)
             {
                 await GarantirPacientesAsync(ctx, mapper, leitor, boletins.Select(b => b.PacCodigo),
@@ -277,7 +280,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
                 try
                 {
                     if (await UpsertBoletimAsync(ctx, mapper, b, comAtendimento.Contains(b.Codigo),
-                            orgPorUnidade, pacPorCodigo, ct) is { } a)
+                            orgPorUnidade, pacPorCodigo, desfechos.GetValueOrDefault(b.Codigo), ct) is { } a)
                     {
                         atendPorBoletim[b.Codigo] = a;
                         p.Encounters++;
@@ -294,6 +297,46 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
                     fase.Falhou(b.Rv);
                     Falhou($"boletim {b.Codigo}", Cd(b.PacCodigo), ex);
                 }
+            }
+        }, ct, persistirPonteiro: !limitado);
+
+        // ---------- 4b. Fechamentos → period.end do Encounter ----------
+        //
+        // Fase própria porque FECHAR O BOLETIM NÃO TOCA O BOLETIM: a alta é gravada em
+        // `atendimento_ambulatorial`, e o `rv_atualizacao` do `Pronto_Atendimento` fica onde
+        // estava. Medido na UPA em 08/08/2026: dos 2.350 boletins fechados em 7 dias, ZERO
+        // tiveram o rowversion do boletim avançado. Um CDC só por `Pronto_Atendimento` importa
+        // a chegada de todo mundo e a saída de ninguém — foi o estado do hub até aqui.
+        //
+        // O ponteiro é o `rv_atualizacao` DA `atendimento_ambulatorial`, que avança no fechamento.
+        p.FaseAtual = "fechamentos…";
+        await PaginarAsync(leitor, FaseFechamento, ctx, incremental, SqlFechamentos, async (linhas, fase) =>
+        {
+            var fechados = linhas
+                .Select(l => (Spa: l.Texto("spa_codigo"), Rv: l.Numero("rv") ?? 0))
+                .Where(f => f.Spa is not null)
+                .ToList();
+            if (limitado)
+            {
+                // Ensaio: só o que o ensaio já importou. Fora do escopo não é falha.
+                fechados = [.. fechados.Where(f => atendPorBoletim.ContainsKey(f.Spa!))];
+            }
+            if (fechados.Count == 0) return;
+
+            // Tirar do cache é o que FORÇA a releitura: `GarantirAtendimentosAsync` pula o que
+            // já está lá, e o que está lá foi gravado antes de existir hora de saída. Mesmo
+            // idioma usado quando o INÍCIO tardio cura o status de um boletim.
+            foreach (var f in fechados) atendPorBoletim.Remove(f.Spa!);
+
+            await GarantirAtendimentosAsync(ctx, mapper, leitor, fechados.Select(f => f.Spa),
+                orgPorUnidade, pacPorCodigo, atendPorBoletim, Falhou, ct);
+
+            foreach (var f in fechados)
+            {
+                fase.Visto(f.Rv);
+                // Fail-closed: boletim que não resolveu segura o ponteiro. Deixar passar
+                // perderia a alta em silêncio, e o rowversion nunca mais volta.
+                if (!atendPorBoletim.ContainsKey(f.Spa!)) fase.Falhou(f.Rv);
             }
         }, ct, persistirPonteiro: !limitado);
 
@@ -609,10 +652,35 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
         return com;
     }
 
+    /// <summary>
+    /// Fechamento de cada boletim, em lote por página — mesmo desenho de
+    /// <see cref="CarregarFlagsAtendimentoAsync"/>, e pela mesma razão: custo previsível sem
+    /// depender de índice que não dá para conferir com o agente offline.
+    /// </summary>
+    private static async Task<Dictionary<string, DesfechoBoletim>> CarregarDesfechosAsync(
+        LeitorAgenteSql leitor, IEnumerable<string> boletins, CancellationToken ct)
+    {
+        var todos = boletins.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var por = new Dictionary<string, DesfechoBoletim>(StringComparer.OrdinalIgnoreCase);
+        foreach (var lote in EmLotes(todos, TamanhoLote))
+        {
+            foreach (var linha in await leitor.ConsultarAsync(SqlDesfechos(lote), ct))
+            {
+                if (linha.Texto("spa_codigo") is not { } spa) continue;
+                por[spa] = new DesfechoBoletim(
+                    linha.DataHora("atendamb_datafinal"),
+                    (int?)linha.Numero("tipsai_codigo"),
+                    linha.Texto("tipsai_Descricao"));
+            }
+        }
+        return por;
+    }
+
     private static async Task<Atendimento?> UpsertBoletimAsync(
         ContextoImportacaoPep ctx, KlinikosFhirMapper mapper, BoletimLinha b, bool teveAtendimento,
         IReadOnlyDictionary<string, string> orgPorUnidade,
         IReadOnlyDictionary<string, string> pacPorCodigo,
+        DesfechoBoletim? desfecho,
         CancellationToken ct)
     {
         if (b.PacCodigo is null || !pacPorCodigo.TryGetValue(b.PacCodigo, out var pacRef)) return null;
@@ -622,7 +690,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
         // Todo boletim vira Encounter, inclusive o de quem desistiu antes de ser atendido
         // (7,7% na UPA): a pessoa esteve na unidade, e isso é informação clínica. O que muda
         // é o status — nunca a existência.
-        var enc = mapper.BuildEncounter(b, pacRef, orgRef, teveAtendimento);
+        var enc = mapper.BuildEncounter(b, pacRef, orgRef, teveAtendimento, desfecho);
         var salvo = await ctx.Escritor.UpsertPorIdentifierAsync(
             enc, KlinikosFhirMapper.IdentBoletim, mapper.Pref(b.Codigo), ct);
 
@@ -655,6 +723,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
             var achados = linhas.Select(MapBoletim).OfType<BoletimLinha>().ToList();
             var comAtendimento = await CarregarFlagsAtendimentoAsync(
                 leitor, achados.Select(b => b.Codigo), ct);
+            var desfechos = await CarregarDesfechosAsync(leitor, achados.Select(b => b.Codigo), ct);
 
             await GarantirPacientesAsync(ctx, mapper, leitor, achados.Select(b => b.PacCodigo),
                 pacPorCodigo, falhou, ct);
@@ -664,7 +733,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
                 try
                 {
                     if (await UpsertBoletimAsync(ctx, mapper, b, comAtendimento.Contains(b.Codigo),
-                            orgPorUnidade, pacPorCodigo, ct) is { } a)
+                            orgPorUnidade, pacPorCodigo, desfechos.GetValueOrDefault(b.Codigo), ct) is { } a)
                         cache[b.Codigo] = a;
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
@@ -823,6 +892,38 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
           FROM UPA_Evolucao
          WHERE SPA_CODIGO IN ({ListaTexto(boletins)})
            AND Tipo NOT LIKE 'ESTORNO%'
+        """;
+
+    /// <summary>
+    /// Quando cada boletim FECHOU e com que desfecho — o par que o <c>Pronto_Atendimento</c> não
+    /// tem. Sem isto o Encounter nasce sem <c>period.end</c>, e quem consome o hub não consegue
+    /// distinguir quem já foi para casa de quem ainda está na unidade.
+    ///
+    /// <para>Sem <c>GROUP BY</c> porque a relação é 1:1, medida em 08/08/2026 na UPA (90 dias:
+    /// 36.075 linhas de <c>atendimento_ambulatorial</c> para 36.075 boletins distintos, e o mesmo
+    /// número ao juntar <c>UPA_Atendimento_Medico</c>). Os dois <c>LEFT JOIN</c> são de propósito:
+    /// 4,9% dos boletins fecham sem passar pelo atendimento médico, e ficar sem desfecho é
+    /// diferente de ficar sem saída.</para>
+    /// </summary>
+    internal static string SqlDesfechos(IReadOnlyList<string> boletins) => $"""
+        SELECT aa.spa_codigo, aa.atendamb_datafinal, am.tipsai_codigo, ts.tipsai_Descricao
+          FROM atendimento_ambulatorial aa
+          LEFT JOIN UPA_Atendimento_Medico am ON am.atendamb_codigo = aa.atendamb_codigo
+          LEFT JOIN Tipo_Saida ts ON ts.tipsai_codigo = am.tipsai_codigo
+         WHERE aa.spa_codigo IN ({ListaTexto(boletins)})
+        """;
+
+    /// <summary>
+    /// CDC dos FECHAMENTOS. Devolve só o boletim e o rowversion: quem monta o desfecho é
+    /// <see cref="SqlDesfechos"/>, na releitura — assim existe uma única definição de "qual é a
+    /// saída deste boletim", em vez de duas que podem divergir.
+    /// </summary>
+    internal static string SqlFechamentos(long desde, int top) => $"""
+        SELECT TOP {top} spa_codigo, CONVERT(BIGINT, rv_atualizacao) AS rv
+          FROM atendimento_ambulatorial
+         WHERE CONVERT(BIGINT, rv_atualizacao) > {desde}
+           AND spa_codigo IS NOT NULL
+         ORDER BY CONVERT(BIGINT, rv_atualizacao)
         """;
 
     /// <summary>Teto seguro do rowversion: nada abaixo dele pertence a transacao em voo.</summary>

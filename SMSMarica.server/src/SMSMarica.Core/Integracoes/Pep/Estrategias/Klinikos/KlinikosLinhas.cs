@@ -28,6 +28,18 @@ internal sealed record BoletimLinha(
     string? NomeSocial, string? CartaoSus, string? FormaChegada, string? RiscoCodigo, long Rv);
 
 /// <summary>
+/// Fechamento do boletim: quando a pessoa saiu e por quê. Não vem do <c>Pronto_Atendimento</c>
+/// — essa tabela só tem a chegada; a saída mora em <c>atendimento_ambulatorial</c> e o desfecho
+/// em <c>UPA_Atendimento_Medico</c> (ver <c>SqlDesfechos</c>).
+///
+/// <para><c>Fim</c> é o <c>atendamb_datafinal</c>. Medido em 08/08/2026 nos últimos 90 dias:
+/// preenchido em 95,1% dos boletins da UPA e 96,9% dos da Santa Rita, espalhado pelas 24h do dia
+/// — é evento real, não fechamento em lote. <b>Não usar <c>upaatemed_DataSaida</c></b>, que tem
+/// nome de campo certo e preenchimento de 6,0% (UPA) e 0,2% (Santa Rita).</para>
+/// </summary>
+internal sealed record DesfechoBoletim(string? Fim, int? TipoSaida, string? TipoSaidaDs);
+
+/// <summary>
 /// Linha de <c>UPA_Evolucao</c>. É o registro clínico desta implantação — o CID, a nota e a
 /// prescrição vêm daqui, porque as tabelas de atendimento do módulo de emergência estão vazias
 /// (ver <c>docs/klinikos/mapeamento-fhir.md §3</c>).
