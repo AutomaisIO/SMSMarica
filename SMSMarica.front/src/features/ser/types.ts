@@ -272,6 +272,8 @@ export type TipoGatilhoSer =
 
 export type NotificacaoSer = {
   id: string;
+  /** Id interno da solicitação — o modal de detalhe busca por ele. */
+  solicitacaoId: string;
   idSer: string;
   tipo: TipoGatilhoSer;
   situacaoAnterior: SituacaoSer | null;

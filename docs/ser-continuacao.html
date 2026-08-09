@@ -221,9 +221,9 @@ li{margin:3px 0}p,li{max-width:75ch}
 </ol>
 <p>   de histórico também tem <code>form0</code>.</p>
 <ol>
-<li><strong>Sessão do SER é única por operador</strong>: varrer derruba quem estiver logado. Uma rodada por</li>
+<li>~~<strong>Sessão do SER é única por operador</strong>~~ — <strong>FALSO, medido em 08/08/2026.</strong> Três logins</li>
 </ol>
-<p>   vez, sempre. Por isso o scheduler roda de madrugada.</p>
+<p>   simultâneos com a MESMA credencial coexistiram, cada um num nó diferente do balanceador    (<code>server1</code>, <code>server3</code>, <code>server5</code>), e os três continuaram respondendo. A regra tinha sido    herdada do SISREG por analogia e nunca testada; ela justificava "uma rodada por vez" e o    scheduler de madrugada — nenhuma das duas coisas se sustenta por esse motivo.    Throughput medido: 4 workers fizeram 12 buscas em 2,0s contra 3,9s de um worker (<strong>~2x</strong>,    não 4x — o gargalo passa a ser o backend do SER). Paralelizar é viável e está na fila de    trabalho, com ressalva: o SER é produção do Estado inteiro, compartilhada com todos os    municípios, então a recomendação é <strong>3 a 4 workers</strong>, não 10.</p>
 <ol>
 <li><strong>FollowUP é <code>Em fila → Em fila</code></strong> — não aparece em diff de grade. Por isso todo <code>EM_FILA</code></li>
 </ol>

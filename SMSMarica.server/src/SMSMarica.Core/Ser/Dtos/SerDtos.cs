@@ -270,6 +270,11 @@ public sealed record SerDispararVarreduraDto
 /// identificar o paciente sem um segundo request por linha.</summary>
 public sealed record SerNotificacaoDto(
     Guid Id,
+
+    /// <summary>Id interno da solicitação — é por ele que a tela abre o detalhe completo, sem
+    /// precisar de um endpoint novo só para resolver o IdSer do SER.</summary>
+    Guid SolicitacaoId,
+
     string IdSer,
     TipoGatilhoSer Tipo,
     SituacaoSer? SituacaoAnterior,

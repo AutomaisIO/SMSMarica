@@ -303,8 +303,7 @@ export function AbaSerConfiguracao() {
         {status?.varreduraEmAndamento && (
           <p className="mt-3 flex items-center gap-2 rounded bg-blue-50 p-3 text-sm text-blue-800">
             <RefreshCw className="size-4 animate-spin" />
-            Varredura em andamento. Só uma roda por vez — a sessão do SER é única por operador e
-            duas rodadas se derrubariam.
+            Varredura em andamento.
           </p>
         )}
 
@@ -347,10 +346,7 @@ export function AbaSerConfiguracao() {
           credencial que não funciona faria o motor falhar de madrugada, sem ninguém por perto.
           A senha é write-only: depois de salva, não volta para a tela.
         </p>
-        <p className="mt-1 text-xs text-amber-700">
-          Atenção: a sessão do SER é única por operador. Testar ou salvar derruba a sessão de quem
-          estiver logado no SER com esse usuário.
-        </p>
+
       </section>
 
       <section>

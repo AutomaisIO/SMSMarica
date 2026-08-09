@@ -300,8 +300,15 @@ trilha e é reversível.
 3. **ViewState vem de dentro do form submetido**, não o primeiro do documento.
 4. **O discriminador de "página de formulário" é o BOTÃO Pesquisar**, não o `form0` — a tela
    de histórico também tem `form0`.
-5. **Sessão do SER é única por operador**: varrer derruba quem estiver logado. Uma rodada por
-   vez, sempre. Por isso o scheduler roda de madrugada.
+5. ~~**Sessão do SER é única por operador**~~ — **FALSO, medido em 08/08/2026.** Três logins
+   simultâneos com a MESMA credencial coexistiram, cada um num nó diferente do balanceador
+   (`server1`, `server3`, `server5`), e os três continuaram respondendo. A regra tinha sido
+   herdada do SISREG por analogia e nunca testada; ela justificava "uma rodada por vez" e o
+   scheduler de madrugada — nenhuma das duas coisas se sustenta por esse motivo.
+   Throughput medido: 4 workers fizeram 12 buscas em 2,0s contra 3,9s de um worker (**~2x**,
+   não 4x — o gargalo passa a ser o backend do SER). Paralelizar é viável e está na fila de
+   trabalho, com ressalva: o SER é produção do Estado inteiro, compartilhada com todos os
+   municípios, então a recomendação é **3 a 4 workers**, não 10.
 6. **FollowUP é `Em fila → Em fila`** — não aparece em diff de grade. Por isso todo `EM_FILA`
    tem o histórico relido diariamente.
 7. **`Alta` é estado terminal, não tem histórico e não existe no combo da tela de export.**

@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { BellRing, Check, CheckCheck, Loader2 } from 'lucide-react';
 
 import {
@@ -17,6 +16,7 @@ import {
   type TipoRecursoSer,
 } from '@/features/ser/types';
 import { SituacaoSerBadge } from '@/features/ser/components/SituacaoSerBadge';
+import { ModalSolicitacaoSer } from '@/features/ser/components/ModalSolicitacaoSer';
 import { Button } from '@/shared/ui/Button';
 import { formatarInstante } from '@/shared/lib/datas';
 
@@ -55,6 +55,10 @@ export function SerNotificacoesPage() {
 
   const marcarUma = useMarcarNotificacaoVista();
   const marcarSolicitacao = useMarcarSolicitacaoVista();
+
+  // Abrir em modal, e não navegar: quem tria a fila perde filtro, aba e posição de leitura se a
+  // tela troca — e volta tendo de reencontrar onde estava.
+  const [detalhe, setDetalhe] = useState<string | null>(null);
 
   const porTipo = (t: TipoRecursoSer) =>
     resumo?.contadores.filter((c) => c.tipo === t).reduce((a, c) => a + c.quantidade, 0) ?? 0;
@@ -138,6 +142,7 @@ export function SerNotificacoesPage() {
             ocupado={marcarUma.isPending || marcarSolicitacao.isPending}
             onVista={() => marcarUma.mutate(n.id)}
             onVistaSolicitacao={() => marcarSolicitacao.mutate(n.idSer)}
+            onAbrir={() => setDetalhe(n.solicitacaoId)}
           />
         ))}
       </div>
@@ -147,6 +152,7 @@ export function SerNotificacoesPage() {
           Mostrando {pagina.itens.length} de {pagina.total}. Marque as vistas para revelar o resto.
         </p>
       )}
+      <ModalSolicitacaoSer solicitacaoId={detalhe} aoFechar={() => setDetalhe(null)} />
     </div>
   );
 }
@@ -180,15 +186,30 @@ function LinhaNotificacao({
   ocupado,
   onVista,
   onVistaSolicitacao,
+  onAbrir,
 }: {
   n: NotificacaoSer;
   ocupado: boolean;
   onVista: () => void;
   onVistaSolicitacao: () => void;
+  onAbrir: () => void;
 }) {
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-3">
-      <div className="min-w-0 flex-1 space-y-1">
+    <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-3 transition hover:border-slate-300 hover:bg-slate-50">
+      {/* A linha inteira abre o detalhe: o alvo de clique é o caso, não um link escondido no
+          meio do texto. Os botões ficam fora deste bloco para não disparar o modal junto. */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onAbrir}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onAbrir();
+          }
+        }}
+        className="min-w-0 flex-1 cursor-pointer space-y-1 text-left"
+      >
         <div className="flex flex-wrap items-center gap-2">
           <span className={`rounded px-2 py-0.5 text-xs font-medium ${COR_GATILHO[n.tipo]}`}>
             {ROTULO_GATILHO[n.tipo]}
@@ -217,12 +238,7 @@ function LinhaNotificacao({
           <div className="text-xs text-slate-500">Agendado para {n.agendadoParaTexto}</div>
         )}
 
-        <Link
-          to={`/app/regulacao/ser?termo=${n.idSer}`}
-          className="inline-block text-xs text-red-700 hover:underline"
-        >
-          solicitação {n.idSer}
-        </Link>
+        <span className="inline-block text-xs text-red-700">solicitação {n.idSer}</span>
       </div>
 
       <div className="flex shrink-0 flex-col gap-1">
@@ -236,10 +252,10 @@ function LinhaNotificacao({
           variante="secundaria"
           onClick={onVistaSolicitacao}
           disabled={ocupado}
-          title="Marcar TODAS as movimentações desta solicitação"
+          title="Marcar TODAS as movimentações desta solicitação — inclusive as que estão em outra aba ou fora do filtro atual"
         >
           <CheckCheck className="size-4" />
-          Toda a solicitação
+          Marcar todas desta
         </Button>
       </div>
     </div>

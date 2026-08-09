@@ -84,6 +84,7 @@ public sealed class SerNotificacaoService(
             .Take(tamanho)
             .Select(x => new SerNotificacaoDto(
                 x.Gatilho.Id,
+                x.Solicitacao.Id,
                 x.Gatilho.IdSer,
                 x.Gatilho.Tipo,
                 x.Gatilho.SituacaoAnterior,

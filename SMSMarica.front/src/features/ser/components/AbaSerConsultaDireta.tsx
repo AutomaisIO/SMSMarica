@@ -141,7 +141,7 @@ export function AbaSerConsultaDireta() {
           esta aba é quem opera o SER — não precisa ser lembrado da sessão única toda vez. */}
       <span
         className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-800"
-        title="Consulta ao vivo no SER — nada é gravado na nossa base. A sessão do SER é única por operador."
+        title="Consulta ao vivo no SER — nada é gravado na nossa base."
       >
         <Radio className="size-3.5" />
         ao vivo no SER
