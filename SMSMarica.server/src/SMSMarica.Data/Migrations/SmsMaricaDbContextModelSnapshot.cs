@@ -6734,11 +6734,6 @@ namespace SMSMarica.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("prioridade");
 
-                    b.Property<string>("ProcedimentoCodigoSisreg")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("procedimento_codigo_sisreg");
-
                     b.Property<string>("ProcedimentoSigtapCodigo")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
@@ -7234,7 +7229,7 @@ namespace SMSMarica.Data.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("nome");
 
-                    b.Property<Guid?>("ProcedimentoSigtapId")
+                    b.Property<Guid>("ProcedimentoSigtapId")
                         .HasColumnType("uuid")
                         .HasColumnName("procedimento_sigtap_id");
 
@@ -7249,10 +7244,6 @@ namespace SMSMarica.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("scheduled_procedure_step_description");
-
-                    b.Property<Guid?>("SisregProcedimentoId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("sisreg_procedimento_id");
 
                     b.Property<int?>("TempoEstimadoMinutos")
                         .HasColumnType("integer")
@@ -7273,8 +7264,6 @@ namespace SMSMarica.Data.Migrations
                         .HasFilter("excluido_em IS NULL");
 
                     b.HasIndex("ProcedimentoSigtapId");
-
-                    b.HasIndex("SisregProcedimentoId");
 
                     b.HasIndex("UnidadePadraoId");
 
@@ -8528,12 +8517,8 @@ namespace SMSMarica.Data.Migrations
                     b.HasOne("SMSMarica.Data.Entities.ProcedimentoSigtap", "ProcedimentoSigtap")
                         .WithMany()
                         .HasForeignKey("ProcedimentoSigtapId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("SMSMarica.Data.Entities.Sisreg.SisregProcedimentoSigtap", "SisregProcedimento")
-                        .WithMany()
-                        .HasForeignKey("SisregProcedimentoId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("SMSMarica.Data.Entities.Unidade", "UnidadePadrao")
                         .WithMany()
@@ -8541,8 +8526,6 @@ namespace SMSMarica.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("ProcedimentoSigtap");
-
-                    b.Navigation("SisregProcedimento");
 
                     b.Navigation("UnidadePadrao");
                 });
