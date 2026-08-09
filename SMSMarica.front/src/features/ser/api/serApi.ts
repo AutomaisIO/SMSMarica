@@ -11,6 +11,9 @@ import type {
   ResumoSituacaoSer,
   SolicitacaoSerDetalhe,
   StatusMotorSer,
+  NotificacoesFiltro,
+  NotificacoesPagina,
+  NotificacoesResumo,
 } from '@/features/ser/types';
 
 /** Busca na NOSSA base espelhada — não vai ao SER. */
@@ -76,5 +79,28 @@ export async function historicoDiretoSer(
     `/regulacao/ser/configuracao/consulta-direta/${idSer}/historico`,
     { params: { situacao } },
   );
+  return data;
+}
+
+// ---------------------------------------------------------------- notificações
+
+export async function obterResumoNotificacoesSer(): Promise<NotificacoesResumo> {
+  const { data } = await http.get<NotificacoesResumo>('/regulacao/ser/notificacoes/resumo');
+  return data;
+}
+
+export async function listarNotificacoesSer(filtro: NotificacoesFiltro): Promise<NotificacoesPagina> {
+  const { data } = await http.get<NotificacoesPagina>('/regulacao/ser/notificacoes', { params: filtro });
+  return data;
+}
+
+/** Marca UM movimento como visto — some da tela e sai da fila de gatilhos. */
+export async function marcarNotificacaoVista(id: string): Promise<void> {
+  await http.post(`/regulacao/ser/notificacoes/${id}/vista`);
+}
+
+/** Marca tudo que está pendente de uma solicitação: quem abriu, viu tudo dela. */
+export async function marcarNotificacoesDaSolicitacaoVistas(idSer: string): Promise<number> {
+  const { data } = await http.post<number>(`/regulacao/ser/notificacoes/solicitacao/${idSer}/vistas`);
   return data;
 }

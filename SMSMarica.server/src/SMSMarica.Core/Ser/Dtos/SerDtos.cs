@@ -262,3 +262,45 @@ public sealed record SerDispararVarreduraDto
     /// <summary>Vazio = todas as situações.</summary>
     public IReadOnlyList<SituacaoSer>? Situacoes { get; init; }
 }
+
+// ---------------------------------------------------------------- notificações
+// A fila de gatilhos vista pela regulação: o que mudou no SER e ainda ninguém olhou.
+
+/// <summary>Um movimento por ler. Traz junto os dados da solicitação porque a tela precisa
+/// identificar o paciente sem um segundo request por linha.</summary>
+public sealed record SerNotificacaoDto(
+    Guid Id,
+    string IdSer,
+    TipoGatilhoSer Tipo,
+    SituacaoSer? SituacaoAnterior,
+    SituacaoSer? SituacaoAtual,
+    DateTime CriadoEm,
+    TipoRecursoSer? TipoRecurso,
+    string? PacienteNome,
+    string? Recurso,
+    DateOnly? DataSolicitacao,
+    string? AgendadoParaTexto,
+    string? UnidadeExecutora);
+
+public sealed record SerNotificacaoPaginaDto(
+    IReadOnlyList<SerNotificacaoDto> Itens, int Total, int Pagina, int Tamanho);
+
+/// <summary>Quantos movimentos por ler existem em cada (tipo de recurso, situação). É o que
+/// alimenta as abas Consulta/Exame e os números por situação dentro delas.</summary>
+public sealed record SerNotificacaoContadorDto(
+    TipoRecursoSer? Tipo, SituacaoSer Situacao, int Quantidade);
+
+public sealed record SerNotificacaoResumoDto(
+    int Total, IReadOnlyList<SerNotificacaoContadorDto> Contadores);
+
+public sealed record SerNotificacaoFiltroDto
+{
+    public TipoRecursoSer? Tipo { get; init; }
+    public SituacaoSer? Situacao { get; init; }
+
+    /// <summary>Filtra pelo que provocou a notificação (mudança de situação, FollowUP novo…).</summary>
+    public TipoGatilhoSer? TipoGatilho { get; init; }
+
+    public int Pagina { get; init; } = 1;
+    public int Tamanho { get; init; } = 50;
+}

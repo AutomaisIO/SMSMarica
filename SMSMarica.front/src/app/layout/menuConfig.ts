@@ -150,6 +150,13 @@ export const SECOES: SecaoMenu[] = [
         descricao: 'Fila do Estado (SES-RJ) espelhada — consulta e histórico.',
       },
       {
+        rotulo: 'Notificações',
+        to: '/app/regulacao/notificacoes',
+        icone: BellRing,
+        modulo: 'RegulacaoSer',
+        descricao: 'Movimentações do SER que ainda não foram vistas.',
+      },
+      {
         rotulo: 'Configuração',
         to: '/app/regulacao/configuracao',
         icone: Settings2,

@@ -1,0 +1,247 @@
+import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { BellRing, Check, CheckCheck, Loader2 } from 'lucide-react';
+
+import {
+  useMarcarNotificacaoVista,
+  useMarcarSolicitacaoVista,
+  useNotificacoesSer,
+  useResumoNotificacoesSer,
+} from '@/features/ser/api/queries';
+import {
+  ROTULO_SITUACAO,
+  SITUACOES_SER,
+  type NotificacaoSer,
+  type SituacaoSer,
+  type TipoGatilhoSer,
+  type TipoRecursoSer,
+} from '@/features/ser/types';
+import { SituacaoSerBadge } from '@/features/ser/components/SituacaoSerBadge';
+import { Button } from '@/shared/ui/Button';
+import { formatarInstante } from '@/shared/lib/datas';
+
+/**
+ * Regulação → Notificações: o que mudou no SER e ainda ninguém olhou.
+ *
+ * Cada linha é um MOVIMENTO (não uma solicitação): entrou na fila, saiu para agendada, foi
+ * cancelada, chegou FollowUP. Marcar como visto é o que tira o item daqui — e, por baixo, o que
+ * consome a fila de gatilhos do motor. Enquanto ninguém marca, nada some.
+ */
+
+const ROTULO_GATILHO: Record<TipoGatilhoSer, string> = {
+  NovaSolicitacao: 'Nova solicitação',
+  MudancaSituacao: 'Mudou de situação',
+  MudancaAgendamento: 'Remarcada',
+  NovoFollowUp: 'FollowUP novo',
+};
+
+/** FollowUP é o que o paciente (ou a unidade) cobra da fila — merece destaque próprio. */
+const COR_GATILHO: Record<TipoGatilhoSer, string> = {
+  NovaSolicitacao: 'bg-sky-100 text-sky-800',
+  MudancaSituacao: 'bg-amber-100 text-amber-800',
+  MudancaAgendamento: 'bg-violet-100 text-violet-800',
+  NovoFollowUp: 'bg-rose-100 text-rose-800',
+};
+
+const TIPOS: TipoRecursoSer[] = ['Consulta', 'Exame'];
+
+export function SerNotificacoesPage() {
+  const [tipo, setTipo] = useState<TipoRecursoSer>('Consulta');
+  const [situacao, setSituacao] = useState<SituacaoSer | undefined>(undefined);
+
+  const { data: resumo } = useResumoNotificacoesSer();
+  const filtro = useMemo(() => ({ tipo, situacao, pagina: 1, tamanho: 100 }), [tipo, situacao]);
+  const { data: pagina, isLoading } = useNotificacoesSer(filtro);
+
+  const marcarUma = useMarcarNotificacaoVista();
+  const marcarSolicitacao = useMarcarSolicitacaoVista();
+
+  const porTipo = (t: TipoRecursoSer) =>
+    resumo?.contadores.filter((c) => c.tipo === t).reduce((a, c) => a + c.quantidade, 0) ?? 0;
+
+  const porSituacao = (s: SituacaoSer) =>
+    resumo?.contadores.find((c) => c.tipo === tipo && c.situacao === s)?.quantidade ?? 0;
+
+  return (
+    <div className="space-y-4">
+      <header className="flex items-center gap-3">
+        <BellRing className="size-6 text-red-700" />
+        <div>
+          <h1 className="text-xl font-semibold text-slate-900">Notificações da regulação</h1>
+          <p className="text-sm text-slate-600">
+            Movimentações no SER que ainda não foram vistas. Marcar como visto tira daqui.
+          </p>
+        </div>
+        {resumo && resumo.total > 0 && (
+          <span className="ml-auto rounded-full bg-red-700 px-3 py-1 text-sm font-semibold text-white">
+            {resumo.total}
+          </span>
+        )}
+      </header>
+
+      {/* Abas Consulta / Exame — cada uma com o próprio contador */}
+      <div className="flex gap-2 border-b border-slate-200">
+        {TIPOS.map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => {
+              setTipo(t);
+              setSituacao(undefined);
+            }}
+            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium ${
+              tipo === t
+                ? 'border-red-700 text-red-700'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            {t}
+            {porTipo(t) > 0 && (
+              <span className="ml-2 rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-700">
+                {porTipo(t)}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Situações: só aparecem as que têm movimento — lista cheia de zeros é ruído */}
+      <div className="flex flex-wrap gap-2">
+        <FiltroSituacao ativo={situacao === undefined} onClick={() => setSituacao(undefined)}>
+          Todas
+        </FiltroSituacao>
+        {SITUACOES_SER.filter((s) => porSituacao(s) > 0).map((s) => (
+          <FiltroSituacao key={s} ativo={situacao === s} onClick={() => setSituacao(s)}>
+            {ROTULO_SITUACAO[s]}
+            <span className="ml-1.5 text-xs opacity-80">{porSituacao(s)}</span>
+          </FiltroSituacao>
+        ))}
+      </div>
+
+      {isLoading && (
+        <div className="flex items-center gap-2 p-6 text-slate-500">
+          <Loader2 className="size-4 animate-spin" /> carregando…
+        </div>
+      )}
+
+      {!isLoading && (pagina?.itens.length ?? 0) === 0 && (
+        <div className="rounded-lg border border-dashed border-slate-300 p-10 text-center text-slate-500">
+          Nada novo por aqui. Toda movimentação já foi vista.
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {pagina?.itens.map((n) => (
+          <LinhaNotificacao
+            key={n.id}
+            n={n}
+            ocupado={marcarUma.isPending || marcarSolicitacao.isPending}
+            onVista={() => marcarUma.mutate(n.id)}
+            onVistaSolicitacao={() => marcarSolicitacao.mutate(n.idSer)}
+          />
+        ))}
+      </div>
+
+      {pagina && pagina.total > pagina.itens.length && (
+        <p className="text-center text-xs text-slate-500">
+          Mostrando {pagina.itens.length} de {pagina.total}. Marque as vistas para revelar o resto.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function FiltroSituacao({
+  ativo,
+  onClick,
+  children,
+}: {
+  ativo: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full border px-3 py-1 text-sm ${
+        ativo
+          ? 'border-red-700 bg-red-50 text-red-800'
+          : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function LinhaNotificacao({
+  n,
+  ocupado,
+  onVista,
+  onVistaSolicitacao,
+}: {
+  n: NotificacaoSer;
+  ocupado: boolean;
+  onVista: () => void;
+  onVistaSolicitacao: () => void;
+}) {
+  return (
+    <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-3">
+      <div className="min-w-0 flex-1 space-y-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`rounded px-2 py-0.5 text-xs font-medium ${COR_GATILHO[n.tipo]}`}>
+            {ROTULO_GATILHO[n.tipo]}
+          </span>
+
+          {/* A transição é a informação principal: de onde saiu, para onde foi. */}
+          {n.tipo === 'MudancaSituacao' && n.situacaoAnterior && n.situacaoAtual && (
+            <span className="flex items-center gap-1.5 text-xs text-slate-600">
+              <SituacaoSerBadge situacao={n.situacaoAnterior} />
+              <span aria-hidden>→</span>
+              <SituacaoSerBadge situacao={n.situacaoAtual} />
+            </span>
+          )}
+          {n.tipo !== 'MudancaSituacao' && n.situacaoAtual && (
+            <SituacaoSerBadge situacao={n.situacaoAtual} />
+          )}
+
+          <span className="text-xs text-slate-400">{formatarInstante(n.criadoEm)}</span>
+        </div>
+
+        <div className="truncate text-sm font-medium text-slate-900">
+          {n.pacienteNome ?? '(sem nome)'}
+        </div>
+        <div className="truncate text-xs text-slate-600">{n.recurso ?? '—'}</div>
+        {n.agendadoParaTexto && (
+          <div className="text-xs text-slate-500">Agendado para {n.agendadoParaTexto}</div>
+        )}
+
+        <Link
+          to={`/app/regulacao/ser?termo=${n.idSer}`}
+          className="inline-block text-xs text-red-700 hover:underline"
+        >
+          solicitação {n.idSer}
+        </Link>
+      </div>
+
+      <div className="flex shrink-0 flex-col gap-1">
+        <Button variante="secundaria" onClick={onVista} disabled={ocupado} title="Marcar este movimento como visto">
+          <Check className="size-4" />
+          Vista
+        </Button>
+        {/* Uma solicitação costuma acumular mais de um movimento (mudou E chegou FollowUP).
+            Quem abriu a solicitação viu tudo dela — este botão evita clicar linha por linha. */}
+        <Button
+          variante="secundaria"
+          onClick={onVistaSolicitacao}
+          disabled={ocupado}
+          title="Marcar TODAS as movimentações desta solicitação"
+        >
+          <CheckCheck className="size-4" />
+          Toda a solicitação
+        </Button>
+      </div>
+    </div>
+  );
+}

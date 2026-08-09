@@ -49,6 +49,51 @@ public sealed class SerController(ISerConsultaService consulta) : ControllerBase
 }
 
 /// <summary>
+/// <b>Regulação → Notificações</b>: o que mudou no SER e ainda ninguém olhou.
+///
+/// <para>É o primeiro consumidor da fila de gatilhos. Marcar como visto carimba
+/// <c>processado_em</c>/<c>processado_por</c>, que é o que tira o item da fila — então a tela
+/// serve, ao mesmo tempo, para operar e para validar se o motor está gerando gatilho certo.</para>
+/// </summary>
+[ApiController]
+[Route("regulacao/ser/notificacoes")]
+public sealed class SerNotificacaoController(ISerNotificacaoService notificacoes) : ControllerBase
+{
+    /// <summary>Contadores por tipo de recurso e situação — as abas e os números.</summary>
+    [HttpGet("resumo")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]
+    [ProducesResponseType<SerNotificacaoResumoDto>(StatusCodes.Status200OK)]
+    public Task<SerNotificacaoResumoDto> Resumo(CancellationToken cancellationToken) =>
+        notificacoes.ResumoAsync(cancellationToken);
+
+    [HttpGet]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]
+    [ProducesResponseType<SerNotificacaoPaginaDto>(StatusCodes.Status200OK)]
+    public Task<SerNotificacaoPaginaDto> Listar(
+        [FromQuery] SerNotificacaoFiltroDto filtro, CancellationToken cancellationToken) =>
+        notificacoes.ListarAsync(filtro, cancellationToken);
+
+    /// <summary>Marca UM movimento como visto.</summary>
+    [HttpPost("{id:guid}/vista")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> MarcarVista(Guid id, CancellationToken cancellationToken)
+    {
+        await notificacoes.MarcarVistaAsync(id, cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>Marca tudo que está pendente de UMA solicitação — quem abriu a solicitação viu
+    /// todas as movimentações dela.</summary>
+    [HttpPost("solicitacao/{idSer}/vistas")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Edicao)]
+    [ProducesResponseType<int>(StatusCodes.Status200OK)]
+    public Task<int> MarcarVistasDaSolicitacao(string idSer, CancellationToken cancellationToken) =>
+        notificacoes.MarcarVistasDaSolicitacaoAsync(idSer, cancellationToken);
+}
+
+/// <summary>
 /// Aba SER da Configuração da Regulação: estado do motor, histórico de rodadas e disparo.
 /// Usa <see cref="ModuloPermissao.RegulacaoConfiguracao"/> — que já existia — em vez de criar um
 /// módulo de configuração paralelo.

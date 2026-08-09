@@ -260,3 +260,54 @@ export type HistoricoDiretoResultado = {
   eventos: EventoDiretoSer[];
   duracaoMs: number;
 };
+
+// ---------------------------------------------------------------- notificações
+// A fila de gatilhos do motor vista pela regulação: o que mudou no SER e ninguém olhou ainda.
+
+export type TipoGatilhoSer =
+  | 'MudancaSituacao'
+  | 'NovoFollowUp'
+  | 'NovaSolicitacao'
+  | 'MudancaAgendamento';
+
+export type NotificacaoSer = {
+  id: string;
+  idSer: string;
+  tipo: TipoGatilhoSer;
+  situacaoAnterior: SituacaoSer | null;
+  situacaoAtual: SituacaoSer | null;
+  criadoEm: string;
+  tipoRecurso: TipoRecursoSer | null;
+  pacienteNome: string | null;
+  recurso: string | null;
+  dataSolicitacao: string | null;
+  agendadoParaTexto: string | null;
+  unidadeExecutora: string | null;
+};
+
+export type NotificacoesPagina = {
+  itens: NotificacaoSer[];
+  total: number;
+  pagina: number;
+  tamanho: number;
+};
+
+/** Quantos movimentos por ler existem em cada (tipo de recurso, situação). */
+export type NotificacaoContador = {
+  tipo: TipoRecursoSer | null;
+  situacao: SituacaoSer;
+  quantidade: number;
+};
+
+export type NotificacoesResumo = {
+  total: number;
+  contadores: NotificacaoContador[];
+};
+
+export type NotificacoesFiltro = {
+  tipo?: TipoRecursoSer;
+  situacao?: SituacaoSer;
+  tipoGatilho?: TipoGatilhoSer;
+  pagina?: number;
+  tamanho?: number;
+};

@@ -2,6 +2,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   buscarSolicitacoesSer,
   dispararVarreduraSer,
+  listarNotificacoesSer,
+  marcarNotificacaoVista,
+  marcarNotificacoesDaSolicitacaoVistas,
+  obterResumoNotificacoesSer,
   listarExecucoesSer,
   obterResumoSer,
   obterSolicitacaoSer,
@@ -9,7 +13,7 @@ import {
   salvarCredencialSer,
   testarCredencialSer,
 } from '@/features/ser/api/serApi';
-import type { BuscaSerFiltro, DispararVarreduraPayload } from '@/features/ser/types';
+import type { BuscaSerFiltro, DispararVarreduraPayload, NotificacoesFiltro } from '@/features/ser/types';
 
 export const serKeys = {
   busca: (filtro: BuscaSerFiltro) => ['ser', 'busca', filtro] as const,
@@ -92,5 +96,58 @@ export function useSalvarCredencialSer() {
     mutationFn: ({ usuario, senha }: { usuario: string; senha: string }) =>
       salvarCredencialSer(usuario, senha),
     onSuccess: () => void qc.invalidateQueries({ queryKey: serKeys.status }),
+  });
+}
+
+// ---------------------------------------------------------------- notificações
+
+export const notificacaoKeys = {
+  resumo: ['ser', 'notificacoes', 'resumo'] as const,
+  lista: (f: NotificacoesFiltro) => ['ser', 'notificacoes', 'lista', f] as const,
+};
+
+/**
+ * Resumo com polling curto: notificação que chega tarde não serve de notificação. 10s é o
+ * suficiente — a varredura que as produz roda de hora em hora, no melhor caso.
+ */
+export function useResumoNotificacoesSer() {
+  return useQuery({
+    queryKey: notificacaoKeys.resumo,
+    queryFn: obterResumoNotificacoesSer,
+    refetchInterval: 10_000,
+  });
+}
+
+export function useNotificacoesSer(filtro: NotificacoesFiltro) {
+  return useQuery({
+    queryKey: notificacaoKeys.lista(filtro),
+    queryFn: () => listarNotificacoesSer(filtro),
+    refetchInterval: 10_000,
+  });
+}
+
+/**
+ * Marcar como visto invalida lista E resumo: o contador da aba tem de cair junto com a linha,
+ * senão o operador vê "3 novos" numa lista vazia.
+ */
+export function useMarcarNotificacaoVista() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => marcarNotificacaoVista(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['ser', 'notificacoes'] });
+      void qc.invalidateQueries({ queryKey: serKeys.status });
+    },
+  });
+}
+
+export function useMarcarSolicitacaoVista() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (idSer: string) => marcarNotificacoesDaSolicitacaoVistas(idSer),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['ser', 'notificacoes'] });
+      void qc.invalidateQueries({ queryKey: serKeys.status });
+    },
   });
 }

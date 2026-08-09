@@ -346,7 +346,13 @@ public sealed class SerSincronizacaoService(
                 atual.SituacaoMudouEm = agora;
                 execucao.MudancasSituacao++;
 
-                RegistrarGatilho(execucao, atual, TipoGatilhoSer.MudancaSituacao, situacao.ToString(),
+                // A chave carrega A TRANSIÇÃO E O INSTANTE, não só o destino. O índice único é
+                // (solicitação, tipo, chave): com "Cancelada" de chave, a SEGUNDA vez que a mesma
+                // solicitação fosse cancelada (ciclo Cancelada→EmFila→Cancelada, que o SER
+                // permite) estouraria o índice e derrubaria o SaveChanges do lote inteiro.
+                // E cada volta é uma notificação legítima — o operador precisa ver as duas.
+                RegistrarGatilho(execucao, atual, TipoGatilhoSer.MudancaSituacao,
+                    $"{situacaoAnterior}>{situacao}@{agora:yyyyMMddHHmmss}",
                     situacaoAnterior, situacao, new { de = situacaoAnterior.ToString(), para = situacao.ToString() });
 
                 // Mudou de situação → relê o histórico e faz diff. É esta releitura que serve de
@@ -366,8 +372,11 @@ public sealed class SerSincronizacaoService(
                          StringComparison.Ordinal)
                      && !string.IsNullOrWhiteSpace(linha.AgendadoPara))
             {
+                // Mesmo motivo: remarcar para a MESMA data depois de ter mudado (A→B→A) repetiria
+                // a chave e quebraria o lote.
                 RegistrarGatilho(execucao, atual, TipoGatilhoSer.MudancaAgendamento,
-                    linha.AgendadoPara!, situacao, situacao,
+                    $"{DataDoAgendamento(linha.AgendadoPara)}@{agora:yyyyMMddHHmmss}",
+                    situacao, situacao,
                     new { de = agendadoAnterior, para = linha.AgendadoPara });
 
                 precisamHistorico.Add((idSer, situacao, "remarcou"));

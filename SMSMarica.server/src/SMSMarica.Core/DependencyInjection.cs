@@ -318,6 +318,10 @@ public static class DependencyInjection
         services.AddScoped<Ser.ISerConsultaService, Ser.SerConsultaService>();
         services.AddScoped<Ser.ISerMotorService, Ser.SerMotorService>();
 
+        // Notificações: o primeiro consumidor da fila de gatilhos. Marcar como visto é o que
+        // esvazia `ser_gatilho` — até aqui a fila só crescia.
+        services.AddScoped<Ser.ISerNotificacaoService, Ser.SerNotificacaoService>();
+
         // Consulta DIRETA ao SER: a bancada de testes da integração. Exercita login, módulo,
         // ViewState, busca, paginação e parser em segundos, sem gravar nada.
         services.AddScoped<Ser.ISerConsultaDiretaService, Ser.SerConsultaDiretaService>();
