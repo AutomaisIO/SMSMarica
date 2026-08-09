@@ -74,7 +74,8 @@ function duracao(seg: number | null): string {
 
 export function AbaSerConfiguracao() {
   const { data: status, isLoading } = useStatusMotorSer();
-  const { data: execucoes } = useExecucoesSer();
+  // A lista segue o mesmo ritmo do status: é nela que ficam fase, cursor e pendentes da rodada.
+  const { data: execucoes } = useExecucoesSer(20, status?.varreduraEmAndamento ?? false);
   const disparar = useDispararVarreduraSer();
   const testar = useTestarCredencialSer();
   const salvar = useSalvarCredencialSer();

@@ -40,19 +40,32 @@ export function useSolicitacaoSer(id: string | undefined) {
 }
 
 /**
- * Status do motor com polling: 3s enquanto há varredura viva, 30s em repouso.
- * A rodada é longa (15 min a ~1 h), então não adianta martelar o servidor.
+ * Status do motor: 1s enquanto há varredura viva, 15s em repouso — o mesmo ritmo das telas
+ * irmãs (Importação SISREG e Sincronização PEP), que acompanham job longo do mesmo jeito.
+ *
+ * Antes eram 3s/30s "para não martelar o servidor", mas o problema real nunca foi o intervalo:
+ * era o backend só gravar os contadores quando uma SITUAÇÃO INTEIRA terminava, então a tela
+ * ficava minutos exibindo o mesmo número e parecia travada. Corrigido isso (contadores por
+ * lote), 1s dá a sensação de vivo que o operador espera.
  */
 export function useStatusMotorSer() {
   return useQuery({
     queryKey: serKeys.status,
     queryFn: obterStatusMotorSer,
-    refetchInterval: (query) => (query.state.data?.varreduraEmAndamento ? 3000 : 30000),
+    refetchInterval: (query) => (query.state.data?.varreduraEmAndamento ? 1000 : 15000),
   });
 }
 
-export function useExecucoesSer(limite = 20) {
-  return useQuery({ queryKey: serKeys.execucoes, queryFn: () => listarExecucoesSer(limite) });
+/**
+ * A lista de rodadas é o que mostra fase, cursor e pendentes da execução corrente — ela também
+ * precisa andar durante a varredura, senão o "Progresso" congela enquanto o cabeçalho atualiza.
+ */
+export function useExecucoesSer(limite = 20, emAndamento = false) {
+  return useQuery({
+    queryKey: [...serKeys.execucoes, limite],
+    queryFn: () => listarExecucoesSer(limite),
+    refetchInterval: emAndamento ? 1000 : false,
+  });
 }
 
 export function useDispararVarreduraSer() {
