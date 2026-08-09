@@ -103,6 +103,7 @@ public sealed class SerSincronizacaoService(
             };
             db.SerVarreduraExecucoes.Add(execucao);
         }
+        execucao.UltimoSinalEm = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
 
         try
@@ -128,6 +129,7 @@ public sealed class SerSincronizacaoService(
             if (modo != ModoVarreduraSer.SomenteGrade)
             {
                 execucao.Fase = FaseVarreduraSer.Historico;
+                execucao.UltimoSinalEm = DateTime.UtcNow;
                 await db.SaveChangesAsync(cancellationToken);
                 await AplicarHistoricosAsync(execucao, modo, precisamHistorico, cancellationToken);
             }
@@ -227,6 +229,7 @@ public sealed class SerSincronizacaoService(
                 // uma varredura saudável no meio de uma situação longa.)
                 execucao.Buscas = buscasAntes + resultado.Buscas;
                 execucao.SolicitacoesEncontradas = encontradasAntes + vistos.Count;
+                execucao.UltimoSinalEm = DateTime.UtcNow;
 
                 await db.SaveChangesAsync(ct);
             }
@@ -436,6 +439,7 @@ public sealed class SerSincronizacaoService(
         }
 
         execucao.HistoricosPendentes = fila.Count;
+        execucao.UltimoSinalEm = DateTime.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
 
         foreach (var (idSer, situacao, motivo) in fila)
@@ -478,6 +482,7 @@ public sealed class SerSincronizacaoService(
             // `ser_varredura_falha` e retentar em loop travaria a rodada inteira num único registro.
             execucao.CursorIdSer = idSer;
             execucao.HistoricosPendentes = Math.Max(0, execucao.HistoricosPendentes - 1);
+            execucao.UltimoSinalEm = DateTime.UtcNow;
             await db.SaveChangesAsync(cancellationToken);
         }
     }

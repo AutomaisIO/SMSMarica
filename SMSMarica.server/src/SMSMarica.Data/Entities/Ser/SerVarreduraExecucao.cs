@@ -110,6 +110,20 @@ public class SerVarreduraExecucao
     /// <summary>Quando foi retomada pela última vez.</summary>
     public DateTime? RetomadaEm { get; set; }
 
+    /// <summary>
+    /// <b>Sinal de vida:</b> quando o motor gravou progresso pela última vez.
+    ///
+    /// <para>Existe porque nenhum outro campo responde a única pergunta que importa quando uma
+    /// rodada demora: <i>está trabalhando ou pendurada?</i> Contador parado é ambíguo — pode ser
+    /// uma fatia grande em andamento ou o processo travado. Em 08/08/2026 essa dúvida só foi
+    /// resolvida indo ao <c>journalctl</c> do servidor, o que ninguém que opera a tela vai
+    /// fazer.</para>
+    ///
+    /// <para>É atualizado a cada gravação de progresso — por lote na fase de grade, por
+    /// solicitação na de histórico. A tela mostra "há Xs"; envelheceu, é porque parou.</para>
+    /// </summary>
+    public DateTime? UltimoSinalEm { get; set; }
+
     public string? MensagemErro { get; set; }
 
     public DateTime IniciadoEm { get; set; }

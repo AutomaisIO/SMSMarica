@@ -139,7 +139,11 @@ public sealed record SerExecucaoDto(
     string? CursorIdSer,
     int HistoricosPendentes,
     int Retomadas,
-    DateTime? RetomadaEm);
+    DateTime? RetomadaEm,
+
+    /// <summary>Quando o motor gravou progresso pela última vez. É o que distingue "trabalhando
+    /// numa fatia grande" de "pendurada" — contador parado, sozinho, não diz qual dos dois.</summary>
+    DateTime? UltimoSinalEm);
 
 /// <summary>
 /// Consulta DIRETA ao SER — a "tela de testes": mesmos filtros da busca de lá, resultado cru,

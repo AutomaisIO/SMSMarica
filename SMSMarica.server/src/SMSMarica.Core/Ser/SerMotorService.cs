@@ -173,5 +173,5 @@ public sealed class SerMotorService(
         x.HistoricosIndisponiveis, x.GatilhosGerados, x.FatiasTruncadas,
         x.MensagemErro, x.IniciadoEm, x.FinalizadoEm, x.DuracaoSegundos, x.CriadoPorNome,
         x.Fase, x.CursorSituacao, x.CursorData, x.CursorIdSer, x.HistoricosPendentes,
-        x.Retomadas, x.RetomadaEm);
+        x.Retomadas, x.RetomadaEm, x.UltimoSinalEm);
 }

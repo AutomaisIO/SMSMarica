@@ -162,6 +162,11 @@ export type ExecucaoSer = {
   historicosPendentes: number;
   retomadas: number;
   retomadaEm: string | null;
+  /**
+   * Sinal de vida: quando o motor gravou progresso pela última vez. É o que distingue
+   * "trabalhando numa fatia grande" de "pendurada" — contador parado, sozinho, não diz qual.
+   */
+  ultimoSinalEm: string | null;
 };
 
 export type StatusMotorSer = {

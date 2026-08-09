@@ -65,6 +65,18 @@ function descreverFase(x: ExecucaoSer): string {
   }
 }
 
+/**
+ * "há Xs" desde o último progresso gravado. Envelhecer é o sinal de que parou: uma rodada viva
+ * carimba a cada lote (grade) ou a cada solicitação (histórico).
+ */
+function desdeUltimoSinal(iso: string | null): { texto: string; velho: boolean } | null {
+  if (!iso) return null;
+  const seg = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+  const texto = seg < 60 ? `há ${seg}s` : seg < 3600 ? `há ${Math.floor(seg / 60)}min` : `há ${Math.floor(seg / 3600)}h`;
+  // 2 min sem gravar nada é muito: o lote mais lento medido contra o SER leva ~5s.
+  return { texto, velho: seg > 120 };
+}
+
 function duracao(seg: number | null): string {
   if (seg == null) return '—';
   if (seg < 60) return `${seg}s`;
@@ -186,6 +198,19 @@ export function AbaSerConfiguracao() {
       render: (x) => (
         <div className="space-y-0.5 text-xs">
           <div className="text-slate-700">{descreverFase(x)}</div>
+          {x.status === 'EmExecucao' &&
+            (() => {
+              const sinal = desdeUltimoSinal(x.ultimoSinalEm);
+              if (!sinal) return null;
+              // Vermelho não quer dizer "quebrou": quer dizer "vá olhar". Sem isso, a única
+              // forma de saber se a rodada estava viva era ler o log do servidor.
+              return (
+                <div className={sinal.velho ? 'font-medium text-red-700' : 'text-emerald-700'}>
+                  {sinal.velho ? 'sem sinal ' : 'sinal '}
+                  {sinal.texto}
+                </div>
+              );
+            })()}
           {x.retomadas > 0 && (
             // Rodada que reinicia sozinha é normal (deploy no meio); reiniciar MUITAS vezes é
             // sintoma de serviço caindo — por isso o número aparece.

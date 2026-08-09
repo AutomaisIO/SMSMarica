@@ -48,6 +48,7 @@ internal sealed class SerVarreduraExecucaoConfiguration : IEntityTypeConfigurati
             .IsRequired().HasDefaultValue(0);
         builder.Property(x => x.Retomadas).HasColumnName("retomadas").IsRequired().HasDefaultValue(0);
         builder.Property(x => x.RetomadaEm).HasColumnName("retomada_em");
+        builder.Property(x => x.UltimoSinalEm).HasColumnName("ultimo_sinal_em");
 
         builder.Property(x => x.MensagemErro).HasColumnName("mensagem_erro").HasMaxLength(2000);
         builder.Property(x => x.IniciadoEm).HasColumnName("iniciado_em").IsRequired();
