@@ -313,3 +313,10 @@ export type NotificacoesFiltro = {
   pagina?: number;
   tamanho?: number;
 };
+
+/** Disparo diário do motor: ligado/desligado e a que horas (Brasília). */
+export type VarreduraAutomaticaSer = {
+  ativo: boolean;
+  /** `HH:mm`. */
+  horaLocal: string;
+};

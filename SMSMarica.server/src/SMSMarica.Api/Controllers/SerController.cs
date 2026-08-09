@@ -181,6 +181,23 @@ public sealed class SerConfiguracaoController(
 
     /// <summary>Testa uma credencial contra o SER sem gravá-la. Só autentica e confere se o
     /// módulo Ambulatório abre — nenhuma escrita no SER.</summary>
+    /// <summary>Configuração do disparo diário (ligado/desligado + hora de Brasília).</summary>
+    [HttpGet("varredura-automatica")]
+    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<SerVarreduraConfigDto>(StatusCodes.Status200OK)]
+    public Task<SerVarreduraConfigDto> ObterVarreduraAutomatica(
+        [FromServices] ISerVarreduraConfigService config, CancellationToken cancellationToken) =>
+        config.ObterAsync(cancellationToken);
+
+    [HttpPut("varredura-automatica")]
+    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Edicao)]
+    [ProducesResponseType<SerVarreduraConfigDto>(StatusCodes.Status200OK)]
+    public Task<SerVarreduraConfigDto> SalvarVarreduraAutomatica(
+        [FromBody] SerVarreduraConfigDto corpo,
+        [FromServices] ISerVarreduraConfigService config,
+        CancellationToken cancellationToken) =>
+        config.SalvarAsync(corpo, cancellationToken);
+
     [HttpPost("testar-credencial")]
     [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Edicao)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

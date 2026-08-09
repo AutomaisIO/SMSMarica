@@ -6,6 +6,8 @@ import {
   marcarNotificacaoVista,
   marcarNotificacoesDaSolicitacaoVistas,
   obterResumoNotificacoesSer,
+  obterVarreduraAutomaticaSer,
+  salvarVarreduraAutomaticaSer,
   listarExecucoesSer,
   obterResumoSer,
   obterSolicitacaoSer,
@@ -13,7 +15,12 @@ import {
   salvarCredencialSer,
   testarCredencialSer,
 } from '@/features/ser/api/serApi';
-import type { BuscaSerFiltro, DispararVarreduraPayload, NotificacoesFiltro } from '@/features/ser/types';
+import type {
+  BuscaSerFiltro,
+  DispararVarreduraPayload,
+  NotificacoesFiltro,
+  VarreduraAutomaticaSer,
+} from '@/features/ser/types';
 
 export const serKeys = {
   busca: (filtro: BuscaSerFiltro) => ['ser', 'busca', filtro] as const,
@@ -149,5 +156,20 @@ export function useMarcarSolicitacaoVista() {
       void qc.invalidateQueries({ queryKey: ['ser', 'notificacoes'] });
       void qc.invalidateQueries({ queryKey: serKeys.status });
     },
+  });
+}
+
+export function useVarreduraAutomaticaSer() {
+  return useQuery({
+    queryKey: ['ser', 'varredura-automatica'],
+    queryFn: obterVarreduraAutomaticaSer,
+  });
+}
+
+export function useSalvarVarreduraAutomaticaSer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (c: VarreduraAutomaticaSer) => salvarVarreduraAutomaticaSer(c),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['ser', 'varredura-automatica'] }),
   });
 }

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -54,13 +55,9 @@ public sealed class VarreduraSerScheduler(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        if (!_opcoes.Ativo)
-        {
-            logger.LogInformation(
-                "SER: disparo automático desligado (Ser:Varredura:Ativo=false). Só varredura manual.");
-            return;
-        }
-
+        // NÃO decide aqui se está ligado. Antes, `Ativo=false` no arranque encerrava o serviço
+        // para sempre — ligar pela tela não teria efeito nenhum até o próximo deploy, que é
+        // justamente o que a configuração em banco veio resolver. O tick lê o banco a cada volta.
         using var timer = new PeriodicTimer(TimeSpan.FromSeconds(Math.Max(30, _opcoes.TickSegundos)));
 
         while (await timer.WaitForNextTickAsync(stoppingToken))
@@ -86,11 +83,24 @@ public sealed class VarreduraSerScheduler(
         // Barato, e evita abrir escopo de DI à toa.
         if (fila.TemTrabalho) return;
 
+        using var scope = scopeFactory.CreateScope();
+
+        // Config do BANCO (tela), com o appsettings como fallback de arranque.
+        var config = await scope.ServiceProvider
+            .GetRequiredService<Ser.ISerVarreduraConfigService>()
+            .ObterAsync(cancellationToken);
+
+        if (!config.Ativo) return;
+
+        var hora = TimeOnly.TryParseExact(
+            config.HoraLocal, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var h)
+            ? h
+            : _opcoes.HoraLocal;
+
         var agoraUtc = DateTime.UtcNow;
         var agoraLocal = TimeZoneInfo.ConvertTimeFromUtc(agoraUtc, Brasilia);
-        if (TimeOnly.FromDateTime(agoraLocal) < _opcoes.HoraLocal) return;
+        if (TimeOnly.FromDateTime(agoraLocal) < hora) return;
 
-        using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<SmsMaricaDbContext>();
 
         // Início do dia local, convertido para UTC — a coluna é timestamptz.

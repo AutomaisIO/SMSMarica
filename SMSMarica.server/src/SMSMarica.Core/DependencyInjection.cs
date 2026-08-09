@@ -322,6 +322,9 @@ public static class DependencyInjection
         // esvazia `ser_gatilho` — até aqui a fila só crescia.
         services.AddScoped<Ser.ISerNotificacaoService, Ser.SerNotificacaoService>();
 
+        // Config do disparo diário em BANCO: mudar a hora não pode exigir deploy.
+        services.AddScoped<Ser.ISerVarreduraConfigService, Ser.SerVarreduraConfigService>();
+
         // Consulta DIRETA ao SER: a bancada de testes da integração. Exercita login, módulo,
         // ViewState, busca, paginação e parser em segundos, sem gravar nada.
         services.AddScoped<Ser.ISerConsultaDiretaService, Ser.SerConsultaDiretaService>();

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, KeyRound, Loader2, Play, RefreshCw, Save } from 'lucide-react';
+import { AlertTriangle, Clock, KeyRound, Loader2, Play, RefreshCw, Save } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
@@ -8,6 +8,8 @@ import { Select } from '@/shared/ui/Select';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import {
   useDispararVarreduraSer,
+  useSalvarVarreduraAutomaticaSer,
+  useVarreduraAutomaticaSer,
   useExecucoesSer,
   useSalvarCredencialSer,
   useStatusMotorSer,
@@ -89,6 +91,8 @@ export function AbaSerConfiguracao() {
   // A lista segue o mesmo ritmo do status: é nela que ficam fase, cursor e pendentes da rodada.
   const { data: execucoes } = useExecucoesSer(20, status?.varreduraEmAndamento ?? false);
   const disparar = useDispararVarreduraSer();
+  const { data: automatica } = useVarreduraAutomaticaSer();
+  const salvarAutomatica = useSalvarVarreduraAutomaticaSer();
   const testar = useTestarCredencialSer();
   const salvar = useSalvarCredencialSer();
 
@@ -97,6 +101,26 @@ export function AbaSerConfiguracao() {
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [horaEdit, setHoraEdit] = useState<string | null>(null);
+
+  // O que está na caixa: o que o operador digitou, ou o que veio do servidor.
+  const hora = horaEdit ?? automatica?.horaLocal ?? '02:30';
+
+  async function aoSalvarAutomatica(ativo: boolean, horaNova: string) {
+    setErro(null);
+    setAviso(null);
+    try {
+      await salvarAutomatica.mutateAsync({ ativo, horaLocal: horaNova });
+      setHoraEdit(null);
+      setAviso(
+        ativo
+          ? `Disparo diário ligado para ${horaNova} (Brasília).`
+          : 'Disparo diário desligado. Só varredura manual.',
+      );
+    } catch (e) {
+      setErro(extrairMensagemDeErro(e));
+    }
+  }
 
   async function aoDisparar() {
     setErro(null);
@@ -298,6 +322,45 @@ export function AbaSerConfiguracao() {
             )}
             Rodar agora
           </Button>
+        </div>
+
+        {/* Disparo diário: mora em BANCO, não em appsettings — mudar a hora não pode exigir
+            deploy, e quem decide o horário não tem acesso ao servidor. */}
+        <div className="mt-4 flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              className="size-4"
+              checked={automatica?.ativo ?? false}
+              onChange={(e) => void aoSalvarAutomatica(e.target.checked, hora)}
+              disabled={salvarAutomatica.isPending}
+            />
+            <Clock className="size-4 text-slate-500" />
+            Rodar a varredura diária automaticamente
+          </label>
+
+          <Campo label="Horário (Brasília)" htmlFor="ser-hora" className="w-40">
+            <Input
+              id="ser-hora"
+              type="time"
+              value={hora}
+              onChange={(e) => setHoraEdit(e.target.value)}
+            />
+          </Campo>
+
+          <Button
+            variante="secundaria"
+            onClick={() => void aoSalvarAutomatica(automatica?.ativo ?? false, hora)}
+            disabled={salvarAutomatica.isPending || horaEdit === null}
+          >
+            {salvarAutomatica.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+            Salvar horário
+          </Button>
+
+          <p className="w-full text-xs text-slate-500">
+            Modo <strong>Diária</strong>: refaz o diff da grade e relê o histórico de quem mudou de
+            situação e de toda a fila. A carga inicial continua sendo disparo manual.
+          </p>
         </div>
 
         {status?.varreduraEmAndamento && (

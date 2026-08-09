@@ -14,6 +14,7 @@ import type {
   NotificacoesFiltro,
   NotificacoesPagina,
   NotificacoesResumo,
+  VarreduraAutomaticaSer,
 } from '@/features/ser/types';
 
 /** Busca na NOSSA base espelhada — não vai ao SER. */
@@ -102,5 +103,24 @@ export async function marcarNotificacaoVista(id: string): Promise<void> {
 /** Marca tudo que está pendente de uma solicitação: quem abriu, viu tudo dela. */
 export async function marcarNotificacoesDaSolicitacaoVistas(idSer: string): Promise<number> {
   const { data } = await http.post<number>(`/regulacao/ser/notificacoes/solicitacao/${idSer}/vistas`);
+  return data;
+}
+
+// ---------------------------------------------------------------- varredura automática
+
+export async function obterVarreduraAutomaticaSer(): Promise<VarreduraAutomaticaSer> {
+  const { data } = await http.get<VarreduraAutomaticaSer>(
+    '/regulacao/ser/configuracao/varredura-automatica',
+  );
+  return data;
+}
+
+export async function salvarVarreduraAutomaticaSer(
+  config: VarreduraAutomaticaSer,
+): Promise<VarreduraAutomaticaSer> {
+  const { data } = await http.put<VarreduraAutomaticaSer>(
+    '/regulacao/ser/configuracao/varredura-automatica',
+    config,
+  );
   return data;
 }
