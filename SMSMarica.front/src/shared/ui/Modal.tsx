@@ -46,12 +46,16 @@ export function Modal({ aberto, aoFechar, titulo, descricao, children, largura =
         role="dialog"
         aria-modal="true"
         aria-label={titulo}
+        // Coluna flex em vez de altura calculada: o `max-h-[calc(90vh-4rem)]` do corpo assumia
+        // um cabeçalho de 4rem, mas com descrição ele passa disso — e o `overflow-hidden` daqui
+        // comia o padding de baixo, deixando o último item colado na borda. Com flex, o corpo
+        // ocupa o que sobra, seja qual for a altura do cabeçalho.
         className={cn(
-          'relative w-full max-h-[90vh] overflow-hidden rounded-xl bg-white shadow-xl',
+          'relative flex w-full max-h-[90vh] flex-col overflow-hidden rounded-xl bg-white shadow-xl',
           larguras[largura],
         )}
       >
-        <div className="flex items-start justify-between border-b border-gray-200 px-6 py-4">
+        <div className="flex shrink-0 items-start justify-between border-b border-gray-200 px-6 py-4">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">{titulo}</h2>
             {descricao ? <p className="mt-0.5 text-sm text-gray-500">{descricao}</p> : null}
@@ -65,7 +69,9 @@ export function Modal({ aberto, aoFechar, titulo, descricao, children, largura =
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="max-h-[calc(90vh-4rem)] overflow-y-auto px-6 py-5">{children}</div>
+        {/* pb-8: respiro no fim do conteúdo. Sem ele, conteúdo longo termina colado no fim da
+            rolagem e dá a impressão de que ainda há coisa cortada embaixo. */}
+        <div className="flex-1 overflow-y-auto px-6 pb-8 pt-5">{children}</div>
       </div>
     </div>,
     document.body,
