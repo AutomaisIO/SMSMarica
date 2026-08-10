@@ -63,7 +63,7 @@ public sealed class SerExportSolicitacaoLeitor(
         {
             throw new InvalidOperationException(
                 "O GET da tela de Solicitação do SER não devolveu a tela de pesquisa (sem botão "
-                + "Pesquisar). Costuma ser a sessão derrubada por outro login do mesmo operador. "
+                + "Pesquisar). "
                 + "Nada foi lido.");
         }
 
@@ -168,7 +168,8 @@ public sealed class SerExportSolicitacaoLeitor(
             throw new InvalidOperationException(
                 "O SER respondeu HTML no lugar da planilha ao exportar a tela de Solicitação "
                 + $"({arquivo.Corpo.Length} bytes, content-type '{arquivo.ContentType}'). "
-                + "Costuma ser a sessão derrubada por outro login do mesmo operador.");
+                + "A sessão é reautenticada sozinha quando o SER devolve a tela de login; se "
+                + "chegou aqui, a tela veio diferente do esperado.");
         }
 
         // "Agendado para" É DESCARTADO desta tela — a coluna não é parseável (incidente 08/08/2026).

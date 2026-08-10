@@ -79,7 +79,7 @@ public sealed class SerExportLeitor(
         {
             throw new InvalidOperationException(
                 "O GET da tela de Histórico do SER não devolveu a tela de pesquisa (sem botão "
-                + "Pesquisar). Costuma ser a sessão derrubada por outro login do mesmo operador. "
+                + "Pesquisar). "
                 + "Nada foi lido.");
         }
 
@@ -232,12 +232,14 @@ public sealed class SerExportLeitor(
 
         if (!arquivo.EhPlanilha)
         {
-            // Quase sempre é a sessão do SER derrubada por outro login do mesmo operador: em vez da
-            // planilha vem a tela de login, com HTTP 200.
+            // Sessão morta devolve a tela de login com HTTP 200 no lugar da planilha. Desde
+            // 10/08/2026 a SerWebSessao detecta isso e reautentica sozinha, então chegar aqui
+            // significa outra coisa — layout mudou, ou o SER está fora.
             throw new InvalidOperationException(
                 "O SER respondeu HTML no lugar da planilha ao exportar "
                 + $"({arquivo.Corpo.Length} bytes, content-type '{arquivo.ContentType}'). "
-                + "Costuma ser a sessão derrubada por outro login do mesmo operador.");
+                + "A sessão é reautenticada sozinha quando o SER devolve a tela de login; se "
+                + "chegou aqui, a tela veio diferente do esperado.");
         }
 
         var linhas = PlanilhaSerParser.Ler(arquivo.Corpo);

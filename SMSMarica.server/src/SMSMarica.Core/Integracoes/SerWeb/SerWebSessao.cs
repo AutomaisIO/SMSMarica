@@ -120,6 +120,34 @@ public sealed partial class SerWebSessao(
                 html = await GetAsync(sessao, caminho, cancellationToken);
             }
 
+            // SESSÃO MORTA NÃO DÁ 401 — dá HTTP 200 com a tela de login. Como `Logado` só era
+            // marcado no login e nunca desmarcado, `GarantirSessaoAsync` considerava a sessão boa
+            // para sempre: o GET voltava a tela de login, quem chamou não achava o botão
+            // Pesquisar e a varredura inteira morria em menos de um segundo — sem tentar
+            // reautenticar, e só tentando de novo no dia seguinte.
+            //
+            // Aconteceu em 09/08 10:55 e 10/08 05:30 (a diária). Sessão do SER é única por
+            // operador: qualquer outro login com a mesma credencial — inclusive as sondas do
+            // laboratório — derruba a do servidor. E mesmo sem ninguém derrubar, sessão expira.
+            if (html is not null && EhTelaDeLogin(html))
+            {
+                logger.LogWarning(
+                    "SER: a sessão tinha morrido (o SER devolveu a tela de login em {Caminho}). "
+                    + "Reautenticando e tentando de novo.", caminho);
+
+                Reiniciar();
+                sessao = await GarantirSessaoAsync(cancellationToken);
+                html = await GetAsync(sessao, caminho, cancellationToken);
+
+                if (html is not null && EhTelaDeLogin(html))
+                {
+                    throw new ValidacaoException(
+                        "ser.sessao_nao_recuperada",
+                        "O SER devolveu a tela de login mesmo depois de reautenticar. A credencial "
+                        + "pode ter sido bloqueada, ou o SER está recusando novas sessões.");
+                }
+            }
+
             return html ?? throw new ValidacaoException(
                 "ser.tela_indisponivel",
                 $"O SER recusou a tela {caminho}. Verifique se a credencial tem acesso ao módulo "
@@ -180,6 +208,22 @@ public sealed partial class SerWebSessao(
                               + "constante devolve listagem incompleta — ver docs/ser.md §3.3.");
 
             var resposta = await PostAsync(sessao, destino, campos, cancellationToken);
+
+            // Sessão morta no meio de um POST: aqui NÃO se repete a requisição. O ViewState era
+            // da sessão antiga e a nova view é outra — repostar cairia na armadilha de sempre
+            // (HTTP 200, view errada restaurada, resultado silenciosamente incompleto:
+            // docs/ser.md §3.3). Só marcamos a sessão como morta, para a próxima chamada
+            // reautenticar em vez de insistir num cadáver, e devolvemos erro nomeado.
+            if (resposta.EhTexto && EhTelaDeLogin(resposta.Texto))
+            {
+                logger.LogWarning("SER: a sessão morreu durante um POST em {Destino}.", destino);
+                Reiniciar();
+                throw new ValidacaoException(
+                    "ser.sessao_expirada",
+                    "A sessão do SER caiu no meio da operação. A próxima tentativa reautentica "
+                    + "sozinha — refaça a rodada.");
+            }
+
             if (resposta.EhTexto) AbsorverViewState(sessao, resposta.Texto);
             return resposta;
         }
@@ -269,6 +313,18 @@ public sealed partial class SerWebSessao(
     }
 
     private static string CssEscape(string valor) => valor.Replace("\\", "\\\\").Replace("\"", "\\\"");
+
+    /// <summary>
+    /// A resposta é a tela de login? É assim — e só assim — que o SER avisa que a sessão morreu:
+    /// HTTP 200 com o formulário de login no corpo, nunca 401 nem redirect.
+    ///
+    /// <para>Mesma checagem que <c>LoginAsync</c> usa para detectar credencial recusada. Os dois
+    /// casos têm a mesma cara na resposta; o que os separa é o momento — no login é senha errada,
+    /// no meio da navegação é sessão perdida.</para>
+    /// </summary>
+    internal static bool EhTelaDeLogin(string html) =>
+        html.Contains("id=\"login:username\"", StringComparison.Ordinal)
+        || html.Contains("name=\"login:password\"", StringComparison.Ordinal);
 
     // ------------------------------------------------------------------ navegação
 

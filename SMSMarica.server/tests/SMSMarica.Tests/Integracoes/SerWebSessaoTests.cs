@@ -339,4 +339,49 @@ public class SerWebSessaoTests
 
         acao.Should().NotThrow();
     }
+
+    /// <summary>
+    /// REGRESSÃO de 10/08/2026 — a varredura diária morreu às 02:30 em menos de um segundo, e
+    /// todo disparo manual seguinte também, até o processo reiniciar.
+    ///
+    /// <para><b>Causa:</b> sessão morta no SER não devolve 401 nem redirect — devolve <b>HTTP 200
+    /// com a tela de login no corpo</b>. Como <c>Logado</c> só era marcado no login e nunca
+    /// desmarcado, a sessão em memória era considerada boa para sempre: o GET voltava a tela de
+    /// login, quem chamou não achava o botão Pesquisar, e a rodada inteira morria sem nunca tentar
+    /// reautenticar.</para>
+    ///
+    /// <para>Este teste guarda o reconhecimento. Se ele parar de reconhecer a tela de login, a
+    /// reautenticação automática deixa de disparar e o modo de falha volta inteiro.</para>
+    /// </summary>
+    [Fact]
+    public void Tela_de_login_e_reconhecida_como_sessao_morta()
+    {
+        // Estrutura do /ser/login real: o SER devolve isto no lugar da página pedida.
+        const string login = """
+            <html><body><form id="login" action="/ser/login;jsessionid=ABC">
+              <input id="login:username" name="login:username" type="text" />
+              <input id="login:password" name="login:password" type="password" />
+            </form></body></html>
+            """;
+
+        SerWebSessao.EhTelaDeLogin(login).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// O contrário importa igual: confundir a tela de pesquisa com a de login faria o motor
+    /// relogar em loop a cada requisição bem-sucedida.
+    /// </summary>
+    [Fact]
+    public void Tela_normal_do_ser_nao_e_confundida_com_login()
+    {
+        const string pesquisa = """
+            <html><body><form id="form0" action="/ser/pages/x.seam">
+              <input id="form0:login_usuario_exibicao" name="form0:usuario" value="operador" />
+              <a id="form0:pesquisar"><span>Pesquisar</span></a>
+            </form></body></html>
+            """;
+
+        SerWebSessao.EhTelaDeLogin(pesquisa).Should().BeFalse(
+            "campo com 'login' no nome não é a tela de login");
+    }
 }
