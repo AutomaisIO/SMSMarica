@@ -15,9 +15,14 @@ namespace SMSMarica.Core.Ser.Background;
 /// dois são independentes: a varredura carimba, este worker leva, e se o hub estiver fora a fila
 /// espera.</para>
 ///
-/// <para><b>Ritmo deliberadamente lento.</b> Depois do alinhamento único a fila do dia a dia é de
-/// dezenas, não de milhares — não há o que ganhar apertando o intervalo. Lotes pequenos também
-/// deixam a escrita no hub diluída, em vez de concentrar rajadas.</para>
+/// <para><b>Drena a fila INTEIRA a cada acordada</b>, lote a lote, e só então dorme. A primeira
+/// versão parava em 100 por passagem: com a fila do dia a dia — dezenas — dava no mesmo, mas na
+/// carga inicial de 19 mil viraria ~32 horas para um trabalho de minutos. Não há o que poupar
+/// aqui: o hub responde em localhost e o espelho do SER é a nossa própria base, então não existe
+/// serviço de terceiro para preservar nem limite de taxa a respeitar.</para>
+///
+/// <para>Os lotes continuam existindo por causa da memória e do change tracker — cada um em seu
+/// próprio escopo, com DbContext novo —, não como freio.</para>
 /// </summary>
 public sealed class SerConciliacaoPacienteRunner(
     IServiceScopeFactory scopeFactory,
@@ -25,8 +30,8 @@ public sealed class SerConciliacaoPacienteRunner(
 {
     private static readonly TimeSpan Intervalo = TimeSpan.FromMinutes(10);
 
-    /// <summary>Teto por passagem — a fila continua na próxima, e não há pressa.</summary>
-    private const int Lote = 100;
+    /// <summary>Tamanho do lote: recorte de memória, não freio. A fila é drenada até o fim.</summary>
+    private const int Lote = 200;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -45,9 +50,34 @@ public sealed class SerConciliacaoPacienteRunner(
         {
             try
             {
-                using var escopo = scopeFactory.CreateScope();
-                var svc = escopo.ServiceProvider.GetRequiredService<ISerBackfillPacientesService>();
-                await svc.ExecutarPendentesAsync(Lote, stoppingToken);
+                var total = 0;
+                while (!stoppingToken.IsCancellationRequested)
+                {
+                    // Escopo NOVO por lote: com um só, o change tracker acumularia as 19 mil
+                    // entidades da carga inicial e a gravação iria ficando mais lenta a cada lote.
+                    using var escopo = scopeFactory.CreateScope();
+                    var svc = escopo.ServiceProvider.GetRequiredService<ISerBackfillPacientesService>();
+                    var r = await svc.ExecutarPendentesAsync(Lote, stoppingToken);
+
+                    if (r.Pacientes == 0) break;               // fila vazia
+                    total += r.Pacientes;
+
+                    // GUARDA DE GIRO EM FALSO: falha não limpa a marca, então um lote 100% falho
+                    // voltaria idêntico no próximo `while` — laço infinito martelando o hub.
+                    // Parar aqui devolve o caso para a próxima acordada, daqui a 10 minutos.
+                    if (r.Falhas == r.Pacientes)
+                    {
+                        logger.LogWarning(
+                            "SER/conciliação: lote inteiro falhou ({Qtd}). Parando a drenagem "
+                            + "para não girar em falso; retoma na próxima passagem.", r.Falhas);
+                        break;
+                    }
+                }
+
+                if (total > 0)
+                {
+                    logger.LogInformation("SER/conciliação: fila drenada — {Total} paciente(s).", total);
+                }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
