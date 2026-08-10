@@ -216,10 +216,29 @@ public sealed partial class SerWebSessao(
     /// Recusa POSTs que pareçam escrita. Duas camadas: nome do parâmetro (pega ids falantes) e
     /// rótulo visível do componente clicado (indispensável — o SER usa ids opacos).
     /// </summary>
+    /// <summary>
+    /// Parâmetros de NAVEGAÇÃO liberados nominalmente, apesar de casarem com o regex de escrita.
+    ///
+    /// <para><c>form0:editar_server_submit</c> só TROCA DE ABA (é o <c>_JSFFormSubmit</c> do
+    /// <c>rich:tab</c>): abre o formulário de criação para leitura, sem gravar coisa alguma —
+    /// quem grava é o botão <i>Gravar</i>, que continua barrado pelas duas camadas. O verbo está
+    /// no NOME da aba, não na ação.</para>
+    ///
+    /// <para>É uma lista fechada e nominal de propósito: afrouxar o regex abriria a porta para
+    /// <c>btnEditar</c> de verdade em qualquer tela.</para>
+    /// </summary>
+    private static readonly HashSet<string> NavegacaoLiberada = new(StringComparer.Ordinal)
+    {
+        "form0:editar_server_submit",
+        "form0:pesquisar_server_submit",
+    };
+
     internal static void GarantirLeitura(IReadOnlyDictionary<string, string> extras, IHtmlDocument doc)
     {
         foreach (var chave in extras.Keys)
         {
+            if (NavegacaoLiberada.Contains(chave)) continue;
+
             if (RegexEscrita().IsMatch(chave))
             {
                 throw new EscritaNoSerBloqueadaException(

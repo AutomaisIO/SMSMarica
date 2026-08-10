@@ -2,6 +2,7 @@ import {
   Activity,
   BarChart3,
   BellRing,
+  FilePlus2,
   Bot,
   BrainCircuit,
   Bug,
@@ -148,6 +149,13 @@ export const SECOES: SecaoMenu[] = [
         modulo: 'RegulacaoSer',
         end: true,
         descricao: 'Fila do Estado (SES-RJ) espelhada — consulta e histórico.',
+      },
+      {
+        rotulo: 'Nova solicitação',
+        to: '/app/regulacao/nova-solicitacao',
+        icone: FilePlus2,
+        modulo: 'RegulacaoSer',
+        descricao: 'Monta um pedido no formato do SER — campos variam por recurso.',
       },
       {
         rotulo: 'Notificações',

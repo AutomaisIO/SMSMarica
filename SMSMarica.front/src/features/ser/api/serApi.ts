@@ -15,6 +15,9 @@ import type {
   NotificacoesPagina,
   NotificacoesResumo,
   VarreduraAutomaticaSer,
+  FormularioNovaSer,
+  OpcaoSer,
+  CampoDinamicoSer,
 } from '@/features/ser/types';
 
 /** Busca na NOSSA base espelhada — não vai ao SER. */
@@ -121,6 +124,31 @@ export async function salvarVarreduraAutomaticaSer(
   const { data } = await http.put<VarreduraAutomaticaSer>(
     '/regulacao/ser/configuracao/varredura-automatica',
     config,
+  );
+  return data;
+}
+
+// ---------------------------------------------------------------- nova solicitação
+
+export async function obterFormularioNovaSer(): Promise<FormularioNovaSer> {
+  const { data } = await http.get<FormularioNovaSer>(
+    '/regulacao/ser/configuracao/nova-solicitacao/formulario',
+  );
+  return data;
+}
+
+export async function listarRecursosNovaSer(tipo: string): Promise<OpcaoSer[]> {
+  const { data } = await http.get<OpcaoSer[]>(
+    '/regulacao/ser/configuracao/nova-solicitacao/recursos',
+    { params: { tipo } },
+  );
+  return data;
+}
+
+export async function obterCamposNovaSer(tipo: string, recurso: string): Promise<CampoDinamicoSer[]> {
+  const { data } = await http.get<CampoDinamicoSer[]>(
+    '/regulacao/ser/configuracao/nova-solicitacao/campos',
+    { params: { tipo, recurso } },
   );
   return data;
 }

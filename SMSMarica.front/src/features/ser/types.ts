@@ -320,3 +320,31 @@ export type VarreduraAutomaticaSer = {
   /** `HH:mm`. */
   horaLocal: string;
 };
+
+// ---------------------------------------------------------------- nova solicitação
+// O formulário de criação do SER, lido AO VIVO. Ver docs/ser-criar-solicitacao.md.
+
+export type OpcaoSer = { valor: string; rotulo: string };
+
+/**
+ * Campo que o SER acrescenta conforme o Recurso escolhido — é o que faz oncologia pedir peso,
+ * altura, IMC e datas de biópsia enquanto uma consulta comum pede só três textos.
+ */
+export type CampoDinamicoSer = {
+  numero: string;
+  /** Nome JSF do campo — é por ele que o valor viajaria no envio. */
+  campo: string;
+  rotulo: string;
+  /** `text`, `textarea`, `select`, `radio` ou `checkbox`. */
+  tipo: string;
+  obrigatorio: boolean;
+  opcoes: OpcaoSer[] | null;
+};
+
+export type FormularioNovaSer = {
+  ambulatorioEstadual: OpcaoSer[];
+  tipos: OpcaoSer[];
+  classificacoesRisco: OpcaoSer[];
+  medicos: OpcaoSer[];
+  camposDinamicosPadrao: CampoDinamicoSer[];
+};

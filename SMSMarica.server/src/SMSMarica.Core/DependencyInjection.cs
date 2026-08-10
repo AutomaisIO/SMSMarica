@@ -325,6 +325,9 @@ public static class DependencyInjection
         // Config do disparo diário em BANCO: mudar a hora não pode exigir deploy.
         services.AddScoped<Ser.ISerVarreduraConfigService, Ser.SerVarreduraConfigService>();
 
+        // Formulário de nova solicitação, lido ao vivo do SER (somente leitura — não envia).
+        services.AddScoped<Ser.ISerNovaSolicitacaoService, Ser.SerNovaSolicitacaoService>();
+
         // Consulta DIRETA ao SER: a bancada de testes da integração. Exercita login, módulo,
         // ViewState, busca, paginação e parser em segundos, sem gravar nada.
         services.AddScoped<Ser.ISerConsultaDiretaService, Ser.SerConsultaDiretaService>();

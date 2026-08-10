@@ -309,3 +309,30 @@ public sealed record SerNotificacaoFiltroDto
     public int Pagina { get; init; } = 1;
     public int Tamanho { get; init; } = 50;
 }
+
+// ---------------------------------------------------------------- nova solicitação
+// O formulário de criação do SER, lido AO VIVO. Ver docs/ser-criar-solicitacao.md.
+
+public sealed record SerOpcaoDto(string Valor, string Rotulo);
+
+/// <summary>
+/// Um campo que o SER acrescenta conforme o Recurso escolhido. É o que faz oncologia pedir peso,
+/// altura, IMC e datas de biópsia enquanto uma consulta comum pede só três textos.
+/// </summary>
+public sealed record SerCampoDinamicoDto(
+    string Numero,
+    /// <summary>Nome JSF do campo — é por ele que o valor viajaria no envio.</summary>
+    string Campo,
+    string Rotulo,
+    /// <summary><c>text</c>, <c>textarea</c>, <c>select</c>, <c>radio</c> ou <c>checkbox</c>.</summary>
+    string Tipo,
+    bool Obrigatorio,
+    IReadOnlyList<SerOpcaoDto>? Opcoes);
+
+/// <summary>Bloco fixo do formulário: vale para todo pedido, independente do recurso.</summary>
+public sealed record SerFormularioNovaDto(
+    IReadOnlyList<SerOpcaoDto> AmbulatorioEstadual,
+    IReadOnlyList<SerOpcaoDto> Tipos,
+    IReadOnlyList<SerOpcaoDto> ClassificacoesRisco,
+    IReadOnlyList<SerOpcaoDto> Medicos,
+    IReadOnlyList<SerCampoDinamicoDto> CamposDinamicosPadrao);

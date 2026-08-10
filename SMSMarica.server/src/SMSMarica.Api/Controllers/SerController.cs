@@ -181,6 +181,39 @@ public sealed class SerConfiguracaoController(
 
     /// <summary>Testa uma credencial contra o SER sem gravá-la. Só autentica e confere se o
     /// módulo Ambulatório abre — nenhuma escrita no SER.</summary>
+    /// <summary>
+    /// Formulário de NOVA solicitação, lido ao vivo da aba Editar do SER.
+    ///
+    /// <para><b>Somente leitura.</b> Abrir a aba e trocar combos apenas re-renderiza a view do
+    /// SER; nada é criado. O envio ainda não existe — quando existir, será endpoint próprio e
+    /// decisão explícita.</para>
+    /// </summary>
+    [HttpGet("nova-solicitacao/formulario")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]
+    [ProducesResponseType<SerFormularioNovaDto>(StatusCodes.Status200OK)]
+    public Task<SerFormularioNovaDto> FormularioNovaSolicitacao(
+        [FromServices] ISerNovaSolicitacaoService nova, CancellationToken cancellationToken) =>
+        nova.ObterFormularioAsync(cancellationToken);
+
+    [HttpGet("nova-solicitacao/recursos")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<SerOpcaoDto>>(StatusCodes.Status200OK)]
+    public Task<IReadOnlyList<SerOpcaoDto>> RecursosNovaSolicitacao(
+        [FromQuery] string tipo,
+        [FromServices] ISerNovaSolicitacaoService nova,
+        CancellationToken cancellationToken) =>
+        nova.ListarRecursosAsync(tipo, cancellationToken);
+
+    [HttpGet("nova-solicitacao/campos")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<SerCampoDinamicoDto>>(StatusCodes.Status200OK)]
+    public Task<IReadOnlyList<SerCampoDinamicoDto>> CamposNovaSolicitacao(
+        [FromQuery] string tipo,
+        [FromQuery] string recurso,
+        [FromServices] ISerNovaSolicitacaoService nova,
+        CancellationToken cancellationToken) =>
+        nova.ObterCamposDinamicosAsync(tipo, recurso, cancellationToken);
+
     /// <summary>Configuração do disparo diário (ligado/desligado + hora de Brasília).</summary>
     [HttpGet("varredura-automatica")]
     [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Consulta)]

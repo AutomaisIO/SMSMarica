@@ -5,6 +5,9 @@ import {
   listarNotificacoesSer,
   marcarNotificacaoVista,
   marcarNotificacoesDaSolicitacaoVistas,
+  obterCamposNovaSer,
+  obterFormularioNovaSer,
+  listarRecursosNovaSer,
   obterResumoNotificacoesSer,
   obterVarreduraAutomaticaSer,
   salvarVarreduraAutomaticaSer,
@@ -171,5 +174,36 @@ export function useSalvarVarreduraAutomaticaSer() {
   return useMutation({
     mutationFn: (c: VarreduraAutomaticaSer) => salvarVarreduraAutomaticaSer(c),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['ser', 'varredura-automatica'] }),
+  });
+}
+
+// ---------------------------------------------------------------- nova solicitação
+// Cada uma dessas consultas conversa com o SER AO VIVO (abre a aba, troca combo). Por isso
+// `staleTime` alto: o catálogo muda quando a SES-RJ mexe numa especialidade, não a cada minuto.
+
+export function useFormularioNovaSer(habilitado: boolean) {
+  return useQuery({
+    queryKey: ['ser', 'nova', 'formulario'],
+    queryFn: obterFormularioNovaSer,
+    enabled: habilitado,
+    staleTime: 10 * 60_000,
+  });
+}
+
+export function useRecursosNovaSer(tipo: string | undefined) {
+  return useQuery({
+    queryKey: ['ser', 'nova', 'recursos', tipo],
+    queryFn: () => listarRecursosNovaSer(tipo!),
+    enabled: Boolean(tipo),
+    staleTime: 10 * 60_000,
+  });
+}
+
+export function useCamposNovaSer(tipo: string | undefined, recurso: string | undefined) {
+  return useQuery({
+    queryKey: ['ser', 'nova', 'campos', tipo, recurso],
+    queryFn: () => obterCamposNovaSer(tipo!, recurso!),
+    enabled: Boolean(tipo && recurso),
+    staleTime: 10 * 60_000,
   });
 }

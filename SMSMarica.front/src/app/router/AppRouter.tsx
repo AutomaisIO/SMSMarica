@@ -68,6 +68,7 @@ import { SisregConsultaPage } from '@/features/sisreg/pages/SisregConsultaPage';
 import { SisregConfiguracaoPage } from '@/features/sisreg/pages/SisregConfiguracaoPage';
 import { SisregMapeamentoPage } from '@/features/sisreg-mapeamento/pages/SisregMapeamentoPage';
 import { SerNotificacoesPage } from '@/features/ser/pages/SerNotificacoesPage';
+import { SerNovaSolicitacaoPage } from '@/features/ser/pages/SerNovaSolicitacaoPage';
 import { SerFilaPage } from '@/features/ser/pages/SerFilaPage';
 import { SerSolicitacaoDetalhePage } from '@/features/ser/pages/SerSolicitacaoDetalhePage';
 import { RegulacaoConfiguracaoPage } from '@/features/ser/pages/RegulacaoConfiguracaoPage';
@@ -189,6 +190,7 @@ export function AppRouter() {
           <Route path="agendamentos/marcar" element={<MarcarConsultaPage />} />
           <Route path="regulacao/ser" element={<SerFilaPage />} />
           <Route path="regulacao/notificacoes" element={<SerNotificacoesPage />} />
+          <Route path="regulacao/nova-solicitacao" element={<SerNovaSolicitacaoPage />} />
           <Route path="regulacao/ser/:id" element={<SerSolicitacaoDetalhePage />} />
           <Route path="regulacao/configuracao" element={<RegulacaoConfiguracaoPage />} />
           <Route path="sisreg" element={<SisregConsultaPage />} />
