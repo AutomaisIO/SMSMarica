@@ -6,6 +6,13 @@ namespace SMSMarica.Data.Entities.Enums;
 /// </summary>
 public enum ModalidadeDicom
 {
+    /// <summary>
+    /// Ainda não configurada. Não é modalidade DICOM — é a ausência dela, no tipo de exame que o
+    /// SISREG criou sozinho e que ninguém configurou ainda. Um tipo assim nunca vai à worklist:
+    /// mandar 0008,0060 vazio (ou chutado) ao equipamento é pior que não mandar nada.
+    /// </summary>
+    Indefinida = 0,
+
     /// <summary>Computed Radiography (RX digital placas CR).</summary>
     CR = 1,
 

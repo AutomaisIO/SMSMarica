@@ -25,8 +25,9 @@ export function TipoExameFormPage() {
   const atualizar = useAtualizarTipoExame();
 
   const [nome, setNome] = useState('');
+  const [codigoSisreg, setCodigoSisreg] = useState('');
   const [procedimento, setProcedimento] = useState<ProcedimentoSigtap | null>(null);
-  const [modalidade, setModalidade] = useState<ModalidadeDicom>('MG');
+  const [modalidade, setModalidade] = useState<ModalidadeDicom>('Indefinida');
   const [requestedDesc, setRequestedDesc] = useState('');
   const [scheduledDesc, setScheduledDesc] = useState('');
   const [protocolos, setProtocolos] = useState('');
@@ -40,18 +41,23 @@ export function TipoExameFormPage() {
     if (detalhe.data) {
       const t = detalhe.data;
       setNome(t.nome);
-      setProcedimento({
-        id: t.procedimentoSigtapId,
-        codigo: t.procedimentoSigtapCodigo,
-        nome: t.procedimentoSigtapNome,
-        grupo: '',
-        subgrupo: '',
-        forma: '',
-        descricao: '',
-        ativo: true,
-        competenciaInicio: '',
-        competenciaFim: null,
-      });
+      setCodigoSisreg(t.codigoSisreg ?? '');
+      setProcedimento(
+        t.procedimentoSigtapId
+          ? {
+              id: t.procedimentoSigtapId,
+              codigo: t.procedimentoSigtapCodigo,
+              nome: t.procedimentoSigtapNome,
+              grupo: '',
+              subgrupo: '',
+              forma: '',
+              descricao: '',
+              ativo: true,
+              competenciaInicio: '',
+              competenciaFim: null,
+            }
+          : null,
+      );
       setModalidade(t.modalidadeDicom);
       setRequestedDesc(t.requestedProcedureDescription);
       setScheduledDesc(t.scheduledProcedureStepDescription);
@@ -65,12 +71,14 @@ export function TipoExameFormPage() {
   async function salvar() {
     setErro(null);
     if (!nome.trim()) return setErro('Nome é obrigatório.');
-    if (!procedimento) return setErro('Selecione o procedimento SIGTAP.');
+    // O SIGTAP deixou de ser obrigatório: é correlação de faturamento, não identidade.
     if (!requestedDesc.trim()) return setErro('Descrição do procedimento (DICOM) é obrigatória.');
 
     const payload = {
-      nome: nome.trim(),
-      procedimentoSigtapId: procedimento.id,
+      // Sempre em maiúsculas: o nome é o do SISREG e a lista, o exame e o laudo mostram ele.
+      nome: nome.trim().toUpperCase(),
+      codigoSisreg: codigoSisreg.trim() || null,
+      procedimentoSigtapId: procedimento?.id ?? null,
       modalidadeDicom: modalidade,
       requestedProcedureDescription: requestedDesc.trim(),
       scheduledProcedureStepDescription: (scheduledDesc.trim() || requestedDesc.trim()),
@@ -125,13 +133,29 @@ export function TipoExameFormPage() {
       ) : null}
 
       <div className="grid grid-cols-1 gap-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-3">
-        <Campo label="Nome (apresentação)" htmlFor="nome" className="sm:col-span-2">
+        <Campo label="Nome do procedimento (SISREG)" htmlFor="nome" className="sm:col-span-2">
           <Input
             id="nome"
             value={nome}
-            onChange={(e) => setNome(e.target.value)}
-            placeholder="Ex.: Mamografia bilateral de rastreamento"
+            onChange={(e) => setNome(e.target.value.toUpperCase())}
+            placeholder="Ex.: ULTRASONOGRAFIA DE JOELHO DIREITO"
           />
+          <p className="mt-1 text-xs text-gray-500">
+            Escreva exatamente como o SISREG escreve. É este nome que aparece na lista de
+            solicitações, no exame e no laudo — e é por ele que a importação reconhece o
+            procedimento.
+          </p>
+        </Campo>
+        <Campo label="Código no SISREG" htmlFor="codigo-sisreg">
+          <Input
+            id="codigo-sisreg"
+            value={codigoSisreg}
+            onChange={(e) => setCodigoSisreg(e.target.value)}
+            placeholder="Ex.: 1402055"
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            Opcional — o SISREG deixa em branco em boa parte dos agendamentos.
+          </p>
         </Campo>
         <Campo label="Modalidade DICOM" htmlFor="modalidade">
           <Select
@@ -147,7 +171,7 @@ export function TipoExameFormPage() {
           </Select>
         </Campo>
 
-        <Campo label="Procedimento SIGTAP" htmlFor="proc-sigtap" className="sm:col-span-3">
+        <Campo label="Procedimento SIGTAP (faturamento)" htmlFor="proc-sigtap" className="sm:col-span-3">
           <div className="flex items-center gap-3">
             <div className="flex-1 min-w-0 rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm">
               {procedimento ? (
@@ -156,14 +180,24 @@ export function TipoExameFormPage() {
                   <span className="font-medium text-gray-900">{procedimento.nome}</span>
                 </span>
               ) : (
-                <span className="text-gray-400">Nenhum procedimento selecionado.</span>
+                <span className="text-gray-400">Sem correlação — não impede nada.</span>
               )}
             </div>
             <Button type="button" variante="outline" onClick={() => setBuscaAberta(true)}>
               <Search className="mr-2 h-4 w-4" />
               Buscar
             </Button>
+            {procedimento ? (
+              <Button type="button" variante="outline" onClick={() => setProcedimento(null)}>
+                Limpar
+              </Button>
+            ) : null}
           </div>
+          <p className="mt-1 text-xs text-gray-500">
+            Opcional, e só serve ao faturamento. <strong>Não</strong> use o código que vem no
+            arquivo do SISREG: ele sai de uma versão defasada da tabela e aponta para outro
+            procedimento no SIGTAP oficial. Confira na tabela oficial antes de ligar.
+          </p>
         </Campo>
 
         <Campo label="Requested Procedure Description (DICOM)" htmlFor="reqdesc" className="sm:col-span-2">
@@ -239,20 +273,10 @@ export function TipoExameFormPage() {
       <BuscaProcedimentoSigtap
         aberto={buscaAberta}
         aoFechar={() => setBuscaAberta(false)}
-        aoSelecionar={(p) => {
-          setProcedimento(p);
-          if (!nome.trim()) setNome(toTitleCase(p.nome));
-          if (!requestedDesc.trim()) setRequestedDesc(p.nome);
-        }}
+        // Não preenche mais o nome a partir do SIGTAP: o nome é do SISREG, e foi exatamente essa
+        // cópia que fez o rótulo do SIGTAP virar o nome exibido de procedimentos diferentes.
+        aoSelecionar={(p) => setProcedimento(p)}
       />
     </div>
   );
-}
-
-function toTitleCase(s: string): string {
-  return s
-    .toLowerCase()
-    .split(' ')
-    .map((w) => (w.length > 2 ? w[0].toUpperCase() + w.slice(1) : w))
-    .join(' ');
 }

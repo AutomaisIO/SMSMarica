@@ -69,6 +69,7 @@ public sealed class TiposExameService(SmsMaricaDbContext db, IUsuarioAtualAccess
             Id = Guid.CreateVersion7(),
             Nome = nome,
             ProcedimentoSigtapId = request.ProcedimentoSigtapId,
+            CodigoSisreg = NormalizaOpcional(request.CodigoSisreg),
             ModalidadeDicom = request.ModalidadeDicom,
             RequestedProcedureDescription = request.RequestedProcedureDescription.Trim(),
             ScheduledProcedureStepDescription = request.ScheduledProcedureStepDescription.Trim(),
@@ -103,7 +104,10 @@ public sealed class TiposExameService(SmsMaricaDbContext db, IUsuarioAtualAccess
 
         t.Nome = nome;
         t.ProcedimentoSigtapId = request.ProcedimentoSigtapId;
+        t.CodigoSisreg = NormalizaOpcional(request.CodigoSisreg);
         t.ModalidadeDicom = request.ModalidadeDicom;
+        // Configurou à mão: deixa de ser pendência da importação, mesmo que tenha nascido dela.
+        t.AutoCriado = false;
         t.RequestedProcedureDescription = request.RequestedProcedureDescription.Trim();
         t.ScheduledProcedureStepDescription = request.ScheduledProcedureStepDescription.Trim();
         t.CodigosProtocolo = SanearLista(request.CodigosProtocolo);
@@ -139,12 +143,15 @@ public sealed class TiposExameService(SmsMaricaDbContext db, IUsuarioAtualAccess
         await _db.SaveChangesAsync(cancellationToken);
     }
 
-    private async Task ValidarProcedimentoAsync(Guid procedimentoId, CancellationToken ct)
+    /// <summary>Correlação de faturamento: ausente é legítimo; informada tem que existir.</summary>
+    private async Task ValidarProcedimentoAsync(Guid? procedimentoId, CancellationToken ct)
     {
+        if (!procedimentoId.HasValue) return;
+
         var existe = await _db.ProcedimentosSigtap.AsNoTracking().AnyAsync(p => p.Id == procedimentoId, ct);
         if (!existe)
         {
-            throw new NaoEncontradoException(nameof(ProcedimentoSigtap), procedimentoId);
+            throw new NaoEncontradoException(nameof(ProcedimentoSigtap), procedimentoId.Value);
         }
     }
 
@@ -157,6 +164,9 @@ public sealed class TiposExameService(SmsMaricaDbContext db, IUsuarioAtualAccess
             throw new NaoEncontradoException(nameof(Unidade), unidadeId.Value);
         }
     }
+
+    private static string? NormalizaOpcional(string? valor) =>
+        string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();
 
     private static List<string> SanearLista(IReadOnlyList<string>? lista)
     {

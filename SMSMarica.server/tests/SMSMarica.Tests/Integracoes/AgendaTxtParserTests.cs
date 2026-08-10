@@ -73,6 +73,33 @@ public class AgendaTxtParserTests
         m.NomePaciente.Should().Be("FULANA DE TAL");
     }
 
+    // ===== Código do procedimento no SISREG (o `pa`, coluna 1) =====
+
+    [Fact]
+    public void Traz_o_codigo_do_procedimento_no_sisreg_da_coluna_1()
+    {
+        var txt = "3132358;CDT DR ALBERTO;01/07/2026;08/07/2026;1\n" + Linha("670119011");
+
+        var r = AgendaTxtParser.Parse(txt);
+
+        r.Marcacoes.Should().ContainSingle()
+            .Which.CodigoProcedimentoSisreg.Should().Be("1305007");
+    }
+
+    [Fact]
+    public void Codigo_do_procedimento_vazio_vira_null_e_nao_impede_a_marcacao()
+    {
+        // O SISREG deixa a coluna em branco em ~1/3 das linhas de produção — não é erro.
+        var semPa = Linha("670119011").Replace(";1305007;", ";;");
+        var txt = "3132358;CDT DR ALBERTO;01/07/2026;08/07/2026;1\n" + semPa;
+
+        var r = AgendaTxtParser.Parse(txt);
+
+        var m = r.Marcacoes.Should().ContainSingle().Subject;
+        m.CodigoProcedimentoSisreg.Should().BeNull();
+        m.ProcedimentoTexto.Should().Be("MAMOGRAFIA BILATERAL", "o nome é o que identifica o procedimento");
+    }
+
     [Fact]
     public void Csv_sem_data_no_nome_do_arquivo_ainda_deriva_o_executante()
     {

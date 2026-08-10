@@ -32,18 +32,31 @@ export function TiposExamePage() {
       render: (t) => (
         <div className="min-w-0">
           <div className="truncate font-medium text-gray-900">{t.nome}</div>
-          <div className="truncate text-xs text-gray-500 font-mono">SIGTAP {t.procedimentoSigtapCodigo}</div>
+          <div className="truncate text-xs text-gray-500 font-mono">
+            {t.codigoSisreg ? `SISREG ${t.codigoSisreg}` : 'sem código do SISREG'}
+            {t.procedimentoSigtapCodigo ? ` · SIGTAP ${t.procedimentoSigtapCodigo}` : ''}
+          </div>
+          {t.aguardandoConfiguracaoDicom ? (
+            <div className="mt-1 inline-block rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-xs font-medium text-amber-700">
+              Aguardando configuração DICOM
+            </div>
+          ) : null}
         </div>
       ),
     },
     {
       chave: 'modalidade',
       cabecalho: 'Modalidade',
-      render: (t) => (
-        <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium uppercase text-gray-700">
-          {t.modalidadeDicom}
-        </span>
-      ),
+      render: (t) =>
+        t.modalidadeDicom === 'Indefinida' ? (
+          <span className="rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+            não configurada
+          </span>
+        ) : (
+          <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium uppercase text-gray-700">
+            {t.modalidadeDicom}
+          </span>
+        ),
     },
     {
       chave: 'tempo',

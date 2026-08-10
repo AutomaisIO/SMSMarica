@@ -95,7 +95,9 @@ public sealed class ImportacaoSisregService(
     IGeradorIdentificadores geradorIds,
     IUsuarioAtualAccessor usuarioAtual,
     Varredura.Sigtap.IMapeadorSigtapSisreg mapeadorSigtap,
-    ILogger<ImportacaoSisregService> logger,
+    // Sem ILogger: o único log deste serviço era o da catalogação automática de SIGTAP, removida em
+    // 10/08/2026. Quem registra a criação de tipo agora é o ResolvedorTipoExameSisreg.
+    IResolvedorTipoExameSisreg resolvedorTipoExame,
     Notificacoes.Comunicacao.IComunicacaoPacienteService comunicacoes) : IImportacaoSisregService
 {
     // ---- Contexto do operador ----
@@ -243,28 +245,31 @@ public sealed class ImportacaoSisregService(
                 s => s.CodigoSolicitacao == codigo && s.ExcluidoEm == null, ct))
             return (Falha("Já existe uma solicitação com esse número do SISREG.", CausaFalhaImportacao.Outro), true);
 
-        // 2. Natureza pelo subgrupo SIGTAP (roteia satélite/UI). SÓ imagem precisa de TipoExame —
-        //    e mesmo SEM tipo mapeado a importação NÃO trava: entra como pendente (ADR-0021).
+        // 2. Natureza pelo subgrupo SIGTAP (roteia satélite/UI) — é o único campo estruturado que
+        //    diz se isto produz imagem. SÓ imagem precisa de TipoExame.
         var sig = SoDigitos(m.CodigoSigtap);
         var categoria = CategoriaSigtap.Resolver(sig);
+        // O nome do procedimento é o do SISREG, em maiúsculas, e é ele que vai para a tela, o
+        // exame e o laudo. Não arbitramos nome aqui nem em lugar nenhum.
+        var nomeProcedimento = ResolvedorTipoExameSisreg.NormalizarNome(m.ProcedimentoTexto ?? string.Empty);
+        var codigoProcedimento = SoDigitos(m.CodigoProcedimentoSisreg);
         Guid? tipoExameId = null;
         if (categoria == CategoriaSolicitacao.Imagem)
         {
-            var tipos = await db.TiposExame.AsNoTracking()
-                .Where(t => t.ExcluidoEm == null && t.Ativo && t.ProcedimentoSigtap != null)
-                .Select(t => new { t.Id, Codigo = t.ProcedimentoSigtap!.Codigo })
-                .ToListAsync(ct);
-            tipoExameId = tipos.FirstOrDefault(t => SoDigitos(t.Codigo) == sig)?.Id;
-
-            // Sem tipo mapeado, a tela "Mapeamento pendente" mostra o exame — mas só resolve se
-            // houver um TipoExame para vincular. E criar TipoExame exige um procedimento no
-            // catálogo SIGTAP (FK obrigatória). Se o código nem estiver catalogado, o operador vê
-            // a pendência e não tem como sair dela: beco sem saída.
-            if (tipoExameId is null) await CatalogarSigtapSeNovoAsync(sig, m.ProcedimentoTexto, ct);
+            // NÃO catalogamos mais o código como se fosse SIGTAP oficial. Isso existia para tirar o
+            // operador do beco sem saída de "não dá para criar o tipo sem procedimento catalogado" —
+            // beco que sumiu, porque o tipo agora nasce sozinho. E o efeito colateral era grave: o
+            // código exportado pelo SISREG entrava no catálogo OFICIAL com o nome do SISREG, e foi
+            // assim que o 0205020062 virou "ULTRASSONOGRAFIA DA REGIÃO INGUINAL" — nome que passou a
+            // representar 15 procedimentos diferentes.
+            tipoExameId = await resolvedorTipoExame.ResolverOuCriarAsync(
+                nomeProcedimento, codigoProcedimento, sig, ct);
 
             passos.Add(tipoExameId is null
-                ? $"Exame de imagem \"{m.ProcedimentoTexto}\" (SIGTAP {sig}) — SEM tipo mapeado; importa como PENDENTE."
-                : $"Exame de imagem \"{m.ProcedimentoTexto}\" → tipo mapeado (SIGTAP {sig}).");
+                ? "Exame de imagem SEM nome de procedimento no SISREG — importa sem tipo."
+                : $"Exame de imagem \"{nomeProcedimento}\""
+                  + (codigoProcedimento.Length > 0 ? $" (SISREG {codigoProcedimento})" : string.Empty)
+                  + " → tipo de exame resolvido pelo nome do SISREG.");
         }
         else
         {
@@ -376,9 +381,12 @@ public sealed class ImportacaoSisregService(
             PacienteId = pacienteId,
             Categoria = categoria,
             ProcedimentoSigtapCodigo = m.CodigoSigtap,
-            ProcedimentoTexto = m.ProcedimentoTexto,
+            ProcedimentoTexto = nomeProcedimento.Length > 0 ? nomeProcedimento : null,
+            ProcedimentoCodigoSisreg = codigoProcedimento.Length > 0 ? codigoProcedimento : null,
             // Consulta colapsa no SIGTAP 0301010072 — a especialidade só existe no texto.
-            EspecialidadeTexto = categoria == CategoriaSolicitacao.Consulta ? m.ProcedimentoTexto : null,
+            EspecialidadeTexto = categoria == CategoriaSolicitacao.Consulta && nomeProcedimento.Length > 0
+                ? nomeProcedimento
+                : null,
             UnidadeExecutanteId = unidadeExecId,
             UnidadeSolicitanteId = unidadeSolicId,
             SolicitanteNome = m.NomeMedicoSolicitante ?? "NÃO INFORMADO",
@@ -925,58 +933,11 @@ public sealed class ImportacaoSisregService(
         await db.SaveChangesAsync(ct);
     }
 
-    /// <summary>Grava/atualiza a falha de EXECUÇÃO da marcação (upsert pela pendência do mesmo nº).</summary>
-    /// <summary>
-    /// Registra no catálogo SIGTAP um código que o SISREG mandou e nós não tínhamos.
-    ///
-    /// <para><b>Por que existe:</b> o catálogo é semeado à mão e cobre uma fração do SIGTAP real.
-    /// Todo código novo que o SISREG passa a emitir chegava aqui e parava: o exame entrava sem
-    /// tipo, aparecia em "Mapeamento pendente", e o operador não conseguia resolver porque criar
-    /// um TipoExame exige um procedimento catalogado. Catalogar na chegada desfaz o beco sem
-    /// saída — a pendência passa a ser resolvível na tela que já existe.</para>
-    ///
-    /// <para><b>O nome vem do SISREG e NÃO é o nome oficial do SIGTAP</b> — é o nome local da
-    /// unidade, com as abreviações e erros de digitação dela ("ABDOMEM"). Fica marcado na
-    /// descrição, porque foi confiar em nome semeado à mão que fez 51 exames de próstata serem
-    /// classificados como obstétricos. Serve para identificar e mapear, não como verdade oficial.</para>
-    /// </summary>
-    private async Task CatalogarSigtapSeNovoAsync(string sigtapSoDigitos, string? nomeDoSisreg, CancellationToken ct)
-    {
-        if (sigtapSoDigitos.Length != 10) return;
-
-        var jaExiste = await db.ProcedimentosSigtap.AsNoTracking()
-            .AnyAsync(p => p.Codigo.Replace(".", "").Replace("-", "") == sigtapSoDigitos, ct);
-        if (jaExiste) return;
-
-        var nome = string.IsNullOrWhiteSpace(nomeDoSisreg)
-            ? $"PROCEDIMENTO {sigtapSoDigitos}"
-            : nomeDoSisreg.Trim().ToUpperInvariant();
-
-        db.ProcedimentosSigtap.Add(new ProcedimentoSigtap
-        {
-            Id = Guid.CreateVersion7(),
-            Codigo = FormatarSigtap(sigtapSoDigitos),
-            Nome = Truncar(nome, 300)!,
-            Descricao = "Cadastrado automaticamente a partir de uma importação do SISREG. "
-                        + "O nome é o que o SISREG informou (nome local da unidade), NÃO o nome "
-                        + "oficial do SIGTAP — confira na tabela oficial antes de usar como referência.",
-            Grupo = "PROCEDIMENTOS COM FINALIDADE DIAGNOSTICA",
-            Subgrupo = "(a conferir — veio do SISREG)",
-            Forma = "EXAMES",
-            Ativo = true,
-            CompetenciaInicio = DateOnly.FromDateTime(DateTime.UtcNow),
-        });
-
-        logger.LogWarning(
-            "SIGTAP_CODIGO_NOVO: {Codigo} (\"{Nome}\") não estava no catálogo e foi cadastrado a "
-            + "partir da importação do SISREG. Confira o nome na tabela oficial e crie o tipo de "
-            + "exame para tirar as solicitações de \"Mapeamento pendente\".",
-            sigtapSoDigitos, nome);
-    }
-
-    /// <summary>10 dígitos → <c>NN.NN.NN.NNN-N</c>, o formato do catálogo.</summary>
-    private static string FormatarSigtap(string d) =>
-        $"{d[..2]}.{d[2..4]}.{d[4..6]}.{d[6..9]}-{d[9]}";
+    // CatalogarSigtapSeNovoAsync saiu daqui em 10/08/2026. Ela cadastrava, no catálogo SIGTAP
+    // OFICIAL, o código exportado pelo SISREG com o NOME do SISREG — e como esse código vem de uma
+    // versão defasada da tabela, plantava equivalências falsas: foi assim que o 0205020062 virou
+    // "ULTRASSONOGRAFIA DA REGIÃO INGUINAL" e passou a representar 15 procedimentos distintos.
+    // Existia só para destravar a criação do tipo de exame, que agora nasce sozinho pelo nome.
 
     /// <summary>
     /// Avisar o paciente por WhatsApp ao importar esta marcação? Exige que o gatilho da UNIDADE

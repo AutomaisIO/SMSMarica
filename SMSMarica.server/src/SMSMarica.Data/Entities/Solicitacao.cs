@@ -71,6 +71,16 @@ public class Solicitacao
     /// <summary>Chave de confirmação (recepção autoriza a execução). Mesma régua do código.</summary>
     public string? ChaveConfirmacao { get; set; }
 
+    /// <summary>
+    /// Código do procedimento no SISREG (o <c>pa</c>) — coluna 1 da linha do TXT.
+    ///
+    /// <para><b>É opcional de fato, não por displicência:</b> medido em 10/08/2026 sobre as 3.096
+    /// solicitações com RAW em produção, a coluna vem <b>vazia em 1.018 delas (33%)</b>, cobrindo 20
+    /// procedimentos. Por isso ele é registrado e respeitado quando existe, mas quem identifica o
+    /// procedimento é o NOME (<see cref="ProcedimentoTexto"/>), que nunca falta.</para>
+    /// </summary>
+    public string? ProcedimentoCodigoSisreg { get; set; }
+
     /// <summary>Linha CRUA do TXT do SISREG que originou esta solicitação (proveniência). Uso interno.</summary>
     public string? RawSisreg { get; set; }
 

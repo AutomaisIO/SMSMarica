@@ -3,18 +3,43 @@ using SMSMarica.Data.Entities.Enums;
 namespace SMSMarica.Data.Entities;
 
 /// <summary>
-/// Curadoria local que traduz um <see cref="ProcedimentoSigtap"/> em algo
-/// "selecionável no formulário de solicitação". Adiciona o que o SIGTAP não
-/// tem (modalidade DICOM, textos do worklist item) e permite que a equipe da
-/// SMS personalize nomes amigáveis. Ver ADR-0006 para auditoria.
+/// O procedimento como coisa executável: o que aparece na lista de solicitações, no exame e no
+/// laudo, mais o que o DICOM precisa (modalidade, textos do worklist item).
+///
+/// <para><b>O nome é do SISREG, em MAIÚSCULAS, e não se arbitra sobre ele.</b> Até 10/08/2026 o
+/// tipo era ancorado no SIGTAP, e o nome exibido era o rótulo curado à mão daquele SIGTAP — o que
+/// apagava a diferença entre procedimentos distintos que compartilham código. Em produção,
+/// "ULTRASSOM DE ARTICULAÇÃO" (SIGTAP 0205020062) estava exibindo <b>15 procedimentos diferentes</b>
+/// do SISREG sob o mesmo nome (joelho D/E, ombro D/E, punho D/E, mão D/E, tornozelo D/E, antebraço,
+/// panturrilha, perna, região inguinal), e "Ultrassom de tireoide" exibia
+/// "ULTRA-SONOGRAFIA TRANSFONTANELAR - INFANTIL". Quem diz o que o exame é, é o SISREG.</para>
+///
+/// <para><b>O SIGTAP virou correlação secundária</b> — existe para faturamento e é opcional aqui.
+/// Ele não identifica, não nomeia e não impede a execução.</para>
 /// </summary>
 public class TipoExame
 {
     public Guid Id { get; set; }
 
+    /// <summary>Nome do procedimento como o SISREG o informa, em MAIÚSCULAS. É o que o usuário vê.</summary>
     public string Nome { get; set; } = string.Empty;
 
-    public Guid ProcedimentoSigtapId { get; set; }
+    /// <summary>
+    /// Código do procedimento no SISREG (o <c>pa</c>). Respeitado e gravado quando o SISREG o
+    /// informa — mas <b>não é a chave</b>: ver <see cref="Solicitacao.ProcedimentoCodigoSisreg"/>
+    /// para a medição que mostra a coluna vazia em 33% das linhas. A chave é o <see cref="Nome"/>.
+    /// </summary>
+    public string? CodigoSisreg { get; set; }
+
+    /// <summary>
+    /// Nasceu da importação do SISREG, sem ninguém configurar. Enquanto for true com
+    /// <see cref="ModalidadeDicom.Indefinida"/>, o tipo funciona para tudo (lista, laudo, exame)
+    /// menos para ir ao PACS — falta a configuração DICOM.
+    /// </summary>
+    public bool AutoCriado { get; set; }
+
+    /// <summary>Correlação para FATURAMENTO. Opcional — não é identidade nem gate de execução.</summary>
+    public Guid? ProcedimentoSigtapId { get; set; }
     public ProcedimentoSigtap? ProcedimentoSigtap { get; set; }
 
     public ModalidadeDicom ModalidadeDicom { get; set; }

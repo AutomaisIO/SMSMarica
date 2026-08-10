@@ -257,6 +257,12 @@ public static class DependencyInjection
             Integracoes.SisregWeb.Varredura.Sigtap.IMapeadorSigtapSisreg,
             Integracoes.SisregWeb.Varredura.Sigtap.MapeadorSigtapSisreg>();
 
+        // Procedimento do SISREG → tipo de exame, criando na hora. É o que faz o exame de imagem
+        // entrar já com o nome certo, sem operador no meio (ver ResolvedorTipoExameSisreg).
+        services.AddScoped<
+            Integracoes.SisregWeb.Importacao.IResolvedorTipoExameSisreg,
+            Integracoes.SisregWeb.Importacao.ResolvedorTipoExameSisreg>();
+
         // Motor de varredura da agenda (cons_agendas). Uma varredura por vez em toda a instalação:
         // as unidades saem para o SISREG pelo mesmo IP, então paralelizar só aproxima o CAPTCHA.
         services.Configure<Integracoes.SisregWeb.Varredura.VarreduraSisregOpcoes>(
@@ -340,6 +346,12 @@ public static class DependencyInjection
 
         // Rascunhos: pedidos montados e guardados aqui, com anexos, até serem autorizados.
         services.AddScoped<Ser.ISerRascunhoService, Ser.SerRascunhoService>();
+
+        // Conciliação do paciente do SER com o hub FHIR (ADR-0009/0020/0041).
+        services.AddScoped<Ser.Pacientes.ISerConciliacaoPacienteService,
+            Ser.Pacientes.SerConciliacaoPacienteService>();
+        services.AddScoped<Ser.Pacientes.ISerBackfillPacientesService,
+            Ser.Pacientes.SerBackfillPacientesService>();
 
         // Consulta DIRETA ao SER: a bancada de testes da integração. Exercita login, módulo,
         // ViewState, busca, paginação e parser em segundos, sem gravar nada.
