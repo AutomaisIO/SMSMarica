@@ -1,6 +1,7 @@
 using FluentAssertions;
 using SMSMarica.Core.Integracoes.SerWeb;
 using SMSMarica.Core.Ser;
+using SMSMarica.Core.Ser.Dtos;
 
 namespace SMSMarica.Tests.Integracoes;
 
@@ -94,6 +95,53 @@ public class SerNovaSolicitacaoTests
         cirurgia.Opcoes.Should().HaveCount(2);
 
         campos.Single(c => c.Numero == "960").Tipo.Should().Be("textarea");
+    }
+
+    /// <summary>
+    /// REGRESSÃO de 10/08/2026: o combo de médicos do SER traz <b>876 opções para 874 valores
+    /// únicos</b> — "DIEGO CESAR BORGES" aparece duas vezes com o MESMO id. A cópia do catálogo
+    /// conferia duplicata contra o banco mas não dentro do próprio lote, então o segundo
+    /// <c>Add</c> estourava o índice único e a cópia inteira morria com 409 ("já foi processado
+    /// por outra requisição concorrente" — mensagem que ainda por cima acusava concorrência que
+    /// não existia).
+    ///
+    /// <para>O dado sujo vem do SER e não temos como impedir; o que temos é de deduplicar antes
+    /// de gravar.</para>
+    /// </summary>
+    [Fact]
+    public void Opcao_repetida_pelo_ser_e_deduplicada_antes_de_gravar()
+    {
+        List<SerOpcaoDto> doSer =
+        [
+            new("195", "DIEGO CESAR BORGES"),
+            new("520", "OUTRO MEDICO"),
+            new("195", "DIEGO CESAR BORGES"),
+        ];
+
+        var unicos = doSer.DistinctBy(x => x.Valor).ToList();
+
+        unicos.Should().HaveCount(2, "o mesmo id não pode virar duas linhas");
+        unicos.Select(x => x.Valor).Should().OnlyHaveUniqueItems();
+    }
+
+    /// <summary>Campos dinâmicos com o mesmo número no mesmo recurso também colidiriam —
+    /// <c>ux_ser_catalogo_campo</c> é (recurso, numero).</summary>
+    [Fact]
+    public void Campo_dinamico_repetido_no_mesmo_recurso_e_deduplicado()
+    {
+        const string html = """
+            <html><body><form id="form0">
+              <div id="form0:container_dinamico_id_491"><span>Queixa *</span>
+                <textarea id="form0:dinamico_id_491"></textarea></div>
+              <div id="form0:container_dinamico_id_491"><span>Queixa *</span>
+                <textarea id="form0:dinamico_id_491"></textarea></div>
+            </form></body></html>
+            """;
+
+        var campos = SerNovaSolicitacaoService.CamposDinamicos(html);
+
+        campos.DistinctBy(c => c.Numero).Should().ContainSingle(
+            "dois containers com o mesmo número são um só campo");
     }
 
     [Fact]

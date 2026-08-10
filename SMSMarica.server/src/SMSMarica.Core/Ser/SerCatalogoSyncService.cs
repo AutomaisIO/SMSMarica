@@ -119,7 +119,11 @@ public sealed class SerCatalogoSyncService(
             .ToDictionaryAsync(x => x.Valor, cancellationToken);
 
         var ordem = 0;
-        foreach (var o in opcoes)
+        // DEDUP DENTRO DO LOTE, não só contra o banco: o próprio SER repete opção. Medido em
+        // 10/08/2026 — o combo de médicos traz 876 opções para 874 valores únicos ("DIEGO CESAR
+        // BORGES" aparece duas vezes com o MESMO id). Sem isto, o segundo Add estoura o índice
+        // único e a cópia inteira do catálogo morre com 409.
+        foreach (var o in opcoes.DistinctBy(x => x.Valor))
         {
             if (existentes.TryGetValue(o.Valor, out var atual))
             {
@@ -141,7 +145,7 @@ public sealed class SerCatalogoSyncService(
         }
 
         await db.SaveChangesAsync(cancellationToken);
-        return opcoes.Count;
+        return opcoes.DistinctBy(x => x.Valor).Count();
     }
 
     private async Task<int> SalvarRecursosAsync(
@@ -152,7 +156,8 @@ public sealed class SerCatalogoSyncService(
             .Where(x => x.Tipo == tipo)
             .ToDictionaryAsync(x => x.Valor, cancellationToken);
 
-        foreach (var o in doSer)
+        // Mesma razão da lista: recurso repetido no combo derrubaria a cópia inteira.
+        foreach (var o in doSer.DistinctBy(x => x.Valor))
         {
             if (existentes.TryGetValue(o.Valor, out var atual))
             {
@@ -175,7 +180,7 @@ public sealed class SerCatalogoSyncService(
         }
 
         await db.SaveChangesAsync(cancellationToken);
-        return doSer.Count;
+        return doSer.DistinctBy(x => x.Valor).Count();
     }
 
     private async Task<int> SalvarCamposAsync(
@@ -191,7 +196,9 @@ public sealed class SerCatalogoSyncService(
         db.SerCatalogoCampos.RemoveRange(atuais);
 
         var ordem = 0;
-        foreach (var c in lidos)
+        // Idem para os campos dinâmicos: dois `container_dinamico_id_N` com o mesmo N no mesmo
+        // recurso estourariam `ux_ser_catalogo_campo`.
+        foreach (var c in lidos.DistinctBy(x => x.Numero))
         {
             db.SerCatalogoCampos.Add(new SerCatalogoCampo
             {
@@ -207,7 +214,7 @@ public sealed class SerCatalogoSyncService(
             });
         }
 
-        return lidos.Count;
+        return lidos.DistinctBy(x => x.Numero).Count();
     }
 
     private static string Truncar(string texto, int max) =>
