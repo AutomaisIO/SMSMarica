@@ -74,6 +74,32 @@ acumulativa; escolher o tipo antes do ramo devolve a lista do ramo errado sem er
 > `org.jboss.seam.ui.NoSelectionConverter` dos demais. Quem filtrar só pelo converter deixa
 > "Selecione…" virar uma terceira alternativa ao lado de Sim e Não.
 
+#### Os três radios do bloco fixo: dois bifurcam o formulário
+
+Sondados em 10/08/2026 (`probe_radios_bloco_fixo.py`) depois que o combo de ambulatório estadual
+mostrou que "select comum" não é diagnóstico. Os três disparam A4J — ou seja, **os três
+re-renderizam alguma coisa** — mas só dois trocam campos:
+
+| Radio | Sim | Não |
+|---|---|---|
+| `booleanMedicoSolicitanteIdentificado_radio` | `medicoResp` (select, 873), `telefoneCelularMedico`, `especialidadeMedico` **\*** | `nomeMedicoResponsavelNaoIdentificado` **\*** |
+| `unidadeDeOrigemIdentificada_radio` | `suggUnidadeOrigem` (suggestionbox, `minChars:1`) | `unidadeNaoIdentificada` **\*** |
+| `naturezaSolicitacaoMandato_radio` | — | — |
+
+`*` = obrigatório no SER. **Cada caminho tem pelo menos um campo obrigatório próprio**, então
+"obrigatório" aqui não é atributo do campo: depende da resposta do radio. Validação que só olhe a
+lista de campos vai deixar passar pedido incompleto.
+
+O `suggUnidadeOrigem` é um `rich:suggestionbox` — mesmo protocolo do Solicitante descrito em
+[`ser.md` §4.3](./ser.md): fetch com `inputvalue` + `ajaxSingle`, depois `onselect` gravando o
+índice em `form0:j_id264_selection`, que é **transitório**. O `j_id264` sai do
+`Richfaces.onAvailable` da própria página, nunca chumbado.
+
+> Estado em 10/08/2026: a tela de nova solicitação manipula **dois** dos treze nomes JSF do bloco
+> fixo (`classificacao_risco` e `medicoResp`). Os três radios e os cinco campos condicionais ainda
+> não estão implementados — pedido montado hoje seria recusado por falta de médico e de unidade
+> de origem. É pendência conhecida, anterior a ligar o envio.
+
 ### 2.2 Bloco dinâmico
 
 Cada campo é um par `form0:container_dinamico_id_<N>` (rótulo) + `form0:dinamico_id_<N>`
