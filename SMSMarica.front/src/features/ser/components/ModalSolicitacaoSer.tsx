@@ -4,6 +4,7 @@ import { useSolicitacaoSer } from '@/features/ser/api/queries';
 import { SituacaoSerBadge } from '@/features/ser/components/SituacaoSerBadge';
 import { Modal } from '@/shared/ui/Modal';
 import { formatarInstante, formatarInstanteData } from '@/shared/lib/datas';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 
 /**
  * Detalhe completo da solicitação do SER, em modal.
@@ -54,7 +55,19 @@ export function ModalSolicitacaoSer({
           </section>
 
           <Bloco titulo="Paciente">
-            <Item rotulo="Nome" valor={r.pacienteNome} />
+            {r.pacienteId ? (
+              <div className="flex items-center gap-2 pb-1">
+                <span className="text-xs text-slate-500">Nome</span>
+                <NomePacienteComResumo
+                  pacienteId={r.pacienteId}
+                  nome={r.pacienteNome}
+                  classNameNome="text-sm font-medium text-slate-900"
+                  mostrarWhatsApp
+                />
+              </div>
+            ) : (
+              <Item rotulo="Nome" valor={r.pacienteNome} />
+            )}
             <Item rotulo="Idade" valor={r.idadeTexto} />
             <Item rotulo="Nascimento" valor={formatarInstanteData(data.dataNascimento)} />
             <Item rotulo="Sexo" valor={data.sexo} />

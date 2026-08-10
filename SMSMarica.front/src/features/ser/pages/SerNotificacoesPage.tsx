@@ -19,6 +19,7 @@ import { SituacaoSerBadge } from '@/features/ser/components/SituacaoSerBadge';
 import { ModalSolicitacaoSer } from '@/features/ser/components/ModalSolicitacaoSer';
 import { Button } from '@/shared/ui/Button';
 import { formatarInstante } from '@/shared/lib/datas';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 
 /**
  * Regulação → Notificações: o que mudou no SER e ainda ninguém olhou.
@@ -231,7 +232,19 @@ function LinhaNotificacao({
         </div>
 
         <div className="truncate text-sm font-medium text-slate-900">
-          {n.pacienteNome ?? '(sem nome)'}
+          {/* Os ícones param o clique: a linha inteira abre a solicitação, e abrir o resumo do
+              paciente ou o WhatsApp não pode arrastar o operador para outra tela junto. */}
+          {n.pacienteId ? (
+            <span onClick={(e) => e.stopPropagation()}>
+              <NomePacienteComResumo
+                pacienteId={n.pacienteId}
+                nome={n.pacienteNome ?? '(sem nome)'}
+                mostrarWhatsApp
+              />
+            </span>
+          ) : (
+            (n.pacienteNome ?? '(sem nome)')
+          )}
         </div>
         <div className="truncate text-xs text-slate-600">{n.recurso ?? '—'}</div>
         {n.agendadoParaTexto && (

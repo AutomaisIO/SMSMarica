@@ -283,6 +283,8 @@ export type NotificacaoSer = {
   criadoEm: string;
   tipoRecurso: TipoRecursoSer | null;
   pacienteNome: string | null;
+  /** Id no nosso hub FHIR — libera o resumo do paciente e o WhatsApp. Null se não conciliado. */
+  pacienteId: string | null;
   recurso: string | null;
   dataSolicitacao: string | null;
   agendadoParaTexto: string | null;

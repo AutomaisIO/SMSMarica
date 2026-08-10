@@ -92,6 +92,7 @@ public sealed class SerNotificacaoService(
                 x.Gatilho.CriadoEm,
                 x.Solicitacao.Tipo,
                 x.Solicitacao.PacienteNome,
+                x.Solicitacao.PacienteId,
                 x.Solicitacao.Recurso,
                 x.Solicitacao.DataSolicitacao,
                 x.Solicitacao.AgendadoParaTexto,

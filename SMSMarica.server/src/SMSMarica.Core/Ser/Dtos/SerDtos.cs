@@ -285,6 +285,9 @@ public sealed record SerNotificacaoDto(
     DateTime CriadoEm,
     TipoRecursoSer? TipoRecurso,
     string? PacienteNome,
+    /// <summary>Id no nosso hub FHIR — libera o resumo do paciente e o WhatsApp na notificação,
+    /// os mesmos do resto da aplicação. Null enquanto a conciliação não resolveu quem é.</summary>
+    Guid? PacienteId,
     string? Recurso,
     DateOnly? DataSolicitacao,
     string? AgendadoParaTexto,
