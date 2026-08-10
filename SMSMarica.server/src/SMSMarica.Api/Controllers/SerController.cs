@@ -371,3 +371,53 @@ public sealed class SerRascunhoController(
         return NoContent();
     }
 }
+
+/// <summary>
+/// Alinhamento único da base do SER com o hub FHIR. <b>Fora da tela de propósito</b> — é um
+/// acerto de uma vez, não uma operação de rotina; depois dele quem mantém em dia é a varredura.
+/// </summary>
+[ApiController]
+[Route("regulacao/ser/pacientes")]
+public sealed class SerPacientesController : ControllerBase
+{
+    /// <summary>
+    /// Concilia com o hub FHIR os pacientes que o SER já nos deu: cria quem não existe e completa
+    /// quem existe com o que faltava (CPF/CNS, nascimento, mãe, endereço, telefones). Nunca
+    /// sobrescreve — fonte parcial só acrescenta — e telefone verificado é intocável.
+    ///
+    /// <para>Roda em BACKGROUND (202); acompanhe pelos logs do server. <b>GATE OPERACIONAL:</b> só
+    /// com backup do <c>fhir.patient</c> — o hub não tem undo. Idempotente: rodar de novo depois
+    /// de uma queda custa releitura, nunca duplicata.</para>
+    /// </summary>
+    [HttpPost("backfill")]
+    [RequerPermissao(ModuloPermissao.SincronizacaoPep, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    public IActionResult Backfill(
+        [FromServices] IServiceScopeFactory escopos,
+        [FromServices] ILogger<SerPacientesController> logger,
+        [FromQuery] int throttleMs = 25)
+    {
+        // Fire-and-forget em escopo próprio: a requisição responde 202 na hora e o trabalho
+        // sobrevive ao fim da conexão. Mesmo padrão do backfill de promoção blob→nativo.
+        _ = Task.Run(async () =>
+        {
+            using var escopo = escopos.CreateScope();
+            try
+            {
+                var svc = escopo.ServiceProvider
+                    .GetRequiredService<Core.Ser.Pacientes.ISerBackfillPacientesService>();
+                await svc.ExecutarAsync(throttleMs, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "SER/backfill de pacientes falhou.");
+            }
+        });
+
+        return Accepted(new
+        {
+            mensagem = "Backfill de pacientes do SER iniciado em background. "
+                       + "Acompanhe pelos logs do server.",
+        });
+    }
+}

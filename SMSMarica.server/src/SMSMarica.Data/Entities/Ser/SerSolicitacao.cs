@@ -113,6 +113,19 @@ public class SerSolicitacao
     // ---- Controle da sincronização ----
 
     /// <summary>Quando a grade foi lida pela última vez (toda varredura atualiza).</summary>
+    /// <summary>
+    /// Quando o dado de PACIENTE desta solicitação mudou e ainda não foi levado ao hub FHIR.
+    /// <c>null</c> = nada pendente.
+    ///
+    /// <para><b>Por que uma marca, e não uma chamada ao hub dentro da varredura.</b> A rodada
+    /// completa leva ~7 horas e passa por 25 mil solicitações; pendurar nela uma ida ao hub por
+    /// paciente somaria milhares de requisições e — o que pesa de verdade — faria uma
+    /// indisponibilidade do hub derrubar a varredura inteira. Aqui a varredura só carimba quem
+    /// mudou; o worker de conciliação leva ao hub no seu ritmo, e se o hub estiver fora a marca
+    /// continua esperando.</para>
+    /// </summary>
+    public DateTime? PacienteConciliarEm { get; set; }
+
     public DateTime SincronizadoEm { get; set; }
 
     /// <summary>Quando o HISTÓRICO foi lido pela última vez. Null = nunca leu.</summary>

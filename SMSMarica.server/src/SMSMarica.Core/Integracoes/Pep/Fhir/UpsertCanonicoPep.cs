@@ -46,9 +46,22 @@ internal static class UpsertCanonicoPep
     /// <c>urn:klinikos:paciente</c>) — usado só para extrair o código nativo que rotula a
     /// divergência na fila de arbitragem.
     /// </param>
+    /// <param name="fonteParcial">
+    /// A origem conhece só um PEDAÇO da pessoa (o SER, por exemplo, traz endereço em 77% das
+    /// solicitações e telefone em 46%). Com <c>true</c>, campo vazio no recurso montado significa
+    /// "não sei" e é completado do hub — a fonte só acrescenta. Com <c>false</c> (padrão, e o caso
+    /// de Salux e Klinikos) a origem é prontuário completo: campo que sumiu lá some aqui.
+    /// </param>
+    /// <param name="aoEscrever">
+    /// Chamado imediatamente antes de cada escrita, com (estado no hub, recurso a gravar) — e
+    /// <c>null</c> no primeiro argumento quando é criação. Existe para a trilha de auditoria
+    /// poder dizer o que MUDOU sem uma segunda ida ao hub: quem já tem os dois lados aqui é este
+    /// método. Não é chamado quando a guarda de no-op decide não escrever.
+    /// </param>
     public static async Task<string> UpsertAsync(
         ContextoImportacaoPep ctx, string tipo, string system, string valor,
-        Resource novo, string systemCdInterno, CancellationToken ct)
+        Resource novo, string systemCdInterno, CancellationToken ct, bool fonteParcial = false,
+        Action<Resource?, Resource>? aoEscrever = null)
     {
         var existentes = await ctx.Escritor.BuscarPorIdentifierAsync(tipo, system, valor, ct);
         var atual = existentes.Entry.Select(e => e.Resource).FirstOrDefault(r => r is not null);
@@ -94,6 +107,10 @@ internal static class UpsertCanonicoPep
             if (novo is Patient np && atual is Patient ap)
             {
                 Pacientes.Fhir.PatientMergeFhir.PreservarDoExistente(np, ap);
+                // Antes da conciliação, e sem atrapalhá-la: CompletarVazios só copia onde a
+                // origem NADA disse. Divergência de verdade é origem e hub ambos preenchidos e
+                // diferentes — esse caso passa intacto para ConciliarNascimento congelar.
+                if (fonteParcial) Pacientes.Fhir.PatientMergeFhir.CompletarVazios(np, ap);
                 PreservarClinicoEntreBases(np, ap);
                 ConciliarNascimento(ctx, system, valor, np, ap, systemCdInterno);
             }
@@ -118,6 +135,7 @@ internal static class UpsertCanonicoPep
 
             try
             {
+                aoEscrever?.Invoke(atual, novo);
                 var atualizado = await ctx.Escritor.AtualizarAsync(tipo, atual.Id!, novo, ct);
                 return atualizado.Id!;
             }
@@ -128,6 +146,7 @@ internal static class UpsertCanonicoPep
             }
         }
 
+        aoEscrever?.Invoke(null, novo);
         var criado = await ctx.Escritor.CriarAsync(novo, ct);
         return criado.Id!;
     }

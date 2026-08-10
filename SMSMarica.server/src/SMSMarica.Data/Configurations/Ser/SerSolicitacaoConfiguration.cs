@@ -45,6 +45,12 @@ internal sealed class SerSolicitacaoConfiguration : IEntityTypeConfiguration<Ser
         builder.Property(x => x.TelefoneContato).HasColumnName("telefone_contato").HasMaxLength(30);
 
         builder.Property(x => x.SincronizadoEm).HasColumnName("sincronizado_em").IsRequired();
+        builder.Property(x => x.PacienteConciliarEm).HasColumnName("paciente_conciliar_em");
+        // Índice PARCIAL: a fila de conciliação é minúscula perto das 25 mil linhas, e a
+        // pergunta do worker é exatamente "quem está pendente".
+        builder.HasIndex(x => x.PacienteConciliarEm)
+            .HasFilter("paciente_conciliar_em IS NOT NULL")
+            .HasDatabaseName("ix_ser_solicitacao_paciente_conciliar");
         builder.Property(x => x.HistoricoLidoEm).HasColumnName("historico_lido_em");
         builder.Property(x => x.EventosCount).HasColumnName("eventos_count").IsRequired();
         builder.Property(x => x.UltimoEventoEm).HasColumnName("ultimo_evento_em");

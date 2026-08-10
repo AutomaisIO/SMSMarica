@@ -322,6 +322,9 @@ public sealed class SerSincronizacaoService(
                     Situacao = situacao,
                 };
                 PreencherDaGrade(nova, linha, situacao);
+                // Solicitação nova: o paciente pode ser inédito para o hub. Vai para a fila de
+                // conciliação sem comparar retrato — não há retrato anterior com que comparar.
+                nova.PacienteConciliarEm = agora;
                 db.SerSolicitacoes.Add(nova);
 
                 execucao.SolicitacoesNovas++;
@@ -335,7 +338,9 @@ public sealed class SerSincronizacaoService(
             var situacaoAnterior = atual.Situacao;
             var agendadoAnterior = atual.AgendadoParaTexto;
 
+            var retratoAntes = RetratoDoPaciente(atual);
             PreencherDaGrade(atual, linha, situacao);
+            MarcarSeMudouOPaciente(atual, retratoAntes, agora);
             atual.SincronizadoEm = agora;
             atual.AtualizadoEm = agora;
             execucao.SolicitacoesAtualizadas++;
@@ -554,7 +559,11 @@ public sealed class SerSincronizacaoService(
         SerHistorico historico,
         CancellationToken cancellationToken)
     {
+        // A tela de histórico é a fonte do cadastro rico (mãe, endereço, os três telefones):
+        // é aqui que o retrato do paciente costuma mudar de verdade.
+        var retratoAntes = RetratoDoPaciente(solicitacao);
         PreencherDadosDoPaciente(solicitacao, historico.Paciente);
+        MarcarSeMudouOPaciente(solicitacao, retratoAntes, DateTime.UtcNow);
 
         var jaTemos = await db.SerEventos
             .Where(e => e.SerSolicitacaoId == solicitacao.Id)
@@ -620,6 +629,27 @@ public sealed class SerSincronizacaoService(
 
     private static string Chave(DateTime data, string evento) =>
         $"{data:O}|{evento.Trim().ToLowerInvariant()}";
+
+    /// <summary>
+    /// Retrato dos campos que descrevem a PESSOA. Serve para decidir se algo digno de ir ao hub
+    /// mudou — mudança de situação, de agendamento ou de recurso não é assunto do cadastro do
+    /// paciente e não pode disparar conciliação.
+    /// </summary>
+    private static string RetratoDoPaciente(SerSolicitacao s) => string.Join('|', [
+        s.PacienteNome, s.Cpf, s.Cns, s.NomeMae, s.Sexo, s.DataNascimento?.ToString("O"),
+        s.Cep, s.Uf, s.MunicipioPaciente, s.Bairro, s.TipoLogradouro, s.Logradouro, s.Numero,
+        s.Complemento, s.TelefoneResidencial, s.TelefoneWhatsapp, s.TelefoneContato,
+    ]);
+
+    /// <summary>
+    /// Carimba a solicitação para o worker de conciliação <b>se</b> o cadastro do paciente mudou.
+    /// Não fala com o hub: a varredura não pode depender dele (ver
+    /// <see cref="SerSolicitacao.PacienteConciliarEm"/>).
+    /// </summary>
+    private static void MarcarSeMudouOPaciente(SerSolicitacao alvo, string antes, DateTime agora)
+    {
+        if (RetratoDoPaciente(alvo) != antes) alvo.PacienteConciliarEm = agora;
+    }
 
     private static void PreencherDadosDoPaciente(
         SerSolicitacao alvo, IReadOnlyDictionary<string, string> paciente)

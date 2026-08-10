@@ -440,6 +440,78 @@ public static class PatientMergeFhir
         }
     }
 
+    /// <summary>
+    /// Completa o recurso montado por uma <b>fonte PARCIAL</b> com o que só o hub tem.
+    ///
+    /// <para><b>Por que existe.</b> <see cref="PreservarDoExistente"/> guarda o blob, os campos
+    /// editados no painel e o telefone confirmado — e substitui todo o resto pelo que o mapper
+    /// montou. Isso é certo para Salux e Klinikos, que são prontuário completo: campo que sumiu
+    /// na origem deve sumir no hub. É <b>errado</b> para uma fonte que só conhece um pedaço da
+    /// pessoa. O SER, por exemplo, traz endereço em 19.594 das 25.439 solicitações; mandar o
+    /// Patient sem endereço apagaria o que o Salux tinha trazido.</para>
+    ///
+    /// <para>Aqui vazio significa <b>"não sei"</b>, nunca "está vazio" — a mesma régua de
+    /// <see cref="AplicarContatos"/>. Fonte parcial só acrescenta; para remover dado do hub
+    /// existe o painel.</para>
+    ///
+    /// <para><b>Telecom e identifier ficam de fora de propósito</b>: os dois já são união
+    /// (<c>AplicarContatos</c> preserva os não geridos, <c>UnirIdentifiers</c> acumula), e
+    /// mexer aqui desfaria o rank do confirmado que <see cref="PreservarDoExistente"/> acabou
+    /// de acertar.</para>
+    /// </summary>
+    public static void CompletarVazios(Patient novo, Patient atual)
+    {
+        if (novo.Name?.Any(n => n.Use == HumanName.NameUse.Official) != true
+            && atual.Name?.FirstOrDefault(n => n.Use == HumanName.NameUse.Official) is { } oficial)
+        {
+            (novo.Name ??= []).Insert(0, (HumanName)oficial.DeepCopy());
+        }
+
+        if (novo.Name?.Any(n => n.Use == HumanName.NameUse.Nickname) != true
+            && atual.Name?.FirstOrDefault(n => n.Use == HumanName.NameUse.Nickname) is { } apelido)
+        {
+            (novo.Name ??= []).Add((HumanName)apelido.DeepCopy());
+        }
+
+        if (string.IsNullOrWhiteSpace(novo.BirthDate)) novo.BirthDate = atual.BirthDate;
+
+        // `Unknown` é o "não informado" do FHIR: vale como vazio, senão a fonte parcial rebaixaria
+        // um sexo conhecido para desconhecido.
+        if (novo.Gender is null or AdministrativeGender.Unknown && atual.Gender is not null)
+            novo.Gender = atual.Gender;
+
+        novo.MaritalStatus ??= (CodeableConcept?)atual.MaritalStatus?.DeepCopy();
+        novo.Deceased ??= (DataType?)atual.Deceased?.DeepCopy();
+
+        if (novo.Address is not { Count: > 0 } && atual.Address is { Count: > 0 })
+            novo.Address = [.. atual.Address.Select(a => (Address)a.DeepCopy())];
+
+        // Contact por PARENTESCO: a fonte parcial pode trazer a mãe e não o responsável.
+        foreach (var c in atual.Contact ?? [])
+        {
+            var codigos = CodigosDeParentesco(c);
+            var jaTem = codigos.Count == 0
+                ? novo.Contact?.Any(x => CodigosDeParentesco(x).Count == 0) == true
+                : novo.Contact?.Any(x => CodigosDeParentesco(x).Overlaps(codigos)) == true;
+            if (!jaTem) (novo.Contact ??= []).Add((Patient.ContactComponent)c.DeepCopy());
+        }
+
+        // Extensions do hub que a fonte parcial não conhece (geolocalização, marcadores de
+        // qualidade de outros conectores). O blob e os campos-editados já vieram de
+        // PreservarDoExistente; re-adicionar aqui seria duplicar.
+        foreach (var ext in atual.Extension ?? [])
+        {
+            if (novo.GetExtension(ext.Url) is null) novo.Extension.Add((Extension)ext.DeepCopy());
+        }
+    }
+
+    private static HashSet<string> CodigosDeParentesco(Patient.ContactComponent c) =>
+        [.. (c.Relationship ?? [])
+            .SelectMany(r => r.Coding ?? [])
+            .Select(cd => cd.Code)
+            .Where(cd => !string.IsNullOrEmpty(cd))
+            .Select(cd => cd!)];
+
     // ---------------- Filiação (Patient.contact) ----------------
 
     /// <summary>Upsert de um contato de parentesco (MTH/FTH/GUARD/SPS, v3-RoleCode). Vazio remove.</summary>
