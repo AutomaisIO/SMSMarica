@@ -347,12 +347,6 @@ public static class DependencyInjection
         // Rascunhos: pedidos montados e guardados aqui, com anexos, até serem autorizados.
         services.AddScoped<Ser.ISerRascunhoService, Ser.SerRascunhoService>();
 
-        // Conciliação do paciente do SER com o hub FHIR (ADR-0009/0020/0041).
-        services.AddScoped<Ser.Pacientes.ISerConciliacaoPacienteService,
-            Ser.Pacientes.SerConciliacaoPacienteService>();
-        services.AddScoped<Ser.Pacientes.ISerBackfillPacientesService,
-            Ser.Pacientes.SerBackfillPacientesService>();
-
         // Consulta DIRETA ao SER: a bancada de testes da integração. Exercita login, módulo,
         // ViewState, busca, paginação e parser em segundos, sem gravar nada.
         services.AddScoped<Ser.ISerConsultaDiretaService, Ser.SerConsultaDiretaService>();
