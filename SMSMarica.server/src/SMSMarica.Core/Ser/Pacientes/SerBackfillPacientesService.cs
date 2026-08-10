@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Data;
+using SMSMarica.Data.Entities.Ser;
 
 namespace SMSMarica.Core.Ser.Pacientes;
 
@@ -73,7 +74,11 @@ public sealed class SerBackfillPacientesService(
                 try
                 {
                     var r = await conciliacao.ConciliarAsync(s, ct);
-                    if (r.PacienteId is { } pid) s.PacienteId = pid;
+                    if (r.PacienteId is { } pid)
+                    {
+                        s.PacienteId = pid;
+                        await PropagarAsIrmasAsync(s, pid, ct);
+                    }
                     switch (r.Resultado)
                     {
                         case ResultadoConciliacaoSer.Criado: criados++; break;
@@ -150,7 +155,11 @@ public sealed class SerBackfillPacientesService(
 
                 // Guarda quem é a pessoa: é isto que liga a linha do SER ao resumo do
                 // paciente e ao WhatsApp na tela, sem uma consulta ao hub por linha listada.
-                if (r.PacienteId is { } pid) s.PacienteId = pid;
+                if (r.PacienteId is { } pid)
+                {
+                    s.PacienteId = pid;
+                    await PropagarAsIrmasAsync(s, pid, ct);
+                }
 
                 // Limpa a marca. Vale inclusive para "sem chave": mantê-la faria o worker
                 // reprocessar a cada ciclo um caso sem saída. Se o SER trouxer CPF ou CNS
@@ -178,6 +187,28 @@ public sealed class SerBackfillPacientesService(
         return new BackfillPacientesSerDto(
             pendentes.Count, criados, enriquecidos, inalterados, semChave, falhas, duracao);
     }
+
+    /// <summary>
+    /// Espalha o paciente resolvido para as <b>outras solicitações da mesma pessoa</b>.
+    ///
+    /// <para>A conciliação processa UMA solicitação por paciente (a mais recente) — ir ao hub uma
+    /// vez por linha seria desperdício, já que a pessoa é a mesma. Só que o id ficava gravado
+    /// nessa única linha, e na tela o bonequinho aparecia no pedido mais novo e sumia nos
+    /// anteriores do mesmo paciente. Medido em 10/08/2026: 6.370 solicitações de 25.439 ficaram
+    /// assim.</para>
+    ///
+    /// <para>A chave é (CPF, CNS) — <b>a mesma</b> que agrupou a fila. Duas solicitações no mesmo
+    /// par são a mesma pessoa por construção; não há heurística nova aqui.</para>
+    /// </summary>
+    private Task<int> PropagarAsIrmasAsync(
+        SerSolicitacao origem, Guid pacienteId, CancellationToken ct) =>
+        db.SerSolicitacoes
+            .Where(x => x.Id != origem.Id
+                        && x.ExcluidoEm == null
+                        && x.PacienteId == null
+                        && x.Cpf == origem.Cpf
+                        && x.Cns == origem.Cns)
+            .ExecuteUpdateAsync(u => u.SetProperty(x => x.PacienteId, pacienteId), ct);
 
     /// <summary>
     /// Um id de solicitação por paciente — a mais recentemente sincronizada — <b>e quem tem CPF
