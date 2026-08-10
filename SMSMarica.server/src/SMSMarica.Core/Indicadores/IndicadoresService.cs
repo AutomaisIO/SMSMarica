@@ -32,10 +32,18 @@ public sealed class IndicadoresService(
 
     /// <summary>
     /// Teto de linhas do relatório analítico. É um dump de auditoria contra o Oracle vivo do
-    /// hospital: melhor devolver 5.000 linhas e dizer "truncado" do que arrastar a base inteira
-    /// para dentro de uma planilha.
+    /// hospital: em algum ponto é melhor truncar e dizer que truncou do que arrastar a base
+    /// inteira para dentro de uma planilha.
+    ///
+    /// O teto tem de caber o mês inteiro, senão a evidência deixa de provar o número que
+    /// acompanha: no HMCML um mês tem ~17,6 mil boletins de urgência, e os indicadores de perfil
+    /// epidemiológico olham todos eles. O maior universo medido é o da distribuição por
+    /// procedimento (Perfil Epidemiológico 7), em que a unidade contada é o par boletim ×
+    /// procedimento: 75,1 mil linhas em julho/2026. Com 5.000 as planilhas saíam truncadas — a
+    /// conta certa embaixo de uma lista incompleta, que é justamente o que a evidência existe
+    /// para evitar.
     /// </summary>
-    private const int LimiteLinhasAnalitico = 5_000;
+    private const int LimiteLinhasAnalitico = 100_000;
 
     public IReadOnlyList<UnidadeIndicadorDto> Unidades() => UnidadesContratadas;
 

@@ -117,6 +117,20 @@ const TIPO_ROTULO: Record<TipoResultadoIndicador, string> = {
   Media: 'Média',
 };
 
+/**
+ * Sigla da aba para o nome da planilha de evidência. O Excel corta nome de planilha em 31
+ * caracteres, e o número do indicador se repete entre as abas — "Ev. 2 TEMPO MÉDIO PARA
+ * CLASSIFICAÇÃO…" colidiria entre Adulto e Pediátrico e sairia desambiguado por um "2" no fim,
+ * que não diz nada. Com a sigla na frente, cada aba se identifica no primeiro olhar.
+ */
+const SIGLA_ABA: Record<AbaIndicador, string> = {
+  Adulto: 'Ad',
+  Pediatrico: 'Ped',
+  MaternoInfantil: 'MI',
+  PerfilEpidemiologico: 'Epi',
+  Institucional: 'Inst',
+};
+
 const OPERADOR_SIMBOLO: Record<MetaOperador, string> = {
   MenorOuIgual: '≤',
   MaiorOuIgual: '≥',
@@ -860,9 +874,10 @@ function escreverValor(cell: ExcelJS.Cell, bruto: unknown): void {
 }
 
 /**
- * A evidência de um indicador: os registros que o SQL analítico devolveu, do jeito que ele os
- * nomeou. Não reordena nem reagrupa nada — quem confere precisa poder bater linha a linha com a
- * consulta. O que a planilha acrescenta é o destaque de quem ficou de fora, e o motivo.
+ * A evidência de um indicador: os registros que o SQL analítico devolveu, com as colunas do jeito
+ * que ele as nomeou. A única coisa que a planilha reordena é o corte incluído/excluído — quem
+ * entrou na conta vem primeiro e quem ficou de fora vai para o final, com o motivo. Dentro de
+ * cada bloco a ordem da consulta é preservada, para dar para bater linha a linha com ela.
  */
 function montarPlanilhaEvidencia(
   ws: ExcelJS.Worksheet,
@@ -929,10 +944,21 @@ function montarPlanilhaEvidencia(
   estiloCabecalhoTabela(ws, linhaHeader, [...colunas]);
   ws.views = [{ state: 'frozen', ySplit: linhaHeader, showGridLines: false }];
 
-  analitico.linhas.forEach((valores, idx) => {
+  // Incluídos primeiro, excluídos no fim. Quem abre a planilha quer ler a conta antes de ler
+  // as ressalvas dela; e o bloco vermelho no rodapé fecha a evidência em vez de picotá-la.
+  const excluidoDe = (valores: readonly unknown[]) =>
+    analitico.indiceIncluido >= 0 && !ehSim(valores[analitico.indiceIncluido]);
+  const ordenadas = analitico.linhas
+    .map((valores, ordemOriginal) => ({ valores, ordemOriginal }))
+    .sort((a, b) =>
+      Number(excluidoDe(a.valores)) - Number(excluidoDe(b.valores)) ||
+      a.ordemOriginal - b.ordemOriginal,
+    );
+
+  ordenadas.forEach(({ valores }, idx) => {
     const r = linhaHeader + 1 + idx;
     const row = ws.getRow(r);
-    const excluido = analitico.indiceIncluido >= 0 && !ehSim(valores[analitico.indiceIncluido]);
+    const excluido = excluidoDe(valores);
 
     valores.forEach((v, c) => {
       const cell = row.getCell(c + 1);
@@ -1132,7 +1158,7 @@ export async function gerarXlsxIndicadores(dados: DadosExportacao): Promise<Blob
       for (const it of aba.itens) {
         const analitico = dados.analiticos.get(it.id);
         if (!analitico) continue;
-        const nome = nomePlanilha(`Ev. ${it.numero} ${it.nome}`, usados);
+        const nome = nomePlanilha(`Ev. ${SIGLA_ABA[aba.aba]} ${it.numero} ${it.nome}`, usados);
         nomePorIndicador.set(it.id, nome);
         evidencias.push({ item: it, aba, analitico, nomePlanilha: nome });
       }

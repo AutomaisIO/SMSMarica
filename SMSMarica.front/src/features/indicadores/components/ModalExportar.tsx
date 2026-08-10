@@ -43,9 +43,15 @@ function nomeArquivo(escopo: string, filtro: FiltroIndicador): string {
   return `Indicadores_${limpo}_${filtro.inicio}_a_${filtro.fim}.xlsx`;
 }
 
-/** Indicadores que podem render evidência: habilitados e com SQL analítico cadastrado. */
-function comAnalitico(abas: AbaExportacao[]): IndicadorResumo[] {
-  return abas.flatMap((a) => a.itens.filter((i) => i.ativo && i.temAnalitico));
+/**
+ * Indicadores que podem render evidência: habilitados e com SQL analítico cadastrado. Carrega o
+ * rótulo da aba junto porque o número do indicador se repete entre elas (existe um "2" em quase
+ * todas) — sem a aba, o progresso da exportação completa vira uma contagem sem referência.
+ */
+function comAnalitico(abas: AbaExportacao[]): { item: IndicadorResumo; rotuloAba: string }[] {
+  return abas.flatMap((a) =>
+    a.itens.filter((i) => i.ativo && i.temAnalitico).map((item) => ({ item, rotuloAba: a.rotulo })),
+  );
 }
 
 export function ModalExportar({ aberto, aoFechar, aba, rotuloAba, filtro, unidadeNome, itensAtual }: Props) {
@@ -67,10 +73,10 @@ export function ModalExportar({ aberto, aoFechar, aba, rotuloAba, filtro, unidad
     let falhas = 0;
 
     for (let i = 0; i < alvos.length; i++) {
-      const it = alvos[i];
+      const { item: it, rotuloAba } = alvos[i];
       setFase({
         tipo: 'trabalhando',
-        texto: `Levantando a evidência de ${it.numero} (${i + 1}/${alvos.length})…`,
+        texto: `Levantando a evidência de ${rotuloAba} ${it.numero} (${i + 1}/${alvos.length})…`,
       });
       try {
         mapa.set(it.id, await obterAnalitico(it.id, filtro));
