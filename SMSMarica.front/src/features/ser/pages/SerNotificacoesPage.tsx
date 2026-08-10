@@ -1,9 +1,8 @@
 import { useMemo, useState } from 'react';
-import { BellRing, Check, CheckCheck, Loader2 } from 'lucide-react';
+import { BellRing, Check, Loader2 } from 'lucide-react';
 
 import {
   useMarcarNotificacaoVista,
-  useMarcarSolicitacaoVista,
   useNotificacoesSer,
   useResumoNotificacoesSer,
 } from '@/features/ser/api/queries';
@@ -55,7 +54,6 @@ export function SerNotificacoesPage() {
   const { data: pagina, isLoading } = useNotificacoesSer(filtro);
 
   const marcarUma = useMarcarNotificacaoVista();
-  const marcarSolicitacao = useMarcarSolicitacaoVista();
 
   // Abrir em modal, e não navegar: quem tria a fila perde filtro, aba e posição de leitura se a
   // tela troca — e volta tendo de reencontrar onde estava.
@@ -140,9 +138,8 @@ export function SerNotificacoesPage() {
           <LinhaNotificacao
             key={n.id}
             n={n}
-            ocupado={marcarUma.isPending || marcarSolicitacao.isPending}
+            ocupado={marcarUma.isPending}
             onVista={() => marcarUma.mutate(n.id)}
-            onVistaSolicitacao={() => marcarSolicitacao.mutate(n.idSer)}
             onAbrir={() => setDetalhe(n.solicitacaoId)}
           />
         ))}
@@ -186,13 +183,11 @@ function LinhaNotificacao({
   n,
   ocupado,
   onVista,
-  onVistaSolicitacao,
   onAbrir,
 }: {
   n: NotificacaoSer;
   ocupado: boolean;
   onVista: () => void;
-  onVistaSolicitacao: () => void;
   onAbrir: () => void;
 }) {
   return (
@@ -258,17 +253,6 @@ function LinhaNotificacao({
         <Button variante="secundaria" onClick={onVista} disabled={ocupado} title="Marcar este movimento como visto">
           <Check className="size-4" />
           Vista
-        </Button>
-        {/* Uma solicitação costuma acumular mais de um movimento (mudou E chegou FollowUP).
-            Quem abriu a solicitação viu tudo dela — este botão evita clicar linha por linha. */}
-        <Button
-          variante="secundaria"
-          onClick={onVistaSolicitacao}
-          disabled={ocupado}
-          title="Marcar TODAS as movimentações desta solicitação — inclusive as que estão em outra aba ou fora do filtro atual"
-        >
-          <CheckCheck className="size-4" />
-          Marcar todas desta
         </Button>
       </div>
     </div>
