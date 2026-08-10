@@ -144,6 +144,45 @@ public class SerNovaSolicitacaoTests
             "dois containers com o mesmo número são um só campo");
     }
 
+    /// <summary>
+    /// REGRESSÃO de 10/08/2026, dois defeitos no mesmo campo. Campo de data é um `rich:calendar`,
+    /// que embute um &lt;script&gt; DENTRO do container e posta num input irmão.
+    ///
+    /// <para>(1) O rótulo vinha com o script junto — "Data da coleta da biópsia://&lt;![CDATA[
+    /// Richfaces.Calendar.addLocale('pt', {'weekDayLabels':[…" — porque `TextContent` engole
+    /// script. (2) Pior: o nome gravado era o id BASE, mas o SER lê o valor do input terminado em
+    /// <c>InputDate</c>. A data iria para um campo ignorado e o pedido seria recusado por falta
+    /// de um dado que a tela mostrava preenchido.</para>
+    ///
+    /// <para><c>InputCurrentDate</c> existe no mesmo componente e não é o campo — por isso a
+    /// escolha é pelo fim exato do nome.</para>
+    /// </summary>
+    [Fact]
+    public void Campo_de_data_sai_com_rotulo_limpo_e_com_o_input_que_o_ser_le()
+    {
+        const string html = """
+            <html><body><form id="form0">
+              <div id="form0:container_dinamico_id_948">
+                <span>Data da coleta da biópsia:</span>
+                <input id="form0:dinamico_id_948InputDate" name="form0:dinamico_id_948InputDate" type="text" />
+                <input id="form0:dinamico_id_948InputCurrentDate" name="form0:dinamico_id_948InputCurrentDate" type="hidden" />
+                <script type="text/javascript">//<![CDATA[
+                  Richfaces.Calendar.addLocale('pt', {'weekDayLabels':['Domingo','Segunda-feira']});
+                  new Calendar('form0:dinamico_id_948', "pt", {'datePattern':'dd/MM/yyyy'}).load();
+                //]]></script>
+              </div>
+            </form></body></html>
+            """;
+
+        var campo = SerNovaSolicitacaoService.CamposDinamicos(html).Single();
+
+        campo.Rotulo.Should().Be("Data da coleta da biópsia", "o script não pode virar rótulo");
+        campo.Rotulo.Should().NotContain("CDATA").And.NotContain("Richfaces");
+        campo.Campo.Should().Be("form0:dinamico_id_948InputDate", "é onde o SER lê a data");
+        campo.Campo.Should().NotContain("InputCurrentDate");
+        campo.Tipo.Should().Be("date");
+    }
+
     [Fact]
     public void Sem_bloco_dinamico_devolve_lista_vazia()
     {

@@ -213,18 +213,38 @@ public sealed partial class SerNovaSolicitacaoService(
         {
             var id = cont.Id!;
             var numero = id[(id.LastIndexOf('_') + 1)..];
+
+            // O SCRIPT SAI ANTES DO TEXTO. Campo de data é um `rich:calendar`, que embute no
+            // container um <script> com a localização inteira do calendário — e `TextContent`
+            // engole isso, transformando o rótulo em "Data da coleta da biópsia://<![CDATA[
+            // Richfaces.Calendar.addLocale('pt', {'weekDayLabels':[...".
+            foreach (var lixo in cont.QuerySelectorAll("script, style")) lixo.Remove();
+
             var texto = string.Join(' ',
                 cont.TextContent.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 
-            var el = cont.QuerySelector("input, select, textarea");
+            // O `rich:calendar` NÃO posta no id base: o valor viaja num input irmão terminado em
+            // `InputDate` (o mesmo padrão de `form0:dtInicialSolicitacaoInputDate` das telas de
+            // busca). Guardar o id base faria a data ir para um campo que o SER ignora — e o
+            // pedido seria recusado por falta de um dado que a tela mostrou preenchido.
+            //
+            // `InputCurrentDate` existe no mesmo componente e NÃO é o campo: por isso a
+            // comparação é pelo fim exato do nome.
+            var calendario = cont.QuerySelectorAll("input")
+                .FirstOrDefault(i => (i.GetAttribute("name") ?? string.Empty)
+                    .EndsWith("InputDate", StringComparison.Ordinal));
+
+            var el = calendario ?? cont.QuerySelector("input, select, textarea");
             if (el is null) continue;
 
-            var tipo = el.TagName.ToLowerInvariant() switch
-            {
-                "select" => "select",
-                "textarea" => "textarea",
-                _ => (el.GetAttribute("type") ?? "text").ToLowerInvariant(),
-            };
+            var tipo = calendario is not null
+                ? "date"
+                : el.TagName.ToLowerInvariant() switch
+                {
+                    "select" => "select",
+                    "textarea" => "textarea",
+                    _ => (el.GetAttribute("type") ?? "text").ToLowerInvariant(),
+                };
 
             List<SerOpcaoDto>? opcoes = null;
             if (tipo == "select")
@@ -238,7 +258,7 @@ public sealed partial class SerNovaSolicitacaoService(
 
             saida.Add(new SerCampoDinamicoDto(
                 numero,
-                $"form0:dinamico_id_{numero}",
+                calendario?.GetAttribute("name") ?? $"form0:dinamico_id_{numero}",
                 // O asterisco do SER é a marcação de obrigatório; some do rótulo e vira flag.
                 texto.Replace("*", string.Empty).Trim(' ', ':'),
                 tipo,

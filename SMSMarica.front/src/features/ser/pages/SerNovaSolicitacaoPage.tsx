@@ -533,9 +533,35 @@ function CampoDinamico({
     );
   }
 
+  // O SER usa dd/MM/yyyy no rich:calendar. O input nativo de data fala ISO, então a conversão
+  // acontece na borda — o que sai daqui para o payload é sempre o formato que o SER espera.
+  if (c.tipo === 'date') {
+    return (
+      <Campo label={rotulo} htmlFor={id} className="w-52">
+        <Input
+          id={id}
+          type="date"
+          value={paraIso(valor)}
+          disabled={desabilitado}
+          onChange={(e) => onChange(paraBr(e.target.value))}
+        />
+      </Campo>
+    );
+  }
+
   return (
     <Campo label={rotulo} htmlFor={id} className="w-56">
       <Input id={id} value={valor} disabled={desabilitado} onChange={(e) => onChange(e.target.value)} />
     </Campo>
   );
+}
+
+function paraIso(br: string): string {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(br.trim());
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : '';
+}
+
+function paraBr(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
 }
