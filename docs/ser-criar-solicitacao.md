@@ -44,6 +44,36 @@ oncologia pede campos diferentes".
 Ações da aba: `form0:addMedico` (Adicionar médico), `form0:j_id299` (Anexar Arquivo) e
 **`form0:j_id313` (Gravar)** — este último é escrita e está fora de qualquer uso nosso.
 
+#### "É AMBULATÓRIO ESTADUAL?" não é um campo — é um interruptor de catálogo
+
+Medido em 10/08/2026 (`probe_ambulatorio_estadual.py` e `probe_sisreg_detalhe.py`). Este combo é o
+**primeiro** da aba e tem `onchange` A4J próprio (`form0:j_id46`). A tabela acima o listava como
+um select comum, o que escondeu que ele **troca o catálogo inteiro**:
+
+| | Não (= o default "Selecione…") | Sim |
+|---|---|---|
+| CONSULTA | 120 recursos | **151** — 31 que não existem no outro ramo |
+| EXAME | 83 recursos | 64 (subconjunto dos 83) |
+
+As 31 exclusivas do "Sim" são as de nome em caixa alta, estilo SISREG: urologia (11), pneumologia
+(4), reumatologia (4), fonoaudiologia, alergologia, hepatologia, nutrição pediátrica, fisiatria,
+polissonografia, homeopatia infantil, LECO, reabilitação em mastectomias e consulta de enfermagem.
+
+**E o ramo muda o formulário do MESMO recurso.** O recurso 1000 pede 9 campos no "Não" (sinais e
+sintomas, NYHA, laudo de ecocardiograma, estudo eletrofisiológico…) e apenas 3 no "Sim" (Queixa
+Principal, Resultado de Exames, Observações).
+
+> Consequência para a modelagem: **(tipo, valor) não identifica um recurso** — só
+> (tipo, ramo, valor). É por isso que `ser_catalogo_recurso` tem `ambulatorio_estadual` na chave
+> natural, e por isso a cópia do catálogo varre os dois ramos.
+
+E a ordem dos combos é obrigatória: **ramo → tipo → recurso**. Cada troca é uma conversa Seam
+acumulativa; escolher o tipo antes do ramo devolve a lista do ramo errado sem erro nenhum.
+
+> Detalhe do placeholder: este combo usa a string literal `"null"` para "Selecione…", e não o
+> `org.jboss.seam.ui.NoSelectionConverter` dos demais. Quem filtrar só pelo converter deixa
+> "Selecione…" virar uma terceira alternativa ao lado de Sim e Não.
+
 ### 2.2 Bloco dinâmico
 
 Cada campo é um par `form0:container_dinamico_id_<N>` (rótulo) + `form0:dinamico_id_<N>`

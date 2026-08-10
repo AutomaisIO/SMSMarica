@@ -369,6 +369,8 @@ public sealed record SerRascunhoDetalheDto(
     Guid Id,
     StatusRascunhoSer Status,
     TipoRecursoSer? Tipo,
+    /// <summary>Resposta a "É ambulatório estadual?" — decide os recursos e o formulário.</summary>
+    bool? AmbulatorioEstadual,
     string? RecursoValor,
     string? RecursoRotulo,
     string? Cns,
@@ -387,6 +389,7 @@ public sealed record SerRascunhoDetalheDto(
 public sealed record SerRascunhoRequest
 {
     public TipoRecursoSer? Tipo { get; init; }
+    public bool? AmbulatorioEstadual { get; init; }
     public string? RecursoValor { get; init; }
     public string? RecursoRotulo { get; init; }
     public string? Cns { get; init; }
@@ -414,4 +417,9 @@ public sealed record SerCatalogoFormularioDto(
     string? UltimoErro);
 
 public sealed record SerCatalogoRecursoDto(
-    TipoRecursoSer Tipo, string Valor, string Rotulo, bool CamposLidos);
+    TipoRecursoSer Tipo,
+    /// <summary>Ramo de "É ambulatório estadual?" em que este recurso existe — parte da
+    /// identidade, não atributo: o mesmo valor aparece nos dois ramos com formulários
+    /// diferentes, e 31 consultas só existem no "Sim".</summary>
+    bool AmbulatorioEstadual,
+    string Valor, string Rotulo, bool CamposLidos);

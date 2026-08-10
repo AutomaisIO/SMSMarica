@@ -289,6 +289,38 @@ public class SerNovaSolicitacaoTests
         SerValorMultiplo.Separar(null).Should().BeEmpty();
     }
 
+    /// <summary>
+    /// O combo "É AMBULATÓRIO ESTADUAL?" — o primeiro campo da aba — usa a string literal
+    /// <c>"null"</c> como placeholder, e não o <c>NoSelectionConverter</c> do Seam que os outros
+    /// combos usam. Sem filtrar, "Selecione..." viraria uma terceira alternativa na tela ao lado
+    /// de Sim e Não, e o operador poderia escolhê-la.
+    ///
+    /// <para>Marcação copiada da captura real de 10/08/2026.</para>
+    /// </summary>
+    [Fact]
+    public void Placeholder_literal_null_nao_vira_opcao()
+    {
+        const string html = """
+            <html><body><form id="form0">
+              <label>&Eacute; AMBULAT&Oacute;RIO ESTADUAL?</label>
+              <select id="form0:comboSisReg" name="form0:comboSisReg">
+                <option value="null">Selecione...</option>
+                <option value="true">Sim</option>
+                <option value="false">N&atilde;o</option>
+              </select>
+            </form></body></html>
+            """;
+        var doc = (AngleSharp.Html.Dom.IHtmlDocument)SerHtmlParser.Documento(html);
+
+        var opcoes = SerNovaSolicitacaoService.Combo(doc, "form0:comboSisReg");
+
+        opcoes.Should().BeEquivalentTo(new[]
+        {
+            new SerOpcaoDto("true", "Sim"),
+            new SerOpcaoDto("false", "Não"),
+        }, o => o.WithStrictOrdering());
+    }
+
     [Fact]
     public void Sem_bloco_dinamico_devolve_lista_vazia()
     {

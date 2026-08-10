@@ -16,6 +16,19 @@ public class SerCatalogoRecurso
 
     public TipoRecursoSer Tipo { get; set; }
 
+    /// <summary>
+    /// O ramo do combo "É AMBULATÓRIO ESTADUAL?" (<c>form0:comboSisReg</c>) em que este recurso
+    /// aparece. <b>Faz parte da identidade</b>, não é um atributo.
+    ///
+    /// <para>Medido em 10/08/2026: o ramo muda a lista E o formulário. CONSULTA lista 120 recursos
+    /// no "Não" e 151 no "Sim" — 31 consultas (urologia, pneumologia, reumatologia, fonoaudiologia…)
+    /// só existem no "Sim" e ficaram fora da nossa primeira cópia. EXAME lista 83 e 64. E o mesmo
+    /// recurso pede formulários diferentes: o 1000 pede 9 campos no "Não" e 3 no "Sim".</para>
+    ///
+    /// <para>Por isso o par (tipo, valor) NÃO identifica um recurso — só (tipo, valor, ramo).</para>
+    /// </summary>
+    public bool AmbulatorioEstadual { get; set; }
+
     /// <summary>O <c>value</c> do combo no SER — é ele que viaja no envio.</summary>
     public string Valor { get; set; } = string.Empty;
 

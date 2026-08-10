@@ -49,6 +49,17 @@ li{margin:3px 0}p,li{max-width:75ch}
 <tr><td>Unidade de origem (texto livre)</td><td><code>form0:unidadeNaoIdentificada</code></td><td>text</td><td>sim</td></tr>
 </tbody></table></div>
 <p>Ações da aba: <code>form0:addMedico</code> (Adicionar médico), <code>form0:j_id299</code> (Anexar Arquivo) e <strong><code>form0:j_id313</code> (Gravar)</strong> — este último é escrita e está fora de qualquer uso nosso.</p>
+<h4>"É AMBULATÓRIO ESTADUAL?" não é um campo — é um interruptor de catálogo</h4>
+<p>Medido em 10/08/2026 (<code>probe_ambulatorio_estadual.py</code> e <code>probe_sisreg_detalhe.py</code>). Este combo é o <strong>primeiro</strong> da aba e tem <code>onchange</code> A4J próprio (<code>form0:j_id46</code>). A tabela acima o listava como um select comum, o que escondeu que ele <strong>troca o catálogo inteiro</strong>:</p>
+<div class="tw"><table><thead><tr><th></th><th>Não (= o default "Selecione…")</th><th>Sim</th></tr></thead><tbody>
+<tr><td>CONSULTA</td><td>120 recursos</td><td><strong>151</strong> — 31 que não existem no outro ramo</td></tr>
+<tr><td>EXAME</td><td>83 recursos</td><td>64 (subconjunto dos 83)</td></tr>
+</tbody></table></div>
+<p>As 31 exclusivas do "Sim" são as de nome em caixa alta, estilo SISREG: urologia (11), pneumologia (4), reumatologia (4), fonoaudiologia, alergologia, hepatologia, nutrição pediátrica, fisiatria, polissonografia, homeopatia infantil, LECO, reabilitação em mastectomias e consulta de enfermagem.</p>
+<p><strong>E o ramo muda o formulário do MESMO recurso.</strong> O recurso 1000 pede 9 campos no "Não" (sinais e sintomas, NYHA, laudo de ecocardiograma, estudo eletrofisiológico…) e apenas 3 no "Sim" (Queixa Principal, Resultado de Exames, Observações).</p>
+<p>&gt; Consequência para a modelagem: <strong>(tipo, valor) não identifica um recurso</strong> — só &gt; (tipo, ramo, valor). É por isso que <code>ser_catalogo_recurso</code> tem <code>ambulatorio_estadual</code> na chave &gt; natural, e por isso a cópia do catálogo varre os dois ramos.</p>
+<p>E a ordem dos combos é obrigatória: <strong>ramo → tipo → recurso</strong>. Cada troca é uma conversa Seam acumulativa; escolher o tipo antes do ramo devolve a lista do ramo errado sem erro nenhum.</p>
+<p>&gt; Detalhe do placeholder: este combo usa a string literal <code>"null"</code> para "Selecione…", e não o &gt; <code>org.jboss.seam.ui.NoSelectionConverter</code> dos demais. Quem filtrar só pelo converter deixa &gt; "Selecione…" virar uma terceira alternativa ao lado de Sim e Não.</p>
 <h3>2.2 Bloco dinâmico</h3>
 <p>Cada campo é um par <code>form0:container_dinamico_id_&lt;N&gt;</code> (rótulo) + <code>form0:dinamico_id_&lt;N&gt;</code> (o campo). Trocar o Recurso dispara A4J (<code>form0:j_id57</code>, com <code>ajaxSingle=form0:comboRecurso</code>) e o SER devolve o bloco re-renderizado. O <code>oncomplete</code> chama <code>verificarPetCt()</code> — o PET-CT tem regra própria, e de fato é o único recurso com formulário exclusivo (§4).</p>
 <p>&gt; <strong>A resposta é PARCIAL</strong>: não traz <code>&lt;form id="form0"&gt;</code>. Vale a regra de sempre — usar a &gt; última página completa como fonte dos campos e o parcial só como fonte do conteúdo novo.</p>

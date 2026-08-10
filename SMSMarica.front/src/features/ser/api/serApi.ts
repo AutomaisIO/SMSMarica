@@ -172,9 +172,10 @@ export async function obterFormularioCatalogoSer(): Promise<CatalogoFormularioSe
 export async function obterCamposCatalogoSer(
   tipo: TipoRecursoSer,
   recurso: string,
+  ambulatorioEstadual: boolean,
 ): Promise<CampoDinamicoSer[]> {
   const { data } = await http.get<CampoDinamicoSer[]>('/regulacao/ser/rascunhos/campos', {
-    params: { tipo, recurso },
+    params: { tipo, recurso, ambulatorioEstadual },
   });
   return data;
 }

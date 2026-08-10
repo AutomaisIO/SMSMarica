@@ -58,22 +58,29 @@ public sealed class SerCatalogoSyncService(
 
         logger.LogInformation("SER/catálogo: {Qtd} itens das listas fixas.", listas);
 
-        // ---- recursos e seus campos ----
+        // ---- recursos e seus campos, RAMO A RAMO ----
+        // O combo "É AMBULATÓRIO ESTADUAL?" não é um campo a mais: ele troca o catálogo inteiro.
+        // Copiar só o default deixou 31 consultas (urologia, pneumologia, reumatologia…) fora da
+        // base — inexistentes para quem fosse pedir — e gravou, para os recursos que existem nos
+        // dois ramos, o formulário de um ramo só.
+        foreach (var ramo in (bool[])[false, true])
         foreach (var (codigo, tipo) in Tipos)
         {
-            var doSer = await leitor.ListarRecursosAsync(codigo, cancellationToken);
-            recursos += await SalvarRecursosAsync(tipo, doSer, agora, cancellationToken);
+            var doSer = await leitor.ListarRecursosAsync(codigo, ramo, cancellationToken);
+            recursos += await SalvarRecursosAsync(tipo, ramo, doSer, agora, cancellationToken);
 
             // Retomada: só pede ao SER o que ainda não tem campo lido. Refazer tudo é escolha
             // explícita (o catálogo muda pouco, e cada recurso custa uma requisição).
             var pendentes = await db.SerCatalogoRecursos
-                .Where(r => r.Tipo == tipo && (refazerTudo || !r.CamposLidos))
+                .Where(r => r.Tipo == tipo && r.AmbulatorioEstadual == ramo
+                            && (refazerTudo || !r.CamposLidos))
                 .OrderBy(r => r.Valor)
                 .ToListAsync(cancellationToken);
 
             logger.LogInformation(
-                "SER/catálogo: {Tipo} — {Total} recursos, {Pendentes} a ler campos.",
-                tipo, doSer.Count, pendentes.Count);
+                "SER/catálogo: {Tipo} ambulatório estadual={Ramo} — {Total} recursos, "
+                + "{Pendentes} a ler campos.",
+                tipo, ramo ? "Sim" : "Não", doSer.Count, pendentes.Count);
 
             foreach (var recurso in pendentes)
             {
@@ -81,7 +88,7 @@ public sealed class SerCatalogoSyncService(
                 try
                 {
                     var lidos = await leitor.ObterCamposDinamicosAsync(
-                        codigo, recurso.Valor, cancellationToken);
+                        codigo, recurso.Valor, ramo, cancellationToken);
                     campos += await SalvarCamposAsync(recurso, lidos, cancellationToken);
 
                     recurso.CamposLidos = true;
@@ -149,11 +156,11 @@ public sealed class SerCatalogoSyncService(
     }
 
     private async Task<int> SalvarRecursosAsync(
-        TipoRecursoSer tipo, IReadOnlyList<Dtos.SerOpcaoDto> doSer, DateTime agora,
+        TipoRecursoSer tipo, bool ramo, IReadOnlyList<Dtos.SerOpcaoDto> doSer, DateTime agora,
         CancellationToken cancellationToken)
     {
         var existentes = await db.SerCatalogoRecursos
-            .Where(x => x.Tipo == tipo)
+            .Where(x => x.Tipo == tipo && x.AmbulatorioEstadual == ramo)
             .ToDictionaryAsync(x => x.Valor, cancellationToken);
 
         // Mesma razão da lista: recurso repetido no combo derrubaria a cópia inteira.
@@ -172,6 +179,7 @@ public sealed class SerCatalogoSyncService(
             {
                 Id = Guid.NewGuid(),
                 Tipo = tipo,
+                AmbulatorioEstadual = ramo,
                 Valor = o.Valor,
                 Rotulo = o.Rotulo,
                 SincronizadoEm = agora,

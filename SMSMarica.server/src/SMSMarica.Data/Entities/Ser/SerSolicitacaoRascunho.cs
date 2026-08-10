@@ -36,6 +36,13 @@ public class SerSolicitacaoRascunho
 
     public TipoRecursoSer? Tipo { get; set; }
 
+    /// <summary>
+    /// Resposta a "É AMBULATÓRIO ESTADUAL?" (<c>form0:comboSisReg</c>). Fica em coluna própria,
+    /// e não dentro do JSON, porque decide QUAIS recursos existem e QUAIS campos o recurso pede —
+    /// é o primeiro campo do formulário e o que dá sentido a <see cref="RecursoValor"/>.
+    /// </summary>
+    public bool? AmbulatorioEstadual { get; set; }
+
     /// <summary>Valor do recurso no SER (o <c>value</c> do combo).</summary>
     public string? RecursoValor { get; set; }
 

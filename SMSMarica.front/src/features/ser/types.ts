@@ -356,6 +356,11 @@ export type StatusRascunhoSer = 'Rascunho' | 'Pronto' | 'Enviado' | 'Falhou';
 
 export type CatalogoRecursoSer = {
   tipo: TipoRecursoSer;
+  /**
+   * Ramo de "É ambulatório estadual?" em que o recurso existe. Faz parte da IDENTIDADE: o mesmo
+   * valor aparece nos dois ramos com formulários diferentes, e 31 consultas só existem no "Sim".
+   */
+  ambulatorioEstadual: boolean;
   valor: string;
   rotulo: string;
   /** false = os campos dinâmicos deste recurso ainda não foram copiados do SER. */
@@ -407,6 +412,8 @@ export type RascunhoSerDetalhe = {
   id: string;
   status: StatusRascunhoSer;
   tipo: TipoRecursoSer | null;
+  /** Resposta a "É ambulatório estadual?" — decide os recursos e o formulário. */
+  ambulatorioEstadual: boolean | null;
   recursoValor: string | null;
   recursoRotulo: string | null;
   cns: string | null;

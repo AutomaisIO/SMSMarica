@@ -27,13 +27,16 @@ public interface ISerNovaSolicitacaoService
     /// <summary>Bloco fixo do formulário: combos e campos que valem para todo pedido.</summary>
     Task<SerFormularioNovaDto> ObterFormularioAsync(CancellationToken cancellationToken);
 
-    /// <summary>Catálogo de recursos de um tipo (CONSULTA/EXAME) — 120 e 83 na medição.</summary>
+    /// <summary>
+    /// Catálogo de recursos de um tipo (CONSULTA/EXAME) <b>naquele ramo</b>.
+    /// Medido em 10/08/2026: CONSULTA 120 no ramo Não e 151 no Sim; EXAME 83 e 64.
+    /// </summary>
     Task<IReadOnlyList<SerOpcaoDto>> ListarRecursosAsync(
-        string tipo, CancellationToken cancellationToken);
+        string tipo, bool ambulatorioEstadual, CancellationToken cancellationToken);
 
-    /// <summary>Campos dinâmicos que o SER exige para aquele recurso.</summary>
+    /// <summary>Campos dinâmicos que o SER exige para aquele recurso <b>naquele ramo</b>.</summary>
     Task<IReadOnlyList<SerCampoDinamicoDto>> ObterCamposDinamicosAsync(
-        string tipo, string recurso, CancellationToken cancellationToken);
+        string tipo, string recurso, bool ambulatorioEstadual, CancellationToken cancellationToken);
 }
 
 public sealed partial class SerNovaSolicitacaoService(
@@ -45,6 +48,9 @@ public sealed partial class SerNovaSolicitacaoService(
 
     /// <summary>Troca de aba: <c>_JSFFormSubmit</c>, POST comum sem <c>AJAXREQUEST</c>.</summary>
     private const string AbrirAbaEditar = "form0:editar_server_submit";
+
+    /// <summary>"É AMBULATÓRIO ESTADUAL?" — o primeiro campo, e o que decide todo o resto.</summary>
+    private const string CampoSisReg = "form0:comboSisReg";
 
     private const string CampoTipo = "form0:comboTipoRecurso";
     private const string CampoRecurso = "form0:comboRecurso";
@@ -66,9 +72,9 @@ public sealed partial class SerNovaSolicitacaoService(
     }
 
     public async Task<IReadOnlyList<SerOpcaoDto>> ListarRecursosAsync(
-        string tipo, CancellationToken cancellationToken)
+        string tipo, bool ambulatorioEstadual, CancellationToken cancellationToken)
     {
-        var html = await TrocarTipoAsync(tipo, cancellationToken);
+        var html = await PrepararAsync(ambulatorioEstadual, tipo, cancellationToken);
         var recursos = Combo(SerHtmlParser.Documento(html), CampoRecurso);
 
         if (recursos.Count == 0)
@@ -78,17 +84,16 @@ public sealed partial class SerNovaSolicitacaoService(
                 $"O SER não devolveu recursos para o tipo {tipo}. O layout da aba mudou?");
         }
 
-        logger.LogInformation("SER/nova: {Qtd} recursos para {Tipo}.", recursos.Count, tipo);
+        logger.LogInformation(
+            "SER/nova: {Qtd} recursos para {Tipo} (ambulatório estadual: {Ramo}).",
+            recursos.Count, tipo, ambulatorioEstadual ? "Sim" : "Não");
         return recursos;
     }
 
     public async Task<IReadOnlyList<SerCampoDinamicoDto>> ObterCamposDinamicosAsync(
-        string tipo, string recurso, CancellationToken cancellationToken)
+        string tipo, string recurso, bool ambulatorioEstadual, CancellationToken cancellationToken)
     {
-        // A ordem importa: o combo de Recurso só é populado DEPOIS que o Tipo é escolhido, e o
-        // servidor guarda isso na conversa Seam. Pedir o recurso sem passar pelo tipo devolve
-        // formulário vazio — sem erro nenhum.
-        await TrocarTipoAsync(tipo, cancellationToken);
+        await PrepararAsync(ambulatorioEstadual, tipo, cancellationToken);
         var html = await TrocarAsync(CampoRecurso, recurso, cancellationToken);
         return [.. CamposDinamicos(html)];
     }
@@ -135,8 +140,26 @@ public sealed partial class SerNovaSolicitacaoService(
         return html;
     }
 
-    private Task<string> TrocarTipoAsync(string tipo, CancellationToken cancellationToken) =>
-        TrocarAsync(CampoTipo, tipo, cancellationToken, reabrir: true);
+    /// <summary>
+    /// Põe o formulário no estado em que os combos seguintes fazem sentido: <b>ramo primeiro,
+    /// tipo depois</b>.
+    ///
+    /// <para><b>A ordem não é estética.</b> "É AMBULATÓRIO ESTADUAL?" decide QUAIS recursos o SER
+    /// lista, e cada troca é uma conversa Seam acumulativa no servidor. Medido em 10/08/2026:
+    /// CONSULTA lista 120 recursos no ramo "Não" e <b>151</b> no "Sim" — 31 que só existem lá;
+    /// EXAME lista 83 e 64. E o MESMO recurso muda de formulário conforme o ramo (o 1000 pede 9
+    /// campos no "Não" e 3 no "Sim").</para>
+    ///
+    /// <para>Escolher o tipo antes do ramo devolveria a lista do ramo errado — sem erro nenhum,
+    /// como sempre acontece neste sistema.</para>
+    /// </summary>
+    private async Task<string> PrepararAsync(
+        bool ambulatorioEstadual, string tipo, CancellationToken cancellationToken)
+    {
+        await AbrirEditarAsync(cancellationToken);
+        await TrocarAsync(CampoSisReg, ambulatorioEstadual ? "true" : "false", cancellationToken);
+        return await TrocarAsync(CampoTipo, tipo, cancellationToken);
+    }
 
     /// <summary>
     /// Dispara o <c>onchange</c> A4J de um combo. Só re-renderiza a view — nada é gravado.
@@ -145,9 +168,9 @@ public sealed partial class SerNovaSolicitacaoService(
     /// captura antiga: <c>j_id</c> é posicional e muda quando a SES-RJ recompila.</para>
     /// </summary>
     private async Task<string> TrocarAsync(
-        string campo, string valor, CancellationToken cancellationToken, bool reabrir = false)
+        string campo, string valor, CancellationToken cancellationToken)
     {
-        if (reabrir || string.IsNullOrEmpty(_html)) await AbrirEditarAsync(cancellationToken);
+        if (string.IsNullOrEmpty(_html)) await AbrirEditarAsync(cancellationToken);
 
         var evento = EventoDoCombo(_html, campo)
             ?? throw new InvalidOperationException(
@@ -186,7 +209,7 @@ public sealed partial class SerNovaSolicitacaoService(
         return m.Success ? m.Groups[1].Value : null;
     }
 
-    private static List<SerOpcaoDto> Combo(IHtmlDocument doc, string nome)
+    internal static List<SerOpcaoDto> Combo(IHtmlDocument doc, string nome)
     {
         var sel = doc.QuerySelector($"select[name=\"{nome}\"]");
         if (sel is null) return [];
@@ -195,9 +218,12 @@ public sealed partial class SerNovaSolicitacaoService(
             .Select(o => new SerOpcaoDto(
                 o.GetAttribute("value") ?? string.Empty,
                 Espremer(o.TextContent)))
-            // "Selecione..." e o placeholder do Seam não são opção de verdade.
+            // "Selecione..." não é opção de verdade. O Seam usa `NoSelectionConverter` na maioria
+            // dos combos, mas o de ambulatório estadual usa a string literal "null" — que passaria
+            // no filtro e viraria uma terceira alternativa na tela.
             .Where(o => o.Valor.Length > 0
-                        && !o.Valor.Contains("NoSelectionConverter", StringComparison.Ordinal))];
+                        && !o.Valor.Contains("NoSelectionConverter", StringComparison.Ordinal)
+                        && !string.Equals(o.Valor, "null", StringComparison.Ordinal))];
     }
 
     /// <summary>Colapsa todo espaço em branco — o HTML do SER vem cheio de quebra e tabulação.</summary>

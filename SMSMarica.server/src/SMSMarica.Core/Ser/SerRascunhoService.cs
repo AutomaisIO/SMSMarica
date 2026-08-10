@@ -96,6 +96,7 @@ public sealed class SerRascunhoService(
         }
 
         r.Tipo = request.Tipo;
+        r.AmbulatorioEstadual = request.AmbulatorioEstadual;
         r.RecursoValor = request.RecursoValor;
         r.RecursoRotulo = request.RecursoRotulo;
         r.Cns = Limpar(request.Cns);
@@ -253,6 +254,9 @@ public sealed class SerRascunhoService(
         SerSolicitacaoRascunho r, CancellationToken cancellationToken)
     {
         var faltando = new List<string>();
+        // O ramo vem antes do tipo porque é ele que decide quais recursos existem — sem resposta,
+        // não dá nem para dizer se o recurso escolhido é válido.
+        if (r.AmbulatorioEstadual is null) faltando.Add("É ambulatório estadual?");
         if (r.Tipo is null) faltando.Add("Tipo");
         if (string.IsNullOrWhiteSpace(r.RecursoValor)) faltando.Add("Recurso");
         if (string.IsNullOrWhiteSpace(r.Cns)) faltando.Add("CNS do paciente");
@@ -264,11 +268,14 @@ public sealed class SerRascunhoService(
             faltando.Add("Classificação de risco");
         }
 
-        if (r.Tipo is { } tipo && !string.IsNullOrWhiteSpace(r.RecursoValor))
+        if (r.Tipo is { } tipo && r.AmbulatorioEstadual is { } ramo
+            && !string.IsNullOrWhiteSpace(r.RecursoValor))
         {
             var obrigatorios = await db.SerCatalogoCampos
                 .AsNoTracking()
-                .Where(c => c.Recurso!.Tipo == tipo && c.Recurso.Valor == r.RecursoValor && c.Obrigatorio)
+                .Where(c => c.Recurso!.Tipo == tipo
+                            && c.Recurso.AmbulatorioEstadual == ramo
+                            && c.Recurso.Valor == r.RecursoValor && c.Obrigatorio)
                 .Select(c => new { c.Campo, c.Rotulo })
                 .ToListAsync(cancellationToken);
 
@@ -294,7 +301,8 @@ public sealed class SerRascunhoService(
     }
 
     private static SerRascunhoDetalheDto ParaDetalhe(SerSolicitacaoRascunho r) => new(
-        r.Id, r.Status, r.Tipo, r.RecursoValor, r.RecursoRotulo, r.Cns, r.PacienteNome, r.Hipotese,
+        r.Id, r.Status, r.Tipo, r.AmbulatorioEstadual, r.RecursoValor, r.RecursoRotulo,
+        r.Cns, r.PacienteNome, r.Hipotese,
         Ler(r.CamposJson), r.IdSerGerado, r.MensagemErro, r.CriadoPorNome, r.CriadoEm,
         r.AtualizadoEm, r.EnviadoEm,
         [.. r.Anexos

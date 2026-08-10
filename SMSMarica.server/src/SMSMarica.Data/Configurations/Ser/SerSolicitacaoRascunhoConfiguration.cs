@@ -15,6 +15,7 @@ internal sealed class SerSolicitacaoRascunhoConfiguration
         builder.Property(x => x.Id).HasColumnName("id");
         builder.Property(x => x.Status).HasColumnName("status").IsRequired();
         builder.Property(x => x.Tipo).HasColumnName("tipo");
+        builder.Property(x => x.AmbulatorioEstadual).HasColumnName("ambulatorio_estadual");
         builder.Property(x => x.RecursoValor).HasColumnName("recurso_valor").HasMaxLength(40);
         builder.Property(x => x.RecursoRotulo).HasColumnName("recurso_rotulo").HasMaxLength(300);
         builder.Property(x => x.Cns).HasColumnName("cns").HasMaxLength(20);

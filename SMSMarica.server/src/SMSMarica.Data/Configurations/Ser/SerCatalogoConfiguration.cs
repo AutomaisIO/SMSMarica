@@ -17,11 +17,15 @@ internal sealed class SerCatalogoRecursoConfiguration : IEntityTypeConfiguration
         builder.Property(x => x.Rotulo).HasColumnName("rotulo").HasMaxLength(300).IsRequired();
         builder.Property(x => x.SincronizadoEm).HasColumnName("sincronizado_em").IsRequired();
         builder.Property(x => x.CamposLidos).HasColumnName("campos_lidos").IsRequired().HasDefaultValue(false);
+        builder.Property(x => x.AmbulatorioEstadual)
+            .HasColumnName("ambulatorio_estadual").IsRequired().HasDefaultValue(false);
 
-        // O SER identifica o recurso pelo par (tipo, value do combo) — é a chave natural, e o
-        // índice único é o que torna a sincronização um upsert em vez de acumular duplicata a
-        // cada rodada do catálogo.
-        builder.HasIndex(x => new { x.Tipo, x.Valor }).IsUnique().HasDatabaseName("ux_ser_catalogo_recurso");
+        // A chave natural do recurso no SER é (tipo, ramo, value do combo) — o RAMO faz parte da
+        // identidade porque o mesmo `value` aparece nos dois com formulários diferentes (ver
+        // SerCatalogoRecurso.AmbulatorioEstadual). Deixar o ramo de fora faria as duas versões
+        // brigarem pela mesma linha, e a última cópia venceria em silêncio.
+        builder.HasIndex(x => new { x.Tipo, x.AmbulatorioEstadual, x.Valor })
+            .IsUnique().HasDatabaseName("ux_ser_catalogo_recurso");
 
         builder.HasMany(x => x.Campos)
             .WithOne(x => x.Recurso!)

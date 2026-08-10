@@ -57,6 +57,10 @@ const CLASSE_STATUS: Record<StatusRascunhoSer, string> = {
 export function SerNovaSolicitacaoPage() {
   const [rascunhoId, setRascunhoId] = useState<string | null>(null);
   const [tipo, setTipo] = useState<TipoRecursoSer | ''>('');
+  // "É ambulatório estadual?" — null = ainda não respondido. Começa sem resposta de propósito:
+  // é ele que decide QUAIS recursos existem e QUAL formulário o recurso pede, então escolher um
+  // default aqui seria escolher um catálogo pelo operador.
+  const [ambEstadual, setAmbEstadual] = useState<boolean | null>(null);
   const [recurso, setRecurso] = useState<CatalogoRecursoSer | null>(null);
   const [cns, setCns] = useState('');
   const [paciente, setPaciente] = useState('');
@@ -66,7 +70,7 @@ export function SerNovaSolicitacaoPage() {
   const [aviso, setAviso] = useState<string | null>(null);
 
   const catalogo = useFormularioCatalogoSer();
-  const dinamicos = useCamposCatalogoSer(tipo || undefined, recurso?.valor);
+  const dinamicos = useCamposCatalogoSer(tipo || undefined, recurso?.valor, ambEstadual ?? undefined);
   const lista = useRascunhosSer();
   const carregado = useRascunhoSer(rascunhoId);
 
@@ -80,20 +84,34 @@ export function SerNovaSolicitacaoPage() {
     const r = carregado.data;
     if (!r || r.id !== rascunhoId) return;
     setTipo(r.tipo ?? '');
+    setAmbEstadual(r.ambulatorioEstadual);
     setCns(r.cns ?? '');
     setPaciente(r.pacienteNome ?? '');
     setHipotese(r.hipotese ?? '');
     setCampos(r.campos ?? {});
     setRecurso(
       r.recursoValor
-        ? { tipo: r.tipo ?? 'Consulta', valor: r.recursoValor, rotulo: r.recursoRotulo ?? r.recursoValor, camposLidos: true }
+        ? {
+            tipo: r.tipo ?? 'Consulta',
+            ambulatorioEstadual: r.ambulatorioEstadual ?? false,
+            valor: r.recursoValor,
+            rotulo: r.recursoRotulo ?? r.recursoValor,
+            camposLidos: true,
+          }
         : null,
     );
   }, [carregado.data, rascunhoId]);
 
+  // Filtra pelo RAMO junto com o tipo: os dois catálogos convivem na mesma tabela, e misturá-los
+  // ofereceria recursos que o SER não lista para a resposta escolhida.
   const recursosDoTipo = useMemo(
-    () => (catalogo.data?.recursos ?? []).filter((r) => r.tipo === tipo),
-    [catalogo.data, tipo],
+    () =>
+      ambEstadual === null
+        ? []
+        : (catalogo.data?.recursos ?? []).filter(
+            (r) => r.tipo === tipo && r.ambulatorioEstadual === ambEstadual,
+          ),
+    [catalogo.data, tipo, ambEstadual],
   );
 
   const listaCampos = dinamicos.data ?? [];
@@ -102,6 +120,7 @@ export function SerNovaSolicitacaoPage() {
   function corpo() {
     return {
       tipo: (tipo || undefined) as TipoRecursoSer | undefined,
+      ambulatorioEstadual: ambEstadual ?? undefined,
       recursoValor: recurso?.valor,
       recursoRotulo: recurso?.rotulo,
       cns: cns.trim() || undefined,
@@ -157,6 +176,7 @@ export function SerNovaSolicitacaoPage() {
   function novo() {
     setRascunhoId(null);
     setTipo('');
+    setAmbEstadual(null);
     setRecurso(null);
     setCns('');
     setPaciente('');
@@ -232,11 +252,30 @@ export function SerNovaSolicitacaoPage() {
           <section>
             <h2 className="mb-2 font-semibold text-slate-800">O que está sendo pedido</h2>
             <div className="flex flex-wrap items-end gap-3">
+              <Campo label="É ambulatório estadual? *" htmlFor="ns-amb" className="w-56">
+                <Select
+                  id="ns-amb"
+                  value={ambEstadual === null ? '' : ambEstadual ? 'true' : 'false'}
+                  disabled={somenteLeitura}
+                  onChange={(e) => {
+                    setAmbEstadual(e.target.value === '' ? null : e.target.value === 'true');
+                    // Trocar o ramo troca o catálogo inteiro: o recurso escolhido pode nem
+                    // existir do outro lado, e os campos são de outro formulário.
+                    setRecurso(null);
+                    setCampos({});
+                  }}
+                >
+                  <option value="">Selecione…</option>
+                  <option value="true">Sim</option>
+                  <option value="false">Não</option>
+                </Select>
+              </Campo>
+
               <Campo label="Tipo *" htmlFor="ns-tipo" className="w-44">
                 <Select
                   id="ns-tipo"
                   value={tipo}
-                  disabled={somenteLeitura}
+                  disabled={ambEstadual === null || somenteLeitura}
                   onChange={(e) => {
                     setTipo(e.target.value as TipoRecursoSer | '');
                     // Recurso e campos são do tipo anterior: manter montaria um pedido com
@@ -255,7 +294,7 @@ export function SerNovaSolicitacaoPage() {
                 <SeletorRecursoSer
                   recursos={recursosDoTipo}
                   valor={recurso?.valor ?? ''}
-                  desabilitado={!tipo || somenteLeitura}
+                  desabilitado={!tipo || ambEstadual === null || somenteLeitura}
                   onChange={(r) => {
                     setRecurso(r);
                     setCampos({});
@@ -263,10 +302,18 @@ export function SerNovaSolicitacaoPage() {
                 />
               </Campo>
             </div>
-            {tipo && (
+            {ambEstadual === null ? (
               <p className="mt-1 text-xs text-slate-500">
-                {recursosDoTipo.length} recursos em {tipo} — digite para filtrar.
+                Responda primeiro se é ambulatório estadual — a resposta muda a lista de recursos
+                e os campos que o SER pede.
               </p>
+            ) : (
+              tipo && (
+                <p className="mt-1 text-xs text-slate-500">
+                  {recursosDoTipo.length} recursos em {tipo} (ambulatório estadual:{' '}
+                  {ambEstadual ? 'Sim' : 'Não'}) — digite para filtrar.
+                </p>
+              )
             )}
           </section>
 

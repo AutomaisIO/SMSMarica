@@ -200,9 +200,10 @@ public sealed class SerConfiguracaoController(
     [ProducesResponseType<IReadOnlyList<SerOpcaoDto>>(StatusCodes.Status200OK)]
     public Task<IReadOnlyList<SerOpcaoDto>> RecursosNovaSolicitacao(
         [FromQuery] string tipo,
+        [FromQuery] bool ambulatorioEstadual,
         [FromServices] ISerNovaSolicitacaoService nova,
         CancellationToken cancellationToken) =>
-        nova.ListarRecursosAsync(tipo, cancellationToken);
+        nova.ListarRecursosAsync(tipo, ambulatorioEstadual, cancellationToken);
 
     [HttpGet("nova-solicitacao/campos")]
     [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]
@@ -210,9 +211,10 @@ public sealed class SerConfiguracaoController(
     public Task<IReadOnlyList<SerCampoDinamicoDto>> CamposNovaSolicitacao(
         [FromQuery] string tipo,
         [FromQuery] string recurso,
+        [FromQuery] bool ambulatorioEstadual,
         [FromServices] ISerNovaSolicitacaoService nova,
         CancellationToken cancellationToken) =>
-        nova.ObterCamposDinamicosAsync(tipo, recurso, cancellationToken);
+        nova.ObterCamposDinamicosAsync(tipo, recurso, ambulatorioEstadual, cancellationToken);
 
     /// <summary>Copia o catálogo do SER para a nossa base. Leitura longa (~15 min, uma ida por
     /// recurso) e retomável — recurso já lido não é pedido de novo, salvo `refazerTudo`.</summary>
@@ -297,8 +299,9 @@ public sealed class SerRascunhoController(
     public Task<IReadOnlyList<SerCampoDinamicoDto>> Campos(
         [FromQuery] TipoRecursoSer tipo,
         [FromQuery] string recurso,
+        [FromQuery] bool ambulatorioEstadual,
         CancellationToken cancellationToken) =>
-        catalogo.ObterCamposAsync(tipo, recurso, cancellationToken);
+        catalogo.ObterCamposAsync(tipo, recurso, ambulatorioEstadual, cancellationToken);
 
     [HttpGet]
     [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]

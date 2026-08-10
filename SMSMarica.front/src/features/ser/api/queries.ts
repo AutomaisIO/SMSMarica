@@ -226,7 +226,8 @@ export function useCamposNovaSer(tipo: string | undefined, recurso: string | und
 
 export const rascunhoKeys = {
   formulario: ['ser', 'rascunhos', 'formulario'] as const,
-  campos: (tipo?: string, recurso?: string) => ['ser', 'rascunhos', 'campos', tipo, recurso] as const,
+  campos: (tipo?: string, recurso?: string, ramo?: boolean) =>
+    ['ser', 'rascunhos', 'campos', tipo, recurso, ramo] as const,
   lista: (status?: string) => ['ser', 'rascunhos', 'lista', status] as const,
   item: (id: string) => ['ser', 'rascunhos', id] as const,
 };
@@ -241,11 +242,16 @@ export function useFormularioCatalogoSer() {
   });
 }
 
-export function useCamposCatalogoSer(tipo?: TipoRecursoSer, recurso?: string) {
+export function useCamposCatalogoSer(
+  tipo?: TipoRecursoSer,
+  recurso?: string,
+  ambulatorioEstadual?: boolean,
+) {
   return useQuery({
-    queryKey: rascunhoKeys.campos(tipo, recurso),
-    queryFn: () => obterCamposCatalogoSer(tipo!, recurso!),
-    enabled: Boolean(tipo && recurso),
+    queryKey: rascunhoKeys.campos(tipo, recurso, ambulatorioEstadual),
+    queryFn: () => obterCamposCatalogoSer(tipo!, recurso!, ambulatorioEstadual!),
+    // O ramo entra no `enabled`: sem ele o formulário buscado seria o do outro ramo.
+    enabled: Boolean(tipo && recurso && ambulatorioEstadual !== undefined),
   });
 }
 

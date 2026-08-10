@@ -18,7 +18,8 @@ public interface ISerCatalogoService
     Task<SerCatalogoFormularioDto> ObterFormularioAsync(CancellationToken cancellationToken);
 
     Task<IReadOnlyList<SerCampoDinamicoDto>> ObterCamposAsync(
-        TipoRecursoSer tipo, string recurso, CancellationToken cancellationToken);
+        TipoRecursoSer tipo, string recurso, bool ambulatorioEstadual,
+        CancellationToken cancellationToken);
 }
 
 public sealed class SerCatalogoService(
@@ -36,7 +37,8 @@ public sealed class SerCatalogoService(
         var recursos = await db.SerCatalogoRecursos
             .AsNoTracking()
             .OrderBy(x => x.Tipo).ThenBy(x => x.Rotulo)
-            .Select(x => new SerCatalogoRecursoDto(x.Tipo, x.Valor, x.Rotulo, x.CamposLidos))
+            .Select(x => new SerCatalogoRecursoDto(
+                x.Tipo, x.AmbulatorioEstadual, x.Valor, x.Rotulo, x.CamposLidos))
             .ToListAsync(cancellationToken);
 
         // A data mais ANTIGA, não a mais nova: o catálogo só está tão atualizado quanto o item
@@ -57,11 +59,17 @@ public sealed class SerCatalogoService(
     }
 
     public async Task<IReadOnlyList<SerCampoDinamicoDto>> ObterCamposAsync(
-        TipoRecursoSer tipo, string recurso, CancellationToken cancellationToken)
+        TipoRecursoSer tipo, string recurso, bool ambulatorioEstadual,
+        CancellationToken cancellationToken)
     {
+        // O RAMO entra no filtro: o mesmo recurso pede formulários diferentes conforme a resposta
+        // a "É ambulatório estadual?" (o 1000 pede 9 campos no "Não" e 3 no "Sim"). Sem ele, a
+        // tela mostraria o formulário do outro ramo e o pedido voltaria recusado.
         var campos = await db.SerCatalogoCampos
             .AsNoTracking()
-            .Where(c => c.Recurso!.Tipo == tipo && c.Recurso.Valor == recurso)
+            .Where(c => c.Recurso!.Tipo == tipo
+                        && c.Recurso.AmbulatorioEstadual == ambulatorioEstadual
+                        && c.Recurso.Valor == recurso)
             .OrderBy(c => c.Ordem)
             .ToListAsync(cancellationToken);
 
