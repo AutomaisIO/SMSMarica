@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, Clock, KeyRound, Loader2, Play, RefreshCw, Save } from 'lucide-react';
+import { AlertTriangle, Clock, HardDriveDownload, KeyRound, Loader2, Play, RefreshCw, Save } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
@@ -8,6 +8,8 @@ import { Select } from '@/shared/ui/Select';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import {
   useDispararVarreduraSer,
+  useFormularioCatalogoSer,
+  useSincronizarCatalogoSer,
   useSalvarVarreduraAutomaticaSer,
   useVarreduraAutomaticaSer,
   useExecucoesSer,
@@ -92,6 +94,8 @@ export function AbaSerConfiguracao() {
   const { data: execucoes } = useExecucoesSer(20, status?.varreduraEmAndamento ?? false);
   const disparar = useDispararVarreduraSer();
   const { data: automatica } = useVarreduraAutomaticaSer();
+  const { data: catalogo } = useFormularioCatalogoSer();
+  const sincronizarCatalogo = useSincronizarCatalogoSer();
   const salvarAutomatica = useSalvarVarreduraAutomaticaSer();
   const testar = useTestarCredencialSer();
   const salvar = useSalvarCredencialSer();
@@ -322,6 +326,63 @@ export function AbaSerConfiguracao() {
             )}
             Rodar agora
           </Button>
+        </div>
+
+        {/* Cópia do catálogo: é o que deixa a tela de nova solicitação OFFLINE. Leitura longa
+            (uma ida ao SER por recurso) e retomável — o botão avisa o custo. */}
+        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <HardDriveDownload className="size-4 text-slate-500" />
+          <div className="min-w-64 flex-1 text-sm text-slate-700">
+            <strong>Catálogo do SER</strong>{' '}
+            {catalogo && catalogo.recursos.length > 0 ? (
+              <>
+                — {catalogo.recursos.length} recursos copiados
+                {catalogo.recursosSemCampos > 0 && (
+                  <span className="text-amber-700">
+                    {' '}({catalogo.recursosSemCampos} sem campos)
+                  </span>
+                )}
+                {catalogo.sincronizadoEm && (
+                  <span className="text-xs text-slate-500">
+                    {' '}· mais antigo de {dataHora(catalogo.sincronizadoEm)}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="text-amber-700">— ainda não copiado</span>
+            )}
+          </div>
+
+          <Button
+            variante="secundaria"
+            onClick={async () => {
+              setErro(null);
+              setAviso(null);
+              try {
+                const r = await sincronizarCatalogo.mutateAsync(false);
+                setAviso(
+                  `Catálogo copiado: ${r.recursos} recursos, ${r.campos} campos, ` +
+                    `${r.listas} itens de lista em ${r.duracaoSegundos}s` +
+                    (r.falhas > 0 ? ` — ${r.falhas} recurso(s) falharam e ficam para a próxima.` : '.'),
+                );
+              } catch (e) {
+                setErro(extrairMensagemDeErro(e));
+              }
+            }}
+            disabled={sincronizarCatalogo.isPending || status?.varreduraEmAndamento}
+          >
+            {sincronizarCatalogo.isPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <HardDriveDownload className="size-4" />
+            )}
+            Copiar catálogo do SER
+          </Button>
+
+          <p className="w-full text-xs text-slate-500">
+            Uma ida ao SER por recurso (~15 min na primeira vez). É retomável: recurso já copiado
+            não é pedido de novo, então rodar outra vez completa o que faltou.
+          </p>
         </div>
 
         {/* Disparo diário: mora em BANCO, não em appsettings — mudar a hora não pode exigir

@@ -18,6 +18,14 @@ import type {
   FormularioNovaSer,
   OpcaoSer,
   CampoDinamicoSer,
+  CatalogoFormularioSer,
+  CatalogoSyncResultado,
+  AnexoRascunhoSer,
+  RascunhoSerDetalhe,
+  RascunhoSerLista,
+  RascunhoSerRequest,
+  StatusRascunhoSer,
+  TipoRecursoSer,
 } from '@/features/ser/types';
 
 /** Busca na NOSSA base espelhada — não vai ao SER. */
@@ -149,6 +157,77 @@ export async function obterCamposNovaSer(tipo: string, recurso: string): Promise
   const { data } = await http.get<CampoDinamicoSer[]>(
     '/regulacao/ser/configuracao/nova-solicitacao/campos',
     { params: { tipo, recurso } },
+  );
+  return data;
+}
+
+
+// ---------------------------------------------------------------- catálogo local + rascunhos
+// Nenhuma destas chamadas toca o SER — leem e escrevem só na nossa base.
+
+export async function obterFormularioCatalogoSer(): Promise<CatalogoFormularioSer> {
+  const { data } = await http.get<CatalogoFormularioSer>('/regulacao/ser/rascunhos/formulario');
+  return data;
+}
+
+export async function obterCamposCatalogoSer(
+  tipo: TipoRecursoSer,
+  recurso: string,
+): Promise<CampoDinamicoSer[]> {
+  const { data } = await http.get<CampoDinamicoSer[]>('/regulacao/ser/rascunhos/campos', {
+    params: { tipo, recurso },
+  });
+  return data;
+}
+
+export async function listarRascunhosSer(status?: StatusRascunhoSer): Promise<RascunhoSerLista[]> {
+  const { data } = await http.get<RascunhoSerLista[]>('/regulacao/ser/rascunhos', {
+    params: status ? { status } : undefined,
+  });
+  return data;
+}
+
+export async function obterRascunhoSer(id: string): Promise<RascunhoSerDetalhe> {
+  const { data } = await http.get<RascunhoSerDetalhe>(`/regulacao/ser/rascunhos/${id}`);
+  return data;
+}
+
+export async function salvarRascunhoSer(
+  id: string | null,
+  corpo: RascunhoSerRequest,
+): Promise<RascunhoSerDetalhe> {
+  const { data } = id
+    ? await http.put<RascunhoSerDetalhe>(`/regulacao/ser/rascunhos/${id}`, corpo)
+    : await http.post<RascunhoSerDetalhe>('/regulacao/ser/rascunhos', corpo);
+  return data;
+}
+
+export async function excluirRascunhoSer(id: string): Promise<void> {
+  await http.delete(`/regulacao/ser/rascunhos/${id}`);
+}
+
+export async function marcarRascunhoProntoSer(id: string): Promise<RascunhoSerDetalhe> {
+  const { data } = await http.post<RascunhoSerDetalhe>(`/regulacao/ser/rascunhos/${id}/pronto`);
+  return data;
+}
+
+export async function anexarRascunhoSer(id: string, arquivo: File): Promise<AnexoRascunhoSer> {
+  const fd = new FormData();
+  fd.append('arquivo', arquivo);
+  const { data } = await http.post<AnexoRascunhoSer>(`/regulacao/ser/rascunhos/${id}/anexos`, fd);
+  return data;
+}
+
+export async function removerAnexoRascunhoSer(id: string, anexoId: string): Promise<void> {
+  await http.delete(`/regulacao/ser/rascunhos/${id}/anexos/${anexoId}`);
+}
+
+/** Copia o catálogo do SER. Leitura longa (~15 min) — a tela avisa o operador. */
+export async function sincronizarCatalogoSer(refazerTudo = false): Promise<CatalogoSyncResultado> {
+  const { data } = await http.post<CatalogoSyncResultado>(
+    '/regulacao/ser/configuracao/catalogo/sincronizar',
+    null,
+    { params: { refazerTudo }, timeout: 30 * 60_000 },
   );
   return data;
 }

@@ -348,3 +348,91 @@ export type FormularioNovaSer = {
   medicos: OpcaoSer[];
   camposDinamicosPadrao: CampoDinamicoSer[];
 };
+
+// ---------------------------------------------------------------- catálogo + rascunhos
+// Tudo local: o formulário vem do catálogo copiado, o pedido é guardado na nossa base.
+
+export type StatusRascunhoSer = 'Rascunho' | 'Pronto' | 'Enviado' | 'Falhou';
+
+export type CatalogoRecursoSer = {
+  tipo: TipoRecursoSer;
+  valor: string;
+  rotulo: string;
+  /** false = os campos dinâmicos deste recurso ainda não foram copiados do SER. */
+  camposLidos: boolean;
+};
+
+export type CatalogoFormularioSer = {
+  ambulatorioEstadual: OpcaoSer[];
+  classificacoesRisco: OpcaoSer[];
+  medicos: OpcaoSer[];
+  recursos: CatalogoRecursoSer[];
+  /** Data do item MAIS ANTIGO: o catálogo só está tão atualizado quanto a parte mais velha. */
+  sincronizadoEm: string | null;
+  recursosSemCampos: number;
+};
+
+export type AnexoRascunhoSer = {
+  id: string;
+  midiaId: string;
+  nomeArquivo: string;
+  contentType: string | null;
+  tamanho: number;
+  /** Nulo = o arquivo ainda é só nosso; não subiu para o SER. */
+  enviadoEm: string | null;
+  criadoEm: string;
+};
+
+export type RascunhoSerLista = {
+  id: string;
+  status: StatusRascunhoSer;
+  tipo: TipoRecursoSer | null;
+  recursoRotulo: string | null;
+  pacienteNome: string | null;
+  cns: string | null;
+  hipotese: string | null;
+  idSerGerado: string | null;
+  criadoPorNome: string | null;
+  criadoEm: string;
+  atualizadoEm: string | null;
+  enviadoEm: string | null;
+  anexos: number;
+};
+
+export type RascunhoSerDetalhe = {
+  id: string;
+  status: StatusRascunhoSer;
+  tipo: TipoRecursoSer | null;
+  recursoValor: string | null;
+  recursoRotulo: string | null;
+  cns: string | null;
+  pacienteNome: string | null;
+  hipotese: string | null;
+  /** Valores com os nomes JSF do SER como chave — é o que seria postado. */
+  campos: Record<string, string>;
+  idSerGerado: string | null;
+  mensagemErro: string | null;
+  criadoPorNome: string | null;
+  criadoEm: string;
+  atualizadoEm: string | null;
+  enviadoEm: string | null;
+  anexos: AnexoRascunhoSer[];
+};
+
+export type RascunhoSerRequest = {
+  tipo?: TipoRecursoSer;
+  recursoValor?: string;
+  recursoRotulo?: string;
+  cns?: string;
+  pacienteNome?: string;
+  hipotese?: string;
+  campos?: Record<string, string>;
+};
+
+export type CatalogoSyncResultado = {
+  recursos: number;
+  campos: number;
+  listas: number;
+  falhas: number;
+  duracaoSegundos: number;
+};

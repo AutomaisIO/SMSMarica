@@ -5,6 +5,16 @@ import {
   listarNotificacoesSer,
   marcarNotificacaoVista,
   marcarNotificacoesDaSolicitacaoVistas,
+  anexarRascunhoSer,
+  excluirRascunhoSer,
+  listarRascunhosSer,
+  marcarRascunhoProntoSer,
+  obterCamposCatalogoSer,
+  obterFormularioCatalogoSer,
+  obterRascunhoSer,
+  removerAnexoRascunhoSer,
+  salvarRascunhoSer,
+  sincronizarCatalogoSer,
   obterCamposNovaSer,
   obterFormularioNovaSer,
   listarRecursosNovaSer,
@@ -23,6 +33,9 @@ import type {
   DispararVarreduraPayload,
   NotificacoesFiltro,
   VarreduraAutomaticaSer,
+  RascunhoSerRequest,
+  StatusRascunhoSer,
+  TipoRecursoSer,
 } from '@/features/ser/types';
 
 export const serKeys = {
@@ -205,5 +218,88 @@ export function useCamposNovaSer(tipo: string | undefined, recurso: string | und
     queryFn: () => obterCamposNovaSer(tipo!, recurso!),
     enabled: Boolean(tipo && recurso),
     staleTime: 10 * 60_000,
+  });
+}
+
+// ---------------------------------------------------------------- catálogo local + rascunhos
+// Sem polling e sem staleTime curto: isto é a NOSSA base, não muda sozinha.
+
+export const rascunhoKeys = {
+  formulario: ['ser', 'rascunhos', 'formulario'] as const,
+  campos: (tipo?: string, recurso?: string) => ['ser', 'rascunhos', 'campos', tipo, recurso] as const,
+  lista: (status?: string) => ['ser', 'rascunhos', 'lista', status] as const,
+  item: (id: string) => ['ser', 'rascunhos', id] as const,
+};
+
+export function useFormularioCatalogoSer() {
+  return useQuery({ queryKey: rascunhoKeys.formulario, queryFn: obterFormularioCatalogoSer });
+}
+
+export function useCamposCatalogoSer(tipo?: TipoRecursoSer, recurso?: string) {
+  return useQuery({
+    queryKey: rascunhoKeys.campos(tipo, recurso),
+    queryFn: () => obterCamposCatalogoSer(tipo!, recurso!),
+    enabled: Boolean(tipo && recurso),
+  });
+}
+
+export function useRascunhosSer(status?: StatusRascunhoSer) {
+  return useQuery({ queryKey: rascunhoKeys.lista(status), queryFn: () => listarRascunhosSer(status) });
+}
+
+export function useRascunhoSer(id: string | null) {
+  return useQuery({
+    queryKey: rascunhoKeys.item(id ?? ''),
+    queryFn: () => obterRascunhoSer(id!),
+    enabled: Boolean(id),
+  });
+}
+
+/** Salvar invalida a lista também: o cartão da lista mostra paciente, recurso e nº de anexos. */
+function invalidarRascunhos(qc: ReturnType<typeof useQueryClient>) {
+  void qc.invalidateQueries({ queryKey: ['ser', 'rascunhos'] });
+}
+
+export function useSalvarRascunhoSer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, corpo }: { id: string | null; corpo: RascunhoSerRequest }) =>
+      salvarRascunhoSer(id, corpo),
+    onSuccess: () => invalidarRascunhos(qc),
+  });
+}
+
+export function useExcluirRascunhoSer() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: excluirRascunhoSer, onSuccess: () => invalidarRascunhos(qc) });
+}
+
+export function useMarcarRascunhoPronto() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: marcarRascunhoProntoSer, onSuccess: () => invalidarRascunhos(qc) });
+}
+
+export function useAnexarRascunhoSer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, arquivo }: { id: string; arquivo: File }) => anexarRascunhoSer(id, arquivo),
+    onSuccess: () => invalidarRascunhos(qc),
+  });
+}
+
+export function useRemoverAnexoRascunhoSer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, anexoId }: { id: string; anexoId: string }) =>
+      removerAnexoRascunhoSer(id, anexoId),
+    onSuccess: () => invalidarRascunhos(qc),
+  });
+}
+
+export function useSincronizarCatalogoSer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (refazerTudo: boolean) => sincronizarCatalogoSer(refazerTudo),
+    onSuccess: () => invalidarRascunhos(qc),
   });
 }
