@@ -146,8 +146,8 @@ public sealed class SerBackfillPacientesService(
                 }
 
                 // Limpa a marca. Vale inclusive para "sem chave": mantê-la faria o worker
-                // reprocessar um caso sem saída a cada ciclo, para sempre. Se o SER trouxer o
-                // CNS depois, o retrato do paciente muda e a varredura remarca sozinha.
+                // reprocessar a cada ciclo um caso sem saída. Se o SER trouxer CPF ou CNS
+                // depois, o retrato do paciente muda e a varredura remarca sozinha.
                 // Exceção NÃO chega aqui — quem falha fica na fila para a próxima passagem.
                 s.PacienteConciliarEm = null;
             }
@@ -173,23 +173,44 @@ public sealed class SerBackfillPacientesService(
     }
 
     /// <summary>
-    /// Um id de solicitação por paciente — a mais recentemente sincronizada.
+    /// Um id de solicitação por paciente — a mais recentemente sincronizada — <b>e quem tem CPF
+    /// primeiro</b>.
+    ///
+    /// <para><b>A ordem muda o resultado, não só o tempo.</b> Sem CPF a âncora é o CNS, e o CNS
+    /// não é uma chave por pessoa: medido no piloto de 10/08/2026, ancorar por CNS deu ~4
+    /// duplicatas em cada 10. Processar antes todos os que têm CPF faz esses pacientes chegarem
+    /// ao hub pela chave certa; quando a vez dos só-CNS chegar, parte deles já estará lá com CPF,
+    /// e a ponte local→CPF do upsert canônico reaproveita o recurso em vez de criar outro.</para>
     ///
     /// <para>O agrupamento é por (CPF, CNS) <b>como o SER escreveu</b>. Não normalizo aqui de
     /// propósito: quem decide se o CPF vale é <c>CpfPep.Valido</c>, dentro da conciliação, e
     /// duplicar essa régua em SQL criaria duas verdades. No pior caso o mesmo paciente entra
     /// duas vezes na fila e a segunda passagem é um no-op.</para>
     /// </summary>
-    private async Task<List<Guid>> IdsMaisRecentesPorPacienteAsync(CancellationToken ct) =>
-        await db.SerSolicitacoes
+    private async Task<List<Guid>> IdsMaisRecentesPorPacienteAsync(CancellationToken ct)
+    {
+        var grupos = await db.SerSolicitacoes
             .AsNoTracking()
             .Where(s => s.ExcluidoEm == null
                         && ((s.Cpf != null && s.Cpf != "") || (s.Cns != null && s.Cns != "")))
             .GroupBy(s => new { s.Cpf, s.Cns })
-            .Select(g => g
-                .OrderByDescending(x => x.SincronizadoEm)
-                .ThenByDescending(x => x.DataSolicitacao)
-                .Select(x => x.Id)
-                .First())
+            .Select(g => new
+            {
+                Id = g
+                    .OrderByDescending(x => x.SincronizadoEm)
+                    .ThenByDescending(x => x.DataSolicitacao)
+                    .Select(x => x.Id)
+                    .First(),
+                TemCpf = g.Key.Cpf != null && g.Key.Cpf != "",
+            })
+            .OrderByDescending(x => x.TemCpf)
             .ToListAsync(ct);
+
+        var comCpf = grupos.Count(x => x.TemCpf);
+        logger.LogInformation(
+            "SER/backfill: {ComCpf} paciente(s) com CPF vêm primeiro; {SoCns} só com CNS depois.",
+            comCpf, grupos.Count - comCpf);
+
+        return [.. grupos.Select(x => x.Id)];
+    }
 }

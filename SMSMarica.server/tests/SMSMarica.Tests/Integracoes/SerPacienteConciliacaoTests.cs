@@ -143,6 +143,28 @@ public class SerPacienteConciliacaoTests
     }
 
     /// <summary>
+    /// Paciente sem CPF entra pelo CNS e SAI MARCADO (ADR-0041). Medido no piloto de 10/08/2026:
+    /// ancorar por CNS duplica pessoa em cerca de 4 de cada 10 casos — dos 40 criados assim, 17
+    /// tinham no hub alguém de mesmo nome e mesma data de nascimento. O CNS não é uma chave por
+    /// pessoa (há provisório da faixa 898… e gente com mais de um número).
+    ///
+    /// <para>A tag é o que torna essa dívida buscável em vez de invisível. Se ela parar de ser
+    /// carimbada, os duplicados viram indistinguíveis do cadastro bom — e aí não há como voltar
+    /// atrás depois.</para>
+    /// </summary>
+    [Fact]
+    public void Sem_cpf_entra_pelo_cns_mas_declarado()
+    {
+        var p = SerPacienteFhirMapper.Construir(Solicitacao(s => s.Cpf = null));
+
+        p.Identifier.Should().ContainSingle(i => i.System == SerPacienteFhirMapper.SysCns);
+        p.Identifier.Should().NotContain(i => i.System == SerPacienteFhirMapper.SysCpf);
+        p.Meta!.Tag.Should().Contain(t =>
+            t.System == "urn:smsmarica:qualidade" && t.Code == "identidade-incompleta",
+            "sem a tag a dívida some do radar");
+    }
+
+    /// <summary>
     /// Sexo em branco (4.881 das 25.439) é "não perguntaram", não "desconhecido": virar
     /// <c>unknown</c> rebaixaria no hub um sexo que outra base já sabia.
     /// </summary>

@@ -22,7 +22,7 @@ public enum ResultadoConciliacaoSer
     /// <summary>O paciente existia e ganhou dado que faltava.</summary>
     Enriquecido = 2,
 
-    /// <summary>Sem CPF válido e sem CNS: não há chave para casar ninguém. Fica de fora.</summary>
+    /// <summary>Sem CPF válido e sem CNS: não há chave nenhuma. Fica de fora (1 caso em 25.439).</summary>
     SemChave = 3,
 }
 
@@ -43,10 +43,17 @@ public sealed record ConciliacaoSerDto(
 /// prontuário. Campo vazio significa "não perguntaram" e é completado do próprio hub — o SER
 /// acrescenta, nunca remove.</para>
 ///
-/// <para><b>Âncora.</b> CPF válido por dígito verificador quando existe; senão o CNS, que o
-/// ADR-0009 define como chave nacional secundária. O SER traz CNS em 25.438 das 25.439
-/// solicitações, então o caso "sem chave nenhuma" é praticamente teórico aqui — mas é tratado,
-/// porque um paciente ancorado em nada se fundiria com o primeiro homônimo.</para>
+/// <para><b>Âncora: CPF válido por dígito verificador; sem ele, o CNS.</b> O CPF é a chave
+/// CERTA porque é uma por pessoa. O CNS não: a mesma pessoa pode ter mais de um número, e o SER
+/// usa CNS provisório (faixa 898…). Medido no piloto de 10/08/2026 — dos 40 pacientes criados
+/// ancorados em CNS, <b>17 tinham no hub alguém de mesmo nome e mesma data de nascimento</b>.
+/// Ou seja: ancorar por CNS duplica pessoa em cerca de 4 de cada 10 casos.</para>
+///
+/// <para><b>Mesmo assim eles entram</b> — e marcados (ADR-0041): o hub afirmar por omissão que
+/// aquele cidadão não existe é pior que um registro duplicado e declarado. A tag
+/// <c>urn:smsmarica:qualidade|identidade-incompleta</c> é o que torna essa dívida <b>buscável</b>
+/// (<c>GET /fhir/Patient?_tag=…</c>), em vez de invisível. O dia em que o CPF aparecer, a ponte
+/// local→CPF do upsert canônico reaproveita o mesmo recurso e a tag sai sozinha.</para>
 /// </summary>
 public interface ISerConciliacaoPacienteService
 {
@@ -64,13 +71,14 @@ public sealed class SerConciliacaoPacienteService(
         var cpf = CpfPep.Valido(s.Cpf) ? CpfPep.Digitos(s.Cpf) : string.Empty;
         var cns = new string([.. (s.Cns ?? string.Empty).Where(char.IsDigit)]);
 
-        // Sem chave nacional não há como afirmar "é a mesma pessoa". Criar assim geraria um
-        // Patient que o próximo ciclo não reencontraria — duplicata a cada rodada.
+        // Sem chave nenhuma não há o que casar: criar geraria um Patient que o próximo ciclo não
+        // reencontraria — duplicata NOVA a cada rodada, que é outro problema, bem pior.
         if (cpf.Length == 0 && cns.Length == 0)
         {
             return new ConciliacaoSerDto(ResultadoConciliacaoSer.SemChave, null, []);
         }
 
+        // CPF quando dá; senão CNS, e aí o mapper carimba identidade-incompleta.
         var (system, valor) = cpf.Length > 0
             ? (SerPacienteFhirMapper.SysCpf, cpf)
             : (SerPacienteFhirMapper.SysCns, cns);
