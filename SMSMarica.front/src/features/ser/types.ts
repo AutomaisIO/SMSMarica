@@ -54,6 +54,8 @@ export type SolicitacaoSerLista = {
   recurso: string;
   dataSolicitacao: string | null;
   pacienteNome: string;
+  /** Id no nosso hub FHIR — null quando ainda não conciliado. Libera o resumo e o WhatsApp. */
+  pacienteId: string | null;
   idadeTexto: string | null;
   cpf: string | null;
   cns: string | null;

@@ -45,6 +45,10 @@ internal sealed class SerSolicitacaoConfiguration : IEntityTypeConfiguration<Ser
         builder.Property(x => x.TelefoneContato).HasColumnName("telefone_contato").HasMaxLength(30);
 
         builder.Property(x => x.SincronizadoEm).HasColumnName("sincronizado_em").IsRequired();
+        builder.Property(x => x.PacienteId).HasColumnName("paciente_id");
+        // Sem FK: o paciente vive no schema fhir, e FK cross-schema só na direção
+        // smsmarica -> fhir é permitida — mas o hub é serviço autônomo (ADR-0010) e
+        // amarrar por FK acoplaria o ciclo de vida dos dois.
         builder.Property(x => x.PacienteConciliarEm).HasColumnName("paciente_conciliar_em");
         // Índice PARCIAL: a fila de conciliação é minúscula perto das 25 mil linhas, e a
         // pergunta do worker é exatamente "quem está pendente".

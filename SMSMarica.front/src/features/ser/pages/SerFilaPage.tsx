@@ -8,6 +8,7 @@ import { Select } from '@/shared/ui/Select';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { useBuscaSer, useResumoSer } from '@/features/ser/api/queries';
 import { SituacaoSerBadge } from '@/features/ser/components/SituacaoSerBadge';
+import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import {
   ROTULO_SITUACAO,
   SITUACOES_SER,
@@ -106,7 +107,19 @@ export function SerFilaPage() {
       ordenar: (s) => s.pacienteNome,
       render: (s) => (
         <div>
-          <div className="text-sm font-medium">{s.pacienteNome}</div>
+          {/* Com o paciente já conciliado no hub, a linha ganha o bonequinho (resumo) e o
+              atalho de WhatsApp — os mesmos do resto da aplicação. Sem conciliação ainda,
+              mostra só o nome: os dois componentes falam por id, não por nome. */}
+          {s.pacienteId ? (
+            <NomePacienteComResumo
+              pacienteId={s.pacienteId}
+              nome={s.pacienteNome}
+              classNameNome="text-sm font-medium"
+              mostrarWhatsApp
+            />
+          ) : (
+            <div className="text-sm font-medium">{s.pacienteNome}</div>
+          )}
           <div className="text-xs text-slate-500">{s.idadeTexto ?? ''}</div>
         </div>
       ),

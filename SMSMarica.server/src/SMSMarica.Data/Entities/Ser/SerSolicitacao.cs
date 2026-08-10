@@ -124,6 +124,16 @@ public class SerSolicitacao
     /// mudou; o worker de conciliação leva ao hub no seu ritmo, e se o hub estiver fora a marca
     /// continua esperando.</para>
     /// </summary>
+    /// <summary>
+    /// Id do paciente NO NOSSO HUB FHIR, quando a conciliação conseguiu resolver quem é.
+    /// <c>null</c> = ainda não conciliado, ou sem chave (nem CPF nem CNS).
+    ///
+    /// <para>É o que liga a linha do SER à pessoa: sem ele a tela não tem como abrir o resumo do
+    /// paciente nem o WhatsApp, porque esses componentes falam por id, não por nome. Guardar o
+    /// resultado aqui evita a alternativa cara — uma consulta ao hub por linha listada.</para>
+    /// </summary>
+    public Guid? PacienteId { get; set; }
+
     public DateTime? PacienteConciliarEm { get; set; }
 
     public DateTime SincronizadoEm { get; set; }

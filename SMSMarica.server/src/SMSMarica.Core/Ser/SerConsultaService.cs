@@ -112,7 +112,7 @@ public sealed class SerConsultaService(SmsMaricaDbContext db) : ISerConsultaServ
     }
 
     private static SerSolicitacaoListaDto ParaLista(SerSolicitacao s) => new(
-        s.Id, s.IdSer, s.Tipo, s.Recurso, s.DataSolicitacao, s.PacienteNome, s.IdadeTexto,
+        s.Id, s.IdSer, s.Tipo, s.Recurso, s.DataSolicitacao, s.PacienteNome, s.PacienteId, s.IdadeTexto,
         s.Cpf, s.Cns, s.Cid, s.SolicitanteNome, s.MunicipioSolicitante, s.AgendadoParaTexto,
         s.Situacao, s.SituacaoAnterior, s.SituacaoMudouEm, s.SincronizadoEm, s.HistoricoLidoEm,
         s.EventosCount, s.HistoricoIndisponivel,

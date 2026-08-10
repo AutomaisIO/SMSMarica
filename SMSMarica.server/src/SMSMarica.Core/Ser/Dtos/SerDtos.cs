@@ -14,6 +14,9 @@ public sealed record SerSolicitacaoListaDto(
     string Recurso,
     DateOnly? DataSolicitacao,
     string PacienteNome,
+    /// <summary>Id no nosso hub FHIR — null quando ainda não conciliado. É ele que libera o
+    /// resumo do paciente e o atalho de WhatsApp na lista.</summary>
+    Guid? PacienteId,
     string? IdadeTexto,
     string? Cpf,
     string? Cns,

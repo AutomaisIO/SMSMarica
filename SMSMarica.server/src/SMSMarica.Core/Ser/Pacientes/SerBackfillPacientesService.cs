@@ -61,8 +61,8 @@ public sealed class SerBackfillPacientesService(
         {
             ct.ThrowIfCancellationRequested();
 
+            // Rastreadas: o id do paciente resolvido é gravado na própria solicitação.
             var solicitacoes = await db.SerSolicitacoes
-                .AsNoTracking()
                 .Where(s => pagina.Contains(s.Id))
                 .ToListAsync(ct);
 
@@ -73,6 +73,7 @@ public sealed class SerBackfillPacientesService(
                 try
                 {
                     var r = await conciliacao.ConciliarAsync(s, ct);
+                    if (r.PacienteId is { } pid) s.PacienteId = pid;
                     switch (r.Resultado)
                     {
                         case ResultadoConciliacaoSer.Criado: criados++; break;
@@ -92,6 +93,8 @@ public sealed class SerBackfillPacientesService(
 
                 if (throttleMs > 0) await Task.Delay(throttleMs, ct);
             }
+
+            await db.SaveChangesAsync(ct);
 
             logger.LogInformation(
                 "SER/backfill: {Vistos}/{Total} — {Criados} criados, {Enriq} enriquecidos, "
@@ -144,6 +147,10 @@ public sealed class SerBackfillPacientesService(
                     case ResultadoConciliacaoSer.Inalterado: inalterados++; break;
                     case ResultadoConciliacaoSer.SemChave: semChave++; break;
                 }
+
+                // Guarda quem é a pessoa: é isto que liga a linha do SER ao resumo do
+                // paciente e ao WhatsApp na tela, sem uma consulta ao hub por linha listada.
+                if (r.PacienteId is { } pid) s.PacienteId = pid;
 
                 // Limpa a marca. Vale inclusive para "sem chave": mantê-la faria o worker
                 // reprocessar a cada ciclo um caso sem saída. Se o SER trouxer CPF ou CNS
