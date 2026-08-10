@@ -498,6 +498,52 @@ function CampoDinamico({
     );
   }
 
+  // Múltipla escolha. O SER recebe o MESMO nome repetido, um par por opção marcada; no rascunho
+  // isso cabe num par nome→valor porque os valores viajam juntos separados por quebra de linha —
+  // o contrato de SerValorMultiplo no backend, que desdobra na hora do envio.
+  if (c.tipo === 'checkbox' && c.opcoes?.length) {
+    const marcadas = new Set(valor ? valor.split('\n').filter(Boolean) : []);
+    const alternar = (v: string) => {
+      if (marcadas.has(v)) marcadas.delete(v);
+      else marcadas.add(v);
+      // Reordena pela ordem do SER, não pela ordem dos cliques.
+      onChange(c.opcoes!.filter((o) => marcadas.has(o.valor)).map((o) => o.valor).join('\n'));
+    };
+
+    return (
+      <Campo label={rotulo} htmlFor={id} className="min-w-72">
+        <div id={id} className="flex flex-wrap gap-x-4 gap-y-1.5 pt-1">
+          {c.opcoes.map((o) => (
+            <label key={o.valor} className="flex items-center gap-1.5 text-sm">
+              <input
+                type="checkbox"
+                value={o.valor}
+                disabled={desabilitado}
+                checked={marcadas.has(o.valor)}
+                onChange={() => alternar(o.valor)}
+              />
+              {o.rotulo}
+            </label>
+          ))}
+        </div>
+      </Campo>
+    );
+  }
+
+  // Escolha SEM opção nenhuma = catálogo copiado antes da correção de 10/08/2026. Não deixo isso
+  // virar caixa de texto em silêncio: o SER só aceita os valores da lista dele, e o pedido
+  // voltaria recusado com o campo aparentemente preenchido na tela.
+  if ((c.tipo === 'radio' || c.tipo === 'checkbox') && !c.opcoes?.length) {
+    return (
+      <Campo label={rotulo} htmlFor={id} className="min-w-72">
+        <Input id={id} value={valor} disabled onChange={() => {}} />
+        <p className="mt-1 text-xs text-amber-700">
+          Sem as opções deste campo. Recopie o catálogo do SER em Configurações para liberá-lo.
+        </p>
+      </Campo>
+    );
+  }
+
   if ((c.tipo === 'select' || c.tipo === 'radio') && c.opcoes?.length) {
     if (c.tipo === 'radio') {
       return (

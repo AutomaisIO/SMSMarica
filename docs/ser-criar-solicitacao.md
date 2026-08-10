@@ -54,6 +54,43 @@ regra própria, e de fato é o único recurso com formulário exclusivo (§4).
 > **A resposta é PARCIAL**: não traz `<form id="form0">`. Vale a regra de sempre — usar a
 > última página completa como fonte dos campos e o parcial só como fonte do conteúdo novo.
 
+#### Os cinco tipos de campo, e por onde cada um posta
+
+Capturado em 10/08/2026 (`probe_radio_dinamico.py`, CONSULTA 995 e 1007). O nome que o SER lê
+**nem sempre é o id base do container** — foram dois defeitos em produção por causa disso.
+
+| Tipo | Marcação no SER | Nome que recebe o valor |
+|---|---|---|
+| `text` / `textarea` / `select` | `<input>`, `<textarea>`, `<select>` | `form0:dinamico_id_<N>` |
+| `date` | `rich:calendar` | **`form0:dinamico_id_<N>InputDate`** |
+| `radio` | `<table class="radioButton">` | `form0:dinamico_id_<N>` |
+| `checkbox` | `<table class="checkBox">` | `form0:dinamico_id_<N>`, **repetido** |
+
+**Data** (§ regressão 10/08): o `rich:calendar` embute um `<script>` com a localização inteira do
+calendário *dentro* do container — ler o texto cru transforma o rótulo em
+`"Data da coleta da biópsia://<![CDATA[ Richfaces.Calendar.addLocale('pt'…"`. E o valor não viaja
+no id base: vai no input irmão terminado em `InputDate`. `InputCurrentDate` existe no mesmo
+componente e **não** é o campo.
+
+**Escolha** (radio e checkbox): não são `<select>` — são uma tabela com **um `<input>` por opção**,
+todos com o mesmo `name`, e o texto de cada opção num `<label for="<id da opção>">`:
+
+```html
+<span><label>Grupo Sanguineo:</label></span>          <!-- rótulo do CAMPO: sem `for` -->
+<table class="radioButton" id="form0:dinamico_id_379">
+  <td><input id="form0:dinamico_id_379:0" name="form0:dinamico_id_379" type="radio" value="Tipo A"/>
+      <label for="form0:dinamico_id_379:0">Tipo A</label></td>   <!-- rótulo da OPÇÃO: com `for` -->
+```
+
+> Medido em 22 containers reais: **o rótulo do campo nunca tem `for`; o das opções sempre tem.**
+> É essa assimetria que separa os dois — por isso o `<label for>` só é descartado em grupo de
+> marcação, nunca num campo comum.
+
+`value` é o texto em si ("Tipo A", "Diabetes"), não um código. E **checkbox é múltipla escolha**:
+o JSF posta o mesmo nome uma vez por marcado
+(`…id_594=Diabetes&…id_594=Depressão`). Como o rascunho guarda par nome→valor, os valores viajam
+juntos separados por `\n` e se desdobram no envio — contrato em `SerValorMultiplo`.
+
 ## 2.3 Anexar arquivo — como o upload funciona
 
 Levantado em 08/08/2026 lendo o `ui.pack.js` do próprio SER. **Nunca exercitado**: subir arquivo

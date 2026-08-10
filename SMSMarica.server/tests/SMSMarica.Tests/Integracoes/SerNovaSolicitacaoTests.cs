@@ -183,6 +183,112 @@ public class SerNovaSolicitacaoTests
         campo.Tipo.Should().Be("date");
     }
 
+    /// <summary>
+    /// REGRESSÃO de 10/08/2026. Estrutura COPIADA da captura real (CONSULTA 995, campo 379):
+    /// radio no SER é um &lt;table&gt; com um input por opção, todos com o MESMO <c>name</c>, e o
+    /// texto de cada opção num <c>&lt;label for&gt;</c>.
+    ///
+    /// <para>O extrator só lia <c>&lt;option&gt;</c> — que radio não tem — e gravou 56 radios e 4
+    /// checkboxes com ZERO opções. A tela caía no input de texto livre: o operador DIGITARIA onde
+    /// o SER exige escolha entre valores fixos, e o pedido voltaria recusado. De quebra, as
+    /// opções vinham grudadas no rótulo.</para>
+    /// </summary>
+    [Fact]
+    public void Radio_sai_com_opcoes_e_sem_elas_grudadas_no_rotulo()
+    {
+        const string html = """
+            <html><body><form id="form0">
+              <div id="form0:container_dinamico_id_379">
+                <div id="form0:grupo_dinamico_id_379">
+                  <span><label style="text-align:left;">Grupo Sanguineo:</label></span>
+                  <table class="radioButton" id="form0:dinamico_id_379"><tbody><tr>
+                    <td><input id="form0:dinamico_id_379:0" name="form0:dinamico_id_379" type="radio" value="Tipo A"/>
+                        <label for="form0:dinamico_id_379:0">Tipo A</label></td>
+                    <td><input id="form0:dinamico_id_379:1" name="form0:dinamico_id_379" type="radio" value="Tipo AB"/>
+                        <label for="form0:dinamico_id_379:1">Tipo AB</label></td>
+                  </tr></tbody></table>
+                </div>
+              </div>
+            </form></body></html>
+            """;
+
+        var campo = SerNovaSolicitacaoService.CamposDinamicos(html).Single();
+
+        campo.Tipo.Should().Be("radio");
+        campo.Campo.Should().Be("form0:dinamico_id_379", "todas as opções postam no mesmo nome");
+        campo.Rotulo.Should().Be("Grupo Sanguineo", "as opções não são parte do rótulo");
+        campo.Rotulo.Should().NotContain("Tipo A");
+        campo.Opcoes.Should().BeEquivalentTo(new[]
+        {
+            new SerOpcaoDto("Tipo A", "Tipo A"),
+            new SerOpcaoDto("Tipo AB", "Tipo AB"),
+        }, o => o.WithStrictOrdering());
+    }
+
+    /// <summary>Checkbox segue a mesma estrutura, e o asterisco continua virando flag.</summary>
+    [Fact]
+    public void Checkbox_sai_como_multipla_escolha_com_obrigatoriedade()
+    {
+        const string html = """
+            <html><body><form id="form0">
+              <div id="form0:container_dinamico_id_594">
+                <span><label>Comorbidades:</label><label style="color:red;">*</label></span>
+                <table class="checkBox" id="form0:dinamico_id_594"><tbody><tr>
+                  <td><input id="form0:dinamico_id_594:0" name="form0:dinamico_id_594" type="checkbox" value="Diabetes"/>
+                      <label for="form0:dinamico_id_594:0">Diabetes</label></td>
+                  <td><input id="form0:dinamico_id_594:1" name="form0:dinamico_id_594" type="checkbox" value="Doenças articulares"/>
+                      <label for="form0:dinamico_id_594:1">Doenças articulares</label></td>
+                </tr></tbody></table>
+              </div>
+            </form></body></html>
+            """;
+
+        var campo = SerNovaSolicitacaoService.CamposDinamicos(html).Single();
+
+        campo.Tipo.Should().Be("checkbox");
+        campo.Rotulo.Should().Be("Comorbidades");
+        campo.Obrigatorio.Should().BeTrue();
+        campo.Opcoes.Should().HaveCount(2);
+        campo.Opcoes!.Select(o => o.Valor).Should().Contain("Doenças articulares");
+    }
+
+    /// <summary>
+    /// CANÁRIO: o &lt;label for&gt; só pode ser descartado em grupo de marcação. Num campo comum
+    /// ele seria o rótulo de verdade, e removê-lo deixaria o campo anônimo na tela.
+    /// </summary>
+    [Fact]
+    public void Rotulo_de_campo_comum_com_for_nao_e_descartado()
+    {
+        const string html = """
+            <html><body><form id="form0">
+              <div id="form0:container_dinamico_id_695">
+                <label for="form0:dinamico_id_695">Telefone de contato:</label>
+                <input id="form0:dinamico_id_695" name="form0:dinamico_id_695" type="text" />
+              </div>
+            </form></body></html>
+            """;
+
+        SerNovaSolicitacaoService.CamposDinamicos(html).Single()
+            .Rotulo.Should().Be("Telefone de contato");
+    }
+
+    /// <summary>
+    /// O SER recebe múltipla escolha como o MESMO nome repetido. O rascunho guarda par
+    /// nome→valor, então os valores viajam juntos e só se desdobram no envio.
+    /// </summary>
+    [Fact]
+    public void Multipla_escolha_vai_e_volta_sem_perder_opcao()
+    {
+        string[] marcadas = ["Diabetes", "Doenças articulares", "Depressão"];
+
+        SerValorMultiplo.Separar(SerValorMultiplo.Juntar(marcadas))
+            .Should().BeEquivalentTo(marcadas, o => o.WithStrictOrdering());
+
+        SerValorMultiplo.Separar("Tipo A").Should().ContainSingle()
+            .Which.Should().Be("Tipo A", "valor único não precisa saber que existe separador");
+        SerValorMultiplo.Separar(null).Should().BeEmpty();
+    }
+
     [Fact]
     public void Sem_bloco_dinamico_devolve_lista_vazia()
     {

@@ -194,11 +194,15 @@ public sealed partial class SerNovaSolicitacaoService(
         return [.. sel.QuerySelectorAll("option")
             .Select(o => new SerOpcaoDto(
                 o.GetAttribute("value") ?? string.Empty,
-                string.Join(' ', o.TextContent.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))))
+                Espremer(o.TextContent)))
             // "Selecione..." e o placeholder do Seam não são opção de verdade.
             .Where(o => o.Valor.Length > 0
                         && !o.Valor.Contains("NoSelectionConverter", StringComparison.Ordinal))];
     }
+
+    /// <summary>Colapsa todo espaço em branco — o HTML do SER vem cheio de quebra e tabulação.</summary>
+    private static string Espremer(string texto) =>
+        string.Join(' ', texto.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 
     /// <summary>
     /// Os campos que o SER acrescenta conforme o recurso. Cada um é o par
@@ -220,45 +224,87 @@ public sealed partial class SerNovaSolicitacaoService(
             // Richfaces.Calendar.addLocale('pt', {'weekDayLabels':[...".
             foreach (var lixo in cont.QuerySelectorAll("script, style")) lixo.Remove();
 
-            var texto = string.Join(' ',
-                cont.TextContent.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
-
-            // O `rich:calendar` NÃO posta no id base: o valor viaja num input irmão terminado em
-            // `InputDate` (o mesmo padrão de `form0:dtInicialSolicitacaoInputDate` das telas de
-            // busca). Guardar o id base faria a data ir para um campo que o SER ignora — e o
-            // pedido seria recusado por falta de um dado que a tela mostrou preenchido.
-            //
-            // `InputCurrentDate` existe no mesmo componente e NÃO é o campo: por isso a
-            // comparação é pelo fim exato do nome.
-            var calendario = cont.QuerySelectorAll("input")
-                .FirstOrDefault(i => (i.GetAttribute("name") ?? string.Empty)
-                    .EndsWith("InputDate", StringComparison.Ordinal));
-
-            var el = calendario ?? cont.QuerySelector("input, select, textarea");
-            if (el is null) continue;
-
-            var tipo = calendario is not null
-                ? "date"
-                : el.TagName.ToLowerInvariant() switch
-                {
-                    "select" => "select",
-                    "textarea" => "textarea",
-                    _ => (el.GetAttribute("type") ?? "text").ToLowerInvariant(),
-                };
+            // Radio e checkbox do SER são um <table> com UM INPUT POR OPÇÃO — todos com o mesmo
+            // `name` — e o texto de cada opção num <label for="<id da opção>">. O extrator antigo
+            // só lia <option>, que esses campos não têm: gravou 56 radios e 4 checkboxes com
+            // ZERO opções. A tela então caía no input de texto livre — o operador digitaria onde
+            // o SER exige escolha entre valores fixos — e as opções ainda vinham grudadas no
+            // rótulo ("Grupo Sanguineo: Tipo A Tipo B Tipo O Tipo AB").
+            var marcaveis = cont.QuerySelectorAll("input[type=radio], input[type=checkbox]");
 
             List<SerOpcaoDto>? opcoes = null;
-            if (tipo == "select")
+            string tipo;
+            string? nome;
+
+            if (marcaveis.Length > 0)
             {
-                opcoes = [.. el.QuerySelectorAll("option")
-                    .Select(o => new SerOpcaoDto(
-                        o.GetAttribute("value") ?? string.Empty,
-                        string.Join(' ', o.TextContent.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))))
-                    .Where(o => o.Valor.Length > 0)];
+                var rotuloDaOpcao = new Dictionary<string, string>(StringComparer.Ordinal);
+                foreach (var l in cont.QuerySelectorAll("label[for]"))
+                {
+                    rotuloDaOpcao[l.GetAttribute("for")!] = Espremer(l.TextContent);
+                }
+
+                opcoes = [.. marcaveis
+                    .Select(i => new SerOpcaoDto(
+                        i.GetAttribute("value") ?? string.Empty,
+                        rotuloDaOpcao.TryGetValue(i.Id ?? string.Empty, out var r) && r.Length > 0
+                            ? r
+                            : i.GetAttribute("value") ?? string.Empty))
+                    .Where(o => o.Valor.Length > 0)
+                    .DistinctBy(o => o.Valor, StringComparer.Ordinal)];
+
+                // Só AQUI o <label for> é removido: medido em 22 containers reais, o rótulo do
+                // CAMPO nunca tem `for` e o das OPÇÕES sempre tem. Em campo comum o `for` — se um
+                // dia aparecer — seria o rótulo de verdade e não pode sumir.
+                foreach (var l in cont.QuerySelectorAll("label[for]")) l.Remove();
+
+                tipo = (marcaveis[0].GetAttribute("type") ?? "radio").ToLowerInvariant();
+                nome = marcaveis[0].GetAttribute("name");
             }
+            else
+            {
+                // O `rich:calendar` NÃO posta no id base: o valor viaja num input irmão terminado
+                // em `InputDate` (o mesmo padrão de `form0:dtInicialSolicitacaoInputDate` das
+                // telas de busca). Guardar o id base faria a data ir para um campo que o SER
+                // ignora — e o pedido seria recusado por falta de um dado que a tela mostrou
+                // preenchido.
+                //
+                // `InputCurrentDate` existe no mesmo componente e NÃO é o campo: por isso a
+                // comparação é pelo fim exato do nome.
+                var calendario = cont.QuerySelectorAll("input")
+                    .FirstOrDefault(i => (i.GetAttribute("name") ?? string.Empty)
+                        .EndsWith("InputDate", StringComparison.Ordinal));
+
+                var el = calendario ?? cont.QuerySelector("input, select, textarea");
+                if (el is null) continue;
+
+                tipo = calendario is not null
+                    ? "date"
+                    : el.TagName.ToLowerInvariant() switch
+                    {
+                        "select" => "select",
+                        "textarea" => "textarea",
+                        _ => (el.GetAttribute("type") ?? "text").ToLowerInvariant(),
+                    };
+
+                if (tipo == "select")
+                {
+                    opcoes = [.. el.QuerySelectorAll("option")
+                        .Select(o => new SerOpcaoDto(
+                            o.GetAttribute("value") ?? string.Empty,
+                            Espremer(o.TextContent)))
+                        .Where(o => o.Valor.Length > 0)];
+                }
+
+                nome = el.GetAttribute("name");
+            }
+
+            var texto = Espremer(cont.TextContent);
 
             saida.Add(new SerCampoDinamicoDto(
                 numero,
-                calendario?.GetAttribute("name") ?? $"form0:dinamico_id_{numero}",
+                // O `name` lido da página vem antes do id montado: quem manda é o SER.
+                nome is { Length: > 0 } ? nome : $"form0:dinamico_id_{numero}",
                 // O asterisco do SER é a marcação de obrigatório; some do rótulo e vira flag.
                 texto.Replace("*", string.Empty).Trim(' ', ':'),
                 tipo,
