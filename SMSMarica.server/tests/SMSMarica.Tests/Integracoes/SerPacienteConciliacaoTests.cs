@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Hl7.Fhir.Model;
 using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Core.Ser.Pacientes;
@@ -99,6 +99,97 @@ public class SerPacienteConciliacaoTests
         doSer.BirthDate.Should().Be("1985-04-12");
         doSer.Gender.Should().Be(AdministrativeGender.Female);
         doSer.MaritalStatus.Should().NotBeNull("fonte parcial só acrescenta");
+    }
+
+    /// <summary>
+    /// <b>O incidente de 10/08/2026, virado teste.</b> A paciente tinha telefone no hub — um vindo
+    /// do Salux, três trazidos por uma solicitação anterior do próprio SER. Uma OUTRA solicitação
+    /// da mesma pessoa, com o campo telefone em branco, conciliou por cima e levou todos embora:
+    /// 2.771 pacientes ficaram sem número nenhum. Formulário em branco é "não perguntaram", nunca
+    /// "não tem".
+    /// </summary>
+    [Fact]
+    public void Solicitacao_sem_telefone_nao_apaga_o_telefone_do_hub()
+    {
+        var noHub = new Patient();
+        PatientMergeFhir.AplicarContatos(noHub,
+            principal: "21997150212", celular: "21967156518", residencial: "2197173488",
+            email: "ester@exemplo.com", manual: false);
+
+        // A solicitação que o SER trouxe depois não perguntou telefone nenhum.
+        var doSer = SerPacienteFhirMapper.Construir(Solicitacao(s =>
+        {
+            s.TelefoneContato = null; s.TelefoneWhatsapp = null; s.TelefoneResidencial = null;
+        }));
+        doSer.Telecom.Should().BeNullOrEmpty("o mapper não inventa telefone vazio");
+
+        PatientMergeFhir.PreservarDoExistente(doSer, noHub);
+
+        doSer.Telecom.Where(t => t.System == ContactPoint.ContactPointSystem.Phone)
+            .Select(t => t.Value).Should()
+            .BeEquivalentTo(["21997150212", "21967156518", "2197173488"]);
+        doSer.Telecom.Single(t => t.Rank == 1).Value.Should().Be("21997150212",
+            "sem principal na origem, o do hub continua principal");
+        doSer.Telecom.Should().Contain(t => t.System == ContactPoint.ContactPointSystem.Email,
+            "e-mail é contato pela mesma régua");
+    }
+
+    /// <summary>
+    /// A marca de "sem CPF" fala sobre a LEITURA daquela base, não sobre a pessoa. Quando a união
+    /// de identifiers traz um CPF válido — de outra base ou do próprio hub — ela tem de sair,
+    /// senão a busca por dívida de identidade (<c>_tag</c>) devolve gente que tem CPF: eram 1.445
+    /// em 10/08/2026.
+    /// </summary>
+    [Fact]
+    public void Marca_de_identidade_incompleta_sai_quando_o_cpf_aparece()
+    {
+        // Solicitação sem CPF: o mapper carimba, e está certo — ele só viu o CNS.
+        var doSer = SerPacienteFhirMapper.Construir(Solicitacao(s => s.Cpf = null));
+        SMSMarica.Core.Pacientes.PacienteFhirMapper.TemIdentidadeIncompleta(doSer).Should().BeTrue();
+
+        // A união de identifiers traz o CPF que o Salux já tinha posto no hub.
+        doSer.Identifier.Add(new Identifier(PatientMergeFhir.SystemCpf, "52998224725"));
+        PatientMergeFhir.RevisarIdentidadeIncompleta(doSer);
+
+        SMSMarica.Core.Pacientes.PacienteFhirMapper.TemIdentidadeIncompleta(doSer).Should().BeFalse();
+    }
+
+    /// <summary>
+    /// E não sai por CPF de mentira: "00000000000" é preenchimento de campo obrigatório, não
+    /// chave nacional — desmarcar por causa dele esconderia a dívida em vez de saldá-la.
+    /// </summary>
+    [Fact]
+    public void Marca_nao_sai_com_cpf_invalido()
+    {
+        var doSer = SerPacienteFhirMapper.Construir(Solicitacao(s => s.Cpf = null));
+        doSer.Identifier.Add(new Identifier(PatientMergeFhir.SystemCpf, "00000000000"));
+
+        PatientMergeFhir.RevisarIdentidadeIncompleta(doSer);
+
+        SMSMarica.Core.Pacientes.PacienteFhirMapper.TemIdentidadeIncompleta(doSer).Should().BeTrue();
+    }
+
+    /// <summary>
+    /// O contato preservado não pode disputar o slot principal com quem a origem acabou de
+    /// afirmar — nem voltar duplicado a cada importação.
+    /// </summary>
+    [Fact]
+    public void Telefone_herdado_do_hub_vira_secundario_e_nao_duplica()
+    {
+        var noHub = new Patient();
+        PatientMergeFhir.AplicarContatos(noHub, principal: "2197173488", celular: null,
+            residencial: null, email: null, manual: false);
+
+        var doSer = SerPacienteFhirMapper.Construir(Solicitacao(s => s.TelefoneContato = "21997150212"));
+        PatientMergeFhir.PreservarDoExistente(doSer, noHub);
+
+        doSer.Telecom.Single(t => t.Rank == 1).Value.Should().Be("21997150212",
+            "o principal é de quem falou agora");
+        doSer.Telecom.Should().Contain(t => t.Value == "2197173488", "mas o antigo continua lá");
+
+        // Segunda passagem sobre o resultado da primeira: o mesmo número não pode entrar de novo.
+        PatientMergeFhir.PreservarDoExistente(doSer, noHub);
+        doSer.Telecom.Count(t => t.Value == "2197173488").Should().Be(1);
     }
 
     /// <summary>

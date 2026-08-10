@@ -106,6 +106,9 @@ internal static class UpsertCanonicoPep
             UnirIdentifiers(novo, atual);
             if (novo is Patient np && atual is Patient ap)
             {
+                // A união acabou de acontecer: se o CPF entrou (desta base ou de outra), a marca
+                // de "sem CPF" que o mapper carimbou sobre a PRÓPRIA leitura não vale mais.
+                Pacientes.Fhir.PatientMergeFhir.RevisarIdentidadeIncompleta(np);
                 Pacientes.Fhir.PatientMergeFhir.PreservarDoExistente(np, ap);
                 // Antes da conciliação, e sem atrapalhá-la: CompletarVazios só copia onde a
                 // origem NADA disse. Divergência de verdade é origem e hub ambos preenchidos e

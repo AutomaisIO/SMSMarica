@@ -417,7 +417,10 @@ public static class PatientMergeFhir
         }
         if (editados.Count > 0) MarcarEditados(novo, editados);
 
-        // 3. Telefones CONFIRMADOS — sempre preservados. Idempotente inclusive no retry: remove
+        // 3. TODO contato que o hub tem e a origem não trouxe. Ver PreservarContatos.
+        PreservarContatos(novo, atual);
+
+        // 4. Telefones CONFIRMADOS — sempre preservados. Idempotente inclusive no retry: remove
         //    QUALQUER confirmado já presente em 'novo' (de uma tentativa anterior) e injeta os do
         //    hub clonados, tirando o número correspondente vindo do Oracle.
         novo.Telecom ??= [];
@@ -440,6 +443,102 @@ public static class PatientMergeFhir
         }
     }
 
+    /// <summary>System das marcas de qualidade de dado (buscáveis por <c>_tag</c>).</summary>
+    public const string SysQualidade = "urn:smsmarica:qualidade";
+
+    /// <summary>Marca de "não dá para unir esta pessoa a outra base": entrou sem CPF (ADR-0041).</summary>
+    public const string TagIdentidadeIncompleta = "identidade-incompleta";
+
+    /// <summary>
+    /// Tira a marca de identidade incompleta quando o recurso <b>final</b> tem CPF válido.
+    ///
+    /// <para>Os três conectores (Salux, Klinikos, SER) carimbam a marca quando a SUA leitura veio
+    /// sem CPF — correto, cada um só responde pelo que viu. Mas o recurso gravado é a união: o
+    /// CPF pode chegar de outra base, ou já estar no hub, e <c>UnirIdentifiers</c> o traz. A marca
+    /// ficava mesmo assim. Medido em 10/08/2026: <b>1.445 pacientes com CPF ainda marcados como
+    /// sem CPF</b> — o que estraga justamente a busca que a marca existe para servir
+    /// (<c>GET /fhir/Patient?_tag=urn:smsmarica:qualidade|identidade-incompleta</c>).</para>
+    ///
+    /// <para>Roda depois da união de identifiers, e olha o CPF pelo dígito verificador: entrar com
+    /// "00000000000" no identifier não desmarca ninguém.</para>
+    /// </summary>
+    public static void RevisarIdentidadeIncompleta(Patient p)
+    {
+        if (p.Meta?.Tag is not { Count: > 0 }) return;
+        var cpf = p.Identifier?.FirstOrDefault(i => i.System == SystemCpf)?.Value;
+        if (!Integracoes.Pep.CpfPep.Valido(cpf)) return;
+        p.Meta.Tag.RemoveAll(t => t.System == SysQualidade && t.Code == TagIdentidadeIncompleta);
+    }
+
+    /// <summary>
+    /// <b>Nenhuma importação apaga contato do hub. Nunca.</b> Todo telefone/e-mail que existe em
+    /// <paramref name="atual"/> e que a origem não trouxe é carregado para
+    /// <paramref name="novo"/>.
+    ///
+    /// <para><b>Por que isto existe (incidente de 10/08/2026).</b> Até aqui só o telefone
+    /// CONFIRMADO era preservado; o resto vinha da origem, e origem que não fala apagava. O SER
+    /// escancarou: ele é um formulário, o mesmo cidadão aparece em várias solicitações e o campo
+    /// telefone vem em branco quando não perguntaram. Uma solicitação sem telefone conciliou por
+    /// cima e levou embora <b>2.771 pacientes</b> que tinham número — inclusive números que o
+    /// Salux tinha trazido, sem relação nenhuma com o SER. A trilha nem denunciava, porque
+    /// remoção não gerava linha.</para>
+    ///
+    /// <para><b>Vale para fonte parcial e para prontuário completo.</b> Para o resto da demografia
+    /// a régua continua a de sempre — campo que sumiu no Salux some no hub, e é
+    /// <see cref="CompletarVazios"/> que abre exceção só para fonte parcial. Contato não entra
+    /// nessa régua: um número a menos é uma pessoa que a Secretaria deixa de conseguir avisar, e
+    /// nenhuma importação tem informação suficiente para afirmar que um telefone deixou de
+    /// existir. Quem remove contato é o painel, com gente decidindo.</para>
+    ///
+    /// <para><b>O rank 1 continua sendo da origem.</b> O principal do hub que não veio na origem
+    /// entra como secundário (rank limpo) em vez de disputar o slot — preserva-se o número, não a
+    /// precedência. Só quando a origem não trouxe principal nenhum o do hub segue principal.</para>
+    /// </summary>
+    private static void PreservarContatos(Patient novo, Patient atual)
+    {
+        if (atual.Telecom is not { Count: > 0 }) return;
+        novo.Telecom ??= [];
+
+        var origemTemPrincipal = novo.Telecom.Any(t =>
+            t.System == ContactPoint.ContactPointSystem.Phone && t.Rank == 1);
+
+        foreach (var doHub in atual.Telecom.ToList())
+        {
+            if (JaRepresentado(novo, doHub)) continue;
+
+            var clone = (ContactPoint)doHub.DeepCopy();
+            // O principal é de quem falou agora; o herdado vira secundário.
+            if (clone.System == ContactPoint.ContactPointSystem.Phone
+                && clone.Rank == 1 && origemTemPrincipal)
+            {
+                clone.Rank = null;
+            }
+            novo.Telecom.Add(clone);
+        }
+    }
+
+    /// <summary>
+    /// O contato do hub já está no recurso que vai ser gravado? Telefone casa por dígitos
+    /// (tolerando DDI, como no resto do arquivo); e-mail, por texto normalizado. Comparar por
+    /// dígitos e não por objeto é o que impede o mesmo número de voltar duplicado em slots
+    /// diferentes a cada importação.
+    /// </summary>
+    private static bool JaRepresentado(Patient novo, ContactPoint doHub)
+    {
+        if (doHub.System == ContactPoint.ContactPointSystem.Phone)
+        {
+            var digitos = Digitos(doHub.Value);
+            if (digitos.Length == 0) return true; // telecom vazio não é contato — não carrega lixo
+            return novo.Telecom.Any(t => t.System == ContactPoint.ContactPointSystem.Phone
+                && MesmoNumero(Digitos(t.Value), digitos));
+        }
+
+        var valor = doHub.Value?.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(valor)) return true;
+        return novo.Telecom.Any(t => t.System == doHub.System
+            && string.Equals(t.Value?.Trim().ToLowerInvariant(), valor, StringComparison.Ordinal));
+    }
+
     /// <summary>
     /// Completa o recurso montado por uma <b>fonte PARCIAL</b> com o que só o hub tem.
     ///
@@ -454,10 +553,12 @@ public static class PatientMergeFhir
     /// <see cref="AplicarContatos"/>. Fonte parcial só acrescenta; para remover dado do hub
     /// existe o painel.</para>
     ///
-    /// <para><b>Telecom e identifier ficam de fora de propósito</b>: os dois já são união
-    /// (<c>AplicarContatos</c> preserva os não geridos, <c>UnirIdentifiers</c> acumula), e
-    /// mexer aqui desfaria o rank do confirmado que <see cref="PreservarDoExistente"/> acabou
-    /// de acertar.</para>
+    /// <para><b>Telecom e identifier ficam de fora daqui</b> porque são união em TODA importação,
+    /// parcial ou não: <see cref="PreservarContatos"/> carrega os contatos e <c>UnirIdentifiers</c>
+    /// acumula as chaves, ambos dentro de <see cref="PreservarDoExistente"/>. Repetir a união aqui
+    /// desfaria o rank do confirmado que ele acabou de acertar.
+    /// <b>Este parágrafo já foi mentira</b>: dizia que telecom "já era união" quando só o
+    /// confirmado sobrevivia, e foi assim que 2.771 pacientes perderam o telefone em 10/08/2026.</para>
     /// </summary>
     public static void CompletarVazios(Patient novo, Patient atual)
     {

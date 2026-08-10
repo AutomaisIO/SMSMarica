@@ -172,9 +172,18 @@ public sealed class SerConciliacaoPacienteService(
         // Telefone entra por número, não por slot: o que importa na trilha é "passou a ter este
         // número", e o slot pode ser reorganizado pelo merge sem nada de novo ter entrado.
         var fonesAntes = Fones(antes);
-        foreach (var f in Fones(depois).Where(f => !fonesAntes.Contains(f)))
+        var fonesDepois = Fones(depois);
+        foreach (var f in fonesDepois.Where(f => !fonesAntes.Contains(f)))
         {
             m.Add($"telefone: + {f}");
+        }
+
+        // Canário, não relatório: o merge não pode remover contato (PreservarContatos), então esta
+        // linha nunca deveria sair. Ela existe porque a trilha só listava telefone ACRESCENTADO —
+        // e foi por isso que o apagamento de 10/08/2026 passou 20 minutos sem deixar rastro.
+        foreach (var f in fonesAntes.Where(f => !fonesDepois.Contains(f)))
+        {
+            m.Add($"ATENÇÃO telefone REMOVIDO: {f}");
         }
 
         return m;

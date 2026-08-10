@@ -1,5 +1,6 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using SMSMarica.Core.Integracoes.Pep;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities.Ser;
 
@@ -25,6 +26,12 @@ public sealed record BackfillPacientesSerDto(
 /// <para><b>Uma solicitação por paciente, a mais recente.</b> O mesmo paciente aparece em várias
 /// solicitações ao longo dos anos, e o cadastro do SER muda entre elas — telefone novo, endereço
 /// novo. Conciliar todas em ordem faria o hub receber o dado antigo por último.</para>
+///
+/// <para><b>Exceção: contato não é campo, é acervo.</b> Telefone em branco no SER significa "não
+/// perguntaram", então a mais recente empresta das irmãs o número que ela não trouxe
+/// (<c>ComDadosDasIrmasAsync</c>) e o hub nunca perde o que já tinha
+/// (<c>PatientMergeFhir.PreservarContatos</c>). As duas metades da mesma regra: <b>contato só
+/// acumula</b>.</para>
 ///
 /// <para><b>Gate operacional: o hub não tem undo.</b> Rodar isto escreve identidade em milhares
 /// de pacientes. Só com backup do <c>fhir.patient</c> — a mesma regra do backfill de promoção
@@ -73,7 +80,7 @@ public sealed class SerBackfillPacientesService(
                 vistos++;
                 try
                 {
-                    var r = await conciliacao.ConciliarAsync(s, ct);
+                    var r = await conciliacao.ConciliarAsync(await ComDadosDasIrmasAsync(s, ct), ct);
                     if (r.PacienteId is { } pid)
                     {
                         s.PacienteId = pid;
@@ -144,7 +151,7 @@ public sealed class SerBackfillPacientesService(
             ct.ThrowIfCancellationRequested();
             try
             {
-                var r = await conciliacao.ConciliarAsync(s, ct);
+                var r = await conciliacao.ConciliarAsync(await ComDadosDasIrmasAsync(s, ct), ct);
                 switch (r.Resultado)
                 {
                     case ResultadoConciliacaoSer.Criado: criados++; break;
@@ -186,6 +193,73 @@ public sealed class SerBackfillPacientesService(
 
         return new BackfillPacientesSerDto(
             pendentes.Count, criados, enriquecidos, inalterados, semChave, falhas, duracao);
+    }
+
+    /// <summary>
+    /// A solicitação escolhida <b>com o que só as irmãs sabem</b> — telefones e CPF —, sem tocar
+    /// no espelho.
+    ///
+    /// <para><b>Por quê.</b> Concilia-se uma solicitação por pessoa, a mais recente — certo para
+    /// endereço e nome, onde o dado novo manda. Errado para o que é <b>acervo</b>: o SER é um
+    /// formulário, e campo em branco significa "não perguntaram nesta vez". Se o pedido mais novo
+    /// veio sem número, o número do pedido anterior <b>nunca chegava ao hub</b> (~1.430 pacientes
+    /// em 10/08/2026). E se veio sem CPF, a pessoa era ancorada por CNS mesmo tendo CPF em outra
+    /// solicitação (270 pessoas) — ancorar por CNS duplica cerca de 4 em cada 10.</para>
+    ///
+    /// <para><b>Irmã é quem compartilha a CNS</b> (ou, na falta dela, o CPF válido). Não é chute:
+    /// medido no espelho inteiro em 10/08/2026 — <b>18.807 CNS distintas, nenhuma com mais de um
+    /// CPF e nenhuma com mais de um nome</b>. O caminho do CPF exige dígito verificador válido,
+    /// senão as 85 solicitações com "00000000000" fundiriam pessoas diferentes numa só.</para>
+    ///
+    /// <para><b>O que isto NÃO faz:</b> unir as duas CNS da mesma pessoa. Quem tem CNS provisória
+    /// (faixa 898…) e definitiva aparece aqui como duas irmandades — 18 das 270. Elas não perdem
+    /// nada por isso: já chegam ao mesmo Patient pelo CPF que outra base trouxe, e a marca de
+    /// identidade incompleta sai por <c>PatientMergeFhir.RevisarIdentidadeIncompleta</c>. Casar
+    /// CNS provisória com definitiva exigiria nome+nascimento como chave, que é exatamente a
+    /// heurística que duplicou pessoa no piloto.</para>
+    ///
+    /// <para><b>Cópia destacada, nunca a entidade rastreada.</b> O espelho do SER é
+    /// somente-leitura — ele reproduz o que o Estado tem, e não pode ganhar um telefone ou um CPF
+    /// que aquela solicitação não trazia. A consolidação vive só na memória, no caminho da
+    /// conciliação; um <c>SaveChanges</c> depois disto não escreve nada disso.</para>
+    /// </summary>
+    private async Task<SerSolicitacao> ComDadosDasIrmasAsync(SerSolicitacao s, CancellationToken ct)
+    {
+        var faltaZap = string.IsNullOrWhiteSpace(s.TelefoneWhatsapp);
+        var faltaContato = string.IsNullOrWhiteSpace(s.TelefoneContato);
+        var faltaResidencial = string.IsNullOrWhiteSpace(s.TelefoneResidencial);
+        var faltaCpf = !CpfPep.Valido(s.Cpf);
+        if (!faltaZap && !faltaContato && !faltaResidencial && !faltaCpf) return s;
+
+        // Chave da irmandade: CNS quando existe; senão o CPF, e só se for válido por DV.
+        var cns = s.Cns ?? string.Empty;
+        var cpfAncora = CpfPep.Valido(s.Cpf) ? s.Cpf : null;
+        if (cns.Length == 0 && cpfAncora is null) return s;
+
+        var irmas = await db.SerSolicitacoes
+            .AsNoTracking()
+            .Where(x => x.Id != s.Id && x.ExcluidoEm == null
+                        && (cns.Length > 0 ? x.Cns == cns : x.Cpf == cpfAncora))
+            .OrderByDescending(x => x.SincronizadoEm)
+            .ThenByDescending(x => x.DataSolicitacao)
+            .Select(x => new { x.Cpf, x.TelefoneWhatsapp, x.TelefoneContato, x.TelefoneResidencial })
+            .ToListAsync(ct);
+
+        if (irmas.Count == 0) return s;
+
+        var copia = (SerSolicitacao)db.Entry(s).CurrentValues.ToObject();
+        if (faltaZap)
+            copia.TelefoneWhatsapp = irmas
+                .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.TelefoneWhatsapp))?.TelefoneWhatsapp;
+        if (faltaContato)
+            copia.TelefoneContato = irmas
+                .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.TelefoneContato))?.TelefoneContato;
+        if (faltaResidencial)
+            copia.TelefoneResidencial = irmas
+                .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.TelefoneResidencial))?.TelefoneResidencial;
+        if (faltaCpf)
+            copia.Cpf = irmas.FirstOrDefault(x => CpfPep.Valido(x.Cpf))?.Cpf;
+        return copia;
     }
 
     /// <summary>

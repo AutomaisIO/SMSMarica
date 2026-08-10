@@ -1,5 +1,7 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using SMSMarica.Core.Ser.Pacientes;
 using SMSMarica.Data.Entities.Enums;
 using SMSMarica.Data.Entities.Ser;
 using SMSMarica.Tests.Infraestrutura;
@@ -77,5 +79,69 @@ public class SerBackfillOrdemTests(PostgresFixture fixture)
         grupos[0].TemCpf.Should().BeTrue();
         grupos[1].Id.Should().Be(soCns.Id, "o só-CNS fica para o fim, mesmo sendo o mais recente de todos");
         grupos.Select(x => x.Id).Should().NotContain(antiga.Id, "a solicitação velha do mesmo paciente sai");
+    }
+
+    /// <summary>
+    /// O caso da Ester (10/08/2026): o pedido mais novo veio sem CPF e sem telefone, e era ele
+    /// quem falava pela pessoa inteira — apagou telefone e carimbou "sem CPF" em quem tinha CPF
+    /// em duas solicitações anteriores. Agora a mais nova empresta da irmã de mesma CNS.
+    ///
+    /// <para>A outra metade do teste é tão importante quanto: o espelho do SER <b>não pode</b>
+    /// sair alterado. Ele reproduz o que o Estado tem; se a consolidação vazasse para a entidade
+    /// rastreada, o próximo <c>SaveChanges</c> inventaria no espelho um dado que o SER nunca
+    /// mandou.</para>
+    /// </summary>
+    [Fact]
+    public async Task Solicitacao_sem_cpf_e_sem_telefone_empresta_da_irma_de_mesma_cns()
+    {
+        await using var db = fixture.CriarDbContext();
+
+        var marca = Guid.NewGuid().ToString("N")[..6];
+        var baseData = new DateTime(2026, 8, 1, 12, 0, 0, DateTimeKind.Utc);
+        const string cns = "700300908811839";
+
+        var irma = Nova($"{marca}-irma", "52998224725", cns, baseData);
+        irma.TelefoneWhatsapp = "(21) 96715-6518";
+        irma.TelefoneContato = "(21) 99715-0212";
+
+        // A mais recente: mesma CNS, sem CPF, sem telefone — e é ela que está na fila.
+        var alvo = Nova($"{marca}-alvo", null, cns, baseData.AddDays(30));
+        alvo.PacienteConciliarEm = baseData.AddDays(30);
+
+        db.SerSolicitacoes.AddRange(irma, alvo);
+        await db.SaveChangesAsync();
+
+        var espia = new ConciliacaoEspia();
+        var servico = new SerBackfillPacientesService(
+            db, espia, NullLogger<SerBackfillPacientesService>.Instance);
+
+        await servico.ExecutarPendentesAsync(50, CancellationToken.None);
+
+        var conciliada = espia.Recebidas.Should()
+            .ContainSingle(x => x.IdSer == alvo.IdSer).Subject;
+        conciliada.Cpf.Should().Be("52998224725", "a irmã de mesma CNS sabia o CPF");
+        conciliada.TelefoneWhatsapp.Should().Be("(21) 96715-6518");
+        conciliada.TelefoneContato.Should().Be("(21) 99715-0212");
+
+        // O espelho continua sendo o retrato fiel do SER.
+        await using var conferencia = fixture.CriarDbContext();
+        var noBanco = await conferencia.SerSolicitacoes
+            .AsNoTracking().SingleAsync(x => x.Id == alvo.Id);
+        noBanco.Cpf.Should().BeNull("o SER não mandou CPF nesta solicitação");
+        noBanco.TelefoneWhatsapp.Should().BeNull();
+        noBanco.TelefoneContato.Should().BeNull();
+    }
+
+    /// <summary>Captura o que a conciliação recebeu, sem falar com hub nenhum.</summary>
+    private sealed class ConciliacaoEspia : ISerConciliacaoPacienteService
+    {
+        public List<SerSolicitacao> Recebidas { get; } = [];
+
+        public Task<ConciliacaoSerDto> ConciliarAsync(SerSolicitacao s, CancellationToken ct)
+        {
+            Recebidas.Add(s);
+            return Task.FromResult(
+                new ConciliacaoSerDto(ResultadoConciliacaoSer.Inalterado, null, []));
+        }
     }
 }

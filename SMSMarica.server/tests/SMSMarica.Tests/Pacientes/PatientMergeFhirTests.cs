@@ -300,6 +300,26 @@ public class PatientMergeFhirTests
         novo.Telecom.Should().Contain(t => Digitos(t.Value) == "21911112222"); // o do Oracle fica em slot secundário
     }
 
+    /// <summary>
+    /// A invariante vale para prontuário COMPLETO também, não só para fonte parcial: o Oracle
+    /// deixar de trazer um telefone não é motivo para o hub perdê-lo. Um número a menos é um
+    /// cidadão que a Secretaria não consegue avisar; quem remove contato é o painel.
+    /// </summary>
+    [Fact]
+    public void PreservarDoExistente_nao_apaga_telefone_que_a_origem_deixou_de_trazer()
+    {
+        var atual = Importado();
+        atual.Telecom = [Fone("21988887777", rank: 1), Fone("2126210000", ContactPoint.ContactPointUse.Home)];
+
+        // Oracle veio sem telefone nenhum nesta leitura.
+        var novo = new Patient { Name = [new HumanName { Use = HumanName.NameUse.Official, Text = "MARIA" }] };
+
+        PatientMergeFhir.PreservarDoExistente(novo, atual);
+
+        novo.Telecom.Select(t => Digitos(t.Value)).Should().BeEquivalentTo(["21988887777", "2126210000"]);
+        novo.Telecom.Single(t => t.Rank == 1).Value.Should().Be("21988887777");
+    }
+
     [Fact]
     public void PreservarDoExistente_e_idempotente()
     {
