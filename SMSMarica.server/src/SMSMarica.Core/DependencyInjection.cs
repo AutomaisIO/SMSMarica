@@ -328,6 +328,14 @@ public static class DependencyInjection
         // Formulário de nova solicitação, lido ao vivo do SER (somente leitura — não envia).
         services.AddScoped<Ser.ISerNovaSolicitacaoService, Ser.SerNovaSolicitacaoService>();
 
+        // Catálogo do SER espelhado: a tela monta o formulário DAQUI, offline. O sync é quem
+        // copia (leitura longa, sob demanda); o service de leitura não toca no SER.
+        services.AddScoped<Ser.ISerCatalogoService, Ser.SerCatalogoService>();
+        services.AddScoped<Ser.ISerCatalogoSyncService, Ser.SerCatalogoSyncService>();
+
+        // Rascunhos: pedidos montados e guardados aqui, com anexos, até serem autorizados.
+        services.AddScoped<Ser.ISerRascunhoService, Ser.SerRascunhoService>();
+
         // Consulta DIRETA ao SER: a bancada de testes da integração. Exercita login, módulo,
         // ViewState, busca, paginação e parser em segundos, sem gravar nada.
         services.AddScoped<Ser.ISerConsultaDiretaService, Ser.SerConsultaDiretaService>();

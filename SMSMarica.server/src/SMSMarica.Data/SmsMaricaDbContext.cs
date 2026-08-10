@@ -123,6 +123,15 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<SerVarreduraExecucao> SerVarreduraExecucoes => Set<SerVarreduraExecucao>();
     public DbSet<SerVarreduraFalha> SerVarreduraFalhas => Set<SerVarreduraFalha>();
 
+    // Catálogo do SER espelhado: a tela de nova solicitação monta o formulário daqui, offline.
+    public DbSet<SerCatalogoRecurso> SerCatalogoRecursos => Set<SerCatalogoRecurso>();
+    public DbSet<SerCatalogoCampo> SerCatalogoCampos => Set<SerCatalogoCampo>();
+    public DbSet<SerCatalogoLista> SerCatalogoListas => Set<SerCatalogoLista>();
+
+    // Pedidos montados na nossa base, esperando autorização para ir ao SER.
+    public DbSet<SerSolicitacaoRascunho> SerSolicitacaoRascunhos => Set<SerSolicitacaoRascunho>();
+    public DbSet<SerRascunhoAnexo> SerRascunhoAnexos => Set<SerRascunhoAnexo>();
+
     // Indicadores contratuais do HMCML — o motor de cada indicador é o SQL guardado no cadastro
     public DbSet<Indicador> Indicadores => Set<Indicador>();
     public DbSet<IndicadorVersao> IndicadorVersoes => Set<IndicadorVersao>();

@@ -336,3 +336,76 @@ public sealed record SerFormularioNovaDto(
     IReadOnlyList<SerOpcaoDto> ClassificacoesRisco,
     IReadOnlyList<SerOpcaoDto> Medicos,
     IReadOnlyList<SerCampoDinamicoDto> CamposDinamicosPadrao);
+
+// ---------------------------------------------------------------- rascunhos
+// Pedidos montados na NOSSA base, com anexos, esperando autorização para ir ao SER.
+
+public sealed record SerRascunhoListaDto(
+    Guid Id,
+    StatusRascunhoSer Status,
+    TipoRecursoSer? Tipo,
+    string? RecursoRotulo,
+    string? PacienteNome,
+    string? Cns,
+    string? Hipotese,
+    string? IdSerGerado,
+    string? CriadoPorNome,
+    DateTime CriadoEm,
+    DateTime? AtualizadoEm,
+    DateTime? EnviadoEm,
+    int Anexos);
+
+public sealed record SerRascunhoAnexoDto(
+    Guid Id,
+    Guid MidiaId,
+    string NomeArquivo,
+    string? ContentType,
+    long Tamanho,
+    /// <summary>Nulo = o arquivo ainda é só nosso; não subiu para o SER.</summary>
+    DateTime? EnviadoEm,
+    DateTime CriadoEm);
+
+public sealed record SerRascunhoDetalheDto(
+    Guid Id,
+    StatusRascunhoSer Status,
+    TipoRecursoSer? Tipo,
+    string? RecursoValor,
+    string? RecursoRotulo,
+    string? Cns,
+    string? PacienteNome,
+    string? Hipotese,
+    /// <summary>Valores do formulário com os nomes JSF do SER como chave — é o que seria postado.</summary>
+    IReadOnlyDictionary<string, string> Campos,
+    string? IdSerGerado,
+    string? MensagemErro,
+    string? CriadoPorNome,
+    DateTime CriadoEm,
+    DateTime? AtualizadoEm,
+    DateTime? EnviadoEm,
+    IReadOnlyList<SerRascunhoAnexoDto> Anexos);
+
+public sealed record SerRascunhoRequest
+{
+    public TipoRecursoSer? Tipo { get; init; }
+    public string? RecursoValor { get; init; }
+    public string? RecursoRotulo { get; init; }
+    public string? Cns { get; init; }
+    public string? PacienteNome { get; init; }
+    public string? Hipotese { get; init; }
+    public Dictionary<string, string>? Campos { get; init; }
+}
+
+// ---------------------------------------------------------------- catálogo espelhado
+
+/// <summary>O formulário montado a partir do NOSSO catálogo — sem tocar no SER.</summary>
+public sealed record SerCatalogoFormularioDto(
+    IReadOnlyList<SerOpcaoDto> AmbulatorioEstadual,
+    IReadOnlyList<SerOpcaoDto> ClassificacoesRisco,
+    IReadOnlyList<SerOpcaoDto> Medicos,
+    IReadOnlyList<SerCatalogoRecursoDto> Recursos,
+    DateTime? SincronizadoEm,
+    /// <summary>Recursos cujos campos ainda não foram lidos — o catálogo está incompleto.</summary>
+    int RecursosSemCampos);
+
+public sealed record SerCatalogoRecursoDto(
+    TipoRecursoSer Tipo, string Valor, string Rotulo, bool CamposLidos);

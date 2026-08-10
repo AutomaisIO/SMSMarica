@@ -214,6 +214,17 @@ public sealed class SerConfiguracaoController(
         CancellationToken cancellationToken) =>
         nova.ObterCamposDinamicosAsync(tipo, recurso, cancellationToken);
 
+    /// <summary>Copia o catálogo do SER para a nossa base. Leitura longa (~15 min, uma ida por
+    /// recurso) e retomável — recurso já lido não é pedido de novo, salvo `refazerTudo`.</summary>
+    [HttpPost("catalogo/sincronizar")]
+    [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Edicao)]
+    [ProducesResponseType<SerCatalogoSyncResultadoDto>(StatusCodes.Status200OK)]
+    public Task<SerCatalogoSyncResultadoDto> SincronizarCatalogo(
+        [FromQuery] bool refazerTudo,
+        [FromServices] ISerCatalogoSyncService sync,
+        CancellationToken cancellationToken) =>
+        sync.SincronizarAsync(refazerTudo, cancellationToken);
+
     /// <summary>Configuração do disparo diário (ligado/desligado + hora de Brasília).</summary>
     [HttpGet("varredura-automatica")]
     [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Consulta)]
@@ -245,3 +256,102 @@ public sealed class SerConfiguracaoController(
 
 /// <summary>Credencial avulsa para teste (não é gravada aqui).</summary>
 public sealed record SerTestarCredencialRequest(string Usuario, string Senha);
+
+
+/// <summary>
+/// <b>Regulação → Nova solicitação</b>: catálogo espelhado e rascunhos.
+///
+/// <para>Tudo aqui é LOCAL — nenhuma requisição ao SER. O formulário vem do catálogo copiado, o
+/// pedido é montado e guardado aqui com os anexos, e o envio ao SER é um passo separado que ainda
+/// não está ligado.</para>
+/// </summary>
+[ApiController]
+[Route("regulacao/ser/rascunhos")]
+public sealed class SerRascunhoController(
+    ISerCatalogoService catalogo,
+    ISerRascunhoService rascunhos) : ControllerBase
+{
+    /// <summary>Formulário montado do NOSSO catálogo — offline e instantâneo.</summary>
+    [HttpGet("formulario")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]
+    [ProducesResponseType<SerCatalogoFormularioDto>(StatusCodes.Status200OK)]
+    public Task<SerCatalogoFormularioDto> Formulario(CancellationToken cancellationToken) =>
+        catalogo.ObterFormularioAsync(cancellationToken);
+
+    [HttpGet("campos")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<SerCampoDinamicoDto>>(StatusCodes.Status200OK)]
+    public Task<IReadOnlyList<SerCampoDinamicoDto>> Campos(
+        [FromQuery] TipoRecursoSer tipo,
+        [FromQuery] string recurso,
+        CancellationToken cancellationToken) =>
+        catalogo.ObterCamposAsync(tipo, recurso, cancellationToken);
+
+    [HttpGet]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<SerRascunhoListaDto>>(StatusCodes.Status200OK)]
+    public Task<IReadOnlyList<SerRascunhoListaDto>> Listar(
+        [FromQuery] StatusRascunhoSer? status, CancellationToken cancellationToken) =>
+        rascunhos.ListarAsync(status, cancellationToken);
+
+    [HttpGet("{id:guid}")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]
+    [ProducesResponseType<SerRascunhoDetalheDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public Task<SerRascunhoDetalheDto> Obter(Guid id, CancellationToken cancellationToken) =>
+        rascunhos.ObterAsync(id, cancellationToken);
+
+    [HttpPost]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Edicao)]
+    [ProducesResponseType<SerRascunhoDetalheDto>(StatusCodes.Status200OK)]
+    public Task<SerRascunhoDetalheDto> Criar(
+        [FromBody] SerRascunhoRequest corpo, CancellationToken cancellationToken) =>
+        rascunhos.SalvarAsync(null, corpo, cancellationToken);
+
+    [HttpPut("{id:guid}")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Edicao)]
+    [ProducesResponseType<SerRascunhoDetalheDto>(StatusCodes.Status200OK)]
+    public Task<SerRascunhoDetalheDto> Salvar(
+        Guid id, [FromBody] SerRascunhoRequest corpo, CancellationToken cancellationToken) =>
+        rascunhos.SalvarAsync(id, corpo, cancellationToken);
+
+    [HttpDelete("{id:guid}")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Exclusao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Excluir(Guid id, CancellationToken cancellationToken)
+    {
+        await rascunhos.ExcluirAsync(id, cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>Marca como pronto para envio. Recusa se faltar campo obrigatório.</summary>
+    [HttpPost("{id:guid}/pronto")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Edicao)]
+    [ProducesResponseType<SerRascunhoDetalheDto>(StatusCodes.Status200OK)]
+    public Task<SerRascunhoDetalheDto> MarcarPronto(Guid id, CancellationToken cancellationToken) =>
+        rascunhos.MarcarProntoAsync(id, cancellationToken);
+
+    /// <summary>Anexa um arquivo ao rascunho. Fica guardado AQUI; sobe para o SER só no envio.</summary>
+    [HttpPost("{id:guid}/anexos")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Edicao)]
+    [RequestSizeLimit(12 * 1024 * 1024)]
+    [ProducesResponseType<SerRascunhoAnexoDto>(StatusCodes.Status200OK)]
+    public async Task<SerRascunhoAnexoDto> Anexar(
+        Guid id, IFormFile arquivo, CancellationToken cancellationToken)
+    {
+        using var ms = new MemoryStream();
+        await arquivo.CopyToAsync(ms, cancellationToken);
+        return await rascunhos.AnexarAsync(
+            id, arquivo.FileName, arquivo.ContentType, ms.ToArray(), cancellationToken);
+    }
+
+    [HttpDelete("{id:guid}/anexos/{anexoId:guid}")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RemoverAnexo(
+        Guid id, Guid anexoId, CancellationToken cancellationToken)
+    {
+        await rascunhos.RemoverAnexoAsync(id, anexoId, cancellationToken);
+        return NoContent();
+    }
+}
