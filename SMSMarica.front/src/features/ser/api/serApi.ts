@@ -19,7 +19,6 @@ import type {
   OpcaoSer,
   CampoDinamicoSer,
   CatalogoFormularioSer,
-  CatalogoSyncResultado,
   AnexoRascunhoSer,
   RascunhoSerDetalhe,
   RascunhoSerLista,
@@ -222,12 +221,14 @@ export async function removerAnexoRascunhoSer(id: string, anexoId: string): Prom
   await http.delete(`/regulacao/ser/rascunhos/${id}/anexos/${anexoId}`);
 }
 
-/** Copia o catálogo do SER. Leitura longa (~15 min) — a tela avisa o operador. */
-export async function sincronizarCatalogoSer(refazerTudo = false): Promise<CatalogoSyncResultado> {
-  const { data } = await http.post<CatalogoSyncResultado>(
-    '/regulacao/ser/configuracao/catalogo/sincronizar',
-    null,
-    { params: { refazerTudo }, timeout: 30 * 60_000 },
-  );
-  return data;
+/**
+ * Dispara a cópia do catálogo. Responde 202 na hora — quem trabalha é um job em segundo plano.
+ *
+ * Antes esta chamada esperava os ~10 minutos da cópia: o proxy desistia, o navegador mostrava
+ * "Network Error" e o cancelamento da conexão abortada MATAVA a cópia no meio.
+ */
+export async function sincronizarCatalogoSer(refazerTudo = false): Promise<void> {
+  await http.post('/regulacao/ser/configuracao/catalogo/sincronizar', null, {
+    params: { refazerTudo },
+  });
 }

@@ -21,7 +21,9 @@ public interface ISerCatalogoService
         TipoRecursoSer tipo, string recurso, CancellationToken cancellationToken);
 }
 
-public sealed class SerCatalogoService(SmsMaricaDbContext db) : ISerCatalogoService
+public sealed class SerCatalogoService(
+    SmsMaricaDbContext db,
+    Background.ISerCatalogoSyncFila fila) : ISerCatalogoService
 {
     public async Task<SerCatalogoFormularioDto> ObterFormularioAsync(
         CancellationToken cancellationToken)
@@ -49,7 +51,9 @@ public sealed class SerCatalogoService(SmsMaricaDbContext db) : ISerCatalogoServ
             Lista(listas, "medico"),
             recursos,
             sincronizado,
-            recursos.Count(r => !r.CamposLidos));
+            recursos.Count(r => !r.CamposLidos),
+            fila.EmExecucao,
+            fila.UltimoErro);
     }
 
     public async Task<IReadOnlyList<SerCampoDinamicoDto>> ObterCamposAsync(

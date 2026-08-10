@@ -218,12 +218,25 @@ public sealed class SerConfiguracaoController(
     /// recurso) e retomável — recurso já lido não é pedido de novo, salvo `refazerTudo`.</summary>
     [HttpPost("catalogo/sincronizar")]
     [RequerPermissao(ModuloPermissao.RegulacaoConfiguracao, AcoesPermissao.Edicao)]
-    [ProducesResponseType<SerCatalogoSyncResultadoDto>(StatusCodes.Status200OK)]
-    public Task<SerCatalogoSyncResultadoDto> SincronizarCatalogo(
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public IActionResult SincronizarCatalogo(
         [FromQuery] bool refazerTudo,
-        [FromServices] ISerCatalogoSyncService sync,
-        CancellationToken cancellationToken) =>
-        sync.SincronizarAsync(refazerTudo, cancellationToken);
+        [FromServices] SMSMarica.Core.Ser.Background.ISerCatalogoSyncFila fila)
+    {
+        // Responde na hora: a cópia roda em segundo plano e a tela acompanha pelo progresso.
+        if (!fila.TentarEnfileirar(refazerTudo))
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Conflito",
+                Detail = "A cópia do catálogo já está em andamento.",
+                Status = StatusCodes.Status409Conflict,
+            });
+        }
+
+        return Accepted();
+    }
 
     /// <summary>Configuração do disparo diário (ligado/desligado + hora de Brasília).</summary>
     [HttpGet("varredura-automatica")]

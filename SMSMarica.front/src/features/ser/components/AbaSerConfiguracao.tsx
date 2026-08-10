@@ -334,6 +334,13 @@ export function AbaSerConfiguracao() {
           <HardDriveDownload className="size-4 text-slate-500" />
           <div className="min-w-64 flex-1 text-sm text-slate-700">
             <strong>Catálogo do SER</strong>{' '}
+            {catalogo?.copiaEmAndamento && (
+              <span className="ml-1 inline-flex items-center gap-1 text-blue-700">
+                <Loader2 className="size-3.5 animate-spin" />
+                copiando… {catalogo.recursos.length - catalogo.recursosSemCampos} de{' '}
+                {catalogo.recursos.length}
+              </span>
+            )}
             {catalogo && catalogo.recursos.length > 0 ? (
               <>
                 — {catalogo.recursos.length} recursos copiados
@@ -359,17 +366,15 @@ export function AbaSerConfiguracao() {
               setErro(null);
               setAviso(null);
               try {
-                const r = await sincronizarCatalogo.mutateAsync(false);
+                await sincronizarCatalogo.mutateAsync(false);
                 setAviso(
-                  `Catálogo copiado: ${r.recursos} recursos, ${r.campos} campos, ` +
-                    `${r.listas} itens de lista em ${r.duracaoSegundos}s` +
-                    (r.falhas > 0 ? ` — ${r.falhas} recurso(s) falharam e ficam para a próxima.` : '.'),
+                  'Cópia iniciada em segundo plano. Pode fechar esta tela — o progresso aparece aqui.',
                 );
               } catch (e) {
                 setErro(extrairMensagemDeErro(e));
               }
             }}
-            disabled={sincronizarCatalogo.isPending || status?.varreduraEmAndamento}
+            disabled={sincronizarCatalogo.isPending || catalogo?.copiaEmAndamento || status?.varreduraEmAndamento}
           >
             {sincronizarCatalogo.isPending ? (
               <Loader2 className="size-4 animate-spin" />
@@ -379,8 +384,13 @@ export function AbaSerConfiguracao() {
             Copiar catálogo do SER
           </Button>
 
+          {catalogo?.ultimoErro && (
+            <p className="w-full text-xs text-red-700">Última tentativa falhou: {catalogo.ultimoErro}</p>
+          )}
+
           <p className="w-full text-xs text-slate-500">
-            Uma ida ao SER por recurso (~15 min na primeira vez). É retomável: recurso já copiado
+            Roda em segundo plano — pode fechar a tela. Uma ida ao SER por recurso (~10 min na
+            primeira vez). É retomável: recurso já copiado
             não é pedido de novo, então rodar outra vez completa o que faltou.
           </p>
         </div>

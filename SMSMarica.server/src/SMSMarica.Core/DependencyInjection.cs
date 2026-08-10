@@ -333,6 +333,11 @@ public static class DependencyInjection
         services.AddScoped<Ser.ISerCatalogoService, Ser.SerCatalogoService>();
         services.AddScoped<Ser.ISerCatalogoSyncService, Ser.SerCatalogoSyncService>();
 
+        // A cópia leva ~10 min: roda FORA do request. Dentro dele, o proxy desistia e o
+        // CancellationToken da conexão abortada matava a cópia no meio (10/08/2026).
+        services.AddSingleton<Ser.Background.ISerCatalogoSyncFila, Ser.Background.SerCatalogoSyncFila>();
+        services.AddHostedService<Ser.Background.SerCatalogoSyncRunner>();
+
         // Rascunhos: pedidos montados e guardados aqui, com anexos, até serem autorizados.
         services.AddScoped<Ser.ISerRascunhoService, Ser.SerRascunhoService>();
 

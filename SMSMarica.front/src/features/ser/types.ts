@@ -370,6 +370,10 @@ export type CatalogoFormularioSer = {
   /** Data do item MAIS ANTIGO: o catálogo só está tão atualizado quanto a parte mais velha. */
   sincronizadoEm: string | null;
   recursosSemCampos: number;
+  /** A cópia está rodando agora, em segundo plano. */
+  copiaEmAndamento: boolean;
+  /** Motivo da última falha, quando houve. */
+  ultimoErro: string | null;
 };
 
 export type AnexoRascunhoSer = {

@@ -405,7 +405,13 @@ public sealed record SerCatalogoFormularioDto(
     IReadOnlyList<SerCatalogoRecursoDto> Recursos,
     DateTime? SincronizadoEm,
     /// <summary>Recursos cujos campos ainda não foram lidos — o catálogo está incompleto.</summary>
-    int RecursosSemCampos);
+    int RecursosSemCampos,
+
+    /// <summary>A cópia está rodando agora, em segundo plano.</summary>
+    bool CopiaEmAndamento,
+
+    /// <summary>Motivo da última falha, quando houve — para a tela não ficar em silêncio.</summary>
+    string? UltimoErro);
 
 public sealed record SerCatalogoRecursoDto(
     TipoRecursoSer Tipo, string Valor, string Rotulo, bool CamposLidos);

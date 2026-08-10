@@ -231,8 +231,14 @@ export const rascunhoKeys = {
   item: (id: string) => ['ser', 'rascunhos', id] as const,
 };
 
+/** Enquanto a cópia roda, acompanha de 3 em 3s — é assim que o progresso aparece sem o
+ *  operador precisar recarregar a página. Parada, não pergunta mais nada. */
 export function useFormularioCatalogoSer() {
-  return useQuery({ queryKey: rascunhoKeys.formulario, queryFn: obterFormularioCatalogoSer });
+  return useQuery({
+    queryKey: rascunhoKeys.formulario,
+    queryFn: obterFormularioCatalogoSer,
+    refetchInterval: (q) => (q.state.data?.copiaEmAndamento ? 3000 : false),
+  });
 }
 
 export function useCamposCatalogoSer(tipo?: TipoRecursoSer, recurso?: string) {
