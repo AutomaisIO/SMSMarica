@@ -83,9 +83,24 @@ public sealed class ComunicacaoPacienteService(
 
         // Idempotência: uma comunicação por solicitação × finalidade (o índice único garante;
         // a checagem evita a exceção quando o gatilho re-dispara).
-        var jaExiste = await db.ComunicacoesPaciente
-            .AnyAsync(c => c.SolicitacaoId == solicitacao.Id && c.Finalidade == finalidade, ct);
-        if (jaExiste) return;
+        var existente = await db.ComunicacoesPaciente
+            .FirstOrDefaultAsync(c => c.SolicitacaoId == solicitacao.Id && c.Finalidade == finalidade, ct);
+        if (existente is not null)
+        {
+            if (!await EstaObsoletaAsync(existente, ct)) return;
+
+            // OBSOLETA: o aviso saiu ANTES do estudo que o exame carrega hoje — ou seja, falava de
+            // OUTRO exame. Acontece depois de uma correção de identidade: o paciente recebeu o
+            // resultado errado, o vínculo foi consertado e, sem isto, ele nunca seria avisado do
+            // exame certo (a linha já existe, então o enfileiramento virava no-op). Foi o caso do
+            // João Bento em 11/08/2026.
+            await RevogarAcessosAsync(solicitacao.Id, DateTime.UtcNow, ct);
+            RearmarParaNovoEnvio(existente);
+            logger.LogInformation(
+                "Comunicação {Id} ({Finalidade}) rearmada: o aviso anterior era de outro estudo.",
+                existente.Id, finalidade);
+            return;
+        }
 
         db.ComunicacoesPaciente.Add(new ComunicacaoPaciente
         {
@@ -99,6 +114,40 @@ public sealed class ComunicacaoPacienteService(
             ProximaTentativaEm = DateTime.UtcNow,
             CriadoEm = DateTime.UtcNow,
         });
+    }
+
+    /// <summary>
+    /// O aviso já enviado fala do estudo que o exame carrega HOJE? Se saiu antes de o exame ser
+    /// dado como realizado com o vínculo atual, fala de outro — está obsoleto.
+    /// <para>Só vale para aviso já ENVIADO: o que ainda está na fila sai com o link atual.</para>
+    /// </summary>
+    private async Task<bool> EstaObsoletaAsync(ComunicacaoPaciente c, CancellationToken ct)
+    {
+        if (c.EnviadoEm is not { } enviadoEm) return false;
+        var realizadoEm = await db.ExamesImagem.AsNoTracking()
+            .Where(e => e.SolicitacaoId == c.SolicitacaoId && e.ExcluidoEm == null)
+            .Select(e => e.RealizadoEm)
+            .FirstOrDefaultAsync(ct);
+        return realizadoEm is { } r && enviadoEm < r;
+    }
+
+    /// <summary>Zera a linha para um envio novo — mesmo saneamento do reenvio manual: telefone,
+    /// link e recibos saem, porque todos se referem ao envio anterior.</summary>
+    private static void RearmarParaNovoEnvio(ComunicacaoPaciente n)
+    {
+        var agora = DateTime.UtcNow;
+        n.Status = StatusComunicacao.Pendente;
+        n.MotivoFalha = null;
+        n.Telefone = null;
+        n.LoginLinkId = null;
+        n.MensagemWhatsAppId = null;
+        n.Tentativas = 0;
+        n.EnviadoEm = null;
+        n.EntregueEm = null;
+        n.LidoEm = null;
+        n.VisualizadoEm = null;
+        n.ProximaTentativaEm = agora;
+        n.AtualizadoEm = agora;
     }
 
     public async Task ProcessarTentativaEnvioAsync(Guid comunicacaoId, CancellationToken ct = default)
