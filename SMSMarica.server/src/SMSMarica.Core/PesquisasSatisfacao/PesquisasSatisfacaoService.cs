@@ -86,7 +86,7 @@ public sealed class PesquisasSatisfacaoService(
                 "pesquisa.sem_unidade",
                 "O atendimento não tem unidade registrada — não dá para citar o local na mensagem.");
 
-        var template = configuration["Pesquisa:Template"] ?? "pesquisa_de_satisfacao_2";
+        var template = configuration["Pesquisa:Template"] ?? "pesquisa_de_satisfacao_uri";
         var idioma = configuration["Pesquisa:TemplateIdioma"] ?? "pt_BR";
 
         var resultado = await whatsApp.EnviarTemplateComBotoesAsync(
