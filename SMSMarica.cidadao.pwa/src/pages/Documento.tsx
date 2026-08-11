@@ -3,27 +3,41 @@ import { useParams } from 'react-router-dom';
 import { Download, FileCheck2, Clock, Loader2 } from 'lucide-react';
 import { http } from '@/lib/httpClient';
 import { PrimaryButton } from '@/components/ui';
+import { ConfirmarCpf } from './ConfirmarCpf';
 
-type Estado = 'carregando' | 'valido' | 'expirado';
+type Estado = 'carregando' | 'cpf' | 'valido' | 'expirado';
 
 /**
  * Página pública (sem login) do link de download enviado ao paciente (ex.: WhatsApp).
- * O token é de uso único: se ainda válido, oferece o download; se já usado/expirado,
- * mostra o aviso e encaminha para o app.
+ *
+ * O token é de uso único, mas possuí-lo não basta: antes de qualquer coisa o portador confirma
+ * o CPF do titular. Sem isso, este era o caminho de menor resistência — entregava o PDF completo
+ * do exame de forma anônima, sem nem abrir sessão.
  */
 export function Documento() {
   const { token = '' } = useParams();
   const [estado, setEstado] = useState<Estado>('carregando');
   const [descricao, setDescricao] = useState<string | null>(null);
+  const [liberacao, setLiberacao] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [erroCpf, setErroCpf] = useState<string | null>(null);
+  const [tentativas, setTentativas] = useState<number | null>(null);
 
   useEffect(() => {
     let ativo = true;
     http
-      .get<{ estado: string; descricao: string | null }>(`/publico/download/${token}/status`)
+      .get<{ estado: string; descricao: string | null; requerCpf?: boolean; tentativasRestantes?: number | null }>(
+        `/publico/download/${token}/status`,
+      )
       .then((r) => {
         if (!ativo) return;
+        if (r.data.estado !== 'valido') {
+          setEstado('expirado');
+          return;
+        }
         setDescricao(r.data.descricao);
-        setEstado(r.data.estado === 'valido' ? 'valido' : 'expirado');
+        setTentativas(r.data.tentativasRestantes ?? null);
+        setEstado(r.data.requerCpf ? 'cpf' : 'valido');
       })
       .catch(() => {
         if (ativo) setEstado('expirado');
@@ -33,7 +47,47 @@ export function Documento() {
     };
   }, [token]);
 
-  const urlDownload = `${http.defaults.baseURL ?? ''}/publico/download/${token}`;
+  async function confirmarCpf(cpf: string) {
+    setEnviando(true);
+    setErroCpf(null);
+    try {
+      const { data } = await http.post<{
+        liberacao: string | null;
+        tentativasRestantes: number;
+        descricao: string | null;
+      }>(`/publico/download/${token}/confirmar`, { cpf });
+
+      if (data.liberacao) {
+        setLiberacao(data.liberacao);
+        setDescricao(data.descricao);
+        setEstado('valido');
+        return;
+      }
+      setTentativas(data.tentativasRestantes);
+      if (data.tentativasRestantes <= 0) {
+        setEstado('expirado');
+        return;
+      }
+      setErroCpf('Esse CPF não confere.');
+    } catch {
+      setEstado('expirado');
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  const urlDownload = `${http.defaults.baseURL ?? ''}/publico/download/${token}?liberacao=${liberacao ?? ''}`;
+
+  if (estado === 'cpf') {
+    return (
+      <ConfirmarCpf
+        onConfirmar={confirmarCpf}
+        enviando={enviando}
+        erro={erroCpf}
+        tentativasRestantes={tentativas}
+      />
+    );
+  }
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-areia px-6 py-10">

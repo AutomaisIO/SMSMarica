@@ -24,10 +24,19 @@ public interface ICidadaoLoginLinkService
     /// <paramref name="destino"/> troca a rota de chegada (default "/exames"). A validade
     /// respeita a config, mas nunca expira ANTES da DataAgendada (o botão "Confirmar" do
     /// WhatsApp precisa funcionar até o dia do exame; teto 30 dias).</summary>
-    Task<MagicLinkDto> GerarParaSolicitacaoAsync(Guid solicitacaoExameId, string? destino = null, CancellationToken cancellationToken = default);
+    Task<MagicLinkDto> GerarParaSolicitacaoAsync(
+        Guid solicitacaoExameId, string? destino = null, bool exigeConfirmacaoCpf = false,
+        CancellationToken cancellationToken = default);
 
-    /// <summary>Troca o token por sessão (uso único). <c>null</c> se inválido/usado/expirado.</summary>
-    Task<RespostaMagicLinkDto?> TrocarAsync(Guid token, string? dispositivo, string? ip, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Troca o token por sessão (uso único). <c>null</c> se inválido/usado/expirado.
+    /// <para>Links clínicos (<see cref="CidadaoLoginLink.ExigeConfirmacaoCpf"/>) exigem o
+    /// <paramref name="cpf"/> do titular: sem ele a resposta é só o DESAFIO e o token NÃO é
+    /// consumido; com CPF errado, conta a tentativa e queima o link na 3ª.</para>
+    /// </summary>
+    Task<RespostaMagicLinkDto?> TrocarAsync(
+        Guid token, string? dispositivo, string? ip, string? cpf = null,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed class CidadaoLoginLinkService(
@@ -42,8 +51,12 @@ public sealed class CidadaoLoginLinkService(
 {
     private const string DestinoPadrao = "/exames";
 
+    /// <summary>Tentativas de CPF antes de o link ser queimado.</summary>
+    private const int MaxTentativasCpf = 3;
+
     public async Task<MagicLinkDto> GerarParaSolicitacaoAsync(
-        Guid solicitacaoExameId, string? destino = null, CancellationToken cancellationToken = default)
+        Guid solicitacaoExameId, string? destino = null, bool exigeConfirmacaoCpf = false,
+        CancellationToken cancellationToken = default)
     {
         var s = await solicitacoes.ObterPorIdAsync(solicitacaoExameId, cancellationToken);
 
@@ -78,6 +91,7 @@ public sealed class CidadaoLoginLinkService(
             Cpf = cpf,
             Destino = string.IsNullOrWhiteSpace(destino) ? DestinoPadrao : destino,
             SolicitacaoId = solicitacaoSpineId,
+            ExigeConfirmacaoCpf = exigeConfirmacaoCpf,
             ExpiraEm = DateTime.UtcNow.AddDays(dias),
             CriadoEm = DateTime.UtcNow,
             CriadoPor = usuarioAtual.UsuarioId,
@@ -89,7 +103,8 @@ public sealed class CidadaoLoginLinkService(
     }
 
     public async Task<RespostaMagicLinkDto?> TrocarAsync(
-        Guid token, string? dispositivo, string? ip, CancellationToken cancellationToken = default)
+        Guid token, string? dispositivo, string? ip, string? cpf = null,
+        CancellationToken cancellationToken = default)
     {
         var link = await db.CidadaoLoginLinks.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == token, cancellationToken);
@@ -97,6 +112,48 @@ public sealed class CidadaoLoginLinkService(
 
         var agora = DateTime.UtcNow;
         var usadoIp = ip is { Length: > 64 } ? ip[..64] : ip;
+
+        // GATE DE CPF — antes de qualquer consumo. Vale para os links que carregam resultado
+        // clínico: possuir o link deixa de SER a credencial. Um link entregue à pessoa errada
+        // (troca de identidade no exame, número desatualizado) não abre o prontuário alheio.
+        if (link.ExigeConfirmacaoCpf)
+        {
+            // Link clínico gasto/expirado NÃO devolve nem o destino: "o link morre" e a
+            // recepção reenvia. (Links não-clínicos mantêm o facilitador do aparelho original.)
+            if (link.UsadoEm is not null || link.ExpiraEm <= agora) return null;
+
+            var informado = Digitos(cpf);
+            var restantes = Math.Max(0, MaxTentativasCpf - link.TentativasCpf);
+
+            // Sem CPF: DESAFIO. Nada é consumido e nada é revelado — nem nome, nem CPF
+            // mascarado, nem destino. Quem não é o titular não descobre de quem é o exame.
+            if (informado.Length == 0)
+                return new RespostaMagicLinkDto(
+                    Token: null, Paciente: null, Destino: string.Empty,
+                    ConfirmacaoAgendamento: null,
+                    RequerConfirmacaoCpf: true, TentativasRestantes: restantes);
+
+            if (!string.Equals(informado, link.Cpf, StringComparison.Ordinal))
+            {
+                var tentativas = link.TentativasCpf + 1;
+                var queimou = tentativas >= MaxTentativasCpf;
+                // Queimar = antecipar a expiração (mesmo mecanismo de revogação do "Reenviar").
+                await db.CidadaoLoginLinks
+                    .Where(x => x.Id == token)
+                    .ExecuteUpdateAsync(s => s
+                        .SetProperty(x => x.TentativasCpf, tentativas)
+                        .SetProperty(x => x.ExpiraEm, x => queimou ? agora : x.ExpiraEm),
+                        cancellationToken);
+
+                if (queimou) return null; // 410 — a tela manda procurar a unidade
+                return new RespostaMagicLinkDto(
+                    Token: null, Paciente: null, Destino: string.Empty,
+                    ConfirmacaoAgendamento: null,
+                    RequerConfirmacaoCpf: true,
+                    TentativasRestantes: MaxTentativasCpf - tentativas);
+            }
+            // CPF confere → segue para o consumo atômico normal.
+        }
 
         // USO ÚNICO ATÔMICO: uma única requisição consegue marcar usado_em. Se a pessoa
         // compartilhar o link, quem clicar depois (ou um 2º clique simultâneo) recebe 0 linhas.

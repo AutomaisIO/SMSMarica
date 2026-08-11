@@ -8,6 +8,9 @@ using SMSMarica.Core.SolicitacoesExame.Declaracao;
 
 namespace SMSMarica.Api.Controllers;
 
+/// <summary>Corpo da confirmação de CPF do link público de download.</summary>
+public sealed record ConfirmarCpfDownloadRequest(string Cpf);
+
 /// <summary>
 /// Páginas/endpoints públicos (sem autenticação): verificação do selo da Declaração
 /// de Comparecimento e o download por token de uso único (link enviado ao paciente).
@@ -21,25 +24,47 @@ public sealed class PublicoController(
 {
     private static readonly CultureInfo PtBr = new("pt-BR");
 
-    /// <summary>Estado do link de download (não consome) — a página decide baixar vs "expirou".</summary>
+    /// <summary>Estado do link de download (não consome) — a página decide pedir o CPF vs "expirou".</summary>
     [HttpGet("download/{token:guid}/status")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> DownloadStatus(Guid token, CancellationToken cancellationToken)
     {
         var s = await downloads.ObterStatusAsync(token, cancellationToken);
         Response.Headers.CacheControl = "no-store";
-        return Ok(new { estado = s.Estado.ToString().ToLowerInvariant(), descricao = s.Descricao });
+        return Ok(new
+        {
+            estado = s.Estado.ToString().ToLowerInvariant(),
+            descricao = s.Descricao,
+            requerCpf = s.RequerCpf,
+            tentativasRestantes = s.TentativasRestantes,
+        });
     }
 
-    /// <summary>Baixa o arquivo do token (uso único). 410 se já usado/expirado/inexistente.</summary>
+    /// <summary>
+    /// Confere o CPF do titular e emite a liberação do download. Sem isto o link é anônimo:
+    /// quem o recebesse por engano baixaria o exame completo de outra pessoa.
+    /// </summary>
+    [HttpPost("download/{token:guid}/confirmar")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> DownloadConfirmar(
+        Guid token, [FromBody] ConfirmarCpfDownloadRequest request, CancellationToken cancellationToken)
+    {
+        var r = await downloads.ConfirmarCpfAsync(token, request.Cpf, cancellationToken);
+        Response.Headers.CacheControl = "no-store";
+        return Ok(new { liberacao = r.Liberacao, tentativasRestantes = r.TentativasRestantes, descricao = r.Descricao });
+    }
+
+    /// <summary>Baixa o arquivo do token (uso único), mediante a liberação emitida pela
+    /// confirmação de CPF. 410 se já usado/expirado/inexistente/sem liberação.</summary>
     [HttpGet("download/{token:guid}")]
     [Produces("application/pdf")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status410Gone)]
-    public async Task<IActionResult> Download(Guid token, CancellationToken cancellationToken)
+    public async Task<IActionResult> Download(
+        Guid token, [FromQuery] Guid? liberacao, CancellationToken cancellationToken)
     {
         var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-        var arquivo = await downloads.ConsumirAsync(token, ip, cancellationToken);
+        var arquivo = await downloads.ConsumirAsync(token, liberacao, ip, cancellationToken);
         Response.Headers.CacheControl = "no-store";
         if (arquivo is null) return StatusCode(StatusCodes.Status410Gone);
         return File(arquivo.Bytes, arquivo.ContentType, arquivo.NomeArquivo);

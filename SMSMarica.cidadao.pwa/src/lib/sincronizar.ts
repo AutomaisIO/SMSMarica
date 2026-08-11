@@ -1,6 +1,6 @@
 import { api, pdfUrls } from './api';
 import { http } from './httpClient';
-import { obterPdfCache, salvarPdfCache } from './pdfCache';
+import { manterApenasPdfCache, obterPdfCache, salvarPdfCache } from './pdfCache';
 import { useAuth } from '@/store/auth';
 
 /**
@@ -58,6 +58,13 @@ async function executar(pacienteId: string): Promise<void> {
       } catch {
         /* um documento falhou (ex.: PACS fora) — segue para o próximo */
       }
+    }
+
+    // 3. FAXINA: o que não está mais na lista do paciente sai do aparelho. Um exame pode ter
+    //    deixado de ser dele (correção de identidade, exclusão, cancelamento) — a listagem
+    //    para de trazê-lo, mas o PDF já baixado continuaria acessível offline.
+    if (useAuth.getState().paciente?.id === pacienteId) {
+      await manterApenasPdfCache(fila.map((f) => f.url));
     }
   } catch {
     /* sincronização é best-effort — nunca afeta a navegação */

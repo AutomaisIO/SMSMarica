@@ -66,6 +66,44 @@ export async function limparPdfCache(): Promise<void> {
   }
 }
 
+/**
+ * Apaga do aparelho todo PDF que NÃO está na lista de URLs ainda válidas.
+ *
+ * Documentos do cidadão são imutáveis, mas o CONJUNTO deles não é: um exame pode deixar de ser
+ * dele — por correção de identidade (as imagens eram de outro paciente), exclusão ou
+ * cancelamento. A listagem do servidor simplesmente para de trazê-lo, e sem esta faxina o PDF
+ * baixado continuaria no celular, acessível offline, para sempre.
+ *
+ * Roda a cada sincronismo: o que sumiu da lista sai do aparelho. Não depende de o servidor
+ * avisar nada, então cobre qualquer motivo de sumiço.
+ */
+export async function manterApenasPdfCache(urlsValidas: readonly string[]): Promise<number> {
+  try {
+    const validas = new Set(urlsValidas);
+    const db = await abrir();
+    return await new Promise<number>((resolve) => {
+      let removidos = 0;
+      const tx = db.transaction(STORE, 'readwrite');
+      const cursor = tx.objectStore(STORE).openCursor();
+      cursor.onsuccess = () => {
+        const c = cursor.result;
+        if (!c) {
+          resolve(removidos);
+          return;
+        }
+        if (!validas.has(c.value.url as string)) {
+          c.delete();
+          removidos++;
+        }
+        c.continue();
+      };
+      cursor.onerror = () => resolve(removidos);
+    });
+  } catch {
+    return 0; // best-effort: falhar aqui não pode quebrar o app
+  }
+}
+
 /** Remove os itens mais antigos quando passa de MAX. */
 async function podar(db: IDBDatabase): Promise<void> {
   await new Promise<void>((resolve) => {

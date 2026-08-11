@@ -18,6 +18,16 @@ public class DownloadToken
 
     public DateTime ExpiraEm { get; set; }
 
+    /// <summary>Tentativas de CPF já erradas. Na 3ª o link é queimado (<see cref="ExpiraEm"/>
+    /// antecipado) e a recepção precisa reenviar.</summary>
+    public int TentativasCpf { get; set; }
+
+    /// <summary>Liberação de curta duração emitida quando o CPF do titular confere. O GET que
+    /// baixa o arquivo precisa apresentá-la — é o que permite manter o download em streaming
+    /// (PDF de mamografia passa de 50 MB) em vez de trafegar tudo pela resposta de um POST.</summary>
+    public Guid? Liberacao { get; set; }
+    public DateTime? LiberadoEm { get; set; }
+
     /// <summary>Preenchido no 1º download bem-sucedido — a partir daí o link é inválido.</summary>
     public DateTime? UsadoEm { get; set; }
     public string? UsadoIp { get; set; }

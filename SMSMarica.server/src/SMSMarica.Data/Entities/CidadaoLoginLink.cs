@@ -26,6 +26,16 @@ public class CidadaoLoginLink
 
     public DateTime ExpiraEm { get; set; }
 
+    /// <summary>Exige que o portador confirme o CPF do titular antes de virar sessão. Ligado nas
+    /// finalidades que carregam resultado clínico (exame liberado, laudo pronto): quem tiver o link
+    /// nas mãos por engano não entra no prontuário alheio. Confirmação de agendamento segue em 1
+    /// clique — não expõe resultado e depende de ser instantânea.</summary>
+    public bool ExigeConfirmacaoCpf { get; set; }
+
+    /// <summary>Tentativas de CPF já erradas. Na 3ª o link é queimado (<see cref="ExpiraEm"/>
+    /// antecipado) e a recepção precisa reenviar.</summary>
+    public int TentativasCpf { get; set; }
+
     /// <summary>Preenchido na 1ª troca por sessão — a partir daí o link é inválido.</summary>
     public DateTime? UsadoEm { get; set; }
     public string? UsadoIp { get; set; }
