@@ -1,14 +1,11 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FileText, MessageSquareHeart, Stethoscope, X } from 'lucide-react';
+import { FileText, Stethoscope, X } from 'lucide-react';
 import { api, type DocumentoAtendimento } from '@/lib/api';
 import { Card } from '@/components/ui';
 import { Lista } from '@/components/Lista';
-import { JANELA_DIAS, diasDesde } from '@/pages/Pesquisa';
 
 export function Atendimentos() {
   const [doc, setDoc] = useState<DocumentoAtendimento | null>(null);
-  const navigate = useNavigate();
 
   return (
     <>
@@ -40,28 +37,6 @@ export function Atendimentos() {
                   {d.tipo}
                 </button>
               ))}
-              {/* A pesquisa fica DENTRO do atendimento: é dele que ela fala, e é o que permite
-                  responder sem o link do WhatsApp em mãos. Some depois da janela — memória de
-                  detalhe (espera, quem atendeu, o que foi orientado) não sobrevive a 15 dias, e
-                  resposta tardia mede lembrança, não experiência. */}
-              {dentroDaJanela(a.data) && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    navigate(`/atendimentos/${a.id}/pesquisa`, {
-                      state: {
-                        unidade: a.estabelecimento,
-                        data: formatarData(a.data),
-                        dataIso: a.data,
-                      },
-                    })
-                  }
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-lagoa/30 bg-lagoa-claro px-3 py-1.5 text-xs font-semibold text-lagoa-escuro transition active:scale-95 active:bg-lagoa-claro/70"
-                >
-                  <MessageSquareHeart className="h-3.5 w-3.5" />
-                  Avaliar atendimento
-                </button>
-              )}
             </div>
           </Card>
         )}
@@ -115,8 +90,3 @@ function formatarData(iso: string): string {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('pt-BR');
 }
 
-/** Mesma régua da tela da pesquisa — a constante mora lá, para não haver duas verdades. */
-function dentroDaJanela(iso: string): boolean {
-  const d = diasDesde(iso);
-  return d !== null && d <= JANELA_DIAS;
-}

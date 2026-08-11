@@ -7,8 +7,6 @@ using SMSMarica.Core.Atendimentos;
 using SMSMarica.Core.Cidadao;
 using SMSMarica.Core.Cidadao.Dtos;
 using SMSMarica.Core.Pacientes;
-using SMSMarica.Core.PesquisasSatisfacao;
-using SMSMarica.Core.PesquisasSatisfacao.Dtos;
 using SMSMarica.Core.Telefones;
 using SMSMarica.Core.Telefones.Dtos;
 
@@ -30,7 +28,6 @@ public sealed class CidadaoController(
     ICidadaoSessaoService sessoes,
     IConsentimentoCidadaoService consentimentos,
     ICidadaoClinicoService clinico,
-    IPesquisasSatisfacaoService pesquisas,
     ITelefoneValidacaoService telefones) : ControllerBase
 {
     /// <summary>Status do consentimento LGPD + texto vigente do termo (acessível sem aceite).</summary>
@@ -100,23 +97,6 @@ public sealed class CidadaoController(
     /// Histórico de atendimentos do cidadão, lido do hub FHIR (Encounter + Condition).
     /// Projetado para o shape enxuto que a PWA consome.
     /// </summary>
-    /// <summary>
-    /// Responde a pesquisa de satisfação de um atendimento pelo app (já autenticado). A pesquisa
-    /// nasce aqui quando o cidadão avalia sem ter recebido convite — é o caminho do botão no
-    /// histórico. Recusa fora da janela ou se já respondida.
-    /// </summary>
-    [HttpPost("atendimentos/{encounterId:guid}/pesquisa")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> ResponderPesquisa(
-        Guid encounterId, [FromBody] ResponderPesquisaRequest request, CancellationToken ct)
-    {
-        await pesquisas.ResponderPeloAppAsync(
-            PacienteId(), encounterId, request.Respostas,
-            HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
-        return NoContent();
-    }
-
     [HttpGet("atendimentos")]
     [ProducesResponseType<IEnumerable<AtendimentoResumoDto>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<AtendimentoResumoDto>>> Atendimentos(CancellationToken ct)

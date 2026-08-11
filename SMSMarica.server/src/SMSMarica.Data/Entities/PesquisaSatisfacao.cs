@@ -1,4 +1,4 @@
-namespace SMSMarica.Data.Entities;
+﻿namespace SMSMarica.Data.Entities;
 
 /// <summary>
 /// Pesquisa de satisfação de UM atendimento. O <see cref="Id"/> é o token que vai na URL
@@ -12,7 +12,12 @@ namespace SMSMarica.Data.Entities;
 /// <see cref="RespondidaEm"/>: respondida uma vez, não se responde de novo.</para>
 ///
 /// <para>Uma pesquisa por atendimento (índice único em <see cref="EncounterId"/>), para reenvio
-/// não gerar duas notas da mesma passagem.</para>
+/// não gerar dois convites da mesma passagem.</para>
+
+/// <para><b>Aqui não mora resposta.</b> O questionário é da AvanteSocial, num link por unidade;
+/// nós provocamos, contamos o clique e encaminhamos. Esta linha guarda QUEM foi convidado e SE
+/// clicou — nunca O QUE respondeu. É essa separação que sustenta o anonimato da pesquisa: as
+/// duas metades existem em sistemas diferentes e não se juntam.</para>
 /// </summary>
 public class PesquisaSatisfacao
 {
@@ -31,6 +36,9 @@ public class PesquisaSatisfacao
     /// </summary>
     public string? UnidadeNome { get; set; }
 
+    /// <summary>CNES da unidade — é por ele que o redirect acha o link da AvanteSocial.</summary>
+    public string? UnidadeCnes { get; set; }
+
     /// <summary>Quando o atendimento terminou — a origem da contagem do prazo.</summary>
     public DateTime AtendimentoEm { get; set; }
 
@@ -41,16 +49,20 @@ public class PesquisaSatisfacao
     public DateTime ExpiraEm { get; set; }
 
     /// <summary>
-    /// Versão do instrumento respondido (ex.: <c>pnass-2015-emergencia-v1</c>). Sem isto, mudar
-    /// a redação de uma pergunta mistura em série histórica duas coisas diferentes.
+    /// Primeiro clique no link. <b>É o mais longe que a nossa medição vai</b>: a resposta é
+    /// tratada pela AvanteSocial e nunca passa por aqui. Clicar não é responder — e chamar isso
+    /// de "respondida" num painel seria inventar uma taxa que não temos.
     /// </summary>
-    public string InstrumentoVersao { get; set; } = string.Empty;
+    public DateTime? ClicadaEm { get; set; }
 
-    /// <summary>Respostas como JSON (<c>{"geral":"Bom","espera":"Regular",...}</c>).</summary>
-    public string? RespostasJson { get; set; }
+    /// <summary>Cliques no total — a mesma pessoa pode voltar ao link.</summary>
+    public int Cliques { get; set; }
 
-    public DateTime? RespondidaEm { get; set; }
-    public string? RespondidaIp { get; set; }
+    /// <summary>
+    /// Id da mensagem no WhatsApp (<c>wamid</c>). É a ponte para <c>whatsapp_mensagem</c>, onde o
+    /// webhook já grava entregue/lida — as métricas de "vistas" saem de lá, sem duplicar estado.
+    /// </summary>
+    public string? WaMessageId { get; set; }
 
     /// <summary>Quando o convite saiu por WhatsApp. Null = criada e ainda não enviada.</summary>
     public DateTime? EnviadaEm { get; set; }

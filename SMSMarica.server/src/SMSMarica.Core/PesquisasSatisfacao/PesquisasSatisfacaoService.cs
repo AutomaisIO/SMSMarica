@@ -1,5 +1,4 @@
-﻿using System.Globalization;
-using System.Text.Json;
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using SMSMarica.Core.Atendimentos;
@@ -28,53 +27,6 @@ public sealed class PesquisasSatisfacaoService(
     IWhatsAppCliente whatsApp,
     IConfiguration configuration) : IPesquisasSatisfacaoService
 {
-    /// <summary>
-    /// Perguntas aceitas. Fechar a lista é o que impede uma tela adulterada de gravar campo
-    /// inventado no meio da série — e o que denuncia, no deploy, que a tela mudou e o servidor não.
-    /// </summary>
-    private static readonly HashSet<string> PerguntasValidas =
-    [
-        "geral", "espera", "equipe", "informacoes", "confianca", "limpeza", "comentario",
-    ];
-
-    private const int TamanhoMaximoComentario = 2_000;
-
-    public async Task<PesquisaPublicaDto> ObterPorTokenAsync(Guid token, CancellationToken ct = default)
-    {
-        var p = await db.PesquisasSatisfacao.AsNoTracking().FirstOrDefaultAsync(x => x.Id == token, ct)
-            ?? throw new NaoEncontradoException("Pesquisa de satisfação", token);
-
-        return new PesquisaPublicaDto(
-            p.UnidadeNome,
-            p.AtendimentoEm,
-            p.ExpiraEm,
-            Expirada: DateTime.UtcNow > p.ExpiraEm,
-            JaRespondida: p.RespondidaEm is not null,
-            p.InstrumentoVersao);
-    }
-
-    public async Task ResponderPorTokenAsync(
-        Guid token, IReadOnlyDictionary<string, string> respostas, string? ip, CancellationToken ct = default)
-    {
-        var p = await db.PesquisasSatisfacao.FirstOrDefaultAsync(x => x.Id == token, ct)
-            ?? throw new NaoEncontradoException("Pesquisa de satisfação", token);
-
-        Gravar(p, respostas, ip);
-        await db.SaveChangesAsync(ct);
-    }
-
-    public async Task ResponderPeloAppAsync(
-        Guid pacienteId, Guid encounterId, IReadOnlyDictionary<string, string> respostas, string? ip,
-        CancellationToken ct = default)
-    {
-        var p = await db.PesquisasSatisfacao
-                    .FirstOrDefaultAsync(x => x.EncounterId == encounterId && x.PatientId == pacienteId, ct)
-                ?? await CriarAsync(pacienteId, encounterId, ct);
-
-        Gravar(p, respostas, ip);
-        await db.SaveChangesAsync(ct);
-    }
-
     public async Task<EnvioPesquisaDto> PrepararEnvioAsync(
         Guid pacienteId, Guid encounterId, CancellationToken ct = default)
     {
@@ -97,9 +49,6 @@ public sealed class PesquisasSatisfacaoService(
             throw new ConflitoException(
                 "pesquisa.fora_da_janela",
                 $"O prazo de {IPesquisasSatisfacaoService.JanelaDias} dias para avaliar este atendimento já passou.");
-
-        if (p.RespondidaEm is not null)
-            throw new ConflitoException("pesquisa.ja_respondida", "Este atendimento já foi avaliado.");
 
         p.EnviadaEm = DateTime.UtcNow;
         p.EnviadaPor = usuarioAtual.UsuarioId;
@@ -158,6 +107,12 @@ public sealed class PesquisasSatisfacaoService(
         if (!resultado.Ok)
             throw new ConflitoException("pesquisa.falha_envio", resultado.Erro ?? "Falha ao enviar a pesquisa.");
 
+        // O wamid é a ponte para `whatsapp_mensagem`, onde o webhook grava entregue/lida. Sem
+        // ele o painel não teria "vistas" — e duplicar esse estado aqui só criaria divergência.
+        var linha = await db.PesquisasSatisfacao.FirstAsync(x => x.Id == envio.PesquisaId, ct);
+        linha.WaMessageId = resultado.WaMessageId;
+        await db.SaveChangesAsync(ct);
+
         return envio;
     }
 
@@ -172,6 +127,47 @@ public sealed class PesquisasSatisfacaoService(
             Sexo.Feminino => $"Sra. {primeiro}",
             _ => primeiro,
         };
+    }
+
+    public async Task<string> RegistrarCliqueAsync(Guid token, CancellationToken ct = default)
+    {
+        var p = await db.PesquisasSatisfacao.FirstOrDefaultAsync(x => x.Id == token, ct)
+            ?? throw new NaoEncontradoException("Pesquisa de satisfação", token);
+
+        var destino = await DestinoDaUnidadeAsync(p.UnidadeCnes, ct);
+
+        // Conta mesmo fora da janela: o clique aconteceu, e esconder isso do painel só produz
+        // taxa de engajamento errada. Quem decide se ainda aceita resposta é a AvanteSocial.
+        p.ClicadaEm ??= DateTime.UtcNow;
+        p.Cliques++;
+        await db.SaveChangesAsync(ct);
+
+        return destino;
+    }
+
+    /// <summary>
+    /// Link da AvanteSocial configurado para a unidade do atendimento, resolvido por CNES —
+    /// a mesma chave que o ADR-0039 usa para casar unidade entre PEPs, e a que a planilha da
+    /// AvanteSocial traz.
+    /// </summary>
+    private async Task<string> DestinoDaUnidadeAsync(string? cnes, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(cnes))
+            throw new ConflitoException(
+                "pesquisa.sem_cnes", "O atendimento não tem unidade identificada por CNES.");
+
+        var destino = await (
+            from u in db.Unidades.AsNoTracking()
+            join c in db.UnidadePesquisaConfigs.AsNoTracking() on u.Id equals c.UnidadeId
+            where u.Cnes == cnes
+            select c.LinkResponder).FirstOrDefaultAsync(ct);
+
+        if (string.IsNullOrWhiteSpace(destino))
+            throw new ConflitoException(
+                "pesquisa.sem_link",
+                "A unidade deste atendimento não tem link de pesquisa configurado.");
+
+        return destino;
     }
 
     /// <summary>
@@ -198,49 +194,14 @@ public sealed class PesquisasSatisfacaoService(
             // aqui congela o que valia no atendimento — unidade renomeada depois não reescreve o
             // passado de quem já respondeu, e a mensagem cita o lugar onde a pessoa esteve.
             UnidadeNome = a.UnidadeNome,
+            UnidadeCnes = a.UnidadeCnes,
             AtendimentoEm = fim,
             ExpiraEm = fim.AddDays(IPesquisasSatisfacaoService.JanelaDias),
-            InstrumentoVersao = IPesquisasSatisfacaoService.InstrumentoVersaoAtual,
             CriadoEm = DateTime.UtcNow,
             CriadoPor = usuarioAtual.UsuarioId,
         };
         db.PesquisasSatisfacao.Add(p);
         return p;
-    }
-
-    /// <summary>Régua única de gravação — as duas portas (link e app) passam por aqui.</summary>
-    private static void Gravar(PesquisaSatisfacao p, IReadOnlyDictionary<string, string> respostas, string? ip)
-    {
-        if (p.RespondidaEm is not null)
-            throw new ConflitoException("pesquisa.ja_respondida", "Esta pesquisa já foi respondida.");
-
-        if (DateTime.UtcNow > p.ExpiraEm)
-            throw new ConflitoException(
-                "pesquisa.fora_da_janela",
-                $"O prazo de {IPesquisasSatisfacaoService.JanelaDias} dias para responder já passou.");
-
-        var desconhecidas = respostas.Keys.Where(k => !PerguntasValidas.Contains(k)).ToList();
-        if (desconhecidas.Count > 0)
-            throw new ValidacaoException(
-                "pesquisa.pergunta_desconhecida",
-                $"Pergunta(s) não reconhecida(s): {string.Join(", ", desconhecidas)}.");
-
-        // A avaliação geral é a única obrigatória — é dela que sai o índice da unidade.
-        if (!respostas.TryGetValue("geral", out var geral) || string.IsNullOrWhiteSpace(geral))
-            throw new ValidacaoException(
-                "pesquisa.avaliacao_geral_obrigatoria", "A avaliação geral é obrigatória.");
-
-        var limpas = respostas
-            .Where(r => !string.IsNullOrWhiteSpace(r.Value))
-            .ToDictionary(
-                r => r.Key,
-                r => r.Key == "comentario" && r.Value.Length > TamanhoMaximoComentario
-                    ? r.Value[..TamanhoMaximoComentario]
-                    : r.Value.Trim());
-
-        p.RespostasJson = JsonSerializer.Serialize(limpas);
-        p.RespondidaEm = DateTime.UtcNow;
-        p.RespondidaIp = ip;
     }
 
     private string MontarUrl(Guid token)

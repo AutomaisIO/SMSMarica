@@ -15,7 +15,6 @@ import { ConsultasAgendadas, ExamesAgendados } from '@/pages/Agendados';
 import { TicketExame } from '@/pages/TicketExame';
 import { Documento } from '@/pages/Documento';
 import { Entrar } from '@/pages/Entrar';
-import { Pesquisa } from '@/pages/Pesquisa';
 
 function Protegida({ children }: { children: React.ReactNode }) {
   const token = useAuth((s) => s.token);
@@ -34,9 +33,6 @@ export function App() {
         <Route path="/documento/:token" element={<Documento />} />
         {/* Magic-link: login em 1 clique a partir do WhatsApp. */}
         <Route path="/entrar/:token" element={<Entrar />} />
-        {/* Pesquisa de satisfação pelo link do WhatsApp — token escopado, abre SÓ a pesquisa
-            (nunca uma sessão), então vive fora da área protegida. */}
-        <Route path="/pesquisa/:token" element={<Pesquisa />} />
 
         <Route
           element={
@@ -49,7 +45,6 @@ export function App() {
         >
           <Route path="/" element={<Home />} />
           <Route path="/atendimentos" element={<Atendimentos />} />
-          <Route path="/atendimentos/:id/pesquisa" element={<Pesquisa />} />
           <Route path="/agendados/consultas" element={<ConsultasAgendadas />} />
           <Route path="/agendados/exames" element={<ExamesAgendados />} />
           <Route path="/agendados/exames/:id" element={<TicketExame />} />

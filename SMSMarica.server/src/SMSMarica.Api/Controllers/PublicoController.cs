@@ -4,8 +4,6 @@ using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Core.Downloads;
-using SMSMarica.Core.PesquisasSatisfacao;
-using SMSMarica.Core.PesquisasSatisfacao.Dtos;
 using SMSMarica.Core.SolicitacoesExame.Declaracao;
 
 namespace SMSMarica.Api.Controllers;
@@ -22,34 +20,8 @@ public sealed record ConfirmarCpfDownloadRequest(string Cpf);
 [AllowAnonymous]
 public sealed class PublicoController(
     IDeclaracaoComparecimentoService declaracao,
-    IDownloadTokenService downloads,
-    IPesquisasSatisfacaoService pesquisas) : ControllerBase
+    IDownloadTokenService downloads) : ControllerBase
 {
-    /// <summary>
-    /// Contexto da pesquisa de satisfação pelo token do link do WhatsApp. Não devolve nada
-    /// clínico — o token abre a pesquisa, nunca o prontuário.
-    /// </summary>
-    [HttpGet("pesquisa/{token:guid}")]
-    [ProducesResponseType<PesquisaPublicaDto>(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<PesquisaPublicaDto>> Pesquisa(Guid token, CancellationToken cancellationToken)
-    {
-        var dto = await pesquisas.ObterPorTokenAsync(token, cancellationToken);
-        Response.Headers.CacheControl = "no-store";
-        return Ok(dto);
-    }
-
-    /// <summary>Grava as respostas da pesquisa. 409 fora do prazo ou se já respondida.</summary>
-    [HttpPost("pesquisa/{token:guid}")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> ResponderPesquisa(
-        Guid token, [FromBody] ResponderPesquisaRequest request, CancellationToken cancellationToken)
-    {
-        await pesquisas.ResponderPorTokenAsync(
-            token, request.Respostas, HttpContext.Connection.RemoteIpAddress?.ToString(), cancellationToken);
-        return NoContent();
-    }
 
     private static readonly CultureInfo PtBr = new("pt-BR");
 

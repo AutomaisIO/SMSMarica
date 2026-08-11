@@ -16,6 +16,17 @@ import { extrairMensagemDeErro } from '@/lib/httpClient';
 import { ErroCard, PrimaryButton, Spinner } from '@/components/ui';
 
 /**
+ * TELA DESLIGADA em 11/08/2026 — sem rota, não alcançável.
+ *
+ * <p>A pesquisa deixou de ser nossa: o questionário passou a ser da AvanteSocial, com um link
+ * por unidade, e a resposta precisa ser ANÔNIMA — não pode chegar aqui vinculada a paciente e
+ * atendimento. O WhatsApp agora leva a <c>api.smsmarica.online/pesquisa/{token}</c>, que só
+ * conta o clique e encaminha para fora.</p>
+ *
+ * <p>Guardada, e não apagada, a pedido: se um dia a pesquisa voltar a ser nossa, o desenho está
+ * aqui. Mas os endpoints que ela chama <b>não existem mais no servidor</b> — religar a rota sem
+ * recriá-los dá 404.</p>
+ *
  * Pesquisa de satisfação do atendimento.
  *
  * <p>Duas portas para a mesma tela: <c>/pesquisa/:token</c> (link do WhatsApp, sem login — o
