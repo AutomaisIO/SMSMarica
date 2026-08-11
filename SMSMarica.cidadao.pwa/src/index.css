@@ -15,6 +15,14 @@ body,
   height: 100%;
 }
 
+/* O index.html pinta html+body de vermelho para não piscar branco antes do React montar. O
+   #splash já cobre esse instante, então aqui devolvemos o html à cor da moldura: sem isto, em
+   tela larga, tudo que passa da altura da viewport aparece sobre um corredor vermelho — o body
+   tem height:100% e só pinta a primeira dobra. */
+html {
+  background: #efe7e3;
+}
+
 body {
   margin: 0;
   background: #efe7e3; /* moldura mais escura que o "papel" — destaca o frame do app no desktop */
