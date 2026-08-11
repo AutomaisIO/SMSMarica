@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Building2,
   CalendarDays,
   Check,
   CheckCircle2,
+  Info,
   Lock,
   MessageSquareHeart,
   Send,
@@ -138,10 +139,20 @@ export type ContextoPesquisa = {
   dataIso?: string | null;
 };
 
+/**
+ * Token reservado para apresentar a tela sem backend. Só ele lê unidade/data da query string —
+ * um token real ignora a query por completo, senão qualquer um forjaria o cabeçalho da pesquisa
+ * de outra pessoa. E a tela se identifica como demonstração: sem isso, quem responde acredita
+ * ter opinado, e não opinou.
+ */
+const TOKEN_DEMO = 'demo';
+
 export function Pesquisa() {
   const { token } = useParams();
+  const [query] = useSearchParams();
   const navigate = useNavigate();
   const publica = Boolean(token);
+  const demo = token === TOKEN_DEMO;
 
   const [respostas, setRespostas] = useState<Record<string, string>>({});
   const [enviando, setEnviando] = useState(false);
@@ -151,8 +162,8 @@ export function Pesquisa() {
   // pelo state — não há por que buscar de novo. Pelo link do WhatsApp virá do token. A tela
   // funciona sem ele: contexto ausente não pode impedir ninguém de responder.
   const contexto: ContextoPesquisa = {
-    unidade: null,
-    data: null,
+    unidade: demo ? query.get('u') : null,
+    data: demo ? query.get('d') : null,
     ...((useLocation().state as Partial<ContextoPesquisa> | null) ?? {}),
   };
 
@@ -184,10 +195,12 @@ export function Pesquisa() {
   const conteudo = expirada ? (
     <Expirada aoVoltar={() => navigate('/')} />
   ) : enviada ? (
-    <Agradecimento publica={publica} aoVoltar={() => navigate('/')} />
+    <Agradecimento publica={publica} demo={demo} aoVoltar={() => navigate('/')} />
   ) : (
     <>
       <Cabecalho contexto={contexto} publica={publica} aoVoltar={() => navigate(-1)} />
+
+      {demo && <AvisoDemo />}
 
       <Progresso feitas={respondidas} total={FECHADAS} />
 
@@ -451,7 +464,27 @@ function Expirada({ aoVoltar }: { aoVoltar: () => void }) {
 
 /* -------------------------------- agradecimento ------------------------------- */
 
-function Agradecimento({ publica, aoVoltar }: { publica: boolean; aoVoltar: () => void }) {
+function AvisoDemo() {
+  return (
+    <div className="flex items-start gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-[12px] leading-relaxed text-amber-900">
+      <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+      <span>
+        <strong className="font-semibold">Demonstração.</strong> Esta é a tela real do aplicativo,
+        mas as respostas <strong className="font-semibold">não são gravadas</strong>.
+      </span>
+    </div>
+  );
+}
+
+function Agradecimento({
+  publica,
+  demo,
+  aoVoltar,
+}: {
+  publica: boolean;
+  demo: boolean;
+  aoVoltar: () => void;
+}) {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center px-6 text-center">
       <span className="grid h-20 w-20 place-items-center rounded-3xl bg-lagoa-claro text-lagoa">
@@ -462,6 +495,12 @@ function Agradecimento({ publica, aoVoltar }: { publica: boolean; aoVoltar: () =
         Sua avaliação foi registrada e vai direto para a equipe responsável pela unidade. É com
         ela que a gente melhora o atendimento.
       </p>
+      {demo && (
+        <p className="mt-4 max-w-xs rounded-xl bg-amber-50 px-3 py-2 text-[12px] leading-relaxed text-amber-900">
+          <strong className="font-semibold">Demonstração:</strong> nada foi gravado. Na versão
+          final a resposta vai para a equipe da unidade.
+        </p>
+      )}
       {!publica && (
         <button
           type="button"
