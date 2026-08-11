@@ -476,7 +476,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
                 try
                 {
                     await ctx.Escritor.UpsertPorIdentifierAsync(
-                        mapper.BuildDocRefBoletimMedico(bm, a.PacRef, a.EncRef, null, null),
+                        mapper.BuildDocRefBoletimMedico(bm, a.PacRef, a.EncRef, bm.DataInicio, null),
                         KlinikosFhirMapper.IdentAtendMedico, mapper.Pref(bm.AtendCodigo), ct);
                     p.DocumentReferences++;
                 }
@@ -1099,7 +1099,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
     /// vazia nas 173.654 linhas da UPA. Ler coluna sempre nula só gasta banda do agente.</para>
     /// </summary>
     internal static string SqlBoletinsMedicos(long desde, int top) => $"""
-        SELECT TOP {top} am.atendamb_codigo, aa.spa_codigo,
+        SELECT TOP {top} am.atendamb_codigo, aa.spa_codigo, aa.atendamb_datainicio,
                am.upaatemed_Anamnese, am.upaatemed_ExameFisico,
                am.upaatemed_HipoteseDiagnostica, am.upaatemed_ProcedimentoProposto,
                am.upaatemed_Observacao, am.prof_codigo_encerramento,
@@ -1231,7 +1231,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
 
     private static BoletimMedicoLinha? MapBoletimMedico(LinhaSql l) =>
         l.Texto("atendamb_codigo") is { } cod
-            ? new BoletimMedicoLinha(cod, l.Texto("spa_codigo"),
+            ? new BoletimMedicoLinha(cod, l.Texto("spa_codigo"), l.DataHora("atendamb_datainicio"),
                 l.Texto("upaatemed_Anamnese"), l.Texto("upaatemed_ExameFisico"),
                 l.Texto("upaatemed_HipoteseDiagnostica"), l.Texto("upaatemed_ProcedimentoProposto"),
                 l.Texto("upaatemed_Observacao"), l.Texto("prof_codigo_encerramento"),

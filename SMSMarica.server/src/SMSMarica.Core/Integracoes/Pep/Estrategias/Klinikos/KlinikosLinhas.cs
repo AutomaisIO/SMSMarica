@@ -75,8 +75,13 @@ internal sealed record EvolucaoLinha(
 /// hipótese 96,7%, conduta 96,7%, anamnese 89,4%. <c>upaatemed_Reavaliacao</c> está zerada nas
 /// 173.654 — a reavaliação nesta implantação é evento (sinais vitais + CID), não narrativa.</para>
 /// </summary>
+/// <param name="DataInicio">
+/// <c>atendimento_ambulatorial.atendamb_datainicio</c> — quando o atendimento médico começou.
+/// É a data do documento. Preenchida em <b>100%</b> das 173.734 linhas (medido 11/08/2026), ao
+/// contrário de <c>upaatemed_DataSaida</c>, que tem nome promissor e 6% de preenchimento.
+/// </param>
 internal sealed record BoletimMedicoLinha(
-    string AtendCodigo, string? SpaCodigo, string? Anamnese, string? ExameFisico,
+    string AtendCodigo, string? SpaCodigo, string? DataInicio, string? Anamnese, string? ExameFisico,
     string? Hipotese, string? Conduta, string? Observacao, string? ProfCodigo, long Rv)
 {
     /// <summary>Sem nenhum dos campos narrativos não há documento — só o esqueleto do desfecho.</summary>

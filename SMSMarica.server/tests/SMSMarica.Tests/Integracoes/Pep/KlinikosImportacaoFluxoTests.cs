@@ -362,6 +362,7 @@ public class KlinikosImportacaoFluxoTests
         string atend, string spa, string? anamnese, string? exame, string? hipotese, string? conduta, long rv) => new()
     {
         ["atendamb_codigo"] = atend, ["spa_codigo"] = spa,
+        ["atendamb_datainicio"] = "2026-08-01T09:40:00",
         ["upaatemed_Anamnese"] = anamnese, ["upaatemed_ExameFisico"] = exame,
         ["upaatemed_HipoteseDiagnostica"] = hipotese, ["upaatemed_ProcedimentoProposto"] = conduta,
         ["upaatemed_Observacao"] = null, ["prof_codigo_encerramento"] = "0001", ["rv"] = rv,
@@ -475,6 +476,13 @@ public class KlinikosImportacaoFluxoTests
         // cada edição tem de reescrever o boletim — não empilhar cópias no prontuário.
         Assert.Contains(doc.Identifier, i => i.System == "urn:klinikos:atendimento-medico" && i.Value == $"{Slug}:A1");
         Assert.Equal("text/html", doc.Content[0].Attachment.ContentType);
+
+        // Documento SEM data aparece no prontuário sem quando e estraga a ordenação. Os
+        // primeiros 168.450 boletins entraram assim em produção porque o parâmetro estava
+        // preparado e recebia null — e nenhum teste olhava para ele.
+        var quando = Assert.IsType<DateTimeOffset>(doc.Date);
+        Assert.Equal(new DateTime(2026, 8, 1, 9, 40, 0), quando.DateTime);
+        Assert.Equal(TimeSpan.FromHours(-3), quando.Offset);   // Brasília, não o fuso do servidor
     }
 
     /// <summary>
