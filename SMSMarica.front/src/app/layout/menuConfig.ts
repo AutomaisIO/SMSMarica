@@ -18,6 +18,7 @@ import {
   DatabaseZap,
   HeartPulse,
   FileCog,
+  UserRoundX,
   FileSignature,
   FileText,
   FlaskConical,
@@ -259,6 +260,13 @@ export const SECOES: SecaoMenu[] = [
         icone: FileCog,
         modulo: 'LaudosTemplates',
         descricao: 'Modelos estruturados de laudo.',
+      },
+      {
+        rotulo: 'Corrigir Identidade',
+        to: '/app/correcao-identidade',
+        icone: UserRoundX,
+        modulo: 'CorrecaoIdentidadeExame',
+        descricao: 'Exame arquivado no paciente errado.',
       },
       {
         rotulo: 'Configuração de Laudo',

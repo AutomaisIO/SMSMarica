@@ -968,6 +968,12 @@ namespace SMSMarica.Data.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("destino");
 
+                    b.Property<bool>("ExigeConfirmacaoCpf")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("exige_confirmacao_cpf");
+
                     b.Property<DateTime>("ExpiraEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expira_em");
@@ -979,6 +985,12 @@ namespace SMSMarica.Data.Migrations
                     b.Property<Guid?>("SolicitacaoId")
                         .HasColumnType("uuid")
                         .HasColumnName("solicitacao_id");
+
+                    b.Property<int>("TentativasCpf")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("tentativas_cpf");
 
                     b.Property<DateTime?>("UsadoEm")
                         .HasColumnType("timestamp with time zone")
@@ -1736,9 +1748,23 @@ namespace SMSMarica.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expira_em");
 
+                    b.Property<Guid?>("Liberacao")
+                        .HasColumnType("uuid")
+                        .HasColumnName("liberacao");
+
+                    b.Property<DateTime?>("LiberadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("liberado_em");
+
                     b.Property<Guid>("ReferenciaId")
                         .HasColumnType("uuid")
                         .HasColumnName("referencia_id");
+
+                    b.Property<int>("TentativasCpf")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("tentativas_cpf");
 
                     b.Property<string>("Tipo")
                         .IsRequired()
@@ -2176,6 +2202,84 @@ namespace SMSMarica.Data.Migrations
                     b.HasIndex("Status", "ProximaTentativaEm");
 
                     b.ToTable("exame_imagem", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMarica.Data.Entities.ExameIncidenteIdentidade", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<Guid?>("AtualizadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atualizado_por");
+
+                    b.Property<bool>("Automatico")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("automatico");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<Guid?>("ExameImagemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("exame_imagem_id");
+
+                    b.Property<string>("Motivo")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("motivo");
+
+                    b.Property<Guid?>("PacienteSuspeitoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paciente_suspeito_id");
+
+                    b.Property<string>("ResolucaoNota")
+                        .HasColumnType("text")
+                        .HasColumnName("resolucao_nota");
+
+                    b.Property<DateTime?>("ResolvidoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resolvido_em");
+
+                    b.Property<Guid?>("ResolvidoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("resolvido_por");
+
+                    b.Property<int>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("status");
+
+                    b.Property<string>("StudyInstanceUID")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("study_instance_uid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("StudyInstanceUID")
+                        .IsUnique()
+                        .HasDatabaseName("ix_exame_incidente_identidade_study_aberto")
+                        .HasFilter("status = 1");
+
+                    b.ToTable("exame_incidente_identidade", "smsmarica");
                 });
 
             modelBuilder.Entity("SMSMarica.Data.Entities.Fileira", b =>

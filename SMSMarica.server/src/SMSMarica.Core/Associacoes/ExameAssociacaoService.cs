@@ -18,9 +18,35 @@ public sealed class ExameAssociacaoService(
     IPacienteResolver pacienteResolver,
     IConsultaStudyClient consultaStudy,
     ISolicitacoesExameService solicitacoes,
+    Pacs.IPacsReescritorEstudoClient reescritor,
+    IQuarentenaIdentidadeService quarentena,
+    Pacs.IResolvedorIdentidadeDicom identidades,
     IUsuarioAtualAccessor usuarioAtual,
     ILogger<ExameAssociacaoService> logger) : IExameAssociacaoService
 {
+    /// <summary>
+    /// Corrige a identidade DENTRO do objeto DICOM do estudo "voando" e devolve o UID novo.
+    ///
+    /// <para>O estudo que chega sem worklist carrega o que a técnica digitou no equipamento —
+    /// PatientID inventado, AccessionNumber vazio ou errado. Até 2026-08-11 a associação resolvia
+    /// isso só do nosso lado e o objeto ficava como veio; o sistema mostrava certo e o arquivo
+    /// continuava errado. Agora o objeto é reescrito com a identidade do pedido.</para>
+    ///
+    /// <para><b>Só no caminho MANUAL.</b> A conciliação automática roda a cada 30s sobre estudos
+    /// recentes e pode pegar um estudo que o equipamento AINDA está enviando — reescrever ali
+    /// (que apaga o original e re-armazena) perderia as instâncias que chegassem depois. No manual
+    /// quem decide é uma pessoa, com o exame já terminado.</para>
+    /// </summary>
+    private async Task<string> ReescreverDicomAsync(string uid, Guid exameImagemId, CancellationToken ct)
+    {
+        var identidade = await identidades.ObterAsync(exameImagemId, ct);
+        var resultado = await reescritor.ReescreverIdentidadeAsync(uid, identidade, ct);
+        logger.LogInformation(
+            "Associação manual reescreveu o estudo {Antigo} → {Novo} com a identidade do pedido.",
+            uid, resultado.StudyInstanceUIDNovo);
+        return resultado.StudyInstanceUIDNovo;
+    }
+
     public async Task<ExameAssociacaoDto> AssociarAsync(
         AssociarExameRequest request,
         OrigemAssociacaoExame origem = OrigemAssociacaoExame.Manual,
@@ -71,9 +97,23 @@ public sealed class ExameAssociacaoService(
         if (validarNoPacs && !await consultaStudy.StudyExistePorStudyUidAsync(uid, cancellationToken))
             throw new ConflitoException("associacao.study_inexistente", "Estudo não encontrado no PACS.");
 
-        // Data/hora REAL do exame vem do DICOM (StudyDate/StudyTime). Buscada ANTES da transação;
-        // falha do PACS não derruba a associação (null → fallback na exibição).
+        // Data/hora REAL do exame vem do DICOM (StudyDate/StudyTime). Buscada ANTES da reescrita,
+        // que troca o UID; falha do PACS não derruba a associação (null → fallback na exibição).
         var dataEstudo = await ObterDataEstudoSeguroAsync(uid, cancellationToken);
+
+        // Integridade: o objeto passa a carregar a identidade do pedido, não a que foi digitada
+        // no equipamento. Só no manual — ver ReescreverDicomAsync. Falha aqui ABORTA a associação:
+        // meia correção (banco certo, arquivo errado) é justamente o que estamos eliminando.
+        var uidDicomOriginal = uid;
+        if (origem == OrigemAssociacaoExame.Manual)
+        {
+            uid = await ReescreverDicomAsync(uid, solicitacao.Id, cancellationToken);
+            // O UID mudou: laudos que apontavam para o estudo antigo seguem o objeto, senão
+            // ficariam órfãos apontando para um estudo que não existe mais.
+            await db.Laudos
+                .Where(l => l.StudyInstanceUID == uidDicomOriginal && !l.Excluido)
+                .ExecuteUpdateAsync(u => u.SetProperty(l => l.StudyInstanceUID, uid), cancellationToken);
+        }
 
         var agora = DateTime.UtcNow;
         // Guarda o status atual SE a associação for promovê-lo a Realizada — para o desassociar
@@ -349,6 +389,11 @@ public sealed class ExameAssociacaoService(
     private async Task<ResultadoConciliacao> ConciliarNucleoAsync(
         string uid, EstudoPacsRecente estudo, CancellationToken cancellationToken)
     {
+        // QUARENTENA: estudo sob suspeita de identidade não é tocado pelo motor. Sem isto o
+        // poller (30s) refaria o vínculo que um humano acabou de pôr em dúvida.
+        if (await quarentena.EmQuarentenaAsync(uid, cancellationToken))
+            return ResultadoConciliacao.SemSolicitacao;
+
         var acc = (estudo.AccessionNumber ?? string.Empty).Trim();
         var patId = (estudo.PatientId ?? string.Empty).Trim();
 

@@ -46,10 +46,21 @@ public interface IComunicacaoPacienteService
     /// </summary>
     Task EnviarManualAsync(
         Guid solicitacaoExameId, FinalidadeComunicacao finalidade, bool assumirRisco, CancellationToken ct = default);
+
+    /// <summary>
+    /// Corta o acesso do paciente ao que já foi enviado desta solicitação: expira TODOS os magic
+    /// links ainda ativos e derruba as sessões de quem chegou a usar algum. NÃO salva — participa
+    /// do <c>SaveChanges</c> do chamador (exceto a revogação de sessões, que é <c>ExecuteUpdate</c>).
+    /// <para>Usado pelo reenvio manual e pela <b>correção de identidade</b>: quando um exame muda de
+    /// dono, quem recebeu o link por engano precisa perder o acesso na mesma operação.</para>
+    /// </summary>
+    Task<IReadOnlyList<CidadaoLoginLink>> RevogarAcessosAsync(
+        Guid solicitacaoId, DateTime agora, CancellationToken ct = default);
 }
 
 public sealed class ComunicacaoPacienteService(
     SmsMaricaDbContext db,
+    Associacoes.IQuarentenaIdentidadeService quarentena,
     IPacientesService pacientes,
     ICidadaoLoginLinkService loginLinks,
     IWhatsAppCliente whatsApp,
@@ -111,6 +122,14 @@ public sealed class ComunicacaoPacienteService(
             {
                 Terminal(n, StatusComunicacao.Falha, "Solicitação excluída ou cancelada antes do envio.");
             }
+            // QUARENTENA: exame sob suspeita de identidade não vai para o paciente. NÃO é terminal
+            // — a suspeita pode ser descartada como falso alarme, e aí o aviso segue normalmente.
+            else if (s.ExameImagem?.StudyInstanceUID is { Length: > 0 } uidQ
+                     && await quarentena.EmQuarentenaAsync(uidQ, ct))
+            {
+                n.MotivoFalha = "Exame em conferência por suspeita de identidade trocada.";
+                n.ProximaTentativaEm = DateTime.UtcNow.AddHours(1);
+            }
             else if (n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
                      && (s.DataAgendada is not { } dataAgendada || dataAgendada <= DateTime.UtcNow))
             {
@@ -166,28 +185,8 @@ public sealed class ComunicacaoPacienteService(
                     "reenvio.ja_respondida", "O paciente já respondeu esta confirmação — nada a reenviar.");
         }
 
-        // 1. REVOGA todos os magic links ainda ativos da solicitação (não só o desta comunicação:
-        //    qualquer link anterior pode ter ido para o número errado). Expirar = ninguém mais
-        //    autentica com eles.
-        var linksAtivos = await db.CidadaoLoginLinks
-            .Where(l => l.SolicitacaoId == solicitacaoId && l.ExpiraEm > agora)
-            .ToListAsync(ct);
-        foreach (var l in linksAtivos) l.ExpiraEm = agora;
-
-        // 2. Se algum link da solicitação JÁ FOI USADO, derruba as sessões ativas do paciente do
-        //    link — se quem clicou foi a pessoa errada, ela perde o acesso ao app AGORA. O
-        //    paciente certo reentra com 1 clique no link novo (single-device, custo zero).
-        var pacientesComLinkUsado = await db.CidadaoLoginLinks.AsNoTracking()
-            .Where(l => l.SolicitacaoId == solicitacaoId && l.UsadoEm != null)
-            .Select(l => l.PatientId)
-            .Distinct()
-            .ToListAsync(ct);
-        if (pacientesComLinkUsado.Count > 0)
-        {
-            await db.CidadaoSessoes
-                .Where(x => x.RevogadaEm == null && pacientesComLinkUsado.Contains(x.CidadaoAcesso.PatientId))
-                .ExecuteUpdateAsync(u => u.SetProperty(x => x.RevogadaEm, agora), ct);
-        }
+        // 1-2. Revoga links ativos e derruba sessões de quem já clicou.
+        var linksAtivos = await RevogarAcessosAsync(solicitacaoId, agora, ct);
 
         // 3. Reconstrói o envio do zero: zera telefone/link/recibos — o processamento re-resolve
         //    o paciente (telefone ATUAL: verificado > celular > principal) e gera link novo.
@@ -247,17 +246,7 @@ public sealed class ComunicacaoPacienteService(
 
         // Revoga links de acesso ainda ativos da solicitação (e derruba sessões de quem já usou um
         // link — proteção contra número errado); o envio reconstrói com o contato ATUAL.
-        var linksAtivos = await db.CidadaoLoginLinks
-            .Where(l => l.SolicitacaoId == solicitacaoId && l.ExpiraEm > agora)
-            .ToListAsync(ct);
-        foreach (var l in linksAtivos) l.ExpiraEm = agora;
-        var pacientesComLinkUsado = await db.CidadaoLoginLinks.AsNoTracking()
-            .Where(l => l.SolicitacaoId == solicitacaoId && l.UsadoEm != null)
-            .Select(l => l.PatientId).Distinct().ToListAsync(ct);
-        if (pacientesComLinkUsado.Count > 0)
-            await db.CidadaoSessoes
-                .Where(x => x.RevogadaEm == null && pacientesComLinkUsado.Contains(x.CidadaoAcesso.PatientId))
-                .ExecuteUpdateAsync(u => u.SetProperty(x => x.RevogadaEm, agora), ct);
+        var linksAtivos = await RevogarAcessosAsync(solicitacaoId, agora, ct);
 
         // Upsert da comunicação (solicitação × finalidade é único): cria se não existe, senão reusa.
         var n = await db.ComunicacoesPaciente
@@ -375,7 +364,8 @@ public sealed class ComunicacaoPacienteService(
         // ancorado na ESPINHA (s.Id); o destino usa o id PÚBLICO do exame (ExameImagem.Id) para o
         // front achar o card em /exames.
         var exameIdPublico = s.ExameImagem?.Id ?? s.Id;
-        var link = await loginLinks.GerarParaSolicitacaoAsync(exameIdPublico, Destino(n.Finalidade, exameIdPublico), ct);
+        var link = await loginLinks.GerarParaSolicitacaoAsync(
+            exameIdPublico, Destino(n.Finalidade, exameIdPublico), ExigeCpf(n.Finalidade), ct);
         n.LoginLinkId = link.Token;
 
         var opts = options.Value;
@@ -405,6 +395,36 @@ public sealed class ComunicacaoPacienteService(
         }
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<CidadaoLoginLink>> RevogarAcessosAsync(
+        Guid solicitacaoId, DateTime agora, CancellationToken ct = default)
+    {
+        // Revoga TODOS os links ativos da solicitação, não só o da comunicação em questão:
+        // qualquer link anterior pode ter ido para o número — ou para a pessoa — errada.
+        // Expirar é a revogação: ninguém mais autentica com eles.
+        var linksAtivos = await db.CidadaoLoginLinks
+            .Where(l => l.SolicitacaoId == solicitacaoId && l.ExpiraEm > agora)
+            .ToListAsync(ct);
+        foreach (var l in linksAtivos) l.ExpiraEm = agora;
+
+        // Se algum link JÁ FOI USADO, derruba as sessões ativas do paciente daquele link — se quem
+        // clicou foi a pessoa errada, ela perde o acesso ao app AGORA. O paciente certo reentra
+        // com 1 clique no link novo.
+        var pacientesComLinkUsado = await db.CidadaoLoginLinks.AsNoTracking()
+            .Where(l => l.SolicitacaoId == solicitacaoId && l.UsadoEm != null)
+            .Select(l => l.PatientId)
+            .Distinct()
+            .ToListAsync(ct);
+        if (pacientesComLinkUsado.Count > 0)
+        {
+            await db.CidadaoSessoes
+                .Where(x => x.RevogadaEm == null && pacientesComLinkUsado.Contains(x.CidadaoAcesso.PatientId))
+                .ExecuteUpdateAsync(u => u.SetProperty(x => x.RevogadaEm, agora), ct);
+        }
+
+        return linksAtivos;
+    }
+
     /// <summary>Rota de chegada no app após o magic link, por finalidade. Exame liberado e
     /// laudo pronto caem em /exames com o CARD do exame já expandido (?exame={id}).</summary>
     private static string Destino(FinalidadeComunicacao finalidade, Guid solicitacaoId) => finalidade switch
@@ -413,6 +433,13 @@ public sealed class ComunicacaoPacienteService(
             => $"/exames?exame={solicitacaoId}",
         _ => "/agendados/exames",
     };
+
+    /// <summary>Quais links exigem o CPF do titular antes de virar sessão. Só os que carregam
+    /// RESULTADO clínico: um link entregue à pessoa errada não pode abrir o prontuário alheio.
+    /// Confirmação de agendamento fica de fora de propósito — não expõe resultado e depende de
+    /// ser 1 clique.</summary>
+    private static bool ExigeCpf(FinalidadeComunicacao finalidade) => finalidade
+        is FinalidadeComunicacao.ExameLiberado or FinalidadeComunicacao.LaudoPronto;
 
     private static (string Template, string[] Parametros, BotaoTemplateWhatsApp[] Botoes) MontarEnvio(
         FinalidadeComunicacao finalidade, TipoAgendamento tipo, Solicitacao s, string? nomePaciente,

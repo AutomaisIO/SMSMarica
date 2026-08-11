@@ -52,11 +52,17 @@ public class ConciliacaoStudyTests(PostgresFixture fixture)
             Substitute.For<SMSMarica.Core.Auditoria.IAuditoriaService>(),
             NullLogger<SolicitacoesExameService>.Instance);
 
+        // Reescritor como substitute: a conciliação AUTOMÁTICA não reescreve o DICOM de propósito
+        // (o equipamento pode ainda estar enviando instâncias). Se algum caso deste arquivo
+        // chamasse o reescritor, seria um sinal de que essa trava se perdeu.
         return new ExameAssociacaoService(
             db,
             Substitute.For<IPacienteResolver>(),
             consultaStudy,
             solicitacoes,
+            Substitute.For<SMSMarica.Core.Pacs.IPacsReescritorEstudoClient>(),
+            Substitute.For<IQuarentenaIdentidadeService>(),
+            Substitute.For<SMSMarica.Core.Pacs.IResolvedorIdentidadeDicom>(),
             new UsuarioAtualAccessorFake(),
             NullLogger<ExameAssociacaoService>.Instance);
     }

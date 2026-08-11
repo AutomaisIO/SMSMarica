@@ -105,6 +105,10 @@ public static class DependencyInjection
             SolicitacoesExame.Declaracao.DeclaracaoComparecimentoService>();
         services.AddScoped<Downloads.IDownloadTokenService, Downloads.DownloadTokenService>();
         services.AddScoped<Associacoes.IExameAssociacaoService, Associacoes.ExameAssociacaoService>();
+        services.AddScoped<Associacoes.IQuarentenaIdentidadeService, Associacoes.QuarentenaIdentidadeService>();
+        services.AddScoped<Associacoes.IDetectorTrocaIdentidadeService, Associacoes.DetectorTrocaIdentidadeService>();
+        services.AddScoped<Pacs.IResolvedorIdentidadeDicom, Pacs.ResolvedorIdentidadeDicom>();
+        services.AddScoped<Associacoes.ICorrecaoIdentidadeExameService, Associacoes.CorrecaoIdentidadeExameService>();
         services.AddScoped<Anamneses.IAnamnesesService, Anamneses.AnamnesesService>();
 
         // ---- Anexos de exame (ponte QR → PWA "Arquivos Saúde Maricá") ----
@@ -136,6 +140,16 @@ public static class DependencyInjection
                 client.BaseAddress = new Uri(configuration["Pacs:Dcm4chee:RsBaseUrl"]
                     ?? "http://pacs.marica.automais.cloud:8080/dcm4chee-arc/aets/PACS-CDT/rs/");
                 client.Timeout = TimeSpan.FromSeconds(10);
+            });
+
+        // Reescrita de identidade do estudo: baixa, reescreve e re-armazena o objeto inteiro.
+        // Timeout largo — uma mamografia tem 4 instâncias que podem passar de 50 MB cada.
+        services
+            .AddHttpClient<Pacs.IPacsReescritorEstudoClient, Pacs.PacsReescritorEstudoClient>(client =>
+            {
+                client.BaseAddress = new Uri(configuration["Pacs:Dcm4chee:RsBaseUrl"]
+                    ?? "http://pacs.marica.automais.cloud:8080/dcm4chee-arc/aets/PACS-CDT/rs/");
+                client.Timeout = TimeSpan.FromMinutes(10);
             });
 
         services.Configure<EnviadorWorklistOptions>(configuration.GetSection(EnviadorWorklistOptions.SecaoConfig));

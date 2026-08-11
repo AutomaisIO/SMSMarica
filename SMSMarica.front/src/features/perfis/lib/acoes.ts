@@ -96,6 +96,7 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'RegulacaoAgendamento', rotulo: 'Regulação — agendamento (visão do município no painel)' },
   { id: 'RegulacaoSer', rotulo: 'Regulação — SER: fila do Estado (só leitura)' },
   { id: 'RegulacaoConfiguracao', rotulo: 'Regulação — Configuração (credenciais e motor do SER)' },
+  { id: 'CorrecaoIdentidadeExame', rotulo: 'Correção de identidade de exame (reescreve o DICOM no PACS)' },
 ];
 
 export const ACOES: { id: AcaoPermissao; rotulo: string }[] = [
@@ -122,5 +123,11 @@ export const APELIDOS_ACOES_POR_MODULO: Partial<
   // Só a Inclusão vale aqui: é a permissão que libera o botão "Nova solicitação" (ticket #89).
   SolicitacaoExameManual: {
     Inclusao: 'Abrir solicitação manual',
+  },
+  // Consulta = ver a fila; Edição = EXECUTAR a correção, que apaga e reescreve o objeto no PACS.
+  // Sem apelido, "Edição" aqui pareceria inofensivo.
+  CorrecaoIdentidadeExame: {
+    Consulta: 'Ver estudos com identidade suspeita',
+    Edicao: 'Executar a correção (reescreve o DICOM)',
   },
 };

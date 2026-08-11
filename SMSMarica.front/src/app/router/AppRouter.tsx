@@ -23,6 +23,7 @@ import { LaudoEditorPage } from '@/features/laudos/pages/LaudoEditorPage';
 import { LaudosListagemPage } from '@/features/laudos/pages/LaudosListagemPage';
 import { LaudoTemplateEditorPage } from '@/features/laudo-templates/pages/LaudoTemplateEditorPage';
 import { LaudoTemplatesListagemPage } from '@/features/laudo-templates/pages/LaudoTemplatesListagemPage';
+import { CorrecaoIdentidadeExamePage } from '@/features/correcao-identidade/pages/CorrecaoIdentidadeExamePage';
 import { LaudoConfiguracaoPage } from '@/features/laudo-configuracao/pages/LaudoConfiguracaoPage';
 import { PacsListagemPage } from '@/features/pacs/pages/PacsListagemPage';
 import { PacsViewerPage } from '@/features/pacs/pages/PacsViewerPage';
@@ -160,6 +161,7 @@ export function AppRouter() {
           <Route path="laudo-templates" element={<LaudoTemplatesListagemPage />} />
           <Route path="laudo-templates/novo" element={<LaudoTemplateEditorPage />} />
           <Route path="laudo-templates/:id" element={<LaudoTemplateEditorPage />} />
+          <Route path="correcao-identidade" element={<CorrecaoIdentidadeExamePage />} />
           <Route path="laudo-configuracao" element={<LaudoConfiguracaoPage />} />
           <Route path="solicitacoes-exame" element={<SolicitacoesExamePage />} />
           <Route path="solicitacoes-exame/novo" element={<SolicitacaoExameFormPage />} />

@@ -174,4 +174,15 @@ public enum ModuloPermissao
     /// <see cref="RegulacaoAgendamento"/> porque é outra fonte, com outro vocabulário de situação
     /// e outra operação (acompanhar fila estadual, não marcar).</summary>
     RegulacaoSer = 54,
+
+    /// <summary>Correção de IDENTIDADE de exame — trocar de qual paciente é um estudo já no PACS.
+    /// Nasce do incidente de 11/08/2026 (a técnica puxou o item de worklist errado e as imagens de
+    /// uma paciente foram arquivadas sob outro).
+    /// <para>Módulo próprio, e não uma ação de <see cref="Pacs"/>, porque a operação é de outra
+    /// natureza: <b>reescreve o objeto DICOM no PACS</b> (apaga o original e re-armazena com UIDs
+    /// novos), descarta rascunhos de laudo e revoga o link já enviado ao paciente. Quem cuida do
+    /// dia a dia de exames não precisa disso; quem precisa é um punhado de nomes. Mesmo caminho de
+    /// <see cref="SolicitacaoExameManual"/> e <see cref="Sandbox"/>.</para>
+    /// <para>Usa <c>Consulta</c> (ver a fila de incidentes) e <c>Edicao</c> (executar a correção).</para></summary>
+    CorrecaoIdentidadeExame = 55,
 }
