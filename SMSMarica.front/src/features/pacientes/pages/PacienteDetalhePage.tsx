@@ -33,6 +33,7 @@ import type { AcessoCidadao } from '@/features/pacientes/api/pacientesApi';
 import type { RegistroAuditoria } from '@/features/auditoria/types';
 import { NomeCompletoVerificavel } from '@/features/pacientes/components/NomeCompletoVerificavel';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
+import { BotaoEnviarPesquisa } from '@/features/pacientes/components/BotaoEnviarPesquisa';
 import { SecaoExamesAnexados } from '@/features/pacientes/components/SecaoExamesAnexados';
 import { SinaisVitaisTendencia } from '@/features/pacientes/components/SinaisVitaisTendencia';
 import { abrirImpressaoDocumento, EDOC_CSS } from '@/features/pacientes/lib/imprimirDocumento';
@@ -447,7 +448,10 @@ function SecaoAtendimentos({ pacienteId, paciente }: { pacienteId: string; pacie
                 {formatarDataHora(a.inicio) ?? '—'}
               </span>
             </div>
-            <EtiquetaOrigem atendimento={a} />
+            <div className="flex shrink-0 items-center gap-2">
+              <BotaoEnviarPesquisa pacienteId={pacienteId} atendimento={a} />
+              <EtiquetaOrigem atendimento={a} />
+            </div>
           </div>
           {a.medicoNome ? (
             <div className="mt-1 flex items-center gap-1.5 text-sm text-gray-600">

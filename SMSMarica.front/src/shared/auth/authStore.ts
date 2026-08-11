@@ -33,6 +33,7 @@ export type ModuloPermissao =
   | 'SisregMapeamento'
   | 'RegulacaoSer'
   | 'CorrecaoIdentidadeExame'
+  | 'PesquisaSatisfacao'
   | 'SincronizacaoPep'
   | 'ApiTokens'
   | 'Cidadao'

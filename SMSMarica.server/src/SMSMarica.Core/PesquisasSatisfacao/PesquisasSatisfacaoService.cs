@@ -1,12 +1,18 @@
+﻿using System.Globalization;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using SMSMarica.Core.Atendimentos;
 using SMSMarica.Core.Common.Excecoes;
+using SMSMarica.Core.Common.Tempo;
+using SMSMarica.Core.Conversas;
 using SMSMarica.Core.Identidade;
+using SMSMarica.Core.Notificacoes.WhatsApp;
+using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.PesquisasSatisfacao.Dtos;
 using SMSMarica.Data;
 using SMSMarica.Data.Entities;
+using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.PesquisasSatisfacao;
 
@@ -18,6 +24,8 @@ public sealed class PesquisasSatisfacaoService(
     SmsMaricaDbContext db,
     IAtendimentosService atendimentos,
     IUsuarioAtualAccessor usuarioAtual,
+    IPacientesService pacientes,
+    IWhatsAppCliente whatsApp,
     IConfiguration configuration) : IPesquisasSatisfacaoService
 {
     /// <summary>
@@ -98,6 +106,62 @@ public sealed class PesquisasSatisfacaoService(
         await db.SaveChangesAsync(ct);
 
         return new EnvioPesquisaDto(p.Id, MontarUrl(p.Id), jaEnviada);
+    }
+
+    public async Task<EnvioPesquisaDto> EnviarAsync(
+        Guid pacienteId, Guid encounterId, CancellationToken ct = default)
+    {
+        var envio = await PrepararEnvioAsync(pacienteId, encounterId, ct);
+        var p = await db.PesquisasSatisfacao.AsNoTracking().FirstAsync(x => x.Id == envio.PesquisaId, ct);
+        var paciente = await pacientes.ObterPorIdAsync(pacienteId, ct);
+
+        // Mesma régua do resto das comunicações: contato verificado primeiro, qualquer celular
+        // do cadastro depois. Aqui NÃO se exige verificação — a pesquisa não carrega resultado
+        // nem laudo, e exigir contato verificado deixaria de fora justamente quem a recepção
+        // ainda não alcançou.
+        var telefone = paciente.TelefoneVerificado
+            ?? new[] { paciente.TelefoneCelular, paciente.TelefonePrincipal, paciente.TelefoneResidencial }
+                .FirstOrDefault(TelefoneWhatsApp.EhCelularBr);
+
+        if (!TelefoneWhatsApp.EhCelularBr(telefone))
+            throw new ConflitoException(
+                "pesquisa.sem_telefone", "Paciente sem número de celular válido para receber a pesquisa.");
+
+        var template = configuration["Pesquisa:Template"] ?? "pesquisa_de_satisfacao_2";
+        var idioma = configuration["Pesquisa:TemplateIdioma"] ?? "pt_BR";
+
+        var resultado = await whatsApp.EnviarTemplateComBotoesAsync(
+            TelefoneWhatsApp.NormalizarNonoDigito(telefone!),
+            template,
+            idioma,
+            [
+                Tratamento(paciente.NomeCompleto, paciente.Sexo),
+                p.UnidadeNome ?? "nossa unidade",
+                FusoBrasilia.ParaExibicao(p.AtendimentoEm).ToString("dd/MM/yyyy", CultureInfo.GetCultureInfo("pt-BR")),
+            ],
+            // Só o botão de URL entra no payload: as duas respostas rápidas do template são
+            // estáticas. O índice 0 é o do botão de link, que é o primeiro do template aprovado.
+            [new BotaoTemplateWhatsApp(TipoBotaoTemplate.Url, envio.PesquisaId.ToString())],
+            pacienteId,
+            ct);
+
+        if (!resultado.Ok)
+            throw new ConflitoException("pesquisa.falha_envio", resultado.Erro ?? "Falha ao enviar a pesquisa.");
+
+        return envio;
+    }
+
+    /// <summary>Sr./Sra. + primeiro nome; sem sexo no cadastro, só o primeiro nome.</summary>
+    private static string Tratamento(string? nomeCompleto, Sexo? sexo)
+    {
+        var primeiro = (nomeCompleto ?? string.Empty).Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .FirstOrDefault() ?? "paciente";
+        return sexo switch
+        {
+            Sexo.Masculino => $"Sr. {primeiro}",
+            Sexo.Feminino => $"Sra. {primeiro}",
+            _ => primeiro,
+        };
     }
 
     /// <summary>

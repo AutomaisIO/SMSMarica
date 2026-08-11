@@ -97,6 +97,7 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'RegulacaoSer', rotulo: 'Regulação — SER: fila do Estado (só leitura)' },
   { id: 'RegulacaoConfiguracao', rotulo: 'Regulação — Configuração (credenciais e motor do SER)' },
   { id: 'CorrecaoIdentidadeExame', rotulo: 'Correção de identidade de exame (reescreve o DICOM no PACS)' },
+  { id: 'PesquisaSatisfacao', rotulo: 'Pesquisa de satisfação — enviar ao paciente pelo histórico' },
 ];
 
 export const ACOES: { id: AcaoPermissao; rotulo: string }[] = [
@@ -128,5 +129,10 @@ export const APELIDOS_ACOES_POR_MODULO: Partial<
   // reescreve o objeto no PACS. Sem apelido, "Edição" pareceria inofensivo.
   CorrecaoIdentidadeExame: {
     Edicao: 'Corrigir identidade de exame (reescreve o DICOM)',
+  },
+  // Só a Edição: é ela que mostra o botão no atendimento. "Edição" sem apelido pareceria
+  // inofensivo — o que ela libera é MANDAR MENSAGEM para o cidadão.
+  PesquisaSatisfacao: {
+    Edicao: 'Enviar pesquisa de satisfação ao paciente (WhatsApp)',
   },
 };

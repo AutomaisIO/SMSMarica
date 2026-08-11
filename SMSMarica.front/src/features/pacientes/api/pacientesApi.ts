@@ -94,3 +94,15 @@ export async function desativarPaciente(id: string): Promise<void> {
 export async function reativarPaciente(id: string): Promise<void> {
   await http.post(`/pacientes/${id}/reativar`);
 }
+
+/**
+ * Dispara a pesquisa de satisfação de um atendimento ao paciente (WhatsApp). Idempotente por
+ * atendimento no servidor: reenviar não gera segunda pesquisa nem segunda nota.
+ */
+export async function enviarPesquisaSatisfacao(
+  pacienteId: string,
+  encounterId: string,
+): Promise<{ pesquisaId: string; url: string; jaEnviadaAntes: boolean }> {
+  const { data } = await http.post('/pesquisas-satisfacao/enviar', { pacienteId, encounterId });
+  return data;
+}

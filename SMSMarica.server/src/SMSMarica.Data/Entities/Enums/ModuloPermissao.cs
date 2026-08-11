@@ -1,4 +1,4 @@
-namespace SMSMarica.Data.Entities.Enums;
+﻿namespace SMSMarica.Data.Entities.Enums;
 
 /// <summary>
 /// Módulos do sistema que aceitam controle de acesso. O valor inteiro
@@ -187,4 +187,13 @@ public enum ModuloPermissao
     /// correção. Não há fila nem triagem — quem tem a permissão resolve na hora, na própria tela
     /// da solicitação; quem não tem, não vê o card.</para></summary>
     CorrecaoIdentidadeExame = 55,
+
+    /// <summary>Enviar a pesquisa de satisfação de um atendimento ao paciente, pelo histórico.
+    /// <para>Módulo próprio, e não uma ação de <see cref="Pacientes"/>, porque a operação
+    /// <b>manda mensagem para o cidadão</b>: quem consulta o histórico não deveria, por isso,
+    /// poder disparar WhatsApp. Enquanto o envio for manual é aqui que se controla quem valida
+    /// o fluxo; quando o gatilho automático entrar, ele passa a conviver com esta permissão para
+    /// o reenvio pontual.</para>
+    /// <para>Usa apenas <c>Edicao</c> — é ela que faz aparecer o botão no atendimento.</para></summary>
+    PesquisaSatisfacao = 56,
 }

@@ -1,4 +1,4 @@
-using SMSMarica.Core.PesquisasSatisfacao.Dtos;
+﻿using SMSMarica.Core.PesquisasSatisfacao.Dtos;
 
 namespace SMSMarica.Core.PesquisasSatisfacao;
 
@@ -36,5 +36,12 @@ public interface IPesquisasSatisfacaoService
     /// duas notas da mesma passagem.
     /// </summary>
     Task<EnvioPesquisaDto> PrepararEnvioAsync(
+        Guid pacienteId, Guid encounterId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Prepara e DISPARA o convite por WhatsApp. Envio manual, feito da tela do histórico —
+    /// é como o fluxo será validado antes de existir gatilho automático.
+    /// </summary>
+    Task<EnvioPesquisaDto> EnviarAsync(
         Guid pacienteId, Guid encounterId, CancellationToken cancellationToken = default);
 }
