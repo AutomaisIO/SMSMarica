@@ -1,4 +1,5 @@
 using Hl7.Fhir.Model;
+using Microsoft.Extensions.Caching.Memory;
 using SMSMarica.Core.Atendimentos.Dtos;
 using SMSMarica.Core.Atendimentos.Fhir;
 
@@ -9,10 +10,15 @@ namespace SMSMarica.Core.Atendimentos;
 /// projeta para o smsmarica. O id do paciente no smsmarica É o id do Patient no
 /// hub (paciente é proxy do hub).
 /// </summary>
-public sealed class AtendimentosService(IEncounterFhirClient fhir) : IAtendimentosService
+public sealed class AtendimentosService(IEncounterFhirClient fhir, IMemoryCache cache) : IAtendimentosService
 {
+    private const string ChaveCacheOrganizacoes = "atendimentos:organizacoes";
+    private static readonly TimeSpan ValidadeOrganizacoes = TimeSpan.FromMinutes(10);
+    private const string SistemaCnes = "https://fhir.saude.gov.br/sid/cnes";
+
     public async Task<IReadOnlyList<AtendimentoDto>> ObterPorPacienteAsync(Guid pacienteId, CancellationToken cancellationToken = default)
     {
+        var unidades = await UnidadesAsync(cancellationToken);
         var encBundle = await fhir.BuscarEncountersAsync(pacienteId, cancellationToken);
         var condBundle = await fhir.BuscarConditionsAsync(pacienteId, cancellationToken);
         var medBundle = await fhir.BuscarMedicationRequestsAsync(pacienteId, cancellationToken);
@@ -83,6 +89,9 @@ public sealed class AtendimentosService(IEncounterFhirClient fhir) : IAtendiment
                 ? ProjetarObservations(obs)
                 : ([], null);
 
+            var unidade = enc.ServiceProvider?.Reference is { } refUnidade
+                && unidades.TryGetValue(IdDaReferencia(refUnidade), out var u) ? u : default;
+
             atendimentos.Add(new AtendimentoDto(
                 id,
                 ParseData(enc.Period?.Start),
@@ -91,6 +100,8 @@ public sealed class AtendimentosService(IEncounterFhirClient fhir) : IAtendiment
                 enc.Status?.ToString().ToLowerInvariant() ?? "unknown",
                 enc.Participant?.FirstOrDefault()?.Individual?.Display,
                 enc.Meta?.Source,
+                unidade.Nome,
+                unidade.Cnes,
                 diagnosticos,
                 medicamentos,
                 documentos,
@@ -100,6 +111,32 @@ public sealed class AtendimentosService(IEncounterFhirClient fhir) : IAtendiment
 
         // Mais recente primeiro (o hub já ordena, mas garante).
         return [.. atendimentos.OrderByDescending(a => a.Inicio)];
+    }
+
+    /// <summary>
+    /// Catálogo de unidades (Organization) indexado pelo id, em cache curto. O hub tem 3, e o
+    /// <c>serviceProvider</c> de todo Encounter aponta para uma delas — sem o catálogo o
+    /// atendimento sabe de qual PEP veio mas não sabe onde aconteceu.
+    /// </summary>
+    private async Task<Dictionary<string, (string? Nome, string? Cnes)>> UnidadesAsync(CancellationToken ct)
+    {
+        if (cache.TryGetValue<Dictionary<string, (string? Nome, string? Cnes)>>(ChaveCacheOrganizacoes, out var cacheado)
+            && cacheado is not null)
+        {
+            return cacheado;
+        }
+
+        var bundle = await fhir.BuscarOrganizacoesAsync(ct);
+        var mapa = bundle.Entry
+            .Select(e => e.Resource)
+            .OfType<Organization>()
+            .Where(o => o.Id is not null)
+            .ToDictionary(
+                o => o.Id!,
+                o => (o.Name, o.Identifier?.FirstOrDefault(i => i.System == SistemaCnes)?.Value));
+
+        cache.Set(ChaveCacheOrganizacoes, mapa, ValidadeOrganizacoes);
+        return mapa;
     }
 
     private static string RotuloClasse(string? code) => code switch

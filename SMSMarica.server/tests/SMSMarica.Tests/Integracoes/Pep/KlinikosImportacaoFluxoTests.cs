@@ -55,6 +55,15 @@ public class KlinikosImportacaoFluxoTests
         public List<Dictionary<string, object?>> Evolucoes { get; } = [];
         public List<Dictionary<string, object?>> Sinais { get; } = [];
 
+        /// <summary>Narrativa do atendimento (<c>UPA_Atendimento_Medico</c>) — o boletim médico.</summary>
+        public List<Dictionary<string, object?>> BoletinsMedicos { get; } = [];
+
+        /// <summary>Itens de medicamento prescrito (<c>Item_Prescricao_Medicamento</c> + <c>Prescricao</c>).</summary>
+        public List<Dictionary<string, object?>> ItensPrescricao { get; } = [];
+
+        /// <summary>Catálogo <c>TB_CID</c>. Sem rowversion no contrato: é varredura integral.</summary>
+        public List<Dictionary<string, object?>> Cids { get; } = [];
+
         public bool Conectada { get; set; } = true;
 
         /// <summary>Teto do MIN_ACTIVE_ROWVERSION simulado (default: sem transação em voo).</summary>
@@ -115,6 +124,12 @@ public class KlinikosImportacaoFluxoTests
             _ when sql.Contains("FROM profissional", StringComparison.OrdinalIgnoreCase) => Profissionais,
             _ when sql.Contains("FROM paciente", StringComparison.OrdinalIgnoreCase) => Pacientes,
             _ when sql.Contains("FROM Pronto_Atendimento", StringComparison.OrdinalIgnoreCase) => Boletins,
+            // `FROM <tabela>` e não só o nome: `SqlDesfechos` faz LEFT JOIN em
+            // UPA_Atendimento_Medico e `SqlBoletinsMedicos` faz JOIN em atendimento_ambulatorial
+            // — casar pelo nome solto trocaria uma consulta pela outra.
+            _ when sql.Contains("FROM UPA_Atendimento_Medico", StringComparison.OrdinalIgnoreCase) => BoletinsMedicos,
+            _ when sql.Contains("FROM Item_Prescricao_Medicamento", StringComparison.OrdinalIgnoreCase) => ItensPrescricao,
+            _ when sql.Contains("FROM TB_CID", StringComparison.OrdinalIgnoreCase) => Cids,
             _ when sql.Contains("FROM atendimento_ambulatorial", StringComparison.OrdinalIgnoreCase) => Desfechos,
             _ when sql.Contains("FROM UPA_Evolucao", StringComparison.OrdinalIgnoreCase) => Evolucoes,
             _ when sql.Contains("FROM UPA_SinaisVitais", StringComparison.OrdinalIgnoreCase) => Sinais,
@@ -267,10 +282,20 @@ public class KlinikosImportacaoFluxoTests
         f.Boletins.Add(Bol("B2", "P2", 1100)); // evasão: nenhum INÍCIO
         f.Boletins.Add(Bol("B3", "P3", 1200));
         f.Evolucoes.Add(Evo(1, "B1", "INÍCIO DO ATENDIMENTO MÉDICO", "Início do Atendimento", "J06.9", 2000));
-        f.Evolucoes.Add(Evo(2, "B1", "RECEITA", "dipirona 500mg 6/6h", null, 2100));
+        // O rótulo é TUDO que a origem grava nessas linhas — nada de medicamento. Elas não
+        // podem virar MedicationRequest; a prescrição de verdade está em ItensPrescricao.
+        f.Evolucoes.Add(Evo(2, "B1", "RECEITA", "Receita", null, 2100));
         f.Evolucoes.Add(Evo(3, "B3", "EVOLUÇÃO MÉDICA", "paciente estável, mantém conduta", null, 2200));
         f.Evolucoes.Add(Evo(4, "B3", "ESTORNO", "lançamento anulado", null, 2300));
         f.Evolucoes.Add(Evo(5, "B3", "INÍCIO DO ATENDIMENTO MÉDICO", "Início do Atendimento", "A90", 2400));
+        f.Evolucoes.Add(Evo(6, "B1", "REAVALIAÇÃO", "Reavaliação", "J06.9", 2500));
+
+        f.BoletinsMedicos.Add(BolMed("A1", "B1", "dor de garganta há 3 dias", "orofaringe hiperemiada",
+            "faringite aguda", "sintomáticos e retorno se piora", 4000));
+        f.ItensPrescricao.Add(ItemPresc("11111111-1111-1111-1111-111111111111", "PR1", "B1",
+            "DipiRONA 500 mg/ml SOLUÇÃO INJETÁVEL 2ml AMPOLA", 1m, "ampola", "INTRAMUSCULAR", 360, 5000));
+        f.Cids.Add(new() { ["CO_CID"] = "J069", ["NO_CID"] = "INFECCAO AGUDA DAS VIAS AEREAS SUPERIORES NE" });
+        f.Cids.Add(new() { ["CO_CID"] = "A90", ["NO_CID"] = "DENGUE" });
         f.Sinais.Add(new()
         {
             ["sv_codigo"] = 77L, ["spa_codigo"] = "B1", ["data"] = "2026-08-01T10:20:00",
@@ -319,6 +344,28 @@ public class KlinikosImportacaoFluxoTests
         ["rv"] = rv,
     };
 
+    /// <summary>Linha de <c>UPA_Atendimento_Medico</c> — a narrativa do atendimento.</summary>
+    private static Dictionary<string, object?> BolMed(
+        string atend, string spa, string? anamnese, string? exame, string? hipotese, string? conduta, long rv) => new()
+    {
+        ["atendamb_codigo"] = atend, ["spa_codigo"] = spa,
+        ["upaatemed_Anamnese"] = anamnese, ["upaatemed_ExameFisico"] = exame,
+        ["upaatemed_HipoteseDiagnostica"] = hipotese, ["upaatemed_ProcedimentoProposto"] = conduta,
+        ["upaatemed_Observacao"] = null, ["prof_codigo_encerramento"] = "0001", ["rv"] = rv,
+    };
+
+    /// <summary>Item de medicamento prescrito — o remédio de verdade, com dose e via.</summary>
+    private static Dictionary<string, object?> ItemPresc(
+        string id, string presc, string spa, string insumo, decimal qtd, string unidade,
+        string via, int frequencia, long rv) => new()
+    {
+        ["item_id"] = id, ["presc_codigo"] = presc, ["spa_codigo"] = spa,
+        ["presc_data"] = "2026-08-01T11:00:00", ["prof_codigo"] = "0001",
+        ["ins_descricao"] = insumo, ["itpresc_quantidade"] = qtd, ["ins_unidade"] = unidade,
+        ["viamed_descricao"] = via, ["itpresc_frequencia"] = frequencia,
+        ["itpresc_duracao"] = 3, ["itpresc_qtd_sos"] = null, ["rv"] = rv,
+    };
+
     private static async Task<(ContextoImportacaoPep Ctx, ProgressoImportacao P, DivergenciasFake Div)> RodarAsync(
         FonteFake fonte, HubFake hub, MarcaDagua? marca = null,
         IReadOnlyDictionary<string, bool>? conhecidas = null)
@@ -362,11 +409,18 @@ public class KlinikosImportacaoFluxoTests
         var evasao = Assert.Single(encs, e => e.Status == Encounter.EncounterStatus.Cancelled);
         Assert.Contains(evasao.Identifier, i => i.Value == $"{Slug}:B2");
 
-        // Condition por boletim; RECEITA vira MedicationRequest; ESTORNO e INÍCIO não viram documento.
+        // Condition por boletim; ESTORNO, INÍCIO e REAVALIAÇÃO não viram documento.
         Assert.Equal(2, hub.Do<Condition>().Count);        // B1 (J06.9) e B3 (A90)
-        Assert.Single(hub.Do<MedicationRequest>());
-        var doc = Assert.Single(hub.Do<DocumentReference>());
-        Assert.Contains("mantém conduta", System.Text.Encoding.UTF8.GetString(doc.Content[0].Attachment.Data!));
+
+        // O medicamento vem da PRESCRIÇÃO, não da evolução: um item, com o nome do remédio.
+        var med = Assert.Single(hub.Do<MedicationRequest>());
+        Assert.Equal("DipiRONA 500 mg/ml SOLUÇÃO INJETÁVEL 2ml AMPOLA", (med.Medication as CodeableConcept)?.Text);
+
+        // Dois documentos: a evolução médica de B3 e o boletim médico de B1.
+        var docs = hub.Do<DocumentReference>();
+        Assert.Equal(2, docs.Count);
+        var evolucao = Assert.Single(docs, d => d.Type?.Text == "EVOLUÇÃO MÉDICA");
+        Assert.Contains("mantém conduta", System.Text.Encoding.UTF8.GetString(evolucao.Content[0].Attachment.Data!));
 
         // Sinais: PA (painel) + pulso = 2 Observations.
         Assert.Equal(2, hub.Do<Observation>().Count);
@@ -375,8 +429,136 @@ public class KlinikosImportacaoFluxoTests
         Assert.Equal(0, p.FalhasTotal);
         Assert.Equal(300, ctx.Marca.Ponteiro("paciente"));
         Assert.Equal(1200, ctx.Marca.Ponteiro("atendimento"));
-        Assert.Equal(2400, ctx.Marca.Ponteiro("evolucao"));
+        Assert.Equal(2500, ctx.Marca.Ponteiro("evolucao"));
         Assert.Equal(3000, ctx.Marca.Ponteiro("sinais-vitais"));
+        Assert.Equal(4000, ctx.Marca.Ponteiro("boletim-medico"));
+        Assert.Equal(5000, ctx.Marca.Ponteiro("prescricao"));
+    }
+
+    /// <summary>
+    /// O buraco que esta frente fechou: a narrativa do atendimento — anamnese, exame físico,
+    /// hipótese e conduta — vive em <c>UPA_Atendimento_Medico</c>, e o conector lia essa tabela
+    /// só para pegar o tipo de saída. O prontuário do Klinikos no hub não tinha boletim médico.
+    /// </summary>
+    [Fact]
+    public async Task Boletim_medico_entra_como_documento_com_as_quatro_secoes()
+    {
+        var hub = new HubFake();
+        await RodarAsync(OrigemPadrao(), hub);
+
+        var doc = Assert.Single(hub.Do<DocumentReference>(), d => d.Type?.Text == "Boletim de Atendimento Médico");
+        var html = System.Text.Encoding.UTF8.GetString(doc.Content[0].Attachment.Data!);
+
+        Assert.Contains("Anamnese", html, StringComparison.Ordinal);
+        Assert.Contains("dor de garganta há 3 dias", html, StringComparison.Ordinal);
+        Assert.Contains("Exame físico", html, StringComparison.Ordinal);
+        Assert.Contains("orofaringe hiperemiada", html, StringComparison.Ordinal);
+        Assert.Contains("Hipótese diagnóstica", html, StringComparison.Ordinal);
+        Assert.Contains("faringite aguda", html, StringComparison.Ordinal);
+        Assert.Contains("Conduta", html, StringComparison.Ordinal);
+        Assert.Contains("sintomáticos e retorno se piora", html, StringComparison.Ordinal);
+
+        // Um documento por ATENDIMENTO: o médico edita o mesmo registro durante a passagem, e
+        // cada edição tem de reescrever o boletim — não empilhar cópias no prontuário.
+        Assert.Contains(doc.Identifier, i => i.System == "urn:klinikos:atendimento-medico" && i.Value == $"{Slug}:A1");
+        Assert.Equal("text/html", doc.Content[0].Attachment.ContentType);
+    }
+
+    /// <summary>
+    /// Boletim médico aberto e ainda sem nada escrito não vira documento vazio no prontuário —
+    /// e o ponteiro avança mesmo assim, porque não há nada a recuperar num ciclo seguinte.
+    /// </summary>
+    [Fact]
+    public async Task Boletim_medico_sem_narrativa_nao_vira_documento_vazio()
+    {
+        var f = OrigemPadrao();
+        f.BoletinsMedicos.Clear();
+        f.BoletinsMedicos.Add(BolMed("A1", "B1", null, null, null, null, 4000));
+
+        var hub = new HubFake();
+        var (ctx, p, _) = await RodarAsync(f, hub);
+
+        Assert.DoesNotContain(hub.Do<DocumentReference>(), d => d.Type?.Text == "Boletim de Atendimento Médico");
+        Assert.Equal(0, p.FalhasTotal);
+        Assert.Equal(4000, ctx.Marca.Ponteiro("boletim-medico"));
+    }
+
+    /// <summary>
+    /// A regressão que mais doeu no prontuário: a prescrição saía de <c>UPA_Evolucao</c>, cuja
+    /// <c>upaevo_descricao</c> guarda o RÓTULO da linha — o hub ficou com 100% dos
+    /// MedicationRequest do Klinikos dizendo "Receita" ou "Prescrição", sem nenhum medicamento.
+    /// </summary>
+    [Fact]
+    public async Task Evolucao_tipo_RECEITA_nao_vira_medicamento_chamado_Receita()
+    {
+        var hub = new HubFake();
+        await RodarAsync(OrigemPadrao(), hub);
+
+        var textos = hub.Do<MedicationRequest>()
+            .Select(m => (m.Medication as CodeableConcept)?.Text)
+            .ToList();
+
+        Assert.DoesNotContain("Receita", textos);
+        Assert.DoesNotContain("Prescrição", textos);
+        var med = Assert.Single(hub.Do<MedicationRequest>());
+        Assert.Contains("DipiRONA", (med.Medication as CodeableConcept)?.Text, StringComparison.Ordinal);
+
+        // A posologia é montada do que a origem tem de fato: 360 minutos são 6 em 6 horas.
+        Assert.Equal("1 ampola · via intramuscular · de 6/6h · por 3 dia(s)", med.DosageInstruction?.FirstOrDefault()?.Text);
+        Assert.Contains(med.Identifier, i => i.System == "urn:klinikos:prescricao");
+    }
+
+    /// <summary>
+    /// REAVALIAÇÃO é evento, não narrativa: <c>upaevo_descricao</c> traz sempre a palavra
+    /// "Reavaliação" (11 bytes). Enquanto virava DocumentReference, respondia por 85% dos
+    /// documentos do Klinikos no hub — ruído puro em cima do prontuário.
+    /// </summary>
+    [Fact]
+    public async Task Reavaliacao_nao_vira_documento__mas_ainda_revisa_o_CID()
+    {
+        var hub = new HubFake();
+        await RodarAsync(OrigemPadrao(), hub);
+
+        Assert.DoesNotContain(hub.Do<DocumentReference>(), d => d.Type?.Text == "REAVALIAÇÃO");
+
+        // O que a reavaliação carrega de útil — o CID do boletim — continua entrando.
+        Assert.Contains(hub.Do<Condition>(), c => c.Code?.Coding?.Any(x => x.Code == "J06.9") == true);
+    }
+
+    /// <summary>
+    /// O "M545 · M545" da tela: sem o catálogo, o <c>text</c> da Condition repetia o código.
+    /// A descrição vem de <c>TB_CID</c> e o código sai no formato canônico, com ponto.
+    /// </summary>
+    [Fact]
+    public async Task CID_ganha_descricao_do_catalogo_e_codigo_com_ponto()
+    {
+        var hub = new HubFake();
+        await RodarAsync(OrigemPadrao(), hub);
+
+        var dengue = Assert.Single(hub.Do<Condition>(), c => c.Code?.Coding?.Any(x => x.Code == "A90") == true);
+        Assert.Equal("DENGUE", dengue.Code?.Text);
+
+        // "J06.9" na origem e "J069" no catálogo são o MESMO código — a chave ignora o ponto.
+        var ivas = Assert.Single(hub.Do<Condition>(), c => c.Code?.Coding?.Any(x => x.Code == "J06.9") == true);
+        Assert.Equal("INFECCAO AGUDA DAS VIAS AEREAS SUPERIORES NE", ivas.Code?.Text);
+    }
+
+    /// <summary>
+    /// Catálogo indisponível não derruba o run: a Condition ainda entra, com o código no lugar
+    /// da descrição. Enriquecimento que falha não pode custar dado clínico.
+    /// </summary>
+    [Fact]
+    public async Task Sem_catalogo_CID_a_Condition_ainda_entra_com_o_codigo()
+    {
+        var f = OrigemPadrao();
+        f.Cids.Clear();
+
+        var hub = new HubFake();
+        var (_, p, _) = await RodarAsync(f, hub);
+
+        var cond = Assert.Single(hub.Do<Condition>(), c => c.Code?.Coding?.Any(x => x.Code == "A90") == true);
+        Assert.Equal("A90", cond.Code?.Text);
+        Assert.Equal(0, p.FalhasTotal);
     }
 
     /// <summary>A garantia número 1: mesma pessoa nas duas bases = UM recurso, amarrado pelo CPF.</summary>

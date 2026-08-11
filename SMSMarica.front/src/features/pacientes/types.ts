@@ -206,7 +206,12 @@ export type Risco = {
   em?: string | null;
 };
 
-/** Atendimento do histórico clínico (Encounter do hub FHIR, originado do Salux). */
+/**
+ * Atendimento do histórico clínico (Encounter do hub FHIR). `fonte` é o PEP que gerou o
+ * registro (Salux, Klinikos); `unidade*` é onde o paciente foi atendido. São dimensões
+ * independentes — a base do Salux serve três unidades, e a mesma unidade acumula
+ * atendimentos dos dois sistemas por causa do cutover.
+ */
 export type Atendimento = {
   id: string;
   inicio?: string | null;
@@ -215,6 +220,8 @@ export type Atendimento = {
   status: string;
   medicoNome?: string | null;
   fonte?: string | null;
+  unidadeNome?: string | null;
+  unidadeCnes?: string | null;
   diagnosticos: Diagnostico[];
   medicamentos: Medicamento[];
   documentos: Documento[];

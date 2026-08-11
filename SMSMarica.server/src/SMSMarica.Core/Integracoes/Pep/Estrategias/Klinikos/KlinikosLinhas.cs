@@ -65,6 +65,39 @@ internal sealed record EvolucaoLinha(
     }
 }
 
+/// <summary>
+/// Boletim médico (<c>UPA_Atendimento_Medico</c>) — a narrativa do atendimento. É o equivalente
+/// do "Boletim de Atendimento de Urgência" que o Salux entrega como eDoc, e a razão pela qual o
+/// prontuário do Klinikos no hub parecia vazio: até 11/08/2026 esta tabela era lida só para
+/// pegar o <c>tipsai_codigo</c> do desfecho, e os cinco campos de texto abaixo eram descartados.
+///
+/// <para>Preenchimento medido na UPA em 11/08/2026, sobre 173.654 linhas: exame físico 96,8%,
+/// hipótese 96,7%, conduta 96,7%, anamnese 89,4%. <c>upaatemed_Reavaliacao</c> está zerada nas
+/// 173.654 — a reavaliação nesta implantação é evento (sinais vitais + CID), não narrativa.</para>
+/// </summary>
+internal sealed record BoletimMedicoLinha(
+    string AtendCodigo, string? SpaCodigo, string? Anamnese, string? ExameFisico,
+    string? Hipotese, string? Conduta, string? Observacao, string? ProfCodigo, long Rv)
+{
+    /// <summary>Sem nenhum dos campos narrativos não há documento — só o esqueleto do desfecho.</summary>
+    public bool TemNarrativa =>
+        !string.IsNullOrWhiteSpace(Anamnese) || !string.IsNullOrWhiteSpace(ExameFisico)
+        || !string.IsNullOrWhiteSpace(Hipotese) || !string.IsNullOrWhiteSpace(Conduta)
+        || !string.IsNullOrWhiteSpace(Observacao);
+}
+
+/// <summary>
+/// Item de medicamento prescrito (<c>Item_Prescricao_Medicamento</c> + <c>Prescricao</c>). É a
+/// prescrição de verdade: nome do insumo, quantidade, unidade e via. Substitui o
+/// MedicationRequest que saía de <c>UPA_Evolucao</c> tipo RECEITA/PRESCRIÇÃO, cujo texto era
+/// literalmente a palavra "Receita" — a coluna <c>upaevo_descricao</c> guarda o rótulo da linha,
+/// não o medicamento.
+/// </summary>
+internal sealed record ItemPrescricaoLinha(
+    string ItemId, string PrescCodigo, string? SpaCodigo, string? Data, string? ProfCodigo,
+    string? Insumo, decimal? Quantidade, string? Unidade, string? Via, int? Frequencia,
+    int? Duracao, string? Sos, long Rv);
+
 /// <summary>Sinais vitais colunados (<c>UPA_SinaisVitais</c>) — cada coluna vira uma Observation.</summary>
 internal sealed record SinaisVitaisLinha(
     long Codigo, string? SpaCodigo, string? Data, string? ProfCodigo,

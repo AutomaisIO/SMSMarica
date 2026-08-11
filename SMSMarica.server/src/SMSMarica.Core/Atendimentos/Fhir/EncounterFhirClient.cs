@@ -20,6 +20,9 @@ public sealed class EncounterFhirClient(HttpClient http) : IEncounterFhirClient
     public Task<Bundle> BuscarObservationsAsync(Guid pacienteId, CancellationToken ct = default) =>
         BuscarAsync($"fhir/Observation?patient={pacienteId}", ct);
 
+    public Task<Bundle> BuscarOrganizacoesAsync(CancellationToken ct = default) =>
+        BuscarAsync("fhir/Organization", ct);
+
     private async Task<Bundle> BuscarAsync(string url, CancellationToken ct)
     {
         using var resp = await http.GetAsync(url, ct);

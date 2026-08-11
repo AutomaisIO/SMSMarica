@@ -65,6 +65,24 @@ internal readonly struct LinhaSql(Dictionary<string, int> indice, IReadOnlyList<
     };
 
     /// <summary>
+    /// Valor fracionário preservado. <see cref="Numero"/> devolve <c>long</c> e trunca — o que
+    /// é inofensivo num rowversion e errado numa quantidade prescrita, onde "0,5 ampola" viraria
+    /// zero. Aceita vírgula decimal porque o agente pode serializar no formato pt-BR.
+    /// </summary>
+    public decimal? Decimal(string coluna) => Bruto(coluna) switch
+    {
+        null => null,
+        decimal d => d,
+        double d => (decimal)d,
+        long l => l,
+        int i => i,
+        short s => s,
+        var o => decimal.TryParse(o.ToString()?.Replace(',', '.'),
+            System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture, out var n) ? n : null,
+    };
+
+    /// <summary>
     /// Data-hora em ISO local (<c>2026-08-03T21:12:00</c>), sem fuso — quem monta o recurso FHIR
     /// aplica o offset de Brasília. O agente serializa datas como texto ISO.
     /// </summary>

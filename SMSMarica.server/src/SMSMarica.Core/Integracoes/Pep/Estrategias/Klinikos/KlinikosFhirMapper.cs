@@ -47,6 +47,8 @@ internal sealed class KlinikosFhirMapper(string slug, string source)
     private const string SysBoletim = "urn:klinikos:boletim";
     private const string SysEvolucao = "urn:klinikos:evolucao";
     private const string SysSinais = "urn:klinikos:sinaisvitais";
+    private const string SysAtendMedico = "urn:klinikos:atendimento-medico";
+    private const string SysPrescricao = "urn:klinikos:prescricao";
 
     public const string IdentCnes = SysCnes;
     public const string IdentUnidade = SysUnidade;
@@ -55,6 +57,8 @@ internal sealed class KlinikosFhirMapper(string slug, string source)
     public const string IdentBoletim = SysBoletim;
     public const string IdentEvolucao = SysEvolucao;
     public const string IdentSinais = SysSinais;
+    public const string IdentAtendMedico = SysAtendMedico;
+    public const string IdentPrescricao = SysPrescricao;
     public const string IdentCpf = SysCpf;
     public const string IdentCns = SysCns;
 
@@ -345,6 +349,40 @@ internal sealed class KlinikosFhirMapper(string slug, string source)
 
     // ---------------- Condition ----------------
 
+    private Dictionary<string, string> _catalogoCid = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Quantos códigos o catálogo carregou — para o log do run.</summary>
+    public int CatalogoCidCount => _catalogoCid.Count;
+
+    /// <summary>
+    /// Carrega o catálogo <c>TB_CID</c> da instância. É a origem do nome do diagnóstico:
+    /// <c>UPA_Evolucao</c> guarda só o código.
+    ///
+    /// <para>A chave é normalizada <b>sem ponto</b> dos dois lados. Medido em 11/08/2026 as duas
+    /// pontas gravam sem separador ("Z008"), mas depender disso deixaria o catálogo mudo no dia
+    /// em que uma instância passasse a gravar "Z00.8" — e a falha seria silenciosa, aparecendo
+    /// só como diagnóstico sem nome no prontuário.</para>
+    /// </summary>
+    public void CarregarCatalogoCid(IEnumerable<(string Codigo, string Descricao)> linhas)
+    {
+        _catalogoCid = linhas
+            .GroupBy(x => ChaveCid(x.Codigo), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().Descricao, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static string ChaveCid(string codigo) =>
+        codigo.Replace(".", string.Empty, StringComparison.Ordinal).Trim().ToUpperInvariant();
+
+    /// <summary>
+    /// "M545" → "M54.5". A origem grava o CID-10 sem separador; o ICD-10 canônico usa ponto
+    /// depois da categoria de 3 caracteres, e é assim que o código casa com qualquer outro
+    /// sistema que leia o hub. Códigos de 3 caracteres ficam como estão.
+    /// </summary>
+    private static string ComPonto(string codigo) =>
+        codigo.Length > 3 && !codigo.Contains('.')
+            ? codigo[..3] + "." + codigo[3..]
+            : codigo;
+
     /// <summary>
     /// CID da evolução → <c>Condition</c>. O identifier é do BOLETIM (não da linha de evolução):
     /// a reavaliação muda o CID do mesmo atendimento, e uma Condition por evolução encheria o
@@ -354,8 +392,11 @@ internal sealed class KlinikosFhirMapper(string slug, string source)
     {
         if (S(cid) is not { } bruto) return null;
         var codigo = LimparCodigoCid(bruto);
-        var code = new CodeableConcept { Text = bruto };
-        if (codigo is not null) code.Coding = [new Coding(SysCid, codigo)];
+        // O `text` é o que o prontuário exibe. Sem o catálogo ele repetia o código, e a tela
+        // mostrava "M545 · M545" — código no lugar do diagnóstico, duas vezes.
+        var descricao = codigo is not null ? S(_catalogoCid.GetValueOrDefault(ChaveCid(codigo))) : null;
+        var code = new CodeableConcept { Text = descricao ?? bruto };
+        if (codigo is not null) code.Coding = [new Coding(SysCid, ComPonto(codigo), descricao)];
 
         return new Condition
         {
@@ -546,26 +587,135 @@ internal sealed class KlinikosFhirMapper(string slug, string source)
         };
     }
 
+    /// <summary>
+    /// <b>Boletim médico</b> (<c>UPA_Atendimento_Medico</c>) → <c>DocumentReference</c>. É a
+    /// narrativa do atendimento — anamnese, exame físico, hipótese e conduta — e o análogo do
+    /// eDoc "Boletim de Atendimento de Urgência" que o Salux entrega.
+    ///
+    /// <para>Vai como <b>HTML</b>, e não como texto puro, pelo mesmo motivo do Salux: são cinco
+    /// campos distintos e sem os títulos o leitor não sabe onde termina o exame físico e começa
+    /// a conduta. O front já renderiza HTML de documento com o CSS do eDoc.</para>
+    ///
+    /// <para>O identifier é do ATENDIMENTO (<c>atendamb_codigo</c>), um por boletim: o médico
+    /// edita o mesmo registro ao longo da passagem, e cada edição tem de reescrever o documento
+    /// — não criar outro.</para>
+    /// </summary>
+    public DocumentReference BuildDocRefBoletimMedico(
+        BoletimMedicoLinha b, string patientRef, string encRef, string? quando, string? autorRef)
+    {
+        var html = new StringBuilder();
+        void Secao(string titulo, string? texto)
+        {
+            if (S(texto) is not { } t) return;
+            html.Append("<h3>").Append(Escapar(titulo)).Append("</h3><p>")
+                .Append(Escapar(t).Replace("\n", "<br/>", StringComparison.Ordinal)).Append("</p>");
+        }
+
+        Secao("Anamnese", b.Anamnese);
+        Secao("Exame físico", b.ExameFisico);
+        Secao("Hipótese diagnóstica", b.Hipotese);
+        Secao("Conduta", b.Conduta);
+        Secao("Observação", b.Observacao);
+
+        var doc = new DocumentReference
+        {
+            Meta = Meta(),
+            Status = DocumentReferenceStatus.Current,
+            Type = new CodeableConcept { Text = "Boletim de Atendimento Médico" },
+            Subject = new ResourceReference(patientRef),
+            Date = Dt(quando) is { } d
+                ? DateTimeOffset.Parse(d, CultureInfo.InvariantCulture)
+                : null,
+            Identifier = [new Identifier(SysAtendMedico, Pref(b.AtendCodigo))],
+            Context = new DocumentReference.ContextComponent { Encounter = [new ResourceReference(encRef)] },
+            Content =
+            [
+                new DocumentReference.ContentComponent
+                {
+                    Attachment = new Attachment
+                    {
+                        ContentType = "text/html",
+                        Data = Encoding.UTF8.GetBytes(html.ToString()),
+                        Title = "Boletim de Atendimento Médico",
+                    },
+                },
+            ],
+        };
+        if (autorRef is not null) doc.Author = [new ResourceReference(autorRef)];
+        return doc;
+    }
+
+    /// <summary>
+    /// Escapa o texto da origem antes de embutir no HTML. O conteúdo é digitado por humano num
+    /// campo livre; um "&lt;" solto quebraria a marcação do documento inteiro.
+    /// </summary>
+    private static string Escapar(string s) => s
+        .Replace("&", "&amp;", StringComparison.Ordinal)
+        .Replace("<", "&lt;", StringComparison.Ordinal)
+        .Replace(">", "&gt;", StringComparison.Ordinal);
+
     // ---------------- MedicationRequest ----------------
 
     /// <summary>
-    /// Receita/prescrição → <c>MedicationRequest</c>. Nesta implantação a prescrição é
-    /// <b>texto livre</b> na evolução, então o medicamento vai em
-    /// <c>medicationCodeableConcept.text</c>, sem <c>Dosage</c> estruturado. Prometer estrutura
-    /// que a origem não tem seria inventar dado clínico.
+    /// Item de medicamento prescrito → <c>MedicationRequest</c>, um por item.
+    ///
+    /// <para>A versão anterior lia a prescrição de <c>UPA_Evolucao</c>, e o <c>text</c> saía como
+    /// a palavra "Receita" ou "Prescrição" em <b>100%</b> dos casos: aquela coluna guarda o
+    /// rótulo da linha de evolução, não o medicamento. O remédio, a quantidade e a via estão em
+    /// <c>Item_Prescricao_Medicamento</c>, e é de lá que vêm agora.</para>
+    ///
+    /// <para>A dosagem vai como <c>Dosage.text</c> montado dos campos que a origem preenche.
+    /// Não se promete <c>timing</c> estruturado — o texto é legível e não finge precisão que a
+    /// origem não garante.</para>
     /// </summary>
-    public MedicationRequest BuildMedicationRequest(EvolucaoLinha e, string patientRef, string encRef) => new()
+    public MedicationRequest BuildMedicationRequestItem(ItemPrescricaoLinha i, string patientRef, string encRef, string? autorRef)
     {
-        Meta = Meta(),
-        Status = MedicationRequest.MedicationrequestStatus.Completed,
-        Intent = MedicationRequest.MedicationRequestIntent.Order,
-        Medication = new CodeableConcept { Text = S(e.Descricao) ?? S(e.Tipo) ?? "Prescrição" },
-        Subject = new ResourceReference(patientRef),
-        Encounter = new ResourceReference(encRef),
-        AuthoredOnElement = Dt(e.DataHora) is { } d ? new FhirDateTime(d) : null,
-        Identifier =
-        [
-            new Identifier(SysEvolucao, Pref(e.Codigo.ToString(CultureInfo.InvariantCulture)) + ":med"),
-        ],
+        var m = new MedicationRequest
+        {
+            Meta = Meta(),
+            Status = MedicationRequest.MedicationrequestStatus.Completed,
+            Intent = MedicationRequest.MedicationRequestIntent.Order,
+            Medication = new CodeableConcept { Text = S(i.Insumo) ?? "Medicamento" },
+            Subject = new ResourceReference(patientRef),
+            Encounter = new ResourceReference(encRef),
+            AuthoredOnElement = Dt(i.Data) is { } d ? new FhirDateTime(d) : null,
+            Identifier = [new Identifier(SysPrescricao, Pref(i.ItemId))],
+        };
+        if (autorRef is not null) m.Requester = new ResourceReference(autorRef);
+        if (Posologia(i) is { } texto) m.DosageInstruction = [new Dosage { Text = texto }];
+        return m;
+    }
+
+    /// <summary>Posologia legível a partir do que a origem tem de fato preenchido.</summary>
+    private static string? Posologia(ItemPrescricaoLinha i)
+    {
+        var partes = new List<string>();
+        if (i.Quantidade is { } q && q > 0)
+        {
+            var qtd = q.ToString("0.##", CultureInfo.InvariantCulture);
+            partes.Add(S(i.Unidade) is { } un ? $"{qtd} {un}" : qtd);
+        }
+        if (S(i.Via) is { } via) partes.Add($"via {via.ToLowerInvariant()}");
+        if (Intervalo(i.Frequencia) is { } intervalo) partes.Add(intervalo);
+        if (i.Duracao is { } dur && dur > 0) partes.Add($"por {dur} dia(s)");
+        if (Verdadeiro(i.Sos)) partes.Add("se necessário");
+        return partes.Count == 0 ? null : string.Join(" · ", partes);
+    }
+
+    /// <summary>
+    /// <c>itpresc_frequencia</c> é o intervalo em MINUTOS — medido na UPA em 11/08/2026, os
+    /// valores são 1440, 720, 480 e 360, que são exatamente 24h, 12h, 8h e 6h. O valor 0 domina
+    /// (221.012 de 337.723) e significa dose única na unidade, não "a cada zero minutos".
+    ///
+    /// <para>Negativos aparecem na cauda (−120, −180) sem semântica conhecida; viram nada, em
+    /// vez de virarem um intervalo inventado.</para>
+    /// </summary>
+    private static string? Intervalo(int? minutos) => minutos switch
+    {
+        null or <= 0 => null,
+        1440 => "1x ao dia",
+        var m when m % 60 == 0 && m < 1440 => $"de {m / 60}/{m / 60}h",
+        var m when m % 1440 == 0 => $"a cada {m / 1440} dia(s)",
+        var m => $"a cada {m} min",
     };
 }

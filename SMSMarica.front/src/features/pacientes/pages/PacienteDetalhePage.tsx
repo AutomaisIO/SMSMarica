@@ -22,6 +22,7 @@ import { StatusBadge } from '@/shared/ui/StatusBadge';
 import { TelefoneCopiavel } from '@/shared/ui/TelefoneCopiavel';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { Tabs, type Aba } from '@/shared/ui/Tabs';
+import { nomeBaseOrigem, nomeSistemaOrigem, rotuloOrigem } from '@/shared/lib/origemClinica';
 import {
   useAcessosPaciente,
   useAtendimentosPaciente,
@@ -101,12 +102,23 @@ function rotuloIdentificador(sistema: string): string {
   return sistema;
 }
 
-const FONTE_LABEL: Record<string, string> = {
-  'https://smsmarica.saude.marica/source/salux': 'Salux (HCML)',
-  'https://smsmarica.saude.marica/source/esus': 'e-SUS APS',
-  'https://smsmarica.saude.marica/source/pacs': 'PACS',
-  'https://smsmarica.saude.marica/source/smsmarica': 'SMS Maricá',
-};
+/**
+ * Etiqueta "Origem: Salux - HMCML" do atendimento. Antes daqui só existia o caso do Salux,
+ * codificado num `if`, então tudo que vinha do Klinikos aparecia sem etiqueta nenhuma — e a
+ * lista dava a impressão de que o hub só tinha Salux.
+ */
+function EtiquetaOrigem({ atendimento }: { atendimento: Atendimento }) {
+  const origem = rotuloOrigem(atendimento.fonte, atendimento.unidadeCnes, atendimento.unidadeNome);
+  if (!origem) return null;
+  return (
+    <span
+      className="text-[10px] uppercase tracking-wide text-gray-400"
+      title={atendimento.unidadeNome ?? undefined}
+    >
+      Origem: {origem}
+    </span>
+  );
+}
 
 const EXTRA_LABEL: Record<string, string> = {
   estado_civil: 'Estado civil', escolaridade: 'Escolaridade', religiao: 'Religião',
@@ -166,7 +178,17 @@ function SecaoDocumentos({ p }: { p: Paciente }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-        {campo('Origem (fonte)', p.fonte ? (FONTE_LABEL[p.fonte] ?? p.fonte) : null)}
+        {campo(
+          'Origem (fonte)',
+          p.fonte ? (
+            <span title={p.fonte}>
+              {nomeSistemaOrigem(p.fonte)}
+              {nomeBaseOrigem(p.fonte) ? (
+                <span className="text-gray-500"> · {nomeBaseOrigem(p.fonte)}</span>
+              ) : null}
+            </span>
+          ) : null,
+        )}
         {campo('Data de óbito', formatarData(p.dataObito))}
       </div>
       <div>
@@ -425,9 +447,7 @@ function SecaoAtendimentos({ pacienteId, paciente }: { pacienteId: string; pacie
                 {formatarDataHora(a.inicio) ?? '—'}
               </span>
             </div>
-            {a.fonte && a.fonte.toLowerCase().includes('salux') ? (
-              <span className="text-[10px] uppercase tracking-wide text-gray-400">Origem: Salux</span>
-            ) : null}
+            <EtiquetaOrigem atendimento={a} />
           </div>
           {a.medicoNome ? (
             <div className="mt-1 flex items-center gap-1.5 text-sm text-gray-600">

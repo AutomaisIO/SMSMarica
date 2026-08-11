@@ -1,6 +1,15 @@
 namespace SMSMarica.Core.Atendimentos.Dtos;
 
-/// <summary>Um atendimento do paciente (Encounter do hub FHIR) com seus diagnósticos.</summary>
+/// <summary>
+/// Um atendimento do paciente (Encounter do hub FHIR) com seus diagnósticos.
+///
+/// <para><b><see cref="Fonte"/> e <see cref="UnidadeNome"/> são dimensões ortogonais</b>
+/// (ADR-0039): a fonte diz qual PEP gerou o registro, a unidade diz onde o paciente foi
+/// atendido. Uma não deriva da outra — a base <c>salux-hcml</c> serve as três unidades, e a
+/// mesma unidade tem atendimentos de dois sistemas por causa do cutover Salux→Klinikos. Ler
+/// unidade de dentro do <c>meta.source</c> daria "HMCML" para 431 mil atendimentos que
+/// aconteceram na UPA Inoã e na Santa Rita.</para>
+/// </summary>
 public sealed record AtendimentoDto(
     Guid Id,
     DateTimeOffset? Inicio,
@@ -9,6 +18,10 @@ public sealed record AtendimentoDto(
     string Status,
     string? MedicoNome,
     string? Fonte,
+    /// <summary>Nome da unidade executante (<c>Encounter.serviceProvider</c> → Organization).</summary>
+    string? UnidadeNome,
+    /// <summary>CNES da unidade — chave estável para rotular, já que o nome oficial é longo.</summary>
+    string? UnidadeCnes,
     IReadOnlyList<DiagnosticoDto> Diagnosticos,
     IReadOnlyList<MedicamentoDto> Medicamentos,
     IReadOnlyList<DocumentoDto> Documentos,

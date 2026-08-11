@@ -60,6 +60,16 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
     private const string FaseEvolucao = "evolucao";
     private const string FaseSinais = "sinais-vitais";
 
+    /// <summary>
+    /// Narrativa do atendimento (<c>UPA_Atendimento_Medico</c>). Fase própria porque o médico
+    /// EDITA o boletim depois de aberto — o rowversion que avança é o dessa tabela, não o do
+    /// <c>Pronto_Atendimento</c>, exatamente como acontece no fechamento.
+    /// </summary>
+    private const string FaseBoletimMedico = "boletim-medico";
+
+    /// <summary>Prescrição estruturada (<c>Item_Prescricao_Medicamento</c>).</summary>
+    private const string FasePrescricao = "prescricao";
+
     private const string TipoInicioAtendimento = "INICIO DO ATENDIMENTO MEDICO";
 
     /// <summary>Boletim resolvido no hub: as referências que todo recurso clínico precisa.</summary>
@@ -340,7 +350,29 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
             }
         }, ct, persistirPonteiro: !limitado);
 
-        // ---------- 5. Evoluções → Condition / DocumentReference / MedicationRequest ----------
+        // ---------- 4c. Catálogo CID ----------
+        // Carregado uma vez por run, antes de qualquer Condition. `UPA_Evolucao` guarda só o
+        // código; sem o catálogo o `text` da Condition repetia o código e o prontuário exibia
+        // "M545 · M545" onde deveria ler "M54.5 · Dor lombar baixa". São ~14 mil linhas.
+        p.FaseAtual = "catálogo CID…";
+        try
+        {
+            var cids = await leitor.ConsultarAsync(SqlCatalogoCid(), ct);
+            mapper.CarregarCatalogoCid(cids
+                .Select(l => (Cod: l.Texto("CO_CID"), Nome: l.Texto("NO_CID")))
+                .Where(x => x.Cod is not null && x.Nome is not null)
+                .Select(x => (x.Cod!, x.Nome!)));
+            logger.LogInformation("Klinikos {Slug}: catálogo CID com {N} código(s).", slug, mapper.CatalogoCidCount);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Catálogo é enriquecimento, não dado clínico: sem ele a Condition ainda entra, com
+            // o código no lugar da descrição. Derrubar o run inteiro por causa do nome do CID
+            // seria trocar dado que falta por dado nenhum.
+            logger.LogWarning(ex, "Klinikos {Slug}: catálogo CID indisponível; as Conditions ficam só com o código.", slug);
+        }
+
+        // ---------- 5. Evoluções → Condition / DocumentReference ----------
         p.FaseAtual = "evoluções…";
         // CID por boletim: a evolução clinicamente mais RECENTE (datahora) vence. Sem esta
         // guarda, a EDIÇÃO de uma evolução antiga (rowversion novo, datahora velha) regrediria
@@ -386,6 +418,101 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
                 {
                     fase.Falhou(e.Rv);
                     Falhou($"evolução {e.Codigo}", e.Codigo, ex);
+                }
+            }
+        }, ct, persistirPonteiro: !limitado);
+
+        // ---------- 5b. Boletim médico → DocumentReference ----------
+        //
+        // A narrativa do atendimento: anamnese, exame físico, hipótese e conduta. Fase própria
+        // com ponteiro próprio porque o médico EDITA o boletim ao longo da passagem, e é o
+        // rowversion de `UPA_Atendimento_Medico` que avança — o do `Pronto_Atendimento` fica
+        // parado, mesma armadilha já conhecida do fechamento.
+        p.FaseAtual = "boletins médicos…";
+        await PaginarAsync(leitor, FaseBoletimMedico, ctx, incremental, SqlBoletinsMedicos, async (linhas, fase) =>
+        {
+            var boletinsMedicos = linhas.Select(MapBoletimMedico).OfType<BoletimMedicoLinha>().ToList();
+            if (limitado)
+            {
+                boletinsMedicos = [.. boletinsMedicos.Where(b => b.SpaCodigo is { } sp && atendPorBoletim.ContainsKey(sp))];
+            }
+            else
+            {
+                await GarantirAtendimentosAsync(ctx, mapper, leitor, boletinsMedicos.Select(b => b.SpaCodigo),
+                    orgPorUnidade, pacPorCodigo, atendPorBoletim, Falhou, ct);
+            }
+
+            foreach (var bm in boletinsMedicos)
+            {
+                fase.Visto(bm.Rv);
+
+                // Boletim médico aberto e ainda sem nada escrito: o atendimento existe (o
+                // desfecho já veio pela fase de fechamento), só não há narrativa. Documento
+                // vazio no prontuário é pior que documento nenhum.
+                if (!bm.TemNarrativa) continue;
+
+                if (bm.SpaCodigo is null || !atendPorBoletim.TryGetValue(bm.SpaCodigo, out var a))
+                {
+                    fase.Falhou(bm.Rv);
+                    Falhou($"boletim médico {bm.AtendCodigo}", Cd(bm.AtendCodigo),
+                        new InvalidOperationException($"boletim {bm.SpaCodigo ?? "(nulo)"} não resolvido no hub"));
+                    continue;
+                }
+                try
+                {
+                    await ctx.Escritor.UpsertPorIdentifierAsync(
+                        mapper.BuildDocRefBoletimMedico(bm, a.PacRef, a.EncRef, null, null),
+                        KlinikosFhirMapper.IdentAtendMedico, mapper.Pref(bm.AtendCodigo), ct);
+                    p.DocumentReferences++;
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    fase.Falhou(bm.Rv);
+                    Falhou($"boletim médico {bm.AtendCodigo}", Cd(bm.AtendCodigo), ex);
+                }
+            }
+        }, ct, persistirPonteiro: !limitado);
+
+        // ---------- 5c. Prescrição estruturada → MedicationRequest ----------
+        //
+        // Um MedicationRequest por ITEM prescrito, com o nome do medicamento. Até 11/08/2026 a
+        // prescrição saía de `UPA_Evolucao`, onde o texto é o rótulo da linha — os 100% dos
+        // MedicationRequest do Klinikos no hub diziam "Receita" ou "Prescrição".
+        p.FaseAtual = "prescrições…";
+        await PaginarAsync(leitor, FasePrescricao, ctx, incremental, SqlItensPrescricao, async (linhas, fase) =>
+        {
+            var itens = linhas.Select(MapItemPrescricao).OfType<ItemPrescricaoLinha>().ToList();
+            if (limitado)
+            {
+                itens = [.. itens.Where(i => i.SpaCodigo is { } sp && atendPorBoletim.ContainsKey(sp))];
+            }
+            else
+            {
+                await GarantirAtendimentosAsync(ctx, mapper, leitor, itens.Select(i => i.SpaCodigo),
+                    orgPorUnidade, pacPorCodigo, atendPorBoletim, Falhou, ct);
+            }
+
+            foreach (var item in itens)
+            {
+                fase.Visto(item.Rv);
+                if (item.SpaCodigo is null || !atendPorBoletim.TryGetValue(item.SpaCodigo, out var a))
+                {
+                    fase.Falhou(item.Rv);
+                    Falhou($"item de prescrição {item.ItemId}", Cd(item.PrescCodigo),
+                        new InvalidOperationException($"boletim {item.SpaCodigo ?? "(nulo)"} não resolvido no hub"));
+                    continue;
+                }
+                try
+                {
+                    await ctx.Escritor.UpsertPorIdentifierAsync(
+                        mapper.BuildMedicationRequestItem(item, a.PacRef, a.EncRef, null),
+                        KlinikosFhirMapper.IdentPrescricao, mapper.Pref(item.ItemId), ct);
+                    p.MedicationRequests++;
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    fase.Falhou(item.Rv);
+                    Falhou($"item de prescrição {item.ItemId}", Cd(item.PrescCodigo), ex);
                 }
             }
         }, ct, persistirPonteiro: !limitado);
@@ -780,12 +907,12 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
 
         switch (e.TipoNorm)
         {
+            // A prescrição NÃO sai daqui. `upaevo_descricao` guarda o rótulo da linha, então
+            // esta rota gerava um MedicationRequest cujo medicamento era a palavra "Receita" —
+            // em 100% dos casos. O remédio, a quantidade e a via vêm de
+            // `Item_Prescricao_Medicamento`, na fase `prescricao`.
             case "RECEITA":
             case "PRESCRICAO":
-                await ctx.Escritor.UpsertPorIdentifierAsync(
-                    mapper.BuildMedicationRequest(e, a.PacRef, a.EncRef),
-                    KlinikosFhirMapper.IdentEvolucao, chave + ":med", ct);
-                p.MedicationRequests++;
                 break;
 
             // Marcos de jornada, não documentos: o INÍCIO é texto constante ("Início do
@@ -795,6 +922,13 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
             case TipoInicioAtendimento:
             case "ENTRADA NA SALA AMARELA":
             case "ENTRADA NA SALA VERMELHA":
+            // REAVALIAÇÃO é o mesmo caso, e é o mais volumoso: 184.222 linhas cujo texto é
+            // sempre a palavra "Reavaliação" (11 bytes, conferido na origem em 11/08/2026 —
+            // `upaatemed_Reavaliacao` está vazia nas 173.654 linhas do atendimento médico).
+            // Nesta implantação reavaliar é um evento, não uma narrativa: o que ela carrega de
+            // verdade — CID revisado e sinais vitais — já entra acima e pela fase de vitais.
+            // Enquanto virava documento, respondia por 85% dos documentos do Klinikos no hub.
+            case "REAVALIACAO":
                 break;
 
             default:
@@ -940,6 +1074,56 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
          ORDER BY CONVERT(BIGINT, rv_atualizacao)
         """;
 
+    /// <summary>
+    /// CDC do BOLETIM MÉDICO — a narrativa do atendimento. O <c>JOIN</c> com
+    /// <c>atendimento_ambulatorial</c> é o que traduz <c>atendamb_codigo</c> em
+    /// <c>spa_codigo</c>: o Encounter do hub é indexado pelo boletim, e a tabela do atendimento
+    /// médico não carrega esse código.
+    ///
+    /// <para><c>upaatemed_Reavaliacao</c> fica de fora de propósito: medida em 11/08/2026, está
+    /// vazia nas 173.654 linhas da UPA. Ler coluna sempre nula só gasta banda do agente.</para>
+    /// </summary>
+    internal static string SqlBoletinsMedicos(long desde, int top) => $"""
+        SELECT TOP {top} am.atendamb_codigo, aa.spa_codigo,
+               am.upaatemed_Anamnese, am.upaatemed_ExameFisico,
+               am.upaatemed_HipoteseDiagnostica, am.upaatemed_ProcedimentoProposto,
+               am.upaatemed_Observacao, am.prof_codigo_encerramento,
+               CONVERT(BIGINT, am.rv_atualizacao) AS rv
+          FROM UPA_Atendimento_Medico am
+          JOIN atendimento_ambulatorial aa ON aa.atendamb_codigo = am.atendamb_codigo
+         WHERE CONVERT(BIGINT, am.rv_atualizacao) > {desde}
+           AND aa.spa_codigo IS NOT NULL
+         ORDER BY CONVERT(BIGINT, am.rv_atualizacao)
+        """;
+
+    /// <summary>
+    /// CDC da PRESCRIÇÃO estruturada. O ponteiro é o rowversion do ITEM, não o da
+    /// <c>Prescricao</c>: acrescentar um medicamento não toca o cabeçalho, e um CDC pelo pai
+    /// perderia o item novo — o mesmo desenho do fechamento do boletim.
+    ///
+    /// <para>Só medicamento: as outras especializações de item (dieta, oxigenoterapia, cuidados
+    /// especiais) não são <c>MedicationRequest</c> e entrariam como remédio inexistente.</para>
+    /// </summary>
+    internal static string SqlItensPrescricao(long desde, int top) => $"""
+        SELECT TOP {top} CONVERT(VARCHAR(36), i.item_prescricao_id) AS item_id,
+               i.presc_codigo, p.spa_codigo, p.presc_data, p.prof_codigo,
+               i.ins_descricao, i.itpresc_quantidade, i.ins_unidade, i.viamed_descricao,
+               i.itpresc_frequencia, i.itpresc_duracao, i.itpresc_qtd_sos,
+               CONVERT(BIGINT, i.rv_atualizacao) AS rv
+          FROM Item_Prescricao_Medicamento i
+          JOIN Prescricao p ON p.presc_codigo = i.presc_codigo
+         WHERE CONVERT(BIGINT, i.rv_atualizacao) > {desde}
+           AND p.spa_codigo IS NOT NULL
+         ORDER BY CONVERT(BIGINT, i.rv_atualizacao)
+        """;
+
+    /// <summary>
+    /// Catálogo CID-10 da instância (14.242 linhas na UPA). Varredura integral uma vez por run:
+    /// é pequeno, não muda entre ciclos, e sem ele a Condition mostra o código no lugar do
+    /// diagnóstico.
+    /// </summary>
+    internal static string SqlCatalogoCid() => "SELECT CO_CID, NO_CID FROM TB_CID";
+
     internal static string SqlSinaisVitais(long desde, int top) => $"""
         SELECT TOP {top} sv_codigo, spa_codigo, data, prof_codigo, pressaoarterial, pulso,
                temperatura, frequenciarespiratoria, hgt, saturacaoO2, peso,
@@ -1019,6 +1203,25 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
             ? new EvolucaoLinha(cod, l.Texto("SPA_CODIGO"), l.Texto("Tipo"),
                 l.DataHora("upaevo_datahora"), l.Texto("upaevo_descricao"), l.Texto("prof_codigo"),
                 l.Texto("cid_codigo_primario"), l.Texto("cid_codigo_secundario"), l.Numero("rv") ?? 0)
+            : null;
+
+    private static BoletimMedicoLinha? MapBoletimMedico(LinhaSql l) =>
+        l.Texto("atendamb_codigo") is { } cod
+            ? new BoletimMedicoLinha(cod, l.Texto("spa_codigo"),
+                l.Texto("upaatemed_Anamnese"), l.Texto("upaatemed_ExameFisico"),
+                l.Texto("upaatemed_HipoteseDiagnostica"), l.Texto("upaatemed_ProcedimentoProposto"),
+                l.Texto("upaatemed_Observacao"), l.Texto("prof_codigo_encerramento"),
+                l.Numero("rv") ?? 0)
+            : null;
+
+    private static ItemPrescricaoLinha? MapItemPrescricao(LinhaSql l) =>
+        l.Texto("item_id") is { } id && l.Texto("presc_codigo") is { } presc
+            ? new ItemPrescricaoLinha(id, presc, l.Texto("spa_codigo"), l.DataHora("presc_data"),
+                l.Texto("prof_codigo"), l.Texto("ins_descricao"),
+                l.Decimal("itpresc_quantidade"), l.Texto("ins_unidade"),
+                l.Texto("viamed_descricao"), (int?)l.Numero("itpresc_frequencia"),
+                (int?)l.Numero("itpresc_duracao"), l.Texto("itpresc_qtd_sos"),
+                l.Numero("rv") ?? 0)
             : null;
 
     private static SinaisVitaisLinha? MapSinaisVitais(LinhaSql l) =>
