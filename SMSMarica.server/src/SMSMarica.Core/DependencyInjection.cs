@@ -434,6 +434,7 @@ public static class DependencyInjection
                 client.Timeout = TimeSpan.FromSeconds(15);
             });
         services.AddScoped<Atendimentos.IAtendimentosService, Atendimentos.AtendimentosService>();
+        services.AddScoped<PesquisasSatisfacao.IPesquisasSatisfacaoService, PesquisasSatisfacao.PesquisasSatisfacaoService>();
 
         // ---- Sincronização de PEPs (importação Salux/outros → hub FHIR) — ADR-0014 ----
         services.AddHttpClient<Integracoes.Pep.Fhir.IHubFhirEscritor, Integracoes.Pep.Fhir.HubFhirEscritor>(client =>
