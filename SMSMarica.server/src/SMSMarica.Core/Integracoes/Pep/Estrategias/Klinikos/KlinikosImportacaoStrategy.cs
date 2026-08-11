@@ -70,6 +70,15 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
     /// <summary>Prescrição estruturada (<c>Item_Prescricao_Medicamento</c>).</summary>
     private const string FasePrescricao = "prescricao";
 
+    /// <summary>Página do catálogo CID — folgada abaixo do teto de resposta do agente (5.000).</summary>
+    private const int TamanhoPaginaCatalogo = 2_000;
+
+    /// <summary>
+    /// Teto do laço do catálogo. O CID-10 tem ~14 mil códigos; 100 mil é backstop contra um
+    /// <c>OFFSET</c> que não avance, não um limite esperado.
+    /// </summary>
+    private const int TetoCatalogoCid = 100_000;
+
     private const string TipoInicioAtendimento = "INICIO DO ATENDIMENTO MEDICO";
 
     /// <summary>Boletim resolvido no hub: as referências que todo recurso clínico precisa.</summary>
@@ -357,11 +366,17 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
         p.FaseAtual = "catálogo CID…";
         try
         {
-            var cids = await leitor.ConsultarAsync(SqlCatalogoCid(), ct);
-            mapper.CarregarCatalogoCid(cids
-                .Select(l => (Cod: l.Texto("CO_CID"), Nome: l.Texto("NO_CID")))
-                .Where(x => x.Cod is not null && x.Nome is not null)
-                .Select(x => (x.Cod!, x.Nome!)));
+            var catalogo = new List<(string, string)>();
+            for (var offset = 0; offset < TetoCatalogoCid; offset += TamanhoPaginaCatalogo)
+            {
+                var pagina = await leitor.ConsultarAsync(SqlCatalogoCid(offset, TamanhoPaginaCatalogo), ct);
+                catalogo.AddRange(pagina
+                    .Select(l => (Cod: l.Texto("CO_CID"), Nome: l.Texto("NO_CID")))
+                    .Where(x => x.Cod is not null && x.Nome is not null)
+                    .Select(x => (x.Cod!, x.Nome!)));
+                if (pagina.Count < TamanhoPaginaCatalogo) break;
+            }
+            mapper.CarregarCatalogoCid(catalogo);
             logger.LogInformation("Klinikos {Slug}: catálogo CID com {N} código(s).", slug, mapper.CatalogoCidCount);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -1118,11 +1133,20 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
         """;
 
     /// <summary>
-    /// Catálogo CID-10 da instância (14.242 linhas na UPA). Varredura integral uma vez por run:
-    /// é pequeno, não muda entre ciclos, e sem ele a Condition mostra o código no lugar do
-    /// diagnóstico.
+    /// Catálogo CID-10 da instância, <b>paginado</b>. São 14.242 linhas na UPA e o agente corta
+    /// a resposta no teto dele (5.000): a primeira versão pediu a tabela inteira de uma vez e
+    /// voltou com exatamente 5.000 códigos — 65% dos diagnósticos ficariam sem nome, e em
+    /// silêncio, porque catálogo curto não é erro, só um <c>GetValueOrDefault</c> que não acha.
+    ///
+    /// <para><c>OFFSET/FETCH</c> exige <c>ORDER BY</c> no SQL Server, e a ordem tem de ser
+    /// estável entre as páginas — <c>CO_CID</c> é a chave.</para>
     /// </summary>
-    internal static string SqlCatalogoCid() => "SELECT CO_CID, NO_CID FROM TB_CID";
+    internal static string SqlCatalogoCid(int offset, int top) => $"""
+        SELECT CO_CID, NO_CID
+          FROM TB_CID
+         ORDER BY CO_CID
+        OFFSET {offset} ROWS FETCH NEXT {top} ROWS ONLY
+        """;
 
     internal static string SqlSinaisVitais(long desde, int top) => $"""
         SELECT TOP {top} sv_codigo, spa_codigo, data, prof_codigo, pressaoarterial, pulso,

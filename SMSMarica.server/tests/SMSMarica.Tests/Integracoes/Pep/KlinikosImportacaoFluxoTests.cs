@@ -115,6 +115,19 @@ public class KlinikosImportacaoFluxoTests
                     linhas = [.. linhas.Take(int.Parse(t.Groups[1].Value))];
             }
 
+            // OFFSET/FETCH — como o catálogo CID pagina (não dá para keyset numa tabela de
+            // domínio sem rowversion útil).
+            if (Regex.Match(sql, @"OFFSET\s+(\d+)\s+ROWS\s+FETCH\s+NEXT\s+(\d+)\s+ROWS",
+                    RegexOptions.IgnoreCase) is { Success: true } o)
+            {
+                linhas = [.. linhas.Skip(int.Parse(o.Groups[1].Value)).Take(int.Parse(o.Groups[2].Value))];
+            }
+
+            // O AGENTE CORTA no teto e não avisa — é assim em produção, e é o que fez o
+            // catálogo CID voltar com 5.000 de 14.242 códigos na primeira subida. Um fake que
+            // devolve tudo esconde exatamente essa classe de bug.
+            if (maxLinhasOverride is { } teto && linhas.Count > teto) linhas = [.. linhas.Take(teto)];
+
             return Task.FromResult(Tabela(linhas));
         }
 
@@ -541,6 +554,31 @@ public class KlinikosImportacaoFluxoTests
         // "J06.9" na origem e "J069" no catálogo são o MESMO código — a chave ignora o ponto.
         var ivas = Assert.Single(hub.Do<Condition>(), c => c.Code?.Coding?.Any(x => x.Code == "J06.9") == true);
         Assert.Equal("INFECCAO AGUDA DAS VIAS AEREAS SUPERIORES NE", ivas.Code?.Text);
+    }
+
+    /// <summary>
+    /// O catálogo é PAGINADO. A primeira versão pediu <c>TB_CID</c> inteira numa consulta só e
+    /// o agente devolveu 5.000 das 14.242 linhas, sem avisar — 65% dos diagnósticos ficariam sem
+    /// nome, e em silêncio. Aqui a origem tem 6.000 códigos e o teto do agente é o real.
+    /// </summary>
+    [Fact]
+    public async Task Catalogo_CID_maior_que_o_teto_do_agente_vem_INTEIRO()
+    {
+        var f = OrigemPadrao();
+        f.Cids.Clear();
+        // Prefixo "A0000"… porque ordinalmente '0' < '9': todos ficam ANTES de "A90", que assim
+        // cai na terceira página. Se a paginação parar na primeira resposta do agente (5.000),
+        // esta descrição não chega — que é exatamente o que aconteceu em produção.
+        for (var i = 0; i < 6_000; i++)
+            f.Cids.Add(new() { ["CO_CID"] = $"A{i:D4}", ["NO_CID"] = $"DIAGNOSTICO {i}" });
+        f.Cids.Add(new() { ["CO_CID"] = "A90", ["NO_CID"] = "DENGUE" });
+        f.Cids.Sort((a, b) => string.CompareOrdinal((string)a["CO_CID"]!, (string)b["CO_CID"]!));
+
+        var hub = new HubFake();
+        await RodarAsync(f, hub);
+
+        var cond = Assert.Single(hub.Do<Condition>(), c => c.Code?.Coding?.Any(x => x.Code == "A90") == true);
+        Assert.Equal("DENGUE", cond.Code?.Text);
     }
 
     /// <summary>
