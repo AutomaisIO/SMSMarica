@@ -37,6 +37,19 @@ public interface ISerNovaSolicitacaoService
     /// <summary>Campos dinâmicos que o SER exige para aquele recurso <b>naquele ramo</b>.</summary>
     Task<IReadOnlyList<SerCampoDinamicoDto>> ObterCamposDinamicosAsync(
         string tipo, string recurso, bool ambulatorioEstadual, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Pesquisa o paciente no SER por <b>CNS ou CPF</b> — o mesmo motor que a tela dele usa.
+    ///
+    /// <para>Resolve o que hoje só conseguimos pelo CADSUS via SISREG, que tem limitação de
+    /// acesso: o SER devolve nome, <b>CPF</b>, CNS, nome social, nascimento, sexo, mãe, raça,
+    /// endereço completo e três telefones.</para>
+    ///
+    /// <para><b>É consulta, não escrita.</b> O botão pesquisa e re-renderiza dois painéis; nada é
+    /// gravado. A trava de somente-leitura segue valendo — "Pesquisar" não é verbo de escrita.</para>
+    /// </summary>
+    Task<SerPacienteEncontradoDto> PesquisarPacienteAsync(
+        string cnsOuCpf, CancellationToken cancellationToken);
 }
 
 public sealed partial class SerNovaSolicitacaoService(
@@ -54,6 +67,13 @@ public sealed partial class SerNovaSolicitacaoService(
 
     private const string CampoTipo = "form0:comboTipoRecurso";
     private const string CampoRecurso = "form0:comboRecurso";
+
+    /// <summary>Campo CNS/CPF do painel de paciente. Continua editável depois da pesquisa —
+    /// é por ele que o número viaja no POST.</summary>
+    private const string CampoCnsCpf = "form0:numeroCADSUS";
+
+    /// <summary>Onde o SER renderiza o cadastro encontrado.</summary>
+    private const string PainelPaciente = "form0:painelDadosDoPaciente";
 
     /// <summary>Container A4J default — o init dos combos não passa <c>containerId</c>.</summary>
     private const string RegiaoViewRoot = "_viewRoot";
@@ -96,6 +116,52 @@ public sealed partial class SerNovaSolicitacaoService(
         await PrepararAsync(ambulatorioEstadual, tipo, cancellationToken);
         var html = await TrocarAsync(CampoRecurso, recurso, cancellationToken);
         return [.. CamposDinamicos(html)];
+    }
+
+    public async Task<SerPacienteEncontradoDto> PesquisarPacienteAsync(
+        string cnsOuCpf, CancellationToken cancellationToken)
+    {
+        var numero = new string([.. (cnsOuCpf ?? string.Empty).Where(char.IsDigit)]);
+        if (numero.Length is not (11 or 15))
+        {
+            throw new ValidacaoException(
+                "ser.documento_invalido",
+                "Informe um CNS (15 dígitos) ou um CPF (11 dígitos).");
+        }
+
+        await AbrirEditarAsync(cancellationToken);
+
+        // Id do botão lido da PÁGINA pelo title, nunca chumbado: `j_id` é posicional e muda
+        // quando a SES-RJ recompila — foi assim que o id do combo de recurso já mudou.
+        var botao = BotaoPesquisarPaciente(_html)
+            ?? throw new InvalidOperationException(
+                "Não achei o botão Pesquisar do painel de paciente na aba Editar do SER.");
+
+        var extras = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [CampoCnsCpf] = numero,
+            ["AJAXREQUEST"] = RegiaoViewRoot,
+            [botao] = botao,
+            ["ajaxSingle"] = botao,
+        };
+
+        var resposta = await sessao.SubmeterFormAsync(
+            _html, SerHtmlParser.FormPesquisa, extras, _viewState, cancellationToken);
+
+        var html = resposta.Texto;
+        if (SerHtmlParser.RedirectNoCorpo(html) is { Length: > 0 } destino)
+        {
+            html = await sessao.AbrirTelaAsync(destino, cancellationToken);
+        }
+
+        _viewState = SerHtmlParser.ViewStateQualquer(html) ?? _viewState;
+
+        var campos = CamposDoPaciente(html);
+        logger.LogInformation(
+            "SER/paciente: pesquisa por {Doc} devolveu {Qtd} campo(s).",
+            numero.Length == 11 ? "CPF" : "CNS", campos.Count);
+
+        return new SerPacienteEncontradoDto(campos.Count > 0, Avisos(html), campos);
     }
 
     // ------------------------------------------------------------------ navegação
@@ -224,6 +290,90 @@ public sealed partial class SerNovaSolicitacaoService(
             .Where(o => o.Valor.Length > 0
                         && !o.Valor.Contains("NoSelectionConverter", StringComparison.Ordinal)
                         && !string.Equals(o.Valor, "null", StringComparison.Ordinal))];
+    }
+
+    /// <summary>Id do <c>&lt;a title="Pesquisar"&gt;</c> do painel de paciente, lido da página.</summary>
+    internal static string? BotaoPesquisarPaciente(string html)
+    {
+        var m = Regex.Match(html, "<a[^>]*title=\"Pesquisar\"[^>]*>");
+        if (!m.Success) return null;
+        var id = Regex.Match(m.Value, "id=\"([^\"]+)\"");
+        return id.Success ? id.Groups[1].Value : null;
+    }
+
+    /// <summary>Mensagens que o SER exibiu (inclui o aviso de CNS definitivo × provisório).</summary>
+    internal static IReadOnlyList<string> Avisos(string html)
+    {
+        var doc = SerHtmlParser.Documento(html);
+        // GetElementById e não seletor CSS: o id tem ":" e escapá-lo em CSS só cria armadilha.
+        var div = doc.GetElementById("form0:divMensagens");
+        var texto = Espremer(div?.TextContent ?? string.Empty);
+        return texto.Length == 0 ? [] : [texto];
+    }
+
+    /// <summary>
+    /// O cadastro que o SER devolveu, campo a campo.
+    ///
+    /// <para><b>O que decide tudo é o <c>disabled</c>.</b> O SER trava a identidade — nome, CPF,
+    /// CNS, nascimento, sexo, mãe e raça — e input travado NÃO é enviado pelo navegador: esses
+    /// valores nem chegam ao Gravar, o SER os tem do lado dele. Medido em 10/08/2026: 7 travados
+    /// e 11 editáveis (nome social, endereço e os três telefones).</para>
+    ///
+    /// <para><b>Dois dos telefones não têm id, só <c>name</c> posicional</b> (<c>form0:j_id173</c>,
+    /// <c>form0:j_id178</c>). Por isso o rótulo vem do <c>&lt;label&gt;</c> irmão e o campo vem do
+    /// <c>name</c> lido na hora — chumbar o j_id daria um formulário mudo na próxima recompilação
+    /// da SES-RJ, sem erro nenhum.</para>
+    /// </summary>
+    internal static List<SerCampoPacienteDto> CamposDoPaciente(string html)
+    {
+        var doc = SerHtmlParser.Documento(html);
+        var painel = doc.GetElementById(PainelPaciente);
+        if (painel is null) return [];
+
+        var saida = new List<SerCampoPacienteDto>();
+
+        foreach (var el in painel.QuerySelectorAll("input, select, textarea"))
+        {
+            var nome = el.GetAttribute("name");
+            if (string.IsNullOrEmpty(nome)) continue;
+
+            var tipoHtml = (el.GetAttribute("type") ?? string.Empty).ToLowerInvariant();
+            if (tipoHtml is "hidden" or "submit" or "button" or "image" or "reset") continue;
+
+            // O rótulo é o <label> do mesmo <td>. O ícone (<i>) e o asterisco vêm dentro dele.
+            var label = el.ParentElement?.QuerySelector("label");
+            var obrigatorio = label?.QuerySelector("span.required") is not null;
+            var rotulo = Espremer(label?.TextContent ?? string.Empty).Replace("*", string.Empty).Trim(' ', ':');
+
+            var ehSelect = string.Equals(el.TagName, "select", StringComparison.OrdinalIgnoreCase);
+            List<SerOpcaoDto>? opcoes = null;
+            string? valor;
+
+            if (ehSelect)
+            {
+                opcoes = [.. el.QuerySelectorAll("option")
+                    .Select(o => new SerOpcaoDto(
+                        o.GetAttribute("value") ?? string.Empty, Espremer(o.TextContent)))
+                    .Where(o => o.Valor.Length > 0)];
+                valor = el.QuerySelectorAll("option")
+                    .FirstOrDefault(o => o.HasAttribute("selected"))?.GetAttribute("value");
+            }
+            else
+            {
+                valor = el.GetAttribute("value");
+            }
+
+            saida.Add(new SerCampoPacienteDto(
+                nome,
+                rotulo,
+                string.IsNullOrWhiteSpace(valor) ? null : valor,
+                ehSelect ? "select" : "text",
+                obrigatorio,
+                Editavel: !el.HasAttribute("disabled") && !el.HasAttribute("readonly"),
+                opcoes));
+        }
+
+        return saida;
     }
 
     /// <summary>Colapsa todo espaço em branco — o HTML do SER vem cheio de quebra e tabulação.</summary>

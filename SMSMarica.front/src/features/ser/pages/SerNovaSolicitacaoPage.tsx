@@ -9,6 +9,7 @@ import {
   Save,
   Send,
   Trash2,
+  Search,
 } from 'lucide-react';
 
 import {
@@ -28,6 +29,8 @@ import type {
   RascunhoSerLista,
   StatusRascunhoSer,
   TipoRecursoSer,
+  CampoPacienteSer,
+  PacienteEncontradoSer,
 } from '@/features/ser/types';
 import { SeletorRecursoSer } from '@/features/ser/components/SeletorRecursoSer';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
@@ -36,6 +39,7 @@ import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { formatarInstante } from '@/shared/lib/datas';
+import { pesquisarPacienteSer } from '@/features/ser/api/serApi';
 
 /**
  * Regulação → Nova solicitação.
@@ -66,6 +70,8 @@ export function SerNovaSolicitacaoPage() {
   const [paciente, setPaciente] = useState('');
   const [hipotese, setHipotese] = useState('');
   const [campos, setCampos] = useState<Record<string, string>>({});
+  const [pacienteSer, setPacienteSer] = useState<PacienteEncontradoSer | null>(null);
+  const [buscando, setBuscando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
 
@@ -128,6 +134,41 @@ export function SerNovaSolicitacaoPage() {
       hipotese: hipotese.trim() || undefined,
       campos,
     };
+  }
+
+  /**
+   * Busca o paciente no motor do PRÓPRIO SER (CNS ou CPF) e traz o cadastro.
+   *
+   * O SER VENCE: o que ele devolver sobrescreve o que estiver preenchido. É a fonte que o pedido
+   * vai enfrentar na hora de gravar, então divergir dela só adiaria a recusa.
+   *
+   * A identidade volta travada (o SER a marca `disabled` e nem a recebe de volta); endereço,
+   * nome social e telefones voltam editáveis, que é o que muda na vida do cidadão.
+   */
+  async function buscarNoSer() {
+    const doc = cns.replace(/\D/g, '');
+    if (doc.length !== 11 && doc.length !== 15) {
+      setErro('Informe um CNS (15 dígitos) ou um CPF (11 dígitos).');
+      return;
+    }
+    setErro(null);
+    setAviso(null);
+    setBuscando(true);
+    try {
+      const r = await pesquisarPacienteSer(doc);
+      setPacienteSer(r);
+      const doSer: Record<string, string> = {};
+      for (const c of r.campos) if (c.valor) doSer[c.campo] = c.valor;
+      setCampos({ ...campos, ...doSer });
+
+      const nome = r.campos.find((c) => c.campo.endsWith(':nome'))?.valor;
+      if (nome) setPaciente(nome);
+      setAviso(r.encontrado ? 'Cadastro trazido do SER.' : null);
+    } catch (e) {
+      setErro(extrairMensagemDeErro(e));
+    } finally {
+      setBuscando(false);
+    }
   }
 
   async function aoSalvar() {
@@ -320,15 +361,52 @@ export function SerNovaSolicitacaoPage() {
           <section>
             <h2 className="mb-2 font-semibold text-slate-800">Paciente</h2>
             <div className="flex flex-wrap items-end gap-3">
-              <Campo label="CNS *" htmlFor="ns-cns" className="w-56">
-                <Input id="ns-cns" value={cns} disabled={somenteLeitura}
-                  onChange={(e) => setCns(e.target.value)} />
+              {/* O SER aceita CNS ou CPF no mesmo campo — a tela dele decide pelo tamanho. */}
+              <Campo label="CNS ou CPF *" htmlFor="ns-cns" className="w-56">
+                <Input
+                  id="ns-cns"
+                  value={cns}
+                  disabled={somenteLeitura}
+                  onChange={(e) => setCns(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); buscarNoSer(); } }}
+                />
               </Campo>
-              <Campo label="Nome" htmlFor="ns-pac" className="min-w-72 flex-1">
-                <Input id="ns-pac" value={paciente} disabled={somenteLeitura}
-                  onChange={(e) => setPaciente(e.target.value)} />
-              </Campo>
+              <Button variante="secundaria" onClick={buscarNoSer} disabled={somenteLeitura || buscando}>
+                {buscando ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
+                Buscar no SER
+              </Button>
+              {pacienteSer && !pacienteSer.encontrado && (
+                <span className="text-sm text-amber-700">
+                  O SER não encontrou ninguém com esse número.
+                </span>
+              )}
             </div>
+
+            {/* Avisos do SER — inclui "o CNS definitivo é diferente do provisório", que é a
+                armadilha de identidade mais cara que conhecemos. */}
+            {pacienteSer?.avisos.map((a) => (
+              <p key={a} className="mt-2 rounded bg-amber-50 p-2 text-xs text-amber-900">{a}</p>
+            ))}
+
+            {pacienteSer?.encontrado && (
+              <div className="mt-3 flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                {pacienteSer.campos.map((c) => (
+                  <CampoPaciente
+                    key={c.campo}
+                    c={c}
+                    valor={campos[c.campo] ?? c.valor ?? ''}
+                    desabilitado={somenteLeitura}
+                    onChange={(v) => setCampos({ ...campos, [c.campo]: v })}
+                    /* Sugestão só no campo de WhatsApp, e amarrada pelo RÓTULO: dois dos três
+                       telefones do SER têm id posicional (j_idNNN), que muda quando a SES-RJ
+                       recompila. */
+                    sugestao={
+                      /whatsapp/i.test(c.rotulo) ? pacienteSer.telefoneVerificadoNosso : null
+                    }
+                  />
+                ))}
+              </div>
+            )}
           </section>
 
           <section>
@@ -512,6 +590,69 @@ export function SerNovaSolicitacaoPage() {
         </aside>
       </div>
     </div>
+  );
+}
+
+/**
+ * Desenha um campo do cadastro que o SER devolveu.
+ *
+ * Travado quando o SER o marcou `disabled` — nome, CPF, CNS, nascimento, sexo, mãe e raça. Não é
+ * capricho de tela: campo `disabled` não é enviado pelo navegador, então esses valores nem chegam
+ * ao Gravar. Deixá-los editáveis prometeria uma correção que o SER descarta em silêncio.
+ */
+function CampoPaciente({
+  c,
+  valor,
+  desabilitado,
+  onChange,
+  sugestao,
+}: {
+  c: CampoPacienteSer;
+  valor: string;
+  desabilitado?: boolean;
+  onChange: (v: string) => void;
+  /** Nosso número verificado por OTP, quando houver. Oferecido, nunca aplicado sozinho. */
+  sugestao?: string | null;
+}) {
+  const id = `pac-${c.campo.replace(/[^\w]/g, '_')}`;
+  const rotulo = `${c.rotulo}${c.obrigatorio ? ' *' : ''}`;
+  const travado = !c.editavel || desabilitado;
+
+  if (c.tipo === 'select' && c.opcoes?.length) {
+    return (
+      <Campo label={rotulo} htmlFor={id} className="w-52">
+        <Select id={id} value={valor} disabled={travado} onChange={(e) => onChange(e.target.value)}>
+          <option value="">Selecione…</option>
+          {c.opcoes.map((o) => (
+            <option key={o.valor} value={o.valor}>{o.rotulo}</option>
+          ))}
+        </Select>
+      </Campo>
+    );
+  }
+
+  const mesmosDigitos = (a: string, b: string) => {
+    const x = a.replace(/\D/g, '');
+    const y = b.replace(/\D/g, '');
+    // Tolera DDI: um é sufixo do outro (o verificado guarda "55…", o SER guarda nacional).
+    return x.length >= 8 && y.length >= 8 && (x.endsWith(y) || y.endsWith(x));
+  };
+  const oferecer = sugestao && !travado && !mesmosDigitos(sugestao, valor);
+
+  return (
+    <Campo label={rotulo} htmlFor={id} className="w-52">
+      <Input id={id} value={valor} disabled={travado} onChange={(e) => onChange(e.target.value)} />
+      {oferecer ? (
+        <button
+          type="button"
+          onClick={() => onChange(sugestao!)}
+          className="mt-1 text-left text-xs text-emerald-700 underline decoration-dotted hover:text-emerald-900"
+          title="Número verificado por código no nosso cadastro — clique para usar"
+        >
+          verificado no nosso cadastro: {sugestao}
+        </button>
+      ) : null}
+    </Campo>
   );
 }
 

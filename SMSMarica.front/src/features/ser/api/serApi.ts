@@ -25,6 +25,7 @@ import type {
   RascunhoSerRequest,
   StatusRascunhoSer,
   TipoRecursoSer,
+  PacienteEncontradoSer,
 } from '@/features/ser/types';
 
 /** Busca na NOSSA base espelhada — não vai ao SER. */
@@ -148,6 +149,14 @@ export async function listarRecursosNovaSer(tipo: string): Promise<OpcaoSer[]> {
   const { data } = await http.get<OpcaoSer[]>(
     '/regulacao/ser/configuracao/nova-solicitacao/recursos',
     { params: { tipo } },
+  );
+  return data;
+}
+
+export async function pesquisarPacienteSer(documento: string): Promise<PacienteEncontradoSer> {
+  const { data } = await http.get<PacienteEncontradoSer>(
+    '/regulacao/ser/configuracao/nova-solicitacao/paciente',
+    { params: { documento } },
   );
   return data;
 }

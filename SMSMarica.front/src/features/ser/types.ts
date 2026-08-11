@@ -451,3 +451,31 @@ export type CatalogoSyncResultado = {
   falhas: number;
   duracaoSegundos: number;
 };
+
+/** Um campo do cadastro do paciente como o SER devolve na pesquisa por CNS/CPF. */
+export type CampoPacienteSer = {
+  /** Nome JSF. Dois dos telefones têm id POSICIONAL (j_idNNN) — nunca chumbar. */
+  campo: string;
+  rotulo: string;
+  valor: string | null;
+  tipo: 'text' | 'select';
+  obrigatorio: boolean;
+  /**
+   * O SER trava a identidade (nome, CPF, CNS, nascimento, sexo, mãe, raça) com `disabled`, e
+   * campo travado não é enviado pelo navegador: esses valores nem chegam ao Gravar. Editá-los
+   * aqui seria oferecer uma digitação que o SER descarta.
+   */
+  editavel: boolean;
+  opcoes: OpcaoSer[] | null;
+};
+
+export type PacienteEncontradoSer = {
+  encontrado: boolean;
+  /** Mensagens do SER — inclui o aviso de CNS definitivo × provisório. */
+  avisos: string[];
+  campos: CampoPacienteSer[];
+  /** Id da mesma pessoa no NOSSO hub, quando o CPF do SER casa com alguém aqui. */
+  pacienteIdNosso: string | null;
+  /** Nosso telefone verificado por OTP. Vira sugestão ao lado do WhatsApp do SER. */
+  telefoneVerificadoNosso: string | null;
+};

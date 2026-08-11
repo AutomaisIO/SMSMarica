@@ -322,6 +322,47 @@ public sealed record SerNotificacaoFiltroDto
 public sealed record SerOpcaoDto(string Valor, string Rotulo);
 
 /// <summary>
+/// Um campo do cadastro do paciente como o SER devolve na pesquisa por CNS/CPF.
+///
+/// <para><b>O <c>Editavel</c> é a informação que mais importa aqui.</b> O SER trava a identidade
+/// (nome, CPF, CNS, nascimento, sexo, mãe, raça) com <c>disabled</c> — e campo disabled não é
+/// enviado pelo navegador. Ou seja: esses valores não viajam no Gravar, o SER os tem do lado
+/// dele. Deixá-los editáveis na nossa tela seria oferecer uma digitação que o SER descarta.</para>
+///
+/// <para>O que ele deixa editar é o que muda na vida do cidadão: nome social, endereço e os três
+/// telefones. Medido em 10/08/2026 contra a tela viva: 7 travados, 11 editáveis.</para>
+/// </summary>
+public sealed record SerCampoPacienteDto(
+    /// <summary>Nome JSF — dois dos telefones têm id POSICIONAL (j_idNNN), por isso o campo é
+    /// sempre lido da página e nunca chumbado.</summary>
+    string Campo,
+    string Rotulo,
+    string? Valor,
+    /// <summary><c>text</c> ou <c>select</c>.</summary>
+    string Tipo,
+    bool Obrigatorio,
+    bool Editavel,
+    IReadOnlyList<SerOpcaoDto>? Opcoes);
+
+/// <summary>Resultado da pesquisa de paciente no SER (CNS ou CPF).</summary>
+public sealed record SerPacienteEncontradoDto(
+    bool Encontrado,
+    /// <summary>Mensagens que o SER exibiu — inclui o aviso de CNS definitivo × provisório.</summary>
+    IReadOnlyList<string> Avisos,
+    IReadOnlyList<SerCampoPacienteDto> Campos,
+    /// <summary>Id da mesma pessoa no NOSSO hub, quando o CPF do SER casa com alguém aqui.</summary>
+    Guid? PacienteIdNosso = null,
+    /// <summary>
+    /// Nosso telefone <b>verificado por OTP</b>, quando existe. Vai para a tela como SUGESTÃO ao
+    /// lado do WhatsApp que o SER trouxe — nunca substituindo sozinho.
+    ///
+    /// <para>Vale mais que o do SER por um motivo concreto: alguém atendeu naquele número e
+    /// provou que é do paciente. O do SER é o que estava no cadastro. Mas quem manda no pedido é
+    /// o operador, então a tela oferece e ele decide.</para>
+    /// </summary>
+    string? TelefoneVerificadoNosso = null);
+
+/// <summary>
 /// Um campo que o SER acrescenta conforme o Recurso escolhido. É o que faz oncologia pedir peso,
 /// altura, IMC e datas de biópsia enquanto uma consulta comum pede só três textos.
 /// </summary>

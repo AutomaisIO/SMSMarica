@@ -205,6 +205,46 @@ public sealed class SerConfiguracaoController(
         CancellationToken cancellationToken) =>
         nova.ListarRecursosAsync(tipo, ambulatorioEstadual, cancellationToken);
 
+    /// <summary>
+    /// Pesquisa o paciente no SER por CNS ou CPF — o motor do próprio SER, que resolve o cadastro
+    /// sem depender do CADSUS via SISREG (limitado). Consulta: nada é gravado no SER.
+    /// </summary>
+    [HttpGet("nova-solicitacao/paciente")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]
+    [ProducesResponseType<SerPacienteEncontradoDto>(StatusCodes.Status200OK)]
+    public async Task<SerPacienteEncontradoDto> PesquisarPacienteNoSer(
+        [FromQuery] string documento,
+        [FromServices] ISerNovaSolicitacaoService nova,
+        [FromServices] Core.Pacientes.IPacientesService pacientes,
+        [FromServices] Core.Pacientes.Fhir.IPacienteResolver resolver,
+        CancellationToken cancellationToken)
+    {
+        var doSer = await nova.PesquisarPacienteAsync(documento, cancellationToken);
+        if (!doSer.Encontrado) return doSer;
+
+        // Cruza com o NOSSO cadastro pelo CPF que o SER devolveu — é a chave que une as bases
+        // (o CNS não serve: a mesma pessoa pode ter mais de um, como o piloto de conciliação
+        // mostrou). Falha aqui não pode derrubar a pesquisa: o dado do SER já é útil sozinho.
+        try
+        {
+            var cpf = doSer.Campos.FirstOrDefault(c => c.Campo.EndsWith(":cpf", StringComparison.Ordinal))?.Valor;
+            if (string.IsNullOrWhiteSpace(cpf)) return doSer;
+
+            if (await pacientes.ObterPorCpfAsync(cpf, cancellationToken) is not { } nosso) return doSer;
+            var resumo = await resolver.ResolverAsync(nosso.Id, cancellationToken);
+
+            return doSer with
+            {
+                PacienteIdNosso = nosso.Id,
+                TelefoneVerificadoNosso = resumo?.TelefoneVerificado,
+            };
+        }
+        catch (Exception)
+        {
+            return doSer;
+        }
+    }
+
     [HttpGet("nova-solicitacao/campos")]
     [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]
     [ProducesResponseType<IReadOnlyList<SerCampoDinamicoDto>>(StatusCodes.Status200OK)]
