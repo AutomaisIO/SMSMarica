@@ -21,6 +21,8 @@ public sealed class CorrecaoIdentidadeExameService(
     IResolvedorIdentidadeDicom identidades,
     IPacienteResolver pacientes,
     IDcm4cheeMwlClient mwl,
+    IConsultaStudyClient consultaStudy,
+    SolicitacoesExame.ISolicitacoesExameService solicitacoes,
     IGeradorIdentificadores identificadores,
     IComunicacaoPacienteService comunicacoes,
     IAuditoriaService auditoria,
@@ -131,7 +133,7 @@ public sealed class CorrecaoIdentidadeExameService(
                 await db.SaveChangesAsync(cancellationToken);
             }
 
-            await AssumirEstudoAsync(destino, uidNovo, cancellationToken);
+            await AssumirEstudoAsync(destino, uidNovo, await DataDoEstudoAsync(uidNovo, cancellationToken), cancellationToken);
             await db.SaveChangesAsync(cancellationToken);
             await tx.CommitAsync(cancellationToken);
         });
@@ -178,6 +180,10 @@ public sealed class CorrecaoIdentidadeExameService(
         await RemoverDaWorklistAsync(origem, cancellationToken);
         await RemoverDaWorklistAsync(destino, cancellationToken);
 
+        // Lidas fora da transação: são chamadas ao PACS.
+        var dataDestino = await DataDoEstudoAsync(novoParaDestino, cancellationToken);
+        var dataOrigem = await DataDoEstudoAsync(novoParaOrigem, cancellationToken);
+
         var strategy = db.Database.CreateExecutionStrategy();
         await strategy.ExecuteAsync(async () =>
         {
@@ -193,8 +199,8 @@ public sealed class CorrecaoIdentidadeExameService(
             await LiberarSemWorklistAsync(destino, cancellationToken);
             await db.SaveChangesAsync(cancellationToken);
 
-            await AssumirEstudoAsync(destino, novoParaDestino, cancellationToken);
-            await AssumirEstudoAsync(origem, novoParaOrigem, cancellationToken);
+            await AssumirEstudoAsync(destino, novoParaDestino, dataDestino, cancellationToken);
+            await AssumirEstudoAsync(origem, novoParaOrigem, dataOrigem, cancellationToken);
             await db.SaveChangesAsync(cancellationToken);
             await tx.CommitAsync(cancellationToken);
         });
@@ -215,12 +221,11 @@ public sealed class CorrecaoIdentidadeExameService(
     }
 
     /// <summary>O exame passa a ser dono do estudo e vira Realizada, com a data real do DICOM.</summary>
-    private async Task AssumirEstudoAsync(ExameImagem exame, string uidNovo, CancellationToken ct)
+    private async Task AssumirEstudoAsync(
+        ExameImagem exame, string uidNovo, DateTime? dataEstudo, CancellationToken ct)
     {
         var alvo = await db.ExamesImagem.FirstAsync(e => e.Id == exame.Id, ct);
         alvo.StudyInstanceUID = uidNovo;
-        alvo.Status = StatusSolicitacaoExame.Realizada;
-        alvo.RealizadoEm ??= DateTime.UtcNow;
         alvo.ProximaTentativaEm = null;
         alvo.AtualizadoEm = DateTime.UtcNow;
         alvo.AtualizadoPor = usuarioAtual.UsuarioId;
@@ -231,6 +236,24 @@ public sealed class CorrecaoIdentidadeExameService(
             .ExecuteUpdateAsync(u => u
                 .SetProperty(a => a.ExcluidoEm, DateTime.UtcNow)
                 .SetProperty(a => a.ExcluidoPor, usuarioAtual.UsuarioId), ct);
+        await db.SaveChangesAsync(ct);
+
+        // Promoção pelo caminho CANÔNICO, não marcando o status na mão: é
+        // MarcarComoRealizadaAsync que enfileira o "exame liberado" para o paciente.
+        // Na correção de 11/08 o aviso só saiu para a Patricia porque o conciliador entrou na
+        // corrida e passou por aqui — sem ele, ela teria o exame certo e ninguém a avisaria.
+        await solicitacoes.MarcarComoRealizadaAsync(exame.Id, DateTime.UtcNow, dataEstudo, ct);
+    }
+
+    /// <summary>Data/hora real do DICOM, blindada: falha do PACS não derruba a correção.</summary>
+    private async Task<DateTime?> DataDoEstudoAsync(string uid, CancellationToken ct)
+    {
+        try { return await consultaStudy.ObterDataHoraEstudoAsync(uid, ct); }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Não foi possível ler a data do estudo {Uid} no PACS.", uid);
+            return null;
+        }
     }
 
     /// <summary>Solta o exame do estudo e o recoloca na fila da worklist, com UID NOVO — o antigo

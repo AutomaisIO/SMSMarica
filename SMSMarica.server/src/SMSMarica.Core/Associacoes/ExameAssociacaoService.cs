@@ -76,22 +76,8 @@ public sealed class ExameAssociacaoService(
                 "Há laudo assinado para este exame. A associação não pode ser alterada.");
 
         // Já associado? Idempotente para o mesmo exame; conflito para outro.
-        var existente = await db.ExameAssociacoes
-            .FirstOrDefaultAsync(a => a.StudyInstanceUID == uid && a.ExcluidoEm == null, cancellationToken);
-        if (existente is not null)
-        {
-            if (existente.ExameImagemId == solicitacao.Id)
-            {
-                // AUTO-REPARO: falha entre commit da associação e a promoção deixaria a solicitação
-                // presa sem "Realizada" (e sem o zap). Reaplicar é idempotente.
-                var dataEstudoReparo = await ObterDataEstudoSeguroAsync(uid, cancellationToken);
-                await solicitacoes.MarcarComoRealizadaAsync(solicitacao.Id, DateTime.UtcNow, dataEstudoReparo, cancellationToken);
-                await AtualizarPacienteDosLaudosAsync(uid, pacienteId, DateTime.UtcNow, cancellationToken);
-                return await MontarDtoAsync(existente, cancellationToken);
-            }
-            throw new ConflitoException("associacao.ja_associado",
-                "Este exame já está associado a outra solicitação. Desassocie antes de reassociar.");
-        }
+        if (await ResolverJaAssociadoAsync(uid, solicitacao.Id, pacienteId, cancellationToken) is { } jaFeito)
+            return jaFeito;
 
         if (validarNoPacs && !await consultaStudy.StudyExistePorStudyUidAsync(uid, cancellationToken))
             throw new ConflitoException("associacao.study_inexistente", "Estudo não encontrado no PACS.");
@@ -112,6 +98,13 @@ public sealed class ExameAssociacaoService(
             await db.Laudos
                 .Where(l => l.StudyInstanceUID == uidDicomOriginal && !l.Excluido)
                 .ExecuteUpdateAsync(u => u.SetProperty(l => l.StudyInstanceUID, uid), cancellationToken);
+
+            // CORRIDA COM O CONCILIADOR: o estudo reescrito entra no PACS já com o accession
+            // FINAL, então a varredura de 30s o reconhece e pode associá-lo antes de nós — foi o
+            // que aconteceu em 11/08 e devolveu 409 ao operador, apesar de o resultado estar certo.
+            // Chegar ao mesmo destino por outro caminho é SUCESSO, não conflito.
+            if (await ResolverJaAssociadoAsync(uid, solicitacao.Id, pacienteId, cancellationToken) is { } peloMotor)
+                return peloMotor;
         }
 
         var agora = DateTime.UtcNow;
@@ -156,6 +149,30 @@ public sealed class ExameAssociacaoService(
         logger.LogInformation(
             "Exame {Uid} associado à solicitação {Accession} (origem {Origem}).", uid, accession, origem);
         return await MontarDtoAsync(assoc, cancellationToken);
+    }
+
+    /// <summary>
+    /// Devolve a associação quando o estudo JÁ está vinculado — ao mesmo exame (idempotente,
+    /// com auto-reparo da promoção) — e lança quando está vinculado a outro. <c>null</c> = livre.
+    ///
+    /// <para>O auto-reparo existe porque uma falha entre o commit da associação e a promoção
+    /// deixaria o exame preso sem "Realizada" (e sem o aviso ao paciente); reaplicar é inofensivo.</para>
+    /// </summary>
+    private async Task<ExameAssociacaoDto?> ResolverJaAssociadoAsync(
+        string uid, Guid exameImagemId, Guid pacienteId, CancellationToken ct)
+    {
+        var existente = await db.ExameAssociacoes
+            .FirstOrDefaultAsync(a => a.StudyInstanceUID == uid && a.ExcluidoEm == null, ct);
+        if (existente is null) return null;
+
+        if (existente.ExameImagemId != exameImagemId)
+            throw new ConflitoException("associacao.ja_associado",
+                "Este exame já está associado a outra solicitação. Desassocie antes de reassociar.");
+
+        var dataEstudoReparo = await ObterDataEstudoSeguroAsync(uid, ct);
+        await solicitacoes.MarcarComoRealizadaAsync(exameImagemId, DateTime.UtcNow, dataEstudoReparo, ct);
+        await AtualizarPacienteDosLaudosAsync(uid, pacienteId, DateTime.UtcNow, ct);
+        return await MontarDtoAsync(existente, ct);
     }
 
     /// <summary>StudyDate/StudyTime do DICOM, blindado: falha do PACS vira null (fallback na exibição).</summary>
