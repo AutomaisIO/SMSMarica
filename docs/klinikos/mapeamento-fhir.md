@@ -65,10 +65,20 @@ um conector que lê tabelas vazias e conclui que a UPA não atende ninguém.
 | `UPA_SinaisVitais` | **382.590** | **VIVA** — sinais vitais colunados |
 | `paciente` | 83.878 | **VIVA** |
 | `profissional` | 495 | **VIVA** (485 ativos) |
+| `UPA_Atendimento_Medico` | **173.654** | **VIVA** — é o BOLETIM MÉDICO: anamnese, exame físico, hipótese, conduta |
+| `Prescricao` + `Item_Prescricao_Medicamento` | 237.873 / **337.723** | **VIVAS** — prescrição estruturada: insumo, dose, unidade, via |
+| `TB_CID` | 14.242 | **VIVA** — catálogo CID-10 (é daqui que sai o NOME do diagnóstico) |
 | `Emergencia` | **0** | morta — o módulo de emergência não é usado |
 | `Atendimento_Emergencia` | **0** | morta — **é aqui que estaria o CID**, se o módulo fosse usado |
 | `atendimento_spa` | **0** | morta — o atendimento médico **não** mora aqui |
 | `Internacao` | — | parada desde 25/01/2026 (medido em 26/07) |
+
+> **Correção de 11/08/2026.** As três primeiras linhas acima foram descobertas tarde, e a
+> omissão custou caro: entre 06/08 e 11/08 o Klinikos entrou no hub **sem boletim médico e sem
+> medicamento**. `UPA_Atendimento_Medico` era lida — mas só para pegar o `tipsai_codigo` do
+> desfecho, e seus cinco campos de texto eram descartados. Preenchimento medido nas 173.654
+> linhas: exame físico 96,8%, hipótese 96,7%, conduta 96,7%, anamnese 89,4%.
+> `upaatemed_Reavaliacao` está **vazia nas 173.654** — reavaliar aqui é evento, não narrativa.
 
 **Consequência de projeto:** o atendimento médico e o CID **não** vêm de uma tabela de
 atendimento. Vêm da **evolução**. O conector precisa reconstruir o Encounter a partir do boletim
@@ -80,10 +90,10 @@ e derivar diagnóstico das linhas de `UPA_Evolucao`.
 
 | `Tipo` | Linhas | Com CID primário | Boletins distintos | Papel no FHIR |
 |---|---:|---:|---:|---|
-| REAVALIAÇÃO | 184.222 | 176.724 | 153.911 | Condition (atualiza) + nota |
+| REAVALIAÇÃO | 184.222 | 176.724 | 153.911 | Condition (atualiza) — **e só** |
 | INÍCIO DO ATENDIMENTO MÉDICO | 165.777 | 139.000 | 165.777 | **início do atendimento** — 1 por boletim |
-| RECEITA | 141.917 | 0 | 130.462 | MedicationRequest (texto) |
-| PRESCRIÇÃO | 100.506 | 0 | 82.169 | MedicationRequest (texto) |
+| RECEITA | 141.917 | 0 | 130.462 | **nada** — ver o aviso abaixo |
+| PRESCRIÇÃO | 100.506 | 0 | 82.169 | **nada** — ver o aviso abaixo |
 | EVOLUÇÃO DE ENFERMAGEM | 19.225 | 0 | 2.194 | DocumentReference |
 | EVOLUÇÃO | 19.054 | 14 | 2.135 | DocumentReference |
 | EVOLUÇÃO MÉDICA | 10.971 | 699 | 3.108 | DocumentReference |
@@ -96,6 +106,26 @@ e derivar diagnóstico das linhas de `UPA_Evolucao`.
 **165.777 dos 179.522 boletins (92,3%)** chegaram a ter atendimento médico iniciado. Os ~13,7 mil
 restantes são evasão/desistência — e **têm de entrar como Encounter mesmo assim**, com status
 próprio: o paciente esteve lá, e isso é informação clínica.
+
+> ### ⚠ `upaevo_descricao` é o RÓTULO da linha, não o conteúdo dela
+>
+> Esta é a armadilha central desta base, e ela custou dois meses de prontuário oco. Para os três
+> tipos mais volumosos, `upaevo_descricao` repete a própria categoria:
+>
+> | `Tipo` | `upaevo_descricao` | Tamanho |
+> |---|---|---|
+> | REAVALIAÇÃO | `Reavaliação` | 11 bytes, em 100% das linhas |
+> | RECEITA | `Receita` | idem |
+> | PRESCRIÇÃO | `Prescrição` | idem |
+>
+> Só os tipos narrativos (EVOLUÇÃO MÉDICA, EVOLUÇÃO DE ENFERMAGEM, EVOLUÇÃO, PARECER) trazem
+> texto real ali — até ~4 KB. Mapear a coluna direto produziu, no hub, **414.086
+> MedicationRequest cujo medicamento era a palavra "Receita"** e **296.475 DocumentReference
+> cujo conteúdo era a palavra "Reavaliação"** (84% de todos os documentos do Klinikos).
+>
+> O conteúdo de verdade mora em OUTRAS tabelas: narrativa em `UPA_Atendimento_Medico`,
+> medicamento em `Item_Prescricao_Medicamento`. **Antes de mapear qualquer coluna desta base,
+> conferir o tamanho e o valor distinto do que ela realmente guarda.**
 
 ---
 
@@ -163,6 +193,17 @@ mexido na data. A marca d'água por fase vira um `long`, e o filtro é
 | Atendimentos | `Pronto_Atendimento` | `rv_atualizacao` |
 | Clínico | `UPA_Evolucao` | `rv_atualizacao` |
 | Sinais vitais | `UPA_SinaisVitais` | `rv_atualizacao` |
+| **Boletim médico** | `UPA_Atendimento_Medico` | `rv_atualizacao` |
+| **Prescrição** | `Item_Prescricao_Medicamento` | `rv_atualizacao` **do item** |
+| Catálogo CID | `TB_CID` | (sem corte — varredura **paginada**, ver abaixo) |
+
+O ponteiro da prescrição é o do ITEM, não o da `Prescricao`: acrescentar um medicamento não toca
+o cabeçalho, e um CDC pelo pai perderia o item novo — o mesmo desenho do fechamento do boletim.
+
+> **O agente corta a resposta no teto dele, em silêncio.** `TB_CID` tem 14.242 linhas e o teto é
+> 5.000: pedir a tabela inteira devolveu exatamente 5.000, sem erro nenhum. Toda leitura de
+> tabela de domínio precisa paginar (`OFFSET/FETCH`) — catálogo curto não levanta exceção, só um
+> `GetValueOrDefault` que não acha, e o resultado é diagnóstico sem nome no prontuário.
 
 > **"Quase" é literal.** Conferido coluna a coluna: `paciente`, `Pronto_Atendimento`,
 > `UPA_Evolucao`, `UPA_SinaisVitais` e `unidade` têm; **`profissional` não tem**. Um SQL que
@@ -260,10 +301,18 @@ com ponteiro no `rv_atualizacao` daquela tabela. Um CDC só pelo boletim importa
 todo mundo e a saída de ninguém, que foi o estado do hub até 08/08/2026 (295 mil Encounters do
 Klinikos, nenhum com `period.end`).
 
-### Condition ← `UPA_Evolucao.cid_codigo_primario` / `_secundario`
+### Condition ← `UPA_Evolucao.cid_codigo_primario` / `_secundario` + `TB_CID`
 
 Só das linhas com CID (INÍCIO, REAVALIAÇÃO, salas). A **reavaliação** pode mudar o CID — a
 última prevalece; as anteriores não somem, viram histórico da mesma Condition.
+
+A origem guarda **só o código** (`Z008`, sem ponto e com padding). O nome vem de `TB_CID`
+(`CO_CID` → `NO_CID`), carregado uma vez por run. Sem ele o `text` repetia o código e o
+prontuário exibia **"M545 · M545"** no lugar de "M54.5 · Dor lombar baixa". No `coding` o código
+sai no formato canônico do ICD-10, com ponto depois da categoria de 3 caracteres; a chave de
+busca no catálogo **ignora o ponto dos dois lados**, para não depender de as duas pontas
+gravarem no mesmo formato. Catálogo indisponível **não derruba o run** — a Condition entra com o
+código, porque enriquecimento que falha não pode custar dado clínico.
 
 ### Observation ← `UPA_SinaisVitais`
 
@@ -272,17 +321,47 @@ Colunas separadas (`pressaoarterial`, `pulso`, `temperatura`, `frequenciarespira
 Observation LOINC com `encounter` amarrado. A pressão vem como texto ("120/80") e precisa ser
 partida em sistólica/diastólica.
 
+### DocumentReference ← `UPA_Atendimento_Medico` (o boletim médico)
+
+**É o documento principal do atendimento** — o análogo do eDoc "Boletim de Atendimento de
+Urgência" do Salux. Um por atendimento (identifier `urn:klinikos:atendimento-medico` sobre o
+`atendamb_codigo`), **não** um por edição: o médico reescreve o mesmo registro durante a
+passagem, e cada gravação tem de atualizar o documento em vez de empilhar cópias.
+
+Vai como **HTML**, com uma seção por campo — `Anamnese`, `Exame físico`, `Hipótese diagnóstica`,
+`Conduta`, `Observação`. Texto puro não serve: são cinco campos distintos, e sem os títulos
+ninguém sabe onde termina o exame físico e começa a conduta. O texto da origem é escapado antes
+de entrar no HTML (campo livre digitado por humano). Boletim aberto e ainda **sem nada escrito
+não vira documento** — documento vazio no prontuário é pior que documento nenhum.
+
+`atendamb_codigo` **não é** o `spa_codigo`: na Santa Rita os dois divergem (`072504080003` vs
+`072504080004`), então o JOIN com `atendimento_ambulatorial` é obrigatório.
+
 ### DocumentReference ← `UPA_Evolucao` (tipos narrativos)
 
-`upaevo_descricao` é o texto. Uma DocumentReference por linha de evolução, `type` derivado do
-`Tipo`. **`ESTORNO` não entra** — é anulação, e importá-lo colocaria no prontuário um registro
-que a origem considera cancelado.
+`upaevo_descricao` é o texto **só nos tipos narrativos** (EVOLUÇÃO MÉDICA, EVOLUÇÃO DE
+ENFERMAGEM, EVOLUÇÃO, PARECER SOLICITADO, PROTOCOLO DENGUE). Uma DocumentReference por linha,
+`type` derivado do `Tipo`.
 
-### MedicationRequest ← `UPA_Evolucao` tipos RECEITA/PRESCRIÇÃO
+**Não viram documento:** `ESTORNO` (anulação — a origem considera cancelado), `INÍCIO DO
+ATENDIMENTO MÉDICO` e as entradas de sala (texto constante), e **`REAVALIAÇÃO`** — cujo texto é
+sempre a palavra "Reavaliação". O que a reavaliação carrega de real (CID revisado e sinais
+vitais) já entra pelos caminhos próprios.
 
-Nesta implantação a prescrição é **texto livre** na evolução (242.423 linhas). A prescrição
-estruturada (`UPA_ITEM_PRESCRICAO_MEDICA` + `Item_Aprazamento`) existe no esquema mas precisa ser
-medida antes de prometer `Dosage` estruturado ou `MedicationAdministration`.
+### MedicationRequest ← `Prescricao` + `Item_Prescricao_Medicamento`
+
+Um por ITEM prescrito, com `ins_descricao` (o remédio), quantidade, unidade e via. **Não sai
+mais de `UPA_Evolucao`** — ver o aviso do §3.1.
+
+`Dosage.text` é montado do que a origem preenche; não se promete `timing` estruturado.
+`itpresc_frequencia` é **intervalo em minutos** (medido: 1440, 720, 480, 360 = 24h, 12h, 8h, 6h),
+com `0` dominando (221.012 de 337.723) no sentido de dose única na unidade — não "a cada zero
+minutos". Valores negativos aparecem na cauda (−120, −180) sem semântica conhecida e viram nada.
+
+Só a especialização de **medicamento** entra: `Item_Prescricao_Dieta`, `_Oxigenoterapia`,
+`_Cuidados_Especiais` e `_Sinais_Vitais` não são MedicationRequest. Por isso a cobertura cai de
+153.836 boletins com prescrição para **92.903 com item de medicamento** — o resto prescreveu
+outra coisa, e inventar remédio ali seria pior que não ter.
 
 ### Higiene medida no dado real
 
@@ -295,9 +374,13 @@ pior que telefone nenhum, porque alguém tenta ligar e o paciente entra em relat
 Outros formatos vistos e tratados: peso com vírgula decimal (`11,30`), pressão arterial como
 `/` (sem medida), CID com padding à direita (`B34      `).
 
-> **Ponta aberta P2.** Medir `UPA_ITEM_PRESCRICAO_MEDICA` e `Item_Aprazamento` nesta instância.
-> Se estiverem vivas, destravam o `MedicationAdministration` (hoje vazio no hub) — que é a
-> pendência mais antiga do BAU clínico.
+> **P2 — parcialmente resolvida em 11/08/2026.** A prescrição estruturada está viva e é a fonte
+> do MedicationRequest desde então: `Prescricao` (237.873) + `Item_Prescricao_Medicamento`
+> (337.723), com insumo, dose, unidade e via. O que **continua aberto** é o aprazamento
+> (`Frequencia_Aprazamento_Prescricao` tem só 13 linhas) — sem ele não há
+> `MedicationAdministration`, que segue sendo a pendência mais antiga do BAU clínico. Vale medir
+> `ItemPrescricaoMedicamento_Lote` (12.281) e `Item_Prescricao_Medicamento_Insulina` (14.215)
+> antes de prometer administração.
 
 ---
 
