@@ -20,6 +20,7 @@ public sealed class CidadaoClinicoService(
     IAnexosService anexos,
     ILaudosService laudos,
     ILaudoAssinaturaService assinatura,
+    Associacoes.IQuarentenaIdentidadeService quarentena,
     IExameImagensPdfService imagensPdf) : ICidadaoClinicoService
 {
     public async Task<IReadOnlyList<ExameResumoDto>> ListarExamesAsync(
@@ -41,6 +42,15 @@ public sealed class CidadaoClinicoService(
             })
             .ToListAsync(cancellationToken);
 
+        if (exames.Count == 0) return [];
+
+        // QUARENTENA: exame sob suspeita de estar no paciente errado some do app até a correção.
+        // Se ele for mesmo de outra pessoa, cada minuto exibido aqui é exposição de dado de saúde.
+        var suspeitos = await quarentena.EmQuarentenaAsync(
+            exames.Select(e => e.StudyInstanceUID).Where(u => !string.IsNullOrEmpty(u)).ToList(),
+            cancellationToken);
+        if (suspeitos.Count > 0)
+            exames = [.. exames.Where(e => !suspeitos.Contains(e.StudyInstanceUID))];
         if (exames.Count == 0) return [];
 
         var ids = exames.Select(e => e.Id).ToList();

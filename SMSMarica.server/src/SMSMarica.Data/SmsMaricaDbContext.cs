@@ -55,6 +55,7 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<Anamnese> Anamneses => Set<Anamnese>();
     public DbSet<AssinaturaMedico> AssinaturasMedico => Set<AssinaturaMedico>();
     public DbSet<ExameAssociacao> ExameAssociacoes => Set<ExameAssociacao>();
+    public DbSet<ExameIncidenteIdentidade> ExameIncidentesIdentidade => Set<ExameIncidenteIdentidade>();
     public DbSet<DeclaracaoComparecimentoVerificacao> DeclaracaoComparecimentoVerificacoes => Set<DeclaracaoComparecimentoVerificacao>();
     public DbSet<DownloadToken> DownloadTokens => Set<DownloadToken>();
     public DbSet<CidadaoLoginLink> CidadaoLoginLinks => Set<CidadaoLoginLink>();
