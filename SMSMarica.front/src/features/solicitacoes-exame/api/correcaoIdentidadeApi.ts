@@ -66,23 +66,3 @@ export async function trocarEstudos(
     motivo,
   });
 }
-
-export type IncidenteAberto = {
-  id: string;
-  studyInstanceUID: string;
-  exameImagemId: string | null;
-  pacienteSuspeitoNome: string | null;
-  motivo: string;
-  status: number;
-  automatico: boolean;
-  criadoEm: string;
-  resolucaoNota: string | null;
-};
-
-/** Fila de exames que alguém colocou em conferência (status 1 = em aberto). */
-export async function listarIncidentesAbertos(): Promise<IncidenteAberto[]> {
-  const { data } = await http.get<IncidenteAberto[]>('/exames/incidentes-identidade', {
-    params: { status: 1 },
-  });
-  return data;
-}

@@ -23,7 +23,6 @@ public sealed class CorrecaoIdentidadeExameService(
     IDcm4cheeMwlClient mwl,
     IGeradorIdentificadores identificadores,
     IComunicacaoPacienteService comunicacoes,
-    IQuarentenaIdentidadeService quarentena,
     IAuditoriaService auditoria,
     IUsuarioAtualAccessor usuarioAtual,
     ILogger<CorrecaoIdentidadeExameService> logger) : ICorrecaoIdentidadeExameService
@@ -84,7 +83,6 @@ public sealed class CorrecaoIdentidadeExameService(
             await db.SaveChangesAsync(cancellationToken);
         }
 
-        await quarentena.ResolverPorEstudoAsync(uid, $"Estudo descartado. {motivo}", cancellationToken);
         await AuditarAsync("DescarteDeEstudo", exame, antes,
             $"Estudo {uid} rejeitado (IOCM 113038) e apagado do PACS. Motivo: {motivo}", cancellationToken);
         logger.LogInformation("Correção de identidade: estudo {Uid} descartado. Motivo: {Motivo}", uid, motivo);
@@ -140,7 +138,6 @@ public sealed class CorrecaoIdentidadeExameService(
 
         await RemoverDaWorklistAsync(destino, cancellationToken);
 
-        await quarentena.ResolverPorEstudoAsync(uid, $"Estudo passou para {destino.AccessionNumber}. {motivo}", cancellationToken);
         await AuditarAsync("AlteracaoDeDestinoDeEstudo", origem, antes,
             $"Estudo reescrito para {destino.AccessionNumber} (novo UID {uidNovo}). " +
             $"Origem: {(request.DestinoDaOrigem == DestinoDoExameDeOrigem.DevolverAWorklist ? "devolvida à worklist" : "liberada sem worklist")}. " +
@@ -202,8 +199,6 @@ public sealed class CorrecaoIdentidadeExameService(
             await tx.CommitAsync(cancellationToken);
         });
 
-        await quarentena.ResolverPorEstudoAsync(uid, $"Troca concluída. {motivo}", cancellationToken);
-        await quarentena.ResolverPorEstudoAsync(uidDestino, $"Troca concluída. {motivo}", cancellationToken);
         await AuditarAsync("TrocaDeIdentidadeDeExame", origem, antes,
             $"{origem.AccessionNumber} ficou com {novoParaOrigem}; {destino.AccessionNumber} ficou com " +
             $"{novoParaDestino}. Motivo: {motivo}", cancellationToken);

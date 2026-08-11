@@ -19,7 +19,6 @@ public sealed class ExameAssociacaoService(
     IConsultaStudyClient consultaStudy,
     ISolicitacoesExameService solicitacoes,
     Pacs.IPacsReescritorEstudoClient reescritor,
-    IQuarentenaIdentidadeService quarentena,
     Pacs.IResolvedorIdentidadeDicom identidades,
     IUsuarioAtualAccessor usuarioAtual,
     ILogger<ExameAssociacaoService> logger) : IExameAssociacaoService
@@ -389,11 +388,6 @@ public sealed class ExameAssociacaoService(
     private async Task<ResultadoConciliacao> ConciliarNucleoAsync(
         string uid, EstudoPacsRecente estudo, CancellationToken cancellationToken)
     {
-        // QUARENTENA: estudo sob suspeita de identidade não é tocado pelo motor. Sem isto o
-        // poller (30s) refaria o vínculo que um humano acabou de pôr em dúvida.
-        if (await quarentena.EmQuarentenaAsync(uid, cancellationToken))
-            return ResultadoConciliacao.SemSolicitacao;
-
         var acc = (estudo.AccessionNumber ?? string.Empty).Trim();
         var patId = (estudo.PatientId ?? string.Empty).Trim();
 

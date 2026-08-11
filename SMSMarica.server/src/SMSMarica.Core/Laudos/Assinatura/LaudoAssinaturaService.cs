@@ -25,7 +25,6 @@ public sealed class LaudoAssinaturaService(
     Medicos.Assinatura.IAssinaturaMedicoService assinaturaMedico,
     Medicos.IMedicosService medicos,
     Associacoes.IExameAssociacaoService associacao,
-    Associacoes.IQuarentenaIdentidadeService quarentena,
     ICarimboAssinaturaRenderer carimboRenderer,
     // Lazy: quebra o ciclo Assinatura → Comunicacao → LoginLink → Solicitacoes → Assinatura.
     Lazy<Notificacoes.Comunicacao.IComunicacaoPacienteService> comunicacoes,
@@ -56,13 +55,6 @@ public sealed class LaudoAssinaturaService(
         if (await associacao.ResolverVinculoAsync(laudo.StudyInstanceUID, cancellationToken) is null)
             throw new ConflitoException("assinatura.sem_associacao",
                 "Associe o exame a um pedido antes de assinar o laudo.");
-
-        // Quarentena: assinar é irreversível (laudo assinado nunca se apaga). Se há suspeita de
-        // identidade trocada, assinar cristalizaria o erro no prontuário do paciente errado.
-        if (await quarentena.EmQuarentenaAsync(laudo.StudyInstanceUID, cancellationToken))
-            throw new ConflitoException("assinatura.exame_em_quarentena",
-                "Este exame está em conferência por suspeita de identidade trocada. " +
-                "Não é possível assinar até a correção.");
 
         var existentes = await db.LaudoAssinaturas
             .Where(a => a.LaudoId == laudoId)

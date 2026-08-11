@@ -23,7 +23,6 @@ import {
   useResincronizarExames,
 } from '@/features/pacs/api/queries';
 import { ModalAssociarExame } from '@/features/pacs/components/ModalAssociarExame';
-import { ModalReportarIdentidade } from '@/features/pacs/components/ModalReportarIdentidade';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { formatarHoraDicom } from '@/features/pacs/lib/dicomJson';
 import { abrirJanelaSolta } from '@/features/pacs/lib/janela';
@@ -91,7 +90,6 @@ export function PacsListagemPage() {
   const [erroExclusao, setErroExclusao] = useState<string | null>(null);
   const [erroPdf, setErroPdf] = useState<string | null>(null);
   const [erroAssoc, setErroAssoc] = useState<string | null>(null);
-  const [reportarEstudo, setReportarEstudo] = useState<Estudo | null>(null);
   const [associarEstudo, setAssociarEstudo] = useState<Estudo | null>(null);
 
   // Busca AO VIVO: aplica 500ms após a última mudança (nome/data/modo/limite) — sem botão
@@ -359,17 +357,6 @@ export function PacsListagemPage() {
         return (
           <div className="flex items-center justify-end gap-2">
             <BotaoAnamnese accessionNumber={e.accessionNumber} somenteLeitura />
-            {!laudoAssinado ? (
-              <button
-                type="button"
-                onClick={() => setReportarEstudo(e)}
-                title="Avisar que este exame pode não ser deste paciente"
-                className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
-              >
-                <Siren className="h-3.5 w-3.5" />
-                Não é este paciente
-              </button>
-            ) : null}
             {!e.associacao && !laudoAssinado && podeAssociar ? (
               <button
                 type="button"
@@ -611,14 +598,6 @@ export function PacsListagemPage() {
       ) : null}
 
       <ModalAssociarExame estudo={associarEstudo} aoFechar={() => setAssociarEstudo(null)} />
-      {reportarEstudo ? (
-        <ModalReportarIdentidade
-          studyInstanceUID={reportarEstudo.studyInstanceUID}
-          nomeExibido={reportarEstudo.patientName ?? "sem nome"}
-          aoFechar={() => setReportarEstudo(null)}
-          aoReportar={() => void busca.refetch()}
-        />
-      ) : null}
     </div>
   );
 }

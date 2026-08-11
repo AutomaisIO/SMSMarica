@@ -60,7 +60,6 @@ public interface IComunicacaoPacienteService
 
 public sealed class ComunicacaoPacienteService(
     SmsMaricaDbContext db,
-    Associacoes.IQuarentenaIdentidadeService quarentena,
     IPacientesService pacientes,
     ICidadaoLoginLinkService loginLinks,
     IWhatsAppCliente whatsApp,
@@ -121,14 +120,6 @@ public sealed class ComunicacaoPacienteService(
             if (s is null || s.ExcluidoEm is not null || s.Status == StatusSolicitacao.Cancelada)
             {
                 Terminal(n, StatusComunicacao.Falha, "Solicitação excluída ou cancelada antes do envio.");
-            }
-            // QUARENTENA: exame sob suspeita de identidade não vai para o paciente. NÃO é terminal
-            // — a suspeita pode ser descartada como falso alarme, e aí o aviso segue normalmente.
-            else if (s.ExameImagem?.StudyInstanceUID is { Length: > 0 } uidQ
-                     && await quarentena.EmQuarentenaAsync(uidQ, ct))
-            {
-                n.MotivoFalha = "Exame em conferência por suspeita de identidade trocada.";
-                n.ProximaTentativaEm = DateTime.UtcNow.AddHours(1);
             }
             else if (n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
                      && (s.DataAgendada is not { } dataAgendada || dataAgendada <= DateTime.UtcNow))

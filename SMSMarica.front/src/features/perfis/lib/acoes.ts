@@ -124,10 +124,9 @@ export const APELIDOS_ACOES_POR_MODULO: Partial<
   SolicitacaoExameManual: {
     Inclusao: 'Abrir solicitação manual',
   },
-  // Consulta = ver a fila; Edição = EXECUTAR a correção, que apaga e reescreve o objeto no PACS.
-  // Sem apelido, "Edição" aqui pareceria inofensivo.
+  // Só a Edição vale aqui: é ela que mostra o card no pedido e libera a correção, que apaga e
+  // reescreve o objeto no PACS. Sem apelido, "Edição" pareceria inofensivo.
   CorrecaoIdentidadeExame: {
-    Consulta: 'Ver estudos com identidade suspeita',
-    Edicao: 'Executar a correção (reescreve o DICOM)',
+    Edicao: 'Corrigir identidade de exame (reescreve o DICOM)',
   },
 };

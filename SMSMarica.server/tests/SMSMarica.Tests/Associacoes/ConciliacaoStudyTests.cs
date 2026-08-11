@@ -61,7 +61,6 @@ public class ConciliacaoStudyTests(PostgresFixture fixture)
             consultaStudy,
             solicitacoes,
             Substitute.For<SMSMarica.Core.Pacs.IPacsReescritorEstudoClient>(),
-            Substitute.For<IQuarentenaIdentidadeService>(),
             Substitute.For<SMSMarica.Core.Pacs.IResolvedorIdentidadeDicom>(),
             new UsuarioAtualAccessorFake(),
             NullLogger<ExameAssociacaoService>.Instance);

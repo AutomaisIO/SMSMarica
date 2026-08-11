@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -13,9 +14,11 @@ using SMSMarica.Data;
 namespace SMSMarica.Data.Migrations
 {
     [DbContext(typeof(SmsMaricaDbContext))]
-    partial class SmsMaricaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260811175853_RemoveQuarentenaIdentidade")]
+    partial class RemoveQuarentenaIdentidade
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -4464,81 +4467,6 @@ namespace SMSMarica.Data.Migrations
                     b.HasKey("UsuarioId", "Modulo");
 
                     b.ToTable("permissao_usuario", "smsmarica");
-                });
-
-            modelBuilder.Entity("SMSMarica.Data.Entities.PesquisaSatisfacao", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("AtendimentoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("atendimento_em");
-
-                    b.Property<DateTime>("CriadoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("criado_em");
-
-                    b.Property<Guid?>("CriadoPor")
-                        .HasColumnType("uuid")
-                        .HasColumnName("criado_por");
-
-                    b.Property<Guid>("EncounterId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("encounter_id");
-
-                    b.Property<DateTime?>("EnviadaEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("enviada_em");
-
-                    b.Property<Guid?>("EnviadaPor")
-                        .HasColumnType("uuid")
-                        .HasColumnName("enviada_por");
-
-                    b.Property<DateTime>("ExpiraEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("expira_em");
-
-                    b.Property<string>("InstrumentoVersao")
-                        .IsRequired()
-                        .HasMaxLength(60)
-                        .HasColumnType("character varying(60)")
-                        .HasColumnName("instrumento_versao");
-
-                    b.Property<Guid>("PatientId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("patient_id");
-
-                    b.Property<DateTime?>("RespondidaEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("respondida_em");
-
-                    b.Property<string>("RespondidaIp")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("respondida_ip");
-
-                    b.Property<string>("RespostasJson")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("respostas");
-
-                    b.Property<string>("UnidadeNome")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("unidade_nome");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EncounterId")
-                        .IsUnique();
-
-                    b.HasIndex("PatientId");
-
-                    b.HasIndex("RespondidaEm");
-
-                    b.ToTable("pesquisa_satisfacao", "smsmarica");
                 });
 
             modelBuilder.Entity("SMSMarica.Data.Entities.PontoGps", b =>

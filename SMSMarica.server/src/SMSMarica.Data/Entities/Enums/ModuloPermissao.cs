@@ -183,6 +183,8 @@ public enum ModuloPermissao
     /// novos), descarta rascunhos de laudo e revoga o link já enviado ao paciente. Quem cuida do
     /// dia a dia de exames não precisa disso; quem precisa é um punhado de nomes. Mesmo caminho de
     /// <see cref="SolicitacaoExameManual"/> e <see cref="Sandbox"/>.</para>
-    /// <para>Usa <c>Consulta</c> (ver a fila de incidentes) e <c>Edicao</c> (executar a correção).</para></summary>
+    /// <para>Usa apenas <c>Edicao</c>: é ela que faz aparecer o card no pedido e libera a
+    /// correção. Não há fila nem triagem — quem tem a permissão resolve na hora, na própria tela
+    /// da solicitação; quem não tem, não vê o card.</para></summary>
     CorrecaoIdentidadeExame = 55,
 }

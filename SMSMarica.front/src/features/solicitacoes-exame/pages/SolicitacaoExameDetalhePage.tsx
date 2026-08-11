@@ -45,6 +45,7 @@ import {
   useSolicitacaoPorId,
 } from '@/features/solicitacoes-exame/api/queries';
 import type { FinalidadeEnvioManual } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
+import { CardCorrecaoIdentidade } from '@/features/solicitacoes-exame/components/CardCorrecaoIdentidade';
 import { useListarUnidades } from '@/features/unidades/api/queries';
 import { BotaoDispensarVerificacao } from '@/features/telefone-validacao/components/BotaoDispensarVerificacao';
 import { ChecksComunicacao } from '@/features/solicitacoes-exame/components/ChecksComunicacao';
@@ -431,6 +432,9 @@ export function SolicitacaoExameDetalhePage() {
         <CardEnvioManual s={s} />
 
         <CardHistoricoComunicacao solicitacaoId={s.id} />
+
+        {/* Correção de identidade fica por ÚLTIMO: é exceção, não parte do fluxo. */}
+        <CardCorrecaoIdentidade s={s} />
 
         {s.observacoes ? (
           <section className="lg:col-span-2 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">

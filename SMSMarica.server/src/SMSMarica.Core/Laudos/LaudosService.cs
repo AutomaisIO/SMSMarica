@@ -29,7 +29,6 @@ public sealed class LaudosService(
     IPacienteResolver pacienteResolver,
     IAssinaturaMedicoService assinaturaMedico,
     IExameAssociacaoService associacao,
-    IQuarentenaIdentidadeService quarentena,
     IConsultaStudyClient consultaStudy,
     Configuracao.ILaudoConfiguracaoService configuracao,
     IUsuarioAtualAccessor usuarioAtual,
@@ -45,7 +44,6 @@ public sealed class LaudosService(
     private readonly IPacienteResolver _pacienteResolver = pacienteResolver;
     private readonly IAssinaturaMedicoService _assinaturaMedico = assinaturaMedico;
     private readonly IExameAssociacaoService _associacao = associacao;
-    private readonly IQuarentenaIdentidadeService _quarentena = quarentena;
     private readonly IConsultaStudyClient _consultaStudy = consultaStudy;
     private readonly Configuracao.ILaudoConfiguracaoService _configuracao = configuracao;
     private readonly IUsuarioAtualAccessor _usuarioAtual = usuarioAtual;
@@ -375,14 +373,6 @@ public sealed class LaudosService(
         // (exame de worklist). Por padrão é OBRIGATÓRIO (sem ele não há paciente confiável — o
         // patientId DICOM é texto livre). A configuração pode liberar iniciar sem associação;
         // ASSINAR, porém, sempre exige (ver LaudoAssinaturaService).
-        // QUARENTENA antes de tudo: se há suspeita de que estas imagens são de outro paciente,
-        // laudar em cima delas é o pior desfecho possível. Exceção PRÓPRIA — reaproveitar
-        // "sem associação" mandaria a médica associar um exame que já está associado.
-        if (await _quarentena.EmQuarentenaAsync(uid, cancellationToken))
-            throw new ConflitoException("laudo.exame_em_quarentena",
-                "Este exame está em conferência por suspeita de identidade trocada. " +
-                "Não é possível laudar até a correção.");
-
         var vinculo = await _associacao.ResolverVinculoAsync(uid, cancellationToken);
         if (vinculo is null && !config.PermitirLaudarSemAssociacao)
             throw new ValidacaoException("laudo.sem_associacao",

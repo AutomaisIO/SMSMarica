@@ -22,7 +22,9 @@ public sealed class CorrecaoIdentidadeExameController(ICorrecaoIdentidadeExameSe
     /// (rascunhos, link enviado). Sem <paramref name="accessionDestino"/>, devolve só o estado atual.
     /// </summary>
     [HttpGet("previa/{studyInstanceUID}")]
-    [RequerPermissao(ModuloPermissao.CorrecaoIdentidadeExame, AcoesPermissao.Consulta)]
+    // Edicao, não Consulta: a prévia só é pedida de dentro do modal, por quem vai corrigir.
+    // Exigir Consulta aqui daria 401 em quem tem só a permissão de executar.
+    [RequerPermissao(ModuloPermissao.CorrecaoIdentidadeExame, AcoesPermissao.Edicao)]
     [ProducesResponseType<PreviaCorrecaoDto>(StatusCodes.Status200OK)]
     public async Task<PreviaCorrecaoDto> Previa(
         string studyInstanceUID, [FromQuery] string? accessionDestino, CancellationToken cancellationToken) =>

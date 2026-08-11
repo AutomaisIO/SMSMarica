@@ -105,8 +105,6 @@ public static class DependencyInjection
             SolicitacoesExame.Declaracao.DeclaracaoComparecimentoService>();
         services.AddScoped<Downloads.IDownloadTokenService, Downloads.DownloadTokenService>();
         services.AddScoped<Associacoes.IExameAssociacaoService, Associacoes.ExameAssociacaoService>();
-        services.AddScoped<Associacoes.IQuarentenaIdentidadeService, Associacoes.QuarentenaIdentidadeService>();
-        services.AddScoped<Associacoes.IDetectorTrocaIdentidadeService, Associacoes.DetectorTrocaIdentidadeService>();
         services.AddScoped<Pacs.IResolvedorIdentidadeDicom, Pacs.ResolvedorIdentidadeDicom>();
         services.AddScoped<Associacoes.ICorrecaoIdentidadeExameService, Associacoes.CorrecaoIdentidadeExameService>();
         services.AddScoped<Anamneses.IAnamnesesService, Anamneses.AnamnesesService>();
