@@ -6,7 +6,6 @@ import {
   CalendarDays,
   Check,
   CheckCircle2,
-  Info,
   Lock,
   MessageSquareHeart,
   Send,
@@ -195,12 +194,10 @@ export function Pesquisa() {
   const conteudo = expirada ? (
     <Expirada aoVoltar={() => navigate('/')} />
   ) : enviada ? (
-    <Agradecimento publica={publica} demo={demo} aoVoltar={() => navigate('/')} />
+    <Agradecimento publica={publica} aoVoltar={() => navigate('/')} />
   ) : (
     <>
       <Cabecalho contexto={contexto} publica={publica} aoVoltar={() => navigate(-1)} />
-
-      {demo && <AvisoDemo />}
 
       <Progresso feitas={respondidas} total={FECHADAS} />
 
@@ -464,27 +461,7 @@ function Expirada({ aoVoltar }: { aoVoltar: () => void }) {
 
 /* -------------------------------- agradecimento ------------------------------- */
 
-function AvisoDemo() {
-  return (
-    <div className="flex items-start gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-[12px] leading-relaxed text-amber-900">
-      <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-      <span>
-        <strong className="font-semibold">Demonstração.</strong> Esta é a tela real do aplicativo,
-        mas as respostas <strong className="font-semibold">não são gravadas</strong>.
-      </span>
-    </div>
-  );
-}
-
-function Agradecimento({
-  publica,
-  demo,
-  aoVoltar,
-}: {
-  publica: boolean;
-  demo: boolean;
-  aoVoltar: () => void;
-}) {
+function Agradecimento({ publica, aoVoltar }: { publica: boolean; aoVoltar: () => void }) {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center px-6 text-center">
       <span className="grid h-20 w-20 place-items-center rounded-3xl bg-lagoa-claro text-lagoa">
@@ -495,12 +472,6 @@ function Agradecimento({
         Sua avaliação foi registrada e vai direto para a equipe responsável pela unidade. É com
         ela que a gente melhora o atendimento.
       </p>
-      {demo && (
-        <p className="mt-4 max-w-xs rounded-xl bg-amber-50 px-3 py-2 text-[12px] leading-relaxed text-amber-900">
-          <strong className="font-semibold">Demonstração:</strong> nada foi gravado. Na versão
-          final a resposta vai para a equipe da unidade.
-        </p>
-      )}
       {!publica && (
         <button
           type="button"
