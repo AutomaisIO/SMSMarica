@@ -24,7 +24,6 @@ public sealed record VarreduraAgendaDto(
     /// derrubaria a sessão do atendente da unidade.</summary>
     TimeOnly JanelaInicioLocal,
     TimeOnly JanelaFimLocal,
-    bool TemCredencial,
     /// <summary>Gatilho mestre da unidade: importar solicitação avisa o paciente por WhatsApp?
     /// Vale para toda importação — varredura e upload de arquivo.</summary>
     bool EnviarConfirmacao);

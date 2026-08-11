@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, CalendarClock, Loader2, Play, Square } from 'lucide-react';
+import { CalendarClock, Loader2, Play, Square } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
@@ -109,14 +109,6 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
         </p>
       </header>
 
-      {!dados?.temCredencial && (
-        <p className="mb-3 flex items-start gap-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          Esta unidade não tem credencial própria do SISREG. Cadastre acima antes de ligar o
-          sincronismo — sem ela o motor usaria a credencial global, que enxerga outra unidade.
-        </p>
-      )}
-
       {/* Configuração */}
       <div className="flex flex-wrap items-end gap-4">
         <label className="flex items-center gap-2 text-sm text-gray-700">
@@ -217,7 +209,7 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
 
       {(dados?.falhasConsecutivas ?? 0) > 0 && (
         <p className="mt-2 text-sm text-amber-700">
-          {dados!.falhasConsecutivas} falhas consecutivas — confira a credencial da unidade.
+          {dados!.falhasConsecutivas} falhas consecutivas — confira a credencial do SISREG.
         </p>
       )}
 

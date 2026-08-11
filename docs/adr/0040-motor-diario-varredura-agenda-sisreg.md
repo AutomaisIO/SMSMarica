@@ -6,6 +6,23 @@
   [ADR-0021](./0021-ecossistema-solicitacao-e-fulfillment.md) (pendência de mapeamento),
   [ADR-0035](./0035-pendencia-importacao-primeira-classe.md) (pendência de importação de 1ª classe)
 
+> **Revisto em 10/08/2026 — a credencial deixou de ser por unidade.** A credencial em uso na SMS
+> enxerga **todas** as unidades. Com isso caíram três peças deste ADR: (a) a tabela
+> `sisreg_credencial_unidade`, a tela de senha por unidade e seus endpoints foram **removidos** — a
+> credencial é uma só, global, na tela de Integrações; (b) a **conferência de unidade** (CNES da
+> sessão × CNES da unidade), que existia no salvar/testar credencial, no mapeamento e como primeiro
+> passo da varredura, foi removida: com credencial municipal a sessão reporta sempre a mesma
+> unidade, e o check barraria todas as outras; (c) a sessão HTTP passou a ser indexada **pelo
+> operador**, não pela unidade — com o cookie jar por unidade, duas unidades na mesma credencial
+> derrubariam a sessão uma da outra (sessão única por operador), sem erro visível.
+>
+> **Consequência para o §6 (orçamento):** o orçamento anti-robô deixou de ser por unidade. Sob a
+> premissa "por operador" adotada aqui, as ~700 requisições até o reCAPTCHA agora são **um teto
+> único para a rede inteira**, não um por unidade. A proteção que segura isso hoje é "uma varredura
+> por vez em toda a instalação" mais o teto por execução; se o CAPTCHA passar a aparecer, o ajuste é
+> no teto global e no espaçamento das horas, não na credencial. O §8 continua valendo pelo mesmo
+> motivo, agora mais forte: a sessão derrubada é a de **qualquer** atendente que use essa credencial.
+
 ## Contexto
 
 As solicitações do SISREG só entravam no sistema por **upload manual de arquivo** (o TXT/CSV do

@@ -1,9 +1,6 @@
 import { http } from '@/shared/api/httpClient';
 import type {
   ProcedimentoSigtapDePara,
-  SalvarCredencialPayload,
-  SisregAutenticacaoResultado,
-  SisregCredencialUnidade,
   SisregMapeamento,
   SisregMapeamentoAtualizacao,
   SisregSincronizacaoFhir,
@@ -118,37 +115,4 @@ export async function confirmarDeParaSigtap(
     { procedimentoSigtapId },
   );
   return data;
-}
-
-export async function obterCredencial(unidadeId?: string | null): Promise<SisregCredencialUnidade> {
-  const { data } = await http.get<SisregCredencialUnidade>(
-    '/sisreg/mapeamento/credencial',
-    cabecalhoUnidade(unidadeId),
-  );
-  return data;
-}
-
-export async function salvarCredencial(
-  payload: SalvarCredencialPayload,
-  unidadeId?: string | null,
-): Promise<SisregAutenticacaoResultado> {
-  const { data } = await http.put<SisregAutenticacaoResultado>(
-    '/sisreg/mapeamento/credencial',
-    payload,
-    cabecalhoUnidade(unidadeId),
-  );
-  return data;
-}
-
-export async function testarCredencial(unidadeId?: string | null): Promise<SisregAutenticacaoResultado> {
-  const { data } = await http.post<SisregAutenticacaoResultado>(
-    '/sisreg/mapeamento/credencial/testar',
-    undefined,
-    cabecalhoUnidade(unidadeId),
-  );
-  return data;
-}
-
-export async function removerCredencial(unidadeId?: string | null): Promise<void> {
-  await http.delete('/sisreg/mapeamento/credencial', cabecalhoUnidade(unidadeId));
 }

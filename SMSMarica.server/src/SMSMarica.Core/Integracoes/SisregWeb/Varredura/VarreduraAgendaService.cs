@@ -340,21 +340,11 @@ public sealed class VarreduraAgendaService(
             return;
         }
 
+        // O CNES da unidade é o filtro da exportação (campo "unidade" abaixo) — é ele que
+        // delimita a agenda varrida, e é por isso que não existe mais double-check de sessão
+        // aqui: a credencial em uso enxerga todas as unidades, então o CNES que a sessão reporta
+        // é sempre o mesmo e barraria todas as unidades menos uma.
         var cnes = SoDigitos(unidade.Cnes!);
-
-        // Double-check ANTES de qualquer varredura (custa 1 requisição). Sem ele, uma credencial
-        // trocada faria o motor varrer a agenda da unidade A e arquivá-la como se fosse da B — e
-        // nada acusaria, porque a executante vem do contexto, não do HTML.
-        var info = await sessao.ObterSessaoInfoAsync(unidade.Id, ct);
-        Interlocked.Increment(ref progresso.Requisicoes);
-
-        if (string.IsNullOrWhiteSpace(info.Cnes) || !string.Equals(SoDigitos(info.Cnes), cnes, StringComparison.Ordinal))
-        {
-            await FinalizarAsync(execucao, StatusVarredura.Erro,
-                $"A sessão do SISREG está em '{info.UnidadeNome}' (CNES {info.Cnes}), mas a varredura é de "
-                + $"'{unidade.Nome}' (CNES {unidade.Cnes}). Confira a credencial desta unidade.", ct, progresso);
-            return;
-        }
 
         var combinacoes = await CarregarCombinacoesAsync(unidade.Id, ct);
 
@@ -405,7 +395,7 @@ public sealed class VarreduraAgendaService(
             // RASPAGEM, onde o procedimento vinha da consulta. Na exportação vem da linha.
 
             var marcacoes = await ExportarComTetoAsync(
-                unidade.Id, cnes, execucao.JanelaInicio, execucao.JanelaFim, combinacao, progresso, ct);
+                cnes, execucao.JanelaInicio, execucao.JanelaFim, combinacao, progresso, ct);
 
             var novas = marcacoes.Where(m => vistos.Add(m.CodigoSolicitacao)).ToList();
             if (novas.Count > 0)
@@ -461,7 +451,6 @@ public sealed class VarreduraAgendaService(
     /// perder agendamento sem avisar seria o pior desfecho possível aqui.</para>
     /// </summary>
     private async Task<List<MarcacaoSisreg>> ExportarComTetoAsync(
-        Guid unidadeId,
         string cnes,
         DateOnly inicio,
         DateOnly fim,
@@ -469,7 +458,7 @@ public sealed class VarreduraAgendaService(
         ProgressoVarredura progresso,
         CancellationToken ct)
     {
-        var texto = await ExportarAsync(unidadeId, cnes, inicio, fim, combinacao, ct);
+        var texto = await ExportarAsync(cnes, inicio, fim, combinacao, ct);
         Interlocked.Increment(ref progresso.Requisicoes);
 
         var parsed = AgendaTxtParser.Parse(texto, NomeArquivoSintetico(combinacao, inicio, fim));
@@ -486,22 +475,22 @@ public sealed class VarreduraAgendaService(
             combinacao.NomeProcedimento, inicio, fim, TetoRegistrosPorExportacao,
             inicio, meio, meio.AddDays(1), fim);
 
-        var esquerda = await ExportarComTetoAsync(unidadeId, cnes, inicio, meio, combinacao, progresso, ct);
-        var direita = await ExportarComTetoAsync(unidadeId, cnes, meio.AddDays(1), fim, combinacao, progresso, ct);
+        var esquerda = await ExportarComTetoAsync(cnes, inicio, meio, combinacao, progresso, ct);
+        var direita = await ExportarComTetoAsync(cnes, meio.AddDays(1), fim, combinacao, progresso, ct);
 
         esquerda.AddRange(direita);
         return esquerda;
     }
 
     private async Task<string> ExportarAsync(
-        Guid unidadeId, string cnes, DateOnly inicio, DateOnly fim, Combinacao combinacao, CancellationToken ct)
+        string cnes, DateOnly inicio, DateOnly fim, Combinacao combinacao, CancellationToken ct)
     {
         // Pausa ANTES da requisição. Fica aqui e não na sessão HTTP de propósito: atrasar a sessão
-        // penalizaria as telas interativas (mapeamento, credencial, CADSUS), que não têm nada a ver
-        // com o volume da varredura.
+        // penalizaria as telas interativas (mapeamento, CADSUS), que não têm nada a ver com o
+        // volume da varredura.
         if (_opcoes.PausaMs > 0) await Task.Delay(_opcoes.PausaMs, ct);
 
-        return await sessao.PostFormAsync(unidadeId, Caminho, new Dictionary<string, string>
+        return await sessao.PostFormAsync(Caminho, new Dictionary<string, string>
         {
             // Cultura invariante explícita: em "dd/MM/yyyy" a barra é o SEPARADOR DA CULTURA, não
             // um literal. Num host com locale que use "." ou "-", a data sairia deformada e o
@@ -654,9 +643,6 @@ public sealed class VarreduraAgendaService(
             .SelectMany(p => p.Procedimentos.Where(x => x.Habilitado && !x.Ausente).Select(x => x.Codigo))
             .CountAsync(ct);
 
-        var temCredencial = await db.SisregCredenciaisUnidade.AsNoTracking()
-            .AnyAsync(c => c.UnidadeId == unidade.Id && c.Ativo, ct);
-
         return new VarreduraAgendaDto(
             unidade.Id,
             unidade.Nome,
@@ -668,12 +654,11 @@ public sealed class VarreduraAgendaService(
             agenda?.UltimaExecucaoEm,
             agenda?.FalhasConsecutivas ?? 0,
             prontas,
-            // +1 do double-check de unidade; páginas extras entram por cima.
-            prontas + 1,
+            // Uma exportação por combinação; páginas extras entram por cima.
+            prontas,
             _opcoes.TetoPorExecucao,
             _opcoes.JanelaInicioLocal,
             _opcoes.JanelaFimLocal,
-            temCredencial,
             // Unidade sem linha de configuração NÃO envia: o gatilho é opt-in.
             agenda?.EnviarConfirmacao ?? false);
     }

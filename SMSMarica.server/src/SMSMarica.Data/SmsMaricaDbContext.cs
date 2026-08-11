@@ -98,9 +98,6 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     // Uma linha por arquivo importado (rastreio: quando, quem, válidos, inválidos)
     public DbSet<Entities.Sisreg.SisregImportacaoExecucao> SisregImportacaoExecucoes => Set<Entities.Sisreg.SisregImportacaoExecucao>();
 
-    // Credencial de operador do SISREG por unidade (o perfil do SISREG só enxerga a unidade dele)
-    public DbSet<SisregCredencialUnidade> SisregCredenciaisUnidade => Set<SisregCredencialUnidade>();
-
     // Mapeamento da "verdade" do SISREG: profissionais da unidade e seus procedimentos,
     // com habilita/desabilita para a varredura de agenda não gastar requisição à toa
     public DbSet<SisregProfissionalUnidade> SisregProfissionaisUnidade => Set<SisregProfissionalUnidade>();

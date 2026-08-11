@@ -3,13 +3,10 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Integracoes.Credenciais;
-using SMSMarica.Core.Inteligencia.Seguranca;
-using SMSMarica.Data;
 
 namespace SMSMarica.Core.Integracoes.SisregWeb;
 
@@ -18,34 +15,22 @@ namespace SMSMarica.Core.Integracoes.SisregWeb;
 ///
 /// <para><b>Sessão única por operador:</b> cada login novo derruba a sessão anterior daquele
 /// operador — inclusive a do humano. Por isso mantemos um cliente HTTP com cookies próprios
-/// <b>por unidade</b> (cada unidade tem seu operador) e só refazemos login quando a sessão cai.
-/// As chamadas de uma mesma unidade são serializadas por semáforo; unidades diferentes correm
-/// em paralelo sem se derrubar.</para>
+/// <b>por operador</b> e só refazemos login quando a sessão cai. As chamadas de um mesmo
+/// operador são serializadas por semáforo; operadores diferentes correm em paralelo.</para>
 ///
-/// <para><b>Credencial:</b> resolve a credencial <b>da unidade</b>
-/// (<c>sisreg_credencial_unidade</c>) e, se a unidade não tiver uma cadastrada, cai na
-/// credencial <b>global</b> do store de Integrações (provedor <c>sisreg</c>) — assim nada do
-/// que já roda em produção quebra enquanto as unidades vão sendo cadastradas.</para>
+/// <para><b>Credencial única, global:</b> vem do store de Integrações (provedor <c>sisreg</c>) e
+/// enxerga <b>todas</b> as unidades. Existiu aqui uma credencial por unidade
+/// (<c>sisreg_credencial_unidade</c>), removida junto com a conferência de CNES que ela
+/// sustentava — a unidade nunca foi propriedade da sessão, e sim filtro de cada consulta
+/// (<c>AJAX_UPS</c> no mapeamento, <c>unidade</c> na exportação da agenda).</para>
 /// </summary>
 public interface ISisregWebSessao
 {
-    /// <summary>POST de formulário na unidade ativa da requisição (ou credencial global). Retorna o HTML.</summary>
+    /// <summary>POST de formulário autenticado. Retorna o HTML.</summary>
     Task<string> PostFormAsync(string caminho, IReadOnlyDictionary<string, string> campos, CancellationToken cancellationToken);
 
-    /// <summary>POST de formulário no contexto de uma unidade específica.</summary>
-    Task<string> PostFormAsync(Guid? unidadeId, string caminho, IReadOnlyDictionary<string, string> campos, CancellationToken cancellationToken);
-
     /// <summary>GET autenticado (usado pelo <c>sisreg_ajax</c>, que é GET com querystring).</summary>
-    Task<string> GetAsync(Guid? unidadeId, string caminho, IReadOnlyDictionary<string, string>? query, CancellationToken cancellationToken);
-
-    /// <summary>Identidade da sessão (operador/perfil/unidade+CNES) para o double-check de unidade.</summary>
-    Task<SisregSessaoInfo> ObterSessaoInfoAsync(Guid? unidadeId, CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Autentica uma credencial <b>avulsa</b> (ainda não salva) e devolve a identidade da sessão.
-    /// Usado na troca de usuário/senha: só gravamos depois que o SISREG aceitou e a unidade conferiu.
-    /// </summary>
-    Task<SisregSessaoInfo> AutenticarAvulsoAsync(string usuario, string senha, CancellationToken cancellationToken);
+    Task<string> GetAsync(string caminho, IReadOnlyDictionary<string, string>? query, CancellationToken cancellationToken);
 }
 
 public sealed class SisregWebSessao(
@@ -71,23 +56,19 @@ public sealed class SisregWebSessao(
     public static bool EhCaptcha(Exception excecao) =>
         excecao is ValidacaoException validacao && validacao.Erros.ContainsKey(CodigoCaptcha);
 
-    /// <summary>Chave usada quando não há unidade no contexto (credencial global).</summary>
-    private static readonly Guid ChaveGlobal = Guid.Empty;
-
-    private readonly ConcurrentDictionary<Guid, SessaoUnidade> _sessoes = new();
-
-    public Task<string> PostFormAsync(
-        string caminho, IReadOnlyDictionary<string, string> campos, CancellationToken cancellationToken) =>
-        PostFormAsync(ResolverUnidadeDaRequisicao(), caminho, campos, cancellationToken);
+    /// <summary>Sessões vivas indexadas pelo operador da credencial (ver nota da classe).</summary>
+    private readonly ConcurrentDictionary<string, SessaoSisreg> _sessoes =
+        new(StringComparer.OrdinalIgnoreCase);
 
     public async Task<string> PostFormAsync(
-        Guid? unidadeId, string caminho, IReadOnlyDictionary<string, string> campos, CancellationToken cancellationToken)
+        string caminho, IReadOnlyDictionary<string, string> campos, CancellationToken cancellationToken)
     {
-        var sessao = ObterSessao(unidadeId);
+        // A credencial vem ANTES do gate porque é ela que decide qual sessão (e qual gate) usar.
+        var creds = await CarregarCredenciaisAsync(cancellationToken);
+        var sessao = ObterSessao(creds);
         await sessao.Gate.WaitAsync(cancellationToken);
         try
         {
-            var creds = await CarregarCredenciaisAsync(unidadeId, cancellationToken);
             sessao.BaseUri = creds.BaseUri;
 
             await GarantirLoginAsync(sessao, creds, cancellationToken);
@@ -100,7 +81,7 @@ public sealed class SisregWebSessao(
                 // SISREG" para não derrubar a sessão do operador humano (freio de produção).
                 sessao.Logado = false;
                 if (!creds.AutoLogin) throw FalhaReautenticacaoDesativada();
-                logger.LogInformation("SISREG: sessão expirada (unidade {Unidade}) — refazendo login.", unidadeId);
+                logger.LogInformation("SISREG: sessão expirada ({Operador}) — refazendo login.", creds.Usuario);
                 await LoginAsync(sessao, creds.Usuario, creds.Senha, cancellationToken);
                 (html, _, _) = await PostRawAsync(sessao, caminho, campos, cancellationToken);
             }
@@ -115,13 +96,13 @@ public sealed class SisregWebSessao(
     }
 
     public async Task<string> GetAsync(
-        Guid? unidadeId, string caminho, IReadOnlyDictionary<string, string>? query, CancellationToken cancellationToken)
+        string caminho, IReadOnlyDictionary<string, string>? query, CancellationToken cancellationToken)
     {
-        var sessao = ObterSessao(unidadeId);
+        var creds = await CarregarCredenciaisAsync(cancellationToken);
+        var sessao = ObterSessao(creds);
         await sessao.Gate.WaitAsync(cancellationToken);
         try
         {
-            var creds = await CarregarCredenciaisAsync(unidadeId, cancellationToken);
             sessao.BaseUri = creds.BaseUri;
 
             await GarantirLoginAsync(sessao, creds, cancellationToken);
@@ -144,43 +125,12 @@ public sealed class SisregWebSessao(
         }
     }
 
-    public async Task<SisregSessaoInfo> ObterSessaoInfoAsync(Guid? unidadeId, CancellationToken cancellationToken)
-    {
-        var html = await GetAsync(unidadeId, "/cgi-bin/index", null, cancellationToken);
-        return SisregHomeParser.LerBarra(html)
-            ?? throw new ValidacaoException(
-                "sisreg.sessao_indeterminada",
-                "Não foi possível identificar a unidade da sessão do SISREG. Verifique a credencial cadastrada.");
-    }
-
-    public async Task<SisregSessaoInfo> AutenticarAvulsoAsync(
-        string usuario, string senha, CancellationToken cancellationToken)
-    {
-        // Cliente descartável: não contamina o cookie jar de nenhuma unidade se a credencial
-        // estiver errada. Ainda assim derruba a sessão humana daquele operador (sessão única).
-        var sessao = new SessaoUnidade(new Uri(BaseUrlPadrao));
-        try
-        {
-            await LoginAsync(sessao, usuario, senha, cancellationToken);
-            var html = await GetRawAsync(sessao, "/cgi-bin/index", null, cancellationToken);
-            GarantirSemCaptcha(html);
-            return SisregHomeParser.LerBarra(html)
-                ?? throw new ValidacaoException(
-                    "sisreg.sessao_indeterminada",
-                    "O SISREG autenticou, mas não foi possível ler a unidade da sessão.");
-        }
-        finally
-        {
-            sessao.Dispose();
-        }
-    }
-
     // ------------------------------------------------------------------ interno
 
-    private SessaoUnidade ObterSessao(Guid? unidadeId) =>
-        _sessoes.GetOrAdd(unidadeId ?? ChaveGlobal, _ => new SessaoUnidade(new Uri(BaseUrlPadrao)));
+    private SessaoSisreg ObterSessao(Credenciais creds) =>
+        _sessoes.GetOrAdd(creds.Usuario, _ => new SessaoSisreg(creds.BaseUri));
 
-    private async Task GarantirLoginAsync(SessaoUnidade sessao, Credenciais creds, CancellationToken cancellationToken)
+    private async Task GarantirLoginAsync(SessaoSisreg sessao, Credenciais creds, CancellationToken cancellationToken)
     {
         if (sessao.Logado) return;
         if (!creds.AutoLogin) throw FalhaReautenticacaoDesativada();
@@ -197,39 +147,14 @@ public sealed class SisregWebSessao(
             + "e resolver o CAPTCHA. Depois disso, tente de novo.");
     }
 
-    /// <summary>Unidade ativa da requisição (header X-Unidade-Id), quando houver contexto HTTP.</summary>
-    private Guid? ResolverUnidadeDaRequisicao()
-    {
-        using var scope = scopeFactory.CreateScope();
-        var usuarioAtual = scope.ServiceProvider.GetService<Identidade.IUsuarioAtualAccessor>();
-        return usuarioAtual?.UnidadeAtivaId;
-    }
-
     private sealed record Credenciais(string Usuario, string Senha, Uri BaseUri, bool AutoLogin);
 
     /// <summary>
-    /// Credencial da unidade quando cadastrada e ativa; senão a global do store de Integrações.
+    /// A credencial global do store de Integrações — uma só, para todas as unidades.
     /// </summary>
-    private async Task<Credenciais> CarregarCredenciaisAsync(Guid? unidadeId, CancellationToken cancellationToken)
+    private async Task<Credenciais> CarregarCredenciaisAsync(CancellationToken cancellationToken)
     {
         using var scope = scopeFactory.CreateScope();
-
-        if (unidadeId is { } id && id != Guid.Empty)
-        {
-            var db = scope.ServiceProvider.GetRequiredService<SmsMaricaDbContext>();
-            var daUnidade = await db.SisregCredenciaisUnidade
-                .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.UnidadeId == id && x.Ativo, cancellationToken);
-
-            if (daUnidade is not null)
-            {
-                var protetor = scope.ServiceProvider.GetRequiredService<IProtetorSegredos>();
-                var senha = protetor.Revelar(daUnidade.SenhaCifrada);
-                // A credencial da unidade não tem toggle próprio de autoLogin: herda o global.
-                var (baseUrlUnidade, autoLoginGlobal) = await LerParametrosGlobaisAsync(scope, cancellationToken);
-                return new Credenciais(daUnidade.Usuario, senha, new Uri(baseUrlUnidade), autoLoginGlobal);
-            }
-        }
 
         var credenciais = scope.ServiceProvider.GetRequiredService<IIntegracaoCredencialService>();
         var ctx = await credenciais.ObterContextoAsync(Provedor, cancellationToken); // lança se não configurado/inativo
@@ -238,29 +163,12 @@ public sealed class SisregWebSessao(
         {
             throw new ValidacaoException(
                 "sisreg.credencial_incompleta",
-                "Configure o usuário e a senha do SISREG — na Configuração SISREG (credencial da "
-                + "unidade) ou na tela de Integrações (credencial global).");
+                "Configure o usuário e a senha do SISREG na tela de Integrações (credencial "
+                + "global, usada por todas as unidades).");
         }
 
         var (baseUrl, autoLogin) = LerParametros(ctx.ParametrosJson);
         return new Credenciais(ctx.ClientId!, ctx.ClientSecret!, new Uri(baseUrl), autoLogin);
-    }
-
-    /// <summary>BaseUrl/autoLogin continuam vindo da configuração global (valem para todas as unidades).</summary>
-    private static async Task<(string baseUrl, bool autoLogin)> LerParametrosGlobaisAsync(
-        IServiceScope scope, CancellationToken cancellationToken)
-    {
-        try
-        {
-            var credenciais = scope.ServiceProvider.GetRequiredService<IIntegracaoCredencialService>();
-            var ctx = await credenciais.ObterContextoAsync(Provedor, cancellationToken);
-            return LerParametros(ctx.ParametrosJson);
-        }
-        catch (ValidacaoException)
-        {
-            // Sem credencial global configurada: a da unidade se vira com os defaults.
-            return (BaseUrlPadrao, true);
-        }
     }
 
     private static ValidacaoException FalhaReautenticacaoDesativada() => new(
@@ -268,7 +176,7 @@ public sealed class SisregWebSessao(
         "Falha no SISREG: a reautenticação automática está desativada para não conflitar com o "
         + "operador humano. Ligue-a na tela de Integrações quando o robô puder reconectar.");
 
-    private async Task LoginAsync(SessaoUnidade sessao, string usuario, string senha, CancellationToken cancellationToken)
+    private async Task LoginAsync(SessaoSisreg sessao, string usuario, string senha, CancellationToken cancellationToken)
     {
         sessao.Logado = false;
 
@@ -297,7 +205,7 @@ public sealed class SisregWebSessao(
     }
 
     private static async Task<(string html, Uri finalUrl, Uri? location)> PostRawAsync(
-        SessaoUnidade sessao, string caminho, IReadOnlyDictionary<string, string> campos, CancellationToken cancellationToken)
+        SessaoSisreg sessao, string caminho, IReadOnlyDictionary<string, string> campos, CancellationToken cancellationToken)
     {
         using var content = new FormUrlEncodedContent(campos);
         using var resposta = await sessao.Http.PostAsync(new Uri(sessao.BaseUri, caminho), content, cancellationToken);
@@ -310,7 +218,7 @@ public sealed class SisregWebSessao(
     }
 
     private static async Task<string> GetRawAsync(
-        SessaoUnidade sessao, string caminho, IReadOnlyDictionary<string, string>? query, CancellationToken cancellationToken)
+        SessaoSisreg sessao, string caminho, IReadOnlyDictionary<string, string>? query, CancellationToken cancellationToken)
     {
         var uri = new Uri(sessao.BaseUri, caminho);
         if (query is { Count: > 0 })
@@ -376,8 +284,8 @@ public sealed class SisregWebSessao(
         return (baseUrl, autoLogin);
     }
 
-    /// <summary>Uma sessão do SISREG: cookie jar próprio + serialização das chamadas.</summary>
-    private sealed class SessaoUnidade(Uri baseUri) : IDisposable
+    /// <summary>Uma sessão do SISREG (um operador): cookie jar próprio + serialização das chamadas.</summary>
+    private sealed class SessaoSisreg(Uri baseUri) : IDisposable
     {
         public SemaphoreSlim Gate { get; } = new(1, 1);
         public HttpClient Http { get; } = CriarHttp();

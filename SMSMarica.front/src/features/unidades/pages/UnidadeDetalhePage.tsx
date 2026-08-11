@@ -12,7 +12,6 @@ import { Tabs, type Aba } from '@/shared/ui/Tabs';
 import { useUnidadePorId, useUsuariosDaUnidade } from '@/features/unidades/api/queries';
 import { UsuariosDaUnidadeSecao } from '@/features/unidades/components/UsuariosDaUnidadeSecao';
 import { EquipamentosDaUnidadeSecao } from '@/features/unidades/components/EquipamentosDaUnidadeSecao';
-import { CredencialSisregSecao } from '@/features/sisreg-mapeamento/components/CredencialSisregSecao';
 import { MapeamentoSisregSecao } from '@/features/sisreg-mapeamento/components/MapeamentoSisregSecao';
 import { SincronismoSisregSecao } from '@/features/sisreg-mapeamento/components/SincronismoSisregSecao';
 import { useListarEquipamentos } from '@/features/equipamentos/api/queries';
@@ -157,10 +156,9 @@ export function UnidadeDetalhePage() {
             conteudo: (
               <div className="space-y-4">
                 <p className="text-sm text-gray-600">
-                  Credencial do operador do SISREG desta unidade. Ao salvar, autenticamos no SISREG
-                  e conferimos se a credencial pertence mesmo a esta unidade antes de gravar.
+                  Profissionais e procedimentos desta unidade no SISREG, e o sincronismo diário da
+                  agenda dela. A credencial é uma só, global, e fica em Sistema → Integrações.
                 </p>
-                <CredencialSisregSecao unidadeId={id} nomeUnidade={u?.nome} />
                 <MapeamentoSisregSecao unidadeId={id} podeEditar={podeEditarSisreg} />
                 <SincronismoSisregSecao unidadeId={id} podeEditar={podeEditarSisreg} />
               </div>

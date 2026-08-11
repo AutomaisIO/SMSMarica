@@ -74,16 +74,14 @@ public sealed class SisregMapeamentoService(
                 + "consultar os profissionais dela no SISREG.");
         }
 
-        // Double-check: a sessão do SISREG tem que ser desta unidade, senão mapearíamos a agenda
-        // de outra unidade sem perceber.
-        var info = await sessao.ObterSessaoInfoAsync(unidade.Id, cancellationToken);
-        GarantirUnidadeConfere(unidade, info);
-
-        var requisicoes = 1;
+        // Sem double-check de unidade: a credencial em uso enxerga todas as unidades, então o
+        // CNES da sessão não diz nada sobre o que estamos mapeando. Quem delimita a unidade é o
+        // próprio AJAX_UPS abaixo — o SISREG só devolve profissionais daquele CNES.
+        var requisicoes = 0;
         var cnes = SoDigitos(unidade.Cnes!);
 
         var xmlProfissionais = await sessao.GetAsync(
-            unidade.Id, CaminhoAjax,
+            CaminhoAjax,
             new Dictionary<string, string> { ["BUSCA"] = "PROFISSIONAIS_POR_UPS", ["AJAX_UPS"] = cnes },
             cancellationToken);
         requisicoes++;
@@ -96,8 +94,8 @@ public sealed class SisregMapeamentoService(
                 "sisreg.lista_vazia",
                 "O SISREG não devolveu nenhum profissional para esta unidade. Isso normalmente "
                 + "significa que a sessão do operador foi derrubada (o SISREG aceita uma sessão por "
-                + "operador) ou que o acesso está bloqueado por CAPTCHA. Teste a credencial da "
-                + "unidade e tente de novo.");
+                + "operador) ou que o acesso está bloqueado por CAPTCHA. Teste a credencial do "
+                + "SISREG e tente de novo.");
         }
 
         var existentes = await CarregarProfissionaisAsync(unidade.Id, rastrear: true, cancellationToken);
@@ -146,7 +144,7 @@ public sealed class SisregMapeamentoService(
             profissional.Ausente = false;
 
             var xmlProcedimentos = await sessao.GetAsync(
-                unidade.Id, CaminhoAjax,
+                CaminhoAjax,
                 new Dictionary<string, string>
                 {
                     ["BUSCA"] = "PROCEDIMENTOS_POR_PROFISSIONAIS_E_UPS",
@@ -197,7 +195,7 @@ public sealed class SisregMapeamentoService(
             doSisreg.Count, novos, ausentes,
             procedimentosEncontrados, procedimentosNovos, procedimentosAusentes,
             requisicoes,
-            $"Mapeamento atualizado a partir do SISREG ({info.UnidadeNome}): {doSisreg.Count} profissionais, "
+            $"Mapeamento atualizado a partir do SISREG ({unidade.Nome}): {doSisreg.Count} profissionais, "
             + $"{procedimentosEncontrados} procedimentos, em {requisicoes} requisições.");
     }
 
@@ -412,19 +410,6 @@ public sealed class SisregMapeamentoService(
         if (!rastrear) query = query.AsNoTracking();
 
         return await query.OrderBy(x => x.Nome).ToListAsync(cancellationToken);
-    }
-
-    private static void GarantirUnidadeConfere(Unidade unidade, SisregSessaoInfo info)
-    {
-        if (string.IsNullOrWhiteSpace(info.Cnes)
-            || !string.Equals(SoDigitos(unidade.Cnes ?? string.Empty), SoDigitos(info.Cnes), StringComparison.Ordinal))
-        {
-            throw new ValidacaoException(
-                "sisreg.unidade_divergente",
-                $"A sessão do SISREG está em '{info.UnidadeNome}' (CNES {info.Cnes}), mas a unidade "
-                + $"selecionada é '{unidade.Nome}' (CNES {unidade.Cnes}). Cadastre a credencial do "
-                + "operador desta unidade na Configuração SISREG antes de mapear.");
-        }
     }
 
     private static string SoDigitos(string valor) => new([.. valor.Where(char.IsDigit)]);

@@ -1,7 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
-using SMSMarica.Core.Integracoes.SisregWeb.Credencial;
-using SMSMarica.Core.Integracoes.SisregWeb.Credencial.Dtos;
 using SMSMarica.Core.Integracoes.SisregWeb.Mapeamento;
 using SMSMarica.Core.Integracoes.SisregWeb.Mapeamento.Dtos;
 using SMSMarica.Core.Integracoes.SisregWeb.Varredura.Sigtap;
@@ -11,23 +9,21 @@ namespace SMSMarica.Api.Controllers;
 
 /// <summary>
 /// Mapeamento do SISREG por unidade: profissionais executantes, seus procedimentos e o
-/// habilita/desabilita que define o que entra na varredura de agenda — mais a credencial de
-/// operador do SISREG daquela unidade.
+/// habilita/desabilita que define o que entra na varredura de agenda.
 ///
-/// <para><b>Todos os endpoints exigem UMA unidade selecionada</b> (header <c>X-Unidade-Id</c>).
-/// Na visão "todas as unidades" o service recusa com <c>sisreg.unidade_obrigatoria</c> (400):
-/// a credencial do SISREG é de um operador que enxerga uma unidade só, então não há como
-/// decidir contra qual autenticar.</para>
+/// <para><b>Os endpoints de mapeamento exigem UMA unidade selecionada</b> (header
+/// <c>X-Unidade-Id</c>). Na visão "todas as unidades" o service recusa com
+/// <c>sisreg.unidade_obrigatoria</c> (400): profissionais e procedimentos são sempre de uma
+/// unidade, e mapear "todas" de uma vez não quer dizer nada. A credencial do SISREG é uma só,
+/// global, e vive na tela de Integrações.</para>
 /// </summary>
 [ApiController]
 [Route("sisreg/mapeamento")]
 public sealed class SisregMapeamentoController(
     ISisregMapeamentoService mapeamentoService,
-    ISisregCredencialUnidadeService credencialService,
     IMapeadorSigtapSisreg mapeadorSigtap) : ControllerBase
 {
     private readonly ISisregMapeamentoService _mapeamentoService = mapeamentoService;
-    private readonly ISisregCredencialUnidadeService _credencialService = credencialService;
     private readonly IMapeadorSigtapSisreg _mapeadorSigtap = mapeadorSigtap;
 
     // ---------------------------------------------------------------- mapeamento
@@ -139,44 +135,4 @@ public sealed class SisregMapeamentoController(
     public async Task<ProcedimentoSigtapDeParaDto> ConfirmarDeParaSigtap(
         Guid id, [FromBody] ConfirmarDeParaSigtapRequest request, CancellationToken cancellationToken) =>
         await _mapeadorSigtap.ConfirmarAsync(id, request.ProcedimentoSigtapId, cancellationToken);
-
-    // ---------------------------------------------------------------- credencial
-
-    /// <summary>Credencial SISREG da unidade. A senha nunca é devolvida — só o usuário.</summary>
-    [HttpGet("credencial")]
-    [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Consulta)]
-    [ProducesResponseType<SisregCredencialUnidadeDto>(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<SisregCredencialUnidadeDto> ObterCredencial(CancellationToken cancellationToken) =>
-        await _credencialService.ObterAsync(cancellationToken);
-
-    /// <summary>
-    /// Troca usuário/senha do SISREG da unidade. Só grava se o SISREG autenticar E a unidade
-    /// da sessão conferir com a unidade selecionada.
-    /// </summary>
-    [HttpPut("credencial")]
-    [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Edicao)]
-    [ProducesResponseType<SisregAutenticacaoResultadoDto>(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<SisregAutenticacaoResultadoDto> SalvarCredencial(
-        [FromBody] SalvarSisregCredencialUnidadeRequest request, CancellationToken cancellationToken) =>
-        await _credencialService.SalvarAsync(request, cancellationToken);
-
-    /// <summary>Reautentica a credencial gravada e revalida o vínculo com a unidade.</summary>
-    [HttpPost("credencial/testar")]
-    [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Edicao)]
-    [ProducesResponseType<SisregAutenticacaoResultadoDto>(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<SisregAutenticacaoResultadoDto> TestarCredencial(CancellationToken cancellationToken) =>
-        await _credencialService.TestarAsync(cancellationToken);
-
-    /// <summary>Remove a credencial da unidade (volta a usar a credencial global).</summary>
-    [HttpDelete("credencial")]
-    [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Edicao)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<IActionResult> RemoverCredencial(CancellationToken cancellationToken)
-    {
-        await _credencialService.RemoverAsync(cancellationToken);
-        return NoContent();
-    }
 }

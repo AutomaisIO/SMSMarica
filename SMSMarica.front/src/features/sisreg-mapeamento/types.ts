@@ -64,33 +64,6 @@ export type SisregSincronizacaoFhir = {
   mensagem: string;
 };
 
-/** Credencial do SISREG da unidade. A senha nunca vem da API — só o usuário. */
-export type SisregCredencialUnidade = {
-  unidadeId: string;
-  unidadeNome: string;
-  unidadeCnes: string | null;
-  usuario: string | null;
-  senhaDefinida: boolean;
-  cnesConfirmado: string | null;
-  unidadeSisregNome: string | null;
-  validadoEm: string | null;
-  ativo: boolean;
-  /** Sem credencial própria: está usando a credencial global das Integrações. */
-  usandoFallbackGlobal: boolean;
-};
-
-export type SisregAutenticacaoResultado = {
-  sucesso: boolean;
-  operador: string;
-  perfil: string;
-  unidadeSisregNome: string;
-  cnes: string | null;
-  unidadeConfere: boolean;
-  mensagem: string;
-};
-
-export type SalvarCredencialPayload = { usuario: string; senha: string };
-
 /** Um procedimento do SISREG e o estado do seu de-para para o SIGTAP. Catálogo global. */
 export type ProcedimentoSigtapDePara = {
   id: string;
@@ -125,7 +98,6 @@ export type VarreduraAgenda = {
   tetoPorExecucao: number;
   janelaInicioLocal: string;
   janelaFimLocal: string;
-  temCredencial: boolean;
   /** Gatilho mestre da unidade: importar solicitação avisa o paciente por WhatsApp? Vale para
    * toda importação — varredura e upload de arquivo. */
   enviarConfirmacao: boolean;

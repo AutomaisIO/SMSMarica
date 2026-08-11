@@ -7,13 +7,9 @@ import {
   atualizarMapeamento,
   confirmarDeParaSigtap,
   listarDeParaSigtap,
-  obterCredencial,
   obterMapeamento,
-  removerCredencial,
-  salvarCredencial,
   sincronizarFhir,
   sugerirDeParaSigtap,
-  testarCredencial,
 } from '@/features/sisreg-mapeamento/api/mapeamentoApi';
 import {
   cancelarVarredura,
@@ -23,15 +19,11 @@ import {
   obterVarreduraAgenda,
   salvarVarreduraAgenda,
 } from '@/features/sisreg-mapeamento/api/varreduraApi';
-import type {
-  SalvarCredencialPayload,
-  SalvarVarreduraAgendaPayload,
-} from '@/features/sisreg-mapeamento/types';
+import type { SalvarVarreduraAgendaPayload } from '@/features/sisreg-mapeamento/types';
 
 export const mapeamentoKeys = {
   /** A unidade entra na chave: trocar de unidade tem que trocar de mapeamento. */
   mapeamento: (unidadeId: string | null) => ['sisreg-mapeamento', unidadeId] as const,
-  credencial: (unidadeId: string | null) => ['sisreg-mapeamento', 'credencial', unidadeId] as const,
   /** O de-para é catálogo GLOBAL — sem unidade na chave, de propósito. */
   dePara: (somenteNaoConfirmados?: boolean) =>
     somenteNaoConfirmados === undefined
@@ -48,14 +40,6 @@ export function useMapeamento(unidadeId: string | null) {
   return useQuery({
     queryKey: mapeamentoKeys.mapeamento(unidadeId),
     queryFn: () => obterMapeamento(unidadeId),
-    enabled: Boolean(unidadeId),
-  });
-}
-
-export function useCredencialUnidade(unidadeId: string | null) {
-  return useQuery({
-    queryKey: mapeamentoKeys.credencial(unidadeId),
-    queryFn: () => obterCredencial(unidadeId),
     enabled: Boolean(unidadeId),
   });
 }
@@ -224,29 +208,5 @@ export function useVarreduraExecucoes(unidadeId: string | null, acompanhando = f
     queryFn: () => listarVarreduraExecucoes(unidadeId),
     enabled: Boolean(unidadeId),
     refetchInterval: acompanhando ? 2000 : false,
-  });
-}
-
-export function useSalvarCredencial(unidadeId: string | null) {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (payload: SalvarCredencialPayload) => salvarCredencial(payload, unidadeId),
-    onSuccess: () => client.invalidateQueries({ queryKey: mapeamentoKeys.credencial(unidadeId) }),
-  });
-}
-
-export function useTestarCredencial(unidadeId: string | null) {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: () => testarCredencial(unidadeId),
-    onSuccess: () => client.invalidateQueries({ queryKey: mapeamentoKeys.credencial(unidadeId) }),
-  });
-}
-
-export function useRemoverCredencial(unidadeId: string | null) {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: () => removerCredencial(unidadeId),
-    onSuccess: () => client.invalidateQueries({ queryKey: mapeamentoKeys.credencial(unidadeId) }),
   });
 }
