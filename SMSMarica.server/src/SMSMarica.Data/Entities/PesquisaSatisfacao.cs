@@ -70,6 +70,17 @@ public class PesquisaSatisfacao
     /// <summary>Operador que disparou o envio manual. Null quando o disparo for automático.</summary>
     public Guid? EnviadaPor { get; set; }
 
+    /// <summary>
+    /// Sexo e nascimento do paciente no momento do convite. Desnormalizados porque o hub FHIR é
+    /// serviço autônomo (ADR-0010) e o painel não pode fazer uma chamada por convidado.
+    ///
+    /// <para>Tem virtude de privacidade também: o perfil de quem clicou fica ao lado do convite,
+    /// que não guarda resposta nenhuma. Não há consulta que junte demografia e opinião — nem por
+    /// engano, nem de propósito.</para>
+    /// </summary>
+    public Enums.Sexo? PacienteSexo { get; set; }
+    public DateOnly? PacienteNascimento { get; set; }
+
     public DateTime CriadoEm { get; set; }
     public Guid? CriadoPor { get; set; }
 }

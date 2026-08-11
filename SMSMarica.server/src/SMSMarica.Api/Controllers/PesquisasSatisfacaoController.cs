@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
 using SMSMarica.Core.PesquisasSatisfacao;
 using SMSMarica.Core.PesquisasSatisfacao.Dtos;
@@ -29,6 +29,32 @@ public sealed class PesquisasSatisfacaoController(IPesquisasSatisfacaoService pe
     public Task<EnvioPesquisaDto> Enviar(
         [FromBody] EnviarPesquisaRequest request, CancellationToken cancellationToken) =>
         pesquisas.EnviarAsync(request.PacienteId, request.EncounterId, cancellationToken);
+
+    /// <summary>Configuração da pesquisa de uma unidade — a aba na tela da unidade.</summary>
+    [HttpGet("unidades/{unidadeId:guid}")]
+    [RequerPermissao(ModuloPermissao.PesquisaSatisfacao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<PesquisaConfigDto>(StatusCodes.Status200OK)]
+    public Task<PesquisaConfigDto> ObterConfig(Guid unidadeId, CancellationToken cancellationToken) =>
+        pesquisas.ObterConfigAsync(unidadeId, cancellationToken);
+
+    /// <summary>Salva a configuração. Recusa ligar o envio sem link de resposta.</summary>
+    [HttpPut("unidades/{unidadeId:guid}")]
+    [RequerPermissao(ModuloPermissao.PesquisaSatisfacao, AcoesPermissao.Edicao)]
+    [ProducesResponseType<PesquisaConfigDto>(StatusCodes.Status200OK)]
+    public Task<PesquisaConfigDto> SalvarConfig(
+        Guid unidadeId, [FromBody] SalvarPesquisaConfigRequest request, CancellationToken cancellationToken) =>
+        pesquisas.SalvarConfigAsync(unidadeId, request, cancellationToken);
+
+    /// <summary>
+    /// Painel da unidade. <b>"Clicadas" não é "respondidas"</b> — a resposta é da AvanteSocial e
+    /// nunca chega aqui.
+    /// </summary>
+    [HttpGet("unidades/{unidadeId:guid}/painel")]
+    [RequerPermissao(ModuloPermissao.PesquisaSatisfacao, AcoesPermissao.Consulta)]
+    [ProducesResponseType<PesquisaPainelDto>(StatusCodes.Status200OK)]
+    public Task<PesquisaPainelDto> ObterPainel(
+        Guid unidadeId, [FromQuery] int dias, CancellationToken cancellationToken) =>
+        pesquisas.ObterPainelAsync(unidadeId, dias <= 0 ? 30 : dias, cancellationToken);
 }
 
 /// <summary>Atendimento a avaliar. O paciente vem junto porque é ele quem recebe a mensagem.</summary>

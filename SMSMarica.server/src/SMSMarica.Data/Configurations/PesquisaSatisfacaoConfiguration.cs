@@ -21,6 +21,8 @@ internal sealed class PesquisaSatisfacaoConfiguration : IEntityTypeConfiguration
         builder.Property(p => p.ClicadaEm).HasColumnName("clicada_em");
         builder.Property(p => p.Cliques).HasColumnName("cliques").IsRequired().HasDefaultValue(0);
         builder.Property(p => p.WaMessageId).HasColumnName("wa_message_id").HasMaxLength(120);
+        builder.Property(p => p.PacienteSexo).HasColumnName("paciente_sexo");
+        builder.Property(p => p.PacienteNascimento).HasColumnName("paciente_nascimento");
         builder.Property(p => p.EnviadaEm).HasColumnName("enviada_em");
         builder.Property(p => p.EnviadaPor).HasColumnName("enviada_por");
         builder.Property(p => p.CriadoEm).HasColumnName("criado_em").IsRequired();

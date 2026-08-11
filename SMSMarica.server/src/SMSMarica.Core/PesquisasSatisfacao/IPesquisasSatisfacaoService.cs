@@ -1,4 +1,4 @@
-using SMSMarica.Core.PesquisasSatisfacao.Dtos;
+﻿using SMSMarica.Core.PesquisasSatisfacao.Dtos;
 
 namespace SMSMarica.Core.PesquisasSatisfacao;
 
@@ -34,4 +34,15 @@ public interface IPesquisasSatisfacaoService
     /// sem saber o que foi respondido, e as duas metades nunca se encontram.</para>
     /// </summary>
     Task<string> RegistrarCliqueAsync(Guid token, CancellationToken cancellationToken = default);
+
+    /// <summary>Configuração da pesquisa de uma unidade (aba da tela da unidade).</summary>
+    Task<PesquisaConfigDto> ObterConfigAsync(Guid unidadeId, CancellationToken cancellationToken = default);
+
+    /// <summary>Salva a configuração. Recusa ligar o disparo sem link de resposta.</summary>
+    Task<PesquisaConfigDto> SalvarConfigAsync(
+        Guid unidadeId, SalvarPesquisaConfigRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>Painel da unidade: enviadas, entregues, vistas, clicadas e perfil de quem clicou.</summary>
+    Task<PesquisaPainelDto> ObterPainelAsync(
+        Guid unidadeId, int dias, CancellationToken cancellationToken = default);
 }

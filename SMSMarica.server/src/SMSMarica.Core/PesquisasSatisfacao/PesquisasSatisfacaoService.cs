@@ -111,6 +111,8 @@ public sealed class PesquisasSatisfacaoService(
         // ele o painel não teria "vistas" — e duplicar esse estado aqui só criaria divergência.
         var linha = await db.PesquisasSatisfacao.FirstAsync(x => x.Id == envio.PesquisaId, ct);
         linha.WaMessageId = resultado.WaMessageId;
+        linha.PacienteSexo = paciente.Sexo;
+        linha.PacienteNascimento = paciente.DataNascimento;
         await db.SaveChangesAsync(ct);
 
         return envio;
@@ -168,6 +170,118 @@ public sealed class PesquisasSatisfacaoService(
                 "A unidade deste atendimento não tem link de pesquisa configurado.");
 
         return destino;
+    }
+
+    public async Task<PesquisaConfigDto> ObterConfigAsync(Guid unidadeId, CancellationToken ct = default)
+    {
+        var u = await db.Unidades.AsNoTracking().FirstOrDefaultAsync(x => x.Id == unidadeId, ct)
+            ?? throw new NaoEncontradoException("Unidade", unidadeId);
+        var c = await db.UnidadePesquisaConfigs.AsNoTracking().FirstOrDefaultAsync(x => x.UnidadeId == unidadeId, ct);
+
+        return new PesquisaConfigDto(
+            u.Id, u.Nome, u.Cnes,
+            c?.EnvioWhatsAppAtivo ?? false,
+            c?.LinkResponder, c?.LinkPainel,
+            c?.HorasAposAtendimento ?? 24,
+            c?.AtualizadoEm);
+    }
+
+    public async Task<PesquisaConfigDto> SalvarConfigAsync(
+        Guid unidadeId, SalvarPesquisaConfigRequest request, CancellationToken ct = default)
+    {
+        _ = await db.Unidades.AsNoTracking().FirstOrDefaultAsync(x => x.Id == unidadeId, ct)
+            ?? throw new NaoEncontradoException("Unidade", unidadeId);
+
+        // Ligar o disparo sem destino manda o paciente para lugar nenhum: o redirect recusaria e
+        // ele receberia uma mensagem que não abre. Melhor barrar aqui, onde dá para explicar.
+        if (request.EnvioWhatsAppAtivo && string.IsNullOrWhiteSpace(request.LinkResponder))
+            throw new ValidacaoException(
+                "linkResponder", "Informe o link da pesquisa antes de ligar o envio por WhatsApp.");
+
+        if (request.HorasAposAtendimento is < 1 or > 168)
+            throw new ValidacaoException(
+                "horasAposAtendimento", "O atraso do envio deve ficar entre 1 hora e 7 dias.");
+
+        var c = await db.UnidadePesquisaConfigs.FirstOrDefaultAsync(x => x.UnidadeId == unidadeId, ct);
+        if (c is null)
+        {
+            c = new UnidadePesquisaConfig { UnidadeId = unidadeId };
+            db.UnidadePesquisaConfigs.Add(c);
+        }
+
+        c.EnvioWhatsAppAtivo = request.EnvioWhatsAppAtivo;
+        c.LinkResponder = string.IsNullOrWhiteSpace(request.LinkResponder) ? null : request.LinkResponder.Trim();
+        c.LinkPainel = string.IsNullOrWhiteSpace(request.LinkPainel) ? null : request.LinkPainel.Trim();
+        c.HorasAposAtendimento = request.HorasAposAtendimento;
+        c.AtualizadoEm = DateTime.UtcNow;
+        c.AtualizadoPor = usuarioAtual.UsuarioId;
+        await db.SaveChangesAsync(ct);
+
+        return await ObterConfigAsync(unidadeId, ct);
+    }
+
+    public async Task<PesquisaPainelDto> ObterPainelAsync(Guid unidadeId, int dias, CancellationToken ct = default)
+    {
+        var u = await db.Unidades.AsNoTracking().FirstOrDefaultAsync(x => x.Id == unidadeId, ct)
+            ?? throw new NaoEncontradoException("Unidade", unidadeId);
+        var desde = DateTime.UtcNow.AddDays(-Math.Clamp(dias, 1, 365));
+
+        var convites = await db.PesquisasSatisfacao.AsNoTracking()
+            .Where(p => p.UnidadeCnes == u.Cnes && p.EnviadaEm != null && p.EnviadaEm >= desde)
+            .Select(p => new
+            {
+                p.WaMessageId, p.ClicadaEm, p.EnviadaEm, p.PacienteSexo, p.PacienteNascimento, p.AtendimentoEm,
+            })
+            .ToListAsync(ct);
+
+        // Entregue/lida vêm de `whatsapp_mensagem`, alimentada pelo webhook. Não duplicamos esse
+        // estado aqui: duas fontes para o mesmo fato divergem, e a do webhook é a verdadeira.
+        var wamids = convites.Select(c => c.WaMessageId).Where(w => w != null).ToList();
+        var status = await db.MensagensWhatsApp.AsNoTracking()
+            .Where(m => m.WaMessageId != null && wamids.Contains(m.WaMessageId))
+            .Select(m => m.Status)
+            .ToListAsync(ct);
+
+        var clicados = convites.Where(c => c.ClicadaEm is not null).ToList();
+        var horas = clicados
+            .Where(c => c.EnviadaEm is not null)
+            .Select(c => (c.ClicadaEm!.Value - c.EnviadaEm!.Value).TotalHours)
+            .OrderBy(h => h).ToList();
+
+        var perfil = clicados
+            .GroupBy(c => new
+            {
+                Sexo = c.PacienteSexo?.ToString() ?? "Não informado",
+                Faixa = FaixaEtaria(c.PacienteNascimento, c.AtendimentoEm),
+            })
+            .Select(g => new PesquisaPerfilDto(g.Key.Sexo, g.Key.Faixa, g.Count()))
+            .OrderByDescending(x => x.Cliques)
+            .ToList();
+
+        return new PesquisaPainelDto(
+            Enviadas: convites.Count,
+            Entregues: status.Count(s => s is StatusMensagemWhatsApp.Entregue or StatusMensagemWhatsApp.Lida),
+            Vistas: status.Count(s => s == StatusMensagemWhatsApp.Lida),
+            Clicadas: clicados.Count,
+            HorasMedianasAteClique: horas.Count == 0 ? null : Math.Round(horas[horas.Count / 2], 1),
+            Perfil: perfil);
+    }
+
+    /// <summary>Faixas amplas de propósito: com poucas respostas, faixa estreita identifica gente.</summary>
+    private static string FaixaEtaria(DateOnly? nascimento, DateTime referencia)
+    {
+        if (nascimento is not { } n) return "Não informada";
+        var idade = referencia.Year - n.Year;
+        if (DateOnly.FromDateTime(referencia) < n.AddYears(idade)) idade--;
+        return idade switch
+        {
+            < 0 => "Não informada",
+            < 18 => "0–17",
+            < 30 => "18–29",
+            < 45 => "30–44",
+            < 60 => "45–59",
+            _ => "60+",
+        };
     }
 
     /// <summary>
