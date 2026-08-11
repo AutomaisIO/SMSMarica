@@ -1,4 +1,4 @@
-using SMSMarica.Data.Entities.Enums;
+﻿using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.SolicitacoesExame.Dtos;
 
@@ -113,6 +113,9 @@ public sealed record SolicitacaoExameListItemDto(
     string? CodigoSolicitacao,
     Guid PacienteId,
     string PacienteNome,
+    // CPF do paciente. NULO quando o cidadão entrou pela importação do SISREG ancorado só no
+    // CNS — a lista pinta a linha de laranja e a recepção cobra o CPF antes de abrir.
+    string? PacienteCpf,
     Guid TipoExameId,
     string TipoExameNome,
     ModalidadeDicom ModalidadeDicom,
@@ -150,3 +153,17 @@ public sealed record PaginaSolicitacoesDto(
     int Total,
     int Pagina,
     int Tamanho);
+
+/// <summary>
+/// Resultado de informar o CPF do paciente de uma solicitação.
+/// <paramref name="Repontado"/> = o CPF já era de outro cadastro e a solicitação passou a apontar
+/// para ele; a tela precisa avisar, porque o nome do paciente pode ter mudado na frente do operador.
+/// </summary>
+public sealed record DefinirCpfPacienteResultadoDto(
+    Guid PacienteId,
+    string NomePaciente,
+    string Cpf,
+    bool Repontado);
+
+/// <summary>CPF informado pela recepção para o paciente de uma solicitação.</summary>
+public sealed record DefinirCpfPacienteRequest(string Cpf);

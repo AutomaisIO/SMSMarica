@@ -64,6 +64,34 @@ public interface IPacientesService
     Task AtualizarNomeAsync(Guid id, AtualizarNomePacienteRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Carimba o CPF num paciente que entrou <b>sem ele</b> (importação do SISREG ancorada só no
+    /// CNS). Endpoint dedicado porque <see cref="AtualizarAsync"/> trata o CPF como imutável — e
+    /// ele é: sobrescrever o CPF de alguém é trocar a identidade da pessoa.
+    ///
+    /// <para>Recusa se o paciente já tem CPF diferente (<c>ConflitoException</c>) e se o CPF não
+    /// passa no dígito verificador. Idempotente quando o CPF já é o mesmo.</para>
+    ///
+    /// <para><b>Não</b> verifica se o CPF já pertence a outro cadastro — essa decisão é de quem
+    /// chama, porque a resposta certa depende do contexto (na recepção, é repontar a solicitação
+    /// para o cadastro que já existe).</para>
+    /// </summary>
+    Task DefinirCpfAsync(Guid id, string cpf, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Traz para <paramref name="destinoId"/> os identificadores de um cadastro-sombra (aquele que
+    /// a importação criou sem CPF) quando a recepção descobre que a pessoa já existia.
+    ///
+    /// <para><b>Por que o CNS TEM de vir junto:</b> sem isso a próxima varredura encontra o
+    /// cadastro-sombra outra vez por CNS e a solicitação é repontada de novo — para sempre. Mover o
+    /// CNS é o que fecha o ciclo.</para>
+    ///
+    /// <para>Só ACUMULA: o telefone entra por append e nenhum dado do destino é sobrescrito
+    /// (regra "contato só acumula" — merge nenhum apaga telefone).</para>
+    /// </summary>
+    Task AbsorverIdentificadoresAsync(
+        Guid destinoId, string? cns, string? telefone, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Adiciona um telefone aos contatos do paciente (append em
     /// <c>Patient.telecom</c> nativo), sem substituir os existentes. Idempotente:
     /// se o número já constar, é no-op.

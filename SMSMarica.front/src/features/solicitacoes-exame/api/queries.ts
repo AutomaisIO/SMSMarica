@@ -11,6 +11,7 @@ import {
   alterarEquipamentoDestino,
   alterarUnidadeExecutante,
   autorizarSolicitacao,
+  definirCpfDoPaciente,
   listarEquipamentosDoExame,
   obterHistorico,
   reenviarComunicacao,
@@ -182,6 +183,21 @@ export function useAutorizarSolicitacao() {
       chaveConfirmacao: string;
       equipamentoId?: string | null;
     }) => autorizarSolicitacao(id, chaveConfirmacao, equipamentoId),
+    onSuccess: (_d, v) => {
+      client.invalidateQueries({ queryKey: solicitacoesKeys.raiz });
+      client.invalidateQueries({ queryKey: solicitacoesKeys.porId(v.id) });
+    },
+  });
+}
+
+/**
+ * Informa o CPF do paciente da solicitação. Invalida a raiz porque a linha muda de cor na
+ * listagem — e porque, no caso repontado, até o NOME do paciente muda.
+ */
+export function useDefinirCpfDoPaciente() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, cpf }: { id: string; cpf: string }) => definirCpfDoPaciente(id, cpf),
     onSuccess: (_d, v) => {
       client.invalidateQueries({ queryKey: solicitacoesKeys.raiz });
       client.invalidateQueries({ queryKey: solicitacoesKeys.porId(v.id) });

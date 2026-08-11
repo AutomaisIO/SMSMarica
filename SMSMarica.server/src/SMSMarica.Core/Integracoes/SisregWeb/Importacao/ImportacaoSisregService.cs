@@ -1,6 +1,7 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using SMSMarica.Core.Common.Documentos;
 using SMSMarica.Core.Common.Dtos;
 using SMSMarica.Core.Common.Excecoes;
 using Microsoft.Extensions.Logging;
@@ -315,8 +316,12 @@ public sealed class ImportacaoSisregService(
             catch (Exception ex) { return (Falha($"Falha ao consultar o paciente no SISREG (CNS): {ex.Message}", CausaFalhaImportacao.CadsusIndisponivel), false); }
             passos.Add($"CNS {Mascara(m.CnsPaciente)} → CPF {Mascara(cadsus.Cpf)} (cadweb50).");
 
+            // A régua é CPF com DV válido, não "11 dígitos" (adendo do ADR-0041): um 00000000000
+            // vindo do CADSUS passaria como chave nacional e fundiria duas pessoas.
+            var cpfAncora = CpfBr.EhValido(cadsus.Cpf) ? CpfBr.SoDigitos(cadsus.Cpf) : null;
+
             // Pode já existir por CPF (mesmo cidadão cadastrado sob outro CNS). Nunca altera o nome.
-            var porCpf = await pacientes.ObterPorCpfAsync(cadsus.Cpf, ct);
+            var porCpf = cpfAncora is null ? null : await pacientes.ObterPorCpfAsync(cpfAncora, ct);
             if (porCpf is not null)
             {
                 pacienteId = porCpf.Id;
@@ -326,12 +331,15 @@ public sealed class ImportacaoSisregService(
             }
             else
             {
-                // Paciente inexistente E sem CPF do CADSUS: não dá para cadastrar com segurança
-                // (sem CPF não há identidade). Cai em falha honesta em vez do falso "CPF duplicado".
-                if (SoDigitos(cadsus.Cpf).Length != 11)
-                    return (Falha(
-                        "O CADSUS não retornou o CPF deste CNS e o paciente ainda não existe no sistema. Informe o CPF nesta pendência para importar.",
-                        CausaFalhaImportacao.CpfNaoResolvido), false);
+                // Sem CPF do CADSUS o paciente entra assim mesmo, ancorado no CNS — que É chave
+                // nacional (ADR-0009) e que nós temos aqui. Deixar de fora era o pior desfecho:
+                // um agendamento real virava pendência que ninguém resolvia (as linhas reincidiam
+                // em toda varredura diária), e a unidade nem sabia que o paciente ia aparecer.
+                //
+                // O gate mudou de lugar, não sumiu: a solicitação nasce com o paciente sem CPF, a
+                // linha fica marcada na tela e a recepção não abre a solicitação — logo não manda
+                // para a worklist — enquanto o CPF não for informado. E não é só regra de negócio:
+                // o PatientID do DICOM É o CPF, então sem ele o exame não teria como ir ao PACS.
 
                 // Telefone do TXT vai num slot NÃO-principal (celular se móvel, senão residencial) —
                 // o principal é o contato validado por OTP e é intocável pela automação (ADR-0020).
@@ -342,7 +350,7 @@ public sealed class ImportacaoSisregService(
                 var nomeNovo = (cadsus.Nome.Length > 0 ? cadsus.Nome : m.NomePaciente) ?? "SEM NOME";
                 pacienteId = await pacientes.CadastrarAsync(new CadastrarPacienteRequest(
                     NomeCompleto: nomeNovo,
-                    Cpf: cadsus.Cpf,
+                    Cpf: cpfAncora,
                     DataNascimento: cadsus.DataNascimento ?? default,
                     Cns: cadsus.Cns,
                     Rg: null,
@@ -353,7 +361,9 @@ public sealed class ImportacaoSisregService(
                     TelefoneResidencial: residencial), ct);
                 pacienteCriado = true;
                 nomeResolvido = nomeNovo;
-                passos.Add("Paciente novo → criado a partir do CADSUS (+ telefone/endereço do TXT).");
+                passos.Add(cpfAncora is null
+                    ? "Paciente novo → criado SEM CPF, ancorado no CNS (o CADSUS não devolveu CPF válido). A recepção informa o CPF para liberar o exame."
+                    : "Paciente novo → criado a partir do CADSUS (+ telefone/endereço do TXT).");
             }
         }
 

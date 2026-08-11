@@ -193,6 +193,55 @@ internal static class PacienteFhirMapper
         PatientMergeFhir.MarcarEditados(existente, ["nome"]);
     }
 
+    /// <summary>CPF gravado no Patient (identifier nacional), ou null se ainda não tem.</summary>
+    public static string? CpfDe(Patient p) => IdentValor(p, SystemCpf);
+
+    /// <summary>CNS gravado no Patient, ou null.</summary>
+    public static string? CnsDe(Patient p) => IdentValor(p, SystemCns);
+
+    /// <summary>Grava o CNS num paciente que ainda não tem. Ver <see cref="AplicarCpf"/>.</summary>
+    public static void AplicarCns(Patient existente, string cns)
+    {
+        var limpo = Digitos(cns);
+        PatientMergeFhir.UpsertIdentifier(existente, SystemCns, limpo);
+
+        var raw = (existente.GetExtension(PayloadUrl)?.Value as FhirString)?.Value;
+        if (raw is not null)
+        {
+            var pl = JsonSerializer.Deserialize<Payload>(raw, Json)! with { Cns = limpo };
+            existente.RemoveExtension(PayloadUrl);
+            existente.AddExtension(PayloadUrl, new FhirString(JsonSerializer.Serialize(pl, Json)));
+        }
+    }
+
+    /// <summary>
+    /// Carimba o CPF num paciente que entrou <b>sem ele</b> — o cidadão que a importação do SISREG
+    /// criou ancorado só no CNS, e cujo CPF a recepção informa quando ele aparece no balcão.
+    ///
+    /// <para>Mantém o blob consistente quando existir, pelo mesmo motivo de
+    /// <see cref="AplicarNome"/>: nunca chamar <c>AplicarPayload</c>, que recriaria
+    /// Identifier/BirthDate/Gender do payload e apagaria a demografia de quem não tem blob.</para>
+    ///
+    /// <para>Quem decide se PODE gravar é o service — aqui já chega decidido. O CPF é chave de
+    /// identidade: sobrescrever um existente fundiria duas pessoas.</para>
+    /// </summary>
+    public static void AplicarCpf(Patient existente, string cpf)
+    {
+        var limpo = Digitos(cpf);
+        PatientMergeFhir.UpsertIdentifier(existente, SystemCpf, limpo);
+
+        var raw = (existente.GetExtension(PayloadUrl)?.Value as FhirString)?.Value;
+        if (raw is not null)
+        {
+            var pl = JsonSerializer.Deserialize<Payload>(raw, Json)! with { Cpf = limpo };
+            existente.RemoveExtension(PayloadUrl);
+            existente.AddExtension(PayloadUrl, new FhirString(JsonSerializer.Serialize(pl, Json)));
+        }
+
+        // O CPF informado no balcão vence o reimport do PEP: quem digitou tinha o documento na mão.
+        PatientMergeFhir.MarcarEditados(existente, ["cpf"]);
+    }
+
     /// <summary>
     /// Backfill (ADR-0020 R4): promove a demografia do blob para campos FHIR NATIVOS (idempotente).
     /// NÃO marca "campos editados" — não é edição de usuário, só migração de representação. Mantém o

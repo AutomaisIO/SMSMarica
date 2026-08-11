@@ -291,6 +291,23 @@ public sealed class SolicitacoesExameController(
         return NoContent();
     }
 
+    /// <summary>
+    /// Informa o CPF do paciente desta solicitação — destrava o cidadão que entrou pela importação
+    /// do SISREG ancorado só no CNS. Se o CPF já for de outro cadastro, a solicitação é repontada
+    /// para ele (o retorno diz <c>repontado: true</c> e traz o nome novo).
+    /// </summary>
+    [HttpPost("{id:guid}/cpf-paciente")]
+    [RequerPermissao(ModuloPermissao.SolicitacoesExame, AcoesPermissao.Edicao)]
+    [ProducesResponseType<DefinirCpfPacienteResultadoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<DefinirCpfPacienteResultadoDto> DefinirCpfDoPaciente(
+        Guid id,
+        [FromBody] DefinirCpfPacienteRequest request,
+        CancellationToken cancellationToken) =>
+        await _service.DefinirCpfDoPacienteAsync(id, request.Cpf, cancellationToken);
+
     /// <summary><paramref name="EquipamentoId"/> = estação escolhida. Obrigatório quando a unidade
     /// tem mais de um equipamento na modalidade (senão a autorização recusa pedindo a seleção).</summary>
     public sealed record AutorizarSolicitacaoRequest(string ChaveConfirmacao, Guid? EquipamentoId = null);

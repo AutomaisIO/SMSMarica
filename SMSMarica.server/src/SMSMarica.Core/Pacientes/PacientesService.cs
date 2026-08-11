@@ -1,5 +1,6 @@
-using Hl7.Fhir.Model;
+﻿using Hl7.Fhir.Model;
 using SMSMarica.Core.Common.Dtos;
+using SMSMarica.Core.Common.Documentos;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Pacientes.Dtos;
 using SMSMarica.Core.Pacientes.Fhir;
@@ -107,16 +108,34 @@ public sealed class PacientesService(
 
     public async Task<Guid> CadastrarAsync(CadastrarPacienteRequest request, CancellationToken cancellationToken = default)
     {
-        var cpf = Digitos(request.Cpf);
-        // Sem CPF válido (11 dígitos) NÃO buscamos por identifier vazio: o hub trataria a
-        // ausência de filtro como "listar todos" e um match qualquer viraria falso "CPF duplicado".
-        if (cpf.Length != 11)
-            throw new ValidacaoException("paciente.cpf_invalido",
-                "CPF ausente ou inválido — não é possível cadastrar o paciente sem um CPF de 11 dígitos.");
+        var cpf = CpfBr.SoDigitos(request.Cpf);
+        var cns = Digitos(request.Cns);
 
-        var existentes = await fhir.BuscarAsync(identifier: cpf, ct: cancellationToken);
+        // CPF preenchido tem de fechar o DV. "11 dígitos" não basta: 00000000000 passaria e
+        // viraria chave nacional de duas pessoas diferentes (adendo do ADR-0041).
+        if (cpf.Length > 0 && !CpfBr.EhValido(cpf))
+            throw new ValidacaoException("paciente.cpf_invalido", "CPF inválido — confira os dígitos.");
+
+        // Precisa de ALGUMA chave nacional. Sem CPF e sem CNS não há como afirmar quem é a pessoa,
+        // e dedup por nome+nascimento é o caminho curto para fundir dois pacientes (ADR-0041).
+        if (cpf.Length == 0 && cns.Length != 15)
+        {
+            throw new ValidacaoException(
+                "paciente.sem_chave_nacional",
+                "Sem CPF e sem CNS não é possível cadastrar o paciente com segurança — não haveria "
+                + "como distinguir esta pessoa de um homônimo.");
+        }
+
+        // A busca é SEMPRE por uma chave preenchida: com identifier vazio o hub trataria a
+        // ausência de filtro como "listar todos", e um match qualquer viraria falso "duplicado".
+        var chave = cpf.Length == 11 ? cpf : cns;
+        var existentes = await fhir.BuscarAsync(identifier: chave, ct: cancellationToken);
         if (existentes.Entry.Select(e => e.Resource).OfType<Hl7.Fhir.Model.Patient>().Any())
-            throw new ConflitoException("paciente.cpf_duplicado", "Já existe paciente com este CPF no hub FHIR.");
+        {
+            throw cpf.Length == 11
+                ? new ConflitoException("paciente.cpf_duplicado", "Já existe paciente com este CPF no hub FHIR.")
+                : new ConflitoException("paciente.cns_duplicado", "Já existe paciente com este CNS no hub FHIR.");
+        }
 
         var patient = PacienteFhirMapper.ConstruirNovo(request);
         var coord = await GeocodificarAsync(request.Endereco, cancellationToken);
@@ -249,6 +268,76 @@ public sealed class PacientesService(
             await auditoria.RegistrarAsync(
                 "Paciente", id.ToString(), "AlteracaoNome", nomeAnterior, nomeNovo, cancellationToken);
     }
+
+    public async Task DefinirCpfAsync(Guid id, string cpf, CancellationToken cancellationToken = default)
+    {
+        var digitos = CpfBr.SoDigitos(cpf);
+        if (!CpfBr.EhValido(digitos))
+        {
+            throw new ValidacaoException(
+                "paciente.cpf_invalido",
+                "CPF inválido — confira os dígitos. (A checagem é do dígito verificador: um número "
+                + "com 11 dígitos que não fecha não identifica ninguém e fundiria cadastros.)");
+        }
+
+        string? anterior = null;
+        var alterou = false;
+
+        await AtualizarComRetryAsync(id, patient =>
+        {
+            anterior = PacienteFhirMapper.CpfDe(patient);
+
+            // Já tem CPF e é OUTRO: não é correção de digitação, é troca de identidade. Recusa.
+            if (!string.IsNullOrWhiteSpace(anterior) && anterior != digitos)
+            {
+                throw new ConflitoException(
+                    "paciente.cpf_ja_definido",
+                    $"Este paciente já está cadastrado com o CPF {Mascarar(anterior)}. Trocar o CPF "
+                    + "de um cadastro existente muda a identidade da pessoa — se for outra pessoa, "
+                    + "use o cadastro dela.");
+            }
+
+            if (anterior == digitos) return false; // idempotente
+
+            PacienteFhirMapper.AplicarCpf(patient, digitos);
+            alterou = true;
+            return true;
+        }, cancellationToken);
+
+        if (alterou)
+        {
+            await auditoria.RegistrarAsync(
+                "Paciente", id.ToString(), "DefinicaoCpf", "", digitos, cancellationToken);
+        }
+    }
+
+    public async Task AbsorverIdentificadoresAsync(
+        Guid destinoId, string? cns, string? telefone, CancellationToken cancellationToken = default)
+    {
+        var cnsLimpo = Digitos(cns);
+        if (cnsLimpo.Length == 15)
+        {
+            await AtualizarComRetryAsync(destinoId, patient =>
+            {
+                // Se o destino já tem ESTE CNS, nada a fazer. Se tem OUTRO, também não mexemos:
+                // sobrescrever identificador nacional é o caminho para fundir pessoas erradas.
+                var atual = PacienteFhirMapper.CnsDe(patient);
+                if (!string.IsNullOrWhiteSpace(atual)) return false;
+                PacienteFhirMapper.AplicarCns(patient, cnsLimpo);
+                return true;
+            }, cancellationToken);
+
+            await auditoria.RegistrarAsync(
+                "Paciente", destinoId.ToString(), "AbsorcaoCns", "", cnsLimpo, cancellationToken);
+        }
+
+        // Append, nunca substituição — o principal é o contato validado por OTP e é intocável.
+        if (!string.IsNullOrWhiteSpace(telefone))
+            await AdicionarTelefoneAsync(destinoId, new AdicionarTelefoneRequest(telefone), cancellationToken);
+    }
+
+    private static string Mascarar(string cpf) =>
+        cpf.Length == 11 ? $"***.***.{cpf[6..9]}-{cpf[9..]}" : "***";
 
     public async Task AdicionarTelefoneAsync(
         Guid id, AdicionarTelefoneRequest request, CancellationToken cancellationToken = default)

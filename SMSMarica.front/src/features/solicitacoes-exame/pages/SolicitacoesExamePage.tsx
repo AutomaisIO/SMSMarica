@@ -27,6 +27,10 @@ import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
+import {
+  ModalCpfPaciente,
+  type SolicitacaoSemCpf,
+} from '@/features/solicitacoes-exame/components/ModalCpfPaciente';
 import { CodigoCopiavel } from '@/shared/ui/CodigoCopiavel';
 import { useExcluirSolicitacao, useListarSolicitacoes } from '@/features/solicitacoes-exame/api/queries';
 import { ehFalhaExclusaoPacs } from '@/features/solicitacoes-exame/api/solicitacoesExameApi';
@@ -113,6 +117,7 @@ export function SolicitacoesExamePage() {
   const definirVisao = useVisaoSolicitacoes((s) => s.definir);
   const excluir = useExcluirSolicitacao();
   const [paraExcluir, setParaExcluir] = useState<SolicitacaoExameListItem | null>(null);
+  const [cpfPendente, setCpfPendente] = useState<SolicitacaoSemCpf | null>(null);
   const [erroExcluir, setErroExcluir] = useState<string | null>(null);
   const [forcarExclusao, setForcarExclusao] = useState(false);
 
@@ -635,17 +640,41 @@ export function SolicitacoesExamePage() {
         layoutFixo
         redimensionavel
         idTabela="solicitacoes-exame"
-        aoClicarLinha={podeVer ? (s) => navigate(`/app/solicitacoes-exame/${s.id}`) : undefined}
+        // Sem CPF a solicitação NÃO abre: o paciente entrou pela importação do SISREG ancorado
+        // só no CNS, e o CPF é cobrado aqui, com a pessoa no balcão. Sem ele não há como
+        // autorizar nem mandar para a worklist (o PatientID do DICOM é o CPF).
+        aoClicarLinha={
+          podeVer
+            ? (s) =>
+                s.pacienteCpf
+                  ? navigate(`/app/solicitacoes-exame/${s.id}`)
+                  : setCpfPendente({
+                      id: s.id,
+                      pacienteNome: s.pacienteNome,
+                      procedimento: s.tipoExameNome,
+                    })
+            : undefined
+        }
         dicaLinha="Clique para visualizar"
         // Solicitações URGENTES: fundo vermelho claro + filete vermelho fininho à
         // esquerda (na 1ª célula — renderiza em qualquer border-model da tabela).
         classeLinha={(s) =>
           s.statusConfirmacao === 'Cancelada'
             ? 'opacity-55 bg-gray-50 hover:bg-gray-100'
-            : s.prioridade === 'Urgente'
+            : // Sem CPF: laranja. É acionável — a recepção resolve em 10 segundos — e por isso
+              // se distingue do vermelho de urgência, que é gravidade clínica.
+              !s.pacienteCpf
+              ? 'bg-orange-50 hover:bg-orange-100 [&>td:first-child]:border-l-[3px] [&>td:first-child]:border-l-orange-500'
+              : s.prioridade === 'Urgente'
               ? 'bg-red-50 hover:bg-red-100 [&>td:first-child]:border-l-[3px] [&>td:first-child]:border-l-red-600'
               : undefined
         }
+      />
+
+      <ModalCpfPaciente
+        alvo={cpfPendente}
+        aoFechar={() => setCpfPendente(null)}
+        aoLiberar={(id) => navigate(`/app/solicitacoes-exame/${id}`)}
       />
 
       {totalPaginas > 1 ? (

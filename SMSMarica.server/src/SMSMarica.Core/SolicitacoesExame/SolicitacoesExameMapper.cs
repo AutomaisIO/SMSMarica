@@ -1,4 +1,4 @@
-using SMSMarica.Core.SolicitacoesExame.Dtos;
+﻿using SMSMarica.Core.SolicitacoesExame.Dtos;
 using SMSMarica.Data.Entities;
 using SMSMarica.Data.Entities.Enums;
 
@@ -84,6 +84,7 @@ internal static class SolicitacoesExameMapper
             reg.CodigoSolicitacao,
             reg.PacienteId,
             string.Empty,
+            null,
             s.TipoExameId ?? Guid.Empty,
             s.TipoExame?.Nome ?? string.Empty,
             s.TipoExame?.ModalidadeDicom ?? ModalidadeDicom.OT,

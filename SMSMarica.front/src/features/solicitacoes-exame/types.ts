@@ -115,6 +115,8 @@ export type SolicitacaoExameListItem = {
   codigoSolicitacao: string | null;
   pacienteId: string;
   pacienteNome: string;
+  /** Nulo quando o paciente entrou pela importação do SISREG ancorado só no CNS. */
+  pacienteCpf: string | null;
   tipoExameId: string;
   tipoExameNome: string;
   modalidadeDicom: ModalidadeDicom;

@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using SMSMarica.Core.Common.Excecoes;
@@ -37,6 +37,7 @@ public class LimpezaWorklistTests(PostgresFixture fixture)
             Substitute.For<INotificadorExame>(),
             new UsuarioAtualAccessorFake(Guid.NewGuid()),
             Substitute.For<IPacienteResolver>(),
+            Substitute.For<SMSMarica.Core.Pacientes.IPacientesService>(),
             Substitute.For<IDispensaContatoService>(),
             new Lazy<ILaudoAssinaturaService>(() => Substitute.For<ILaudoAssinaturaService>()),
             new Lazy<IComunicacaoPacienteService>(() => Substitute.For<IComunicacaoPacienteService>()),

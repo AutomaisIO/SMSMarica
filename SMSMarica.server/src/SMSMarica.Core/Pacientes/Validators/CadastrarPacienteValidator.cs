@@ -1,5 +1,7 @@
-using FluentValidation;
+﻿using FluentValidation;
 using SMSMarica.Core.Pacientes.Dtos;
+
+using SMSMarica.Core.Common.Documentos;
 
 namespace SMSMarica.Core.Pacientes.Validators;
 
@@ -11,11 +13,13 @@ public sealed class CadastrarPacienteValidator : AbstractValidator<CadastrarPaci
             .NotEmpty().WithMessage("Nome completo é obrigatório.")
             .MaximumLength(200);
 
+        // CPF é OPCIONAL: um sexto do cidadão atendido na rede não tem CPF na origem (ADR-0041),
+        // e a importação do SISREG ancora essa gente no CNS. Mas quando vem, tem de fechar o
+        // dígito verificador — CPF inválido não identifica ninguém e funde cadastros.
         RuleFor(p => p.Cpf)
-            .NotEmpty().WithMessage("CPF é obrigatório.")
-            .Must(c => SoDigitos(c) && c.Length == 11)
-            .WithMessage("CPF deve ter 11 dígitos.")
-            .When(p => p.Cpf is not null);
+            .Must(c => CpfBr.EhValido(c))
+            .WithMessage("CPF inválido — confira os dígitos.")
+            .When(p => !string.IsNullOrWhiteSpace(p.Cpf));
 
         RuleFor(p => p.DataNascimento)
             .Must(d => d > DateOnly.FromDateTime(new DateTime(1900, 1, 1)) &&

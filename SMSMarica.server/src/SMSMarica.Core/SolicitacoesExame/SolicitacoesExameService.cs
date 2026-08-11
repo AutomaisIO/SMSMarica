@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using SMSMarica.Core.Common.Documentos;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Common.Tempo;
 using SMSMarica.Core.Common.Unidades;
@@ -29,6 +30,7 @@ public sealed class SolicitacoesExameService(
     INotificadorExame notificador,
     IUsuarioAtualAccessor usuarioAtual,
     Pacientes.Fhir.IPacienteResolver pacienteResolver,
+    Pacientes.IPacientesService pacientes,
     Telefones.IDispensaContatoService dispensasContato,
     Lazy<Laudos.Assinatura.ILaudoAssinaturaService> assinaturas,
     // Lazy: quebra o ciclo Solicitacoes → Comunicacao → LoginLink → Solicitacoes.
@@ -42,6 +44,7 @@ public sealed class SolicitacoesExameService(
     private readonly IGeradorIdentificadores _geradorIds = geradorIds;
     private readonly IDcm4cheeMwlClient _mwlClient = mwlClient;
     private readonly IResolvedorEstacaoWorklist _estacaoWorklist = estacaoWorklist;
+    private readonly Pacientes.IPacientesService _pacientes = pacientes;
     private readonly INotificadorExame _notificador = notificador;
     private readonly IUsuarioAtualAccessor _usuarioAtual = usuarioAtual;
     private readonly Pacientes.Fhir.IPacienteResolver _pacienteResolver = pacienteResolver;
@@ -61,7 +64,7 @@ public sealed class SolicitacoesExameService(
     {
         var nomes = await _pacienteResolver.ResolverManyAsync(dtos.Select(d => d.PacienteId), ct);
         return [.. dtos.Select(d => nomes.TryGetValue(d.PacienteId, out var r)
-            ? d with { PacienteNome = r.Nome } : d)];
+            ? d with { PacienteNome = r.Nome, PacienteCpf = r.Cpf } : d)];
     }
 
     private async Task<SolicitacaoExameDto> EnriquecerAsync(SolicitacaoExameDto dto, CancellationToken ct)
@@ -448,6 +451,72 @@ public sealed class SolicitacoesExameService(
         return s is null ? null : await EnriquecerAsync(SolicitacoesExameMapper.ParaDto(s), cancellationToken);
     }
 
+    public async Task<DefinirCpfPacienteResultadoDto> DefinirCpfDoPacienteAsync(
+        Guid id, string cpf, CancellationToken cancellationToken = default)
+    {
+        var digitos = CpfBr.SoDigitos(cpf);
+        if (!CpfBr.EhValido(digitos))
+        {
+            throw new ValidacaoException(
+                "solicitacao.cpf_invalido",
+                "CPF invÃ¡lido â confira os dÃ­gitos. Um CPF mal digitado que por acaso exista "
+                + "vincularia este exame ao PACIENTE ERRADO.");
+        }
+
+        var s = await _db.ExamesImagem
+            .Include(x => x.Solicitacao)
+            .FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
+            ?? throw new NaoEncontradoException(nameof(ExameImagem), id);
+        var reg = s.Solicitacao!;
+
+        var atual = await _pacienteResolver.ResolverAsync(reg.PacienteId, cancellationToken)
+            ?? throw new NaoEncontradoException("Paciente", reg.PacienteId);
+
+        if (!string.IsNullOrWhiteSpace(atual.Cpf))
+        {
+            // Idempotente: reenviar o mesmo CPF (duplo clique, retry de rede) nÃ£o Ã© erro.
+            if (atual.Cpf == digitos)
+                return new DefinirCpfPacienteResultadoDto(atual.Id, atual.Nome, digitos, Repontado: false);
+
+            throw new ConflitoException(
+                "solicitacao.paciente_ja_tem_cpf",
+                $"O paciente desta solicitaÃ§Ã£o jÃ¡ tem CPF cadastrado. Se nÃ£o for a mesma pessoa, "
+                + "corrija o vÃ­nculo do exame em vez de trocar o CPF do cadastro.");
+        }
+
+        // O CPF jÃ¡ Ã© de outro cadastro? EntÃ£o a pessoa jÃ¡ existia e este registro sem CPF Ã© uma
+        // sombra dela criada pela importaÃ§Ã£o. Repontamos a solicitaÃ§Ã£o â nada Ã© fundido nem apagado.
+        var existente = await _pacientes.ObterPorCpfAsync(digitos, cancellationToken);
+        if (existente is not null && existente.Id != reg.PacienteId)
+        {
+            var sombraId = reg.PacienteId;
+
+            // O CNS TEM de ir junto: senÃ£o a prÃ³xima varredura reencontra a sombra por CNS e
+            // reponta de novo, para sempre. O telefone entra por append (contato sÃ³ acumula).
+            await _pacientes.AbsorverIdentificadoresAsync(
+                existente.Id, atual.Cns, atual.Celular, cancellationToken);
+
+            reg.PacienteId = existente.Id;
+            reg.AtualizadoEm = DateTime.UtcNow;
+            reg.AtualizadoPor = _usuarioAtual.UsuarioId;
+            await _db.SaveChangesAsync(cancellationToken);
+
+            await _auditoria.RegistrarAsync(
+                "Solicitacao", reg.Id.ToString(), "RepontarPacientePorCpf",
+                $"{atual.Nome} ({sombraId})", $"{existente.NomeCompleto} ({existente.Id})", cancellationToken);
+
+            _logger.LogInformation(
+                "SOLICITACAO_REPONTADA_POR_CPF: solicitaÃ§Ã£o {Solicitacao} saiu do cadastro-sombra {Sombra} "
+                + "para o paciente {Destino} ao informar o CPF.", reg.Id, sombraId, existente.Id);
+
+            return new DefinirCpfPacienteResultadoDto(
+                existente.Id, existente.NomeCompleto, digitos, Repontado: true);
+        }
+
+        await _pacientes.DefinirCpfAsync(reg.PacienteId, digitos, cancellationToken);
+        return new DefinirCpfPacienteResultadoDto(atual.Id, atual.Nome, digitos, Repontado: false);
+    }
+
     public async Task AutorizarAsync(
         Guid id, string chaveConfirmacao, Guid? equipamentoId = null, CancellationToken cancellationToken = default)
     {
@@ -469,6 +538,21 @@ public sealed class SolicitacoesExameService(
         // OU uma dispensa registrada. A dispensa existe porque o gate rígido travava o balcão:
         // quem não tem celular, ou não consegue confirmar o código, ficava sem caminho de saída.
         var paciente = await _pacienteResolver.ResolverAsync(reg.PacienteId, cancellationToken);
+
+        // Gate do CPF. O paciente pode ter entrado SEM CPF: a importação do SISREG deixa passar
+        // o agendamento ancorado só no CNS em vez de virar pendência que ninguém resolve. Aqui é
+        // onde o débito é cobrado — e não é só regra de negócio: o PatientID do DICOM É o CPF,
+        // então sem ele o exame não teria como ir para a worklist do PACS.
+        // Backstop do gate da tela (a recepção não abre a solicitação sem informar o CPF): esta
+        // é a única barreira que vale para chamada direta de API.
+        if (string.IsNullOrWhiteSpace(paciente?.Cpf))
+        {
+            throw new ValidacaoException(
+                "autorizacao.paciente_sem_cpf",
+                "O paciente ainda não tem CPF no cadastro. Informe o CPF na solicitação para liberar "
+                + "o exame — sem ele o pedido não pode ser enviado ao equipamento.");
+        }
+
         if (paciente?.TelefoneVerificado is null
             && await _dispensasContato.ObterAtivaAsync(reg.PacienteId, cancellationToken) is null)
             throw new ValidacaoException(

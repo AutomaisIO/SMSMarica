@@ -71,6 +71,30 @@ export async function autorizarSolicitacao(
   await http.post(`/solicitacoes-exame/${id}/autorizar`, { chaveConfirmacao, equipamentoId: equipamentoId ?? null });
 }
 
+export type DefinirCpfPacienteResultado = {
+  pacienteId: string;
+  nomePaciente: string;
+  cpf: string;
+  /** O CPF já era de outro cadastro: a solicitação passou a apontar para ele. */
+  repontado: boolean;
+};
+
+/**
+ * Informa o CPF do paciente desta solicitação. Destrava o cidadão que entrou pela importação
+ * do SISREG ancorado só no CNS — sem CPF o exame não pode ir à worklist (o PatientID do DICOM
+ * é o CPF).
+ */
+export async function definirCpfDoPaciente(
+  id: string,
+  cpf: string,
+): Promise<DefinirCpfPacienteResultado> {
+  const { data } = await http.post<DefinirCpfPacienteResultado>(
+    `/solicitacoes-exame/${id}/cpf-paciente`,
+    { cpf },
+  );
+  return data;
+}
+
 /** Equipamentos (estações) elegíveis para executar o exame — unidade executante + modalidade. */
 export async function listarEquipamentosDoExame(id: string): Promise<EquipamentoExame[]> {
   const { data } = await http.get<EquipamentoExame[]>(`/solicitacoes-exame/${id}/equipamentos`);

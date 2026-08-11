@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
+import {
+  ModalCpfPaciente,
+  type SolicitacaoSemCpf,
+} from '@/features/solicitacoes-exame/components/ModalCpfPaciente';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   AlertTriangle,
+  IdCard,
   ArrowLeft,
   CheckCircle2,
   ClipboardCheck,
@@ -72,6 +77,7 @@ export function SolicitacaoExameDetalhePage() {
   const equipamentos = useEquipamentosDoExame(id ?? null, podeEditar);
 
   const [modalCancelar, setModalCancelar] = useState(false);
+  const [cpfPendente, setCpfPendente] = useState<SolicitacaoSemCpf | null>(null);
   const [modalExcluir, setModalExcluir] = useState(false);
   const [modalEquip, setModalEquip] = useState(false);
   const [modalUnidade, setModalUnidade] = useState(false);
@@ -156,6 +162,35 @@ export function SolicitacaoExameDetalhePage() {
 
   return (
     <div className="space-y-5">
+      {/* Caminho por URL direta (link salvo, volta do navegador): a listagem já cobra o CPF no
+          clique, mas quem chega por aqui precisa da mesma saída — e sem CPF a autorização vai
+          recusar de qualquer jeito (o PatientID do DICOM é o CPF). */}
+      {!s.pacienteCpf && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-orange-300 bg-orange-50 px-4 py-3">
+          <p className="flex items-start gap-2 text-sm text-orange-900">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              Este paciente veio do SISREG <strong>sem CPF</strong>, ancorado apenas no CNS. Cadastre
+              o CPF para liberar o exame — sem ele o pedido não pode ser autorizado nem enviado ao
+              equipamento.
+            </span>
+          </p>
+          <Button
+            onClick={() =>
+              setCpfPendente({ id: s.id, pacienteNome: s.pacienteNome, procedimento: s.tipoExameNome })
+            }
+          >
+            <IdCard className="h-4 w-4" /> Cadastrar CPF
+          </Button>
+        </div>
+      )}
+
+      <ModalCpfPaciente
+        alvo={cpfPendente}
+        aoFechar={() => setCpfPendente(null)}
+        aoLiberar={() => setCpfPendente(null)}
+      />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <button

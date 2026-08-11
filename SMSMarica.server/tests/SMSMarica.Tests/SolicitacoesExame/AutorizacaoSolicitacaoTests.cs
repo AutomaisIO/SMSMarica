@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using SMSMarica.Core.Common.Excecoes;
@@ -44,6 +44,7 @@ public class AutorizacaoSolicitacaoTests(PostgresFixture fixture)
             Substitute.For<INotificadorExame>(),
             new UsuarioAtualAccessorFake(Guid.NewGuid()),
             resolver,
+            Substitute.For<SMSMarica.Core.Pacientes.IPacientesService>(),
             // Serviço REAL de dispensa: o gate consulta o banco, e é isso que os testes de
             // dispensa exercitam (o mock esconderia justamente a leitura que importa).
             CriarDispensas(db),

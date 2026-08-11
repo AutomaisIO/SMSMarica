@@ -1,4 +1,4 @@
-using SMSMarica.Core.Common.Dtos;
+﻿using SMSMarica.Core.Common.Dtos;
 using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Pacientes.Dtos;
@@ -6,7 +6,9 @@ namespace SMSMarica.Core.Pacientes.Dtos;
 public sealed record CadastrarPacienteRequest(
     // Identificação (CPF e DataNascimento vêm da consulta Hub no passo 1)
     string NomeCompleto,
-    string Cpf,
+    /// <summary>CPF com DV válido, ou <c>null</c> quando a origem não tem — o paciente entra
+    /// ancorado no CNS e a recepção informa o CPF depois (ADR-0041 / ADR-0009).</summary>
+    string? Cpf,
     DateOnly DataNascimento,
     string? Cns,
     string? Rg,

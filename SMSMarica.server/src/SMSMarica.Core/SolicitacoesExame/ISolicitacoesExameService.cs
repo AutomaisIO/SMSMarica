@@ -49,6 +49,18 @@ public interface ISolicitacoesExameService
         Guid id, string chaveConfirmacao, Guid? equipamentoId = null, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Informa o CPF do paciente desta solicitação — o passo que destrava tudo quando o cidadão
+    /// entrou pela importação do SISREG ancorado só no CNS (o CADSUS nem sempre devolve CPF).
+    ///
+    /// <para>Se o CPF já pertence a OUTRO cadastro, a pessoa já existia no sistema e o registro
+    /// sem CPF é uma sombra dela: a solicitação é <b>repontada</b> para o cadastro real e o CNS e o
+    /// telefone da sombra são absorvidos por ele. Nada é fundido nem apagado — a sombra continua
+    /// existindo para saneamento posterior, e a operação é reversível.</para>
+    /// </summary>
+    Task<DefinirCpfPacienteResultadoDto> DefinirCpfDoPacienteAsync(
+        Guid id, string cpf, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Equipamentos elegíveis para executar o exame (unidade executante + modalidade). A tela de
     /// autorização usa para montar a seleção quando há mais de um.
     /// </summary>
