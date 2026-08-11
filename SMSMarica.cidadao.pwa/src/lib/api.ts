@@ -50,6 +50,14 @@ export type Exame = {
   laudoAssinado: boolean;
 };
 export type Laudo = { id: string; data: string; titulo: string; status: string };
+export type PesquisaPublica = {
+  unidade: string | null;
+  atendimentoEm: string;
+  expiraEm: string;
+  expirada: boolean;
+  jaRespondida: boolean;
+  instrumentoVersao: string;
+};
 export type Agendamento = {
   id: string;
   inicioEm: string;
@@ -115,6 +123,15 @@ export const api = {
       .then((r) => r.data),
   salvarFoto: (fotoBase64: string | null) => http.put('/auth/paciente/me/foto', { fotoBase64 }),
   logout: () => http.post('/auth/paciente/logout'),
+
+  /** Contexto da pesquisa pelo token do WhatsApp — rota pública, sem sessão. */
+  pesquisa: (token: string) =>
+    http.get<PesquisaPublica>(`/publico/pesquisa/${token}`).then((r) => r.data),
+  responderPesquisaPorToken: (token: string, respostas: Record<string, string>) =>
+    http.post(`/publico/pesquisa/${token}`, { respostas }),
+  /** Mesma pesquisa, entrando pelo histórico do app (já autenticado). */
+  responderPesquisaDoAtendimento: (encounterId: string, respostas: Record<string, string>) =>
+    http.post(`/auth/paciente/atendimentos/${encounterId}/pesquisa`, { respostas }),
   translados: () =>
     comCacheLocal('translados', () =>
       http.get<Translado[]>('/auth/paciente/meus-translados').then((r) => r.data)),

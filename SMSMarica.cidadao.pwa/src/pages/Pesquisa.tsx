@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -10,8 +10,10 @@ import {
   MessageSquareHeart,
   Send,
 } from 'lucide-react';
+import { api, type PesquisaPublica } from '@/lib/api';
 import { cn } from '@/lib/cn';
-import { PrimaryButton } from '@/components/ui';
+import { extrairMensagemDeErro } from '@/lib/httpClient';
+import { ErroCard, PrimaryButton, Spinner } from '@/components/ui';
 
 /**
  * Pesquisa de satisfação do atendimento.
@@ -147,24 +149,49 @@ export type ContextoPesquisa = {
 const TOKEN_DEMO = 'demo';
 
 export function Pesquisa() {
-  const { token } = useParams();
+  const { token, id: encounterId } = useParams();
   const [query] = useSearchParams();
   const navigate = useNavigate();
   const publica = Boolean(token);
   const demo = token === TOKEN_DEMO;
+  /** Token de verdade (não o de demonstração): é o único caso que consulta o servidor. */
+  const publicaReal = publica && !demo;
 
   const [respostas, setRespostas] = useState<Record<string, string>>({});
   const [enviando, setEnviando] = useState(false);
   const [enviada, setEnviada] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  // Só o link público precisa perguntar ao servidor quem é: entrando pelo app, a lista já
+  // passou unidade e data pelo state.
+  const [doServidor, setDoServidor] = useState<PesquisaPublica | null>(null);
+  const [carregando, setCarregando] = useState(publicaReal);
 
   // Contexto do atendimento. Entrando pelo histórico, a lista já tem unidade e data e passa
   // pelo state — não há por que buscar de novo. Pelo link do WhatsApp virá do token. A tela
   // funciona sem ele: contexto ausente não pode impedir ninguém de responder.
   const contexto: ContextoPesquisa = {
-    unidade: demo ? query.get('u') : null,
-    data: demo ? query.get('d') : null,
+    unidade: doServidor?.unidade ?? (demo ? query.get('u') : null),
+    data: doServidor ? formatarDia(doServidor.atendimentoEm) : demo ? query.get('d') : null,
+    dataIso: doServidor?.atendimentoEm ?? null,
     ...((useLocation().state as Partial<ContextoPesquisa> | null) ?? {}),
   };
+
+  useEffect(() => {
+    if (!publicaReal || !token) return;
+    let vivo = true;
+    api
+      .pesquisa(token)
+      .then((d) => {
+        if (!vivo) return;
+        setDoServidor(d);
+        if (d.jaRespondida) setEnviada(true);
+      })
+      .catch((e) => vivo && setErro(extrairMensagemDeErro(e)))
+      .finally(() => vivo && setCarregando(false));
+    return () => {
+      vivo = false;
+    };
+  }, [publicaReal, token]);
 
   const respondidas = useMemo(
     () => PERGUNTAS.filter((p) => p.tipo !== 'texto' && respostas[p.id] !== undefined).length,
@@ -179,19 +206,34 @@ export function Pesquisa() {
 
   async function enviar() {
     setEnviando(true);
-    // TODO: POST /pesquisa/{token}/respostas — enquanto o backend não existe, a tela já
-    // encerra no estado final para a régua de UX ficar fechada.
-    await new Promise((r) => setTimeout(r, 700));
-    setEnviando(false);
-    setEnviada(true);
+    setErro(null);
+    try {
+      // Demonstração não grava: é a tela real, mas sem destino. Ver TOKEN_DEMO.
+      if (demo) await new Promise((r) => setTimeout(r, 500));
+      else if (token) await api.responderPesquisaPorToken(token, respostas);
+      else await api.responderPesquisaDoAtendimento(encounterId!, respostas);
+      setEnviada(true);
+    } catch (e) {
+      setErro(extrairMensagemDeErro(e));
+    } finally {
+      setEnviando(false);
+    }
   }
 
   // Janela vencida: o botão do histórico já some antes disso, mas quem chegou por link antigo
   // (ou deixou a tela aberta) precisa ver o motivo, não um formulário que não vai ser aceito.
   const dias = diasDesde(contexto.dataIso);
-  const expirada = dias !== null && dias > JANELA_DIAS;
+  const expirada = doServidor?.expirada ?? (dias !== null && dias > JANELA_DIAS);
 
-  const conteudo = expirada ? (
+  const conteudo = carregando ? (
+    <div className="grid min-h-dvh place-items-center">
+      <Spinner />
+    </div>
+  ) : erro && !doServidor ? (
+    <div className="grid min-h-dvh place-items-center px-6">
+      <ErroCard mensagem={erro} />
+    </div>
+  ) : expirada ? (
     <Expirada aoVoltar={() => navigate('/')} />
   ) : enviada ? (
     <Agradecimento publica={publica} aoVoltar={() => navigate('/')} />
@@ -229,7 +271,8 @@ export function Pesquisa() {
           {!enviando && <Send className="h-4 w-4" />}
           Enviar avaliação
         </PrimaryButton>
-        {!podeEnviar && (
+        {erro && <p className="mt-2 text-center text-[12px] text-marica">{erro}</p>}
+        {!podeEnviar && !erro && (
           <p className="mt-2 text-center text-[12px] text-tinta-mute">
             Responda ao menos a primeira pergunta.
           </p>
@@ -483,4 +526,10 @@ function Agradecimento({ publica, aoVoltar }: { publica: boolean; aoVoltar: () =
       )}
     </div>
   );
+}
+
+/** dd/mm/aaaa a partir do ISO devolvido pelo servidor. */
+function formatarDia(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('pt-BR');
 }
