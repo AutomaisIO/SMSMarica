@@ -132,6 +132,43 @@ public class SerBackfillOrdemTests(PostgresFixture fixture)
         noBanco.TelefoneContato.Should().BeNull();
     }
 
+    /// <summary>
+    /// Quem falha vai para o FIM da fila, não fica na cabeça.
+    ///
+    /// <para>A fila é servida pelos 200 mais antigos. Mantendo o carimbo original, o item que
+    /// falha sempre volta ao topo e ocupa a janela em toda passagem: com 200 casos envenenados a
+    /// guarda de giro em falso do worker corta a drenagem e a fila inteira congela atrás deles.
+    /// O carimbo novo tem de ser mais recente que o de quem ainda espera.</para>
+    /// </summary>
+    [Fact]
+    public async Task Quem_falha_volta_para_o_fim_da_fila()
+    {
+        await using var db = fixture.CriarDbContext();
+
+        var marca = Guid.NewGuid().ToString("N")[..6];
+        var baseData = new DateTime(2026, 8, 1, 12, 0, 0, DateTimeKind.Utc);
+
+        var quebra = Nova($"{marca}-quebra", "52998224725", "700300908811839", baseData);
+        quebra.PacienteConciliarEm = baseData;
+
+        db.SerSolicitacoes.Add(quebra);
+        await db.SaveChangesAsync();
+
+        var servico = new SerBackfillPacientesService(
+            db, new ConciliacaoQuebrada(), NullLogger<SerBackfillPacientesService>.Instance);
+
+        var r = await servico.ExecutarPendentesAsync(50, CancellationToken.None);
+        r.Falhas.Should().BeGreaterThan(0);
+
+        await using var conferencia = fixture.CriarDbContext();
+        var noBanco = await conferencia.SerSolicitacoes
+            .AsNoTracking().SingleAsync(x => x.Id == quebra.Id);
+
+        noBanco.PacienteConciliarEm.Should().NotBeNull("continua na fila — a retentativa é o certo");
+        noBanco.PacienteConciliarEm.Should().BeAfter(baseData,
+            "mas com carimbo novo, atrás de quem ainda não teve a vez");
+    }
+
     /// <summary>Captura o que a conciliação recebeu, sem falar com hub nenhum.</summary>
     private sealed class ConciliacaoEspia : ISerConciliacaoPacienteService
     {
@@ -143,5 +180,12 @@ public class SerBackfillOrdemTests(PostgresFixture fixture)
             return Task.FromResult(
                 new ConciliacaoSerDto(ResultadoConciliacaoSer.Inalterado, null, []));
         }
+    }
+
+    /// <summary>O hub recusando o paciente por um motivo que não passa sozinho.</summary>
+    private sealed class ConciliacaoQuebrada : ISerConciliacaoPacienteService
+    {
+        public Task<ConciliacaoSerDto> ConciliarAsync(SerSolicitacao s, CancellationToken ct) =>
+            throw new InvalidOperationException("hub recusou");
     }
 }

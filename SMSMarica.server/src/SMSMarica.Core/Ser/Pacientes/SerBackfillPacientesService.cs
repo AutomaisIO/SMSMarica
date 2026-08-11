@@ -171,15 +171,25 @@ public sealed class SerBackfillPacientesService(
                 // Limpa a marca. Vale inclusive para "sem chave": mantê-la faria o worker
                 // reprocessar a cada ciclo um caso sem saída. Se o SER trouxer CPF ou CNS
                 // depois, o retrato do paciente muda e a varredura remarca sozinha.
-                // Exceção NÃO chega aqui — quem falha fica na fila para a próxima passagem.
                 s.PacienteConciliarEm = null;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 falhas++;
+
+                // VAI PARA O FIM DA FILA, não para a cabeça. Quem falha continua na fila — isso
+                // é o certo, é o que garante a retentativa. O erro era MANTER o carimbo antigo:
+                // esta consulta pega os 200 mais ANTIGOS, então o item que falha sempre volta
+                // para a cabeça e ocupa a janela em toda passagem. Com F itens envenenados, cada
+                // chamada rendia só (200 - F) de progresso; com F igual ao lote, a guarda de giro
+                // em falso do worker cortava a drenagem e a fila inteira parava atrás deles.
+                // Re-carimbar joga o caso para trás de quem ainda não teve a vez: ele é retentado
+                // do mesmo jeito, sem bloquear ninguém.
+                s.PacienteConciliarEm = DateTime.UtcNow;
+
                 logger.LogWarning(
                     ex, "SER/conciliação: falhou no paciente da solicitação {IdSer}. "
-                    + "Fica na fila para a próxima passagem.", s.IdSer);
+                    + "Recolocado no FIM da fila.", s.IdSer);
             }
         }
 
