@@ -12,6 +12,7 @@ import { Tabs, type Aba } from '@/shared/ui/Tabs';
 import { useUnidadePorId, useUsuariosDaUnidade } from '@/features/unidades/api/queries';
 import { UsuariosDaUnidadeSecao } from '@/features/unidades/components/UsuariosDaUnidadeSecao';
 import { EquipamentosDaUnidadeSecao } from '@/features/unidades/components/EquipamentosDaUnidadeSecao';
+import { PesquisaSatisfacaoAba } from '@/features/pesquisa-satisfacao/components/PesquisaSatisfacaoAba';
 import { MapeamentoSisregSecao } from '@/features/sisreg-mapeamento/components/MapeamentoSisregSecao';
 import { SincronismoSisregSecao } from '@/features/sisreg-mapeamento/components/SincronismoSisregSecao';
 import { useListarEquipamentos } from '@/features/equipamentos/api/queries';
@@ -129,6 +130,8 @@ export function UnidadeDetalhePage() {
     </div>
   );
 
+  const podeVerPesquisa = useTemConsulta('PesquisaSatisfacao');
+
   const abas: Aba[] = [
     {
       id: 'tratamentos',
@@ -163,6 +166,15 @@ export function UnidadeDetalhePage() {
                 <SincronismoSisregSecao unidadeId={id} podeEditar={podeEditarSisreg} />
               </div>
             ),
+          } satisfies Aba,
+        ]
+      : []),
+    ...(podeVerPesquisa && id
+      ? [
+          {
+            id: 'pesquisa',
+            rotulo: 'Pesquisa de satisfação',
+            conteudo: <PesquisaSatisfacaoAba unidadeId={id} />,
           } satisfies Aba,
         ]
       : []),
