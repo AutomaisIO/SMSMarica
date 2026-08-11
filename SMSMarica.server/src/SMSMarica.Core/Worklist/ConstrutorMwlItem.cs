@@ -156,8 +156,12 @@ internal static class ConstrutorMwlItem
         _ => "ROUTINE",
     };
 
-    /// <summary>"João da Silva" → "SILVA^JOAO DA" (DICOM PN: Family^Given, sem acentos).</summary>
-    private static string FormatarPn(string nome)
+    /// <summary>"João da Silva" → "SILVA^JOAO DA" (DICOM PN: Family^Given, sem acentos).
+    /// <para><b>Público de propósito:</b> a correção de identidade reescreve o PatientName dentro
+    /// do objeto DICOM e precisa usar EXATAMENTE esta régua. Se cada lado formatasse do seu jeito,
+    /// um estudo corrigido e um estudo novo do mesmo paciente ficariam com nomes diferentes no
+    /// PACS — e a busca por nome passaria a achar um e não o outro.</para></summary>
+    public static string FormatarPn(string nome)
     {
         var n = Ascii(nome).Trim();
         if (string.IsNullOrEmpty(n)) return "PACIENTE";
