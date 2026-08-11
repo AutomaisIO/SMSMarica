@@ -127,6 +127,16 @@ public sealed class PesquisasSatisfacaoService(
             throw new ConflitoException(
                 "pesquisa.sem_telefone", "Paciente sem número de celular válido para receber a pesquisa.");
 
+        // O corpo do template diz "recebido em nossa unidade {{2}}". Sem o nome real, a frase
+        // sairia "em nossa unidade nossa unidade" — e, pior, afirmaria ao paciente algo que não
+        // conferimos. Recusa é o comportamento certo: a unidade vem do serviceProvider do
+        // Encounter (ADR-0039) e está preenchida em 100% dos atendimentos recentes; se faltar,
+        // é sinal de dado incompleto, não de mensagem a improvisar.
+        if (string.IsNullOrWhiteSpace(p.UnidadeNome))
+            throw new ConflitoException(
+                "pesquisa.sem_unidade",
+                "O atendimento não tem unidade registrada — não dá para citar o local na mensagem.");
+
         var template = configuration["Pesquisa:Template"] ?? "pesquisa_de_satisfacao_2";
         var idioma = configuration["Pesquisa:TemplateIdioma"] ?? "pt_BR";
 
@@ -136,7 +146,7 @@ public sealed class PesquisasSatisfacaoService(
             idioma,
             [
                 Tratamento(paciente.NomeCompleto, paciente.Sexo),
-                p.UnidadeNome ?? "nossa unidade",
+                p.UnidadeNome,
                 FusoBrasilia.ParaExibicao(p.AtendimentoEm).ToString("dd/MM/yyyy", CultureInfo.GetCultureInfo("pt-BR")),
             ],
             // Só o botão de URL entra no payload: as duas respostas rápidas do template são
@@ -184,6 +194,10 @@ public sealed class PesquisasSatisfacaoService(
             Id = Guid.CreateVersion7(),
             PatientId = pacienteId,
             EncounterId = encounterId,
+            // ADR-0039: a unidade é dimensão própria, não deriva do meta.source. Guardar o nome
+            // aqui congela o que valia no atendimento — unidade renomeada depois não reescreve o
+            // passado de quem já respondeu, e a mensagem cita o lugar onde a pessoa esteve.
+            UnidadeNome = a.UnidadeNome,
             AtendimentoEm = fim,
             ExpiraEm = fim.AddDays(IPesquisasSatisfacaoService.JanelaDias),
             InstrumentoVersao = IPesquisasSatisfacaoService.InstrumentoVersaoAtual,
