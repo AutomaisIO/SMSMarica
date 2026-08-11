@@ -1,8 +1,9 @@
 # ADR-0016 — Conciliação de estudo não-agendado (associar estudo "voando" a paciente/solicitação)
 
-- **Status:** Aceito (proposta)
+- **Status:** Aceito — **coerção implementada em 2026-08-11, por reescrita** (ver adendo no fim)
 - **Data:** 2026-06-13
-- **Relacionados:** ADR-0012 (agendamento/solicitação), `docs/pacs.md`, [[project_worklist_ups_vs_mwl]]
+- **Relacionados:** ADR-0012 (agendamento/solicitação), `docs/pacs.md`,
+  `docs/pacs-correcao-identidade.md`, [[project_worklist_ups_vs_mwl]]
 
 ## Contexto
 
@@ -116,3 +117,35 @@ compensa. O vínculo solicitação↔estudo passa a ser pelo UID real após a co
 - **Mudar o StudyInstanceUID do estudo para o pré-gerado** — exige reject+re-store; caro e frágil.
   Descartado: a solicitação adota o UID real.
 - **Link a item MWL** — não usamos MWL (gravamos UPS); endpoint não se aplica.
+
+---
+
+## Adendo 2026-08-11 — o que a implementação corrigiu desta ADR
+
+A coerção prevista aqui foi implementada, mas o spike contra o dcm4chee de produção mostrou que
+três coisas descritas acima **não são assim**:
+
+1. **`POST /studies/{uid}/patient` quer o PatientID na QUERY STRING**, não no path nem no corpo:
+   `POST /studies/{uid}/patient?PatientID={id}` → 204. Com o ID no path devolve 404; no corpo,
+   400 `"Missing Patient ID in query filters"`.
+
+2. **`PUT /studies/{uid}` NÃO troca o paciente.** Ele só atualiza atributos do estudo e recusa
+   corpo com outro paciente: *"Patient found using patient identifiers sent in request payload
+   does not match"*. Mover e coagir são **duas** chamadas, nesta ordem.
+
+3. **A coerção não basta.** Ela propaga `PatientID` e `AccessionNumber` para o que o WADO-RS
+   devolve, mas o **`PatientName` continua o antigo** dentro do objeto recuperado — e nem
+   `updatePolicy=OVERWRITE` nem `REPLACE` mudam isso. Ou seja, coagir deixaria o nome de outra
+   pessoa no arquivo, visível em exportação DICOM e gravação de CD.
+
+Por (3), a implementação **não usa coerção**: usa **reescrita** — baixa as instâncias, troca a
+identidade, gera UIDs novos, re-armazena por STOW-RS e então rejeita o original com
+`113038^DCM` ("Incorrect Modality Worklist Entry", o código IOCM deste erro; a instalação já tem
+o AE `IOCM_WRONG_MWL`) e o apaga.
+
+Também **cai a premissa** de que "mudar UID no PACS é caro e arriscado, então a solicitação adota
+o UID real": com reescrita, é o contrário — o UID **precisa** ser novo, porque o antigo está
+colado ao objeto que está sendo removido.
+
+Detalhes operacionais e as três opções de correção: `docs/pacs-correcao-identidade.md`.
+Código: `SMSMarica.Core/Pacs/PacsReescritorEstudoClient.cs`.

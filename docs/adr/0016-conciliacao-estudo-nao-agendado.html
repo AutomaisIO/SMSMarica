@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0016 — Conciliação de estudo não-agendado (associar estudo "voando" a paciente/solicitação)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0016 — Conciliação de estudo não-agendado (associar estudo "voando" a paciente/solicitação)</h1>
+<ul>
+<li><strong>Status:</strong> Aceito — <strong>coerção implementada em 2026-08-11, por reescrita</strong> (ver adendo no fim)</li>
+<li><strong>Data:</strong> 2026-06-13</li>
+<li><strong>Relacionados:</strong> ADR-0012 (agendamento/solicitação), <code>docs/pacs.md</code>,</li>
+</ul>
+<p>  <code>docs/pacs-correcao-identidade.md</code>, [[project_worklist_ups_vs_mwl]]</p>
+<h2>Contexto</h2>
+<p>O fluxo feliz da Solicitação de Exame é: SMSMarica cria a solicitação → grava um item de worklist no dcm4chee → o equipamento puxa a worklist → adquire as imagens <strong>já com o paciente, AccessionNumber e StudyInstanceUID corretos</strong> → o estudo chega no PACS associado à solicitação.</p>
+<p>Na prática hoje <strong>não há equipamento cooperando com a worklist</strong> (o aparelho real é MWL e nós gravamos UPS — ver [[project_worklist_ups_vs_mwl]]). Resultado: o técnico adquire as imagens <strong>sem puxar a worklist</strong>, então o estudo chega no PACS:</p>
+<ul>
+<li>com <strong>PatientName/PatientID</strong> digitados à mão (ou vazios), que <strong>não casam</strong> com nenhum paciente</li>
+</ul>
+<p>  nosso (<code>fhir.patient</code>);</p>
+<ul>
+<li><strong>sem AccessionNumber</strong> (ou com um qualquer);</li>
+<li>com um <strong>StudyInstanceUID próprio da máquina</strong>, diferente do pré-gerado pela solicitação.</li>
+</ul>
+<p>Ou seja, o estudo fica "voando" — sem vínculo com a solicitação/paciente. A solicitação nunca sai de <code>Agendada</code> (o <code>SincronizadorExamesService</code> busca por AccessionNumber e não acha) e não dá pra visualizar/laudar a partir dela.</p>
+<p>É o problema clássico de PACS de <strong>conciliação de estudo não-agendado</strong> (<em>unscheduled / unidentified study reconciliation</em>).</p>
+<h2>Decisão</h2>
+<p>Criar no SMSMarica uma função de <strong>Conciliação ("Associar exame")</strong> que corrige o estudo no próprio dcm4chee-arc (coerção de paciente + AccessionNumber) e religa a solicitação, em vez de exigir que o operador faça isso na arc-ui crua do PACS.</p>
+<h3>Fluxo</h3>
+<ol>
+<li><strong>Listar estudos voando</strong> — estudos do PACS sem solicitação correspondente. Heurística:</li>
+</ol>
+<p>   AccessionNumber vazio/sem <code>SMS…</code>, <strong>ou</strong> AccessionNumber que não casa com nenhuma    <code>SolicitacaoExame</code>, <strong>ou</strong> PatientID que não casa com nenhum paciente nosso.</p>
+<ol>
+<li><strong>Operador escolhe o estudo + a solicitação</strong> (que carrega <code>PacienteId</code>, <code>AccessionNumber</code> e</li>
+</ol>
+<p>   o paciente resolvido no FHIR).</p>
+<ol>
+<li><strong>Backend coage o estudo no dcm4chee</strong> (ver endpoints abaixo):</li>
+</ol>
+<p>   a. Garante o paciente no dcm4chee (PatientID = <code>PacienteId</code>, PatientName do FHIR).    b. <strong>Move Study to Patient</strong> — associa o estudo voador ao paciente certo.    c. <strong>Update Study</strong> — grava <code>AccessionNumber</code> (0008,0050), <code>StudyDescription</code> e atributos do       pedido (ReferencedRequestSequence) batendo com a solicitação.</p>
+<ol>
+<li><strong>Backend religa a solicitação</strong>: grava o <strong>StudyInstanceUID REAL</strong> (o da máquina) em</li>
+</ol>
+<p>   <code>SolicitacaoExame.StudyInstanceUID</code>, seta <code>RealizadoEm</code> e <code>Status = Realizada</code>.</p>
+<ol>
+<li>A partir daí <strong>Visualizar/Laudar</strong> funcionam normalmente (o estudo está associado).</li>
+</ol>
+<h3>Auto-conciliação (quando possível)</h3>
+<p>Se o técnico digitar o <strong>AccessionNumber</strong> (<code>SMS…</code>) ou o <strong>CPF</strong> no aparelho, o <code>SincronizadorExamesService</code> pode conciliar <strong>sozinho</strong> por AccessionNumber — sem operador. A tela manual cobre o caso em que nada foi digitado.</p>
+<h3>Endpoints dcm4chee-arc 5.32 usados (confirmados)</h3>
+<div class="tw"><table><thead><tr><th>Operação</th><th>Método + caminho (<code>…/aets/{aet}/rs</code>)</th></tr></thead><tbody>
+<tr><td>Update Study (accession, descrição, request attrs)</td><td><code>PUT /studies/{studyUID}</code> (corpo DICOM+JSON)</td></tr>
+<tr><td>Move Study to Patient</td><td><code>POST /studies/{studyUID}/patient</code></td></tr>
+<tr><td>Create Patient (se faltar)</td><td><code>POST /patients</code></td></tr>
+<tr><td>Change Patient ID</td><td><code>POST /patients/{prior}/changeid/{new}</code></td></tr>
+<tr><td>Reject (IOCM, se precisar desfazer)</td><td><code>POST /studies/{studyUID}/reject/{code}^{designator}</code></td></tr>
+</tbody></table></div>
+<p>&gt; <strong>Descartado:</strong> "Link Instances with MWL Entry" &gt; (<code>POST /mwlitems/{study}/{sps}/move/…</code>) — só vincula a item <strong>MWL</strong>, e nós gravamos <strong>UPS</strong> &gt; (não MWL). A coerção direta (Move + Update) não depende de MWL e é mais robusta no nosso caso.</p>
+<h3>Identidade do paciente no PACS</h3>
+<p>Mantém a régua do <code>ConstrutorWorkitemUps</code>: <strong>PatientID (0010,0020) = <code>PacienteId</code></strong> (Guid do <code>fhir.patient</code>); <strong>PatientName (0010,0010)</strong> resolvido no hub FHIR. Assim o estudo conciliado fica consistente com o que a worklist teria gravado.</p>
+<h3>O StudyInstanceUID divergente</h3>
+<p>Como a máquina gera o próprio UID, <strong>a solicitação adota o UID real</strong> do estudo (não o pré-gerado). Mudar o UID do estudo no PACS (reject + re-store) é caro e arriscado — não compensa. O vínculo solicitação↔estudo passa a ser pelo UID real após a conciliação.</p>
+<h2>Componentes (a construir)</h2>
+<p><strong>Backend:</strong></p>
+<ul>
+<li><code>IPacsReconciliacaoClient</code> — cliente tipado para as operações de escrita do dcm4chee (Move/Update/</li>
+</ul>
+<p>  Create Patient), no padrão dos clients existentes. (O <code>PacsProxyService.EncaminharAsync</code> já   encaminha PUT/POST, mas um client tipado é mais claro e testável.)</p>
+<ul>
+<li><code>IConciliacaoExameService</code> — <code>ListarEstudosNaoAssociadosAsync</code>, `ConciliarAsync(studyUID,</li>
+</ul>
+<p>  solicitacaoId)`. Coage no PACS + religa a solicitação (transação lógica; idempotente).</p>
+<ul>
+<li>Endpoints: <code>GET /conciliacao/estudos-voando</code>, <code>POST /conciliacao/{studyUID}</code> (body: solicitacaoId).</li>
+</ul>
+<p>  Permissão <code>SolicitacoesExame</code> (Edição).</p>
+<p><strong>Front:</strong></p>
+<ul>
+<li>Tela "Conciliação" (ou aba/filtro em Exames de Imagem) que lista os estudos voando e, por estudo,</li>
+</ul>
+<p>  um botão <strong>"Associar"</strong> → modal: busca/seleciona a solicitação → confirma. Mostra o que vai mudar   (paciente, accession) antes de aplicar.</p>
+<h2>Consequências</h2>
+<ul>
+<li>✅ Estudos voadores deixam de travar o fluxo; operador associa em segundos sem entrar na arc-ui.</li>
+<li>✅ Auto-conciliação por AccessionNumber/CPF reduz trabalho manual quando o técnico digita o id.</li>
+<li>⚠️ Escrita no PACS: o deploy do dcm4chee é <strong>unsecure</strong> (sem auth REST) — as operações de coerção</li>
+</ul>
+<p>  ficam acessíveis a quem alcança a porta 8080. Já é o caso hoje (QIDO/WADO/reject); manter o PACS   atrás de rede/firewall. Auditar quem conciliou (registrar usuário + antes/depois) no SMSMarica.</p>
+<ul>
+<li>⚠️ Operação destrutiva-ish (muda o paciente do estudo): exigir confirmação e logar; usar Reject/</li>
+</ul>
+<p>  IOCM para reverter se associar errado.</p>
+<ul>
+<li>➡️ Não resolve a causa-raiz (máquina não puxa worklist). O caminho definitivo continua sendo</li>
+</ul>
+<p>  <strong>escrever MWL</strong> para o aparelho real enxergar ([[project_worklist_ups_vs_mwl]]); a conciliação   é a rede de segurança para o que escapar.</p>
+<h2>Alternativas consideradas</h2>
+<ul>
+<li><strong>Operador concilia na arc-ui do dcm4chee</strong> — funciona, mas é fora do SMSMarica, sem nossa régua</li>
+</ul>
+<p>  FHIR, sem auditoria nossa, e exige treinar operador no PACS cru. Descartado como fluxo primário.</p>
+<ul>
+<li><strong>Mudar o StudyInstanceUID do estudo para o pré-gerado</strong> — exige reject+re-store; caro e frágil.</li>
+</ul>
+<p>  Descartado: a solicitação adota o UID real.</p>
+<ul>
+<li><strong>Link a item MWL</strong> — não usamos MWL (gravamos UPS); endpoint não se aplica.</li>
+</ul>
+<hr>
+<h2>Adendo 2026-08-11 — o que a implementação corrigiu desta ADR</h2>
+<p>A coerção prevista aqui foi implementada, mas o spike contra o dcm4chee de produção mostrou que três coisas descritas acima <strong>não são assim</strong>:</p>
+<ol>
+<li><strong><code>POST /studies/{uid}/patient</code> quer o PatientID na QUERY STRING</strong>, não no path nem no corpo:</li>
+</ol>
+<p>   <code>POST /studies/{uid}/patient?PatientID={id}</code> → 204. Com o ID no path devolve 404; no corpo,    400 <code>"Missing Patient ID in query filters"</code>.</p>
+<ol>
+<li><strong><code>PUT /studies/{uid}</code> NÃO troca o paciente.</strong> Ele só atualiza atributos do estudo e recusa</li>
+</ol>
+<p>   corpo com outro paciente: <em>"Patient found using patient identifiers sent in request payload    does not match"</em>. Mover e coagir são <strong>duas</strong> chamadas, nesta ordem.</p>
+<ol>
+<li><strong>A coerção não basta.</strong> Ela propaga <code>PatientID</code> e <code>AccessionNumber</code> para o que o WADO-RS</li>
+</ol>
+<p>   devolve, mas o <strong><code>PatientName</code> continua o antigo</strong> dentro do objeto recuperado — e nem    <code>updatePolicy=OVERWRITE</code> nem <code>REPLACE</code> mudam isso. Ou seja, coagir deixaria o nome de outra    pessoa no arquivo, visível em exportação DICOM e gravação de CD.</p>
+<p>Por (3), a implementação <strong>não usa coerção</strong>: usa <strong>reescrita</strong> — baixa as instâncias, troca a identidade, gera UIDs novos, re-armazena por STOW-RS e então rejeita o original com <code>113038^DCM</code> ("Incorrect Modality Worklist Entry", o código IOCM deste erro; a instalação já tem o AE <code>IOCM_WRONG_MWL</code>) e o apaga.</p>
+<p>Também <strong>cai a premissa</strong> de que "mudar UID no PACS é caro e arriscado, então a solicitação adota o UID real": com reescrita, é o contrário — o UID <strong>precisa</strong> ser novo, porque o antigo está colado ao objeto que está sendo removido.</p>
+<p>Detalhes operacionais e as três opções de correção: <code>docs/pacs-correcao-identidade.md</code>. Código: <code>SMSMarica.Core/Pacs/PacsReescritorEstudoClient.cs</code>.</p>
+</main>
+</body>
+</html>

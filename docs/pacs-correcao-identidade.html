@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Correção de identidade de exame — o que cada opção faz, ponta a ponta</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>Correção de identidade de exame — o que cada opção faz, ponta a ponta</h1>
+<p>Documento operacional: para cada uma das três opções, <strong>o que muda no nosso banco, o que acontece no PACS e o que a técnica precisa fazer no equipamento</strong>. Escrito para que ninguém precise adivinhar o estado do sistema depois de apertar o botão.</p>
+<p>Base técnica: spike executado em 2026-08-11 contra o dcm4chee de produção (ver <code>~/.claude/plans/o-que-poderemos-fazer-pure-twilight.md</code>).</p>
+<h2>Princípio adotado</h2>
+<p><strong>Integridade real, sem máscara.</strong> O objeto DICOM armazenado passa a conter os dados corretos — não basta o índice apontar para a pessoa certa enquanto o arquivo carrega o nome de outra.</p>
+<p>O spike provou que a via barata (<code>POST /studies/{uid}/patient</code> + <code>PUT /studies/{uid}</code>) corrige <code>PatientID</code> e <code>AccessionNumber</code> mas <strong>não</strong> o <code>PatientName</code> dentro do objeto. Por isso a correção usa a <strong>reescrita completa</strong>:</p>
+<p>```</p>
+<ol>
+<li>baixa as instâncias do estudo         (WADO-RS)</li>
+<li>reescreve os atributos de identidade  (pydicom)</li>
+<li>gera SOP Instance UIDs e StudyInstanceUID NOVOS</li>
+<li>re-armazena                            (STOW-RS)</li>
+<li>rejeita o original com 113038^DCM     (IOCM "Incorrect Modality Worklist Entry")</li>
+<li>apaga o original                       (DELETE /studies/{uid})</li>
+</ol>
+<p>```</p>
+<p>O passo 5 não é burocracia: <code>113038^DCM</code> é o código DICOM padrão para <em>"item de worklist errado"</em> — exatamente este erro — e a instalação já tem o AE <code>IOCM_WRONG_MWL</code> provisionado para enxergar o que foi rejeitado por esse motivo. É a trilha de auditoria do próprio PACS.</p>
+<p>&gt; <strong>Por que UIDs novos.</strong> O UID antigo fica colado ao estudo errado. Reaproveitá-lo faria o objeto &gt; corrigido colidir com o que estamos apagando. Com UID novo, o antes e o depois são objetos &gt; distintos, e a rejeição documenta a relação entre eles.</p>
+<hr>
+<h2>Como o item volta para a worklist (vale para as opções 1 e 2)</h2>
+<p>Esta é a parte que precisa estar clara, porque não existe "empurrar" para o equipamento.</p>
+<p><strong>A Modality Worklist é PULL.</strong> O equipamento consulta (C-FIND); o servidor não tem como avisá-lo. Então "devolver à worklist" significa: recriar o item no dcm4chee e a técnica <strong>atualizar a consulta de worklist na estação</strong> — o item reaparece na lista dela.</p>
+<p>O que o sistema faz, automaticamente:</p>
+<div class="tw"><table><thead><tr><th>Passo</th><th>Efeito</th></tr></thead><tbody>
+<tr><td><code>Status</code> → <em>Solicitada</em></td><td>volta a ser candidato da fila de envio</td></tr>
+<tr><td><code>StudyInstanceUID</code> → <strong>novo</strong> pré-gerado</td><td>o UID anterior está queimado no PACS</td></tr>
+<tr><td><code>WorklistItemUid</code>, <code>RealizadoEm</code>, <code>DataEstudo</code> → nulos</td><td>o exame deixa de constar como feito</td></tr>
+<tr><td><code>ProximaTentativaEm</code> → agora</td><td>o worker pega no próximo ciclo</td></tr>
+</tbody></table></div>
+<p>O <code>EnviadorWorklistService</code> roda a cada <strong>15 segundos</strong> e cria o item novo (<code>POST /mwlitems</code>). <strong>Não é preciso reautorizar na recepção</strong> — a fila só exige <code>Status ∈ {Solicitada, Enviada}</code> + <code>ProximaTentativaEm</code> vencido; a autorização vive na <code>Solicitacao</code> e governa apenas o enfileiramento inicial.</p>
+<p>&gt; <strong>Na prática, para a técnica:</strong> aguardar ~15 segundos e atualizar a worklist na estação. &gt; O paciente reaparece na lista como se nunca tivesse sido feito.</p>
+<p>Único caso em que não volta sozinho: se o <code>TipoExame</code> estiver com <code>EnviarParaWorklist</code> desligado — aí não vai à worklist e nem erro aparece. A tela avisa antes de confirmar.</p>
+<hr>
+<h2>Opção 1 — Descartar estudo</h2>
+<p><strong>Quando:</strong> as imagens não servem para ninguém (aquisição abortada, teste, duplicata sem valor).</p>
+<div class="tw"><table><thead><tr><th>Onde</th><th>O que acontece</th></tr></thead><tbody>
+<tr><td><strong>PACS</strong></td><td>Estudo rejeitado com <code>113038^DCM</code> e <strong>apagado</strong>. Some do <code>PACS-CDT</code>.</td></tr>
+<tr><td><strong>Nosso banco</strong></td><td>O exame que o consumiu volta ao estado anterior e <strong>retorna à worklist</strong> (ver acima).</td></tr>
+<tr><td><strong>Laudos</strong></td><td>Rascunhos do estudo são descartados. Havendo laudo <strong>assinado</strong>, a operação é bloqueada.</td></tr>
+<tr><td><strong>Paciente</strong></td><td>Link já enviado é revogado; aviso pendente é cancelado.</td></tr>
+<tr><td><strong>Equipamento</strong></td><td>Item reaparece em ~15 s. <strong>O exame precisa ser refeito.</strong></td></tr>
+</tbody></table></div>
+<h2>Opção 2 — Alterar destino</h2>
+<p><strong>Quando:</strong> o estudo é de outra pessoa, e o dono do registro errado <strong>ainda não fez</strong> o exame dele.</p>
+<div class="tw"><table><thead><tr><th>Onde</th><th>O que acontece</th></tr></thead><tbody>
+<tr><td><strong>PACS</strong></td><td>Estudo <strong>reescrito</strong> com a identidade do destino (PatientID, PatientName, AccessionNumber) e re-armazenado com UIDs novos; o original é rejeitado com <code>113038^DCM</code> e apagado.</td></tr>
+<tr><td><strong>Nosso banco</strong></td><td>O exame <strong>destino</strong> adota o novo StudyUID e vira <em>Realizada</em>, com a data real do DICOM; se ele tinha item de worklist, o item é removido. O exame <strong>origem</strong> volta à worklist.</td></tr>
+<tr><td><strong>Laudos</strong></td><td>Rascunhos descartados; assinado bloqueia.</td></tr>
+<tr><td><strong>Paciente</strong></td><td>Link do destinatário errado revogado. O aviso correto só sai depois da correção.</td></tr>
+<tr><td><strong>Equipamento</strong></td><td>O item da <strong>origem</strong> reaparece (precisa ser feito); o do <strong>destino</strong> some (já está feito).</td></tr>
+</tbody></table></div>
+<h2>Opção 3 — Trocar um pelo outro</h2>
+<p><strong>Quando:</strong> o exame de destino <strong>já tem estudo vinculado</strong>. Enquanto o outro estudo for apenas órfão, não é caso de opção 3 — resolve-se com a opção 2 seguida da <strong>associação manual</strong>, que o fluxo atual já cobre.</p>
+<p>Faz o mesmo da opção 2 para o estudo contaminado <strong>e</strong>, no mesmo movimento, traz o estudo do destino para a origem. Ao informar a solicitação de destino, a tela <strong>sugere</strong> o estudo a trazer de volta (vinculado ao destino, ou órfão cujo accession/PatientID aponte para ele) — sugestão marcada, que o ADM pode desmarcar.</p>
+<div class="tw"><table><thead><tr><th>Onde</th><th>O que acontece</th></tr></thead><tbody>
+<tr><td><strong>PACS</strong></td><td><strong>Os dois</strong> estudos são reescritos com a identidade correta e re-armazenados; os dois originais são rejeitados com <code>113038^DCM</code> e apagados.</td></tr>
+<tr><td><strong>Nosso banco</strong></td><td>Cada exame adota o UID do seu estudo novo e fica <em>Realizada</em>.</td></tr>
+<tr><td><strong>Worklist</strong></td><td><strong>Ninguém volta para a worklist</strong> — os dois exames foram feitos. Itens pendentes de ambos são removidos.</td></tr>
+<tr><td><strong>Equipamento</strong></td><td>Nada a fazer. Nenhum exame precisa ser refeito.</td></tr>
+</tbody></table></div>
+<hr>
+<h2>O caso Patricia / João Bento é a opção 2, em dois tempos</h2>
+<p>Decisão do operador: <strong>alterar destino</strong> para o estudo contaminado e, <strong>depois</strong>, resolver o estudo do João pela <strong>associação manual</strong> que já existe. (Se a associação viesse primeiro, o exame do João já teria estudo e o caso viraria opção 3.)</p>
+<div class="tw"><table><thead><tr><th>Tempo</th><th>Ação</th><th>Resultado</th></tr></thead><tbody>
+<tr><td>1</td><td><strong>Alterar destino</strong> do estudo <code>2.25.3261…</code> para o exame <code>260804109</code></td><td>Estudo reescrito para a Patricia; ela vira <em>Realizada</em> e sai da worklist. O exame do João é liberado e volta à worklist.</td></tr>
+<tr><td>2</td><td><strong>Associar</strong> o estudo órfão <code>1.2.392…8116424</code> ao exame <code>260804114</code></td><td>O exame do João vira <em>Realizada</em> e sai da worklist.</td></tr>
+</tbody></table></div>
+<p><strong>Efeito transitório esperado:</strong> entre os tempos 1 e 2, o João reaparece na worklist da estação (~15 s após o passo 1) e some quando a associação é feita. Se a técnica estiver olhando a lista nesse intervalo, verá um paciente que não deve ser examinado. Fazer os dois passos em sequência.</p>
+<p>O aviso de "exame liberado" sai para a Patricia depois da correção; o link entregue ao João já está revogado desde 11/08 14:44 UTC.</p>
+<p><strong>A origem não volta à worklist neste caso.</strong> O "alterar destino" ganha a opção <strong>"a origem já fez o exame"</strong>: libera o exame do João sem recriar o item de worklist, porque ele será resolvido pela associação no passo 2. Sem isso, ele reapareceria na estação por alguns minutos e a técnica veria um paciente que não deve ser examinado.</p>
+<h2>Estudo "voando": a associação manual passa a corrigir o DICOM</h2>
+<p>O estudo que chega sem worklist (chaves digitadas à mão no equipamento) carrega identificadores inventados. Até aqui a associação resolvia isso <strong>só do nosso lado</strong> — o objeto no PACS permanecia como veio, e a regra era explicitamente "nunca reescreve o DICOM".</p>
+<p><strong>Isso muda.</strong> Ao associar, o objeto passa a ser reescrito com a identidade do pedido — <code>PatientID</code>, <code>AccessionNumber</code> e <code>PatientName</code> — pela mesma máquina da opção 2 (reescreve, re-armazena com UIDs novos, rejeita e apaga o original).</p>
+<p>Vale para todo estudo voando, não só para este caso: é o que fecha a lacuna entre "o sistema mostra certo" e "o arquivo está certo". No caso do João, o estudo sai de <code>PatientID 123456789 / accession vazio</code> para <code>PatientID = CPF / accession 260804114</code>.</p>
+<hr>
+<h2>O que fica registrado</h2>
+<ul>
+<li><strong>No PACS:</strong> o par rejeição + objeto novo. O que foi rejeitado por worklist errada é consultável</li>
+</ul>
+<p>  pelo AE <code>IOCM_WRONG_MWL</code>.</p>
+<ul>
+<li><strong>No nosso banco:</strong> entrada em <code>registro_auditoria</code> com estado antes e depois, motivo digitado e</li>
+</ul>
+<p>  quem executou — hoje associar/desassociar nem entram nessa trilha; esta operação entra sempre.</p>
+<ul>
+<li><strong>No incidente:</strong> o <code>ExameIncidenteIdentidade</code> que abriu a quarentena é fechado como <em>Resolvido</em>,</li>
+</ul>
+<p>  com a nota da correção.</p>
+</main>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Incidente 2026-08-11 — Troca de identidade em mamografia (worklist errada)</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>Incidente 2026-08-11 — Troca de identidade em mamografia (worklist errada)</h1>
+<p>&gt; <strong>Classificação:</strong> segurança do paciente (identidade trocada em exame de imagem) + exposição de &gt; dado de saúde (LGPD). &gt; <strong>Status:</strong> vazamento <strong>contido</strong>; correção do vínculo <strong>pendente</strong>. &gt; <strong>Levantamento:</strong> 2026-08-11, só-leitura no Postgres de PROD + QIDO no dcm4chee.</p>
+<h2>1. O que aconteceu</h2>
+<p>No mamógrafo do CDT, em 11/08/2026, a técnica selecionou o item de Modality Worklist do paciente <strong>JOÃO BENTO RIBEIRO</strong> e adquiriu as imagens da paciente <strong>PATRICIA FERNANDA DE ALMEIDA BANKS</strong>.</p>
+<p>O equipamento copiou do item de worklist o <code>PatientName</code>, o <code>PatientID</code> e o <code>AccessionNumber</code> do João. As imagens da Patricia chegaram ao PACS <strong>internamente coerentes</strong> com a identidade do João — por isso a conciliação automática do SMSMarica aceitou o estudo sem qualquer sinal de erro, promoveu o exame do João a <em>Realizada</em> e disparou o WhatsApp de "exame liberado" <strong>para o João</strong>.</p>
+<p>Os dois exames eram MAMOGRAFIA BILATERAL e estavam na worklist da mesma estação — o que explica mecanicamente a confusão.</p>
+<h2>2. Os envolvidos</h2>
+<div class="tw"><table><thead><tr><th>Papel</th><th>Paciente</th><th>CPF</th><th>Exame</th><th>Accession</th><th>Status hoje</th></tr></thead><tbody>
+<tr><td><strong>A</strong> — dono errado do registro</td><td>JOÃO BENTO RIBEIRO (86a)</td><td>010.745.887-03</td><td><code>019fcc69-9540…</code></td><td><code>260804114</code></td><td><strong>Realizada</strong> (com as imagens da Patricia)</td></tr>
+<tr><td><strong>B</strong> — dona real das imagens</td><td>PATRICIA FERNANDA DE ALMEIDA BANKS</td><td>045.288.227-33</td><td><code>019fcc69-8fd0…</code></td><td><code>260804109</code></td><td><strong>Recebida</strong> — item ainda na worklist</td></tr>
+</tbody></table></div>
+<p><code>fhir.patient</code>: João <code>5f331a20-c0f4-410f-b796-7158316787cc</code> · Patricia <code>54002b3d-b040-45d9-9917-f5c9828c6413</code>.</p>
+<h2>3. Os três estudos no PACS</h2>
+<p>``` CONTAMINADO  (imagens da PATRICIA, carimbadas JOÃO)   StudyUID  2.25.326124362417603501160858399380646188215      ← UID PRÉ-GERADO por nós   Accession 260804114        PatientID 01074588703 (CPF do João)   Nome      RIBEIRO^JOAO BENTO   11/08/2026 09:40:31    MG    4 séries / 4 instâncias</p>
+<p>REFEITO      (imagens REAIS do JOÃO)   StudyUID  1.2.392.200036.9125.2.24823725282117250.65139678144.8116424   ← UID da MÁQUINA (Fuji)   Accession (VAZIO)          PatientID 123456789   Nome      JOAO^BENTO^RIBEIRO   11/08/2026 11:02:24    MG    4 séries / 4 instâncias         → ÓRFÃO no PACS</p>
+<p>PATRICIA     — nenhum estudo sob o CPF nem sob o nome dela. As imagens dela são o CONTAMINADO. ```</p>
+<p>&gt; <strong>Correção de premissa:</strong> o <code>123456789</code> combinado como contorno foi digitado no campo &gt; <strong>PatientID (0010,0020)</strong>, não no AccessionNumber — que ficou <strong>vazio</strong>. Não muda o desfecho &gt; (o estudo é órfão de qualquer forma), mas muda o caminho da conciliação.</p>
+<h2>4. Extensão do estrago</h2>
+<div class="tw"><table><thead><tr><th>Camada</th><th>Situação</th></tr></thead><tbody>
+<tr><td>PACS</td><td>Estudo da Patricia arquivado sob a identidade do João</td></tr>
+<tr><td>Vínculo local</td><td><strong>Nenhuma linha em <code>exame_associacao</code></strong> — o vínculo é <strong>implícito/estrutural</strong></td></tr>
+<tr><td>Laudo</td><td><strong>Nenhum laudo</strong> no estudo contaminado. Nada a descartar; nada assinado</td></tr>
+<tr><td>Comunicação</td><td>WhatsApp <strong>ENVIADO E ENTREGUE</strong> ao João em 11/08 12:51:33</td></tr>
+<tr><td>Sessão do app</td><td><strong>Nenhuma</strong> — o link nunca foi usado</td></tr>
+<tr><td>Worklist</td><td>Item do João consumido; item da Patricia <strong>ainda pendente</strong></td></tr>
+</tbody></table></div>
+<h3>4.1 A confirmação técnica que importa</h3>
+<p>Não existe linha em <code>exame_associacao</code> para o estudo contaminado. Isso confirma empiricamente o diagnóstico: quando o estudo volta com o <code>StudyInstanceUID</code> <strong>pré-gerado</strong>, a conciliação (<code>ExameAssociacaoService.cs:363</code>) o trata como <em>worklist genuíno</em> e cria um vínculo <strong>implícito</strong>, gravado na coluna <code>exame_imagem.study_instance_uid</code> (UNIQUE).</p>
+<p><strong>Consequência operacional: nenhuma ferramenta existente hoje alcança este caso.</strong> Não há o que "desassociar" — o botão da tela de PACS não vê esse vínculo.</p>
+<h2>5. Contenção executada</h2>
+<p><strong>2026-08-11 14:44 UTC — magic-link revogado</strong> (autorizado explicitamente pelo operador).</p>
+<p>``<code> cidadao_login_link  019ff0e0-b14d-75f3-b2da-5e1c431a448d   destino    /exames?exame=019fcc69-9540-7dfd-80fe-e9c0827beeac   expira_em  14/08 12:51  →  11/08 14:44   (antecipado = revogado)   usado_em   NULL  (antes e depois) </code>``</p>
+<p>Único link da solicitação; após o UPDATE, <code>ativo = false</code>.</p>
+<p><strong>Não houve vazamento consumado.</strong> A mensagem foi entregue ao celular do João, mas o link nunca foi aberto e nenhuma sessão foi criada. A revogação fechou a janela antes do clique.</p>
+<p>&gt; <strong>O que teria acontecido se ele tivesse clicado:</strong> o link é um <em>magic-link que autentica</em>. Um &gt; clique abriria a sessão do prontuário do João já apontando para o exame — exibindo a mamografia da &gt; Patricia. Ver Fase 3 do plano (gate de CPF).</p>
+<p>Nada mais foi escrito: exame, status, worklist e PACS estão exatamente como estavam.</p>
+<h2>6. O que falta corrigir</h2>
+<p>Três peças, e a do meio só destrava depois da primeira:</p>
+<ol>
+<li><strong>Estudo contaminado → Patricia.</strong> Coagir no dcm4chee (<code>PatientID</code> 04528822733, nome</li>
+</ol>
+<p>   <code>BANKS^PATRICIA FERNANDA DE ALMEIDA</code>, <code>AccessionNumber</code> 260804109), liberar o    <code>study_instance_uid</code> do exame do João e atribuí-lo ao exame da Patricia (<em>Realizada</em>, data do    estudo 11/08 09:40). Remover o item dela da worklist.</p>
+<ol>
+<li><strong>Estudo refeito → João.</strong> Associação explícita do UID <code>1.2.392.200036…8116424</code> ao exame</li>
+</ol>
+<p>   <code>019fcc69-9540…</code>, guardando o PatientID DICOM original (<code>123456789</code>) como snapshot.</p>
+<ol>
+<li><strong>Comunicações.</strong> Só depois de 1 e 2 os avisos corretos devem sair — para a Patricia (exame</li>
+</ol>
+<p>   liberado) e, se aplicável, para o João sobre o exame refeito.</p>
+<p>É exatamente a <strong>opção 3 (trocar um pelo outro)</strong> do plano de correção — com a ressalva de que o estudo que volta para o João <strong>não tem accession</strong> e tem UID de máquina.</p>
+<h2>7. Por que passou</h2>
+<ul>
+<li>A conciliação é determinística e confia no <code>AccessionNumber</code>/<code>StudyInstanceUID</code> que voltam do</li>
+</ul>
+<p>  equipamento. Nesse erro, <strong>todos eles são coerentes — e todos estão errados</strong>. Não havia sinal.</p>
+<ul>
+<li>Dois itens de MAMOGRAFIA BILATERAL na worklist da mesma estação, no mesmo turno.</li>
+<li>Nenhuma checagem cruzada entre "quem passou pela recepção" e "de quem chegou estudo".</li>
+</ul>
+<p><strong>O detector proposto teria pego:</strong> ao fim do dia, Patricia estava autorizada, com item pendente na worklist e <strong>sem estudo</strong>; João tinha estudo <em>Realizada</em>. Esse par é a assinatura do erro.</p>
+<p><strong>A implausibilidade clínica também sinalizava:</strong> mamografia bilateral em paciente do sexo masculino, 86 anos.</p>
+<h2>8. Ações</h2>
+<div class="tw"><table><thead><tr><th>#</th><th>Ação</th><th>Estado</th></tr></thead><tbody>
+<tr><td>1</td><td>Revogar o magic-link entregue ao paciente errado</td><td><strong>FEITO</strong> 11/08 14:44 UTC</td></tr>
+<tr><td>2</td><td>Gate de CPF nas 3 portas (link, download público, cache do app)</td><td>Implementado, não deployado</td></tr>
+<tr><td>3</td><td>Quarentena de exame acionável por qualquer usuário</td><td>Implementado, não deployado</td></tr>
+<tr><td>4</td><td>Motor de correção de identidade (3 opções, só ADM)</td><td>Implementado, não deployado</td></tr>
+<tr><td>5</td><td>Corrigir as duas peças deste caso</td><td><strong>PENDENTE</strong> — depende do deploy</td></tr>
+<tr><td>6</td><td>Detector automático (par órfão da recepção)</td><td>Implementado, não deployado</td></tr>
+<tr><td>7</td><td>Varredura retroativa por outros casos</td><td><strong>PENDENTE</strong> — rodar em modo relatório</td></tr>
+</tbody></table></div>
+<p><strong>Como corrigir este caso quando a ferramenta estiver no ar</strong> (decisão do operador — opção 2 em dois tempos, ver <code>docs/pacs-correcao-identidade.md</code>):</p>
+<ol>
+<li>Em <em>Exames de Imagem → Corrigir Identidade</em>, carregar o estudo <code>2.25.3261…</code> com destino</li>
+</ol>
+<p>   <code>260804109</code> (Patricia). Ação <strong>Alterar destino</strong>, marcando <strong>"o paciente que estava errado já    fez o exame dele"</strong> — assim o João não reaparece na lista do aparelho.</p>
+<ol>
+<li>Na tela de exames, <strong>Associar</strong> o estudo <code>1.2.392…8116424</code> ao pedido <code>260804114</code> (João). A</li>
+</ol>
+<p>   associação agora também corrige o DICOM, então o <code>PatientID 123456789</code> e o accession vazio    viram os dados certos dele.</p>
+<p>Plano completo: <code>~/.claude/plans/o-que-poderemos-fazer-pure-twilight.md</code>.</p>
+</main>
+</body>
+</html>
