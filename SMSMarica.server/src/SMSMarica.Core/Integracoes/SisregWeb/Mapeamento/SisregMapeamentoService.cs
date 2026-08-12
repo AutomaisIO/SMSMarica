@@ -83,7 +83,8 @@ public sealed class SisregMapeamentoService(
         var xmlProfissionais = await sessao.GetAsync(
             CaminhoAjax,
             new Dictionary<string, string> { ["BUSCA"] = "PROFISSIONAIS_POR_UPS", ["AJAX_UPS"] = cnes },
-            cancellationToken);
+            cancellationToken,
+            SemLinhas);
         requisicoes++;
 
         var doSisreg = SisregAjaxParser.LerLinhas(xmlProfissionais);
@@ -151,7 +152,8 @@ public sealed class SisregMapeamentoService(
                     ["AJAX_CPF"] = cpf,
                     ["AJAX_UPS"] = cnes,
                 },
-                cancellationToken);
+                cancellationToken,
+                SemLinhas);
             requisicoes++;
 
             var procedimentos = SisregAjaxParser.LerLinhas(xmlProcedimentos);
@@ -424,6 +426,18 @@ public sealed class SisregMapeamentoService(
 
         return await query.OrderBy(x => x.Nome).ToListAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// Resposta do AJAX sem nenhuma linha — o sintoma de sessão derrubada que o detector de HTML
+    /// não vê, porque aqui o SISREG devolve <c>&lt;ROOT/&gt;</c> e não a tela de login. Entregue à
+    /// sessão para ela relogar e repetir; se voltar vazio de novo, aí o vazio é real.
+    ///
+    /// <para>Vale também para a lista de procedimentos de um profissional: sem isto, uma sessão
+    /// que caísse no meio do mapeamento faria todos os profissionais restantes voltarem com zero
+    /// procedimentos — e a reconciliação marcaria os procedimentos deles como <c>Ausente</c>, em
+    /// silêncio, como se o SISREG os tivesse descadastrado.</para>
+    /// </summary>
+    private static bool SemLinhas(string xml) => SisregAjaxParser.LerLinhas(xml).Count == 0;
 
     private static string SoDigitos(string valor) => new([.. valor.Where(char.IsDigit)]);
 

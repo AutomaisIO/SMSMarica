@@ -29,8 +29,22 @@ public interface ISisregWebSessao
     /// <summary>POST de formulário autenticado. Retorna o HTML.</summary>
     Task<string> PostFormAsync(string caminho, IReadOnlyDictionary<string, string> campos, CancellationToken cancellationToken);
 
-    /// <summary>GET autenticado (usado pelo <c>sisreg_ajax</c>, que é GET com querystring).</summary>
-    Task<string> GetAsync(string caminho, IReadOnlyDictionary<string, string>? query, CancellationToken cancellationToken);
+    /// <summary>
+    /// GET autenticado (usado pelo <c>sisreg_ajax</c>, que é GET com querystring).
+    ///
+    /// <para><paramref name="pareceSessaoCaida"/> existe porque a sessão cai de duas formas e só
+    /// uma aparece no HTML. O <c>sisreg_ajax</c> responde <c>&lt;ROOT/&gt;</c> vazio quando a
+    /// sessão morreu — que não casa com nenhum marcador de
+    /// <see cref="CadsusHtmlParser.SessaoInvalida"/> e, à primeira vista, é idêntico a "não há
+    /// dados". Sem isto, o relogin nunca dispara e a sessão fica morta em memória com
+    /// <c>Logado = true</c>: toda chamada seguinte devolve vazio até alguém reiniciar o serviço.
+    /// Quem chama sabe diferenciar; aqui só se reage.</para>
+    /// </summary>
+    Task<string> GetAsync(
+        string caminho,
+        IReadOnlyDictionary<string, string>? query,
+        CancellationToken cancellationToken,
+        Func<string, bool>? pareceSessaoCaida = null);
 }
 
 public sealed class SisregWebSessao(
@@ -55,6 +69,12 @@ public sealed class SisregWebSessao(
     /// </summary>
     public static bool EhCaptcha(Exception excecao) =>
         excecao is ValidacaoException validacao && validacao.Erros.ContainsKey(CodigoCaptcha);
+
+    /// <summary>
+    /// Intervalo mínimo entre relogins disparados por <i>suspeita</i> (resposta vazia). Segura o
+    /// caso em que o vazio é real: sem ele, um mapeamento de 97 profissionais faria 97 logins.
+    /// </summary>
+    private static readonly TimeSpan EsperaEntreReloginsPorSuspeita = TimeSpan.FromMinutes(1);
 
     /// <summary>Sessões vivas indexadas pelo operador da credencial (ver nota da classe).</summary>
     private readonly ConcurrentDictionary<string, SessaoSisreg> _sessoes =
@@ -96,7 +116,10 @@ public sealed class SisregWebSessao(
     }
 
     public async Task<string> GetAsync(
-        string caminho, IReadOnlyDictionary<string, string>? query, CancellationToken cancellationToken)
+        string caminho,
+        IReadOnlyDictionary<string, string>? query,
+        CancellationToken cancellationToken,
+        Func<string, bool>? pareceSessaoCaida = null)
     {
         var creds = await CarregarCredenciaisAsync(cancellationToken);
         var sessao = ObterSessao(creds);
@@ -108,10 +131,22 @@ public sealed class SisregWebSessao(
             await GarantirLoginAsync(sessao, creds, cancellationToken);
 
             var html = await GetRawAsync(sessao, caminho, query, cancellationToken);
-            if (CadsusHtmlParser.SessaoInvalida(html))
+
+            // A suspeita (resposta vazia) é palpite, não certeza: pode ser dado que não existe
+            // mesmo. Por isso ela reloga no máximo uma vez por minuto — senão uma unidade
+            // legitimamente vazia viraria uma tempestade de logins, que é justamente o que
+            // aproxima o CAPTCHA. O marcador de HTML continua valendo sempre: aquele é certeza.
+            var suspeita = pareceSessaoCaida is not null
+                && pareceSessaoCaida(html)
+                && DateTime.UtcNow - sessao.UltimoLoginEm > EsperaEntreReloginsPorSuspeita;
+
+            if (CadsusHtmlParser.SessaoInvalida(html) || suspeita)
             {
                 sessao.Logado = false;
                 if (!creds.AutoLogin) throw FalhaReautenticacaoDesativada();
+                logger.LogInformation(
+                    "SISREG: sessão caiu ({Operador}) — refazendo login{Motivo}.",
+                    creds.Usuario, suspeita ? " (resposta vazia do AJAX)" : string.Empty);
                 await LoginAsync(sessao, creds.Usuario, creds.Senha, cancellationToken);
                 html = await GetRawAsync(sessao, caminho, query, cancellationToken);
             }
@@ -202,6 +237,7 @@ public sealed class SisregWebSessao(
         }
 
         sessao.Logado = true;
+        sessao.UltimoLoginEm = DateTime.UtcNow;
     }
 
     private static async Task<(string html, Uri finalUrl, Uri? location)> PostRawAsync(
@@ -291,6 +327,9 @@ public sealed class SisregWebSessao(
         public HttpClient Http { get; } = CriarHttp();
         public Uri BaseUri { get; set; } = baseUri;
         public bool Logado { get; set; }
+
+        /// <summary>Quando o último login concluiu (UTC). Freia o relogin por suspeita.</summary>
+        public DateTime UltimoLoginEm { get; set; }
 
         private static HttpClient CriarHttp()
         {
