@@ -2,6 +2,8 @@ using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using SMSMarica.Core.Atendimentos;
+using SMSMarica.Core.Atendimentos.Fhir;
+using Hl7.Fhir.Model;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Common.Tempo;
 using SMSMarica.Core.Conversas;
@@ -22,6 +24,7 @@ namespace SMSMarica.Core.PesquisasSatisfacao;
 public sealed class PesquisasSatisfacaoService(
     SmsMaricaDbContext db,
     IAtendimentosService atendimentos,
+    IEncounterFhirClient fhir,
     IUsuarioAtualAccessor usuarioAtual,
     IPacientesService pacientes,
     IWhatsAppCliente whatsApp,
@@ -116,6 +119,13 @@ public sealed class PesquisasSatisfacaoService(
         await db.SaveChangesAsync(ct);
 
         return envio;
+    }
+
+    /// <summary>Id de uma referência FHIR (<c>Patient/{guid}</c>). Null quando não dá para ler.</summary>
+    private static Guid? IdDaReferencia(string? referencia)
+    {
+        var ultimo = referencia?.Split('/').LastOrDefault();
+        return Guid.TryParse(ultimo, out var id) ? id : null;
     }
 
     /// <summary>Sr./Sra. + primeiro nome; sem sexo no cadastro, só o primeiro nome.</summary>
@@ -282,6 +292,97 @@ public sealed class PesquisasSatisfacaoService(
             < 60 => "45–59",
             _ => "60+",
         };
+    }
+
+    /// <summary>
+    /// Desfechos que NÃO recebem pesquisa (códigos de <c>Tipo_Saida</c> do Klinikos): óbito (6),
+    /// chegou cadáver (8), evasão (3) e evasão sem atendimento médico (12), boletim extraviado
+    /// (9) e baixa administrativa (13, 16).
+    ///
+    /// <para>Óbito é o que mais importa: convidar a família a avaliar o atendimento de quem
+    /// morreu não tem justificativa possível. Evasão não teve atendimento a avaliar.</para>
+    /// </summary>
+    private static readonly HashSet<string> DesfechosSemPesquisa = ["6", "8", "3", "12", "9", "13", "16"];
+
+    /// <summary>Permanência acima disto é fechamento administrativo tardio, não permanência.</summary>
+    private static readonly TimeSpan PermanenciaMaxima = TimeSpan.FromHours(24);
+
+    public async Task<int> ProcessarGatilhoAsync(CancellationToken ct = default)
+    {
+        var configs = await db.UnidadePesquisaConfigs
+            .Where(c => c.EnvioWhatsAppAtivo && c.LinkResponder != null)
+            .ToListAsync(ct);
+        if (configs.Count == 0) return 0;
+
+        var unidades = await db.Unidades.AsNoTracking()
+            .Where(u => configs.Select(c => c.UnidadeId).Contains(u.Id) && u.Cnes != null)
+            .ToDictionaryAsync(u => u.Id, u => u.Cnes!, ct);
+
+        // Organização → CNES, uma vez só: o Encounter aponta serviceProvider por id, e é o CNES
+        // que casa com a unidade (ADR-0039).
+        var orgCnes = (await fhir.BuscarOrganizacoesAsync(ct)).Entry
+            .Select(e => e.Resource).OfType<Organization>()
+            .Where(o => o.Id is not null)
+            .Select(o => new
+            {
+                Id = o.Id!,
+                Cnes = o.Identifier.FirstOrDefault(i => i.System == "https://fhir.saude.gov.br/sid/cnes")?.Value,
+            })
+            .Where(x => x.Cnes is not null)
+            .ToDictionary(x => x.Id, x => x.Cnes!, StringComparer.OrdinalIgnoreCase);
+
+        var enviados = 0;
+        foreach (var c in configs)
+        {
+            if (!unidades.TryGetValue(c.UnidadeId, out var cnes)) continue;
+
+            var ate = DateTime.UtcNow.AddHours(-c.HorasAposAtendimento);
+            // Sem marca d'água ainda: começa agora, não no passado. Ligar o gatilho não pode
+            // disparar um lote retroativo para quem foi atendido semanas atrás.
+            var de = c.UltimoFimProcessadoEm ?? ate.AddMinutes(-1);
+            if (ate <= de) continue;
+
+            var bundle = await fhir.BuscarEncerradosAsync(de, ate, ct);
+            foreach (var enc in bundle.Entry.Select(e => e.Resource).OfType<Encounter>())
+            {
+                if (!Elegivel(enc, cnes, orgCnes)) continue;
+                if (IdDaReferencia(enc.Subject?.Reference) is not { } pid) continue;
+                if (!Guid.TryParse(enc.Id, out var encounterId)) continue;
+
+                try
+                {
+                    await EnviarAsync(pid, encounterId, ct);
+                    enviados++;
+                }
+                catch (Exception ex) when (ex is ConflitoException or NaoEncontradoException)
+                {
+                    // Já convidado, sem telefone, sem unidade: são casos esperados e individuais.
+                    // Um deles não pode segurar a marca d'água e travar a fila inteira.
+                }
+            }
+
+            c.UltimoFimProcessadoEm = ate;
+            await db.SaveChangesAsync(ct);
+        }
+
+        return enviados;
+    }
+
+    /// <summary>Regras de quem recebe — ver <see cref="DesfechosSemPesquisa"/> e a guarda de janela.</summary>
+    private static bool Elegivel(Encounter enc, string cnes, IReadOnlyDictionary<string, string> orgCnes)
+    {
+        // A varredura é por janela, não por unidade — o hub devolve todas. Sem este filtro, uma
+        // unidade com o gatilho ligado dispararia convite de atendimento das outras.
+        if (IdDaReferencia(enc.ServiceProvider?.Reference)?.ToString() is not { } orgId) return false;
+        if (!orgCnes.TryGetValue(orgId, out var cnesDoEnc) || cnesDoEnc != cnes) return false;
+        if (enc.Period?.Start is null || enc.Period?.End is null) return false;
+        if (!DateTimeOffset.TryParse(enc.Period.Start, out var ini)) return false;
+        if (!DateTimeOffset.TryParse(enc.Period.End, out var fim)) return false;
+        if (fim - ini > PermanenciaMaxima) return false;
+
+        var tipoSaida = enc.Hospitalization?.DischargeDisposition?.Coding
+            ?.FirstOrDefault(x => x.System == "urn:klinikos:tiposaida")?.Code;
+        return tipoSaida is null || !DesfechosSemPesquisa.Contains(tipoSaida);
     }
 
     /// <summary>

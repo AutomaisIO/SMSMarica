@@ -42,6 +42,12 @@ public interface IPesquisasSatisfacaoService
     Task<PesquisaConfigDto> SalvarConfigAsync(
         Guid unidadeId, SalvarPesquisaConfigRequest request, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Varre os atendimentos encerrados e dispara os convites vencidos, unidade a unidade.
+    /// Chamado pelo motor de fundo; devolve quantos saíram.
+    /// </summary>
+    Task<int> ProcessarGatilhoAsync(CancellationToken cancellationToken = default);
+
     /// <summary>Painel da unidade: enviadas, entregues, vistas, clicadas e perfil de quem clicou.</summary>
     Task<PesquisaPainelDto> ObterPainelAsync(
         Guid unidadeId, int dias, CancellationToken cancellationToken = default);

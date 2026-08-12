@@ -1,4 +1,4 @@
-using Hl7.Fhir.Model;
+﻿using Hl7.Fhir.Model;
 using SMSMarica.Core.Pacientes.Fhir;
 
 namespace SMSMarica.Core.Atendimentos.Fhir;
@@ -7,6 +7,9 @@ public sealed class EncounterFhirClient(HttpClient http) : IEncounterFhirClient
 {
     public Task<Bundle> BuscarEncountersAsync(Guid pacienteId, CancellationToken ct = default) =>
         BuscarAsync($"fhir/Encounter?patient={pacienteId}", ct);
+
+    public Task<Bundle> BuscarEncerradosAsync(DateTimeOffset de, DateTimeOffset ate, CancellationToken ct = default) =>
+        BuscarAsync($"fhir/Encounter?fim-de={Uri.EscapeDataString(de.ToString("O"))}&fim-ate={Uri.EscapeDataString(ate.ToString("O"))}", ct);
 
     public Task<Bundle> BuscarConditionsAsync(Guid pacienteId, CancellationToken ct = default) =>
         BuscarAsync($"fhir/Condition?patient={pacienteId}", ct);

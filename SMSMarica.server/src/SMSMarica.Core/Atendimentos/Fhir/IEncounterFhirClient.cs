@@ -1,4 +1,4 @@
-using Hl7.Fhir.Model;
+﻿using Hl7.Fhir.Model;
 
 namespace SMSMarica.Core.Atendimentos.Fhir;
 
@@ -18,4 +18,10 @@ public interface IEncounterFhirClient
     /// uma requisição por atendimento.
     /// </summary>
     Task<Bundle> BuscarOrganizacoesAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Atendimentos ENCERRADOS na janela <c>[de, ate)</c> — quem teve alta no intervalo.
+    /// Semiaberta de propósito: quem cai na borda não entra em dois ciclos.
+    /// </summary>
+    Task<Bundle> BuscarEncerradosAsync(DateTimeOffset de, DateTimeOffset ate, CancellationToken ct = default);
 }

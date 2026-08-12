@@ -433,6 +433,7 @@ public static class DependencyInjection
             });
         services.AddScoped<Atendimentos.IAtendimentosService, Atendimentos.AtendimentosService>();
         services.AddScoped<PesquisasSatisfacao.IPesquisasSatisfacaoService, PesquisasSatisfacao.PesquisasSatisfacaoService>();
+        services.AddHostedService<PesquisasSatisfacao.PesquisaSatisfacaoScheduler>();
 
         // ---- Sincronização de PEPs (importação Salux/outros → hub FHIR) — ADR-0014 ----
         services.AddHttpClient<Integracoes.Pep.Fhir.IHubFhirEscritor, Integracoes.Pep.Fhir.HubFhirEscritor>(client =>

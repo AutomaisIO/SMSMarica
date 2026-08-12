@@ -1,4 +1,4 @@
-using Hl7.Fhir.Model;
+﻿using Hl7.Fhir.Model;
 using Microsoft.AspNetCore.Mvc;
 using Automais.Fhir.Api.Infra;
 using Automais.Fhir.Core.Common.Excecoes;
@@ -67,18 +67,25 @@ public sealed class EncounterController(IEncounterService service) : ControllerB
     /// <summary>
     /// GET /fhir/Encounter?patient={id}&amp;status=finished&amp;identifier=system|value —
     /// atendimentos do paciente (timeline) ou lookup pontual por identifier de negócio.
+    ///
+    /// <para><c>fim-de</c>/<c>fim-ate</c> varrem por FIM de atendimento, em janela semiaberta
+    /// <c>[de, ate)</c> — é como se descobre quem teve alta num intervalo. Não é o <c>date</c>
+    /// do R4, que casa por sobreposição do período inteiro.</para>
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> Buscar(
         [FromQuery] string? patient,
         [FromQuery] string? status,
         [FromQuery] string? identifier,
+        [FromQuery(Name = "fim-de")] DateTimeOffset? fimDe,
+        [FromQuery(Name = "fim-ate")] DateTimeOffset? fimAte,
         CancellationToken ct)
     {
         string? system = null, value = null;
         if (!string.IsNullOrWhiteSpace(identifier))
             (system, value) = FhirIdentifier.ParseParam(identifier);
-        var bundle = await service.BuscarAsync(new EncounterBusca(FhirRef.ParseId(patient), status, system, value), ct);
+        var bundle = await service.BuscarAsync(
+            new EncounterBusca(FhirRef.ParseId(patient), status, system, value, fimDe, fimAte), ct);
         return FhirResponse.Recurso(bundle);
     }
 

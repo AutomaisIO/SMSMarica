@@ -1,4 +1,4 @@
-using Hl7.Fhir.Model;
+﻿using Hl7.Fhir.Model;
 using Microsoft.EntityFrameworkCore;
 using Automais.Fhir.Core.Common.Excecoes;
 using Automais.Fhir.Core.Fhir;
@@ -120,6 +120,12 @@ public sealed class EncounterService(FhirDbContext db, TimeProvider clock) : IEn
             query = query.Where(e => e.Status == filtro.Status);
         if (!string.IsNullOrWhiteSpace(filtro.IdentifierSystem) && !string.IsNullOrWhiteSpace(filtro.IdentifierValue))
             query = query.Where(e => e.IdentifierSystem == filtro.IdentifierSystem && e.IdentifierValue == filtro.IdentifierValue);
+        // Semiaberta: um atendimento não pode cair em duas janelas consecutivas e render dois
+        // convites. Quem varre por faixa depende disso para não duplicar na borda.
+        if (filtro.FimDe is { } fimDe)
+            query = query.Where(e => e.PeriodEnd != null && e.PeriodEnd >= fimDe);
+        if (filtro.FimAte is { } fimAte)
+            query = query.Where(e => e.PeriodEnd != null && e.PeriodEnd < fimAte);
 
         // Timeline: mais recente primeiro.
         var rows = await query

@@ -1,4 +1,4 @@
-using Hl7.Fhir.Model;
+﻿using Hl7.Fhir.Model;
 
 namespace Automais.Fhir.Core.Encounters;
 
@@ -7,7 +7,18 @@ public sealed record EncounterBusca(
     Guid? PatientId = null,
     string? Status = null,
     string? IdentifierSystem = null,
-    string? IdentifierValue = null);
+    string? IdentifierValue = null,
+    /// <summary>
+    /// Janela do FIM do atendimento (<c>period.end</c>), semiaberta: <c>[de, ate)</c>.
+    ///
+    /// <para>Parâmetro próprio, não o <c>date</c> do R4 — o <c>date</c> padrão casa por
+    /// SOBREPOSIÇÃO com o período inteiro, e quem pergunta aqui quer especificamente
+    /// <b>quem terminou</b> na janela. Nasceu do gatilho da pesquisa de satisfação, que precisa
+    /// achar os atendimentos encerrados há N horas; serve a qualquer coisa que dependa do
+    /// evento de alta.</para>
+    /// </summary>
+    DateTimeOffset? FimDe = null,
+    DateTimeOffset? FimAte = null);
 
 /// <summary>Operações sobre o recurso FHIR <c>Encounter</c> (atendimento).</summary>
 public interface IEncounterService

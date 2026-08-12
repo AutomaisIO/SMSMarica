@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SMSMarica.Data.Entities;
 
@@ -18,6 +18,7 @@ internal sealed class UnidadePesquisaConfigConfiguration : IEntityTypeConfigurat
         builder.Property(c => c.LinkPainel).HasColumnName("link_painel").HasMaxLength(500);
         builder.Property(c => c.HorasAposAtendimento)
             .HasColumnName("horas_apos_atendimento").IsRequired().HasDefaultValue(24);
+        builder.Property(c => c.UltimoFimProcessadoEm).HasColumnName("ultimo_fim_processado_em");
         builder.Property(c => c.AtualizadoEm).HasColumnName("atualizado_em").IsRequired();
         builder.Property(c => c.AtualizadoPor).HasColumnName("atualizado_por");
     }

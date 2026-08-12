@@ -1,4 +1,4 @@
-namespace SMSMarica.Data.Entities;
+﻿namespace SMSMarica.Data.Entities;
 
 /// <summary>
 /// Configuração da pesquisa de satisfação de uma unidade.
@@ -30,6 +30,13 @@ public class UnidadePesquisaConfig
     /// sintomático e responde sobre o mal-estar; tarde demais já esqueceu o detalhe.
     /// </summary>
     public int HorasAposAtendimento { get; set; } = 24;
+
+    /// <summary>
+    /// Até onde a varredura já processou (fim de atendimento). É a marca d'água: a janela do
+    /// próximo ciclo começa aqui, então nem pula quem terminou durante uma parada, nem convida
+    /// duas vezes quem cai na borda.
+    /// </summary>
+    public DateTime? UltimoFimProcessadoEm { get; set; }
 
     public DateTime AtualizadoEm { get; set; }
     public Guid? AtualizadoPor { get; set; }
