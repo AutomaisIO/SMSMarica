@@ -359,8 +359,20 @@ public sealed class SisregMapeamentoService(
         Name = [new HumanName { Use = HumanName.NameUse.Official, Text = profissional.Nome }],
     };
 
-    /// <summary>Reconcilia os procedimentos de um profissional; devolve quantos são novos.</summary>
-    private static int ReconciliarProcedimentos(
+    /// <summary>
+    /// Reconcilia os procedimentos de um profissional; devolve quantos são novos.
+    ///
+    /// <para><b>O procedimento novo entra pelo DbSet, não só pela navegação.</b> Ele nasce com
+    /// <c>Id</c> já preenchido, e para o EF "chave preenchida" em entidade descoberta pela
+    /// navegação de um pai <i>já existente</i> significa <c>Modified</c> — vira UPDATE de uma
+    /// linha que nunca foi inserida, que acerta 0 linhas e estoura
+    /// <c>DbUpdateConcurrencyException</c>. O middleware traduz isso como "alterado por outra
+    /// requisição concorrente", acusando uma concorrência que não existe. Enquanto o profissional
+    /// também era novo (pai <c>Added</c>) o EF cascateava <c>Added</c> e o defeito ficava
+    /// escondido: só apareceu quando o SISREG passou a trazer procedimento novo em profissional
+    /// antigo.</para>
+    /// </summary>
+    private int ReconciliarProcedimentos(
         SisregProfissionalUnidade profissional, IReadOnlyList<SisregAjaxParser.Linha> doSisreg, DateTime agora)
     {
         var novos = 0;
@@ -382,6 +394,7 @@ public sealed class SisregMapeamentoService(
                     Habilitado = false,
                 };
                 profissional.Procedimentos.Add(procedimento);
+                db.SisregProcedimentosProfissional.Add(procedimento); // ver nota do método
                 novos++;
             }
 
