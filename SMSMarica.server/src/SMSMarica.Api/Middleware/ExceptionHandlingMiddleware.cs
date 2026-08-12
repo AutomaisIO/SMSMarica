@@ -47,8 +47,12 @@ public sealed partial class ExceptionHandlingMiddleware(
                 "O recurso já foi processado por outra requisição concorrente.",
                 type: "concorrencia.violacao_unica");
         }
-        catch (DbUpdateConcurrencyException)
+        // O 409 saía SEM log nenhum: nem tabela, nem linha, nem estado. E "outra requisição
+        // concorrente" é só o rótulo — a causa real costuma ser gravação que não achou a linha
+        // que esperava (0 linhas afetadas), inclusive com ninguém mais usando o sistema.
+        catch (DbUpdateConcurrencyException ex)
         {
+            LogConflitoConcorrencia(_logger, ex, context.Request.Path, DescreverEntradas(ex), context.TraceIdentifier);
             await EscreverProblemDetails(context, StatusCodes.Status409Conflict, "Conflito",
                 "O recurso foi alterado por outra requisição concorrente. Tente novamente.",
                 type: "concorrencia.token");
@@ -186,4 +190,30 @@ public sealed partial class ExceptionHandlingMiddleware(
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Erro não tratado em {Path}")]
     private static partial void LogErroNaoTratado(ILogger logger, Exception ex, string path);
+
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "CONFLITO_CONCORRENCIA em {Path}: {Entradas} (TraceId={TraceId})")]
+    private static partial void LogConflitoConcorrencia(
+        ILogger logger, Exception ex, string path, string entradas, string traceId);
+
+    /// <summary>
+    /// Quem eram as linhas que a gravação esperava encontrar. É a única pista que separa
+    /// "outro operador editou junto" de "a linha sumiu embaixo da gravação" — sem ela, o 409
+    /// é indiagnosticável depois do fato.
+    /// </summary>
+    private static string DescreverEntradas(DbUpdateConcurrencyException ex)
+    {
+        if (ex.Entries.Count == 0) return "(a exceção não trouxe entradas)";
+
+        return string.Join(" | ", ex.Entries.Select(entrada =>
+        {
+            var tabela = entrada.Metadata.GetTableName() ?? entrada.Metadata.Name;
+            var chave = entrada.Metadata.FindPrimaryKey();
+            var valores = chave is null
+                ? "?"
+                : string.Join(',', chave.Properties.Select(p => entrada.Property(p.Name).CurrentValue));
+            return $"{tabela}[{valores}] {entrada.State}";
+        }));
+    }
 }
