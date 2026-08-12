@@ -287,7 +287,13 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
                   <th className="py-1 pr-3 font-medium">Status</th>
                   <th className="py-1 pr-3 font-medium">Cobertura</th>
                   <th className="py-1 pr-3 font-medium">Req.</th>
-                  <th className="py-1 pr-3 font-medium">Importadas</th>
+                  {/* "Importadas" era uma coluna só, mostrando o total LIDO — e uma varredura
+                      relida dizia "901 importadas" tendo criado zero. Quem olha esta tela está
+                      justamente perguntando "entrou coisa nova?"; as três são respostas
+                      diferentes. */}
+                  <th className="py-1 pr-3 font-medium">Lidas</th>
+                  <th className="py-1 pr-3 font-medium">Novas</th>
+                  <th className="py-1 pr-3 font-medium">Já existiam</th>
                   <th className="py-1 pr-3 font-medium">Pendências</th>
                 </tr>
               </thead>
@@ -305,6 +311,10 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
 }
 
 function LinhaExecucao({ execucao: e }: { execucao: VarreduraExecucao }) {
+  // O que efetivamente virou solicitação nesta rodada. Reler é seguro (a idempotência por nº da
+  // solicitação descarta o repetido), então relidas em massa são o caso NORMAL, não anomalia.
+  const novas = Math.max(0, e.validos - e.jaExistiam);
+
   return (
     <>
       <tr className="text-gray-700">
@@ -320,6 +330,10 @@ function LinhaExecucao({ execucao: e }: { execucao: VarreduraExecucao }) {
         </td>
         <td className="py-1.5 pr-3">{e.requisicoes}</td>
         <td className="py-1.5 pr-3">{e.validos}</td>
+        <td className={`py-1.5 pr-3 ${novas > 0 ? 'font-semibold text-emerald-700' : 'text-gray-400'}`}>
+          {novas > 0 ? novas : '—'}
+        </td>
+        <td className="py-1.5 pr-3 text-gray-500">{e.jaExistiam > 0 ? e.jaExistiam : '—'}</td>
         <td className="py-1.5 pr-3">{e.invalidos > 0 ? e.invalidos : '—'}</td>
       </tr>
 
@@ -327,7 +341,7 @@ function LinhaExecucao({ execucao: e }: { execucao: VarreduraExecucao }) {
           operador precisa saber o que fazer — e "Parcial" sozinho não diz nada. */}
       {e.mensagemErro && (
         <tr>
-          <td colSpan={7} className="pb-2 pr-3">
+          <td colSpan={9} className="pb-2 pr-3">
             <p
               className={`rounded-md border px-3 py-2 text-xs ${
                 e.status === 'Erro'
