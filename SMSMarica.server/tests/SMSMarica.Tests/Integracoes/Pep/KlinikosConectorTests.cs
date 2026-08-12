@@ -160,7 +160,7 @@ public class KlinikosConectorTests
     public void Boletim_fechado_carrega_a_hora_da_saida()
     {
         var e = Mapper().BuildEncounter(Bol(), "Patient/abc", null, teveAtendimento: true,
-            new DesfechoBoletim("2026-08-04T01:40:00", 17, "A.1 - Atendimento em consultório concluído"));
+            new DesfechoBoletim("2026-08-04T01:40:00", 17, "A.1 - Atendimento em consultório concluído", null));
 
         Assert.StartsWith("2026-08-04T01:40:00", e.Period!.End, StringComparison.Ordinal);
     }
@@ -192,7 +192,7 @@ public class KlinikosConectorTests
     public void Tipo_de_saida_da_origem_vira_discharge_disposition_do_R4(int tipsai, string esperado)
     {
         var e = Mapper().BuildEncounter(Bol(), "Patient/abc", null, teveAtendimento: true,
-            new DesfechoBoletim("2026-08-04T01:40:00", tipsai, "descrição da origem"));
+            new DesfechoBoletim("2026-08-04T01:40:00", tipsai, "descrição da origem", null));
 
         var cc = e.Hospitalization!.DischargeDisposition!;
         Assert.Equal(esperado,
@@ -210,7 +210,7 @@ public class KlinikosConectorTests
     public void Fechamento_sem_tipo_de_saida_ainda_registra_a_saida()
     {
         var e = Mapper().BuildEncounter(Bol(), "Patient/abc", null, teveAtendimento: true,
-            new DesfechoBoletim("2026-08-04T01:40:00", null, null));
+            new DesfechoBoletim("2026-08-04T01:40:00", null, null, null));
 
         Assert.StartsWith("2026-08-04T01:40:00", e.Period!.End, StringComparison.Ordinal);
         Assert.Null(e.Hospitalization);

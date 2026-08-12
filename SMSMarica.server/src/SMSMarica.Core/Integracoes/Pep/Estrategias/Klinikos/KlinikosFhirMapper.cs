@@ -289,7 +289,7 @@ internal sealed class KlinikosFhirMapper(string slug, string source)
     /// </summary>
     public Encounter BuildEncounter(
         BoletimLinha b, string patientRef, string? organizationRef, bool teveAtendimento,
-        DesfechoBoletim? desfecho = null)
+        DesfechoBoletim? desfecho = null, string? medicoRef = null)
     {
         var enc = new Encounter
         {
@@ -302,6 +302,17 @@ internal sealed class KlinikosFhirMapper(string slug, string source)
             Identifier = [new Identifier(SysBoletim, Pref(b.Codigo))],
         };
         if (organizationRef is not null) enc.ServiceProvider = new ResourceReference(organizationRef);
+
+        // Quem atendeu. É o que o prontuário exibe no cabeçalho do atendimento — sem
+        // participant a tela mostra só a data, e o profissional que assinou o boletim fica
+        // invisível apesar de existir no hub com nome, CPF e conselho.
+        if (medicoRef is not null)
+        {
+            enc.Participant =
+            [
+                new Encounter.ParticipantComponent { Individual = new ResourceReference(medicoRef) },
+            ];
+        }
 
         if ((Dt(b.Chegada) ?? Dt(b.DataBoletim)) is { } inicio)
         {

@@ -37,7 +37,12 @@ internal sealed record BoletimLinha(
 /// — é evento real, não fechamento em lote. <b>Não usar <c>upaatemed_DataSaida</c></b>, que tem
 /// nome de campo certo e preenchimento de 6,0% (UPA) e 0,2% (Santa Rita).</para>
 /// </summary>
-internal sealed record DesfechoBoletim(string? Fim, int? TipoSaida, string? TipoSaidaDs);
+/// <param name="ProfCodigo">
+/// Médico que encerrou o atendimento (<c>UPA_Atendimento_Medico.prof_codigo_encerramento</c>).
+/// Vem de carona: <c>SqlDesfechos</c> já faz o JOIN com essa tabela para pegar o tipo de saída,
+/// então o médico do atendimento custa uma coluna a mais, não uma consulta a mais.
+/// </param>
+internal sealed record DesfechoBoletim(string? Fim, int? TipoSaida, string? TipoSaidaDs, string? ProfCodigo);
 
 /// <summary>
 /// Linha de <c>UPA_Evolucao</c>. É o registro clínico desta implantação — o CID, a nota e a

@@ -346,7 +346,7 @@ public class KlinikosImportacaoFluxoTests
     private static Dictionary<string, object?> Desf(string spa, string fim, int? tipsai, string? tipsaiDs, long rv) => new()
     {
         ["spa_codigo"] = spa, ["atendamb_datafinal"] = fim, ["tipsai_codigo"] = tipsai,
-        ["tipsai_Descricao"] = tipsaiDs, ["rv"] = rv,
+        ["tipsai_Descricao"] = tipsaiDs, ["prof_codigo_encerramento"] = "0001", ["rv"] = rv,
     };
 
     private static Dictionary<string, object?> Evo(long cod, string spa, string tipo, string desc, string? cid, long rv) => new()
@@ -483,6 +483,55 @@ public class KlinikosImportacaoFluxoTests
         var quando = Assert.IsType<DateTimeOffset>(doc.Date);
         Assert.Equal(new DateTime(2026, 8, 1, 9, 40, 0), quando.DateTime);
         Assert.Equal(TimeSpan.FromHours(-3), quando.Offset);   // Brasília, não o fuso do servidor
+    }
+
+    /// <summary>
+    /// O profissional existe no hub com nome, CPF e conselho — mas o prontuário mostrava só a
+    /// data do atendimento, porque nada apontava para ele. Agora o médico entra no
+    /// <c>Encounter.participant</c> (é de lá que a tela lê o nome), no <c>author</c> do boletim
+    /// e no <c>requester</c> da prescrição.
+    /// </summary>
+    [Fact]
+    public async Task Medico_do_atendimento_e_ligado_ao_Encounter_ao_boletim_e_a_prescricao()
+    {
+        var f = OrigemPadrao();
+        f.Desfechos.Add(Desf("B1", "2026-08-01T12:00:00", 17, "alta", 1500));
+
+        var hub = new HubFake();
+        await RodarAsync(f, hub);
+
+        var prof = Assert.Single(hub.Do<Practitioner>());
+        var esperado = $"Practitioner/{prof.Id}";
+        Assert.Equal("DR HOUSE", prof.Name[0].Text);
+
+        var enc = Assert.Single(hub.Do<Encounter>(), e => e.Identifier.Any(i => i.Value == $"{Slug}:B1"));
+        Assert.Equal(esperado, enc.Participant[0].Individual?.Reference);
+
+        var doc = Assert.Single(hub.Do<DocumentReference>(), d => d.Type?.Text == "Boletim de Atendimento Médico");
+        Assert.Equal(esperado, doc.Author?[0].Reference);
+
+        var med = Assert.Single(hub.Do<MedicationRequest>());
+        Assert.Equal(esperado, med.Requester?.Reference);
+    }
+
+    /// <summary>
+    /// Profissional sem CPF não vira Practitioner (regra canônica) — e o atendimento dele entra
+    /// do mesmo jeito, sem autor. Autoria é enriquecimento: nunca pode custar o registro clínico.
+    /// </summary>
+    [Fact]
+    public async Task Medico_que_nao_resolve_nao_impede_o_atendimento_de_entrar()
+    {
+        var f = OrigemPadrao();
+        // 0002 é o profissional SEM CPF do cenário: fica fora do hub por regra canônica.
+        f.Desfechos.Add(Desf("B1", "2026-08-01T12:00:00", 17, "alta", 1500));
+        f.Desfechos[0]["prof_codigo_encerramento"] = "0002";
+
+        var hub = new HubFake();
+        var (_, p, _) = await RodarAsync(f, hub);
+
+        var enc = Assert.Single(hub.Do<Encounter>(), e => e.Identifier.Any(i => i.Value == $"{Slug}:B1"));
+        Assert.Empty(enc.Participant);
+        Assert.Equal(0, p.FalhasTotal);
     }
 
     /// <summary>

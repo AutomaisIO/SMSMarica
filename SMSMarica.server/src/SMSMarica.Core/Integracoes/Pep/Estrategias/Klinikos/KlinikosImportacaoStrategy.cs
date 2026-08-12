@@ -141,6 +141,9 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
         // Caches do run: código da origem → referência no hub. Evitam reconsultar o hub a cada
         // linha; o incremental de um ciclo é pequeno, então cabem em memória com folga.
         var orgPorUnidade = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        // Código do profissional → Practitioner/{id}. Guarda o NEGATIVO também (valor null):
+        // profissional sem CPF não vira Practitioner, e sem isso cada boletim dele repetiria a busca.
+        var profPorCodigo = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         var pacPorCodigo = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var atendPorBoletim = new Dictionary<string, Atendimento>(StringComparer.OrdinalIgnoreCase);
 
@@ -235,7 +238,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
                     try
                     {
                         if (await UpsertBoletimAsync(ctx, mapper, b, comAtd.Contains(b.Codigo),
-                                orgPorUnidade, pacPorCodigo, desfechos.GetValueOrDefault(b.Codigo), ct) is { } a)
+                                orgPorUnidade, pacPorCodigo, desfechos.GetValueOrDefault(b.Codigo), profPorCodigo, ct) is { } a)
                         {
                             atendPorBoletim[b.Codigo] = a;
                             p.Encounters++;
@@ -299,7 +302,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
                 try
                 {
                     if (await UpsertBoletimAsync(ctx, mapper, b, comAtendimento.Contains(b.Codigo),
-                            orgPorUnidade, pacPorCodigo, desfechos.GetValueOrDefault(b.Codigo), ct) is { } a)
+                            orgPorUnidade, pacPorCodigo, desfechos.GetValueOrDefault(b.Codigo), profPorCodigo, ct) is { } a)
                     {
                         atendPorBoletim[b.Codigo] = a;
                         p.Encounters++;
@@ -348,7 +351,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
             foreach (var f in fechados) atendPorBoletim.Remove(f.Spa!);
 
             await GarantirAtendimentosAsync(ctx, mapper, leitor, fechados.Select(f => f.Spa),
-                orgPorUnidade, pacPorCodigo, atendPorBoletim, Falhou, ct);
+                orgPorUnidade, pacPorCodigo, atendPorBoletim, profPorCodigo, Falhou, ct);
 
             foreach (var f in fechados)
             {
@@ -415,7 +418,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
             if (!limitado)
             {
                 await GarantirAtendimentosAsync(ctx, mapper, leitor, evolucoes.Select(e => e.SpaCodigo),
-                    orgPorUnidade, pacPorCodigo, atendPorBoletim, Falhou, ct);
+                    orgPorUnidade, pacPorCodigo, atendPorBoletim, profPorCodigo, Falhou, ct);
             }
 
             foreach (var e in evolucoes)
@@ -454,7 +457,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
             else
             {
                 await GarantirAtendimentosAsync(ctx, mapper, leitor, boletinsMedicos.Select(b => b.SpaCodigo),
-                    orgPorUnidade, pacPorCodigo, atendPorBoletim, Falhou, ct);
+                    orgPorUnidade, pacPorCodigo, atendPorBoletim, profPorCodigo, Falhou, ct);
             }
 
             foreach (var bm in boletinsMedicos)
@@ -475,8 +478,9 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
                 }
                 try
                 {
+                    var autor = await ResolverProfissionalAsync(ctx, mapper, bm.ProfCodigo, profPorCodigo, ct);
                     await ctx.Escritor.UpsertPorIdentifierAsync(
-                        mapper.BuildDocRefBoletimMedico(bm, a.PacRef, a.EncRef, bm.DataInicio, null),
+                        mapper.BuildDocRefBoletimMedico(bm, a.PacRef, a.EncRef, bm.DataInicio, autor),
                         KlinikosFhirMapper.IdentAtendMedico, mapper.Pref(bm.AtendCodigo), ct);
                     p.DocumentReferences++;
                 }
@@ -504,7 +508,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
             else
             {
                 await GarantirAtendimentosAsync(ctx, mapper, leitor, itens.Select(i => i.SpaCodigo),
-                    orgPorUnidade, pacPorCodigo, atendPorBoletim, Falhou, ct);
+                    orgPorUnidade, pacPorCodigo, atendPorBoletim, profPorCodigo, Falhou, ct);
             }
 
             foreach (var item in itens)
@@ -519,8 +523,9 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
                 }
                 try
                 {
+                    var prescritor = await ResolverProfissionalAsync(ctx, mapper, item.ProfCodigo, profPorCodigo, ct);
                     await ctx.Escritor.UpsertPorIdentifierAsync(
-                        mapper.BuildMedicationRequestItem(item, a.PacRef, a.EncRef, null),
+                        mapper.BuildMedicationRequestItem(item, a.PacRef, a.EncRef, prescritor),
                         KlinikosFhirMapper.IdentPrescricao, mapper.Pref(item.ItemId), ct);
                     p.MedicationRequests++;
                 }
@@ -544,7 +549,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
             else
             {
                 await GarantirAtendimentosAsync(ctx, mapper, leitor, vitais.Select(v => v.SpaCodigo),
-                    orgPorUnidade, pacPorCodigo, atendPorBoletim, Falhou, ct);
+                    orgPorUnidade, pacPorCodigo, atendPorBoletim, profPorCodigo, Falhou, ct);
             }
 
             foreach (var sv in vitais)
@@ -812,7 +817,8 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
                 por[spa] = new DesfechoBoletim(
                     linha.DataHora("atendamb_datafinal"),
                     (int?)linha.Numero("tipsai_codigo"),
-                    linha.Texto("tipsai_Descricao"));
+                    linha.Texto("tipsai_Descricao"),
+                    linha.Texto("prof_codigo_encerramento"));
             }
         }
         return por;
@@ -823,20 +829,58 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
         IReadOnlyDictionary<string, string> orgPorUnidade,
         IReadOnlyDictionary<string, string> pacPorCodigo,
         DesfechoBoletim? desfecho,
+        Dictionary<string, string?> profPorCodigo,
         CancellationToken ct)
     {
         if (b.PacCodigo is null || !pacPorCodigo.TryGetValue(b.PacCodigo, out var pacRef)) return null;
 
         var orgRef = b.UnidCodigo is not null ? orgPorUnidade.GetValueOrDefault(b.UnidCodigo) : null;
+        // Quem atendeu. O prontuário mostra este nome no cabeçalho do atendimento; sem ele a
+        // tela dizia só a data. Vem do desfecho, que já lê UPA_Atendimento_Medico.
+        var medicoRef = await ResolverProfissionalAsync(ctx, mapper, desfecho?.ProfCodigo, profPorCodigo, ct);
 
         // Todo boletim vira Encounter, inclusive o de quem desistiu antes de ser atendido
         // (7,7% na UPA): a pessoa esteve na unidade, e isso é informação clínica. O que muda
         // é o status — nunca a existência.
-        var enc = mapper.BuildEncounter(b, pacRef, orgRef, teveAtendimento, desfecho);
+        var enc = mapper.BuildEncounter(b, pacRef, orgRef, teveAtendimento, desfecho, medicoRef);
         var salvo = await ctx.Escritor.UpsertPorIdentifierAsync(
             enc, KlinikosFhirMapper.IdentBoletim, mapper.Pref(b.Codigo), ct);
 
         return new Atendimento($"Encounter/{salvo.Id}", pacRef, teveAtendimento);
+    }
+
+    /// <summary>
+    /// Código do profissional na origem → <c>Practitioner/{id}</c> no hub.
+    ///
+    /// <para>Não dá para depender só do cache preenchido pela fase de profissionais: aquela fase
+    /// é <b>gated</b> (só roda na primeira vez ou quando forçada), e no ciclo normal ela nem
+    /// executa. Então quem não está no cache é buscado no hub pelo identifier local, uma vez por
+    /// run — e o resultado NEGATIVO também é cacheado, senão todo boletim de um profissional sem
+    /// CPF (31 dos 495 na UPA ficam fora por regra canônica) viraria uma consulta perdida.</para>
+    /// </summary>
+    private static async Task<string?> ResolverProfissionalAsync(
+        ContextoImportacaoPep ctx, KlinikosFhirMapper mapper, string? codigo,
+        Dictionary<string, string?> cache, CancellationToken ct)
+    {
+        if (codigo is null) return null;
+        if (cache.TryGetValue(codigo, out var achado)) return achado;
+
+        string? refProf = null;
+        try
+        {
+            var bundle = await ctx.Escritor.BuscarPorIdentifierAsync(
+                "Practitioner", KlinikosFhirMapper.IdentProfissional, mapper.Pref(codigo), ct);
+            if (bundle.Entry.Select(e => e.Resource).OfType<Practitioner>().FirstOrDefault() is { Id: { } id })
+                refProf = $"Practitioner/{id}";
+        }
+        catch (Exception) when (!ct.IsCancellationRequested)
+        {
+            // Autoria é enriquecimento: um profissional que não resolve não pode custar o
+            // registro clínico inteiro. Fica sem autor e segue.
+        }
+
+        cache[codigo] = refProf;
+        return refProf;
     }
 
     /// <summary>
@@ -851,6 +895,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
         IReadOnlyDictionary<string, string> orgPorUnidade,
         Dictionary<string, string> pacPorCodigo,
         Dictionary<string, Atendimento> cache,
+        Dictionary<string, string?> profPorCodigo,
         Action<string, long, Exception> falhou, CancellationToken ct)
     {
         var faltantes = boletins.OfType<string>()
@@ -875,7 +920,7 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
                 try
                 {
                     if (await UpsertBoletimAsync(ctx, mapper, b, comAtendimento.Contains(b.Codigo),
-                            orgPorUnidade, pacPorCodigo, desfechos.GetValueOrDefault(b.Codigo), ct) is { } a)
+                            orgPorUnidade, pacPorCodigo, desfechos.GetValueOrDefault(b.Codigo), profPorCodigo, ct) is { } a)
                         cache[b.Codigo] = a;
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
@@ -1055,7 +1100,8 @@ internal sealed class KlinikosImportacaoStrategy(ILogger<KlinikosImportacaoStrat
     /// diferente de ficar sem saída.</para>
     /// </summary>
     internal static string SqlDesfechos(IReadOnlyList<string> boletins) => $"""
-        SELECT aa.spa_codigo, aa.atendamb_datafinal, am.tipsai_codigo, ts.tipsai_Descricao
+        SELECT aa.spa_codigo, aa.atendamb_datafinal, am.tipsai_codigo, ts.tipsai_Descricao,
+               am.prof_codigo_encerramento
           FROM atendimento_ambulatorial aa
           LEFT JOIN UPA_Atendimento_Medico am ON am.atendamb_codigo = aa.atendamb_codigo
           LEFT JOIN Tipo_Saida ts ON ts.tipsai_codigo = am.tipsai_codigo
