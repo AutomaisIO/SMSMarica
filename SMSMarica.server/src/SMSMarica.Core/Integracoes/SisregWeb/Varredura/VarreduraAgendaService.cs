@@ -430,6 +430,13 @@ public sealed class VarreduraAgendaService(
             agenda.CursorProcedimentoCodigo = null;
             agenda.CursorJanelaFim = null;
             agenda.FalhasConsecutivas = 0;
+
+            // Varredura inteira sem CAPTCHA É a prova de que o bloqueio acabou — normalmente
+            // porque alguém o resolveu no navegador. Sem isto a pausa de 24h sobrevivia ao próprio
+            // motivo e engolia o disparo diário seguinte: a unidade programada para 05:00 só
+            // voltava a rodar quando a pausa vencesse, à noite, fazendo o horário escolhido
+            // parecer decorativo.
+            agenda.PausadoAte = null;
         }
 
         await FinalizarAsync(execucao, StatusVarredura.Concluida, null, ct, progresso);
