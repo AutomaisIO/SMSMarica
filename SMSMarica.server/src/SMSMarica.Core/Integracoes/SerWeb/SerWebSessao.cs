@@ -445,10 +445,16 @@ public sealed partial class SerWebSessao(
         if (html.Contains("id=\"login:username\"", StringComparison.Ordinal)
             || html.Contains("name=\"login:password\"", StringComparison.Ordinal))
         {
+            // A orientação muda com QUEM está logando: mandar o operador conferir a credencial
+            // cadastrada na Configuração, quando ele acabou de digitar a própria senha, é
+            // instrução errada — e ele não tem acesso àquela tela.
             throw new ValidacaoException(
                 "ser.login_falhou",
-                "Não foi possível autenticar no SER. Verifique o usuário e a senha cadastrados "
-                + "na Configuração da Regulação.");
+                _credencialDoOperador is not null
+                    ? "Usuário ou senha do SER inválidos. Confira os dados e tente de novo — é a "
+                      + "mesma credencial com que você entra no site do SER."
+                    : "Não foi possível autenticar no SER. Verifique o usuário e a senha cadastrados "
+                      + "na Configuração da Regulação.");
         }
 
         sessao.Logado = true;

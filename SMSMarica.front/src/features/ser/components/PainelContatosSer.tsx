@@ -1,22 +1,12 @@
-import { useState } from 'react';
-import { AxiosError } from 'axios';
+import { useEffect, useState } from 'react';
 import { CheckCircle2, Loader2, Phone, UserCheck } from 'lucide-react';
 
-import {
-  useAlterarContatosSer,
-  useContatosSer,
-  useSessaoOperadorSer,
-} from '@/features/ser/api/queries';
+import { useAlterarContatosSer, useContatosSer } from '@/features/ser/api/queries';
 import { ModalLoginSer } from '@/features/ser/components/ModalLoginSer';
+import { SEM_SESSAO_SER, temCodigo, useSessaoSerObrigatoria } from '@/features/ser/lib/sessaoSer';
 import { Button } from '@/shared/ui/Button';
 import { Input } from '@/shared/ui/Input';
-import { extrairMensagemDeErro, type ProblemaApi } from '@/shared/api/httpClient';
-
-function temCodigo(erro: unknown, codigo: string): boolean {
-  if (!(erro instanceof AxiosError)) return false;
-  const dados = erro.response?.data as ProblemaApi | undefined;
-  return Boolean(dados?.errors && codigo in dados.errors);
-}
+import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 
 type Campos = { residencial: string; whatsapp: string; contato: string };
 
@@ -35,12 +25,27 @@ export function PainelContatosSer({ solicitacaoId }: { solicitacaoId: string }) 
   const [campos, setCampos] = useState<Campos | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
-  const [pedindoLogin, setPedindoLogin] = useState(false);
 
-  const { data: sessao } = useSessaoOperadorSer();
-  // Só bate no SER quando o operador abre o painel — a leitura custa duas requisições lá.
-  const contatos = useContatosSer(solicitacaoId, aberto);
+  const { autenticado, usuarioSer, comSessao, tratouFaltaDeSessao, modal } =
+    useSessaoSerObrigatoria();
+
+  // A leitura já exige sessão de escrita (ela abre a aba Editar do SER). Só habilita depois de
+  // autenticado — assim a recusa do backend nunca vira erro vermelho na tela.
+  const contatos = useContatosSer(solicitacaoId, aberto && autenticado);
   const alterar = useAlterarContatosSer(solicitacaoId);
+
+  // A sessão pode cair ENTRE abrir o painel e a leitura (expirou, API reiniciou). Tratar isso
+  // aqui e não no JSX: chamar `tratouFaltaDeSessao` durante o render dispararia `setState` no
+  // meio da renderização — React reclama e, dependendo do caminho, entra em laço.
+  const faltaSessao = temCodigo(contatos.error, SEM_SESSAO_SER);
+  useEffect(() => {
+    if (faltaSessao) {
+      tratouFaltaDeSessao(contatos.error, () => {
+        void contatos.refetch();
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [faltaSessao]);
 
   const atuais = contatos.data;
   const valores: Campos = campos ?? {
@@ -89,39 +94,52 @@ export function PainelContatosSer({ solicitacaoId }: { solicitacaoId: string }) 
         contato: r.contato ?? '',
       });
     } catch (e) {
-      if (temCodigo(e, 'ser.sessao_operador_ausente')) {
-        setPedindoLogin(true);
-        return;
-      }
+      if (tratouFaltaDeSessao(e, salvar)) return;
       setErro(extrairMensagemDeErro(e));
     }
   }
 
+  if (!aberto) {
+    return (
+      <>
+        {/* Pede a senha antes de qualquer requisição: a própria LEITURA abre a aba Editar do
+            SER e exige sessão de escrita. */}
+        <Button
+          variante="secundaria"
+          tamanho="sm"
+          onClick={() => comSessao(() => setAberto(true))}
+          title="Alterar os telefones no cadastro do SER (não muda o nosso)"
+        >
+          <Phone className="mr-1 size-4" />
+          Editar Contato SER
+        </Button>
+
+        {ok && (
+          <p className="flex w-full items-center gap-1 text-xs text-emerald-700">
+            <CheckCircle2 className="size-4" /> {ok}
+          </p>
+        )}
+
+        <ModalLoginSer {...modal} />
+      </>
+    );
+  }
+
   return (
-    <section className="rounded border border-slate-200 bg-slate-50 p-3">
+    <section className="w-full rounded border border-slate-200 bg-slate-50 p-3">
       <div className="flex flex-wrap items-center gap-2">
         <Phone className="size-4 text-red-700" />
         <h4 className="text-sm font-semibold text-slate-800">Dados de contato no SER</h4>
 
-        {sessao?.autenticado ? (
+        {autenticado && (
           <span className="ml-auto flex items-center gap-1 text-[11px] text-emerald-700">
             <UserCheck className="size-3.5" />
-            assinando como {sessao.usuarioSer}
+            assinando como {usuarioSer}
           </span>
-        ) : (
-          <span className="ml-auto text-[11px] text-slate-500">exige seu login do SER</span>
         )}
       </div>
 
-      {!aberto && (
-        <div className="mt-2">
-          <Button variante="secundaria" tamanho="sm" onClick={() => setAberto(true)}>
-            Alterar dados de contato
-          </Button>
-        </div>
-      )}
-
-      {aberto && (
+      {(
         <div className="mt-3 space-y-3">
           {contatos.isLoading && (
             <p className="flex items-center gap-2 text-xs text-slate-500">
@@ -129,7 +147,7 @@ export function PainelContatosSer({ solicitacaoId }: { solicitacaoId: string }) 
             </p>
           )}
 
-          {contatos.isError && (
+          {contatos.isError && !faltaSessao && (
             <p className="rounded border border-red-200 bg-red-50 p-2 text-xs text-red-800">
               {extrairMensagemDeErro(contatos.error)}
             </p>
@@ -212,14 +230,7 @@ export function PainelContatosSer({ solicitacaoId }: { solicitacaoId: string }) 
         </p>
       )}
 
-      <ModalLoginSer
-        aberto={pedindoLogin}
-        aoFechar={() => setPedindoLogin(false)}
-        aoAutenticar={() => {
-          setPedindoLogin(false);
-          void salvar();
-        }}
-      />
+      <ModalLoginSer {...modal} />
     </section>
   );
 }

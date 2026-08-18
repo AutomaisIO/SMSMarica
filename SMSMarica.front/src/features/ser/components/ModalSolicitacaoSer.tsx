@@ -56,6 +56,15 @@ export function ModalSolicitacaoSer({
             )}
           </section>
 
+          {/* Barra de ações no topo: são as duas coisas que o operador VEM fazer aqui — o resto
+              da tela é leitura. Cada botão vira o formulário no lugar quando aberto. */}
+          {solicitacaoId && (
+            <section className="flex flex-wrap items-center gap-2">
+              <PainelFollowUpSer solicitacaoId={solicitacaoId} />
+              <PainelContatosSer solicitacaoId={solicitacaoId} />
+            </section>
+          )}
+
           <Bloco titulo="Paciente">
             {r.pacienteId ? (
               <div className="flex items-center gap-2 pb-1">
@@ -101,15 +110,6 @@ export function ModalSolicitacaoSer({
             <Item rotulo="Agendado para" valor={r.agendadoParaTexto} />
             <Item rotulo="Solicitante" valor={r.solicitanteNome} />
           </Bloco>
-
-          {/* A ação fica JUNTO do histórico de propósito: FollowUP é uma entrada nessa mesma
-              trilha, e quem vai escrever precisa ler antes o que já foi registrado — inclusive
-              para não repetir uma tentativa de contato que outro operador já anotou. */}
-          {solicitacaoId && <PainelFollowUpSer solicitacaoId={solicitacaoId} />}
-
-          {/* Contato fica ao lado do FollowUP porque a sequência real é essa: liga-se para o
-              paciente, o número está errado, corrige-se ali e registra-se a tentativa. */}
-          {solicitacaoId && <PainelContatosSer solicitacaoId={solicitacaoId} />}
 
           <section>
             <h3 className="mb-2 font-semibold text-slate-800">

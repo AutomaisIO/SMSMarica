@@ -1,21 +1,11 @@
 import { useState } from 'react';
-import { AxiosError } from 'axios';
 import { CheckCircle2, Loader2, MessageSquarePlus, UserCheck } from 'lucide-react';
 
-import {
-  useRegistrarFollowUpSer,
-  useSessaoOperadorSer,
-} from '@/features/ser/api/queries';
+import { useRegistrarFollowUpSer } from '@/features/ser/api/queries';
 import { ModalLoginSer } from '@/features/ser/components/ModalLoginSer';
+import { useSessaoSerObrigatoria } from '@/features/ser/lib/sessaoSer';
 import { Button } from '@/shared/ui/Button';
-import { extrairMensagemDeErro, type ProblemaApi } from '@/shared/api/httpClient';
-
-/** O código de validação vem como CHAVE em `errors` (ValidacaoException → ValidationProblemDetails). */
-function temCodigo(erro: unknown, codigo: string): boolean {
-  if (!(erro instanceof AxiosError)) return false;
-  const dados = erro.response?.data as ProblemaApi | undefined;
-  return Boolean(dados?.errors && codigo in dados.errors);
-}
+import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 
 /**
  * Registrar FollowUP na solicitação — <b>escreve no SER</b>.
@@ -25,17 +15,17 @@ function temCodigo(erro: unknown, codigo: string): boolean {
  * abrir a tela deles.</p>
  *
  * <p><b>Assinado pelo operador.</b> A credencial do sistema é de sincronismo e só lê; o SER grava
- * o nome de quem fez em cada evento. Por isso a primeira escrita pede o login pessoal do SER — e
- * a tela mostra, antes de enviar, qual nome vai ficar no histórico do Estado.</p>
+ * o nome de quem fez em cada evento. Quando falta sessão, a tela <b>pede a senha</b> — nunca
+ * mostra a recusa do backend como erro.</p>
  */
 export function PainelFollowUpSer({ solicitacaoId }: { solicitacaoId: string }) {
   const [aberto, setAberto] = useState(false);
   const [texto, setTexto] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
-  const [pedindoLogin, setPedindoLogin] = useState(false);
 
-  const { data: sessao } = useSessaoOperadorSer();
+  const { autenticado, usuarioSer, comSessao, tratouFaltaDeSessao, modal } =
+    useSessaoSerObrigatoria();
   const registrar = useRegistrarFollowUpSer(solicitacaoId);
 
   async function enviar() {
@@ -52,50 +42,61 @@ export function PainelFollowUpSer({ solicitacaoId }: { solicitacaoId: string }) 
       // O backend só devolve OK depois de RELER o histórico e achar o evento lá — dizer isso na
       // tela importa, porque o SER já respondeu "salvo com sucesso" sem ter gravado nada.
       setOk(
-        `Registrado e conferido no histórico do SER${
-          r.evento.data ? ` (${r.evento.data})` : ''
-        }.`,
+        `Registrado e conferido no histórico do SER${r.evento.data ? ` (${r.evento.data})` : ''}.`,
       );
       setTexto('');
       setAberto(false);
     } catch (e) {
-      // Sessão do SER ausente ou expirada: em vez de erro seco, pede a senha e reenvia.
-      if (temCodigo(e, 'ser.sessao_operador_ausente')) {
-        setPedindoLogin(true);
-        return;
-      }
+      // Sessão caiu no meio (expirou, API reiniciou): pede a senha e reenvia sozinho.
+      if (tratouFaltaDeSessao(e, enviar)) return;
       setErro(extrairMensagemDeErro(e));
     }
   }
 
+  // Fechado, o painel é só o botão da barra de ações do topo — quem abre é quem vai escrever.
+  if (!aberto) {
+    return (
+      <>
+        {/* Pede a senha JÁ, e não depois de escrever: descobrir que precisa entrar só ao clicar
+            em Enviar faz o operador redigitar contexto que já tinha na cabeça. */}
+        <Button
+          variante="secundaria"
+          tamanho="sm"
+          onClick={() => comSessao(() => setAberto(true))}
+          title="Registrar uma observação no histórico da solicitação, no SER"
+        >
+          <MessageSquarePlus className="mr-1 size-4" />+ FollowUp
+        </Button>
+
+        {ok && (
+          <p className="flex w-full items-center gap-1 text-xs text-emerald-700">
+            <CheckCircle2 className="size-4" /> {ok}
+          </p>
+        )}
+
+        <ModalLoginSer {...modal} />
+      </>
+    );
+  }
+
   return (
-    <section className="rounded border border-slate-200 bg-slate-50 p-3">
+    <section className="w-full rounded border border-slate-200 bg-slate-50 p-3">
       <div className="flex flex-wrap items-center gap-2">
         <MessageSquarePlus className="size-4 text-red-700" />
         <h4 className="text-sm font-semibold text-slate-800">Registrar FollowUP no SER</h4>
 
-        {sessao?.autenticado ? (
+        {autenticado && (
           <span
             className="ml-auto flex items-center gap-1 text-[11px] text-emerald-700"
             title="É este nome que fica no histórico da solicitação, no SER"
           >
             <UserCheck className="size-3.5" />
-            assinando como {sessao.usuarioSer}
+            assinando como {usuarioSer}
           </span>
-        ) : (
-          <span className="ml-auto text-[11px] text-slate-500">exige seu login do SER</span>
         )}
       </div>
 
-      {!aberto && (
-        <div className="mt-2">
-          <Button variante="secundaria" tamanho="sm" onClick={() => setAberto(true)}>
-            Escrever FollowUP
-          </Button>
-        </div>
-      )}
-
-      {aberto && (
+      {(
         <div className="mt-2 space-y-2">
           <textarea
             className="input min-h-24 w-full"
@@ -141,15 +142,7 @@ export function PainelFollowUpSer({ solicitacaoId }: { solicitacaoId: string }) 
         </p>
       )}
 
-      <ModalLoginSer
-        aberto={pedindoLogin}
-        aoFechar={() => setPedindoLogin(false)}
-        aoAutenticar={() => {
-          // Retoma o envio que disparou o pedido de senha: o operador não redigita o texto.
-          setPedindoLogin(false);
-          void enviar();
-        }}
-      />
+      <ModalLoginSer {...modal} />
     </section>
   );
 }
