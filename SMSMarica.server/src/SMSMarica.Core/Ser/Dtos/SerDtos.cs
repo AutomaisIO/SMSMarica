@@ -247,6 +247,30 @@ public sealed record SerFollowUpResultadoDto(
     SerEventoDiretoDto Evento,
     int EventosNovos);
 
+/// <summary>
+/// Os três telefones da solicitação como o SER os tem AGORA.
+///
+/// <para><c>Editavel</c> é falso quando a situação não oferece "Editar" (Cancelada, Alta): a tela
+/// mostra os números, mas não oferece o botão — melhor do que deixar o operador digitar para
+/// receber erro no fim.</para>
+/// </summary>
+public sealed record SerContatosDto(
+    string? Residencial,
+    string? WhatsApp,
+    string? Contato,
+    bool Editavel,
+    string? MotivoNaoEditavel);
+
+/// <summary>
+/// Alteração dos telefones no SER. Campo <c>null</c> = não mexer; string vazia = limpar.
+///
+/// <para>A distinção importa: sem ela, não enviar um telefone e apagá-lo viram a mesma coisa.</para>
+/// </summary>
+public sealed record SerAlterarContatosRequest(
+    string? Residencial,
+    string? WhatsApp,
+    string? Contato);
+
 /// <summary>Credencial do operador no SER — trafega, valida e some. Nunca é persistida.</summary>
 public sealed record SerLoginOperadorRequest(string Usuario, string Senha);
 

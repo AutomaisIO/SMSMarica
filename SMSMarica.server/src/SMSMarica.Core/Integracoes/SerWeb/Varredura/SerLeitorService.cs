@@ -37,7 +37,28 @@ public interface ISerLeitorService
     /// </summary>
     Task<string> RegistrarFollowUpAsync(
         string idSer, SituacaoSer situacao, string texto, CancellationToken cancellationToken);
+
+    /// <summary>Abre a aba Editar da solicitação e lê os três telefones, sem gravar nada.</summary>
+    Task<SerContatosDaTela> LerContatosAsync(
+        string idSer, SituacaoSer situacao, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Altera os telefones na aba Editar. <b>Isto ESCREVE no SER.</b>
+    ///
+    /// <para>Só mexe nos campos passados em <paramref name="novos"/> (chave = rótulo:
+    /// <c>residencial</c>, <c>whatsapp</c>, <c>contato</c>); os demais vão exatamente como a tela
+    /// os renderizou, e uma trava invertida recusa o POST se algum outro divergir.</para>
+    ///
+    /// <para>Devolve os contatos RELIDOS do SER depois de gravar — "salvo com sucesso" não é
+    /// prova (docs/ser.md §9).</para>
+    /// </summary>
+    Task<SerContatosDaTela> AlterarContatosAsync(
+        string idSer, SituacaoSer situacao, IReadOnlyDictionary<string, string> novos,
+        CancellationToken cancellationToken);
 }
+
+/// <summary>A linha não oferece "Editar" (situações terminais, como Cancelada e Alta).</summary>
+public sealed class EdicaoSerIndisponivelException(string mensagem) : Exception(mensagem);
 
 /// <summary>A linha não oferece "Registrar FollowUP" no menu Opções (acontece na situação Alta).</summary>
 public sealed class FollowUpSerIndisponivelException(string mensagem) : Exception(mensagem);
@@ -271,6 +292,157 @@ public sealed class SerLeitorService(
 
         return SerHtmlParser.MensagemDaTela(SerHtmlParser.Documento(resposta.Texto));
     }
+
+    /// <summary>Rótulos visíveis dos três telefones na aba Editar do SER.</summary>
+    private static readonly (string Chave, string Rotulo)[] RotulosDeTelefone =
+    [
+        ("residencial", "Telefone Residencial"),
+        ("whatsapp", "Telefone WhatsApp"),
+        ("contato", "Telefone de Contato"),
+    ];
+
+    private const string RegiaoViewRoot = "_viewRoot";
+
+    public async Task<SerContatosDaTela> LerContatosAsync(
+        string idSer, SituacaoSer situacao, CancellationToken cancellationToken)
+    {
+        var html = await AbrirEdicaoAsync(idSer, situacao, cancellationToken);
+        return LerContatos(SerHtmlParser.Documento(html));
+    }
+
+    public async Task<SerContatosDaTela> AlterarContatosAsync(
+        string idSer, SituacaoSer situacao, IReadOnlyDictionary<string, string> novos,
+        CancellationToken cancellationToken)
+    {
+        if (novos.Count == 0)
+        {
+            throw new ArgumentException("Nenhum telefone para alterar.", nameof(novos));
+        }
+
+        var html = await AbrirEdicaoAsync(idSer, situacao, cancellationToken);
+        var doc = SerHtmlParser.Documento(html);
+
+        var gravar = SerHtmlParser.BotaoGravar(doc, SerHtmlParser.FormPesquisa)
+            ?? throw new InvalidOperationException(
+                "Nao achei o botao Gravar na aba Editar do SER. Nada foi escrito.");
+
+        // O que a TELA renderizou. E a referencia da trava invertida abaixo — e tambem o que
+        // garante que gravar nao zere nada: campo `disabled` (nome, CPF, CNS, mae, raca) nao entra
+        // aqui, exatamente como o navegador tambem nao o envia.
+        var renderizado = SerHtmlParser.CamposDoForm(doc, SerHtmlParser.FormPesquisa, comoNavegador: true);
+        var alterados = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (var (chave, rotulo) in RotulosDeTelefone)
+        {
+            if (!novos.TryGetValue(chave, out var valor)) continue;
+
+            var campo = SerHtmlParser.CampoPorRotulo(doc, SerHtmlParser.FormPesquisa, rotulo)
+                ?? throw new InvalidOperationException(
+                    $"A aba Editar do SER nao trouxe o campo '{rotulo}' (ou veio travado). "
+                    + "Nada foi escrito.");
+
+            if (!renderizado.ContainsKey(campo.Nome))
+            {
+                throw new InvalidOperationException(
+                    $"O campo '{rotulo}' ({campo.Nome}) nao esta entre os que a tela envia. "
+                    + "Nada foi escrito.");
+            }
+
+            alterados[campo.Nome] = (valor ?? string.Empty).Trim();
+        }
+
+        if (alterados.Count == 0)
+        {
+            throw new ArgumentException("Nenhum telefone reconhecido para alterar.", nameof(novos));
+        }
+
+        // ---- TRAVA INVERTIDA: so os campos alvo podem divergir do que a tela renderizou.
+        // A trava de somente-leitura nao serve aqui (esta operacao E escrita, e o botao chama-se
+        // Gravar). O que protege e isto: um POST que mexesse em recurso, medico, risco ou CID
+        // passaria despercebido, porque o SER aceita e responde "salvo com sucesso".
+        var foraDaTela = alterados.Keys.Where(k => !renderizado.ContainsKey(k)).ToList();
+        if (foraDaTela.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"TRAVA: o POST tocaria campos fora da tela ({string.Join(", ", foraDaTela)}). "
+                + "Nada foi escrito.");
+        }
+
+        var extras = new Dictionary<string, string>(alterados, StringComparer.Ordinal)
+        {
+            [gravar] = gravar,
+            ["AJAXREQUEST"] = SerHtmlParser.RegiaoDoBotao(html, gravar) ?? RegiaoViewRoot,
+        };
+
+        var resposta = await sessao.SubmeterEscritaAsync(
+            html, SerHtmlParser.FormPesquisa, extras,
+            SerHtmlParser.ViewStateDoForm(doc, SerHtmlParser.FormPesquisa) ?? _ultimoViewState,
+            $"alterar contatos da solicitacao {idSer} ({string.Join(", ", alterados.Keys)})",
+            cancellationToken);
+
+        var mensagem = SerHtmlParser.MensagemDaTela(SerHtmlParser.Documento(resposta.Texto));
+        logger.LogInformation(
+            "SER: contatos de {IdSer} enviados ({Campos}); SER respondeu: {Mensagem}",
+            idSer, string.Join(", ", alterados.Keys), mensagem);
+
+        // ---- CONFERENCIA: reabrir a edicao DO ZERO. Foi na Hipotese (10/08/2026) que o SER
+        // respondeu "salva com sucesso" e nao gravou nada — releitura e a unica prova.
+        return await LerContatosAsync(idSer, situacao, cancellationToken);
+    }
+
+    /// <summary>Pesquisa o ID, abre o item "Editar" da linha e devolve a tela preenchida.</summary>
+    private async Task<string> AbrirEdicaoAsync(
+        string idSer, SituacaoSer situacao, CancellationToken cancellationToken)
+    {
+        var pagina = await PesquisarAsync(
+            new SerFiltroPesquisa { Situacao = situacao, IdSolicitacao = idSer }, cancellationToken);
+
+        if (pagina.Linhas.Count != 1)
+        {
+            throw new InvalidOperationException(
+                $"A busca pelo ID {idSer} em {situacao} devolveu {pagina.Linhas.Count} linhas — "
+                + "esperava exatamente 1. Nada foi escrito no SER.");
+        }
+
+        var dados = SerHtmlParser.Documento(_htmlDados);
+        var item = SerHtmlParser.ItemEditar(dados, 0);
+        if (item is null)
+        {
+            var disponiveis = string.Join(", ", SerHtmlParser.ItensDeOpcoes(dados, 0).Keys);
+            throw new EdicaoSerIndisponivelException(
+                $"A solicitacao {idSer} nao oferece 'Editar' no menu Opcoes — situacoes terminais "
+                + $"nao permitem alterar contato. Itens disponiveis: [{disponiveis}]");
+        }
+
+        // Abrir a edicao e NAVEGACAO, mas o rotulo "Editar" casa com a trava de somente-leitura.
+        // Vai pela porta de escrita para nao precisar afrouxar o regex — que passaria a deixar
+        // `btnEditar` de qualquer tela escapar.
+        var resposta = await sessao.SubmeterEscritaAsync(
+            _htmlForm,
+            SerHtmlParser.FormPesquisa,
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [item] = item,
+                ["AJAXREQUEST"] = RegiaoViewRoot,
+            },
+            _ultimoViewState,
+            $"abrir edicao da solicitacao {idSer}",
+            cancellationToken);
+
+        var html = resposta.Texto;
+        if (SerHtmlParser.RedirectNoCorpo(html) is { Length: > 0 } destino)
+        {
+            html = await sessao.AbrirTelaAsync(destino, cancellationToken);
+        }
+
+        Absorver(html);
+        return html;
+    }
+
+    private static SerContatosDaTela LerContatos(IHtmlDocument doc) => new(
+        SerHtmlParser.CampoPorRotulo(doc, SerHtmlParser.FormPesquisa, "Telefone Residencial"),
+        SerHtmlParser.CampoPorRotulo(doc, SerHtmlParser.FormPesquisa, "Telefone WhatsApp"),
+        SerHtmlParser.CampoPorRotulo(doc, SerHtmlParser.FormPesquisa, "Telefone de Contato"));
 
     private void Absorver(string html)
     {

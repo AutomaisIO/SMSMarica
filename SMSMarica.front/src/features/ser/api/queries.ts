@@ -31,8 +31,11 @@ import {
   entrarNoSer,
   sairDoSer,
   registrarFollowUpSer,
+  obterContatosSer,
+  alterarContatosSer,
 } from '@/features/ser/api/serApi';
 import type {
+  AlterarContatosSer,
   BuscaSerFiltro,
   DispararVarreduraPayload,
   NotificacoesFiltro,
@@ -49,6 +52,7 @@ export const serKeys = {
   status: ['ser', 'status'] as const,
   execucoes: ['ser', 'execucoes'] as const,
   sessaoOperador: ['ser', 'sessao-operador'] as const,
+  contatos: (id: string) => ['ser', 'contatos', id] as const,
 };
 
 export function useBuscaSer(filtro: BuscaSerFiltro) {
@@ -362,6 +366,33 @@ export function useRegistrarFollowUpSer(solicitacaoId: string | undefined) {
         void qc.invalidateQueries({ queryKey: serKeys.solicitacao(solicitacaoId) });
       }
       void qc.invalidateQueries({ queryKey: ['ser', 'notificacoes'] });
+    },
+  });
+}
+
+/**
+ * Telefones lidos ao vivo do SER. Fica desabilitado até o operador abrir o painel: a leitura
+ * custa duas requisições na tela do Estado, e não vale pagar isso ao abrir cada solicitação.
+ */
+export function useContatosSer(id: string | undefined, habilitado: boolean) {
+  return useQuery({
+    queryKey: serKeys.contatos(id ?? ''),
+    queryFn: () => obterContatosSer(id!),
+    enabled: Boolean(id) && habilitado,
+    staleTime: 0,
+  });
+}
+
+export function useAlterarContatosSer(id: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (corpo: AlterarContatosSer) => alterarContatosSer(id!, corpo),
+    onSuccess: () => {
+      if (id) {
+        void qc.invalidateQueries({ queryKey: serKeys.contatos(id) });
+        // O espelho também mudou (só os telefones), então o detalhe da solicitação sai do cache.
+        void qc.invalidateQueries({ queryKey: serKeys.solicitacao(id) });
+      }
     },
   });
 }

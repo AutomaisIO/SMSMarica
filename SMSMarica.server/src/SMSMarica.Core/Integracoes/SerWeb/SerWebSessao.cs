@@ -218,7 +218,7 @@ public sealed partial class SerWebSessao(
         string? viewState, CancellationToken cancellationToken)
     {
         GarantirLeitura(extras, SerHtmlParser.Documento(htmlPagina));
-        return SubmeterAsync(htmlPagina, formId, extras, viewState, cancellationToken);
+        return SubmeterAsync(htmlPagina, formId, extras, viewState, comoNavegador: false, cancellationToken);
     }
 
     public Task<RespostaSer> SubmeterEscritaAsync(
@@ -237,12 +237,13 @@ public sealed partial class SerWebSessao(
             "SER: ESCRITA — {Operacao} (form {Form}, {Campos} parâmetro(s)).",
             operacao, formId, extras.Count);
 
-        return SubmeterAsync(htmlPagina, formId, extras, viewState, cancellationToken);
+        // `comoNavegador`: escrita não manda campo travado de volta (identidade do paciente).
+        return SubmeterAsync(htmlPagina, formId, extras, viewState, comoNavegador: true, cancellationToken);
     }
 
     private async Task<RespostaSer> SubmeterAsync(
         string htmlPagina, string formId, IReadOnlyDictionary<string, string> extras,
-        string? viewState, CancellationToken cancellationToken)
+        string? viewState, bool comoNavegador, CancellationToken cancellationToken)
     {
         var doc = SerHtmlParser.Documento(htmlPagina);
 
@@ -251,7 +252,7 @@ public sealed partial class SerWebSessao(
         {
             var sessao = await GarantirSessaoAsync(cancellationToken);
 
-            var campos = SerHtmlParser.CamposDoForm(doc, formId);
+            var campos = SerHtmlParser.CamposDoForm(doc, formId, comoNavegador);
             campos[formId] = formId;
             foreach (var (k, v) in extras) campos[k] = v;
 

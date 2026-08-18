@@ -1,6 +1,7 @@
 import { Loader2 } from 'lucide-react';
 
 import { useSolicitacaoSer } from '@/features/ser/api/queries';
+import { PainelContatosSer } from '@/features/ser/components/PainelContatosSer';
 import { PainelFollowUpSer } from '@/features/ser/components/PainelFollowUpSer';
 import { SituacaoSerBadge } from '@/features/ser/components/SituacaoSerBadge';
 import { Modal } from '@/shared/ui/Modal';
@@ -105,6 +106,10 @@ export function ModalSolicitacaoSer({
               trilha, e quem vai escrever precisa ler antes o que já foi registrado — inclusive
               para não repetir uma tentativa de contato que outro operador já anotou. */}
           {solicitacaoId && <PainelFollowUpSer solicitacaoId={solicitacaoId} />}
+
+          {/* Contato fica ao lado do FollowUP porque a sequência real é essa: liga-se para o
+              paciente, o número está errado, corrige-se ali e registra-se a tentativa. */}
+          {solicitacaoId && <PainelContatosSer solicitacaoId={solicitacaoId} />}
 
           <section>
             <h3 className="mb-2 font-semibold text-slate-800">

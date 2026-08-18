@@ -77,8 +77,21 @@ public static partial class SerHtmlParser
         return m.Success ? m.Groups[1].Value : null;
     }
 
-    /// <summary>Campos preenchidos de um form (hidden/texto/select), sem os botões de submit.</summary>
-    public static Dictionary<string, string> CamposDoForm(IHtmlDocument doc, string formId)
+    /// <summary>
+    /// Campos preenchidos de um form (hidden/texto/select), sem os botões de submit.
+    ///
+    /// <para><paramref name="comoNavegador"/> exclui os campos <c>disabled</c>, que é o que o
+    /// navegador de verdade faz. Fica <b>desligado por padrão</b> de propósito: é assim que a
+    /// varredura vem funcionando em produção, e mudar o corpo dos POSTs de leitura para
+    /// "arrumar" seria trocar comportamento provado por comportamento suposto — nesta tela, o
+    /// que muda o resultado costuma ser justamente o que se manda no POST (docs/ser.md §3.3).</para>
+    ///
+    /// <para><b>Na ESCRITA ele é ligado</b>: o SER trava a identidade do paciente (nome, CPF,
+    /// CNS, mãe, raça) com <c>disabled</c>, e mandar esses valores de volta é divergir do
+    /// navegador exatamente na requisição que grava.</para>
+    /// </summary>
+    public static Dictionary<string, string> CamposDoForm(
+        IHtmlDocument doc, string formId, bool comoNavegador = false)
     {
         var dados = new Dictionary<string, string>(StringComparer.Ordinal);
         if (doc.GetElementById(formId) is not IHtmlFormElement form) return dados;
@@ -88,6 +101,7 @@ public static partial class SerHtmlParser
             if (el is not IHtmlInputElement input) continue;
             var nome = input.Name;
             if (string.IsNullOrEmpty(nome)) continue;
+            if (comoNavegador && input.HasAttribute("disabled")) continue;
             var tipo = (input.Type ?? "text").ToLowerInvariant();
             if (tipo is "submit" or "button" or "image" or "reset") continue;
             if (tipo is "checkbox" or "radio" && !input.IsChecked) continue;
@@ -97,7 +111,16 @@ public static partial class SerHtmlParser
         foreach (var el in form.QuerySelectorAll("select"))
         {
             if (el is not IHtmlSelectElement select || string.IsNullOrEmpty(select.Name)) continue;
+            if (comoNavegador && select.HasAttribute("disabled")) continue;
             dados[select.Name] = select.Value ?? string.Empty;
+        }
+
+        foreach (var el in form.QuerySelectorAll("textarea"))
+        {
+            if (el is not IHtmlTextAreaElement area || string.IsNullOrEmpty(area.Name)) continue;
+            if (comoNavegador && area.HasAttribute("disabled")) continue;
+            // Só na escrita: incluir textarea na leitura mudaria o corpo dos POSTs da varredura.
+            if (comoNavegador) dados[area.Name] = area.Value ?? string.Empty;
         }
 
         return dados;
@@ -404,6 +427,101 @@ public static partial class SerHtmlParser
         }
 
         return null;
+    }
+
+    // ------------------------------------------------------------------ edição de contato
+
+    /// <summary>Item "Editar" do menu Opções de uma linha. Situações terminais não o oferecem
+    /// (medido em 18/08/2026: Cancelada só tem Visualizar, Histórico e Registrar FollowUP).</summary>
+    public static string? ItemEditar(IHtmlDocument doc, int indiceNaPagina)
+    {
+        var prefixo = $"form0:listagem:{indiceNaPagina}:";
+        return doc.QuerySelectorAll("a")
+            .Where(a => (a.Id ?? string.Empty).StartsWith(prefixo, StringComparison.Ordinal))
+            .FirstOrDefault(a => string.Equals(Texto(a), "Editar", StringComparison.OrdinalIgnoreCase))
+            ?.Id;
+    }
+
+    /// <summary>
+    /// Campo de um form localizado pelo RÓTULO visível (o <c>&lt;label&gt;</c> irmão), devolvendo
+    /// <c>(name, valor)</c>.
+    ///
+    /// <para><b>Por que não pelo id:</b> dois dos três telefones da tela de edição não têm
+    /// <c>id</c>, só <c>name</c> posicional (<c>form0:j_id173</c> residencial e
+    /// <c>form0:j_id178</c> WhatsApp, medidos em 10/08/2026). Chumbar esses números gravaria no
+    /// campo errado na próxima recompilação da SES-RJ — sem erro nenhum.</para>
+    ///
+    /// <para>Campo <c>disabled</c> é ignorado: o navegador não o envia, e o SER usa isso para
+    /// travar a identidade do paciente.</para>
+    /// </summary>
+    public static (string Nome, string Valor)? CampoPorRotulo(
+        IHtmlDocument doc, string formId, string rotulo)
+    {
+        if (doc.GetElementById(formId) is not IHtmlFormElement form) return null;
+
+        var alvo = NormalizarRotulo(rotulo);
+        foreach (var el in form.QuerySelectorAll("input, textarea"))
+        {
+            var nome = el.GetAttribute("name");
+            if (string.IsNullOrEmpty(nome) || el.HasAttribute("disabled")) continue;
+
+            // Campo sem rótulo visível nunca é alvo. Sem isto, o hidden `form0` (cujo pai é o
+            // próprio <form>) casava com o PRIMEIRO <label> da tela inteira e devolvia o campo
+            // errado — e o POST gravaria um telefone dentro do marcador do form.
+            var tipo = (el.GetAttribute("type") ?? "text").ToLowerInvariant();
+            if (tipo is "hidden" or "submit" or "button" or "image" or "reset") continue;
+
+            // FILHO DIRETO do mesmo elemento, não descendente: `QuerySelector` varre a subárvore
+            // toda e, num campo pendurado direto no <form>, acharia o rótulo de outro campo.
+            var label = el.ParentElement?.Children
+                .FirstOrDefault(f => string.Equals(f.TagName, "LABEL", StringComparison.OrdinalIgnoreCase));
+            if (label is null) continue;
+            if (!string.Equals(NormalizarRotulo(Texto(label)), alvo, StringComparison.Ordinal)) continue;
+
+            var valor = el is IHtmlInputElement input ? input.Value : el.TextContent;
+            return (nome, (valor ?? string.Empty).Trim());
+        }
+
+        return null;
+    }
+
+    /// <summary>Rótulos do SER vêm com asterisco de obrigatório, dois-pontos e espaço solto
+    /// (inclusive NBSP, que o HTML deles usa à vontade).</summary>
+    private static string NormalizarRotulo(string texto) =>
+        RegexEspacos()
+            .Replace(texto.Replace("*", string.Empty).Replace(' ', ' '), " ")
+            .Trim()
+            .Trim(':')
+            .Trim()
+            .ToLowerInvariant();
+
+    /// <summary>O <c>&lt;a title="Gravar"&gt;</c> DAQUELE form — a tela tem outros, em modais.</summary>
+    public static string? BotaoGravar(IHtmlDocument doc, string formId)
+    {
+        var prefixo = formId + ":";
+        return doc.QuerySelectorAll("a[title='Gravar']")
+            .FirstOrDefault(a => (a.Id ?? string.Empty).StartsWith(prefixo, StringComparison.Ordinal))
+            ?.Id;
+    }
+
+    /// <summary>
+    /// A REGIÃO A4J que o próprio botão declara no <c>onclick</c>
+    /// (<c>A4J.AJAX.Submit('form0', …)</c>).
+    ///
+    /// <para>Ler da página em vez de chumbar <c>_viewRoot</c>: a região decide qual pedaço da
+    /// árvore JSF é processado, e mandar a errada não é "mais abrangente" — é outra coisa.</para>
+    /// </summary>
+    public static string? RegiaoDoBotao(string html, string idBotao)
+    {
+        var m = Regex.Match(
+            html,
+            "<a[^>]*id=\"" + Regex.Escape(idBotao) + "\"[^>]*>",
+            RegexOptions.None,
+            TimeSpan.FromSeconds(2));
+        if (!m.Success) return null;
+
+        var regiao = Regex.Match(m.Value, @"A4J\.AJAX\.Submit\(\s*'([^']+)'");
+        return regiao.Success ? regiao.Groups[1].Value : null;
     }
 
     // ------------------------------------------------------------------ histórico

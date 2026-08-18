@@ -504,3 +504,24 @@ export type FollowUpResultadoSer = {
   evento: EventoDiretoSer;
   eventosNovos: number;
 };
+
+/**
+ * Os três telefones como o SER os tem agora.
+ *
+ * `editavel` é falso nas situações terminais (Cancelada, Alta): o SER mostra os números mas não
+ * oferece o botão Editar no menu da linha.
+ */
+export type ContatosSer = {
+  residencial: string | null;
+  whatsApp: string | null;
+  contato: string | null;
+  editavel: boolean;
+  motivoNaoEditavel: string | null;
+};
+
+/** Campo ausente = não mexer; string vazia = limpar. */
+export type AlterarContatosSer = Partial<{
+  residencial: string;
+  whatsapp: string;
+  contato: string;
+}>;

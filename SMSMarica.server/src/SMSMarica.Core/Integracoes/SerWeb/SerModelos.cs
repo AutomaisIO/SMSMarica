@@ -201,3 +201,14 @@ public static class SerCodigos
         return semAcento.Trim().ToLowerInvariant();
     }
 }
+
+/// <summary>
+/// Os três telefones da tela de edição do SER, como ela os renderiza.
+///
+/// <para>Só dois dos três têm <c>id</c>; os outros vêm com <c>name</c> posicional. Por isso o
+/// nome JSF vem junto do valor — ele é resolvido pelo rótulo a cada leitura, nunca chumbado.</para>
+/// </summary>
+public sealed record SerContatosDaTela(
+    (string Nome, string Valor)? Residencial,
+    (string Nome, string Valor)? WhatsApp,
+    (string Nome, string Valor)? Contato);

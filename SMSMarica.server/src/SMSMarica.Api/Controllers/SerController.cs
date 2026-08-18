@@ -69,6 +69,44 @@ public sealed class SerController(ISerConsultaService consulta) : ControllerBase
         [FromServices] ISerEscritaService escrita,
         CancellationToken cancellationToken) =>
         escrita.RegistrarFollowUpAsync(id, corpo.Texto, cancellationToken);
+
+    /// <summary>
+    /// Os três telefones como o SER os tem AGORA — lidos ao vivo da tela de edição.
+    ///
+    /// <para>Lê do SER e não do espelho de propósito: o espelho só se atualiza na varredura, e
+    /// deixar o operador editar em cima de número velho sobrescreveria o que o Estado já tem.</para>
+    /// </summary>
+    [HttpGet("{id:guid}/contatos")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]
+    [ProducesResponseType<SerContatosDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public Task<SerContatosDto> Contatos(
+        Guid id,
+        [FromServices] ISerEscritaService escrita,
+        CancellationToken cancellationToken) =>
+        escrita.LerContatosAsync(id, cancellationToken);
+
+    /// <summary>
+    /// Altera os telefones da solicitação <b>no SER</b> (docs/ser.md §10).
+    ///
+    /// <para>Campo ausente/<c>null</c> não é tocado; string vazia limpa. Uma trava invertida
+    /// garante que o POST não mexa em nada além dos telefones, e o resultado é RELIDO da tela
+    /// antes de responder.</para>
+    ///
+    /// <para><b>Não altera o nosso hub FHIR</b> — o cadastro clínico do cidadão tem regras
+    /// próprias (telefone verificado, contato que só acumula) e não passa por aqui.</para>
+    /// </summary>
+    [HttpPut("{id:guid}/contatos")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Edicao)]
+    [ProducesResponseType<SerContatosDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public Task<SerContatosDto> AlterarContatos(
+        Guid id,
+        [FromBody] SerAlterarContatosRequest corpo,
+        [FromServices] ISerEscritaService escrita,
+        CancellationToken cancellationToken) =>
+        escrita.AlterarContatosAsync(id, corpo, cancellationToken);
 }
 
 /// <summary>

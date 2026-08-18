@@ -1,12 +1,20 @@
 # SER — Sistema Estadual de Regulação (SES-RJ)
 
-Integração de **leitura** com `ser.saude.rj.gov.br`. Decisão de arquitetura em
+Integração com `ser.saude.rj.gov.br`. Decisão de arquitetura em
 [ADR-0042](./adr/0042-ser-segunda-fonte-de-regulacao.md). O protocolo abaixo foi
 levantado no laboratório `Automais.SER/` (Python) e portado para
 `SMSMarica.Core/Integracoes/SerWeb/` (.NET).
 
-> **Somente leitura.** O motor nunca escreve no SER. A trava está em
-> `SerWebSessao` e é descrita no fim deste documento.
+> **Leitura por padrão; escrita é exceção nomeada.** Todo POST passa pela trava de
+> somente-leitura (§7). Desde 18/08/2026 existem **duas** escritas liberadas, cada uma
+> mapeada contra o SER real e autorizada explicitamente: **registrar FollowUP** (§9) e
+> **alterar os telefones** (§10). Elas saem por uma porta separada
+> (`SubmeterEscritaAsync`), que exige declarar a operação e a registra em log.
+>
+> **E são assinadas pelo operador, não pela credencial de sincronismo.** O SER carimba
+> cada evento com o nome de quem fez; escrever com a credencial do banco faria toda ação
+> do município sair no nome da mesma pessoa. A senha pessoal do operador vive **em
+> memória**, amarrada à sessão dele no SMSMarica — nunca em banco.
 
 ## 1. Stack do SER
 
@@ -486,7 +494,48 @@ de fato pediu tem de estar no TEXTO, ou o histórico do Estado perde a autoria r
 > liberar nominalmente esses componentes, como já foi feito para a troca de aba. Enquanto isso
 > não acontecer, o caminho é a sonda `Automais.SER/probe_followup.py` (ensaio por padrão).
 
-## 10. Laboratório
+## 10. Alterar os telefones (aba *Editar*)
+
+A segunda escrita. Serve ao caso real da regulação: liga-se para o paciente, o número está errado,
+e corrigir exigia abrir a tela do Estado.
+
+| Passo | Requisição |
+|---|---|
+| 1. Pesquisar por `form0:idSolicitacao` | A4J normal (`AJAXREQUEST=form0`) |
+| 2. Item *Editar* do menu da linha | A4J (`AJAXREQUEST=_viewRoot`) — a aba volta preenchida |
+| 3. Gravar (`<a title="Gravar">` do `form0`) | A4J, na região que o próprio `onclick` declara |
+
+**Os três telefones se resolvem pelo RÓTULO, nunca pelo id.** Dois deles não têm `id`, só `name`
+posicional (`form0:j_id173` residencial e `form0:j_id178` WhatsApp, medidos em 10/08/2026);
+`form0:telefoneContato` é o único estável. Chumbar aqueles números grava no campo errado na
+próxima recompilação da SES-RJ — e o SER responde "salvo com sucesso" do mesmo jeito.
+
+**Trava invertida.** A trava de somente-leitura não vale nesta operação (ela *é* escrita, e o
+botão chama-se *Gravar*). O que protege é comparar o POST contra o que a tela renderizou e
+recusar se qualquer campo além dos telefones divergir: um POST que mexesse em recurso, médico,
+risco ou CID passaria despercebido, porque o SER aceita e confirma.
+
+**Campo `disabled` não vai no POST.** O SER trava a identidade do paciente (nome, CPF, CNS, mãe,
+raça) com `disabled`, e o navegador não envia esses campos — então gravar não os zera. O motor
+faz o mesmo **só na escrita** (`CamposDoForm(..., comoNavegador: true)`); nas leituras o corpo
+segue como sempre foi, porque nesta tela o que muda o resultado costuma ser o que se manda no
+POST (§3.3) e trocar isso "para arrumar" seria trocar comportamento provado por suposto.
+
+**Situação terminal não oferece *Editar*.** Cancelada e Alta só têm Visualizar, Histórico e
+Registrar FollowUP — a tela mostra os números e esconde o botão, em vez de deixar digitar para
+recusar no fim.
+
+**A conferência é reabrir a edição do zero** e comparar número a número, **só pelos dígitos**: o
+SER aplica máscara ao gravar (`21987654321` volta `(21) 98765-4321`), e comparar o texto cru faria
+"formatou" parecer "ignorou".
+
+> **Isto NÃO altera o hub FHIR** (decisão de 18/08/2026). Telefone no FHIR tem regras próprias —
+> o marcador de verificado por OTP é a fonte única, e contato só ACUMULA (o incidente de 10/08
+> apagou 8.634 números num merge). O que a tela grava é o cadastro do SER e o espelho
+> `ser_solicitacao`. Efeito colateral consciente: como espelho e SER passam a bater, a varredura
+> seguinte não vê mudança e não dispara conciliação — a alteração fica no Estado e no espelho.
+
+## 11. Laboratório
 
 `Automais.SER/` (Python) continua como bancada de recon — é onde se investiga tela
 nova antes de portar. Não roda em produção. `.env`, `credenciais_ser.txt` e

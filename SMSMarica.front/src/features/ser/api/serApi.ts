@@ -28,6 +28,8 @@ import type {
   PacienteEncontradoSer,
   SessaoOperadorSer,
   FollowUpResultadoSer,
+  ContatosSer,
+  AlterarContatosSer,
 } from '@/features/ser/types';
 
 /** Busca na NOSSA base espelhada — não vai ao SER. */
@@ -271,5 +273,20 @@ export async function registrarFollowUpSer(
   texto: string,
 ): Promise<FollowUpResultadoSer> {
   const { data } = await http.post<FollowUpResultadoSer>(`/regulacao/ser/${id}/followup`, { texto });
+  return data;
+}
+
+/** Lê os telefones AO VIVO da tela de edição do SER — não do nosso espelho. */
+export async function obterContatosSer(id: string): Promise<ContatosSer> {
+  const { data } = await http.get<ContatosSer>(`/regulacao/ser/${id}/contatos`);
+  return data;
+}
+
+/** Altera os telefones no SER. Só volta OK depois de o backend reabrir a tela e conferir. */
+export async function alterarContatosSer(
+  id: string,
+  corpo: AlterarContatosSer,
+): Promise<ContatosSer> {
+  const { data } = await http.put<ContatosSer>(`/regulacao/ser/${id}/contatos`, corpo);
   return data;
 }
