@@ -337,6 +337,13 @@ public static class DependencyInjection
         // esvazia `ser_gatilho` — até aqui a fila só crescia.
         services.AddScoped<Ser.ISerNotificacaoService, Ser.SerNotificacaoService>();
 
+        // ESCRITA no SER (FollowUP). Duas identidades diferentes, de propósito: a sessão acima é
+        // de SINCRONISMO (credencial do banco) e só lê; escrever usa a sessão do OPERADOR, que é
+        // singleton por viver em memória e por sessão de usuário — nunca em banco. Sem isso, toda
+        // ação do município sairia assinada pela mesma pessoa na trilha do Estado.
+        services.AddSingleton<Ser.Sessao.ISerSessaoOperadorStore, Ser.Sessao.SerSessaoOperadorStore>();
+        services.AddScoped<Ser.ISerEscritaService, Ser.SerEscritaService>();
+
         // Config do disparo diário em BANCO: mudar a hora não pode exigir deploy.
         services.AddScoped<Ser.ISerVarreduraConfigService, Ser.SerVarreduraConfigService>();
 

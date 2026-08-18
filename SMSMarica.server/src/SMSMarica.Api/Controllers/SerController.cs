@@ -3,6 +3,7 @@ using SMSMarica.Api.Auth;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Ser;
 using SMSMarica.Core.Ser.Dtos;
+using SMSMarica.Core.Ser.Sessao;
 using SMSMarica.Data.Entities.Enums;
 using SMSMarica.Data.Entities.Ser;
 
@@ -46,6 +47,84 @@ public sealed class SerController(ISerConsultaService consulta) : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public Task<SerSolicitacaoDetalheDto> Obter(Guid id, CancellationToken cancellationToken) =>
         consulta.ObterAsync(id, cancellationToken);
+
+    /// <summary>
+    /// Registra um FollowUP na solicitação — <b>escreve no SER</b> (docs/ser.md §9).
+    ///
+    /// <para>Assinado pelo operador: exige a sessão de <c>/regulacao/ser/sessao</c>. Sem ela
+    /// responde 400 com o código <c>ser.sessao_operador_ausente</c>, que é o sinal para a tela
+    /// pedir a senha do SER.</para>
+    ///
+    /// <para>Só retorna sucesso depois de RELER o histórico e achar o evento lá — o SER já
+    /// respondeu "salvo com sucesso" sem ter gravado nada (10/08/2026).</para>
+    /// </summary>
+    [HttpPost("{id:guid}/followup")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Edicao)]
+    [ProducesResponseType<SerFollowUpResultadoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public Task<SerFollowUpResultadoDto> RegistrarFollowUp(
+        Guid id,
+        [FromBody] SerFollowUpRequest corpo,
+        [FromServices] ISerEscritaService escrita,
+        CancellationToken cancellationToken) =>
+        escrita.RegistrarFollowUpAsync(id, corpo.Texto, cancellationToken);
+}
+
+/// <summary>
+/// A sessão de ESCRITA do operador no SER.
+///
+/// <para><b>Por que não basta a credencial cadastrada.</b> Aquela é de sincronismo — serve para a
+/// varredura ler. O SER assina cada evento com o nome de quem fez, então escrever com ela faria
+/// toda ação do município aparecer no nome da mesma pessoa na trilha do Estado. Quem escreve usa
+/// o PRÓPRIO login do SER.</para>
+///
+/// <para><b>A senha não é persistida.</b> Vive na memória do processo, amarrada ao usuário, e
+/// morre com a sessão dele (ou com o restart da API). Não existe tabela para ela.</para>
+/// </summary>
+[ApiController]
+[Route("regulacao/ser/sessao")]
+public sealed class SerSessaoOperadorController(
+    ISerSessaoOperadorStore sessoes,
+    IUsuarioAtualAccessor usuarioAtual) : ControllerBase
+{
+    /// <summary>A tela pergunta isto antes de oferecer as ações de escrita.</summary>
+    [HttpGet]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]
+    [ProducesResponseType<SerSessaoOperadorInfo>(StatusCodes.Status200OK)]
+    public SerSessaoOperadorInfo Estado() => sessoes.Estado(Sessao());
+
+    /// <summary>Entra no SER com a credencial do operador. Valida CONTRA O SER na hora.</summary>
+    [HttpPost]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Edicao)]
+    [ProducesResponseType<SerSessaoOperadorInfo>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public Task<SerSessaoOperadorInfo> Entrar(
+        [FromBody] SerLoginOperadorRequest corpo, CancellationToken cancellationToken) =>
+        sessoes.AutenticarAsync(Sessao(), Operador(), corpo.Usuario, corpo.Senha, cancellationToken);
+
+    /// <summary>Sai do SER. O front chama isto no logout — sair daqui é sair de lá.</summary>
+    [HttpDelete]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public IActionResult Sair()
+    {
+        sessoes.Encerrar(Sessao());
+        return NoContent();
+    }
+
+    /// <summary>A SESSÃO (jti), não o usuário: é o que faz sair-e-entrar começar do zero.</summary>
+    private string Sessao() =>
+        usuarioAtual.SessaoId
+        ?? throw new SMSMarica.Core.Common.Excecoes.ValidacaoException(
+            "ser.sem_operador",
+            "Escrita no SER exige um usuário autenticado — a ação é assinada por quem a fez.");
+
+    private Guid Operador() =>
+        usuarioAtual.UsuarioId
+        ?? throw new SMSMarica.Core.Common.Excecoes.ValidacaoException(
+            "ser.sem_operador",
+            "Escrita no SER exige um usuário autenticado — a ação é assinada por quem a fez.");
 }
 
 /// <summary>

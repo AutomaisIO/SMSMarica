@@ -27,6 +27,10 @@ import {
   obterStatusMotorSer,
   salvarCredencialSer,
   testarCredencialSer,
+  obterSessaoOperadorSer,
+  entrarNoSer,
+  sairDoSer,
+  registrarFollowUpSer,
 } from '@/features/ser/api/serApi';
 import type {
   BuscaSerFiltro,
@@ -44,6 +48,7 @@ export const serKeys = {
   solicitacao: (id: string) => ['ser', 'solicitacao', id] as const,
   status: ['ser', 'status'] as const,
   execucoes: ['ser', 'execucoes'] as const,
+  sessaoOperador: ['ser', 'sessao-operador'] as const,
 };
 
 export function useBuscaSer(filtro: BuscaSerFiltro) {
@@ -313,5 +318,50 @@ export function useSincronizarCatalogoSer() {
   return useMutation({
     mutationFn: (refazerTudo: boolean) => sincronizarCatalogoSer(refazerTudo),
     onSuccess: () => invalidarRascunhos(qc),
+  });
+}
+
+// ---------------------------------------------------------------- escrita no SER
+
+/** A tela consulta isto ANTES de oferecer as ações de escrita — é o que decide abrir o modal. */
+export function useSessaoOperadorSer() {
+  return useQuery({
+    queryKey: serKeys.sessaoOperador,
+    queryFn: obterSessaoOperadorSer,
+    staleTime: 60_000,
+  });
+}
+
+export function useEntrarNoSer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ usuario, senha }: { usuario: string; senha: string }) =>
+      entrarNoSer(usuario, senha),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: serKeys.sessaoOperador }),
+  });
+}
+
+export function useSairDoSer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: sairDoSer,
+    onSuccess: () => void qc.invalidateQueries({ queryKey: serKeys.sessaoOperador }),
+  });
+}
+
+/**
+ * Registra o FollowUP e recarrega a solicitação: o backend já gravou o evento novo no espelho,
+ * então a trilha da tela passa a mostrar a ação do próprio operador sem esperar a varredura.
+ */
+export function useRegistrarFollowUpSer(solicitacaoId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (texto: string) => registrarFollowUpSer(solicitacaoId!, texto),
+    onSuccess: () => {
+      if (solicitacaoId) {
+        void qc.invalidateQueries({ queryKey: serKeys.solicitacao(solicitacaoId) });
+      }
+      void qc.invalidateQueries({ queryKey: ['ser', 'notificacoes'] });
+    },
   });
 }

@@ -94,7 +94,7 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'RegulacaoTriagem', rotulo: 'Regulação — triagem técnica (visão do município no painel)' },
   { id: 'RegulacaoMedica', rotulo: 'Regulação — médico regulador (visão do município no painel)' },
   { id: 'RegulacaoAgendamento', rotulo: 'Regulação — agendamento (visão do município no painel)' },
-  { id: 'RegulacaoSer', rotulo: 'Regulação — SER: fila do Estado (só leitura)' },
+  { id: 'RegulacaoSer', rotulo: 'Regulação — SER: fila do Estado (Edição = registrar FollowUP no SER)' },
   { id: 'RegulacaoConfiguracao', rotulo: 'Regulação — Configuração (credenciais e motor do SER)' },
   { id: 'CorrecaoIdentidadeExame', rotulo: 'Correção de identidade de exame (reescreve o DICOM no PACS)' },
   { id: 'PesquisaSatisfacao', rotulo: 'Pesquisa de satisfação — enviar ao paciente pelo histórico' },

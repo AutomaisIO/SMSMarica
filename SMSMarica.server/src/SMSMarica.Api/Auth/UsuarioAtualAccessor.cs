@@ -29,6 +29,17 @@ internal sealed class UsuarioAtualAccessor(IHttpContextAccessor http) : IUsuario
         }
     }
 
+    public string? SessaoId
+    {
+        get
+        {
+            var user = _http.HttpContext?.User;
+            if (user?.Identity?.IsAuthenticated != true) return null;
+            var jti = user.FindFirstValue(JwtRegisteredClaimNames.Jti);
+            return string.IsNullOrWhiteSpace(jti) ? null : jti;
+        }
+    }
+
     public string? Ip
     {
         get

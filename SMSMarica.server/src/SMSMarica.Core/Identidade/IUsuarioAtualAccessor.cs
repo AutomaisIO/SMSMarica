@@ -23,4 +23,14 @@ public interface IUsuarioAtualAccessor
     /// <summary>IP real do cliente na requisição (X-Forwarded-For já honrado), ou <c>null</c>
     /// fora de uma requisição (jobs/seed). Para a trilha de auditoria.</summary>
     string? Ip { get; }
+
+    /// <summary>
+    /// Identidade da SESSÃO (o <c>jti</c> do token), não do usuário: muda a cada login.
+    ///
+    /// <para>Serve para amarrar estado de memória ao ciclo de vida da sessão — hoje, a sessão de
+    /// escrita no SER. Chavear por usuário faria o operador que saiu e voltou <b>herdar</b> a
+    /// credencial da sessão anterior; chavear por <c>jti</c> faz sair-e-entrar valer o que
+    /// aparenta valer.</para>
+    /// </summary>
+    string? SessaoId { get; }
 }

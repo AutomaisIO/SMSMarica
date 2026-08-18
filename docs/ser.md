@@ -431,7 +431,62 @@ peso/altura/IMC obrigatórios, "já realizou cirurgia oncológica?" e as datas d
 > **Continua valendo a trava de somente-leitura.** Abrir a aba e trocar combos só re-renderiza a
 > view; o botão *Gravar* (`form0:j_id313`) nunca é acionado por nada nosso.
 
-## 9. Laboratório
+## 9. Registrar FollowUP — a primeira escrita mapeada (18/08/2026)
+
+Mapeada no navegador e **exercitada de verdade** na solicitação 8196837 (Agendada). É a
+escrita mais simples do SER, e a única de que precisamos hoje: acrescenta uma observação ao
+histórico **sem mudar a situação**.
+
+**O FollowUP não mora no `form0`.** Clicar em *Registrar FollowUP* no menu da linha abre um
+modal com **form próprio**, e o Gravar dele é um **POST comum** — sem `AJAXREQUEST`, sem
+`ajaxSingle`, sem o ViewState do `form0`. A página inteira navega e volta com *"FollowUp
+registrado!"*.
+
+| Passo | Requisição |
+|---|---|
+| 1. Pesquisar por `form0:idSolicitacao` | A4J normal (`AJAXREQUEST=form0`) |
+| 2. Item *Registrar FollowUP* do menu da linha | A4J (`AJAXREQUEST=_viewRoot`) — abre o modal |
+| 3. Gravar do modal | **POST comum**, no `action` do form do modal |
+
+O POST do passo 3 tem **cinco campos**:
+
+```
+<form>                = <form>          # marcador do form, como sempre no JSF
+<form>:<textarea>     = <observação>
+<form>:<gravar>       = Gravar
+autoScroll            =
+javax.faces.ViewState = <o ViewState DE DENTRO desse form>
+```
+
+Medido em 18/08/2026: form `j_id175`, textarea `j_id175:j_id183`, Gravar `j_id175:j_id185`,
+Cancelar `j_id175:j_id186`, item do menu `form0:listagem:0:j_id169`. **Todos posicionais** — o
+item do menu se acha pelo texto, o form pelo textarea + botão *Gravar* que ele contém.
+
+**"FollowUp registrado!" não é prova** — é a lição de 10/08/2026 com a Hipótese, que respondeu
+sucesso e não gravou nada. A conferência é pelo **Histórico**, e o evento tem esta cara:
+
+```
+18/08/2026 13:03:51 · FollowUP · Agendada -> Agendada
+CREG-METROPOLITANA II · HOSPITAL UNIVERSITARIO ANTONIO PEDRO (UFF HUAP)
+BERNARDO DOS SANTOS LEITE ALMEIDA · Gestor: GESTOR SMS MARICA · <IP>
+"Registramos que o contato com a paciente já foi realizado, e a mesma informa que poderá comparecer."
+```
+
+> **Correção a uma regra registrada.** `docs/ser-continuacao.md §3` diz *"FollowUP é Em fila ->
+> Em fila"*. O certo é que o FollowUP **preserva a situação, qualquer que ela seja** — o caso
+> medido foi `Agendada -> Agendada`. A consequência prática não muda: FollowUP **nunca** aparece
+> num diff de grade, então só a leitura do histórico o revela.
+
+**O evento carrega o usuário logado** (nome completo) e a lotação (`Gestor: GESTOR SMS MARICA`).
+Como a integração usa uma credencial única, todo FollowUP nosso vai sair com esse nome — quem
+de fato pediu tem de estar no TEXTO, ou o histórico do Estado perde a autoria real.
+
+> **A trava de somente-leitura continua barrando isto no motor .NET** — `registrar` e `followup`
+> estão no regex, e o rótulo do botão é *Gravar*. Ligar o FollowUP é decisão explícita: exige
+> liberar nominalmente esses componentes, como já foi feito para a troca de aba. Enquanto isso
+> não acontecer, o caminho é a sonda `Automais.SER/probe_followup.py` (ensaio por padrão).
+
+## 10. Laboratório
 
 `Automais.SER/` (Python) continua como bancada de recon — é onde se investiga tela
 nova antes de portar. Não roda em produção. `.env`, `credenciais_ser.txt` e

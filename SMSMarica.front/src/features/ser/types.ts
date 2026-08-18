@@ -479,3 +479,28 @@ export type PacienteEncontradoSer = {
   /** Nosso telefone verificado por OTP. Vira sugestão ao lado do WhatsApp do SER. */
   telefoneVerificadoNosso: string | null;
 };
+
+// ---------------------------------------------------------------- escrita no SER
+
+/**
+ * Sessão de ESCRITA do operador no SER.
+ *
+ * A credencial cadastrada em Configuração é de SINCRONISMO e só lê. O SER assina cada evento com
+ * o nome de quem fez, então escrever exige o login pessoal de quem está operando — senão toda
+ * ação do município aparece no nome da mesma pessoa na trilha do Estado.
+ */
+export type SessaoOperadorSer = {
+  autenticado: boolean;
+  usuarioSer: string | null;
+  autenticadaEm: string | null;
+  expiraEm: string | null;
+};
+
+
+export type FollowUpResultadoSer = {
+  idSer: string;
+  /** O que o SER exibiu. NÃO é a prova — a prova é `evento`, achado na releitura. */
+  mensagemDoSer: string;
+  evento: EventoDiretoSer;
+  eventosNovos: number;
+};

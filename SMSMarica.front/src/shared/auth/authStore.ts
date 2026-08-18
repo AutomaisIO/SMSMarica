@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { create } from 'zustand';
 import { http } from '@/shared/api/httpClient';
 
@@ -210,6 +211,12 @@ export const useAuth = create<AuthState>((set, get) => ({
   },
 
   sair: () => {
+    // A sessão de ESCRITA no SER morre junto. A senha do SER de cada operador vive na memória do
+    // servidor amarrada a ESTA sessão (o `jti` do token), e "sair" tem de significar sair dos
+    // dois — senão a credencial pessoal dele no sistema do Estado continuaria viva por horas.
+    const { token } = get();
+    if (token) void encerrarSessaoDeEscritaNoSer(token);
+
     localStorage.removeItem(CHAVE_STORAGE);
     set({ usuario: null, token: null, expiraEm: null, permissoes: {}, unidades: [], unidadeAtivaId: null });
   },
@@ -262,4 +269,24 @@ export function usePermissao(modulo: ModuloPermissao, acao: AcaoPermissao): bool
 /** Hook utilitário: o usuário logado é médico (papel derivado do hub FHIR)? */
 export function useEhMedico(): boolean {
   return useAuth((s) => s.usuario?.papelAtual === 'Medico');
+}
+
+/**
+ * Encerra a sessão de escrita no SER durante o logout.
+ *
+ * Usa uma instância CRUA do axios de propósito: o interceptor global reage a 401 chamando
+ * `sair()`, e esta chamada acontece dentro do próprio `sair()`. E manda o token explicitamente
+ * porque o estado está prestes a ser limpo.
+ */
+async function encerrarSessaoDeEscritaNoSer(token: string): Promise<void> {
+  try {
+    await axios.delete('/regulacao/ser/sessao', {
+      baseURL: http.defaults.baseURL,
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 5000,
+    });
+  } catch {
+    // Sair do sistema não pode falhar porque o SER (ou a rede) não respondeu. Uma sessão órfã
+    // ainda cai sozinha pela validade por inatividade do servidor.
+  }
 }

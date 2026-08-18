@@ -232,6 +232,24 @@ public sealed record SerConsultaDiretaDto(
     /// </summary>
     string? AvisoDoSer);
 
+/// <summary>Pedido de FollowUP vindo da tela.</summary>
+public sealed record SerFollowUpRequest(string Texto);
+
+/// <summary>
+/// Resultado de um FollowUP registrado no SER.
+///
+/// <para><see cref="MensagemDoSer"/> vem junto de propósito, mas <b>não é a prova</b>: quem prova
+/// é <see cref="Evento"/>, que só existe porque foi encontrado na RELEITURA do histórico.</para>
+/// </summary>
+public sealed record SerFollowUpResultadoDto(
+    string IdSer,
+    string MensagemDoSer,
+    SerEventoDiretoDto Evento,
+    int EventosNovos);
+
+/// <summary>Credencial do operador no SER — trafega, valida e some. Nunca é persistida.</summary>
+public sealed record SerLoginOperadorRequest(string Usuario, string Senha);
+
 /// <summary>Histórico lido ao vivo de uma solicitação, para conferir contra a tela do SER.</summary>
 public sealed record SerHistoricoDiretoDto(
     string IdSer,

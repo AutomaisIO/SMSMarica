@@ -1,6 +1,7 @@
 import { Loader2 } from 'lucide-react';
 
 import { useSolicitacaoSer } from '@/features/ser/api/queries';
+import { PainelFollowUpSer } from '@/features/ser/components/PainelFollowUpSer';
 import { SituacaoSerBadge } from '@/features/ser/components/SituacaoSerBadge';
 import { Modal } from '@/shared/ui/Modal';
 import { formatarInstante, formatarInstanteData } from '@/shared/lib/datas';
@@ -99,6 +100,11 @@ export function ModalSolicitacaoSer({
             <Item rotulo="Agendado para" valor={r.agendadoParaTexto} />
             <Item rotulo="Solicitante" valor={r.solicitanteNome} />
           </Bloco>
+
+          {/* A ação fica JUNTO do histórico de propósito: FollowUP é uma entrada nessa mesma
+              trilha, e quem vai escrever precisa ler antes o que já foi registrado — inclusive
+              para não repetir uma tentativa de contato que outro operador já anotou. */}
+          {solicitacaoId && <PainelFollowUpSer solicitacaoId={solicitacaoId} />}
 
           <section>
             <h3 className="mb-2 font-semibold text-slate-800">

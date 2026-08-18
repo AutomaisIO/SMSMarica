@@ -48,8 +48,37 @@ public interface ISerWebSessao
         string htmlPagina, string formId, IReadOnlyDictionary<string, string> extras,
         string? viewState, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Submete um form <b>ESCREVENDO</b> no SER: a trava de somente-leitura não roda aqui.
+    ///
+    /// <para>Existe como método separado, e não como um <c>bool</c> em
+    /// <see cref="SubmeterFormAsync"/>, para que toda escrita seja uma decisão visível na chamada
+    /// — dá para achar todas com um grep pelo nome. O <paramref name="operacao"/> é obrigatório e
+    /// vai para o log: quando o Estado perguntar "quem fez isso", a resposta tem de estar aqui.</para>
+    ///
+    /// <para><b>Só use depois de autorização explícita para AQUELA operação.</b> Hoje existe uma:
+    /// registrar FollowUP (docs/ser.md §9). Qualquer outra precisa do mesmo caminho — autorizar,
+    /// mapear contra o SER real e só então chamar isto.</para>
+    /// </summary>
+    Task<RespostaSer> SubmeterEscritaAsync(
+        string htmlPagina, string formId, IReadOnlyDictionary<string, string> extras,
+        string? viewState, string operacao, CancellationToken cancellationToken);
+
     /// <summary>Autentica uma credencial avulsa (ainda não salva) — usado na tela de configuração.</summary>
     Task<string> AutenticarAvulsoAsync(string usuario, string senha, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Amarra ESTA instância à credencial de um operador, em vez da credencial de sincronismo
+    /// guardada no banco.
+    ///
+    /// <para><b>Por que existe:</b> a trilha de auditoria do SER grava o nome de quem fez, e a
+    /// credencial do banco é de SINCRONISMO — usá-la para escrever faria toda ação do município
+    /// sair no nome da mesma pessoa, apagando a autoria real. Escrita usa a credencial de quem
+    /// está operando (docs/ser.md §9).</para>
+    ///
+    /// <para>A senha fica só na memória desta instância; nada disso é persistido.</para>
+    /// </summary>
+    void UsarCredencialDoOperador(string usuario, string senha);
 
     /// <summary>Descarta a sessão em memória (força novo login na próxima chamada).</summary>
     void Reiniciar();
@@ -91,6 +120,22 @@ public sealed partial class SerWebSessao(
 
     private readonly SemaphoreSlim _gate = new(1, 1);
     private Sessao? _sessao;
+
+    /// <summary>Credencial do OPERADOR, quando esta instância é de escrita. Só memória.</summary>
+    private Credenciais? _credencialDoOperador;
+
+    public void UsarCredencialDoOperador(string usuario, string senha)
+    {
+        if (string.IsNullOrWhiteSpace(usuario) || string.IsNullOrWhiteSpace(senha))
+        {
+            throw new ValidacaoException(
+                "ser.credencial_operador_incompleta",
+                "Informe o usuário e a senha do SER.");
+        }
+
+        _credencialDoOperador = new Credenciais(usuario, senha, new Uri(BaseUrlPadrao));
+        Reiniciar();
+    }
 
     public void Reiniciar()
     {
@@ -168,12 +213,38 @@ public sealed partial class SerWebSessao(
         return resposta.Texto;
     }
 
-    public async Task<RespostaSer> SubmeterFormAsync(
+    public Task<RespostaSer> SubmeterFormAsync(
+        string htmlPagina, string formId, IReadOnlyDictionary<string, string> extras,
+        string? viewState, CancellationToken cancellationToken)
+    {
+        GarantirLeitura(extras, SerHtmlParser.Documento(htmlPagina));
+        return SubmeterAsync(htmlPagina, formId, extras, viewState, cancellationToken);
+    }
+
+    public Task<RespostaSer> SubmeterEscritaAsync(
+        string htmlPagina, string formId, IReadOnlyDictionary<string, string> extras,
+        string? viewState, string operacao, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(operacao))
+        {
+            throw new ArgumentException(
+                "Toda escrita no SER precisa dizer QUAL operação é — o nome vai para o log.",
+                nameof(operacao));
+        }
+
+        // Warning, não Debug: escrita no sistema do Estado é evento raro e precisa saltar do log.
+        logger.LogWarning(
+            "SER: ESCRITA — {Operacao} (form {Form}, {Campos} parâmetro(s)).",
+            operacao, formId, extras.Count);
+
+        return SubmeterAsync(htmlPagina, formId, extras, viewState, cancellationToken);
+    }
+
+    private async Task<RespostaSer> SubmeterAsync(
         string htmlPagina, string formId, IReadOnlyDictionary<string, string> extras,
         string? viewState, CancellationToken cancellationToken)
     {
         var doc = SerHtmlParser.Documento(htmlPagina);
-        GarantirLeitura(extras, doc);
 
         await _gate.WaitAsync(cancellationToken);
         try
@@ -498,6 +569,15 @@ public sealed partial class SerWebSessao(
 
     private async Task<Credenciais> CarregarCredenciaisAsync(CancellationToken cancellationToken)
     {
+        // Sessão do OPERADOR: o par usuário/senha já veio dele; do provedor só aproveitamos a URL,
+        // e a ausência do provedor NÃO pode derrubar o login — a credencial dele está correta, e
+        // "Provedor 'ser' ainda não configurado" seria um diagnóstico mentiroso na cara de quem
+        // acabou de digitar a senha certa.
+        if (_credencialDoOperador is { } doOperador)
+        {
+            return doOperador with { BaseUri = new Uri(await BaseUrlConfiguradaAsync(cancellationToken)) };
+        }
+
         using var scope = scopeFactory.CreateScope();
         var credenciais = scope.ServiceProvider.GetRequiredService<IIntegracaoCredencialService>();
         var ctx = await credenciais.ObterContextoAsync(Provedor, cancellationToken);
@@ -510,6 +590,23 @@ public sealed partial class SerWebSessao(
         }
 
         return new Credenciais(ctx.ClientId!, ctx.ClientSecret!, new Uri(LerBaseUrl(ctx.ParametrosJson)));
+    }
+
+    /// <summary>URL do SER configurada, caindo no padrão quando o provedor não existe/está
+    /// inativo — usado só pela sessão do operador, que não depende do provedor para nada mais.</summary>
+    private async Task<string> BaseUrlConfiguradaAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var scope = scopeFactory.CreateScope();
+            var credenciais = scope.ServiceProvider.GetRequiredService<IIntegracaoCredencialService>();
+            var ctx = await credenciais.ObterContextoAsync(Provedor, cancellationToken);
+            return LerBaseUrl(ctx.ParametrosJson);
+        }
+        catch (ValidacaoException)
+        {
+            return BaseUrlPadrao;
+        }
     }
 
     private static string LerBaseUrl(string? parametrosJson)

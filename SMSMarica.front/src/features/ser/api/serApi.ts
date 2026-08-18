@@ -26,6 +26,8 @@ import type {
   StatusRascunhoSer,
   TipoRecursoSer,
   PacienteEncontradoSer,
+  SessaoOperadorSer,
+  FollowUpResultadoSer,
 } from '@/features/ser/types';
 
 /** Busca na NOSSA base espelhada — não vai ao SER. */
@@ -241,4 +243,33 @@ export async function sincronizarCatalogoSer(refazerTudo = false): Promise<void>
   await http.post('/regulacao/ser/configuracao/catalogo/sincronizar', null, {
     params: { refazerTudo },
   });
+}
+
+// ---------------------------------------------------------------- escrita no SER
+
+export async function obterSessaoOperadorSer(): Promise<SessaoOperadorSer> {
+  const { data } = await http.get<SessaoOperadorSer>('/regulacao/ser/sessao');
+  return data;
+}
+
+/**
+ * Entra no SER com a credencial do próprio operador. O backend valida contra o SER na hora e
+ * guarda só em memória — a senha não é persistida em lugar nenhum.
+ */
+export async function entrarNoSer(usuario: string, senha: string): Promise<SessaoOperadorSer> {
+  const { data } = await http.post<SessaoOperadorSer>('/regulacao/ser/sessao', { usuario, senha });
+  return data;
+}
+
+export async function sairDoSer(): Promise<void> {
+  await http.delete('/regulacao/ser/sessao');
+}
+
+/** Registra FollowUP no SER. Só volta OK depois de o backend RELER o histórico e achar o evento. */
+export async function registrarFollowUpSer(
+  id: string,
+  texto: string,
+): Promise<FollowUpResultadoSer> {
+  const { data } = await http.post<FollowUpResultadoSer>(`/regulacao/ser/${id}/followup`, { texto });
+  return data;
 }

@@ -352,6 +352,17 @@ public class SerExportLeitorTests
             string usuario, string senha, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
+        /// <summary>Estes testes exercitam LEITURA. Se algum caminho chamar a escrita, é bug do
+        /// código sob teste — falhar alto aqui é o que denuncia.</summary>
+        public Task<RespostaSer> SubmeterEscritaAsync(
+            string htmlPagina, string formId, IReadOnlyDictionary<string, string> extras,
+            string? viewState, string operacao, CancellationToken cancellationToken) =>
+            throw new NotSupportedException($"dublê de leitura recebeu escrita: {operacao}");
+
+        public void UsarCredencialDoOperador(string usuario, string senha) =>
+            throw new NotSupportedException("dublê de leitura não autentica operador");
+
+
         public void Reiniciar()
         {
         }

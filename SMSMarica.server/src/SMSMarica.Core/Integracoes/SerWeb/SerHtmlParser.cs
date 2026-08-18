@@ -19,6 +19,13 @@ namespace SMSMarica.Core.Integracoes.SerWeb;
 /// <param name="CampoTexto">o input visível (<c>form0:suggUnidadeSol</c>).</param>
 /// <param name="BoxId">o container do suggestionbox — vai em <c>ajaxSingle</c> nas duas idas.</param>
 /// <param name="OnselectId">o <c>a4j:support event="onselect"</c> — é ele que amarra a escolha.</param>
+/// <summary>
+/// O modal de observação (FollowUP): form próprio, textarea, botão Gravar e o ViewState de
+/// DENTRO desse form — usar o do <c>form0</c> faz o JSF restaurar a view errada (docs/ser.md §3.2).
+/// </summary>
+public sealed record SerModalObservacao(
+    string FormId, string CampoTexto, string BotaoGravar, string? ViewState);
+
 public sealed record SerSuggestionBox(string CampoTexto, string BoxId, string OnselectId)
 {
     /// <summary>Hidden que carrega o índice da linha escolhida. O RichFaces o preenche SÓ durante
@@ -199,6 +206,27 @@ public static partial class SerHtmlParser
     }
 
     /// <summary>
+    /// O que a tela está exibindo ao operador, venha de onde vier.
+    ///
+    /// <para>O SER usa <b>duas</b> caixas: <c>form0:messages</c> (avisos da busca) e
+    /// <c>form0:divMensagens</c> (o retorno das ações — é onde sai tanto <i>"FollowUp
+    /// registrado!"</i> quanto <i>"Consulta ou Exame é obrigatório."</i>). Ler só uma delas faz
+    /// uma ação recusada parecer silenciosa.</para>
+    /// </summary>
+    public static string MensagemDaTela(IHtmlDocument doc)
+    {
+        var partes = new List<string>();
+        foreach (var id in new[] { CaixaMensagens, "form0:divMensagens" })
+        {
+            if (doc.GetElementById(id) is { } caixa && Texto(caixa) is { Length: > 0 } t)
+            {
+                partes.Add(t);
+            }
+        }
+        return string.Join(" | ", partes.Distinct(StringComparer.Ordinal));
+    }
+
+    /// <summary>
     /// Aviso de corte da tela de Histórico, ou <c>null</c> quando o resultado veio inteiro.
     ///
     /// <para>Essa tela <b>avisa</b> quando trunca — <i>"Consulta muito ampla, retorno limitado em
@@ -324,6 +352,58 @@ public static partial class SerHtmlParser
             if (rotulo.Length > 0) itens[rotulo] = a.Id!;
         }
         return itens;
+    }
+
+    // ------------------------------------------------------------------ FollowUP
+
+    /// <summary>Item "Registrar FollowUP" do menu Opções de uma linha (docs/ser.md §9).</summary>
+    public static string? ItemFollowUp(IHtmlDocument doc, int indiceNaPagina)
+    {
+        var prefixo = $"form0:listagem:{indiceNaPagina}:";
+        return doc.QuerySelectorAll("a")
+            .Where(a => (a.Id ?? string.Empty).StartsWith(prefixo, StringComparison.Ordinal))
+            // O SER escreve "Registrar FollowUP"; toleramos caixa e hífen, como o resto do motor.
+            .FirstOrDefault(a => a.TextContent
+                .Replace("-", string.Empty)
+                .Contains("followup", StringComparison.OrdinalIgnoreCase))
+            ?.Id;
+    }
+
+    /// <summary>
+    /// O modal de observação do FollowUP, resolvido na hora.
+    ///
+    /// <para><b>Ele tem form PRÓPRIO</b> — não é o <c>form0</c> — e o Gravar dele é POST comum,
+    /// sem <c>AJAXREQUEST</c>. Os três ids (form, textarea, botão) são posicionais e mudam quando
+    /// a SES-RJ recompila, por isso nada aqui é chumbado: o form é achado por ser o único que tem
+    /// um <c>textarea</c> nomeado E um controle rotulado <i>Gravar</i>.</para>
+    /// </summary>
+    public static SerModalObservacao? ModalDeObservacao(IHtmlDocument doc)
+    {
+        foreach (var form in doc.QuerySelectorAll("form").OfType<IHtmlFormElement>())
+        {
+            if (string.IsNullOrEmpty(form.Id)) continue;
+
+            var textarea = form.QuerySelectorAll("textarea")
+                .FirstOrDefault(t => !string.IsNullOrEmpty(t.GetAttribute("name")));
+            if (textarea is null) continue;
+
+            var gravar = form.QuerySelectorAll("a, input")
+                .FirstOrDefault(e => string.Equals(
+                    (e.GetAttribute("title") ?? e.GetAttribute("value") ?? e.TextContent).Trim(),
+                    "Gravar", StringComparison.OrdinalIgnoreCase));
+            if (gravar is null) continue;
+
+            var nomeGravar = gravar.GetAttribute("name") ?? gravar.Id;
+            if (string.IsNullOrEmpty(nomeGravar)) continue;
+
+            return new SerModalObservacao(
+                form.Id!,
+                textarea.GetAttribute("name")!,
+                nomeGravar,
+                (form.QuerySelector("input[name='javax.faces.ViewState']") as IHtmlInputElement)?.Value);
+        }
+
+        return null;
     }
 
     // ------------------------------------------------------------------ histórico

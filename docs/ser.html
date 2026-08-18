@@ -247,7 +247,23 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p>Levantada em 08/08/2026 e documentada à parte, por volume: <a href="./ser-criar-solicitacao.md"><code>docs/ser-criar-solicitacao.md</code></a>.</p>
 <p>Resumo do que importa saber daqui: o formulário de pedido tem um <strong>bloco fixo</strong> (tipo, recurso, CNS, médico, classificação de risco, hipótese, unidade de origem) e um <strong>bloco dinâmico</strong> (<code>form0:camposDinamicos</code>) que <strong>muda conforme o Recurso escolhido</strong> — 203 recursos produzem <strong>21 formulários diferentes</strong>, com 163 campos únicos. Oncologia, por exemplo, acrescenta peso/altura/IMC obrigatórios, "já realizou cirurgia oncológica?" e as datas da biópsia.</p>
 <p>&gt; <strong>Continua valendo a trava de somente-leitura.</strong> Abrir a aba e trocar combos só re-renderiza a &gt; view; o botão <em>Gravar</em> (<code>form0:j_id313</code>) nunca é acionado por nada nosso.</p>
-<h2>9. Laboratório</h2>
+<h2>9. Registrar FollowUP — a primeira escrita mapeada (18/08/2026)</h2>
+<p>Mapeada no navegador e <strong>exercitada de verdade</strong> na solicitação 8196837 (Agendada). É a escrita mais simples do SER, e a única de que precisamos hoje: acrescenta uma observação ao histórico <strong>sem mudar a situação</strong>.</p>
+<p><strong>O FollowUP não mora no <code>form0</code>.</strong> Clicar em <em>Registrar FollowUP</em> no menu da linha abre um modal com <strong>form próprio</strong>, e o Gravar dele é um <strong>POST comum</strong> — sem <code>AJAXREQUEST</code>, sem <code>ajaxSingle</code>, sem o ViewState do <code>form0</code>. A página inteira navega e volta com <em>"FollowUp registrado!"</em>.</p>
+<div class="tw"><table><thead><tr><th>Passo</th><th>Requisição</th></tr></thead><tbody>
+<tr><td>1. Pesquisar por <code>form0:idSolicitacao</code></td><td>A4J normal (<code>AJAXREQUEST=form0</code>)</td></tr>
+<tr><td>2. Item <em>Registrar FollowUP</em> do menu da linha</td><td>A4J (<code>AJAXREQUEST=_viewRoot</code>) — abre o modal</td></tr>
+<tr><td>3. Gravar do modal</td><td><strong>POST comum</strong>, no <code>action</code> do form do modal</td></tr>
+</tbody></table></div>
+<p>O POST do passo 3 tem <strong>cinco campos</strong>:</p>
+<p>``<code> &lt;form&gt;                = &lt;form&gt;          # marcador do form, como sempre no JSF &lt;form&gt;:&lt;textarea&gt;     = &lt;observação&gt; &lt;form&gt;:&lt;gravar&gt;       = Gravar autoScroll            = javax.faces.ViewState = &lt;o ViewState DE DENTRO desse form&gt; </code>``</p>
+<p>Medido em 18/08/2026: form <code>j_id175</code>, textarea <code>j_id175:j_id183</code>, Gravar <code>j_id175:j_id185</code>, Cancelar <code>j_id175:j_id186</code>, item do menu <code>form0:listagem:0:j_id169</code>. <strong>Todos posicionais</strong> — o item do menu se acha pelo texto, o form pelo textarea + botão <em>Gravar</em> que ele contém.</p>
+<p><strong>"FollowUp registrado!" não é prova</strong> — é a lição de 10/08/2026 com a Hipótese, que respondeu sucesso e não gravou nada. A conferência é pelo <strong>Histórico</strong>, e o evento tem esta cara:</p>
+<p>``<code> 18/08/2026 13:03:51 · FollowUP · Agendada -&gt; Agendada CREG-METROPOLITANA II · HOSPITAL UNIVERSITARIO ANTONIO PEDRO (UFF HUAP) BERNARDO DOS SANTOS LEITE ALMEIDA · Gestor: GESTOR SMS MARICA · &lt;IP&gt; "Registramos que o contato com a paciente já foi realizado, e a mesma informa que poderá comparecer." </code>``</p>
+<p>&gt; <strong>Correção a uma regra registrada.</strong> <code>docs/ser-continuacao.md §3</code> diz <em>"FollowUP é Em fila -&gt; &gt; Em fila"</em>. O certo é que o FollowUP <strong>preserva a situação, qualquer que ela seja</strong> — o caso &gt; medido foi <code>Agendada -&gt; Agendada</code>. A consequência prática não muda: FollowUP <strong>nunca</strong> aparece &gt; num diff de grade, então só a leitura do histórico o revela.</p>
+<p><strong>O evento carrega o usuário logado</strong> (nome completo) e a lotação (<code>Gestor: GESTOR SMS MARICA</code>). Como a integração usa uma credencial única, todo FollowUP nosso vai sair com esse nome — quem de fato pediu tem de estar no TEXTO, ou o histórico do Estado perde a autoria real.</p>
+<p>&gt; <strong>A trava de somente-leitura continua barrando isto no motor .NET</strong> — <code>registrar</code> e <code>followup</code> &gt; estão no regex, e o rótulo do botão é <em>Gravar</em>. Ligar o FollowUP é decisão explícita: exige &gt; liberar nominalmente esses componentes, como já foi feito para a troca de aba. Enquanto isso &gt; não acontecer, o caminho é a sonda <code>Automais.SER/probe_followup.py</code> (ensaio por padrão).</p>
+<h2>10. Laboratório</h2>
 <p><code>Automais.SER/</code> (Python) continua como bancada de recon — é onde se investiga tela nova antes de portar. Não roda em produção. <code>.env</code>, <code>credenciais_ser.txt</code> e <code>capturas/</code> são gitignored (credencial e PII).</p>
 </main>
 </body>
