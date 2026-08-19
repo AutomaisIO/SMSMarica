@@ -78,7 +78,6 @@ export function ModalLoginSer({
       aoFechar={fechar}
       largura="sm"
       titulo="Entrar no SER"
-      descricao="Suas ações no SER são assinadas com o SEU usuário do Estado."
     >
       {okComo ? (
         <div className="space-y-3">
@@ -96,12 +95,7 @@ export function ModalLoginSer({
         <form onSubmit={aoEnviar} className="space-y-4">
           <p className="flex gap-2 rounded border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
             <ShieldCheck className="mt-0.5 size-4 shrink-0" />
-            <span>
-              A credencial cadastrada no sistema serve só para <strong>ler</strong> a fila. Para
-              escrever no SER é preciso o seu login — é o nome dele que fica no histórico da
-              solicitação. A senha <strong>não é gravada</strong>: fica na sua sessão e some ao
-              sair.
-            </span>
+            <span>A senha não é gravada: fica na sua sessão e some ao sair.</span>
           </p>
 
           <label className="block space-y-1">
