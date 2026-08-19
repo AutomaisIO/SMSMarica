@@ -67,6 +67,12 @@ public sealed class SerEscritaService(
         var sessao = sessoes.Exigir(sessaoId);
         var leitor = new SerLeitorService(sessao, loggerFactory.CreateLogger<SerLeitorService>());
 
+        // Marco temporal ANTES de escrever: é ele que separa "o meu FollowUP entrou" de "já
+        // existia um evento com este texto". Sem isso, repetir a mesma observação numa
+        // solicitação que já a tinha confirmaria o registro pelo evento ANTIGO — e uma gravação
+        // que falhou passaria por bem-sucedida.
+        var inicio = DateTime.UtcNow;
+
         string mensagemDoSer;
         try
         {
@@ -89,7 +95,13 @@ public sealed class SerEscritaService(
 
         var confirmado = historico.Eventos
             .Where(e => EhFollowUp(e.Evento) && ComparaTexto(e.Observacao, limpo))
-            .OrderByDescending(e => ParaData(e.Data) ?? DateTime.MinValue)
+            .Select(e => new { Evento = e, Data = ParaData(e.Data) })
+            // Só conta evento DESTA gravação. A folga cobre defasagem de relógio entre a nossa
+            // máquina e a do Estado; ela é curta o bastante para não aceitar um FollowUP igual
+            // registrado ontem.
+            .Where(x => x.Data is not null && x.Data >= inicio - FolgaDeRelogio)
+            .OrderByDescending(x => x.Data)
+            .Select(x => x.Evento)
             .FirstOrDefault();
 
         if (confirmado is null)
@@ -99,8 +111,9 @@ public sealed class SerEscritaService(
                 "O SER respondeu " + (string.IsNullOrWhiteSpace(mensagemDoSer)
                     ? "sem mensagem"
                     : $"\"{mensagemDoSer}\"")
-                + ", mas o FollowUP não apareceu na releitura do histórico. Confira na tela do "
-                + "SER antes de tentar de novo — repetir pode duplicar o registro.");
+                + ", mas o FollowUP não apareceu como evento novo na releitura do histórico. "
+                + "Confira na tela do SER antes de tentar de novo — repetir pode duplicar o "
+                + "registro.");
         }
 
         var novos = await GravarEventosNovosAsync(solicitacao, historico, cancellationToken);
@@ -306,6 +319,13 @@ public sealed class SerEscritaService(
         await db.SaveChangesAsync(cancellationToken);
         return novos;
     }
+
+    /// <summary>
+    /// Folga para a diferença de relógio entre a nossa máquina e a do SER ao decidir se um evento
+    /// é "desta gravação". Generosa de propósito: errar para menos rejeitaria um registro que deu
+    /// certo, e o custo disso é o operador conferir à toa na tela do Estado.
+    /// </summary>
+    private static readonly TimeSpan FolgaDeRelogio = TimeSpan.FromMinutes(10);
 
     /// <summary>O SER escreve "FollowUP"; toleramos caixa e hífen, como o resto do motor.</summary>
     private static bool EhFollowUp(string? evento) =>
