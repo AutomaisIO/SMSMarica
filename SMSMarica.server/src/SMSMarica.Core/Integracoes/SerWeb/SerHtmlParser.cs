@@ -471,9 +471,18 @@ public static partial class SerHtmlParser
             var tipo = (el.GetAttribute("type") ?? "text").ToLowerInvariant();
             if (tipo is "hidden" or "submit" or "button" or "image" or "reset") continue;
 
-            // FILHO DIRETO do mesmo elemento, não descendente: `QuerySelector` varre a subárvore
-            // toda e, num campo pendurado direto no <form>, acharia o rótulo de outro campo.
-            var label = el.ParentElement?.Children
+            // O rótulo tem de ser DESTE campo, sem ambiguidade: um contêiner com mais de um
+            // controle não diz a qual deles o <label> pertence. Medido em 19/08/2026 na aba
+            // Editar: `form0:especialidadeMedico` divide o <div> com o telefone do médico e
+            // "casava" com o rótulo dele — um telefone gravado ali iria para a especialidade,
+            // com o SER respondendo sucesso.
+            var pai = el.ParentElement;
+            if (pai is null) continue;
+            if (pai.QuerySelectorAll("input, select, textarea").Length != 1) continue;
+
+            // FILHO DIRETO, não descendente: `QuerySelector` varre a subárvore toda e, num campo
+            // pendurado direto no <form>, acharia o rótulo de outro campo.
+            var label = pai.Children
                 .FirstOrDefault(f => string.Equals(f.TagName, "LABEL", StringComparison.OrdinalIgnoreCase));
             if (label is null) continue;
             if (!string.Equals(NormalizarRotulo(Texto(label)), alvo, StringComparison.Ordinal)) continue;

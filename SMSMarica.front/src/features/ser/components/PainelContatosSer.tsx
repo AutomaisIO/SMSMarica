@@ -26,7 +26,7 @@ export function PainelContatosSer({ solicitacaoId }: { solicitacaoId: string }) 
   const [erro, setErro] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
-  const { autenticado, usuarioSer, comSessao, tratouFaltaDeSessao, modal } =
+  const { autenticado, operador, usuarioSer, comSessao, tratouFaltaDeSessao, modal } =
     useSessaoSerObrigatoria();
 
   // A leitura já exige sessão de escrita (ela abre a aba Editar do SER). Só habilita depois de
@@ -132,9 +132,12 @@ export function PainelContatosSer({ solicitacaoId }: { solicitacaoId: string }) 
         <h4 className="text-sm font-semibold text-slate-800">Dados de contato no SER</h4>
 
         {autenticado && (
-          <span className="ml-auto flex items-center gap-1 text-[11px] text-emerald-700">
+          <span
+            className="ml-auto flex items-center gap-1 text-[11px] text-emerald-700"
+            title={`Login do SER: ${usuarioSer ?? '—'}`}
+          >
             <UserCheck className="size-3.5" />
-            assinando como {usuarioSer}
+            assinando como {operador}
           </span>
         )}
       </div>

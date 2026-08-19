@@ -33,8 +33,13 @@ public class SerContatosTests
                <input name="form0:j_id901" value="(21) 3333-0000" /></div>
           <div><label>Telefone WhatsApp<span class="required">*</span></label>
                <input name="form0:j_id777" value="(21) 97777-1111" /></div>
-          <div><label>Telefone de Contato<span class="required">*</span></label>
+          <div><label>Telefone Contato<span class="required">*</span></label>
                <input name="form0:telefoneContato" value="(21) 98888-2222" /></div>
+
+          <!-- Dois controles no mesmo pai: o <label> não diz a qual deles pertence. -->
+          <div><label>Telefone celular do médico</label>
+               <input name="form0:telefoneCelularMedico" disabled="disabled" />
+               <input name="form0:especialidadeMedico" value="[CLÍNICA GERAL]" disabled="disabled" /></div>
 
           <a title="Gravar" id="form0:j_id950"
              onclick="A4J.AJAX.Submit('form0',event,{'similarityGroupingId':'form0:j_id950'})">Gravar</a>
@@ -54,7 +59,10 @@ public class SerContatosTests
             .Should().Be(("form0:j_id901", "(21) 3333-0000"));
         SerHtmlParser.CampoPorRotulo(doc, "form0", "Telefone WhatsApp")
             .Should().Be(("form0:j_id777", "(21) 97777-1111"));
-        SerHtmlParser.CampoPorRotulo(doc, "form0", "Telefone de Contato")
+        // MEDIDO na tela em 19/08/2026: é "Telefone Contato", sem o "de". Escrever "Telefone de
+        // Contato" fez o campo não ser encontrado, e a tela mostrou o contato em branco mesmo com
+        // o SER tendo o número (solicitação 7684585).
+        SerHtmlParser.CampoPorRotulo(doc, "form0", "Telefone Contato")
             .Should().Be(("form0:telefoneContato", "(21) 98888-2222"));
     }
 
@@ -148,5 +156,16 @@ public class SerContatosTests
             """;
 
         SerHtmlParser.ItemEditar(SerHtmlParser.Documento(cancelada), 0).Should().BeNull();
+    }
+
+    [Fact]
+    public void CampoPorRotulo_recusa_rotulo_ambiguo_com_dois_controles_no_mesmo_pai()
+    {
+        // Medido em 19/08/2026: `especialidadeMedico` divide o <div> com o telefone do médico e
+        // "casava" com o rótulo dele. Um telefone gravado ali iria para a especialidade — com o
+        // SER respondendo sucesso. Sem dono claro, não resolve.
+        SerHtmlParser.CampoPorRotulo(
+                SerHtmlParser.Documento(AbaEditar), "form0", "Telefone celular do médico")
+            .Should().BeNull();
     }
 }

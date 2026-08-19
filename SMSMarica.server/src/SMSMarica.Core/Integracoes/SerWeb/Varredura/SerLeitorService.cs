@@ -293,13 +293,34 @@ public sealed class SerLeitorService(
         return SerHtmlParser.MensagemDaTela(SerHtmlParser.Documento(resposta.Texto));
     }
 
-    /// <summary>Rótulos visíveis dos três telefones na aba Editar do SER.</summary>
-    private static readonly (string Chave, string Rotulo)[] RotulosDeTelefone =
+    /// <summary>
+    /// Rótulos visíveis dos três telefones na aba Editar, MEDIDOS na tela (19/08/2026):
+    /// <c>Telefone Residencial</c>, <c>Telefone WhatsApp *</c> e <c>Telefone Contato *</c>.
+    ///
+    /// <para>É <b>"Telefone Contato"</b>, sem o "de" — escrever "Telefone de Contato" fez o campo
+    /// simplesmente não ser encontrado, e a tela mostrou o telefone de contato em branco mesmo
+    /// com o SER tendo o número. Cada chave aceita mais de um rótulo porque a diferença é de uma
+    /// preposição: se a SES-RJ padronizar o texto, o motor não para.</para>
+    /// </summary>
+    private static readonly (string Chave, string[] Rotulos)[] RotulosDeTelefone =
     [
-        ("residencial", "Telefone Residencial"),
-        ("whatsapp", "Telefone WhatsApp"),
-        ("contato", "Telefone de Contato"),
+        ("residencial", ["Telefone Residencial"]),
+        ("whatsapp", ["Telefone WhatsApp", "Telefone Whatsapp", "Telefone Celular"]),
+        ("contato", ["Telefone Contato", "Telefone de Contato"]),
     ];
+
+    /// <summary>Primeiro rótulo que a tela reconhecer, ou <c>null</c> se nenhum casar.</summary>
+    private static (string Nome, string Valor)? AcharTelefone(IHtmlDocument doc, string[] rotulos)
+    {
+        foreach (var rotulo in rotulos)
+        {
+            if (SerHtmlParser.CampoPorRotulo(doc, SerHtmlParser.FormPesquisa, rotulo) is { } achado)
+            {
+                return achado;
+            }
+        }
+        return null;
+    }
 
     private const string RegiaoViewRoot = "_viewRoot";
 
@@ -332,19 +353,19 @@ public sealed class SerLeitorService(
         var renderizado = SerHtmlParser.CamposDoForm(doc, SerHtmlParser.FormPesquisa, comoNavegador: true);
         var alterados = new Dictionary<string, string>(StringComparer.Ordinal);
 
-        foreach (var (chave, rotulo) in RotulosDeTelefone)
+        foreach (var (chave, rotulos) in RotulosDeTelefone)
         {
             if (!novos.TryGetValue(chave, out var valor)) continue;
 
-            var campo = SerHtmlParser.CampoPorRotulo(doc, SerHtmlParser.FormPesquisa, rotulo)
+            var campo = AcharTelefone(doc, rotulos)
                 ?? throw new InvalidOperationException(
-                    $"A aba Editar do SER nao trouxe o campo '{rotulo}' (ou veio travado). "
+                    $"A aba Editar do SER nao trouxe o campo '{rotulos[0]}' (ou veio travado). "
                     + "Nada foi escrito.");
 
             if (!renderizado.ContainsKey(campo.Nome))
             {
                 throw new InvalidOperationException(
-                    $"O campo '{rotulo}' ({campo.Nome}) nao esta entre os que a tela envia. "
+                    $"O campo '{rotulos[0]}' ({campo.Nome}) nao esta entre os que a tela envia. "
                     + "Nada foi escrito.");
             }
 
@@ -440,9 +461,9 @@ public sealed class SerLeitorService(
     }
 
     private static SerContatosDaTela LerContatos(IHtmlDocument doc) => new(
-        SerHtmlParser.CampoPorRotulo(doc, SerHtmlParser.FormPesquisa, "Telefone Residencial"),
-        SerHtmlParser.CampoPorRotulo(doc, SerHtmlParser.FormPesquisa, "Telefone WhatsApp"),
-        SerHtmlParser.CampoPorRotulo(doc, SerHtmlParser.FormPesquisa, "Telefone de Contato"));
+        AcharTelefone(doc, RotulosDeTelefone[0].Rotulos),
+        AcharTelefone(doc, RotulosDeTelefone[1].Rotulos),
+        AcharTelefone(doc, RotulosDeTelefone[2].Rotulos));
 
     private void Absorver(string html)
     {
