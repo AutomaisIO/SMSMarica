@@ -390,7 +390,10 @@ public sealed class SerConfiguracaoController(
         [FromQuery] string tipo,
         [FromQuery] string recurso,
         [FromQuery] bool ambulatorioEstadual,
-        [FromQuery] string termo,
+        // `string?` de propósito: com `string` o ASP.NET põe um Required implícito (nullable
+        // reference types) que REPROVA a string vazia — e vazio aqui é pedido legítimo, é o que
+        // lista todos. Era daí que vinha o "The termo field is required." na tela.
+        [FromQuery] string? termo,
         [FromServices] ISerCatalogoService catalogo,
         [FromServices] ISerNovaSolicitacaoService nova,
         CancellationToken cancellationToken)
@@ -400,11 +403,13 @@ public sealed class SerConfiguracaoController(
             ? TipoRecursoSer.Exame
             : TipoRecursoSer.Consulta;
 
+        var busca = termo ?? string.Empty;
+
         var espelho = await catalogo.BuscarCidsAsync(
-            doTipo, recurso, ambulatorioEstadual, termo, cancellationToken);
+            doTipo, recurso, ambulatorioEstadual, busca, cancellationToken);
 
         return espelho ?? await nova.SugerirCidsAsync(
-            tipo, recurso, ambulatorioEstadual, termo, cancellationToken);
+            tipo, recurso, ambulatorioEstadual, busca, cancellationToken);
     }
 
     /// <summary>Copia o catálogo do SER para a nossa base. Leitura longa (~15 min, uma ida por

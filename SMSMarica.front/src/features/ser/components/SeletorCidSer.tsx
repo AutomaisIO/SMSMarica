@@ -138,8 +138,13 @@ export function SeletorCidSer({
 
           <ul className="max-h-72 overflow-y-auto py-1">
             {sugestoes.isError && (
-              <li className="px-3 py-4 text-center text-sm text-red-700">
-                {extrairMensagemDeErro(sugestoes.error)}
+              <li className="px-3 py-4 text-center text-sm">
+                <p className="text-red-700">Não consegui buscar os CID agora.</p>
+                {/* O motivo fica, mas pequeno e embaixo: mensagem de framework em inglês no meio
+                    da tela não ajuda quem está atendendo, e some quando precisamos dela. */}
+                <p className="mt-1 text-xs text-slate-500">
+                  {extrairMensagemDeErro(sugestoes.error)}
+                </p>
               </li>
             )}
 
