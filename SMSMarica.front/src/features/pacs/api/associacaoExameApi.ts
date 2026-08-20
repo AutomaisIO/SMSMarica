@@ -1,5 +1,5 @@
 import { http } from '@/shared/api/httpClient';
-import type { AssociacaoExame } from '@/features/pacs/types';
+import type { AssociacaoExame, OrigemEstudo } from '@/features/pacs/types';
 import type { SolicitacaoExame } from '@/features/solicitacoes-exame/types';
 
 /** Vínculos (explícito ou implícito) por StudyInstanceUID, para a listagem. */
@@ -7,6 +7,18 @@ export async function listarAssociacoesPorStudies(uids: string[]): Promise<Assoc
   if (uids.length === 0) return [];
   // O backend aceita CSV — evita query enorme com vários `studyUIDs=` repetidos.
   const { data } = await http.get<AssociacaoExame[]>('/exames/associacoes', {
+    params: { studyUIDs: uids.join(',') },
+  });
+  return data;
+}
+
+/**
+ * Origem (equipamento + unidade) dos estudos, pelo AE das imagens. Custa uma consulta ao PACS
+ * por estudo, então a listagem só chama isto para as linhas SEM associação.
+ */
+export async function listarOrigemPorStudies(uids: string[]): Promise<OrigemEstudo[]> {
+  if (uids.length === 0) return [];
+  const { data } = await http.get<OrigemEstudo[]>('/pacs/origem', {
     params: { studyUIDs: uids.join(',') },
   });
   return data;

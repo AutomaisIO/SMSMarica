@@ -74,6 +74,12 @@ export async function buscarEstudos(filtro: FiltroBusca, signal?: AbortSignal): 
       filtro.tipoBuscaNome === 'inicio' ? `${nomeNormalizado}*` : `*${nomeNormalizado}*`;
   }
 
+  // Modalidade: chave de busca NATIVA do QIDO (0008,0061 ModalitiesInStudy). Multi-valor por
+  // vírgula é união no dcm4chee (verificado: MG 1995 + OT 152 = 2147), então o recorte acontece
+  // no PACS e a página continua vindo cheia — filtrar depois de receber quebraria a paginação.
+  const modalidades = (filtro.modalidades ?? []).filter(Boolean);
+  if (modalidades.length > 0) params[Tag.ModalitiesInStudy] = modalidades.join(',');
+
   const di = filtro.dataInicial ? semData(filtro.dataInicial) : '';
   const df = filtro.dataFinal ? semData(filtro.dataFinal) : '';
   if (di && df) params[Tag.StudyDate] = `${di}-${df}`;

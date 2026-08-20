@@ -1,3 +1,5 @@
+import type { ModalidadeDicom } from '@/features/tipos-exame/types';
+
 /** Um elemento de tag no formato DICOM-JSON (QIDO-RS / WADO-RS metadata). */
 export type ElementoDicom = {
   vr: string;
@@ -46,6 +48,27 @@ export type AssociacaoExame = {
   origem: 'Manual' | 'Automatica' | null;
   prioridade: 'Eletiva' | 'Prioritaria' | 'Urgente';
   temAnamnese: boolean;
+  /**
+   * Nome do procedimento como o SISREG o informa ("ULTRASONOGRAFIA TRANSVAGINAL"). É o que a
+   * coluna Descrição mostra: a tag DICOM StudyDescription é escrita pelo EQUIPAMENTO e vem
+   * genérica ("ULTRASSONOGRAFIA", "Mamografia"), sem saber qual procedimento foi pedido.
+   */
+  tipoExameNome: string | null;
+  modalidade: ModalidadeDicom | null;
+  unidadeExecutanteNome: string | null;
+  unidadeSolicitanteNome: string | null;
+};
+
+/**
+ * De onde as imagens vieram, pelo AE Title de origem (tag privada dcm4chee 7777,1037). Só é
+ * consultado para o estudo ÓRFÃO — o associado já traz a unidade do próprio pedido.
+ */
+export type OrigemEstudo = {
+  studyInstanceUID: string;
+  aeTitle: string;
+  /** Null quando o AE não é de nenhum equipamento cadastrado (ex.: acervo legado importado). */
+  equipamentoNome: string | null;
+  unidadeNome: string | null;
 };
 
 export type TipoBuscaNome = 'inicio' | 'qualquer';
@@ -56,6 +79,12 @@ export type FiltroBusca = {
   dataInicial: string;
   dataFinal: string;
   limite: number;
+  /**
+   * Modalidades DICOM marcadas. Vira `ModalitiesInStudy` no QIDO — o dcm4chee faz a UNIÃO dos
+   * valores separados por vírgula, então a paginação continua correta (ao contrário de filtrar
+   * a página depois de recebida). Vazio/ausente = todas.
+   */
+  modalidades?: ModalidadeDicom[];
   /** Offset para paginação (default 0). */
   offset?: number;
 };

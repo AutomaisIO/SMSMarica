@@ -21,6 +21,8 @@ public sealed class PacsController(
     IPacsCache cache,
     IPacsTranscodeService transcode,
     IPacsWarmupService warmup,
+    IEscopoEstudosPacs escopoEstudos,
+    IOrigemEstudoService origemEstudo,
     IServiceScopeFactory scopeFactory,
     ILogger<PacsController> logger) : ControllerBase
 {
@@ -44,6 +46,8 @@ public sealed class PacsController(
     private readonly IPacsCache _cache = cache;
     private readonly IPacsTranscodeService _transcode = transcode;
     private readonly IPacsWarmupService _warmup = warmup;
+    private readonly IEscopoEstudosPacs _escopoEstudos = escopoEstudos;
+    private readonly IOrigemEstudoService _origemEstudo = origemEstudo;
     private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
     private readonly ILogger<PacsController> _logger = logger;
 
@@ -61,6 +65,27 @@ public sealed class PacsController(
         //  - ?semCompressao=1  pede o frame CRU (desvia do transcode) ao "recriar".
         var semCompressao = PedeSemCompressao(queryString);
         var queryUpstream = RemoverParamsInternos(queryString);
+
+        // Recorte por unidade na LISTAGEM (ADR-0033/0037). Tem de ser imposto AQUI: este proxy
+        // é passthrough puro da query string, então um filtro escolhido pelo front seria
+        // burlável digitando na URL. A tradução unidade → AE de origem vive em
+        // IEscopoEstudosPacs; o motor de conciliação não passa por aqui e segue vendo tudo.
+        //
+        // LIMITE CONHECIDO: recorta a LISTA, não o acesso a um estudo específico. Quem já
+        // souber um StudyInstanceUID de outra unidade continua conseguindo abri-lo — fechar
+        // isso exige checar o AE de cada estudo em toda requisição WADO, o que custa uma ida
+        // ao PACS por imagem.
+        if (EscopoAeQuery.EhListagem(caminho))
+        {
+            var escopo = await _escopoEstudos.ResolverAsync(cancellationToken);
+            if (escopo.SemAcesso)
+            {
+                // Mesma resposta que o dcm4chee dá para "nenhum match" — o front já a trata.
+                Response.StatusCode = (int)HttpStatusCode.NoContent;
+                return;
+            }
+            queryUpstream = EscopoAeQuery.Aplicar(queryUpstream, escopo);
+        }
 
         // (C) Compressão JPEG-LS Lossless (flag Pacs:Compressao:Habilitado, default false).
         // Só para requisições de frame; serve a variante comprimida (cache-first, chave
@@ -187,6 +212,23 @@ public sealed class PacsController(
         Response.Headers.CacheControl = CacheControlImutavel;
         await Response.Body.WriteAsync(comprimido.Conteudo, cancellationToken);
         return true;
+    }
+
+    /// <summary>
+    /// De onde os estudos vieram (equipamento + unidade), pelo AE de origem das imagens.
+    /// Serve a linha ÓRFÃ da listagem, que não tem pedido de onde tirar a unidade.
+    /// Query: <c>?studyUIDs=1.2,1.3,...</c> (CSV) ou repetido.
+    /// </summary>
+    [HttpGet("origem")]
+    [RequerPermissao(ModuloPermissao.Pacs, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<OrigemEstudoDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<OrigemEstudoDto>> Origem(
+        [FromQuery(Name = "studyUIDs")] string[] studyUIDs, CancellationToken cancellationToken)
+    {
+        var uids = studyUIDs is null
+            ? []
+            : studyUIDs.SelectMany(s => s.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).ToArray();
+        return await _origemEstudo.ResolverAsync(uids, cancellationToken);
     }
 
     /// <summary>

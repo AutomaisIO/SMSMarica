@@ -19,17 +19,25 @@ import {
   useAssociacoesPorStudyUIDs,
   useDesassociarExame,
   useExcluirEstudo,
+  useOrigemPorStudyUIDs,
   usePesquisaEstudos,
   useResincronizarExames,
 } from '@/features/pacs/api/queries';
 import { ModalAssociarExame } from '@/features/pacs/components/ModalAssociarExame';
+import { FiltroModalidades } from '@/features/pacs/components/FiltroModalidades';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { formatarHoraDicom } from '@/features/pacs/lib/dicomJson';
 import { abrirJanelaSolta } from '@/features/pacs/lib/janela';
-import type { AssociacaoExame, Estudo, FiltroBusca, TipoBuscaNome } from '@/features/pacs/types';
+import type { AssociacaoExame, Estudo, FiltroBusca, OrigemEstudo, TipoBuscaNome } from '@/features/pacs/types';
+import { useModalidadesExames } from '@/features/pacs/store/modalidadesPreferencia';
 
 /** Estudo enriquecido com laudo e associação (vindos do nosso DB). */
-type ExameRow = Estudo & { laudo: LaudoPorStudy | null; associacao: AssociacaoExame | null };
+type ExameRow = Estudo & {
+  laudo: LaudoPorStudy | null;
+  associacao: AssociacaoExame | null;
+  /** Só para a linha ÓRFÃ: de qual equipamento/unidade a imagem veio (AE de origem). */
+  origem: OrigemEstudo | null;
+};
 
 // Persistência do filtro entre navegações e reaberturas do browser (localStorage).
 const CHAVE_FILTRO_PACS = 'smsmarica.pacs.filtro';
@@ -82,6 +90,11 @@ export function PacsListagemPage() {
   const permitirLaudarSemAssociacao = regras?.permitirLaudarSemAssociacao ?? false;
   const permitirLaudarSemAnamnese = regras?.permitirLaudarSemAnamnese ?? false;
 
+  // Recorte de modalidade: preferência do USUÁRIO (salva no servidor), não do navegador — a
+  // médica que lauda MG e OT abre a tela já filtrada em qualquer máquina.
+  const modalidades = useModalidadesExames((s) => s.modalidades);
+  const definirModalidades = useModalidadesExames((s) => s.definir);
+
   const [pagina, setPagina] = useState(1);
   const exclusao = useExcluirEstudo();
   const desassociar = useDesassociarExame();
@@ -95,7 +108,10 @@ export function PacsListagemPage() {
   // Busca AO VIVO: aplica 500ms após a última mudança (nome/data/modo/limite) — sem botão
   // "Buscar". O QIDO-RS não devolve total, então a paginação é por offset com "próxima"
   // liberada quando a página vem cheia.
-  const filtroDebounced = useDebounce(filtro, 500);
+  const filtroDebounced = useDebounce(
+    useMemo(() => ({ ...filtro, modalidades }), [filtro, modalidades]),
+    500,
+  );
   const limiteAtual = filtroDebounced.limite || 10;
   const busca = usePesquisaEstudos({ ...filtroDebounced, offset: (pagina - 1) * limiteAtual });
 
@@ -214,6 +230,21 @@ export function PacsListagemPage() {
     return m;
   }, [associacoesLookup.data]);
 
+  // Órfãos da página: sem vínculo não há pedido de onde tirar a unidade, mas o AE que enviou as
+  // imagens está no próprio estudo. Só estes UIDs vão ao endpoint (uma consulta ao PACS cada).
+  // Só depois que o lote de associações chega: antes disso TODA linha parece órfã e a página
+  // dispararia uma consulta ao PACS por linha, à toa.
+  const uidsOrfaos = useMemo(
+    () => (associacoesLookup.isSuccess ? studyUids.filter((u) => !mapaAssociacoes.has(u)) : []),
+    [associacoesLookup.isSuccess, studyUids, mapaAssociacoes],
+  );
+  const origemLookup = useOrigemPorStudyUIDs(uidsOrfaos);
+  const mapaOrigem = useMemo(() => {
+    const m = new Map<string, OrigemEstudo>();
+    for (const o of origemLookup.data ?? []) m.set(o.studyInstanceUID, o);
+    return m;
+  }, [origemLookup.data]);
+
   const exames: ExameRow[] = (busca.data ?? [])
     // Descarta exames de PHANTOM: estudos de calibração/teste criados automaticamente
     // pelo equipamento de imagem (não são pacientes reais e poluem a lista).
@@ -222,6 +253,7 @@ export function PacsListagemPage() {
       ...e,
       laudo: mapaLaudos.get(e.studyInstanceUID) ?? null,
       associacao: mapaAssociacoes.get(e.studyInstanceUID) ?? null,
+      origem: mapaOrigem.get(e.studyInstanceUID) ?? null,
     }))
     // Exames de solicitação URGENTE sempre no topo, independente da data (sort estável).
     .map((e, i) => ({ e, i }))
@@ -342,8 +374,65 @@ export function PacsListagemPage() {
     {
       chave: 'descricao',
       cabecalho: 'Descrição',
-      ordenar: (e) => e.studyDescription || null,
-      render: (e) => <span className="text-gray-700">{e.studyDescription || '—'}</span>,
+      // Ordena pelo que está VISÍVEL: o procedimento do pedido quando existe, senão o texto do
+      // equipamento — senão a ordenação discordaria da coluna.
+      ordenar: (e) => e.associacao?.tipoExameNome || e.studyDescription || null,
+      render: (e) => {
+        // A tag DICOM StudyDescription é escrita pelo EQUIPAMENTO e vem genérica
+        // ("ULTRASSONOGRAFIA", "Mamografia"): ela não sabe qual procedimento foi pedido. Quando o
+        // exame está associado, quem manda é o nome do tipo (SISREG) — o texto do aparelho vira
+        // sublinha, e só quando acrescenta algo. Nada é reescrito no DICOM.
+        const doPedido = e.associacao?.tipoExameNome?.trim();
+        const doAparelho = e.studyDescription?.trim();
+        const mostrarAparelho =
+          !!doPedido && !!doAparelho && doAparelho.toLowerCase() !== doPedido.toLowerCase();
+        return (
+          <div className="min-w-0 leading-tight">
+            <div className="truncate text-gray-800">{doPedido || doAparelho || '—'}</div>
+            {mostrarAparelho ? (
+              <div className="truncate text-xs text-gray-400" title={`Descrição do equipamento: ${doAparelho}`}>
+                {doAparelho}
+              </div>
+            ) : null}
+          </div>
+        );
+      },
+    },
+    {
+      chave: 'unidade',
+      cabecalho: 'Unidade',
+      ordenar: (e) => e.associacao?.unidadeExecutanteNome ?? e.origem?.unidadeNome ?? null,
+      render: (e) => {
+        // Associado: a unidade vem do PEDIDO (executante, com o solicitante embaixo). Órfão: vem
+        // do EQUIPAMENTO que enviou as imagens — é o que responde "de quem é este exame?" antes
+        // de alguém associar.
+        const assoc = e.associacao;
+        if (assoc?.unidadeExecutanteNome) {
+          const solicitante = assoc.unidadeSolicitanteNome;
+          return (
+            <div className="min-w-0 leading-tight">
+              <div className="truncate text-gray-800">{assoc.unidadeExecutanteNome}</div>
+              {solicitante && solicitante !== assoc.unidadeExecutanteNome ? (
+                <div className="truncate text-xs text-gray-500" title="Unidade solicitante">
+                  Pedido: {solicitante}
+                </div>
+              ) : null}
+            </div>
+          );
+        }
+        const origem = e.origem;
+        if (!origem) {
+          return <span className="text-xs text-gray-400">{origemLookup.isFetching ? '…' : '—'}</span>;
+        }
+        return (
+          <div className="min-w-0 leading-tight">
+            <div className="truncate text-gray-700">{origem.unidadeNome ?? 'Origem não cadastrada'}</div>
+            <div className="truncate text-xs text-gray-500" title={`AE de origem: ${origem.aeTitle}`}>
+              {origem.equipamentoNome ?? origem.aeTitle}
+            </div>
+          </div>
+        );
+      },
     },
     {
       chave: 'acoes',
@@ -478,7 +567,7 @@ export function PacsListagemPage() {
 
       <form
         onSubmit={aoBuscar}
-        className="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-6"
+        className="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-7"
       >
         <Campo label="Nome do paciente" htmlFor="nome" className="sm:col-span-2">
           <div className="relative">
@@ -518,6 +607,9 @@ export function PacsListagemPage() {
             value={filtro.dataFinal}
             onChange={(e) => setCampo('dataFinal', e.target.value)}
           />
+        </Campo>
+        <Campo label="Modalidade" htmlFor="modalidade">
+          <FiltroModalidades id="modalidade" selecionadas={modalidades} aoMudar={definirModalidades} />
         </Campo>
         <Campo label="Limite" htmlFor="limite">
           <Select

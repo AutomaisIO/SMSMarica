@@ -292,7 +292,18 @@ public sealed class ExameAssociacaoService(
         var implicitas = await db.ExamesImagem.AsNoTracking()
             .Where(e => faltam.Contains(e.StudyInstanceUID) && e.ExcluidoEm == null
                         && e.Status != StatusSolicitacaoExame.Cancelada)
-            .Select(e => new { e.StudyInstanceUID, e.Id, e.AccessionNumber, e.Solicitacao!.PacienteId, e.Solicitacao!.Prioridade })
+            .Select(e => new
+            {
+                e.StudyInstanceUID,
+                e.Id,
+                e.AccessionNumber,
+                e.Solicitacao!.PacienteId,
+                e.Solicitacao!.Prioridade,
+                TipoNome = e.TipoExame!.Nome,
+                Modalidade = (ModalidadeDicom?)e.TipoExame!.ModalidadeDicom,
+                Executante = e.Solicitacao!.UnidadeExecutante!.Nome,
+                Solicitante = e.Solicitacao!.UnidadeSolicitante!.Nome,
+            })
             .ToListAsync(cancellationToken);
 
         // Accession + Prioridade dos exames das associações explícitas.
@@ -301,12 +312,22 @@ public sealed class ExameAssociacaoService(
         // avaliaria em memória sobre a entidade materializada (Solicitacao não carregada) => NRE.
         var solIds = explicitas.Select(a => a.ExameImagemId).Distinct().ToArray();
         var solDados = solIds.Length == 0
-            ? new Dictionary<Guid, (string Accession, PrioridadeSolicitacao Prioridade)>()
+            ? new Dictionary<Guid, ContextoExame>()
             : (await db.ExamesImagem.AsNoTracking()
                 .Where(e => solIds.Contains(e.Id))
-                .Select(e => new { e.Id, e.AccessionNumber, e.Solicitacao!.Prioridade })
+                .Select(e => new
+                {
+                    e.Id,
+                    e.AccessionNumber,
+                    e.Solicitacao!.Prioridade,
+                    TipoNome = e.TipoExame!.Nome,
+                    Modalidade = (ModalidadeDicom?)e.TipoExame!.ModalidadeDicom,
+                    Executante = e.Solicitacao!.UnidadeExecutante!.Nome,
+                    Solicitante = e.Solicitacao!.UnidadeSolicitante!.Nome,
+                })
                 .ToListAsync(cancellationToken))
-                .ToDictionary(x => x.Id, x => (Accession: x.AccessionNumber, x.Prioridade));
+                .ToDictionary(x => x.Id, x => new ContextoExame(
+                    x.AccessionNumber, x.Prioridade, x.TipoNome, x.Modalidade, x.Executante, x.Solicitante));
 
         // Nomes de paciente em lote (1 chamada ao hub por id distinto).
         var pacienteIds = explicitas.Select(a => a.PacienteId).Concat(implicitas.Select(i => i.PacienteId));
@@ -329,16 +350,18 @@ public sealed class ExameAssociacaoService(
             var dados = solDados.GetValueOrDefault(a.ExameImagemId);
             resultado.Add(new ExameAssociacaoDto(
                 a.StudyInstanceUID, a.ExameImagemId,
-                dados.Accession ?? string.Empty,
+                dados?.Accession ?? string.Empty,
                 a.PacienteId, Nome(a.PacienteId), Explicita: true, a.Origem,
-                dados.Prioridade, comAnamnese.Contains(a.ExameImagemId)));
+                dados?.Prioridade ?? PrioridadeSolicitacao.Eletiva, comAnamnese.Contains(a.ExameImagemId),
+                dados?.TipoExameNome, dados?.Modalidade, dados?.UnidadeExecutante, dados?.UnidadeSolicitante));
         }
         foreach (var i in implicitas)
         {
             resultado.Add(new ExameAssociacaoDto(
                 i.StudyInstanceUID, i.Id, i.AccessionNumber,
                 i.PacienteId, Nome(i.PacienteId), Explicita: false, Origem: null, i.Prioridade,
-                comAnamnese.Contains(i.Id)));
+                comAnamnese.Contains(i.Id),
+                i.TipoNome, i.Modalidade, i.Executante, i.Solicitante));
         }
         return resultado;
     }
@@ -376,6 +399,19 @@ public sealed class ExameAssociacaoService(
 
     /// <summary>Chave mínima de um exame aberto para a conciliação PACS-driven.</summary>
     private sealed record SolicitacaoChave(Guid Id, string AccessionNumber, string StudyInstanceUID);
+
+    /// <summary>
+    /// O contexto do PEDIDO que a listagem mostra junto do estudo. Nada disso existe no DICOM:
+    /// o equipamento escreve uma StudyDescription genérica e não conhece nem o procedimento do
+    /// SISREG nem as unidades envolvidas.
+    /// </summary>
+    private sealed record ContextoExame(
+        string Accession,
+        PrioridadeSolicitacao Prioridade,
+        string? TipoExameNome,
+        ModalidadeDicom? Modalidade,
+        string? UnidadeExecutante,
+        string? UnidadeSolicitante);
 
     /// <inheritdoc />
     public async Task<ResultadoConciliacao> ConciliarStudyAsync(
@@ -545,7 +581,15 @@ public sealed class ExameAssociacaoService(
     {
         var sol = await db.ExamesImagem.AsNoTracking()
             .Where(e => e.Id == assoc.ExameImagemId)
-            .Select(e => new { e.AccessionNumber, e.Solicitacao!.Prioridade })
+            .Select(e => new
+            {
+                e.AccessionNumber,
+                e.Solicitacao!.Prioridade,
+                TipoNome = e.TipoExame!.Nome,
+                Modalidade = (ModalidadeDicom?)e.TipoExame!.ModalidadeDicom,
+                Executante = e.Solicitacao!.UnidadeExecutante!.Nome,
+                Solicitante = e.Solicitacao!.UnidadeSolicitante!.Nome,
+            })
             .FirstOrDefaultAsync(ct);
         var paciente = await pacienteResolver.ResolverAsync(assoc.PacienteId, ct);
         var temAnamnese = await db.Anamneses.AsNoTracking()
@@ -553,6 +597,7 @@ public sealed class ExameAssociacaoService(
         return new ExameAssociacaoDto(
             assoc.StudyInstanceUID, assoc.ExameImagemId, sol?.AccessionNumber ?? string.Empty,
             assoc.PacienteId, paciente?.Nome, Explicita: true, assoc.Origem,
-            sol?.Prioridade ?? PrioridadeSolicitacao.Eletiva, temAnamnese);
+            sol?.Prioridade ?? PrioridadeSolicitacao.Eletiva, temAnamnese,
+            sol?.TipoNome, sol?.Modalidade, sol?.Executante, sol?.Solicitante);
     }
 }

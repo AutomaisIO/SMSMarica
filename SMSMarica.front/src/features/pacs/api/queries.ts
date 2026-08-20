@@ -4,6 +4,7 @@ import {
   associarExame,
   desassociarExame,
   listarAssociacoesPorStudies,
+  listarOrigemPorStudies,
   previewSolicitacaoPorAccession,
   resincronizarExames,
 } from '@/features/pacs/api/associacaoExameApi';
@@ -64,6 +65,19 @@ export function useAssociacoesPorStudyUIDs(uids: string[]) {
     queryFn: () => listarAssociacoesPorStudies(uids),
     enabled: uids.length > 0,
     staleTime: 15_000,
+  });
+}
+
+/**
+ * Origem (equipamento/unidade) dos estudos ÓRFÃOS da página. Chamar só com os UIDs sem
+ * associação: cada UID custa uma consulta ao PACS. staleTime alto — o AE de um estudo não muda.
+ */
+export function useOrigemPorStudyUIDs(uids: string[]) {
+  return useQuery({
+    queryKey: ['pacs', 'origem', [...uids].sort()] as const,
+    queryFn: () => listarOrigemPorStudies(uids),
+    enabled: uids.length > 0,
+    staleTime: 10 * 60_000,
   });
 }
 

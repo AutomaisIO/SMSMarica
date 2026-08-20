@@ -9,6 +9,7 @@ import { useComposerPreferencias } from '@/features/conversas/store/composerPref
 import { useVisaoSolicitacoes } from '@/features/solicitacoes-exame/store/visaoPreferencia';
 import { useTabelaPreferencias } from '@/shared/ui/tabelaPreferencias';
 import { obterPreferencias } from '@/shared/auth/preferenciasApi';
+import { useModalidadesExames } from '@/features/pacs/store/modalidadesPreferencia';
 import { useVersaoApp } from '@/shared/hooks/useVersaoApp';
 import { CANAL_NAVEGACAO } from '@/shared/lib/janela';
 import { ChatWidget } from '@/features/conversas/components/ChatWidget';
@@ -21,6 +22,7 @@ export function Layout() {
   const hidratarComposer = useComposerPreferencias((s) => s.hidratar);
   const hidratarVisao = useVisaoSolicitacoes((s) => s.hidratar);
   const hidratarTabela = useTabelaPreferencias((s) => s.hidratar);
+  const hidratarModalidades = useModalidadesExames((s) => s.hidratar);
   const { novaVersao, atualizar } = useVersaoApp();
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -58,6 +60,7 @@ export function Layout() {
         hidratarComposer({ altura: p.alturaComposerChat, enviarComEnter: p.enviarComEnter });
         hidratarVisao(p.verComoSolicitante);
         hidratarTabela(p.largurasTabela);
+        hidratarModalidades(p.examesModalidades);
       })
       .catch(() => {
         /* offline/erro — segue com o cache local. */
@@ -65,7 +68,7 @@ export function Layout() {
     return () => {
       ativo = false;
     };
-  }, [hidratar, hidratarComposer, hidratarVisao, hidratarTabela]);
+  }, [hidratar, hidratarComposer, hidratarVisao, hidratarTabela, hidratarModalidades]);
 
   return (
     <div className="min-h-screen bg-gray-50">

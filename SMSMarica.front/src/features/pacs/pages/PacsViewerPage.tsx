@@ -9,6 +9,7 @@ import {
   type ImagemLista,
 } from '@/features/pacs/components/PacsImagensSidebar';
 import { PacsViewport } from '@/features/pacs/components/PacsViewport';
+import { useAssociacoesPorStudyUIDs } from '@/features/pacs/api/queries';
 import type { Layout } from '@/features/pacs/components/SeletorLayoutGrade';
 import { notificar } from '@/shared/ui/Notificacoes';
 import {
@@ -58,6 +59,12 @@ export function PacsViewerPage({ janela = false }: Props = {}) {
   const navigate = useNavigate();
   const [modalAberto, setModalAberto] = useState(false);
   const [estudo, setEstudo] = useState<Estudo | null>(() => (janela ? lerEstudoDoHash() : null));
+  // O cabeçalho mostrava a StudyDescription do EQUIPAMENTO ("ULTRASSONOGRAFIA", "Mamografia").
+  // Havendo vínculo, o nome do procedimento do pedido é mais informativo — mesma régua da
+  // listagem. Uma consulta leve; sem vínculo, cai no texto do aparelho.
+  const associacao = useAssociacoesPorStudyUIDs(estudo?.studyInstanceUID ? [estudo.studyInstanceUID] : []);
+  const tipoDoPedido = associacao.data?.[0]?.tipoExameNome?.trim() || null;
+
   const [imagens, setImagens] = useState<ImagemLista[]>([]);
   const [layout, setLayout] = useState<Layout>({ linhas: 1, colunas: 1 });
   const [celulas, setCelulas] = useState<(string | null)[]>([null]);
@@ -323,7 +330,7 @@ export function PacsViewerPage({ janela = false }: Props = {}) {
               <span className="text-gray-500"> · </span>
               {estudo.patientAge || '—'}/{estudo.patientSex || '—'}
               <span className="text-gray-500"> · </span>
-              {estudo.studyDescription || estudo.modalidade}
+              {tipoDoPedido || estudo.studyDescription || estudo.modalidade}
               <span className="text-gray-500"> · </span>
               {estudo.studyDateFormatado}
             </>

@@ -15,6 +15,11 @@ export type PreferenciasUi = {
    * id da tela → (chave da coluna → largura). Enviar sempre o mapa completo.
    */
   largurasTabela?: Record<string, Record<string, number>>;
+  /**
+   * Modalidades DICOM que a tela de Exames de imagem mostra por padrão (ex.: ["MG","OT"]).
+   * Vira o filtro ModalitiesInStudy do QIDO. Vazio = todas.
+   */
+  examesModalidades?: string[];
 };
 
 export async function obterPreferencias(): Promise<PreferenciasUi> {
@@ -25,6 +30,7 @@ export async function obterPreferencias(): Promise<PreferenciasUi> {
     enviarComEnter: data?.enviarComEnter ?? undefined,
     verComoSolicitante: data?.verComoSolicitante ?? undefined,
     largurasTabela: data?.largurasTabela ?? undefined,
+    examesModalidades: data?.examesModalidades ?? undefined,
   };
 }
 

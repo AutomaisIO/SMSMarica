@@ -73,6 +73,23 @@ public sealed class ConsultaStudyClient(HttpClient http, ILogger<ConsultaStudyCl
         return CombinarDataHoraDicom(Tag(estudo, "00080020"), Tag(estudo, "00080030"));
     }
 
+    /// <summary>Tag privada dcm4chee (7777,1037) — SendingApplicationEntityTitleOfSeries.</summary>
+    private const string TagAeOrigem = "77771037";
+
+    public async Task<string?> ObterAeOrigemAsync(string studyInstanceUID, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(studyInstanceUID)) return null;
+        // Nível de SÉRIE: no de estudo a tag filtra mas volta vazia. limit=1 basta — as séries
+        // de um mesmo estudo saem do mesmo equipamento.
+        var arr = await ConsultarAsync(
+            $"series?StudyInstanceUID={Uri.EscapeDataString(studyInstanceUID)}&includefield={TagAeOrigem}&limit=1",
+            cancellationToken);
+        if (arr is not { ValueKind: JsonValueKind.Array } a || a.GetArrayLength() == 0) return null;
+
+        var ae = Tag(a[0], TagAeOrigem);
+        return string.IsNullOrWhiteSpace(ae) ? null : ae.Trim();
+    }
+
     public async Task<string?> ObterNomePacienteAsync(string studyInstanceUID, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(studyInstanceUID)) return null;

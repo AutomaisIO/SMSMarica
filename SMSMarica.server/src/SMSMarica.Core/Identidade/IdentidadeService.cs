@@ -413,7 +413,8 @@ public sealed class IdentidadeService(
             preferencias.AlturaComposerChat ?? atual.AlturaComposerChat,
             preferencias.EnviarComEnter ?? atual.EnviarComEnter,
             preferencias.VerComoSolicitante ?? atual.VerComoSolicitante,
-            preferencias.LargurasTabela ?? atual.LargurasTabela);
+            preferencias.LargurasTabela ?? atual.LargurasTabela,
+            preferencias.ExamesModalidades ?? atual.ExamesModalidades);
         u.PreferenciasUi = JsonSerializer.Serialize(mesclado, PreferenciasJson);
         await _db.SaveChangesAsync(cancellationToken);
     }

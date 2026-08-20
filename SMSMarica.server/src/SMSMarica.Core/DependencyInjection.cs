@@ -410,6 +410,10 @@ public static class DependencyInjection
                 client.Timeout = TimeSpan.FromSeconds(30);
             });
 
+        // Escopo de unidade traduzido para AE de origem — recorte da LISTAGEM do PACS.
+        services.AddScoped<IEscopoEstudosPacs, EscopoEstudosPacs>();
+        services.AddScoped<IOrigemEstudoService, OrigemEstudoService>();
+
         // ---- Cache em disco (LRU) + pré-aquecimento de imagens imutáveis do PACS ----
         services.Configure<PacsCacheOptions>(configuration.GetSection(PacsCacheOptions.SecaoConfig));
         services.AddSingleton<IPacsCache, PacsCache>();

@@ -36,6 +36,18 @@ public interface IConsultaStudyClient
     Task<DateTime?> ObterDataHoraEstudoAsync(string studyInstanceUID, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// AE Title de onde as imagens do estudo vieram — tag privada do dcm4chee
+    /// <c>(7777,1037) SendingApplicationEntityTitleOfSeries</c>. É o
+    /// <c>Equipamento.IdentificadorDicom</c> que cadastramos, logo diz de qual EQUIPAMENTO (e
+    /// portanto de qual UNIDADE) o estudo saiu — inclusive quando ele ainda é órfão.
+    ///
+    /// <para>Consultado no nível de SÉRIE de propósito: no nível de estudo o dcm4chee aceita a
+    /// tag como filtro mas devolve o campo vazio. Retorna <c>null</c> se o estudo não existir,
+    /// a tag estiver ausente ou o PACS estiver indisponível.</para>
+    /// </summary>
+    Task<string?> ObterAeOrigemAsync(string studyInstanceUID, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Nome do paciente (0010,0010, VR PN) como veio no DICOM do estudo, já limpo
     /// para exibição (componentes "^" viram espaço). Retorna <c>null</c> se o estudo
     /// não existir, a tag estiver ausente/vazia ou o PACS estiver indisponível.

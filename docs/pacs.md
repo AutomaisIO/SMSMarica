@@ -357,6 +357,65 @@ Resumo do fluxo no `PacsViewerPage.tsx`:
 4. LengthTool mede em mm se PixelSpacing chegou no metadado
 ```
 
+### 9.1 Recorte por unidade — o AE de origem (2026-08-20)
+
+O dcm4chee não sabe o que é "unidade", mas guarda, **por série**, o AE Title de quem enviou as
+imagens, na tag privada **`(7777,1037) SendingApplicationEntityTitleOfSeries`**. Esse AE é o
+`Equipamento.IdentificadorDicom` que já cadastramos, e o equipamento pertence a uma unidade — o
+que dá o filtro por unidade de graça, **inclusive para o estudo órfão**, que ainda não casou com
+nenhuma solicitação: o AE viaja na imagem, associada ou não.
+
+**A tag é chave de BUSCA válida no QIDO** (verificado no 5.34.3 em produção):
+
+| Consulta | Resultado |
+|----------|-----------|
+| `studies/count?SendingApplicationEntityTitleOfSeries=DO-CDT` | 143 |
+| `...=US02-CDT` | 9 |
+| `...=US02-CDT,DO-CDT` | **152** — a vírgula é união (vale também repetindo o parâmetro) |
+| `...=DO-CDT&ModalitiesInStudy=OT&StudyDate=20260801-` | combina com os demais filtros |
+| `...&orderby=-StudyDate&offset=100` | paginação e ordenação continuam corretas |
+
+⚠ **Ela FILTRA no nível de estudo mas não VOLTA nele** — `includefield` devolve o campo vazio em
+`/studies`. Para exibir a origem de um estudo é preciso consultar a série:
+`GET /series?StudyInstanceUID={uid}&includefield=77771037&limit=1`.
+
+⚠ **`AccessionNumber` NÃO aceita multi-valor** (nem vírgula nem parâmetro repetido: devolve 1).
+Por isso filtro por *tipo de exame* e visão do *solicitante* não podem ser empurrados ao PACS —
+dependem da lista sair do nosso banco.
+
+**Mapa AE → unidade em produção** (`smsmarica.equipamento`), com a contagem de estudos em
+2026-08-20 (total 2615):
+
+| AE | Equipamento | Unidade | Studies |
+|----|-------------|---------|---------|
+| `FDR-MAMO` | Mamógrafo Fuji FDR-3000AWS | CDT | 729 |
+| `US_CMI` | Ultrassom | Centro Materno Infantil | 285 |
+| `US01-CDT` | Ultrassom 01 | CDT | 158 |
+| `DO-CDT` | Densitometria óssea | CDT | 143 |
+| `US02-CDT` | Ultrassom 02 | CDT | 9 |
+| `DICOMPACSSCU` | — (acervo legado importado) | — | 1263 |
+
+`DICOMPACSSCU` é o acervo migrado: **todos os 1263 estudos têm StudyDate ≤ 31/12/2025**, são MG e
+não trazem `InstitutionName`/`StationName`. De 2026 em diante (1352 estudos) praticamente tudo
+carrega AE de equipamento. Enquanto esse AE não estiver cadastrado como equipamento de alguma
+unidade, o acervo legado fica invisível para quem não tem acesso global.
+
+**Onde isso é aplicado:** [`EscopoEstudosPacs`](../SMSMarica.server/src/SMSMarica.Core/Pacs/EscopoEstudosPacs.cs)
+traduz o escopo de unidade (ADR-0033/0037) para o conjunto de AEs, e
+[`EscopoAeQuery`](../SMSMarica.server/src/SMSMarica.Core/Pacs/EscopoAeQuery.cs) reescreve a query
+string no proxy `/pacs/rs/studies`. O recorte é imposto **no servidor**: o proxy é passthrough
+puro da query string, então um filtro escolhido pelo front seria burlável digitando na URL.
+
+Duas propriedades que valem lembrar:
+
+- **É só da VISTA.** O motor de conciliação (`SincronizadorExamesService`) vai direto ao dcm4chee
+  por `IConsultaStudyClient`, sem passar pelo proxy e sem `HttpContext` — cai no passo 1 de
+  `EscopoUnidade` ("sem usuário ⇒ vê tudo") e continua varrendo a rede inteira. Errar o mapa
+  AE→unidade faz alguém deixar de VER uma linha; nunca faz um exame deixar de ser conciliado.
+- **Recorta a LISTA, não o acesso a um estudo.** Quem já souber um `StudyInstanceUID` de outra
+  unidade continua conseguindo abri-lo; fechar isso exigiria checar o AE de cada estudo em toda
+  requisição WADO.
+
 ## 10. Problemas conhecidos e ações recomendadas
 
 ### 10.1. **Arquivos de 2024 sumiram do bucket S3 — `/metadata` retorna 500**

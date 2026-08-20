@@ -11,6 +11,13 @@ public sealed record AssociarExameRequest(
 /// <summary>
 /// Vínculo resolvido de um estudo (explícito via tabela, ou implícito por
 /// StudyInstanceUID de worklist). Usado na listagem e no preview.
+///
+/// <para>Carrega também o que o DICOM não sabe dizer. A tag (0008,1030) StudyDescription é
+/// escrita pelo EQUIPAMENTO — o Mindray põe "ULTRASSONOGRAFIA", o Fuji põe "Mamografia" — e não
+/// tem como saber qual procedimento do SISREG foi pedido. Quem sabe é o pedido, do nosso lado:
+/// <paramref name="TipoExameNome"/> é o nome que o usuário reconhece ("ULTRASONOGRAFIA
+/// TRANSVAGINAL"), e as unidades dão o contexto de quem pediu e quem executa. Nada disso é
+/// escrito de volta no DICOM: enriquece a tela, não o arquivo.</para>
 /// </summary>
 public sealed record ExameAssociacaoDto(
     string StudyInstanceUID,
@@ -21,7 +28,11 @@ public sealed record ExameAssociacaoDto(
     bool Explicita,
     OrigemAssociacaoExame? Origem,
     PrioridadeSolicitacao Prioridade,
-    bool TemAnamnese);
+    bool TemAnamnese,
+    string? TipoExameNome = null,
+    ModalidadeDicom? Modalidade = null,
+    string? UnidadeExecutanteNome = null,
+    string? UnidadeSolicitanteNome = null);
 
 /// <summary>Vínculo mínimo (solicitação + paciente) usado pelo gate de laudar.</summary>
 public sealed record VinculoExame(Guid SolicitacaoExameId, Guid PacienteId);
