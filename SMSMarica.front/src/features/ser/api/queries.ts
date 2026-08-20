@@ -275,6 +275,7 @@ export function useCamposCatalogoSer(
  * inteira (aba → ramo → tipo → recurso → sugestão) numa sessão única e serializada, a mesma da
  * varredura. Por isso o termo chega com atraso da tela, o mínimo é 2 caracteres, e a resposta
  * fica guardada.</p>
+ */
 export function useSugestoesCidSer(
   tipo?: TipoRecursoSer,
   recurso?: string,
