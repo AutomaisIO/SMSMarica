@@ -31,6 +31,67 @@ internal sealed class SerCatalogoRecursoConfiguration : IEntityTypeConfiguration
             .WithOne(x => x.Recurso!)
             .HasForeignKey(x => x.RecursoId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Property(x => x.CidListaId).HasColumnName("cid_lista_id");
+        builder.Property(x => x.CidAssinatura).HasColumnName("cid_assinatura").HasMaxLength(60);
+
+        // `Restrict`: a lista de CID é copiada uma vez e compartilhada por centenas de recursos.
+        // Apagar uma lista por tabela em cascata deixaria os recursos apontando para o vazio sem
+        // ninguém perceber — quem troca a lista de um recurso é a cópia do catálogo.
+        builder.HasOne(x => x.CidLista)
+            .WithMany()
+            .HasForeignKey(x => x.CidListaId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+internal sealed class SerCatalogoCidListaConfiguration
+    : IEntityTypeConfiguration<SerCatalogoCidLista>
+{
+    public void Configure(EntityTypeBuilder<SerCatalogoCidLista> builder)
+    {
+        builder.ToTable("ser_catalogo_cid_lista");
+        builder.HasKey(x => x.Id);
+
+        builder.Property(x => x.Id).HasColumnName("id");
+        builder.Property(x => x.Assinatura).HasColumnName("assinatura").HasMaxLength(60).IsRequired();
+        builder.Property(x => x.Quantidade).HasColumnName("quantidade").IsRequired();
+        builder.Property(x => x.SincronizadoEm).HasColumnName("sincronizado_em").IsRequired();
+
+        // A assinatura É a identidade da lista: dois recursos que respondem o mesmo às buscas de
+        // sondagem compartilham a lista, e é assim que um recurso novo se liga a uma cópia que já
+        // existe sem varrer 260 prefixos de novo.
+        builder.HasIndex(x => x.Assinatura)
+            .IsUnique().HasDatabaseName("ux_ser_catalogo_cid_lista");
+
+        builder.HasMany(x => x.Cids)
+            .WithOne(x => x.Lista!)
+            .HasForeignKey(x => x.ListaId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+internal sealed class SerCatalogoCidConfiguration : IEntityTypeConfiguration<SerCatalogoCid>
+{
+    public void Configure(EntityTypeBuilder<SerCatalogoCid> builder)
+    {
+        builder.ToTable("ser_catalogo_cid");
+        builder.HasKey(x => x.Id);
+
+        builder.Property(x => x.Id).HasColumnName("id");
+        builder.Property(x => x.ListaId).HasColumnName("lista_id").IsRequired();
+        builder.Property(x => x.Codigo).HasColumnName("codigo").HasMaxLength(10).IsRequired();
+        builder.Property(x => x.Descricao).HasColumnName("descricao").HasMaxLength(400).IsRequired();
+        builder.Property(x => x.Texto).HasColumnName("texto").HasMaxLength(420).IsRequired();
+        builder.Property(x => x.Busca).HasColumnName("busca").HasMaxLength(420).IsRequired();
+
+        builder.HasIndex(x => new { x.ListaId, x.Codigo })
+            .IsUnique().HasDatabaseName("ux_ser_catalogo_cid");
+
+        // A tela busca "contém" dentro de UMA lista, e são 14 mil linhas por lista. O índice
+        // composto é o que mantém o filtro por lista barato antes do LIKE.
+        builder.HasIndex(x => new { x.ListaId, x.Busca })
+            .HasDatabaseName("ix_ser_catalogo_cid_busca");
     }
 }
 

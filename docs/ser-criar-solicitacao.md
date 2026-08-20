@@ -130,16 +130,53 @@ procedimento aceita:
 | `malig` | 395 | 21 |
 | `C50` | 10 (com as subcategorias C500…C509) | 1 (só a categoria `C50`) |
 
-> Consequência direta: **não dá para espelhar uma tabela de CID-10 na nossa base** e servi-la a
-> todo mundo, como se faz com recursos e médicos. Uma lista única ofereceria ao operador um código
-> que o SER recusa na hora de gravar — e ele recusa em silêncio. Por isso a nossa tela pergunta ao
-> SER a cada termo (`GET /regulacao/ser/configuracao/nova-solicitacao/cids`), e por isso o recurso
-> e o ramo fazem parte da pergunta.
+> Consequência direta: **não existe UMA lista de CID a servir**. Uma tabela de CID-10 baixada de
+> fora ofereceria ao operador um código que o SER recusa na hora de gravar — e ele recusa em
+> silêncio. Por isso o recurso e o ramo fazem parte da pergunta em
+> `GET /regulacao/ser/configuracao/nova-solicitacao/cids`.
+
+#### Mas são só DUAS listas — e por isso dá para espelhar
+
+Medido em 20/08/2026 (`Automais.SER/probe_cid_grupos.py`), assinando cada recurso com três buscas
+(`diab`, `malig`, `Z9`) e agrupando:
+
+| ramo | recursos | listas distintas |
+|---|---|---|
+| Não | 204 (121 consultas + 83 exames) | **2** |
+| Sim | 218 (154 consultas + 64 exames) | **1** |
+
+| lista | quem usa | tamanho |
+|---|---|---|
+| ampla | 390 recursos | **14.226 CID** — o CID-10 inteiro |
+| restrita | 32 recursos, todos com "(Oncologia)" no nome | **136 CID** |
+
+A restrita é **subconjunto perfeito** da ampla (interseção 136, nada fora). E duas varreduras
+completas de recursos sem nada em comum — Cardiologia (1003) e Cranio Maxilo Facial (1018) —
+devolveram conjuntos **idênticos**: 14.226 = 14.226, zero de diferença dos dois lados.
+
+> É isso que torna a cópia viável: varre-se uma vez por **lista** (260 buscas por prefixo, ~25s),
+> não uma vez por recurso. Espelhar por recurso custaria 422 varreduras.
+
+O espelho mora em `ser_catalogo_cid_lista` + `ser_catalogo_cid`, e cada recurso guarda a
+assinatura medida (`cid_assinatura`) e a lista a que pertence (`cid_lista_id`). A cópia roda junto
+com o sync de catálogo, em duas passadas — medir todos os recursos numa conversa Seam só, depois
+copiar uma lista por assinatura nova. Intercalar as duas coisas destruiria o estado da conversa da
+medição, e as assinaturas seguintes sairiam do recurso errado.
+
+**Recurso sem lista copiada cai no autocomplete ao vivo** — a fonte continua sendo o SER, o
+espelho é só a comodidade.
 
 **A busca casa código e descrição**, sem exigir acento: `hipert` traz `E05`, `G932`, `I10`…
 O SER corta em **500 linhas** por busca (um termo de uma letra volta com exatamente 500); a nossa
 resposta marca `truncado` para a tela pedir um termo mais específico em vez de fingir que aquilo é
-tudo. Prefixo de dois caracteres já cabe folgado (`A0` → 68, `M5` → 32, `Z9` → 90).
+tudo. É também o que obriga a cópia a enumerar por prefixo de dois caracteres, que cabe folgado
+(`A0` → 68, `M5` → 32, `Z9` → 90) — e a refinar com um terceiro caractere qualquer prefixo que
+volte no teto, em vez de aceitar uma lista incompleta com cara de completa.
+
+> O dado do SER é irregular no acento — "Diarréia" tem, "Hipertensao" não. O espelho guarda uma
+> coluna `busca` sem acento e normaliza o termo digitado do mesmo jeito (`SerCidBusca`), para que
+> "hipertensão" ache "Hipertensao". Isso não amplia o que é oferecido: o conjunto continua sendo
+> exatamente o que o SER devolveu.
 
 **A linha da tabela tem três células, e a que importa é a primeira**, que vem com
 `style="display: none"`:

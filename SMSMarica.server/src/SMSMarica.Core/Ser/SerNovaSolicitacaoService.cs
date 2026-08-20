@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using AngleSharp.Html.Dom;
 using Microsoft.Extensions.Caching.Memory;
@@ -60,6 +61,30 @@ public interface ISerNovaSolicitacaoService
         CancellationToken cancellationToken);
 
     /// <summary>
+    /// Mede, recurso a recurso, a <b>assinatura</b> da lista de CID — o que permite agrupar os
+    /// 422 recursos nas poucas listas que existem de verdade.
+    ///
+    /// <para>Tudo numa conversa Seam só: a aba é aberta uma vez por ramo e daí em diante só se
+    /// trocam combos. Medido em 20/08/2026: 204 recursos em 86 segundos. Reabrir a aba por
+    /// recurso — como faz a leitura de campos — levaria umas dez vezes mais.</para>
+    ///
+    /// <para>Devolve em fluxo para o chamador gravar conforme mede: uma queda no meio não pode
+    /// jogar fora o que já foi medido.</para>
+    /// </summary>
+    IAsyncEnumerable<SerAssinaturaCidDto> MedirAssinaturasCidAsync(
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// A lista INTEIRA de CID daquele recurso, varrida por prefixo de código.
+    ///
+    /// <para>O SER corta cada busca em 500 linhas, então não existe "traga tudo": a lista é
+    /// enumerada pelos 260 prefixos <c>A0…Z9</c>, e qualquer prefixo que volte no teto é
+    /// refinado com um terceiro caractere. Medido em 20/08/2026: 14.226 CID em ~25 segundos.</para>
+    /// </summary>
+    Task<IReadOnlyList<SerCidDto>> CopiarListaCidAsync(
+        string tipo, string recurso, bool ambulatorioEstadual, CancellationToken cancellationToken);
+
+    /// <summary>
     /// Pesquisa o paciente no SER por <b>CNS ou CPF</b> — o mesmo motor que a tela dele usa.
     ///
     /// <para>Resolve o que hoje só conseguimos pelo CADSUS via SISREG, que tem limitação de
@@ -93,6 +118,16 @@ public sealed partial class SerNovaSolicitacaoService(
     /// <summary>A <b>Hipótese</b>. O rótulo engana: não é campo de texto, é a caixa de
     /// autocomplete de CID (o input tem <c>alt="Digite o nome ou o código"</c>).</summary>
     private const string CampoHipotese = "form0:procedimento";
+
+    /// <summary>
+    /// As buscas que identificam uma lista de CID. Três bastam e são baratas: <c>diab</c> separa
+    /// a lista ampla da oncológica (78 x 0), <c>malig</c> mede o tamanho do capítulo de neoplasia
+    /// (395 x 21) e <c>Z9</c> confere o capítulo Z, que a restrita não tem (90 x 0).
+    /// </summary>
+    /// <summary>Separa as contagens na assinatura de uma lista de CID: <c>78|395|90</c>.</summary>
+    private const char SeparadorAssinatura = '|';
+
+    private static readonly string[] TermosDeSondagem = ["diab", "malig", "Z9"];
 
     /// <summary>Teto de linhas que o SER devolve numa busca de CID (medido em 20/08/2026: um
     /// termo de uma letra volta com exatamente 500).</summary>
@@ -182,19 +217,122 @@ public sealed partial class SerNovaSolicitacaoService(
         await PrepararAsync(ambulatorioEstadual, tipo, cancellationToken);
         await TrocarAsync(CampoRecurso, recurso, cancellationToken);
 
-        // O script `new RichFaces.Suggestion(...)` está na página COMPLETA da aba — os fragmentos
-        // A4J das trocas de combo não o trazem. `_html` é ela.
-        var caixa = SerHtmlParser.SuggestionBoxDoCampo(_html, CampoHipotese)
-            ?? throw new InvalidOperationException(
-                $"Não achei o script do autocomplete de CID ({CampoHipotese}) na aba Editar do "
-                + "SER. O layout mudou?");
+        var itens = await BuscarNoSerAsync(CaixaDaHipotese(), busca, cancellationToken);
+        var saida = new SerCidSugestoesDto(itens, itens.Count >= TetoDeSugestoes);
 
+        cache.Set(chave, saida, TimeSpan.FromHours(6));
+
+        logger.LogDebug(
+            "SER/cid: \"{Termo}\" no recurso {Recurso} ({Tipo}, ambulatório estadual {Ramo}) "
+            + "devolveu {Qtd} CID{Corte}.",
+            busca, recurso, tipo, ambulatorioEstadual ? "Sim" : "Não", itens.Count,
+            saida.Truncado ? " (no teto do SER)" : string.Empty);
+
+        return saida;
+    }
+
+    public async IAsyncEnumerable<SerAssinaturaCidDto> MedirAssinaturasCidAsync(
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        foreach (var ramo in (bool[])[false, true])
+        {
+            // Aba nova a cada ramo. Trocar "É ambulatório estadual?" com tipo e recurso já
+            // escolhidos é estado que ninguém mediu — e este combo troca o catálogo inteiro.
+            await AbrirEditarAsync(cancellationToken);
+            await TrocarAsync(CampoSisReg, ramo ? "true" : "false", cancellationToken);
+
+            foreach (var tipo in (string[])["CONSULTA", "EXAME"])
+            {
+                var html = await TrocarAsync(CampoTipo, tipo, cancellationToken);
+                var recursos = Combo(SerHtmlParser.Documento(html), CampoRecurso);
+                var caixa = CaixaDaHipotese();
+
+                logger.LogInformation(
+                    "SER/cid: medindo {Qtd} recursos de {Tipo} (ambulatório estadual {Ramo}).",
+                    recursos.Count, tipo, ramo ? "Sim" : "Não");
+
+                foreach (var r in recursos)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await TrocarAsync(CampoRecurso, r.Valor, cancellationToken);
+
+                    var contagens = new int[TermosDeSondagem.Length];
+                    for (var i = 0; i < TermosDeSondagem.Length; i++)
+                    {
+                        contagens[i] = (await BuscarNoSerAsync(
+                            caixa, TermosDeSondagem[i], cancellationToken)).Count;
+                    }
+
+                    yield return new SerAssinaturaCidDto(
+                        tipo, ramo, r.Valor, string.Join(SeparadorAssinatura, contagens));
+                }
+            }
+        }
+    }
+
+    public async Task<IReadOnlyList<SerCidDto>> CopiarListaCidAsync(
+        string tipo, string recurso, bool ambulatorioEstadual, CancellationToken cancellationToken)
+    {
+        await PrepararAsync(ambulatorioEstadual, tipo, cancellationToken);
+        await TrocarAsync(CampoRecurso, recurso, cancellationToken);
+        var caixa = CaixaDaHipotese();
+
+        var achados = new Dictionary<string, SerCidDto>(StringComparer.Ordinal);
+        var pendentes = new Queue<string>(
+            from letra in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            from digito in "0123456789"
+            select string.Concat(letra, digito));
+
+        var buscas = 0;
+        while (pendentes.Count > 0)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var prefixo = pendentes.Dequeue();
+            var linhas = await BuscarNoSerAsync(caixa, prefixo, cancellationToken);
+            buscas++;
+
+            foreach (var c in linhas) achados[c.Codigo] = c;
+
+            // No teto = a resposta foi CORTADA e existe CID que não veio. Refinar com mais um
+            // caractere é o que impede a cópia de ficar incompleta com cara de completa — o mesmo
+            // erro que este projeto já viu de outra forma, a fila do Estado lida sem filtro.
+            if (linhas.Count >= TetoDeSugestoes && prefixo.Length < 4)
+            {
+                foreach (var digito in "0123456789") pendentes.Enqueue(prefixo + digito);
+            }
+        }
+
+        logger.LogInformation(
+            "SER/cid: recurso {Recurso} ({Tipo}, ambulatório estadual {Ramo}) — {Qtd} CID em "
+            + "{Buscas} buscas.",
+            recurso, tipo, ambulatorioEstadual ? "Sim" : "Não", achados.Count, buscas);
+
+        return [.. achados.Values.OrderBy(c => c.Codigo, StringComparer.Ordinal)];
+    }
+
+    /// <summary>
+    /// O <c>rich:suggestionbox</c> da Hipótese, lido da página COMPLETA da aba — os fragmentos
+    /// A4J das trocas de combo não trazem o script que o declara.
+    /// </summary>
+    private SerSuggestionBox CaixaDaHipotese() =>
+        SerHtmlParser.SuggestionBoxDoCampo(_html, CampoHipotese)
+        ?? throw new InvalidOperationException(
+            $"Não achei o script do autocomplete de CID ({CampoHipotese}) na aba Editar do SER. "
+            + "O layout mudou?");
+
+    /// <summary>
+    /// Uma busca no autocomplete: a PRIMEIRA das duas requisições do protocolo (docs/ser.md §4.3).
+    /// Traz a tabela de sugestões e não amarra escolha nenhuma — o <c>onselect</c> é do envio.
+    /// </summary>
+    private async Task<List<SerCidDto>> BuscarNoSerAsync(
+        SerSuggestionBox caixa, string termo, CancellationToken cancellationToken)
+    {
         var extras = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["AJAXREQUEST"] = RegiaoViewRoot,
             // `inputvalue` é o default do RichFaces para o texto digitado; o init do componente
             // não o sobrescreve.
-            ["inputvalue"] = busca,
+            ["inputvalue"] = termo,
             [caixa.BoxId] = caixa.BoxId,
             ["ajaxSingle"] = caixa.BoxId,
         };
@@ -211,18 +349,7 @@ public sealed partial class SerNovaSolicitacaoService(
                 "O autocomplete de CID do SER não devolveu a tabela de sugestões — o protocolo "
                 + "mudou, ou a sessão caiu. Nenhum CID foi listado.");
 
-        var itens = CidsDaTabela(linhas);
-        var saida = new SerCidSugestoesDto(itens, itens.Count >= TetoDeSugestoes);
-
-        cache.Set(chave, saida, TimeSpan.FromHours(6));
-
-        logger.LogDebug(
-            "SER/cid: \"{Termo}\" no recurso {Recurso} ({Tipo}, ambulatório estadual {Ramo}) "
-            + "devolveu {Qtd} CID{Corte}.",
-            busca, recurso, tipo, ambulatorioEstadual ? "Sim" : "Não", itens.Count,
-            saida.Truncado ? " (no teto do SER)" : string.Empty);
-
-        return saida;
+        return CidsDaTabela(linhas);
     }
 
     public async Task<SerPacienteEncontradoDto> PesquisarPacienteAsync(

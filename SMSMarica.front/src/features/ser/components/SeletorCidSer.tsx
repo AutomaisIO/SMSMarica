@@ -13,10 +13,13 @@ import { extrairMensagemDeErro } from '@/shared/api/httpClient';
  * campo voltou vazio. Por isso aqui só se escolhe da lista.</p>
  *
  * <p><b>A lista é do RECURSO, não do CID-10.</b> Sem recurso escolhido o SER responde "Nenhum CID
- * encontrado" para qualquer termo; com ele, a relação muda — "Cirurgia Geral (Oncologia)" só
- * aceita neoplasia, cardiologia aceita quase tudo. É por isso que a busca vai ao SER a cada termo
- * em vez de filtrar uma tabela nossa: uma lista única ofereceria código que o SER recusa na hora
- * de gravar.</p>
+ * encontrado" para qualquer termo; com ele, a relação muda — "Cirurgia Geral (Oncologia)" aceita
+ * 136 códigos, todos de neoplasia, enquanto a cardiologia aceita os 14.226 do CID-10 inteiro. É
+ * por isso que o recurso e o ramo fazem parte da pergunta: uma lista única ofereceria código que
+ * o SER recusa na hora de gravar.</p>
+ *
+ * <p>A busca vai ao nosso espelho, copiado do próprio SER (uma varredura por lista, não por
+ * recurso). Recurso ainda não copiado cai no autocomplete ao vivo — a fonte continua sendo ele.</p>
  */
 export function SeletorCidSer({
   tipo,
@@ -41,8 +44,10 @@ export function SeletorCidSer({
 
   const semRecurso = !recurso || !tipo || ambulatorioEstadual === undefined;
 
-  // Atraso antes de perguntar ao SER: cada busca abre uma conversa lá, na sessão única que a
-  // varredura também usa. Sem isto, uma palavra digitada vira meia dúzia de idas ao Estado.
+  // Atraso antes de buscar. No espelho seria barato, mas o recurso ainda não copiado cai no
+  // autocomplete ao vivo — e lá cada busca abre uma conversa inteira no SER, na sessão única que
+  // a varredura também usa. O atraso é o que impede uma palavra digitada de virar meia dúzia de
+  // idas ao Estado.
   useEffect(() => {
     const t = setTimeout(() => setBuscado(termo.trim()), 450);
     return () => clearTimeout(t);
@@ -150,13 +155,14 @@ export function SeletorCidSer({
               <>
                 {sugestoes.isFetching && itens.length === 0 && (
                   <li className="px-3 py-4 text-center text-sm text-slate-500">
-                    Perguntando ao SER...
+                    Procurando...
                   </li>
                 )}
 
                 {!sugestoes.isFetching && itens.length === 0 && (
                   <li className="px-3 py-4 text-center text-sm text-slate-500">
-                    O SER não tem CID com &ldquo;{buscado}&rdquo; para este recurso.
+                    Não há CID com &ldquo;{buscado}&rdquo; entre os que o SER aceita para este
+                    recurso.
                   </li>
                 )}
 
@@ -182,7 +188,8 @@ export function SeletorCidSer({
 
                 {sugestoes.data?.truncado && (
                   <li className="border-t border-slate-100 px-3 py-2 text-xs text-amber-700">
-                    O SER cortou a lista em {itens.length}. Refine o termo — há mais CID que casam.
+                    Lista cortada em {itens.length} — o mesmo teto do SER. Refine o termo: há mais
+                    CID que casam.
                   </li>
                 )}
               </>

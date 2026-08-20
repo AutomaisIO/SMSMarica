@@ -374,26 +374,38 @@ public sealed class SerConfiguracaoController(
         nova.ObterCamposDinamicosAsync(tipo, recurso, ambulatorioEstadual, cancellationToken);
 
     /// <summary>
-    /// Lista os CID que o SER aceita como <b>Hipótese</b> para aquele recurso — o mesmo
-    /// autocomplete da tela dele.
+    /// Lista os CID que o SER aceita como <b>Hipótese</b> para aquele recurso.
     ///
-    /// <para><b>Ao vivo, e não do catálogo espelhado, porque a lista é do RECURSO.</b> O
-    /// oncológico só aceita neoplasia; a cardiologia aceita quase todo o CID-10. Servir uma lista
-    /// única daria ao operador códigos que o SER recusa na gravação — em silêncio.</para>
+    /// <para><b>Do espelho quando ele existe; ao vivo enquanto não existe.</b> A lista é do
+    /// RECURSO — o oncológico só aceita neoplasia, a cardiologia aceita o CID-10 inteiro —, então
+    /// não há uma lista única a servir. O espelho guarda a relação de cada uma delas, copiada do
+    /// próprio SER; recurso ainda não copiado cai no autocomplete ao vivo, que é a fonte.</para>
     ///
-    /// <para>Consulta: só o fetch de sugestões, nada é gravado.</para>
+    /// <para>Consulta nos dois caminhos: no ao vivo é só o fetch de sugestões, nada é gravado.</para>
     /// </summary>
     [HttpGet("nova-solicitacao/cids")]
     [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]
     [ProducesResponseType<SerCidSugestoesDto>(StatusCodes.Status200OK)]
-    public Task<SerCidSugestoesDto> CidsNovaSolicitacao(
+    public async Task<SerCidSugestoesDto> CidsNovaSolicitacao(
         [FromQuery] string tipo,
         [FromQuery] string recurso,
         [FromQuery] bool ambulatorioEstadual,
         [FromQuery] string termo,
+        [FromServices] ISerCatalogoService catalogo,
         [FromServices] ISerNovaSolicitacaoService nova,
-        CancellationToken cancellationToken) =>
-        nova.SugerirCidsAsync(tipo, recurso, ambulatorioEstadual, termo, cancellationToken);
+        CancellationToken cancellationToken)
+    {
+        var doTipo = string.Equals(tipo, "EXAME", StringComparison.OrdinalIgnoreCase)
+                     || string.Equals(tipo, "Exame", StringComparison.OrdinalIgnoreCase)
+            ? TipoRecursoSer.Exame
+            : TipoRecursoSer.Consulta;
+
+        var espelho = await catalogo.BuscarCidsAsync(
+            doTipo, recurso, ambulatorioEstadual, termo, cancellationToken);
+
+        return espelho ?? await nova.SugerirCidsAsync(
+            tipo, recurso, ambulatorioEstadual, termo, cancellationToken);
+    }
 
     /// <summary>Copia o catálogo do SER para a nossa base. Leitura longa (~15 min, uma ida por
     /// recurso) e retomável — recurso já lido não é pedido de novo, salvo `refazerTudo`.</summary>

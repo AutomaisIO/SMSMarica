@@ -126,6 +126,8 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<SerCatalogoRecurso> SerCatalogoRecursos => Set<SerCatalogoRecurso>();
     public DbSet<SerCatalogoCampo> SerCatalogoCampos => Set<SerCatalogoCampo>();
     public DbSet<SerCatalogoLista> SerCatalogoListas => Set<SerCatalogoLista>();
+    public DbSet<SerCatalogoCidLista> SerCatalogoCidListas => Set<SerCatalogoCidLista>();
+    public DbSet<SerCatalogoCid> SerCatalogoCids => Set<SerCatalogoCid>();
 
     // Pedidos montados na nossa base, esperando autorização para ir ao SER.
     public DbSet<SerSolicitacaoRascunho> SerSolicitacaoRascunhos => Set<SerSolicitacaoRascunho>();

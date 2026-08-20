@@ -8,7 +8,9 @@ namespace SMSMarica.Core.Ser;
 
 /// <summary>Resultado de uma sincronização do catálogo.</summary>
 public sealed record SerCatalogoSyncResultadoDto(
-    int Recursos, int Campos, int Listas, int Falhas, int DuracaoSegundos);
+    int Recursos, int Campos, int Listas, int Falhas, int DuracaoSegundos,
+    /// <summary>Quantos CID foram copiados nesta rodada (somando as listas novas).</summary>
+    int Cids = 0);
 
 /// <summary>
 /// Copia o catálogo do SER para a nossa base — recursos, campos dinâmicos e as listas do bloco
@@ -107,12 +109,157 @@ public sealed class SerCatalogoSyncService(
             }
         }
 
+        // ---- listas de CID da Hipótese ----
+        var cids = 0;
+        try
+        {
+            cids = await SincronizarCidsAsync(refazerTudo, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            falhas++;
+            // Não derruba a rodada: recursos e campos já copiados valem por si, e a tela cai no
+            // autocomplete ao vivo enquanto não houver lista.
+            logger.LogWarning(ex, "SER/catálogo: a cópia das listas de CID falhou.");
+        }
+
         var duracao = (int)(DateTime.UtcNow - inicio).TotalSeconds;
         logger.LogInformation(
             "SER/catálogo: {Recursos} recursos, {Campos} campos, {Listas} itens de lista, "
-            + "{Falhas} falhas em {Seg}s.", recursos, campos, listas, falhas, duracao);
+            + "{Cids} CID, {Falhas} falhas em {Seg}s.",
+            recursos, campos, listas, cids, falhas, duracao);
 
-        return new SerCatalogoSyncResultadoDto(recursos, campos, listas, falhas, duracao);
+        return new SerCatalogoSyncResultadoDto(recursos, campos, listas, falhas, duracao, cids);
+    }
+
+    // ------------------------------------------------------------------ listas de CID
+
+    /// <summary>
+    /// Copia as listas de CID que a Hipótese aceita, em DUAS passadas.
+    ///
+    /// <para><b>Por que duas:</b> medir a assinatura dos 422 recursos é uma conversa Seam só
+    /// (~3 min); copiar uma lista inteira reabre a aba e varre 260 prefixos. Intercalar as duas
+    /// coisas destruiria o estado da conversa da medição, e as assinaturas seguintes sairiam do
+    /// recurso errado — em silêncio, como sempre neste sistema. Então mede-se tudo primeiro,
+    /// gravando a assinatura em cada recurso, e só depois se copia uma lista por assinatura
+    /// nova.</para>
+    ///
+    /// <para>Medido em 20/08/2026: os 422 recursos produzem <b>duas</b> listas — 14.226 CID (o
+    /// CID-10 inteiro) para 390 deles e 136 para os 32 oncológicos. Por isso a segunda passada
+    /// custa duas varreduras, não 422.</para>
+    /// </summary>
+    private async Task<int> SincronizarCidsAsync(bool refazerTudo, CancellationToken cancellationToken)
+    {
+        var semLista = await db.SerCatalogoRecursos
+            .CountAsync(r => r.CidListaId == null, cancellationToken);
+
+        if (!refazerTudo && semLista == 0)
+        {
+            logger.LogInformation(
+                "SER/cid: todos os recursos já têm lista de CID — nada a medir.");
+            return 0;
+        }
+
+        // ---- passada 1: assinatura de cada recurso ----
+        var medidos = 0;
+        await foreach (var a in leitor.MedirAssinaturasCidAsync(cancellationToken))
+        {
+            var tipo = string.Equals(a.Tipo, "EXAME", StringComparison.OrdinalIgnoreCase)
+                ? TipoRecursoSer.Exame
+                : TipoRecursoSer.Consulta;
+
+            var recurso = await db.SerCatalogoRecursos.FirstOrDefaultAsync(
+                r => r.Tipo == tipo
+                     && r.AmbulatorioEstadual == a.AmbulatorioEstadual
+                     && r.Valor == a.Recurso,
+                cancellationToken);
+
+            // Recurso que o SER lista e a nossa cópia ainda não tem: a fase de recursos roda
+            // antes, então isso só acontece se ele apareceu no meio da rodada. Fica para a
+            // próxima, sem derrubar nada.
+            if (recurso is null) continue;
+
+            recurso.CidAssinatura = a.Assinatura;
+            await db.SaveChangesAsync(cancellationToken);
+            medidos++;
+        }
+
+        // ---- passada 2: uma cópia por assinatura que ainda não tem lista ----
+        var listas = await db.SerCatalogoCidListas
+            .ToDictionaryAsync(l => l.Assinatura, cancellationToken);
+
+        var pendentes = await db.SerCatalogoRecursos
+            .Where(r => r.CidAssinatura != null && (refazerTudo || r.CidListaId == null))
+            .ToListAsync(cancellationToken);
+
+        var copiados = 0;
+        foreach (var grupo in pendentes.GroupBy(r => r.CidAssinatura!))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (!listas.TryGetValue(grupo.Key, out var lista))
+            {
+                // Qualquer recurso do grupo serve de porta de entrada: por definição todos
+                // devolvem a mesma lista.
+                var porta = grupo.First();
+                var itens = await leitor.CopiarListaCidAsync(
+                    porta.Tipo == TipoRecursoSer.Exame ? "EXAME" : "CONSULTA",
+                    porta.Valor, porta.AmbulatorioEstadual, cancellationToken);
+
+                lista = await SalvarListaCidAsync(grupo.Key, itens, cancellationToken);
+                listas[grupo.Key] = lista;
+                copiados += itens.Count;
+            }
+
+            foreach (var r in grupo) r.CidListaId = lista.Id;
+            await db.SaveChangesAsync(cancellationToken);
+        }
+
+        logger.LogInformation(
+            "SER/cid: {Medidos} recursos medidos, {Listas} lista(s) distinta(s), "
+            + "{Copiados} CID copiados.", medidos, listas.Count, copiados);
+
+        return copiados;
+    }
+
+    private async Task<SerCatalogoCidLista> SalvarListaCidAsync(
+        string assinatura, IReadOnlyList<Dtos.SerCidDto> itens, CancellationToken cancellationToken)
+    {
+        var lista = await db.SerCatalogoCidListas
+            .FirstOrDefaultAsync(l => l.Assinatura == assinatura, cancellationToken);
+
+        if (lista is null)
+        {
+            lista = new SerCatalogoCidLista { Id = Guid.NewGuid(), Assinatura = assinatura };
+            db.SerCatalogoCidListas.Add(lista);
+        }
+        else
+        {
+            // Substituição completa: CID que saiu da lista do SER tem de sair daqui, senão a tela
+            // ofereceria um código que o pedido não aceita mais.
+            db.SerCatalogoCids.RemoveRange(
+                await db.SerCatalogoCids.Where(c => c.ListaId == lista.Id)
+                    .ToListAsync(cancellationToken));
+        }
+
+        lista.Quantidade = itens.Count;
+        lista.SincronizadoEm = DateTime.UtcNow;
+
+        foreach (var c in itens.DistinctBy(x => x.Codigo, StringComparer.Ordinal))
+        {
+            db.SerCatalogoCids.Add(new SerCatalogoCid
+            {
+                Id = Guid.NewGuid(),
+                ListaId = lista.Id,
+                Codigo = Truncar(c.Codigo, 10),
+                Descricao = Truncar(c.Descricao, 400),
+                Texto = Truncar(c.Texto, 420),
+                Busca = Truncar(SerCidBusca.De(c.Codigo, c.Descricao), 420),
+            });
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        return lista;
     }
 
     // ------------------------------------------------------------------ persistência

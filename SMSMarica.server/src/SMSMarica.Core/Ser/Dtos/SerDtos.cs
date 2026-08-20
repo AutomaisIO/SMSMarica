@@ -433,6 +433,13 @@ public sealed record SerCampoDinamicoDto(
 /// </param>
 public sealed record SerCidDto(string Codigo, string Descricao, string Texto);
 
+/// <summary>
+/// A "impressão digital" da lista de CID de um recurso: as contagens das buscas de sondagem,
+/// na forma <c>78|395|90</c>. Recursos com a mesma assinatura compartilham a mesma lista.
+/// </summary>
+public sealed record SerAssinaturaCidDto(
+    string Tipo, bool AmbulatorioEstadual, string Recurso, string Assinatura);
+
 /// <summary>Resposta do autocomplete de CID para um termo.</summary>
 public sealed record SerCidSugestoesDto(
     IReadOnlyList<SerCidDto> Itens,
@@ -521,6 +528,13 @@ public sealed record SerCatalogoFormularioDto(
     DateTime? SincronizadoEm,
     /// <summary>Recursos cujos campos ainda não foram lidos — o catálogo está incompleto.</summary>
     int RecursosSemCampos,
+
+    /// <summary>Quantos CID o espelho tem, somando as listas.</summary>
+    int CidsCopiados,
+
+    /// <summary>Recursos que ainda não sabem qual lista de CID aceitam. Enquanto forem &gt; 0, a
+    /// tela cai no autocomplete ao vivo naqueles recursos.</summary>
+    int RecursosSemCid,
 
     /// <summary>A cópia está rodando agora, em segundo plano.</summary>
     bool CopiaEmAndamento,

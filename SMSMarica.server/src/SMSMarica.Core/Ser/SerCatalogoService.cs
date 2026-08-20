@@ -20,6 +20,18 @@ public interface ISerCatalogoService
     Task<IReadOnlyList<SerCampoDinamicoDto>> ObterCamposAsync(
         TipoRecursoSer tipo, string recurso, bool ambulatorioEstadual,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Os CID daquele recurso que casam o termo, do espelho — sem tocar no SER.
+    ///
+    /// <para>Devolve <c>null</c> quando o recurso ainda não tem lista copiada; aí quem chama cai
+    /// no autocomplete ao vivo. É a diferença entre "não achei CID com esse termo" e "ainda não
+    /// sei quais CID este recurso aceita", e confundir as duas ofereceria uma lista vazia com
+    /// cara de resposta.</para>
+    /// </summary>
+    Task<SerCidSugestoesDto?> BuscarCidsAsync(
+        TipoRecursoSer tipo, string recurso, bool ambulatorioEstadual, string termo,
+        CancellationToken cancellationToken);
 }
 
 public sealed class SerCatalogoService(
@@ -47,6 +59,10 @@ public sealed class SerCatalogoService(
             ? null
             : await db.SerCatalogoRecursos.MinAsync(x => (DateTime?)x.SincronizadoEm, cancellationToken);
 
+        var cids = await db.SerCatalogoCids.CountAsync(cancellationToken);
+        var semCid = await db.SerCatalogoRecursos
+            .CountAsync(r => r.CidListaId == null, cancellationToken);
+
         return new SerCatalogoFormularioDto(
             Lista(listas, "ambulatorio_estadual"),
             Lista(listas, "classificacao_risco"),
@@ -54,6 +70,8 @@ public sealed class SerCatalogoService(
             recursos,
             sincronizado,
             recursos.Count(r => !r.CamposLidos),
+            cids,
+            semCid,
             fila.EmExecucao,
             fila.UltimoErro);
     }
@@ -75,6 +93,39 @@ public sealed class SerCatalogoService(
 
         return [.. campos.Select(c => new SerCampoDinamicoDto(
             c.Numero, c.Campo, c.Rotulo, c.Tipo, c.Obrigatorio, Opcoes(c.OpcoesJson)))];
+    }
+
+    /// <summary>Mesmo teto do SER (500 por busca), para a tela se comportar igual dos dois
+    /// lados — inclusive no aviso de lista cortada.</summary>
+    private const int TetoDeSugestoes = 500;
+
+    public async Task<SerCidSugestoesDto?> BuscarCidsAsync(
+        TipoRecursoSer tipo, string recurso, bool ambulatorioEstadual, string termo,
+        CancellationToken cancellationToken)
+    {
+        var listaId = await db.SerCatalogoRecursos
+            .AsNoTracking()
+            .Where(r => r.Tipo == tipo
+                        && r.AmbulatorioEstadual == ambulatorioEstadual
+                        && r.Valor == recurso)
+            .Select(r => r.CidListaId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (listaId is null) return null;
+
+        // A MESMA régua da cópia (SerCidBusca): normalizar de um jeito aqui e de outro lá faria a
+        // tela não achar nada, sem erro nenhum.
+        var busca = SerCidBusca.Normalizar(termo);
+
+        var itens = await db.SerCatalogoCids
+            .AsNoTracking()
+            .Where(c => c.ListaId == listaId && c.Busca.Contains(busca))
+            .OrderBy(c => c.Codigo)
+            .Take(TetoDeSugestoes)
+            .Select(c => new SerCidDto(c.Codigo, c.Descricao, c.Texto))
+            .ToListAsync(cancellationToken);
+
+        return new SerCidSugestoesDto(itens, itens.Count >= TetoDeSugestoes);
     }
 
     private static IReadOnlyList<SerOpcaoDto> Lista(List<SerCatalogoLista> todas, string nome) =>

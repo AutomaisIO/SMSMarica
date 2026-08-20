@@ -379,6 +379,10 @@ export type CatalogoFormularioSer = {
   /** Data do item MAIS ANTIGO: o catálogo só está tão atualizado quanto a parte mais velha. */
   sincronizadoEm: string | null;
   recursosSemCampos: number;
+  /** Quantos CID o espelho tem, somando as listas. */
+  cidsCopiados: number;
+  /** Recursos que ainda não sabem qual lista de CID aceitam — esses caem no ao vivo. */
+  recursosSemCid: number;
   /** A cópia está rodando agora, em segundo plano. */
   copiaEmAndamento: boolean;
   /** Motivo da última falha, quando houve. */
@@ -467,6 +471,7 @@ export type CatalogoSyncResultado = {
   recursos: number;
   campos: number;
   listas: number;
+  cids: number;
   falhas: number;
   duracaoSegundos: number;
 };

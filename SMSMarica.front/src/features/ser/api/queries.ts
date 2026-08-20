@@ -268,12 +268,13 @@ export function useCamposCatalogoSer(
 }
 
 /**
- * Sugestões de CID para a Hipótese, do autocomplete do PRÓPRIO SER.
+ * Sugestões de CID para a Hipótese — do espelho, com o SER como reserva.
  *
- * <p>Cada busca abre uma conversa Seam lá (aba → ramo → tipo → recurso → sugestão) numa sessão
- * única e serializada, a mesma da varredura. Por isso o termo já chega aqui com atraso da tela,
- * o mínimo é 2 caracteres, e a resposta é guardada: repetir um termo não volta ao SER.</p>
- */
+ * <p>Quando a lista daquele recurso já foi copiada, a resposta sai da nossa base e é instantânea.
+ * Enquanto não foi, o servidor cai no autocomplete ao vivo: lá cada busca abre uma conversa Seam
+ * inteira (aba → ramo → tipo → recurso → sugestão) numa sessão única e serializada, a mesma da
+ * varredura. Por isso o termo chega com atraso da tela, o mínimo é 2 caracteres, e a resposta
+ * fica guardada.</p>
 export function useSugestoesCidSer(
   tipo?: TipoRecursoSer,
   recurso?: string,

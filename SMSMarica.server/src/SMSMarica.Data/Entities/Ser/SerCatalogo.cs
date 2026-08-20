@@ -38,6 +38,25 @@ public class SerCatalogoRecurso
     /// de aparecer no SER fica com a data velha — é assim que se enxerga o que saiu do ar.</summary>
     public DateTime SincronizadoEm { get; set; }
 
+    /// <summary>
+    /// Qual lista de CID este recurso aceita na Hipótese. Nulo = ainda não medido, e a tela cai
+    /// no autocomplete ao vivo do SER.
+    ///
+    /// <para>É FK e não um enum porque o agrupamento é medido, não decretado: em 20/08/2026 os
+    /// 422 recursos dos dois ramos produziram <b>duas</b> listas, mas isso é um fato do SER de
+    /// hoje. Se a SES-RJ criar uma terceira, a cópia a descobre sozinha.</para>
+    /// </summary>
+    public Guid? CidListaId { get; set; }
+    public SerCatalogoCidLista? CidLista { get; set; }
+
+    /// <summary>
+    /// A assinatura medida para este recurso (<c>78|395|90</c>). Fica gravada junto porque a
+    /// medição e a cópia são passadas SEPARADAS: medir percorre os 422 recursos numa conversa
+    /// Seam só, e copiar uma lista reabre a aba — fazer as duas coisas intercaladas destruiria o
+    /// estado da conversa e as assinaturas seguintes sairiam do recurso errado.
+    /// </summary>
+    public string? CidAssinatura { get; set; }
+
     /// <summary><c>true</c> quando os campos dinâmicos deste recurso já foram lidos. A varredura
     /// do catálogo é longa (uma ida ao SER por recurso) e pode ser retomada.</summary>
     public bool CamposLidos { get; set; }
@@ -97,4 +116,66 @@ public class SerCatalogoLista
     public string Rotulo { get; set; } = string.Empty;
     public int Ordem { get; set; }
     public DateTime SincronizadoEm { get; set; }
+}
+
+/// <summary>
+/// Uma relação de CID que o SER aceita na Hipótese — <b>a lista, não o recurso</b>.
+///
+/// <para><b>Por que agrupar:</b> medido em 20/08/2026 (<c>Automais.SER/probe_cid_grupos.py</c>),
+/// os 422 recursos dos dois ramos produzem apenas <b>duas</b> listas: a ampla, com 14.226 CID —
+/// o CID-10 inteiro —, usada por 390 recursos, e uma de 136 códigos, usada pelos 32 recursos
+/// oncológicos (Hematologia, Mastologia, Urologia, Coloproctologia… todos com "(Oncologia)" no
+/// nome). A restrita é subconjunto perfeito da ampla: nenhum código fora dela.</para>
+///
+/// <para>Guardar por LISTA, e não por recurso, é o que torna a cópia viável: varre-se cada lista
+/// uma vez (260 buscas por prefixo, ~25s) em vez de uma vez por recurso.</para>
+/// </summary>
+public class SerCatalogoCidLista
+{
+    public Guid Id { get; set; }
+
+    /// <summary>
+    /// Como os recursos são reconhecidos como sendo da mesma lista: as contagens de três buscas
+    /// de sondagem, na forma <c>78|395|90</c>. Duas listas iguais dão a mesma assinatura, e é por
+    /// ela que um recurso novo é ligado a uma lista já copiada sem varrer nada de novo.
+    /// </summary>
+    public string Assinatura { get; set; } = string.Empty;
+
+    /// <summary>Quantos CID esta lista tem — para a tela dizer o tamanho sem contar linha.</summary>
+    public int Quantidade { get; set; }
+
+    public DateTime SincronizadoEm { get; set; }
+
+    public ICollection<SerCatalogoCid> Cids { get; set; } = [];
+}
+
+/// <summary>Um CID de uma lista, do jeito que o SER o devolve.</summary>
+public class SerCatalogoCid
+{
+    public Guid Id { get; set; }
+
+    public Guid ListaId { get; set; }
+    public SerCatalogoCidLista? Lista { get; set; }
+
+    /// <summary>Código sem ponto, como o SER usa: <c>A09</c>, <c>E119</c>.</summary>
+    public string Codigo { get; set; } = string.Empty;
+
+    public string Descricao { get; set; } = string.Empty;
+
+    /// <summary>
+    /// O texto que o SER escreve no campo ao clicar na sugestão — <c>(A09 ) Diarréia e
+    /// gastroenterite…</c>. É ele que o pedido leva de volta em <c>form0:procedimento</c>, e por
+    /// isso é copiado como veio, sem normalizar acento nem espaço.
+    /// </summary>
+    public string Texto { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Código e descrição sem acento e em minúsculas, para a busca da tela.
+    ///
+    /// <para>O SER casa "contém" e o dado dele é irregular ("Hipertensao" sem til, "Diarréia"
+    /// com acento). Comparar pelo texto cru faria "hipertensão" não achar nada. Isto não amplia
+    /// o que é oferecido — o conjunto continua sendo o do SER —, só torna encontrável o que já
+    /// está lá.</para>
+    /// </summary>
+    public string Busca { get; set; } = string.Empty;
 }

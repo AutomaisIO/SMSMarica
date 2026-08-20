@@ -349,6 +349,16 @@ export function AbaSerConfiguracao() {
                     {' '}({catalogo.recursosSemCampos} sem campos)
                   </span>
                 )}
+                {catalogo.cidsCopiados > 0 && (
+                  <>
+                    {' '}· {catalogo.cidsCopiados.toLocaleString('pt-BR')} CID
+                    {catalogo.recursosSemCid > 0 && (
+                      <span className="text-amber-700">
+                        {' '}({catalogo.recursosSemCid} recurso(s) ainda sem lista)
+                      </span>
+                    )}
+                  </>
+                )}
                 {catalogo.sincronizadoEm && (
                   <span className="text-xs text-slate-500">
                     {' '}· mais antigo de {dataHora(catalogo.sincronizadoEm)}
