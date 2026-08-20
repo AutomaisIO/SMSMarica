@@ -18,6 +18,7 @@ using DomNode = AngleSharp.Dom.INode;
 using DomText = AngleSharp.Dom.IText;
 using QuestDocument = QuestPDF.Fluent.Document;
 
+
 namespace SMSMarica.Core.Laudos.Pdf;
 
 public sealed class LaudoPdfRenderer(
@@ -44,6 +45,16 @@ public sealed class LaudoPdfRenderer(
     /// invade ≈ 87pt da área útil. 100pt cobre com folga rodapés enxutos.
     /// </summary>
     private const float ReservaCarimboPt = 100f;
+
+    /// <summary>
+    /// Corpo do laudo é 10pt; dentro de tabela de dados cai para 9pt — uma tabela
+    /// de 7 colunas (densitometria) não cabe na largura útil da A4 com 10pt sem
+    /// quebrar os títulos em 3 linhas.
+    /// </summary>
+    private const float FonteTabela = 9f;
+
+    /// <summary>Classe que marca uma tabela como "de dados" (grade, cabeçalho, larguras).</summary>
+    private const string ClasseTabelaDados = "laudo-tabela";
 
     public async Task<byte[]> GerarAsync(
         Guid laudoId,
@@ -239,12 +250,20 @@ public sealed class LaudoPdfRenderer(
         });
     }
 
-    private static void RenderBloco(IContainer container, BlocoHtml bloco, IReadOnlyDictionary<string, byte[]> imagens)
+    private static void RenderBloco(IContainer container, BlocoHtml bloco, IReadOnlyDictionary<string, byte[]> imagens,
+        float fonteBase = 10f)
     {
         // Linha (tabela): ocupa a largura toda e renderiza as células lado a lado.
         if (bloco.Tipo == TipoBloco.Linha)
         {
             RenderLinha(container, bloco, imagens);
+            return;
+        }
+
+        // Tabela de dados (<table class="laudo-tabela">): grade contínua de verdade.
+        if (bloco.Tipo == TipoBloco.Tabela)
+        {
+            RenderTabela(container, bloco, imagens);
             return;
         }
 
@@ -271,16 +290,147 @@ public sealed class LaudoPdfRenderer(
                 container.Text(t => RenderInline(t, bloco.Spans, baseSize: 11, baseBold: true));
                 break;
             case TipoBloco.Paragrafo:
-                container.Text(t => RenderInline(t, bloco.Spans, baseSize: 10, baseBold: false));
+                container.Text(t => RenderInline(t, bloco.Spans, baseSize: fonteBase, baseBold: false));
                 break;
             case TipoBloco.ItemLista:
                 container.Row(r =>
                 {
-                    r.ConstantItem(14).Text(bloco.PrefixoLista ?? "•").FontSize(10);
-                    r.RelativeItem().Text(t => RenderInline(t, bloco.Spans, baseSize: 10, baseBold: false));
+                    r.ConstantItem(14).Text(bloco.PrefixoLista ?? "•").FontSize(fonteBase);
+                    r.RelativeItem().Text(t => RenderInline(t, bloco.Spans, baseSize: fonteBase, baseBold: false));
                 });
                 break;
         }
+    }
+
+    /// <summary>
+    /// Renderiza <c>&lt;table class="laudo-tabela"&gt;</c> como tabela de verdade:
+    /// grade contínua, larguras de coluna vindas do HTML, cabeçalho destacado e
+    /// repetido quando a tabela quebra de página.
+    ///
+    /// <para>
+    /// É um caminho <b>opt-in</b>: tabelas sem a classe continuam em
+    /// <see cref="RenderLinha"/> (uma caixa por &lt;tr&gt;), que é o layout usado
+    /// pelo cabeçalho institucional configurado no painel — este NÃO muda.
+    /// </para>
+    /// </summary>
+    private static void RenderTabela(IContainer container, BlocoHtml bloco, IReadOnlyDictionary<string, byte[]> imagens)
+    {
+        var linhas = bloco.Linhas;
+        if (linhas is null || linhas.Count == 0) return;
+
+        // Nº de colunas = maior soma de colspan entre as linhas.
+        var colunas = linhas.Max(l => l.Celulas.Sum(c => Math.Max(1, c.ColSpan)));
+        if (colunas <= 0) return;
+
+        var pesos = PesosColunas(bloco.ColunasLargura, colunas);
+        var cabecalho = linhas.FirstOrDefault(l => l.EhCabecalho);
+        var corpo = linhas.Where(l => !ReferenceEquals(l, cabecalho)).ToList();
+
+        container.Table(tabela =>
+        {
+            tabela.ColumnsDefinition(cols =>
+            {
+                foreach (var peso in pesos) cols.RelativeColumn(peso);
+            });
+
+            if (cabecalho is not null)
+            {
+                tabela.Header(h => MontarLinha(
+                    (cs, rs) => h.Cell().ColumnSpan(cs).RowSpan(rs),
+                    cabecalho, colunas, imagens, ehCabecalho: true));
+            }
+
+            foreach (var linha in corpo)
+            {
+                MontarLinha(
+                    (cs, rs) => tabela.Cell().ColumnSpan(cs).RowSpan(rs),
+                    linha, colunas, imagens, ehCabecalho: false);
+            }
+        });
+    }
+
+    /// <summary>
+    /// Emite as células de uma linha e COMPLETA a linha com células vazias até
+    /// fechar o nº de colunas.
+    ///
+    /// <para>
+    /// O preenchimento não é cosmético: o QuestPDF posiciona célula a célula em
+    /// sequência, então uma linha curta (HTML editado na mão, célula apagada)
+    /// puxaria a 1ª célula da linha seguinte para o buraco e deslocaria a tabela
+    /// inteira dali para baixo — sem erro nenhum.
+    /// </para>
+    /// </summary>
+    private static void MontarLinha(Func<uint, uint, IContainer> novaCelula, LinhaTabela linha,
+        int colunas, IReadOnlyDictionary<string, byte[]> imagens, bool ehCabecalho)
+    {
+        var ocupadas = 0;
+        foreach (var celula in linha.Celulas)
+        {
+            var span = Math.Max(1, celula.ColSpan);
+            if (ocupadas + span > colunas) break; // linha malformada: não estoura a tabela.
+
+            MontarCelula(
+                novaCelula((uint)span, (uint)Math.Max(1, celula.RowSpan)),
+                celula, imagens, ehCabecalho);
+            ocupadas += span;
+        }
+
+        for (; ocupadas < colunas; ocupadas++)
+        {
+            MontarCelula(novaCelula(1, 1), new CelulaTabela([], 1, 1, null), imagens, ehCabecalho);
+        }
+    }
+
+    /// <summary>Aplica moldura/fundo e despeja os blocos dentro de uma célula.</summary>
+    private static void MontarCelula(IContainer cell, CelulaTabela celula,
+        IReadOnlyDictionary<string, byte[]> imagens, bool ehCabecalho)
+    {
+        var alvo = cell.Border(0.5f).BorderColor(Colors.Grey.Darken1);
+
+        if (ehCabecalho) alvo = alvo.Background(Colors.Grey.Lighten3);
+
+        alvo.PaddingVertical(3).PaddingHorizontal(4).AlignMiddle().Column(col =>
+        {
+            col.Spacing(1);
+            if (celula.Blocos.Count == 0)
+            {
+                // Célula vazia ainda precisa ocupar altura para a grade fechar.
+                col.Item().Text(string.Empty).FontSize(FonteTabela);
+                return;
+            }
+            foreach (var b in celula.Blocos)
+            {
+                // Cabeçalho sai em negrito, marcando os spans (o <th> do HTML não
+                // carrega <strong>, o destaque é semântico da tag).
+                var bloco = ehCabecalho && b.Tipo == TipoBloco.Paragrafo
+                    ? b with { Spans = [.. b.Spans.Select(s => s with { Bold = true })] }
+                    : b;
+                RenderBloco(col.Item(), bloco, imagens, FonteTabela);
+            }
+        });
+    }
+
+    /// <summary>
+    /// Pesos relativos das colunas. Usa <c>style="width:NN%"</c> / <c>colwidth</c>
+    /// das células da 1ª linha; sem isso, colunas iguais.
+    /// </summary>
+    private static IReadOnlyList<float> PesosColunas(IReadOnlyList<float?>? larguras, int colunas)
+    {
+        var pesos = new float[colunas];
+        for (var i = 0; i < colunas; i++)
+        {
+            var l = larguras is not null && i < larguras.Count ? larguras[i] : null;
+            pesos[i] = l is > 0 ? l.Value : 0f;
+        }
+
+        // Colunas sem largura declarada recebem a média das declaradas (ou 1).
+        var declaradas = pesos.Where(p => p > 0).ToList();
+        var padrao = declaradas.Count > 0 ? declaradas.Average() : 1f;
+        for (var i = 0; i < colunas; i++)
+        {
+            if (pesos[i] <= 0) pesos[i] = padrao;
+        }
+        return pesos;
     }
 
     /// <summary>
@@ -584,18 +734,29 @@ public sealed class LaudoPdfRenderer(
         return resultado;
     }
 
-    /// <summary>Achata blocos descendo recursivamente nas células de Linha (tabela).</summary>
+    /// <summary>Achata blocos descendo recursivamente nas células de Linha e de Tabela.</summary>
     private static IEnumerable<BlocoHtml> Achatar(IEnumerable<BlocoHtml> blocos)
     {
         foreach (var b in blocos)
         {
             yield return b;
-            if (b.Celulas is null) continue;
-            foreach (var celula in b.Celulas)
+
+            if (b.Celulas is not null)
             {
-                foreach (var sub in Achatar(celula))
+                foreach (var celula in b.Celulas)
                 {
-                    yield return sub;
+                    foreach (var sub in Achatar(celula)) yield return sub;
+                }
+            }
+
+            if (b.Linhas is not null)
+            {
+                foreach (var linha in b.Linhas)
+                {
+                    foreach (var celula in linha.Celulas)
+                    {
+                        foreach (var sub in Achatar(celula.Blocos)) yield return sub;
+                    }
                 }
             }
         }
@@ -714,8 +875,18 @@ public sealed class LaudoPdfRenderer(
                 destino.Add(new BlocoHtml(TipoBloco.Paragrafo, [new SpanInline(string.Empty, false, false, false)], null, alinhamento));
                 break;
             case "TABLE":
-                // Cada <tr> vira um bloco Linha cujas células (td/th) são listas de
-                // blocos renderizadas lado a lado. Usado p/ cabeçalho logo|texto|logo.
+                // Tabela de DADOS (opt-in pela classe): vira um único bloco Tabela com
+                // grade contínua, cabeçalho e larguras de coluna.
+                if (el.ClassList.Contains(ClasseTabelaDados))
+                {
+                    var tabela = ColetarTabela(el, alinhamento);
+                    if (tabela is not null) destino.Add(tabela);
+                    break;
+                }
+
+                // Caminho legado (tabela de LAYOUT): cada <tr> vira um bloco Linha cujas
+                // células (td/th) são listas de blocos renderizadas lado a lado. É o que
+                // o cabeçalho institucional (logo|texto|logo) usa — não mexer.
                 foreach (var tr in el.QuerySelectorAll("tr"))
                 {
                     var celulas = new List<IReadOnlyList<BlocoHtml>>();
@@ -745,6 +916,97 @@ public sealed class LaudoPdfRenderer(
                 }
                 break;
         }
+    }
+
+    /// <summary>
+    /// Lê uma tabela de dados inteira (<c>class="laudo-tabela"</c>) para um único
+    /// bloco. A linha de cabeçalho é a primeira que estiver dentro de
+    /// <c>&lt;thead&gt;</c> ou que seja composta só de <c>&lt;th&gt;</c>.
+    /// </summary>
+    private static BlocoHtml? ColetarTabela(DomElement el, Alinhamento alinhamento)
+    {
+        var linhas = new List<LinhaTabela>();
+
+        foreach (var tr in el.QuerySelectorAll("tr"))
+        {
+            var celulas = new List<CelulaTabela>();
+            var todasTh = true;
+
+            foreach (var td in tr.Children.Where(c =>
+                string.Equals(c.TagName, "TD", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(c.TagName, "TH", StringComparison.OrdinalIgnoreCase)))
+            {
+                if (!string.Equals(td.TagName, "TH", StringComparison.OrdinalIgnoreCase)) todasTh = false;
+
+                var sub = new List<BlocoHtml>();
+                var alinhCel = LerAlinhamento(td, alinhamento);
+                foreach (var filho in td.ChildNodes)
+                {
+                    ColetarBlocos(filho, sub, null, alinhCel);
+                }
+
+                celulas.Add(new CelulaTabela(
+                    sub,
+                    LerSpan(td, "colspan"),
+                    LerSpan(td, "rowspan"),
+                    LerLarguraCelula(td)));
+            }
+
+            if (celulas.Count == 0) continue;
+
+            var noThead = tr.ParentElement is { } pai
+                && string.Equals(pai.TagName, "THEAD", StringComparison.OrdinalIgnoreCase);
+
+            linhas.Add(new LinhaTabela(noThead || (todasTh && linhas.Count == 0), celulas));
+        }
+
+        if (linhas.Count == 0) return null;
+
+        // Larguras: a 1ª linha manda (é onde o TipTap grava o colwidth).
+        var larguras = linhas[0].Celulas.Select(c => c.Largura).ToList();
+
+        return new BlocoHtml(TipoBloco.Tabela, [], null, alinhamento,
+            Linhas: linhas, ColunasLargura: larguras);
+    }
+
+    private static int LerSpan(DomElement el, string atributo) =>
+        int.TryParse(el.GetAttribute(atributo), out var n) && n > 0 ? n : 1;
+
+    /// <summary>
+    /// Largura declarada de uma célula, em unidade arbitrária (só a proporção
+    /// importa): <c>style="width:NN%"</c>, <c>style="width:NNpx"</c> ou o
+    /// <c>colwidth</c> que o TipTap grava ao redimensionar a coluna.
+    /// </summary>
+    private static float? LerLarguraCelula(DomElement el)
+    {
+        var style = el.GetAttribute("style");
+        if (!string.IsNullOrWhiteSpace(style))
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(
+                style, @"width\s*:\s*([\d.,]+)\s*(%|px|pt)?",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (m.Success && float.TryParse(m.Groups[1].Value.Replace(',', '.'),
+                    System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out var w) && w > 0)
+            {
+                return w;
+            }
+        }
+
+        // colwidth do TipTap pode vir como lista ("120,80") quando a célula tem colspan.
+        var colwidth = el.GetAttribute("colwidth");
+        if (!string.IsNullOrWhiteSpace(colwidth))
+        {
+            var soma = 0f;
+            foreach (var parte in colwidth.Split(',', StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (float.TryParse(parte.Trim(), System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out var v)) soma += v;
+            }
+            if (soma > 0) return soma;
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -826,11 +1088,21 @@ public sealed class LaudoPdfRenderer(
         return spans;
     }
 
-    private enum TipoBloco { Paragrafo, Titulo1, Titulo2, Titulo3, ItemLista, Imagem, Linha }
+    private enum TipoBloco { Paragrafo, Titulo1, Titulo2, Titulo3, ItemLista, Imagem, Linha, Tabela }
 
     private enum Alinhamento { Esquerda, Centro, Direita }
 
     private sealed record SpanInline(string Texto, bool Bold, bool Italic, bool Underline);
+
+    /// <summary>Célula de uma tabela de dados (TipoBloco.Tabela).</summary>
+    private sealed record CelulaTabela(
+        IReadOnlyList<BlocoHtml> Blocos,
+        int ColSpan,
+        int RowSpan,
+        float? Largura);
+
+    /// <summary>Linha de uma tabela de dados; a de cabeçalho repete a cada página.</summary>
+    private sealed record LinhaTabela(bool EhCabecalho, IReadOnlyList<CelulaTabela> Celulas);
 
     private sealed record BlocoHtml(
         TipoBloco Tipo,
@@ -845,5 +1117,8 @@ public sealed class LaudoPdfRenderer(
         double? ImagemLarguraPct = null,
         // Para TipoBloco.Linha: cada célula é uma lista de blocos (linha de tabela
         // renderizada lado a lado — usado p/ cabeçalho logo|texto|logo).
-        IReadOnlyList<IReadOnlyList<BlocoHtml>>? Celulas = null);
+        IReadOnlyList<IReadOnlyList<BlocoHtml>>? Celulas = null,
+        // Para TipoBloco.Tabela: a tabela inteira num bloco só.
+        IReadOnlyList<LinhaTabela>? Linhas = null,
+        IReadOnlyList<float?>? ColunasLargura = null);
 }

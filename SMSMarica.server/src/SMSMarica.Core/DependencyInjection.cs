@@ -69,6 +69,7 @@ public static class DependencyInjection
         // Armazenamento genérico de imagens/binários no banco (reutilizável).
         services.AddScoped<Midias.IMidiasService, Midias.MidiasService>();
 
+
         // ---- Assinatura digital de laudos (PAdES via Automais.Assinador) ----
         services.Configure<Laudos.Assinatura.AssinaturaOptions>(
             configuration.GetSection(Laudos.Assinatura.AssinaturaOptions.SecaoConfig));
@@ -183,6 +184,7 @@ public static class DependencyInjection
             foreach (var tag in new[] { "p", "br", "h1", "h2", "h3", "ul", "ol", "li",
                                         "strong", "b", "em", "i", "u",
                                         "table", "thead", "tbody", "tr", "th", "td",
+                                        "colgroup", "col",
                                         // Cabeçalho/rodapé institucional: imagens + wrappers do TipTap.
                                         "img", "span", "div" })
             {
@@ -191,6 +193,9 @@ public static class DependencyInjection
             s.AllowedAttributes.Clear();
             s.AllowedAttributes.Add("colspan");
             s.AllowedAttributes.Add("rowspan");
+            // Largura de coluna que o TipTap grava ao redimensionar a tabela — sem
+            // isso o ajuste some no save e a tabela volta a colunas iguais.
+            s.AllowedAttributes.Add("colwidth");
             s.AllowedAttributes.Add("src");
             s.AllowedAttributes.Add("alt");
             s.AllowedAttributes.Add("width");

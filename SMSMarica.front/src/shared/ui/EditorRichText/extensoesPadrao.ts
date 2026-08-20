@@ -35,6 +35,29 @@ const ImagemComDimensoes = Image.extend({
   },
 });
 
+/**
+ * Tabela que PRESERVA a `class`. O renderizador de PDF usa `class="laudo-tabela"`
+ * para decidir entre tabela de dados (grade, cabeçalho, larguras) e tabela de
+ * layout (o cabeçalho institucional logo|texto|logo). A extensão padrão não
+ * guarda `class`, então o round-trip pelo editor apagava a marca e a tabela do
+ * checklist voltava a sair como caixinhas empilhadas no PDF.
+ *
+ * Tabela sem classe continua sem classe — o cabeçalho institucional não muda.
+ */
+const TabelaComClasse = Table.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      class: {
+        default: null,
+        parseHTML: (el: HTMLElement) => el.getAttribute('class'),
+        renderHTML: (attrs: { class?: string | null }) =>
+          attrs.class ? { class: attrs.class } : {},
+      },
+    };
+  },
+});
+
 export function extensoesPadrao(placeholder?: string): Extensions {
   return [
     StarterKit.configure({
@@ -45,7 +68,7 @@ export function extensoesPadrao(placeholder?: string): Extensions {
     // nunca base64, para manter o HTML leve e dedupável. Preserva width/height.
     ImagemComDimensoes.configure({ inline: false, allowBase64: false }),
     TextAlign.configure({ types: ['heading', 'paragraph'] }),
-    Table.configure({ resizable: true }),
+    TabelaComClasse.configure({ resizable: true }),
     TableRow,
     TableHeader,
     TableCell,

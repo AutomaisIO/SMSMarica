@@ -163,11 +163,12 @@ export function LaudoTemplateEditorPage() {
             onChange={(e) => alternarChecklist(e.target.checked)}
             className="h-4 w-4 accent-primary-600"
           />
-          Este template usa checklist + cálculo automático de BI-RADS
+          Este template usa checklist estruturado
         </label>
         <p className="mt-1 text-xs text-gray-500">
-          Com o checklist, a profissional marca as frases e o sistema monta o texto do laudo e
-          calcula a categoria BI-RADS (regra do achado mais suspeito).
+          Com o checklist, a profissional marca as frases (ou preenche a tabela de medidas) e o
+          sistema monta o texto do laudo e calcula a conclusão — BI-RADS na mamografia, OMS/DMO na
+          densitometria.
         </p>
 
         {estrutura ? (
@@ -192,6 +193,8 @@ export function LaudoTemplateEditorPage() {
             </div>
           </div>
         ) : null}
+
+        {estrutura ? <ImportarExportarEstrutura estrutura={estrutura} aoAplicar={setEstrutura} /> : null}
       </div>
 
       {estrutura === null ? (
@@ -209,6 +212,78 @@ export function LaudoTemplateEditorPage() {
       <p className="text-xs text-gray-500">
         Editar este template não altera laudos já criados — o conteúdo é copiado para o laudo no momento da emissão.
       </p>
+    </div>
+  );
+}
+
+/**
+ * Estrutura em JSON, para copiar e colar. Serve para montar um template complexo
+ * fora da tela (uma tabela de 7 colunas com todas as notas é penoso no
+ * construtor) e, principalmente, para LEVAR um template de uma instância para
+ * outra — cada município tem seu próprio banco ([ADR-0043]), então não há como
+ * compartilhar template pelo banco.
+ */
+function ImportarExportarEstrutura({
+  estrutura,
+  aoAplicar,
+}: {
+  estrutura: EstruturaChecklist;
+  aoAplicar: (e: EstruturaChecklist) => void;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const [texto, setTexto] = useState('');
+  const [erro, setErro] = useState<string | null>(null);
+
+  function abrir() {
+    setTexto(JSON.stringify(estrutura, null, 2));
+    setErro(null);
+    setAberto((a) => !a);
+  }
+
+  function aplicar() {
+    try {
+      const lido = JSON.parse(texto) as EstruturaChecklist;
+      if (!Array.isArray(lido?.secoes)) {
+        setErro('JSON válido, mas não parece uma estrutura de checklist (falta "secoes").');
+        return;
+      }
+      setErro(null);
+      aoAplicar(lido);
+    } catch {
+      setErro('JSON inválido — confira se o texto foi colado por inteiro.');
+    }
+  }
+
+  return (
+    <div className="mt-4 border-t border-gray-100 pt-3">
+      <button
+        type="button"
+        onClick={abrir}
+        className="text-xs font-medium text-gray-500 hover:text-gray-700"
+      >
+        {aberto ? '− ' : '+ '}Estrutura em JSON (copiar / colar)
+      </button>
+
+      {aberto ? (
+        <div className="mt-2 space-y-2">
+          <textarea
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            spellCheck={false}
+            rows={14}
+            className="block w-full resize-y rounded-md border border-gray-300 bg-gray-900 px-3 py-2 font-mono text-xs leading-relaxed text-gray-100 focus:outline-none"
+          />
+          {erro ? <p className="text-xs text-red-600">{erro}</p> : null}
+          <div className="flex items-center gap-2">
+            <Button variante="outline" onClick={aplicar}>
+              Aplicar ao construtor
+            </Button>
+            <span className="text-xs text-gray-500">
+              Substitui a estrutura atual. Só grava ao salvar o template.
+            </span>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

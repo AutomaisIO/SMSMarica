@@ -45,6 +45,7 @@ import { useAvisoSaidaNaoSalva } from '@/shared/hooks/useAvisoSaidaNaoSalva';
 import { PainelChecklist } from '@/features/laudos/checklist/PainelChecklist';
 import { useListarTemplates } from '@/features/laudo-templates/api/queries';
 import { obterTemplate } from '@/features/laudo-templates/api/laudoTemplatesApi';
+import { templateDaModalidade } from '@/features/laudos/lib/templateModalidade';
 import { coletarContribuicoes, gerarHtmlLaudo } from '@/features/laudos/checklist/gerarTexto';
 import type { EstruturaChecklist, RespostasChecklist } from '@/features/laudos/checklist/types';
 import type { ChecklistLaudoInput } from '@/features/laudos/types';
@@ -116,18 +117,18 @@ export function LaudoEditorPage() {
     }
   }, [detalhe.data]);
 
-  // Laudo "checklist-only" (por ora só mamografia): ao criar um laudo novo,
-  // carrega automaticamente o template de checklist disponível, em vez de abrir
-  // no texto livre. Gating por modalidade evita carregar mamografia em estudo de
-  // outra natureza; quando houver mais templates, casar por modalidade/categoria.
+  // Laudo "checklist-only": ao criar um laudo novo, carrega automaticamente o
+  // template de checklist da MODALIDADE do estudo, em vez de abrir no texto
+  // livre. O casamento é pela categoria do template (ver `templateDaModalidade`);
+  // se for ambíguo ou não houver candidato, não carrega nada e a médica escolhe
+  // no seletor — melhor abrir vazio do que abrir o laudo errado.
   const autoCarregado = useRef(false);
-  const ehMamografia = !modalidadeParam || modalidadeParam === 'MG';
   const templatesDisponiveis = useListarTemplates(undefined, false);
   useEffect(() => {
-    if (!ehNovo || autoCarregado.current || respostas || !ehMamografia) return;
+    if (!ehNovo || autoCarregado.current || respostas) return;
     const lista = templatesDisponiveis.data;
     if (!lista) return;
-    const tpl = lista.find((t) => t.temChecklist);
+    const tpl = templateDaModalidade(lista, modalidadeParam);
     autoCarregado.current = true;
     if (!tpl) return;
     void obterTemplate(tpl.id)
@@ -149,7 +150,7 @@ export function LaudoEditorPage() {
       .catch(() => {
         /* sem template/checklist → segue no texto livre */
       });
-  }, [ehNovo, respostas, ehMamografia, templatesDisponiveis.data]);
+  }, [ehNovo, respostas, modalidadeParam, templatesDisponiveis.data]);
 
   // Marcar/desmarcar no checklist regenera o texto do laudo (TipTap fica para ajuste fino).
   function aoMudarRespostas(r: RespostasChecklist) {
