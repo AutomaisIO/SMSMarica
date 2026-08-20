@@ -95,6 +95,14 @@ O `suggUnidadeOrigem` é um `rich:suggestionbox` — mesmo protocolo do Solicita
 índice em `form0:j_id264_selection`, que é **transitório**. O `j_id264` sai do
 `Richfaces.onAvailable` da própria página, nunca chumbado.
 
+> **Armadilha do vocabulário (custou um dia, 20/08/2026):** o combo de Tipo só aceita `CONSULTA`
+> e `EXAME`. O nosso domínio chama isso de `Consulta`/`Exame` (o enum `TipoRecursoSer`, que é o
+> que a tela manda). Passar o valor do nosso lado direto ao SER **não dá erro**: ele não aplica a
+> troca e devolve a view intacta — o combo de recurso vem vazio, o recurso não amarra, e o
+> autocomplete de CID responde "Nenhum CID encontrado" para qualquer termo, inclusive para um
+> código que aquele recurso aceita. A conversão está em `SerNovaSolicitacaoService.TipoParaOSer`,
+> no `PrepararAsync`, com teste de regressão.
+
 > Estado em 20/08/2026: a tela de nova solicitação manipula **três** dos treze nomes JSF do bloco
 > fixo (`classificacao_risco`, `medicoResp` e, desde hoje, `procedimento` — a Hipótese, §2.1.3).
 > Os três radios e os cinco campos condicionais ainda não estão implementados — pedido montado
@@ -165,6 +173,33 @@ medição, e as assinaturas seguintes sairiam do recurso errado.
 
 **Recurso sem lista copiada cai no autocomplete ao vivo** — a fonte continua sendo o SER, o
 espelho é só a comodidade.
+
+#### O mesmo nome, duas listas: quem decide é o RAMO
+
+Medido em 20/08/2026 (`Automais.SER/probe_cid_mastologia.py`), a partir de um caso real de
+operação. "Mastologia" existe nos dois ramos, com listas opostas:
+
+| ramo | recurso | `I64` | `Acidente` | `C50` | campo vazio |
+|---|---|---|---|---|---|
+| Não | `1059 Ambulatório 1ª vez - Mastologia (Oncologia)` | **0** | **0** | 1 (`C50`) | 136 |
+| Não | `1069 Ambulatório 1ª vez em Mastologia - Lesão Impalpável (Oncologia)` | **0** | **0** | 1 | 136 |
+| Sim | `1026 CONSULTA EM MASTOLOGIA` | 1 | 378 | 10 (com C500…C509) | 500 (teto) |
+
+> Ou seja: "não acho o I64 em mastologia" pode ser o SER funcionando como deve. No ramo "Não" o
+> recurso é o oncológico e a lista tem 136 códigos de neoplasia; no "Sim" é a consulta comum
+> (nome em caixa alta, estilo SISREG — uma das 31 exclusivas daquele ramo) e a lista é o CID-10
+> inteiro. **Antes de tratar como defeito, conferir em que ramo o operador está.**
+
+#### Campo vazio lista tudo
+
+Apagar o texto não é "sem filtro proibido", é o comportamento do próprio SER: `inputvalue` vazio
+devolve a lista inteira até o teto — 136 no oncológico, 500 no amplo. A nossa tela faz o mesmo ao
+abrir a caixa, e por isso não há mínimo de caracteres.
+
+> Detalhe: a busca do SER é `contém` na string inteira. Colar `"I64 Acidente Vascular"` devolve
+> **zero** lá, porque essa string não existe nem no código nem na descrição. No espelho a coluna
+> `busca` é `código + descrição`, então o mesmo texto colado encontra — melhor que o SER, sem
+> oferecer nada que ele não aceite.
 
 **A busca casa código e descrição**, sem exigir acento: `hipert` traz `E05`, `G932`, `I10`…
 O SER corta em **500 linhas** por busca (um termo de uma letra volta com exatamente 500); a nossa

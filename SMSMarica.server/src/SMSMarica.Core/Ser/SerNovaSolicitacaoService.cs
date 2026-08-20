@@ -171,7 +171,7 @@ public sealed partial class SerNovaSolicitacaoService(
 
         logger.LogInformation(
             "SER/nova: {Qtd} recursos para {Tipo} (ambulatório estadual: {Ramo}).",
-            recursos.Count, tipo, ambulatorioEstadual ? "Sim" : "Não");
+            recursos.Count, TipoParaOSer(tipo), ambulatorioEstadual ? "Sim" : "Não");
         return recursos;
     }
 
@@ -187,13 +187,10 @@ public sealed partial class SerNovaSolicitacaoService(
         string tipo, string recurso, bool ambulatorioEstadual, string termo,
         CancellationToken cancellationToken)
     {
+        // Termo VAZIO é pedido legítimo: no SER, apagar o campo lista tudo (medido em
+        // 20/08/2026 — 136 no oncológico, 500 no amplo, que é o teto dele). A tela faz o mesmo ao
+        // abrir a caixa, então não há mínimo de caracteres aqui.
         var busca = (termo ?? string.Empty).Trim();
-        if (busca.Length < 2)
-        {
-            throw new ValidacaoException(
-                "ser.termo_curto",
-                "Digite pelo menos 2 caracteres do código ou do nome do CID.");
-        }
 
         if (string.IsNullOrWhiteSpace(recurso))
         {
@@ -458,7 +455,9 @@ public sealed partial class SerNovaSolicitacaoService(
     {
         await AbrirEditarAsync(cancellationToken);
         await TrocarAsync(CampoSisReg, ambulatorioEstadual ? "true" : "false", cancellationToken);
-        return await TrocarAsync(CampoTipo, tipo, cancellationToken);
+        // Normalizado AQUI, no ponto por onde todos passam: quem chama vem tanto do sync
+        // (CONSULTA/EXAME) quanto da tela (Consulta/Exame, o nome do nosso domínio).
+        return await TrocarAsync(CampoTipo, TipoParaOSer(tipo), cancellationToken);
     }
 
     /// <summary>
@@ -499,6 +498,28 @@ public sealed partial class SerNovaSolicitacaoService(
     }
 
     // ------------------------------------------------------------------ leitura
+
+    /// <summary>
+    /// O tipo no vocabulário do SER: <c>CONSULTA</c> ou <c>EXAME</c>.
+    ///
+    /// <para><b>Por que existe:</b> o nosso domínio chama isso de <c>Consulta</c>/<c>Exame</c>
+    /// (o enum <c>TipoRecursoSer</c>, que é o que a tela manda), e o combo do SER só conhece as
+    /// duas palavras em caixa alta. Um valor que não está no combo não é recusado: o SER apenas
+    /// não aplica a troca, devolve a view intacta — e daí em diante o combo de recurso vem vazio,
+    /// o recurso não amarra e o autocomplete de CID responde "Nenhum CID encontrado" para
+    /// qualquer termo. Foi exatamente o que a tela mostrou em 20/08/2026.</para>
+    /// </summary>
+    internal static string TipoParaOSer(string tipo)
+    {
+        var limpo = (tipo ?? string.Empty).Trim();
+
+        if (limpo.Equals("CONSULTA", StringComparison.OrdinalIgnoreCase)) return "CONSULTA";
+        if (limpo.Equals("EXAME", StringComparison.OrdinalIgnoreCase)) return "EXAME";
+
+        throw new ValidacaoException(
+            "ser.tipo_invalido",
+            $"Tipo de recurso desconhecido para o SER: \"{limpo}\". Só existem CONSULTA e EXAME.");
+    }
 
     /// <summary>Id do <c>a4j:support</c> declarado no <c>onchange</c> do combo.</summary>
     internal static string? EventoDoCombo(string html, string campo)

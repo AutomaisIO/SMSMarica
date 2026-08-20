@@ -1,4 +1,5 @@
 using FluentAssertions;
+using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Integracoes.SerWeb;
 using SMSMarica.Core.Ser;
 using SMSMarica.Core.Ser.Dtos;
@@ -326,6 +327,41 @@ public class SerNovaSolicitacaoTests
     {
         SerNovaSolicitacaoService.CamposDinamicos("<html><body><form id=\"form0\"></form></body></html>")
             .Should().BeEmpty();
+    }
+
+    // ------------------------------------------------------------------ tipo do recurso
+
+    /// <summary>
+    /// REGRESSÃO de 20/08/2026. A tela manda o tipo no vocabulário do NOSSO domínio
+    /// (<c>Consulta</c>/<c>Exame</c>, o enum <c>TipoRecursoSer</c>) e o combo do SER só conhece
+    /// <c>CONSULTA</c>/<c>EXAME</c>. O valor cru era repassado ao SER, que não recusa: ele apenas
+    /// não aplica a troca e devolve a view intacta. Daí o combo de recurso vinha vazio, o recurso
+    /// não amarrava e o autocomplete respondia "Nenhum CID encontrado" para QUALQUER termo —
+    /// inclusive para um código que aquele recurso aceita.
+    /// </summary>
+    [Theory]
+    [InlineData("Consulta", "CONSULTA")]
+    [InlineData("CONSULTA", "CONSULTA")]
+    [InlineData("consulta", "CONSULTA")]
+    [InlineData("Exame", "EXAME")]
+    [InlineData("EXAME", "EXAME")]
+    [InlineData(" exame ", "EXAME")]
+    public void Tipo_da_tela_vira_o_vocabulario_do_SER(string daTela, string esperado)
+    {
+        SerNovaSolicitacaoService.TipoParaOSer(daTela).Should().Be(esperado);
+    }
+
+    /// <summary>
+    /// Tipo desconhecido FALHA em vez de seguir: mandá-lo ao SER devolveria uma tela sem recurso,
+    /// que é indistinguível de "este recurso não tem CID".
+    /// </summary>
+    [Fact]
+    public void Tipo_desconhecido_e_recusado_em_vez_de_ir_ao_SER()
+    {
+        var acao = () => SerNovaSolicitacaoService.TipoParaOSer("Procedimento");
+
+        acao.Should().Throw<ValidacaoException>()
+            .Which.Erros.Should().ContainKey("ser.tipo_invalido");
     }
 
     // ------------------------------------------------------------------ Hipótese (CID)

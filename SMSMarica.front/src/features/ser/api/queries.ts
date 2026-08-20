@@ -287,8 +287,9 @@ export function useSugestoesCidSer(
     queryKey: rascunhoKeys.cids(tipo, recurso, ambulatorioEstadual, busca),
     queryFn: () => sugerirCidsSer(tipo!, recurso!, ambulatorioEstadual!, busca),
     // O recurso entra no `enabled` porque é ele que define a lista: sem recurso o SER responde
-    // "Nenhum CID encontrado" para qualquer termo, inclusive o código exato.
-    enabled: Boolean(tipo && recurso && ambulatorioEstadual !== undefined && busca.length >= 2),
+    // "Nenhum CID encontrado" para qualquer termo, inclusive o código exato. O TERMO não entra:
+    // vazio é pedido válido e lista tudo, como no SER.
+    enabled: Boolean(tipo && recurso && ambulatorioEstadual !== undefined),
     staleTime: 6 * 60 * 60 * 1000,
     retry: false,
   });

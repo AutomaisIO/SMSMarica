@@ -64,7 +64,6 @@ export function SeletorCidSer({
   const sugestoes = useSugestoesCidSer(tipo, recurso, ambulatorioEstadual, buscado);
   const itens = sugestoes.data?.itens ?? [];
   const escolhido = partes(valor);
-  const curto = termo.trim().length < 2;
 
   function escolher(c: CidSer) {
     onChange(c.texto);
@@ -129,7 +128,7 @@ export function SeletorCidSer({
               autoFocus
               value={termo}
               onChange={(e) => setTermo(e.target.value)}
-              placeholder="código ou nome do CID..."
+              placeholder="código ou nome do CID — vazio lista todos"
               className="w-full text-sm outline-none"
             />
             {sugestoes.isFetching && (
@@ -138,20 +137,13 @@ export function SeletorCidSer({
           </div>
 
           <ul className="max-h-72 overflow-y-auto py-1">
-            {curto && (
-              <li className="px-3 py-4 text-center text-sm text-slate-500">
-                Digite ao menos 2 caracteres. A busca é a do próprio SER: vale o código
-                (<span className="font-mono">I10</span>) ou parte do nome.
-              </li>
-            )}
-
-            {!curto && sugestoes.isError && (
+            {sugestoes.isError && (
               <li className="px-3 py-4 text-center text-sm text-red-700">
                 {extrairMensagemDeErro(sugestoes.error)}
               </li>
             )}
 
-            {!curto && !sugestoes.isError && (
+            {!sugestoes.isError && (
               <>
                 {sugestoes.isFetching && itens.length === 0 && (
                   <li className="px-3 py-4 text-center text-sm text-slate-500">
@@ -161,8 +153,9 @@ export function SeletorCidSer({
 
                 {!sugestoes.isFetching && itens.length === 0 && (
                   <li className="px-3 py-4 text-center text-sm text-slate-500">
-                    Não há CID com &ldquo;{buscado}&rdquo; entre os que o SER aceita para este
-                    recurso.
+                    {buscado
+                      ? `Não há CID com “${buscado}” entre os que o SER aceita para este recurso.`
+                      : 'O SER não devolveu CID nenhum para este recurso.'}
                   </li>
                 )}
 
