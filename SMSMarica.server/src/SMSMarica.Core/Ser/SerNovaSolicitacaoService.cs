@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using AngleSharp.Html.Dom;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Integracoes.SerWeb;
@@ -39,6 +40,26 @@ public interface ISerNovaSolicitacaoService
         string tipo, string recurso, bool ambulatorioEstadual, CancellationToken cancellationToken);
 
     /// <summary>
+    /// Sugestões de <b>CID</b> para a Hipótese — o autocomplete do próprio SER
+    /// (<c>form0:procedimento</c>), medido em 20/08/2026.
+    ///
+    /// <para><b>A relação de CID depende do RECURSO, e por isso não dá para espelhá-la.</b> Sem
+    /// recurso escolhido o SER responde "Nenhum CID encontrado" para qualquer termo — inclusive
+    /// para o código exato. Com recurso escolhido, a lista muda de recurso para recurso: o
+    /// "Ambulatório 1ª vez - Cirurgia Geral (Oncologia)" só aceita neoplasia (21 CID para
+    /// "malig", <b>zero</b> para "diab" ou "hipert"), enquanto a cardiologia aceita 395 e 78.
+    /// Copiar uma tabela de CID-10 para a nossa base ofereceria ao operador um código que o SER
+    /// recusa na hora de gravar — e o SER recusa em silêncio.</para>
+    ///
+    /// <para><b>É consulta.</b> Só a primeira das duas requisições do <c>rich:suggestionbox</c>
+    /// (o fetch, docs/ser.md §4.3): traz a tabela de sugestões e não amarra escolha nenhuma. A
+    /// amarração — o <c>onselect</c> — pertence ao envio do pedido, que não existe ainda.</para>
+    /// </summary>
+    Task<SerCidSugestoesDto> SugerirCidsAsync(
+        string tipo, string recurso, bool ambulatorioEstadual, string termo,
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// Pesquisa o paciente no SER por <b>CNS ou CPF</b> — o mesmo motor que a tela dele usa.
     ///
     /// <para>Resolve o que hoje só conseguimos pelo CADSUS via SISREG, que tem limitação de
@@ -54,6 +75,7 @@ public interface ISerNovaSolicitacaoService
 
 public sealed partial class SerNovaSolicitacaoService(
     ISerWebSessao sessao,
+    IMemoryCache cache,
     ILogger<SerNovaSolicitacaoService> logger) : ISerNovaSolicitacaoService
 {
     public const string CaminhoTela =
@@ -67,6 +89,14 @@ public sealed partial class SerNovaSolicitacaoService(
 
     private const string CampoTipo = "form0:comboTipoRecurso";
     private const string CampoRecurso = "form0:comboRecurso";
+
+    /// <summary>A <b>Hipótese</b>. O rótulo engana: não é campo de texto, é a caixa de
+    /// autocomplete de CID (o input tem <c>alt="Digite o nome ou o código"</c>).</summary>
+    private const string CampoHipotese = "form0:procedimento";
+
+    /// <summary>Teto de linhas que o SER devolve numa busca de CID (medido em 20/08/2026: um
+    /// termo de uma letra volta com exatamente 500).</summary>
+    private const int TetoDeSugestoes = 500;
 
     /// <summary>Campo CNS/CPF do painel de paciente. Continua editável depois da pesquisa —
     /// é por ele que o número viaja no POST.</summary>
@@ -116,6 +146,83 @@ public sealed partial class SerNovaSolicitacaoService(
         await PrepararAsync(ambulatorioEstadual, tipo, cancellationToken);
         var html = await TrocarAsync(CampoRecurso, recurso, cancellationToken);
         return [.. CamposDinamicos(html)];
+    }
+
+    public async Task<SerCidSugestoesDto> SugerirCidsAsync(
+        string tipo, string recurso, bool ambulatorioEstadual, string termo,
+        CancellationToken cancellationToken)
+    {
+        var busca = (termo ?? string.Empty).Trim();
+        if (busca.Length < 2)
+        {
+            throw new ValidacaoException(
+                "ser.termo_curto",
+                "Digite pelo menos 2 caracteres do código ou do nome do CID.");
+        }
+
+        if (string.IsNullOrWhiteSpace(recurso))
+        {
+            throw new ValidacaoException(
+                "ser.recurso_obrigatorio",
+                "Escolha o recurso antes da hipótese: o SER só lista os CID depois de saber qual "
+                + "é o procedimento, e a lista muda conforme ele.");
+        }
+
+        // Cada busca custa ao SER uma conversa Seam inteira (abrir a aba, o ramo, o tipo e o
+        // recurso) e a sessão é ÚNICA e serializada — a mesma que a varredura usa. Guardar a
+        // resposta por termo é o que impede a digitação de um operador de enfileirar o motor.
+        // A relação de CID de um recurso não muda no meio do expediente.
+        var chave = $"ser:cid:{(ambulatorioEstadual ? "amb" : "nao")}:{tipo}:{recurso}"
+                    + $":{busca.ToLowerInvariant()}";
+        if (cache.TryGetValue(chave, out SerCidSugestoesDto? guardado) && guardado is not null)
+        {
+            return guardado;
+        }
+
+        await PrepararAsync(ambulatorioEstadual, tipo, cancellationToken);
+        await TrocarAsync(CampoRecurso, recurso, cancellationToken);
+
+        // O script `new RichFaces.Suggestion(...)` está na página COMPLETA da aba — os fragmentos
+        // A4J das trocas de combo não o trazem. `_html` é ela.
+        var caixa = SerHtmlParser.SuggestionBoxDoCampo(_html, CampoHipotese)
+            ?? throw new InvalidOperationException(
+                $"Não achei o script do autocomplete de CID ({CampoHipotese}) na aba Editar do "
+                + "SER. O layout mudou?");
+
+        var extras = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["AJAXREQUEST"] = RegiaoViewRoot,
+            // `inputvalue` é o default do RichFaces para o texto digitado; o init do componente
+            // não o sobrescreve.
+            ["inputvalue"] = busca,
+            [caixa.BoxId] = caixa.BoxId,
+            ["ajaxSingle"] = caixa.BoxId,
+        };
+
+        var resposta = await sessao.SubmeterFormAsync(
+            _html, SerHtmlParser.FormPesquisa, extras, _viewState, cancellationToken);
+
+        _viewState = SerHtmlParser.ViewStateQualquer(resposta.Texto) ?? _viewState;
+
+        var linhas = SerHtmlParser.LinhasDeSugestao(
+                         SerHtmlParser.Documento(resposta.Texto), caixa.BoxId)
+            ?? throw new ValidacaoException(
+                "ser.autocomplete_sem_resposta",
+                "O autocomplete de CID do SER não devolveu a tabela de sugestões — o protocolo "
+                + "mudou, ou a sessão caiu. Nenhum CID foi listado.");
+
+        var itens = CidsDaTabela(linhas);
+        var saida = new SerCidSugestoesDto(itens, itens.Count >= TetoDeSugestoes);
+
+        cache.Set(chave, saida, TimeSpan.FromHours(6));
+
+        logger.LogDebug(
+            "SER/cid: \"{Termo}\" no recurso {Recurso} ({Tipo}, ambulatório estadual {Ramo}) "
+            + "devolveu {Qtd} CID{Corte}.",
+            busca, recurso, tipo, ambulatorioEstadual ? "Sim" : "Não", itens.Count,
+            saida.Truncado ? " (no teto do SER)" : string.Empty);
+
+        return saida;
     }
 
     public async Task<SerPacienteEncontradoDto> PesquisarPacienteAsync(
@@ -375,6 +482,23 @@ public sealed partial class SerNovaSolicitacaoService(
 
         return saida;
     }
+
+    /// <summary>
+    /// Os CID de uma tabela de sugestões do SER.
+    ///
+    /// <para>Cada linha de verdade tem TRÊS células: a primeira é a coluna oculta
+    /// (<c>display:none</c>) com o texto que o navegador escreve no campo — <c>(A09 ) Diarréia
+    /// e gastroenterite…</c> — e as outras duas são as visíveis, código e descrição. É o texto
+    /// da coluna oculta que o pedido leva de volta; o código sozinho não serve.</para>
+    ///
+    /// <para>A tabela vem <b>sempre</b> com uma linha escondida a mais, a <c>NothingLabel</c>
+    /// ("Nenhum CID encontrado"), com UMA célula só — inclusive quando há resultado. O descarte é
+    /// pela forma da linha, não pelo texto da mensagem: o texto é do SER e muda com ele.</para>
+    /// </summary>
+    internal static List<SerCidDto> CidsDaTabela(IReadOnlyList<IReadOnlyList<string>> linhas) =>
+        [.. linhas
+            .Where(l => l.Count >= 3 && l[1].Trim().Length > 0)
+            .Select(l => new SerCidDto(l[1].Trim(), l[2].Trim(), l[0].Trim()))];
 
     /// <summary>Colapsa todo espaço em branco — o HTML do SER vem cheio de quebra e tabulação.</summary>
     private static string Espremer(string texto) =>

@@ -385,6 +385,25 @@ export type CatalogoFormularioSer = {
   ultimoErro: string | null;
 };
 
+/** Uma linha do autocomplete de CID da Hipótese, como o SER devolve. */
+export type CidSer = {
+  /** Código sem ponto, do jeito do SER: `A09`, `E119`. */
+  codigo: string;
+  descricao: string;
+  /**
+   * O que o SER escreve no campo ao clicar na sugestão — `(A09 ) Diarréia e gastroenterite…`.
+   * É ISSO que o pedido leva de volta em `form0:procedimento`; guardar o código sozinho, ou só a
+   * descrição, faz o SER gravar o pedido sem hipótese e responder "salva com sucesso".
+   */
+  texto: string;
+};
+
+export type SugestoesCidSer = {
+  itens: CidSer[];
+  /** O SER cortou no teto dele (500) — refine o termo, a lista não é toda a resposta. */
+  truncado: boolean;
+};
+
 export type AnexoRascunhoSer = {
   id: string;
   midiaId: string;

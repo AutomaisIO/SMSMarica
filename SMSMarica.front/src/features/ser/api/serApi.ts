@@ -19,6 +19,7 @@ import type {
   OpcaoSer,
   CampoDinamicoSer,
   CatalogoFormularioSer,
+  SugestoesCidSer,
   AnexoRascunhoSer,
   RascunhoSerDetalhe,
   RascunhoSerLista,
@@ -173,6 +174,24 @@ export async function obterCamposNovaSer(tipo: string, recurso: string): Promise
   return data;
 }
 
+
+/**
+ * Os CID que o SER aceita como Hipótese para AQUELE recurso — consulta ao vivo, no autocomplete
+ * dele. A lista muda por recurso (o oncológico só aceita neoplasia), por isso o recurso e o ramo
+ * fazem parte da pergunta.
+ */
+export async function sugerirCidsSer(
+  tipo: string,
+  recurso: string,
+  ambulatorioEstadual: boolean,
+  termo: string,
+): Promise<SugestoesCidSer> {
+  const { data } = await http.get<SugestoesCidSer>(
+    '/regulacao/ser/configuracao/nova-solicitacao/cids',
+    { params: { tipo, recurso, ambulatorioEstadual, termo } },
+  );
+  return data;
+}
 
 // ---------------------------------------------------------------- catálogo local + rascunhos
 // Nenhuma destas chamadas toca o SER — leem e escrevem só na nossa base.

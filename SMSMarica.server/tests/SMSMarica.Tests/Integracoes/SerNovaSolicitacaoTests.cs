@@ -328,6 +328,70 @@ public class SerNovaSolicitacaoTests
             .Should().BeEmpty();
     }
 
+    // ------------------------------------------------------------------ Hipótese (CID)
+
+    /// <summary>
+    /// Resposta real do autocomplete de CID em 20/08/2026 (recurso 1003, termo "A09"). A primeira
+    /// célula é a coluna OCULTA — o texto que o navegador escreve no campo — e a tabela traz
+    /// sempre a linha escondida <c>NothingLabel</c>, mesmo quando há resultado.
+    /// </summary>
+    private const string TabelaDeCid = """
+        <html><body>
+        <table id="form0:j_id226:suggest" class="rich-sb-int-decor-table"><tbody>
+          <tr class="rich-sb-int richfaces_suggestionEntry">
+            <td style="display: none;">(A09 ) Diarréia e gastroenterite de origem infecciosa presumível</td>
+            <td nowrap="nowrap" class="rich-sb-cell-padding">A09</td>
+            <td nowrap="nowrap" class="rich-sb-cell-padding">Diarréia e gastroenterite de origem infecciosa presumível</td>
+          </tr>
+          <tr id="form0:j_id226:0NothingLabel" class="rich-sb-int" style="display: none;">
+            <td nowrap="nowrap" class="rich-sb-cell-padding">Nenhum CID encontrado</td>
+          </tr>
+        </tbody></table>
+        </body></html>
+        """;
+
+    /// <summary>
+    /// O que vai de volta no campo é a COLUNA OCULTA, não o código nem a descrição. Guardar outra
+    /// coisa faz o SER gravar o pedido sem hipótese e responder "salva com sucesso" — foi o que
+    /// aconteceu na edição de 10/08/2026.
+    /// </summary>
+    [Fact]
+    public void Cid_guarda_o_texto_da_coluna_oculta_que_o_SER_espera_de_volta()
+    {
+        var doc = (AngleSharp.Html.Dom.IHtmlDocument)SerHtmlParser.Documento(TabelaDeCid);
+        var linhas = SerHtmlParser.LinhasDeSugestao(doc, "form0:j_id226")!;
+
+        var cids = SerNovaSolicitacaoService.CidsDaTabela(linhas);
+
+        cids.Should().ContainSingle();
+        cids[0].Codigo.Should().Be("A09");
+        cids[0].Descricao.Should().Be("Diarréia e gastroenterite de origem infecciosa presumível");
+        cids[0].Texto.Should().Be("(A09 ) Diarréia e gastroenterite de origem infecciosa presumível");
+    }
+
+    /// <summary>
+    /// A linha "Nenhum CID encontrado" vem escondida em TODA resposta, inclusive nas que têm
+    /// resultado. Se ela vazasse para a lista, o operador poderia escolhê-la como diagnóstico.
+    /// </summary>
+    [Fact]
+    public void Linha_de_nada_encontrado_nunca_vira_um_CID()
+    {
+        const string vazia = """
+            <html><body>
+            <table id="form0:j_id226:suggest"><tbody>
+              <tr id="form0:j_id226:0NothingLabel" style="display: none;">
+                <td>Nenhum CID encontrado</td>
+              </tr>
+            </tbody></table>
+            </body></html>
+            """;
+        var doc = (AngleSharp.Html.Dom.IHtmlDocument)SerHtmlParser.Documento(vazia);
+
+        SerNovaSolicitacaoService
+            .CidsDaTabela(SerHtmlParser.LinhasDeSugestao(doc, "form0:j_id226")!)
+            .Should().BeEmpty();
+    }
+
     /// <summary>
     /// CANÁRIO da trava de somente-leitura. A troca de aba usa <c>form0:editar_server_submit</c>,
     /// que casa com o verbo "editar" do regex de escrita e só passa por estar na lista nominal.

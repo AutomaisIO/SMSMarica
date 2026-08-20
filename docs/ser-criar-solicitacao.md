@@ -36,7 +36,7 @@ oncologia pede campos diferentes".
 | Telefone do médico | `form0:telefoneCelularMedico` | text |  |
 | Especialidade do médico | `form0:especialidadeMedico` | text |  |
 | Classificação de Risco | `form0:classificacao_risco` | select (Prioridade 1–4) | sim |
-| Hipótese | `form0:procedimento` | text | sim |
+| Hipótese | `form0:procedimento` | **suggestionbox de CID** (não é texto — §2.1.3) | sim |
 | Mandado Judicial | `form0:naturezaSolicitacaoMandato_radio` | radio S/N |  |
 | Unidade de origem identificada? | `form0:unidadeDeOrigemIdentificada_radio` | radio S/N |  |
 | Unidade de origem (texto livre) | `form0:unidadeNaoIdentificada` | text | sim |
@@ -95,10 +95,74 @@ O `suggUnidadeOrigem` é um `rich:suggestionbox` — mesmo protocolo do Solicita
 índice em `form0:j_id264_selection`, que é **transitório**. O `j_id264` sai do
 `Richfaces.onAvailable` da própria página, nunca chumbado.
 
-> Estado em 10/08/2026: a tela de nova solicitação manipula **dois** dos treze nomes JSF do bloco
-> fixo (`classificacao_risco` e `medicoResp`). Os três radios e os cinco campos condicionais ainda
-> não estão implementados — pedido montado hoje seria recusado por falta de médico e de unidade
-> de origem. É pendência conhecida, anterior a ligar o envio.
+> Estado em 20/08/2026: a tela de nova solicitação manipula **três** dos treze nomes JSF do bloco
+> fixo (`classificacao_risco`, `medicoResp` e, desde hoje, `procedimento` — a Hipótese, §2.1.3).
+> Os três radios e os cinco campos condicionais ainda não estão implementados — pedido montado
+> hoje seria recusado por falta de médico e de unidade de origem. É pendência conhecida, anterior
+> a ligar o envio.
+
+#### 2.1.3 A Hipótese é uma caixa de CID — e a lista é do RECURSO
+
+Medido em 20/08/2026 (`Automais.SER/probe_cid.py`), depois que a nossa tela de nova solicitação
+apareceu com a Hipótese como campo de texto e sem listar CID nenhum. A tabela de §2.1 dizia
+`text`; está errada. `form0:procedimento` é um `rich:suggestionbox` (o input tem
+`alt="Digite o nome ou o código"`), e o SER guarda a hipótese pelo **CID escolhido**, não pelo
+texto — foi por isso que a edição de 10/08/2026 respondeu "salva com sucesso" e voltou vazia.
+
+**Sem Recurso escolhido, não existe CID nenhum.** Qualquer termo — inclusive o código exato —
+devolve a linha "Nenhum CID encontrado":
+
+| termo | sem recurso | com o recurso 1003 (Cardiologia) |
+|---|---|---|
+| `A09` | 0 | 1 |
+| `diab` | 0 | 78 |
+| `I10` | 0 | 1 |
+
+**E a relação MUDA de recurso para recurso** — não é o CID-10 inteiro, é o que aquele
+procedimento aceita:
+
+| termo | 1003 — Cardiologia (Cardiopatia Congênita) | 1063 — Cirurgia Geral (Oncologia) |
+|---|---|---|
+| `diab` | 78 | **0** |
+| `hipert` | 75 | **0** |
+| `M54` | 10 | **0** |
+| `neopl` | 500 (no teto) | 108 |
+| `malig` | 395 | 21 |
+| `C50` | 10 (com as subcategorias C500…C509) | 1 (só a categoria `C50`) |
+
+> Consequência direta: **não dá para espelhar uma tabela de CID-10 na nossa base** e servi-la a
+> todo mundo, como se faz com recursos e médicos. Uma lista única ofereceria ao operador um código
+> que o SER recusa na hora de gravar — e ele recusa em silêncio. Por isso a nossa tela pergunta ao
+> SER a cada termo (`GET /regulacao/ser/configuracao/nova-solicitacao/cids`), e por isso o recurso
+> e o ramo fazem parte da pergunta.
+
+**A busca casa código e descrição**, sem exigir acento: `hipert` traz `E05`, `G932`, `I10`…
+O SER corta em **500 linhas** por busca (um termo de uma letra volta com exatamente 500); a nossa
+resposta marca `truncado` para a tela pedir um termo mais específico em vez de fingir que aquilo é
+tudo. Prefixo de dois caracteres já cabe folgado (`A0` → 68, `M5` → 32, `Z9` → 90).
+
+**A linha da tabela tem três células, e a que importa é a primeira**, que vem com
+`style="display: none"`:
+
+```html
+<tr class="rich-sb-int richfaces_suggestionEntry">
+  <td style="display: none;">(A09 ) Diarréia e gastroenterite de origem infecciosa presumível</td>
+  <td class="rich-sb-cell-padding">A09</td>
+  <td class="rich-sb-cell-padding">Diarréia e gastroenterite de origem infecciosa presumível</td>
+</tr>
+<tr id="form0:j_id226:0NothingLabel" style="display: none;"><td>Nenhum CID encontrado</td></tr>
+```
+
+É a coluna oculta — `(A09 ) …`, código preenchido com espaço até 4 caracteres, entre parênteses,
+mais a descrição — que o navegador escreve no campo, e é ela que o pedido leva de volta em
+`form0:procedimento`. Guardar só o código, ou só a descrição, dá pedido sem hipótese.
+E a `NothingLabel` vem escondida em **toda** resposta, inclusive nas que têm resultado: descarte
+pela forma da linha (uma célula só), nunca pelo texto da mensagem.
+
+> Para o envio, vale a regra do §2.1 do `probe_criar_solicitacao.py`: são **as duas coisas** —
+> a amarração A4J (fetch + `onselect` com o índice no `_selection`) **e** o texto no campo. O
+> `onselect` responde `Ajax-Update-Ids` vazio; a escolha mora só na conversa Seam. Nossa tela hoje
+> faz apenas o fetch (é consulta); a amarração entra junto com o envio.
 
 ### 2.2 Bloco dinâmico
 

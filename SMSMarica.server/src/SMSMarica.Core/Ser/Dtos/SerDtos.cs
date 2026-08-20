@@ -418,6 +418,29 @@ public sealed record SerCampoDinamicoDto(
     bool Obrigatorio,
     IReadOnlyList<SerOpcaoDto>? Opcoes);
 
+/// <summary>
+/// Uma linha do autocomplete de CID da <b>Hipótese</b>, como o SER a devolve.
+/// </summary>
+/// <param name="Codigo">o código sem ponto, do jeito do SER (<c>A09</c>, <c>E119</c>).</param>
+/// <param name="Descricao">o texto do CID (<c>Diarréia e gastroenterite de origem infecciosa
+/// presumível</c>) — com os acentos e as faltas de acento do próprio SER.</param>
+/// <param name="Texto">
+/// O que o navegador escreve no campo ao clicar na sugestão: <c>(A09 ) Diarréia e gastroenterite
+/// de origem infecciosa presumível</c> — código com espaço até 4 caracteres, entre parênteses,
+/// seguido da descrição. É a coluna oculta do <c>rich:suggestionbox</c>, e é ela que o SER espera
+/// de volta em <c>form0:procedimento</c> na hora de gravar. Guardar outra coisa faz o pedido sair
+/// sem hipótese, com o SER respondendo "salva com sucesso".
+/// </param>
+public sealed record SerCidDto(string Codigo, string Descricao, string Texto);
+
+/// <summary>Resposta do autocomplete de CID para um termo.</summary>
+public sealed record SerCidSugestoesDto(
+    IReadOnlyList<SerCidDto> Itens,
+
+    /// <summary>O SER cortou a lista no teto dele (500 linhas) — existem mais CID que casam o
+    /// termo, e o operador precisa saber que a lista não é toda a resposta.</summary>
+    bool Truncado);
+
 /// <summary>Bloco fixo do formulário: vale para todo pedido, independente do recurso.</summary>
 public sealed record SerFormularioNovaDto(
     IReadOnlyList<SerOpcaoDto> AmbulatorioEstadual,

@@ -16,6 +16,7 @@ import {
   salvarRascunhoSer,
   sincronizarCatalogoSer,
   obterCamposNovaSer,
+  sugerirCidsSer,
   obterFormularioNovaSer,
   listarRecursosNovaSer,
   obterResumoNotificacoesSer,
@@ -237,6 +238,8 @@ export const rascunhoKeys = {
   formulario: ['ser', 'rascunhos', 'formulario'] as const,
   campos: (tipo?: string, recurso?: string, ramo?: boolean) =>
     ['ser', 'rascunhos', 'campos', tipo, recurso, ramo] as const,
+  cids: (tipo?: string, recurso?: string, ramo?: boolean, termo?: string) =>
+    ['ser', 'rascunhos', 'cids', tipo, recurso, ramo, termo] as const,
   lista: (status?: string) => ['ser', 'rascunhos', 'lista', status] as const,
   item: (id: string) => ['ser', 'rascunhos', id] as const,
 };
@@ -261,6 +264,31 @@ export function useCamposCatalogoSer(
     queryFn: () => obterCamposCatalogoSer(tipo!, recurso!, ambulatorioEstadual!),
     // O ramo entra no `enabled`: sem ele o formulário buscado seria o do outro ramo.
     enabled: Boolean(tipo && recurso && ambulatorioEstadual !== undefined),
+  });
+}
+
+/**
+ * Sugestões de CID para a Hipótese, do autocomplete do PRÓPRIO SER.
+ *
+ * <p>Cada busca abre uma conversa Seam lá (aba → ramo → tipo → recurso → sugestão) numa sessão
+ * única e serializada, a mesma da varredura. Por isso o termo já chega aqui com atraso da tela,
+ * o mínimo é 2 caracteres, e a resposta é guardada: repetir um termo não volta ao SER.</p>
+ */
+export function useSugestoesCidSer(
+  tipo?: TipoRecursoSer,
+  recurso?: string,
+  ambulatorioEstadual?: boolean,
+  termo?: string,
+) {
+  const busca = (termo ?? '').trim();
+  return useQuery({
+    queryKey: rascunhoKeys.cids(tipo, recurso, ambulatorioEstadual, busca),
+    queryFn: () => sugerirCidsSer(tipo!, recurso!, ambulatorioEstadual!, busca),
+    // O recurso entra no `enabled` porque é ele que define a lista: sem recurso o SER responde
+    // "Nenhum CID encontrado" para qualquer termo, inclusive o código exato.
+    enabled: Boolean(tipo && recurso && ambulatorioEstadual !== undefined && busca.length >= 2),
+    staleTime: 6 * 60 * 60 * 1000,
+    retry: false,
   });
 }
 

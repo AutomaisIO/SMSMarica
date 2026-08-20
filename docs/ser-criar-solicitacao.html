@@ -43,7 +43,7 @@ li{margin:3px 0}p,li{max-width:75ch}
 <tr><td>Telefone do médico</td><td><code>form0:telefoneCelularMedico</code></td><td>text</td><td></td></tr>
 <tr><td>Especialidade do médico</td><td><code>form0:especialidadeMedico</code></td><td>text</td><td></td></tr>
 <tr><td>Classificação de Risco</td><td><code>form0:classificacao_risco</code></td><td>select (Prioridade 1–4)</td><td>sim</td></tr>
-<tr><td>Hipótese</td><td><code>form0:procedimento</code></td><td>text</td><td>sim</td></tr>
+<tr><td>Hipótese</td><td><code>form0:procedimento</code></td><td><strong>suggestionbox de CID</strong> (não é texto — §2.1.3)</td><td>sim</td></tr>
 <tr><td>Mandado Judicial</td><td><code>form0:naturezaSolicitacaoMandato_radio</code></td><td>radio S/N</td><td></td></tr>
 <tr><td>Unidade de origem identificada?</td><td><code>form0:unidadeDeOrigemIdentificada_radio</code></td><td>radio S/N</td><td></td></tr>
 <tr><td>Unidade de origem (texto livre)</td><td><code>form0:unidadeNaoIdentificada</code></td><td>text</td><td>sim</td></tr>
@@ -69,7 +69,30 @@ li{margin:3px 0}p,li{max-width:75ch}
 </tbody></table></div>
 <p><code>*</code> = obrigatório no SER. <strong>Cada caminho tem pelo menos um campo obrigatório próprio</strong>, então "obrigatório" aqui não é atributo do campo: depende da resposta do radio. Validação que só olhe a lista de campos vai deixar passar pedido incompleto.</p>
 <p>O <code>suggUnidadeOrigem</code> é um <code>rich:suggestionbox</code> — mesmo protocolo do Solicitante descrito em <a href="./ser.md"><code>ser.md</code> §4.3</a>: fetch com <code>inputvalue</code> + <code>ajaxSingle</code>, depois <code>onselect</code> gravando o índice em <code>form0:j_id264_selection</code>, que é <strong>transitório</strong>. O <code>j_id264</code> sai do <code>Richfaces.onAvailable</code> da própria página, nunca chumbado.</p>
-<p>&gt; Estado em 10/08/2026: a tela de nova solicitação manipula <strong>dois</strong> dos treze nomes JSF do bloco &gt; fixo (<code>classificacao_risco</code> e <code>medicoResp</code>). Os três radios e os cinco campos condicionais ainda &gt; não estão implementados — pedido montado hoje seria recusado por falta de médico e de unidade &gt; de origem. É pendência conhecida, anterior a ligar o envio.</p>
+<p>&gt; Estado em 20/08/2026: a tela de nova solicitação manipula <strong>três</strong> dos treze nomes JSF do bloco &gt; fixo (<code>classificacao_risco</code>, <code>medicoResp</code> e, desde hoje, <code>procedimento</code> — a Hipótese, §2.1.3). &gt; Os três radios e os cinco campos condicionais ainda não estão implementados — pedido montado &gt; hoje seria recusado por falta de médico e de unidade de origem. É pendência conhecida, anterior &gt; a ligar o envio.</p>
+<h4>2.1.3 A Hipótese é uma caixa de CID — e a lista é do RECURSO</h4>
+<p>Medido em 20/08/2026 (<code>Automais.SER/probe_cid.py</code>), depois que a nossa tela de nova solicitação apareceu com a Hipótese como campo de texto e sem listar CID nenhum. A tabela de §2.1 dizia <code>text</code>; está errada. <code>form0:procedimento</code> é um <code>rich:suggestionbox</code> (o input tem <code>alt="Digite o nome ou o código"</code>), e o SER guarda a hipótese pelo <strong>CID escolhido</strong>, não pelo texto — foi por isso que a edição de 10/08/2026 respondeu "salva com sucesso" e voltou vazia.</p>
+<p><strong>Sem Recurso escolhido, não existe CID nenhum.</strong> Qualquer termo — inclusive o código exato — devolve a linha "Nenhum CID encontrado":</p>
+<div class="tw"><table><thead><tr><th>termo</th><th>sem recurso</th><th>com o recurso 1003 (Cardiologia)</th></tr></thead><tbody>
+<tr><td><code>A09</code></td><td>0</td><td>1</td></tr>
+<tr><td><code>diab</code></td><td>0</td><td>78</td></tr>
+<tr><td><code>I10</code></td><td>0</td><td>1</td></tr>
+</tbody></table></div>
+<p><strong>E a relação MUDA de recurso para recurso</strong> — não é o CID-10 inteiro, é o que aquele procedimento aceita:</p>
+<div class="tw"><table><thead><tr><th>termo</th><th>1003 — Cardiologia (Cardiopatia Congênita)</th><th>1063 — Cirurgia Geral (Oncologia)</th></tr></thead><tbody>
+<tr><td><code>diab</code></td><td>78</td><td><strong>0</strong></td></tr>
+<tr><td><code>hipert</code></td><td>75</td><td><strong>0</strong></td></tr>
+<tr><td><code>M54</code></td><td>10</td><td><strong>0</strong></td></tr>
+<tr><td><code>neopl</code></td><td>500 (no teto)</td><td>108</td></tr>
+<tr><td><code>malig</code></td><td>395</td><td>21</td></tr>
+<tr><td><code>C50</code></td><td>10 (com as subcategorias C500…C509)</td><td>1 (só a categoria <code>C50</code>)</td></tr>
+</tbody></table></div>
+<p>&gt; Consequência direta: <strong>não dá para espelhar uma tabela de CID-10 na nossa base</strong> e servi-la a &gt; todo mundo, como se faz com recursos e médicos. Uma lista única ofereceria ao operador um código &gt; que o SER recusa na hora de gravar — e ele recusa em silêncio. Por isso a nossa tela pergunta ao &gt; SER a cada termo (<code>GET /regulacao/ser/configuracao/nova-solicitacao/cids</code>), e por isso o recurso &gt; e o ramo fazem parte da pergunta.</p>
+<p><strong>A busca casa código e descrição</strong>, sem exigir acento: <code>hipert</code> traz <code>E05</code>, <code>G932</code>, <code>I10</code>… O SER corta em <strong>500 linhas</strong> por busca (um termo de uma letra volta com exatamente 500); a nossa resposta marca <code>truncado</code> para a tela pedir um termo mais específico em vez de fingir que aquilo é tudo. Prefixo de dois caracteres já cabe folgado (<code>A0</code> → 68, <code>M5</code> → 32, <code>Z9</code> → 90).</p>
+<p><strong>A linha da tabela tem três células, e a que importa é a primeira</strong>, que vem com <code>style="display: none"</code>:</p>
+<p>``<code>html &lt;tr class="rich-sb-int richfaces_suggestionEntry"&gt;   &lt;td style="display: none;"&gt;(A09 ) Diarréia e gastroenterite de origem infecciosa presumível&lt;/td&gt;   &lt;td class="rich-sb-cell-padding"&gt;A09&lt;/td&gt;   &lt;td class="rich-sb-cell-padding"&gt;Diarréia e gastroenterite de origem infecciosa presumível&lt;/td&gt; &lt;/tr&gt; &lt;tr id="form0:j_id226:0NothingLabel" style="display: none;"&gt;&lt;td&gt;Nenhum CID encontrado&lt;/td&gt;&lt;/tr&gt; </code>``</p>
+<p>É a coluna oculta — <code>(A09 ) …</code>, código preenchido com espaço até 4 caracteres, entre parênteses, mais a descrição — que o navegador escreve no campo, e é ela que o pedido leva de volta em <code>form0:procedimento</code>. Guardar só o código, ou só a descrição, dá pedido sem hipótese. E a <code>NothingLabel</code> vem escondida em <strong>toda</strong> resposta, inclusive nas que têm resultado: descarte pela forma da linha (uma célula só), nunca pelo texto da mensagem.</p>
+<p>&gt; Para o envio, vale a regra do §2.1 do <code>probe_criar_solicitacao.py</code>: são <strong>as duas coisas</strong> — &gt; a amarração A4J (fetch + <code>onselect</code> com o índice no <code>_selection</code>) <strong>e</strong> o texto no campo. O &gt; <code>onselect</code> responde <code>Ajax-Update-Ids</code> vazio; a escolha mora só na conversa Seam. Nossa tela hoje &gt; faz apenas o fetch (é consulta); a amarração entra junto com o envio.</p>
 <h3>2.2 Bloco dinâmico</h3>
 <p>Cada campo é um par <code>form0:container_dinamico_id_&lt;N&gt;</code> (rótulo) + <code>form0:dinamico_id_&lt;N&gt;</code> (o campo). Trocar o Recurso dispara A4J (<code>form0:j_id57</code>, com <code>ajaxSingle=form0:comboRecurso</code>) e o SER devolve o bloco re-renderizado. O <code>oncomplete</code> chama <code>verificarPetCt()</code> — o PET-CT tem regra própria, e de fato é o único recurso com formulário exclusivo (§4).</p>
 <p>&gt; <strong>A resposta é PARCIAL</strong>: não traz <code>&lt;form id="form0"&gt;</code>. Vale a regra de sempre — usar a &gt; última página completa como fonte dos campos e o parcial só como fonte do conteúdo novo.</p>

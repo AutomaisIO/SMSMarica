@@ -373,6 +373,28 @@ public sealed class SerConfiguracaoController(
         CancellationToken cancellationToken) =>
         nova.ObterCamposDinamicosAsync(tipo, recurso, ambulatorioEstadual, cancellationToken);
 
+    /// <summary>
+    /// Lista os CID que o SER aceita como <b>Hipótese</b> para aquele recurso — o mesmo
+    /// autocomplete da tela dele.
+    ///
+    /// <para><b>Ao vivo, e não do catálogo espelhado, porque a lista é do RECURSO.</b> O
+    /// oncológico só aceita neoplasia; a cardiologia aceita quase todo o CID-10. Servir uma lista
+    /// única daria ao operador códigos que o SER recusa na gravação — em silêncio.</para>
+    ///
+    /// <para>Consulta: só o fetch de sugestões, nada é gravado.</para>
+    /// </summary>
+    [HttpGet("nova-solicitacao/cids")]
+    [RequerPermissao(ModuloPermissao.RegulacaoSer, AcoesPermissao.Consulta)]
+    [ProducesResponseType<SerCidSugestoesDto>(StatusCodes.Status200OK)]
+    public Task<SerCidSugestoesDto> CidsNovaSolicitacao(
+        [FromQuery] string tipo,
+        [FromQuery] string recurso,
+        [FromQuery] bool ambulatorioEstadual,
+        [FromQuery] string termo,
+        [FromServices] ISerNovaSolicitacaoService nova,
+        CancellationToken cancellationToken) =>
+        nova.SugerirCidsAsync(tipo, recurso, ambulatorioEstadual, termo, cancellationToken);
+
     /// <summary>Copia o catálogo do SER para a nossa base. Leitura longa (~15 min, uma ida por
     /// recurso) e retomável — recurso já lido não é pedido de novo, salvo `refazerTudo`.</summary>
     [HttpPost("catalogo/sincronizar")]

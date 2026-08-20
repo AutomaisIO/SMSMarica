@@ -32,6 +32,7 @@ import type {
   CampoPacienteSer,
   PacienteEncontradoSer,
 } from '@/features/ser/types';
+import { SeletorCidSer } from '@/features/ser/components/SeletorCidSer';
 import { SeletorRecursoSer } from '@/features/ser/components/SeletorRecursoSer';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
@@ -304,6 +305,7 @@ export function SerNovaSolicitacaoPage() {
                     // existir do outro lado, e os campos são de outro formulário.
                     setRecurso(null);
                     setCampos({});
+                    setHipotese('');
                   }}
                 >
                   <option value="">Selecione…</option>
@@ -323,6 +325,7 @@ export function SerNovaSolicitacaoPage() {
                     // campos que o novo recurso nem tem.
                     setRecurso(null);
                     setCampos({});
+                    setHipotese('');
                   }}
                 >
                   <option value="">Selecione…</option>
@@ -339,6 +342,9 @@ export function SerNovaSolicitacaoPage() {
                   onChange={(r) => {
                     setRecurso(r);
                     setCampos({});
+                    // A Hipótese também é do recurso: o CID que servia na cardiologia não existe
+                    // no oncológico, e o SER recusaria o pedido sem dizer por quê.
+                    setHipotese('');
                   }}
                 />
               </Campo>
@@ -440,9 +446,17 @@ export function SerNovaSolicitacaoPage() {
                 </Select>
               </Campo>
 
-              <Campo label="Hipótese *" htmlFor="ns-hip" className="min-w-72 flex-1">
-                <Input id="ns-hip" value={hipotese} disabled={somenteLeitura}
-                  onChange={(e) => setHipotese(e.target.value)} />
+              {/* Não é campo de texto: no SER a Hipótese é a caixa de CID, e a relação de
+                  códigos é a DAQUELE recurso — por isso o seletor recebe o recurso e o ramo. */}
+              <Campo label="Hipótese (CID) *" htmlFor="ns-hip" className="min-w-72 flex-1">
+                <SeletorCidSer
+                  tipo={tipo || undefined}
+                  recurso={recurso?.valor}
+                  ambulatorioEstadual={ambEstadual ?? undefined}
+                  valor={hipotese}
+                  onChange={setHipotese}
+                  desabilitado={somenteLeitura}
+                />
               </Campo>
             </div>
           </section>
