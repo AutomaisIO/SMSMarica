@@ -1,0 +1,27 @@
+@page "/admin/novo"
+@model Automais.Zap.Api.Pages.Admin.Plataforma.NovoModel
+@{
+    ViewData["Title"] = "Novo tenant";
+}
+
+<h1>Novo tenant</h1>
+<p class="sub">Um tenant por cliente. WABAs, números, usuários e tokens penduram nele.</p>
+
+@if (!string.IsNullOrEmpty(Model.Erro))
+{
+    <div class="aviso">@Model.Erro</div>
+}
+
+<div class="cartao">
+    <form method="post" class="linha" style="margin-top:0">
+        <div>
+            <label>Nome do cliente</label>
+            <input type="text" name="nome" required autofocus placeholder="Secretaria Municipal de Saúde" />
+        </div>
+        <div style="flex:1;min-width:260px">
+            <label>Observação</label>
+            <input type="text" name="observacao" style="width:100%" />
+        </div>
+        <button class="acao" type="submit">Criar</button>
+    </form>
+</div>

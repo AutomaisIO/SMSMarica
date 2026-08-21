@@ -78,13 +78,25 @@ builder.Services
         o.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     });
 
-builder.Services.AddAuthorization();
+// Politica "Global": so quem e da casa. Aplicada por PASTA logo abaixo, para que a protecao
+// venha de ONDE o arquivo esta e nao de o desenvolvedor lembrar de checar. Foi assim que
+// /admin/meta nasceu so com o link escondido e a pagina aberta a quem soubesse a URL.
+builder.Services.AddAuthorization(o =>
+{
+    o.AddPolicy(EscopoUsuario.PoliticaGlobal, p =>
+        p.RequireAuthenticatedUser().RequireClaim(EscopoUsuario.ClaimGlobal, "1"));
+});
 
 builder.Services.AddRazorPages(o =>
 {
     // Tudo em /Pages/Admin exige login, menos a própria tela de entrar.
     o.Conventions.AuthorizeFolder("/Admin");
     o.Conventions.AllowAnonymousToPage("/Admin/Entrar");
+
+    // /Pages/Admin/Plataforma é a area da casa: credenciais do App, criacao de tenant.
+    // Pagina nova ali dentro ja nasce protegida, sem depender de checagem manual. (A pasta
+    // nao pode se chamar "Automais": colidiria com o namespace raiz Automais.Zap.)
+    o.Conventions.AuthorizeFolder("/Admin/Plataforma", EscopoUsuario.PoliticaGlobal);
 });
 
 builder.Services.AddControllers();

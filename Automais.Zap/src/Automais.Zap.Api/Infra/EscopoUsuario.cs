@@ -14,6 +14,10 @@ namespace Automais.Zap.Api.Infra;
 public sealed class EscopoUsuario(IHttpContextAccessor acessor, IAdminService admin)
 {
     public const string ClaimGlobal = "zap:global";
+
+    /// <summary>Politica aplicada a pasta /Pages/Admin/Plataforma.</summary>
+    public const string PoliticaGlobal = "Global";
+
     public const string CookieTenant = "zap.tenant";
 
     private IReadOnlyList<Tenant>? _visiveis;

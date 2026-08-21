@@ -75,6 +75,15 @@
             background: transparent; color: var(--suave); border: 1px solid var(--borda);
         }
         details.adicionar > .cartao { margin-top: 12px; }
+
+        .seletor-tenant {
+            background: #0d0f13; border: 1px solid var(--borda); color: var(--texto);
+            border-radius: 7px; padding: 6px 8px; font: inherit; max-width: 240px;
+        }
+        a.botao-nav {
+            border: 1px solid var(--borda); border-radius: 7px; padding: 5px 11px;
+        }
+        a.botao-nav:hover { border-color: var(--marca); color: var(--marca); }
     </style>
 </head>
 <body>
@@ -83,12 +92,13 @@
     <header>
         <div class="marca">automais<span>.zap</span></div>
 
+        @* O seletor e o eixo da navegacao: trocar de tenant troca o painel inteiro para a
+           visao daquele cliente. Quem tem um so nao precisa escolher, so saber onde esta. *@
         @if (visiveis.Count > 1)
         {
-            <form method="post" action="/admin?handler=Selecionar" style="display:flex;gap:6px;align-items:center">
+            <form method="post" action="/admin?handler=Selecionar" style="display:flex;align-items:center">
                 @Html.AntiForgeryToken()
-                <select name="id" onchange="this.form.submit()"
-                        style="background:#0d0f13;border:1px solid var(--borda);color:var(--texto);border-radius:7px;padding:6px 8px;font:inherit;max-width:220px">
+                <select name="id" onchange="this.form.submit()" class="seletor-tenant">
                     @foreach (var t in visiveis)
                     {
                         <option value="@t.Id" selected="@(selecionado?.Id == t.Id)">@t.Nome</option>
@@ -102,10 +112,13 @@
         }
 
         <nav>
-            <a href="/admin">Tenants</a>
+            @if (Escopo.Global)
+            {
+                <a href="/admin/novo" class="botao-nav">Novo tenant</a>
+            }
             @if (selecionado is not null)
             {
-                <a href="/admin/tenant?id=@selecionado.Id">Tenant</a>
+                <a href="/admin">Painel</a>
             }
             <a href="/admin/entregas">Entregas</a>
             @if (Escopo.Global)

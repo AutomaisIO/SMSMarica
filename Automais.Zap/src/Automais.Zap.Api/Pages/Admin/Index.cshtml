@@ -1,71 +1,29 @@
 @page "/admin"
 @model Automais.Zap.Api.Pages.Admin.IndexModel
 @{
-    ViewData["Title"] = "Tenants";
+    ViewData["Title"] = "Painel";
 }
 
-<h1>Tenants</h1>
-<p class="sub">Cada cliente é um tenant. WABAs, números, usuários e tokens penduram nele.</p>
+<h1>Nenhum tenant</h1>
 
 @if (!string.IsNullOrEmpty(Model.Erro))
 {
     <div class="aviso">@Model.Erro</div>
 }
-@if (!string.IsNullOrEmpty(Model.Recado))
-{
-    <div class="aviso ok">@Model.Recado</div>
-}
 
 <div class="cartao">
-    <table>
-        <thead><tr><th>Tenant</th><th>WABAs</th><th>Números</th><th>Situação</th></tr></thead>
-        <tbody>
-        @foreach (var l in Model.Tenants)
-        {
-            <tr>
-                <td><a href="/admin/tenant?id=@l.Tenant.Id">@l.Tenant.Nome</a></td>
-                <td class="num">@l.Wabas</td>
-                <td class="num">@l.Numeros</td>
-                <td>
-                    @if (l.Tenant.SuspensoEm is not null)
-                    {
-                        <span class="selo off">suspenso</span>
-                    }
-                    else if (!l.Tenant.Ativo)
-                    {
-                        <span class="selo off">inativo</span>
-                    }
-                    else
-                    {
-                        <span class="selo on">ativo</span>
-                    }
-                </td>
-            </tr>
-        }
-        @if (Model.Tenants.Count == 0)
-        {
-            <tr><td colspan="4" class="sub">Nenhum tenant visível para você.</td></tr>
-        }
-        </tbody>
-    </table>
+    @if (Model.Global)
+    {
+        <p class="sub" style="margin:0">
+            Ainda não há nenhum cliente cadastrado. Use <strong>Novo tenant</strong>, no
+            cabeçalho, para criar o primeiro.
+        </p>
+    }
+    else
+    {
+        <p class="sub" style="margin:0">
+            Você não está atribuído a nenhum tenant. Peça a quem administra a plataforma para
+            incluir seu acesso.
+        </p>
+    }
 </div>
-
-@if (Model.Global)
-{
-    <details class="adicionar">
-        <summary>Novo tenant</summary>
-        <div class="cartao">
-        <form method="post" asp-page-handler="Criar" class="linha" style="margin-top:0">
-            <div>
-                <label>Nome do cliente</label>
-                <input type="text" name="nome" required placeholder="Secretaria Municipal de Saúde" />
-            </div>
-            <div style="flex:1;min-width:260px">
-                <label>Observação</label>
-                <input type="text" name="observacao" style="width:100%" />
-            </div>
-            <button class="acao" type="submit">Criar</button>
-        </form>
-        </div>
-    </details>
-}

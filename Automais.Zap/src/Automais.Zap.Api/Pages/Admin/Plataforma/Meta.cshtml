@@ -1,5 +1,5 @@
 @page "/admin/meta"
-@model Automais.Zap.Api.Pages.Admin.MetaModel
+@model Automais.Zap.Api.Pages.Admin.Plataforma.MetaModel
 @{
     ViewData["Title"] = "Meta";
 }
@@ -55,7 +55,7 @@
         <button class="acao" type="submit">Apontar o App para cá</button>
     </form>
     <p class="sub" style="margin:10px 0 0">
-        Campos assinados: <code>@string.Join("</code>, <code>", Automais.Zap.Api.Pages.Admin.MetaModel.CamposWebhook)</code>.
+        Campos assinados: <code>@string.Join("</code>, <code>", Automais.Zap.Api.Pages.Admin.Plataforma.MetaModel.CamposWebhook)</code>.
         A Meta chama a URL com o verify token antes de aceitar — se o relay estiver fora do ar, ela recusa.
     </p>
 </div>
