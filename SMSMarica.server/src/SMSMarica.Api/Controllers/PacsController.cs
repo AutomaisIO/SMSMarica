@@ -23,6 +23,7 @@ public sealed class PacsController(
     IPacsWarmupService warmup,
     IEscopoEstudosPacs escopoEstudos,
     IOrigemEstudoService origemEstudo,
+    IListagemEstudosService listagemEstudos,
     IServiceScopeFactory scopeFactory,
     ILogger<PacsController> logger) : ControllerBase
 {
@@ -48,6 +49,7 @@ public sealed class PacsController(
     private readonly IPacsWarmupService _warmup = warmup;
     private readonly IEscopoEstudosPacs _escopoEstudos = escopoEstudos;
     private readonly IOrigemEstudoService _origemEstudo = origemEstudo;
+    private readonly IListagemEstudosService _listagemEstudos = listagemEstudos;
     private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
     private readonly ILogger<PacsController> _logger = logger;
 
@@ -215,6 +217,31 @@ public sealed class PacsController(
     }
 
     /// <summary>
+    /// Listagem de estudos da tela de Exames. Aceita os mesmos parâmetros do QIDO (nome, data,
+    /// modalidade, orderby) mais <c>tipoExameIds</c> (CSV), e pagina do NOSSO lado — porque o
+    /// recorte por unidade e o filtro por tipo dependem do nosso banco, não do DICOM. Devolve os
+    /// datasets DICOM-JSON como vieram do dcm4chee.
+    /// </summary>
+    [HttpGet("estudos")]
+    [RequerPermissao(ModuloPermissao.Pacs, AcoesPermissao.Consulta)]
+    [ProducesResponseType<PaginaEstudosDto>(StatusCodes.Status200OK)]
+    public async Task<PaginaEstudosDto> Estudos(CancellationToken cancellationToken)
+    {
+        var limite = int.TryParse(Request.Query["limit"], out var l) ? l : 10;
+        var offset = int.TryParse(Request.Query["offset"], out var o) ? o : 0;
+        var tipos = (Request.Query["tipoExameIds"].ToString() ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(t => Guid.TryParse(t, out var g) ? g : Guid.Empty)
+            .Where(g => g != Guid.Empty)
+            .Distinct()
+            .ToArray();
+
+        var queryPacs = RemoverParamsDaListagem(Request.QueryString.Value ?? string.Empty);
+        return await _listagemEstudos.ListarAsync(
+            new FiltroListagemEstudos(queryPacs, limite, offset, tipos), cancellationToken);
+    }
+
+    /// <summary>
     /// De onde os estudos vieram (equipamento + unidade), pelo AE de origem das imagens.
     /// Serve a linha ÓRFÃ da listagem, que não tem pedido de onde tirar a unidade.
     /// Query: <c>?studyUIDs=1.2,1.3,...</c> (CSV) ou repetido.
@@ -331,6 +358,25 @@ public sealed class PacsController(
     /// de uma queryString antes de encaminhá-la ao dcm4chee, preservando os demais
     /// (ex.: <c>viewport</c> do /rendered). Devolve começando por <c>?</c> ou vazio.
     /// </summary>
+    /// <summary>
+    /// Tira da query o que é NOSSO e o dcm4chee não conhece: a janela da página (o serviço varre
+    /// em blocos próprios) e a lista de tipos (que vive no nosso banco).
+    /// </summary>
+    private static string RemoverParamsDaListagem(string queryString)
+    {
+        var q = queryString.StartsWith('?') ? queryString[1..] : queryString;
+        var mantidos = q.Split('&', StringSplitOptions.RemoveEmptyEntries)
+            .Where(par =>
+            {
+                var chave = par.Split('=', 2)[0];
+                return !chave.Equals("limit", StringComparison.OrdinalIgnoreCase)
+                    && !chave.Equals("offset", StringComparison.OrdinalIgnoreCase)
+                    && !chave.Equals("tipoExameIds", StringComparison.OrdinalIgnoreCase);
+            })
+            .ToArray();
+        return mantidos.Length == 0 ? string.Empty : "?" + string.Join('&', mantidos);
+    }
+
     private static string RemoverParamsInternos(string queryString)
     {
         if (string.IsNullOrEmpty(queryString)) return string.Empty;
