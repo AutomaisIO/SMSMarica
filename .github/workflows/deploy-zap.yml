@@ -88,6 +88,7 @@ jobs:
             ENV_DIR=/etc/automais-zap
             ENV_FILE=$ENV_DIR/env
             SERVICE=automais-zap
+            CHAVES_DIR=/var/lib/automais-zap/chaves
             PORTA=5086
             DOTNET_DIR=/opt/dotnet
             DOTNET=$DOTNET_DIR/dotnet
@@ -126,23 +127,33 @@ jobs:
             $SUDO mkdir -p "$APP_DIR" "$ENV_DIR"
 
             # --- 5. Arquivo de ambiente ---
-            # O tee RECRIA o arquivo, então tudo que o serviço precisa é escrito aqui.
-            # Admin__SenhaInicial fica de fora de propósito: só serve no primeiro boot e não
-            # deve viver no env — semear o operador é passo manual do bootstrap.
             if [ -z "${DB_CS:-}" ]; then
               echo "ERRO: secret DB_CONNECTION_ZAP ausente — o relay não sobe sem banco." >&2
               exit 1
             fi
-            if [ -z "${META_APP_SECRET:-}" ] || [ -z "${META_VERIFY_TOKEN:-}" ]; then
-              echo "ERRO: META_APP_SECRET/META_VERIFY_TOKEN ausentes — o webhook falharia fechado (503)." >&2
-              exit 1
+            # O tee RECRIA o arquivo. Se um secret da Meta nao vier, PRESERVA o valor que ja
+            # esta no host em vez de apagar: o App da Meta pode ser configurado direto no
+            # servidor antes de existir secret no GitHub, e um deploy nao pode desconfigurar o
+            # webhook. Sem App Secret o servico sobe e responde 503 no webhook -- falha fechado,
+            # que e o comportamento correto, e e visivel.
+            ler_env() { $SUDO grep -oP "(?<=^$1=).*" "$ENV_FILE" 2>/dev/null || true; }
+            META_APP_SECRET="${META_APP_SECRET:-$(ler_env Meta__AppSecret)}"
+            META_VERIFY_TOKEN="${META_VERIFY_TOKEN:-$(ler_env Meta__VerifyToken)}"
+            if [ -z "$META_APP_SECRET" ] || [ -z "$META_VERIFY_TOKEN" ]; then
+              log "AVISO: Meta__AppSecret/VerifyToken vazios -- o webhook responde 503 ate serem configurados."
             fi
+
+            # Chaves do Data Protection fora de $APP_DIR, que e esvaziado a cada deploy.
+            $SUDO mkdir -p "$CHAVES_DIR"
+            $SUDO chown zap:zap "$CHAVES_DIR"
+            $SUDO chmod 700 "$CHAVES_DIR"
 
             log "Escrevendo $ENV_FILE..."
             {
               printf 'ConnectionStrings__ZapDb=%s\n' "$DB_CS"
               printf 'Meta__AppSecret=%s\n' "$META_APP_SECRET"
               printf 'Meta__VerifyToken=%s\n' "$META_VERIFY_TOKEN"
+              printf 'DataProtection__CaminhoChaves=%s\n' "$CHAVES_DIR"
             } | $SUDO tee "$ENV_FILE" >/dev/null
             $SUDO chmod 600 "$ENV_FILE"
             $SUDO chown zap:zap "$ENV_FILE"
@@ -201,6 +212,7 @@ jobs:
             log "Extraindo nova versão em $APP_DIR..."
             $SUDO find "$APP_DIR" -mindepth 1 -delete
             $SUDO tar -xzf "$TARBALL" -C "$APP_DIR"
+            $SUDO rm -f "$APP_DIR/appsettings.Development.json"
             $SUDO chown -R zap:zap "$APP_DIR"
             rm -f "$TARBALL"
 

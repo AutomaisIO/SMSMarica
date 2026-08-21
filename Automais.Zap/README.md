@@ -51,7 +51,8 @@ Três camadas (ADR-0004): `Data ← nada`, `Core ← Data`, `Api ← Core + Data
 |---|---|
 | Banco | Postgres **local do droplet**, database próprio, schema `zap` |
 | Porta | `127.0.0.1:5086` — quem fala com a internet é o nginx |
-| Host | `zap.automais.io` |
+| Hosts | `api.smsmais.automais.com` (webhook) · `smsmais.automais.com` (painel) |
+| Droplet | `147.182.218.159` — ver [docs/droplet.md](./docs/droplet.md) |
 | Unit | `automais-zap` |
 | Deploy | `.github/workflows/deploy-zap.yml` |
 
@@ -97,27 +98,24 @@ dotnet ef migrations add <Nome> \
   --startup-project src/Automais.Zap.Api
 ```
 
-## Bootstrap do droplet (uma vez, manual)
+## Ambiente
 
-O workflow cuida do serviço. Estes passos são do host:
+O droplet está provisionado e o serviço no ar desde 21/08/2026 — nginx, Let's Encrypt, Postgres
+local, ufw e systemd. O mapa do host, as variáveis e as pendências operacionais estão em
+[docs/droplet.md](./docs/droplet.md).
 
-1. `apt install postgresql`; criar database e role do relay; deixar em loopback.
-2. DNS **A** de `zap.automais.io` → IP do droplet (`dig +short zap.automais.io` para conferir).
-3. nginx: vhost com `proxy_pass http://127.0.0.1:5086`, e `certbot --nginx -d zap.automais.io`.
-4. Secrets no GitHub: `HOST_ZAP`, `USER_ZAP`, `PASS_ZAP`, `DB_CONNECTION_ZAP`,
-   `META_APP_SECRET`, `META_VERIFY_TOKEN`.
-5. Primeiro deploy; depois semear o operador (`Admin__Email`/`Admin__SenhaInicial` no env, subir
-   uma vez, remover do env) e trocar a senha.
+Deploy contínuo pelo `.github/workflows/deploy-zap.yml`, que precisa dos secrets `HOST_ZAP`,
+`USER_ZAP`, `PASS_ZAP`, `DB_CONNECTION_ZAP`, `META_APP_SECRET` e `META_VERIFY_TOKEN`.
 
-> O hostname próprio desde o dia 1 é deliberado: a Callback URL na Meta é a coisa mais cara de
-> mudar. Com `zap.automais.io`, trocar de droplet depois é alteração de DNS — a Meta não fica
+> O hostname próprio é deliberado: a Callback URL na Meta é a coisa mais cara de mudar. Com
+> `api.smsmais.automais.com`, trocar de droplet depois é alteração de DNS — a Meta não fica
 > sabendo.
 
 ## Cutover
 
 1. Cadastrar o destino e o `phone_number_id` na tela.
 2. Com o App ainda apontando para a produção, testar contra o relay com POSTs assinados.
-3. Trocar a Callback URL do App da Meta para `https://zap.automais.io/meta/webhook`.
+3. Apontar a Callback URL do App da Meta para `https://api.smsmais.automais.com/meta/webhook`.
 4. Reversão: apontar de volta.
 
 Confirmar entrando uma mensagem real **e** um envio recebendo `delivered` — os recibos de status

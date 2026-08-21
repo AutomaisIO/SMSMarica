@@ -6,6 +6,7 @@ using Automais.Zap.Core.Entregas;
 using Automais.Zap.Core.Relay;
 using Automais.Zap.Data;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -40,6 +41,16 @@ builder.Services.AddHttpClient<IEntregador, Entregador>(c =>
 });
 
 builder.Services.AddHostedService<LimpezaLogService>();
+
+// Chaves do Data Protection (cifram o cookie do admin) FORA de /opt/automais-zap/api: o
+// deploy esvazia aquele diretório, e chave nova a cada deploy desloga todo mundo. Caminho
+// explícito porque depender do $HOME do usuário de sistema é acidente esperando acontecer.
+var caminhoChaves = builder.Configuration["DataProtection:CaminhoChaves"];
+var dataProtection = builder.Services.AddDataProtection().SetApplicationName("Automais.Zap");
+if (!string.IsNullOrWhiteSpace(caminhoChaves))
+{
+    dataProtection.PersistKeysToFileSystem(new DirectoryInfo(caminhoChaves));
+}
 
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -120,7 +131,6 @@ if (app.Configuration.GetValue("AutoMigrate:Enabled", defaultValue: true))
     }
 }
 
-app.UseStaticFiles();
 app.UseRouting();
 app.UseRateLimiter();
 app.UseAuthentication();
