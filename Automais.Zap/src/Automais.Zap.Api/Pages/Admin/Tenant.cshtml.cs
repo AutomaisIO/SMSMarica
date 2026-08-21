@@ -1,6 +1,7 @@
 using Automais.Zap.Api.Infra;
 using Automais.Zap.Core.Admin;
 using Automais.Zap.Core.Meta;
+using Automais.Zap.Core.Tokens;
 using Automais.Zap.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -13,11 +14,17 @@ public sealed class TenantModel(
     EscopoUsuario escopo,
     IAdminService admin,
     IGraphMetaClient graph,
+    ITokenService tokens,
     TimeProvider relogio) : PageModel
 {
     public Data.Entities.Tenant? Alvo { get; private set; }
     public List<Data.Entities.Waba> Wabas { get; private set; } = [];
     public IReadOnlyList<UsuarioListado> Usuarios { get; private set; } = [];
+    public IReadOnlyList<Data.Entities.TenantToken> Tokens { get; private set; } = [];
+    public List<Data.Entities.Numero> NumerosDoTenant { get; private set; } = [];
+
+    /// <summary>Token em claro, exibido UMA vez logo apos criar. Nao ha como reexibir.</summary>
+    [TempData] public string? TokenNovo { get; set; }
     public bool Global => escopo.Global;
 
     [TempData] public string? Recado { get; set; }
@@ -45,6 +52,65 @@ public sealed class TenantModel(
             .ToListAsync(ct);
 
         Usuarios = await admin.ListarUsuariosAsync(id, ct);
+        Tokens = await tokens.ListarAsync(id, ct);
+
+        NumerosDoTenant = await db.Numeros.AsNoTracking()
+            .Where(n => n.Waba!.TenantId == id)
+            .OrderBy(n => n.DisplayPhoneNumber)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IActionResult> OnPostCriarTokenAsync(
+        Guid id, string nome, string alcance, Guid[]? numeros, CancellationToken ct)
+    {
+        if (!await escopo.PodeVerAsync(id, ct)) return Forbid();
+
+        nome = (nome ?? "").Trim();
+        if (nome.Length == 0)
+        {
+            Erro = "Dê um nome ao token — é como você vai saber qual revogar depois.";
+            return RedirectToPage(new { id });
+        }
+
+        var todos = alcance != "selecionados";
+        var escolhidos = numeros ?? [];
+        if (!todos && escolhidos.Length == 0)
+        {
+            Erro = "Escolha ao menos um número, ou marque que o token vale para todos.";
+            return RedirectToPage(new { id });
+        }
+
+        // Números de OUTRO tenant não entram nem por request forjado.
+        if (!todos)
+        {
+            var validos = await db.Numeros
+                .Where(n => escolhidos.Contains(n.Id) && n.Waba!.TenantId == id)
+                .Select(n => n.Id)
+                .ToListAsync(ct);
+            escolhidos = [.. validos];
+            if (escolhidos.Length == 0)
+            {
+                Erro = "Nenhum dos números escolhidos pertence a este tenant.";
+                return RedirectToPage(new { id });
+            }
+        }
+
+        var criado = await tokens.CriarAsync(id, nome, todos, escolhidos, ct);
+        TokenNovo = criado.ValorEmClaro;
+        Recado = "Token criado. Copie agora — ele não é exibido de novo.";
+        return RedirectToPage(new { id });
+    }
+
+    public async Task<IActionResult> OnPostRevogarTokenAsync(Guid id, Guid tokenId, CancellationToken ct)
+    {
+        if (!await escopo.PodeVerAsync(id, ct)) return Forbid();
+
+        var alvo = await db.TenantTokens.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tokenId, ct);
+        if (alvo is null || alvo.TenantId != id) return Forbid();
+
+        await tokens.RevogarAsync(tokenId, ct);
+        Recado = "Token revogado. Quem estiver usando para de conseguir enviar agora.";
+        return RedirectToPage(new { id });
     }
 
     public async Task<IActionResult> OnPostSuspenderAsync(Guid id, string? motivo, CancellationToken ct)

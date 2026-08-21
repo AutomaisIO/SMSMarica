@@ -4,6 +4,7 @@ using Automais.Zap.Core.Meta;
 using Automais.Zap.Core.Relay;
 using Automais.Zap.Core.Roteamento;
 using Automais.Zap.Core.Seguranca;
+using Automais.Zap.Core.Tokens;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -30,6 +31,7 @@ public static class DependencyInjection
         services.AddScoped<IRoteador, Roteador>();
         services.AddScoped<IRelayService, RelayService>();
         services.AddScoped<IAdminService, AdminService>();
+        services.AddScoped<ITokenService, TokenService>();
 
         return services;
     }

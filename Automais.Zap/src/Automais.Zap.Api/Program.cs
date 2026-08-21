@@ -3,6 +3,7 @@ using Automais.Zap.Api.Infra;
 using Automais.Zap.Core;
 using Automais.Zap.Core.Admin;
 using Automais.Zap.Core.Entregas;
+using Automais.Zap.Core.Envio;
 using Automais.Zap.Core.Meta;
 using Automais.Zap.Core.Relay;
 using Automais.Zap.Data;
@@ -49,6 +50,13 @@ builder.Services.AddHttpClient<IEntregador, Entregador>(c =>
 builder.Services.AddHttpClient<IGraphMetaClient, GraphMetaClient>(c =>
 {
     c.Timeout = TimeSpan.FromSeconds(30);
+});
+
+// Cliente de envio para a Meta. Separado do da gestao: timeout curto, porque quem chama
+// esta esperando o wamid na resposta.
+builder.Services.AddHttpClient<IEnvioService, EnvioService>(c =>
+{
+    c.Timeout = TimeSpan.FromSeconds(20);
 });
 
 builder.Services.AddHostedService<LimpezaLogService>();

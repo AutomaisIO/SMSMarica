@@ -154,3 +154,115 @@
         </div>
     </details>
 }
+
+<h2>Tokens de API</h2>
+<p class="sub">
+    É com eles que o sistema do cliente manda mensagem pela nossa API. Um por sistema que
+    integra — assim revogar um não derruba os outros.
+</p>
+
+@if (!string.IsNullOrEmpty(Model.TokenNovo))
+{
+    <div class="aviso ok">
+        <strong>Copie agora.</strong> O token não é exibido de novo — o que fica guardado é só
+        o resumo dele.
+        <div style="margin-top:8px"><code style="font-size:14px;word-break:break-all">@Model.TokenNovo</code></div>
+    </div>
+}
+
+<div class="cartao">
+    <table>
+        <thead><tr><th>Nome</th><th>Prefixo</th><th>Pode enviar por</th><th>Último uso</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var t in Model.Tokens)
+        {
+            <tr>
+                <td>@t.Nome</td>
+                <td class="num"><code>zap_@(t.Prefixo)_…</code></td>
+                <td class="sub">
+                    @if (t.TodosNumeros)
+                    {
+                        <span>todos os números do tenant</span>
+                    }
+                    else
+                    {
+                        <span>@string.Join(", ", t.Numeros.Select(n => n.Numero?.DisplayPhoneNumber ?? n.NumeroId.ToString()[..8]))</span>
+                    }
+                </td>
+                <td class="num">@(t.UltimoUsoEm?.ToLocalTime().ToString("dd/MM HH:mm") ?? "nunca")</td>
+                <td style="text-align:right;white-space:nowrap">
+                    @if (t.RevogadoEm is null)
+                    {
+                        <form method="post" asp-page-handler="RevogarToken" style="display:inline"
+                              onsubmit="return confirm('Revogar @t.Nome? Quem estiver usando para de enviar na hora.');">
+                            <input type="hidden" name="id" value="@Model.Alvo.Id" />
+                            <input type="hidden" name="tokenId" value="@t.Id" />
+                            <button class="acao discreto" type="submit">Revogar</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <span class="selo off">revogado</span>
+                    }
+                </td>
+            </tr>
+        }
+        @if (Model.Tokens.Count == 0)
+        {
+            <tr><td colspan="5" class="sub">Nenhum token. O cliente ainda não consegue enviar pela API.</td></tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+<details class="adicionar">
+    <summary>Gerar token</summary>
+    <div class="cartao">
+        <form method="post" asp-page-handler="CriarToken">
+            <input type="hidden" name="id" value="@Model.Alvo.Id" />
+            <div class="linha" style="margin-top:0">
+                <div style="flex:1;min-width:260px">
+                    <label>Para que serve</label>
+                    <input type="text" name="nome" required placeholder="Sistema do cliente — produção" style="width:100%" />
+                </div>
+            </div>
+
+            <div style="margin-top:14px">
+                <label>Pode enviar por</label>
+                <div style="margin-top:6px">
+                    <label style="display:flex;gap:8px;align-items:center;color:var(--texto);font-size:15px">
+                        <input type="radio" name="alcance" value="todos" checked />
+                        Todos os números do tenant, inclusive os que entrarem depois
+                    </label>
+                    <label style="display:flex;gap:8px;align-items:center;color:var(--texto);font-size:15px;margin-top:6px">
+                        <input type="radio" name="alcance" value="selecionados" />
+                        Só os números marcados abaixo
+                    </label>
+                </div>
+
+                @if (Model.NumerosDoTenant.Count > 0)
+                {
+                    <div style="margin-top:10px;padding-left:24px">
+                        @foreach (var n in Model.NumerosDoTenant)
+                        {
+                            <label style="display:flex;gap:8px;align-items:center;color:var(--suave);font-size:14px;margin-top:4px">
+                                <input type="checkbox" name="numeros" value="@n.Id" />
+                                @(n.DisplayPhoneNumber ?? n.PhoneNumberId) @(n.Rotulo is null ? "" : "— " + n.Rotulo)
+                            </label>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="sub" style="margin:10px 0 0;padding-left:24px">
+                        Nenhum número sincronizado ainda — só o alcance "todos" faz sentido por enquanto.
+                    </p>
+                }
+            </div>
+
+            <div style="margin-top:16px">
+                <button class="acao" type="submit">Gerar</button>
+            </div>
+        </form>
+    </div>
+</details>

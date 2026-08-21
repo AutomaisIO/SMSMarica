@@ -66,6 +66,7 @@ compartilhado.
 |---|---|
 | `GET /meta/webhook` | Handshake `hub.challenge` da Meta |
 | `POST /meta/webhook` | Recebe o evento e entrega — é esta a Callback URL do App |
+| `POST /v1/mensagens` | Envio pelo sistema do cliente (token de tenant) |
 | `GET /admin` | Rotas: destinos e números (login) |
 | `GET /admin/wabas` | WABAs, números, apps inscritos — e o botão de inscrever este App |
 | `GET /admin/templates` | Templates por WABA: status, criar, excluir |
@@ -74,6 +75,36 @@ compartilhado.
 | `GET /privacidade`, `/termos`, `/exclusao-de-dados` | Páginas legais do App, públicas |
 | `GET /health` | Liveness + banco |
 | `GET /docs` | Scalar |
+
+## API de envio
+
+`POST /v1/mensagens`, autenticada por token de tenant gerado no painel:
+
+```
+Authorization: Bearer zap_<prefixo>_<segredo>
+{ "phone_number_id": "...", "para": "5521...", "mensagem": { "type": "text", "text": { "body": "..." } } }
+```
+
+O objeto `mensagem` vai no formato da Cloud API e é repassado como está — traduzir aqui só
+criaria uma segunda gramática para manter em dia com a Meta. `messaging_product` e `to` são
+preenchidos pelo relay, para o chamador não conseguir trocar o destinatário por dentro.
+Resposta: `200` com o `wamid`.
+
+**Envia agora e não guarda nada.** Não há fila nem agendamento: quem agenda é o sistema do
+cliente, que já tem a máquina de retentativa e o contexto para decidir a hora. Uma fila aqui
+obrigaria o relay a reter o texto até o disparo — exatamente o que ele promete não fazer.
+
+### Tokens
+
+Um tenant tem vários, um por sistema que integra, para que revogar um não derrube os outros.
+O valor em claro existe só no instante da criação: o banco guarda o SHA-256, então reexibir é
+impossível por construção.
+
+O alcance é **por número**, não por WABA — é pelo `phone_number_id` que a Meta envia, e um
+token que só fala pela linha da Regulação não deve conseguir usar a da Central, mesmo estando
+as duas no mesmo WABA. Token de um tenant nunca envia pelo número de outro: o
+`phone_number_id` não é segredo, e sem essa checagem bastaria conhecê-lo. Tenant suspenso
+derruba os tokens junto.
 
 ## Console de gestão da Meta
 
