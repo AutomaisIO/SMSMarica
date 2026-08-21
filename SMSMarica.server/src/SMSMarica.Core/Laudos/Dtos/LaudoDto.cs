@@ -58,7 +58,16 @@ public sealed record LaudoListItemDto(
     bool Assinado = false,
     // Checks do aviso "laudo pronto" ao paciente (✓ enviado, ✓✓ entregue, ✓✓ azul
     // lida/visualizada, ⚠ falha). Null quando não há comunicação (ex.: não assinado).
-    ComunicacaoChipDto? ChipLaudoPronto = null);
+    ComunicacaoChipDto? ChipLaudoPronto = null,
+    // ---- Contexto do PEDIDO (mesma leitura da tela de Solicitações) ----
+    // O laudo se liga ao exame só pelo StudyInstanceUID, sem FK; estes campos são resolvidos na
+    // listagem pelos dois caminhos de sempre (worklist consumada ou associação explícita) e são
+    // null no laudo ÓRFÃO — study que não casa com solicitação nenhuma.
+    string? AccessionNumber = null,
+    string? CodigoSolicitacao = null,
+    string? TipoExameNome = null,
+    ModalidadeDicom? Modalidade = null,
+    string? UnidadeExecutanteNome = null);
 
 /// <summary>Página da listagem de laudos (paginação offset + total para os controles).</summary>
 public sealed record PaginaLaudosDto(

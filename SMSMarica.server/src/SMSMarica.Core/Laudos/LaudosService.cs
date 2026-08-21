@@ -144,9 +144,82 @@ public sealed class LaudosService(
         var dtos = await EnriquecerAsync([.. lista.Select(LaudosMapper.ParaListItem)], cancellationToken);
         var assinados = await ResolverAssinadosAsync([.. dtos.Select(d => d.Id)], cancellationToken);
         var comAssinatura = dtos.Select(d => assinados.Contains(d.Id) ? d with { Assinado = true } : d).ToList();
-        var itens = await EnriquecerComunicacoesAsync(comAssinatura, cancellationToken);
+        var comComunicacao = await EnriquecerComunicacoesAsync(comAssinatura, cancellationToken);
+        var itens = await EnriquecerPedidoAsync([.. comComunicacao], cancellationToken);
         return new PaginaLaudosDto(itens, total, pagina, tamanho);
     }
+
+    /// <summary>
+    /// Anexa a cada linha o contexto do PEDIDO — nº SMS, nº SISREG, procedimento, modalidade e
+    /// unidade executante —, o que dá à lista de laudos a mesma leitura da de Solicitações e da de
+    /// Exames.
+    ///
+    /// <para>O laudo se liga ao exame só pelo <c>StudyInstanceUID</c>, sem FK, então a resolução
+    /// usa os dois caminhos de sempre: associação explícita (que prevalece) e worklist consumada.
+    /// Laudo cujo study não casa com solicitação nenhuma fica com os campos nulos — é o órfão, que
+    /// a lista continua mostrando de propósito.</para>
+    /// </summary>
+    private async Task<IReadOnlyList<LaudoListItemDto>> EnriquecerPedidoAsync(
+        List<LaudoListItemDto> dtos, CancellationToken ct)
+    {
+        var studies = dtos.Select(d => d.StudyInstanceUID)
+            .Where(u => !string.IsNullOrWhiteSpace(u))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (studies.Length == 0) return dtos;
+
+        var contexto = new Dictionary<string, PedidoDoLaudo>(StringComparer.Ordinal);
+
+        var associadas = await _db.ExameAssociacoes.AsNoTracking()
+            .Where(a => studies.Contains(a.StudyInstanceUID) && a.ExcluidoEm == null)
+            .Select(a => new PedidoDoLaudo(
+                a.StudyInstanceUID,
+                a.ExameImagem!.AccessionNumber,
+                a.ExameImagem!.Solicitacao!.CodigoSolicitacao,
+                a.ExameImagem!.TipoExame!.Nome,
+                (ModalidadeDicom?)a.ExameImagem!.TipoExame!.ModalidadeDicom,
+                a.ExameImagem!.Solicitacao!.UnidadeExecutante!.Nome))
+            .ToListAsync(ct);
+        foreach (var a in associadas) contexto[a.StudyInstanceUID] = a;
+
+        var faltam = studies.Where(u => !contexto.ContainsKey(u)).ToArray();
+        if (faltam.Length > 0)
+        {
+            var diretas = await _db.ExamesImagem.AsNoTracking()
+                .Where(e => faltam.Contains(e.StudyInstanceUID) && e.ExcluidoEm == null)
+                .Select(e => new PedidoDoLaudo(
+                    e.StudyInstanceUID,
+                    e.AccessionNumber,
+                    e.Solicitacao!.CodigoSolicitacao,
+                    e.TipoExame!.Nome,
+                    (ModalidadeDicom?)e.TipoExame!.ModalidadeDicom,
+                    e.Solicitacao!.UnidadeExecutante!.Nome))
+                .ToListAsync(ct);
+            foreach (var d in diretas) contexto.TryAdd(d.StudyInstanceUID, d);
+        }
+
+        if (contexto.Count == 0) return dtos;
+
+        return [.. dtos.Select(d => contexto.TryGetValue(d.StudyInstanceUID, out var p)
+            ? d with
+            {
+                AccessionNumber = p.AccessionNumber,
+                CodigoSolicitacao = p.CodigoSolicitacao,
+                TipoExameNome = p.TipoExameNome,
+                Modalidade = p.Modalidade,
+                UnidadeExecutanteNome = p.UnidadeExecutanteNome,
+            }
+            : d)];
+    }
+
+    /// <summary>Projeção do pedido por study — os dois caminhos devolvem esta mesma forma.</summary>
+    private sealed record PedidoDoLaudo(
+        string StudyInstanceUID,
+        string? AccessionNumber,
+        string? CodigoSolicitacao,
+        string? TipoExameNome,
+        ModalidadeDicom? Modalidade,
+        string? UnidadeExecutanteNome);
 
     // Checks do aviso "laudo pronto" (zap) na lista: resolve a solicitação de cada study
     // (direto pela worklist consumada ou via associação explícita) e anexa o estado da
