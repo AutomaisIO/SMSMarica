@@ -78,10 +78,10 @@ public sealed class RelayService(
                     continue;
                 }
 
-                if (!grupos.TryGetValue(rota.DestinoId, out var grupo))
+                if (!grupos.TryGetValue(rota.TenantId, out var grupo))
                 {
                     grupo = new GrupoDestino(rota);
-                    grupos[rota.DestinoId] = grupo;
+                    grupos[rota.TenantId] = grupo;
                 }
 
                 grupo.Coordenadas.Add((ev.IndiceEntry, ev.IndiceChange));
@@ -97,7 +97,7 @@ public sealed class RelayService(
                 db.EntregasLog.Add(new EntregaLog
                 {
                     PhoneNumberId = ev.PhoneNumberId ?? ev.WabaId ?? "(ausente)",
-                    DestinoId = null,
+                    TenantId = null,
                     Tipo = ev.Field,
                     Sucesso = false,
                     StatusHttp = null,
@@ -145,7 +145,7 @@ public sealed class RelayService(
                 {
                     PhoneNumberId = Truncar(string.Join(",", grupo.Eventos
                         .Select(e => e.PhoneNumberId ?? e.WabaId ?? "?").Distinct()), 200),
-                    DestinoId = grupo.Rota.DestinoId,
+                    TenantId = grupo.Rota.TenantId,
                     Tipo = Truncar(string.Join(",", grupo.Eventos.Select(e => e.Field).Distinct()), 120),
                     Sucesso = resultado.Sucesso,
                     StatusHttp = resultado.StatusHttp,

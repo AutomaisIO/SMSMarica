@@ -1,5 +1,9 @@
+@using Automais.Zap.Api.Infra
+@inject EscopoUsuario Escopo
 @{
-    var autenticado = User.Identity?.IsAuthenticated == true;
+    var autenticado = Escopo.Autenticado;
+    var visiveis = autenticado ? await Escopo.VisiveisAsync() : [];
+    var selecionado = autenticado ? await Escopo.SelecionadoAsync() : null;
 }
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -24,7 +28,7 @@
         }
         header .marca { font-weight: 700; letter-spacing: -0.02em; }
         header .marca span { color: var(--marca); }
-        header nav { display: flex; gap: 16px; margin-left: auto; }
+        header nav { display: flex; gap: 16px; margin-left: auto; align-items: center; }
         header nav a, header nav button {
             color: var(--suave); text-decoration: none; background: none;
             border: 0; font: inherit; cursor: pointer; padding: 0;
@@ -63,12 +67,36 @@
 {
     <header>
         <div class="marca">automais<span>.zap</span></div>
+
+        @if (visiveis.Count > 1)
+        {
+            <form method="post" action="/admin?handler=Selecionar" style="display:flex;gap:6px;align-items:center">
+                @Html.AntiForgeryToken()
+                <select name="id" onchange="this.form.submit()"
+                        style="background:#0d0f13;border:1px solid var(--borda);color:var(--texto);border-radius:7px;padding:6px 8px;font:inherit;max-width:220px">
+                    @foreach (var t in visiveis)
+                    {
+                        <option value="@t.Id" selected="@(selecionado?.Id == t.Id)">@t.Nome</option>
+                    }
+                </select>
+            </form>
+        }
+        else if (selecionado is not null)
+        {
+            <span class="sub">@selecionado.Nome</span>
+        }
+
         <nav>
-            <a href="/admin">Rotas</a>
-            <a href="/admin/wabas">WABAs</a>
-            <a href="/admin/templates">Templates</a>
-            <a href="/admin/meta">Meta</a>
+            <a href="/admin">Tenants</a>
+            @if (selecionado is not null)
+            {
+                <a href="/admin/tenant?id=@selecionado.Id">Tenant</a>
+            }
             <a href="/admin/entregas">Entregas</a>
+            @if (Escopo.Global)
+            {
+                <a href="/admin/meta">Meta</a>
+            }
             <form method="post" action="/admin/sair" style="display:inline">
                 @Html.AntiForgeryToken()
                 <button type="submit">Sair</button>

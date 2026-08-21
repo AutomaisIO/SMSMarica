@@ -5,9 +5,16 @@
 }
 
 <h1>Templates</h1>
+@if (Model.Alvo is not null)
+{
+    <p class="sub">
+        <strong>@(Model.Alvo.Nome ?? Model.Alvo.WabaId)</strong> ·
+        <a href="/admin/waba?id=@Model.Alvo.Id">voltar ao WABA</a>
+    </p>
+}
 <p class="sub">
     Modelos são aprovados <strong>por WABA</strong> — um App compartilhado não dá reuso de
-    aprovação, cada município aprova os seus.
+    aprovação, cada cliente aprova os seus.
 </p>
 
 @if (!string.IsNullOrEmpty(Model.Erro))
@@ -19,26 +26,7 @@
     <div class="aviso ok">@Model.Recado</div>
 }
 
-@if (Model.Wabas.Count == 0)
-{
-    <div class="cartao">
-        <p class="sub" style="margin:0">Cadastre um WABA em <a href="/admin/wabas">WABAs</a> primeiro.</p>
-    </div>
-}
-else
-{
-    <div class="cartao" style="margin-bottom:18px">
-        @foreach (var w in Model.Wabas)
-        {
-            var atual = Model.Aberto?.Id == w.Id;
-            <a href="/admin/templates?id=@w.Id"
-               class="selo @(atual ? "on" : "")"
-               style="margin-right:8px;text-decoration:none;display:inline-block">@(w.Nome ?? w.WabaId)</a>
-        }
-    </div>
-}
-
-@if (Model.Aberto is not null)
+@if (Model.Alvo is not null)
 {
     @if (Model.ErroGraph is not null)
     {
@@ -67,7 +55,7 @@ else
                     <td style="text-align:right">
                         <form method="post" asp-page-handler="Excluir" style="display:inline"
                               onsubmit="return confirm('Excluir o template @t.Nome? Quem usa esse nome para de conseguir enviar.');">
-                            <input type="hidden" name="id" value="@Model.Aberto.Id" />
+                            <input type="hidden" name="id" value="@Model.Alvo.Id" />
                             <input type="hidden" name="nome" value="@t.Nome" />
                             <button class="acao discreto" type="submit">Excluir</button>
                         </form>
@@ -85,7 +73,7 @@ else
     <h2>Novo template</h2>
     <div class="cartao">
         <form method="post" asp-page-handler="Criar">
-            <input type="hidden" name="id" value="@Model.Aberto.Id" />
+            <input type="hidden" name="id" value="@Model.Alvo.Id" />
             <div class="linha" style="margin-top:0">
                 <div>
                     <label>Nome</label>

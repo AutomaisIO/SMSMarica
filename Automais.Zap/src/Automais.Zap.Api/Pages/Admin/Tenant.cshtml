@@ -1,0 +1,144 @@
+@page "/admin/tenant"
+@model Automais.Zap.Api.Pages.Admin.TenantModel
+@{
+    ViewData["Title"] = Model.Alvo?.Nome ?? "Tenant";
+}
+
+@if (Model.Alvo is null)
+{
+    <p class="sub">Tenant não encontrado.</p>
+    return;
+}
+
+<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <h1 style="margin:0">@Model.Alvo.Nome</h1>
+    @if (Model.Alvo.SuspensoEm is not null)
+    {
+        <span class="selo off">suspenso</span>
+    }
+    else
+    {
+        <span class="selo on">ativo</span>
+    }
+    @if (Model.Global)
+    {
+        <form method="post" asp-page-handler="Suspender" style="margin-left:auto;display:flex;gap:8px;align-items:center">
+            <input type="hidden" name="id" value="@Model.Alvo.Id" />
+            @if (Model.Alvo.SuspensoEm is null)
+            {
+                <input type="text" name="motivo" placeholder="motivo (opcional)" />
+                <button class="acao discreto" type="submit">Suspender canal</button>
+            }
+            else
+            {
+                <button class="acao" type="submit">Religar canal</button>
+            }
+        </form>
+    }
+</div>
+<p class="sub">
+    @if (Model.Alvo.SuspensoEm is not null)
+    {
+        <span>Suspenso desde @Model.Alvo.SuspensoEm.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")@(string.IsNullOrEmpty(Model.Alvo.SuspensoMotivo) ? "" : " — " + Model.Alvo.SuspensoMotivo). Nenhum WABA deste tenant recebe.</span>
+    }
+    else
+    {
+        <span>@(Model.Alvo.Observacao ?? "")</span>
+    }
+</p>
+
+@if (!string.IsNullOrEmpty(Model.Erro))
+{
+    <div class="aviso">@Model.Erro</div>
+}
+@if (!string.IsNullOrEmpty(Model.Recado))
+{
+    <div class="aviso ok">@Model.Recado</div>
+}
+
+<h2>WABAs</h2>
+<div class="cartao">
+    <table>
+        <thead><tr><th>WABA</th><th>ID</th><th>Números</th><th>Roteamento</th><th>Destino</th></tr></thead>
+        <tbody>
+        @foreach (var w in Model.Wabas)
+        {
+            <tr>
+                <td><a href="/admin/waba?id=@w.Id">@(w.Nome ?? "(sem nome)")</a></td>
+                <td class="num"><code>@w.WabaId</code></td>
+                <td class="num">@w.Numeros.Count</td>
+                <td><span class="selo @(w.RoteamentoAtivo ? "on" : "off")">@(w.RoteamentoAtivo ? "ligado" : "desligado")</span></td>
+                <td class="sub">@(w.UrlDestino ?? "—")</td>
+            </tr>
+        }
+        @if (Model.Wabas.Count == 0)
+        {
+            <tr><td colspan="5" class="sub">Nenhum WABA neste tenant.</td></tr>
+        }
+        </tbody>
+    </table>
+
+    <form method="post" asp-page-handler="AdicionarWaba" class="linha">
+        <input type="hidden" name="id" value="@Model.Alvo.Id" />
+        <div>
+            <label>ID do WABA na Meta</label>
+            <input type="text" name="wabaId" required placeholder="1234567890123456" />
+        </div>
+        <button class="acao" type="submit">Adicionar WABA</button>
+    </form>
+</div>
+
+<h2>Usuários</h2>
+<div class="cartao">
+    <table>
+        <thead><tr><th>E-mail</th><th>Nome</th><th>Último acesso</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var u in Model.Usuarios)
+        {
+            <tr>
+                <td>@u.Email</td>
+                <td>@u.Nome</td>
+                <td class="num">@(u.UltimoAcessoEm?.ToLocalTime().ToString("dd/MM HH:mm") ?? "nunca")</td>
+                <td style="text-align:right">
+                    @if (Model.Global)
+                    {
+                        <form method="post" asp-page-handler="Desvincular" style="display:inline">
+                            <input type="hidden" name="id" value="@Model.Alvo.Id" />
+                            <input type="hidden" name="usuarioId" value="@u.Id" />
+                            <button class="acao discreto" type="submit">Desvincular</button>
+                        </form>
+                    }
+                </td>
+            </tr>
+        }
+        @if (Model.Usuarios.Count == 0)
+        {
+            <tr><td colspan="4" class="sub">Nenhum usuário atribuído. Quem é do domínio da casa enxerga sem precisar de vínculo.</td></tr>
+        }
+        </tbody>
+    </table>
+
+    @if (Model.Global)
+    {
+        <form method="post" asp-page-handler="CriarUsuario" class="linha">
+            <input type="hidden" name="id" value="@Model.Alvo.Id" />
+            <div>
+                <label>E-mail</label>
+                <input type="email" name="email" required />
+            </div>
+            <div>
+                <label>Nome</label>
+                <input type="text" name="nome" />
+            </div>
+            <div>
+                <label>Senha (mín. 10)</label>
+                <input type="password" name="senha" required autocomplete="new-password" />
+            </div>
+            <button class="acao" type="submit">Criar usuário</button>
+        </form>
+        <p class="sub" style="margin:10px 0 0">
+            E-mail do domínio da casa nasce <strong>global</strong> e enxerga todos os tenants —
+            o vínculo com este tenant nem chega a ser criado.
+        </p>
+    }
+</div>

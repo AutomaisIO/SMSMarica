@@ -1,3 +1,4 @@
+using Automais.Zap.Api.Infra;
 using Automais.Zap.Data;
 using Automais.Zap.Data.Entities;
 using Microsoft.AspNetCore.Mvc;
@@ -6,168 +7,72 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Automais.Zap.Api.Pages.Admin;
 
-public sealed class IndexModel(ZapDbContext db, TimeProvider relogio) : PageModel
+public sealed class IndexModel(ZapDbContext db, EscopoUsuario escopo, TimeProvider relogio) : PageModel
 {
-    public List<Destino> Destinos { get; private set; } = [];
+    public sealed record LinhaTenant(Tenant Tenant, int Wabas, int Numeros);
 
-    [TempData]
-    public string? Recado { get; set; }
+    public List<LinhaTenant> Tenants { get; private set; } = [];
+    public bool Global => escopo.Global;
 
-    [TempData]
-    public string? Erro { get; set; }
+    [TempData] public string? Recado { get; set; }
+    [TempData] public string? Erro { get; set; }
 
-    public async Task OnGetAsync(CancellationToken ct) => await CarregarAsync(ct);
-
-    private async Task CarregarAsync(CancellationToken ct)
+    public async Task<IActionResult> OnGetAsync(CancellationToken ct)
     {
-        Destinos = await db.Destinos
-            .AsNoTracking()
-            .Include(d => d.Numeros.OrderBy(n => n.PhoneNumberId))
-            .OrderBy(d => d.Nome)
+        var visiveis = await escopo.VisiveisAsync(ct);
+
+        // Quem só enxerga um tenant não precisa de uma lista de um item.
+        if (!Global && visiveis.Count == 1)
+        {
+            return Redirect($"/admin/tenant?id={visiveis[0].Id}");
+        }
+
+        var ids = visiveis.Select(t => t.Id).ToList();
+        var contagens = await db.Wabas.AsNoTracking()
+            .Where(w => ids.Contains(w.TenantId))
+            .GroupBy(w => w.TenantId)
+            .Select(g => new { TenantId = g.Key, Wabas = g.Count(), Numeros = g.Sum(w => w.Numeros.Count) })
             .ToListAsync(ct);
+
+        Tenants = visiveis.Select(t =>
+        {
+            var c = contagens.FirstOrDefault(x => x.TenantId == t.Id);
+            return new LinhaTenant(t, c?.Wabas ?? 0, c?.Numeros ?? 0);
+        }).ToList();
+
+        return Page();
     }
 
-    public async Task<IActionResult> OnPostNovoDestinoAsync(
-        string nome, string urlWebhook, string? observacao, CancellationToken ct)
+    public async Task<IActionResult> OnPostCriarAsync(string nome, string? observacao, CancellationToken ct)
     {
-        nome = (nome ?? string.Empty).Trim();
-        urlWebhook = (urlWebhook ?? string.Empty).Trim();
+        // Só quem é global cria tenant: criar tenant é ato comercial, não de operação.
+        if (!escopo.Global) return Forbid();
 
-        if (nome.Length == 0 || urlWebhook.Length == 0)
+        nome = (nome ?? "").Trim();
+        if (nome.Length == 0) { Erro = "Informe o nome."; return RedirectToPage(); }
+        if (await db.Tenants.AnyAsync(t => t.Nome == nome, ct))
         {
-            Erro = "Nome e URL do webhook são obrigatórios.";
+            Erro = $"Já existe um tenant chamado \"{nome}\".";
             return RedirectToPage();
         }
 
-        // Só http/https absoluto: a URL vira destino de um POST feito pelo servidor, então
-        // um esquema exótico aqui é superfície de SSRF, não conveniência.
-        if (!Uri.TryCreate(urlWebhook, UriKind.Absolute, out var uri)
-            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
-        {
-            Erro = "A URL do webhook precisa ser http(s) absoluta.";
-            return RedirectToPage();
-        }
-
-        if (await db.Destinos.AnyAsync(d => d.Nome == nome, ct))
-        {
-            Erro = $"Já existe um destino chamado \"{nome}\".";
-            return RedirectToPage();
-        }
-
-        db.Destinos.Add(new Destino
+        var tenant = new Tenant
         {
             Nome = nome,
-            UrlWebhook = urlWebhook,
             Observacao = string.IsNullOrWhiteSpace(observacao) ? null : observacao.Trim(),
             Ativo = true,
             CriadoEm = relogio.GetUtcNow(),
-        });
-
+        };
+        db.Tenants.Add(tenant);
         await db.SaveChangesAsync(ct);
-        Recado = $"Destino \"{nome}\" criado.";
-        return RedirectToPage();
+
+        return Redirect($"/admin/tenant?id={tenant.Id}");
     }
 
-    public async Task<IActionResult> OnPostAlternarDestinoAsync(Guid id, CancellationToken ct)
+    public async Task<IActionResult> OnPostSelecionarAsync(Guid id, CancellationToken ct)
     {
-        var destino = await db.Destinos.FirstOrDefaultAsync(d => d.Id == id, ct);
-        if (destino is null) return RedirectToPage();
-
-        destino.Ativo = !destino.Ativo;
-        destino.AtualizadoEm = relogio.GetUtcNow();
-        await db.SaveChangesAsync(ct);
-
-        Recado = destino.Ativo
-            ? $"Canal de \"{destino.Nome}\" religado."
-            : $"Canal de \"{destino.Nome}\" suspenso — os números dele param de receber agora.";
-        return RedirectToPage();
+        if (!await escopo.PodeVerAsync(id, ct)) return Forbid();
+        escopo.Selecionar(id);
+        return Redirect($"/admin/tenant?id={id}");
     }
-
-    public async Task<IActionResult> OnPostEditarDestinoAsync(
-        Guid id, string urlWebhook, CancellationToken ct)
-    {
-        urlWebhook = (urlWebhook ?? string.Empty).Trim();
-        if (!Uri.TryCreate(urlWebhook, UriKind.Absolute, out var uri)
-            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
-        {
-            Erro = "A URL do webhook precisa ser http(s) absoluta.";
-            return RedirectToPage();
-        }
-
-        var destino = await db.Destinos.FirstOrDefaultAsync(d => d.Id == id, ct);
-        if (destino is null) return RedirectToPage();
-
-        destino.UrlWebhook = urlWebhook;
-        destino.AtualizadoEm = relogio.GetUtcNow();
-        await db.SaveChangesAsync(ct);
-
-        Recado = $"URL de \"{destino.Nome}\" atualizada.";
-        return RedirectToPage();
-    }
-
-    public async Task<IActionResult> OnPostNovoNumeroAsync(
-        Guid destinoId, string phoneNumberId, string? wabaId,
-        string? displayPhoneNumber, string? rotulo, CancellationToken ct)
-    {
-        phoneNumberId = (phoneNumberId ?? string.Empty).Trim();
-        if (phoneNumberId.Length == 0)
-        {
-            Erro = "O phone_number_id é obrigatório — é por ele que o roteamento acontece.";
-            return RedirectToPage();
-        }
-
-        if (await db.Numeros.AnyAsync(n => n.PhoneNumberId == phoneNumberId, ct))
-        {
-            Erro = $"O número {phoneNumberId} já está cadastrado em algum destino.";
-            return RedirectToPage();
-        }
-
-        if (!await db.Destinos.AnyAsync(d => d.Id == destinoId, ct))
-        {
-            Erro = "Destino inexistente.";
-            return RedirectToPage();
-        }
-
-        db.Numeros.Add(new Numero
-        {
-            DestinoId = destinoId,
-            PhoneNumberId = phoneNumberId,
-            WabaId = Vazio(wabaId),
-            DisplayPhoneNumber = Vazio(displayPhoneNumber),
-            Rotulo = Vazio(rotulo),
-            Ativo = true,
-            CriadoEm = relogio.GetUtcNow(),
-        });
-
-        await db.SaveChangesAsync(ct);
-        Recado = $"Número {phoneNumberId} cadastrado.";
-        return RedirectToPage();
-    }
-
-    public async Task<IActionResult> OnPostAlternarNumeroAsync(Guid id, CancellationToken ct)
-    {
-        var numero = await db.Numeros.FirstOrDefaultAsync(n => n.Id == id, ct);
-        if (numero is null) return RedirectToPage();
-
-        numero.Ativo = !numero.Ativo;
-        numero.AtualizadoEm = relogio.GetUtcNow();
-        await db.SaveChangesAsync(ct);
-
-        Recado = $"Número {numero.PhoneNumberId} {(numero.Ativo ? "religado" : "desligado")}.";
-        return RedirectToPage();
-    }
-
-    public async Task<IActionResult> OnPostRemoverNumeroAsync(Guid id, CancellationToken ct)
-    {
-        var numero = await db.Numeros.FirstOrDefaultAsync(n => n.Id == id, ct);
-        if (numero is null) return RedirectToPage();
-
-        db.Numeros.Remove(numero);
-        await db.SaveChangesAsync(ct);
-
-        Recado = $"Número {numero.PhoneNumberId} removido. Eventos dele passam a cair sem rota.";
-        return RedirectToPage();
-    }
-
-    private static string? Vazio(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 }

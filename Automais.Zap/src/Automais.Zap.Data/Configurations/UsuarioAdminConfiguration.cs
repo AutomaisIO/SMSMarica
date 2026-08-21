@@ -14,6 +14,7 @@ public sealed class UsuarioAdminConfiguration : IEntityTypeConfiguration<Usuario
         b.Property(x => x.Email).HasColumnName("email").HasMaxLength(200).IsRequired();
         b.Property(x => x.SenhaHash).HasColumnName("senha_hash").HasMaxLength(400).IsRequired();
         b.Property(x => x.Nome).HasColumnName("nome").HasMaxLength(120).IsRequired();
+        b.Property(x => x.Global).HasColumnName("global").HasDefaultValue(false);
         b.Property(x => x.Ativo).HasColumnName("ativo").HasDefaultValue(true);
         b.Property(x => x.CriadoEm).HasColumnName("criado_em");
         b.Property(x => x.UltimoAcessoEm).HasColumnName("ultimo_acesso_em");

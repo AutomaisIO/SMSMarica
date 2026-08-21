@@ -33,6 +33,8 @@ builder.Services.AddDbContext<ZapDbContext>(opt =>
     opt.UseNpgsql(conexao, npg => npg.MigrationsHistoryTable("__EFMigrationsHistory", ZapDbContext.Schema)));
 
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<Automais.Zap.Api.Infra.EscopoUsuario>();
 builder.Services.AddZapCore(builder.Configuration);
 
 var timeoutEntrega = builder.Configuration.GetValue("Relay:TimeoutSegundos", 10);
@@ -126,9 +128,7 @@ if (app.Configuration.GetValue("AutoMigrate:Enabled", defaultValue: true))
         await db.Database.MigrateAsync();
 
         var admin = scope.ServiceProvider.GetRequiredService<IAdminService>();
-        await admin.SemearPrimeiroUsuarioAsync(
-            app.Configuration["Admin:Email"],
-            app.Configuration["Admin:SenhaInicial"]);
+        await admin.SemearPrimeiroUsuarioAsync();
 
         app.Logger.LogInformation("Schema/migrations OK.");
     }

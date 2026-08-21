@@ -1,14 +1,11 @@
 @page "/admin"
 @model Automais.Zap.Api.Pages.Admin.IndexModel
 @{
-    ViewData["Title"] = "Rotas";
+    ViewData["Title"] = "Tenants";
 }
 
-<h1>Rotas</h1>
-<p class="sub">
-    A Meta manda tudo para <code>/meta/webhook</code>. O relay decide o destino pelo
-    <code>phone_number_id</code> do evento — e só por ele.
-</p>
+<h1>Tenants</h1>
+<p class="sub">Cada cliente é um tenant. WABAs, números, usuários e tokens penduram nele.</p>
 
 @if (!string.IsNullOrEmpty(Model.Erro))
 {
@@ -19,115 +16,54 @@
     <div class="aviso ok">@Model.Recado</div>
 }
 
-@foreach (var destino in Model.Destinos)
-{
-    <div class="cartao" style="margin-bottom:18px">
-        <div style="display:flex;align-items:center;gap:12px">
-            <h2 style="margin:0">@destino.Nome</h2>
-            <span class="selo @(destino.Ativo ? "on" : "off")">@(destino.Ativo ? "ativo" : "suspenso")</span>
-            <form method="post" asp-page-handler="AlternarDestino" style="margin-left:auto">
-                <input type="hidden" name="id" value="@destino.Id" />
-                <button class="acao discreto" type="submit">@(destino.Ativo ? "Suspender canal" : "Religar")</button>
-            </form>
-        </div>
-
-        <form method="post" asp-page-handler="EditarDestino" class="linha">
-            <input type="hidden" name="id" value="@destino.Id" />
-            <div style="flex:1">
-                <label>URL do webhook da aplicação</label>
-                <input type="url" name="urlWebhook" value="@destino.UrlWebhook" required style="width:100%" />
-            </div>
-            <button class="acao discreto" type="submit">Salvar</button>
-        </form>
-
-        @if (destino.Numeros.Count > 0)
-        {
-            <table style="margin-top:16px">
-                <thead>
-                <tr>
-                    <th>phone_number_id</th>
-                    <th>Número</th>
-                    <th>Rótulo</th>
-                    <th>WABA</th>
-                    <th></th>
-                </tr>
-                </thead>
-                <tbody>
-                @foreach (var numero in destino.Numeros)
-                {
-                    <tr>
-                        <td class="num"><code>@numero.PhoneNumberId</code></td>
-                        <td>@(numero.DisplayPhoneNumber ?? "—")</td>
-                        <td>@(numero.Rotulo ?? "—")</td>
-                        <td class="num">@(numero.WabaId ?? "—")</td>
-                        <td style="text-align:right;white-space:nowrap">
-                            <span class="selo @(numero.Ativo ? "on" : "off")">@(numero.Ativo ? "ativo" : "off")</span>
-                            <form method="post" asp-page-handler="AlternarNumero" style="display:inline">
-                                <input type="hidden" name="id" value="@numero.Id" />
-                                <button class="acao discreto" type="submit">@(numero.Ativo ? "Desligar" : "Ligar")</button>
-                            </form>
-                            <form method="post" asp-page-handler="RemoverNumero" style="display:inline"
-                                  onsubmit="return confirm('Remover @numero.PhoneNumberId? Os eventos dele passam a cair sem rota.');">
-                                <input type="hidden" name="id" value="@numero.Id" />
-                                <button class="acao discreto" type="submit">Remover</button>
-                            </form>
-                        </td>
-                    </tr>
-                }
-                </tbody>
-            </table>
-        }
-        else
-        {
-            <p class="sub" style="margin:16px 0 0">Nenhum número cadastrado — este destino não recebe nada.</p>
-        }
-
-        <form method="post" asp-page-handler="NovoNumero" class="linha">
-            <input type="hidden" name="destinoId" value="@destino.Id" />
-            <div>
-                <label>phone_number_id</label>
-                <input type="text" name="phoneNumberId" required />
-            </div>
-            <div>
-                <label>Número exibido</label>
-                <input type="text" name="displayPhoneNumber" />
-            </div>
-            <div>
-                <label>Rótulo</label>
-                <input type="text" name="rotulo" />
-            </div>
-            <div>
-                <label>WABA id</label>
-                <input type="text" name="wabaId" />
-            </div>
-            <button class="acao" type="submit">Adicionar número</button>
-        </form>
-    </div>
-}
-
-@if (Model.Destinos.Count == 0)
-{
-    <div class="cartao">
-        <p class="sub" style="margin:0">Nenhum destino ainda. Cadastre o primeiro abaixo.</p>
-    </div>
-}
-
-<h2>Novo destino</h2>
 <div class="cartao">
-    <form method="post" asp-page-handler="NovoDestino" class="linha" style="margin-top:0">
-        <div>
-            <label>Nome do cliente</label>
-            <input type="text" name="nome" required placeholder="Saúde Maricá" />
-        </div>
-        <div style="flex:1;min-width:320px">
-            <label>URL do webhook</label>
-            <input type="url" name="urlWebhook" required
-                   placeholder="https://api.smsmarica.online/integracoes/whatsapp/webhook" style="width:100%" />
-        </div>
-        <div>
-            <label>Observação</label>
-            <input type="text" name="observacao" />
-        </div>
-        <button class="acao" type="submit">Criar</button>
-    </form>
+    <table>
+        <thead><tr><th>Tenant</th><th>WABAs</th><th>Números</th><th>Situação</th></tr></thead>
+        <tbody>
+        @foreach (var l in Model.Tenants)
+        {
+            <tr>
+                <td><a href="/admin/tenant?id=@l.Tenant.Id">@l.Tenant.Nome</a></td>
+                <td class="num">@l.Wabas</td>
+                <td class="num">@l.Numeros</td>
+                <td>
+                    @if (l.Tenant.SuspensoEm is not null)
+                    {
+                        <span class="selo off">suspenso</span>
+                    }
+                    else if (!l.Tenant.Ativo)
+                    {
+                        <span class="selo off">inativo</span>
+                    }
+                    else
+                    {
+                        <span class="selo on">ativo</span>
+                    }
+                </td>
+            </tr>
+        }
+        @if (Model.Tenants.Count == 0)
+        {
+            <tr><td colspan="4" class="sub">Nenhum tenant visível para você.</td></tr>
+        }
+        </tbody>
+    </table>
 </div>
+
+@if (Model.Global)
+{
+    <h2>Novo tenant</h2>
+    <div class="cartao">
+        <form method="post" asp-page-handler="Criar" class="linha" style="margin-top:0">
+            <div>
+                <label>Nome do cliente</label>
+                <input type="text" name="nome" required placeholder="Secretaria Municipal de Saúde" />
+            </div>
+            <div style="flex:1;min-width:260px">
+                <label>Observação</label>
+                <input type="text" name="observacao" style="width:100%" />
+            </div>
+            <button class="acao" type="submit">Criar</button>
+        </form>
+    </div>
+}

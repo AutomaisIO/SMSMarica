@@ -14,7 +14,7 @@ public sealed class EntregaLog
 
     public required string PhoneNumberId { get; set; }
 
-    public Guid? DestinoId { get; set; }
+    public Guid? TenantId { get; set; }
 
     /// <summary>"messages", "statuses", "desconhecido"… — o campo <c>field</c> da Meta.</summary>
     public required string Tipo { get; set; }

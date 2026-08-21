@@ -1,14 +1,15 @@
+using Automais.Zap.Api.Infra;
 using Automais.Zap.Data;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 
 namespace Automais.Zap.Api.Pages.Admin;
 
-public sealed class EntregasModel(ZapDbContext db) : PageModel
+public sealed class EntregasModel(ZapDbContext db, EscopoUsuario escopo) : PageModel
 {
     public sealed record Linha(
         DateTimeOffset RecebidoEm,
-        string? Destino,
+        string? Tenant,
         string PhoneNumberId,
         string Tipo,
         bool Sucesso,
@@ -22,13 +23,20 @@ public sealed class EntregasModel(ZapDbContext db) : PageModel
 
     public async Task OnGetAsync(CancellationToken ct)
     {
+        // Quem nao e global so ve a trilha dos tenants dele. Sem esse recorte, a tela de
+        // entregas vazaria o volume e os numeros de um municipio para outro.
+        var permitidos = escopo.Global
+            ? null
+            : (await escopo.VisiveisAsync(ct)).Select(t => t.Id).ToList();
+
         Linhas = await db.EntregasLog
             .AsNoTracking()
+            .Where(x => permitidos == null || (x.TenantId != null && permitidos.Contains(x.TenantId.Value)))
             .OrderByDescending(x => x.Id)
             .Take(200)
             .Select(x => new Linha(
                 x.RecebidoEm,
-                x.DestinoId == null ? null : db.Destinos.Where(d => d.Id == x.DestinoId).Select(d => d.Nome).FirstOrDefault(),
+                x.TenantId == null ? null : db.Tenants.Where(t => t.Id == x.TenantId).Select(t => t.Nome).FirstOrDefault(),
                 x.PhoneNumberId,
                 x.Tipo,
                 x.Sucesso,

@@ -11,18 +11,18 @@ public sealed class WabaConfiguration : IEntityTypeConfiguration<Waba>
         b.ToTable("waba");
         b.HasKey(x => x.Id);
         b.Property(x => x.Id).HasColumnName("id");
+        b.Property(x => x.TenantId).HasColumnName("tenant_id");
         b.Property(x => x.WabaId).HasColumnName("waba_id").HasMaxLength(60).IsRequired();
         b.Property(x => x.Nome).HasColumnName("nome").HasMaxLength(200);
-        b.Property(x => x.DestinoId).HasColumnName("destino_id");
+        b.Property(x => x.UrlDestino).HasColumnName("url_destino").HasMaxLength(500);
+        b.Property(x => x.RoteamentoAtivo).HasColumnName("roteamento_ativo").HasDefaultValue(false);
         b.Property(x => x.Observacao).HasColumnName("observacao").HasMaxLength(500);
         b.Property(x => x.CriadoEm).HasColumnName("criado_em");
         b.Property(x => x.SincronizadoEm).HasColumnName("sincronizado_em");
 
         b.HasIndex(x => x.WabaId).IsUnique().HasDatabaseName("ux_waba_waba_id");
 
-        b.HasOne(x => x.Destino)
-            .WithMany()
-            .HasForeignKey(x => x.DestinoId)
-            .OnDelete(DeleteBehavior.SetNull);
+        b.HasOne(x => x.Tenant).WithMany(t => t.Wabas)
+            .HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.Restrict);
     }
 }

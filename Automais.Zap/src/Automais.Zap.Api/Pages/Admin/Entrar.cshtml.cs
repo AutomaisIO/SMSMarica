@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Automais.Zap.Api.Infra;
 using Automais.Zap.Core.Admin;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -39,6 +40,7 @@ public sealed class EntrarModel(IAdminService admin, ILogger<EntrarModel> logger
                 new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
                 new Claim(ClaimTypes.Name, usuario.Nome),
                 new Claim(ClaimTypes.Email, usuario.Email),
+                new Claim(EscopoUsuario.ClaimGlobal, usuario.Global ? "1" : "0"),
             ],
             CookieAuthenticationDefaults.AuthenticationScheme);
 

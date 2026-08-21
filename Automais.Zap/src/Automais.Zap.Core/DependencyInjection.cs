@@ -20,6 +20,7 @@ public static class DependencyInjection
         services.Configure<MetaOptions>(config.GetSection(MetaOptions.Secao));
         services.Configure<RelayOptions>(config.GetSection(RelayOptions.Secao));
         services.Configure<LegalOptions>(config.GetSection(LegalOptions.Secao));
+        services.Configure<AdminOptions>(config.GetSection(AdminOptions.Secao));
 
         services.AddMemoryCache();
 

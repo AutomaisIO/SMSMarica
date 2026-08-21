@@ -33,6 +33,19 @@ public sealed class RelayServiceTests(PostgresZapFixture fixture)
         }
     }
 
+    /// <summary>Credenciais fixas: o teste é do roteamento, não da configuração.</summary>
+    private sealed class ConfiguracaoMetaFalsa(string? appSecret) : IConfiguracaoMetaService
+    {
+        public Task<CredenciaisMeta> ObterAsync(CancellationToken ct = default)
+            => Task.FromResult(new CredenciaisMeta("app", appSecret, "vt", null, "https://graph.facebook.com/v21.0/"));
+
+        public Task<ConfiguracaoMeta> ObterBrutaAsync(CancellationToken ct = default)
+            => Task.FromResult(new ConfiguracaoMeta());
+
+        public Task SalvarAsync(AtualizarConfiguracaoMeta dados, CancellationToken ct = default)
+            => Task.CompletedTask;
+    }
+
     private static RelayService Montar(ZapDbContext db, IEntregador entregador, string? appSecret = AppSecret)
         => new(
             db,
@@ -42,44 +55,54 @@ public sealed class RelayServiceTests(PostgresZapFixture fixture)
             TimeProvider.System,
             NullLogger<RelayService>.Instance);
 
-    /// <summary>Credenciais fixas: o teste e do roteamento, nao da configuracao.</summary>
-    private sealed class ConfiguracaoMetaFalsa(string? appSecret) : IConfiguracaoMetaService
-    {
-        public Task<CredenciaisMeta> ObterAsync(CancellationToken ct = default)
-            => Task.FromResult(new CredenciaisMeta("app", appSecret, "vt", null, "https://graph.facebook.com/v21.0/"));
+    private sealed record Semeado(Tenant Tenant, Waba Waba, string PhoneNumberId, string WabaIdMeta, string Url);
 
-        public Task<Automais.Zap.Data.Entities.ConfiguracaoMeta> ObterBrutaAsync(CancellationToken ct = default)
-            => Task.FromResult(new Automais.Zap.Data.Entities.ConfiguracaoMeta());
-
-        public Task SalvarAsync(AtualizarConfiguracaoMeta dados, CancellationToken ct = default)
-            => Task.CompletedTask;
-    }
-
-    private static async Task<(Destino Destino, string PhoneNumberId)> SemearAsync(
-        ZapDbContext db, string url, bool destinoAtivo = true, bool numeroAtivo = true, string? waba = null)
+    private static async Task<Semeado> SemearAsync(
+        ZapDbContext db,
+        string url,
+        bool tenantAtivo = true,
+        bool tenantSuspenso = false,
+        bool roteamentoAtivo = true,
+        bool numeroAtivo = true)
     {
         var sufixo = Guid.NewGuid().ToString("N")[..12];
-        var destino = new Destino
+
+        var tenant = new Tenant
         {
             Nome = "Cliente " + sufixo,
-            UrlWebhook = url,
-            Ativo = destinoAtivo,
+            Ativo = tenantAtivo,
+            SuspensoEm = tenantSuspenso ? DateTimeOffset.UtcNow : null,
+            CriadoEm = DateTimeOffset.UtcNow,
+        };
+        var waba = new Waba
+        {
+            WabaId = "WABA_" + sufixo,
+            Nome = "WABA " + sufixo,
+            UrlDestino = url,
+            RoteamentoAtivo = roteamentoAtivo,
             CriadoEm = DateTimeOffset.UtcNow,
         };
         var numero = new Numero
         {
-            Destino = destino,
             PhoneNumberId = "NUM_" + sufixo,
-            WabaId = waba,
             Ativo = numeroAtivo,
             CriadoEm = DateTimeOffset.UtcNow,
         };
 
-        db.Destinos.Add(destino);
+        // Grava em tres passos e amarra a FK na mao: depender de fixup de navegacao aqui
+        // deixa a ordem de insercao a cargo do EF, e a FK de numero->waba estoura.
+        db.Tenants.Add(tenant);
+        await db.SaveChangesAsync();
+
+        waba.TenantId = tenant.Id;
+        db.Wabas.Add(waba);
+        await db.SaveChangesAsync();
+
+        numero.WabaId = waba.Id;
         db.Numeros.Add(numero);
         await db.SaveChangesAsync();
 
-        return (destino, numero.PhoneNumberId);
+        return new Semeado(tenant, waba, numero.PhoneNumberId, waba.WabaId, url);
     }
 
     private static byte[] PayloadDe(params (string Waba, string PhoneNumberId)[] donos)
@@ -120,12 +143,12 @@ public sealed class RelayServiceTests(PostgresZapFixture fixture)
     public async Task Assinatura_invalida_nao_entrega_nada()
     {
         await using var db = fixture.CriarContexto();
-        var (_, numero) = await SemearAsync(db, "https://destino.exemplo/webhook");
+        var s = await SemearAsync(db, "https://destino.exemplo/webhook");
 
         var entregador = new EntregadorFalso();
         var relay = Montar(db, entregador);
 
-        var resultado = await relay.ProcessarAsync(PayloadDe(("W", numero)), "sha256=deadbeef");
+        var resultado = await relay.ProcessarAsync(PayloadDe((s.WabaIdMeta, s.PhoneNumberId)), "sha256=deadbeef");
 
         resultado.Situacao.Should().Be(SituacaoRelay.AssinaturaInvalida);
         entregador.Chamadas.Should().BeEmpty();
@@ -135,12 +158,12 @@ public sealed class RelayServiceTests(PostgresZapFixture fixture)
     public async Task Dono_unico_recebe_os_bytes_originais_e_a_assinatura_original()
     {
         await using var db = fixture.CriarContexto();
-        var (destino, numero) = await SemearAsync(db, "https://marica.exemplo/webhook");
+        var s = await SemearAsync(db, "https://dono-unico.exemplo/webhook");
 
         var entregador = new EntregadorFalso();
         var relay = Montar(db, entregador);
 
-        var corpo = PayloadDe(("W", numero));
+        var corpo = PayloadDe((s.WabaIdMeta, s.PhoneNumberId));
         var assinatura = AssinaturaMeta.Calcular(AppSecret, corpo);
 
         var resultado = await relay.ProcessarAsync(corpo, assinatura);
@@ -149,7 +172,7 @@ public sealed class RelayServiceTests(PostgresZapFixture fixture)
         resultado.Entregues.Should().Be(1);
 
         var chamada = entregador.Chamadas.Should().ContainSingle().Subject;
-        chamada.Url.Should().Be(destino.UrlWebhook);
+        chamada.Url.Should().Be(s.Url);
         // Byte a byte: é o que permite a instância validar sem mudar uma linha de código.
         chamada.Corpo.Should().Equal(corpo);
         chamada.Assinatura.Should().Be(assinatura);
@@ -159,51 +182,45 @@ public sealed class RelayServiceTests(PostgresZapFixture fixture)
     public async Task Lote_com_dois_donos_recorta_e_cada_um_so_ve_o_seu()
     {
         await using var db = fixture.CriarContexto();
-        var (destinoA, numeroA) = await SemearAsync(db, "https://a.exemplo/webhook");
-        var (destinoB, numeroB) = await SemearAsync(db, "https://b.exemplo/webhook");
+        var a = await SemearAsync(db, "https://a.exemplo/webhook");
+        var b = await SemearAsync(db, "https://b.exemplo/webhook");
 
         var entregador = new EntregadorFalso();
         var relay = Montar(db, entregador);
 
-        var corpo = PayloadDe(("WABA_A", numeroA), ("WABA_B", numeroB));
+        var corpo = PayloadDe((a.WabaIdMeta, a.PhoneNumberId), (b.WabaIdMeta, b.PhoneNumberId));
         var resultado = await relay.ProcessarAsync(corpo, AssinaturaMeta.Calcular(AppSecret, corpo));
 
         resultado.Situacao.Should().Be(SituacaoRelay.Ok);
         resultado.Entregues.Should().Be(2);
         entregador.Chamadas.Should().HaveCount(2);
 
-        var paraA = entregador.Chamadas.Single(c => c.Url == destinoA.UrlWebhook);
-        var paraB = entregador.Chamadas.Single(c => c.Url == destinoB.UrlWebhook);
+        var paraA = entregador.Chamadas.Single(c => c.Url == a.Url);
+        var paraB = entregador.Chamadas.Single(c => c.Url == b.Url);
 
-        var textoA = Encoding.UTF8.GetString(paraA.Corpo);
-        textoA.Should().Contain(numeroA);
-        textoA.Should().NotContain(numeroB);
-
-        var textoB = Encoding.UTF8.GetString(paraB.Corpo);
-        textoB.Should().Contain(numeroB);
-        textoB.Should().NotContain(numeroA);
+        Encoding.UTF8.GetString(paraA.Corpo).Should().Contain(a.PhoneNumberId).And.NotContain(b.PhoneNumberId);
+        Encoding.UTF8.GetString(paraB.Corpo).Should().Contain(b.PhoneNumberId).And.NotContain(a.PhoneNumberId);
     }
 
     [Fact]
     public async Task Recorte_vai_assinado_com_o_mesmo_app_secret_e_a_instancia_valida()
     {
         await using var db = fixture.CriarContexto();
-        var (destinoA, numeroA) = await SemearAsync(db, "https://a2.exemplo/webhook");
-        var (_, numeroB) = await SemearAsync(db, "https://b2.exemplo/webhook");
+        var a = await SemearAsync(db, "https://a2.exemplo/webhook");
+        var b = await SemearAsync(db, "https://b2.exemplo/webhook");
 
         var entregador = new EntregadorFalso();
         var relay = Montar(db, entregador);
 
-        var corpo = PayloadDe(("WABA_A", numeroA), ("WABA_B", numeroB));
+        var corpo = PayloadDe((a.WabaIdMeta, a.PhoneNumberId), (b.WabaIdMeta, b.PhoneNumberId));
         await relay.ProcessarAsync(corpo, AssinaturaMeta.Calcular(AppSecret, corpo));
 
-        var paraA = entregador.Chamadas.Single(c => c.Url == destinoA.UrlWebhook);
+        var paraA = entregador.Chamadas.Single(c => c.Url == a.Url);
 
         // É esta linha que garante "zero mudança no monolito": o destino confere o HMAC do
         // corpo recortado com o App Secret que ele já tem, e passa.
         AssinaturaMeta.Confere(AppSecret, paraA.Corpo, paraA.Assinatura).Should().BeTrue();
 
-        // E o recorte continua sendo um payload legível.
         using var doc = JsonDocument.Parse(paraA.Corpo);
         doc.RootElement.GetProperty("entry").GetArrayLength().Should().Be(1);
     }
@@ -226,55 +243,64 @@ public sealed class RelayServiceTests(PostgresZapFixture fixture)
         resultado.Entregues.Should().Be(0);
         entregador.Chamadas.Should().BeEmpty();
 
-        var log = await db.EntregasLog.AsNoTracking()
-            .FirstOrDefaultAsync(x => x.PhoneNumberId == orfao);
+        var log = await db.EntregasLog.AsNoTracking().FirstOrDefaultAsync(x => x.PhoneNumberId == orfao);
         log.Should().NotBeNull();
         log!.Erro.Should().Be("sem rota cadastrada");
-        log.DestinoId.Should().BeNull();
+        log.TenantId.Should().BeNull();
     }
 
-    [Fact]
-    public async Task Destino_suspenso_para_de_receber()
+    [Theory]
+    [InlineData(false, false, true, true, "tenant inativo")]
+    [InlineData(true, true, true, true, "tenant suspenso")]
+    [InlineData(true, false, false, true, "roteamento do WABA desligado")]
+    [InlineData(true, false, true, false, "numero desligado")]
+    public async Task Qualquer_chave_desligada_para_a_entrega(
+        bool tenantAtivo, bool tenantSuspenso, bool roteamentoAtivo, bool numeroAtivo, string caso)
     {
         await using var db = fixture.CriarContexto();
-        var (_, numero) = await SemearAsync(db, "https://suspenso.exemplo/webhook", destinoAtivo: false);
+        var s = await SemearAsync(db, "https://off.exemplo/webhook",
+            tenantAtivo: tenantAtivo, tenantSuspenso: tenantSuspenso,
+            roteamentoAtivo: roteamentoAtivo, numeroAtivo: numeroAtivo);
 
         var entregador = new EntregadorFalso();
         var relay = Montar(db, entregador);
 
-        var corpo = PayloadDe(("W", numero));
+        var corpo = PayloadDe((s.WabaIdMeta, s.PhoneNumberId));
         var resultado = await relay.ProcessarAsync(corpo, AssinaturaMeta.Calcular(AppSecret, corpo));
 
-        resultado.SemRota.Should().Be(1);
-        entregador.Chamadas.Should().BeEmpty();
+        resultado.SemRota.Should().Be(1, because: caso);
+        entregador.Chamadas.Should().BeEmpty(because: caso);
     }
 
     [Fact]
-    public async Task Numero_desligado_para_de_receber()
+    public async Task Override_do_numero_ganha_do_destino_do_waba()
     {
         await using var db = fixture.CriarContexto();
-        var (_, numero) = await SemearAsync(db, "https://numoff.exemplo/webhook", numeroAtivo: false);
+        var s = await SemearAsync(db, "https://waba.exemplo/webhook");
+
+        var numero = await db.Numeros.FirstAsync(n => n.PhoneNumberId == s.PhoneNumberId);
+        numero.UrlDestinoOverride = "https://excecao.exemplo/webhook";
+        await db.SaveChangesAsync();
 
         var entregador = new EntregadorFalso();
         var relay = Montar(db, entregador);
 
-        var corpo = PayloadDe(("W", numero));
-        var resultado = await relay.ProcessarAsync(corpo, AssinaturaMeta.Calcular(AppSecret, corpo));
+        var corpo = PayloadDe((s.WabaIdMeta, s.PhoneNumberId));
+        await relay.ProcessarAsync(corpo, AssinaturaMeta.Calcular(AppSecret, corpo));
 
-        resultado.SemRota.Should().Be(1);
-        entregador.Chamadas.Should().BeEmpty();
+        entregador.Chamadas.Should().ContainSingle().Which.Url.Should().Be("https://excecao.exemplo/webhook");
     }
 
     [Fact]
     public async Task Destino_fora_do_ar_devolve_falha_para_a_Meta_reentregar()
     {
         await using var db = fixture.CriarContexto();
-        var (_, numero) = await SemearAsync(db, "https://caiu.exemplo/webhook");
+        var s = await SemearAsync(db, "https://caiu.exemplo/webhook");
 
         var entregador = new EntregadorFalso(sucesso: false);
         var relay = Montar(db, entregador);
 
-        var corpo = PayloadDe(("W", numero));
+        var corpo = PayloadDe((s.WabaIdMeta, s.PhoneNumberId));
         var resultado = await relay.ProcessarAsync(corpo, AssinaturaMeta.Calcular(AppSecret, corpo));
 
         resultado.Situacao.Should().Be(SituacaoRelay.FalhaDeEntrega);
@@ -285,41 +311,39 @@ public sealed class RelayServiceTests(PostgresZapFixture fixture)
     public async Task Evento_sem_numero_cai_no_dono_do_waba()
     {
         await using var db = fixture.CriarContexto();
-        var waba = "WABA_" + Guid.NewGuid().ToString("N")[..8];
-        var (destino, _) = await SemearAsync(db, "https://waba.exemplo/webhook", waba: waba);
+        var s = await SemearAsync(db, "https://waba-fallback.exemplo/webhook");
 
         var entregador = new EntregadorFalso();
         var relay = Montar(db, entregador);
 
         var corpo = Encoding.UTF8.GetBytes($$"""
         {"object":"whatsapp_business_account","entry":[
-          {"id":"{{waba}}","changes":[{"field":"message_template_status_update","value":{"event":"APPROVED"} }]}
+          {"id":"{{s.WabaIdMeta}}","changes":[{"field":"message_template_status_update","value":{"event":"APPROVED"} }]}
         ]}
         """);
 
         var resultado = await relay.ProcessarAsync(corpo, AssinaturaMeta.Calcular(AppSecret, corpo));
 
         resultado.Situacao.Should().Be(SituacaoRelay.Ok);
-        entregador.Chamadas.Should().ContainSingle().Which.Url.Should().Be(destino.UrlWebhook);
+        entregador.Chamadas.Should().ContainSingle().Which.Url.Should().Be(s.Url);
     }
 
     [Fact]
     public async Task Phone_number_id_e_unico_no_relay_inteiro()
     {
         await using var db = fixture.CriarContexto();
-        var (_, numero) = await SemearAsync(db, "https://dono1.exemplo/webhook");
+        var s = await SemearAsync(db, "https://dono1.exemplo/webhook");
+        var outro = await SemearAsync(db, "https://dono2.exemplo/webhook");
 
-        var outro = new Destino
-        {
-            Nome = "Outro " + Guid.NewGuid().ToString("N")[..8],
-            UrlWebhook = "https://dono2.exemplo/webhook",
-            CriadoEm = DateTimeOffset.UtcNow,
-        };
-        db.Destinos.Add(outro);
-        db.Numeros.Add(new Numero { Destino = outro, PhoneNumberId = numero, CriadoEm = DateTimeOffset.UtcNow });
-
-        // O banco tem de recusar: dois destinos com o mesmo número seria mensagem de um
+        // O banco tem de recusar: dois tenants com o mesmo número seria mensagem de um
         // município caindo em outro.
+        db.Numeros.Add(new Numero
+        {
+            WabaId = outro.Waba.Id,
+            PhoneNumberId = s.PhoneNumberId,
+            CriadoEm = DateTimeOffset.UtcNow,
+        });
+
         var act = async () => await db.SaveChangesAsync();
         await act.Should().ThrowAsync<DbUpdateException>();
     }

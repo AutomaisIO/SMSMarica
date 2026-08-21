@@ -1,0 +1,155 @@
+@page "/admin/waba"
+@model Automais.Zap.Api.Pages.Admin.WabaModel
+@{
+    ViewData["Title"] = Model.Alvo?.Nome ?? "WABA";
+}
+
+@if (Model.Alvo is null)
+{
+    <p class="sub">WABA não encontrado.</p>
+    return;
+}
+
+<h1>@(Model.Alvo.Nome ?? Model.Alvo.WabaId)</h1>
+<p class="sub">
+    <code>@Model.Alvo.WabaId</code> ·
+    <a href="/admin/tenant?id=@Model.Alvo.TenantId">voltar ao tenant</a> ·
+    <a href="/admin/templates?id=@Model.Alvo.Id">templates</a>
+</p>
+
+@if (!string.IsNullOrEmpty(Model.Erro))
+{
+    <div class="aviso">@Model.Erro</div>
+}
+@if (!string.IsNullOrEmpty(Model.Recado))
+{
+    <div class="aviso ok">@Model.Recado</div>
+}
+
+<h2>Roteamento</h2>
+<div class="cartao">
+    <form method="post" asp-page-handler="Roteamento" class="linha" style="margin-top:0">
+        <input type="hidden" name="id" value="@Model.Alvo.Id" />
+        <div style="flex:1;min-width:340px">
+            <label>Webhook da aplicação de destino</label>
+            <input type="url" name="urlDestino" value="@Model.Alvo.UrlDestino" style="width:100%"
+                   placeholder="https://api.dominio-do-cliente/integracoes/whatsapp/webhook" />
+        </div>
+        <div>
+            <label>Entregar</label>
+            <select name="ativo" style="background:#0d0f13;border:1px solid var(--borda);color:var(--texto);border-radius:7px;padding:8px 10px;font:inherit">
+                <option value="true" selected="@Model.Alvo.RoteamentoAtivo">ligado</option>
+                <option value="false" selected="@(!Model.Alvo.RoteamentoAtivo)">desligado</option>
+            </select>
+        </div>
+        <button class="acao" type="submit">Salvar</button>
+    </form>
+    <p class="sub" style="margin:12px 0 0">
+        Todos os números deste WABA herdam esse destino. Para entregar de verdade, quatro coisas
+        precisam estar ligadas: o número, o roteamento aqui, o tenant ativo e o tenant não suspenso.
+    </p>
+</div>
+
+<h2>Quem recebe os eventos deste WABA</h2>
+<div class="cartao">
+    @if (Model.ErroGraph is not null)
+    {
+        <div class="aviso">Consultando a Meta: @Model.ErroGraph</div>
+    }
+
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        @if (Model.EsteAppInscrito)
+        {
+            <span class="selo on">nosso App está recebendo</span>
+        }
+        else
+        {
+            <span class="selo off">nosso App NÃO está recebendo</span>
+        }
+
+        @if (Model.Global)
+        {
+            <form method="post" asp-page-handler="@(Model.EsteAppInscrito ? "Desinscrever" : "Inscrever")" style="margin-left:auto"
+                  onsubmit="return confirm('@(Model.EsteAppInscrito ? "Desinscrever? Este WABA PARA de entregar eventos aqui na hora." : "Inscrever? A partir daí a Meta entrega os eventos deste WABA no nosso webhook.")');">
+                <input type="hidden" name="id" value="@Model.Alvo.Id" />
+                <button class="acao @(Model.EsteAppInscrito ? "discreto" : "")" type="submit">
+                    @(Model.EsteAppInscrito ? "Parar de receber" : "Passar a receber")
+                </button>
+            </form>
+        }
+    </div>
+
+    @if (Model.OutrosApps.Any())
+    {
+        <div class="aviso" style="margin-top:14px">
+            <strong>Integração antiga ainda ativa.</strong> Estes Apps também recebem os eventos
+            deste WABA — o que significa que parte do tráfego continua indo para o sistema anterior:
+            <ul style="margin:8px 0 0">
+                @foreach (var a in Model.OutrosApps)
+                {
+                    <li>@(a.Nome ?? "(sem nome)") — <code>@a.Id</code></li>
+                }
+            </ul>
+        </div>
+    }
+    else if (Model.EsteAppInscrito)
+    {
+        <p class="sub" style="margin:12px 0 0">Só o nosso App recebe. Migração concluída.</p>
+    }
+</div>
+
+<h2>Números</h2>
+<div class="cartao">
+    <div style="display:flex;align-items:center;gap:12px">
+        <span class="sub">
+            @if (Model.Alvo.SincronizadoEm is not null)
+            {
+                <span>Sincronizado em @Model.Alvo.SincronizadoEm.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+            }
+            else
+            {
+                <span>Nunca sincronizado.</span>
+            }
+        </span>
+        <form method="post" asp-page-handler="Sincronizar" style="margin-left:auto">
+            <input type="hidden" name="id" value="@Model.Alvo.Id" />
+            <button class="acao discreto" type="submit">Sincronizar com a Meta</button>
+        </form>
+    </div>
+
+    <table style="margin-top:12px">
+        <thead>
+        <tr><th>Número</th><th>Rótulo</th><th>phone_number_id</th><th>Destino</th><th></th></tr>
+        </thead>
+        <tbody>
+        @foreach (var n in Model.Numeros)
+        {
+            <tr>
+                <td>@(n.DisplayPhoneNumber ?? "—")</td>
+                <td>@(n.Rotulo ?? "—")</td>
+                <td class="num"><code>@n.PhoneNumberId</code></td>
+                <td>
+                    <form method="post" asp-page-handler="Override" style="display:flex;gap:6px">
+                        <input type="hidden" name="id" value="@Model.Alvo.Id" />
+                        <input type="hidden" name="numeroId" value="@n.Id" />
+                        <input type="url" name="url" value="@n.UrlDestinoOverride" placeholder="herda do WABA" style="min-width:240px" />
+                        <button class="acao discreto" type="submit">Salvar</button>
+                    </form>
+                </td>
+                <td style="text-align:right;white-space:nowrap">
+                    <span class="selo @(n.Ativo ? "on" : "off")">@(n.Ativo ? "ativo" : "off")</span>
+                    <form method="post" asp-page-handler="AlternarNumero" style="display:inline">
+                        <input type="hidden" name="id" value="@Model.Alvo.Id" />
+                        <input type="hidden" name="numeroId" value="@n.Id" />
+                        <button class="acao discreto" type="submit">@(n.Ativo ? "Desligar" : "Ligar")</button>
+                    </form>
+                </td>
+            </tr>
+        }
+        @if (Model.Numeros.Count == 0)
+        {
+            <tr><td colspan="5" class="sub">Nenhum número. Clique em sincronizar para trazer da Meta.</td></tr>
+        }
+        </tbody>
+    </table>
+</div>

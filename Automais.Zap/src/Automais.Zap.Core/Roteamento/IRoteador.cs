@@ -1,7 +1,7 @@
 namespace Automais.Zap.Core.Roteamento;
 
 /// <summary>Destino resolvido para um número, já com a rota pronta.</summary>
-public sealed record RotaDestino(Guid DestinoId, string Nome, string UrlWebhook);
+public sealed record RotaDestino(Guid TenantId, string Nome, string UrlWebhook);
 
 public interface IRoteador
 {

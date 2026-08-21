@@ -12,7 +12,8 @@ public sealed class ZapDbContext(DbContextOptions<ZapDbContext> options) : DbCon
 {
     public const string Schema = "zap";
 
-    public DbSet<Destino> Destinos => Set<Destino>();
+    public DbSet<Tenant> Tenants => Set<Tenant>();
+    public DbSet<UsuarioTenant> UsuariosTenant => Set<UsuarioTenant>();
     public DbSet<Numero> Numeros => Set<Numero>();
     public DbSet<UsuarioAdmin> UsuariosAdmin => Set<UsuarioAdmin>();
     public DbSet<EntregaLog> EntregasLog => Set<EntregaLog>();

@@ -27,7 +27,7 @@
         <thead>
         <tr>
             <th>Quando</th>
-            <th>Destino</th>
+            <th>Tenant</th>
             <th>phone_number_id</th>
             <th>Tipo</th>
             <th>HTTP</th>
@@ -40,7 +40,7 @@
         {
             <tr>
                 <td class="num">@l.RecebidoEm.ToLocalTime().ToString("dd/MM HH:mm:ss")</td>
-                <td>@(l.Destino ?? "—")</td>
+                <td>@(l.Tenant ?? "—")</td>
                 <td class="num"><code>@l.PhoneNumberId</code></td>
                 <td>@l.Tipo</td>
                 <td class="num">
