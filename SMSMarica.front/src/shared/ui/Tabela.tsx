@@ -103,6 +103,18 @@ export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrol
   // mantém o layout automático (colunas ajustam ao conteúdo), sem regressão visual.
   const temLarguras = redim && Object.keys(larguras).length > 0;
   const larguraFixa = layoutFixo || temLarguras;
+  /**
+   * Coluna de SOBRA, sem largura, no fim da tabela.
+   *
+   * Sem ela, `w-full table-fixed` com todas as colunas dimensionadas devolve o espaço que você
+   * liberou distribuindo-o de volta entre TODAS as colunas — a largura que você acabou de
+   * definir não gruda. Com ela, a sobra tem para onde ir e cada coluna fica exatamente onde foi
+   * posta. É também o que permite a ÚLTIMA coluna real ser redimensionável: antes ela era a
+   * absorvedora e por isso não tinha alça, o que obrigava a mexer na coluna anterior para tentar
+   * ajustá-la.
+   */
+  const temSobra = temLarguras;
+  const colunasNoCabecalho = colunas.length + (temSobra ? 1 : 0);
 
   function iniciarArrasto(e: ReactPointerEvent<HTMLDivElement>, chave: string) {
     const th = (e.currentTarget as HTMLElement).closest('th');
@@ -201,13 +213,15 @@ export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrol
               {colunas.map((c) => (
                 <col key={c.chave} style={larguras[c.chave] ? { width: larguras[c.chave] } : undefined} />
               ))}
+              {temSobra ? <col /> : null}
             </colgroup>
           ) : null}
           <thead className="bg-gray-50">
             <tr>
-              {colunas.map((c, i) => {
+              {colunas.map((c) => {
                 const ativa = ordem?.chave === c.chave && Boolean(c.ordenar);
-                const podeRedimensionar = redim && i < colunas.length - 1; // última coluna absorve o resto
+                // Todas, inclusive a última: quem absorve a sobra agora é a coluna extra.
+                const podeRedimensionar = redim;
                 return (
                   <th
                     key={c.chave}
@@ -265,18 +279,19 @@ export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrol
                   </th>
                 );
               })}
+              {temSobra ? <th aria-hidden="true" className="p-0" /> : null}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {carregando ? (
               <tr>
-                <td colSpan={colunas.length} className="px-4 py-8 text-center text-sm text-gray-500">
+                <td colSpan={colunasNoCabecalho} className="px-4 py-8 text-center text-sm text-gray-500">
                   Carregando…
                 </td>
               </tr>
             ) : dadosSeguros.length === 0 ? (
               <tr>
-                <td colSpan={colunas.length} className="px-4 py-8 text-center text-sm text-gray-500">
+                <td colSpan={colunasNoCabecalho} className="px-4 py-8 text-center text-sm text-gray-500">
                   {vazio ?? 'Nenhum registro encontrado.'}
                 </td>
               </tr>
@@ -304,6 +319,7 @@ export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrol
                       {c.render(item)}
                     </td>
                   ))}
+                  {temSobra ? <td aria-hidden="true" className="p-0" /> : null}
                 </tr>
               ))
             )}
