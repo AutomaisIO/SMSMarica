@@ -1,7 +1,9 @@
 using Automais.Zap.Core.Admin;
+using Automais.Zap.Core.Legal;
 using Automais.Zap.Core.Meta;
 using Automais.Zap.Core.Relay;
 using Automais.Zap.Core.Roteamento;
+using Automais.Zap.Core.Seguranca;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,6 +19,12 @@ public static class DependencyInjection
     {
         services.Configure<MetaOptions>(config.GetSection(MetaOptions.Secao));
         services.Configure<RelayOptions>(config.GetSection(RelayOptions.Secao));
+        services.Configure<LegalOptions>(config.GetSection(LegalOptions.Secao));
+
+        services.AddMemoryCache();
+
+        services.AddSingleton<IProtetorSegredos, ProtetorSegredos>();
+        services.AddScoped<IConfiguracaoMetaService, ConfiguracaoMetaService>();
 
         services.AddScoped<IRoteador, Roteador>();
         services.AddScoped<IRelayService, RelayService>();

@@ -11,6 +11,12 @@ public sealed class RelayOptions
     /// </summary>
     public int TimeoutSegundos { get; set; } = 10;
 
+    /// <summary>
+    /// URL pública deste relay, usada para preencher a Callback URL na tela da Meta.
+    /// Não dá para derivar do Request: o painel roda num host e o webhook em outro.
+    /// </summary>
+    public string? UrlWebhookPublica { get; set; }
+
     /// <summary>Dias de retenção do <c>entrega_log</c>. É trilha operacional, não histórico.</summary>
     public int RetencaoLogDias { get; set; } = 30;
 }

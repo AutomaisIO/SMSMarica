@@ -4,7 +4,6 @@ using Automais.Zap.Core.Roteamento;
 using Automais.Zap.Data;
 using Automais.Zap.Data.Entities;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Automais.Zap.Core.Relay;
 
@@ -16,14 +15,14 @@ public sealed class RelayService(
     ZapDbContext db,
     IRoteador roteador,
     IEntregador entregador,
-    IOptions<MetaOptions> metaOptions,
+    IConfiguracaoMetaService configuracao,
     TimeProvider relogio,
     ILogger<RelayService> logger) : IRelayService
 {
     public async Task<ResultadoRelay> ProcessarAsync(
         byte[] corpo, string? assinatura, CancellationToken ct = default)
     {
-        var appSecret = metaOptions.Value.AppSecret;
+        var appSecret = (await configuracao.ObterAsync(ct)).AppSecret;
 
         // Falha FECHADO. O webhook do monolito tem um catch vazio que, sem configuração,
         // aceita qualquer POST sem conferir HMAC — não repetir esse erro aqui, onde o

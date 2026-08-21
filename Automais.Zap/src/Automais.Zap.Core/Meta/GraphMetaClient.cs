@@ -1,0 +1,337 @@
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
+
+namespace Automais.Zap.Core.Meta;
+
+/// <summary>
+/// Fala com a Graph API para a gestão do App e dos WABAs.
+///
+/// Nada aqui está no caminho do webhook: são chamadas de administração, feitas quando um
+/// operador clica na tela. Se a Meta estiver fora do ar, o relay continua entregando.
+/// </summary>
+public sealed partial class GraphMetaClient(
+    HttpClient http,
+    IConfiguracaoMetaService config,
+    ILogger<GraphMetaClient> logger) : IGraphMetaClient
+{
+    [GeneratedRegex(@"\{\{(\d+)\}\}")]
+    private static partial Regex RegexParametro();
+
+    // ------------------------------------------------------------------ App
+
+    public async Task<ResultadoMeta<IReadOnlyList<AssinaturaWebhook>>> ObterWebhookDoAppAsync(CancellationToken ct = default)
+    {
+        var (creds, erro) = await CredenciaisAppAsync(ct);
+        if (erro is not null) return ResultadoMeta<IReadOnlyList<AssinaturaWebhook>>.Falha(erro);
+
+        var r = await ChamarAsync(HttpMethod.Get, $"{creds!.AppId}/subscriptions", creds.TokenApp!, null, ct);
+        if (!r.Sucesso) return ResultadoMeta<IReadOnlyList<AssinaturaWebhook>>.Falha(r.Erro!);
+
+        var lista = new List<AssinaturaWebhook>();
+        foreach (var item in Dados(r.Valor!))
+        {
+            var campos = new List<string>();
+            if (item.TryGetProperty("fields", out var fs) && fs.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var f in fs.EnumerateArray())
+                {
+                    campos.Add(f.ValueKind == JsonValueKind.Object ? Texto(f, "name") ?? "?" : f.GetString() ?? "?");
+                }
+            }
+
+            lista.Add(new AssinaturaWebhook(
+                Texto(item, "object") ?? "?",
+                Texto(item, "callback_url"),
+                item.TryGetProperty("active", out var a) && a.ValueKind == JsonValueKind.True,
+                campos));
+        }
+
+        return ResultadoMeta<IReadOnlyList<AssinaturaWebhook>>.Ok(lista);
+    }
+
+    public async Task<ResultadoMeta<bool>> ConfigurarWebhookDoAppAsync(
+        string callbackUrl, IReadOnlyList<string> campos, CancellationToken ct = default)
+    {
+        var (creds, erro) = await CredenciaisAppAsync(ct);
+        if (erro is not null) return ResultadoMeta<bool>.Falha(erro);
+
+        if (string.IsNullOrWhiteSpace(creds!.VerifyToken))
+        {
+            return ResultadoMeta<bool>.Falha(
+                "Verify token não configurado. A Meta chama a Callback URL para conferir esse valor antes de aceitar.");
+        }
+
+        var corpo = new Dictionary<string, string>
+        {
+            ["object"] = "whatsapp_business_account",
+            ["callback_url"] = callbackUrl,
+            ["verify_token"] = creds.VerifyToken!,
+            ["fields"] = string.Join(",", campos),
+        };
+
+        logger.LogInformation("Configurando webhook do App {App} para {Url}.", creds.AppId, callbackUrl);
+        var r = await ChamarAsync(HttpMethod.Post, $"{creds.AppId}/subscriptions", creds.TokenApp!, corpo, ct);
+        return r.Sucesso ? ResultadoMeta<bool>.Ok(true) : ResultadoMeta<bool>.Falha(r.Erro!);
+    }
+
+    // ----------------------------------------------------------------- WABA
+
+    public async Task<ResultadoMeta<WabaMeta>> ObterWabaAsync(string wabaId, CancellationToken ct = default)
+    {
+        var (creds, erro) = await CredenciaisSistemaAsync(ct);
+        if (erro is not null) return ResultadoMeta<WabaMeta>.Falha(erro);
+
+        var r = await ChamarAsync(HttpMethod.Get,
+            $"{wabaId}?fields=id,name,account_review_status,currency", creds!.TokenSistema!, null, ct);
+        if (!r.Sucesso) return ResultadoMeta<WabaMeta>.Falha(r.Erro!);
+
+        var e = r.Valor!;
+        return ResultadoMeta<WabaMeta>.Ok(new WabaMeta(
+            Texto(e, "id") ?? wabaId, Texto(e, "name"), Texto(e, "account_review_status"), Texto(e, "currency")));
+    }
+
+    public async Task<ResultadoMeta<IReadOnlyList<NumeroMeta>>> ListarNumerosAsync(string wabaId, CancellationToken ct = default)
+    {
+        var (creds, erro) = await CredenciaisSistemaAsync(ct);
+        if (erro is not null) return ResultadoMeta<IReadOnlyList<NumeroMeta>>.Falha(erro);
+
+        var r = await ChamarAsync(HttpMethod.Get,
+            $"{wabaId}/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating,code_verification_status,platform_type&limit=100",
+            creds!.TokenSistema!, null, ct);
+        if (!r.Sucesso) return ResultadoMeta<IReadOnlyList<NumeroMeta>>.Falha(r.Erro!);
+
+        var lista = Dados(r.Valor!).Select(n => new NumeroMeta(
+            Texto(n, "id") ?? "?",
+            Texto(n, "display_phone_number"),
+            Texto(n, "verified_name"),
+            Texto(n, "quality_rating"),
+            Texto(n, "code_verification_status"),
+            Texto(n, "platform_type"))).ToList();
+
+        return ResultadoMeta<IReadOnlyList<NumeroMeta>>.Ok(lista);
+    }
+
+    public async Task<ResultadoMeta<IReadOnlyList<AppInscrito>>> ListarAppsInscritosAsync(string wabaId, CancellationToken ct = default)
+    {
+        var (creds, erro) = await CredenciaisSistemaAsync(ct);
+        if (erro is not null) return ResultadoMeta<IReadOnlyList<AppInscrito>>.Falha(erro);
+
+        var r = await ChamarAsync(HttpMethod.Get, $"{wabaId}/subscribed_apps", creds!.TokenSistema!, null, ct);
+        if (!r.Sucesso) return ResultadoMeta<IReadOnlyList<AppInscrito>>.Falha(r.Erro!);
+
+        var lista = new List<AppInscrito>();
+        foreach (var item in Dados(r.Valor!))
+        {
+            // A Meta aninha o app em whatsapp_business_api_data.
+            var alvo = item.TryGetProperty("whatsapp_business_api_data", out var d) ? d : item;
+            lista.Add(new AppInscrito(Texto(alvo, "id") ?? "?", Texto(alvo, "name")));
+        }
+
+        return ResultadoMeta<IReadOnlyList<AppInscrito>>.Ok(lista);
+    }
+
+    public async Task<ResultadoMeta<bool>> InscreverAppNoWabaAsync(string wabaId, CancellationToken ct = default)
+    {
+        var (creds, erro) = await CredenciaisSistemaAsync(ct);
+        if (erro is not null) return ResultadoMeta<bool>.Falha(erro);
+
+        logger.LogWarning("Inscrevendo o App no WABA {Waba} — muda para onde a Meta entrega os eventos.", wabaId);
+        var r = await ChamarAsync(HttpMethod.Post, $"{wabaId}/subscribed_apps", creds!.TokenSistema!, new Dictionary<string, string>(), ct);
+        return r.Sucesso ? ResultadoMeta<bool>.Ok(true) : ResultadoMeta<bool>.Falha(r.Erro!);
+    }
+
+    public async Task<ResultadoMeta<bool>> DesinscreverAppDoWabaAsync(string wabaId, CancellationToken ct = default)
+    {
+        var (creds, erro) = await CredenciaisSistemaAsync(ct);
+        if (erro is not null) return ResultadoMeta<bool>.Falha(erro);
+
+        logger.LogWarning("Desinscrevendo o App do WABA {Waba} — para de receber eventos dele.", wabaId);
+        var r = await ChamarAsync(HttpMethod.Delete, $"{wabaId}/subscribed_apps", creds!.TokenSistema!, null, ct);
+        return r.Sucesso ? ResultadoMeta<bool>.Ok(true) : ResultadoMeta<bool>.Falha(r.Erro!);
+    }
+
+    // ------------------------------------------------------------ Templates
+
+    public async Task<ResultadoMeta<IReadOnlyList<TemplateMeta>>> ListarTemplatesAsync(string wabaId, CancellationToken ct = default)
+    {
+        var (creds, erro) = await CredenciaisSistemaAsync(ct);
+        if (erro is not null) return ResultadoMeta<IReadOnlyList<TemplateMeta>>.Falha(erro);
+
+        var r = await ChamarAsync(HttpMethod.Get,
+            $"{wabaId}/message_templates?fields=id,name,language,category,status,components,rejected_reason&limit=200",
+            creds!.TokenSistema!, null, ct);
+        if (!r.Sucesso) return ResultadoMeta<IReadOnlyList<TemplateMeta>>.Falha(r.Erro!);
+
+        var lista = new List<TemplateMeta>();
+        foreach (var t in Dados(r.Valor!))
+        {
+            string? corpo = null;
+            if (t.TryGetProperty("components", out var comps) && comps.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var c in comps.EnumerateArray())
+                {
+                    if (string.Equals(Texto(c, "type"), "BODY", StringComparison.OrdinalIgnoreCase))
+                    {
+                        corpo = Texto(c, "text");
+                        break;
+                    }
+                }
+            }
+
+            var parametros = corpo is null
+                ? 0
+                : RegexParametro().Matches(corpo).Select(m => int.Parse(m.Groups[1].Value)).DefaultIfEmpty(0).Max();
+
+            lista.Add(new TemplateMeta(
+                Texto(t, "id") ?? "?",
+                Texto(t, "name") ?? "?",
+                Texto(t, "language") ?? "?",
+                Texto(t, "category") ?? "?",
+                Texto(t, "status") ?? "?",
+                corpo,
+                parametros,
+                Texto(t, "rejected_reason")));
+        }
+
+        return ResultadoMeta<IReadOnlyList<TemplateMeta>>.Ok(
+            lista.OrderBy(x => x.Nome).ThenBy(x => x.Idioma).ToList());
+    }
+
+    public async Task<ResultadoMeta<string>> CriarTemplateAsync(string wabaId, NovoTemplate template, CancellationToken ct = default)
+    {
+        var (creds, erro) = await CredenciaisSistemaAsync(ct);
+        if (erro is not null) return ResultadoMeta<string>.Falha(erro);
+
+        var componentes = new List<object>();
+
+        if (!string.IsNullOrWhiteSpace(template.Cabecalho))
+        {
+            componentes.Add(new { type = "HEADER", format = "TEXT", text = template.Cabecalho });
+        }
+
+        // A Meta EXIGE exemplo para todo {{n}} do corpo; sem isso a submissão volta com erro
+        // pouco explicativo. Falta de exemplo vira um placeholder em vez de deixar quebrar.
+        var qtd = RegexParametro().Matches(template.Corpo).Select(m => int.Parse(m.Groups[1].Value)).DefaultIfEmpty(0).Max();
+        if (qtd > 0)
+        {
+            var exemplos = Enumerable.Range(0, qtd)
+                .Select(i => i < template.ExemplosCorpo.Count && !string.IsNullOrWhiteSpace(template.ExemplosCorpo[i])
+                    ? template.ExemplosCorpo[i]
+                    : $"exemplo{i + 1}")
+                .ToArray();
+            componentes.Add(new { type = "BODY", text = template.Corpo, example = new { body_text = new[] { exemplos } } });
+        }
+        else
+        {
+            componentes.Add(new { type = "BODY", text = template.Corpo });
+        }
+
+        if (!string.IsNullOrWhiteSpace(template.Rodape))
+        {
+            componentes.Add(new { type = "FOOTER", text = template.Rodape });
+        }
+
+        var corpoJson = JsonSerializer.Serialize(new
+        {
+            name = template.Nome,
+            language = template.Idioma,
+            category = template.Categoria,
+            components = componentes,
+        });
+
+        var r = await ChamarJsonAsync(HttpMethod.Post, $"{wabaId}/message_templates", creds!.TokenSistema!, corpoJson, ct);
+        if (!r.Sucesso) return ResultadoMeta<string>.Falha(r.Erro!);
+
+        return ResultadoMeta<string>.Ok(Texto(r.Valor!, "id") ?? "(sem id)");
+    }
+
+    public async Task<ResultadoMeta<bool>> ExcluirTemplateAsync(string wabaId, string nome, CancellationToken ct = default)
+    {
+        var (creds, erro) = await CredenciaisSistemaAsync(ct);
+        if (erro is not null) return ResultadoMeta<bool>.Falha(erro);
+
+        var r = await ChamarAsync(HttpMethod.Delete,
+            $"{wabaId}/message_templates?name={Uri.EscapeDataString(nome)}", creds!.TokenSistema!, null, ct);
+        return r.Sucesso ? ResultadoMeta<bool>.Ok(true) : ResultadoMeta<bool>.Falha(r.Erro!);
+    }
+
+    // ---------------------------------------------------------------- Apoio
+
+    private async Task<(CredenciaisMeta? Creds, string? Erro)> CredenciaisSistemaAsync(CancellationToken ct)
+    {
+        var c = await config.ObterAsync(ct);
+        return c.PodeGerenciar
+            ? (c, null)
+            : (null, "Falta o App ID ou o token do System User. Configure em Meta → Credenciais.");
+    }
+
+    private async Task<(CredenciaisMeta? Creds, string? Erro)> CredenciaisAppAsync(CancellationToken ct)
+    {
+        var c = await config.ObterAsync(ct);
+        return c.TokenApp is not null
+            ? (c, null)
+            : (null, "Falta o App ID ou o App Secret. Configure em Meta → Credenciais.");
+    }
+
+    private async Task<ResultadoMeta<JsonElement>> ChamarAsync(
+        HttpMethod metodo, string caminho, string token, IDictionary<string, string>? formulario, CancellationToken ct)
+    {
+        HttpContent? conteudo = formulario is null ? null : new FormUrlEncodedContent(formulario);
+        return await EnviarAsync(metodo, caminho, token, conteudo, ct);
+    }
+
+    private async Task<ResultadoMeta<JsonElement>> ChamarJsonAsync(
+        HttpMethod metodo, string caminho, string token, string json, CancellationToken ct)
+        => await EnviarAsync(metodo, caminho, token, new StringContent(json, Encoding.UTF8, "application/json"), ct);
+
+    private async Task<ResultadoMeta<JsonElement>> EnviarAsync(
+        HttpMethod metodo, string caminho, string token, HttpContent? conteudo, CancellationToken ct)
+    {
+        var creds = await config.ObterAsync(ct);
+        var url = creds.BaseUrl.TrimEnd('/') + "/" + caminho;
+
+        try
+        {
+            using var req = new HttpRequestMessage(metodo, url) { Content = conteudo };
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            using var resp = await http.SendAsync(req, ct);
+            var texto = await resp.Content.ReadAsStringAsync(ct);
+
+            using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(texto) ? "{}" : texto);
+            var raiz = doc.RootElement.Clone();
+
+            if (resp.IsSuccessStatusCode) return ResultadoMeta<JsonElement>.Ok(raiz);
+
+            var msg = raiz.TryGetProperty("error", out var err)
+                ? $"{Texto(err, "message")} (code {Texto(err, "code")}{(Texto(err, "error_subcode") is { } sc ? "/" + sc : "")})"
+                : $"HTTP {(int)resp.StatusCode}";
+
+            logger.LogWarning("Graph API recusou {Metodo} {Caminho}: {Erro}", metodo, caminho, msg);
+            return ResultadoMeta<JsonElement>.Falha(msg);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            logger.LogWarning(ex, "Falha chamando a Graph API em {Caminho}.", caminho);
+            return ResultadoMeta<JsonElement>.Falha(ex is TaskCanceledException ? "timeout falando com a Meta" : ex.Message);
+        }
+    }
+
+    private static IEnumerable<JsonElement> Dados(JsonElement raiz)
+        => raiz.TryGetProperty("data", out var d) && d.ValueKind == JsonValueKind.Array
+            ? d.EnumerateArray()
+            : [];
+
+    private static string? Texto(JsonElement e, string prop)
+        => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(prop, out var v)
+            ? v.ValueKind switch
+            {
+                JsonValueKind.String => v.GetString(),
+                JsonValueKind.Number => v.ToString(),
+                _ => null,
+            }
+            : null;
+}

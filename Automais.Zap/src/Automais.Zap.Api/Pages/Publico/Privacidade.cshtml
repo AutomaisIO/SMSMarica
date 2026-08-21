@@ -1,0 +1,113 @@
+@page "/privacidade"
+@using Microsoft.Extensions.Options
+@using Automais.Zap.Core.Legal
+@inject IOptions<LegalOptions> Legal
+@{
+    ViewData["Title"] = "Política de Privacidade";
+    Layout = "_LayoutPublico";
+    var legal = Legal.Value;
+}
+
+<h1>Política de Privacidade</h1>
+<p class="sub">Plataforma @legal.Plataforma, operada por @legal.NomeFantasia.</p>
+
+<p>
+    A @legal.Plataforma é uma plataforma de comunicação que liga cidadãos a órgãos públicos de
+    saúde pelo WhatsApp. Esta política explica quais dados pessoais trafegam pela plataforma, o
+    que fazemos com eles e como você exerce seus direitos.
+</p>
+
+<h2>Quem é responsável pelos seus dados</h2>
+<p>
+    A distinção abaixo importa para saber a quem recorrer, e por isso vem antes de tudo:
+</p>
+<ul>
+    <li>
+        <strong>O órgão público de saúde é o controlador.</strong> É ele quem decide por que e
+        como seus dados são tratados: quem recebe mensagem, sobre o quê, e o que fica registrado
+        no prontuário ou no sistema de saúde do município.
+    </li>
+    <li>
+        <strong>A @legal.NomeFantasia é a operadora.</strong> Tratamos dados apenas em nome do
+        órgão contratante e conforme as instruções dele. Não usamos seus dados para finalidade
+        própria, não os vendemos e não os compartilhamos com terceiros para publicidade.
+    </li>
+</ul>
+
+<h2>Quais dados trafegam</h2>
+<ul>
+    <li><strong>Seu número de telefone</strong>, para que a mensagem chegue a você.</li>
+    <li><strong>O conteúdo das mensagens</strong> que você troca com o órgão de saúde.</li>
+    <li>
+        <strong>Confirmações de entrega e leitura</strong> devolvidas pelo WhatsApp
+        (enviada, entregue, lida, falha).
+    </li>
+    <li>
+        <strong>O nome de perfil</strong> que você exibe no WhatsApp, quando o aplicativo o envia
+        junto com a mensagem.
+    </li>
+</ul>
+
+<div class="destaque">
+    <p style="margin:0">
+        <strong>A camada de roteamento da @legal.Plataforma não armazena o conteúdo das suas
+        mensagens.</strong> Ela recebe cada evento do WhatsApp, identifica a qual órgão de saúde
+        aquele número pertence e encaminha adiante. O registro que ela mantém é operacional —
+        identificador da linha, tipo do evento, se a entrega deu certo e quanto demorou — e não
+        contém texto de mensagem, identificador de mensagem nem telefone de cidadão.
+    </p>
+</div>
+
+<p>
+    O conteúdo das conversas é armazenado no sistema do órgão público de saúde com quem você
+    está falando, sob a responsabilidade dele.
+</p>
+
+<h2>Por quanto tempo guardamos</h2>
+<p>
+    Os registros operacionais de roteamento são apagados automaticamente após o período de
+    retenção configurado, por padrão 30 dias. O prazo de guarda das conversas em si é definido
+    pelo órgão público de saúde, conforme a legislação de saúde e de arquivo aplicável a ele.
+</p>
+
+<h2>Com quem compartilhamos</h2>
+<ul>
+    <li><strong>Meta Platforms</strong>, por ser a operadora do WhatsApp, pela qual as mensagens necessariamente trafegam.</li>
+    <li><strong>O órgão público de saúde</strong> destinatário da sua mensagem.</li>
+    <li><strong>Provedores de infraestrutura</strong> que hospedam a plataforma, sob contrato e obrigação de confidencialidade.</li>
+</ul>
+<p>Não há venda de dados pessoais nem compartilhamento para fins de publicidade.</p>
+
+<h2>Seus direitos</h2>
+<p>
+    A Lei Geral de Proteção de Dados (Lei 13.709/2018, art. 18) garante a você confirmação e
+    acesso aos seus dados, correção, anonimização, bloqueio ou eliminação, portabilidade,
+    informação sobre compartilhamentos e revogação do consentimento.
+</p>
+<p>
+    Como somos operadores, o caminho mais direto costuma ser procurar o próprio órgão de saúde
+    que entrou em contato com você. Se preferir falar conosco, escreva para
+    <a href="mailto:@legal.EmailContato">@legal.EmailContato</a> — encaminhamos ao controlador e
+    acompanhamos o atendimento. Para apagar seus dados, veja
+    <a href="/exclusao-de-dados">exclusão de dados</a>.
+</p>
+
+<h2>Segurança</h2>
+<p>
+    O tráfego é cifrado em trânsito (HTTPS), as credenciais de integração são cifradas em repouso,
+    e cada município opera em infraestrutura própria e isolada. Todo evento recebido do WhatsApp
+    tem sua assinatura criptográfica conferida antes de ser processado; evento sem assinatura
+    válida é recusado.
+</p>
+
+<h2>Menores de idade</h2>
+<p>
+    A plataforma é usada por órgãos de saúde que atendem pessoas de todas as idades. Quando o
+    atendimento envolve criança ou adolescente, o contato é feito com o responsável legal
+    cadastrado no serviço de saúde.
+</p>
+
+<h2>Mudanças nesta política</h2>
+<p>
+    Alterações são publicadas nesta página, com a data de atualização no rodapé.
+</p>

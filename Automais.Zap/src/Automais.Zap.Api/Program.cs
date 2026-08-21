@@ -3,6 +3,7 @@ using Automais.Zap.Api.Infra;
 using Automais.Zap.Core;
 using Automais.Zap.Core.Admin;
 using Automais.Zap.Core.Entregas;
+using Automais.Zap.Core.Meta;
 using Automais.Zap.Core.Relay;
 using Automais.Zap.Data;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -38,6 +39,14 @@ var timeoutEntrega = builder.Configuration.GetValue("Relay:TimeoutSegundos", 10)
 builder.Services.AddHttpClient<IEntregador, Entregador>(c =>
 {
     c.Timeout = TimeSpan.FromSeconds(timeoutEntrega <= 0 ? 10 : timeoutEntrega);
+});
+
+// Cliente da Graph API para o console de gestao. Timeout maior que o da entrega: a Meta
+// demora mais em criar template do que em aceitar um POST, e nada aqui esta no caminho do
+// webhook -- se travar, o relay continua entregando.
+builder.Services.AddHttpClient<IGraphMetaClient, GraphMetaClient>(c =>
+{
+    c.Timeout = TimeSpan.FromSeconds(30);
 });
 
 builder.Services.AddHostedService<LimpezaLogService>();

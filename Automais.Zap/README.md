@@ -66,14 +66,46 @@ compartilhado.
 |---|---|
 | `GET /meta/webhook` | Handshake `hub.challenge` da Meta |
 | `POST /meta/webhook` | Recebe o evento e entrega — é esta a Callback URL do App |
-| `GET /admin` | Tela de rotas (login) |
+| `GET /admin` | Rotas: destinos e números (login) |
+| `GET /admin/wabas` | WABAs, números, apps inscritos — e o botão de inscrever este App |
+| `GET /admin/templates` | Templates por WABA: status, criar, excluir |
+| `GET /admin/meta` | Credenciais e Callback URL do App |
 | `GET /admin/entregas` | Últimas 200 tentativas |
+| `GET /privacidade`, `/termos`, `/exclusao-de-dados` | Páginas legais do App, públicas |
 | `GET /health` | Liveness + banco |
 | `GET /docs` | Scalar |
 
+## Console de gestão da Meta
+
+A tela faz o que antes só dava para fazer no `curl` ou no painel da Meta: consultar um WABA,
+listar seus números com nome verificado e qualidade, ver quais Apps estão inscritos nele,
+**inscrever ou desinscrever este App**, importar um número direto para a tabela de rotas, e
+listar/criar/excluir templates com o status de aprovação.
+
+Nada disso está no caminho do webhook — são chamadas de administração, feitas quando alguém
+clica. Se a Graph API estiver fora do ar, o relay continua entregando.
+
+Duas consequências de desenho:
+
+- O console precisa do **token do System User**, guardado cifrado no banco. O relay não envia
+  mensagem e nunca o usa; ele é exclusivo desta camada.
+- A Graph API não deixa listar os WABAs de um business sem `business_management`, que o token
+  não tem. Por isso cada WABA é cadastrado pelo id, e o console valida contra a Meta antes de
+  gravar — id errado não vira linha órfã.
+
+## Páginas legais
+
+`/privacidade`, `/termos` e `/exclusao-de-dados` são públicas e servem as URLs exigidas pelo App
+da Meta. Ficam aqui, e não no PWA de um município, porque o App é da Automais e serve N
+prefeituras — apontar para o domínio de um cliente estaria errado.
+
+Razão social, CNPJ e e-mail de contato vêm de `Legal__*`, nunca de código.
+
 ## Configuração
 
-Tudo por env var; nada de segredo em `appsettings.json`.
+Tudo por env var; nada de segredo em `appsettings.json`. As credenciais da Meta também podem ser
+salvas pela tela (cifradas no banco), e o que estiver no banco tem precedência sobre o env — que
+segue valendo como bootstrap.
 
 | Env | Para quê |
 |---|---|
@@ -83,6 +115,8 @@ Tudo por env var; nada de segredo em `appsettings.json`.
 | `Admin__Email` / `Admin__SenhaInicial` | Semeia o **primeiro** operador, e só se a tabela estiver vazia |
 | `Relay__TimeoutSegundos` | Teto por entrega (padrão 10) |
 | `Relay__RetencaoLogDias` | Retenção do `entrega_log` (padrão 30) |
+| `Relay__UrlWebhookPublica` | Preenche a Callback URL na tela da Meta (o painel roda noutro host) |
+| `Legal__*` | Nome fantasia, razão social, CNPJ e e-mail das páginas públicas |
 
 ## Comandos
 

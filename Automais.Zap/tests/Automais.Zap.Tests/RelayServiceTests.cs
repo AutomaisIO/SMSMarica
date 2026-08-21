@@ -10,7 +10,6 @@ using Automais.Zap.Tests.Infraestrutura;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
 namespace Automais.Zap.Tests;
 
@@ -39,9 +38,22 @@ public sealed class RelayServiceTests(PostgresZapFixture fixture)
             db,
             new Roteador(db),
             entregador,
-            Options.Create(new MetaOptions { AppSecret = appSecret, VerifyToken = "vt" }),
+            new ConfiguracaoMetaFalsa(appSecret),
             TimeProvider.System,
             NullLogger<RelayService>.Instance);
+
+    /// <summary>Credenciais fixas: o teste e do roteamento, nao da configuracao.</summary>
+    private sealed class ConfiguracaoMetaFalsa(string? appSecret) : IConfiguracaoMetaService
+    {
+        public Task<CredenciaisMeta> ObterAsync(CancellationToken ct = default)
+            => Task.FromResult(new CredenciaisMeta("app", appSecret, "vt", null, "https://graph.facebook.com/v21.0/"));
+
+        public Task<Automais.Zap.Data.Entities.ConfiguracaoMeta> ObterBrutaAsync(CancellationToken ct = default)
+            => Task.FromResult(new Automais.Zap.Data.Entities.ConfiguracaoMeta());
+
+        public Task SalvarAsync(AtualizarConfiguracaoMeta dados, CancellationToken ct = default)
+            => Task.CompletedTask;
+    }
 
     private static async Task<(Destino Destino, string PhoneNumberId)> SemearAsync(
         ZapDbContext db, string url, bool destinoAtivo = true, bool numeroAtivo = true, string? waba = null)

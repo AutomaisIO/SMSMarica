@@ -1,0 +1,98 @@
+@page "/termos"
+@using Microsoft.Extensions.Options
+@using Automais.Zap.Core.Legal
+@inject IOptions<LegalOptions> Legal
+@{
+    ViewData["Title"] = "Termos de Serviço";
+    Layout = "_LayoutPublico";
+    var legal = Legal.Value;
+}
+
+<h1>Termos de Serviço</h1>
+<p class="sub">Plataforma @legal.Plataforma, operada por @legal.NomeFantasia.</p>
+
+<h2>O que é a @legal.Plataforma</h2>
+<p>
+    A @legal.Plataforma é uma plataforma que permite a órgãos públicos de saúde se comunicarem com
+    cidadãos pelo WhatsApp — confirmação de agendamento, aviso de exame liberado, resultado
+    disponível, atendimento por atendente humano e afins.
+</p>
+<p>
+    A plataforma é contratada pelo órgão público. O cidadão não contrata nada, não paga nada e não
+    precisa criar conta para receber ou responder mensagens.
+</p>
+
+<h2>Quem usa, e como</h2>
+<ul>
+    <li>
+        <strong>Órgão público de saúde contratante:</strong> usa a plataforma para se comunicar com
+        os cidadãos que atende, dentro da finalidade pública do serviço, e responde pelo conteúdo
+        que envia e pela base de contatos que utiliza.
+    </li>
+    <li>
+        <strong>Cidadão:</strong> recebe e responde mensagens do órgão de saúde. Pode pedir a
+        qualquer momento para deixar de receber, respondendo à conversa ou procurando o órgão.
+    </li>
+</ul>
+
+<h2>Uso aceitável</h2>
+<p>É vedado usar a plataforma para:</p>
+<ul>
+    <li>enviar mensagem não solicitada sem relação com o serviço público de saúde;</li>
+    <li>publicidade comercial, propaganda eleitoral ou promoção pessoal;</li>
+    <li>qualquer finalidade ilícita, discriminatória ou que viole direitos de terceiros;</li>
+    <li>burlar as políticas do WhatsApp Business ou as regras da Meta Platforms.</li>
+</ul>
+<p>
+    O descumprimento pode levar à suspensão do canal do contratante, sem prejuízo das medidas
+    contratuais e legais cabíveis.
+</p>
+
+<h2>Dependência do WhatsApp</h2>
+<p>
+    A plataforma depende da infraestrutura do WhatsApp Business Platform, operada pela Meta
+    Platforms. Indisponibilidade, mudança de política, limitação de envio ou restrição de conta
+    impostas pela Meta afetam o serviço e estão fora do nosso controle. As políticas da Meta
+    aplicam-se em conjunto com estes termos.
+</p>
+
+<h2>Disponibilidade</h2>
+<p>
+    Trabalhamos para manter o serviço disponível de forma contínua, mas ele pode ser interrompido
+    por manutenção, falha de terceiros ou eventos fora do nosso controle. Níveis de serviço, quando
+    existirem, são os definidos no contrato com o órgão público — não nesta página.
+</p>
+
+<h2>A plataforma não é canal de emergência</h2>
+<div class="destaque">
+    <p style="margin:0">
+        <strong>Não use o WhatsApp para emergências médicas.</strong> Mensagens não são lidas em
+        tempo real e não substituem atendimento. Em emergência, procure o pronto-socorro mais
+        próximo ou ligue para o SAMU (192).
+    </p>
+</div>
+
+<h2>Dados pessoais</h2>
+<p>
+    O tratamento de dados pessoais está descrito na <a href="/privacidade">Política de
+    Privacidade</a>. Em resumo: o órgão público de saúde é o controlador, a @legal.NomeFantasia é a
+    operadora, e a camada de roteamento não armazena o conteúdo das mensagens.
+</p>
+
+<h2>Propriedade intelectual</h2>
+<p>
+    O software, a marca e a documentação da plataforma pertencem à @legal.NomeFantasia. Os dados
+    de saúde e os conteúdos produzidos no atendimento pertencem ao órgão público contratante e aos
+    respectivos titulares.
+</p>
+
+<h2>Alterações</h2>
+<p>
+    Estes termos podem ser atualizados; a versão vigente é sempre a publicada nesta página, com a
+    data de atualização no rodapé.
+</p>
+
+<h2>Contato</h2>
+<p>
+    <a href="mailto:@legal.EmailContato">@legal.EmailContato</a>
+</p>

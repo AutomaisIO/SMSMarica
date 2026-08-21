@@ -1,0 +1,137 @@
+@page "/admin/templates"
+@model Automais.Zap.Api.Pages.Admin.TemplatesModel
+@{
+    ViewData["Title"] = "Templates";
+}
+
+<h1>Templates</h1>
+<p class="sub">
+    Modelos são aprovados <strong>por WABA</strong> — um App compartilhado não dá reuso de
+    aprovação, cada município aprova os seus.
+</p>
+
+@if (!string.IsNullOrEmpty(Model.Erro))
+{
+    <div class="aviso">@Model.Erro</div>
+}
+@if (!string.IsNullOrEmpty(Model.Recado))
+{
+    <div class="aviso ok">@Model.Recado</div>
+}
+
+@if (Model.Wabas.Count == 0)
+{
+    <div class="cartao">
+        <p class="sub" style="margin:0">Cadastre um WABA em <a href="/admin/wabas">WABAs</a> primeiro.</p>
+    </div>
+}
+else
+{
+    <div class="cartao" style="margin-bottom:18px">
+        @foreach (var w in Model.Wabas)
+        {
+            var atual = Model.Aberto?.Id == w.Id;
+            <a href="/admin/templates?id=@w.Id"
+               class="selo @(atual ? "on" : "")"
+               style="margin-right:8px;text-decoration:none;display:inline-block">@(w.Nome ?? w.WabaId)</a>
+        }
+    </div>
+}
+
+@if (Model.Aberto is not null)
+{
+    @if (Model.ErroGraph is not null)
+    {
+        <div class="aviso">Consultando a Meta: @Model.ErroGraph</div>
+    }
+
+    <div class="cartao">
+        <table>
+            <thead><tr><th>Nome</th><th>Idioma</th><th>Categoria</th><th>Status</th><th>Params</th><th>Corpo</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var t in Model.Templates)
+            {
+                <tr>
+                    <td><code>@t.Nome</code></td>
+                    <td>@t.Idioma</td>
+                    <td>@t.Categoria</td>
+                    <td>
+                        <span class="selo @(t.Status == "APPROVED" ? "on" : (t.Status == "REJECTED" ? "off" : ""))">@t.Status</span>
+                        @if (!string.IsNullOrEmpty(t.MotivoRejeicao) && t.MotivoRejeicao != "NONE")
+                        {
+                            <div class="sub" style="margin:2px 0 0">@t.MotivoRejeicao</div>
+                        }
+                    </td>
+                    <td class="num">@t.Parametros</td>
+                    <td class="sub" style="max-width:340px">@(t.Corpo ?? "—")</td>
+                    <td style="text-align:right">
+                        <form method="post" asp-page-handler="Excluir" style="display:inline"
+                              onsubmit="return confirm('Excluir o template @t.Nome? Quem usa esse nome para de conseguir enviar.');">
+                            <input type="hidden" name="id" value="@Model.Aberto.Id" />
+                            <input type="hidden" name="nome" value="@t.Nome" />
+                            <button class="acao discreto" type="submit">Excluir</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (Model.Templates.Count == 0 && Model.ErroGraph is null)
+            {
+                <tr><td colspan="7" class="sub">Nenhum template neste WABA.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+
+    <h2>Novo template</h2>
+    <div class="cartao">
+        <form method="post" asp-page-handler="Criar">
+            <input type="hidden" name="id" value="@Model.Aberto.Id" />
+            <div class="linha" style="margin-top:0">
+                <div>
+                    <label>Nome</label>
+                    <input type="text" name="nome" required placeholder="confirmacao_agendamento" />
+                </div>
+                <div>
+                    <label>Idioma</label>
+                    <input type="text" name="idioma" value="pt_BR" required />
+                </div>
+                <div>
+                    <label>Categoria</label>
+                    <select name="categoria" required style="background:#0d0f13;border:1px solid var(--borda);color:var(--texto);border-radius:7px;padding:8px 10px;font:inherit">
+                        @foreach (var c in Automais.Zap.Api.Pages.Admin.TemplatesModel.Categorias)
+                        {
+                            <option value="@c">@c</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="linha">
+                <div style="flex:1;min-width:300px">
+                    <label>Cabeçalho (opcional, texto)</label>
+                    <input type="text" name="cabecalho" style="width:100%" />
+                </div>
+                <div style="flex:1;min-width:300px">
+                    <label>Rodapé (opcional)</label>
+                    <input type="text" name="rodape" style="width:100%" />
+                </div>
+            </div>
+            <div style="margin-top:10px">
+                <label>Corpo — use {{1}}, {{2}}… para as variáveis</label>
+                <textarea name="corpo" required rows="4"
+                          style="width:100%;background:#0d0f13;border:1px solid var(--borda);color:var(--texto);border-radius:7px;padding:10px;font:inherit"></textarea>
+            </div>
+            <div style="margin-top:10px">
+                <label>Exemplos das variáveis, separados por | (a Meta exige um para cada {{n}})</label>
+                <input type="text" name="exemplos" style="width:100%" placeholder="Maria | 12/09 às 14h" />
+            </div>
+            <div style="margin-top:14px">
+                <button class="acao" type="submit">Enviar para aprovação</button>
+            </div>
+        </form>
+        <p class="sub" style="margin:12px 0 0">
+            O nome vai em minúsculas com underscore — a Meta não aceita outra coisa e o console
+            corrige antes de enviar. Faltando exemplo para alguma variável, entra um placeholder,
+            porque a submissão sem exemplo volta com erro pouco explicativo.
+        </p>
+    </div>
+}

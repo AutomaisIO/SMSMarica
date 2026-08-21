@@ -1,0 +1,56 @@
+@using Microsoft.Extensions.Options
+@using Automais.Zap.Core.Legal
+@inject IOptions<LegalOptions> Legal
+@{
+    var legal = Legal.Value;
+}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] — @legal.Plataforma</title>
+    <style>
+        :root { --tinta:#1a1d23; --suave:#5b6472; --linha:#e3e6ea; --fundo:#ffffff; --marca:#128c4a; }
+        @@media (prefers-color-scheme: dark) {
+            :root { --tinta:#e6e8ec; --suave:#9aa3b2; --linha:#272b34; --fundo:#0f1115; }
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; background: var(--fundo); color: var(--tinta);
+            font: 16px/1.65 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        }
+        .folha { max-width: 720px; margin: 0 auto; padding: 48px 24px 72px; }
+        .marca { font-weight: 700; letter-spacing: -0.02em; margin-bottom: 40px; }
+        .marca span { color: var(--marca); }
+        h1 { font-size: 28px; line-height: 1.25; margin: 0 0 8px; letter-spacing: -0.02em; }
+        h2 { font-size: 18px; margin: 34px 0 10px; letter-spacing: -0.01em; }
+        p, li { color: var(--tinta); }
+        .sub { color: var(--suave); font-size: 14px; }
+        ul { padding-left: 20px; }
+        li { margin-bottom: 6px; }
+        a { color: var(--marca); }
+        code { background: rgba(127,127,127,.12); padding: 1px 5px; border-radius: 4px; font-size: 14px; }
+        .destaque { border-left: 3px solid var(--marca); padding: 12px 16px; background: rgba(18,140,74,.06); border-radius: 0 8px 8px 0; margin: 20px 0; }
+        footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--linha); }
+        nav a { margin-right: 16px; font-size: 14px; }
+    </style>
+</head>
+<body>
+<div class="folha">
+    <div class="marca">@legal.NomeFantasia<span>+</span></div>
+    @RenderBody()
+    <footer>
+        <nav>
+            <a href="/privacidade">Privacidade</a>
+            <a href="/termos">Termos de Serviço</a>
+            <a href="/exclusao-de-dados">Exclusão de dados</a>
+        </nav>
+        <p class="sub" style="margin:12px 0 0">
+            @legal.NomeFantasia@(string.IsNullOrWhiteSpace(legal.RazaoSocial) ? "" : " — " + legal.RazaoSocial)@(string.IsNullOrWhiteSpace(legal.Cnpj) ? "" : " — CNPJ " + legal.Cnpj)<br />
+            Última atualização: @legal.AtualizadoEm.
+        </p>
+    </footer>
+</div>
+</body>
+</html>

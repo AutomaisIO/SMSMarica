@@ -53,6 +53,10 @@ Firewall `ufw` ativo: só **22**, **80** e **443**. Postgres nunca sai do loopba
 | `Meta__AppSecret` | Confere o HMAC da Meta. **Vazio → webhook responde 503** (falha fechado, de propósito) |
 | `Meta__VerifyToken` | Handshake do webhook |
 | `DataProtection__CaminhoChaves` | `/var/lib/automais-zap/chaves` |
+| `Relay__UrlWebhookPublica` | `https://api.smsmais.automais.com/meta/webhook` — preenche a Callback URL na tela |
+| `Legal__*` | Dados institucionais das páginas públicas de privacidade/termos/exclusão |
+
+O **token do System User** não fica no env: é salvo cifrado no banco, pela tela `/admin/meta`.
 
 `Admin__Email`/`Admin__SenhaInicial` **não ficam no env**: entram só no boot em que o primeiro
 operador é semeado, e saem em seguida.

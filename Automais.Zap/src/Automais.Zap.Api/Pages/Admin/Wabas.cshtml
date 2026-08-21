@@ -1,0 +1,160 @@
+@page "/admin/wabas"
+@model Automais.Zap.Api.Pages.Admin.WabasModel
+@{
+    ViewData["Title"] = "WABAs";
+}
+
+<h1>WABAs e números</h1>
+<p class="sub">
+    A Graph API não deixa listar os WABAs de um business sem a permissão <code>business_management</code>,
+    que o token não tem — então cadastre cada WABA pelo id e o console consulta o resto.
+</p>
+
+@if (!string.IsNullOrEmpty(Model.Erro))
+{
+    <div class="aviso">@Model.Erro</div>
+}
+@if (!string.IsNullOrEmpty(Model.Recado))
+{
+    <div class="aviso ok">@Model.Recado</div>
+}
+@if (!Model.PodeConsultarMeta)
+{
+    <div class="aviso">
+        Sem App ID ou token do System User. Configure em <a href="/admin/meta">Meta</a> para o console
+        conseguir consultar.
+    </div>
+}
+
+<div class="cartao">
+    <table>
+        <thead><tr><th>WABA</th><th>ID</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var w in Model.Wabas)
+        {
+            <tr>
+                <td><a href="/admin/wabas?id=@w.Id">@(w.Nome ?? "(sem nome)")</a></td>
+                <td class="num"><code>@w.WabaId</code></td>
+                <td style="text-align:right">
+                    <form method="post" asp-page-handler="Remover" style="display:inline">
+                        <input type="hidden" name="id" value="@w.Id" />
+                        <button class="acao discreto" type="submit">Remover</button>
+                    </form>
+                </td>
+            </tr>
+        }
+        @if (Model.Wabas.Count == 0)
+        {
+            <tr><td colspan="3" class="sub">Nenhum WABA cadastrado.</td></tr>
+        }
+        </tbody>
+    </table>
+
+    <form method="post" asp-page-handler="Adicionar" class="linha">
+        <div>
+            <label>ID do WABA</label>
+            <input type="text" name="wabaId" required placeholder="2099272540984687" />
+        </div>
+        <button class="acao" type="submit">Cadastrar</button>
+    </form>
+</div>
+
+@if (Model.Aberto is not null)
+{
+    <h2>@(Model.Aberto.Nome ?? Model.Aberto.WabaId)</h2>
+
+    @if (Model.ErroGraph is not null)
+    {
+        <div class="aviso">Consultando a Meta: @Model.ErroGraph</div>
+    }
+
+    <div class="cartao" style="margin-bottom:18px">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <strong>Apps inscritos</strong>
+            @if (Model.EsteAppInscrito)
+            {
+                <span class="selo on">este App está inscrito</span>
+                <form method="post" asp-page-handler="Desinscrever" style="margin-left:auto"
+                      onsubmit="return confirm('Desinscrever o App deste WABA? Ele PARA de entregar eventos aqui na hora.');">
+                    <input type="hidden" name="id" value="@Model.Aberto.Id" />
+                    <button class="acao discreto" type="submit">Desinscrever este App</button>
+                </form>
+            }
+            else
+            {
+                <span class="selo off">este App NÃO está inscrito</span>
+                <form method="post" asp-page-handler="Inscrever" style="margin-left:auto"
+                      onsubmit="return confirm('Inscrever o App neste WABA? A partir daí a Meta entrega os eventos dele no nosso webhook.');">
+                    <input type="hidden" name="id" value="@Model.Aberto.Id" />
+                    <button class="acao" type="submit">Inscrever este App</button>
+                </form>
+            }
+        </div>
+
+        <table style="margin-top:12px">
+            <thead><tr><th>App</th><th>ID</th></tr></thead>
+            <tbody>
+            @foreach (var a in Model.AppsInscritos)
+            {
+                <tr>
+                    <td>@(a.Nome ?? "(sem nome)") @(a.Id == Model.AppIdProprio ? "— este relay" : "")</td>
+                    <td class="num"><code>@a.Id</code></td>
+                </tr>
+            }
+            @if (Model.AppsInscritos.Count == 0)
+            {
+                <tr><td colspan="2" class="sub">Nenhum app inscrito — este WABA não entrega evento a lugar nenhum.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="cartao">
+        <strong>Números</strong>
+        <table style="margin-top:12px">
+            <thead>
+            <tr><th>Número</th><th>Nome verificado</th><th>phone_number_id</th><th>Qualidade</th><th>Verificação</th><th>Rota</th></tr>
+            </thead>
+            <tbody>
+            @foreach (var n in Model.Numeros)
+            {
+                var roteado = Model.NumerosJaRoteados.Contains(n.Id);
+                <tr>
+                    <td>@(n.DisplayPhoneNumber ?? "—")</td>
+                    <td>@(n.VerifiedName ?? "—")</td>
+                    <td class="num"><code>@n.Id</code></td>
+                    <td><span class="selo @(n.QualityRating == "GREEN" ? "on" : "off")">@(n.QualityRating ?? "—")</span></td>
+                    <td>@(n.CodeVerificationStatus ?? "—")</td>
+                    <td>
+                        @if (roteado)
+                        {
+                            <span class="selo on">roteado</span>
+                        }
+                        else
+                        {
+                            <form method="post" asp-page-handler="ImportarNumero" style="display:flex;gap:6px;align-items:center">
+                                <input type="hidden" name="id" value="@Model.Aberto.Id" />
+                                <input type="hidden" name="phoneNumberId" value="@n.Id" />
+                                <input type="hidden" name="displayPhoneNumber" value="@n.DisplayPhoneNumber" />
+                                <input type="hidden" name="rotulo" value="@n.VerifiedName" />
+                                <select name="destinoId" required style="background:#0d0f13;border:1px solid var(--borda);color:var(--texto);border-radius:7px;padding:7px">
+                                    <option value="">destino…</option>
+                                    @foreach (var d in Model.Destinos)
+                                    {
+                                        <option value="@d.Id">@d.Nome</option>
+                                    }
+                                </select>
+                                <button class="acao" type="submit">Rotear</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            @if (Model.Numeros.Count == 0)
+            {
+                <tr><td colspan="6" class="sub">Nenhum número neste WABA.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

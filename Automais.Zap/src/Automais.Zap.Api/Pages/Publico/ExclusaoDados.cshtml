@@ -1,0 +1,70 @@
+@page "/exclusao-de-dados"
+@using Microsoft.Extensions.Options
+@using Automais.Zap.Core.Legal
+@inject IOptions<LegalOptions> Legal
+@{
+    ViewData["Title"] = "Exclusão de dados";
+    Layout = "_LayoutPublico";
+    var legal = Legal.Value;
+}
+
+<h1>Como excluir seus dados</h1>
+<p class="sub">Plataforma @legal.Plataforma, operada por @legal.NomeFantasia.</p>
+
+<p>
+    Você pode pedir a exclusão dos seus dados a qualquer momento, sem custo e sem precisar
+    justificar.
+</p>
+
+<h2>Pelo WhatsApp, na própria conversa</h2>
+<p>
+    Responda à conversa com o órgão de saúde pedindo a exclusão dos seus dados. O pedido é
+    encaminhado à equipe responsável.
+</p>
+
+<h2>Por e-mail</h2>
+<p>
+    Escreva para <a href="mailto:@legal.EmailContato">@legal.EmailContato</a> com o assunto
+    <strong>"Exclusão de dados"</strong>, informando:
+</p>
+<ul>
+    <li>o número de telefone usado na conversa;</li>
+    <li>o município ou o órgão de saúde com quem você conversou;</li>
+    <li>se quer excluir tudo ou apenas parar de receber mensagens.</li>
+</ul>
+<p>
+    Respondemos em até <strong>15 dias</strong>, prazo do art. 19 da Lei Geral de Proteção de
+    Dados.
+</p>
+
+<h2>O que é apagado, e o que não pode ser</h2>
+<div class="destaque">
+    <p style="margin:0 0 10px">
+        <strong>A camada de roteamento da @legal.Plataforma não guarda o conteúdo das suas
+        mensagens.</strong> O que ela mantém é um registro operacional de entrega, sem texto de
+        mensagem e sem telefone de cidadão, apagado automaticamente após 30 dias.
+    </p>
+    <p style="margin:0">
+        O histórico da conversa fica no sistema do <strong>órgão público de saúde</strong>, e é a
+        ele que o pedido de exclusão se dirige — nós encaminhamos e acompanhamos.
+    </p>
+</div>
+
+<p>
+    Vale saber de antemão: parte do registro de saúde <strong>não pode ser apagada</strong> mesmo a
+    pedido. Prontuário e registros de atendimento têm guarda obrigatória por lei e por norma do
+    Conselho Federal de Medicina, e a LGPD (art. 16, I) preserva o tratamento necessário ao
+    cumprimento de obrigação legal pelo controlador. Nesses casos, o órgão de saúde informa o que
+    foi excluído e o que precisa ser mantido, e por quê.
+</p>
+<p>
+    O que é sempre possível: <strong>parar de receber mensagens</strong>. Basta pedir, na conversa
+    ou por e-mail.
+</p>
+
+<h2>Excluir também na Meta</h2>
+<p>
+    As mensagens trafegam pelo WhatsApp, da Meta Platforms. Para apagar dados que estejam com a
+    Meta, o pedido tem de ser feito a ela, pelos canais do próprio WhatsApp — não temos acesso
+    para excluí-los em seu nome.
+</p>

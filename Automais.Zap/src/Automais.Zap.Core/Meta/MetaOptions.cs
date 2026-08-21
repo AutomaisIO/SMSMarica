@@ -9,6 +9,9 @@ public sealed class MetaOptions
 {
     public const string Secao = "Meta";
 
+    /// <summary>ID do App. Nao e segredo, mas anda junto.</summary>
+    public string? AppId { get; set; }
+
     /// <summary>App Secret. Usado para conferir a assinatura que a Meta manda.</summary>
     public string? AppSecret { get; set; }
 

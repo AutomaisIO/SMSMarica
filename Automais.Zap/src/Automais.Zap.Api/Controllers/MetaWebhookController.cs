@@ -2,7 +2,6 @@ using Automais.Zap.Core.Meta;
 using Automais.Zap.Core.Relay;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.Extensions.Options;
 
 namespace Automais.Zap.Api.Controllers;
 
@@ -15,17 +14,18 @@ namespace Automais.Zap.Api.Controllers;
 [EnableRateLimiting("webhook")]
 public sealed class MetaWebhookController(
     IRelayService relay,
-    IOptions<MetaOptions> metaOptions,
+    IConfiguracaoMetaService configuracao,
     ILogger<MetaWebhookController> logger) : ControllerBase
 {
     /// <summary>Handshake de verificação do webhook (a Meta chama uma vez, ao configurar).</summary>
     [HttpGet("webhook")]
-    public IActionResult Verificar(
+    public async Task<IActionResult> Verificar(
         [FromQuery(Name = "hub.mode")] string? mode,
         [FromQuery(Name = "hub.verify_token")] string? verifyToken,
-        [FromQuery(Name = "hub.challenge")] string? challenge)
+        [FromQuery(Name = "hub.challenge")] string? challenge,
+        CancellationToken cancellationToken)
     {
-        var esperado = metaOptions.Value.VerifyToken;
+        var esperado = (await configuracao.ObterAsync(cancellationToken)).VerifyToken;
         if (string.IsNullOrWhiteSpace(esperado))
         {
             logger.LogError("Meta:VerifyToken não configurado — handshake recusado.");

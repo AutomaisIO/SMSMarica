@@ -16,6 +16,8 @@ public sealed class ZapDbContext(DbContextOptions<ZapDbContext> options) : DbCon
     public DbSet<Numero> Numeros => Set<Numero>();
     public DbSet<UsuarioAdmin> UsuariosAdmin => Set<UsuarioAdmin>();
     public DbSet<EntregaLog> EntregasLog => Set<EntregaLog>();
+    public DbSet<ConfiguracaoMeta> ConfiguracoesMeta => Set<ConfiguracaoMeta>();
+    public DbSet<Waba> Wabas => Set<Waba>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

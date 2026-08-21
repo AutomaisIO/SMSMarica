@@ -1,0 +1,99 @@
+@page "/admin/meta"
+@model Automais.Zap.Api.Pages.Admin.MetaModel
+@{
+    ViewData["Title"] = "Meta";
+}
+
+<h1>Meta</h1>
+<p class="sub">Credenciais do App e para onde a Meta entrega os eventos.</p>
+
+@if (!string.IsNullOrEmpty(Model.Erro))
+{
+    <div class="aviso">@Model.Erro</div>
+}
+@if (!string.IsNullOrEmpty(Model.Recado))
+{
+    <div class="aviso ok">@Model.Recado</div>
+}
+
+<h2>Webhook do App</h2>
+<div class="cartao">
+    @if (Model.ErroGraph is not null)
+    {
+        <div class="aviso">Não consegui consultar a Meta: @Model.ErroGraph</div>
+    }
+    else if (Model.Assinaturas.Count == 0)
+    {
+        <p class="sub" style="margin:0 0 12px">
+            Nenhum webhook configurado neste App. Enquanto não houver, a Meta não entrega evento
+            nenhum — mesmo com o WABA inscrito.
+        </p>
+    }
+    else
+    {
+        <table>
+            <thead><tr><th>Objeto</th><th>Callback URL</th><th>Campos</th><th>Ativo</th></tr></thead>
+            <tbody>
+            @foreach (var a in Model.Assinaturas)
+            {
+                <tr>
+                    <td>@a.Objeto</td>
+                    <td><code>@(a.CallbackUrl ?? "—")</code></td>
+                    <td>@string.Join(", ", a.Campos)</td>
+                    <td><span class="selo @(a.Ativo ? "on" : "off")">@(a.Ativo ? "sim" : "não")</span></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+
+    <form method="post" asp-page-handler="ConfigurarWebhook" class="linha">
+        <div style="flex:1;min-width:340px">
+            <label>Callback URL (esta instância do relay)</label>
+            <input type="url" name="urlWebhook" value="@Model.UrlWebhookSugerida" required style="width:100%" />
+        </div>
+        <button class="acao" type="submit">Apontar o App para cá</button>
+    </form>
+    <p class="sub" style="margin:10px 0 0">
+        Campos assinados: <code>@string.Join("</code>, <code>", Automais.Zap.Api.Pages.Admin.MetaModel.CamposWebhook)</code>.
+        A Meta chama a URL com o verify token antes de aceitar — se o relay estiver fora do ar, ela recusa.
+    </p>
+</div>
+
+<h2>Credenciais</h2>
+<div class="cartao">
+    <p class="sub" style="margin:0 0 4px">
+        Segredos nunca são exibidos de volta. Deixe em branco para manter o valor atual; digite
+        <code>-</code> para apagar.
+    </p>
+    <form method="post" asp-page-handler="Salvar" class="linha">
+        <div>
+            <label>App ID</label>
+            <input type="text" name="appId" value="@Model.AppId" />
+        </div>
+        <div>
+            <label>App Secret @(Model.TemAppSecret ? "(configurado)" : "(FALTANDO)")</label>
+            <input type="password" name="appSecret" autocomplete="new-password" />
+        </div>
+        <div>
+            <label>Verify token @(Model.TemVerifyToken ? "(configurado)" : "(FALTANDO)")</label>
+            <input type="password" name="verifyToken" autocomplete="new-password" />
+        </div>
+        <div>
+            <label>Token do System User @(Model.TemTokenSistema ? "(configurado)" : "(FALTANDO)")</label>
+            <input type="password" name="tokenSistema" autocomplete="new-password" />
+        </div>
+        <div>
+            <label>Graph API</label>
+            <input type="url" name="baseUrl" value="@Model.BaseUrl" />
+        </div>
+        <button class="acao" type="submit">Salvar</button>
+    </form>
+
+    <p class="sub" style="margin:14px 0 0">
+        <strong>App Secret</strong> é o que valida a assinatura de cada evento recebido — sem ele o
+        webhook responde 503, de propósito.
+        <strong>Token do System User</strong> serve só para a gestão desta tela (ver WABAs, inscrever
+        o App, templates); o relay não envia mensagem e nunca o usa.
+    </p>
+</div>
