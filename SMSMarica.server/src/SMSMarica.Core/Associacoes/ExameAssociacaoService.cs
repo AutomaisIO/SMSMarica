@@ -303,6 +303,7 @@ public sealed class ExameAssociacaoService(
                 Modalidade = (ModalidadeDicom?)e.TipoExame!.ModalidadeDicom,
                 Executante = e.Solicitacao!.UnidadeExecutante!.Nome,
                 Solicitante = e.Solicitacao!.UnidadeSolicitante!.Nome,
+                e.Solicitacao!.CodigoSolicitacao,
             })
             .ToListAsync(cancellationToken);
 
@@ -324,10 +325,12 @@ public sealed class ExameAssociacaoService(
                     Modalidade = (ModalidadeDicom?)e.TipoExame!.ModalidadeDicom,
                     Executante = e.Solicitacao!.UnidadeExecutante!.Nome,
                     Solicitante = e.Solicitacao!.UnidadeSolicitante!.Nome,
+                    e.Solicitacao!.CodigoSolicitacao,
                 })
                 .ToListAsync(cancellationToken))
                 .ToDictionary(x => x.Id, x => new ContextoExame(
-                    x.AccessionNumber, x.Prioridade, x.TipoNome, x.Modalidade, x.Executante, x.Solicitante));
+                    x.AccessionNumber, x.Prioridade, x.TipoNome, x.Modalidade,
+                    x.Executante, x.Solicitante, x.CodigoSolicitacao));
 
         // Nomes de paciente em lote (1 chamada ao hub por id distinto).
         var pacienteIds = explicitas.Select(a => a.PacienteId).Concat(implicitas.Select(i => i.PacienteId));
@@ -353,7 +356,8 @@ public sealed class ExameAssociacaoService(
                 dados?.Accession ?? string.Empty,
                 a.PacienteId, Nome(a.PacienteId), Explicita: true, a.Origem,
                 dados?.Prioridade ?? PrioridadeSolicitacao.Eletiva, comAnamnese.Contains(a.ExameImagemId),
-                dados?.TipoExameNome, dados?.Modalidade, dados?.UnidadeExecutante, dados?.UnidadeSolicitante));
+                dados?.TipoExameNome, dados?.Modalidade, dados?.UnidadeExecutante, dados?.UnidadeSolicitante,
+                dados?.CodigoSolicitacao));
         }
         foreach (var i in implicitas)
         {
@@ -361,7 +365,7 @@ public sealed class ExameAssociacaoService(
                 i.StudyInstanceUID, i.Id, i.AccessionNumber,
                 i.PacienteId, Nome(i.PacienteId), Explicita: false, Origem: null, i.Prioridade,
                 comAnamnese.Contains(i.Id),
-                i.TipoNome, i.Modalidade, i.Executante, i.Solicitante));
+                i.TipoNome, i.Modalidade, i.Executante, i.Solicitante, i.CodigoSolicitacao));
         }
         return resultado;
     }
@@ -411,7 +415,8 @@ public sealed class ExameAssociacaoService(
         string? TipoExameNome,
         ModalidadeDicom? Modalidade,
         string? UnidadeExecutante,
-        string? UnidadeSolicitante);
+        string? UnidadeSolicitante,
+        string? CodigoSolicitacao);
 
     /// <inheritdoc />
     public async Task<ResultadoConciliacao> ConciliarStudyAsync(
@@ -589,6 +594,7 @@ public sealed class ExameAssociacaoService(
                 Modalidade = (ModalidadeDicom?)e.TipoExame!.ModalidadeDicom,
                 Executante = e.Solicitacao!.UnidadeExecutante!.Nome,
                 Solicitante = e.Solicitacao!.UnidadeSolicitante!.Nome,
+                e.Solicitacao!.CodigoSolicitacao,
             })
             .FirstOrDefaultAsync(ct);
         var paciente = await pacienteResolver.ResolverAsync(assoc.PacienteId, ct);
@@ -598,6 +604,6 @@ public sealed class ExameAssociacaoService(
             assoc.StudyInstanceUID, assoc.ExameImagemId, sol?.AccessionNumber ?? string.Empty,
             assoc.PacienteId, paciente?.Nome, Explicita: true, assoc.Origem,
             sol?.Prioridade ?? PrioridadeSolicitacao.Eletiva, temAnamnese,
-            sol?.TipoNome, sol?.Modalidade, sol?.Executante, sol?.Solicitante);
+            sol?.TipoNome, sol?.Modalidade, sol?.Executante, sol?.Solicitante, sol?.CodigoSolicitacao);
     }
 }

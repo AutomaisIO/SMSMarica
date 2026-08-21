@@ -32,7 +32,10 @@ public sealed record ExameAssociacaoDto(
     string? TipoExameNome = null,
     ModalidadeDicom? Modalidade = null,
     string? UnidadeExecutanteNome = null,
-    string? UnidadeSolicitanteNome = null);
+    string? UnidadeSolicitanteNome = null,
+    /// <summary>Nº da solicitação no SISREG, quando veio de lá. A listagem mostra abaixo do
+    /// nº SMS, como a tela de Solicitações — é por ele que a regulação se acha.</summary>
+    string? CodigoSolicitacao = null);
 
 /// <summary>Vínculo mínimo (solicitação + paciente) usado pelo gate de laudar.</summary>
 public sealed record VinculoExame(Guid SolicitacaoExameId, Guid PacienteId);
