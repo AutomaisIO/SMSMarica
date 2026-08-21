@@ -52,8 +52,9 @@
 
 @if (Model.Global)
 {
-    <h2>Novo tenant</h2>
-    <div class="cartao">
+    <details class="adicionar">
+        <summary>Novo tenant</summary>
+        <div class="cartao">
         <form method="post" asp-page-handler="Criar" class="linha" style="margin-top:0">
             <div>
                 <label>Nome do cliente</label>
@@ -65,5 +66,6 @@
             </div>
             <button class="acao" type="submit">Criar</button>
         </form>
-    </div>
+        </div>
+    </details>
 }

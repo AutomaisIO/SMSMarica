@@ -78,15 +78,21 @@
         </tbody>
     </table>
 
-    <form method="post" asp-page-handler="AdicionarWaba" class="linha">
-        <input type="hidden" name="id" value="@Model.Alvo.Id" />
-        <div>
-            <label>ID do WABA na Meta</label>
-            <input type="text" name="wabaId" required placeholder="1234567890123456" />
-        </div>
-        <button class="acao" type="submit">Adicionar WABA</button>
-    </form>
 </div>
+
+<details class="adicionar">
+    <summary>Adicionar WABA</summary>
+    <div class="cartao">
+        <form method="post" asp-page-handler="AdicionarWaba" class="linha" style="margin-top:0">
+            <input type="hidden" name="id" value="@Model.Alvo.Id" />
+            <div>
+                <label>ID do WABA na Meta</label>
+                <input type="text" name="wabaId" required placeholder="1234567890123456" />
+            </div>
+            <button class="acao" type="submit">Adicionar</button>
+        </form>
+    </div>
+</details>
 
 <h2>Usuários</h2>
 <div class="cartao">
@@ -118,9 +124,14 @@
         </tbody>
     </table>
 
-    @if (Model.Global)
-    {
-        <form method="post" asp-page-handler="CriarUsuario" class="linha">
+</div>
+
+@if (Model.Global)
+{
+    <details class="adicionar">
+        <summary>Adicionar usuário</summary>
+        <div class="cartao">
+        <form method="post" asp-page-handler="CriarUsuario" class="linha" style="margin-top:0">
             <input type="hidden" name="id" value="@Model.Alvo.Id" />
             <div>
                 <label>E-mail</label>
@@ -134,11 +145,12 @@
                 <label>Senha (mín. 10)</label>
                 <input type="password" name="senha" required autocomplete="new-password" />
             </div>
-            <button class="acao" type="submit">Criar usuário</button>
+            <button class="acao" type="submit">Criar</button>
         </form>
         <p class="sub" style="margin:10px 0 0">
             E-mail do domínio da casa nasce <strong>global</strong> e enxerga todos os tenants —
             o vínculo com este tenant nem chega a ser criado.
         </p>
-    }
-</div>
+        </div>
+    </details>
+}
