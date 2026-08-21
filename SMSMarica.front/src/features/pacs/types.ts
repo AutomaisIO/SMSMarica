@@ -85,8 +85,24 @@ export type FiltroBusca = {
    * a página depois de recebida). Vazio/ausente = todas.
    */
   modalidades?: ModalidadeDicom[];
+  /**
+   * Tipos de exame marcados (ids). Diferente da modalidade, este filtro NÃO existe no DICOM —
+   * quem sabe o procedimento é o pedido, do nosso lado. Por isso a lista passou a ser paginada
+   * pelo servidor. Com tipo marcado o ÓRFÃO sai por definição (não tem pedido, não tem tipo) —
+   * daí `orfaosOcultos` na resposta.
+   */
+  tipoExameIds?: string[];
   /** Offset para paginação (default 0). */
   offset?: number;
+};
+
+/** Página de estudos já recortada pelo servidor (unidade + tipo). */
+export type PaginaEstudos = {
+  estudos: Estudo[];
+  /** Órfãos descartados pelo filtro de tipo nesta varredura — a tela avisa. */
+  orfaosOcultos: number;
+  /** A varredura bateu no teto antes de completar a página. */
+  truncado: boolean;
 };
 
 /**

@@ -20,6 +20,8 @@ export type PreferenciasUi = {
    * Vira o filtro ModalitiesInStudy do QIDO. Vazio = todas.
    */
   examesModalidades?: string[];
+  /** Ids dos tipos de exame marcados na tela de Exames de imagem. Vazio = todos. */
+  examesTipos?: string[];
 };
 
 export async function obterPreferencias(): Promise<PreferenciasUi> {
@@ -31,6 +33,7 @@ export async function obterPreferencias(): Promise<PreferenciasUi> {
     verComoSolicitante: data?.verComoSolicitante ?? undefined,
     largurasTabela: data?.largurasTabela ?? undefined,
     examesModalidades: data?.examesModalidades ?? undefined,
+    examesTipos: data?.examesTipos ?? undefined,
   };
 }
 

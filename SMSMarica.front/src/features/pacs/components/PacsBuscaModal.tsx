@@ -105,7 +105,7 @@ export function PacsBuscaModal({ aberto, aoFechar, aoSelecionar }: Props) {
 
   // Ordena do mais novo para o mais velho como rede de segurança — o backend
   // já pede orderby=-StudyDate,-StudyTime, mas garantimos a ordem aqui também.
-  const estudos = [...(busca.data ?? [])].sort((a, b) => {
+  const estudos = [...(busca.data?.estudos ?? [])].sort((a, b) => {
     const chaveA = `${a.studyDate}${a.studyTime}`;
     const chaveB = `${b.studyDate}${b.studyTime}`;
     return chaveB.localeCompare(chaveA);

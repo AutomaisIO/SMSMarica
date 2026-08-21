@@ -25,6 +25,7 @@ import {
 } from '@/features/pacs/api/queries';
 import { ModalAssociarExame } from '@/features/pacs/components/ModalAssociarExame';
 import { FiltroModalidades } from '@/features/pacs/components/FiltroModalidades';
+import { FiltroTiposExame } from '@/features/pacs/components/FiltroTiposExame';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { formatarHoraDicom } from '@/features/pacs/lib/dicomJson';
 import { abrirJanelaSolta } from '@/features/pacs/lib/janela';
@@ -93,7 +94,9 @@ export function PacsListagemPage() {
   // Recorte de modalidade: preferência do USUÁRIO (salva no servidor), não do navegador — a
   // médica que lauda MG e OT abre a tela já filtrada em qualquer máquina.
   const modalidades = useModalidadesExames((s) => s.modalidades);
-  const definirModalidades = useModalidadesExames((s) => s.definir);
+  const definirModalidades = useModalidadesExames((s) => s.definirModalidades);
+  const tipos = useModalidadesExames((s) => s.tipos);
+  const definirTipos = useModalidadesExames((s) => s.definirTipos);
 
   const [pagina, setPagina] = useState(1);
   const exclusao = useExcluirEstudo();
@@ -109,7 +112,7 @@ export function PacsListagemPage() {
   // "Buscar". O QIDO-RS não devolve total, então a paginação é por offset com "próxima"
   // liberada quando a página vem cheia.
   const filtroDebounced = useDebounce(
-    useMemo(() => ({ ...filtro, modalidades }), [filtro, modalidades]),
+    useMemo(() => ({ ...filtro, modalidades, tipoExameIds: tipos }), [filtro, modalidades, tipos]),
     500,
   );
   const limiteAtual = filtroDebounced.limite || 10;
@@ -212,9 +215,11 @@ export function PacsListagemPage() {
     });
   }
 
+  const estudosDaPagina = useMemo(() => busca.data?.estudos ?? [], [busca.data]);
+
   const studyUids = useMemo(
-    () => (busca.data ?? []).map((e) => e.studyInstanceUID).filter(Boolean),
-    [busca.data],
+    () => estudosDaPagina.map((e) => e.studyInstanceUID).filter(Boolean),
+    [estudosDaPagina],
   );
   const laudosLookup = useLaudosPorStudyUIDs(studyUids);
   const mapaLaudos = useMemo(() => {
@@ -245,7 +250,7 @@ export function PacsListagemPage() {
     return m;
   }, [origemLookup.data]);
 
-  const exames: ExameRow[] = (busca.data ?? [])
+  const exames: ExameRow[] = estudosDaPagina
     // Descarta exames de PHANTOM: estudos de calibração/teste criados automaticamente
     // pelo equipamento de imagem (não são pacientes reais e poluem a lista).
     .filter((e) => !/phanto[nm]/i.test(e.patientName ?? ''))
@@ -567,7 +572,7 @@ export function PacsListagemPage() {
 
       <form
         onSubmit={aoBuscar}
-        className="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-7"
+        className="grid grid-cols-1 gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-8"
       >
         <Campo label="Nome do paciente" htmlFor="nome" className="sm:col-span-2">
           <div className="relative">
@@ -611,6 +616,14 @@ export function PacsListagemPage() {
         <Campo label="Modalidade" htmlFor="modalidade">
           <FiltroModalidades id="modalidade" selecionadas={modalidades} aoMudar={definirModalidades} />
         </Campo>
+        <Campo label="Tipo de exame" htmlFor="tipo">
+          <FiltroTiposExame
+            id="tipo"
+            modalidades={modalidades}
+            selecionados={tipos}
+            aoMudar={definirTipos}
+          />
+        </Campo>
         <Campo label="Limite" htmlFor="limite">
           <Select
             id="limite"
@@ -644,6 +657,20 @@ export function PacsListagemPage() {
         </div>
       ) : null}
 
+      {busca.data?.orfaosOcultos ? (
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          {busca.data.orfaosOcultos} exame(s) sem associação ficaram de fora — o filtro de tipo só
+          alcança o que já tem pedido casado. Limpe o filtro de tipo para vê-los.
+        </div>
+      ) : null}
+
+      {busca.data?.truncado ? (
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          A varredura parou no teto antes de completar a página — pode haver mais exames além
+          destes. Estreite o período ou o filtro para chegar ao resto.
+        </div>
+      ) : null}
+
       {erroAssoc ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{erroAssoc}</div>
       ) : null}
@@ -665,7 +692,7 @@ export function PacsListagemPage() {
 
       {/* Paginação offset. O QIDO-RS do dcm4chee não devolve total, então não há "página X de Y":
           "Próxima" fica liberada enquanto a página vier cheia (pode haver mais). */}
-      {pagina > 1 || (busca.data?.length ?? 0) >= limiteAtual ? (
+      {pagina > 1 || estudosDaPagina.length >= limiteAtual ? (
         <div className="flex items-center justify-center gap-3 text-sm text-gray-600">
           <button
             type="button"
@@ -680,7 +707,7 @@ export function PacsListagemPage() {
           <button
             type="button"
             onClick={() => setPagina((p) => p + 1)}
-            disabled={(busca.data?.length ?? 0) < limiteAtual || busca.isFetching}
+            disabled={estudosDaPagina.length < limiteAtual || busca.isFetching}
             className="inline-flex h-8 items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Próxima

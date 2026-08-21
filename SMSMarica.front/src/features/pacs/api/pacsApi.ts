@@ -1,5 +1,5 @@
 import { http } from '@/shared/api/httpClient';
-import type { DatasetDicom, Estudo, FiltroBusca, Serie } from '@/features/pacs/types';
+import type { DatasetDicom, Estudo, FiltroBusca, PaginaEstudos, Serie } from '@/features/pacs/types';
 import {
   Tag,
   formatarDataDicom,
@@ -44,7 +44,12 @@ function mapearSerie(ds: DatasetDicom): Serie {
   };
 }
 
-export async function buscarEstudos(filtro: FiltroBusca, signal?: AbortSignal): Promise<Estudo[]> {
+/**
+ * Listagem de estudos. NÃO vai direto ao QIDO: passa por `/pacs/estudos`, que aplica o recorte
+ * por unidade e o filtro por tipo — dois filtros que dependem do nosso banco, não do DICOM — e
+ * pagina do lado do servidor. Os parâmetros abaixo são os mesmos do QIDO e seguem intactos.
+ */
+export async function buscarEstudos(filtro: FiltroBusca, signal?: AbortSignal): Promise<PaginaEstudos> {
   // fuzzymatching=true quebra wildcard PN (testado contra esse dcm4chee — sempre
   // retorna 204 com *NOME*), então deixamos desligado. A normalização do nome
   // (NFD + uppercase + espaços→*) já cobre acentos e variações.
@@ -90,13 +95,18 @@ export async function buscarEstudos(filtro: FiltroBusca, signal?: AbortSignal): 
   // mesmo quando há filtros; sem filtros o resultado também vem ordenado.
   params.orderby = `-${Tag.StudyDate},-${Tag.StudyTime}`;
 
-  const { data } = await http.get<DatasetDicom[]>('/pacs/rs/studies', {
-    params,
-    headers: HEADERS_DICOM,
-    signal,
-  });
-  // QIDO-RS responde 204 No Content quando não há matches — axios entrega "" em vez de array.
-  return (Array.isArray(data) ? data : []).map(mapearEstudo);
+  const tipos = (filtro.tipoExameIds ?? []).filter(Boolean);
+  if (tipos.length > 0) params.tipoExameIds = tipos.join(',');
+
+  const { data } = await http.get<{ estudos: DatasetDicom[]; orfaosOcultos: number; truncado: boolean }>(
+    '/pacs/estudos',
+    { params, headers: HEADERS_DICOM, signal },
+  );
+  return {
+    estudos: (Array.isArray(data?.estudos) ? data.estudos : []).map(mapearEstudo),
+    orfaosOcultos: data?.orfaosOcultos ?? 0,
+    truncado: data?.truncado ?? false,
+  };
 }
 
 export async function listarSeries(studyUID: string): Promise<Serie[]> {

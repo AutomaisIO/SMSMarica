@@ -60,7 +60,7 @@ export function Layout() {
         hidratarComposer({ altura: p.alturaComposerChat, enviarComEnter: p.enviarComEnter });
         hidratarVisao(p.verComoSolicitante);
         hidratarTabela(p.largurasTabela);
-        hidratarModalidades(p.examesModalidades);
+        hidratarModalidades({ modalidades: p.examesModalidades, tipos: p.examesTipos });
       })
       .catch(() => {
         /* offline/erro — segue com o cache local. */
