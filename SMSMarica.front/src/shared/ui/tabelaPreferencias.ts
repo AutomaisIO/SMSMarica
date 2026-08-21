@@ -13,7 +13,14 @@ import { salvarPreferencias } from '@/shared/auth/preferenciasApi';
 const CHAVE = 'smsmarica.tabela.larguras';
 
 export const LARGURA_MIN = 60;
-export const LARGURA_MAX = 900;
+/**
+ * Teto de sanidade contra preferência corrompida — NÃO é um limite de projeto, e por isso é
+ * folgado. O arrasto move a fronteira entre duas colunas (o que uma ganha a outra cede), então a
+ * soma tem de continuar igual à largura da tabela; um teto que morde tira pixels dessa soma e o
+ * navegador redistribui a diferença, fazendo a largura recém-definida "escapar". O limite real de
+ * uma coluna já é a própria largura da tabela.
+ */
+export const LARGURA_MAX = 2400;
 
 export type LargurasPorTela = Record<string, Record<string, number>>;
 

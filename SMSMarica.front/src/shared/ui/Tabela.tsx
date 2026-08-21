@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { ChevronDown, ChevronUp, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/shared/lib/cn';
-import { clampLargura, useTabelaPreferencias } from '@/shared/ui/tabelaPreferencias';
+import { LARGURA_MIN, clampLargura, useTabelaPreferencias } from '@/shared/ui/tabelaPreferencias';
 
 export type Coluna<T> = {
   chave: string;
@@ -97,28 +97,36 @@ export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrol
   useEffect(() => {
     setLarguras({ ...(largurasSalvas ?? {}) });
   }, [largurasSalvas]);
-  const arrasto = useRef<{ chave: string; startX: number; startWidth: number } | null>(null);
+  /**
+   * Arrasto de uma FRONTEIRA entre duas colunas vizinhas.
+   *
+   * A alça não estica uma coluna sozinha: ela move o limite entre a coluna dona e a seguinte, e
+   * o que uma ganha a outra cede. Duas consequências, e são as que importam:
+   *
+   * - a SOMA das larguras não muda, então `w-full table-fixed` não tem sobra para redistribuir e
+   *   a largura que você define gruda (antes ela voltava um pouco sozinha);
+   * - a primeira coluna fica colada no início e a ÚLTIMA colada no fim da tabela, sempre. A
+   *   última não tem alça própria porque não tem vizinha à direita — quem a ajusta é a alça da
+   *   penúltima, que é exatamente o mesmo gesto.
+   */
+  const arrasto = useRef<{
+    chave: string;
+    chaveVizinha: string;
+    startX: number;
+    startWidth: number;
+    startWidthVizinha: number;
+  } | null>(null);
   const [emArrasto, setEmArrasto] = useState(false);
   // Só vira table-fixed quando há largura (salva ou em edição): antes disso a tabela
   // mantém o layout automático (colunas ajustam ao conteúdo), sem regressão visual.
   const temLarguras = redim && Object.keys(larguras).length > 0;
   const larguraFixa = layoutFixo || temLarguras;
-  /**
-   * Coluna de SOBRA, sem largura, no fim da tabela.
-   *
-   * Sem ela, `w-full table-fixed` com todas as colunas dimensionadas devolve o espaço que você
-   * liberou distribuindo-o de volta entre TODAS as colunas — a largura que você acabou de
-   * definir não gruda. Com ela, a sobra tem para onde ir e cada coluna fica exatamente onde foi
-   * posta. É também o que permite a ÚLTIMA coluna real ser redimensionável: antes ela era a
-   * absorvedora e por isso não tinha alça, o que obrigava a mexer na coluna anterior para tentar
-   * ajustá-la.
-   */
-  const temSobra = temLarguras;
-  const colunasNoCabecalho = colunas.length + (temSobra ? 1 : 0);
+  const colunasNoCabecalho = colunas.length;
 
-  function iniciarArrasto(e: ReactPointerEvent<HTMLDivElement>, chave: string) {
+  function iniciarArrasto(e: ReactPointerEvent<HTMLDivElement>, chave: string, chaveVizinha: string) {
     const th = (e.currentTarget as HTMLElement).closest('th');
-    if (!th) return;
+    const thVizinha = th?.nextElementSibling as HTMLElement | null;
+    if (!th || !thVizinha || !chaveVizinha) return;
     // Primeiro arrasto sem larguras salvas: semeia TODAS as colunas com a largura
     // renderizada atual, para congelar o visual exato antes de entrar em table-fixed.
     if (Object.keys(larguras).length === 0) {
@@ -132,26 +140,52 @@ export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrol
         setLarguras(semente);
       }
     }
-    arrasto.current = { chave, startX: e.clientX, startWidth: th.getBoundingClientRect().width };
+    arrasto.current = {
+      chave,
+      chaveVizinha,
+      startX: e.clientX,
+      startWidth: th.getBoundingClientRect().width,
+      startWidthVizinha: thVizinha.getBoundingClientRect().width,
+    };
     setEmArrasto(true);
     e.currentTarget.setPointerCapture(e.pointerId);
     e.preventDefault();
     e.stopPropagation();
   }
+
+  /**
+   * Quanto a fronteira pode andar sem esmagar nenhuma das duas colunas: para a direita, o que a
+   * vizinha tem acima do mínimo; para a esquerda, o que esta coluna tem acima do mínimo.
+   */
+  function deltaPermitido(st: NonNullable<typeof arrasto.current>, clientX: number): number {
+    const bruto = clientX - st.startX;
+    const paraDireita = Math.max(0, st.startWidthVizinha - LARGURA_MIN);
+    const paraEsquerda = Math.max(0, st.startWidth - LARGURA_MIN);
+    return Math.round(Math.min(paraDireita, Math.max(-paraEsquerda, bruto)));
+  }
+
+  function aplicarArrasto(st: NonNullable<typeof arrasto.current>, clientX: number) {
+    const delta = deltaPermitido(st, clientX);
+    return {
+      [st.chave]: st.startWidth + delta,
+      [st.chaveVizinha]: st.startWidthVizinha - delta,
+    };
+  }
+
   function moverArrasto(e: ReactPointerEvent<HTMLDivElement>) {
     const st = arrasto.current;
     if (!st) return;
-    const nova = clampLargura(st.startWidth + (e.clientX - st.startX));
-    setLarguras((m) => ({ ...m, [st.chave]: nova }));
+    setLarguras((m) => ({ ...m, ...aplicarArrasto(st, e.clientX) }));
   }
+
   function terminarArrasto(e: ReactPointerEvent<HTMLDivElement>) {
     const st = arrasto.current;
     if (!st) return;
     arrasto.current = null;
     setEmArrasto(false);
-    const nova = clampLargura(st.startWidth + (e.clientX - st.startX));
+    const ajuste = aplicarArrasto(st, e.clientX);
     setLarguras((m) => {
-      const proximo = { ...m, [st.chave]: nova };
+      const proximo = { ...m, ...ajuste };
       // Persiste o mapa inteiro (inclui as colunas semeadas no 1º arrasto) em 1 PUT.
       if (idTabela) definirVarias(idTabela, proximo);
       return proximo;
@@ -213,15 +247,17 @@ export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrol
               {colunas.map((c) => (
                 <col key={c.chave} style={larguras[c.chave] ? { width: larguras[c.chave] } : undefined} />
               ))}
-              {temSobra ? <col /> : null}
             </colgroup>
           ) : null}
           <thead className="bg-gray-50">
             <tr>
-              {colunas.map((c) => {
+              {colunas.map((c, i) => {
                 const ativa = ordem?.chave === c.chave && Boolean(c.ordenar);
-                // Todas, inclusive a última: quem absorve a sobra agora é a coluna extra.
-                const podeRedimensionar = redim;
+                // A alça move a FRONTEIRA entre esta coluna e a seguinte, então a última não tem
+                // uma: não há vizinha à direita para ceder/receber. Ela é ajustada pela alça da
+                // penúltima, que é o mesmo gesto.
+                const podeRedimensionar = redim && i < colunas.length - 1;
+                const chaveVizinha = colunas[i + 1]?.chave;
                 return (
                   <th
                     key={c.chave}
@@ -266,7 +302,7 @@ export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrol
                         role="separator"
                         aria-orientation="vertical"
                         title="Arraste para ajustar a largura da coluna"
-                        onPointerDown={(e) => iniciarArrasto(e, c.chave)}
+                        onPointerDown={(e) => iniciarArrasto(e, c.chave, chaveVizinha!)}
                         onPointerMove={moverArrasto}
                         onPointerUp={terminarArrasto}
                         onPointerCancel={terminarArrasto}
@@ -279,7 +315,6 @@ export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrol
                   </th>
                 );
               })}
-              {temSobra ? <th aria-hidden="true" className="p-0" /> : null}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -319,7 +354,6 @@ export function Tabela<T>({ colunas, dados, chaveLinha, vazio, carregando, scrol
                       {c.render(item)}
                     </td>
                   ))}
-                  {temSobra ? <td aria-hidden="true" className="p-0" /> : null}
                 </tr>
               ))
             )}
