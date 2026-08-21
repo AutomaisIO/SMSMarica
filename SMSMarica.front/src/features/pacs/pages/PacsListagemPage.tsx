@@ -10,6 +10,7 @@ import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
+import { TextoLimitado } from '@/shared/ui/TextoLimitado';
 import { useLaudosPorStudyUIDs } from '@/features/laudos/api/queries';
 import { useRegrasIniciarLaudo } from '@/features/laudo-configuracao/queries';
 import { abrirPdfLaudo } from '@/features/laudos/lib/pdf';
@@ -367,38 +368,34 @@ export function PacsListagemPage() {
       },
     },
     {
-      chave: 'modalidade',
-      cabecalho: 'Modalidade',
-      ordenar: (e) => e.modalidade || null,
-      render: (e) => (
-        <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium uppercase text-gray-700">
-          {e.modalidade || '—'}
-        </span>
-      ),
-    },
-    {
-      chave: 'descricao',
-      cabecalho: 'Descrição',
-      // Ordena pelo que está VISÍVEL: o procedimento do pedido quando existe, senão o texto do
-      // equipamento — senão a ordenação discordaria da coluna.
+      chave: 'exame',
+      cabecalho: 'Exame',
+      // Mesmo desenho da coluna "Exame" em Solicitações: procedimento em cima, modalidade em
+      // cinza embaixo. Modalidade sozinha numa coluna própria gastava largura para repetir três
+      // letras que já estão implícitas no nome do procedimento.
+      //
+      // A tag DICOM StudyDescription é escrita pelo EQUIPAMENTO e vem genérica
+      // ("ULTRA-SONOGRAFIA", "Mamografia"): ela não sabe qual procedimento foi pedido. Havendo
+      // vínculo, quem manda é o nome do tipo (SISREG) e o texto do aparelho desce para a segunda
+      // linha — e só quando acrescenta algo. Nada é reescrito no DICOM.
       ordenar: (e) => e.associacao?.tipoExameNome || e.studyDescription || null,
       render: (e) => {
-        // A tag DICOM StudyDescription é escrita pelo EQUIPAMENTO e vem genérica
-        // ("ULTRASSONOGRAFIA", "Mamografia"): ela não sabe qual procedimento foi pedido. Quando o
-        // exame está associado, quem manda é o nome do tipo (SISREG) — o texto do aparelho vira
-        // sublinha, e só quando acrescenta algo. Nada é reescrito no DICOM.
         const doPedido = e.associacao?.tipoExameNome?.trim();
         const doAparelho = e.studyDescription?.trim();
+        const modalidade = e.modalidade || e.associacao?.modalidade || '';
         const mostrarAparelho =
           !!doPedido && !!doAparelho && doAparelho.toLowerCase() !== doPedido.toLowerCase();
         return (
-          <div className="min-w-0 leading-tight">
-            <div className="truncate text-gray-800">{doPedido || doAparelho || '—'}</div>
-            {mostrarAparelho ? (
-              <div className="truncate text-xs text-gray-400" title={`Descrição do equipamento: ${doAparelho}`}>
-                {doAparelho}
-              </div>
-            ) : null}
+          <div className="min-w-0" title={doPedido || doAparelho || undefined}>
+            <TextoLimitado
+              texto={doPedido || doAparelho}
+              max={40}
+              className="block truncate text-gray-900"
+            />
+            <div className="truncate text-xs text-gray-500">
+              <span className="uppercase">{modalidade || '—'}</span>
+              {mostrarAparelho ? <> — {doAparelho}</> : null}
+            </div>
           </div>
         );
       },
