@@ -57,6 +57,8 @@ export type AssociacaoExame = {
   modalidade: ModalidadeDicom | null;
   unidadeExecutanteNome: string | null;
   unidadeSolicitanteNome: string | null;
+  /** Nº da solicitação no SISREG, quando veio de lá. */
+  codigoSolicitacao: string | null;
 };
 
 /**

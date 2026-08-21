@@ -11,6 +11,8 @@ import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
 import { TextoLimitado } from '@/shared/ui/TextoLimitado';
+import { CodigoCopiavel } from '@/shared/ui/CodigoCopiavel';
+import { hojeSP } from '@/shared/lib/datas';
 import { useLaudosPorStudyUIDs } from '@/features/laudos/api/queries';
 import { useRegrasIniciarLaudo } from '@/features/laudo-configuracao/queries';
 import { abrirPdfLaudo } from '@/features/laudos/lib/pdf';
@@ -43,6 +45,28 @@ type ExameRow = Estudo & {
 
 // Persistência do filtro entre navegações e reaberturas do browser (localStorage).
 const CHAVE_FILTRO_PACS = 'smsmarica.pacs.filtro';
+
+/**
+ * Atalhos de período do topo da lista. "N dias" INCLUI hoje (5 dias = anteontem-1 até hoje), que
+ * é como a recepção fala. Sem atalho marcado, a lista não filtra data — é o estado inicial, que
+ * traz os últimos exames independentemente de quando foram feitos.
+ */
+const ATALHOS_PERIODO = [
+  { rotulo: 'Hoje', dias: 1 },
+  { rotulo: '5 dias', dias: 5 },
+  { rotulo: '10 dias', dias: 10 },
+  { rotulo: '30 dias', dias: 30 },
+  { rotulo: '60 dias', dias: 60 },
+] as const;
+
+/** Período de N dias terminando hoje, em Brasília (regra única de fuso — `hojeSP`). */
+function periodoDeDias(dias: number): { dataInicial: string; dataFinal: string } {
+  const fim = hojeSP();
+  // Meio-dia UTC para a subtração nunca cair na virada do dia por causa do fuso.
+  const inicio = new Date(`${fim}T12:00:00Z`);
+  inicio.setUTCDate(inicio.getUTCDate() - (dias - 1));
+  return { dataInicial: inicio.toISOString().slice(0, 10), dataFinal: fim };
+}
 
 const FILTRO_PADRAO: FiltroBusca = {
   nome: '',
@@ -285,6 +309,40 @@ export function PacsListagemPage() {
 
   const colunas: Coluna<ExameRow>[] = [
     {
+      chave: 'pedido',
+      cabecalho: 'Pedido',
+      className: 'w-44 whitespace-nowrap',
+      // Mesma primeira coluna de Solicitações: nº SMS copiável, nº do SISREG embaixo. Associado,
+      // o nº vem do PEDIDO (autoritativo). Órfão, sobra o que o equipamento escreveu no
+      // AccessionNumber — que costuma ser lixo do aparelho, então vai em cinza e sem copiar,
+      // para ninguém confundir com número de pedido.
+      ordenar: (e) => e.associacao?.accessionNumber || e.accessionNumber?.trim() || null,
+      render: (e) => {
+        const doPedido = e.associacao?.accessionNumber?.trim();
+        if (doPedido) {
+          return (
+            <div className="min-w-0">
+              <CodigoCopiavel codigo={doPedido} />
+              {e.associacao?.codigoSolicitacao ? (
+                <div className="truncate text-xs text-gray-500">SISREG {e.associacao.codigoSolicitacao}</div>
+              ) : null}
+            </div>
+          );
+        }
+        const doDicom = e.accessionNumber?.trim();
+        return (
+          <div className="min-w-0">
+            <span className="text-xs text-gray-400">Sem pedido</span>
+            {doDicom ? (
+              <div className="truncate font-mono text-[11px] text-gray-400" title="AccessionNumber gravado pelo equipamento">
+                {doDicom}
+              </div>
+            ) : null}
+          </div>
+        );
+      },
+    },
+    {
       chave: 'paciente',
       cabecalho: 'Paciente',
       ordenar: (e) => e.associacao?.pacienteNome ?? e.patientName ?? null,
@@ -340,6 +398,47 @@ export function PacsListagemPage() {
       },
     },
     {
+      chave: 'exame',
+      cabecalho: 'Exame',
+      // Mesmo desenho da coluna "Exame" de Solicitações: procedimento em cima, "MODALIDADE —
+      // unidade" em cinza embaixo. Modalidade e unidade em colunas próprias gastavam largura
+      // repetindo o que cabe numa linha de apoio.
+      //
+      // A tag DICOM StudyDescription é escrita pelo EQUIPAMENTO e vem genérica
+      // ("ULTRA-SONOGRAFIA", "Mamografia"): ela não sabe qual procedimento foi pedido. Havendo
+      // vínculo, quem manda é o nome do tipo (SISREG) e o texto do aparelho fica só no tooltip —
+      // é ruído na linha e diagnóstico quando os dois discordam. Sem vínculo, ele é o que sobra
+      // e sobe para a primeira linha.
+      ordenar: (e) => e.associacao?.tipoExameNome || e.studyDescription || null,
+      render: (e) => {
+        const doPedido = e.associacao?.tipoExameNome?.trim();
+        const doAparelho = e.studyDescription?.trim();
+        const modalidade = e.modalidade || e.associacao?.modalidade || '';
+        // Unidade: do PEDIDO quando associado; do EQUIPAMENTO que enviou as imagens quando órfão
+        // — é o que responde "de quem é este exame?" antes de alguém associar.
+        const unidade = e.associacao?.unidadeExecutanteNome ?? e.origem?.unidadeNome ?? null;
+        const discorda =
+          !!doPedido && !!doAparelho && doAparelho.toLowerCase() !== doPedido.toLowerCase();
+        const dica = [doPedido || doAparelho, discorda ? `Equipamento: ${doAparelho}` : null]
+          .filter(Boolean)
+          .join(' · ');
+        return (
+          <div className="min-w-0" title={dica || undefined}>
+            <TextoLimitado
+              texto={doPedido || doAparelho}
+              max={40}
+              className="block truncate text-gray-900"
+            />
+            <div className="truncate text-xs text-gray-500">
+              <span className="uppercase">{modalidade || '—'}</span>
+              {unidade ? <> — {unidade}</> : null}
+              {!unidade && e.origem?.equipamentoNome ? <> — {e.origem.equipamentoNome}</> : null}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
       chave: 'data',
       cabecalho: 'Data / Hora',
       // studyDate/studyTime são texto DICOM (YYYYMMDD/HHMMSS): concatenar ordena cronologicamente.
@@ -350,88 +449,6 @@ export function PacsListagemPage() {
           <div className="leading-tight">
             <div className="font-medium text-gray-900">{e.studyDateFormatado || '—'}</div>
             <div className="text-xs text-gray-500">{hora || '—'}</div>
-          </div>
-        );
-      },
-    },
-    {
-      chave: 'pedido',
-      cabecalho: 'Pedido',
-      ordenar: (e) => e.accessionNumber?.trim() || null,
-      render: (e) => {
-        const acc = e.accessionNumber?.trim() ?? '';
-        return acc ? (
-          <span className="font-mono text-xs text-gray-600">{acc}</span>
-        ) : (
-          <span className="text-xs text-gray-400">—</span>
-        );
-      },
-    },
-    {
-      chave: 'exame',
-      cabecalho: 'Exame',
-      // Mesmo desenho da coluna "Exame" em Solicitações: procedimento em cima, modalidade em
-      // cinza embaixo. Modalidade sozinha numa coluna própria gastava largura para repetir três
-      // letras que já estão implícitas no nome do procedimento.
-      //
-      // A tag DICOM StudyDescription é escrita pelo EQUIPAMENTO e vem genérica
-      // ("ULTRA-SONOGRAFIA", "Mamografia"): ela não sabe qual procedimento foi pedido. Havendo
-      // vínculo, quem manda é o nome do tipo (SISREG) e o texto do aparelho desce para a segunda
-      // linha — e só quando acrescenta algo. Nada é reescrito no DICOM.
-      ordenar: (e) => e.associacao?.tipoExameNome || e.studyDescription || null,
-      render: (e) => {
-        const doPedido = e.associacao?.tipoExameNome?.trim();
-        const doAparelho = e.studyDescription?.trim();
-        const modalidade = e.modalidade || e.associacao?.modalidade || '';
-        const mostrarAparelho =
-          !!doPedido && !!doAparelho && doAparelho.toLowerCase() !== doPedido.toLowerCase();
-        return (
-          <div className="min-w-0" title={doPedido || doAparelho || undefined}>
-            <TextoLimitado
-              texto={doPedido || doAparelho}
-              max={40}
-              className="block truncate text-gray-900"
-            />
-            <div className="truncate text-xs text-gray-500">
-              <span className="uppercase">{modalidade || '—'}</span>
-              {mostrarAparelho ? <> — {doAparelho}</> : null}
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      chave: 'unidade',
-      cabecalho: 'Unidade',
-      ordenar: (e) => e.associacao?.unidadeExecutanteNome ?? e.origem?.unidadeNome ?? null,
-      render: (e) => {
-        // Associado: a unidade vem do PEDIDO (executante, com o solicitante embaixo). Órfão: vem
-        // do EQUIPAMENTO que enviou as imagens — é o que responde "de quem é este exame?" antes
-        // de alguém associar.
-        const assoc = e.associacao;
-        if (assoc?.unidadeExecutanteNome) {
-          const solicitante = assoc.unidadeSolicitanteNome;
-          return (
-            <div className="min-w-0 leading-tight">
-              <div className="truncate text-gray-800">{assoc.unidadeExecutanteNome}</div>
-              {solicitante && solicitante !== assoc.unidadeExecutanteNome ? (
-                <div className="truncate text-xs text-gray-500" title="Unidade solicitante">
-                  Pedido: {solicitante}
-                </div>
-              ) : null}
-            </div>
-          );
-        }
-        const origem = e.origem;
-        if (!origem) {
-          return <span className="text-xs text-gray-400">{origemLookup.isFetching ? '…' : '—'}</span>;
-        }
-        return (
-          <div className="min-w-0 leading-tight">
-            <div className="truncate text-gray-700">{origem.unidadeNome ?? 'Origem não cadastrada'}</div>
-            <div className="truncate text-xs text-gray-500" title={`AE de origem: ${origem.aeTitle}`}>
-              {origem.equipamentoNome ?? origem.aeTitle}
-            </div>
           </div>
         );
       },
@@ -635,6 +652,41 @@ export function PacsListagemPage() {
           </Select>
         </Campo>
       </form>
+
+      {/* Atalhos de período: o caso comum é "o que chegou hoje" / "esta semana", e digitar duas
+          datas para isso é atrito. O par de campos acima continua valendo para o resto. */}
+      <div className="-mt-2 flex flex-wrap items-center gap-2">
+        <span className="text-xs font-medium text-gray-500">Período:</span>
+        {ATALHOS_PERIODO.map(({ rotulo, dias }) => {
+          const periodo = periodoDeDias(dias);
+          const ativo =
+            filtro.dataInicial === periodo.dataInicial && filtro.dataFinal === periodo.dataFinal;
+          return (
+            <button
+              key={rotulo}
+              type="button"
+              onClick={() => setFiltro((f) => ({ ...f, ...periodo }))}
+              aria-pressed={ativo}
+              className={`h-7 rounded-full border px-3 text-xs font-medium transition-colors ${
+                ativo
+                  ? 'border-primary-600 bg-primary-600 text-white'
+                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {rotulo}
+            </button>
+          );
+        })}
+        {filtro.dataInicial || filtro.dataFinal ? (
+          <button
+            type="button"
+            onClick={() => setFiltro((f) => ({ ...f, dataInicial: '', dataFinal: '' }))}
+            className="h-7 rounded-full border border-gray-300 bg-white px-3 text-xs font-medium text-gray-500 hover:bg-gray-50"
+          >
+            Todo o período
+          </button>
+        ) : null}
+      </div>
 
       {busca.isError ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
