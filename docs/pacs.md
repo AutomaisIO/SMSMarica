@@ -400,6 +400,23 @@ não trazem `InstitutionName`/`StationName`. De 2026 em diante (1352 estudos) pr
 carrega AE de equipamento. Enquanto esse AE não estiver cadastrado como equipamento de alguma
 unidade, o acervo legado fica invisível para quem não tem acesso global.
 
+⚠️ **Estudo REESCRITO perde o AE — por isso o recorte está DESLIGADO** (`Pacs:EscopoPorUnidade:Habilitado`,
+default `false`). Toda associação manual reescreve o objeto DICOM (§ `ICorrecaoIdentidadeExameService`:
+coagir corrigiria PatientID/AccessionNumber mas deixaria o nome de outra pessoa dentro do arquivo) e o
+re-armazena por **STOW-RS, que não tem AE chamador** — o dcm4chee grava a tag vazia. Medição de
+2026-08-20: **20 estudos do CDT sem AE nenhum, todos de agosto, 4 do mesmo dia**, e o conjunto cresce a
+cada conciliação manual (o US do CDT não consome a MWL). Ligar o recorte hoje esconderia exatamente os
+exames que a recepção acabou de associar.
+
+O QIDO não consegue expressar "AE no conjunto **OU** AE ausente" (testado: vírgula solta é ignorada —
+`=DEXA,` devolve os mesmos 8; curinga vira universal — `=DEXA,*` devolve 2615). Fechar isso exige a
+lista sair do nosso banco, onde o estudo reescrito é conhecido, com unidade. Enquanto isso a listagem
+segue como antes: sem recorte.
+
+Cobertura medida do mapa AE (2026-08-20): união dos 7 AEs = 2595 de 2615 estudos. Além dos 5 dos
+equipamentos, existem `DICOMPACSSCU` (1263, acervo legado ≤ 2025) e `DEXA` (8, a MESMA densitometria
+Hologic S/N309428M do `DO-CDT`, sob AE diferente). Os 20 restantes são os reescritos, sem AE.
+
 **Onde isso é aplicado:** [`EscopoEstudosPacs`](../SMSMarica.server/src/SMSMarica.Core/Pacs/EscopoEstudosPacs.cs)
 traduz o escopo de unidade (ADR-0033/0037) para o conjunto de AEs, e
 [`EscopoAeQuery`](../SMSMarica.server/src/SMSMarica.Core/Pacs/EscopoAeQuery.cs) reescreve a query
