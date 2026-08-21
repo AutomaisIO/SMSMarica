@@ -1,3 +1,4 @@
+import type { ModalidadeDicom } from '@/features/tipos-exame/types';
 import type { ComunicacaoChip } from '@/features/solicitacoes-exame/types';
 
 export type StatusLaudo = 'Rascunho' | 'Finalizado';
@@ -63,6 +64,15 @@ export type LaudoListItem = {
   assinado: boolean;
   /** Checks do aviso "laudo pronto" ao paciente (null = sem comunicação, ex.: não assinado). */
   chipLaudoPronto: ComunicacaoChip | null;
+  /**
+   * Contexto do PEDIDO, resolvido pelo StudyInstanceUID (o laudo não tem FK para o exame).
+   * Tudo null no laudo ÓRFÃO — study que não casa com solicitação nenhuma.
+   */
+  accessionNumber: string | null;
+  codigoSolicitacao: string | null;
+  tipoExameNome: string | null;
+  modalidade: ModalidadeDicom | null;
+  unidadeExecutanteNome: string | null;
 };
 
 export type StatusAssinatura =

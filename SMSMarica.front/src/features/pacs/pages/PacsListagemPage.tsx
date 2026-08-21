@@ -456,12 +456,18 @@ export function PacsListagemPage() {
     {
       chave: 'acoes',
       cabecalho: 'Ações',
-      className: 'text-right',
+      // Só ícones, como em Solicitações e Laudos: seis rótulos ("Associar", "Desassociar",
+      // "Laudar", "Rascunho", "PDF", "Excluir") comiam a largura da tabela para dizer o que o
+      // ícone já diz. A cor separa a intenção (associar/laudar/abrir/excluir) e o texto continua
+      // no title e no aria-label.
+      className: 'w-36 whitespace-nowrap text-right',
       render: (e) => {
         const excluindoEste = excluindoUid === e.studyInstanceUID;
         const laudoFinalizado = e.laudo?.status === 'Finalizado';
         // Só o laudo ASSINADO trava a (re)associação; finalizado-sem-assinatura é livre.
         const laudoAssinado = e.laudo?.assinado === true;
+        const faltaAnamnese =
+          !!e.associacao && !e.associacao.temAnamnese && !permitirLaudarSemAnamnese;
         return (
           <div className="flex items-center justify-end gap-2">
             <BotaoAnamnese accessionNumber={e.accessionNumber} somenteLeitura />
@@ -470,10 +476,10 @@ export function PacsListagemPage() {
                 type="button"
                 onClick={() => setAssociarEstudo(e)}
                 title="Associar este exame a um pedido (e paciente)"
-                className="inline-flex items-center gap-1 rounded-md border border-indigo-300 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-800 hover:bg-indigo-100"
+                aria-label="Associar exame a um pedido"
+                className="inline-flex items-center rounded p-0.5 text-indigo-600 transition-colors hover:text-indigo-800"
               >
-                <Link2 className="h-3.5 w-3.5" />
-                Associar
+                <Link2 className="h-4 w-4" />
               </button>
             ) : null}
             {e.associacao?.explicita && e.associacao.origem !== 'Automatica' && !laudoAssinado && podeAssociar ? (
@@ -482,10 +488,10 @@ export function PacsListagemPage() {
                 onClick={() => aoDesassociar(e)}
                 disabled={desassociar.isPending}
                 title="Desassociar do pedido (enquanto o laudo não estiver assinado)"
-                className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+                aria-label="Desassociar do pedido"
+                className="inline-flex items-center rounded p-0.5 text-gray-500 transition-colors hover:text-gray-800 disabled:opacity-60"
               >
-                <Unlink className="h-3.5 w-3.5" />
-                Desassociar
+                <Unlink className="h-4 w-4" />
               </button>
             ) : null}
             {e.laudo && podeEditarLaudo ? (
@@ -493,47 +499,37 @@ export function PacsListagemPage() {
                 type="button"
                 onClick={() => navigate(`/app/laudos/${e.laudo!.laudoId}`)}
                 title={laudoFinalizado ? 'Abrir laudo finalizado' : 'Editar rascunho do laudo'}
-                className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                aria-label={laudoFinalizado ? 'Abrir laudo' : 'Editar rascunho do laudo'}
+                className="inline-flex items-center rounded p-0.5 text-amber-600 transition-colors hover:text-amber-800"
               >
-                <Edit2 className="h-3.5 w-3.5" />
-                {laudoFinalizado ? 'Laudo' : 'Rascunho'}
+                <Edit2 className="h-4 w-4" />
               </button>
             ) : null}
             {!e.laudo && podeCriarLaudo && (e.associacao || permitirLaudarSemAssociacao) ? (
-              (() => {
-                const faltaAnamnese =
-                  !!e.associacao && !e.associacao.temAnamnese && !permitirLaudarSemAnamnese;
-                return (
-                  <span
-                    title={
-                      faltaAnamnese
-                        ? 'Preencha a anamnese da solicitação antes de iniciar o laudo'
-                        : 'Criar laudo para este exame'
-                    }
-                    className="inline-flex"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => criarLaudoPara(e)}
-                      disabled={faltaAnamnese}
-                      className="inline-flex items-center gap-1 rounded-md border border-green-300 bg-green-50 px-2.5 py-1 text-xs font-medium text-green-800 hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <FilePlus className="h-3.5 w-3.5" />
-                      Laudar
-                    </button>
-                  </span>
-                );
-              })()
+              <button
+                type="button"
+                onClick={() => criarLaudoPara(e)}
+                disabled={faltaAnamnese}
+                title={
+                  faltaAnamnese
+                    ? 'Preencha a anamnese da solicitação antes de iniciar o laudo'
+                    : 'Criar laudo para este exame'
+                }
+                aria-label="Criar laudo para este exame"
+                className="inline-flex items-center rounded p-0.5 text-green-700 transition-colors hover:text-green-900 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <FilePlus className="h-4 w-4" />
+              </button>
             ) : null}
             {laudoFinalizado ? (
               <button
                 type="button"
                 onClick={() => abrirLaudoPdf(e.laudo!.laudoId)}
                 title="Abrir PDF do laudo em janela separada"
-                className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                aria-label="Abrir PDF do laudo"
+                className="inline-flex items-center rounded p-0.5 text-gray-500 transition-colors hover:text-gray-800"
               >
-                <FileText className="h-3.5 w-3.5" />
-                PDF
+                <FileText className="h-4 w-4" />
               </button>
             ) : null}
             {podeExcluir ? (
@@ -542,14 +538,14 @@ export function PacsListagemPage() {
                 onClick={() => excluirExame(e)}
                 disabled={excluindoEste}
                 title="Excluir exame do PACS"
-                className="inline-flex items-center gap-1 rounded-md border border-red-300 bg-white px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-wait disabled:opacity-60"
+                aria-label="Excluir exame do PACS"
+                className="inline-flex items-center rounded p-0.5 text-red-600 transition-colors hover:text-red-800 disabled:cursor-wait disabled:opacity-60"
               >
                 {excluindoEste ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className="h-4 w-4" />
                 )}
-                Excluir
               </button>
             ) : null}
           </div>

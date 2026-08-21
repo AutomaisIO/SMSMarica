@@ -10,6 +10,8 @@ import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { Select } from '@/shared/ui/Select';
 import { Tabela, type Coluna } from '@/shared/ui/Tabela';
+import { TextoLimitado } from '@/shared/ui/TextoLimitado';
+import { CodigoCopiavel } from '@/shared/ui/CodigoCopiavel';
 import { useExcluirLaudo, useListarLaudos } from '@/features/laudos/api/queries';
 import { abrirPdfLaudo, baixarPdfLaudo } from '@/features/laudos/lib/pdf';
 import { StatusBadgeLaudo } from '@/features/laudos/components/StatusBadgeLaudo';
@@ -83,6 +85,26 @@ export function LaudosListagemPage() {
 
   const colunas: Coluna<LaudoListItem>[] = useMemo(() => [
     {
+      chave: 'pedido',
+      cabecalho: 'Pedido',
+      className: 'w-44 whitespace-nowrap',
+      // Mesma primeira coluna de Solicitações e de Exames: nº SMS copiável, SISREG embaixo.
+      // O laudo se liga ao exame só pelo StudyInstanceUID; sem pedido casado (laudo órfão) não
+      // há número nenhum a mostrar.
+      ordenar: (l) => l.accessionNumber,
+      render: (l) =>
+        l.accessionNumber ? (
+          <div className="min-w-0">
+            <CodigoCopiavel codigo={l.accessionNumber} />
+            {l.codigoSolicitacao ? (
+              <div className="truncate text-xs text-gray-500">SISREG {l.codigoSolicitacao}</div>
+            ) : null}
+          </div>
+        ) : (
+          <span className="text-xs text-gray-400">Sem pedido</span>
+        ),
+    },
+    {
       chave: 'paciente',
       cabecalho: 'Paciente',
       ordenar: (l) => l.pacienteNome ?? l.pacienteNomeDicom ?? null,
@@ -113,15 +135,34 @@ export function LaudosListagemPage() {
           ) : (
             <div className="truncate font-medium text-gray-400">Não vinculado</div>
           )}
-          <div className="truncate text-xs text-gray-500">{l.titulo}</div>
+          {/* Quem laudou, na linha de apoio — mesmo lugar do "Por {solicitante}" em
+              Solicitações. Dispensa a coluna Médico. */}
+          <div className="truncate text-xs text-gray-500">{l.medicoNome}</div>
         </div>
       ),
     },
     {
-      chave: 'medico',
-      cabecalho: 'Médico',
-      ordenar: (l) => l.medicoNome,
-      render: (l) => <span className="text-gray-700">{l.medicoNome}</span>,
+      chave: 'exame',
+      cabecalho: 'Exame',
+      // Mesma coluna "Exame" das outras duas telas: procedimento em cima, "MODALIDADE — unidade"
+      // em cinza embaixo. Sem pedido casado sobra o título do laudo, que é o que o médico deu.
+      ordenar: (l) => l.tipoExameNome ?? l.titulo ?? null,
+      render: (l) => {
+        const nome = l.tipoExameNome?.trim() || l.titulo?.trim();
+        const apoio = [l.modalidade ?? null, l.unidadeExecutanteNome ?? null].filter(Boolean);
+        return (
+          <div className="min-w-0" title={nome || undefined}>
+            <TextoLimitado texto={nome} max={40} className="block truncate text-gray-900" />
+            {apoio.length > 0 ? (
+              <div className="truncate text-xs text-gray-500">
+                <span className="uppercase">{l.modalidade ?? ''}</span>
+                {l.modalidade && l.unidadeExecutanteNome ? ' — ' : ''}
+                {l.unidadeExecutanteNome ?? ''}
+              </div>
+            ) : null}
+          </div>
+        );
+      },
     },
     {
       chave: 'data',
@@ -162,7 +203,10 @@ export function LaudosListagemPage() {
     {
       chave: 'acoes',
       cabecalho: 'Ações',
-      className: 'text-right',
+      // Só ícones, como em Solicitações: os rótulos ("Editar", "PDF", "Baixar", "Excluir")
+      // custavam metade da largura útil da tabela para dizer o que o ícone já diz. O texto
+      // continua no title/aria-label, então tooltip e leitor de tela não perdem nada.
+      className: 'w-28 whitespace-nowrap text-right',
       render: (l) => {
         const ehRascunho = l.status === 'Rascunho';
         return (
@@ -172,10 +216,10 @@ export function LaudosListagemPage() {
                 type="button"
                 onClick={() => navigate(`/app/laudos/${l.id}`)}
                 title={ehRascunho ? 'Editar rascunho' : 'Visualizar / nova versão'}
-                className="inline-flex items-center gap-1 rounded-md border border-primary-300 bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100"
+                aria-label={ehRascunho ? 'Editar rascunho' : 'Visualizar laudo'}
+                className="inline-flex items-center rounded p-0.5 text-primary-700 transition-colors hover:text-primary-900"
               >
-                <Edit2 className="h-3.5 w-3.5" />
-                {ehRascunho ? 'Editar' : 'Abrir'}
+                <Edit2 className="h-4 w-4" />
               </button>
             ) : null}
             {!ehRascunho ? (
@@ -184,20 +228,20 @@ export function LaudosListagemPage() {
                   type="button"
                   onClick={() => aoAbrirPdf(l.id)}
                   title="Abrir PDF"
-                  className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  aria-label="Abrir PDF do laudo"
+                  className="inline-flex items-center rounded p-0.5 text-gray-500 transition-colors hover:text-gray-800"
                 >
-                  <FileText className="h-3.5 w-3.5" />
-                  PDF
+                  <FileText className="h-4 w-4" />
                 </button>
                 {l.assinado ? (
                   <button
                     type="button"
                     onClick={() => aoBaixarPdf(l.id)}
                     title="Baixar o PDF assinado digitalmente (ICP-Brasil)"
-                    className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                    aria-label="Baixar PDF assinado"
+                    className="inline-flex items-center rounded p-0.5 text-gray-500 transition-colors hover:text-gray-800"
                   >
-                    <Download className="h-3.5 w-3.5" />
-                    Baixar
+                    <Download className="h-4 w-4" />
                   </button>
                 ) : null}
               </>
@@ -208,20 +252,21 @@ export function LaudosListagemPage() {
                 onClick={() => aoExcluir(l)}
                 disabled={excluindoId === l.id}
                 title="Excluir rascunho"
-                className="inline-flex items-center gap-1 rounded-md border border-red-300 bg-white px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-wait disabled:opacity-60"
+                aria-label="Excluir rascunho"
+                className="inline-flex items-center rounded p-0.5 text-red-600 transition-colors hover:text-red-800 disabled:cursor-wait disabled:opacity-60"
               >
                 {excluindoId === l.id ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className="h-4 w-4" />
                 )}
-                Excluir
               </button>
             ) : null}
           </div>
         );
       },
     },
+
   ], [podeEditar, podeExcluir, excluindoId, navigate]);
 
   return (
