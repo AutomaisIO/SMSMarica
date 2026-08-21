@@ -1,0 +1,231 @@
+name: Deploy Automais.Zap (relay de webhook)
+
+# Relay de webhook do WhatsApp (ADR-0044). Roda em DROPLET PRÓPRIO, com Postgres LOCAL —
+# por isso os secrets são HOST_ZAP/USER_ZAP/PASS_ZAP e não os do smsmarica.
+#
+# Só provisiona e publica o serviço. Postgres local, nginx, DNS e certbot são passo manual
+# de bootstrap do droplet — ver Automais.Zap/README.md.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Automais.Zap/**'
+      - '.github/workflows/deploy-zap.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-automais-zap
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+      DOTNET_NOLOGO: 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        working-directory: Automais.Zap
+        run: dotnet restore
+
+      # Gate antes de publicar: nada sobe sem a suíte verde. Os testes de banco usam
+      # Testcontainers, que funciona direto no runner (tem Docker). Na máquina de dev, que
+      # não tem Docker, a mesma suíte roda apontando ZAP_TESTS_CONNECTION para a bancada.
+      - name: Testes
+        working-directory: Automais.Zap
+        run: dotnet test --configuration Release
+
+      - name: Publish (framework-dependent, linux-x64)
+        working-directory: Automais.Zap
+        run: |
+          dotnet publish src/Automais.Zap.Api/Automais.Zap.Api.csproj \
+            --configuration Release \
+            --runtime linux-x64 \
+            --no-self-contained \
+            --output publish
+
+      - name: Pack artifact
+        working-directory: Automais.Zap
+        run: tar -czf ../automais-zap.tar.gz -C publish .
+
+      - name: Copy artifact to server (SCP)
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HOST_ZAP }}
+          username: ${{ secrets.USER_ZAP }}
+          password: ${{ secrets.PASS_ZAP }}
+          port: 22
+          source: automais-zap.tar.gz
+          target: /tmp/
+
+      - name: Deploy on server (SSH)
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          # Postgres LOCAL do droplet do relay — nunca o cluster gerenciado das instâncias.
+          DB_CS: ${{ secrets.DB_CONNECTION_ZAP }}
+          META_APP_SECRET: ${{ secrets.META_APP_SECRET }}
+          META_VERIFY_TOKEN: ${{ secrets.META_VERIFY_TOKEN }}
+        with:
+          host: ${{ secrets.HOST_ZAP }}
+          username: ${{ secrets.USER_ZAP }}
+          password: ${{ secrets.PASS_ZAP }}
+          port: 22
+          envs: DB_CS,META_APP_SECRET,META_VERIFY_TOKEN
+          command_timeout: 15m
+          script: |
+            set -euo pipefail
+
+            APP_DIR=/opt/automais-zap/api
+            ENV_DIR=/etc/automais-zap
+            ENV_FILE=$ENV_DIR/env
+            SERVICE=automais-zap
+            PORTA=5086
+            DOTNET_DIR=/opt/dotnet
+            DOTNET=$DOTNET_DIR/dotnet
+            DOTNET_LINK=/usr/local/bin/dotnet
+            TARBALL=/tmp/automais-zap.tar.gz
+
+            if [ "$(id -u)" -eq 0 ]; then SUDO=""; else SUDO="sudo -n"; fi
+
+            log() { echo ">>> $*"; }
+
+            # --- 1. Dependências básicas ---
+            if ! command -v curl >/dev/null 2>&1; then
+              $SUDO apt-get update -y && $SUDO apt-get install -y curl
+            fi
+            if ! command -v tar >/dev/null 2>&1; then
+              $SUDO apt-get install -y tar
+            fi
+
+            # --- 2. .NET 10 ASP.NET Core runtime ---
+            if [ ! -x "$DOTNET" ] || ! "$DOTNET" --list-runtimes 2>/dev/null | grep -q 'Microsoft.AspNetCore.App 10'; then
+              log "Instalando .NET 10 ASP.NET Core runtime..."
+              curl -fsSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+              chmod +x /tmp/dotnet-install.sh
+              $SUDO mkdir -p "$DOTNET_DIR"
+              $SUDO /tmp/dotnet-install.sh --channel 10.0 --runtime aspnetcore --install-dir "$DOTNET_DIR"
+              $SUDO ln -sf "$DOTNET" "$DOTNET_LINK"
+              rm -f /tmp/dotnet-install.sh
+            fi
+
+            # --- 3. Usuário de sistema dedicado ---
+            if ! id -u zap >/dev/null 2>&1; then
+              $SUDO useradd --system --home-dir /opt/automais-zap --shell /usr/sbin/nologin zap
+            fi
+
+            # --- 4. Diretórios ---
+            $SUDO mkdir -p "$APP_DIR" "$ENV_DIR"
+
+            # --- 5. Arquivo de ambiente ---
+            # O tee RECRIA o arquivo, então tudo que o serviço precisa é escrito aqui.
+            # Admin__SenhaInicial fica de fora de propósito: só serve no primeiro boot e não
+            # deve viver no env — semear o operador é passo manual do bootstrap.
+            if [ -z "${DB_CS:-}" ]; then
+              echo "ERRO: secret DB_CONNECTION_ZAP ausente — o relay não sobe sem banco." >&2
+              exit 1
+            fi
+            if [ -z "${META_APP_SECRET:-}" ] || [ -z "${META_VERIFY_TOKEN:-}" ]; then
+              echo "ERRO: META_APP_SECRET/META_VERIFY_TOKEN ausentes — o webhook falharia fechado (503)." >&2
+              exit 1
+            fi
+
+            log "Escrevendo $ENV_FILE..."
+            {
+              printf 'ConnectionStrings__ZapDb=%s\n' "$DB_CS"
+              printf 'Meta__AppSecret=%s\n' "$META_APP_SECRET"
+              printf 'Meta__VerifyToken=%s\n' "$META_VERIFY_TOKEN"
+            } | $SUDO tee "$ENV_FILE" >/dev/null
+            $SUDO chmod 600 "$ENV_FILE"
+            $SUDO chown zap:zap "$ENV_FILE"
+
+            # --- 6. Systemd unit ---
+            # Bind em 127.0.0.1: quem fala com a internet é o nginx. O automais-fhir escuta em
+            # 0.0.0.0 sem auth e isso é pendência aberta nos ADRs 0043 e 0045 — não repetir.
+            UNIT_FILE=/etc/systemd/system/$SERVICE.service
+            if [ ! -f "$UNIT_FILE" ]; then
+              log "Criando unit $UNIT_FILE..."
+              $SUDO tee "$UNIT_FILE" >/dev/null <<'UNIT'
+            [Unit]
+            Description=Automais Zap (relay de webhook do WhatsApp)
+            After=network.target postgresql.service
+
+            [Service]
+            WorkingDirectory=/opt/automais-zap/api
+            ExecStart=/usr/local/bin/dotnet /opt/automais-zap/api/Automais.Zap.Api.dll
+            Restart=on-failure
+            RestartSec=10
+            KillSignal=SIGINT
+            SyslogIdentifier=automais-zap
+            User=zap
+            Group=zap
+            EnvironmentFile=/etc/automais-zap/env
+            Environment=ASPNETCORE_ENVIRONMENT=Production
+            Environment=ASPNETCORE_URLS=http://127.0.0.1:5086
+            Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
+
+            [Install]
+            WantedBy=multi-user.target
+            UNIT
+              $SUDO systemctl daemon-reload
+              $SUDO systemctl enable "$SERVICE"
+            fi
+
+            # --- 7. Parar serviço + garantir a porta livre ---
+            # NÃO usar pkill -f com o nome da DLL: casaria com o shell deste script (que contém
+            # a string) e mataria a sessão SSH (SIGTERM 143).
+            $SUDO systemctl stop "$SERVICE" 2>/dev/null || true
+            if ! command -v fuser >/dev/null 2>&1; then
+              $SUDO apt-get update -y >/dev/null 2>&1 || true
+              $SUDO apt-get install -y psmisc >/dev/null 2>&1 || true
+            fi
+            for _ in $(seq 1 15); do
+              $SUDO fuser -k $PORTA/tcp 2>/dev/null || true
+              sleep 1
+              if ! $SUDO fuser $PORTA/tcp >/dev/null 2>&1; then break; fi
+            done
+
+            # --- 8. Substituir artefatos ---
+            if [ ! -f "$TARBALL" ]; then
+              echo "ERRO: $TARBALL não encontrado (scp falhou?)" >&2
+              exit 1
+            fi
+            log "Extraindo nova versão em $APP_DIR..."
+            $SUDO find "$APP_DIR" -mindepth 1 -delete
+            $SUDO tar -xzf "$TARBALL" -C "$APP_DIR"
+            $SUDO chown -R zap:zap "$APP_DIR"
+            rm -f "$TARBALL"
+
+            # --- 9. Iniciar ---
+            log "Iniciando $SERVICE..."
+            $SUDO systemctl start "$SERVICE"
+
+            # --- 10. Validação ---
+            # is-active sozinho dá falso verde em crash tardio (a migration roda no boot e
+            # falha fechado). Só o /health respondendo prova que subiu de verdade.
+            if ! $SUDO systemctl is-active --quiet "$SERVICE"; then
+              echo "FALHA: serviço não subiu. Journal:" >&2
+              $SUDO journalctl -u "$SERVICE" -n 80 --no-pager || true
+              exit 1
+            fi
+
+            OK=0
+            for _ in $(seq 1 15); do
+              if curl -fsS --max-time 3 "http://127.0.0.1:$PORTA/health" >/dev/null 2>&1; then OK=1; break; fi
+              sleep 2
+            done
+            if [ "$OK" -ne 1 ]; then
+              echo "FALHA: /health não respondeu em 30s. Journal:" >&2
+              $SUDO journalctl -u "$SERVICE" -n 80 --no-pager || true
+              exit 1
+            fi
+
+            log "OK — $SERVICE ativo e saudável em 127.0.0.1:$PORTA."

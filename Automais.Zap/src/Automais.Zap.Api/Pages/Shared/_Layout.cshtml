@@ -1,0 +1,80 @@
+@{
+    var autenticado = User.Identity?.IsAuthenticated == true;
+}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] — Automais.Zap</title>
+    <style>
+        :root {
+            --fundo: #0f1115; --painel: #171a21; --borda: #272b34;
+            --texto: #e6e8ec; --suave: #9aa3b2; --marca: #25d366;
+            --erro: #ff6b6b; --ok: #4ade80;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; background: var(--fundo); color: var(--texto);
+            font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        }
+        header {
+            display: flex; align-items: center; gap: 16px;
+            padding: 14px 24px; border-bottom: 1px solid var(--borda); background: var(--painel);
+        }
+        header .marca { font-weight: 700; letter-spacing: -0.02em; }
+        header .marca span { color: var(--marca); }
+        header nav { display: flex; gap: 16px; margin-left: auto; }
+        header nav a, header nav button {
+            color: var(--suave); text-decoration: none; background: none;
+            border: 0; font: inherit; cursor: pointer; padding: 0;
+        }
+        header nav a:hover, header nav button:hover { color: var(--texto); }
+        main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+        h1 { font-size: 20px; margin: 0 0 4px; }
+        h2 { font-size: 16px; margin: 28px 0 10px; }
+        .sub { color: var(--suave); font-size: 13px; margin: 0 0 20px; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--borda); }
+        th { color: var(--suave); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+        td.num { font-variant-numeric: tabular-nums; }
+        .cartao { background: var(--painel); border: 1px solid var(--borda); border-radius: 10px; padding: 18px; }
+        form.linha { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-top: 14px; }
+        label { display: block; font-size: 12px; color: var(--suave); margin-bottom: 4px; }
+        input[type=text], input[type=url], input[type=email], input[type=password] {
+            background: #0d0f13; border: 1px solid var(--borda); color: var(--texto);
+            border-radius: 7px; padding: 8px 10px; font: inherit; min-width: 180px;
+        }
+        button.acao {
+            background: var(--marca); color: #06240f; border: 0; border-radius: 7px;
+            padding: 9px 14px; font: inherit; font-weight: 600; cursor: pointer;
+        }
+        button.discreto { background: transparent; color: var(--suave); border: 1px solid var(--borda); }
+        .selo { font-size: 12px; padding: 2px 8px; border-radius: 20px; border: 1px solid var(--borda); }
+        .selo.on { color: var(--ok); border-color: #1f4d33; }
+        .selo.off { color: var(--erro); border-color: #4d1f1f; }
+        .aviso { border-left: 3px solid var(--erro); padding: 10px 14px; background: #1d1417; border-radius: 0 8px 8px 0; margin-bottom: 16px; }
+        .ok { border-left-color: var(--marca); background: #101d15; }
+        code { background: #0d0f13; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+    </style>
+</head>
+<body>
+@if (autenticado)
+{
+    <header>
+        <div class="marca">automais<span>.zap</span></div>
+        <nav>
+            <a href="/admin">Rotas</a>
+            <a href="/admin/entregas">Entregas</a>
+            <form method="post" action="/admin/sair" style="display:inline">
+                @Html.AntiForgeryToken()
+                <button type="submit">Sair</button>
+            </form>
+        </nav>
+    </header>
+}
+<main>
+    @RenderBody()
+</main>
+</body>
+</html>

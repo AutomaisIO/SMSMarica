@@ -1,0 +1,10 @@
+## .NET
+bin/
+obj/
+publish/
+*.user
+*.suo
+.vs/
+
+## Artefatos de deploy
+*.tar.gz

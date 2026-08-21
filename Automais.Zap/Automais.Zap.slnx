@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Automais.Zap.Api/Automais.Zap.Api.csproj" />
+    <Project Path="src/Automais.Zap.Core/Automais.Zap.Core.csproj" />
+    <Project Path="src/Automais.Zap.Data/Automais.Zap.Data.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Automais.Zap.Tests/Automais.Zap.Tests.csproj" />
+  </Folder>
+</Solution>

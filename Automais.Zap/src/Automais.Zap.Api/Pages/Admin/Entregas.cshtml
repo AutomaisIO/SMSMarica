@@ -1,0 +1,59 @@
+@page "/admin/entregas"
+@model Automais.Zap.Api.Pages.Admin.EntregasModel
+@{
+    ViewData["Title"] = "Entregas";
+}
+
+<h1>Entregas</h1>
+<p class="sub">
+    Últimas 200 tentativas. É trilha operacional: não há corpo de mensagem, wamid nem telefone
+    de cidadão aqui — só o número nosso, o tipo do evento e o resultado.
+</p>
+
+@if (Model.SemRotaRecentes > 0)
+{
+    <div class="aviso">
+        @Model.SemRotaRecentes evento(s) chegaram sem rota cadastrada. Confira o
+        <code>phone_number_id</code> em <a href="/admin">Rotas</a>.
+    </div>
+}
+@if (Model.FalhasRecentes > 0)
+{
+    <div class="aviso">@Model.FalhasRecentes entrega(s) falharam — a Meta reentrega, mas vale olhar o destino.</div>
+}
+
+<div class="cartao">
+    <table>
+        <thead>
+        <tr>
+            <th>Quando</th>
+            <th>Destino</th>
+            <th>phone_number_id</th>
+            <th>Tipo</th>
+            <th>HTTP</th>
+            <th>ms</th>
+            <th>Erro</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var l in Model.Linhas)
+        {
+            <tr>
+                <td class="num">@l.RecebidoEm.ToLocalTime().ToString("dd/MM HH:mm:ss")</td>
+                <td>@(l.Destino ?? "—")</td>
+                <td class="num"><code>@l.PhoneNumberId</code></td>
+                <td>@l.Tipo</td>
+                <td class="num">
+                    <span class="selo @(l.Sucesso ? "on" : "off")">@(l.StatusHttp?.ToString() ?? "—")</span>
+                </td>
+                <td class="num">@l.DuracaoMs</td>
+                <td>@(l.Erro ?? "")</td>
+            </tr>
+        }
+        @if (Model.Linhas.Count == 0)
+        {
+            <tr><td colspan="7" class="sub">Nada ainda.</td></tr>
+        }
+        </tbody>
+    </table>
+</div>
