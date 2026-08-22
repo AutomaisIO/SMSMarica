@@ -80,7 +80,7 @@ export function useSalvarTfdGoogle() {
   });
 }
 
-// ---- WhatsApp / Meta (TFD) ----
+// ---- WhatsApp (via Automais.Zap) ----
 
 export function useTfdWhatsApp() {
   return useQuery({

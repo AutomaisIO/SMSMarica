@@ -70,8 +70,17 @@ public sealed class ComunicacaoPacienteService(
 {
     private static readonly CultureInfo PtBr = CultureInfo.GetCultureInfo("pt-BR");
 
-    /// <summary>Códigos de erro da Meta que não adianta retentar (número inexistente/não autorizado).</summary>
+    /// <summary>Códigos de erro do WhatsApp que não adianta retentar (número inexistente/não autorizado).</summary>
     private static readonly string[] ErrosMetaPermanentes = ["131026", "131030"];
+
+    /// <summary>
+    /// O Automais.Zap devolve o erro como "{message} (code {code})"; o formato antigo, direto da
+    /// Meta, era "({code}) {message}". Casa pelo código nos dois — senão número inexistente volta
+    /// para a fila de retentativas em vez de falhar de vez.
+    /// </summary>
+    internal static bool ErroPermanente(string? erro)
+        => erro is not null
+           && ErrosMetaPermanentes.Any(c => erro.Contains($"({c})") || erro.Contains($"code {c}"));
 
     public async Task EnfileirarAsync(
         Solicitacao solicitacao, FinalidadeComunicacao finalidade, CancellationToken ct = default)
@@ -425,7 +434,9 @@ public sealed class ComunicacaoPacienteService(
                 n.MensagemWhatsAppId = await db.MensagensWhatsApp.AsNoTracking()
                     .Where(m => m.WaMessageId == wamid).Select(m => (Guid?)m.Id).FirstOrDefaultAsync(ct);
         }
-        else if (ErrosMetaPermanentes.Any(c => resultado.Erro?.Contains($"({c})") == true))
+        // O Automais.Zap devolve "{message} (code {code})"; o formato antigo era "({code}) {message}".
+        // Casar pelo codigo em ambos, senao numero inexistente volta para a fila em vez de falhar.
+        else if (ErroPermanente(resultado.Erro))
         {
             Terminal(n, StatusComunicacao.Falha, resultado.Erro);
         }

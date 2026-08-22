@@ -16,7 +16,7 @@ using SMSMarica.Tests.Infraestrutura;
 namespace SMSMarica.Tests.Notificacoes;
 
 /// <summary>
-/// Processamento de <c>value.statuses</c> do webhook da Meta (recibos de entrega):
+/// Processamento de <c>value.statuses</c> do eventos entregues pelo Automais.Zap (recibos de entrega):
 /// promoção monotônica Enviada→Entregue→Lida, falha com ErroMeta, espelho na
 /// ComunicacaoPaciente (re-enfileira retentável, terminal em erro permanente) e idempotência.
 /// Payloads no formato real da Cloud API.

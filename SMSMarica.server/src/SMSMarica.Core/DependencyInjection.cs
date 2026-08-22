@@ -535,7 +535,7 @@ public static class DependencyInjection
         // consente em não validar, com motivo — é o que destrava a autorização na recepção.
         services.AddScoped<Telefones.IDispensaContatoService, Telefones.DispensaContatoService>();
 
-        // WhatsApp (Meta Cloud API) — cliente de envio + webhook de recebimento (FT6).
+        // WhatsApp via Automais.Zap (ADR-0044) — cliente de envio + webhook assinado pelo relay (FT6).
         services.AddScoped<Notificacoes.WhatsApp.IWhatsAppWebhookService, Notificacoes.WhatsApp.WhatsAppWebhookService>();
         services.AddScoped<Notificacoes.WhatsApp.IWhatsAppNotificador, Notificacoes.WhatsApp.WhatsAppNotificador>();
         services.AddHttpClient<Notificacoes.WhatsApp.IWhatsAppCliente, Notificacoes.WhatsApp.WhatsAppCliente>(client =>

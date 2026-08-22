@@ -58,7 +58,7 @@ public enum ModuloPermissao
     /// <summary>Portal do cidadão/paciente (PWA): acesso ao próprio escopo (translados, acompanhante).</summary>
     Cidadao = 29,
 
-    /// <summary>Configurar integrações externas do TFD (Google Maps, WhatsApp/Meta).</summary>
+    /// <summary>Configurar integrações externas (Google Maps, WhatsApp via Automais.Zap).</summary>
     IntegracoesConfig = 30,
 
     /// <summary>Faturamento SUS / geração de BPA do transporte (TFD).</summary>

@@ -38,7 +38,7 @@ public sealed record TemplateWhatsApp(
     IReadOnlyList<string> Exemplos);
 
 /// <summary>
-/// Cliente do WhatsApp Cloud API (Meta). Token/PhoneNumberId vêm da configuração cifrada
+/// Cliente do canal WhatsApp via Automais.Zap. Token de tenant e PhoneNumberId vêm da configuração cifrada
 /// (<see cref="Tfd.Configuracao.ITfdConfigService"/>). Cada envio é auditado em
 /// <c>whatsapp_mensagem</c>. Mensagens iniciadas pelo sistema (fora da janela de 24h)
 /// exigem template HSM aprovado; dentro da janela, texto livre.

@@ -7,7 +7,7 @@ namespace SMSMarica.Api.Controllers;
 
 /// <summary>
 /// Disparo de mensagens do TFD ao paciente pelo WhatsApp (em modo simulado enquanto não há
-/// conta Meta — o envio é registrado/logado e os fluxos funcionam ponta a ponta).
+/// conexão com o Automais.Zap — o envio é registrado/logado e os fluxos funcionam ponta a ponta).
 /// </summary>
 [ApiController]
 [Route("tfd/notificacoes")]

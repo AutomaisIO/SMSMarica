@@ -1,7 +1,7 @@
 namespace SMSMarica.Core.Notificacoes.WhatsApp;
 
 /// <summary>
-/// Mensagens do TFD ao paciente pelo WhatsApp (em modo simulado enquanto não há conta Meta).
+/// Mensagens do TFD ao paciente pelo WhatsApp (simula quando o canal WhatsApp não está configurado).
 /// </summary>
 public interface IWhatsAppNotificador
 {

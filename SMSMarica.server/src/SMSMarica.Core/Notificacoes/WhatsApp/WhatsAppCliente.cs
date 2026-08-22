@@ -14,10 +14,9 @@ using SMSMarica.Data.Entities.Notificacoes;
 namespace SMSMarica.Core.Notificacoes.WhatsApp;
 
 /// <summary>
-/// Cliente do WhatsApp Cloud API (Meta). Enquanto não há conta Meta verificada, opera em
-/// <b>modo simulado</b>: registra/loga a mensagem que seria enviada e devolve sucesso (não
-/// chama a Meta). Simula quando a integração não está configurada ou quando
-/// <c>Tfd:WhatsApp:Simular=true</c>. Configurada a conta, passa a enviar de verdade sozinho.
+/// Cliente do canal WhatsApp via Automais.Zap (ADR-0044). Monta o corpo no formato da Cloud API
+/// e o relay o repassa à Meta intacto. Simula quando a conexão com o Zap não está configurada
+/// ou <c>Tfd:WhatsApp:Simular=true</c>.
 /// </summary>
 public sealed class WhatsAppCliente(
     HttpClient http,
@@ -330,24 +329,6 @@ public sealed class WhatsAppCliente(
         CriadoEm = DateTime.UtcNow,
     };
 
-    /// <summary>"(code) message — details" a partir do envelope de erro do Graph API; null se o corpo não for esse formato.</summary>
-    internal static string? ExtrairErroMeta(string corpo)
-    {
-        try
-        {
-            using var doc = JsonDocument.Parse(corpo);
-            if (!doc.RootElement.TryGetProperty("error", out var e)) return null;
-            var code = e.TryGetProperty("code", out var c) ? c.ToString() : null;
-            var message = e.TryGetProperty("message", out var m) ? m.GetString() : null;
-            var details = e.TryGetProperty("error_data", out var ed) && ed.TryGetProperty("details", out var d)
-                ? d.GetString() : null;
-            if (message is null && code is null) return null;
-            var txt = $"({code}) {message}";
-            return string.IsNullOrEmpty(details) ? txt : $"{txt} — {details}";
-        }
-        catch { return null; }
-    }
-
     /// <summary>Resposta do Automais.Zap no sucesso: <c>{"wamid":"..."}</c>.</summary>
     private static string? ExtrairWamidZap(string corpo)
     {
@@ -368,21 +349,6 @@ public sealed class WhatsAppCliente(
             return doc.RootElement.TryGetProperty("erro", out var e) ? e.GetString() : null;
         }
         catch { return null; }
-    }
-
-    private static string? ExtrairWamid(string corpo)
-    {
-        try
-        {
-            using var doc = JsonDocument.Parse(corpo);
-            if (doc.RootElement.TryGetProperty("messages", out var msgs) && msgs.ValueKind == JsonValueKind.Array
-                && msgs.GetArrayLength() > 0 && msgs[0].TryGetProperty("id", out var id))
-            {
-                return id.GetString();
-            }
-        }
-        catch { /* corpo inesperado */ }
-        return null;
     }
 
     /// <summary>Só dígitos, com DDI Brasil (55) quando vier sem código de país.</summary>

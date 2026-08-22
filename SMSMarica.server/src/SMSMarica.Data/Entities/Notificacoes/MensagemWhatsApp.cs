@@ -4,7 +4,7 @@ using SMSMarica.Data.Entities.Enums;
 namespace SMSMarica.Data.Entities.Notificacoes;
 
 /// <summary>
-/// Trilha de auditoria das mensagens WhatsApp (Meta Cloud API) — envios e recebimentos.
+/// Trilha de auditoria das mensagens WhatsApp (via Automais.Zap, payload no formato da Cloud API) — envios e recebimentos.
 /// É infraestrutura transversal do SMSMarica: serve a Central de Atendimento, as
 /// comunicações ao paciente e qualquer módulo que precise falar por WhatsApp. A
 /// idempotência do webhook se apoia em <see cref="WaMessageId"/>. Colunas

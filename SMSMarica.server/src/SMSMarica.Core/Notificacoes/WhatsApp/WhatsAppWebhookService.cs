@@ -209,7 +209,7 @@ public sealed class WhatsAppWebhookService(
                         notificacao.Status = StatusComunicacao.Lida;
                     break;
                 case StatusMensagemWhatsApp.Falha:
-                    notificacao.MotivoFalha = erro ?? "Falha de entrega reportada pela Meta.";
+                    notificacao.MotivoFalha = erro ?? "Falha de entrega reportada pelo WhatsApp.";
                     if (notificacao.Tentativas < notificadorOptions.Value.MaxTentativas && ErroEntregaRetentavel(erro))
                     {
                         // Volta pra fila — o worker reenvia com magic link novo.

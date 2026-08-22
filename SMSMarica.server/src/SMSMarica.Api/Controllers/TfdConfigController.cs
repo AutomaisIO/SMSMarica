@@ -5,7 +5,7 @@ using SMSMarica.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
 
-/// <summary>Configuração das integrações externas do TFD (Google Maps, WhatsApp/Meta).</summary>
+/// <summary>Configuração das integrações externas (Google Maps, WhatsApp via Automais.Zap).</summary>
 [ApiController]
 [Route("integracoes/tfd")]
 public sealed class TfdConfigController(ITfdConfigService service) : ControllerBase

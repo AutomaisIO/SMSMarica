@@ -4,7 +4,7 @@ namespace SMSMarica.Core.Cidadao;
 
 /// <summary>
 /// Autenticação do paciente no PWA: CPF + código (OTP). Hoje o código é exibido na tela
-/// (modo teste); quando o WhatsApp/Meta estiver ativo, o envio do código migra para lá.
+/// (modo teste); com o canal WhatsApp configurado (Automais.Zap), o código vai por ele.
 /// </summary>
 public interface IPacienteAuthService
 {
