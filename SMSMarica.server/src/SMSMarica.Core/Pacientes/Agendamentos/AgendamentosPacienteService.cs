@@ -73,6 +73,7 @@ public sealed partial class AgendamentosPacienteService(SmsMaricaDbContext db)
             .Select(x => new
             {
                 x.Id,
+                x.IdSer,
                 x.Tipo,
                 x.Recurso,
                 x.UnidadeExecutora,
@@ -97,7 +98,9 @@ public sealed partial class AgendamentosPacienteService(SmsMaricaDbContext db)
                 l.DataSolicitacao,
                 situacao,
                 DescreverSituacao(situacao),
-                l.Situacao.ToString());
+                l.Situacao.ToString(),
+                l.IdSer,
+                l.Id); // detalhe SER abre pelo id da própria ser_solicitacao
         });
     }
 
@@ -124,6 +127,7 @@ public sealed partial class AgendamentosPacienteService(SmsMaricaDbContext db)
             {
                 s.Id,
                 s.Categoria,
+                s.CodigoSolicitacao,
                 s.ProcedimentoTexto,
                 s.EspecialidadeTexto,
                 UnidadeNome = s.UnidadeExecutante != null ? s.UnidadeExecutante.Nome : null,
@@ -131,6 +135,9 @@ public sealed partial class AgendamentosPacienteService(SmsMaricaDbContext db)
                 s.DataSolicitacao,
                 s.Status,
                 s.AutorizadoEm,
+                // O detalhe (GET /solicitacoes-exame/{id}) resolve pelo id do satélite de imagem —
+                // existe só para exame de imagem; consulta/gráfico/outros ficam sem modal.
+                ExameImagemId = s.ExameImagem != null ? (Guid?)s.ExameImagem.Id : null,
             })
             .ToListAsync(cancellationToken);
 
@@ -154,7 +161,9 @@ public sealed partial class AgendamentosPacienteService(SmsMaricaDbContext db)
                 l.DataSolicitacao,
                 situacao,
                 DescreverSituacao(situacao),
-                l.Status.ToString());
+                l.Status.ToString(),
+                l.CodigoSolicitacao,
+                l.ExameImagemId);
         });
     }
 
@@ -202,7 +211,9 @@ public sealed partial class AgendamentosPacienteService(SmsMaricaDbContext db)
                 null, // agenda local não tem eixo de "data de solicitação"
                 situacao,
                 DescreverSituacao(situacao),
-                l.Status.ToString());
+                l.Status.ToString(),
+                null, // sem número de solicitação externa
+                null); // sem detalhe navegável
         });
     }
 

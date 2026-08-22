@@ -263,6 +263,8 @@ export type AgendamentoPacienteItem = {
   situacao: SituacaoAgendamentoPaciente;
   situacaoDescricao: string;
   situacaoOrigem?: string | null;
+  numeroSolicitacao?: string | null;
+  detalheId?: string | null;
 };
 
 export type AgendamentosPaciente = {
