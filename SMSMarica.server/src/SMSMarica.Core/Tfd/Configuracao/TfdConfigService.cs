@@ -43,31 +43,24 @@ public sealed class TfdConfigService(SmsMaricaDbContext db, IProtetorSegredos pr
     {
         var c = await ObterOuCriarWhatsAppAsync(ct);
         return new TfdConfigWhatsAppDto(
-            c.BaseUrl, c.PhoneNumberId, c.WabaId,
-            !string.IsNullOrEmpty(c.TokenCifrado),
-            !string.IsNullOrEmpty(c.VerifyTokenCifrado),
-            !string.IsNullOrEmpty(c.AppSecretCifrado),
-            c.Ativo,
+            c.PhoneNumberId,
             c.ZapBaseUrl,
             !string.IsNullOrEmpty(c.ZapTokenCifrado),
             !string.IsNullOrEmpty(c.ZapSegredoWebhookCifrado),
-            c.ZapAtivo);
+            c.ZapAtivo,
+            c.Ativo);
     }
 
     public async Task AtualizarWhatsAppAsync(AtualizarTfdConfigWhatsAppRequest request, CancellationToken ct = default)
     {
         var c = await ObterOuCriarWhatsAppAsync(ct);
-        c.BaseUrl = string.IsNullOrWhiteSpace(request.BaseUrl) ? c.BaseUrl : request.BaseUrl.Trim();
         c.PhoneNumberId = string.IsNullOrWhiteSpace(request.PhoneNumberId) ? c.PhoneNumberId : request.PhoneNumberId.Trim();
-        c.WabaId = string.IsNullOrWhiteSpace(request.WabaId) ? c.WabaId : request.WabaId.Trim();
-        c.Ativo = request.Ativo;
-        if (!string.IsNullOrWhiteSpace(request.Token)) c.TokenCifrado = protetor.Proteger(request.Token.Trim());
-        if (!string.IsNullOrWhiteSpace(request.VerifyToken)) c.VerifyTokenCifrado = protetor.Proteger(request.VerifyToken.Trim());
-        if (!string.IsNullOrWhiteSpace(request.AppSecret)) c.AppSecretCifrado = protetor.Proteger(request.AppSecret.Trim());
         c.ZapBaseUrl = string.IsNullOrWhiteSpace(request.ZapBaseUrl) ? c.ZapBaseUrl : request.ZapBaseUrl.Trim();
+        // Segredo em branco mantém o que está gravado; a tela nunca reexibe o valor.
         if (!string.IsNullOrWhiteSpace(request.ZapToken)) c.ZapTokenCifrado = protetor.Proteger(request.ZapToken.Trim());
         if (!string.IsNullOrWhiteSpace(request.ZapSegredoWebhook)) c.ZapSegredoWebhookCifrado = protetor.Proteger(request.ZapSegredoWebhook.Trim());
         c.ZapAtivo = request.ZapAtivo;
+        c.Ativo = request.Ativo;
         c.AtualizadoEm = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
     }
@@ -77,28 +70,16 @@ public sealed class TfdConfigService(SmsMaricaDbContext db, IProtetorSegredos pr
         var c = await db.WhatsAppConfiguracao.AsNoTracking().FirstOrDefaultAsync(ct)
             ?? throw new ValidacaoException("whatsapp.nao_configurado", "Integração WhatsApp ainda não configurada.");
         if (!c.Ativo) throw new ValidacaoException("whatsapp.inativo", "Integração WhatsApp está desativada.");
-        // Com o envio pelo Automais.Zap, o token da Meta deixa de ser obrigatório aqui — é
-        // justamente o ponto de sair do App antigo sem precisar de credencial da Meta na
-        // instância. O PhoneNumberId continua exigido: é ele que identifica a linha.
-        var viaZap = c.ZapAtivo
-                     && !string.IsNullOrWhiteSpace(c.ZapBaseUrl)
-                     && !string.IsNullOrEmpty(c.ZapTokenCifrado);
 
         if (string.IsNullOrWhiteSpace(c.PhoneNumberId))
-            throw new ValidacaoException("whatsapp.incompleto", "Phone Number ID do WhatsApp não configurado.");
-        if (!viaZap && string.IsNullOrEmpty(c.TokenCifrado))
-            throw new ValidacaoException("whatsapp.incompleto", "Token do WhatsApp não configurado.");
+            throw new ValidacaoException("whatsapp.incompleto", "Linha de envio (phone_number_id) não configurada.");
+        if (string.IsNullOrWhiteSpace(c.ZapBaseUrl) || string.IsNullOrEmpty(c.ZapTokenCifrado))
+            throw new ValidacaoException("whatsapp.incompleto", "Conexão com o Automais.Zap não configurada.");
 
         return new TfdWhatsAppContexto(
-            c.BaseUrl,
-            string.IsNullOrEmpty(c.TokenCifrado) ? string.Empty : protetor.Revelar(c.TokenCifrado),
             c.PhoneNumberId,
-            c.WabaId,
-            string.IsNullOrEmpty(c.VerifyTokenCifrado) ? null : protetor.Revelar(c.VerifyTokenCifrado),
-            string.IsNullOrEmpty(c.AppSecretCifrado) ? null : protetor.Revelar(c.AppSecretCifrado),
             c.ZapBaseUrl,
-            string.IsNullOrEmpty(c.ZapTokenCifrado) ? null : protetor.Revelar(c.ZapTokenCifrado),
-            c.ZapAtivo,
+            protetor.Revelar(c.ZapTokenCifrado),
             string.IsNullOrEmpty(c.ZapSegredoWebhookCifrado) ? null : protetor.Revelar(c.ZapSegredoWebhookCifrado));
     }
 

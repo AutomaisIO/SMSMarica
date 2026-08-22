@@ -3,24 +3,15 @@ namespace SMSMarica.Core.Tfd.Configuracao;
 /// <summary>Contexto resolvido (segredos revelados) da Google Maps Platform.</summary>
 public sealed record TfdGoogleContexto(string BaseUrl, string ApiKey);
 
-/// <summary>Contexto resolvido (segredos revelados) do WhatsApp Cloud API (Meta).</summary>
+/// <summary>
+/// Contexto resolvido do canal WhatsApp. Não há credencial da Meta aqui: quem fala com ela é
+/// o Automais.Zap.
+/// </summary>
 public sealed record TfdWhatsAppContexto(
-    string BaseUrl,
-    string Token,
     string PhoneNumberId,
-    string? WabaId,
-    string? VerifyToken,
-    string? AppSecret,
-    string? ZapBaseUrl = null,
-    string? ZapToken = null,
-    bool ZapAtivo = false,
-    string? ZapSegredoWebhook = null)
-{
-    /// <summary>Envio (e listagem de templates) sai pelo Automais.Zap.</summary>
-    public bool ViaZap => ZapAtivo
-                          && !string.IsNullOrWhiteSpace(ZapBaseUrl)
-                          && !string.IsNullOrWhiteSpace(ZapToken);
-}
+    string ZapBaseUrl,
+    string ZapToken,
+    string? ZapSegredoWebhook);
 
 /// <summary>
 /// Configuração (linha única por integração) das credenciais externas do TFD.

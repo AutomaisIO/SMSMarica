@@ -7,18 +7,22 @@ import { Campo } from '@/shared/ui/Campo';
 import { Input } from '@/shared/ui/Input';
 import { useSalvarTfdWhatsApp, useTfdWhatsApp } from '@/features/integracoes/api';
 
+/**
+ * Conexão de WhatsApp da instância.
+ *
+ * Quem fala com a Meta é o Automais.Zap — token do System User, App Secret, verify token e
+ * WABA ficaram lá. Esta tela cuida só do que é nosso: por onde falamos com o relay e por qual
+ * linha enviamos.
+ *
+ * Não há credencial da Meta nesta instância — nem na tela, nem no banco.
+ */
 export function WhatsAppCard() {
   const podeEditar = usePermissao('IntegracoesConfig', 'Edicao');
   const config = useTfdWhatsApp();
   const salvar = useSalvarTfdWhatsApp();
 
   const [aberto, setAberto] = useState(false);
-  const [baseUrl, setBaseUrl] = useState('https://graph.facebook.com/v21.0/');
   const [phoneNumberId, setPhoneNumberId] = useState('');
-  const [wabaId, setWabaId] = useState('');
-  const [token, setToken] = useState('');
-  const [verifyToken, setVerifyToken] = useState('');
-  const [appSecret, setAppSecret] = useState('');
   const [ativo, setAtivo] = useState(true);
   const [zapBaseUrl, setZapBaseUrl] = useState('');
   const [zapToken, setZapToken] = useState('');
@@ -29,29 +33,24 @@ export function WhatsAppCard() {
 
   useEffect(() => {
     if (config.data) {
-      setBaseUrl(config.data.baseUrl);
       setPhoneNumberId(config.data.phoneNumberId ?? '');
-      setWabaId(config.data.wabaId ?? '');
       setAtivo(config.data.ativo);
       setZapBaseUrl(config.data.zapBaseUrl ?? '');
       setZapAtivo(config.data.zapAtivo);
     }
   }, [config.data]);
 
-  const configurado = config.data?.tokenConfigurado ?? false;
+  const pronto = (config.data?.zapTokenConfigurado ?? false) && (config.data?.zapAtivo ?? false);
 
   function aoSalvar(e: React.FormEvent) {
     e.preventDefault();
     setErro(null);
     setSalvo(false);
+    // Campo omitido = mantido como está no banco. É assim que as credenciais legadas da Meta
+    // sobrevivem a um salvamento desta tela, mesmo sem aparecer nela.
     salvar.mutate(
       {
-        baseUrl: baseUrl.trim(),
         phoneNumberId: phoneNumberId.trim() || null,
-        wabaId: wabaId.trim() || null,
-        token: token || undefined,
-        verifyToken: verifyToken || undefined,
-        appSecret: appSecret || undefined,
         ativo,
         zapBaseUrl: zapBaseUrl.trim() || null,
         zapToken: zapToken || undefined,
@@ -61,9 +60,8 @@ export function WhatsAppCard() {
       {
         onSuccess: () => {
           setSalvo(true);
-          setToken('');
-          setVerifyToken('');
-          setAppSecret('');
+          setZapToken('');
+          setZapSegredoWebhook('');
         },
         onError: (err) => setErro(extrairMensagemDeErro(err)),
       },
@@ -79,143 +77,113 @@ export function WhatsAppCard() {
       >
         <span className="flex items-center gap-2">
           <MessageCircle className="h-5 w-5 text-primary-600" />
-          <span className="font-medium text-gray-900">WhatsApp / Meta Cloud API</span>
+          <span className="font-medium text-gray-900">WhatsApp</span>
         </span>
         <span className="flex items-center gap-2">
           <span
             className={
-              configurado && (config.data?.ativo ?? false)
+              pronto && (config.data?.ativo ?? false)
                 ? 'rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-medium text-green-700'
                 : 'rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500'
             }
           >
-            {configurado ? (config.data?.ativo ? 'Configurado' : 'Inativo') : 'Não configurado'}
+            {pronto ? (config.data?.ativo ? 'Conectado' : 'Desligado') : 'Não configurado'}
           </span>
           <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${aberto ? 'rotate-180' : ''}`} />
         </span>
       </button>
 
       {aberto ? (
-        <form onSubmit={aoSalvar} className="mt-4 space-y-4 border-t border-gray-100 pt-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Campo label="URL base" htmlFor="wa-url" className="sm:col-span-2">
-              <Input id="wa-url" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} disabled={!podeEditar} />
-            </Campo>
-            <Campo label="Phone Number ID" htmlFor="wa-phone">
-              <Input id="wa-phone" value={phoneNumberId} onChange={(e) => setPhoneNumberId(e.target.value)} disabled={!podeEditar} />
-            </Campo>
-            <Campo label="WABA ID" htmlFor="wa-waba">
-              <Input id="wa-waba" value={wabaId} onChange={(e) => setWabaId(e.target.value)} disabled={!podeEditar} />
-            </Campo>
+        <form onSubmit={aoSalvar} className="mt-4 space-y-5 border-t border-gray-100 pt-4">
+          {/* A chave-geral vem primeiro e sozinha: desligá-la derruba receber E enviar, e o
+              sintoma no envio é silencioso (cai em modo simulado). Já derrubou uma vez por
+              parecer irmã da chave que só escolhe o transporte. */}
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+            <label className="flex items-start gap-2 text-sm text-gray-800">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={ativo}
+                onChange={(e) => setAtivo(e.target.checked)}
+                disabled={!podeEditar}
+              />
+              <span>
+                <span className="font-medium">WhatsApp habilitado</span>
+                <span className="mt-0.5 block text-xs text-amber-800">
+                  Chave geral do canal. Desligada, o sistema para de <strong>receber</strong> e de{' '}
+                  <strong>enviar</strong> mensagem — e o envio falha em silêncio.
+                </span>
+              </span>
+            </label>
           </div>
 
-          <Campo
-            label="Token (System User)"
-            htmlFor="wa-token"
-            dica={config.data?.tokenConfigurado ? 'Já configurado — preencha apenas para substituir.' : 'Ainda não configurado.'}
-          >
-            <Input
-              id="wa-token"
-              type="password"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              placeholder={config.data?.tokenConfigurado ? '••••••••••••' : 'Cole o token aqui'}
-              autoComplete="new-password"
-              disabled={!podeEditar}
-            />
-          </Campo>
-
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Campo label="URL do Automais.Zap" htmlFor="zap-url">
+              <Input
+                id="zap-url"
+                value={zapBaseUrl}
+                onChange={(e) => setZapBaseUrl(e.target.value)}
+                placeholder="https://api.smsmais.automais.com"
+                disabled={!podeEditar}
+              />
+            </Campo>
+
             <Campo
-              label="Verify Token (webhook)"
-              htmlFor="wa-verify"
-              dica={config.data?.verifyTokenConfigurado ? 'Já configurado.' : 'Ainda não configurado.'}
+              label="Linha de envio (phone_number_id)"
+              htmlFor="wa-phone"
+              dica="Identifica por qual número as mensagens saem."
             >
               <Input
-                id="wa-verify"
+                id="wa-phone"
+                value={phoneNumberId}
+                onChange={(e) => setPhoneNumberId(e.target.value)}
+                disabled={!podeEditar}
+              />
+            </Campo>
+
+            <Campo
+              label="Token do tenant"
+              htmlFor="zap-token"
+              dica={
+                config.data?.zapTokenConfigurado
+                  ? 'Já configurado — preencha apenas para substituir.'
+                  : 'Gerado no painel do Automais.Zap, na tela do tenant.'
+              }
+            >
+              <Input
+                id="zap-token"
                 type="password"
-                value={verifyToken}
-                onChange={(e) => setVerifyToken(e.target.value)}
-                placeholder={config.data?.verifyTokenConfigurado ? '••••••••' : 'Verify token'}
+                value={zapToken}
+                onChange={(e) => setZapToken(e.target.value)}
+                placeholder={config.data?.zapTokenConfigurado ? '••••••••' : 'zap_...'}
                 autoComplete="new-password"
                 disabled={!podeEditar}
               />
             </Campo>
+
             <Campo
-              label="App Secret"
-              htmlFor="wa-secret"
-              dica={config.data?.appSecretConfigurado ? 'Já configurado.' : 'Ainda não configurado.'}
+              label="Segredo do webhook"
+              htmlFor="zap-segredo"
+              dica={
+                config.data?.zapSegredoWebhookConfigurado
+                  ? 'Já configurado.'
+                  : 'Gerado no painel do Automais.Zap, na tela do WABA.'
+              }
             >
               <Input
-                id="wa-secret"
+                id="zap-segredo"
                 type="password"
-                value={appSecret}
-                onChange={(e) => setAppSecret(e.target.value)}
-                placeholder={config.data?.appSecretConfigurado ? '••••••••' : 'App secret'}
+                value={zapSegredoWebhook}
+                onChange={(e) => setZapSegredoWebhook(e.target.value)}
+                placeholder={config.data?.zapSegredoWebhookConfigurado ? '••••••••' : 'gerado no painel do Zap'}
                 autoComplete="new-password"
                 disabled={!podeEditar}
               />
             </Campo>
           </div>
 
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <input type="checkbox" checked={ativo} onChange={(e) => setAtivo(e.target.checked)} disabled={!podeEditar} />
-            Integração ativa
-          </label>
-
-          <div className="border-t border-gray-100 pt-4">
-            <h4 className="text-sm font-semibold text-gray-900">Automais.Zap</h4>
-            <p className="mt-1 text-xs text-gray-500">
-              Com o envio pelo Automais.Zap, as credenciais da Meta acima deixam de ser
-              necessárias: quem fala com a Meta é ele. O segredo do webhook é o que nos permite
-              conferir que o evento recebido veio mesmo dele.
-            </p>
-
-            <div className="mt-3 grid gap-4 sm:grid-cols-2">
-              <Campo label="URL da API" htmlFor="zap-url">
-                <Input
-                  id="zap-url"
-                  value={zapBaseUrl}
-                  onChange={(e) => setZapBaseUrl(e.target.value)}
-                  placeholder="https://api.smsmais.automais.com"
-                  disabled={!podeEditar}
-                />
-              </Campo>
-
-              <Campo
-                label="Token do tenant"
-                htmlFor="zap-token"
-                dica={config.data?.zapTokenConfigurado ? 'Já configurado — preencha apenas para substituir.' : 'Ainda não configurado.'}
-              >
-                <Input
-                  id="zap-token"
-                  type="password"
-                  value={zapToken}
-                  onChange={(e) => setZapToken(e.target.value)}
-                  placeholder={config.data?.zapTokenConfigurado ? '••••••••' : 'zap_...'}
-                  autoComplete="new-password"
-                  disabled={!podeEditar}
-                />
-              </Campo>
-
-              <Campo
-                label="Segredo do webhook"
-                htmlFor="zap-segredo"
-                dica={config.data?.zapSegredoWebhookConfigurado ? 'Já configurado.' : 'Ainda não configurado.'}
-              >
-                <Input
-                  id="zap-segredo"
-                  type="password"
-                  value={zapSegredoWebhook}
-                  onChange={(e) => setZapSegredoWebhook(e.target.value)}
-                  placeholder={config.data?.zapSegredoWebhookConfigurado ? '••••••••' : 'gerado no painel do Zap'}
-                  autoComplete="new-password"
-                  disabled={!podeEditar}
-                />
-              </Campo>
-            </div>
-
-            <label className="mt-3 flex items-center gap-2 text-sm text-gray-700">
+          <div>
+            <label className="flex items-center gap-2 text-sm text-gray-700">
               <input
                 type="checkbox"
                 checked={zapAtivo}
@@ -225,8 +193,8 @@ export function WhatsAppCard() {
               Enviar pelo Automais.Zap
             </label>
             <p className="mt-1 text-xs text-gray-500">
-              Desmarcado, o envio volta a sair direto para a Meta com o token acima. É a saída de
-              emergência — voltar atrás tem de ser uma chave, não um deploy.
+              Reservado para o dia em que houver outro transporte. Hoje o Automais.Zap é o único
+              caminho de envio — desmarcar não tem para onde voltar.
             </p>
           </div>
 

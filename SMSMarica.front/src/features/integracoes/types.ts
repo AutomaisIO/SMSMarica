@@ -33,33 +33,24 @@ export type TesteSpacesResultado = {
 export type TfdGoogle = { baseUrl: string; chaveConfigurada: boolean; ativo: boolean };
 export type AtualizarTfdGoogle = { baseUrl: string; apiKey?: string; ativo: boolean };
 
-// WhatsApp / Meta (TFD) — tokens cifrados.
+// WhatsApp — a instância fala só com o Automais.Zap; as credenciais da Meta vivem lá.
 export type TfdWhatsApp = {
-  baseUrl: string;
   phoneNumberId: string | null;
-  wabaId: string | null;
-  tokenConfigurado: boolean;
-  verifyTokenConfigurado: boolean;
-  appSecretConfigurado: boolean;
-  ativo: boolean;
   zapBaseUrl: string | null;
   zapTokenConfigurado: boolean;
   zapSegredoWebhookConfigurado: boolean;
   zapAtivo: boolean;
+  ativo: boolean;
 };
 
+// Segredo em branco mantém o que está gravado — a tela nunca reexibe o valor.
 export type AtualizarTfdWhatsApp = {
-  baseUrl: string;
-  token?: string;
   phoneNumberId?: string | null;
-  wabaId?: string | null;
-  verifyToken?: string;
-  appSecret?: string;
-  ativo: boolean;
   zapBaseUrl?: string | null;
   zapToken?: string;
   zapSegredoWebhook?: string;
   zapAtivo: boolean;
+  ativo: boolean;
 };
 
 // Motores de proxy (CPF/CEP) com fallback configurável.

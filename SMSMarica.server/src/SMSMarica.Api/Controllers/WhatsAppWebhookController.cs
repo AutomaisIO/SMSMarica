@@ -8,15 +8,16 @@ using SMSMarica.Core.Tfd.Configuracao;
 namespace SMSMarica.Api.Controllers;
 
 /// <summary>
-/// Webhook do WhatsApp. Anônimo — a autorização é a assinatura do corpo.
+/// Webhook por onde o <b>Automais.Zap</b> entrega os eventos do WhatsApp desta instância.
 ///
-/// <para>Duas origens são aceitas, de propósito, porque durante a migração as duas existem:</para>
-/// <list type="bullet">
-/// <item><b>Automais.Zap</b> — <c>X-Automais-Signature</c> sobre <c>{timestamp}.{corpo}</c>,
-/// com o segredo combinado entre os dois sistemas. É o caminho novo.</item>
-/// <item><b>Meta direto</b> — <c>X-Hub-Signature-256</c> com o App Secret. É o caminho antigo,
-/// que continua valendo enquanto o App antigo estiver inscrito no WABA.</item>
-/// </list>
+/// <para>Só ele chama aqui — a Meta não fala mais direto com este sistema (ADR-0044). A
+/// autorização é a assinatura <c>X-Automais-Signature</c>: HMAC-SHA256 do segredo combinado
+/// entre os dois sistemas sobre <c>{timestamp}.{corpo}</c>, com o instante em
+/// <c>X-Automais-Timestamp</c>. O timestamp entra no que é assinado para que capturar uma
+/// entrega não permita reenviá-la depois.</para>
+///
+/// <para>O payload em si continua no formato da Cloud API — o relay o repassa intacto —, por
+/// isso o processamento a jusante não mudou.</para>
 /// </summary>
 [ApiController]
 [Route("integracoes/whatsapp")]
@@ -26,29 +27,13 @@ public sealed class WhatsAppWebhookController(
     ITfdConfigService config,
     ILogger<WhatsAppWebhookController> logger) : ControllerBase
 {
-    /// <summary>Tolerância de relógio na assinatura do Automais.Zap.</summary>
+    private const string CabecalhoAssinatura = "X-Automais-Signature";
+    private const string CabecalhoTimestamp = "X-Automais-Timestamp";
+
+    /// <summary>Tolerância de relógio entre o relay e esta instância.</summary>
     private static readonly TimeSpan JanelaAssinatura = TimeSpan.FromMinutes(5);
 
-    /// <summary>Verificação de assinatura do webhook (handshake da Meta).</summary>
-    [HttpGet("webhook")]
-    public async Task<IActionResult> Verificar(
-        [FromQuery(Name = "hub.mode")] string? mode,
-        [FromQuery(Name = "hub.verify_token")] string? verifyToken,
-        [FromQuery(Name = "hub.challenge")] string? challenge,
-        CancellationToken cancellationToken)
-    {
-        TfdWhatsAppContexto ctx;
-        try { ctx = await config.ObterWhatsAppContextoAsync(cancellationToken); }
-        catch { return Forbid(); }
-
-        if (mode == "subscribe" && !string.IsNullOrEmpty(ctx.VerifyToken) && verifyToken == ctx.VerifyToken)
-        {
-            return Content(challenge ?? string.Empty, "text/plain");
-        }
-        return Unauthorized();
-    }
-
-    /// <summary>Recebe eventos (mensagens/status).</summary>
+    /// <summary>Recebe eventos (mensagens e status) entregues pelo Automais.Zap.</summary>
     [HttpPost("webhook")]
     public async Task<IActionResult> Receber(CancellationToken cancellationToken)
     {
@@ -67,14 +52,19 @@ public sealed class WhatsAppWebhookController(
         }
         catch (Exception ex)
         {
-            // FALHA FECHADO. Antes havia um catch vazio aqui e o POST seguia SEM conferir
-            // assinatura nenhuma quando a configuração não carregava — qualquer um criava
-            // conversa. Com App compartilhado entre municípios isso é pior ainda.
+            // FALHA FECHADO. Sem configuração não há como conferir a origem — e aceitar sem
+            // conferir é deixar qualquer um criar conversa.
             logger.LogError(ex, "Webhook WhatsApp: sem configuração para validar a origem. Recusando.");
             return Unauthorized();
         }
 
-        if (!OrigemConfiavel(raw, ctx))
+        if (string.IsNullOrWhiteSpace(ctx.ZapSegredoWebhook))
+        {
+            logger.LogError("Webhook WhatsApp: segredo do Automais.Zap não configurado em Integrações. Recusando.");
+            return Unauthorized();
+        }
+
+        if (!AssinaturaConfere(raw, ctx.ZapSegredoWebhook))
         {
             return Unauthorized();
         }
@@ -83,59 +73,37 @@ public sealed class WhatsAppWebhookController(
         return Ok();
     }
 
-    private bool OrigemConfiavel(string raw, TfdWhatsAppContexto ctx)
+    private bool AssinaturaConfere(string raw, string segredo)
     {
-        var bytes = Encoding.UTF8.GetBytes(raw);
-
-        // 1) Automais.Zap, quando o segredo estiver combinado.
-        var assinaturaZap = Request.Headers["X-Automais-Signature"].ToString();
-        if (!string.IsNullOrWhiteSpace(ctx.ZapSegredoWebhook) && !string.IsNullOrWhiteSpace(assinaturaZap))
+        var assinatura = Request.Headers[CabecalhoAssinatura].ToString();
+        if (string.IsNullOrWhiteSpace(assinatura))
         {
-            if (!long.TryParse(Request.Headers["X-Automais-Timestamp"].ToString(), out var ts))
-            {
-                logger.LogWarning("Webhook: assinatura do Automais.Zap sem timestamp.");
-                return false;
-            }
-
-            var idade = DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeSeconds(ts);
-            if (idade.Duration() > JanelaAssinatura)
-            {
-                // Sem esta janela, capturar uma entrega permitiria reenviá-la depois.
-                logger.LogWarning("Webhook: assinatura do Automais.Zap fora da janela ({Idade}).", idade);
-                return false;
-            }
-
-            var esperado = "sha256=" + Convert.ToHexString(HMACSHA256.HashData(
-                Encoding.UTF8.GetBytes(ctx.ZapSegredoWebhook),
-                Encoding.UTF8.GetBytes($"{ts}.{raw}"))).ToLowerInvariant();
-
-            if (Iguais(assinaturaZap, esperado)) return true;
-
-            logger.LogWarning("Webhook: assinatura do Automais.Zap inválida.");
+            logger.LogWarning("Webhook WhatsApp: chamada sem {Cabecalho}.", CabecalhoAssinatura);
             return false;
         }
 
-        // 2) Meta direto, enquanto o App antigo continuar inscrito no WABA.
-        var assinaturaMeta = Request.Headers["X-Hub-Signature-256"].ToString();
-        if (!string.IsNullOrEmpty(ctx.AppSecret) && !string.IsNullOrWhiteSpace(assinaturaMeta))
+        if (!long.TryParse(Request.Headers[CabecalhoTimestamp].ToString(), out var ts))
         {
-            var esperado = "sha256=" + Convert.ToHexString(HMACSHA256.HashData(
-                Encoding.UTF8.GetBytes(ctx.AppSecret), Encoding.UTF8.GetBytes(raw))).ToLowerInvariant();
-
-            if (Iguais(assinaturaMeta, esperado)) return true;
-
-            logger.LogWarning("Webhook WhatsApp: assinatura da Meta inválida.");
+            logger.LogWarning("Webhook WhatsApp: assinatura sem timestamp.");
             return false;
         }
 
-        logger.LogWarning("Webhook: nenhuma assinatura reconhecível e nenhum segredo configurado.");
+        var idade = DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeSeconds(ts);
+        if (idade.Duration() > JanelaAssinatura)
+        {
+            logger.LogWarning("Webhook WhatsApp: assinatura fora da janela ({Idade}).", idade);
+            return false;
+        }
+
+        var esperado = "sha256=" + Convert.ToHexString(HMACSHA256.HashData(
+            Encoding.UTF8.GetBytes(segredo),
+            Encoding.UTF8.GetBytes($"{ts}.{raw}"))).ToLowerInvariant();
+
+        var a = Encoding.UTF8.GetBytes(assinatura.Trim());
+        var b = Encoding.UTF8.GetBytes(esperado);
+        if (a.Length == b.Length && CryptographicOperations.FixedTimeEquals(a, b)) return true;
+
+        logger.LogWarning("Webhook WhatsApp: assinatura do Automais.Zap inválida.");
         return false;
-    }
-
-    private static bool Iguais(string recebida, string esperada)
-    {
-        var a = Encoding.UTF8.GetBytes(recebida.Trim());
-        var b = Encoding.UTF8.GetBytes(esperada);
-        return a.Length == b.Length && CryptographicOperations.FixedTimeEquals(a, b);
     }
 }

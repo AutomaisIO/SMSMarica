@@ -275,7 +275,7 @@ export function NovaConversaDialog({ onFechar, onCriada, pacienteInicialId }: Pr
             </select>
             {!templates?.length ? (
               <p className="mt-1 text-xs text-amber-600">
-                Nenhum modelo de abertura disponível — confira as credenciais da Meta em Integrações.
+                Nenhum modelo de abertura disponível — confira a conexão com o Automais.Zap em Integrações.
               </p>
             ) : null}
           </div>

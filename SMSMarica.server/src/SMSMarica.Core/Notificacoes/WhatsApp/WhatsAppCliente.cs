@@ -32,21 +32,17 @@ public sealed class WhatsAppCliente(
     public async Task<IReadOnlyList<TemplateWhatsApp>> ListarTemplatesAsync(CancellationToken ct = default)
     {
         var ctx = await ObterContextoOuNuloAsync(ct);
-        // Pelo Automais.Zap o catalogo vem do que o token alcanca: WabaId aqui nao e exigido,
-        // e e justamente o que permite a instancia largar a credencial da Meta.
-        if (ctx is null || (!ctx.ViaZap && string.IsNullOrWhiteSpace(ctx.WabaId))) return [];
+        if (ctx is null) return [];
 
         if (memoryCache.TryGetValue(CacheKeyTemplates, out IReadOnlyList<TemplateWhatsApp>? cache) && cache is not null)
             return cache;
 
-        var url = ctx.ViaZap
-            ? $"{ctx.ZapBaseUrl!.TrimEnd('/')}/v1/templates"
-            : $"{ctx.BaseUrl.TrimEnd('/')}/{ctx.WabaId}/message_templates?limit=200";
+        // O catalogo vem do Automais.Zap, recortado pelo que o token do tenant alcanca.
+        var url = $"{ctx.ZapBaseUrl.TrimEnd('/')}/v1/templates";
         try
         {
             using var req = new HttpRequestMessage(HttpMethod.Get, url);
-            req.Headers.Authorization = new AuthenticationHeaderValue(
-                "Bearer", ctx.ViaZap ? ctx.ZapToken! : ctx.Token);
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", ctx.ZapToken);
             using var resp = await http.SendAsync(req, ct);
             var corpo = await resp.Content.ReadAsStringAsync(ct);
 
@@ -67,6 +63,11 @@ public sealed class WhatsAppCliente(
         }
     }
 
+    /// <summary>
+    /// Lê a resposta de <c>GET /v1/templates</c> do Automais.Zap. Só vêm os aprovados; nome,
+    /// idioma, corpo e exemplos já chegam prontos — quem conversa com a Meta e abre os
+    /// componentes é o relay.
+    /// </summary>
     private static IReadOnlyList<TemplateWhatsApp> ParsearTemplates(string corpo)
     {
         var lista = new List<TemplateWhatsApp>();
@@ -76,35 +77,25 @@ public sealed class WhatsAppCliente(
 
         using (doc)
         {
-            if (!doc.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
+            if (!doc.RootElement.TryGetProperty("templates", out var data) || data.ValueKind != JsonValueKind.Array)
                 return lista;
 
             foreach (var t in data.EnumerateArray())
             {
-                var status = t.TryGetProperty("status", out var st) ? st.GetString() : null;
-                if (!string.Equals(status, "APPROVED", StringComparison.OrdinalIgnoreCase)) continue;
-
-                var nome = t.TryGetProperty("name", out var n) ? n.GetString() : null;
+                var nome = Texto(t, "nome");
                 if (string.IsNullOrEmpty(nome)) continue;
 
-                var idioma = (t.TryGetProperty("language", out var l) ? l.GetString() : null) ?? "pt_BR";
-                var categoria = (t.TryGetProperty("category", out var c) ? c.GetString() : null) ?? "";
+                var idioma = Texto(t, "idioma") ?? "pt_BR";
+                var categoria = Texto(t, "categoria") ?? "";
+                var corpoTexto = Texto(t, "corpo");
 
-                string? corpoTexto = null;
                 IReadOnlyList<string> exemplos = [];
-                if (t.TryGetProperty("components", out var comps) && comps.ValueKind == JsonValueKind.Array)
+                if (t.TryGetProperty("exemplos", out var ex) && ex.ValueKind == JsonValueKind.Array)
                 {
-                    foreach (var comp in comps.EnumerateArray())
-                    {
-                        if (comp.TryGetProperty("type", out var tp)
-                            && string.Equals(tp.GetString(), "BODY", StringComparison.OrdinalIgnoreCase)
-                            && comp.TryGetProperty("text", out var txt))
-                        {
-                            corpoTexto = txt.GetString();
-                            exemplos = ExtrairExemplos(comp);
-                            break;
-                        }
-                    }
+                    exemplos = [.. ex.EnumerateArray()
+                        .Select(v => v.GetString())
+                        .Where(v => !string.IsNullOrWhiteSpace(v))
+                        .Select(v => v!)];
                 }
 
                 lista.Add(new TemplateWhatsApp(
@@ -115,28 +106,8 @@ public sealed class WhatsAppCliente(
         return lista;
     }
 
-    /// <summary>
-    /// Lê <c>example.body_text</c> do componente BODY — a Meta entrega uma lista de listas
-    /// (um conjunto de exemplos por variável); usamos o primeiro conjunto.
-    /// </summary>
-    private static IReadOnlyList<string> ExtrairExemplos(JsonElement componenteBody)
-    {
-        if (!componenteBody.TryGetProperty("example", out var ex)
-            || !ex.TryGetProperty("body_text", out var bt)
-            || bt.ValueKind != JsonValueKind.Array)
-            return [];
-
-        foreach (var conjunto in bt.EnumerateArray())
-        {
-            if (conjunto.ValueKind != JsonValueKind.Array) continue;
-            return [.. conjunto.EnumerateArray()
-                .Select(v => v.GetString())
-                .Where(v => !string.IsNullOrWhiteSpace(v))
-                .Select(v => v!)];
-        }
-
-        return [];
-    }
+    private static string? Texto(JsonElement e, string prop)
+        => e.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
 
     private static int ContarParametros(string? corpo)
     {
@@ -306,30 +277,22 @@ public sealed class WhatsAppCliente(
         TfdWhatsAppContexto ctx, object body, string telefone, string? template, string conteudo,
         Guid? pacienteId, CancellationToken ct)
     {
-        // Duas rotas de saida com a MESMA carga: o Automais.Zap aceita o corpo da Cloud API
-        // como esta e so o embrulha. Por isso aqui muda o transporte, nao o payload -- montar
-        // o corpo, gravar a auditoria, extrair erro e simular continuam num lugar so.
-        var viaZap = ctx.ViaZap;
-        var url = viaZap
-            ? $"{ctx.ZapBaseUrl!.TrimEnd('/')}/v1/mensagens"
-            : $"{ctx.BaseUrl.TrimEnd('/')}/{ctx.PhoneNumberId}/messages";
-        var carga = viaZap
-            ? new { phone_number_id = ctx.PhoneNumberId, para = telefone, mensagem = body }
-            : (object)body;
-        var credencial = viaZap ? ctx.ZapToken! : ctx.Token;
+        // O corpo e o da Cloud API, intacto: o Automais.Zap so o embrulha e repassa. Nao ha
+        // uma segunda gramatica para manter em dia com a Meta.
+        var url = $"{ctx.ZapBaseUrl.TrimEnd('/')}/v1/mensagens";
+        var carga = new { phone_number_id = ctx.PhoneNumberId, para = telefone, mensagem = body };
         var msg = NovaMensagem(telefone, template, conteudo, pacienteId);
 
         try
         {
             using var req = new HttpRequestMessage(HttpMethod.Post, url) { Content = JsonContent.Create(carga) };
-            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", credencial);
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", ctx.ZapToken);
             using var resp = await http.SendAsync(req, ct);
             var corpo = await resp.Content.ReadAsStringAsync(ct);
 
             if (!resp.IsSuccessStatusCode)
             {
-                var erro = (viaZap ? ExtrairErroZap(corpo) : ExtrairErroMeta(corpo))
-                           ?? $"HTTP {(int)resp.StatusCode}: {corpo}";
+                var erro = ExtrairErroZap(corpo) ?? $"HTTP {(int)resp.StatusCode}: {corpo}";
                 msg.Status = StatusMensagemWhatsApp.Falha;
                 msg.Conteudo = Truncar($"{conteudo} | erro {(int)resp.StatusCode}: {corpo}");
                 msg.ErroMeta = erro.Length <= 500 ? erro : erro[..500];
@@ -339,7 +302,7 @@ public sealed class WhatsAppCliente(
                 return new EnvioWhatsAppResultado(false, null, erro);
             }
 
-            msg.WaMessageId = viaZap ? ExtrairWamidZap(corpo) : ExtrairWamid(corpo);
+            msg.WaMessageId = ExtrairWamidZap(corpo);
             db.MensagensWhatsApp.Add(msg);
             await db.SaveChangesAsync(ct);
             return new EnvioWhatsAppResultado(true, msg.WaMessageId, null);
