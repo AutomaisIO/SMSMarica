@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react';
+
 import { useListarUnidades } from '@/features/unidades/api/queries';
 import { cn } from '@/shared/lib/cn';
 
@@ -18,12 +20,34 @@ export function UnidadesSecao({ selecionadas, aoMudar, desabilitado }: Props) {
   const unidades = useListarUnidades();
   const ativas = (unidades.data ?? []).filter((u) => u.ativo);
 
+  const todasMarcadas =
+    ativas.length > 0 && ativas.every((u) => selecionadas.some((s) => s.unidadeId === u.id));
+  const algumasMarcadas = selecionadas.length > 0 && !todasMarcadas;
+
+  const todasRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (todasRef.current) todasRef.current.indeterminate = algumasMarcadas;
+  }, [algumasMarcadas]);
+
   function alternar(unidadeId: string) {
     const existente = selecionadas.find((s) => s.unidadeId === unidadeId);
     aoMudar(
       existente
         ? selecionadas.filter((s) => s.unidadeId !== unidadeId)
         : [...selecionadas, { unidadeId, principal: false }],
+    );
+  }
+
+  function alternarTodas() {
+    // Já com todas marcadas -> clicar de novo limpa tudo; senão, marca todas
+    // as ativas preservando a unidade principal já escolhida.
+    aoMudar(
+      todasMarcadas
+        ? []
+        : ativas.map((u) => ({
+            unidadeId: u.id,
+            principal: selecionadas.find((s) => s.unidadeId === u.id)?.principal ?? false,
+          })),
     );
   }
 
@@ -47,7 +71,19 @@ export function UnidadesSecao({ selecionadas, aoMudar, desabilitado }: Props) {
       ) : ativas.length === 0 ? (
         <p className="text-sm text-gray-500">Nenhuma unidade ativa cadastrada.</p>
       ) : (
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <>
+          <label className="flex w-fit cursor-pointer items-center gap-2 text-sm font-medium text-gray-700">
+            <input
+              ref={todasRef}
+              type="checkbox"
+              checked={todasMarcadas}
+              onChange={alternarTodas}
+              disabled={desabilitado}
+            />
+            Todas as unidades
+          </label>
+
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {ativas.map((u) => {
             const sel = selecionadas.find((s) => s.unidadeId === u.id);
             return (
@@ -91,7 +127,8 @@ export function UnidadesSecao({ selecionadas, aoMudar, desabilitado }: Props) {
               </label>
             );
           })}
-        </div>
+          </div>
+        </>
       )}
     </div>
   );
