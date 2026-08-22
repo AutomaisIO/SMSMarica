@@ -605,15 +605,30 @@ const SITUACAO_AGENDAMENTO_CLASSE: Record<SituacaoAgendamentoPaciente, string> =
   Concluido: 'bg-green-100 text-green-700',
 };
 
+function soData(iso: string): string | null {
+  const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : null;
+}
+
 function formatarDataAgendamento(item: AgendamentoPacienteItem): string {
-  if (!item.dataHora) return 'Sem data';
-  const d = new Date(item.dataHora);
-  if (Number.isNaN(d.getTime())) return item.dataHora;
-  return item.temHora
-    ? d.toLocaleString('pt-BR', {
-        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-      })
-    : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  if (item.dataHora) {
+    const d = new Date(item.dataHora);
+    if (Number.isNaN(d.getTime())) return item.dataHora;
+    return item.temHora
+      ? d.toLocaleString('pt-BR', {
+          day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+        })
+      : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+  // Sem data de agendamento: usar a data de solicitação como referência de tempo de espera.
+  if (item.dataSolicitacao) {
+    const d = soData(item.dataSolicitacao);
+    if (d) {
+      const emFila = item.situacao === 'EmFila' || item.situacao === 'Pendente';
+      return emFila ? `Em fila desde ${d}` : `Solicitado em ${d}`;
+    }
+  }
+  return 'Sem data';
 }
 
 function colunasAgendamento(): Coluna<AgendamentoPacienteItem>[] {

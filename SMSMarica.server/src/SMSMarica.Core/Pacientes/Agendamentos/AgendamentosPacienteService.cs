@@ -77,6 +77,7 @@ public sealed partial class AgendamentosPacienteService(SmsMaricaDbContext db)
                 x.Recurso,
                 x.UnidadeExecutora,
                 x.AgendadoParaTexto,
+                x.DataSolicitacao,
                 x.Situacao,
             })
             .ToListAsync(cancellationToken);
@@ -89,10 +90,11 @@ public sealed partial class AgendamentosPacienteService(SmsMaricaDbContext db)
                 l.Id,
                 OrigemAgendamentoPaciente.Ser,
                 l.Tipo == TipoRecursoSer.Consulta ? "Consulta" : "Exame",
-                l.Recurso,
+                NormalizarTexto(l.Recurso),
                 l.UnidadeExecutora ?? unidadeTexto,
                 data,
                 temHora,
+                l.DataSolicitacao,
                 situacao,
                 DescreverSituacao(situacao),
                 l.Situacao.ToString());
@@ -126,6 +128,7 @@ public sealed partial class AgendamentosPacienteService(SmsMaricaDbContext db)
                 s.EspecialidadeTexto,
                 UnidadeNome = s.UnidadeExecutante != null ? s.UnidadeExecutante.Nome : null,
                 s.DataAgendada,
+                s.DataSolicitacao,
                 s.Status,
                 s.AutorizadoEm,
             })
@@ -144,10 +147,11 @@ public sealed partial class AgendamentosPacienteService(SmsMaricaDbContext db)
                 l.Id,
                 OrigemAgendamentoPaciente.Sisreg,
                 l.Categoria == CategoriaSolicitacao.Consulta ? "Consulta" : "Exame",
-                l.ProcedimentoTexto ?? l.EspecialidadeTexto ?? "Procedimento",
+                NormalizarTexto(l.ProcedimentoTexto ?? l.EspecialidadeTexto ?? "Procedimento"),
                 l.UnidadeNome,
                 data,
                 data is not null, // DataAgendada carrega horário
+                l.DataSolicitacao,
                 situacao,
                 DescreverSituacao(situacao),
                 l.Status.ToString());
@@ -190,11 +194,12 @@ public sealed partial class AgendamentosPacienteService(SmsMaricaDbContext db)
                 l.Id,
                 OrigemAgendamentoPaciente.Local,
                 ehExame ? "Exame" : "Consulta",
-                (ehExame ? l.TipoExameNome : l.EspecialidadeNome) ?? (ehExame ? "Exame" : "Consulta"),
+                NormalizarTexto((ehExame ? l.TipoExameNome : l.EspecialidadeNome) ?? (ehExame ? "Exame" : "Consulta")),
                 l.UnidadeNome,
                 // InicioEm já é wall-clock de Brasília (timestamp without time zone).
                 DateTime.SpecifyKind(l.InicioEm, DateTimeKind.Unspecified),
                 true,
+                null, // agenda local não tem eixo de "data de solicitação"
                 situacao,
                 DescreverSituacao(situacao),
                 l.Status.ToString());
@@ -261,6 +266,17 @@ public sealed partial class AgendamentosPacienteService(SmsMaricaDbContext db)
         return (DateTime.SpecifyKind(data, DateTimeKind.Unspecified), temHora, unidade);
     }
 
+    /// <summary>
+    /// Limpa o texto vindo das fontes externas: apara as pontas e colapsa espaços/quebras
+    /// repetidos num único espaço (o SER manda "CONSULTA  EM POLISSONOGRAFIA" com espaço duplo).
+    /// Preserva a caixa original — converter para Title Case estragaria siglas do vocabulário.
+    /// </summary>
+    private static string NormalizarTexto(string? t) =>
+        string.IsNullOrWhiteSpace(t) ? string.Empty : RegexEspacos().Replace(t.Trim(), " ");
+
     [GeneratedRegex(@"(?<data>\d{2}/\d{2}/\d{4})(?:\s+(?<hh>\d{2}):(?<mm>\d{2}))?")]
     private static partial Regex RegexAgendadoPara();
+
+    [GeneratedRegex(@"\s+")]
+    private static partial Regex RegexEspacos();
 }

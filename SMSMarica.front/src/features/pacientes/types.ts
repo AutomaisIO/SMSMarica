@@ -259,6 +259,7 @@ export type AgendamentoPacienteItem = {
   unidade?: string | null;
   dataHora?: string | null;
   temHora: boolean;
+  dataSolicitacao?: string | null;
   situacao: SituacaoAgendamentoPaciente;
   situacaoDescricao: string;
   situacaoOrigem?: string | null;

@@ -63,6 +63,9 @@ public enum SituacaoAgendamentoPaciente
 /// <param name="DataHora">Data/hora do agendamento em horário de Brasília. <c>null</c> quando a
 /// fonte não tem data (ex.: SER em fila, ou SISREG ainda em análise).</param>
 /// <param name="TemHora">Indica se <see cref="DataHora"/> carrega hora real ou só a data.</param>
+/// <param name="DataSolicitacao">Data em que o pedido entrou na fila/foi solicitado. Serve de
+/// referência quando não há <see cref="DataHora"/> — a UI mostra "em fila desde…" / "solicitado
+/// em…" em vez de "sem data". <c>null</c> para a agenda local (não tem esse eixo).</param>
 /// <param name="Situacao">Situação normalizada.</param>
 /// <param name="SituacaoDescricao">Rótulo pronto para a UI.</param>
 /// <param name="SituacaoOrigem">Situação crua da fonte (para tooltip/auditoria).</param>
@@ -74,6 +77,7 @@ public sealed record AgendamentoPacienteItemDto(
     string? Unidade,
     DateTime? DataHora,
     bool TemHora,
+    DateOnly? DataSolicitacao,
     SituacaoAgendamentoPaciente Situacao,
     string SituacaoDescricao,
     string? SituacaoOrigem);
