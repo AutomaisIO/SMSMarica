@@ -70,6 +70,12 @@ if (!string.IsNullOrWhiteSpace(caminhoChaves))
 {
     dataProtection.PersistKeysToFileSystem(new DirectoryInfo(caminhoChaves));
 }
+else if (builder.Environment.IsProduction())
+{
+    // Sem anel persistido, cada restart gera chave nova e TODO segredo gravado (App Secret,
+    // token do System User, segredos de entrega) vira indecifravel em silencio. Falhar alto.
+    throw new InvalidOperationException("DataProtection:CaminhoChaves e obrigatorio em producao.");
+}
 
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -113,13 +119,20 @@ builder.Services.AddHealthChecks().AddDbContextCheck<ZapDbContext>();
 
 builder.Services.AddRateLimiter(o =>
 {
-    // Teto de abuso, não de vazão: folgado o bastante para uma rajada legítima da Meta.
-    o.AddFixedWindowLimiter("webhook", opt =>
+    // Duas politicas, de proposito. Uma so e global permitiria a qualquer anonimo esgotar a cota
+    // do webhook da Meta e derrubar o inbound de TODOS os tenants com 600 POSTs.
+    //
+    // Webhook da Meta: so a Meta chama e a origem e autenticada por HMAC; teto alto, global.
+    o.AddFixedWindowLimiter("meta-webhook", opt =>
     {
-        opt.PermitLimit = 600;
+        opt.PermitLimit = 6000;
         opt.Window = TimeSpan.FromMinutes(1);
         opt.QueueLimit = 0;
     });
+    // API publica (/v1/*): particionada por IP de origem, para um cliente nao afetar o outro.
+    o.AddPolicy("api-publica", ctx => RateLimitPartition.GetFixedWindowLimiter(
+        ctx.Connection.RemoteIpAddress?.ToString() ?? "anon",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 600, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 

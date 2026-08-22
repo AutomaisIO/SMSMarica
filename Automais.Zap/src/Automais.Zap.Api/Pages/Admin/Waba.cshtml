@@ -13,7 +13,7 @@
 <h1>@(Model.Alvo.Nome ?? Model.Alvo.WabaId)</h1>
 <p class="sub">
     <code>@Model.Alvo.WabaId</code> ·
-    <a href="/admin/tenant?id=@Model.Alvo.TenantId">voltar ao tenant</a> ·
+    <a href="/admin/tenant?id=@Model.Alvo.TenantId">voltar ao cliente</a> ·
     <a href="/admin/templates?id=@Model.Alvo.Id">templates</a>
 </p>
 
@@ -44,10 +44,20 @@
         </div>
         <button class="acao" type="submit">Salvar</button>
     </form>
-    <p class="sub" style="margin:12px 0 0">
-        Todos os números deste WABA herdam esse destino. Para entregar de verdade, quatro coisas
-        precisam estar ligadas: o número, o roteamento aqui, o tenant ativo e o tenant não suspenso.
-    </p>
+    <p class="sub" style="margin:12px 0 0">Todos os números deste WABA herdam esse destino (um número pode ter exceção, abaixo).</p>
+</div>
+
+<h2>Status da entrega</h2>
+<div class="cartao">
+    <ul class="status-lista">
+        <li><span class="selo @(!string.IsNullOrWhiteSpace(Model.Alvo.UrlDestino) ? "on" : "off")">@(!string.IsNullOrWhiteSpace(Model.Alvo.UrlDestino) ? "ok" : "falta")</span> Destino configurado</li>
+        <li><span class="selo @(Model.TemSegredo ? "on" : "off")">@(Model.TemSegredo ? "ok" : "falta")</span> Segredo de entrega gerado</li>
+        <li><span class="selo @(Model.Alvo.RoteamentoAtivo ? "on" : "off")">@(Model.Alvo.RoteamentoAtivo ? "ok" : "desligado")</span> Roteamento ligado</li>
+        <li><span class="selo @(Model.EsteAppInscrito ? "on" : (Model.ErroGraph is null ? "off" : "atencao"))">@(Model.EsteAppInscrito ? "ok" : (Model.ErroGraph is null ? "não" : "?"))</span> App da Meta inscrito neste WABA</li>
+        <li><span class="selo @(Model.Numeros.Any(n => n.Ativo) ? "on" : "off")">@(Model.Numeros.Any(n => n.Ativo) ? "ok" : "nenhum")</span> Ao menos um número ativo</li>
+        <li><span class="selo @(Model.TenantAtivo ? "on" : "off")">@(Model.TenantAtivo ? "ok" : "suspenso")</span> Cliente ativo e não suspenso</li>
+    </ul>
+    <p class="sub compacto" style="margin-top:12px">Todas as linhas em verde = os eventos deste WABA chegam no destino.</p>
 </div>
 
 <h2>Assinatura da entrega</h2>
@@ -55,35 +65,38 @@
     @if (!string.IsNullOrEmpty(Model.SegredoNovo))
     {
         <div class="aviso ok">
-            <strong>Copie agora.</strong> Não é exibido de novo.
-            <div style="margin-top:8px"><code style="font-size:14px;word-break:break-all">@Model.SegredoNovo</code></div>
+            <strong>Segredo gerado — copie agora.</strong> Não é exibido de novo. Cole em Integrações → WhatsApp → "Segredo do webhook" no sistema de destino.
+            <div class="segredo-linha">
+                <code class="copiavel" id="segredo-novo">@Model.SegredoNovo</code>
+                <button type="button" class="acao discreto" data-copiar="#segredo-novo">Copiar</button>
+            </div>
         </div>
     }
 
     @if (Model.TemSegredo)
     {
         <p class="sub" style="margin:0 0 12px">
-            <span class="selo on">segredo próprio</span>
-            Assinamos o que entregamos com ele, em <code>X-Automais-Signature</code>, junto de
-            <code>X-Automais-Timestamp</code>. O destino confere com o mesmo segredo.
+            <span class="selo on">segredo configurado</span>
+            As entregas saem assinadas em <code>X-Automais-Signature</code> (com <code>X-Automais-Timestamp</code>);
+            o destino confere com o mesmo segredo.
         </p>
-        <form method="post" asp-page-handler="RemoverSegredo" style="display:inline"
-              onsubmit="return confirm('Remover? Voltamos a repassar a assinatura da Meta, que só valida se os dois lados usarem o mesmo App Secret.');">
-            <input type="hidden" name="id" value="@Model.Alvo.Id" />
-            <button class="acao discreto" type="submit">Remover segredo</button>
-        </form>
         <form method="post" asp-page-handler="GerarSegredo" style="display:inline"
-              onsubmit="return confirm('Gerar um novo? O destino para de aceitar até ser reconfigurado com o valor novo.');">
+              onsubmit="return confirm('Gerar um novo segredo? O destino recusa tudo com 401 até ser reconfigurado com o valor novo.');">
             <input type="hidden" name="id" value="@Model.Alvo.Id" />
             <button class="acao discreto" type="submit">Gerar outro</button>
+        </form>
+        <form method="post" asp-page-handler="RemoverSegredo" style="display:inline"
+              onsubmit="return confirm('Remover o segredo? O roteamento deste WABA é DESLIGADO junto — sem assinatura o destino recusaria tudo. Gere um novo e religue quando configurar.');">
+            <input type="hidden" name="id" value="@Model.Alvo.Id" />
+            <button class="acao perigo" type="submit">Remover segredo</button>
         </form>
     }
     else
     {
         <p class="sub" style="margin:0 0 12px">
-            <span class="selo off">repassando a assinatura da Meta</span>
-            Isso só valida enquanto a aplicação de destino usa o <strong>mesmo App Secret</strong> que
-            o nosso App. Com dois Apps na jogada — o antigo e o novo — ela recusa com 401.
+            <span class="selo off">sem segredo</span>
+            Sem segredo próprio a entrega sai sem <code>X-Automais-Signature</code> e o destino recusa com 401.
+            O roteamento não pode ser ligado até gerar um.
         </p>
         <form method="post" asp-page-handler="GerarSegredo">
             <input type="hidden" name="id" value="@Model.Alvo.Id" />
@@ -96,17 +109,17 @@
 <div class="cartao">
     @if (Model.ErroGraph is not null)
     {
-        <div class="aviso">Consultando a Meta: @Model.ErroGraph</div>
+        <div class="aviso atencao">Não foi possível consultar a Meta: @Model.ErroGraph. Os dados abaixo podem estar desatualizados.</div>
     }
 
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         @if (Model.EsteAppInscrito)
         {
-            <span class="selo on">nosso App está recebendo</span>
+            <span class="selo on">recebendo</span> <span class="sub compacto">o App da plataforma está inscrito neste WABA</span>
         }
         else
         {
-            <span class="selo off">nosso App NÃO está recebendo</span>
+            <span class="selo off">não recebendo</span> <span class="sub compacto">o App da plataforma ainda não está inscrito neste WABA</span>
         }
 
         @if (Model.Global)
@@ -136,7 +149,7 @@
     }
     else if (Model.EsteAppInscrito)
     {
-        <p class="sub" style="margin:12px 0 0">Só o nosso App recebe. Migração concluída.</p>
+        <p class="sub" style="margin:12px 0 0">Só o App da plataforma recebe os eventos deste WABA.</p>
     }
 </div>
 
@@ -161,7 +174,7 @@
 
     <table style="margin-top:12px">
         <thead>
-        <tr><th>Número</th><th>Rótulo</th><th>phone_number_id</th><th>Destino</th><th></th></tr>
+        <tr><th>Número</th><th>Rótulo</th><th>ID do número (Meta)</th><th>Destino próprio (opcional)</th><th>Status</th><th></th></tr>
         </thead>
         <tbody>
         @foreach (var n in Model.Numeros)
@@ -174,23 +187,24 @@
                     <form method="post" asp-page-handler="Override" style="display:flex;gap:6px">
                         <input type="hidden" name="id" value="@Model.Alvo.Id" />
                         <input type="hidden" name="numeroId" value="@n.Id" />
-                        <input type="url" name="url" value="@n.UrlDestinoOverride" placeholder="herda do WABA" style="min-width:240px" />
+                        <input type="url" name="url" value="@n.UrlDestinoOverride" placeholder="herda do WABA" style="min-width:240px" aria-label="Destino próprio do número @(n.DisplayPhoneNumber ?? n.PhoneNumberId)" />
                         <button class="acao discreto" type="submit">Salvar</button>
                     </form>
                 </td>
-                <td style="text-align:right;white-space:nowrap">
-                    <span class="selo @(n.Ativo ? "on" : "off")">@(n.Ativo ? "ativo" : "off")</span>
-                    <form method="post" asp-page-handler="AlternarNumero" style="display:inline">
+                <td><span class="selo @(n.Ativo ? "on" : "off")">@(n.Ativo ? "ativo" : "desligado")</span></td>
+                <td class="acoes">
+                    <form method="post" asp-page-handler="AlternarNumero" style="display:inline"
+                          onsubmit="return confirm('@(n.Ativo ? "Desligar este número? Os eventos dele param de ser entregues." : "Ligar este número?")');">
                         <input type="hidden" name="id" value="@Model.Alvo.Id" />
                         <input type="hidden" name="numeroId" value="@n.Id" />
-                        <button class="acao discreto" type="submit">@(n.Ativo ? "Desligar" : "Ligar")</button>
+                        <button class="acao @(n.Ativo ? "perigo" : "discreto")" type="submit">@(n.Ativo ? "Desligar" : "Ligar")</button>
                     </form>
                 </td>
             </tr>
         }
         @if (Model.Numeros.Count == 0)
         {
-            <tr><td colspan="5" class="sub">Nenhum número. Clique em sincronizar para trazer da Meta.</td></tr>
+            <tr><td colspan="6" class="sub compacto" style="text-align:center;padding:16px">Nenhum número ainda. Use "Sincronizar com a Meta" para trazer os números deste WABA.</td></tr>
         }
         </tbody>
     </table>

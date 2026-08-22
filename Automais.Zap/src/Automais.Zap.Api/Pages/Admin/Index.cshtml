@@ -5,25 +5,21 @@
 }
 
 <h1>Nenhum tenant</h1>
+<p class="sub">&nbsp;</p>
 
 @if (!string.IsNullOrEmpty(Model.Erro))
 {
     <div class="aviso">@Model.Erro</div>
 }
 
-<div class="cartao">
+<div class="cartao vazio">
     @if (Model.Global)
     {
-        <p class="sub" style="margin:0">
-            Ainda não há nenhum cliente cadastrado. Use <strong>Novo tenant</strong>, no
-            cabeçalho, para criar o primeiro.
-        </p>
+        <span>Ainda não há nenhum cliente cadastrado.</span>
+        <div style="margin-top:14px"><a class="acao" href="/admin/novo" style="display:inline-block;text-decoration:none;background:var(--marca);color:var(--marca-escura);border-radius:7px;padding:9px 14px;font-weight:600">Criar o primeiro cliente</a></div>
     }
     else
     {
-        <p class="sub" style="margin:0">
-            Você não está atribuído a nenhum tenant. Peça a quem administra a plataforma para
-            incluir seu acesso.
-        </p>
+        <span>Você não está atribuído a nenhum tenant. Peça a quem administra a plataforma para incluir seu acesso.</span>
     }
 </div>

@@ -4,8 +4,8 @@
     ViewData["Title"] = "Meta";
 }
 
-<h1>Meta</h1>
-<p class="sub">Credenciais do App e para onde a Meta entrega os eventos.</p>
+<h1>Plataforma · App da Meta</h1>
+<p class="sub">Configuração global — vale para todos os clientes desta instância. Credenciais do App e para onde a Meta entrega os eventos.</p>
 
 @if (!string.IsNullOrEmpty(Model.Erro))
 {
@@ -20,7 +20,7 @@
 <div class="cartao">
     @if (Model.ErroGraph is not null)
     {
-        <div class="aviso">Não consegui consultar a Meta: @Model.ErroGraph</div>
+        <div class="aviso atencao">Não foi possível consultar a Meta: @Model.ErroGraph</div>
     }
     else if (Model.Assinaturas.Count == 0)
     {

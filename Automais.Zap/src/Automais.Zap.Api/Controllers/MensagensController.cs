@@ -34,7 +34,7 @@ public sealed class EnviarMensagemRequest
 /// </summary>
 [ApiController]
 [Route("v1/mensagens")]
-[EnableRateLimiting("webhook")]
+[EnableRateLimiting("api-publica")]
 public sealed class MensagensController(
     ITokenService tokens,
     IEnvioService envio,

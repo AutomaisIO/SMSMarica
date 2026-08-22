@@ -19,4 +19,8 @@ public interface IRoteador
     /// </summary>
     Task<IReadOnlyDictionary<string, RotaDestino>> ResolverPorWabaAsync(
         IReadOnlyCollection<string> wabaIds, CancellationToken ct = default);
+
+    /// <summary>Quais destes <c>phone_number_id</c> existem na tabela, ativos ou nao.</summary>
+    Task<IReadOnlySet<string>> NumerosConhecidosAsync(
+        IReadOnlyCollection<string> phoneNumberIds, CancellationToken ct = default);
 }

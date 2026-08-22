@@ -9,12 +9,11 @@
 {
     <p class="sub">
         <strong>@(Model.Alvo.Nome ?? Model.Alvo.WabaId)</strong> ·
-        <a href="/admin/waba?id=@Model.Alvo.Id">voltar ao WABA</a>
+        <a href="/admin/waba?id=@Model.Alvo.Id">voltar ao WABA</a> · <a href="/admin/tenant?id=@Model.Alvo.TenantId">cliente</a>
     </p>
 }
 <p class="sub">
-    Modelos são aprovados <strong>por WABA</strong> — um App compartilhado não dá reuso de
-    aprovação, cada cliente aprova os seus.
+    Templates são aprovados <strong>por WABA</strong> — cada cliente aprova os seus.
 </p>
 
 @if (!string.IsNullOrEmpty(Model.Erro))
@@ -30,12 +29,12 @@
 {
     @if (Model.ErroGraph is not null)
     {
-        <div class="aviso">Consultando a Meta: @Model.ErroGraph</div>
+        <div class="aviso atencao">Não foi possível consultar a Meta: @Model.ErroGraph. Os dados abaixo podem estar desatualizados.</div>
     }
 
     <div class="cartao">
         <table>
-            <thead><tr><th>Nome</th><th>Idioma</th><th>Categoria</th><th>Status</th><th>Params</th><th>Corpo</th><th></th></tr></thead>
+            <thead><tr><th>Nome</th><th>Idioma</th><th>Categoria</th><th>Status</th><th>Variáveis</th><th>Corpo</th><th></th></tr></thead>
             <tbody>
             @foreach (var t in Model.Templates)
             {
@@ -44,7 +43,7 @@
                     <td>@t.Idioma</td>
                     <td>@t.Categoria</td>
                     <td>
-                        <span class="selo @(t.Status == "APPROVED" ? "on" : (t.Status == "REJECTED" ? "off" : ""))">@t.Status</span>
+                        <span class="selo @(t.Status == "APPROVED" ? "on" : (t.Status == "REJECTED" || t.Status == "PAUSED" || t.Status == "DISABLED" ? "off" : "atencao"))">@(t.Status switch { "APPROVED" => "aprovado", "REJECTED" => "rejeitado", "PENDING" => "em análise", "IN_APPEAL" => "em recurso", "PAUSED" => "pausado", "DISABLED" => "desativado", _ => t.Status.ToLowerInvariant() })</span>
                         @if (!string.IsNullOrEmpty(t.MotivoRejeicao) && t.MotivoRejeicao != "NONE")
                         {
                             <div class="sub" style="margin:2px 0 0">@t.MotivoRejeicao</div>
@@ -54,7 +53,7 @@
                     <td class="sub" style="max-width:340px">@(t.Corpo ?? "—")</td>
                     <td style="text-align:right">
                         <form method="post" asp-page-handler="Excluir" style="display:inline"
-                              onsubmit="return confirm('Excluir o template @t.Nome? Quem usa esse nome para de conseguir enviar.');">
+                              onsubmit="return confirm('Excluir este template? Quem usa esse nome para de conseguir enviar.');">
                             <input type="hidden" name="id" value="@Model.Alvo.Id" />
                             <input type="hidden" name="nome" value="@t.Nome" />
                             <button class="acao discreto" type="submit">Excluir</button>
@@ -85,10 +84,10 @@
                 </div>
                 <div>
                     <label>Categoria</label>
-                    <select name="categoria" required style="background:#0d0f13;border:1px solid var(--borda);color:var(--texto);border-radius:7px;padding:8px 10px;font:inherit">
+                    <select name="categoria" required>
                         @foreach (var c in Automais.Zap.Api.Pages.Admin.TemplatesModel.Categorias)
                         {
-                            <option value="@c">@c</option>
+                            <option value="@c">@(c switch { "UTILITY" => "UTILITY — utilidade (confirmações, avisos)", "MARKETING" => "MARKETING — promocional", "AUTHENTICATION" => "AUTHENTICATION — código de acesso", _ => c })</option>
                         }
                     </select>
                 </div>
@@ -105,8 +104,7 @@
             </div>
             <div style="margin-top:10px">
                 <label>Corpo — use {{1}}, {{2}}… para as variáveis</label>
-                <textarea name="corpo" required rows="4"
-                          style="width:100%;background:#0d0f13;border:1px solid var(--borda);color:var(--texto);border-radius:7px;padding:10px;font:inherit"></textarea>
+                <textarea name="corpo" required rows="4"></textarea>
             </div>
             <div style="margin-top:10px">
                 <label>Exemplos das variáveis, separados por | (a Meta exige um para cada {{n}})</label>

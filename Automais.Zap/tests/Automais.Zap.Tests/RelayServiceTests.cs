@@ -22,12 +22,14 @@ public sealed class RelayServiceTests(PostgresZapFixture fixture)
     /// <summary>Entregador de mentira: guarda o que recebeu e obedece ao veredito combinado.</summary>
     private sealed class EntregadorFalso(bool sucesso = true) : IEntregador
     {
+        private readonly object _trava = new();
         public List<(string Url, byte[] Corpo, string Assinatura, string? Segredo)> Chamadas { get; } = [];
 
         public Task<ResultadoEntrega> EntregarAsync(
             string url, byte[] corpo, string assinatura, string? segredoProprio = null, CancellationToken ct = default)
         {
-            Chamadas.Add((url, corpo, assinatura, segredoProprio));
+            // As entregas saem em paralelo: sem trava a lista corrompe.
+            lock (_trava) Chamadas.Add((url, corpo, assinatura, segredoProprio));
             return Task.FromResult(sucesso
                 ? new ResultadoEntrega(true, 200, 5, null)
                 : new ResultadoEntrega(false, 500, 5, "HTTP 500"));
@@ -354,5 +356,71 @@ public sealed class RelayServiceTests(PostgresZapFixture fixture)
 
         var act = async () => await db.SaveChangesAsync();
         await act.Should().ThrowAsync<DbUpdateException>();
+    }
+
+    [Fact]
+    public async Task Lote_misto_do_mesmo_tenant_respeita_o_override_de_cada_numero()
+    {
+        await using var db = fixture.CriarContexto();
+        var s = await SemearAsync(db, "https://padrao.exemplo/webhook");
+
+        // segundo numero do MESMO waba, com destino proprio
+        var b = new Numero
+        {
+            WabaId = s.Waba.Id,
+            PhoneNumberId = "NUM_B_" + Guid.NewGuid().ToString("N")[..8],
+            UrlDestinoOverride = "https://excecao.exemplo/webhook",
+            CriadoEm = DateTimeOffset.UtcNow,
+        };
+        db.Numeros.Add(b);
+        await db.SaveChangesAsync();
+
+        var entregador = new EntregadorFalso();
+        var relay = Montar(db, entregador);
+
+        var corpo = PayloadDe((s.WabaIdMeta, s.PhoneNumberId), (s.WabaIdMeta, b.PhoneNumberId));
+        var r = await relay.ProcessarAsync(corpo, AssinaturaMeta.Calcular(AppSecret, corpo));
+
+        // Antes, agrupava por tenant e mandava os dois para a primeira URL.
+        r.Entregues.Should().Be(2);
+        entregador.Chamadas.Select(c => c.Url).Should().BeEquivalentTo(
+            ["https://padrao.exemplo/webhook", "https://excecao.exemplo/webhook"]);
+        Encoding.UTF8.GetString(entregador.Chamadas.Single(c => c.Url.Contains("excecao")).Corpo)
+            .Should().Contain(b.PhoneNumberId).And.NotContain(s.PhoneNumberId);
+    }
+
+    [Fact]
+    public async Task Numero_novo_de_waba_ja_roteado_cai_na_rota_do_waba()
+    {
+        await using var db = fixture.CriarContexto();
+        var s = await SemearAsync(db, "https://waba-roteado.exemplo/webhook");
+
+        var entregador = new EntregadorFalso();
+        var relay = Montar(db, entregador);
+
+        // phone_number_id que NAO existe na tabela, mas o WABA (entry.id) existe e esta roteado
+        var novo = "NUM_NOVO_" + Guid.NewGuid().ToString("N")[..8];
+        var corpo = PayloadDe((s.WabaIdMeta, novo));
+        var r = await relay.ProcessarAsync(corpo, AssinaturaMeta.Calcular(AppSecret, corpo));
+
+        r.Entregues.Should().Be(1, because: "um numero ainda nao sincronizado nao pode ser descartado em silencio");
+        entregador.Chamadas.Should().ContainSingle().Which.Url.Should().Be(s.Url);
+    }
+
+    [Fact]
+    public async Task Numero_conhecido_mas_desligado_NAO_cai_na_rota_do_waba()
+    {
+        await using var db = fixture.CriarContexto();
+        var s = await SemearAsync(db, "https://off.exemplo/webhook", numeroAtivo: false);
+
+        var entregador = new EntregadorFalso();
+        var relay = Montar(db, entregador);
+
+        var corpo = PayloadDe((s.WabaIdMeta, s.PhoneNumberId));
+        var r = await relay.ProcessarAsync(corpo, AssinaturaMeta.Calcular(AppSecret, corpo));
+
+        // Desligar o numero e decisao do operador; a reserva por WABA nao pode anular isso.
+        r.SemRota.Should().Be(1);
+        entregador.Chamadas.Should().BeEmpty();
     }
 }

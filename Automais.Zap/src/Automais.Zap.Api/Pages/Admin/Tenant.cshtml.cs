@@ -22,6 +22,7 @@ public sealed class TenantModel(
     public IReadOnlyList<UsuarioListado> Usuarios { get; private set; } = [];
     public IReadOnlyList<Data.Entities.TenantToken> Tokens { get; private set; } = [];
     public List<Data.Entities.Numero> NumerosDoTenant { get; private set; } = [];
+    public int FalhasUltimas24h { get; private set; }
 
     /// <summary>Token em claro, exibido UMA vez logo apos criar. Nao ha como reexibir.</summary>
     [TempData] public string? TokenNovo { get; set; }
@@ -58,6 +59,10 @@ public sealed class TenantModel(
             .Where(n => n.Waba!.TenantId == id)
             .OrderBy(n => n.DisplayPhoneNumber)
             .ToListAsync(ct);
+
+        var corte = relogio.GetUtcNow().AddHours(-24);
+        FalhasUltimas24h = await db.EntregasLog.AsNoTracking()
+            .CountAsync(x => x.TenantId == id && !x.Sucesso && x.RecebidoEm >= corte, ct);
     }
 
     public async Task<IActionResult> OnPostCriarTokenAsync(
@@ -140,10 +145,17 @@ public sealed class TenantModel(
 
     public async Task<IActionResult> OnPostAdicionarWabaAsync(Guid id, string wabaId, CancellationToken ct)
     {
+        // Ato da casa: a validacao usa o token do System User da PLATAFORMA, que enxerga os WABAs
+        // de todos os clientes — um operador de tenant poderia reivindicar o WABA de outro.
+        if (!escopo.Global) return Forbid();
         if (!await escopo.PodeVerAsync(id, ct)) return Forbid();
 
         wabaId = (wabaId ?? "").Trim();
-        if (wabaId.Length == 0) { Erro = "Informe o ID do WABA."; return RedirectToPage(new { id }); }
+        if (!System.Text.RegularExpressions.Regex.IsMatch(wabaId, @"^\d{5,40}$"))
+        {
+            Erro = "Informe o ID numérico do WABA.";
+            return RedirectToPage(new { id });
+        }
 
         if (await db.Wabas.AnyAsync(w => w.WabaId == wabaId, ct))
         {

@@ -32,6 +32,7 @@ public sealed class WabaModel(
     [TempData] public string? SegredoNovo { get; set; }
 
     public bool TemSegredo => Alvo?.SegredoEntregaCifrado is { Length: > 0 };
+    public bool TenantAtivo { get; private set; }
 
     [TempData] public string? Recado { get; set; }
     [TempData] public string? Erro { get; set; }
@@ -62,12 +63,57 @@ public sealed class WabaModel(
 
         if (!await escopo.PodeVerAsync(Alvo.TenantId, ct)) return false;
 
+        TenantAtivo = await db.Tenants.AsNoTracking()
+            .AnyAsync(t => t.Id == Alvo.TenantId && t.Ativo && t.SuspensoEm == null, ct);
+
         Numeros = await db.Numeros.AsNoTracking()
             .Where(n => n.WabaId == id)
             .OrderBy(n => n.DisplayPhoneNumber)
             .ToListAsync(ct);
 
         return true;
+    }
+
+    /// <summary>
+    /// A URL vira destino de um POST feito PELO SERVIDOR. Sem isto, o operador aponta o relay
+    /// para 127.0.0.1:5086, para a metadata da nuvem (169.254.169.254) ou para a rede
+    /// interna, e o relay vira proxy de SSRF.
+    /// </summary>
+    private static bool UrlDestinoValida(string url, out string motivo)
+    {
+        motivo = "";
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
+        {
+            motivo = "A URL de destino precisa ser https absoluta (o relay fala com a instância pela internet).";
+            return false;
+        }
+        var host = uri.Host.ToLowerInvariant();
+        if (host is "localhost" || host.EndsWith(".local") || host.EndsWith(".internal"))
+        {
+            motivo = "Host de destino não permitido.";
+            return false;
+        }
+        if (System.Net.IPAddress.TryParse(host.Trim('[', ']'), out var ip))
+        {
+            if (System.Net.IPAddress.IsLoopback(ip) || ip.IsIPv6LinkLocal || ip.IsIPv6SiteLocal
+                || EhPrivadoV4(ip))
+            {
+                motivo = "IP de destino não permitido (loopback, link-local ou rede privada).";
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static bool EhPrivadoV4(System.Net.IPAddress ip)
+    {
+        if (ip.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork) return false;
+        var b = ip.GetAddressBytes();
+        return b[0] == 10
+            || (b[0] == 172 && b[1] >= 16 && b[1] <= 31)
+            || (b[0] == 192 && b[1] == 168)
+            || (b[0] == 169 && b[1] == 254)
+            || b[0] == 127 || b[0] == 0;
     }
 
     private async Task<Data.Entities.Waba?> AutorizarAsync(Guid id, CancellationToken ct)
@@ -84,19 +130,23 @@ public sealed class WabaModel(
         if (waba is null) return Forbid();
 
         urlDestino = (urlDestino ?? "").Trim();
-        if (urlDestino.Length > 0
-            && (!Uri.TryCreate(urlDestino, UriKind.Absolute, out var uri)
-                || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)))
+        if (urlDestino.Length > 0 && !UrlDestinoValida(urlDestino, out var motivoUrl))
         {
-            // A URL vira destino de um POST feito pelo servidor: esquema exótico aqui é
-            // superfície de SSRF, não conveniência.
-            Erro = "A URL de destino precisa ser http(s) absoluta.";
+            Erro = motivoUrl;
             return RedirectToPage(new { id });
         }
 
         if (ativo && urlDestino.Length == 0)
         {
             Erro = "Não dá para ligar o roteamento sem destino — os eventos cairiam sem rota.";
+            return RedirectToPage(new { id });
+        }
+
+        // Sem segredo proprio, a entrega sai com a assinatura da Meta — que a instancia nao
+        // aceita mais. Ligar o roteamento assim so produziria 401 em serie.
+        if (ativo && string.IsNullOrEmpty(waba.SegredoEntregaCifrado))
+        {
+            Erro = "Gere o segredo de entrega antes de ligar o roteamento — sem ele a instância recusa tudo com 401.";
             return RedirectToPage(new { id });
         }
 
@@ -131,8 +181,9 @@ public sealed class WabaModel(
         if (waba is null) return Forbid();
 
         waba.SegredoEntregaCifrado = null;
+        waba.RoteamentoAtivo = false;
         await db.SaveChangesAsync(ct);
-        Recado = "Segredo removido. Voltamos a repassar a assinatura da Meta.";
+        Recado = "Segredo removido e roteamento desligado. Gere um segredo novo, configure no destino e religue.";
         return RedirectToPage(new { id });
     }
 
@@ -160,7 +211,9 @@ public sealed class WabaModel(
                 // tenant, é engano de cadastro e tem de aparecer, não ser engolido.
                 if (await db.Numeros.AnyAsync(n => n.PhoneNumberId == vindo.Id, ct))
                 {
-                    Erro = $"O número {vindo.DisplayPhoneNumber ?? vindo.Id} já está cadastrado em outro WABA.";
+                    Erro = escopo.Global
+                        ? $"O número {vindo.DisplayPhoneNumber ?? vindo.Id} já está cadastrado em outro WABA."
+                        : "Um dos números não pôde ser importado. Fale com a plataforma.";
                     continue;
                 }
 
@@ -210,11 +263,9 @@ public sealed class WabaModel(
         if (waba is null) return Forbid();
 
         url = (url ?? "").Trim();
-        if (url.Length > 0
-            && (!Uri.TryCreate(url, UriKind.Absolute, out var uri)
-                || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)))
+        if (url.Length > 0 && !UrlDestinoValida(url, out var motivoUrl))
         {
-            Erro = "A URL precisa ser http(s) absoluta.";
+            Erro = motivoUrl;
             return RedirectToPage(new { id });
         }
 

@@ -57,7 +57,18 @@ public sealed class RelayService(
                 payload.Eventos.Where(e => e.PhoneNumberId is null && e.WabaId is not null)
                     .Select(e => e.WabaId!).Distinct().ToList(), ct);
 
-            var grupos = new Dictionary<Guid, GrupoDestino>();
+            // Reserva para numero desconhecido de WABA conhecido (ver abaixo).
+            var porWabaReserva = await roteador.ResolverPorWabaAsync(
+                payload.Eventos.Where(e => e.PhoneNumberId is not null && e.WabaId is not null)
+                    .Select(e => e.WabaId!).Distinct().ToList(), ct);
+            var numerosConhecidos = await roteador.NumerosConhecidosAsync(
+                payload.Eventos.Where(e => e.PhoneNumberId is not null)
+                    .Select(e => e.PhoneNumberId!).Distinct().ToList(), ct);
+
+            // Chave = rota efetiva (URL + segredo), nao o tenant: dois numeros do mesmo tenant
+            // podem ter destinos diferentes (override por numero), e agrupar por tenant
+            // entregaria tudo na primeira URL encontrada.
+            var grupos = new Dictionary<(Guid TenantId, string Url, string? Segredo), GrupoDestino>();
             var semRota = new List<EventoMeta>();
 
             foreach (var ev in payload.Eventos)
@@ -66,6 +77,20 @@ public sealed class RelayService(
                 if (ev.PhoneNumberId is not null)
                 {
                     porNumero.TryGetValue(ev.PhoneNumberId, out rota);
+
+                    // Numero ainda nao sincronizado de um WABA que JA esta roteado: cai na rota do
+                    // WABA em vez de ser descartado com 200 ate alguem clicar em sincronizar.
+                    // (Numero que EXISTE e esta desligado nao entra aqui: ResolverPorNumero ja o
+                    // exclui e ResolverPorWaba so e consultado para quem nao esta na tabela.)
+                    if (rota is null && ev.WabaId is not null
+                        && !numerosConhecidos.Contains(ev.PhoneNumberId)
+                        && porWabaReserva.TryGetValue(ev.WabaId, out var rotaWaba))
+                    {
+                        rota = rotaWaba;
+                        logger.LogWarning(
+                            "Numero {Numero} do WABA {Waba} ainda nao sincronizado — entregue pela rota do WABA. Sincronize na tela.",
+                            ev.PhoneNumberId, ev.WabaId);
+                    }
                 }
                 else if (ev.WabaId is not null)
                 {
@@ -78,10 +103,11 @@ public sealed class RelayService(
                     continue;
                 }
 
-                if (!grupos.TryGetValue(rota.TenantId, out var grupo))
+                var chave = (rota.TenantId, rota.UrlWebhook, rota.SegredoEntrega);
+                if (!grupos.TryGetValue(chave, out var grupo))
                 {
                     grupo = new GrupoDestino(rota);
-                    grupos[rota.TenantId] = grupo;
+                    grupos[chave] = grupo;
                 }
 
                 grupo.Coordenadas.Add((ev.IndiceEntry, ev.IndiceChange));
@@ -110,7 +136,9 @@ public sealed class RelayService(
             var entregues = 0;
             var falhas = 0;
 
-            foreach (var grupo in grupos.Values)
+            // Destinos sao independentes: entregar em paralelo evita que um destino lento some
+            // N x timeout e estoure a janela da Meta (que entao reentregaria o lote inteiro).
+            var tarefas = grupos.Values.Select(async grupo =>
             {
                 byte[] corpoDestino;
                 string assinaturaDestino;
@@ -138,6 +166,13 @@ public sealed class RelayService(
                 var resultado = await entregador.EntregarAsync(
                     grupo.Rota.UrlWebhook, corpoDestino, assinaturaDestino, grupo.Rota.SegredoEntrega, ct);
 
+                return (grupo, resultado);
+            }).ToList();
+
+            var concluidas = await Task.WhenAll(tarefas);
+
+            foreach (var (grupo, resultado) in concluidas)
+            {
                 if (resultado.Sucesso) entregues++;
                 else falhas++;
 

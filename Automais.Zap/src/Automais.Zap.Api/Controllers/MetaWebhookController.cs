@@ -11,7 +11,7 @@ namespace Automais.Zap.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("meta")]
-[EnableRateLimiting("webhook")]
+[EnableRateLimiting("meta-webhook")]
 public sealed class MetaWebhookController(
     IRelayService relay,
     IConfiguracaoMetaService configuracao,
@@ -32,7 +32,10 @@ public sealed class MetaWebhookController(
             return StatusCode(StatusCodes.Status503ServiceUnavailable);
         }
 
-        if (mode == "subscribe" && verifyToken == esperado)
+        var a = System.Text.Encoding.UTF8.GetBytes(verifyToken ?? "");
+        var b = System.Text.Encoding.UTF8.GetBytes(esperado);
+        var confere = a.Length == b.Length && System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(a, b);
+        if (mode == "subscribe" && confere)
         {
             return Content(challenge ?? string.Empty, "text/plain");
         }

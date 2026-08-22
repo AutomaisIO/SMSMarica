@@ -84,7 +84,20 @@ public sealed class ConfiguracaoMetaService(
         }
 
         if (dados.AppId is not null) linha.AppId = Vazio(dados.AppId);
-        if (dados.BaseUrl is not null && !string.IsNullOrWhiteSpace(dados.BaseUrl)) linha.BaseUrl = dados.BaseUrl.Trim();
+        if (dados.BaseUrl is not null && !string.IsNullOrWhiteSpace(dados.BaseUrl))
+        {
+            // O token do System User e o app token vao em Authorization para ESTA URL. Aceitar
+            // qualquer host aqui e dar a quem tem a tela um jeito de exfiltrar os dois.
+            var url = dados.BaseUrl.Trim();
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var u)
+                || u.Scheme != Uri.UriSchemeHttps
+                || !string.Equals(u.Host, "graph.facebook.com", StringComparison.OrdinalIgnoreCase)
+                || !System.Text.RegularExpressions.Regex.IsMatch(u.AbsolutePath, @"^/v\d+\.\d+/?$"))
+            {
+                throw new InvalidOperationException("Graph API precisa ser https://graph.facebook.com/vNN.N/.");
+            }
+            linha.BaseUrl = url.TrimEnd('/') + "/";
+        }
 
         // Campo de senha em branco na tela significa "mantém o que está lá", não "apaga".
         // Apagar de verdade é enviar o literal "-".

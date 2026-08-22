@@ -16,7 +16,7 @@ namespace Automais.Zap.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("v1/templates")]
-[EnableRateLimiting("webhook")]
+[EnableRateLimiting("api-publica")]
 public sealed class TemplatesApiController(
     ZapDbContext db,
     ITokenService tokens,
@@ -61,6 +61,7 @@ public sealed class TemplatesApiController(
                     categoria = t.Categoria,
                     corpo = t.Corpo,
                     parametros = t.Parametros,
+                    exemplos = t.Exemplos,
                     waba_id = w.WabaId,
                 });
             }

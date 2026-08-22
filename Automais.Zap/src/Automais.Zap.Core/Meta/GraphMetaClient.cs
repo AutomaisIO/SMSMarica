@@ -17,7 +17,7 @@ public sealed partial class GraphMetaClient(
     IConfiguracaoMetaService config,
     ILogger<GraphMetaClient> logger) : IGraphMetaClient
 {
-    [GeneratedRegex(@"\{\{(\d+)\}\}")]
+    [GeneratedRegex(@"\{\{(\d{1,3})\}\}")]
     private static partial Regex RegexParametro();
 
     // ------------------------------------------------------------------ App
@@ -169,15 +169,27 @@ public sealed partial class GraphMetaClient(
         foreach (var t in Dados(r.Valor!))
         {
             string? corpo = null;
+            var exemplos = new List<string>();
             if (t.TryGetProperty("components", out var comps) && comps.ValueKind == JsonValueKind.Array)
             {
                 foreach (var c in comps.EnumerateArray())
                 {
-                    if (string.Equals(Texto(c, "type"), "BODY", StringComparison.OrdinalIgnoreCase))
+                    if (!string.Equals(Texto(c, "type"), "BODY", StringComparison.OrdinalIgnoreCase)) continue;
+
+                    corpo = Texto(c, "text");
+                    // example.body_text vem como lista DE LISTAS (um conjunto por variacao);
+                    // a primeira basta para pre-preencher a tela de quem vai enviar.
+                    if (c.TryGetProperty("example", out var ex)
+                        && ex.TryGetProperty("body_text", out var bt)
+                        && bt.ValueKind == JsonValueKind.Array && bt.GetArrayLength() > 0
+                        && bt[0].ValueKind == JsonValueKind.Array)
                     {
-                        corpo = Texto(c, "text");
-                        break;
+                        foreach (var v in bt[0].EnumerateArray())
+                        {
+                            if (v.ValueKind == JsonValueKind.String) exemplos.Add(v.GetString() ?? "");
+                        }
                     }
+                    break;
                 }
             }
 
@@ -193,7 +205,8 @@ public sealed partial class GraphMetaClient(
                 Texto(t, "status") ?? "?",
                 corpo,
                 parametros,
-                Texto(t, "rejected_reason")));
+                Texto(t, "rejected_reason"),
+                exemplos));
         }
 
         return ResultadoMeta<IReadOnlyList<TemplateMeta>>.Ok(

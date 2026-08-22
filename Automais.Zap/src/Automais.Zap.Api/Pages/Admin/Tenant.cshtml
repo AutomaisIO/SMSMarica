@@ -6,28 +6,38 @@
 
 @if (Model.Alvo is null)
 {
-    <p class="sub">Tenant não encontrado.</p>
+    <div class="cartao vazio">Tenant não encontrado.</div>
     return;
 }
 
-<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <h1 style="margin:0">@Model.Alvo.Nome</h1>
-    @if (Model.Alvo.SuspensoEm is not null)
-    {
-        <span class="selo off">suspenso</span>
-    }
-    else
-    {
-        <span class="selo on">ativo</span>
-    }
+<div class="pagina-topo">
+    <div>
+        <h1>@Model.Alvo.Nome</h1>
+        <p class="sub compacto">
+            @if (Model.Alvo.SuspensoEm is not null)
+            {
+                <span class="selo off">canal suspenso</span>
+                <span> desde @Model.Alvo.SuspensoEm.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")@(string.IsNullOrEmpty(Model.Alvo.SuspensoMotivo) ? "" : " — " + Model.Alvo.SuspensoMotivo). Nenhum WABA deste tenant recebe ou envia.</span>
+            }
+            else
+            {
+                <span class="selo on">canal ativo</span>
+                @if (!string.IsNullOrEmpty(Model.Alvo.Observacao))
+                {
+                    <span> · @Model.Alvo.Observacao</span>
+                }
+            }
+        </p>
+    </div>
     @if (Model.Global)
     {
-        <form method="post" asp-page-handler="Suspender" style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <form method="post" asp-page-handler="Suspender" class="acoes" style="margin:0">
             <input type="hidden" name="id" value="@Model.Alvo.Id" />
             @if (Model.Alvo.SuspensoEm is null)
             {
-                <input type="text" name="motivo" placeholder="motivo (opcional)" />
-                <button class="acao discreto" type="submit">Suspender canal</button>
+                <input type="text" name="motivo" placeholder="motivo (opcional)" style="min-width:200px" />
+                <button class="acao perigo" type="submit"
+                        onclick="return confirm('Suspender o canal deste tenant? Todos os WABAs param de receber e os tokens param de enviar, na hora.');">Suspender canal</button>
             }
             else
             {
@@ -36,16 +46,6 @@
         </form>
     }
 </div>
-<p class="sub">
-    @if (Model.Alvo.SuspensoEm is not null)
-    {
-        <span>Suspenso desde @Model.Alvo.SuspensoEm.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")@(string.IsNullOrEmpty(Model.Alvo.SuspensoMotivo) ? "" : " — " + Model.Alvo.SuspensoMotivo). Nenhum WABA deste tenant recebe.</span>
-    }
-    else
-    {
-        <span>@(Model.Alvo.Observacao ?? "")</span>
-    }
-</p>
 
 @if (!string.IsNullOrEmpty(Model.Erro))
 {
@@ -56,163 +56,134 @@
     <div class="aviso ok">@Model.Recado</div>
 }
 
-<h2>WABAs</h2>
-<div class="cartao">
-    <table>
-        <thead><tr><th>WABA</th><th>ID</th><th>Números</th><th>Roteamento</th><th>Destino</th></tr></thead>
-        <tbody>
-        @foreach (var w in Model.Wabas)
-        {
-            <tr>
-                <td><a href="/admin/waba?id=@w.Id">@(w.Nome ?? "(sem nome)")</a></td>
-                <td class="num"><code>@w.WabaId</code></td>
-                <td class="num">@w.Numeros.Count</td>
-                <td><span class="selo @(w.RoteamentoAtivo ? "on" : "off")">@(w.RoteamentoAtivo ? "ligado" : "desligado")</span></td>
-                <td class="sub">@(w.UrlDestino ?? "—")</td>
-            </tr>
-        }
-        @if (Model.Wabas.Count == 0)
-        {
-            <tr><td colspan="5" class="sub">Nenhum WABA neste tenant.</td></tr>
-        }
-        </tbody>
-    </table>
-
+<div class="grade-resumo">
+    <div class="resumo">
+        <div class="valor">@Model.Wabas.Count</div>
+        <div class="rotulo">WABA@(Model.Wabas.Count == 1 ? "" : "s")</div>
+    </div>
+    <div class="resumo">
+        <div class="valor">@Model.Wabas.Sum(w => w.Numeros.Count)</div>
+        <div class="rotulo">número@(Model.Wabas.Sum(w => w.Numeros.Count) == 1 ? "" : "s")</div>
+    </div>
+    <div class="resumo @(Model.Wabas.Count > 0 && Model.Wabas.All(w => w.RoteamentoAtivo) ? "ok" : (Model.Wabas.Any(w => !w.RoteamentoAtivo) ? "alerta" : ""))">
+        <div class="valor">@Model.Wabas.Count(w => w.RoteamentoAtivo)<span style="font-size:14px;color:var(--fraco);font-weight:400">/@Model.Wabas.Count</span></div>
+        <div class="rotulo">com roteamento ligado</div>
+    </div>
+    <div class="resumo">
+        <div class="valor">@Model.Tokens.Count(t => t.RevogadoEm is null)</div>
+        <div class="rotulo">token@(Model.Tokens.Count(t => t.RevogadoEm is null) == 1 ? "" : "s") de API ativo@(Model.Tokens.Count(t => t.RevogadoEm is null) == 1 ? "" : "s")</div>
+    </div>
+    <div class="resumo @(Model.FalhasUltimas24h > 0 ? "alerta" : "ok")">
+        <div class="valor">@Model.FalhasUltimas24h</div>
+        <div class="rotulo"><a href="/admin/entregas?tenant=@Model.Alvo.Id&falhas=1">falha@(Model.FalhasUltimas24h == 1 ? "" : "s") em 24h</a></div>
+    </div>
 </div>
 
+<h2>WABAs <span class="cont">@Model.Wabas.Count</span></h2>
+<div class="cartao">
+    @if (Model.Wabas.Count == 0)
+    {
+        <p class="sub compacto" style="text-align:center;padding:10px 0">Nenhum WABA neste cliente.@(Model.Global ? " Adicione o primeiro abaixo." : " Peça à plataforma para vincular o WABA.")</p>
+    }
+    else
+    {
+        <table>
+            <thead><tr><th>WABA</th><th>ID na Meta</th><th>Números</th><th>Roteamento</th><th>Destino</th></tr></thead>
+            <tbody>
+            @foreach (var w in Model.Wabas)
+            {
+                <tr>
+                    <td><a href="/admin/waba?id=@w.Id">@(w.Nome ?? "(sem nome)")</a></td>
+                    <td class="num"><code>@w.WabaId</code></td>
+                    <td class="num">@w.Numeros.Count</td>
+                    <td><span class="selo @(w.RoteamentoAtivo ? "on" : "off")">@(w.RoteamentoAtivo ? "ligado" : "desligado")</span></td>
+                    <td class="sub compacto" style="max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@(w.UrlDestino ?? "—")</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>
+
+@if (Model.Global)
+{
 <details class="adicionar">
     <summary>Adicionar WABA</summary>
     <div class="cartao">
         <form method="post" asp-page-handler="AdicionarWaba" class="linha" style="margin-top:0">
             <input type="hidden" name="id" value="@Model.Alvo.Id" />
             <div>
-                <label>ID do WABA na Meta</label>
-                <input type="text" name="wabaId" required placeholder="1234567890123456" />
+                <label for="waba-id">ID do WABA na Meta</label>
+                <input id="waba-id" type="text" name="wabaId" required placeholder="1234567890123456" />
             </div>
             <button class="acao" type="submit">Adicionar</button>
         </form>
+        <p class="sub compacto" style="margin-top:10px">O console consulta a Meta antes de gravar: id errado não vira linha órfã.</p>
     </div>
 </details>
-
-<h2>Usuários</h2>
-<div class="cartao">
-    <table>
-        <thead><tr><th>E-mail</th><th>Nome</th><th>Último acesso</th><th></th></tr></thead>
-        <tbody>
-        @foreach (var u in Model.Usuarios)
-        {
-            <tr>
-                <td>@u.Email</td>
-                <td>@u.Nome</td>
-                <td class="num">@(u.UltimoAcessoEm?.ToLocalTime().ToString("dd/MM HH:mm") ?? "nunca")</td>
-                <td style="text-align:right">
-                    @if (Model.Global)
-                    {
-                        <form method="post" asp-page-handler="Desvincular" style="display:inline">
-                            <input type="hidden" name="id" value="@Model.Alvo.Id" />
-                            <input type="hidden" name="usuarioId" value="@u.Id" />
-                            <button class="acao discreto" type="submit">Desvincular</button>
-                        </form>
-                    }
-                </td>
-            </tr>
-        }
-        @if (Model.Usuarios.Count == 0)
-        {
-            <tr><td colspan="4" class="sub">Nenhum usuário atribuído. Quem é do domínio da casa enxerga sem precisar de vínculo.</td></tr>
-        }
-        </tbody>
-    </table>
-
-</div>
-
-@if (Model.Global)
-{
-    <details class="adicionar">
-        <summary>Adicionar usuário</summary>
-        <div class="cartao">
-        <form method="post" asp-page-handler="CriarUsuario" class="linha" style="margin-top:0">
-            <input type="hidden" name="id" value="@Model.Alvo.Id" />
-            <div>
-                <label>E-mail</label>
-                <input type="email" name="email" required />
-            </div>
-            <div>
-                <label>Nome</label>
-                <input type="text" name="nome" />
-            </div>
-            <div>
-                <label>Senha (mín. 10)</label>
-                <input type="password" name="senha" required autocomplete="new-password" />
-            </div>
-            <button class="acao" type="submit">Criar</button>
-        </form>
-        <p class="sub" style="margin:10px 0 0">
-            E-mail do domínio da casa nasce <strong>global</strong> e enxerga todos os tenants —
-            o vínculo com este tenant nem chega a ser criado.
-        </p>
-        </div>
-    </details>
 }
 
-<h2>Tokens de API</h2>
+<h2>Tokens de API <span class="cont">@Model.Tokens.Count(t => t.RevogadoEm is null) ativo@(Model.Tokens.Count(t => t.RevogadoEm is null) == 1 ? "" : "s")</span></h2>
 <p class="sub">
-    É com eles que o sistema do cliente manda mensagem pela nossa API. Um por sistema que
-    integra — assim revogar um não derruba os outros.
+    Usados pelo seu sistema para enviar mensagens pela API. Crie um por sistema integrado:
+    revogar um não afeta os outros.
 </p>
 
 @if (!string.IsNullOrEmpty(Model.TokenNovo))
 {
     <div class="aviso ok">
-        <strong>Copie agora.</strong> O token não é exibido de novo — o que fica guardado é só
-        o resumo dele.
-        <div style="margin-top:8px"><code style="font-size:14px;word-break:break-all">@Model.TokenNovo</code></div>
+        <strong>Token criado — copie agora.</strong> Ele não é exibido de novo; o que fica guardado é só o resumo.
+        <div class="segredo-linha">
+            <code class="copiavel" id="token-novo">@Model.TokenNovo</code>
+            <button type="button" class="acao discreto" data-copiar="#token-novo">Copiar</button>
+        </div>
     </div>
 }
 
 <div class="cartao">
-    <table>
-        <thead><tr><th>Nome</th><th>Prefixo</th><th>Pode enviar por</th><th>Último uso</th><th></th></tr></thead>
-        <tbody>
-        @foreach (var t in Model.Tokens)
-        {
-            <tr>
-                <td>@t.Nome</td>
-                <td class="num"><code>zap_@(t.Prefixo)_…</code></td>
-                <td class="sub">
-                    @if (t.TodosNumeros)
-                    {
-                        <span>todos os números do tenant</span>
-                    }
-                    else
-                    {
-                        <span>@string.Join(", ", t.Numeros.Select(n => n.Numero?.DisplayPhoneNumber ?? n.NumeroId.ToString()[..8]))</span>
-                    }
-                </td>
-                <td class="num">@(t.UltimoUsoEm?.ToLocalTime().ToString("dd/MM HH:mm") ?? "nunca")</td>
-                <td style="text-align:right;white-space:nowrap">
-                    @if (t.RevogadoEm is null)
-                    {
-                        <form method="post" asp-page-handler="RevogarToken" style="display:inline"
-                              onsubmit="return confirm('Revogar @t.Nome? Quem estiver usando para de enviar na hora.');">
-                            <input type="hidden" name="id" value="@Model.Alvo.Id" />
-                            <input type="hidden" name="tokenId" value="@t.Id" />
-                            <button class="acao discreto" type="submit">Revogar</button>
-                        </form>
-                    }
-                    else
-                    {
-                        <span class="selo off">revogado</span>
-                    }
-                </td>
-            </tr>
-        }
-        @if (Model.Tokens.Count == 0)
-        {
-            <tr><td colspan="5" class="sub">Nenhum token. O cliente ainda não consegue enviar pela API.</td></tr>
-        }
-        </tbody>
-    </table>
+    @if (Model.Tokens.Count == 0)
+    {
+        <p class="sub compacto" style="text-align:center;padding:10px 0">Nenhum token ativo. Sem token, nenhum sistema consegue enviar por este cliente.</p>
+    }
+    else
+    {
+        <table>
+            <thead><tr><th>Nome</th><th>Prefixo</th><th>Pode enviar por</th><th>Criado</th><th>Último uso</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var t in Model.Tokens.OrderBy(t => t.RevogadoEm != null).ThenByDescending(t => t.CriadoEm))
+            {
+                <tr class="@(t.RevogadoEm is null ? "" : "apagado")">
+                    <td>@t.Nome</td>
+                    <td class="num"><code>zap_@(t.Prefixo)_…</code></td>
+                    <td class="sub compacto">
+                        @if (t.TodosNumeros)
+                        {
+                            <span>todos os números do tenant</span>
+                        }
+                        else
+                        {
+                            <span>@string.Join(", ", t.Numeros.Select(n => n.Numero?.DisplayPhoneNumber ?? n.NumeroId.ToString()[..8]))</span>
+                        }
+                    </td>
+                    <td class="num">@t.CriadoEm.ToLocalTime().ToString("dd/MM/yy")</td>
+                    <td class="num">@(t.UltimoUsoEm?.ToLocalTime().ToString("dd/MM HH:mm") ?? "nunca")</td>
+                    <td>@if (t.RevogadoEm is null) { <span class="selo on">ativo</span> } else { <span class="selo off">revogado</span> }</td>
+                    <td class="acoes">
+                        @if (t.RevogadoEm is null)
+                        {
+                            <form method="post" asp-page-handler="RevogarToken" style="display:inline"
+                                  onsubmit="return confirm('Revogar este token? Quem estiver usando para de enviar na hora.');">
+                                <input type="hidden" name="id" value="@Model.Alvo.Id" />
+                                <input type="hidden" name="tokenId" value="@t.Id" />
+                                <button class="acao perigo" type="submit">Revogar</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
 </div>
 
 <details class="adicionar">
@@ -221,31 +192,23 @@
         <form method="post" asp-page-handler="CriarToken">
             <input type="hidden" name="id" value="@Model.Alvo.Id" />
             <div class="linha" style="margin-top:0">
-                <div style="flex:1;min-width:260px">
-                    <label>Para que serve</label>
-                    <input type="text" name="nome" required placeholder="Sistema do cliente — produção" style="width:100%" />
+                <div class="campo-largo">
+                    <label for="tok-nome">Para que serve</label>
+                    <input id="tok-nome" type="text" name="nome" required placeholder="Sistema do cliente — produção" />
                 </div>
             </div>
 
             <div style="margin-top:14px">
                 <label>Pode enviar por</label>
-                <div style="margin-top:6px">
-                    <label style="display:flex;gap:8px;align-items:center;color:var(--texto);font-size:15px">
-                        <input type="radio" name="alcance" value="todos" checked />
-                        Todos os números do tenant, inclusive os que entrarem depois
-                    </label>
-                    <label style="display:flex;gap:8px;align-items:center;color:var(--texto);font-size:15px;margin-top:6px">
-                        <input type="radio" name="alcance" value="selecionados" />
-                        Só os números marcados abaixo
-                    </label>
-                </div>
+                <label class="opcao"><input type="radio" name="alcance" value="todos" checked /> Todos os números do tenant, inclusive os que entrarem depois</label>
+                <label class="opcao"><input type="radio" name="alcance" value="selecionados" /> Só os números marcados abaixo</label>
 
                 @if (Model.NumerosDoTenant.Count > 0)
                 {
-                    <div style="margin-top:10px;padding-left:24px">
+                    <div style="margin-top:8px;padding-left:24px">
                         @foreach (var n in Model.NumerosDoTenant)
                         {
-                            <label style="display:flex;gap:8px;align-items:center;color:var(--suave);font-size:14px;margin-top:4px">
+                            <label class="opcao suave">
                                 <input type="checkbox" name="numeros" value="@n.Id" />
                                 @(n.DisplayPhoneNumber ?? n.PhoneNumberId) @(n.Rotulo is null ? "" : "— " + n.Rotulo)
                             </label>
@@ -254,7 +217,7 @@
                 }
                 else
                 {
-                    <p class="sub" style="margin:10px 0 0;padding-left:24px">
+                    <p class="sub compacto" style="margin-top:8px;padding-left:24px">
                         Nenhum número sincronizado ainda — só o alcance "todos" faz sentido por enquanto.
                     </p>
                 }
@@ -266,3 +229,67 @@
         </form>
     </div>
 </details>
+
+<h2>Usuários <span class="cont">@Model.Usuarios.Count</span></h2>
+<div class="cartao">
+    @if (Model.Usuarios.Count == 0)
+    {
+        <p class="sub compacto" style="text-align:center;padding:10px 0">Nenhum usuário atribuído a este cliente.</p>
+    }
+    else
+    {
+        <table>
+            <thead><tr><th>E-mail</th><th>Nome</th><th>Último acesso</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var u in Model.Usuarios)
+            {
+                <tr>
+                    <td>@u.Email</td>
+                    <td>@u.Nome</td>
+                    <td class="num">@(u.UltimoAcessoEm?.ToLocalTime().ToString("dd/MM HH:mm") ?? "nunca")</td>
+                    <td class="acoes">
+                        @if (Model.Global)
+                        {
+                            <form method="post" asp-page-handler="Desvincular" style="display:inline"
+                                  onsubmit="return confirm('Desvincular este usuário deste tenant?');">
+                                <input type="hidden" name="id" value="@Model.Alvo.Id" />
+                                <input type="hidden" name="usuarioId" value="@u.Id" />
+                                <button class="acao discreto" type="submit">Desvincular</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+</div>
+
+@if (Model.Global)
+{
+    <details class="adicionar">
+        <summary>Adicionar usuário</summary>
+        <div class="cartao">
+            <form method="post" asp-page-handler="CriarUsuario" class="linha" style="margin-top:0">
+                <input type="hidden" name="id" value="@Model.Alvo.Id" />
+                <div>
+                    <label for="usr-email">E-mail</label>
+                    <input id="usr-email" type="email" name="email" required />
+                </div>
+                <div>
+                    <label for="usr-nome">Nome</label>
+                    <input id="usr-nome" type="text" name="nome" />
+                </div>
+                <div>
+                    <label for="usr-senha">Senha (mín. 10)</label>
+                    <input id="usr-senha" type="password" name="senha" required autocomplete="new-password" />
+                </div>
+                <button class="acao" type="submit">Criar</button>
+            </form>
+            <p class="sub compacto" style="margin-top:10px">
+                E-mail do domínio da plataforma nasce <strong>global</strong> e enxerga todos os clientes —
+                o vínculo com este cliente nem chega a ser criado.
+            </p>
+        </div>
+    </details>
+}

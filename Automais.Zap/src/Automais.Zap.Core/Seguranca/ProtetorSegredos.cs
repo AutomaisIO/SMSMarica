@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Logging;
 
 namespace Automais.Zap.Core.Seguranca;
 
@@ -21,8 +22,13 @@ public sealed class ProtetorSegredos : IProtetorSegredos
     private const string Proposito = "Automais.Zap.Segredos";
 
     private readonly IDataProtector _protetor;
+    private readonly ILogger<ProtetorSegredos> _logger;
 
-    public ProtetorSegredos(IDataProtectionProvider provider) => _protetor = provider.CreateProtector(Proposito);
+    public ProtetorSegredos(IDataProtectionProvider provider, ILogger<ProtetorSegredos> logger)
+    {
+        _protetor = provider.CreateProtector(Proposito);
+        _logger = logger;
+    }
 
     public string Proteger(string textoPuro) => _protetor.Protect(textoPuro);
 
@@ -33,10 +39,12 @@ public sealed class ProtetorSegredos : IProtetorSegredos
         {
             return _protetor.Unprotect(textoCifrado);
         }
-        catch
+        catch (Exception ex)
         {
             // Perder a chave não pode derrubar o serviço: o chamador trata como "não configurado",
-            // que no caminho do webhook significa falhar fechado (503).
+            // que no caminho do webhook significa falhar fechado (503). Mas tem de ser VISIVEL:
+            // silencio aqui vira "parou de funcionar e ninguem sabe por que".
+            _logger.LogError("Falha ao decifrar um segredo ({Tipo}). Anel de Data Protection trocado? Verifique DataProtection:CaminhoChaves.", ex.GetType().Name);
             return null;
         }
     }

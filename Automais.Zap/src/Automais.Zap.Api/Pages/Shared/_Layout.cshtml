@@ -4,128 +4,229 @@
     var autenticado = Escopo.Autenticado;
     var visiveis = autenticado ? await Escopo.VisiveisAsync() : [];
     var selecionado = autenticado ? await Escopo.SelecionadoAsync() : null;
+    var caminho = Context.Request.Path.Value ?? "";
+    string Ativo(string prefixo) => caminho.StartsWith(prefixo, StringComparison.OrdinalIgnoreCase) ? "ativo" : "";
+    var versao = typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "dev";
 }
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>@ViewData["Title"] — Automais.Zap</title>
+    <title>@ViewData["Title"] · Automais.Zap</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2325d366'/%3E%3Cpath d='M9 22l1.6-4.4A7 7 0 1 1 14 21.2L9 22z' fill='none' stroke='%23062b14' stroke-width='2.2' stroke-linejoin='round'/%3E%3C/svg%3E" />
     <style>
         :root {
-            --fundo: #0f1115; --painel: #171a21; --borda: #272b34;
-            --texto: #e6e8ec; --suave: #9aa3b2; --marca: #25d366;
-            --erro: #ff6b6b; --ok: #4ade80;
+            --fundo: #0f1115; --painel: #171a21; --painel-2: #1c2029; --borda: #272b34;
+            --texto: #e6e8ec; --suave: #9aa3b2; --fraco: #6b7382; --marca: #25d366;
+            --marca-escura: #062b14; --erro: #ff6b6b; --ok: #4ade80; --atencao: #fbbf24;
+            --raio: 10px;
         }
         * { box-sizing: border-box; }
+        html, body { height: 100%; }
         body {
             margin: 0; background: var(--fundo); color: var(--texto);
             font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+            display: flex; flex-direction: column;
         }
+        a { color: var(--marca); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        /* ---------------- cabeçalho ---------------- */
         header {
-            display: flex; align-items: center; gap: 16px;
-            padding: 14px 24px; border-bottom: 1px solid var(--borda); background: var(--painel);
+            position: sticky; top: 0; z-index: 10;
+            display: flex; align-items: center; gap: 18px;
+            padding: 0 24px; height: 56px;
+            border-bottom: 1px solid var(--borda); background: rgba(23,26,33,.92);
+            backdrop-filter: blur(8px);
         }
-        header .marca { font-weight: 700; letter-spacing: -0.02em; }
-        header .marca span { color: var(--marca); }
-        header nav { display: flex; gap: 16px; margin-left: auto; align-items: center; }
+        header .marca {
+            display: flex; align-items: center; gap: 9px;
+            font-weight: 700; letter-spacing: -0.02em; color: var(--texto); white-space: nowrap;
+        }
+        header .marca:hover { text-decoration: none; }
+        header .marca .logo {
+            width: 26px; height: 26px; border-radius: 7px; background: var(--marca);
+            display: grid; place-items: center; color: var(--marca-escura);
+        }
+        header .marca em { font-style: normal; color: var(--marca); }
+        header .contexto { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        header .contexto .rotulo { color: var(--fraco); font-size: 12px; white-space: nowrap; }
+        header nav { display: flex; gap: 4px; margin-left: auto; align-items: center; }
         header nav a, header nav button {
-            color: var(--suave); text-decoration: none; background: none;
-            border: 0; font: inherit; cursor: pointer; padding: 0;
+            color: var(--suave); background: none; border: 0; font: inherit; cursor: pointer;
+            padding: 6px 10px; border-radius: 7px; white-space: nowrap;
         }
-        header nav a:hover, header nav button:hover { color: var(--texto); }
-        main { max-width: 1100px; margin: 0 auto; padding: 24px; }
-        h1 { font-size: 20px; margin: 0 0 4px; }
-        h2 { font-size: 16px; margin: 28px 0 10px; }
-        .sub { color: var(--suave); font-size: 13px; margin: 0 0 20px; }
+        header nav a:hover, header nav button:hover { color: var(--texto); background: var(--painel-2); text-decoration: none; }
+        header nav a.ativo { color: var(--texto); background: var(--painel-2); }
+        header nav .sep { width: 1px; height: 20px; background: var(--borda); margin: 0 6px; }
+        header nav a.botao-nav { border: 1px solid var(--borda); }
+        header nav a.botao-nav:hover { border-color: var(--marca); color: var(--marca); }
+        header nav .quem { color: var(--fraco); font-size: 12px; padding: 0 6px; }
+        .seletor-tenant {
+            background: #0d0f13; border: 1px solid var(--borda); color: var(--texto);
+            border-radius: 7px; padding: 6px 28px 6px 10px; font: inherit; max-width: 260px;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239aa3b2' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 10px center;
+        }
+
+        /* ---------------- conteúdo ---------------- */
+        main { flex: 1; width: 100%; max-width: 1120px; margin: 0 auto; padding: 28px 24px 48px; }
+        .pagina-topo { display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; margin-bottom: 6px; }
+        .pagina-topo h1 { margin: 0; }
+        .pagina-topo .acoes { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .migalhas { font-size: 12px; color: var(--fraco); margin: 0 0 10px; display: flex; gap: 6px; align-items: center; }
+        .migalhas a { color: var(--suave); }
+        .migalhas .sep { color: var(--borda); }
+        h1 { font-size: 22px; letter-spacing: -0.01em; margin: 0 0 4px; }
+        h2 { font-size: 15px; margin: 28px 0 10px; color: var(--texto); display: flex; align-items: center; gap: 10px; }
+        h2 .cont { font-size: 12px; color: var(--fraco); font-weight: 400; }
+        .sub { color: var(--suave); font-size: 13px; margin: 0 0 18px; }
+        .sub.compacto { margin: 0; }
         table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--borda); }
-        th { color: var(--suave); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
-        td.num { font-variant-numeric: tabular-nums; }
-        .cartao { background: var(--painel); border: 1px solid var(--borda); border-radius: 10px; padding: 18px; }
-        form.linha { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-top: 14px; }
+        th, td { text-align: left; padding: 10px; border-bottom: 1px solid var(--borda); vertical-align: middle; }
+        tr:last-child td { border-bottom: 0; }
+        th { color: var(--fraco); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+        td.num, .num { font-variant-numeric: tabular-nums; }
+        td.acoes { text-align: right; white-space: nowrap; }
+        .cartao { background: var(--painel); border: 1px solid var(--borda); border-radius: var(--raio); padding: 18px; overflow-x: auto; }
+        .cartao + .cartao { margin-top: 14px; }
+        .cartao.vazio { color: var(--suave); font-size: 13px; text-align: center; padding: 28px 18px; }
+        .grade-resumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 16px 0 8px; }
+        .resumo { background: var(--painel); border: 1px solid var(--borda); border-radius: var(--raio); padding: 14px 16px; }
+        .resumo .valor { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
+        .resumo .rotulo { color: var(--suave); font-size: 12px; margin-top: 4px; }
+        .resumo .rotulo a { color: var(--suave); }
+        .resumo.alerta .valor { color: var(--erro); }
+        .resumo.ok .valor { color: var(--ok); }
+
+        /* ---------------- formulários ---------------- */
+        form.linha { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-top: 14px; }
         label { display: block; font-size: 12px; color: var(--suave); margin-bottom: 4px; }
-        input[type=text], input[type=url], input[type=email], input[type=password] {
+        input[type=text], input[type=url], input[type=email], input[type=password], input[type=search], select.campo, textarea.campo {
             background: #0d0f13; border: 1px solid var(--borda); color: var(--texto);
             border-radius: 7px; padding: 8px 10px; font: inherit; min-width: 180px;
         }
-        button.acao {
-            background: var(--marca); color: #06240f; border: 0; border-radius: 7px;
-            padding: 9px 14px; font: inherit; font-weight: 600; cursor: pointer;
+        input:focus, select:focus, textarea:focus, button:focus-visible, summary:focus-visible, a:focus-visible {
+            outline: 2px solid var(--marca); outline-offset: 1px;
         }
-        button.discreto { background: transparent; color: var(--suave); border: 1px solid var(--borda); }
-        .selo { font-size: 12px; padding: 2px 8px; border-radius: 20px; border: 1px solid var(--borda); }
-        .selo.on { color: var(--ok); border-color: #1f4d33; }
-        .selo.off { color: var(--erro); border-color: #4d1f1f; }
-        .aviso { border-left: 3px solid var(--erro); padding: 10px 14px; background: #1d1417; border-radius: 0 8px 8px 0; margin-bottom: 16px; }
-        .ok { border-left-color: var(--marca); background: #101d15; }
-        code { background: #0d0f13; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+        select { appearance: none; padding-right: 28px; background-color: #0d0f13; border: 1px solid var(--borda); color: var(--texto); border-radius: 7px; padding-top: 8px; padding-bottom: 8px; padding-left: 10px; font: inherit; min-width: 160px; }
+        textarea { background: #0d0f13; border: 1px solid var(--borda); color: var(--texto); border-radius: 7px; padding: 8px 10px; font: inherit; width: 100%; resize: vertical; }
+        select.campo { appearance: none; padding-right: 28px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239aa3b2' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 10px center; }
+        textarea.campo { min-width: 0; width: 100%; }
+        .campo-largo { flex: 1; min-width: 280px; }
+        .campo-largo input { width: 100%; }
+        button.acao {
+            background: var(--marca); color: var(--marca-escura); border: 0; border-radius: 7px;
+            padding: 9px 14px; font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap;
+        }
+        button.acao:hover { filter: brightness(1.06); }
+        button.discreto { background: transparent; color: var(--suave); border: 1px solid var(--borda); font-weight: 500; }
+        button.discreto:hover { color: var(--texto); border-color: var(--suave); filter: none; }
+        button.perigo { background: transparent; color: var(--erro); border: 1px solid #4d1f1f; font-weight: 500; }
+        button.perigo:hover { background: #1d1417; filter: none; }
+        .opcao { display: flex; gap: 8px; align-items: center; color: var(--texto); font-size: 14px; margin-top: 6px; }
+        .opcao input { margin: 0; }
+        .opcao.suave { color: var(--suave); font-size: 13px; margin-top: 4px; }
 
-        /* Formulario de cadastro fica atras de um botao: aberto o tempo todo, ele compete
-           com a lista, que e o que a tela existe para mostrar. <details> resolve sem JS. */
-        details.adicionar { margin-top: 18px; }
+        /* ---------------- selos e avisos ---------------- */
+        .selo { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 20px; border: 1px solid var(--borda); color: var(--suave); white-space: nowrap; line-height: 1.5; }
+        .selo.on { color: var(--ok); border-color: #1f4d33; background: rgba(74,222,128,.06); }
+        .selo.off { color: var(--erro); border-color: #4d1f1f; background: rgba(255,107,107,.06); }
+        .selo.atencao { color: var(--atencao); border-color: #4d3f14; background: rgba(251,191,36,.06); }
+        .aviso { border-left: 3px solid var(--erro); padding: 10px 14px; background: #1d1417; border-radius: 0 8px 8px 0; margin-bottom: 16px; font-size: 14px; }
+        .aviso.ok { border-left-color: var(--marca); background: #101d15; }
+        .aviso.atencao { border-left-color: var(--atencao); background: #1d1a12; }
+        .aviso ul { margin: 8px 0 0; padding-left: 18px; }
+        code { background: #0d0f13; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+        code.copiavel { user-select: all; word-break: break-all; font-size: 14px; display: inline-block; padding: 6px 8px; }
+        .segredo-linha { display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; margin-top: 8px; }
+        .segredo-linha code { flex: 1; min-width: 240px; }
+        .status-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+        .status-lista li { display: flex; gap: 10px; align-items: center; font-size: 14px; }
+        .status-lista .selo { min-width: 84px; text-align: center; }
+        tr.apagado td { opacity: .55; }
+
+        /* ---------------- disclosure ---------------- */
+        details.adicionar { margin-top: 14px; }
         details.adicionar > summary {
             display: inline-block; list-style: none; cursor: pointer; user-select: none;
-            background: var(--marca); color: #06240f; border: 0; border-radius: 7px;
-            padding: 9px 14px; font-weight: 600;
+            background: transparent; color: var(--marca); border: 1px solid #1f4d33; border-radius: 7px;
+            padding: 8px 14px; font-weight: 600; font-size: 14px;
         }
+        details.adicionar > summary::before { content: "+ "; }
         details.adicionar > summary::-webkit-details-marker { display: none; }
         details.adicionar > summary::marker { content: ""; }
-        details.adicionar[open] > summary {
-            background: transparent; color: var(--suave); border: 1px solid var(--borda);
-        }
+        details.adicionar[open] > summary { color: var(--suave); border-color: var(--borda); }
+        details.adicionar[open] > summary::before { content: "− "; }
         details.adicionar > .cartao { margin-top: 12px; }
 
-        .seletor-tenant {
-            background: #0d0f13; border: 1px solid var(--borda); color: var(--texto);
-            border-radius: 7px; padding: 6px 8px; font: inherit; max-width: 240px;
+        /* ---------------- rodapé ---------------- */
+        footer {
+            border-top: 1px solid var(--borda); padding: 14px 24px; font-size: 12px; color: var(--fraco);
+            display: flex; gap: 16px; flex-wrap: wrap; align-items: center;
         }
-        a.botao-nav {
-            border: 1px solid var(--borda); border-radius: 7px; padding: 5px 11px;
+        footer .dir { margin-left: auto; }
+        @@media (max-width: 720px) {
+            header { height: auto; flex-wrap: wrap; padding: 10px 16px; gap: 10px; }
+            header nav { margin-left: 0; flex-wrap: wrap; }
+            main { padding: 18px 14px 36px; }
+            td.acoes { white-space: normal; }
         }
-        a.botao-nav:hover { border-color: var(--marca); color: var(--marca); }
     </style>
 </head>
 <body>
 @if (autenticado)
 {
     <header>
-        <div class="marca">automais<span>.zap</span></div>
+        <a class="marca" href="/admin">
+            <span class="logo" aria-hidden="true">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><path d="M5 19l1.4-4A7.5 7.5 0 1 1 9.6 18L5 19z"/></svg>
+            </span>
+            automais<em>.zap</em>
+        </a>
 
-        @* O seletor e o eixo da navegacao: trocar de tenant troca o painel inteiro para a
-           visao daquele cliente. Quem tem um so nao precisa escolher, so saber onde esta. *@
-        @if (visiveis.Count > 1)
-        {
-            <form method="post" action="/admin?handler=Selecionar" style="display:flex;align-items:center">
-                @Html.AntiForgeryToken()
-                <select name="id" onchange="this.form.submit()" class="seletor-tenant">
-                    @foreach (var t in visiveis)
-                    {
-                        <option value="@t.Id" selected="@(selecionado?.Id == t.Id)">@t.Nome</option>
-                    }
-                </select>
-            </form>
-        }
-        else if (selecionado is not null)
-        {
-            <span class="sub">@selecionado.Nome</span>
-        }
-
-        <nav>
-            @if (Escopo.Global)
+        @* O seletor é o eixo da navegação: trocar de tenant troca o painel inteiro para a
+           visão daquele cliente. Quem tem um só não precisa escolher, só saber onde está. *@
+        <div class="contexto">
+            @if (visiveis.Count > 1)
             {
-                <a href="/admin/novo" class="botao-nav">Novo tenant</a>
+                <span class="rotulo">Tenant</span>
+                <form method="post" action="/admin?handler=Selecionar" style="display:flex;align-items:center;margin:0">
+                    @Html.AntiForgeryToken()
+                    <select name="id" onchange="this.form.submit()" class="seletor-tenant" aria-label="Trocar de tenant">
+                        @foreach (var t in visiveis)
+                        {
+                            <option value="@t.Id" selected="@(selecionado?.Id == t.Id)">@t.Nome</option>
+                        }
+                    </select>
+                </form>
             }
+            else if (selecionado is not null)
+            {
+                <span class="rotulo">Tenant</span>
+                <span>@selecionado.Nome</span>
+            }
+        </div>
+
+        <nav aria-label="Principal">
             @if (selecionado is not null)
             {
-                <a href="/admin">Painel</a>
+                <a href="/admin/tenant?id=@selecionado.Id" class="@Ativo("/admin/tenant") @Ativo("/admin/waba") @Ativo("/admin/templates")">Painel</a>
             }
-            <a href="/admin/entregas">Entregas</a>
+            <a href="/admin/entregas" class="@Ativo("/admin/entregas")">Entregas</a>
             @if (Escopo.Global)
             {
-                <a href="/admin/meta">Meta</a>
+                <span class="sep" aria-hidden="true"></span>
+                <a href="/admin/meta" class="@Ativo("/admin/meta")">Meta</a>
+                <a href="/admin/novo" class="botao-nav">Novo tenant</a>
             }
-            <form method="post" action="/admin/sair" style="display:inline">
+            <span class="sep" aria-hidden="true"></span>
+            <span class="quem" title="@Escopo.Nome">@Escopo.Nome</span>
+            <form method="post" action="/admin/sair" style="display:inline;margin:0">
                 @Html.AntiForgeryToken()
                 <button type="submit">Sair</button>
             </form>
@@ -135,5 +236,24 @@
 <main>
     @RenderBody()
 </main>
+<script>
+    // Copiar valor exibido uma unica vez (token/segredo). Delegacao: funciona para qualquer
+    // botao com data-copiar="#id".
+    document.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-copiar]'); if (!b) return;
+        var alvo = document.querySelector(b.getAttribute('data-copiar')); if (!alvo) return;
+        navigator.clipboard.writeText(alvo.textContent.trim()).then(function () {
+            var t = b.textContent; b.textContent = 'Copiado'; setTimeout(function () { b.textContent = t; }, 1800);
+        });
+    });
+</script>
+@if (autenticado)
+{
+    <footer>
+        <span>Automais.Zap · relay de WhatsApp</span>
+        <span>@(Escopo.Global ? "acesso global" : "acesso por tenant")</span>
+        <span class="dir">v@versao</span>
+    </footer>
+}
 </body>
 </html>

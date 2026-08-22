@@ -67,4 +67,15 @@ public sealed class Roteador(ZapDbContext db, IProtetorSegredos protetor) : IRot
             x => x.WabaId,
             x => new RotaDestino(x.TenantId, x.Nome, x.Url, protetor.Revelar(x.Segredo)));
     }
+
+    public async Task<IReadOnlySet<string>> NumerosConhecidosAsync(
+        IReadOnlyCollection<string> phoneNumberIds, CancellationToken ct = default)
+    {
+        if (phoneNumberIds.Count == 0) return new HashSet<string>();
+        var lista = await db.Numeros.AsNoTracking()
+            .Where(n => phoneNumberIds.Contains(n.PhoneNumberId))
+            .Select(n => n.PhoneNumberId)
+            .ToListAsync(ct);
+        return lista.ToHashSet();
+    }
 }

@@ -33,7 +33,8 @@ public sealed record TemplateMeta(
     string Status,
     string? Corpo,
     int Parametros,
-    string? MotivoRejeicao);
+    string? MotivoRejeicao,
+    IReadOnlyList<string> Exemplos);
 
 /// <summary>Dados mínimos para submeter um template à aprovação da Meta.</summary>
 public sealed record NovoTemplate(
