@@ -20,6 +20,10 @@ export function WhatsAppCard() {
   const [verifyToken, setVerifyToken] = useState('');
   const [appSecret, setAppSecret] = useState('');
   const [ativo, setAtivo] = useState(true);
+  const [zapBaseUrl, setZapBaseUrl] = useState('');
+  const [zapToken, setZapToken] = useState('');
+  const [zapSegredoWebhook, setZapSegredoWebhook] = useState('');
+  const [zapAtivo, setZapAtivo] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [salvo, setSalvo] = useState(false);
 
@@ -29,6 +33,8 @@ export function WhatsAppCard() {
       setPhoneNumberId(config.data.phoneNumberId ?? '');
       setWabaId(config.data.wabaId ?? '');
       setAtivo(config.data.ativo);
+      setZapBaseUrl(config.data.zapBaseUrl ?? '');
+      setZapAtivo(config.data.zapAtivo);
     }
   }, [config.data]);
 
@@ -47,6 +53,10 @@ export function WhatsAppCard() {
         verifyToken: verifyToken || undefined,
         appSecret: appSecret || undefined,
         ativo,
+        zapBaseUrl: zapBaseUrl.trim() || null,
+        zapToken: zapToken || undefined,
+        zapSegredoWebhook: zapSegredoWebhook || undefined,
+        zapAtivo,
       },
       {
         onSuccess: () => {
@@ -152,6 +162,73 @@ export function WhatsAppCard() {
             <input type="checkbox" checked={ativo} onChange={(e) => setAtivo(e.target.checked)} disabled={!podeEditar} />
             Integração ativa
           </label>
+
+          <div className="border-t border-gray-100 pt-4">
+            <h4 className="text-sm font-semibold text-gray-900">Automais.Zap</h4>
+            <p className="mt-1 text-xs text-gray-500">
+              Com o envio pelo Automais.Zap, as credenciais da Meta acima deixam de ser
+              necessárias: quem fala com a Meta é ele. O segredo do webhook é o que nos permite
+              conferir que o evento recebido veio mesmo dele.
+            </p>
+
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              <Campo label="URL da API" htmlFor="zap-url">
+                <Input
+                  id="zap-url"
+                  value={zapBaseUrl}
+                  onChange={(e) => setZapBaseUrl(e.target.value)}
+                  placeholder="https://api.smsmais.automais.com"
+                  disabled={!podeEditar}
+                />
+              </Campo>
+
+              <Campo
+                label="Token do tenant"
+                htmlFor="zap-token"
+                dica={config.data?.zapTokenConfigurado ? 'Já configurado — preencha apenas para substituir.' : 'Ainda não configurado.'}
+              >
+                <Input
+                  id="zap-token"
+                  type="password"
+                  value={zapToken}
+                  onChange={(e) => setZapToken(e.target.value)}
+                  placeholder={config.data?.zapTokenConfigurado ? '••••••••' : 'zap_...'}
+                  autoComplete="new-password"
+                  disabled={!podeEditar}
+                />
+              </Campo>
+
+              <Campo
+                label="Segredo do webhook"
+                htmlFor="zap-segredo"
+                dica={config.data?.zapSegredoWebhookConfigurado ? 'Já configurado.' : 'Ainda não configurado.'}
+              >
+                <Input
+                  id="zap-segredo"
+                  type="password"
+                  value={zapSegredoWebhook}
+                  onChange={(e) => setZapSegredoWebhook(e.target.value)}
+                  placeholder={config.data?.zapSegredoWebhookConfigurado ? '••••••••' : 'gerado no painel do Zap'}
+                  autoComplete="new-password"
+                  disabled={!podeEditar}
+                />
+              </Campo>
+            </div>
+
+            <label className="mt-3 flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={zapAtivo}
+                onChange={(e) => setZapAtivo(e.target.checked)}
+                disabled={!podeEditar}
+              />
+              Enviar pelo Automais.Zap
+            </label>
+            <p className="mt-1 text-xs text-gray-500">
+              Desmarcado, o envio volta a sair direto para a Meta com o token acima. É a saída de
+              emergência — voltar atrás tem de ser uma chave, não um deploy.
+            </p>
+          </div>
 
           {erro ? (
             <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{erro}</div>

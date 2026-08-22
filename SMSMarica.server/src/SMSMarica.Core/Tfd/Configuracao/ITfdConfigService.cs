@@ -10,7 +10,17 @@ public sealed record TfdWhatsAppContexto(
     string PhoneNumberId,
     string? WabaId,
     string? VerifyToken,
-    string? AppSecret);
+    string? AppSecret,
+    string? ZapBaseUrl = null,
+    string? ZapToken = null,
+    bool ZapAtivo = false,
+    string? ZapSegredoWebhook = null)
+{
+    /// <summary>Envio (e listagem de templates) sai pelo Automais.Zap.</summary>
+    public bool ViaZap => ZapAtivo
+                          && !string.IsNullOrWhiteSpace(ZapBaseUrl)
+                          && !string.IsNullOrWhiteSpace(ZapToken);
+}
 
 /// <summary>
 /// Configuração (linha única por integração) das credenciais externas do TFD.

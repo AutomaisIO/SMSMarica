@@ -47,7 +47,11 @@ public sealed class TfdConfigService(SmsMaricaDbContext db, IProtetorSegredos pr
             !string.IsNullOrEmpty(c.TokenCifrado),
             !string.IsNullOrEmpty(c.VerifyTokenCifrado),
             !string.IsNullOrEmpty(c.AppSecretCifrado),
-            c.Ativo);
+            c.Ativo,
+            c.ZapBaseUrl,
+            !string.IsNullOrEmpty(c.ZapTokenCifrado),
+            !string.IsNullOrEmpty(c.ZapSegredoWebhookCifrado),
+            c.ZapAtivo);
     }
 
     public async Task AtualizarWhatsAppAsync(AtualizarTfdConfigWhatsAppRequest request, CancellationToken ct = default)
@@ -60,6 +64,10 @@ public sealed class TfdConfigService(SmsMaricaDbContext db, IProtetorSegredos pr
         if (!string.IsNullOrWhiteSpace(request.Token)) c.TokenCifrado = protetor.Proteger(request.Token.Trim());
         if (!string.IsNullOrWhiteSpace(request.VerifyToken)) c.VerifyTokenCifrado = protetor.Proteger(request.VerifyToken.Trim());
         if (!string.IsNullOrWhiteSpace(request.AppSecret)) c.AppSecretCifrado = protetor.Proteger(request.AppSecret.Trim());
+        c.ZapBaseUrl = string.IsNullOrWhiteSpace(request.ZapBaseUrl) ? c.ZapBaseUrl : request.ZapBaseUrl.Trim();
+        if (!string.IsNullOrWhiteSpace(request.ZapToken)) c.ZapTokenCifrado = protetor.Proteger(request.ZapToken.Trim());
+        if (!string.IsNullOrWhiteSpace(request.ZapSegredoWebhook)) c.ZapSegredoWebhookCifrado = protetor.Proteger(request.ZapSegredoWebhook.Trim());
+        c.ZapAtivo = request.ZapAtivo;
         c.AtualizadoEm = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
     }
@@ -69,15 +77,29 @@ public sealed class TfdConfigService(SmsMaricaDbContext db, IProtetorSegredos pr
         var c = await db.WhatsAppConfiguracao.AsNoTracking().FirstOrDefaultAsync(ct)
             ?? throw new ValidacaoException("whatsapp.nao_configurado", "Integração WhatsApp ainda não configurada.");
         if (!c.Ativo) throw new ValidacaoException("whatsapp.inativo", "Integração WhatsApp está desativada.");
-        if (string.IsNullOrEmpty(c.TokenCifrado) || string.IsNullOrWhiteSpace(c.PhoneNumberId))
-            throw new ValidacaoException("whatsapp.incompleto", "Token ou Phone Number ID do WhatsApp não configurados.");
+        // Com o envio pelo Automais.Zap, o token da Meta deixa de ser obrigatório aqui — é
+        // justamente o ponto de sair do App antigo sem precisar de credencial da Meta na
+        // instância. O PhoneNumberId continua exigido: é ele que identifica a linha.
+        var viaZap = c.ZapAtivo
+                     && !string.IsNullOrWhiteSpace(c.ZapBaseUrl)
+                     && !string.IsNullOrEmpty(c.ZapTokenCifrado);
+
+        if (string.IsNullOrWhiteSpace(c.PhoneNumberId))
+            throw new ValidacaoException("whatsapp.incompleto", "Phone Number ID do WhatsApp não configurado.");
+        if (!viaZap && string.IsNullOrEmpty(c.TokenCifrado))
+            throw new ValidacaoException("whatsapp.incompleto", "Token do WhatsApp não configurado.");
+
         return new TfdWhatsAppContexto(
             c.BaseUrl,
-            protetor.Revelar(c.TokenCifrado),
+            string.IsNullOrEmpty(c.TokenCifrado) ? string.Empty : protetor.Revelar(c.TokenCifrado),
             c.PhoneNumberId,
             c.WabaId,
             string.IsNullOrEmpty(c.VerifyTokenCifrado) ? null : protetor.Revelar(c.VerifyTokenCifrado),
-            string.IsNullOrEmpty(c.AppSecretCifrado) ? null : protetor.Revelar(c.AppSecretCifrado));
+            string.IsNullOrEmpty(c.AppSecretCifrado) ? null : protetor.Revelar(c.AppSecretCifrado),
+            c.ZapBaseUrl,
+            string.IsNullOrEmpty(c.ZapTokenCifrado) ? null : protetor.Revelar(c.ZapTokenCifrado),
+            c.ZapAtivo,
+            string.IsNullOrEmpty(c.ZapSegredoWebhookCifrado) ? null : protetor.Revelar(c.ZapSegredoWebhookCifrado));
     }
 
     private async Task<GeoConfiguracao> ObterOuCriarGoogleAsync(CancellationToken ct)

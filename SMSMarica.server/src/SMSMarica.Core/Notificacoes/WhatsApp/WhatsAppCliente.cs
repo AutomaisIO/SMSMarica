@@ -32,16 +32,21 @@ public sealed class WhatsAppCliente(
     public async Task<IReadOnlyList<TemplateWhatsApp>> ListarTemplatesAsync(CancellationToken ct = default)
     {
         var ctx = await ObterContextoOuNuloAsync(ct);
-        if (ctx is null || string.IsNullOrWhiteSpace(ctx.WabaId)) return [];
+        // Pelo Automais.Zap o catalogo vem do que o token alcanca: WabaId aqui nao e exigido,
+        // e e justamente o que permite a instancia largar a credencial da Meta.
+        if (ctx is null || (!ctx.ViaZap && string.IsNullOrWhiteSpace(ctx.WabaId))) return [];
 
         if (memoryCache.TryGetValue(CacheKeyTemplates, out IReadOnlyList<TemplateWhatsApp>? cache) && cache is not null)
             return cache;
 
-        var url = $"{ctx.BaseUrl.TrimEnd('/')}/{ctx.WabaId}/message_templates?limit=200";
+        var url = ctx.ViaZap
+            ? $"{ctx.ZapBaseUrl!.TrimEnd('/')}/v1/templates"
+            : $"{ctx.BaseUrl.TrimEnd('/')}/{ctx.WabaId}/message_templates?limit=200";
         try
         {
             using var req = new HttpRequestMessage(HttpMethod.Get, url);
-            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", ctx.Token);
+            req.Headers.Authorization = new AuthenticationHeaderValue(
+                "Bearer", ctx.ViaZap ? ctx.ZapToken! : ctx.Token);
             using var resp = await http.SendAsync(req, ct);
             var corpo = await resp.Content.ReadAsStringAsync(ct);
 
@@ -301,19 +306,30 @@ public sealed class WhatsAppCliente(
         TfdWhatsAppContexto ctx, object body, string telefone, string? template, string conteudo,
         Guid? pacienteId, CancellationToken ct)
     {
-        var url = $"{ctx.BaseUrl.TrimEnd('/')}/{ctx.PhoneNumberId}/messages";
+        // Duas rotas de saida com a MESMA carga: o Automais.Zap aceita o corpo da Cloud API
+        // como esta e so o embrulha. Por isso aqui muda o transporte, nao o payload -- montar
+        // o corpo, gravar a auditoria, extrair erro e simular continuam num lugar so.
+        var viaZap = ctx.ViaZap;
+        var url = viaZap
+            ? $"{ctx.ZapBaseUrl!.TrimEnd('/')}/v1/mensagens"
+            : $"{ctx.BaseUrl.TrimEnd('/')}/{ctx.PhoneNumberId}/messages";
+        var carga = viaZap
+            ? new { phone_number_id = ctx.PhoneNumberId, para = telefone, mensagem = body }
+            : (object)body;
+        var credencial = viaZap ? ctx.ZapToken! : ctx.Token;
         var msg = NovaMensagem(telefone, template, conteudo, pacienteId);
 
         try
         {
-            using var req = new HttpRequestMessage(HttpMethod.Post, url) { Content = JsonContent.Create(body) };
-            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", ctx.Token);
+            using var req = new HttpRequestMessage(HttpMethod.Post, url) { Content = JsonContent.Create(carga) };
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", credencial);
             using var resp = await http.SendAsync(req, ct);
             var corpo = await resp.Content.ReadAsStringAsync(ct);
 
             if (!resp.IsSuccessStatusCode)
             {
-                var erro = ExtrairErroMeta(corpo) ?? $"HTTP {(int)resp.StatusCode}: {corpo}";
+                var erro = (viaZap ? ExtrairErroZap(corpo) : ExtrairErroMeta(corpo))
+                           ?? $"HTTP {(int)resp.StatusCode}: {corpo}";
                 msg.Status = StatusMensagemWhatsApp.Falha;
                 msg.Conteudo = Truncar($"{conteudo} | erro {(int)resp.StatusCode}: {corpo}");
                 msg.ErroMeta = erro.Length <= 500 ? erro : erro[..500];
@@ -323,7 +339,7 @@ public sealed class WhatsAppCliente(
                 return new EnvioWhatsAppResultado(false, null, erro);
             }
 
-            msg.WaMessageId = ExtrairWamid(corpo);
+            msg.WaMessageId = viaZap ? ExtrairWamidZap(corpo) : ExtrairWamid(corpo);
             db.MensagensWhatsApp.Add(msg);
             await db.SaveChangesAsync(ct);
             return new EnvioWhatsAppResultado(true, msg.WaMessageId, null);
@@ -365,6 +381,28 @@ public sealed class WhatsAppCliente(
             if (message is null && code is null) return null;
             var txt = $"({code}) {message}";
             return string.IsNullOrEmpty(details) ? txt : $"{txt} — {details}";
+        }
+        catch { return null; }
+    }
+
+    /// <summary>Resposta do Automais.Zap no sucesso: <c>{"wamid":"..."}</c>.</summary>
+    private static string? ExtrairWamidZap(string corpo)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(corpo);
+            return doc.RootElement.TryGetProperty("wamid", out var w) ? w.GetString() : null;
+        }
+        catch { return null; }
+    }
+
+    /// <summary>Resposta do Automais.Zap no erro: <c>{"erro":"..."}</c>.</summary>
+    private static string? ExtrairErroZap(string corpo)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(corpo);
+            return doc.RootElement.TryGetProperty("erro", out var e) ? e.GetString() : null;
         }
         catch { return null; }
     }

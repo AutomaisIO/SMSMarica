@@ -42,6 +42,10 @@ export type TfdWhatsApp = {
   verifyTokenConfigurado: boolean;
   appSecretConfigurado: boolean;
   ativo: boolean;
+  zapBaseUrl: string | null;
+  zapTokenConfigurado: boolean;
+  zapSegredoWebhookConfigurado: boolean;
+  zapAtivo: boolean;
 };
 
 export type AtualizarTfdWhatsApp = {
@@ -52,6 +56,10 @@ export type AtualizarTfdWhatsApp = {
   verifyToken?: string;
   appSecret?: string;
   ativo: boolean;
+  zapBaseUrl?: string | null;
+  zapToken?: string;
+  zapSegredoWebhook?: string;
+  zapAtivo: boolean;
 };
 
 // Motores de proxy (CPF/CEP) com fallback configurável.

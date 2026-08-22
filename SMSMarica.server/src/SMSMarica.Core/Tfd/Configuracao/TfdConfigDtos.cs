@@ -11,7 +11,11 @@ public sealed record TfdConfigWhatsAppDto(
     bool TokenConfigurado,
     bool VerifyTokenConfigurado,
     bool AppSecretConfigurado,
-    bool Ativo);
+    bool Ativo,
+    string? ZapBaseUrl,
+    bool ZapTokenConfigurado,
+    bool ZapSegredoWebhookConfigurado,
+    bool ZapAtivo);
 
 public sealed record AtualizarTfdConfigWhatsAppRequest(
     string BaseUrl,
@@ -20,4 +24,8 @@ public sealed record AtualizarTfdConfigWhatsAppRequest(
     string? WabaId,
     string? VerifyToken,
     string? AppSecret,
-    bool Ativo);
+    bool Ativo,
+    string? ZapBaseUrl = null,
+    string? ZapToken = null,
+    string? ZapSegredoWebhook = null,
+    bool ZapAtivo = false);
