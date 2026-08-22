@@ -50,6 +50,48 @@
     </p>
 </div>
 
+<h2>Assinatura da entrega</h2>
+<div class="cartao">
+    @if (!string.IsNullOrEmpty(Model.SegredoNovo))
+    {
+        <div class="aviso ok">
+            <strong>Copie agora.</strong> Não é exibido de novo.
+            <div style="margin-top:8px"><code style="font-size:14px;word-break:break-all">@Model.SegredoNovo</code></div>
+        </div>
+    }
+
+    @if (Model.TemSegredo)
+    {
+        <p class="sub" style="margin:0 0 12px">
+            <span class="selo on">segredo próprio</span>
+            Assinamos o que entregamos com ele, em <code>X-Automais-Signature</code>, junto de
+            <code>X-Automais-Timestamp</code>. O destino confere com o mesmo segredo.
+        </p>
+        <form method="post" asp-page-handler="RemoverSegredo" style="display:inline"
+              onsubmit="return confirm('Remover? Voltamos a repassar a assinatura da Meta, que só valida se os dois lados usarem o mesmo App Secret.');">
+            <input type="hidden" name="id" value="@Model.Alvo.Id" />
+            <button class="acao discreto" type="submit">Remover segredo</button>
+        </form>
+        <form method="post" asp-page-handler="GerarSegredo" style="display:inline"
+              onsubmit="return confirm('Gerar um novo? O destino para de aceitar até ser reconfigurado com o valor novo.');">
+            <input type="hidden" name="id" value="@Model.Alvo.Id" />
+            <button class="acao discreto" type="submit">Gerar outro</button>
+        </form>
+    }
+    else
+    {
+        <p class="sub" style="margin:0 0 12px">
+            <span class="selo off">repassando a assinatura da Meta</span>
+            Isso só valida enquanto a aplicação de destino usa o <strong>mesmo App Secret</strong> que
+            o nosso App. Com dois Apps na jogada — o antigo e o novo — ela recusa com 401.
+        </p>
+        <form method="post" asp-page-handler="GerarSegredo">
+            <input type="hidden" name="id" value="@Model.Alvo.Id" />
+            <button class="acao" type="submit">Gerar segredo próprio</button>
+        </form>
+    }
+</div>
+
 <h2>Quem recebe os eventos deste WABA</h2>
 <div class="cartao">
     @if (Model.ErroGraph is not null)

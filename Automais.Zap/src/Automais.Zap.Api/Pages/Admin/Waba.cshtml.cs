@@ -1,5 +1,7 @@
 using Automais.Zap.Api.Infra;
+using Automais.Zap.Core.Entregas;
 using Automais.Zap.Core.Meta;
+using Automais.Zap.Core.Seguranca;
 using Automais.Zap.Data;
 using Automais.Zap.Data.Entities;
 using Microsoft.AspNetCore.Mvc;
@@ -13,6 +15,7 @@ public sealed class WabaModel(
     EscopoUsuario escopo,
     IGraphMetaClient graph,
     IConfiguracaoMetaService configuracao,
+    IProtetorSegredos protetor,
     TimeProvider relogio) : PageModel
 {
     public Data.Entities.Waba? Alvo { get; private set; }
@@ -24,6 +27,11 @@ public sealed class WabaModel(
 
     public bool EsteAppInscrito => AppIdProprio is not null && AppsInscritos.Any(a => a.Id == AppIdProprio);
     public IEnumerable<AppInscrito> OutrosApps => AppsInscritos.Where(a => a.Id != AppIdProprio);
+
+    /// <summary>Segredo em claro, exibido UMA vez logo apos gerar.</summary>
+    [TempData] public string? SegredoNovo { get; set; }
+
+    public bool TemSegredo => Alvo?.SegredoEntregaCifrado is { Length: > 0 };
 
     [TempData] public string? Recado { get; set; }
     [TempData] public string? Erro { get; set; }
@@ -99,6 +107,32 @@ public sealed class WabaModel(
         Recado = ativo
             ? "Roteamento ligado. Os números deste WABA passam a ser entregues nesse destino."
             : "Roteamento desligado. Os eventos deste WABA param de ser entregues.";
+        return RedirectToPage(new { id });
+    }
+
+    public async Task<IActionResult> OnPostGerarSegredoAsync(Guid id, CancellationToken ct)
+    {
+        var waba = await AutorizarAsync(id, ct);
+        if (waba is null) return Forbid();
+
+        var segredo = AssinaturaAutomais.GerarSegredo();
+        waba.SegredoEntregaCifrado = protetor.Proteger(segredo);
+        await db.SaveChangesAsync(ct);
+
+        SegredoNovo = segredo;
+        Recado = "Segredo gerado. Copie agora e configure na aplicação de destino — enquanto ela "
+                 + "não conhecer esse valor, vai recusar tudo que mandarmos.";
+        return RedirectToPage(new { id });
+    }
+
+    public async Task<IActionResult> OnPostRemoverSegredoAsync(Guid id, CancellationToken ct)
+    {
+        var waba = await AutorizarAsync(id, ct);
+        if (waba is null) return Forbid();
+
+        waba.SegredoEntregaCifrado = null;
+        await db.SaveChangesAsync(ct);
+        Recado = "Segredo removido. Voltamos a repassar a assinatura da Meta.";
         return RedirectToPage(new { id });
     }
 

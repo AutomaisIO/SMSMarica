@@ -7,7 +7,7 @@ namespace Automais.Zap.Core.Entregas;
 public sealed class Entregador(HttpClient http, ILogger<Entregador> logger) : IEntregador
 {
     public async Task<ResultadoEntrega> EntregarAsync(
-        string url, byte[] corpo, string assinatura, CancellationToken ct = default)
+        string url, byte[] corpo, string assinatura, string? segredoProprio = null, CancellationToken ct = default)
     {
         var cronometro = Stopwatch.StartNew();
         try
@@ -16,9 +16,19 @@ public sealed class Entregador(HttpClient http, ILogger<Entregador> logger) : IE
             req.Content = new ByteArrayContent(corpo);
             req.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
 
-            // Mesmo nome de header que a Meta usa: a aplicação de destino valida com o mesmo
-            // App Secret e não precisa saber que passou por aqui.
-            req.Headers.TryAddWithoutValidation("X-Hub-Signature-256", assinatura);
+            if (string.IsNullOrWhiteSpace(segredoProprio))
+            {
+                // Sem segredo próprio: repassa a assinatura da Meta. Só funciona enquanto os
+                // dois lados usam o mesmo App Secret.
+                req.Headers.TryAddWithoutValidation("X-Hub-Signature-256", assinatura);
+            }
+            else
+            {
+                var ts = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                req.Headers.TryAddWithoutValidation(AssinaturaAutomais.CabecalhoTimestamp, ts.ToString());
+                req.Headers.TryAddWithoutValidation(
+                    AssinaturaAutomais.CabecalhoAssinatura, AssinaturaAutomais.Calcular(segredoProprio, ts, corpo));
+            }
 
             using var resp = await http.SendAsync(req, ct);
             cronometro.Stop();

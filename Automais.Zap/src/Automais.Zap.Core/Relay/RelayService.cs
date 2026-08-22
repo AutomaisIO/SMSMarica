@@ -136,7 +136,7 @@ public sealed class RelayService(
                 }
 
                 var resultado = await entregador.EntregarAsync(
-                    grupo.Rota.UrlWebhook, corpoDestino, assinaturaDestino, ct);
+                    grupo.Rota.UrlWebhook, corpoDestino, assinaturaDestino, grupo.Rota.SegredoEntrega, ct);
 
                 if (resultado.Sucesso) entregues++;
                 else falhas++;

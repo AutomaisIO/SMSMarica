@@ -1,3 +1,4 @@
+using Automais.Zap.Core.Seguranca;
 using Automais.Zap.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,7 +9,7 @@ namespace Automais.Zap.Core.Roteamento;
 /// único — cache aqui só traria bug de invalidação (mudou a rota na tela, o relay continua
 /// entregando no destino velho) em troca de microssegundos.
 /// </summary>
-public sealed class Roteador(ZapDbContext db) : IRoteador
+public sealed class Roteador(ZapDbContext db, IProtetorSegredos protetor) : IRoteador
 {
     public async Task<IReadOnlyDictionary<string, RotaDestino>> ResolverPorNumeroAsync(
         IReadOnlyCollection<string> phoneNumberIds, CancellationToken ct = default)
@@ -39,12 +40,13 @@ public sealed class Roteador(ZapDbContext db) : IRoteador
                 Url = n.UrlDestinoOverride != null && n.UrlDestinoOverride != ""
                     ? n.UrlDestinoOverride
                     : n.Waba.UrlDestino!,
+                Segredo = n.Waba.SegredoEntregaCifrado,
             })
             .ToListAsync(ct);
 
         return linhas.ToDictionary(
             x => x.PhoneNumberId,
-            x => new RotaDestino(x.TenantId, x.Nome, x.Url));
+            x => new RotaDestino(x.TenantId, x.Nome, x.Url, protetor.Revelar(x.Segredo)));
     }
 
     public async Task<IReadOnlyDictionary<string, RotaDestino>> ResolverPorWabaAsync(
@@ -58,11 +60,11 @@ public sealed class Roteador(ZapDbContext db) : IRoteador
                         && w.RoteamentoAtivo
                         && w.UrlDestino != null && w.UrlDestino != ""
                         && w.Tenant!.Ativo && w.Tenant.SuspensoEm == null)
-            .Select(w => new { w.WabaId, w.TenantId, Nome = w.Tenant!.Nome, Url = w.UrlDestino! })
+            .Select(w => new { w.WabaId, w.TenantId, Nome = w.Tenant!.Nome, Url = w.UrlDestino!, Segredo = w.SegredoEntregaCifrado })
             .ToListAsync(ct);
 
         return linhas.ToDictionary(
             x => x.WabaId,
-            x => new RotaDestino(x.TenantId, x.Nome, x.Url));
+            x => new RotaDestino(x.TenantId, x.Nome, x.Url, protetor.Revelar(x.Segredo)));
     }
 }

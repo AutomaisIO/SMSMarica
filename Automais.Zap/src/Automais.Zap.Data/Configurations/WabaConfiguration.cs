@@ -16,6 +16,7 @@ public sealed class WabaConfiguration : IEntityTypeConfiguration<Waba>
         b.Property(x => x.Nome).HasColumnName("nome").HasMaxLength(200);
         b.Property(x => x.UrlDestino).HasColumnName("url_destino").HasMaxLength(500);
         b.Property(x => x.RoteamentoAtivo).HasColumnName("roteamento_ativo").HasDefaultValue(false);
+        b.Property(x => x.SegredoEntregaCifrado).HasColumnName("segredo_entrega_cifrado").HasMaxLength(1000);
         b.Property(x => x.Observacao).HasColumnName("observacao").HasMaxLength(500);
         b.Property(x => x.CriadoEm).HasColumnName("criado_em");
         b.Property(x => x.SincronizadoEm).HasColumnName("sincronizado_em");

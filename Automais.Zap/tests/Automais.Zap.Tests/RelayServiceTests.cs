@@ -4,6 +4,7 @@ using Automais.Zap.Core.Entregas;
 using Automais.Zap.Core.Meta;
 using Automais.Zap.Core.Relay;
 using Automais.Zap.Core.Roteamento;
+using Automais.Zap.Core.Seguranca;
 using Automais.Zap.Data;
 using Automais.Zap.Data.Entities;
 using Automais.Zap.Tests.Infraestrutura;
@@ -21,12 +22,12 @@ public sealed class RelayServiceTests(PostgresZapFixture fixture)
     /// <summary>Entregador de mentira: guarda o que recebeu e obedece ao veredito combinado.</summary>
     private sealed class EntregadorFalso(bool sucesso = true) : IEntregador
     {
-        public List<(string Url, byte[] Corpo, string Assinatura)> Chamadas { get; } = [];
+        public List<(string Url, byte[] Corpo, string Assinatura, string? Segredo)> Chamadas { get; } = [];
 
         public Task<ResultadoEntrega> EntregarAsync(
-            string url, byte[] corpo, string assinatura, CancellationToken ct = default)
+            string url, byte[] corpo, string assinatura, string? segredoProprio = null, CancellationToken ct = default)
         {
-            Chamadas.Add((url, corpo, assinatura));
+            Chamadas.Add((url, corpo, assinatura, segredoProprio));
             return Task.FromResult(sucesso
                 ? new ResultadoEntrega(true, 200, 5, null)
                 : new ResultadoEntrega(false, 500, 5, "HTTP 500"));
@@ -46,10 +47,17 @@ public sealed class RelayServiceTests(PostgresZapFixture fixture)
             => Task.CompletedTask;
     }
 
+    /// <summary>Sem anel de Data Protection no teste: o segredo vai e volta como esta.</summary>
+    private sealed class ProtetorSegredosFalso : IProtetorSegredos
+    {
+        public string Proteger(string textoPuro) => textoPuro;
+        public string? Revelar(string? textoCifrado) => string.IsNullOrWhiteSpace(textoCifrado) ? null : textoCifrado;
+    }
+
     private static RelayService Montar(ZapDbContext db, IEntregador entregador, string? appSecret = AppSecret)
         => new(
             db,
-            new Roteador(db),
+            new Roteador(db, new ProtetorSegredosFalso()),
             entregador,
             new ConfiguracaoMetaFalsa(appSecret),
             TimeProvider.System,
