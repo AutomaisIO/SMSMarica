@@ -14,7 +14,9 @@ import {
 import {
   cancelarVarredura,
   executarVarredura,
+  executarVarreduraPeriodo,
   listarVarreduraExecucoes,
+  listarVarreduraItens,
   obterStatusVarredura,
   obterVarreduraAgenda,
   salvarVarreduraAgenda,
@@ -34,6 +36,8 @@ export const mapeamentoKeys = {
     ['sisreg-mapeamento', 'varredura-status', unidadeId] as const,
   varreduraExecucoes: (unidadeId: string | null) =>
     ['sisreg-mapeamento', 'varredura-execucoes', unidadeId] as const,
+  varreduraItens: (execucaoId: string) =>
+    ['sisreg-mapeamento', 'varredura-itens', execucaoId] as const,
 };
 
 export function useMapeamento(unidadeId: string | null) {
@@ -168,6 +172,27 @@ export function useExecutarVarredura(unidadeId: string | null) {
       client.invalidateQueries({ queryKey: mapeamentoKeys.varreduraStatus(unidadeId) });
       client.invalidateQueries({ queryKey: mapeamentoKeys.varreduraExecucoes(unidadeId) });
     },
+  });
+}
+
+export function useExecutarVarreduraPeriodo(unidadeId: string | null) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ dataInicio, dataFim }: { dataInicio: string; dataFim: string }) =>
+      executarVarreduraPeriodo(dataInicio, dataFim, unidadeId),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: mapeamentoKeys.varreduraStatus(unidadeId) });
+      client.invalidateQueries({ queryKey: mapeamentoKeys.varreduraExecucoes(unidadeId) });
+    },
+  });
+}
+
+/** Detalhe de uma execução. Só busca quando o modal abre (execucaoId definido). */
+export function useVarreduraItens(unidadeId: string | null, execucaoId: string | null) {
+  return useQuery({
+    queryKey: mapeamentoKeys.varreduraItens(execucaoId ?? ''),
+    queryFn: () => listarVarreduraItens(execucaoId!, unidadeId),
+    enabled: Boolean(execucaoId),
   });
 }
 

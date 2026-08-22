@@ -112,6 +112,7 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     // Motor diário que varre a agenda do SISREG por unidade: agenda (quando roda) e rastreio (o que rodou)
     public DbSet<SisregVarreduraAgenda> SisregVarreduraAgendas => Set<SisregVarreduraAgenda>();
     public DbSet<SisregVarreduraExecucao> SisregVarreduraExecucoes => Set<SisregVarreduraExecucao>();
+    public DbSet<SisregVarreduraExecucaoItem> SisregVarreduraExecucaoItens => Set<SisregVarreduraExecucaoItem>();
 
     // SER (Sistema Estadual de Regulação, SES-RJ) — ESPELHO da fila do Estado, ADR-0042.
     // Deliberadamente separado de `solicitacao`: solicitação do SER não tem unidade executante

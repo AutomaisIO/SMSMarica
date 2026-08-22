@@ -71,7 +71,10 @@ public interface IImportacaoSisregService
     Task<ImportacaoFalhaDetalheDto> ObterFalhaDetalheAsync(Guid falhaId, CancellationToken ct);
 
     /// <summary>Quem/onde, quando o serviço roda fora de uma request (lote no background).</summary>
-    void DefinirContextoDeBackground(Guid? usuarioId, Guid? unidadeAtivaId);
+    /// <param name="suprimirConfirmacao">Força "não avisar o paciente por WhatsApp" nesta execução,
+    /// mesmo que a unidade/procedimento estejam configurados para enviar. Usado no backfill por
+    /// período: importar agendamento passado não pode disparar mensagem sobre exame já ocorrido.</param>
+    void DefinirContextoDeBackground(Guid? usuarioId, Guid? unidadeAtivaId, bool suprimirConfirmacao = false);
 
     /// <summary>Importa UM arquivo inteiro do lote. Reconhece o arquivo antes: se não for do
     /// SISREG, descarta tudo sem tentar linha a linha.</summary>
@@ -111,6 +114,10 @@ public sealed class ImportacaoSisregService(
     private Guid? _unidadeOverride;
     private bool _temOverride;
 
+    /// <summary>Quando true, nenhuma marcação desta execução enfileira confirmação por WhatsApp —
+    /// ver <see cref="DefinirContextoDeBackground"/>. Scoped por execução, como os overrides acima.</summary>
+    private bool _suprimirConfirmacao;
+
     /// <summary>Execução (arquivo) em curso — carimbada nas falhas para a aba de rastreio poder
     /// abrir "os erros desta importação". NULL fora de um lote (ex.: preview avulso).</summary>
     private Guid? _execucaoAtual;
@@ -118,11 +125,12 @@ public sealed class ImportacaoSisregService(
     private Guid? UsuarioIdAtual => _temOverride ? _usuarioOverride : usuarioAtual.UsuarioId;
     private Guid? UnidadeAtivaAtual => _temOverride ? _unidadeOverride : usuarioAtual.UnidadeAtivaId;
 
-    public void DefinirContextoDeBackground(Guid? usuarioId, Guid? unidadeAtivaId)
+    public void DefinirContextoDeBackground(Guid? usuarioId, Guid? unidadeAtivaId, bool suprimirConfirmacao = false)
     {
         _usuarioOverride = usuarioId;
         _unidadeOverride = unidadeAtivaId;
         _temOverride = true;
+        _suprimirConfirmacao = suprimirConfirmacao;
     }
 
     // ===================== PREVIEW =====================
@@ -961,6 +969,10 @@ public sealed class ImportacaoSisregService(
     private async Task<bool> DeveEnviarConfirmacaoAsync(
         Guid unidadeExecutanteId, MarcacaoSisreg m, CancellationToken ct)
     {
+        // Backfill por período: nunca avisa o paciente, mesmo com a unidade/procedimento ligados —
+        // a mensagem seria sobre um agendamento que já passou.
+        if (_suprimirConfirmacao) return false;
+
         var daUnidade = await db.SisregVarreduraAgendas.AsNoTracking()
             .Where(a => a.UnidadeId == unidadeExecutanteId)
             .Select(a => (bool?)a.EnviarConfirmacao)

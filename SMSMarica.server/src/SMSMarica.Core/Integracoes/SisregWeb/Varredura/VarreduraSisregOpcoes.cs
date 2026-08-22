@@ -28,12 +28,32 @@ public sealed class VarreduraSisregOpcoes
     public int PausaMs { get; set; } = 350;
 
     /// <summary>
-    /// Janela em que o motor pode rodar (hora local de Brasília). <b>Sessão única por operador:</b>
-    /// varrer às 10h com a credencial da unidade derruba o atendente da recepção.
+    /// Faixa (hora local de Brasília) em que o <c>expo_solicitacoes</c> fica <b>bloqueado</b> pelo
+    /// SISREG: 08:00–15:00 (ver ADR-0040 §1 — "Aplicativo bloqueado para uso de 8 as 15 horas").
+    /// Fora dessa faixa o motor roda a qualquer hora — a credencial da SMS é dedicada à varredura,
+    /// então não há mais a preocupação de "sessão única" derrubar atendente que motivava a antiga
+    /// janela 22:00–06:00.
     /// </summary>
-    public TimeOnly JanelaInicioLocal { get; set; } = new(22, 0);
+    public TimeOnly BloqueioInicioLocal { get; set; } = new(8, 0);
 
-    public TimeOnly JanelaFimLocal { get; set; } = new(6, 0);
+    public TimeOnly BloqueioFimLocal { get; set; } = new(15, 0);
+
+    /// <summary>
+    /// Margem de segurança ANTES do bloqueio: uma varredura não deve INICIAR perto demais das
+    /// 08:00, senão uma execução longa (backfill) cruzaria o bloqueio no meio. O corte de entrada é
+    /// <c>BloqueioInicio − margem</c> (07:30 com os defaults). 07:30 ainda inicia; 07:31 já não.
+    /// </summary>
+    public int MargemEntradaMinutos { get; set; } = 30;
+
+    /// <summary>Hora local a partir da qual (exclusive) já não se pode INICIAR uma varredura.</summary>
+    public TimeOnly CorteEntradaLocal => BloqueioInicioLocal.Add(TimeSpan.FromMinutes(-MargemEntradaMinutos));
+
+    /// <summary>
+    /// Pode INICIAR uma varredura nesta hora local? Recusa a faixa <c>(corteEntrada, bloqueioFim]</c>
+    /// = (07:30, 15:00]: 07:30 ainda entra, 15:00 ainda não, depois das 15:00 volta a valer.
+    /// </summary>
+    public bool PodeIniciarNaHora(TimeOnly hora) =>
+        !(hora > CorteEntradaLocal && hora <= BloqueioFimLocal);
 
     /// <summary>Quanto pausar a unidade quando o CAPTCHA aparece. Relogar não resolve — só um
     /// humano abrindo o SISREG no navegador com aquele operador.</summary>

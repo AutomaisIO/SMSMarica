@@ -12,10 +12,13 @@ namespace SMSMarica.Tests.Integracoes.Sisreg;
 public class DecididorVarreduraSisregTests
 {
     private static readonly TimeZoneInfo Brasilia = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
-    private static readonly TimeOnly JanelaInicio = new(22, 0);
-    private static readonly TimeOnly JanelaFim = new(6, 0);
 
-    /// <summary>03/08/2026 04:00 em Brasília = 07:00 UTC. Dentro da janela 22:00–06:00.</summary>
+    // Regra atual: pode iniciar EXCETO na faixa (07:30, 15:00] — o SISREG bloqueia o expo_solicitacoes
+    // das 08:00 às 15:00, e a margem de 30 min antecipa o corte de entrada para 07:30.
+    private static readonly TimeOnly CorteEntrada = new(7, 30);
+    private static readonly TimeOnly BloqueioFim = new(15, 0);
+
+    /// <summary>03/08/2026 04:00 em Brasília = 07:00 UTC. Fora do bloqueio 08:00–15:00.</summary>
     private static readonly DateTime AgoraUtc = new(2026, 8, 3, 7, 0, 0, DateTimeKind.Utc);
     private static readonly TimeOnly HoraLocal = new(4, 0);
 
@@ -45,7 +48,7 @@ public class DecididorVarreduraSisregTests
         bool varreduraViva = false,
         bool importacaoViva = false) =>
         DecididorVarreduraSisreg.Decidir(
-            agenda, AgoraUtc, horaLocal ?? HoraLocal, JanelaInicio, JanelaFim, varreduraViva, importacaoViva);
+            agenda, AgoraUtc, horaLocal ?? HoraLocal, CorteEntrada, BloqueioFim, varreduraViva, importacaoViva);
 
     [Fact]
     public void Agenda_vencida_dentro_da_janela_dispara()
@@ -86,23 +89,37 @@ public class DecididorVarreduraSisregTests
     }
 
     [Theory]
+    [InlineData(7, 31)]  // logo após o corte de entrada
+    [InlineData(8, 0)]   // início do bloqueio
     [InlineData(10, 0)]  // meio da manhã
     [InlineData(14, 30)] // meio da tarde
-    [InlineData(21, 59)] // um minuto antes da janela
-    [InlineData(6, 1)]   // um minuto depois da janela
-    public void Fora_da_janela_nao_dispara(int hora, int minuto)
+    [InlineData(15, 0)]  // fim do bloqueio — 15:00 ainda recusa
+    public void Dentro_do_bloqueio_nao_dispara(int hora, int minuto)
     {
         Assert.Equal(DecisaoVarredura.ForaDaJanela, Decidir(Agenda(), new TimeOnly(hora, minuto)));
     }
 
     [Theory]
-    [InlineData(22, 0)]
-    [InlineData(23, 30)]
-    [InlineData(0, 15)]
-    [InlineData(6, 0)]
-    public void Janela_que_cruza_a_meia_noite_e_respeitada(int hora, int minuto)
+    [InlineData(7, 30)]  // exatamente no corte — ainda entra
+    [InlineData(3, 0)]   // madrugada
+    [InlineData(15, 1)]  // um minuto depois do bloqueio
+    [InlineData(18, 0)]  // fim de tarde
+    [InlineData(23, 30)] // noite
+    public void Fora_do_bloqueio_dispara(int hora, int minuto)
     {
         Assert.Equal(DecisaoVarredura.Disparar, Decidir(Agenda(), new TimeOnly(hora, minuto)));
+    }
+
+    [Theory]
+    [InlineData(7, 30, true)]   // corte inclusivo
+    [InlineData(7, 31, false)]
+    [InlineData(8, 0, false)]
+    [InlineData(15, 0, false)]  // fim do bloqueio inclusivo
+    [InlineData(15, 1, true)]
+    [InlineData(0, 0, true)]
+    public void PodeIniciar_recusa_so_a_faixa_do_bloqueio(int hora, int minuto, bool podeIniciar)
+    {
+        Assert.Equal(podeIniciar, DecididorVarreduraSisreg.PodeIniciar(new TimeOnly(hora, minuto), CorteEntrada, BloqueioFim));
     }
 
     [Fact]

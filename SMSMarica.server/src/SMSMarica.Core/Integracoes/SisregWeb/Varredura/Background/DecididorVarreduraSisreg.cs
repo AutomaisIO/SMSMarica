@@ -29,8 +29,8 @@ public static class DecididorVarreduraSisreg
         SisregVarreduraAgenda agenda,
         DateTime agoraUtc,
         TimeOnly horaLocalAgora,
-        TimeOnly janelaInicio,
-        TimeOnly janelaFim,
+        TimeOnly corteEntrada,
+        TimeOnly bloqueioFim,
         bool varreduraViva,
         bool importacaoViva)
     {
@@ -43,7 +43,7 @@ public static class DecididorVarreduraSisreg
         // agenda calcula o ProximoRunEm ao salvar.
         if (agenda.ProximoRunEm is not { } proximo || proximo > agoraUtc) return DecisaoVarredura.Aguardar;
 
-        if (!DentroDaJanela(horaLocalAgora, janelaInicio, janelaFim)) return DecisaoVarredura.ForaDaJanela;
+        if (!PodeIniciar(horaLocalAgora, corteEntrada, bloqueioFim)) return DecisaoVarredura.ForaDaJanela;
 
         // O humano sempre ganha: uma importação manual em curso usa a mesma saída para o SISREG.
         if (varreduraViva || importacaoViva) return DecisaoVarredura.PularRunVivo;
@@ -51,11 +51,14 @@ public static class DecididorVarreduraSisreg
         return DecisaoVarredura.Disparar;
     }
 
-    /// <summary>Janela que cruza a meia-noite (22:00–06:00) é o caso normal aqui, não a exceção.</summary>
-    public static bool DentroDaJanela(TimeOnly hora, TimeOnly inicio, TimeOnly fim) =>
-        inicio <= fim
-            ? hora >= inicio && hora <= fim
-            : hora >= inicio || hora <= fim;
+    /// <summary>
+    /// Pode INICIAR uma varredura nesta hora local? O <c>expo_solicitacoes</c> fica bloqueado pelo
+    /// SISREG de <paramref name="bloqueioFim"/> para trás; <paramref name="corteEntrada"/> antecipa
+    /// o corte com uma margem, para não começar uma varredura que cruzaria o bloqueio. Recusa a
+    /// faixa <c>(corteEntrada, bloqueioFim]</c> — fora dela, roda a qualquer hora.
+    /// </summary>
+    public static bool PodeIniciar(TimeOnly hora, TimeOnly corteEntrada, TimeOnly bloqueioFim) =>
+        !(hora > corteEntrada && hora <= bloqueioFim);
 
     /// <summary>Próximo <c>HH:mm</c> local estritamente depois de agora, devolvido em UTC.</summary>
     public static DateTime ProximoDiario(TimeOnly horaLocal, DateTime agoraUtc, TimeZoneInfo fuso)

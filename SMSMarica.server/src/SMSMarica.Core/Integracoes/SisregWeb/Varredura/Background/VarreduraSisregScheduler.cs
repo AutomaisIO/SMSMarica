@@ -61,8 +61,8 @@ public sealed class VarreduraSisregScheduler(
         var agora = DateTime.UtcNow;
         var horaLocal = TimeOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(agora, Brasilia));
 
-        // Fora da janela nem vale consultar: nenhuma unidade poderia disparar.
-        if (!DecididorVarreduraSisreg.DentroDaJanela(horaLocal, _opcoes.JanelaInicioLocal, _opcoes.JanelaFimLocal))
+        // Dentro do bloqueio do expo_solicitacoes nem vale consultar: nenhuma unidade poderia disparar.
+        if (!DecididorVarreduraSisreg.PodeIniciar(horaLocal, _opcoes.CorteEntradaLocal, _opcoes.BloqueioFimLocal))
             return;
 
         // Quem ficou mais tempo sem varrer vai primeiro. Quando o orçamento não cobre a rede toda
@@ -77,7 +77,7 @@ public sealed class VarreduraSisregScheduler(
         foreach (var agenda in candidatas)
         {
             var decisao = DecididorVarreduraSisreg.Decidir(
-                agenda, agora, horaLocal, _opcoes.JanelaInicioLocal, _opcoes.JanelaFimLocal,
+                agenda, agora, horaLocal, _opcoes.CorteEntradaLocal, _opcoes.BloqueioFimLocal,
                 varreduraViva: estadoVivo.ObterAtual() is not null,
                 importacaoViva: importacaoEstadoVivo.ObterAtual() is not null);
 

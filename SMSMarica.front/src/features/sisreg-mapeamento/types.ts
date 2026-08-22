@@ -96,8 +96,12 @@ export type VarreduraAgenda = {
   combinacoesProntas: number;
   requisicoesEstimadas: number;
   tetoPorExecucao: number;
-  janelaInicioLocal: string;
-  janelaFimLocal: string;
+  /** Faixa (Brasília) em que o SISREG bloqueia a exportação: a varredura não roda entre
+   * `corteEntradaLocal` e `bloqueioFimLocal`. Fora disso, qualquer hora. "HH:mm:ss". */
+  bloqueioInicioLocal: string;
+  bloqueioFimLocal: string;
+  /** Hora a partir da qual já não se pode iniciar (bloqueio − margem de 30 min). "HH:mm:ss". */
+  corteEntradaLocal: string;
   /** Gatilho mestre da unidade: importar solicitação avisa o paciente por WhatsApp? Vale para
    * toda importação — varredura e upload de arquivo. */
   enviarConfirmacao: boolean;
@@ -141,6 +145,20 @@ export type VarreduraExecucao = {
   finalizadoEm: string | null;
   duracaoSegundos: number | null;
   criadoPorNome: string | null;
+};
+
+/** Detalhe por profissional × procedimento de UMA execução (modal do histórico). */
+export type VarreduraExecucaoItem = {
+  id: string;
+  profissionalNome: string;
+  procedimentoCodigo: string;
+  procedimentoNome: string;
+  requisicoes: number;
+  registrosEncontrados: number;
+  validos: number;
+  invalidos: number;
+  jaExistiam: number;
+  observacao: string | null;
 };
 
 export type StatusVarreduraVivo = {

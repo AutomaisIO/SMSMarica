@@ -23,6 +23,10 @@ public interface IVarreduraAgendaService
     /// <summary>Dispara a varredura da unidade ativa, agora. ESCRITA no SISREG? Não — só leitura.</summary>
     Task<VarreduraAceitaDto> IniciarAsync(CancellationToken ct);
 
+    /// <summary>Dispara uma varredura MANUAL por período específico (inclusive datas passadas). Não
+    /// avisa o paciente por WhatsApp — é backfill.</summary>
+    Task<VarreduraAceitaDto> IniciarPeriodoAsync(IniciarVarreduraPeriodoRequest request, CancellationToken ct);
+
     /// <summary>Disparo pelo scheduler. Devolve null em colisão (não é erro: só reprograma).</summary>
     Task<Guid?> IniciarAgendadoAsync(Guid unidadeId, CancellationToken ct);
 
@@ -34,6 +38,9 @@ public interface IVarreduraAgendaService
     bool Cancelar();
 
     Task<IReadOnlyList<VarreduraExecucaoDto>> ListarExecucoesAsync(int limite, CancellationToken ct);
+
+    /// <summary>Detalhe por profissional × procedimento de UMA execução (o modal do histórico).</summary>
+    Task<IReadOnlyList<VarreduraExecucaoItemDto>> ListarItensAsync(Guid execucaoId, CancellationToken ct);
 }
 
 /// <summary>
@@ -105,16 +112,17 @@ public sealed class VarreduraAgendaService(
                 + "o SISREG recusa consulta com intervalo maior que 31 dias.");
         }
 
-        // A hora tem que cair na janela permitida, e isto é recusa, não aviso: o SISREG mantém uma
-        // sessão por operador, então varrer no horário de expediente DERRUBA o atendente da unidade
-        // que estiver usando a mesma credencial.
-        if (request.Ativo && !DentroDaJanela(request.HoraLocal))
+        // A hora do disparo diário tem que ser um horário em que dá para INICIAR — o SISREG bloqueia
+        // a exportação da agenda das 08:00 às 15:00, então uma varredura marcada para dentro dessa
+        // faixa falharia todo dia.
+        if (request.Ativo && !_opcoes.PodeIniciarNaHora(request.HoraLocal))
         {
             throw new ValidacaoException(
                 "varredura.hora_fora_da_janela",
-                $"A varredura só pode rodar entre {_opcoes.JanelaInicioLocal:HH\\:mm} e "
-                + $"{_opcoes.JanelaFimLocal:HH\\:mm} (hora de Brasília). O SISREG aceita uma sessão por "
-                + "operador: rodando no expediente, o motor derruba a sessão de quem estiver atendendo.");
+                $"A varredura não pode ser marcada entre {_opcoes.CorteEntradaLocal:HH\\:mm} e "
+                + $"{_opcoes.BloqueioFimLocal:HH\\:mm} (Brasília): o SISREG bloqueia a exportação da "
+                + $"agenda das {_opcoes.BloqueioInicioLocal:HH\\:mm} às {_opcoes.BloqueioFimLocal:HH\\:mm}. "
+                + "Escolha um horário fora desse intervalo.");
         }
 
         var agenda = await db.SisregVarreduraAgendas.FirstOrDefaultAsync(x => x.UnidadeId == unidade.Id, ct);
@@ -153,6 +161,65 @@ public sealed class VarreduraAgendaService(
     {
         var unidade = await unidadeAtual.ObterObrigatoriaAsync(ct);
 
+        GarantirJanelaDeEntrada();
+        GarantirSemTrabalhoVivo();
+
+        var (execucaoId, mensagem) = await CriarExecucaoAsync(
+            unidade, DisparoSincronizacao.Manual, usuarioAtual.UsuarioId, null, null, ct);
+
+        return new VarreduraAceitaDto(execucaoId, mensagem);
+    }
+
+    public async Task<VarreduraAceitaDto> IniciarPeriodoAsync(
+        IniciarVarreduraPeriodoRequest request, CancellationToken ct)
+    {
+        var unidade = await unidadeAtual.ObterObrigatoriaAsync(ct);
+
+        if (request.DataInicio > request.DataFim)
+        {
+            throw new ValidacaoException(
+                "varredura.periodo_invalido", "A data inicial não pode ser depois da data final.");
+        }
+
+        // O SISREG recusa exportação com intervalo maior que 31 dias por par. O split de 700
+        // registros parte a janela por VOLUME, não por tamanho — então um período largo estouraria
+        // já na primeira requisição. Para períodos maiores, rode em partes.
+        var dias = request.DataFim.DayNumber - request.DataInicio.DayNumber;
+        if (dias > VarreduraSisregOpcoes.MaxDiasAFrente)
+        {
+            throw new ValidacaoException(
+                "varredura.periodo_longo",
+                $"O período não pode passar de {VarreduraSisregOpcoes.MaxDiasAFrente} dias — o SISREG "
+                + "recusa exportação com intervalo maior. Rode em partes para cobrir um período maior.");
+        }
+
+        GarantirJanelaDeEntrada();
+        GarantirSemTrabalhoVivo();
+
+        var (execucaoId, mensagem) = await CriarExecucaoAsync(
+            unidade, DisparoSincronizacao.Manual, usuarioAtual.UsuarioId,
+            request.DataInicio, request.DataFim, ct);
+
+        return new VarreduraAceitaDto(execucaoId, mensagem);
+    }
+
+    /// <summary>Recusa iniciar dentro do bloqueio do <c>expo_solicitacoes</c> — o disparo falharia.</summary>
+    private void GarantirJanelaDeEntrada()
+    {
+        var horaAgora = TimeOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, Brasilia));
+        if (!_opcoes.PodeIniciarNaHora(horaAgora))
+        {
+            throw new ValidacaoException(
+                "varredura.hora_fora_da_janela",
+                $"Não dá para iniciar uma varredura entre {_opcoes.CorteEntradaLocal:HH\\:mm} e "
+                + $"{_opcoes.BloqueioFimLocal:HH\\:mm} (Brasília): o SISREG bloqueia a exportação da "
+                + $"agenda das {_opcoes.BloqueioInicioLocal:HH\\:mm} às {_opcoes.BloqueioFimLocal:HH\\:mm}. "
+                + "Tente fora desse intervalo.");
+        }
+    }
+
+    private void GarantirSemTrabalhoVivo()
+    {
         if (estadoVivo.ObterAtual() is not null)
         {
             throw new ConflitoException(
@@ -167,11 +234,6 @@ public sealed class VarreduraAgendaService(
                 "Há uma importação de arquivo em andamento. Como as duas falam com o SISREG pela "
                 + "mesma saída, espere a importação terminar.");
         }
-
-        var (execucaoId, mensagem) = await CriarExecucaoAsync(
-            unidade, DisparoSincronizacao.Manual, usuarioAtual.UsuarioId, ct);
-
-        return new VarreduraAceitaDto(execucaoId, mensagem);
     }
 
     public async Task<Guid?> IniciarAgendadoAsync(Guid unidadeId, CancellationToken ct)
@@ -185,7 +247,8 @@ public sealed class VarreduraAgendaService(
         try
         {
             // CriadoPor null: não existe usuário-robô. A autoria é o enum Disparo.
-            var (execucaoId, _) = await CriarExecucaoAsync(unidade, DisparoSincronizacao.Agendado, null, ct);
+            var (execucaoId, _) = await CriarExecucaoAsync(
+                unidade, DisparoSincronizacao.Agendado, null, null, null, ct);
             return execucaoId;
         }
         catch (ConflitoException)
@@ -196,13 +259,19 @@ public sealed class VarreduraAgendaService(
     }
 
     private async Task<(Guid ExecucaoId, string Mensagem)> CriarExecucaoAsync(
-        Unidade unidade, DisparoSincronizacao disparo, Guid? usuarioId, CancellationToken ct)
+        Unidade unidade, DisparoSincronizacao disparo, Guid? usuarioId,
+        DateOnly? janelaInicio, DateOnly? janelaFim, CancellationToken ct)
     {
         var agenda = await db.SisregVarreduraAgendas.AsNoTracking()
             .FirstOrDefaultAsync(x => x.UnidadeId == unidade.Id, ct);
 
         var diasAFrente = agenda?.DiasAFrente ?? 21;
         var hoje = HojeBrasilia();
+
+        // Período explícito = backfill manual; ausência = janela padrão "hoje até hoje + N".
+        var ehPeriodo = janelaInicio is not null;
+        var inicio = janelaInicio ?? hoje;
+        var fim = janelaFim ?? hoje.AddDays(diasAFrente);
 
         var combinacoes = await CarregarCombinacoesAsync(unidade.Id, ct);
         if (combinacoes.Count == 0)
@@ -221,8 +290,8 @@ public sealed class VarreduraAgendaService(
             UnidadeNome = unidade.Nome,
             Disparo = disparo,
             Status = StatusVarredura.Pendente,
-            JanelaInicio = hoje,
-            JanelaFim = hoje.AddDays(diasAFrente),
+            JanelaInicio = inicio,
+            JanelaFim = fim,
             CombinacoesTotal = combinacoes.Count,
             IniciadoEm = DateTime.UtcNow,
             CriadoPor = usuarioId,
@@ -232,7 +301,7 @@ public sealed class VarreduraAgendaService(
         db.SisregVarreduraExecucoes.Add(execucao);
         await db.SaveChangesAsync(ct);
 
-        if (!fila.TentarEnfileirar(new VarreduraJob(execucao.Id, unidade.Id, disparo, usuarioId)))
+        if (!fila.TentarEnfileirar(new VarreduraJob(execucao.Id, unidade.Id, disparo, usuarioId, ehPeriodo)))
         {
             execucao.Status = StatusVarredura.Erro;
             execucao.MensagemErro = "A fila de varredura já estava ocupada.";
@@ -264,8 +333,9 @@ public sealed class VarreduraAgendaService(
         }
 
         // O serviço roda no runner: sem isto, ResolverExecutanteAsync não acha a unidade executante
-        // e TODA marcação falharia por "unidade não resolvida".
-        importacao.DefinirContextoDeBackground(job.UsuarioId, unidade.Id);
+        // e TODA marcação falharia por "unidade não resolvida". SuprimirConfirmacao vem do job: nas
+        // varreduras por período (backfill), nenhuma marcação avisa o paciente por WhatsApp.
+        importacao.DefinirContextoDeBackground(job.UsuarioId, unidade.Id, job.SuprimirConfirmacao);
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         var progresso = new ProgressoVarredura
@@ -394,20 +464,48 @@ public sealed class VarreduraAgendaService(
             // A preocupação de "o grupo carimbaria tudo com o procedimento do grupo" era da
             // RASPAGEM, onde o procedimento vinha da consulta. Na exportação vem da linha.
 
+            var reqAntes = progresso.Requisicoes;
+
             var marcacoes = await ExportarComTetoAsync(
                 cnes, execucao.JanelaInicio, execucao.JanelaFim, combinacao, progresso, ct);
 
             var novas = marcacoes.Where(m => vistos.Add(m.CodigoSolicitacao)).ToList();
+
+            var validosItem = 0;
+            var invalidosItem = 0;
+            var jaExistiamItem = 0;
             if (novas.Count > 0)
             {
                 // Importa a cada combinação, não no fim: é isto que faz o parcial ser útil quando
                 // a varredura é interrompida no meio.
                 var resultado = await importacao.ImportarMarcacoesAsync(execucao.Id, novas, ct);
+                validosItem = resultado.Validos;
+                invalidosItem = resultado.Invalidos;
+                jaExistiamItem = resultado.JaExistiam;
                 Interlocked.Add(ref progresso.RegistrosEncontrados, novas.Count);
                 Interlocked.Add(ref progresso.Validos, resultado.Validos);
                 Interlocked.Add(ref progresso.Invalidos, resultado.Invalidos);
                 execucao.JaExistiam += resultado.JaExistiam;
             }
+
+            // Detalhe por par, para o modal do histórico. Gravado a cada combinação — uma varredura
+            // interrompida (parcial) preserva o detalhe do que já rodou, igual ao agregado. É salvo
+            // no SalvarProgressoAsync logo abaixo.
+            db.SisregVarreduraExecucaoItens.Add(new SisregVarreduraExecucaoItem
+            {
+                Id = Guid.CreateVersion7(),
+                ExecucaoId = execucao.Id,
+                ProfissionalCpf = combinacao.Cpf,
+                ProfissionalNome = combinacao.NomeProfissional,
+                ProcedimentoCodigo = combinacao.Codigo,
+                ProcedimentoNome = combinacao.NomeProcedimento,
+                Requisicoes = progresso.Requisicoes - reqAntes,
+                RegistrosEncontrados = novas.Count,
+                Validos = validosItem,
+                Invalidos = invalidosItem,
+                JaExistiam = jaExistiamItem,
+                Observacao = invalidosItem > 0 ? $"{invalidosItem} pendência(s) gerada(s)." : null,
+            });
 
             Interlocked.Increment(ref progresso.CombinacoesFeitas);
 
@@ -618,6 +716,31 @@ public sealed class VarreduraAgendaService(
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<VarreduraExecucaoItemDto>> ListarItensAsync(
+        Guid execucaoId, CancellationToken ct)
+    {
+        var unidade = await unidadeAtual.ObterObrigatoriaAsync(ct);
+
+        // A execução tem que ser DESTA unidade — senão o header X-Unidade-Id de uma unidade abriria
+        // o detalhe da varredura de outra.
+        var pertence = await db.SisregVarreduraExecucoes.AsNoTracking()
+            .AnyAsync(x => x.Id == execucaoId && x.UnidadeId == unidade.Id, ct);
+        if (!pertence)
+        {
+            throw new NaoEncontradoException(
+                "varredura.execucao_nao_encontrada", "Execução de varredura não encontrada nesta unidade.");
+        }
+
+        return await db.SisregVarreduraExecucaoItens.AsNoTracking()
+            .Where(i => i.ExecucaoId == execucaoId)
+            .OrderBy(i => i.ProfissionalNome)
+            .ThenBy(i => i.ProcedimentoNome)
+            .Select(i => new VarreduraExecucaoItemDto(
+                i.Id, i.ProfissionalNome, i.ProcedimentoCodigo, i.ProcedimentoNome,
+                i.Requisicoes, i.RegistrosEncontrados, i.Validos, i.Invalidos, i.JaExistiam, i.Observacao))
+            .ToListAsync(ct);
+    }
+
     // ============================================================ apoio
 
     /// <summary>
@@ -664,8 +787,9 @@ public sealed class VarreduraAgendaService(
             // Uma exportação por combinação; páginas extras entram por cima.
             prontas,
             _opcoes.TetoPorExecucao,
-            _opcoes.JanelaInicioLocal,
-            _opcoes.JanelaFimLocal,
+            _opcoes.BloqueioInicioLocal,
+            _opcoes.BloqueioFimLocal,
+            _opcoes.CorteEntradaLocal,
             // Unidade sem linha de configuração NÃO envia: o gatilho é opt-in.
             agenda?.EnviarConfirmacao ?? false);
     }
@@ -682,17 +806,6 @@ public sealed class VarreduraAgendaService(
         var porCpf = string.CompareOrdinal(c.Cpf, cursorCpf);
         if (porCpf != 0) return porCpf > 0;
         return string.CompareOrdinal(c.Codigo, cursorCodigo ?? string.Empty) > 0;
-    }
-
-    private bool DentroDaJanela(TimeOnly hora)
-    {
-        var inicio = _opcoes.JanelaInicioLocal;
-        var fim = _opcoes.JanelaFimLocal;
-
-        // Janela que cruza a meia-noite (22:00–06:00) é o caso normal aqui, não a exceção.
-        return inicio <= fim
-            ? hora >= inicio && hora <= fim
-            : hora >= inicio || hora <= fim;
     }
 
     private static DateOnly HojeBrasilia() =>

@@ -5,6 +5,7 @@ import type {
   VarreduraAceita,
   VarreduraAgenda,
   VarreduraExecucao,
+  VarreduraExecucaoItem,
 } from '@/features/sisreg-mapeamento/types';
 
 /**
@@ -38,6 +39,32 @@ export async function executarVarredura(unidadeId?: string | null): Promise<Varr
   const { data } = await http.post<VarreduraAceita>(
     '/sisreg/varredura/executar',
     undefined,
+    cabecalhoUnidade(unidadeId),
+  );
+  return data;
+}
+
+/** Varredura manual por período específico (datas "yyyy-MM-dd", inclusive passadas). */
+export async function executarVarreduraPeriodo(
+  dataInicio: string,
+  dataFim: string,
+  unidadeId?: string | null,
+): Promise<VarreduraAceita> {
+  const { data } = await http.post<VarreduraAceita>(
+    '/sisreg/varredura/executar-periodo',
+    { dataInicio, dataFim },
+    cabecalhoUnidade(unidadeId),
+  );
+  return data;
+}
+
+/** Detalhe por profissional × procedimento de uma execução. */
+export async function listarVarreduraItens(
+  execucaoId: string,
+  unidadeId?: string | null,
+): Promise<VarreduraExecucaoItem[]> {
+  const { data } = await http.get<VarreduraExecucaoItem[]>(
+    `/sisreg/varredura/execucoes/${execucaoId}/itens`,
     cabecalhoUnidade(unidadeId),
   );
   return data;

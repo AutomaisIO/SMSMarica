@@ -54,6 +54,32 @@ public sealed class SisregVarreduraController(IVarreduraAgendaService varredura)
         return Accepted(aceita);
     }
 
+    /// <summary>
+    /// Dispara uma varredura MANUAL por período específico (inclusive datas passadas). 202: roda no
+    /// servidor. Não avisa o paciente por WhatsApp — é backfill. Recusa fora da janela de entrada e
+    /// período maior que 31 dias.
+    /// </summary>
+    [HttpPost("executar-periodo")]
+    [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Edicao)]
+    [ProducesResponseType<VarreduraAceitaDto>(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> ExecutarPeriodo(
+        [FromBody] IniciarVarreduraPeriodoRequest request, CancellationToken cancellationToken)
+    {
+        var aceita = await _varredura.IniciarPeriodoAsync(request, cancellationToken);
+        return Accepted(aceita);
+    }
+
+    /// <summary>Detalhe por profissional × procedimento de uma execução (o modal do histórico).</summary>
+    [HttpGet("execucoes/{id:guid}/itens")]
+    [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<VarreduraExecucaoItemDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IReadOnlyList<VarreduraExecucaoItemDto>> Itens(
+        Guid id, CancellationToken cancellationToken) =>
+        await _varredura.ListarItensAsync(id, cancellationToken);
+
     /// <summary>Progresso da varredura em curso, ou 204 se não houver nenhuma.</summary>
     [HttpGet("status")]
     [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Consulta)]

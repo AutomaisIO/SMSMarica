@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CalendarClock, Loader2, Play, Square } from 'lucide-react';
+import { CalendarClock, CalendarRange, Loader2, Play, Square } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
@@ -12,6 +12,8 @@ import {
   useVarreduraAgenda,
   useVarreduraExecucoes,
 } from '@/features/sisreg-mapeamento/api/queries';
+import { ModalVarreduraPeriodo } from '@/features/sisreg-mapeamento/components/ModalVarreduraPeriodo';
+import { ModalDetalheVarredura } from '@/features/sisreg-mapeamento/components/ModalDetalheVarredura';
 import type { StatusVarredura, VarreduraExecucao } from '@/features/sisreg-mapeamento/types';
 
 type Props = { unidadeId: string; podeEditar: boolean };
@@ -53,6 +55,11 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
    * terminar em 2 s, e sem isto a tela fica parada mostrando "Rodando" de algo já encerrado.
    */
   const [acompanhando, setAcompanhando] = useState(false);
+
+  /** Modal de disparo por período aberto. */
+  const [periodoAberto, setPeriodoAberto] = useState(false);
+  /** Execução cujo detalhe está aberto no modal, ou null. */
+  const [detalhe, setDetalhe] = useState<VarreduraExecucao | null>(null);
 
   const agenda = useVarreduraAgenda(unidadeId);
   const salvar = useSalvarVarreduraAgenda(unidadeId);
@@ -168,9 +175,9 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
       </div>
 
       <p className="mt-2 text-xs text-gray-500">
-        Só é possível rodar entre {dados?.janelaInicioLocal?.slice(0, 5)} e{' '}
-        {dados?.janelaFimLocal?.slice(0, 5)}: o SISREG aceita <strong>uma sessão por operador</strong>,
-        então varrer no expediente derrubaria quem estivesse atendendo por esta unidade.
+        Roda a qualquer hora, <strong>menos</strong> entre {dados?.corteEntradaLocal?.slice(0, 5)} e{' '}
+        {dados?.bloqueioFimLocal?.slice(0, 5)} (Brasília): o SISREG bloqueia a exportação da agenda
+        das {dados?.bloqueioInicioLocal?.slice(0, 5)} às {dados?.bloqueioFimLocal?.slice(0, 5)}.
       </p>
 
       {/* Estado */}
@@ -237,27 +244,33 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
           </>
         ) : (
           podeEditar && (
-            <Button
-              variante="outline"
-              tamanho="sm"
-              disabled={executar.isPending}
-              onClick={() => {
-                // Acompanha a partir do clique, não a partir da primeira resposta: a varredura
-                // leva 1–2 s para se registrar, e esperar por ela é o que congelava a tela.
-                setAcompanhando(true);
-                void comAviso(
-                  () => executar.mutateAsync(),
-                  (r) => (r as { mensagem: string }).mensagem,
-                );
-              }}
-            >
-              {executar.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Play className="h-4 w-4" />
-              )}
-              Sincronizar agora
-            </Button>
+            <>
+              <Button
+                variante="outline"
+                tamanho="sm"
+                disabled={executar.isPending}
+                onClick={() => {
+                  // Acompanha a partir do clique, não a partir da primeira resposta: a varredura
+                  // leva 1–2 s para se registrar, e esperar por ela é o que congelava a tela.
+                  setAcompanhando(true);
+                  void comAviso(
+                    () => executar.mutateAsync(),
+                    (r) => (r as { mensagem: string }).mensagem,
+                  );
+                }}
+              >
+                {executar.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Play className="h-4 w-4" />
+                )}
+                Sincronizar agora
+              </Button>
+              <Button variante="ghost" tamanho="sm" onClick={() => setPeriodoAberto(true)}>
+                <CalendarRange className="h-4 w-4" />
+                Sincronizar período…
+              </Button>
+            </>
           )
         )}
       </div>
@@ -299,25 +312,51 @@ export function SincronismoSisregSecao({ unidadeId, podeEditar }: Props) {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {execucoes.data!.map((e) => (
-                  <LinhaExecucao key={e.id} execucao={e} />
+                  <LinhaExecucao key={e.id} execucao={e} aoAbrir={() => setDetalhe(e)} />
                 ))}
               </tbody>
             </table>
           </div>
         </div>
       )}
+
+      {periodoAberto && (
+        <ModalVarreduraPeriodo
+          unidadeId={unidadeId}
+          corteEntradaLocal={dados?.corteEntradaLocal}
+          bloqueioFimLocal={dados?.bloqueioFimLocal}
+          aoFechar={() => setPeriodoAberto(false)}
+          aoIniciado={(mensagem) => {
+            setPeriodoAberto(false);
+            setAcompanhando(true);
+            setAviso({ tipo: 'ok', texto: mensagem });
+          }}
+        />
+      )}
+
+      {detalhe && (
+        <ModalDetalheVarredura
+          unidadeId={unidadeId}
+          execucao={detalhe}
+          aoFechar={() => setDetalhe(null)}
+        />
+      )}
     </section>
   );
 }
 
-function LinhaExecucao({ execucao: e }: { execucao: VarreduraExecucao }) {
+function LinhaExecucao({ execucao: e, aoAbrir }: { execucao: VarreduraExecucao; aoAbrir: () => void }) {
   // O que efetivamente virou solicitação nesta rodada. Reler é seguro (a idempotência por nº da
   // solicitação descarta o repetido), então relidas em massa são o caso NORMAL, não anomalia.
   const novas = Math.max(0, e.validos - e.jaExistiam);
 
   return (
     <>
-      <tr className="text-gray-700">
+      <tr
+        className="cursor-pointer text-gray-700 hover:bg-gray-50"
+        onClick={aoAbrir}
+        title="Ver detalhes desta sincronização"
+      >
         <td className="py-1.5 pr-3 whitespace-nowrap">{dataHora(e.iniciadoEm)}</td>
         <td className="py-1.5 pr-3">{e.disparo === 'Agendado' ? '⏱ Agendado' : 'Manual'}</td>
         <td className="py-1.5 pr-3">

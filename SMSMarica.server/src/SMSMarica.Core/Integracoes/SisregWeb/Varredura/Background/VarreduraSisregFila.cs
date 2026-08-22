@@ -8,11 +8,15 @@ namespace SMSMarica.Core.Integracoes.SisregWeb.Varredura.Background;
 /// </summary>
 /// <param name="UsuarioId">Capturado NA REQUEST — dentro do runner não há usuário logado.
 /// NULL no disparo agendado: não existe usuário-robô, a autoria é o <paramref name="Disparo"/>.</param>
+/// <param name="SuprimirConfirmacao">True nas varreduras manuais POR PERÍODO (backfill): importar
+/// agendamento passado não pode disparar WhatsApp sobre exame que já aconteceu. Força o gate de
+/// confirmação a "não enviar", independentemente da configuração da unidade.</param>
 public sealed record VarreduraJob(
     Guid ExecucaoId,
     Guid UnidadeId,
     DisparoSincronizacao Disparo,
-    Guid? UsuarioId);
+    Guid? UsuarioId,
+    bool SuprimirConfirmacao = false);
 
 public interface IVarreduraSisregFila
 {
