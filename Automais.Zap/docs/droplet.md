@@ -105,5 +105,9 @@ O primeiro deploy foi manual (publish local + SFTP), porque os secrets ainda nã
 - **Backup**: não há. O banco é pequeno (rotas e log operacional), mas perder `zap.numero` é perder
   o roteamento de todos os clientes. Um `pg_dump` diário para fora do droplet resolve.
   Vale também guardar `/var/lib/automais-zap/chaves` — sem ela, todo mundo é deslogado do painel.
-- **Monitoramento**: o relay é ponto único de falha do inbound de todos os clientes, e os recibos
-  de status (`delivered`/`failed`) passam por ele. Ninguém é avisado hoje se ele cair.
+- **Monitoramento**: o relay é ponto único de falha de ENTRADA E SAÍDA de todos os clientes —
+  desde 22/08 a instância não tem mais caminho direto para a Meta. Ninguém é avisado hoje se
+  ele cair. É a pendência mais importante.
+- **Secrets do GitHub** (`HOST_ZAP`, `USER_ZAP`, `PASS_ZAP`, `DB_CONNECTION_ZAP`, `META_APP_SECRET`,
+  `META_VERIFY_TOKEN`): sem eles o `deploy-zap.yml` falha no SCP e o deploy é manual (SFTP).
+- **Backup**: só o snapshot semanal da DigitalOcean. Token criado entre snapshots se perde.

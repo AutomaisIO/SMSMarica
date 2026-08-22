@@ -12,8 +12,7 @@ prefeituras, alguém precisa distribuir esse webhook.
 - **Não guarda conversa, mensagem nem telefone de cidadão.** Encaminha envelope e conta o
   resultado. É o que o mantém fora do alcance da LGPD dos municípios: ele é *operador*, cada
   prefeitura é *controladora*.
-- **Não envia mensagem.** O envio sai direto de cada instância para
-  `graph.facebook.com/v21.0/{phone_number_id}/messages`.
+- **Não guarda mensagem de saída.** `POST /v1/mensagens` envia na hora e devolve o `wamid`; não há fila nem agendamento (isso é do sistema do cliente).
 - **Não licencia nem gerencia instância.** Suspender o canal de um cliente é desligar o destino
   na tela; nenhuma instância consulta o relay para saber se pode funcionar.
 
@@ -23,16 +22,17 @@ Pelo `entry[].changes[].value.metadata.phone_number_id`, e só por ele. Eventos 
 de template, por exemplo) caem no destino dono do WABA — e se o WABA tiver números de mais de um
 destino, nada é entregue, porque ambíguo é pior que atrasado.
 
-### O relay é transparente
+### Assinatura própria por destino
 
-Quando o POST inteiro é de um destino só — o caso normal — o corpo segue **byte a byte** com a
-assinatura original da Meta. A aplicação de destino valida o HMAC exatamente como já valida hoje:
-**nenhuma mudança de código do lado da instância**.
+O relay assina o que entrega com um **segredo por WABA**, gerado no painel e compartilhado com
+a aplicação de destino: `X-Automais-Signature` = HMAC-SHA256 sobre `{timestamp}.{corpo}`, com o
+instante em `X-Automais-Timestamp` (janela de 5 min contra replay). O payload em si continua no
+formato da Cloud API, repassado intacto.
 
-Quando um POST traz eventos de mais de um dono, o relay **recorta** o payload por destino e
-reassina com o **mesmo App Secret**. Entregar o corpo inteiro a cada um faria o município A ver
-mensagem do B; e como sob o App único o App Secret é o mesmo dos dois lados, o destino valida o
-recorte sem saber que houve recorte.
+Nasceu "transparente" (repassando a assinatura original da Meta), e isso quebrou no primeiro dia
+em que existiram dois Apps com segredos diferentes. Além disso, a conversa entre o relay e a
+instância é entre sistemas nossos — pedir emprestado o App Secret da Meta para autenticá-la era
+acoplamento sem ganho. O roteamento de um WABA não liga sem segredo gerado.
 
 ### Confirmação sem buffer
 
@@ -176,12 +176,13 @@ Deploy contínuo pelo `.github/workflows/deploy-zap.yml`, que precisa dos secret
 > `api.smsmais.automais.com`, trocar de droplet depois é alteração de DNS — a Meta não fica
 > sabendo.
 
-## Cutover
+## Estado
 
-1. Cadastrar o destino e o `phone_number_id` na tela.
-2. Com o App ainda apontando para a produção, testar contra o relay com POSTs assinados.
-3. Apontar a Callback URL do App da Meta para `https://api.smsmais.automais.com/meta/webhook`.
-4. Reversão: apontar de volta.
+Migração do primeiro cliente **concluída em 22/08/2026**: o App próprio do município foi apagado
+da Meta e só o App da Automais está inscrito no WABA. A instância não tem mais credencial da
+Meta — envio, templates e recebimento passam todos por aqui.
 
-Confirmar entrando uma mensagem real **e** um envio recebendo `delivered` — os recibos de status
-voltam pelo webhook, então é o status que prova o caminho inteiro.
+Para um cliente novo: criar o tenant → adicionar o WABA (ato da plataforma) → sincronizar
+números → gerar segredo de entrega → apontar o destino e ligar o roteamento → gerar token de
+API → inscrever o App no WABA. O checklist "Status da entrega" na tela do WABA mostra o que
+falta. Prova final: uma mensagem real entrando **e** um envio recebendo `delivered`.
