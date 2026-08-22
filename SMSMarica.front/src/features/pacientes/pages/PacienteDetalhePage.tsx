@@ -25,6 +25,7 @@ import { Tabs, type Aba } from '@/shared/ui/Tabs';
 import { nomeBaseOrigem, nomeSistemaOrigem, rotuloOrigem } from '@/shared/lib/origemClinica';
 import {
   useAcessosPaciente,
+  useAgendamentosPaciente,
   useAtendimentosPaciente,
   useAuditoriaPaciente,
   usePacientePorId,
@@ -37,7 +38,14 @@ import { BotaoEnviarPesquisa } from '@/features/pacientes/components/BotaoEnviar
 import { SecaoExamesAnexados } from '@/features/pacientes/components/SecaoExamesAnexados';
 import { SinaisVitaisTendencia } from '@/features/pacientes/components/SinaisVitaisTendencia';
 import { abrirImpressaoDocumento, EDOC_CSS } from '@/features/pacientes/lib/imprimirDocumento';
-import type { Atendimento, Documento, Paciente } from '@/features/pacientes/types';
+import type {
+  AgendamentoPacienteItem,
+  Atendimento,
+  Documento,
+  OrigemAgendamento,
+  Paciente,
+  SituacaoAgendamentoPaciente,
+} from '@/features/pacientes/types';
 import { useListarTratamentos } from '@/features/tratamentos/api/queries';
 import { formatarDataBr } from '@/features/tratamentos/lib/expansor';
 import type { TratamentoListItem } from '@/features/tratamentos/types';
@@ -579,6 +587,142 @@ function SecaoAcessos({ pacienteId }: { pacienteId: string }) {
   );
 }
 
+const ORIGEM_AGENDAMENTO: Record<OrigemAgendamento, { texto: string; titulo: string; classe: string }> = {
+  Ser: { texto: 'SER', titulo: 'Regulação estadual (SES-RJ)', classe: 'bg-purple-100 text-purple-700' },
+  Sisreg: { texto: 'SISREG', titulo: 'Regulação municipal (SISREG)', classe: 'bg-blue-100 text-blue-700' },
+  Local: { texto: 'Agenda local', titulo: 'Agenda própria do município', classe: 'bg-teal-100 text-teal-700' },
+};
+
+const SITUACAO_AGENDAMENTO_CLASSE: Record<SituacaoAgendamentoPaciente, string> = {
+  EmFila: 'bg-gray-100 text-gray-600',
+  Pendente: 'bg-amber-100 text-amber-800',
+  Agendado: 'bg-blue-100 text-blue-700',
+  Confirmado: 'bg-indigo-100 text-indigo-700',
+  Compareceu: 'bg-green-100 text-green-700',
+  ChegadaNaoConfirmada: 'bg-amber-100 text-amber-800',
+  Faltou: 'bg-red-100 text-red-700',
+  Cancelado: 'bg-gray-200 text-gray-500',
+  Concluido: 'bg-green-100 text-green-700',
+};
+
+function formatarDataAgendamento(item: AgendamentoPacienteItem): string {
+  if (!item.dataHora) return 'Sem data';
+  const d = new Date(item.dataHora);
+  if (Number.isNaN(d.getTime())) return item.dataHora;
+  return item.temHora
+    ? d.toLocaleString('pt-BR', {
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+      })
+    : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function colunasAgendamento(): Coluna<AgendamentoPacienteItem>[] {
+  return [
+    { chave: 'data', cabecalho: 'Data/hora', render: (a) => formatarDataAgendamento(a) },
+    { chave: 'tipo', cabecalho: 'Tipo', render: (a) => a.tipo },
+    {
+      chave: 'descricao',
+      cabecalho: 'Procedimento',
+      render: (a) => (
+        <span className="block max-w-sm truncate text-gray-900" title={a.descricao}>
+          {a.descricao}
+        </span>
+      ),
+    },
+    {
+      chave: 'unidade',
+      cabecalho: 'Unidade',
+      render: (a) => (
+        <span className="block max-w-xs truncate text-gray-600" title={a.unidade ?? ''}>
+          {a.unidade || '—'}
+        </span>
+      ),
+    },
+    {
+      chave: 'origem',
+      cabecalho: 'Origem',
+      render: (a) => {
+        const o = ORIGEM_AGENDAMENTO[a.origem];
+        return (
+          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${o.classe}`} title={o.titulo}>
+            {o.texto}
+          </span>
+        );
+      },
+    },
+    {
+      chave: 'situacao',
+      cabecalho: 'Situação',
+      render: (a) => (
+        <span
+          className={`rounded-full px-2 py-0.5 text-xs font-medium ${SITUACAO_AGENDAMENTO_CLASSE[a.situacao] ?? 'bg-gray-100 text-gray-600'}`}
+          title={a.situacaoOrigem ? `Origem: ${a.situacaoOrigem}` : undefined}
+        >
+          {a.situacaoDescricao}
+        </span>
+      ),
+    },
+  ];
+}
+
+/** Agendamentos do paciente (SER + SISREG + agenda local), próximos e histórico. */
+function SecaoAgendamentos({ pacienteId }: { pacienteId: string }) {
+  const q = useAgendamentosPaciente(pacienteId);
+  const colunas = colunasAgendamento();
+  const proximos = q.data?.proximos ?? [];
+  const historico = q.data?.historico ?? [];
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900">
+          <CalendarClock className="h-4 w-4" /> Próximos agendamentos
+          <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
+            {proximos.length}
+          </span>
+        </div>
+        <Tabela
+          colunas={colunas}
+          dados={proximos}
+          chaveLinha={(a) => `${a.origem}-${a.id}`}
+          carregando={q.isLoading}
+          vazio={
+            !q.isLoading && proximos.length === 0
+              ? 'Nenhum agendamento futuro ou em fila para este paciente.'
+              : undefined
+          }
+        />
+      </div>
+
+      <div>
+        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900">
+          <ListChecks className="h-4 w-4" /> Histórico de agendamentos
+          <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
+            {historico.length}
+          </span>
+        </div>
+        <Tabela
+          colunas={colunas}
+          dados={historico}
+          chaveLinha={(a) => `${a.origem}-${a.id}`}
+          carregando={q.isLoading}
+          vazio={
+            !q.isLoading && historico.length === 0
+              ? 'Nenhum agendamento passado registrado para este paciente.'
+              : undefined
+          }
+        />
+      </div>
+
+      <p className="text-xs text-gray-400">
+        Fontes: SER (regulação estadual) e SISREG (regulação municipal), além da agenda própria.
+        O comparecimento (compareceu/faltou) vem do SER e da agenda local; do SISREG mostramos o
+        agendamento e a data.
+      </p>
+    </div>
+  );
+}
+
 function calcularIdade(iso?: string | null): number | null {
   if (!iso) return null;
   const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -680,7 +824,15 @@ function resumirAtendimentos(lista: Atendimento[]): EstatisticasAtendimentos {
   };
 }
 
-type Vista = 'resumo' | 'atendimentos' | 'tratamentos' | 'exames' | 'acessos' | 'auditoria' | 'dados';
+type Vista =
+  | 'resumo'
+  | 'atendimentos'
+  | 'agendamentos'
+  | 'tratamentos'
+  | 'exames'
+  | 'acessos'
+  | 'auditoria'
+  | 'dados';
 
 /** Histórico de alterações auditadas do paciente (ex.: correções de nome). */
 function SecaoAuditoriaPaciente({ pacienteId }: { pacienteId: string }) {
@@ -964,6 +1116,7 @@ export function PacienteDetalhePage() {
   const navItens: { id: Vista; rotulo: string; badge?: number }[] = [
     { id: 'resumo', rotulo: 'Resumo' },
     { id: 'atendimentos', rotulo: 'Atendimentos', badge: stats.total },
+    { id: 'agendamentos', rotulo: 'Agendamentos' },
     { id: 'tratamentos', rotulo: 'Tratamentos', badge: listaTratamentos.length },
     { id: 'exames', rotulo: 'Exames anexados' },
     { id: 'acessos', rotulo: 'Histórico de Acesso' },
@@ -1061,6 +1214,12 @@ export function PacienteDetalhePage() {
           {vista === 'atendimentos' ? (
             <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
               <SecaoAtendimentos pacienteId={id} paciente={p} />
+            </div>
+          ) : null}
+
+          {vista === 'agendamentos' ? (
+            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+              <SecaoAgendamentos pacienteId={id} />
             </div>
           ) : null}
 

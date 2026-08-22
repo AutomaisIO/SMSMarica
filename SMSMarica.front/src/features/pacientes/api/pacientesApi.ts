@@ -2,6 +2,7 @@ import { http } from '@/shared/api/httpClient';
 import type { AnexoExameDto } from '@/features/anamnese/types';
 import type { PaginaAuditoria } from '@/features/auditoria/types';
 import type {
+  AgendamentosPaciente,
   Atendimento,
   AtualizarPacientePayload,
   CadastrarPacientePayload,
@@ -12,6 +13,12 @@ import type {
 
 export async function obterAtendimentos(id: string): Promise<Atendimento[]> {
   const { data } = await http.get<Atendimento[]>(`/pacientes/${id}/atendimentos`);
+  return data;
+}
+
+/** Agendamentos do paciente (SER + SISREG + agenda local), separados em próximos e histórico. */
+export async function obterAgendamentosPaciente(id: string): Promise<AgendamentosPaciente> {
+  const { data } = await http.get<AgendamentosPaciente>(`/pacientes/${id}/agendamentos`);
   return data;
 }
 

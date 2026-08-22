@@ -235,3 +235,36 @@ export type PacienteExistencia = {
   cpf: string;
   ativo: boolean;
 };
+
+// ---- Agendamentos (aba do cadastro) ----
+
+export type OrigemAgendamento = 'Ser' | 'Sisreg' | 'Local';
+
+export type SituacaoAgendamentoPaciente =
+  | 'EmFila'
+  | 'Pendente'
+  | 'Agendado'
+  | 'Confirmado'
+  | 'Compareceu'
+  | 'ChegadaNaoConfirmada'
+  | 'Faltou'
+  | 'Cancelado'
+  | 'Concluido';
+
+export type AgendamentoPacienteItem = {
+  id: string;
+  origem: OrigemAgendamento;
+  tipo: string;
+  descricao: string;
+  unidade?: string | null;
+  dataHora?: string | null;
+  temHora: boolean;
+  situacao: SituacaoAgendamentoPaciente;
+  situacaoDescricao: string;
+  situacaoOrigem?: string | null;
+};
+
+export type AgendamentosPaciente = {
+  proximos: AgendamentoPacienteItem[];
+  historico: AgendamentoPacienteItem[];
+};

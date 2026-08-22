@@ -85,6 +85,12 @@ internal sealed class SerSolicitacaoConfiguration : IEntityTypeConfiguration<Ser
         builder.HasIndex(x => x.Cpf).HasDatabaseName("ix_ser_solicitacao_cpf");
         builder.HasIndex(x => x.Cns).HasDatabaseName("ix_ser_solicitacao_cns");
 
+        // Agendamentos de um paciente já conciliado (aba "Agendamentos" do cadastro).
+        // Filtrado: só interessam as linhas conciliadas e não excluídas.
+        builder.HasIndex(x => x.PacienteId)
+            .HasFilter("paciente_id IS NOT NULL AND excluido_em IS NULL")
+            .HasDatabaseName("ix_ser_solicitacao_paciente_id");
+
         // O motor diário precisa achar rápido "quem está em fila e o histórico está velho".
         builder.HasIndex(x => new { x.Situacao, x.HistoricoLidoEm })
             .HasDatabaseName("ix_ser_solicitacao_situacao_historico_lido");

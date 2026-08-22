@@ -16,6 +16,7 @@ using SMSMarica.Core.Medicos;
 using SMSMarica.Core.Motoristas;
 using SMSMarica.Core.Notificacoes;
 using SMSMarica.Core.Pacientes;
+using SMSMarica.Core.Pacientes.Agendamentos;
 using SMSMarica.Core.Pacs;
 using SMSMarica.Core.Perfis;
 using SMSMarica.Core.Procedimentos;
@@ -39,6 +40,7 @@ public static class DependencyInjection
     public static IServiceCollection AddCore(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<IPacientesService, PacientesService>();
+        services.AddScoped<IAgendamentosPacienteService, AgendamentosPacienteService>();
         services.AddScoped<Pacientes.Fhir.IPacienteResolver, Pacientes.Fhir.PacienteResolver>();
         services.AddScoped<Pacientes.Promocao.IPromocaoBlobService, Pacientes.Promocao.PromocaoBlobService>();
         services.AddScoped<Auditoria.IAuditoriaService, Auditoria.AuditoriaService>();

@@ -9,6 +9,8 @@ using SMSMarica.Core.Auditoria.Dtos;
 using SMSMarica.Core.Cidadao;
 using SMSMarica.Core.Cidadao.Dtos;
 using SMSMarica.Core.Pacientes;
+using SMSMarica.Core.Pacientes.Agendamentos;
+using SMSMarica.Core.Pacientes.Agendamentos.Dtos;
 using SMSMarica.Core.Pacientes.Dtos;
 using SMSMarica.Data.Entities.Enums;
 
@@ -20,12 +22,14 @@ public sealed class PacientesController(
     IPacientesService service,
     IAtendimentosService atendimentos,
     ICidadaoSessaoService sessoes,
-    IAuditoriaService auditoria) : ControllerBase
+    IAuditoriaService auditoria,
+    IAgendamentosPacienteService agendamentos) : ControllerBase
 {
     private readonly IPacientesService _service = service;
     private readonly IAtendimentosService _atendimentos = atendimentos;
     private readonly ICidadaoSessaoService _sessoes = sessoes;
     private readonly IAuditoriaService _auditoria = auditoria;
+    private readonly IAgendamentosPacienteService _agendamentos = agendamentos;
 
     /// <summary>
     /// Busca em tempo real por nome (qualquer parte, múltiplos tokens) ou CPF.
@@ -56,6 +60,21 @@ public sealed class PacientesController(
     [ProducesResponseType<IReadOnlyList<AtendimentoDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<AtendimentoDto>> Atendimentos(Guid id, CancellationToken cancellationToken) =>
         await _atendimentos.ObterPorPacienteAsync(id, cancellationToken);
+
+    /// <summary>
+    /// Agendamentos do paciente (consultas e exames), separados em próximos e histórico, com a
+    /// situação normalizada entre as fontes: SER (regulação estadual), SISREG (regulação
+    /// municipal) e a agenda própria do município. Exibido na aba "Agendamentos" do cadastro.
+    ///
+    /// <para>Agregação em LEITURA (sem tabela nova): cada fonte já é materializada localmente pela
+    /// sua própria varredura. Gate por Pacientes.Consulta — igual às demais abas do cadastro —,
+    /// para que quem abre a ficha veja os agendamentos sem depender do módulo RegulacaoSer.</para>
+    /// </summary>
+    [HttpGet("{id:guid}/agendamentos")]
+    [RequerPermissao(ModuloPermissao.Pacientes, AcoesPermissao.Consulta)]
+    [ProducesResponseType<AgendamentosPacienteDto>(StatusCodes.Status200OK)]
+    public async Task<AgendamentosPacienteDto> Agendamentos(Guid id, CancellationToken cancellationToken) =>
+        await _agendamentos.ListarPorPacienteAsync(id, cancellationToken);
 
     /// <summary>
     /// Histórico de acessos do paciente ao app (sessões de login), mais recentes primeiro.
