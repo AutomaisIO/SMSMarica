@@ -180,7 +180,7 @@
         @foreach (var n in Model.Numeros)
         {
             <tr>
-                <td>@(n.DisplayPhoneNumber ?? "—")</td>
+                <td><a href="/admin/numero?id=@n.Id">@(n.DisplayPhoneNumber ?? n.PhoneNumberId)</a></td>
                 <td>@(n.Rotulo ?? "—")</td>
                 <td class="num"><code>@n.PhoneNumberId</code></td>
                 <td>

@@ -114,6 +114,58 @@ public sealed partial class GraphMetaClient(
         return ResultadoMeta<IReadOnlyList<NumeroMeta>>.Ok(lista);
     }
 
+    /// <summary>Tudo que a Meta conta sobre o número, incluindo o status de conta oficial.</summary>
+    private const string CamposNumero =
+        "id,display_phone_number,verified_name,name_status,status,quality_rating,platform_type,"
+        + "throughput,code_verification_status,search_visibility,messaging_limit_tier,"
+        + "is_official_business_account,is_on_biz_app,official_business_account";
+
+    /// <summary>
+    /// Conjunto reduzido, só com campos antigos. A versão da Graph é configurável pelo
+    /// operador (Meta → Credenciais); numa versão velha, um campo novo faz a Meta recusar a
+    /// chamada INTEIRA com "(#100) nonexisting field" — a tela ficaria vazia por causa de um
+    /// campo acessório. Melhor perder duas linhas do diagnóstico do que perder a tela.
+    /// </summary>
+    private const string CamposNumeroMinimos =
+        "id,display_phone_number,verified_name,name_status,status,quality_rating,platform_type,"
+        + "code_verification_status,official_business_account";
+
+    public async Task<ResultadoMeta<NumeroDetalheMeta>> ObterNumeroAsync(string phoneNumberId, CancellationToken ct = default)
+    {
+        var (creds, erro) = await CredenciaisSistemaAsync(ct);
+        if (erro is not null) return ResultadoMeta<NumeroDetalheMeta>.Falha(erro);
+
+        var r = await ChamarAsync(HttpMethod.Get, $"{phoneNumberId}?fields={CamposNumero}", creds!.TokenSistema!, null, ct);
+        if (!r.Sucesso)
+        {
+            logger.LogInformation("Consulta completa do número {Numero} falhou ({Erro}); tentando o conjunto mínimo.",
+                phoneNumberId, r.Erro);
+            r = await ChamarAsync(HttpMethod.Get, $"{phoneNumberId}?fields={CamposNumeroMinimos}", creds.TokenSistema!, null, ct);
+            if (!r.Sucesso) return ResultadoMeta<NumeroDetalheMeta>.Falha(r.Erro!);
+        }
+
+        var e = r.Valor!;
+        var oba = e.TryGetProperty("official_business_account", out var o) ? o : default;
+        var vazao = e.TryGetProperty("throughput", out var t) ? t : default;
+
+        return ResultadoMeta<NumeroDetalheMeta>.Ok(new NumeroDetalheMeta(
+            Texto(e, "id") ?? phoneNumberId,
+            Texto(e, "display_phone_number"),
+            Texto(e, "verified_name"),
+            Texto(e, "name_status"),
+            Texto(e, "status"),
+            Texto(e, "quality_rating"),
+            Texto(e, "platform_type"),
+            Texto(vazao, "level"),
+            Texto(e, "code_verification_status"),
+            Texto(e, "search_visibility"),
+            Texto(e, "messaging_limit_tier"),
+            Booleano(e, "is_official_business_account"),
+            Texto(oba, "oba_status"),
+            Booleano(e, "is_on_biz_app"),
+            Bonito(e)));
+    }
+
     public async Task<ResultadoMeta<IReadOnlyList<AppInscrito>>> ListarAppsInscritosAsync(string wabaId, CancellationToken ct = default)
     {
         var (creds, erro) = await CredenciaisSistemaAsync(ct);
@@ -347,4 +399,22 @@ public sealed partial class GraphMetaClient(
                 _ => null,
             }
             : null;
+
+    /// <summary>
+    /// Nulo quando a Meta não mandou o campo — que é diferente de <c>false</c>. "Não é conta
+    /// oficial" e "a Meta não respondeu se é" não podem virar a mesma coisa na tela.
+    /// </summary>
+    private static bool? Booleano(JsonElement e, string prop)
+        => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(prop, out var v)
+            ? v.ValueKind switch
+            {
+                JsonValueKind.True => true,
+                JsonValueKind.False => false,
+                _ => (bool?)null,
+            }
+            : null;
+
+    private static readonly JsonSerializerOptions Identado = new() { WriteIndented = true };
+
+    private static string Bonito(JsonElement e) => JsonSerializer.Serialize(e, Identado);
 }
