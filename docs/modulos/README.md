@@ -1,6 +1,6 @@
-# Módulos do SMSMarica
+# Módulos do SMSMais
 
-Esta pasta organiza a **documentação por módulo de negócio** do ecossistema SMSMarica.
+Esta pasta organiza a **documentação por módulo de negócio** do ecossistema SMSMais.
 A ideia é tratar cada grande frente (transporte/TFD, laudos, agendamento, importação de
 PEPs, etc.) de forma isolada — escopo, arquitetura, requisitos e cronograma próprios —
 sem misturar com a documentação canônica transversal de [`docs/`](../).

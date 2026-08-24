@@ -160,7 +160,7 @@ antigos. Parâmetros para o técnico do equipamento: [`pacs-cdt-mamografo.md`](.
 
 | AE Title | Papel | Descrição |
 |----------|-------|-----------|
-| **`PACS-CDT`** | **Imagens (canônico)** | Recebe C-STORE + serve QIDO/WADO/STOW. **Usado pelo SMSMarica.** |
+| **`PACS-CDT`** | **Imagens (canônico)** | Recebe C-STORE + serve QIDO/WADO/STOW. **Usado pelo SMSMais.** |
 | **`WORK-CDT`** | **Worklist (canônico)** | Modality Worklist (MWL) + Unified Worklist (UPS). |
 | `DCM4CHEE` | Imagens (alias legado) | Mesmo acervo que `PACS-CDT` — esconde instâncias rejeitadas. |
 | `WORKLIST` | Worklist (alias legado) | Mesmo que `WORK-CDT` — MWL + UPS. |
@@ -314,7 +314,7 @@ Parâmetros por equipamento (entregáveis ao técnico):
 O AE Title do equipamento **não** precisa ser cadastrado no dcm4chee — o servidor
 aceita qualquer Calling AE (§10.4). O cadastro no painel serve à worklist.
 
-## 9. Endpoints DICOMweb (consumidos pelo SMSMarica)
+## 9. Endpoints DICOMweb (consumidos pelo SMSMais)
 
 Base RS: `http://pacs.marica.automais.cloud:8080/dcm4chee-arc/aets/PACS-CDT/rs/`
 (o alias legado `.../aets/DCM4CHEE/rs/` aponta para o mesmo acervo)
@@ -332,7 +332,7 @@ sob `Pacs.Dcm4chee.RsBaseUrl`, sobrescritível por `Pacs__Dcm4chee__RsBaseUrl` e
 | WADO — pixel frame | `GET /studies/{study}/series/{series}/instances/{sop}/frames/{n}` (`Accept: multipart/related; type="application/octet-stream"; transfer-syntax=*`) — chamado pelo Cornerstone `dicom-image-loader` |
 
 Header obrigatório nos QIDO/metadata: `Accept: application/dicom+json`. STOW-RS
-(upload via HTTP) também existe mas hoje não é usado pelo SMSMarica — os
+(upload via HTTP) também existe mas hoje não é usado pelo SMSMais — os
 equipamentos enviam via DICOM C-STORE direto.
 
 ### Integração no `SMSMais.front`
@@ -570,7 +570,7 @@ direto pelo console do Spaces).
 Os AEs canônicos passaram a ser `PACS-CDT`/`WORK-CDT` (§7). Os legados continuam
 ativos só para não quebrar quem ainda aponta pros nomes antigos. **Quando remover:**
 só depois de certificar que (a) o mamógrafo do CDT envia/lê de `PACS-CDT`/`WORK-CDT`,
-(b) a plataforma SMSMarica em **produção** está nos novos AEs — conferir eventuais
+(b) a plataforma SMSMais em **produção** está nos novos AEs — conferir eventuais
 overrides de ambiente `Pacs__Dcm4chee__RsBaseUrl` / `Pacs__Dcm4chee__UpsBaseUrl`, que
 **têm precedência** sobre o `appsettings.json` — e (c) nenhuma outra modalidade
 aponta pra `DCM4CHEE`.

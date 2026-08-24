@@ -3,7 +3,7 @@
 > **TFD (Tratamento Fora do Domicílio)** é a política do SUS (Portaria SAS/MS nº 55/1999)
 > que garante o **transporte** — e, quando indicado, ajuda de custo e acompanhante — de
 > pacientes que precisam de atendimento de saúde **em outro município**, quando o
-> procedimento não está disponível na rede local. Em Maricá, o módulo TFD do SMSMarica
+> procedimento não está disponível na rede local. Em Maricá, o módulo TFD do SMSMais
 > organiza **quem vai, em qual carro, por qual rota, com qual motorista e quando**,
 > levando pacientes (e acompanhantes) da cidade até hospitais e unidades de referência
 > em outras cidades, e trazendo-os de volta.

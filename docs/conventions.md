@@ -1,6 +1,6 @@
 # Convenções — SMS Maricá
 
-Este documento fixa como escrevemos e versionamos código no ecossistema SMSMarica. Mudanças aqui são feitas por PR com discussão registrada.
+Este documento fixa como escrevemos e versionamos código no ecossistema SMSMais. Mudanças aqui são feitas por PR com discussão registrada.
 
 ## 1. Idioma
 

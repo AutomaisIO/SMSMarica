@@ -28,4 +28,4 @@ Instâncias de Claude Code devem começar por [`CLAUDE.md`](./CLAUDE.md).
 
 ## Regra crítica (leia antes de qualquer migration)
 
-O backend compartilha a instância e o banco lógico PostgreSQL (`defaultdb`) com outros produtos. **Todo** o modelo do SMSMarica vive no schema `smsmarica` — zero dependência cross-schema. Detalhes e rationale em [`docs/adr/0001-schema-isolation.md`](./docs/adr/0001-schema-isolation.md).
+O backend compartilha a instância e o banco lógico PostgreSQL (`defaultdb`) com outros produtos. **Todo** o modelo do SMSMais vive no schema `smsmarica` — zero dependência cross-schema. Detalhes e rationale em [`docs/adr/0001-schema-isolation.md`](./docs/adr/0001-schema-isolation.md).

@@ -8,7 +8,7 @@ Dependências entre marcos são **duras** — M2 não começa sem M1 mínimo. Pa
 
 ```mermaid
 gantt
-    title Roadmap macro SMSMarica
+    title Roadmap macro SMSMais
     dateFormat  YYYY-MM-DD
     axisFormat  %b/%y
 

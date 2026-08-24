@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0046 — O produto chama-se SMSMais: rename de código com carve-outs de runtime</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0046 — O produto chama-se SMSMais: rename de código com carve-outs de runtime</h1>
+<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-08-24 <strong>Supersede:</strong> a regra derivada nº 1 do <a href="./0043-instancia-por-municipio.md">ADR-0043</a> ("SMSMarica não é renomeado"). As demais regras do 0043 — sem <code>TenantId</code>, nada institucional em código ou migration — <strong>continuam valendo</strong>. <strong>Relacionado:</strong> <a href="./0004-arquitetura-tres-projetos.md">ADR-0004</a> (migrations imutáveis), <a href="./0021-runbook-deploy.md">ADR-0021</a> (AutoMigrate falha calado).</p>
+<h2>Contexto</h2>
+<p>O ADR-0043 decidiu, em 17/08, que <code>SMSMarica</code> viraria nome de código interno do produto — renomear custava caro e o cliente não vê namespace. Uma semana depois a premissa mudou: a <strong>segunda prefeitura foi contratada</strong>, a VM e o banco dela já existem, foi criada a organização <code>SMSMais-Sistema-de-Saude</code> no GitHub, e o nome comercial do produto está travado como <strong>SMSMais</strong> (seguindo a família Automais / Falarmais / AeroMais). Um produto vendido a N municípios carregando o nome de um deles em toda pasta, namespace e unit deixou de ser aceitável para o dono do produto.</p>
+<p>A decisão de reverter a regra foi tomada com o custo medido de novo (20-24/08, repo em <code>main</code>): 42.474 ocorrências em 1.471 arquivos, das quais <strong>89% dentro das migrations</strong>; 2.069 arquivos com o token no caminho; 4 grafias distintas (<code>SMSMarica</code>, <code>smsmarica</code>, <code>SmsMarica</code>, <code>SMSMARICA</code>) com papéis completamente diferentes — e é essa distinção que torna o rename seguro ou catastrófico.</p>
+<h2>Decisão</h2>
+<p><strong>O nome de código do produto passa a ser <code>SMSMais</code></strong> — pastas, projetos, namespaces, classes, nomes npm e pacotes. O rename foi executado <strong>em fatias, uma por projeto, cada uma commitada com a solução compilando</strong> (a independência entre namespace, nome de pasta e nome de assembly em .NET é o que permite o repo ficar "misto" e verde entre fatias).</p>
+<p><strong>O que NÃO foi renomeado (carve-outs).</strong> Estes valores carregam o nome antigo e <strong>devem permanecer assim</strong> até o bloco que os trata — ou para sempre, quando o dono é externo:</p>
+<div class="tw"><table><thead><tr><th>#</th><th>Valor</th><th>Onde</th><th>Por quê</th></tr></thead><tbody>
+<tr><td>1</td><td>Schema Postgres <code>smsmarica</code> (+ <code>smsmarica.__migrations</code>, extensão <code>vector</code> dentro dele)</td><td><code>SmsMaisDbContext.SchemaPadrao</code>, 269 migrations</td><td>Bloco 3 (um <code>ALTER SCHEMA ... RENAME</code> futuro, nas duas instâncias). Migrations continuam imutáveis: o EF compara só o <code>migration_id</code>, que não carrega namespace</td></tr>
+<tr><td>2</td><td>Domínios <code>*.smsmarica.online</code> e <code>smsmarica.app.br</code></td><td>fronts, CORS, workflows, magic-links já enviados</td><td>São domínios <strong>de Maricá</strong>, não do produto. A 2ª instância tem os dela; viram configuração</td></tr>
+<tr><td>3</td><td><code>https://smsmarica.saude.marica/source/</code> (<code>meta.source</code> FHIR)</td><td><code>Automais.Fhir.Core/Fhir/MetaSources.cs</code> + mappers</td><td>Gravado em todo recurso FHIR já persistido. Vira env var por instância com este default</td></tr>
+<tr><td>4</td><td>Headers <code>X-SMSMarica-*</code></td><td>Api ↔ aiengine (o FastAPI <strong>deriva o header do nome do parâmetro</strong> <code>x_smsmarica_internal_key</code>)</td><td>Contrato entre dois deploys independentes — Bloco 2, em lockstep</td></tr>
+<tr><td>5</td><td>Chaves de browser <code>smsmarica*</code> (localStorage, IndexedDB <code>smsmarica-pdf</code>, BroadcastChannels)</td><td>painel + PWAs</td><td>Renomear desloga operadores e pacientes e órfã caches. Bloco 2, com shim de migração</td></tr>
+<tr><td>6</td><td>Purpose <code>"SMSMarica.Ia.Segredos"</code></td><td><code>Api/Auth/ProtetorSegredos.cs</code></td><td>Entra na <strong>derivação da chave</strong> do Data Protection — um caractere trocado torna indecifráveis todas as credenciais de integração. Literal congelado, para sempre</td></tr>
+<tr><td>7</td><td>JWT <code>Issuer="smsmarica"</code> / <code>Audience="smsmarica-front"</code> e <code>UserSecretsId=smsmarica-api-dev</code></td><td><code>appsettings.json</code>, csproj</td><td>Trocar invalida todos os tokens vivos (logout geral) / perde os user-secrets locais. Bloco 2, com janela</td></tr>
+<tr><td>8</td><td>Units systemd <code>smsmarica-*</code>, caminhos `/opt</td><td>/etc</td><td>/var</td><td>/srv/<em>smsmarica</em><code>, usuário POSIX, secrets </code>*_SMSMARICA<code>, tarballs, </code>DEPLOY_DIR`</td><td>workflows + servidor de Maricá</td><td>Lado servidor da instância Maricá — Bloco 2. *<em>A instância nova já nasce com nomes <code>smsmais-</em></code>**</td></tr>
+<tr><td>9</td><td><code>GESTOR SMS MARICA</code>, <code>"UPA MARICA"</code>, <code>cd_cidade=330270</code></td><td>integrações SER/Klinikos/Salux</td><td>Valores cadastrados em <strong>sistemas de terceiros</strong> (Estado, PEPs). Nunca</td></tr>
+<tr><td>10</td><td><code>sip_smsmarica.conf</code></td><td>Asterisk da FalarMais</td><td><code>#include</code> no servidor de um terceiro, sem git/CI. Nunca, sem janela combinada</td></tr>
+<tr><td>11</td><td><code>docs/adr/**</code> e docs-inventário de época (<code>marco-1-e-linha-de-corte</code>, <code>reconciliacao-working-tree</code>, <code>ser-continuacao</code>)</td><td>—</td><td>Registro histórico não se reescreve</td></tr>
+<tr><td>12</td><td>Repo <code>AutomaisIO/SMSMarica</code> (deploy key do Agente IA, <code>/srv/smsmarica-repo</code>)</td><td><code>setup-aiengine-host.sh</code></td><td>Muda junto com a <strong>transferência do repo</strong> para a org <code>SMSMais-Sistema-de-Saude</code> (passo próprio, com checklist: secrets, deploy key, clone do agente, token cross-org do espelho AGPL)</td></tr>
+</tbody></table></div>
+<p><strong>Exceção consciente à regra 4 (migrations imutáveis):</strong> os 134 <code>.Designer.cs</code> e o snapshot foram editados — apenas namespace, <code>[DbContext(typeof(...))]</code> e as strings tipo-qualificadas do modelo. O <code>migration_id</code> (o que a <code>__migrations</code> compara) e o SQL de Up/Down não mudaram: os <strong>11.996 literais <code>"smsmarica"</code> de schema foram conferidos byte a byte antes e depois</strong>. O gate <code>dotnet ef migrations has-pending-model-changes</code> respondeu <strong>No changes</strong> após cada fatia do backend — é a prova de que modelo e snapshot não dessincronizaram (o modo de falha do incidente TFD/mensageria).</p>
+<p><strong><code>SMSMarica.secretario.pwa</code> não foi renomeado por decisão de produto:</strong> o Painel do Secretário é específico de Maricá (números ao vivo do Oracle do HMCML), não faz parte do produto replicável.</p>
+<h2>Consequências</h2>
+<ul>
+<li>Fatias executadas em 24/08 (commits <code>55638b4..759b4f7</code>): testes, arquivos.pwa, cidadao.pwa,</li>
+</ul>
+<p>  front, aiengine, EquipamentoSim, <strong>Data (+<code>SmsMaisDbContext</code>), Core, Api, pasta server   (<code>SMSMais.slnx</code>)</strong>, apps Flutter (bundle ids novos <code>io.automais.smsmais.*</code> — apps nunca   publicados, id livre até a primeira publicação). Auditoria final: zero tokens qualificados   vivos fora do histórico.</p>
+<ul>
+<li>O deploy do server ganhou um <strong>passo de reconciliação da unit</strong>: a unit existente em produção</li>
+</ul>
+<p>  aponta para <code>SMSMarica.Api.dll</code>; no primeiro deploy pós-rename o script corrige o <code>ExecStart</code>   in-place e faz <code>daemon-reload</code> — sem isso o serviço não subiria com o Actions "success".</p>
+<ul>
+<li>Dois achados de padrão que valem para qualquer rename futuro: (a) **referências de namespace</li>
+</ul>
+<p>  RELATIVAS<strong> (<code>Data.Entities.X</code>, <code>Core.X</code>) só compilavam pela raiz comum e quebram quando as   raízes divergem — foram qualificadas por extenso; (b) </strong><code>InternalsVisibleTo</code> acopla pelo nome   do assembly** e não aparece em busca por namespace.</p>
+<ul>
+<li>Blocos pendentes: <strong>Bloco 2</strong> (infra de Maricá: caminhos, units, JWT, chaves de browser, com 1</li>
+</ul>
+<p>  janela pequena) e <strong>Bloco 3</strong> (schema, <code>ALTER SCHEMA</code> nas duas bases, 1 janela). Nenhum dos dois   bloqueia a segunda prefeitura.</p>
+</main>
+</body>
+</html>

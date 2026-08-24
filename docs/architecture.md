@@ -2,7 +2,7 @@
 
 ## 1. Visão do ecossistema
 
-O SMSMarica é composto por quatro produtos independentes que colaboram via uma única API central.
+O SMSMais é composto por quatro produtos independentes que colaboram via uma única API central.
 
 ```mermaid
 flowchart TB
@@ -153,4 +153,4 @@ Decisões específicas (Controllers MVC, FluentValidation, Mapperly, Scalar) est
 - **Time-series de GPS**: migrar ingestão de pontos para InfluxDB/TimescaleDB quando o volume justificar. Schema administrativo permanece em `smsmarica`.
 - **Auth**: ASP.NET Core Identity + JWT entram quando virarem prioridade. Endpoints públicos por enquanto (MVP).
 - **Extração de subdomínios**: se um conjunto de pastas (ex.: `Core/Rastreamento` + `Data/Entities/PontoGps`+`Geofence`) crescer ao ponto de pedir ciclo de release independente, criar ADR para extração e mover para serviço próprio.
-- **Camada intermediária**: integrações com sistemas legados de saúde municipais ficarão em serviços separados que publicam/assinam no Host, sem acoplar domínio do SMSMarica a legados.
+- **Camada intermediária**: integrações com sistemas legados de saúde municipais ficarão em serviços separados que publicam/assinam no Host, sem acoplar domínio do SMSMais a legados.

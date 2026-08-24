@@ -11,7 +11,7 @@
 
 ## Slide 1 — Capa
 
-**Módulo TFD — SMSMarica**
+**Módulo TFD — SMSMais**
 Transporte sanitário inteligente de pacientes
 SMS Maricá · OS Avante (A/C Sra. Clarisse)
 v1 — 2026-06-18
@@ -50,7 +50,7 @@ e comunicado**.
 > paciente.
 
 Tecnologia: **Google Maps** (rotas reais) + **Claude/IA** (distribuição inteligente) +
-**WhatsApp oficial** (comunicação) — sobre a plataforma SMSMarica que **já existe**.
+**WhatsApp oficial** (comunicação) — sobre a plataforma SMSMais que **já existe**.
 
 ---
 
@@ -80,7 +80,7 @@ Tecnologia: **Google Maps** (rotas reais) + **Claude/IA** (distribuição inteli
 
 ## Slide 7 — Já temos meio caminho andado
 
-A plataforma SMSMarica **já possui**: cadastros (motoristas, veículos, unidades,
+A plataforma SMSMais **já possui**: cadastros (motoristas, veículos, unidades,
 tratamentos, pacientes), **rotas diárias**, **mapa de assentos** (com assento de
 acompanhante), **periodicidade e sessões**, **ingestão de GPS e geofences**, **Claude já
 integrado** e o **app do motorista iniciado**.

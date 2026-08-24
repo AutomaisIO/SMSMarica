@@ -1,6 +1,6 @@
 # SMSMais.EquipamentoSim
 
-Simulador de equipamento DICOM (mamógrafo) para testar o ciclo completo de **Solicitação de Exame → Worklist → Execução** do sistema SMSMarica, sem precisar de um equipamento real.
+Simulador de equipamento DICOM (mamógrafo) para testar o ciclo completo de **Solicitação de Exame → Worklist → Execução** do sistema SMSMais, sem precisar de um equipamento real.
 
 CLI em Python que conversa direto com o `dcm4chee` via DICOM:
 - **C-FIND** para puxar a worklist do dia.
@@ -13,7 +13,7 @@ Pré-requisito: Python 3.11+ instalado e no PATH.
 ### Opção A — Com venv (recomendado)
 
 ```powershell
-cd "C:\Projetos GIT\SMSMarica\SMSMais.EquipamentoSim"
+cd "C:\Projetos GIT\SMSMais\SMSMais.EquipamentoSim"
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -e .
@@ -29,7 +29,7 @@ então `equipamento` não fica acessível mesmo após `pip install -e .`. Use a
 forma `python -m`:
 
 ```cmd
-cd "C:\Projetos GIT\SMSMarica\SMSMais.EquipamentoSim"
+cd "C:\Projetos GIT\SMSMais\SMSMais.EquipamentoSim"
 pip install -e .
 python -m equipamento_sim mwl
 python -m equipamento_sim exec --accession SMS2026000001 --fantasma
@@ -83,7 +83,7 @@ equipamento exec --accession SMS2026000001 --imagem .\examples\mamo.jpg
 
 Fluxo interno:
 1. C-FIND para localizar o worklist item por AccessionNumber.
-2. Monta DICOM herdando `PatientName/ID/BirthDate/Sex` e `StudyInstanceUID` do worklist (fundamental — é a chave que amarra o study à solicitação no SMSMarica).
+2. Monta DICOM herdando `PatientName/ID/BirthDate/Sex` e `StudyInstanceUID` do worklist (fundamental — é a chave que amarra o study à solicitação no SMSMais).
 3. C-STORE no AE `PACS-CDT`.
 
 Após o sucesso, o `SincronizadorExamesService` do SMSMais.Api detecta o study no próximo polling (~30s) e marca a solicitação como **Realizada**. Quando o radiologista finaliza o laudo, vira **Laudada**.

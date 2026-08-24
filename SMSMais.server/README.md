@@ -1,6 +1,6 @@
 # SMSMais.server
 
-API backend do ecossistema SMSMarica. **3 projetos** em .NET 10 + EF Core + PostgreSQL.
+API backend do ecossistema SMSMais. **3 projetos** em .NET 10 + EF Core + PostgreSQL.
 
 Decisão arquitetural em [`../docs/adr/0004-arquitetura-tres-projetos.md`](../docs/adr/0004-arquitetura-tres-projetos.md).
 
@@ -8,7 +8,7 @@ Decisão arquitetural em [`../docs/adr/0004-arquitetura-tres-projetos.md`](../do
 
 ```
 SMSMais.server/
-├── SMSMarica.sln
+├── SMSMais.sln
 ├── global.json                       (fixa SDK .NET 10)
 ├── Directory.Build.props             (Nullable, TWAE, net10.0)
 ├── Directory.Packages.props          (Central Package Management)
@@ -83,7 +83,7 @@ A senha fica armazenada localmente no perfil do usuário Windows — **nunca no 
 
 ### Cluster compartilhado (DigitalOcean)
 
-O Postgres em produção é o `defaultdb` do cluster da Prefeitura na DigitalOcean, compartilhado com outros produtos. **Tudo do SMSMarica vive no schema `smsmarica`** ([ADR-0001](../docs/adr/0001-schema-isolation.md)). A migration `Initial` cria o schema automaticamente (`EnsureSchema`).
+O Postgres em produção é o `defaultdb` do cluster da Prefeitura na DigitalOcean, compartilhado com outros produtos. **Tudo do SMSMais vive no schema `smsmarica`** ([ADR-0001](../docs/adr/0001-schema-isolation.md)). A migration `Initial` cria o schema automaticamente (`EnsureSchema`).
 
 > `Trust Server Certificate=true` é OK pra dev/MVP. Para produção endurecida, trocar por `SSL Mode=VerifyFull` + `Root Certificate=<caminho do CA cert>` (DO disponibiliza na página do banco).
 

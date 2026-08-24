@@ -110,7 +110,7 @@ não precisa alcançar a porta local `104`.
    - `WORK-CMI@104.236.203.40:11112` → **Success (0x0000)**
    - *(Ambos validados em 2026-07-21 pela equipe Automais, a partir da internet.)*
 2. **Worklist**: os exames aparecem conforme forem agendados na plataforma
-   SMSMarica **com o CMI como unidade executante**. Lista vazia costuma ser
+   SMSMais **com o CMI como unidade executante**. Lista vazia costuma ser
    ausência de exame agendado para a data — confirmar com a equipe Automais.
 3. **Envio**: dispare um C-STORE de teste para `PACS-CDT`. A imagem deve aparecer
    no visualizador da plataforma logo em seguida.

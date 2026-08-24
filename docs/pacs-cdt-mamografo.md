@@ -90,9 +90,9 @@ AE do equipamento (Calling AE / local):  FDR-MAMO   (ou o nome já usado na máq
    - C-ECHO em `WORK-CDT@104.236.203.40:11112` → deve retornar **Success (0x0000)**.
    - *(Ambos validados em 2026-06-16 pela equipe Automais.)*
 2. **Envio de imagem**: dispare um C-STORE de teste para `PACS-CDT`. A imagem deve
-   aparecer no visualizador da plataforma SMSMarica em seguida.
+   aparecer no visualizador da plataforma SMSMais em seguida.
 3. **Worklist**: configure o nó MWL para `WORK-CDT` e atualize a lista. Os exames
-   aparecem conforme forem **agendados na plataforma SMSMarica** — se a lista vier
+   aparecem conforme forem **agendados na plataforma SMSMais** — se a lista vier
    vazia, confirme com a equipe Automais se há exame agendado para a data/modalidade.
 
 ---
@@ -100,7 +100,7 @@ AE do equipamento (Calling AE / local):  FDR-MAMO   (ou o nome já usado na máq
 ## 7. Observações
 
 - O AE Title do **equipamento** (Calling AE) é `FDR-MAMO`. O servidor dcm4chee não
-  exige cadastro prévio dele, mas a **plataforma SMSMarica exige**: o mesmo valor
+  exige cadastro prévio dele, mas a **plataforma SMSMais exige**: o mesmo valor
   está em *Exames de Imagem → Equipamentos* (mamógrafo do CDT, modalidade MG) e é
   dele que sai o `ScheduledStationAETitle` da worklist. Mudar o AE na máquina sem
   atualizar o cadastro faz a worklist parar de chegar.

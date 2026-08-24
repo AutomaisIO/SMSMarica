@@ -2,9 +2,9 @@
 
 ## 1. Regra crítica: isolamento por schema
 
-O SMSMarica **compartilha** a instância e o banco lógico PostgreSQL com outros produtos (notadamente Automais.IO). O banco convencional é `defaultdb`.
+O SMSMais **compartilha** a instância e o banco lógico PostgreSQL com outros produtos (notadamente Automais.IO). O banco convencional é `defaultdb`.
 
-**Todo** o modelo do SMSMarica vive **exclusivamente** no schema:
+**Todo** o modelo do SMSMais vive **exclusivamente** no schema:
 
 ```
 smsmarica
@@ -14,7 +14,7 @@ Decisão registrada em [ADR-0001](./adr/0001-schema-isolation.md).
 
 ### O que isso implica
 
-- Nenhuma tabela do SMSMarica fora do schema `smsmarica`.
+- Nenhuma tabela do SMSMais fora do schema `smsmarica`.
 - Nenhuma FK, view, trigger ou migration referenciando objetos de outros schemas.
 - `DbContext` base aplica `HasDefaultSchema("smsmarica")` — não depender de cada entidade declarar.
 - Connection string pode apontar para `defaultdb` compartilhado; isolamento é **por schema, não por banco**.
@@ -23,7 +23,7 @@ Decisão registrada em [ADR-0001](./adr/0001-schema-isolation.md).
 
 - `JOIN` com tabelas de outro produto ("só um selectzinho rápido"). Se precisar de dado externo, vem por API.
 - Usar `search_path` do role para "achar" tabelas fora do schema — isso mascara a dependência e volta a morder depois.
-- Criar migrations que dropam/alteram objetos não pertencentes ao SMSMarica, mesmo que existam no mesmo banco.
+- Criar migrations que dropam/alteram objetos não pertencentes ao SMSMais, mesmo que existam no mesmo banco.
 
 ## 2. Organização por módulo
 
@@ -65,7 +65,7 @@ Cada módulo do backend tem seu próprio `DbContext` apontando para `smsmarica`.
 
 ```bash
 dotnet ef migrations add <Nome> \
-  --project src/Modules/<Modulo>/SMSMarica.Modules.<Modulo>.Infrastructure \
+  --project src/SMSMais.Data \
   --startup-project src/SMSMais.Api \
   --context <Modulo>DbContext
 ```

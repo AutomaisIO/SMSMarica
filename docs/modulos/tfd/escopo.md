@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Projeto** | Módulo TFD — Transporte sanitário de pacientes |
-| **Plataforma** | SMSMarica (monorepo: backend .NET 10 + painel React + apps Flutter + hub FHIR) |
+| **Plataforma** | SMSMais (monorepo: backend .NET 10 + painel React + apps Flutter + hub FHIR) |
 | **Cliente** | Secretaria Municipal de Saúde de Maricá (SMS Maricá) |
 | **Operadora (OS)** | Avante — A/C Sra. Clarisse |
 | **Equipe** | Equipes dedicadas: desenvolvimento, implantação e (pós) suporte, com apoio de IA |

@@ -1,9 +1,9 @@
 # Diagnóstico — Worklist (MWL) no mamógrafo Fuji FDR-3000AWS não inicia exame
 
 > **Status:** causa raiz identificada e comprovada (2026-06-22). Resolução pendente de
-> **1 ajuste de serviço no console** (engenheiro Fuji) + emissão de 1 código pelo backend SMSMarica.
+> **1 ajuste de serviço no console** (engenheiro Fuji) + emissão de 1 código pelo backend SMSMais.
 >
-> Documento para o **técnico/engenheiro Fuji** e para a equipe SMSMarica. Em PT-BR.
+> Documento para o **técnico/engenheiro Fuji** e para a equipe SMSMais. Em PT-BR.
 
 ## 1. Resumo executivo
 
@@ -20,10 +20,10 @@ vazia, e o fluxo aborta. **A worklist nunca foi comissionada nesta máquina.**
 
 **Resolução (1 visita):**
 1. **Popular** `JJ1017V3CodeMapping` com (no mínimo) **1 linha**: `FCRCode = FCR0329`
-   (= menu **MAMO BILATERAL**) ↔ um **JJCode** combinado com a SMSMarica.
+   (= menu **MAMO BILATERAL**) ↔ um **JJCode** combinado com a SMSMais.
 2. **Configurar destino de MPPS** apontando para `WORK-CDT` (ou desabilitar o "Inform
    Procedure State"), pois hoje **não há destino de MPPS** configurado.
-3. **SMSMarica** passa a emitir esse **JJCode fixo** no `Scheduled Protocol Code Sequence`.
+3. **SMSMais** passa a emitir esse **JJCode fixo** no `Scheduled Protocol Code Sequence`.
 
 ---
 
@@ -174,8 +174,8 @@ mapeando o menu padrão de mamografia:
 
 ```
 FCRCode      = FCR0329           (= MAMO BILATERAL)
-JJCode-16M   = <código JJ1017-M combinado com a SMSMarica>
-JJCode-16S   = <código JJ1017-S combinado com a SMSMarica>
+JJCode-16M   = <código JJ1017-M combinado com a SMSMais>
+JJCode-16S   = <código JJ1017-S combinado com a SMSMais>
 ```
 
 Com isso, **todo** exame de mamografia vindo da worklist abre **já no menu MAMO BILATERAL**, e o
@@ -184,13 +184,13 @@ técnico **ajusta na hora** se precisar (trocar incidência, etc.). Opcionalment
 
 > Alternativa (modo "auto puro"): configurar o console para, quando o código não casar, **abrir a
 > tela de seleção de menu** em vez de dar erro (fallback manual). Nesse caso o técnico escolhe o
-> menu a cada exame. A SMSMarica prefere a abordagem da linha única (abre já no menu padrão).
+> menu a cada exame. A SMSMais prefere a abordagem da linha única (abre já no menu padrão).
 
 **(b) Configurar destino de MPPS** apontando para `WORK-CDT` (`104.236.203.40:11112`), **ou**
 desabilitar o "Inform Procedure State" (MPPS) se não for usado. Hoje o `ConnectInfo` não tem
 entrada `PPS`.
 
-### 6.2 SMSMarica (backend) — já pronto / a ajustar
+### 6.2 SMSMais (backend) — já pronto / a ajustar
 
 O item de MWL emitido pelo backend já está conforme o que o console exige (verificado):
 
@@ -206,7 +206,7 @@ O item de MWL emitido pelo backend já está conforme o que o console exige (ver
 - `Coding Scheme Designator (0008,0102)` = conforme JJ1017 (`JJ1017-M` / esquema definido com a Fuji)
 - (se exigido) `Protocol Context Sequence (0040,0440)` para o JJ1017Ver3.
 
-> O valor exato do JJCode deve ser **acordado entre SMSMarica e o engenheiro Fuji** no momento de
+> O valor exato do JJCode deve ser **acordado entre SMSMais e o engenheiro Fuji** no momento de
 > popular a tabela — os dois lados precisam usar o mesmo par.
 
 ---
