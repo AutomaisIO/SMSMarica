@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import { urlLogo } from '@/shared/tema/instituicao';
 import { formatarInstante, paraDataPlanilha } from '@/shared/lib/datas';
 import { renderizarPizza, type FatiaPizza } from '@/features/indicadores/lib/graficoPizza';
 import type {
@@ -318,7 +319,10 @@ function borda(): Partial<ExcelJS.Borders> {
 
 async function carregarLogoBase64(): Promise<string | null> {
   try {
-    const resp = await fetch('/marica_logo.png');
+    // Logo da instituição (banco), nunca um asset estático de município (ADR-0046).
+    const url = urlLogo();
+    if (!url) return null;
+    const resp = await fetch(url);
     if (!resp.ok) return null;
     const buf = new Uint8Array(await resp.arrayBuffer());
     let bin = '';

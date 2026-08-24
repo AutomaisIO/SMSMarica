@@ -365,7 +365,8 @@ if (autoMigrate)
 
         var hasher = scope.ServiceProvider
             .GetRequiredService<Microsoft.AspNetCore.Identity.IPasswordHasher<SMSMais.Data.Entities.Usuario>>();
-        await DbSeeder.SeedAsync(db, hasher);
+        var conteudoMarica = builder.Configuration.GetValue("Seeds:ConteudoMarica", false);
+        await DbSeeder.SeedAsync(db, hasher, incluirConteudoMarica: conteudoMarica);
         app.Logger.LogInformation("Seed do Admin OK.");
     }
     catch (Exception ex)

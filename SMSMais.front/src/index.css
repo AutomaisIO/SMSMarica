@@ -15,41 +15,41 @@
    * mesmo vermelho de antes. Uma instituição que define `corPrimaria` sobrescreve estas
    * variáveis em runtime (`shared/tema/aplicarTema.ts`), sem rebuild.
    */
-  --c-primary-50: 254 242 243;
-  --c-primary-100: 253 227 230;
-  --c-primary-200: 250 200 206;
-  --c-primary-300: 245 159 169;
-  --c-primary-400: 238 107 123;
-  --c-primary-500: 224 60 82;
-  --c-primary-600: 200 16 46;
-  --c-primary-700: 168 12 39;
-  --c-primary-800: 135 10 32;
-  --c-primary-900: 108 8 25;
-  --c-primary-950: 61 4 14;
+  --c-primary-50: 248 250 252;
+  --c-primary-100: 241 245 249;
+  --c-primary-200: 226 232 240;
+  --c-primary-300: 203 213 225;
+  --c-primary-400: 148 163 184;
+  --c-primary-500: 100 116 139;
+  --c-primary-600: 71 85 105;
+  --c-primary-700: 51 65 85;
+  --c-primary-800: 30 41 59;
+  --c-primary-900: 15 23 42;
+  --c-primary-950: 2 6 23;
 
-  --c-secondary-50: 255 241 242;
-  --c-secondary-100: 255 224 227;
-  --c-secondary-200: 255 194 200;
-  --c-secondary-300: 251 142 151;
-  --c-secondary-400: 238 87 100;
-  --c-secondary-500: 168 12 39;
-  --c-secondary-600: 135 10 32;
-  --c-secondary-700: 108 8 25;
-  --c-secondary-800: 87 6 20;
-  --c-secondary-900: 61 4 14;
-  --c-secondary-950: 36 2 7;
+  --c-secondary-50: 248 250 252;
+  --c-secondary-100: 241 245 249;
+  --c-secondary-200: 226 232 240;
+  --c-secondary-300: 203 213 225;
+  --c-secondary-400: 148 163 184;
+  --c-secondary-500: 100 116 139;
+  --c-secondary-600: 51 65 85;
+  --c-secondary-700: 30 41 59;
+  --c-secondary-800: 15 23 42;
+  --c-secondary-900: 2 6 23;
+  --c-secondary-950: 2 6 23;
 
-  --theme-primary: #C8102E;
-  --theme-secondary: #A80C27;
-  --theme-accent: #E03C52;
+  --theme-primary: #475569;
+  --theme-secondary: #334155;
+  --theme-accent: #64748b;
   --theme-background: #f9fafb;
   --theme-surface: #ffffff;
   --theme-text: #111827;
   --theme-text-muted: #52525b;
   --theme-border: #e4e4e7;
-  --theme-gradient-start: #A80C27;
-  --theme-gradient-mid: #e7062c;
-  --theme-gradient-end: #730216;
+  --theme-gradient-start: #334155;
+  --theme-gradient-mid: #475569;
+  --theme-gradient-end: #0f172a;
 
   --theme-font-family: Inter, system-ui, sans-serif;
   --theme-heading-weight: 700;
@@ -73,10 +73,10 @@
   --theme-menu-active-bg: #ffffff;
   --theme-menu-active-text: var(--theme-primary);
 
-  --theme-button-primary-solid: #C8102E;
-  --theme-button-secondary-solid: #A80C27;
+  --theme-button-primary-solid: #475569;
+  --theme-button-secondary-solid: #334155;
 
-  --theme-avatar-border-color: #C8102E;
+  --theme-avatar-border-color: #475569;
   --theme-avatar-border-width: 2px;
 }
 

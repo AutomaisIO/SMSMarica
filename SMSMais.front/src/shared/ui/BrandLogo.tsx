@@ -10,9 +10,9 @@ type Props = {
 /**
  * Logotipo da instituição desta instância (ADR-0043).
  *
- * A imagem vem do que foi cadastrado em Sistema → Instituição; `/marica_logo.png` continua
- * como último recurso para não deixar o cabeçalho vazio numa instância recém-provisionada
- * — mas quem provisiona troca o logo antes de entregar.
+ * A imagem vem do que foi cadastrado em Sistema → Instituição. Sem logo cadastrado, o
+ * fallback é NEUTRO (a inicial do nome curto) — nunca a marca de outro município, nem por
+ * um frame (ADR-0046).
  */
 export function BrandLogo({ className, alt, compact = false }: Props) {
   const inst = instituicao();
@@ -34,11 +34,22 @@ export function BrandLogo({ className, alt, compact = false }: Props) {
     );
   }
 
-  return (
-    <img
-      src={urlLogo() ?? '/marica_logo.png'}
-      alt={rotulo}
-      className={cn('object-contain', className)}
-    />
-  );
+  const src = urlLogo();
+  if (!src) {
+    // Sem logo no banco: bloco neutro com a inicial — mesmo desenho do modo compacto.
+    const inicial = (inst.nomeCurto || inst.nome || '?').trim().charAt(0).toUpperCase();
+    return (
+      <div
+        className={cn(
+          'flex h-10 min-w-10 items-center justify-center rounded-md bg-white px-2 text-primary-700 font-bold shadow-marca',
+          className,
+        )}
+        title={rotulo}
+      >
+        {inicial}
+      </div>
+    );
+  }
+
+  return <img src={src} alt={rotulo} className={cn('object-contain', className)} />;
 }

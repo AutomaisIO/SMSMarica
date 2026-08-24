@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
@@ -22,12 +22,24 @@ public static class DbSeeder
     public static async Task SeedAsync(
         SmsMaisDbContext db,
         IPasswordHasher<Usuario> hasher,
+        bool incluirConteudoMarica = false,
         CancellationToken cancellationToken = default)
     {
+        // Bootstrap GENÉRICO — toda instância precisa: sem ele ninguém consegue logar.
         await GarantirPerfilAdminAsync(db, cancellationToken);
         await GarantirUsuarioAdminAsync(db, hasher, cancellationToken);
-        await GarantirTemplateMamografiaAsync(db, cancellationToken);
-        await SeedCabecalhoLaudo.GarantirAsync(db, cancellationToken);
+
+        // Conteúdo CLÍNICO DE MARICÁ (macro do CDT, banner de laudo). Atrás de flag
+        // (`Seeds:ConteudoMarica`) porque numa instância de outro município isso semearia
+        // a marca e os templates da cidade errada no startup — o vazamento mais silencioso
+        // do whitelabel (ADR-0043/0046). Maricá já tem os dados no banco; default false
+        // não re-semeia nada lá (os Garantir* são insert-only e retornam cedo).
+        if (incluirConteudoMarica)
+        {
+            await GarantirTemplateMamografiaAsync(db, cancellationToken);
+            await SeedCabecalhoLaudo.GarantirAsync(db, cancellationToken);
+        }
+
         await db.SaveChangesAsync(cancellationToken);
     }
 
