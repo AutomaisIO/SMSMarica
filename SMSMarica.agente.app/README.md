@@ -18,7 +18,7 @@ Aplicativo **Flutter** destinado ao **motorista** (agente de transporte sanitár
 
 ## Relação com o restante do ecossistema
 
-Consome a API do projeto **`SMSMarica.server`**. O cadastro administrativo de motoristas, veículos e alocações é feito no **`SMSMais.front`** (ou futuras integrações).
+Consome a API do projeto **`SMSMais.server`**. O cadastro administrativo de motoristas, veículos e alocações é feito no **`SMSMais.front`** (ou futuras integrações).
 
 ## Stack
 

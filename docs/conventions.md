@@ -60,7 +60,7 @@ Commits de mesclagem (`Merge …`): evitar. Usar `rebase` + `squash` no PR.
   - **Checklist**: build verde, testes verdes, migrations aplicam em Postgres limpo, docs atualizados.
 - Mínimo 1 aprovação para merge. Auto-merge habilitado após aprovação.
 
-## 3. C# / .NET (`SMSMarica.server`)
+## 3. C# / .NET (`SMSMais.server`)
 
 ### 3.1 Estilo
 

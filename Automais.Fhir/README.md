@@ -4,7 +4,7 @@ Serviço FHIR R4 autônomo da SMS Maricá — o **hub canônico** de dados clín
 
 ## Arquitetura
 
-Solução própria (`Automais.Fhir.slnx`), padrão 3-camadas espelhando o `SMSMarica.server`:
+Solução própria (`Automais.Fhir.slnx`), padrão 3-camadas espelhando o `SMSMais.server`:
 
 | Projeto | Papel |
 |---|---|

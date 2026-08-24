@@ -1,11 +1,11 @@
 """
-Serviço Agente IA do SMSMarica.
+Serviço Agente IA do SMSMais.
 
 Expõe o Claude Code (rodando no servidor, com o clone do repositório) como API HTTP de
 loopback na 5085. Quem consome é a API .NET (5080), que valida a permissão `AgenteIa`
 antes de repassar. O nginx nunca expõe esta porta.
 
-Autocontido de propósito: o SMSMarica não tem `shared/python`, então nada aqui depende de
+Autocontido de propósito: o SMSMais não tem `shared/python`, então nada aqui depende de
 biblioteca interna — só stdlib, FastAPI e o SDK.
 """
 import asyncio
@@ -48,7 +48,7 @@ if not (os.environ.get("CLAUDE_CODE_OAUTH_TOKEN") or os.environ.get("ANTHROPIC_A
     logger.error("Sem credencial do Claude (CLAUDE_CODE_OAUTH_TOKEN ou ANTHROPIC_API_KEY).")
     raise SystemExit(1)
 
-# Estado do loop de manutenção. O SMSMarica não tem o loop_supervisor do Automais, então
+# Estado do loop de manutenção. O SMSMais não tem o loop_supervisor do Automais, então
 # guardamos o batimento aqui — um loop morto precisa aparecer no /health, senão o serviço
 # fica "ativo" com a manutenção parada e ninguém percebe.
 _sweep = {"last_beat": 0.0, "failures": 0, "last_error": ""}
@@ -82,7 +82,7 @@ def sweep_healthy() -> bool:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Iniciando SMSMarica.aiengine (modelo=%s)", config.MODEL)
+    logger.info("Iniciando SMSMais.aiengine (modelo=%s)", config.MODEL)
 
     mode = config.auth_mode()
     if mode == "subscription":
@@ -112,7 +112,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="SMSMarica Agente IA",
+    title="SMSMais Agente IA",
     description="Motor do Agente IA — Claude Code no servidor",
     version="1.0.0",
     lifespan=lifespan,

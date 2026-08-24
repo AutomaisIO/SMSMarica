@@ -1,4 +1,4 @@
-# SMSMarica.server
+# SMSMais.server
 
 API backend do ecossistema SMSMarica. **3 projetos** em .NET 10 + EF Core + PostgreSQL.
 
@@ -7,7 +7,7 @@ Decisão arquitetural em [`../docs/adr/0004-arquitetura-tres-projetos.md`](../do
 ## Estrutura
 
 ```
-SMSMarica.server/
+SMSMais.server/
 ├── SMSMarica.sln
 ├── global.json                       (fixa SDK .NET 10)
 ├── Directory.Build.props             (Nullable, TWAE, net10.0)
@@ -113,8 +113,8 @@ Ver [`../docs/architecture.md §3.6`](../docs/architecture.md) — checklist de 
 
 Workflow do GitHub Actions em [`.github/workflows/deploy-server.yml`](../.github/workflows/deploy-server.yml). Dispara em:
 
-- `push` em `main` que toque qualquer arquivo em `SMSMarica.server/**`
-- manualmente via **Actions → Deploy SMSMarica.server → Run workflow**
+- `push` em `main` que toque qualquer arquivo em `SMSMais.server/**`
+- manualmente via **Actions → Deploy SMSMais.server → Run workflow**
 
 ### Secrets que o workflow usa
 

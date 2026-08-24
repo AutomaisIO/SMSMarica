@@ -3,11 +3,11 @@ requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "smsmarica-equipamento-sim"
+name = "smsmais-equipamento-sim"
 version = "0.1.0"
-description = "Simulador de equipamento DICOM para testar o ciclo de Solicitação de Exame → Worklist → Execução do SMSMarica."
+description = "Simulador de equipamento DICOM para testar o ciclo de Solicitação de Exame → Worklist → Execução do SMSMais."
 requires-python = ">=3.11"
-authors = [{ name = "SMS Maricá", email = "dev@smsmarica.local" }]
+authors = [{ name = "SMS Maricá", email = "dev@smsmais.local" }]
 dependencies = [
     "pynetdicom>=2.1.0",
     "pydicom>=2.4.0",

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sms_marica_cidadao/features/perfil/domain/paciente.dart';
 import 'package:sms_marica_cidadao/shared/api/dio_provider.dart';
 
-/// Consulta dados do paciente na API `SMSMarica.server`.
+/// Consulta dados do paciente na API `SMSMais.server`.
 ///
 /// Endpoint: `GET /pacientes/{id}` (ver `PacientesApiModule`).
 class PerfilRepository {

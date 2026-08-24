@@ -1,7 +1,7 @@
 # Pedido de backend — App do Motorista (TFD) com login facial on-device
 
 > Documento de **interface**: o que o app Flutter do motorista (`SMSMarica.agente.app`)
-> precisa do `SMSMarica.server`. O reconhecimento facial roda **on-device** (ML Kit +
+> precisa do `SMSMais.server`. O reconhecimento facial roda **on-device** (ML Kit +
 > MobileFaceNet TFLite); o servidor **não** faz matching — guarda a foto de referência e
 > a trilha de auditoria das verificações.
 

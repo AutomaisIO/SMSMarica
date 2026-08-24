@@ -50,7 +50,7 @@ ambiente — o `Local.json` é registrado antes dos providers de env, então env
 
 - Projeto único (sem split 3 camadas): é um micro-serviço de leitura com um único endpoint.
 - Execução read-only "de cinto e suspensório": `SET TRANSACTION READ ONLY` + `SqlReadOnlyGuard`
-  (copiados do SMSMarica.server) em toda consulta, mesmo sendo SQL constante do código.
+  (copiados do SMSMais.server) em toda consulta, mesmo sendo SQL constante do código.
 - Períodos (`:ini`/`:fim`) são expressões `TRUNC(SYSDATE...)` constantes montadas no código —
   não existe input de usuário neste serviço.
 - Cores normalizadas para o contrato (VERMELHO/AMARELO/VERDE/AZUL/SEM_CLASSIFICACAO);

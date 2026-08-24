@@ -10,7 +10,7 @@ flowchart TB
     S[(schema smsmarica)]
   end
 
-  subgraph server [SMSMarica.server · .NET 10]
+  subgraph server [SMSMais.server · .NET 10]
     Api[SMSMais.Api · controllers MVC + Scalar]
     Core[SMSMais.Core · services + DTOs + validators]
     Data[SMSMais.Data · POCOs + DbContext + migrations]
@@ -36,12 +36,12 @@ flowchart TB
 
 | Subprojeto | Responsabilidade | Não é responsável por |
 |------------|------------------|------------------------|
-| `SMSMarica.server` | API REST, regras de negócio, persistência, geração de sessões a partir da periodicidade, alocação em assentos, autenticação | UI de qualquer espécie, integração direta com WhatsApp/Waze |
+| `SMSMais.server` | API REST, regras de negócio, persistência, geração de sessões a partir da periodicidade, alocação em assentos, autenticação | UI de qualquer espécie, integração direta com WhatsApp/Waze |
 | `SMSMais.front` | Painel administrativo web (operador + gestor), dashboards | Uso por paciente ou motorista final |
 | `SMSMarica.cidadao.app` | App do paciente/acompanhante — cadastro, agenda, confirmação, ETA, avaliação | Cadastros administrativos, edição de rotas |
 | `SMSMarica.agente.app` | App do motorista (Android) — rotas do dia, postagem de GPS, geofencing, navegação externa | Cadastros administrativos |
 
-Todos os clientes consomem **exclusivamente** a API do `SMSMarica.server`. Clientes não conversam entre si nem acessam o banco diretamente.
+Todos os clientes consomem **exclusivamente** a API do `SMSMais.server`. Clientes não conversam entre si nem acessam o banco diretamente.
 
 ## 3. Arquitetura do backend — 3 projetos (Data + Core + Api)
 
@@ -50,7 +50,7 @@ Todos os clientes consomem **exclusivamente** a API do `SMSMarica.server`. Clien
 ### 3.1 Layout
 
 ```
-SMSMarica.server/
+SMSMais.server/
 ├── src/
 │   ├── SMSMais.Data/    (POCOs + DbContext + Configurations + Migrations)
 │   ├── SMSMais.Core/    (services + DTOs + validators + mappers)
@@ -141,7 +141,7 @@ Um único `SmsMaisDbContext` aponta para o schema `smsmarica`. Tabelas usam pref
 
 | | Stack | Versão alvo |
 |---|---|---|
-| `SMSMarica.server` | ASP.NET Core + EF Core + PostgreSQL | .NET 10 (LTS) |
+| `SMSMais.server` | ASP.NET Core + EF Core + PostgreSQL | .NET 10 (LTS) |
 | `SMSMais.front` | React + Vite + TypeScript | Node LTS vigente |
 | `SMSMarica.cidadao.app` | Flutter | Stable mais recente |
 | `SMSMarica.agente.app` | Flutter, Android only | Stable mais recente |

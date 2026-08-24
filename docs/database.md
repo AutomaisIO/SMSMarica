@@ -61,7 +61,7 @@ Cada módulo do backend tem seu próprio `DbContext` apontando para `smsmarica`.
 - O Host aplica migrations na inicialização em ordem determinística (módulos com dependência vêm depois dos dependidos — mas como módulos **não** compartilham tabelas, a ordem importa pouco).
 - Em ambiente de teste, migrations rodam contra Postgres real via TestContainers.
 
-### Comando padrão (a partir de `SMSMarica.server/`)
+### Comando padrão (a partir de `SMSMais.server/`)
 
 ```bash
 dotnet ef migrations add <Nome> \

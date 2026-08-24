@@ -1,5 +1,5 @@
 [Unit]
-Description=SMSMarica Agente IA (Claude Code)
+Description=SMSMais Agente IA (Claude Code)
 After=network.target
 
 [Service]

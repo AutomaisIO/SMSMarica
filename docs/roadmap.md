@@ -47,7 +47,7 @@ gantt
 **Entregas:** D1, S1, S2.1..S2.5, F1, C1, A1 (ver plano).
 
 **Critério de pronto:**
-- `SMSMarica.server` sobe e expõe Swagger com CRUDs de: Pacientes, Unidades, Veículos, Motoristas, Avaliações, Identidade.
+- `SMSMais.server` sobe e expõe Swagger com CRUDs de: Pacientes, Unidades, Veículos, Motoristas, Avaliações, Identidade.
 - Auth JWT operando para os 4 perfis.
 - `SMSMais.front` conecta, autentica, lista pacientes.
 - Cada app Flutter buildando e logando com mock/real.
@@ -122,7 +122,7 @@ gantt
 - **IA-4 (Conhecimento + RAG)** — base de conhecimento `.md` versionada no repo, espelhada em `smsmarica.ia_conhecimento*` (chunks + embeddings em pgvector).
 - **IA-5 (Governança/aprendizado)** — auto-correção de query falha → `ia_aprendizado` (Origem=Auto, ativo) + histórico em `ia_correcao`, rastreável e removível pela Configuração.
 
-**Dependência:** M1 estável (RBAC/`ModuloPermissao`, infra do `SMSMarica.server`). Independente de M2..M7 — pode rodar em paralelo. Acesso de rede ao Oracle Salux a partir do server é pré-requisito de IA-2.
+**Dependência:** M1 estável (RBAC/`ModuloPermissao`, infra do `SMSMais.server`). Independente de M2..M7 — pode rodar em paralelo. Acesso de rede ao Oracle Salux a partir do server é pré-requisito de IA-2.
 
 **Risco:** LGPD de PII em perguntas que viram embeddings na Voyage (alternativa: embeddings locais); garantia read-only absoluta no Salux PRODUCAO.
 
@@ -140,7 +140,7 @@ gantt
 ## Próximos passos imediatos (checklist)
 
 - [x] D1 (docs base + ADR-0004)
-- [x] **Refator R1** — `SMSMarica.server` reescrito como 3 projetos (Data + Core + Api + Tests).
+- [x] **Refator R1** — `SMSMais.server` reescrito como 3 projetos (Data + Core + Api + Tests).
 - [x] **R2 — CRUD completo das 9 entidades** (Pacientes, Unidades, Motoristas, Avaliacoes, Usuarios, Veiculos+Fileiras, Tratamentos+Periodicidade, Rotas, Rastreamento Pontos+Geofences+Eventos). Services chamando DbContext direto, controllers MVC, exceções tipadas → ProblemDetails.
 - [x] C1 (scaffold `SMSMarica.cidadao.app` — Flutter, login mock + perfil consumindo `GET /pacientes/{id}`)
 - [x] A1 (scaffold `SMSMarica.agente.app` — Flutter Android-only)
@@ -151,4 +151,4 @@ gantt
 
 Para implementar, p.ex., **Unidades** completa em outra sessão:
 
-> Implementar CRUD completo da entidade **Unidades** no `SMSMarica.server`. Use `SMSMais.Core/Pacientes/*` + `SMSMais.Api/Controllers/PacientesController.cs` como template. POCO já existe em `Data/Entities/Unidade.cs` e configuração em `Data/Configurations/UnidadeConfiguration.cs`. Substituir o skeleton em `Core/Unidades/` por implementação completa: DTOs (Lista/Detalhe/Cadastrar/Atualizar), Service com CRUD via `SmsMaisDbContext`, Validators FluentValidation, Mapper Mapperly. Depois substituir `Controllers/UnidadesController.cs` por controller MVC com 5 endpoints. Critério de pronto: `dotnet build` verde, ao menos 4 testes em `tests/SMSMais.Tests/Unidades/`.
+> Implementar CRUD completo da entidade **Unidades** no `SMSMais.server`. Use `SMSMais.Core/Pacientes/*` + `SMSMais.Api/Controllers/PacientesController.cs` como template. POCO já existe em `Data/Entities/Unidade.cs` e configuração em `Data/Configurations/UnidadeConfiguration.cs`. Substituir o skeleton em `Core/Unidades/` por implementação completa: DTOs (Lista/Detalhe/Cadastrar/Atualizar), Service com CRUD via `SmsMaisDbContext`, Validators FluentValidation, Mapper Mapperly. Depois substituir `Controllers/UnidadesController.cs` por controller MVC com 5 endpoints. Critério de pronto: `dotnet build` verde, ao menos 4 testes em `tests/SMSMais.Tests/Unidades/`.

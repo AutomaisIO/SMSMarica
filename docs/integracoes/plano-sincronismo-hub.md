@@ -273,7 +273,7 @@ O achado é, por si só, a justificativa do pré-check — e do gate de bancada 
 
 | Build | Resultado | Conforme a régua da casa (0/0)? |
 |---|---|---|
-| `SMSMarica.server` — dotnet build | 0 erros, 0 warnings (2m00s) | **sim** |
+| `SMSMais.server` — dotnet build | 0 erros, 0 warnings (2m00s) | **sim** |
 | `Automais.Fhir` — dotnet build | 0 erros, **2 warnings CS8604** (`UpsertPorIdentifierTests.cs:77` e `:123`) | **não** — corrigir antes do commit |
 | `SMSMais.front` — npm run build | tsc 0 erros; warnings não-bloqueantes (chunk 5,3 MB, imports mistos) | sim (com ressalva do chunk) |
 
@@ -487,7 +487,7 @@ manual** (o deploy não aplica — já custou caro 3 vezes), **conferir
 | 1 | **Commit fatiado por frente** (motor server / hub / front), sem deploy | cuidado com o snapshot do EF compartilhado entre frentes — commitar só o próprio hunk; `git status` limpo para esta frente |
 | 2 | **Bancada Maestro**: aplicar as 2 migrations + backfill em schemas com cópia de dados; medir o tempo dos CREATE INDEX; ensaiar rollback | contagens antes/depois batendo; **0 linhas vivas com identifier NULL em encounter, document_reference E condition** (a dupla do achado nº 1: BAA editado duplica Encounter **e** a Condition `:cond`); **decisão formal registrada** para o legado de medication_request/observation (derivação impossível pelo content → ou cutover documentado com purga ou convivência com órfãos); tempo de índice conhecido |
 | 3 | **Deploy hub (Automais.Fhir)**: migration manual via psql/bundle (índices CONCURRENTLY), depois o backfill, depois o serviço | `fhir."__EFMigrationsHistory"` tem a `20260727020900`; smoke: `PUT ?identifier=` sobre registro legado **atualiza** (não cria); `GET ?identifier=` devolve no máximo 1 |
-| 4 | **Deploy server (SMSMarica.server)**: migration `20260727122701` manual; serviço sobe com o motor **inerte** (agenda vazia) | `smsmarica.__migrations` confere; tabela de agenda vazia; zero runs espontâneos por 24h |
+| 4 | **Deploy server (SMSMais.server)**: migration `20260727122701` manual; serviço sobe com o motor **inerte** (agenda vazia) | `smsmarica.__migrations` confere; tabela de agenda vazia; zero runs espontâneos por 24h |
 | 5 | **Ligar a agenda com janela** (ex.: madrugada, intervalo 30 min) — OK explícito | primeiro run agendado completo sem Erro; diagnóstico origem×hub coerente; query de duplicatas (identifier com >1 linha viva) = **0** |
 | 6 | **Observar** N ciclos (sugestão: 3 dias) | falhas consecutivas = 0; marcas avançando; sem crescimento anômalo de tombstones |
 | 7 | **Reconciliação noturna**: um Completo controlado (sem ApagarAntes) para fechar o gap 06/06→hoje e a metade da base acima do cursor 182576 — **é este passe que backfilla a unidade no estoque**: com a §4.1-3 no lugar, cada Encounter reescrito por upsert sai com `serviceProvider`, sem passo extra | contagens origem×hub batendo no diagnóstico; **3 Organizations vivas no hub** (criadas pelo próprio run); amostra de Encounters antigos reescritos carrega `serviceProvider`; duração medida (última referência: 12,8h — atenção ao ORA-01555, achado baixo da §2.2) |

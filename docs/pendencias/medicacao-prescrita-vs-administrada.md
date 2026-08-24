@@ -28,7 +28,7 @@ Fluxo canônico: **Request → Dispense → Administration**. O "MAR" (o que foi
 
 - **Hub (`Automais.Fhir`):** tem `MedicationRequest` **e** `MedicationAdministration` (entidade `MedicationAdministrationRow` inclusive documenta "APRAZAMENTO do Salux"). **Não** tem `MedicationDispense`.
 - **Importador (`Salux/scripts/importar_atendimentos_fhir.py`):** mapeia **só** `PRESC_BAA_OPC_PROD → MedicationRequest` (1 por item). **`MedicationAdministration` está modelado mas vazio** — nenhum script o popula.
-- **Backend (`SMSMarica.server`):** `AtendimentosService` lê apenas `MedicationRequest` por Encounter (`AtendimentoDto.Medicamentos`).
+- **Backend (`SMSMais.server`):** `AtendimentosService` lê apenas `MedicationRequest` por Encounter (`AtendimentoDto.Medicamentos`).
 - **Front:** mostra os medicamentos (prescritos) num bloco `SecaoMedicamentos` por fora do card; a impressão/PDF (`imprimirDocumento.ts`) já embute o bloco "Prescrição / Medicamentos" no documento.
 
 ## Mapeamento Salux → FHIR

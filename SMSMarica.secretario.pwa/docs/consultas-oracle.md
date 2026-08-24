@@ -1,6 +1,6 @@
 # Consultas Oracle do Painel do Secretário
 
-Todas validadas contra o Oracle PROD do Salux (`10.50.0.18:1521/ORASX01`, schema `INFOSAUDE`) em 24/07/2026, com a conta com acesso de leitura ao schema. **Execução sempre read-only**: `SET TRANSACTION READ ONLY` + guard de SQL (só SELECT/WITH), mesmo padrão do `SaluxOracleFonte` do SMSMarica.server.
+Todas validadas contra o Oracle PROD do Salux (`10.50.0.18:1521/ORASX01`, schema `INFOSAUDE`) em 24/07/2026, com a conta com acesso de leitura ao schema. **Execução sempre read-only**: `SET TRANSACTION READ ONLY` + guard de SQL (só SELECT/WITH), mesmo padrão do `SaluxOracleFonte` do SMSMais.server.
 
 Hospital fixo: `cd_hospital = 1` (HMCML). UPA Inoã (2) e PA Santa Rita (3) existem na base mas estão **sem movimento** — não incluir.
 

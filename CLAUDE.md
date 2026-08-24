@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository state
 
-**Multi-project monorepo.** Backend `SMSMarica.server` está em **3 projetos** (Data + Core + Api) + 1 de testes — ver [ADR-0004](./docs/adr/0004-arquitetura-tres-projetos.md). CRUD coberto bem além das 9 entidades originais (Pacientes, Unidades, Motoristas, Avaliacoes, Usuarios, Veiculos, Tratamentos, Rotas, Rastreamento) — também Laudos, SolicitacoesExame, Procedimentos SIGTAP, Médicos, Perfis, Translados, Tipos de Exame, etc.
+**Multi-project monorepo.** Backend `SMSMais.server` está em **3 projetos** (Data + Core + Api) + 1 de testes — ver [ADR-0004](./docs/adr/0004-arquitetura-tres-projetos.md). CRUD coberto bem além das 9 entidades originais (Pacientes, Unidades, Motoristas, Avaliacoes, Usuarios, Veiculos, Tratamentos, Rotas, Rastreamento) — também Laudos, SolicitacoesExame, Procedimentos SIGTAP, Médicos, Perfis, Translados, Tipos de Exame, etc.
 
 **Demais subprojetos no monorepo** (nem todos no README/stack antigos):
 - `SMSMais.front` — **painel web já implementado** (não é mais README-only): React + Vite + TS com ~20 features em `src/features/` (auth, pacientes, laudos, solicitacoes-exame, ia, pacs, procedimentos-sigtap, medicos, perfis, rastreamento, translados, tratamentos, unidades, usuarios, veiculos…).
@@ -66,7 +66,7 @@ As regras abaixo não podem ser violadas sem novo ADR.
 
 | | Stack | Observação |
 |---|---|---|
-| `SMSMarica.server` | .NET 10 LTS, ASP.NET Core, EF Core 10, PostgreSQL | CPM em `Directory.Packages.props`. Controllers MVC + FluentValidation auto + Mapperly + Serilog. xUnit + Testcontainers (precisa Docker pra rodar testes). |
+| `SMSMais.server` | .NET 10 LTS, ASP.NET Core, EF Core 10, PostgreSQL | CPM em `Directory.Packages.props`. Controllers MVC + FluentValidation auto + Mapperly + Serilog. xUnit + Testcontainers (precisa Docker pra rodar testes). |
 | `Automais.Fhir` | .NET 10, EF Core + Npgsql, Firely SDK (`Hl7.Fhir.R4`), PostgreSQL (schema `fhir`, JSONB) | Solução própria (`Automais.Fhir.slnx`). Serviço FHIR autônomo ([ADR-0010](./docs/adr/0010-servico-fhir-autonomo.md)), em prod na porta 5081. |
 | `SMSMais.front` | React + Vite + TypeScript, Tailwind | **Implementado** (~20 features). Tema vermelho/branco (logo Maricá horizontal). npm (`package-lock.json`). |
 | `SMSMais.EquipamentoSim` | Python 3.11+, `pynetdicom`/`pydicom`, Typer CLI | Simulador DICOM para o ciclo Solicitação→Worklist→Execução. |
@@ -78,7 +78,7 @@ As regras abaixo não podem ser violadas sem novo ADR.
 
 ```bash
 # Backend
-cd SMSMarica.server
+cd SMSMais.server
 dotnet build                                       # 0 erros, 0 warnings esperado
 dotnet test                                        # requer Docker para Testcontainers
 dotnet run --project src/SMSMais.Api             # http://localhost:5080

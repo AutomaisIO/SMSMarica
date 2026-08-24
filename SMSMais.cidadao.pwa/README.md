@@ -41,7 +41,7 @@ Canal de contato/Encarregado (LGPD): **contato@smsmarica.online**.
 
 ## Backend (pendente)
 
-Os endpoints de cidadão/paciente ainda **não existem** no `SMSMarica.server` (marcados com
+Os endpoints de cidadão/paciente ainda **não existem** no `SMSMais.server` (marcados com
 `TODO(FT7)`):
 
 - `POST /auth/paciente/solicitar-otp` `{ cpf }`

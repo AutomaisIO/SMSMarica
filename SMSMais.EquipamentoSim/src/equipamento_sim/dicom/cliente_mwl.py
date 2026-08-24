@@ -1,6 +1,6 @@
 """Cliente C-FIND para Unified Worklist (UPS).
 
-O backend SMSMarica grava items de worklist via UPS-RS (POST /workitems no AE
+O backend SMSMais grava items de worklist via UPS-RS (POST /workitems no AE
 WORKLIST). Isso fica disponível em DICOM como **UPS Pull** SOP Class, NÃO
 como Modality Worklist clássica (MWL). Por isso usamos UPS C-FIND aqui — o
 dcm4chee não converte UPS→MWL automaticamente.
@@ -186,7 +186,7 @@ def _para_item(ds: Dataset) -> ItemWorklist:
 
 
 def _extrair_modalidade(ds: Dataset) -> str:
-    # Backend SMSMarica grava em ScheduledStationClassCodeSequence (0040,4026).
+    # Backend SMSMais grava em ScheduledStationClassCodeSequence (0040,4026).
     # Mantemos os outros como fallback para outros RIS.
     for nome in (
         "ScheduledStationClassCodeSequence",

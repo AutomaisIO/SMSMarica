@@ -5,7 +5,7 @@ namespace SMSMarica.Secretario.Api.Oracle;
 /// <summary>
 /// Guarda read-only do SQL: garante que é UM ÚNICO SELECT (ou WITH/EXPLAIN)
 /// e bloqueia qualquer token de escrita (DML/DDL/DCL/TCL) ou múltiplos statements.
-/// Espelha o <c>SqlReadOnlyGuard</c> do SMSMarica.server (que por sua vez espelha
+/// Espelha o <c>SqlReadOnlyGuard</c> do SMSMais.server (que por sua vez espelha
 /// <c>Salux/scripts/_guard.py</c>) — peca pela segurança (aceita falso positivo se um
 /// token bloqueado aparecer dentro de string literal). Aqui as consultas são constantes
 /// do código, mas o guard roda mesmo assim: Oracle é produção viva de hospital.

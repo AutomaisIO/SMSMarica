@@ -17,7 +17,7 @@ var fhirMaxPool = builder.Configuration.GetValue<int?>("Db:MaxPoolSize");
 if (!string.IsNullOrWhiteSpace(fhirConn))
 {
     // search_path inclui smsmarica para que a função unaccent() (extensão instalada no schema
-    // smsmarica pela migration do SMSMarica.server, no mesmo banco) resolva na busca de paciente
+    // smsmarica pela migration do SMSMais.server, no mesmo banco) resolva na busca de paciente
     // por nome. As tabelas do hub são qualificadas (schema fhir via HasDefaultSchema), então
     // manter fhir/public no path preserva o comportamento atual.
     var csb = new Npgsql.NpgsqlConnectionStringBuilder(fhirConn) { SearchPath = "fhir, smsmarica, public" };

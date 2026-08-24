@@ -84,7 +84,7 @@ def comando(
     if ok:
         console.print(f"[green]✓[/green] {msg}")
         console.print(
-            "[dim]O SMSMarica detectará o study no próximo polling QIDO-RS (~30s) "
+            "[dim]O SMSMais detectará o study no próximo polling QIDO-RS (~30s) "
             "e marcará a solicitação como Realizada.[/dim]"
         )
     else:

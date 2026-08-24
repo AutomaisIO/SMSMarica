@@ -135,4 +135,4 @@ Skill: `~/.claude/skills/salux-capturar-tela/SKILL.md`.
 
 ## Roadmap (não detalhado aqui)
 
-Pós-discovery: backend de leitura (provavelmente .NET seguindo padrão SMSMarica.server, ver `../CLAUDE.md`) + React+Vite consumindo. ADR ainda não escrito. **Nenhuma decisão arquitetural sem novo ADR no monorepo SMSMarica.**
+Pós-discovery: backend de leitura (provavelmente .NET seguindo padrão SMSMais.server, ver `../CLAUDE.md`) + React+Vite consumindo. ADR ainda não escrito. **Nenhuma decisão arquitetural sem novo ADR no monorepo SMSMarica.**

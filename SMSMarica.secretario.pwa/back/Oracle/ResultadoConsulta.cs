@@ -1,6 +1,6 @@
 namespace SMSMarica.Secretario.Api.Oracle;
 
-/// <summary>Resultado tabular de uma consulta Oracle (mesmo shape do SMSMarica.server).</summary>
+/// <summary>Resultado tabular de uma consulta Oracle (mesmo shape do SMSMais.server).</summary>
 public sealed record ResultadoConsulta(
     bool Ok,
     IReadOnlyList<string> Colunas,

@@ -9,7 +9,7 @@ from equipamento_sim.comandos import mwl as mwl_cmd
 
 app = typer.Typer(
     name="equipamento",
-    help="Simulador de equipamento DICOM para o SMSMarica.",
+    help="Simulador de equipamento DICOM para o SMSMais.",
     no_args_is_help=True,
     add_completion=False,
 )

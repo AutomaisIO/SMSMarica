@@ -1,10 +1,10 @@
-name: Deploy SMSMarica.aiengine
+name: Deploy SMSMais.aiengine
 
 on:
   push:
     branches: [main]
     paths:
-      - 'SMSMarica.aiengine/**'
+      - 'SMSMais.aiengine/**'
       - '.github/workflows/deploy-aiengine.yml'
   workflow_dispatch: {}
 
@@ -25,7 +25,7 @@ jobs:
           tar -czf smsmarica-aiengine.tar.gz \
             --exclude='__pycache__' --exclude='*.pyc' \
             --exclude='venv' --exclude='.venv' \
-            -C SMSMarica.aiengine .
+            -C SMSMais.aiengine .
           ls -la smsmarica-aiengine.tar.gz
 
       - name: Copy artifact to server (SCP)

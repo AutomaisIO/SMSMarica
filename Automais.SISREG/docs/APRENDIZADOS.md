@@ -1,7 +1,7 @@
 # SISREG III — aprendizados da integração
 
 > Laboratório isolado (Python) para mapear o SISREG antes de portar o motor
-> para o `SMSMarica.server`. Fonte: `https://sisregiii.saude.gov.br`.
+> para o `SMSMais.server`. Fonte: `https://sisregiii.saude.gov.br`.
 
 ## Versão do sistema (observada em 2026-07-01)
 
@@ -257,7 +257,7 @@ janelas curtas (1 semana), execução espaçada, e/ou preferir o
 **É a MELHOR fonte para materializar agenda** — melhor que raspar o `cons_agendas`. Medido no CDT,
 mesmo par profissional × procedimento, 419 registros em julho: **1 requisição** contra **9** da tela
 paginada de 50 em 50. E o arquivo ainda traz SIGTAP, datas de solicitação/regulação e endereço, que
-a tela de agenda não informa. É a fonte que o motor do `SMSMarica.server` usa (ADR-0040).
+a tela de agenda não informa. É a fonte que o motor do `SMSMais.server` usa (ADR-0040).
 
 **Formulário** — `GET /cgi-bin/expo_solicitacoes` e depois `POST` no mesmo caminho:
 
@@ -418,7 +418,7 @@ Nunca chamar `login()` em loop.
 ⚠️ **Implicação de arquitetura (confirmada na prática 2026-07-01):** como a sessão
 é única, quando um humano loga com o mesmo operador, a sessão do robô **morre** — e
 vice-versa. Sintoma sutil: chamadas ainda "funcionam" (retornam página logada) mas
-**AJAX de dados vem vazio**. Por isso o motor no `SMSMarica.server` **precisa de uma
+**AJAX de dados vem vazio**. Por isso o motor no `SMSMais.server` **precisa de uma
 credencial de operador DEDICADA**, exclusiva do robô, para não brigar com os
 operadores humanos. Definir esse operador com a SMS antes do go-live.
 
@@ -441,4 +441,4 @@ operadores humanos. Definir esse operador com a SMS antes do go-live.
 - [ ] Implementar paginação completa + parser das colunas → JSON/CSV.
 - [ ] Testar `expo_solicitacoes` (txt) após as 15h.
 - [ ] **Provisionar credencial de operador DEDICADA** para o robô (sessão única).
-- [ ] Portar o motor validado para `SMSMarica.server`.
+- [ ] Portar o motor validado para `SMSMais.server`.

@@ -18,4 +18,4 @@ Aplicativo **Flutter** destinado ao **cidadão / paciente** (e uso associado ao 
 
 ## Relação com o restante do ecossistema
 
-Consome a API do **`SMSMarica.server`**. Cadastros e parametrizações feitas pelas equipes ocorrem no **`SMSMais.front`**; o motorista opera pelo **`SMSMarica.agente.app`**.
+Consome a API do **`SMSMais.server`**. Cadastros e parametrizações feitas pelas equipes ocorrem no **`SMSMais.front`**; o motorista opera pelo **`SMSMarica.agente.app`**.

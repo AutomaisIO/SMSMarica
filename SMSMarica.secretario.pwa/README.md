@@ -111,7 +111,7 @@ defasado sem sair do ar.
 
 ## Decisões
 
-- **Serviço standalone, fora do SMSMarica.server** — isolamento de carga e de
+- **Serviço standalone, fora do SMSMais.server** — isolamento de carga e de
   deploy: um painel público não pode competir por pool/threads com o sistema
   interno, nem um deploy do painel derrubar o server (e vice-versa). Mesmo
   precedente do Automais.Fhir ([ADR-0010](../docs/adr/0010-servico-fhir-autonomo.md)).

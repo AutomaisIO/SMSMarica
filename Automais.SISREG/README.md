@@ -2,7 +2,7 @@
 
 Sandbox **isolado** (Python) para mapear e documentar a integração com o
 `sisregiii.saude.gov.br` (login, sessão, menus, endpoints) **antes** de portar o
-motor validado para o `SMSMarica.server` (.NET). Isolado de propósito: dá pra
+motor validado para o `SMSMais.server` (.NET). Isolado de propósito: dá pra
 testar/iterar sem depender de deploy.
 
 ## Setup

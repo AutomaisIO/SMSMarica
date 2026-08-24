@@ -1,6 +1,6 @@
 # SMSMais.front
 
-Painel web do **SMS Maricá**. React + Vite + TypeScript consumindo `SMSMarica.server`.
+Painel web do **SMS Maricá**. React + Vite + TypeScript consumindo `SMSMais.server`.
 
 ## O que é
 
@@ -9,7 +9,7 @@ Aplicação web administrativa e operacional:
 - **Operador:** foco em execução (cadastros, alocações, conferências).
 - **Gestor:** foco em visão gerencial e relatórios (a partir do marco M6).
 
-Consome exclusivamente a API do [`SMSMarica.server`](../SMSMarica.server/README.md). Os aplicativos Flutter (cidadão e agente) atendem públicos distintos e não substituem este painel.
+Consome exclusivamente a API do [`SMSMais.server`](../SMSMais.server/README.md). Os aplicativos Flutter (cidadão e agente) atendem públicos distintos e não substituem este painel.
 
 ## Stack
 
@@ -32,7 +32,7 @@ npm run dev        # http://localhost:5173
 O Vite faz proxy de `/api/*` para `http://localhost:5080` (backend local).
 Para apontar para outra URL, copie `.env.example` para `.env.local` e ajuste `VITE_API_BASE_URL`.
 
-Com o `SMSMarica.server` rodando (`dotnet run --project SMSMarica.server/src/Host/SMSMarica.Api`), faça login (mock) e acesse **Operador → Pacientes** para cadastrar e consultar pacientes contra o backend real.
+Com o `SMSMais.server` rodando (`dotnet run --project SMSMais.server/src/Host/SMSMarica.Api`), faça login (mock) e acesse **Operador → Pacientes** para cadastrar e consultar pacientes contra o backend real.
 
 ## Estrutura
 

@@ -1,5 +1,5 @@
 """
-Configuração do motor de Agente IA do SMSMarica.
+Configuração do motor de Agente IA do SMSMais.
 
 Diferente do Automais.IO, aqui NÃO existe um arquivo de env central nem `shared/python`.
 Cada serviço tem o seu `/etc/<serviço>/env`, escrito pelo GitHub Actions a cada deploy.
@@ -123,7 +123,7 @@ HISTORY_RETENTION_DAYS = int(os.getenv("AIENGINE_HISTORY_RETENTION_DAYS", "30"))
 
 PROMPT_FILE = Path(os.getenv(
     "AIENGINE_PROMPT_FILE",
-    str(Path(__file__).parent / "prompts" / "smsmarica_system.md"),
+    str(Path(__file__).parent / "prompts" / "smsmais_system.md"),
 ))
 
 
