@@ -52,7 +52,7 @@ export function primeiroEUltimoNome(completo: string | null | undefined): string
  */
 export function useSessaoSerObrigatoria() {
   const { data: sessao } = useSessaoOperadorSer();
-  // Quem opera é o usuário do SMSMarica; o login do SER é credencial, não identificação de
+  // Quem opera é o usuário do SMSMais; o login do SER é credencial, não identificação de
   // pessoa — mostrar "56840827" não diz a ninguém quem está assinando.
   const nomeDoOperador = useAuth((e) => primeiroEUltimoNome(e.usuario?.nome));
   const [pedindoSenha, setPedindoSenha] = useState(false);

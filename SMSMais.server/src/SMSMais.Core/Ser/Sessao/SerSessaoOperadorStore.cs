@@ -11,7 +11,7 @@ public sealed record SerSessaoOperadorInfo(
     bool Autenticado, string? UsuarioSer, DateTime? AutenticadaEm, DateTime? ExpiraEm);
 
 /// <summary>
-/// A sessão de ESCRITA no SER, uma por operador do SMSMarica — em MEMÓRIA.
+/// A sessão de ESCRITA no SER, uma por operador do SMSMais — em MEMÓRIA.
 ///
 /// <para><b>Por que não dá para usar a credencial do banco.</b> Aquela é de <b>sincronismo</b>:
 /// serve para a varredura ler a fila. O SER carimba cada evento com o nome de quem fez, e foi
@@ -21,7 +21,7 @@ public sealed record SerSessaoOperadorInfo(
 /// e é trilha de auditoria de saúde pública.</para>
 ///
 /// <para><b>Por que memória e não banco.</b> Decisão do Bernardo (18/08/2026): a senha do SER de
-/// cada operador vive junto da sessão dele no SMSMarica e some quando ela some. Guardar em banco
+/// cada operador vive junto da sessão dele no SMSMais e some quando ela some. Guardar em banco
 /// criaria um cofre de credenciais pessoais do Estado — risco que a funcionalidade não paga.
 /// Consequência aceita: reiniciar a API derruba as sessões e cada operador reautentica.</para>
 ///
@@ -47,7 +47,7 @@ public interface ISerSessaoOperadorStore
     /// <summary>A sessão de escrita do operador, ou recusa nomeada para a tela pedir a senha.</summary>
     ISerWebSessao Exigir(string sessaoId);
 
-    /// <summary>Chamado no logout do SMSMarica: sair de lá é sair daqui.</summary>
+    /// <summary>Chamado no logout do SMSMais: sair de lá é sair daqui.</summary>
     void Encerrar(string sessaoId);
 }
 

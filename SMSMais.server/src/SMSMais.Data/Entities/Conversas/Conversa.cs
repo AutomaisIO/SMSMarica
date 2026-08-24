@@ -4,7 +4,7 @@ using SMSMais.Data.Entities.Notificacoes;
 namespace SMSMais.Data.Entities.Conversas;
 
 /// <summary>
-/// Uma conversa (thread) do chat WhatsApp multi-operador — transversal a todo o SMSMarica
+/// Uma conversa (thread) do chat WhatsApp multi-operador — transversal a todo o SMSMais
 /// (TFD, marcação, dúvidas, atendente). Agrupa as <see cref="MensagemWhatsApp"/> de um contato
 /// e carrega o estado de atendimento: dono responsável (sticky), unidade, janela de 24h e
 /// contador de não-lidas. No máximo uma conversa "viva" (Aberta/Pendente) por contato.

@@ -7,7 +7,7 @@ Dio criarDio() {
   final dio = Dio(
     BaseOptions(
       baseUrl: const String.fromEnvironment(
-        'SMSMARICA_API_BASE_URL',
+        'SMSMAIS_API_BASE_URL',
         defaultValue: 'https://localhost:5001',
       ),
       connectTimeout: const Duration(seconds: 10),

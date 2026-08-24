@@ -16,8 +16,8 @@
   </PropertyGroup>
 
   <PropertyGroup Label="Assembly">
-    <Company>Prefeitura Municipal de Maricá</Company>
-    <Product>SMSMarica</Product>
+    <Company>Automais</Company>
+    <Product>SMSMais</Product>
     <NeutralLanguage>pt-BR</NeutralLanguage>
   </PropertyGroup>
 

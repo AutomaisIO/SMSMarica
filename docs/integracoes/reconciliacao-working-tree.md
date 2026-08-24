@@ -105,8 +105,8 @@ tar -czf ~/Backups/smsmarica-wt-20260802.tgz --exclude=node_modules --exclude=bi
 git reset --mixed origin/main
 
 # 3. Restaurar os 2 arquivos do grupo C (a migration do rename)
-git checkout -- SMSMarica.server/src/SMSMais.Data/Migrations/20260731230018_RenomeiaMensageriaEGeoForaDoTfd.cs \
-                SMSMarica.server/src/SMSMais.Data/Migrations/20260731230018_RenomeiaMensageriaEGeoForaDoTfd.Designer.cs
+git checkout -- SMSMais.server/src/SMSMais.Data/Migrations/20260731230018_RenomeiaMensageriaEGeoForaDoTfd.cs \
+                SMSMais.server/src/SMSMais.Data/Migrations/20260731230018_RenomeiaMensageriaEGeoForaDoTfd.Designer.cs
 
 # 4. Conferir: o status agora deve mostrar SÓ o trabalho novo.
 #    Os 9 do grupo B somem (viram "sem alteração"); nenhuma deleção deve aparecer.
@@ -120,7 +120,7 @@ Depois disso, commit **fatiado por frente** — cada um com seu escopo de caminh
 | # | Frente | Caminhos | Deploy que dispara |
 |---|---|---|---|
 | 1 | Hub FHIR (upsert por identifier + Location + fail-fast) | `Automais.Fhir/**` | `deploy-fhir.yml` |
-| 2 | Motor de sincronismo + conciliação de identidade | `SMSMarica.server/src/SMSMarica.Core/Integracoes/Pep/**`, `Data/Entities/Pep/**`, `Data/Configurations/Pep/**`, `Api/Controllers/PepSincronizacaoController.cs`, `tests/.../Integracoes/Pep/**`, front `features/pep-sincronizacao/**` | `deploy-server.yml` + `deploy-front.yml` |
+| 2 | Motor de sincronismo + conciliação de identidade | `SMSMais.server/src/SMSMais.Core/Integracoes/Pep/**`, `Data/Entities/Pep/**`, `Data/Configurations/Pep/**`, `Api/Controllers/PepSincronizacaoController.cs`, `tests/.../Integracoes/Pep/**`, front `features/pep-sincronizacao/**` | `deploy-server.yml` + `deploy-front.yml` |
 | 3 | Painel de Início | ADR-0033/34/35 | idem |
 | 4 | Processo Regulatório | `Data/Entities/Regulacao/**` | idem |
 | 5 | Escopo fail-closed | `Core/Common/Unidades/**` | idem |

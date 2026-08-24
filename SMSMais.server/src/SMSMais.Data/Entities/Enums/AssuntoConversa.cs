@@ -1,7 +1,7 @@
 namespace SMSMais.Data.Entities.Enums;
 
 /// <summary>
-/// Assunto/categoria da conversa. O chat é transversal a todo o SMSMarica (TFD, marcação de
+/// Assunto/categoria da conversa. O chat é transversal a todo o SMSMais (TFD, marcação de
 /// consulta, dúvidas, atendente geral). Opcional — <c>null</c> = ainda não classificado.
 /// Serve para filtrar/organizar as filas; não gateia regras. Valor inteiro estável.
 /// </summary>

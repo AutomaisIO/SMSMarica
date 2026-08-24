@@ -15,7 +15,7 @@ public sealed class TenantToken
     public Guid TenantId { get; set; }
     public Tenant? Tenant { get; set; }
 
-    /// <summary>Para que serve, na tela. Ex.: "SMSMarica produção".</summary>
+    /// <summary>Para que serve, na tela. Ex.: "SMSMais produção".</summary>
     public required string Nome { get; set; }
 
     /// <summary>

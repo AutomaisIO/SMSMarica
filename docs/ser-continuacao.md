@@ -14,7 +14,7 @@ Documento de handoff. Quem retomar deve ler **este arquivo primeiro**, depois
 
 - Tabelas `ser_solicitacao`, `ser_evento`, `ser_gatilho`, `ser_varredura_execucao`,
   `ser_varredura_falha`.
-- Motor `SMSMarica.Core/Integracoes/SerWeb/` (sessão JSF/Seam, parsers, varredor, runner).
+- Motor `SMSMais.Core/Integracoes/SerWeb/` (sessão JSF/Seam, parsers, varredor, runner).
 - Telas `Regulação → SER` e `Regulação → Configuração` (aba SER + aba **SER — consulta direta**).
 - Permissões `RegulacaoSer = 54` e `RegulacaoConfiguracao = 51`.
 

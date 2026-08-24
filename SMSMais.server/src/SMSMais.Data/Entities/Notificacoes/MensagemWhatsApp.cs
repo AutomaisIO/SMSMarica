@@ -5,7 +5,7 @@ namespace SMSMais.Data.Entities.Notificacoes;
 
 /// <summary>
 /// Trilha de auditoria das mensagens WhatsApp (via Automais.Zap, payload no formato da Cloud API) — envios e recebimentos.
-/// É infraestrutura transversal do SMSMarica: serve a Central de Atendimento, as
+/// É infraestrutura transversal do SMSMais: serve a Central de Atendimento, as
 /// comunicações ao paciente e qualquer módulo que precise falar por WhatsApp. A
 /// idempotência do webhook se apoia em <see cref="WaMessageId"/>. Colunas
 /// <c>conversa_*</c> são aditivas (nullable): linhas legadas (anteriores ao módulo

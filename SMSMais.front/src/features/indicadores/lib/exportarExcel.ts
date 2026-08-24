@@ -1140,7 +1140,7 @@ export async function gerarXlsxIndicadores(dados: DadosExportacao): Promise<Blob
   // apuração e os totais continuam considerando só os ativos.
   const abas = dados.abas.filter((a) => a.itens.length > 0);
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'SMSMarica';
+  wb.creator = 'SMSMais';
   wb.created = new Date();
 
   const logoBase64 = await carregarLogoBase64();

@@ -10,7 +10,7 @@ namespace SMSMais.Tests.Integracoes;
 /// O ciclo de vida da sessão de ESCRITA no SER.
 ///
 /// <para>A regra que estes testes protegem: a credencial pessoal do operador no sistema do
-/// Estado é amarrada à <b>sessão</b> do SMSMarica (o <c>jti</c> do token), não ao usuário. Se
+/// Estado é amarrada à <b>sessão</b> do SMSMais (o <c>jti</c> do token), não ao usuário. Se
 /// alguém trocar a chave para o id do usuário "porque é mais simples", sair e voltar passa a
 /// herdar a credencial da sessão anterior — e "sair" deixa de significar sair.</para>
 /// </summary>

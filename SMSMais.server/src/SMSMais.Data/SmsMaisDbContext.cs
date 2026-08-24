@@ -175,7 +175,7 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     // Log de erros não tratados (500) com código de referência. Ver RegistroErro.
     public DbSet<RegistroErro> RegistrosErro => Set<RegistroErro>();
 
-    // Módulo Conversas — chat WhatsApp multi-operador, transversal a todo o SMSMarica.
+    // Módulo Conversas — chat WhatsApp multi-operador, transversal a todo o SMSMais.
     public DbSet<Conversa> Conversas => Set<Conversa>();
     public DbSet<ConversaEvento> ConversaEventos => Set<ConversaEvento>();
 

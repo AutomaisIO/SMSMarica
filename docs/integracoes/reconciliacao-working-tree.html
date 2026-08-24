@@ -65,7 +65,7 @@ li{margin:3px 0}p,li{max-width:75ch}
 <h1>--mixed reseta só HEAD e o índice; o disco fica intacto.</h1>
 <p>git reset --mixed origin/main</p>
 <h1>3. Restaurar os 2 arquivos do grupo C (a migration do rename)</h1>
-<p>git checkout -- SMSMarica.server/src/SMSMais.Data/Migrations/20260731230018_RenomeiaMensageriaEGeoForaDoTfd.cs \                 SMSMarica.server/src/SMSMais.Data/Migrations/20260731230018_RenomeiaMensageriaEGeoForaDoTfd.Designer.cs</p>
+<p>git checkout -- SMSMais.server/src/SMSMais.Data/Migrations/20260731230018_RenomeiaMensageriaEGeoForaDoTfd.cs \                 SMSMais.server/src/SMSMais.Data/Migrations/20260731230018_RenomeiaMensageriaEGeoForaDoTfd.Designer.cs</p>
 <h1>4. Conferir: o status agora deve mostrar SÓ o trabalho novo.</h1>
 <h1>Os 9 do grupo B somem (viram "sem alteração"); nenhuma deleção deve aparecer.</h1>
 <p>git status --porcelain | grep '^ D\|^D' || echo "OK: nenhuma deleção pendente"</p>
@@ -74,7 +74,7 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p>Depois disso, commit <strong>fatiado por frente</strong> — cada um com seu escopo de caminhos:</p>
 <div class="tw"><table><thead><tr><th>#</th><th>Frente</th><th>Caminhos</th><th>Deploy que dispara</th></tr></thead><tbody>
 <tr><td>1</td><td>Hub FHIR (upsert por identifier + Location + fail-fast)</td><td><code>Automais.Fhir/**</code></td><td><code>deploy-fhir.yml</code></td></tr>
-<tr><td>2</td><td>Motor de sincronismo + conciliação de identidade</td><td><code>SMSMarica.server/src/SMSMarica.Core/Integracoes/Pep/<strong></code>, <code>Data/Entities/Pep/</strong></code>, <code>Data/Configurations/Pep/<strong></code>, <code>Api/Controllers/PepSincronizacaoController.cs</code>, <code>tests/.../Integracoes/Pep/</strong></code>, front <code>features/pep-sincronizacao/**</code></td><td><code>deploy-server.yml</code> + <code>deploy-front.yml</code></td></tr>
+<tr><td>2</td><td>Motor de sincronismo + conciliação de identidade</td><td><code>SMSMais.server/src/SMSMais.Core/Integracoes/Pep/<strong></code>, <code>Data/Entities/Pep/</strong></code>, <code>Data/Configurations/Pep/<strong></code>, <code>Api/Controllers/PepSincronizacaoController.cs</code>, <code>tests/.../Integracoes/Pep/</strong></code>, front <code>features/pep-sincronizacao/**</code></td><td><code>deploy-server.yml</code> + <code>deploy-front.yml</code></td></tr>
 <tr><td>3</td><td>Painel de Início</td><td>ADR-0033/34/35</td><td>idem</td></tr>
 <tr><td>4</td><td>Processo Regulatório</td><td><code>Data/Entities/Regulacao/**</code></td><td>idem</td></tr>
 <tr><td>5</td><td>Escopo fail-closed</td><td><code>Core/Common/Unidades/**</code></td><td>idem</td></tr>
