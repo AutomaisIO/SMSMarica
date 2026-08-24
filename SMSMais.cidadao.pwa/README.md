@@ -1,4 +1,4 @@
-# SMSMarica.cidadao.pwa
+# SMSMais.cidadao.pwa
 
 **App do Cidadão** (PWA) do SMS Maricá — a saúde digital do município no bolso do cidadão.
 React + Vite + TypeScript, instalável (vite-plugin-pwa). Login por **CPF + código (OTP) no

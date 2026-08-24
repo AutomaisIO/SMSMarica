@@ -1,10 +1,10 @@
-name: Deploy SMSMarica.cidadao.pwa
+name: Deploy SMSMais.cidadao.pwa
 
 on:
   push:
     branches: [main]
     paths:
-      - 'SMSMarica.cidadao.pwa/**'
+      - 'SMSMais.cidadao.pwa/**'
       - '.github/workflows/deploy-app.yml'
   workflow_dispatch: {}
 
@@ -28,18 +28,18 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: SMSMarica.cidadao.pwa/package-lock.json
+          cache-dependency-path: SMSMais.cidadao.pwa/package-lock.json
 
       - name: Install
-        working-directory: SMSMarica.cidadao.pwa
+        working-directory: SMSMais.cidadao.pwa
         run: npm ci --no-audit --no-fund
 
       - name: Build
-        working-directory: SMSMarica.cidadao.pwa
+        working-directory: SMSMais.cidadao.pwa
         run: npm run build
 
       - name: Pack artifact
-        working-directory: SMSMarica.cidadao.pwa
+        working-directory: SMSMais.cidadao.pwa
         run: tar -czf ../smsmarica-app.tar.gz -C dist .
 
       - name: Copy artifact to server (SCP)
