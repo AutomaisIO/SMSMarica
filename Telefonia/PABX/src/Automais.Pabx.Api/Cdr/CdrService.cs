@@ -32,7 +32,7 @@ public interface ICdrService
 /// Lê a tabela cdr do MySQL local do Asterisk (cdr_mysql já ativo no servidor), só-leitura.
 /// calldate é wall-clock local do PABX (Brasília) e é devolvido como está — regra única
 /// de fuso do projeto: wall-clock não sofre conversão.
-/// É o alicerce do futuro histórico de chamadas por paciente no SMSMarica
+/// É o alicerce do futuro histórico de chamadas por paciente no SMSMais
 /// (correlação pelo telefone normalizado em dígitos).
 /// </summary>
 public sealed class CdrService(IConfiguration configuration) : ICdrService

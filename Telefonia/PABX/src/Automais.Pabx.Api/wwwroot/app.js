@@ -1,4 +1,4 @@
-// Página local do Automais.Pabx — teste/operação antes do menu no SMSMarica.
+// Página local do Automais.Pabx — teste/operação antes do menu no SMSMais.
 // JS puro, sem build. Toda chamada à API leva o header X-Api-Key.
 
 const $ = (sel) => document.querySelector(sel);

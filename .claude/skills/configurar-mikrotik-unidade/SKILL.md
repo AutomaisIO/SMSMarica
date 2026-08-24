@@ -158,6 +158,42 @@ Templates `.rsc` validados: `Telefonia/scripts/templates/hardening-hex.rsc` e
    ⇒ **ether4 dark = pare, faça só o upgrade (§0.1, janela de graça) e volte depois.**
    ⇒ E se o survey trouxer algo que **não** é `10.1.x.0/24` com DHCP `10.1.201.254`,
    desconfie de **cabeamento** antes de concluir que a unidade é exceção.
+
+0c. 🔌 **UNIDADE SEM LINK DA PREFEITURA — "cabos dobrados" (padrão desde 2026-08-10).**
+   Algumas unidades simplesmente não têm link corporativo; têm **um único link**. Nesses
+   casos **não se muda a arquitetura do MK**: dobra-se o cabo, ou seja, `ether1` **e**
+   `ether2` vão os dois para o roteador desse único link. A bridge transparente
+   `ether1↔ether4` continua existindo e o roteador do link segue sendo gateway/DHCP/DNS
+   da unidade, como se fosse a Prefeitura. O MK fica só como ponte + nó de VOIP.
+   Isso **substitui o desenho do TFD** (id=21), onde o MK virou gateway+DHCP+DNS da LAN
+   local: aquele desenho muda a LAN da unidade e dá trabalho pra desfazer; este não muda
+   nada, e no dia em que a Prefeitura chegar basta trocar o cabo da `ether1` e rodar a
+   FASE SITE normal. (O TFD fica como está — não vale mexer numa unidade viva só por
+   uniformidade.)
+
+   **Como reconhecer no survey** (validado no SRT I, 10/08): o torch da `ether1` volta com
+   a coluna `VLAN-ID` **vazia** e **zero** endereços `10.1.x.x` / `10.135.16.x` — só a
+   faixa do roteador do link; e o dhcp-client TEMP na `bridge-transparente` fecha no
+   **mesmo servidor/gateway que a `ether2` já usa**. Essa coincidência é a prova: as duas
+   portas estão no mesmo L2. ⚠️ Só concluir isso **depois** de confirmar o cabeamento
+   (§0b) — foi exatamente esse quadro que o CAPS III produziu com o cabo na porta errada.
+
+   **O que NÃO se aplica nessas unidades:**
+   - **Sem regras FAILOVER e sem DHCP de retaguarda** — não existe segundo caminho; o
+     "failover" seria do link para ele mesmo. Deixar o scheduler `FAILOVER-check`
+     **desabilitado** (com comentário dizendo o porquê) e o script no disco, inerte.
+   - **Sem IP do MK na LAN** (o `<IP_MK_LAN>` = `.254` do §2). O MK **já tem** endereço
+     nessa sub-rede pela `ether2`; um segundo IP da mesma rede na bridge poria duas
+     interfaces do MK no mesmo domínio de broadcast, com ambiguidade de ARP/rota e zero
+     ganho.
+   - **Sem liberar ssh/winbox por IP vindo da LAN.** Como a LAN *é* a rede do link
+     não-confiável, o pacote chega pela `ether2` e morre na `BLINDAGEM Connect` — e
+     afrouxar essa regra exporia a gestão ao wifi/ISP compartilhado. Gestão fica por
+     `automais-vpn`, `ether3` e **MAC-Winbox pela ether4** (L2, não depende de IP).
+
+   **O que continua valendo normalmente:** bridge transparente, túnel `wg-voip`, gateway
+   dos telefones `10.200.<ID>.1` na `bridge-transparente` (LAN untagged), blindagem §5 e
+   os dois WireGuards.
 1. Levantar a LAN local: sub-rede, **gateway real**, IP que o MK assume. Truque validado
    (CMI): **dhcp-client temporário na bridge-transparente** (`add-default-route=no
    use-peer-dns=no use-peer-ntp=no comment="TEMP survey LAN"`) revela sub-rede/gateway/DNS;
@@ -586,29 +622,41 @@ fica **sem internet nenhuma** — trocar "fura o proxy" por "não tem internet" 
 Assim, mesmo que uma transição falhe, o tick seguinte corrige em 5 segundos. Testar as **duas**
 direções antes de deixar em produção.
 
-### Estado dos MKs ativos — nivelado em 31/07/2026
+### Estado dos MKs ativos — nivelado em 31/07/2026, ampliado em 10/08/2026
 
 Padrão-alvo: **detecção v2** + **DHCP sempre ligado com delay (v3)** + **redirect `:53`
 alternado pelo script** + **conntrack limpo nas duas transições (v4)**.
 
-| Item do padrão | id=0 Regulação (CCR) | id=1 Péricles | id=3 CAPS III | id=4 CAPS AD | id=6 CDT | id=7 Boqueirão | id=10 CMI |
-|---|---|---|---|---|---|---|---|
-| VPN de gestão | `10.35.0.23` | `10.35.0.24` | `10.35.0.26` | `10.35.0.27` | `10.35.0.29` | `10.35.0.30` | `10.35.0.33` |
-| LAN | `10.3.74.0/24` | `10.1.19.0/24` | `10.1.55.0/24` | `10.1.96.0/24` **VLAN 1102** | `10.1.92.0/24` **VLAN 1092** | `10.1.108.0/24` | `10.1.18.0/24` |
-| Script | `failover-eth3-check` | `FAILOVER-ether1` | `FAILOVER-ether1` | `FAILOVER-ether1` | `FAILOVER-ether1` | `FAILOVER-ether1` | `FAILOVER-ether1` |
-| Detecção v2 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ *(era v1)* |
-| DHCP v3 (sempre ligado) | ✓ *(era liga/desliga)* | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ *(não existia)* |
-| DNS reais no escopo | ✓ *(era `8.8.8.8,1.1.1.1`)* | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Redirect `:53` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Conntrack v4 | ✓ | ✓ *(31/07)* | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Anti-bypass (MAC antigo) | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
-| RouterOS | 7.23.2 | 7.23.2 | 7.23.2 | 7.23.2 | 7.23.2 | 7.23.2 | 7.19.6 ⚠ |
+| Item do padrão | id=0 Regulação (CCR) | id=1 Péricles | id=3 CAPS III | id=4 CAPS AD | id=6 CDT | id=7 Boqueirão | id=10 CMI | id=11 CEREST | id=17 SAE |
+|---|---|---|---|---|---|---|---|---|---|
+| VPN de gestão | `10.35.0.23` | `10.35.0.24` | `10.35.0.26` | `10.35.0.27` | `10.35.0.29` | `10.35.0.30` | `10.35.0.33` | `10.35.0.34` | `10.35.0.40` |
+| LAN | `10.3.74.0/24` | `10.1.19.0/24` | `10.1.55.0/24` | `10.1.96.0/24` **VLAN 1102** | `10.1.92.0/24` **VLAN 1092** | `10.1.108.0/24` | `10.1.18.0/24` | `10.1.100.0/24` **VLAN 1100** | `10.1.162.0/24` **VLAN 1512** |
+| Script | `failover-eth3-check` | `FAILOVER-ether1` | `FAILOVER-ether1` | `FAILOVER-ether1` | `FAILOVER-ether1` | `FAILOVER-ether1` | `FAILOVER-ether1` | `FAILOVER-ether1` | `FAILOVER-ether1` |
+| Detecção v2 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ *(era v1)* | ✓ *(era v1)* | ✓ *(era v1)* |
+| DHCP v3 (sempre ligado) | ✓ *(era liga/desliga)* | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ *(não existia)* | ✓ | ✓ |
+| DNS reais no escopo | ✓ *(era `8.8.8.8,1.1.1.1`)* | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Redirect `:53` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Conntrack v4 | ✓ | ✓ *(31/07)* | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Anti-bypass (MAC antigo) | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| RouterOS | 7.23.2 | 7.23.2 | 7.23.2 | 7.23.2 | 7.23.2 | 7.23.2 | 7.19.6 ⚠ | **7.23.3** | **7.23.3** |
 
-> **Firmware do routerboard ≠ versão do pacote.** Em todos os MKs que subiram para 7.23.2 o
-> `/system routerboard print` continua com `current-firmware: 7.19.6` e `upgrade-firmware:
-> 7.23.2` — `/system package update install` **não** atualiza o bootloader. Verificado em
-> CDT e CAPS AD. Está assim na frota inteira e foi mantido de propósito; se um dia valer
-> subir, é `/system routerboard upgrade` + mais um reboot, e aí vale fazer em todos de uma vez.
+> **id=18 SRT I não entra nesta tabela**: é unidade **sem link da Prefeitura** (cabos
+> dobrados, §0c) — não tem failover, nem DHCP de retaguarda, nem IP do MK na LAN. Ver a
+> nota de exceção logo abaixo.
+
+> **Firmware do routerboard ≠ versão do pacote.** Em todos os MKs que subiram de versão o
+> `/system routerboard print` continua com `current-firmware: 7.19.6` e `upgrade-firmware`
+> igual à versão nova — `/system package update install` **não** atualiza o bootloader.
+> Verificado em CDT, CAPS AD, CEREST, SAE e SRT I. Está assim na frota inteira e foi
+> mantido de propósito; se um dia valer subir, é `/system routerboard upgrade` + mais um
+> reboot, e aí vale fazer em todos de uma vez.
+
+> ⚠️ **A `latest-version` do canal stable ANDA.** Em 10/08 ela já era **7.23.3**, não a
+> 7.23.2 em que a frota parou em julho. Ou seja: subir "para a latest" hoje deixa o MK um
+> patch à frente dos que subiram antes. Isso é esperado e aceito (a §0.1 manda ir para a
+> latest); não tente casar com a versão dos vizinhos. Sempre rodar
+> `/system package update check-for-updates once` + `print` e **relatar a versão que
+> realmente vai entrar** antes de instalar.
 
 > **id=1 Péricles nivelado em 31/07/2026.** Voltou a responder (`10.35.0.24`) e foi auditado:
 > estava melhor do que as células `?` sugeriam — já tinha detecção v2, DHCP v3 com DNS reais e
@@ -655,6 +703,33 @@ quadro imita *IP ocupado* ou *IP source guard na VLAN*. Não é nenhum dos dois.
 concluir qualquer coisa: `/ip arp remove [find interface=vlan<ID>-lan]` e repetir o ping.
 No CAPS AD isso custou uma rodada inteira de diagnóstico (teste com `.253`, comparação com
 o IP vindo do DHCP) até cair a ficha.
+
+**LAN tagged — id=11 CEREST (ATIVA 10/08/2026, `10.35.0.34`): VLAN 1100, `10.1.100.0/24`.**
+**LAN tagged — id=17 SAE (ATIVA 10/08/2026, `10.35.0.40`): VLAN 1512, `10.1.162.0/24`.**
+Terceira e quarta unidades tagged — com isso são **4 de 9**, e o cenário tagged deixa de
+vez de ser "exceção": é um dos dois resultados possíveis do passo 1 da FASE SITE. Mesmo
+desenho do CDT/CAPS AD em ambas: todo o L3 na interface VLAN (IP do MK `.254`, takeover
+do gw, takeover do DHCP `10.1.201.254`, redirects `:53`, `FAILOVER-dhcp` e o gateway dos
+telefones `10.200.<ID>.1`). Demais valores no padrão PMM (DHCP central `10.1.201.254`,
+DNS `10.135.16.119`/`.17`, `pmm.local`, lease 8h). Configs em
+`unidades-config/id11-cerest-site.rsc` e `id17-sae-site.rsc`.
+⚠️ **Os números das VLANs não seguem nenhuma série** — 1092, 1100, 1102, 1512. Não tente
+derivar do id nem "chutar pela vizinha": só o torch diz.
+⏱️ **No SAE o dhcp-client do survey levou ~50 s** para sair de `searching...`/`requesting...`
+e fechar em `bound` (o CEREST fechou em <35 s). É o mesmo relay lento da Prefeitura já
+documentado no Boqueirão. **Não concluir "essa VLAN não tem DHCP" antes de ~1 minuto** —
+com 15 s de espera o quadro é indistinguível de VLAN errada.
+
+**Exceção ao padrão — id=18 SRT I - Araçatiba (ATIVA 10/08/2026, `10.35.0.41`): unidade
+SEM link da Prefeitura, cabos dobrados.** Primeira unidade no desenho do §0c (que passa a
+ser o padrão para link único, no lugar do desenho do TFD). `ether1` e `ether2` estão os
+dois no roteador do único link (`192.168.0.1`, que segue sendo gateway/DHCP/DNS da
+unidade); a bridge transparente e o `wg-voip` continuam normais, com o gateway dos
+telefones `10.200.18.1/24` na `bridge-transparente` (LAN untagged). **Sem** regras
+FAILOVER, **sem** DHCP de retaguarda, **sem** IP do MK na LAN, **sem** liberação de
+ssh/winbox por IP local; scheduler `FAILOVER-check` **desabilitado** com o motivo no
+comentário e o script v1 inerte no disco. Gestão por `automais-vpn`/`ether3`/MAC-Winbox
+na ether4. Config em `unidades-config/id18-srt-i-site.rsc`.
 
 **Exceção ao padrão — id=21 TFD (ATIVA 30/07/2026, `10.35.0.44`):** a unidade **NÃO tem
 link da Prefeitura** — a Connect (ether2) é o único link ("failover permanente", decisão do
@@ -717,7 +792,25 @@ LAN física (pode não caber um segundo MK de borda).
   (script byte a byte, 0 objetos `FAILOVER` ligados, `FAILOVER-dhcp` com 0 leases, hub VOIP a
   112ms/0% perda, gw local a 3,4ms/0%). Teste de cabo é da equipe no local. Quando os aparelhos
   chegarem: IP fixo `.10-.200`, gw `10.200.3.1`, SIP `10.201.0.1`.
+- **id=11 CEREST e id=17 SAE — teste de failover pendente + nenhum telefone ainda.**
+  Regras criadas e validadas em repouso (script conferido byte a byte contra o `.rsc`,
+  0 objetos `FAILOVER` habilitados, `FAILOVER-dhcp` com 0 leases, `allow-remote-requests=no`,
+  gateway local respondendo e hub VOIP a ~111 ms / 0 % de perda). O teste de cabo é da
+  equipe no local. Quando os aparelhos chegarem: IP fixo `.10-.200`, gw `10.200.11.1` /
+  `10.200.17.1`, SIP `10.201.0.1`.
+- ✅ **id=18 SRT I — PRIMEIRO TELEFONE REGISTROU (13/08).** `Cisco CP-69xx`
+  (`70:CA:9B:5C:86:A8`) em `10.200.18.15`, **ramal 1801**, contexto `PLANO_HOSPITAIS`,
+  `sip show peers` → `OK (126 ms)`. É a primeira unidade do rollout hEX com ramal vivo
+  ponta a ponta (as demais seguem sem aparelho). Provisionamento feito **pelo painel
+  FalarMais durante a auditoria**: o `SEP70CA9B5C86A8.cnf.xml` nasceu às 10:52 no
+  `/var/lib/tftpboot` (dono `www-data`) — antes disso o telefone tomava `NAK File not
+  found` e subia no `XMLDefault.cnf.xml`. Nada de failover a testar (link único).
+  Demais aparelhos, quando chegarem: IP fixo `.10-.200`, gw `10.200.18.1`, SIP
+  `10.201.0.1`.
 - **Todas:** anti-bypass, se aprovada. ROS 7.19.6 restante: **id=10 CMI** e **id=21 TFD**.
+  (CEREST, SAE e SRT I subiram para 7.23.3 em 10/08, autorizados, logo apos a fase site —
+  cada MK fora ~1-2 min, config integra nos tres, device-mode preservado, os dois tuneis
+  com handshake em menos de 3 min.)
   **O upgrade com a unidade viva é mais barato do que a skill sugeria** — no CAPS AD (31/07) a
   janela dark tinha passado, o usuário autorizou subir no meio do expediente e o MK ficou fora
   **~2 min**, config íntegra, sem nenhum reflexo reportado. Continua valendo pegar a janela dark
@@ -769,6 +862,32 @@ Depois: testar SSH nos DOIS caminhos com conexão nova → se OK, remover `SAFET
   estiver entregando lease com o link bom, o `delay-threshold` não está pegando e ele está
   competindo com o DHCP da Prefeitura.
 - Hardening: gestão OK pelos 2 caminhos; `SAFETY-revert` removido; VOIP intacto.
+
+### Telefone não responde: desligado ou problema de rede? (1 comando)
+
+```
+/interface bridge host print where mac-address=<MAC do telefone>
+```
+
+**Vazio = o MK não está mais aprendendo o MAC ⇒ o aparelho está desligado/desplugado.**
+Não é rede, não é firewall, não é o túnel — e não adianta investigar do lado do hub. Se o
+MAC aparece mas o `/ping` falha, aí sim é L3 (IP/máscara/gateway do aparelho). Confirmado no
+SRT I em 13/08: o telefone respondia a 0,8 ms às 10:49, foi reprovisionado pelo painel às
+10:52, reiniciou e sumiu; `bridge host` vazio + `/ip arp` em `failed` fecharam o diagnóstico
+sem precisar de ninguém no local. Complementos baratos: `/ip firewall connection` ainda
+mostra a sessão SIP antiga (timeout de ~1 h — presença dela **não** prova telefone vivo) e
+`/interface ethernet print stats-detail where name=ether4` confirma o cabo
+(`rx-fcs-error=0`, `rx-drop=0`).
+
+⚠️ **Perda de pacote na `automais-vpn` NÃO é sintoma da unidade.** Medindo do PC em 13/08, o
+MK do SRT I deu **66 % de perda** e a vizinha 0 %; minutos depois o SRT I estava em 0 % e a
+perda tinha migrado para outra unidade. É ruído do caminho PC→automais.io, e chega a derrubar
+sessões SSH no meio da auditoria. **Antes de acusar o link de uma unidade, meça pelo
+`wg-voip` a partir do hub** (`ping 10.201.0.<id+10>` do `192.241.153.121`): os dois túneis
+saem pelo MESMO link físico, então um `wg-voip` limpo com `automais-vpn` sujo **inocenta a
+unidade** e joga o problema no lado do automais.io. No SRT I o `wg-voip` estava em
+0 % / 111 ms enquanto a gestão perdia 66 %. É a mesma assinatura da queda do Péricles em
+29/07 que ficou sem explicação.
 
 ## 7. Registrar
 
