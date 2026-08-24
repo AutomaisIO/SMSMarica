@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using SMSMarica.Core.Conversas;
 using SMSMarica.Core.Identidade;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Hubs;
 

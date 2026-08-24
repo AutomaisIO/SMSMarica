@@ -11,8 +11,8 @@ using SMSMarica.Core.SolicitacoesExame.Identificadores;
 using SMSMarica.Core.Telefones;
 using SMSMarica.Core.Worklist;
 using SMSMarica.Core.Erros;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
 using SMSMais.Tests.Infraestrutura;
 
 namespace SMSMais.Tests.Associacoes;
@@ -28,7 +28,7 @@ public class ConciliacaoStudyTests(PostgresFixture fixture)
 {
     private static readonly DateTime DataEstudoDicom = new(2026, 7, 7, 10, 30, 0, DateTimeKind.Unspecified);
 
-    private ExameAssociacaoService CriarService(SmsMaricaDbContext db)
+    private ExameAssociacaoService CriarService(SmsMaisDbContext db)
     {
         var consultaStudy = Substitute.For<IConsultaStudyClient>();
         consultaStudy.ObterDataHoraEstudoAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -244,7 +244,7 @@ public class ConciliacaoStudyTests(PostgresFixture fixture)
         var uid = UidAleatorio();
 
         // Simula falha parcial histórica: associação persistida SEM a promoção.
-        db.ExameAssociacoes.Add(new SMSMarica.Data.Entities.ExameAssociacao
+        db.ExameAssociacoes.Add(new SMSMais.Data.Entities.ExameAssociacao
         {
             Id = Guid.CreateVersion7(),
             StudyInstanceUID = uid,
@@ -277,7 +277,7 @@ public class ConciliacaoStudyTests(PostgresFixture fixture)
 
         // O zap "Exame Liberado" ficou na fila (Pendente) — aqui semeado direto porque o
         // serviço de comunicação é substituído no teste.
-        db.ComunicacoesPaciente.Add(new SMSMarica.Data.Entities.ComunicacaoPaciente
+        db.ComunicacoesPaciente.Add(new SMSMais.Data.Entities.ComunicacaoPaciente
         {
             Id = Guid.NewGuid(),
             Finalidade = FinalidadeComunicacao.ExameLiberado,

@@ -1,14 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.ApiTokens.Dtos;
 using SMSMarica.Core.Common.Excecoes;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.ApiTokens;
 
-public sealed class ApiTokensService(SmsMaricaDbContext db) : IApiTokensService
+public sealed class ApiTokensService(SmsMaisDbContext db) : IApiTokensService
 {
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
 
     public async Task<IReadOnlyList<ApiTokenListItemDto>> ListarAsync(
         CancellationToken cancellationToken = default)

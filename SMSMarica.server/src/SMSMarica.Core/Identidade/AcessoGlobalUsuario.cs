@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using SMSMarica.Data;
+using SMSMais.Data;
 
 namespace SMSMarica.Core.Identidade;
 
@@ -18,7 +18,7 @@ namespace SMSMarica.Core.Identidade;
 public static class AcessoGlobalUsuario
 {
     public static async Task<bool> TemAsync(
-        SmsMaricaDbContext db, Guid? usuarioId, CancellationToken ct = default)
+        SmsMaisDbContext db, Guid? usuarioId, CancellationToken ct = default)
     {
         if (usuarioId is null) return false;
         return await db.Usuarios.AsNoTracking()

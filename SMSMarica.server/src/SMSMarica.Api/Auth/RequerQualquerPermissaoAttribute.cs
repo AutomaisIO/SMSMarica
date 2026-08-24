@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Auth;
 

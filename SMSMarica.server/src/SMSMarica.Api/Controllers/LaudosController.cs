@@ -6,7 +6,7 @@ using SMSMarica.Core.Laudos;
 using SMSMarica.Core.Laudos.Assinatura;
 using SMSMarica.Core.Laudos.Assinatura.Dtos;
 using SMSMarica.Core.Laudos.Dtos;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
 

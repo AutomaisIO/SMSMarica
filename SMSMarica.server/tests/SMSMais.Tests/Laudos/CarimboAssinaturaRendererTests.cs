@@ -1,6 +1,6 @@
 using QuestPDF.Infrastructure;
 using SMSMarica.Core.Laudos.Assinatura;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 using Xunit;
 
 namespace SMSMais.Tests.Laudos;

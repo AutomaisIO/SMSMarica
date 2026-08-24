@@ -6,8 +6,8 @@ using SMSMarica.Core.Laudos.Configuracao;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.SolicitacoesExame;
 using SMSMarica.Core.Telefones;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
 using SMSMais.Tests.Infraestrutura;
 
 namespace SMSMais.Tests.Cidadao;
@@ -27,7 +27,7 @@ public class MagicLinkGateCpfTests(PostgresFixture fixture)
     private const string CpfTitular = "04528822733";
     private const string CpfOutro = "01074588703";
 
-    private static CidadaoLoginLinkService CriarService(SmsMaricaDbContext db) =>
+    private static CidadaoLoginLinkService CriarService(SmsMaisDbContext db) =>
         new(db,
             Substitute.For<ILaudoConfiguracaoService>(),
             Substitute.For<IPacientesService>(),
@@ -37,7 +37,7 @@ public class MagicLinkGateCpfTests(PostgresFixture fixture)
             new UsuarioAtualAccessorFake(),
             Substitute.For<Microsoft.Extensions.Configuration.IConfiguration>());
 
-    private static async Task<Guid> SemearLinkAsync(SmsMaricaDbContext db, bool exigeCpf)
+    private static async Task<Guid> SemearLinkAsync(SmsMaisDbContext db, bool exigeCpf)
     {
         var link = new CidadaoLoginLink
         {

@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Inteligencia.Dtos;
-using SMSMarica.Data;
+using SMSMais.Data;
 
 namespace SMSMarica.Core.Inteligencia;
 
@@ -10,7 +10,7 @@ namespace SMSMarica.Core.Inteligencia;
 /// removida — a consulta conversável usa o motor local (feature consulta-inteligente /
 /// IaChatController + aiengine no modo `dados`).
 /// </summary>
-public sealed class IaService(SmsMaricaDbContext db) : IIaService
+public sealed class IaService(SmsMaisDbContext db) : IIaService
 {
     public async Task<IReadOnlyList<FonteResumoDto>> ListarFontesAtivasAsync(
         CancellationToken cancellationToken = default)

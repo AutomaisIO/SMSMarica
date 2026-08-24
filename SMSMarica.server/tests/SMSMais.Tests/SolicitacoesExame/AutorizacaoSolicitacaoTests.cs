@@ -11,9 +11,9 @@ using SMSMarica.Core.SolicitacoesExame.Identificadores;
 using SMSMarica.Core.Telefones;
 using SMSMarica.Core.Worklist;
 using SMSMarica.Core.Erros;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 using SMSMais.Tests.Infraestrutura;
 
 namespace SMSMais.Tests.SolicitacoesExame;
@@ -27,7 +27,7 @@ namespace SMSMais.Tests.SolicitacoesExame;
 public class AutorizacaoSolicitacaoTests(PostgresFixture fixture)
 {
     private SolicitacoesExameService CriarService(
-        SmsMaricaDbContext db, string? cpfPaciente, Guid pacienteId, string? telefoneVerificado = null)
+        SmsMaisDbContext db, string? cpfPaciente, Guid pacienteId, string? telefoneVerificado = null)
     {
         // O gate de autorização lê o verificado do Patient FHIR (via resolver) — não há mais
         // tabela contato_validado para semear; o resumo do mock carrega o telefone verificado.
@@ -57,7 +57,7 @@ public class AutorizacaoSolicitacaoTests(PostgresFixture fixture)
 
     /// <summary>Dispensa real sobre o banco de teste. O hub FHIR só é tocado no Registrar —
     /// aqui as dispensas são semeadas direto na tabela, então o cliente pode ser substitute.</summary>
-    private static DispensaContatoService CriarDispensas(SmsMaricaDbContext db) =>
+    private static DispensaContatoService CriarDispensas(SmsMaisDbContext db) =>
         new(db,
             Substitute.For<IPacienteFhirClient>(),
             new UsuarioAtualAccessorFake(Guid.NewGuid()),
@@ -65,7 +65,7 @@ public class AutorizacaoSolicitacaoTests(PostgresFixture fixture)
 
     /// <summary>Semeia uma dispensa ATIVA para o paciente (o que a recepção teria registrado).</summary>
     private static async Task SemearDispensaAsync(
-        SmsMaricaDbContext db, Guid pacienteId, MotivoDispensaContato motivo)
+        SmsMaisDbContext db, Guid pacienteId, MotivoDispensaContato motivo)
     {
         db.DispensasVerificacaoContato.Add(new DispensaVerificacaoContato
         {
@@ -226,7 +226,7 @@ public class AutorizacaoSolicitacaoTests(PostgresFixture fixture)
     // ---- Escolha da estação na autorização ----
 
     private static async Task<Equipamento> SemearEquipamentoAsync(
-        SmsMaricaDbContext db, Guid unidadeId, string nome, string ae)
+        SmsMaisDbContext db, Guid unidadeId, string nome, string ae)
     {
         var equipamento = new Equipamento
         {

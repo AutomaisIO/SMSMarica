@@ -6,14 +6,14 @@ using SMSMarica.Core.Armazenamento;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Pacientes.Fhir;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Anexos;
 
 public sealed class AnexosService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IArmazenamentoArquivos armazenamento,
     IPacienteResolver pacienteResolver,
     IUsuarioAtualAccessor usuarioAtual,

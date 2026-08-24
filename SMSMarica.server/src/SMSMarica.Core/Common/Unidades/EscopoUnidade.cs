@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Identidade;
-using SMSMarica.Data;
+using SMSMais.Data;
 
 namespace SMSMarica.Core.Common.Unidades;
 
@@ -39,7 +39,7 @@ public static class EscopoUnidade
     /// que rodam sem usuário e precisam enxergar a rede inteira.
     /// </summary>
     public static async Task<EscopoUnidadeResultado> ResolverAsync(
-        SmsMaricaDbContext db, IUsuarioAtualAccessor usuarioAtual, CancellationToken ct = default)
+        SmsMaisDbContext db, IUsuarioAtualAccessor usuarioAtual, CancellationToken ct = default)
     {
         var usuarioId = usuarioAtual.UsuarioId;
         if (usuarioId is null) return EscopoUnidadeResultado.Tudo;
@@ -114,8 +114,8 @@ public sealed record EscopoUnidadeResultado(bool VeTudo, Guid[] Unidades, Guid? 
 /// </summary>
 public static class SolicitacaoNoEscopo
 {
-    public static IQueryable<Data.Entities.Solicitacao> Filtrar(
-        IQueryable<Data.Entities.Solicitacao> query, EscopoUnidadeResultado escopo)
+    public static IQueryable<SMSMais.Data.Entities.Solicitacao> Filtrar(
+        IQueryable<SMSMais.Data.Entities.Solicitacao> query, EscopoUnidadeResultado escopo)
     {
         if (escopo.VeTudo) return query;
 

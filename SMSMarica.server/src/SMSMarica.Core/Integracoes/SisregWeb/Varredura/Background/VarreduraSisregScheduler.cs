@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using SMSMarica.Data;
+using SMSMais.Data;
 
 namespace SMSMarica.Core.Integracoes.SisregWeb.Varredura.Background;
 
@@ -56,7 +56,7 @@ public sealed class VarreduraSisregScheduler(
         if (estadoVivo.ObterAtual() is not null || importacaoEstadoVivo.ObterAtual() is not null) return;
 
         using var scope = scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<SmsMaricaDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<SmsMaisDbContext>();
 
         var agora = DateTime.UtcNow;
         var horaLocal = TimeOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(agora, Brasilia));

@@ -4,7 +4,7 @@ using SMSMarica.Core.Associacoes;
 using SMSMarica.Core.Associacoes.Dtos;
 using SMSMarica.Core.SolicitacoesExame;
 using SMSMarica.Core.SolicitacoesExame.Dtos;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
 

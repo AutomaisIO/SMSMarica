@@ -3,8 +3,8 @@ using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Integracoes.SisregWeb.Importacao.Background;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Sisreg;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Sisreg;
 
 namespace SMSMarica.Core.Integracoes.SisregWeb.Importacao;
 
@@ -29,8 +29,8 @@ public interface IImportacaoLoteService
 }
 
 public sealed class ImportacaoLoteService(
-    SmsMaricaDbContext db,
-    IDbContextFactory<SmsMaricaDbContext> dbFactory,
+    SmsMaisDbContext db,
+    IDbContextFactory<SmsMaisDbContext> dbFactory,
     ISisregImportacaoFila fila,
     SisregImportacaoEstadoVivo estadoVivo,
     IImportacaoSisregService importacao,

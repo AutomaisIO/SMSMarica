@@ -4,9 +4,9 @@ using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Inteligencia.Dtos;
 using SMSMarica.Core.Inteligencia.Fontes;
 using SMSMarica.Core.Inteligencia.Seguranca;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Ia;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Ia;
 
 namespace SMSMarica.Core.Inteligencia.Configuracao;
 
@@ -16,14 +16,14 @@ namespace SMSMarica.Core.Inteligencia.Configuracao;
 /// Exclusão é lógica (<c>ExcluidoEm</c>).
 /// </summary>
 public sealed class IaFonteService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IProtetorSegredos protetor,
     IFonteDadosFactory fonteDadosFactory,
     Fontes.Agente.IAgenteSqlRegistry agenteRegistry,
     Microsoft.Extensions.Configuration.IConfiguration configuracao,
     IUsuarioAtualAccessor usuarioAtual) : IIaFonteService
 {
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
     private readonly IProtetorSegredos _protetor = protetor;
     private readonly IFonteDadosFactory _fonteDadosFactory = fonteDadosFactory;
     private readonly Fontes.Agente.IAgenteSqlRegistry _agenteRegistry = agenteRegistry;

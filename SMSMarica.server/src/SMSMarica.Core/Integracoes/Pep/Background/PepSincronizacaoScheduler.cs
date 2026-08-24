@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Integracoes.Pep.Progresso;
-using SMSMarica.Data;
+using SMSMais.Data;
 
 namespace SMSMarica.Core.Integracoes.Pep.Background;
 
@@ -44,7 +44,7 @@ public sealed class PepSincronizacaoScheduler(
         try
         {
             using var scope = scopeFactory.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<SmsMaricaDbContext>();
+            var db = scope.ServiceProvider.GetRequiredService<SmsMaisDbContext>();
             var servico = scope.ServiceProvider.GetRequiredService<IPepSincronizacaoService>();
 
             var agendas = await db.PepSincronizacaoAgendas.Where(a => a.Ativo).ToListAsync(ct);

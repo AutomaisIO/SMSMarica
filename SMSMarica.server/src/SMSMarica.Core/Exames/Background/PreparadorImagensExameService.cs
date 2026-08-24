@@ -3,8 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Exames.Background;
 
@@ -120,7 +120,7 @@ public sealed class PreparadorImagensExameService(
         List<Guid> pendentes;
         using (var scope = scopeFactory.CreateScope())
         {
-            var db = scope.ServiceProvider.GetRequiredService<SmsMaricaDbContext>();
+            var db = scope.ServiceProvider.GetRequiredService<SmsMaisDbContext>();
             var corte = DateTime.UtcNow.AddDays(-Math.Max(1, _options.JanelaDias));
             var max = Math.Clamp(_options.MaximoPorPassagem, 1, 20);
 
@@ -153,7 +153,7 @@ public sealed class PreparadorImagensExameService(
     private async Task PrepararUmAsync(Guid solicitacaoId, CancellationToken ct)
     {
         using var scope = scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<SmsMaricaDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<SmsMaisDbContext>();
         var pdfImagens = scope.ServiceProvider.GetRequiredService<IExameImagensPdfService>();
 
         var sol = await db.ExamesImagem
@@ -193,7 +193,7 @@ public sealed class PreparadorImagensExameService(
         List<(Guid Id, DateTime? RealizadoEm)> candidatos;
         using (var scope = scopeFactory.CreateScope())
         {
-            var db = scope.ServiceProvider.GetRequiredService<SmsMaricaDbContext>();
+            var db = scope.ServiceProvider.GetRequiredService<SmsMaisDbContext>();
             var corte = DateTime.UtcNow.AddHours(-Math.Max(1, _options.RevalidacaoJanelaHoras));
 
             candidatos = await db.ExamesImagem.AsNoTracking()
@@ -231,7 +231,7 @@ public sealed class PreparadorImagensExameService(
     private async Task RevalidarUmAsync(Guid id, DateTime? realizadoEm, DateTime estavelCorte, CancellationToken ct)
     {
         using var scope = scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<SmsMaricaDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<SmsMaisDbContext>();
         var pdfImagens = scope.ServiceProvider.GetRequiredService<IExameImagensPdfService>();
 
         var r = await pdfImagens.ReavaliarAsync(id, ct);

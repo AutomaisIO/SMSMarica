@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Notificacoes.WhatsApp.Manipuladores;
 
@@ -20,7 +20,7 @@ namespace SMSMarica.Core.Notificacoes.WhatsApp.Manipuladores;
 /// (mesmo precedente do AcompanhanteWhatsAppHandler).
 /// </summary>
 public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IWhatsAppCliente whatsApp,
     ILogger<ConfirmacaoAgendamentoWhatsAppHandler> logger) : IManipuladorMensagemWhatsApp
 {

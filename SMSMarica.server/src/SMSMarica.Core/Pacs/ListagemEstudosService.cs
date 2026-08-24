@@ -2,8 +2,8 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Unidades;
 using SMSMarica.Core.Identidade;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Pacs;
 
@@ -55,7 +55,7 @@ public sealed record PaginaEstudosDto(
     bool Truncado);
 
 internal sealed class ListagemEstudosService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IPacsProxyService pacs,
     IEscopoEstudosPacs escopoPacs,
     IUsuarioAtualAccessor usuarioAtual) : IListagemEstudosService

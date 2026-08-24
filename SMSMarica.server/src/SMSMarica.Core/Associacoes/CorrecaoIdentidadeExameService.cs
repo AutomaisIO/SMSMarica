@@ -8,15 +8,15 @@ using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Core.Pacs;
 using SMSMarica.Core.SolicitacoesExame.Identificadores;
 using SMSMarica.Core.Worklist;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Associacoes;
 
 /// <inheritdoc cref="ICorrecaoIdentidadeExameService"/>
 public sealed class CorrecaoIdentidadeExameService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IPacsReescritorEstudoClient reescritor,
     IResolvedorIdentidadeDicom identidades,
     IPacienteResolver pacientes,

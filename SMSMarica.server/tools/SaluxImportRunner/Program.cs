@@ -4,7 +4,7 @@ using SMSMarica.Core.Integracoes.Pep.Estrategias;
 using SMSMarica.Core.Integracoes.Pep.Estrategias.Salux;
 using SMSMarica.Core.Integracoes.Pep.Fhir;
 using SMSMarica.Core.Integracoes.Pep.Progresso;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 // Roda a importação Salux→FHIR ON-PREM (esta máquina alcança o Oracle interno),
 // dirigindo o MESMO motor do backend (SaluxImportacaoStrategy). Credenciais do

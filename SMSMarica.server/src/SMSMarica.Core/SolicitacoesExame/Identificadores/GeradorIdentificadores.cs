@@ -1,12 +1,12 @@
 using System.Numerics;
 using Microsoft.EntityFrameworkCore;
-using SMSMarica.Data;
+using SMSMais.Data;
 
 namespace SMSMarica.Core.SolicitacoesExame.Identificadores;
 
-public sealed class GeradorIdentificadores(SmsMaricaDbContext db) : IGeradorIdentificadores
+public sealed class GeradorIdentificadores(SmsMaisDbContext db) : IGeradorIdentificadores
 {
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
 
     public async Task<string> ProximoAccessionAsync(CancellationToken cancellationToken = default)
     {

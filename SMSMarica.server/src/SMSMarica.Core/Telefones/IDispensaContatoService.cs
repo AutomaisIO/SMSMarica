@@ -23,7 +23,7 @@ public interface IDispensaContatoService
     /// conforme o motivo permita ou não o envio.
     /// </summary>
     Task<DispensaContatoDto> RegistrarAsync(
-        Guid pacienteId, Data.Entities.Enums.MotivoDispensaContato motivo, string? motivoDescricao,
+        Guid pacienteId, SMSMais.Data.Entities.Enums.MotivoDispensaContato motivo, string? motivoDescricao,
         bool pacienteCiente, CancellationToken ct = default);
 
     /// <summary>Derruba a dispensa ativa do paciente. Sem dispensa ativa é no-op (idempotente).</summary>

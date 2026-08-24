@@ -1,4 +1,4 @@
-using SMSMarica.Data.Entities.Ia;
+using SMSMais.Data.Entities.Ia;
 
 namespace SMSMarica.Core.Inteligencia.Fontes;
 

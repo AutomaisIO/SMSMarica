@@ -7,7 +7,7 @@ using SMSMarica.Core.Integracoes.Pep.Estrategias.Klinikos;
 using SMSMarica.Core.Integracoes.Pep.Fhir;
 using SMSMarica.Core.Integracoes.Pep.Progresso;
 using SMSMarica.Core.Inteligencia.Fontes;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 using Task = System.Threading.Tasks.Task;
 
 namespace SMSMais.Tests.Integracoes.Pep;

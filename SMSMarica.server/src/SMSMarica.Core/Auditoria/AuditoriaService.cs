@@ -2,13 +2,13 @@ using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Auditoria.Dtos;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Pacientes.Fhir;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.Auditoria;
 
 public sealed class AuditoriaService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IUsuarioAtualAccessor usuarioAtual,
     IPacienteResolver pacienteResolver) : IAuditoriaService
 {

@@ -6,9 +6,9 @@ using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Indicadores.Dtos;
 using SMSMarica.Core.Inteligencia.Fontes;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Indicadores;
 
@@ -17,7 +17,7 @@ namespace SMSMarica.Core.Indicadores;
 /// Sempre read-only: o SQL passa pelo guard da <see cref="IFonteDados"/> antes de ir ao banco.
 /// </summary>
 public sealed class IndicadoresService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IFonteDadosFactory fonteFactory,
     IUsuarioAtualAccessor usuarioAtual) : IIndicadoresService
 {

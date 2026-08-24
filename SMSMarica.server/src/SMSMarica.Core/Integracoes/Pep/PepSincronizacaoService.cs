@@ -12,15 +12,15 @@ using SMSMarica.Core.Integracoes.Pep.Falhas;
 using SMSMarica.Core.Integracoes.Pep.Fhir;
 using SMSMarica.Core.Integracoes.Pep.Progresso;
 using SMSMarica.Core.Inteligencia.Seguranca;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Pep;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Pep;
 
 namespace SMSMarica.Core.Integracoes.Pep;
 
 public sealed class PepSincronizacaoService(
-    SmsMaricaDbContext db,
-    IDbContextFactory<SmsMaricaDbContext> dbFactory,
+    SmsMaisDbContext db,
+    IDbContextFactory<SmsMaisDbContext> dbFactory,
     IProtetorSegredos protetor,
     IEnumerable<IEstrategiaImportacaoPep> estrategias,
     IHubFhirEscritor escritor,

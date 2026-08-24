@@ -1,5 +1,5 @@
 using SMSMarica.Core.SolicitacoesExame.Dtos;
-using SMSMarica.Data.Entities.Sisreg;
+using SMSMais.Data.Entities.Sisreg;
 
 namespace SMSMarica.Core.PainelInicio.Dtos;
 

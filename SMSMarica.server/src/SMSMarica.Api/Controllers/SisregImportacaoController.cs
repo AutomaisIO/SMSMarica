@@ -5,7 +5,7 @@ using SMSMarica.Api.Auth;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Integracoes.SisregWeb.Importacao;
 using SMSMarica.Core.Integracoes.SisregWeb.Importacao.Background;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
 

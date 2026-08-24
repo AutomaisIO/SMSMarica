@@ -6,9 +6,9 @@ using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Notificacoes.WhatsApp;
 using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Core.Sandbox.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Sandbox;
 
@@ -32,7 +32,7 @@ public interface ISandboxService
 }
 
 public sealed class SandboxService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IPacienteResolver pacientes,
     IWhatsAppCliente whatsApp,
     IUsuarioAtualAccessor usuarioAtual,

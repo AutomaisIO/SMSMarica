@@ -3,8 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Notificacoes.Comunicacao;
 
@@ -75,7 +75,7 @@ public sealed class EnviadorComunicacaoService(
         if (habilitadas.Length == 0) return;
 
         using var scope = scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<SmsMaricaDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<SmsMaisDbContext>();
         var servico = scope.ServiceProvider.GetRequiredService<IComunicacaoPacienteService>();
 
         var agora = DateTime.UtcNow;

@@ -6,8 +6,8 @@ using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Common.Unidades;
 using SMSMarica.Core.Estatisticas.Dtos;
 using SMSMarica.Core.Identidade;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Estatisticas;
 
@@ -22,7 +22,7 @@ namespace SMSMarica.Core.Estatisticas;
 /// entre <c>DataEstudo</c> (wall-clock local) e os timestamps UTC no SQL.
 /// </summary>
 public sealed class EstatisticasService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IUsuarioAtualAccessor usuarioAtual,
     Pacientes.Fhir.IPacienteResolver pacienteResolver,
     ILogger<EstatisticasService> logger) : IEstatisticasService

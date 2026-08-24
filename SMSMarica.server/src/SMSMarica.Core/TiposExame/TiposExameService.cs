@@ -2,15 +2,15 @@ using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.TiposExame.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.TiposExame;
 
-public sealed class TiposExameService(SmsMaricaDbContext db, IUsuarioAtualAccessor usuarioAtual) : ITiposExameService
+public sealed class TiposExameService(SmsMaisDbContext db, IUsuarioAtualAccessor usuarioAtual) : ITiposExameService
 {
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
     private readonly IUsuarioAtualAccessor _usuarioAtual = usuarioAtual;
 
     public async Task<IReadOnlyList<TipoExameListItemDto>> ListarAsync(

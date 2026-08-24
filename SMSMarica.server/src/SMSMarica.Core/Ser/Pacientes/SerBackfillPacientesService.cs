@@ -1,8 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Integracoes.Pep;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Ser;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Ser;
 
 namespace SMSMarica.Core.Ser.Pacientes;
 
@@ -49,7 +49,7 @@ public interface ISerBackfillPacientesService
 }
 
 public sealed class SerBackfillPacientesService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     ISerConciliacaoPacienteService conciliacao,
     ILogger<SerBackfillPacientesService> logger) : ISerBackfillPacientesService
 {

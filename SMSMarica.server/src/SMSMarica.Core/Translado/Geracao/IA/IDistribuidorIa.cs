@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Inteligencia.Seguranca;
-using SMSMarica.Data;
+using SMSMais.Data;
 
 namespace SMSMarica.Core.Translado.Geracao.IA;
 
@@ -34,7 +34,7 @@ public interface IDistribuidorIa
 
 public sealed class DistribuidorIa(
     HttpClient http,
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IProtetorSegredos protetor,
     ILogger<DistribuidorIa> logger) : IDistribuidorIa
 {

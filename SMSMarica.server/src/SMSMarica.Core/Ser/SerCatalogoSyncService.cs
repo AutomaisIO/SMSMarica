@@ -1,8 +1,8 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Ser;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Ser;
 
 namespace SMSMarica.Core.Ser;
 
@@ -34,7 +34,7 @@ public interface ISerCatalogoSyncService
 }
 
 public sealed class SerCatalogoSyncService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     ISerNovaSolicitacaoService leitor,
     ILogger<SerCatalogoSyncService> logger) : ISerCatalogoSyncService
 {

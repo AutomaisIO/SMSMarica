@@ -2,8 +2,8 @@
 using SMSMarica.Core.Integracoes.Pep.Falhas;
 using SMSMarica.Core.Integracoes.Pep.Fhir;
 using SMSMarica.Core.Integracoes.Pep.Progresso;
-using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Ia;
+using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Ia;
 
 namespace SMSMarica.Core.Integracoes.Pep.Estrategias;
 

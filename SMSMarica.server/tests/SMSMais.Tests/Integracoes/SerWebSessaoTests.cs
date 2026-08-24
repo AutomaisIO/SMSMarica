@@ -232,9 +232,9 @@ public class SerWebSessaoTests
     [Fact]
     public void Situacao_traduz_texto_da_grade_para_enum()
     {
-        SerCodigos.DoTextoSituacao("Em fila").Should().Be(SMSMarica.Data.Entities.Ser.SituacaoSer.EmFila);
+        SerCodigos.DoTextoSituacao("Em fila").Should().Be(SMSMais.Data.Entities.Ser.SituacaoSer.EmFila);
         SerCodigos.DoTextoSituacao("Chegada Não Confirmada")
-            .Should().Be(SMSMarica.Data.Entities.Ser.SituacaoSer.ChegadaNaoConfirmada);
+            .Should().Be(SMSMais.Data.Entities.Ser.SituacaoSer.ChegadaNaoConfirmada);
         SerCodigos.DoTextoSituacao("desconhecido").Should().BeNull();
     }
 

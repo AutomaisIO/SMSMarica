@@ -2,7 +2,7 @@ using System.Net.WebSockets;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Inteligencia.Fontes.Agente;
-using SMSMarica.Data;
+using SMSMais.Data;
 
 namespace SMSMarica.Api.Realtime;
 
@@ -26,7 +26,7 @@ public static class AgenteSqlEndpoint
     }
 
     private static async Task HandleAsync(
-        HttpContext ctx, IAgenteSqlRegistry registry, SmsMaricaDbContext db, ILoggerFactory logs)
+        HttpContext ctx, IAgenteSqlRegistry registry, SmsMaisDbContext db, ILoggerFactory logs)
     {
         var log = logs.CreateLogger("AgenteSql");
 

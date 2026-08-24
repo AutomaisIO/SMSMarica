@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Api.Auth;
 
@@ -20,7 +20,7 @@ internal static class SeedCabecalhoLaudo
 <p style="text-align: center"><img src="https://api.smsmarica.online/midias/00000000-0000-0000-0000-00000000a007" width="100%"></p>
 """;
 
-    public static async Task GarantirAsync(SmsMaricaDbContext db, CancellationToken ct)
+    public static async Task GarantirAsync(SmsMaisDbContext db, CancellationToken ct)
     {
         if (!await db.Midias.AnyAsync(m => m.Id == BannerId, ct))
         {

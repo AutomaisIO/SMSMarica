@@ -27,7 +27,7 @@ using SMSMarica.Api.Auth;
 using SMSMarica.Api.Middleware;
 using SMSMarica.Core;
 using SMSMarica.Core.Identidade;
-using SMSMarica.Data;
+using SMSMais.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -195,7 +195,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddOpenApi();
 
 builder.Services.AddHealthChecks()
-    .AddDbContextCheck<SmsMaricaDbContext>(
+    .AddDbContextCheck<SmsMaisDbContext>(
         name: "db",
         tags: ["ready"]);
 
@@ -356,7 +356,7 @@ var autoMigrate = builder.Configuration.GetValue("AutoMigrate:Enabled", defaultV
 if (autoMigrate)
 {
     await using var scope = app.Services.CreateAsyncScope();
-    var db = scope.ServiceProvider.GetRequiredService<SmsMaricaDbContext>();
+    var db = scope.ServiceProvider.GetRequiredService<SmsMaisDbContext>();
     try
     {
         app.Logger.LogInformation("Aplicando migrations pendentes...");
@@ -364,7 +364,7 @@ if (autoMigrate)
         app.Logger.LogInformation("Migrations OK.");
 
         var hasher = scope.ServiceProvider
-            .GetRequiredService<Microsoft.AspNetCore.Identity.IPasswordHasher<SMSMarica.Data.Entities.Usuario>>();
+            .GetRequiredService<Microsoft.AspNetCore.Identity.IPasswordHasher<SMSMais.Data.Entities.Usuario>>();
         await DbSeeder.SeedAsync(db, hasher);
         app.Logger.LogInformation("Seed do Admin OK.");
     }

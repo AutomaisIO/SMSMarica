@@ -1,0 +1,13 @@
+using SMSMais.Data.Entities.Enums;
+
+namespace SMSMais.Data.Entities;
+
+public class Geofence
+{
+    public Guid Id { get; set; }
+    public TipoGeofence Tipo { get; set; }
+    public Guid ReferenciaId { get; set; }
+    public Gps Centro { get; set; } = new(0, 0);
+    public int RaioMetros { get; set; }
+    public DateTime CriadoEm { get; set; }
+}

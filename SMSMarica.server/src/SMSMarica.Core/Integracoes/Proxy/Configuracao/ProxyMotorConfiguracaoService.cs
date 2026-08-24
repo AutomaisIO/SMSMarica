@@ -2,8 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Inteligencia.Seguranca;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Integracoes;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Integracoes;
 
 namespace SMSMarica.Core.Integracoes.Proxy.Configuracao;
 
@@ -13,7 +13,7 @@ namespace SMSMarica.Core.Integracoes.Proxy.Configuracao;
 /// tem nenhum cadastrado fica fora da cadeia de fallback.
 /// </summary>
 public sealed class ProxyMotorConfiguracaoService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IProtetorSegredos protetor,
     IUsuarioAtualAccessor usuarioAtual) : IProxyMotorConfiguracaoService
 {

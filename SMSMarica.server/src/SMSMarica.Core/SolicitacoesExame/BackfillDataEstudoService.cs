@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Worklist;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.SolicitacoesExame;
 
@@ -27,7 +27,7 @@ public interface IBackfillDataEstudoService
 }
 
 public sealed class BackfillDataEstudoService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IConsultaStudyClient consultaStudy,
     ILogger<BackfillDataEstudoService> logger) : IBackfillDataEstudoService
 {

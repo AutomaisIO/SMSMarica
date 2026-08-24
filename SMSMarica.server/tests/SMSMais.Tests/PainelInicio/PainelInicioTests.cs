@@ -6,11 +6,11 @@ using SMSMarica.Core.PainelInicio;
 using SMSMarica.Core.PainelInicio.Dtos;
 using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Core.SolicitacoesExame.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Conversas;
-using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Sisreg;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Conversas;
+using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Sisreg;
 using SMSMais.Tests.Infraestrutura;
 
 namespace SMSMais.Tests.PainelInicio;
@@ -284,7 +284,7 @@ public class PainelInicioTests(PostgresFixture fixture)
     // ===================== apoio =====================
 
     private static PainelInicioService CriarServico(
-        SmsMaricaDbContext db, Guid usuarioId, Guid? unidadeAtiva, params ModuloPermissao[] modulos)
+        SmsMaisDbContext db, Guid usuarioId, Guid? unidadeAtiva, params ModuloPermissao[] modulos)
     {
         if (modulos.Length == 0) modulos = [ModuloPermissao.SolicitacoesExame, ModuloPermissao.Sisreg];
 
@@ -306,7 +306,7 @@ public class PainelInicioTests(PostgresFixture fixture)
             NullLogger<PainelInicioService>.Instance);
     }
 
-    private static async Task<(Guid Usuario, Guid Unidade)> CriarOperadorAsync(SmsMaricaDbContext db)
+    private static async Task<(Guid Usuario, Guid Unidade)> CriarOperadorAsync(SmsMaisDbContext db)
     {
         var unidade = await CriarUnidadeAsync(db);
         var usuario = await CriarUsuarioAsync(db);
@@ -320,7 +320,7 @@ public class PainelInicioTests(PostgresFixture fixture)
         return (usuario, unidade);
     }
 
-    private static async Task<Guid> CriarUnidadeAsync(SmsMaricaDbContext db)
+    private static async Task<Guid> CriarUnidadeAsync(SmsMaisDbContext db)
     {
         var u = new Unidade
         {
@@ -334,7 +334,7 @@ public class PainelInicioTests(PostgresFixture fixture)
         return u.Id;
     }
 
-    private static async Task<Guid> CriarUsuarioAsync(SmsMaricaDbContext db)
+    private static async Task<Guid> CriarUsuarioAsync(SmsMaisDbContext db)
     {
         var u = new Usuario
         {
@@ -351,7 +351,7 @@ public class PainelInicioTests(PostgresFixture fixture)
     }
 
     private static async Task<Solicitacao> CriarSolicitacaoAsync(
-        SmsMaricaDbContext db,
+        SmsMaisDbContext db,
         Guid unidadeExecutanteId,
         Guid? unidadeSolicitanteId = null,
         StatusConfirmacaoAgendamento confirmacao = StatusConfirmacaoAgendamento.Pendente,
@@ -382,7 +382,7 @@ public class PainelInicioTests(PostgresFixture fixture)
     }
 
     private static async Task<SisregImportacaoFalha> CriarPendenciaAsync(
-        SmsMaricaDbContext db, Guid unidadeId, CausaFalhaImportacao causa = CausaFalhaImportacao.CpfNaoResolvido)
+        SmsMaisDbContext db, Guid unidadeId, CausaFalhaImportacao causa = CausaFalhaImportacao.CpfNaoResolvido)
     {
         var f = new SisregImportacaoFalha
         {

@@ -3,7 +3,7 @@ using SMSMarica.Core.Common.Excecoes;
 namespace SMSMarica.Core.Common.ValueObjects;
 
 /// <summary>
-/// Helper de validação de coordenadas. O tipo de persistência é <c>SMSMarica.Data.Entities.Gps</c>.
+/// Helper de validação de coordenadas. O tipo de persistência é <c>SMSMais.Data.Entities.Gps</c>.
 /// </summary>
 public static class Gps
 {

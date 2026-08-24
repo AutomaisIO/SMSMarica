@@ -35,7 +35,7 @@ arquivos *untracked*, que existem no disco e são bit-a-bit idênticos aos do `o
 | **A. Trabalho novo** | **113** | só o working tree tem — as 5 frentes | **manter** (é o que vai virar commit) |
 | **B. Untracked idênticos** | **9** | existem no disco, `git hash-object` **igual** ao `origin/main`; o git os lê como "deletados" só porque nunca foram rastreados aqui | **nenhuma** — o reset ao `origin/main` os torna "sem alteração" |
 | **C. Ausentes no disco** | **2** | a migration do rename (`.cs` + `.Designer.cs`) | **restaurar do `origin/main`** |
-| **D. Cirurgia** | **2** | `SmsMaricaDbContext.cs` e `SmsMaricaDbContextModelSnapshot.cs` | **manter a versão do working tree** — verificado abaixo |
+| **D. Cirurgia** | **2** | `SmsMaisDbContext.cs` e `SmsMaisDbContextModelSnapshot.cs` | **manter a versão do working tree** — verificado abaixo |
 
 ### B — os 9 idênticos (verificados por hash)
 
@@ -59,11 +59,11 @@ Migration **já aplicada em produção** (é a última em `smsmarica.__migration
 
 ### D — os 2 que precisavam de análise (ambos aprovados)
 
-**`SmsMaricaDbContext.cs`** — o diff contra o `origin/main` é **puramente aditivo**: 1 `using`
+**`SmsMaisDbContext.cs`** — o diff contra o `origin/main` é **puramente aditivo**: 1 `using`
 de Regulação e 7 `DbSet` novos (2 de PEP + 5 de Regulação). A única linha removida é o `using`
 de Sisreg, reinserido em ordem alfabética. **Nada do rename se perde.**
 
-**`SmsMaricaDbContextModelSnapshot.cs`** — é **superset estrito**:
+**`SmsMaisDbContextModelSnapshot.cs`** — é **superset estrito**:
 
 | | Entidades |
 |---|---|
@@ -105,8 +105,8 @@ tar -czf ~/Backups/smsmarica-wt-20260802.tgz --exclude=node_modules --exclude=bi
 git reset --mixed origin/main
 
 # 3. Restaurar os 2 arquivos do grupo C (a migration do rename)
-git checkout -- SMSMarica.server/src/SMSMarica.Data/Migrations/20260731230018_RenomeiaMensageriaEGeoForaDoTfd.cs \
-                SMSMarica.server/src/SMSMarica.Data/Migrations/20260731230018_RenomeiaMensageriaEGeoForaDoTfd.Designer.cs
+git checkout -- SMSMarica.server/src/SMSMais.Data/Migrations/20260731230018_RenomeiaMensageriaEGeoForaDoTfd.cs \
+                SMSMarica.server/src/SMSMais.Data/Migrations/20260731230018_RenomeiaMensageriaEGeoForaDoTfd.Designer.cs
 
 # 4. Conferir: o status agora deve mostrar SÓ o trabalho novo.
 #    Os 9 do grupo B somem (viram "sem alteração"); nenhuma deleção deve aparecer.
@@ -127,7 +127,7 @@ Depois disso, commit **fatiado por frente** — cada um com seu escopo de caminh
 | 6 | Trilha de falhas + fix CID | — | idem |
 | — | Documentação | `docs/**` | nenhum |
 
-⚠️ **Os dois arquivos compartilhados** (`SmsMaricaDbContext.cs` e o snapshot) contêm hunks de
+⚠️ **Os dois arquivos compartilhados** (`SmsMaisDbContext.cs` e o snapshot) contêm hunks de
 mais de uma frente. Commitar por hunk (`git add -p`) ou concentrá-los no primeiro commit de
 servidor e referenciar nos demais.
 

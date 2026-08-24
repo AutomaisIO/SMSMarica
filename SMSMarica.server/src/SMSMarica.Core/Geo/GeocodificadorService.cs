@@ -5,15 +5,15 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Geo.Google;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Geo;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Geo;
 
 namespace SMSMarica.Core.Geo;
 
 public sealed class GeocodificadorService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IGoogleGeocodingClient google,
     ILogger<GeocodificadorService> logger) : IGeocodificadorService
 {

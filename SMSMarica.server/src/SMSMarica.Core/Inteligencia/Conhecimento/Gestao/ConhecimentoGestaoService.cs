@@ -6,8 +6,8 @@ using Pgvector;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Inteligencia.Fontes;
 using SMSMarica.Core.Inteligencia.Provedores;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Ia;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Ia;
 
 namespace SMSMarica.Core.Inteligencia.Conhecimento.Gestao;
 
@@ -18,7 +18,7 @@ namespace SMSMarica.Core.Inteligencia.Conhecimento.Gestao;
 /// Ver ADR-0023.
 /// </summary>
 public sealed class ConhecimentoGestaoService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IFonteDadosFactory fonteFactory,
     IServicoEmbeddings embeddings,
     IConfiguration configuracao) : IConhecimentoGestaoService

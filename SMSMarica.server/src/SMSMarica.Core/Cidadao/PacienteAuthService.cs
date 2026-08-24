@@ -11,13 +11,13 @@ using SMSMarica.Core.Notificacoes.WhatsApp;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.Pacientes.Dtos;
 using SMSMarica.Core.Telefones;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Cidadao;
 
 public sealed class PacienteAuthService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IPacientesService pacientes,
     ICidadaoSessaoService sessoes,
     IWhatsAppCliente whatsapp,

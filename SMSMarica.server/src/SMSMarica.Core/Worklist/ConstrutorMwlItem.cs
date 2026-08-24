@@ -2,8 +2,8 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json.Nodes;
 using SMSMarica.Core.Pacientes.Fhir;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Worklist;
 

@@ -5,8 +5,8 @@ using SMSMarica.Core.Exames;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Laudos.Configuracao;
 using SMSMarica.Core.SolicitacoesExame;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.Downloads;
 
@@ -48,7 +48,7 @@ public interface IDownloadTokenService
 }
 
 public sealed class DownloadTokenService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     ILaudoConfiguracaoService configuracaoLaudo,
     IExameCompletoPdfService exameCompleto,
     ISolicitacoesExameService solicitacoes,

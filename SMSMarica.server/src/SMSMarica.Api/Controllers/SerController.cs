@@ -4,8 +4,8 @@ using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Ser;
 using SMSMarica.Core.Ser.Dtos;
 using SMSMarica.Core.Ser.Sessao;
-using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Ser;
+using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Ser;
 
 namespace SMSMarica.Api.Controllers;
 

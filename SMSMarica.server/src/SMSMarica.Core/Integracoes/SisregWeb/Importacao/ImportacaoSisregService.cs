@@ -11,10 +11,10 @@ using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.Pacientes.Dtos;
 using SMSMarica.Core.SolicitacoesExame;
 using SMSMarica.Core.SolicitacoesExame.Identificadores;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Sisreg;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Sisreg;
 
 namespace SMSMarica.Core.Integracoes.SisregWeb.Importacao;
 
@@ -93,7 +93,7 @@ public interface IImportacaoSisregService
 }
 
 public sealed class ImportacaoSisregService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IConsultaCnsService consultaCns,
     IPacientesService pacientes,
     IGeradorIdentificadores geradorIds,
@@ -454,7 +454,7 @@ public sealed class ImportacaoSisregService(
         // lacuna de cadastro seria pior do que uma mensagem a mais.
         if (await DeveEnviarConfirmacaoAsync(unidadeExecId, m, ct))
         {
-            await comunicacoes.EnfileirarAsync(solic, Data.Entities.Enums.FinalidadeComunicacao.ConfirmacaoAgendamento, ct);
+            await comunicacoes.EnfileirarAsync(solic, SMSMais.Data.Entities.Enums.FinalidadeComunicacao.ConfirmacaoAgendamento, ct);
         }
         else
         {

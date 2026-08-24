@@ -31,7 +31,7 @@ using SMSMarica.Core.Unidades;
 using SMSMarica.Core.Veiculos;
 using SMSMarica.Core.Worklist;
 using SMSMarica.Core.Worklist.Background;
-using SMSMarica.Data.Entities;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core;
 

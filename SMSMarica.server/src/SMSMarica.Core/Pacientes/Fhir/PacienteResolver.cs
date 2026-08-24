@@ -1,6 +1,6 @@
 using Hl7.Fhir.Model;
 using Microsoft.Extensions.Logging;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Pacientes.Fhir;
 

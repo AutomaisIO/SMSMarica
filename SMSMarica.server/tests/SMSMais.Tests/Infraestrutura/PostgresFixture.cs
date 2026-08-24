@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using SMSMarica.Data;
+using SMSMais.Data;
 using Testcontainers.PostgreSql;
 
 namespace SMSMais.Tests.Infraestrutura;
@@ -38,20 +38,20 @@ public sealed class PostgresFixture : IAsyncLifetime
 
     public string ConnectionString => ConexaoExterna ?? _container!.GetConnectionString();
 
-    public SmsMaricaDbContext CriarDbContext()
+    public SmsMaisDbContext CriarDbContext()
     {
-        var options = new DbContextOptionsBuilder<SmsMaricaDbContext>()
+        var options = new DbContextOptionsBuilder<SmsMaisDbContext>()
             .UseNpgsql(ConnectionString, npgsql =>
             {
-                npgsql.MigrationsAssembly(typeof(SmsMaricaDbContext).Assembly.FullName);
-                npgsql.MigrationsHistoryTable("__migrations", SmsMaricaDbContext.SchemaPadrao);
+                npgsql.MigrationsAssembly(typeof(SmsMaisDbContext).Assembly.FullName);
+                npgsql.MigrationsHistoryTable("__migrations", SmsMaisDbContext.SchemaPadrao);
                 // Espelha o DependencyInjection da Data: sem isto o modelo nem valida
                 // (IaAprendizado.Embedding é vector(1024)) e a fixture morre antes do 1º teste.
                 npgsql.UseVector();
             })
             .Options;
 
-        return new SmsMaricaDbContext(options);
+        return new SmsMaisDbContext(options);
     }
 
     public async Task InitializeAsync()

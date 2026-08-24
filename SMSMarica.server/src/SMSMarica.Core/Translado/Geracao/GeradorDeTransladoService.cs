@@ -6,14 +6,14 @@ using SMSMarica.Core.Geo.Google;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.Translado.Geracao.Dtos;
 using SMSMarica.Core.Translado.Geracao.IA;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Translado.Geracao;
 
 public sealed class GeradorDeTransladoService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IGeocodificadorService geo,
     IGoogleRoutesClient rotas,
     IDistribuidorIa distribuidor,

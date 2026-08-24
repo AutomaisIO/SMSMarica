@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Demais subprojetos no monorepo** (nem todos no README/stack antigos):
 - `SMSMais.front` — **painel web já implementado** (não é mais README-only): React + Vite + TS com ~20 features em `src/features/` (auth, pacientes, laudos, solicitacoes-exame, ia, pacs, procedimentos-sigtap, medicos, perfis, rastreamento, translados, tratamentos, unidades, usuarios, veiculos…).
 - `Automais.Fhir` — **serviço FHIR R4 autônomo** ([ADR-0010](./docs/adr/0010-servico-fhir-autonomo.md)), solução própria (`Automais.Fhir.slnx`), 3 camadas (Data/Core/Api) espelhando o server. Persistência JSONB + Firely SDK, schema `fhir` próprio, DbContext próprio (`ConnectionStrings:FhirDb`). Já em produção (porta 5081). É o hub canônico clínico; demais sistemas falam com ele via API FHIR. Tem `Automais.Fhir/README.md` próprio.
-- `SMSMarica.EquipamentoSim` — simulador de equipamento DICOM (Python 3.11+, `pynetdicom`/`pydicom`, CLI `equipamento`) para testar o ciclo Solicitação de Exame → Worklist → Execução.
+- `SMSMais.EquipamentoSim` — simulador de equipamento DICOM (Python 3.11+, `pynetdicom`/`pydicom`, CLI `equipamento`) para testar o ciclo Solicitação de Exame → Worklist → Execução.
 - `Salux` — engenharia reversa do Salux HIS (Oracle 12c do HCML). **Tem CLAUDE.md próprio com regras não-negociáveis** (PROD Oracle é read-only absoluto via `scripts/_guard.py`; `capturas/` e `.env` são gitignored por conterem PII). Ler `Salux/CLAUDE.md` antes de tocar nessa pasta.
 - `SMSMais.arquivos.pwa` — **PWA "Arquivos Saúde Maricá"** (React + Vite + TS) para digitalizar exames em papel pelo celular e anexá-los à anamnese, via **ponte por QR** (sem login; token de upload escopado). Domínio `arquivos.smsmarica.online`; deploy `deploy-arquivos.yml` → `/var/www/smsmarica-arquivos`. Ver [ADR-0019](./docs/adr/0019-anexos-exame-pwa-qr-armazenamento.md).
 - `SMSMarica.cidadao.app` está scaffoldado (Flutter, login mock + perfil consumindo `GET /pacientes/{id}`). `SMSMarica.agente.app` ainda é README-only.
@@ -38,9 +38,9 @@ Plano de implementação: `C:\Users\berna\.claude\plans\deep-gathering-kahn.md`.
 
 As regras abaixo não podem ser violadas sem novo ADR.
 
-1. **Dois schemas: `smsmarica` (negócio, pt-BR) + `fhir` (canônico FHIR R4, en)** — [ADR-0001](./docs/adr/0001-schema-isolation.md) + [ADR-0007](./docs/adr/0007-schema-fhir-separado.md). Identidade do cidadão/profissional (Patient, Practitioner, identifiers, names, addresses, telecoms, contacts, photos, qualifications, consents, lookups) vive em `fhir.*` em inglês. Regras de negócio (Usuario/RBAC, Motorista, Tratamento, RotaDiaria, Laudo, SolicitacaoExame, etc.) vivem em `smsmarica.*` em pt-BR. `HasDefaultSchema("smsmarica")` continua + cada configuration FHIR chama `.ToTable(..., schema: "fhir")`. **FKs cross-schema só na direção `smsmarica → fhir`** (proibida a inversa). Um único `SmsMaricaDbContext`.
+1. **Dois schemas: `smsmarica` (negócio, pt-BR) + `fhir` (canônico FHIR R4, en)** — [ADR-0001](./docs/adr/0001-schema-isolation.md) + [ADR-0007](./docs/adr/0007-schema-fhir-separado.md). Identidade do cidadão/profissional (Patient, Practitioner, identifiers, names, addresses, telecoms, contacts, photos, qualifications, consents, lookups) vive em `fhir.*` em inglês. Regras de negócio (Usuario/RBAC, Motorista, Tratamento, RotaDiaria, Laudo, SolicitacaoExame, etc.) vivem em `smsmarica.*` em pt-BR. `HasDefaultSchema("smsmarica")` continua + cada configuration FHIR chama `.ToTable(..., schema: "fhir")`. **FKs cross-schema só na direção `smsmarica → fhir`** (proibida a inversa). Um único `SmsMaisDbContext`.
 
-2. **Arquitetura 3-projetos** — [ADR-0004](./docs/adr/0004-arquitetura-tres-projetos.md). Backend é `SMSMarica.Data` + `SMSMarica.Core` + `SMSMarica.Api`. Não criar projetos novos para "modular" subdomínios — usar pastas dentro de cada projeto. Quem quiser modular monolith de novo precisa de novo ADR. (ADR-0002 está **superseded**.)
+2. **Arquitetura 3-projetos** — [ADR-0004](./docs/adr/0004-arquitetura-tres-projetos.md). Backend é `SMSMais.Data` + `SMSMarica.Core` + `SMSMarica.Api`. Não criar projetos novos para "modular" subdomínios — usar pastas dentro de cada projeto. Quem quiser modular monolith de novo precisa de novo ADR. (ADR-0002 está **superseded**.)
 
 3. **Dependências entre projetos:**
    - `Data` ← nada
@@ -48,7 +48,7 @@ As regras abaixo não podem ser violadas sem novo ADR.
    - `Api` ← `Core` + `Data`
    - `Tests` ← `Core` + `Data` + `Api`
 
-4. **Migrations imutáveis** — uma migração já aplicada nunca é editada. Correção vira nova migration. Pasta única `SMSMarica.Data/Migrations/`.
+4. **Migrations imutáveis** — uma migração já aplicada nunca é editada. Correção vira nova migration. Pasta única `SMSMais.Data/Migrations/`.
 
 5. **`agente.app` é Android-only** — [ADR-0003](./docs/adr/0003-flutter-android-only-agente.md). Não gerar pasta `ios/` nem condicionais `Platform.isIOS` nesse projeto.
 
@@ -69,7 +69,7 @@ As regras abaixo não podem ser violadas sem novo ADR.
 | `SMSMarica.server` | .NET 10 LTS, ASP.NET Core, EF Core 10, PostgreSQL | CPM em `Directory.Packages.props`. Controllers MVC + FluentValidation auto + Mapperly + Serilog. xUnit + Testcontainers (precisa Docker pra rodar testes). |
 | `Automais.Fhir` | .NET 10, EF Core + Npgsql, Firely SDK (`Hl7.Fhir.R4`), PostgreSQL (schema `fhir`, JSONB) | Solução própria (`Automais.Fhir.slnx`). Serviço FHIR autônomo ([ADR-0010](./docs/adr/0010-servico-fhir-autonomo.md)), em prod na porta 5081. |
 | `SMSMais.front` | React + Vite + TypeScript, Tailwind | **Implementado** (~20 features). Tema vermelho/branco (logo Maricá horizontal). npm (`package-lock.json`). |
-| `SMSMarica.EquipamentoSim` | Python 3.11+, `pynetdicom`/`pydicom`, Typer CLI | Simulador DICOM para o ciclo Solicitação→Worklist→Execução. |
+| `SMSMais.EquipamentoSim` | Python 3.11+, `pynetdicom`/`pydicom`, Typer CLI | Simulador DICOM para o ciclo Solicitação→Worklist→Execução. |
 | `Salux` | Python 3.13, `paramiko`, `sqlplus`; alvo Oracle 12c | Engenharia reversa do Salux HIS. **Regras próprias em `Salux/CLAUDE.md`.** |
 | `SMSMarica.cidadao.app` | Flutter (iOS + Android) | Riverpod + go_router + dio. **Ainda não está em produção** — login é mock; quebras de contrato com `/pacientes/{id}` são aceitáveis nesta fase. |
 | `SMSMarica.agente.app` | Flutter Android only (planejado) | Foreground service + geofencing. |
@@ -88,7 +88,7 @@ dotnet run --project src/SMSMarica.Api             # http://localhost:5080
 
 # Nova migration
 dotnet ef migrations add <Nome> \
-  --project src/SMSMarica.Data \
+  --project src/SMSMais.Data \
   --startup-project src/SMSMarica.Api
 
 # Serviço FHIR autônomo (solução separada)
@@ -110,7 +110,7 @@ Ver [`docs/architecture.md §3.6`](./docs/architecture.md). Resumo:
 
 1. POCO em `Data/Entities/<X>.cs`
 2. Configuração EF em `Data/Configurations/<X>Configuration.cs`
-3. `DbSet<X>` em `SmsMaricaDbContext`
+3. `DbSet<X>` em `SmsMaisDbContext`
 4. Migration (`dotnet ef migrations add ...`)
 5. Pasta `Core/<X>/` com `IXService`/`XService`, `Dtos/`, `Validators/`, `Mapper.cs`
 6. Registrar service em `Core/DependencyInjection.cs`

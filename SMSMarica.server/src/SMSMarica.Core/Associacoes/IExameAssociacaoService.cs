@@ -1,6 +1,6 @@
 using SMSMarica.Core.Associacoes.Dtos;
 using SMSMarica.Core.Worklist;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Associacoes;
 

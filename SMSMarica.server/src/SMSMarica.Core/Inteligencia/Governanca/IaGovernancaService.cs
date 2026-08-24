@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Ia;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Ia;
 
 namespace SMSMarica.Core.Inteligencia.Governanca;
 
@@ -12,10 +12,10 @@ namespace SMSMarica.Core.Inteligencia.Governanca;
 /// o histórico de correções. Desativar é não-destrutivo (Ativo=false + soft-delete).
 /// </summary>
 public sealed class IaGovernancaService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IUsuarioAtualAccessor usuarioAtual) : IIaGovernancaService
 {
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
     private readonly IUsuarioAtualAccessor _usuarioAtual = usuarioAtual;
 
     public async Task<IReadOnlyList<AprendizadoDto>> ListarAprendizadosAsync(

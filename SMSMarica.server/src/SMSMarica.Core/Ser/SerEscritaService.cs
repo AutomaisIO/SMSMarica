@@ -8,8 +8,8 @@ using SMSMarica.Core.Integracoes.SerWeb;
 using SMSMarica.Core.Integracoes.SerWeb.Varredura;
 using SMSMarica.Core.Ser.Dtos;
 using SMSMarica.Core.Ser.Sessao;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Ser;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Ser;
 
 namespace SMSMarica.Core.Ser;
 
@@ -38,7 +38,7 @@ public interface ISerEscritaService
 }
 
 public sealed class SerEscritaService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     ISerSessaoOperadorStore sessoes,
     IUsuarioAtualAccessor usuarioAtual,
     ILoggerFactory loggerFactory,

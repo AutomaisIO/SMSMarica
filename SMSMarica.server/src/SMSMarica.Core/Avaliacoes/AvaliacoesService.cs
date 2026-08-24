@@ -1,14 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Avaliacoes.Dtos;
 using SMSMarica.Core.Common.Excecoes;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.Avaliacoes;
 
-public sealed class AvaliacoesService(SmsMaricaDbContext db) : IAvaliacoesService
+public sealed class AvaliacoesService(SmsMaisDbContext db) : IAvaliacoesService
 {
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
 
     public async Task<IReadOnlyList<AvaliacaoListItemDto>> ListarAsync(CancellationToken cancellationToken = default)
     {

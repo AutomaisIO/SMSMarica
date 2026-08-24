@@ -4,8 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Integracoes.Pep.Divergencias;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Integracoes.Pep.Background;
 
@@ -63,7 +63,7 @@ public sealed class VerificadorDivergenciasScheduler(
         try
         {
             using var scope = scopeFactory.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<SmsMaricaDbContext>();
+            var db = scope.ServiceProvider.GetRequiredService<SmsMaisDbContext>();
 
             // Fontes com fila pendente. Consulta barata — na esmagadora maioria dos ticks
             // não há nada a fazer e o job termina aqui, sem tocar em serviço externo.

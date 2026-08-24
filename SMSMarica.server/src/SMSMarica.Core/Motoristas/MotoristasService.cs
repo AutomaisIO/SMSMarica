@@ -2,14 +2,14 @@ using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Motoristas.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.Motoristas;
 
-public sealed class MotoristasService(SmsMaricaDbContext db, IUsuarioAtualAccessor atual) : IMotoristasService
+public sealed class MotoristasService(SmsMaisDbContext db, IUsuarioAtualAccessor atual) : IMotoristasService
 {
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
     private readonly IUsuarioAtualAccessor _atual = atual;
 
     private const string SenhaHashPlaceholder = "PENDENTE_AUTH";

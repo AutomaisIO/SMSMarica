@@ -5,13 +5,13 @@ using Microsoft.Extensions.Caching.Memory;
 using SMSMarica.Core.Common.Dtos;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Institucional.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.Institucional;
 
 public sealed partial class InstituicaoService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IMemoryCache cache,
     IHtmlSanitizer sanitizer) : IInstituicaoService
 {
@@ -21,7 +21,7 @@ public sealed partial class InstituicaoService(
     // só invalida o cache DESTE processo — server e (futuros) workers têm o seu.
     private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(2);
 
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
     private readonly IMemoryCache _cache = cache;
     private readonly IHtmlSanitizer _sanitizer = sanitizer;
 

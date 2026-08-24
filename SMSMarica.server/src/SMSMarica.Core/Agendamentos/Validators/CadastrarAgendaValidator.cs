@@ -1,6 +1,6 @@
 using FluentValidation;
 using SMSMarica.Core.Agendamentos.Dtos;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Agendamentos.Validators;
 

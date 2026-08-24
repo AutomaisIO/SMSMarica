@@ -13,8 +13,8 @@ using SMSMarica.Core.Midias;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.SolicitacoesExame;
 using SMSMarica.Core.Worklist;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 using QuestDocument = QuestPDF.Fluent.Document;
 
 namespace SMSMais.Tests.Laudos;

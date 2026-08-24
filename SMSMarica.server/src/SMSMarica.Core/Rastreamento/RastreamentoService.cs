@@ -1,18 +1,18 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Rastreamento.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Rastreamento;
 
 public sealed class RastreamentoService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IRastreamentoNotificador notificador,
     Pacientes.Fhir.IPacienteResolver pacienteResolver) : IRastreamentoService
 {
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
 
     public async Task<IReadOnlyList<PontoGpsDto>> ListarAsync(CancellationToken cancellationToken = default)
     {

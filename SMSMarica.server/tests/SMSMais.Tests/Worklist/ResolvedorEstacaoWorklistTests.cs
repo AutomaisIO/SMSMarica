@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Worklist;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 using SMSMais.Tests.Infraestrutura;
 
 namespace SMSMais.Tests.Worklist;
@@ -16,11 +16,11 @@ namespace SMSMais.Tests.Worklist;
 [Collection(nameof(PostgresCollection))]
 public class ResolvedorEstacaoWorklistTests(PostgresFixture fixture)
 {
-    private static ResolvedorEstacaoWorklist CriarResolvedor(SmsMaricaDbContext db) =>
+    private static ResolvedorEstacaoWorklist CriarResolvedor(SmsMaisDbContext db) =>
         new(db, NullLogger<ResolvedorEstacaoWorklist>.Instance);
 
     private static async Task<Equipamento> AdicionarEquipamentoAsync(
-        SmsMaricaDbContext db,
+        SmsMaisDbContext db,
         Guid unidadeId,
         ModalidadeDicom modalidade,
         string? identificadorDicom,
@@ -43,7 +43,7 @@ public class ResolvedorEstacaoWorklistTests(PostgresFixture fixture)
     }
 
     /// <summary>Outra unidade qualquer (FK real — equipamento não aceita unidade inexistente).</summary>
-    private static async Task<Guid> OutraUnidadeAsync(SmsMaricaDbContext db)
+    private static async Task<Guid> OutraUnidadeAsync(SmsMaisDbContext db)
     {
         var unidade = new Unidade
         {
@@ -57,7 +57,7 @@ public class ResolvedorEstacaoWorklistTests(PostgresFixture fixture)
     }
 
     private static async Task<ConflitoException> AssertSemEquipamentoAsync(
-        SmsMaricaDbContext db, ExameImagem exame)
+        SmsMaisDbContext db, ExameImagem exame)
     {
         var ex = await Assert.ThrowsAsync<ConflitoException>(
             () => CriarResolvedor(db).ResolverAsync(exame));

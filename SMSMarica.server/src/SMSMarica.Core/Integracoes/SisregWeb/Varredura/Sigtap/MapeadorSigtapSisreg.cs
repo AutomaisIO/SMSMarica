@@ -2,8 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Sisreg;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Sisreg;
 
 namespace SMSMarica.Core.Integracoes.SisregWeb.Varredura.Sigtap;
 
@@ -88,7 +88,7 @@ public sealed record ConfirmarDeParaSigtapRequest(Guid ProcedimentoSigtapId);
 /// Ver <see cref="SisregProcedimentoSigtap"/> para o porquê de ser catálogo global.
 /// </summary>
 public sealed class MapeadorSigtapSisreg(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IUsuarioAtualAccessor usuarioAtual,
     ILogger<MapeadorSigtapSisreg> logger) : IMapeadorSigtapSisreg
 {

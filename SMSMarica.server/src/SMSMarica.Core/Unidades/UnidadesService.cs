@@ -2,14 +2,14 @@ using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Geo;
 using SMSMarica.Core.Unidades.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.Unidades;
 
-public sealed class UnidadesService(SmsMaricaDbContext db, IGeocodificadorService geo) : IUnidadesService
+public sealed class UnidadesService(SmsMaisDbContext db, IGeocodificadorService geo) : IUnidadesService
 {
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
     private readonly IGeocodificadorService _geo = geo;
 
     public async Task<IReadOnlyList<UnidadeListItemDto>> ListarAsync(CancellationToken cancellationToken = default)

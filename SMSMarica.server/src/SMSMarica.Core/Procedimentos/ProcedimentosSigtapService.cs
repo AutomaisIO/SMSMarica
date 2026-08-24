@@ -1,14 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Procedimentos.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.Procedimentos;
 
-public sealed class ProcedimentosSigtapService(SmsMaricaDbContext db) : IProcedimentosSigtapService
+public sealed class ProcedimentosSigtapService(SmsMaisDbContext db) : IProcedimentosSigtapService
 {
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
 
     public async Task<IReadOnlyList<ProcedimentoSigtapDto>> ListarAsync(
         string? busca,

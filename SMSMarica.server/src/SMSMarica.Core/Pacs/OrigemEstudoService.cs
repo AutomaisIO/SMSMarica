@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Worklist;
-using SMSMarica.Data;
+using SMSMais.Data;
 
 namespace SMSMarica.Core.Pacs;
 
@@ -32,7 +32,7 @@ public sealed record OrigemEstudoDto(
     string? EquipamentoNome,
     string? UnidadeNome);
 
-internal sealed class OrigemEstudoService(SmsMaricaDbContext db, IConsultaStudyClient consulta)
+internal sealed class OrigemEstudoService(SmsMaisDbContext db, IConsultaStudyClient consulta)
     : IOrigemEstudoService
 {
     /// <summary>Teto por chamada: é uma página da listagem, não uma varredura.</summary>

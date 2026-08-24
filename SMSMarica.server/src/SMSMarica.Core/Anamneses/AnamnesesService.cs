@@ -3,13 +3,13 @@ using SMSMarica.Core.Anamneses.Dtos;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Pacientes.Fhir;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.Anamneses;
 
 public sealed class AnamnesesService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IPacienteResolver pacienteResolver,
     IUsuarioAtualAccessor usuarioAtual) : IAnamnesesService
 {

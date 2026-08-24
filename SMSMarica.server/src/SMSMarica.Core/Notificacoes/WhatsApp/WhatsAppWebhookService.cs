@@ -7,10 +7,10 @@ using SMSMarica.Core.Conversas;
 using SMSMarica.Core.Notificacoes.Comunicacao;
 using SMSMarica.Core.Notificacoes.WhatsApp.Manipuladores;
 using SMSMarica.Core.Pacientes;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Conversas;
-using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Notificacoes;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Conversas;
+using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Notificacoes;
 
 namespace SMSMarica.Core.Notificacoes.WhatsApp;
 
@@ -27,7 +27,7 @@ public interface IWhatsAppWebhookService
 /// domínio (ex.: confirmação de acompanhante do TFD). Notifica em tempo real APÓS o commit.
 /// </summary>
 public sealed class WhatsAppWebhookService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IPacientesService pacientes,
     IConversaNotificador notificador,
     IEnumerable<IManipuladorMensagemWhatsApp> manipuladores,

@@ -5,9 +5,9 @@ using SMSMarica.Core.Consultas.Dtos;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Core.SolicitacoesExame.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Consultas;
 
@@ -23,7 +23,7 @@ public interface IConsultasService
 }
 
 public sealed class ConsultasService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IPacienteResolver pacienteResolver,
     IUsuarioAtualAccessor usuarioAtual) : IConsultasService
 {

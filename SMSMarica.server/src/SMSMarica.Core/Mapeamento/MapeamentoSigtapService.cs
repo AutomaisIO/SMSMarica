@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Mapeamento.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.Mapeamento;
 
@@ -18,7 +18,7 @@ public interface IMapeamentoSigtapService
     Task<VincularMapeamentoResultado> VincularAsync(VincularMapeamentoRequest request, CancellationToken ct = default);
 }
 
-public sealed class MapeamentoSigtapService(SmsMaricaDbContext db) : IMapeamentoSigtapService
+public sealed class MapeamentoSigtapService(SmsMaisDbContext db) : IMapeamentoSigtapService
 {
     public async Task<IReadOnlyList<PendenteMapeamentoDto>> ListarPendentesAsync(CancellationToken ct = default)
     {

@@ -2,14 +2,14 @@ using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Equipamentos.Dtos;
 using SMSMarica.Core.Identidade;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.Equipamentos;
 
-public sealed class EquipamentosService(SmsMaricaDbContext db, IUsuarioAtualAccessor usuarioAtual) : IEquipamentosService
+public sealed class EquipamentosService(SmsMaisDbContext db, IUsuarioAtualAccessor usuarioAtual) : IEquipamentosService
 {
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
     private readonly IUsuarioAtualAccessor _usuarioAtual = usuarioAtual;
 
     public async Task<IReadOnlyList<EquipamentoListItemDto>> ListarAsync(

@@ -4,7 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Pgvector;
 using Pgvector.EntityFrameworkCore;
 using SMSMarica.Core.Inteligencia.Provedores;
-using SMSMarica.Data;
+using SMSMais.Data;
 
 namespace SMSMarica.Core.Inteligencia.Conhecimento;
 
@@ -19,7 +19,7 @@ namespace SMSMarica.Core.Inteligencia.Conhecimento;
 /// Em ambos, soma os aprendizados ativos da fonte.
 /// </summary>
 public sealed class RecuperadorContexto(
-    SmsMaricaDbContext db, IServicoEmbeddings embeddings, IConfiguration configuration)
+    SmsMaisDbContext db, IServicoEmbeddings embeddings, IConfiguration configuration)
     : IRecuperadorContexto
 {
     private const int TopKChunks = 8;

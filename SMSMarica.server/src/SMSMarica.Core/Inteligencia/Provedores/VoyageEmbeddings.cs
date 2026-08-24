@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Inteligencia.Seguranca;
-using SMSMarica.Data;
+using SMSMais.Data;
 
 namespace SMSMarica.Core.Inteligencia.Provedores;
 
@@ -14,7 +14,7 @@ namespace SMSMarica.Core.Inteligencia.Provedores;
 /// </summary>
 public sealed class VoyageEmbeddings(
     HttpClient http,
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IProtetorSegredos protetor) : IServicoEmbeddings
 {
     public const string HttpClientName = "IaEmbeddings";

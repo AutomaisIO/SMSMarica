@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Ser.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Ser;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Ser;
 
 namespace SMSMarica.Core.Ser;
 
@@ -21,7 +21,7 @@ public interface ISerConsultaService
     Task<IReadOnlyList<SerResumoSituacaoDto>> ResumoPorSituacaoAsync(CancellationToken cancellationToken);
 }
 
-public sealed class SerConsultaService(SmsMaricaDbContext db) : ISerConsultaService
+public sealed class SerConsultaService(SmsMaisDbContext db) : ISerConsultaService
 {
     private const int TamanhoMaximo = 200;
 

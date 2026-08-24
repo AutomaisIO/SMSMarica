@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Integracoes.SisregWeb.Importacao;
 
@@ -46,7 +46,7 @@ public interface IResolvedorTipoExameSisreg
 }
 
 public sealed class ResolvedorTipoExameSisreg(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     ILogger<ResolvedorTipoExameSisreg> logger) : IResolvedorTipoExameSisreg
 {
     private const int TamanhoMaximoNome = 200;

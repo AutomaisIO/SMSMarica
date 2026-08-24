@@ -5,9 +5,9 @@ using SMSMarica.Core.Integracoes.Credenciais.Dtos;
 using SMSMarica.Core.Integracoes.SerWeb;
 using SMSMarica.Core.Integracoes.SerWeb.Varredura.Background;
 using SMSMarica.Core.Ser.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Ser;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Ser;
 
 namespace SMSMarica.Core.Ser;
 
@@ -41,7 +41,7 @@ public interface ISerMotorService
 }
 
 public sealed class SerMotorService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IVarreduraSerFila fila,
     ISerWebSessao sessao,
     IIntegracaoCredencialService credenciais) : ISerMotorService

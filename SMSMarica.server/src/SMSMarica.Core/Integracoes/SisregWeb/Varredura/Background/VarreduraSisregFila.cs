@@ -1,5 +1,5 @@
 using System.Threading.Channels;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Integracoes.SisregWeb.Varredura.Background;
 

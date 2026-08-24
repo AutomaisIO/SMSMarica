@@ -1,5 +1,5 @@
 using FluentValidation;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Medicos.Assinatura;
 

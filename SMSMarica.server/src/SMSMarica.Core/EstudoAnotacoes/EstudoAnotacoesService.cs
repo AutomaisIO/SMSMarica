@@ -2,14 +2,14 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.EstudoAnotacoes.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.EstudoAnotacoes;
 
-public sealed class EstudoAnotacoesService(SmsMaricaDbContext db) : IEstudoAnotacoesService
+public sealed class EstudoAnotacoesService(SmsMaisDbContext db) : IEstudoAnotacoesService
 {
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
 
     public async Task<EstudoAnotacaoVersaoDto?> ObterVersaoAtualAsync(
         string studyInstanceUID,

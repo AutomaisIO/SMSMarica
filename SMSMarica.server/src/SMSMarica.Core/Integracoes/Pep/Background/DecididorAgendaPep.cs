@@ -1,4 +1,4 @@
-using SMSMarica.Data.Entities.Pep;
+using SMSMais.Data.Entities.Pep;
 
 namespace SMSMarica.Core.Integracoes.Pep.Background;
 

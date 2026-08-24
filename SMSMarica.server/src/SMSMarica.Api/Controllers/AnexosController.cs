@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using SMSMarica.Api.Auth;
 using SMSMarica.Core.Anexos;
 using SMSMarica.Core.Anexos.Dtos;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
 

@@ -7,10 +7,10 @@ using SMSMarica.Core.Notificacoes.Comunicacao;
 using SMSMarica.Core.Notificacoes.WhatsApp;
 using SMSMarica.Core.Notificacoes.WhatsApp.Manipuladores;
 using SMSMarica.Core.Pacientes;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Notificacoes;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Notificacoes;
 using SMSMais.Tests.Infraestrutura;
 
 namespace SMSMais.Tests.Notificacoes;
@@ -24,7 +24,7 @@ namespace SMSMais.Tests.Notificacoes;
 [Collection(nameof(PostgresCollection))]
 public class WhatsAppWebhookStatusesTests(PostgresFixture fixture)
 {
-    private static WhatsAppWebhookService CriarService(SmsMaricaDbContext db) => new(
+    private static WhatsAppWebhookService CriarService(SmsMaisDbContext db) => new(
         db,
         Substitute.For<IPacientesService>(),
         Substitute.For<IConversaNotificador>(),
@@ -41,7 +41,7 @@ public class WhatsAppWebhookStatusesTests(PostgresFixture fixture)
     }
 
     private async Task<(MensagemWhatsApp Msg, ComunicacaoPaciente Notif)> SeedEnvioAsync(
-        SmsMaricaDbContext db, int tentativas = 1)
+        SmsMaisDbContext db, int tentativas = 1)
     {
         var wamid = $"wamid.TEST.{Guid.NewGuid():N}";
         var msg = new MensagemWhatsApp

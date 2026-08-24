@@ -9,14 +9,14 @@ using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade.Dtos;
 using SMSMarica.Core.Medicos;
 using SMSMarica.Core.Medicos.Fhir;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Identidade;
 
 public sealed class IdentidadeService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IPasswordHasher<Usuario> hasher,
     ITokenService tokenService,
     IUsuarioAtualAccessor atual,
@@ -26,7 +26,7 @@ public sealed class IdentidadeService(
     /// <summary>Hash de senha "PENDENTE" — bloqueia login até o admin definir a senha real.</summary>
     private const string SenhaHashPlaceholder = "PENDENTE_AUTH";
 
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
     private readonly IPasswordHasher<Usuario> _hasher = hasher;
     private readonly ITokenService _tokenService = tokenService;
     private readonly IUsuarioAtualAccessor _atual = atual;

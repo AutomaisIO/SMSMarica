@@ -4,7 +4,7 @@ using Hl7.Fhir.Model;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Integracoes.Pep.Leitura;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Integracoes.Pep.Estrategias.Salux;
 

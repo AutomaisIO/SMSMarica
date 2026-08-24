@@ -1,13 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.Cidadao;
 
 public sealed class CidadaoSessaoService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IPacienteTokenService tokens,
     IConfiguration config,
     ILogger<CidadaoSessaoService> logger) : ICidadaoSessaoService

@@ -1,6 +1,6 @@
 ﻿using SMSMarica.Core.SolicitacoesExame.Dtos;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.SolicitacoesExame;
 

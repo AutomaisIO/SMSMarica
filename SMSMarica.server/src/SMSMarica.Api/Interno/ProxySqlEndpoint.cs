@@ -4,7 +4,7 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using SMSMarica.Core.Inteligencia.Fontes;
-using SMSMarica.Data;
+using SMSMais.Data;
 
 namespace SMSMarica.Api.Interno;
 
@@ -42,7 +42,7 @@ public static class ProxySqlEndpoint
         ProxySqlRequisicao requisicao,
         HttpContext ctx,
         IOptions<ProxySqlOpcoes> opcoes,
-        SmsMaricaDbContext db,
+        SmsMaisDbContext db,
         IFonteDadosFactory factory,
         ILoggerFactory logs,
         CancellationToken ct)

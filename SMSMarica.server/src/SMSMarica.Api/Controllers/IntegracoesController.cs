@@ -4,7 +4,7 @@ using SMSMarica.Core.Integracoes.Dtos;
 using SMSMarica.Core.Integracoes.Proxy;
 using SMSMarica.Core.Integracoes.Proxy.Configuracao;
 using SMSMarica.Core.Integracoes.SisregWeb;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
 

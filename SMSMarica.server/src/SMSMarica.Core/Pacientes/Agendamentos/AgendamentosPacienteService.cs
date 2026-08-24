@@ -3,14 +3,14 @@ using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Tempo;
 using SMSMarica.Core.Pacientes.Agendamentos.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Ser;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Ser;
 
 namespace SMSMarica.Core.Pacientes.Agendamentos;
 
 /// <inheritdoc />
-public sealed partial class AgendamentosPacienteService(SmsMaricaDbContext db)
+public sealed partial class AgendamentosPacienteService(SmsMaisDbContext db)
     : IAgendamentosPacienteService
 {
     public async Task<AgendamentosPacienteDto> ListarPorPacienteAsync(

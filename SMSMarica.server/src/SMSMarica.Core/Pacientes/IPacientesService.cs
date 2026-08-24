@@ -47,7 +47,7 @@ public interface IPacientesService
     Task<Guid> CadastrarAsync(CadastrarPacienteRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Promove um <see cref="SMSMarica.Data.Entities.Usuario"/> existente
+    /// Promove um <see cref="SMSMais.Data.Entities.Usuario"/> existente
     /// (sem papel atual) a Paciente, criando linha em paciente com os campos
     /// específicos. Papel é determinado pela existência da linha 1:1 (ADR-0006).
     /// </summary>

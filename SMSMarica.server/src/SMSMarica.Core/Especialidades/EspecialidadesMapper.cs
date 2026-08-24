@@ -1,5 +1,5 @@
 using SMSMarica.Core.Especialidades.Dtos;
-using SMSMarica.Data.Entities;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.Especialidades;
 

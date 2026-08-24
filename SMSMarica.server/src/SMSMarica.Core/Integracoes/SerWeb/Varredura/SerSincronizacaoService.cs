@@ -3,9 +3,9 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Common.Tempo;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Ser;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Ser;
 using SMSMarica.Core.Integracoes.SerWeb.Varredura.Export;
 
 namespace SMSMarica.Core.Integracoes.SerWeb.Varredura;
@@ -34,7 +34,7 @@ public interface ISerSincronizacaoService
 }
 
 public sealed class SerSincronizacaoService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     ISerLeitorService leitor,
     ISerExportLeitor exportLeitor,
     ISerExportSolicitacaoLeitor exportSolicitacaoLeitor,

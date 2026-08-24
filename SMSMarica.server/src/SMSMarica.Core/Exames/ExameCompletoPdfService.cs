@@ -4,9 +4,9 @@ using SMSMarica.Core.Common.Tempo;
 using SMSMarica.Core.Laudos;
 using SMSMarica.Core.Laudos.Pdf;
 using SMSMarica.Core.Pacientes;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Exames;
 
@@ -22,7 +22,7 @@ public interface IExameCompletoPdfService
 }
 
 public sealed class ExameCompletoPdfService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IExamePacsImagensReader imagensReader,
     IPacientesService pacientes,
     ILaudosService laudos,

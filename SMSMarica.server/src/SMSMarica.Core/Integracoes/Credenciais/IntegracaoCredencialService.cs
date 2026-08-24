@@ -3,8 +3,8 @@ using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Integracoes.Credenciais.Dtos;
 using SMSMarica.Core.Inteligencia.Seguranca;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Integracoes;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Integracoes;
 
 namespace SMSMarica.Core.Integracoes.Credenciais;
 
@@ -14,11 +14,11 @@ namespace SMSMarica.Core.Integracoes.Credenciais;
 /// de <c>SisregConfiguracaoService</c>.
 /// </summary>
 public sealed class IntegracaoCredencialService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IProtetorSegredos protetor,
     IUsuarioAtualAccessor usuarioAtual) : IIntegracaoCredencialService
 {
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
     private readonly IProtetorSegredos _protetor = protetor;
     private readonly IUsuarioAtualAccessor _usuarioAtual = usuarioAtual;
 

@@ -2,9 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.SolicitacoesExame.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.SolicitacoesExame;
 
@@ -20,7 +20,7 @@ public interface ISolicitacaoHistoricoService
 }
 
 public sealed class SolicitacaoHistoricoService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IUsuarioAtualAccessor usuarioAtual) : ISolicitacaoHistoricoService
 {
     public async Task<HistoricoSolicitacaoDto> ObterAsync(Guid solicitacaoExameId, CancellationToken ct = default)

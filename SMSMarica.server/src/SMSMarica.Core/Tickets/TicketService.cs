@@ -2,15 +2,15 @@ using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Tickets.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Tickets;
 
-public sealed class TicketService(SmsMaricaDbContext db, IUsuarioAtualAccessor usuarioAtual) : ITicketService
+public sealed class TicketService(SmsMaisDbContext db, IUsuarioAtualAccessor usuarioAtual) : ITicketService
 {
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
     private readonly IUsuarioAtualAccessor _usuarioAtual = usuarioAtual;
 
     // ================= Self-service =================

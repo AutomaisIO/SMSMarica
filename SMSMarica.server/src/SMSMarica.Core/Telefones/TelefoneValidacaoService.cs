@@ -9,13 +9,13 @@ using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Notificacoes.WhatsApp;
 using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Core.Telefones.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Telefones;
 
 public sealed class TelefoneValidacaoService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IWhatsAppCliente whatsapp,
     IMemoryCache cache,
     IConfiguration config,

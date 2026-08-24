@@ -35,7 +35,7 @@ li{margin:3px 0}p,li{max-width:75ch}
 <tr><td><strong>A. Trabalho novo</strong></td><td><strong>113</strong></td><td>só o working tree tem — as 5 frentes</td><td><strong>manter</strong> (é o que vai virar commit)</td></tr>
 <tr><td><strong>B. Untracked idênticos</strong></td><td><strong>9</strong></td><td>existem no disco, <code>git hash-object</code> <strong>igual</strong> ao <code>origin/main</code>; o git os lê como "deletados" só porque nunca foram rastreados aqui</td><td><strong>nenhuma</strong> — o reset ao <code>origin/main</code> os torna "sem alteração"</td></tr>
 <tr><td><strong>C. Ausentes no disco</strong></td><td><strong>2</strong></td><td>a migration do rename (<code>.cs</code> + <code>.Designer.cs</code>)</td><td><strong>restaurar do <code>origin/main</code></strong></td></tr>
-<tr><td><strong>D. Cirurgia</strong></td><td><strong>2</strong></td><td><code>SmsMaricaDbContext.cs</code> e <code>SmsMaricaDbContextModelSnapshot.cs</code></td><td><strong>manter a versão do working tree</strong> — verificado abaixo</td></tr>
+<tr><td><strong>D. Cirurgia</strong></td><td><strong>2</strong></td><td><code>SmsMaisDbContext.cs</code> e <code>SmsMaisDbContextModelSnapshot.cs</code></td><td><strong>manter a versão do working tree</strong> — verificado abaixo</td></tr>
 </tbody></table></div>
 <h3>B — os 9 idênticos (verificados por hash)</h3>
 <p>``<code> Configurations/GeoConfiguracaoConfiguration.cs      Entities/Geo/GeoConfiguracao.cs Configurations/GeoEnderecoConfiguration.cs          Entities/Geo/GeoEndereco.cs Configurations/TfdConfiguracaoConfiguration.cs      Entities/Notificacoes/MensagemWhatsApp.cs Configurations/WhatsAppConfiguracaoConfiguration.cs Entities/Notificacoes/WhatsAppConfiguracao.cs Entities/Tfd/TfdConfiguracao.cs </code>``</p>
@@ -43,8 +43,8 @@ li{margin:3px 0}p,li{max-width:75ch}
 <p>``<code> Migrations/20260731230018_RenomeiaMensageriaEGeoForaDoTfd.cs Migrations/20260731230018_RenomeiaMensageriaEGeoForaDoTfd.Designer.cs </code>``</p>
 <p>Migration <strong>já aplicada em produção</strong> (é a última em <code>smsmarica.__migrations</code>). Vem inteira do <code>origin/main</code>; o working tree não tem versão concorrente dela.</p>
 <h3>D — os 2 que precisavam de análise (ambos aprovados)</h3>
-<p><strong><code>SmsMaricaDbContext.cs</code></strong> — o diff contra o <code>origin/main</code> é <strong>puramente aditivo</strong>: 1 <code>using</code> de Regulação e 7 <code>DbSet</code> novos (2 de PEP + 5 de Regulação). A única linha removida é o <code>using</code> de Sisreg, reinserido em ordem alfabética. <strong>Nada do rename se perde.</strong></p>
-<p><strong><code>SmsMaricaDbContextModelSnapshot.cs</code></strong> — é <strong>superset estrito</strong>:</p>
+<p><strong><code>SmsMaisDbContext.cs</code></strong> — o diff contra o <code>origin/main</code> é <strong>puramente aditivo</strong>: 1 <code>using</code> de Regulação e 7 <code>DbSet</code> novos (2 de PEP + 5 de Regulação). A única linha removida é o <code>using</code> de Sisreg, reinserido em ordem alfabética. <strong>Nada do rename se perde.</strong></p>
+<p><strong><code>SmsMaisDbContextModelSnapshot.cs</code></strong> — é <strong>superset estrito</strong>:</p>
 <div class="tw"><table><thead><tr><th></th><th>Entidades</th></tr></thead><tbody>
 <tr><td><code>origin/main</code></td><td>171</td></tr>
 <tr><td>working tree</td><td><strong>183</strong></td></tr>
@@ -65,7 +65,7 @@ li{margin:3px 0}p,li{max-width:75ch}
 <h1>--mixed reseta só HEAD e o índice; o disco fica intacto.</h1>
 <p>git reset --mixed origin/main</p>
 <h1>3. Restaurar os 2 arquivos do grupo C (a migration do rename)</h1>
-<p>git checkout -- SMSMarica.server/src/SMSMarica.Data/Migrations/20260731230018_RenomeiaMensageriaEGeoForaDoTfd.cs \                 SMSMarica.server/src/SMSMarica.Data/Migrations/20260731230018_RenomeiaMensageriaEGeoForaDoTfd.Designer.cs</p>
+<p>git checkout -- SMSMarica.server/src/SMSMais.Data/Migrations/20260731230018_RenomeiaMensageriaEGeoForaDoTfd.cs \                 SMSMarica.server/src/SMSMais.Data/Migrations/20260731230018_RenomeiaMensageriaEGeoForaDoTfd.Designer.cs</p>
 <h1>4. Conferir: o status agora deve mostrar SÓ o trabalho novo.</h1>
 <h1>Os 9 do grupo B somem (viram "sem alteração"); nenhuma deleção deve aparecer.</h1>
 <p>git status --porcelain | grep '^ D\|^D' || echo "OK: nenhuma deleção pendente"</p>
@@ -81,7 +81,7 @@ li{margin:3px 0}p,li{max-width:75ch}
 <tr><td>6</td><td>Trilha de falhas + fix CID</td><td>—</td><td>idem</td></tr>
 <tr><td>—</td><td>Documentação</td><td><code>docs/**</code></td><td>nenhum</td></tr>
 </tbody></table></div>
-<p>⚠️ <strong>Os dois arquivos compartilhados</strong> (<code>SmsMaricaDbContext.cs</code> e o snapshot) contêm hunks de mais de uma frente. Commitar por hunk (<code>git add -p</code>) ou concentrá-los no primeiro commit de servidor e referenciar nos demais.</p>
+<p>⚠️ <strong>Os dois arquivos compartilhados</strong> (<code>SmsMaisDbContext.cs</code> e o snapshot) contêm hunks de mais de uma frente. Commitar por hunk (<code>git add -p</code>) ou concentrá-los no primeiro commit de servidor e referenciar nos demais.</p>
 <p>⚠️ <strong>Migration fora de ordem, ainda pendente de decisão</strong> (§4.1 do plano): produção tem a <code>20260725154214_AddSisregMapeamentoECredencialUnidade</code> aplicada mas <strong>não</strong> a <code>20260725152753_AddProcessoRegulatorio</code>, que é anterior. Qualquer <code>database update</code> no servidor vai arrastar as 5 migrations pendentes de uma vez — inclusive de frentes cujo código não estará deployado. Tabela sem código é inofensiva, mas <strong>decidir antes</strong>, não durante o deploy.</p>
 <h2>Estado do banco (já feito, não depende disto)</h2>
 <p>Saneamento das duplicatas, migration do hub e backfill dos identifiers <strong>já foram aplicados em produção em 02/08</strong> e estão verificados — ver <code>plano-sincronismo-hub.md</code> §2.5 e §4. O deploy de código é o que falta, e é só ele que depende desta reconciliação.</p>

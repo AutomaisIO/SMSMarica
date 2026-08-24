@@ -1,6 +1,6 @@
 using SMSMarica.Core.Laudos;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Tests.Laudos;
 

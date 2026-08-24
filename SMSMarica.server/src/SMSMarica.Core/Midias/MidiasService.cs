@@ -2,14 +2,14 @@ using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Midias.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.Midias;
 
-public sealed class MidiasService(SmsMaricaDbContext db) : IMidiasService
+public sealed class MidiasService(SmsMaisDbContext db) : IMidiasService
 {
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
 
     /// <summary>5 MB — suficiente para logos/timbres; evita estourar o bytea.</summary>
     private const long TamanhoMaximoBytes = 5 * 1024 * 1024;

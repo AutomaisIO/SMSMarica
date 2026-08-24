@@ -1,6 +1,6 @@
 using Riok.Mapperly.Abstractions;
 using SMSMarica.Core.Anexos.Dtos;
-using SMSMarica.Data.Entities;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.Anexos;
 

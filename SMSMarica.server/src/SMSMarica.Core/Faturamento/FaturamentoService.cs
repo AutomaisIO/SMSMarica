@@ -5,14 +5,14 @@ using SMSMarica.Core.Faturamento.Dtos;
 using SMSMarica.Core.Geo;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.Pacientes.Fhir;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Tfd;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Tfd;
 
 namespace SMSMarica.Core.Faturamento;
 
 public sealed class FaturamentoService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IGeocodificadorService geo,
     IDistanciaService distancia,
     IPacientesService pacientes,

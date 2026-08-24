@@ -24,7 +24,7 @@ public interface ISerConsultaDiretaService
         SerConsultaDiretaRequest requisicao, CancellationToken cancellationToken);
 
     Task<SerHistoricoDiretoDto> HistoricoAsync(
-        string idSer, Data.Entities.Ser.SituacaoSer situacao, CancellationToken cancellationToken);
+        string idSer, SMSMais.Data.Entities.Ser.SituacaoSer situacao, CancellationToken cancellationToken);
 }
 
 public sealed class SerConsultaDiretaService(
@@ -103,7 +103,7 @@ public sealed class SerConsultaDiretaService(
     private async Task<SerConsultaDiretaDto> ConsultarPorExportAsync(
         SerConsultaDiretaRequest r, CancellationToken cancellationToken)
     {
-        if (r.Situacao == Data.Entities.Ser.SituacaoSer.Alta)
+        if (r.Situacao == SMSMais.Data.Entities.Ser.SituacaoSer.Alta)
         {
             throw new ValidacaoException(
                 "ser.export_sem_alta",
@@ -141,7 +141,7 @@ public sealed class SerConsultaDiretaService(
     }
 
     public async Task<SerHistoricoDiretoDto> HistoricoAsync(
-        string idSer, Data.Entities.Ser.SituacaoSer situacao, CancellationToken cancellationToken)
+        string idSer, SMSMais.Data.Entities.Ser.SituacaoSer situacao, CancellationToken cancellationToken)
     {
         var relogio = Stopwatch.StartNew();
         await leitor.PrepararAsync(cancellationToken);

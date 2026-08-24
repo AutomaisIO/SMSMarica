@@ -7,10 +7,10 @@ using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Integracoes.SisregWeb.Importacao;
 using SMSMarica.Core.Integracoes.SisregWeb.Varredura.Background;
 using SMSMarica.Core.Integracoes.SisregWeb.Varredura.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Sisreg;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Sisreg;
 
 namespace SMSMarica.Core.Integracoes.SisregWeb.Varredura;
 
@@ -66,7 +66,7 @@ public interface IVarreduraAgendaService
 /// cortesia com o operador humano e passa a ser requisito do próprio recurso.</para>
 /// </summary>
 public sealed class VarreduraAgendaService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     ISisregWebSessao sessao,
     ISisregUnidadeAtual unidadeAtual,
     IImportacaoSisregService importacao,

@@ -1,5 +1,5 @@
 ﻿using SMSMarica.Core.Integracoes.Pep.Dtos;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Integracoes.Pep.Progresso;
 

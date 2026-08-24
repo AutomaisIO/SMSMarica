@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using SMSMarica.Core.Integracoes.Pep.Divergencias;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Tests.Integracoes.Pep;
 

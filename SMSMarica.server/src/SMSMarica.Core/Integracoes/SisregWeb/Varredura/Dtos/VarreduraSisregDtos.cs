@@ -1,5 +1,5 @@
-using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Sisreg;
+using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Sisreg;
 
 namespace SMSMarica.Core.Integracoes.SisregWeb.Varredura.Dtos;
 

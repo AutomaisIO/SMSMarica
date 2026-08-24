@@ -5,8 +5,8 @@ using SMSMarica.Core.Exames;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Laudos.Configuracao;
 using SMSMarica.Core.SolicitacoesExame;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
 using SMSMais.Tests.Infraestrutura;
 
 namespace SMSMais.Tests.Downloads;
@@ -24,7 +24,7 @@ namespace SMSMais.Tests.Downloads;
 [Collection(nameof(PostgresCollection))]
 public class DownloadPublicoGateCpfTests(PostgresFixture fixture)
 {
-    private static DownloadTokenService CriarService(SmsMaricaDbContext db) =>
+    private static DownloadTokenService CriarService(SmsMaisDbContext db) =>
         new(db,
             Substitute.For<ILaudoConfiguracaoService>(),
             Substitute.For<IExameCompletoPdfService>(),
@@ -33,7 +33,7 @@ public class DownloadPublicoGateCpfTests(PostgresFixture fixture)
             Substitute.For<Microsoft.Extensions.Configuration.IConfiguration>());
 
     private static async Task<DownloadToken> SemearAsync(
-        SmsMaricaDbContext db, Guid? liberacao = null, DateTime? liberadoEm = null)
+        SmsMaisDbContext db, Guid? liberacao = null, DateTime? liberadoEm = null)
     {
         var t = new DownloadToken
         {

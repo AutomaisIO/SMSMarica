@@ -7,14 +7,14 @@ using SMSMarica.Core.Conversas.Dtos;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Notificacoes.WhatsApp;
 using SMSMarica.Core.Pacientes;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Conversas;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Conversas;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Conversas;
 
 public sealed class ConversaService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IWhatsAppCliente whats,
     IPacientesService pacientes,
     IUsuarioAtualAccessor usuarioAtual,

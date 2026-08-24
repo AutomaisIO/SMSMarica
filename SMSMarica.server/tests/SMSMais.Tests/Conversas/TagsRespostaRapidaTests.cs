@@ -1,5 +1,5 @@
 using SMSMarica.Core.Conversas.RespostasRapidas;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Tests.Conversas;
 

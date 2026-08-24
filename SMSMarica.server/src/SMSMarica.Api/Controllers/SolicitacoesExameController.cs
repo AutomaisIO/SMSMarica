@@ -8,7 +8,7 @@ using SMSMarica.Core.Integracoes.SisregWeb.Importacao;
 using SMSMarica.Core.SolicitacoesExame;
 using SMSMarica.Core.SolicitacoesExame.Declaracao;
 using SMSMarica.Core.SolicitacoesExame.Dtos;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
 

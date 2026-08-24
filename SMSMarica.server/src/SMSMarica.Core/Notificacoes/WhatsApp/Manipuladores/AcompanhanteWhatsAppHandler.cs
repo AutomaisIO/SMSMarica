@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Notificacoes.WhatsApp.Manipuladores;
 
@@ -9,7 +9,7 @@ namespace SMSMarica.Core.Notificacoes.WhatsApp.Manipuladores;
 /// próxima sessão pendente. Antes vivia hard-coded no webhook; virou manipulador plugável para o
 /// caminho principal (chat multi-operador) ficar genérico.
 /// </summary>
-public sealed class AcompanhanteWhatsAppHandler(SmsMaricaDbContext db) : IManipuladorMensagemWhatsApp
+public sealed class AcompanhanteWhatsAppHandler(SmsMaisDbContext db) : IManipuladorMensagemWhatsApp
 {
     public int Ordem => 100;
 

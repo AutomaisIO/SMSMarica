@@ -3,12 +3,12 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Erros.Dtos;
 using SMSMarica.Core.Identidade;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.Erros;
 
-public sealed class RegistroErroService(SmsMaricaDbContext db, IUsuarioAtualAccessor usuarioAtual) : IRegistroErroService
+public sealed class RegistroErroService(SmsMaisDbContext db, IUsuarioAtualAccessor usuarioAtual) : IRegistroErroService
 {
     private const int TamanhoMaximo = 200;
 

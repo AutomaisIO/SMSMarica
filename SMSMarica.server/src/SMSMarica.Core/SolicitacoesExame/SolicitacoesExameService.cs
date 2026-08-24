@@ -9,9 +9,9 @@ using SMSMarica.Core.Notificacoes;
 using SMSMarica.Core.SolicitacoesExame.Dtos;
 using SMSMarica.Core.SolicitacoesExame.Identificadores;
 using SMSMarica.Core.Worklist;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.SolicitacoesExame;
 
@@ -23,7 +23,7 @@ namespace SMSMarica.Core.SolicitacoesExame;
 /// de regulação, sincronizado nas transições Cancelada/Realizada.
 /// </summary>
 public sealed class SolicitacoesExameService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IGeradorIdentificadores geradorIds,
     IDcm4cheeMwlClient mwlClient,
     IResolvedorEstacaoWorklist estacaoWorklist,
@@ -40,7 +40,7 @@ public sealed class SolicitacoesExameService(
     ILogger<SolicitacoesExameService> logger)
     : ISolicitacoesExameService
 {
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
     private readonly IGeradorIdentificadores _geradorIds = geradorIds;
     private readonly IDcm4cheeMwlClient _mwlClient = mwlClient;
     private readonly IResolvedorEstacaoWorklist _estacaoWorklist = estacaoWorklist;

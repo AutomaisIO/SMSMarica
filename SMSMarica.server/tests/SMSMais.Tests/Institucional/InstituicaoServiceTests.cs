@@ -23,10 +23,10 @@ public class InstituicaoServiceTests(PostgresFixture fixture)
 {
     private readonly PostgresFixture _fixture = fixture;
 
-    private InstituicaoService CriarServico(out SmsMaricaDbContextWrapper wrapper)
+    private InstituicaoService CriarServico(out SmsMaisDbContextWrapper wrapper)
     {
         var db = _fixture.CriarDbContext();
-        wrapper = new SmsMaricaDbContextWrapper(db);
+        wrapper = new SmsMaisDbContextWrapper(db);
         return new InstituicaoService(db, new MemoryCache(new MemoryCacheOptions()), new HtmlSanitizer());
     }
 
@@ -37,7 +37,7 @@ public class InstituicaoServiceTests(PostgresFixture fixture)
     private async Task<Guid> SemearUsuarioAsync()
     {
         await using var db = _fixture.CriarDbContext();
-        var u = new SMSMarica.Data.Entities.Usuario
+        var u = new SMSMais.Data.Entities.Usuario
         {
             Id = Guid.NewGuid(),
             NomeCompleto = "Teste Instituição",
@@ -191,7 +191,7 @@ public class InstituicaoServiceTests(PostgresFixture fixture)
     }
 
     /// <summary>Descarta o DbContext criado junto com o service.</summary>
-    public sealed class SmsMaricaDbContextWrapper(SMSMarica.Data.SmsMaricaDbContext db) : IAsyncDisposable
+    public sealed class SmsMaisDbContextWrapper(SMSMais.Data.SmsMaisDbContext db) : IAsyncDisposable
     {
         public ValueTask DisposeAsync() => db.DisposeAsync();
     }

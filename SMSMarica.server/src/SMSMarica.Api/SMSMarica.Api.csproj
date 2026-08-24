@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SMSMarica.Core\SMSMarica.Core.csproj" />
-    <ProjectReference Include="..\SMSMarica.Data\SMSMarica.Data.csproj" />
+    <ProjectReference Include="..\SMSMais.Data\SMSMais.Data.csproj" />
   </ItemGroup>
 
   <ItemGroup>

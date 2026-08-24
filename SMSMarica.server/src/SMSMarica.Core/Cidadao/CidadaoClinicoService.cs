@@ -8,15 +8,15 @@ using SMSMarica.Core.Laudos;
 using SMSMarica.Core.Laudos.Assinatura;
 using SMSMarica.Core.Laudos.Assinatura.Dtos;
 using SMSMarica.Core.Laudos.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Cidadao;
 
 // Visão clínica do cidadão (PWA). Exames de imagem = satélite ExameImagem (id público preservado);
 // a regulação (paciente, datas, confirmação) vem por .Solicitacao. Ver ADR-0021.
 public sealed class CidadaoClinicoService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IAnexosService anexos,
     ILaudosService laudos,
     ILaudoAssinaturaService assinatura,
@@ -322,7 +322,7 @@ public sealed class CidadaoClinicoService(
             reg.MotivoCancelamentoPaciente);
     }
 
-    private static string? FormatarEndereco(Data.Entities.Endereco? e)
+    private static string? FormatarEndereco(SMSMais.Data.Entities.Endereco? e)
     {
         if (e is null) return null;
         var partes = new[]
@@ -373,7 +373,7 @@ public sealed class CidadaoClinicoService(
 
     // Retorna a ESPINHA (Solicitacao) do exame do paciente. O id recebido é o público (exame);
     // traduz para a espinha (consulta: já é o id da espinha).
-    private async Task<Data.Entities.Solicitacao> ObterSolicitacaoDoPacienteAsync(
+    private async Task<SMSMais.Data.Entities.Solicitacao> ObterSolicitacaoDoPacienteAsync(
         Guid pacienteId, Guid solicitacaoExameId, CancellationToken ct)
     {
         var solicitacaoId = await db.ExamesImagem.AsNoTracking()

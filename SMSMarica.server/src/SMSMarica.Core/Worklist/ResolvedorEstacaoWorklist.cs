@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Common.Excecoes;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Worklist;
 
@@ -16,10 +16,10 @@ namespace SMSMarica.Core.Worklist;
 /// estação de outra — ou sortear entre duas salas — é pior que não mandar.
 /// </summary>
 public sealed class ResolvedorEstacaoWorklist(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     ILogger<ResolvedorEstacaoWorklist> logger) : IResolvedorEstacaoWorklist
 {
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
     private readonly ILogger<ResolvedorEstacaoWorklist> _logger = logger;
 
     public async Task<string> ResolverAsync(ExameImagem exame, CancellationToken cancellationToken = default)

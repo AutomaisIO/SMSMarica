@@ -1,6 +1,6 @@
 using Hl7.Fhir.Model;
 using SMSMarica.Core.Integracoes.Pep;
-using SMSMarica.Data.Entities.Ser;
+using SMSMais.Data.Entities.Ser;
 // Alias: o namespace Ser.Pacientes sombreia Core.Pacientes.
 using PatientMergeFhir = SMSMarica.Core.Pacientes.Fhir.PatientMergeFhir;
 

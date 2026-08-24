@@ -2,7 +2,7 @@
 using Hl7.Fhir.Model;
 using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Core.Ser.Pacientes;
-using SMSMarica.Data.Entities.Ser;
+using SMSMais.Data.Entities.Ser;
 
 namespace SMSMais.Tests.Integracoes;
 

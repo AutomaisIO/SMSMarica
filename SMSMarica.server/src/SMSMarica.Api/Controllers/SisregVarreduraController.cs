@@ -3,7 +3,7 @@ using SMSMarica.Api.Auth;
 using SMSMarica.Core.Integracoes.SisregWeb.Varredura;
 using SMSMarica.Core.Integracoes.SisregWeb.Varredura.Background;
 using SMSMarica.Core.Integracoes.SisregWeb.Varredura.Dtos;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
 

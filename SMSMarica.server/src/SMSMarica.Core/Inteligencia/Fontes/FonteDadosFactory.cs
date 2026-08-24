@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Configuration;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Inteligencia.Seguranca;
-using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Ia;
+using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Ia;
 
 namespace SMSMarica.Core.Inteligencia.Fontes;
 

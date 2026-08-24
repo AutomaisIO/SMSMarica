@@ -12,7 +12,7 @@ using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.Pacientes.Agendamentos;
 using SMSMarica.Core.Pacientes.Agendamentos.Dtos;
 using SMSMarica.Core.Pacientes.Dtos;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
 

@@ -2,7 +2,7 @@
 using SMSMarica.Api.Auth;
 using SMSMarica.Core.PesquisasSatisfacao;
 using SMSMarica.Core.PesquisasSatisfacao.Dtos;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
 

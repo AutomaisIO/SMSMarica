@@ -46,7 +46,7 @@ cur.execute("""select numero,nome,memoria_calculo,fonte_declarada,meta,meta_oper
   from smsmarica.indicador where aba=%s and numero=%s and excluido_em is null""", (1,'1'))
 ```
 
-Enums (valor inteiro persistido — ver `SMSMarica.Data/Entities/Enums/IndicadorEnums.cs`):
+Enums (valor inteiro persistido — ver `SMSMais.Data/Entities/Enums/IndicadorEnums.cs`):
 - **situacao**: 1=Validado · 2=NaoValidado · 3=SemMotor · 4=ForaDoBanco
 - **tipo_resultado**: 1=Razao · 2=Densidade(×fator) · 3=Absoluto · 4=Distribuicao · 5=Agrupador · 6=Media
 - **meta_operador**: 1=≤ · 2=≥ · 3=< · 4=> · 5== · 6=Entre

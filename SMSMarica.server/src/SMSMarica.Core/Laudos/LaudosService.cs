@@ -14,14 +14,14 @@ using SMSMarica.Core.Medicos.Fhir;
 using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Core.SolicitacoesExame;
 using SMSMarica.Core.Worklist;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Laudos;
 
 public sealed class LaudosService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IHtmlSanitizer sanitizer,
     Lazy<ISolicitacoesExameService> solicitacoes,
     IPacienteFhirClient pacienteFhir,
@@ -34,7 +34,7 @@ public sealed class LaudosService(
     IUsuarioAtualAccessor usuarioAtual,
     ILogger<LaudosService> logger) : ILaudosService
 {
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
     private readonly IHtmlSanitizer _sanitizer = sanitizer;
     // Lazy: quebra a dependência circular SolicitacoesExame → Assinatura → PdfRenderer
     // → Laudos → SolicitacoesExame na construção do grafo de DI (resolução só no uso).

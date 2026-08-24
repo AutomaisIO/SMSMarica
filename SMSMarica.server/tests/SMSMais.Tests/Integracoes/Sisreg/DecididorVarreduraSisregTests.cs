@@ -1,5 +1,5 @@
 using SMSMarica.Core.Integracoes.SisregWeb.Varredura.Background;
-using SMSMarica.Data.Entities.Sisreg;
+using SMSMais.Data.Entities.Sisreg;
 
 namespace SMSMais.Tests.Integracoes.Sisreg;
 

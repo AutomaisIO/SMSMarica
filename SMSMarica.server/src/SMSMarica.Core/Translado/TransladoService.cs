@@ -1,15 +1,15 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Translado.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Translado;
 
-public sealed class TransladoService(SmsMaricaDbContext db, Pacientes.Fhir.IPacienteResolver pacienteResolver) : ITransladoService
+public sealed class TransladoService(SmsMaisDbContext db, Pacientes.Fhir.IPacienteResolver pacienteResolver) : ITransladoService
 {
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
     private readonly Pacientes.Fhir.IPacienteResolver _pacienteResolver = pacienteResolver;
 
     public async Task<IReadOnlyList<RotaDiariaListItemDto>> ListarAsync(

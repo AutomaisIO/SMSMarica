@@ -11,14 +11,14 @@ using SMSMarica.Core.Laudos.Pdf;
 using SMSMarica.Core.Medicos;
 using SMSMarica.Core.Medicos.Dtos;
 using SMSMarica.Core.Medicos.Fhir;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Laudos.Assinatura;
 
 public sealed class LaudoAssinaturaService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     ILaudoPdfRenderer pdf,
     IAssinadorPdfPades assinador,
     IPractitionerFhirClient practitionerFhir,

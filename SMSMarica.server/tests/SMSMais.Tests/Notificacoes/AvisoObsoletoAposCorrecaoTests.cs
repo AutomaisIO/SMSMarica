@@ -6,9 +6,9 @@ using SMSMarica.Core.Cidadao;
 using SMSMarica.Core.Notificacoes.Comunicacao;
 using SMSMarica.Core.Notificacoes.WhatsApp;
 using SMSMarica.Core.Pacientes;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 using SMSMais.Tests.Infraestrutura;
 
 namespace SMSMais.Tests.Notificacoes;
@@ -27,7 +27,7 @@ namespace SMSMais.Tests.Notificacoes;
 [Collection(nameof(PostgresCollection))]
 public class AvisoObsoletoAposCorrecaoTests(PostgresFixture fixture)
 {
-    private static ComunicacaoPacienteService CriarService(SmsMaricaDbContext db) =>
+    private static ComunicacaoPacienteService CriarService(SmsMaisDbContext db) =>
         new(db,
             Substitute.For<IPacientesService>(),
             Substitute.For<ICidadaoLoginLinkService>(),
@@ -38,7 +38,7 @@ public class AvisoObsoletoAposCorrecaoTests(PostgresFixture fixture)
             NullLogger<ComunicacaoPacienteService>.Instance);
 
     private static async Task<ComunicacaoPaciente> SemearAvisoEnviadoAsync(
-        SmsMaricaDbContext db, ExameImagem exame, DateTime enviadoEm)
+        SmsMaisDbContext db, ExameImagem exame, DateTime enviadoEm)
     {
         var c = new ComunicacaoPaciente
         {

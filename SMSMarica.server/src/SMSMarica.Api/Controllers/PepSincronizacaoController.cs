@@ -3,7 +3,7 @@ using SMSMarica.Api.Auth;
 using SMSMarica.Core.Integracoes.Pep;
 using SMSMarica.Core.Integracoes.Pep.Divergencias;
 using SMSMarica.Core.Integracoes.Pep.Dtos;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
 

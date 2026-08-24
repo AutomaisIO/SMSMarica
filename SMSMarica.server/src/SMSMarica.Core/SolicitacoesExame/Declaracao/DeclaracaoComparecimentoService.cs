@@ -9,9 +9,9 @@ using SMSMarica.Core.Laudos.Configuracao;
 using SMSMarica.Core.Laudos.Pdf;
 using SMSMarica.Core.Midias;
 using SMSMarica.Core.Worklist;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.SolicitacoesExame.Declaracao;
 
@@ -27,7 +27,7 @@ public sealed partial class DeclaracaoComparecimentoService(
     IMidiasService midias,
     IConsultaStudyClient consultaStudy,
     IUsuarioAtualAccessor usuarioAtual,
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IConfiguration configuration,
     IOptions<LaudosPdfOptions> options) : IDeclaracaoComparecimentoService
 {

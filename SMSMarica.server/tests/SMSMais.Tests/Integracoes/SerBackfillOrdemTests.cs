@@ -2,8 +2,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using SMSMarica.Core.Ser.Pacientes;
-using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Ser;
+using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Ser;
 using SMSMais.Tests.Infraestrutura;
 
 namespace SMSMais.Tests.Integracoes;

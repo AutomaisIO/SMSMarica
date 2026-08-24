@@ -1,5 +1,5 @@
 using SMSMarica.Core.TiposExame.Dtos;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.TiposExame;
 

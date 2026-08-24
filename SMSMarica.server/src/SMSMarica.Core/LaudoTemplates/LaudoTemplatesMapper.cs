@@ -1,5 +1,5 @@
 using SMSMarica.Core.LaudoTemplates.Dtos;
-using SMSMarica.Data.Entities;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.LaudoTemplates;
 

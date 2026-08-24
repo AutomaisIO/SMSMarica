@@ -1,7 +1,7 @@
 using SMSMarica.Core.Common.Unidades;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Conversas;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Conversas;
 using SMSMais.Tests.Infraestrutura;
 
 namespace SMSMais.Tests.Common;
@@ -149,7 +149,7 @@ public class EscopoUnidadeTests(PostgresFixture fixture)
 
     // ===================== seed =====================
 
-    private static async Task<Guid> CriarUnidadeAsync(SmsMaricaDbContext db)
+    private static async Task<Guid> CriarUnidadeAsync(SmsMaisDbContext db)
     {
         var u = new Unidade
         {
@@ -163,7 +163,7 @@ public class EscopoUnidadeTests(PostgresFixture fixture)
         return u.Id;
     }
 
-    private static async Task<Guid> CriarUsuarioAsync(SmsMaricaDbContext db, bool acessoGlobal)
+    private static async Task<Guid> CriarUsuarioAsync(SmsMaisDbContext db, bool acessoGlobal)
     {
         var u = new Usuario
         {
@@ -180,7 +180,7 @@ public class EscopoUnidadeTests(PostgresFixture fixture)
         return u.Id;
     }
 
-    private static async Task VincularAsync(SmsMaricaDbContext db, Guid usuarioId, params Guid[] unidades)
+    private static async Task VincularAsync(SmsMaisDbContext db, Guid usuarioId, params Guid[] unidades)
     {
         foreach (var id in unidades)
         {

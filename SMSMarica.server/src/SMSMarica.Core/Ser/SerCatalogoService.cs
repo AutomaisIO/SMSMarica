@@ -1,8 +1,8 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Ser.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Ser;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Ser;
 
 namespace SMSMarica.Core.Ser;
 
@@ -35,7 +35,7 @@ public interface ISerCatalogoService
 }
 
 public sealed class SerCatalogoService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     Background.ISerCatalogoSyncFila fila) : ISerCatalogoService
 {
     public async Task<SerCatalogoFormularioDto> ObterFormularioAsync(

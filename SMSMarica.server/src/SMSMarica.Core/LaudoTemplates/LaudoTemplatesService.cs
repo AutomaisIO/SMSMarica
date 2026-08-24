@@ -2,14 +2,14 @@ using Ganss.Xss;
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.LaudoTemplates.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.LaudoTemplates;
 
-public sealed class LaudoTemplatesService(SmsMaricaDbContext db, IHtmlSanitizer sanitizer) : ILaudoTemplatesService
+public sealed class LaudoTemplatesService(SmsMaisDbContext db, IHtmlSanitizer sanitizer) : ILaudoTemplatesService
 {
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
     private readonly IHtmlSanitizer _sanitizer = sanitizer;
 
     public async Task<IReadOnlyList<LaudoTemplateListItemDto>> ListarAsync(

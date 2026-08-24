@@ -5,7 +5,7 @@ using SMSMarica.Core.Midias;
 using SMSMarica.Core.Midias.Dtos;
 using SMSMarica.Core.Tickets;
 using SMSMarica.Core.Tickets.Dtos;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
 

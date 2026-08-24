@@ -13,8 +13,8 @@ using SMSMarica.Core.Notificacoes.WhatsApp;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.Pacientes.Dtos;
 using SMSMarica.Core.Telefones;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Tests.Cidadao;
 
@@ -39,7 +39,7 @@ public sealed class PacienteAuthServiceTests
     private PacienteAuthService CriarServico(bool modoTeste = true)
     {
         // Conexão nunca é aberta: os casos deste arquivo não chegam a consultar solicitações.
-        var db = new SmsMaricaDbContext(new DbContextOptionsBuilder<SmsMaricaDbContext>()
+        var db = new SmsMaisDbContext(new DbContextOptionsBuilder<SmsMaisDbContext>()
             .UseNpgsql("Host=localhost;Database=nao-usado")
             .Options);
 

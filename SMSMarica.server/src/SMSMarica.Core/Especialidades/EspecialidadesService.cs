@@ -2,14 +2,14 @@ using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Especialidades.Dtos;
 using SMSMarica.Core.Identidade;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.Especialidades;
 
-public sealed class EspecialidadesService(SmsMaricaDbContext db, IUsuarioAtualAccessor usuarioAtual) : IEspecialidadesService
+public sealed class EspecialidadesService(SmsMaisDbContext db, IUsuarioAtualAccessor usuarioAtual) : IEspecialidadesService
 {
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
     private readonly IUsuarioAtualAccessor _usuarioAtual = usuarioAtual;
 
     public async Task<IReadOnlyList<EspecialidadeListItemDto>> ListarAsync(

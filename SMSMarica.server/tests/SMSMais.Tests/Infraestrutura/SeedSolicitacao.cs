@@ -1,6 +1,6 @@
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Tests.Infraestrutura;
 
@@ -12,7 +12,7 @@ namespace SMSMais.Tests.Infraestrutura;
 internal static class SeedSolicitacao
 {
     public static async Task<ExameImagem> CriarAsync(
-        SmsMaricaDbContext db,
+        SmsMaisDbContext db,
         Guid pacienteId,
         bool enviarParaWorklist = true,
         DateTime? dataAgendada = null,

@@ -2,13 +2,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Pacientes;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.Notificacoes.WhatsApp;
 
 public sealed class WhatsAppNotificador(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IWhatsAppCliente cliente,
     IPacientesService pacientes,
     ILogger<WhatsAppNotificador> logger) : IWhatsAppNotificador

@@ -4,8 +4,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SMSMarica.Core.SolicitacoesExame;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Worklist.Background;
 
@@ -63,7 +63,7 @@ public sealed class EnviadorWorklistService(
     private async Task ExecutarUmaPassagemAsync(CancellationToken ct)
     {
         using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<SmsMaricaDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<SmsMaisDbContext>();
         var solicitacoes = scope.ServiceProvider.GetRequiredService<ISolicitacoesExameService>();
 
         var agora = DateTime.UtcNow;

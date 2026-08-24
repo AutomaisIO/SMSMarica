@@ -3,8 +3,8 @@ using SMSMarica.Core.Armazenamento;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Common.Tempo;
 using SMSMarica.Core.Pacientes;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.Exames;
 
@@ -36,7 +36,7 @@ public interface IExameImagensPdfService
 public sealed record ReavaliacaoImagens(string? StudyInstanceUID, int? ImagensCache, int ImagensPacs, bool Defasado);
 
 public sealed class ExameImagensPdfService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IArmazenamentoArquivos armazenamento,
     IExamePacsImagensReader imagensReader,
     IPacientesService pacientes) : IExameImagensPdfService

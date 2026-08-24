@@ -3,7 +3,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using SMSMarica.Core.Integracoes.SerWeb;
 using SMSMarica.Core.Integracoes.SerWeb.Varredura;
-using SMSMarica.Data.Entities.Ser;
+using SMSMais.Data.Entities.Ser;
 
 namespace SMSMais.Tests.Integracoes;
 

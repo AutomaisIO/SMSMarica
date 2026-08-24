@@ -8,9 +8,9 @@ using SMSMarica.Api.Auth;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Inteligencia.Conhecimento;
 using SMSMarica.Core.Tfd.Configuracao;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Ia;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Ia;
 
 namespace SMSMarica.Api.Controllers;
 
@@ -31,7 +31,7 @@ public sealed class IaChatController : ControllerBase
     private readonly IUsuarioAtualAccessor _usuarioAtual;
     private readonly IRecuperadorContexto _recuperador;
     private readonly ITfdConfigService _tfdConfig;
-    private readonly SmsMaricaDbContext _db;
+    private readonly SmsMaisDbContext _db;
     private readonly ILogger<IaChatController> _logger;
     private readonly string _baseUrl;
     private readonly string? _internalKey;
@@ -41,7 +41,7 @@ public sealed class IaChatController : ControllerBase
         IUsuarioAtualAccessor usuarioAtual,
         IRecuperadorContexto recuperador,
         ITfdConfigService tfdConfig,
-        SmsMaricaDbContext db,
+        SmsMaisDbContext db,
         IConfiguration configuration,
         ILogger<IaChatController> logger)
     {

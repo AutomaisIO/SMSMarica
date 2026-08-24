@@ -1,4 +1,4 @@
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Tratamentos.Dtos;
 

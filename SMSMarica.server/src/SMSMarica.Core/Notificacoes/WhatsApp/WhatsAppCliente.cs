@@ -7,9 +7,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Tfd.Configuracao;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Notificacoes;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Notificacoes;
 
 namespace SMSMarica.Core.Notificacoes.WhatsApp;
 
@@ -21,7 +21,7 @@ namespace SMSMarica.Core.Notificacoes.WhatsApp;
 public sealed class WhatsAppCliente(
     HttpClient http,
     ITfdConfigService config,
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IConfiguration configuration,
     IMemoryCache memoryCache,
     ILogger<WhatsAppCliente> logger) : IWhatsAppCliente

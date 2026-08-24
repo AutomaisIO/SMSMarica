@@ -1,12 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Cidadao.Dtos;
 using SMSMarica.Core.Common.Excecoes;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.Cidadao;
 
-public sealed class ConsentimentoCidadaoService(SmsMaricaDbContext db) : IConsentimentoCidadaoService
+public sealed class ConsentimentoCidadaoService(SmsMaisDbContext db) : IConsentimentoCidadaoService
 {
     public async Task<ConsentimentoStatusDto> ObterStatusAsync(Guid patientId, CancellationToken ct = default)
     {

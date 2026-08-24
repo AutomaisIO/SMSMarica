@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Inteligencia.Seguranca;
-using SMSMarica.Data;
+using SMSMais.Data;
 
 namespace SMSMarica.Core.Armazenamento;
 
@@ -26,14 +26,14 @@ public sealed class ArmazenamentoSpaces : IArmazenamentoArquivos, IDisposable
 {
     private const string ProvedorSpaces = "digitalocean_spaces";
 
-    private readonly SmsMaricaDbContext _db;
+    private readonly SmsMaisDbContext _db;
     private readonly IProtetorSegredos _protetor;
     private readonly string _prefixo;
 
     private IAmazonS3? _cliente;
     private string? _bucket;
 
-    public ArmazenamentoSpaces(SmsMaricaDbContext db, IProtetorSegredos protetor, IConfiguration configuration)
+    public ArmazenamentoSpaces(SmsMaisDbContext db, IProtetorSegredos protetor, IConfiguration configuration)
     {
         _db = db;
         _protetor = protetor;

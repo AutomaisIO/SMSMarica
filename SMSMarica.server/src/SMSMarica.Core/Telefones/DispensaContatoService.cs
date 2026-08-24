@@ -5,14 +5,14 @@ using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Core.Telefones.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Telefones;
 
 public sealed class DispensaContatoService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IPacienteFhirClient fhir,
     IUsuarioAtualAccessor atual,
     ILogger<DispensaContatoService> logger) : IDispensaContatoService

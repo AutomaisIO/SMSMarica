@@ -3,11 +3,11 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using SMSMarica.Core.Notificacoes.WhatsApp;
 using SMSMarica.Core.Notificacoes.WhatsApp.Manipuladores;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Conversas;
-using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Notificacoes;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Conversas;
+using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Notificacoes;
 using SMSMais.Tests.Infraestrutura;
 
 namespace SMSMais.Tests.Notificacoes;
@@ -57,7 +57,7 @@ public class ConfirmacaoAgendamentoHandlerTests(PostgresFixture fixture)
         return new ManipuladorContexto(conversa, msg, texto, pacienteId, botaoPayload, interativoReplyId);
     }
 
-    private async Task<(ExameImagem Solic, ComunicacaoPaciente Notif)> SeedAsync(SmsMaricaDbContext db)
+    private async Task<(ExameImagem Solic, ComunicacaoPaciente Notif)> SeedAsync(SmsMaisDbContext db)
     {
         var solic = await SeedSolicitacao.CriarAsync(db, Guid.NewGuid(), dataAgendada: DateTime.UtcNow.AddDays(3));
         var notif = new ComunicacaoPaciente

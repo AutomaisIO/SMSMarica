@@ -2,8 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Inteligencia.Dtos;
 using SMSMarica.Core.Inteligencia.Seguranca;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Ia;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Ia;
 
 namespace SMSMarica.Core.Inteligencia.Configuracao;
 
@@ -13,11 +13,11 @@ namespace SMSMarica.Core.Inteligencia.Configuracao;
 /// apenas sinaliza se estão definidos.
 /// </summary>
 public sealed class IaConfiguracaoService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IProtetorSegredos protetor,
     IUsuarioAtualAccessor usuarioAtual) : IIaConfiguracaoService
 {
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
     private readonly IProtetorSegredos _protetor = protetor;
     private readonly IUsuarioAtualAccessor _usuarioAtual = usuarioAtual;
 

@@ -2,7 +2,7 @@
 using Hl7.Fhir.Model;
 using SMSMarica.Core.Common.Dtos;
 using SMSMarica.Core.Pacientes.Fhir;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Tests.Pacientes;
 

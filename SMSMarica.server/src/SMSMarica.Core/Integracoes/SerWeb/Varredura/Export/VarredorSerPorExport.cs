@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Logging;
-using SMSMarica.Data.Entities.Ser;
+using SMSMais.Data.Entities.Ser;
 
 namespace SMSMarica.Core.Integracoes.SerWeb.Varredura.Export;
 

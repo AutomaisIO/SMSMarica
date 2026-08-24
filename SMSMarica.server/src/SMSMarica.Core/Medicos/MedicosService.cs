@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Medicos.Dtos;
 using SMSMarica.Core.Medicos.Fhir;
-using SMSMarica.Data;
+using SMSMais.Data;
 
 namespace SMSMarica.Core.Medicos;
 
@@ -11,7 +11,7 @@ namespace SMSMarica.Core.Medicos;
 /// "identidade clínica → FHIR"). Este serviço é proxy do /fhir/Practitioner.
 /// O Usuario (login) é vinculado por CPF — resolvido aqui, não pelo id FHIR.
 /// </summary>
-public sealed class MedicosService(IPractitionerFhirClient fhir, SmsMaricaDbContext db) : IMedicosService
+public sealed class MedicosService(IPractitionerFhirClient fhir, SmsMaisDbContext db) : IMedicosService
 {
     private const int LimiteBusca = 10;
 

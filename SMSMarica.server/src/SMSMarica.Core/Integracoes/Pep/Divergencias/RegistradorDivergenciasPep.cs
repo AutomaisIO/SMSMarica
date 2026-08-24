@@ -1,9 +1,9 @@
 ﻿using System.Threading.Channels;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Pep;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Pep;
 
 namespace SMSMarica.Core.Integracoes.Pep.Divergencias;
 
@@ -37,7 +37,7 @@ public sealed class RegistradorDivergenciasPep : IRegistradorDivergenciasPep
 {
     private const int TamanhoLote = 50;
 
-    private readonly IDbContextFactory<SmsMaricaDbContext> _factory;
+    private readonly IDbContextFactory<SmsMaisDbContext> _factory;
     private readonly ILogger _logger;
     private readonly Guid _execucaoId;
     private readonly Guid _fonteId;
@@ -46,7 +46,7 @@ public sealed class RegistradorDivergenciasPep : IRegistradorDivergenciasPep
     private readonly Task _consumidor;
 
     public RegistradorDivergenciasPep(
-        IDbContextFactory<SmsMaricaDbContext> factory, ILogger logger,
+        IDbContextFactory<SmsMaisDbContext> factory, ILogger logger,
         Guid execucaoId, Guid fonteId, string fonteSlug)
     {
         _factory = factory;

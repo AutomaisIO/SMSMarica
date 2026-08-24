@@ -4,8 +4,8 @@ using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Midias;
 using SMSMarica.Core.Ser.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Ser;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Ser;
 
 namespace SMSMarica.Core.Ser;
 
@@ -44,7 +44,7 @@ public interface ISerRascunhoService
 }
 
 public sealed class SerRascunhoService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IMidiasService midias,
     IUsuarioAtualAccessor usuarioAtual) : ISerRascunhoService
 {

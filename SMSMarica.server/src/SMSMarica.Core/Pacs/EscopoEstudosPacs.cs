@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using SMSMarica.Core.Common.Unidades;
 using SMSMarica.Core.Identidade;
-using SMSMarica.Data;
+using SMSMais.Data;
 
 namespace SMSMarica.Core.Pacs;
 
@@ -14,7 +14,7 @@ namespace SMSMarica.Core.Pacs;
 /// isso na tag privada <c>(7777,1037) SendingApplicationEntityTitleOfSeries</c>, que é uma chave
 /// de BUSCA válida no QIDO (verificado no 5.34.3 de produção: multi-valor por vírgula faz união
 /// e combina com <c>ModalitiesInStudy</c>/<c>StudyDate</c>/<c>offset</c> sem quebrar a paginação).
-/// Como o AE de origem é o <see cref="Data.Entities.Equipamento.IdentificadorDicom"/> que já
+/// Como o AE de origem é o <see cref="SMSMais.Data.Entities.Equipamento.IdentificadorDicom"/> que já
 /// cadastramos, e o equipamento pertence a uma unidade, o filtro por unidade sai de graça — e
 /// vale inclusive para o estudo <b>órfão</b>, que ainda não casou com nenhuma solicitação: o AE
 /// viaja na imagem, associada ou não.</para>
@@ -54,7 +54,7 @@ public sealed record EscopoAeResultado(bool SemRestricao, string[] AeTitles)
 }
 
 internal sealed class EscopoEstudosPacs(
-    SmsMaricaDbContext db, IUsuarioAtualAccessor usuarioAtual, IConfiguration configuration)
+    SmsMaisDbContext db, IUsuarioAtualAccessor usuarioAtual, IConfiguration configuration)
     : IEscopoEstudosPacs
 {
     /// <summary>Chave de configuração que liga o recorte. Ver a ressalva do AE ausente no resumo.</summary>

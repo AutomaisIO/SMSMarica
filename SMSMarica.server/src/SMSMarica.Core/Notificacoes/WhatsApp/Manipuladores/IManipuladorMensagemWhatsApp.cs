@@ -1,5 +1,5 @@
-using SMSMarica.Data.Entities.Conversas;
-using SMSMarica.Data.Entities.Notificacoes;
+using SMSMais.Data.Entities.Conversas;
+using SMSMais.Data.Entities.Notificacoes;
 
 namespace SMSMarica.Core.Notificacoes.WhatsApp.Manipuladores;
 

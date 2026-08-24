@@ -2,9 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Notificacoes.Comunicacao.Dtos;
 using SMSMarica.Core.Pacientes.Fhir;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Notificacoes.Comunicacao;
 
@@ -21,7 +21,7 @@ public interface IComunicacaoGestaoService
 }
 
 public sealed class ComunicacaoGestaoService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IPacienteResolver pacienteResolver) : IComunicacaoGestaoService
 {
     public async Task<PaginaComunicacoesDto> ListarAsync(ComunicacaoFiltroDto filtro, CancellationToken ct = default)

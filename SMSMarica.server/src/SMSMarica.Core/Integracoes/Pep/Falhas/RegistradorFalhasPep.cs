@@ -1,15 +1,15 @@
 using System.Threading.Channels;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Pep;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Pep;
 
 namespace SMSMarica.Core.Integracoes.Pep.Falhas;
 
 /// <summary>
 /// Sink durável de falhas de um run de importação. As threads da estratégia chamam
 /// <see cref="Registrar"/> (não-bloqueante: só enfileira); um consumidor único drena o canal
-/// e grava em lotes num <see cref="SmsMaricaDbContext"/> próprio (criado pela factory — seguro
+/// e grava em lotes num <see cref="SmsMaisDbContext"/> próprio (criado pela factory — seguro
 /// para concorrência, sem compartilhar o context do orquestrador). As escritas saem na hora,
 /// então a trilha sobrevive a crash/órfã. Ao final, <see cref="DisposeAsync"/> drena o resto.
 /// </summary>
@@ -27,7 +27,7 @@ public sealed class RegistradorFalhasPep : IRegistradorFalhasPep
 {
     private const int TamanhoLote = 50;
 
-    private readonly IDbContextFactory<SmsMaricaDbContext> _factory;
+    private readonly IDbContextFactory<SmsMaisDbContext> _factory;
     private readonly ILogger _logger;
     private readonly Guid _execucaoId;
     private readonly Guid _fonteId;
@@ -36,7 +36,7 @@ public sealed class RegistradorFalhasPep : IRegistradorFalhasPep
     private readonly Task _consumidor;
 
     public RegistradorFalhasPep(
-        IDbContextFactory<SmsMaricaDbContext> factory, ILogger logger,
+        IDbContextFactory<SmsMaisDbContext> factory, ILogger logger,
         Guid execucaoId, Guid fonteId, string fonteSlug)
     {
         _factory = factory;

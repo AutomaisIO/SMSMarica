@@ -1,13 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.Medicos.Assinatura;
 
 public sealed class AssinaturaMedicoService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IUsuarioAtualAccessor usuarioAtual) : IAssinaturaMedicoService
 {
     public async Task<AssinaturaMedicoDto?> ObterAsync(Guid medicoId, CancellationToken cancellationToken = default)

@@ -7,9 +7,9 @@ using SMSMarica.Core.Common.Tempo;
 using SMSMarica.Core.Conversas;
 using SMSMarica.Core.Notificacoes.WhatsApp;
 using SMSMarica.Core.Pacientes;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Notificacoes.Comunicacao;
 
@@ -59,7 +59,7 @@ public interface IComunicacaoPacienteService
 }
 
 public sealed class ComunicacaoPacienteService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IPacientesService pacientes,
     ICidadaoLoginLinkService loginLinks,
     IWhatsAppCliente whatsApp,

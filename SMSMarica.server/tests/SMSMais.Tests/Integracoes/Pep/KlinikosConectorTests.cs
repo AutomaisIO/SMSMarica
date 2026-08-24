@@ -2,8 +2,8 @@
 using Hl7.Fhir.Model;
 using SMSMarica.Core.Integracoes.Pep.Estrategias;
 using SMSMarica.Core.Integracoes.Pep.Estrategias.Klinikos;
-using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Ia;
+using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Ia;
 
 namespace SMSMais.Tests.Integracoes.Pep;
 

@@ -3,8 +3,8 @@ using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Integracoes.Sisreg.Dtos;
 using SMSMarica.Core.Inteligencia.Seguranca;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Sisreg;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Sisreg;
 
 namespace SMSMarica.Core.Integracoes.Sisreg.Configuracao;
 
@@ -14,11 +14,11 @@ namespace SMSMarica.Core.Integracoes.Sisreg.Configuracao;
 /// o cliente. Espelha o padrão de <c>IaConfiguracaoService</c> (ADR-0011/0012).
 /// </summary>
 public sealed class SisregConfiguracaoService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IProtetorSegredos protetor,
     IUsuarioAtualAccessor usuarioAtual) : ISisregConfiguracaoService
 {
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
     private readonly IProtetorSegredos _protetor = protetor;
     private readonly IUsuarioAtualAccessor _usuarioAtual = usuarioAtual;
 

@@ -6,9 +6,9 @@ using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Integracoes.SisregWeb.Mapeamento.Dtos;
 using SMSMarica.Core.Integracoes.SisregWeb.Varredura.Sigtap;
 using SMSMarica.Core.Medicos.Fhir;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Sisreg;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Sisreg;
 
 namespace SMSMarica.Core.Integracoes.SisregWeb.Mapeamento;
 
@@ -24,7 +24,7 @@ namespace SMSMarica.Core.Integracoes.SisregWeb.Mapeamento;
 /// checkboxes: eles definem o custo de cada varredura.</para>
 /// </summary>
 public sealed class SisregMapeamentoService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     ISisregWebSessao sessao,
     ISisregUnidadeAtual unidadeAtual,
     IPractitionerFhirClient fhir,

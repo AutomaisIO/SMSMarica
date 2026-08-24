@@ -1,7 +1,7 @@
 using System.Globalization;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Common.Excecoes;
-using SMSMarica.Data.Entities.Ser;
+using SMSMais.Data.Entities.Ser;
 
 namespace SMSMarica.Core.Integracoes.SerWeb.Varredura.Export;
 

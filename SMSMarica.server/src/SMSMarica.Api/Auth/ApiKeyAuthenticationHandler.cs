@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using SMSMarica.Core.ApiTokens;
-using SMSMarica.Data;
+using SMSMais.Data;
 
 namespace SMSMarica.Api.Auth;
 
@@ -19,7 +19,7 @@ public sealed class ApiKeyAuthenticationHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options,
     ILoggerFactory logger,
     UrlEncoder encoder,
-    SmsMaricaDbContext db)
+    SmsMaisDbContext db)
     : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
     public const string Esquema = "ApiKey";
@@ -28,7 +28,7 @@ public sealed class ApiKeyAuthenticationHandler(
     public const string ClaimApiTokenId = "api_token_id";
     public const string ValorServico = "service";
 
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {

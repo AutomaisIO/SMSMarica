@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.Integracoes.SisregWeb;
 
@@ -22,7 +22,7 @@ public interface ISisregUnidadeAtual
 }
 
 public sealed class SisregUnidadeAtual(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IUsuarioAtualAccessor usuarioAtual) : ISisregUnidadeAtual
 {
     public const string CodigoUnidadeObrigatoria = "sisreg.unidade_obrigatoria";

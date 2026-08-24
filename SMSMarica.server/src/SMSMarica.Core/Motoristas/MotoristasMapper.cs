@@ -1,6 +1,6 @@
 using SMSMarica.Core.Common.Dtos;
 using SMSMarica.Core.Motoristas.Dtos;
-using SMSMarica.Data.Entities;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.Motoristas;
 

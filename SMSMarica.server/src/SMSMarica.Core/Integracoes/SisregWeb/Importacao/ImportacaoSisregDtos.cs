@@ -1,4 +1,4 @@
-using SMSMarica.Data.Entities.Sisreg;
+using SMSMais.Data.Entities.Sisreg;
 
 namespace SMSMarica.Core.Integracoes.SisregWeb.Importacao;
 

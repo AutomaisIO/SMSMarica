@@ -3,7 +3,7 @@ using SMSMarica.Api.Auth;
 using SMSMarica.Core.Conversas;
 using SMSMarica.Core.Conversas.Dtos;
 using SMSMarica.Core.Notificacoes.WhatsApp;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
 

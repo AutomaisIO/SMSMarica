@@ -4,9 +4,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Ser;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Ser;
 
 namespace SMSMarica.Core.Integracoes.SerWeb.Varredura.Background;
 
@@ -101,7 +101,7 @@ public sealed class VarreduraSerScheduler(
         var agoraLocal = TimeZoneInfo.ConvertTimeFromUtc(agoraUtc, Brasilia);
         if (TimeOnly.FromDateTime(agoraLocal) < hora) return;
 
-        var db = scope.ServiceProvider.GetRequiredService<SmsMaricaDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<SmsMaisDbContext>();
 
         // Início do dia local, convertido para UTC — a coluna é timestamptz.
         var inicioDoDiaUtc = TimeZoneInfo.ConvertTimeToUtc(

@@ -13,7 +13,7 @@ flowchart TB
   subgraph server [SMSMarica.server · .NET 10]
     Api[SMSMarica.Api · controllers MVC + Scalar]
     Core[SMSMarica.Core · services + DTOs + validators]
-    Data[SMSMarica.Data · POCOs + DbContext + migrations]
+    Data[SMSMais.Data · POCOs + DbContext + migrations]
     Api --> Core --> Data
   end
 
@@ -52,7 +52,7 @@ Todos os clientes consomem **exclusivamente** a API do `SMSMarica.server`. Clien
 ```
 SMSMarica.server/
 ├── src/
-│   ├── SMSMarica.Data/    (POCOs + DbContext + Configurations + Migrations)
+│   ├── SMSMais.Data/    (POCOs + DbContext + Configurations + Migrations)
 │   ├── SMSMarica.Core/    (services + DTOs + validators + mappers)
 │   └── SMSMarica.Api/     (Program.cs + middleware + 1 controller MVC por entidade)
 └── tests/
@@ -70,8 +70,8 @@ SMSMarica.server/
 
 | Projeto | O que vive aqui |
 |---------|-----------------|
-| `SMSMarica.Data` | POCOs em `Entities/` (sem private setters, sem domain events), `Configurations/<X>Configuration.cs` com mapeamento EF (snake_case, owned `Gps`, índices únicos), `SmsMaricaDbContext` com `HasDefaultSchema("smsmarica")`, `Migrations/` (uma migration `Initial` cobre todas as 16 tabelas), `DependencyInjection.AddData(IConfiguration)` |
-| `SMSMarica.Core` | `Common/Excecoes/` (`NaoEncontrado`, `Validacao`, `Conflito`), `Common/ValueObjects/Gps.cs` (helper de validação), uma pasta por entidade (`Pacientes/`, `Tratamentos/`, …) com `IXxxService` + `XxxService` injetando `SmsMaricaDbContext` direto, `Dtos/`, `Validators/` (FluentValidation), `Mapper.cs` (Mapperly), `DependencyInjection.AddCore()` |
+| `SMSMais.Data` | POCOs em `Entities/` (sem private setters, sem domain events), `Configurations/<X>Configuration.cs` com mapeamento EF (snake_case, owned `Gps`, índices únicos), `SmsMaisDbContext` com `HasDefaultSchema("smsmarica")`, `Migrations/` (uma migration `Initial` cobre todas as 16 tabelas), `DependencyInjection.AddData(IConfiguration)` |
+| `SMSMarica.Core` | `Common/Excecoes/` (`NaoEncontrado`, `Validacao`, `Conflito`), `Common/ValueObjects/Gps.cs` (helper de validação), uma pasta por entidade (`Pacientes/`, `Tratamentos/`, …) com `IXxxService` + `XxxService` injetando `SmsMaisDbContext` direto, `Dtos/`, `Validators/` (FluentValidation), `Mapper.cs` (Mapperly), `DependencyInjection.AddCore()` |
 | `SMSMarica.Api` | `Program.cs` (Serilog + AddOpenApi + Scalar + AddData/AddCore + ExceptionMiddleware + auto-migrate em dev), `Middleware/ExceptionHandlingMiddleware.cs` (mapeia exceções tipadas para `ProblemDetails`), `Controllers/<X>Controller.cs` (`[ApiController]`, 1 por entidade, CRUD em `HttpGet/Post/Put/Delete`), `appsettings*.json` |
 
 ### 3.3 Organização interna por entidade
@@ -80,7 +80,7 @@ Cada projeto organiza arquivos por **pasta** (não por csproj). Exemplo Paciente
 
 ```
 src/
-├── SMSMarica.Data/
+├── SMSMais.Data/
 │   ├── Entities/Paciente.cs
 │   └── Configurations/PacienteConfiguration.cs
 ├── SMSMarica.Core/
@@ -122,9 +122,9 @@ src/
 
 Para qualquer outra entidade de domínio:
 
-1. Criar POCO em `SMSMarica.Data/Entities/<X>.cs`.
-2. Criar `IEntityTypeConfiguration` em `SMSMarica.Data/Configurations/<X>Configuration.cs` (tabela snake_case + índices).
-3. Adicionar `DbSet<X>` em `SmsMaricaDbContext`.
+1. Criar POCO em `SMSMais.Data/Entities/<X>.cs`.
+2. Criar `IEntityTypeConfiguration` em `SMSMais.Data/Configurations/<X>Configuration.cs` (tabela snake_case + índices).
+3. Adicionar `DbSet<X>` em `SmsMaisDbContext`.
 4. Rodar `dotnet ef migrations add <Nome>` no projeto Data com `--startup-project src/SMSMarica.Api`.
 5. Criar pasta `SMSMarica.Core/<X>/` com `I<X>Service` + `<X>Service`, DTOs, Validators e Mapper.
 6. Registrar service em `SMSMarica.Core/DependencyInjection.cs`.
@@ -135,7 +135,7 @@ Para qualquer outra entidade de domínio:
 
 Ver [database.md](./database.md). Resumo: **todas** as tabelas em schema `smsmarica` do banco compartilhado `defaultdb`. Zero cross-schema (ADR-0001).
 
-Um único `SmsMaricaDbContext` aponta para o schema `smsmarica`. Tabelas usam prefixo do "domínio" (`paciente`, `tratamento_periodicidade`, `translado_alocacao`, `rastreamento_ponto_gps`, etc.).
+Um único `SmsMaisDbContext` aponta para o schema `smsmarica`. Tabelas usam prefixo do "domínio" (`paciente`, `tratamento_periodicidade`, `translado_alocacao`, `rastreamento_ponto_gps`, etc.).
 
 ## 5. Stack por subprojeto
 

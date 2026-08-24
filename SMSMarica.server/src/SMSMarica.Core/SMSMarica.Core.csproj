@@ -10,7 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SMSMarica.Data\SMSMarica.Data.csproj" />
+    <ProjectReference Include="..\SMSMais.Data\SMSMais.Data.csproj" />
   </ItemGroup>
 
   <ItemGroup>

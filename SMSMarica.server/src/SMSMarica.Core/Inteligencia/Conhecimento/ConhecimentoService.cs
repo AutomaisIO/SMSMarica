@@ -3,8 +3,8 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Pgvector;
 using SMSMarica.Core.Inteligencia.Provedores;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Ia;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Ia;
 
 namespace SMSMarica.Core.Inteligencia.Conhecimento;
 
@@ -14,7 +14,7 @@ namespace SMSMarica.Core.Inteligencia.Conhecimento;
 /// e <c>ia_chunk_conhecimento</c>. Idempotente: usa hash do conteúdo para re-embeddar só o que mudou.
 /// O nome da subpasta &lt;fonte&gt; é casado (case-insensitive) com <see cref="IaFonte.Tipo"/>.
 /// </summary>
-public sealed class ConhecimentoService(SmsMaricaDbContext db, IServicoEmbeddings embeddings)
+public sealed class ConhecimentoService(SmsMaisDbContext db, IServicoEmbeddings embeddings)
     : IConhecimentoService
 {
     private const string PastaRelativa = "Inteligencia/Conhecimento/Bases";

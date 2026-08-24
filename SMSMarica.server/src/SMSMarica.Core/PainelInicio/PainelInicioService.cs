@@ -4,10 +4,10 @@ using SMSMarica.Core.Common.Unidades;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.PainelInicio.Dtos;
 using SMSMarica.Core.Pacientes.Fhir;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Sisreg;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Sisreg;
 
 namespace SMSMarica.Core.PainelInicio;
 
@@ -22,7 +22,7 @@ public interface IPainelInicioService
 }
 
 public sealed class PainelInicioService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IUsuarioAtualAccessor usuarioAtual,
     IIdentidadeService identidade,
     IPacienteResolver pacienteResolver,

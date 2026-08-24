@@ -13,9 +13,9 @@ using SMSMarica.Core.SolicitacoesExame.Identificadores;
 using SMSMarica.Core.Telefones;
 using SMSMarica.Core.Worklist;
 using SMSMarica.Core.Erros;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 using SMSMais.Tests.Infraestrutura;
 
 namespace SMSMais.Tests.Associacoes;
@@ -35,7 +35,7 @@ namespace SMSMais.Tests.Associacoes;
 public class AssociacaoCorridaConciliadorTests(PostgresFixture fixture)
 {
     private static ExameAssociacaoService CriarService(
-        SmsMaricaDbContext db, IPacsReescritorEstudoClient reescritor)
+        SmsMaisDbContext db, IPacsReescritorEstudoClient reescritor)
     {
         var consultaStudy = Substitute.For<IConsultaStudyClient>();
         consultaStudy.StudyExistePorStudyUidAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);

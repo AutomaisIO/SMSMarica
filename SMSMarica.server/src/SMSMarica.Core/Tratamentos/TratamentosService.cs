@@ -2,15 +2,15 @@ using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Core.Tratamentos.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Tratamentos;
 
-public sealed class TratamentosService(SmsMaricaDbContext db, IPacienteResolver resolver, Faturamento.IFaturamentoService faturamento) : ITratamentosService
+public sealed class TratamentosService(SmsMaisDbContext db, IPacienteResolver resolver, Faturamento.IFaturamentoService faturamento) : ITratamentosService
 {
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
     private readonly IPacienteResolver _resolver = resolver;
 
     // Resolve o nome do paciente (hub FHIR) e embute nos itens da listagem.

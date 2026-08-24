@@ -27,7 +27,7 @@ identidade do paciente continua no **hub FHIR** (`fhir.patient`), referenciada p
         │             (motor de otimização)            │
         │             ┌──────┴───────┐                 │
         ▼             ▼              ▼                  ▼
-  SMSMarica.Data   GoogleMaps     Claude          Job background
+  SMSMais.Data   GoogleMaps     Claude          Job background
   (EF Core /       (Geocoding/    (ClaudeProvedorIa)  (GPS→chegada/ETA)
    PostgreSQL)     Routes/Matrix)
 ```
@@ -41,7 +41,7 @@ tipado registrado em DI, `BaseUrl`/`Timeout` por configuração, **segredos cifr
 ## 2. Modelo de dados — mudanças (migrations novas)
 
 > Migrations são **imutáveis**: cada item abaixo é uma migration nova em
-> `SMSMarica.Data/Migrations/`. Nenhuma tabela existente é editada destrutivamente.
+> `SMSMais.Data/Migrations/`. Nenhuma tabela existente é editada destrutivamente.
 
 ### 2.1 Destino e geolocalização (FT1)
 - **`Unidade`** já tem `Endereco` (owned) + `Gps` (lat/long nullable). Mudanças:

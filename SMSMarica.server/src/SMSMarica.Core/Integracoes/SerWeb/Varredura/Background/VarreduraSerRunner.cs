@@ -2,8 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Ser;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Ser;
 
 namespace SMSMarica.Core.Integracoes.SerWeb.Varredura.Background;
 
@@ -81,7 +81,7 @@ public sealed class VarreduraSerRunner(
         try
         {
             using var scope = scopeFactory.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<SmsMaricaDbContext>();
+            var db = scope.ServiceProvider.GetRequiredService<SmsMaisDbContext>();
 
             var pendentes = await db.SerVarreduraExecucoes
                 .Where(x => x.Status == StatusVarreduraSer.EmExecucao

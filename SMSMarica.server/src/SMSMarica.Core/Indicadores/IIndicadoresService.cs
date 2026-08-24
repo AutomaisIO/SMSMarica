@@ -1,5 +1,5 @@
 using SMSMarica.Core.Indicadores.Dtos;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Indicadores;
 

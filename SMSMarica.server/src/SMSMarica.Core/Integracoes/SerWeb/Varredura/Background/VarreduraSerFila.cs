@@ -1,6 +1,6 @@
 using System.Threading.Channels;
-using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Ser;
+using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Ser;
 
 namespace SMSMarica.Core.Integracoes.SerWeb.Varredura.Background;
 

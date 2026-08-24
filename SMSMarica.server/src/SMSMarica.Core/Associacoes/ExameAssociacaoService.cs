@@ -7,14 +7,14 @@ using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Core.SolicitacoesExame;
 using SMSMarica.Core.Worklist;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Associacoes;
 
 public sealed class ExameAssociacaoService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IPacienteResolver pacienteResolver,
     IConsultaStudyClient consultaStudy,
     ISolicitacoesExameService solicitacoes,

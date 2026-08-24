@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Auth;
 
@@ -20,7 +20,7 @@ public static class DbSeeder
     private const string AdminSenhaInicial = "Abc,123!";
 
     public static async Task SeedAsync(
-        SmsMaricaDbContext db,
+        SmsMaisDbContext db,
         IPasswordHasher<Usuario> hasher,
         CancellationToken cancellationToken = default)
     {
@@ -37,7 +37,7 @@ public static class DbSeeder
     /// usuário). Identificação do paciente e CRM/RQE do assinante NÃO entram no
     /// corpo: vêm do cabeçalho do laudo e da assinatura.
     /// </summary>
-    private static async Task GarantirTemplateMamografiaAsync(SmsMaricaDbContext db, CancellationToken ct)
+    private static async Task GarantirTemplateMamografiaAsync(SmsMaisDbContext db, CancellationToken ct)
     {
         var existente = await db.LaudoTemplates
             .FirstOrDefaultAsync(t => t.Id == IdentificadoresFixos.TemplateMamografiaCdtId, ct);
@@ -247,7 +247,7 @@ public static class DbSeeder
         }
         """;
 
-    private static async Task GarantirPerfilAdminAsync(SmsMaricaDbContext db, CancellationToken ct)
+    private static async Task GarantirPerfilAdminAsync(SmsMaisDbContext db, CancellationToken ct)
     {
         var perfil = await db.Perfis
             .Include(p => p.Permissoes)
@@ -287,7 +287,7 @@ public static class DbSeeder
     }
 
     private static async Task GarantirUsuarioAdminAsync(
-        SmsMaricaDbContext db,
+        SmsMaisDbContext db,
         IPasswordHasher<Usuario> hasher,
         CancellationToken ct)
     {

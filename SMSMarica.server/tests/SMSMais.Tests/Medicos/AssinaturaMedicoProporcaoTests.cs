@@ -2,7 +2,7 @@ using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using SMSMarica.Core.Medicos.Assinatura;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 using QuestDocument = QuestPDF.Fluent.Document;
 
 namespace SMSMais.Tests.Medicos;

@@ -1,14 +1,14 @@
 using Ganss.Xss;
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Laudos.Configuracao.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.Laudos.Configuracao;
 
-public sealed class LaudoConfiguracaoService(SmsMaricaDbContext db, IHtmlSanitizer sanitizer) : ILaudoConfiguracaoService
+public sealed class LaudoConfiguracaoService(SmsMaisDbContext db, IHtmlSanitizer sanitizer) : ILaudoConfiguracaoService
 {
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
     private readonly IHtmlSanitizer _sanitizer = sanitizer;
 
     public async Task<LaudoConfiguracaoDto> ObterAsync(CancellationToken cancellationToken = default)

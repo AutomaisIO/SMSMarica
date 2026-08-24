@@ -1,13 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Inteligencia.Seguranca;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Geo;
-using SMSMarica.Data.Entities.Notificacoes;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Geo;
+using SMSMais.Data.Entities.Notificacoes;
 
 namespace SMSMarica.Core.Tfd.Configuracao;
 
-public sealed class TfdConfigService(SmsMaricaDbContext db, IProtetorSegredos protetor) : ITfdConfigService
+public sealed class TfdConfigService(SmsMaisDbContext db, IProtetorSegredos protetor) : ITfdConfigService
 {
     // ---------------- Google ----------------
     public async Task<TfdConfigGoogleDto> ObterGoogleAsync(CancellationToken ct = default)

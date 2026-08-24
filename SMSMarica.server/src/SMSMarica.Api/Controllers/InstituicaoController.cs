@@ -4,7 +4,7 @@ using SMSMarica.Api.Auth;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Institucional;
 using SMSMarica.Core.Institucional.Dtos;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
 

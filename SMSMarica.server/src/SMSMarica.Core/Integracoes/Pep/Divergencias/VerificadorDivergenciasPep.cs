@@ -4,9 +4,9 @@ using Microsoft.Extensions.Logging;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Integracoes.Dtos;
 using SMSMarica.Core.Integracoes.Proxy;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Enums;
-using SMSMarica.Data.Entities.Pep;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Pep;
 
 namespace SMSMarica.Core.Integracoes.Pep.Divergencias;
 
@@ -58,7 +58,7 @@ public interface IVerificadorDivergenciasPep
 /// rodada; (c) indisponibilidade em sequência aborta a rodada em vez de queimar a fila.</para>
 /// </summary>
 public sealed class VerificadorDivergenciasPep(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IConsultaCpfService consultaCpf,
     ILogger<VerificadorDivergenciasPep> logger) : IVerificadorDivergenciasPep
 {

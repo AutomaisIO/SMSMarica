@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Logging;
-using SMSMarica.Data.Entities;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.Notificacoes;
 

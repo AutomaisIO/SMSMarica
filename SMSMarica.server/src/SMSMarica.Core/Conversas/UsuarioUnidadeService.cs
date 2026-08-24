@@ -1,13 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Conversas;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Conversas;
 
 namespace SMSMarica.Core.Conversas;
 
 public sealed class UsuarioUnidadeService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IUsuarioAtualAccessor usuarioAtual) : IUsuarioUnidadeService
 {
     public async Task<IReadOnlyList<Guid>> ObterUnidadeIdsAsync(Guid usuarioId, CancellationToken ct = default) =>

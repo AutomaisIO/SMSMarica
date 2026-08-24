@@ -3,9 +3,9 @@ using SMSMarica.Core.Agendamentos.Dtos;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Medicos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Agendamentos;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Agendamentos;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Agendamentos;
 
@@ -15,11 +15,11 @@ namespace SMSMarica.Core.Agendamentos;
 /// para exibir a grade sem ir ao hub a cada render. Ver ADR-0012.
 /// </summary>
 public sealed class AgendaService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IMedicosService medicos,
     IUsuarioAtualAccessor usuarioAtual) : IAgendaService
 {
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
     private readonly IMedicosService _medicos = medicos;
     private readonly IUsuarioAtualAccessor _usuarioAtual = usuarioAtual;
 

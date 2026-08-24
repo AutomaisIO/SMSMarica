@@ -11,9 +11,9 @@ using SMSMarica.Core.SolicitacoesExame.Identificadores;
 using SMSMarica.Core.Telefones;
 using SMSMarica.Core.Worklist;
 using SMSMarica.Core.Erros;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 using SMSMais.Tests.Infraestrutura;
 
 namespace SMSMais.Tests.Worklist;
@@ -26,7 +26,7 @@ namespace SMSMais.Tests.Worklist;
 [Collection(nameof(PostgresCollection))]
 public class LimpezaWorklistTests(PostgresFixture fixture)
 {
-    private static (SolicitacoesExameService Service, IDcm4cheeMwlClient Mwl) CriarService(SmsMaricaDbContext db)
+    private static (SolicitacoesExameService Service, IDcm4cheeMwlClient Mwl) CriarService(SmsMaisDbContext db)
     {
         var mwl = Substitute.For<IDcm4cheeMwlClient>();
         var service = new SolicitacoesExameService(
@@ -48,7 +48,7 @@ public class LimpezaWorklistTests(PostgresFixture fixture)
     }
 
     private static async Task<ExameImagem> PrepararAsync(
-        SmsMaricaDbContext db,
+        SmsMaisDbContext db,
         StatusSolicitacaoExame status,
         string? worklistItemUid = "SPS-TESTE",
         bool excluido = false)

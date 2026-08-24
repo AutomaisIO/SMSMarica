@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using SMSMarica.Core.Common.Tempo;
 using SMSMarica.Core.Common.Texto;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Conversas.RespostasRapidas;
 

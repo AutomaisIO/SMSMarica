@@ -2,8 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Pacientes.Fhir;
 using SMSMarica.Core.Worklist;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Pacs;
 
@@ -24,7 +24,7 @@ public interface IResolvedorIdentidadeDicom
 }
 
 public sealed class ResolvedorIdentidadeDicom(
-    SmsMaricaDbContext db, IPacienteResolver pacientes) : IResolvedorIdentidadeDicom
+    SmsMaisDbContext db, IPacienteResolver pacientes) : IResolvedorIdentidadeDicom
 {
     public async Task<IdentidadeDicom> ObterAsync(Guid exameImagemId, CancellationToken cancellationToken = default)
     {

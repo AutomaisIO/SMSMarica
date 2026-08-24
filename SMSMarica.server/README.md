@@ -14,11 +14,11 @@ SMSMarica.server/
 ├── Directory.Packages.props          (Central Package Management)
 ├── .editorconfig
 ├── src/
-│   ├── SMSMarica.Data/               (POCOs + DbContext + Configurations + Migrations)
+│   ├── SMSMais.Data/               (POCOs + DbContext + Configurations + Migrations)
 │   │   ├── Entities/                 (16 POCOs em pt-BR)
 │   │   ├── Configurations/           (16 IEntityTypeConfiguration, snake_case)
 │   │   ├── Migrations/Initial.cs
-│   │   ├── SmsMaricaDbContext.cs     (HasDefaultSchema("smsmarica"))
+│   │   ├── SmsMaisDbContext.cs     (HasDefaultSchema("smsmarica"))
 │   │   └── DependencyInjection.cs    (AddData)
 │   ├── SMSMarica.Core/               (services + DTOs + validators + mappers)
 │   │   ├── Common/Excecoes/          (NaoEncontrado, Validacao, Conflito)
@@ -91,7 +91,7 @@ O Postgres em produção é o `defaultdb` do cluster da Prefeitura na DigitalOce
 
 ```bash
 dotnet ef database update \
-  --project src/SMSMarica.Data \
+  --project src/SMSMais.Data \
   --startup-project src/SMSMarica.Api
 ```
 
@@ -101,7 +101,7 @@ dotnet ef database update \
 
 ```bash
 dotnet ef migrations add <Nome> \
-  --project src/SMSMarica.Data \
+  --project src/SMSMais.Data \
   --startup-project src/SMSMarica.Api
 ```
 

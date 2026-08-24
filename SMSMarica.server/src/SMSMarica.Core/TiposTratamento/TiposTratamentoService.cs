@@ -1,14 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.TiposTratamento.Dtos;
-using SMSMarica.Data;
-using EntidadeTipoTratamento = SMSMarica.Data.Entities.TipoTratamento;
+using SMSMais.Data;
+using EntidadeTipoTratamento = SMSMais.Data.Entities.TipoTratamento;
 
 namespace SMSMarica.Core.TiposTratamento;
 
-public sealed class TiposTratamentoService(SmsMaricaDbContext db) : ITiposTratamentoService
+public sealed class TiposTratamentoService(SmsMaisDbContext db) : ITiposTratamentoService
 {
-    private readonly SmsMaricaDbContext _db = db;
+    private readonly SmsMaisDbContext _db = db;
 
     public async Task<IReadOnlyList<TipoTratamentoListItemDto>> ListarAsync(bool somenteAtivos, CancellationToken cancellationToken = default)
     {

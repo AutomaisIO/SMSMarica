@@ -11,9 +11,9 @@ using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Notificacoes.WhatsApp;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.PesquisasSatisfacao.Dtos;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.PesquisasSatisfacao;
 
@@ -22,7 +22,7 @@ namespace SMSMarica.Core.PesquisasSatisfacao;
 /// do token e <see cref="IPesquisasSatisfacaoService.JanelaDias"/> para o prazo.
 /// </summary>
 public sealed class PesquisasSatisfacaoService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IAtendimentosService atendimentos,
     IEncounterFhirClient fhir,
     IUsuarioAtualAccessor usuarioAtual,

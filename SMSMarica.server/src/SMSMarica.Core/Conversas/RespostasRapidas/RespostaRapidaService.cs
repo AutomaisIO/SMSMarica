@@ -3,14 +3,14 @@ using SMSMarica.Core.Common.Excecoes;
 using SMSMarica.Core.Conversas.RespostasRapidas.Dtos;
 using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Pacientes;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities.Conversas;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Conversas;
+using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Core.Conversas.RespostasRapidas;
 
 public sealed class RespostaRapidaService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     IUsuarioAtualAccessor usuarioAtual,
     IUsuarioUnidadeService vinculos,
     IPacientesService pacientes) : IRespostaRapidaService

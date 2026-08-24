@@ -20,7 +20,7 @@ public interface IEstatisticasService
     /// opcionalmente, restrito a uma única unidade EXECUTANTE. Só contagens/médias — sem PII.
     /// </summary>
     Task<EstatisticasExamesImagemDto> ObterExamesImagemAsync(
-        DateOnly de, DateOnly ate, Guid? unidadeId, Data.Entities.Enums.ModalidadeDicom? modalidade,
+        DateOnly de, DateOnly ate, Guid? unidadeId, SMSMais.Data.Entities.Enums.ModalidadeDicom? modalidade,
         Guid? tipoExameId, CancellationToken ct = default);
 
     /// <summary>
@@ -29,7 +29,7 @@ public interface IEstatisticasService
     /// (só números do exame/solicitação/laudo). Registra auditoria de quem exportou e o quê.
     /// </summary>
     Task<ExportacaoImagemDto> ObterExportacaoImagemAsync(
-        DateOnly de, DateOnly ate, Guid? unidadeId, Data.Entities.Enums.ModalidadeDicom? modalidade,
+        DateOnly de, DateOnly ate, Guid? unidadeId, SMSMais.Data.Entities.Enums.ModalidadeDicom? modalidade,
         Guid? tipoExameId, ConteudoExportacaoImagem conteudo, CancellationToken ct = default);
 
     /// <summary>
@@ -39,6 +39,6 @@ public interface IEstatisticasService
     /// ticket #74. Registra auditoria de quem exportou. O front monta o .xlsx formatado.
     /// </summary>
     Task<IReadOnlyList<ExameFaturamentoDto>> ObterFaturamentoImagemAsync(
-        DateOnly de, DateOnly ate, Guid? unidadeId, Data.Entities.Enums.ModalidadeDicom? modalidade,
+        DateOnly de, DateOnly ate, Guid? unidadeId, SMSMais.Data.Entities.Enums.ModalidadeDicom? modalidade,
         Guid? tipoExameId, CancellationToken ct = default);
 }

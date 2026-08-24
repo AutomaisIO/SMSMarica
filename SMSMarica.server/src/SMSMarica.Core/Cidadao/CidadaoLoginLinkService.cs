@@ -7,8 +7,8 @@ using SMSMarica.Core.Identidade;
 using SMSMarica.Core.Laudos.Configuracao;
 using SMSMarica.Core.Pacientes;
 using SMSMarica.Core.SolicitacoesExame;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
 
 namespace SMSMarica.Core.Cidadao;
 
@@ -40,7 +40,7 @@ public interface ICidadaoLoginLinkService
 }
 
 public sealed class CidadaoLoginLinkService(
-    SmsMaricaDbContext db,
+    SmsMaisDbContext db,
     ILaudoConfiguracaoService configuracaoLaudo,
     IPacientesService pacientes,
     ISolicitacoesExameService solicitacoes,
@@ -203,16 +203,16 @@ public sealed class CidadaoLoginLinkService(
                 // Mesma régua do app (CidadaoClinicoService): vale enquanto o exame for do dia
                 // corrente de Brasília. Exigir hora futura fazia o clique no botão do WhatsApp,
                 // no dia do exame depois do horário, não confirmar nada — e em silêncio.
-                if (s.StatusConfirmacao == Data.Entities.Enums.StatusConfirmacaoAgendamento.Pendente
+                if (s.StatusConfirmacao == SMSMais.Data.Entities.Enums.StatusConfirmacaoAgendamento.Pendente
                     && s.DataAgendada is { } da && da >= FusoBrasilia.InicioDoDiaAtualEmUtc())
                 {
-                    s.StatusConfirmacao = Data.Entities.Enums.StatusConfirmacaoAgendamento.Confirmada;
+                    s.StatusConfirmacao = SMSMais.Data.Entities.Enums.StatusConfirmacaoAgendamento.Confirmada;
                     s.ConfirmadoEm = DateTime.UtcNow;
                     s.ConfirmadoCanal = "whatsapp-link";
                     s.AtualizadoEm = DateTime.UtcNow;
                     confirmadaAgora = true;
                 }
-                if (confirmadaAgora || s.StatusConfirmacao == Data.Entities.Enums.StatusConfirmacaoAgendamento.Confirmada)
+                if (confirmadaAgora || s.StatusConfirmacao == SMSMais.Data.Entities.Enums.StatusConfirmacaoAgendamento.Confirmada)
                 {
                     confirmacao = new ConfirmacaoAgendamentoDto(
                         s.ExameImagem?.Id ?? s.Id, s.ExameImagem?.TipoExame?.Nome ?? "Exame", s.DataAgendada, s.UnidadeExecutante?.Nome, confirmadaAgora);

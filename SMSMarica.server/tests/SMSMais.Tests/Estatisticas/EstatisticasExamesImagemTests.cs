@@ -3,9 +3,9 @@ using NSubstitute;
 using SMSMarica.Core.Estatisticas;
 using SMSMarica.Core.Estatisticas.Dtos;
 using SMSMarica.Core.Pacientes.Fhir;
-using SMSMarica.Data;
-using SMSMarica.Data.Entities;
-using SMSMarica.Data.Entities.Enums;
+using SMSMais.Data;
+using SMSMais.Data.Entities;
+using SMSMais.Data.Entities.Enums;
 using SMSMais.Tests.Infraestrutura;
 
 namespace SMSMais.Tests.Estatisticas;
@@ -226,10 +226,10 @@ public class EstatisticasExamesImagemTests(PostgresFixture fixture)
 
     // ===================== apoio =====================
 
-    private async Task<ExamesImagemResumoDto> ResumoAsync(SmsMaricaDbContext db, ExameImagem exame) =>
+    private async Task<ExamesImagemResumoDto> ResumoAsync(SmsMaisDbContext db, ExameImagem exame) =>
         (await ObterAsync(db, exame)).Resumo;
 
-    private async Task<EstatisticasExamesImagemDto> ObterAsync(SmsMaricaDbContext db, ExameImagem exame)
+    private async Task<EstatisticasExamesImagemDto> ObterAsync(SmsMaisDbContext db, ExameImagem exame)
     {
         var unidadeId = (await db.Solicitacoes.FindAsync(exame.SolicitacaoId))!.UnidadeExecutanteId;
         var dia = DateOnly.FromDateTime(exame.RealizadoEm!.Value);
@@ -244,7 +244,7 @@ public class EstatisticasExamesImagemTests(PostgresFixture fixture)
     }
 
     private static async Task<LaudoAssinatura> AssinarAsync(
-        SmsMaricaDbContext db, Laudo laudo, StatusAssinatura status, DateTime? assinadoEm = null)
+        SmsMaisDbContext db, Laudo laudo, StatusAssinatura status, DateTime? assinadoEm = null)
     {
         var a = new LaudoAssinatura
         {
@@ -263,7 +263,7 @@ public class EstatisticasExamesImagemTests(PostgresFixture fixture)
         return a;
     }
 
-    private static async Task<ExameImagem> CriarExameRealizadoAsync(SmsMaricaDbContext db)
+    private static async Task<ExameImagem> CriarExameRealizadoAsync(SmsMaisDbContext db)
     {
         var exame = await SeedSolicitacao.CriarAsync(db, Guid.NewGuid());
         exame.Status = StatusSolicitacaoExame.Realizada;
@@ -273,7 +273,7 @@ public class EstatisticasExamesImagemTests(PostgresFixture fixture)
     }
 
     private static async Task<ExameAssociacao> ConciliarAsync(
-        SmsMaricaDbContext db, ExameImagem exame, string uidReal)
+        SmsMaisDbContext db, ExameImagem exame, string uidReal)
     {
         var a = new ExameAssociacao
         {
@@ -290,13 +290,13 @@ public class EstatisticasExamesImagemTests(PostgresFixture fixture)
     }
 
     private static Task<Laudo> FinalizarLaudoAsync(
-        SmsMaricaDbContext db, string uid, int versao = 1,
+        SmsMaisDbContext db, string uid, int versao = 1,
         DateTime? finalizadoEm = null, Guid? anteriorId = null) =>
         CriarLaudoAsync(db, uid, StatusLaudo.Finalizado,
             finalizadoEm ?? DateTime.UtcNow.AddHours(-1), versao, anteriorId);
 
     private static async Task<Laudo> CriarLaudoAsync(
-        SmsMaricaDbContext db, string uid, StatusLaudo status, DateTime? finalizadoEm,
+        SmsMaisDbContext db, string uid, StatusLaudo status, DateTime? finalizadoEm,
         int versao = 1, Guid? anteriorId = null)
     {
         var l = new Laudo
