@@ -56,7 +56,7 @@ SMSMarica.server/
 │   ├── SMSMarica.Core/    (services + DTOs + validators + mappers)
 │   └── SMSMarica.Api/     (Program.cs + middleware + 1 controller MVC por entidade)
 └── tests/
-    └── SMSMarica.Tests/   (xUnit + Testcontainers Postgres)
+    └── SMSMais.Tests/   (xUnit + Testcontainers Postgres)
 ```
 
 **Referências (travadas por `ProjectReference`):**
@@ -129,7 +129,7 @@ Para qualquer outra entidade de domínio:
 5. Criar pasta `SMSMarica.Core/<X>/` com `I<X>Service` + `<X>Service`, DTOs, Validators e Mapper.
 6. Registrar service em `SMSMarica.Core/DependencyInjection.cs`.
 7. Criar `SMSMarica.Api/Controllers/<X>Controller.cs` com `[ApiController]` e 5 actions.
-8. Adicionar testes em `tests/SMSMarica.Tests/<X>/`.
+8. Adicionar testes em `tests/SMSMais.Tests/<X>/`.
 
 ## 4. Banco de dados
 

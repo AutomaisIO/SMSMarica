@@ -6,7 +6,7 @@
 
   <ItemGroup>
     <!-- Testes unitários acessam tipos internos (ex.: PacienteFhirMapper). -->
-    <InternalsVisibleTo Include="SMSMarica.Tests" />
+    <InternalsVisibleTo Include="SMSMais.Tests" />
   </ItemGroup>
 
   <ItemGroup>

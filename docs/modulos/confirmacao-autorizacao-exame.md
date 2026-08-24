@@ -162,7 +162,7 @@ do navegador).
 
 ## Testes
 
-`tests/SMSMarica.Tests` — `AutorizacaoSolicitacaoTests` (gate + régua + revive + dispensa
+`tests/SMSMais.Tests` — `AutorizacaoSolicitacaoTests` (gate + régua + revive + dispensa
 libera / dispensa revogada volta a travar), `DispensaContatoRegrasTests` (quais motivos deixam
 dado clínico sair; **sem banco** — roda sem Docker),
 `WhatsAppWebhookStatusesTests` (recibos, monotonicidade, retentável/terminal),

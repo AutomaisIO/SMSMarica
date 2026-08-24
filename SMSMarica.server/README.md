@@ -33,7 +33,7 @@ SMSMarica.server/
 │       ├── Controllers/              (1 controller por entidade, CRUD)
 │       └── appsettings*.json
 └── tests/
-    └── SMSMarica.Tests/              (xUnit + FluentAssertions + Testcontainers Postgres)
+    └── SMSMais.Tests/              (xUnit + FluentAssertions + Testcontainers Postgres)
 ```
 
 **Referências:** `Data ← nada` · `Core ← Data` · `Api ← Core + Data` · `Tests ← Core + Data + Api`.

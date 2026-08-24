@@ -5,6 +5,6 @@
     <Project Path="src/SMSMarica.Data/SMSMarica.Data.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/SMSMarica.Tests/SMSMarica.Tests.csproj" />
+    <Project Path="tests/SMSMais.Tests/SMSMais.Tests.csproj" />
   </Folder>
 </Solution>

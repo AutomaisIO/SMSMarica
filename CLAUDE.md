@@ -115,6 +115,6 @@ Ver [`docs/architecture.md §3.6`](./docs/architecture.md). Resumo:
 5. Pasta `Core/<X>/` com `IXService`/`XService`, `Dtos/`, `Validators/`, `Mapper.cs`
 6. Registrar service em `Core/DependencyInjection.cs`
 7. Controller em `Api/Controllers/<X>Controller.cs` com `[ApiController]` e CRUD
-8. Testes em `tests/SMSMarica.Tests/<X>/`
+8. Testes em `tests/SMSMais.Tests/<X>/`
 
 Use o módulo Pacientes (já completo) como referência.
