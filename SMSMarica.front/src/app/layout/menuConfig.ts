@@ -27,6 +27,7 @@ import {
   Folder,
   KeyRound,
   KeySquare,
+  Landmark,
   Layers,
   LayoutDashboard,
   Map,
@@ -427,6 +428,13 @@ export const SECOES: SecaoMenu[] = [
     titulo: 'Sistema',
     icone: ScrollText,
     itens: [
+      {
+        rotulo: 'Instituição',
+        to: '/app/instituicao',
+        icone: Landmark,
+        modulo: 'Instituicao',
+        descricao: 'Nome, marca, domínios e contatos legais desta instância.',
+      },
       {
         rotulo: 'Auditoria',
         to: '/app/auditoria',

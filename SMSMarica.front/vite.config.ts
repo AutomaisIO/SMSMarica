@@ -22,7 +22,30 @@ function gerarVersaoJson(): Plugin {
   };
 }
 
-export default defineConfig({
+/**
+ * Cada instância aponta para o próprio backend (ADR-0043 — uma instância por município),
+ * e o painel só sabe qual por `VITE_API_BASE_URL`.
+ *
+ * A checagem é aqui, e não só no `httpClient`, porque um `throw` em módulo do bundle só
+ * aparece no navegador — tela branca depois do deploy. Falhar no build é barulhento, é
+ * barato, e acontece antes de qualquer artefato subir.
+ *
+ * Até 2026-08 havia um fallback para `https://api.smsmarica.online`: um build sem a env
+ * subia calado e apontava o painel de um município para o backend de Maricá.
+ */
+function exigirApiBaseUrl(modo: string) {
+  if (modo !== 'production') return;
+  if (process.env.VITE_API_BASE_URL?.trim()) return;
+  throw new Error(
+    'VITE_API_BASE_URL não definida.\n' +
+      'O painel de cada município aponta para o backend daquele município — não há default.\n' +
+      'Defina a variável no ambiente de build (no CI, o secret da instância).',
+  );
+}
+
+export default defineConfig(({ mode }) => {
+  exigirApiBaseUrl(mode);
+  return {
   plugins: [react(), gerarVersaoJson()],
   define: {
     __VERSAO_BUILD__: JSON.stringify(versaoBuild),
@@ -56,4 +79,5 @@ export default defineConfig({
       },
     },
   },
+  };
 });

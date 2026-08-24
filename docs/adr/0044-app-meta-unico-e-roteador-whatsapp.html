@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0044 — Um App único na Meta para N prefeituras, com roteador de WhatsApp na frente</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0044 — Um App único na Meta para N prefeituras, com roteador de WhatsApp na frente</h1>
+<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-08-17 <strong>Implantação:</strong> não iniciada. Este ADR registra a decisão e o desenho; nada foi construído. <strong>Relacionado:</strong> <a href="./0043-instancia-por-municipio.md">ADR-0043</a> (uma instância por município), <a href="./0038-mensageria-e-geo-fora-do-tfd.md">ADR-0038</a> (mensageria é serviço de domínio, não do TFD), <a href="./0045-criterio-para-extrair-servico.md">ADR-0045</a> (por que este é o <em>único</em> serviço novo).</p>
+<h2>Contexto</h2>
+<p>Com a decisão de entregar o produto como <strong>uma instância por município</strong> (ADR-0043), o WhatsApp passou a ser o único ponto do sistema em que instâncias diferentes disputam um recurso externo compartilhado.</p>
+<p>O motivo é uma característica da plataforma da Meta, não uma escolha nossa:</p>
+<ul>
+<li>O <strong>App</strong> da Meta é onde se configura <strong>um</strong> webhook — uma URL de callback, uma só.</li>
+<li>O <strong>WABA</strong> (WhatsApp Business Account), o <strong>número</strong> e o <strong>nome de exibição</strong> são de nível</li>
+</ul>
+<p>  abaixo: um App pode servir vários WABAs, cada um com seu número e sua identidade visual.</p>
+<p>Ou seja: <strong>a marca é por número, o webhook é por App.</strong> É possível — e é o que queremos — que cada prefeitura tenha número, nome ("Secretaria Municipal de Saúde de X"), foto e selo próprios, enquanto o App é da Automais. O cidadão nunca vê o App.</p>
+<p>O que isso quebra é o webhook. Hoje, <code>SMSMarica.Api/Controllers/WhatsAppWebhookController.cs:43</code> lê o corpo cru da requisição, valida o HMAC <code>X-Hub-Signature-256</code> com o App Secret e entrega tudo a <code>IWhatsAppWebhookService.ProcessarAsync(raw, …)</code>. <strong>Ele não olha para <code>entry[].changes[].value.metadata.phone_number_id</code></strong> — assume que todo evento que chega é dele. Essa premissa é verdadeira enquanto existir um App por instância, e falsa no primeiro dia de um App compartilhado.</p>
+<h3>As duas alternativas, e por que esta</h3>
+<p><strong>(a) Um App por prefeitura.</strong> Webhook aponta direto para a instância; o código de hoje funciona sem mudança nenhuma. Custo: cada venda espera a verificação de negócio da Meta, e a prefeitura precisa abrir e manter uma conta — entra no caminho crítico comercial, e depende de terceiro.</p>
+<p><strong>(b) Um App da Automais, N WABAs (modelo Tech Provider).</strong> A verificação sai do caminho crítico da venda; o onboarding de um município novo vira trabalho nosso. Custo: um componente novo, porque o webhook único precisa ser distribuído.</p>
+<p>Escolhemos <strong>(b)</strong>. O custo é um serviço pequeno e sem dado clínico; o ganho é não depender da Meta a cada venda.</p>
+<h2>Decisão</h2>
+<p><strong>Um App da Automais serve todas as prefeituras. Cada prefeitura mantém WABA, número, nome de exibição, foto e selo próprios.</strong> Entre a Meta e as instâncias entra o <strong><code>Automais.ZapRouter</code></strong>.</p>
+<h3>O que o roteador é</h3>
+<p>Um serviço próprio, na estrutura de <code>Automais.Fhir</code> (Data + Core + Api), com uma responsabilidade só: <strong>entregar cada evento da Meta à instância dona do número.</strong></p>
+<ul>
+<li><strong>Entrada.</strong> Recebe o webhook único, valida o HMAC <code>X-Hub-Signature-256</code> com o App Secret,</li>
+</ul>
+<p>  lê <code>entry[].changes[].value.metadata.phone_number_id</code>, encontra a instância dona e encaminha   o corpo <strong>cru</strong>, reassinando com um segredo próprio daquela instância.</p>
+<ul>
+<li><strong>Saída (fase 2).</strong> Media o envio. Sob um App compartilhado, o token do System User pode</li>
+</ul>
+<p>  enviar por qualquer número do business; mediar evita que esse token viva em N droplets. Na   fase 1 cada instância continua enviando direto, com credencial própria.</p>
+<ul>
+<li><strong>Estado.</strong> Uma tabela de rota (<code>phone_number_id → URL da instância + segredo</code>) e um buffer</li>
+</ul>
+<p>  curto de reentrega para quando a instância estiver fora do ar.</p>
+<h3>O que o roteador NÃO é</h3>
+<p><strong>Não é a mensageria.</strong> <code>Conversa</code>, <code>MensagemWhatsApp</code>, <code>ComunicacaoPaciente</code>, <code>ContatoRegistro</code> e o vínculo com o cidadão continuam no banco de cada município, como hoje.</p>
+<p>Isso não é preferência de estilo — é o que mantém o roteador <strong>fora do alcance da LGPD dos municípios</strong>. Ele encaminha um envelope; não interpreta, não armazena e não correlaciona conteúdo clínico. Um componente que guardasse conversas de N prefeituras seria um repositório central de dado de saúde de vários entes — exatamente o que o ADR-0043 decidiu não construir.</p>
+<h3>Mudança na instância</h3>
+<p><code>WhatsAppWebhookController</code> passa a:</p>
+<ol>
+<li>Validar a assinatura <strong>do roteador</strong>, não a da Meta (o App Secret deixa de estar em N hosts).</li>
+<li><strong>Recusar payload cujo <code>phone_number_id</code> não seja o seu</strong> — comparando com</li>
+</ol>
+<p>   <code>WhatsAppConfiguracao.PhoneNumberId</code>, que já existe. Hoje ele aceita qualquer coisa que passe    no HMAC; com App compartilhado isso significaria uma instância processando mensagem de outro    município.</p>
+<p>O item 2 vale a pena mesmo antes do roteador existir: é uma verificação barata contra uma configuração errada.</p>
+<h2>Consequências</h2>
+<p><strong>Positivas</strong></p>
+<ul>
+<li>A venda deixa de esperar a Meta. O onboarding de um município novo é trabalho nosso, não</li>
+</ul>
+<p>  dele.</p>
+<ul>
+<li>O App Secret e (na fase 2) o token do System User ficam num lugar só.</li>
+<li>O cidadão vê a prefeitura dele: número, nome, foto e selo são do WABA de cada município.</li>
+</ul>
+<p><strong>Custos assumidos</strong></p>
+<ul>
+<li><strong>Mais um deployable</strong>, com CI, porta e monitoramento próprios. Aceito porque o critério do</li>
+</ul>
+<p>  <a href="./0045-criterio-para-extrair-servico.md">ADR-0045</a> é satisfeito: existe um <strong>dono externo</strong>   (a Meta) impondo a fronteira.</p>
+<ul>
+<li><strong>Ponto único de falha para o inbound.</strong> Roteador fora do ar = nenhuma prefeitura recebe</li>
+</ul>
+<p>  mensagem. Daí o buffer de reentrega e o bind/monitoramento serem parte do desenho, não   detalhe. O outbound (fase 1) não passa por ele e continua funcionando.</p>
+<ul>
+<li><strong>Um problema de App atinge todos</strong> — App restrito ou token revogado é incidente de N</li>
+</ul>
+<p>  clientes. Qualidade e limites de envio continuam por número.</p>
+<ul>
+<li><strong>Templates são aprovados por WABA.</strong> Um App compartilhado não dá reuso de aprovação: cada</li>
+</ul>
+<p>  município aprova os seus. Automatizável por API, mas não é ganho do modelo.</p>
+<h2>Pendência contratual (a mais importante deste ADR)</h2>
+<p>Se o WABA nascer sob o business da Automais, <strong>a prefeitura depende de nós para levar o número embora</strong>. A Meta suporta transferência de WABA, mas é um processo — e contrato público costuma exigir que o ativo seja transferível ou do ente.</p>
+<p><strong>Combinar a transferência no contrato, antes da primeira ativação.</strong> Descobrir isso numa renovação é caro, e é o tipo de cláusula que não se negocia bem sob pressão.</p>
+<h2>Pendências técnicas herdadas</h2>
+<p>Registradas aqui porque afetam o desenho e ainda não foram resolvidas:</p>
+<ol>
+<li><strong><code>WhatsAppConfiguracao</code> é lida via <code>ITfdConfigService</code></strong> (<code>Core/Tfd/Configuracao/</code>) — nome</li>
+</ol>
+<p>   legado: esse serviço gerencia Google Maps e WhatsApp, não TFD, e é consumido por 6 pontos    fora do transporte. O roteador não depende disso, mas quem mexer no webhook vai esbarrar.</p>
+<ol>
+<li><strong>O <code>/health</code> do monolito não conhece serviços externos</strong> (<code>Api/Program.cs:174-177</code> só checa o</li>
+</ol>
+<p>   DbContext). Com o roteador, "WhatsApp parou" precisa ser observável — hoje não seria.</p>
+</main>
+</body>
+</html>

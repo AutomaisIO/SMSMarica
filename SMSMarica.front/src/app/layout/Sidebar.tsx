@@ -146,7 +146,7 @@ export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseM
 
     return (
       <div
-        className="flex h-full flex-col overflow-y-auto shadow-marica-lg"
+        className="flex h-full flex-col overflow-y-auto shadow-marca-lg"
         style={{ background: 'var(--theme-menu-background)' }}
       >
         <div className="relative flex justify-center px-3 py-5 border-b border-white/10 bg-white">

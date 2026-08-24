@@ -98,6 +98,7 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'RegulacaoConfiguracao', rotulo: 'Regulação — Configuração (credenciais e motor do SER)' },
   { id: 'CorrecaoIdentidadeExame', rotulo: 'Correção de identidade de exame (reescreve o DICOM no PACS)' },
   { id: 'PesquisaSatisfacao', rotulo: 'Pesquisa de satisfação — enviar ao paciente pelo histórico' },
+  { id: 'Instituicao', rotulo: 'Instituição — identidade, marca e contatos legais desta instância' },
 ];
 
 export const ACOES: { id: AcaoPermissao; rotulo: string }[] = [
@@ -134,5 +135,11 @@ export const APELIDOS_ACOES_POR_MODULO: Partial<
   // inofensivo — o que ela libera é MANDAR MENSAGEM para o cidadão.
   PesquisaSatisfacao: {
     Edicao: 'Enviar pesquisa de satisfação ao paciente (WhatsApp)',
+  },
+  // O que se edita aqui aparece na tela de login, no PDF de laudo e na página pública de
+  // verificação — inclusive para quem NÃO está autenticado. Não é configuração operacional.
+  Instituicao: {
+    Consulta: 'Ver a identidade da instituição',
+    Edicao: 'Alterar nome, marca, domínios e contatos legais (afeta telas públicas)',
   },
 };

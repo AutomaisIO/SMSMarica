@@ -2,10 +2,21 @@ import axios, { AxiosError } from 'axios';
 import { obterToken, obterUnidadeAtivaId, useAuth } from '@/shared/auth/authStore';
 import { notificar } from '@/shared/ui/Notificacoes';
 
-const URL_PROD = 'https://api.smsmarica.online';
 const envBase = import.meta.env.VITE_API_BASE_URL?.trim();
-// Ordem: env var explícita > fallback prod em build de produção > proxy /api em dev.
-const baseURL = envBase || (import.meta.env.PROD ? URL_PROD : '/api');
+
+// Em produção a env é OBRIGATÓRIA (ADR-0043 — uma instância por município). Até 2026-08 havia
+// aqui um fallback para `https://api.smsmarica.online`: um build sem `VITE_API_BASE_URL` subia
+// calado e apontava o painel de um município para o backend de Maricá. Falhar no build é
+// barulhento e barato; descobrir isso em produção, não.
+if (import.meta.env.PROD && !envBase) {
+  throw new Error(
+    'VITE_API_BASE_URL não definida. Cada instância aponta para o próprio backend — ' +
+      'defina a variável no ambiente de build (ADR-0043).',
+  );
+}
+
+// Em dev, o proxy `/api` do Vite resolve contra o backend local.
+const baseURL = envBase || '/api';
 
 export const http = axios.create({
   baseURL,

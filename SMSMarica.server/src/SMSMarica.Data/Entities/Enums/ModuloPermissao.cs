@@ -1,4 +1,4 @@
-﻿namespace SMSMarica.Data.Entities.Enums;
+namespace SMSMarica.Data.Entities.Enums;
 
 /// <summary>
 /// Módulos do sistema que aceitam controle de acesso. O valor inteiro
@@ -196,4 +196,16 @@ public enum ModuloPermissao
     /// o reenvio pontual.</para>
     /// <para>Usa apenas <c>Edicao</c> — é ela que faz aparecer o botão no atendimento.</para></summary>
     PesquisaSatisfacao = 56,
+
+    /// <summary>Identidade da instituição desta instância (ADR-0043): nome da secretaria, marca
+    /// (logo e cores), domínios e contatos legais (LGPD).
+    /// <para>Módulo próprio porque o alcance não se parece com nenhum outro: o que se edita aqui
+    /// aparece no login, no PDF de laudo, na página pública de verificação e no app do cidadão —
+    /// inclusive para quem <b>não</b> está autenticado. Errar o e-mail do DPO ou trocar o logo é
+    /// mudança institucional, não operacional; fica com um punhado de nomes, como
+    /// <see cref="ConfiguracaoLaudo"/>.</para>
+    /// <para><c>Consulta</c> para ver a tela; <c>Edicao</c> para salvar. A <b>leitura pública</b>
+    /// (<c>GET /publico/instituicao</c>) não passa por aqui — é anônima por necessidade: o front
+    /// precisa se pintar antes de existir sessão.</para></summary>
+    Instituicao = 57,
 }

@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0045 — Só se extrai um serviço que tenha dono externo</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0045 — Só se extrai um serviço que tenha dono externo</h1>
+<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-08-17 <strong>Relacionado:</strong> <a href="./0004-arquitetura-tres-projetos.md">ADR-0004</a> (3 projetos, supersede o Modular Monolith), <a href="./0010-servico-fhir-autonomo.md">ADR-0010</a> (Automais.Fhir), <a href="./0015-assinatura-laudos-agente-itext.md">ADR-0015</a> (Automais.Assinador), <a href="./0043-instancia-por-municipio.md">ADR-0043</a>, <a href="./0044-app-meta-unico-e-roteador-whatsapp.md">ADR-0044</a>.</p>
+<h2>Contexto</h2>
+<p>Com o produto virando multi-município, voltou a pergunta: <em>"eu não deveria ter uma API e um banco para mensageria, outra para telefonia, outra para motoristas?"</em></p>
+<p>Ela já apareceu antes, em outra forma. O scaffold inicial seguiu o <a href="./0002-modular-monolith.md">ADR-0002</a> — Modular Monolith com 44 projetos (9 módulos × 4 camadas) — e foi desfeito pelo <a href="./0004-arquitetura-tres-projetos.md">ADR-0004</a>, que registra: <em>"rejeitada após uso real"</em>. O que se propõe agora é a versão mais cara daquilo: não só projetos separados, mas processos e bancos.</p>
+<p>Desta vez a decisão foi tomada com medição, em 2026-08-17, sobre o código e o histórico do repositório. Os números estão abaixo porque são o valor deste documento — sem eles, a pergunta volta em três meses e é respondida por intuição de novo.</p>
+<h3>O que as separações já feitas custaram</h3>
+<p>Este repositório já tem três serviços fora do monolito. Medindo commits que tocam cada um <strong>e também</strong> <code>SMSMarica.server</code> no mesmo commit:</p>
+<div class="tw"><table><thead><tr><th>Serviço</th><th>commits</th><th>também mexem no monolito</th><th></th></tr></thead><tbody>
+<tr><td><code>Automais.Fhir</code></td><td>31</td><td><strong>16 (51,6%)</strong></td><td>fronteira que não separou mudança</td></tr>
+<tr><td><code>Automais.Assinador</code></td><td>7</td><td><strong>4 (57,1%)</strong></td><td>idem</td></tr>
+<tr><td><code>Telefonia/PABX</code></td><td>4</td><td><strong>0 (0%)</strong></td><td>a única fronteira real</td></tr>
+</tbody></table></div>
+<p>O ADR-0010 prometia "deployável e versionável de forma independente". O que se materializou foi <strong>deploy</strong> independente, não <strong>mudança</strong> independente.</p>
+<p><strong><code>Automais.Fhir</code> — o caso mais instrutivo:</strong></p>
+<ul>
+<li>O código no monolito que existe <em>só</em> para falar com ele — clientes HTTP + mappers FHIR — soma</li>
+</ul>
+<p>  <strong>4.119 linhas</strong>. O serviço inteiro, sem migrations, tem <strong>4.214</strong>. <em>O lado cliente da fronteira   tem o tamanho do serviço.</em></p>
+<ul>
+<li><strong>Zero endpoints com autenticação ou autorização</strong>, contra 442 <code>[RequerPermissao]</code> no monolito.</li>
+</ul>
+<p>  Auth "própria" era o próximo passo do ADR-0010; nunca chegou. Escuta em <code>0.0.0.0:5081</code>.</p>
+<ul>
+<li>A fronteira <strong>vaza</strong>: <code>Automais.Fhir.Api/Program.cs:19-23</code> põe <code>smsmarica</code> no <code>search_path</code></li>
+</ul>
+<p>  porque a busca de paciente precisa do <code>unaccent()</code> instalado por migration do monolito — no   mesmo arquivo em que <code>FhirDbContext.cs:9</code> afirma "este DbContext não conhece o schema smsmarica".</p>
+<ul>
+<li><code>Fhir:BaseUrl</code> <strong>não está configurado em lugar nenhum</strong> — produção roda no default</li>
+</ul>
+<p>  <code>http://localhost:5081/</code>. Os "dois serviços" são co-residentes conversando por loopback.</p>
+<ul>
+<li>Constantes de <code>identifier.system</code> foram centralizadas no hub "para nunca duplicar string" e</li>
+</ul>
+<p>  estão <strong>redeclaradas 8 vezes</strong> no monolito; <code>PacienteFhirMapper.cs:29</code> admite: <em>"espelham   FhirSystems do hub"</em>.</p>
+<p><strong><code>Automais.Assinador</code>:</strong> <strong>3 workflows / 14.929 bytes de YAML</strong> para <strong>548 linhas</strong> de serviço — mais YAML que o <code>deploy-server.yml</code> do monolito inteiro. O CI não roda os testes dele.</p>
+<p><strong><code>Telefonia/PABX</code></strong> é a única com 0% de sobreposição — e mesmo ela pagou o preço da cópia que a separação exigiu: duplicou <code>Telefonia/registro/unidades.csv</code> para dentro do serviço, <strong>as duas cópias já divergiram nas 30 linhas de dados</strong>, e como o <code>UnidadeSeeder</code> faz upsert a <strong>todo boot</strong>, um restart do PABX reverte o status das unidades para o estado de julho. É um defeito de dado vivo, causado pela duplicação.</p>
+<h3>Os dois candidatos, medidos</h3>
+<p><strong>Mensageria</strong> parece a melhor candidata pelo grafo de dados e é a pior na prática:</p>
+<div class="tw"><table><thead><tr><th></th><th></th></tr></thead><tbody>
+<tr><td>FKs saindo / entrando</td><td>8 / <strong>0</strong></td></tr>
+<tr><td>Services de domínio que dependem dela</td><td>8</td></tr>
+<tr><td>Controllers/hubs que dependem dela</td><td>12</td></tr>
+<tr><td>Arquivos de fora acessando <code>db.ComunicacoesPaciente</code> direto</td><td><strong>11</strong> (15 pontos)</td></tr>
+<tr><td>Cadeias <code>.Include</code> cruzando a fronteira</td><td>12</td></tr>
+<tr><td>Fluxos hoje em transação única que virariam 2 chamadas de rede</td><td><strong>7</strong></td></tr>
+<tr><td><code>BeginTransactionAsync</code> explícita cruzando</td><td>1 (<code>CorrecaoIdentidadeExameService.cs:121,190</code>)</td></tr>
+</tbody></table></div>
+<p>E o impedimento decisivo: <strong><code>usuario_unidade</code> mora em <code>Data/Entities/Conversas/</code></strong>, mas é a tabela que <code>Core/Common/Unidades/EscopoUnidade.cs:59</code> lê para escopar exames, consultas, laudos, estatísticas e painel — e o faz <strong>fail-closed</strong> (quem não tem vínculo não vê nada; a inversão de 2026-07-30 está documentada no XML-doc do próprio arquivo, que a atribui ao "ADR-0037" — decisão citada no código mas <strong>sem arquivo em <code>docs/adr/</code></strong>). Mandá-la para outro banco significa que <strong>uma indisponibilidade da API de mensageria faz todo usuário não ver nada.</strong></p>
+<p><strong>Transporte/TFD</strong> tem a fronteira de dados mais limpa do sistema — <strong>2 FKs saindo, 0 entrando, 0 services de fora o injetam</strong>, só 2 arquivos de fora tocam seus DbSets — e mesmo assim não deve ser extraído: é o módulo <strong>menos entregue</strong>. O endpoint da PWA do cidadão é um stub (<code>CidadaoController.cs:53</code> devolve <code>Array.Empty</code>), o app do motorista é mock salvo por um endpoint de GPS, e o <code>RastreamentoHub</code> não tem cliente. Extrair um módulo inacabado é otimizar a coisa errada.</p>
+<h3>E a dor que motivou a pergunta é menor do que parece</h3>
+<p>"Deploy tudo ou nada" já é falso: são <strong>8 workflows com filtro de <code>paths</code></strong> — mexer na telefonia não redeploya a API de saúde. Os deploys do server levam <strong>3m30 a 6m40</strong>, todos verdes. O que é monolítico é só o interior de <code>SMSMarica.server</code>.</p>
+<h2>Decisão</h2>
+<p><strong>Só se extrai para um serviço próprio aquilo que tem um DONO EXTERNO impondo a fronteira.</strong></p>
+<p>Dono externo é uma destas três coisas:</p>
+<ol>
+<li><strong>Uma restrição jurídica</strong> — ex.: o iText é AGPL e precisa ficar isolado do produto fechado</li>
+</ol>
+<p>   (ADR-0015). A razão é legal, não técnica.</p>
+<ol>
+<li><strong>Um host ou operador de terceiro</strong> — ex.: o PABX roda dentro do servidor VOIP da FalarMais,</li>
+</ol>
+<p>   que atende outros clientes, e não toca dado de paciente.</p>
+<ol>
+<li><strong>Um recurso compartilhado entre clientes</strong> — ex.: o App único da Meta, cujo webhook é por App</li>
+</ol>
+<p>   e precisa ser distribuído entre instâncias (ADR-0044).</p>
+<p><strong>Não contam como justificativa:</strong> tamanho do domínio, seção de menu, "está grande demais", "quero deployar separado", ou desejo de fronteira arquitetural. Para isso existem pastas dentro dos 3 projetos, que é o que o ADR-0004 decidiu.</p>
+<p>Aplicando o critério:</p>
+<div class="tw"><table><thead><tr><th>Candidato</th><th>Dono externo</th><th>Decisão</th></tr></thead><tbody>
+<tr><td>Assinatura de laudo</td><td>iText AGPL + certificado na máquina do médico</td><td>já extraído, correto</td></tr>
+<tr><td>Telefonia</td><td>servidor VOIP de terceiro, zero dado de paciente</td><td>já extraído, correto</td></tr>
+<tr><td>WhatsApp (<strong>roteador</strong>)</td><td>webhook por App da Meta, N clientes</td><td><strong>extrair</strong> — ADR-0044</td></tr>
+<tr><td>Mensageria (domínio)</td><td>—</td><td>manter no monolito</td></tr>
+<tr><td>Transporte / TFD</td><td>—</td><td>manter no monolito</td></tr>
+<tr><td>Hub FHIR</td><td>— (extraído por outra razão, ADR-0010)</td><td>manter como está; ver pendências</td></tr>
+</tbody></table></div>
+<h2>Consequências</h2>
+<ul>
+<li>Uma pergunta recorrente passa a ter resposta com evidência, e não com preferência.</li>
+<li>O monolito continua crescendo por pastas. Quando um módulo <em>ganhar</em> um dono externo — um</li>
+</ul>
+<p>  cliente que compre só telefonia, um regulador que exija isolamento — o critério dispara e a   extração é justificada por escrito.</p>
+<ul>
+<li>Nada disso impede fronteiras internas melhores; ao contrário, ver "Trabalho que substitui a</li>
+</ul>
+<p>  extração".</p>
+<h2>Trabalho que substitui a extração</h2>
+<p>Três itens atacam a dor real por uma fração do custo:</p>
+<ol>
+<li><strong>Ligar/desligar módulo por instância — hoje não existe.</strong> Busca por <code>FeatureFlag</code>,</li>
+</ol>
+<p>   <code>Modulos:</code>, <code>ModuloHabilitado</code>: <strong>zero resultados</strong>. E os <strong>15 <code>AddHostedService</code> de    <code>Core/DependencyInjection.cs</code> sobem incondicionalmente</strong> (linhas 158, 161, 167, 180, 290, 291,    328, 334, 358, 368, 385, 440, 455, 456, 459). Tirar o módulo do perfil some com a tela e <strong>não    para o worker</strong> — <code>EscopoUnidade.cs:29-40</code> documenta que job sem <code>HttpContext</code> "vê tudo". Isto    é pré-requisito do produto multi-município, não melhoria.</p>
+<ol>
+<li><strong>Mover <code>UsuarioUnidade</code> para fora de <code>Entities/Conversas/</code>.</strong> É a tabela de escopo de 5</li>
+</ol>
+<p>   módulos, não de conversas. Só o código muda de pasta — a tabela <code>usuario_unidade</code> não se mexe,    sem migration.</p>
+<ol>
+<li><strong>Fechar o acesso direto a <code>comunicacao_paciente</code>.</strong> 11 arquivos de fora leem/escrevem o DbSet</li>
+</ol>
+<p>   sem passar por <code>IComunicacaoPacienteService</code>, que já existe. É a fronteira que importa — e a    que teria que existir de qualquer forma antes de qualquer extração futura.</p>
+<h2>Pendências abertas</h2>
+<p>Levantadas pelas mesmas medições, sem decisão ainda:</p>
+<ol>
+<li><strong><code>automais-fhir</code> escuta em <code>0.0.0.0:5081</code> sem autenticação alguma</strong>, incluindo</li>
+</ol>
+<p>   <code>GET /fhir/_estatisticas</code> (10 <code>COUNT</code> sobre ~10,5M linhas). Mínimo: bind em <code>127.0.0.1</code>.</p>
+<ol>
+<li><strong><code>AddDataProtection()</code> sem <code>PersistKeysToFileSystem</code> nem <code>SetApplicationName</code></strong></li>
+</ol>
+<p>   (<code>Api/Program.cs:85</code>) — é esse anel que decifra <strong>todas</strong> as credenciais de integração do banco.</p>
+<ol>
+<li><strong>Telefonia: <code>unidades.csv</code> duplicado e divergido</strong>, revertendo status a cada boot.</li>
+<li><strong><code>CLAUDE.md</code> descreve arquitetura que não existe mais.</strong> A regra 1 afirma "um único</li>
+</ol>
+<p>   <code>SmsMaricaDbContext</code>" e "FKs cross-schema <code>smsmarica → fhir</code>" — falso desde o cutover do    ADR-0010 (<code>grep 'schema: "fhir"'</code> em <code>SMSMarica.Data</code> devolve 0). A regra 8 e o    <a href="./0007-schema-fhir-separado.md">ADR-0007</a> descrevem <code>ck_usuario_papel_unico</code> como valendo:    <strong>essa constraint não existe no banco</strong> — a única <code>HasCheckConstraint</code> do modelo é    <code>ck_agenda_recurso_por_finalidade</code>, e as colunas <code>patient_id</code>/<code>practitioner_id</code>/<code>motorista_id</code>    em <code>usuario</code> também não existem (a FK real é <code>motorista.usuario_id</code>). É o primeiro arquivo que    devs e agentes leem.</p>
+<ol>
+<li><strong>Decisões citadas no código sem ADR escrito.</strong> <code>EscopoUnidade.cs</code> atribui a inversão</li>
+</ol>
+<p>   fail-closed ao "ADR-0037" e a extração da cascata ao "ADR-0033"; não há arquivo para nenhum    dos dois em <code>docs/adr/</code> (a numeração salta de 0023 para 0036). Uma regra de segurança cuja    justificativa só existe num comentário é uma regra que a próxima pessoa desfaz sem saber.</p>
+</main>
+</body>
+</html>

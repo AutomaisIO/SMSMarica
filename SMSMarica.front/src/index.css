@@ -3,6 +3,42 @@
 @tailwind utilities;
 
 :root {
+  /*
+   * Paleta da marca em triplets RGB (ADR-0043 — uma instância por município).
+   *
+   * O Tailwind consome estas variáveis como `rgb(var(--c-primary-600) / <alpha-value>)`,
+   * e é por isso que aqui não há `#`: sem os canais separados, `bg-primary-600/40` para
+   * de funcionar.
+   *
+   * Os valores abaixo são a paleta de Maricá, byte a byte igual à que estava fixa no
+   * `tailwind.config.ts` — quem não configura cor nenhuma continua vendo exatamente o
+   * mesmo vermelho de antes. Uma instituição que define `corPrimaria` sobrescreve estas
+   * variáveis em runtime (`shared/tema/aplicarTema.ts`), sem rebuild.
+   */
+  --c-primary-50: 254 242 243;
+  --c-primary-100: 253 227 230;
+  --c-primary-200: 250 200 206;
+  --c-primary-300: 245 159 169;
+  --c-primary-400: 238 107 123;
+  --c-primary-500: 224 60 82;
+  --c-primary-600: 200 16 46;
+  --c-primary-700: 168 12 39;
+  --c-primary-800: 135 10 32;
+  --c-primary-900: 108 8 25;
+  --c-primary-950: 61 4 14;
+
+  --c-secondary-50: 255 241 242;
+  --c-secondary-100: 255 224 227;
+  --c-secondary-200: 255 194 200;
+  --c-secondary-300: 251 142 151;
+  --c-secondary-400: 238 87 100;
+  --c-secondary-500: 168 12 39;
+  --c-secondary-600: 135 10 32;
+  --c-secondary-700: 108 8 25;
+  --c-secondary-800: 87 6 20;
+  --c-secondary-900: 61 4 14;
+  --c-secondary-950: 36 2 7;
+
   --theme-primary: #C8102E;
   --theme-secondary: #A80C27;
   --theme-accent: #E03C52;
@@ -98,7 +134,7 @@
   }
 
   .btn-primary {
-    @apply text-white hover:shadow-marica focus:ring-primary-500;
+    @apply text-white hover:shadow-marca focus:ring-primary-500;
     background-image: linear-gradient(
       145deg,
       var(--theme-gradient-start),

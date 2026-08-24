@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { carregarInstituicao } from '@/shared/tema/instituicao';
 import './index.css';
 
 // Após um deploy, chunk antigo (hash trocado) some do servidor e o import dinâmico
@@ -20,8 +21,13 @@ if (!container) {
   throw new Error('Elemento raiz #root não encontrado.');
 }
 
-createRoot(container).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+// Identidade da instituição ANTES do primeiro render (ADR-0043): cores, título e logo saem
+// daqui, e renderizar antes faria o painel piscar com a marca de outro município.
+// `carregarInstituicao` nunca rejeita — sem backend, sobe com a identidade neutra.
+carregarInstituicao().finally(() => {
+  createRoot(container).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  );
+});

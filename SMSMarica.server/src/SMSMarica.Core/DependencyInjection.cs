@@ -71,6 +71,10 @@ public static class DependencyInjection
         // Armazenamento genérico de imagens/binários no banco (reutilizável).
         services.AddScoped<Midias.IMidiasService, Midias.MidiasService>();
 
+        // Identidade da instituição desta instância (ADR-0043): nome, marca, domínios e
+        // contatos legais. Substitui os textos de Maricá que viviam fixos no código.
+        services.AddScoped<Institucional.IInstituicaoService, Institucional.InstituicaoService>();
+
 
         // ---- Assinatura digital de laudos (PAdES via Automais.Assinador) ----
         services.Configure<Laudos.Assinatura.AssinaturaOptions>(

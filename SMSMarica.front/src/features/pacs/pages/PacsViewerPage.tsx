@@ -318,7 +318,7 @@ export function PacsViewerPage({ janela = false }: Props = {}) {
   return (
     <div
       className={cn(
-        'flex flex-col overflow-hidden bg-gray-900 shadow-marica-lg',
+        'flex flex-col overflow-hidden bg-gray-900 shadow-marca-lg',
         janela ? 'h-screen w-screen' : 'h-[calc(100vh-7rem)] rounded-xl border border-gray-700',
       )}
     >

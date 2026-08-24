@@ -267,7 +267,7 @@ function Opcao({
         desabilitada
           ? 'cursor-not-allowed border-gray-200 opacity-60'
           : marcada
-            ? 'cursor-pointer border-marica bg-marica/5'
+            ? 'cursor-pointer border-primary-600 bg-primary-600/5'
             : 'cursor-pointer border-gray-200 hover:bg-gray-50'
       }`}
     >

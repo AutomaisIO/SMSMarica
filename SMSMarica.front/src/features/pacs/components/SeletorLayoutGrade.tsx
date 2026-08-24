@@ -51,7 +51,7 @@ export function SeletorLayoutGrade({ valor, onSelecionar }: Props) {
 
       {aberto ? (
         <div
-          className="absolute left-0 top-full z-20 mt-1 rounded-lg border border-gray-700 bg-gray-900 p-2 shadow-marica-lg"
+          className="absolute left-0 top-full z-20 mt-1 rounded-lg border border-gray-700 bg-gray-900 p-2 shadow-marca-lg"
           onMouseLeave={() => setHover(null)}
         >
           <div className="mb-1.5 text-center text-xs font-medium text-gray-200">

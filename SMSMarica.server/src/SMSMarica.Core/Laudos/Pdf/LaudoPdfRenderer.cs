@@ -18,6 +18,8 @@ using DomNode = AngleSharp.Dom.INode;
 using DomText = AngleSharp.Dom.IText;
 using QuestDocument = QuestPDF.Fluent.Document;
 
+using SMSMarica.Core.Institucional;
+using SMSMarica.Core.Institucional.Dtos;
 
 namespace SMSMarica.Core.Laudos.Pdf;
 
@@ -28,6 +30,7 @@ public sealed class LaudoPdfRenderer(
     IPacientesService pacientes,
     ISolicitacoesExameService solicitacoes,
     IConsultaStudyClient consultaStudy,
+    IInstituicaoService instituicao,
     IOptions<LaudosPdfOptions> options) : ILaudoPdfRenderer
 {
     private readonly ILaudosService _laudos = laudos;
@@ -36,6 +39,7 @@ public sealed class LaudoPdfRenderer(
     private readonly IPacientesService _pacientes = pacientes;
     private readonly ISolicitacoesExameService _solicitacoes = solicitacoes;
     private readonly IConsultaStudyClient _consultaStudy = consultaStudy;
+    private readonly IInstituicaoService _instituicao = instituicao;
     private readonly LaudosPdfOptions _opt = options.Value;
 
     /// <summary>
@@ -70,6 +74,9 @@ public sealed class LaudoPdfRenderer(
         var efetivo = laudo.Status != StatusLaudo.Finalizado ? ModoRodapeLaudo.Rascunho : modo;
 
         var config = await _configuracao.ObterAsync(cancellationToken);
+        // Identidade da instância (ADR-0043): alimenta o cabeçalho estático quando não há
+        // cabeçalho HTML configurado no painel.
+        var inst = await _instituicao.ObterAsync(cancellationToken);
         var blocosCabecalho = ParseHtmlParaBlocos(config.CabecalhoHtml);
         var blocosRodape = ParseHtmlParaBlocos(config.RodapeHtml);
         var temCabecalhoCustom = TemConteudo(config.CabecalhoHtml);
@@ -94,7 +101,7 @@ public sealed class LaudoPdfRenderer(
                 page.Margin(2, Unit.Centimetre);
                 page.DefaultTextStyle(t => t.FontSize(10).FontFamily("Helvetica"));
 
-                page.Header().Element(c => RenderHeader(c, temCabecalhoCustom, blocosCabecalho, imagens));
+                page.Header().Element(c => RenderHeader(c, temCabecalhoCustom, blocosCabecalho, imagens, inst));
                 page.Content().Element(c => RenderContent(c, laudo, efetivo, dadosCabecalho, blocos, imagens));
                 page.Footer().Element(c => RenderFooter(c, efetivo, emitidoEm, temRodapeCustom, blocosRodape, imagens));
             });
@@ -107,7 +114,7 @@ public sealed class LaudoPdfRenderer(
 
     // ------------------------ Header ------------------------
 
-    private void RenderHeader(IContainer container, bool custom, IReadOnlyList<BlocoHtml> blocos, IReadOnlyDictionary<string, byte[]> imagens)
+    private void RenderHeader(IContainer container, bool custom, IReadOnlyList<BlocoHtml> blocos, IReadOnlyDictionary<string, byte[]> imagens, InstituicaoDto inst)
     {
         // Cabeçalho configurado no painel tem prioridade; senão, cai no estático do appsettings.
         if (custom)
@@ -123,10 +130,10 @@ public sealed class LaudoPdfRenderer(
             return;
         }
 
-        RenderHeaderEstatico(container);
+        RenderHeaderEstatico(container, inst);
     }
 
-    private void RenderHeaderEstatico(IContainer container)
+    private void RenderHeaderEstatico(IContainer container, InstituicaoDto inst)
     {
         container.Row(row =>
         {
@@ -138,7 +145,13 @@ public sealed class LaudoPdfRenderer(
 
             row.RelativeItem().Column(c =>
             {
-                c.Item().Text(_opt.TituloInstituicao).Bold().FontSize(12);
+                // appsettings vence (permite ajuste fino sem mexer no banco); sem ele, a
+                // identidade da instância. Nunca mais um nome de município fixo no código.
+                var titulo = string.IsNullOrWhiteSpace(_opt.TituloInstituicao)
+                    ? inst.NomeSecretaria
+                    : _opt.TituloInstituicao;
+
+                c.Item().Text(titulo).Bold().FontSize(12);
                 c.Item().Text(_opt.SubtituloServico).FontSize(10);
                 if (!string.IsNullOrWhiteSpace(_opt.EnderecoLinha1))
                 {

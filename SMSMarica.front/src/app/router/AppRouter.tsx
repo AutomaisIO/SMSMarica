@@ -77,6 +77,7 @@ import { ApiTokensPage } from '@/features/api-tokens/pages/ApiTokensPage';
 import { IntegracoesPage } from '@/features/integracoes/pages/IntegracoesPage';
 import { FaturamentoPage } from '@/features/faturamento/pages/FaturamentoPage';
 import { AuditoriaPage } from '@/features/auditoria/pages/AuditoriaPage';
+import { InstituicaoPage } from '@/features/instituicao/pages/InstituicaoPage';
 import { ErrosPage } from '@/features/erros/pages/ErrosPage';
 import { ConversasPage } from '@/features/conversas/pages/ConversasPage';
 import { EstatisticasPage } from '@/features/estatisticas/pages/EstatisticasPage';
@@ -200,6 +201,7 @@ export function AppRouter() {
           <Route path="api-tokens" element={<ApiTokensPage />} />
           <Route path="integracoes" element={<IntegracoesPage />} />
           <Route path="auditoria" element={<AuditoriaPage />} />
+          <Route path="instituicao" element={<InstituicaoPage />} />
           <Route path="erros" element={<ErrosPage />} />
           <Route path="conversas" element={<ConversasPage />} />
           <Route path="notificacoes-agendamento" element={<NotificacoesAgendamentoPage />} />

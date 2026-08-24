@@ -22,6 +22,7 @@ public sealed class ConversaService(
     IUsuarioUnidadeService vinculos,
     IConversaNotificador notificador,
     Pacientes.Fhir.IPacienteResolver pacienteResolver,
+    Institucional.IInstituicaoService instituicao,
     IOptions<ConversasOptions> opcoes,
     IConfiguration configuration) : IConversaService
 {
@@ -105,7 +106,11 @@ public sealed class ConversaService(
     public async Task<Guid> IniciarComTemplateAsync(IniciarConversaRequest request, CancellationToken ct = default)
     {
         var me = ExigirUsuario();
-        var interpretado = TelefoneWhatsApp.Interpretar(request.Telefone);
+        // DDD do município desta instância (ADR-0043) para completar número digitado sem ele.
+        var inst = await instituicao.ObterAsync(ct);
+        var interpretado = TelefoneWhatsApp.Interpretar(
+            request.Telefone,
+            inst.DddPadrao?.ToString() ?? TelefoneWhatsApp.DddPadraoFallback);
         if (!interpretado.Ok) throw new ValidacaoException("telefone", interpretado.Erro!);
         var fone = TelefoneWhatsApp.Canonizar(interpretado.Fone!);
 

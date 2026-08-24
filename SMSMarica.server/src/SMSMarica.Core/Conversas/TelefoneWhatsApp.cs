@@ -45,18 +45,27 @@ public static class TelefoneWhatsApp
         return d[4] == '9';
     }
 
-    /// <summary>DDD assumido quando o número é digitado sem ele (Maricá/RJ).</summary>
-    public const string DddPadrao = "21";
+    /// <summary>
+    /// Último recurso quando o número vem sem DDD e a instância ainda não configurou o seu
+    /// (<c>Instituicao.DddPadrao</c>, ADR-0043). Quem tem acesso à identidade da instituição
+    /// deve passar o DDD dela para <see cref="Interpretar"/> — este valor existe só para os
+    /// caminhos estáticos, e chutar 21 num município de outro estado erra o número.
+    /// </summary>
+    public const string DddPadraoFallback = "21";
 
     /// <summary>
     /// Interpreta um telefone DIGITADO POR UM HUMANO e devolve o celular canônico de 13
     /// dígitos (55 + DDD + 9 dígitos) ou o motivo da recusa. Absorve as variações que
     /// aparecem no balcão: com/sem máscara, com/sem +55, com prefixo de discagem
     /// (0 + DDD), com código de operadora (0 XX + DDD), com/sem o nono dígito e sem DDD
-    /// (assume <see cref="DddPadrao"/>). Fixo e estrangeiro são recusados — o WhatsApp só
+    /// (assume <paramref name="dddPadrao"/>). Fixo e estrangeiro são recusados — o WhatsApp só
     /// alcança celular brasileiro.
     /// </summary>
-    public static InterpretacaoTelefone Interpretar(string? entrada, string dddPadrao = DddPadrao)
+    /// <param name="dddPadrao">
+    /// DDD do município desta instância. Passe <c>Instituicao.DddPadrao</c> sempre que puder;
+    /// o default é só o <see cref="DddPadraoFallback"/>.
+    /// </param>
+    public static InterpretacaoTelefone Interpretar(string? entrada, string dddPadrao = DddPadraoFallback)
     {
         if (string.IsNullOrWhiteSpace(entrada))
             return InterpretacaoTelefone.Recusado("Informe o telefone.");

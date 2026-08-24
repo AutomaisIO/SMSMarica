@@ -1,9 +1,12 @@
 ﻿using System.Globalization;
 using System.Text;
 using System.Text.Encodings.Web;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Core.Downloads;
+using SMSMarica.Core.Institucional;
+using SMSMarica.Core.Institucional.Dtos;
 using SMSMarica.Core.SolicitacoesExame.Declaracao;
 
 namespace SMSMarica.Api.Controllers;
@@ -12,18 +15,39 @@ namespace SMSMarica.Api.Controllers;
 public sealed record ConfirmarCpfDownloadRequest(string Cpf);
 
 /// <summary>
-/// Páginas/endpoints públicos (sem autenticação): verificação do selo da Declaração
-/// de Comparecimento e o download por token de uso único (link enviado ao paciente).
+/// Páginas/endpoints públicos (sem autenticação): a identidade da instituição, a verificação
+/// do selo da Declaração de Comparecimento e o download por token de uso único (link enviado
+/// ao paciente).
 /// </summary>
 [ApiController]
 [Route("publico")]
 [AllowAnonymous]
-public sealed class PublicoController(
+public sealed partial class PublicoController(
     IDeclaracaoComparecimentoService declaracao,
-    IDownloadTokenService downloads) : ControllerBase
+    IDownloadTokenService downloads,
+    IInstituicaoService instituicao) : ControllerBase
 {
 
     private static readonly CultureInfo PtBr = new("pt-BR");
+
+    /// <summary>
+    /// Identidade da instituição desta instância (ADR-0043) — nome, marca, cores, domínios e
+    /// contatos legais.
+    ///
+    /// <para>
+    /// <b>Anônimo por necessidade:</b> o painel e os PWAs precisam da marca para desenhar a
+    /// própria tela de login. Só carrega dado institucional público — nunca segredo.
+    /// </para>
+    /// </summary>
+    [HttpGet("instituicao")]
+    [ProducesResponseType<InstituicaoDto>(StatusCodes.Status200OK)]
+    public async Task<InstituicaoDto> Instituicao(CancellationToken cancellationToken)
+    {
+        // Curto: o front busca isto a cada carga de página, mas trocar um logo não pode
+        // levar meia hora para aparecer.
+        Response.Headers.CacheControl = "public, max-age=60";
+        return await instituicao.ObterAsync(cancellationToken);
+    }
 
     /// <summary>Estado do link de download (não consome) — a página decide pedir o CPF vs "expirou".</summary>
     [HttpGet("download/{token:guid}/status")]
@@ -77,12 +101,13 @@ public sealed class PublicoController(
     public async Task<IActionResult> VerificarDeclaracao(Guid codigo, CancellationToken cancellationToken)
     {
         var dados = await declaracao.VerificarAsync(codigo, cancellationToken);
+        var inst = await instituicao.ObterAsync(cancellationToken);
         Response.Headers.CacheControl = "no-store";
-        var html = dados is null ? PaginaInvalida() : PaginaValida(dados, codigo);
+        var html = dados is null ? PaginaInvalida(inst) : PaginaValida(dados, codigo, inst);
         return Content(html, "text/html; charset=utf-8");
     }
 
-    private static string PaginaValida(DeclaracaoVerificacaoDto d, Guid codigo)
+    private static string PaginaValida(DeclaracaoVerificacaoDto d, Guid codigo, InstituicaoDto inst)
     {
         var nome = Html(d.Nome);
         var descricao = Html(d.Descricao);
@@ -95,7 +120,7 @@ public sealed class PublicoController(
 
         return Pagina($"""
             <div class="selo selo-ok">✓ Documento autêntico</div>
-            <p class="sub">Esta Declaração de Comparecimento foi emitida pela Secretaria Municipal de Saúde de Maricá.</p>
+            <p class="sub">Esta Declaração de Comparecimento foi emitida pela {Html(inst.NomeSecretaria)}.</p>
             <div class="card">
               <div class="row"><span class="rotulo">Nome</span><span class="valor">{nome}</span></div>
               <div class="row"><span class="rotulo">Data e hora</span><span class="valor">{dataHora}</span></div>
@@ -103,17 +128,17 @@ public sealed class PublicoController(
               {linhaUnidade}
             </div>
             <p class="codigo">Código de autenticidade<br><b>{Html(codigo.ToString())}</b></p>
-            """);
+            """, inst);
     }
 
-    private static string PaginaInvalida() =>
+    private static string PaginaInvalida(InstituicaoDto inst) =>
         Pagina("""
             <div class="selo selo-erro">Documento não encontrado</div>
             <p class="sub">O código informado não corresponde a nenhuma Declaração de Comparecimento emitida.
             Verifique se o QR Code foi lido corretamente.</p>
-            """);
+            """, inst);
 
-    private static string Pagina(string conteudo) =>
+    private static string Pagina(string conteudo, InstituicaoDto inst) =>
         $$"""
         <!doctype html>
         <html lang="pt-BR">
@@ -121,15 +146,15 @@ public sealed class PublicoController(
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <meta name="robots" content="noindex">
-          <title>Verificação de Documento — SMS Maricá</title>
+          <title>Verificação de Documento — {{Html(inst.NomeCurto)}}</title>
           <style>
-            :root { --marica:#C4122F; --vinho:#7A0C24; --tinta:#2B2B2B; }
+            :root { --marca:{{CorSegura(inst.CorPrimaria)}}; --tinta:#2B2B2B; }
             * { box-sizing: border-box; }
             body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
                    background:#f5f5f7; color:var(--tinta); padding:24px; }
             .wrap { max-width:480px; margin:0 auto; }
             .top { text-align:center; margin-bottom:16px; }
-            .top h1 { color:var(--marica); font-size:18px; margin:0; }
+            .top h1 { color:var(--marca); font-size:18px; margin:0; }
             .top p { color:#666; font-size:13px; margin:4px 0 0; }
             .selo { text-align:center; font-weight:700; font-size:18px; padding:14px; border-radius:12px; }
             .selo-ok { background:#e8f6ec; color:#137333; border:1px solid #b7e1c3; }
@@ -147,15 +172,41 @@ public sealed class PublicoController(
         <body>
           <div class="wrap">
             <div class="top">
-              <h1>Saúde Maricá</h1>
+              <h1>{{Html(inst.NomeCurto)}}</h1>
               <p>Verificação de autenticidade</p>
             </div>
             {{conteudo}}
-            <p class="rodape">Secretaria Municipal de Saúde de Maricá</p>
+            <p class="rodape">{{Html(inst.NomeSecretaria)}}</p>
           </div>
         </body>
         </html>
         """;
 
     private static string Html(string valor) => HtmlEncoder.Default.Encode(valor);
+
+    /// <summary>
+    /// Cor de marca padrão do produto — a mesma <c>--theme-primary</c> de
+    /// <c>SMSMarica.front/src/index.css</c>. É o valor usado enquanto a instituição não
+    /// escolheu a sua.
+    ///
+    /// <para>
+    /// Deixar a cor <b>nula</b> é o estado normal de uma instância que herda a paleta padrão:
+    /// preenchê-la faz o painel derivar toda a escala 50..950 a partir dela, trocando os tons
+    /// ajustados à mão. Por isso o default aqui não pode ser um cinza neutro — seria pintar de
+    /// cinza a página pública de toda instalação que não mexeu em cor.
+    /// </para>
+    /// </summary>
+    private const string CorMarcaPadrao = "#C8102E";
+
+    /// <summary>
+    /// Cor da marca para interpolar dentro do <c>&lt;style&gt;</c>. O service já só grava
+    /// <c>#RRGGBB</c>, mas aqui o valor cai <b>dentro de CSS</b>, onde escapar HTML não protege
+    /// — então revalida e descarta qualquer coisa fora do formato. Vale para o caso de a linha
+    /// ter sido escrita direto no banco.
+    /// </summary>
+    private static string CorSegura(string? cor) =>
+        !string.IsNullOrWhiteSpace(cor) && CorHexSegura().IsMatch(cor) ? cor : CorMarcaPadrao;
+
+    [GeneratedRegex("^#[0-9a-fA-F]{6}$")]
+    private static partial Regex CorHexSegura();
 }

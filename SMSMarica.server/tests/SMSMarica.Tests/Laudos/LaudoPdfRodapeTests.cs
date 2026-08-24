@@ -2,6 +2,7 @@ using Microsoft.Extensions.Options;
 using NSubstitute;
 using QuestPDF.Fluent;
 using QuestPDF.Infrastructure;
+using SMSMarica.Core.Institucional;
 using SMSMarica.Core.Laudos;
 using SMSMarica.Core.Laudos.Assinatura;
 using SMSMarica.Core.Laudos.Configuracao;
@@ -55,7 +56,11 @@ public class LaudoPdfRodapeTests
         var solicitacoes = Substitute.For<ISolicitacoesExameService>();
         var consultaStudy = Substitute.For<IConsultaStudyClient>();
 
-        return new LaudoPdfRenderer(laudosSvc, cfg, midias, pacientes, solicitacoes, consultaStudy, Options.Create(new LaudosPdfOptions()));
+        var instituicao = Substitute.For<IInstituicaoService>();
+        instituicao.ObterAsync(Arg.Any<CancellationToken>())
+            .Returns(IInstituicaoService.ObterPadrao());
+
+        return new LaudoPdfRenderer(laudosSvc, cfg, midias, pacientes, solicitacoes, consultaStudy, instituicao, Options.Create(new LaudosPdfOptions()));
     }
 
     private static Laudo LaudoExemplo(StatusLaudo status) => new()

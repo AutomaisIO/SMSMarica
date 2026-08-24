@@ -35,6 +35,7 @@ export type ModuloPermissao =
   | 'RegulacaoSer'
   | 'CorrecaoIdentidadeExame'
   | 'PesquisaSatisfacao'
+  | 'Instituicao'
   | 'SincronizacaoPep'
   | 'ApiTokens'
   | 'Cidadao'

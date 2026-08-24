@@ -1,4 +1,4 @@
-using System.IdentityModel.Tokens.Jwt;
+﻿using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Security.Claims;
 using System.Text;
@@ -279,7 +279,10 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.MapOpenApi();
 app.MapScalarApiReference("/docs", options =>
 {
-    options.WithTitle("SMS Maricá — API")
+    // Título neutro de propósito: o Scalar é montado no startup e a identidade da instituição
+    // vive no banco (ADR-0043), que pode nem estar preenchido ainda. Página de desenvolvedor
+    // não precisa da marca do município — as que o cidadão vê é que precisam.
+    options.WithTitle("Automais Saúde — API")
         .WithTheme(ScalarTheme.Default);
 });
 

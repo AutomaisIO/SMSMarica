@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using QuestPDF.Infrastructure;
+using SMSMarica.Core.Institucional;
 using SMSMarica.Core.Laudos;
 using SMSMarica.Core.Laudos.Configuracao;
 using SMSMarica.Core.Laudos.Configuracao.Dtos;
@@ -57,7 +58,12 @@ public class LaudoPdfCabecalhoTabelaTests
         var pacientes = Substitute.For<IPacientesService>();
         var solicitacoes = Substitute.For<ISolicitacoesExameService>();
         var consultaStudy = Substitute.For<IConsultaStudyClient>();
-        var renderer = new LaudoPdfRenderer(laudosSvc, cfg, midias, pacientes, solicitacoes, consultaStudy, Options.Create(new LaudosPdfOptions()));
+
+        var instituicao = Substitute.For<IInstituicaoService>();
+        instituicao.ObterAsync(Arg.Any<CancellationToken>())
+            .Returns(IInstituicaoService.ObterPadrao());
+
+        var renderer = new LaudoPdfRenderer(laudosSvc, cfg, midias, pacientes, solicitacoes, consultaStudy, instituicao, Options.Create(new LaudosPdfOptions()));
         var pdf = await renderer.GerarAsync(laudo.Id);
 
         pdf.Should().NotBeNullOrEmpty();

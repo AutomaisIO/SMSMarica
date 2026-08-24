@@ -22,6 +22,8 @@ public sealed class SmsMaricaDbContext(DbContextOptions<SmsMaricaDbContext> opti
     public DbSet<Periodicidade> Periodicidades => Set<Periodicidade>();
     public DbSet<SessaoDeTratamento> Sessoes => Set<SessaoDeTratamento>();
     public DbSet<Unidade> Unidades => Set<Unidade>();
+    /// <summary>Identidade da instituição desta instância (singleton) — ADR-0043.</summary>
+    public DbSet<Instituicao> Instituicoes => Set<Instituicao>();
     public DbSet<Veiculo> Veiculos => Set<Veiculo>();
     public DbSet<Fileira> Fileiras => Set<Fileira>();
     public DbSet<Assento> Assentos => Set<Assento>();
