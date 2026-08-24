@@ -1,6 +1,6 @@
 #!/bin/bash
 echo "=== Data do DLL deployado ==="
-ls -la --time-style=full-iso /opt/smsmarica/server/SMSMarica.Core.dll /opt/smsmarica/server/SMSMarica.Api.dll 2>/dev/null
+ls -la --time-style=full-iso /opt/smsmarica/server/SMSMais.Core.dll /opt/smsmarica/server/SMSMais.Api.dll 2>/dev/null
 echo
 echo "=== Status do servico ==="
 systemctl status smsmarica-server --no-pager 2>/dev/null | grep -E "Active|Main PID|since"

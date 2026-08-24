@@ -43,7 +43,7 @@ jobs:
       - name: Publish (framework-dependent, linux-x64)
         working-directory: SMSMarica.server
         run: |
-          dotnet publish src/SMSMarica.Api/SMSMarica.Api.csproj \
+          dotnet publish src/SMSMais.Api/SMSMais.Api.csproj \
             --configuration Release \
             --runtime linux-x64 \
             --no-self-contained \
@@ -171,7 +171,7 @@ jobs:
 
             [Service]
             WorkingDirectory=/opt/smsmarica/server
-            ExecStart=/usr/local/bin/dotnet /opt/smsmarica/server/SMSMarica.Api.dll
+            ExecStart=/usr/local/bin/dotnet /opt/smsmarica/server/SMSMais.Api.dll
             Restart=on-failure
             RestartSec=10
             KillSignal=SIGINT
@@ -188,6 +188,15 @@ jobs:
             UNIT
               $SUDO systemctl daemon-reload
               $SUDO systemctl enable "$SERVICE"
+            fi
+
+            # Rename SMSMais: a unit criada antes do rename aponta para SMSMarica.Api.dll,
+            # que este deploy deixa de publicar. Reconcilia o ExecStart in-place — sem isso
+            # o serviço não sobe e o Actions ainda sai 'success'.
+            if $SUDO grep -q 'SMSMarica\.Api\.dll' "$UNIT_FILE"; then
+              log "Reconciliando ExecStart da unit para SMSMais.Api.dll..."
+              $SUDO sed -i 's|SMSMarica\.Api\.dll|SMSMais.Api.dll|' "$UNIT_FILE"
+              $SUDO systemctl daemon-reload
             fi
 
             # --- 7. Parar serviço (se ativo) ---

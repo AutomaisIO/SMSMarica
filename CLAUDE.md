@@ -40,7 +40,7 @@ As regras abaixo não podem ser violadas sem novo ADR.
 
 1. **Dois schemas: `smsmarica` (negócio, pt-BR) + `fhir` (canônico FHIR R4, en)** — [ADR-0001](./docs/adr/0001-schema-isolation.md) + [ADR-0007](./docs/adr/0007-schema-fhir-separado.md). Identidade do cidadão/profissional (Patient, Practitioner, identifiers, names, addresses, telecoms, contacts, photos, qualifications, consents, lookups) vive em `fhir.*` em inglês. Regras de negócio (Usuario/RBAC, Motorista, Tratamento, RotaDiaria, Laudo, SolicitacaoExame, etc.) vivem em `smsmarica.*` em pt-BR. `HasDefaultSchema("smsmarica")` continua + cada configuration FHIR chama `.ToTable(..., schema: "fhir")`. **FKs cross-schema só na direção `smsmarica → fhir`** (proibida a inversa). Um único `SmsMaisDbContext`.
 
-2. **Arquitetura 3-projetos** — [ADR-0004](./docs/adr/0004-arquitetura-tres-projetos.md). Backend é `SMSMais.Data` + `SMSMais.Core` + `SMSMarica.Api`. Não criar projetos novos para "modular" subdomínios — usar pastas dentro de cada projeto. Quem quiser modular monolith de novo precisa de novo ADR. (ADR-0002 está **superseded**.)
+2. **Arquitetura 3-projetos** — [ADR-0004](./docs/adr/0004-arquitetura-tres-projetos.md). Backend é `SMSMais.Data` + `SMSMais.Core` + `SMSMais.Api`. Não criar projetos novos para "modular" subdomínios — usar pastas dentro de cada projeto. Quem quiser modular monolith de novo precisa de novo ADR. (ADR-0002 está **superseded**.)
 
 3. **Dependências entre projetos:**
    - `Data` ← nada
@@ -81,7 +81,7 @@ As regras abaixo não podem ser violadas sem novo ADR.
 cd SMSMarica.server
 dotnet build                                       # 0 erros, 0 warnings esperado
 dotnet test                                        # requer Docker para Testcontainers
-dotnet run --project src/SMSMarica.Api             # http://localhost:5080
+dotnet run --project src/SMSMais.Api             # http://localhost:5080
                                                    # /docs (Scalar UI)
                                                    # /openapi/v1.json (spec)
                                                    # /health
@@ -89,7 +89,7 @@ dotnet run --project src/SMSMarica.Api             # http://localhost:5080
 # Nova migration
 dotnet ef migrations add <Nome> \
   --project src/SMSMais.Data \
-  --startup-project src/SMSMarica.Api
+  --startup-project src/SMSMais.Api
 
 # Serviço FHIR autônomo (solução separada)
 cd Automais.Fhir

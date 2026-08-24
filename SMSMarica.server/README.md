@@ -27,7 +27,7 @@ SMSMarica.server/
 │   │   │  Veiculos/, Tratamentos/, Translado/, Rastreamento/
 │   │   │                             (cada pasta: IService, Service, Mapper, Dtos/, Validators/)
 │   │   └── DependencyInjection.cs    (AddCore)
-│   └── SMSMarica.Api/                (Program.cs + middleware + 9 controllers MVC)
+│   └── SMSMais.Api/                (Program.cs + middleware + 9 controllers MVC)
 │       ├── Program.cs                (Serilog + AddOpenApi + Scalar + ExceptionMiddleware)
 │       ├── Middleware/ExceptionHandlingMiddleware.cs
 │       ├── Controllers/              (1 controller por entidade, CRUD)
@@ -43,7 +43,7 @@ SMSMarica.server/
 ```bash
 dotnet build                                     # 0 erros, 0 warnings
 dotnet test                                      # requer Docker (Testcontainers)
-dotnet run --project src/SMSMarica.Api           # http://localhost:5080
+dotnet run --project src/SMSMais.Api           # http://localhost:5080
 ```
 
 URLs disponíveis após `run`:
@@ -75,7 +75,7 @@ A connection string **não é commitada** no repositório. `appsettings.json` tr
 ### Setar em dev via user-secrets
 
 ```bash
-dotnet user-secrets --project src/SMSMarica.Api set "ConnectionStrings:DefaultDb" \
+dotnet user-secrets --project src/SMSMais.Api set "ConnectionStrings:DefaultDb" \
   "Host=<host>;Port=25060;Database=defaultdb;Username=<user>;Password=<senha>;SSL Mode=Require;Trust Server Certificate=true"
 ```
 
@@ -92,7 +92,7 @@ O Postgres em produção é o `defaultdb` do cluster da Prefeitura na DigitalOce
 ```bash
 dotnet ef database update \
   --project src/SMSMais.Data \
-  --startup-project src/SMSMarica.Api
+  --startup-project src/SMSMais.Api
 ```
 
 **Por padrão o `Program.cs` aplica migrations automaticamente no startup em qualquer ambiente** (`AutoMigrate:Enabled=true`). Se falhar (ex.: Postgres indisponível no boot), o processo continua vivo e `/health` reporta `Unhealthy` no check `db` até o banco voltar. Para desligar a migração automática em prod e gerenciar manualmente, seta `AutoMigrate__Enabled=false` no env file.
@@ -102,7 +102,7 @@ dotnet ef database update \
 ```bash
 dotnet ef migrations add <Nome> \
   --project src/SMSMais.Data \
-  --startup-project src/SMSMarica.Api
+  --startup-project src/SMSMais.Api
 ```
 
 ## Como adicionar uma nova entidade

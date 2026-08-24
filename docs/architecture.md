@@ -11,7 +11,7 @@ flowchart TB
   end
 
   subgraph server [SMSMarica.server · .NET 10]
-    Api[SMSMarica.Api · controllers MVC + Scalar]
+    Api[SMSMais.Api · controllers MVC + Scalar]
     Core[SMSMais.Core · services + DTOs + validators]
     Data[SMSMais.Data · POCOs + DbContext + migrations]
     Api --> Core --> Data
@@ -54,7 +54,7 @@ SMSMarica.server/
 ├── src/
 │   ├── SMSMais.Data/    (POCOs + DbContext + Configurations + Migrations)
 │   ├── SMSMais.Core/    (services + DTOs + validators + mappers)
-│   └── SMSMarica.Api/     (Program.cs + middleware + 1 controller MVC por entidade)
+│   └── SMSMais.Api/     (Program.cs + middleware + 1 controller MVC por entidade)
 └── tests/
     └── SMSMais.Tests/   (xUnit + Testcontainers Postgres)
 ```
@@ -72,7 +72,7 @@ SMSMarica.server/
 |---------|-----------------|
 | `SMSMais.Data` | POCOs em `Entities/` (sem private setters, sem domain events), `Configurations/<X>Configuration.cs` com mapeamento EF (snake_case, owned `Gps`, índices únicos), `SmsMaisDbContext` com `HasDefaultSchema("smsmarica")`, `Migrations/` (uma migration `Initial` cobre todas as 16 tabelas), `DependencyInjection.AddData(IConfiguration)` |
 | `SMSMais.Core` | `Common/Excecoes/` (`NaoEncontrado`, `Validacao`, `Conflito`), `Common/ValueObjects/Gps.cs` (helper de validação), uma pasta por entidade (`Pacientes/`, `Tratamentos/`, …) com `IXxxService` + `XxxService` injetando `SmsMaisDbContext` direto, `Dtos/`, `Validators/` (FluentValidation), `Mapper.cs` (Mapperly), `DependencyInjection.AddCore()` |
-| `SMSMarica.Api` | `Program.cs` (Serilog + AddOpenApi + Scalar + AddData/AddCore + ExceptionMiddleware + auto-migrate em dev), `Middleware/ExceptionHandlingMiddleware.cs` (mapeia exceções tipadas para `ProblemDetails`), `Controllers/<X>Controller.cs` (`[ApiController]`, 1 por entidade, CRUD em `HttpGet/Post/Put/Delete`), `appsettings*.json` |
+| `SMSMais.Api` | `Program.cs` (Serilog + AddOpenApi + Scalar + AddData/AddCore + ExceptionMiddleware + auto-migrate em dev), `Middleware/ExceptionHandlingMiddleware.cs` (mapeia exceções tipadas para `ProblemDetails`), `Controllers/<X>Controller.cs` (`[ApiController]`, 1 por entidade, CRUD em `HttpGet/Post/Put/Delete`), `appsettings*.json` |
 
 ### 3.3 Organização interna por entidade
 
@@ -92,7 +92,7 @@ src/
 │       ├── Dtos/CadastrarPacienteRequest.cs
 │       ├── Dtos/AtualizarPacienteRequest.cs
 │       └── Validators/CadastrarPacienteValidator.cs
-└── SMSMarica.Api/
+└── SMSMais.Api/
     └── Controllers/PacientesController.cs
 ```
 
@@ -125,10 +125,10 @@ Para qualquer outra entidade de domínio:
 1. Criar POCO em `SMSMais.Data/Entities/<X>.cs`.
 2. Criar `IEntityTypeConfiguration` em `SMSMais.Data/Configurations/<X>Configuration.cs` (tabela snake_case + índices).
 3. Adicionar `DbSet<X>` em `SmsMaisDbContext`.
-4. Rodar `dotnet ef migrations add <Nome>` no projeto Data com `--startup-project src/SMSMarica.Api`.
+4. Rodar `dotnet ef migrations add <Nome>` no projeto Data com `--startup-project src/SMSMais.Api`.
 5. Criar pasta `SMSMais.Core/<X>/` com `I<X>Service` + `<X>Service`, DTOs, Validators e Mapper.
 6. Registrar service em `SMSMais.Core/DependencyInjection.cs`.
-7. Criar `SMSMarica.Api/Controllers/<X>Controller.cs` com `[ApiController]` e 5 actions.
+7. Criar `SMSMais.Api/Controllers/<X>Controller.cs` com `[ApiController]` e 5 actions.
 8. Adicionar testes em `tests/SMSMais.Tests/<X>/`.
 
 ## 4. Banco de dados
