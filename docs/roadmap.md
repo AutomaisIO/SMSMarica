@@ -142,8 +142,8 @@ gantt
 - [x] D1 (docs base + ADR-0004)
 - [x] **Refator R1** — `SMSMais.server` reescrito como 3 projetos (Data + Core + Api + Tests).
 - [x] **R2 — CRUD completo das 9 entidades** (Pacientes, Unidades, Motoristas, Avaliacoes, Usuarios, Veiculos+Fileiras, Tratamentos+Periodicidade, Rotas, Rastreamento Pontos+Geofences+Eventos). Services chamando DbContext direto, controllers MVC, exceções tipadas → ProblemDetails.
-- [x] C1 (scaffold `SMSMarica.cidadao.app` — Flutter, login mock + perfil consumindo `GET /pacientes/{id}`)
-- [x] A1 (scaffold `SMSMarica.agente.app` — Flutter Android-only)
+- [x] C1 (scaffold `SMSMais.cidadao.app` — Flutter, login mock + perfil consumindo `GET /pacientes/{id}`)
+- [x] A1 (scaffold `SMSMais.agente.app` — Flutter Android-only)
 - [ ] F1 (scaffold Vite + React + tema Maricá vermelho/branco) — pode rodar em paralelo.
 - [ ] **Auth** (ADR a criar) — endpoints públicos por enquanto; ASP.NET Core Identity + JWT entram quando virar prioridade.
 

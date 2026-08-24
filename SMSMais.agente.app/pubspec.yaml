@@ -1,0 +1,49 @@
+name: agente
+description: "App do agente de transporte sanitario - SMSMais (Android only)"
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  cupertino_icons: ^1.0.8
+  dio: ^5.7.0
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.6.1
+  go_router: ^14.6.2
+  permission_handler: ^11.3.1
+  # --- GPS / rastreamento do veículo (envio periódico de posição) ---
+  geolocator: ^13.0.1
+  shared_preferences: ^2.3.3
+  # --- Navegação assistida (turn-by-turn) do translado ---
+  # Google Navigation SDK para Flutter. Chave em android/local.properties
+  # (MAPS_API_KEY, gitignored). É COBRADO por uso — lançar UMA rota com paradas
+  # (waypoints) por translado e não recriar a sessão a cada parada.
+  # Ver docs/modulos/tfd/navegacao-motorista.md.
+  google_navigation_flutter: ^0.9.4
+  # --- Reconhecimento facial on-device (login do motorista) ---
+  camera: ^0.11.0+2
+  google_mlkit_face_detection: ^0.13.1
+  tflite_flutter: ^0.11.0
+  image: ^4.3.0
+  # --- Armazenamento local cifrado (template/foto de referência) ---
+  sqflite_sqlcipher: ^3.1.0+1
+  flutter_secure_storage: ^9.2.2
+  path_provider: ^2.1.4
+  path: ^1.9.0
+  crypto: ^3.0.5
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+  very_good_analysis: ^7.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    # MobileFaceNet (BSD 3-Clause, MCarlomagno/FaceRecognitionAuth).
+    # 112x112x3 -> embedding; usado on-device para o match facial do motorista.
+    - assets/models/mobilefacenet.tflite

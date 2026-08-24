@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `SMSMais.EquipamentoSim` — simulador de equipamento DICOM (Python 3.11+, `pynetdicom`/`pydicom`, CLI `equipamento`) para testar o ciclo Solicitação de Exame → Worklist → Execução.
 - `Salux` — engenharia reversa do Salux HIS (Oracle 12c do HCML). **Tem CLAUDE.md próprio com regras não-negociáveis** (PROD Oracle é read-only absoluto via `scripts/_guard.py`; `capturas/` e `.env` são gitignored por conterem PII). Ler `Salux/CLAUDE.md` antes de tocar nessa pasta.
 - `SMSMais.arquivos.pwa` — **PWA "Arquivos Saúde Maricá"** (React + Vite + TS) para digitalizar exames em papel pelo celular e anexá-los à anamnese, via **ponte por QR** (sem login; token de upload escopado). Domínio `arquivos.smsmarica.online`; deploy `deploy-arquivos.yml` → `/var/www/smsmarica-arquivos`. Ver [ADR-0019](./docs/adr/0019-anexos-exame-pwa-qr-armazenamento.md).
-- `SMSMarica.cidadao.app` está scaffoldado (Flutter, login mock + perfil consumindo `GET /pacientes/{id}`). `SMSMarica.agente.app` ainda é README-only.
+- `SMSMais.cidadao.app` está scaffoldado (Flutter, login mock + perfil consumindo `GET /pacientes/{id}`). `SMSMais.agente.app` ainda é README-only.
 
 Documentation is in **Portuguese (pt-BR)**. Match that language for docs, commit messages, and code comments. Identifiers follow [`docs/conventions.md §1`](./docs/conventions.md): pt-BR for domain (`Paciente`, `Veiculo`), en-US for technical infrastructure (`DbContext`, `Service`, `Controller`).
 
@@ -71,8 +71,8 @@ As regras abaixo não podem ser violadas sem novo ADR.
 | `SMSMais.front` | React + Vite + TypeScript, Tailwind | **Implementado** (~20 features). Tema vermelho/branco (logo Maricá horizontal). npm (`package-lock.json`). |
 | `SMSMais.EquipamentoSim` | Python 3.11+, `pynetdicom`/`pydicom`, Typer CLI | Simulador DICOM para o ciclo Solicitação→Worklist→Execução. |
 | `Salux` | Python 3.13, `paramiko`, `sqlplus`; alvo Oracle 12c | Engenharia reversa do Salux HIS. **Regras próprias em `Salux/CLAUDE.md`.** |
-| `SMSMarica.cidadao.app` | Flutter (iOS + Android) | Riverpod + go_router + dio. **Ainda não está em produção** — login é mock; quebras de contrato com `/pacientes/{id}` são aceitáveis nesta fase. |
-| `SMSMarica.agente.app` | Flutter Android only (planejado) | Foreground service + geofencing. |
+| `SMSMais.cidadao.app` | Flutter (iOS + Android) | Riverpod + go_router + dio. **Ainda não está em produção** — login é mock; quebras de contrato com `/pacientes/{id}` são aceitáveis nesta fase. |
+| `SMSMais.agente.app` | Flutter Android only (planejado) | Foreground service + geofencing. |
 
 ## Comandos comuns
 

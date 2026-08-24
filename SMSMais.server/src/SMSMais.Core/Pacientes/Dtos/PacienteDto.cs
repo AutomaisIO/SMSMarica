@@ -5,7 +5,7 @@ namespace SMSMais.Core.Pacientes.Dtos;
 
 /// <summary>
 /// Detalhe completo de um paciente. Shape mantém os campos originais
-/// consumidos por SMSMarica.cidadao.app (nomeCompleto, cpf, cns,
+/// consumidos por SMSMais.cidadao.app (nomeCompleto, cpf, cns,
 /// latitude, longitude, ativo, cadastradoEm). Campos novos adicionados
 /// ao final são ignorados silenciosamente pelo cliente antigo.
 /// </summary>

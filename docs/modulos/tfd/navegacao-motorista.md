@@ -1,7 +1,7 @@
 # Navegação assistida do motorista (TFD) — Google Navigation SDK
 
 > Documento de **decisão + interface**: como o app do motorista
-> (`SMSMarica.agente.app`) navega os translados com o **Google Navigation SDK
+> (`SMSMais.agente.app`) navega os translados com o **Google Navigation SDK
 > para Flutter**, a estratégia de **custo**, e a UX pensada para o motorista.
 > Complementa [`backend-app-motorista.md`](./backend-app-motorista.md).
 

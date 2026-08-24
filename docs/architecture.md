@@ -18,8 +18,8 @@ flowchart TB
   end
 
   Front[SMSMais.front · React + Vite]
-  Cidadao[SMSMarica.cidadao.app · Flutter iOS+Android]
-  Agente[SMSMarica.agente.app · Flutter Android]
+  Cidadao[SMSMais.cidadao.app · Flutter iOS+Android]
+  Agente[SMSMais.agente.app · Flutter Android]
 
   Future[Serviços intermediários futuros]
   Legacy[Sistemas de saúde locais]
@@ -38,8 +38,8 @@ flowchart TB
 |------------|------------------|------------------------|
 | `SMSMais.server` | API REST, regras de negócio, persistência, geração de sessões a partir da periodicidade, alocação em assentos, autenticação | UI de qualquer espécie, integração direta com WhatsApp/Waze |
 | `SMSMais.front` | Painel administrativo web (operador + gestor), dashboards | Uso por paciente ou motorista final |
-| `SMSMarica.cidadao.app` | App do paciente/acompanhante — cadastro, agenda, confirmação, ETA, avaliação | Cadastros administrativos, edição de rotas |
-| `SMSMarica.agente.app` | App do motorista (Android) — rotas do dia, postagem de GPS, geofencing, navegação externa | Cadastros administrativos |
+| `SMSMais.cidadao.app` | App do paciente/acompanhante — cadastro, agenda, confirmação, ETA, avaliação | Cadastros administrativos, edição de rotas |
+| `SMSMais.agente.app` | App do motorista (Android) — rotas do dia, postagem de GPS, geofencing, navegação externa | Cadastros administrativos |
 
 Todos os clientes consomem **exclusivamente** a API do `SMSMais.server`. Clientes não conversam entre si nem acessam o banco diretamente.
 
@@ -143,8 +143,8 @@ Um único `SmsMaisDbContext` aponta para o schema `smsmarica`. Tabelas usam pref
 |---|---|---|
 | `SMSMais.server` | ASP.NET Core + EF Core + PostgreSQL | .NET 10 (LTS) |
 | `SMSMais.front` | React + Vite + TypeScript | Node LTS vigente |
-| `SMSMarica.cidadao.app` | Flutter | Stable mais recente |
-| `SMSMarica.agente.app` | Flutter, Android only | Stable mais recente |
+| `SMSMais.cidadao.app` | Flutter | Stable mais recente |
+| `SMSMais.agente.app` | Flutter, Android only | Stable mais recente |
 
 Decisões específicas (Controllers MVC, FluentValidation, Mapperly, Scalar) estão nos ADRs.
 

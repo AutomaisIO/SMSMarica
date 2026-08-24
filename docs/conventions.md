@@ -144,7 +144,7 @@ src/
 - Logo horizontal: `prefeitura_marica_horizontal_vermelho_slogan.webp`. Respeitar área de respiro.
 - Acessibilidade: contraste AA mínimo; foco visível em todos interativos.
 
-## 5. Dart / Flutter (`SMSMarica.cidadao.app`, `SMSMarica.agente.app`)
+## 5. Dart / Flutter (`SMSMais.cidadao.app`, `SMSMais.agente.app`)
 
 ### 5.1 Estilo
 
