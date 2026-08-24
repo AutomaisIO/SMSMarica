@@ -1,4 +1,4 @@
-# SMSMarica.arquivos.pwa
+# SMSMais.arquivos.pwa
 
 **Arquivos Saúde Maricá** — PWA leve para **digitalizar exames antigos em papel** (laudos,
 resultados, atestados) direto do celular e **anexá-los à anamnese** do paciente, via uma
@@ -42,7 +42,7 @@ npm run preview
 ## Deploy
 
 Automático via `.github/workflows/deploy-arquivos.yml`: ao dar push em `main` tocando
-`SMSMarica.arquivos.pwa/**`, o workflow buila e publica o `dist/` em **`/var/www/smsmarica-arquivos`**
+`SMSMais.arquivos.pwa/**`, o workflow buila e publica o `dist/` em **`/var/www/smsmarica-arquivos`**
 (mesmo servidor do `SMSMarica.front` / `SMSMarica.cidadao.pwa`), com swap atômico `.new`/`.old`.
 Reusa os secrets `HOST_SMSMARICA` / `USER_SMSMARICA` / `PASS_SMSMARICA` e o env
 `VITE_API_BASE_URL_SMSMARICA`.

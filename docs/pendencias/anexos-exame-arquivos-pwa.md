@@ -2,7 +2,7 @@
 
 - **Aberta em**: 2026-06-25
 - **Contexto**: feature "Arquivos Saúde Maricá" — digitalizar exames em papel pelo celular (PWA
-  `SMSMarica.arquivos.pwa`, ponte por QR) e anexar à anamnese. Ver
+  `SMSMais.arquivos.pwa`, ponte por QR) e anexar à anamnese. Ver
   [ADR-0019](../adr/0019-anexos-exame-pwa-qr-armazenamento.md).
 
 Os itens abaixo **não** foram executados nesta entrega — são passos de **produção**, sob
@@ -18,7 +18,7 @@ confirmação.
 
 ## 2. nginx vhost + certbot para `arquivos.smsmarica.online`
 
-Passo manual, uma vez (detalhado no `SMSMarica.arquivos.pwa/README.md`, seção "Provisionamento no
+Passo manual, uma vez (detalhado no `SMSMais.arquivos.pwa/README.md`, seção "Provisionamento no
 servidor"):
 
 - DNS `arquivos.smsmarica.online` → IP do servidor.

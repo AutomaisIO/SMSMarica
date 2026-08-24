@@ -1,5 +1,5 @@
 {
-  "name": "smsmarica-arquivos-pwa",
+  "name": "smsmais-arquivos-pwa",
   "description": "PWA para digitalizar e anexar exames antigos via QR code — Saúde Maricá. Sem login: o token do QR é o único acesso.",
   "private": true,
   "version": "1.0.3",

@@ -1,10 +1,10 @@
-name: Deploy SMSMarica.arquivos.pwa
+name: Deploy SMSMais.arquivos.pwa
 
 on:
   push:
     branches: [main]
     paths:
-      - 'SMSMarica.arquivos.pwa/**'
+      - 'SMSMais.arquivos.pwa/**'
       - '.github/workflows/deploy-arquivos.yml'
   workflow_dispatch: {}
 
@@ -29,18 +29,18 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: SMSMarica.arquivos.pwa/package-lock.json
+          cache-dependency-path: SMSMais.arquivos.pwa/package-lock.json
 
       - name: Install
-        working-directory: SMSMarica.arquivos.pwa
+        working-directory: SMSMais.arquivos.pwa
         run: npm ci --no-audit --no-fund
 
       - name: Build
-        working-directory: SMSMarica.arquivos.pwa
+        working-directory: SMSMais.arquivos.pwa
         run: npm run build
 
       - name: Pack artifact
-        working-directory: SMSMarica.arquivos.pwa
+        working-directory: SMSMais.arquivos.pwa
         run: tar -czf ../smsmarica-arquivos.tar.gz -C dist .
 
       - name: Copy artifact to server (SCP)
