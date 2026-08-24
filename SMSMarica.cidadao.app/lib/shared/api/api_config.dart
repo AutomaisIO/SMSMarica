@@ -1,7 +1,7 @@
 /// Configuração base da API do `SMSMais.server`.
 ///
 /// Enquanto o app está em desenvolvimento local, apontamos para o launch do
-/// Host em modo Dev (ver `SMSMais.server/src/Host/SMSMarica.Api/Properties/launchSettings.json`).
+/// Host em modo Dev (ver `SMSMais.server/src/SMSMais.Api/Properties/launchSettings.json`).
 ///
 /// Para emulador Android, `localhost` do host é `10.0.2.2`.
 /// Para dispositivo físico, trocar por IP da máquina de dev.

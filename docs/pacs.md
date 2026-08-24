@@ -10,13 +10,13 @@ recomendadas.
 O backend de imagens é um **dcm4chee-arc-light 5.34.3** (open-source DICOM
 archive sobre Wildfly/Java) hospedado em DigitalOcean. O frontend `SMSMais.front`
 fala **DICOMweb (QIDO-RS + WADO-RS)** com ele através do proxy `/pacs/rs/*` do
-backend `SMSMarica.Api`, que apenas encaminha as requisições HTTP sem reescrever
+backend `SMSMais.Api`, que apenas encaminha as requisições HTTP sem reescrever
 payload — ver [`PacsProxyService`](../SMSMais.server/src/SMSMais.Core/Pacs/PacsProxyService.cs).
 
 ```mermaid
 flowchart LR
   Front[SMSMais.front<br/>Cornerstone3D + WADO-RS]
-  Api[SMSMarica.Api<br/>/pacs/rs/* proxy]
+  Api[SMSMais.Api<br/>/pacs/rs/* proxy]
   Arc[dcm4chee-arc 5.34.3<br/>Wildfly :8080]
   PG[(PostgreSQL 14<br/>dcmdb)]
   LDAP[(OpenLDAP<br/>cn=admin,dc=dcm4che,dc=org)]
@@ -319,7 +319,7 @@ aceita qualquer Calling AE (§10.4). O cadastro no painel serve à worklist.
 Base RS: `http://pacs.marica.automais.cloud:8080/dcm4chee-arc/aets/PACS-CDT/rs/`
 (o alias legado `.../aets/DCM4CHEE/rs/` aponta para o mesmo acervo)
 
-Configurado em [`appsettings.json`](../SMSMais.server/src/SMSMarica.Api/appsettings.json)
+Configurado em [`appsettings.json`](../SMSMais.server/src/SMSMais.Api/appsettings.json)
 sob `Pacs.Dcm4chee.RsBaseUrl`, sobrescritível por `Pacs__Dcm4chee__RsBaseUrl` em prod.
 
 | Operação | Caminho |

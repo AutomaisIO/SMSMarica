@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Automais.Pabx.Api.Infra;
 
-/// <summary>Mapeia exceções tipadas para ProblemDetails (espelha o padrão do SMSMarica.Api).</summary>
+/// <summary>Mapeia exceções tipadas para ProblemDetails (espelha o padrão do SMSMais.Api).</summary>
 public sealed class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
 {
     public async Task InvokeAsync(HttpContext context)

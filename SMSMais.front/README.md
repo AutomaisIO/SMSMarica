@@ -32,7 +32,7 @@ npm run dev        # http://localhost:5173
 O Vite faz proxy de `/api/*` para `http://localhost:5080` (backend local).
 Para apontar para outra URL, copie `.env.example` para `.env.local` e ajuste `VITE_API_BASE_URL`.
 
-Com o `SMSMais.server` rodando (`dotnet run --project SMSMais.server/src/Host/SMSMarica.Api`), faça login (mock) e acesse **Operador → Pacientes** para cadastrar e consultar pacientes contra o backend real.
+Com o `SMSMais.server` rodando (`dotnet run --project SMSMais.server/src/SMSMais.Api`), faça login (mock) e acesse **Operador → Pacientes** para cadastrar e consultar pacientes contra o backend real.
 
 ## Estrutura
 

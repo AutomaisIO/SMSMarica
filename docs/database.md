@@ -66,7 +66,7 @@ Cada módulo do backend tem seu próprio `DbContext` apontando para `smsmarica`.
 ```bash
 dotnet ef migrations add <Nome> \
   --project src/Modules/<Modulo>/SMSMarica.Modules.<Modulo>.Infrastructure \
-  --startup-project src/Host/SMSMarica.Api \
+  --startup-project src/SMSMais.Api \
   --context <Modulo>DbContext
 ```
 

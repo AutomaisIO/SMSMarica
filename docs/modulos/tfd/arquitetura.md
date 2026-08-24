@@ -16,11 +16,11 @@ identidade do paciente continua no **hub FHIR** (`fhir.patient`), referenciada p
 ```
   Painel React ──┐                          ┌── App Motorista (Flutter/Android, tablet)
                  │                           │
-  App Cidadão ───┤      SMSMarica.Api        ├── WhatsApp (Meta Cloud API) [webhook+envio]
+  App Cidadão ───┤      SMSMais.Api        ├── WhatsApp (Meta Cloud API) [webhook+envio]
    (Flutter)     │  (Controllers + SignalR)  │
                  └──────────┬────────────────┘
                             │
-                   SMSMarica.Core
+                   SMSMais.Core
         ┌───────────────────┼─────────────────────────┐
         │                   │                          │
   TransladoService   GeradorDeTransladoService   RastreamentoService

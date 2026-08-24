@@ -24,7 +24,7 @@ li{margin:3px 0}p,li{max-width:75ch}
 <body>
 <main>
 <h1>SER — Sistema Estadual de Regulação (SES-RJ)</h1>
-<p>Integração com <code>ser.saude.rj.gov.br</code>. Decisão de arquitetura em <a href="./adr/0042-ser-segunda-fonte-de-regulacao.md">ADR-0042</a>. O protocolo abaixo foi levantado no laboratório <code>Automais.SER/</code> (Python) e portado para <code>SMSMarica.Core/Integracoes/SerWeb/</code> (.NET).</p>
+<p>Integração com <code>ser.saude.rj.gov.br</code>. Decisão de arquitetura em <a href="./adr/0042-ser-segunda-fonte-de-regulacao.md">ADR-0042</a>. O protocolo abaixo foi levantado no laboratório <code>Automais.SER/</code> (Python) e portado para <code>SMSMais.Core/Integracoes/SerWeb/</code> (.NET).</p>
 <p>&gt; <strong>Leitura por padrão; escrita é exceção nomeada.</strong> Todo POST passa pela trava de &gt; somente-leitura (§7). Desde 18/08/2026 existem <strong>duas</strong> escritas liberadas, cada uma &gt; mapeada contra o SER real e autorizada explicitamente: <strong>registrar FollowUP</strong> (§9) e &gt; <strong>alterar os telefones</strong> (§10). Elas saem por uma porta separada &gt; (<code>SubmeterEscritaAsync</code>), que exige declarar a operação e a registra em log. &gt; &gt; <strong>E são assinadas pelo operador, não pela credencial de sincronismo.</strong> O SER carimba &gt; cada evento com o nome de quem fez; escrever com a credencial do banco faria toda ação &gt; do município sair no nome da mesma pessoa. A senha pessoal do operador vive <strong>em &gt; memória</strong>, amarrada à sessão dele no SMSMarica — nunca em banco.</p>
 <h2>1. Stack do SER</h2>
 <div class="tw"><table><thead><tr><th></th><th></th></tr></thead><tbody>

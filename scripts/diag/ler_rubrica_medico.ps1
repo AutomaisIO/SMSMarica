@@ -5,7 +5,7 @@ param([Parameter(Mandatory = $true)][string]$MedicoId)
 
 $ErrorActionPreference = 'Stop'
 
-Push-Location "$PSScriptRoot\..\..\SMSMais.server\src\SMSMarica.Api"
+Push-Location "$PSScriptRoot\..\..\SMSMais.server\src\SMSMais.Api"
 $cs = (dotnet user-secrets list | Select-String "ConnectionStrings:DefaultDb").ToString() -replace '^ConnectionStrings:DefaultDb = ', ''
 $dll = Get-ChildItem -Recurse bin -Filter Npgsql.dll | Select-Object -First 1
 Pop-Location

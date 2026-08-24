@@ -3,7 +3,7 @@
 > Como o backend em produção (`api.smsmarica.online`, DigitalOcean) alcança o
 > **SISREG III** (`sisregiii.saude.gov.br`) para a consulta de paciente por CNS
 > (CADSUS / `cadweb50`). Ver também o motor da integração em
-> `SMSMarica.Core/Integracoes/SisregWeb/` e o laboratório `Automais.SISREG/`.
+> `SMSMais.Core/Integracoes/SisregWeb/` e o laboratório `Automais.SISREG/`.
 
 ## Problema
 
