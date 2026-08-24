@@ -49,7 +49,7 @@ gantt
 **Critério de pronto:**
 - `SMSMarica.server` sobe e expõe Swagger com CRUDs de: Pacientes, Unidades, Veículos, Motoristas, Avaliações, Identidade.
 - Auth JWT operando para os 4 perfis.
-- `SMSMarica.front` conecta, autentica, lista pacientes.
+- `SMSMais.front` conecta, autentica, lista pacientes.
 - Cada app Flutter buildando e logando com mock/real.
 - Pipeline CI rodando build+test (S4.4).
 

@@ -4,7 +4,7 @@
 resultados, atestados) direto do celular e **anexá-los à anamnese** do paciente, via uma
 **ponte por QR code**.
 
-> **Como entra no fluxo:** na tela de Anamnese do painel principal (`SMSMarica.front`, médico
+> **Como entra no fluxo:** na tela de Anamnese do painel principal (`SMSMais.front`, médico
 > autenticado), o médico clica **"Adicionar Exame"**. O backend gera um **token de upload** e o
 > front exibe um **QR code**. O paciente/atendente lê o QR no celular → abre este PWA já com o
 > token → fotografa o documento página a página → o app **recorta, corrige perspectiva e melhora
@@ -43,7 +43,7 @@ npm run preview
 
 Automático via `.github/workflows/deploy-arquivos.yml`: ao dar push em `main` tocando
 `SMSMais.arquivos.pwa/**`, o workflow buila e publica o `dist/` em **`/var/www/smsmarica-arquivos`**
-(mesmo servidor do `SMSMarica.front` / `SMSMais.cidadao.pwa`), com swap atômico `.new`/`.old`.
+(mesmo servidor do `SMSMais.front` / `SMSMais.cidadao.pwa`), com swap atômico `.new`/`.old`.
 Reusa os secrets `HOST_SMSMARICA` / `USER_SMSMARICA` / `PASS_SMSMARICA` e o env
 `VITE_API_BASE_URL_SMSMARICA`.
 

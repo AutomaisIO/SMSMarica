@@ -3,7 +3,7 @@
 Documentação de referência dos campos de uma **Solicitação de Exame** (entidade
 `SolicitacaoExame`, schema `smsmarica`). Os textos de ajuda exibidos pelo ícone **"?"**
 na tela de preenchimento manual (`AjudaCampo`) são a versão resumida deste documento —
-fonte única em `SMSMarica.front/src/features/solicitacoes-exame/ajudaCampos.tsx`.
+fonte única em `SMSMais.front/src/features/solicitacoes-exame/ajudaCampos.tsx`.
 
 ## As três datas (e por que são diferentes)
 

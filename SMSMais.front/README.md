@@ -1,4 +1,4 @@
-# SMSMarica.front
+# SMSMais.front
 
 Painel web do **SMS Maricá**. React + Vite + TypeScript consumindo `SMSMarica.server`.
 

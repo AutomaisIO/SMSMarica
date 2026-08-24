@@ -49,3 +49,6 @@ docs/agente-sql/**/.agente_token
 docs/agente-sql/**/__pycache__/
 docs/agente-sql/**/*.pyc
 docs/agente-sql/*.rar
+
+# Dependencias de node em qualquer nivel (a regra por-projeto continua valendo; esta cobre cascas de rename)
+node_modules/

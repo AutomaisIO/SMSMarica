@@ -7,7 +7,7 @@ WhatsApp**, sem senha.
 > **Escopo:** o app **não** é específico de TFD. O transporte/TFD é apenas **um módulo**.
 > O app do cidadão evolui para reunir os serviços digitais de saúde de Maricá.
 
-Publicado em **https://app.smsmarica.online** (mesmo server do `SMSMarica.front`; vhost nginx
+Publicado em **https://app.smsmarica.online** (mesmo server do `SMSMais.front`; vhost nginx
 servindo `/var/www/smsmarica-app`, deploy via `.github/workflows/deploy-app.yml`).
 
 ## Módulos

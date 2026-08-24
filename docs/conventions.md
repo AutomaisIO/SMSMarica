@@ -104,7 +104,7 @@ Commits de mesclagem (`Merge …`): evitar. Usar `rebase` + `squash` no PR.
 - Testes de integração: TestContainers com Postgres real.
 - Cobertura **não** é meta; comportamento crítico coberto é a meta.
 
-## 4. TypeScript / React (`SMSMarica.front`)
+## 4. TypeScript / React (`SMSMais.front`)
 
 ### 4.1 Estilo
 

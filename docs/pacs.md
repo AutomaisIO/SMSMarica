@@ -1,21 +1,21 @@
 # PACS — Imagens DICOM (dcm4chee-arc)
 
 Documentação operacional do servidor de imagens médicas que abastece o visualizador
-`SMSMarica.front > /features/pacs`. Documenta o que está em produção hoje
+`SMSMais.front > /features/pacs`. Documenta o que está em produção hoje
 (2026-05-23): topologia, configuração, integrações, problemas conhecidos e ações
 recomendadas.
 
 ## 1. Visão geral
 
 O backend de imagens é um **dcm4chee-arc-light 5.34.3** (open-source DICOM
-archive sobre Wildfly/Java) hospedado em DigitalOcean. O frontend `SMSMarica.front`
+archive sobre Wildfly/Java) hospedado em DigitalOcean. O frontend `SMSMais.front`
 fala **DICOMweb (QIDO-RS + WADO-RS)** com ele através do proxy `/pacs/rs/*` do
 backend `SMSMarica.Api`, que apenas encaminha as requisições HTTP sem reescrever
 payload — ver [`PacsProxyService`](../SMSMarica.server/src/SMSMarica.Core/Pacs/PacsProxyService.cs).
 
 ```mermaid
 flowchart LR
-  Front[SMSMarica.front<br/>Cornerstone3D + WADO-RS]
+  Front[SMSMais.front<br/>Cornerstone3D + WADO-RS]
   Api[SMSMarica.Api<br/>/pacs/rs/* proxy]
   Arc[dcm4chee-arc 5.34.3<br/>Wildfly :8080]
   PG[(PostgreSQL 14<br/>dcmdb)]
@@ -335,10 +335,10 @@ Header obrigatório nos QIDO/metadata: `Accept: application/dicom+json`. STOW-RS
 (upload via HTTP) também existe mas hoje não é usado pelo SMSMarica — os
 equipamentos enviam via DICOM C-STORE direto.
 
-### Integração no `SMSMarica.front`
+### Integração no `SMSMais.front`
 
 Cornerstone3D (`@cornerstonejs/core` + `tools` + `dicom-image-loader`) consome
-o WADO-RS via os helpers em [`features/pacs/lib/cornerstone.ts`](../SMSMarica.front/src/features/pacs/lib/cornerstone.ts):
+o WADO-RS via os helpers em [`features/pacs/lib/cornerstone.ts`](../SMSMais.front/src/features/pacs/lib/cornerstone.ts):
 
 - `wadoRsRoot()` aponta para `${baseURL}/pacs/rs` (passa pelo proxy).
 - `construirImageId(study, series, sop, frame)` monta `wadors:.../frames/1`.

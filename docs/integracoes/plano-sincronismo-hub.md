@@ -275,7 +275,7 @@ O achado é, por si só, a justificativa do pré-check — e do gate de bancada 
 |---|---|---|
 | `SMSMarica.server` — dotnet build | 0 erros, 0 warnings (2m00s) | **sim** |
 | `Automais.Fhir` — dotnet build | 0 erros, **2 warnings CS8604** (`UpsertPorIdentifierTests.cs:77` e `:123`) | **não** — corrigir antes do commit |
-| `SMSMarica.front` — npm run build | tsc 0 erros; warnings não-bloqueantes (chunk 5,3 MB, imports mistos) | sim (com ressalva do chunk) |
+| `SMSMais.front` — npm run build | tsc 0 erros; warnings não-bloqueantes (chunk 5,3 MB, imports mistos) | sim (com ressalva do chunk) |
 
 ---
 

@@ -7,7 +7,7 @@ Ecossistema de software para o programa de **transporte sanitário** da Secretar
 | Pasta | O que é | Stack |
 |-------|---------|-------|
 | [`SMSMarica.server/`](./SMSMarica.server/) | API central e regras de negócio | .NET 10 + EF Core + PostgreSQL |
-| [`SMSMarica.front/`](./SMSMarica.front/) | Painel web (operador + gestor) | React + Vite + TypeScript |
+| [`SMSMais.front/`](./SMSMais.front/) | Painel web (operador + gestor) | React + Vite + TypeScript |
 | [`SMSMarica.cidadao.app/`](./SMSMarica.cidadao.app/) | App do paciente | Flutter (iOS + Android) |
 | [`SMSMarica.agente.app/`](./SMSMarica.agente.app/) | App do motorista | Flutter (Android only) |
 

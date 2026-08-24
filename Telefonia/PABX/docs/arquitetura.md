@@ -16,7 +16,7 @@ com contrato estável; a página local embutida existe só para operar/testar an
 ## Componentes
 
 ```
-SMSMarica.front (futuro menu Telefonia)
+SMSMais.front (futuro menu Telefonia)
         │  HTTPS + X-Api-Key
         ▼
 Automais.Pabx (porta 5090, systemd, self-contained)

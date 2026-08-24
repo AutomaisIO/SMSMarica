@@ -17,7 +17,7 @@ flowchart TB
     Api --> Core --> Data
   end
 
-  Front[SMSMarica.front · React + Vite]
+  Front[SMSMais.front · React + Vite]
   Cidadao[SMSMarica.cidadao.app · Flutter iOS+Android]
   Agente[SMSMarica.agente.app · Flutter Android]
 
@@ -37,7 +37,7 @@ flowchart TB
 | Subprojeto | Responsabilidade | Não é responsável por |
 |------------|------------------|------------------------|
 | `SMSMarica.server` | API REST, regras de negócio, persistência, geração de sessões a partir da periodicidade, alocação em assentos, autenticação | UI de qualquer espécie, integração direta com WhatsApp/Waze |
-| `SMSMarica.front` | Painel administrativo web (operador + gestor), dashboards | Uso por paciente ou motorista final |
+| `SMSMais.front` | Painel administrativo web (operador + gestor), dashboards | Uso por paciente ou motorista final |
 | `SMSMarica.cidadao.app` | App do paciente/acompanhante — cadastro, agenda, confirmação, ETA, avaliação | Cadastros administrativos, edição de rotas |
 | `SMSMarica.agente.app` | App do motorista (Android) — rotas do dia, postagem de GPS, geofencing, navegação externa | Cadastros administrativos |
 
@@ -142,7 +142,7 @@ Um único `SmsMaricaDbContext` aponta para o schema `smsmarica`. Tabelas usam pr
 | | Stack | Versão alvo |
 |---|---|---|
 | `SMSMarica.server` | ASP.NET Core + EF Core + PostgreSQL | .NET 10 (LTS) |
-| `SMSMarica.front` | React + Vite + TypeScript | Node LTS vigente |
+| `SMSMais.front` | React + Vite + TypeScript | Node LTS vigente |
 | `SMSMarica.cidadao.app` | Flutter | Stable mais recente |
 | `SMSMarica.agente.app` | Flutter, Android only | Stable mais recente |
 

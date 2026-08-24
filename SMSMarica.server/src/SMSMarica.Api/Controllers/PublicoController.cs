@@ -186,7 +186,7 @@ public sealed partial class PublicoController(
 
     /// <summary>
     /// Cor de marca padrão do produto — a mesma <c>--theme-primary</c> de
-    /// <c>SMSMarica.front/src/index.css</c>. É o valor usado enquanto a instituição não
+    /// <c>SMSMais.front/src/index.css</c>. É o valor usado enquanto a instituição não
     /// escolheu a sua.
     ///
     /// <para>

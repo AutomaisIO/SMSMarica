@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Multi-project monorepo.** Backend `SMSMarica.server` está em **3 projetos** (Data + Core + Api) + 1 de testes — ver [ADR-0004](./docs/adr/0004-arquitetura-tres-projetos.md). CRUD coberto bem além das 9 entidades originais (Pacientes, Unidades, Motoristas, Avaliacoes, Usuarios, Veiculos, Tratamentos, Rotas, Rastreamento) — também Laudos, SolicitacoesExame, Procedimentos SIGTAP, Médicos, Perfis, Translados, Tipos de Exame, etc.
 
 **Demais subprojetos no monorepo** (nem todos no README/stack antigos):
-- `SMSMarica.front` — **painel web já implementado** (não é mais README-only): React + Vite + TS com ~20 features em `src/features/` (auth, pacientes, laudos, solicitacoes-exame, ia, pacs, procedimentos-sigtap, medicos, perfis, rastreamento, translados, tratamentos, unidades, usuarios, veiculos…).
+- `SMSMais.front` — **painel web já implementado** (não é mais README-only): React + Vite + TS com ~20 features em `src/features/` (auth, pacientes, laudos, solicitacoes-exame, ia, pacs, procedimentos-sigtap, medicos, perfis, rastreamento, translados, tratamentos, unidades, usuarios, veiculos…).
 - `Automais.Fhir` — **serviço FHIR R4 autônomo** ([ADR-0010](./docs/adr/0010-servico-fhir-autonomo.md)), solução própria (`Automais.Fhir.slnx`), 3 camadas (Data/Core/Api) espelhando o server. Persistência JSONB + Firely SDK, schema `fhir` próprio, DbContext próprio (`ConnectionStrings:FhirDb`). Já em produção (porta 5081). É o hub canônico clínico; demais sistemas falam com ele via API FHIR. Tem `Automais.Fhir/README.md` próprio.
 - `SMSMarica.EquipamentoSim` — simulador de equipamento DICOM (Python 3.11+, `pynetdicom`/`pydicom`, CLI `equipamento`) para testar o ciclo Solicitação de Exame → Worklist → Execução.
 - `Salux` — engenharia reversa do Salux HIS (Oracle 12c do HCML). **Tem CLAUDE.md próprio com regras não-negociáveis** (PROD Oracle é read-only absoluto via `scripts/_guard.py`; `capturas/` e `.env` são gitignored por conterem PII). Ler `Salux/CLAUDE.md` antes de tocar nessa pasta.
@@ -68,7 +68,7 @@ As regras abaixo não podem ser violadas sem novo ADR.
 |---|---|---|
 | `SMSMarica.server` | .NET 10 LTS, ASP.NET Core, EF Core 10, PostgreSQL | CPM em `Directory.Packages.props`. Controllers MVC + FluentValidation auto + Mapperly + Serilog. xUnit + Testcontainers (precisa Docker pra rodar testes). |
 | `Automais.Fhir` | .NET 10, EF Core + Npgsql, Firely SDK (`Hl7.Fhir.R4`), PostgreSQL (schema `fhir`, JSONB) | Solução própria (`Automais.Fhir.slnx`). Serviço FHIR autônomo ([ADR-0010](./docs/adr/0010-servico-fhir-autonomo.md)), em prod na porta 5081. |
-| `SMSMarica.front` | React + Vite + TypeScript, Tailwind | **Implementado** (~20 features). Tema vermelho/branco (logo Maricá horizontal). npm (`package-lock.json`). |
+| `SMSMais.front` | React + Vite + TypeScript, Tailwind | **Implementado** (~20 features). Tema vermelho/branco (logo Maricá horizontal). npm (`package-lock.json`). |
 | `SMSMarica.EquipamentoSim` | Python 3.11+, `pynetdicom`/`pydicom`, Typer CLI | Simulador DICOM para o ciclo Solicitação→Worklist→Execução. |
 | `Salux` | Python 3.13, `paramiko`, `sqlplus`; alvo Oracle 12c | Engenharia reversa do Salux HIS. **Regras próprias em `Salux/CLAUDE.md`.** |
 | `SMSMarica.cidadao.app` | Flutter (iOS + Android) | Riverpod + go_router + dio. **Ainda não está em produção** — login é mock; quebras de contrato com `/pacientes/{id}` são aceitáveis nesta fase. |
@@ -97,7 +97,7 @@ dotnet build                                       # 0 erros, 0 warnings esperad
 dotnet run --project src/Automais.Fhir.Api         # porta 5081 (/fhir/Patient...)
 
 # Front (painel web)
-cd SMSMarica.front
+cd SMSMais.front
 npm install
 npm run dev                                        # Vite (http://localhost:5173)
 npm run build                                      # tsc -b && vite build

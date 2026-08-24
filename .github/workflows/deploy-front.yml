@@ -1,15 +1,15 @@
-name: Deploy SMSMarica.front
+name: Deploy SMSMais.front
 
 on:
   push:
     branches: [main]
     paths:
-      - 'SMSMarica.front/**'
+      - 'SMSMais.front/**'
       - '.github/workflows/deploy-front.yml'
   workflow_dispatch: {}
 
 concurrency:
-  group: deploy-smsmarica-front
+  group: deploy-smsmais-front
   cancel-in-progress: false
 
 jobs:
@@ -36,7 +36,7 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: SMSMarica.front/package-lock.json
+          cache-dependency-path: SMSMais.front/package-lock.json
 
       # Falha ANTES do npm ci (que leva minutos) com uma mensagem que diz o que fazer.
       # Sem isto, o erro só apareceria no meio do log do Vite.
@@ -52,16 +52,16 @@ jobs:
           echo "API base: $VITE_API_BASE_URL"
 
       - name: Install
-        working-directory: SMSMarica.front
+        working-directory: SMSMais.front
         run: npm ci --no-audit --no-fund
 
       - name: Build
-        working-directory: SMSMarica.front
+        working-directory: SMSMais.front
         run: npm run build
 
       - name: Pack artifact
-        working-directory: SMSMarica.front
-        run: tar -czf ../smsmarica-front.tar.gz -C dist .
+        working-directory: SMSMais.front
+        run: tar -czf ../smsmais-front.tar.gz -C dist .
 
       - name: Copy artifact to server (SCP)
         uses: appleboy/scp-action@v0.1.7
@@ -70,7 +70,7 @@ jobs:
           username: ${{ secrets.USER_SMSMARICA }}
           password: ${{ secrets.PASS_SMSMARICA }}
           port: 22
-          source: smsmarica-front.tar.gz
+          source: smsmais-front.tar.gz
           target: /tmp/
 
       - name: Deploy on server (SSH)
@@ -87,7 +87,7 @@ jobs:
             # Publicado em subdiretório de /var/www para não colidir com outros sites.
             # Ajuste se quiser servir em /var/www/ direto — mas cuidado com o nginx default.
             DEPLOY_DIR=/var/www/smsmarica-front
-            TARBALL=/tmp/smsmarica-front.tar.gz
+            TARBALL=/tmp/smsmais-front.tar.gz
 
             if [ "$(id -u)" -eq 0 ]; then SUDO=""; else SUDO="sudo -n"; fi
 
