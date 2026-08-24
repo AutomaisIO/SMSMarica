@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { instituicao, urlMidia } from '@/shared/tema/instituicao';
 
 export type PermissaoNotificacao = 'default' | 'granted' | 'denied' | 'indisponivel';
 
@@ -22,7 +23,14 @@ export function useNotificacoesNavegador() {
     (titulo: string, corpo: string, tag?: string, onClick?: () => void) => {
       if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
       try {
-        const n = new Notification(titulo, { body: corpo, tag, icon: '/favicon.png' });
+        // Ícone = favicon da instituição (banco); sem ele, notificação sem ícone —
+        // nunca um asset estático de município (ADR-0046).
+        const fav = instituicao().faviconMidiaId;
+        const n = new Notification(titulo, {
+          body: corpo,
+          tag,
+          ...(fav ? { icon: urlMidia(fav) } : {}),
+        });
         if (onClick) {
           n.onclick = () => {
             window.focus();
