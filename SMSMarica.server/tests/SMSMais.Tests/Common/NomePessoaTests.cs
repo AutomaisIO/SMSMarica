@@ -1,4 +1,4 @@
-using SMSMarica.Core.Common.Texto;
+using SMSMais.Core.Common.Texto;
 
 namespace SMSMais.Tests.Common;
 

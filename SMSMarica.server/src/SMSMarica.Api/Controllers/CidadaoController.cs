@@ -3,12 +3,12 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
-using SMSMarica.Core.Atendimentos;
-using SMSMarica.Core.Cidadao;
-using SMSMarica.Core.Cidadao.Dtos;
-using SMSMarica.Core.Pacientes;
-using SMSMarica.Core.Telefones;
-using SMSMarica.Core.Telefones.Dtos;
+using SMSMais.Core.Atendimentos;
+using SMSMais.Core.Cidadao;
+using SMSMais.Core.Cidadao.Dtos;
+using SMSMais.Core.Pacientes;
+using SMSMais.Core.Telefones;
+using SMSMais.Core.Telefones.Dtos;
 
 namespace SMSMarica.Api.Controllers;
 
@@ -116,7 +116,7 @@ public sealed class CidadaoController(
     }
 
     /// <summary>Resumo textual do atendimento a partir dos diagnósticos (CID-10).</summary>
-    private static string DescricaoAtendimento(Core.Atendimentos.Dtos.AtendimentoDto a)
+    private static string DescricaoAtendimento(SMSMais.Core.Atendimentos.Dtos.AtendimentoDto a)
     {
         var diags = a.Diagnosticos
             .Select(d => string.IsNullOrWhiteSpace(d.Descricao) ? d.Codigo : d.Descricao)

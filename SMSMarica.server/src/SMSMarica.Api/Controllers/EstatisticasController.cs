@@ -2,8 +2,8 @@ using System.Globalization;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
-using SMSMarica.Core.Estatisticas;
-using SMSMarica.Core.Estatisticas.Dtos;
+using SMSMais.Core.Estatisticas;
+using SMSMais.Core.Estatisticas.Dtos;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;

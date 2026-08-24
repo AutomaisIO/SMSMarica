@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SMSMarica.Core.PesquisasSatisfacao;
+using SMSMais.Core.PesquisasSatisfacao;
 
 namespace SMSMarica.Api.Controllers;
 

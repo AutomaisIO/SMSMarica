@@ -1,4 +1,4 @@
-using SMSMarica.Core.Integracoes.Pep.Background;
+using SMSMais.Core.Integracoes.Pep.Background;
 using SMSMais.Data.Entities.Pep;
 
 namespace SMSMais.Tests.Integracoes.Pep;

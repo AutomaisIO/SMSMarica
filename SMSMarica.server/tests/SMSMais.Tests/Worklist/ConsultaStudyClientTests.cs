@@ -1,6 +1,6 @@
 using System.Net;
 using Microsoft.Extensions.Logging.Abstractions;
-using SMSMarica.Core.Worklist;
+using SMSMais.Core.Worklist;
 
 namespace SMSMais.Tests.Worklist;
 

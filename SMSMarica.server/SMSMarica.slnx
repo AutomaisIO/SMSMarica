@@ -1,7 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/SMSMarica.Api/SMSMarica.Api.csproj" />
-    <Project Path="src/SMSMarica.Core/SMSMarica.Core.csproj" />
+    <Project Path="src/SMSMais.Core/SMSMais.Core.csproj" />
     <Project Path="src/SMSMais.Data/SMSMais.Data.csproj" />
   </Folder>
   <Folder Name="/tests/">

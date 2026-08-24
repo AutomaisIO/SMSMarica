@@ -1,6 +1,6 @@
 using FluentAssertions;
-using SMSMarica.Core.Integracoes.SerWeb;
-using SMSMarica.Core.Integracoes.SerWeb.Varredura.Export;
+using SMSMais.Core.Integracoes.SerWeb;
+using SMSMais.Core.Integracoes.SerWeb.Varredura.Export;
 
 namespace SMSMais.Tests.Integracoes;
 

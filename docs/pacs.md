@@ -11,7 +11,7 @@ O backend de imagens é um **dcm4chee-arc-light 5.34.3** (open-source DICOM
 archive sobre Wildfly/Java) hospedado em DigitalOcean. O frontend `SMSMais.front`
 fala **DICOMweb (QIDO-RS + WADO-RS)** com ele através do proxy `/pacs/rs/*` do
 backend `SMSMarica.Api`, que apenas encaminha as requisições HTTP sem reescrever
-payload — ver [`PacsProxyService`](../SMSMarica.server/src/SMSMarica.Core/Pacs/PacsProxyService.cs).
+payload — ver [`PacsProxyService`](../SMSMarica.server/src/SMSMais.Core/Pacs/PacsProxyService.cs).
 
 ```mermaid
 flowchart LR
@@ -417,9 +417,9 @@ Cobertura medida do mapa AE (2026-08-20): união dos 7 AEs = 2595 de 2615 estudo
 equipamentos, existem `DICOMPACSSCU` (1263, acervo legado ≤ 2025) e `DEXA` (8, a MESMA densitometria
 Hologic S/N309428M do `DO-CDT`, sob AE diferente). Os 20 restantes são os reescritos, sem AE.
 
-**Onde isso é aplicado:** [`EscopoEstudosPacs`](../SMSMarica.server/src/SMSMarica.Core/Pacs/EscopoEstudosPacs.cs)
+**Onde isso é aplicado:** [`EscopoEstudosPacs`](../SMSMarica.server/src/SMSMais.Core/Pacs/EscopoEstudosPacs.cs)
 traduz o escopo de unidade (ADR-0033/0037) para o conjunto de AEs, e
-[`EscopoAeQuery`](../SMSMarica.server/src/SMSMarica.Core/Pacs/EscopoAeQuery.cs) reescreve a query
+[`EscopoAeQuery`](../SMSMarica.server/src/SMSMais.Core/Pacs/EscopoAeQuery.cs) reescreve a query
 string no proxy `/pacs/rs/studies`. O recorte é imposto **no servidor**: o proxy é passthrough
 puro da query string, então um filtro escolhido pelo front seria burlável digitando na URL.
 

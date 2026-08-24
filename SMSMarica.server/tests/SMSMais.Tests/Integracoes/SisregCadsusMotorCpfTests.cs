@@ -1,9 +1,9 @@
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
-using SMSMarica.Core.Common.Excecoes;
-using SMSMarica.Core.Integracoes.Proxy;
-using SMSMarica.Core.Integracoes.Proxy.Motores;
-using SMSMarica.Core.Integracoes.SisregWeb;
+using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.Integracoes.Proxy;
+using SMSMais.Core.Integracoes.Proxy.Motores;
+using SMSMais.Core.Integracoes.SisregWeb;
 
 namespace SMSMais.Tests.Integracoes;
 

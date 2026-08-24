@@ -1,16 +1,16 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using SMSMarica.Core.Associacoes;
-using SMSMarica.Core.Laudos.Assinatura;
-using SMSMarica.Core.Notificacoes;
-using SMSMarica.Core.Notificacoes.Comunicacao;
-using SMSMarica.Core.Pacientes.Fhir;
-using SMSMarica.Core.SolicitacoesExame;
-using SMSMarica.Core.SolicitacoesExame.Identificadores;
-using SMSMarica.Core.Telefones;
-using SMSMarica.Core.Worklist;
-using SMSMarica.Core.Erros;
+using SMSMais.Core.Associacoes;
+using SMSMais.Core.Laudos.Assinatura;
+using SMSMais.Core.Notificacoes;
+using SMSMais.Core.Notificacoes.Comunicacao;
+using SMSMais.Core.Pacientes.Fhir;
+using SMSMais.Core.SolicitacoesExame;
+using SMSMais.Core.SolicitacoesExame.Identificadores;
+using SMSMais.Core.Telefones;
+using SMSMais.Core.Worklist;
+using SMSMais.Core.Erros;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
 using SMSMais.Tests.Infraestrutura;
@@ -44,12 +44,12 @@ public class ConciliacaoStudyTests(PostgresFixture fixture)
             Substitute.For<INotificadorExame>(),
             new UsuarioAtualAccessorFake(),
             Substitute.For<IPacienteResolver>(),
-            Substitute.For<SMSMarica.Core.Pacientes.IPacientesService>(),
+            Substitute.For<SMSMais.Core.Pacientes.IPacientesService>(),
             Substitute.For<IDispensaContatoService>(),
             new Lazy<ILaudoAssinaturaService>(() => Substitute.For<ILaudoAssinaturaService>()),
             new Lazy<IComunicacaoPacienteService>(() => Substitute.For<IComunicacaoPacienteService>()),
             Substitute.For<IRegistroErroService>(),
-            Substitute.For<SMSMarica.Core.Auditoria.IAuditoriaService>(),
+            Substitute.For<SMSMais.Core.Auditoria.IAuditoriaService>(),
             NullLogger<SolicitacoesExameService>.Instance);
 
         // Reescritor como substitute: a conciliação AUTOMÁTICA não reescreve o DICOM de propósito
@@ -60,8 +60,8 @@ public class ConciliacaoStudyTests(PostgresFixture fixture)
             Substitute.For<IPacienteResolver>(),
             consultaStudy,
             solicitacoes,
-            Substitute.For<SMSMarica.Core.Pacs.IPacsReescritorEstudoClient>(),
-            Substitute.For<SMSMarica.Core.Pacs.IResolvedorIdentidadeDicom>(),
+            Substitute.For<SMSMais.Core.Pacs.IPacsReescritorEstudoClient>(),
+            Substitute.For<SMSMais.Core.Pacs.IResolvedorIdentidadeDicom>(),
             new UsuarioAtualAccessorFake(),
             NullLogger<ExameAssociacaoService>.Instance);
     }
@@ -258,7 +258,7 @@ public class ConciliacaoStudyTests(PostgresFixture fixture)
 
         // Retry idempotente do POST deve AUTO-REPARAR (promover), não só devolver o DTO.
         await service.AssociarAsync(
-            new SMSMarica.Core.Associacoes.Dtos.AssociarExameRequest(uid, s.AccessionNumber), validarNoPacs: false);
+            new SMSMais.Core.Associacoes.Dtos.AssociarExameRequest(uid, s.AccessionNumber), validarNoPacs: false);
 
         var atual = await db.ExamesImagem.AsNoTracking().SingleAsync(x => x.Id == s.Id);
         Assert.Equal(StatusSolicitacaoExame.Realizada, atual.Status);

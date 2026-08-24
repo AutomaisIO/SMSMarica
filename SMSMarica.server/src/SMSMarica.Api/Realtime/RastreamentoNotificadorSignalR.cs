@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 using SMSMarica.Api.Hubs;
-using SMSMarica.Core.Rastreamento;
+using SMSMais.Core.Rastreamento;
 
 namespace SMSMarica.Api.Realtime;
 

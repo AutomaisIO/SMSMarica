@@ -1,5 +1,5 @@
 using FluentAssertions;
-using SMSMarica.Core.Integracoes.SisregWeb;
+using SMSMais.Core.Integracoes.SisregWeb;
 
 namespace SMSMais.Tests.Integracoes;
 

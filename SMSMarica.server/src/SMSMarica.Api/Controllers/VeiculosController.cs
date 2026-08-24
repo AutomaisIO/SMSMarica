@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
-using SMSMarica.Core.Veiculos;
-using SMSMarica.Core.Veiculos.Dtos;
+using SMSMais.Core.Veiculos;
+using SMSMais.Core.Veiculos.Dtos;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;

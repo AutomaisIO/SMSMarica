@@ -1,0 +1,655 @@
+using System.Text.RegularExpressions;
+using AngleSharp.Dom;
+using AngleSharp.Html.Dom;
+using AngleSharp.Html.Parser;
+
+namespace SMSMais.Core.Integracoes.SerWeb;
+
+/// <summary>
+/// Um <c>rich:suggestionbox</c> e seus três ids voláteis, extraídos do script de inicialização
+/// que o próprio SER manda na página — nunca de captura antiga, porque <c>j_id</c> é posicional
+/// e muda quando a SES-RJ recompila.
+///
+/// <para><b>Por que isso importa:</b> o filtro de Solicitante da tela de Histórico só é aplicado
+/// no servidor durante a ida-e-volta A4J do autocomplete (fetch de sugestões + <c>onselect</c>).
+/// Mandar o texto no campo é decorativo — medido em 07/08/2026: com texto solto o export devolve
+/// a fila do <b>Estado inteiro</b>; com a ida-e-volta reproduzida, o recorte de Maricá, idêntico
+/// ao do navegador e determinístico entre chamadas.</para>
+/// </summary>
+/// <param name="CampoTexto">o input visível (<c>form0:suggUnidadeSol</c>).</param>
+/// <param name="BoxId">o container do suggestionbox — vai em <c>ajaxSingle</c> nas duas idas.</param>
+/// <param name="OnselectId">o <c>a4j:support event="onselect"</c> — é ele que amarra a escolha.</param>
+/// <summary>
+/// O modal de observação (FollowUP): form próprio, textarea, botão Gravar e o ViewState de
+/// DENTRO desse form — usar o do <c>form0</c> faz o JSF restaurar a view errada (docs/ser.md §3.2).
+/// </summary>
+public sealed record SerModalObservacao(
+    string FormId, string CampoTexto, string BotaoGravar, string? ViewState);
+
+public sealed record SerSuggestionBox(string CampoTexto, string BoxId, string OnselectId)
+{
+    /// <summary>Hidden que carrega o índice da linha escolhida. O RichFaces o preenche SÓ durante
+    /// o submit do onselect e o limpa em seguida — por isso ele parece "sempre vazio" no DOM.</summary>
+    public string CampoSelecao => $"{BoxId}_selection";
+}
+
+/// <summary>
+/// Leitura das telas do SER (JSF 1.2 + RichFaces 3.3.3). Ver <c>docs/ser.md</c>.
+///
+/// <para><b>Princípio de projeto: nunca casar por <c>j_id</c> fixo.</b> Os ids do JSF são
+/// posicionais e mudam quando a SES-RJ recompila a página. Tudo aqui é localizado por rótulo
+/// visível (<c>title="Pesquisar"</c>, texto "Historico da Solicitação", <c>&lt;label&gt;</c> do
+/// mesmo <c>&lt;td&gt;</c>) e, quando o componente não é encontrado, o método devolve
+/// <c>null</c> em vez de chutar — chutar faz o SER responder página vazia sem erro, e o chamador
+/// acredita ter lido algo.</para>
+/// </summary>
+public static partial class SerHtmlParser
+{
+    public const string FormPesquisa = "form0";
+    public const string TabelaGrade = "form0:listagem";
+    public const string TabelaHistorico = "form0:historicoList";
+    public const string Scroller = "form0:sc1";
+    public const string CaixaMensagens = "form0:messages";
+
+    private static readonly HtmlParser Parser = new();
+
+    public static IHtmlDocument Documento(string html) => Parser.ParseDocument(html);
+
+    // ------------------------------------------------------------------ JSF
+
+    /// <summary>
+    /// ViewState de DENTRO de um form específico. A home do SER tem vários forms e os
+    /// ViewStates PODEM diferir; pegar o primeiro do documento faz o JSF restaurar a view errada
+    /// e a ação não roda — HTTP 200, sem erro (ver docs/ser.md §3.2).
+    /// </summary>
+    public static string? ViewStateDoForm(IHtmlDocument doc, string formId)
+    {
+        var form = doc.GetElementById(formId) as IHtmlFormElement;
+        var input = form?.QuerySelector("input[name='javax.faces.ViewState']") as IHtmlInputElement;
+        return input?.Value;
+    }
+
+    /// <summary>ViewState de qualquer lugar do documento — usado só quando a resposta é parcial
+    /// (paginação) e não traz form nenhum.</summary>
+    public static string? ViewStateQualquer(string html)
+    {
+        var m = RegexViewState().Match(html);
+        return m.Success ? m.Groups[1].Value : null;
+    }
+
+    /// <summary>
+    /// Campos preenchidos de um form (hidden/texto/select), sem os botões de submit.
+    ///
+    /// <para><paramref name="comoNavegador"/> exclui os campos <c>disabled</c>, que é o que o
+    /// navegador de verdade faz. Fica <b>desligado por padrão</b> de propósito: é assim que a
+    /// varredura vem funcionando em produção, e mudar o corpo dos POSTs de leitura para
+    /// "arrumar" seria trocar comportamento provado por comportamento suposto — nesta tela, o
+    /// que muda o resultado costuma ser justamente o que se manda no POST (docs/ser.md §3.3).</para>
+    ///
+    /// <para><b>Na ESCRITA ele é ligado</b>: o SER trava a identidade do paciente (nome, CPF,
+    /// CNS, mãe, raça) com <c>disabled</c>, e mandar esses valores de volta é divergir do
+    /// navegador exatamente na requisição que grava.</para>
+    /// </summary>
+    public static Dictionary<string, string> CamposDoForm(
+        IHtmlDocument doc, string formId, bool comoNavegador = false)
+    {
+        var dados = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (doc.GetElementById(formId) is not IHtmlFormElement form) return dados;
+
+        foreach (var el in form.QuerySelectorAll("input"))
+        {
+            if (el is not IHtmlInputElement input) continue;
+            var nome = input.Name;
+            if (string.IsNullOrEmpty(nome)) continue;
+            if (comoNavegador && input.HasAttribute("disabled")) continue;
+            var tipo = (input.Type ?? "text").ToLowerInvariant();
+            if (tipo is "submit" or "button" or "image" or "reset") continue;
+            if (tipo is "checkbox" or "radio" && !input.IsChecked) continue;
+            dados[nome] = input.Value ?? string.Empty;
+        }
+
+        foreach (var el in form.QuerySelectorAll("select"))
+        {
+            if (el is not IHtmlSelectElement select || string.IsNullOrEmpty(select.Name)) continue;
+            if (comoNavegador && select.HasAttribute("disabled")) continue;
+            dados[select.Name] = select.Value ?? string.Empty;
+        }
+
+        foreach (var el in form.QuerySelectorAll("textarea"))
+        {
+            if (el is not IHtmlTextAreaElement area || string.IsNullOrEmpty(area.Name)) continue;
+            if (comoNavegador && area.HasAttribute("disabled")) continue;
+            // Só na escrita: incluir textarea na leitura mudaria o corpo dos POSTs da varredura.
+            if (comoNavegador) dados[area.Name] = area.Value ?? string.Empty;
+        }
+
+        return dados;
+    }
+
+    /// <summary>Action do form, para montar a URL do POST.</summary>
+    public static string? ActionDoForm(IHtmlDocument doc, string formId) =>
+        (doc.GetElementById(formId) as IHtmlFormElement)?.GetAttribute("action");
+
+    /// <summary>
+    /// Redirect do Ajax4JSF embutido no CORPO (<c>&lt;meta name="Location"&gt;</c>). O SER usa
+    /// duas formas de redirect: header <c>Location</c> (escolha de módulo) e este meta (abrir o
+    /// histórico, que responde 200 com ~268 bytes).
+    /// </summary>
+    public static string? RedirectNoCorpo(string html)
+    {
+        var m = RegexMetaLocation().Match(html);
+        return m.Success ? System.Net.WebUtility.HtmlDecode(m.Groups[1].Value) : null;
+    }
+
+    /// <summary>Id do form de escolha de módulo da home (<c>action="/ser/home"</c>).</summary>
+    public static string? FormDeModulo(string html)
+    {
+        var m = RegexFormModulo().Match(html);
+        return m.Success ? m.Groups[1].Value : null;
+    }
+
+    // ------------------------------------------------------------------ pesquisa
+
+    /// <summary>Id do botão Pesquisar, localizado pelo <c>title</c> (não pelo j_id).</summary>
+    public static string? BotaoPesquisar(IHtmlDocument doc)
+    {
+        var el = doc.QuerySelectorAll("[title='Pesquisar']")
+            .FirstOrDefault(e => (e.Id ?? string.Empty).StartsWith("form0:", StringComparison.Ordinal));
+        return el?.Id;
+    }
+
+    /// <summary>Quantas páginas o <c>rich:datascroller</c> expõe. 5 = provável corte em 100.</summary>
+    public static int PaginasNaResposta(IHtmlDocument doc)
+    {
+        var tab = doc.GetElementById($"{Scroller}_table");
+        if (tab is null) return 0;
+
+        var numeros = tab.QuerySelectorAll("td")
+            .Select(td => td.TextContent.Trim())
+            .Where(t => int.TryParse(t, out _))
+            .Select(int.Parse)
+            .ToList();
+
+        return numeros.Count > 0 ? numeros.Max() : 1;
+    }
+
+    /// <summary>Lê a grade "Solicitações de Consulta ou Exame".</summary>
+    public static IReadOnlyList<SerLinhaGrade> LerGrade(IHtmlDocument doc)
+    {
+        var tabela = doc.GetElementById(TabelaGrade);
+        if (tabela is null) return [];
+
+        var colunas = CabecalhoUtil(tabela);
+        var linhas = new List<SerLinhaGrade>();
+
+        foreach (var tr in tabela.QuerySelectorAll("tbody tr"))
+        {
+            var celulas = tr.QuerySelectorAll("td").Select(td => Texto(td)).ToList();
+            if (celulas.Count < 5) continue;
+
+            var mapa = Alinhar(colunas, celulas);
+            var id = Valor(mapa, "ID");
+            var paciente = Valor(mapa, "Paciente");
+            if (string.IsNullOrWhiteSpace(id) && string.IsNullOrWhiteSpace(paciente)) continue;
+            // Cabeçalho repetido dentro do tbody (o RichFaces faz isso) — ID não é numérico.
+            if (!string.IsNullOrWhiteSpace(id) && !id.All(char.IsDigit)) continue;
+
+            linhas.Add(new SerLinhaGrade
+            {
+                IdSer = id ?? string.Empty,
+                Tipo = Valor(mapa, "Tipo"),
+                Recurso = Valor(mapa, "Recurso"),
+                DataSolicitacao = Valor(mapa, "Data da Solicitação"),
+                Paciente = paciente,
+                Idade = Valor(mapa, "Idade"),
+                Cpf = Valor(mapa, "CPF"),
+                Cns = Valor(mapa, "CNS"),
+                Cid = Valor(mapa, "CID"),
+                Solicitante = Valor(mapa, "Solicitante"),
+                MunicipioSolicitante = Valor(mapa, "Município Solicitante"),
+                AgendadoPara = Valor(mapa, "Agendado para"),
+                Situacao = Valor(mapa, "Situação"),
+            });
+        }
+
+        return linhas;
+    }
+
+    // ------------------------------------------------------------------ tela de export
+
+    /// <summary>Mensagens que a tela devolve em <c>form0:messages</c> (avisos e erros do SER).</summary>
+    public static IReadOnlyList<string> Mensagens(IHtmlDocument doc)
+    {
+        var caixa = doc.GetElementById(CaixaMensagens);
+        if (caixa is null) return [];
+        return caixa.QuerySelectorAll("li")
+            .Select(Texto)
+            .Where(t => t.Length > 0)
+            .ToList();
+    }
+
+    /// <summary>
+    /// O que a tela está exibindo ao operador, venha de onde vier.
+    ///
+    /// <para>O SER usa <b>duas</b> caixas: <c>form0:messages</c> (avisos da busca) e
+    /// <c>form0:divMensagens</c> (o retorno das ações — é onde sai tanto <i>"FollowUp
+    /// registrado!"</i> quanto <i>"Consulta ou Exame é obrigatório."</i>). Ler só uma delas faz
+    /// uma ação recusada parecer silenciosa.</para>
+    /// </summary>
+    public static string MensagemDaTela(IHtmlDocument doc)
+    {
+        var partes = new List<string>();
+        foreach (var id in new[] { CaixaMensagens, "form0:divMensagens" })
+        {
+            if (doc.GetElementById(id) is { } caixa && Texto(caixa) is { Length: > 0 } t)
+            {
+                partes.Add(t);
+            }
+        }
+        return string.Join(" | ", partes.Distinct(StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// Aviso de corte da tela de Histórico, ou <c>null</c> quando o resultado veio inteiro.
+    ///
+    /// <para>Essa tela <b>avisa</b> quando trunca — <i>"Consulta muito ampla, retorno limitado em
+    /// 500 resultados"</i> — ao contrário da tela de Solicitação, que corta em 100 calada. Usar o
+    /// aviso como sinal é o que permite afirmar cobertura: sem aviso, o lote é completo. Inferir
+    /// truncamento por contagem de linhas seria adivinhação (500 exatos podem ser o total real).</para>
+    /// </summary>
+    public static string? AvisoDeLimite(IHtmlDocument doc) =>
+        Mensagens(doc).FirstOrDefault(m =>
+            m.Contains("retorno limitado", StringComparison.OrdinalIgnoreCase)
+            || m.Contains("muito ampla", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// <c>name</c> do <c>&lt;select&gt;</c> do form que oferece determinada <c>&lt;option&gt;</c>,
+    /// ou <c>null</c>.
+    ///
+    /// <para>Serve para achar combos cujo id é opaco — o de Situação da tela de Histórico se chama
+    /// <c>form0:j_id57</c>, e <c>j_id</c> é posicional: basta a SES-RJ recompilar a página para ele
+    /// virar outro campo. Procurar pelo <i>conteúdo</i> (quem tem a opção <c>EM_FILA</c> é o combo
+    /// de situação) é estável e ainda valida que o combo é mesmo o esperado.</para>
+    /// </summary>
+    public static string? SelectComOpcao(IHtmlDocument doc, string formId, string valorDeOpcao)
+    {
+        if (doc.GetElementById(formId) is not IHtmlFormElement form) return null;
+
+        foreach (var el in form.QuerySelectorAll("select"))
+        {
+            if (el is not IHtmlSelectElement select || string.IsNullOrEmpty(select.Name)) continue;
+
+            var tem = select.QuerySelectorAll("option")
+                .Any(o => string.Equals(o.GetAttribute("value"), valorDeOpcao, StringComparison.Ordinal));
+
+            if (tem) return select.Name;
+        }
+
+        return null;
+    }
+
+    /// <summary>Id do link "Exportar", localizado pelo <c>title</c> — nunca pelo <c>j_id</c>.</summary>
+    public static string? BotaoExportar(IHtmlDocument doc)
+    {
+        var el = doc.QuerySelectorAll("a[title]")
+            .FirstOrDefault(e =>
+                (e.Id ?? string.Empty).StartsWith("form0:", StringComparison.Ordinal)
+                && (e.GetAttribute("title") ?? string.Empty)
+                    .Contains("Exportar", StringComparison.OrdinalIgnoreCase));
+        return el?.Id;
+    }
+
+    /// <summary>
+    /// Localiza o <c>rich:suggestionbox</c> amarrado a um campo de texto, lendo os ids do script
+    /// <c>new RichFaces.Suggestion('form0','&lt;campo&gt;','&lt;box&gt;',{...})</c> que a própria
+    /// página traz. O id do <c>onselect</c> sai do bloco <c>'parameters':{'&lt;box&gt;:j_idNN':...}</c>
+    /// dentro do handler — é o <c>a4j:support</c> que faz o servidor gravar a escolha na conversa.
+    /// </summary>
+    public static SerSuggestionBox? SuggestionBoxDoCampo(string html, string campoTexto)
+    {
+        var box = Regex.Match(html,
+            @"RichFaces\.Suggestion\(\s*'[^']*'\s*,\s*'" + Regex.Escape(campoTexto) + @"'\s*,\s*'([^']+)'");
+        if (!box.Success) return null;
+
+        var boxId = box.Groups[1].Value;
+
+        // `'form0:j_id37:j_id42':'form0:j_id37:j_id42'` — o parâmetro do onselect é o único cujo
+        // nome é o PRÓPRIO box seguido de mais um segmento. O parâmetro do fetch ('form0:j_id37')
+        // não tem o segmento extra e não casa.
+        var onselect = Regex.Match(html,
+            @"'(" + Regex.Escape(boxId) + @":[A-Za-z_]\w*)'\s*:\s*'\1'");
+        if (!onselect.Success) return null;
+
+        return new SerSuggestionBox(campoTexto, boxId, onselect.Groups[1].Value);
+    }
+
+    /// <summary>
+    /// Linhas da tabela de sugestões (<c>&lt;box&gt;:suggest</c>) na <b>ordem do DOM</b>, cada uma
+    /// como lista de células. <c>null</c> quando a resposta não trouxe a tabela (aí não houve
+    /// autocomplete nenhum — o chamador decide falhar, nunca seguir sem filtro).
+    ///
+    /// <para>A posição da linha nessa ordem é exatamente o índice que o RichFaces escreve no
+    /// hidden <c>_selection</c> ao clicar (<c>selectEntry</c> usa <c>tbody.childNodes[i]</c>).</para>
+    /// </summary>
+    public static IReadOnlyList<IReadOnlyList<string>>? LinhasDeSugestao(IHtmlDocument doc, string boxId)
+    {
+        var tabela = doc.GetElementById($"{boxId}:suggest");
+        if (tabela is null) return null;
+
+        var corpo = tabela.QuerySelector("tbody") ?? tabela;
+        return corpo.Children
+            .Where(tr => tr.TagName.Equals("TR", StringComparison.OrdinalIgnoreCase))
+            .Select(tr => (IReadOnlyList<string>)tr.QuerySelectorAll("td").Select(Texto).ToList())
+            .ToList();
+    }
+
+    // ------------------------------------------------------------------ menu Opções
+
+    /// <summary>
+    /// Id do item "Histórico da Solicitação" do menu Opções da linha, ou <c>null</c> quando a
+    /// linha não oferece o item.
+    ///
+    /// <para><b>Sem fallback de propósito.</b> O menu MUDA por situação: "Em fila" tem
+    /// Visualizar/Editar/Histórico/Cancelar/Registrar FollowUP; "Alta" não tem histórico nenhum.
+    /// Chutar um <c>j_id</c> fixo faz o SER responder página vazia sem erro.</para>
+    /// </summary>
+    public static string? ItemHistorico(IHtmlDocument doc, int indiceNaPagina)
+    {
+        var prefixo = $"form0:listagem:{indiceNaPagina}:";
+        return doc.QuerySelectorAll("a")
+            .Where(a => (a.Id ?? string.Empty).StartsWith(prefixo, StringComparison.Ordinal))
+            .FirstOrDefault(a => a.TextContent.Contains("Historico da Solicita", StringComparison.OrdinalIgnoreCase)
+                              || a.TextContent.Contains("Histórico da Solicita", StringComparison.OrdinalIgnoreCase))
+            ?.Id;
+    }
+
+    /// <summary>Itens do menu Opções de uma linha (rótulo → id). Diagnóstico e mensagem de erro.</summary>
+    public static IReadOnlyDictionary<string, string> ItensDeOpcoes(IHtmlDocument doc, int indiceNaPagina)
+    {
+        var prefixo = $"form0:listagem:{indiceNaPagina}:";
+        var itens = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var a in doc.QuerySelectorAll("a"))
+        {
+            if (!(a.Id ?? string.Empty).StartsWith(prefixo, StringComparison.Ordinal)) continue;
+            var rotulo = a.TextContent.Trim();
+            if (rotulo.Length > 0) itens[rotulo] = a.Id!;
+        }
+        return itens;
+    }
+
+    // ------------------------------------------------------------------ FollowUP
+
+    /// <summary>Item "Registrar FollowUP" do menu Opções de uma linha (docs/ser.md §9).</summary>
+    public static string? ItemFollowUp(IHtmlDocument doc, int indiceNaPagina)
+    {
+        var prefixo = $"form0:listagem:{indiceNaPagina}:";
+        return doc.QuerySelectorAll("a")
+            .Where(a => (a.Id ?? string.Empty).StartsWith(prefixo, StringComparison.Ordinal))
+            // O SER escreve "Registrar FollowUP"; toleramos caixa e hífen, como o resto do motor.
+            .FirstOrDefault(a => a.TextContent
+                .Replace("-", string.Empty)
+                .Contains("followup", StringComparison.OrdinalIgnoreCase))
+            ?.Id;
+    }
+
+    /// <summary>
+    /// O modal de observação do FollowUP, resolvido na hora.
+    ///
+    /// <para><b>Ele tem form PRÓPRIO</b> — não é o <c>form0</c> — e o Gravar dele é POST comum,
+    /// sem <c>AJAXREQUEST</c>. Os três ids (form, textarea, botão) são posicionais e mudam quando
+    /// a SES-RJ recompila, por isso nada aqui é chumbado: o form é achado por ser o único que tem
+    /// um <c>textarea</c> nomeado E um controle rotulado <i>Gravar</i>.</para>
+    /// </summary>
+    public static SerModalObservacao? ModalDeObservacao(IHtmlDocument doc)
+    {
+        foreach (var form in doc.QuerySelectorAll("form").OfType<IHtmlFormElement>())
+        {
+            if (string.IsNullOrEmpty(form.Id)) continue;
+
+            var textarea = form.QuerySelectorAll("textarea")
+                .FirstOrDefault(t => !string.IsNullOrEmpty(t.GetAttribute("name")));
+            if (textarea is null) continue;
+
+            var gravar = form.QuerySelectorAll("a, input")
+                .FirstOrDefault(e => string.Equals(
+                    (e.GetAttribute("title") ?? e.GetAttribute("value") ?? e.TextContent).Trim(),
+                    "Gravar", StringComparison.OrdinalIgnoreCase));
+            if (gravar is null) continue;
+
+            var nomeGravar = gravar.GetAttribute("name") ?? gravar.Id;
+            if (string.IsNullOrEmpty(nomeGravar)) continue;
+
+            return new SerModalObservacao(
+                form.Id!,
+                textarea.GetAttribute("name")!,
+                nomeGravar,
+                (form.QuerySelector("input[name='javax.faces.ViewState']") as IHtmlInputElement)?.Value);
+        }
+
+        return null;
+    }
+
+    // ------------------------------------------------------------------ edição de contato
+
+    /// <summary>Item "Editar" do menu Opções de uma linha. Situações terminais não o oferecem
+    /// (medido em 18/08/2026: Cancelada só tem Visualizar, Histórico e Registrar FollowUP).</summary>
+    public static string? ItemEditar(IHtmlDocument doc, int indiceNaPagina)
+    {
+        var prefixo = $"form0:listagem:{indiceNaPagina}:";
+        return doc.QuerySelectorAll("a")
+            .Where(a => (a.Id ?? string.Empty).StartsWith(prefixo, StringComparison.Ordinal))
+            .FirstOrDefault(a => string.Equals(Texto(a), "Editar", StringComparison.OrdinalIgnoreCase))
+            ?.Id;
+    }
+
+    /// <summary>
+    /// Campo de um form localizado pelo RÓTULO visível (o <c>&lt;label&gt;</c> irmão), devolvendo
+    /// <c>(name, valor)</c>.
+    ///
+    /// <para><b>Por que não pelo id:</b> dois dos três telefones da tela de edição não têm
+    /// <c>id</c>, só <c>name</c> posicional (<c>form0:j_id173</c> residencial e
+    /// <c>form0:j_id178</c> WhatsApp, medidos em 10/08/2026). Chumbar esses números gravaria no
+    /// campo errado na próxima recompilação da SES-RJ — sem erro nenhum.</para>
+    ///
+    /// <para>Campo <c>disabled</c> é ignorado: o navegador não o envia, e o SER usa isso para
+    /// travar a identidade do paciente.</para>
+    /// </summary>
+    public static (string Nome, string Valor)? CampoPorRotulo(
+        IHtmlDocument doc, string formId, string rotulo)
+    {
+        if (doc.GetElementById(formId) is not IHtmlFormElement form) return null;
+
+        var alvo = NormalizarRotulo(rotulo);
+        foreach (var el in form.QuerySelectorAll("input, textarea"))
+        {
+            var nome = el.GetAttribute("name");
+            if (string.IsNullOrEmpty(nome) || el.HasAttribute("disabled")) continue;
+
+            // Campo sem rótulo visível nunca é alvo. Sem isto, o hidden `form0` (cujo pai é o
+            // próprio <form>) casava com o PRIMEIRO <label> da tela inteira e devolvia o campo
+            // errado — e o POST gravaria um telefone dentro do marcador do form.
+            var tipo = (el.GetAttribute("type") ?? "text").ToLowerInvariant();
+            if (tipo is "hidden" or "submit" or "button" or "image" or "reset") continue;
+
+            // O rótulo tem de ser DESTE campo, sem ambiguidade: um contêiner com mais de um
+            // controle não diz a qual deles o <label> pertence. Medido em 19/08/2026 na aba
+            // Editar: `form0:especialidadeMedico` divide o <div> com o telefone do médico e
+            // "casava" com o rótulo dele — um telefone gravado ali iria para a especialidade,
+            // com o SER respondendo sucesso.
+            var pai = el.ParentElement;
+            if (pai is null) continue;
+            if (pai.QuerySelectorAll("input, select, textarea").Length != 1) continue;
+
+            // FILHO DIRETO, não descendente: `QuerySelector` varre a subárvore toda e, num campo
+            // pendurado direto no <form>, acharia o rótulo de outro campo.
+            var label = pai.Children
+                .FirstOrDefault(f => string.Equals(f.TagName, "LABEL", StringComparison.OrdinalIgnoreCase));
+            if (label is null) continue;
+            if (!string.Equals(NormalizarRotulo(Texto(label)), alvo, StringComparison.Ordinal)) continue;
+
+            var valor = el is IHtmlInputElement input ? input.Value : el.TextContent;
+            return (nome, (valor ?? string.Empty).Trim());
+        }
+
+        return null;
+    }
+
+    /// <summary>Rótulos do SER vêm com asterisco de obrigatório, dois-pontos e espaço solto
+    /// (inclusive NBSP, que o HTML deles usa à vontade).</summary>
+    private static string NormalizarRotulo(string texto) =>
+        RegexEspacos()
+            .Replace(texto.Replace("*", string.Empty).Replace(' ', ' '), " ")
+            .Trim()
+            .Trim(':')
+            .Trim()
+            .ToLowerInvariant();
+
+    /// <summary>O <c>&lt;a title="Gravar"&gt;</c> DAQUELE form — a tela tem outros, em modais.</summary>
+    public static string? BotaoGravar(IHtmlDocument doc, string formId)
+    {
+        var prefixo = formId + ":";
+        return doc.QuerySelectorAll("a[title='Gravar']")
+            .FirstOrDefault(a => (a.Id ?? string.Empty).StartsWith(prefixo, StringComparison.Ordinal))
+            ?.Id;
+    }
+
+    /// <summary>
+    /// A REGIÃO A4J que o próprio botão declara no <c>onclick</c>
+    /// (<c>A4J.AJAX.Submit('form0', …)</c>).
+    ///
+    /// <para>Ler da página em vez de chumbar <c>_viewRoot</c>: a região decide qual pedaço da
+    /// árvore JSF é processado, e mandar a errada não é "mais abrangente" — é outra coisa.</para>
+    /// </summary>
+    public static string? RegiaoDoBotao(string html, string idBotao)
+    {
+        var m = Regex.Match(
+            html,
+            "<a[^>]*id=\"" + Regex.Escape(idBotao) + "\"[^>]*>",
+            RegexOptions.None,
+            TimeSpan.FromSeconds(2));
+        if (!m.Success) return null;
+
+        var regiao = Regex.Match(m.Value, @"A4J\.AJAX\.Submit\(\s*'([^']+)'");
+        return regiao.Success ? regiao.Groups[1].Value : null;
+    }
+
+    // ------------------------------------------------------------------ histórico
+
+    /// <summary>Lê a tela de histórico: dados do paciente + trilha de eventos.</summary>
+    public static SerHistorico LerHistorico(IHtmlDocument doc)
+    {
+        // Dados do paciente: inputs readonly com id volátil. Casamos pelo <label> do MESMO <td>
+        // — assim a extração sobrevive a uma recompilação da página.
+        var paciente = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var td in doc.QuerySelectorAll("td"))
+        {
+            var label = td.QuerySelector("label");
+            var input = td.QuerySelector("input") as IHtmlInputElement;
+            if (label is null || input is null) continue;
+
+            var chave = Texto(label);
+            var valor = (input.Value ?? string.Empty).Trim();
+            if (chave.Length > 0 && valor.Length > 0) paciente[chave] = valor;
+        }
+
+        var eventos = new List<SerEventoLido>();
+        var tabela = doc.GetElementById(TabelaHistorico);
+        if (tabela is not null)
+        {
+            var colunas = CabecalhoUtil(tabela);
+            foreach (var tr in tabela.QuerySelectorAll("tbody tr"))
+            {
+                var celulas = tr.QuerySelectorAll("td").Select(td => Texto(td)).ToList();
+                if (celulas.Count == 0 || celulas.All(string.IsNullOrWhiteSpace)) continue;
+
+                var mapa = Alinhar(colunas, celulas);
+                var data = Valor(mapa, "Data");
+
+                // O tbody REPETE o cabeçalho e traz linhas-tooltip só com a observação.
+                // Só é evento de verdade quem tem data dd/MM/yyyy.
+                if (string.IsNullOrWhiteSpace(data) || !RegexDataHora().IsMatch(data)) continue;
+
+                eventos.Add(new SerEventoLido
+                {
+                    Data = data,
+                    Evento = Valor(mapa, "Evento"),
+                    EstadoAnterior = Valor(mapa, "Estado Anterior"),
+                    EstadoAtual = Valor(mapa, "Estado Atual"),
+                    CentralRegulacao = Valor(mapa, "Central regulação"),
+                    UnidadeExecutora = Valor(mapa, "Unidade Executora"),
+                    Usuario = Valor(mapa, "Usuário"),
+                    LotacaoEvento = Valor(mapa, "Lotacao Evento"),
+                    Ip = Valor(mapa, "IP"),
+                    Observacao = Valor(mapa, "Observação"),
+                });
+            }
+        }
+
+        return new SerHistorico(paciente, eventos);
+    }
+
+    // ------------------------------------------------------------------ util
+
+    /// <summary>Linha de cabeçalho com nomes de coluna (a grade tem antes uma linha de título
+    /// mesclado com o nome da tabela).</summary>
+    private static List<string> CabecalhoUtil(IElement tabela)
+    {
+        var melhor = new List<string>();
+        foreach (var tr in tabela.QuerySelectorAll("thead tr"))
+        {
+            var ths = tr.QuerySelectorAll("th").Select(th => Texto(th)).ToList();
+            if (ths.Count > melhor.Count) melhor = ths;
+        }
+        return melhor;
+    }
+
+    /// <summary>
+    /// Casa nomes de coluna com células alinhando pelo FIM. A 1ª coluna do thead costuma ser o
+    /// título mesclado da grade e as linhas de dados têm uma célula a menos.
+    /// </summary>
+    private static Dictionary<string, string> Alinhar(List<string> colunas, List<string> celulas)
+    {
+        var nomes = colunas.Count >= celulas.Count
+            ? colunas.Skip(colunas.Count - celulas.Count).ToList()
+            : colunas;
+
+        var mapa = new Dictionary<string, string>(StringComparer.Ordinal);
+        for (var i = 0; i < celulas.Count && i < nomes.Count; i++)
+        {
+            var nome = nomes[i];
+            if (!string.IsNullOrWhiteSpace(nome) && !mapa.ContainsKey(nome)) mapa[nome] = celulas[i];
+        }
+        return mapa;
+    }
+
+    /// <summary>Busca tolerante: o SER põe o ícone de ordenação dentro do &lt;th&gt;, então o
+    /// nome da coluna vem com sujeira ("ID ⇕").</summary>
+    private static string? Valor(Dictionary<string, string> mapa, string coluna)
+    {
+        if (mapa.TryGetValue(coluna, out var direto)) return Limpar(direto);
+        var chave = mapa.Keys.FirstOrDefault(k =>
+            k.StartsWith(coluna, StringComparison.OrdinalIgnoreCase)
+            || k.Contains(coluna, StringComparison.OrdinalIgnoreCase));
+        return chave is null ? null : Limpar(mapa[chave]);
+    }
+
+    private static string? Limpar(string? v) => string.IsNullOrWhiteSpace(v) ? null : v.Trim();
+
+    private static string Texto(IElement el) =>
+        RegexEspacos().Replace(el.TextContent.Replace(' ', ' '), " ").Trim();
+
+    [GeneratedRegex(@"name=""javax\.faces\.ViewState""[^>]*value=""([^""]*)""")]
+    private static partial Regex RegexViewState();
+
+    [GeneratedRegex(@"<meta name=""Location"" content=""([^""]+)""")]
+    private static partial Regex RegexMetaLocation();
+
+    [GeneratedRegex(@"<form id=""(j_id\d+)""[^>]*action=""/ser/home""")]
+    private static partial Regex RegexFormModulo();
+
+    [GeneratedRegex(@"^\d{2}/\d{2}/\d{4}")]
+    private static partial Regex RegexDataHora();
+
+    [GeneratedRegex(@"\s+")]
+    private static partial Regex RegexEspacos();
+}

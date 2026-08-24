@@ -1,4 +1,4 @@
-using SMSMarica.Core.Common.Unidades;
+using SMSMais.Core.Common.Unidades;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Conversas;

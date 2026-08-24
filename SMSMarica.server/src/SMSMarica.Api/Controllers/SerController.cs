@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
-using SMSMarica.Core.Identidade;
-using SMSMarica.Core.Ser;
-using SMSMarica.Core.Ser.Dtos;
-using SMSMarica.Core.Ser.Sessao;
+using SMSMais.Core.Identidade;
+using SMSMais.Core.Ser;
+using SMSMais.Core.Ser.Dtos;
+using SMSMais.Core.Ser.Sessao;
 using SMSMais.Data.Entities.Enums;
 using SMSMais.Data.Entities.Ser;
 
@@ -154,13 +154,13 @@ public sealed class SerSessaoOperadorController(
     /// <summary>A SESSÃO (jti), não o usuário: é o que faz sair-e-entrar começar do zero.</summary>
     private string Sessao() =>
         usuarioAtual.SessaoId
-        ?? throw new SMSMarica.Core.Common.Excecoes.ValidacaoException(
+        ?? throw new SMSMais.Core.Common.Excecoes.ValidacaoException(
             "ser.sem_operador",
             "Escrita no SER exige um usuário autenticado — a ação é assinada por quem a fez.");
 
     private Guid Operador() =>
         usuarioAtual.UsuarioId
-        ?? throw new SMSMarica.Core.Common.Excecoes.ValidacaoException(
+        ?? throw new SMSMais.Core.Common.Excecoes.ValidacaoException(
             "ser.sem_operador",
             "Escrita no SER exige um usuário autenticado — a ação é assinada por quem a fez.");
 }
@@ -332,8 +332,8 @@ public sealed class SerConfiguracaoController(
     public async Task<SerPacienteEncontradoDto> PesquisarPacienteNoSer(
         [FromQuery] string documento,
         [FromServices] ISerNovaSolicitacaoService nova,
-        [FromServices] Core.Pacientes.IPacientesService pacientes,
-        [FromServices] Core.Pacientes.Fhir.IPacienteResolver resolver,
+        [FromServices] SMSMais.Core.Pacientes.IPacientesService pacientes,
+        [FromServices] SMSMais.Core.Pacientes.Fhir.IPacienteResolver resolver,
         CancellationToken cancellationToken)
     {
         var doSer = await nova.PesquisarPacienteAsync(documento, cancellationToken);
@@ -420,7 +420,7 @@ public sealed class SerConfiguracaoController(
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public IActionResult SincronizarCatalogo(
         [FromQuery] bool refazerTudo,
-        [FromServices] SMSMarica.Core.Ser.Background.ISerCatalogoSyncFila fila)
+        [FromServices] SMSMais.Core.Ser.Background.ISerCatalogoSyncFila fila)
     {
         // Responde na hora: a cópia roda em segundo plano e a tela acompanha pelo progresso.
         if (!fila.TentarEnfileirar(refazerTudo))
@@ -601,7 +601,7 @@ public sealed class SerPacientesController : ControllerBase
             try
             {
                 var svc = escopo.ServiceProvider
-                    .GetRequiredService<Core.Ser.Pacientes.ISerBackfillPacientesService>();
+                    .GetRequiredService<SMSMais.Core.Ser.Pacientes.ISerBackfillPacientesService>();
                 await svc.ExecutarAsync(throttleMs, CancellationToken.None);
             }
             catch (Exception ex)

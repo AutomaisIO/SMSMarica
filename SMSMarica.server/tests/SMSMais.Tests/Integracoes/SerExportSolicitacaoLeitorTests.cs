@@ -1,10 +1,10 @@
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
-using SMSMarica.Core.Common.Excecoes;
-using SMSMarica.Core.Integracoes.SerWeb;
-using SMSMarica.Core.Integracoes.SerWeb.Varredura;
-using SMSMarica.Core.Integracoes.SerWeb.Varredura.Export;
+using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.Integracoes.SerWeb;
+using SMSMais.Core.Integracoes.SerWeb.Varredura;
+using SMSMais.Core.Integracoes.SerWeb.Varredura.Export;
 using SMSMais.Data.Entities.Ser;
 
 namespace SMSMais.Tests.Integracoes;

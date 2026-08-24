@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
-using SMSMarica.Core.Consultas;
-using SMSMarica.Core.Consultas.Dtos;
-using SMSMarica.Core.SolicitacoesExame;
-using SMSMarica.Core.SolicitacoesExame.Dtos;
+using SMSMais.Core.Consultas;
+using SMSMais.Core.Consultas.Dtos;
+using SMSMais.Core.SolicitacoesExame;
+using SMSMais.Core.SolicitacoesExame.Dtos;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
@@ -56,7 +56,7 @@ public sealed class ConsultasController(
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> ReenviarComunicacao(
         Guid id, Guid comunicacaoId,
-        [FromServices] Core.Notificacoes.Comunicacao.IComunicacaoPacienteService comunicacoes,
+        [FromServices] SMSMais.Core.Notificacoes.Comunicacao.IComunicacaoPacienteService comunicacoes,
         CancellationToken cancellationToken)
     {
         await comunicacoes.ReenviarAsync(id, comunicacaoId, cancellationToken);

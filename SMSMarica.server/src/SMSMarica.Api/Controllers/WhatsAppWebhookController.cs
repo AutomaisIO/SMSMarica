@@ -2,8 +2,8 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SMSMarica.Core.Notificacoes.WhatsApp;
-using SMSMarica.Core.Tfd.Configuracao;
+using SMSMais.Core.Notificacoes.WhatsApp;
+using SMSMais.Core.Tfd.Configuracao;
 
 namespace SMSMarica.Api.Controllers;
 

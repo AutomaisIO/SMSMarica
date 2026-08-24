@@ -1,4 +1,4 @@
-using SMSMarica.Core.Laudos.BiRads;
+using SMSMais.Core.Laudos.BiRads;
 
 namespace SMSMais.Tests.Laudos;
 

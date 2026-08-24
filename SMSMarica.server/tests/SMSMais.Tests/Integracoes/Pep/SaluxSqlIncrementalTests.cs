@@ -1,5 +1,5 @@
-using SMSMarica.Core.Integracoes.Pep.Estrategias.Salux;
-using SMSMarica.Core.Integracoes.Pep.Leitura;
+using SMSMais.Core.Integracoes.Pep.Estrategias.Salux;
+using SMSMais.Core.Integracoes.Pep.Leitura;
 
 namespace SMSMais.Tests.Integracoes.Pep;
 

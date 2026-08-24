@@ -1,11 +1,11 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using SMSMarica.Core.Identidade;
-using SMSMarica.Core.Identidade.Dtos;
-using SMSMarica.Core.PainelInicio;
-using SMSMarica.Core.PainelInicio.Dtos;
-using SMSMarica.Core.Pacientes.Fhir;
-using SMSMarica.Core.SolicitacoesExame.Dtos;
+using SMSMais.Core.Identidade;
+using SMSMais.Core.Identidade.Dtos;
+using SMSMais.Core.PainelInicio;
+using SMSMais.Core.PainelInicio.Dtos;
+using SMSMais.Core.Pacientes.Fhir;
+using SMSMais.Core.SolicitacoesExame.Dtos;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Conversas;

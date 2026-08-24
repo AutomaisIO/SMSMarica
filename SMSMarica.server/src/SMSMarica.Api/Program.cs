@@ -25,8 +25,8 @@ using SMSMarica.Api.Realtime;
 using Serilog;
 using SMSMarica.Api.Auth;
 using SMSMarica.Api.Middleware;
-using SMSMarica.Core;
-using SMSMarica.Core.Identidade;
+using SMSMais.Core;
+using SMSMais.Core.Identidade;
 using SMSMais.Data;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -64,24 +64,24 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 
 builder.Services.AddFluentValidationAutoValidation()
     .AddFluentValidationClientsideAdapters();
-builder.Services.AddValidatorsFromAssembly(typeof(SMSMarica.Core.DependencyInjection).Assembly);
+builder.Services.AddValidatorsFromAssembly(typeof(SMSMais.Core.DependencyInjection).Assembly);
 
 builder.Services.AddData(builder.Configuration);
 builder.Services.AddCore(builder.Configuration);
 
 // fo-dicom: registra os codecs nativos (JPEG-LS Lossless) usados pela transcodificação
 // do proxy PACS. Idempotente; a flag Pacs:Compressao:Habilitado controla o uso efetivo.
-SMSMarica.Core.Pacs.PacsDicomSetup.Inicializar();
+SMSMais.Core.Pacs.PacsDicomSetup.Inicializar();
 
 // Tempo real (TFD): SignalR + notificador concreto (sobrescreve o no-op do Core).
 builder.Services.AddSignalR();
-builder.Services.AddScoped<SMSMarica.Core.Rastreamento.IRastreamentoNotificador, SMSMarica.Api.Realtime.RastreamentoNotificadorSignalR>();
+builder.Services.AddScoped<SMSMais.Core.Rastreamento.IRastreamentoNotificador, SMSMarica.Api.Realtime.RastreamentoNotificadorSignalR>();
 
 // Tempo real (Conversas/chat): notificador concreto (sobrescreve o no-op do Core).
-builder.Services.AddScoped<SMSMarica.Core.Conversas.IConversaNotificador, SMSMarica.Api.Realtime.ConversaNotificadorSignalR>();
+builder.Services.AddScoped<SMSMais.Core.Conversas.IConversaNotificador, SMSMarica.Api.Realtime.ConversaNotificadorSignalR>();
 
 // Token JWT do paciente (login CPF + OTP do PWA).
-builder.Services.AddScoped<SMSMarica.Core.Cidadao.IPacienteTokenService, SMSMarica.Api.Auth.PacienteTokenService>();
+builder.Services.AddScoped<SMSMais.Core.Cidadao.IPacienteTokenService, SMSMarica.Api.Auth.PacienteTokenService>();
 
 // Módulo IA: cifragem de segredos (token do provedor, senha das bases) em repouso.
 //
@@ -106,7 +106,7 @@ if (!string.IsNullOrWhiteSpace(nomeAplicacaoProtecao))
 {
     protecaoDados.SetApplicationName(nomeAplicacaoProtecao);
 }
-builder.Services.AddScoped<SMSMarica.Core.Inteligencia.Seguranca.IProtetorSegredos, SMSMarica.Api.Auth.ProtetorSegredos>();
+builder.Services.AddScoped<SMSMais.Core.Inteligencia.Seguranca.IProtetorSegredos, SMSMarica.Api.Auth.ProtetorSegredos>();
 
 // Agente IA — proxy para o motor Python em 127.0.0.1:5085. Cliente nomeado porque o
 // controller repassa JSON cru (o formato é contrato entre o motor e o painel). Timeout
@@ -170,7 +170,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 }
 
                 var sessoes = ctx.HttpContext.RequestServices
-                    .GetRequiredService<SMSMarica.Core.Cidadao.ICidadaoSessaoService>();
+                    .GetRequiredService<SMSMais.Core.Cidadao.ICidadaoSessaoService>();
                 var acesso = await sessoes.ValidarAcessoAsync(sessaoId, pacienteId, ctx.HttpContext.RequestAborted);
                 if (!acesso.SessaoValida)
                 {

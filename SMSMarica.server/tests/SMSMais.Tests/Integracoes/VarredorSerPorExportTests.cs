@@ -1,8 +1,8 @@
 using AngleSharp.Html.Dom;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
-using SMSMarica.Core.Integracoes.SerWeb;
-using SMSMarica.Core.Integracoes.SerWeb.Varredura.Export;
+using SMSMais.Core.Integracoes.SerWeb;
+using SMSMais.Core.Integracoes.SerWeb.Varredura.Export;
 using SMSMais.Data.Entities.Ser;
 
 namespace SMSMais.Tests.Integracoes;

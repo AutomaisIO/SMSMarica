@@ -1,12 +1,12 @@
 ﻿using System.Text.RegularExpressions;
 using Hl7.Fhir.Model;
 using Microsoft.Extensions.Logging.Abstractions;
-using SMSMarica.Core.Integracoes.Pep.Divergencias;
-using SMSMarica.Core.Integracoes.Pep.Estrategias;
-using SMSMarica.Core.Integracoes.Pep.Estrategias.Klinikos;
-using SMSMarica.Core.Integracoes.Pep.Fhir;
-using SMSMarica.Core.Integracoes.Pep.Progresso;
-using SMSMarica.Core.Inteligencia.Fontes;
+using SMSMais.Core.Integracoes.Pep.Divergencias;
+using SMSMais.Core.Integracoes.Pep.Estrategias;
+using SMSMais.Core.Integracoes.Pep.Estrategias.Klinikos;
+using SMSMais.Core.Integracoes.Pep.Fhir;
+using SMSMais.Core.Integracoes.Pep.Progresso;
+using SMSMais.Core.Inteligencia.Fontes;
 using SMSMais.Data.Entities.Enums;
 using Task = System.Threading.Tasks.Task;
 
@@ -907,9 +907,9 @@ public class KlinikosImportacaoFluxoTests
                 BaseSlug = Slug,
             }, CancellationToken.None);
 
-        await Assert.ThrowsAsync<SMSMarica.Core.Common.Excecoes.ValidacaoException>(() =>
+        await Assert.ThrowsAsync<SMSMais.Core.Common.Excecoes.ValidacaoException>(() =>
             Rodar(new OpcoesImportacao(ModoSincronizacao.Completo, EscopoSincronizacao.Tudo, null, null, ApagarAntes: true)));
-        await Assert.ThrowsAsync<SMSMarica.Core.Common.Excecoes.ValidacaoException>(() =>
+        await Assert.ThrowsAsync<SMSMais.Core.Common.Excecoes.ValidacaoException>(() =>
             Rodar(new OpcoesImportacao(ModoSincronizacao.Completo, EscopoSincronizacao.Tudo, null, null, false, CdsPacientes: [1, 2])));
     }
 
@@ -1103,7 +1103,7 @@ public class KlinikosImportacaoFluxoTests
     {
         var estrategia = new KlinikosImportacaoStrategy(NullLogger<KlinikosImportacaoStrategy>.Instance);
 
-        var ex = await Assert.ThrowsAsync<SMSMarica.Core.Common.Excecoes.ValidacaoException>(() =>
+        var ex = await Assert.ThrowsAsync<SMSMais.Core.Common.Excecoes.ValidacaoException>(() =>
             estrategia.ImportarAsync(new ContextoImportacaoPep
             {
                 Consulta = OrigemPadrao(),
@@ -1188,7 +1188,7 @@ public class KlinikosImportacaoFluxoTests
     {
         var estrategia = new KlinikosImportacaoStrategy(NullLogger<KlinikosImportacaoStrategy>.Instance);
 
-        var ex = await Assert.ThrowsAsync<SMSMarica.Core.Common.Excecoes.ValidacaoException>(() =>
+        var ex = await Assert.ThrowsAsync<SMSMais.Core.Common.Excecoes.ValidacaoException>(() =>
             estrategia.ImportarAsync(new ContextoImportacaoPep
             {
                 Consulta = OrigemPadrao(),
@@ -1566,7 +1566,7 @@ public class KlinikosImportacaoFluxoTests
     [InlineData("  ", null)]
     [InlineData("12", null)]          // abaixo do piso: não é número de conselho
     public void Regua_do_conselho(string bruto, string? esperado) =>
-        Assert.Equal(esperado, SMSMarica.Core.Integracoes.Pep.ConselhoPep.Normalizar(bruto));
+        Assert.Equal(esperado, SMSMais.Core.Integracoes.Pep.ConselhoPep.Normalizar(bruto));
 
     /// <summary>O total de falhas conta além do teto do detalhe — o detalhe é amostra, o número é exato.</summary>
     [Fact]

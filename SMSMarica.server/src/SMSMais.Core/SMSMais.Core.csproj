@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>SMSMais.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Testes unitários acessam tipos internos (ex.: PacienteFhirMapper). -->
+    <InternalsVisibleTo Include="SMSMais.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SMSMais.Data\SMSMais.Data.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.S3" />
+    <PackageReference Include="Hl7.Fhir.R4" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="Riok.Mapperly" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Microsoft.Extensions.Identity.Core" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+    <PackageReference Include="QuestPDF" />
+    <PackageReference Include="AngleSharp" />
+    <PackageReference Include="HtmlSanitizer" />
+    <PackageReference Include="PdfSharp" />
+    <PackageReference Include="QRCoder" />
+    <PackageReference Include="Pgvector" />
+    <PackageReference Include="Oracle.ManagedDataAccess.Core" />
+    <!-- Export da tela de Histórico do SER: .xls BIFF8 (OLE2), 500 linhas por lote. -->
+    <PackageReference Include="ExcelDataReader" />
+    <!-- DICOM: transcode JPEG-LS Lossless feito no NOSSO proxy (dcm4chee tem o compressor quebrado). -->
+    <PackageReference Include="fo-dicom" />
+    <PackageReference Include="fo-dicom.Codecs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Bases de conhecimento (.md) do módulo IA: copiadas para a saída p/ sync/embeddings. -->
+    <Content Include="Inteligencia/Conhecimento/Bases/**/*.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Logo institucional embutido (capa do PDF consolidado de imagens do exame). -->
+    <EmbeddedResource Include="Exames/Recursos/marica_logo.png" />
+  </ItemGroup>
+
+</Project>

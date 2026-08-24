@@ -1,4 +1,4 @@
-using SMSMarica.Core.Telefones;
+using SMSMais.Core.Telefones;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Tests.Telefones;

@@ -1,9 +1,9 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
-using SMSMarica.Core.Common.Excecoes;
-using SMSMarica.Core.Institucional;
-using SMSMarica.Core.Institucional.Dtos;
+using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.Institucional;
+using SMSMais.Core.Institucional.Dtos;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;

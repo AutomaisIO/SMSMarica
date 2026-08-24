@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
-using SMSMarica.Core.Identidade;
-using SMSMarica.Core.Identidade.Dtos;
+using SMSMais.Core.Identidade;
+using SMSMais.Core.Identidade.Dtos;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;

@@ -1,8 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
-using SMSMarica.Core.Conversas;
-using SMSMarica.Core.Identidade;
+using SMSMais.Core.Conversas;
+using SMSMais.Core.Identidade;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Hubs;

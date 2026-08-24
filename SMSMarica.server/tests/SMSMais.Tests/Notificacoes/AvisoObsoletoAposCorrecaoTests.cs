@@ -2,10 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
-using SMSMarica.Core.Cidadao;
-using SMSMarica.Core.Notificacoes.Comunicacao;
-using SMSMarica.Core.Notificacoes.WhatsApp;
-using SMSMarica.Core.Pacientes;
+using SMSMais.Core.Cidadao;
+using SMSMais.Core.Notificacoes.Comunicacao;
+using SMSMais.Core.Notificacoes.WhatsApp;
+using SMSMais.Core.Pacientes;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Enums;
@@ -34,7 +34,7 @@ public class AvisoObsoletoAposCorrecaoTests(PostgresFixture fixture)
             Substitute.For<IWhatsAppCliente>(),
             Options.Create(new ComunicacaoPacienteOptions()),
             new UsuarioAtualAccessorFake(),
-            Substitute.For<SMSMarica.Core.Telefones.IDispensaContatoService>(),
+            Substitute.For<SMSMais.Core.Telefones.IDispensaContatoService>(),
             NullLogger<ComunicacaoPacienteService>.Instance);
 
     private static async Task<ComunicacaoPaciente> SemearAvisoEnviadoAsync(

@@ -2,16 +2,16 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Api.Auth;
-using SMSMarica.Core.Atendimentos;
-using SMSMarica.Core.Atendimentos.Dtos;
-using SMSMarica.Core.Auditoria;
-using SMSMarica.Core.Auditoria.Dtos;
-using SMSMarica.Core.Cidadao;
-using SMSMarica.Core.Cidadao.Dtos;
-using SMSMarica.Core.Pacientes;
-using SMSMarica.Core.Pacientes.Agendamentos;
-using SMSMarica.Core.Pacientes.Agendamentos.Dtos;
-using SMSMarica.Core.Pacientes.Dtos;
+using SMSMais.Core.Atendimentos;
+using SMSMais.Core.Atendimentos.Dtos;
+using SMSMais.Core.Auditoria;
+using SMSMais.Core.Auditoria.Dtos;
+using SMSMais.Core.Cidadao;
+using SMSMais.Core.Cidadao.Dtos;
+using SMSMais.Core.Pacientes;
+using SMSMais.Core.Pacientes.Agendamentos;
+using SMSMais.Core.Pacientes.Agendamentos.Dtos;
+using SMSMais.Core.Pacientes.Dtos;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
@@ -251,7 +251,7 @@ public sealed class PacientesController(
             using var escopo = escopos.CreateScope();
             try
             {
-                var svc = escopo.ServiceProvider.GetRequiredService<Core.Pacientes.Promocao.IPromocaoBlobService>();
+                var svc = escopo.ServiceProvider.GetRequiredService<SMSMais.Core.Pacientes.Promocao.IPromocaoBlobService>();
                 await svc.PromoverTodosAsync(throttleMs, CancellationToken.None);
             }
             catch (Exception ex)

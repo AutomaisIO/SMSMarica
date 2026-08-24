@@ -3,8 +3,8 @@ using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using SMSMarica.Api.Auth;
-using SMSMarica.Core.Anexos;
-using SMSMarica.Core.Anexos.Dtos;
+using SMSMais.Core.Anexos;
+using SMSMais.Core.Anexos.Dtos;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;

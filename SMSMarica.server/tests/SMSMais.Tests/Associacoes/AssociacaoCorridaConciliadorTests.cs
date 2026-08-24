@@ -1,18 +1,18 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using SMSMarica.Core.Associacoes;
-using SMSMarica.Core.Associacoes.Dtos;
-using SMSMarica.Core.Laudos.Assinatura;
-using SMSMarica.Core.Notificacoes;
-using SMSMarica.Core.Notificacoes.Comunicacao;
-using SMSMarica.Core.Pacientes.Fhir;
-using SMSMarica.Core.Pacs;
-using SMSMarica.Core.SolicitacoesExame;
-using SMSMarica.Core.SolicitacoesExame.Identificadores;
-using SMSMarica.Core.Telefones;
-using SMSMarica.Core.Worklist;
-using SMSMarica.Core.Erros;
+using SMSMais.Core.Associacoes;
+using SMSMais.Core.Associacoes.Dtos;
+using SMSMais.Core.Laudos.Assinatura;
+using SMSMais.Core.Notificacoes;
+using SMSMais.Core.Notificacoes.Comunicacao;
+using SMSMais.Core.Pacientes.Fhir;
+using SMSMais.Core.Pacs;
+using SMSMais.Core.SolicitacoesExame;
+using SMSMais.Core.SolicitacoesExame.Identificadores;
+using SMSMais.Core.Telefones;
+using SMSMais.Core.Worklist;
+using SMSMais.Core.Erros;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Enums;
@@ -48,12 +48,12 @@ public class AssociacaoCorridaConciliadorTests(PostgresFixture fixture)
             Substitute.For<INotificadorExame>(),
             new UsuarioAtualAccessorFake(),
             Substitute.For<IPacienteResolver>(),
-            Substitute.For<SMSMarica.Core.Pacientes.IPacientesService>(),
+            Substitute.For<SMSMais.Core.Pacientes.IPacientesService>(),
             Substitute.For<IDispensaContatoService>(),
             new Lazy<ILaudoAssinaturaService>(() => Substitute.For<ILaudoAssinaturaService>()),
             new Lazy<IComunicacaoPacienteService>(() => Substitute.For<IComunicacaoPacienteService>()),
             Substitute.For<IRegistroErroService>(),
-            Substitute.For<SMSMarica.Core.Auditoria.IAuditoriaService>(),
+            Substitute.For<SMSMais.Core.Auditoria.IAuditoriaService>(),
             NullLogger<SolicitacoesExameService>.Instance);
 
         var identidades = Substitute.For<IResolvedorIdentidadeDicom>();

@@ -1,4 +1,4 @@
-using SMSMarica.Core.Integracoes.Proxy.Motores;
+using SMSMais.Core.Integracoes.Proxy.Motores;
 
 namespace SMSMais.Tests.Integracoes;
 

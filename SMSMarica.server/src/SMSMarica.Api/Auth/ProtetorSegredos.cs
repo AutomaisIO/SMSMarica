@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.DataProtection;
-using SMSMarica.Core.Inteligencia.Seguranca;
+using SMSMais.Core.Inteligencia.Seguranca;
 
 namespace SMSMarica.Api.Auth;
 

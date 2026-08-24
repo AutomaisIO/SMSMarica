@@ -1,5 +1,5 @@
 using FluentAssertions;
-using SMSMarica.Core.Notificacoes.Comunicacao;
+using SMSMais.Core.Notificacoes.Comunicacao;
 
 namespace SMSMais.Tests.Notificacoes;
 

@@ -40,7 +40,7 @@ As regras abaixo não podem ser violadas sem novo ADR.
 
 1. **Dois schemas: `smsmarica` (negócio, pt-BR) + `fhir` (canônico FHIR R4, en)** — [ADR-0001](./docs/adr/0001-schema-isolation.md) + [ADR-0007](./docs/adr/0007-schema-fhir-separado.md). Identidade do cidadão/profissional (Patient, Practitioner, identifiers, names, addresses, telecoms, contacts, photos, qualifications, consents, lookups) vive em `fhir.*` em inglês. Regras de negócio (Usuario/RBAC, Motorista, Tratamento, RotaDiaria, Laudo, SolicitacaoExame, etc.) vivem em `smsmarica.*` em pt-BR. `HasDefaultSchema("smsmarica")` continua + cada configuration FHIR chama `.ToTable(..., schema: "fhir")`. **FKs cross-schema só na direção `smsmarica → fhir`** (proibida a inversa). Um único `SmsMaisDbContext`.
 
-2. **Arquitetura 3-projetos** — [ADR-0004](./docs/adr/0004-arquitetura-tres-projetos.md). Backend é `SMSMais.Data` + `SMSMarica.Core` + `SMSMarica.Api`. Não criar projetos novos para "modular" subdomínios — usar pastas dentro de cada projeto. Quem quiser modular monolith de novo precisa de novo ADR. (ADR-0002 está **superseded**.)
+2. **Arquitetura 3-projetos** — [ADR-0004](./docs/adr/0004-arquitetura-tres-projetos.md). Backend é `SMSMais.Data` + `SMSMais.Core` + `SMSMarica.Api`. Não criar projetos novos para "modular" subdomínios — usar pastas dentro de cada projeto. Quem quiser modular monolith de novo precisa de novo ADR. (ADR-0002 está **superseded**.)
 
 3. **Dependências entre projetos:**
    - `Data` ← nada
@@ -52,7 +52,7 @@ As regras abaixo não podem ser violadas sem novo ADR.
 
 5. **`agente.app` é Android-only** — [ADR-0003](./docs/adr/0003-flutter-android-only-agente.md). Não gerar pasta `ios/` nem condicionais `Platform.isIOS` nesse projeto.
 
-6. **Erros via exceções tipadas** — services lançam `NaoEncontradoException`/`ConflitoException`/`ValidacaoException` (em `SMSMarica.Core/Common/Excecoes/`). `ExceptionHandlingMiddleware` na Api mapeia para `ProblemDetails`. Não retornar `null` em vez de lançar.
+6. **Erros via exceções tipadas** — services lançam `NaoEncontradoException`/`ConflitoException`/`ValidacaoException` (em `SMSMais.Core/Common/Excecoes/`). `ExceptionHandlingMiddleware` na Api mapeia para `ProblemDetails`. Não retornar `null` em vez de lançar.
 
 7. **OpenAPI sempre exposto** — `MapOpenApi()` + `MapScalarApiReference("/docs")` ficam **fora** de `if (env.IsDevelopment())`. Decisão de produto: spec acessível em dev e prod.
 

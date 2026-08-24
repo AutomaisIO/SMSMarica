@@ -1,4 +1,4 @@
-using SMSMarica.Core.Laudos;
+using SMSMais.Core.Laudos;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Enums;
 

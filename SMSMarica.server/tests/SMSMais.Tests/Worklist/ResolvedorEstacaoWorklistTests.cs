@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
-using SMSMarica.Core.Common.Excecoes;
-using SMSMarica.Core.Worklist;
+using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.Worklist;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Enums;

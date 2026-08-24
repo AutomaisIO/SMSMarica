@@ -1,5 +1,5 @@
 using Hl7.Fhir.Model;
-using SMSMarica.Core.Integracoes.Pep.Estrategias.Salux;
+using SMSMais.Core.Integracoes.Pep.Estrategias.Salux;
 
 namespace SMSMais.Tests.Integracoes.Pep;
 

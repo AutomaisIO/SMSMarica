@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
-using SMSMarica.Core.Integracoes.SisregWeb.Varredura;
-using SMSMarica.Core.Integracoes.SisregWeb.Varredura.Background;
-using SMSMarica.Core.Integracoes.SisregWeb.Varredura.Dtos;
+using SMSMais.Core.Integracoes.SisregWeb.Varredura;
+using SMSMais.Core.Integracoes.SisregWeb.Varredura.Background;
+using SMSMais.Core.Integracoes.SisregWeb.Varredura.Dtos;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;

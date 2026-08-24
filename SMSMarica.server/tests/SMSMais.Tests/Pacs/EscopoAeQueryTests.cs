@@ -1,4 +1,4 @@
-using SMSMarica.Core.Pacs;
+using SMSMais.Core.Pacs;
 
 namespace SMSMais.Tests.Pacs;
 

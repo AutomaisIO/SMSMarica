@@ -1,7 +1,7 @@
 using System.Net.WebSockets;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
-using SMSMarica.Core.Inteligencia.Fontes.Agente;
+using SMSMais.Core.Inteligencia.Fontes.Agente;
 using SMSMais.Data;
 
 namespace SMSMarica.Api.Realtime;

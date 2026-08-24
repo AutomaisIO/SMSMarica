@@ -1,7 +1,7 @@
 using Ganss.Xss;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using SMSMarica.Core;
+using SMSMais.Core;
 
 namespace SMSMais.Tests.Laudos;
 

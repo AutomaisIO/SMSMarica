@@ -1,4 +1,4 @@
-using SMSMarica.Core.Common.Documentos;
+using SMSMais.Core.Common.Documentos;
 
 namespace SMSMais.Tests.Pacientes;
 

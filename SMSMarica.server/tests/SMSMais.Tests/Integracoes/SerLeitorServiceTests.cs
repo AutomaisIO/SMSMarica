@@ -1,8 +1,8 @@
 using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
-using SMSMarica.Core.Integracoes.SerWeb;
-using SMSMarica.Core.Integracoes.SerWeb.Varredura;
+using SMSMais.Core.Integracoes.SerWeb;
+using SMSMais.Core.Integracoes.SerWeb.Varredura;
 using SMSMais.Data.Entities.Ser;
 
 namespace SMSMais.Tests.Integracoes;

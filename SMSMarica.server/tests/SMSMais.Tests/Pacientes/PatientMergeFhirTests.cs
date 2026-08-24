@@ -1,7 +1,7 @@
 #nullable disable
 using Hl7.Fhir.Model;
-using SMSMarica.Core.Common.Dtos;
-using SMSMarica.Core.Pacientes.Fhir;
+using SMSMais.Core.Common.Dtos;
+using SMSMais.Core.Pacientes.Fhir;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Tests.Pacientes;

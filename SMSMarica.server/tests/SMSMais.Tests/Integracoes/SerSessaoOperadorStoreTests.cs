@@ -1,8 +1,8 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
-using SMSMarica.Core.Common.Excecoes;
-using SMSMarica.Core.Integracoes.SerWeb;
-using SMSMarica.Core.Ser.Sessao;
+using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.Integracoes.SerWeb;
+using SMSMais.Core.Ser.Sessao;
 
 namespace SMSMais.Tests.Integracoes;
 

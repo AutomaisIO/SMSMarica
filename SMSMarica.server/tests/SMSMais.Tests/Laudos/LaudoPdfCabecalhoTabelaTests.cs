@@ -1,16 +1,16 @@
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using QuestPDF.Infrastructure;
-using SMSMarica.Core.Institucional;
-using SMSMarica.Core.Laudos;
-using SMSMarica.Core.Laudos.Configuracao;
-using SMSMarica.Core.Laudos.Configuracao.Dtos;
-using SMSMarica.Core.Laudos.Pdf;
-using SMSMarica.Core.Midias;
-using SMSMarica.Core.Pacientes;
-using SMSMarica.Core.SolicitacoesExame;
-using SMSMarica.Core.Worklist;
-using SMSMarica.Core.Midias.Dtos;
+using SMSMais.Core.Institucional;
+using SMSMais.Core.Laudos;
+using SMSMais.Core.Laudos.Configuracao;
+using SMSMais.Core.Laudos.Configuracao.Dtos;
+using SMSMais.Core.Laudos.Pdf;
+using SMSMais.Core.Midias;
+using SMSMais.Core.Pacientes;
+using SMSMais.Core.SolicitacoesExame;
+using SMSMais.Core.Worklist;
+using SMSMais.Core.Midias.Dtos;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Enums;
 

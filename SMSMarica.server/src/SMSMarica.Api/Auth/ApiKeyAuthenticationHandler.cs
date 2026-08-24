@@ -3,7 +3,7 @@ using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using SMSMarica.Core.ApiTokens;
+using SMSMais.Core.ApiTokens;
 using SMSMais.Data;
 
 namespace SMSMarica.Api.Auth;

@@ -2,9 +2,9 @@ using System.IO.Compression;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
-using SMSMarica.Core.Common.Excecoes;
-using SMSMarica.Core.Integracoes.SisregWeb.Importacao;
-using SMSMarica.Core.Integracoes.SisregWeb.Importacao.Background;
+using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.Integracoes.SisregWeb.Importacao;
+using SMSMais.Core.Integracoes.SisregWeb.Importacao.Background;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;

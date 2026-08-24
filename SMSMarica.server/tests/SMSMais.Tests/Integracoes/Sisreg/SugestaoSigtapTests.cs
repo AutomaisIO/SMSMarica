@@ -1,4 +1,4 @@
-using SMSMarica.Core.Integracoes.SisregWeb.Varredura.Sigtap;
+using SMSMais.Core.Integracoes.SisregWeb.Varredura.Sigtap;
 
 namespace SMSMais.Tests.Integracoes.Sisreg;
 

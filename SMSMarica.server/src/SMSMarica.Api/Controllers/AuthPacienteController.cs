@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using SMSMarica.Core.Cidadao;
-using SMSMarica.Core.Cidadao.Dtos;
+using SMSMais.Core.Cidadao;
+using SMSMais.Core.Cidadao.Dtos;
 
 namespace SMSMarica.Api.Controllers;
 

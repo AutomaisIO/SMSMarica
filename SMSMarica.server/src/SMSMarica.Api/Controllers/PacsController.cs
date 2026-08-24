@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SMSMarica.Api.Auth;
-using SMSMarica.Core.Pacs;
+using SMSMais.Core.Pacs;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;

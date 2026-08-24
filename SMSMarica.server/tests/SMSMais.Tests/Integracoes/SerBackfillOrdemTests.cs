@@ -1,7 +1,7 @@
 ﻿using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
-using SMSMarica.Core.Ser.Pacientes;
+using SMSMais.Core.Ser.Pacientes;
 using SMSMais.Data.Entities.Enums;
 using SMSMais.Data.Entities.Ser;
 using SMSMais.Tests.Infraestrutura;

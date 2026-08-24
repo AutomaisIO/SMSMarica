@@ -1,4 +1,4 @@
-using SMSMarica.Core.Integracoes.Pep.Estrategias.Salux;
+using SMSMais.Core.Integracoes.Pep.Estrategias.Salux;
 
 namespace SMSMais.Tests.Integracoes.Pep;
 

@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using SMSMarica.Core.Estatisticas;
-using SMSMarica.Core.Estatisticas.Dtos;
-using SMSMarica.Core.Pacientes.Fhir;
+using SMSMais.Core.Estatisticas;
+using SMSMais.Core.Estatisticas.Dtos;
+using SMSMais.Core.Pacientes.Fhir;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Enums;

@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
-using SMSMarica.Core.Common.Excecoes;
-using SMSMarica.Core.Integracoes.Sisreg;
-using SMSMarica.Core.Integracoes.Sisreg.Configuracao;
-using SMSMarica.Core.Integracoes.Sisreg.Dtos;
+using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.Integracoes.Sisreg;
+using SMSMais.Core.Integracoes.Sisreg.Configuracao;
+using SMSMais.Core.Integracoes.Sisreg.Dtos;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;

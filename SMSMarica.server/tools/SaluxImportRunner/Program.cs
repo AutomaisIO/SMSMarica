@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
-using SMSMarica.Core.Integracoes.Pep.Estrategias;
-using SMSMarica.Core.Integracoes.Pep.Estrategias.Salux;
-using SMSMarica.Core.Integracoes.Pep.Fhir;
-using SMSMarica.Core.Integracoes.Pep.Progresso;
+using SMSMais.Core.Integracoes.Pep.Estrategias;
+using SMSMais.Core.Integracoes.Pep.Estrategias.Salux;
+using SMSMais.Core.Integracoes.Pep.Fhir;
+using SMSMais.Core.Integracoes.Pep.Progresso;
 using SMSMais.Data.Entities.Enums;
 
 // Roda a importação Salux→FHIR ON-PREM (esta máquina alcança o Oracle interno),

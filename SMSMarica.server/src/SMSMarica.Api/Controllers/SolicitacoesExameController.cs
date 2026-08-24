@@ -1,13 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
-using SMSMarica.Core.Cidadao;
-using SMSMarica.Core.Cidadao.Dtos;
-using SMSMarica.Core.Downloads;
-using SMSMarica.Core.Exames;
-using SMSMarica.Core.Integracoes.SisregWeb.Importacao;
-using SMSMarica.Core.SolicitacoesExame;
-using SMSMarica.Core.SolicitacoesExame.Declaracao;
-using SMSMarica.Core.SolicitacoesExame.Dtos;
+using SMSMais.Core.Cidadao;
+using SMSMais.Core.Cidadao.Dtos;
+using SMSMais.Core.Downloads;
+using SMSMais.Core.Exames;
+using SMSMais.Core.Integracoes.SisregWeb.Importacao;
+using SMSMais.Core.SolicitacoesExame;
+using SMSMais.Core.SolicitacoesExame.Declaracao;
+using SMSMais.Core.SolicitacoesExame.Dtos;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;
@@ -238,7 +238,7 @@ public sealed class SolicitacoesExameController(
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> ReenviarComunicacao(
         Guid id, Guid comunicacaoId,
-        [FromServices] Core.Notificacoes.Comunicacao.IComunicacaoPacienteService comunicacoes,
+        [FromServices] SMSMais.Core.Notificacoes.Comunicacao.IComunicacaoPacienteService comunicacoes,
         CancellationToken cancellationToken)
     {
         await comunicacoes.ReenviarAsync(id, comunicacaoId, cancellationToken);

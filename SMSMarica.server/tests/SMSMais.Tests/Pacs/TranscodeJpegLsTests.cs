@@ -2,7 +2,7 @@ using FellowOakDicom;
 using FellowOakDicom.Imaging;
 using FellowOakDicom.Imaging.Codec;
 using FellowOakDicom.IO.Buffer;
-using SMSMarica.Core.Pacs;
+using SMSMais.Core.Pacs;
 
 namespace SMSMais.Tests.Pacs;
 

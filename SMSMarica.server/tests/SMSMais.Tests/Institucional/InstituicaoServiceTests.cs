@@ -1,9 +1,9 @@
 using Ganss.Xss;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using SMSMarica.Core.Common.Excecoes;
-using SMSMarica.Core.Institucional;
-using SMSMarica.Core.Institucional.Dtos;
+using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.Institucional;
+using SMSMais.Core.Institucional.Dtos;
 using SMSMais.Tests.Infraestrutura;
 
 namespace SMSMais.Tests.Institucional;

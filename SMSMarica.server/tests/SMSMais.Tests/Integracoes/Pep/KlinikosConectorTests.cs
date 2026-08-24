@@ -1,7 +1,7 @@
 ﻿using System.Globalization;
 using Hl7.Fhir.Model;
-using SMSMarica.Core.Integracoes.Pep.Estrategias;
-using SMSMarica.Core.Integracoes.Pep.Estrategias.Klinikos;
+using SMSMais.Core.Integracoes.Pep.Estrategias;
+using SMSMais.Core.Integracoes.Pep.Estrategias.Klinikos;
 using SMSMais.Data.Entities.Enums;
 using SMSMais.Data.Entities.Ia;
 
@@ -106,7 +106,7 @@ public class KlinikosConectorTests
         var klinikos = Mapper().BuildPatient(Pac(cpf: null)).Meta!.Tag.Single();
 
         var salux = new Patient();
-        SMSMarica.Core.Integracoes.Pep.Estrategias.Salux.SaluxFhirMapper.MarcarIdentidadeIncompleta(salux);
+        SMSMais.Core.Integracoes.Pep.Estrategias.Salux.SaluxFhirMapper.MarcarIdentidadeIncompleta(salux);
 
         Assert.Equal(salux.Meta!.Tag.Single().System, klinikos.System);
         Assert.Equal(salux.Meta.Tag.Single().Code, klinikos.Code);

@@ -20,7 +20,7 @@ SMSMarica.server/
 │   │   ├── Migrations/Initial.cs
 │   │   ├── SmsMaisDbContext.cs     (HasDefaultSchema("smsmarica"))
 │   │   └── DependencyInjection.cs    (AddData)
-│   ├── SMSMarica.Core/               (services + DTOs + validators + mappers)
+│   ├── SMSMais.Core/               (services + DTOs + validators + mappers)
 │   │   ├── Common/Excecoes/          (NaoEncontrado, Validacao, Conflito)
 │   │   ├── Common/ValueObjects/Gps.cs
 │   │   ├── Pacientes/, Unidades/, Motoristas/, Avaliacoes/, Identidade/,
@@ -173,7 +173,7 @@ curl http://127.0.0.1:5080/health/ready | jq
 ## Regras
 
 - **Schema `smsmarica` exclusivo** — zero referências cross-schema. Ver [`../docs/database.md`](../docs/database.md) e [`../docs/adr/0001-schema-isolation.md`](../docs/adr/0001-schema-isolation.md).
-- **Errors via exceções tipadas** — services lançam `NaoEncontradoException`/`ConflitoException`/`ValidacaoException` (em `SMSMarica.Core/Common/Excecoes/`); middleware mapeia para `ProblemDetails`.
+- **Errors via exceções tipadas** — services lançam `NaoEncontradoException`/`ConflitoException`/`ValidacaoException` (em `SMSMais.Core/Common/Excecoes/`); middleware mapeia para `ProblemDetails`.
 - **Identificadores em pt-BR para domínio** (`Paciente`, `Veiculo`); en-US para infra (`DbContext`, `Service`).
 - **Controllers MVC** (`[ApiController]`), 1 por entidade, CRUD em 5 actions.
 

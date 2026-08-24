@@ -4,10 +4,10 @@ using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SMSMarica.Core.Downloads;
-using SMSMarica.Core.Institucional;
-using SMSMarica.Core.Institucional.Dtos;
-using SMSMarica.Core.SolicitacoesExame.Declaracao;
+using SMSMais.Core.Downloads;
+using SMSMais.Core.Institucional;
+using SMSMais.Core.Institucional.Dtos;
+using SMSMais.Core.SolicitacoesExame.Declaracao;
 
 namespace SMSMarica.Api.Controllers;
 

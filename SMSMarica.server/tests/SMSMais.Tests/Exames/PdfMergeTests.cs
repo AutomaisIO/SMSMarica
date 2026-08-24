@@ -4,7 +4,7 @@ using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using Placeholders = QuestPDF.Helpers.Placeholders;
-using SMSMarica.Core.Exames;
+using SMSMais.Core.Exames;
 using Xunit;
 using QuestDocument = QuestPDF.Fluent.Document;
 

@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SMSMarica.Core.PainelInicio;
-using SMSMarica.Core.PainelInicio.Dtos;
+using SMSMais.Core.PainelInicio;
+using SMSMais.Core.PainelInicio.Dtos;
 
 namespace SMSMarica.Api.Controllers;
 

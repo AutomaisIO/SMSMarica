@@ -1,6 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using SMSMarica.Core.Identidade;
+using SMSMais.Core.Identidade;
 
 namespace SMSMarica.Api.Auth;
 

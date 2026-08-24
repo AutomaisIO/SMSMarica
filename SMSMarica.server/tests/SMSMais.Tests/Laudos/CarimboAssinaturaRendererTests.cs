@@ -1,5 +1,5 @@
 using QuestPDF.Infrastructure;
-using SMSMarica.Core.Laudos.Assinatura;
+using SMSMais.Core.Laudos.Assinatura;
 using SMSMais.Data.Entities.Enums;
 using Xunit;
 

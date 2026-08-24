@@ -3,8 +3,8 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using SMSMarica.Core.Cidadao;
-using SMSMarica.Core.Identidade;
+using SMSMais.Core.Cidadao;
+using SMSMais.Core.Identidade;
 
 namespace SMSMarica.Api.Auth;
 

@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
-using SMSMarica.Core.Conversas.RespostasRapidas;
-using SMSMarica.Core.Conversas.RespostasRapidas.Dtos;
+using SMSMais.Core.Conversas.RespostasRapidas;
+using SMSMais.Core.Conversas.RespostasRapidas.Dtos;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;

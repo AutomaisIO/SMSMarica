@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using SMSMarica.Core.Inteligencia.Fontes;
+using SMSMais.Core.Inteligencia.Fontes;
 using SMSMais.Data;
 
 namespace SMSMarica.Api.Interno;

@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
-using SMSMarica.Core.Medicos;
-using SMSMarica.Core.Medicos.Assinatura;
-using SMSMarica.Core.Medicos.Dtos;
+using SMSMais.Core.Medicos;
+using SMSMais.Core.Medicos.Assinatura;
+using SMSMais.Core.Medicos.Dtos;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;

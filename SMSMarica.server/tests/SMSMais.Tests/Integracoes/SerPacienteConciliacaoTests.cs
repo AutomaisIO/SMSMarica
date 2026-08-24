@@ -1,7 +1,7 @@
 ﻿using FluentAssertions;
 using Hl7.Fhir.Model;
-using SMSMarica.Core.Pacientes.Fhir;
-using SMSMarica.Core.Ser.Pacientes;
+using SMSMais.Core.Pacientes.Fhir;
+using SMSMais.Core.Ser.Pacientes;
 using SMSMais.Data.Entities.Ser;
 
 namespace SMSMais.Tests.Integracoes;
@@ -145,13 +145,13 @@ public class SerPacienteConciliacaoTests
     {
         // Solicitação sem CPF: o mapper carimba, e está certo — ele só viu o CNS.
         var doSer = SerPacienteFhirMapper.Construir(Solicitacao(s => s.Cpf = null));
-        SMSMarica.Core.Pacientes.PacienteFhirMapper.TemIdentidadeIncompleta(doSer).Should().BeTrue();
+        SMSMais.Core.Pacientes.PacienteFhirMapper.TemIdentidadeIncompleta(doSer).Should().BeTrue();
 
         // A união de identifiers traz o CPF que o Salux já tinha posto no hub.
         doSer.Identifier.Add(new Identifier(PatientMergeFhir.SystemCpf, "52998224725"));
         PatientMergeFhir.RevisarIdentidadeIncompleta(doSer);
 
-        SMSMarica.Core.Pacientes.PacienteFhirMapper.TemIdentidadeIncompleta(doSer).Should().BeFalse();
+        SMSMais.Core.Pacientes.PacienteFhirMapper.TemIdentidadeIncompleta(doSer).Should().BeFalse();
     }
 
     /// <summary>
@@ -166,7 +166,7 @@ public class SerPacienteConciliacaoTests
 
         PatientMergeFhir.RevisarIdentidadeIncompleta(doSer);
 
-        SMSMarica.Core.Pacientes.PacienteFhirMapper.TemIdentidadeIncompleta(doSer).Should().BeTrue();
+        SMSMais.Core.Pacientes.PacienteFhirMapper.TemIdentidadeIncompleta(doSer).Should().BeTrue();
     }
 
     /// <summary>

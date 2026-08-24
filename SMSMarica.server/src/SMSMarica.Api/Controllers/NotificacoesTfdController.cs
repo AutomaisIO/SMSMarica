@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using SMSMarica.Api.Auth;
-using SMSMarica.Core.Notificacoes.WhatsApp;
+using SMSMais.Core.Notificacoes.WhatsApp;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMarica.Api.Controllers;

@@ -1,10 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
-using SMSMarica.Core.Downloads;
-using SMSMarica.Core.Exames;
-using SMSMarica.Core.Identidade;
-using SMSMarica.Core.Laudos.Configuracao;
-using SMSMarica.Core.SolicitacoesExame;
+using SMSMais.Core.Downloads;
+using SMSMais.Core.Exames;
+using SMSMais.Core.Identidade;
+using SMSMais.Core.Laudos.Configuracao;
+using SMSMais.Core.SolicitacoesExame;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Tests.Infraestrutura;

@@ -1,4 +1,4 @@
-using SMSMarica.Core.Agendamentos;
+using SMSMais.Core.Agendamentos;
 
 namespace SMSMais.Tests.Agendamentos;
 

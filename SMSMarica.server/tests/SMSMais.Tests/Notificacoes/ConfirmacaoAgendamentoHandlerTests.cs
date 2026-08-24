@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using SMSMarica.Core.Notificacoes.WhatsApp;
-using SMSMarica.Core.Notificacoes.WhatsApp.Manipuladores;
+using SMSMais.Core.Notificacoes.WhatsApp;
+using SMSMais.Core.Notificacoes.WhatsApp.Manipuladores;
 using SMSMais.Data;
 using SMSMais.Data.Entities;
 using SMSMais.Data.Entities.Conversas;

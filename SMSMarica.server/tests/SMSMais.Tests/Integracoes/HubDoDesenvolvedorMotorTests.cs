@@ -1,7 +1,7 @@
 using System.Net;
 using System.Text;
-using SMSMarica.Core.Integracoes.Proxy;
-using SMSMarica.Core.Integracoes.Proxy.Motores;
+using SMSMais.Core.Integracoes.Proxy;
+using SMSMais.Core.Integracoes.Proxy.Motores;
 
 namespace SMSMais.Tests.Integracoes;
 
@@ -32,7 +32,7 @@ public class HubDoDesenvolvedorMotorTests
     private static HubDoDesenvolvedorMotorCep MotorCep(string json, HttpStatusCode status = HttpStatusCode.OK) =>
         new(new HttpClient(new HandlerFixo(json, status)));
 
-    private static Task<SMSMarica.Core.Integracoes.Dtos.HubCpfRespostaDto> ConsultarCpf(HubDoDesenvolvedorMotorCpf m) =>
+    private static Task<SMSMais.Core.Integracoes.Dtos.HubCpfRespostaDto> ConsultarCpf(HubDoDesenvolvedorMotorCpf m) =>
         m.ConsultarAsync("03622090731", new DateOnly(1962, 7, 16), Cfg, CancellationToken.None);
 
     // ---- CPF ----

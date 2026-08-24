@@ -1,8 +1,8 @@
 using FluentAssertions;
-using SMSMarica.Core.Common.Excecoes;
-using SMSMarica.Core.Integracoes.SerWeb;
-using SMSMarica.Core.Ser;
-using SMSMarica.Core.Ser.Dtos;
+using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.Integracoes.SerWeb;
+using SMSMais.Core.Ser;
+using SMSMais.Core.Ser.Dtos;
 
 namespace SMSMais.Tests.Integracoes;
 

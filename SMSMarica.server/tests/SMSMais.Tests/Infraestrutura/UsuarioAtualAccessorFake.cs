@@ -1,4 +1,4 @@
-using SMSMarica.Core.Identidade;
+using SMSMais.Core.Identidade;
 
 namespace SMSMais.Tests.Infraestrutura;
 

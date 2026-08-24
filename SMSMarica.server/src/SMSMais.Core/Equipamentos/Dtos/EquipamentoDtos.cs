@@ -1,0 +1,35 @@
+using SMSMais.Data.Entities.Enums;
+
+namespace SMSMais.Core.Equipamentos.Dtos;
+
+public sealed record EquipamentoDto(
+    Guid Id,
+    string Nome,
+    Guid UnidadeId,
+    string UnidadeNome,
+    ModalidadeDicom ModalidadeDicom,
+    string? IdentificadorDicom,
+    bool Ativo,
+    DateTime CriadoEm);
+
+public sealed record EquipamentoListItemDto(
+    Guid Id,
+    string Nome,
+    Guid UnidadeId,
+    string UnidadeNome,
+    ModalidadeDicom ModalidadeDicom,
+    string? IdentificadorDicom,
+    bool Ativo);
+
+public sealed record CadastrarEquipamentoRequest(
+    string Nome,
+    Guid UnidadeId,
+    ModalidadeDicom ModalidadeDicom,
+    string? IdentificadorDicom);
+
+public sealed record AtualizarEquipamentoRequest(
+    string Nome,
+    Guid UnidadeId,
+    ModalidadeDicom ModalidadeDicom,
+    string? IdentificadorDicom,
+    bool Ativo);

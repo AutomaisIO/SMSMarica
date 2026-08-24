@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using SMSMarica.Core.Laudos.Assinatura;
-using SMSMarica.Core.Laudos.Assinatura.Dtos;
+using SMSMais.Core.Laudos.Assinatura;
+using SMSMais.Core.Laudos.Assinatura.Dtos;
 
 namespace SMSMarica.Api.Controllers;
 

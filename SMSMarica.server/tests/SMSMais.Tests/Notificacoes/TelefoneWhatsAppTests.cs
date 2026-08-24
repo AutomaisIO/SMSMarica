@@ -1,4 +1,4 @@
-using SMSMarica.Core.Conversas;
+using SMSMais.Core.Conversas;
 
 namespace SMSMais.Tests.Notificacoes;
 

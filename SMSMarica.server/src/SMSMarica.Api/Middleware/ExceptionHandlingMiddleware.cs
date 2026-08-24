@@ -3,9 +3,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
-using SMSMarica.Core.Common.Excecoes;
-using SMSMarica.Core.Erros;
-using SMSMarica.Core.Erros.Dtos;
+using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.Erros;
+using SMSMais.Core.Erros.Dtos;
 
 namespace SMSMarica.Api.Middleware;
 

@@ -3,7 +3,7 @@
 Integração com `ser.saude.rj.gov.br`. Decisão de arquitetura em
 [ADR-0042](./adr/0042-ser-segunda-fonte-de-regulacao.md). O protocolo abaixo foi
 levantado no laboratório `Automais.SER/` (Python) e portado para
-`SMSMarica.Core/Integracoes/SerWeb/` (.NET).
+`SMSMais.Core/Integracoes/SerWeb/` (.NET).
 
 > **Leitura por padrão; escrita é exceção nomeada.** Todo POST passa pela trava de
 > somente-leitura (§7). Desde 18/08/2026 existem **duas** escritas liberadas, cada uma
