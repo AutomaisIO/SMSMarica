@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.DataProtection;
+﻿using Microsoft.AspNetCore.DataProtection;
 using SMSMarica.Core.Inteligencia.Seguranca;
 
 namespace SMSMarica.Api.Auth;
@@ -10,6 +10,10 @@ namespace SMSMarica.Api.Auth;
 /// </summary>
 internal sealed class ProtetorSegredos : IProtetorSegredos
 {
+    // NÃO RENOMEAR ESTE VALOR. O purpose entra na derivação da chave do Data Protection: trocar
+    // um caractere torna indecifrável tudo o que já foi cifrado com ele — credenciais de
+    // integração, Spaces, SISREG, WhatsApp, PEP, IA, TFD e Geo. É um literal congelado, não o
+    // nome do produto, e sobrevive de propósito ao rename para SMSMais (ADR-0046, carve-out).
     private const string Proposito = "SMSMarica.Ia.Segredos";
 
     private readonly IDataProtector _protector;

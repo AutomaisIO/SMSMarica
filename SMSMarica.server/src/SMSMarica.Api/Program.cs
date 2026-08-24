@@ -12,10 +12,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Authorization;
 using FluentValidation.AspNetCore;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using SMSMarica.Api.Interno;
@@ -82,7 +84,28 @@ builder.Services.AddScoped<SMSMarica.Core.Conversas.IConversaNotificador, SMSMar
 builder.Services.AddScoped<SMSMarica.Core.Cidadao.IPacienteTokenService, SMSMarica.Api.Auth.PacienteTokenService>();
 
 // Módulo IA: cifragem de segredos (token do provedor, senha das bases) em repouso.
-builder.Services.AddDataProtection();
+//
+// O anel de chaves e o discriminador da aplicação são EXPLÍCITOS por configuração. Sem isso o
+// ASP.NET deriva os dois de caminho: o discriminador vem do content root (`/opt/smsmarica/server`)
+// e o anel vai para o `$HOME` do usuário do serviço. Mover qualquer um dos dois — que é
+// exatamente o que o rename para SMSMais faz — torna TODAS as credenciais de integração gravadas
+// no banco indecifráveis, e falha em runtime, não no build.
+//
+// Ambas as chaves são opcionais: com as duas ausentes o comportamento é idêntico ao implícito,
+// para a virada poder ser feita por ambiente, sem redeploy.
+var protecaoDados = builder.Services.AddDataProtection();
+
+var chavesProtecao = builder.Configuration["DataProtection:CaminhoChaves"];
+if (!string.IsNullOrWhiteSpace(chavesProtecao))
+{
+    protecaoDados.PersistKeysToFileSystem(new DirectoryInfo(chavesProtecao));
+}
+
+var nomeAplicacaoProtecao = builder.Configuration["DataProtection:NomeAplicacao"];
+if (!string.IsNullOrWhiteSpace(nomeAplicacaoProtecao))
+{
+    protecaoDados.SetApplicationName(nomeAplicacaoProtecao);
+}
 builder.Services.AddScoped<SMSMarica.Core.Inteligencia.Seguranca.IProtetorSegredos, SMSMarica.Api.Auth.ProtetorSegredos>();
 
 // Agente IA — proxy para o motor Python em 127.0.0.1:5085. Cliente nomeado porque o
@@ -261,6 +284,19 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 });
 
 var app = builder.Build();
+
+// Discriminador efetivo do Data Protection. É ele que entra na derivação da chave: se mudar,
+// nada do que já foi cifrado decifra. Logado no startup para poder ser fixado em configuração
+// com o valor exato que a instância usa hoje, sem adivinhação.
+{
+    var opcoesProtecao = app.Services
+        .GetRequiredService<IOptions<DataProtectionOptions>>().Value;
+    Log.Information(
+        "Data Protection: discriminador={Discriminador} caminhoChaves={CaminhoChaves} contentRoot={ContentRoot}",
+        opcoesProtecao.ApplicationDiscriminator,
+        string.IsNullOrWhiteSpace(chavesProtecao) ? "(implícito: $HOME do serviço)" : chavesProtecao,
+        app.Environment.ContentRootPath);
+}
 
 // Primeiro middleware: reescreve RemoteIpAddress a partir do X-Forwarded-For antes de qualquer
 // coisa que use o IP (log do Serilog, rate limiter por IP, gravação do acesso do cidadão).
