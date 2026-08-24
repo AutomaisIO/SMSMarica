@@ -8,13 +8,21 @@ on:
       - '.github/workflows/deploy-server.yml'
   workflow_dispatch: {}
 
-concurrency:
-  group: deploy-smsmarica-server
-  cancel-in-progress: false
-
 jobs:
   build-and-deploy:
+    # Uma execução POR INSTÂNCIA (ADR-0043/0046): cada município é um GitHub Environment
+    # com os MESMOS nomes de secret/var. fail-fast desligado: falha numa instância não
+    # impede nem cancela a outra. Concurrency por instância: deploys da mesma instância
+    # se enfileiram; instâncias diferentes correm em paralelo.
+    strategy:
+      fail-fast: false
+      matrix:
+        instancia: [marica, ccdti]
     runs-on: ubuntu-latest
+    environment: ${{ matrix.instancia }}
+    concurrency:
+      group: deploy-server-${{ matrix.instancia }}
+      cancel-in-progress: false
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
       DOTNET_NOLOGO: 'true'
@@ -56,9 +64,9 @@ jobs:
       - name: Copy artifact to server (SCP)
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.HOST_SMSMARICA }}
-          username: ${{ secrets.USER_SMSMARICA }}
-          password: ${{ secrets.PASS_SMSMARICA }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
           port: 22
           source: smsmarica-server.tar.gz
           target: /tmp/
@@ -66,22 +74,29 @@ jobs:
       - name: Deploy on server (SSH)
         uses: appleboy/ssh-action@v1.2.0
         env:
-          DB_CS: ${{ secrets.DB_CONNECTION_SMSMARICA }}
+          DB_CS: ${{ secrets.DB_CONNECTION }}
           AIENGINE_KEY: ${{ secrets.AIENGINE_INTERNAL_KEY }}
+          I_APP_DIR: ${{ vars.APP_DIR }}
+          I_ENV_DIR: ${{ vars.ENV_DIR }}
+          I_SERVICE: ${{ vars.SERVICE }}
+          I_RUN_USER: ${{ vars.RUN_USER }}
+          DP_NOME: ${{ vars.DATAPROTECTION_NOME }}
+          DP_CHAVES: ${{ vars.DATAPROTECTION_CHAVES }}
         with:
-          host: ${{ secrets.HOST_SMSMARICA }}
-          username: ${{ secrets.USER_SMSMARICA }}
-          password: ${{ secrets.PASS_SMSMARICA }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
           port: 22
-          envs: DB_CS,AIENGINE_KEY
+          envs: DB_CS,AIENGINE_KEY,I_APP_DIR,I_ENV_DIR,I_SERVICE,I_RUN_USER,DP_NOME,DP_CHAVES
           command_timeout: 15m
           script: |
             set -euo pipefail
 
-            APP_DIR=/opt/smsmarica/server
-            ENV_DIR=/etc/smsmarica-server
+            APP_DIR=${I_APP_DIR:?var APP_DIR do environment ausente}
+            ENV_DIR=${I_ENV_DIR:?var ENV_DIR do environment ausente}
             ENV_FILE=$ENV_DIR/env
-            SERVICE=smsmarica-server
+            SERVICE=${I_SERVICE:?var SERVICE do environment ausente}
+            RUN_USER=${I_RUN_USER:?var RUN_USER do environment ausente}
             DOTNET_DIR=/opt/dotnet
             DOTNET=$DOTNET_DIR/dotnet
             DOTNET_LINK=/usr/local/bin/dotnet
@@ -117,9 +132,9 @@ jobs:
             fi
 
             # --- 3. Usuário de sistema dedicado ---
-            if ! id -u smsmarica >/dev/null 2>&1; then
-              log "Criando usuário de sistema 'smsmarica'..."
-              $SUDO useradd --system --home-dir /opt/smsmarica --shell /usr/sbin/nologin smsmarica
+            if ! id -u "$RUN_USER" >/dev/null 2>&1; then
+              log "Criando usuário de sistema '$RUN_USER'..."
+              $SUDO useradd --system --home-dir "$(dirname "$APP_DIR")" --shell /usr/sbin/nologin "$RUN_USER"
             fi
 
             # --- 4. Diretórios ---
@@ -127,16 +142,16 @@ jobs:
 
             # --- 5. Arquivo de ambiente (connection string e afins) ---
             if [ -n "${DB_CS:-}" ]; then
-              log "Atualizando $ENV_FILE com a connection string do secret DB_CONNECTION_SMSMARICA..."
+              log "Atualizando $ENV_FILE com a connection string do secret DB_CONNECTION do environment..."
               # tee escreve via sudo sem precisar abrir subshell com heredoc
               printf 'ConnectionStrings__DefaultDb=%s\n' "$DB_CS" | $SUDO tee "$ENV_FILE" >/dev/null
             elif [ ! -f "$ENV_FILE" ]; then
-              log "AVISO: secret DB_CONNECTION_SMSMARICA não setado e $ENV_FILE não existe."
+              log "AVISO: secret DB_CONNECTION do environment não setado e $ENV_FILE não existe."
               log "Criando env vazio — o serviço vai subir mas falhará ao conectar no banco."
               log "Configure manualmente em $ENV_FILE (ver README do server)."
               $SUDO touch "$ENV_FILE"
             else
-              log "Secret DB_CONNECTION_SMSMARICA não fornecido; mantendo $ENV_FILE existente."
+              log "Secret DB_CONNECTION não fornecido; mantendo $ENV_FILE existente."
             fi
 
             # Chave interna do Agente IA: a API (5080) usa para falar com o motor (5085).
@@ -157,30 +172,40 @@ jobs:
               printf 'AutoMigrate__Enabled=true\n' | $SUDO tee -a "$ENV_FILE" >/dev/null
             fi
 
+            # Data Protection (ADR-0046 fase 0b): discriminador e anel EXPLÍCITOS por
+            # instância. Append-if-missing: o tee da connection string recria o env, então
+            # estas linhas precisam voltar a cada deploy; um valor manual existente é mantido.
+            if [ -n "${DP_NOME:-}" ] && ! $SUDO grep -q '^DataProtection__NomeAplicacao=' "$ENV_FILE"; then
+              echo "DataProtection__NomeAplicacao=$DP_NOME" | $SUDO tee -a "$ENV_FILE" >/dev/null
+            fi
+            if [ -n "${DP_CHAVES:-}" ] && ! $SUDO grep -q '^DataProtection__CaminhoChaves=' "$ENV_FILE"; then
+              echo "DataProtection__CaminhoChaves=$DP_CHAVES" | $SUDO tee -a "$ENV_FILE" >/dev/null
+            fi
+
             $SUDO chmod 600 "$ENV_FILE"
-            $SUDO chown smsmarica:smsmarica "$ENV_FILE"
+            $SUDO chown "$RUN_USER":"$RUN_USER" "$ENV_FILE"
 
             # --- 6. Systemd unit (cria se não tiver) ---
             UNIT_FILE=/etc/systemd/system/$SERVICE.service
             if [ ! -f "$UNIT_FILE" ]; then
               log "Criando unit $UNIT_FILE..."
-              $SUDO tee "$UNIT_FILE" >/dev/null <<'UNIT'
+              $SUDO tee "$UNIT_FILE" >/dev/null <<UNIT
             [Unit]
-            Description=SMSMarica Server (API .NET)
+            Description=SMSMais Server (API .NET)
             After=network.target
 
             [Service]
-            WorkingDirectory=/opt/smsmarica/server
-            ExecStart=/usr/local/bin/dotnet /opt/smsmarica/server/SMSMais.Api.dll
+            WorkingDirectory=$APP_DIR
+            ExecStart=/usr/local/bin/dotnet $APP_DIR/SMSMais.Api.dll
             Restart=on-failure
             RestartSec=10
             KillSignal=SIGINT
-            SyslogIdentifier=smsmarica-server
-            User=smsmarica
-            Group=smsmarica
-            EnvironmentFile=/etc/smsmarica-server/env
+            SyslogIdentifier=$SERVICE
+            User=$RUN_USER
+            Group=$RUN_USER
+            EnvironmentFile=$ENV_FILE
             Environment=ASPNETCORE_ENVIRONMENT=Production
-            Environment=ASPNETCORE_URLS=http://0.0.0.0:5080
+            Environment=ASPNETCORE_URLS=http://127.0.0.1:5080
             Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
 
             [Install]
@@ -213,7 +238,7 @@ jobs:
             log "Extraindo nova versão em $APP_DIR..."
             $SUDO find "$APP_DIR" -mindepth 1 -delete
             $SUDO tar -xzf "$TARBALL" -C "$APP_DIR"
-            $SUDO chown -R smsmarica:smsmarica "$APP_DIR"
+            $SUDO chown -R "$RUN_USER":"$RUN_USER" "$APP_DIR"
             rm -f "$TARBALL"
 
             # --- 9. Iniciar ---
