@@ -37,6 +37,15 @@ jobs:
 
       - name: Build
         working-directory: SMSMais.arquivos.pwa
+        env:
+          # Identidade da INSTÂNCIA Maricá (ADR-0046). Sem estas envs o build sai NEUTRO;
+          # com elas, o output é o de sempre. Na matrix multi-instância isto migra para
+          # vars do GitHub Environment de cada município.
+          VITE_APP_NOME: Arquivos Saúde Maricá
+          VITE_APP_NOME_CURTO: Arquivos Saúde
+          VITE_APP_RODAPE: Saúde Maricá
+          VITE_TEMA_COR: '#C8102E'
+          VITE_TEMA_FUNDO: '#BC1F28'
         run: npm run build
 
       - name: Pack artifact

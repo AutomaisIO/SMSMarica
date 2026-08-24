@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'node:path';
@@ -9,7 +9,15 @@ const { version: APP_VERSION } = JSON.parse(
   readFileSync(new URL('./package.json', import.meta.url), 'utf-8'),
 );
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  // Identidade por INSTÂNCIA via env de build (ADR-0046): default NEUTRO — o deploy de cada
+  // município injeta os valores dele; nenhum nome/cor de cidade fica no código.
+  const env = loadEnv(mode, process.cwd(), '');
+  const NOME = env.VITE_APP_NOME || 'Arquivos Saúde';
+  const NOME_CURTO = env.VITE_APP_NOME_CURTO || 'Arquivos';
+  const COR = env.VITE_TEMA_COR || '#475569';
+  const FUNDO = env.VITE_TEMA_FUNDO || '#334155';
+  return {
   define: {
     __APP_VERSION__: JSON.stringify(APP_VERSION),
   },
@@ -26,13 +34,13 @@ export default defineConfig({
         'apple-touch-icon.png',
       ],
       manifest: {
-        name: 'Arquivos Saúde Maricá',
-        short_name: 'Arquivos Saúde',
+        name: NOME,
+        short_name: NOME_CURTO,
         description:
           'Digitalize e envie exames antigos pela câmera do celular, lendo o QR code mostrado na clínica.',
         lang: 'pt-BR',
-        theme_color: '#C8102E',
-        background_color: '#BC1F28',
+        theme_color: COR,
+        background_color: FUNDO,
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
@@ -69,4 +77,5 @@ export default defineConfig({
       },
     },
   },
+};
 });

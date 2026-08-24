@@ -1,7 +1,7 @@
 import { ChevronLeft } from 'lucide-react';
 
 /**
- * Moldura do app (phone-first, tema vermelho Maricá). Sem menu/navegação: o fluxo
+ * Moldura do app (phone-first, tema da instância via env de build (ADR-0046)). Sem menu/navegação: o fluxo
  * é linear (Início → Novo Documento → Scanner → Sucesso). Cabeçalho fixo com título
  * e, quando aplicável, botão de voltar; rodapé com a versão (para suporte).
  */
@@ -33,7 +33,7 @@ export function AppShell({
         )}
         <div className="flex flex-1 flex-col leading-tight">
           <span className="font-display text-[15px] font-semibold tracking-tight">
-            Arquivos Saúde Maricá
+            {import.meta.env.VITE_APP_NOME || 'Arquivos Saúde'}
           </span>
           <span className="text-[11px] font-medium text-white/80">
             {subtitulo ?? 'Envio de exames'}
@@ -45,7 +45,7 @@ export function AppShell({
 
       <footer className="px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-2">
         <p className="text-center text-[11px] font-medium text-tinta-mute/70">
-          Saúde Maricá · versão {__APP_VERSION__}
+          {import.meta.env.VITE_APP_RODAPE || 'Saúde'} · versão {__APP_VERSION__}
         </p>
       </footer>
     </div>

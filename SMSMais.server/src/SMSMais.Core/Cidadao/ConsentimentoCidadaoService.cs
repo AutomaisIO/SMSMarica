@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using SMSMais.Core.Cidadao.Dtos;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Data;
@@ -6,7 +6,9 @@ using SMSMais.Data.Entities;
 
 namespace SMSMais.Core.Cidadao;
 
-public sealed class ConsentimentoCidadaoService(SmsMaisDbContext db) : IConsentimentoCidadaoService
+public sealed class ConsentimentoCidadaoService(
+    SmsMaisDbContext db,
+    Institucional.IInstituicaoService instituicao) : IConsentimentoCidadaoService
 {
     public async Task<ConsentimentoStatusDto> ObterStatusAsync(Guid patientId, CancellationToken ct = default)
     {
@@ -17,7 +19,9 @@ public sealed class ConsentimentoCidadaoService(SmsMaisDbContext db) : IConsenti
             .Select(c => (DateTime?)c.AceitoEm)
             .FirstOrDefaultAsync(ct);
 
-        return new ConsentimentoStatusDto(versao, TermoConsentimento.Texto, ativo is not null, ativo);
+        // Texto montado com a identidade DESTA instância (ADR-0046) — nunca o de outro município.
+        var termo = TermoConsentimento.Montar(await instituicao.ObterAsync(ct));
+        return new ConsentimentoStatusDto(versao, termo.Texto, ativo is not null, ativo);
     }
 
     public async Task RegistrarAsync(Guid patientId, string? ip, string? dispositivo, CancellationToken ct = default)
@@ -35,7 +39,7 @@ public sealed class ConsentimentoCidadaoService(SmsMaisDbContext db) : IConsenti
             Id = Guid.NewGuid(),
             CidadaoAcessoId = acesso.Id,
             Versao = versao,
-            TextoHash = TermoConsentimento.Hash,
+            TextoHash = TermoConsentimento.Montar(await instituicao.ObterAsync(ct)).Hash,
             AceitoEm = DateTime.UtcNow,
             Ip = Truncar(ip, 64),
             Dispositivo = Truncar(dispositivo, 255),

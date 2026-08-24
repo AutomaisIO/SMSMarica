@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <RootNamespace>SMSMais.Core</RootNamespace>
@@ -44,7 +44,6 @@
 
   <ItemGroup>
     <!-- Logo institucional embutido (capa do PDF consolidado de imagens do exame). -->
-    <EmbeddedResource Include="Exames/Recursos/marica_logo.png" />
   </ItemGroup>
 
 </Project>

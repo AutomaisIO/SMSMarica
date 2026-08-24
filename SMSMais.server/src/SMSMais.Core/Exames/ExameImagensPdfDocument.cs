@@ -1,4 +1,4 @@
-using QuestPDF.Fluent;
+﻿using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using QuestDocument = QuestPDF.Fluent.Document;
@@ -24,10 +24,10 @@ public sealed record ExameImagensCapa(
 public sealed class ExameImagensPdfDocument(
     ExameImagensCapa capa,
     IReadOnlyList<byte[]> imagens,
-    byte[]? logo)
+    IdentidadeVisualPdf idv)
 {
-    private const string Marica = "#C4122F";
-    private const string Vinho = "#7A0C24";
+    private string CorMarca => idv.CorPrimaria;
+    private string CorEscura => idv.CorEscura;
     private const string Tinta = "#2B2B2B";
 
     private void Compose(IDocumentContainer container)
@@ -65,16 +65,16 @@ public sealed class ExameImagensPdfDocument(
             // Faixa de marca
             col.Item().Row(row =>
             {
-                if (logo is not null)
-                    row.ConstantItem(150).Height(54).Image(logo).FitArea();
-                row.RelativeItem().AlignRight().AlignMiddle().Text("Saúde Maricá")
-                    .FontSize(16).Bold().FontColor(Marica);
+                if (idv.Logo is not null)
+                    row.ConstantItem(150).Height(54).Image(idv.Logo).FitArea();
+                row.RelativeItem().AlignRight().AlignMiddle().Text(idv.Nome)
+                    .FontSize(16).Bold().FontColor(CorMarca);
             });
 
-            col.Item().PaddingTop(6).LineHorizontal(2).LineColor(Marica);
+            col.Item().PaddingTop(6).LineHorizontal(2).LineColor(CorMarca);
 
             col.Item().PaddingTop(24).Text("Imagens do Exame")
-                .FontSize(22).Bold().FontColor(Vinho);
+                .FontSize(22).Bold().FontColor(CorEscura);
             col.Item().PaddingTop(2).Text("Documento gerado para o cidadão a partir das imagens do exame.")
                 .FontSize(10).FontColor(Colors.Grey.Darken1);
 
@@ -118,9 +118,9 @@ public sealed class ExameImagensPdfDocument(
         });
     }
 
-    private static void Secao(IContainer container, string titulo) =>
+    private void Secao(IContainer container, string titulo) =>
         container.BorderBottom(1).BorderColor(Colors.Grey.Lighten2).PaddingBottom(3)
-            .Text(titulo.ToUpperInvariant()).FontSize(9).Bold().FontColor(Marica).LetterSpacing(0.05f);
+            .Text(titulo.ToUpperInvariant()).FontSize(9).Bold().FontColor(CorMarca).LetterSpacing(0.05f);
 
     private static void Linha(ColumnDescriptor col, string rotulo, string valor) =>
         col.Item().Row(row =>

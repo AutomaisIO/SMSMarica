@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Common.Tempo;
 using SMSMais.Core.Laudos;
@@ -22,6 +22,8 @@ public interface IExameCompletoPdfService
 }
 
 public sealed class ExameCompletoPdfService(
+    Institucional.IInstituicaoService instituicaoService,
+    Midias.IMidiasService midiasService,
     SmsMaisDbContext db,
     IExamePacsImagensReader imagensReader,
     IPacientesService pacientes,
@@ -80,7 +82,7 @@ public sealed class ExameCompletoPdfService(
             Justificativa: string.IsNullOrWhiteSpace(sol.Solicitacao!.Justificativa) ? null : sol.Solicitacao!.Justificativa,
             Observacoes: string.IsNullOrWhiteSpace(sol.Solicitacao!.Observacoes) ? null : sol.Solicitacao!.Observacoes);
 
-        var capaImagens = new ExameCompletoPdfDocument(capa, imagens, ExameRecursos.Logo).Gerar();
+        var capaImagens = new ExameCompletoPdfDocument(capa, imagens, await IdentidadeVisualPdf.ResolverAsync(instituicaoService, midiasService, cancellationToken)).Gerar();
 
         if (!incluiLaudo) return capaImagens;
 

@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using SMSMais.Core.Armazenamento;
 using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Common.Tempo;
@@ -36,6 +36,8 @@ public interface IExameImagensPdfService
 public sealed record ReavaliacaoImagens(string? StudyInstanceUID, int? ImagensCache, int ImagensPacs, bool Defasado);
 
 public sealed class ExameImagensPdfService(
+    Institucional.IInstituicaoService instituicaoService,
+    Midias.IMidiasService midiasService,
     SmsMaisDbContext db,
     IArmazenamentoArquivos armazenamento,
     IExamePacsImagensReader imagensReader,
@@ -90,7 +92,7 @@ public sealed class ExameImagensPdfService(
             Descricao: PrimeiroNaoVazio(sol.Solicitacao!.Justificativa, sol.Solicitacao!.Observacoes),
             Anamnese: Resumir(sol.Solicitacao!.Observacoes, sol.Solicitacao!.Justificativa));
 
-        var pdf = new ExameImagensPdfDocument(capa, imagens, ExameRecursos.Logo).Gerar();
+        var pdf = new ExameImagensPdfDocument(capa, imagens, await IdentidadeVisualPdf.ResolverAsync(instituicaoService, midiasService, cancellationToken)).Gerar();
 
         await armazenamento.SalvarAsync(chave, pdf, cancellationToken);
         return pdf;

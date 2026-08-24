@@ -4,14 +4,14 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#C8102E" />
-    <meta name="description" content="Arquivos Saúde Maricá — digitalize e envie exames antigos pela câmera do celular, lendo o QR code da clínica." />
+    <meta name="theme-color" content="%VITE_TEMA_COR%" />
+    <meta name="description" content="%VITE_APP_NOME% — digitalize e envie exames antigos pela câmera do celular, lendo o QR code da clínica." />
     <!-- iOS / Safari "Adicionar à Tela de Início" -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Arquivos Saúde Maricá" />
+    <meta name="apple-mobile-web-app-title" content="%VITE_APP_NOME%" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <title>Arquivos Saúde Maricá</title>
+    <title>%VITE_APP_NOME%</title>
     <style>
       /* Fundo vermelho da arte do app — evita flash branco antes do React montar. */
       html,
@@ -56,7 +56,7 @@
     </style>
   </head>
   <body>
-    <div id="splash"><img src="/icon-512.png" alt="Arquivos Saúde Maricá" /></div>
+    <div id="splash"><img src="/icon-512.png" alt="%VITE_APP_NOME%" /></div>
     <div id="root"></div>
     <!-- Splash garante ~2s de tela vermelha com o logo e some com fade (sem "piscar"). -->
     <script>
