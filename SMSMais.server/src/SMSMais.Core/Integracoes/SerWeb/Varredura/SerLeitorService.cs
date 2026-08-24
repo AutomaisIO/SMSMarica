@@ -290,7 +290,30 @@ public sealed class SerLeitorService(
         // chamada parta de uma base velha.
         Absorver(resposta.Texto);
 
-        return SerHtmlParser.MensagemDaTela(SerHtmlParser.Documento(resposta.Texto));
+        var docResposta = SerHtmlParser.Documento(resposta.Texto);
+        var mensagem = SerHtmlParser.MensagemDaTela(docResposta);
+
+        // Mensagem vazia é o sintoma do FollowUP que não confirma (ticket #111): o SER aceitou o
+        // POST "Gravar" mas não devolveu a caixa de sucesso, e o evento não aparece na releitura
+        // do histórico. Registramos um retrato ESTRUTURAL da tela devolvida — presença de
+        // elementos, nunca o conteúdo — para o próximo incidente já vir com evidência de ONDE o
+        // fluxo quebrou. Não despejamos o HTML: a tela do SER carrega PII do paciente.
+        if (string.IsNullOrWhiteSpace(mensagem))
+        {
+            logger.LogWarning(
+                "SER: gravação de FollowUP de {IdSer} voltou SEM mensagem de sucesso (HTML {Tamanho} B). "
+                + "Diagnóstico estrutural — telaPesquisa(form0)={TemPesquisa}, caixaMensagens={TemCaixa}, "
+                + "divMensagens={TemDiv}, listagem={TemListagem}, modalAindaAberto={ModalAberto}.",
+                idSer,
+                resposta.Texto.Length,
+                docResposta.GetElementById(SerHtmlParser.FormPesquisa) is not null,
+                docResposta.GetElementById(SerHtmlParser.CaixaMensagens) is not null,
+                docResposta.GetElementById("form0:divMensagens") is not null,
+                docResposta.GetElementById(SerHtmlParser.TabelaGrade) is not null,
+                SerHtmlParser.ModalDeObservacao(docResposta) is not null);
+        }
+
+        return mensagem;
     }
 
     /// <summary>
