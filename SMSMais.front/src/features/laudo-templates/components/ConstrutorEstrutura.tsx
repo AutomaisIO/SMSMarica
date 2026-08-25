@@ -90,17 +90,34 @@ export function ConstrutorEstrutura({ estrutura, aoMudar }: Props) {
           { chave: 'am', titulo: 'AM (%)', tipo: 'numero', larguraPct: 11 },
         ],
         linhas: [
+          // Todos os sítios são digitáveis no preenchimento do laudo (fixosEditaveis:
+          // ['sitio']) — a médica pode ajustar o texto do sítio em qualquer linha
+          // (ex.: excluir vértebras em "L1 a L4"). Vazio = usa o rótulo-padrão.
           {
             id: novoId(),
             fixos: { regiao: 'Coluna Lombar', sitio: 'L1 a L4' },
             diagnostica: true,
-            // O sítio da coluna lombar é digitável no laudo (ex.: excluir vértebras).
             fixosEditaveis: ['sitio'],
           },
-          { id: novoId(), fixos: { regiao: 'Fêmur Proximal', sitio: 'Fêmur Total' }, diagnostica: true },
-          { id: novoId(), fixos: { regiao: 'Fêmur Proximal', sitio: 'Colo Femoral' }, diagnostica: true },
+          {
+            id: novoId(),
+            fixos: { regiao: 'Fêmur Proximal', sitio: 'Fêmur Total' },
+            diagnostica: true,
+            fixosEditaveis: ['sitio'],
+          },
+          {
+            id: novoId(),
+            fixos: { regiao: 'Fêmur Proximal', sitio: 'Colo Femoral' },
+            diagnostica: true,
+            fixosEditaveis: ['sitio'],
+          },
           // Rádio 33% só é diagnóstico em condições específicas (SBDens/ISCD).
-          { id: novoId(), fixos: { regiao: 'Antebraço', sitio: 'Rádio 33%' }, diagnostica: false },
+          {
+            id: novoId(),
+            fixos: { regiao: 'Antebraço', sitio: 'Rádio 33%' },
+            diagnostica: false,
+            fixosEditaveis: ['sitio'],
+          },
         ],
       },
     ]);
