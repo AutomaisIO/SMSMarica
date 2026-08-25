@@ -14,6 +14,16 @@ type Props = {
    * tela). Nome e telefone vêm do cadastro — o operador só confere e dispara.
    */
   pacienteInicialId?: string;
+  /**
+   * Abre já com este telefone preenchido — usado ao REABRIR uma conversa cuja janela de 24h
+   * expirou e que não tem cadastro vinculado (só o número). Ignorado quando há
+   * <see cref="pacienteInicialId" />, que traz o telefone do cadastro.
+   */
+  telefoneInicial?: string;
+  /** Nome do perfil do WhatsApp, para adiantar o tratamento ({{1}}) quando não há cadastro. */
+  nomeContatoInicial?: string;
+  /** Título do modal — "Reabrir conversa" quando vem do banner de janela expirada. */
+  titulo?: string;
 };
 
 const ASSUNTOS: AssuntoConversa[] = ['Tfd', 'MarcacaoConsulta', 'Duvida', 'Atendente', 'Outro'];
@@ -53,18 +63,28 @@ function preencher(corpo: string, valores: string[]): string {
  * primeiro contato só existe via template aprovado, e é ele que provoca a resposta que abre
  * a janela. Por isso o modelo é obrigatório aqui (a lista vem filtrada pelo backend).
  */
-export function NovaConversaDialog({ onFechar, onCriada, pacienteInicialId }: Props) {
+export function NovaConversaDialog({
+  onFechar,
+  onCriada,
+  pacienteInicialId,
+  telefoneInicial,
+  nomeContatoInicial,
+  titulo = 'Nova conversa',
+}: Props) {
   const { data: templates } = useTemplates(true);
   const iniciar = useIniciarConversa();
   const pacienteInicial = usePacientePorId(pacienteInicialId ?? null);
 
-  const [modo, setModo] = useState<'paciente' | 'telefone'>('paciente');
+  // Reabertura sem cadastro vinculado: já entra no modo telefone, com o número preenchido —
+  // não há o que buscar, o operador só escolhe o modelo e dispara.
+  const soTelefone = !pacienteInicialId && Boolean(telefoneInicial);
+  const [modo, setModo] = useState<'paciente' | 'telefone'>(soTelefone ? 'telefone' : 'paciente');
   const [termo, setTermo] = useState('');
   const termoDebounced = useDebounce(termo, 300);
   const busca = useBuscarContatos(termoDebounced);
   const [contato, setContato] = useState<ContatoConversa | null>(null);
 
-  const [telefone, setTelefone] = useState('');
+  const [telefone, setTelefone] = useState(soTelefone ? telefoneFmt(telefoneInicial!) : '');
   const [assunto, setAssunto] = useState<AssuntoConversa | ''>('');
   const [templateNome, setTemplateNome] = useState('');
   const [params, setParams] = useState<string[]>([]);
@@ -77,14 +97,18 @@ export function NovaConversaDialog({ onFechar, onCriada, pacienteInicialId }: Pr
 
   // Só há um modelo de abertura hoje (validação cadastral) — pré-seleciona para o operador
   // não ter de escolher em lista de um item.
+  // Nome para adiantar o tratamento ({{1}}): o do cadastro quando há contato; senão o do
+  // perfil do WhatsApp (reabertura de conversa sem cadastro vinculado).
+  const nomeSugerido = contato?.nome ?? nomeContatoInicial ?? null;
+
   useEffect(() => {
     if (templateNome || !templates?.length) return;
     const unico = templates[0];
     setTemplateNome(unico.nome);
     // O contato pode ter chegado antes do modelo (atalho do WhatsApp): mantém o {{1}}.
     setParams(Array.from({ length: unico.parametros }, (_, i) =>
-      i === 0 && contato ? primeiroNomeProprio(contato.nome) : ''));
-  }, [templates, templateNome, contato]);
+      i === 0 && nomeSugerido ? primeiroNomeProprio(nomeSugerido) : ''));
+  }, [templates, templateNome, nomeSugerido]);
 
   function aoTrocarTemplate(nome: string) {
     setTemplateNome(nome);
@@ -110,7 +134,9 @@ export function NovaConversaDialog({ onFechar, onCriada, pacienteInicialId }: Pr
     aoSelecionarContato({
       pacienteId: pacienteCarregado.id,
       nome: pacienteCarregado.nomeCompleto,
-      telefone: pacienteCarregado.telefonePrincipal ?? null,
+      // Numa REABERTURA, o número da conversa manda: o cadastro pode ter vários telefones e
+      // reabrir no principal falaria com outro aparelho, não com quem está na thread.
+      telefone: telefoneInicial ? telefoneFmt(telefoneInicial) : pacienteCarregado.telefonePrincipal ?? null,
       cpf: pacienteCarregado.cpf ?? null,
       dataNascimento: pacienteCarregado.dataNascimento ?? null,
       origem: 'Cadastro',
@@ -151,7 +177,7 @@ export function NovaConversaDialog({ onFechar, onCriada, pacienteInicialId }: Pr
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
       <div className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-lg bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
-          <h2 className="text-sm font-semibold text-gray-900">Nova conversa</h2>
+          <h2 className="text-sm font-semibold text-gray-900">{titulo}</h2>
           <button type="button" onClick={onFechar} className="rounded p-1 text-gray-400 hover:bg-gray-100" aria-label="Fechar">
             <X className="h-4 w-4" />
           </button>

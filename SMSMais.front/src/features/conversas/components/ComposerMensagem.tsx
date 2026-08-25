@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, GripHorizontal, Send } from 'lucide-react';
-import { useEnviarMensagem } from '@/features/conversas/api/queries';
+import { AlertTriangle, GripHorizontal, RotateCcw, Send } from 'lucide-react';
+import { useConversa, useEnviarMensagem } from '@/features/conversas/api/queries';
+import { NovaConversaDialog } from '@/features/conversas/components/NovaConversaDialog';
 import { useChat } from '@/features/conversas/store/chatStore';
 import {
   ALTURA_MAX,
@@ -17,7 +18,11 @@ type Props = {
 export function ComposerMensagem({ conversaId, podeTextoLivre }: Props) {
   const [texto, setTexto] = useState('');
   const [erro, setErro] = useState<string | null>(null);
+  const [reabrirAberto, setReabrirAberto] = useState(false);
   const enviar = useEnviarMensagem();
+  // Já está no cache (o ThreadMensagens carrega a mesma query) — serve para levar paciente,
+  // telefone e nome ao modal de reabertura sem prop-drilling.
+  const { data: conversa } = useConversa(conversaId);
 
   const altura = useComposerPreferencias((s) => s.altura);
   const enviarComEnter = useComposerPreferencias((s) => s.enviarComEnter);
@@ -78,13 +83,40 @@ export function ComposerMensagem({ conversaId, podeTextoLivre }: Props) {
 
   if (!podeTextoLivre) {
     return (
-      <div className="flex items-start gap-2 border-t border-gray-200 bg-amber-50 p-3 text-xs text-amber-800">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-        <span>
-          A janela de 24h expirou. Para reabrir, inicie uma nova conversa por <b>modelo</b> (template)
-          aprovado — o cidadão precisa responder para liberar o texto livre.
-        </span>
-      </div>
+      <>
+        <div className="border-t border-gray-200 bg-amber-50 p-3">
+          <div className="flex items-start gap-2 text-xs text-amber-800">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              A janela de 24h expirou. Para reabrir, inicie uma nova conversa por <b>modelo</b>{' '}
+              (template) aprovado — o cidadão precisa responder para liberar o texto livre.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setReabrirAberto(true)}
+            className="mt-2 flex items-center gap-1.5 rounded-md bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700"
+          >
+            <RotateCcw className="h-3.5 w-3.5" /> Reabrir conversa
+          </button>
+        </div>
+
+        {reabrirAberto && conversa && (
+          <NovaConversaDialog
+            titulo="Reabrir conversa"
+            pacienteInicialId={conversa.pacienteId ?? undefined}
+            telefoneInicial={conversa.telefoneCanonical}
+            nomeContatoInicial={conversa.pacienteNome ?? conversa.nomeContato ?? undefined}
+            onFechar={() => setReabrirAberto(false)}
+            onCriada={(id) => {
+              setReabrirAberto(false);
+              // O backend reusa a conversa viva do mesmo telefone — o id costuma ser este
+              // mesmo. Se vier outro (a anterior foi fechada), leva o operador para lá.
+              if (id !== conversaId) useChat.getState().abrirConversa(id);
+            }}
+          />
+        )}
+      </>
     );
   }
 
