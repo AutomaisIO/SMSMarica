@@ -1,7 +1,6 @@
 import { http } from '@/shared/api/httpClient';
 import type {
   BuscaSernitFiltro,
-  SituacaoSernit,
   BuscaSernitResultado,
   DispararVarreduraSernitPayload,
   ExecucaoSernit,
