@@ -270,6 +270,24 @@ public sealed partial class SernitNovaSolicitacaoService(
 
         if (!html.Contains(CampoTipo, StringComparison.Ordinal))
         {
+            // DIAG temporário: que página o SERNIT devolveu quando o combo faltou?
+            var b = html ?? string.Empty;
+            logger.LogWarning(
+                "SERNIT/diag AbrirEditar: combo ausente. len={Len} login={Login} aguarde={Ag} "
+                + "temPesquisar={Pesq} temForm0={F0} temComboRecurso={CR} temCampoDin={CD} "
+                + "temPainelPac={PP} temGrade={Grade} redirect={Red}. head={Head}",
+                b.Length,
+                b.Contains("login:password", StringComparison.Ordinal),
+                b.Contains("AGUARDE", StringComparison.OrdinalIgnoreCase),
+                b.Contains("Pesquisar", StringComparison.OrdinalIgnoreCase),
+                b.Contains("id=\"form0\"", StringComparison.Ordinal) || b.Contains("name=\"form0\"", StringComparison.Ordinal),
+                b.Contains("comboRecurso", StringComparison.Ordinal),
+                b.Contains("campoDinamicoBox", StringComparison.Ordinal),
+                b.Contains("painelDadosDoPaciente", StringComparison.Ordinal),
+                b.Contains("form0:listagem", StringComparison.Ordinal) || b.Contains("datascroller", StringComparison.Ordinal),
+                SernitHtmlParser.RedirectNoCorpo(b) ?? "(nenhum)",
+                b.Length > 400 ? b[..400].Replace('\n', ' ').Replace('\r', ' ') : b);
+
             throw new InvalidOperationException(
                 "A aba Editar do SERNIT não abriu (combo de Tipo ausente na resposta).");
         }
