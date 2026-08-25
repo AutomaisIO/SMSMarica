@@ -17,9 +17,13 @@ public sealed class CadastrarSolicitacaoExameValidator : AbstractValidator<Cadas
             .NotEmpty().WithMessage("Código de Solicitação é obrigatório.")
             .Must(RegulacaoRegras.Valido).WithMessage(RegulacaoRegras.MensagemInvalido)
             .MaximumLength(50);
+        // Chave de Confirmação é OPCIONAL na criação manual (ticket #77): a chave só é conhecida
+        // quando o paciente chega ao balcão, e é cobrada/gravada na autorização (AutorizarAsync).
+        // Espelha o caminho automático (importação SISREG), que cria a solicitação sem chave.
+        // Quando informada, precisa seguir a régua da regulação (0000 ou >= 9999).
         RuleFor(s => s.ChaveConfirmacao)
-            .NotEmpty().WithMessage("Chave de Confirmação é obrigatória.")
-            .Must(RegulacaoRegras.Valido).WithMessage(RegulacaoRegras.MensagemInvalido)
+            .Must(v => string.IsNullOrWhiteSpace(v) || RegulacaoRegras.Valido(v))
+            .WithMessage(RegulacaoRegras.MensagemInvalido)
             .MaximumLength(100);
         RuleFor(s => s.Justificativa).MaximumLength(1000);
         RuleFor(s => s.Observacoes).MaximumLength(2000);

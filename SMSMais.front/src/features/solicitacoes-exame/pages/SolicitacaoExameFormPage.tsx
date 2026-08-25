@@ -158,7 +158,9 @@ export function SolicitacaoExameFormPage() {
     if (!estado.solicitanteNome.trim()) return setErro('Informe o solicitante.');
     if (!regulacaoValida(estado.codigoSolicitacao))
       return setErro('Código de Solicitação inválido: use 0000 (emergência extra-SUS) ou um número a partir de 9999.');
-    if (!regulacaoValida(estado.chaveConfirmacao))
+    // Chave de Confirmação é opcional aqui (ticket #77): a recepção informa a chave quando o
+    // paciente chega (na autorização). Só valida o formato quando o campo foi preenchido.
+    if (estado.chaveConfirmacao.trim() && !regulacaoValida(estado.chaveConfirmacao))
       return setErro('Chave de Confirmação inválida: use 0000 (emergência extra-SUS) ou um número a partir de 9999.');
 
     // Já existe solicitação recente para este paciente → confirma antes de criar outra.
@@ -414,7 +416,7 @@ export function SolicitacaoExameFormPage() {
             />
           </Campo>
           <Campo
-            label="Chave de Confirmação"
+            label="Chave de Confirmação (opcional)"
             htmlFor="chave"
             ajuda={<AjudaCampo titulo={AJUDA_SOLICITACAO.chaveConfirmacao.titulo}>{AJUDA_SOLICITACAO.chaveConfirmacao.conteudo}</AjudaCampo>}
             erro={
