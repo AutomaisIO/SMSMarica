@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, Search } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
 import { Campo } from '@/shared/ui/Campo';
@@ -16,10 +17,15 @@ import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { consultarCpf } from '@/shared/api/integracoes';
 import { consultarUsuarioPorCpf, obterUsuarioPorId } from '@/features/usuarios/api/usuariosApi';
 import {
+  medicosKeys,
   useAtualizarMedico,
   useCadastrarMedico,
   useMedicoPorId,
 } from '@/features/medicos/api/queries';
+import {
+  FormularioUsuario,
+  type PrefillUsuario,
+} from '@/features/usuarios/components/FormularioUsuario';
 import {
   useAtualizarOverridesDoUsuario,
   useAtualizarPerfisDoUsuario,
@@ -114,6 +120,11 @@ export function FormularioMedico({
 
   const [perfilIdsSelecionados, setPerfilIdsSelecionados] = useState<string[]>([]);
   const [overrides, setOverrides] = useState<MatrizEdicao>({});
+
+  // Fluxo "criar usuário de acesso" a partir do profissional (ticket #70):
+  // 'oferta' aparece logo após cadastrar; 'form' abre o cadastro de usuário pré-preenchido.
+  const [subTela, setSubTela] = useState<'nenhuma' | 'oferta' | 'form'>('nenhuma');
+  const queryClient = useQueryClient();
 
   const cadastrar = useCadastrarMedico();
   const atualizar = useAtualizarMedico();
@@ -251,6 +262,27 @@ export function FormularioMedico({
     await salvarOverrides.mutateAsync({ id: usuarioId, overrides: overridesParaApi });
   }
 
+  // Dados do profissional para pré-preencher o cadastro do usuário de acesso.
+  function montarPrefillUsuario(): PrefillUsuario {
+    return {
+      nomeCompleto: valores.nomeCompleto,
+      cpf: valores.cpf,
+      dataNascimento: valores.dataNascimento || null,
+      email: valores.email || null,
+      telefone: valores.telefone || null,
+      endereco: valores.endereco,
+      fotoBase64: valores.fotoBase64,
+    };
+  }
+
+  // Após criar o usuário, o vínculo usuário↔profissional é resolvido por CPF no backend;
+  // recarrega os médicos para refletir o login recém-criado.
+  function aoConcluirCriacaoUsuario() {
+    queryClient.invalidateQueries({ queryKey: medicosKeys.raiz });
+    if (idMedico) queryClient.invalidateQueries({ queryKey: medicosKeys.porId(idMedico) });
+    aoConcluir();
+  }
+
   async function aoEnviar(e: FormEvent) {
     e.preventDefault();
     setErros({});
@@ -301,12 +333,19 @@ export function FormularioMedico({
           return;
         }
         const idMed = await cadastrar.mutateAsync(parsed.data);
+        let temUsuario = false;
         try {
           const novoMed = await import('@/features/medicos/api/medicosApi')
             .then((m) => m.obterMedicoPorId(idMed));
+          temUsuario = Boolean(novoMed.usuarioId);
           if (novoMed.usuarioId) await aplicarPermissoes(novoMed.usuarioId);
         } catch (errPerm) {
           setErroGlobal(`Médico criado, mas falha ao aplicar permissões: ${extrairMensagemDeErro(errPerm)}`);
+          return;
+        }
+        // Profissional criado sem login vinculado → oferece criar o usuário de acesso (ticket #70).
+        if (!temUsuario) {
+          setSubTela('oferta');
           return;
         }
       } else {
@@ -334,6 +373,43 @@ export function FormularioMedico({
   const pendente =
     cadastrar.isPending || atualizar.isPending
     || salvarPerfis.isPending || salvarOverrides.isPending;
+
+  const nomeSubstantivo = substantivo.charAt(0).toUpperCase() + substantivo.slice(1);
+
+  // Cadastro do usuário de acesso a partir do profissional (ticket #70).
+  if (subTela === 'form') {
+    return (
+      <FormularioUsuario
+        modo="criar"
+        prefill={montarPrefillUsuario()}
+        aoConcluir={aoConcluirCriacaoUsuario}
+      />
+    );
+  }
+
+  // Oferta logo após cadastrar um profissional sem login vinculado.
+  if (subTela === 'oferta') {
+    return (
+      <div className="space-y-5">
+        <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+          {nomeSubstantivo} <strong>{valores.nomeCompleto}</strong> cadastrado com sucesso.
+        </div>
+        <p className="text-sm text-gray-700">
+          Deseja criar agora um <strong>usuário de acesso ao sistema</strong> para este{' '}
+          {substantivo}? Com ele, o profissional entra no painel com login e senha. Você também
+          pode fazer isso depois, na edição do {substantivo}.
+        </p>
+        <div className="flex items-center justify-end gap-3 pt-2">
+          <Button type="button" variante="ghost" onClick={aoConcluir}>
+            Agora não
+          </Button>
+          <Button type="button" onClick={() => setSubTela('form')}>
+            Criar usuário de acesso
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (modo === 'criar' && !passoCpfConcluido) {
     return (
@@ -439,9 +515,14 @@ export function FormularioMedico({
           deveTrocarAtual={false}
         />
       ) : modo === 'editar' && detalhe.data ? (
-        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          Este profissional não tem usuário de acesso (login) vinculado. Senha e permissões só
-          ficam disponíveis após criar um usuário com o mesmo CPF.
+        <div className="space-y-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <p>
+            Este profissional não tem usuário de acesso (login) vinculado. Senha e permissões só
+            ficam disponíveis após criar um usuário com o mesmo CPF.
+          </p>
+          <Button type="button" onClick={() => setSubTela('form')}>
+            Criar Usuário de Sistema
+          </Button>
         </div>
       ) : null}
     </div>
@@ -461,9 +542,14 @@ export function FormularioMedico({
 
   const semUsuario = modo === 'editar' && detalhe.data != null && !detalhe.data.usuarioId;
   const abaPermissoes = semUsuario ? (
-    <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-      Este profissional não tem usuário de acesso (login) vinculado. Crie um usuário com o mesmo
-      CPF para gerenciar perfis e permissões.
+    <div className="space-y-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+      <p>
+        Este profissional não tem usuário de acesso (login) vinculado. Crie um usuário com o mesmo
+        CPF para gerenciar perfis e permissões.
+      </p>
+      <Button type="button" onClick={() => setSubTela('form')}>
+        Criar Usuário de Sistema
+      </Button>
     </div>
   ) : (
     <PermissoesSecao
@@ -475,10 +561,9 @@ export function FormularioMedico({
     />
   );
 
-  const tituloAbaProfissional = substantivo.charAt(0).toUpperCase() + substantivo.slice(1);
   const abas: Aba[] = [
     { id: 'dados', rotulo: 'Dados pessoais', conteudo: abaDados },
-    { id: 'medico', rotulo: tituloAbaProfissional, conteudo: abaMedico },
+    { id: 'medico', rotulo: nomeSubstantivo, conteudo: abaMedico },
     {
       id: 'permissoes',
       rotulo: 'Permissões',

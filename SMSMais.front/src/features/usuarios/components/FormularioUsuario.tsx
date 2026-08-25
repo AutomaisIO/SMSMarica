@@ -32,7 +32,25 @@ import { UnidadesSecao, type UnidadeSelecionada } from '@/features/usuarios/comp
 import { paraMatriz } from '@/features/perfis/lib/acoes';
 import type { MatrizEdicao } from '@/features/perfis/types';
 
-type Props = { modo: 'criar' | 'editar'; idUsuario?: string | null; aoConcluir: () => void };
+/** Dados para pré-preencher o cadastro de usuário — ex.: criar o login a partir de um
+ *  profissional recém-salvo (ticket #70). Presente em modo criar, pula o gate de CPF,
+ *  pois a identidade já foi validada ao cadastrar o profissional. */
+export type PrefillUsuario = {
+  nomeCompleto: string;
+  cpf: string;
+  dataNascimento?: string | null;
+  email?: string | null;
+  telefone?: string | null;
+  endereco?: EnderecoForm | null;
+  fotoBase64?: string | null;
+};
+
+type Props = {
+  modo: 'criar' | 'editar';
+  idUsuario?: string | null;
+  aoConcluir: () => void;
+  prefill?: PrefillUsuario;
+};
 
 type Valores = {
   nomeCompleto: string;
@@ -72,8 +90,22 @@ function formatarCpfDigitos(cpf: string): string {
   return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
 }
 
-export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
-  const [valores, setValores] = useState<Valores>(INICIAL);
+function montarValoresIniciais(prefill?: PrefillUsuario): Valores {
+  if (!prefill) return INICIAL;
+  return {
+    ...INICIAL,
+    nomeCompleto: prefill.nomeCompleto ?? '',
+    cpf: prefill.cpf ? formatarCpfDigitos(prefill.cpf) : '',
+    dataNascimento: prefill.dataNascimento ?? '',
+    email: prefill.email ?? '',
+    telefone: prefill.telefone ?? '',
+    endereco: prefill.endereco ?? enderecoVazio,
+    fotoBase64: prefill.fotoBase64 ?? null,
+  };
+}
+
+export function FormularioUsuario({ modo, idUsuario, aoConcluir, prefill }: Props) {
+  const [valores, setValores] = useState<Valores>(() => montarValoresIniciais(prefill));
   const [perfilIdsSelecionados, setPerfilIdsSelecionados] = useState<string[]>([]);
   const [unidadesSelecionadas, setUnidadesSelecionadas] = useState<UnidadeSelecionada[]>([]);
   const [overrides, setOverrides] = useState<MatrizEdicao>({});
@@ -81,7 +113,7 @@ export function FormularioUsuario({ modo, idUsuario, aoConcluir }: Props) {
   const [erroGlobal, setErroGlobal] = useState<string | null>(null);
 
   // Gate inicial em modo criar: CPF + nascimento + consulta Hub.
-  const [passoCpfConcluido, setPassoCpfConcluido] = useState(modo === 'editar');
+  const [passoCpfConcluido, setPassoCpfConcluido] = useState(modo === 'editar' || !!prefill);
   const [consultandoCpf, setConsultandoCpf] = useState(false);
 
   const cadastrar = useCadastrarUsuario();
