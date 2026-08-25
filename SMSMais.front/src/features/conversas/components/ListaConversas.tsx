@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
-import { useListarConversas } from '@/features/conversas/api/queries';
-import { useChat } from '@/features/conversas/store/chatStore';
+import { useListarConversas, useResumoConversas } from '@/features/conversas/api/queries';
+import { useAuth } from '@/shared/auth/authStore';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { ROTULO_ASSUNTO, type AbaConversas } from '@/features/conversas/types';
 
@@ -9,14 +9,13 @@ type Props = {
   conversaAtivaId: string | null;
   onSelecionar: (id: string) => void;
   podeSupervisao: boolean;
-  /** Só a instância do widget global deve alimentar o total (evita escrita duplicada). */
-  alimentarTotalGlobal?: boolean;
 };
 
+// Minhas × Fila são disjuntas (semântica do backend): conversa puxada sai da fila e passa a
+// existir só na lista pessoal do dono. A antiga "Não atribuídas" virou a própria Fila.
 const ABAS: { id: AbaConversas; rotulo: string }[] = [
   { id: 'Minhas', rotulo: 'Minhas' },
-  { id: 'Unidade', rotulo: 'Da unidade' },
-  { id: 'NaoAtribuidas', rotulo: 'Não atribuídas' },
+  { id: 'Unidade', rotulo: 'Fila' },
 ];
 
 function formatarHora(iso: string | null): string {
@@ -29,10 +28,10 @@ function formatarHora(iso: string | null): string {
     : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 }
 
-export function ListaConversas({ conversaAtivaId, onSelecionar, podeSupervisao, alimentarTotalGlobal }: Props) {
+export function ListaConversas({ conversaAtivaId, onSelecionar, podeSupervisao }: Props) {
   const [aba, setAba] = useState<AbaConversas>('Unidade');
   const [busca, setBusca] = useState('');
-  const setTotalNaoLidas = useChat((s) => s.setTotalNaoLidas);
+  const usuarioId = useAuth((s) => s.usuario?.id ?? null);
 
   const abas = useMemo(
     () => (podeSupervisao ? [...ABAS, { id: 'Todas' as AbaConversas, rotulo: 'Todas' }] : ABAS),
@@ -40,11 +39,12 @@ export function ListaConversas({ conversaAtivaId, onSelecionar, podeSupervisao, 
   );
 
   const { data: conversas, isLoading } = useListarConversas(aba, busca);
-
-  useEffect(() => {
-    if (!alimentarTotalGlobal || !conversas) return;
-    setTotalNaoLidas(conversas.reduce((acc, c) => acc + c.naoLidas, 0));
-  }, [alimentarTotalGlobal, conversas, setTotalNaoLidas]);
+  // Badge por aba: contadores do endpoint leve (o total global vem do useTotalNaoLidas).
+  const { data: resumo } = useResumoConversas(true);
+  const badgeAba: Partial<Record<AbaConversas, number>> = {
+    Minhas: resumo?.minhasNaoLidas ?? 0,
+    Unidade: resumo?.filaNaoLidas ?? 0,
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -54,11 +54,16 @@ export function ListaConversas({ conversaAtivaId, onSelecionar, podeSupervisao, 
             key={a.id}
             type="button"
             onClick={() => setAba(a.id)}
-            className={`rounded-t-md px-2.5 py-1.5 text-xs font-medium ${
+            className={`flex items-center gap-1 rounded-t-md px-2.5 py-1.5 text-xs font-medium ${
               aba === a.id ? 'bg-primary-50 text-primary-700' : 'text-gray-500 hover:bg-gray-50'
             }`}
           >
             {a.rotulo}
+            {(badgeAba[a.id] ?? 0) > 0 && (
+              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-600 px-1 text-[10px] font-semibold text-white">
+                {badgeAba[a.id]! > 99 ? '99+' : badgeAba[a.id]}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -131,9 +136,15 @@ export function ListaConversas({ conversaAtivaId, onSelecionar, podeSupervisao, 
                       {c.unidadeNome}
                     </span>
                   )}
-                  {c.operadorResponsavelNome && (
-                    <span className="truncate rounded bg-sky-50 px-1.5 py-0.5 text-[10px] text-sky-700">
-                      {c.operadorResponsavelNome}
+                  {c.operadorResponsavelId && (
+                    <span
+                      className={`truncate rounded px-1.5 py-0.5 text-[10px] ${
+                        c.operadorResponsavelId === usuarioId
+                          ? 'bg-emerald-50 text-emerald-700'
+                          : 'bg-sky-50 text-sky-700'
+                      }`}
+                    >
+                      {c.operadorResponsavelId === usuarioId ? 'Você' : c.operadorResponsavelNome}
                     </span>
                   )}
                   {!c.podeTextoLivre && c.status !== 'Pendente' && (

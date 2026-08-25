@@ -4,6 +4,7 @@ import { useTemConsulta } from '@/shared/auth/authStore';
 import { useChat } from '@/features/conversas/store/chatStore';
 import { useChatHub } from '@/features/conversas/hooks/useChatHub';
 import { useNotificacoesNavegador } from '@/features/conversas/hooks/useNotificacoesNavegador';
+import { useTotalNaoLidas } from '@/features/conversas/hooks/useTotalNaoLidas';
 import { abrirJanelaChat } from '@/features/conversas/lib/janelaChat';
 
 /**
@@ -20,6 +21,9 @@ export function ChatWidget() {
 
   // Hub sempre ativo enquanto o operador estiver logado. Deve rodar antes do early-return.
   useChatHub(podeVer);
+  // O total do sino/badge vem do /conversas/resumo — na janela principal ninguém carrega a
+  // lista, então sem isto o contador ficava sempre em zero.
+  useTotalNaoLidas(podeVer);
 
   // Alertas do navegador seguem a permissão já concedida (o pedido/toggle vive na janela
   // do chat) — o clique na notificação abre/foca a janela na conversa certa.

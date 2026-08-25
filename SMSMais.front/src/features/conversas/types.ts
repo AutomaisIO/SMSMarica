@@ -4,6 +4,11 @@ export type TipoMensagem =
   | 'Texto' | 'Imagem' | 'Documento' | 'Audio' | 'Video' | 'Template' | 'NotaInterna' | 'Sistema';
 export type AssuntoConversa = 'Tfd' | 'MarcacaoConsulta' | 'Duvida' | 'Atendente' | 'Outro';
 export type StatusMensagem = 'Enviada' | 'Entregue' | 'Lida' | 'Falha' | 'Recebida';
+/**
+ * 'Unidade' é a FILA (sem responsável, das minhas unidades + triagem geral); 'Minhas' são as
+ * que eu atendo. As duas são disjuntas. 'NaoAtribuidas' sobrevive só por compatibilidade — o
+ * backend a trata como alias de 'Unidade'.
+ */
 export type AbaConversas = 'Minhas' | 'Unidade' | 'NaoAtribuidas' | 'Todas';
 
 export type ConversaListItem = {
@@ -83,6 +88,25 @@ export type IniciarConversaPayload = {
   template: string;
   idioma: string;
   parametros: string[];
+};
+
+/** Atendente que pode receber a conversa por encaminhamento (ativo, com o módulo, vinculado). */
+export type AtendenteElegivel = {
+  usuarioId: string;
+  nome: string;
+  responsavelAtual: boolean;
+};
+
+/** Unidade da rede que pode receber a conversa por transferência. */
+export type UnidadeDestino = {
+  id: string;
+  nome: string;
+};
+
+/** Contadores de não-lidas (minhas × fila) para o sino/badge sem carregar a lista. */
+export type ResumoConversas = {
+  minhasNaoLidas: number;
+  filaNaoLidas: number;
 };
 
 /** Payload dos eventos SignalR (espelha ConversaEventoRealtime do backend). */

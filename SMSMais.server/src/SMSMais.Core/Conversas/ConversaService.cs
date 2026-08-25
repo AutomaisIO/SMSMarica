@@ -267,14 +267,14 @@ public sealed class ConversaService(
 
         var query = db.Conversas.AsNoTracking().Where(c => c.ExcluidoEm == null);
 
+        // Minhas e a fila são DISJUNTAS: conversa com dono aparece só na lista pessoal do dono
+        // (+ Todas, da supervisão); a fila é o que ninguém puxou — das minhas unidades ou da
+        // triagem geral. NaoAtribuidas sobrevive como alias da fila (compat com front antigo).
         query = aba switch
         {
             AbaConversas.Minhas => FiltrarMinhas(query, me),
-            AbaConversas.NaoAtribuidas => FiltrarFila(query, minhasUnidades),
             AbaConversas.Todas when supervisor => query,
-            _ => query.Where(c => c.OperadorResponsavelId == me
-                || c.UnidadeId == null
-                || (c.UnidadeId != null && minhasUnidades.Contains(c.UnidadeId.Value))),
+            _ => FiltrarFila(query, minhasUnidades),
         };
 
         if (!string.IsNullOrWhiteSpace(busca))

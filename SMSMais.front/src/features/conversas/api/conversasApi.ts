@@ -1,12 +1,15 @@
 import { http } from '@/shared/api/httpClient';
 import type {
   AbaConversas,
+  AtendenteElegivel,
   ContatoConversa,
   ConversaListItem,
   IniciarConversaPayload,
   Mensagem,
   PacienteDoTelefone,
+  ResumoConversas,
   TemplateWhatsApp,
+  UnidadeDestino,
 } from '@/features/conversas/types';
 
 export async function listarConversas(aba: AbaConversas, busca?: string): Promise<ConversaListItem[]> {
@@ -52,4 +55,43 @@ export async function enviarMensagem(id: string, texto: string): Promise<void> {
 
 export async function marcarLida(id: string): Promise<void> {
   await http.post(`/conversas/${id}/lida`, {});
+}
+
+/** Claim: o operador vira o responsável e a conversa sai da fila para a lista pessoal dele. */
+export async function assumirConversa(id: string): Promise<void> {
+  await http.post(`/conversas/${id}/assumir`, {});
+}
+
+/** Devolve à fila da unidade (limpa o responsável). */
+export async function devolverConversa(id: string): Promise<void> {
+  await http.post(`/conversas/${id}/devolver`, {});
+}
+
+export async function encaminharConversa(
+  id: string,
+  payload: { paraUsuarioId: string; observacao?: string | null },
+): Promise<void> {
+  await http.post(`/conversas/${id}/encaminhar`, payload);
+}
+
+export async function transferirConversa(
+  id: string,
+  payload: { paraUnidadeId: string; observacao?: string | null },
+): Promise<void> {
+  await http.post(`/conversas/${id}/transferir`, payload);
+}
+
+export async function listarAtendentesElegiveis(id: string): Promise<AtendenteElegivel[]> {
+  const { data } = await http.get<AtendenteElegivel[]>(`/conversas/${id}/atendentes-elegiveis`);
+  return data;
+}
+
+export async function listarUnidadesDestino(): Promise<UnidadeDestino[]> {
+  const { data } = await http.get<UnidadeDestino[]>('/conversas/unidades-destino');
+  return data;
+}
+
+export async function obterResumoConversas(): Promise<ResumoConversas> {
+  const { data } = await http.get<ResumoConversas>('/conversas/resumo');
+  return data;
 }

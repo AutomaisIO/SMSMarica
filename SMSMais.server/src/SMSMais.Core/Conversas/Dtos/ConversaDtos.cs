@@ -8,10 +8,13 @@ public enum AbaConversas
     /// <summary>Só as conversas cujo responsável sou eu.</summary>
     Minhas = 1,
 
-    /// <summary>Fila das minhas unidades (inclui as minhas e a triagem sem unidade).</summary>
+    /// <summary>
+    /// A FILA: sem responsável, das minhas unidades ou da triagem geral (sem unidade).
+    /// Disjunta de <see cref="Minhas"/> — conversa puxada sai daqui.
+    /// </summary>
     Unidade = 2,
 
-    /// <summary>Da(s) minha(s) unidade(s) ainda sem responsável.</summary>
+    /// <summary>Obsoleta — mesmo resultado de <see cref="Unidade"/> (compat com front antigo).</summary>
     NaoAtribuidas = 3,
 
     /// <summary>Todas (exige permissão de supervisão; senão cai no escopo da Unidade).</summary>

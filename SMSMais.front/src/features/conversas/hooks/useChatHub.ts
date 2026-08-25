@@ -95,7 +95,10 @@ export function useChatHub(habilitado: boolean) {
       .build();
     connAtual = conn;
 
-    const invalidarLista = () => queryClient.invalidateQueries({ queryKey: ['conversas', 'lista'] });
+    const invalidarLista = () => {
+      queryClient.invalidateQueries({ queryKey: ['conversas', 'lista'] });
+      queryClient.invalidateQueries({ queryKey: ['conversas', 'resumo'] });
+    };
     const invalidarConversa = (evt: ConversaEventoRealtime) => {
       invalidarLista();
       queryClient.invalidateQueries({ queryKey: ['conversas', 'mensagens', evt.conversaId] });
@@ -144,7 +147,13 @@ export function useChatHub(habilitado: boolean) {
       invalidarConversa(evt);
     });
 
-    conn.on('conversaAtualizada', () => invalidarLista());
+    // conversaAtualizada também cobre mudança de POSSE/unidade (assumir/devolver/encaminhar/
+    // transferir): o antigo dono com a thread aberta precisa ver o chip mudar — o detalhe não
+    // tem poll, só invalidação.
+    conn.on('conversaAtualizada', (evt: ConversaEventoRealtime) => {
+      invalidarLista();
+      queryClient.invalidateQueries({ queryKey: ['conversas', 'detalhe', evt.conversaId] });
+    });
 
     const reassinar = () => {
       for (const id of conversasAssinadas) invocarSeguro('AssinarConversa', id);

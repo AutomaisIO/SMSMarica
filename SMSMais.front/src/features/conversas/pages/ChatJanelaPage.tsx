@@ -7,6 +7,7 @@ import { useComposerPreferencias } from '@/features/conversas/store/composerPref
 import { obterPreferencias } from '@/shared/auth/preferenciasApi';
 import { useChatHub } from '@/features/conversas/hooks/useChatHub';
 import { useNotificacoesNavegador } from '@/features/conversas/hooks/useNotificacoesNavegador';
+import { useTotalNaoLidas } from '@/features/conversas/hooks/useTotalNaoLidas';
 import { ListaConversas } from '@/features/conversas/components/ListaConversas';
 import { ThreadMensagens } from '@/features/conversas/components/ThreadMensagens';
 import { NovaConversaDialog } from '@/features/conversas/components/NovaConversaDialog';
@@ -30,6 +31,7 @@ export function ChatJanelaPage() {
   const [params] = useSearchParams();
 
   useChatHub(podeVer);
+  useTotalNaoLidas(podeVer); // título da aba desta janela usa o mesmo total do resumo
 
   // A janela solta não tem o Layout, que é quem hidrata as preferências do servidor.
   // Sem isto, a altura da caixa (e o "Enviar com Enter") não acompanham o usuário ao
@@ -118,7 +120,6 @@ export function ChatJanelaPage() {
             conversaAtivaId={conversaAtivaId}
             onSelecionar={setConversaAtiva}
             podeSupervisao={podeSupervisao}
-            alimentarTotalGlobal
           />
         </div>
         <div className="min-w-0 flex-1">
