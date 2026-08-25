@@ -460,6 +460,15 @@ public sealed partial class SernitWebSessao(
     private static async Task<string?> GetAsync(Sessao sessao, string caminho, CancellationToken cancellationToken)
     {
         var uri = new Uri(sessao.BaseUri, caminho);
+        // O SERNIT (atrás do proxy, sem X-Forwarded-Proto) emite Location/redirect em http://. Nunca
+        // falamos http com ele: sobe para https no mesmo host. Sem isto, o HttpClient recusa seguir o
+        // 302 https→http (devolve corpo vazio) e o cookie de sessão Secure não iria. É o que fazia a
+        // aba Editar voltar "sem o combo de Tipo". Caminho relativo passa direto (já resolve em https).
+        if (uri.Scheme == Uri.UriSchemeHttp
+            && string.Equals(uri.Host, sessao.BaseUri.Host, StringComparison.OrdinalIgnoreCase))
+        {
+            uri = new UriBuilder(uri) { Scheme = Uri.UriSchemeHttps, Port = -1 }.Uri;
+        }
         using var requisicao = new HttpRequestMessage(HttpMethod.Get, uri);
         if (sessao.Referer is { } r) requisicao.Headers.TryAddWithoutValidation("Referer", r);
 

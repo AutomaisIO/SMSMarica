@@ -263,31 +263,21 @@ public sealed partial class SernitNovaSolicitacaoService(
             cancellationToken);
 
         var html = resposta.Texto;
-        if (SernitHtmlParser.RedirectNoCorpo(html) is { Length: > 0 } destino)
+
+        // O SERNIT (atrás do proxy) responde o submit da aba Editar com um 302 cujo Location aponta
+        // para http:// — o proxy não devolve X-Forwarded-Proto, então o WildFly monta a URL de
+        // redirect sem o https. O HttpClient do .NET, por segurança, NÃO segue redirect que rebaixa
+        // https→http: ele para no 302 e devolve corpo VAZIO (era o "combo ausente" — resposta len=0).
+        // Por isso lemos o Location do header (não só o <meta> do corpo); o AbrirTelaAsync/GetAsync
+        // sobe http→https antes de seguir. Mesma leitura de Location que o EntrarNoModuloAsync faz.
+        var destino = resposta.Location ?? SernitHtmlParser.RedirectNoCorpo(html);
+        if (!string.IsNullOrWhiteSpace(destino))
         {
             html = await sessao.AbrirTelaAsync(destino, cancellationToken);
         }
 
         if (!html.Contains(CampoTipo, StringComparison.Ordinal))
         {
-            // DIAG temporário: que página o SERNIT devolveu quando o combo faltou?
-            var b = html ?? string.Empty;
-            logger.LogWarning(
-                "SERNIT/diag AbrirEditar: combo ausente. len={Len} login={Login} aguarde={Ag} "
-                + "temPesquisar={Pesq} temForm0={F0} temComboRecurso={CR} temCampoDin={CD} "
-                + "temPainelPac={PP} temGrade={Grade} redirect={Red}. head={Head}",
-                b.Length,
-                b.Contains("login:password", StringComparison.Ordinal),
-                b.Contains("AGUARDE", StringComparison.OrdinalIgnoreCase),
-                b.Contains("Pesquisar", StringComparison.OrdinalIgnoreCase),
-                b.Contains("id=\"form0\"", StringComparison.Ordinal) || b.Contains("name=\"form0\"", StringComparison.Ordinal),
-                b.Contains("comboRecurso", StringComparison.Ordinal),
-                b.Contains("campoDinamicoBox", StringComparison.Ordinal),
-                b.Contains("painelDadosDoPaciente", StringComparison.Ordinal),
-                b.Contains("form0:listagem", StringComparison.Ordinal) || b.Contains("datascroller", StringComparison.Ordinal),
-                SernitHtmlParser.RedirectNoCorpo(b) ?? "(nenhum)",
-                b.Length > 400 ? b[..400].Replace('\n', ' ').Replace('\r', ' ') : b);
-
             throw new InvalidOperationException(
                 "A aba Editar do SERNIT não abriu (combo de Tipo ausente na resposta).");
         }
