@@ -553,6 +553,7 @@ public static class DependencyInjection
         services.Configure<Conversas.ConversasOptions>(
             configuration.GetSection(Conversas.ConversasOptions.SecaoConfig));
         services.AddScoped<Conversas.IConversaService, Conversas.ConversaService>();
+        services.AddScoped<Conversas.IConversasDoPacienteService, Conversas.ConversasDoPacienteService>();
         services.AddScoped<Conversas.RespostasRapidas.IRespostaRapidaService,
             Conversas.RespostasRapidas.RespostaRapidaService>();
         services.AddScoped<Conversas.IUsuarioUnidadeService, Conversas.UsuarioUnidadeService>();

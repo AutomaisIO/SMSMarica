@@ -1,6 +1,7 @@
 import { http } from '@/shared/api/httpClient';
 import type { AnexoExameDto } from '@/features/anamnese/types';
 import type { PaginaAuditoria } from '@/features/auditoria/types';
+import type { Mensagem } from '@/features/conversas/types';
 import type {
   AgendamentosPaciente,
   Atendimento,
@@ -9,6 +10,7 @@ import type {
   Paciente,
   PacienteExistencia,
   PacienteListItem,
+  SessaoConversaPaciente,
 } from '@/features/pacientes/types';
 
 export async function obterAtendimentos(id: string): Promise<Atendimento[]> {
@@ -41,6 +43,25 @@ export type AcessoCidadao = {
 
 export async function obterAcessos(id: string): Promise<AcessoCidadao[]> {
   const { data } = await http.get<AcessoCidadao[]>(`/pacientes/${id}/acessos`);
+  return data;
+}
+
+/** Sessões de conversa de WhatsApp do paciente (blocos por 24h+ de silêncio), recentes primeiro. */
+export async function obterSessoesConversa(id: string): Promise<SessaoConversaPaciente[]> {
+  const { data } = await http.get<SessaoConversaPaciente[]>(`/pacientes/${id}/conversas/sessoes`);
+  return data;
+}
+
+/** Mensagens de uma sessão (telefone + faixa vindos da listagem), em ordem cronológica. */
+export async function obterMensagensSessao(
+  id: string,
+  telefone: string,
+  de: string,
+  ate: string,
+): Promise<Mensagem[]> {
+  const { data } = await http.get<Mensagem[]>(`/pacientes/${id}/conversas/mensagens`, {
+    params: { telefone, de, ate },
+  });
   return data;
 }
 

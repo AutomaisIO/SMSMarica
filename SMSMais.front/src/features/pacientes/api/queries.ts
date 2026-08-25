@@ -10,8 +10,10 @@ import {
   obterAnexosExame,
   obterAtendimentos,
   obterAuditoriaPaciente,
+  obterMensagensSessao,
   obterPacientePorCpf,
   obterPacientePorId,
+  obterSessoesConversa,
   reativarPaciente,
 } from '@/features/pacientes/api/pacientesApi';
 import type {
@@ -29,6 +31,9 @@ export const pacientesKeys = {
   acessos: (id: string) => ['pacientes', 'acessos', id] as const,
   anexosExame: (id: string) => ['pacientes', 'anexos-exame', id] as const,
   auditoria: (id: string) => ['pacientes', 'auditoria', id] as const,
+  sessoesConversa: (id: string) => ['pacientes', 'sessoes-conversa', id] as const,
+  mensagensSessao: (id: string, telefone: string, de: string) =>
+    ['pacientes', 'mensagens-sessao', id, telefone, de] as const,
 };
 
 export function useAtendimentosPaciente(id: string | null) {
@@ -72,6 +77,35 @@ export function useAnexosExamePaciente(id: string | null) {
       return obterAnexosExame(id);
     },
     enabled: Boolean(id),
+  });
+}
+
+export function useSessoesConversaPaciente(id: string | null) {
+  return useQuery({
+    queryKey: id ? pacientesKeys.sessoesConversa(id) : ['pacientes', 'sessoes-conversa', 'nenhum'],
+    queryFn: () => {
+      if (!id) throw new Error('ID não informado.');
+      return obterSessoesConversa(id);
+    },
+    enabled: Boolean(id),
+  });
+}
+
+/** Mensagens de UMA sessão — só busca quando a sessão é expandida na aba. */
+export function useMensagensSessaoPaciente(
+  id: string,
+  sessao: { telefone: string; inicio: string; fim: string } | null,
+) {
+  return useQuery({
+    queryKey: sessao
+      ? pacientesKeys.mensagensSessao(id, sessao.telefone, sessao.inicio)
+      : ['pacientes', 'mensagens-sessao', 'nenhuma'],
+    queryFn: () => {
+      if (!sessao) throw new Error('Sessão não informada.');
+      return obterMensagensSessao(id, sessao.telefone, sessao.inicio, sessao.fim);
+    },
+    enabled: Boolean(sessao),
+    staleTime: 60_000,
   });
 }
 

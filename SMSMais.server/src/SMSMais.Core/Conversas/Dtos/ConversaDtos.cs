@@ -90,6 +90,29 @@ public sealed record UnidadeDestinoDto(Guid Id, string Nome);
 public sealed record ResumoConversasDto(int MinhasNaoLidas, int FilaNaoLidas);
 
 /// <summary>
+/// Uma "sessão" de conversa na aba do cadastro do paciente — bloco de mensagens do mesmo
+/// telefone separado por 24h+ de silêncio (a janela do WhatsApp). Derivada da linha do tempo
+/// de <c>whatsapp_mensagem</c>, então cobre também mensagens de automação e o legado sem
+/// <c>conversa_id</c>.
+/// </summary>
+/// <param name="Operadores">Quem respondeu no bloco (autores das mensagens de saída).</param>
+/// <param name="TemAutomaticas">Há saídas sem autor — mensagens do sistema (confirmações, avisos).</param>
+/// <param name="PeloTelefone">
+/// Nenhuma mensagem do bloco está vinculada a ESTE paciente — a sessão entrou por ser de um
+/// telefone do cadastro (celular de família: pode ser diálogo de outra pessoa da casa).
+/// </param>
+public sealed record SessaoConversaPacienteDto(
+    string Telefone,
+    DateTime Inicio,
+    DateTime Fim,
+    int QtdMensagens,
+    int QtdRecebidas,
+    int QtdEnviadas,
+    IReadOnlyList<string> Operadores,
+    bool TemAutomaticas,
+    bool PeloTelefone);
+
+/// <summary>
 /// Um dos cadastros que carregam o telefone da conversa. Celular de família aparece no
 /// cadastro da mãe, do filho e do avô — quem atende precisa ver todos, não um escolhido em
 /// silêncio.

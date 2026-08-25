@@ -8,6 +8,8 @@ using SMSMais.Core.Auditoria;
 using SMSMais.Core.Auditoria.Dtos;
 using SMSMais.Core.Cidadao;
 using SMSMais.Core.Cidadao.Dtos;
+using SMSMais.Core.Conversas;
+using SMSMais.Core.Conversas.Dtos;
 using SMSMais.Core.Pacientes;
 using SMSMais.Core.Pacientes.Agendamentos;
 using SMSMais.Core.Pacientes.Agendamentos.Dtos;
@@ -23,13 +25,15 @@ public sealed class PacientesController(
     IAtendimentosService atendimentos,
     ICidadaoSessaoService sessoes,
     IAuditoriaService auditoria,
-    IAgendamentosPacienteService agendamentos) : ControllerBase
+    IAgendamentosPacienteService agendamentos,
+    IConversasDoPacienteService conversas) : ControllerBase
 {
     private readonly IPacientesService _service = service;
     private readonly IAtendimentosService _atendimentos = atendimentos;
     private readonly ICidadaoSessaoService _sessoes = sessoes;
     private readonly IAuditoriaService _auditoria = auditoria;
     private readonly IAgendamentosPacienteService _agendamentos = agendamentos;
+    private readonly IConversasDoPacienteService _conversas = conversas;
 
     /// <summary>
     /// Busca em tempo real por nome (qualquer parte, múltiplos tokens) ou CPF.
@@ -85,6 +89,33 @@ public sealed class PacientesController(
     [ProducesResponseType<IReadOnlyList<AcessoCidadaoDto>>(StatusCodes.Status200OK)]
     public async Task<IReadOnlyList<AcessoCidadaoDto>> Acessos(Guid id, CancellationToken cancellationToken) =>
         await _sessoes.ListarAcessosAsync(id, cancellationToken);
+
+    /// <summary>
+    /// Sessões de conversa de WhatsApp do paciente (blocos separados por 24h+ de silêncio),
+    /// mais recentes primeiro — mensagens vinculadas a ele + as dos telefones do cadastro.
+    /// Aba "Conversas" da ficha; gate por Pacientes.Consulta como as demais abas (o escopo por
+    /// unidade/posse é da Central, não da ficha).
+    /// </summary>
+    [HttpGet("{id:guid}/conversas/sessoes")]
+    [RequerPermissao(ModuloPermissao.Pacientes, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<SessaoConversaPacienteDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IReadOnlyList<SessaoConversaPacienteDto>> ConversasSessoes(
+        Guid id, CancellationToken cancellationToken) =>
+        await _conversas.ListarSessoesAsync(id, cancellationToken);
+
+    /// <summary>Mensagens de uma sessão (telefone + faixa vindos da listagem), em ordem cronológica.</summary>
+    [HttpGet("{id:guid}/conversas/mensagens")]
+    [RequerPermissao(ModuloPermissao.Pacientes, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<MensagemDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IReadOnlyList<MensagemDto>> ConversasMensagens(
+        Guid id,
+        [FromQuery] string telefone,
+        [FromQuery] DateTime de,
+        [FromQuery] DateTime ate,
+        CancellationToken cancellationToken) =>
+        await _conversas.ObterMensagensDaSessaoAsync(id, telefone, de, ate, cancellationToken);
 
     /// <summary>
     /// BOTÃO DE PÂNICO: expira TODOS os magic links válidos e revoga TODAS as sessões de

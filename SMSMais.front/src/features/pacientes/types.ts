@@ -271,3 +271,22 @@ export type AgendamentosPaciente = {
   proximos: AgendamentoPacienteItem[];
   historico: AgendamentoPacienteItem[];
 };
+
+/**
+ * Uma "sessão" de conversa de WhatsApp na aba Conversas da ficha — bloco de mensagens do mesmo
+ * telefone separado por 24h+ de silêncio. `peloTelefone` = nenhuma mensagem do bloco está
+ * vinculada a ESTE paciente (celular de família: pode ser diálogo de outra pessoa da casa).
+ */
+export type SessaoConversaPaciente = {
+  telefone: string;
+  inicio: string;
+  fim: string;
+  qtdMensagens: number;
+  qtdRecebidas: number;
+  qtdEnviadas: number;
+  /** Operadores que responderam no bloco. */
+  operadores: string[];
+  /** Há mensagens automáticas do sistema (confirmações, avisos) no bloco. */
+  temAutomaticas: boolean;
+  peloTelefone: boolean;
+};

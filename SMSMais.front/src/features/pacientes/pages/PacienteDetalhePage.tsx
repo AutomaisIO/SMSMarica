@@ -38,6 +38,7 @@ import type { RegistroAuditoria } from '@/features/auditoria/types';
 import { NomeCompletoVerificavel } from '@/features/pacientes/components/NomeCompletoVerificavel';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
 import { BotaoEnviarPesquisa } from '@/features/pacientes/components/BotaoEnviarPesquisa';
+import { SecaoConversasWhatsApp } from '@/features/pacientes/components/SecaoConversasWhatsApp';
 import { SecaoExamesAnexados } from '@/features/pacientes/components/SecaoExamesAnexados';
 import { SinaisVitaisTendencia } from '@/features/pacientes/components/SinaisVitaisTendencia';
 import { abrirImpressaoDocumento, EDOC_CSS } from '@/features/pacientes/lib/imprimirDocumento';
@@ -886,6 +887,7 @@ type Vista =
   | 'agendamentos'
   | 'tratamentos'
   | 'exames'
+  | 'conversas'
   | 'acessos'
   | 'auditoria'
   | 'dados';
@@ -1175,6 +1177,7 @@ export function PacienteDetalhePage() {
     { id: 'agendamentos', rotulo: 'Agendamentos' },
     { id: 'tratamentos', rotulo: 'Tratamentos', badge: listaTratamentos.length },
     { id: 'exames', rotulo: 'Exames anexados' },
+    { id: 'conversas', rotulo: 'Conversas' },
     { id: 'acessos', rotulo: 'Histórico de Acesso' },
     { id: 'auditoria', rotulo: 'Histórico de alterações' },
     { id: 'dados', rotulo: 'Dados pessoais' },
@@ -1309,6 +1312,12 @@ export function PacienteDetalhePage() {
           {vista === 'exames' ? (
             <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
               <SecaoExamesAnexados pacienteId={id} />
+            </div>
+          ) : null}
+
+          {vista === 'conversas' ? (
+            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+              <SecaoConversasWhatsApp pacienteId={id} />
             </div>
           ) : null}
 
