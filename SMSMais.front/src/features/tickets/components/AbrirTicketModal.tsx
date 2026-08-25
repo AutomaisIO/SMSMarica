@@ -32,6 +32,7 @@ export function AbrirTicketModal({ aberto, aoFechar, aoCriar }: Props) {
   const [descricao, setDescricao] = useState('');
   const [anexos, setAnexos] = useState<AnexoRef[]>([]);
   const [erro, setErro] = useState<string | null>(null);
+  const [criadoId, setCriadoId] = useState<string | null>(null);
   const abrir = useAbrirTicket();
 
   function reiniciar() {
@@ -40,6 +41,7 @@ export function AbrirTicketModal({ aberto, aoFechar, aoCriar }: Props) {
     setDescricao('');
     setAnexos([]);
     setErro(null);
+    setCriadoId(null);
   }
 
   function fechar() {
@@ -57,9 +59,7 @@ export function AbrirTicketModal({ aberto, aoFechar, aoCriar }: Props) {
     try {
       const id = await abrir.mutateAsync({ titulo: titulo.trim(), descricao: descricao.trim(), tipo, anexos });
       notificar('Ticket aberto! Você será avisado quando houver retorno.', 'sucesso');
-      reiniciar();
-      aoFechar();
-      aoCriar?.(id);
+      setCriadoId(id);
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
     }
@@ -67,6 +67,24 @@ export function AbrirTicketModal({ aberto, aoFechar, aoCriar }: Props) {
 
   return (
     <Modal aberto={aberto} aoFechar={fechar} titulo="Abrir ticket" descricao="Reporte um bug, peça uma mudança, sugira uma melhoria ou tire uma dúvida." largura="lg">
+      {criadoId ? (
+        <div className="space-y-4">
+          <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3">
+            <p className="text-sm font-medium text-green-800">Ticket aberto com sucesso!</p>
+            <p className="mt-1 text-sm text-green-700">
+              Você será avisado quando houver retorno. Quer abrir outro agora?
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variante="ghost" onClick={fechar}>Fechar</Button>
+            <Button variante="ghost" onClick={() => { const id = criadoId; reiniciar(); aoFechar(); aoCriar?.(id); }}>
+              Ver ticket
+            </Button>
+            <Button onClick={reiniciar}>Abrir outro</Button>
+          </div>
+        </div>
+      ) : (
       <div className="space-y-4">
         <Campo label="O que você quer fazer?" htmlFor="tk-tipo" required dica={DICA_TIPO[tipo]}>
           <Select id="tk-tipo" value={tipo} onChange={(e) => setTipo(e.target.value as TicketTipo)}>
@@ -111,6 +129,7 @@ export function AbrirTicketModal({ aberto, aoFechar, aoCriar }: Props) {
           </Button>
         </div>
       </div>
+      )}
     </Modal>
   );
 }
