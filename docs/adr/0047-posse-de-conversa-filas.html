@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR-0047 — Posse de conversa: fila da unidade × lista pessoal do atendente</title>
+<style>
+:root{--bg:#f4f6f5;--surface:#fff;--ink:#1b2427;--muted:#5c6b70;--border:#d3dcda;--accent:#0782a1;--accent2:#b45309;--code:#eceff0}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--surface:#1c2226;--ink:#e6ebec;--muted:#93a1a6;--border:#2e383d;--accent:#189aa8;--accent2:#c67927;--code:#232b30}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6;padding:32px 20px 64px}
+main{max-width:920px;margin:0 auto}
+h1{font-family:ui-monospace,Consolas,monospace;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid var(--accent);padding-bottom:8px}
+h2{font-family:ui-monospace,Consolas,monospace;font-size:.95rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-top:2.2em}
+h3{font-size:1rem;margin-top:1.6em}
+a{color:var(--accent)}code{font-family:ui-monospace,Consolas,monospace;background:var(--code);padding:1px 5px;border-radius:3px;font-size:.88em}
+hr{border:none;border-top:1px solid var(--border);margin:2em 0}
+.tw{overflow-x:auto;margin:12px 0}
+table{border-collapse:collapse;width:100%;background:var(--surface);border:1px solid var(--border);font-size:.85rem}
+th,td{text-align:left;padding:8px 12px;border-top:1px solid var(--border);vertical-align:top}
+thead th{border-top:none;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+li{margin:3px 0}p,li{max-width:75ch}
+</style>
+</head>
+<body>
+<main>
+<h1>ADR-0047 — Posse de conversa: fila da unidade × lista pessoal do atendente</h1>
+<p><strong>Status:</strong> aceito · <strong>Data:</strong> 2026-08-24 <strong>Relacionado:</strong> <a href="./0044-app-meta-unico-e-roteador-whatsapp.md">ADR-0044</a> (roteador de WhatsApp), <a href="./0043-instancia-por-municipio.md">ADR-0043</a> (instância por município — o multi-tenant do módulo continua sendo <em>unidade</em>, nunca <code>TenantId</code>).</p>
+<h2>Contexto</h2>
+<p>A Central de Atendimento (módulo Conversas) nasceu com o modelo de dados de posse pronto — <code>conversa.operador_responsavel_id</code>, <code>conversa.unidade_id</code>, a trilha <code>conversa_evento</code> com De/Para e o token de concorrência <code>xmin</code> — mas sem a mecânica: nenhum endpoint mudava a posse, a aba "Da unidade" era um superconjunto que incluía as conversas com dono, responder não tornava ninguém responsável, e abrir a thread zerava o contador de não-lidas <strong>para todos os operadores</strong> (o front chamava <code>POST /{id}/lida</code> num <code>useEffect</code>).</p>
+<p>Na prática: não existia separação entre "o que é meu" e "o que ninguém pegou", qualquer operador via (e apagava o badge de) conversas de qualquer colega, e a posse — quando existia — era um rótulo de listagem, não uma trava.</p>
+<h2>Decisão</h2>
+<p><strong>Conversa tem no máximo um responsável, e as listas são disjuntas:</strong></p>
+<ul>
+<li><strong>Com dono</strong> (<code>operador_responsavel_id</code> setado): existe só na lista pessoal do dono</li>
+</ul>
+<p>  (aba <em>Minhas</em>) e na visão da supervisão (aba <em>Todas</em>, <code>ConversasSupervisao</code>).</p>
+<ul>
+<li><strong>Sem dono, com unidade</strong>: fila da unidade — visível aos vinculados àquela unidade.</li>
+<li><strong>Sem dono e sem unidade</strong> (número desconhecido): triagem geral, visível a todo operador do</li>
+</ul>
+<p>  módulo até alguém puxar.</p>
+<ul>
+<li>A antiga aba <code>NaoAtribuidas</code> vira <strong>alias</strong> da fila (compatibilidade); o recorte da fila segue</li>
+</ul>
+<p>  sendo <strong>todas as unidades vinculadas</strong> do operador — <code>X-Unidade-Id</code> continua fora deste módulo.</p>
+<p><strong>A posse muda por exatamente cinco caminhos</strong>, todos gravados na trilha <code>conversa_evento</code>:</p>
+<div class="tw"><table><thead><tr><th>Ação</th><th>Como</th><th>Evento</th></tr></thead><tbody>
+<tr><td>Claim implícito</td><td>responder (texto ou template) conversa <strong>sem dono</strong></td><td><code>Assumida</code></td></tr>
+<tr><td>Claim explícito</td><td><code>POST /conversas/{id}/assumir</code> (o botão "Marcar como lida" da fila)</td><td><code>Assumida</code></td></tr>
+<tr><td>Devolver</td><td><code>POST /{id}/devolver</code> — limpa o dono, <strong>mantém a unidade</strong></td><td><code>Devolvida</code> (novo, =9)</td></tr>
+<tr><td>Encaminhar a colega</td><td><code>POST /{id}/encaminhar</code> — alvo ativo, com o módulo, vinculado à unidade</td><td><code>Transferida</code></td></tr>
+<tr><td>Transferir de unidade</td><td><code>POST /{id}/transferir</code> — entra na fila de lá <strong>sem dono</strong></td><td><code>EncaminhadaUnidade</code></td></tr>
+</tbody></table></div>
+<p><strong>Responder conversa de terceiro NÃO rouba a posse</strong> — a autoria da mensagem já registra quem falou; reatribuição é sempre ação explícita. Agir sobre conversa de terceiro (devolver / encaminhar / transferir) exige <code>ConversasSupervisao</code>.</p>
+<p><strong><code>POST /{id}/lida</code> mantém a semântica antiga</strong> (zera o contador, nunca dá claim). Motivo de transição que virou garantia: o front anterior chamava esse endpoint ao abrir a thread — se ele desse claim, o deploy do backend na frente do front faria <em>abrir a conversa</em> roubar a posse em silêncio. O claim explícito tem endpoint próprio (<code>/assumir</code>).</p>
+<p><strong>A posse é trava de acesso, não só filtro.</strong> Todo acesso por id (ler, mensagens, responder, marcar lida e as ações novas) passa pelo escopo: supervisão ∨ dono ∨ triagem geral ∨ unidade vinculada — fora disso, <strong>404</strong> (não vaza a existência). Colega da mesma unidade continua podendo abrir e responder a conversa do outro (sem virar dono) — é o plantão cobrindo o colega.</p>
+<p><strong>Concorrência pelo <code>xmin</code> que já existia:</strong> dois atendentes puxando a mesma conversa — o segundo recebe <code>409 conversa.ja_assumida</code> com o nome de quem ganhou. Exceção deliberada: <code>EnviarTexto</code> nunca falha <strong>depois</strong> que a mensagem já foi ao cidadão; perdeu a corrida do claim, a posse fica com o vencedor e só os efeitos da mensagem são reaplicados.</p>
+<p><strong>Contador de não-lidas continua um inteiro por conversa</strong> (não por usuário). Com as listas disjuntas ele é suficiente: conversa com dono só aparece para o dono, então o badge é dele; na fila, o primeiro que puxar assume a pendência. O sino/badge global sai do novo <code>GET /conversas/resumo</code> (minhas + fila) — antes o total era somado da lista carregada, e só na janela solta do chat (o sino da janela principal vivia em zero).</p>
+<p><strong>SignalR espelha as listas</strong> (<code>Grupos()</code> ↔ <code>ListarAsync</code> — mudou um, muda o outro): conversa com dono notifica só <code>usuario:{dono}</code> + supervisão + thread aberta (a unidade inteira não bipa mais); sem dono notifica a unidade, ou <code>conversas:geral</code> na triagem. Mudança de posse/unidade usa <code>ConversaMovidaAsync</code>, que soma a audiência <strong>antiga</strong> à nova — quem perdeu a conversa recebe o evento que a tira da lista dele.</p>
+<h2>Consequências</h2>
+<ul>
+<li>Sem migration: campos, índices e eventos já existiam; só <code>Devolvida = 9</code> entrou no enum.</li>
+<li>O deploy é em duas fases <em>por design</em>: fase 1 (backend aditivo, abas intactas) é inofensiva ao</li>
+</ul>
+<p>  front antigo; fase 2 (abas disjuntas + <code>Grupos()</code> + UI) é atômica back+front.</p>
+<ul>
+<li>Conversa assumida por operador <strong>sem unidade principal</strong> (vários vínculos, nenhum marcado)</li>
+</ul>
+<p>  fica com dono e sem unidade — visível só a ele e à supervisão. É comportamento documentado;   o alerta de cadastro (vínculo sem principal) fica como melhoria futura.</p>
+<ul>
+<li>A supervisão zera badge de conversa alheia ao marcar lida (contador é global). Aceito.</li>
+<li>Mensagens de automação (confirmação de agendamento etc.) continuam <strong>fora</strong> da thread</li>
+</ul>
+<p>  (<code>WhatsAppCliente.NovaMensagem</code> não vincula <code>conversa_id</code>) — gap conhecido, independente de   posse, registrado para frente própria.</p>
+<ul>
+<li>Fica proibido dar claim em <code>POST /{id}/lida</code> — quem quiser "abrir = assumir" precisa de novo</li>
+</ul>
+<p>  ADR (e de pensar no front velho em cache).</p>
+</main>
+</body>
+</html>
