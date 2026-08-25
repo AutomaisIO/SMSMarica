@@ -1,0 +1,112 @@
+using Microsoft.EntityFrameworkCore;
+using SMSMais.Core.Common.Excecoes;
+using SMSMais.Core.Sernit.Dtos;
+using SMSMais.Data;
+using SMSMais.Data.Entities.Sernit;
+
+namespace SMSMais.Core.Sernit;
+
+/// <summary>
+/// Busca na NOSSA base espelhada do SERNIT — subsistema irmão do SER-RJ (ADR-0042).
+///
+/// <para><b>Não fala com o SERNIT.</b> A tela lê o espelho, atualizado pelo motor de varredura —
+/// consultar ao vivo custaria uma sessão (única por operador) e ficaria refém do teto de 100.</para>
+/// </summary>
+public interface ISernitConsultaService
+{
+    Task<SernitBuscaResultadoDto> BuscarAsync(SernitBuscaFiltroDto filtro, CancellationToken cancellationToken);
+    Task<SernitSolicitacaoDetalheDto> ObterAsync(Guid id, CancellationToken cancellationToken);
+    Task<IReadOnlyList<SernitResumoSituacaoDto>> ResumoPorSituacaoAsync(CancellationToken cancellationToken);
+}
+
+public sealed class SernitConsultaService(SmsMaisDbContext db) : ISernitConsultaService
+{
+    private const int TamanhoMaximo = 200;
+
+    public async Task<SernitBuscaResultadoDto> BuscarAsync(
+        SernitBuscaFiltroDto filtro, CancellationToken cancellationToken)
+    {
+        var consulta = db.SernitSolicitacoes.AsNoTracking().Where(x => x.ExcluidoEm == null);
+
+        if (filtro.Situacao is { } situacao) consulta = consulta.Where(x => x.Situacao == situacao);
+        if (filtro.Tipo is { } tipo) consulta = consulta.Where(x => x.Tipo == tipo);
+        if (filtro.DataSolicitacaoInicio is { } di) consulta = consulta.Where(x => x.DataSolicitacao >= di);
+        if (filtro.DataSolicitacaoFim is { } df) consulta = consulta.Where(x => x.DataSolicitacao <= df);
+        if (filtro.MudouDesde is { } desde) consulta = consulta.Where(x => x.SituacaoMudouEm >= desde);
+
+        if (!string.IsNullOrWhiteSpace(filtro.Termo))
+        {
+            var termo = filtro.Termo.Trim();
+            var digitos = new string(termo.Where(char.IsDigit).ToArray());
+
+            consulta = consulta.Where(x =>
+                EF.Functions.ILike(x.PacienteNome, $"%{termo}%")
+                || EF.Functions.ILike(x.Recurso, $"%{termo}%")
+                || x.IdSernit == termo
+                || (digitos.Length > 0 && (x.Cpf == digitos || x.Cns == digitos)));
+        }
+
+        var total = await consulta.CountAsync(cancellationToken);
+
+        var pagina = Math.Max(filtro.Pagina, 1);
+        var tamanho = Math.Clamp(filtro.Tamanho, 1, TamanhoMaximo);
+
+        var itens = await consulta
+            .OrderBy(x => x.DataSolicitacao)
+            .ThenBy(x => x.IdSernit)
+            .Skip((pagina - 1) * tamanho)
+            .Take(tamanho)
+            .ToListAsync(cancellationToken);
+
+        return new SernitBuscaResultadoDto(itens.Select(ParaLista).ToList(), total, pagina, tamanho);
+    }
+
+    public async Task<SernitSolicitacaoDetalheDto> ObterAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var s = await db.SernitSolicitacoes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id && x.ExcluidoEm == null, cancellationToken)
+            ?? throw new NaoEncontradoException("Solicitação do SERNIT", id);
+
+        var eventos = await db.SernitEventos
+            .AsNoTracking()
+            .Where(e => e.SernitSolicitacaoId == id)
+            .OrderByDescending(e => e.DataEvento)
+            .Select(e => new SernitEventoDto(
+                e.Id, e.DataEvento, e.Evento, e.EstadoAnterior, e.EstadoAtual,
+                e.CentralRegulacao, e.UnidadeExecutora, e.Usuario, e.LotacaoEvento, e.Ip, e.Observacao))
+            .ToListAsync(cancellationToken);
+
+        return new SernitSolicitacaoDetalheDto(
+            ParaLista(s),
+            s.NomeMae, s.Sexo, s.DataNascimento, s.Etnia, s.Cep, s.Uf, s.MunicipioPaciente,
+            s.Bairro, s.TipoLogradouro, s.Logradouro, s.Numero, s.Complemento,
+            s.TelefoneResidencial, s.TelefoneWhatsapp, s.TelefoneContato,
+            eventos);
+    }
+
+    public async Task<IReadOnlyList<SernitResumoSituacaoDto>> ResumoPorSituacaoAsync(
+        CancellationToken cancellationToken)
+    {
+        var contagens = await db.SernitSolicitacoes
+            .AsNoTracking()
+            .Where(x => x.ExcluidoEm == null)
+            .GroupBy(x => x.Situacao)
+            .Select(g => new { Situacao = g.Key, Quantidade = g.Count() })
+            .ToListAsync(cancellationToken);
+
+        return contagens
+            .OrderByDescending(x => x.Quantidade)
+            .Select(x => new SernitResumoSituacaoDto(x.Situacao, x.Quantidade))
+            .ToList();
+    }
+
+    private static SernitSolicitacaoListaDto ParaLista(SernitSolicitacao s) => new(
+        s.Id, s.IdSernit, s.Tipo, s.Recurso, s.DataSolicitacao, s.PacienteNome, s.PacienteId, s.IdadeTexto,
+        s.Cpf, s.Cns, s.Cid, s.SolicitanteNome, s.MunicipioSolicitante, s.AgendadoParaTexto,
+        s.Situacao, s.SituacaoAnterior, s.SituacaoMudouEm, s.SincronizadoEm, s.HistoricoLidoEm,
+        s.EventosCount, s.HistoricoIndisponivel,
+        s.DataSolicitacao is { } d
+            ? DateOnly.FromDateTime(DateTime.UtcNow).DayNumber - d.DayNumber
+            : null);
+}

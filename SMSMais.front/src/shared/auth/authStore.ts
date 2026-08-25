@@ -61,7 +61,8 @@ export type ModuloPermissao =
   | 'RegulacaoTriagem'
   | 'RegulacaoMedica'
   | 'RegulacaoAgendamento'
-  | 'RegulacaoConfiguracao';
+  | 'RegulacaoConfiguracao'
+  | 'RegulacaoSernit';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 
@@ -212,11 +213,15 @@ export const useAuth = create<AuthState>((set, get) => ({
   },
 
   sair: () => {
-    // A sessão de ESCRITA no SER morre junto. A senha do SER de cada operador vive na memória do
-    // servidor amarrada a ESTA sessão (o `jti` do token), e "sair" tem de significar sair dos
-    // dois — senão a credencial pessoal dele no sistema do Estado continuaria viva por horas.
+    // A sessão de ESCRITA no SER (e no SERNIT) morre junto. A senha de cada operador vive na
+    // memória do servidor amarrada a ESTA sessão (o `jti` do token), e "sair" tem de significar
+    // sair de todas — senão a credencial pessoal dele no sistema do Estado (ou de Niterói)
+    // continuaria viva por horas.
     const { token } = get();
-    if (token) void encerrarSessaoDeEscritaNoSer(token);
+    if (token) {
+      void encerrarSessaoDeEscritaNoSer(token);
+      void encerrarSessaoDeEscritaNoSernit(token);
+    }
 
     localStorage.removeItem(CHAVE_STORAGE);
     set({ usuario: null, token: null, expiraEm: null, permissoes: {}, unidades: [], unidadeAtivaId: null });
@@ -289,5 +294,18 @@ async function encerrarSessaoDeEscritaNoSer(token: string): Promise<void> {
   } catch {
     // Sair do sistema não pode falhar porque o SER (ou a rede) não respondeu. Uma sessão órfã
     // ainda cai sozinha pela validade por inatividade do servidor.
+  }
+}
+
+/** Igual à do SER, para a sessão de escrita no SERNIT (SER de Niterói). Ver comentário acima. */
+async function encerrarSessaoDeEscritaNoSernit(token: string): Promise<void> {
+  try {
+    await axios.delete('/regulacao/sernit/sessao', {
+      baseURL: http.defaults.baseURL,
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 5000,
+    });
+  } catch {
+    // Sair do sistema não pode falhar porque o SERNIT (ou a rede) não respondeu.
   }
 }

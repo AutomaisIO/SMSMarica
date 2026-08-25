@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Pgvector;
@@ -13,9 +14,11 @@ using SMSMais.Data;
 namespace SMSMais.Data.Migrations
 {
     [DbContext(typeof(SmsMaisDbContext))]
-    partial class SmsMaisDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260825200127_EspelhoSernitRegulacaoNiteroi")]
+    partial class EspelhoSernitRegulacaoNiteroi
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -6395,234 +6398,6 @@ namespace SMSMais.Data.Migrations
                     b.ToTable("ser_varredura_falha", "smsmarica");
                 });
 
-            modelBuilder.Entity("SMSMais.Data.Entities.Sernit.SernitCatalogoCampo", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Campo")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)")
-                        .HasColumnName("campo");
-
-                    b.Property<string>("Numero")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("numero");
-
-                    b.Property<bool>("Obrigatorio")
-                        .HasColumnType("boolean")
-                        .HasColumnName("obrigatorio");
-
-                    b.Property<string>("OpcoesJson")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("opcoes_json");
-
-                    b.Property<int>("Ordem")
-                        .HasColumnType("integer")
-                        .HasColumnName("ordem");
-
-                    b.Property<Guid>("RecursoId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("recurso_id");
-
-                    b.Property<string>("Rotulo")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("rotulo");
-
-                    b.Property<string>("Tipo")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("tipo");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RecursoId", "Numero")
-                        .IsUnique()
-                        .HasDatabaseName("ux_sernit_catalogo_campo");
-
-                    b.ToTable("sernit_catalogo_campo", "smsmarica");
-                });
-
-            modelBuilder.Entity("SMSMais.Data.Entities.Sernit.SernitCatalogoCid", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Busca")
-                        .IsRequired()
-                        .HasMaxLength(420)
-                        .HasColumnType("character varying(420)")
-                        .HasColumnName("busca");
-
-                    b.Property<string>("Codigo")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
-                        .HasColumnName("codigo");
-
-                    b.Property<string>("Descricao")
-                        .IsRequired()
-                        .HasMaxLength(400)
-                        .HasColumnType("character varying(400)")
-                        .HasColumnName("descricao");
-
-                    b.Property<Guid>("ListaId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("lista_id");
-
-                    b.Property<string>("Texto")
-                        .IsRequired()
-                        .HasMaxLength(420)
-                        .HasColumnType("character varying(420)")
-                        .HasColumnName("texto");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ListaId", "Busca")
-                        .HasDatabaseName("ix_sernit_catalogo_cid_busca");
-
-                    b.HasIndex("ListaId", "Codigo")
-                        .IsUnique()
-                        .HasDatabaseName("ux_sernit_catalogo_cid");
-
-                    b.ToTable("sernit_catalogo_cid", "smsmarica");
-                });
-
-            modelBuilder.Entity("SMSMais.Data.Entities.Sernit.SernitCatalogoCidLista", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Assinatura")
-                        .IsRequired()
-                        .HasMaxLength(60)
-                        .HasColumnType("character varying(60)")
-                        .HasColumnName("assinatura");
-
-                    b.Property<int>("Quantidade")
-                        .HasColumnType("integer")
-                        .HasColumnName("quantidade");
-
-                    b.Property<DateTime>("SincronizadoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("sincronizado_em");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Assinatura")
-                        .IsUnique()
-                        .HasDatabaseName("ux_sernit_catalogo_cid_lista");
-
-                    b.ToTable("sernit_catalogo_cid_lista", "smsmarica");
-                });
-
-            modelBuilder.Entity("SMSMais.Data.Entities.Sernit.SernitCatalogoLista", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Lista")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)")
-                        .HasColumnName("lista");
-
-                    b.Property<int>("Ordem")
-                        .HasColumnType("integer")
-                        .HasColumnName("ordem");
-
-                    b.Property<string>("Rotulo")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)")
-                        .HasColumnName("rotulo");
-
-                    b.Property<DateTime>("SincronizadoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("sincronizado_em");
-
-                    b.Property<string>("Valor")
-                        .IsRequired()
-                        .HasMaxLength(80)
-                        .HasColumnType("character varying(80)")
-                        .HasColumnName("valor");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Lista", "Valor")
-                        .IsUnique()
-                        .HasDatabaseName("ux_sernit_catalogo_lista");
-
-                    b.ToTable("sernit_catalogo_lista", "smsmarica");
-                });
-
-            modelBuilder.Entity("SMSMais.Data.Entities.Sernit.SernitCatalogoRecurso", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<bool>("CamposLidos")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("campos_lidos");
-
-                    b.Property<string>("CidAssinatura")
-                        .HasMaxLength(60)
-                        .HasColumnType("character varying(60)")
-                        .HasColumnName("cid_assinatura");
-
-                    b.Property<Guid?>("CidListaId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("cid_lista_id");
-
-                    b.Property<string>("Rotulo")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)")
-                        .HasColumnName("rotulo");
-
-                    b.Property<DateTime>("SincronizadoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("sincronizado_em");
-
-                    b.Property<int>("Tipo")
-                        .HasColumnType("integer")
-                        .HasColumnName("tipo");
-
-                    b.Property<string>("Valor")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)")
-                        .HasColumnName("valor");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CidListaId");
-
-                    b.HasIndex("Tipo", "Valor")
-                        .IsUnique()
-                        .HasDatabaseName("ux_sernit_catalogo_recurso");
-
-                    b.ToTable("sernit_catalogo_recurso", "smsmarica");
-                });
-
             modelBuilder.Entity("SMSMais.Data.Entities.Sernit.SernitEvento", b =>
                 {
                     b.Property<Guid>("Id")
@@ -6766,52 +6541,6 @@ namespace SMSMais.Data.Migrations
                         .HasDatabaseName("ux_sernit_gatilho_solicitacao_tipo_chave");
 
                     b.ToTable("sernit_gatilho", "smsmarica");
-                });
-
-            modelBuilder.Entity("SMSMais.Data.Entities.Sernit.SernitRascunhoAnexo", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("ContentType")
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)")
-                        .HasColumnName("content_type");
-
-                    b.Property<DateTime>("CriadoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("criado_em");
-
-                    b.Property<DateTime?>("EnviadoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("enviado_em");
-
-                    b.Property<Guid>("MidiaId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("midia_id");
-
-                    b.Property<string>("NomeArquivo")
-                        .IsRequired()
-                        .HasMaxLength(260)
-                        .HasColumnType("character varying(260)")
-                        .HasColumnName("nome_arquivo");
-
-                    b.Property<Guid>("RascunhoId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("rascunho_id");
-
-                    b.Property<long>("Tamanho")
-                        .HasColumnType("bigint")
-                        .HasColumnName("tamanho");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RascunhoId")
-                        .HasDatabaseName("ix_sernit_rascunho_anexo_rascunho");
-
-                    b.ToTable("sernit_rascunho_anexo", "smsmarica");
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.Sernit.SernitSolicitacao", b =>
@@ -7053,95 +6782,6 @@ namespace SMSMais.Data.Migrations
                         .HasDatabaseName("ix_sernit_solicitacao_situacao_historico_lido");
 
                     b.ToTable("sernit_solicitacao", "smsmarica");
-                });
-
-            modelBuilder.Entity("SMSMais.Data.Entities.Sernit.SernitSolicitacaoRascunho", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime?>("AtualizadoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("atualizado_em");
-
-                    b.Property<string>("CamposJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("campos_json");
-
-                    b.Property<string>("Cns")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("cns");
-
-                    b.Property<DateTime>("CriadoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("criado_em");
-
-                    b.Property<Guid?>("CriadoPor")
-                        .HasColumnType("uuid")
-                        .HasColumnName("criado_por");
-
-                    b.Property<string>("CriadoPorNome")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("criado_por_nome");
-
-                    b.Property<DateTime?>("EnviadoEm")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("enviado_em");
-
-                    b.Property<string>("Hipotese")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("hipotese");
-
-                    b.Property<string>("IdSernitGerado")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("id_sernit_gerado");
-
-                    b.Property<string>("MensagemErro")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
-                        .HasColumnName("mensagem_erro");
-
-                    b.Property<string>("PacienteNome")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("paciente_nome");
-
-                    b.Property<string>("RecursoRotulo")
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)")
-                        .HasColumnName("recurso_rotulo");
-
-                    b.Property<string>("RecursoValor")
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)")
-                        .HasColumnName("recurso_valor");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer")
-                        .HasColumnName("status");
-
-                    b.Property<int?>("Tipo")
-                        .HasColumnType("integer")
-                        .HasColumnName("tipo");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IdSernitGerado")
-                        .IsUnique()
-                        .HasDatabaseName("ux_sernit_rascunho_id_gerado")
-                        .HasFilter("id_sernit_gerado IS NOT NULL");
-
-                    b.HasIndex("Status")
-                        .HasDatabaseName("ix_sernit_rascunho_status");
-
-                    b.ToTable("sernit_solicitacao_rascunho", "smsmarica");
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.Sernit.SernitVarreduraExecucao", b =>
@@ -10184,38 +9824,6 @@ namespace SMSMais.Data.Migrations
                     b.Navigation("Execucao");
                 });
 
-            modelBuilder.Entity("SMSMais.Data.Entities.Sernit.SernitCatalogoCampo", b =>
-                {
-                    b.HasOne("SMSMais.Data.Entities.Sernit.SernitCatalogoRecurso", "Recurso")
-                        .WithMany("Campos")
-                        .HasForeignKey("RecursoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Recurso");
-                });
-
-            modelBuilder.Entity("SMSMais.Data.Entities.Sernit.SernitCatalogoCid", b =>
-                {
-                    b.HasOne("SMSMais.Data.Entities.Sernit.SernitCatalogoCidLista", "Lista")
-                        .WithMany("Cids")
-                        .HasForeignKey("ListaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Lista");
-                });
-
-            modelBuilder.Entity("SMSMais.Data.Entities.Sernit.SernitCatalogoRecurso", b =>
-                {
-                    b.HasOne("SMSMais.Data.Entities.Sernit.SernitCatalogoCidLista", "CidLista")
-                        .WithMany()
-                        .HasForeignKey("CidListaId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("CidLista");
-                });
-
             modelBuilder.Entity("SMSMais.Data.Entities.Sernit.SernitEvento", b =>
                 {
                     b.HasOne("SMSMais.Data.Entities.Sernit.SernitSolicitacao", "SernitSolicitacao")
@@ -10236,17 +9844,6 @@ namespace SMSMais.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("SernitSolicitacao");
-                });
-
-            modelBuilder.Entity("SMSMais.Data.Entities.Sernit.SernitRascunhoAnexo", b =>
-                {
-                    b.HasOne("SMSMais.Data.Entities.Sernit.SernitSolicitacaoRascunho", "Rascunho")
-                        .WithMany("Anexos")
-                        .HasForeignKey("RascunhoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Rascunho");
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.Sernit.SernitVarreduraFalha", b =>
@@ -10666,24 +10263,9 @@ namespace SMSMais.Data.Migrations
                     b.Navigation("Anexos");
                 });
 
-            modelBuilder.Entity("SMSMais.Data.Entities.Sernit.SernitCatalogoCidLista", b =>
-                {
-                    b.Navigation("Cids");
-                });
-
-            modelBuilder.Entity("SMSMais.Data.Entities.Sernit.SernitCatalogoRecurso", b =>
-                {
-                    b.Navigation("Campos");
-                });
-
             modelBuilder.Entity("SMSMais.Data.Entities.Sernit.SernitSolicitacao", b =>
                 {
                     b.Navigation("Eventos");
-                });
-
-            modelBuilder.Entity("SMSMais.Data.Entities.Sernit.SernitSolicitacaoRascunho", b =>
-                {
-                    b.Navigation("Anexos");
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.Sisreg.SisregProfissionalUnidade", b =>

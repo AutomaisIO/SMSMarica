@@ -208,4 +208,11 @@ public enum ModuloPermissao
     /// (<c>GET /publico/instituicao</c>) não passa por aqui — é anônima por necessidade: o front
     /// precisa se pintar antes de existir sessão.</para></summary>
     Instituicao = 57,
+
+    /// <summary>Regulação — **SERNIT** (SER de Niterói): a fila de Niterói espelhada na nossa base,
+    /// subsistema irmão do <see cref="RegulacaoSer"/> (ADR-0042), em tabelas <c>sernit_*</c>
+    /// próprias. Mesma natureza do SER-RJ — acompanhar a fila estadual e a trilha de cada
+    /// solicitação —, com <c>Consulta</c> para ler o espelho e <c>Edicao</c> para as ações que
+    /// escrevem no SERNIT (FollowUP, telefones), assinadas pelo operador.</summary>
+    RegulacaoSernit = 58,
 }

@@ -52,6 +52,9 @@ public static class ProvedoresIntegracao
         // clientId=usuário (operador), clientSecret=senha, parametrosJson={baseUrl}.
         // Cadastrada pela aba SER de Regulação → Configuração, não por esta tela.
         ["ser"] = "SER — Sistema Estadual de Regulação (SES-RJ)",
+        // SERNIT — SER de Niterói (regulacao.niteroi.rj.gov.br), mesma stack, instância própria.
+        // clientId=usuário (operador), clientSecret=senha, parametrosJson={baseUrl}.
+        ["sernit"] = "SERNIT — SER de Niterói",
     };
 
     public static bool EhSuportado(string provedor) => Suportados.ContainsKey(provedor);

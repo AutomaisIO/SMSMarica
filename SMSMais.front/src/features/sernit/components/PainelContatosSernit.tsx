@@ -1,0 +1,239 @@
+import { useEffect, useState } from 'react';
+import { CheckCircle2, Loader2, Phone, UserCheck } from 'lucide-react';
+
+import { useAlterarContatosSernit, useContatosSernit } from '@/features/sernit/api/queries';
+import { ModalLoginSernit } from '@/features/sernit/components/ModalLoginSernit';
+import { SEM_SESSAO_SERNIT, temCodigo, useSessaoSernitObrigatoria } from '@/features/sernit/lib/sessaoSernit';
+import { Button } from '@/shared/ui/Button';
+import { Input } from '@/shared/ui/Input';
+import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+
+type Campos = { residencial: string; whatsapp: string; contato: string };
+
+/**
+ * Alterar os telefones da solicitação <b>no SERNIT</b>.
+ *
+ * <p>Os valores vêm lidos AO VIVO da tela de edição do SERNIT, não do nosso espelho: o espelho só
+ * se atualiza na varredura, e editar em cima de número velho sobrescreveria o que o SERNIT já tem.</p>
+ *
+ * <p><b>Isto não altera o cadastro do paciente no nosso hub.</b> Telefone no FHIR tem regras
+ * próprias (o verificado por OTP é a fonte única, e contato só acumula), e elas não passam por
+ * esta tela.</p>
+ */
+export function PainelContatosSernit({ solicitacaoId }: { solicitacaoId: string }) {
+  const [aberto, setAberto] = useState(false);
+  const [campos, setCampos] = useState<Campos | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [ok, setOk] = useState<string | null>(null);
+
+  const { autenticado, operador, usuarioSernit, comSessao, tratouFaltaDeSessao, modal } =
+    useSessaoSernitObrigatoria();
+
+  // A leitura já exige sessão de escrita (ela abre a aba Editar do SERNIT). Só habilita depois de
+  // autenticado — assim a recusa do backend nunca vira erro vermelho na tela.
+  const contatos = useContatosSernit(solicitacaoId, aberto && autenticado);
+  const alterar = useAlterarContatosSernit(solicitacaoId);
+
+  // A sessão pode cair ENTRE abrir o painel e a leitura (expirou, API reiniciou). Tratar isso
+  // aqui e não no JSX: chamar `tratouFaltaDeSessao` durante o render dispararia `setState` no
+  // meio da renderização — React reclama e, dependendo do caminho, entra em laço.
+  const faltaSessao = temCodigo(contatos.error, SEM_SESSAO_SERNIT);
+  useEffect(() => {
+    if (faltaSessao) {
+      tratouFaltaDeSessao(contatos.error, () => {
+        void contatos.refetch();
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [faltaSessao]);
+
+  const atuais = contatos.data;
+  const valores: Campos = campos ?? {
+    residencial: atuais?.residencial ?? '',
+    whatsapp: atuais?.whatsApp ?? '',
+    contato: atuais?.contato ?? '',
+  };
+
+  function set(campo: keyof Campos, valor: string) {
+    setCampos({ ...valores, [campo]: valor });
+    setOk(null);
+  }
+
+  /** Só vai ao SERNIT o que o operador mudou — o resto fica exatamente como o SERNIT tem. */
+  function mudancas() {
+    const so = (v: string) => v.replace(/\D/g, '');
+    const pares: [keyof Campos, string | null | undefined][] = [
+      ['residencial', atuais?.residencial],
+      ['whatsapp', atuais?.whatsApp],
+      ['contato', atuais?.contato],
+    ];
+    const corpo: Record<string, string> = {};
+    for (const [chave, antes] of pares) {
+      if (so(valores[chave]) !== so(antes ?? '')) corpo[chave] = valores[chave].trim();
+    }
+    return corpo;
+  }
+
+  async function salvar() {
+    setErro(null);
+    setOk(null);
+
+    const corpo = mudancas();
+    if (Object.keys(corpo).length === 0) {
+      setErro('Nenhum telefone foi alterado.');
+      return;
+    }
+
+    try {
+      const r = await alterar.mutateAsync(corpo);
+      // O backend só devolve OK depois de REABRIR a tela do SERNIT e conferir número a número.
+      setOk('Alterado e conferido na tela do SERNIT.');
+      setCampos({
+        residencial: r.residencial ?? '',
+        whatsapp: r.whatsApp ?? '',
+        contato: r.contato ?? '',
+      });
+    } catch (e) {
+      if (tratouFaltaDeSessao(e, salvar)) return;
+      setErro(extrairMensagemDeErro(e));
+    }
+  }
+
+  if (!aberto) {
+    return (
+      <>
+        {/* Pede a senha antes de qualquer requisição: a própria LEITURA abre a aba Editar do
+            SERNIT e exige sessão de escrita. */}
+        <Button
+          variante="secundaria"
+          tamanho="sm"
+          onClick={() => comSessao(() => setAberto(true))}
+          title="Alterar os telefones no cadastro do SERNIT (não muda o nosso)"
+        >
+          <Phone className="mr-1 size-4" />
+          Editar Contato SERNIT
+        </Button>
+
+        {ok && (
+          <p className="flex w-full items-center gap-1 text-xs text-emerald-700">
+            <CheckCircle2 className="size-4" /> {ok}
+          </p>
+        )}
+
+        <ModalLoginSernit {...modal} />
+      </>
+    );
+  }
+
+  return (
+    <section className="w-full rounded border border-slate-200 bg-slate-50 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <Phone className="size-4 text-red-700" />
+        <h4 className="text-sm font-semibold text-slate-800">Dados de contato no SERNIT</h4>
+
+        {autenticado && (
+          <span
+            className="ml-auto flex items-center gap-1 text-[11px] text-emerald-700"
+            title={`Login do SERNIT: ${usuarioSernit ?? '—'}`}
+          >
+            <UserCheck className="size-3.5" />
+            assinando como {operador}
+          </span>
+        )}
+      </div>
+
+      {(
+        <div className="mt-3 space-y-3">
+          {contatos.isLoading && (
+            <p className="flex items-center gap-2 text-xs text-slate-500">
+              <Loader2 className="size-4 animate-spin" /> lendo os telefones no SERNIT…
+            </p>
+          )}
+
+          {contatos.isError && !faltaSessao && (
+            <p className="rounded border border-red-200 bg-red-50 p-2 text-xs text-red-800">
+              {extrairMensagemDeErro(contatos.error)}
+            </p>
+          )}
+
+          {atuais && !atuais.editavel && (
+            // Situação terminal (Cancelada, Alta): o SERNIT mostra, mas não deixa editar. Melhor
+            // dizer isso agora do que deixar digitar para recusar no fim.
+            <p className="rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+              Esta solicitação não permite alterar contato no SERNIT.
+              {atuais.motivoNaoEditavel ? ` ${atuais.motivoNaoEditavel}` : ''}
+            </p>
+          )}
+
+          {atuais?.editavel && (
+            <>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <label className="block space-y-1">
+                  <span className="text-xs text-slate-600">WhatsApp</span>
+                  <Input
+                    value={valores.whatsapp}
+                    onChange={(e) => set('whatsapp', e.target.value)}
+                    inputMode="tel"
+                  />
+                </label>
+                <label className="block space-y-1">
+                  <span className="text-xs text-slate-600">Contato</span>
+                  <Input
+                    value={valores.contato}
+                    onChange={(e) => set('contato', e.target.value)}
+                    inputMode="tel"
+                  />
+                </label>
+                <label className="block space-y-1">
+                  <span className="text-xs text-slate-600">Residencial</span>
+                  <Input
+                    value={valores.residencial}
+                    onChange={(e) => set('residencial', e.target.value)}
+                    inputMode="tel"
+                  />
+                </label>
+              </div>
+
+              <p className="text-[11px] text-slate-500">
+                Altera o cadastro <strong>no SERNIT</strong>. Não muda o telefone do paciente no nosso
+                sistema.
+              </p>
+
+              <div className="flex gap-2">
+                <Button tamanho="sm" onClick={salvar} disabled={alterar.isPending}>
+                  {alterar.isPending && <Loader2 className="mr-1 size-4 animate-spin" />}
+                  Salvar no SERNIT
+                </Button>
+                <Button
+                  variante="ghost"
+                  tamanho="sm"
+                  onClick={() => {
+                    setAberto(false);
+                    setCampos(null);
+                    setErro(null);
+                  }}
+                  disabled={alterar.isPending}
+                >
+                  Fechar
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {ok && (
+        <p className="mt-2 flex items-center gap-1 text-xs text-emerald-700">
+          <CheckCircle2 className="size-4" /> {ok}
+        </p>
+      )}
+      {erro && (
+        <p className="mt-2 rounded border border-red-200 bg-red-50 p-2 text-xs text-red-800">
+          {erro}
+        </p>
+      )}
+
+      <ModalLoginSernit {...modal} />
+    </section>
+  );
+}

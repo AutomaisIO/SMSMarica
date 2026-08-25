@@ -72,6 +72,11 @@ import { SerNovaSolicitacaoPage } from '@/features/ser/pages/SerNovaSolicitacaoP
 import { SerFilaPage } from '@/features/ser/pages/SerFilaPage';
 import { SerSolicitacaoDetalhePage } from '@/features/ser/pages/SerSolicitacaoDetalhePage';
 import { RegulacaoConfiguracaoPage } from '@/features/ser/pages/RegulacaoConfiguracaoPage';
+import { SernitNotificacoesPage } from '@/features/sernit/pages/SernitNotificacoesPage';
+import { SernitNovaSolicitacaoPage } from '@/features/sernit/pages/SernitNovaSolicitacaoPage';
+import { SernitFilaPage } from '@/features/sernit/pages/SernitFilaPage';
+import { SernitSolicitacaoDetalhePage } from '@/features/sernit/pages/SernitSolicitacaoDetalhePage';
+import RegulacaoSernitConfiguracaoPage from '@/features/sernit/pages/RegulacaoSernitConfiguracaoPage';
 import { PepSincronizacaoPage } from '@/features/pep-sincronizacao/pages/PepSincronizacaoPage';
 import { ApiTokensPage } from '@/features/api-tokens/pages/ApiTokensPage';
 import { IntegracoesPage } from '@/features/integracoes/pages/IntegracoesPage';
@@ -194,6 +199,12 @@ export function AppRouter() {
           <Route path="regulacao/nova-solicitacao" element={<SerNovaSolicitacaoPage />} />
           <Route path="regulacao/ser/:id" element={<SerSolicitacaoDetalhePage />} />
           <Route path="regulacao/configuracao" element={<RegulacaoConfiguracaoPage />} />
+          {/* SERNIT (SER de Niterói) — fila espelhada irmã do SER-RJ, sob /sernit para não colidir. */}
+          <Route path="regulacao/sernit" element={<SernitFilaPage />} />
+          <Route path="regulacao/sernit/notificacoes" element={<SernitNotificacoesPage />} />
+          <Route path="regulacao/sernit/nova-solicitacao" element={<SernitNovaSolicitacaoPage />} />
+          <Route path="regulacao/sernit/configuracao" element={<RegulacaoSernitConfiguracaoPage />} />
+          <Route path="regulacao/sernit/:id" element={<SernitSolicitacaoDetalhePage />} />
           <Route path="sisreg" element={<SisregConsultaPage />} />
           <Route path="sisreg/configuracao" element={<SisregConfiguracaoPage />} />
           <Route path="sisreg/mapeamento" element={<SisregMapeamentoPage />} />

@@ -1,0 +1,207 @@
+import { useEffect, useRef, useState } from 'react';
+import { AlertTriangle, Check, ChevronDown, Loader2, Search, X } from 'lucide-react';
+
+import { useSugestoesCidSernit } from '@/features/sernit/api/queries';
+import type { CidSernit, TipoRecursoSernit } from '@/features/sernit/types';
+import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+
+/**
+ * A Hipótese diagnóstica — que no SERNIT **não é texto livre**: é a caixa de CID.
+ *
+ * <p>Digitar e sair não preenche nada. O SERNIT guarda a hipótese pelo CID que foi CLICADO na
+ * sugestão e descarta o texto solto: em 10/08/2026 uma edição respondeu "salva com sucesso" e o
+ * campo voltou vazio. Por isso aqui só se escolhe da lista.</p>
+ *
+ * <p><b>A lista é do RECURSO, não do CID-10.</b> Sem recurso escolhido o SERNIT responde "Nenhum CID
+ * encontrado" para qualquer termo; com ele, a relação muda — "Cirurgia Geral (Oncologia)" aceita
+ * 136 códigos, todos de neoplasia, enquanto a cardiologia aceita os 14.226 do CID-10 inteiro. É
+ * por isso que o recurso faz parte da pergunta: uma lista única ofereceria código que o SERNIT
+ * recusa na hora de gravar.</p>
+ *
+ * <p>A busca vai ao nosso espelho, copiado do próprio SERNIT (uma varredura por lista, não por
+ * recurso). Recurso ainda não copiado cai no autocomplete ao vivo — a fonte continua sendo ele.</p>
+ */
+export function SeletorCidSernit({
+  tipo,
+  recurso,
+  valor,
+  onChange,
+  desabilitado,
+}: {
+  tipo?: TipoRecursoSernit;
+  recurso?: string;
+  /** O texto do jeito do SERNIT: `(A09 ) Diarréia e gastroenterite...`. */
+  valor: string;
+  onChange: (texto: string) => void;
+  desabilitado?: boolean;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const [termo, setTermo] = useState('');
+  const [buscado, setBuscado] = useState('');
+  const caixa = useRef<HTMLDivElement>(null);
+
+  const semRecurso = !recurso || !tipo;
+
+  // Atraso antes de buscar. No espelho seria barato, mas o recurso ainda não copiado cai no
+  // autocomplete ao vivo — e lá cada busca abre uma conversa inteira no SERNIT, na sessão única que
+  // a varredura também usa. O atraso é o que impede uma palavra digitada de virar meia dúzia de
+  // idas a Niterói.
+  useEffect(() => {
+    const t = setTimeout(() => setBuscado(termo.trim()), 450);
+    return () => clearTimeout(t);
+  }, [termo]);
+
+  useEffect(() => {
+    function fora(e: MouseEvent) {
+      if (caixa.current && !caixa.current.contains(e.target as Node)) setAberto(false);
+    }
+    document.addEventListener('mousedown', fora);
+    return () => document.removeEventListener('mousedown', fora);
+  }, []);
+
+  const sugestoes = useSugestoesCidSernit(tipo, recurso, buscado);
+  const itens = sugestoes.data?.itens ?? [];
+  const escolhido = partes(valor);
+
+  function escolher(c: CidSernit) {
+    onChange(c.texto);
+    setAberto(false);
+    setTermo('');
+  }
+
+  return (
+    <div ref={caixa} className="relative">
+      <button
+        type="button"
+        disabled={desabilitado || semRecurso}
+        onClick={() => setAberto((a) => !a)}
+        className="flex w-full items-center justify-between gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-left text-sm disabled:bg-slate-100 disabled:text-slate-400"
+      >
+        {escolhido ? (
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-700">
+              {escolhido.codigo}
+            </span>
+            <span className="truncate text-slate-900">{escolhido.descricao}</span>
+          </span>
+        ) : valor ? (
+          /* Rascunho antigo, de quando o campo era texto livre: o SERNIT não vai aceitar isso — o
+             operador precisa escolher da lista antes de o pedido sair. */
+          <span className="flex min-w-0 items-center gap-2">
+            <AlertTriangle className="size-4 shrink-0 text-amber-600" />
+            <span className="truncate text-amber-800">{valor}</span>
+          </span>
+        ) : (
+          <span className="text-slate-400">
+            {semRecurso ? 'Escolha o recurso primeiro...' : 'Procure o CID...'}
+          </span>
+        )}
+
+        <span className="flex shrink-0 items-center gap-1">
+          {valor && !desabilitado && (
+            <X
+              className="size-4 text-slate-400 hover:text-slate-700"
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange('');
+              }}
+            />
+          )}
+          <ChevronDown className="size-4 text-slate-400" />
+        </span>
+      </button>
+
+      {valor && !escolhido && (
+        <p className="mt-1 text-xs text-amber-700">
+          Este texto não veio da lista do SERNIT. Lá a hipótese é guardada pelo CID escolhido, e texto
+          digitado é descartado — procure o CID de novo.
+        </p>
+      )}
+
+      {aberto && !desabilitado && !semRecurso && (
+        <div className="absolute z-20 mt-1 w-full rounded-md border border-slate-300 bg-white shadow-lg">
+          <div className="flex items-center gap-2 border-b border-slate-200 px-3 py-2">
+            <Search className="size-4 shrink-0 text-slate-400" />
+            <input
+              autoFocus
+              value={termo}
+              onChange={(e) => setTermo(e.target.value)}
+              placeholder="código ou nome do CID — vazio lista todos"
+              className="w-full text-sm outline-none"
+            />
+            {sugestoes.isFetching && (
+              <Loader2 className="size-4 shrink-0 animate-spin text-slate-400" />
+            )}
+          </div>
+
+          <ul className="max-h-72 overflow-y-auto py-1">
+            {sugestoes.isError && (
+              <li className="px-3 py-4 text-center text-sm">
+                <p className="text-red-700">Não consegui buscar os CID agora.</p>
+                {/* O motivo fica, mas pequeno e embaixo: mensagem de framework em inglês no meio
+                    da tela não ajuda quem está atendendo, e some quando precisamos dela. */}
+                <p className="mt-1 text-xs text-slate-500">
+                  {extrairMensagemDeErro(sugestoes.error)}
+                </p>
+              </li>
+            )}
+
+            {!sugestoes.isError && (
+              <>
+                {sugestoes.isFetching && itens.length === 0 && (
+                  <li className="px-3 py-4 text-center text-sm text-slate-500">
+                    Procurando...
+                  </li>
+                )}
+
+                {!sugestoes.isFetching && itens.length === 0 && (
+                  <li className="px-3 py-4 text-center text-sm text-slate-500">
+                    {buscado
+                      ? `Não há CID com “${buscado}” entre os que o SERNIT aceita para este recurso.`
+                      : 'O SERNIT não devolveu CID nenhum para este recurso.'}
+                  </li>
+                )}
+
+                {itens.map((c) => (
+                  <li key={c.codigo}>
+                    <button
+                      type="button"
+                      onClick={() => escolher(c)}
+                      className="flex w-full items-start gap-2 px-3 py-1.5 text-left text-sm hover:bg-slate-50"
+                    >
+                      {escolhido?.codigo === c.codigo ? (
+                        <Check className="mt-0.5 size-4 shrink-0 text-red-700" />
+                      ) : (
+                        <span className="w-4 shrink-0" />
+                      )}
+                      <span className="mt-0.5 w-14 shrink-0 font-mono text-xs text-slate-600">
+                        {c.codigo}
+                      </span>
+                      <span className="min-w-0">{c.descricao}</span>
+                    </button>
+                  </li>
+                ))}
+
+                {sugestoes.data?.truncado && (
+                  <li className="border-t border-slate-100 px-3 py-2 text-xs text-amber-700">
+                    Lista cortada em {itens.length} — o mesmo teto do SERNIT. Refine o termo: há mais
+                    CID que casam.
+                  </li>
+                )}
+              </>
+            )}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Separa `(A09 ) Diarréia...` em código e descrição. Nulo quando o texto não tem essa forma — é
+ * como se reconhece o que veio da lista do SERNIT e o que foi digitado à mão.
+ */
+function partes(texto: string): { codigo: string; descricao: string } | null {
+  const m = /^\(([A-Za-z]\d{2,3})\s*\)\s*(.*)$/.exec(texto.trim());
+  return m ? { codigo: m[1].toUpperCase(), descricao: m[2].trim() } : null;
+}

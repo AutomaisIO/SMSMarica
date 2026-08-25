@@ -385,6 +385,57 @@ public static class DependencyInjection
         // ViewState, busca, paginação e parser em segundos, sem gravar nada.
         services.AddScoped<Ser.ISerConsultaDiretaService, Ser.SerConsultaDiretaService>();
 
+        // ---- SERNIT (SER de Niterói) — subsistema irmão do SER-RJ (ADR-0042), tabelas sernit_* ----
+        // Sessão ÚNICA por operador (login por Referer; cookies JSESSIONID + UCID). Difere do
+        // SER-RJ: a grade é lida por PAGINAÇÃO (o SERNIT não tem Exportar).
+        services.AddSingleton<Integracoes.SernitWeb.ISernitWebSessao, Integracoes.SernitWeb.SernitWebSessao>();
+        services.AddScoped<
+            Integracoes.SernitWeb.Varredura.ISernitLeitorService,
+            Integracoes.SernitWeb.Varredura.SernitLeitorService>();
+        services.AddScoped<Integracoes.SernitWeb.Varredura.VarredorSernitPorPaginacao>();
+        services.AddScoped<
+            Integracoes.SernitWeb.Varredura.ISernitSincronizacaoService,
+            Integracoes.SernitWeb.Varredura.SernitSincronizacaoService>();
+
+        services.AddSingleton<
+            Integracoes.SernitWeb.Varredura.Background.IVarreduraSernitFila,
+            Integracoes.SernitWeb.Varredura.Background.VarreduraSernitFila>();
+        services.AddHostedService<Integracoes.SernitWeb.Varredura.Background.VarreduraSernitRunner>();
+
+        services.Configure<Integracoes.SernitWeb.Varredura.Background.VarreduraSernitOpcoes>(
+            configuration.GetSection(Integracoes.SernitWeb.Varredura.Background.VarreduraSernitOpcoes.Secao));
+        services.AddHostedService<Integracoes.SernitWeb.Varredura.Background.VarreduraSernitScheduler>();
+
+        // Config do disparo diário do SERNIT em BANCO (mudar a hora não pode exigir deploy).
+        services.AddScoped<Sernit.ISernitVarreduraConfigService, Sernit.SernitVarreduraConfigService>();
+
+        // Consumo pelas telas: a busca lê o ESPELHO (nosso banco); o motor opera a rodada.
+        services.AddScoped<Sernit.ISernitConsultaService, Sernit.SernitConsultaService>();
+        services.AddScoped<Sernit.ISernitMotorService, Sernit.SernitMotorService>();
+
+        // ESCRITA no SERNIT (FollowUP + telefones), assinada pelo OPERADOR: a sessão de escrita é
+        // singleton em memória e por sessão de usuário (jti), nunca em banco — a de sincronismo só lê.
+        services.AddSingleton<Sernit.Sessao.ISernitSessaoOperadorStore, Sernit.Sessao.SernitSessaoOperadorStore>();
+        services.AddScoped<Sernit.ISernitEscritaService, Sernit.SernitEscritaService>();
+
+        // Notificações: consumidor da fila sernit_gatilho (marcar visto tira da fila).
+        services.AddScoped<Sernit.ISernitNotificacaoService, Sernit.SernitNotificacaoService>();
+
+        // Conciliação do paciente do SERNIT com o hub FHIR (ADR-0009/0020/0041), pelo upsert canônico.
+        services.AddScoped<Sernit.Pacientes.ISernitConciliacaoPacienteService,
+            Sernit.Pacientes.SernitConciliacaoPacienteService>();
+        services.AddScoped<Sernit.Pacientes.ISernitBackfillPacientesService,
+            Sernit.Pacientes.SernitBackfillPacientesService>();
+        services.AddHostedService<Sernit.Background.SernitConciliacaoPacienteRunner>();
+
+        // Catálogo espelhado + nova solicitação (leitura ao vivo) + rascunhos.
+        services.AddScoped<Sernit.ISernitCatalogoService, Sernit.SernitCatalogoService>();
+        services.AddScoped<Sernit.ISernitCatalogoSyncService, Sernit.SernitCatalogoSyncService>();
+        services.AddScoped<Sernit.ISernitNovaSolicitacaoService, Sernit.SernitNovaSolicitacaoService>();
+        services.AddScoped<Sernit.ISernitRascunhoService, Sernit.SernitRascunhoService>();
+        services.AddSingleton<Sernit.Background.ISernitCatalogoSyncFila, Sernit.Background.SernitCatalogoSyncFila>();
+        services.AddHostedService<Sernit.Background.SernitCatalogoSyncRunner>();
+
         // Importação de agendamentos → Solicitacao. A leitura do SISREG é a varredura da agenda
         // do executante (cons_agendas); o scraper de cons_marcados_reg foi aposentado por mirar a
         // visão do solicitante e custar 1 requisição de ficha POR agendamento — sozinho estouraria

@@ -6,6 +6,7 @@ using SMSMais.Data.Entities.Ia;
 using SMSMais.Data.Entities.Integracoes;
 using SMSMais.Data.Entities.Pep;
 using SMSMais.Data.Entities.Ser;
+using SMSMais.Data.Entities.Sernit;
 using SMSMais.Data.Entities.Sisreg;
 using SMSMais.Data.Entities.Geo;
 using SMSMais.Data.Entities.Notificacoes;
@@ -135,6 +136,24 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     // Pedidos montados na nossa base, esperando autorização para ir ao SER.
     public DbSet<SerSolicitacaoRascunho> SerSolicitacaoRascunhos => Set<SerSolicitacaoRascunho>();
     public DbSet<SerRascunhoAnexo> SerRascunhoAnexos => Set<SerRascunhoAnexo>();
+
+    // SERNIT (SER de Niterói) — ESPELHO da fila de Niterói, subsistema irmão do SER-RJ (ADR-0042),
+    // em tabelas próprias `sernit_*` para isolar do SER-RJ em produção. Mesma plataforma
+    // (JSF/RichFaces/Seam), instância e build diferentes; leitura por paginação (não há export).
+    public DbSet<SernitSolicitacao> SernitSolicitacoes => Set<SernitSolicitacao>();
+    public DbSet<SernitEvento> SernitEventos => Set<SernitEvento>();
+    public DbSet<SernitGatilho> SernitGatilhos => Set<SernitGatilho>();
+    public DbSet<SernitVarreduraExecucao> SernitVarreduraExecucoes => Set<SernitVarreduraExecucao>();
+    public DbSet<SernitVarreduraFalha> SernitVarreduraFalhas => Set<SernitVarreduraFalha>();
+
+    // Catálogo do SERNIT espelhado (nova solicitação monta o formulário daqui, offline) + rascunhos.
+    public DbSet<SernitCatalogoRecurso> SernitCatalogoRecursos => Set<SernitCatalogoRecurso>();
+    public DbSet<SernitCatalogoCampo> SernitCatalogoCampos => Set<SernitCatalogoCampo>();
+    public DbSet<SernitCatalogoLista> SernitCatalogoListas => Set<SernitCatalogoLista>();
+    public DbSet<SernitCatalogoCidLista> SernitCatalogoCidListas => Set<SernitCatalogoCidLista>();
+    public DbSet<SernitCatalogoCid> SernitCatalogoCids => Set<SernitCatalogoCid>();
+    public DbSet<SernitSolicitacaoRascunho> SernitSolicitacaoRascunhos => Set<SernitSolicitacaoRascunho>();
+    public DbSet<SernitRascunhoAnexo> SernitRascunhoAnexos => Set<SernitRascunhoAnexo>();
 
     // Indicadores contratuais do HMCML — o motor de cada indicador é o SQL guardado no cadastro
     public DbSet<Indicador> Indicadores => Set<Indicador>();
