@@ -67,6 +67,25 @@ public sealed record IniciarConversaRequest(
 /// <summary>Envia uma mensagem de texto livre (dentro da janela de 24h).</summary>
 public sealed record EnviarMensagemRequest(string Texto);
 
+/// <summary>Encaminha a conversa para outro atendente (ele vira o responsável).</summary>
+public sealed record EncaminharConversaRequest(Guid ParaUsuarioId, string? Observacao);
+
+/// <summary>Transfere a conversa para outra unidade (entra na fila de lá, sem responsável).</summary>
+public sealed record TransferirConversaRequest(Guid ParaUnidadeId, string? Observacao);
+
+/// <summary>Atendente que pode receber a conversa (ativo, com o módulo, vinculado à unidade).</summary>
+public sealed record AtendenteElegivelDto(Guid UsuarioId, string Nome, bool ResponsavelAtual);
+
+/// <summary>Unidade que pode receber a conversa por transferência.</summary>
+public sealed record UnidadeDestinoDto(Guid Id, string Nome);
+
+/// <summary>
+/// Contadores de não-lidas para sino/badge sem carregar a lista: <paramref name="MinhasNaoLidas"/>
+/// soma as conversas cujo responsável sou eu; <paramref name="FilaNaoLidas"/> soma as SEM
+/// responsável visíveis a mim (minhas unidades + triagem geral).
+/// </summary>
+public sealed record ResumoConversasDto(int MinhasNaoLidas, int FilaNaoLidas);
+
 /// <summary>
 /// Um dos cadastros que carregam o telefone da conversa. Celular de família aparece no
 /// cadastro da mãe, do filho e do avô — quem atende precisa ver todos, não um escolhido em

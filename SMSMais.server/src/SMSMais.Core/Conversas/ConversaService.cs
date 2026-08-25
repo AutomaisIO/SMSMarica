@@ -88,10 +88,7 @@ public sealed class ConversaService(
     public async Task<IReadOnlyList<PacienteDoTelefoneDto>> ListarPacientesDoTelefoneAsync(
         Guid conversaId, CancellationToken ct = default)
     {
-        var conversa = await db.Conversas
-            .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Id == conversaId && c.ExcluidoEm == null, ct)
-            ?? throw new NaoEncontradoException("Conversa", conversaId);
+        var conversa = await ObterNoEscopoAsync(conversaId, rastrear: false, ct);
 
         var achados = await pacientes.ListarPorTelefoneAsync(conversa.TelefoneCanonical, ct);
 
@@ -151,7 +148,10 @@ public sealed class ConversaService(
         }
         else
         {
-            conversa.OperadorResponsavelId ??= me;
+            // Disparar template numa conversa viva SEM dono é claim (com evento na trilha);
+            // com dono, a posse fica onde está — só a autoria da mensagem registra quem falou.
+            if (conversa.OperadorResponsavelId is null)
+                await AplicarClaimAsync(conversa, me, agora, ct);
             conversa.Assunto ??= request.Assunto;
             conversa.PacienteId ??= pacienteId;
             conversa.NomeContato ??= nome;
@@ -181,8 +181,7 @@ public sealed class ConversaService(
     public async Task EnviarTextoAsync(Guid conversaId, EnviarMensagemRequest request, CancellationToken ct = default)
     {
         var me = ExigirUsuario();
-        var conversa = await db.Conversas.FirstOrDefaultAsync(c => c.Id == conversaId && c.ExcluidoEm == null, ct)
-            ?? throw new NaoEncontradoException("Conversa", conversaId);
+        var conversa = await ObterNoEscopoAsync(conversaId, rastrear: true, ct);
 
         if (conversa.JanelaExpiraEm is null || conversa.JanelaExpiraEm <= DateTime.UtcNow)
             throw new ConflitoException("janela.expirada",
@@ -201,13 +200,61 @@ public sealed class ConversaService(
         await VincularAsync(envio.WaMessageId, conversa.Id, me, nomeOperador, TipoMensagem.Texto, ct);
 
         var agora = DateTime.UtcNow;
+        // Responder conversa SEM dono é o claim implícito: ela sai da fila e vira minha. Com dono
+        // (meu ou de colega), a posse NÃO muda — a autoria da mensagem já registra quem falou.
+        var eraSemDono = conversa.OperadorResponsavelId is null;
+        var unidadeAntes = conversa.UnidadeId;
+        ConversaEvento? eventoClaim = null;
+        if (eraSemDono) eventoClaim = await AplicarClaimAsync(conversa, me, agora, ct);
+
+        conversa.NaoLidas = 0; // responder = ler
         conversa.UltimaMensagemEm = agora;
         conversa.UltimaMensagemDirecao = DirecaoMensagem.Saida;
         conversa.UltimaMensagemPreview = Truncar(request.Texto);
         conversa.AtualizadoEm = agora;
         conversa.AtualizadoPor = me;
-        await db.SaveChangesAsync(ct);
 
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // A mensagem JÁ FOI ao cidadão — daqui em diante a corrida nunca vira erro para o
+            // operador. Alguém mexeu na linha no meio (colega assumiu, inbound chegou): recarrega
+            // o estado que venceu e reaplica só os efeitos da mensagem. O claim só permanece se a
+            // conversa CONTINUAR sem dono; se um colega ganhou, a posse é dele.
+            var entry = db.Entry(conversa);
+            var banco = await entry.GetDatabaseValuesAsync(ct);
+            if (banco is null) throw; // conversa sumiu no meio — deixa o middleware responder
+            entry.OriginalValues.SetValues(banco); // token xmin novo para o próximo save
+            entry.CurrentValues.SetValues(banco);  // parte do estado do vencedor (posse incluída)
+
+            if (eventoClaim is not null && conversa.OperadorResponsavelId is not null)
+            {
+                // Perdeu a corrida do claim — o Assumida enfileirado não aconteceu.
+                db.Entry(eventoClaim).State = EntityState.Detached;
+                eventoClaim = null;
+            }
+            else if (eraSemDono && conversa.OperadorResponsavelId is null)
+            {
+                // O conflito veio de outra mudança (ex.: inbound) e ela segue sem dono — o claim vale.
+                conversa.OperadorResponsavelId = me;
+                conversa.UnidadeId ??= unidadeAntes ?? await vinculos.ObterPrincipalIdAsync(me, ct);
+            }
+
+            conversa.NaoLidas = 0;
+            conversa.UltimaMensagemEm = agora;
+            conversa.UltimaMensagemDirecao = DirecaoMensagem.Saida;
+            conversa.UltimaMensagemPreview = Truncar(request.Texto);
+            conversa.AtualizadoEm = agora;
+            conversa.AtualizadoPor = me;
+            await db.SaveChangesAsync(ct);
+        }
+
+        if (eventoClaim is not null)
+            await notificador.ConversaMovidaAsync(
+                ParaEvento(conversa, request.Texto), deOperadorId: null, deUnidadeId: unidadeAntes, ct);
         await notificador.MensagemEnviadaAsync(ParaEvento(conversa, request.Texto), ct);
     }
 
@@ -222,9 +269,8 @@ public sealed class ConversaService(
 
         query = aba switch
         {
-            AbaConversas.Minhas => query.Where(c => c.OperadorResponsavelId == me),
-            AbaConversas.NaoAtribuidas => query.Where(c => c.OperadorResponsavelId == null
-                && (c.UnidadeId == null || minhasUnidades.Contains(c.UnidadeId.Value))),
+            AbaConversas.Minhas => FiltrarMinhas(query, me),
+            AbaConversas.NaoAtribuidas => FiltrarFila(query, minhasUnidades),
             AbaConversas.Todas when supervisor => query,
             _ => query.Where(c => c.OperadorResponsavelId == me
                 || c.UnidadeId == null
@@ -308,6 +354,11 @@ public sealed class ConversaService(
             .FirstOrDefaultAsync(ct)
             ?? throw new NaoEncontradoException("Conversa", conversaId);
 
+        // Fora do escopo de acesso → 404 (não vaza a existência). Token de serviço vê tudo.
+        if (usuarioAtual.UsuarioId is { } me
+            && !await NoEscopoAsync(dto.OperadorResponsavelId, dto.UnidadeId, me, ct))
+            throw new NaoEncontradoException("Conversa", conversaId);
+
         // Nome COMPLETO do paciente (título da thread): pelo vínculo ou, sem vínculo, achando
         // pelo telefone no hub (só exibição — não grava). Best-effort: hub fora → sem nome.
         try
@@ -331,8 +382,11 @@ public sealed class ConversaService(
         return dto;
     }
 
-    public async Task<IReadOnlyList<MensagemDto>> ObterMensagensAsync(Guid conversaId, CancellationToken ct = default) =>
-        await db.MensagensWhatsApp.AsNoTracking()
+    public async Task<IReadOnlyList<MensagemDto>> ObterMensagensAsync(Guid conversaId, CancellationToken ct = default)
+    {
+        await ObterNoEscopoAsync(conversaId, rastrear: false, ct); // 404 fora do escopo de acesso
+
+        return await db.MensagensWhatsApp.AsNoTracking()
             .Where(m => m.ConversaId == conversaId)
             .OrderBy(m => m.OcorridoEm)
             .Take(500)
@@ -340,11 +394,13 @@ public sealed class ConversaService(
                 m.Id, m.ConversaId, m.Direcao, m.TipoMensagem, m.Conteudo, m.Template,
                 m.AutorUsuarioId, m.AutorNomeExibicao, m.Status, m.OcorridoEm))
             .ToListAsync(ct);
+    }
 
     public async Task MarcarLidaAsync(Guid conversaId, CancellationToken ct = default)
     {
-        var conversa = await db.Conversas.FirstOrDefaultAsync(c => c.Id == conversaId && c.ExcluidoEm == null, ct)
-            ?? throw new NaoEncontradoException("Conversa", conversaId);
+        // NÃO muda a posse: o front antigo chama isto ao abrir a thread — claim aqui roubaria a
+        // conversa em silêncio. O claim explícito é AssumirAsync.
+        var conversa = await ObterNoEscopoAsync(conversaId, rastrear: true, ct);
 
         if (conversa.NaoLidas == 0) return;
 
@@ -356,7 +412,304 @@ public sealed class ConversaService(
         await notificador.ConversaAtualizadaAsync(ParaEvento(conversa, conversa.UltimaMensagemPreview), ct);
     }
 
+    // --- posse (assumir / devolver / encaminhar / transferir) ----------------------------------
+
+    public async Task AssumirAsync(Guid conversaId, CancellationToken ct = default)
+    {
+        var me = ExigirUsuario();
+        var conversa = await ObterNoEscopoAsync(conversaId, rastrear: true, ct);
+
+        if (conversa.OperadorResponsavelId == me)
+        {
+            // Já é minha — só garante o contador zerado (idempotente).
+            if (conversa.NaoLidas == 0) return;
+            conversa.NaoLidas = 0;
+            conversa.AtualizadoEm = DateTime.UtcNow;
+            conversa.AtualizadoPor = me;
+            await db.SaveChangesAsync(ct);
+            await notificador.ConversaAtualizadaAsync(ParaEvento(conversa, conversa.UltimaMensagemPreview), ct);
+            return;
+        }
+
+        if (conversa.OperadorResponsavelId is { } dono)
+            throw await ConflitoJaAssumidaAsync(dono, ct);
+
+        var agora = DateTime.UtcNow;
+        var unidadeAntes = conversa.UnidadeId;
+        await AplicarClaimAsync(conversa, me, agora, ct);
+        await SalvarComTraducaoDeCorridaAsync(conversa, ct);
+        await notificador.ConversaMovidaAsync(
+            ParaEvento(conversa, conversa.UltimaMensagemPreview), deOperadorId: null, deUnidadeId: unidadeAntes, ct);
+    }
+
+    public async Task DevolverAsync(Guid conversaId, CancellationToken ct = default)
+    {
+        var me = ExigirUsuario();
+        var conversa = await ObterNoEscopoAsync(conversaId, rastrear: true, ct);
+        await ExigirPosseOuSupervisaoAsync(conversa, me, ct);
+
+        if (conversa.OperadorResponsavelId is not { } deOperador) return; // já está na fila
+
+        var agora = DateTime.UtcNow;
+        conversa.OperadorResponsavelId = null; // a unidade fica — a conversa volta à fila de onde estava
+        conversa.AtualizadoEm = agora;
+        conversa.AtualizadoPor = me;
+
+        var evento = NovoEvento(conversa.Id, TipoEventoConversa.Devolvida, me, agora);
+        evento.DeUsuarioId = deOperador;
+        db.ConversaEventos.Add(evento);
+
+        await SalvarComTraducaoDeCorridaAsync(conversa, ct);
+        await notificador.ConversaMovidaAsync(
+            ParaEvento(conversa, conversa.UltimaMensagemPreview), deOperador, conversa.UnidadeId, ct);
+    }
+
+    public async Task EncaminharAsync(
+        Guid conversaId, EncaminharConversaRequest request, CancellationToken ct = default)
+    {
+        var me = ExigirUsuario();
+        var conversa = await ObterNoEscopoAsync(conversaId, rastrear: true, ct);
+        await ExigirPosseOuSupervisaoAsync(conversa, me, ct);
+
+        var alvo = request.ParaUsuarioId;
+        if (conversa.OperadorResponsavelId == alvo) return; // já é dele
+
+        var alvoInfo = await db.Usuarios.AsNoTracking()
+            .Where(u => u.Id == alvo && u.ExcluidoEm == null)
+            .Select(u => new { u.Ativo })
+            .FirstOrDefaultAsync(ct);
+        if (alvoInfo is null || !alvoInfo.Ativo)
+            throw new ValidacaoException("paraUsuarioId", "O atendente de destino não existe ou está inativo.");
+        if (!await TemModuloAsync(alvo, ModuloPermissao.Conversas, ct))
+            throw new ValidacaoException("paraUsuarioId",
+                "O atendente de destino não tem acesso à Central de Atendimento.");
+
+        if (conversa.UnidadeId is { } unidadeConversa
+            && !await db.UsuarioUnidades.AsNoTracking()
+                .AnyAsync(x => x.UsuarioId == alvo && x.UnidadeId == unidadeConversa, ct))
+            throw new ValidacaoException("paraUsuarioId",
+                "O atendente de destino não é vinculado à unidade desta conversa.");
+
+        var agora = DateTime.UtcNow;
+        var deOperador = conversa.OperadorResponsavelId;
+        var deUnidade = conversa.UnidadeId;
+        conversa.OperadorResponsavelId = alvo;
+        // Conversa da triagem geral entra na unidade do atendente que a recebeu.
+        conversa.UnidadeId ??= await vinculos.ObterPrincipalIdAsync(alvo, ct);
+        // NaoLidas fica como está: a pendência de leitura agora é do novo responsável.
+        conversa.AtualizadoEm = agora;
+        conversa.AtualizadoPor = me;
+
+        // Na trilha, "Transferida" é o encaminhamento a outro operador (nomenclatura do enum).
+        var evento = NovoEvento(conversa.Id, TipoEventoConversa.Transferida, me, agora);
+        evento.DeUsuarioId = deOperador;
+        evento.ParaUsuarioId = alvo;
+        evento.Observacao = LimparObservacao(request.Observacao);
+        db.ConversaEventos.Add(evento);
+
+        await SalvarComTraducaoDeCorridaAsync(conversa, ct);
+        await notificador.ConversaMovidaAsync(
+            ParaEvento(conversa, conversa.UltimaMensagemPreview), deOperador, deUnidade, ct);
+    }
+
+    public async Task TransferirUnidadeAsync(
+        Guid conversaId, TransferirConversaRequest request, CancellationToken ct = default)
+    {
+        var me = ExigirUsuario();
+        var conversa = await ObterNoEscopoAsync(conversaId, rastrear: true, ct);
+        await ExigirPosseOuSupervisaoAsync(conversa, me, ct);
+
+        if (conversa.UnidadeId == request.ParaUnidadeId)
+            throw new ValidacaoException("paraUnidadeId", "A conversa já está nessa unidade.");
+
+        var destino = await db.Unidades.AsNoTracking()
+            .Where(u => u.Id == request.ParaUnidadeId)
+            .Select(u => new { u.Ativo, u.Externa })
+            .FirstOrDefaultAsync(ct);
+        if (destino is null || !destino.Ativo || destino.Externa)
+            throw new ValidacaoException("paraUnidadeId",
+                "A unidade de destino não existe, está inativa ou é externa à rede.");
+
+        var agora = DateTime.UtcNow;
+        var deOperador = conversa.OperadorResponsavelId;
+        var deUnidade = conversa.UnidadeId;
+        conversa.OperadorResponsavelId = null; // entra na fila de lá, sem responsável
+        conversa.UnidadeId = request.ParaUnidadeId;
+        conversa.AtualizadoEm = agora;
+        conversa.AtualizadoPor = me;
+
+        var evento = NovoEvento(conversa.Id, TipoEventoConversa.EncaminhadaUnidade, me, agora);
+        evento.DeUsuarioId = deOperador;
+        evento.DeUnidadeId = deUnidade;
+        evento.ParaUnidadeId = request.ParaUnidadeId;
+        evento.Observacao = LimparObservacao(request.Observacao);
+        db.ConversaEventos.Add(evento);
+
+        await SalvarComTraducaoDeCorridaAsync(conversa, ct);
+        await notificador.ConversaMovidaAsync(
+            ParaEvento(conversa, conversa.UltimaMensagemPreview), deOperador, deUnidade, ct);
+    }
+
+    public async Task<IReadOnlyList<AtendenteElegivelDto>> ListarAtendentesElegiveisAsync(
+        Guid conversaId, CancellationToken ct = default)
+    {
+        var me = ExigirUsuario();
+        var conversa = await ObterNoEscopoAsync(conversaId, rastrear: false, ct);
+
+        // Conversa com unidade: os colegas de lá. Da triagem geral: o MEU time (minhas
+        // unidades) — quem puxa do balde geral distribui dentro do próprio time.
+        IReadOnlyList<Guid> unidadesAlvo = conversa.UnidadeId is { } unidade
+            ? [unidade]
+            : await vinculos.ObterUnidadeIdsAsync(me, ct);
+        if (unidadesAlvo.Count == 0) return [];
+
+        var candidatos = await db.UsuarioUnidades.AsNoTracking()
+            .Where(x => unidadesAlvo.Contains(x.UnidadeId)
+                && x.Usuario!.Ativo && x.Usuario.ExcluidoEm == null)
+            .Select(x => new { x.UsuarioId, x.Usuario!.NomeCompleto })
+            .Distinct()
+            .OrderBy(x => x.NomeCompleto)
+            .ToListAsync(ct);
+
+        var elegiveis = new List<AtendenteElegivelDto>(candidatos.Count);
+        foreach (var candidato in candidatos)
+        {
+            // Sem o módulo Conversas o encaminhamento seria recusado — nem oferecer.
+            if (!await TemModuloAsync(candidato.UsuarioId, ModuloPermissao.Conversas, ct)) continue;
+            elegiveis.Add(new AtendenteElegivelDto(
+                candidato.UsuarioId, candidato.NomeCompleto,
+                candidato.UsuarioId == conversa.OperadorResponsavelId));
+        }
+        return elegiveis;
+    }
+
+    public async Task<IReadOnlyList<UnidadeDestinoDto>> ListarUnidadesDestinoAsync(CancellationToken ct = default) =>
+        await db.Unidades.AsNoTracking()
+            .Where(u => u.Ativo && !u.Externa)
+            .OrderBy(u => u.Nome)
+            .Select(u => new UnidadeDestinoDto(u.Id, u.Nome))
+            .ToListAsync(ct);
+
+    public async Task<ResumoConversasDto> ObterResumoAsync(CancellationToken ct = default)
+    {
+        var me = ExigirUsuario();
+        var minhasUnidades = await vinculos.ObterUnidadeIdsAsync(me, ct);
+
+        var vivas = db.Conversas.AsNoTracking().Where(c => c.ExcluidoEm == null);
+        var minhas = await FiltrarMinhas(vivas, me).SumAsync(c => c.NaoLidas, ct);
+        var fila = await FiltrarFila(vivas, minhasUnidades).SumAsync(c => c.NaoLidas, ct);
+        return new ResumoConversasDto(minhas, fila);
+    }
+
     // --- helpers -------------------------------------------------------------------------------
+
+    /// <summary>Predicado da lista pessoal — compartilhado entre a aba Minhas e o resumo do sino.</summary>
+    private static IQueryable<Conversa> FiltrarMinhas(IQueryable<Conversa> query, Guid me) =>
+        query.Where(c => c.OperadorResponsavelId == me);
+
+    /// <summary>
+    /// Predicado da fila (sem responsável, nas minhas unidades ou na triagem geral) —
+    /// compartilhado entre a listagem e o resumo. Se divergirem, o sino conta o que a lista
+    /// não mostra.
+    /// </summary>
+    private static IQueryable<Conversa> FiltrarFila(IQueryable<Conversa> query, IReadOnlyList<Guid> minhasUnidades) =>
+        query.Where(c => c.OperadorResponsavelId == null
+            && (c.UnidadeId == null || minhasUnidades.Contains(c.UnidadeId.Value)));
+
+    /// <summary>
+    /// Carrega a conversa aplicando o escopo de acesso por id — fora do escopo → 404 (não vaza a
+    /// existência). Token de serviço (X-API-Key, sem operador) já passou no gate da Api e vê tudo.
+    /// </summary>
+    private async Task<Conversa> ObterNoEscopoAsync(Guid conversaId, bool rastrear, CancellationToken ct)
+    {
+        IQueryable<Conversa> query = rastrear ? db.Conversas : db.Conversas.AsNoTracking();
+        var conversa = await query.FirstOrDefaultAsync(c => c.Id == conversaId && c.ExcluidoEm == null, ct)
+            ?? throw new NaoEncontradoException("Conversa", conversaId);
+
+        if (usuarioAtual.UsuarioId is { } me
+            && !await NoEscopoAsync(conversa.OperadorResponsavelId, conversa.UnidadeId, me, ct))
+            throw new NaoEncontradoException("Conversa", conversaId);
+
+        return conversa;
+    }
+
+    /// <summary>
+    /// A posse como trava de acesso, não só filtro de listagem: supervisão vê tudo; o dono vê a
+    /// sua; conversa sem dono é visível na triagem geral (sem unidade) ou aos vinculados à
+    /// unidade dela; conversa COM dono continua acessível aos colegas da mesma unidade (responder
+    /// sem roubar a posse é permitido). Dono sem unidade: só ele e a supervisão.
+    /// </summary>
+    private async Task<bool> NoEscopoAsync(
+        Guid? operadorResponsavelId, Guid? unidadeId, Guid me, CancellationToken ct)
+    {
+        if (operadorResponsavelId == me) return true;
+        if (operadorResponsavelId is null && unidadeId is null) return true;
+        if (unidadeId is { } unidade && (await vinculos.ObterUnidadeIdsAsync(me, ct)).Contains(unidade))
+            return true;
+        return await EhSupervisorAsync(me, ct);
+    }
+
+    /// <summary>Agir sobre conversa de TERCEIRO (devolver/encaminhar/transferir) exige supervisão.</summary>
+    private async Task ExigirPosseOuSupervisaoAsync(Conversa conversa, Guid me, CancellationToken ct)
+    {
+        if (conversa.OperadorResponsavelId is { } dono && dono != me && !await EhSupervisorAsync(me, ct))
+            throw new ConflitoException("conversa.sem_posse",
+                "Só o responsável pela conversa (ou a supervisão) pode fazer isso.");
+    }
+
+    /// <summary>
+    /// Aplica o claim: o operador vira o responsável, a conversa herda a unidade principal dele
+    /// quando não tinha nenhuma, o contador zera e a trilha ganha o Assumida. NÃO salva — o
+    /// SaveChanges é do chamador. Devolve o evento para o chamador poder descartá-lo se perder a
+    /// corrida (EnviarTextoAsync).
+    /// </summary>
+    private async Task<ConversaEvento> AplicarClaimAsync(
+        Conversa conversa, Guid me, DateTime agora, CancellationToken ct)
+    {
+        conversa.OperadorResponsavelId = me;
+        conversa.UnidadeId ??= await vinculos.ObterPrincipalIdAsync(me, ct);
+        conversa.NaoLidas = 0;
+        conversa.AtualizadoEm = agora;
+        conversa.AtualizadoPor = me;
+
+        var evento = NovoEvento(conversa.Id, TipoEventoConversa.Assumida, me, agora);
+        evento.ParaUsuarioId = me;
+        db.ConversaEventos.Add(evento);
+        return evento;
+    }
+
+    /// <summary>
+    /// SaveChanges traduzindo a corrida de posse (token xmin) num 409 legível: relê quem ficou
+    /// com a conversa e devolve <c>conversa.ja_assumida</c> com o nome do vencedor.
+    /// </summary>
+    private async Task SalvarComTraducaoDeCorridaAsync(Conversa conversa, CancellationToken ct)
+    {
+        try
+        {
+            await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            var donoAtual = await db.Conversas.AsNoTracking()
+                .Where(c => c.Id == conversa.Id)
+                .Select(c => c.OperadorResponsavelId)
+                .FirstOrDefaultAsync(ct);
+            if (donoAtual is { } dono && dono != usuarioAtual.UsuarioId)
+                throw await ConflitoJaAssumidaAsync(dono, ct);
+            throw new ConflitoException("conversa.alterada",
+                "A conversa mudou enquanto você agia — atualize a lista e tente de novo.");
+        }
+    }
+
+    private async Task<ConflitoException> ConflitoJaAssumidaAsync(Guid donoId, CancellationToken ct) =>
+        new("conversa.ja_assumida", $"Conversa já assumida por {await ObterNomeAsync(donoId, ct)}.");
+
+    private static string? LimparObservacao(string? observacao)
+    {
+        observacao = observacao?.Trim();
+        if (string.IsNullOrEmpty(observacao)) return null;
+        return observacao.Length <= 1000 ? observacao : observacao[..1000];
+    }
 
     private Guid ExigirUsuario() =>
         usuarioAtual.UsuarioId ?? throw new ValidacaoException("operador", "Operador não identificado na requisição.");
@@ -364,12 +717,15 @@ public sealed class ConversaService(
     private async Task<string> ObterNomeAsync(Guid usuarioId, CancellationToken ct) =>
         await db.Usuarios.Where(u => u.Id == usuarioId).Select(u => u.NomeCompleto).FirstOrDefaultAsync(ct) ?? "Atendente";
 
-    private async Task<bool> EhSupervisorAsync(Guid usuarioId, CancellationToken ct)
+    private Task<bool> EhSupervisorAsync(Guid usuarioId, CancellationToken ct) =>
+        TemModuloAsync(usuarioId, ModuloPermissao.ConversasSupervisao, ct);
+
+    private async Task<bool> TemModuloAsync(Guid usuarioId, ModuloPermissao modulo, CancellationToken ct)
     {
         try
         {
             var perms = await identidade.ObterPermissoesResolvidasAsync(usuarioId, ct);
-            return perms.Resolvidas.Any(p => p.Modulo == ModuloPermissao.ConversasSupervisao && p.Acoes != AcoesPermissao.Nenhuma);
+            return perms.Resolvidas.Any(p => p.Modulo == modulo && p.Acoes != AcoesPermissao.Nenhuma);
         }
         catch (NaoEncontradoException) { return false; }
     }

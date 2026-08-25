@@ -21,6 +21,21 @@ public sealed class ConversaNotificadorSignalR(IHubContext<ConversasHub> hub) : 
         hub.Clients.Groups(Grupos(evt)).SendAsync("conversaAtualizada", evt, ct);
 
     /// <summary>
+    /// Mudança de posse/unidade: o mesmo <c>conversaAtualizada</c>, mas para a UNIÃO da audiência
+    /// nova (a do evt) com a antiga — quem perdeu a conversa (dono anterior, fila anterior)
+    /// precisa do evento para o invalidate tirá-la da própria lista.
+    /// </summary>
+    public Task ConversaMovidaAsync(
+        ConversaEventoRealtime evt, Guid? deOperadorId, Guid? deUnidadeId, CancellationToken ct = default)
+    {
+        var grupos = new HashSet<string>(Grupos(evt));
+        if (deOperadorId is { } op) grupos.Add($"usuario:{op}");
+        if (deUnidadeId is { } unidade) grupos.Add($"unidade:{unidade}");
+        else grupos.Add("conversas:geral");
+        return hub.Clients.Groups([.. grupos]).SendAsync("conversaAtualizada", evt, ct);
+    }
+
+    /// <summary>
     /// Espelha a visibilidade da lista (ConversaService.ListarAsync): conversa com unidade vai
     /// aos membros da unidade; SEM unidade é visível a todo operador do chat (grupo
     /// <c>conversas:geral</c>). Supervisores (aba Todas) recebem sempre. Sem isso, mensagem de

@@ -23,4 +23,7 @@ public enum TipoEventoConversa
     Resolvida = 6,
     Reaberta = 7,
     Fechada = 8,
+
+    /// <summary>Devolvida à fila (o responsável abriu mão; a conversa volta a ficar sem dono).</summary>
+    Devolvida = 9,
 }

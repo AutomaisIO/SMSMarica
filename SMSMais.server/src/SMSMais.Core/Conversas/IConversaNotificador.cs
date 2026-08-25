@@ -29,6 +29,16 @@ public interface IConversaNotificador
 
     /// <summary>Conversa mudou de estado/atribuição/unidade/não-lidas — atualiza as listas.</summary>
     Task ConversaAtualizadaAsync(ConversaEventoRealtime evt, CancellationToken ct = default);
+
+    /// <summary>
+    /// Posse ou unidade mudou (assumir/devolver/encaminhar/transferir). Além da audiência NOVA
+    /// (a do <paramref name="evt"/>), notifica a ANTIGA — o dono/fila de onde a conversa saiu
+    /// precisa do evento para removê-la da própria lista.
+    /// </summary>
+    /// <param name="deOperadorId">Responsável anterior (null = estava na fila).</param>
+    /// <param name="deUnidadeId">Unidade anterior (null = estava na triagem geral).</param>
+    Task ConversaMovidaAsync(
+        ConversaEventoRealtime evt, Guid? deOperadorId, Guid? deUnidadeId, CancellationToken ct = default);
 }
 
 public sealed class NotificadorConversaNulo : IConversaNotificador
@@ -36,4 +46,7 @@ public sealed class NotificadorConversaNulo : IConversaNotificador
     public Task MensagemRecebidaAsync(ConversaEventoRealtime evt, CancellationToken ct = default) => Task.CompletedTask;
     public Task MensagemEnviadaAsync(ConversaEventoRealtime evt, CancellationToken ct = default) => Task.CompletedTask;
     public Task ConversaAtualizadaAsync(ConversaEventoRealtime evt, CancellationToken ct = default) => Task.CompletedTask;
+    public Task ConversaMovidaAsync(
+        ConversaEventoRealtime evt, Guid? deOperadorId, Guid? deUnidadeId, CancellationToken ct = default) =>
+        Task.CompletedTask;
 }

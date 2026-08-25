@@ -98,4 +98,81 @@ public sealed class ConversasController(IConversaService service) : ControllerBa
         await service.MarcarLidaAsync(id, ct);
         return NoContent();
     }
+
+    /// <summary>
+    /// Assume a conversa (claim): o operador vira o responsável e ela sai da fila para a lista
+    /// pessoal dele. Conversa de outro responsável → <c>409 conversa.ja_assumida</c>.
+    /// </summary>
+    [HttpPost("{id:guid}/assumir")]
+    [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Assumir(Guid id, CancellationToken ct)
+    {
+        await service.AssumirAsync(id, ct);
+        return NoContent();
+    }
+
+    /// <summary>Devolve a conversa à fila da unidade (limpa o responsável).</summary>
+    [HttpPost("{id:guid}/devolver")]
+    [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Devolver(Guid id, CancellationToken ct)
+    {
+        await service.DevolverAsync(id, ct);
+        return NoContent();
+    }
+
+    /// <summary>Encaminha a conversa para outro atendente (ele vira o responsável).</summary>
+    [HttpPost("{id:guid}/encaminhar")]
+    [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Encaminhar(
+        Guid id, [FromBody] EncaminharConversaRequest request, CancellationToken ct)
+    {
+        await service.EncaminharAsync(id, request, ct);
+        return NoContent();
+    }
+
+    /// <summary>Transfere a conversa para outra unidade (entra na fila de lá, sem responsável).</summary>
+    [HttpPost("{id:guid}/transferir")]
+    [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Transferir(
+        Guid id, [FromBody] TransferirConversaRequest request, CancellationToken ct)
+    {
+        await service.TransferirUnidadeAsync(id, request, ct);
+        return NoContent();
+    }
+
+    /// <summary>Atendentes que podem receber esta conversa por encaminhamento.</summary>
+    [HttpGet("{id:guid}/atendentes-elegiveis")]
+    [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<AtendenteElegivelDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IReadOnlyList<AtendenteElegivelDto>> AtendentesElegiveis(Guid id, CancellationToken ct) =>
+        await service.ListarAtendentesElegiveisAsync(id, ct);
+
+    /// <summary>Unidades da rede que podem receber conversas por transferência.</summary>
+    [HttpGet("unidades-destino")]
+    [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<UnidadeDestinoDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<UnidadeDestinoDto>> UnidadesDestino(CancellationToken ct) =>
+        await service.ListarUnidadesDestinoAsync(ct);
+
+    /// <summary>Contadores de não-lidas (minhas × fila) para sino/badge sem carregar a lista.</summary>
+    [HttpGet("resumo")]
+    [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Consulta)]
+    [ProducesResponseType<ResumoConversasDto>(StatusCodes.Status200OK)]
+    public async Task<ResumoConversasDto> Resumo(CancellationToken ct) =>
+        await service.ObterResumoAsync(ct);
 }

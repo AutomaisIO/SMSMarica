@@ -24,8 +24,48 @@ public interface IConversaService
     /// <summary>Mensagens da thread (ordem cronológica).</summary>
     Task<IReadOnlyList<MensagemDto>> ObterMensagensAsync(Guid conversaId, CancellationToken ct = default);
 
-    /// <summary>Zera o contador de não-lidas ao abrir a conversa.</summary>
+    /// <summary>
+    /// Zera o contador de não-lidas. NÃO muda a posse — o claim explícito é
+    /// <see cref="AssumirAsync"/> (o front antigo chama este endpoint ao abrir a thread; se ele
+    /// desse claim, abrir a conversa roubaria a posse em silêncio).
+    /// </summary>
     Task MarcarLidaAsync(Guid conversaId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Assume a conversa (claim): o operador vira o responsável, o contador zera e ela sai da
+    /// fila para a lista pessoal dele. Conversa de outro responsável falha com
+    /// <c>conversa.ja_assumida</c> (posse só muda por encaminhar/devolver/transferir).
+    /// </summary>
+    Task AssumirAsync(Guid conversaId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Devolve a conversa à fila: limpa o responsável, mantendo a unidade (sem unidade, volta à
+    /// triagem geral). Só o próprio responsável ou a supervisão.
+    /// </summary>
+    Task DevolverAsync(Guid conversaId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Encaminha a conversa para outro atendente (ele vira o responsável). O alvo precisa estar
+    /// ativo, ter o módulo Conversas e vínculo com a unidade da conversa. Conversa de terceiro
+    /// exige supervisão.
+    /// </summary>
+    Task EncaminharAsync(Guid conversaId, EncaminharConversaRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Transfere a conversa para outra unidade: entra na fila de lá SEM responsável. Conversa de
+    /// terceiro exige supervisão.
+    /// </summary>
+    Task TransferirUnidadeAsync(Guid conversaId, TransferirConversaRequest request, CancellationToken ct = default);
+
+    /// <summary>Atendentes que podem receber a conversa por encaminhamento.</summary>
+    Task<IReadOnlyList<AtendenteElegivelDto>> ListarAtendentesElegiveisAsync(
+        Guid conversaId, CancellationToken ct = default);
+
+    /// <summary>Unidades ativas que podem receber a conversa por transferência.</summary>
+    Task<IReadOnlyList<UnidadeDestinoDto>> ListarUnidadesDestinoAsync(CancellationToken ct = default);
+
+    /// <summary>Contadores de não-lidas (minhas × fila) para sino/badge sem carregar a lista.</summary>
+    Task<ResumoConversasDto> ObterResumoAsync(CancellationToken ct = default);
 
     /// <summary>Templates aprovados para iniciar conversa.</summary>
     Task<IReadOnlyList<TemplateWhatsApp>> ListarTemplatesAsync(CancellationToken ct = default);
