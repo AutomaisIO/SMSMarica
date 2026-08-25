@@ -123,7 +123,12 @@ export function gerarHtmlTabela(secao: SecaoChecklist, respostas: RespostaItem[]
       const campos = respostas.find((r) => r.itemId === linha.id)?.campos ?? {};
       const celulas = colunas
         .map((c) => {
-          const bruto = c.fixa ? linha.fixos[c.chave] : campos[c.chave];
+          // Coluna `fixa` normalmente usa o rótulo de `fixos`; mas se a linha
+          // permite editar essa chave no laudo (fixosEditaveis) e a profissional
+          // digitou algo, o valor digitado (override em `campos`) prevalece.
+          const editavel = c.fixa && (linha.fixosEditaveis ?? []).includes(c.chave);
+          const override = (campos[c.chave] ?? '').trim();
+          const bruto = c.fixa ? (editavel && override ? override : linha.fixos[c.chave]) : campos[c.chave];
           return `<td><p>${escaparHtml(celulaTexto(c, bruto))}</p></td>`;
         })
         .join('');
@@ -176,7 +181,8 @@ export function gerarHtmlLaudo(respostas: RespostasChecklist): string {
       if (!dmo) continue;
       partes.push(`<h3>${escaparHtml(secao.titulo)}</h3>`);
       partes.push('<p>Segundo os critérios da OMS e posições oficiais da SBDens / ISCD:</p>');
-      partes.push(`<p>${escaparHtml(fraseDmo(dmo))}</p>`);
+      // Linha do diagnóstico em negrito para destaque (pedido do ticket #110).
+      partes.push(`<p><strong>${escaparHtml(fraseDmo(dmo))}</strong></p>`);
 
       // Rastreabilidade do cálculo: qual sítio e qual score decidiram.
       const escala = escalaDe(respostas);

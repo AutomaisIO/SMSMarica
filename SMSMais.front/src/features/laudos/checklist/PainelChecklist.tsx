@@ -295,7 +295,16 @@ function GradeTabela({
                     {colunas.map((c) => (
                       <td key={c.chave} className="border border-gray-200 px-2 py-1">
                         {c.fixa ? (
-                          <span className="text-gray-800">{linha.fixos[c.chave] ?? ''}</span>
+                          (linha.fixosEditaveis ?? []).includes(c.chave) ? (
+                            <CelulaFixaEditavel
+                              valor={campos[c.chave] ?? ''}
+                              padrao={linha.fixos[c.chave] ?? ''}
+                              somenteLeitura={somenteLeitura}
+                              aoMudar={(v) => aoMudarCelula(linha.id, c.chave, v)}
+                            />
+                          ) : (
+                            <span className="text-gray-800">{linha.fixos[c.chave] ?? ''}</span>
+                          )
                         ) : (
                           <CelulaEditavel
                             coluna={c}
@@ -343,6 +352,35 @@ function CelulaEditavel({
       />
       {coluna.sufixo ? <span className="text-xs text-gray-500">{coluna.sufixo}</span> : null}
     </span>
+  );
+}
+
+/**
+ * Célula de rótulo (`fixa`) que, nesta linha, é editável no preenchimento do
+ * laudo. Texto livre; vazio cai no rótulo-padrão (mostrado como placeholder e
+ * usado na exportação). Ex.: sítio da coluna lombar ("L1 a L4" → "L1-L2-L4").
+ */
+function CelulaFixaEditavel({
+  valor,
+  padrao,
+  somenteLeitura,
+  aoMudar,
+}: {
+  valor: string;
+  padrao: string;
+  somenteLeitura?: boolean;
+  aoMudar: (v: string) => void;
+}) {
+  return (
+    <input
+      type="text"
+      value={valor}
+      onChange={(e) => aoMudar(e.target.value)}
+      disabled={somenteLeitura}
+      placeholder={padrao}
+      title="Sítio editável (deixe em branco para usar o padrão)"
+      className="w-full min-w-[72px] rounded border border-gray-300 px-1.5 py-0.5 text-sm focus:border-primary-400 focus:outline-none focus:ring-1 focus:ring-primary-100 disabled:bg-gray-50"
+    />
   );
 }
 

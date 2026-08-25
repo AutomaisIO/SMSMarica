@@ -67,7 +67,7 @@ export function menorScore(
         const n = lerNumero(campos[col.chave]);
         if (n === null) continue;
         if (melhor === null || n < melhor.valor) {
-          melhor = { valor: n, sitio: rotuloLinha(secao.colunas, linha.fixos) };
+          melhor = { valor: n, sitio: rotuloLinha(secao.colunas, linha.fixos, campos) };
         }
       }
     }
@@ -76,14 +76,19 @@ export function menorScore(
   return melhor;
 }
 
-/** Rótulo legível da linha ("Fêmur Proximal · Colo Femoral"). */
+/**
+ * Rótulo legível da linha ("Fêmur Proximal · Colo Femoral"). `override` traz os
+ * valores digitados no laudo (ex.: sítio livre da coluna lombar) — quando há um
+ * override não-vazio para uma coluna fixa, ele prevalece sobre o rótulo-padrão.
+ */
 export function rotuloLinha(
   colunas: ColunaTabela[] | undefined,
   fixos: Record<string, string>,
+  override?: Record<string, string>,
 ): string {
   return (colunas ?? [])
     .filter((c) => c.fixa)
-    .map((c) => (fixos[c.chave] ?? '').trim())
+    .map((c) => ((override?.[c.chave] ?? '').trim() || (fixos[c.chave] ?? '').trim()))
     .filter(Boolean)
     .join(' · ');
 }

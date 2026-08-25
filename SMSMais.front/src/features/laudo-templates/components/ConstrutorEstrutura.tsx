@@ -90,7 +90,13 @@ export function ConstrutorEstrutura({ estrutura, aoMudar }: Props) {
           { chave: 'am', titulo: 'AM (%)', tipo: 'numero', larguraPct: 11 },
         ],
         linhas: [
-          { id: novoId(), fixos: { regiao: 'Coluna Lombar', sitio: 'L1 a L4' }, diagnostica: true },
+          {
+            id: novoId(),
+            fixos: { regiao: 'Coluna Lombar', sitio: 'L1 a L4' },
+            diagnostica: true,
+            // O sítio da coluna lombar é digitável no laudo (ex.: excluir vértebras).
+            fixosEditaveis: ['sitio'],
+          },
           { id: novoId(), fixos: { regiao: 'Fêmur Proximal', sitio: 'Fêmur Total' }, diagnostica: true },
           { id: novoId(), fixos: { regiao: 'Fêmur Proximal', sitio: 'Colo Femoral' }, diagnostica: true },
           // Rádio 33% só é diagnóstico em condições específicas (SBDens/ISCD).

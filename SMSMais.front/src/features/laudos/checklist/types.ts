@@ -78,6 +78,14 @@ export type LinhaTabela = {
    * específicas — por isso é opt-in, linha a linha.
    */
   diagnostica?: boolean;
+  /**
+   * Chaves das colunas `fixa` que, embora tenham rótulo-padrão em `fixos`, ficam
+   * EDITÁVEIS no preenchimento do laudo (não só na autoria do template). Ex.: a
+   * coluna lombar precisa permitir digitar o sítio ("L1 a L4", "L1-L2-L4") porque
+   * às vezes se excluem vértebras. O valor digitado vive em `RespostaItem.campos`
+   * (override); vazio = usa o rótulo de `fixos`.
+   */
+  fixosEditaveis?: string[];
 };
 
 export type SecaoChecklist = {
