@@ -17,7 +17,8 @@ public enum AbaConversas
     /// <summary>Obsoleta — mesmo resultado de <see cref="Unidade"/> (compat com front antigo).</summary>
     NaoAtribuidas = 3,
 
-    /// <summary>Todas (exige permissão de supervisão; senão cai no escopo da Unidade).</summary>
+    /// <summary>Todas as conversas, sem recorte de unidade/posse (ADR-0048: destravada para todo
+    /// operador do módulo — só visibilidade de leitura; as ações seguem travadas por posse).</summary>
     Todas = 4,
 }
 

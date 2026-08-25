@@ -21,7 +21,6 @@ import { PainelRespostasRapidas } from '@/features/respostas-rapidas/components/
  */
 export function ChatJanelaPage() {
   const podeVer = useTemConsulta('Conversas');
-  const podeSupervisao = useTemConsulta('ConversasSupervisao');
   const conversaAtivaId = useChat((s) => s.conversaAtivaId);
   const alertasAtivos = useChat((s) => s.alertasAtivos);
   const { setConversaAtiva } = useChat.getState();
@@ -116,11 +115,7 @@ export function ChatJanelaPage() {
 
       <div className="flex min-h-0 flex-1">
         <div className="w-64 shrink-0 border-r border-gray-200">
-          <ListaConversas
-            conversaAtivaId={conversaAtivaId}
-            onSelecionar={setConversaAtiva}
-            podeSupervisao={podeSupervisao}
-          />
+          <ListaConversas conversaAtivaId={conversaAtivaId} onSelecionar={setConversaAtiva} />
         </div>
         <div className="min-w-0 flex-1">
           {conversaAtivaId ? (

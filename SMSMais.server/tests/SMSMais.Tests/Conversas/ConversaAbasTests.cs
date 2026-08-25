@@ -20,8 +20,9 @@ namespace SMSMais.Tests.Conversas;
 /// <summary>
 /// Semântica das abas da lista: <c>Minhas</c> (dono == eu) e <c>Unidade</c>/fila (sem dono, das
 /// minhas unidades + triagem geral) são DISJUNTAS — a conversa puxada sai da fila de todo mundo
-/// e passa a existir só na lista pessoal do dono (+ Todas, da supervisão). Se este arquivo
-/// quebrar, o roteamento do SignalR (Grupos) tem de mudar junto — um espelha o outro.
+/// e passa a existir só na lista pessoal do dono (+ Todas, destravada para todo operador pelo
+/// ADR-0048). Se este arquivo quebrar, o roteamento do SignalR (Grupos) tem de mudar junto — um
+/// espelha o outro.
 /// </summary>
 [Collection(nameof(PostgresCollection))]
 public class ConversaAbasTests(PostgresFixture fixture)
@@ -77,20 +78,22 @@ public class ConversaAbasTests(PostgresFixture fixture)
     }
 
     [Fact]
-    public async Task Todas_sem_supervisao_cai_na_fila_e_com_supervisao_ve_tudo()
+    public async Task Todas_e_destravada_todo_operador_ve_conversa_de_outra_unidade()
     {
+        // ADR-0048: a aba Todas deixou de exigir supervisão — qualquer operador do módulo vê a
+        // conversa de outra unidade/dono. É visibilidade de leitura; a posse segue trava de ação.
         await using var db = fixture.CriarDbContext();
         var (dono, unidade) = await CriarOperadorAsync(db);
-        var (deFora, _) = await CriarOperadorAsync(db);
+        var (deFora, _) = await CriarOperadorAsync(db); // vinculado só à própria unidade, sem supervisão
         var comDono = await CriarConversaAsync(db, operadorId: dono, unidadeId: unidade);
 
-        var semSupervisao = await CriarServico(db, deFora).ListarAsync(AbaConversas.Todas, null);
-        Assert.DoesNotContain(semSupervisao, c => c.Id == comDono.Id);
+        // Some da fila do de-fora (unidades disjuntas)…
+        var filaDeFora = await CriarServico(db, deFora).ListarAsync(AbaConversas.Unidade, null);
+        Assert.DoesNotContain(filaDeFora, c => c.Id == comDono.Id);
 
-        var comSupervisao = await CriarServico(
-                db, deFora, ModuloPermissao.Conversas, ModuloPermissao.ConversasSupervisao)
-            .ListarAsync(AbaConversas.Todas, null);
-        Assert.Contains(comSupervisao, c => c.Id == comDono.Id);
+        // …mas aparece em Todas, mesmo SEM permissão de supervisão.
+        var todasDeFora = await CriarServico(db, deFora).ListarAsync(AbaConversas.Todas, null);
+        Assert.Contains(todasDeFora, c => c.Id == comDono.Id);
     }
 
     // ===================== HELPERS =====================

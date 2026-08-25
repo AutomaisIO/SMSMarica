@@ -1,13 +1,11 @@
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
-import { useTemConsulta } from '@/shared/auth/authStore';
 import { ListaConversas } from '@/features/conversas/components/ListaConversas';
 import { ThreadMensagens } from '@/features/conversas/components/ThreadMensagens';
 import { NovaConversaDialog } from '@/features/conversas/components/NovaConversaDialog';
 import { PainelRespostasRapidas } from '@/features/respostas-rapidas/components/PainelRespostasRapidas';
 
 export function ConversasPage() {
-  const podeSupervisao = useTemConsulta('ConversasSupervisao');
   const [ativa, setAtiva] = useState<string | null>(null);
   const [nova, setNova] = useState(false);
 
@@ -29,11 +27,7 @@ export function ConversasPage() {
 
       <div className="flex h-[72vh] overflow-hidden rounded-lg border border-gray-200 bg-white">
         <div className="w-80 shrink-0 border-r border-gray-200">
-          <ListaConversas
-            conversaAtivaId={ativa}
-            onSelecionar={setAtiva}
-            podeSupervisao={podeSupervisao}
-          />
+          <ListaConversas conversaAtivaId={ativa} onSelecionar={setAtiva} />
         </div>
         <div className="min-w-0 flex-1">
           {ativa ? (

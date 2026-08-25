@@ -160,16 +160,32 @@ public class ConversaPosseTests(PostgresFixture fixture)
     // ===================== ESCOPO DE ACESSO POR ID =====================
 
     [Fact]
-    public async Task Conversa_de_outra_unidade_e_404_para_ler_mensagens_e_agir()
+    public async Task Conversa_de_outra_unidade_e_LEGIVEL_por_qualquer_operador()
     {
+        // ADR-0048: leitura destravada — ver o cabeçalho e as mensagens não depende mais de posse.
         await using var db = fixture.CriarDbContext();
         var (dono, unidadeDele) = await CriarOperadorAsync(db);
         var (intruso, _) = await CriarOperadorAsync(db); // vinculado só à própria unidade
         var conversa = await CriarConversaAsync(db, operadorId: dono, unidadeId: unidadeDele, naoLidas: 1, janelaAberta: true);
 
         var servico = CriarServico(db, intruso);
-        await Assert.ThrowsAsync<NaoEncontradoException>(() => servico.ObterAsync(conversa.Id));
-        await Assert.ThrowsAsync<NaoEncontradoException>(() => servico.ObterMensagensAsync(conversa.Id));
+        var dto = await servico.ObterAsync(conversa.Id);
+        Assert.Equal(conversa.Id, dto.Id);
+        // Não lança (histórico legível a qualquer operador).
+        await servico.ObterMensagensAsync(conversa.Id);
+    }
+
+    [Fact]
+    public async Task Conversa_de_outra_unidade_ainda_e_404_para_AGIR()
+    {
+        // A trava de posse continua valendo para as AÇÕES: marcar lida / responder / assumir /
+        // devolver / encaminhar / transferir de conversa fora do escopo → 404 (não vaza).
+        await using var db = fixture.CriarDbContext();
+        var (dono, unidadeDele) = await CriarOperadorAsync(db);
+        var (intruso, _) = await CriarOperadorAsync(db); // vinculado só à própria unidade
+        var conversa = await CriarConversaAsync(db, operadorId: dono, unidadeId: unidadeDele, naoLidas: 1, janelaAberta: true);
+
+        var servico = CriarServico(db, intruso);
         await Assert.ThrowsAsync<NaoEncontradoException>(() => servico.MarcarLidaAsync(conversa.Id));
         await Assert.ThrowsAsync<NaoEncontradoException>(() =>
             servico.EnviarTextoAsync(conversa.Id, new ConversaDtos.EnviarMensagemRequest("oi")));

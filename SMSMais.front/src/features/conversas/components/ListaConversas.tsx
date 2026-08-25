@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Search } from 'lucide-react';
 import { useListarConversas, useResumoConversas } from '@/features/conversas/api/queries';
 import { useAuth } from '@/shared/auth/authStore';
@@ -8,14 +8,16 @@ import { ROTULO_ASSUNTO, type AbaConversas } from '@/features/conversas/types';
 type Props = {
   conversaAtivaId: string | null;
   onSelecionar: (id: string) => void;
-  podeSupervisao: boolean;
 };
 
 // Minhas × Fila são disjuntas (semântica do backend): conversa puxada sai da fila e passa a
 // existir só na lista pessoal do dono. A antiga "Não atribuídas" virou a própria Fila.
+// "Todas" foi destravada para todo operador (ADR-0048) — visibilidade de leitura de todo o
+// histórico, independente de unidade/posse.
 const ABAS: { id: AbaConversas; rotulo: string }[] = [
   { id: 'Minhas', rotulo: 'Minhas' },
   { id: 'Unidade', rotulo: 'Fila' },
+  { id: 'Todas', rotulo: 'Todas' },
 ];
 
 function formatarHora(iso: string | null): string {
@@ -28,15 +30,10 @@ function formatarHora(iso: string | null): string {
     : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 }
 
-export function ListaConversas({ conversaAtivaId, onSelecionar, podeSupervisao }: Props) {
+export function ListaConversas({ conversaAtivaId, onSelecionar }: Props) {
   const [aba, setAba] = useState<AbaConversas>('Unidade');
   const [busca, setBusca] = useState('');
   const usuarioId = useAuth((s) => s.usuario?.id ?? null);
-
-  const abas = useMemo(
-    () => (podeSupervisao ? [...ABAS, { id: 'Todas' as AbaConversas, rotulo: 'Todas' }] : ABAS),
-    [podeSupervisao],
-  );
 
   const { data: conversas, isLoading } = useListarConversas(aba, busca);
   // Badge por aba: contadores do endpoint leve (o total global vem do useTotalNaoLidas).
@@ -49,7 +46,7 @@ export function ListaConversas({ conversaAtivaId, onSelecionar, podeSupervisao }
   return (
     <div className="flex h-full flex-col">
       <div className="flex gap-1 border-b border-gray-200 px-2 pt-2">
-        {abas.map((a) => (
+        {ABAS.map((a) => (
           <button
             key={a.id}
             type="button"

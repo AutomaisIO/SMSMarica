@@ -88,7 +88,8 @@ public sealed class ConversaService(
     public async Task<IReadOnlyList<PacienteDoTelefoneDto>> ListarPacientesDoTelefoneAsync(
         Guid conversaId, CancellationToken ct = default)
     {
-        var conversa = await ObterNoEscopoAsync(conversaId, rastrear: false, ct);
+        // ADR-0048: leitura destravada — painel de pacientes do telefone é parte do "ver a thread".
+        var conversa = await CarregarVivaAsync(conversaId, rastrear: false, ct);
 
         var achados = await pacientes.ListarPorTelefoneAsync(conversa.TelefoneCanonical, ct);
 
@@ -262,18 +263,20 @@ public sealed class ConversaService(
     {
         var me = ExigirUsuario();
         var minhasUnidades = await vinculos.ObterUnidadeIdsAsync(me, ct);
-        var supervisor = await EhSupervisorAsync(me, ct);
         var agora = DateTime.UtcNow;
 
         var query = db.Conversas.AsNoTracking().Where(c => c.ExcluidoEm == null);
 
-        // Minhas e a fila são DISJUNTAS: conversa com dono aparece só na lista pessoal do dono
-        // (+ Todas, da supervisão); a fila é o que ninguém puxou — das minhas unidades ou da
-        // triagem geral. NaoAtribuidas sobrevive como alias da fila (compat com front antigo).
+        // Minhas e a fila são DISJUNTAS: conversa com dono aparece só na lista pessoal do dono;
+        // a fila é o que ninguém puxou — das minhas unidades ou da triagem geral. NaoAtribuidas
+        // sobrevive como alias da fila (compat com front antigo).
+        // ADR-0048: a aba Todas foi DESTRAVADA — todo operador do módulo Conversas vê todas as
+        // conversas (era exclusiva da supervisão). É só VISIBILIDADE de leitura; a posse continua
+        // trava de AÇÃO (responder/assumir/devolver/encaminhar/transferir seguem gated).
         query = aba switch
         {
             AbaConversas.Minhas => FiltrarMinhas(query, me),
-            AbaConversas.Todas when supervisor => query,
+            AbaConversas.Todas => query,
             _ => FiltrarFila(query, minhasUnidades),
         };
 
@@ -354,10 +357,8 @@ public sealed class ConversaService(
             .FirstOrDefaultAsync(ct)
             ?? throw new NaoEncontradoException("Conversa", conversaId);
 
-        // Fora do escopo de acesso → 404 (não vaza a existência). Token de serviço vê tudo.
-        if (usuarioAtual.UsuarioId is { } me
-            && !await NoEscopoAsync(dto.OperadorResponsavelId, dto.UnidadeId, me, ct))
-            throw new NaoEncontradoException("Conversa", conversaId);
+        // ADR-0048: leitura destravada — qualquer operador do módulo abre qualquer conversa. A
+        // trava de posse continua valendo para as AÇÕES (responder/assumir/devolver/…).
 
         // Nome COMPLETO do paciente (título da thread): pelo vínculo ou, sem vínculo, achando
         // pelo telefone no hub (só exibição — não grava). Best-effort: hub fora → sem nome.
@@ -384,16 +385,27 @@ public sealed class ConversaService(
 
     public async Task<IReadOnlyList<MensagemDto>> ObterMensagensAsync(Guid conversaId, CancellationToken ct = default)
     {
-        await ObterNoEscopoAsync(conversaId, rastrear: false, ct); // 404 fora do escopo de acesso
+        // ADR-0048: leitura destravada (sem trava de escopo) + HISTÓRICO COMPLETO do interlocutor.
+        var conversa = await CarregarVivaAsync(conversaId, rastrear: false, ct);
+        var fone = conversa.TelefoneCanonical;
+        var pacienteId = conversa.PacienteId;
 
-        return await db.MensagensWhatsApp.AsNoTracking()
-            .Where(m => m.ConversaId == conversaId)
-            .OrderBy(m => m.OcorridoEm)
+        // Não só as mensagens desta thread: TODAS as do mesmo telefone (qualquer conversa, de
+        // qualquer unidade/operador) + as AUTOMÁTICAS (confirmação de agendamento, laudo etc.,
+        // que têm conversa_id nulo) + as do mesmo paciente em outros números. O telefone canônico
+        // é a mesma chave em toda origem (Canonizar no inbound; NormalizarTelefone no outbound —
+        // mesmo algoritmo). Teto nas 500 MAIS RECENTES, devolvidas em ordem cronológica.
+        var recentes = await db.MensagensWhatsApp.AsNoTracking()
+            .Where(m => m.Telefone == fone || (pacienteId != null && m.PacienteId == pacienteId))
+            .OrderByDescending(m => m.OcorridoEm)
             .Take(500)
             .Select(m => new MensagemDto(
                 m.Id, m.ConversaId, m.Direcao, m.TipoMensagem, m.Conteudo, m.Template,
                 m.AutorUsuarioId, m.AutorNomeExibicao, m.Status, m.OcorridoEm))
             .ToListAsync(ct);
+
+        recentes.Reverse(); // a UI rola para o fim: ordem ascendente por OcorridoEm
+        return recentes;
     }
 
     public async Task MarcarLidaAsync(Guid conversaId, CancellationToken ct = default)
@@ -616,15 +628,23 @@ public sealed class ConversaService(
         query.Where(c => c.OperadorResponsavelId == null
             && (c.UnidadeId == null || minhasUnidades.Contains(c.UnidadeId.Value)));
 
+    /// <summary>Carrega a conversa viva (não excluída) sem aplicar escopo — só existência → 404.
+    /// Usado nos caminhos de LEITURA, destravados pelo ADR-0048.</summary>
+    private async Task<Conversa> CarregarVivaAsync(Guid conversaId, bool rastrear, CancellationToken ct)
+    {
+        IQueryable<Conversa> query = rastrear ? db.Conversas : db.Conversas.AsNoTracking();
+        return await query.FirstOrDefaultAsync(c => c.Id == conversaId && c.ExcluidoEm == null, ct)
+            ?? throw new NaoEncontradoException("Conversa", conversaId);
+    }
+
     /// <summary>
     /// Carrega a conversa aplicando o escopo de acesso por id — fora do escopo → 404 (não vaza a
-    /// existência). Token de serviço (X-API-Key, sem operador) já passou no gate da Api e vê tudo.
+    /// existência). Trava das AÇÕES (responder/assumir/devolver/encaminhar/transferir); a LEITURA
+    /// foi destravada no ADR-0048. Token de serviço (X-API-Key, sem operador) vê tudo.
     /// </summary>
     private async Task<Conversa> ObterNoEscopoAsync(Guid conversaId, bool rastrear, CancellationToken ct)
     {
-        IQueryable<Conversa> query = rastrear ? db.Conversas : db.Conversas.AsNoTracking();
-        var conversa = await query.FirstOrDefaultAsync(c => c.Id == conversaId && c.ExcluidoEm == null, ct)
-            ?? throw new NaoEncontradoException("Conversa", conversaId);
+        var conversa = await CarregarVivaAsync(conversaId, rastrear, ct);
 
         if (usuarioAtual.UsuarioId is { } me
             && !await NoEscopoAsync(conversa.OperadorResponsavelId, conversa.UnidadeId, me, ct))
