@@ -76,6 +76,13 @@ export type ItemMenu = {
    * própria `to`. (Ver Tarefa "Favoritar menu".)
    */
   destinoPadrao?: string;
+  /**
+   * Sub-itens de um 3º nível (grupo dentro da seção). Quando presente, este item
+   * vira um sub-grupo COLAPSÁVEL: o clique no rótulo abre/fecha a lista de
+   * `subItens` em vez de (só) navegar. Usado em Regulação → SER/SERNIT → telas de
+   * cada fonte. A visibilidade do sub-grupo segue os `subItens` acessíveis.
+   */
+  subItens?: ItemMenu[];
 };
 
 export type SecaoMenu = {
@@ -144,81 +151,117 @@ export const SECOES: SecaoMenu[] = [
     icone: ClipboardCheck,
     itens: [
       {
+        // 2º nível: SER (Estado / SES-RJ). O clique expande os submenus (3º nível).
         rotulo: 'SER',
         to: '/app/regulacao/ser',
         icone: ClipboardList,
         modulo: 'RegulacaoSer',
-        end: true,
-        descricao: 'Fila do Estado (SES-RJ) espelhada — consulta e histórico.',
+        descricao: 'Fila do Estado (SES-RJ): fila, nova solicitação, notificações e configuração.',
+        subItens: [
+          {
+            rotulo: 'Fila',
+            to: '/app/regulacao/ser',
+            icone: ClipboardList,
+            modulo: 'RegulacaoSer',
+            end: true,
+            descricao: 'Fila do Estado (SES-RJ) espelhada — consulta e histórico.',
+          },
+          {
+            rotulo: 'Nova solicitação',
+            to: '/app/regulacao/nova-solicitacao',
+            icone: FilePlus2,
+            modulo: 'RegulacaoSer',
+            descricao: 'Monta um pedido no formato do SER — campos variam por recurso.',
+          },
+          {
+            rotulo: 'Notificações',
+            to: '/app/regulacao/notificacoes',
+            icone: BellRing,
+            modulo: 'RegulacaoSer',
+            descricao: 'Movimentações do SER que ainda não foram vistas.',
+          },
+          {
+            rotulo: 'Configuração',
+            to: '/app/regulacao/configuracao',
+            icone: Settings2,
+            modulo: 'RegulacaoConfiguracao',
+            descricao: 'Credenciais e motor de atualização do SER (Estado).',
+          },
+        ],
       },
       {
-        rotulo: 'Nova solicitação',
-        to: '/app/regulacao/nova-solicitacao',
-        icone: FilePlus2,
-        modulo: 'RegulacaoSer',
-        descricao: 'Monta um pedido no formato do SER — campos variam por recurso.',
-      },
-      {
-        rotulo: 'Notificações',
-        to: '/app/regulacao/notificacoes',
-        icone: BellRing,
-        modulo: 'RegulacaoSer',
-        descricao: 'Movimentações do SER que ainda não foram vistas.',
-      },
-      {
-        rotulo: 'Configuração',
-        to: '/app/regulacao/configuracao',
-        icone: Settings2,
-        modulo: 'RegulacaoConfiguracao',
-        descricao: 'Credenciais e motor de atualização das fontes de regulação.',
-      },
-      {
+        // 2º nível: SERNIT (SER de Niterói). Mesmos submenus, sob /regulacao/sernit.
         rotulo: 'SERNIT',
         to: '/app/regulacao/sernit',
         icone: ClipboardList,
         modulo: 'RegulacaoSernit',
-        end: true,
-        descricao: 'Fila de Niterói (SERNIT) espelhada — consulta e histórico.',
+        descricao: 'Fila de Niterói (SERNIT): fila, nova solicitação, notificações e configuração.',
+        subItens: [
+          {
+            rotulo: 'Fila',
+            to: '/app/regulacao/sernit',
+            icone: ClipboardList,
+            modulo: 'RegulacaoSernit',
+            end: true,
+            descricao: 'Fila de Niterói (SERNIT) espelhada — consulta e histórico.',
+          },
+          {
+            rotulo: 'Nova solicitação',
+            to: '/app/regulacao/sernit/nova-solicitacao',
+            icone: FilePlus2,
+            modulo: 'RegulacaoSernit',
+            descricao: 'Monta um pedido no formato do SERNIT — campos variam por recurso.',
+          },
+          {
+            rotulo: 'Notificações',
+            to: '/app/regulacao/sernit/notificacoes',
+            icone: BellRing,
+            modulo: 'RegulacaoSernit',
+            descricao: 'Movimentações do SERNIT que ainda não foram vistas.',
+          },
+          {
+            rotulo: 'Configuração',
+            to: '/app/regulacao/sernit/configuracao',
+            icone: Settings2,
+            modulo: 'RegulacaoConfiguracao',
+            descricao: 'Credenciais e motor de atualização do SERNIT (Niterói).',
+          },
+        ],
       },
       {
-        rotulo: 'Nova solicitação (SERNIT)',
-        to: '/app/regulacao/sernit/nova-solicitacao',
-        icone: FilePlus2,
-        modulo: 'RegulacaoSernit',
-        descricao: 'Monta um pedido no formato do SERNIT — campos variam por recurso.',
-      },
-      {
-        rotulo: 'Notificações (SERNIT)',
-        to: '/app/regulacao/sernit/notificacoes',
-        icone: BellRing,
-        modulo: 'RegulacaoSernit',
-        descricao: 'Movimentações do SERNIT que ainda não foram vistas.',
-      },
-      {
-        rotulo: 'Configuração (SERNIT)',
-        to: '/app/regulacao/sernit/configuracao',
-        icone: Settings2,
-        modulo: 'RegulacaoConfiguracao',
-        descricao: 'Credenciais e motor de atualização do SERNIT (Niterói).',
-      },
-    ],
-  },
-  {
-    id: 'sisreg',
-    titulo: 'SISREG',
-    icone: ClipboardList,
-    itens: [
-      { rotulo: 'Consultar SISREG', to: '/app/sisreg', icone: ClipboardList, modulo: 'Sisreg', end: true, descricao: 'Consulta integrada (só leitura).' },
-      { rotulo: 'Importação SISREG', to: '/app/importacao-sisreg', icone: DownloadCloud, modulo: 'Sisreg', descricao: 'Preview e importação de agendamentos.' },
-      // "Mapeamento" saiu daqui: virou a aba SISREG do detalhe da unidade
-      // (/app/unidades/{id}), junto com a credencial e o sincronismo diário. Manter os dois
-      // caminhos duplicaria manutenção e deixaria duas verdades sobre a mesma unidade.
-      {
-        rotulo: 'Configuração SISREG',
-        to: '/app/sisreg/configuracao',
-        icone: Settings2,
-        modulo: 'SisregConfiguracao',
-        descricao: 'Credenciais e parâmetros.',
+        // 2º nível: SISREG III (regulação federal). Trazido para dentro de Regulação.
+        rotulo: 'SISREG',
+        to: '/app/sisreg',
+        icone: ClipboardList,
+        modulo: 'Sisreg',
+        descricao: 'SISREG III: consulta, importação de agendamentos e configuração.',
+        subItens: [
+          {
+            rotulo: 'Consultar',
+            to: '/app/sisreg',
+            icone: ClipboardList,
+            modulo: 'Sisreg',
+            end: true,
+            descricao: 'Consulta integrada (só leitura).',
+          },
+          {
+            rotulo: 'Importação',
+            to: '/app/importacao-sisreg',
+            icone: DownloadCloud,
+            modulo: 'Sisreg',
+            descricao: 'Preview e importação de agendamentos.',
+          },
+          // "Mapeamento" saiu daqui: virou a aba SISREG do detalhe da unidade
+          // (/app/unidades/{id}), junto com a credencial e o sincronismo diário. Manter os dois
+          // caminhos duplicaria manutenção e deixaria duas verdades sobre a mesma unidade.
+          {
+            rotulo: 'Configuração',
+            to: '/app/sisreg/configuracao',
+            icone: Settings2,
+            modulo: 'SisregConfiguracao',
+            descricao: 'Credenciais e parâmetros do SISREG.',
+          },
+        ],
       },
     ],
   },
@@ -501,10 +544,15 @@ export function encontrarSecaoPorId(secaoId: string | undefined): SecaoMenu | un
   return SECOES.find((s) => s.id === secaoId);
 }
 
-/** Localiza um item de menu pela sua rota (`to`). */
+/** Itens da seção achatados: cada item e, quando houver, seus `subItens` (3º nível). */
+function itensAchatados(secao: SecaoMenu): ItemMenu[] {
+  return secao.itens.flatMap((i) => (i.subItens ? [i, ...i.subItens] : [i]));
+}
+
+/** Localiza um item de menu pela sua rota (`to`) — inclui sub-itens de 3º nível. */
 export function encontrarItemPorTo(to: string): ItemMenu | undefined {
   for (const secao of SECOES) {
-    const item = secao.itens.find((i) => i.to === to);
+    const item = itensAchatados(secao).find((i) => i.to === to);
     if (item) return item;
   }
   return undefined;
@@ -534,7 +582,7 @@ export function encontrarSecaoPorPath(path: string): SecaoMenu | undefined {
   let melhor: { secao: SecaoMenu; tamanho: number } | undefined;
   for (const secao of SECOES) {
     if (!secao.titulo) continue;
-    for (const item of secao.itens) {
+    for (const item of itensAchatados(secao)) {
       if (itemCasaPath(item, path) && (!melhor || item.to.length > melhor.tamanho)) {
         melhor = { secao, tamanho: item.to.length };
       }

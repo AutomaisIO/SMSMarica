@@ -83,14 +83,58 @@ export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseM
     navigate('/login', { replace: true });
   }
 
-  const secoesVisiveis = SECOES.map((s) => ({ ...s, itens: s.itens.filter(temAcesso) })).filter(
-    (s) => s.itens.length > 0,
-  );
+  // Filtra por acesso, descendo no 3º nível: um sub-grupo (SER/SERNIT/SISREG) fica visível se
+  // ao menos um dos seus sub-itens for acessível; e seus sub-itens também são filtrados.
+  function filtrarItem(item: ItemMenu): ItemMenu | null {
+    if (item.subItens) {
+      const subs = item.subItens.filter(temAcesso);
+      return subs.length > 0 ? { ...item, subItens: subs } : null;
+    }
+    return temAcesso(item) ? item : null;
+  }
+
+  const secoesVisiveis = SECOES.map((s) => ({
+    ...s,
+    itens: s.itens.map(filtrarItem).filter((i): i is ItemMenu => i !== null),
+  })).filter((s) => s.itens.length > 0);
+
+  // Um sub-grupo está "ativo" quando a rota atual casa com algum dos seus sub-itens.
+  function subgrupoAtivo(item: ItemMenu): boolean {
+    return (item.subItens ?? []).some((si) =>
+      si.end ? pathname === si.to : pathname === si.to || pathname.startsWith(`${si.to}/`),
+    );
+  }
+
+  // Sub-grupos abertos (3º nível). Abre por padrão o da rota atual; toggle é independente por grupo.
+  const [subgruposAbertos, setSubgruposAbertos] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    for (const secao of SECOES) {
+      for (const item of secao.itens) {
+        if (item.subItens && subgrupoAtivo(item)) {
+          setSubgruposAbertos((prev) => (prev.has(item.to) ? prev : new Set(prev).add(item.to)));
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
+  function alternarSubgrupo(to: string) {
+    setSubgruposAbertos((prev) => {
+      const proximo = new Set(prev);
+      if (proximo.has(to)) proximo.delete(to);
+      else proximo.add(to);
+      return proximo;
+    });
+  }
 
   const conteudo = (mobile: boolean) => {
     const compacto = isCollapsed && !mobile;
 
-    const renderItem = (item: ItemMenu, indentado: boolean) => {
+    // Indentação por nível: 0 = topo, 1 = item de seção, 2 = sub-item de 3º nível (SER/SERNIT/SISREG).
+    const recuo = (nivel: 0 | 1 | 2) =>
+      nivel === 0 ? 'gap-3 px-3' : nivel === 1 ? 'gap-3 pl-9 pr-3' : 'gap-3 pl-14 pr-3';
+
+    const renderItem = (item: ItemMenu, nivel: 0 | 1 | 2) => {
       const contador = contadorBadge(item);
       return item.acao === 'chat' ? (
         // Central de Atendimento abre em JANELA SEPARADA do navegador (como o PACS):
@@ -105,7 +149,7 @@ export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseM
           title={compacto ? item.rotulo : 'Abrir a Central de Atendimento (janela separada)'}
           className={cn(
             'relative flex w-full items-center rounded-md py-2.5 text-sm font-medium transition-all duration-200',
-            compacto ? 'justify-center px-3' : indentado ? 'gap-3 pl-9 pr-3' : 'gap-3 px-3',
+            compacto ? 'justify-center px-3' : recuo(nivel),
             'text-white/90 hover:bg-white/10',
           )}
         >
@@ -128,7 +172,7 @@ export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseM
           className={({ isActive }) =>
             cn(
               'relative flex items-center rounded-md py-2.5 text-sm font-medium transition-all duration-200',
-              compacto ? 'justify-center px-3' : indentado ? 'gap-3 pl-9 pr-3' : 'gap-3 px-3',
+              compacto ? 'justify-center px-3' : recuo(nivel),
               isActive ? 'bg-white text-primary-700 shadow-md' : 'text-white/90 hover:bg-white/10',
             )
           }
@@ -141,6 +185,34 @@ export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseM
             <CounterBadge valor={contador} variante="branco" className="ml-auto" />
           )}
         </NavLink>
+      );
+    };
+
+    // Sub-grupo de 3º nível (SER / SERNIT / SISREG): cabeçalho colapsável + os sub-itens indentados.
+    const renderSubgrupo = (item: ItemMenu) => {
+      const aberto = subgruposAbertos.has(item.to);
+      const ativo = subgrupoAtivo(item);
+      const Icone = item.icone;
+      return (
+        <div key={item.to} className="space-y-1">
+          <button
+            type="button"
+            onClick={() => alternarSubgrupo(item.to)}
+            aria-expanded={aberto}
+            title={item.rotulo}
+            className={cn(
+              'flex w-full items-center gap-3 rounded-md py-2.5 pl-9 pr-2 text-sm font-medium transition-all duration-200',
+              ativo ? 'text-white' : 'text-white/90 hover:bg-white/10',
+            )}
+          >
+            <Icone className="w-5 h-5 flex-shrink-0" />
+            <span className="flex-1 truncate text-left">{item.rotulo}</span>
+            <ChevronDown className={cn('w-4 h-4 transition-transform', !aberto && '-rotate-90')} />
+          </button>
+          {aberto && (
+            <div className="space-y-1">{item.subItens!.map((sub) => renderItem(sub, 2))}</div>
+          )}
+        </div>
       );
     };
 
@@ -193,13 +265,13 @@ export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseM
           {secoesVisiveis.map((secao) => {
             // Seção sem título (Início): renderiza os itens diretamente.
             if (!secao.titulo) {
-              return secao.itens.map((item) => renderItem(item, false));
+              return secao.itens.map((item) => renderItem(item, 0));
             }
 
-            // Seção com 1 item visível: vira um link direto (sem hub/expansão),
+            // Seção com 1 item visível SEM sub-grupo: vira um link direto (sem hub/expansão),
             // exceto quando marcada para manter o grupo (crescerá no futuro).
-            if (secao.itens.length === 1 && !secao.manterGrupo) {
-              return renderItem(secao.itens[0], false);
+            if (secao.itens.length === 1 && !secao.manterGrupo && !secao.itens[0].subItens) {
+              return renderItem(secao.itens[0], 0);
             }
 
             // Seção com título e múltiplos itens: o cabeçalho leva à página-hub
@@ -257,7 +329,13 @@ export function Sidebar({ isCollapsed, onToggleCollapsed, isMobileOpen, onCloseM
                   )}
                 </div>
 
-                {aberta && <div className="space-y-1">{secao.itens.map((item) => renderItem(item, true))}</div>}
+                {aberta && (
+                  <div className="space-y-1">
+                    {secao.itens.map((item) =>
+                      item.subItens ? renderSubgrupo(item) : renderItem(item, 1),
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
