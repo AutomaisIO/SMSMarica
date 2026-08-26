@@ -4,7 +4,6 @@ using SMSMais.Core.Common.Excecoes;
 using SMSMais.Core.Integracoes.SisregWeb.Importacao.Background;
 using SMSMais.Core.Integracoes.SisregWeb.Varredura;
 using SMSMais.Core.Integracoes.SisregWeb.Varredura.Background;
-using SMSMais.Core.Integracoes.SisregWeb.Varredura.Sigtap;
 
 namespace SMSMais.Core.Integracoes.SisregWeb.Importacao.AgendaPontual;
 
@@ -38,20 +37,18 @@ public interface IImportacaoAgendaPontualService
 /// de um par e de um intervalo curto (o dia). Cada agendamento vira <see cref="MarcacaoSisreg"/> e
 /// entra pelo <b>mesmo</b> núcleo de importação da varredura (<see
 /// cref="IImportacaoSisregService.ImportarMarcacoesAsync"/>): mesma resolução de paciente
-/// (CNS→CPF), mesma criação de unidade por CNES, mesma idempotência por nº de solicitação e a
-/// mesma pendência de 1ª classe quando falta SIGTAP.</para>
+/// (CNS→CPF), mesma criação de unidade por CNES e mesma idempotência/reconciliação por nº.</para>
 ///
-/// <para><b>SIGTAP:</b> o <c>cons_agendas</c> não informa SIGTAP nem <c>pa</c> por linha, só o NOME
-/// do procedimento. Resolvemos o SIGTAP por <b>nome exato</b> contra o catálogo (<see
-/// cref="IMapeadorSigtapSisreg.ResolverPorNomeExatoAsync"/>) — que é o eixo do procedimento. O que
-/// não casar vira pendência de SIGTAP, exatamente como na varredura, e é coberto pela varredura
-/// noturna do <c>expo</c> (que traz o SIGTAP na coluna 2) ou pelo mapeamento manual.</para>
+/// <para><b>SIGTAP é IGNORADO.</b> O <c>cons_agendas</c> não informa SIGTAP nem <c>pa</c> por linha,
+/// só o NOME do procedimento — e o eixo do catálogo é justamente o NOME do SISREG. A solicitação é
+/// cadastrada local pelo nome (categoria por nome; o <c>TipoExame</c> nasce sozinho pelo nome se
+/// ainda não existir), sem depender de SIGTAP. A correlação SIGTAP é trabalho de faturamento,
+/// associada DEPOIS — nunca barra a importação.</para>
 /// </summary>
 public sealed class ImportacaoAgendaPontualService(
     ISisregUnidadeAtual unidadeAtual,
     ISisregWebSessao sessao,
     IImportacaoSisregService importacao,
-    IMapeadorSigtapSisreg mapeadorSigtap,
     VarreduraSisregEstadoVivo varreduraEstadoVivo,
     SisregImportacaoEstadoVivo importacaoEstadoVivo,
     ILogger<ImportacaoAgendaPontualService> logger) : IImportacaoAgendaPontualService
@@ -135,30 +132,25 @@ public sealed class ImportacaoAgendaPontualService(
             Coletar(html);
         }
 
-        // SIGTAP por NOME (o eixo). O que não resolver entra com SIGTAP nulo e o gate do
-        // ImportarMarcacoesAsync o transforma em pendência acionável — não em lixo silencioso.
-        var resolvidas = new List<MarcacaoSisreg>(marcacoes.Count);
-        foreach (var m in marcacoes)
-        {
-            var sig = await mapeadorSigtap.ResolverPorNomeExatoAsync(m.ProcedimentoTexto, ct);
-            resolvidas.Add(sig is null ? m : m with { CodigoSigtap = sig });
-        }
-
+        // SIGTAP é IGNORADO aqui: o cons_agendas não informa código, e o eixo do catálogo é o NOME
+        // do SISREG (a correlação SIGTAP é do faturamento, à parte). O núcleo cadastra local pelo
+        // nome — categoria por nome, TipoExame criado pelo nome se ainda não existe.
+        //
         // Mesmo ponto de injeção da varredura. O execucaoId agrupa eventuais pendências desta
         // importação (a coluna não tem FK — não precisa de linha de execução).
         var execucaoId = Guid.CreateVersion7();
-        var resultado = await importacao.ImportarMarcacoesAsync(execucaoId, resolvidas, ct);
+        var resultado = await importacao.ImportarMarcacoesAsync(execucaoId, marcacoes, ct);
 
         var importados = Math.Max(0, resultado.Validos - resultado.JaExistiam);
         logger.LogInformation(
             "SISREG_IMPORT_PONTUAL: unidade {Unidade} cpf {Cpf} pa {Pa} {Ini}..{Fim} — {Req} req, "
             + "{Total} agendamentos, {Novos} novos, {JaExistiam} já existiam, {Pend} pendências.",
             unidade.Nome, cpf, pa, request.DataInicio, request.DataFim, requisicoes,
-            resolvidas.Count, importados, resultado.JaExistiam, resultado.Invalidos);
+            marcacoes.Count, importados, resultado.JaExistiam, resultado.Invalidos);
 
-        var mensagem = MontarMensagem(resolvidas.Count, importados, resultado.JaExistiam, resultado.Invalidos);
+        var mensagem = MontarMensagem(marcacoes.Count, importados, resultado.JaExistiam, resultado.Invalidos);
         return new ImportacaoAgendaPontualResultado(
-            request.DataInicio, request.DataFim, requisicoes, resolvidas.Count,
+            request.DataInicio, request.DataFim, requisicoes, marcacoes.Count,
             importados, resultado.JaExistiam, resultado.Invalidos, mensagem);
     }
 

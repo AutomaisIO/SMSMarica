@@ -267,13 +267,17 @@ public sealed class ImportacaoSisregService(
             return (await ComplementarManualAsync(existente, m, passos, ct), false);
         }
 
-        // 2. Natureza pelo subgrupo SIGTAP (roteia satélite/UI) — é o único campo estruturado que
-        //    diz se isto produz imagem. SÓ imagem precisa de TipoExame.
+        // 2. Natureza para rotear o satélite de execução. O EIXO é o NOME do SISREG — o "SIGTAP"
+        //    exportado é defasado e a correlação oficial é trabalho de faturamento, à parte (ver
+        //    ResolvedorTipoExameSisreg). Com SIGTAP, roteia pelo subgrupo; SEM SIGTAP (ex.: a agenda
+        //    do cons_agendas, que não informa código), roteia pelo NOME. Nunca barra por falta de SIGTAP.
         var sig = SoDigitos(m.CodigoSigtap);
-        var categoria = CategoriaSigtap.Resolver(sig);
         // O nome do procedimento é o do SISREG, em maiúsculas, e é ele que vai para a tela, o
         // exame e o laudo. Não arbitramos nome aqui nem em lugar nenhum.
         var nomeProcedimento = ResolvedorTipoExameSisreg.NormalizarNome(m.ProcedimentoTexto ?? string.Empty);
+        var categoria = sig.Length >= 4
+            ? CategoriaSigtap.Resolver(sig)
+            : CategoriaSigtap.ResolverPorNome(nomeProcedimento);
         var codigoProcedimento = SoDigitos(m.CodigoProcedimentoSisreg);
         Guid? tipoExameId = null;
         if (categoria == CategoriaSolicitacao.Imagem)
@@ -608,28 +612,12 @@ public sealed class ImportacaoSisregService(
         {
             ct.ThrowIfCancellationRequested();
 
-            // Gate do SIGTAP. Sem ele, ExecutarMarcacaoAsync criaria a solicitação com categoria
-            // "Outro", sem satélite de imagem, sem worklist — e marcada como SUCESSO. Lixo
-            // silencioso em escala de centenas por dia, que nenhuma tela mostraria. Vira pendência
-            // acionável: o operador confirma o de-para uma vez e revalida.
-            //
-            // Exceção: se JÁ existe solicitação com esse número, o fluxo é reconciliar (complementar
-            // a manual) ou pular — nada disso CRIA solicitação nova, então não precisa de SIGTAP.
-            // Barrar aqui deixaria a solicitação manual da recepção sem o complemento do SISREG.
-            if (string.IsNullOrWhiteSpace(m.CodigoSigtap)
-                && !await db.Solicitacoes.AsNoTracking().AnyAsync(
-                    s => s.CodigoSolicitacao == m.CodigoSolicitacao && s.ExcluidoEm == null, ct))
-            {
-                invalidos++;
-                await RegistrarFalhaExecucaoAsync(
-                    m, nomeArquivo: null,
-                    $"O procedimento \"{m.ProcedimentoTexto ?? m.CodigoProcedimentoSisreg}\" não tem "
-                    + "código SIGTAP: o nome não bate exatamente com nenhum procedimento do catálogo. "
-                    + "Mapeie-o para liberar todas as solicitações deste procedimento.",
-                    CausaFalhaImportacao.SigtapNaoMapeado, ct, OrigemFalhaImportacao.Varredura);
-                continue;
-            }
-
+            // SEM gate de SIGTAP: o eixo do catálogo é o NOME do SISREG. O "SIGTAP" exportado é
+            // defasado, e a correlação oficial é trabalho de faturamento, à parte — associada
+            // DEPOIS, não na importação. ExecutarMarcacaoAsync cadastra local pelo nome (categoria
+            // por nome quando não há SIGTAP; o TipoExame nasce sozinho pelo nome se ainda não
+            // existe). Assim a agenda do cons_agendas, que não informa código nenhum, entra de
+            // verdade em vez de virar pendência.
             var (res, jaExistia) = await ExecutarMarcacaoAsync(m, ct);
             if (res.Sucesso || jaExistia)
             {

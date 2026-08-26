@@ -125,9 +125,8 @@ export function ModalImportarProcedimento({
 
           {resultado.pendencias > 0 && (
             <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-              {resultado.pendencias} agendamento(s) ficaram em pendência porque o procedimento ainda
-              não tem SIGTAP mapeado. Eles aparecem na aba de erros e são completados pela varredura
-              noturna (ou pelo mapeamento manual).
+              {resultado.pendencias} agendamento(s) ficaram em pendência (ex.: paciente sem CNS ou
+              CADSUS indisponível no momento). Aparecem na aba de erros para tratamento.
             </p>
           )}
 
