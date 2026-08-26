@@ -28,4 +28,12 @@ public enum StatusComunicacao
     /// expõe resultado; é justamente ela que provoca o contato).
     /// </summary>
     AguardandoTelefoneVerificado = 7,
+
+    /// <summary>
+    /// Retido: confirmação de agendamento para número NÃO verificado. Em vez de enviar os dados
+    /// do agendamento, mandou-se o desafio cadastral (template <c>validacao_cadastro</c>) pedindo
+    /// os 4 primeiros dígitos do CPF. Quando o robô valida (comando <c>VerificarCadastro</c>),
+    /// volta para <see cref="Pendente"/> e o worker envia a confirmação real. NÃO é terminal.
+    /// </summary>
+    AguardandoVerificacaoCadastral = 8,
 }

@@ -16,25 +16,29 @@ function telefoneFmt(fone: string): string {
 function BolhaLeitura({ m }: { m: Mensagem }) {
   const saida = m.direcao === 'Saida';
   const nota = m.tipoMensagem === 'NotaInterna';
+  const robo = m.tipoMensagem === 'Robo';
   return (
     <div className={`flex ${saida ? 'justify-end' : 'justify-start'}`}>
       <div
         className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
           nota
             ? 'bg-amber-50 text-amber-900'
-            : saida
-              ? 'bg-primary-600 text-white'
-              : 'bg-white text-gray-800 ring-1 ring-gray-200'
+            : robo
+              ? 'bg-indigo-50 text-indigo-900 ring-1 ring-indigo-200'
+              : saida
+                ? 'bg-primary-600 text-white'
+                : 'bg-white text-gray-800 ring-1 ring-gray-200'
         }`}
       >
         {saida && (
           <p className="mb-0.5 text-[11px] font-semibold opacity-80">
+            {robo ? '🤖 ' : ''}
             {m.autorNomeExibicao ?? 'Sistema'}
           </p>
         )}
         {m.template && !m.conteudo && <p className="italic opacity-90">[modelo: {m.template}]</p>}
         {m.conteudo && <p className="whitespace-pre-wrap break-words">{m.conteudo}</p>}
-        <p className={`mt-1 text-[10px] ${saida && !nota ? 'text-white/70' : 'text-gray-400'}`}>
+        <p className={`mt-1 text-[10px] ${saida && !nota && !robo ? 'text-white/70' : 'text-gray-400'}`}>
           {formatarInstante(m.ocorridoEm)}
         </p>
       </div>

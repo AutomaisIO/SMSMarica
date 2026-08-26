@@ -121,6 +121,15 @@ public sealed class WhatsAppWebhookService(
         conversa.PacienteId ??= pacienteId;
         conversa.NomeContato ??= nomeContato;
         conversa.Status = StatusConversa.Aberta;                 // reabre Pendente/Resolvida/Fechada
+        // Robô — âncora da JANELA corrente: abre janela nova = primeiro contato OU a anterior já
+        // expirou. Zera o contador de interações do robô. É a primitiva da trava humano-por-janela
+        // (o robô se cala se houve resposta/atribuição humana desde JanelaAbertaEm). Precede a
+        // renovação de JanelaExpiraEm de propósito — senão a comparação nunca detectaria expiração.
+        if (conversa.JanelaExpiraEm is null || conversa.JanelaExpiraEm <= ocorridoEm)
+        {
+            conversa.JanelaAbertaEm = ocorridoEm;
+            conversa.RoboInteracoesNaJanela = 0;
+        }
         conversa.JanelaExpiraEm = ocorridoEm.AddHours(24);       // renova janela de 24h
         conversa.UltimaMensagemEm = ocorridoEm;
         conversa.UltimaMensagemDirecao = DirecaoMensagem.Entrada;

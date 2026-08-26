@@ -92,10 +92,27 @@ DADOS_PROMPT_FILE = Path(os.getenv(
     str(Path(__file__).parent / "prompts" / "dados_system.md"),
 ))
 
+# ── Kind `atendimento` (robô de atendimento do WhatsApp) ───────────────────────────────
+# Turno curto e síncrono: a .NET monta todo o system prompt (persona global + assunto + treinos)
+# e manda histórico + mensagem; o motor só responde. Fase 2: ÚNICA ferramenta é responder_cidadao
+# (canal de saída). Os comandos por assunto entram na Fase 3 como tools MCP adicionais.
+ATENDIMENTO_SERVER_NAME = "atendimento"
+ATENDIMENTO_RESPONDER_FQN = "mcp__atendimento__responder_cidadao"
+ATENDIMENTO_ALLOWED_TOOLS = [ATENDIMENTO_RESPONDER_FQN]
+# Sandbox vazio e próprio (fora de /opt e do repo). Cai no FALLBACK_CWD se não existir.
+ATENDIMENTO_CWD = os.getenv("AIENGINE_ATENDIMENTO_CWD", "/var/lib/smsmarica-aiengine/atendimento-sandbox")
+ATENDIMENTO_MAX_TURNS = int(os.getenv("AIENGINE_ATENDIMENTO_MAX_TURNS", "4"))
+
 # Proxy SQL interno da API .NET (loopback). O tool `consultar_base` fala SÓ com ele.
 PROXYSQL_URL = os.getenv("AIENGINE_PROXYSQL_URL", "http://127.0.0.1:5091/proxy-sql")
 PROXYSQL_TOKEN = os.getenv("AIENGINE_PROXYSQL_TOKEN", "")
 PROXYSQL_TIMEOUT_SEC = int(os.getenv("AIENGINE_PROXYSQL_TIMEOUT_SEC", "60"))
+
+# Guichê de comandos do robô na API .NET (loopback). Vive no MESMO endpoint interno do proxy SQL:
+# por padrão reusa a URL (trocando o caminho) e o MESMO token — não é preciso configurar nada novo.
+ROBO_COMANDO_URL = os.getenv("AIENGINE_ROBO_COMANDO_URL") or PROXYSQL_URL.replace("/proxy-sql", "/robo-comando")
+ROBO_COMANDO_TOKEN = os.getenv("AIENGINE_ROBO_COMANDO_TOKEN") or PROXYSQL_TOKEN
+ROBO_COMANDO_TIMEOUT_SEC = int(os.getenv("AIENGINE_ROBO_COMANDO_TIMEOUT_SEC", "30"))
 
 MAX_TURNS = int(os.getenv("AIENGINE_MAX_TURNS", "60"))
 TURN_TIMEOUT_SEC = int(os.getenv("AIENGINE_TURN_TIMEOUT_SEC", "900"))

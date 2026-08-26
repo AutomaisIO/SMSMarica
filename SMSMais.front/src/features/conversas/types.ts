@@ -1,7 +1,7 @@
 export type StatusConversa = 'Aberta' | 'Pendente' | 'Resolvida' | 'Fechada';
 export type DirecaoMensagem = 'Saida' | 'Entrada';
 export type TipoMensagem =
-  | 'Texto' | 'Imagem' | 'Documento' | 'Audio' | 'Video' | 'Template' | 'NotaInterna' | 'Sistema';
+  | 'Texto' | 'Imagem' | 'Documento' | 'Audio' | 'Video' | 'Template' | 'NotaInterna' | 'Sistema' | 'Robo';
 export type AssuntoConversa = 'Tfd' | 'MarcacaoConsulta' | 'Duvida' | 'Atendente' | 'Outro';
 export type StatusMensagem = 'Enviada' | 'Entregue' | 'Lida' | 'Falha' | 'Recebida';
 /**

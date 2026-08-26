@@ -215,4 +215,17 @@ public enum ModuloPermissao
     /// solicitação —, com <c>Consulta</c> para ler o espelho e <c>Edicao</c> para as ações que
     /// escrevem no SERNIT (FollowUP, telefones), assinadas pelo operador.</summary>
     RegulacaoSernit = 58,
+
+    /// <summary>Robô de atendimento (WhatsApp): cadastrar os ASSUNTOS que o robô atende, seus
+    /// treinos/condições e os comandos liberados por assunto, além da configuração global do
+    /// robô. É a tela de gestão do bot — atender/ver conversas continua sendo
+    /// <see cref="Conversas"/>. <c>Consulta</c> para ver; <c>Inclusao</c>/<c>Edicao</c>/
+    /// <c>Exclusao</c> para gerir assuntos e ligar/desligar comandos.</summary>
+    RoboAtendimento = 59,
+
+    /// <summary>Pendências de ajuste de cadastro ("números errados"): a fila de casos em que o
+    /// cidadão avisou que o número não é dele. O robô só registra (com o vínculo declarado); a
+    /// recepção resolve o cadastro aqui. <c>Consulta</c> para ver a fila; <c>Edicao</c> para
+    /// resolver/ignorar e registrar manualmente.</summary>
+    AjusteCadastro = 60,
 }

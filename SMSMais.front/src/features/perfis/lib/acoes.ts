@@ -100,6 +100,8 @@ export const MODULOS: { id: ModuloPermissao; rotulo: string }[] = [
   { id: 'CorrecaoIdentidadeExame', rotulo: 'Correção de identidade de exame (reescreve o DICOM no PACS)' },
   { id: 'PesquisaSatisfacao', rotulo: 'Pesquisa de satisfação — enviar ao paciente pelo histórico' },
   { id: 'Instituicao', rotulo: 'Instituição — identidade, marca e contatos legais desta instância' },
+  { id: 'RoboAtendimento', rotulo: 'Robô de atendimento — cadastro de assuntos e comandos do bot' },
+  { id: 'AjusteCadastro', rotulo: 'Pendências de cadastro (números errados) — ver e resolver' },
 ];
 
 export const ACOES: { id: AcaoPermissao; rotulo: string }[] = [

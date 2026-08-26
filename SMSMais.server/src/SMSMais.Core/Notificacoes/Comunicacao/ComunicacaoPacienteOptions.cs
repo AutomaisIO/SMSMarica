@@ -29,6 +29,12 @@ public sealed class ComunicacaoPacienteOptions
     /// "Falar com atendente" (este cai no módulo Conversas).</summary>
     public string TemplateConfirmaAgendamento { get; set; } = "confirmacao_regulacao";
 
+    /// <summary>Desafio cadastral para número NÃO verificado (UTILITY, aprovado). 2 params:
+    /// {{1}} primeiro nome, {{2}} procedimento. Pede os 4 primeiros dígitos do CPF; botões
+    /// "Não sou essa pessoa." e "Prefiro falar com um atendente". Não revela data/local — o robô
+    /// valida os 4 dígitos (VerificarCadastro) e só então a confirmação real é enviada.</summary>
+    public string TemplateValidacaoCadastro { get; set; } = "validacao_cadastro";
+
     /// <summary>3 params (nome, exame, data realizada) + botão URL "Visualizar Exame".</summary>
     public string TemplateExameLiberado { get; set; } = "exame_liberado";
 

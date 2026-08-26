@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SMSMais.Data.Entities.Conversas;
+using SMSMais.Data.Entities.Robo;
 
 namespace SMSMais.Data.Configurations;
 
@@ -25,6 +26,9 @@ internal sealed class ConversaConfiguration : IEntityTypeConfiguration<Conversa>
         builder.Property(c => c.UltimaMensagemDirecao).HasColumnName("ultima_mensagem_direcao").HasConversion<int>();
         builder.Property(c => c.UltimaMensagemPreview).HasColumnName("ultima_mensagem_preview").HasMaxLength(200);
         builder.Property(c => c.NaoLidas).HasColumnName("nao_lidas").HasDefaultValue(0).IsRequired();
+        builder.Property(c => c.JanelaAbertaEm).HasColumnName("janela_aberta_em");
+        builder.Property(c => c.RoboInteracoesNaJanela).HasColumnName("robo_interacoes_na_janela").HasDefaultValue(0).IsRequired();
+        builder.Property(c => c.RoboAssuntoId).HasColumnName("robo_assunto_id");
         builder.Property(c => c.PrimeiroContatoEm).HasColumnName("primeiro_contato_em").IsRequired();
 
         builder.Property(c => c.CriadoEm).HasColumnName("criado_em").IsRequired();
@@ -50,6 +54,12 @@ internal sealed class ConversaConfiguration : IEntityTypeConfiguration<Conversa>
             .WithMany()
             .HasForeignKey(c => c.UnidadeId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Assunto que o robô engajou (informativo; sem navegação na Conversa).
+        builder.HasOne<RoboAssunto>()
+            .WithMany()
+            .HasForeignKey(c => c.RoboAssuntoId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         // No máximo uma conversa "viva" (Aberta=1 / Pendente=2) por contato — evita corrida
         // no webhook criando threads duplicadas para o mesmo telefone.

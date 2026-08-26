@@ -22,6 +22,7 @@ from fastapi import Body, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+import atendimento
 import config
 from claude_runner import engine
 from store import store
@@ -276,6 +277,22 @@ async def cancel_turn(turn_id: str,
     if not await engine.cancel_turn(turn_id):
         raise HTTPException(status_code=409, detail="Turno não está em execução.")
     return {"cancelled": True}
+
+
+# ─────────────────────────── Kind `atendimento` (robô de WhatsApp) ────────────────────────
+# Endpoint SÍNCRONO: um turno curto por chamada. A .NET (worker do robô) já montou o system
+# prompt (persona global + assunto + treinos) e manda histórico + mensagem. Devolve
+# {texto, handoff, motivoHandoff, confianca}. Sem sessão persistida — cada resposta é um turno.
+
+@app.post("/internal/ai/atendimento/responder", tags=["AI-Atendimento"])
+async def atendimento_responder(payload: dict = Body(...),
+                                x_smsmarica_internal_key: str | None = Header(default=None)):
+    require_internal_key(x_smsmarica_internal_key)
+    try:
+        return JSONResponse(await atendimento.responder(payload or {}))
+    except Exception as e:  # noqa: BLE001
+        logger.exception("Falha no turno do robô de atendimento.")
+        raise HTTPException(status_code=502, detail=f"Falha no motor de atendimento: {e}")
 
 
 # ─────────────────────────── Modo `dados` (menu IA: perguntas às bases) ───────────────────

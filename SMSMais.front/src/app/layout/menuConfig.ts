@@ -464,6 +464,20 @@ export const SECOES: SecaoMenu[] = [
         descricao: 'Respostas rápidas que os atendentes usam no chat.',
       },
       {
+        rotulo: 'Robô de Atendimento',
+        to: '/app/robo-atendimento',
+        icone: Bot,
+        modulo: 'RoboAtendimento',
+        descricao: 'Assuntos, treinos e comandos do robô que responde no WhatsApp.',
+      },
+      {
+        rotulo: 'Pendências de Cadastro',
+        to: '/app/pendencias-cadastro',
+        icone: Inbox,
+        modulo: 'AjusteCadastro',
+        descricao: 'Números errados sinalizados pelo cidadão, para a recepção ajustar o cadastro.',
+      },
+      {
         rotulo: 'Estatísticas',
         to: '/app/estatisticas',
         icone: BarChart3,

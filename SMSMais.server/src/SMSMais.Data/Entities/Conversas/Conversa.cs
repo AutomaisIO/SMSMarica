@@ -47,6 +47,20 @@ public class Conversa
     /// <summary>Mensagens do cidadão ainda não lidas pelo operador. Zerado ao abrir a thread.</summary>
     public int NaoLidas { get; set; }
 
+    // ---- Robô de atendimento ----
+    /// <summary>Início da JANELA de 24h corrente (âncora). Escrito só pelo webhook quando uma
+    /// janela nova abre (primeiro contato ou depois da anterior expirar). Base da trava
+    /// "humano-por-janela": o robô se cala se houve resposta/atribuição humana desde aqui.</summary>
+    public DateTime? JanelaAbertaEm { get; set; }
+
+    /// <summary>Quantas vezes o robô já respondeu nesta janela (zerado ao abrir janela nova) —
+    /// limite antes do hand-off por "X interações sem resolver".</summary>
+    public int RoboInteracoesNaJanela { get; set; }
+
+    /// <summary>Assunto que o robô engajou nesta conversa (para o operador ver). <c>null</c> =
+    /// robô não atuou.</summary>
+    public Guid? RoboAssuntoId { get; set; }
+
     public DateTime PrimeiroContatoEm { get; set; }
 
     /// <summary>Token de concorrência (xmin do Postgres) — protege takeover simultâneo.</summary>

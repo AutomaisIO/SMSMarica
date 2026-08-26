@@ -409,6 +409,36 @@ public sealed class ComunicacaoPacienteService(
         }
         n.Telefone = TelefoneWhatsApp.NormalizarNonoDigito(telefone!);
 
+        // Confirmação para número NÃO verificado: em vez de mandar os DADOS do agendamento, manda
+        // o DESAFIO cadastral (validacao_cadastro) pedindo os 4 primeiros dígitos do CPF, e SEGURA
+        // a confirmação real. Evita vazar o agendamento para a pessoa/número errado ("1 telefone,
+        // várias pessoas"). O robô valida (VerificarCadastro) → marca verificado → a confirmação
+        // real sai depois. "Assumo o risco" (IgnorarVerificacaoTelefone) pula o desafio.
+        if (n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
+            && !n.IgnorarVerificacaoTelefone
+            && !TelefoneWhatsApp.EhCelularBr(paciente.TelefoneVerificado)
+            && await RoboLigadoAsync(ct))
+        {
+            var optsDesafio = options.Value;
+            var procedimento = s.ExameImagem?.TipoExame?.Nome ?? s.EspecialidadeTexto ?? s.ProcedimentoTexto ?? "seu atendimento";
+            var desafio = await whatsApp.EnviarTemplateAsync(
+                n.Telefone, optsDesafio.TemplateValidacaoCadastro, optsDesafio.Idioma,
+                [PrimeiroNome(paciente.NomeCompleto), procedimento], pacienteId: n.PacienteId, ct: ct);
+
+            if (desafio.Ok)
+            {
+                n.Status = StatusComunicacao.AguardandoVerificacaoCadastral;
+                n.EnviadoEm = DateTime.UtcNow;
+                n.MotivoFalha = "Aguardando confirmação cadastral (4 primeiros dígitos do CPF) pelo robô.";
+                n.ProximaTentativaEm = null;
+                await db.SaveChangesAsync(ct);
+                return;
+            }
+            if (ErroPermanente(desafio.Erro)) { Terminal(n, StatusComunicacao.Falha, desafio.Erro); return; }
+            ReagendarOuFalhar(n, desafio.Erro);
+            return;
+        }
+
         // Magic link novo a cada tentativa (o anterior simplesmente expira sem uso). O link é
         // ancorado na ESPINHA (s.Id); o destino usa o id PÚBLICO do exame (ExameImagem.Id) para o
         // front achar o card em /exames.
@@ -478,6 +508,14 @@ public sealed class ComunicacaoPacienteService(
 
     /// <summary>Rota de chegada no app após o magic link, por finalidade. Exame liberado e
     /// laudo pronto caem em /exames com o CARD do exame já expandido (?exame={id}).</summary>
+    private async Task<bool> RoboLigadoAsync(CancellationToken ct)
+    {
+        // Defensivo: se a tabela ainda não existe (janela de deploy antes da migration), trata como
+        // DESLIGADO — o envio segue o comportamento antigo em vez de quebrar a confirmação.
+        try { return await db.RoboConfiguracoes.AsNoTracking().Select(c => c.Ativo).FirstOrDefaultAsync(ct); }
+        catch { return false; }
+    }
+
     private static string Destino(FinalidadeComunicacao finalidade, Guid solicitacaoId) => finalidade switch
     {
         FinalidadeComunicacao.ExameLiberado or FinalidadeComunicacao.LaudoPronto

@@ -10,6 +10,7 @@ using SMSMais.Data.Entities.Sernit;
 using SMSMais.Data.Entities.Sisreg;
 using SMSMais.Data.Entities.Geo;
 using SMSMais.Data.Entities.Notificacoes;
+using SMSMais.Data.Entities.Robo;
 using SMSMais.Data.Entities.Tfd;
 
 namespace SMSMais.Data;
@@ -212,6 +213,19 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     // Consentimento de NÃO validar o WhatsApp (com motivo) — válvula de escape do gate de
     // contato verificado na recepção. Uma ativa por paciente; as revogadas ficam de trilha.
     public DbSet<DispensaVerificacaoContato> DispensasVerificacaoContato => Set<DispensaVerificacaoContato>();
+
+    // Robô de atendimento (WhatsApp): assuntos cadastráveis (com treinos/condições/comandos),
+    // fila durável de tarefas, trilha de ações executadas e configuração global (singleton).
+    public DbSet<RoboAssunto> RoboAssuntos => Set<RoboAssunto>();
+    public DbSet<RoboAssuntoCondicao> RoboAssuntoCondicoes => Set<RoboAssuntoCondicao>();
+    public DbSet<RoboAssuntoTreino> RoboAssuntoTreinos => Set<RoboAssuntoTreino>();
+    public DbSet<RoboAssuntoComando> RoboAssuntoComandos => Set<RoboAssuntoComando>();
+    public DbSet<RoboAtendimentoTarefa> RoboTarefas => Set<RoboAtendimentoTarefa>();
+    public DbSet<RoboAcao> RoboAcoes => Set<RoboAcao>();
+    public DbSet<RoboConfiguracao> RoboConfiguracoes => Set<RoboConfiguracao>();
+
+    // Pendências de ajuste de cadastro ("números errados") levantadas no atendimento.
+    public DbSet<PendenciaCadastro> PendenciasCadastro => Set<PendenciaCadastro>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

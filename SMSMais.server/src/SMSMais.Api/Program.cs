@@ -118,6 +118,18 @@ builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptio
 
 // Proxy SQL interno: porta de loopback + token. Sem token configurado, fica desligado.
 builder.Services.Configure<ProxySqlOpcoes>(builder.Configuration.GetSection("ProxySql"));
+// Guichê de comandos do robô: mesma porta de loopback do ProxySql, e por padrão o MESMO token —
+// se "RoboComando:Porta"/"Token" não forem configurados, cai no "ProxySql:*". Assim não é preciso
+// criar porta nem segredo novos: o guichê vive no mesmo endpoint interno.
+builder.Services.Configure<RoboComandoOpcoes>(o =>
+{
+    var proxy = builder.Configuration.GetSection("ProxySql");
+    var robo = builder.Configuration.GetSection("RoboComando");
+    var porta = robo.GetValue("Porta", 0);
+    o.Porta = porta != 0 ? porta : proxy.GetValue("Porta", 0);
+    var token = robo.GetValue("Token", string.Empty);
+    o.Token = string.IsNullOrWhiteSpace(token) ? proxy.GetValue("Token", string.Empty) : token;
+});
 builder.Services.AddSingleton<ITokenService, JwtTokenService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IUsuarioAtualAccessor, UsuarioAtualAccessor>();
@@ -345,6 +357,8 @@ app.MapAgenteSql();
 // Proxy SQL interno (porta de loopback + token) — serviços da própria máquina consultam as
 // bases cadastradas sem guardar credencial nem driver. Ver Interno/ProxySqlEndpoint.cs.
 app.MapProxySql();
+// Guichê de comandos do robô de atendimento (porta de loopback + token). Ver Interno/RoboComandoEndpoint.cs.
+app.MapRoboComando();
 
 app.MapControllers();
 app.MapHub<SMSMais.Api.Hubs.RastreamentoHub>("/hubs/rastreamento");

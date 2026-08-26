@@ -1261,6 +1261,10 @@ namespace SMSMais.Data.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("excluido_por");
 
+                    b.Property<DateTime?>("JanelaAbertaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("janela_aberta_em");
+
                     b.Property<DateTime?>("JanelaExpiraEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("janela_expira_em");
@@ -1287,6 +1291,16 @@ namespace SMSMais.Data.Migrations
                     b.Property<DateTime>("PrimeiroContatoEm")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("primeiro_contato_em");
+
+                    b.Property<Guid?>("RoboAssuntoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("robo_assunto_id");
+
+                    b.Property<int>("RoboInteracoesNaJanela")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("robo_interacoes_na_janela");
 
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
@@ -1322,6 +1336,8 @@ namespace SMSMais.Data.Migrations
                         .HasColumnName("unidade_id");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("RoboAssuntoId");
 
                     b.HasIndex("TelefoneCanonical");
 
@@ -5374,6 +5390,492 @@ namespace SMSMais.Data.Migrations
                         .HasDatabaseName("ix_registro_erro_criado_em");
 
                     b.ToTable("registro_erro", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Robo.PendenciaCadastro", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ConversaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversa_id");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<string>("Observacao")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("observacao");
+
+                    b.Property<Guid?>("PacienteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paciente_id");
+
+                    b.Property<string>("ResolucaoNota")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("resolucao_nota");
+
+                    b.Property<DateTime?>("ResolvidoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resolvido_em");
+
+                    b.Property<Guid?>("ResolvidoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("resolvido_por");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TelefoneCanonical")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("telefone_canonical");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer")
+                        .HasColumnName("tipo");
+
+                    b.Property<int>("Vinculo")
+                        .HasColumnType("integer")
+                        .HasColumnName("vinculo");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConversaId");
+
+                    b.HasIndex("TelefoneCanonical")
+                        .HasDatabaseName("ix_pendencia_cadastro_telefone");
+
+                    b.HasIndex("Status", "CriadoEm")
+                        .HasDatabaseName("ix_pendencia_cadastro_status_criado");
+
+                    b.ToTable("pendencia_cadastro", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Robo.RoboAcao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Comando")
+                        .HasColumnType("integer")
+                        .HasColumnName("comando");
+
+                    b.Property<Guid>("ConversaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversa_id");
+
+                    b.Property<string>("EntradaJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("entrada_json");
+
+                    b.Property<string>("IdempotenciaChave")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("idempotencia_chave");
+
+                    b.Property<DateTime>("OcorridoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ocorrido_em");
+
+                    b.Property<string>("ResultadoJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("resultado_json");
+
+                    b.Property<Guid?>("RoboAssuntoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("robo_assunto_id");
+
+                    b.Property<bool>("Sucesso")
+                        .HasColumnType("boolean")
+                        .HasColumnName("sucesso");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConversaId")
+                        .HasDatabaseName("ix_robo_acao_conversa");
+
+                    b.HasIndex("IdempotenciaChave")
+                        .IsUnique()
+                        .HasDatabaseName("ux_robo_acao_idempotencia");
+
+                    b.HasIndex("RoboAssuntoId");
+
+                    b.ToTable("robo_acao", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Robo.RoboAssunto", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Ativo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("ativo");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<Guid?>("AtualizadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atualizado_por");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<string>("Descricao")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("descricao");
+
+                    b.Property<int?>("DiasSemana")
+                        .HasColumnType("integer")
+                        .HasColumnName("dias_semana");
+
+                    b.Property<Guid?>("EscalonamentoUnidadeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("escalonamento_unidade_id");
+
+                    b.Property<DateTime?>("ExcluidoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("excluido_em");
+
+                    b.Property<Guid?>("ExcluidoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("excluido_por");
+
+                    b.Property<TimeOnly?>("HorarioFim")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("horario_fim");
+
+                    b.Property<TimeOnly?>("HorarioInicio")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("horario_inicio");
+
+                    b.Property<string>("InstrucoesPersona")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("instrucoes_persona");
+
+                    b.Property<double>("LimiarConfianca")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("double precision")
+                        .HasDefaultValue(0.59999999999999998)
+                        .HasColumnName("limiar_confianca");
+
+                    b.Property<int>("MaxInteracoesSemResolver")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(5)
+                        .HasColumnName("max_interacoes_sem_resolver");
+
+                    b.Property<string>("Modelo")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("modelo");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("nome");
+
+                    b.Property<int>("Ordem")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("ordem");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EscalonamentoUnidadeId");
+
+                    b.HasIndex("Nome")
+                        .IsUnique()
+                        .HasDatabaseName("ux_robo_assunto_nome")
+                        .HasFilter("excluido_em IS NULL");
+
+                    b.HasIndex("Ordem")
+                        .HasDatabaseName("ix_robo_assunto_ordem")
+                        .HasFilter("excluido_em IS NULL");
+
+                    b.ToTable("robo_assunto", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Robo.RoboAssuntoComando", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Comando")
+                        .HasColumnType("integer")
+                        .HasColumnName("comando");
+
+                    b.Property<bool>("Habilitado")
+                        .HasColumnType("boolean")
+                        .HasColumnName("habilitado");
+
+                    b.Property<Guid>("RoboAssuntoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("robo_assunto_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoboAssuntoId", "Comando")
+                        .IsUnique();
+
+                    b.ToTable("robo_assunto_comando", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Robo.RoboAssuntoCondicao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Ativo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("ativo");
+
+                    b.Property<int>("Ordem")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("ordem");
+
+                    b.Property<Guid>("RoboAssuntoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("robo_assunto_id");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer")
+                        .HasColumnName("tipo");
+
+                    b.Property<string>("Valor")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)")
+                        .HasColumnName("valor");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoboAssuntoId", "Ordem");
+
+                    b.ToTable("robo_assunto_condicao", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Robo.RoboAssuntoTreino", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Ativo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("ativo");
+
+                    b.Property<string>("Conteudo")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("conteudo");
+
+                    b.Property<int>("Ordem")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("ordem");
+
+                    b.Property<Guid>("RoboAssuntoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("robo_assunto_id");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("integer")
+                        .HasColumnName("tipo");
+
+                    b.Property<string>("Titulo")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("titulo");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoboAssuntoId", "Ordem");
+
+                    b.ToTable("robo_assunto_treino", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Robo.RoboAtendimentoTarefa", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<double?>("ConfiancaUltima")
+                        .HasColumnType("double precision")
+                        .HasColumnName("confianca_ultima");
+
+                    b.Property<Guid>("ConversaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversa_id");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<string>("Erro")
+                        .HasColumnType("text")
+                        .HasColumnName("erro");
+
+                    b.Property<Guid>("MensagemWhatsAppId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("mensagem_whatsapp_id");
+
+                    b.Property<Guid?>("PacienteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("paciente_id");
+
+                    b.Property<DateTime?>("ProximaTentativaEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("proxima_tentativa_em");
+
+                    b.Property<Guid?>("RoboAssuntoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("robo_assunto_id");
+
+                    b.Property<string>("SessionIdAiengine")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("session_id_aiengine");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<int>("Tentativas")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("tentativas");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConversaId");
+
+                    b.HasIndex("MensagemWhatsAppId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_robo_tarefa_mensagem");
+
+                    b.HasIndex("RoboAssuntoId");
+
+                    b.HasIndex("Status", "ProximaTentativaEm")
+                        .HasDatabaseName("ix_robo_tarefa_status_proxima");
+
+                    b.ToTable("robo_tarefa", "smsmarica");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Robo.RoboConfiguracao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Ativo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("ativo");
+
+                    b.Property<DateTime?>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em");
+
+                    b.Property<Guid?>("AtualizadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("atualizado_por");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em");
+
+                    b.Property<Guid?>("CriadoPor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("criado_por");
+
+                    b.Property<string>("MensagemForaHorario")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("mensagem_fora_horario");
+
+                    b.Property<string>("MensagemHandOff")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("mensagem_handoff");
+
+                    b.Property<string>("ModeloPadrao")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("modelo_padrao");
+
+                    b.Property<string>("NomeExibicao")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("nome_exibicao");
+
+                    b.Property<string>("PersonaGlobal")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("persona_global");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("robo_configuracao", "smsmarica");
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.RotaDiaria", b =>
@@ -9563,6 +10065,11 @@ namespace SMSMais.Data.Migrations
                         .HasForeignKey("OperadorResponsavelId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("SMSMais.Data.Entities.Robo.RoboAssunto", null)
+                        .WithMany()
+                        .HasForeignKey("RoboAssuntoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("SMSMais.Data.Entities.Unidade", "Unidade")
                         .WithMany()
                         .HasForeignKey("UnidadeId")
@@ -10117,6 +10624,103 @@ namespace SMSMais.Data.Migrations
                     b.Navigation("Motorista");
                 });
 
+            modelBuilder.Entity("SMSMais.Data.Entities.Robo.PendenciaCadastro", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.Conversas.Conversa", "Conversa")
+                        .WithMany()
+                        .HasForeignKey("ConversaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Conversa");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Robo.RoboAcao", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.Conversas.Conversa", "Conversa")
+                        .WithMany()
+                        .HasForeignKey("ConversaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SMSMais.Data.Entities.Robo.RoboAssunto", "RoboAssunto")
+                        .WithMany()
+                        .HasForeignKey("RoboAssuntoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Conversa");
+
+                    b.Navigation("RoboAssunto");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Robo.RoboAssunto", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.Unidade", "EscalonamentoUnidade")
+                        .WithMany()
+                        .HasForeignKey("EscalonamentoUnidadeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("EscalonamentoUnidade");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Robo.RoboAssuntoComando", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.Robo.RoboAssunto", "RoboAssunto")
+                        .WithMany("Comandos")
+                        .HasForeignKey("RoboAssuntoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("RoboAssunto");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Robo.RoboAssuntoCondicao", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.Robo.RoboAssunto", "RoboAssunto")
+                        .WithMany("Condicoes")
+                        .HasForeignKey("RoboAssuntoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("RoboAssunto");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Robo.RoboAssuntoTreino", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.Robo.RoboAssunto", "RoboAssunto")
+                        .WithMany("Treinos")
+                        .HasForeignKey("RoboAssuntoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("RoboAssunto");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Robo.RoboAtendimentoTarefa", b =>
+                {
+                    b.HasOne("SMSMais.Data.Entities.Conversas.Conversa", "Conversa")
+                        .WithMany()
+                        .HasForeignKey("ConversaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SMSMais.Data.Entities.Notificacoes.MensagemWhatsApp", "Mensagem")
+                        .WithMany()
+                        .HasForeignKey("MensagemWhatsAppId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SMSMais.Data.Entities.Robo.RoboAssunto", "RoboAssunto")
+                        .WithMany()
+                        .HasForeignKey("RoboAssuntoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Conversa");
+
+                    b.Navigation("Mensagem");
+
+                    b.Navigation("RoboAssunto");
+                });
+
             modelBuilder.Entity("SMSMais.Data.Entities.RotaDiaria", b =>
                 {
                     b.HasOne("SMSMais.Data.Entities.Motorista", "Motorista")
@@ -10667,6 +11271,15 @@ namespace SMSMais.Data.Migrations
                     b.Navigation("Permissoes");
 
                     b.Navigation("UsuariosPerfis");
+                });
+
+            modelBuilder.Entity("SMSMais.Data.Entities.Robo.RoboAssunto", b =>
+                {
+                    b.Navigation("Comandos");
+
+                    b.Navigation("Condicoes");
+
+                    b.Navigation("Treinos");
                 });
 
             modelBuilder.Entity("SMSMais.Data.Entities.RotaDiaria", b =>

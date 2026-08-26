@@ -639,6 +639,30 @@ public static class DependencyInjection
         services.AddScoped<Notificacoes.WhatsApp.Manipuladores.IManipuladorMensagemWhatsApp,
             Notificacoes.WhatsApp.Manipuladores.ConfirmacaoAgendamentoWhatsAppHandler>();
 
+        // ---- Robô de atendimento (assuntos cadastráveis + comandos por assunto) ----
+        services.AddScoped<RoboAtendimento.IRoboAssuntoService, RoboAtendimento.RoboAssuntoService>();
+        services.AddScoped<RoboAtendimento.IRoboConfiguracaoService, RoboAtendimento.RoboConfiguracaoService>();
+        services.AddScoped<PendenciasCadastro.IPendenciaCadastroService, PendenciasCadastro.PendenciaCadastroService>();
+
+        // Runtime do robô: motor (aiengine), classificador, processador (1 tarefa) e o worker (fila).
+        services.AddScoped<RoboAtendimento.Runtime.IRoboAtendimentoMotor, RoboAtendimento.Runtime.RoboAtendimentoMotorHttp>();
+        services.AddScoped<RoboAtendimento.Runtime.IRoboClassificador, RoboAtendimento.Runtime.RoboClassificador>();
+        services.AddScoped<RoboAtendimento.Runtime.IRoboAtendimentoProcessador, RoboAtendimento.Runtime.RoboAtendimentoProcessador>();
+        services.AddScoped<Notificacoes.WhatsApp.Manipuladores.IManipuladorMensagemWhatsApp,
+            Notificacoes.WhatsApp.Manipuladores.RoboAtendimentoWhatsAppHandler>();
+        services.AddHostedService<RoboAtendimento.Runtime.RoboAtendimentoWorker>();
+
+        // Comandos do robô (o "guichê" tipado) + dispatcher (habilitação por assunto + trilha).
+        services.AddScoped<RoboAtendimento.Comandos.IRoboComandoDispatcher, RoboAtendimento.Comandos.RoboComandoDispatcher>();
+        services.AddScoped<RoboAtendimento.Comandos.IRoboComando, RoboAtendimento.Comandos.RegistrarNumeroErradoComando>();
+        services.AddScoped<RoboAtendimento.Comandos.IRoboComando, RoboAtendimento.Comandos.EncaminharParaHumanoComando>();
+        services.AddScoped<RoboAtendimento.Comandos.IRoboComando, RoboAtendimento.Comandos.IniciarCancelamentoComando>();
+        services.AddScoped<RoboAtendimento.Comandos.IRoboComando, RoboAtendimento.Comandos.ConfirmarPresencaComando>();
+        services.AddScoped<RoboAtendimento.Comandos.IRoboComando, RoboAtendimento.Comandos.VerificarCadastroComando>();
+        services.AddScoped<RoboAtendimento.Comandos.IRoboComando, RoboAtendimento.Comandos.InformarHorarioAtendimentoComando>();
+        services.AddScoped<RoboAtendimento.Comandos.IRoboComando, RoboAtendimento.Comandos.ConsultarStatusExameRecenteComando>();
+        services.AddScoped<RoboAtendimento.Comandos.IRoboComando, RoboAtendimento.Comandos.ConsultarPosicaoRegulacaoComando>();
+
         // ---- Estatísticas de atendimento (retrato do WhatsApp) — dashboard gerencial ----
         services.AddScoped<Estatisticas.IEstatisticasService, Estatisticas.EstatisticasService>();
 

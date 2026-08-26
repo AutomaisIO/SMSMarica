@@ -136,6 +136,8 @@ public sealed class ConfirmacaoAgendamentoWhatsAppHandler(
         }
         if (estado.Etapa != EtapaConfirmacaoAgendamento.AguardandoMotivo) return;
 
+        // A partir daqui o texto livre é tratado como o motivo — o robô não responde por cima.
+        ctx.Consumido = true;
         var solicitacaoId = estado.ComunicacaoPaciente?.SolicitacaoId;
         if (solicitacaoId is null) { db.AgendamentoConfirmacaoEstados.Remove(estado); return; }
 

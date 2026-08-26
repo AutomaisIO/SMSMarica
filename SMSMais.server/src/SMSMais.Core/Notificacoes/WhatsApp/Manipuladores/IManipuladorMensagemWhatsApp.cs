@@ -16,7 +16,15 @@ public sealed record ManipuladorContexto(
     // de volta ao domínio (ex.: "confirma:{solicitacaoId}").
     string? BotaoPayload = null,
     // Id do botão escolhido numa mensagem interativa (interactive.button_reply.id).
-    string? InterativoReplyId = null);
+    string? InterativoReplyId = null)
+{
+    /// <summary>
+    /// Um manipulador de domínio já tratou esta mensagem (ex.: virou motivo de cancelamento,
+    /// confirmação de acompanhante). Manipuladores posteriores — o robô de atendimento — devem
+    /// se ABSTER, para não responder por cima de um fluxo determinístico.
+    /// </summary>
+    public bool Consumido { get; set; }
+}
 
 /// <summary>
 /// Regra de negócio plugável disparada por uma mensagem recebida. O caminho principal do webhook

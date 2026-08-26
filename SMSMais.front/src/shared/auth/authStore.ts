@@ -62,7 +62,9 @@ export type ModuloPermissao =
   | 'RegulacaoMedica'
   | 'RegulacaoAgendamento'
   | 'RegulacaoConfiguracao'
-  | 'RegulacaoSernit';
+  | 'RegulacaoSernit'
+  | 'RoboAtendimento'
+  | 'AjusteCadastro';
 
 export type AcaoPermissao = 'Consulta' | 'Inclusao' | 'Edicao' | 'Exclusao';
 

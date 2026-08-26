@@ -33,6 +33,7 @@ public sealed class AcompanhanteWhatsAppHandler(SmsMaisDbContext db) : IManipula
 
         if (sessao is null) return;
 
+        ctx.Consumido = true; // sim/não virou confirmação de acompanhante — o robô não responde por cima.
         sessao.AcompanhanteEsperado = resposta.Value;
         sessao.AcompanhanteConfirmadoEm = DateTime.UtcNow;
         sessao.AcompanhanteCanal = CanalConfirmacao.WhatsApp;

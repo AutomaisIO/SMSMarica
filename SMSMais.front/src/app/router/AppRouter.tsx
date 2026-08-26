@@ -93,6 +93,8 @@ import { TicketDetalhePage } from '@/features/tickets/pages/TicketDetalhePage';
 import { GestaoTicketsPage } from '@/features/tickets/pages/GestaoTicketsPage';
 import { NotificacoesAgendamentoPage } from '@/features/notificacoes-agendamento/pages/NotificacoesAgendamentoPage';
 import { RespostasRapidasPage } from '@/features/respostas-rapidas/pages/RespostasRapidasPage';
+import { RoboAtendimentoPage } from '@/features/robo-atendimento/pages/RoboAtendimentoPage';
+import { PendenciasCadastroPage } from '@/features/pendencias-cadastro/pages/PendenciasCadastroPage';
 import { SandboxPage } from '@/features/sandbox/pages/SandboxPage';
 import { useAuth } from '@/shared/auth/authStore';
 
@@ -217,6 +219,8 @@ export function AppRouter() {
           <Route path="conversas" element={<ConversasPage />} />
           <Route path="notificacoes-agendamento" element={<NotificacoesAgendamentoPage />} />
           <Route path="respostas-rapidas" element={<RespostasRapidasPage />} />
+          <Route path="robo-atendimento" element={<RoboAtendimentoPage />} />
+          <Route path="pendencias-cadastro" element={<PendenciasCadastroPage />} />
           <Route path="estatisticas" element={<EstatisticasPage />} />
           <Route path="relatorios-imagem" element={<RelatoriosImagemPage />} />
           <Route path="sandbox" element={<SandboxPage />} />
