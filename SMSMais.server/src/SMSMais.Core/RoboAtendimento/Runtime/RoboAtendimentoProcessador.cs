@@ -93,7 +93,10 @@ public sealed class RoboAtendimentoProcessador(
             return;
         }
 
-        var dentroHorario = assunto is null || DentroDoHorario(assunto);
+        // "Dentro do horário" para o robô = há ATENDENTE HUMANO disponível agora. Fora da janela
+        // de expediente humano (ignorarHumano) não há para quem encaminhar — o robô não pode
+        // oferecer atendente e deve orientar a voltar no horário.
+        var dentroHorario = !ignorarHumano && (assunto is null || DentroDoHorario(assunto));
         var urlApp = await db.Instituicoes.AsNoTracking().Select(i => i.UrlApp).FirstOrDefaultAsync(ct);
         var comandos = assunto is null
             ? Array.Empty<string>()
@@ -244,8 +247,12 @@ public sealed class RoboAtendimentoProcessador(
         }
         sb.AppendLine();
         sb.AppendLine(dentroHorario
-            ? "Estamos dentro do horário de atendimento."
-            : "Estamos FORA do horário de atendimento: se não puder resolver, oriente a pessoa a procurar atendimento no horário.");
+            ? "Há atendente humano disponível no horário. NÃO ofereça encaminhar para um atendente por "
+              + "conta própria: só encaminhe se a pessoa PEDIR um atendente humano ou se você realmente não "
+              + "conseguir resolver — nunca de forma preventiva nem como fecho de cortesia."
+            : "ESTAMOS FORA DO HORÁRIO DE ATENDIMENTO HUMANO: não há atendente disponível agora. NÃO ofereça "
+              + "nem prometa encaminhar para um atendente. Ajude no que puder; se não resolver, oriente a pessoa "
+              + "a procurar o atendimento humano dentro do horário.");
         sb.AppendLine();
         var app = string.IsNullOrWhiteSpace(urlApp) ? "o aplicativo do cidadão da prefeitura" : urlApp!.Trim();
         sb.AppendLine($"AO SE DESPEDIR, sempre oriente a pessoa: acesse {app} — lá ficam os exames, consultas e "
