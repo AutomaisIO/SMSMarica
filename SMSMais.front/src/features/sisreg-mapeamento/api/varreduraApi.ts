@@ -1,5 +1,7 @@
 import { http } from '@/shared/api/httpClient';
 import type {
+  ImportacaoAgendaPontualResultado,
+  ImportarAgendaPontualPayload,
   SalvarVarreduraAgendaPayload,
   StatusVarreduraVivo,
   VarreduraAceita,
@@ -53,6 +55,22 @@ export async function executarVarreduraPeriodo(
   const { data } = await http.post<VarreduraAceita>(
     '/sisreg/varredura/executar-periodo',
     { dataInicio, dataFim },
+    cabecalhoUnidade(unidadeId),
+  );
+  return data;
+}
+
+/**
+ * Import PONTUAL da agenda de UM profissional × procedimento no período (botão "Importar").
+ * Consulta o cons_agendas direto — não tem a trava de horário do expo. Síncrono: devolve o resumo.
+ */
+export async function importarProcedimento(
+  payload: ImportarAgendaPontualPayload,
+  unidadeId?: string | null,
+): Promise<ImportacaoAgendaPontualResultado> {
+  const { data } = await http.post<ImportacaoAgendaPontualResultado>(
+    '/sisreg/varredura/importar-procedimento',
+    payload,
     cabecalhoUnidade(unidadeId),
   );
   return data;

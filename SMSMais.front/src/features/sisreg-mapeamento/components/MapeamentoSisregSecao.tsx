@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  Download,
   Loader2,
   MessageCircle,
   Network,
@@ -11,6 +12,7 @@ import {
 } from 'lucide-react';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
 import { Button } from '@/shared/ui/Button';
+import { ModalImportarProcedimento } from '@/features/sisreg-mapeamento/components/ModalImportarProcedimento';
 import {
   useAlternarEnvioConfirmacao,
   useAlternarProcedimento,
@@ -22,7 +24,7 @@ import {
   useSincronizarFhir,
   useVarreduraAgenda,
 } from '@/features/sisreg-mapeamento/api/queries';
-import type { SisregProfissional } from '@/features/sisreg-mapeamento/types';
+import type { SisregProcedimento, SisregProfissional } from '@/features/sisreg-mapeamento/types';
 
 type Props = {
   /** Unidade-alvo. Vai no header X-Unidade-Id de cada chamada, vencendo o seletor do topo. */
@@ -281,6 +283,7 @@ export function MapeamentoSisregSecao({ unidadeId, podeEditar }: Props) {
             {profissionais.map((p) => (
               <LinhaProfissional
                 key={p.id}
+                unidadeId={unidadeId}
                 profissional={p}
                 podeEditar={podeEditar}
                 expandido={expandidos.has(p.id)}
@@ -340,6 +343,7 @@ function Indicador({
 }
 
 function LinhaProfissional({
+  unidadeId,
   profissional,
   podeEditar,
   expandido,
@@ -348,6 +352,7 @@ function LinhaProfissional({
   aoAlternarProcedimento,
   aoAlternarConfirmacao,
 }: {
+  unidadeId: string;
   profissional: SisregProfissional;
   podeEditar: boolean;
   expandido: boolean;
@@ -357,6 +362,8 @@ function LinhaProfissional({
   aoAlternarConfirmacao: (procedimentoId: string, enviar: boolean, nome: string) => void;
 }) {
   const habilitadosNoProfissional = profissional.procedimentos.filter((p) => p.habilitado).length;
+  // Procedimento cujo modal "Importar" está aberto (import pontual, cons_agendas).
+  const [importarProc, setImportarProc] = useState<SisregProcedimento | null>(null);
 
   return (
     <li className={profissional.ausente ? 'bg-gray-50' : undefined}>
@@ -462,10 +469,40 @@ function LinhaProfissional({
                   />
                   zap
                 </label>
+
+                {/* Import PONTUAL: puxa a agenda deste procedimento agora, sem esperar a varredura
+                    noturna (que usa o expo, bloqueado 8h–15h). Consulta direta ao cons_agendas. */}
+                {podeEditar && (
+                  <Button
+                    variante="outline"
+                    tamanho="sm"
+                    className="shrink-0"
+                    onClick={() => setImportarProc(proc)}
+                    title="Importar agora a agenda deste procedimento (consulta direta ao SISREG)"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    Importar
+                  </Button>
+                )}
               </li>
             ))
           )}
         </ul>
+      )}
+
+      {importarProc && (
+        <ModalImportarProcedimento
+          unidadeId={unidadeId}
+          cpf={profissional.cpf}
+          profissionalId={profissional.id}
+          nomeProfissional={profissional.nome}
+          profissionalHabilitado={profissional.habilitado}
+          procedimentoId={importarProc.id}
+          codigoProcedimento={importarProc.codigo}
+          nomeProcedimento={importarProc.nome}
+          procedimentoHabilitado={importarProc.habilitado}
+          aoFechar={() => setImportarProc(null)}
+        />
       )}
     </li>
   );

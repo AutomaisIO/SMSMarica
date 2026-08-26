@@ -177,3 +177,26 @@ export type StatusVarreduraVivo = {
 };
 
 export type VarreduraAceita = { execucaoId: string; mensagem: string };
+
+/** Import PONTUAL de um procedimento (botão "Importar" da árvore de mapeamento). */
+export type ImportarAgendaPontualPayload = {
+  cpf: string;
+  codigoProcedimento: string;
+  /** "yyyy-MM-dd" — Brasília. */
+  dataInicio: string;
+  dataFim: string;
+};
+
+/** Resumo do que a importação pontual fez — vira o modal de resultado. */
+export type ImportacaoAgendaPontualResultado = {
+  inicio: string;
+  fim: string;
+  /** Requisições gastas no SISREG (o recurso escasso). */
+  requisicoes: number;
+  totalEncontrados: number;
+  importados: number;
+  jaExistiam: number;
+  /** Sem SIGTAP mapeado — vira pendência; a varredura noturna do expo completa depois. */
+  pendencias: number;
+  mensagem: string;
+};

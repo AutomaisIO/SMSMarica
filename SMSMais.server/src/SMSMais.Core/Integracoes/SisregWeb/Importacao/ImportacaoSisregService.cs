@@ -102,6 +102,9 @@ public sealed class ImportacaoSisregService(
     // Sem ILogger: o único log deste serviço era o da catalogação automática de SIGTAP, removida em
     // 10/08/2026. Quem registra a criação de tipo agora é o ResolvedorTipoExameSisreg.
     IResolvedorTipoExameSisreg resolvedorTipoExame,
+    // Trilha: a reconciliação COMPLEMENTA uma solicitação criada manualmente pela recepção (mesmo
+    // número do SISREG) — o histórico tem de mostrar "criada à mão por fulano, depois complementada".
+    Auditoria.IAuditoriaService auditoria,
     Notificacoes.Comunicacao.IComunicacaoPacienteService comunicacoes) : IImportacaoSisregService
 {
     // ---- Contexto do operador ----
@@ -249,10 +252,20 @@ public sealed class ImportacaoSisregService(
         ImportacaoExecucaoResultado Falha(string erro, CausaFalhaImportacao causa) =>
             new(codigo, false, null, null, null, false, false, false, passos, erro, causa);
 
-        // 1. Idempotência (nº SISREG).
-        if (await db.Solicitacoes.AsNoTracking().AnyAsync(
-                s => s.CodigoSolicitacao == codigo && s.ExcluidoEm == null, ct))
-            return (Falha("Já existe uma solicitação com esse número do SISREG.", CausaFalhaImportacao.Outro), true);
+        // 1. Idempotência / reconciliação por nº do SISREG.
+        // A recepção cria a solicitação MANUAL já com o número do SISREG (o código que o paciente
+        // traz). Então, quando a importação chega com o mesmo número:
+        //  - se a solicitação JÁ veio de importação (tem RawSisreg) → nada a fazer (idempotente);
+        //  - se é a MANUAL (sem RawSisreg) → complementa com o dado rico do SISREG, preservando a
+        //    autoria manual (CriadoPor) e o exame/accession que a recepção já pôs em curso.
+        var existente = await db.Solicitacoes
+            .FirstOrDefaultAsync(s => s.CodigoSolicitacao == codigo && s.ExcluidoEm == null, ct);
+        if (existente is not null)
+        {
+            if (!string.IsNullOrWhiteSpace(existente.RawSisreg))
+                return (Falha("Já existe uma solicitação com esse número do SISREG.", CausaFalhaImportacao.Outro), true);
+            return (await ComplementarManualAsync(existente, m, passos, ct), false);
+        }
 
         // 2. Natureza pelo subgrupo SIGTAP (roteia satélite/UI) — é o único campo estruturado que
         //    diz se isto produz imagem. SÓ imagem precisa de TipoExame.
@@ -469,6 +482,69 @@ public sealed class ImportacaoSisregService(
             nomeResolvido, pacienteCriado, solicCriada, execCriada, passos, null), false);
     }
 
+    /// <summary>
+    /// Complementa uma solicitação MANUAL (criada pela recepção com o número do SISREG) com os dados
+    /// ricos do agendamento. Reescreve só o que o SISREG informa e é a fonte correta — sem tocar em
+    /// paciente, na autoria manual (<c>CriadoPor</c>/<c>CriadoEm</c>), no status/confirmação do
+    /// paciente, nem no exame/accession que a recepção já pode ter mandado para a worklist. Registra
+    /// o complemento na trilha; o "criada à mão por fulano" continua visível em <c>CriadoPor</c>.
+    /// </summary>
+    private async Task<ImportacaoExecucaoResultado> ComplementarManualAsync(
+        Solicitacao alvo, MarcacaoSisreg m, List<string> passos, CancellationToken ct)
+    {
+        var antes = ResumoSolicitacao(alvo);
+
+        var (unidadeSolicId, solicCriada) =
+            await ResolverOuCriarUnidadeAsync(m.CnesUnidadeSolicitante, m.NomeUnidadeSolicitante, ct);
+
+        // Marca como já vinda do SISREG (some da lista de "manual" da reconciliação). Preserva o RAW
+        // que já houver; se a fonte não trouxe RAW, ao menos carimba a origem.
+        alvo.RawSisreg = m.LinhaRaw ?? alvo.RawSisreg ?? "sisreg";
+        if (m.DataHoraAtendimento is { } dh) alvo.DataAgendada = ParaUtcBrasilia(dh);
+        if (m.DataSolicitacao is { } ds) alvo.DataSolicitacao = ds;
+        if (m.DataRegulacao is { } dr) alvo.DataRegulacao = dr;
+        if (unidadeSolicId is not null) alvo.UnidadeSolicitanteId = unidadeSolicId;
+
+        var codigoProc = SoDigitos(m.CodigoProcedimentoSisreg);
+        if (codigoProc.Length > 0) alvo.ProcedimentoCodigoSisreg = codigoProc;
+        var sig = SoDigitos(m.CodigoSigtap);
+        if (sig.Length > 0) alvo.ProcedimentoSigtapCodigo = sig;
+        var nomeProc = ResolvedorTipoExameSisreg.NormalizarNome(m.ProcedimentoTexto ?? string.Empty);
+        if (nomeProc.Length > 0) alvo.ProcedimentoTexto = nomeProc;
+        if (!string.IsNullOrWhiteSpace(m.NomeMedicoSolicitante)) alvo.SolicitanteNome = m.NomeMedicoSolicitante!;
+        if (!string.IsNullOrWhiteSpace(m.CpfMedicoSolicitante)) alvo.SolicitanteCpf = m.CpfMedicoSolicitante;
+
+        alvo.AtualizadoEm = DateTime.UtcNow;
+        alvo.AtualizadoPor = UsuarioIdAtual;
+
+        await db.SaveChangesAsync(ct);
+
+        // Trilha (append-only): o CriadoPor manual fica intacto; aqui registra-se o complemento.
+        await auditoria.RegistrarAsync(
+            "Solicitacao", alvo.Id.ToString(), "ComplementadaImportacaoSisreg", antes,
+            ResumoSolicitacao(alvo), ct);
+
+        passos.Add(
+            "Solicitação MANUAL encontrada com o mesmo número do SISREG — complementada com os dados "
+            + "do SISREG; a autoria manual foi preservada no histórico.");
+        if (solicCriada)
+            passos.Add($"Unidade solicitante criada: {m.NomeUnidadeSolicitante}{CnesSufixo(m.CnesUnidadeSolicitante)}.");
+
+        return new ImportacaoExecucaoResultado(
+            alvo.CodigoSolicitacao ?? string.Empty, true, alvo.Id, string.Empty,
+            null, false, solicCriada, false, passos, null);
+    }
+
+    /// <summary>Resumo curto para a trilha (antes/depois do complemento). Cabe na coluna.</summary>
+    private static string ResumoSolicitacao(Solicitacao s)
+    {
+        var texto =
+            $"proc={s.ProcedimentoTexto};sigtap={s.ProcedimentoSigtapCodigo};"
+            + $"agendada={s.DataAgendada:yyyy-MM-dd HH:mm};solicitante={s.UnidadeSolicitanteId};"
+            + $"origem={(string.IsNullOrEmpty(s.RawSisreg) ? "manual" : "sisreg")}";
+        return texto.Length <= 190 ? texto : texto[..190];
+    }
+
     // ===================== LOTE (um arquivo) =====================
 
     public async Task<ResultadoArquivoImportado> ImportarArquivoAsync(
@@ -536,7 +612,13 @@ public sealed class ImportacaoSisregService(
             // "Outro", sem satélite de imagem, sem worklist — e marcada como SUCESSO. Lixo
             // silencioso em escala de centenas por dia, que nenhuma tela mostraria. Vira pendência
             // acionável: o operador confirma o de-para uma vez e revalida.
-            if (string.IsNullOrWhiteSpace(m.CodigoSigtap))
+            //
+            // Exceção: se JÁ existe solicitação com esse número, o fluxo é reconciliar (complementar
+            // a manual) ou pular — nada disso CRIA solicitação nova, então não precisa de SIGTAP.
+            // Barrar aqui deixaria a solicitação manual da recepção sem o complemento do SISREG.
+            if (string.IsNullOrWhiteSpace(m.CodigoSigtap)
+                && !await db.Solicitacoes.AsNoTracking().AnyAsync(
+                    s => s.CodigoSolicitacao == m.CodigoSolicitacao && s.ExcluidoEm == null, ct))
             {
                 invalidos++;
                 await RegistrarFalhaExecucaoAsync(

@@ -15,13 +15,17 @@ import {
   cancelarVarredura,
   executarVarredura,
   executarVarreduraPeriodo,
+  importarProcedimento,
   listarVarreduraExecucoes,
   listarVarreduraItens,
   obterStatusVarredura,
   obterVarreduraAgenda,
   salvarVarreduraAgenda,
 } from '@/features/sisreg-mapeamento/api/varreduraApi';
-import type { SalvarVarreduraAgendaPayload } from '@/features/sisreg-mapeamento/types';
+import type {
+  ImportarAgendaPontualPayload,
+  SalvarVarreduraAgendaPayload,
+} from '@/features/sisreg-mapeamento/types';
 
 export const mapeamentoKeys = {
   /** A unidade entra na chave: trocar de unidade tem que trocar de mapeamento. */
@@ -184,6 +188,19 @@ export function useExecutarVarreduraPeriodo(unidadeId: string | null) {
       client.invalidateQueries({ queryKey: mapeamentoKeys.varreduraStatus(unidadeId) });
       client.invalidateQueries({ queryKey: mapeamentoKeys.varreduraExecucoes(unidadeId) });
     },
+  });
+}
+
+/**
+ * Import PONTUAL de um procedimento (o botão da árvore). Síncrono — a mutation resolve com o
+ * resumo. Ao terminar, o histórico de execuções pode ter mudado; invalida-o para refletir.
+ */
+export function useImportarProcedimento(unidadeId: string | null) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: ImportarAgendaPontualPayload) => importarProcedimento(payload, unidadeId),
+    onSuccess: () =>
+      client.invalidateQueries({ queryKey: mapeamentoKeys.varreduraExecucoes(unidadeId) }),
   });
 }
 

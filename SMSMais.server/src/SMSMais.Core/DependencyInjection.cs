@@ -294,6 +294,14 @@ public static class DependencyInjection
         services.AddScoped<
             Integracoes.SisregWeb.Varredura.IVarreduraAgendaService,
             Integracoes.SisregWeb.Varredura.VarreduraAgendaService>();
+
+        // Import PONTUAL (botão por procedimento na tela de mapeamento): consulta o cons_agendas
+        // direto (não bloqueado por horário, ao contrário do expo) para o "não dá para esperar as
+        // 15h". Síncrono, escopo de um par, entra pelo mesmo núcleo de ImportarMarcacoesAsync.
+        services.AddScoped<
+            Integracoes.SisregWeb.Importacao.AgendaPontual.IImportacaoAgendaPontualService,
+            Integracoes.SisregWeb.Importacao.AgendaPontual.ImportacaoAgendaPontualService>();
+
         services.AddHostedService<Integracoes.SisregWeb.Varredura.Background.VarreduraSisregRunner>();
         services.AddHostedService<Integracoes.SisregWeb.Varredura.Background.VarreduraSisregScheduler>();
 

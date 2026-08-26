@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using SMSMais.Api.Auth;
+using SMSMais.Core.Integracoes.SisregWeb.Importacao.AgendaPontual;
 using SMSMais.Core.Integracoes.SisregWeb.Varredura;
 using SMSMais.Core.Integracoes.SisregWeb.Varredura.Background;
 using SMSMais.Core.Integracoes.SisregWeb.Varredura.Dtos;
@@ -18,9 +19,12 @@ namespace SMSMais.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("sisreg/varredura")]
-public sealed class SisregVarreduraController(IVarreduraAgendaService varredura) : ControllerBase
+public sealed class SisregVarreduraController(
+    IVarreduraAgendaService varredura,
+    IImportacaoAgendaPontualService importacaoPontual) : ControllerBase
 {
     private readonly IVarreduraAgendaService _varredura = varredura;
+    private readonly IImportacaoAgendaPontualService _importacaoPontual = importacaoPontual;
 
     /// <summary>Agenda da unidade + o custo estimado da próxima varredura.</summary>
     [HttpGet("agenda")]
@@ -70,6 +74,21 @@ public sealed class SisregVarreduraController(IVarreduraAgendaService varredura)
         var aceita = await _varredura.IniciarPeriodoAsync(request, cancellationToken);
         return Accepted(aceita);
     }
+
+    /// <summary>
+    /// Importa PONTUALMENTE a agenda de UM profissional × procedimento no período informado,
+    /// consultando o <c>cons_agendas</c> direto (não tem a trava de horário do <c>expo</c>). É o
+    /// botão "Importar" da tela de mapeamento, para quando não dá para esperar a varredura noturna.
+    /// Síncrono: devolve o resumo do que entrou. Só leitura no SISREG.
+    /// </summary>
+    [HttpPost("importar-procedimento")]
+    [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Edicao)]
+    [ProducesResponseType<ImportacaoAgendaPontualResultado>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ImportacaoAgendaPontualResultado> ImportarProcedimento(
+        [FromBody] ImportarAgendaPontualRequest request, CancellationToken cancellationToken) =>
+        await _importacaoPontual.ImportarAsync(request, cancellationToken);
 
     /// <summary>Detalhe por profissional × procedimento de uma execução (o modal do histórico).</summary>
     [HttpGet("execucoes/{id:guid}/itens")]
