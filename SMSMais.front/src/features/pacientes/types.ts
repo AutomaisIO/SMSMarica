@@ -238,7 +238,7 @@ export type PacienteExistencia = {
 
 // ---- Agendamentos (aba do cadastro) ----
 
-export type OrigemAgendamento = 'Ser' | 'Sisreg' | 'Local';
+export type OrigemAgendamento = 'Ser' | 'Sernit' | 'Sisreg' | 'Local';
 
 export type SituacaoAgendamentoPaciente =
   | 'EmFila'

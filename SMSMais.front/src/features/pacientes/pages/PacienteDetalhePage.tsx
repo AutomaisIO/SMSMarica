@@ -25,6 +25,7 @@ import { Tabs, type Aba } from '@/shared/ui/Tabs';
 import { nomeBaseOrigem, nomeSistemaOrigem, rotuloOrigem } from '@/shared/lib/origemClinica';
 import { usePermissao } from '@/shared/auth/authStore';
 import { ModalSolicitacaoSer } from '@/features/ser/components/ModalSolicitacaoSer';
+import { ModalSolicitacaoSernit } from '@/features/sernit/components/ModalSolicitacaoSernit';
 import { ModalSolicitacaoExame } from '@/features/solicitacoes-exame/components/ModalSolicitacaoExame';
 import {
   useAcessosPaciente,
@@ -593,6 +594,7 @@ function SecaoAcessos({ pacienteId }: { pacienteId: string }) {
 
 const ORIGEM_AGENDAMENTO: Record<OrigemAgendamento, { texto: string; titulo: string; classe: string }> = {
   Ser: { texto: 'SER', titulo: 'Regulação estadual (SES-RJ)', classe: 'bg-purple-100 text-purple-700' },
+  Sernit: { texto: 'SERNIT', titulo: 'Regulação de Niterói (SERNIT)', classe: 'bg-rose-100 text-rose-700' },
   Sisreg: { texto: 'SISREG', titulo: 'Regulação municipal (SISREG)', classe: 'bg-blue-100 text-blue-700' },
   Local: { texto: 'Agenda local', titulo: 'Agenda própria do município', classe: 'bg-teal-100 text-teal-700' },
 };
@@ -701,15 +703,18 @@ function SecaoAgendamentos({ pacienteId }: { pacienteId: string }) {
   const historico = q.data?.historico ?? [];
 
   // Drill-in por modal, respeitando a permissão de cada módulo: a aba abre com Pacientes.Consulta,
-  // mas o detalhe do SER exige RegulacaoSer e o do exame exige SolicitacoesExame.
+  // mas o detalhe do SER exige RegulacaoSer, o do SERNIT RegulacaoSernit e o do exame SolicitacoesExame.
   const podeVerSer = usePermissao('RegulacaoSer', 'Consulta');
+  const podeVerSernit = usePermissao('RegulacaoSernit', 'Consulta');
   const podeVerExame = usePermissao('SolicitacoesExame', 'Consulta');
   const [serModalId, setSerModalId] = useState<string | null>(null);
+  const [sernitModalId, setSernitModalId] = useState<string | null>(null);
   const [exameModalId, setExameModalId] = useState<string | null>(null);
 
   function podeAbrir(a: AgendamentoPacienteItem): boolean {
     if (!a.detalheId) return false;
     if (a.origem === 'Ser') return podeVerSer;
+    if (a.origem === 'Sernit') return podeVerSernit;
     if (a.origem === 'Sisreg') return podeVerExame;
     return false;
   }
@@ -717,6 +722,7 @@ function SecaoAgendamentos({ pacienteId }: { pacienteId: string }) {
   function abrir(a: AgendamentoPacienteItem) {
     if (!podeAbrir(a) || !a.detalheId) return;
     if (a.origem === 'Ser') setSerModalId(a.detalheId);
+    else if (a.origem === 'Sernit') setSernitModalId(a.detalheId);
     else if (a.origem === 'Sisreg') setExameModalId(a.detalheId);
   }
 
@@ -769,12 +775,14 @@ function SecaoAgendamentos({ pacienteId }: { pacienteId: string }) {
       </div>
 
       <p className="text-xs text-gray-400">
-        Fontes: SER (regulação estadual) e SISREG (regulação municipal), além da agenda própria.
-        O comparecimento (compareceu/faltou) vem do SER e da agenda local; do SISREG mostramos o
-        agendamento e a data. Clique numa linha do SER ou de exame de imagem para abrir o detalhe.
+        Fontes: SER (regulação estadual), SERNIT (regulação de Niterói) e SISREG (regulação
+        municipal), além da agenda própria. O comparecimento (compareceu/faltou) vem do SER/SERNIT e
+        da agenda local; do SISREG mostramos o agendamento e a data. Clique numa linha do SER, do
+        SERNIT ou de exame de imagem para abrir o detalhe.
       </p>
 
       <ModalSolicitacaoSer solicitacaoId={serModalId} aoFechar={() => setSerModalId(null)} />
+      <ModalSolicitacaoSernit solicitacaoId={sernitModalId} aoFechar={() => setSernitModalId(null)} />
       <ModalSolicitacaoExame solicitacaoId={exameModalId} aoFechar={() => setExameModalId(null)} />
     </div>
   );

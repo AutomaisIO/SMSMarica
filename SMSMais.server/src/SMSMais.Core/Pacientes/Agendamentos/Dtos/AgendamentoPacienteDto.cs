@@ -11,6 +11,9 @@ public enum OrigemAgendamentoPaciente
 
     /// <summary>Agenda própria do município (entidade <c>agendamento</c>).</summary>
     Local = 3,
+
+    /// <summary>Regulação de Niterói (SERNIT), espelho <c>sernit_solicitacao</c> (ADR-0042).</summary>
+    Sernit = 4,
 }
 
 /// <summary>

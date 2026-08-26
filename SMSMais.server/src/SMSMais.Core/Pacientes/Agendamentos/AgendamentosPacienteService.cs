@@ -6,6 +6,7 @@ using SMSMais.Core.Pacientes.Agendamentos.Dtos;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Enums;
 using SMSMais.Data.Entities.Ser;
+using SMSMais.Data.Entities.Sernit;
 
 namespace SMSMais.Core.Pacientes.Agendamentos;
 
@@ -22,6 +23,7 @@ public sealed partial class AgendamentosPacienteService(SmsMaisDbContext db)
 
         var itens = new List<AgendamentoPacienteItemDto>();
         itens.AddRange(await LerSerAsync(pacienteId, cancellationToken));
+        itens.AddRange(await LerSernitAsync(pacienteId, cancellationToken));
         itens.AddRange(await LerSisregAsync(pacienteId, cancellationToken));
         itens.AddRange(await LerLocalAsync(pacienteId, cancellationToken));
 
@@ -113,6 +115,59 @@ public sealed partial class AgendamentosPacienteService(SmsMaisDbContext db)
         SituacaoSer.ChegadaConfirmada => SituacaoAgendamentoPaciente.Compareceu,
         SituacaoSer.Cancelada => SituacaoAgendamentoPaciente.Cancelado,
         SituacaoSer.Alta => SituacaoAgendamentoPaciente.Concluido,
+        _ => SituacaoAgendamentoPaciente.Pendente,
+    };
+
+    // ---- SERNIT (regulação de Niterói — subsistema irmão do SER, ADR-0042) ----
+
+    private async Task<IEnumerable<AgendamentoPacienteItemDto>> LerSernitAsync(
+        Guid pacienteId, CancellationToken cancellationToken)
+    {
+        var linhas = await db.SernitSolicitacoes.AsNoTracking()
+            .Where(x => x.PacienteId == pacienteId && x.ExcluidoEm == null)
+            .Select(x => new
+            {
+                x.Id,
+                x.IdSernit,
+                x.Tipo,
+                x.Recurso,
+                x.UnidadeExecutora,
+                x.AgendadoParaTexto,
+                x.DataSolicitacao,
+                x.Situacao,
+            })
+            .ToListAsync(cancellationToken);
+
+        return linhas.Select(l =>
+        {
+            var (data, temHora, unidadeTexto) = ParsearAgendadoPara(l.AgendadoParaTexto);
+            var situacao = MapearSernit(l.Situacao);
+            return new AgendamentoPacienteItemDto(
+                l.Id,
+                OrigemAgendamentoPaciente.Sernit,
+                l.Tipo == TipoRecursoSernit.Consulta ? "Consulta" : "Exame",
+                NormalizarTexto(l.Recurso),
+                l.UnidadeExecutora ?? unidadeTexto,
+                data,
+                temHora,
+                l.DataSolicitacao,
+                situacao,
+                DescreverSituacao(situacao),
+                l.Situacao.ToString(),
+                l.IdSernit,
+                l.Id); // detalhe SERNIT abre pelo id da própria sernit_solicitacao
+        });
+    }
+
+    private static SituacaoAgendamentoPaciente MapearSernit(SituacaoSernit s) => s switch
+    {
+        SituacaoSernit.EmFila => SituacaoAgendamentoPaciente.EmFila,
+        SituacaoSernit.Pendente => SituacaoAgendamentoPaciente.Pendente,
+        SituacaoSernit.Agendada => SituacaoAgendamentoPaciente.Agendado,
+        SituacaoSernit.ChegadaNaoConfirmada => SituacaoAgendamentoPaciente.ChegadaNaoConfirmada,
+        SituacaoSernit.ChegadaConfirmada => SituacaoAgendamentoPaciente.Compareceu,
+        SituacaoSernit.Cancelada => SituacaoAgendamentoPaciente.Cancelado,
+        SituacaoSernit.Alta => SituacaoAgendamentoPaciente.Concluido,
         _ => SituacaoAgendamentoPaciente.Pendente,
     };
 
