@@ -9,6 +9,8 @@ import { Modal } from '@/shared/ui/Modal';
 import { obterPdfBaseAssinatura } from '@/features/laudos/api/laudosApi';
 import type { CarimboPosicao } from '@/features/laudos/types';
 
+// Worker do pdfjs empacotado pelo Vite (?url) — resolve o carregamento do PDF-base
+// em produção sem depender de CDN externa. (ADR-0049 / #113)
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
 /** Retângulo do carimbo em frações [0..1] da página (origem superior-esquerda, como a tela). */
