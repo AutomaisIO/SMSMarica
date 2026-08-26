@@ -3,6 +3,8 @@ import { ArrowLeft, History, Phone, User } from 'lucide-react';
 import { Button } from '@/shared/ui/Button';
 import { useSolicitacaoSernit } from '@/features/sernit/api/queries';
 import { SituacaoSernitBadge } from '@/features/sernit/components/SituacaoSernitBadge';
+import { PainelFollowUpSernit } from '@/features/sernit/components/PainelFollowUpSernit';
+import { PainelContatosSernit } from '@/features/sernit/components/PainelContatosSernit';
 import type { EventoSernit } from '@/features/sernit/types';
 import { usePacientePorId } from '@/features/pacientes/api/queries';
 import { NomePacienteComResumo } from '@/features/pacientes/components/NomePacienteComResumo';
@@ -169,6 +171,17 @@ export function SernitSolicitacaoDetalhePage() {
         </div>
         <SituacaoSernitBadge situacao={r.situacao} />
       </div>
+
+      {/* Ações que escrevem no sistema — as mesmas do modal da fila. Cada painel se vira sozinho
+          com a sessão do operador (pede a senha quando falta) e, quando a situação não oferece a
+          ação, mostra o motivo em vez de falhar. Deep-link para a solicitação também precisa
+          delas: quem chega aqui direto não deve ter de voltar à fila só para agir. */}
+      {id && (
+        <section className="flex flex-wrap items-center gap-2">
+          <PainelFollowUpSernit solicitacaoId={id} />
+          <PainelContatosSernit solicitacaoId={id} />
+        </section>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <section className="rounded-lg border border-slate-200 bg-white p-4 lg:col-span-1">

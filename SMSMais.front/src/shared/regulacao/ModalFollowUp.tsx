@@ -25,6 +25,9 @@ export type SessaoFollowUp = {
   modal: { aberto: boolean; aoFechar: () => void; aoAutenticar?: () => void };
 };
 
+/** Mesma sessão serve os modais de regulação (FollowUp e Contato). Alias para uso compartilhado. */
+export type SessaoRegulacao = SessaoFollowUp;
+
 /** O que o registro de FollowUP devolve — só o que esta tela usa. */
 type FollowUpResultado = { evento: { data?: string | null } };
 
@@ -84,7 +87,7 @@ export function ModalFollowUp({ sistema, sessao, registrar, ModalLogin }: Props)
       // O backend só devolve OK depois de RELER o histórico e achar o evento lá — dizer isso na
       // tela importa, porque o sistema de origem já respondeu "salvo com sucesso" sem ter gravado.
       setOk(
-        `Registrado e conferido no histórico do ${sistema}${r.evento.data ? ` (${r.evento.data})` : ''}.`,
+        `Registrado e conferido no histórico${r.evento.data ? ` (${r.evento.data})` : ''}.`,
       );
       setTexto('');
       setAberto(false);
@@ -114,17 +117,19 @@ export function ModalFollowUp({ sistema, sessao, registrar, ModalLogin }: Props)
         <MessageSquarePlus className="mr-1 size-4" />+ FollowUp
       </Button>
 
+      {/* Confirmação fica na última linha da barra (basis-full + order-last), sem se meter entre
+          os botões — senão empurraria o botão vizinho para baixo. */}
       {ok && !aberto && (
-        <p className="flex w-full items-center gap-1 text-xs text-emerald-700">
+        <p className="order-last flex basis-full items-center gap-1 text-xs text-emerald-700">
           <CheckCircle2 className="size-4" /> {ok}
         </p>
       )}
 
       <Modal
         aberto={aberto}
-        // Enquanto grava, não deixa fechar por Esc/clique fora: a ação está a caminho do SER.
+        // Enquanto grava, não deixa fechar por Esc/clique fora: a ação está a caminho do sistema.
         aoFechar={registrar.isPending ? () => {} : fechar}
-        titulo={`Registrar FollowUP no ${sistema}`}
+        titulo="Registrar FollowUP"
         largura="md"
       >
         <div className="space-y-2">
@@ -148,7 +153,7 @@ export function ModalFollowUp({ sistema, sessao, registrar, ModalLogin }: Props)
           {/* A trilha do sistema só guarda o nome do login usado. Se quem pediu o registro é outra
               pessoa (recepção, agente), isso precisa estar escrito no texto — não há outro campo. */}
           <p className="text-[11px] text-slate-500">
-            O texto vai para o histórico da solicitação no {sistema} e não pode ser apagado depois.
+            O texto vai para o histórico da solicitação e não pode ser apagado depois.
           </p>
 
           {erro && (
@@ -168,7 +173,7 @@ export function ModalFollowUp({ sistema, sessao, registrar, ModalLogin }: Props)
             </Button>
             <Button tamanho="sm" onClick={enviar} disabled={registrar.isPending}>
               {registrar.isPending && <Loader2 className="mr-1 size-4 animate-spin" />}
-              Enviar ao {sistema}
+              Registrar
             </Button>
           </div>
         </div>

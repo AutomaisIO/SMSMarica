@@ -113,7 +113,7 @@ export function ModalSolicitacaoSernit({
 
           <section>
             <h3 className="mb-2 font-semibold text-slate-800">
-              Histórico no SERNIT{' '}
+              Histórico da solicitação{' '}
               <span className="text-xs font-normal text-slate-500">
                 ({data.eventos.length} evento{data.eventos.length === 1 ? '' : 's'})
               </span>
@@ -124,7 +124,7 @@ export function ModalSolicitacaoSernit({
               // solicitação nunca se moveu.
               <p className="text-xs text-slate-500">
                 {r.historicoIndisponivel
-                  ? 'O SERNIT não oferece histórico para esta situação (Alta).'
+                  ? 'O sistema não oferece histórico para esta situação (Alta).'
                   : r.historicoLidoEm
                     ? 'Nenhum evento registrado.'
                     : 'Histórico ainda não lido pelo motor de varredura.'}
