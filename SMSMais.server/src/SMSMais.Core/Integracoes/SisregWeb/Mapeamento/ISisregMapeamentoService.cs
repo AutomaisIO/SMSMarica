@@ -1,4 +1,5 @@
 using SMSMais.Core.Integracoes.SisregWeb.Mapeamento.Dtos;
+using SMSMais.Data.Entities;
 
 namespace SMSMais.Core.Integracoes.SisregWeb.Mapeamento;
 
@@ -19,6 +20,16 @@ public interface ISisregMapeamentoService
     /// </summary>
     Task<SisregMapeamentoAtualizacaoDto> AtualizarAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Reconcilia o mapeamento de uma unidade <b>explícita</b> (sem depender do header
+    /// <c>X-Unidade-Id</c>) e com autor explícito — a porta usada pelo motor em lote fora de uma
+    /// request. <paramref name="antesDeCadaRequisicao"/> é chamado antes de cada ida ao SISREG
+    /// (o lote usa para respeitar o teto de requisições/hora); passe <c>null</c> no uso interativo.
+    /// </summary>
+    Task<SisregMapeamentoAtualizacaoDto> AtualizarNoContextoAsync(
+        Unidade unidade, Guid? usuarioId, Func<CancellationToken, Task>? antesDeCadaRequisicao,
+        CancellationToken cancellationToken = default);
+
     Task AlternarProfissionalAsync(Guid profissionalId, bool habilitado, CancellationToken cancellationToken = default);
 
     Task AlternarProcedimentoAsync(Guid procedimentoId, bool habilitado, CancellationToken cancellationToken = default);
@@ -38,4 +49,11 @@ public interface ISisregMapeamentoService
     /// deduplicando por CPF.
     /// </summary>
     Task<SisregSincronizacaoFhirDto> SincronizarFhirAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Núcleo do <see cref="SincronizarFhirAsync"/> com unidade e autor explícitos — para o motor em
+    /// lote rodar fora de uma request.
+    /// </summary>
+    Task<SisregSincronizacaoFhirDto> SincronizarFhirNoContextoAsync(
+        Unidade unidade, Guid? usuarioId, CancellationToken cancellationToken = default);
 }

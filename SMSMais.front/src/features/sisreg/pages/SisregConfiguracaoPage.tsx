@@ -10,6 +10,7 @@ import {
   useAtualizarConfiguracaoSisreg,
   useConfiguracaoSisreg,
 } from '@/features/sisreg/api/queries';
+import { SincronizarTudoSecao } from '@/features/sisreg/components/SincronizarTudoSecao';
 import type {
   AtualizarSisregConfiguracaoPayload,
   EscopoSisreg,
@@ -257,6 +258,7 @@ export function SisregConfiguracaoPage() {
         </form>
       </section>
 
+      <SincronizarTudoSecao />
     </div>
   );
 }

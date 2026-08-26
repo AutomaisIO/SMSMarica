@@ -73,6 +73,7 @@ public sealed class VarreduraAgendaService(
     IVarreduraSisregFila fila,
     VarreduraSisregEstadoVivo estadoVivo,
     Importacao.Background.SisregImportacaoEstadoVivo importacaoEstadoVivo,
+    MapeamentoLote.Background.MapeamentoLoteEstadoVivo loteEstadoVivo,
     IUsuarioAtualAccessor usuarioAtual,
     IOptions<VarreduraSisregOpcoes> opcoes,
     ILogger<VarreduraAgendaService> logger) : IVarreduraAgendaService
@@ -234,12 +235,24 @@ public sealed class VarreduraAgendaService(
                 "Há uma importação de arquivo em andamento. Como as duas falam com o SISREG pela "
                 + "mesma saída, espere a importação terminar.");
         }
+
+        if (loteEstadoVivo.EmExecucao)
+        {
+            throw new ConflitoException(
+                "varredura.lote_em_andamento",
+                "Há uma sincronização de mapeamento de todas as unidades em andamento. Como as duas "
+                + "falam com o SISREG pela mesma saída, espere ela terminar.");
+        }
     }
 
     public async Task<Guid?> IniciarAgendadoAsync(Guid unidadeId, CancellationToken ct)
     {
-        if (estadoVivo.ObterAtual() is not null || importacaoEstadoVivo.ObterAtual() is not null)
+        if (estadoVivo.ObterAtual() is not null
+            || importacaoEstadoVivo.ObterAtual() is not null
+            || loteEstadoVivo.EmExecucao)
+        {
             return null;
+        }
 
         var unidade = await db.Unidades.AsNoTracking().FirstOrDefaultAsync(u => u.Id == unidadeId, ct);
         if (unidade is null) return null;

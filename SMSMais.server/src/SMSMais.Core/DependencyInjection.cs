@@ -305,6 +305,21 @@ public static class DependencyInjection
         services.AddHostedService<Integracoes.SisregWeb.Varredura.Background.VarreduraSisregRunner>();
         services.AddHostedService<Integracoes.SisregWeb.Varredura.Background.VarreduraSisregScheduler>();
 
+        // Motor "sincroniza tudo" (#118): reconcilia o mapeamento (profissionais/procedimentos +
+        // vínculo FHIR) de TODAS as unidades configuradas em sequência, com botão manual e flag
+        // diário. Sequencial e com throttle: divide o orçamento anti-robô do SISREG com a varredura.
+        services.Configure<Integracoes.SisregWeb.MapeamentoLote.SisregMapeamentoLoteOpcoes>(
+            configuration.GetSection(Integracoes.SisregWeb.MapeamentoLote.SisregMapeamentoLoteOpcoes.Secao));
+        services.AddSingleton<
+            Integracoes.SisregWeb.MapeamentoLote.Background.IMapeamentoLoteFila,
+            Integracoes.SisregWeb.MapeamentoLote.Background.MapeamentoLoteFila>();
+        services.AddSingleton<Integracoes.SisregWeb.MapeamentoLote.Background.MapeamentoLoteEstadoVivo>();
+        services.AddScoped<
+            Integracoes.SisregWeb.MapeamentoLote.ISisregMapeamentoLoteService,
+            Integracoes.SisregWeb.MapeamentoLote.SisregMapeamentoLoteService>();
+        services.AddHostedService<Integracoes.SisregWeb.MapeamentoLote.Background.MapeamentoLoteRunner>();
+        services.AddHostedService<Integracoes.SisregWeb.MapeamentoLote.Background.MapeamentoLoteScheduler>();
+
         // ---- SER (Sistema Estadual de Regulação, SES-RJ) — ADR-0042 ----
         // Sessão ÚNICA por operador, como no SISREG: um cliente HTTP singleton com cookies
         // próprios (JSESSIONID + SERVERID do balanceador) e o módulo Ambulatório ativo na conversa

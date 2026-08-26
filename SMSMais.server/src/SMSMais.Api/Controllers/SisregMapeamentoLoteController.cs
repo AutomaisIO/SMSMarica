@@ -1,0 +1,71 @@
+using Microsoft.AspNetCore.Mvc;
+using SMSMais.Api.Auth;
+using SMSMais.Core.Integracoes.SisregWeb.MapeamentoLote;
+using SMSMais.Core.Integracoes.SisregWeb.MapeamentoLote.Dtos;
+using SMSMais.Data.Entities.Enums;
+
+namespace SMSMais.Api.Controllers;
+
+/// <summary>
+/// "SISREG Sincroniza tudo" (#118): reconcilia o mapeamento (profissionais/procedimentos + vínculo
+/// FHIR) de <b>todas</b> as unidades configuradas de uma vez, com botão manual e agendamento diário.
+///
+/// <para><b>Não é por unidade</b> (ao contrário de <c>sisreg/mapeamento</c> e
+/// <c>sisreg/varredura</c>): estes endpoints operam a rede inteira, então não usam
+/// <c>X-Unidade-Id</c>. Um lote por vez em toda a instalação, sequencial, respeitando o teto de
+/// requisições/hora do SISREG.</para>
+/// </summary>
+[ApiController]
+[Route("sisreg/mapeamento/lote")]
+public sealed class SisregMapeamentoLoteController(ISisregMapeamentoLoteService lote) : ControllerBase
+{
+    private readonly ISisregMapeamentoLoteService _lote = lote;
+
+    /// <summary>
+    /// Dispara AGORA a sincronização de todas as unidades. 202: roda no servidor, fechar a aba não
+    /// interrompe. Acompanhe por <c>GET status</c>.
+    /// </summary>
+    [HttpPost("sincronizar")]
+    [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Edicao)]
+    [ProducesResponseType<MapeamentoLoteAceitoDto>(StatusCodes.Status202Accepted)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Sincronizar(CancellationToken cancellationToken)
+    {
+        var aceito = await _lote.IniciarAsync(cancellationToken);
+        return Accepted(aceito);
+    }
+
+    /// <summary>Progresso do lote em curso, ou 204 se não houver nenhum.</summary>
+    [HttpGet("status")]
+    [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Consulta)]
+    [ProducesResponseType<MapeamentoLoteStatusDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public IActionResult Status()
+    {
+        var status = _lote.ObterStatus();
+        return status is null ? NoContent() : Ok(status);
+    }
+
+    /// <summary>Para o lote em curso. O que já entrou permanece — cada unidade é gravada ao concluir.</summary>
+    [HttpPost("cancelar")]
+    [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public IActionResult Cancelar() => Ok(new { cancelada = _lote.Cancelar() });
+
+    /// <summary>Configuração do disparo diário automático.</summary>
+    [HttpGet("agendamento")]
+    [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Consulta)]
+    [ProducesResponseType<MapeamentoLoteAgendamentoDto>(StatusCodes.Status200OK)]
+    public async Task<MapeamentoLoteAgendamentoDto> ObterAgendamento(CancellationToken cancellationToken) =>
+        await _lote.ObterAgendamentoAsync(cancellationToken);
+
+    /// <summary>Liga/desliga o disparo diário e define a hora (Brasília, HH:mm).</summary>
+    [HttpPut("agendamento")]
+    [RequerPermissao(ModuloPermissao.SisregMapeamento, AcoesPermissao.Edicao)]
+    [ProducesResponseType<MapeamentoLoteAgendamentoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<MapeamentoLoteAgendamentoDto> SalvarAgendamento(
+        [FromBody] SalvarMapeamentoLoteAgendamentoRequest request, CancellationToken cancellationToken) =>
+        await _lote.SalvarAgendamentoAsync(request, cancellationToken);
+}

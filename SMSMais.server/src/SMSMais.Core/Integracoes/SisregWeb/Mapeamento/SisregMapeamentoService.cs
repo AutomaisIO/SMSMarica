@@ -66,6 +66,22 @@ public sealed class SisregMapeamentoService(
     public async Task<SisregMapeamentoAtualizacaoDto> AtualizarAsync(CancellationToken cancellationToken = default)
     {
         var unidade = await unidadeAtual.ObterObrigatoriaAsync(cancellationToken);
+        return await AtualizarNoContextoAsync(unidade, usuarioAtual.UsuarioId, null, cancellationToken);
+    }
+
+    /// <summary>
+    /// Núcleo do <see cref="AtualizarAsync"/> com a unidade e o autor <b>explícitos</b> e um gancho
+    /// opcional antes de cada requisição ao SISREG. É a porta que o motor em lote usa para
+    /// reconciliar qualquer unidade fora de uma request — sem <c>X-Unidade-Id</c> nem usuário
+    /// logado. O gancho serve ao lote para respeitar o teto de requisições/hora (o mapeamento e a
+    /// varredura dividem o mesmo orçamento anti-robô do SISREG).
+    /// </summary>
+    public async Task<SisregMapeamentoAtualizacaoDto> AtualizarNoContextoAsync(
+        Unidade unidade,
+        Guid? usuarioId,
+        Func<CancellationToken, Task>? antesDeCadaRequisicao,
+        CancellationToken cancellationToken = default)
+    {
         if (string.IsNullOrWhiteSpace(unidade.Cnes))
         {
             throw new ValidacaoException(
@@ -80,6 +96,7 @@ public sealed class SisregMapeamentoService(
         var requisicoes = 0;
         var cnes = SoDigitos(unidade.Cnes!);
 
+        if (antesDeCadaRequisicao is not null) await antesDeCadaRequisicao(cancellationToken);
         var xmlProfissionais = await sessao.GetAsync(
             CaminhoAjax,
             new Dictionary<string, string> { ["BUSCA"] = "PROFISSIONAIS_POR_UPS", ["AJAX_UPS"] = cnes },
@@ -128,7 +145,7 @@ public sealed class SisregMapeamentoService(
                     Cpf = cpf,
                     Habilitado = false, // novo entra desligado: quem decide o custo da varredura é o operador
                     CriadoEm = agora,
-                    CriadoPor = usuarioAtual.UsuarioId,
+                    CriadoPor = usuarioId,
                 };
                 db.SisregProfissionaisUnidade.Add(profissional);
                 porCpf[cpf] = profissional;
@@ -137,13 +154,14 @@ public sealed class SisregMapeamentoService(
             else
             {
                 profissional.AtualizadoEm = agora;
-                profissional.AtualizadoPor = usuarioAtual.UsuarioId;
+                profissional.AtualizadoPor = usuarioId;
             }
 
             profissional.Nome = linha.Descricao;
             profissional.VistoEm = agora;
             profissional.Ausente = false;
 
+            if (antesDeCadaRequisicao is not null) await antesDeCadaRequisicao(cancellationToken);
             var xmlProcedimentos = await sessao.GetAsync(
                 CaminhoAjax,
                 new Dictionary<string, string>
@@ -173,7 +191,7 @@ public sealed class SisregMapeamentoService(
         {
             profissional.Ausente = true;
             profissional.AtualizadoEm = agora;
-            profissional.AtualizadoPor = usuarioAtual.UsuarioId;
+            profissional.AtualizadoPor = usuarioId;
             ausentes++;
         }
 
@@ -278,7 +296,17 @@ public sealed class SisregMapeamentoService(
     public async Task<SisregSincronizacaoFhirDto> SincronizarFhirAsync(CancellationToken cancellationToken = default)
     {
         var unidade = await unidadeAtual.ObterObrigatoriaAsync(cancellationToken);
+        return await SincronizarFhirNoContextoAsync(unidade, usuarioAtual.UsuarioId, cancellationToken);
+    }
 
+    /// <summary>
+    /// Núcleo do <see cref="SincronizarFhirAsync"/> com a unidade e o autor <b>explícitos</b>, para
+    /// o motor em lote rodar fora de uma request. Fala com o hub FHIR (não com o SISREG), então não
+    /// consome o orçamento anti-robô — por isso não tem gancho de throttle.
+    /// </summary>
+    public async Task<SisregSincronizacaoFhirDto> SincronizarFhirNoContextoAsync(
+        Unidade unidade, Guid? usuarioId, CancellationToken cancellationToken = default)
+    {
         var habilitados = await db.SisregProfissionaisUnidade
             .Where(x => x.UnidadeId == unidade.Id && x.Habilitado && !x.Ausente)
             .ToListAsync(cancellationToken);
@@ -329,7 +357,7 @@ public sealed class SisregMapeamentoService(
 
                 profissional.SincronizadoEm = agora;
                 profissional.AtualizadoEm = agora;
-                profissional.AtualizadoPor = usuarioAtual.UsuarioId;
+                profissional.AtualizadoPor = usuarioId;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {

@@ -20,6 +20,7 @@ public sealed class VarreduraSisregScheduler(
     IServiceScopeFactory scopeFactory,
     VarreduraSisregEstadoVivo estadoVivo,
     Importacao.Background.SisregImportacaoEstadoVivo importacaoEstadoVivo,
+    MapeamentoLote.Background.MapeamentoLoteEstadoVivo loteEstadoVivo,
     IOptions<VarreduraSisregOpcoes> opcoes,
     ILogger<VarreduraSisregScheduler> logger) : BackgroundService
 {
@@ -53,7 +54,13 @@ public sealed class VarreduraSisregScheduler(
     private async Task TickAsync(CancellationToken ct)
     {
         // Barato e evita abrir escopo de DI à toa: se já há trabalho vivo, nem consulta o banco.
-        if (estadoVivo.ObterAtual() is not null || importacaoEstadoVivo.ObterAtual() is not null) return;
+        // O lote de mapeamento também usa a saída do SISREG — a varredura cede a ele.
+        if (estadoVivo.ObterAtual() is not null
+            || importacaoEstadoVivo.ObterAtual() is not null
+            || loteEstadoVivo.EmExecucao)
+        {
+            return;
+        }
 
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<SmsMaisDbContext>();

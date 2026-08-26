@@ -29,6 +29,29 @@ export type AtualizarSisregConfiguracaoPayload = {
 
 export type TestarConexaoSisregResultado = { sucesso: boolean; mensagem: string };
 
+/** Resposta ao disparo do lote "sincroniza tudo". */
+export type MapeamentoLoteAceito = { unidadesTotal: number; mensagem: string };
+
+/** Progresso do lote em curso (null = nenhum rodando). */
+export type MapeamentoLoteStatus = {
+  emExecucao: boolean;
+  disparo: 'Manual' | 'Agendado';
+  unidadesTotal: number;
+  unidadesFeitas: number;
+  unidadeAtual: string | null;
+  requisicoesFeitas: number;
+  profissionaisEncontrados: number;
+  profissionaisNovos: number;
+  practitionersCriados: number;
+  practitionersVinculados: number;
+  unidadesComErro: number;
+  iniciadoEm: string;
+  ultimoErro: string | null;
+};
+
+/** Configuração do disparo diário automático do lote. */
+export type MapeamentoLoteAgendamento = { ativo: boolean; horaLocal: string };
+
 export type SisregBuscaResultado<T> = { total: number; itens: T[] };
 
 /** Registro genérico do SISREG — os três índices compartilham muitos campos negociais. */
