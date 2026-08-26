@@ -213,8 +213,10 @@ function PainelTriagem({
   }
 
   function enviarAoAgente() {
-    // Só há o relato do autor: pergunta uma instrução antes de o agente iniciar "cego".
-    if (!temContextoAlemDoAutor) {
+    // O modal de instrução vale só para o PRIMEIRO envio à IA. Depois disso o botão vira
+    // "Acompanhar" (enviadoIa === true) e não se pergunta mais — vai direto ao terminal. Ticket #116.
+    // Só há o relato do autor: pergunta uma instrução antes de o agente iniciar "cego" (Ticket #95).
+    if (!ticket.enviadoIa && !temContextoAlemDoAutor) {
       setInstrucao('');
       setModalInstrucao(true);
       return;
