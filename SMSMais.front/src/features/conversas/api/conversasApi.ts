@@ -79,6 +79,11 @@ export async function encaminharConversaParaRobo(id: string): Promise<void> {
   await http.post(`/conversas/${id}/encaminhar-robo`, {});
 }
 
+/** Para o robô nesta conversa (bloqueio forte) e assume para o operador corrigir. */
+export async function pararRoboConversa(id: string): Promise<void> {
+  await http.post(`/conversas/${id}/parar-robo`, {});
+}
+
 export async function transferirConversa(
   id: string,
   payload: { paraUnidadeId: string; observacao?: string | null },

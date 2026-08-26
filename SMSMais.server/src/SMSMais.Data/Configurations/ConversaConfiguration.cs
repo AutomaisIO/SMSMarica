@@ -30,6 +30,7 @@ internal sealed class ConversaConfiguration : IEntityTypeConfiguration<Conversa>
         builder.Property(c => c.RoboInteracoesNaJanela).HasColumnName("robo_interacoes_na_janela").HasDefaultValue(0).IsRequired();
         builder.Property(c => c.RoboAssuntoId).HasColumnName("robo_assunto_id");
         builder.Property(c => c.RoboRearmadoEm).HasColumnName("robo_rearmado_em");
+        builder.Property(c => c.RoboBloqueado).HasColumnName("robo_bloqueado").HasDefaultValue(false).IsRequired();
         builder.Property(c => c.PrimeiroContatoEm).HasColumnName("primeiro_contato_em").IsRequired();
 
         builder.Property(c => c.CriadoEm).HasColumnName("criado_em").IsRequired();

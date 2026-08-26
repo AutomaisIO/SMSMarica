@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowRightLeft, Building2, Check, MoreVertical, Undo2 } from 'lucide-react';
+import { ArrowRightLeft, BotOff, Building2, Check, MoreVertical, Undo2 } from 'lucide-react';
 import {
   useAssumirConversa,
   useConversa,
   useDevolverConversa,
   useMarcarLida,
   useMensagens,
+  usePararRoboConversa,
 } from '@/features/conversas/api/queries';
 import { useAssinaturaConversa } from '@/features/conversas/hooks/useChatHub';
 import { ComposerMensagem } from '@/features/conversas/components/ComposerMensagem';
@@ -23,12 +24,20 @@ function hora(iso: string): string {
   });
 }
 
-function Bolha({ m }: { m: Mensagem }) {
+function Bolha({
+  m,
+  onPararRobo,
+  pararPendente,
+}: {
+  m: Mensagem;
+  onPararRobo?: () => void;
+  pararPendente?: boolean;
+}) {
   const saida = m.direcao === 'Saida';
   const nota = m.tipoMensagem === 'NotaInterna';
   const robo = m.tipoMensagem === 'Robo';
   return (
-    <div className={`flex ${saida ? 'justify-end' : 'justify-start'}`}>
+    <div className={`flex flex-col ${saida ? 'items-end' : 'items-start'}`}>
       <div
         className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
           nota
@@ -50,6 +59,17 @@ function Bolha({ m }: { m: Mensagem }) {
         {m.conteudo && <p className="whitespace-pre-wrap break-words">{m.conteudo}</p>}
         <p className={`mt-1 text-[10px] ${saida && !nota && !robo ? 'text-white/70' : 'text-gray-400'}`}>{hora(m.ocorridoEm)}</p>
       </div>
+      {robo && onPararRobo && (
+        <button
+          type="button"
+          onClick={onPararRobo}
+          disabled={pararPendente}
+          className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-indigo-500 hover:text-indigo-700 disabled:opacity-50"
+          title="Para o robô nesta conversa e assume para você corrigir. A mensagem já enviada não pode ser apagada no WhatsApp."
+        >
+          <BotOff className="h-3.5 w-3.5" /> Parar robô
+        </button>
+      )}
     </div>
   );
 }
@@ -62,6 +82,7 @@ export function ThreadMensagens({ conversaId }: { conversaId: string }) {
   const assumir = useAssumirConversa();
   const marcarLida = useMarcarLida();
   const devolver = useDevolverConversa();
+  const pararRobo = usePararRoboConversa();
   const fimRef = useRef<HTMLDivElement | null>(null);
   const [menuAberto, setMenuAberto] = useState(false);
   const [encaminharAberto, setEncaminharAberto] = useState(false);
@@ -216,6 +237,14 @@ export function ThreadMensagens({ conversaId }: { conversaId: string }) {
                       >
                         <Building2 className="h-4 w-4 text-gray-400" /> Transferir para outra unidade…
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => void executar(() => pararRobo.mutateAsync(conversaId))}
+                        className="flex w-full items-center gap-2 border-t border-gray-100 px-3 py-2 text-left text-sm text-indigo-700 hover:bg-indigo-50"
+                        title="Impede o robô de continuar nesta conversa (vence a virada de horário) e assume para você"
+                      >
+                        <BotOff className="h-4 w-4 text-indigo-500" /> Parar robô nesta conversa
+                      </button>
                     </div>
                   )}
                 </div>
@@ -231,7 +260,18 @@ export function ThreadMensagens({ conversaId }: { conversaId: string }) {
 
       <div className="flex-1 space-y-2 overflow-y-auto p-3">
         {isLoading && <p className="text-sm text-gray-500">Carregando mensagens…</p>}
-        {mensagens?.map((m) => <Bolha key={m.id} m={m} />)}
+        {mensagens?.map((m) => (
+          <Bolha
+            key={m.id}
+            m={m}
+            onPararRobo={
+              m.tipoMensagem === 'Robo' && podeAgirNaPosse
+                ? () => void executar(() => pararRobo.mutateAsync(conversaId))
+                : undefined
+            }
+            pararPendente={pararRobo.isPending}
+          />
+        ))}
         <div ref={fimRef} />
       </div>
 

@@ -126,6 +126,18 @@ public sealed class ConversasController(IConversaService service) : ControllerBa
         return NoContent();
     }
 
+    /// <summary>Para o robô nesta conversa (bloqueio forte) e assume para o operador corrigir.</summary>
+    [HttpPost("{id:guid}/parar-robo")]
+    [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> PararRobo(Guid id, CancellationToken ct)
+    {
+        await service.PararRoboAsync(id, ct);
+        return NoContent();
+    }
+
     /// <summary>Devolve a conversa ao robô ("Atendente Virtual"): volta à fila e o robô retoma.</summary>
     [HttpPost("{id:guid}/encaminhar-robo")]
     [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Edicao)]

@@ -52,6 +52,12 @@ public interface IConversaService
     Task EncaminharParaRoboAsync(Guid conversaId, CancellationToken ct = default);
 
     /// <summary>
+    /// Para o robô nesta conversa (bloqueio forte, vence a virada de horário e persiste entre
+    /// janelas até a conversa voltar ao robô). Assume para o operador se estiver sem dono.
+    /// </summary>
+    Task PararRoboAsync(Guid conversaId, CancellationToken ct = default);
+
+    /// <summary>
     /// Encaminha a conversa para outro atendente (ele vira o responsável). O alvo precisa estar
     /// ativo, ter o módulo Conversas e vínculo com a unidade da conversa. Conversa de terceiro
     /// exige supervisão.

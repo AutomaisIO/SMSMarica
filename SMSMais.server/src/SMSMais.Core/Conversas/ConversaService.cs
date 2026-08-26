@@ -477,6 +477,38 @@ public sealed class ConversaService(
             ParaEvento(conversa, conversa.UltimaMensagemPreview), deOperador, conversa.UnidadeId, ct);
     }
 
+    /// <summary>Para o robô NESTA conversa (contenção): bloqueio forte que vence tudo — inclusive a
+    /// virada de horário fora do expediente — e persiste entre janelas até a conversa ser devolvida
+    /// ao robô. Assume a conversa para o operador (se estiver sem dono) para ele poder corrigir. Não
+    /// desfaz a mensagem já enviada (o WhatsApp não permite) — só impede o robô de continuar.</summary>
+    public async Task PararRoboAsync(Guid conversaId, CancellationToken ct = default)
+    {
+        var me = ExigirUsuario();
+        var conversa = await ObterNoEscopoAsync(conversaId, rastrear: true, ct);
+
+        var agora = DateTime.UtcNow;
+        conversa.RoboBloqueado = true;
+        conversa.AtualizadoEm = agora;
+        conversa.AtualizadoPor = me;
+
+        // Sem dono → assume para o operador poder mandar a correção; com dono, só bloqueia.
+        var deOperador = conversa.OperadorResponsavelId;
+        var deUnidade = conversa.UnidadeId;
+        var assumiu = false;
+        if (conversa.OperadorResponsavelId is null)
+        {
+            await AplicarClaimAsync(conversa, me, agora, ct);
+            assumiu = true;
+        }
+
+        await SalvarComTraducaoDeCorridaAsync(conversa, ct);
+        if (assumiu)
+            await notificador.ConversaMovidaAsync(
+                ParaEvento(conversa, conversa.UltimaMensagemPreview), deOperador, deUnidade, ct);
+        else
+            await notificador.ConversaAtualizadaAsync(ParaEvento(conversa, conversa.UltimaMensagemPreview), ct);
+    }
+
     /// <summary>Devolve a conversa AO ROBÔ ("Atendente Virtual"): volta à fila (sem responsável),
     /// re-arma a trava humano-por-janela (o robô passa a ignorar a atividade humana anterior desta
     /// janela) e, se a última mensagem for do cidadão e estiver sem resposta, enfileira já uma
@@ -497,6 +529,7 @@ public sealed class ConversaService(
 
         conversa.OperadorResponsavelId = null;     // volta à fila (a unidade permanece)
         conversa.RoboRearmadoEm = agora;           // re-arma: ignora atividade humana anterior desta janela
+        conversa.RoboBloqueado = false;            // devolver ao robô limpa o bloqueio "Parar robô"
         conversa.RoboInteracoesNaJanela = 0;       // orçamento de interações renovado para o robô
         conversa.AtualizadoEm = agora;
         conversa.AtualizadoPor = me;

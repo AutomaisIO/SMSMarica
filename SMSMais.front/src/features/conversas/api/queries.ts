@@ -6,6 +6,7 @@ import {
   encaminharConversa,
   encaminharConversaParaRobo,
   enviarMensagem,
+  pararRoboConversa,
   iniciarConversa,
   listarAtendentesElegiveis,
   listarConversas,
@@ -164,6 +165,15 @@ export function useEncaminharConversaParaRobo() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => encaminharConversaParaRobo(id),
+    onSuccess: (_d, id) => invalidarPosse(client, id),
+    onError: (_e, id) => invalidarPosse(client, id),
+  });
+}
+
+export function usePararRoboConversa() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => pararRoboConversa(id),
     onSuccess: (_d, id) => invalidarPosse(client, id),
     onError: (_e, id) => invalidarPosse(client, id),
   });

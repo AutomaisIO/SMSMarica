@@ -19,6 +19,10 @@ public sealed class RoboAtendimentoWhatsAppHandler(SmsMaisDbContext db) : IManip
     {
         if (ctx.Consumido) return;
 
+        // Bloqueio forte por conversa (operador clicou "Parar robô"): vence tudo, inclusive a virada
+        // de horário. Só é limpo ao devolver a conversa ao robô.
+        if (ctx.Conversa.RoboBloqueado) return;
+
         var ehAtendente = ctx.BotaoPayload?.StartsWith("atendente:", StringComparison.Ordinal) == true;
         // Botões/replies de outros domínios não são do robô; e sem texto (a menos que seja o botão atendente) não há o que tratar.
         if (!ehAtendente && !string.IsNullOrEmpty(ctx.BotaoPayload)) return;
@@ -36,25 +40,24 @@ public sealed class RoboAtendimentoWhatsAppHandler(SmsMaisDbContext db) : IManip
             e => e.TelefoneCanonical == ctx.Conversa.TelefoneCanonical && e.ExpiraEm > DateTime.UtcNow, ct);
         if (temEstadoConfirmacao) return;
 
-        // Trava humano-por-janela: se um humano já respondeu/assumiu desde a âncora, cala — salvo
-        // FORA do expediente dos atendentes (antes de abrir / depois de fechar), quando o robô assume.
-        var ignorarHumano = TravaHumano.ForaDoExpedienteHumano(
+        // Trava humano: se um humano já respondeu/assumiu desde o corte, cala. Dentro do expediente o
+        // corte é a âncora da janela; FORA dele, só a atividade RECENTE cala (o robô assume quando os
+        // atendentes saíram, mas recua se um deles acabou de agir — ex.: correção manual às 20h).
+        var foraExpediente = TravaHumano.ForaDoExpedienteHumano(
             cfg.HoraAtendimentoHumanoInicio, cfg.HoraAtendimentoHumanoFim, DateTime.UtcNow);
-        if (!ignorarHumano)
-        {
-            var ancora = TravaHumano.AncoraEfetiva(
-                ctx.Conversa.JanelaAbertaEm, ctx.Mensagem.OcorridoEm, ctx.Conversa.RoboRearmadoEm);
-            var humanoRespondeu = await db.MensagensWhatsApp.AsNoTracking().AnyAsync(
-                m => m.ConversaId == ctx.Conversa.Id && m.Direcao == DirecaoMensagem.Saida
-                    && m.AutorUsuarioId != null && m.OcorridoEm >= ancora, ct);
-            if (humanoRespondeu) return;
-            var humanoAssumiu = await db.ConversaEventos.AsNoTracking().AnyAsync(
-                e => e.ConversaId == ctx.Conversa.Id && e.AtorUsuarioId != null && e.OcorridoEm >= ancora
-                    && (e.Tipo == TipoEventoConversa.Assumida
-                        || e.Tipo == TipoEventoConversa.Transferida
-                        || e.Tipo == TipoEventoConversa.EncaminhadaUnidade), ct);
-            if (humanoAssumiu) return;
-        }
+        var ancora = TravaHumano.AncoraEfetiva(
+            ctx.Conversa.JanelaAbertaEm, ctx.Mensagem.OcorridoEm, ctx.Conversa.RoboRearmadoEm);
+        var corteHumano = TravaHumano.CorteHumano(ancora, foraExpediente, DateTime.UtcNow);
+        var humanoRespondeu = await db.MensagensWhatsApp.AsNoTracking().AnyAsync(
+            m => m.ConversaId == ctx.Conversa.Id && m.Direcao == DirecaoMensagem.Saida
+                && m.AutorUsuarioId != null && m.OcorridoEm >= corteHumano, ct);
+        if (humanoRespondeu) return;
+        var humanoAssumiu = await db.ConversaEventos.AsNoTracking().AnyAsync(
+            e => e.ConversaId == ctx.Conversa.Id && e.AtorUsuarioId != null && e.OcorridoEm >= corteHumano
+                && (e.Tipo == TipoEventoConversa.Assumida
+                    || e.Tipo == TipoEventoConversa.Transferida
+                    || e.Tipo == TipoEventoConversa.EncaminhadaUnidade), ct);
+        if (humanoAssumiu) return;
 
         // Limite de interações do robô na janela.
         if (ctx.Conversa.RoboInteracoesNaJanela >= 8) return;

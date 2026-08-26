@@ -16,6 +16,21 @@ public static class TravaHumano
         return roboRearmadoEm is { } r && r > baseAncora ? r : baseAncora;
     }
 
+    /// <summary>Fora do expediente, por quanto tempo o robô ainda RECUA depois da última ação de um
+    /// humano. Enquanto um atendente estiver ativo (agiu há menos que isto), o robô não assume,
+    /// mesmo após o fim do expediente — cobre o atendente que ficou trabalhando além da hora.</summary>
+    public static readonly TimeSpan RecenciaForaExpediente = TimeSpan.FromMinutes(120);
+
+    /// <summary>Instante-corte a partir do qual a atividade humana cala o robô. Dentro do expediente
+    /// é a âncora da janela; FORA dele, só a atividade RECENTE cala (max entre a âncora e agora−recência),
+    /// de modo que o robô assume quando os atendentes já saíram, mas recua se um deles acabou de agir.</summary>
+    public static DateTime CorteHumano(DateTime ancora, bool foraExpediente, DateTime agoraUtc)
+    {
+        if (!foraExpediente) return ancora;
+        var recente = agoraUtc - RecenciaForaExpediente;
+        return recente > ancora ? recente : ancora;
+    }
+
     /// <summary>Verdadeiro quando o horário atual (Brasília, UTC-3) está FORA do expediente dos
     /// atendentes humanos — antes de <paramref name="inicio"/> ou a partir de <paramref name="fim"/>.
     /// Nesse caso o robô ignora a trava humano-por-janela e assume a conversa. Ambos nulos ⇒ nunca

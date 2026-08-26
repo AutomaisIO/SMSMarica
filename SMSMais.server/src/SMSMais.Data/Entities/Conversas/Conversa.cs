@@ -65,6 +65,11 @@ public class Conversa
     /// trava humano-por-janela: atividade humana ANTES disso deixa de calar o robô, que retoma.</summary>
     public DateTime? RoboRearmadoEm { get; set; }
 
+    /// <summary>Bloqueio FORTE do robô nesta conversa (operador clicou "Parar robô"). Vence tudo —
+    /// inclusive a virada de horário fora do expediente — e persiste entre janelas. Só é limpo ao
+    /// devolver a conversa ao robô ("Atendente Virtual").</summary>
+    public bool RoboBloqueado { get; set; }
+
     public DateTime PrimeiroContatoEm { get; set; }
 
     /// <summary>Token de concorrência (xmin do Postgres) — protege takeover simultâneo.</summary>

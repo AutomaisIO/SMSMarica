@@ -60,16 +60,25 @@ public sealed class RoboAtendimentoProcessador(
             return;
         }
 
-        var ancora = TravaHumano.AncoraEfetiva(conversa.JanelaAbertaEm, mensagem.OcorridoEm, conversa.RoboRearmadoEm);
-        // Fora do expediente dos atendentes (antes de abrir / depois de fechar), o robô assume
-        // mesmo com humano na sessão. Dentro dele, a trava humano-por-janela vale.
-        var ignorarHumano = TravaHumano.ForaDoExpedienteHumano(
-            cfg.HoraAtendimentoHumanoInicio, cfg.HoraAtendimentoHumanoFim, DateTime.UtcNow);
-
-        // Trava humano-por-janela (1ª checagem).
-        if (!ignorarHumano && await HumanoNaJanelaAsync(conversa.Id, ancora, ct))
+        // Bloqueio forte por conversa (operador parou o robô) — vence tudo, inclusive a virada de horário.
+        if (conversa.RoboBloqueado)
         {
-            await FinalizarAsync(tarefa, StatusRoboTarefa.HandOff, "Humano já atuou na janela.", ct);
+            await FinalizarAsync(tarefa, StatusRoboTarefa.HandOff, "Robô bloqueado nesta conversa.", ct);
+            return;
+        }
+
+        var ancora = TravaHumano.AncoraEfetiva(conversa.JanelaAbertaEm, mensagem.OcorridoEm, conversa.RoboRearmadoEm);
+        // Fora do expediente dos atendentes o robô assume mesmo com humano na sessão — MAS recua se
+        // um atendente agiu recentemente (corte = agora−recência). Dentro do expediente, a trava
+        // humano-por-janela vale a janela toda (corte = âncora).
+        var foraExpediente = TravaHumano.ForaDoExpedienteHumano(
+            cfg.HoraAtendimentoHumanoInicio, cfg.HoraAtendimentoHumanoFim, DateTime.UtcNow);
+        var corteHumano = TravaHumano.CorteHumano(ancora, foraExpediente, DateTime.UtcNow);
+
+        // Trava humano (1ª checagem).
+        if (await HumanoNaJanelaAsync(conversa.Id, corteHumano, ct))
+        {
+            await FinalizarAsync(tarefa, StatusRoboTarefa.HandOff, "Humano atuou (dentro do corte).", ct);
             return;
         }
 
@@ -93,10 +102,10 @@ public sealed class RoboAtendimentoProcessador(
             return;
         }
 
-        // "Dentro do horário" para o robô = há ATENDENTE HUMANO disponível agora. Fora da janela
-        // de expediente humano (ignorarHumano) não há para quem encaminhar — o robô não pode
-        // oferecer atendente e deve orientar a voltar no horário.
-        var dentroHorario = !ignorarHumano && (assunto is null || DentroDoHorario(assunto));
+        // "Dentro do horário" para o robô = há ATENDENTE HUMANO disponível agora. Fora do expediente
+        // humano não há para quem encaminhar — o robô não pode oferecer atendente e deve orientar a
+        // voltar no horário.
+        var dentroHorario = !foraExpediente && (assunto is null || DentroDoHorario(assunto));
         var urlApp = await db.Instituicoes.AsNoTracking().Select(i => i.UrlApp).FirstOrDefaultAsync(ct);
         var comandos = assunto is null
             ? Array.Empty<string>()
@@ -115,8 +124,8 @@ public sealed class RoboAtendimentoProcessador(
 
         var resposta = await motor.ResponderAsync(entrada, ct);
 
-        // Trava humano-por-janela (2ª checagem — TOCTOU: alguém pode ter assumido enquanto a IA pensava).
-        if (!ignorarHumano && await HumanoNaJanelaAsync(conversa.Id, ancora, ct))
+        // Trava humano (2ª checagem — TOCTOU: alguém pode ter assumido enquanto a IA pensava).
+        if (await HumanoNaJanelaAsync(conversa.Id, corteHumano, ct))
         {
             await FinalizarAsync(tarefa, StatusRoboTarefa.HandOff, "Humano assumiu durante o processamento.", ct);
             return;
