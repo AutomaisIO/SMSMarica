@@ -84,6 +84,14 @@ export async function pararRoboConversa(id: string): Promise<void> {
   await http.post(`/conversas/${id}/parar-robo`, {});
 }
 
+/** Marca uma resposta do robô como errada (para treinamento). */
+export async function marcarRoboErro(
+  id: string,
+  body: { mensagemWhatsAppId?: string | null; nota?: string | null },
+): Promise<void> {
+  await http.post(`/conversas/${id}/robo-erro`, body);
+}
+
 export async function transferirConversa(
   id: string,
   payload: { paraUnidadeId: string; observacao?: string | null },

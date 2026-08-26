@@ -86,6 +86,22 @@ export type ComandoRoboCatalogo = {
   escrita: boolean;
 };
 
+export type StatusRoboErro = 'Aberto' | 'Revisado' | 'Descartado';
+
+export type RoboErro = {
+  id: string;
+  conversaId: string;
+  mensagemWhatsAppId: string | null;
+  assunto: string | null;
+  trecho: string | null;
+  nota: string | null;
+  status: StatusRoboErro;
+  criadoEm: string;
+  criadoPorNome: string | null;
+  revisadoEm: string | null;
+  revisaoNota: string | null;
+};
+
 export type RoboConfiguracao = {
   ativo: boolean;
   personaGlobal: string;

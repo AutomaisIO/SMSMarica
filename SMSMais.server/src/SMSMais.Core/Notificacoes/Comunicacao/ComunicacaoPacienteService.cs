@@ -421,9 +421,16 @@ public sealed class ComunicacaoPacienteService(
         {
             var optsDesafio = options.Value;
             var procedimento = s.ExameImagem?.TipoExame?.Nome ?? s.EspecialidadeTexto ?? s.ProcedimentoTexto ?? "seu atendimento";
+            // Conteúdo legível gravado na thread/histórico: deixa CLARO que se pede os dígitos do CPF,
+            // para o robô entender que a próxima resposta (números) é a confirmação cadastral.
+            var textoDesafio =
+                $"Olá {PrimeiroNome(paciente.NomeCompleto)}! Este é o canal oficial da saúde. Temos uma "
+                + $"informação sobre *{procedimento}*. Para sua segurança, confirme apenas os primeiros "
+                + "dígitos do seu CPF para prosseguir.";
             var desafio = await whatsApp.EnviarTemplateAsync(
                 n.Telefone, optsDesafio.TemplateValidacaoCadastro, optsDesafio.Idioma,
-                [PrimeiroNome(paciente.NomeCompleto), procedimento], pacienteId: n.PacienteId, ct: ct);
+                [PrimeiroNome(paciente.NomeCompleto), procedimento],
+                pacienteId: n.PacienteId, conteudoLegivel: textoDesafio, ct: ct);
 
             if (desafio.Ok)
             {

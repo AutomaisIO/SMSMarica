@@ -5,11 +5,17 @@ import {
   criarAssunto,
   excluirAssunto,
   listarAssuntos,
+  listarErrosRobo,
   obterAssunto,
   obterConfiguracao,
+  revisarErroRobo,
   salvarConfiguracao,
 } from '@/features/robo-atendimento/api/roboApi';
-import type { RoboConfiguracao, SalvarRoboAssuntoPayload } from '@/features/robo-atendimento/types';
+import type {
+  RoboConfiguracao,
+  SalvarRoboAssuntoPayload,
+  StatusRoboErro,
+} from '@/features/robo-atendimento/types';
 
 export const roboKeys = {
   raiz: ['robo-atendimento'] as const,
@@ -18,6 +24,7 @@ export const roboKeys = {
   assunto: (id: string) => ['robo-atendimento', 'assunto', id] as const,
   catalogo: ['robo-atendimento', 'catalogo-comandos'] as const,
   config: ['robo-atendimento', 'configuracao'] as const,
+  erros: (status?: StatusRoboErro) => ['robo-atendimento', 'erros', status ?? 'todos'] as const,
 };
 
 export function useListarAssuntos(incluirInativos = false) {
@@ -73,5 +80,21 @@ export function useSalvarConfiguracaoRobo() {
   return useMutation({
     mutationFn: (payload: RoboConfiguracao) => salvarConfiguracao(payload),
     onSuccess: () => client.invalidateQueries({ queryKey: roboKeys.config }),
+  });
+}
+
+export function useListarErrosRobo(status?: StatusRoboErro) {
+  return useQuery({
+    queryKey: roboKeys.erros(status),
+    queryFn: () => listarErrosRobo(status),
+  });
+}
+
+export function useRevisarErroRobo() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status, nota }: { id: string; status: 'Revisado' | 'Descartado'; nota?: string }) =>
+      revisarErroRobo(id, { status, nota: nota || null }),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['robo-atendimento', 'erros'] }),
   });
 }

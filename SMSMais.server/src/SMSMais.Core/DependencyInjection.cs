@@ -642,6 +642,7 @@ public static class DependencyInjection
         // ---- Robô de atendimento (assuntos cadastráveis + comandos por assunto) ----
         services.AddScoped<RoboAtendimento.IRoboAssuntoService, RoboAtendimento.RoboAssuntoService>();
         services.AddScoped<RoboAtendimento.IRoboConfiguracaoService, RoboAtendimento.RoboConfiguracaoService>();
+        services.AddScoped<RoboAtendimento.IRoboErroService, RoboAtendimento.RoboErroService>();
         services.AddScoped<PendenciasCadastro.IPendenciaCadastroService, PendenciasCadastro.PendenciaCadastroService>();
 
         // Runtime do robô: motor (aiengine), classificador, processador (1 tarefa) e o worker (fila).

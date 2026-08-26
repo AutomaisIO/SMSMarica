@@ -15,7 +15,8 @@ namespace SMSMais.Api.Controllers;
 [Route("robo")]
 public sealed class RoboController(
     IRoboAssuntoService assuntos,
-    IRoboConfiguracaoService configuracao) : ControllerBase
+    IRoboConfiguracaoService configuracao,
+    IRoboErroService erros) : ControllerBase
 {
     // ---- Assuntos ----
 
@@ -87,6 +88,28 @@ public sealed class RoboController(
     public async Task<IActionResult> SalvarConfiguracao([FromBody] SalvarRoboConfiguracaoRequest request, CancellationToken ct)
     {
         await configuracao.SalvarAsync(request, ct);
+        return NoContent();
+    }
+
+    // ---- Erros para treinamento ----
+
+    /// <summary>Lista os erros do robô marcados por atendentes (para revisão/treinamento).</summary>
+    [HttpGet("erros")]
+    [RequerPermissao(ModuloPermissao.RoboAtendimento, AcoesPermissao.Consulta)]
+    [ProducesResponseType<IReadOnlyList<RoboErroDto>>(StatusCodes.Status200OK)]
+    public async Task<IReadOnlyList<RoboErroDto>> ListarErros(
+        [FromQuery] StatusRoboErro? status, [FromQuery] Guid? assuntoId, CancellationToken ct) =>
+        await erros.ListarAsync(status, assuntoId, ct);
+
+    /// <summary>Revisa um erro marcado (Revisado ou Descartado).</summary>
+    [HttpPost("erros/{id:guid}/revisar")]
+    [RequerPermissao(ModuloPermissao.RoboAtendimento, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RevisarErro(Guid id, [FromBody] RevisarRoboErroRequest request, CancellationToken ct)
+    {
+        await erros.RevisarAsync(id, request, ct);
         return NoContent();
     }
 }

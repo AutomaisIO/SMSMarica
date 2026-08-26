@@ -6,6 +6,7 @@ import {
   encaminharConversa,
   encaminharConversaParaRobo,
   enviarMensagem,
+  marcarRoboErro,
   pararRoboConversa,
   iniciarConversa,
   listarAtendentesElegiveis,
@@ -176,6 +177,13 @@ export function usePararRoboConversa() {
     mutationFn: (id: string) => pararRoboConversa(id),
     onSuccess: (_d, id) => invalidarPosse(client, id),
     onError: (_e, id) => invalidarPosse(client, id),
+  });
+}
+
+export function useMarcarRoboErro() {
+  return useMutation({
+    mutationFn: ({ id, mensagemWhatsAppId, nota }: { id: string; mensagemWhatsAppId?: string; nota?: string }) =>
+      marcarRoboErro(id, { mensagemWhatsAppId: mensagemWhatsAppId || null, nota: nota || null }),
   });
 }
 

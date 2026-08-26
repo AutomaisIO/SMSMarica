@@ -223,6 +223,7 @@ public sealed class SmsMaisDbContext(DbContextOptions<SmsMaisDbContext> options)
     public DbSet<RoboAtendimentoTarefa> RoboTarefas => Set<RoboAtendimentoTarefa>();
     public DbSet<RoboAcao> RoboAcoes => Set<RoboAcao>();
     public DbSet<RoboConfiguracao> RoboConfiguracoes => Set<RoboConfiguracao>();
+    public DbSet<RoboErroResposta> RoboErrosResposta => Set<RoboErroResposta>();
 
     // Pendências de ajuste de cadastro ("números errados") levantadas no atendimento.
     public DbSet<PendenciaCadastro> PendenciasCadastro => Set<PendenciaCadastro>();

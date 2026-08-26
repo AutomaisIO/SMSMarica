@@ -3,6 +3,8 @@ using SMSMais.Api.Auth;
 using SMSMais.Core.Conversas;
 using SMSMais.Core.Conversas.Dtos;
 using SMSMais.Core.Notificacoes.WhatsApp;
+using SMSMais.Core.RoboAtendimento;
+using SMSMais.Core.RoboAtendimento.Dtos;
 using SMSMais.Data.Entities.Enums;
 
 namespace SMSMais.Api.Controllers;
@@ -13,7 +15,7 @@ namespace SMSMais.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("conversas")]
-public sealed class ConversasController(IConversaService service) : ControllerBase
+public sealed class ConversasController(IConversaService service, IRoboErroService roboErros) : ControllerBase
 {
     [HttpGet]
     [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Consulta)]
@@ -125,6 +127,21 @@ public sealed class ConversasController(IConversaService service) : ControllerBa
         await service.DevolverAsync(id, ct);
         return NoContent();
     }
+
+    /// <summary>Marca uma resposta do robô nesta conversa como errada (para revisão/treinamento).</summary>
+    [HttpPost("{id:guid}/robo-erro")]
+    [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> MarcarRoboErro(Guid id, [FromBody] MarcarRoboErroBody body, CancellationToken ct)
+    {
+        await roboErros.RegistrarAsync(new RegistrarRoboErroRequest(id, body?.MensagemWhatsAppId, body?.Nota), ct);
+        return NoContent();
+    }
+
+    /// <summary>Corpo de <c>POST /conversas/{id}/robo-erro</c>.</summary>
+    public sealed record MarcarRoboErroBody(Guid? MensagemWhatsAppId, string? Nota);
 
     /// <summary>Para o robô nesta conversa (bloqueio forte) e assume para o operador corrigir.</summary>
     [HttpPost("{id:guid}/parar-robo")]

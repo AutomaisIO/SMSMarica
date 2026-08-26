@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowRightLeft, BotOff, Building2, Check, MoreVertical, Undo2 } from 'lucide-react';
+import { AlertTriangle, ArrowRightLeft, BotOff, Building2, Check, MoreVertical, Undo2 } from 'lucide-react';
 import {
   useAssumirConversa,
   useConversa,
   useDevolverConversa,
   useMarcarLida,
+  useMarcarRoboErro,
   useMensagens,
   usePararRoboConversa,
 } from '@/features/conversas/api/queries';
@@ -27,10 +28,12 @@ function hora(iso: string): string {
 function Bolha({
   m,
   onPararRobo,
+  onMarcarErro,
   pararPendente,
 }: {
   m: Mensagem;
   onPararRobo?: () => void;
+  onMarcarErro?: () => void;
   pararPendente?: boolean;
 }) {
   const saida = m.direcao === 'Saida';
@@ -59,16 +62,30 @@ function Bolha({
         {m.conteudo && <p className="whitespace-pre-wrap break-words">{m.conteudo}</p>}
         <p className={`mt-1 text-[10px] ${saida && !nota && !robo ? 'text-white/70' : 'text-gray-400'}`}>{hora(m.ocorridoEm)}</p>
       </div>
-      {robo && onPararRobo && (
-        <button
-          type="button"
-          onClick={onPararRobo}
-          disabled={pararPendente}
-          className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-indigo-500 hover:text-indigo-700 disabled:opacity-50"
-          title="Para o robô nesta conversa e assume para você corrigir. A mensagem já enviada não pode ser apagada no WhatsApp."
-        >
-          <BotOff className="h-3.5 w-3.5" /> Parar robô
-        </button>
+      {robo && (onPararRobo || onMarcarErro) && (
+        <div className="mt-0.5 flex items-center gap-3">
+          {onPararRobo && (
+            <button
+              type="button"
+              onClick={onPararRobo}
+              disabled={pararPendente}
+              className="flex items-center gap-1 text-[11px] font-medium text-indigo-500 hover:text-indigo-700 disabled:opacity-50"
+              title="Para o robô nesta conversa e assume para você corrigir. A mensagem já enviada não pode ser apagada no WhatsApp."
+            >
+              <BotOff className="h-3.5 w-3.5" /> Parar robô
+            </button>
+          )}
+          {onMarcarErro && (
+            <button
+              type="button"
+              onClick={onMarcarErro}
+              className="flex items-center gap-1 text-[11px] font-medium text-amber-600 hover:text-amber-700"
+              title="Marca esta resposta como errada, para revisão e treinamento do robô."
+            >
+              <AlertTriangle className="h-3.5 w-3.5" /> Marcar erro
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
@@ -83,6 +100,9 @@ export function ThreadMensagens({ conversaId }: { conversaId: string }) {
   const marcarLida = useMarcarLida();
   const devolver = useDevolverConversa();
   const pararRobo = usePararRoboConversa();
+  const marcarErro = useMarcarRoboErro();
+  const [erroMsgId, setErroMsgId] = useState<string | null>(null);
+  const [erroNota, setErroNota] = useState('');
   const fimRef = useRef<HTMLDivElement | null>(null);
   const [menuAberto, setMenuAberto] = useState(false);
   const [encaminharAberto, setEncaminharAberto] = useState(false);
@@ -269,6 +289,14 @@ export function ThreadMensagens({ conversaId }: { conversaId: string }) {
                 ? () => void executar(() => pararRobo.mutateAsync(conversaId))
                 : undefined
             }
+            onMarcarErro={
+              m.tipoMensagem === 'Robo'
+                ? () => {
+                    setErroNota('');
+                    setErroMsgId(m.id);
+                  }
+                : undefined
+            }
             pararPendente={pararRobo.isPending}
           />
         ))}
@@ -291,6 +319,52 @@ export function ThreadMensagens({ conversaId }: { conversaId: string }) {
           onFechar={() => setTransferirAberto(false)}
           onTransferida={() => setTransferirAberto(false)}
         />
+      )}
+
+      {erroMsgId && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-4 shadow-xl">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+              <AlertTriangle className="h-4 w-4 text-amber-500" /> Marcar resposta do robô como erro
+            </h2>
+            <p className="mt-1 text-xs text-gray-500">
+              Fica registrada para revisão e treinamento do robô. Não altera a mensagem já enviada.
+            </p>
+            <textarea
+              value={erroNota}
+              onChange={(e) => setErroNota(e.target.value)}
+              rows={3}
+              maxLength={2000}
+              placeholder="O que saiu errado? (opcional)"
+              className="mt-3 w-full rounded-md border border-gray-200 px-2 py-1.5 text-sm outline-none focus:border-primary-400"
+            />
+            <div className="mt-3 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setErroMsgId(null)}
+                className="rounded-md px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={marcarErro.isPending}
+                onClick={() =>
+                  marcarErro.mutate(
+                    { id: conversaId, mensagemWhatsAppId: erroMsgId, nota: erroNota.trim() || undefined },
+                    {
+                      onSuccess: () => setErroMsgId(null),
+                      onError: (e) => setErroAcao(extrairMensagemDeErro(e)),
+                    },
+                  )
+                }
+                className="rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+              >
+                {marcarErro.isPending ? 'Registrando…' : 'Marcar erro'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -83,9 +83,14 @@ public sealed class RoboAtendimentoProcessador(
         }
 
         var texto = mensagem.Conteudo ?? string.Empty;
-        // Classificação por ESTADO tem prioridade: se há um desafio cadastral pendente para o
-        // paciente, a resposta (4 dígitos do CPF / botões) é do assunto "Verificação cadastral".
-        Guid? assuntoId = conversa.PacienteId is { } pid && await AguardandoVerificacaoCadastralAsync(pid, ct)
+        // Classificação por ESTADO tem prioridade: se há um desafio cadastral pendente, a resposta
+        // (dígitos do CPF / botões) é do assunto "Verificação cadastral". O desafio é buscado por
+        // PACIENTE quando a conversa está resolvida, MAS também por TELEFONE — o caso comum é o
+        // número NÃO estar amarrado a ninguém (é o motivo do desafio), então conversa.PacienteId é nulo.
+        var aguardandoCadastral =
+            (conversa.PacienteId is { } pid && await AguardandoVerificacaoCadastralAsync(pid, ct))
+            || await AguardandoVerificacaoCadastralPorTelefoneAsync(conversa.TelefoneCanonical, ct);
+        Guid? assuntoId = aguardandoCadastral
             ? RoboAssuntosPadrao.VerificacaoCadastralId
             : await classificador.ClassificarAsync(texto, ct);
         RoboAssunto? assunto = assuntoId is { } id
@@ -205,6 +210,21 @@ public sealed class RoboAtendimentoProcessador(
             n => n.PacienteId == pacienteId
                 && n.Status == StatusComunicacao.AguardandoVerificacaoCadastral
                 && n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento, ct);
+
+    /// <summary>Há desafio cadastral pendente para ESTE telefone? Cobre o caso (comum) do número
+    /// não amarrado a paciente. O telefone da comunicação é comparado em forma canônica.</summary>
+    private async Task<bool> AguardandoVerificacaoCadastralPorTelefoneAsync(string telefoneCanonical, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(telefoneCanonical)) return false;
+        var limite = DateTime.UtcNow.AddDays(-20); // desafio antigo não conta
+        var fones = await db.ComunicacoesPaciente.AsNoTracking()
+            .Where(n => n.Status == StatusComunicacao.AguardandoVerificacaoCadastral
+                && n.Finalidade == FinalidadeComunicacao.ConfirmacaoAgendamento
+                && n.Telefone != null && n.CriadoEm >= limite)
+            .Select(n => n.Telefone!)
+            .ToListAsync(ct);
+        return fones.Any(t => TelefoneWhatsApp.Canonizar(t) == telefoneCanonical);
+    }
 
     private async Task<IReadOnlyList<MensagemHistoricoRobo>> CarregarHistoricoAsync(
         Guid conversaId, Guid excluirId, CancellationToken ct)

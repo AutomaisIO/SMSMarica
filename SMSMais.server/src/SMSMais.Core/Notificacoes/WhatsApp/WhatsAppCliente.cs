@@ -130,10 +130,12 @@ public sealed class WhatsAppCliente(
 
     public async Task<EnvioWhatsAppResultado> EnviarTemplateAsync(
         string telefone, string template, string idiomaBcp47, IReadOnlyList<string> parametros,
-        Guid? pacienteId = null, CancellationToken ct = default)
+        Guid? pacienteId = null, string? conteudoLegivel = null, CancellationToken ct = default)
     {
         var fone = NormalizarTelefone(telefone);
-        var conteudo = parametros.Count == 0 ? $"[template:{template}]" : $"[template:{template}] {string.Join(" | ", parametros)}";
+        var conteudo = !string.IsNullOrWhiteSpace(conteudoLegivel)
+            ? conteudoLegivel!
+            : parametros.Count == 0 ? $"[template:{template}]" : $"[template:{template}] {string.Join(" | ", parametros)}";
         var ctx = await ObterContextoOuNuloAsync(ct);
         if (ctx is null) return await SimularAsync(fone, template, conteudo, pacienteId, ct);
 

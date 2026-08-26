@@ -4,7 +4,9 @@ import type {
   RoboAssunto,
   RoboAssuntoListItem,
   RoboConfiguracao,
+  RoboErro,
   SalvarRoboAssuntoPayload,
+  StatusRoboErro,
 } from '@/features/robo-atendimento/types';
 
 export async function listarAssuntos(incluirInativos = false): Promise<RoboAssuntoListItem[]> {
@@ -44,4 +46,18 @@ export async function obterConfiguracao(): Promise<RoboConfiguracao> {
 
 export async function salvarConfiguracao(payload: RoboConfiguracao): Promise<void> {
   await http.put('/robo/configuracao', payload);
+}
+
+export async function listarErrosRobo(status?: StatusRoboErro): Promise<RoboErro[]> {
+  const { data } = await http.get<RoboErro[]>('/robo/erros', {
+    params: status ? { status } : undefined,
+  });
+  return data;
+}
+
+export async function revisarErroRobo(
+  id: string,
+  payload: { status: 'Revisado' | 'Descartado'; nota?: string | null },
+): Promise<void> {
+  await http.post(`/robo/erros/${id}/revisar`, payload);
 }
