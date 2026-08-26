@@ -266,17 +266,21 @@ export function SernitSolicitacaoDetalhePage() {
               </span>
             </h2>
 
-            {r.historicoIndisponivel ? (
-              // Vale explicar em vez de mostrar vazio: em Alta o menu do SERNIT não oferece o item,
-              // e como Alta é estado terminal, a trilha nunca mais ficará legível lá.
-              <p className="rounded bg-amber-50 p-3 text-sm text-amber-800">
-                O SERNIT não oferece o histórico desta solicitação — solicitações em Alta não têm o
-                item no menu de opções. O que aparece aqui é o que foi capturado antes da alta.
+            {/* Em Alta o SERNIT esconde o histórico — mas NÓS mantemos o que capturamos e anexamos
+                a linha da mudança para Alta. Por isso o aviso é um banner ACIMA da trilha, não no
+                lugar dela: o operador vê a explicação E os eventos preservados. */}
+            {r.historicoIndisponivel && (
+              <p className="mb-3 rounded bg-amber-50 p-3 text-sm text-amber-800">
+                Em Alta o SERNIT não oferece mais o histórico. Mantivemos o que foi capturado antes e
+                registramos a mudança para Alta — a trilha abaixo é o que preservamos.
               </p>
-            ) : detalhe.eventos.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                Histórico ainda não lido pelo motor de varredura.
-              </p>
+            )}
+            {detalhe.eventos.length === 0 ? (
+              !r.historicoIndisponivel && (
+                <p className="text-sm text-slate-500">
+                  Histórico ainda não lido pelo motor de varredura.
+                </p>
+              )
             ) : (
               <ol className="relative space-y-3 border-l border-slate-200 pl-2">
                 {detalhe.eventos.map((e) => (

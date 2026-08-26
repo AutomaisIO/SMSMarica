@@ -287,7 +287,10 @@ public sealed class SernitSincronizacaoService(
                 RegistrarGatilho(execucao, nova, TipoGatilhoSernit.NovaSolicitacao, situacao.ToString(),
                     null, situacao, new { linha.Recurso, linha.Paciente, linha.DataSolicitacao });
 
-                precisamHistorico.Add((idSernit, situacao, "nova"));
+                // Já nasce em Alta: o SERNIT não oferece o histórico dela e não vimos a transição,
+                // então não há o que ler nem o que anexar — só marca indisponível (evita a falha).
+                if (situacao == SituacaoSernit.Alta) nova.HistoricoIndisponivel = true;
+                else precisamHistorico.Add((idSernit, situacao, "nova"));
                 continue;
             }
 
@@ -311,7 +314,18 @@ public sealed class SernitSincronizacaoService(
                     $"{situacaoAnterior}>{situacao}@{agora:yyyyMMddHHmmss}",
                     situacaoAnterior, situacao, new { de = situacaoAnterior.ToString(), para = situacao.ToString() });
 
-                precisamHistorico.Add((idSernit, situacao, "mudou_situacao"));
+                if (situacao == SituacaoSernit.Alta)
+                {
+                    // O SERNIT ESCONDE o histórico quando a solicitação vai para Alta — reler
+                    // falharia e não traria nada. Em vez de perder a trilha (como o SERNIT faz),
+                    // PRESERVAMOS os eventos já capturados e ANEXAMOS a linha da mudança para Alta
+                    // com os dados da grade. Não enfileira para leitura de histórico.
+                    AnexarMudancaParaAlta(execucao, atual, situacaoAnterior, agora);
+                }
+                else
+                {
+                    precisamHistorico.Add((idSernit, situacao, "mudou_situacao"));
+                }
             }
             else if (!string.Equals(
                          DataDoAgendamento(agendadoAnterior),
@@ -528,6 +542,39 @@ public sealed class SernitSincronizacaoService(
         solicitacao.HistoricoLidoEm = agora;
         solicitacao.EventosCount = conhecidos.Count;
         solicitacao.UltimoEventoEm = maisRecente;
+    }
+
+    /// <summary>
+    /// Anexa a linha <b>"→ Alta"</b> ao histórico LOCAL e marca o histórico como indisponível no
+    /// SERNIT — sem tentar reler (Alta esconde o histórico e a releitura falharia). Os eventos já
+    /// capturados FICAM: ao contrário do SERNIT, não sumimos com a trilha do processo; só somamos
+    /// a transição. Roda uma vez (a guarda <c>HistoricoIndisponivel</c> impede re-anexar).
+    /// </summary>
+    private void AnexarMudancaParaAlta(
+        SernitVarreduraExecucao execucao, SernitSolicitacao sol, SituacaoSernit anterior, DateTime agora)
+    {
+        if (sol.HistoricoIndisponivel) return;
+
+        db.SernitEventos.Add(new SernitEvento
+        {
+            Id = Guid.NewGuid(),
+            SernitSolicitacaoId = sol.Id,
+            DataEvento = agora,
+            Evento = "Alta",
+            EstadoAnterior = anterior.ToString(),
+            EstadoAtual = SituacaoSernit.Alta.ToString(),
+            UnidadeExecutora = string.IsNullOrWhiteSpace(sol.UnidadeExecutora) ? null : sol.UnidadeExecutora,
+            Observacao = "Alta detectada pela varredura da grade. O SERNIT não oferece o histórico em "
+                         + "Alta; os eventos capturados antes ficam preservados e esta linha registra "
+                         + "a transição.",
+            CapturadoEm = agora,
+        });
+
+        sol.EventosCount += 1;
+        if (sol.UltimoEventoEm is null || agora > sol.UltimoEventoEm) sol.UltimoEventoEm = agora;
+        sol.HistoricoIndisponivel = true; // não re-enfileira nem re-anexa; a tela explica o porquê
+        sol.HistoricoLidoEm ??= agora;
+        execucao.EventosNovos++;
     }
 
     private static bool EhFollowUp(string evento) =>

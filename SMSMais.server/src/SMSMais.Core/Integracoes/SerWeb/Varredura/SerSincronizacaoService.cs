@@ -331,7 +331,10 @@ public sealed class SerSincronizacaoService(
                 RegistrarGatilho(execucao, nova, TipoGatilhoSer.NovaSolicitacao, situacao.ToString(),
                     null, situacao, new { linha.Recurso, linha.Paciente, linha.DataSolicitacao });
 
-                precisamHistorico.Add((idSer, situacao, "nova"));
+                // Já nasce em Alta: o SER não oferece o histórico dela e não vimos a transição,
+                // então não há o que ler nem o que anexar — só marca indisponível (evita a falha).
+                if (situacao == SituacaoSer.Alta) nova.HistoricoIndisponivel = true;
+                else precisamHistorico.Add((idSer, situacao, "nova"));
                 continue;
             }
 
@@ -360,10 +363,21 @@ public sealed class SerSincronizacaoService(
                     $"{situacaoAnterior}>{situacao}@{agora:yyyyMMddHHmmss}",
                     situacaoAnterior, situacao, new { de = situacaoAnterior.ToString(), para = situacao.ToString() });
 
-                // Mudou de situação → relê o histórico e faz diff. É esta releitura que serve de
-                // REDE DE SEGURANÇA para o FollowUP registrado enquanto a solicitação estava
-                // cancelada: ao voltar para EmFila, a trilha inteira é relida e deduplicada.
-                precisamHistorico.Add((idSer, situacao, "mudou_situacao"));
+                if (situacao == SituacaoSer.Alta)
+                {
+                    // O SER ESCONDE o histórico (de eventos) quando a solicitação vai para Alta —
+                    // reler falharia. Em vez de perder a trilha, PRESERVAMOS os eventos já capturados
+                    // e ANEXAMOS a linha da mudança para Alta com os dados da grade. Não enfileira
+                    // para leitura. (Padronizado com o SERNIT — mesmo comportamento.)
+                    AnexarMudancaParaAlta(execucao, atual, situacaoAnterior, agora);
+                }
+                else
+                {
+                    // Mudou de situação → relê o histórico e faz diff. É esta releitura que serve de
+                    // REDE DE SEGURANÇA para o FollowUP registrado enquanto a solicitação estava
+                    // cancelada: ao voltar para EmFila, a trilha inteira é relida e deduplicada.
+                    precisamHistorico.Add((idSer, situacao, "mudou_situacao"));
+                }
             }
             // Compara pela DATA, não pelo texto cru: as duas telas escrevem o mesmo agendamento de
             // formas diferentes ("28/01/2020 13:15 - HOSPITAL X" na de Solicitação, "28/01/2020"
@@ -620,6 +634,39 @@ public sealed class SerSincronizacaoService(
         solicitacao.HistoricoLidoEm = agora;
         solicitacao.EventosCount = conhecidos.Count;
         solicitacao.UltimoEventoEm = maisRecente;
+    }
+
+    /// <summary>
+    /// Anexa a linha <b>"→ Alta"</b> ao histórico LOCAL e marca o histórico (de eventos) como
+    /// indisponível no SER — sem tentar reler (Alta esconde o histórico de eventos). Os eventos já
+    /// capturados FICAM: ao contrário do SER, não sumimos com a trilha; só somamos a transição.
+    /// Padronizado com o SERNIT. Roda uma vez (a guarda <c>HistoricoIndisponivel</c> impede repetir).
+    /// </summary>
+    private void AnexarMudancaParaAlta(
+        SerVarreduraExecucao execucao, SerSolicitacao sol, SituacaoSer anterior, DateTime agora)
+    {
+        if (sol.HistoricoIndisponivel) return;
+
+        db.SerEventos.Add(new SerEvento
+        {
+            Id = Guid.NewGuid(),
+            SerSolicitacaoId = sol.Id,
+            DataEvento = agora,
+            Evento = "Alta",
+            EstadoAnterior = anterior.ToString(),
+            EstadoAtual = SituacaoSer.Alta.ToString(),
+            UnidadeExecutora = string.IsNullOrWhiteSpace(sol.UnidadeExecutora) ? null : sol.UnidadeExecutora,
+            Observacao = "Alta detectada pela varredura da grade. O SER não oferece o histórico em "
+                         + "Alta; os eventos capturados antes ficam preservados e esta linha registra "
+                         + "a transição.",
+            CapturadoEm = agora,
+        });
+
+        sol.EventosCount += 1;
+        if (sol.UltimoEventoEm is null || agora > sol.UltimoEventoEm) sol.UltimoEventoEm = agora;
+        sol.HistoricoIndisponivel = true; // não re-enfileira nem re-anexa; a tela explica o porquê
+        sol.HistoricoLidoEm ??= agora;
+        execucao.EventosNovos++;
     }
 
     /// <summary>O SER escreve "FollowUP"; toleramos variações de caixa e o hífen.</summary>
