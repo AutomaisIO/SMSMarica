@@ -26,4 +26,8 @@ public enum TipoEventoConversa
 
     /// <summary>Devolvida à fila (o responsável abriu mão; a conversa volta a ficar sem dono).</summary>
     Devolvida = 9,
+
+    /// <summary>Devolvida AO ROBÔ ("Atendente Virtual"): volta à fila e re-arma o robô, que retoma
+    /// de onde parou na janela corrente.</summary>
+    EncaminhadaRobo = 10,
 }

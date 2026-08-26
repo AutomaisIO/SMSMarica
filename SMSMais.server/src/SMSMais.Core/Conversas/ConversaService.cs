@@ -10,6 +10,7 @@ using SMSMais.Core.Pacientes;
 using SMSMais.Data;
 using SMSMais.Data.Entities.Conversas;
 using SMSMais.Data.Entities.Enums;
+using SMSMais.Data.Entities.Robo;
 
 namespace SMSMais.Core.Conversas;
 
@@ -474,6 +475,60 @@ public sealed class ConversaService(
         await SalvarComTraducaoDeCorridaAsync(conversa, ct);
         await notificador.ConversaMovidaAsync(
             ParaEvento(conversa, conversa.UltimaMensagemPreview), deOperador, conversa.UnidadeId, ct);
+    }
+
+    /// <summary>Devolve a conversa AO ROBÔ ("Atendente Virtual"): volta à fila (sem responsável),
+    /// re-arma a trava humano-por-janela (o robô passa a ignorar a atividade humana anterior desta
+    /// janela) e, se a última mensagem for do cidadão e estiver sem resposta, enfileira já uma
+    /// tarefa para o robô retomar de onde parou. Só vale com o robô ligado.</summary>
+    public async Task EncaminharParaRoboAsync(Guid conversaId, CancellationToken ct = default)
+    {
+        var me = ExigirUsuario();
+        var conversa = await ObterNoEscopoAsync(conversaId, rastrear: true, ct);
+        await ExigirPosseOuSupervisaoAsync(conversa, me, ct);
+
+        var roboAtivo = await db.RoboConfiguracoes.AsNoTracking().Select(c => (bool?)c.Ativo).FirstOrDefaultAsync(ct);
+        if (roboAtivo != true)
+            throw new ValidacaoException("robo", "O robô de atendimento está desligado; não é possível encaminhar para o Atendente Virtual.");
+
+        var agora = DateTime.UtcNow;
+        var deOperador = conversa.OperadorResponsavelId;
+        var deUnidade = conversa.UnidadeId;
+
+        conversa.OperadorResponsavelId = null;     // volta à fila (a unidade permanece)
+        conversa.RoboRearmadoEm = agora;           // re-arma: ignora atividade humana anterior desta janela
+        conversa.RoboInteracoesNaJanela = 0;       // orçamento de interações renovado para o robô
+        conversa.AtualizadoEm = agora;
+        conversa.AtualizadoPor = me;
+
+        var evento = NovoEvento(conversa.Id, TipoEventoConversa.EncaminhadaRobo, me, agora);
+        evento.DeUsuarioId = deOperador;
+        db.ConversaEventos.Add(evento);
+
+        // Retomada proativa: se a última mensagem da janela é do cidadão e ficou sem resposta,
+        // enfileira uma tarefa para o robô responder já. Idempotente pelo único de MensagemWhatsAppId.
+        var ultima = await db.MensagensWhatsApp.AsNoTracking()
+            .Where(m => m.ConversaId == conversa.Id && m.TipoMensagem != TipoMensagem.NotaInterna)
+            .OrderByDescending(m => m.OcorridoEm)
+            .Select(m => new { m.Id, m.Direcao })
+            .FirstOrDefaultAsync(ct);
+        if (ultima is { Direcao: DirecaoMensagem.Entrada }
+            && !await db.RoboTarefas.AsNoTracking().AnyAsync(t => t.MensagemWhatsAppId == ultima.Id, ct))
+        {
+            db.RoboTarefas.Add(new RoboAtendimentoTarefa
+            {
+                Id = Guid.CreateVersion7(),
+                ConversaId = conversa.Id,
+                MensagemWhatsAppId = ultima.Id,
+                PacienteId = conversa.PacienteId,
+                Status = StatusRoboTarefa.Pendente,
+                CriadoEm = agora,
+            });
+        }
+
+        await SalvarComTraducaoDeCorridaAsync(conversa, ct);
+        await notificador.ConversaMovidaAsync(
+            ParaEvento(conversa, conversa.UltimaMensagemPreview), deOperador, deUnidade, ct);
     }
 
     public async Task EncaminharAsync(

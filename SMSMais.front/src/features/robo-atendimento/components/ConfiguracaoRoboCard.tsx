@@ -102,6 +102,27 @@ export function ConfiguracaoRoboCard() {
         />
       </Campo>
 
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Campo label="Início do expediente dos atendentes" htmlFor="cfg-exp-inicio"
+          dica="Antes deste horário (Brasília) o robô assume mesmo com atendente na sessão. Vazio = sem limite de manhã.">
+          <Input
+            id="cfg-exp-inicio"
+            type="time"
+            value={(form.horaAtendimentoHumanoInicio ?? '').slice(0, 5)}
+            onChange={(e) => set('horaAtendimentoHumanoInicio', e.target.value || null)}
+          />
+        </Campo>
+        <Campo label="Fim do expediente dos atendentes" htmlFor="cfg-exp-fim"
+          dica="A partir deste horário (Brasília) o robô assume mesmo com atendente na sessão aberta. Vazio = sem limite de fim.">
+          <Input
+            id="cfg-exp-fim"
+            type="time"
+            value={(form.horaAtendimentoHumanoFim ?? '').slice(0, 5)}
+            onChange={(e) => set('horaAtendimentoHumanoFim', e.target.value || null)}
+          />
+        </Campo>
+      </div>
+
       {erro ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{erro}</div>
       ) : null}

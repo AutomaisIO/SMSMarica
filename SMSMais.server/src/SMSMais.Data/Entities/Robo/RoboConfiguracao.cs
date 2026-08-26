@@ -41,6 +41,16 @@ public class RoboConfiguracao
     /// <summary>Mensagem quando fora do horário de atendimento e o robô não resolveu.</summary>
     public string? MensagemForaHorario { get; set; }
 
+    /// <summary>Início do expediente dos ATENDENTES humanos (Brasília, ex.: 08:00). ANTES disso o
+    /// robô assume mesmo com humano na sessão (os atendentes ainda não chegaram). <c>null</c> = sem
+    /// limite de manhã.</summary>
+    public TimeOnly? HoraAtendimentoHumanoInicio { get; set; }
+
+    /// <summary>Fim do expediente dos ATENDENTES humanos (Brasília, ex.: 17:10). A PARTIR desse
+    /// horário o robô assume mesmo com humano na sessão aberta (os atendentes já saíram).
+    /// <c>null</c> = sem limite de fim. Ambos nulos ⇒ a trava humano-por-janela vale o dia todo.</summary>
+    public TimeOnly? HoraAtendimentoHumanoFim { get; set; }
+
     public DateTime CriadoEm { get; set; }
     public Guid? CriadoPor { get; set; }
     public DateTime? AtualizadoEm { get; set; }

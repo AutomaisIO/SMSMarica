@@ -74,6 +74,11 @@ export async function encaminharConversa(
   await http.post(`/conversas/${id}/encaminhar`, payload);
 }
 
+/** Devolve a conversa ao robô ("Atendente Virtual"): volta à fila e o robô retoma. */
+export async function encaminharConversaParaRobo(id: string): Promise<void> {
+  await http.post(`/conversas/${id}/encaminhar-robo`, {});
+}
+
 export async function transferirConversa(
   id: string,
   payload: { paraUnidadeId: string; observacao?: string | null },

@@ -45,6 +45,13 @@ public interface IConversaService
     Task DevolverAsync(Guid conversaId, CancellationToken ct = default);
 
     /// <summary>
+    /// Devolve a conversa ao robô ("Atendente Virtual"): volta à fila, re-arma a trava
+    /// humano-por-janela e, se houver mensagem do cidadão sem resposta, o robô retoma. Só com o
+    /// robô ligado. Conversa de terceiro exige supervisão.
+    /// </summary>
+    Task EncaminharParaRoboAsync(Guid conversaId, CancellationToken ct = default);
+
+    /// <summary>
     /// Encaminha a conversa para outro atendente (ele vira o responsável). O alvo precisa estar
     /// ativo, ter o módulo Conversas e vínculo com a unidade da conversa. Conversa de terceiro
     /// exige supervisão.

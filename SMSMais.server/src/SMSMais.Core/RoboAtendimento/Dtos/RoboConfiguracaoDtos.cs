@@ -7,7 +7,9 @@ public sealed record RoboConfiguracaoDto(
     string ModeloPadrao,
     string NomeExibicao,
     string? MensagemHandOff,
-    string? MensagemForaHorario);
+    string? MensagemForaHorario,
+    TimeOnly? HoraAtendimentoHumanoInicio,
+    TimeOnly? HoraAtendimentoHumanoFim);
 
 public sealed record SalvarRoboConfiguracaoRequest(
     bool Ativo,
@@ -15,4 +17,6 @@ public sealed record SalvarRoboConfiguracaoRequest(
     string ModeloPadrao,
     string NomeExibicao,
     string? MensagemHandOff,
-    string? MensagemForaHorario);
+    string? MensagemForaHorario,
+    TimeOnly? HoraAtendimentoHumanoInicio,
+    TimeOnly? HoraAtendimentoHumanoFim);

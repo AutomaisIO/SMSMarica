@@ -61,6 +61,10 @@ public class Conversa
     /// robô não atuou.</summary>
     public Guid? RoboAssuntoId { get; set; }
 
+    /// <summary>Quando um operador devolveu a conversa AO ROBÔ ("Atendente Virtual"). Re-arma a
+    /// trava humano-por-janela: atividade humana ANTES disso deixa de calar o robô, que retoma.</summary>
+    public DateTime? RoboRearmadoEm { get; set; }
+
     public DateTime PrimeiroContatoEm { get; set; }
 
     /// <summary>Token de concorrência (xmin do Postgres) — protege takeover simultâneo.</summary>

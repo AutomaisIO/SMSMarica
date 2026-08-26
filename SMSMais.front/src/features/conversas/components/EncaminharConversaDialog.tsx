@@ -1,7 +1,14 @@
 import { useState } from 'react';
-import { Loader2, UserRoundCheck, X } from 'lucide-react';
-import { useAtendentesElegiveis, useEncaminharConversa } from '@/features/conversas/api/queries';
+import { Bot, Loader2, UserRoundCheck, X } from 'lucide-react';
+import {
+  useAtendentesElegiveis,
+  useEncaminharConversa,
+  useEncaminharConversaParaRobo,
+} from '@/features/conversas/api/queries';
 import { extrairMensagemDeErro } from '@/shared/api/httpClient';
+
+/** Sentinela de seleção: encaminhar ao robô em vez de um atendente humano. */
+const ALVO_ROBO = '__robo__';
 
 type Props = {
   conversaId: string;
@@ -17,21 +24,28 @@ type Props = {
 export function EncaminharConversaDialog({ conversaId, onFechar, onEncaminhada }: Props) {
   const { data: atendentes, isLoading } = useAtendentesElegiveis(conversaId);
   const encaminhar = useEncaminharConversa();
+  const encaminharRobo = useEncaminharConversaParaRobo();
   const [selecionado, setSelecionado] = useState<string | null>(null);
   const [observacao, setObservacao] = useState('');
   const [erro, setErro] = useState<string | null>(null);
 
   const elegiveis = atendentes?.filter((a) => !a.responsavelAtual) ?? [];
+  const paraRobo = selecionado === ALVO_ROBO;
+  const enviando = encaminhar.isPending || encaminharRobo.isPending;
 
   async function aoEncaminhar() {
     if (!selecionado) return;
     setErro(null);
     try {
-      await encaminhar.mutateAsync({
-        id: conversaId,
-        paraUsuarioId: selecionado,
-        observacao: observacao.trim() || undefined,
-      });
+      if (paraRobo) {
+        await encaminharRobo.mutateAsync(conversaId);
+      } else {
+        await encaminhar.mutateAsync({
+          id: conversaId,
+          paraUsuarioId: selecionado,
+          observacao: observacao.trim() || undefined,
+        });
+      }
       onEncaminhada();
     } catch (e) {
       setErro(extrairMensagemDeErro(e));
@@ -52,6 +66,27 @@ export function EncaminharConversaDialog({ conversaId, onFechar, onEncaminhada }
           <p className="text-xs text-gray-500">
             O colega escolhido vira o responsável: a conversa passa para a lista pessoal dele.
           </p>
+
+          {/* Atendente Virtual (robô): retoma de onde parou, sem virar responsável humano. */}
+          <button
+            type="button"
+            onClick={() => setSelecionado(ALVO_ROBO)}
+            className={`flex w-full items-start gap-2 rounded-md px-3 py-2 text-left text-sm ring-1 transition ${
+              paraRobo
+                ? 'bg-indigo-50 text-indigo-800 ring-indigo-300'
+                : 'text-gray-800 ring-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            <Bot className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" />
+            <span>
+              <span className="block font-medium">Atendente Virtual</span>
+              <span className="block text-xs text-gray-500">
+                Devolve à fila e o robô retoma a conversa de onde parou.
+              </span>
+            </span>
+          </button>
+
+          <p className="pt-1 text-xs font-medium uppercase tracking-wide text-gray-400">Ou um colega</p>
 
           {isLoading && (
             <p className="flex items-center gap-2 text-sm text-gray-500">
@@ -81,20 +116,22 @@ export function EncaminharConversaDialog({ conversaId, onFechar, onEncaminhada }
             ))}
           </ul>
 
-          <div>
-            <label htmlFor="obs-encaminhar" className="mb-1 block text-xs font-medium text-gray-600">
-              Observação (opcional)
-            </label>
-            <textarea
-              id="obs-encaminhar"
-              value={observacao}
-              onChange={(e) => setObservacao(e.target.value)}
-              rows={2}
-              maxLength={1000}
-              placeholder="Contexto para quem vai atender"
-              className="w-full rounded-md border border-gray-200 px-2 py-1.5 text-sm outline-none focus:border-primary-400"
-            />
-          </div>
+          {!paraRobo && (
+            <div>
+              <label htmlFor="obs-encaminhar" className="mb-1 block text-xs font-medium text-gray-600">
+                Observação (opcional)
+              </label>
+              <textarea
+                id="obs-encaminhar"
+                value={observacao}
+                onChange={(e) => setObservacao(e.target.value)}
+                rows={2}
+                maxLength={1000}
+                placeholder="Contexto para quem vai atender"
+                className="w-full rounded-md border border-gray-200 px-2 py-1.5 text-sm outline-none focus:border-primary-400"
+              />
+            </div>
+          )}
 
           {erro && <p className="text-sm text-error-600">{erro}</p>}
         </div>
@@ -110,10 +147,10 @@ export function EncaminharConversaDialog({ conversaId, onFechar, onEncaminhada }
           <button
             type="button"
             onClick={() => void aoEncaminhar()}
-            disabled={!selecionado || encaminhar.isPending}
+            disabled={!selecionado || enviando}
             className="rounded-md bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
           >
-            {encaminhar.isPending ? 'Encaminhando…' : 'Encaminhar'}
+            {enviando ? 'Encaminhando…' : paraRobo ? 'Encaminhar ao robô' : 'Encaminhar'}
           </button>
         </div>
       </div>

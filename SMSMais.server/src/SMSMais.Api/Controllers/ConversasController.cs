@@ -126,6 +126,19 @@ public sealed class ConversasController(IConversaService service) : ControllerBa
         return NoContent();
     }
 
+    /// <summary>Devolve a conversa ao robô ("Atendente Virtual"): volta à fila e o robô retoma.</summary>
+    [HttpPost("{id:guid}/encaminhar-robo")]
+    [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Edicao)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> EncaminharRobo(Guid id, CancellationToken ct)
+    {
+        await service.EncaminharParaRoboAsync(id, ct);
+        return NoContent();
+    }
+
     /// <summary>Encaminha a conversa para outro atendente (ele vira o responsável).</summary>
     [HttpPost("{id:guid}/encaminhar")]
     [RequerPermissao(ModuloPermissao.Conversas, AcoesPermissao.Edicao)]

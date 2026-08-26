@@ -4,6 +4,7 @@ import {
   buscarContatos,
   devolverConversa,
   encaminharConversa,
+  encaminharConversaParaRobo,
   enviarMensagem,
   iniciarConversa,
   listarAtendentesElegiveis,
@@ -156,6 +157,15 @@ export function useEncaminharConversa() {
       encaminharConversa(id, { paraUsuarioId, observacao: observacao || null }),
     onSuccess: (_d, v) => invalidarPosse(client, v.id),
     onError: (_e, v) => invalidarPosse(client, v.id),
+  });
+}
+
+export function useEncaminharConversaParaRobo() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => encaminharConversaParaRobo(id),
+    onSuccess: (_d, id) => invalidarPosse(client, id),
+    onError: (_e, id) => invalidarPosse(client, id),
   });
 }
 

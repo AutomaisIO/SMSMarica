@@ -60,10 +60,14 @@ public sealed class RoboAtendimentoProcessador(
             return;
         }
 
-        var ancora = conversa.JanelaAbertaEm ?? mensagem.OcorridoEm;
+        var ancora = TravaHumano.AncoraEfetiva(conversa.JanelaAbertaEm, mensagem.OcorridoEm, conversa.RoboRearmadoEm);
+        // Fora do expediente dos atendentes (antes de abrir / depois de fechar), o robô assume
+        // mesmo com humano na sessão. Dentro dele, a trava humano-por-janela vale.
+        var ignorarHumano = TravaHumano.ForaDoExpedienteHumano(
+            cfg.HoraAtendimentoHumanoInicio, cfg.HoraAtendimentoHumanoFim, DateTime.UtcNow);
 
         // Trava humano-por-janela (1ª checagem).
-        if (await HumanoNaJanelaAsync(conversa.Id, ancora, ct))
+        if (!ignorarHumano && await HumanoNaJanelaAsync(conversa.Id, ancora, ct))
         {
             await FinalizarAsync(tarefa, StatusRoboTarefa.HandOff, "Humano já atuou na janela.", ct);
             return;
@@ -109,7 +113,7 @@ public sealed class RoboAtendimentoProcessador(
         var resposta = await motor.ResponderAsync(entrada, ct);
 
         // Trava humano-por-janela (2ª checagem — TOCTOU: alguém pode ter assumido enquanto a IA pensava).
-        if (await HumanoNaJanelaAsync(conversa.Id, ancora, ct))
+        if (!ignorarHumano && await HumanoNaJanelaAsync(conversa.Id, ancora, ct))
         {
             await FinalizarAsync(tarefa, StatusRoboTarefa.HandOff, "Humano assumiu durante o processamento.", ct);
             return;

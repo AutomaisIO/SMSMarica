@@ -93,4 +93,8 @@ export type RoboConfiguracao = {
   nomeExibicao: string;
   mensagemHandOff: string | null;
   mensagemForaHorario: string | null;
+  /** Início do expediente dos atendentes humanos (HH:mm[:ss], Brasília). Antes disso o robô assume. */
+  horaAtendimentoHumanoInicio: string | null;
+  /** Fim do expediente dos atendentes humanos (HH:mm[:ss], Brasília). A partir disso o robô assume. */
+  horaAtendimentoHumanoFim: string | null;
 };
