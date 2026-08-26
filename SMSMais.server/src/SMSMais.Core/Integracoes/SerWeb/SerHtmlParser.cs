@@ -429,6 +429,60 @@ public static partial class SerHtmlParser
         return null;
     }
 
+    /// <summary>
+    /// Retrato de diagnóstico do modal de FollowUP reaberto após uma gravação recusada pelo SER:
+    /// os campos que o modal exige AGORA e a mensagem de validação que ele trouxe. NUNCA inclui
+    /// valores digitados — o texto do FollowUP é PII, então só metadados de estrutura entram.
+    /// Sequências de 3+ dígitos na mensagem são mascaradas (telefone/CPF/CNS eventualmente
+    /// ecoados). Devolve string vazia quando o modal não é localizado na resposta.
+    /// </summary>
+    public static string DiagnosticoModalFollowUp(IHtmlDocument doc)
+    {
+        var modal = ModalDeObservacao(doc);
+        if (modal is null || doc.GetElementById(modal.FormId) is not IHtmlFormElement form)
+        {
+            return string.Empty;
+        }
+
+        // Campos exigidos — nome + tag (+ type, + opções de select). Só a ESTRUTURA do form,
+        // nunca o `value`/conteúdo (onde vive o que a profissional digitou).
+        var descritores = form.QuerySelectorAll("input, select, textarea")
+            .Where(e => !(e.GetAttribute("name") ?? e.Id ?? string.Empty)
+                .StartsWith("javax.faces", StringComparison.Ordinal))
+            .Select(e =>
+            {
+                var nome = e.GetAttribute("name") ?? e.Id ?? "?";
+                var tag = e.TagName.ToLowerInvariant();
+                var tipo = e.GetAttribute("type");
+                var opcoes = string.Equals(tag, "select", StringComparison.Ordinal)
+                    ? "{" + string.Join("|", e.QuerySelectorAll("option").Select(Texto).Where(t => t.Length > 0)) + "}"
+                    : string.Empty;
+                return tipo is null ? $"{nome}({tag}){opcoes}" : $"{nome}({tag}:{tipo}){opcoes}";
+            });
+
+        // Mensagem de validação: textos de elementos de mensagem do RichFaces dentro do modal.
+        var mensagens = form.QuerySelectorAll("span, div, td, li")
+            .Where(e =>
+            {
+                var marca = ((e.GetAttribute("class") ?? string.Empty) + " " + (e.Id ?? string.Empty))
+                    .ToLowerInvariant();
+                return marca.Contains("mess") || marca.Contains("erro") || marca.Contains("error");
+            })
+            .Select(Texto)
+            .Where(t => t.Length is > 0 and < 200)
+            .Select(t => Regex.Replace(t, @"\d{3,}", "###"))
+            .Distinct(StringComparer.Ordinal)
+            .Take(6)
+            .ToArray();
+
+        var partes = new List<string> { "campos=[" + string.Join(", ", descritores) + "]" };
+        if (mensagens.Length > 0)
+        {
+            partes.Add("validacao=\"" + string.Join(" | ", mensagens) + "\"");
+        }
+        return string.Join(" ; ", partes);
+    }
+
     // ------------------------------------------------------------------ edição de contato
 
     /// <summary>Item "Editar" do menu Opções de uma linha. Situações terminais não o oferecem

@@ -300,17 +300,23 @@ public sealed class SerLeitorService(
         // fluxo quebrou. Não despejamos o HTML: a tela do SER carrega PII do paciente.
         if (string.IsNullOrWhiteSpace(mensagem))
         {
+            // Quando o modal reabre (gravação recusada), o SER traz o motivo DENTRO do modal —
+            // fora das caixas globais que MensagemDaTela lê. Extraímos campos exigidos + mensagem
+            // de validação (sem valores; dígitos mascarados) para revelar o que o SER passou a
+            // exigir (ticket #111).
+            var modalDiag = SerHtmlParser.DiagnosticoModalFollowUp(docResposta);
             logger.LogWarning(
                 "SER: gravação de FollowUP de {IdSer} voltou SEM mensagem de sucesso (HTML {Tamanho} B). "
                 + "Diagnóstico estrutural — telaPesquisa(form0)={TemPesquisa}, caixaMensagens={TemCaixa}, "
-                + "divMensagens={TemDiv}, listagem={TemListagem}, modalAindaAberto={ModalAberto}.",
+                + "divMensagens={TemDiv}, listagem={TemListagem}, modalAindaAberto={ModalAberto}. Modal: {ModalDiag}",
                 idSer,
                 resposta.Texto.Length,
                 docResposta.GetElementById(SerHtmlParser.FormPesquisa) is not null,
                 docResposta.GetElementById(SerHtmlParser.CaixaMensagens) is not null,
                 docResposta.GetElementById("form0:divMensagens") is not null,
                 docResposta.GetElementById(SerHtmlParser.TabelaGrade) is not null,
-                SerHtmlParser.ModalDeObservacao(docResposta) is not null);
+                SerHtmlParser.ModalDeObservacao(docResposta) is not null,
+                string.IsNullOrEmpty(modalDiag) ? "(modal não localizado)" : modalDiag);
         }
 
         return mensagem;
