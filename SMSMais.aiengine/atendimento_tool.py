@@ -41,24 +41,25 @@ CATALOGO = {
     ),
     "ConfirmarPresenca": (
         "confirmar_presenca",
-        "Confirma a presença do paciente no agendamento. Só chame APÓS confirmar a identidade — "
-        "4 primeiros dígitos do CPF + mês e ano de nascimento. Devolve qual agendamento foi confirmado. "
-        "args: cpf (4 primeiros dígitos ou completo), mesNascimento (1-12), anoNascimento (ex.: 1985).",
-        {"cpf": str, "mesNascimento": int, "anoNascimento": int},
+        "Confirma a presença no agendamento. FLUXO: PRIMEIRO chame com cpf (3 PRIMEIROS dígitos) + "
+        "mesNascimento + anoNascimento — o comando valida e devolve o NOME para você confirmar com a "
+        "pessoa. SÓ depois que ela confirmar o nome, chame de novo com confirmado=true. Nunca peça o "
+        "CPF completo; nunca revele o agendamento antes de a identidade conferir.",
+        {"cpf": str, "mesNascimento": int, "anoNascimento": int, "confirmado": bool},
     ),
     "IniciarCancelamento": (
         "iniciar_cancelamento",
-        "Registra que o paciente NÃO vai comparecer. Ação sensível: só chame APÓS confirmar a "
-        "identidade — 4 primeiros dígitos do CPF + mês e ano de nascimento. "
-        "args: cpf (4 primeiros dígitos ou completo), mesNascimento (1-12), anoNascimento (ex.: 1985), "
-        "motivo (opcional).",
-        {"cpf": str, "mesNascimento": int, "anoNascimento": int, "motivo": str},
+        "Registra que o paciente NÃO vai comparecer. FLUXO: PRIMEIRO chame com cpf (3 PRIMEIROS "
+        "dígitos) + mesNascimento + anoNascimento — o comando valida e devolve o NOME para você "
+        "confirmar. SÓ depois que a pessoa confirmar, chame de novo com confirmado=true. Nunca peça o "
+        "CPF completo; nunca revele o agendamento antes da identidade conferir. Opcional: motivo.",
+        {"cpf": str, "mesNascimento": int, "anoNascimento": int, "confirmado": bool, "motivo": str},
     ),
     "ConsultarStatusExameRecente": (
         "consultar_status_exame_recente",
-        "Consulta a situação do exame/laudo recente APÓS confirmar identidade. "
-        "args: nome (informado pela pessoa), cpf (4 primeiros dígitos ou completo).",
-        {"nome": str, "cpf": str},
+        "Consulta a situação do exame/laudo recente APÓS confirmar identidade (3 PRIMEIROS dígitos do "
+        "CPF — nunca peça o CPF completo). args: cpf.",
+        {"cpf": str},
     ),
     "ConsultarPosicaoRegulacao": (
         "consultar_posicao_regulacao",
@@ -70,8 +71,8 @@ CATALOGO = {
     ),
     "VerificarCadastro": (
         "verificar_cadastro",
-        "Valida os 4 primeiros dígitos do CPF (resposta ao pedido de verificação cadastral). "
-        "Confere → libera o envio da confirmação do agendamento. args: cpf (4 primeiros dígitos ou completo).",
+        "Valida os primeiros dígitos do CPF (resposta ao pedido de verificação cadastral). "
+        "Confere → libera o envio da confirmação do agendamento. args: cpf (os dígitos que a pessoa enviou).",
         {"cpf": str},
     ),
 }

@@ -32,9 +32,9 @@ public sealed class ConsultarPosicaoRegulacaoComando(SmsMaisDbContext db, IPacie
             var cpfInf = GateIdentidade.LerString(ctx.Args, "cpf");
             var mes = GateIdentidade.LerInt(ctx.Args, "mesNascimento");
             var ano = GateIdentidade.LerInt(ctx.Args, "anoNascimento");
-            if (!GateIdentidade.Cpf4Confere(p.Cpf, cpfInf) || !GateIdentidade.NascimentoMesAnoConfere(p.DataNascimento, mes, ano))
+            if (!GateIdentidade.CpfInicioConfere(p.Cpf, cpfInf) || !GateIdentidade.NascimentoMesAnoConfere(p.DataNascimento, mes, ano))
                 return new(false,
-                    "Para consultar a regulação preciso confirmar a identidade: peça os 4 primeiros dígitos do CPF e o "
+                    "Para consultar a regulação preciso confirmar a identidade: peça os 3 primeiros dígitos do CPF e o "
                     + "mês e ano de nascimento e chame novamente. Se não conferir, encaminhe ao atendente humano.");
         }
 

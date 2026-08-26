@@ -90,6 +90,7 @@ public sealed class RoboAtendimentoProcessador(
         }
 
         var dentroHorario = assunto is null || DentroDoHorario(assunto);
+        var urlApp = await db.Instituicoes.AsNoTracking().Select(i => i.UrlApp).FirstOrDefaultAsync(ct);
         var comandos = assunto is null
             ? Array.Empty<string>()
             : [.. assunto.Comandos.Where(c => c.Habilitado).Select(c => c.Comando.ToString())];
@@ -99,7 +100,7 @@ public sealed class RoboAtendimentoProcessador(
             PacienteId: conversa.PacienteId,
             AssuntoId: assunto?.Id,
             Modelo: string.IsNullOrWhiteSpace(assunto?.Modelo) ? cfg.ModeloPadrao : assunto!.Modelo!,
-            InstrucaoSistema: MontarInstrucao(cfg.PersonaGlobal, assunto, dentroHorario),
+            InstrucaoSistema: MontarInstrucao(cfg.PersonaGlobal, assunto, dentroHorario, urlApp),
             ComandosHabilitados: comandos,
             Historico: await CarregarHistoricoAsync(conversa.Id, tarefa.MensagemWhatsAppId, ct),
             MensagemAtual: texto,
@@ -120,7 +121,7 @@ public sealed class RoboAtendimentoProcessador(
         await db.SaveChangesAsync(ct);
 
         if (!string.IsNullOrWhiteSpace(resposta.Texto))
-            await EnviarComoRoboAsync(conversa, resposta.Texto, cfg.NomeExibicao, ct);
+            await EnviarComoRoboAsync(conversa, SanitizarWhatsApp(resposta.Texto), cfg.NomeExibicao, ct);
 
         conversa.RoboAssuntoId = assunto?.Id ?? conversa.RoboAssuntoId;
         conversa.RoboInteracoesNaJanela += 1;
@@ -209,7 +210,11 @@ public sealed class RoboAtendimentoProcessador(
         return "sistema";
     }
 
-    private static string MontarInstrucao(string personaGlobal, RoboAssunto? assunto, bool dentroHorario)
+    /// <summary>Converte negrito markdown (**x**) para o do WhatsApp (*x*) e colapsa asteriscos duplicados.</summary>
+    private static string SanitizarWhatsApp(string texto) =>
+        System.Text.RegularExpressions.Regex.Replace(texto, @"\*{2,}", "*");
+
+    private static string MontarInstrucao(string personaGlobal, RoboAssunto? assunto, bool dentroHorario, string? urlApp)
     {
         var sb = new StringBuilder();
         sb.AppendLine(personaGlobal.Trim());
@@ -237,6 +242,10 @@ public sealed class RoboAtendimentoProcessador(
         sb.AppendLine(dentroHorario
             ? "Estamos dentro do horário de atendimento."
             : "Estamos FORA do horário de atendimento: se não puder resolver, oriente a pessoa a procurar atendimento no horário.");
+        sb.AppendLine();
+        var app = string.IsNullOrWhiteSpace(urlApp) ? "o aplicativo do cidadão da prefeitura" : urlApp!.Trim();
+        sb.AppendLine($"AO SE DESPEDIR, sempre oriente a pessoa: acesse {app} — lá ficam os exames, consultas e "
+            + "atendimentos que ela já teve na rede municipal; peça para manter os dados sempre atualizados.");
         return sb.ToString();
     }
 

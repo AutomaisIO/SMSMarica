@@ -28,9 +28,9 @@ public sealed class VerificarCadastroComando(
 
         var cpf = GateIdentidade.LerString(ctx.Args, "cpf");
         var p = await pacientes.ObterPorIdAsync(pacienteId, ct);
-        if (!GateIdentidade.Cpf4Confere(p.Cpf, cpf))
+        if (!GateIdentidade.CpfInicioConfere(p.Cpf, cpf))
             return new(false,
-                "Os 4 primeiros dígitos do CPF não conferem. Peça novamente, com calma; se persistir, encaminhe ao atendente humano.");
+                "Os primeiros dígitos do CPF não conferem. Peça novamente, com calma; se persistir, encaminhe ao atendente humano.");
 
         // Marca o número da conversa como verificado para este paciente (também corrige o cadastro).
         if (!string.IsNullOrWhiteSpace(p.Cpf))

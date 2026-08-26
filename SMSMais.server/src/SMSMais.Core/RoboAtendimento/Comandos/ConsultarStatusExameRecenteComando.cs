@@ -23,9 +23,9 @@ public sealed class ConsultarStatusExameRecenteComando(SmsMaisDbContext db, IPac
 
         var cpf = GateIdentidade.LerString(ctx.Args, "cpf");
         var p = await pacientes.ObterPorIdAsync(pacienteId, ct);
-        if (!GateIdentidade.Cpf4Confere(p.Cpf, cpf))
+        if (!GateIdentidade.CpfInicioConfere(p.Cpf, cpf))
             return new(false,
-                "Os 4 primeiros dígitos do CPF não conferem. NÃO revele nada; peça novamente ou encaminhe ao atendente humano.");
+                "Os primeiros dígitos do CPF não conferem. NÃO revele nada; peça novamente ou encaminhe ao atendente humano.");
 
         var status = await db.Solicitacoes.AsNoTracking()
             .Where(s => s.PacienteId == pacienteId && s.ExcluidoEm == null && s.ExameImagem != null)

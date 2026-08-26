@@ -9,12 +9,12 @@ namespace SMSMais.Core.RoboAtendimento.Comandos;
 /// </summary>
 public static class GateIdentidade
 {
-    /// <summary>Confere os 4 primeiros dígitos do CPF (aceita CPF inteiro; usa os 4 primeiros).</summary>
-    public static bool Cpf4Confere(string? cpfPaciente, string? cpfInformado)
+    /// <summary>Confere os 3 primeiros dígitos do CPF (aceita CPF inteiro/mais dígitos; usa os 3 primeiros).</summary>
+    public static bool CpfInicioConfere(string? cpfPaciente, string? cpfInformado)
     {
         var a = SoDigitos(cpfPaciente);
         var b = SoDigitos(cpfInformado);
-        return a.Length >= 4 && b.Length >= 4 && a[..4] == b[..4];
+        return a.Length >= 3 && b.Length >= 3 && a[..3] == b[..3];
     }
 
     /// <summary>Confere mês e ano de nascimento.</summary>
@@ -38,6 +38,16 @@ public static class GateIdentidade
         if (el.ValueKind == JsonValueKind.String && int.TryParse(new string(el.GetString()?.Where(char.IsDigit).ToArray()), out var m))
             return m;
         return null;
+    }
+
+    public static bool LerBool(JsonElement args, string nome)
+    {
+        if (args.ValueKind != JsonValueKind.Object || !args.TryGetProperty(nome, out var el))
+            return false;
+        if (el.ValueKind == JsonValueKind.True) return true;
+        if (el.ValueKind == JsonValueKind.String)
+            return string.Equals(el.GetString()?.Trim(), "true", StringComparison.OrdinalIgnoreCase);
+        return false;
     }
 
     public static string? LerString(JsonElement args, string nome) =>
