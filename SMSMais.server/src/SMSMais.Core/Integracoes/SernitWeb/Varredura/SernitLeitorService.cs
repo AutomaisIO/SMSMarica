@@ -80,57 +80,95 @@ public sealed class SernitLeitorService(
     public async Task<SernitPaginaGrade> PesquisarAsync(
         SernitFiltroPesquisa filtro, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrEmpty(_htmlForm)) await PrepararAsync(cancellationToken);
-
-        var doc = SernitHtmlParser.Documento(_htmlForm);
-        if (SernitHtmlParser.BotaoPesquisar(doc) is null)
+        for (var tentativa = 1; ; tentativa++)
         {
-            // A sessão do motor caiu no SERNIT — a varredura DIÁRIA reusa o singleton, que ficou
-            // parado desde a última rodada; o SERNIT devolve uma página de sessão-expirada que NÃO
-            // bate com o detector de login/AGUARDE, então o AbrirTela não reautentica sozinho (a
-            // CARGA INICIAL funciona justamente porque abre sessão nova). Força sessão nova e reabre.
-            logger.LogInformation(
-                "SERNIT: tela de pesquisa perdida (sessão caída?) — reautenticando e reabrindo.");
-            sessao.Reiniciar();
-            _htmlForm = string.Empty;
-            _htmlDados = string.Empty;
-            _ultimoViewState = null;
-            await PrepararAsync(cancellationToken);
-            doc = SernitHtmlParser.Documento(_htmlForm);
+            if (string.IsNullOrEmpty(_htmlForm)) await PrepararAsync(cancellationToken);
+
+            var doc = SernitHtmlParser.Documento(_htmlForm);
+            if (SernitHtmlParser.BotaoPesquisar(doc) is null)
+            {
+                // A sessão do motor caiu no SERNIT — a varredura DIÁRIA reusa o singleton, que ficou
+                // parado desde a última rodada; o SERNIT devolve uma página de sessão-expirada que NÃO
+                // bate com o detector de login/AGUARDE, então o AbrirTela não reautentica sozinho (a
+                // CARGA INICIAL funciona justamente porque abre sessão nova). Força sessão nova e reabre.
+                logger.LogInformation(
+                    "SERNIT: tela de pesquisa perdida (sessão caída?) — reautenticando e reabrindo.");
+                sessao.Reiniciar();
+                _htmlForm = string.Empty;
+                _htmlDados = string.Empty;
+                _ultimoViewState = null;
+                await PrepararAsync(cancellationToken);
+                doc = SernitHtmlParser.Documento(_htmlForm);
+            }
+
+            var botao = SernitHtmlParser.BotaoPesquisar(doc)
+                ?? throw new InvalidOperationException(
+                    "Botão Pesquisar não encontrado na tela do SERNIT nem após reabri-la.");
+
+            // Situação é OBRIGATÓRIA — resolvida pelo select que oferece EM_FILA (id volátil).
+            var campoSituacao = SernitHtmlParser.SelectComOpcao(doc, SernitHtmlParser.FormPesquisa, "EM_FILA")
+                                ?? SituacaoFallback;
+
+            var extras = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [botao] = botao,
+                ["AJAXREQUEST"] = SernitHtmlParser.FormPesquisa,
+                [campoSituacao] = SernitCodigos.Codigo(filtro.Situacao),
+            };
+
+            if (filtro.Tipo is { } tipo) extras[CampoTipo] = SernitCodigos.Codigo(tipo);
+
+            // SEMPRE seta os campos opcionais (valor OU vazio). É a correção da regressão da carga
+            // inicial: a resposta do GRADE vem como página completa com as DATAS do fatiamento
+            // preenchidas, e o Absorver a guarda como _htmlForm. Sem limpar, a busca por ID seguinte
+            // HERDA essas datas e vira (situação, id, data-estreita) → 0 linhas (o id cai fora da
+            // janela). Setando vazio, cada busca reflete só o filtro pedido. (Confirmado no lab.)
+            extras[CampoDataInicio] = filtro.DataSolicitacaoInicio is { } di ? Br(di) : string.Empty;
+            extras[CampoDataFim] = filtro.DataSolicitacaoFim is { } df ? Br(df) : string.Empty;
+            extras[CampoCpf] = filtro.Cpf ?? string.Empty;
+            extras[CampoNome] = filtro.Nome ?? string.Empty;
+            extras[CampoCns] = filtro.Cns ?? string.Empty;
+            extras[CampoIdSolicitacao] = filtro.IdSolicitacao ?? string.Empty;
+
+            var html = await sessao.SubmeterPesquisaAsync(_htmlForm, extras, _ultimoViewState, cancellationToken);
+            Absorver(html);
+
+            var respostaDoc = SernitHtmlParser.Documento(_htmlDados);
+            var pagina = new SernitPaginaGrade(
+                SernitHtmlParser.LerGrade(respostaDoc),
+                SernitHtmlParser.PaginasNaResposta(respostaDoc),
+                SernitHtmlParser.TotalDeResultados(respostaDoc),
+                SernitHtmlParser.GradeCapada(respostaDoc));
+
+            // Busca por ID DEVE achar a linha (1). Se veio VAZIA, o form/viewstate herdado da fase
+            // anterior (a grade termina no meio de um fatiamento por data) provavelmente está stale:
+            // o SERNIT re-renderiza a view antiga e o filtro de ID não pega. Reabre o form LIMPO e
+            // repete uma vez — é o que o lab faz (GET fresco por busca) e resolve. Sem ID, 0 é 0.
+            if (pagina.Linhas.Count == 0 && !string.IsNullOrWhiteSpace(filtro.IdSolicitacao) && tentativa < 2)
+            {
+                // DIAG temporário: o que o SERNIT devolveu na busca por ID vazia? (login? grade? total?)
+                var b = _htmlDados ?? string.Empty;
+                logger.LogWarning(
+                    "SERNIT/diag busca-id vazia: id={Id} sit={Sit} len={Len} login={Login} "
+                    + "temListagem={Grid} temMsgErro={Msg} temIdSolic={IdF} totalTxt={Total}",
+                    filtro.IdSolicitacao, filtro.Situacao, b.Length,
+                    b.Contains("login:password", StringComparison.Ordinal),
+                    b.Contains("form0:listagem", StringComparison.Ordinal),
+                    b.Contains("form0:msgErro", StringComparison.Ordinal),
+                    b.Contains("idSolicitacao", StringComparison.Ordinal),
+                    (SernitHtmlParser.TotalDeResultados(respostaDoc)?.ToString() ?? "null"));
+
+                logger.LogInformation(
+                    "SERNIT: busca pelo ID {Id} veio vazia — reabrindo o formulário limpo e repetindo.",
+                    filtro.IdSolicitacao);
+                _htmlForm = string.Empty;
+                _htmlDados = string.Empty;
+                _ultimoViewState = null;
+                continue;
+            }
+
+            return pagina;
         }
-
-        var botao = SernitHtmlParser.BotaoPesquisar(doc)
-            ?? throw new InvalidOperationException(
-                "Botão Pesquisar não encontrado na tela do SERNIT nem após reabri-la.");
-
-        // Situação é OBRIGATÓRIA — resolvida pelo select que oferece EM_FILA (id volátil).
-        var campoSituacao = SernitHtmlParser.SelectComOpcao(doc, SernitHtmlParser.FormPesquisa, "EM_FILA")
-                            ?? SituacaoFallback;
-
-        var extras = new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            [botao] = botao,
-            ["AJAXREQUEST"] = SernitHtmlParser.FormPesquisa,
-            [campoSituacao] = SernitCodigos.Codigo(filtro.Situacao),
-        };
-
-        if (filtro.Tipo is { } tipo) extras[CampoTipo] = SernitCodigos.Codigo(tipo);
-        if (filtro.DataSolicitacaoInicio is { } di) extras[CampoDataInicio] = Br(di);
-        if (filtro.DataSolicitacaoFim is { } df) extras[CampoDataFim] = Br(df);
-        if (!string.IsNullOrWhiteSpace(filtro.Cpf)) extras[CampoCpf] = filtro.Cpf!;
-        if (!string.IsNullOrWhiteSpace(filtro.Nome)) extras[CampoNome] = filtro.Nome!;
-        if (!string.IsNullOrWhiteSpace(filtro.Cns)) extras[CampoCns] = filtro.Cns!;
-        if (!string.IsNullOrWhiteSpace(filtro.IdSolicitacao)) extras[CampoIdSolicitacao] = filtro.IdSolicitacao!;
-
-        var html = await sessao.SubmeterPesquisaAsync(_htmlForm, extras, _ultimoViewState, cancellationToken);
-        Absorver(html);
-
-        var respostaDoc = SernitHtmlParser.Documento(_htmlDados);
-        return new SernitPaginaGrade(
-            SernitHtmlParser.LerGrade(respostaDoc),
-            SernitHtmlParser.PaginasNaResposta(respostaDoc),
-            SernitHtmlParser.TotalDeResultados(respostaDoc),
-            SernitHtmlParser.GradeCapada(respostaDoc));
     }
 
     public async Task<IReadOnlyList<SernitLinhaGrade>> IrParaPaginaAsync(
